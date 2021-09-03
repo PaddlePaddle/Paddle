@@ -30,6 +30,9 @@ inline void shift_along_dim(T* data, const DDim& input_dim, int64_t dim,
   if (dim < 0) {
     dim += input_dim.size();
   }
+  if (input_dim[dim] == 0) {
+    return;
+  }
   shift = shift % input_dim[dim];
   if (shift < 0) {
     shift += input_dim[dim];

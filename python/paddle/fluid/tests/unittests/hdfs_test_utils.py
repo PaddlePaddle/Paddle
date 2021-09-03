@@ -110,6 +110,24 @@ class FSTestBase(unittest.TestCase):
         fs.delete(dst_file)
         fs.delete(src_file)
 
+    def _test_upload_dir(self, fs):
+        # upload dir
+        src_file = os.path.abspath("./test_upload_dir")
+        dst_file = os.path.abspath("./test_uolpad_dir")
+        file1 = os.path.abspath("./test_upload_dir/file1")
+        file2 = os.path.abspath("./test_upload_dir/file2")
+
+        local = LocalFS()
+        local.mkdirs(src_file)
+        local.touch(file1)
+        local.touch(file2)
+
+        fs.upload(src_file, dst_file)
+
+        self.assertTrue(fs.is_exist(dst_file))
+        fs.delete(dst_file)
+        local.delete(src_file)
+
     def _test_try_download(self, fs):
         src_file = os.path.abspath("./test_try_download.src")
         dst_file = os.path.abspath("./test_try_download.dst")
@@ -152,13 +170,33 @@ class FSTestBase(unittest.TestCase):
             pass
 
         local = LocalFS()
-        local.touch(src_file)
-        fs.delete(dst_file)
+        fs.touch(src_file)
+        local.delete(dst_file)
 
         assert fs.need_upload_download()
 
-        self.assertFalse(fs.is_exist(dst_file))
+        fs.download(src_file, dst_file)
+
+        self.assertTrue(local.is_exist(dst_file))
+        local.delete(dst_file)
+        fs.delete(src_file)
+
+    def _test_download_dir(self, fs):
+        src_file = os.path.abspath("./test_download_dir_src")
+        dst_file = os.path.abspath("./test_download_dir_dst")
+        file1 = os.path.abspath("./test_download_dir_src/file1")
+        file2 = os.path.abspath("./test_download_dir_src/file2")
         fs.delete(dst_file)
+        fs.delete(src_file)
+
+        fs.mkdirs(src_file)
+        fs.touch(file1)
+        fs.touch(file2)
+
+        fs.download(src_file, dst_file)
+        local = LocalFS()
+        self.assertTrue(local.is_exist(dst_file))
+        local.delete(dst_file)
         fs.delete(src_file)
 
     def _test_mkdirs(self, fs):

@@ -68,6 +68,7 @@ ConvElementwiseAdd2ActFusePass::ConvElementwiseAdd2ActFusePass() {
       .AddAttr("paddings")
       .End()
       .AddAttr("padding_algorithm")
+      .IsOptional()
       .IsStringIn({"EXPLICIT", "SAME", "VALID"})
       .End()
       .AddAttr("groups")
@@ -91,7 +92,8 @@ ConvElementwiseAdd2ActFusePass::ConvElementwiseAdd2ActFusePass() {
       .End()
       .AddAttr("axis")
       // the first elementwise_add-axis needs to be 1, the second has to be -1
-      .IsIntIn({1, -1})
+      // or 0
+      .IsIntIn({1, -1, 0})
       .End();
 
   AddOpCompat(OpCompat("relu"))

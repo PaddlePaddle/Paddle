@@ -99,6 +99,122 @@ void addIntermediateOut(Node* op_node, const std::string& out_name,
 
 }  // namespace
 
+LayerNormFusePass::LayerNormFusePass() {
+  AddOpCompat(OpCompat("layer_norm"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Scale")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Mean")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Variance")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddAttr("epsilon")
+      .IsNumGE(0.0f)
+      .IsNumLE(0.001f)
+      .End()
+      .AddAttr("begin_norm_axis")
+      .IsNumGT(0)
+      .End();
+  AddOpCompat(OpCompat("reduce_mean"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("dim")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("keep_dim")
+      .IsBoolEQ(true)
+      .End();
+  AddOpCompat(OpCompat("sqrt"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End();
+  AddOpCompat(OpCompat("elementwise_sub"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(1)
+      .End();
+  AddOpCompat(OpCompat("elementwise_pow"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(1)
+      .End();
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(1)
+      .End();
+  AddOpCompat(OpCompat("elementwise_div"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(1)
+      .End();
+  AddOpCompat(OpCompat("elementwise_mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumEQ(1)
+      .End();
+}
+
 void LayerNormFusePass::ApplyImpl(Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(graph,
                           platform::errors::InvalidArgument(
@@ -117,6 +233,10 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
   int found_layer_norm_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     VLOG(4) << "Fuse LayerNorm from subgraph.";
     GET_IR_NODE_FROM_SUBGRAPH(x, x, layer_norm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(x_mean, x_mean, layer_norm_pattern);
@@ -205,6 +325,12 @@ void LayerNormFusePass::ApplyImpl(Graph* graph) const {
     ln_op_desc.SetAttr("begin_norm_axis", static_cast<int>(x_shape.size() - 1));
     ln_op_desc.SetAttr("epsilon", *(eps_tensor->data<float>()));
     ln_op_desc.SetAttr("is_test", true);
+
+    if (!IsCompat(ln_op_desc)) {
+      LOG(WARNING) << "layer norm pass in out layer_norm op compat failed.";
+      return;
+    }
+
     Node* ln_op = g->CreateOpNode(&ln_op_desc);
 
     addIntermediateOut(ln_op, "Mean", scope_name_, g);

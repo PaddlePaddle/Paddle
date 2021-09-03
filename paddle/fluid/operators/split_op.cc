@@ -78,9 +78,17 @@ class SplitOp : public framework::OperatorWithKernel {
 
 #ifdef PADDLE_WITH_MKLDNN
     if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
+      // OneDNN uses blocking format, which cannot be always supported with
+      // reorders, because if blocked dimension is not divisible by 8 or
+      // 16(depending on which blocking format is used) submemory cannot be
+      // created, so in that scenario a fallback is needed
+      auto tmp_md = dnnl::memory::desc(
+          framework::vectorize(ctx.Input<Tensor>("X")->dims()),
+          dnnl::memory::data_type::f32, ctx.Input<Tensor>("X")->format());
+      if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
+        return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                       framework::DataLayout::kMKLDNN,
+                                       framework::LibraryType::kMKLDNN);
     }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());

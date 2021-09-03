@@ -41,10 +41,13 @@ class MulNPUKernel : public framework::OpKernel<T> {
                         {{"transpose_x1", false}, {"transpose_x2", false}});
 
         runner.Run(stream);
-      } else if (x->dims().size() == 3 && y->dims().size() == 2) {
+      } else if (x->dims().size() >= 3 && y->dims().size() == 2) {
         // reshape
         Tensor tmp_x(x->type());
-        int64_t sec_dim = x->dims()[1] * x->dims()[2];
+        int64_t sec_dim = x->dims()[1];
+        for (auto i = 2; i < x->dims().size(); i++) {
+          sec_dim *= x->dims()[i];
+        }
         int64_t first_dim = x->dims()[0];
         tmp_x.ShareDataWith(*x);
         tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
@@ -56,7 +59,7 @@ class MulNPUKernel : public framework::OpKernel<T> {
         runner.Run(stream);
       } else {
         PADDLE_THROW(
-            platform::errors::InvalidArgument("npu error: not suppert dims"));
+            platform::errors::InvalidArgument("npu error: not support dims"));
       }
       // to do other
     } else if (x->dims().size() == 3 && y->dims().size() == 2) {
@@ -135,7 +138,7 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
 
           runner_dy.Run(stream);
         }
-      } else if (x->dims().size() == 3 && y->dims().size() == 2) {
+      } else if (x->dims().size() >= 3 && y->dims().size() == 2) {
         // flatten => x.shape=[6, 4]
         // matmul
         if (dx) {
@@ -154,7 +157,10 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
         if (dy) {
           // flatten
           Tensor tmp_x(x->type());
-          int64_t sec_dim = x->dims()[1] * x->dims()[2];
+          int64_t sec_dim = x->dims()[1];
+          for (auto i = 2; i < x->dims().size(); i++) {
+            sec_dim *= x->dims()[i];
+          }
           int64_t first_dim = x->dims()[0];
           tmp_x.ShareDataWith(*x);
           tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));

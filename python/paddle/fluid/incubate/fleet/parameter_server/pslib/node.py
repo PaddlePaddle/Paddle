@@ -13,6 +13,8 @@
 """Defination of Server and Worker."""
 
 from . import ps_pb2 as pslib
+# NOTE: reduce removed in fuctools in python3
+from functools import reduce
 
 
 class Server(object):

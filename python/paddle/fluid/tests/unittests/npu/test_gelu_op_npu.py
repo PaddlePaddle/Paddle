@@ -32,8 +32,6 @@ def np_gelu(x):
     return y
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestGelu(OpTest):
     def setUp(self):
         self.set_npu()
@@ -56,18 +54,13 @@ class TestGelu(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
+        self.check_output_with_place(self.place, atol=1e-3)
 
-    # TODO(ascendrc): Add grad test
-    # def test_check_grad(self):
-    #     if self.dtype == np.float16:
-    #         return
-    #     self.check_grad(['X'], 'Out')
-    #
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', max_relative_error=0.007)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestGeluFp16(OpTest):
     def setUp(self):
         self.set_npu()
@@ -91,11 +84,9 @@ class TestGeluFp16(OpTest):
         self.dtype = np.float16
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-3)
+        self.check_output_with_place(self.place, atol=1e-3)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestGeluNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
@@ -115,10 +106,10 @@ class TestGeluNet(unittest.TestCase):
                 name="label", shape=[32, 1], dtype='int64')
 
             c = paddle.multiply(a, b)
-            d = fluid.layers.gelu(c)
 
-            fc_1 = fluid.layers.fc(input=d, size=128)
-            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+            fc_1 = fluid.layers.fc(input=c, size=128)
+            fc_1_gelu = fluid.layers.gelu(fc_1)
+            prediction = fluid.layers.fc(input=fc_1_gelu, size=2, act='softmax')
 
             cost = fluid.layers.cross_entropy(input=prediction, label=label)
             loss = fluid.layers.reduce_mean(cost)

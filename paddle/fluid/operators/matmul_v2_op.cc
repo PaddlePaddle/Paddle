@@ -35,6 +35,14 @@ class MatMulV2Op : public framework::OperatorWithKernel {
         paddle::framework::vectorize(ctx->GetInputDim("Y"));
     auto ndims_x = dims_x.size();
     auto ndims_y = dims_y.size();
+    PADDLE_ENFORCE_GT(ndims_x, 0,
+                      platform::errors::InvalidArgument(
+                          "The Input(X) dims size must be greater than 0,"
+                          " but reviced dims size is 0. "));
+    PADDLE_ENFORCE_GT(ndims_y, 0,
+                      platform::errors::InvalidArgument(
+                          "The Input(Y) dims size must be greater than 0,"
+                          " but reviced dims size is 0. "));
 
     bool x_broadcasted = false, y_broadcasted = false;
     if (ndims_x == 1) {
@@ -62,10 +70,15 @@ class MatMulV2Op : public framework::OperatorWithKernel {
     }
 
     std::vector<int64_t> new_dims;
-    if (ndims_x >= ndims_y) {
+    if (ndims_x > ndims_y) {
       new_dims.assign(dims_x.begin(), dims_x.end() - 2);
-    } else {
+    } else if (ndims_x < ndims_y) {
       new_dims.assign(dims_y.begin(), dims_y.end() - 2);
+    } else {
+      new_dims.reserve(ndims_x);
+      for (size_t i = 0; i < ndims_x - 2; ++i) {
+        new_dims.push_back(std::max(dims_x[i], dims_y[i]));
+      }
     }
     if (!x_broadcasted) {
       new_dims.push_back(M);
@@ -169,10 +182,17 @@ class MatMulV2OpGrad : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto out_grad_name = framework::GradVarName("Out");
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, out_grad_name),
-        ctx.GetPlace());
+    auto input_data_type = OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(

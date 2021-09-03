@@ -11,8 +11,8 @@ Paddle Inference golang API 基于 [capi](../capi_exp) 和 cgo 实现，需要�
 2. 使用`go get`获取golang paddle api
 
 ```
-# 此处使用上一步记录的CommitId，假设为76e5724
-COMMITID=76e5724
+# 此处使用上一步记录的CommitId，假设为0722297
+COMMITID=0722297
 go get -d -v github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi@${COMMITID}
 ```
 
@@ -28,7 +28,7 @@ go1.15新增了`GOMODCACHE`环境变量，`go get`默认会将代码下载到`GO
 ```bash
 eval $(go env | grep GOMODCACHE)
 # 按需修改最后的goapi版本号
-cd ${GOMODCACHE}/github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi\@v0.0.0-20210517084506-76e5724c16a5/
+cd ${GOMODCACHE}/github.com/paddlepaddle/paddle/paddle/fluid/inference/goapi\@v0.0.0-20210623023452-0722297d9b8c/
 ln -s ${PADDLE_C_DOWNLOAD_DIR}/paddle_inference_c_install_dir paddle_inference_c
 ```
 

@@ -435,11 +435,7 @@ class FleetUtil(object):
                         f.write(pre_content + "\n")
                         f.write(content + "\n")
                     client.delete(donefile_path)
-                    client.upload(
-                        output_path,
-                        donefile_name,
-                        multi_processes=1,
-                        overwrite=False)
+                    client.upload(donefile_name, output_path)
                     self.rank0_error("write %s/%s %s succeed" % \
                                       (day, pass_id, donefile_name))
                 else:
@@ -448,11 +444,7 @@ class FleetUtil(object):
             else:
                 with open(donefile_name, "w") as f:
                     f.write(content + "\n")
-                client.upload(
-                    output_path,
-                    donefile_name,
-                    multi_processes=1,
-                    overwrite=False)
+                client.upload(donefile_name, output_path)
                 self.rank0_error("write %s/%s %s succeed" % \
                                (day, pass_id, donefile_name))
         fleet._role_maker._barrier_worker()
@@ -547,11 +539,7 @@ class FleetUtil(object):
                         f.write(pre_content + "\n")
                         f.write(xbox_str + "\n")
                     client.delete(donefile_path)
-                    client.upload(
-                        output_path,
-                        donefile_name,
-                        multi_processes=1,
-                        overwrite=False)
+                    client.upload(donefile_name, output_path)
                     self.rank0_error("write %s/%s %s succeed" % \
                                       (day, pass_id, donefile_name))
                 else:
@@ -560,11 +548,7 @@ class FleetUtil(object):
             else:
                 with open(donefile_name, "w") as f:
                     f.write(xbox_str + "\n")
-                client.upload(
-                    output_path,
-                    donefile_name,
-                    multi_processes=1,
-                    overwrite=False)
+                client.upload(donefile_name, output_path)
                 self.rank0_error("write %s/%s %s succeed" % \
                                (day, pass_id, donefile_name))
         fleet._role_maker._barrier_worker()
@@ -638,11 +622,7 @@ class FleetUtil(object):
                            % (file_num, key_num)
                 with open(donefile_name, "w") as f:
                     f.write(meta_str)
-                client.upload(
-                    model_path,
-                    donefile_name,
-                    multi_processes=1,
-                    overwrite=False)
+                client.upload(donefile_name, model_path)
                 self.rank0_error("write %s succeed" % donefile_path)
         fleet._role_maker._barrier_worker()
 
@@ -962,7 +942,7 @@ class FleetUtil(object):
             if not client.is_exist(dest):
                 client.makedirs(dest)
 
-            client.upload(dest, model_name)
+            client.upload(model_name, dest, multi_processes=5, overwrite=True)
 
         fleet._role_maker._barrier_worker()
 
@@ -1059,12 +1039,8 @@ class FleetUtil(object):
                 dest = "%s/%s/delta-%s/dnn_plugin/" % (output_path, day,
                                                        pass_id)
             if not client.is_exist(dest):
-                client.makedirs(dest)
-
-            if os.path.isdir(model_name):
-                client.upload_dir(dest, model_name)
-            else:
-                client.upload(dest, model_name)
+                client.mkdirs(dest)
+            client.upload(model_name, dest, multi_processes=5, overwrite=True)
 
         fleet._role_maker._barrier_worker()
 
@@ -1248,7 +1224,7 @@ class FleetUtil(object):
         start = 0
         split_path = []
         for i in range(splits_per_day):
-            h = start / 60
+            h = start // 60
             m = start % 60
             if h < left_train_hour or h > right_train_hour:
                 start += split_interval

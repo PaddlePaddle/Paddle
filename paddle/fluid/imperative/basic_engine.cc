@@ -49,11 +49,17 @@ void BasicEngine::Init(
           "the size of tensors is %s, but the size of grad_tensors is %s.",
           tensors.size(), grad_tensors.size()));
 
+  PADDLE_ENFORCE_EQ(accumulators_.empty(), true,
+                    platform::errors::AlreadyExists(
+                        "Accumulators are not empty before preparing it for "
+                        "backward network execution."));
+
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto var = tensors[i];
     auto grad_tensor = grad_tensors[i];
 
     auto init_node = var->GradVarBase()->GradNode();
+
     PADDLE_ENFORCE_EQ(
         var->GradVarBase()->GraphIsFreed(), false,
         platform::errors::Unavailable(
@@ -99,6 +105,16 @@ void BasicEngine::Init(
       paddle::framework::TensorCopy(
           grad_tensor->Var().Get<framework::LoDTensor>(), fwd_var.place(),
           *dev_ctx, grad_var);
+    }
+
+    VariableWrapper* init_grad_var = var->GradVarBase()->SharedVar().get();
+    auto& accumulator = accumulators_[init_grad_var];
+    if (!accumulator) {
+      if (FLAGS_sort_sum_gradient) {
+        accumulator.reset(new SortedGradientAccumulator(init_grad_var));
+      } else {
+        accumulator.reset(new EagerGradientAccumulator(init_grad_var));
+      }
     }
 
     init_nodes_.push_back(init_node);
@@ -237,10 +253,6 @@ void BasicEngine::PrepareDeps() {
       node_deps_.empty(), true,
       platform::errors::AlreadyExists("Op deps are not empty before preparing "
                                       "it for backward network execution."));
-  PADDLE_ENFORCE_EQ(accumulators_.empty(), true,
-                    platform::errors::AlreadyExists(
-                        "Accumulators are not empty before preparing it for "
-                        "backward network execution."));
   PADDLE_ENFORCE_EQ(accumulators_with_grad_node_.empty(), true,
                     platform::errors::AlreadyExists(
                         "Accumulators with grad_node as the key are not empty "
@@ -311,7 +323,9 @@ void BasicEngine::Execute() {
   // Start execute Computation graph
   std::queue<std::shared_ptr<GradOpNode>> q;
   for (size_t i = 0; i < init_nodes_.size(); ++i) {
-    q.push(std::move(init_nodes_[i]));
+    if (node_deps_[init_nodes_[i].get()] == 0) {
+      q.push(std::move(init_nodes_[i]));
+    }
   }
 
   size_t op_num = 0;

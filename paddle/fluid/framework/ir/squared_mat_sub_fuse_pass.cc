@@ -436,7 +436,7 @@ SquaredMatSubFusePass::SquaredMatSubFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsNumEQ(-1)
+      .IsIntIn({-1, 0})
       .End();
 
   AddOpCompat(OpCompat("elementwise_mul"))
@@ -450,7 +450,7 @@ SquaredMatSubFusePass::SquaredMatSubFusePass() {
       .IsTensor()
       .End()
       .AddAttr("axis")
-      .IsNumEQ(-1)
+      .IsIntIn({-1, 0})
       .End();
 
   AddOpCompat(OpCompat("fill_constant"))

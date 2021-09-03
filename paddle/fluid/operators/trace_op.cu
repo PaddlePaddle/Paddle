@@ -14,6 +14,7 @@
 
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
+#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
 #include "paddle/fluid/operators/trace_op.h"
 
@@ -50,6 +51,9 @@ class TraceCUDAKernel : public framework::OpKernel<T> {
       TensorReduce<T, T, cub::Sum, IdentityFunctor>(
           diag, out, reduce_dims, static_cast<T>(0), cub::Sum(),
           IdentityFunctor(), stream);
+    } else {
+      math::SetConstant<DeviceContext, T> functor;
+      functor(context.device_context<DeviceContext>(), out, static_cast<T>(0));
     }
   }
 };

@@ -45,6 +45,7 @@ ExternalProject_Add(
     DEPENDS         gflags
     PREFIX          ${GLOG_PREFIX_DIR}
     SOURCE_DIR      ${GLOG_SOURCE_DIR}
+    UPDATE_COMMAND  ""
     CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
                     -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
                     -DCMAKE_CXX_FLAGS=${GLOG_CMAKE_CXX_FLAGS}

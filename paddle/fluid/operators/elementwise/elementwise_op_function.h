@@ -57,6 +57,10 @@ constexpr int ELEMWISE_MAX_BLOCK_DIM = 1024;
     *mod = dividend_copy % divisor;            \
   } while (0)
 
+#define DIVUP(x, y) (((x) + (y)-1) / (y))
+
+#define ROUNDUP(x, y) (DIVUP((x), (y)) * (y))
+
 namespace paddle {
 namespace operators {
 
@@ -252,6 +256,10 @@ void CommonForwardBroadcastCPU(const framework::Tensor *x,
   std::vector<int> index_array(max_dim, 0);
   const T *x_data = x->data<T>();
   const T *y_data = y->data<T>();
+  PADDLE_ENFORCE_NOT_NULL(x_data, platform::errors::InvalidArgument(
+                                      "The input X should not be empty."));
+  PADDLE_ENFORCE_NOT_NULL(y_data, platform::errors::InvalidArgument(
+                                      "The input Y should not be empty."));
   OutType *out_data = z->mutable_data<OutType>(ctx.GetPlace());
 
   const int out_size = std::accumulate(out_dims_array, out_dims_array + max_dim,
@@ -2152,10 +2160,10 @@ template <typename T, typename CompoundFunctor, bool BcastY,
 static __global__ void FusedElemwiseAndActBroadcast1CUDAKernel(
     const T *x, const T *y, int h, int w, CompoundFunctor compound_functor,
     T *out, T *intermediate_out) {
-  int j = blockIdx.x;
-  int i = threadIdx.x;
+  int i = blockIdx.x;
+  int j = threadIdx.x;
 
-  while (i < h) {
+  while (j < w) {
     int offset = i * w + j;
 
     T y_val = BcastY ? y[j] : y[offset];
@@ -2181,7 +2189,7 @@ static __global__ void FusedElemwiseAndActBroadcast1CUDAKernel(
       out[offset] = compound_functor.GetOut(x_val, y_val);
     }
 
-    i += ELEMWISE_MAX_BLOCK_DIM;
+    j += ELEMWISE_MAX_BLOCK_DIM;
   }
 }
 
@@ -2192,8 +2200,8 @@ static void FusedElemwiseAndActBroadcast1CUDA(gpuStream_t stream, const T *x,
                                               CompoundFunctor compound_functor,
                                               int h, int w, T *out,
                                               T *intermediate_out) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
-  int gird_size = w;
+  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, w);
+  int gird_size = h;
   FusedElemwiseAndActBroadcast1CUDAKernel<
       T, CompoundFunctor, BcastY, KeepIntermediateOut,
       SameShapeOfIntermediateOutAndOut><<<gird_size, block_size, 0, stream>>>(
@@ -2581,106 +2589,129 @@ static __global__ void FusedElemwiseAndActGradBroadcast1CUDAKernel(
     const T *x, const T *y, const T *intermediate_out, const T *out,
     const T *dout, int h, int w, DX_OP dx_op, DY_OP dy_op,
     DIntermediate_OP dintermediate_op, T *dx, T *dy, T *d_intermediate) {
-  int j = blockIdx.x;
-  int i = threadIdx.x;
-  int tid = threadIdx.x;
-  T val(0), inter_val(0);
-  int64_t tmp_out_idx, x_idx, y_idx;
+  __shared__ T sdata[BLOCK_Y][BLOCK_X];
+  size_t idx = threadIdx.x + BLOCK_X * blockIdx.x;
+  size_t width_stride = gridDim.x * BLOCK_X;
+
+  size_t full_w = ROUNDUP(w, BLOCK_X);
+
   T zero = static_cast<T>(0);
 
-  do {
-    int offset = i * w + j;
+  for (size_t j = idx; j < full_w; j += width_stride) {
+    T val(0), inter_val(0);
+    if (j < w) {
+      for (size_t i = threadIdx.y; i < h; i += BLOCK_Y) {
+        size_t offset = i * w + j;
 
-    tmp_out_idx = BcastY ? j : offset;
-    y_idx = BcastY ? j : offset;
-    x_idx = BcastY ? offset : j;
-    T x_val = (x == nullptr) ? zero : x[x_idx];
-    T y_val = (y == nullptr) ? zero : y[y_idx];
+        size_t tmp_out_idx = BcastY ? j : offset;
+        size_t y_idx = BcastY ? j : offset;
+        size_t x_idx = BcastY ? offset : j;
+        T x_val = (x == nullptr) ? zero : x[x_idx];
+        T y_val = (y == nullptr) ? zero : y[y_idx];
 
-    if (SameShapeOfIntermediateOutAndOut) {
-      tmp_out_idx = offset;
-    }
+        if (SameShapeOfIntermediateOutAndOut) {
+          tmp_out_idx = offset;
+        }
 
-    if (dx != nullptr) {
-      T tmp = UseIntermediateOut
+        if (dx != nullptr) {
+          T tmp =
+              UseIntermediateOut
                   ? dx_op.UseIntermediateOut(x_val, y_val,
                                              intermediate_out[tmp_out_idx],
                                              out[offset], dout[offset])
                   : dx_op.Recompute(x_val, y_val, out[offset], dout[offset]);
 
-      if (BcastY) {
-        dx[x_idx] = tmp;
-      } else {
-        val += tmp;
-      }
-    }
-    if (dy != nullptr) {
-      T tmp = UseIntermediateOut
+          if (BcastY) {
+            dx[x_idx] = tmp;
+          } else {
+            val += tmp;
+          }
+        }
+        if (dy != nullptr) {
+          T tmp =
+              UseIntermediateOut
                   ? dy_op.UseIntermediateOut(x_val, y_val,
                                              intermediate_out[tmp_out_idx],
                                              out[offset], dout[offset])
                   : dy_op.Recompute(x_val, y_val, out[offset], dout[offset]);
-      if (BcastY) {
-        val += tmp;
-      } else {
-        dy[y_idx] = tmp;
-      }
-    }
-    if (d_intermediate != nullptr) {
-      T tmp = UseIntermediateOut
-                  ? dintermediate_op.UseIntermediateOut(
-                        y[y_idx], intermediate_out[tmp_out_idx], out[offset],
-                        dout[offset])
-                  : dintermediate_op.Recompute(x_val, y_val, out[offset],
-                                               dout[offset]);
-      if (SameShapeOfIntermediateOutAndOut) {
-        d_intermediate[tmp_out_idx] = tmp;
-      } else {
-        inter_val += tmp;
+          if (BcastY) {
+            val += tmp;
+          } else {
+            dy[y_idx] = tmp;
+          }
+        }
+        if (d_intermediate != nullptr) {
+          T tmp = UseIntermediateOut
+                      ? dintermediate_op.UseIntermediateOut(
+                            y[y_idx], intermediate_out[tmp_out_idx],
+                            out[offset], dout[offset])
+                      : dintermediate_op.Recompute(x_val, y_val, out[offset],
+                                                   dout[offset]);
+          if (SameShapeOfIntermediateOutAndOut) {
+            d_intermediate[tmp_out_idx] = tmp;
+          } else {
+            inter_val += tmp;
+          }
+        }
       }
     }
 
-    i += ELEMWISE_MAX_BLOCK_DIM;
-  } while (i < h);
+    // transpose, for ReduceSum with wrap
+    sdata[threadIdx.y][threadIdx.x] = val;
+    __syncthreads();
+    val = sdata[threadIdx.x][threadIdx.y];
+#pragma unroll
+    for (int i = BLOCK_X >> 1; i > 0; i >>= 1) {
+      // reduce sum with wrap
+      val += platform::CudaShuffleXorSync(0xFFFFFFFF, val, i);
+    }
 
-  h = h > ELEMWISE_MAX_BLOCK_DIM ? ELEMWISE_MAX_BLOCK_DIM : h;
-  if (BcastY) {
-    if (dy) {
-      val = paddle::platform::reduceSum(val, tid, h);
-      if (threadIdx.x == 0) {
-        dy[j] = val;
+    size_t idx_j = j + threadIdx.y;
+    if (BcastY) {
+      if (dy) {
+        if (threadIdx.x == 0 && (idx_j < w)) dy[idx_j] = val;
+      }
+    } else {
+      if (dx) {
+        if (threadIdx.x == 0 && (idx_j < w)) dx[idx_j] = val;
       }
     }
-  } else {
-    if (dx) {
-      val = paddle::platform::reduceSum(val, tid, h);
-      if (threadIdx.x == 0) {
-        dx[j] = val;
+
+    if (!SameShapeOfIntermediateOutAndOut) {
+      if (d_intermediate) {
+        sdata[threadIdx.y][threadIdx.x] = inter_val;
+        __syncthreads();
+        inter_val = sdata[threadIdx.x][threadIdx.y];
+#pragma unroll
+        for (int i = BLOCK_X >> 1; i > 0; i >>= 1) {
+          // reduce sum with wrap
+          inter_val += platform::CudaShuffleXorSync(0xFFFFFFFF, inter_val, i);
+        }
+        if (threadIdx.x == 0 && (idx_j < w)) d_intermediate[idx_j] = inter_val;
       }
     }
-  }
-  if (!SameShapeOfIntermediateOutAndOut) {
-    if (d_intermediate) {
-      inter_val = paddle::platform::reduceSum(inter_val, tid, h);
-      if (threadIdx.x == 0) {
-        d_intermediate[j] = inter_val;
-      }
-    }
-  }
+  }  // end for
 }
 
 template <typename T, typename DX_OP, typename DY_OP, typename DIntermediate_OP,
           bool UseIntermediateOut, bool BcastY,
           bool SameShapeOfIntermediateOutAndOut>
 static void FusedElemwiseAndActGradBroadcast1CUDA(
-    gpuStream_t stream, const T *x, const T *y, const T *intermediate_out,
-    const T *out, const T *dout, int h, int w, DX_OP dx_op, DY_OP dy_op,
-    DIntermediate_OP dintermediate_op, T *dx, T *dy, T *d_intermediate) {
-  int block_size = std::min(ELEMWISE_MAX_BLOCK_DIM, h);
-  int gird_size = w;
+    const framework::ExecutionContext &ctx, const T *x, const T *y,
+    const T *intermediate_out, const T *out, const T *dout, int h, int w,
+    DX_OP dx_op, DY_OP dy_op, DIntermediate_OP dintermediate_op, T *dx, T *dy,
+    T *d_intermediate) {
+  gpuStream_t stream = ctx.cuda_device_context().stream();
+
+  dim3 blocks(BLOCK_X, BLOCK_Y);
+  int max_gpu_threads = ctx.cuda_device_context().GetMaxPhysicalThreadCount();
+  int max_blocks = std::max(max_gpu_threads / (BLOCK_X * BLOCK_Y), 1);
+  int theory_block = (w + BLOCK_X - 1) / BLOCK_X;
+  dim3 grids(std::min(theory_block, max_blocks));
+
   FusedElemwiseAndActGradBroadcast1CUDAKernel<
       T, DX_OP, DY_OP, DIntermediate_OP, UseIntermediateOut, BcastY,
-      SameShapeOfIntermediateOutAndOut><<<gird_size, block_size, 0, stream>>>(
+      SameShapeOfIntermediateOutAndOut><<<grids, blocks, 0, stream>>>(
       x, y, intermediate_out, out, dout, h, w, dx_op, dy_op, dintermediate_op,
       dx, dy, d_intermediate);
 }
@@ -2832,7 +2863,7 @@ void FusedElemwiseAndActGradComputeWithBroadcast(
       FusedElemwiseAndActGradBroadcast1CUDA<T, DX_OP, DY_OP, DIntermediate_OP,
                                             UseIntermediateOut, BcastY,
                                             SameShapeOfIntermediateOutAndOut>(
-          ctx.template device_context<DeviceContext>().stream(), x_data, y_data,
+          ctx, x_data, y_data,
           intermediate_out == nullptr ? nullptr : intermediate_out->data<T>(),
           out->data<T>(), dout->data<T>(), h, w, dx_op, dy_op, dintermediate_op,
           dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()),
@@ -3007,5 +3038,25 @@ static inline void GetDoubleGradSafeTensor(
   }
 }
 
+// for broadcast backwards
+static inline std::vector<int> GetReduceDim(const framework::DDim &in,
+                                            const framework::DDim &out,
+                                            int axis) {
+  axis =
+      (axis == -1 ? std::abs(static_cast<int>(out.size() - in.size())) : axis);
+  std::vector<int> dims;
+  for (int i = 0; i < axis; ++i) {
+    dims.push_back(i);
+  }
+  for (int i = 0; i < in.size(); ++i) {
+    if (out[i + axis] != in[i]) {
+      dims.push_back(i + axis);
+    }
+  }
+  for (int i = axis + in.size(); i < out.size(); ++i) {
+    dims.push_back(i);
+  }
+  return dims;
+}
 }  // namespace operators
 }  // namespace paddle

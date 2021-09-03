@@ -14,26 +14,4 @@ def {
     type: BOOLEAN
   }
 }
-extra {
-  attrs {
-    name: "op_role"
-    type: INT
-  }
-  attrs {
-    name: "op_role_var"
-    type: STRINGS
-  }
-  attrs {
-    name: "op_namescope"
-    type: STRING
-  }
-  attrs {
-    name: "op_callstack"
-    type: STRINGS
-  }
-  attrs {
-    name: "op_device"
-    type: STRING
-  }
-}
 

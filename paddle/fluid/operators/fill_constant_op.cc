@@ -36,7 +36,6 @@ class FillConstantOp : public framework::OperatorWithKernel {
                 i, shape[i], framework::make_ddim(shape)));
       }
     }
-
     if (shape.empty() && ctx->HasInput("ShapeTensor")) {
       auto shape_dims = ctx->GetInputDim("ShapeTensor");
       int num_ele = 1;

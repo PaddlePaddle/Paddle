@@ -6,6 +6,9 @@ def {
   inputs {
     name: "Filter"
   }
+  inputs {
+    name: "ResidualData"
+  }
   outputs {
     name: "Output"
   }
@@ -35,32 +38,9 @@ def {
   }
 }
 extra {
-  inputs {
-    name: "ResidualData"
-  }
-  attrs {
-    name: "is_test"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "use_cudnn"
-    type: BOOLEAN
-  }
   attrs {
     name: "fuse_relu_before_depthwise_conv"
     type: BOOLEAN
-  }
-  attrs {
-    name: "use_mkldnn"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "use_quantizer"
-    type: BOOLEAN
-  }
-  attrs {
-    name: "mkldnn_data_type"
-    type: STRING
   }
   attrs {
     name: "fuse_relu"

@@ -21,6 +21,10 @@ import paddle.fluid as fluid
 import six
 import unittest
 import multiprocessing
+from functools import reduce
+
+import paddle
+paddle.enable_static()
 
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
@@ -114,6 +118,12 @@ class TestExecutor(unittest.TestCase):
         self.assertEqual(len(outline_p_vars), 0)
         self.assertEqual(len(outline_np_vars), 0)
 
+    def assert_gc_vars(self, program, skip_vars, non_persistable_vars):
+        gc_vars = fluid.core._get_eager_deletion_vars(program.desc, skip_vars)
+        self.assertEqual(len(gc_vars), program.num_blocks)
+        gc_vars = reduce(lambda x, y: x + y, gc_vars[0])
+        self.assertEqual(set(gc_vars), set(non_persistable_vars))
+
     def executor_main(self):
         image, label, loss = simple_fc_net()
         loss.persistable = False
@@ -121,6 +131,9 @@ class TestExecutor(unittest.TestCase):
             fluid.default_main_program(), [loss.name])
         print('Non-persistable var number {}'.format(len(non_persistables)))
         print(non_persistables)
+
+        self.assert_gc_vars(fluid.default_main_program(), [loss.name],
+                            non_persistables)
 
         exe = fluid.Executor(self.place)
         exe.run(fluid.default_startup_program())
@@ -147,6 +160,8 @@ class TestExecutor(unittest.TestCase):
         loss.persistable = False
         persistables, non_persistables = get_persistables_and_non_persistables(
             fluid.default_main_program(), [loss.name])
+        self.assert_gc_vars(fluid.default_main_program(), [loss.name],
+                            non_persistables)
 
         exe = fluid.Executor(self.place)
         exe.run(fluid.default_startup_program())
