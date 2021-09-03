@@ -202,7 +202,7 @@ class ImperativeQuantAware(object):
 
         self._quantize_inputs = ImperativeQuantizeInputs(**kwargs)
 
-        self._quantize_outputs = ImperativeQuantizeOutputs()
+        self._quantize_outputs = ImperativeQuantizeOutputs(moving_rate)
 
     def quantize(self, model):
         """
@@ -413,6 +413,8 @@ class ImperativeQuantizeOutputs(object):
             "The model must be the instance of dygraph.Layer."
 
         for cur_name, cur_layer in model.named_sublayers():
+            if '_act_preprocess' in cur_name:
+                continue
             if not self._is_target_layer(cur_layer):
                 continue
 
