@@ -228,6 +228,7 @@ function cmake_base() {
         -DWITH_ARM=${WITH_ARM:-OFF}
         -DWITH_ASCEND=${WITH_ASCEND:-OFF}
         -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
+        -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
         -DWITH_STRIP=${WITH_STRIP:-ON}
         -DON_INFER=${ON_INFER:-OFF}
     ========================================
@@ -269,6 +270,7 @@ EOF
         -DWITH_ARM=${WITH_ARM:-OFF} \
         -DWITH_ASCEND=${WITH_ASCEND:-OFF} \
         -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF} \
+        -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF} \
         -DWITH_STRIP=${WITH_STRIP:-ON} \
         -DON_INFER=${ON_INFER:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
