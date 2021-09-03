@@ -425,7 +425,7 @@ class DataParallel(layers.Layer):
     Returns:
         Layer: The data paralleled module.
 
-    Examples 1:
+    Examples:
 
         .. code-block:: python
             :name: dp-example
@@ -480,7 +480,7 @@ class DataParallel(layers.Layer):
         and manually implement 'all_reduce' before model optimization. There is an example 
         showing specific implemetation processing.
 
-    Examples 2:
+    Examples:
 
         .. code-block:: python
             :name: dp-pylayer-example
