@@ -118,8 +118,8 @@ struct ElementwiseArgsWrapper {
 
 template <typename InT, typename OutT, int VecSize, int Arity, typename Functor>
 __device__ inline void VectorizedKernelImpl(
-    ElementwiseArgsWrapper<InT, OutT, VecSize, Arity> wrapper, Functor func,
-    int tid) {
+    const ElementwiseArgsWrapper<InT, OutT, VecSize, Arity> &wrapper,
+    Functor func, int tid) {
   using InVecType = platform::AlignedVector<InT, VecSize>;
   using OutVecType = platform::AlignedVector<OutT, VecSize>;
 
@@ -148,8 +148,8 @@ __device__ inline void VectorizedKernelImpl(
 
 template <typename InT, typename OutT, int VecSize, int Arity, typename Functor>
 __device__ inline void ScalarKernelImpl(
-    ElementwiseArgsWrapper<InT, OutT, VecSize, Arity> wrapper, Functor func,
-    int tid) {
+    const ElementwiseArgsWrapper<InT, OutT, VecSize, Arity> &wrapper,
+    Functor func, int tid) {
   InT ins[Arity];
   wrapper.LoadScalarizedData(ins, tid);
   OutT out = platform::Apply<InT, OutT, Functor>(func, ins);
