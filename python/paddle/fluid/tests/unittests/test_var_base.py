@@ -801,6 +801,7 @@ class TestVarBase(unittest.TestCase):
         py_idx = [[0, 2, 0, 1, 3], [0, 0, 1, 2, 0]]
         idx = [paddle.to_tensor(py_idx[0]), paddle.to_tensor(py_idx[1])]
         self.assertTrue(np.array_equal(x[idx].numpy(), array[py_idx]))
+        self.assertTrue(np.array_equal(x[py_idx].numpy(), array[py_idx]))
         # case2:
         tensor_x = paddle.to_tensor(
             np.zeros(12).reshape(2, 6).astype(np.float32))

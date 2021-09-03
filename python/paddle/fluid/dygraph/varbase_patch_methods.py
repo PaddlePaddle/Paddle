@@ -554,20 +554,21 @@ def monkey_patch_varbase():
                         or isinstance(slice_item.step, Variable):
                     return True
             else:
-                if isinstance(slice_item, Variable):
+                if isinstance(slice_item,
+                              Variable) and Variable.dtype != paddle.bool:
                     return True
         return False
 
     def __getitem__(self, item):
         def is_list_tuple(index, contain_type):
             def _is_list_tuple(item):
-                if not (isinstance(item, (list, tuple)) or
-                        type(item) == contain_type):
-                    return False
                 if isinstance(item, (tuple, list)):
                     for s in item:
                         if not _is_list_tuple(s):
                             return False
+                else:
+                    if type(item) != contain_type:
+                        return False
                 return True
 
             if not isinstance(index, (tuple, list)):
@@ -588,11 +589,11 @@ def monkey_patch_varbase():
 
     def __setitem__(self, item, value):
         def contain_tensor_or_list(item):
-            if not isinstance(item, (tuple, list)):
+            if not isinstance(item, tuple):
                 item = [item]
 
             for slice_item in item:
-                if isinstance(slice_item, (list, tuple)):
+                if isinstance(slice_item, list):
                     return True
                 elif isinstance(slice_item, Variable):
                     return True
