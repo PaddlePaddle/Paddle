@@ -22,19 +22,27 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-template <typename TensorImplT>
-std::shared_ptr<TensorImplT> MakeTensorImpl(const Tensor& tensor,
-                                            pt::Backend backend,
-                                            pt::DataType dtype,
-                                            pt::DataLayout layout);
+template <typename PtTensorImplT, typename VariableT>
+std::shared_ptr<PtTensorImplT> MakeTensorImpl(const VariableT& tensor,
+                                              pt::Backend backend,
+                                              pt::DataType dtype,
+                                              pt::DataLayout layout);
 
-template <typename TensorImplT>
-std::shared_ptr<TensorImplT> MakeTensorImpl(const Tensor& tensor,
-                                            const platform::Place& place,
-                                            proto::VarType::Type type);
+template <typename PtTensorImplT>
+std::shared_ptr<PtTensorImplT> MakeTensorImpl(const LoDTensor& tensor,
+                                              const platform::Place& place,
+                                              proto::VarType::Type type);
 
-template <typename TensorImplT>
-void ShareTensorImpl(TensorImplT* tensor_impl, Tensor* out);
+template <typename PtTensorImplT>
+std::shared_ptr<PtTensorImplT> MakeTensorImpl(const Tensor& tensor,
+                                              const platform::Place& place,
+                                              proto::VarType::Type type);
+
+template <typename PtTensorImplT>
+void ShareTensorImpl(PtTensorImplT* tensor_impl, LoDTensor* out);
+
+template <typename PtTensorImplT>
+void ShareTensorImpl(PtTensorImplT* tensor_impl, Tensor* out);
 
 }  // namespace framework
 }  // namespace paddle

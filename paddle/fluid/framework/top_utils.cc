@@ -13,6 +13,8 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/top_utils.h"
+#include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/selected_rows.h"
 
 namespace paddle {
 namespace framework {
@@ -20,7 +22,24 @@ namespace framework {
 /* For DenseTensor */
 
 template <>
-std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor>(
+std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor, LoDTensor>(
+    const LoDTensor& tensor, pt::Backend backend, pt::DataType dtype,
+    pt::DataLayout layout) {
+  auto holder = tensor.Holder();
+  auto tensor_impl = std::make_shared<pt::DenseTensor>(
+      pt::TensorMeta(tensor.dims(), backend, dtype, layout, tensor.offset()),
+      pt::TensorStatus());
+
+  if (holder != nullptr) {
+    tensor_impl->ShareAllocation(tensor.Holder());
+  } else {
+    VLOG(1) << "Old LoDTensor holder is nullptr.";
+  }
+  return tensor_impl;
+}
+
+template <>
+std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor, Tensor>(
     const Tensor& tensor, pt::Backend backend, pt::DataType dtype,
     pt::DataLayout layout) {
   auto holder = tensor.Holder();
@@ -37,12 +56,48 @@ std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor>(
 }
 
 template <>
+std::shared_ptr<pt::SelectedRowsTensor>
+MakeTensorImpl<pt::SelectedRowsTensor, SelectedRows>(const SelectedRows& tensor,
+                                                     pt::Backend backend,
+                                                     pt::DataType dtype,
+                                                     pt::DataLayout layout) {
+  auto value = tensor.value();
+  auto holder = value.Holder();
+  auto tensor_impl = std::make_shared<pt::SelectedRowsTensor>(
+      pt::TensorMeta(value.dims(), backend, dtype, layout, value.offset()),
+      pt::TensorStatus(), tensor.rows(), tensor.height());
+
+  if (holder != nullptr) {
+    tensor_impl->mutable_value()->ShareAllocation(tensor.value().Holder());
+  } else {
+    VLOG(1) << "Old SelectedRows holder is nullptr.";
+  }
+  return tensor_impl;
+}
+
+template <>
+std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor>(
+    const LoDTensor& tensor, const platform::Place& place,
+    proto::VarType::Type type) {
+  return MakeTensorImpl<pt::DenseTensor, LoDTensor>(
+      tensor, pt::TransToPtBackend(place), pt::TransToPtDataType(type),
+      pt::TransToPtLayout(tensor.layout()));
+}
+
+template <>
 std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor>(
     const Tensor& tensor, const platform::Place& place,
     proto::VarType::Type type) {
-  return MakeTensorImpl<pt::DenseTensor>(tensor, pt::TransToPtBackend(place),
-                                         pt::TransToPtDataType(type),
-                                         pt::TransToPtLayout(tensor.layout()));
+  return MakeTensorImpl<pt::DenseTensor, Tensor>(
+      tensor, pt::TransToPtBackend(place), pt::TransToPtDataType(type),
+      pt::TransToPtLayout(tensor.layout()));
+}
+
+template <>
+void ShareTensorImpl<pt::DenseTensor>(pt::DenseTensor* tensor_impl,
+                                      LoDTensor* out) {
+  out->ResetHolderWithType(tensor_impl->allocation(),
+                           pt::TransToProtoVarType(tensor_impl->type()));
 }
 
 template <>

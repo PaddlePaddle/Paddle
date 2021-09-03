@@ -16,11 +16,12 @@ limitations under the License. */
 
 #include "paddle/top/core/dense_tensor.h"
 #include "paddle/top/core/kernel_registry.h"
+#include "paddle/top/core/selected_rows_tensor.h"
+
 #include "paddle/top/module/scale.h"
 #include "paddle/top/module/sign.h"
 
 // See Note [ Why still include the fluid headers? ]
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace pt {
@@ -39,7 +40,17 @@ void Scale(const CPUContext& dev_ctx,
            float scale,
            float bias,
            bool bias_after_scale,
-           DenseTensor* out);
+           DenseTensor* out) {
+  module::Scale<CPUContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
+}
+
+// template <typename T>
+// void ScaleSelectedRows(const CPUContext& dev_ctx,
+//         const SelectedRowsTensor& x,
+//         float scale,
+//         float bias,
+//         bool bias_after_scale,
+//         SelectedRowsTensor* out);
 
 }  // namespace pt
 

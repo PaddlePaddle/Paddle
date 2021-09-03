@@ -61,6 +61,13 @@ class OpKernelRegistrar {
   OpKernelKey op_kernel_key_;
 };
 
+#if defined(_WIN32)
+#define UNUSED
+#define __builtin_expect(EXP, C) (EXP)
+#else
+#define UNUSED __attribute__((unused))
+#endif
+
 #define PT_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                     \
   struct __test_global_namespace_##uniq_name##__ {};                          \
   static_assert(std::is_same<::__test_global_namespace_##uniq_name##__,       \
@@ -225,13 +232,6 @@ class OpKernelRegistrar {
 /**
  * Op Kernel declare macros
  */
-
-#if defined(_WIN32)
-#define UNUSED
-#define __builtin_expect(EXP, C) (EXP)
-#else
-#define UNUSED __attribute__((unused))
-#endif
 
 #define PT_DECLARE_KERNEL_1T(op_name, backend, layout, dtype)                 \
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \

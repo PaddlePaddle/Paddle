@@ -14,6 +14,12 @@
 
 #include "paddle/top/cpu/math.h"
 
+// #include "paddle/top/module/scale.h"
+// #include "paddle/top/module/sign.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/framework/eigen.h"
+
 namespace pt {
 
 template <typename T,
@@ -39,15 +45,28 @@ void Mean(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   y_data.device(place) = x_data.mean();
 }
 
-template <typename T>
-void Scale(const CPUContext& dev_ctx,
-           const DenseTensor& x,
-           float scale,
-           float bias,
-           bool bias_after_scale,
-           DenseTensor* out) {
-  module::Scale<CPUContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
-}
+// template <typename T>
+// void Scale(const CPUContext& dev_ctx,
+//            const DenseTensor& x,
+//            float scale,
+//            float bias,
+//            bool bias_after_scale,
+//            DenseTensor* out) {
+//   module::Scale<CPUContext, T>(dev_ctx, x, scale, bias, bias_after_scale,
+//   out);
+// }
+
+// template <typename T>
+// void ScaleSelectedRows(const CPUContext& dev_ctx,
+//           const SelectedRowsTensor& x,
+//           float scale,
+//           float bias,
+//           bool bias_after_scale,
+//           SelectedRowsTensor* out) {
+//   out->set_rows(x.rows());
+//   out->set_height(x.height());
+//   Scale<T>(dev_ctx, x.value(), scale, bias, bias_after_scale, out->value());
+// }
 
 }  // namespace pt
 
@@ -68,15 +87,27 @@ using bfloat16 = ::paddle::platform::bfloat16;
 // Register method 3:
 PT_REGISTER_KERNEL_2T(sign, CPU, NCHW, pt::Sign, float, double);
 PT_REGISTER_KERNEL_2T(mean, CPU, NCHW, pt::Mean, float, double);
-PT_REGISTER_KERNEL_8T(scale,
-                      CPU,
-                      NCHW,
-                      pt::Scale,
-                      float,
-                      double,
-                      bfloat16,
-                      uint8_t,
-                      int8_t,
-                      int16_t,
-                      int,
-                      int64_t);
+// PT_REGISTER_KERNEL_8T(scale,
+//                       CPU,
+//                       NCHW,
+//                       pt::Scale,
+//                       float,
+//                       double,
+//                       bfloat16,
+//                       uint8_t,
+//                       int8_t,
+//                       int16_t,
+//                       int,
+//                       int64_t);
+// PT_REGISTER_KERNEL_8T(scale.selected_rows,
+//                       CPU,
+//                       NCHW,
+//                       pt::ScaleSelectedRows,
+//                       float,
+//                       double,
+//                       bfloat16,
+//                       uint8_t,
+//                       int8_t,
+//                       int16_t,
+//                       int,
+//                       int64_t);

@@ -21,6 +21,7 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
+#include "paddle/top/core/dense_tensor.h"
 #include "paddle/top/core/tensor_interface.h"
 
 // See Note [ Why still include the fluid headers? ]
@@ -48,18 +49,39 @@ class SelectedRowsTensor : public TensorInterface {
  public:
   SelectedRowsTensor() = delete;
 
-  SelectedRowsTensor(const SelectedRowsTensor&) = delete;
-  SelectedRowsTensor& operator=(const SelectedRowsTensor&) = delete;
+  // SelectedRowsTensor(const SelectedRowsTensor&) = delete;
+  // SelectedRowsTensor& operator=(const SelectedRowsTensor&) = delete;
   SelectedRowsTensor(SelectedRowsTensor&&) = delete;
   SelectedRowsTensor& operator=(SelectedRowsTensor&&) = delete;
 
   SelectedRowsTensor(const TensorMeta& meta,
                      const TensorStatus& status,
                      const std::vector<int64_t>& rows,
-                     int64_t height)
-      : rows_(rows), height_(height) {
+                     int64_t height) {
     value_.reset(new DenseTensor(meta, status));
+    rows_ = rows;
+    height_ = height;
   }
+
+  ~SelectedRowsTensor() override {}
+
+  int64_t numel() const override { return value_->numel(); }
+
+  DDim dims() const override {
+    std::vector<int64_t> dims = vectorize(value_->dims());
+    dims[0] = height_;
+    return paddle::framework::make_ddim(dims);
+  }
+
+  DataType type() const override { return value_->type(); }
+
+  DataLayout layout() const override { return value_->layout(); }
+
+  Place place() const override { return value_->place(); }
+
+  Backend backend() const override { return value_->backend(); }
+
+  bool initialized() const override { return value_->initialized(); }
 
   const DenseTensor& value() const { return *value_; }
 

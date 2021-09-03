@@ -538,6 +538,9 @@ class OperatorWithKernel : public OperatorBase {
   virtual pt::OpKernelKey ConstructPtOpKernelKey(
       const VariableValueMap& inputs, const platform::Place& ctx_place) const;
 
+  virtual pt::OpKernelContext ConstructPtOpKernelContext(
+      const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const;
+
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
   void RunImpl(const Scope& scope, const platform::Place& place,

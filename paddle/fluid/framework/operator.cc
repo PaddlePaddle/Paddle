@@ -1105,86 +1105,6 @@ static std::string RuntimeContextDebugString(const RuntimeContext& ctx) {
   return ss.str();
 }
 
-static pt::OpKernelContext BuildOpKernelContext(
-    const std::string& op_type, const pt::OpKernel& pt_kernel,
-    const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) {
-  VLOG(1) << RuntimeContextDebugString(ctx);
-
-  // TODO(chenweihang): now only work for very simple case (sign op),
-  // many cases need to be deal with later:
-  // 1. the input and output are not tensor
-  // 2. the dispensbale, duplicable input and output
-  // 3. needless attributes remove
-  // 4. use pt Tensor directly
-  // 5. kernel input is not DenseTensor
-  pt::OpKernelContext op_kernel_ctx(dev_ctx);
-  auto input_defs = pt_kernel.param_def().input_defs();
-  auto output_defs = pt_kernel.param_def().output_defs();
-
-  // TODO(chenweihang): use ordered_map for VariableNameMap and VariableValueMap
-  // If we the VariableValueMap are ordered, we can get tensor by iter the map,
-  // and its order is same as OpProto, like follow
-  //
-  // size_t i = 0;
-  // for (auto& var_pair : ctx.inputs) {
-  //   // TODO(chenweihang): deal with diff param in vector
-  //   auto in_def = input_defs.at(i);
-  //   for (auto* var : var_pair.second) {
-  //     const auto& tensor = var->Get<LoDTensor>();
-  //     auto pt_in = MakeTensorImpl<pt::DenseTensor>(tensor, in_def.backend,
-  //                                                  in_def.dtype,
-  //                                                  in_def.layout);
-  //     op_kernel_ctx.EmplaceBackInput(pt_in);
-  //   }
-  //   ++i;
-  // }
-  // // ordered_map access mutable value need iter
-  // i = 0;
-  // for (auto it = ctx.outputs.begin(); it != ctx.outputs.end(); ++it) {
-  //   auto out_def = output_defs.at(i);
-  //   for (auto* var : it.value()) {
-  //     auto* tensor = var->GetMutable<LoDTensor>();
-  //     // mutable_data before run kernel, to avoid share output form
-  //     // OpKernelContext to original tensor
-  //     tensor->mutable_data(pt::TransToFluidPlace(out_def.backend),
-  //                          pt::TransToProtoVarType(out_def.dtype));
-  //     auto pt_out = MakeTensorImpl<pt::DenseTensor>(
-  //         *tensor, out_def.backend, out_def.dtype, out_def.layout);
-  //     op_kernel_ctx.EmplaceBackOutput(pt_out);
-  //   }
-  //   ++i;
-  // }
-
-  auto& op_proto = OpInfoMap::Instance().Get(op_type).proto_;
-  for (int i = 0; i < op_proto->inputs().size(); ++i) {
-    // TODO(chenweihang): deal with diff param in vector
-    auto in_name = op_proto->inputs()[i].name();
-    auto in_def = input_defs.at(i);
-    for (auto* var : ctx.inputs.at(in_name)) {
-      const auto& tensor = var->Get<LoDTensor>();
-      auto pt_in = MakeTensorImpl<pt::DenseTensor>(tensor, in_def.backend,
-                                                   in_def.dtype, in_def.layout);
-      op_kernel_ctx.EmplaceBackInput(pt_in);
-    }
-  }
-  for (int i = 0; i < op_proto->outputs().size(); ++i) {
-    auto out_name = op_proto->outputs()[i].name();
-    auto out_def = output_defs.at(i);
-    for (auto* var : ctx.outputs.at(out_name)) {
-      auto* tensor = var->GetMutable<LoDTensor>();
-      // mutable_data before run kernel, to avoid share output form
-      // OpKernelContext to original tensor
-      tensor->mutable_data(pt::TransToFluidPlace(out_def.backend),
-                           pt::TransToProtoVarType(out_def.dtype));
-      auto pt_out = MakeTensorImpl<pt::DenseTensor>(
-          *tensor, out_def.backend, out_def.dtype, out_def.layout);
-      op_kernel_ctx.EmplaceBackOutput(pt_out);
-    }
-  }
-  // TODO(chenweihang): append attrs
-  return op_kernel_ctx;
-}
-
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
@@ -1219,6 +1139,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   // TODO(chenweihang): Now we are still reusing a lot of the original fluid
   // implementation, this is a gradual replacement process
+  // TODO(chenweihang): only for debug, remove it after
+  // print all registered kernels
+  VLOG(1) << pt::OpKernelFactory::Instance();
+
   run_pt_kernel_ =
       pt::OpKernelFactory::Instance().ContainsOperation(type_.c_str());
   if (run_pt_kernel_) {
@@ -1272,8 +1196,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        platform::EventRole::kInnerOp);
     if (run_pt_kernel_) {
       // TODO(chenweihang): here will intrduce copy
-      auto op_kernel_ctx =
-          BuildOpKernelContext(Type(), *pt_kernel_, *runtime_ctx, *dev_ctx);
+      auto op_kernel_ctx = ConstructPtOpKernelContext(*runtime_ctx, *dev_ctx);
       (*pt_kernel_)(&op_kernel_ctx);
       // need share output into fluid tensor
 
@@ -1328,11 +1251,26 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 }
 
+bool ContainsSelectedRows(const VariableValueMap& inputs) {
+  for (auto& var_pair : inputs) {
+    for (auto* var : var_pair.second) {
+      if (var->IsType<SelectedRows>()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 void OperatorWithKernel::ChoosePtKernel(
     const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
   // 1. construct operation name
   // TODO(chenweihang): add rules for construct op name
   pt::OperationName op_name(Type().c_str());
+  // TODO(chenweihang): polish judge rules
+  if (ContainsSelectedRows(ctx.inputs)) {
+    op_name.overload_type = "selected_rows";
+  }
 
   // 2. construct op kernel key
   pt_kernel_key_.reset(new pt::OpKernelKey(
@@ -1881,6 +1819,114 @@ pt::OpKernelKey OperatorWithKernel::ConstructPtOpKernelKey(
 
   // 4. build pt OpKernelKey
   return pt::OpKernelKey(backend, layout, dtype);
+}
+
+pt::OpKernelContext OperatorWithKernel::ConstructPtOpKernelContext(
+    const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
+  VLOG(1) << RuntimeContextDebugString(ctx);
+
+  // TODO(chenweihang): now only work for very simple case (sign op),
+  // many cases need to be deal with later:
+  // 1. the input and output are not tensor
+  // 2. the dispensbale, duplicable input and output
+  // 3. needless attributes remove
+  // 4. use pt Tensor directly
+  // 5. kernel input is not DenseTensor
+  pt::OpKernelContext op_kernel_ctx(dev_ctx);
+  auto input_defs = pt_kernel_->param_def().input_defs();
+  auto output_defs = pt_kernel_->param_def().output_defs();
+
+  // TODO(chenweihang): use ordered_map for VariableNameMap and VariableValueMap
+  // If we the VariableValueMap are ordered, we can get tensor by iter the map,
+  // and its order is same as OpProto
+
+  auto& op_proto = Info().proto_;
+  for (int i = 0; i < op_proto->inputs_size(); ++i) {
+    auto in = op_proto->inputs()[i];
+    // TODO(chenweihang): skip special cases temporarily
+    // TODO(chenweihang): deal with diff param in vector
+    if (in.has_dispensable() && in.dispensable()) {
+      VLOG(1) << "BuildOpKernelContext: skip dispensable input - " << in.name();
+      continue;
+    }
+    auto in_name = in.name();
+    auto in_def = input_defs.at(i);
+    for (auto* var : ctx.inputs.at(in_name)) {
+      if (var->IsType<LoDTensor>()) {
+        const auto& tensor = var->Get<LoDTensor>();
+        auto pt_in = MakeTensorImpl<pt::DenseTensor, LoDTensor>(
+            tensor, in_def.backend, in_def.dtype, in_def.layout);
+        op_kernel_ctx.EmplaceBackInput(pt_in);
+      } else if (var->IsType<SelectedRows>()) {
+        const auto& tensor = var->Get<SelectedRows>();
+        auto pt_in = MakeTensorImpl<pt::SelectedRowsTensor, SelectedRows>(
+            tensor, in_def.backend, in_def.dtype, in_def.layout);
+        op_kernel_ctx.EmplaceBackInput(pt_in);
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported shared input `%s` type now when call pt kernel.",
+            ToTypeName(var->Type())));
+      }
+    }
+  }
+  for (int i = 0; i < op_proto->outputs_size(); ++i) {
+    auto out_name = op_proto->outputs()[i].name();
+    auto out_def = output_defs.at(i);
+    for (auto* var : ctx.outputs.at(out_name)) {
+      // mutable_data before run kernel, to avoid share output form
+      // OpKernelContext to original tensor
+      if (var->IsType<LoDTensor>()) {
+        auto* tensor = var->GetMutable<LoDTensor>();
+        tensor->mutable_data(pt::TransToFluidPlace(out_def.backend),
+                             pt::TransToProtoVarType(out_def.dtype));
+        auto pt_out = MakeTensorImpl<pt::DenseTensor, LoDTensor>(
+            *tensor, out_def.backend, out_def.dtype, out_def.layout);
+        op_kernel_ctx.EmplaceBackOutput(pt_out);
+      } else if (var->IsType<SelectedRows>()) {
+        auto* tensor = var->GetMutable<SelectedRows>();
+        tensor->mutable_value()->mutable_data(
+            pt::TransToFluidPlace(out_def.backend),
+            pt::TransToProtoVarType(out_def.dtype));
+        auto pt_out = MakeTensorImpl<pt::SelectedRowsTensor, SelectedRows>(
+            *tensor, out_def.backend, out_def.dtype, out_def.layout);
+        op_kernel_ctx.EmplaceBackOutput(pt_out);
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported shared output `%s` type now when call pt kernel.",
+            ToTypeName(var->Type())));
+      }
+    }
+  }
+  for (int i = 0; i < op_proto->attrs_size(); ++i) {
+    auto attr = op_proto->attrs()[i];
+    // TODO(chenweihang): skip extra attrs by extra value
+    // if (attr.has_extra() && attr.extra()) {
+    //   continue;
+    // }
+    if (attr.name() == "use_mkldnn" || attr.name() == "op_role" ||
+        attr.name() == "op_role_var" || attr.name() == "op_namescope" ||
+        attr.name() == "op_callstack" || attr.name() == "op_device") {
+      continue;
+    }
+    switch (attr.type()) {
+      case proto::AttrType::INT:
+        op_kernel_ctx.EmplaceBackAttr(Attr<int>(attr.name()));
+        break;
+      case proto::AttrType::FLOAT:
+        op_kernel_ctx.EmplaceBackAttr(Attr<float>(attr.name()));
+        break;
+      case proto::AttrType::BOOLEAN:
+        op_kernel_ctx.EmplaceBackAttr(Attr<bool>(attr.name()));
+        break;
+      default:
+        // TODO(chenweihang): support other attrs type
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "unsupported cast op `%s`'s attribute `%s` when construct "
+            "OpKernelContext.",
+            Type(), attr.name()));
+    }
+  }
+  return op_kernel_ctx;
 }
 
 }  // namespace framework

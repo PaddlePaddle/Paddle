@@ -252,8 +252,9 @@ static pt::OpKernelContext BuildDygraphOpKernelContext(
     for (auto var : var_pair.second) {
       const auto& variable = var->Var();
       const auto& tensor = variable.template Get<framework::LoDTensor>();
-      auto pt_in = framework::MakeTensorImpl<pt::DenseTensor>(
-          tensor, in_def.backend, in_def.dtype, in_def.layout);
+      auto pt_in =
+          framework::MakeTensorImpl<pt::DenseTensor, framework::LoDTensor>(
+              tensor, in_def.backend, in_def.dtype, in_def.layout);
       op_kernel_ctx.EmplaceBackInput(pt_in);
     }
     ++i;
@@ -269,8 +270,9 @@ static pt::OpKernelContext BuildDygraphOpKernelContext(
       // OpKernelContext to original tensor
       tensor->mutable_data(pt::TransToFluidPlace(out_def.backend),
                            pt::TransToProtoVarType(out_def.dtype));
-      auto pt_out = framework::MakeTensorImpl<pt::DenseTensor>(
-          *tensor, out_def.backend, out_def.dtype, out_def.layout);
+      auto pt_out =
+          framework::MakeTensorImpl<pt::DenseTensor, framework::LoDTensor>(
+              *tensor, out_def.backend, out_def.dtype, out_def.layout);
       op_kernel_ctx.EmplaceBackOutput(pt_out);
     }
     ++i;

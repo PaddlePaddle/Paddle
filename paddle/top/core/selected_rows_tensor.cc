@@ -12,6 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/top/core/selected_rows.h"
+#include "paddle/top/core/selected_rows_tensor.h"
 
 namespace pt {}  // namespace pt

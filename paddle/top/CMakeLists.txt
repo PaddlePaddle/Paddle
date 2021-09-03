@@ -17,8 +17,6 @@ endif()
 if(WITH_XPU)
   add_subdirectory(xpu)
 endif()
-# top kernels for other tensor
-add_subdirectory(selected_rows)
 # top infershape
 add_subdirectory(infershape)
 # top public functors

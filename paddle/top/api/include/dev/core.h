@@ -20,3 +20,4 @@ limitations under the License. */
 #include "paddle/top/core/kernel_context.h"
 #include "paddle/top/core/kernel_factory.h"
 #include "paddle/top/core/mkldnn_dense_tensor.h"
+#include "paddle/top/core/selected_rows_tensor.h"

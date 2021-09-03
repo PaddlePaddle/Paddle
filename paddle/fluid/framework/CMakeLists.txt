@@ -387,7 +387,7 @@ cc_library(save_load_util SRCS save_load_util.cc DEPS tensor scope layer)
 cc_test(save_load_util_test SRCS save_load_util_test.cc DEPS save_load_util tensor scope layer)
 cc_library(generator SRCS generator.cc DEPS enforce place)
 
-cc_library(top_utils SRCS top_utils.cc DEPS tensor place top)
+cc_library(top_utils SRCS top_utils.cc DEPS lod_tensor selected_rows place top)
 
 # Get the current working branch
 execute_process(

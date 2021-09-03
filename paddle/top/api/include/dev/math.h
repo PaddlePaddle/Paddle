@@ -19,5 +19,4 @@ limitations under the License. */
 #include "paddle/top/cuda/math.h"
 #include "paddle/top/mkldnn/math.h"
 #include "paddle/top/npu/math.h"
-#include "paddle/top/selected_rows/math.h"
 #include "paddle/top/xpu/math.h"
