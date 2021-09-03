@@ -15,49 +15,51 @@
 #include "paddle/fluid/framework/new_executor/event_count.h"
 #include "paddle/fluid/framework/new_executor/run_queue.h"
 #include "paddle/fluid/framework/new_executor/thread_environment.h"
+#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
 
 namespace paddle {
 namespace framework {
 
-class CounterTracker {
+class TaskTracker {
  public:
-  explicit CounterTracker(std::atomic<uint64_t>* counter, EventCount* ec)
-      : counter_(counter), ec_(ec) {
-    counter_->fetch_add(1, std::memory_order_relaxed);
-  }
+  TaskTracker() : wait_empty_cv_(1) {}
 
-  ~CounterTracker() {
-    if (counter_ != nullptr) {
-      if (1 == counter_->fetch_sub(1, std::memory_order_relaxed)) {
-        ec_->Notify(true);
-      }
+  TaskTracker(const TaskTracker&) = delete;
+
+  TaskTracker& operator=(const TaskTracker&) = delete;
+
+  ~TaskTracker() = default;
+
+  void AddCounter() { num_tasks_.fetch_add(1, std::memory_order_relaxed); }
+
+  void SubCounter() {
+    if (1 == num_tasks_.fetch_sub(1, std::memory_order_relaxed)) {
+      wait_empty_cv_.Notify(true);
     }
   }
 
-  CounterTracker(CounterTracker&& other)
-      : counter_(other.counter_), ec_(other.ec_) {
-    other.counter_ = nullptr;
-    other.ec_ = nullptr;
+  // only one user can wait at any time
+  void WaitTaskNumToZero() {
+    bool waiting = false;
+    if (!wait_empty_.compare_exchange_strong(waiting, true,
+                                             std::memory_order_seq_cst,
+                                             std::memory_order_relaxed)) {
+      abort();
+    }
+    EventCount::Waiter* w = wait_empty_cv_.GetWaiter(0);
+    wait_empty_cv_.Prewait();
+    if (num_tasks_.load(std::memory_order_relaxed) == 0) {
+      wait_empty_cv_.CancelWait();
+    } else {
+      wait_empty_cv_.CommitWait(w);
+    }
+    wait_empty_.store(false);
   }
-
-  CounterTracker& operator=(CounterTracker&& other) {
-    counter_ = other.counter_;
-    ec_ = other.ec_;
-    other.counter_ = nullptr;
-    other.ec_ = nullptr;
-    return *this;
-  }
-
-  CounterTracker(const CounterTracker& other)
-      : counter_(other.counter_), ec_(other.ec_) {
-    counter_->fetch_add(1, std::memory_order_relaxed);
-  }
-
-  CounterTracker& operator=(const CounterTracker&) = delete;
 
  private:
-  std::atomic<uint64_t>* counter_{nullptr};
-  EventCount* ec_{nullptr};
+  std::atomic<uint64_t> num_tasks_{0};
+  EventCount wait_empty_cv_;
+  std::atomic<bool> wait_empty_{false};
 };
 
 template <typename Environment>
@@ -66,14 +68,12 @@ class ThreadPoolTempl {
   typedef typename Environment::Task Task;
   typedef RunQueue<Task, 1024> Queue;
 
-  explicit ThreadPoolTempl(int num_threads, Environment env = Environment())
-      : ThreadPoolTempl(num_threads, true, env) {}
-
-  ThreadPoolTempl(int num_threads, bool allow_spinning,
-                  Environment env = Environment())
+  ThreadPoolTempl(int num_threads, bool allow_spinning, bool track_task,
+                  TaskTracker* tracker, Environment env = Environment())
       : env_(env),
         num_threads_(num_threads),
         allow_spinning_(allow_spinning),
+        tracker_ownship_(track_task && tracker == nullptr),
         thread_data_(num_threads),
         global_steal_partition_(EncodePartition(0, num_threads_)),
         blocked_(0),
@@ -81,9 +81,7 @@ class ThreadPoolTempl {
         done_(false),
         cancelled_(false),
         ec_(num_threads_),
-        wait_empty_(false),
-        wait_empty_ec_(1),
-        num_tasks_(0) {
+        tracker_(tracker) {
     // Calculate coprimes of all numbers [1, num_threads].
     // Coprimes are used for random walks over all threads in Steal
     // and NonEmptyQueueIndex. Iteration is based on the fact that if we take
@@ -102,6 +100,11 @@ class ThreadPoolTempl {
       SetStealPartition(i, EncodePartition(0, num_threads_));
       thread_data_[i].thread.reset(
           env_.CreateThread([this, i]() { WorkerLoop(i); }));
+    }
+    // TaskTracker
+    assert(!track_task && tracker == nullptr);
+    if (track_task && tracker == nullptr) {
+      tracker_ = new TaskTracker();
     }
   }
 
@@ -125,6 +128,11 @@ class ThreadPoolTempl {
     for (size_t i = 0; i < thread_data_.size(); ++i) {
       thread_data_[i].thread.reset();
     }
+    // TaskTracker
+    if (tracker_ownship_) {
+      delete tracker_;
+    }
+    tracker_ = nullptr;
   }
 
   void SetStealPartitions(
@@ -146,15 +154,20 @@ class ThreadPoolTempl {
   }
 
   void AddTaskWithHint(std::function<void()> fn, int start, int limit) {
-    Task t = env_.CreateTask([
-      task = std::move(fn), raii = CounterTracker(&num_tasks_, &wait_empty_ec_)
-    ]() mutable { task(); });
+    if (tracker_ != nullptr) {
+      fn = [
+        task = std::move(fn), raii = CounterGuard<TaskTracker>(tracker_)
+      ]() mutable {
+        task();
+      };
+    }
+    Task t = env_.CreateTask(fn);
     PerThread* pt = GetPerThread();
     if (pt->pool == this) {
       // Worker thread of this pool, push onto the thread's queue.
       Queue& q = thread_data_[pt->thread_id].queue;
       t = q.PushFront(std::move(t));
-    } else if (wait_empty_.load() == false) {
+    } else {
       // A free-standing thread (or worker of another pool), push onto a random
       // queue.
       assert(start < limit);
@@ -180,26 +193,10 @@ class ThreadPoolTempl {
   }
 
   void WaitQueueEmpty() {
-    bool waiting = wait_empty_.load();
-    assert(waiting == false);
-    if (waiting ||
-        !wait_empty_.compare_exchange_strong(waiting, true,
-                                             std::memory_order_acquire)) {
+    if (nullptr == tracker_) {
       abort();
     }
-    EventCount::Waiter* w = wait_empty_ec_.GetWaiter(0);
-    wait_empty_ec_.Prewait();
-    if (num_tasks_.load() == 0) {
-      wait_empty_ec_.CancelWait();
-    } else {
-      wait_empty_ec_.CommitWait(w);
-    }
-    waiting = true;
-    if (!waiting ||
-        !wait_empty_.compare_exchange_strong(waiting, false,
-                                             std::memory_order_acquire)) {
-      abort();
-    }
+    tracker_->WaitTaskNumToZero();
   }
 
   void Cancel() {
@@ -291,6 +288,7 @@ class ThreadPoolTempl {
   Environment env_;
   const int num_threads_;
   const bool allow_spinning_;
+  const bool tracker_ownship_;
   std::vector<ThreadData> thread_data_;
   std::vector<std::vector<unsigned>> all_coprimes_;
   unsigned global_steal_partition_;
@@ -299,10 +297,7 @@ class ThreadPoolTempl {
   std::atomic<bool> done_;
   std::atomic<bool> cancelled_;
   EventCount ec_;
-
-  std::atomic<bool> wait_empty_;
-  EventCount wait_empty_ec_;
-  std::atomic<uint64_t> num_tasks_;
+  TaskTracker* tracker_;
 
   // Main worker thread loop.
   void WorkerLoop(int thread_id) {

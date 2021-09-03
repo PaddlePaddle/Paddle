@@ -19,13 +19,17 @@
 
 TEST(WorkQueue, TestSingleThreadedWorkQueue) {
   VLOG(1) << "In Test";
+  using paddle::framework::WorkQueueOptions;
   using paddle::framework::WorkQueue;
   using paddle::framework::CreateSingleThreadedWorkQueue;
   std::atomic<bool> finished{false};
   std::atomic<unsigned> counter{0};
   constexpr unsigned kLoopNum = 1000000;
   // CreateSingleThreadedWorkQueue
-  std::unique_ptr<WorkQueue> work_queue = CreateSingleThreadedWorkQueue();
+  WorkQueueOptions options;
+  options.num_threads = 1;
+  options.track_task = true;
+  auto work_queue = CreateSingleThreadedWorkQueue(options);
   // NumThreads
   EXPECT_EQ(work_queue->NumThreads(), 1u);
   // AddTask
@@ -46,14 +50,18 @@ TEST(WorkQueue, TestSingleThreadedWorkQueue) {
 
 TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   VLOG(1) << "In Test";
+  using paddle::framework::WorkQueueOptions;
   using paddle::framework::WorkQueue;
   using paddle::framework::CreateMultiThreadedWorkQueue;
   std::atomic<bool> finished{false};
   std::atomic<unsigned> counter{0};
   constexpr unsigned kExternalLoopNum = 100;
   constexpr unsigned kLoopNum = 1000000;
-  // CreateSingleThreadedWorkQueue
-  std::unique_ptr<WorkQueue> work_queue = CreateMultiThreadedWorkQueue(10);
+  // CreateMultiThreadedWorkQueue
+  WorkQueueOptions options;
+  options.num_threads = 10;
+  options.track_task = true;
+  auto work_queue = CreateMultiThreadedWorkQueue(options);
   // NumThreads
   EXPECT_EQ(work_queue->NumThreads(), 10u);
   // AddTask

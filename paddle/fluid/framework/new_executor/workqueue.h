@@ -16,13 +16,20 @@
 
 #include <functional>
 #include <memory>
+#include <vector>
 
 namespace paddle {
 namespace framework {
 
+struct WorkQueueOptions {
+  size_t num_threads{0};
+  bool allow_spinning{true};
+  bool track_task{false};
+};
+
 class WorkQueue {
  public:
-  WorkQueue() = default;
+  explicit WorkQueue(const WorkQueueOptions& options) : options_(options) {}
 
   WorkQueue(const WorkQueue&) = delete;
 
@@ -32,14 +39,41 @@ class WorkQueue {
 
   virtual void AddTask(std::function<void()> fn) = 0;
 
+  // set WorkQueueOptions.track_task = true before call this
+  // interface, otherwise will abort()
   virtual void WaitQueueEmpty() = 0;
 
   virtual size_t NumThreads() = 0;
+
+ protected:
+  WorkQueueOptions options_;
 };
 
-std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue();
+class WorkQueueGroup {
+ public:
+  explicit WorkQueueGroup(const std::vector<WorkQueueOptions>& queue_options);
 
-std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(int num_threads);
+  void AddTask(size_t queue_idx, std::function<void()> fn) {
+    queues_[queue_idx]->AddTask(std::move(fn));
+  }
+
+  void WaitQueueGroupEmpty();
+
+  size_t QueueNumThreads(size_t queue_idx) {
+    return queues_[queue_idx]->NumThreads();
+  }
+
+  size_t GroupNumThreads();
+
+ private:
+  std::vector<WorkQueue*> queues_;  // owned by group
+};
+
+std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue(
+    const WorkQueueOptions& options);
+
+std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(
+    const WorkQueueOptions& options);
 
 }  // namespace framework
 }  // namespace paddle

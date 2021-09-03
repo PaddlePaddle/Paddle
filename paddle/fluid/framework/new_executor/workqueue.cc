@@ -9,10 +9,17 @@
 
 namespace paddle {
 namespace framework {
+namespace {
 
 class SingleThreadedWorkQueue : public WorkQueue {
  public:
-  SingleThreadedWorkQueue() : queue_(1) {}
+  explicit SingleThreadedWorkQueue(const WorkQueueOptions& options,
+                                   TaskTracker* tracker = nullptr)
+      : WorkQueue(options),
+        queue_(1, options.allow_spinning, options.track_task, tracker) {
+    assert(options.num_threads == 1);
+    options_.num_threads = 1;
+  }
 
   SingleThreadedWorkQueue(const SingleThreadedWorkQueue&) = delete;
 
@@ -32,15 +39,14 @@ class SingleThreadedWorkQueue : public WorkQueue {
   NonblockingThreadPool queue_;
 };
 
-std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue() {
-  std::unique_ptr<WorkQueue> ptr(new SingleThreadedWorkQueue);
-  return std::move(ptr);
-}
-
 class MultiThreadedWorkQueue : public WorkQueue {
  public:
-  explicit MultiThreadedWorkQueue(int num_threads) : queue_(num_threads) {
-    assert(num_threads > 1);
+  explicit MultiThreadedWorkQueue(const WorkQueueOptions& options,
+                                  TaskTracker* tracker = nullptr)
+      : WorkQueue(options),
+        queue_(options.num_threads, options.allow_spinning, options.track_task,
+               tracker) {
+    assert(options.num_threads > 1);
   }
 
   MultiThreadedWorkQueue(const MultiThreadedWorkQueue&) = delete;
@@ -61,8 +67,17 @@ class MultiThreadedWorkQueue : public WorkQueue {
   NonblockingThreadPool queue_;
 };
 
-std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(int num_threads) {
-  std::unique_ptr<WorkQueue> ptr(new MultiThreadedWorkQueue(num_threads));
+}  // namespace
+
+std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue(
+    const WorkQueueOptions& options) {
+  std::unique_ptr<WorkQueue> ptr(new SingleThreadedWorkQueue(options));
+  return std::move(ptr);
+}
+
+std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(
+    const WorkQueueOptions& options) {
+  std::unique_ptr<WorkQueue> ptr(new MultiThreadedWorkQueue(options));
   return std::move(ptr);
 }
 
