@@ -142,6 +142,7 @@ class EighGPUKernel : public framework::OpKernel<T> {
     paddle::framework::TensorCopy(
         *input_var, input_var->place(), dev_ctx,
         output_v_var);  // copy input data to temp data
+
     std::vector<int> axis(dim_size - 2);
     std::iota(axis.begin(), axis.end(), 0);
     axis.insert(axis.end(), {dim_size - 1, dim_size - 2});
@@ -157,6 +158,7 @@ class EighGPUKernel : public framework::OpKernel<T> {
 
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batch_size);
     auto *info_ptr = reinterpret_cast<int *>(info->ptr());
+
 #if CUDA_VERSION >= 9020 && !defined(_WIN32)
 
     // Evd_Buffer(dev_ctx, jobz, uplo, n, out_vector, lda, out_value, &lwork);

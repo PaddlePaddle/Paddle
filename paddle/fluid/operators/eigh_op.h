@@ -91,13 +91,13 @@ class EighGradKernel : public framework::OpKernel<T> {
         math::DeviceIndependenceTensorOperations<DeviceContext, T, ValueType>(
             ctx);
 
-    Tensor conj_res = output_v_var;
+    Tensor conj_res;
+    TensorCopy(output_v_var, ctx.GetPlace(), &conj_res);
     if (framework::IsComplexType(output_v_var.type())) {
       conj_res = dito.Conj(output_v_var);
     }
     auto tV = dito.Transpose(conj_res);
-    Tensor w_sub;
-    w_sub =
+    auto w_sub =
         dito.SubBroadcast(dito.Unsqueeze(output_w_var, -2),
                           dito.Unsqueeze(output_w_var, -1), batch_size, cols);
 
