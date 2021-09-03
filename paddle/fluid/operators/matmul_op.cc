@@ -715,53 +715,66 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>(
         "use_mkldnn",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::vector<int>>("fused_reshape_X",
                               R"DOC(Shape of fused reshape of `X` input.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        ..AsExtra();
     AddAttr<std::vector<int>>("fused_reshape_Y",
                               R"DOC(Shape of fused reshape of `Y` input.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<int>>("fused_transpose_X",
                               R"DOC(Axis of fused transpose of `X` input.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<int>>("fused_transpose_Y",
                               R"DOC(Axis of fused transpose of `Y` input.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<int>>(
         "fused_reshape_Out",
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
               "it's a shape atribute of fused reshape for `Out` output.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<int>>(
         "fused_transpose_Out",
         R"DOC(When MKLDNN MatMul_transpose_reshape fuse activated, "
               "it's a axis atribute of fused transpose for `Out` output.)DOC")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<bool>(
         "use_quantizer",
         "(bool, default false) "
         "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"});
+        .InEnum({"float32", "int8", "bfloat16"})
+        .AsExtra();
     /* int8 parameters */
     AddAttr<float>("Scale_x",
                    "(float, default 1.0f), The quantize scale of X tensor")
-        .SetDefault(1.0f);
+        .SetDefault(1.0f)
+        .AsExtra();
     AddAttr<float>("Scale_y",
                    "(float, default 1.0f), The quantize scale of Y tensor")
-        .SetDefault(1.0f);
+        .SetDefault(1.0f)
+        .AsExtra();
     AddAttr<float>("Scale_out",
                    "(float, default 1.0f), The quantize scale of output data")
-        .SetDefault(1.0f);
+        .SetDefault(1.0f)
+        .AsExtra();
     AddAttr<bool>("force_fp32_output",
                   "(bool, default false) Force INT8 kernel output FP32, only "
                   "used in MKL-DNN INT8")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
 
 #if defined(PADDLE_WITH_MKLML) && !defined(PADDLE_WITH_CUDA) && \
     !defined(PADDLE_WITH_HIP)
