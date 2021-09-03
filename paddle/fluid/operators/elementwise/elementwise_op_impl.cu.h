@@ -72,8 +72,8 @@ int GetVectorizedSizeForTensors(
 
 template <typename InT, typename OutT, int VecSize, int Arity>
 struct ElementwiseArgsWrapper {
-  using InVecType = platform::CudaAlignedVector<InT, VecSize>;
-  using OutVecType = platform::CudaAlignedVector<OutT, VecSize>;
+  using InVecType = platform::AlignedVector<InT, VecSize>;
+  using OutVecType = platform::AlignedVector<OutT, VecSize>;
 
   const InT *__restrict__ in_data[Arity];
   OutT *out_data;
@@ -120,8 +120,8 @@ template <typename InT, typename OutT, int VecSize, int Arity, typename Functor>
 __device__ inline void VectorizedKernelImpl(
     ElementwiseArgsWrapper<InT, OutT, VecSize, Arity> wrapper, Functor func,
     int tid) {
-  using InVecType = platform::CudaAlignedVector<InT, VecSize>;
-  using OutVecType = platform::CudaAlignedVector<OutT, VecSize>;
+  using InVecType = platform::AlignedVector<InT, VecSize>;
+  using OutVecType = platform::AlignedVector<OutT, VecSize>;
 
   InVecType ins_vec[Arity];
   OutVecType out_vec;
@@ -157,7 +157,7 @@ __device__ inline void ScalarKernelImpl(
 }
 
 template <typename InT, typename OutT, int VecSize, int Arity, typename Functor>
-__global__ void VectorizedKernel(
+__global__ void VectorizedElementwiseKernel(
     ElementwiseArgsWrapper<InT, OutT, VecSize, Arity> wrapper, int main_tid,
     int tail_tid, Functor func) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -172,7 +172,7 @@ __global__ void VectorizedKernel(
 }
 
 template <typename InT, typename OutT, int Arity, typename Functor>
-__global__ void ScalarKernel(
+__global__ void ScalarElementwiseKernel(
     ElementwiseArgsWrapper<InT, OutT, 1, Arity> wrapper, int numel,
     Functor func) {
   int tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -211,24 +211,24 @@ void LaunchSameDimsElementwiseCudaKernel(
     case 4: {
       auto wrapper =
           ElementwiseArgsWrapper<InT, InT, 4, kArity>(ins, outs, vec_len);
-      VectorizedKernel<InT, InT, 4, kArity,
-                       Functor><<<grid_size, block_size, 0, stream>>>(
+      VectorizedElementwiseKernel<
+          InT, InT, 4, kArity, Functor><<<grid_size, block_size, 0, stream>>>(
           wrapper, main_tid, tail_tid, func);
       break;
     }
     case 2: {
       auto wrapper =
           ElementwiseArgsWrapper<InT, InT, 2, kArity>(ins, outs, vec_len);
-      VectorizedKernel<InT, InT, 2, kArity,
-                       Functor><<<grid_size, block_size, 0, stream>>>(
+      VectorizedElementwiseKernel<
+          InT, InT, 2, kArity, Functor><<<grid_size, block_size, 0, stream>>>(
           wrapper, main_tid, tail_tid, func);
       break;
     }
     case 1: {
       auto wrapper = ElementwiseArgsWrapper<InT, InT, 1, kArity>(ins, outs, 0);
-      ScalarKernel<InT, InT, kArity,
-                   Functor><<<grid_size, block_size, 0, stream>>>(wrapper,
-                                                                  numel, func);
+      ScalarElementwiseKernel<InT, InT, kArity,
+                              Functor><<<grid_size, block_size, 0, stream>>>(
+          wrapper, numel, func);
       break;
     }
     default: {
