@@ -433,6 +433,9 @@ class BuildExtension(build_ext, object):
                 # See https://stackoverflow.com/questions/34571583/understanding-gcc-5s-glibcxx-use-cxx11-abi-or-the-new-abi
                 add_compile_flag(['-D_GLIBCXX_USE_CXX11_ABI=1'], cflags)
 
+                if not is_cuda_file(src):
+                    cflags.append('-DPADDLE_WITH_CUDA')
+
                 add_std_without_repeat(
                     cflags, self.compiler.compiler_type, use_std14=True)
                 original_compile(obj, src, ext, cc_args, cflags, pp_opts)
