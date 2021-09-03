@@ -20,9 +20,16 @@ limitations under the License. */
 namespace paddle {
 namespace platform {
 
+// Declare a template class with a single template parameter.
+template <typename>
+struct FunctionTraits;
+
+// A forwarding trait allowing functors (objects which have an operator())
+// to be used with this traits class.
 template <typename T>
 struct FunctionTraits : public FunctionTraits<decltype(&T::operator())> {};
 
+// A partial specialization of FunctionTraits for pointers to member functions.
 template <typename ClassType, typename ReturnType, typename... Args>
 struct FunctionTraits<ReturnType (ClassType::*)(Args...) const> {
   typedef ReturnType result_type;
@@ -33,35 +40,43 @@ struct FunctionTraits<ReturnType (ClassType::*)(Args...) const> {
   };
 
   static const size_t arity = sizeof...(Args);
+  static const bool has_pointer_args =
+      (arity == 1) &&
+      (std::is_pointer<
+          typename std::tuple_element<0, std::tuple<Args...>>::type>::value);
 };
 
 namespace details {
 
-template <int Arity, typename InT, typename OutT, typename Functor>
+template <typename InT, typename OutT, typename Functor, int Arity,
+          bool HasPointerArgs = false>
 struct ApplyImpl {
   HOSTDEVICE inline OutT operator()(Functor func, InT args[]);
 };
 
 template <typename InT, typename OutT, typename Functor>
-struct ApplyImpl<1, InT, OutT, Functor> {
-  using Traits = FunctionTraits<Functor>;
+struct ApplyImpl<InT, OutT, Functor, 1, true> {
   HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
-    if (std::is_pointer<typename Traits::template Arg<0>::Type>::value) {
-      return func(args);
-    }
-    return func(args[0]);
+    return func(args);
   }
 };
 
 template <typename InT, typename OutT, typename Functor>
-struct ApplyImpl<2, InT, OutT, Functor> {
+struct ApplyImpl<InT, OutT, Functor, 1, false> {
+  HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
+    return func(args[0]);
+  }
+};
+
+template <typename InT, typename OutT, typename Functor, bool HasPointerArgs>
+struct ApplyImpl<InT, OutT, Functor, 2, HasPointerArgs> {
   HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
     return func(args[0], args[1]);
   }
 };
 
-template <typename InT, typename OutT, typename Functor>
-struct ApplyImpl<3, InT, OutT, Functor> {
+template <typename InT, typename OutT, typename Functor, bool HasPointerArgs>
+struct ApplyImpl<InT, OutT, Functor, 3, HasPointerArgs> {
   HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
     return func(args[0], args[1], args[2]);
   }
@@ -72,10 +87,9 @@ struct ApplyImpl<3, InT, OutT, Functor> {
 template <typename InT, typename OutT, typename Functor>
 HOSTDEVICE inline OutT Apply(Functor func, InT args[]) {
   using Traits = FunctionTraits<Functor>;
-  static_assert(Traits::arity < 4,
-                "Only functor whose's arity less than 4 is suuported.");
 
-  return details::ApplyImpl<Traits::arity, InT, OutT, Functor>()(func, args);
+  return details::ApplyImpl<InT, OutT, Functor, Traits::arity,
+                            Traits::has_pointer_args>()(func, args);
 }
 
 }  // namespace platform

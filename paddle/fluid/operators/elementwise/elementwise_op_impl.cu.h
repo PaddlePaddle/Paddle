@@ -181,17 +181,12 @@ __global__ void ScalarKernel(
   }
 }
 
-template <typename T>
-struct TestFunctor {
-  inline HOSTDEVICE T operator()(T x, T y) const { return x + y; }
-};
-
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
 void LaunchSameDimsElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, Functor func) {
-  using Traits = platform::FunctionTraits<TestFunctor<InT>>;
+  using Traits = platform::FunctionTraits<Functor>;
   const int kArity =
       (ET == ElementwiseType::kUnknown) ? Traits::arity : static_cast<int>(ET);
   PADDLE_ENFORCE_EQ(ins.size(), kArity,
@@ -211,32 +206,29 @@ void LaunchSameDimsElementwiseCudaKernel(
   int tail_tid = numel % vec_size;
   uint32_t vec_len = main_tid * vec_size;
 
-  // cuda kernel
   auto stream = ctx.stream();
-
-  auto test_func = TestFunctor<InT>();
   switch (vec_size) {
     case 4: {
       auto wrapper =
           ElementwiseArgsWrapper<InT, InT, 4, kArity>(ins, outs, vec_len);
       VectorizedKernel<InT, InT, 4, kArity,
-                       TestFunctor<InT>><<<grid_size, block_size, 0, stream>>>(
-          wrapper, main_tid, tail_tid, test_func);
+                       Functor><<<grid_size, block_size, 0, stream>>>(
+          wrapper, main_tid, tail_tid, func);
       break;
     }
     case 2: {
       auto wrapper =
           ElementwiseArgsWrapper<InT, InT, 2, kArity>(ins, outs, vec_len);
       VectorizedKernel<InT, InT, 2, kArity,
-                       TestFunctor<InT>><<<grid_size, block_size, 0, stream>>>(
-          wrapper, main_tid, tail_tid, test_func);
+                       Functor><<<grid_size, block_size, 0, stream>>>(
+          wrapper, main_tid, tail_tid, func);
       break;
     }
     case 1: {
       auto wrapper = ElementwiseArgsWrapper<InT, InT, 1, kArity>(ins, outs, 0);
       ScalarKernel<InT, InT, kArity,
-                   TestFunctor<InT>><<<grid_size, block_size, 0, stream>>>(
-          wrapper, numel, test_func);
+                   Functor><<<grid_size, block_size, 0, stream>>>(wrapper,
+                                                                  numel, func);
       break;
     }
     default: {
