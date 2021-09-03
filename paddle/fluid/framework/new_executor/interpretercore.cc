@@ -474,6 +474,7 @@ void InterpreterCore::CheckGC(size_t instr_id,
     } else if (cur_memory_size_ >= max_memory_size_) {
       gc_event_[instr_id].Record(
           platform::DeviceContextPool::Instance().Get(place));
+      gc_event_[instr_id].SetFininshed();  // Only for CPU Event
       gc_queue_->AddTask(
           [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
             while (!event->Query()) {
