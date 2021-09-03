@@ -143,8 +143,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       main_program_(main_prog),
       global_scope_(global_scope),
       d2h_ctx_pool_({place}),
-      h2d_ctx_pool_({place}),
-      fetch_context_pool_({place}) {
+      h2d_ctx_pool_({place}) {
   is_build_ = false;
 
   garbages_.reset(new GarbageQueue());
@@ -339,9 +338,6 @@ void InterpreterCore::BuildInstructionCtx(Instruction* instr_node,
       new RuntimeInferShapeContext(*op_base, *instr_node->runtime_ctx_.get()));
 
   auto* dev_ctx = instr_node->dev_ctx_;
-  if (instr_node->kernel_func_.operator_base_->Type() == "fetch_v2") {
-    dev_ctx = fetch_context_pool_.Get(place);
-  }
   Scope scope;
 
   instr_node->execution_ctx_.reset(new ExecutionContext(
@@ -349,22 +345,19 @@ void InterpreterCore::BuildInstructionCtx(Instruction* instr_node,
 }
 
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
+  VLOG(3) << "RunInstruction:  "
+          << instr_node.kernel_func_.operator_base_->Type();
+
   static_cast<const framework::OperatorWithKernel*>(
       instr_node.kernel_func_.operator_base_)
       ->InferShape(instr_node.infershape_ctx_.get());
-
-  if (instr_node.kernel_func_.operator_base_->Type() == "fetch_v2") {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto* dev_ctx = pool.Get(place_);
-    dev_ctx->Wait();  // TODO(wanghuancoder)
-  }
 
   instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
 }
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr, const VariableScope& var_scope,
-    const platform::Place& place) {
+    const platform::Place& place, bool is_dry_run) {
   std::queue<size_t> working_queue;
   auto working_dependecy_count = dependecy_count_;
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
@@ -385,6 +378,11 @@ void InterpreterCore::ExecuteInstructionList(
     // step2: run instruction
     RunInstruction(instr_node);
     ++run_op_number;
+
+    if (is_dry_run) {
+      profiler_.ParseMemoryInfo(var_scope.var_list);
+    }
+
     // step3: insert event for out_vars if needed
     RecordEventInstruction(instr_node, vec_func_list_[instr_id]);
 
@@ -402,8 +400,6 @@ void InterpreterCore::ExecuteInstructionList(
     CheckGC(instr_id, instr_node.gc_check_var_list, var_scope, place,
             working_var_ref);
   }
-
-  fetch_context_pool_.Get(place)->Wait();
 
   for (size_t i = 0; i < working_var_ref.size(); ++i) {
     if (working_var_ref[i].var_ref_count_ != 0) {
@@ -663,6 +659,9 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
                                       expected_kernel_key);
         if (!platform::is_same_place(kernel_type_for_var.place_,
                                      expected_kernel_key.place_)) {
+          if (op_base->Type() == "fetch_v2") {
+            op_base->SetAttr("deepcopy", false);
+          }
           // need trans place
           // 1. add var in scope
           // 2. add copy op
@@ -826,6 +825,48 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
 
     VLOG(3) << "run " << op_base->Type() << " done.";
   }
+}
+void InterpreterCore::Prepare(
+    const std::vector<framework::Tensor>& feed_tensors) {
+  auto FeedInput = [&] {
+    for (size_t i = 0; i < feed_names_.size(); ++i) {
+      auto it = global_scope_->name2id.find(feed_names_[i]);
+      assert(it != global_scope_->name2id.end());
+
+      auto feed_tensor = global_scope_->var_list[it->second]
+                             ->GetMutable<framework::LoDTensor>();
+      feed_tensor->ShareDataWith(feed_tensors[i]);
+    }
+  };
+
+  if (is_build_ == false) {
+    BuildVariableScope(main_program_, global_scope_);
+    FeedInput();
+    BuildOpFuncList(place_, main_program_, &op_list_, &vec_func_list_,
+                    global_scope_);
+    is_build_ = true;
+    // convert vec func_list to graph
+    Convert();
+  }
+  // NOTE: Because feed_tensor will be GC after BuildOpFuncList, so we should
+  // call
+  // FeedInput again.
+  FeedInput();
+}
+
+const CostInfo& InterpreterCore::DryRun(
+    const std::vector<framework::Tensor>& feed_tensors) {
+  Prepare(feed_tensors);
+  // DryRun may be called many times.
+  profiler_.Reset();
+  profiler_.Start();
+  ExecuteInstructionList(vec_instruction_, *global_scope_, place_,
+                         /*is_dry_run=*/true);
+  platform::DeviceContextPool::Instance().Get(place_)->Wait();
+
+  profiler_.Pause();
+  profiler_.TotalCUDAAllocatedMemorySize(place_);
+  return profiler_.GetCostInfo();
 }
 
 platform::DeviceContext* InterpreterCore::ParseDeviceContextForInstruction(

@@ -587,14 +587,25 @@ def monkey_patch_varbase():
             return self._getitem_index_not_tensor(item)
 
     def __setitem__(self, item, value):
+        def contain_tensor_or_list(item):
+            if not isinstance(item, tuple):
+                item = [item]
 
-        if contain_tensor(item):
-            # 1. Call _setitem_impl_ when item contains tensor.
-            # Why not call a c++ function ? Because item can't be parsed when it contains tensor.
+            for slice_item in item:
+                if isinstance(slice_item, list):
+                    return True
+                elif isinstance(slice_item, Variable):
+                    return True
+
+            return False
+
+        if contain_tensor_or_list(item):
+            # To reuse code with static graph,
+            # Call _setitem_impl_ when item contains tensor or list.
             return _setitem_impl_(self, item, value)
 
         else:
-            # 2. Call c++ func __setitem_varbase__ to speedup.
+            # Call c++ func __setitem_varbase__ to speedup.
             return self.__setitem_varbase__(item, value)
 
     for method_name, method in (
