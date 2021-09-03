@@ -64,7 +64,7 @@ class DropoutNPUKernel : public framework::OpKernel<T> {
       tmp_x.ShareDataWith(*x);
       tmp_out.ShareDataWith(*out);
       if (x->dims().size() == 1) {
-        // DropOutDoMask will get error result when input
+        // dropout will get error result when input
         // is 1-D. Make it become 2-D.
         std::vector<int> vec_dim = framework::vectorize<int>(x->dims());
         tmp_x.Resize(framework::make_ddim({vec_dim[0], 1}));
@@ -141,25 +141,13 @@ class DropoutGradNPUKernel : public framework::OpKernel<T> {
       return;
     }
 
-    Tensor tmp_dout(dout->type());
-    Tensor tmp_dx(dx->type());
-    tmp_dout.ShareDataWith(*dout);
-    tmp_dx.ShareDataWith(*dx);
-    if (dout->dims().size() == 1) {
-      // DropOutDoMask will get error result when input
-      // is 1-D. Make it become 2-D.
-      std::vector<int> vec_dim = framework::vectorize<int>(dout->dims());
-      tmp_dout.Resize(framework::make_ddim({vec_dim[0], 1}));
-      tmp_dx.Resize(framework::make_ddim({vec_dim[0], 1}));
-    }
-
     float keep_prob = 1. - dropout_prob;
     Tensor keep_prob_tensor(dout->type());
     keep_prob_tensor.mutable_data<T>({1}, ctx.GetPlace());
     FillNpuTensorWithConstant<T>(&keep_prob_tensor, static_cast<T>(keep_prob));
 
     const auto& runner_dropout_grad = NpuOpRunner(
-        "DropOutDoMask", {tmp_dout, *mask, keep_prob_tensor}, {tmp_dx}, {});
+        "DropOutDoMask", {*dout, *mask, keep_prob_tensor}, {*dx}, {});
     runner_dropout_grad.Run(stream);
   }
 };
