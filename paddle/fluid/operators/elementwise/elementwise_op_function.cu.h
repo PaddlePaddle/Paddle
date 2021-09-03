@@ -15,9 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include <glog/logging.h>
+#include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/hostdevice.h"
+
 #ifdef __HIPCC__
 #define PADDLE_CUDA_THREAD_SIZE 256
 #else
@@ -38,41 +40,8 @@ limitations under the License. */
 #endif
 #endif  // PADDLE_WITH_HIP
 
-#define DIV_ERROR_INFO                                                     \
-  "InvalidArgumentError: Integer division by zero encountered in divide. " \
-  "Please check.\n"
 namespace paddle {
 namespace operators {
-
-#define DEFINE_SIMPLE_BINARY_FUNCTOR(Func, expr)                   \
-  template <typename T, class Enable = void>                       \
-  struct Func##Functor {                                           \
-    inline HOSTDEVICE T operator()(const T& a, const T& b) const { \
-      return a expr b;                                             \
-    }                                                              \
-  };                                                               \
-  template <typename T, class Enable = void>                       \
-  struct Inverse##Func##Functor {                                  \
-    inline HOSTDEVICE T operator()(const T& a, const T& b) const { \
-      return b expr a;                                             \
-    }                                                              \
-  };
-
-DEFINE_SIMPLE_BINARY_FUNCTOR(Add, +)
-DEFINE_SIMPLE_BINARY_FUNCTOR(Sub, -)
-DEFINE_SIMPLE_BINARY_FUNCTOR(Mul, *)
-DEFINE_SIMPLE_BINARY_FUNCTOR(Div, /)
-#undef DEFINE_SIMPLE_BINARY_FUNCTOR
-
-// special div functor for int32/int64. check divison has a zero
-template <typename T>
-struct DivFunctor<T,
-                  typename std::enable_if<std::is_integral<T>::value>::type> {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
-    return a / b;
-  }
-};
 
 #define DEFINE_SIMPLE_CUDA_BINARY_FUNCTOR(Func, expr)                         \
   template <typename T, class Enable = void>                                  \

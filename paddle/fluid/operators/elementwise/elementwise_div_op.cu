@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include "paddle/fluid/operators/elementwise/elementwise_div_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/platform/complex.h"
@@ -21,24 +22,6 @@ namespace plat = paddle::platform;
 
 namespace paddle {
 namespace operators {
-
-template <typename T, typename Enable = void>
-struct CudaDivFunctor {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    return args[0] / args[1];
-  }
-};
-
-template <typename T>
-struct CudaDivFunctor<T,
-                      typename std::enable_if_t<std::is_integral<T>::value>> {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    PADDLE_ENFORCE(args[1] != 0,
-                   "Invalid Argument Error: Integer division by zero "
-                   "encountered in divide. Please check the input value.");
-    return args[0] / args[1];
-  }
-};
 
 template <typename T>
 class ElementwiseDivKernel<platform::CUDADeviceContext, T>
@@ -52,7 +35,7 @@ class ElementwiseDivKernel<platform::CUDADeviceContext, T>
 
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, CudaDivFunctor<T>());
+        cuda_ctx, ins, &outs, axis, DivFunctor<T>());
   }
 };
 
