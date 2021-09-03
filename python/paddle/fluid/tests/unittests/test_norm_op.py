@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest, skip_check_grad_ci
 
 
 def l2_norm(x, axis, epsilon):
