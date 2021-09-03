@@ -210,7 +210,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
 
         ops = [op.type for op in x.block.ops]
         self.assertListEqual(ops, [
-            'squared_l2_norm', 'squared_l2_norm', 'sum', 'sqrt',
+            'squared_l2_norm', 'squared_l2_norm', 'sum', 'sum', 'sqrt',
             'fill_constant', 'elementwise_max', 'elementwise_div',
             'elementwise_mul', 'elementwise_mul'
         ])
