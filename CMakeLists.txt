@@ -224,6 +224,7 @@ option(WITH_UNITY_BUILD "Compile with UnityBuild mode"             OFF)
 option(WITH_STRIP       "Strip so files of Whl packages"         OFF)
 option(NEW_RELEASE_CUBIN   "PaddlePaddle next-level release strategy for pypi cubin package"             OFF)
 option(NEW_RELEASE_JIT   "PaddlePaddle next-level release strategy for backup jit package"             OFF)
+option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
