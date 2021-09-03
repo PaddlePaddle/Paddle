@@ -98,7 +98,8 @@ class CosSimOpMaker : public framework::OpProtoAndCheckerMaker {
         .AsIntermediate();
     AddAttr<bool>(framework::kAllKernelsMustComputeRuntimeShape,
                   "Skip calling InferShape() function in the runtime.")
-        .SetDefault(true);
+        .SetDefault(true)
+        .AsExtra();
 
     AddComment(R"DOC(
 **Cosine Similarity Operator**
