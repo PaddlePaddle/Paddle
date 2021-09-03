@@ -855,7 +855,8 @@ def save(layer, path, input_spec=None, **configs):
                 model_filename=model_filename,
                 params_filename=params_filename,
                 export_for_deployment=configs._export_for_deployment,
-                program_only=configs._program_only)
+                program_only=configs._program_only,
+                clip_extra=False)
 
     # NOTE(chenweihang): [ Save extra variable info ]
     # save_inference_model will lose some important variable information, including:
@@ -1342,7 +1343,11 @@ class TracedLayer(object):
             return self._run(self._build_feed(inputs))
 
     @switch_to_static_graph
-    def save_inference_model(self, path, feed=None, fetch=None):
+    def save_inference_model(self,
+                             path,
+                             feed=None,
+                             fetch=None,
+                             clip_extra=False):
         """
         Save the TracedLayer to a model for inference. The saved
         inference model can be loaded by C++ inference APIs.
@@ -1449,4 +1454,5 @@ class TracedLayer(object):
                 executor=self._exe,
                 main_program=self._program.clone(),
                 model_filename=model_filename,
-                params_filename=params_filename)
+                params_filename=params_filename,
+                clip_extra=clip_extra)
