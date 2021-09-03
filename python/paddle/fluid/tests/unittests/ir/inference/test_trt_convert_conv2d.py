@@ -31,12 +31,20 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
             for i in range(len(program_config.ops))
         ]
 
-        # groups restriction.
+        if len(inputs['input_data'].shape) != 4 and len(inputs['input_data'].shape) != 5:
+            return False
+
+        if len(inputs['input_data'].shape) != len(weights['conv2d_weight'].shape):
+            return False
+
+        if len(inputs['input_data'].shape) != len(attrs[0]['dilations']) + 2:
+            return False
+
         if inputs['input_data'].shape[1] != weights['conv2d_weight'].shape[
                 1] * attrs[0]['groups']:
             return False
         
-        if len(inputs['input_data'].shape) != 4 or len(inputs['input_data'].shape) != 5:
+        if weights['conv2d_weight'].shape[0] % attrs[0]['groups'] != 0:
             return False
 
         # others restriction, todo.
@@ -69,7 +77,6 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
                         for dilations in [[1, 1], [1, 2]]:
                             for data_format in ['NCHW']:
                                 dics = [{
-                                    "data_fromat": data_format,
                                     "dilations": dilations,
                                     "padding_algorithm": padding_algotithm,
                                     "groups": groups,
