@@ -33,6 +33,8 @@ class DistributedOperator:
 class DistributedOperatorImpl:
     def __init__(self):
         self._name = None
+        self._forward_implemented = False
+        self._backward_implemented = False
 
     def forward(self, dist_ctx, *args, **kwargs):
         raise NotImplementedError("Please Implement this method in Subclass.")
