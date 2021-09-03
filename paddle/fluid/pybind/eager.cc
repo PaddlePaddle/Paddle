@@ -82,8 +82,6 @@ static int eagertensor_init(EagerTensorObject* self, PyObject* args,
   return 0;
 }
 
-PyObject* eagertensor_str(PyObject* self) { return ToPyObject(""); }
-
 PyObject* eager_tensor_properties_get_shape(EagerTensorObject* self,
                                             void* closure) {
   auto ddim = self->eagertensor.shape();
@@ -273,7 +271,7 @@ static struct PyGetSetDef variable_properties[] = {
      nullptr},
     {"_place_str", (getter)eager_tensor_properties_get_place_str, nullptr,
      nullptr, nullptr},
-    {nullptr}};
+    {nullptr, nullptr, nullptr, nullptr, nullptr}};
 
 PyMethodDef variable_methods[] = {
     {"numpy", (PyCFunction)(void (*)(void))eager_tensor_method_numpy,
@@ -305,7 +303,7 @@ static PyTypeObject EagerTensorType = {
     0,                               /* tp_as_mapping */
     0,                               /* tp_hash  */
     0,                               /* tp_call */
-    eagertensor_str,                 /* tp_str */
+    0,                               /* tp_str */
     0,                               /* tp_getattro */
     0,                               /* tp_setattro */
     0,                               /* tp_as_buffer */
@@ -329,6 +327,15 @@ static PyTypeObject EagerTensorType = {
     (initproc)eagertensor_init, /* tp_init */
     0,                          /* tp_alloc */
     eagertensor_new,            /* tp_new */
+    0,                          /* tp_free */
+    0,                          /* tp_is_gc */
+    0,                          /* tp_bases */
+    0,                          /* tp_mro */
+    0,                          /* tp_cache */
+    0,                          /* tp_subclasses */
+    0,                          /* tp_weaklist */
+    0,                          /* tp_del */
+    0,                          /* tp_version_tag */
 };
 
 void BindEager(pybind11::module* module) {
