@@ -21,6 +21,7 @@ using paddle::framework::DataLayout;
 using paddle::framework::ExecutionContext;
 using paddle::framework::vectorize;
 using paddle::platform::GetMKLDNNFormat;
+using paddle::platform::MKLDNNFormatForSize;
 using paddle::platform::MKLDNNDeviceContext;
 using paddle::platform::MKLDNNGetDataType;
 using paddle::platform::to_void_cast;
