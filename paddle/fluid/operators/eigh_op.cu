@@ -122,7 +122,6 @@ class EighGPUKernel : public framework::OpKernel<T> {
     auto *output_w_var = ctx.Output<Tensor>("OutValue");
     auto *output_v_var = ctx.Output<Tensor>("OutVector");
     std::string lower = ctx.Attr<std::string>("UPLO");
-
     auto &dims = input_var->dims();
     int dim_size = dims.size();
     int64_t batch_size = 1;
@@ -131,7 +130,6 @@ class EighGPUKernel : public framework::OpKernel<T> {
     }
     auto *out_value = output_w_var->mutable_data<ValueType>(ctx.GetPlace());
     auto *out_vector = output_v_var->mutable_data<T>(ctx.GetPlace());
-
     cublasFillMode_t uplo =
         (lower == "L") ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER;
     cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
@@ -140,6 +138,7 @@ class EighGPUKernel : public framework::OpKernel<T> {
     int lda = std::max<int>(1, n);
     auto vector_stride = dims[dim_size - 1] * dims[dim_size - 2];
     auto values_stride = dims[dim_size - 1];
+
     paddle::framework::TensorCopy(
         *input_var, input_var->place(), dev_ctx,
         output_v_var);  // copy input data to temp data
@@ -156,8 +155,8 @@ class EighGPUKernel : public framework::OpKernel<T> {
     int lwork = 0;
     T *d_work = NULL;
 
-    int *info_ptr = NULL;
-    cudaMalloc(reinterpret_cast<void **>(&info_ptr), sizeof(int));
+    auto info = memory::Alloc(dev_ctx, sizeof(int) * batch_size);
+    auto *info_ptr = reinterpret_cast<int *>(info->ptr());
 #if CUDA_VERSION >= 9020 && !defined(_WIN32)
 
     // Evd_Buffer(dev_ctx, jobz, uplo, n, out_vector, lda, out_value, &lwork);
@@ -187,11 +186,10 @@ class EighGPUKernel : public framework::OpKernel<T> {
     for (int i = 0; i < batch_size; ++i) {
       PADDLE_ENFORCE_EQ(
           error_info[i], 0,
-          platform::errors::InvalidArgument(
+          platform::errors::PreconditionNotMet(
               "For batch [%d]: the [%d] argument had an illegal value", i,
               error_info[i]));
     }
-
     TransCompute<platform::CUDADeviceContext, T>(
         dim_size, dev_ctx, *output_v_var, &output_v_var_trans, axis);
     paddle::framework::TensorCopy(
