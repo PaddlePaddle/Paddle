@@ -95,7 +95,7 @@ class TestMemcpy_FillConstant(unittest.TestCase):
         self.assertTrue(np.allclose(gpu_, np.zeros((10, 10))))
 
     def test_hip_copy_bool_value(self):
-        if core.is_compiled_with_cuda():
+        if core.is_compiled_with_rocm():
             paddle.enable_static()
             main_program = Program()
             with program_guard(main_program):
