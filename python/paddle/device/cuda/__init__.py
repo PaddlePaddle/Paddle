@@ -141,4 +141,5 @@ def empty_cache():
     """
 
     if core.is_compiled_with_cuda():
-        core._cuda_emptyCache()
+        if hasattr(core, "cuda_empty_cache"):
+            core.cuda_empty_cache()
