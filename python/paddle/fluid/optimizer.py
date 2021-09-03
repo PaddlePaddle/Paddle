@@ -4538,26 +4538,15 @@ class PipelineOptimizer(object):
         shape and dtype as ref_var, then rename it with the
         name `name`.
         """
-        if isinstance(ref_var, Parameter):
-            new_var = block.create_parameter(
-                name=name,
-                shape=ref_var.shape,
-                dtype=ref_var.dtype if dtype is None else dtype,
-                type=ref_var.type,
-                lod_level=ref_var.lod_level,
-                persistable=ref_var.persistable,
-                is_data=ref_var.is_data,
-                need_check_feed=ref_var.desc.need_check_feed())
-        else:
-            new_var = block.create_var(
-                name=name,
-                shape=ref_var.shape,
-                dtype=ref_var.dtype if dtype is None else dtype,
-                type=ref_var.type,
-                lod_level=ref_var.lod_level,
-                persistable=ref_var.persistable,
-                is_data=ref_var.is_data,
-                need_check_feed=ref_var.desc.need_check_feed())
+        new_var = block.create_var(
+            name=name,
+            shape=ref_var.shape,
+            dtype=ref_var.dtype if dtype is None else dtype,
+            type=ref_var.type,
+            lod_level=ref_var.lod_level,
+            persistable=ref_var.persistable,
+            is_data=ref_var.is_data,
+            need_check_feed=ref_var.desc.need_check_feed())
         new_var.stop_gradient = ref_var.stop_gradient
         return new_var
 
