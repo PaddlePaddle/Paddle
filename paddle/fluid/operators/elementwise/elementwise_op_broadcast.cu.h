@@ -196,8 +196,8 @@ struct StridesCalculation {
   }
 };
 
-template <typename InT, typename OutT, typename Functor, ElementwiseType ET,
-          int VecSize, int kDims>
+template <typename InT, typename OutT, ElementwiseType ET, int VecSize,
+          int Rank>
 struct BroadcastArgsWrapper {
   using InVecType = platform::AlignedVector<InT, VecSize>;
   using OutVecType = platform::AlignedVector<OutT, VecSize>;
@@ -207,34 +207,32 @@ struct BroadcastArgsWrapper {
   const InT *__restrict__ in_data[ET];
   const InVecType *__restrict__ vec_in_data[ET];
   bool no_broadcast[ET];
-  platform::FastDivMod divmoders[kDims];
+  platform::FastDivMod divmoders[Rank];
   uint32_t strides[ET][framework::DDim::kMaxRank];
   uint32_t scalar_cal_offset;
-  Functor func;
 
   HOSTDEVICE BroadcastArgsWrapper(
       const std::vector<const framework::Tensor *> &ins, framework::Tensor *out,
-      int scalar_cal_offset, Functor func,
-      const StridesCalculation &offset_calculator)
-      : scalar_cal_offset(scalar_cal_offset), func(func) {
+      int scalar_cal_offset, const StridesCalculation &offset_calculator)
+      : scalar_cal_offset(scalar_cal_offset) {
     for (int j = 0; j < ET; ++j) {
       in_data[j] = ins[j]->data<InT>();
       vec_in_data[j] = reinterpret_cast<const InVecType *>(in_data[j]);
       no_broadcast[j] = ins[j]->dims() == out->dims() ? true : false;
       memcpy(strides[j], offset_calculator.strides[j].data(),
-             kDims * sizeof(uint32_t));
+             Rank * sizeof(uint32_t));
     }
     out_data = out->data<OutT>();
     vec_out_data = reinterpret_cast<OutVecType *>(out_data);
     memcpy(divmoders, offset_calculator.divmoders.data(),
-           kDims * sizeof(platform::FastDivMod));
+           Rank * sizeof(platform::FastDivMod));
   }
 
   __device__ __forceinline__ uint32_t GetOffsetByDivmod(int idx, int in_idx) {
     uint32_t offset = 0;
 
-#pragma unroll(kDims)
-    for (int i = 0; i < kDims; ++i) {
+#pragma unroll(Rank)
+    for (int i = 0; i < Rank; ++i) {
       auto fast_divmoder = divmoders[i].Divmod(idx);
       idx = fast_divmoder.val[0];
       offset += fast_divmoder.val[1] * strides[in_idx][i];
@@ -303,65 +301,65 @@ struct BroadcastArgsWrapper {
 };
 
 template <typename InT, typename OutT, typename BroadcastArgsWrapper,
-          ElementwiseType ET>
+          typename Functor, ElementwiseType ET>
 __device__ inline void ScalarizedBroadcastKernelImpl(
-    BroadcastArgsWrapper broadcast_wrapper, int tid) {
+    BroadcastArgsWrapper wrapper, Functor func, int tid) {
   InT args[ET];
-  OutT args_out;
-  broadcast_wrapper.LoadScalarizedData(args, tid);
-
-  // Calcualtion of the in_tensor data.
-  args_out = broadcast_wrapper.func(args);
-
-  broadcast_wrapper.StoreScalarizedData(args_out, tid);
+  wrapper.LoadScalarizedData(args, tid);
+  OutT args_out = platform::Apply<InT, OutT, Functor>(func, args);
+  wrapper.StoreScalarizedData(args_out, tid);
 }
 
 template <typename InT, typename OutT, typename BroadcastArgsWrapper,
-          ElementwiseType ET, int VecSize>
+          typename Functor, ElementwiseType ET, int VecSize>
 __device__ inline void VectorizedBroadcastKernelImpl(
-    BroadcastArgsWrapper broadcast_wrapper, int tid) {
+    BroadcastArgsWrapper wrapper, Functor func, int tid) {
   using OutVecType = platform::AlignedVector<OutT, VecSize>;
+
   OutVecType args_out;
-  InT ins[ET];
   InT args[ET][VecSize];
-  broadcast_wrapper.LoadVectorizedData(args, tid);
+
+  wrapper.LoadVectorizedData(args, tid);
 
 #pragma unroll(VecSize)
   for (int i = 0; i < VecSize; ++i) {
+    InT ins[ET];
 #pragma unroll(ET)
     for (int j = 0; j < ET; ++j) {
       ins[j] = args[j][i];
     }
-    args_out.val[i] = broadcast_wrapper.func(ins);
+    args_out.val[i] = platform::Apply<InT, OutT, Functor>(func, ins);
   }
-  broadcast_wrapper.StoreVectorizedData(args_out, tid);
+
+  wrapper.StoreVectorizedData(args_out, tid);
 }
 
 template <typename InT, typename OutT, typename BroadcastArgsWrapper,
-          ElementwiseType ET, int VecSize>
-__global__ void ElementwiseBroadcastKernel(
-    BroadcastArgsWrapper broadcast_wrapper, int main_tid, int tail_tid) {
+          typename Functor, ElementwiseType ET, int VecSize>
+__global__ void ElementwiseBroadcastKernel(BroadcastArgsWrapper wrapper,
+                                           Functor func, int main_tid,
+                                           int tail_tid) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   // Vectorized calculation of major data whose length is the max multipler of
   // VecSize,
   // eg: Calcualting the front 1024-length data in total 1027 data once VecSize
   // is 4.
   if (tid < main_tid) {
-    VectorizedBroadcastKernelImpl<InT, OutT, BroadcastArgsWrapper, ET, VecSize>(
-        broadcast_wrapper, tid);
+    VectorizedBroadcastKernelImpl<InT, OutT, BroadcastArgsWrapper, Functor, ET,
+                                  VecSize>(wrapper, func, tid);
   }
   // Scalarzed calculation of rest data whose lenght cannot fulfill VecSize.
   // eg: Calcualting the rest 3-length data in total 1027 data once VecSize is
   // 4.
   if (tid < tail_tid) {
-    ScalarizedBroadcastKernelImpl<InT, OutT, BroadcastArgsWrapper, ET>(
-        broadcast_wrapper, tid);
+    ScalarizedBroadcastKernelImpl<InT, OutT, BroadcastArgsWrapper, Functor, ET>(
+        wrapper, func, tid);
   }
 }
 
 template <typename InT, typename OutT, ElementwiseType ET, int VecSize,
           typename Functor>
-void LaunchBroadcastKernelForDifferentDimSize(
+void LaunchBroadcastKernelForDifferentVecSize(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins, framework::Tensor *out,
     int axis, Functor func) {
@@ -377,79 +375,24 @@ void LaunchBroadcastKernelForDifferentDimSize(
   const auto offset_calculator = StridesCalculation(
       merge_dims.dim_size, merge_dims.in_dims, merge_dims.out_dims);
 
+#define CALL_BROADCAST_CUDA_KERNEL(Rank)                                  \
+  case Rank: {                                                            \
+    auto wrapper = BroadcastArgsWrapper<InT, OutT, ET, VecSize, Rank>(    \
+        ins, out, vec_len, offset_calculator);                            \
+    ElementwiseBroadcastKernel<InT, OutT, decltype(wrapper), Functor, ET, \
+                               VecSize><<<blocks, threads, 0, stream>>>(  \
+        wrapper, func, main_tid, tail_tid);                               \
+  } break
+
   switch (merge_dims.dim_size) {
-    case 1: {
-      auto broadcast_wrapper =
-          BroadcastArgsWrapper<InT, OutT, Functor, ET, VecSize, 1>(
-              ins, out, vec_len, func, offset_calculator);
-      ElementwiseBroadcastKernel<InT, OutT, decltype(broadcast_wrapper), ET,
-                                 VecSize><<<blocks, threads, 0, stream>>>(
-          broadcast_wrapper, main_tid, tail_tid);
-      break;
-    }
-    case 2: {
-      auto broadcast_wrapper =
-          BroadcastArgsWrapper<InT, OutT, Functor, ET, VecSize, 2>(
-              ins, out, vec_len, func, offset_calculator);
-      ElementwiseBroadcastKernel<InT, OutT, decltype(broadcast_wrapper), ET,
-                                 VecSize><<<blocks, threads, 0, stream>>>(
-          broadcast_wrapper, main_tid, tail_tid);
-      break;
-    }
-    case 3: {
-      auto broadcast_wrapper =
-          BroadcastArgsWrapper<InT, OutT, Functor, ET, VecSize, 3>(
-              ins, out, vec_len, func, offset_calculator);
-      ElementwiseBroadcastKernel<InT, OutT, decltype(broadcast_wrapper), ET,
-                                 VecSize><<<blocks, threads, 0, stream>>>(
-          broadcast_wrapper, main_tid, tail_tid);
-      break;
-    }
-    case 4: {
-      auto broadcast_wrapper =
-          BroadcastArgsWrapper<InT, OutT, Functor, ET, VecSize, 4>(
-              ins, out, vec_len, func, offset_calculator);
-      ElementwiseBroadcastKernel<InT, OutT, decltype(broadcast_wrapper), ET,
-                                 VecSize><<<blocks, threads, 0, stream>>>(
-          broadcast_wrapper, main_tid, tail_tid);
-      break;
-    }
-    case 5: {
-      auto broadcast_wrapper =
-          BroadcastArgsWrapper<InT, OutT, Functor, ET, VecSize, 5>(
-              ins, out, vec_len, func, offset_calculator);
-      ElementwiseBroadcastKernel<InT, OutT, decltype(broadcast_wrapper), ET,
-                                 VecSize><<<blocks, threads, 0, stream>>>(
-          broadcast_wrapper, main_tid, tail_tid);
-      break;
-    }
-    case 6: {
-      auto broadcast_wrapper =
-          BroadcastArgsWrapper<InT, OutT, Functor, ET, VecSize, 6>(
-              ins, out, vec_len, func, offset_calculator);
-      ElementwiseBroadcastKernel<InT, OutT, decltype(broadcast_wrapper), ET,
-                                 VecSize><<<blocks, threads, 0, stream>>>(
-          broadcast_wrapper, main_tid, tail_tid);
-      break;
-    }
-    case 7: {
-      auto broadcast_wrapper =
-          BroadcastArgsWrapper<InT, OutT, Functor, ET, VecSize, 7>(
-              ins, out, vec_len, func, offset_calculator);
-      ElementwiseBroadcastKernel<InT, OutT, decltype(broadcast_wrapper), ET,
-                                 VecSize><<<blocks, threads, 0, stream>>>(
-          broadcast_wrapper, main_tid, tail_tid);
-      break;
-    }
-    case 8: {
-      auto broadcast_wrapper =
-          BroadcastArgsWrapper<InT, OutT, Functor, ET, VecSize, 8>(
-              ins, out, vec_len, func, offset_calculator);
-      ElementwiseBroadcastKernel<InT, OutT, decltype(broadcast_wrapper), ET,
-                                 VecSize><<<blocks, threads, 0, stream>>>(
-          broadcast_wrapper, main_tid, tail_tid);
-      break;
-    }
+    CALL_BROADCAST_CUDA_KERNEL(1);
+    CALL_BROADCAST_CUDA_KERNEL(2);
+    CALL_BROADCAST_CUDA_KERNEL(3);
+    CALL_BROADCAST_CUDA_KERNEL(4);
+    CALL_BROADCAST_CUDA_KERNEL(5);
+    CALL_BROADCAST_CUDA_KERNEL(6);
+    CALL_BROADCAST_CUDA_KERNEL(7);
+    CALL_BROADCAST_CUDA_KERNEL(8);
     default: {
       PADDLE_THROW(platform::errors::InvalidArgument(
           "The maximum dimension of input tensor is expected to be less than "
@@ -457,6 +400,7 @@ void LaunchBroadcastKernelForDifferentDimSize(
           merge_dims.dim_size, framework::DDim::kMaxRank));
     }
   }
+#undef CALL_BROADCAST_CUDA_KERNEL
 }
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
@@ -464,11 +408,21 @@ void LaunchBroadcastElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, int axis, Functor func) {
-  PADDLE_ENFORCE_EQ(ET, ElementwiseType::kBinary,
+  using Traits = platform::FunctionTraits<Functor>;
+  const int kArity =
+      Traits::has_pointer_args ? static_cast<int>(ET) : Traits::arity;
+  PADDLE_ENFORCE_EQ(ins.size(), kArity,
+                    platform::errors::InvalidArgument(
+                        "The number of inputs is expected to be equal to the "
+                        "arity of functor. But recieved: the number of inputs "
+                        "is %d, the arity of functor is %d.",
+                        ins.size(), kArity));
+  PADDLE_ENFORCE_EQ(kArity, 2,
                     platform::errors::InvalidArgument(
                         "Currently, only Support binary calculation, "
                         "but received %d input tensors.\n",
-                        static_cast<int>(ET)));
+                        kArity));
+
   int in_vec_size = 4;
   framework::Tensor *out = (*outs)[0];
   for (auto *in : ins) {
@@ -481,17 +435,17 @@ void LaunchBroadcastElementwiseCudaKernel(
 
   switch (vec_size) {
     case 4: {
-      LaunchBroadcastKernelForDifferentDimSize<InT, OutT, ET, 4>(ctx, ins, out,
+      LaunchBroadcastKernelForDifferentVecSize<InT, OutT, ET, 4>(ctx, ins, out,
                                                                  axis, func);
       break;
     }
     case 2: {
-      LaunchBroadcastKernelForDifferentDimSize<InT, OutT, ET, 2>(ctx, ins, out,
+      LaunchBroadcastKernelForDifferentVecSize<InT, OutT, ET, 2>(ctx, ins, out,
                                                                  axis, func);
       break;
     }
     case 1: {
-      LaunchBroadcastKernelForDifferentDimSize<InT, OutT, ET, 1>(ctx, ins, out,
+      LaunchBroadcastKernelForDifferentVecSize<InT, OutT, ET, 1>(ctx, ins, out,
                                                                  axis, func);
       break;
     }

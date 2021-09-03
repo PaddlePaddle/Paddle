@@ -188,7 +188,7 @@ void LaunchSameDimsElementwiseCudaKernel(
     std::vector<framework::Tensor *> *outs, Functor func) {
   using Traits = platform::FunctionTraits<Functor>;
   const int kArity =
-      (ET == ElementwiseType::kUnknown) ? Traits::arity : static_cast<int>(ET);
+      Traits::has_pointer_args ? static_cast<int>(ET) : Traits::arity;
   PADDLE_ENFORCE_EQ(ins.size(), kArity,
                     platform::errors::InvalidArgument(
                         "The number of inputs is expected to be equal to the "

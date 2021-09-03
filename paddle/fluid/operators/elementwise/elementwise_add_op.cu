@@ -26,13 +26,6 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
-struct CudaAddFunctor {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    return args[0] + args[1];
-  }
-};
-
-template <typename T>
 class ElementwiseAddKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
@@ -44,7 +37,7 @@ class ElementwiseAddKernel<platform::CUDADeviceContext, T>
 
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, CudaAddFunctor<T>());
+        cuda_ctx, ins, &outs, axis, AddFunctor<T>());
   }
 };
 
