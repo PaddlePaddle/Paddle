@@ -112,7 +112,7 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
     int blocks = (num_outputs + num_thread - 1) / num_thread;
     int block_x = 512;
     int block_y = (blocks + 512 - 1) / 512;
-    dim3 threads(1024, 1);
+    dim3 threads(num_thread, 1);
     dim3 grid(block_x, block_y);
     im2col<T><<<grid, threads, 0, context.stream()>>>(
         im.data<T>(), num_outputs, im_height, im_width, dilation[0],
