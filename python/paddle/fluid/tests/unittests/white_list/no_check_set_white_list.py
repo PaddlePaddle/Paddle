@@ -33,4 +33,5 @@ no_check_set_white_list = [
     'softmax_with_cross_entropy',
     'svd',
     'class_center_sample',
+    'dropout',
 ]

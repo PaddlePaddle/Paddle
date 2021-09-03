@@ -53,7 +53,9 @@ class TestDropoutOp(OpTest):
         self.place = paddle.NPUPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        # mask used in `DropOutGenMask` NPU OP is different from the
+        # output `Mask`. So don't check value of Mask in npu unittest.
+        self.check_output_with_place(self.place, no_check_set=['Mask'])
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
@@ -61,7 +63,7 @@ class TestDropoutOp(OpTest):
         self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
-class TestDropoutOpInput1d(TestDropoutOp):
+class TestDropoutOpInputShape2(TestDropoutOp):
     # change input shape
     def setUp(self):
         self.op_type = "dropout"
