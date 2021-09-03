@@ -50,10 +50,19 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// constexpr int MAX_SEQ_LEN = 128;
-// constexpr int NUM_HEAD = 16;
-// constexpr int HEAD_SIZE = 64;
-// constexpr int STEP = 16;
+template <typename T, typename Generator>
+void run_fmha_fprop_fp16(size_t batch_size, size_t max_seqlen, size_t num_head,
+                         size_t head_size, float dropout_rate, void *d_qkv,
+                         void *d_cu_seqlens, void *d_seqlens, void *d_out,
+                         void *d_softmax_mask, Generator generator,
+                         cudaStream_t stream);
+
+template <typename T>
+void run_fmha_dgrad_fp16(size_t batch_size, size_t max_seqlen, size_t num_head,
+                         size_t head_size, float dropout_rate, void *d_qkv,
+                         void *d_cu_seqlens, void *d_seqlens, void *d_out,
+                         void *d_softmax_mask, void *d_dqkv,
+                         cudaStream_t stream);
 
 constexpr size_t SLEN_DIMS = 0;
 constexpr size_t THREE_DIMS = 1;
