@@ -45,10 +45,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/hccl_helper.h"
 #endif
 
-#if defined(PADDLE_WITH_ASCEND_CL)
-DECLARE_bool(hccl_check_nan);
-#endif
-
 namespace paddle {
 namespace operators {
 
@@ -144,7 +140,6 @@ inline bool ContainsNan(const paddle::platform::NPUDeviceContext& dev_ctx,
   try {
     const auto& runner_mean = paddle::operators::NpuOpRunner(
         "ReduceMeanD", {*in}, {mean}, {{"axes", axes}, {"keep_dims", false}});
-    runner_mean.Run(stream);
     TensorToVector(mean, dev_ctx, &vec);
   } catch (...) {
     LOG(WARNING) << "ContainsNan catch exception";
@@ -238,11 +233,9 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
         break;
       }
       case framework::proto::VarType::FP32: {
-        if (FLAGS_hccl_check_nan) {
-          VLOG(3) << "prepare to FoundNanInf";
-          found_nan = ContainsNan(*dev_ctx, dev_ctx->stream(), in);
-          VLOG(3) << "check_numerics:" << found_nan;
-        }
+        VLOG(4) << "prepare to FoundNanInf";
+        found_nan = ContainsNan(*dev_ctx, dev_ctx->stream(), in);
+        VLOG(4) << "check_numerics:" << found_nan;
         break;
       }
       default:
