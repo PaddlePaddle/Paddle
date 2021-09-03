@@ -89,4 +89,7 @@ TEST(DeviceEvent, CPU) {
   event.Record(context);
   status = event.Query();
   ASSERT_EQ(status, false);  // SCHEDULED
+
+  event.Reset();
+  ASSERT_EQ(status, false);  // INITIALIZED
 }
