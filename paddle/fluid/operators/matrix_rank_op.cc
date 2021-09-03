@@ -213,7 +213,7 @@ class MatrixRankCPUKernel : public framework::OpKernel<T> {
 
     Tensor temp_rtol_tensor;
     framework::TensorFromVector<T>(std::vector<T>{rtol_T}, &temp_rtol_tensor);
-    Tensor rtol_tensor = dito_T.mul(temp_rtol_tensor, max_eigenvalue_tensor);
+    Tensor rtol_tensor = dito_T.Mul(temp_rtol_tensor, max_eigenvalue_tensor);
     Tensor tol_tensor;
     tol_tensor.mutable_data<T>(dim_out, context.GetPlace());
     ElementwiseComputeEx<GreaterElementFunctor<T>, platform::CPUDeviceContext,
@@ -239,9 +239,9 @@ class MatrixRankCPUKernel : public framework::OpKernel<T> {
     auto dito_int =
         math::DeviceIndependenceTensorOperations<platform::CPUDeviceContext,
                                                  int64_t>(context);
-    std::vector<int> res_shape = framework::vectorize<int>(dim_out);
-    Tensor res = dito_int.ReduceSum(compare_result, res_shape);
-    out->ShareDataWith(res);
+    std::vector<int> result_shape = framework::vectorize<int>(dim_out);
+    Tensor result = dito_int.ReduceSum(compare_result, result_shape);
+    out->ShareDataWith(result);
   }
 };
 

@@ -48,7 +48,6 @@ void EigenSvd(const T* X, T* U, T* VH, T* S, int rows, int cols,
       svd(2, 2, flag);
   /*NOTE(xiongkun03) Eigen::Matrix API need non-const pointer.*/
   T* input = const_cast<T*>(X);
-This conversation was marked as resolved by Aurelius84
   auto m = Eigen::Map<
       Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>(
       input, rows, cols);
@@ -312,6 +311,22 @@ struct DeviceIndependenceTensorOperations {
     attrs["starts"] = starts;
     attrs["ends"] = ends;
     return CreateOpRunAndReturnTensor("slice", inputs, attrs, out_shape);
+  }
+
+  framework::Tensor ReduceSum(const framework::Tensor& x,
+                              std::vector<int> out_dim) {
+    framework::AttributeMap attrs;
+    attrs["dim"] = std::vector<int>{-1};
+    NameInTensorMap inputs({{"X", {&x}}});
+    return CreateOpRunAndReturnTensor("reduce_sum", inputs, attrs, out_dim);
+  }
+
+  framework::Tensor ReduceMax(const framework::Tensor& x,
+                              std::vector<int> out_dim) {
+    framework::AttributeMap attrs;
+    attrs["dim"] = std::vector<int>{-1};
+    NameInTensorMap inputs({{"X", {&x}}});
+    return CreateOpRunAndReturnTensor("reduce_max", inputs, attrs, out_dim);
   }
 
  private:
