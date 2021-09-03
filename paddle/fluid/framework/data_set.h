@@ -24,6 +24,10 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#ifdef PADDLE_WITH_GLOO
+#include <gloo/broadcast.h>
+#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
+#endif
 
 #include "paddle/fluid/framework/data_feed.h"
 

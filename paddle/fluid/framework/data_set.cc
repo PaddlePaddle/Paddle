@@ -18,10 +18,6 @@
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/platform/timer.h"
-#ifdef PADDLE_WITH_GLOO
-#include <gloo/broadcast.h>
-#include "paddle/fluid/framework/fleet/gloo_wrapper.h"
-#endif
 
 #if defined _WIN32 || defined __APPLE__
 #else
