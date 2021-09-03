@@ -71,10 +71,10 @@ __all__ = [     #noqa
 ]
 
 
-def global_scatter(x, \
-                   local_count, \
-                   global_count, \
-                   group=None, \
+def global_scatter(x,
+                   local_count,
+                   global_count,
+                   group=None,
                    use_calc_stream=True):
     """
     Scatter data in x which has been put together belong to one expert 

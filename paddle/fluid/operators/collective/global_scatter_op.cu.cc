@@ -27,18 +27,31 @@ class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_NCCL)
 #if NCCL_VERSION_CODE >= 2703
-    auto x = ctx.Input<framework::LoDTensor>("x");
+    auto x = ctx.Input<framework::LoDTensor>("X");
     auto local_count = ctx.Input<framework::LoDTensor>("local_count");
     auto global_count = ctx.Input<framework::LoDTensor>("global_count");
     auto out = ctx.Output<framework::LoDTensor>("Out");
-
+    const int64_t* cpu_local_count_data;
+    const int64_t* cpu_global_count_data;
     framework::Tensor cpu_local_count;
-    framework::TensorCopy(*local_count, platform::CPUPlace(), &cpu_local_count);
+    if (platform::is_gpu_place(local_count->place())) {
+      framework::TensorCopy(*local_count, platform::CPUPlace(),
+                            &cpu_local_count);
+      cpu_local_count_data = cpu_local_count.data<int64_t>();
+    } else {
+      cpu_local_count_data = local_count->data<int64_t>();
+    }
+    auto global_count_len = 0;
     framework::Tensor cpu_global_count;
-    framework::TensorCopy(*global_count, platform::CPUPlace(),
-                          &cpu_global_count);
-    int64_t* cpu_local_count_data = cpu_local_count.data<int64_t>();
-    int64_t* cpu_global_count_data = cpu_global_count.data<int64_t>();
+    if (platform::is_gpu_place(global_count->place())) {
+      framework::TensorCopy(*global_count, platform::CPUPlace(),
+                            &cpu_global_count);
+      cpu_global_count_data = cpu_global_count.data<int64_t>();
+      global_count_len = cpu_global_count.numel();
+    } else {
+      cpu_global_count_data = global_count->data<int64_t>();
+      global_count_len = global_count->numel();
+    }
 
     ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
 
@@ -61,10 +74,11 @@ class GlobalScatterOpCUDAKernel : public framework::OpKernel<T> {
     int nranks = comm->nranks();
     auto in_feat = x->dims()[1];
     auto n_expert = local_count->dims()[0] / nranks;
-    auto fwd_count = 0;
-    auto global_count_len = cpu_global_count.numel();
-    for (auto i = 0; i < global_count_len; ++i)
+    int64_t fwd_count = 0;
+
+    for (auto i = 0; i < global_count_len; ++i) {
       fwd_count += cpu_global_count_data[i];
+    }
     framework::DDim out_dims = framework::make_ddim({fwd_count, in_feat});
     int64_t* expert_ptr = new int64_t[n_expert * nranks];
     expert_ptr[0] = 0;
