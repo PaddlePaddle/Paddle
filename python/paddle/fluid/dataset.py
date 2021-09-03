@@ -387,6 +387,7 @@ class InMemoryDataset(DatasetBase):
         self.merge_by_lineid = False
         self.fleet_send_sleep_seconds = None
         self.trainer_num = -1
+        self.enable_heter_ps = False
 
     @deprecated(
         since="2.0.0",
@@ -984,6 +985,10 @@ class InMemoryDataset(DatasetBase):
                                                 global_data_size)
             return global_data_size[0]
         return local_data_size[0]
+
+    def set_heter_ps(self, enable_heter_ps=False):
+        self.enable_heter_ps = True
+        self.dataset.set_heter_ps(enable_heter_ps)
 
 
 class QueueDataset(DatasetBase):
