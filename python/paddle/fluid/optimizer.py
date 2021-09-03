@@ -4938,7 +4938,7 @@ class PipelineOptimizer(object):
                                 self._op_role_key: op_role,
                             })
                         extra_index_info['index'] += 1
-                        prefix_name = name.split('@')[0]
+                        prefix_name = var.name.split('@')[0]
                         prefix_var = block.var(prefix_name)
                         is_param = True if isinstance(prefix_var,
                                                       Parameter) else False
@@ -4997,7 +4997,7 @@ class PipelineOptimizer(object):
                                 'id': self.mp_rank,
                             })
                         extra_index_info['index'] += 1
-                        if use_mp or not is_param:
+                        if use_mp and not is_param:
                             block._insert_op_without_sync(
                                 index=index + extra_index_info['index'],
                                 type='partial_allgather',
