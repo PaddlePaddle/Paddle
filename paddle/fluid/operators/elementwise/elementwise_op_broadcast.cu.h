@@ -19,7 +19,7 @@
 namespace paddle {
 namespace operators {
 
-#define MAX_INPUT_NUM 3
+#define MAX_INPUT_NUM 3  // the max num of ET for BroadcacstConfig
 
 namespace kps = paddle::operators::kernel_primitives;
 
@@ -165,24 +165,23 @@ struct DimensionsTransform {
   }
 };
 
-template <typename T, int VecSize, int DATA_PER_THREAD, int ShapeSize,
-          bool IsBoundary = false>
+template <typename T, int VecSize, int ShapeSize, bool IsBoundary = false>
 __device__ __forceinline__ void LoadData(
-    T *dst, const T *__restrict__ src, uint32_t fix,
-    kps::details::BroadcastConfig<ShapeSize> config, int numel, int num,
+    T *dst, const T *__restrict__ src, uint32_t block_offset,
+    const kps::details::BroadcastConfig<ShapeSize> &config, int numel, int num,
     bool need_broadcast) {
-  // numel : whole num of input
+  // numel : whole num of output
   // num: how many data will be deal with in this time
   if (need_broadcast) {
-    kps::ReadDataBc<T, VecSize, DATA_PER_THREAD, 1, ShapeSize, IsBoundary>(
-        dst, src, fix, config, numel, 1, 1);
+    kps::ReadDataBc<T, VecSize, 1, 1, ShapeSize, IsBoundary>(
+        dst, src, block_offset, config, numel, 1, 1);
   } else {
-    kps::ReadData<T, VecSize, 1, 1, IsBoundary>(dst, src + fix, num);
+    kps::ReadData<T, VecSize, 1, 1, IsBoundary>(dst, src + block_offset, num);
   }
 }
 
 template <typename InT, typename OutT, int ShapeSize, int VecSize,
-          int DATA_PER_THREAD, typename Functor>
+          typename Functor>
 __global__ void BroadcastKernelTernary(
     const InT *__restrict__ in0, const InT *__restrict__ in1,
     const InT *__restrict__ in2, OutT *out,
@@ -190,103 +189,118 @@ __global__ void BroadcastKernelTernary(
     framework::Array<kps::details::BroadcastConfig<ShapeSize>, MAX_INPUT_NUM>
         configlists,
     int main_tid, int tail_tid, Functor func) {
-  int fix = blockIdx.x * blockDim.x * VecSize;  // data offset of this block
+  int block_offset =
+      blockIdx.x * blockDim.x * VecSize;  // data offset of this block
   int num = tail_tid;
-  InT arg0[VecSize * DATA_PER_THREAD];
-  InT arg1[VecSize * DATA_PER_THREAD];
-  InT arg2[VecSize * DATA_PER_THREAD];
-  OutT result[VecSize * DATA_PER_THREAD];
+  InT arg[3][VecSize];
+  OutT result[VecSize];
   const bool is_boundary = true;
   if (blockIdx.x < main_tid) {
     num = blockDim.x * VecSize;  // blockIdx.x < main_tid
     // load in0, in1, in2
-    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize>(
-        &arg0[0], in0, fix, configlists[0], numel, num, use_broadcast[0]);
-    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize>(
-        &arg1[0], in1, fix, configlists[1], numel, num, use_broadcast[1]);
-    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize>(
-        &arg2[0], in2, fix, configlists[2], numel, num, use_broadcast[2]);
+    LoadData<InT, VecSize, ShapeSize>(arg[0], in0, block_offset, configlists[0],
+                                      numel, num, use_broadcast[0]);
+    LoadData<InT, VecSize, ShapeSize>(arg[1], in1, block_offset, configlists[1],
+                                      numel, num, use_broadcast[1]);
+    LoadData<InT, VecSize, ShapeSize>(arg[2], in2, block_offset, configlists[2],
+                                      numel, num, use_broadcast[2]);
     kps::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
-        result, arg0, arg1, arg2, func);
-    kps::WriteData<OutT, VecSize, 1, 1>(out + fix, result, num);
-  } else {
-    // load in0, in1, in2
-    kps::Init<InT, VecSize * DATA_PER_THREAD>(&arg0[0], static_cast<InT>(1.0f));
-    kps::Init<InT, VecSize * DATA_PER_THREAD>(&arg1[0], static_cast<InT>(1.0f));
-    kps::Init<InT, VecSize * DATA_PER_THREAD>(&arg2[0], static_cast<InT>(1.0f));
-    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize, is_boundary>(
-        &arg0[0], in0, fix, configlists[0], numel, num, use_broadcast[0]);
-    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize, is_boundary>(
-        &arg1[0], in1, fix, configlists[1], numel, num, use_broadcast[1]);
-    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize, is_boundary>(
-        &arg2[0], in2, fix, configlists[2], numel, num, use_broadcast[2]);
+        result, arg[0], arg[1], arg[2], func);
+    kps::WriteData<OutT, VecSize, 1, 1>(out + block_offset, result, num);
+  } else {  // blockIdx.x == main_tid
+            // This is the last block and tial_tid != 0, set is_boundary = true
+    // is_boundary = true, boundary judgment needs to be made when loading data
+    // to avoid access storage overflow
+    kps::Init<InT, VecSize>(arg[0], static_cast<InT>(1.0f));
+    kps::Init<InT, VecSize>(arg[1], static_cast<InT>(1.0f));
+    kps::Init<InT, VecSize>(arg[2], static_cast<InT>(1.0f));
+    LoadData<InT, VecSize, ShapeSize, is_boundary>(arg[0], in0, block_offset,
+                                                   configlists[0], numel, num,
+                                                   use_broadcast[0]);
+    LoadData<InT, VecSize, ShapeSize, is_boundary>(arg[1], in1, block_offset,
+                                                   configlists[1], numel, num,
+                                                   use_broadcast[1]);
+    LoadData<InT, VecSize, ShapeSize, is_boundary>(arg[2], in2, block_offset,
+                                                   configlists[2], numel, num,
+                                                   use_broadcast[2]);
     kps::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
-        result, arg0, arg1, arg2, func);
-    kps::WriteData<OutT, VecSize, 1, 1, is_boundary>(out + fix, result, num);
+        result, arg[0], arg[1], arg[2], func);
+    kps::WriteData<OutT, VecSize, 1, 1, is_boundary>(out + block_offset, result,
+                                                     num);
   }
 }
 
 template <typename InT, typename OutT, int ShapeSize, int VecSize,
-          int DATA_PER_THREAD, typename Functor>
+          typename Functor>
 __global__ void BroadcastKernelBinary(
     const InT *__restrict__ in0, const InT *__restrict__ in1, OutT *out,
     framework::Array<bool, MAX_INPUT_NUM> use_broadcast, uint32_t numel,
     framework::Array<kps::details::BroadcastConfig<ShapeSize>, MAX_INPUT_NUM>
         configlists,
     int main_tid, int tail_tid, Functor func) {
-  int fix = blockIdx.x * blockDim.x * VecSize;  // data offset of this block
+  int block_offset =
+      blockIdx.x * blockDim.x * VecSize;  // data offset of this block
   int num = tail_tid;
-  InT arg0[VecSize * DATA_PER_THREAD];
-  InT arg1[VecSize * DATA_PER_THREAD];
-  OutT result[VecSize * DATA_PER_THREAD];
+  InT arg[2][VecSize];
+  OutT result[VecSize];
   const bool is_boundary = true;
   if (blockIdx.x < main_tid) {
     num = blockDim.x * VecSize;  // blockIdx.x < main_tid
-    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize>(
-        &arg0[0], in0, fix, configlists[0], numel, num, use_broadcast[0]);
-    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize>(
-        &arg1[0], in1, fix, configlists[1], numel, num, use_broadcast[1]);
-    kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(result, arg0,
-                                                              arg1, func);
-    kps::WriteData<OutT, VecSize, 1, 1>(out + fix, result, num);
+    LoadData<InT, VecSize, ShapeSize>(arg[0], in0, block_offset, configlists[0],
+                                      numel, num, use_broadcast[0]);
+    LoadData<InT, VecSize, ShapeSize>(arg[1], in1, block_offset, configlists[1],
+                                      numel, num, use_broadcast[1]);
+    kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(result, arg[0],
+                                                              arg[1], func);
+    kps::WriteData<OutT, VecSize, 1, 1>(out + block_offset, result, num);
   } else {  // reminder
-    kps::Init<InT, VecSize * DATA_PER_THREAD>(&arg0[0], static_cast<InT>(1.0f));
-    kps::Init<InT, VecSize * DATA_PER_THREAD>(&arg1[0], static_cast<InT>(1.0f));
-    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize, is_boundary>(
-        &arg0[0], in0, fix, configlists[0], numel, num, use_broadcast[0]);
-    LoadData<InT, VecSize, DATA_PER_THREAD, ShapeSize, is_boundary>(
-        &arg1[0], in1, fix, configlists[1], numel, num, use_broadcast[1]);
-    kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(result, arg0,
-                                                              arg1, func);
-    kps::WriteData<OutT, VecSize, 1, 1, is_boundary>(out + fix, result, num);
+            // This is the last block and tial_tid != 0, set is_boundary = true
+    // is_boundary = true, boundary judgment needs to be made when loading data
+    // to avoid access storage overflow
+    kps::Init<InT, VecSize>(arg[0], static_cast<InT>(1.0f));
+    kps::Init<InT, VecSize>(arg[1], static_cast<InT>(1.0f));
+    LoadData<InT, VecSize, ShapeSize, is_boundary>(arg[0], in0, block_offset,
+                                                   configlists[0], numel, num,
+                                                   use_broadcast[0]);
+    LoadData<InT, VecSize, ShapeSize, is_boundary>(arg[1], in1, block_offset,
+                                                   configlists[1], numel, num,
+                                                   use_broadcast[1]);
+    kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(result, arg[0],
+                                                              arg[1], func);
+    kps::WriteData<OutT, VecSize, 1, 1, is_boundary>(out + block_offset, result,
+                                                     num);
   }
 }
 
 template <typename InT, typename OutT, int ShapeSize, int VecSize,
-          int DATA_PER_THREAD, typename Functor>
+          typename Functor>
 __global__ void BroadcastKernelUnary(
     const InT *__restrict__ in, OutT *out, int numel,
     kps::details::BroadcastConfig<ShapeSize> config, int main_tid, int tail_tid,
     Functor func) {
-  int fix = blockIdx.x * blockDim.x;
+  int block_offset =
+      blockIdx.x * blockDim.x * VecSize;  // data offset of this block
   int num = tail_tid;
-  InT arg[VecSize * DATA_PER_THREAD];
-  OutT result[VecSize * DATA_PER_THREAD];
+  InT arg[VecSize];
+  OutT result[VecSize];
   const bool is_boundary = true;
   if (blockIdx.x < main_tid) {
     num = blockDim.x * VecSize;  // blockIdx.x < main_tid
-    kps::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize>(
-        &arg[0], in, fix * VecSize, config, numel, 1, 1);
+    kps::ReadDataBc<InT, VecSize, 1, 1, ShapeSize>(&arg[0], in, block_offset,
+                                                   config, numel, 1, 1);
     kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(&result[0],
                                                              &arg[0], func);
-    kps::WriteData<OutT, VecSize, 1, 1>(out + fix * VecSize, &result[0], num);
+    kps::WriteData<OutT, VecSize, 1, 1>(out + block_offset, &result[0], num);
   } else {
-    kps::Init<InT, VecSize * DATA_PER_THREAD>(&arg[0], static_cast<InT>(1.0f));
-    kps::ReadDataBc<InT, VecSize, DATA_PER_THREAD, 1, ShapeSize, is_boundary>(
-        &arg[0], in, fix * VecSize, config, numel, 1, 1);
+    // This is the last block and tial_tid != 0, set is_boundary = true
+    // is_boundary = true, boundary judgment needs to be made when loading data
+    // to avoid access storage overflow
+    kps::Init<InT, VecSize>(&arg[0], static_cast<InT>(1.0f));
+    kps::ReadDataBc<InT, VecSize, 1, 1, ShapeSize, is_boundary>(
+        &arg[0], in, block_offset, config, numel, 1, 1);
     kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(&result[0],
                                                              &arg[0], func);
-    kps::WriteData<OutT, VecSize, 1, 1, is_boundary>(out + fix * VecSize,
+    kps::WriteData<OutT, VecSize, 1, 1, is_boundary>(out + block_offset,
                                                      &result[0], num);
   }
 }
@@ -299,14 +313,10 @@ void LaunchKernel(const platform::CUDADeviceContext &ctx,
                   DimensionsTransform merge_dims) {
   int numel = out->numel();
   const int threads = 256;
-  const int data_per_thread = 1;
-  int blocks =
-      ((numel + VecSize * data_per_thread - 1) / (VecSize * data_per_thread) +
-       threads - 1) /
-      threads;
+  int blocks = ((numel + VecSize - 1) / VecSize + threads - 1) / threads;
 
-  int main_tid = numel / (data_per_thread * VecSize * threads);
-  int tail_tid = numel % (data_per_thread * VecSize * threads);
+  int main_tid = numel / (VecSize * threads);
+  int tail_tid = numel % (VecSize * threads);
   auto stream = ctx.stream();
   OutT *out_data = out->data<OutT>();
 
@@ -317,23 +327,26 @@ void LaunchKernel(const platform::CUDADeviceContext &ctx,
   for (int i = 0; i < ET; i++) {
     use_broadcast[i] = (ins[i]->numel() != numel);
     if (use_broadcast[i]) {
+      // get the broadcast config,
+      // if data shape is[m, n], then you should set data_dim = {n, m}
+      // eg: out's shape [3, 45, 1]. then out_dims = {1, 45, 3}
       configlists[i] = kps::details::BroadcastConfig<Size>(
           merge_dims.out_dims, merge_dims.in_dims[i], merge_dims.dim_size);
     }
   }
 
-  if (ET == kUnary) {
-    BroadcastKernelUnary<InT, OutT, Size, VecSize, data_per_thread,
+  if (ET == kUnary) {  // for unary eg: relu
+    BroadcastKernelUnary<InT, OutT, Size, VecSize,
                          Functor><<<blocks, threads, 0, stream>>>(
         ins[0]->data<InT>(), out_data, numel, configlists[0], main_tid,
         tail_tid, func);
-  } else if (ET == kBinary) {  // kBinary
-    BroadcastKernelBinary<InT, OutT, Size, VecSize, data_per_thread,
+  } else if (ET == kBinary) {  // for binary eg: add: a + b
+    BroadcastKernelBinary<InT, OutT, Size, VecSize,
                           Functor><<<blocks, threads, 0, stream>>>(
         ins[0]->data<InT>(), ins[1]->data<InT>(), out_data, use_broadcast,
         numel, configlists, main_tid, tail_tid, func);
-  } else {  // Ternary
-    BroadcastKernelTernary<InT, OutT, Size, VecSize, data_per_thread,
+  } else {  // for ternary eg:fma : a * b + c
+    BroadcastKernelTernary<InT, OutT, Size, VecSize,
                            Functor><<<blocks, threads, 0, stream>>>(
         ins[0]->data<InT>(), ins[1]->data<InT>(), ins[2]->data<InT>(), out_data,
         use_broadcast, numel, configlists, main_tid, tail_tid, func);
@@ -347,7 +360,6 @@ void LaunchBroadcastKernelForDifferentDimSize(
     const std::vector<const framework::Tensor *> &ins, framework::Tensor *out,
     int axis, Functor func) {
   const auto merge_dims = DimensionsTransform(ins, out->dims(), axis);
-
 #define DIM_SIZE(size)                                                       \
   case size: {                                                               \
     LaunchKernel<InT, OutT, ET, VecSize, size, Functor>(ctx, ins, out, func, \
