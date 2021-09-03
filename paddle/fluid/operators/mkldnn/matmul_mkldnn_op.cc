@@ -213,6 +213,11 @@ class MatMulMKLDNNHandler
       out_ptr = static_cast<char*>(out_ptr) + std::get<2>(offsets);
     }
     astream.wait();
+
+    auto format =
+        MKLDNNFormatForSize(out->dims().size(), dnnl::memory::format_tag::nchw);
+    out->set_format(format);
+    out->set_layout(DataLayout::kMKLDNN);
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
