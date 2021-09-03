@@ -34,7 +34,10 @@ black_list = [
     'test_sgd_op_bf16',
     'test_warpctc_op',
     # sync op
-    'test_sync_batch_norm_op'
+    'test_sync_batch_norm_op',
+    # case too large
+    'test_reduce_op',
+    'test_transpose_op'
 ]
 
 op_diff_list = [
