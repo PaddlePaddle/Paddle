@@ -53,7 +53,7 @@ fi
 # check tensorrt installation
 TENSORRT_COMPILED=$(cat "${inference_install_dir}/version.txt" | grep "WITH_TENSORRT")
 USE_TENSORRT=OFF
-if [ -d "$TENSORRT_ROOT_DIR" ] && [ -z "$TENSORRT_COMPILED" ]  ; then
+if [ -d "$TENSORRT_ROOT_DIR" ] && [ ! -z "$TENSORRT_COMPILED" ]  ; then
   USE_TENSORRT=ON
   test_suite_list="${test_suite_list}:tensorrt_tester*"
 fi
@@ -167,8 +167,8 @@ ${exe_dir}/test_resnet50 \
     --gtest_filter=${test_suite_list} \
     --gtest_output=xml:${log_dir}/test_resnet50.xml
 if [ $? -ne 0 ]; then
-    echo "test_resnet50 runs failed" >> ${exe_dir}/test_summary.txt
-    EXIT_CODE=1
+    echo "${RED} test_resnet50 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+    EXIT_CODE=8
 fi
 
 printf "${YELLOW} start test_det_mv3_db ${NC} \n";
@@ -178,8 +178,8 @@ ${exe_dir}/test_det_mv3_db \
     --gtest_filter=${test_suite_list} \
     --gtest_output=xml:${log_dir}/test_det_mv3_db.xml
 if [ $? -ne 0 ]; then
-    echo "test_det_mv3_db runs failed" >> ${exe_dir}/test_summary.txt
-    EXIT_CODE=1
+    echo "${RED} test_det_mv3_db runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+    EXIT_CODE=8
 fi
 
 printf "${YELLOW} start test_LeViT ${NC} \n";
@@ -189,8 +189,8 @@ ${exe_dir}/test_LeViT \
     --gtest_filter=${test_suite_list} \
     --gtest_output=xml:${log_dir}/test_LeViT.xml
 if [ $? -ne 0 ]; then
-    echo "test_LeViT runs failed" >> ${exe_dir}/test_summary.txt
-    EXIT_CODE=1
+    echo "${RED} test_LeViT runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+    EXIT_CODE=8
 fi
 
 if [ $WIN_DETECT != "" ]; then
@@ -200,6 +200,7 @@ else
     compile_test "test_ernie_text_cls"
     ${exe_dir}/test_ernie_text_cls \
         --modeldir=$DATA_DIR/ernie_text_cls/ernie_text_cls \
+        --gtest_filter=${test_suite_list} \
         --gtest_output=xml:${log_dir}/test_ernie_text_cls.xml
     if [ $? -ne 0 ]; then
         echo "${RED} test_ernie_text_cls runs failed ${NC}" >> ${exe_dir}/test_summary.txt
@@ -214,8 +215,8 @@ ${exe_dir}/test_yolov3 \
     --gtest_filter=${test_suite_list} \
     --gtest_output=xml:${log_dir}/test_yolov3.xml
 if [ $? -ne 0 ]; then
-    echo "test_yolov3 runs failed" >> ${exe_dir}/test_summary.txt
-    EXIT_CODE=1
+    echo "${RED} test_yolov3 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+    EXIT_CODE=8
 fi
 
 printf "${YELLOW} start test_ppyolo_mbv3 ${NC} \n";
@@ -225,8 +226,8 @@ ${exe_dir}/test_ppyolo_mbv3 \
     --gtest_filter=${test_suite_list} \
     --gtest_output=xml:${log_dir}/test_ppyolo_mbv3.xml
 if [ $? -ne 0 ]; then
-    echo "test_ppyolo_mbv3 runs failed" >> ${exe_dir}/test_summary.txt
-    EXIT_CODE=1
+    echo "${RED} test_ppyolo_mbv3 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+    EXIT_CODE=8
 fi
 
 printf "${YELLOW} start test_ppyolov2_r50vd ${NC} \n";
@@ -236,8 +237,8 @@ ${exe_dir}/test_ppyolov2_r50vd \
     --gtest_filter=${test_suite_list} \
     --gtest_output=xml:${log_dir}/test_ppyolov2_r50vd.xml
 if [ $? -ne 0 ]; then
-    echo "test_ppyolov2_r50vd runs failed" >> ${exe_dir}/test_summary.txt
-    EXIT_CODE=1
+    echo "${RED} test_ppyolov2_r50vd runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+    EXIT_CODE=8
 fi
 
 printf "${YELLOW} start test_resnet50_quant ${NC} \n";
@@ -249,8 +250,8 @@ ${exe_dir}/test_resnet50_quant \
     --gtest_filter=${test_suite_list} \
     --gtest_output=xml:${log_dir}/test_resnet50_quant.xml
 if [ $? -ne 0 ]; then
-    echo "test_resnet50_quant runs failed" >> ${exe_dir}/test_summary.txt
-    EXIT_CODE=1
+    echo "${RED} test_resnet50_quant runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+    EXIT_CODE=8
 fi
 
 set +x
