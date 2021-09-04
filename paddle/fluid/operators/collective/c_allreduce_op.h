@@ -45,6 +45,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/hccl_helper.h"
 #endif
 
+#if defined(PADDLE_WITH_ASCEND_CL)
+DECLARE_bool(hccl_check_nan);
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -233,10 +237,11 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
         break;
       }
       case framework::proto::VarType::FP32: {
-        VLOG(4) << "prepare to FoundNanInf";
-        // NOTE: performance relating, DO NOT REMOVE!
-        found_nan = ContainsNan(*dev_ctx, dev_ctx->stream(), in);
-        VLOG(4) << "check_numerics:" << found_nan;
+        if (FLAGS_hccl_check_nan) {
+          VLOG(3) << "prepare to FoundNanInf";
+          // NOTE: performance relating, DO NOT REMOVE!
+          ContainsNan(*dev_ctx, dev_ctx->stream(), in);
+        }
         break;
       }
       default:
