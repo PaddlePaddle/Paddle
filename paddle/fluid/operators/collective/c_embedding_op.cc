@@ -74,7 +74,7 @@ class CEmbeddingOpMaker : public framework::OpProtoAndCheckerMaker {
              "(Tensor) The input represents embedding tensors, "
              "which is a learnable parameter.");
     AddInput("Ids",
-             "An input with type int32 or int64"
+             "An input with type int32 or int64 in CPU and GPU, int32 in NPU "
              "contains the ids to be looked up in W.");
     AddOutput("Out", "The lookup results, which have the same type as W.");
 
@@ -126,16 +126,17 @@ class CEmbeddingOpGrad : public framework::OperatorWithKernel {
     // check valid
     PADDLE_ENFORCE_EQ(table_dims.size(), 2,
                       platform::errors::InvalidArgument(
-                          "npu only accept the dims of table_t == 2"));
+                          "Only accept the dims of table_t == 2"));
 
     const int64_t start_idx = ctx->Attrs().Get<int64_t>("start_index");
     const int64_t height = table_dims[0];
     const int64_t width = table_dims[1];
 
     PADDLE_ENFORCE_EQ(
-        (height >= 0 && width >= 0 && start_idx >= 0), true,
-        "height:%ld width:%ld start_idx:%ld must not have negtive values",
-        height, width, start_idx);
+        (height > 0 && width > 0 && start_idx >= 0), true,
+        platform::errors::InvalidArgument(
+            "height:%ld width:%ld start_idx:%ld must not have negtive values",
+            height, width, start_idx));
   }
 
  protected:

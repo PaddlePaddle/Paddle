@@ -113,10 +113,12 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
       framework::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
   framework::LoDTensor table_t_pad;
 
-  size_t mem_size = table_t->memory_size();
+  size_t mem_size = table_t->numel() * framework::SizeOfType(table_t->type());
   size_t line_mem_size =
       table_t->dims()[1] * framework::SizeOfType(table_t->type());
-  PADDLE_ENFORCE_EQ(line_mem_size % 64, 0, "must align by 64");
+  PADDLE_ENFORCE_EQ(line_mem_size % 64, 0,
+                    platform::errors::InvalidArgument(
+                        "NPU only accept the second dim must align by 64"));
 
   VLOG(10) << "mem_size:" << mem_size << ",line_mem_size:" << line_mem_size
            << ", pad_shape:" << pad_shape << ", table_dims:" << table_t->dims();
@@ -148,11 +150,9 @@ class CEmbeddingNPUKernel : public framework::OpKernel<T> {
     const auto &index_type = ids_t->type();
     if (index_type == framework::proto::VarType::INT32) {
       NPUGetIdsEmbedding<int32_t, T>(context);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      NPUGetIdsEmbedding<int64_t, T>(context);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
-          "c_embedding ids only support int32 or int64."));
+          "NPU c_embedding ids only support int32."));
     }
   }
 };
@@ -186,9 +186,10 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   // set table_t_pad to zero
   uint8_t *pad_data = reinterpret_cast<uint8_t *>(
       table_t_pad.mutable_data<T>(pad_shape, context.GetPlace()));
-  PADDLE_ENFORCE_NPU_SUCCESS(
-      aclrtMemsetAsync(pad_data, table_t_pad.memory_size(), 0,
-                       table_t_pad.memory_size(), stream));
+  size_t table_t_pad_mem_size =
+      table_t_pad.numel() * framework::SizeOfType(table_t_pad.type());
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemsetAsync(pad_data, table_t_pad_mem_size, 0,
+                                              table_t_pad_mem_size, stream));
 
   // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
   // can be different tensor, but in cann 20.2+, it does inplace operation.
@@ -200,12 +201,15 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
 
   // copy table_t_pad to table_t
   T *dst = table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
-  const size_t mem_size = table_grad_t->memory_size();
+  const size_t mem_size =
+      table_grad_t->numel() * framework::SizeOfType(table_grad_t->type());
 
   // check align
   size_t line_mem_size =
       table_grad_t->dims()[1] * framework::SizeOfType(table_grad_t->type());
-  PADDLE_ENFORCE_EQ(line_mem_size % 64, 0, "must align by 64");
+  PADDLE_ENFORCE_EQ(line_mem_size % 64, 0,
+                    platform::errors::InvalidArgument(
+                        "NPU only accept the second dim must align by 64"));
 
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpyAsync(
       dst, mem_size, pad_data, mem_size, ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
@@ -220,11 +224,9 @@ class CEmbeddingGradNPUKernel : public framework::OpKernel<T> {
     const auto &index_type = ids_t->type();
     if (index_type == framework::proto::VarType::INT32) {
       NPUUpdateEmbedding<int32_t, T>(context);
-    } else if (index_type == framework::proto::VarType::INT64) {
-      NPUUpdateEmbedding<int64_t, T>(context);
     } else {
-      PADDLE_THROW(platform::errors::Unavailable(
-          "c_embedding ids only support int32 or int64."));
+      PADDLE_THROW(
+          platform::errors::Unavailable("c_embedding ids only support int32."));
     }
   }
 };

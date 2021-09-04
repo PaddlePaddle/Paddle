@@ -38,12 +38,13 @@ void GetIdsEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
     int64_t local = id - start_idx;
 
     if (local >= 0 && local < height) {
-      /*
-      for (int64_t w = 0; w < width; w++) {
-        out[i * width + w] = table[local * width + w];
-      }
-      */
+      // for (int64_t w = 0; w < width; w++) {
+      //   out[i * width + w] = table[local * width + w];
+      // }
+
       memcpy(out + i * width, table + local * width, width * sizeof(TData));
+    } else {
+      memset(out + i * width, 0, width * sizeof(TData));
     }
   }
 }
@@ -74,7 +75,7 @@ class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
                       table_data, height, width, output_data);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
-          "c_embedding ids only support int32 or int64."));
+          "CPU c_embedding ids only support int32 or int64."));
     }
   }
 };
@@ -108,12 +109,17 @@ class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
     T* table_grad_data =
         table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
 
+    size_t table_t_mem_size =
+        table_t->numel() * framework::SizeOfType(table_grad_t->type());
+    size_t table_grad_t_mem_size =
+        table_grad_t->numel() * framework::SizeOfType(table_grad_t->type());
+
     VLOG(10) << "table_dims:" << table_t->dims()
-             << ", table_t memory_size:" << table_t->memory_size()
-             << ", table_grad_t memory_size:" << table_grad_t->memory_size()
+             << ", table_t memory_size:" << table_t_mem_size
+             << ", table_grad_t memory_size:" << table_grad_t_mem_size
              << ", start_index:" << start_idx;
 
-    memset(table_grad_data, 0, table_grad_t->memory_size());
+    memset(table_grad_data, 0, table_grad_t_mem_size);
     const T* d_output_data = d_output_t->data<T>();
 
     const int64_t height = table_t->dims()[0];
@@ -128,7 +134,7 @@ class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
                       table_grad_data, height, width, d_output_data);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
-          "c_embedding ids only support int32 or int64."));
+          "CPU c_embedding ids only support int32 or int64."));
     }
   }
 };
