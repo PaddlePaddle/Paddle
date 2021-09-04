@@ -115,7 +115,6 @@ def get_numeric_gradient(place,
                          output_names,
                          delta=0.005,
                          in_place=False):
-    #print("get_nuemeric_gradient:", op, flush=True)
     # FIXME: change this method by compile time concepts
     set_input(scope, op, inputs, place)
 
@@ -141,7 +140,6 @@ def get_numeric_gradient(place,
 
     def get_output():
         sum = []
-        #print("get_output op:", op, flush=True)
         op.run(scope, place)
         for output_name in output_names:
             output_numpy = np.array(scope.find_var(output_name).get_tensor())
@@ -715,7 +713,6 @@ class OpTest(unittest.TestCase):
             for out_name, out_dup in Operator.get_op_outputs(self.op_type):
                 fetch_list.append(str(out_name))
 
-        print("fetch_list:", fetch_list, flush=True)
         if enable_inplace is not None:
             build_strategy = fluid.BuildStrategy()
             build_strategy.enable_inplace = enable_inplace
@@ -729,8 +726,6 @@ class OpTest(unittest.TestCase):
                             feed=feed_map,
                             fetch_list=fetch_list,
                             return_numpy=False)
-        print("program:", program, flush=True)
-        print("feed:", feed_map, flush=True)
         self.op = op
         self.program = original_program
         if for_inplace_test:
@@ -1193,8 +1188,6 @@ class OpTest(unittest.TestCase):
 
                 expect = self.outputs[out_name]
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
-                print("out_name:", out_name, "actual_t:", actual_t)
-                print("out_name:", out_name, "expect_t:", expect_t)
 
                 if actual_t.dtype == np.uint16 and expect_t.dtype in [
                         np.float32, np.float64

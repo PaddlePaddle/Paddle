@@ -28,9 +28,6 @@ def get_c_embedding(start, end, table, ids):
     masked_input = index - start
     masked_input[input_mask] = 0
     output = table[masked_input]
-    print("start:", start, ", end:", end, flush=True)
-    print("input_mask:", input_mask, flush=True)
-    print("masked_input:", masked_input, flush=True)
     output[input_mask] = 0.0
     return output
 
@@ -51,7 +48,6 @@ class TestCEmbeddingOp(OpTest):
         if core.is_compiled_with_npu():
             self.__class__.use_npu = True
 
-    """
     def test_check_output(self):
         if core.is_compiled_with_cuda():
             self.check_output_with_place(core.CUDAPlace(0))
@@ -63,7 +59,6 @@ class TestCEmbeddingOp(OpTest):
 
     def test_check_cpu_grad(self):
         self.check_grad_with_place(core.CPUPlace(), ['W'], 'Out')
-    """
 
     def test_check_grad(self):
         if core.is_compiled_with_cuda():

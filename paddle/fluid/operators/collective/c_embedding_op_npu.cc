@@ -121,8 +121,6 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
       .AddInput(std::vector<int32_t>{0})
       .AddOutput(*output_t);
   runner.Run();
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
-  VLOG(10) << "debug check 9";
 }
 
 template <typename T>
@@ -157,7 +155,6 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
            << ", table_t:" << table_t << ", table_grad_t" << table_grad_t;
 
   PADDLE_ENFORCE_EQ(table_t->dims()[1] % 64, 0, "must align by 64");
-  VLOG(10) << "grad debug check 1";
 
   auto stream =
       context.template device_context<paddle::platform::NPUDeviceContext>()
@@ -167,8 +164,6 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   framework::Tensor ids_t_local;
   ids_t_local.mutable_data<TIds>(ids_t->dims(), context.GetPlace());
   shard_index<TIds>(*table_t, *ids_t, start_idx, ids_t_local, context);
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
-  VLOG(10) << "grad debug check 2";
 
   // padding table_t -> table_t_pad
   auto pad_shape =
@@ -181,8 +176,6 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   PADDLE_ENFORCE_NPU_SUCCESS(
       aclrtMemsetAsync(pad_data, table_t_pad.memory_size(), 0,
                        table_t_pad.memory_size(), stream));
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
-  VLOG(10) << "grad debug check 3";
 
   // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
   // can be different tensor, but in cann 20.2+, it does inplace operation.
@@ -192,20 +185,12 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
                   {table_t_pad}, {{"use_locking", true}});
   runner_scatter.Run(stream);
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
-  VLOG(10) << "grad debug check 4";
 
   // copy table_t_pad to table_t
   T *dst = table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
-  // VLOG(10) << "dims:" << table_t->dims();
-  // table_t->check_memory_size();
   const size_t mem_size = table_grad_t->memory_size();
-  // VLOG(10) << ", mem_size:" << mem_size << ", pad_data:" << pad_data;
-  // VLOG(10) << "dst:" << dst << ", mem_size:" << mem_size
-  //         << ", pad_data:" << pad_data;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpyAsync(
       dst, mem_size, pad_data, mem_size, ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
-  VLOG(10) << "grad debug check 5";
 }
 
 template <typename T>
