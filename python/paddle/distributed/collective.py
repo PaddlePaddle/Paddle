@@ -1403,7 +1403,6 @@ def split(x,
             "but received vocabulary={} num_partitions={}".format(size[0], num_partitions)
 
         per_part_size = size[0] // num_partitions
-        ## FIXME(baiyangfan) Unified NPU\GPU embedding.
         emb_out = _parallel_embedding(
             x,
             per_part_size,
