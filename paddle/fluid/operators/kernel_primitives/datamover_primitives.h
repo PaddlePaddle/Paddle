@@ -151,10 +151,9 @@ __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
 }
 
 /**
- * @brief load data from src to dst with strid, src can be 1D data or 2D data.
- * When
- * boundary judgment is required, you need to set a to true, and a is false by
- * default.
+ * @brief load data from src to dst with stride, src can be 1D data or 2D data.
+ * When boundary judgment is required, you need to set a to true, and a is false
+ * by default.
  * @typename:
  * Tx: data type of src
  * Ty: data type of dstt
@@ -397,7 +396,7 @@ __device__ __forceinline__ void ReadDataReduce(
   }
 }
 
-/** @brief: WriteData
+/**
  * @brief store data from src to dst, src can be 1D data, you should set NY = 1.
  * When boundary judgment is required, you need to set a to true, and a is false
  * by default.

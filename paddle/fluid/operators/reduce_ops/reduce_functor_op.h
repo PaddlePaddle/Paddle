@@ -24,7 +24,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-namespace kpds = paddle::operators::kernel_primitives;
+namespace kpds = paddle::operators::kernel_primitives::details;
 
 template <typename Tx, typename Ty = Tx>
 struct CustomMin {

@@ -47,7 +47,7 @@ namespace operators {
 
 namespace kps = paddle::operators::kernel_primitives;
 
-namespace detail {
+namespace details {
 
 static inline int GetLastPow2(int n) {
   n |= (n >> 1);
@@ -117,7 +117,7 @@ static inline paddle::framework::Array<T, ElementCount> VectorToArray(
   return ret;
 }
 
-}  // namespace detail
+}  // namespace details
 
 using Tensor = framework::Tensor;
 constexpr int kMaxRank = framework::DDim::kMaxRank;
@@ -133,15 +133,15 @@ struct IndexCalculator {
                   const std::vector<int>& cal_strides,
                   const std::vector<int>& full_strides)
       : dim(dim) {
-    dims = detail::VectorToArray<int, kMaxRank>(cal_dims);
-    strides = detail::VectorToArray<int, kMaxRank>(full_strides);
+    dims = details::VectorToArray<int, kMaxRank>(cal_dims);
+    strides = details::VectorToArray<int, kMaxRank>(full_strides);
     std::vector<platform::FastDivMod> cal_divmoders;
     // fast divmod
     for (auto i : cal_strides) {
       cal_divmoders.push_back(platform::FastDivMod(i));
     }
     divmoders =
-        detail::VectorToArray<platform::FastDivMod, kMaxRank>(cal_divmoders);
+        details::VectorToArray<platform::FastDivMod, kMaxRank>(cal_divmoders);
   }
 
   __device__ inline int operator()(int offset) const {
@@ -306,9 +306,9 @@ struct ReduceConfig {
       idx_dim.push_back(i);
     }
 
-    x_strides = detail::GetDimStrides(x_dim, idx_dim);
-    reduce_strides = detail::GetDimStrides(x_dim, reduce_dim);
-    left_strides = detail::GetDimStrides(x_dim, left_dim);
+    x_strides = details::GetDimStrides(x_dim, idx_dim);
+    reduce_strides = details::GetDimStrides(x_dim, reduce_dim);
+    left_strides = details::GetDimStrides(x_dim, left_dim);
     reduce_num = reduce_strides[0] * x_dim[reduce_dim[0]];
 
     left_num = 1;
@@ -353,23 +353,23 @@ struct ReduceConfig {
     int block_x, block_y;
     int grid_num, reduce_num_per_thread;
     if (reduce_last_dim) {
-      block_x = detail::GetBlockDim(reduce_num);
-      block_y = detail::GetBlockDim(left_num);
+      block_x = details::GetBlockDim(reduce_num);
+      block_y = details::GetBlockDim(left_num);
       block_dim->x = block_x;
       block_dim->y =
           std::min(block_y, static_cast<int>(max_num_threads / block_dim->x));
-      grid_num = detail::AlignUp(left_num, block_dim->y);
-      reduce_num_per_thread = detail::AlignUp(reduce_num, block_dim->x);
+      grid_num = details::AlignUp(left_num, block_dim->y);
+      reduce_num_per_thread = details::AlignUp(reduce_num, block_dim->x);
     } else {
-      block_x = detail::GetBlockDim(left_num);
-      block_y = detail::GetBlockDim(reduce_num);
+      block_x = details::GetBlockDim(left_num);
+      block_y = details::GetBlockDim(reduce_num);
       block_dim->x = std::min(block_x, 32);
       block_dim->y =
           std::min(block_y, static_cast<int>(max_num_threads / block_dim->x));
       block_dim->x =
           std::min(block_x, static_cast<int>(max_num_threads / block_dim->y));
-      grid_num = detail::AlignUp(left_num, block_dim->x);
-      reduce_num_per_thread = detail::AlignUp(reduce_num, block_dim->y);
+      grid_num = details::AlignUp(left_num, block_dim->x);
+      reduce_num_per_thread = details::AlignUp(reduce_num, block_dim->y);
     }
     int device_id = platform::GetCurrentDeviceId();
     int max_mp = platform::GetCUDAMultiProcessors(device_id);
@@ -389,10 +389,10 @@ struct ReduceConfig {
     // the number cannot be larger than max_reduce_num_per_thread, so we
     // choose the maximum between the result above and input_split_num_2.
     int input_split_num_1 =
-        detail::AlignUp(reduce_num_per_thread, min_reduce_num_per_thread);
+        details::AlignUp(reduce_num_per_thread, min_reduce_num_per_thread);
     int input_split_num_2 =
-        detail::AlignUp(reduce_num_per_thread, max_reduce_num_per_thread);
-    int input_split_num_3 = detail::AlignUp(max_num_blocks, grid_num);
+        details::AlignUp(reduce_num_per_thread, max_reduce_num_per_thread);
+    int input_split_num_3 = details::AlignUp(max_num_blocks, grid_num);
 
     grid_dim->x = grid_num;
     grid_dim->y = std::max(std::min(input_split_num_1, input_split_num_3),
@@ -409,7 +409,7 @@ struct ReduceConfig {
   // for others: block(block_num, 1) , grid(left_num, 1)
   void SetBlockDim() {
     // init
-    int block_num = detail::GetBlockDim(reduce_num);
+    int block_num = details::GetBlockDim(reduce_num);
     should_reduce_again = false;
 
     dim3 block_dim(block_num, 1);
@@ -435,23 +435,23 @@ struct ReduceConfig {
       int num_block = (max_threads / left_num);
 
       if (num_block > 1 && reduce_num >= REDUCE_SPLIT_BOUNDARY) {
-        blocking_size = detail::GetLastPow2(reduce_num / num_block);
+        blocking_size = details::GetLastPow2(reduce_num / num_block);
 
         if (blocking_size <= 1) {
-          blocking_size = detail::GetLastPow2(sqrt(reduce_num));
+          blocking_size = details::GetLastPow2(sqrt(reduce_num));
         } else if (blocking_size * 2 < reduce_num) {
           blocking_size *= 2;
         }
 
         should_reduce_again = true;
 
-        block_dim.x = detail::GetBlockDim(left_num);
+        block_dim.x = details::GetBlockDim(left_num);
         block_dim.y = 1;
         grid_dim.x = (left_num + block_dim.x - 1) / block_dim.x;
         grid_dim.y = (reduce_num + blocking_size - 1) / blocking_size;
 
       } else {
-        block_dim.x = detail::GetBlockDim(left_num);
+        block_dim.x = details::GetBlockDim(left_num);
         block_dim.y = 1;
         blocking_size = reduce_num;
         grid_dim.x = (left_num + block_dim.x - 1) / block_dim.x;
@@ -671,7 +671,7 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
     dim3 grid;
     if (config.reduce_last_dim) {
       block = dim3(32, 1, 1);
-      grid = dim3(detail::AlignUp(config.left_num, 32), 1, 1);
+      grid = dim3(details::AlignUp(config.left_num, 32), 1, 1);
     } else {
       block = dim3(config.block.x, 1, 1);
       grid = dim3(config.grid.x, 1, config.grid.z);
@@ -679,10 +679,10 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
 
     ReduceHigherDimKernel<
         Ty, Ty, MPType, ReduceOp,
-        kps::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
+        kps::details::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
         config.output_data, y_data, reducer,
-        kps::IdentityFunctor<Ty, MPType>(config.grid.y), init, config.grid.y,
-        config.left_num, config.grid.y);
+        kps::details::IdentityFunctor<Ty, MPType>(config.grid.y), init,
+        config.grid.y, config.left_num, config.grid.y);
   }
 }
 
@@ -756,12 +756,12 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
     if (config.should_reduce_again) {
       dim3 block = dim3(config.block.x, 1, 1);
       dim3 grid = dim3(config.grid.x, 1, config.grid.z);
-      ReduceHigherDimKernel<
-          Ty, Ty, MPType, ReduceOp<Tx, MPType>,
-          kps::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
+      ReduceHigherDimKernel<Ty, Ty, MPType, ReduceOp<Tx, MPType>,
+                            kps::details::IdentityFunctor<
+                                Ty, MPType>><<<grid, block, 0, stream>>>(
           config.output_data, y_data, reducer,
-          kps::IdentityFunctor<Ty, MPType>(config.grid.y), reducer.initial(),
-          config.grid.y, config.left_num, config.grid.y);
+          kps::details::IdentityFunctor<Ty, MPType>(config.grid.y),
+          reducer.initial(), config.grid.y, config.left_num, config.grid.y);
     }
     return;
   }
