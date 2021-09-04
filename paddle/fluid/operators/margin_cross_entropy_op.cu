@@ -159,7 +159,7 @@ __global__ void LogitsMinusLogSumKernel(T* logits, const T* logits_sum_per_row,
                                         const int64_t N, const int64_t D) {
   CUDA_KERNEL_LOOP(i, N * D) {
     auto row = i / D;
-    logits[i] -= kpds::details::LogFunctor(logits_sum_per_row[row]);
+    logits[i] -= kpds::LogFunctor(logits_sum_per_row[row]);
   }
 }
 
@@ -174,9 +174,9 @@ __global__ void HardLabelSoftmaxWithCrossEntropyKernel(
     if ((col + start_index) == labels[row]) {
       auto softmax = log_softmax[i];
       loss[row] = -softmax;
-      log_softmax[i] = kpds::details::ExpFunctor(softmax);
+      log_softmax[i] = kpds::ExpFunctor(softmax);
     } else {
-      log_softmax[i] = kpds::details::ExpFunctor(log_softmax[i]);
+      log_softmax[i] = kpds::ExpFunctor(log_softmax[i]);
     }
   }
 }
