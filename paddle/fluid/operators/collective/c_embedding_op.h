@@ -40,7 +40,7 @@ void GetIdsEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
     if (local >= 0 && local < height) {
       // printf("local:%ld\n", local);
       for (int64_t w = 0; w < width; w++) {
-        out[i * width + w] = table[local * width + w];
+        out[i * width + w] = table[local * width + w] + static_cast<TData>(1);
       }
     }
   }

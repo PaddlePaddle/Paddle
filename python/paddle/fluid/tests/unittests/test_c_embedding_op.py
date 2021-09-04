@@ -28,6 +28,9 @@ def get_c_embedding(start, end, table, ids):
     masked_input = index - start
     masked_input[input_mask] = 0
     output = table[masked_input]
+    print("start:", start, ", end:", end, flush=True)
+    print("input_mask:", input_mask, flush=True)
+    print("masked_input:", masked_input, flush=True)
     output[input_mask] = 0.0
     return output
 
@@ -36,14 +39,13 @@ class TestCEmbeddingOp(OpTest):
     def setUp(self):
         self.op_type = "c_embedding"
         table = np.random.random((17, 64)).astype("float32")
-        ids = np.random.randint(
-            low=0, high=17 * 2, size=(2, 4, 5)).astype("int32")
+        ids = np.random.randint(low=0, high=17 * 2, size=(2, 4)).astype("int32")
         self.start_index = 10
         self.end_index = self.start_index + 17
 
         self.inputs = {'W': table, 'Ids': ids}
         np_out = get_c_embedding(self.start_index, self.end_index, table, ids)
-        self.outputs = {'Out': np_out.reshape((2, 4, 5, 64))}
+        self.outputs = {'Out': np_out.reshape((2, 4, 64))}
         self.attrs = {'start_index': self.start_index}
 
         if core.is_compiled_with_npu():
@@ -55,6 +57,7 @@ class TestCEmbeddingOp(OpTest):
         elif core.is_compiled_with_npu():
             self.check_output_with_place(core.NPUPlace(0))
 
+    """
     def test_check_grad(self):
         return
         if core.is_compiled_with_cuda():
@@ -69,6 +72,7 @@ class TestCEmbeddingOp(OpTest):
     def test_check_cpu_grad(self):
         return
         self.check_grad_with_place(core.CPUPlace(), ['W'], 'Out')
+    """
 
 
 if __name__ == "__main__":
