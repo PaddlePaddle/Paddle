@@ -95,17 +95,11 @@ class CumprodGradOpCPUKernel : public framework::OpKernel<T> {
     int dim = context.Attr<int>("dim");
     framework::DDim shape = x->dims();
     Tensor* d_x = context.Output<Tensor>(framework::GradVarName("X"));
-    size_t numel_x = x->numel();
-    size_t numel_out = out->numel();
 
     auto* d_out_data = d_out->data<T>();
     auto* x_data = x->data<T>();
     auto* out_data = out->data<T>();
     auto* d_x_data = d_x->mutable_data<T>(context.GetPlace());
-
-    auto place = BOOST_GET_CONST(platform::CPUPlace, context.GetPlace());
-    const auto& dev_ctx =
-        context.template device_context<platform::CPUDeviceContext>();
 
     auto place = BOOST_GET_CONST(platform::CPUPlace, context.GetPlace());
     const auto& dev_ctx =
@@ -136,34 +130,6 @@ class CumprodGradOpCPUKernel : public framework::OpKernel<T> {
       platform::ForRange<platform::CPUDeviceContext> for_range_out(dev_ctx,
                                                                    numel);
       math::ConjFunctor<T> functor_out(out_data, numel, out_data_conj);
-      for_range_out(functor_out);
-
-      x_data_deal = x_data_conj;
-      out_data_deal = out_data_conj;
-    } else {
-      x_data_deal = x_data;
-      out_data_deal = out_data;
-    }
-
-    // deal with complex
-    const T* x_data_deal;
-    const T* out_data_deal;
-    memory::AllocationPtr x_conj;
-    memory::AllocationPtr out_conj;
-    if (framework::IsComplex<T>::value) {
-      x_conj = memory::Alloc(place, numel_x * sizeof(T));
-      auto* x_data_conj = reinterpret_cast<T*>(x_conj->ptr());
-      out_conj = memory::Alloc(place, numel_out * sizeof(T));
-      auto* out_data_conj = reinterpret_cast<T*>(out_conj->ptr());
-
-      platform::ForRange<platform::CPUDeviceContext> for_range_x(dev_ctx,
-                                                                 numel_x);
-      math::ConjFunctor<T> functor_x(x_data, numel_x, x_data_conj);
-      for_range_x(functor_x);
-
-      platform::ForRange<platform::CPUDeviceContext> for_range_out(dev_ctx,
-                                                                   numel_out);
-      math::ConjFunctor<T> functor_out(out_data, numel_out, out_data_conj);
       for_range_out(functor_out);
 
       x_data_deal = x_data_conj;

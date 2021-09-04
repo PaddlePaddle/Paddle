@@ -220,8 +220,6 @@ class CumprodGradOpCUDAKernel : public framework::OpKernel<T> {
     if (outer_dim == 0 || mid_dim == 0 || inner_dim == 0) return;
 
     size_t numel = outer_dim * mid_dim * inner_dim;
-    size_t numel_x = x->numel();
-    size_t numel_y = y->numel();
 
     const auto *x_data = x->data<T>();
     const auto *y_data = y->data<T>();
@@ -252,7 +250,6 @@ class CumprodGradOpCUDAKernel : public framework::OpKernel<T> {
                                                                   numel);
       math::ConjFunctor<T> functor_y(y_data, numel, y_data_conj);
       for_range_y(functor_y);
-
       x_data_deal = x_data_conj;
       y_data_deal = y_data_conj;
     } else {
