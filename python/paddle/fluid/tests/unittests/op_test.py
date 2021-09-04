@@ -115,7 +115,7 @@ def get_numeric_gradient(place,
                          output_names,
                          delta=0.005,
                          in_place=False):
-    print("get_nuemeric_gradient:", op, flush=True)
+    #print("get_nuemeric_gradient:", op, flush=True)
     # FIXME: change this method by compile time concepts
     set_input(scope, op, inputs, place)
 
@@ -141,7 +141,7 @@ def get_numeric_gradient(place,
 
     def get_output():
         sum = []
-        print("get_output op:", op, flush=True)
+        #print("get_output op:", op, flush=True)
         op.run(scope, place)
         for output_name in output_names:
             output_numpy = np.array(scope.find_var(output_name).get_tensor())

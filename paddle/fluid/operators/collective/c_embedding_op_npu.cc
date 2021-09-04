@@ -76,7 +76,7 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
       .Run(stream);
 }
 
-template <typename TIds, typename TData>
+template <typename TIds, typename T>
 void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
   auto *table_t = context.Input<LoDTensor>("W");
   auto *ids_t = context.Input<LoDTensor>("Ids");
@@ -145,13 +145,13 @@ class CEmbeddingNPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename TIds, typename TData>
+template <typename TIds, typename T>
 void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   VLOG(10) << "grad debug check 0";
   const int64_t start_idx = context.Attr<int64_t>("start_index");
   auto ids_t = context.Input<LoDTensor>("Ids");
   auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
-  auto table_grad_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+  auto table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
   VLOG(10) << "grad debug check 1";
 
   auto stream =
@@ -167,14 +167,14 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
       {table_grad_t->dims()[0] + 1, table_grad_t->dims()[1]});
   framework::LoDTensor table_t_pad;
 
-  size_t mem_size = table_grad_t->memory_size();
-  size_t line_mem_size =
-      table_grad_t->dims()[1] * framework::SizeOfType(table_grad_t->type());
+  cosnt size_t mem_size = table_t->memory_size();
+  const size_t line_mem_size =
+      table_t->dims()[1] * framework::SizeOfType(table_t->type());
 
   uint8_t *pad_data = reinterpret_cast<uint8_t *>(
       table_t_pad.mutable_data<T>(pad_shape, context.GetPlace()));
   PADDLE_ENFORCE_NPU_SUCCESS(
-      aclrtMemcpyAsync(pad_data, mem_size, table_grad_t->data<T>(), mem_size,
+      aclrtMemcpyAsync(pad_data, mem_size, table_t->data<T>(), mem_size,
                        ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemsetAsync(
       pad_data + mem_size, line_mem_size, 0, line_mem_size, stream));
@@ -191,7 +191,7 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
 
   // copy to src
   PADDLE_ENFORCE_NPU_SUCCESS(
-      aclrtMemcpyAsync(table_grad_t->data<T>(), mem_size, pad_data, mem_size,
+      aclrtMemcpyAsync(table_t->data<T>(), mem_size, pad_data, mem_size,
                        ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
   VLOG(10) << "grad debug check 4";
