@@ -26,7 +26,7 @@ namespace operators {
 template <typename T>
 void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
                  Tensor id_t, const framework::ExecutionContext &context) {
-  int table_w = table_t.dims()[0];
+  const int height = table_t.dims()[0];
 
   auto stream =
       context.template device_context<paddle::platform::NPUDeviceContext>()
@@ -37,7 +37,7 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
   id_t_d.Resize(ids_t.dims());
   framework::Tensor id_t_u;
   id_t_u.mutable_data<T>(ids_t.dims(), context.GetPlace());
-  FillNpuTensorWithConstant(&id_t_u, static_cast<T>(table_w - 1));
+  FillNpuTensorWithConstant(&id_t_u, static_cast<T>(height - 1));
   id_t_u.Resize(ids_t.dims());
 
   framework::Tensor id_matched_d;
@@ -46,7 +46,7 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
   id_matched_u.mutable_data<bool>(ids_t.dims(), context.GetPlace());
   framework::Tensor ignore_tensor;
   ignore_tensor.mutable_data<T>(ids_t.dims(), context.GetPlace());
-  FillNpuTensorWithConstant(&ignore_tensor, static_cast<T>(table_w));
+  FillNpuTensorWithConstant(&ignore_tensor, static_cast<T>(height));
   ignore_tensor.Resize(ids_t.dims());
 
   NpuOpRunner sub_runner;
@@ -92,10 +92,8 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
   ids_t_local.mutable_data<TIds>(ids_t->dims(), context.GetPlace());
   shard_index<TIds>(*table_t, *ids_t, start_idx, ids_t_local, context);
 
-  PADDLE_ENFORCE_EQ(table_t->dims().size(), 2,
-                    platform::errors::InvalidArgument(
-                        "npu only accept the dims of table_t == 2"));
   PADDLE_ENFORCE_EQ(table_t->dims()[1] % 64, 0, "must align by 64");
+
   auto pad_shape =
       framework::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
   framework::LoDTensor table_t_pad;
@@ -154,6 +152,8 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
   auto table_t = context.Input<LoDTensor>("W");
   auto table_grad_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+
+  PADDLE_ENFORCE_EQ(table_t->dims()[1] % 64, 0, "must align by 64");
   VLOG(10) << "grad debug check 1";
 
   auto stream =

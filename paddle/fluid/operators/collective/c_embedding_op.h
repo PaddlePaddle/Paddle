@@ -27,6 +27,8 @@ namespace operators {
 
 using LoDTensor = framework::LoDTensor;
 
+inline void CheckTableValid() {}
+
 template <typename TIds, typename TData>
 void GetIdsEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
                      const TData* table, int64_t height, int64_t width,
@@ -54,10 +56,6 @@ class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
 
     VLOG(10) << "table_dims:" << table_t->dims();
 
-    PADDLE_ENFORCE_EQ(table_t->dims().size(), 2,
-                      platform::errors::InvalidArgument(
-                          "npu only accept the dims of table_t == 2"));
-
     const T* table_data = table_t->data<T>();
     auto out_shape =
         framework::make_ddim({ids_t->dims()[0], table_t->dims()[1]});
@@ -65,11 +63,6 @@ class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
 
     const int64_t height = table_t->dims()[0];
     const int64_t width = table_t->dims()[1];
-
-    PADDLE_ENFORCE_EQ(
-        (height >= 0 && width >= 0 && start_idx >= 0), true,
-        "height:%llu width:%llu start_idx:%llu must not have negtive values",
-        height, width, start_idx);
 
     const auto& index_type = ids_t->type();
     if (index_type == framework::proto::VarType::INT32) {
@@ -117,11 +110,6 @@ class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
 
     const int64_t height = table_t->dims()[0];
     const int64_t width = table_t->dims()[1];
-
-    PADDLE_ENFORCE_EQ(
-        (height >= 0 && width >= 0 && start_idx >= 0), true,
-        "height:%llu width:%llu start_idx:%llu must not have negtive values",
-        height, width, start_idx);
 
     const auto& index_type = ids_t->type();
     if (index_type == framework::proto::VarType::INT32) {

@@ -46,6 +46,15 @@ class CEmbeddingOp : public framework::OperatorWithKernel {
         framework::proto::VarType::LOD_TENSOR) {
       ctx->ShareLoD("Ids", /*->*/ "Out");
     }
+
+    // check valid
+    const int64_t height = table_dims()[0];
+    const int64_t width = table_dims()[1];
+
+    PADDLE_ENFORCE_EQ(
+        (height >= 0 && width >= 0 && start_idx >= 0), true,
+        "height:%llu width:%llu start_idx:%llu must not have negtive values",
+        height, width, start_idx);
   }
 
  protected:
@@ -111,6 +120,19 @@ class CEmbeddingOpGrad : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     auto table_dims = ctx->GetInputDim("W");
     ctx->SetOutputDim(framework::GradVarName("W"), table_dims);
+
+    // check valid
+    PADDLE_ENFORCE_EQ(table_dims().size(), 2,
+                      platform::errors::InvalidArgument(
+                          "npu only accept the dims of table_t == 2"));
+
+    const int64_t height = table_dims()[0];
+    const int64_t width = table_dims()[1];
+
+    PADDLE_ENFORCE_EQ(
+        (height >= 0 && width >= 0 && start_idx >= 0), true,
+        "height:%llu width:%llu start_idx:%llu must not have negtive values",
+        height, width, start_idx);
   }
 
  protected:
