@@ -27,13 +27,29 @@ namespace operators {
 
 using LoDTensor = framework::LoDTensor;
 
+template <typename TIds, typename TData>
+void GetIdsEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
+                     const TData* table, int64_t height, int64_t width,
+                     TData* out) {
+  for (size_t i = 0; i < ids_len; i++) {
+    TIds id = ids[i];
+    int64_t local = id - start_idx;
+
+    if (local >= 0 && local < height) {
+      for (int64_t w = 0; w < width; w++) {
+        out[i * height + w] = table[local * height + w];
+      }
+    }
+  }
+}
+
 template <typename T>
 class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    auto *table_t = ctx.Input<LoDTensor>("W");
-    auto *ids_t = ctx.Input<LoDTensor>("Ids");
-    auto *output_t = ctx.Output<LoDTensor>("Out");
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* table_t = ctx.Input<LoDTensor>("W");
+    auto* ids_t = ctx.Input<LoDTensor>("Ids");
+    auto* output_t = ctx.Output<LoDTensor>("Out");
     const int64_t start_idx = ctx.Attr<int64_t>("start_index");
 
     VLOG(10) << "table_dims:" << table_t->dims();
@@ -42,40 +58,51 @@ class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
                       platform::errors::InvalidArgument(
                           "npu only accept the dims of table_t == 2"));
 
-    std::vector<T> ids_t_vec;
-    framework::TensorToVector(*ids_t, &ids_t_vec);
+    const T* table_data = table_t->data<T>();
+    T* output_data = output_t->data<T>();
 
-    std::vector<T> table_t_vec;
-    framework::TensorToVector(*table_t, &table_t_vec);
+    const int64_t height = table_t->dims()[0];
+    const int64_t width = table_t->dims()[1];
 
-    const size_t height = table_t->dims()[0];
-    const size_t width = table_t->dims()[1];
-    std::vector<std::vector<T>> out;
-    out.resize(ids_t->numel());
+    PADDLE_ENFORCE_EQ(
+        (height >= 0 && width >= 0 && start_idx >= 0), true,
+        "height:%llu width:%llu start_idx:%llu must not have negtive values",
+        height, width, start_idx);
 
-    for (size_t i = 0; i < ids_t_vec.size(); i++) {
-      size_t id = ids_t_vec[i];
-      size_t local = id - start_idx;
-
-      std::vector<T> tmp(width, static_cast<T>(0.0));
-      if (local >= 0 && local < height) {
-        for (size_t w = 0; w < width; w++) {
-          tmp[w] = table_t_vec[local * height + w];
-        }
-      }
-      out[i] = std::move(tmp);
+    const auto& index_type = ids_t->type();
+    if (index_type == framework::proto::VarType::INT32) {
+      GetIdsEmbedding(ids_t->data<int32_t>(), ids_t->numel(), start_idx,
+                      table_data, height, width, output_data);
+    } else if (index_type == framework::proto::VarType::INT64) {
+      GetIdsEmbedding(ids_t->data<int64_t>(), ids_t->numel(), start_idx,
+                      table_data, height, width, output_data);
+    } else {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "c_embedding only support int32 or int64."));
     }
-
-    auto dims = output_t->dims();
-    framework::TensorFromVector(out, output_t);
-    output_t->Resize(dims);
   }
 };
+
+template <typename TIds, typename TData>
+void UpdateEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
+                     TData* table, int64_t height, int64_t width,
+                     const TData* out) {
+  for (size_t i = 0; i < ids_len; i++) {
+    TIds id = ids[i];
+    int64_t local = id - start_idx;
+
+    if (local >= 0 && local < height) {
+      for (int64_t w = 0; w < width; w++) {
+        table[local * height + w] += out[i * height + w];
+      }
+    }
+  }
+}
 
 template <typename T>
 class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext &context) const override {
+  void Compute(const framework::ExecutionContext& context) const override {
     const int64_t start_idx = context.Attr<int64_t>("start_index");
     auto ids_t = context.Input<LoDTensor>("Ids");
     auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
@@ -83,32 +110,28 @@ class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
 
     VLOG(10) << "table_dims:" << table_t->dims();
 
-    std::vector<T> ids_t_vec;
-    framework::TensorToVector(*ids_t, &ids_t_vec);
+    T* table_data = table_t->data<T>();
+    const T* d_output_data = d_output_t->data<T>();
 
-    std::vector<T> table_t_vec;
-    framework::TensorToVector(*table_t, &table_t_vec);
+    const int64_t height = table_t->dims()[0];
+    const int64_t width = table_t->dims()[1];
 
-    std::vector<T> d_output_vec;
-    framework::TensorToVector(*d_output_t, &d_output_vec);
+    PADDLE_ENFORCE_EQ(
+        (height >= 0 && width >= 0 && start_idx >= 0), true,
+        "height:%llu width:%llu start_idx:%llu must not have negtive values",
+        height, width, start_idx);
 
-    const size_t height = table_t->dims()[0];
-    const size_t width = table_t->dims()[1];
-
-    for (size_t i = 0; i < ids_t_vec.size(); i++) {
-      size_t id = ids_t_vec[i];
-      size_t local = id - start_idx;
-
-      if (local >= 0 && local < height) {
-        for (size_t w = 0; w < width; w++) {
-          table_t_vec[local * height + w] = d_output_vec[i * height + w];
-        }
-      }
+    const auto& index_type = ids_t->type();
+    if (index_type == framework::proto::VarType::INT32) {
+      UpdateEmbedding(ids_t->data<int32_t>(), ids_t->numel(), start_idx,
+                      table_data, height, width, d_output_data);
+    } else if (index_type == framework::proto::VarType::INT64) {
+      UpdateEmbedding(ids_t->data<int64_t>(), ids_t->numel(), start_idx,
+                      table_data, height, width, d_output_data);
+    } else {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "c_embedding only support int32 or int64."));
     }
-
-    auto dims = table_t->dims();
-    framework::TensorFromVector(table_t_vec, table_t);
-    table_t->Resize(dims);
   }
 };
 
