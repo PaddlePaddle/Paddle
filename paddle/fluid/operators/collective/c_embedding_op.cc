@@ -54,7 +54,7 @@ class CEmbeddingOp : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(
         (height >= 0 && width >= 0 && start_idx >= 0), true,
-        "height:%llu width:%llu start_idx:%llu must not have negtive values",
+        "height:%ld width:%ld start_idx:%ld must not have negtive values",
         height, width, start_idx);
   }
 
@@ -133,7 +133,7 @@ class CEmbeddingOpGrad : public framework::OperatorWithKernel {
 
     PADDLE_ENFORCE_EQ(
         (height >= 0 && width >= 0 && start_idx >= 0), true,
-        "height:%llu width:%llu start_idx:%llu must not have negtive values",
+        "height:%ld width:%ld start_idx:%ld must not have negtive values",
         height, width, start_idx);
   }
 
