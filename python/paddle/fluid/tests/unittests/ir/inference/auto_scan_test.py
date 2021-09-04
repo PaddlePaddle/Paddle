@@ -35,10 +35,6 @@ class SkipReasons(enum.Enum):
     TRT_NOT_IMPLEMENTED = 0
     # TRT not support.
     TRT_NOT_SUPPORT = 1
-    # Implement wrong.
-    ALGO_WRONG = 2
-    # Quant model, only to run in INT8 mode.
-    QUANT_MODEL = 3
 
 
 class AutoScanTest(unittest.TestCase):
