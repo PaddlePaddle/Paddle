@@ -39,7 +39,6 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
   id_t_u.mutable_data<T>(ids_t.dims(), context.GetPlace());
   FillNpuTensorWithConstant(&id_t_u, static_cast<T>(table_w - 1));
   id_t_u.Resize(ids_t.dims());
-  VLOG(10) << "debug check 2";
 
   framework::Tensor id_matched_d;
   id_matched_d.mutable_data<bool>(ids_t.dims(), context.GetPlace());
@@ -49,7 +48,6 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
   ignore_tensor.mutable_data<T>(ids_t.dims(), context.GetPlace());
   FillNpuTensorWithConstant(&ignore_tensor, static_cast<T>(table_w));
   ignore_tensor.Resize(ids_t.dims());
-  VLOG(10) << "debug check 3";
 
   NpuOpRunner sub_runner;
   sub_runner.SetType("Sub")
@@ -57,8 +55,6 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
       .AddInput(std::vector<int>{static_cast<int>(start_idx)})
       .AddOutput(id_t);
   sub_runner.Run();
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
-  VLOG(10) << "debug check 4";
 
   NpuOpRunner lessequal1_runner;
   lessequal1_runner.SetType("LessEqual")
@@ -66,8 +62,6 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
       .AddInput(id_t_u)
       .AddOutput(id_matched_u);
   lessequal1_runner.Run();
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
-  VLOG(10) << "debug check 5";
 
   NpuOpRunner lessequal2_runner;
   lessequal2_runner.SetType("LessEqual")
@@ -75,16 +69,11 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
       .AddInput(id_t)
       .AddOutput(id_matched_d);
   lessequal2_runner.Run();
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
-  VLOG(10) << "debug check 6";
 
   NpuOpRunner("Equal", {id_matched_u, id_matched_d}, {id_matched_d}, {})
       .Run(stream);
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
   NpuOpRunner("Select", {id_matched_d, id_t, ignore_tensor}, {id_t}, {})
       .Run(stream);
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
-  VLOG(10) << "debug check 7";
 }
 
 template <typename T>
@@ -102,9 +91,7 @@ class CEmbeddingNPUKernel : public framework::OpKernel<T> {
     const int64_t start_idx = context.Attr<int64_t>("start_index");
     framework::Tensor id_t;
     id_t.mutable_data<int>(ids_t->dims(), context.GetPlace());
-    // id_t.Resize(ids_t->dims());
     shard_index<int>(*table_t, *ids_t, start_idx, id_t, context);
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
 
     PADDLE_ENFORCE_EQ(table_t->dims().size(), 2,
                       platform::errors::InvalidArgument(
@@ -129,8 +116,6 @@ class CEmbeddingNPUKernel : public framework::OpKernel<T> {
                          ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemsetAsync(
         pad_data + mem_size, line_mem_size, 0, line_mem_size, stream));
-    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
-    VLOG(10) << "debug check 8";
 
     output_t->mutable_data<T>(context.GetPlace());
     NpuOpRunner runner;
@@ -193,7 +178,7 @@ class CEmbeddingGradNPUKernel : public framework::OpKernel<T> {
 
     // copy to src
     PADDLE_ENFORCE_NPU_SUCCESS(
-        aclrtMemcpyAsync(table_grad_t.data(), mem_size, pad_data, mem_size,
+        aclrtMemcpyAsync(table_grad_t->data<T>(), mem_size, pad_data, mem_size,
                          ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
     VLOG(10) << "grad debug check 4";

@@ -48,14 +48,14 @@ class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
     std::vector<T> table_t_vec;
     framework::TensorToVector(*table_t, &table_t_vec);
 
-    const size_t height = table_t.dims()[0];
-    const size_t width = table_t.dims()[1];
+    const size_t height = table_t->dims()[0];
+    const size_t width = table_t->dims()[1];
     std::vector<std::vector<T>> out;
-    out.resize(ids_t.numel());
+    out.resize(ids_t->numel());
 
     for (size_t i = 0; i < ids_t_vec.size(); i++) {
-      auto id = ids_t_vec[i];
-      auto local = id - start_idx;
+      size_t id = ids_t_vec[i];
+      size_t local = id - start_idx;
 
       std::vector<T> tmp(width, static_cast<T>(0.0));
       if (local >= 0 && local < height) {
@@ -67,7 +67,7 @@ class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
     }
 
     auto dims = output_t->dims();
-    framework::TensorFromVector(out, &output_t);
+    framework::TensorFromVector(out, output_t);
     output_t->Resize(dims);
   }
 };
@@ -89,22 +89,19 @@ class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
     std::vector<T> table_t_vec;
     framework::TensorToVector(*table_t, &table_t_vec);
 
-    st::vector<T> d_output_vec;
+    std::vector<T> d_output_vec;
     framework::TensorToVector(*d_output_t, &d_output_vec);
 
-    const size_t height = table_t.dims()[0];
-    const size_t width = table_t.dims()[1];
-    std::vector<std::vector<T>> out;
-    out.resize(ids_t.numel());
+    const size_t height = table_t->dims()[0];
+    const size_t width = table_t->dims()[1];
 
     for (size_t i = 0; i < ids_t_vec.size(); i++) {
-      auto id = ids_t_vec[i];
-      auto local = id - start_idx;
+      size_t id = ids_t_vec[i];
+      size_t local = id - start_idx;
 
-      std::vector<T> tmp(width, static_cast<T>(0.0));
       if (local >= 0 && local < height) {
         for (size_t w = 0; w < width; w++) {
-          table_t_vec[local * height + w] = d_output_vec[i * height + w]
+          table_t_vec[local * height + w] = d_output_vec[i * height + w];
         }
       }
     }
