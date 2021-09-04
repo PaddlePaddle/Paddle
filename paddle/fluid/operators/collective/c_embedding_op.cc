@@ -146,4 +146,9 @@ REGISTER_OPERATOR(c_embedding_grad, ops::CEmbeddingOpGrad,
                   ops::CEmbeddingOpGradVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(c_embedding, ops::CEmbeddingOpCPUKernel<float>,
-                       ops::CEmbeddingOpCPUKernel<double>);
+                       ops::CEmbeddingOpCPUKernel<double>,
+                       ops::CEmbeddingOpCPUKernel<plat::float16>);
+
+REGISTER_OP_CPU_KERNEL(c_embedding_grad, ops::CEmbeddingGrapOpCPUKernel<float>,
+                       ops::CEmbeddingGrapOpCPUKernel<double>,
+                       ops::CEmbeddingGrapOpCPUKernel<plat::float16>);
