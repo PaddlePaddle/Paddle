@@ -59,7 +59,9 @@ class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
                           "npu only accept the dims of table_t == 2"));
 
     const T* table_data = table_t->data<T>();
-    T* output_data = output_t->data<T>();
+    auto out_shape =
+        framework::make_ddim({ids_t->dims()[0], table_t->dims()[1]});
+    T* output_data = output_t->mutable_data<T>(out_shape, ctx.GetPlace());
 
     const int64_t height = table_t->dims()[0];
     const int64_t width = table_t->dims()[1];
