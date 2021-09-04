@@ -212,14 +212,17 @@ bool GetCondData(const framework::LoDTensor &cond) {
   if (platform::is_cpu_place(cond.place())) {
     return cond.data<bool>()[0];
   }
-  // when platform::is_gpu_place(cond.place()) is true
+  // when platform::is_gpu_place(cond.place()) or
+  // platform::is_npu_place(cond.place()) is true
   std::unique_ptr<framework::LoDTensor> cpu_cond{new framework::LoDTensor()};
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_ASCEND_CL)
   framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(
-      "This version of PaddlePaddle does NOT support GPU but got GPU tensor "
-      "Cond in WhileOp. Please compile WITH_GPU option."));
+      "This version of PaddlePaddle does NOT support GPU/NPU but got GPU/NPU "
+      "tensor "
+      "Cond in WhileOp. Please compile WITH_GPU or WITH_ASCEND_CL option."));
 #endif
   return cpu_cond->data<bool>()[0];
 }

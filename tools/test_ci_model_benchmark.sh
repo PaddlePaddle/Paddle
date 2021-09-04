@@ -31,6 +31,7 @@ function check_whl {
     [ $? -ne 0 ] && echo "install paddle failed." && exit 1
     cd build
     make -j `nproc`
+    [ $? -ne 0 ] && echo "build paddle failed." && exit 1
     unzip -q python/dist/*.whl -d /tmp/develop
 
     sed -i '/version.py/d' /tmp/pr/*/RECORD

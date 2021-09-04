@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 #include <string>
 #include <typeindex>
+#include <iostream>
 
 #include "paddle/fluid/framework/framework.pb.h"
 #include "paddle/fluid/platform/bfloat16.h"
@@ -171,6 +172,7 @@ extern inline proto::VarType::Type ToComplexType(proto::VarType::Type t) {
 }
 
 extern inline proto::VarType::Type ToRealType(proto::VarType::Type t) {
+  std::cout<<t<<std::endl;
   switch (t) {
     case proto::VarType::COMPLEX64:
       return proto::VarType::FP32;

@@ -17,9 +17,11 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from inference_pass_test import InferencePassTest
+from quant_dequant_test import QuantDequantTest
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.core import AnalysisConfig
+from paddle.fluid.core import PassVersionChecker
 
 
 class FCFusePassTRTTest(InferencePassTest):
@@ -281,6 +283,56 @@ class FCFusePassTRTDynamicDims4Cols3Test(InferencePassTest):
             use_gpu.append(True)
         for i in range(len(use_gpu)):
             self.check_output_with_option(use_gpu[i])
+
+
+class FcQuantDequantFusePassTRTTest(QuantDequantTest):
+    def setUp(self):
+        def network():
+            self.data = fluid.data(
+                name='data', shape=[1, 28, 28], dtype='float32')
+            self.label = fluid.data(name='label', shape=[1, 1], dtype='int64')
+            fc_out = fluid.layers.fc(input=self.data,
+                                     size=10,
+                                     num_flatten_dims=1,
+                                     bias_attr=False,
+                                     act=None)
+            result = fluid.layers.relu(fc_out)
+            loss = fluid.layers.cross_entropy(input=result, label=self.label)
+            avg_loss = fluid.layers.mean(loss)
+            return avg_loss, result
+
+        self.main_program.random_seed = 2
+        self.startup_program.random_seed = 2
+        self.test_main_program.random_seed = 2
+        #self.test_startup_program.random_seed = 2
+        with fluid.unique_name.guard():
+            with fluid.program_guard(self.main_program, self.startup_program):
+                self.loss, result = network()
+                opt = fluid.optimizer.Adam(learning_rate=0.0001)
+                opt.minimize(self.loss)
+        with fluid.unique_name.guard():
+            with fluid.program_guard(self.test_main_program,
+                                     self.startup_program):
+                network()
+        self.feeds = {"data": np.random.random((1, 28, 28)).astype("float32")}
+        self.fetch_list = [result]
+
+        self.enable_trt = True
+
+        self.trt_parameters = FcQuantDequantFusePassTRTTest.TensorRTParam(
+            1 << 30, 32, 0, AnalysisConfig.Precision.Int8, False, False)
+        self.activation_quantize_type = 'moving_average_abs_max'
+        self.weight_quantize_type = 'channel_wise_abs_max'
+
+    def test_check_output(self):
+        #self.quant_dequant()
+        if core.is_compiled_with_cuda():
+            use_gpu = True
+            self.check_output_with_option(
+                use_gpu, atol=1e-2, flatten=False, rtol=1e-2)
+            self.assertTrue(
+                PassVersionChecker.IsCompatible(
+                    'quant_conv2d_dequant_fuse_pass'))
 
 
 if __name__ == "__main__":
