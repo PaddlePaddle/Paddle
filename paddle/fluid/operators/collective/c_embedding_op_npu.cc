@@ -96,7 +96,7 @@ class CEmbeddingNPUKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(table_t->dims().size(), 2,
                       platform::errors::InvalidArgument(
                           "npu only accept the dims of table_t == 2"));
-    // PADDLE_ENFORCE_EQ(table_t->dims()[1] % 64, 0, "must align by 64");
+    PADDLE_ENFORCE_EQ(table_t->dims()[1] % 64, 0, "must align by 64");
     auto pad_shape =
         framework::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
     framework::LoDTensor table_t_pad;
@@ -115,7 +115,7 @@ class CEmbeddingNPUKernel : public framework::OpKernel<T> {
         aclrtMemcpyAsync(pad_data, mem_size, table_t->data<T>(), mem_size,
                          ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemsetAsync(
-        pad_data + mem_size, line_mem_size, 0.0, line_mem_size, stream));
+        pad_data + mem_size, line_mem_size, 0, line_mem_size, stream));
 
     output_t->mutable_data<T>(context.GetPlace());
     NpuOpRunner runner;

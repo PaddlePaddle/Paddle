@@ -35,7 +35,7 @@ def get_c_embedding(start, end, table, ids):
 class TestCEmbeddingOp(OpTest):
     def setUp(self):
         self.op_type = "c_embedding"
-        table = np.random.random((17, 31)).astype("float64")
+        table = np.random.random((17, 64)).astype("float32")
         ids = np.random.randint(
             low=0, high=17 * 2, size=(2, 4, 5)).astype("int32")
         self.start_index = 10
@@ -43,7 +43,7 @@ class TestCEmbeddingOp(OpTest):
 
         self.inputs = {'W': table, 'Ids': ids}
         np_out = get_c_embedding(self.start_index, self.end_index, table, ids)
-        self.outputs = {'Out': np_out.reshape((2, 4, 5, 31))}
+        self.outputs = {'Out': np_out.reshape((2, 4, 5, 64))}
         self.attrs = {'start_index': self.start_index}
 
     def test_check_output_gpu(self):
