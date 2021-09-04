@@ -22,8 +22,8 @@ class CumprodOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "cumprod");
-    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "cumprod");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Cumprod");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Cumprod");
 
     ctx->ShareDim("X", "Out");
     ctx->ShareLoD("X", "Out");
@@ -40,8 +40,8 @@ class CumprodOpMaker : public framework::OpProtoAndCheckerMaker {
         "（int), The dim along which the input tensors will be cumproded");
     AddComment(
         R"DOC(Cumprod operator. Return the cumprod results of the input elements along the dim.
-		For example, if input X is a vector of size N, the output will also be a vector of size N,
-                with elements yi = x1 * x2 * x3 *...* xi (0<=i<=N))DOC");
+	For example, if input X is a tensor with rank 1 and N elements, the output will also be a tensor 
+        with rank 1 and N elements, with elements y[i] = x[0]*x[1]*x[2]*...*x[i] (0<=i<N))DOC");
   }
 };
 
@@ -66,6 +66,12 @@ class CumprodGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext *ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CumprodGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "CumprodGrad");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   "Out@Grad", "CumprodGrad");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                   "X@Grad", "CumprodGrad");
     ctx->ShareDim(framework::GradVarName("Out"), framework::GradVarName("X"));
     ctx->ShareLoD(framework::GradVarName("Out"), framework::GradVarName("X"));
   }

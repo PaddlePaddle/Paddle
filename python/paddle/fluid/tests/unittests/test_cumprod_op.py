@@ -28,27 +28,126 @@ from paddle.fluid import compiler, Program, program_guard
 np.random.seed(0)
 
 
+# define cumprod grad function.
+def cumprod_grad(x, y, dy, dx, shape, dim):
+    if dim < 0:
+        dim += len(shape)
+    mid_dim = shape[dim]
+    outer_dim = 1
+    inner_dim = 1
+    for i in range(0, dim):
+        outer_dim *= shape[i]
+    for i in range(dim + 1, len(shape)):
+        inner_dim *= shape[i]
+    for i in range(outer_dim):
+        for k in range(inner_dim):
+            for j in range(mid_dim):
+                index = i * mid_dim * inner_dim + j * inner_dim + k
+                for n in range(mid_dim):
+                    pos = i * mid_dim * inner_dim + n * inner_dim + k
+                    elem = 0
+                    if j == 0:
+                        elem = dy[pos]
+                    else:
+                        elem = dy[pos] * y[index - inner_dim]
+                    if pos > index:
+                        for m in range(index + inner_dim, pos + inner_dim,
+                                       inner_dim):
+                            elem *= x[m]
+                    elif pos < index:
+                        elem = 0
+                    dx[index] += elem
+
+
 # test function.
 class TestCumprod(OpTest):
-    def setUp(self):
-        paddle.enable_static()
-        self.op_type = "cumprod"
-        self.init_dtype()
-
-        x = (np.random.rand(2, 3, 10, 10) + 0.5).astype(self.dtype)
-        out = np.cumprod(x, axis=1)
-        self.inputs = {'X': x}
-        self.outputs = {'Out': out}
-        self.attrs = {'dim': 1}
-
-    def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
-
-    def test_check_output(self):
-        self.check_output()
+    def init_params(self):
+        self.shape = (2, 3, 4, 5)
+        self.zero_nums = [0, 10, 20, 30, int(np.prod(self.shape))]
 
     def init_dtype(self):
         self.dtype = np.float64
+
+    def setUp(self):
+        paddle.enable_static()
+        self.init_params()
+        self.init_dtype()
+        self.op_type = "cumprod"
+        self.inputs = {'X': None}
+        self.outputs = {'Out': None}
+        self.attrs = {'dim': None}
+
+    def prepare_inputs_outputs_attrs(self, dim, zero_num):
+        self.x = np.random.random(self.shape).astype(self.dtype)
+        if zero_num > 0:
+            zero_num = min(zero_num, self.x.size)
+            shape = self.x.shape
+            self.x = self.x.flatten()
+            indices = random.sample(range(self.x.size), zero_num)
+            for i in indices:
+                self.x[i] = 0
+            self.x = np.reshape(self.x, self.shape)
+        self.out = np.cumprod(self.x, axis=dim)
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+        self.outputs = {'Out': self.out}
+        self.attrs = {'dim': dim}
+
+    def init_grad_input_output(self, dim):
+        reshape_x = self.x.reshape(self.x.size)
+        self.grad_out = np.ones(self.x.size, self.dtype)
+        self.grad_x = np.zeros(self.x.size, self.dtype)
+        out_data = self.out.reshape(self.x.size)
+        if self.dtype == np.complex128 or self.dtype == np.complex64:
+            reshape_x = np.conj(reshape_x)
+            out_data = np.conj(out_data)
+        cumprod_grad(reshape_x, out_data, self.grad_out, self.grad_x,
+                     self.shape, dim)
+        self.grad_x = self.grad_x.reshape(self.shape)
+        self.grad_out = self.grad_out.reshape(self.shape)
+
+    # test forward.
+    def test_check_output(self):
+        for dim in range(-len(self.shape), len(self.shape)):
+            for zero_num in self.zero_nums:
+                self.prepare_inputs_outputs_attrs(dim, zero_num)
+                self.check_output()
+
+    # test backward.
+    def test_check_grad(self):
+        for dim in range(-len(self.shape), len(self.shape)):
+            for zero_num in self.zero_nums:
+                self.prepare_inputs_outputs_attrs(dim, zero_num)
+                self.init_grad_input_output(dim)
+                self.check_grad(
+                    ['X'],
+                    'Out',
+                    user_defined_grads=[self.grad_x],
+                    user_defined_grad_outputs=[self.grad_out])
+
+
+class TestCumprod_float32(TestCumprod):
+    def init_dtype(self):
+        self.dtype = np.float32
+
+
+class TestCumprod_int32(TestCumprod):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestCumprod_int64(TestCumprod):
+    def init_dtype(self):
+        self.dtype = np.int64
+
+
+class TestCumprod_complex64(TestCumprod):
+    def init_dtype(self):
+        self.dtype = np.complex64
+
+
+class TestCumprod_complex128(TestCumprod):
+    def init_dtype(self):
+        self.dtype = np.complex128
 
 
 # test api.
@@ -71,8 +170,8 @@ class TestCumprodAPI(unittest.TestCase):
 
         def run(place):
             with paddle.static.program_guard(paddle.static.Program()):
-                X = paddle.fluid.data('X', self.shape, dtype=self.dtype)
-                out = paddle.cumprod(X, -2)
+                x = paddle.fluid.data('X', self.shape, dtype=self.dtype)
+                out = paddle.cumprod(x, -2)
                 exe = paddle.static.Executor(place)
                 res = exe.run(feed={'X': self.x})
             out_ref = np.cumprod(self.x, -2)
@@ -87,8 +186,8 @@ class TestCumprodAPI(unittest.TestCase):
     def test_dygraph_api(self):
         def run(place):
             paddle.disable_static(place)
-            X = paddle.to_tensor(self.x)
-            out = paddle.cumprod(X, 1)
+            x = paddle.to_tensor(self.x)
+            out = paddle.cumprod(x, 1)
             out_ref = np.cumprod(self.x, 1)
             self.assertEqual(np.allclose(out_ref, out.numpy()), True)
             paddle.enable_static()
@@ -96,71 +195,16 @@ class TestCumprodAPI(unittest.TestCase):
         for place in self.place:
             run(place)
 
+    # test error message.
+    # def test_error_message(self):
+    #     def run(place):
+    #         paddle.disable_static(place)
+    #         x = paddle.to_tensor(self.x)
+    #         out = paddle.cumprod(x, 10)
+    #         paddle.enable_static()
 
-class TestComplexCumprod(OpTest):
-    def setUp(self):
-        paddle.enable_static()
-        self.op_type = "cumprod"
-        self.dtype = np.complex128
-        self.shape = (2, 3, 4, 5)
-        self.dim = 1
-        self.attrs = {'dim': 1}
-        self.init_input_output()
-        self.init_grad_input_output()
-
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
-        self.outputs = {'Out': self.out}
-
-    def init_input_output(self):
-        self.x = np.random.random(self.shape).astype(self.dtype)
-        self.out = np.cumprod(self.x, axis=self.dim)
-
-    def init_grad_input_output(self):
-        mid_dim = self.shape[self.dim]
-        outer_dim = 1
-        inner_dim = 1
-        for i in range(0, self.dim):
-            outer_dim *= self.shape[i]
-        for i in range(self.dim + 1, len(self.shape)):
-            inner_dim *= self.shape[i]
-
-        reshape_x = self.x.reshape(outer_dim * mid_dim * inner_dim)
-        self.grad_out = np.ones(outer_dim * mid_dim * inner_dim, self.dtype)
-        self.grad_x = np.zeros(outer_dim * mid_dim * inner_dim, self.dtype)
-        out_data = self.out.reshape(outer_dim * mid_dim * inner_dim)
-        x_data_conj = np.conj(reshape_x)
-        out_data_conj = np.conj(out_data)
-        for i in range(outer_dim):
-            for k in range(inner_dim):
-                for j in range(mid_dim):
-                    index = i * mid_dim * inner_dim + j * inner_dim + k
-                    for n in range(mid_dim):
-                        pos = i * mid_dim * inner_dim + n * inner_dim + k
-                        elem = 0
-                        if j == 0:
-                            elem = self.grad_out[pos]
-                        else:
-                            elem = self.grad_out[pos] * out_data_conj[index -
-                                                                      inner_dim]
-                        if (pos > index):
-                            for m in range(index + inner_dim, pos + inner_dim,
-                                           inner_dim):
-                                elem *= x_data_conj[m]
-                        elif (pos < index):
-                            elem = 0
-                        self.grad_x[index] += elem
-        self.grad_x = self.grad_x.reshape(self.shape)
-        self.grad_out = self.grad_out.reshape(self.shape)
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out])
+    #     for place in self.place:
+    #         run(place)
 
 
 if __name__ == "__main__":

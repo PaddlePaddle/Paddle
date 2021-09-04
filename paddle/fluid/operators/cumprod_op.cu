@@ -11,15 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-// Reference to
-// https://github.com/pytorch/pytorch/blob/master/aten/src/ATen/native/ReduceOps.cpp
 
 #include <thrust/transform.h>
 #include "paddle/fluid/operators/cumprod_op.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/inclusive_scan.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -144,36 +141,47 @@ struct FillFirstZeroPositionGradFunctor {
 };
 
 /*
+Reference to
+https://github.com/pytorch/pytorch/blob/master/aten/src/ATen/native/ReduceOps.cpp
 input: x, y, dy
 output: dx
+dL/dx[i] = sum{0<=j<n} (dL/dy[j])*(dy[j]/dx[i]) (1)
+         = sum(0<=j<n} (dL/dy[j])*(d(x[0]*x[1]*...*x[j])/dx[i])
+if x[i] != 0, dL/dx[i] = sum{i<=j<n} (dL/dy[j])*(y[j]/x[i]) (2)
+if x[i] == 0, the formula(2) can not be applied directly.
+Suppose k is the first index of zero element, the formula will be:
+i > k, dL/dx[i] = 0;
+i < k, dL/dx[i] = 1/x[i]*sum{i<=j<n} (dL/dy[j]*y[j])
+i = k, dL/dx[i] = y[i-1]*sum{i<=j<n} (dL/dy[j])*(x[i+1]*...*x[j])
+
 First, we will show the main resolution.
-we need to judge the relationship between i (current index) and k (index
-which corresponds the first element of 0).
+We need to judge the relationship between i (current index) and k (index
+which corresponds to the first element of 0).
 To mark the relationship, we now introduce zero_mask and we also need to
 mark the index of the first zero element.
 zero_mask = cummax(x[i] == 0);      //label whether x[i]==0 until the index.
-zero_index = -1;                     //store the first zero element's index.
+zero_index = -1;                    //store the first zero element's index.
 e.g. x = [1, 4, 5, 0, 2, 3, 0];
-    zero_mask = [0, 0, 0, 1, 1, 1, 1];
-    zero_index = 3;
-when i < k, we need to calculate the result of sum{i<=j<n}(d_yj*yj),we can
+     zero_mask = [0, 0, 0, 1, 1, 1, 1];
+     zero_index = 3;
+When i < k, we need to calculate the result of sum{i<=j<n}(d_y[j]*y[j]), we can
 use reversed cumsum to calculate it.
 R = reversed_cumsum(dy[j]*y[j]);     //store the calculation result of the
-sum{i<=j<n}(d_yj*yj) and x[k+1],x[k+2],...,x[j] along the index k+1 ~ j.
-when i = k, we need to calculate the result of prod{i<w<j}(xw).
-To calculate it, we introduce x_filled_one, which fill 1 before x(i+1) along
-the index 0 ~ i.
+sum{i<=j<n}(d_y[j]*y[j]) and x[k+1],x[k+2],...,x[j] along the index k+1 ~ j.
+When i = k, we need to calculate the result of prod{i<w<j}(x[w]).
+To calculate it, we introduce x_filled_one, which fill 1 before x[k+1] along
+the index 0 ~ k.
 e.g. x = [1, 4, 5, 0, 2, 3, 0];
-    x_filled_one = [1, 1, 1, 1, 2, 3, 0];
-thus, we can use cumprod(x_filled_one[x[j]]) to calculate the result of
-prod{i<w<j}(xw).
-Then, we will show more detailed implement method.
+     x_filled_one = [1, 1, 1, 1, 2, 3, 0];
+Thus, we can use cumprod(x_filled_one[j]) to calculate the result of
+prod{k<=w<j}(x[w]).
+
+Then, we will show more detailed implementation.
 for (int i = 0; i < numel; i++) {
     if (zero_mask[i] == 0) {       //case i < k
         dx[i] = R[i] / x[i];
         x_filled_one[i] = 1;
-    }
-    else {
+    } else {
         if (i == 0) {              //case i = k
             dx[i] = 1;
             zero_index = i;
@@ -183,15 +191,14 @@ for (int i = 0; i < numel; i++) {
                 dx[i] = y[i-1];
                 zero_index = i;
                 x_filled_one[i] = 1;
-            }
-            else {                  //case i > k
+            } else {                  //case i > k
                 dx[i] = 0;
                 x_filled_one[i] = x[i];
             }
         }
     }
 }
-T = reversed_cumsum(dy[j]*cumprod(x_filled_one[x[j]]));
+T = reversed_cumsum(dy[j]*cumprod(x_filled_one[j]));
 if (zero_index != -1) {
     dx[zero_index] *= T[zero_index];
 }
@@ -213,8 +220,6 @@ class CumprodGradOpCUDAKernel : public framework::OpKernel<T> {
     if (outer_dim == 0 || mid_dim == 0 || inner_dim == 0) return;
 
     size_t numel = outer_dim * mid_dim * inner_dim;
-    size_t numel_x = x->numel();
-    size_t numel_y = y->numel();
 
     const auto *x_data = x->data<T>();
     const auto *y_data = y->data<T>();
@@ -231,21 +236,20 @@ class CumprodGradOpCUDAKernel : public framework::OpKernel<T> {
     memory::AllocationPtr x_conj;
     memory::AllocationPtr y_conj;
     if (framework::IsComplex<T>::value) {
-      x_conj = memory::Alloc(place, numel_x * sizeof(T));
+      x_conj = memory::Alloc(place, numel * sizeof(T));
       auto *x_data_conj = reinterpret_cast<T *>(x_conj->ptr());
-      y_conj = memory::Alloc(place, numel_y * sizeof(T));
+      y_conj = memory::Alloc(place, numel * sizeof(T));
       auto *y_data_conj = reinterpret_cast<T *>(y_conj->ptr());
 
       platform::ForRange<platform::CUDADeviceContext> for_range_x(dev_ctx,
-                                                                  numel_x);
-      math::ConjFunctor<T> functor_x(x_data, numel_x, x_data_conj);
+                                                                  numel);
+      math::ConjFunctor<T> functor_x(x_data, numel, x_data_conj);
       for_range_x(functor_x);
 
       platform::ForRange<platform::CUDADeviceContext> for_range_y(dev_ctx,
-                                                                  numel_y);
-      math::ConjFunctor<T> functor_y(y_data, numel_y, y_data_conj);
+                                                                  numel);
+      math::ConjFunctor<T> functor_y(y_data, numel, y_data_conj);
       for_range_y(functor_y);
-
       x_data_deal = x_data_conj;
       y_data_deal = y_data_conj;
     } else {

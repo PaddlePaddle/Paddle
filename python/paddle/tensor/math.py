@@ -1921,9 +1921,9 @@ def cumsum(x, axis=None, dtype=None, name=None):
     _cum_sum_ = generate_layer_fn('cumsum')
     return _cum_sum_(**kwargs)
 
-def cumprod(x, dim=None, dtype=None):
+def cumprod(x, dim=None, dtype=None, name=None):
     """
-    Compute the cumulative product of the input along a given dim.
+    Compute the cumulative product of the input tensor x along a given dim.
 
     **Note**:
     The first element of the result is the same as the first element of the input.
@@ -1958,7 +1958,6 @@ def cumprod(x, dim=None, dtype=None):
             #  [ 8  72 720 7920]]
 
     """
-    check_type(dim, 'dim', (int), 'cumprod')
 
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
         x = layers.cast(x, dtype)
@@ -1966,14 +1965,13 @@ def cumprod(x, dim=None, dtype=None):
     if in_dygraph_mode():
         return _C_ops.cumprod(x, 'dim', dim)
 
-    check_type(x, 'x', (Variable), 'cumprod')
-    locals_var = locals().copy()
-    kwargs = dict()
-    for name, val in locals_var.items():
-        if val is not None:
-            kwargs[name] = val
-    _cum_prod_ = generate_layer_fn('cumprod')
-    return _cum_prod_(**kwargs)
+    check_variable_and_dtype(x, "x", ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'], 'cumprod')
+    check_type(dim, 'dim', int, 'cumprod')
+
+    helper = LayerHelper('cumprod', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='cumprod', inputs={'X': x}, outputs={'Out': out}, attrs={'dim': dim})
+    return out
 
 def isfinite(x, name=None):
     """

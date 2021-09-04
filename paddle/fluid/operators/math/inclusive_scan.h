@@ -114,7 +114,7 @@ static __global__ void InclusiveScanInnerDimCUDAKernel(const T *x, T *y,
                                                        BinaryOp op) {
   using RealT = math::Real<T>;
   constexpr auto kSharedBufferSize =
-      framework::IsComplex<T>::value ? 2 * kThreadNumX : 4 * kThreadNumX;
+      framework::IsComplex<T>::value ? 4 * kThreadNumX : 2 * kThreadNumX;
   __shared__ RealT sbuf[kThreadNumY][kSharedBufferSize];
   T *row_buf = reinterpret_cast<T *>(sbuf[threadIdx.y]);
 

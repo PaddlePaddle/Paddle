@@ -32,12 +32,12 @@ static void GetCumprodDimInfo(const framework::DDim& dim, int cumprod_dim,
       cumprod_dim, -dim.size(),
       platform::errors::InvalidArgument(
           "The input dim of CumprodOp should be larger than the opposite "
-          "dimension of input x which is %d.But received dim=%d",
+          "rank of input x which is %d.But received dim=%d",
           -dim.size(), cumprod_dim));
   PADDLE_ENFORCE_LT(cumprod_dim, dim.size(),
                     platform::errors::InvalidArgument(
                         "The input dim of CumprodOp should be smaller than the "
-                        "dimension of input x which is %d.But received dim=%d",
+                        "rank of input x which is %d.But received dim=%d",
                         dim.size(), cumprod_dim));
   if (cumprod_dim < 0) cumprod_dim += dim.size();
 
@@ -72,13 +72,11 @@ class CumprodOpCPUKernel : public framework::OpKernel<T> {
     for (size_t i = 0; i < outer_dim; i++) {
       for (size_t j = 0; j < mid_dim; j++) {
         for (size_t k = 0; k < inner_dim; k++) {
+          size_t pos = i * mid_dim * inner_dim + j * inner_dim + k;
           if (j == 0) {
-            out_data[i * mid_dim * inner_dim + j * inner_dim + k] =
-                x_data[i * mid_dim * inner_dim + j * inner_dim + k];
+            out_data[pos] = x_data[pos];
           } else {
-            out_data[i * mid_dim * inner_dim + j * inner_dim + k] =
-                out_data[i * mid_dim * inner_dim + (j - 1) * inner_dim + k] *
-                x_data[i * mid_dim * inner_dim + j * inner_dim + k];
+            out_data[pos] = out_data[pos - inner_dim] * x_data[pos];
           }
         }
       }
@@ -97,13 +95,11 @@ class CumprodGradOpCPUKernel : public framework::OpKernel<T> {
     int dim = context.Attr<int>("dim");
     framework::DDim shape = x->dims();
     Tensor* d_x = context.Output<Tensor>(framework::GradVarName("X"));
-    size_t numel_x = x->numel();
-    size_t numel_out = out->numel();
 
-    auto* dout_data = d_out->data<T>();
+    auto* d_out_data = d_out->data<T>();
     auto* x_data = x->data<T>();
     auto* out_data = out->data<T>();
-    auto* dx_data = d_x->mutable_data<T>(context.GetPlace());
+    auto* d_x_data = d_x->mutable_data<T>(context.GetPlace());
 
     auto place = BOOST_GET_CONST(platform::CPUPlace, context.GetPlace());
     const auto& dev_ctx =
@@ -113,6 +109,7 @@ class CumprodGradOpCPUKernel : public framework::OpKernel<T> {
     size_t mid_dim = 1;
     size_t inner_dim = 1;
     GetCumprodDimInfo(shape, dim, &outer_dim, &mid_dim, &inner_dim);
+    size_t numel = outer_dim * mid_dim * inner_dim;
 
     // deal with complex
     const T* x_data_deal;
@@ -120,19 +117,19 @@ class CumprodGradOpCPUKernel : public framework::OpKernel<T> {
     memory::AllocationPtr x_conj;
     memory::AllocationPtr out_conj;
     if (framework::IsComplex<T>::value) {
-      x_conj = memory::Alloc(place, numel_x * sizeof(T));
+      x_conj = memory::Alloc(place, numel * sizeof(T));
       auto* x_data_conj = reinterpret_cast<T*>(x_conj->ptr());
-      out_conj = memory::Alloc(place, numel_out * sizeof(T));
+      out_conj = memory::Alloc(place, numel * sizeof(T));
       auto* out_data_conj = reinterpret_cast<T*>(out_conj->ptr());
 
       platform::ForRange<platform::CPUDeviceContext> for_range_x(dev_ctx,
-                                                                 numel_x);
-      math::ConjFunctor<T> functor_x(x_data, numel_x, x_data_conj);
+                                                                 numel);
+      math::ConjFunctor<T> functor_x(x_data, numel, x_data_conj);
       for_range_x(functor_x);
 
       platform::ForRange<platform::CPUDeviceContext> for_range_out(dev_ctx,
-                                                                   numel_out);
-      math::ConjFunctor<T> functor_out(out_data, numel_out, out_data_conj);
+                                                                   numel);
+      math::ConjFunctor<T> functor_out(out_data, numel, out_data_conj);
       for_range_out(functor_out);
 
       x_data_deal = x_data_conj;
@@ -146,14 +143,14 @@ class CumprodGradOpCPUKernel : public framework::OpKernel<T> {
       for (size_t k = 0; k < inner_dim; k++) {
         for (size_t j = 0; j < mid_dim; j++) {
           size_t index = i * mid_dim * inner_dim + j * inner_dim + k;
-          dx_data[index] = 0;
+          d_x_data[index] = 0;
           for (size_t n = 0; n < mid_dim; n++) {
             size_t pos = i * mid_dim * inner_dim + n * inner_dim + k;
             T elem;
             if (j == 0) {
-              elem = dout_data[pos];
+              elem = d_out_data[pos];
             } else {
-              elem = dout_data[pos] * out_data_deal[index - inner_dim];
+              elem = d_out_data[pos] * out_data_deal[index - inner_dim];
             }
             if (pos > index) {
               for (size_t m = index + inner_dim; m <= pos; m += inner_dim) {
@@ -162,7 +159,7 @@ class CumprodGradOpCPUKernel : public framework::OpKernel<T> {
             } else if (pos < index) {
               elem = static_cast<T>(0);
             }
-            dx_data[index] += elem;
+            d_x_data[index] += elem;
           }
         }
       }
