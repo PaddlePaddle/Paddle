@@ -21,7 +21,7 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 
 class TrtConvertConv2dTest(TrtLayerAutoScanTest):
-    def check_program_validity(self, program_config: ProgramConfig) -> bool:
+    def is_program_validity(self, program_config: ProgramConfig) -> bool:
         # TODO: This is just the example to remove the wrong attrs.
         inputs = program_config.inputs
         weights = program_config.weights
@@ -51,6 +51,12 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
 
+        # for strides in [[1, 1], [2, 2], [1, 2], [2, 3]]:
+        #     for paddings in [[0, 3], [3, 1], [1, 1, 1, 1]]:
+        #         for groups in [1, 2]:
+        #             for padding_algotithm in ['EXPLICIT', 'SAME', 'VALID']:
+        #                 for dilations in [[1, 1], [1, 2]]:
+        #                     for data_format in ['NCHW']:
         for strides in [[1, 1], [2, 2]]:
             for paddings in [[0, 3], [3, 1]]:
                 for groups in [1]:
@@ -58,12 +64,6 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
                         for dilations in [[1, 1]]:
                             for data_format in ['NCHW']:
 
-                                # for strides in [[1, 1], [2, 2], [1, 2], [2, 3]]:
-                                #     for paddings in [[0, 3], [3, 1], [1, 1, 1, 1], [2, 1, 1, 3]]:
-                                #         for groups in [1, 2]:
-                                #             for padding_algotithm in ['EXPLICIT', 'SAME', 'VALID']:
-                                #                 for dilations in [[1, 1], [1, 2]]:
-                                #                     for data_format in ['NCHW']:
                                 dics = [{
                                     "data_fromat": data_format,
                                     "dilations": dilations,
@@ -111,8 +111,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
                                     outputs=["relu_output_data"])
 
                                 # if program is invalid, we should skip that cases.
-                                if not self.check_program_validity(
-                                        program_config):
+                                if not self.is_program_validity(program_config):
                                     continue
 
                                 yield program_config
@@ -152,7 +151,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         def generate_trt_nodes_num(attrs, dynamic_shape):
             # TODO: This is just the example, need to be fixed.
             if len(attrs[0]['paddings']) == 4:
-                return 0, 3
+                return 1, 2
             else:
                 return 1, 2
 
@@ -187,26 +186,26 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
 
     def add_skip_trt_case(self):
         # TODO(wilber): This is just the example to illustrate the skip usage.
-        # def teller1(program_config, predictor_config):
-        #     if len(program_config.ops[0].attrs['paddings']) == 4:
-        #         return True
-        #     return False
+        def teller1(program_config, predictor_config):
+            if len(program_config.ops[0].attrs['paddings']) == 4:
+                return True
+            return False
 
-        # self.add_skip_case(
-        #     teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
-        #     "NOT Implemented: we need to add support in the future ....TODO, just for the example"
-        # )
+        self.add_skip_case(
+            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
+            "NOT Implemented: we need to add support in the future ....TODO, just for the example"
+        )
 
-        # def teller2(program_config, predictor_config):
-        #     if (
-        #             program_config.ops[0].attrs['dilations'][0] == 1 and
-        #             program_config.ops[0].attrs['dilations'][0] == 2
-        #     ) or program_config.ops[0].attrs['padding_algorithm'] != 'EXPLICIT':
-        #         return True
-        #     return False
+        def teller2(program_config, predictor_config):
+            if (
+                    program_config.ops[0].attrs['dilations'][0] == 1 and
+                    program_config.ops[0].attrs['dilations'][0] == 2
+            ) or program_config.ops[0].attrs['padding_algorithm'] != 'EXPLICIT':
+                return True
+            return False
 
-        # self.add_skip_case(teller2, SkipReasons.TRT_NOT_SUPPORT,
-        #                    "TODO, just for the example")
+        self.add_skip_case(teller2, SkipReasons.TRT_NOT_SUPPORT,
+                           "TODO, just for the example")
         pass
 
     def test(self):
