@@ -30,9 +30,39 @@ using LoDTensor = framework::LoDTensor;
 template <typename T>
 class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    PADDLE_THROW(platform::errors::Unavailable(
-        "Do not support c_embedding for cpu kernel now."));
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    auto *table_t = context.Input<LoDTensor>("W");
+    auto *ids_t = context.Input<LoDTensor>("Ids");
+    auto *output_t = context.Output<LoDTensor>("Out");
+    const int64_t start_idx = context.Attr<int64_t>("start_index");
+
+    PADDLE_ENFORCE_EQ(table_t->dims().size(), 2,
+                      platform::errors::InvalidArgument(
+                          "npu only accept the dims of table_t == 2"));
+
+    std::vector<T> ids_t_vec;
+    framework::TensorToVector(*idst_t, &ids_t_vec);
+
+    std::vector<T> table_t_vec;
+    framework::TensorToVector(*table_t, &table_t_vec);
+
+    const size_t height = table_t.dims()[0];
+    const size_t width = talbe_t.dims()[1];
+    std::vector<std::vector<T>> out;
+    out.resize(ids_t.numel());
+
+    for (size_t i = 0; i < ids_t_vec.size(); i++) {
+      auto id = ids_t_vec[i];
+      auto local = id - start_idx;
+
+      std::vector<T> tmp(width, static_cast<T>(0.0));
+      if (local >= 0 && local < height) {
+        for (size_t w = 0; w < width; w++) {
+          tmp[w] = table_t_vec[i * height + w];
+        }
+      }
+      out[i] = std::move(tmp);
+    }
   }
 };
 

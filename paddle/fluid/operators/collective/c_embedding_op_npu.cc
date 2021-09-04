@@ -39,6 +39,7 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
   id_t_u.mutable_data<T>(ids_t.dims(), context.GetPlace());
   FillNpuTensorWithConstant(&id_t_u, static_cast<T>(table_w - 1));
   id_t_u.Resize(ids_t.dims());
+  VLOG(10) << "debug check 2";
 
   framework::Tensor id_matched_d;
   id_matched_d.mutable_data<bool>(ids_t.dims(), context.GetPlace());
@@ -48,6 +49,7 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
   ignore_tensor.mutable_data<T>(ids_t.dims(), context.GetPlace());
   FillNpuTensorWithConstant(&ignore_tensor, static_cast<T>(table_w));
   ignore_tensor.Resize(ids_t.dims());
+  VLOG(10) << "debug check 3";
 
   NpuOpRunner sub_runner;
   sub_runner.SetType("Sub")
@@ -55,6 +57,8 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
       .AddInput(std::vector<int>{static_cast<int>(start_idx)})
       .AddOutput(id_t);
   sub_runner.Run();
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+  VLOG(10) << "debug check 4";
 
   NpuOpRunner lessequal1_runner;
   lessequal1_runner.SetType("LessEqual")
@@ -62,6 +66,8 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
       .AddInput(id_t_u)
       .AddOutput(id_matched_u);
   lessequal1_runner.Run();
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+  VLOG(10) << "debug check 5";
 
   NpuOpRunner lessequal2_runner;
   lessequal2_runner.SetType("LessEqual")
@@ -69,11 +75,16 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
       .AddInput(id_t)
       .AddOutput(id_matched_d);
   lessequal2_runner.Run();
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+  VLOG(10) << "debug check 6";
 
   NpuOpRunner("Equal", {id_matched_u, id_matched_d}, {id_matched_d}, {})
       .Run(stream);
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
   NpuOpRunner("Select", {id_matched_d, id_t, ignore_tensor}, {id_t}, {})
       .Run(stream);
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+  VLOG(10) << "debug check 7";
 }
 
 template <typename T>
@@ -83,6 +94,7 @@ class CEmbeddingNPUKernel : public framework::OpKernel<T> {
     auto *table_t = context.Input<LoDTensor>("W");
     auto *ids_t = context.Input<LoDTensor>("Ids");
     auto *output_t = context.Output<LoDTensor>("Out");
+    VLOG(10) << "debug check 1";
 
     auto stream =
         context.template device_context<paddle::platform::NPUDeviceContext>()
@@ -92,6 +104,7 @@ class CEmbeddingNPUKernel : public framework::OpKernel<T> {
     id_t.mutable_data<int>(ids_t->dims(), context.GetPlace());
     // id_t.Resize(ids_t->dims());
     shard_index<int>(*table_t, *ids_t, start_idx, id_t, context);
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
 
     PADDLE_ENFORCE_EQ(table_t->dims().size(), 2,
                       platform::errors::InvalidArgument(
@@ -116,6 +129,8 @@ class CEmbeddingNPUKernel : public framework::OpKernel<T> {
                          ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemsetAsync(
         pad_data + mem_size, line_mem_size, 0, line_mem_size, stream));
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+    VLOG(10) << "debug check 8";
 
     output_t->mutable_data<T>(context.GetPlace());
     NpuOpRunner runner;
@@ -125,6 +140,8 @@ class CEmbeddingNPUKernel : public framework::OpKernel<T> {
         .AddInput(std::vector<int32_t>{0})
         .AddOutput(*output_t);
     runner.Run();
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+    VLOG(10) << "debug check 9";
   }
 };
 
@@ -132,10 +149,12 @@ template <typename T>
 class CEmbeddingGradNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &context) const override {
+    VLOG(10) << "grad debug check 0";
     const int64_t start_idx = context.Attr<int64_t>("start_index");
     auto ids_t = context.Input<LoDTensor>("Ids");
     auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
     auto table_grad_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+    VLOG(10) << "grad debug check 1";
 
     auto stream =
         context.template device_context<paddle::platform::NPUDeviceContext>()
@@ -143,56 +162,41 @@ class CEmbeddingGradNPUKernel : public framework::OpKernel<T> {
     framework::Tensor id_t;
     id_t.mutable_data<int>(ids_t->dims(), context.GetPlace());
     shard_index<int>(*table_grad_t, *ids_t, start_idx, id_t, context);
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+    VLOG(10) << "grad debug check 2";
 
     auto pad_shape = framework::make_ddim(
         {table_grad_t->dims()[0] + 1, table_grad_t->dims()[1]});
-    framework::LoDTensor table_t_tmp;
+    framework::LoDTensor table_t_pad;
 
     size_t mem_size = table_grad_t->memory_size();
     size_t line_mem_size =
         table_grad_t->dims()[1] * framework::SizeOfType(table_grad_t->type());
 
     uint8_t *pad_data = reinterpret_cast<uint8_t *>(
-        table_t_tmp.mutable_data<T>(pad_shape, context.GetPlace()));
+        table_t_pad.mutable_data<T>(pad_shape, context.GetPlace()));
     PADDLE_ENFORCE_NPU_SUCCESS(
         aclrtMemcpyAsync(pad_data, mem_size, table_grad_t->data<T>(), mem_size,
                          ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
     PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemsetAsync(
-        pad_data + mem_size, line_mem_size, 0.0, line_mem_size, stream));
-
-    const auto &runner_zeros =
-        NpuOpRunner("ZerosLike", {table_t_tmp}, {table_t_tmp});
-    runner_zeros.Run(stream);
+        pad_data + mem_size, line_mem_size, 0, line_mem_size, stream));
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+    VLOG(10) << "grad debug check 3";
 
     // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
     // can be different tensor, but in cann 20.2+, it does inplace operation.
     // Thus, the first input and output should be same tensor.
     const auto &runner_scatter =
-        NpuOpRunner("ScatterAdd", {table_t_tmp, id_t, *d_output_t},
-                    {table_t_tmp}, {{"use_locking", true}});
+        NpuOpRunner("ScatterAdd", {table_t_pad, id_t, *d_output_t},
+                    {table_t_pad}, {{"use_locking", true}});
     runner_scatter.Run(stream);
 
-    framework::Tensor out1;
-    framework::Tensor out2;
-    auto out_shape1 = framework::make_ddim(
-        {table_t_tmp.dims()[0] - 1, table_t_tmp.dims()[1]});
-    auto out_shape2 = framework::make_ddim({1, table_t_tmp.dims()[1]});
-    out1.mutable_data<T>(out_shape1, context.GetPlace());
-    out2.mutable_data<T>(out_shape2, context.GetPlace());
-    std::vector<framework::Tensor> outputs = {out1, out2};
-    std::vector<int> sections = {static_cast<int>(table_t_tmp.dims()[0] - 1),
-                                 1};
-    framework::NPUAttributeMap attr_input = {
-        {"size_splits", sections},
-        {"split_dim", 0},
-        {"num_split", static_cast<int32_t>(sections.size())}};
-    NpuOpRunner runner_split;
-    runner_split.SetType("SplitVD")
-        .AddInput(table_t_tmp)
-        .AddOutputs(outputs)
-        .AddAttrs(attr_input);
-    runner_split.Run(stream);
-    table_grad_t->ShareDataWith(out1);
+    // copy to src
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclrtMemcpyAsync(table_grad_t.data(), mem_size, pad_data, mem_size,
+                         ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
+    PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+    VLOG(10) << "grad debug check 4";
   }
 };
 
