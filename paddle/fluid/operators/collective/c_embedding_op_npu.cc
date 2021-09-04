@@ -88,9 +88,9 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
       context.template device_context<paddle::platform::NPUDeviceContext>()
           .stream();
 
-  framework::Tensor id_t;
-  id_t.mutable_data<TIds>(ids_t->dims(), context.GetPlace());
-  shard_index<TIds>(*table_t, *ids_t, start_idx, id_t, context);
+  framework::Tensor ids_t_local;
+  ids_t_local.mutable_data<TIds>(ids_t->dims(), context.GetPlace());
+  shard_index<TIds>(*table_t, *ids_t, start_idx, ids_t_local, context);
 
   PADDLE_ENFORCE_EQ(table_t->dims().size(), 2,
                     platform::errors::InvalidArgument(
@@ -119,7 +119,7 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
   NpuOpRunner runner;
   runner.SetType("GatherV2")
       .AddInput(table_t_pad)
-      .AddInput(id_t)
+      .AddInput(ids_t_local)
       .AddInput(std::vector<int32_t>{0})
       .AddOutput(*output_t);
   runner.Run();
@@ -147,37 +147,37 @@ class CEmbeddingNPUKernel : public framework::OpKernel<T> {
 
 template <typename TIds, typename T>
 void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
+  // get inputs
   VLOG(10) << "grad debug check 0";
   const int64_t start_idx = context.Attr<int64_t>("start_index");
   auto ids_t = context.Input<LoDTensor>("Ids");
   auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
-  auto table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+  auto table_t = context.Output<LoDTensor>("W");
+  auto table_grad_t = context.Output<LoDTensor>(framework::GradVarName("W"));
   VLOG(10) << "grad debug check 1";
 
   auto stream =
       context.template device_context<paddle::platform::NPUDeviceContext>()
           .stream();
-  framework::Tensor id_t;
-  id_t.mutable_data<int>(ids_t->dims(), context.GetPlace());
-  shard_index<int>(*table_grad_t, *ids_t, start_idx, id_t, context);
+
+  // convert ids_t to local valid
+  framework::Tensor ids_t_local;
+  ids_t_local.mutable_data<int>(ids_t->dims(), context.GetPlace());
+  shard_index<int>(*table_t, *ids_t, start_idx, ids_t_local, context);
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
   VLOG(10) << "grad debug check 2";
 
-  auto pad_shape = framework::make_ddim(
-      {table_grad_t->dims()[0] + 1, table_grad_t->dims()[1]});
+  // padding table_t -> table_t_pad
+  auto pad_shape =
+      framework::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
   framework::LoDTensor table_t_pad;
 
-  cosnt size_t mem_size = table_t->memory_size();
-  const size_t line_mem_size =
-      table_t->dims()[1] * framework::SizeOfType(table_t->type());
-
+  // set table_t_pad to zero
   uint8_t *pad_data = reinterpret_cast<uint8_t *>(
       table_t_pad.mutable_data<T>(pad_shape, context.GetPlace()));
   PADDLE_ENFORCE_NPU_SUCCESS(
-      aclrtMemcpyAsync(pad_data, mem_size, table_t->data<T>(), mem_size,
-                       ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemsetAsync(
-      pad_data + mem_size, line_mem_size, 0, line_mem_size, stream));
+      aclrtMemsetAsync(pad_data, table_t_pad.memory_size(), 0,
+                       table_t_pad.memory_size(), stream));
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
   VLOG(10) << "grad debug check 3";
 
@@ -185,13 +185,15 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   // can be different tensor, but in cann 20.2+, it does inplace operation.
   // Thus, the first input and output should be same tensor.
   const auto &runner_scatter =
-      NpuOpRunner("ScatterAdd", {table_t_pad, id_t, *d_output_t}, {table_t_pad},
-                  {{"use_locking", true}});
+      NpuOpRunner("ScatterAdd", {table_t_pad, ids_t_local, *d_output_t},
+                  {table_t_pad}, {{"use_locking", true}});
   runner_scatter.Run(stream);
 
-  // copy to src
+  // copy table_t_pad to table_t
+  const size_t mem_size = table_t->memory_size();
+  table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
   PADDLE_ENFORCE_NPU_SUCCESS(
-      aclrtMemcpyAsync(table_t->data<T>(), mem_size, pad_data, mem_size,
+      aclrtMemcpyAsync(table_grad_t->data<T>(), mem_size, pad_data, mem_size,
                        ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
   VLOG(10) << "grad debug check 4";
