@@ -195,13 +195,13 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   VLOG(10) << "grad debug check 4";
 
   // copy table_t_pad to table_t
-  VLOG(10) << "dims:" << table_t->dims();
-  table_t->check_memory_size();
-  const size_t mem_size = table_t->memory_size();
-  VLOG(10) << ", mem_size:" << mem_size << ", pad_data:" << pad_data;
   T *dst = table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
-  VLOG(10) << "dst:" << dst << ", mem_size:" << mem_size
-           << ", pad_data:" << pad_data;
+  // VLOG(10) << "dims:" << table_t->dims();
+  // table_t->check_memory_size();
+  const size_t mem_size = table_grad_t->memory_size();
+  // VLOG(10) << ", mem_size:" << mem_size << ", pad_data:" << pad_data;
+  // VLOG(10) << "dst:" << dst << ", mem_size:" << mem_size
+  //         << ", pad_data:" << pad_data;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpyAsync(
       dst, mem_size, pad_data, mem_size, ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));

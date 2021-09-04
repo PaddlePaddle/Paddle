@@ -57,23 +57,19 @@ class TestCEmbeddingOp(OpTest):
             self.check_output_with_place(core.CUDAPlace(0))
         elif core.is_compiled_with_npu():
             self.check_output_with_place(core.NPUPlace(0))
-    """
 
     def test_check_cpu(self):
         self.check_output_with_place(core.CPUPlace())
 
+    def test_check_cpu_grad(self):
+        self.check_grad_with_place(core.CPUPlace(), ['W'], 'Out')
     """
+
     def test_check_grad(self):
-        return
         if core.is_compiled_with_cuda():
             self.check_grad_with_place(core.CUDAPlace(0), ['W'], 'Out')
         elif core.is_compiled_with_npu():
             self.check_grad_with_place(core.NPUPlace(0), ['W'], 'Out')
-
-    def test_check_cpu_grad(self):
-        return
-        self.check_grad_with_place(core.CPUPlace(), ['W'], 'Out')
-    """
 
 
 if __name__ == "__main__":
