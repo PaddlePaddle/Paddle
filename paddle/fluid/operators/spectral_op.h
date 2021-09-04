@@ -227,7 +227,7 @@ class FFTC2RGradKernel : public framework::OpKernel<T> {
     auto normalization = get_norm_from_string(norm_str, forward);
 
     FFTR2CFunctor<DeviceContext, T, C> fft_r2c_func;
-    fft_r2c_func(dev_ctx, dy, dx, axes, normalization, forward, onesided);
+    fft_r2c_func(dev_ctx, dy, dx, axes, normalization, !forward, onesided);
   }
 };
 }  // namespace operators
