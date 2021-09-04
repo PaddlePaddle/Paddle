@@ -152,7 +152,7 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   const int64_t start_idx = context.Attr<int64_t>("start_index");
   auto ids_t = context.Input<LoDTensor>("Ids");
   auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
-  auto table_t = context.Output<LoDTensor>("W");
+  auto table_t = context.Input<LoDTensor>("W");
   auto table_grad_t = context.Output<LoDTensor>(framework::GradVarName("W"));
   VLOG(10) << "grad debug check 1";
 
@@ -191,10 +191,11 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
 
   // copy table_t_pad to table_t
   const size_t mem_size = table_t->memory_size();
-  table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
-  PADDLE_ENFORCE_NPU_SUCCESS(
-      aclrtMemcpyAsync(table_grad_t->data<T>(), mem_size, pad_data, mem_size,
-                       ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
+  T *dst = table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
+  VLOG(10) << "dst:" << dst << ", mem_size:" << mem_size
+           << ", pad_data:" << pad_data;
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpyAsync(
+      dst, mem_size, pad_data, mem_size, ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
   VLOG(10) << "grad debug check 4";
 }
