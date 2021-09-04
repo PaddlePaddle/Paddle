@@ -106,7 +106,7 @@ class CEmbeddingCUDAKernel : public framework::OpKernel<T> {
           output, table, ids_t->data<int64_t>(), K, D, N, start_idx, end_idx,
           limit);
     } else {
-      DDLE_THROW(platform::errors::Unavailable(
+      PADDLE_THROW(platform::errors::Unavailable(
           "c_embedding ids only support int32 or int64."));
     }
   }
