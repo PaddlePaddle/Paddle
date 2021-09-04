@@ -71,7 +71,7 @@ class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
                       table_data, height, width, output_data);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
-          "c_embedding only support int32 or int64."));
+          "c_embedding ids only support int32 or int64."));
     }
   }
 };
@@ -125,7 +125,7 @@ class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
                       table_grad_data, height, width, d_output_data);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
-          "c_embedding only support int32 or int64."));
+          "c_embedding ids only support int32 or int64."));
     }
   }
 };

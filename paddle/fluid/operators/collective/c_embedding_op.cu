@@ -107,7 +107,7 @@ class CEmbeddingCUDAKernel : public framework::OpKernel<T> {
           limit);
     } else {
       DDLE_THROW(platform::errors::Unavailable(
-          "c_embedding only support int32 or int64."));
+          "c_embedding ids only support int32 or int64."));
     }
   }
 };

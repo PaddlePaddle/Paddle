@@ -82,7 +82,6 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
   auto *ids_t = context.Input<LoDTensor>("Ids");
   auto *output_t = context.Output<LoDTensor>("Out");
   const int64_t start_idx = context.Attr<int64_t>("start_index");
-  VLOG(10) << "debug check 1";
 
   auto stream =
       context.template device_context<paddle::platform::NPUDeviceContext>()
@@ -136,7 +135,7 @@ class CEmbeddingNPUKernel : public framework::OpKernel<T> {
       NPUGetIdsEmbedding<int64_t, T>(context);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
-          "c_embedding only support int32 or int64."));
+          "c_embedding ids only support int32 or int64."));
     }
   }
 };
@@ -144,7 +143,6 @@ class CEmbeddingNPUKernel : public framework::OpKernel<T> {
 template <typename TIds, typename T>
 void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   // get inputs
-  VLOG(10) << "grad debug check 0";
   const int64_t start_idx = context.Attr<int64_t>("start_index");
   auto ids_t = context.Input<LoDTensor>("Ids");
   auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
@@ -206,7 +204,7 @@ class CEmbeddingGradNPUKernel : public framework::OpKernel<T> {
       NPUUpdateEmbedding<int64_t, T>(context);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
-          "c_embedding only support int32 or int64."));
+          "c_embedding ids only support int32 or int64."));
     }
   }
 };
