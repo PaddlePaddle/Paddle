@@ -240,6 +240,16 @@ class FFTC2ROpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("normalization",
                          "fft_norm_type, the fft normalization type.");
     AddAttr<bool>("forward", "bool, the fft direction.");
+    AddAttr<int64_t>(
+        "last_dim_size", "int",
+        "Length of the transformed "
+        "axis of the output. For n output points, last_dim_size//2 + 1 input"
+        " points are necessary. If the input is longer than this,"
+        " it is cropped. If it is shorter than this, it is padded"
+        " with zeros. If last_dim_size is not given, it is taken to be 2*(m-1)"
+        " where m is the length of the input along the axis "
+        "specified by axis.")
+        .SetDefault(0L);
     AddComment(R"DOC(
       // add doc here
     )DOC");
@@ -259,10 +269,15 @@ class FFTC2ROp : public framework::OperatorWithKernel {
                           "Output(%s) of FFTC2ROp should not be null.", "Out"));
     const auto axes = ctx->Attrs().Get<std::vector<int64_t>>("axes");
 
+    const int64_t last_dim_size = ctx->Attrs().Get<int64_t>("last_dim_size");
     framework::DDim out_dim(ctx->GetInputDim("X"));
     const int64_t last_fft_axis = axes.back();
-    const int64_t last_fft_dim_size = out_dim.at(last_fft_axis);
-    out_dim.at(last_fft_axis) = (last_fft_dim_size - 1) * 2;
+    if (last_dim_size == 0) {
+      const int64_t last_fft_dim_size = out_dim.at(last_fft_axis);
+      out_dim.at(last_fft_axis) = (last_fft_dim_size - 1) * 2;
+    } else {
+      out_dim.at(last_fft_axis) = ctx->Attrs().Get<int64_t>("last_dim_size");
+    }
     ctx->SetOutputDim("Out", out_dim);
   }
 
@@ -840,7 +855,23 @@ template <typename Ti, typename To>
 struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
   void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
                   Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward) {}
+                  FFTNormMode normalization, bool forward) {
+    if (axes.size() > 1) {
+      const std::vector<int64_t> c2c_dims(axes.begin(), axes.end() - 1);
+      Tensor temp;
+      temp->mutable_data<Ti>(x->dims(), ctx.GetPlace());
+
+      FFTC2CFunctor<platform::CPUDeviceContext, Ti, Ti> c2c_functor;
+      c2c_functor(ctx, x, &temp, c2c_dims, normalization, forward);
+
+      const std::vector<int64_t> new_axes(axes.back());
+      exec_fft<platform::CPUDeviceContext, Ti, To>(ctx, &temp, out, new_axes,
+                                                   normalization, forward);
+    } else {
+      exec_fft<platform::CPUDeviceContext, Ti, To>(ctx, x, out, axes,
+                                                   normalization, forward);
+    }
+  }
 };
 
 #elif defined(PADDLE_WITH_POCKETFFT)
@@ -955,7 +986,7 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
                      [](int64_t s) { return s * data_size; });
     }
 
-    const auto* in_data = reinterpret_cast<const C*>(x->data<To>());
+    const auto* in_data = reinterpret_cast<const C*>(x->data<Ti>());
     auto* out_data = out->data<R>();
     // well, we have to use std::vector<size_t> here
     std::vector<size_t> axes_(axes.size());

@@ -409,16 +409,16 @@ def fftn_c2r(x, s, axes, norm, forward):
         raise ValueError(
             "Unexpected norm: {}. Norm should be forward, backward or ortho".
             form(norm))
+    s = list(s)
     rank = x.ndim
     if axes is None:
         if s is None:
             axes = list(range(rank))
-            s = paddle.shape(x)
         else:
             fft_ndims = len(s)
             axes = list(range(rank - fft_ndims, rank))
     else:
-        axes_ = axes.copy()
+        axes_ = list(axes)
         for i in len(axes_):
             if axes_[i] < -rank or axes_[i] >= rank:
                 raise ValueError(
@@ -427,26 +427,20 @@ def fftn_c2r(x, s, axes, norm, forward):
             if axes_[i] < 0:
                 axes_[i] += rank
         axes = axes_
-        axes.sort()
-        if s is None:
-            shape = paddle.shape(x)
-            s = [shape[axis] for axis in axes]
-        else:
-            assert len(axes) == len(s)
+
     op_type = 'fft_c2r'
 
     if in_dygraph_mode():
-        attrs = ('s', s, 'axes', axes, 'normalization', norm, 'forward',
-                 forward)
+        if s:
+            attrs = ('axes', axes, 'normalization', norm, 'forward', forward,
+                     'last_dim_size', s[-1])
+        attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
         out = getattr(_C_ops, op_type)(x, *attrs)
     else:
         inputs = {'X': [x], }
-        attrs = {
-            's': s,
-            'axes': axes,
-            'normalization': norm,
-            'forward': forward
-        }
+        attrs = {'axes': axes, 'normalization': norm, 'forward': forward}
+        if s:
+            attr["last_dim_size"] = s[-1]
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  op_type)
         helper = LayerHelper(op_type, **locals())
