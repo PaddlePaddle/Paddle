@@ -187,37 +187,27 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
 
     def add_skip_trt_case(self):
         # TODO(wilber): This is just the example to illustrate the skip usage.
-        def teller2(program_config, predictor_config):
-            if len(program_config.ops[0].attrs['paddings']) == 4:
-                return True
-            return False
+        # def teller1(program_config, predictor_config):
+        #     if len(program_config.ops[0].attrs['paddings']) == 4:
+        #         return True
+        #     return False
 
-        self.add_skip_case(
-            teller2, SkipReasons.TRT_NOT_IMPLEMENTED,
-            "NOT Implemented: we need to add support in the future ....TODO, just for the example"
-        )
+        # self.add_skip_case(
+        #     teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
+        #     "NOT Implemented: we need to add support in the future ....TODO, just for the example"
+        # )
 
-        def teller3(program_config, predictor_config):
-            if (
-                    program_config.ops[0].attrs['dilations'][0] == 1 and
-                    program_config.ops[0].attrs['dilations'][0] == 2
-            ) or program_config.ops[0].attrs['padding_algorithm'] != 'EXPLICIT':
-                return True
-            return False
+        # def teller2(program_config, predictor_config):
+        #     if (
+        #             program_config.ops[0].attrs['dilations'][0] == 1 and
+        #             program_config.ops[0].attrs['dilations'][0] == 2
+        #     ) or program_config.ops[0].attrs['padding_algorithm'] != 'EXPLICIT':
+        #         return True
+        #     return False
 
-        self.add_skip_case(teller3, SkipReasons.TRT_NOT_SUPPORT,
-                           "TODO, just for the example")
-
-        def teller4(program_config, predictor_config):
-            if program_config.ops[0].attrs['strides'][0] != program_config.ops[
-                    0].attrs['strides'][1] or program_config.ops[0].attrs[
-                        'strides'][0] == program_config.ops[0].attrs['strides'][
-                            1] == 2:
-                return True
-            return False
-
-        self.add_skip_case(teller4, SkipReasons.TRT_NOT_SUPPORT,
-                           "TODO, just for the example")
+        # self.add_skip_case(teller2, SkipReasons.TRT_NOT_SUPPORT,
+        #                    "TODO, just for the example")
+        pass
 
     def test(self):
         self.add_skip_trt_case()
