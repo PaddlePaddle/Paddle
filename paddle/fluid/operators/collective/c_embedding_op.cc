@@ -53,9 +53,10 @@ class CEmbeddingOp : public framework::OperatorWithKernel {
     const int64_t start_idx = ctx->Attrs().Get<int64_t>("start_index");
 
     PADDLE_ENFORCE_EQ(
-        (height >= 0 && width >= 0 && start_idx >= 0), true,
-        "height:%ld width:%ld start_idx:%ld must not have negtive values",
-        height, width, start_idx);
+        (height > 0 && width > 0 && start_idx >= 0), true,
+        platform::errors::InvalidArgument(
+            "height:%ld width:%ld start_idx:%ld must not have negtive values",
+            height, width, start_idx));
   }
 
  protected:

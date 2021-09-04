@@ -24,8 +24,25 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
+inline void FillNPU(Tensor *dst, T val,
+                    const framework::ExecutionContext &context) {
+  Tensor value(dst->type());
+  value.mutable_data<T>({1}, context.GetPlace());
+  FillNpuTensorWithConstant<T>(&value, static_cast<T>(val));
+
+  auto stream =
+      context.template device_context<paddle::platform::NPUDeviceContext>()
+          .stream();
+
+  const auto &runner = NpuOpRunner(
+      "FillD", {value}, {*dst}, {{"dims", framework::vectorize(dst->dims())}});
+  runner.Run(stream);
+}
+
+template <typename T>
 void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
-                 Tensor id_t, const framework::ExecutionContext &context) {
+                 const Tensor &id_t,
+                 const framework::ExecutionContext &context) {
   const int height = table_t.dims()[0];
 
   auto stream =
@@ -33,11 +50,12 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
           .stream();
   framework::Tensor id_t_d;
   id_t_d.mutable_data<T>(ids_t.dims(), context.GetPlace());
-  FillNpuTensorWithConstant(&id_t_d, static_cast<T>(0.0));
+  FillNPU(&id_t_d, static_cast<T>(0.0), context);
   id_t_d.Resize(ids_t.dims());
+
   framework::Tensor id_t_u;
   id_t_u.mutable_data<T>(ids_t.dims(), context.GetPlace());
-  FillNpuTensorWithConstant(&id_t_u, static_cast<T>(height - 1));
+  FillNPU(&id_t_u, static_cast<T>(height - 1), context);
   id_t_u.Resize(ids_t.dims());
 
   framework::Tensor id_matched_d;
@@ -46,13 +64,13 @@ void shard_index(const Tensor &table_t, const Tensor &ids_t, int64_t start_idx,
   id_matched_u.mutable_data<bool>(ids_t.dims(), context.GetPlace());
   framework::Tensor ignore_tensor;
   ignore_tensor.mutable_data<T>(ids_t.dims(), context.GetPlace());
-  FillNpuTensorWithConstant(&ignore_tensor, static_cast<T>(height));
+  FillNPU(&ignore_tensor, static_cast<T>(height), context);
   ignore_tensor.Resize(ids_t.dims());
 
   NpuOpRunner sub_runner;
   sub_runner.SetType("Sub")
       .AddInput(ids_t)
-      .AddInput(std::vector<int>{static_cast<int>(start_idx)})
+      .AddInput(std::vector<T>{static_cast<T>(start_idx)})
       .AddOutput(id_t);
   sub_runner.Run();
 
@@ -182,7 +200,6 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
       NpuOpRunner("ScatterAdd", {table_t_pad, ids_t_local, *d_output_t},
                   {table_t_pad}, {{"use_locking", true}});
   runner_scatter.Run(stream);
-  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
 
   // copy table_t_pad to table_t
   T *dst = table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
