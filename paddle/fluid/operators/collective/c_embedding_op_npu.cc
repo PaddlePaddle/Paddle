@@ -109,8 +109,6 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
   ids_t_local.mutable_data<TIds>(ids_t->dims(), context.GetPlace());
   shard_index<TIds>(*table_t, *ids_t, start_idx, ids_t_local, context);
 
-  PADDLE_ENFORCE_EQ(table_t->dims()[1] % 64, 0, "must align by 64");
-
   auto pad_shape =
       framework::make_ddim({table_t->dims()[0] + 1, table_t->dims()[1]});
   framework::LoDTensor table_t_pad;
@@ -118,6 +116,7 @@ void NPUGetIdsEmbedding(const framework::ExecutionContext &context) {
   size_t mem_size = table_t->memory_size();
   size_t line_mem_size =
       table_t->dims()[1] * framework::SizeOfType(table_t->type());
+  PADDLE_ENFORCE_EQ(line_mem_size % 64, 0, "must align by 64");
 
   VLOG(10) << "mem_size:" << mem_size << ",line_mem_size:" << line_mem_size
            << ", pad_shape:" << pad_shape << ", table_dims:" << table_t->dims();
@@ -170,8 +169,6 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   VLOG(10) << "ids_t:" << ids_t << ", d_output_t:" << d_output_t
            << ", table_t:" << table_t << ", table_grad_t" << table_grad_t;
 
-  PADDLE_ENFORCE_EQ(table_t->dims()[1] % 64, 0, "must align by 64");
-
   auto stream =
       context.template device_context<paddle::platform::NPUDeviceContext>()
           .stream();
@@ -204,6 +201,12 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   // copy table_t_pad to table_t
   T *dst = table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
   const size_t mem_size = table_grad_t->memory_size();
+
+  // check align
+  size_t line_mem_size =
+      table_grad_t->dims()[1] * framework::SizeOfType(table_grad_t->type());
+  PADDLE_ENFORCE_EQ(line_mem_size % 64, 0, "must align by 64");
+
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpyAsync(
       dst, mem_size, pad_data, mem_size, ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
 }
