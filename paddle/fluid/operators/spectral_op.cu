@@ -862,18 +862,15 @@ struct FFTR2CFunctor<platform::CUDADeviceContext, Ti, To> {
       c2c_out.mutable_data<To>(out->dims(), ctx.GetPlace());
       std::vector<int64_t>  remain_dim(axes.begin(), axes.end()-1);
       FFTC2CFunctor<platform::CUDADeviceContext, To, To> fft_c2c_func;
-      fft_c2c_func(ctx, &c2c_out, r2c_out, remain_dim, FFTNormMode::none, forward);
+      fft_c2c_func(ctx, r2c_out, &c2c_out, remain_dim, FFTNormMode::none, forward);
     }
 
- 
     const auto in_sizes = framework::vectorize(X->dims());
     framework::Tensor* norm_tensor = axes.size()>1 ? &c2c_out : r2c_out;
     exec_normalization<platform::CUDADeviceContext, To>(
         ctx, norm_tensor, out, normalization, in_sizes, axes);
   }
 };
-
->>>>>>> add fft r2c onesided with cpu(pocketfft/mkl) and gpu
 
 }  // namespace operators
 }  // namespace paddle
@@ -889,8 +886,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FFTC2CGradKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
-<<<<<<< 9f16534355db9c798119d872d041014bb7deeca8
-    fft_c2r, ops::FFTC2RKernel<paddle::platform::CUDADeviceContext, float>,
+    fft_c2r, 
+    ops::FFTC2RKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FFTC2RKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
@@ -899,19 +896,12 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FFTC2RGradKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
-    fft_r2c, ops::FFTR2CKernel<paddle::platform::CUDADeviceContext, float>,
+    fft_r2c, 
+    ops::FFTR2CKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FFTR2CKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
     fft_r2c_grad,
     ops::FFTR2CGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FFTR2CGradKernel<paddle::platform::CUDADeviceContext, double>);
-=======
-  fft_r2c, ops::FFTR2CKernel<paddle::platform::CUDADeviceContext, float>,
-  ops::FFTR2CKernel<paddle::platform::CUDADeviceContext, double>);
-  
-REGISTER_OP_CUDA_KERNEL(
-    fft_r2c_grad,
-    ops::FFTR2CGradKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FFTR2CGradKernel<paddle::platform::CUDADeviceContext, double>);
->>>>>>> add fft r2c onesided with cpu(pocketfft/mkl) and gpu
+
