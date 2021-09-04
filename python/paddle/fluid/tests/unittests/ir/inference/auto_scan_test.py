@@ -65,7 +65,7 @@ class AutoScanTest(unittest.TestCase):
         self.skip_cases.append((teller, reason, note))
 
     @abc.abstractmethod
-    def is_program_validity(self, program_config: ProgramConfig) -> bool:
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
         raise NotImplementedError
 
     def run_test_config(self, model, params, prog_config, pred_config,

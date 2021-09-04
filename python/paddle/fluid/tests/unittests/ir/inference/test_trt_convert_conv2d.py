@@ -21,7 +21,7 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 
 class TrtConvertConv2dTest(TrtLayerAutoScanTest):
-    def is_program_validity(self, program_config: ProgramConfig) -> bool:
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
         # TODO: This is just the example to remove the wrong attrs.
         inputs = program_config.inputs
         weights = program_config.weights
@@ -109,10 +109,6 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
                                                              dics))
                                     },
                                     outputs=["relu_output_data"])
-
-                                # if program is invalid, we should skip that cases.
-                                if not self.is_program_validity(program_config):
-                                    continue
 
                                 yield program_config
 

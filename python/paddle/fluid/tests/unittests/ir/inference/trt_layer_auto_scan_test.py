@@ -164,6 +164,10 @@ class TrtLayerAutoScanTest(AutoScanTest):
         status = True
 
         for prog_config in self.sample_program_configs():
+            # if program is invalid, we should skip that cases.
+            if not self.is_program_valid(prog_config):
+                continue
+
             model, params = create_fake_model(prog_config)
             if quant:
                 model, params = create_quant_model(model, params)
@@ -208,6 +212,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                                           inference_config_str(pred_config))
                         else:
                             raise NotImplementedError
+                        break
 
                 try:
                     results.append(
