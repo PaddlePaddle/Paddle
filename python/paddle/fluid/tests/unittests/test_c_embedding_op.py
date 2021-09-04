@@ -67,5 +67,26 @@ class TestCEmbeddingOp(OpTest):
             self.check_grad_with_place(core.NPUPlace(0), ['W'], 'Out')
 
 
+class TestCEmbeddingOpDuplicate(TestCEmbeddingOp):
+    def setUp(self):
+        self.op_type = "c_embedding"
+        table = np.random.random((17, 64)).astype("float32")
+        ids = np.random.randint(low=0, high=17 * 2, size=(2, 4)).astype("int32")
+        self.start_index = 10
+        ids[0][1] = 12
+        ids[0][2] = 12
+        ids[1][2] = 12
+        ids[1][3] = 12
+        self.end_index = self.start_index + 17
+
+        self.inputs = {'W': table, 'Ids': ids}
+        np_out = get_c_embedding(self.start_index, self.end_index, table, ids)
+        self.outputs = {'Out': np_out.reshape((2, 4, 64))}
+        self.attrs = {'start_index': self.start_index}
+
+        if core.is_compiled_with_npu():
+            self.__class__.use_npu = True
+
+
 if __name__ == "__main__":
     unittest.main()
