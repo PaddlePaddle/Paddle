@@ -40,7 +40,7 @@ void GetIdsEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
     if (local >= 0 && local < height) {
       // printf("local:%ld\n", local);
       for (int64_t w = 0; w < width; w++) {
-        out[i * width + w] = table[local * width + w] + static_cast<TData>(1);
+        out[i * width + w] = table[local * width + w];
       }
     }
   }
@@ -58,8 +58,7 @@ class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
     VLOG(10) << "table_dims:" << table_t->dims();
 
     const T* table_data = table_t->data<T>();
-    auto out_shape = framework::make_ddim({ids_t->numel(), table_t->dims()[1]});
-    T* output_data = output_t->mutable_data<T>(out_shape, ctx.GetPlace());
+    T* output_data = output_t->mutable_data<T>(ctx.GetPlace());
 
     const int64_t height = table_t->dims()[0];
     const int64_t width = table_t->dims()[1];
