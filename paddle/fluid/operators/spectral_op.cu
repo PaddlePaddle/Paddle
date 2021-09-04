@@ -630,7 +630,7 @@ void exec_fft(const DeviceContext& ctx, Tensor* out, const Tensor* X,
   output.mutable_data<To>(tensor_place);
 
   // Create the transform plan (either from cache or locally)
-  const auto value_type = framework::ToRealType(input.type());
+  const auto value_type = framework::IsComplexType(input.type())?framework::ToRealType(input.type()):input.type();
   auto fft_type = GetFFTTransformType(input.type(), output.type());
   PlanKey Key(framework::vectorize(input.dims()),
               framework::vectorize(output.dims()), signal_size, fft_type,
@@ -747,6 +747,11 @@ void exec_normalization(const DeviceContext& ctx, const Tensor* in, Tensor* out,
   }
 }
 
+// TODO: fill other half tensor with conjugate symmetry
+template <typename DeviceContext, typename T>
+void fill_with_conj_symmetry(Tensor* in, const std::vector<int64_t> axes) {
+}
+
 }  // anonymous namespace
 
 // Use the optimized path to perform single R2C or C2R if transformation dim is
@@ -839,11 +844,32 @@ struct FFTC2RFunctor<platform::CUDADeviceContext, Ti, To> {
   }
 };
 
+// n dimension real to complex FFT use cufft lib
 template <typename Ti, typename To>
 struct FFTR2CFunctor<platform::CUDADeviceContext, Ti, To> {
   void operator()(const platform::CUDADeviceContext& ctx, const Tensor* X,
                   Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward, bool onesided) {}
+                  FFTNormMode normalization, bool forward, bool onesided) {
+    // Step1: R2C transform on the last dimension
+    framework::Tensor* r2c_out = out; 
+    const std::vector<int64_t> last_dim{axes.back()};
+    std::vector<int64_t> out_dims = framework::vectorize(out->dims());
+    exec_fft<platform::CUDADeviceContext, Ti, To>(ctx, r2c_out, X, out_dims, last_dim, forward);
+
+    // Step2: C2C transform on the remaining dimension
+    framework::Tensor c2c_out;
+    if (axes.size() > 1) {
+      c2c_out.mutable_data<To>(out->dims(), ctx.GetPlace());
+      std::vector<int64_t>  remain_dim(axes.begin(), axes.end()-1);
+      FFTC2CFunctor<platform::CUDADeviceContext, To, To> fft_c2c_func;
+      fft_c2c_func(ctx, r2c_out, &c2c_out, remain_dim, FFTNormMode::none, forward);
+    }
+
+    const auto in_sizes = framework::vectorize(X->dims());
+    framework::Tensor* norm_tensor = axes.size()>1 ? &c2c_out : r2c_out;
+    exec_normalization<platform::CUDADeviceContext, To>(
+        ctx, norm_tensor, out, normalization, in_sizes, axes);
+  }
 };
 
 }  // namespace operators
@@ -860,7 +886,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FFTC2CGradKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
-    fft_c2r, ops::FFTC2RKernel<paddle::platform::CUDADeviceContext, float>,
+    fft_c2r, 
+    ops::FFTC2RKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FFTC2RKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
@@ -869,10 +896,12 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FFTC2RGradKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
-    fft_r2c, ops::FFTR2CKernel<paddle::platform::CUDADeviceContext, float>,
+    fft_r2c, 
+    ops::FFTR2CKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FFTR2CKernel<paddle::platform::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
     fft_r2c_grad,
     ops::FFTR2CGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FFTR2CGradKernel<paddle::platform::CUDADeviceContext, double>);
+
