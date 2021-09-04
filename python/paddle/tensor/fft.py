@@ -409,7 +409,7 @@ def fftn_c2r(x, s, axes, norm, forward):
         raise ValueError(
             "Unexpected norm: {}. Norm should be forward, backward or ortho".
             form(norm))
-    s = list(s)
+    s = list(s) if s is not None else s
     rank = x.ndim
     if axes is None:
         if s is None:

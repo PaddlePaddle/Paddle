@@ -22,6 +22,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/operators/conj_op.h"
 #include "paddle/fluid/operators/spectral_op.h"
 #include "paddle/fluid/operators/transpose_op.h"
 
@@ -257,6 +258,7 @@ class CuFFTConfig {
         /* onembed */ nullptr, /* base_ostride */ 1, /* odist */ 1, exec_type,
         batch, &ws_size_t));
 #else
+
     CUFFT_CHECK(cufftXtMakePlanMany(
         plan(), signal_ndim, signal_sizes.data(),
         /* inembed */ nullptr, /* base_istride */ 1, /* idist */ 1, itype,
@@ -450,10 +452,7 @@ class PlanLRUCache {
 // Execute a pre-planned transform
 static void exec_cufft_plan(const CuFFTConfig& config, void* in_data,
                             void* out_data, bool forward) {
-  std::cout << "config address:" << &config << std::endl;
   auto& plan = config.plan();
-  std::cout << "inside exec_cufft_plan ==============--------" << std::endl;
-// std::cout<<"plan ==============--------"<< *plan << std::endl;
 #ifdef __HIPCC__
   auto value_type = config.data_type();
   if (value_type == framework::proto::VarType::FP32) {
@@ -472,8 +471,7 @@ static void exec_cufft_plan(const CuFFTConfig& config, void* in_data,
       case FFTTransformType::C2R: {
         CUFFT_CHECK(hipfftExecC2R(plan, static_cast<hipfftComplex*>(in_data),
                                   static_cast<hipfftReal*>(out_data)));
-        std::cout << "inside FFTTransformType ==============--------"
-                  << std::endl;
+        << std::endl;
         return;
       }
     }
@@ -502,17 +500,16 @@ static void exec_cufft_plan(const CuFFTConfig& config, void* in_data,
   PADDLE_THROW(platform::errors::InvalidArgument(
       "hipFFT only support transforms of type float32 and float64"));
 #else
-  std::cout << "after __HIPCC__ ==============--------" << std::endl;
-  std::cout << "plan: " << plan << std::endl;
-  std::cout << "input pointer: " << in_data << std::endl;
-  std::cout << "output pointer: " << out_data << std::endl;
+  std::cout << "input pointer: " << in_data << " and "
+            << (reinterpret_cast<size_t>(in_data) % 16) << std::endl;
+  std::cout << "output pointer: " << out_data << " and "
+            << (reinterpret_cast<size_t>(out_data) % 16) << std::endl;
   size_t ws = 0;
   cufftGetSize(plan, &ws);
   std::cout << "workspace size: " << ws << std::endl;
 
   CUFFT_CHECK(cufftXtExec(plan, in_data, out_data,
                           forward ? CUFFT_FORWARD : CUFFT_INVERSE));
-  std::cout << "end end end __HIPCC__ end ==============--------" << std::endl;
 #endif
 }
 
@@ -669,7 +666,31 @@ void exec_fft(const DeviceContext& ctx, Tensor* out, const Tensor* X,
   CUFFT_CHECK(cufftSetWorkArea(plan, workspace_tensor.data<To>()));
 
   // execute transform plan
-  exec_cufft_plan(*config, input.data<void>(), output.data<void>(), forward);
+  if (fft_type == FFTTransformType::C2R && forward) {
+    forward = false;
+    framework::Tensor input_conj(input.type());
+    input_conj.mutable_data<Ti>(input.dims(), ctx.GetPlace());
+    platform::ForRange<DeviceContext> for_range(ctx, input.numel());
+    math::ConjFunctor<Ti> functor(input.data<Ti>(), input.numel(),
+                                  input_conj.data<Ti>());
+    for_range(functor);
+    exec_cufft_plan(*config, input_conj.data<void>(), output.data<void>(),
+                    forward);
+  } else if (fft_type == FFTTransformType::R2C && !forward) {
+    forward = true;
+    framework::Tensor out_conj(output.type());
+    out_conj.mutable_data<To>(output.dims(), ctx.GetPlace());
+    exec_cufft_plan(*config, input.data<void>(), out_conj.data<void>(),
+                    forward);
+
+    platform::ForRange<DeviceContext> for_range(ctx, output.numel());
+    math::ConjFunctor<To> functor(out_conj.data<To>(), output.numel(),
+                                  output.data<To>());
+    for_range(functor);
+  } else {
+    exec_cufft_plan(*config, input.data<void>(), output.data<void>(), forward);
+  }
+
   // Inverting output by reshape and transpose to original batch and dimension
   output.Resize(framework::make_ddim(reshape_out_sizes));
   out->Resize(framework::make_ddim(out_sizes));
@@ -788,19 +809,23 @@ struct FFTC2RFunctor<platform::CUDADeviceContext, Ti, To> {
                   Tensor* out, const std::vector<int64_t>& axes,
                   FFTNormMode normalization, bool forward) {
     std::vector<int64_t> in_dims = framework::vectorize(X->dims());
-    // std::vector<int64_t> out_dims(in_dims.begin(), in_dims.end());
-    // out_dims[axes.back()] = out->dims();
     std::vector<int64_t> out_dims = framework::vectorize(out->dims());
 
     std::cout << "axes: " << framework::make_ddim(axes) << std::endl;
-    if (use_optimized_cufft_path(axes)) {
-      std::cout << "befor exec --------" << std::endl;
-      std::cout << "out dims: " << out->dims() << out->type() << std::endl;
-      std::cout << "in dims: " << X->dims() << X->type() << std::endl;
-      exec_fft<platform::CUDADeviceContext, Ti, To>(ctx, out, X, out_dims, axes,
-                                                    forward);
+    if (axes.size() == 1) {
+      std::cout << "out dims: " << out->dims() << "dtype: " << out->type()
+                << std::endl;
+      std::cout << "in dims: " << X->dims() << "dtype: " << X->type()
+                << std::endl;
+      framework::Tensor x_copy(X->type());
+      x_copy.mutable_data<Ti>(X->dims(), ctx.GetPlace());
+      framework::TensorCopy(*X, ctx.GetPlace(), &x_copy);
+      std::cout << "copy done " << std::endl;
+      exec_fft<platform::CUDADeviceContext, Ti, To>(ctx, out, &x_copy, out_dims,
+                                                    axes, forward);
     } else {
       framework::Tensor temp_tensor;
+      temp_tensor.mutable_data<Ti>(X->dims(), ctx.GetPlace());
       const std::vector<int64_t> dims(axes.begin(), axes.end() - 1);
 
       FFTC2CFunctor<platform::CUDADeviceContext, Ti, Ti> c2c_functor;
