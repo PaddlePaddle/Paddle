@@ -48,8 +48,9 @@ class CEmbeddingOp : public framework::OperatorWithKernel {
     }
 
     // check valid
-    const int64_t height = table_dims()[0];
-    const int64_t width = table_dims()[1];
+    const int64_t height = table_dims[0];
+    const int64_t width = table_dims[1];
+    const int64_t start_idx = ctx->Attrs().Get<int64_t>("start_index");
 
     PADDLE_ENFORCE_EQ(
         (height >= 0 && width >= 0 && start_idx >= 0), true,
@@ -122,12 +123,13 @@ class CEmbeddingOpGrad : public framework::OperatorWithKernel {
     ctx->SetOutputDim(framework::GradVarName("W"), table_dims);
 
     // check valid
-    PADDLE_ENFORCE_EQ(table_dims().size(), 2,
+    PADDLE_ENFORCE_EQ(table_dims.size(), 2,
                       platform::errors::InvalidArgument(
                           "npu only accept the dims of table_t == 2"));
 
-    const int64_t height = table_dims()[0];
-    const int64_t width = table_dims()[1];
+    const int64_t start_idx = ctx->Attrs().Get<int64_t>("start_index");
+    const int64_t height = table_dims[0];
+    const int64_t width = table_dims[1];
 
     PADDLE_ENFORCE_EQ(
         (height >= 0 && width >= 0 && start_idx >= 0), true,
