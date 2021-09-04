@@ -48,9 +48,7 @@ ExternalProject_Add(
     ${EXTERNAL_PROJECT_LOG_ARGS}
     PREFIX                ${PSLIB_SOURCE_DIR}
     DOWNLOAD_DIR          ${PSLIB_DOWNLOAD_DIR}
-    #DOWNLOAD_COMMAND      wget --no-check-certificate ${PSLIB_URL} -c -q -O ${PSLIB_NAME}.tar.gz
-    #DOWNLOAD_COMMAND      cp /yaoxuefeng/repos/pslib_82/baidu/paddlepaddle/pslib/pslib.tar.gz .
-    DOWNLOAD_COMMAND      cp /yaoxuefeng/repos/pslib_rdma_tmp/baidu/paddlepaddle/pslib/pslib.tar.gz .
+    DOWNLOAD_COMMAND      wget --no-check-certificate ${PSLIB_URL} -c -q -O ${PSLIB_NAME}.tar.gz
                           && tar zxvf ${PSLIB_NAME}.tar.gz
     DOWNLOAD_NO_PROGRESS  1
     UPDATE_COMMAND        ""

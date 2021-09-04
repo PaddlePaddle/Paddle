@@ -28,8 +28,7 @@ SET_PROPERTY(TARGET crypto PROPERTY IMPORTED_LOCATION ${OPENSSL_CRYPTO_LIBRARY})
 SET(BRPC_SOURCES_DIR ${THIRD_PARTY_PATH}/brpc)
 SET(BRPC_INSTALL_DIR ${THIRD_PARTY_PATH}/install/brpc)
 SET(BRPC_INCLUDE_DIR "${BRPC_INSTALL_DIR}/include" CACHE PATH "brpc include directory." FORCE)
-SET(BRPC_LIBRARIES "${BRPC_INSTALL_DIR}/lib/libbrpc.so" CACHE FILEPATH "brpc library." FORCE)
-SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_RPATH}" "${BRPC_INSTALL_DIR}/lib")
+SET(BRPC_LIBRARIES "${BRPC_INSTALL_DIR}/lib/libbrpc.a" CACHE FILEPATH "brpc library." FORCE)
 
 INCLUDE_DIRECTORIES(${BRPC_INCLUDE_DIR})
 
@@ -43,8 +42,6 @@ ExternalProject_Add(
         # TODO(gongwb): change to de newst repo when they changed
         GIT_REPOSITORY  "https://github.com/wangjiawei04/brpc"
         GIT_TAG         "e203afb794caf027da0f1e0776443e7d20c0c28e"
-        #GIT_REPOSITORY  "https://github.com/apache/incubator-brpc.git"
-        #GIT_TAG         "62240fea920006dddfc2cb58b98a15e323ed499f"
         PREFIX          ${BRPC_SOURCES_DIR}
         UPDATE_COMMAND  ""
         CMAKE_ARGS      -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
@@ -69,7 +66,7 @@ ExternalProject_Add(
 )
 # ADD_DEPENDENCIES(extern_brpc protobuf ssl crypto leveldb gflags glog gtest snappy)
 ADD_DEPENDENCIES(extern_brpc protobuf ssl crypto leveldb gflags glog snappy)
-ADD_LIBRARY(brpc SHARED IMPORTED GLOBAL)
+ADD_LIBRARY(brpc STATIC IMPORTED GLOBAL)
 SET_PROPERTY(TARGET brpc PROPERTY IMPORTED_LOCATION ${BRPC_LIBRARIES})
 ADD_DEPENDENCIES(brpc extern_brpc)
 
