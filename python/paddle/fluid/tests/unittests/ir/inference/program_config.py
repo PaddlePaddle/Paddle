@@ -85,8 +85,7 @@ class ProgramConfig:
                 return np.array([1]).astype(np.float32)
 
             self.weights = {
-                "place_holder_weight": TensorConfig(
-                    shape=[1], data_gen=generate_weight)
+                "place_holder_weight": TensorConfig(data_gen=generate_weight)
             }
         else:
             self.weights = weights

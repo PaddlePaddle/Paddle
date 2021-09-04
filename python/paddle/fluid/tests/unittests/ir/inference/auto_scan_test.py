@@ -39,6 +39,7 @@ class SkipReasons(enum.Enum):
 
 class AutoScanTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
+        np.random.seed(1024)
         paddle.enable_static()
         super(AutoScanTest, self).__init__(methodName)
         self.skip_cases = []
