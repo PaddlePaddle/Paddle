@@ -40,7 +40,7 @@ def get_c_embedding(start, end, table, ids):
 class TestCast(OpTest):
     def setUp(self):
         self.set_npu()
-        self.place = fluid.NPUPlace(1)
+        self.place = fluid.NPUPlace(0)
         self.dtype = np.float32
         np.random.seed(SEED)
         self.op_type = "c_embedding"

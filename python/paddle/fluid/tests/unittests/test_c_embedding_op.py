@@ -49,10 +49,14 @@ class TestCEmbeddingOp(OpTest):
     def test_check_output_gpu(self):
         if core.is_compiled_with_cuda():
             self.check_output_with_place(core.CUDAPlace(0))
+        elif core.is_compiled_with_npu():
+            self.check_output_with_place(core.NPUPlace(0))
 
     def test_check_grad_gpu(self):
         if core.is_compiled_with_cuda():
             self.check_grad_with_place(core.CUDAPlace(0), ['W'], 'Out')
+        elif core.is_compiled_with_npu():
+            self.check_grad_with_place(core.NPUPlace(0), ['W'], 'Out')
 
 
 if __name__ == "__main__":
