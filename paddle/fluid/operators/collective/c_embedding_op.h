@@ -38,6 +38,7 @@ void GetIdsEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
     int64_t local = id - start_idx;
 
     if (local >= 0 && local < height) {
+      // printf("local:%ld\n", local);
       for (int64_t w = 0; w < width; w++) {
         out[i * width + w] = table[local * width + w];
       }
@@ -57,8 +58,7 @@ class CEmbeddingOpCPUKernel : public framework::OpKernel<T> {
     VLOG(10) << "table_dims:" << table_t->dims();
 
     const T* table_data = table_t->data<T>();
-    auto out_shape =
-        framework::make_ddim({ids_t->dims()[0], table_t->dims()[1]});
+    auto out_shape = framework::make_ddim({ids_t->numel(), table_t->dims()[1]});
     T* output_data = output_t->mutable_data<T>(out_shape, ctx.GetPlace());
 
     const int64_t height = table_t->dims()[0];
@@ -87,6 +87,7 @@ void UpdateEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
     int64_t local = id - start_idx;
 
     if (local >= 0 && local < height) {
+      // printf("local:%ld\n", local);
       for (int64_t w = 0; w < width; w++) {
         table[local * width + w] += out[i * width + w];
       }
@@ -106,6 +107,7 @@ class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
 
     T* table_grad_data =
         table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
+
     VLOG(10) << "table_dims:" << table_t->dims()
              << ", table_t memory_size:" << table_t->memory_size()
              << ", table_grad_t memory_size:" << table_grad_t->memory_size()

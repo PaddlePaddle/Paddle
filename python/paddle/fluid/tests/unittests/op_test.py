@@ -1190,6 +1190,8 @@ class OpTest(unittest.TestCase):
 
                 expect = self.outputs[out_name]
                 expect_t = expect[0] if isinstance(expect, tuple) else expect
+                print("out_name:", out_name, "actual_t:", actual_t)
+                print("out_name:", out_name, "expect_t:", expect_t)
 
                 if actual_t.dtype == np.uint16 and expect_t.dtype in [
                         np.float32, np.float64
