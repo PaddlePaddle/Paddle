@@ -21,54 +21,36 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
-
-// aligned vector generates vectorized load/store on CUDA
-template <typename T, int Size>
-struct alignas(sizeof(T) * Size) AlignedVector {
-  T val[Size];
-};
-
-template <typename T>
-inline int VectorizedSize(const T* pointer) {
-  uint64_t address = reinterpret_cast<uint64_t>(pointer);
-  constexpr int vec4 = std::alignment_of<AlignedVector<T, 4>>::value;  // NOLINT
-  if (address % vec4 == 0) {
-    return 4;
-  }
-  return 1;
-}
 
 #if defined(__NVCC__) || defined(__HIPCC__)
 template <typename T, typename MaskType, int VecSize>
 __global__ void DropoutGradCUDAKernel(const T* dout, const MaskType* mask,
                                       const T factor, const int64_t size,
                                       T* dx) {
+  using LoadT = platform::AlignedVector<T, VecSize>;
+  using MaskLoadT = platform::AlignedVector<MaskType, VecSize>;
+
   int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
-
-  using LoadT = AlignedVector<T, VecSize>;
-  using MaskLoadT = AlignedVector<MaskType, VecSize>;
-
   for (int i = idx * VecSize; i < size; i += blockDim.x * gridDim.x * VecSize) {
-    T dout_vec[VecSize];
-    LoadT* dout_value = reinterpret_cast<LoadT*>(&dout_vec);
-    *dout_value = *reinterpret_cast<const LoadT*>(&dout[i]);
+    LoadT dout_val;
+    platform::Load<T, VecSize>(&dout[i], &dout_val);
 
-    MaskType mask_vec[VecSize];
-    MaskLoadT* mask_value = reinterpret_cast<MaskLoadT*>(&mask_vec);
-    *mask_value = *reinterpret_cast<const MaskLoadT*>(&mask[i]);
+    MaskLoadT mask_val;
+    platform::Load<MaskType, VecSize>(&mask[i], &mask_val);
 
-    T dx_vec[VecSize];
+    LoadT dx_val;
 
 #pragma unroll
-    for (int ii = 0; ii < VecSize; ii++) {
-      dx_vec[ii] = dout_vec[ii] * static_cast<T>(mask_vec[ii]) * factor;
+    for (int j = 0; j < VecSize; j++) {
+      dx_val[j] = dout_val[j] * static_cast<T>(mask_val[j]) * factor;
     }
 
-    *(reinterpret_cast<LoadT*>(&dx[i])) = *reinterpret_cast<LoadT*>(&dx_vec[0]);
+    platform::Store<T, VecSize>(dx_val, &dx[i]);
   }
 }
 #endif
@@ -187,7 +169,7 @@ class DropoutGradKernel : public framework::OpKernel<T> {
         if (dropout_prob == 1.0f) {
           dX.device(place) = static_cast<T>(0) * dY;
         } else {
-          int vec_size = VectorizedSize<T>(grad_y->data<T>());
+          int vec_size = platform::GetVectorizedSize<T>(grad_y->data<T>());
           if (platform::is_gpu_place(context.GetPlace()) && vec_size == 4 &&
               size % 4 == 0) {
 #if defined(__NVCC__) || defined(__HIPCC__)
