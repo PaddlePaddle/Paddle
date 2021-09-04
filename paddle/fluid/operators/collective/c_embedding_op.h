@@ -39,7 +39,7 @@ void GetIdsEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
 
     if (local >= 0 && local < height) {
       for (int64_t w = 0; w < width; w++) {
-        out[i * height + w] = table[local * height + w];
+        out[i * width + w] = table[local * width + w];
       }
     }
   }
@@ -88,7 +88,7 @@ void UpdateEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
 
     if (local >= 0 && local < height) {
       for (int64_t w = 0; w < width; w++) {
-        table[local * height + w] += out[i * height + w];
+        table[local * width + w] += out[i * width + w];
       }
     }
   }
@@ -101,11 +101,17 @@ class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
     const int64_t start_idx = context.Attr<int64_t>("start_index");
     auto ids_t = context.Input<LoDTensor>("Ids");
     auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
-    auto table_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+    auto table_t = context.Input<LoDTensor>("W");
+    auto table_grad_t = context.Output<LoDTensor>(framework::GradVarName("W"));
 
-    VLOG(10) << "table_dims:" << table_t->dims();
+    T* table_grad_data =
+        table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
+    VLOG(10) << "table_dims:" << table_t->dims()
+             << ", table_t memory_size:" << table_t->memory_size()
+             << ", table_grad_t memory_size:" << table_grad_t->memory_size()
+             << ", start_index:" << start_idx;
 
-    T* table_data = table_t->data<T>();
+    memset(table_grad_data, 0, table_grad_t->memory_size());
     const T* d_output_data = d_output_t->data<T>();
 
     const int64_t height = table_t->dims()[0];
@@ -114,10 +120,10 @@ class CEmbeddingGradOpCPUKernel : public framework::OpKernel<T> {
     const auto& index_type = ids_t->type();
     if (index_type == framework::proto::VarType::INT32) {
       UpdateEmbedding(ids_t->data<int32_t>(), ids_t->numel(), start_idx,
-                      table_data, height, width, d_output_data);
+                      table_grad_data, height, width, d_output_data);
     } else if (index_type == framework::proto::VarType::INT64) {
       UpdateEmbedding(ids_t->data<int64_t>(), ids_t->numel(), start_idx,
-                      table_data, height, width, d_output_data);
+                      table_grad_data, height, width, d_output_data);
     } else {
       PADDLE_THROW(platform::errors::Unavailable(
           "c_embedding only support int32 or int64."));

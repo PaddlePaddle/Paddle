@@ -150,8 +150,11 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
   const int64_t start_idx = context.Attr<int64_t>("start_index");
   auto ids_t = context.Input<LoDTensor>("Ids");
   auto d_output_t = context.Input<LoDTensor>(framework::GradVarName("Out"));
-  auto table_t = context.Input<LoDTensor>("W");
+  auto table_t = context.Input<Tensor>("W");
   auto table_grad_t = context.Output<LoDTensor>(framework::GradVarName("W"));
+
+  VLOG(10) << "ids_t:" << ids_t << ", d_output_t:" << d_output_t
+           << ", table_t:" << table_t << ", table_grad_t" << table_grad_t;
 
   PADDLE_ENFORCE_EQ(table_t->dims()[1] % 64, 0, "must align by 64");
   VLOG(10) << "grad debug check 1";
@@ -162,8 +165,8 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
 
   // convert ids_t to local valid
   framework::Tensor ids_t_local;
-  ids_t_local.mutable_data<int>(ids_t->dims(), context.GetPlace());
-  shard_index<int>(*table_t, *ids_t, start_idx, ids_t_local, context);
+  ids_t_local.mutable_data<TIds>(ids_t->dims(), context.GetPlace());
+  shard_index<TIds>(*table_t, *ids_t, start_idx, ids_t_local, context);
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
   VLOG(10) << "grad debug check 2";
 
@@ -188,16 +191,21 @@ void NPUUpdateEmbedding(const framework::ExecutionContext &context) {
       NpuOpRunner("ScatterAdd", {table_t_pad, ids_t_local, *d_output_t},
                   {table_t_pad}, {{"use_locking", true}});
   runner_scatter.Run(stream);
+  PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+  VLOG(10) << "grad debug check 4";
 
   // copy table_t_pad to table_t
+  VLOG(10) << "dims:" << table_t->dims();
+  table_t->check_memory_size();
   const size_t mem_size = table_t->memory_size();
+  VLOG(10) << ", mem_size:" << mem_size << ", pad_data:" << pad_data;
   T *dst = table_grad_t->mutable_data<T>(table_t->dims(), context.GetPlace());
   VLOG(10) << "dst:" << dst << ", mem_size:" << mem_size
            << ", pad_data:" << pad_data;
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtMemcpyAsync(
       dst, mem_size, pad_data, mem_size, ACL_MEMCPY_DEVICE_TO_DEVICE, stream));
   PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
-  VLOG(10) << "grad debug check 4";
+  VLOG(10) << "grad debug check 5";
 }
 
 template <typename T>
