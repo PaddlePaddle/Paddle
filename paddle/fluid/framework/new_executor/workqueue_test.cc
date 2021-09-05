@@ -81,3 +81,18 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   EXPECT_EQ(finished.load(), true);
   EXPECT_EQ(counter.load(), kLoopNum * kExternalLoopNum);
 }
+
+TEST(WorkQueue, TestWorkQueueGroup) {
+  using paddle::framework::WorkQueueOptions;
+  using paddle::framework::WorkQueueGroup;
+  using paddle::framework::CreateWorkQueueGroup;
+  // CreateMultiThreadedWorkQueue
+  WorkQueueOptions sq_options;
+  sq_options.num_threads = 1;
+  sq_options.track_task = true;
+  WorkQueueOptions mq_options;
+  mq_options.num_threads = 10;
+  mq_options.track_task = true;
+  auto queue_group = CreateWorkQueueGroup({sq_options, mq_options});
+  // NumThreads
+}

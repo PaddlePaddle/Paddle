@@ -44,9 +44,12 @@ class CounterGuard {
     other.counter_holder_ = nullptr;
   }
 
-  // copy constructor deleted, we define this for std::function template
-  // never use it
-  CounterGuard(const CounterGuard&) { abort(); }
+  // copy constructor deleted, we define this for std::function
+  // never use it directly
+  CounterGuard(const CounterGuard& other)
+      : counter_holder_(other.counter_holder_) {
+    counter_holder_->AddCounter();
+  }
 
   CounterGuard& operator=(const CounterGuard&) = delete;
 

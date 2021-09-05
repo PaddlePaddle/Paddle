@@ -15,7 +15,6 @@
 #include "paddle/fluid/framework/new_executor/event_count.h"
 #include "paddle/fluid/framework/new_executor/run_queue.h"
 #include "paddle/fluid/framework/new_executor/thread_environment.h"
-#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -68,20 +67,18 @@ class ThreadPoolTempl {
   typedef typename Environment::Task Task;
   typedef RunQueue<Task, 1024> Queue;
 
-  ThreadPoolTempl(int num_threads, bool allow_spinning, bool track_task,
-                  TaskTracker* tracker, Environment env = Environment())
+  ThreadPoolTempl(int num_threads, bool allow_spinning,
+                  Environment env = Environment())
       : env_(env),
         num_threads_(num_threads),
         allow_spinning_(allow_spinning),
-        tracker_ownship_(track_task && tracker == nullptr),
         thread_data_(num_threads),
         global_steal_partition_(EncodePartition(0, num_threads_)),
         blocked_(0),
         spinning_(0),
         done_(false),
         cancelled_(false),
-        ec_(num_threads_),
-        tracker_(tracker) {
+        ec_(num_threads_) {
     // Calculate coprimes of all numbers [1, num_threads].
     // Coprimes are used for random walks over all threads in Steal
     // and NonEmptyQueueIndex. Iteration is based on the fact that if we take
@@ -100,11 +97,6 @@ class ThreadPoolTempl {
       SetStealPartition(i, EncodePartition(0, num_threads_));
       thread_data_[i].thread.reset(
           env_.CreateThread([this, i]() { WorkerLoop(i); }));
-    }
-    // TaskTracker
-    assert(!track_task && tracker == nullptr);
-    if (track_task && tracker == nullptr) {
-      tracker_ = new TaskTracker();
     }
   }
 
@@ -128,11 +120,6 @@ class ThreadPoolTempl {
     for (size_t i = 0; i < thread_data_.size(); ++i) {
       thread_data_[i].thread.reset();
     }
-    // TaskTracker
-    if (tracker_ownship_) {
-      delete tracker_;
-    }
-    tracker_ = nullptr;
   }
 
   void SetStealPartitions(
@@ -154,13 +141,6 @@ class ThreadPoolTempl {
   }
 
   void AddTaskWithHint(std::function<void()> fn, int start, int limit) {
-    if (tracker_ != nullptr) {
-      fn = [
-        task = std::move(fn), raii = CounterGuard<TaskTracker>(tracker_)
-      ]() mutable {
-        task();
-      };
-    }
     Task t = env_.CreateTask(fn);
     PerThread* pt = GetPerThread();
     if (pt->pool == this) {
@@ -190,13 +170,6 @@ class ThreadPoolTempl {
     } else {
       env_.ExecuteTask(t);  // Push failed, execute directly.
     }
-  }
-
-  void WaitQueueEmpty() {
-    if (nullptr == tracker_) {
-      abort();
-    }
-    tracker_->WaitTaskNumToZero();
   }
 
   void Cancel() {
@@ -288,7 +261,6 @@ class ThreadPoolTempl {
   Environment env_;
   const int num_threads_;
   const bool allow_spinning_;
-  const bool tracker_ownship_;
   std::vector<ThreadData> thread_data_;
   std::vector<std::vector<unsigned>> all_coprimes_;
   unsigned global_steal_partition_;
@@ -297,7 +269,6 @@ class ThreadPoolTempl {
   std::atomic<bool> done_;
   std::atomic<bool> cancelled_;
   EventCount ec_;
-  TaskTracker* tracker_;
 
   // Main worker thread loop.
   void WorkerLoop(int thread_id) {

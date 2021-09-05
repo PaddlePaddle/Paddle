@@ -43,7 +43,7 @@ class WorkQueue {
   // interface, otherwise will abort()
   virtual void WaitQueueEmpty() = 0;
 
-  virtual size_t NumThreads() = 0;
+  virtual size_t NumThreads() const = 0;
 
  protected:
   WorkQueueOptions options_;
@@ -51,22 +51,27 @@ class WorkQueue {
 
 class WorkQueueGroup {
  public:
-  explicit WorkQueueGroup(const std::vector<WorkQueueOptions>& queue_options);
+  explicit WorkQueueGroup(const std::vector<WorkQueueOptions>& queues_options)
+      : queues_options_(queues_options) {}
 
-  void AddTask(size_t queue_idx, std::function<void()> fn) {
-    queues_[queue_idx]->AddTask(std::move(fn));
-  }
+  WorkQueueGroup(const WorkQueueGroup&) = delete;
 
-  void WaitQueueGroupEmpty();
+  WorkQueueGroup& operator=(const WorkQueueGroup&) = delete;
 
-  size_t QueueNumThreads(size_t queue_idx) {
-    return queues_[queue_idx]->NumThreads();
-  }
+  virtual ~WorkQueueGroup() = default;
 
-  size_t GroupNumThreads();
+  virtual void AddTask(size_t queue_idx, std::function<void()> fn) = 0;
 
- private:
-  std::vector<WorkQueue*> queues_;  // owned by group
+  // set WorkQueueOptions.track_task = true for at least one of queues
+  // before call this interface, otherwise will abort()
+  virtual void WaitQueueGroupEmpty() = 0;
+
+  virtual size_t QueueNumThreads(size_t queue_idx) const = 0;
+
+  virtual size_t QueueGroupNumThreads() const = 0;
+
+ protected:
+  std::vector<WorkQueueOptions> queues_options_;
 };
 
 std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue(
@@ -74,6 +79,9 @@ std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue(
 
 std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(
     const WorkQueueOptions& options);
+
+std::unique_ptr<WorkQueueGroup> CreateWorkQueueGroup(
+    const std::vector<WorkQueueOptions>& queues_options);
 
 }  // namespace framework
 }  // namespace paddle
