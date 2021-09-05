@@ -424,6 +424,18 @@ class LocalSGD(Collective):
                 attrs={self.op_role_key: OpRole.Optimize})
 
 
+class SingleProcessMultiThread(GradAllReduce):
+    '''
+    '''
+
+    def __init__(self):
+        GradAllReduce.__init__(self, 1)
+        self.mode = "single_process_multi_thread"
+
+    def _transpile_startup_program(self):
+        block = self.startup_program.global_block()
+        block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
+
 class MultiThread(GradAllReduce):
     '''
     '''
