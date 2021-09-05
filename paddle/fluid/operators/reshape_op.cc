@@ -279,7 +279,8 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 Reshape Operator.
 

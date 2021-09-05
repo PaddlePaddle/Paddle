@@ -48,8 +48,8 @@ __device__ inline void VectorizeLarsUpdateMP(
     const int grid_stride, const int numel) {
   // As for multiple-precision, type T and MT cannot be more than fp16 or fp32,
   // Then, the maximum data IO size could be set to 4.
-  using VecType = paddle::platform::CudaAlignedVector<T, 4>;
-  using VecMType = paddle::platform::CudaAlignedVector<MT, 4>;
+  using VecType = paddle::platform::AlignedVector<T, 4>;
+  using VecMType = paddle::platform::AlignedVector<MT, 4>;
   int main = numel >> 2;
   int tail_offset = main << 2;
 
@@ -100,7 +100,7 @@ __device__ inline void VectorizeLarsUpdate(
     MT* __restrict__ v_out, const MT* __restrict__ p, const MT mu, MT local_lr,
     const MT lars_weight_decay, const MT rescale_grad, const int tid,
     const int grid_stride, const int numel) {
-  using VecType = paddle::platform::CudaAlignedVector<MT, VesSize>;
+  using VecType = paddle::platform::AlignedVector<MT, VesSize>;
   int main = numel >> (VesSize >> 1);
   int tail_offset = main * VesSize;
 
