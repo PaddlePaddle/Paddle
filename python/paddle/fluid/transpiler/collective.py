@@ -436,6 +436,7 @@ class SingleProcessMultiThread(GradAllReduce):
         block = self.startup_program.global_block()
         block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
 
+
 class MultiThread(GradAllReduce):
     '''
     '''
