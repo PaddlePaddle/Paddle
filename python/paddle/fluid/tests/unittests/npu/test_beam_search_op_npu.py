@@ -79,6 +79,7 @@ class TestBeamSearchNPUOp(OpTest):
         self.check_output_with_place(self.place, atol=1e-3)
 
 
+"""
 class TestBeamSearchNPUOp2(TestBeamSearchNPUOp):
     def init_data(self):
         self.beam_size = 2
@@ -169,7 +170,53 @@ class TestBeamSearchNPUOp5(TestBeamSearchNPUOp):
         self.selected_ids = np.array([2, 7, 3, 1])[:, np.newaxis]
         self.selected_scores = np.array([0.9, 0.5, 0.9, 0.7])[:, np.newaxis]
         self.parent_idx = np.array([0, 1, 2, 3])
+"""
 
+
+class TestBeamSearchNPUOp6(TestBeamSearchNPUOp):
+    def init_data(self):
+        # prune beam search while pre_id of in all beams is end_id
+        self.beam_size = 2
+        self.is_accumulated = True
+        self.pre_ids = np.array([[0], [0], [0], [4]], dtype='int64')
+        self.ids = np.array([[4, 2], [7, 3], [3, 5], [8, 1]], dtype='int64')
+        self.lod = [[2, 2], [1, 1, 1, 1]]
+        self.out_lod = [[2, 2], [0, 0, 0, 2]]
+        self.offset_lod = [[0, 2, 4], [0, 0, 0, 0, 2]]
+        self.score = np.array(
+            [
+                [0.6, 0.9],
+                [0.5, 0.3],
+                [0.9, 0.5],
+                [0.6, 0.7],
+            ], dtype='float32')
+        self.pre_score = np.array([[0.1], [1.2], [0.5], [0.4]], dtype='float32')
+        self.selected_ids = np.array([8, 1])[:, np.newaxis]
+        self.selected_scores = np.array([0.6, 0.7])[:, np.newaxis]
+        self.parent_idx = np.array([3, 3])
+
+
+"""
+class TestBeamSearchNPUOp7(TestBeamSearchNPUOp):
+    def init_data(self):
+        # do beam search after prune
+        self.beam_size = 2
+        self.is_accumulated = True
+        self.pre_ids = np.array([[8], [1]], dtype='int64')
+        self.ids = np.array([[3, 5], [8, 1]], dtype='int64')
+        self.lod = [[2, 2], [0, 0, 0, 2]]
+        self.out_lod = [[0, 2], [1, 1]]
+        self.offset_lod = [[0, 0, 2], [0, 1, 2]]
+        self.score = np.array(
+            [
+                [0.9, 0.5],
+                [0.6, 0.7],
+            ], dtype='float32')
+        self.pre_score = np.array([[0.7], [0.6]], dtype='float32')
+        self.selected_ids = np.array([3, 1])[:, np.newaxis]
+        self.selected_scores = np.array([0.9, 0.7])[:, np.newaxis]
+        self.parent_idx = np.array([0, 1])
+"""
 
 if __name__ == '__main__':
     unittest.main()

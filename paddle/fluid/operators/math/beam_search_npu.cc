@@ -32,6 +32,16 @@ namespace math {
 template <typename T>
 class BeamSearchFunctor<platform::NPUDeviceContext, T> {
  public:
+  template <typename U>
+  void PrintTensor(const framework::Tensor& src,
+                   const platform::NPUDeviceContext& ctx) {
+    std::vector<U> vec(src.numel());
+    TensorToVector(src, ctx, &vec);
+    for (int i = 0; i < static_cast<int>(vec.size()); ++i) {
+      VLOG(3) << "vec[" << i << "] : " << vec[i];
+    }
+  }
+
   void operator()(const platform::NPUDeviceContext& ctx,
                   const framework::LoDTensor* pre_ids,
                   const framework::LoDTensor* pre_scores,
@@ -44,7 +54,31 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     auto abs_lod = framework::ToAbsOffset(scores->lod());
     auto& high_level = abs_lod[level];
 
-    int64_t num_seqs = scores->NumElements(level);
+    // construct seq_id to calculate parent_idx
+    int64_t num_seqs = 0;
+    std::vector<int> vector_seq_ids;
+    for (int64_t seq_id = 0;
+         seq_id < static_cast<int64_t>(scores->NumElements(level)); ++seq_id) {
+      int64_t seq_offset_start = abs_lod[level][seq_id];
+      int64_t seq_offset_end = abs_lod[level][seq_id + 1];
+      int64_t seq_offset_interval = seq_offset_end - seq_offset_start;
+      if (seq_offset_interval > 0) {
+        num_seqs++;
+      }
+      for (int64_t offset = seq_offset_start; offset < seq_offset_end;
+           ++offset) {
+        vector_seq_ids.push_back(static_cast<int>(seq_offset_start));
+      }
+    }
+
+    VLOG(3) << "yoki: scores";
+    PrintTensor<float>(*scores, ctx);
+
+    VLOG(3) << "yoki: num_seqs: " << num_seqs;
+    for (int i = 0; i < static_cast<int>(vector_seq_ids.size()); ++i) {
+      VLOG(3) << "vec[" << i << "] : " << vector_seq_ids[i];
+    }
+
     // size of the first beam is 1, others are equal to beam_size
     int64_t real_beam_size = static_cast<int64_t>(scores->dims()[0] / num_seqs);
     // K
@@ -58,12 +92,6 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
 
     int64_t total_length = num_seqs * beam_size;
     int64_t batch_size = static_cast<int64_t>(scores->dims()[0]);
-    selected_ids->mutable_data<int64_t>(framework::make_ddim({total_length, 1}),
-                                        place);
-    selected_scores->mutable_data<float>(
-        framework::make_ddim({total_length, 1}), place);
-    parent_idx->mutable_data<int64_t>(framework::make_ddim({total_length}),
-                                      place);
 
     // Step1: Define Tensors and Preprocess the situation that pre_id == end_id
 
@@ -282,6 +310,9 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
     tmp_indices.mutable_data<int>(ctx.GetPlace());
 
+    VLOG(3) << "yoki: cal_scores";
+    PrintTensor<float>(cal_scores, ctx);
+
     // run topk op
     NpuOpRunner runner_topk;
     runner_topk.SetType("TopKV2")
@@ -293,6 +324,9 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         .AddAttr("dim", -1)
         .AddAttr("largest", true);
     runner_topk.Run(stream);
+
+    VLOG(3) << "yoki: topk_scores";
+    PrintTensor<float>(topk_scores, ctx);
 
     // cast tmp_indices from int to float32 for Sort op
     Tensor cast_tmp_indices(framework::proto::VarType::FP32);
@@ -337,6 +371,9 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         "Select", {equal_end_ids, expand_pre_ids, ids_int32}, {cal_ids}, {});
     runner_select_equal_end_id.Run(stream);
 
+    VLOG(3) << "yoki: cal_ids";
+    PrintTensor<int>(cal_ids, ctx);
+
     // resize ids from [num_seqs * real_beam_size, K] to [num_seqs,
     // real_beam_size * K]
     // real_beam_size = 1 or beam_size
@@ -378,10 +415,17 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     runner_concat_score_indices.AddInputNames(concat_names);
     runner_concat_score_indices.Run(stream);
 
+    VLOG(3) << "yoki: gather_nd_score_indices";
+    PrintTensor<int>(gather_nd_score_indices, ctx);
+
     // use gather_nd to get selected_scores
+    Tensor tmp_selected_scores(framework::proto::VarType::FP32);
+    tmp_selected_scores.Resize(
+        framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
+    tmp_selected_scores.mutable_data<float>(ctx.GetPlace());
     const auto& runner_gather_nd_scores =
         NpuOpRunner("GatherNd", {topk_scores, gather_nd_score_indices},
-                    {*selected_scores}, {});
+                    {tmp_selected_scores}, {});
     runner_gather_nd_scores.Run(stream);
 
     // get indices of gather_nd op
@@ -411,14 +455,11 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         "GatherNd", {cal_ids, gather_nd_id_indices}, {topk_ids}, {});
     runner_gather_nd_ids.Run(stream);
 
-    // cast topk_ids from int to int64 to get selected_ids
-    auto dst_dtype_selected_ids = ConvertToNpuDtype(selected_ids->type());
-    const auto& runner_cast_selected_ids =
-        NpuOpRunner("Cast", {topk_ids}, {*selected_ids},
-                    {{"dst_type", static_cast<int>(dst_dtype_selected_ids)}});
-    runner_cast_selected_ids.Run(stream);
+    VLOG(3) << "yoki: gather_nd_id_indices";
+    PrintTensor<int>(gather_nd_id_indices, ctx);
 
-    // TODO(pangyoki): PruneEndBeams
+    VLOG(3) << "yoki: topk_ids";
+    PrintTensor<int>(topk_ids, ctx);
 
     // Step 4: set lod of output Tensor
     // define Tensor with value `seq_width`
@@ -439,66 +480,262 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         "Div", {cast_sort_tmp_indices, seq_width_tensor}, {beam_ids}, {});
     runner_div.Run(stream);
 
-    // get parent_idx by adding batch_ids to beam_ids
-    // construct scale_batch_ids like [[0, 0, 0], [bw, bw, bw], ..., [bs-1*bw,
-    // bs-1*bw, bs-1*bw]]
-    batch_ids.Resize(
+    VLOG(3) << "yoki: beam_ids";
+    PrintTensor<int>(beam_ids, ctx);
+
+    Tensor seq_ids(framework::proto::VarType::INT32);
+    seq_ids.Resize(
+        framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
+    seq_ids.mutable_data<int>(place);
+    framework::TensorFromVector(vector_seq_ids, ctx, &seq_ids);
+    seq_ids.Resize(
         framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
 
-    // cast batch_ids from int to float32
-    Tensor cast_batch_ids(framework::proto::VarType::FP32);
-    cast_batch_ids.Resize(batch_ids.dims());
-    cast_batch_ids.mutable_data<float>(ctx.GetPlace());
-    auto dst_dtype1 = ConvertToNpuDtype(cast_batch_ids.type());
-    const auto& runner_cast_batch_ids =
-        NpuOpRunner("Cast", {batch_ids}, {cast_batch_ids},
-                    {{"dst_type", static_cast<int>(dst_dtype1)}});
-    runner_cast_batch_ids.Run(stream);
-
-    // scale batch_ids with beam_size
-    Tensor scale_batch_ids(framework::proto::VarType::FP32);
-    scale_batch_ids.Resize(batch_ids.dims());
-    scale_batch_ids.mutable_data<float>(place);
-    const auto& runner_power =
-        NpuOpRunner("Power", {cast_batch_ids}, {scale_batch_ids},
-                    {{"power", static_cast<float>(1.0)},
-                     {"scale", static_cast<float>(beam_size)},
-                     {"shift", static_cast<float>(0.0)}});
-    runner_power.Run(stream);
-
-    // cast cast_scale_batch_ids from float32 to int
-    Tensor cast_scale_batch_ids(framework::proto::VarType::INT32);
-    cast_scale_batch_ids.Resize(scale_batch_ids.dims());
-    cast_scale_batch_ids.mutable_data<int>(ctx.GetPlace());
-    auto dst_dtype2 = ConvertToNpuDtype(cast_scale_batch_ids.type());
-    const auto& runner_cast_scale_batch_ids =
-        NpuOpRunner("Cast", {scale_batch_ids}, {cast_scale_batch_ids},
-                    {{"dst_type", static_cast<int>(dst_dtype2)}});
-    runner_cast_scale_batch_ids.Run(stream);
+    VLOG(3) << "yoki: seq_ids";
+    PrintTensor<int>(seq_ids, ctx);
 
     // calculate parent_idx
     Tensor tmp_parent_idx(framework::proto::VarType::INT32);
-    tmp_parent_idx.Resize(parent_idx->dims());
+    tmp_parent_idx.Resize(framework::make_ddim({total_length}));
     tmp_parent_idx.mutable_data<int>(place);
-    const auto& runner_add_beam_id = NpuOpRunner(
-        "Add", {beam_ids, cast_scale_batch_ids}, {tmp_parent_idx}, {});
+    const auto& runner_add_beam_id =
+        NpuOpRunner("Add", {beam_ids, seq_ids}, {tmp_parent_idx}, {});
     runner_add_beam_id.Run(stream);
 
-    // cast tmp_parent_idx from int to int64 to get parent_idx
-    auto dst_dtype_parent_idx = ConvertToNpuDtype(parent_idx->type());
+    VLOG(3) << "yoki: tmp_parent_idx";
+    PrintTensor<int>(tmp_parent_idx, ctx);
+
+    // Step 5: PruneEndBeams
+    // End_id Tensors
+    Tensor end_id_tensors_after_topk(topk_ids.type());
+    end_id_tensors_after_topk.mutable_data<int>(topk_ids.dims(), place);
+    const auto& runner_fill_end_id_after_topk =
+        NpuOpRunner("FillD", {end_id_tmp_tensor}, {end_id_tensors_after_topk},
+                    {{"dims", framework::vectorize(topk_ids.dims())}});
+    runner_fill_end_id_after_topk.Run(stream);
+
+    // whether topk_ids == end_ids?
+    Tensor topk_ids_equal_end_ids(framework::proto::VarType::BOOL);
+    topk_ids_equal_end_ids.mutable_data<bool>(topk_ids.dims(), place);
+    const auto& runner_topk_ids_equal_end_ids =
+        NpuOpRunner("Equal", {topk_ids, end_id_tensors_after_topk},
+                    {topk_ids_equal_end_ids}, {});
+    runner_topk_ids_equal_end_ids.Run(stream);
+
+    // cast topk_ids_equal_end_ids from bool to float32
+    Tensor cast_topk_ids_equal_end_ids(framework::proto::VarType::FP32);
+    cast_topk_ids_equal_end_ids.Resize(topk_ids_equal_end_ids.dims());
+    cast_topk_ids_equal_end_ids.mutable_data<float>(ctx.GetPlace());
+    auto dst_dtype_float32 =
+        ConvertToNpuDtype(cast_topk_ids_equal_end_ids.type());
+    const auto& runner_cast_topk_ids_equal_end_ids = NpuOpRunner(
+        "Cast", {topk_ids_equal_end_ids}, {cast_topk_ids_equal_end_ids},
+        {{"dst_type", static_cast<int>(dst_dtype_float32)}});
+    runner_cast_topk_ids_equal_end_ids.Run(stream);
+
+    // reduce_max(topk_ids_equal_end_ids) => finish flag
+    Tensor reduce_max_equal(cast_topk_ids_equal_end_ids.type());
+    reduce_max_equal.Resize(framework::make_ddim({num_seqs}));
+    reduce_max_equal.mutable_data<float>(place);
+    const auto& runner_reduce_max_equal = NpuOpRunner(
+        "ReduceMaxD", {cast_topk_ids_equal_end_ids}, {reduce_max_equal},
+        {{"axes", std::vector<int>{1}}, {"keep_dims", false}});
+    runner_reduce_max_equal.Run(stream);
+
+    // get 1 - reduce_max_equal => not finish flag
+    Tensor one(reduce_max_equal.type());
+    one.mutable_data<float>(reduce_max_equal.dims(), place);
+    const auto& runner_one =
+        NpuOpRunner("OnesLike", {reduce_max_equal}, {one}, {});
+    runner_one.Run(stream);
+
+    Tensor one_sub_reduce_max_equal(reduce_max_equal.type());
+    one_sub_reduce_max_equal.mutable_data<float>(reduce_max_equal.dims(),
+                                                 place);
+    const auto& runner_one_sub_reduce_max_equal = NpuOpRunner(
+        "Sub", {one, reduce_max_equal}, {one_sub_reduce_max_equal}, {});
+    runner_one_sub_reduce_max_equal.Run(stream);
+
+    // reduce_sum one_sub_reduce_max_equal to get new num_seqs
+    Tensor new_num_seqs_tensor(one_sub_reduce_max_equal.type());
+    new_num_seqs_tensor.Resize(framework::make_ddim({1}));
+    new_num_seqs_tensor.mutable_data<float>(place);
+    const auto& runner_new_num_seqs_tensor = NpuOpRunner(
+        "ReduceSumD", {one_sub_reduce_max_equal}, {new_num_seqs_tensor},
+        {{"axes", std::vector<int>{0}}, {"keep_dims", true}});
+    runner_new_num_seqs_tensor.Run(stream);
+
+    std::vector<float> vector_new_num_seqs;
+    framework::TensorToVector(new_num_seqs_tensor, ctx, &vector_new_num_seqs);
+    int64_t new_num_seqs = static_cast<int64_t>(vector_new_num_seqs[0]);
+
+    // expand flag_not_finish to {num_seqs, beam_size}
+    one_sub_reduce_max_equal.Resize(framework::make_ddim({num_seqs, 1}));
+    Tensor expand_flag_not_finish(one_sub_reduce_max_equal.type());
+    expand_flag_not_finish.Resize(
+        framework::make_ddim({num_seqs, static_cast<int64_t>(beam_size)}));
+    expand_flag_not_finish.mutable_data<float>(place);
+    const auto& runner_tile_expand_flag_not_finish = NpuOpRunner(
+        "TileWithAxis", {one_sub_reduce_max_equal}, {expand_flag_not_finish},
+        {{"axis", 1}, {"tiles", static_cast<int64_t>(beam_size)}});
+    runner_tile_expand_flag_not_finish.Run(stream);
+
+    // cast expand_flag_not_finish from float32 to bool
+    Tensor cast_expand_flag_not_finish(framework::proto::VarType::BOOL);
+    cast_expand_flag_not_finish.Resize(expand_flag_not_finish.dims());
+    cast_expand_flag_not_finish.mutable_data<bool>(ctx.GetPlace());
+    auto dst_dtype_bool = ConvertToNpuDtype(cast_expand_flag_not_finish.type());
+    const auto& runner_cast_expand_flag_not_finish = NpuOpRunner(
+        "Cast", {expand_flag_not_finish}, {cast_expand_flag_not_finish},
+        {{"dst_type", static_cast<int>(dst_dtype_bool)}});
+    runner_cast_expand_flag_not_finish.Run(stream);
+
+    VLOG(3) << "yoki: cast_expand_flag_not_finish";
+    PrintTensor<bool>(cast_expand_flag_not_finish, ctx);
+
+    cast_expand_flag_not_finish.Resize(
+        framework::make_ddim({num_seqs * static_cast<int64_t>(beam_size)}));
+
+    // mask topk_id
+    // cast topk_id from int to float32
+    Tensor cast_topk_ids(framework::proto::VarType::FP32);
+    cast_topk_ids.Resize(topk_ids.dims());
+    cast_topk_ids.mutable_data<float>(ctx.GetPlace());
+    const auto& runner_cast_topk_ids =
+        NpuOpRunner("Cast", {topk_ids}, {cast_topk_ids},
+                    {{"dst_type", static_cast<int>(dst_dtype_float32)}});
+    runner_cast_topk_ids.Run(stream);
+
+    Tensor mask_topk_ids(cast_topk_ids.type());
+    mask_topk_ids.Resize(
+        framework::make_ddim({new_num_seqs * static_cast<int64_t>(beam_size)}));
+    mask_topk_ids.mutable_data<float>(ctx.GetPlace());
+
+    VLOG(3) << "yoki: cast_topk_ids";
+    PrintTensor<float>(cast_topk_ids, ctx);
+    VLOG(3) << "yoki: cast_expand_flag_not_finish";
+    PrintTensor<bool>(cast_expand_flag_not_finish, ctx);
+
+    cast_topk_ids.Resize(
+        framework::make_ddim({num_seqs * static_cast<int64_t>(beam_size)}));
+    const auto& runner_mask_topk_ids = NpuOpRunner(
+        "MaskedSelect", {cast_topk_ids, cast_expand_flag_not_finish},
+        {mask_topk_ids}, {});
+    runner_mask_topk_ids.Run(stream);
+    mask_topk_ids.Resize(framework::make_ddim(
+        {new_num_seqs * static_cast<int64_t>(beam_size), 1}));
+
+    VLOG(3) << "yoki: cast_topk_ids";
+    PrintTensor<float>(cast_topk_ids, ctx);
+    VLOG(3) << "yoki: mask_topk_ids";
+    PrintTensor<float>(mask_topk_ids, ctx);
+
+    // mask tmp_selected_scores
+    // // cast tmp_selected_scores from int to float32
+    // Tensor cast_selected_scores(framework::proto::VarType::FP32);
+    // cast_selected_scores.Resize(tmp_selected_scores.dims());
+    // cast_selected_scores.mutable_data<float>(ctx.GetPlace());
+    // const auto& runner_cast_selected_scores_fp32 = NpuOpRunner(
+    //     "Cast", {tmp_selected_scores}, {cast_selected_scores},
+    //     {{"dst_type", static_cast<int>(dst_dtype_float32)}});
+    // runner_cast_selected_scores_fp32.Run(stream);
+
+    selected_scores->mutable_data<float>(
+        framework::make_ddim(
+            {new_num_seqs * static_cast<int64_t>(beam_size), 1}),
+        place);
+    Tensor mask_selected_scores(tmp_selected_scores.type());
+    mask_selected_scores.ShareDataWith(*selected_scores);
+    mask_selected_scores.Resize(
+        framework::make_ddim({new_num_seqs * static_cast<int64_t>(beam_size)}));
+    // mask_selected_scores.mutable_data<float>(ctx.GetPlace());
+
+    tmp_selected_scores.Resize(
+        framework::make_ddim({num_seqs * static_cast<int64_t>(beam_size)}));
+    const auto& runner_mask_selected_scores = NpuOpRunner(
+        "MaskedSelect", {tmp_selected_scores, cast_expand_flag_not_finish},
+        {mask_selected_scores}, {});
+    runner_mask_selected_scores.Run(stream);
+    // mask_selected_scores.Resize(framework::make_ddim({new_num_seqs *
+    // static_cast<int64_t>(beam_size), 1}));
+
+    VLOG(3) << "yoki: mask_selected_scores";
+    PrintTensor<float>(mask_selected_scores, ctx);
+
+    // mask parent_idx
+    // cast parent_idx from int to float32
+    Tensor cast_parent_idx(framework::proto::VarType::FP32);
+    cast_parent_idx.Resize(tmp_parent_idx.dims());
+    cast_parent_idx.mutable_data<float>(ctx.GetPlace());
+    const auto& runner_cast_parent_idx_fp32 =
+        NpuOpRunner("Cast", {tmp_parent_idx}, {cast_parent_idx},
+                    {{"dst_type", static_cast<int>(dst_dtype_float32)}});
+    runner_cast_parent_idx_fp32.Run(stream);
+
+    Tensor mask_parent_idx(cast_parent_idx.type());
+    mask_parent_idx.Resize(
+        framework::make_ddim({new_num_seqs * static_cast<int64_t>(beam_size)}));
+    mask_parent_idx.mutable_data<float>(ctx.GetPlace());
+
+    cast_parent_idx.Resize(
+        framework::make_ddim({num_seqs * static_cast<int64_t>(beam_size)}));
+    const auto& runner_mask_parent_idx = NpuOpRunner(
+        "MaskedSelect", {cast_parent_idx, cast_expand_flag_not_finish},
+        {mask_parent_idx}, {});
+    runner_mask_parent_idx.Run(stream);
+
+    VLOG(3) << "yoki: cast_parent_idx";
+    PrintTensor<float>(cast_parent_idx, ctx);
+    VLOG(3) << "yoki: mask_parent_idx";
+    PrintTensor<float>(mask_parent_idx, ctx);
+
+    // cast topk_id from float to int64_t to get selected_ids
+    selected_ids->mutable_data<int64_t>(mask_topk_ids.dims(), place);
+    auto dst_dtype_int64 = ConvertToNpuDtype(selected_ids->type());
+    const auto& runner_cast_selected_ids =
+        NpuOpRunner("Cast", {mask_topk_ids}, {*selected_ids},
+                    {{"dst_type", static_cast<int>(dst_dtype_int64)}});
+    runner_cast_selected_ids.Run(stream);
+
+    VLOG(3) << "yoki: selected_ids";
+    PrintTensor<int64_t>(*selected_ids, ctx);
+
+    // // cast mask_selected_scores from float to int64_t to get selected_scores
+    // selected_scores->mutable_data<float>(mask_selected_scores.dims(), place);
+    // const auto& runner_cast_selected_scores = NpuOpRunner(
+    //     "Cast", {mask_selected_scores}, {*selected_scores},
+    //     {{"dst_type", static_cast<int>(dst_dtype_int64)}});
+    // runner_cast_selected_scores.Run(stream);
+
+    // VLOG(3) << "yoki: selected_scores";
+    // PrintTensor<int64_t>(*selected_scores, ctx);
+
+    // cast mask_parent_idx from float to int64_t to get parent_idx
+    parent_idx->mutable_data<int64_t>(mask_parent_idx.dims(), place);
     const auto& runner_cast_parent_idx =
-        NpuOpRunner("Cast", {tmp_parent_idx}, {*parent_idx},
-                    {{"dst_type", static_cast<int>(dst_dtype_parent_idx)}});
+        NpuOpRunner("Cast", {mask_parent_idx}, {*parent_idx},
+                    {{"dst_type", static_cast<int>(dst_dtype_int64)}});
     runner_cast_parent_idx.Run(stream);
+
+    VLOG(3) << "yoki: parent_idx";
+    PrintTensor<int64_t>(*parent_idx, ctx);
+
+    VLOG(3) << "yoki: parent_idx";
+    PrintTensor<int64_t>(*parent_idx, ctx);
 
     std::vector<int> vector_parent_idx;
     framework::TensorToVector(tmp_parent_idx, ctx, &vector_parent_idx);
+
+    VLOG(3) << "yoki: vector_parent_idx";
+    for (int i = 0; i < static_cast<int>(vector_parent_idx.size()); ++i) {
+      VLOG(3) << "vec[" << i << "] : " << vector_parent_idx[i];
+    }
 
     // set low level, len(low_level) = high_level[-1]
     std::vector<int> low_level;
     std::vector<int> num_parent_ids(num_seqs * beam_size,
                                     static_cast<int64_t>(0));
-    size_t low_level_size = high_level[num_seqs];
+    size_t low_level_size = high_level[high_level.size() - 1];
     size_t sum_parent_id = 0;
 
     // calculate number of every parent_id
