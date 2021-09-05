@@ -48,31 +48,32 @@ __device__ inline void VectorizeLarsUpdateMP(
     const int grid_stride, const int numel) {
   // As for multiple-precision, type T and MT cannot be more than fp16 or fp32,
   // Then, the maximum data IO size could be set to 4.
-  using VecType = platform::CudaAlignedVector<T, 4>;
-  using VecMType = platform::CudaAlignedVector<MT, 4>;
+  using VecType = paddle::platform::CudaAlignedVector<T, 4>;
+  using VecMType = paddle::platform::CudaAlignedVector<MT, 4>;
   int main = numel >> 2;
   int tail_offset = main << 2;
 
-  const VecType* g_vec = reinterpret_cast<const VecType*>(g);
-  const VecMType* v_vec = reinterpret_cast<const VecMType*>(v);
-  const VecMType* master_p_vec = reinterpret_cast<const VecMType*>(master_p);
+  const VecType* __restrict__ g_vec = reinterpret_cast<const VecType*>(g);
+  const VecMType* __restrict__ v_vec = reinterpret_cast<const VecMType*>(v);
+  const VecMType* __restrict__ master_p_vec =
+      reinterpret_cast<const VecMType*>(master_p);
   VecType* p_out_vec = reinterpret_cast<VecType*>(p_out);
   VecMType* v_out_vec = reinterpret_cast<VecMType*>(v_out);
   VecMType* master_p_out_vec = reinterpret_cast<VecMType*>(master_p_out);
 
   for (int i = tid; i < main; i += grid_stride) {
     VecType p_out;
-    VecMType grad, v_new, p_new;
-
+    VecMType v_new, p_new;
     VecType g_data = g_vec[i];
     VecMType v_data = v_vec[i];
     VecMType p_data = master_p_vec[i];
+
 #pragma unroll
     for (int j = 0; j < 4; ++j) {
-      grad.val[j] = static_cast<MT>(g_data.val[j]) * rescale_grad;
-      v_new.val[j] = fma_root(
-          v_data.val[j], mu,
-          local_lr * fma_root(lars_weight_decay, p_data.val[j], grad.val[j]));
+      MT grad = static_cast<MT>(g_data.val[j]) * rescale_grad;
+      v_new.val[j] =
+          fma_root(v_data.val[j], mu,
+                   local_lr * fma_root(lars_weight_decay, p_data.val[j], grad));
       p_new.val[j] = p_data.val[j] - v_new.val[j];
       p_out.val[j] = static_cast<T>(p_new.val[j]);
     }
@@ -99,9 +100,9 @@ __device__ inline void VectorizeLarsUpdate(
     MT* __restrict__ v_out, const MT* __restrict__ p, const MT mu, MT local_lr,
     const MT lars_weight_decay, const MT rescale_grad, const int tid,
     const int grid_stride, const int numel) {
-  using VecType = platform::CudaAlignedVector<MT, VesSize>;
+  using VecType = paddle::platform::CudaAlignedVector<MT, VesSize>;
   int main = numel >> (VesSize >> 1);
-  int tail_offset = main << (VesSize >> 1);
+  int tail_offset = main * VesSize;
 
   const VecType* g_vec = reinterpret_cast<const VecType*>(g);
   const VecType* v_vec = reinterpret_cast<const VecType*>(v);
@@ -110,17 +111,17 @@ __device__ inline void VectorizeLarsUpdate(
   VecType* v_out_vec = reinterpret_cast<VecType*>(v_out);
 
   for (int i = tid; i < main; i += grid_stride) {
-    VecType grad, v_new, p_new;
+    VecType v_new, p_new;
     VecType g_data = g_vec[i];
     VecType v_data = v_vec[i];
     VecType p_data = p_vec[i];
 
 #pragma unroll
     for (int j = 0; j < VesSize; ++j) {
-      grad.val[j] = g_data.val[j] * rescale_grad;
-      v_new.val[j] = fma_root(
-          v_data.val[j], mu,
-          local_lr * fma_root(lars_weight_decay, p_data.val[j], grad.val[j]));
+      MT grad = g_data.val[j] * rescale_grad;
+      v_new.val[j] =
+          fma_root(v_data.val[j], mu,
+                   local_lr * fma_root(lars_weight_decay, p_data.val[j], grad));
       p_new.val[j] = p_data.val[j] - v_new.val[j];
     }
     v_out_vec[i] = v_new;
@@ -145,9 +146,10 @@ __global__ void L2NormKernel(const T* __restrict__ p_data,
                              const int64_t repeat_times, const int64_t numel) {
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
   int grid_stride = LARS_BLOCK_SIZE * gridDim.x;
-  __shared__ MT s_buffer[2];
-  s_buffer[0] = static_cast<MT>(0);
-  s_buffer[1] = static_cast<MT>(0);
+  __shared__ MT p_buffer;
+  __shared__ MT g_buffer;
+  p_buffer = static_cast<MT>(0);
+  g_buffer = static_cast<MT>(0);
   MT p_tmp_val = static_cast<MT>(0);
   MT g_tmp_val = static_cast<MT>(0);
 
@@ -156,36 +158,32 @@ __global__ void L2NormKernel(const T* __restrict__ p_data,
       p_tmp_val = static_cast<MT>(p_data[tid]);
       g_tmp_val = static_cast<MT>(g_data[tid]);
     }
-    s_buffer[0] += math::blockReduceSum<MT>(p_tmp_val * p_tmp_val, FINAL_MASK);
-    s_buffer[1] += math::blockReduceSum<MT>(g_tmp_val * g_tmp_val, FINAL_MASK);
+    p_buffer += math::blockReduceSum<MT>(p_tmp_val * p_tmp_val, FINAL_MASK);
+    g_buffer += math::blockReduceSum<MT>(g_tmp_val * g_tmp_val, FINAL_MASK);
   } else {
     // To avoid occupy too much temp buffer.
-    for (int i = 0; i < repeat_times - 1; ++i) {
-      if (tid < numel) {
-        p_tmp_val = static_cast<MT>(p_data[tid]);
-        g_tmp_val = static_cast<MT>(g_data[tid]);
-      }
+    for (int i = 0; i < repeat_times; ++i) {
+      p_tmp_val = static_cast<MT>(p_data[tid]);
+      g_tmp_val = static_cast<MT>(g_data[tid]);
       tid += grid_stride;
-      s_buffer[0] +=
-          math::blockReduceSum<MT>(p_tmp_val * p_tmp_val, FINAL_MASK);
-      s_buffer[1] +=
-          math::blockReduceSum<MT>(g_tmp_val * g_tmp_val, FINAL_MASK);
+      p_buffer += math::blockReduceSum<MT>(p_tmp_val * p_tmp_val, FINAL_MASK);
+      g_buffer += math::blockReduceSum<MT>(g_tmp_val * g_tmp_val, FINAL_MASK);
       __syncthreads();
     }
-    MT p_val = static_cast<MT>(0);
-    MT g_val = static_cast<MT>(0);
+    MT p_val = 0;
+    MT g_val = 0;
     if (tid < numel) {
       p_val = static_cast<MT>(p_data[tid]);
       g_val = static_cast<MT>(g_data[tid]);
     }
-    s_buffer[0] += math::blockReduceSum<MT>(p_val * p_val, FINAL_MASK);
-    s_buffer[1] += math::blockReduceSum<MT>(g_val * g_val, FINAL_MASK);
+    p_buffer += math::blockReduceSum<MT>(p_val * p_val, FINAL_MASK);
+    g_buffer += math::blockReduceSum<MT>(g_val * g_val, FINAL_MASK);
   }
   __syncthreads();
 
   if (threadIdx.x == 0) {
-    p_tmp_buffer[blockIdx.x] = s_buffer[0];
-    g_tmp_buffer[blockIdx.x] = s_buffer[1];
+    p_tmp_buffer[blockIdx.x] = p_buffer;
+    g_tmp_buffer[blockIdx.x] = g_buffer;
   }
 }
 
@@ -200,8 +198,7 @@ __global__ void MomentumLarsKernel(
     const int thresh, const int64_t numel) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   int grid_stride = LARS_BLOCK_SIZE * gridDim.x;
-  MT rescale_grad_pow = rescale_grad * rescale_grad;
-
+  const MT rescale_grad_pow = rescale_grad * rescale_grad;
   MT p_val = threadIdx.x < thresh ? p_tmp_buffer[threadIdx.x] : 0;
   MT g_val = threadIdx.x < thresh ? g_tmp_buffer[threadIdx.x] : 0;
   __syncthreads();
@@ -259,7 +256,6 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
 
     int64_t numel = param->numel();
     int grid_norm = (numel + LARS_BLOCK_SIZE - 1) / LARS_BLOCK_SIZE;
-
     // Determine to read 4 fp16 or float data once, but 2 double data once.
     int grid_lars =
         sizeof(T) < 64
@@ -308,9 +304,8 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     total, consequently affect the performance of lars op, make it necessary to
     replace the eigen with cuda kernel.
     */
-    grid_norm = std::min(grid_norm, LARS_BLOCK_SIZE);
-
     // Allocate temp buffer for L2 norm kernel.
+    grid_norm = std::min(grid_norm, LARS_BLOCK_SIZE);
     framework::Tensor p_buffer_t =
         ctx.AllocateTmpTensor<MT, platform::CUDADeviceContext>({grid_norm << 1},
                                                                cuda_ctx);
@@ -318,7 +313,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     auto* g_tmp_buffer = p_tmp_buffer + grid_norm;
 
     const int grid_stride = LARS_BLOCK_SIZE * grid_norm;
-    const int repeat_times = (numel + grid_stride - 1) / grid_stride;
+    const int repeat_times = (numel + grid_stride - 1) / grid_stride - 1;
 
     L2NormKernel<T, MT><<<grid_norm, LARS_BLOCK_SIZE, 0, cuda_ctx.stream()>>>(
         p, g, p_tmp_buffer, g_tmp_buffer, repeat_times, numel);
