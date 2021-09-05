@@ -207,5 +207,71 @@ class TestCumprodAPI(unittest.TestCase):
     #         run(place)
 
 
+class TestComplexCumprod(OpTest):
+    def setUp(self):
+        paddle.enable_static()
+        self.op_type = "cumprod"
+        self.dtype = np.complex128
+        self.shape = (2, 3, 4, 5)
+        self.dim = 1
+        self.attrs = {'dim': 1}
+        self.init_input_output()
+        self.init_grad_input_output()
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+        self.outputs = {'Out': self.out}
+
+    def init_input_output(self):
+        self.x = np.random.random(self.shape).astype(self.dtype)
+        self.out = np.cumprod(self.x, axis=self.dim)
+
+    def init_grad_input_output(self):
+        mid_dim = self.shape[self.dim]
+        outer_dim = 1
+        inner_dim = 1
+        for i in range(0, self.dim):
+            outer_dim *= self.shape[i]
+        for i in range(self.dim + 1, len(self.shape)):
+            inner_dim *= self.shape[i]
+
+        reshape_x = self.x.reshape(outer_dim * mid_dim * inner_dim)
+        self.grad_out = np.ones(outer_dim * mid_dim * inner_dim, self.dtype)
+        self.grad_x = np.zeros(outer_dim * mid_dim * inner_dim, self.dtype)
+        out_data = self.out.reshape(outer_dim * mid_dim * inner_dim)
+        x_data_conj = np.conj(reshape_x)
+        out_data_conj = np.conj(out_data)
+        for i in range(outer_dim):
+            for k in range(inner_dim):
+                for j in range(mid_dim):
+                    index = i * mid_dim * inner_dim + j * inner_dim + k
+                    for n in range(mid_dim):
+                        pos = i * mid_dim * inner_dim + n * inner_dim + k
+                        elem = 0
+                        if j == 0:
+                            elem = self.grad_out[pos]
+                        else:
+                            elem = self.grad_out[pos] * out_data_conj[index -
+                                                                      inner_dim]
+                        if (pos > index):
+                            for m in range(index + inner_dim, pos + inner_dim,
+                                           inner_dim):
+                                elem *= x_data_conj[m]
+                        elif (pos < index):
+                            elem = 0
+                        self.grad_x[index] += elem
+        self.grad_x = self.grad_x.reshape(self.shape)
+        self.grad_out = self.grad_out.reshape(self.shape)
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad(self):
+        self.check_grad(
+            ['X'],
+            'Out',
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out])
+
+
 if __name__ == "__main__":
     unittest.main()
