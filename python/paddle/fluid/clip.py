@@ -445,8 +445,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 merge_grad = layers.merge_selected_rows(g)
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
 
-            square = layers.square(merge_grad)
-            sum_square = layers.reduce_sum(square)
             sum_square = _squared_l2_norm(merge_grad)
             sum_square_list.append(sum_square)
 
@@ -551,8 +549,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                             inputs={'X': g,
                                     'Y': scale_var},
                             outputs={'Out': g})
-                            
-                            
+
                 param_new_grad_name_dict[p.name] = g.name
                 params_and_grads.append((p, g))
 
