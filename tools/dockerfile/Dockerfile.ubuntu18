@@ -11,7 +11,7 @@ ARG WITH_AVX
 ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV DEBIAN_FRONTEND=noninteractive
-ENV LD_LIBRARY_PATH=/usr/local/cuda-11.2/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/cuda-11.4/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
 
 ENV HOME /root
 # Add bash enhancements
@@ -22,7 +22,7 @@ RUN apt-get update && \
   apt-get update && \
   apt-get install -y curl wget vim git unzip unrar tar xz-utils libssl-dev bzip2 gzip \ 
     coreutils ntp language-pack-zh-hans python-qt4 libsm6 libxext6 libxrender-dev libgl1-mesa-glx \
-    bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool module-init-tools
+    bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool module-init-tools vim
 
 # Downgrade gcc&&g++
 WORKDIR /usr/bin 
