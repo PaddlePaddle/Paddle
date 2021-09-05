@@ -41,7 +41,7 @@ class CumprodOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(
         R"DOC(Cumprod operator. Return the cumprod results of the input elements along the dim.
 	For example, if input X is a tensor with rank 1 and N elements, the output will also be a tensor 
-        with rank 1 and N elements, with elements y[i] = x[0]*x[1]*x[2]*...*x[i] (0<=i<N))DOC");
+        with rank 1 and N elements, and elements y[i] = x[0] * x[1] * x[2] *...* x[i] (0<=i<N))DOC");
   }
 };
 
