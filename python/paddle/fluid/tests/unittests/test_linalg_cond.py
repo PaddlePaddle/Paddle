@@ -19,82 +19,145 @@ import numpy as np
 import paddle
 import paddle.static as static
 
+p_list_n_n = ("fro", "nuc", 1, -1, np.inf, -np.inf)
+p_list_m_n = (None, 2, -2)
+
+
+def test_static_assert_true(self, x_list, p_list):
+    for p in p_list:
+        for x in x_list:
+            with static.program_guard(static.Program(), static.Program()):
+                input_data = static.data("X", shape=x.shape, dtype=x.dtype)
+                output = paddle.cond(input_data, p)
+                exe = static.Executor()
+                result = exe.run(feed={"X": x}, fetch_list=[output])
+                expected_output = np.linalg.cond(x, p)
+                self.assertTrue(np.allclose(result, expected_output))
+
+
+def test_dygraph_assert_true(self, x_list, p_list):
+    for p in p_list:
+        for x in x_list:
+            input_tensor = paddle.to_tensor(x)
+            output = paddle.cond(input_tensor, p)
+            expected_output = np.linalg.cond(x, p)
+            self.assertTrue(np.allclose(output, expected_output))
+
+
+def gen_input():
+    # generate square matrix or batches of square matrices
+    input_1 = np.random.rand(10, 10).astype('float32')
+    input_2 = np.random.rand(2, 7, 7).astype('float32')
+    input_3 = np.random.rand(3, 6, 6).astype('float64')
+    input_4 = np.random.rand(5, 5, 5).astype('float64')
+    input_5 = np.random.rand(2, 3, 4, 4).astype('float32')
+
+    # generate non-square matrix or batches of non-square matrices
+    input_6 = np.random.rand(9, 11).astype('float32')
+    input_7 = np.random.rand(12, 8).astype('float64')
+    input_8 = np.random.rand(7, 4, 3).astype('float32')
+    input_9 = np.random.rand(10, 1, 10).astype('float64')
+    input_10 = np.random.rand(2, 3, 4, 5).astype('float32')
+
+    list_n_n = (input_1, input_2, input_3, input_4, input_5)
+    list_m_n = (input_6, input_7, input_8, input_9, input_10)
+    return list_n_n, list_m_n
+
+
+def gen_empty_input():
+    # generate square matrix or batches of square matrices which are empty tensor
+    input_1 = np.random.rand(0, 7, 7).astype('float32')
+    input_2 = np.random.rand(0, 9, 9).astype('float32')
+    input_3 = np.random.rand(0, 5, 5, 5).astype('float64')
+    input_4 = np.random.rand(6, 0, 4, 4).astype('float64')
+
+    # generate non-square matrix or batches of non-square matrices which are empty tensor
+    input_5 = np.random.rand(0, 9, 11).astype('float32')
+    input_6 = np.random.rand(0, 12, 8).astype('float64')
+    input_7 = np.random.rand(7, 0, 4, 3).astype('float32')
+    input_8 = np.random.rand(0, 10, 1, 10).astype('float64')
+
+    list_n_n = (input_1, input_2, input_3, input_4)
+    list_m_n = (input_5, input_6, input_7, input_8)
+    return list_n_n, list_m_n
+
 
 class API_TestStaticCond(unittest.TestCase):
     def test_out(self):
         paddle.enable_static()
-        with paddle.static.program_guard(paddle.static.Program(),
-                                         paddle.static.Program()):
-            input1 = np.random.rand(10, 10).astype('float64')
-            input2 = np.random.rand(6, 4, 4).astype('float32')
-            input3 = np.random.rand(5, 5, 5).astype('float64')
-            input4 = np.random.rand(7, 4, 3).astype('float32')
-            input5 = np.random.rand(10, 1, 10).astype('float64')
-
-            for p in (None, "fro", "nuc", 1, -1, 2, -2, np.inf, -np.inf):
-                for input in (input1, input2, input3):
-                    with static.program_guard(static.Program(),
-                                              static.Program()):
-                        input_data = static.data(
-                            "X", shape=input.shape, dtype=input.dtype)
-                        output = paddle.linalg.cond(input_data, p)
-                        exe = static.Executor()
-                        result = exe.run(feed={"X": input}, fetch_list=[output])
-                        expected_output = np.linalg.cond(input, p)
-                        self.assertTrue(np.allclose(result, expected_output))
-
-            for p in (None, 2, -2):
-                for input in (input4, input5):
-                    with static.program_guard(static.Program(),
-                                              static.Program()):
-                        input_data = static.data(
-                            "X", shape=input.shape, dtype=input.dtype)
-                        output = paddle.linalg.cond(input_data, p)
-                        exe = static.Executor()
-                        result = exe.run(feed={"X": input}, fetch_list=[output])
-                        expected_output = np.linalg.cond(input, p)
-                        self.assertTrue(np.allclose(result, expected_output))
+        # test calling results of 'cond' in static mode
+        x_list_n_n, x_list_m_n = gen_input()
+        test_static_assert_true(self, x_list_n_n, p_list_n_n + p_list_m_n)
+        test_static_assert_true(self, x_list_m_n, p_list_m_n)
 
 
 class API_TestDygraphCond(unittest.TestCase):
     def test_out(self):
         paddle.disable_static()
-        input1 = np.random.rand(10, 10).astype('float32')
-        input2 = np.random.rand(4, 5, 5).astype('float32')
-        input3 = np.random.rand(3, 6, 6).astype('float64')
-        input4 = np.random.rand(3, 4, 5).astype('float32')
-        input5 = np.random.rand(4, 3, 7).astype('float64')
-
-        for p in (None, "fro", "nuc", 1, -1, 2, -2, np.inf, -np.inf):
-            for input in (input1, input2, input3):
-                input_tensor = paddle.to_tensor(input)
-                output = paddle.linalg.cond(input_tensor, p)
-                expected_output = np.linalg.cond(input, p)
-                self.assertTrue(np.allclose(output, expected_output))
-
-        for p in (None, 2, -2):
-            for input in (input4, input5):
-                input_tensor = paddle.to_tensor(input)
-                output = paddle.linalg.cond(input_tensor, p)
-                expected_output = np.linalg.cond(input, p)
-                self.assertTrue(np.allclose(output, expected_output))
+        # test calling results of 'cond' in dynamic mode
+        x_list_n_n, x_list_m_n = gen_input()
+        test_dygraph_assert_true(self, x_list_n_n, p_list_n_n + p_list_m_n)
+        test_dygraph_assert_true(self, x_list_m_n, p_list_m_n)
 
 
 class TestCondAPIError(unittest.TestCase):
-    def test_api_error(self):
-        x_data_1 = np.arange(32, dtype='float32').reshape((2, 4, 4))
-        x_data_2 = np.arange(32, dtype='float64').reshape((2, 4, 4))
-        x_data_3 = np.arange(24, dtype='float64').reshape((2, 3, 4))
-        self.assertRaises(ValueError, paddle.linalg.cond, x_data_1, 'fro_')
-        self.assertRaises(ValueError, paddle.linalg.cond, x_data_1, 1.5)
-        self.assertRaises(ValueError, paddle.linalg.cond, x_data_1, 0)
-        self.assertRaises(ValueError, paddle.linalg.cond, x_data_2, '_nuc')
-        self.assertRaises(ValueError, paddle.linalg.cond, x_data_2, -0.7)
-        self.assertRaises(ValueError, paddle.linalg.cond, x_data_2, 3)
-        self.assertRaises(ValueError, paddle.linalg.cond, x_data_3, np.inf)
-        self.assertRaises(ValueError, paddle.linalg.cond, x_data_3, -1)
-        self.assertRaises(ValueError, paddle.linalg.cond, x_data_3, 'fro')
-        self.assertRaises(ValueError, paddle.linalg.cond, x_data_3, 'nuc')
+    def test_dygraph_api_error(self):
+        paddle.disable_static()
+        # test raising errors when 'cond' is called in dygraph mode
+        p_list_error = ('fro_', '_nuc', -0.7, 0, 1.5, 3)
+        x_list_n_n, x_list_m_n = gen_input()
+        for p in p_list_error:
+            for x in (x_list_n_n + x_list_m_n):
+                x_tensor = paddle.to_tensor(x)
+                self.assertRaises(ValueError, paddle.cond, x_tensor, p)
+
+        for p in p_list_n_n:
+            for x in x_list_m_n:
+                x_tensor = paddle.to_tensor(x)
+                self.assertRaises(ValueError, paddle.cond, x_tensor, p)
+
+    def test_static_api_error(self):
+        paddle.enable_static()
+        # test raising errors when 'cond' is called in static mode
+        p_list_error = ('f ro', 'fre', 'NUC', -1.6, 0, 5)
+        x_list_n_n, x_list_m_n = gen_input()
+        for p in p_list_error:
+            for x in (x_list_n_n + x_list_m_n):
+                with static.program_guard(static.Program(), static.Program()):
+                    x_data = static.data("X", shape=x.shape, dtype=x.dtype)
+                    self.assertRaises(ValueError, paddle.cond, x_data, p)
+
+        for p in p_list_n_n:
+            for x in x_list_m_n:
+                with static.program_guard(static.Program(), static.Program()):
+                    x_data = static.data("X", shape=x.shape, dtype=x.dtype)
+                    self.assertRaises(ValueError, paddle.cond, x_data, p)
+
+    # it's not supported when input is an empty tensor in static mode
+    def test_static_empty_input_error(self):
+        paddle.enable_static()
+
+        x_list_n_n, x_list_m_n = gen_empty_input()
+        for p in (p_list_n_n + p_list_m_n):
+            for x in x_list_n_n:
+                with static.program_guard(static.Program(), static.Program()):
+                    x_data = static.data("X", shape=x.shape, dtype=x.dtype)
+                    self.assertRaises(ValueError, paddle.cond, x_data, p)
+
+        for p in (p_list_n_n + p_list_m_n):
+            for x in x_list_n_n:
+                with static.program_guard(static.Program(), static.Program()):
+                    x_data = static.data("X", shape=x.shape, dtype=x.dtype)
+                    self.assertRaises(ValueError, paddle.cond, x_data, p)
+
+
+class TestCondEmptyTensorInput(unittest.TestCase):
+    def test_dygraph_empty_tensor_input(self):
+        paddle.disable_static()
+        # test calling results of 'cond' when input is an empty tensor in dynamic mode
+        x_list_n_n, x_list_m_n = gen_empty_input()
+        test_dygraph_assert_true(self, x_list_n_n, p_list_n_n + p_list_m_n)
+        test_dygraph_assert_true(self, x_list_m_n, p_list_m_n)
 
 
 if __name__ == "__main__":

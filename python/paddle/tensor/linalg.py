@@ -631,7 +631,7 @@ def cond(x, p=None, name=None):
 
     """
 
-    def matrix_norm(input, porder=1., axis=None):
+    def mat_norm(input, porder=1., axis=None):
         """
         NOTE:
             Calculate the matrix norm of a square matrix or batches of square matrices,
@@ -690,7 +690,7 @@ def cond(x, p=None, name=None):
                 })
         return out
 
-    def frobenius_norm(input, porder=2, axis=[-1]):
+    def fro_norm(input, porder=2, axis=[-1]):
         """
         NOTE:
             Calculate the frobenius norm of a square matrix or batches of square matrices.
@@ -818,32 +818,42 @@ def cond(x, p=None, name=None):
                        'use_mkldnn': False})
             return out
 
-    x_shape = x.shape
+    def empty_tensor(input, shape):
+        if in_dygraph_mode():
+            return input.reshape(shape)
+        raise ValueError("only support x is nonempty tensor in static mode")
+
+    x_shape = list(x.shape)
     if not len(x_shape) >= 2:
         raise ValueError("input should be a matrix or batches of matrices, " +
                          "but the dimention of received input is {}".format(
                              len(x_shape)))
     if p == None:
         p = 2
+    x_size = 0 if (0 in x_shape) else 1
     if p in ("fro", "nuc", 1, -1, np.inf, -np.inf):
         if x_shape[len(x_shape) - 1] == x_shape[len(x_shape) - 2]:
+            if x_size == 0:
+                return empty_tensor(x, x_shape[:-2])
             x_inv = x.inverse()
             if p == "fro":
-                return frobenius_norm(x) * frobenius_norm(x_inv)
+                return fro_norm(x) * fro_norm(x_inv)
             if p == "nuc":
                 return svd_norm(x, p) * svd_norm(x_inv, p)
             if p in (1, -1):
-                return matrix_norm(
-                    x, porder=p, axis=[-2]) * matrix_norm(
+                return mat_norm(
+                    x, porder=p, axis=[-2]) * mat_norm(
                         x_inv, porder=p, axis=[-2])
             if p in (np.inf, -np.inf):
-                return matrix_norm(
-                    x, porder=p, axis=[-1]) * matrix_norm(
+                return mat_norm(
+                    x, porder=p, axis=[-1]) * mat_norm(
                         x_inv, porder=p, axis=[-1])
         else:
             raise ValueError("only support p is {} when input is a ".format(p) +
                              "square matrix or batches of square matrices")
     elif p in (2, -2):
+        if x_size == 0:
+            return empty_tensor(x, x_shape[:-2])
         return svd_norm(x, porder=p)
     else:
         raise ValueError(
