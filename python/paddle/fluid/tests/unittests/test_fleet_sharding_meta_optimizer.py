@@ -252,7 +252,6 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
                 "fc_1.b_0", "fc_2.b_0", "fc_2.w_0", "fc_1.b_0_velocity_0",
                 "fc_2.b_0_velocity_0", "fc_2.w_0_velocity_0", "learning_rate_0"
             ]))
-
         self.assertEqual(ops, [
             'fill_constant', 'fill_constant', 'fill_constant',
             'c_sync_calc_stream', 'c_broadcast', 'c_broadcast', 'c_broadcast',
@@ -266,9 +265,10 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
             'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream',
             'squared_l2_norm', 'squared_l2_norm', 'squared_l2_norm', 'sum',
-            'c_allreduce_sum', 'sqrt', 'fill_constant', 'elementwise_max',
-            'elementwise_div', 'elementwise_mul', 'elementwise_mul',
-            'elementwise_mul', 'momentum', 'momentum', 'momentum'
+            'c_allreduce_sum', 'sum', 'c_allreduce_sum', 'sqrt',
+            'fill_constant', 'elementwise_max', 'elementwise_div',
+            'elementwise_mul', 'elementwise_mul', 'elementwise_mul', 'momentum',
+            'momentum', 'momentum'
         ])
 
     def test_sharding_clone_for_test(self):
