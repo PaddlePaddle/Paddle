@@ -162,8 +162,8 @@ if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
         --modeldir=$DATA_DIR/resnet50/resnet50 \
         --gtest_output=xml:${log_dir}/test_resnet50.xml
     if [ $? -ne 0 ]; then
-        echo "test_resnet50 runs failed" >> ${exe_dir}/test_summary.txt
-        EXIT_CODE=1
+        echo "${RED} test_resnet50 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+        EXIT_CODE=8
     fi
 
     printf "${YELLOW} start test_det_mv3_db ${NC} \n";
@@ -172,8 +172,8 @@ if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
         --modeldir=$DATA_DIR/ocr_det_mv3_db/ocr_det_mv3_db \
         --gtest_output=xml:${log_dir}/test_det_mv3_db.xml
     if [ $? -ne 0 ]; then
-        echo "test_det_mv3_db runs failed" >> ${exe_dir}/test_summary.txt
-        EXIT_CODE=1
+        echo "${RED} test_det_mv3_db runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+        EXIT_CODE=8
     fi
 
     printf "${YELLOW} start test_LeViT ${NC} \n";
@@ -182,19 +182,23 @@ if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
         --modeldir=$DATA_DIR/LeViT/LeViT \
         --gtest_output=xml:${log_dir}/test_LeViT.xml
     if [ $? -ne 0 ]; then
-        echo "test_LeViT runs failed" >> ${exe_dir}/test_summary.txt
-        EXIT_CODE=1
+        echo "${RED} test_LeViT runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+        EXIT_CODE=8
     fi
 
-    printf "${YELLOW} start test_ernie_text_cls ${NC} \n";
-    compile_test "test_ernie_text_cls"
-    ${exe_dir}/test_ernie_text_cls \
-        --modeldir=$DATA_DIR/ernie_text_cls/ernie_text_cls \
-        --gtest_output=xml:${log_dir}/test_ernie_text_cls.xml
-    if [ $? -ne 0 ]; then
-        echo "test_ernie_text_cls runs failed" >> ${exe_dir}/test_summary.txt
-        EXIT_CODE=1
-    fi
+    if [ $WIN_DETECT != "" ]; then
+        echo "  skip test_ernie_text_cls  "
+    else
+        printf "${YELLOW} start test_ernie_text_cls ${NC} \n";
+        compile_test "test_ernie_text_cls"
+        ${exe_dir}/test_ernie_text_cls \
+            --modeldir=$DATA_DIR/ernie_text_cls/ernie_text_cls \
+            --gtest_output=xml:${log_dir}/test_ernie_text_cls.xml
+        if [ $? -ne 0 ]; then
+            echo "${RED} test_ernie_text_cls runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+            EXIT_CODE=8
+        fi
+    fi;
 
     printf "${YELLOW} start test_yolov3 ${NC} \n";
     compile_test "test_yolov3"
@@ -202,8 +206,8 @@ if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
         --modeldir=$DATA_DIR/yolov3/yolov3 \
         --gtest_output=xml:${log_dir}/test_yolov3.xml
     if [ $? -ne 0 ]; then
-        echo "test_yolov3 runs failed" >> ${exe_dir}/test_summary.txt
-        EXIT_CODE=1
+        echo "${RED} test_yolov3 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+        EXIT_CODE=8
     fi
 
     printf "${YELLOW} start test_ppyolo_mbv3 ${NC} \n";
@@ -212,8 +216,8 @@ if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
         --modeldir=$DATA_DIR/ppyolo_mbv3/ppyolo_mbv3 \
         --gtest_output=xml:${log_dir}/test_ppyolo_mbv3.xml
     if [ $? -ne 0 ]; then
-        echo "test_ppyolo_mbv3 runs failed" >> ${exe_dir}/test_summary.txt
-        EXIT_CODE=1
+        echo "${RED} test_ppyolo_mbv3 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+        EXIT_CODE=8
     fi
 
     printf "${YELLOW} start test_ppyolov2_r50vd ${NC} \n";
@@ -222,8 +226,8 @@ if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
         --modeldir=$DATA_DIR/ppyolov2_r50vd/ppyolov2_r50vd \
         --gtest_output=xml:${log_dir}/test_ppyolov2_r50vd.xml
     if [ $? -ne 0 ]; then
-        echo "test_ppyolov2_r50vd runs failed" >> ${exe_dir}/test_summary.txt
-        EXIT_CODE=1
+        echo "${RED} test_ppyolov2_r50vd runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+        EXIT_CODE=8
     fi
 
     printf "${YELLOW} start test_resnet50_quant ${NC} \n";
@@ -234,16 +238,25 @@ if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
         --datadir=$DATA_DIR/resnet50_quant/resnet50_quant/imagenet-eval-binary/9.data \
         --gtest_output=xml:${log_dir}/test_resnet50_quant.xml
     if [ $? -ne 0 ]; then
-        echo "test_resnet50_quant runs failed" >> ${exe_dir}/test_summary.txt
-        EXIT_CODE=1
+        echo "${RED} test_resnet50_quant runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+        EXIT_CODE=8
     fi
 fi
 
-
+set +x
 if [[ -f ${exe_dir}/test_summary.txt ]];then
+  echo " "
+  echo "Summary Failed Tests ..."
   echo "=====================test summary======================"
+  echo "The following tests Failed: "
   cat ${exe_dir}/test_summary.txt
   echo "========================================================"
+  echo " "
 fi
+set -x
+
+# tar Gtest output report
+tar -zcvf infer_ut_log.tgz ${log_dir}
+
 echo "infer_ut script finished"
 exit ${EXIT_CODE}
