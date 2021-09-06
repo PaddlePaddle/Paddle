@@ -40,7 +40,8 @@ def _squared_l2_norm(x):
     This OP returns the squared L2 norm of a tensor.
     """
 
-    if core.is_compiled_with_xpu() or x.dtype == core.VarDesc.VarType.FP16:
+    if core.is_compiled_with_xpu(
+    ) or x.dtype == core.VarDesc.VarType.FP16 or x.dtype == core.VarDesc.VarType.FP64:
         square = layers.square(x)
         sum_square = layers.reduce_sum(square)
         return sum_square
