@@ -18,6 +18,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using NPUDeviceContext = platform::NPUDeviceContext;
+
 template <typename T>
 class NPUBatchNormOpKernel : public framework::OpKernel<T> {
  public:
@@ -49,26 +51,20 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
     auto *y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
 
-    PADDLE_ENFORCE_EQ(
-        x->layout(), data_layout,
-        platform::errors::InvalidArgument(
-            "BatchNorm OP's input tensor x layout should equal to attr "
-            "data_layout, but got tensor layout <%s>, attr layout <%s>",
-            framework::DataLayoutToString(x->layout()), data_layout_str));
-    PADDLE_ENFORCE_EQ(
-        y->layout(), data_layout,
-        platform::errors::InvalidArgument(
-            "BatchNorm OP's output tensor y layout should equal to attr "
-            "data_layout, but got tensor layout <%s>, attr layout <%s>",
-            framework::DataLayoutToString(y->layout()), data_layout_str));
+    Tensor x_tensor(x->type());
+    Tensor y_tesnor(y->type());
+    x_tensor.ShareDataWith(*x);
+    y_tesnor.ShareDataWith(*y);
+    if (data_layout == DataLayout::kNHWC) {
+      x_tensor.set_layout(DataLayout::kNHWC);
+      y_tesnor.set_layout(DataLayout::kNHWC);
+    }
 
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
+    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     if (!training) {
       const auto &runner_infer = NpuOpRunner(
-          "BNInfer", {*x, *scale, *bias, *running_mean, *running_var}, {*y},
-          {{"epsilon", epsilon}});
+          "BNInfer", {x_tensor, *scale, *bias, *running_mean, *running_var},
+          {y_tesnor}, {{"epsilon", epsilon}});
       runner_infer.Run(stream);
     } else {
       auto *mean_out = ctx.Output<Tensor>("MeanOut");
@@ -93,14 +89,15 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
       sum.mutable_data<float>(running_mean->dims(), ctx.GetPlace());
       square_sum.mutable_data<float>(running_mean->dims(), ctx.GetPlace());
 
-      const auto &runner_reduce = NpuOpRunner(
-          "BNTrainingReduce", {*x}, {sum, square_sum}, {{"epsilon", epsilon}});
+      const auto &runner_reduce =
+          NpuOpRunner("BNTrainingReduce", {x_tensor}, {sum, square_sum},
+                      {{"epsilon", epsilon}});
       runner_reduce.Run(stream);
 
       const auto &runner_update = NpuOpRunner(
-          "BNTrainingUpdate",
-          {*x, sum, square_sum, *scale, *bias, *running_mean, *running_var},
-          {*y, *mean_out, *variance_out, *saved_mean, *saved_variance},
+          "BNTrainingUpdate", {x_tensor, sum, square_sum, *scale, *bias,
+                               *running_mean, *running_var},
+          {y_tesnor, *mean_out, *variance_out, *saved_mean, *saved_variance},
           {{"factor", momentum}, {"epsilon", epsilon}});
       runner_update.Run(stream);
     }
@@ -128,20 +125,16 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
     auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
-    PADDLE_ENFORCE_EQ(
-        x->layout(), data_layout,
-        platform::errors::InvalidArgument(
-            "BatchNorm OP's input tensor x layout should equal to attr "
-            "data_layout, but got tensor layout <%s>, attr layout <%s>",
-            framework::DataLayoutToString(x->layout()), data_layout_str));
-    PADDLE_ENFORCE_EQ(
-        d_y->layout(), data_layout,
-        platform::errors::InvalidArgument(
-            "BatchNorm OP's input tensor d_y layout should equal to attr "
-            "data_layout, but got tensor layout <%s>, attr layout <%s>",
-            framework::DataLayoutToString(d_y->layout()), data_layout_str));
-
     use_global_stats = is_test || use_global_stats;
+
+    Tensor x_tensor(x->type());
+    Tensor dy_tensor(d_y->type());
+    x_tensor.ShareDataWith(*x);
+    dy_tensor.ShareDataWith(*d_y);
+    if (data_layout == DataLayout::kNHWC) {
+      x_tensor.set_layout(DataLayout::kNHWC);
+      dy_tensor.set_layout(DataLayout::kNHWC);
+    }
 
     Tensor scale_grad_tmp(scale->type());
     Tensor bias_grad_tmp(bias->type());
@@ -154,30 +147,41 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
       d_bias = &bias_grad_tmp;
     }
 
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
+    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     if (d_scale && d_bias) {
       d_scale->mutable_data<T>(ctx.GetPlace());
       d_bias->mutable_data<T>(ctx.GetPlace());
-      const auto &runner_update = NpuOpRunner(
-          "BNTrainingUpdateGrad", {*d_y, *x, *saved_mean, *saved_inv_variance},
-          {*d_scale, *d_bias}, {{"epsilon", epsilon}});
-      runner_update.Run(stream);
+      if (use_global_stats) {
+        const auto *running_mean = ctx.Input<Tensor>("Mean");
+        const auto *running_variance = ctx.Input<Tensor>("Variance");
+        const auto &runner_update =
+            NpuOpRunner("BNTrainingUpdateGrad",
+                        {dy_tensor, x_tensor, *running_mean, *running_variance},
+                        {*d_scale, *d_bias}, {{"epsilon", epsilon}});
+        runner_update.Run(stream);
+      } else {
+        const auto &runner_update =
+            NpuOpRunner("BNTrainingUpdateGrad",
+                        {dy_tensor, x_tensor, *saved_mean, *saved_inv_variance},
+                        {*d_scale, *d_bias}, {{"epsilon", epsilon}});
+        runner_update.Run(stream);
+      }
     }
     if (d_x) {
       d_x->mutable_data<T>(ctx.GetPlace());
+      Tensor dx_tensor(d_x->type());
+      dx_tensor.ShareDataWith(*d_x);
       if (use_global_stats) {
         const auto *running_var = ctx.Input<Tensor>("Variance");
         const auto &runner_infer =
-            NpuOpRunner("BNInferGrad", {*d_y, *scale, *running_var}, {*d_x},
-                        {{"epsilon", epsilon}});
+            NpuOpRunner("BNInferGrad", {dy_tensor, *scale, *running_var},
+                        {dx_tensor}, {{"epsilon", epsilon}});
         runner_infer.Run(stream);
       } else {
         const auto &runner_reduce = NpuOpRunner(
-            "BNTrainingReduceGrad", {*d_y, *x, *d_scale, *d_bias, *scale,
-                                     *saved_mean, *saved_inv_variance},
-            {*d_x}, {{"epsilon", epsilon}});
+            "BNTrainingReduceGrad", {dy_tensor, x_tensor, *d_scale, *d_bias,
+                                     *scale, *saved_mean, *saved_inv_variance},
+            {dx_tensor}, {{"epsilon", epsilon}});
         runner_reduce.Run(stream);
       }
     }
