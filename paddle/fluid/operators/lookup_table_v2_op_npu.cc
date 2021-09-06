@@ -53,7 +53,7 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
     auto stream = dev_ctx->stream();
     auto w_name = ctx.InputName("W");
     VLOG(10) << "input W name:" << w_name;
-    if (w_name == "word_embedding_0") {
+    if (w_name == "word_embedding_0" || w_name == "word_embedding_1") {
       PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
 
       // get weight last two lines
@@ -85,29 +85,10 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
       framework::TensorToVector(*ids_t, *dev_ctx, &ids_vec);
       framework::TensorToVector(*output_t, *dev_ctx, &out_vec);
 
-      /*
-      auto batch_size = ids_t->dims()[0];
-      auto seq_len = ids_t->dims()[1];
-      VLOG(10) << "ids_t batch_size:" << batch_size
-               << ", ids_t dims:" << ids_t->dims()
-               << ", out_embedding dims:" << output_t->dims();
-
-      printf("%s ids:\n", w_name.c_str());
-      for (int64_t i = 0; i < batch_size; i++) {
-        printf("batch %d:", i);
-        for (int64_t s = 0; s < width; width++) {
-          printf("%f,",
-                 static_cast<float>(ids_embedding_vec[i * seq + s]));
-        }
-        printf("\n");
-      }
-      printf("\n");
-      */
-
-      auto &out = output_t;
-      int64_t batch_size = out->dims()[0];
-      int64_t height = out->dims()[1];
-      int64_t width = out->dims()[2];
+      const auto &out = output_t;
+      const int64_t batch_size = out->dims()[0];
+      const int64_t height = out->dims()[1];
+      const int64_t width = out->dims()[2];
       VLOG(10) << "batchsize:" << batch_size << ", height:" << height
                << ", width:" << width << ", out_dims:" << out->dims();
 
@@ -115,7 +96,7 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
       for (int64_t i = 0; i < batch_size; i++) {
         printf("batch %ld:\n", i);
         for (int64_t h = 0; h < height; h++) {
-          printf("\tidt row %ld idx:%d:", h, ids_vec[i * h + h]);
+          printf("\tidt row %ld idx:%d:", h, ids_vec[i * height + h]);
           for (int64_t w = 0; w < 10; w++) {
             printf("%f,", static_cast<float>(
                               out_vec[i * height * width + h * width + w]));
