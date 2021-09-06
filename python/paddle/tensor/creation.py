@@ -31,8 +31,60 @@ from ..fluid.framework import convert_np_dtype_to_dtype_, in_dygraph_mode, _varb
 from ..fluid.layers import linspace  # noqa: F401
 import paddle
 from paddle import _C_ops
+from ..fluid.framework import in_eager_mode
 
 __all__ = []
+
+
+# PlaceType value must equal Backend
+class PlaceType:
+    kUndef = 0
+    kCPUPlace = 1
+    kCUDAPlace = 2
+    kCUDAPinnedPlace = 3
+    kHIPPlace = 4
+    kXPUPlace = 5
+    kNPUPlace = 6
+    kNPUPinnedPlace = 7
+    kMKLDNNPlace = 8
+    kCUDNNPlace = 9
+
+
+def encode_place_for_eager(place):
+    place_id = PlaceType.kUndef
+    device_id = -1
+    if isinstance(place, core.Place):
+        if place.is_cpu_place():
+            place_id = PlaceType.kCPUPlace
+            device_id = -1
+        elif place.is_cuda_pinned_place():
+            place_id = PlaceType.kCUDAPinnedPlace
+            device_id = -1
+        elif place.is_gpu_place():
+            place_id = PlaceType.kCUDAPlace
+            device_id = place.gpu_device_id()
+        elif place.is_xpu_place():
+            place_id = PlaceType.kXPUPlace
+            device_id = place.xpu_device_id()
+        elif place.is_npu_place():
+            place_id = PlaceType.kNPUPlace
+            device_id = place.npu_device_id()
+    elif isinstance(place, core.CPUPlace):
+        place_id = PlaceType.kCPUPlace
+        device_id = -1
+    elif isinstance(place, core.CUDAPinnedPlace):
+        place_id = PlaceType.kCUDAPinnedPlace
+        device_id = -1
+    elif isinstance(place, core.CUDAPlace):
+        place_id = PlaceType.kCUDAPlace
+        device_id = place.get_device_id()
+    elif isinstance(place, core.XPUPlace):
+        place_id = PlaceType.kXPUPlace
+        device_id = place.get_device_id()
+    elif isinstance(place, core.NPUPlace):
+        place_id = PlaceType.kNPUPlace
+        device_id = place.get_device_id()
+    return place_id, device_id
 
 
 @dygraph_only
@@ -114,6 +166,14 @@ def to_tensor(data, dtype=None, place=None, stop_gradient=True):
             _current_expected_place(), core.CUDAPlace) and place._get_device_id(
             ) != _current_expected_place()._get_device_id():
         place = _current_expected_place()
+
+    if in_eager_mode():
+        if dtype is None:
+            dtype = paddle.get_default_dtype()
+        place_id, device_id = encode_place_for_eager(place)
+        return core.eager.to_tensor(data,
+                                    convert_dtype(dtype), place_id, device_id,
+                                    stop_gradient)
 
     if not isinstance(data, np.ndarray):
 

@@ -130,6 +130,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
+#include "paddle/fluid/pybind/eager.h"
 #include "pybind11/stl.h"
 
 DECLARE_bool(use_mkldnn);
@@ -488,6 +489,7 @@ PYBIND11_MODULE(core_avx, m) {
 PYBIND11_MODULE(core_noavx, m) {
 #endif
 
+  BindEager(&m);
   BindCudaStream(&m);
 
   // Not used, just make sure cpu_info.cc is linked.

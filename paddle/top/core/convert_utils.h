@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
+#include <string>
+
 #include "paddle/top/core/backend.h"
 #include "paddle/top/core/dtype.h"
 #include "paddle/top/core/layout.h"
@@ -35,5 +37,10 @@ DataType TransToPtenDataType(
 DataLayout TransToPtenLayout(const paddle::framework::DataLayout& layout);
 paddle::framework::proto::VarType::Type TransToProtoVarType(
     const DataType& dtype);
+
+size_t DataTypeSize(DataType dtype);
+DataType String2DataTyep(const std::string& str);
+std::string DataType2String(DataType dtype);
+int TensorDtype2NumpyDtype(pt::DataType dtype);
 
 }  // namespace pt

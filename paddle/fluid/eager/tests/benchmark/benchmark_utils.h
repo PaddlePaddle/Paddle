@@ -14,19 +14,21 @@
 
 #pragma once
 
-#include "paddle/top/api/include/tensor.h"
+#include "paddle/top/api/all.h"
+#include "paddle/fluid/imperative/layer.h"
 
 namespace egr {
 
-// Public
-void ScaleAPI(const pt::Tensor& x, float scale, float bias, bool bias_after_scale, std::vector<pt::Tensor>& outs);
-void FillConstAPI(double value, const pt::DDim& ddim, const pt::Backend& backend, 
-                  const pt::DataType& dtype, const pt::DataLayout& layout,
-                  pt::Tensor& target);
-void AccumulateTensorsAPI(pt::Tensor& t0, const pt::Tensor& t1);
-
-// Global 
-const paddle::platform::Place& GetExpectedPlace();
-void SetExpectedPlace(const paddle::platform::Place& place);
+void benchmark_eager_accuracy_check(pt::Tensor& tensor);
+void benchmark_eager(pt::Tensor& tensor);
 
 } // namespace egr
+
+namespace paddle {
+namespace imperative {
+
+void benchmark_fluid_accuracy_check(std::shared_ptr<imperative::VarBase>& X, std::shared_ptr<imperative::VarBase>& Out);
+void benchmark_fluid(std::shared_ptr<imperative::VarBase>& X, std::shared_ptr<imperative::VarBase>& Out);
+
+} // namespace imperative
+} // namespace paddle

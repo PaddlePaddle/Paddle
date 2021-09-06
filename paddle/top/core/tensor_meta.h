@@ -88,7 +88,7 @@ struct TensorMeta {
   TensorMeta(const DDim& dims,
              Backend backend,
              DataType type,
-             DataLayout layout,
+             DataLayout layout = DataLayout::kNCHW,
              size_t offset = 0UL,
              const LoD& lod = {})
       : dims(dims),

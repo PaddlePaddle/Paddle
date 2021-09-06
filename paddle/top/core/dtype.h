@@ -35,6 +35,7 @@ enum class DataType {
   kINT8,   // Char
   kUINT8,  // BYte
   kINT16,
+  kUINT16,
   kINT32,
   kINT64,
   kFLOAT16,

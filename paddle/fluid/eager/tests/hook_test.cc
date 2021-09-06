@@ -65,6 +65,8 @@ ScaleNode
  inp0
 */
 TEST(RetainGrad, HookBeforeRetainGrad) {
+  InitEnv(paddle::platform::CPUPlace());
+
   // Prepare Inputs
   std::vector<pt::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
@@ -147,6 +149,8 @@ ScaleNode
  inp0
 */
 TEST(RetainGrad, HookAfterRetainGrad) {
+  InitEnv(paddle::platform::CPUPlace());
+
   // Prepare Inputs
   std::vector<pt::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});

@@ -1,2 +1,7 @@
-cc_test(benchmark_eager SRCS benchmark_eager.cc DEPS eager_api function_api backward autograd_meta grad_node_info top)
-cc_test(benchmark_fluid SRCS benchmark_fluid.cc DEPS tracer layer proto_desc operator op_registry variable_helper scale_op memcpy)
+cc_library(benchmark_utils SRCS benchmark_utils.cc DEPS ${eager_deps} ${fluid_deps})
+
+cc_test(benchmark_eager_cpu SRCS benchmark_eager_cpu.cc DEPS benchmark_utils ${eager_deps} ${fluid_deps})
+cc_test(benchmark_fluid_cpu SRCS benchmark_fluid_cpu.cc DEPS benchmark_utils ${eager_deps} ${fluid_deps})
+
+cc_test(benchmark_eager_cuda SRCS benchmark_eager_cuda.cc DEPS benchmark_utils ${eager_deps} ${fluid_deps})
+cc_test(benchmark_fluid_cuda SRCS benchmark_fluid_cuda.cc DEPS benchmark_utils ${eager_deps} ${fluid_deps})
