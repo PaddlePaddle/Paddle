@@ -192,35 +192,52 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
         for place in self.get_places():
             self.check_sparse_gradient_clip(place)
 
-    # if grad is None or not need clip
-    def test_none_grad(self):
-        clip = fluid.clip.GradientClipByGlobalNorm(self.clip_norm)
-        x = fluid.default_main_program().global_block().create_parameter(
-            name="x", shape=[2, 3], dtype="float32")
-        y = fluid.default_main_program().global_block().create_parameter(
-            name="y", shape=[2, 3], dtype="float32")
-
-        # (x, None) should not be returned
-        params_grads = [(x, None), (x, y), (y, x)]
-        params_grads = clip(params_grads)
-        self.assertTrue(
-            len(params_grads) == 2,
-            "ClipByGlobalNorm: when grad is None, it shouldn't be returned by gradient clip!"
-        )
-
-        ops = [op.type for op in x.block.ops]
-        self.assertListEqual(ops, [
-            'squared_l2_norm', 'squared_l2_norm', 'sum', 'sum', 'sqrt',
-            'fill_constant', 'elementwise_max', 'elementwise_div',
-            'elementwise_mul', 'elementwise_mul'
-        ])
-
     # raise typeError
     def test_tpyeError(self):
         # the type of optimizer(grad_clip=) must be an instance of GradientClipBase's derived class
         with self.assertRaises(TypeError):
             sgd_optimizer = fluid.optimizer.SGD(learning_rate=0.1,
                                                 grad_clip="test")
+
+    # if grad is None or not need clip
+    def test_none_grad_fp32(self):
+        ops = self._test_none_grad_helper("float32")
+        self.assertListEqual(ops, [
+            'squared_l2_norm', 'squared_l2_norm', 'sum', 'sum', 'sqrt',
+            'fill_constant', 'elementwise_max', 'elementwise_div',
+            'elementwise_mul', 'elementwise_mul'
+        ])
+
+    def test_none_grad_fp16(self):
+        ops = self._test_none_grad_helper("float16")
+        self.assertListEqual(ops, [
+            'square', 'reduce_sum', 'square', 'reduce_sum', 'sum', 'cast',
+            'sum', 'sqrt', 'fill_constant', 'elementwise_max',
+            'elementwise_div', 'cast', 'elementwise_mul', 'cast',
+            'elementwise_mul'
+        ])
+
+    def _test_none_grad_helper(self, dtype):
+        prog = fluid.Program()
+        startup_program = fluid.Program()
+        with fluid.program_guard(
+                main_program=prog, startup_program=startup_program):
+            clip = fluid.clip.GradientClipByGlobalNorm(self.clip_norm)
+            x = fluid.default_main_program().global_block().create_parameter(
+                name="x", shape=[2, 3], dtype=dtype)
+            y = fluid.default_main_program().global_block().create_parameter(
+                name="y", shape=[2, 3], dtype=dtype)
+
+            # (x, None) should not be returned
+            params_grads = [(x, None), (x, y), (y, x)]
+            params_grads = clip(params_grads)
+            self.assertTrue(
+                len(params_grads) == 2,
+                "ClipByGlobalNorm: when grad is None, it shouldn't be returned by gradient clip!"
+            )
+
+            ops = [op.type for op in x.block.ops]
+        return ops
 
 
 class TestGradientClipByNorm(TestGradientClip):
