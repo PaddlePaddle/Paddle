@@ -40,6 +40,9 @@ ScaleNode
  inp0
 */
 TEST(CrossBatchAccumulation, SingleScaleNode) {
+  // Prepare Device Contexts
+  InitEnv(paddle::platform::CPUPlace());
+  
   // Prepare Inputs
   std::vector<pt::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});

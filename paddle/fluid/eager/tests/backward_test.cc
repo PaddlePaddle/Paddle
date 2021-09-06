@@ -33,6 +33,9 @@
 using namespace egr;
 
 TEST(Backward, SingleNodeEmptyGrad) {
+  // Prepare Device Contexts
+  InitEnv(paddle::platform::CPUPlace());
+  
   // Prepare Inputs
   std::vector<pt::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
@@ -80,6 +83,9 @@ TEST(Backward, SingleNodeEmptyGrad) {
 
 
 TEST(Backward, SingleNodeCustomGrad) {
+  // Prepare Device Contexts
+  InitEnv(paddle::platform::CPUPlace());
+  
   // Prepare Inputs
   std::vector<pt::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
@@ -141,6 +147,9 @@ Node0
  inp0
 */
 TEST(Backward, LinearNodes) {
+  // Prepare Device Contexts
+  InitEnv(paddle::platform::CPUPlace());
+  
   // Prepare Inputs
   std::vector<pt::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
@@ -205,6 +214,9 @@ Node0   Node1
  inp0   inp1
 */
 TEST(Backward, WithAccumulation) {
+  // Prepare Device Contexts
+  InitEnv(paddle::platform::CPUPlace());
+  
   // Prepare Inputs
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
   

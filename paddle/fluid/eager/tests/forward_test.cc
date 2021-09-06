@@ -31,6 +31,9 @@
 using namespace egr;
 
 TEST(Forward, SingleNode) {
+  // Prepare Device Contexts
+  InitEnv(paddle::platform::CPUPlace());
+  
   // Prepare Inputs
   std::vector<pt::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
@@ -78,6 +81,8 @@ Node1
  out
 */
 TEST(Forward, LinearNodes) {
+  InitEnv(paddle::platform::CPUPlace());
+  
   // Prepare Inputs
   std::vector<pt::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});
@@ -157,6 +162,8 @@ TEST(Forward, LinearNodes) {
    out1    out2
 */
 TEST(Forward, BranchedNodes) {
+  InitEnv(paddle::platform::CPUPlace());
+  
   // Prepare Inputs
   std::vector<pt::Tensor> target_tensors;
   paddle::framework::DDim ddim = paddle::framework::make_ddim({4, 16, 16, 32});

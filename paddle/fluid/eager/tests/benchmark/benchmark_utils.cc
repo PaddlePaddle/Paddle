@@ -12,7 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <paddle/fluid/framework/op_registry.h>
+// Eager
+#include "paddle/fluid/eager/backward.h"
+#include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/api/api.h"
+#include "paddle/fluid/eager/tests/test_utils.h"
+
+// Fluid
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/imperative/basic_engine.h"
+#include "paddle/fluid/imperative/tracer.h"
+#include "paddle/fluid/memory/memcpy.h"
 
 #include <memory>
 #include <set>
@@ -20,18 +30,54 @@
 #include <vector>
 #include <iostream>
 
-#include "gtest/gtest.h"
-#include "glog/logging.h"
-#include "paddle/fluid/imperative/basic_engine.h"
-#include "paddle/fluid/imperative/tracer.h"
-#include "paddle/fluid/memory/memcpy.h"
+namespace egr {
 
-#include <chrono>
+void benchmark_eager_accuracy_check(pt::Tensor& tensor) {
+  // 2. Run Forward for certain number of times
+  pt::Tensor input_tensor = tensor;
+  float scale = 2.0;
+  float bias = 3.0;
 
-using namespace paddle;
-using namespace imperative;
+  size_t max_num_runs = 10;
+  for(size_t i = 0; i < max_num_runs; i++) {
+    input_tensor = egr::scale(input_tensor, scale, bias, true /*bias_after_scale*/, true /*trace_backward*/)[0];
+  }
 
-inline void benchmark_fluid_accuracy_check(std::shared_ptr<imperative::VarBase>& X, std::shared_ptr<imperative::VarBase>& Out) {
+  // 3. Run Backward
+  std::vector<pt::Tensor> target_tensors = {input_tensor};
+  RunBackward(target_tensors, {});
+  
+  // Examine Forward Grad (w.r.t max_num_runs = 10)
+  PADDLE_ENFORCE(CompareTensorWithValue<float>(input_tensor, 8189.0) == true, 
+      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 8189.0));
+  // Examine Backward Grad (w.r.t max_num_runs = 10)
+  PADDLE_ENFORCE(CompareGradTensorWithValue<float>(tensor, 1024.0) == true, 
+      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 1024.0));
+}
+
+void benchmark_eager(pt::Tensor& tensor) {
+  // 2. Run Forward for certain number of times
+  pt::Tensor input_tensor = tensor;
+  float scale = 2.0;
+  float bias = 3.0;
+
+  size_t max_num_runs = 5000;
+  for(size_t i = 0; i < max_num_runs; i++) {
+    input_tensor = egr::scale(input_tensor, scale, bias, true /*bias_after_scale*/, true /*trace_backward*/)[0];
+  }
+
+  // 3. Run Backward
+  std::vector<pt::Tensor> target_tensors = {input_tensor};
+  RunBackward(target_tensors, {});
+}
+
+} // namespace egr
+
+
+namespace paddle {
+namespace imperative {
+
+void benchmark_fluid_accuracy_check(std::shared_ptr<imperative::VarBase>& X, std::shared_ptr<imperative::VarBase>& Out, const paddle::platform::Place& place) {
     imperative::Tracer tracer;
 
     framework::AttributeMap attrs;
@@ -44,8 +90,6 @@ inline void benchmark_fluid_accuracy_check(std::shared_ptr<imperative::VarBase>&
     // NameVarBaseMap = std::map<std::string, std::vector<std::shared_ptr<VarBase>>>
     imperative::NameVarBaseMap outs = {{"Out", {Out}}};
     imperative::NameVarBaseMap ins = {{"X", {X}}};
-
-    platform::CPUPlace place;
     
     size_t max_num_runs = 10;
     for(size_t i = 0; i < max_num_runs; i++) {
@@ -76,7 +120,7 @@ inline void benchmark_fluid_accuracy_check(std::shared_ptr<imperative::VarBase>&
 }
 
 
-inline void benchmark_fluid(std::shared_ptr<imperative::VarBase>& X, std::shared_ptr<imperative::VarBase>& Out) {
+void benchmark_fluid(std::shared_ptr<imperative::VarBase>& X, std::shared_ptr<imperative::VarBase>& Out, const paddle::platform::Place& place) {
     imperative::Tracer tracer;
 
     framework::AttributeMap attrs;
@@ -89,8 +133,6 @@ inline void benchmark_fluid(std::shared_ptr<imperative::VarBase>& X, std::shared
     // NameVarBaseMap = std::map<std::string, std::vector<std::shared_ptr<VarBase>>>
     imperative::NameVarBaseMap outs = {{"Out", {Out}}};
     imperative::NameVarBaseMap ins = {{"X", {X}}};
-
-    platform::CPUPlace place;
     
     size_t max_num_runs = 5000;
     for(size_t i = 0; i < max_num_runs; i++) {
@@ -107,50 +149,5 @@ inline void benchmark_fluid(std::shared_ptr<imperative::VarBase>& X, std::shared
     engine->Execute();
 }
 
-/*
-TEST(Benchmark, FluidAccuracy) {
-    std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
-    X->SetOverridedStopGradient(false);
-
-    std::shared_ptr<imperative::VarBase> Out(new imperative::VarBase(true, "Out"));
-    std::vector<float> src_data(128, 5.0);
-    std::vector<int64_t> dims = {2,4,4,4};
-    platform::CPUPlace place;
-  
-    auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
-    x_tensor->Resize(framework::make_ddim(dims));
-    auto* mutable_x = x_tensor->mutable_data<float>(place);
-    paddle::memory::Copy(place, mutable_x, place, src_data.data(),
-                         sizeof(float) * src_data.size());
-
-    benchmark_fluid_accuracy_check(X, Out);
-}
-*/
-
-TEST(Benchmark, FluidPerformance) {
-    std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
-    X->SetOverridedStopGradient(false);
-
-    std::shared_ptr<imperative::VarBase> Out(new imperative::VarBase(true, "Out"));
-    std::vector<float> src_data(128, 5.0);
-    std::vector<int64_t> dims = {2,4,4,4};
-    platform::CPUPlace place;
-  
-    auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
-    x_tensor->Resize(framework::make_ddim(dims));
-    auto* mutable_x = x_tensor->mutable_data<float>(place);
-    paddle::memory::Copy(place, mutable_x, place, src_data.data(),
-                         sizeof(float) * src_data.size());
-
-    auto t_start = std::chrono::high_resolution_clock::now();
-    
-    benchmark_fluid(X, Out);
-
-    auto t_end = std::chrono::high_resolution_clock::now();
-    double elapsed_time_ms = std::chrono::duration<double, std::milli>(t_end-t_start).count();
-
-    std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
-}
-
-USE_OP(scale);
-
+} // namespace imperative
+} // namespace paddle

@@ -20,55 +20,18 @@
 #include "paddle/fluid/eager/api/api.h"
 
 #include "paddle/fluid/eager/tests/test_utils.h"
+#include "paddle/fluid/eager/tests/benchmark/benchmark_utils.h"
+
+#include "gperftools/profiler.h"
 
 #include <chrono>
 
 using namespace egr;
 
-inline void benchmark_eager_accuracy_check(pt::Tensor& tensor) {
-  // 2. Run Forward for certain number of times
-  pt::Tensor input_tensor = tensor;
-  float scale = 2.0;
-  float bias = 3.0;
-
-  size_t max_num_runs = 10;
-  for(size_t i = 0; i < max_num_runs; i++) {
-    input_tensor = egr::scale(input_tensor, scale, bias, true /*bias_after_scale*/, true /*trace_backward*/)[0];
-  }
-  
-  // Examine Forward Output
-  // CompareTensorWithValue<float>(out, 13.0);
-
-  // 3. Run Backward
-  std::vector<pt::Tensor> target_tensors = {input_tensor};
-  RunBackward(target_tensors, {});
-  
-  // Examine Forward Grad (w.r.t max_num_runs = 10)
-  PADDLE_ENFORCE(CompareTensorWithValue<float>(input_tensor, 8189.0) == true, 
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 8189.0));
-  // Examine Backward Grad (w.r.t max_num_runs = 10)
-  PADDLE_ENFORCE(CompareGradTensorWithValue<float>(tensor, 1024.0) == true, 
-      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 1024.0));
-}
-
-inline void benchmark_eager(pt::Tensor& tensor) {
-  // 2. Run Forward for certain number of times
-  pt::Tensor input_tensor = tensor;
-  float scale = 2.0;
-  float bias = 3.0;
-
-  size_t max_num_runs = 5000;
-  for(size_t i = 0; i < max_num_runs; i++) {
-    input_tensor = egr::scale(input_tensor, scale, bias, true /*bias_after_scale*/, true /*trace_backward*/)[0];
-  }
-
-  // 3. Run Backward
-  std::vector<pt::Tensor> target_tensors = {input_tensor};
-  RunBackward(target_tensors, {});
-}
-
-/*
 TEST(Benchmark, EagerAccuracy) {
+    // Prepare Device Contexts
+    InitEnv(paddle::platform::CPUPlace());
+    
     // 1. Prepare Input
     paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
     pt::Tensor tensor = EagerUtils::CreateTensorWithValue(ddim, pt::Backend::kCPU,
@@ -78,9 +41,11 @@ TEST(Benchmark, EagerAccuracy) {
     
     benchmark_eager_accuracy_check(tensor);
 }
-*/
 
 TEST(Benchmark, EagerPerformance) {
+    // Prepare Device Contexts
+    InitEnv(paddle::platform::CPUPlace());
+  
     // 1. Prepare Input
     paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
     pt::Tensor tensor = EagerUtils::CreateTensorWithValue(ddim, pt::Backend::kCPU,
@@ -90,7 +55,9 @@ TEST(Benchmark, EagerPerformance) {
     
     auto t_start = std::chrono::high_resolution_clock::now();
     
+    ProfilerStart("eager_cpu.out");
     benchmark_eager(tensor);
+    ProfilerStop();
     
     auto t_end = std::chrono::high_resolution_clock::now();
     double elapsed_time_ms = std::chrono::duration<double, std::milli>(t_end-t_start).count();
