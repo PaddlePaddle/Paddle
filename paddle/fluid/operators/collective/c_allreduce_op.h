@@ -288,7 +288,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
       printf("%s lines:", in_name.c_str());
       for (int64_t i = 0; i < batch_size; i++) {
         printf("batch %ld:\n", i);
-        for (int64_t h = 0; h < height; i++) {
+        for (int64_t h = 0; h < height; h++) {
           printf("\trow %ld:", h);
           for (int64_t w = 0; w < width; w++) {
             printf("%f,", static_cast<float>(
