@@ -42,7 +42,9 @@ class WorkQueueImpl : public WorkQueue {
 
   void WaitQueueEmpty() override {
     if (tracker_ == nullptr) {
-      abort();
+      PADDLE_THROW(
+          platform::errors::Unavailable("set WorkQueueOptions.track_task = "
+                                        "true before call this interface."));
     }
     tracker_->WaitTaskNumToZero();
   }
@@ -116,7 +118,9 @@ void WorkQueueGroupImpl::AddTask(size_t queue_idx, std::function<void()> fn) {
 
 void WorkQueueGroupImpl::WaitQueueGroupEmpty() {
   if (nullptr == tracker_) {
-    abort();
+    PADDLE_THROW(platform::errors::Unavailable(
+        "set WorkQueueOptions.track_task = true for at least one of queues "
+        "before call this interface."));
   }
   tracker_->WaitTaskNumToZero();
 }
