@@ -69,9 +69,9 @@ class CumprodGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "CumprodGrad");
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "CumprodGrad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@Grad", "CumprodGrad");
+                   "framework::GradVarName(\"Out\")", "CumprodGrad");
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@Grad", "CumprodGrad");
+                   "framework::GradVarName(\"X\")", "CumprodGrad");
     ctx->ShareDim(framework::GradVarName("Out"), framework::GradVarName("X"));
     ctx->ShareLoD(framework::GradVarName("Out"), framework::GradVarName("X"));
   }

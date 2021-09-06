@@ -88,7 +88,7 @@ class TestCumprod(OpTest):
                 self.x[i] = 0
             self.x = np.reshape(self.x, self.shape)
         self.out = np.cumprod(self.x, axis=dim)
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+        self.inputs = {'X': self.x}
         self.outputs = {'Out': self.out}
         self.attrs = {'dim': dim}
 
@@ -190,17 +190,6 @@ class TestCumprodAPI(unittest.TestCase):
 
         for place in self.place:
             run(place)
-
-    # test error message.
-    # def test_error_message(self):
-    #     def run(place):
-    #         paddle.disable_static(place)
-    #         x = paddle.to_tensor(self.x)
-    #         out = paddle.cumprod(x, 10)
-    #         paddle.enable_static()
-
-    #     for place in self.place:
-    #         run(place)
 
 
 if __name__ == "__main__":
