@@ -309,7 +309,7 @@ def update_op_node_dims_mapping(dist_context, op_node, fwd=True):
     changed = False
     if (not op_node.is_op()) or (op_node.op() is None):
         return False
-    # Skip reader op 
+    # Skip reader op
     op_desc = op_node.op()
     if op_desc.type() == "create_py_reader" \
         or op_desc.type() == "create_double_buffer_reader" \
@@ -420,9 +420,8 @@ def complete_annotation(program, dist_context=None):
     if dist_context is None:
         dist_context = get_default_distributed_context()
 
-    # Initialize distributed attributes for all var and op node in program 
+    # Initialize distributed attributes for all var and op node in program
     dist_context.initialize_distributed_attr_for_program(program)
-    # print_program_with_distributed_attr(program, dist_context)
 
     # Convert program to graph
     graph = framework.IrGraph(core.Graph(program.desc))
@@ -430,37 +429,134 @@ def complete_annotation(program, dist_context=None):
     # Initialize distributed attributes for all var and op node in graph
     dist_context.initialize_distributed_attr_for_graph(graph)
 
-    # # Complete process mesh for each node
+    # Complete process mesh for each node
     all_nodes = list(graph.all_nodes())
+
+    def sort_key_fun(node):
+        first = -1
+        if node.is_op():
+            first = 0
+        else:
+            first = 1
+        second = -1
+        if node.is_op() and node.op() is not None:
+            second = node.op().id()
+        if node.is_var() and node.var() is not None:
+            second = node.var().id()
+        return (first, second)
+
+    all_nodes.sort(key=sort_key_fun)
+
     reach_fix_point = False
     while not reach_fix_point:
-        changed = False
-        for node in all_nodes:
-            if node.is_var() and node.var() is not None:
-                tensor_changed = update_tensor_node_process_mesh(
-                    dist_context, node, fwd=True)
-                if tensor_changed:
-                    changed = True
-            if node.is_op() and node.op() is not None:
-                op_changed = update_op_node_process_mesh(
-                    dist_context, node, fwd=True)
-                if op_changed:
-                    changed = True
-        for node in reversed(all_nodes):
-            if node.is_var() and node.var() is not None:
-                tensor_changed = update_tensor_node_process_mesh(
-                    dist_context, node, fwd=False)
-                if tensor_changed:
-                    changed = True
-            if node.is_op() and node.op() is not None:
-                op_changed = update_op_node_process_mesh(
-                    dist_context, node, fwd=False)
-                if op_changed:
-                    changed = True
-        if changed:
+        total_changed = False
+        reach_fwd_fix_point = False
+        reach_bwd_fix_point = False
+        while not reach_fwd_fix_point:
+            changed = False
+            for node in all_nodes:
+                if node.is_var() and node.var() is not None:
+                    tensor_changed = update_tensor_node_process_mesh(
+                        dist_context, node, fwd=True)
+                    if tensor_changed:
+                        changed = True
+                if node.is_op() and node.op() is not None:
+                    op_changed = update_op_node_process_mesh(
+                        dist_context, node, fwd=True)
+                    if op_changed:
+                        changed = True
+            if changed:
+                reach_fwd_fix_point = False
+                total_changed = True
+            else:
+                reach_fwd_fix_point = True
+        while not reach_bwd_fix_point:
+            changed = False
+            for node in all_nodes:
+                if node.is_var() and node.var() is not None:
+                    tensor_changed = update_tensor_node_process_mesh(
+                        dist_context, node, fwd=False)
+                    if tensor_changed:
+                        changed = True
+                if node.is_op() and node.op() is not None:
+                    op_changed = update_op_node_process_mesh(
+                        dist_context, node, fwd=False)
+                    if op_changed:
+                        changed = True
+            if changed:
+                reach_bwd_fix_point = False
+                total_changed = True
+            else:
+                reach_bwd_fix_point = True
+        if total_changed:
             reach_fix_point = False
         else:
             reach_fix_point = True
+            # Validation the completion of process meshes and should be moved to a proper location
+            is_wrong = False
+            for node in all_nodes:
+                if node.is_var() and node.var() is not None:
+                    tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_graph(
+                        node)
+                    if tensor_dist_attr.get_process_mesh() is None:
+                        msg_str = ""
+                        for op_node in node.inputs:
+                            if op_node.op() is not None:
+                                op_dist_attr = dist_context.get_op_distributed_attr_for_graph(
+                                    op_node)
+                                msg_str += "{} [{}], ".format(
+                                    op_node.op().type(),
+                                    op_dist_attr.get_process_mesh())
+                            else:
+                                msg_str += "{} [{}], ".format(op_node.name(),
+                                                              None)
+                        for op_node in node.outputs:
+                            if op_node.op() is not None:
+                                op_dist_attr = dist_context.get_op_distributed_attr_for_graph(
+                                    op_node)
+                                msg_str += "{} [{}], ".format(
+                                    op_node.op().type(),
+                                    op_dist_attr.get_process_mesh())
+                            else:
+                                msg_str += "{} [{}], ".format(op_node.name(),
+                                                              None)
+                        msg_str = "Cannot decide ProcessMesh of {} among {}. Please use shard_tensor api explicitly to annotate it".format(
+                            node.var().name(), msg_str[:-2])
+                        is_wrong = True
+                        print(msg_str)
+                if node.is_op() and node.op() is not None:
+                    op_dist_attr = dist_context.get_op_distributed_attr_for_graph(
+                        node)
+                    if op_dist_attr.get_process_mesh() is None:
+                        msg_str = ""
+                        for tensor_node in node.inputs:
+                            if tensor_node.var() is not None:
+                                tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_graph(
+                                    tensor_node)
+                                msg_str += "{} [{}], ".format(
+                                    tensor_node.var().name(),
+                                    tensor_dist_attr.get_process_mesh())
+                            else:
+                                msg_str += "{} [{}], ".format(
+                                    tensor_node.name(), None)
+                        for tensor_node in node.outputs:
+                            if tensor_node.var() is not None:
+                                tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_graph(
+                                    tensor_node)
+                                msg_str += "{} [{}], ".format(
+                                    tensor_node.var().name(),
+                                    tensor_dist_attr.get_process_mesh())
+                            else:
+                                msg_str += "{} [{}], ".format(
+                                    tensor_node.name(), None)
+                        msg_str = "Cannot decide ProcessMesh of {} among {}. Please use shard_op api explicitly to annotate it".format(
+                            node.op().type(), msg_str[:-2])
+                        is_wrong = True
+                        print(msg_str)
+                if node.is_op() and node.op() is None:
+                    print("op op is None", node.name())
+            if is_wrong:
+                assert False, "Cannot complete process_meshes of the program."
 
     # Complete dims_mapping for each node
     reach_fix_point = False
