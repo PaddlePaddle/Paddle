@@ -140,7 +140,7 @@ __device__ inline void VectorizedKernelImpl(
     for (int j = 0; j < Arity; ++j) {
       ins[j] = ins_ptr[j][i];
     }
-    out_vec.val[i] = platform::Apply<InT, OutT, Functor>(func, ins);
+    out_vec.val[i] = platform::CallFunctor<InT, OutT, Functor>(func, ins);
   }
   // store
   wrapper.StoreVectorizedData(out_vec, tid);
@@ -152,7 +152,7 @@ __device__ inline void ScalarKernelImpl(
     int tid) {
   InT ins[Arity];
   wrapper.LoadScalarizedData(ins, tid);
-  OutT out = platform::Apply<InT, OutT, Functor>(func, ins);
+  OutT out = platform::CallFunctor<InT, OutT, Functor>(func, ins);
   wrapper.StoreScalarizedData(out, tid);
 }
 

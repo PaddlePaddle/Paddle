@@ -50,33 +50,33 @@ namespace details {
 
 template <typename InT, typename OutT, typename Functor, int Arity,
           bool HasPointerArgs = false>
-struct ApplyImpl {
+struct CallFunctorImpl {
   HOSTDEVICE inline OutT operator()(Functor func, InT args[]);
 };
 
 template <typename InT, typename OutT, typename Functor>
-struct ApplyImpl<InT, OutT, Functor, 1, true> {
+struct CallFunctorImpl<InT, OutT, Functor, 1, true> {
   HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
     return func(args);
   }
 };
 
 template <typename InT, typename OutT, typename Functor>
-struct ApplyImpl<InT, OutT, Functor, 1, false> {
+struct CallFunctorImpl<InT, OutT, Functor, 1, false> {
   HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
     return func(args[0]);
   }
 };
 
 template <typename InT, typename OutT, typename Functor, bool HasPointerArgs>
-struct ApplyImpl<InT, OutT, Functor, 2, HasPointerArgs> {
+struct CallFunctorImpl<InT, OutT, Functor, 2, HasPointerArgs> {
   HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
     return func(args[0], args[1]);
   }
 };
 
 template <typename InT, typename OutT, typename Functor, bool HasPointerArgs>
-struct ApplyImpl<InT, OutT, Functor, 3, HasPointerArgs> {
+struct CallFunctorImpl<InT, OutT, Functor, 3, HasPointerArgs> {
   HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
     return func(args[0], args[1], args[2]);
   }
@@ -85,11 +85,11 @@ struct ApplyImpl<InT, OutT, Functor, 3, HasPointerArgs> {
 }  // namespace details
 
 template <typename InT, typename OutT, typename Functor>
-HOSTDEVICE inline OutT Apply(Functor func, InT args[]) {
+HOSTDEVICE inline OutT CallFunctor(Functor func, InT args[]) {
   using Traits = FunctionTraits<Functor>;
 
-  return details::ApplyImpl<InT, OutT, Functor, Traits::arity,
-                            Traits::has_pointer_args>()(func, args);
+  return details::CallFunctorImpl<InT, OutT, Functor, Traits::arity,
+                                  Traits::has_pointer_args>()(func, args);
 }
 
 }  // namespace platform

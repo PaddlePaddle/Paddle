@@ -306,7 +306,7 @@ __device__ inline void ScalarizedBroadcastKernelImpl(
     BroadcastArgsWrapper wrapper, Functor func, int tid) {
   InT args[ET];
   wrapper.LoadScalarizedData(args, tid);
-  OutT args_out = platform::Apply<InT, OutT, Functor>(func, args);
+  OutT args_out = platform::CallFunctor<InT, OutT, Functor>(func, args);
   wrapper.StoreScalarizedData(args_out, tid);
 }
 
@@ -328,7 +328,7 @@ __device__ inline void VectorizedBroadcastKernelImpl(
     for (int j = 0; j < ET; ++j) {
       ins[j] = args[j][i];
     }
-    args_out.val[i] = platform::Apply<InT, OutT, Functor>(func, ins);
+    args_out.val[i] = platform::CallFunctor<InT, OutT, Functor>(func, ins);
   }
 
   wrapper.StoreVectorizedData(args_out, tid);
