@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
 import unittest
 import paddle
 from paddle.fluid import core
@@ -55,6 +56,23 @@ class LinearTestCase(unittest.TestCase):
                 "a": np.ones(
                     [2, 2], dtype="float32") * i
             }, [a.name, c.name])
+
+        # test for cost_info
+        cost_info = standaloneexecutor.dry_run({
+            "a": np.ones(
+                [2, 2], dtype="float32") * i
+        })
+        self.check_cost_info(cost_info)
+
+    def check_cost_info(self, cost_info):
+        if core.is_compiled_with_cuda():
+            # self.assertEqual(cost_info.host_memory_bytes(), 16)
+            self.assertGreater(cost_info.device_memory_bytes(), 0)
+            self.assertGreaterEqual(cost_info.device_total_memory_bytes(),
+                                    cost_info.device_memory_bytes())
+        else:
+            self.assertGreater(cost_info.host_memory_bytes(), 0)
+            self.assertEqual(cost_info.device_memory_bytes(), 0)
 
 
 class MultiStreamModelTestCase(unittest.TestCase):
