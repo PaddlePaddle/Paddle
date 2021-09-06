@@ -290,7 +290,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
         printf("batch %ld:\n", i);
         for (int64_t h = 0; h < height; h++) {
           printf("\trow %ld:", h);
-          for (int64_t w = 0; w < width; w++) {
+          for (int64_t w = 0; w < 10; w++) {
             printf("%f,", static_cast<float>(
                               out_vec[i * height * width + h * width + w]));
           }

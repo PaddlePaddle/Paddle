@@ -62,14 +62,18 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
         framework::TensorToVector(*table_t, *dev_ctx, &w_vec);
         int64_t width = table_t->dims()[1];
         int64_t height = table_t->dims()[0];
-        printf("%s last second line:", w_name.c_str());
-        for (int64_t i = (height - 2) * width; i < height * width; i++) {
-          printf("%f,", static_cast<float>(w_vec[i]));
+        printf("%s:", w_name.c_str());
+        for (int64_t i = 0; i < height; i++) {
+          printf("embedding row %ld:", i);
+          for (int64_t w = 0; w < 10; w++) {
+            printf("%f,", static_cast<float>(w_vec[i * width + w]));
+          }
+          printf("\n");
         }
         printf("\n");
 
         printf("%s last line:", w_name.c_str());
-        for (int64_t i = (height - 1) * width; i < height * width; i++) {
+        for (int64_t i = (height - 1) * width; i < 10; i++) {
           printf("%f,", static_cast<float>(w_vec[i]));
         }
         printf("\n");
@@ -111,8 +115,8 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
       for (int64_t i = 0; i < batch_size; i++) {
         printf("batch %ld:\n", i);
         for (int64_t h = 0; h < height; h++) {
-          printf("\trow %ld:", h);
-          for (int64_t w = 0; w < width; w++) {
+          printf("\tidt row %ld idx:%d:", h, ids_vec[i * h + h]);
+          for (int64_t w = 0; w < 10; w++) {
             printf("%f,", static_cast<float>(
                               out_vec[i * height * width + h * width + w]));
           }
