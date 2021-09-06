@@ -269,6 +269,36 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
         reinterpret_cast<void*>(stream)));
 
     out->Resize(in->dims());
+
+    auto in_name = ctx.InputName("X");
+    VLOG(10) << "input X name:" << in_name;
+    if (in_name == "embedding_1.tmp_0") {
+      PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+
+      // get weight last two lines
+      std::vector<T> out_vec;
+      framework::TensorToVector(*out, dev_ctx, &out_vec);
+
+      int64_t batch_size = out->dims[0];
+      int64_t height = out->dims()[1];
+      int64_t width = out->dims()[2];
+      VLOG(10) << "batchsize:" << batch_size << ", height:" << height
+               << ", width:" << width << ", out_dims:" << out->dims();
+
+      printf("%s lines:", in_name.c_str());
+      for (int64_t i = 0; r < batch_size; i++) {
+        print("batch %d:\n", i);
+        for (int64_t h = 0; h < height; i++) {
+          print("\trow %d:", h);
+          for (int64_t w = 0; w < width; w++) {
+            print("%f,", out_vec[i * height * width + h * width + w]);
+          }
+          print("\n");
+        }
+        printf("\n");
+      }
+      printf("\n");
+    }
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
         "PaddlePaddle should compile with NPU."));

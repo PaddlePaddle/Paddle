@@ -47,6 +47,52 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
         .AddInput(std::vector<int32_t>{0})
         .AddOutput(*output_t);
     runner.Run();
+
+    auto dev_ctx = static_cast<platform::NPUDeviceContext *>(
+        platform::DeviceContextPool::Instance().Get(place));
+    auto stream = dev_ctx->stream();
+    auto w_name = ctx.InputName("W");
+    VLOG(10) << "input W name:" << w_name;
+    if (w_name == "word_embedding_0") {
+      PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
+
+      // get weight last two lines
+      std::vector<T> w_vec;
+      framework::TensorFromVector(*table_t, dev_ctx, &w_vec);
+      int64_t width = table_t->dims()[1];
+      int64_t height = table_t->dims()[0];
+      printf("%s last second line:", w_name.c_str());
+      for (int64_t i = (height - 2) * width; i < width; i++) {
+        printf("%f,", w_vec[i]);
+      }
+
+      printf("%s last line:", w_name.c_str());
+      for (int64_t i = (height - 1) * width; i < width; i++) {
+        printf("%f,", w_vec[i]);
+      }
+      printf("\n");
+
+      // get ids_t
+      std::vector<int32_t> ids_vec, ids_embedding_vec;
+      framework::TensorToVector(*ids_t, dev_ctx, ids_vec);
+      framework::TensorToVector(*output_t, dev_ctx, ids_embedding_vec);
+
+      auto batch_size = ids_t->dims()[0];
+      auto hid_size = ids_t->dims()[1];
+      VLOG(10) << "ids_t batch_size:" << batch_size << ", hid_size:" << hid_size
+               << ", ids_t dims:" << ids_t->dims()
+               << ", out_embedding dims:" << output_t->dims();
+
+      printf("%s ids:\n", w_name.c_str());
+      for (int64_t i = 0; i < batch_size; i++) {
+        printf("batch %d:", ids_vec[i]);
+        for (int64_t hid = 0; hid < hid_size; hid++) {
+          printf("%f,", ids_embedding_vec[i * hid_size + hid]);
+        }
+        printf("\n");
+      }
+      printf("\n");
+    }
   }
 };
 

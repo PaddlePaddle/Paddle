@@ -1286,6 +1286,12 @@ def _parallel_embedding_npu(x,
             'use_calc_stream': True,
             'use_model_parallel': True
         })
+
+    print("origin_num_embeddings:", origin_num_embeddings, flush=True)
+    print("origin_size:", origin_size, flush=True)
+    print("padding_idx:", per_part_embeddings - 1, flush=True)
+    print("embedding name:", name, flush=True)
+
     return out
 
 
