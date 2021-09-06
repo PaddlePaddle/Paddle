@@ -24,12 +24,6 @@
 #include <hip/hip_runtime.h>
 #endif
 
-#ifdef _WIN32
-#ifndef NOMINMAX
-#define NOMINMAX  // msvc max/min macro conflict with std::min/max
-#endif            // NOMINMAX
-#endif            // _WIN32
-
 #include <stddef.h>
 #include <algorithm>
 #include <string>
@@ -80,7 +74,7 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(
 
   // Compute physical threads we need, should small than max sm threads
   const int physical_thread_count =
-      std::min(max_physical_threads, theory_thread_count);
+      (std::min)(max_physical_threads, theory_thread_count);
 
   // Get compute_capability
   const int capability = context.GetComputeCapability();
@@ -93,9 +87,9 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(
 
   // Need get from device
   const int thread_per_block =
-      std::min(max_threads, context.GetMaxThreadsPerBlock());
+      (std::min)(max_threads, context.GetMaxThreadsPerBlock());
   const int block_count =
-      std::min(DivUp(physical_thread_count, thread_per_block), sm);
+      (std::min)(DivUp(physical_thread_count, thread_per_block), sm);
 
   GpuLaunchConfig config;
   config.theory_thread_count.x = theory_thread_count;
@@ -117,19 +111,20 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(
                                   y_dim));
 
   const int kThreadsPerBlock = 256;
-  int block_cols = std::min(x_dim, kThreadsPerBlock);
-  int block_rows = std::max(kThreadsPerBlock / block_cols, 1);
+  int block_cols = (std::min)(x_dim, kThreadsPerBlock);
+  int block_rows = (std::max)(kThreadsPerBlock / block_cols, 1);
 
   int max_physical_threads = context.GetMaxPhysicalThreadCount();
-  const int max_blocks = std::max(max_physical_threads / kThreadsPerBlock, 1);
+  const int max_blocks = (std::max)(max_physical_threads / kThreadsPerBlock, 1);
 
   GpuLaunchConfig config;
   // Noticed, block size is not align to 32, if needed do it yourself.
   config.theory_thread_count = dim3(x_dim, y_dim, 1);
   config.thread_per_block = dim3(block_cols, block_rows, 1);
 
-  int grid_x = std::min(DivUp(x_dim, block_cols), max_blocks);
-  int grid_y = std::min(max_blocks / grid_x, std::max(y_dim / block_rows, 1));
+  int grid_x = (std::min)(DivUp(x_dim, block_cols), max_blocks);
+  int grid_y =
+      (std::min)(max_blocks / grid_x, (std::max)(y_dim / block_rows, 1));
 
   config.block_per_grid = dim3(grid_x, grid_y, 1);
   return config;
