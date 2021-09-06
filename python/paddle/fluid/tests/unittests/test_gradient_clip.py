@@ -71,14 +71,18 @@ class TestGradientClip(unittest.TestCase):
     def check_clip_result(self, out, out_clip):
         pass
 
-    def check_gradient_clip(self, place):
+    def check_gradient_clip(self, place, dtype='float32'):
         prog = fluid.Program()
         startup_program = fluid.Program()
         with fluid.program_guard(
                 main_program=prog, startup_program=startup_program):
             image = fluid.data(name="a", shape=[-1, 784], dtype='float32')
             label = fluid.data(name="b", shape=[-1, 1], dtype='int64')
-            hidden = fluid.layers.fc(input=image, size=32, act='relu')
+            if dtype != 'float32':
+                image_cast = paddle.cast(image, dtype)
+                hidden = fluid.layers.fc(input=image_cast, size=32, act='relu')
+            else:
+                hidden = fluid.layers.fc(input=image, size=32, act='relu')
             predict = fluid.layers.fc(input=hidden, size=10, act='softmax')
 
             cost = fluid.layers.cross_entropy(input=predict, label=label)
@@ -175,6 +179,15 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
 
         self.clip_gradient = func
         self.check_gradient_clip(fluid.CPUPlace())
+
+    # test whether the ouput is right when use grad_clip under float64
+    def test_new_gradient_clip_fp64(self):
+        def func(params_grads):
+            clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=self.clip_norm)
+            return clip(params_grads)
+
+        self.clip_gradient = func
+        self.check_gradient_clip(fluid.CPUPlace(), "float64")
 
     # invoke 'set_gradient_clip' in a wrong order
     def test_wrong_API_order(self):
