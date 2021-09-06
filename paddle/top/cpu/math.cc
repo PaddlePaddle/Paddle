@@ -70,7 +70,7 @@ void Mean(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
 
 }  // namespace pt
 
-using bfloat16 = ::paddle::platform::bfloat16;
+// using bfloat16 = ::paddle::platform::bfloat16;
 
 // Register method 1:
 // PT_REGISTER_KERNEL_STANDARD(sign, CPU, NCHW, FLOAT32, pt::Sign<float>)
