@@ -1493,7 +1493,7 @@ class OpTest(unittest.TestCase):
 
         numeric_grads = user_defined_grads or [
             get_numeric_gradient(
-                numeric_place,
+                place,
                 self.scope,
                 self.op,
                 self.inputs,
