@@ -75,6 +75,10 @@ XPUOpMap& get_kl2_ops() {
       {"elementwise_min_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"momentum", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"batch_norm", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"batch_norm_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       // AddMore
   };
 
