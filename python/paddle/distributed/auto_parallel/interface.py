@@ -275,12 +275,18 @@ def _dim_mapping_checker(tensor, mesh, dim_mapping):
                       ProcessMesh), 'The type of mesh must be ProcessMesh.'
     assert isinstance(dim_mapping,
                       list), 'The type of dim_mapping must be list.'
-    assert len(tensor.shape) == len(dim_mapping)
+    assert len(tensor.shape) == len(dim_mapping), (
+        'The number of dimensions '
+        'of tensor must be the same as the length of its corresponding '
+        'dim_mapping.')
     mesh_dim = len(mesh.topology)
     dim_set = set()
     for i in range(len(dim_mapping)):
-        assert dim_mapping[i] == -1 or (dim_mapping[i] < mesh_dim and
-                                        dim_mapping[i] >= 0)
+        assert dim_mapping[i] == -1 or (
+            dim_mapping[i] < mesh_dim and dim_mapping[i] >= 0), (
+                'Each element '
+                'in dim_mapping must be greater than zero and less than the '
+                'length of its corresponding topology, or it must be -1.')
         if dim_mapping[i] >= 0:
             assert dim_mapping[i] not in dim_set
             dim_set.add(dim_mapping[i])
