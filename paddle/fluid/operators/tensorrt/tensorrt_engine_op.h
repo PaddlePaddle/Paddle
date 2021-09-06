@@ -145,7 +145,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
   bool calibration_mode_;
   int predictor_id_;
   int device_id_;
-  bool allow_build_at_runtime_;
+  bool allow_build_at_runtime_{false};
   std::string shape_range_info_path_;
   std::string model_opt_cache_dir_;
   bool use_static_engine_;
@@ -168,7 +168,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
     engine_key_ = Attr<std::string>("engine_key");
     calibration_engine_key_ = Attr<std::string>("calibration_engine_key");
     predictor_id_ = Attr<int>("predictor_id");
-    allow_build_at_runtime_ = false;
     shape_range_info_path_ = Attr<std::string>("shape_range_info_path");
     allow_build_at_runtime_ = Attr<bool>("allow_build_at_runtime");
     use_static_engine_ = Attr<bool>("use_static_engine");

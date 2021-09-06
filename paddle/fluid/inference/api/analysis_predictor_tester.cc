@@ -19,6 +19,7 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
 #include "paddle/fluid/platform/cpu_info.h"
@@ -180,6 +181,47 @@ TEST(AnalysisPredictor, ZeroCopy) {
   LOG(INFO) << "output size: " << size / sizeof(float);
   LOG(INFO) << "output_data: " << out_data;
   predictor->TryShrinkMemory();
+}
+
+TEST(AnalysisPredictor, tuned_dynamic_shape) {
+  AnalysisConfig config;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchUseFeedFetchOps(false);
+  config.EnableUseGpu(100, 0);
+  config.CollectShapeRangeInfo("shape_range.pbtxt");
+  LOG(INFO) << config.Summary();
+  AnalysisConfig config2(config);
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config2);
+
+  auto w0 = predictor->GetInputTensor("firstw");
+  auto w1 = predictor->GetInputTensor("secondw");
+  auto w2 = predictor->GetInputTensor("thirdw");
+  auto w3 = predictor->GetInputTensor("forthw");
+
+  w0->Reshape({4, 1});
+  w1->Reshape({4, 1});
+  w2->Reshape({4, 1});
+  w3->Reshape({4, 1});
+
+  auto* w0_data = w0->mutable_data<int64_t>(PaddlePlace::kCPU);
+  auto* w1_data = w1->mutable_data<int64_t>(PaddlePlace::kCPU);
+  auto* w2_data = w2->mutable_data<int64_t>(PaddlePlace::kCPU);
+  auto* w3_data = w3->mutable_data<int64_t>(PaddlePlace::kCPU);
+
+  for (int i = 0; i < 4; i++) {
+    w0_data[i] = i;
+    w1_data[i] = i;
+    w2_data[i] = i;
+    w3_data[i] = i;
+  }
+
+  predictor->ZeroCopyRun();
+
+  auto out = predictor->GetOutputTensor("fc_1.tmp_2");
+  PaddlePlace place;
+  int size = 0;
+  out->data<float>(&place, &size);
+  LOG(INFO) << "output size: " << size / sizeof(float);
 }
 
 TEST(AnalysisPredictor, Clone) {
