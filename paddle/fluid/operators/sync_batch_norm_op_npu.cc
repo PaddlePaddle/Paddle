@@ -796,7 +796,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
         }
       }
 
-      int count = platform::GetNPUDeviceCount();
+      int count = platform::GetSelectedNPUDevices().size();
       if (count > 1) {
         LOG(WARNING) << "before | saved_mean: ";
         PrintTensor<float>(*saved_mean, ctx);
