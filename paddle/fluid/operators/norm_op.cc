@@ -40,7 +40,8 @@ class NormOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddOutput("Out", "(Tensor) A tensor of the same shape as X.");
     AddComment(R"DOC(
 
