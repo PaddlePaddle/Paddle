@@ -336,7 +336,8 @@ void Pool2dOpMaker::Make() {
   AddAttr<bool>(
       "use_cudnn",
       "(bool) Only used in cudnn kernel, need install cudnn. Default False")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>(
       "ceil_mode",
       "(bool) Whether to use the ceil function to calculate "
@@ -345,17 +346,20 @@ void Pool2dOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool) Only used in mkldnn kernel. Default False")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>(
       "use_quantizer",
       "(bool, default false) "
       "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>(
       "mkldnn_data_type",
       "(string, default \"float32\"). Data type of mkldnn kernel")
       .SetDefault("float32")
-      .InEnum({"float32", "int8", "bfloat16"});
+      .InEnum({"float32", "int8", "bfloat16"})
+      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -366,7 +370,8 @@ void Pool2dOpMaker::Make() {
   AddAttr<bool>("is_test",
                 "(bool, default false) Set to true for inference only, false "
                 "for training. Some layers may run faster when this is true.")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
 
   AddAttr<std::string>(
       "padding_algorithm",
@@ -540,7 +545,8 @@ void Pool3dOpMaker::Make() {
   AddAttr<bool>(
       "use_cudnn",
       "(bool) Only used in cudnn kernel, need install cudnn. Default False")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>(
       "ceil_mode",
       "(bool) Whether to use the ceil function to calculate "
@@ -549,7 +555,8 @@ void Pool3dOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool) Only used in mkldnn kernel. Default False")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCDHW) Only used in "
