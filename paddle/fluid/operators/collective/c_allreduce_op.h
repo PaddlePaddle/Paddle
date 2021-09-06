@@ -279,7 +279,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
       std::vector<T> out_vec;
       framework::TensorToVector(*out, dev_ctx, &out_vec);
 
-      int64_t batch_size = out->dims[0];
+      int64_t batch_size = out->dims()[0];
       int64_t height = out->dims()[1];
       int64_t width = out->dims()[2];
       VLOG(10) << "batchsize:" << batch_size << ", height:" << height
