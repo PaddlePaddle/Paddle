@@ -141,7 +141,7 @@ class ThreadPoolTempl {
   }
 
   void AddTaskWithHint(std::function<void()> fn, int start, int limit) {
-    Task t = env_.CreateTask(fn);
+    Task t = env_.CreateTask(std::move(fn));
     PerThread* pt = GetPerThread();
     if (pt->pool == this) {
       // Worker thread of this pool, push onto the thread's queue.

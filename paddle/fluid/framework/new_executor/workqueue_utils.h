@@ -25,7 +25,7 @@ template <typename Holder>
 class CounterGuard {
  public:
   explicit CounterGuard(Holder* holder) : counter_holder_(holder) {
-    assert(counter != nullptr);
+    assert(holder != nullptr);
     counter_holder_->AddCounter();
   }
 
@@ -42,13 +42,14 @@ class CounterGuard {
   CounterGuard& operator=(CounterGuard&& other) {
     counter_holder_ = other.counter_holder_;
     other.counter_holder_ = nullptr;
+    return *this;
   }
 
   // copy constructor deleted, we define this for std::function
   // never use it directly
   CounterGuard(const CounterGuard& other)
       : counter_holder_(other.counter_holder_) {
-    counter_holder_->AddCounter();
+    abort();
   }
 
   CounterGuard& operator=(const CounterGuard&) = delete;
