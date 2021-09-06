@@ -271,6 +271,8 @@ class ProcessMesh(object):
 
 
 def _dim_mapping_checker(tensor, mesh, dim_mapping):
+    assert isinstance(mesh,
+                      ProcessMesh), 'The type of mesh must be ProcessMesh.'
     assert isinstance(dim_mapping,
                       list), 'The type of dim_mapping must be list.'
     assert len(tensor.shape) == len(dim_mapping)
@@ -312,8 +314,6 @@ def shard_tensor(x, mesh, dim_mapping):
 
     """
     _static_mode_check()
-    assert isinstance(mesh,
-                      ProcessMesh), 'The type of mesh must be ProcessMesh.'
     _dim_mapping_checker(x, mesh, dim_mapping)
     attr_name = _append_attr_suffix('mesh_id')
     x._set_attr(attr_name, mesh._id)
@@ -411,7 +411,15 @@ def shard_op(op_fn, mesh, dim_mapping_dict, **kwargs):
     op_size = len(main_block.ops)
     output = op_fn(**kwargs)
     new_op_size = len(main_block.ops)
-    if dim_mapping_dict is None: dim_mapping_dict = dict()
+    if dim_mapping_dict is None:
+        dim_mapping_dict = dict()
+    else:
+        assert isinstance(dim_mapping_dict,
+                          dict), 'The type of dim_mapping_dict must be dict.'
+        for var_name in dim_mapping_dict.keys():
+            dim_mapping = dim_mapping_dict[var_name]
+            tensor = main_block.var(var_name)
+            _dim_mapping_checker(tensor, mesh, dim_mapping)
     for idx in range(op_size, new_op_size):
         op = main_block.ops[idx]
         attr_name = _append_attr_suffix('mesh_id')
