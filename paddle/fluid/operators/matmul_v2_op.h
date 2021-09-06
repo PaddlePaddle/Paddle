@@ -1218,7 +1218,6 @@ class MatMulV2DoubleGradKernel : public framework::OpKernel<T> {
       // Case3: broadcast. It need cost much time to reduce sum for the
       // broadcast and wastes the memory.
       // So we should avoid the case in reality.
-      VLOG(0) << "in case3";
       VLOG(3) << "It need cost much time to reduce sum for the broadcast and "
                  "wastes the memory. So we should avoid the case in reality";
       framework::Tensor ddy_conj(ddx->type());
