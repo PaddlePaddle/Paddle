@@ -77,6 +77,7 @@ class TestEighUPLOCase(TestEighOp):
 class TestEighAPI(unittest.TestCase):
     def setUp(self):
         self.x_shape = [5, 5]
+        self.x_shape_1 = [64, 64]
         self.dtype = "float32"
         self.UPLO = 'L'
         self.rtol = 1e-6
@@ -86,6 +87,7 @@ class TestEighAPI(unittest.TestCase):
             self.places.append(fluid.CUDAPlace(0))
         np.random.seed(123)
         self.real_data = np.random.random(self.x_shape).astype(self.dtype)
+        self.real_data_1 = np.random.random(self.x_shape_1).astype(self.dtype)
         self.complex_data = np.random.random(self.x_shape).astype(
             self.dtype) + 1J * np.random.random(self.x_shape).astype(self.dtype)
 
@@ -130,6 +132,12 @@ class TestEighAPI(unittest.TestCase):
                 input_real_data = fluid.dygraph.to_variable(self.real_data)
                 expected_w, expected_v = np.linalg.eigh(self.real_data)
                 actual_w, actual_v = paddle.linalg.eigh(input_real_data)
+                self.compare_result(actual_w,
+                                    actual_v.numpy(), expected_w, expected_v)
+
+                input_real_data_1 = fluid.dygraph.to_variable(self.real_data_1)
+                expected_w, expected_v = np.linalg.eigh(self.real_data_1)
+                actual_w, actual_v = paddle.linalg.eigh(input_real_data_1)
                 self.compare_result(actual_w,
                                     actual_v.numpy(), expected_w, expected_v)
 
