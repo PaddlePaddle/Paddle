@@ -21,6 +21,9 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 
 class TrtConvertFlattenTest_dim_2(TrtLayerAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
     def sample_program_configs(self):
         def generate_input(batch):
             return np.random.random([batch, 32]).astype(np.float32)
@@ -102,6 +105,9 @@ class TrtConvertFlattenTest_dim_2(TrtLayerAutoScanTest):
 
 
 class TrtConvertFlattenTest_dim_3(TrtLayerAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
     def sample_program_configs(self):
         def generate_input(batch):
             return np.random.random([batch, 32, 64]).astype(np.float32)
@@ -183,6 +189,9 @@ class TrtConvertFlattenTest_dim_3(TrtLayerAutoScanTest):
 
 
 class TrtConvertFlattenTest_dim_4(TrtLayerAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
     def sample_program_configs(self):
         def generate_input(batch):
             return np.random.random([batch, 8, 8, 8]).astype(np.float32)
@@ -264,6 +273,9 @@ class TrtConvertFlattenTest_dim_4(TrtLayerAutoScanTest):
 
 
 class TrtConvertFlattenTest_dim_5(TrtLayerAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
     def sample_program_configs(self):
         def generate_input(batch):
             return np.random.random([batch, 8, 8, 8]).astype(np.float32)
