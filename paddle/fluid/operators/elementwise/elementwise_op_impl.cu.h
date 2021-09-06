@@ -69,8 +69,8 @@ int GetVectorizedSizeForIO(const std::vector<const framework::Tensor *> &ins,
 
 template <ElementwiseType ET, int VecSize, typename InT, typename OutT>
 struct ElementwiseDataWrapper {
-  using InVecType = platform::CudaAlignedVector<InT, VecSize>;
-  using OutVecType = platform::CudaAlignedVector<OutT, VecSize>;
+  using InVecType = platform::AlignedVector<InT, VecSize>;
+  using OutVecType = platform::AlignedVector<OutT, VecSize>;
 
   const InT *__restrict__ in_data[ET];
   OutT *out_data;
@@ -117,8 +117,8 @@ template <ElementwiseType ET, int VecSize, typename ElementwiseWrapper,
           typename InT, typename OutT, typename Functor>
 __device__ inline void VectorizedKernelImpl(ElementwiseWrapper data,
                                             Functor func, int tid) {
-  using InVecType = platform::CudaAlignedVector<InT, VecSize>;
-  using OutVecType = platform::CudaAlignedVector<OutT, VecSize>;
+  using InVecType = platform::AlignedVector<InT, VecSize>;
+  using OutVecType = platform::AlignedVector<OutT, VecSize>;
   InVecType ins_vec[ET];
   OutVecType out_vec;
   InT *ins_ptr[ET];
