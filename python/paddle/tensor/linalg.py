@@ -947,12 +947,12 @@ def svd(x, full_matrices=False, name=None):
     r"""
     Computes the singular value decomposition of one 
     matrix or batches of regular matrice.
+
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
             where ... is zero or more batch dimensions. N and M can be arbitraty
             positive number. Note that if x is sigular matrices, the grad is numerical 
-            instability. The data type of x should be float32 or float64. 
-
+            instable. The data type of x should be float32 or float64. 
         full_matrices(bool): A flag to control the behavor of svd. 
             If full_matrices = True, svd op will compute full U and V matrics, 
             which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`.
