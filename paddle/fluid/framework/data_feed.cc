@@ -258,7 +258,7 @@ bool InMemoryDataFeed<T>::Start() {
   }
 #endif
   if (batch_offsets_.size() > 0) {
-    VLOG(3) << "#14 batch_size offsets: " << batch_offsets_.size();
+    VLOG(3) << "batch_size offsets: " << batch_offsets_.size();
     enable_heterps_ = true;
     this->offset_index_ = 0;
   }
@@ -301,7 +301,7 @@ int InMemoryDataFeed<T>::Next() {
               << ", thread_id=" << thread_id_;
     }
   } else {
-    VLOG(3) << "#015 enable heter NEXT: " << offset_index_
+    VLOG(3) << "enable heter NEXT: " << offset_index_
             << " batch_offsets: " << batch_offsets_.size();
     if (offset_index_ >= batch_offsets_.size()) {
       VLOG(3) << "offset_index: " << offset_index_

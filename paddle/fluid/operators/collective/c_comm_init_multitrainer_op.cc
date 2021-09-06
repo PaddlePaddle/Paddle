@@ -59,21 +59,10 @@ class CCommInitMultiTrainerOp : public framework::OperatorBase {
     int rid = Attr<int>("ring_id");
 
     std::vector<int> devices = Attr<std::vector<int>>("devices");
-    VLOG(0) << "111yxf11dev: ";
-    for (auto dev : devices) {
-      VLOG(0) << "dev: " << dev;
-    }
-    VLOG(0) << "11yxf22dev: ";
 
     if (devices.empty()) {
-      VLOG(0) << "11yxf0000dev: ";
       devices = platform::GetSelectedDevices();
     }
-    VLOG(0) << "yxf11dev: ";
-    for (auto dev : devices) {
-      VLOG(0) << "dev: " << dev;
-    }
-    VLOG(0) << "yxf22dev: ";
     platform::NCCLCommContext::Instance().CreateNCCLCommMultiTrainer(
         devices, nccl_id, ntrainers, train_id, rid);
 #else
