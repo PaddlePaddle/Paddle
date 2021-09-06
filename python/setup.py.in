@@ -519,6 +519,9 @@ if '${WITH_STRIP}' == 'ON':
     if os.system(command) != 0:
         raise Exception("strip *.so failed, command: %s" % command)
 
+# numpy must be installed first because bfloat16's setup.py depends on it
+subprocess.check_call([sys.executable, "-m", "pip", "install", "numpy>=1.13"])
+
 with redirect_stdout():
     setup(name='${PACKAGE_NAME}',
         version='${PADDLE_VERSION}',

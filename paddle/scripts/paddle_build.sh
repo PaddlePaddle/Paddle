@@ -170,10 +170,10 @@ function cmake_base() {
                 export PYTHON_FLAGS="-DPYTHON_EXECUTABLE:FILEPATH=/opt/conda/bin/python
                                      -DPYTHON_INCLUDE_DIR:PATH=/opt/conda/include/python3.7m
                                      -DPYTHON_LIBRARIES:FILEPATH=/opt/conda/lib/libpython3.so"
-                /opt/conda/bin/pip install -r ${PADDLE_ROOT}/python/requirements.txt
+                /opt/conda/bin/pip install -r ${PADDLE_ROOT}/python/requirements_first.txt -r ${PADDLE_ROOT}/python/requirements.txt
            fi
         else
-            pip install -r ${PADDLE_ROOT}/python/requirements.txt
+            pip install -r ${PADDLE_ROOT}/python/requirements_first.txt -r ${PADDLE_ROOT}/python/requirements.txt
         fi
     fi
 
@@ -787,7 +787,7 @@ function generate_api_spec() {
     if [ "$spec_kind" == "DEV" ]; then
         pip install -r /tmp/requirements.txt
     else
-        pip install -r ${PADDLE_ROOT}/python/requirements.txt
+        pip install -r ${PADDLE_ROOT}/python/requirements_first.txt -r ${PADDLE_ROOT}/python/requirements.txt
     fi
     pip --no-cache-dir install ${PADDLE_ROOT}/build/python/dist/*whl
     spec_path=${PADDLE_ROOT}/paddle/fluid/API_${spec_kind}.spec
