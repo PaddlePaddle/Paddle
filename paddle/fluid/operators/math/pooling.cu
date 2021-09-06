@@ -66,7 +66,8 @@ struct PoolingFunctor {
   inline HOSTDEVICE void operator()(const T* __restrict__ output_grad,
                                     T* __restrict__ gradient, int pool_size,
                                     int index) const {
-    *gradient += output_grad[index] * static_cast<T>(input, output_data[index]);
+    *gradient +=
+        output_grad[index] * static_cast<T>(input == output_data[index]);
   }
 };
 
