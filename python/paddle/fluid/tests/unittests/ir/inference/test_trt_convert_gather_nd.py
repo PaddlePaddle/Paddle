@@ -21,6 +21,9 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 
 class TrtConvertGatherNdTest_dim_4_1(TrtLayerAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
     def sample_program_configs(self):
         def generate_input1():
             return np.random.random([2, 32, 64, 64]).astype(np.float32)
@@ -97,6 +100,9 @@ class TrtConvertGatherNdTest_dim_4_1(TrtLayerAutoScanTest):
 
 
 class TrtConvertGatherNdTest_dim_4_1_2(TrtLayerAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
     def sample_program_configs(self):
         def generate_input1():
             return np.random.random([2, 32, 64, 64]).astype(np.float32)
@@ -173,6 +179,9 @@ class TrtConvertGatherNdTest_dim_4_1_2(TrtLayerAutoScanTest):
 
 
 class TrtConvertGatherNdTest_dim_4_2(TrtLayerAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
     def sample_program_configs(self):
         def generate_input1():
             return np.random.random([2, 32, 64, 64]).astype(np.float32)
@@ -249,6 +258,9 @@ class TrtConvertGatherNdTest_dim_4_2(TrtLayerAutoScanTest):
 
 
 class TrtConvertGatherNdTest_dim_4_3(TrtLayerAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
     def sample_program_configs(self):
         def generate_input1():
             return np.random.random([2, 32, 64, 64]).astype(np.float32)
@@ -325,6 +337,9 @@ class TrtConvertGatherNdTest_dim_4_3(TrtLayerAutoScanTest):
 
 
 class TrtConvertGatherNdTest_dim_2_2(TrtLayerAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
     def sample_program_configs(self):
         def generate_input1():
             return np.random.random([2, 32]).astype(np.float32)
@@ -401,6 +416,9 @@ class TrtConvertGatherNdTest_dim_2_2(TrtLayerAutoScanTest):
 
 
 class TrtConvertGatherNdTest_dim_3_3(TrtLayerAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+
     def sample_program_configs(self):
         def generate_input1():
             return np.random.random([2, 32, 256]).astype(np.float32)
