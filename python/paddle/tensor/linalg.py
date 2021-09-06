@@ -1084,27 +1084,23 @@ def eigh(x, UPLO='L', name=None):
     Args:
         x (Tensor): A tensor with shape :math:`[_, M, M]` , The data type of the input Tensor x
             should be one of float32, float64, complex64, complex128.
-        UPLO(str, optional): (Tensor): Specifies whether the calculation 
-           is done with the lower triangular part of a (‘L’, default) or the upper triangular part (‘U’).
+        UPLO(str, optional): Lower triangular part of a (‘L’, default) or the upper triangular part (‘U’).
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: The tensor eigenvalues in ascending order.
-        Tensor: The eigenvectors corresponding to the eigenvalues ​​according to the column
+        Tensor: The tensor eigenvectors corresponding to the eigenvalues ​​according to the column
 
     Examples:
         .. code-block:: python
-        
-            # x: [M, M], UPLO: L
-            # paddle.eigh(x, UPLO='L')  
 
             import numpy as np
             import paddle
 
             x_data = np.array([[1, -2j], [2j, 5]])
             x = paddle.to_tensor(x_data)
-            out_value, out_vector = paddle.eigh(x)
+            out_value, out_vector = paddle.eigh(x, UPLO='L')
             print(out_value)
             #[0.17157288, 5.82842712]
             print(out_vector)
