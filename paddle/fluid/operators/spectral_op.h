@@ -11,13 +11,17 @@
 
 #pragma once
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
-#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/operators/math/padding.h"
-#include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/fluid/platform/complex.h"
+#include "paddle/fluid/platform/for_range.h"
+#if defined(__NVCC__) || defined(__HIPCC__)
+#include "thrust/device_vector.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -84,18 +88,48 @@ inline bool has_complex_output(FFTTransformType type) {
 }
 
 // template <typename DeviceContext, typename T>
-// void fill_tensor(const Tensor* in, int64_t axes, int64_t begin, int64_t end, T value) {
+// void fill_tensor(const Tensor* in, int64_t axes, int64_t begin, int64_t end,
+// T value) {
 //   framework::DDim shape = in->dims();
 //   eigen_in = framework::EigenVector<T>::Flatten(*in);
 //   eigin_in.setZero();
 
-
 //   framework::Tensor* out;
-//   paddle::operators::Slice<DeviceContext, T, D>(ctx, in, out, begin, end, axes);
+//   paddle::operators::Slice<DeviceContext, T, D>(ctx, in, out, begin, end,
+//   axes);
 
 //   auto& place = *ctx.template device_context<DeviceContext>().eigen_device();
-//   EigenConstant<std::decay_t<decltype(place)>, T, out->dims().size()>::Eval(place, out, value);  
+//   EigenConstant<std::decay_t<decltype(place)>, T,
+//   out->dims().size()>::Eval(place, out, value);
 // }
+
+template <typename T>
+struct FFTFillConjGradFunctor {
+  T* input_;
+  const size_t axis_;
+  const int64_t* strides_;
+  const size_t double_length_;
+
+  FFTFillConjGradFunctor(T* input, size_t axis, const int64_t* strides,
+                         size_t double_length)
+      : input_(input),
+        axis_(axis),
+        strides_(strides),
+        double_length_(double_length) {}
+
+  HOSTDEVICE void operator()(size_t index) {
+    size_t offtset = index;  // back
+    size_t index_i;
+    for (size_t i = 0; i <= axis_; i++) {
+      index_i = offtset / strides_[i];
+      offtset %= strides_[i];
+    }
+
+    if ((0 < index_i) && (index_i < double_length_ + 1)) {
+      input_[index] *= static_cast<T>(2);
+    }
+  }
+};
 
 template <typename DeviceContext, typename Ti, typename To>
 struct FFTC2CFunctor {
@@ -201,9 +235,10 @@ class FFTR2CGradKernel : public framework::OpKernel<T> {
     complex_dx.mutable_data<C>(dx->dims(), ctx.GetPlace());
 
     auto normalization = get_norm_from_string(norm_str, forward);
-    VLOG(5) << "[FFT][R2C][GRAD]" << "Exec FFTR2CGradKernel(onesided="<<onesided <<")";
+    VLOG(5) << "[FFT][R2C][GRAD]"
+            << "Exec FFTR2CGradKernel(onesided=" << onesided << ")";
     FFTC2CFunctor<DeviceContext, C, C> fft_c2c_func;
-    
+
     if (!onesided) {
       fft_c2c_func(dev_ctx, dy, dx, axes, normalization, !forward);
     } else {
@@ -218,12 +253,15 @@ class FFTR2CGradKernel : public framework::OpKernel<T> {
       auto rank = dy->dims().size();
 
       std::vector<int> pads(rank * 2, 0);
-      pads[last_dim*2+1] = zero_length;
+      pads[last_dim * 2 + 1] = zero_length;
 
-      paddle::operators::math::PaddingFunctor<DeviceContext, C>(rank, ctx, pads, static_cast<C>(0), *dy, &full_dy);
-      fft_c2c_func(dev_ctx, &full_dy, &complex_dx, axes, normalization, !forward);
+      paddle::operators::math::PaddingFunctor<DeviceContext, C>(
+          rank, ctx, pads, static_cast<C>(0), *dy, &full_dy);
+      fft_c2c_func(dev_ctx, &full_dy, &complex_dx, axes, normalization,
+                   !forward);
     }
-    framework::TransComplexToReal(dx->type(), complex_dx.type(), complex_dx, dx);
+    framework::TransComplexToReal(dx->type(), complex_dx.type(), complex_dx,
+                                  dx);
   }
 };
 
@@ -262,14 +300,30 @@ class FFTC2RGradKernel : public framework::OpKernel<T> {
     const auto* dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-    dx->mutable_data<C>(ctx.GetPlace());
+    C* pdx = dx->mutable_data<C>(ctx.GetPlace());
     auto normalization = get_norm_from_string(norm_str, forward);
 
     FFTR2CFunctor<DeviceContext, T, C> fft_r2c_func;
-    fft_r2c_func(dev_ctx, dy, dx, axes, normalization, forward, onesided);
+    fft_r2c_func(dev_ctx, dy, dx, axes, normalization, !forward, onesided);
+
+    const int64_t double_length =
+        dy->dims()[axes.back()] - dx->dims()[axes.back()];
+    const framework::DDim strides = framework::stride(dx->dims());
+
+#if defined(__NVCC__) || defined(__HIPCC__)
+    const thrust::device_vector<int64_t> strides_g(
+        framework::vectorize(strides));
+    const int64_t* pstrides = thrust::raw_pointer_cast(strides_g.data());
+#else
+    const int64_t* pstrides = strides.Get();
+#endif
+
+    FFTFillConjGradFunctor<C> func(pdx, axes.back(), pstrides, double_length);
+    size_t limit = dx->numel();
+    platform::ForRange<DeviceContext> for_range(dev_ctx, limit);
+    for_range(func);
   }
 };
-
 
 }  // namespace operators
 }  // namespace paddle

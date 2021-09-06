@@ -359,9 +359,8 @@ T compute_factor(int64_t size, FFTNormMode normalization) {
   PADDLE_THROW("Unsupported normalization type");
 }
 
-void fill_with_conjugate_symetry_cpu(const Tensor& input, const std::vector<int64_t>& axes) {
-
-}
+void fill_with_conjugate_symetry_cpu(const Tensor& input,
+                                     const std::vector<int64_t>& axes) {}
 ////////////////// Functors
 #if defined(PADDLE_WITH_ONEMKL)
 
@@ -841,7 +840,9 @@ struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
   void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
                   Tensor* out, const std::vector<int64_t>& axes,
                   FFTNormMode normalization, bool forward, bool onesided) {
-    VLOG(5) << "[FFT][R2C][CPU][MKL]:" << "Exec FFTR2CFunctor(onsided=" << onesided << ", forward=" << forward <<")";
+    VLOG(5) << "[FFT][R2C][CPU][MKL]:"
+            << "Exec FFTR2CFunctor(onsided=" << onesided
+            << ", forward=" << forward << ")";
     exec_fft<platform::CPUDeviceContext, Ti, To>(ctx, x, out, axes,
                                                  normalization, forward);
     if (!onesided) {
@@ -858,7 +859,7 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
     if (axes.size() > 1) {
       const std::vector<int64_t> c2c_dims(axes.begin(), axes.end() - 1);
       Tensor temp;
-      temp->mutable_data<Ti>(x->dims(), ctx.GetPlace());
+      temp.mutable_data<Ti>(x->dims(), ctx.GetPlace());
 
       FFTC2CFunctor<platform::CPUDeviceContext, Ti, Ti> c2c_functor;
       c2c_functor(ctx, x, &temp, c2c_dims, normalization, forward);
