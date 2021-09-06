@@ -277,7 +277,7 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
 
       // get weight last two lines
       std::vector<T> out_vec;
-      framework::TensorToVector(*out, dev_ctx, &out_vec);
+      framework::TensorToVector(*out, *dev_ctx, &out_vec);
 
       int64_t batch_size = out->dims()[0];
       int64_t height = out->dims()[1];
@@ -286,14 +286,15 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
                << ", width:" << width << ", out_dims:" << out->dims();
 
       printf("%s lines:", in_name.c_str());
-      for (int64_t i = 0; r < batch_size; i++) {
-        print("batch %d:\n", i);
+      for (int64_t i = 0; i < batch_size; i++) {
+        printf("batch %ld:\n", i);
         for (int64_t h = 0; h < height; i++) {
-          print("\trow %d:", h);
+          printf("\trow %ld:", h);
           for (int64_t w = 0; w < width; w++) {
-            print("%f,", out_vec[i * height * width + h * width + w]);
+            printf("%f,", static_cast<float>(
+                              out_vec[i * height * width + h * width + w]));
           }
-          print("\n");
+          printf("\n");
         }
         printf("\n");
       }
