@@ -27,28 +27,9 @@ import socket
 from paddle.fluid import core
 from distutils.util import strtobool
 
-import numpy as np
-import os
 from paddle.fluid.layer_helper import LayerHelper
-from paddle.fluid.framework import Variable
-from paddle.fluid.framework import OpProtoHolder
 from paddle.fluid.framework import in_dygraph_mode
-from paddle.fluid.framework import convert_np_dtype_to_dtype_
-from paddle.fluid.framework import _varbase_creator
-from paddle.fluid.data_feeder import convert_dtype
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle.fluid.data_feeder import check_type
-from paddle.fluid.data_feeder import check_dtype
-from paddle.fluid.layers.tensor import fill_constant
-from paddle.fluid.layers import utils
-from paddle.fluid.dygraph import layers
-from paddle.fluid.dygraph.parallel import prepare_context
-import paddle
-from paddle.distributed.fleet import fleet
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle import _C_ops
-import paddle.fluid.dygraph_utils as dygraph_utils
 
 __all__ = [     #noqa
            'get_host_name_ip',
