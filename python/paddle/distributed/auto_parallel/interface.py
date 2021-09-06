@@ -312,6 +312,8 @@ def shard_tensor(x, mesh, dim_mapping):
 
     """
     _static_mode_check()
+    assert isinstance(mesh,
+                      ProcessMesh), 'The type of mesh must be ProcessMesh.'
     _dim_mapping_checker(x, mesh, dim_mapping)
     attr_name = _append_attr_suffix('mesh_id')
     x._set_attr(attr_name, mesh._id)
@@ -483,4 +485,5 @@ def set_pipeline_stage(stage):
     """
     from paddle.fluid.framework import _set_pipeline_stage
     _static_mode_check()
+    assert isinstance(stage, int), 'The type of stage must be int.'
     _set_pipeline_stage(stage)
