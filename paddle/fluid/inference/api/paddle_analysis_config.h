@@ -378,7 +378,7 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \return bool Whether the trt dynamic_shape is used.
   ///
   bool tensorrt_dynamic_shape_enabled() const {
-    return min_input_shape_.empty();
+    return !min_input_shape_.empty();
   }
   ///
   /// \brief Enable tuned tensorrt dynamic shape.
