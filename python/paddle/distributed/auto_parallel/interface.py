@@ -355,6 +355,9 @@ def set_shard_mask(x, mask):
     np_mask = numpy.array(mask)
     min_ele = numpy.min(np_mask)
     max_ele = numpy.max(np_mask)
+    mesh_attr_name = _append_attr_suffix('mesh_id')
+    assert x._has_attr(mesh_attr_name), \
+        "Please set process mesh for the variable firstly."
     assert min_ele >= 0 and max_ele <= 1, "Elements in mask must be 0 or 1."
     x_mesh = x.process_mesh
     assert x_mesh, "Please set process mesh for the variable firstly."
