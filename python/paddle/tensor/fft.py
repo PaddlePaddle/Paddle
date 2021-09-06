@@ -256,22 +256,21 @@ def fft_c2r(x, n, axis, norm, forward):
                 rank, rank, rank))
     if axis < 0:
         axis += rank
-    s = [axis]
     axes = [axis]
     op_type = 'fft_c2r'
 
     if in_dygraph_mode():
-        attrs = ('s', s, 'axes', axes, 'normalization', norm, 'forward',
-                 forward)
+        if n is not None:
+            attrs = ('axes', axes, 'normalization', norm, 'forward', forward,
+                     'last_dim_size', n)
+        else:
+            attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
         out = getattr(_C_ops, op_type)(x, *attrs)
     else:
         inputs = {'X': [x], }
-        attrs = {
-            's': s,
-            'axes': axes,
-            'normalization': norm,
-            'forward': forward
-        }
+        attrs = {'axes': axes, 'normalization': norm, 'forward': forward}
+        if n is not None:
+            attr['last_dim_size'] = None
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  op_type)
         helper = LayerHelper(op_type, **locals())
