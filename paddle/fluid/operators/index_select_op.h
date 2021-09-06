@@ -27,9 +27,9 @@ using DDim = framework::DDim;
 
 template <typename DeviceContext, typename T, typename IndexT = int>
 void IndexSelectInner(const framework::ExecutionContext& context,
-                      const LoDTensor& input, const LoDTensor& index,
+                      LoDTensor* input, const LoDTensor& index,
                       LoDTensor* output, int dim) {
-  auto input_dim = input.dims();
+  auto input_dim = input->dims();
   auto input_dim_size = input_dim.size();
   auto output_dim = output->dims();
   auto index_size = index.dims()[0];
@@ -73,13 +73,10 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; index_size: " << index_size;
 
-  LoDTensor input_copy;
-  TensorCopy(input, context.GetPlace(), &input_copy);
-  input_copy.Resize(
-      framework::make_ddim({outer_nums, input_dim[dim], slice_size}));
+  input->Resize(framework::make_ddim({outer_nums, input_dim[dim], slice_size}));
   output->Resize(framework::make_ddim({outer_nums, index_size, slice_size}));
 
-  auto input_tensor = framework::EigenTensor<T, 3>::From(input_copy);
+  auto input_tensor = framework::EigenTensor<T, 3>::From(*input);
   auto output_tensor = framework::EigenTensor<T, 3>::From(*output);
 
   auto& place =
@@ -97,13 +94,13 @@ template <typename DeviceContext, typename T>
 class IndexSelectKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* inputs = context.Input<framework::LoDTensor>("X");
+    auto inputs = *context.Input<framework::LoDTensor>("X");
     auto* index = context.Input<framework::LoDTensor>("Index");
     auto* output = context.Output<framework::LoDTensor>("Out");
 
     int dim = context.Attr<int>("dim");
     if (dim < 0) {
-      dim += inputs->dims().size();
+      dim += inputs.dims().size();
     }
     const auto& index_type = index->type();
     bool index_type_match = index_type == framework::proto::VarType::INT32 ||
@@ -119,10 +116,10 @@ class IndexSelectKernel : public framework::OpKernel<T> {
                               framework::proto::VarType::INT64)));
 
     if (index_type == framework::proto::VarType::INT32) {
-      IndexSelectInner<DeviceContext, T, int>(context, *inputs, *index, output,
+      IndexSelectInner<DeviceContext, T, int>(context, &inputs, *index, output,
                                               dim);
     } else if (index_type == framework::proto::VarType::INT64) {
-      IndexSelectInner<DeviceContext, T, int64_t>(context, *inputs, *index,
+      IndexSelectInner<DeviceContext, T, int64_t>(context, &inputs, *index,
                                                   output, dim);
     }
   }
