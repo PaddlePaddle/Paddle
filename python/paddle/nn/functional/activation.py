@@ -1366,6 +1366,18 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
     
     Examples:
         .. code-block:: python
+        import paddle
+        import paddle.nn.functional as F
+
+        logits = paddle.randn([4, 6])
+        temperature = 0.01
+        gumbel_softmax = F.gumbel_softmax(logits, temperature)
+        print(gumbel_softmax)
+
+        # [[0.00000001, 1.        , 0.00000000, 0.00000000, 0.00000006, 0.00000000],
+        # [0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 1.        ],
+        # [0.00000062, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.99999940],
+        # [0.00000000, 0.00000000, 0.00000000, 0.00001258, 0.99998736, 0.00000000]]
         
         
     """
