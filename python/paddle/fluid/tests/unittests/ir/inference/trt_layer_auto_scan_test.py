@@ -51,11 +51,11 @@ class TrtLayerAutoScanTest(AutoScanTest):
          Prepare TensorRT subgraph engine dynamic shape parameters. 
          '''
 
-        def __init__(self, min_input_shape, max_input_shape, optim_input_shape,
+        def __init__(self, min_input_shape, max_input_shape, opt_input_shape,
                      disable_trt_plugin_fp16):
             self.min_input_shape = min_input_shape
             self.max_input_shape = max_input_shape
-            self.optim_input_shape = optim_input_shape
+            self.opt_input_shape = opt_input_shape
             self.disable_trt_plugin_fp16 = disable_trt_plugin_fp16
 
     def __init__(self, methodName='runTest'):
@@ -161,28 +161,13 @@ class TrtLayerAutoScanTest(AutoScanTest):
         return str(dic)
 
     def run_test(self, quant=False):
-        if quant:
-
-            def teller(program_config, predictor_config):
-                if predictor_config.tensorrt_precision_mode(
-                ) == paddle_infer.PrecisionType.Int8:
-                    return False
-                return True
-
-            self.add_skip_case(teller, SkipReasons.QUANT_MODEL,
-                               "Only test QUANT model")
-        else:
-
-            def teller(program_config, predictor_config):
-                if predictor_config.tensorrt_precision_mode(
-                ) == paddle_infer.PrecisionType.Int8:
-                    return True
-                return False
-
-            self.add_skip_case(teller, SkipReasons.QUANT_MODEL,
-                               "Not test QUANT model")
+        status = True
 
         for prog_config in self.sample_program_configs():
+            # if program is invalid, we should skip that cases.
+            if not self.is_program_valid(prog_config):
+                continue
+
             model, params = create_fake_model(prog_config)
             if quant:
                 model, params = create_quant_model(model, params)
@@ -206,15 +191,18 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
             for pred_config, nodes_num, threshold in self.sample_predictor_configs(
                     prog_config):
+                if quant and pred_config.tensorrt_precision_mode(
+                ) != paddle_infer.PrecisionType.Int8:
+                    continue
+                if pred_config.tensorrt_precision_mode(
+                ) == paddle_infer.PrecisionType.Int8 and not quant:
+                    continue
+
                 skip_flag = False
                 for skip_info in self.skip_cases:
                     if skip_info[0](prog_config, pred_config):
                         skip_flag = True
-                        if skip_info[1] == SkipReasons.ALGO_WRONG:
-                            self.skip_log("[ALGO_WRONG] " + skip_info[
-                                2] + ' ' + repr(prog_config) + ' vs ' + self.
-                                          inference_config_str(pred_config))
-                        elif skip_info[1] == SkipReasons.TRT_NOT_IMPLEMENTED:
+                        if skip_info[1] == SkipReasons.TRT_NOT_IMPLEMENTED:
                             self.skip_log("[TRT_NOT_IMPLEMENTED] " + skip_info[
                                 2] + ' ' + repr(prog_config) + ' vs ' + self.
                                           inference_config_str(pred_config))
@@ -222,24 +210,28 @@ class TrtLayerAutoScanTest(AutoScanTest):
                             self.skip_log("[TRT_NOT_SUPPORT] " + skip_info[
                                 2] + ' ' + repr(prog_config) + ' vs ' + self.
                                           inference_config_str(pred_config))
-                        elif skip_info[1] == SkipReasons.QUANT_MODEL:
-                            pass
                         else:
                             raise NotImplementedError
-                if skip_flag:
-                    continue
+                        break
 
                 try:
                     results.append(
                         self.run_test_config(model, params, prog_config,
                                              pred_config, feed_data))
                     self.assert_tensors_near(threshold, results[-1], results[0])
-                    self.assert_op_size(nodes_num[0], nodes_num[1])
                 except Exception as e:
                     self.fail_log(
                         str(prog_config) + ' vs ' + self.inference_config_str(
-                            pred_config) + str(e))
+                            pred_config) +
+                        '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e)))
+                    status = False
                     continue
+
+                if not skip_flag:
+                    self.assert_op_size(nodes_num[0], nodes_num[1])
 
                 self.success_log('RUN ' + str(prog_config) + ' vs ' +
                                  self.inference_config_str(pred_config))
+
+            # In the first step, we found the problem, and after the subsequent repairs, the assert assertion will be enabled
+            # self.assertTrue(status)
