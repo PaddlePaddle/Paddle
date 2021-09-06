@@ -33,13 +33,15 @@ class TestLookupTableV2(OpTest):
         self.place = paddle.NPUPlace(0)
 
         self.init_dtype()
+        self.init_ids_dtype()
         self.init_dim()
         np.random.seed(SEED)
         bsz = 6
         seqlen = 8
         vocab = 10
         w = np.ones([vocab, self.dim]).astype(self.dtype)
-        x = np.random.randint(0, vocab, size=(bsz, seqlen)).astype(np.int32)
+        x = np.random.randint(
+            0, vocab, size=(bsz, seqlen)).astype(self.ids_dtype)
         out = np.ones([bsz, seqlen, self.dim]).astype(self.dtype)
 
         self.inputs = {
@@ -60,6 +62,9 @@ class TestLookupTableV2(OpTest):
     def init_dtype(self):
         self.dtype = np.float32
 
+    def init_ids_dtype(self):
+        self.ids_dtype = np.int32
+
     def init_dim(self):
         # embedding_dim is not multiple of 32
         self.dim = 20
@@ -73,6 +78,11 @@ class TestLookupTableV2(OpTest):
         self.check_grad_with_place(self.place, ['W'], 'Out')
 
 
+class TestLookupTableV2IdsInt64(TestLookupTableV2):
+    def init_ids_dtype(self):
+        self.ids_dtype = np.int64
+
+
 class TestLookupTableV2FP16(TestLookupTableV2):
     no_need_check_grad = True
 
@@ -84,10 +94,20 @@ class TestLookupTableV2FP16(TestLookupTableV2):
         self.__class__.no_need_check_grad = True
 
 
+class TestLookupTableV2FP16IdsInt64(TestLookupTableV2FP16):
+    def init_ids_dtype(self):
+        self.ids_dtype = np.int64
+
+
 class TestLookupTableV2Dim32(TestLookupTableV2):
     def init_dim(self):
         # embedding_dim is multiple of 32
         self.dim = 64
+
+
+class TestLookupTableV2Dim32IdsInt64(TestLookupTableV2Dim32):
+    def init_ids_dtype(self):
+        self.ids_dtype = np.int64
 
 
 class TestLookupTableV2Dim32FP16(TestLookupTableV2):
@@ -102,6 +122,11 @@ class TestLookupTableV2Dim32FP16(TestLookupTableV2):
     def set_npu(self):
         self.__class__.use_npu = True
         self.__class__.no_need_check_grad = True
+
+
+class TestLookupTableV2Dim32FP16IdsInt64(TestLookupTableV2Dim32FP16):
+    def init_ids_dtype(self):
+        self.ids_dtype = np.int64
 
 
 if __name__ == '__main__':
