@@ -483,11 +483,12 @@ class TestFunctionalConv3DTransposeErrorCase9(
         self.data_format = "NCDHW"
 
 
-class TestFunctionalConv3DTransposeErrorCase10(
-        TestFunctionalConv3DTransposeError):
+class TestFunctionalConv3DTransposeErrorCase10(TestCase):
     def setUp(self):
-        self.input = []
-        self.filter = []
+        self.input = np.array([])
+        self.filter = np.array([])
+        self.num_filters = 0
+        self.filter_size = 0
         self.bias = None
         self.padding = 0
         self.stride = 1
@@ -495,6 +496,30 @@ class TestFunctionalConv3DTransposeErrorCase10(
         self.groups = 1
         self.data_format = "NCDHW"
 
+    def static_graph_case(self):
+        main = fluid.Program()
+        start = fluid.Program()
+        with fluid.unique_name.guard():
+            with fluid.program_guard(main, start):
+                x = fluid.data("input", self.input.shape, dtype=paddle.float32)
+                y = fluid.layers.conv3d(
+                    x,
+                    self.num_filters,
+                    self.filter_size,
+                    stride=self.stride,
+                    padding=self.padding,
+                    dilation=self.dilation,
+                    groups=self.groups,
+                    param_attr=I.NumpyArrayInitializer(self.filter),
+                    bias_attr=False if self.bias is None else
+                    I.NumpyArrayInitializer(self.bias),
+                    act=None,
+                    data_format=self.data_format)
+        exe = fluid.Executor()
+        exe.run(start)
+        out, = exe.run(main, feed={"input": self.input}, fetch_list=[y])
+        return out
+
     def dygraph_case(self):
         with dg.guard():
             x = dg.to_variable(self.input, dtype=paddle.float32)
@@ -511,42 +536,28 @@ class TestFunctionalConv3DTransposeErrorCase10(
                 groups=self.groups,
                 data_format=self.data_format)
 
-    def test_exception(self):
+    def test_dygraph_exception(self):
         with self.assertRaises(ValueError):
             self.dygraph_case()
 
+    def test_static_exception(self):
+        with self.assertRaises(ValueError):
+            self.static_graph_case()
+
 
 class TestFunctionalConv3DTransposeErrorCase11(
-        TestFunctionalConv3DTransposeError):
+        TestFunctionalConv3DTransposeErrorCase10):
     def setUp(self):
         self.input = np.random.randn(1, 3, 3, 3, 3)
         self.filter = np.random.randn(3, 3, 1, 1, 1)
+        self.num_filters = 3
+        self.filter_size = 1
         self.bias = None
         self.padding = 0
         self.stride = 1
         self.dilation = 1
         self.groups = 0
         self.data_format = "NCDHW"
-
-    def dygraph_case(self):
-        with dg.guard():
-            x = dg.to_variable(self.input, dtype=paddle.float32)
-            w = dg.to_variable(self.filter, dtype=paddle.float32)
-            b = None if self.bias is None else dg.to_variable(
-                self.bias, dtype=paddle.float32)
-            y = F.conv3d(
-                x,
-                w,
-                b,
-                padding=self.padding,
-                stride=self.stride,
-                dilation=self.dilation,
-                groups=self.groups,
-                data_format=self.data_format)
-
-    def test_exception(self):
-        with self.assertRaises(ValueError):
-            self.dygraph_case()
 
 
 if __name__ == "__main__":
