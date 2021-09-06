@@ -522,10 +522,6 @@ def _getitem_impl_(var, item):
 
     if slice_info.indexes:
         if len(slice_info.indexes) != len(item) + len(none_axes):
-            # raise IndexError(
-            #     "Valid index accept int or slice or ellipsis or list, but received {}.".
-            #     format(item))
-
             slice_info.update_slice_index(var.shape, starts, ends, steps, axes,
                                           decrease_axes, none_axes)
             out = slice_info.get_item(var)
@@ -683,11 +679,6 @@ def _setitem_impl_(var, item, value):
         starts.append(start)
         ends.append(end)
         steps.append(step)
-
-        # dec_axis=[dim,] if dim in decrease_axes else []
-        # none_axis=[dim,] if dim in none_axes else []
-        # slice_info.update_slice_index(var.shape, [start,], [end,], [step,], [dim,],
-        #                                   dec_axis, none_axis)
 
         dim += 1
     if slice_info.indexes:
