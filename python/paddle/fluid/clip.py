@@ -541,21 +541,15 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     continue
 
                 with p.block.program._optimized_guard([p, g]):
-
                     # inplace
-                    if g.dtype == core.VarDesc.VarType.FP16:
-                        scale_var_fp16 = scale_var.astype('float16')
-                        p.block.append_op(
-                            type='elementwise_mul',
-                            inputs={'X': g,
-                                    'Y': scale_var_fp16},
-                            outputs={'Out': g})
-                    else:
-                        p.block.append_op(
-                            type='elementwise_mul',
-                            inputs={'X': g,
-                                    'Y': scale_var},
-                            outputs={'Out': g})
+                    scale_input = (scale_var.astype('float16')
+                                   if g.dtype == core.VarDesc.VarType.FP16 else
+                                   scale_var)
+                    p.block.append_op(
+                        type='elementwise_mul',
+                        inputs={'X': g,
+                                'Y': scale_input},
+                        outputs={'Out': g})
 
                 param_new_grad_name_dict[p.name] = g.name
                 params_and_grads.append((p, g))
