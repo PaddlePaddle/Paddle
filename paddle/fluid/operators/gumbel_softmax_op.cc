@@ -127,5 +127,5 @@ REGISTER_OP_CPU_KERNEL(
     ops::GumbelSoftmaxKernel<paddle::platform::CPUDeviceContext, double>);
 REGISTER_OP_CPU_KERNEL(
     gumbel_softmax_grad,
-    ops::GumbelSoftmaxKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::GumbelSoftmaxKernel<paddle::platform::CPUDeviceContext, double>);
+    ops::GumbelSoftmaxGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::GumbelSoftmaxGradKernel<paddle::platform::CPUDeviceContext, double>);

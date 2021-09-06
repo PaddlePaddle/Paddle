@@ -63,28 +63,108 @@ static inline int SizeOutAxis(const int axis, DDim dims) {
   return size;
 }
 
-template <typename T>
-inline void UniformRealDistribution(T* data, const int64_t& size,
-                                    const float& min, const float& max) {
-  VLOG(4) << "[CPU] UniformRandomKernel<T>";
-  std::uniform_real_distribution<T> dist(static_cast<T>(min),
-                                         static_cast<T>(max));
-  const int seed = std::random_device()();
-  auto engine = paddle::framework::GetCPURandomEngine(seed);
-
-  for (int64_t i = 0; i < size; ++i) {
-    data[i] = dist(*engine);
-  }
-}
-
 template <typename DeviceContext, typename T, int64_t Rank>
 struct ArgMaxFunctor {
-  void operator()(const DeviceContext& ctx, const Tensor& in, Tensor* out,
-                  const int64_t& axis) {
+  void operator()(const DeviceContext& ctx, const Tensor& in,
+                  Tensor* index_tensor, const int64_t& axis) {
     auto in_eigen = EigenTensor<T, Rank>::From(in, in.dims());
-    auto index_eigen = EigenTensor<int, Rank - 1>::From(*out);
-    index_eigen.device(*(ctx.eigen_device())) =
-        in_eigen.argmax(axis).template cast<int>();
+    auto index_eigen = EigenTensor<int, Rank - 1>::From(*index_tensor);
+    index_eigen = in_eigen.argmax(axis).template cast<int>();
+  }
+};
+template <typename DeviceContext, typename T>
+struct GumbleNoiseGenerator;
+
+template <typename DeviceContext, typename T>
+struct OneHotGenerator;
+template <typename DeviceContext, typename T>
+struct UniformRealDistribution;
+
+template <typename T>
+struct GumbleNoiseGenerator<platform::CPUDeviceContext, T> {
+  static void Transform(const platform::CPUDeviceContext& context,
+                        const T* input_data, T* output_data, int size_to_axis,
+                        int size_from_axis, const float temperature) {
+    // generate uniform random number
+    const int size = size_to_axis * size_from_axis;
+    std::uniform_real_distribution<T> dist(0.00001, 1);
+    const int seed = std::random_device()();
+    auto engine = paddle::framework::GetCPURandomEngine(seed);
+    Tensor random_tensor;
+    auto* random_data =
+        random_tensor.mutable_data<T>({size}, platform::CPUPlace());
+    for (int64_t i = 0; i < size; ++i) {
+      random_data[i] = dist(*engine);
+    }
+
+    // generate gumbel noise
+    framework::DDim dim_2d{size_to_axis, size_from_axis};
+    auto gumbel_noise_eigen = EigenMatrix<T>::From(random_tensor, dim_2d);
+    gumbel_noise_eigen = -(((-(gumbel_noise_eigen.log())).log()));
+
+    // add noise
+    for (int64_t i = 0; i < size_to_axis * size_from_axis; i++) {
+      output_data[i] = (input_data[i] + random_data[i]) / temperature;
+    }
+  }
+};
+template <typename T>
+struct OneHotGenerator<platform::CPUDeviceContext, T> {
+  static void Transform(const platform::CPUDeviceContext& context,
+                        const Tensor& X, Tensor* Out, int axis) {
+    Tensor index;
+    std::vector<int> index_dim;
+    const auto rank = X.dims().size();
+    const int size_to_axis = SizeToAxis(axis, X.dims());
+    const int size_from_axis = SizeFromAxis(axis, X.dims());
+    const int size_out_axis = SizeOutAxis(axis, X.dims());
+
+    for (int i = 0; i < X.dims().size(); i++) {
+      if (i != axis) index_dim.push_back(X.dims().Get()[i]);
+    }
+    DDim index_ddim(index_dim.data(), rank - 1);
+    index.Resize(index_ddim);
+    auto* index_data = index.mutable_data<int>(context.GetPlace());
+
+#define CALL_ARG_MINMAX_FUNCTOR(rank)                               \
+  ArgMaxFunctor<platform::CPUDeviceContext, T, rank> functor##rank; \
+  functor##rank(context, *Out, &index, axis);
+    switch (Out->dims().size()) {
+      case 1:
+        CALL_ARG_MINMAX_FUNCTOR(1);
+        break;
+      case 2:
+        CALL_ARG_MINMAX_FUNCTOR(2);
+        break;
+      case 3:
+        CALL_ARG_MINMAX_FUNCTOR(3);
+        break;
+      case 4:
+        CALL_ARG_MINMAX_FUNCTOR(4);
+        break;
+      case 5:
+        CALL_ARG_MINMAX_FUNCTOR(5);
+        break;
+      case 6:
+        CALL_ARG_MINMAX_FUNCTOR(6);
+        break;
+      default:
+        PADDLE_ENFORCE_LE(Out->dims().size(), 6,
+                          platform::errors::InvalidArgument(
+                              "gumbel_softmax operator doesn't supports "
+                              "tensors whose ranks are greater "
+                              "than 6 in CPU mode."));
+        break;
+#undef CALL_ARG_MINMAX_FUNCTOR
+    }
+
+    math::set_constant(context, Out, 0.0);
+    for (int i = 0; i < size_to_axis; i++) {
+      for (int j = 0; j < size_out_axis; j++) {
+        *(Out->data<T>() + i * size_from_axis + j +
+          index_data[i * size_out_axis + j] * size_out_axis) = 1.0;
+      }
+    }
   }
 };
 
@@ -92,10 +172,8 @@ template <typename DeviceContext, typename T>
 class GumbelSoftmaxKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    LOG(INFO) << "gumbel softmax come in" << std::endl;
     auto* X = context.Input<Tensor>("X");
     auto* Out = context.Output<Tensor>("Out");
-    if (X == nullptr) LOG(INFO) << "X is null" << std::endl;
     const int rank = X->dims().size();
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = X->dims()[axis];
@@ -108,41 +186,23 @@ class GumbelSoftmaxKernel : public framework::OpKernel<T> {
                           temperature));
 
     // allocate memory on device.
-    auto* out_data = Out->mutable_data<T>(context.GetPlace());
+    Out->mutable_data<T>(context.GetPlace());
     if (Out->numel() == 0) {
       return;
     }
 
     const int size_to_axis = SizeToAxis(axis, X->dims());
     const int size_from_axis = SizeFromAxis(axis, X->dims());
-    const int size_out_axis = SizeOutAxis(axis, X->dims());
-    Tensor X_2d, Out_2d;
-    X_2d.ShareDataWith(*X).Resize({size_to_axis, size_from_axis});
-    Out_2d.ShareDataWith(*Out).Resize({size_to_axis, size_from_axis});
-    // generate gumbel noise
-    Tensor gumbel_noise;
-    gumbel_noise.Resize(X->dims());
-    auto* gumbel_noise_ptr = gumbel_noise.mutable_data<T>(context.GetPlace());
-    UniformRealDistribution(gumbel_noise_ptr, size_to_axis * size_from_axis, 0,
-                            1);
-    LOG(INFO) << "generate gumbel noise" << std::endl;
-    framework::DDim dim_2d{size_to_axis, size_from_axis};
-    auto gumbel_noise_eigen = EigenMatrix<T>::From(gumbel_noise, dim_2d);
-    auto device_eigen =
-        (context.template device_context<DeviceContext>()).eigen_device();
-    gumbel_noise_eigen.device(*device_eigen) =
-        -(((-(gumbel_noise_eigen.log())).log()));
-
-    // add noise to X
-    Tensor X_noise_2d;
+    Tensor X_noise_2d, Out_2d;
     X_noise_2d.Resize({size_to_axis, size_from_axis});
-    auto* X_noise_2d_ptr = X_noise_2d.mutable_data<T>(context.GetPlace());
-    for (int64_t i = 0; i < size_to_axis * size_from_axis; i++) {
-      X_noise_2d_ptr[i] =
-          (X_2d.data<T>()[i] + gumbel_noise_ptr[i]) / temperature;
-    }
+    Out_2d.ShareDataWith(*Out).Resize({size_to_axis, size_from_axis});
 
-    LOG(INFO) << "add noise" << std::endl;
+    // generate gumbel noise and add it to X
+    auto* x_noise_data = X_noise_2d.mutable_data<T>(context.GetPlace());
+    GumbleNoiseGenerator<DeviceContext, T>::Transform(
+        context.template device_context<DeviceContext>(), X->data<T>(),
+        x_noise_data, size_to_axis, size_from_axis, temperature);
+
 #ifdef PADDLE_ON_INFERENCE
     math::SoftmaxFunctor<DeviceContext, T, true>()(
         context.template device_context<DeviceContext>(), axis_dim, &X_noise_2d,
@@ -153,65 +213,10 @@ class GumbelSoftmaxKernel : public framework::OpKernel<T> {
         &Out_2d);
 #endif
 
-    // generate one-hot vector result
-    LOG(INFO) << "generate one-hot vector" << std::endl;
     if (is_hard) {
-      LOG(INFO) << "come in hard" << std::endl;
-      Tensor index;
-      std::vector<int> index_dim;
-      for (int i = 0; i < X->dims().size(); i++) {
-        if (i != axis) index_dim.push_back(X->dims().Get()[i]);
-      }
-      DDim index_ddim(index_dim.data(), rank - 1);
-      index.Resize(index_ddim);
-      auto* index_data = index.mutable_data<int>(context.GetPlace());
-
-#define CALL_ARG_MINMAX_FUNCTOR(rank)                                   \
-  ArgMaxFunctor<DeviceContext, T, rank> functor##rank;                  \
-  functor##rank(context.template device_context<DeviceContext>(), *Out, \
-                &index, axis);
-      LOG(INFO) << "hard is true" << std::endl;
-      switch (Out->dims().size()) {
-        case 1:
-          LOG(INFO) << "come in argmax functor(1)" << std::endl;
-          CALL_ARG_MINMAX_FUNCTOR(1);
-          break;
-        case 2:
-          CALL_ARG_MINMAX_FUNCTOR(2);
-          break;
-        case 3:
-          CALL_ARG_MINMAX_FUNCTOR(3);
-          break;
-        case 4:
-          CALL_ARG_MINMAX_FUNCTOR(4);
-          break;
-        case 5:
-          CALL_ARG_MINMAX_FUNCTOR(5);
-          break;
-        case 6:
-          CALL_ARG_MINMAX_FUNCTOR(6);
-          break;
-        default:
-          PADDLE_ENFORCE_LE(Out->dims().size(), 6,
-                            platform::errors::InvalidArgument(
-                                "gumbel_softmax operator doesn't supports "
-                                "tensors whose ranks are greater "
-                                "than 6."));
-          break;
-#undef CALL_ARG_MINMAX_FUNCTOR
-      }
-
-      math::set_constant(context.template device_context<DeviceContext>(), Out,
-                         0.0);
-      for (int i = 0; i < size_to_axis; i++) {
-        for (int j = 0; j < size_out_axis; j++) {
-          *(out_data + i * size_from_axis + j +
-            index_data[i * size_out_axis + j] * size_out_axis) = 1.0;
-        }
-      }
+      OneHotGenerator<DeviceContext, T>::Transform(
+          context.template device_context<DeviceContext>(), *X, Out, axis);
     }
-
-    LOG(INFO) << "gumbel softmax inference end" << std::endl;
   }
 };
 
@@ -219,14 +224,12 @@ template <typename DeviceContext, typename T>
 class GumbelSoftmaxGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    LOG(INFO) << "gumbel softmax grad come in " << std::endl;
     auto* Out = context.Input<Tensor>("Out");
     auto* dOut = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* dX = context.Output<Tensor>(framework::GradVarName("X"));
     const int rank = dX->dims().size();
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = dX->dims()[axis];
-    LOG(INFO) << "gumbel softmax grad init end" << std::endl;
     // allocate memory on device.
     dX->mutable_data<T>(context.GetPlace());
     if (dX->numel() == 0) {
@@ -239,11 +242,9 @@ class GumbelSoftmaxGradKernel : public framework::OpKernel<T> {
     dX_2d.ShareDataWith(*dX).Resize({size_to_axis, size_from_axis});
     Out_2d.ShareDataWith(*Out).Resize({size_to_axis, size_from_axis});
     dOut_2d.ShareDataWith(*dOut).Resize({size_to_axis, size_from_axis});
-    LOG(INFO) << "gumbel softmax grad start calculate " << std::endl;
     math::SoftmaxGradFunctor<DeviceContext, T>()(
         context.template device_context<DeviceContext>(), axis_dim, &Out_2d,
         &dOut_2d, &dX_2d);
-    LOG(INFO) << "gumbel softmax grad end" << std::endl;
   }
 };
 
