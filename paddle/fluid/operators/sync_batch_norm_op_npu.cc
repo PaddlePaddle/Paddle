@@ -15,6 +15,11 @@ limitations under the Licnse. */
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
+#if defined(PADDLE_WITH_ASCEND_CL)
+#include "paddle/fluid/platform/collective_helper.h"
+#include "paddle/fluid/platform/hccl_helper.h"
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -788,6 +793,65 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
             LOG(WARNING) << "var_ref: ";
             PrintTensor<float>(var_ref, ctx);
           }
+        }
+      }
+
+      int count = platform::GetNPUDeviceCount();
+      if (count > 1) {
+        LOG(WARNING) << "before | saved_mean: ";
+        PrintTensor<float>(*saved_mean, ctx);
+
+        LOG(WARNING) << "before | var_ref: ";
+        PrintTensor<float>(var_ref, ctx);
+
+        auto &dev_ctx = reinterpret_cast<const platform::NPUDeviceContext &>(
+            ctx.device_context());
+        auto *comm = dev_ctx.hccl_comm();
+        if (comm) {
+          int dtype = platform::ToHCCLDataType(mean_out->type());
+          // In-place operation
+          PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
+              saved_mean->data<float>(), saved_mean->data<float>(), C,
+              static_cast<HcclDataType>(dtype), HCCL_REDUCE_SUM, comm, stream));
+          PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
+              var_ref.data<float>(), var_ref.data<float>(), C,
+              static_cast<HcclDataType>(dtype), HCCL_REDUCE_SUM, comm, stream));
+        }
+
+        LOG(WARNING) << "after | saved_mean: ";
+        PrintTensor<float>(*saved_mean, ctx);
+
+        LOG(WARNING) << "after | var_ref: ";
+        PrintTensor<float>(var_ref, ctx);
+
+        // mean saved_mean
+        {
+          LOG(WARNING) << "before | saved_mean: ";
+          PrintTensor<float>(*saved_mean, ctx);
+
+          framework::NPUAttributeMap attr_input = {{"value", 1.0f / count}};
+
+          const auto &runner =
+              NpuOpRunner("Muls", {*saved_mean}, {*saved_mean}, attr_input);
+          runner.Run(stream);
+
+          LOG(WARNING) << "after | saved_mean: ";
+          PrintTensor<float>(*saved_mean, ctx);
+        }
+
+        // mean var_ref
+        {
+          LOG(WARNING) << "before | var_ref: ";
+          PrintTensor<float>(var_ref, ctx);
+
+          framework::NPUAttributeMap attr_input = {{"value", 1.0f / count}};
+
+          const auto &runner =
+              NpuOpRunner("Muls", {var_ref}, {var_ref}, attr_input);
+          runner.Run(stream);
+
+          LOG(WARNING) << "after | var_ref: ";
+          PrintTensor<float>(var_ref, ctx);
         }
       }
 
