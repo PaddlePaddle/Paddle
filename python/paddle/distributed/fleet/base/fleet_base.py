@@ -18,7 +18,7 @@ import warnings
 import paddle
 import os
 import numpy as np
-from paddle.fluid.framework import dygraph_only
+from paddle.fluid.framework import dygraph_only, _global_flags
 from paddle.fluid import compiler
 from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
 from .strategy_compiler import StrategyCompiler
@@ -40,7 +40,7 @@ __all__ = []
 
 def apply_ir_passes(main_program, startup_program, config):
     build_strategy = config._user_defined_strategy.build_strategy._copy()
-    if not paddle.fluid.core.globals()['FLAGS_apply_pass_to_program']:
+    if not _global_flags()['FLAGS_apply_pass_to_program']:
         return build_strategy
 
     pipeline_opt = getattr(main_program, "_pipeline_opt", {})
