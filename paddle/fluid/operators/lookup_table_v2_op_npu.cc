@@ -57,38 +57,64 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
       PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
 
       // get weight last two lines
-      std::vector<T> w_vec;
-      framework::TensorToVector(*table_t, *dev_ctx, &w_vec);
-      int64_t width = table_t->dims()[1];
-      int64_t height = table_t->dims()[0];
-      printf("%s last second line:", w_name.c_str());
-      for (int64_t i = (height - 2) * width; i < width; i++) {
-        printf("%f,", static_cast<float>(w_vec[i]));
-      }
+      {
+        std::vector<T> w_vec;
+        framework::TensorToVector(*table_t, *dev_ctx, &w_vec);
+        int64_t width = table_t->dims()[1];
+        int64_t height = table_t->dims()[0];
+        printf("%s last second line:", w_name.c_str());
+        for (int64_t i = (height - 2) * width; i < width; i++) {
+          printf("%f,", static_cast<float>(w_vec[i]));
+        }
 
-      printf("%s last line:", w_name.c_str());
-      for (int64_t i = (height - 1) * width; i < width; i++) {
-        printf("%f,", static_cast<float>(w_vec[i]));
+        printf("%s last line:", w_name.c_str());
+        for (int64_t i = (height - 1) * width; i < width; i++) {
+          printf("%f,", static_cast<float>(w_vec[i]));
+        }
+        printf("\n");
       }
-      printf("\n");
 
       // get ids_t
-      std::vector<int32_t> ids_vec, ids_embedding_vec;
+      std::vector<int32_t> ids_vec, out_vec;
       framework::TensorToVector(*ids_t, *dev_ctx, &ids_vec);
-      framework::TensorToVector(*output_t, *dev_ctx, &ids_embedding_vec);
+      framework::TensorToVector(*output_t, *dev_ctx, &out_vec);
 
+      /*
       auto batch_size = ids_t->dims()[0];
-      auto hid_size = ids_t->dims()[1];
-      VLOG(10) << "ids_t batch_size:" << batch_size << ", hid_size:" << hid_size
+      auto seq_len = ids_t->dims()[1];
+      VLOG(10) << "ids_t batch_size:" << batch_size
                << ", ids_t dims:" << ids_t->dims()
                << ", out_embedding dims:" << output_t->dims();
 
       printf("%s ids:\n", w_name.c_str());
       for (int64_t i = 0; i < batch_size; i++) {
-        printf("batch %d:", ids_vec[i]);
-        for (int64_t hid = 0; hid < hid_size; hid++) {
+        printf("batch %d:", i);
+        for (int64_t s = 0; s < width; width++) {
           printf("%f,",
-                 static_cast<float>(ids_embedding_vec[i * hid_size + hid]));
+                 static_cast<float>(ids_embedding_vec[i * seq + s]));
+        }
+        printf("\n");
+      }
+      printf("\n");
+      */
+
+      auto &out = output_t;
+      int64_t batch_size = out->dims()[0];
+      int64_t height = out->dims()[1];
+      int64_t width = out->dims()[2];
+      VLOG(10) << "batchsize:" << batch_size << ", height:" << height
+               << ", width:" << width << ", out_dims:" << out->dims();
+
+      printf("%s lines:", w_name.c_str());
+      for (int64_t i = 0; i < batch_size; i++) {
+        printf("batch %ld:\n", i);
+        for (int64_t h = 0; h < height; i++) {
+          printf("\trow %ld:", h);
+          for (int64_t w = 0; w < width; w++) {
+            printf("%f,", static_cast<float>(
+                              out_vec[i * height * width + h * width + w]));
+          }
+          printf("\n");
         }
         printf("\n");
       }
