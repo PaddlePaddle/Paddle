@@ -99,10 +99,8 @@ void ConvertConv3d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
                               static_cast<void*>(bias_data), bias_size};
   // In conv3d_transpose output channels = filter_dims[1] * groups
   auto* layer = (op_desc.Type() == "conv3d_transpose")
-                    ? fadd_layer(const_cast<nvinfer1::ITensor*>(X),
-                                 n_input * groups, nv_ksize, weight, bias)
-                    : fadd_layer(const_cast<nvinfer1::ITensor*>(X), n_output,
-                                 nv_ksize, weight, bias);
+                    ? fadd_layer(X, n_input * groups, nv_ksize, weight, bias)
+                    : fadd_layer(X, n_output, nv_ksize, weight, bias);
 
   PADDLE_ENFORCE_NOT_NULL(
       layer, platform::errors::Fatal("TensorRT create conv3d/conv3d_transpose"
