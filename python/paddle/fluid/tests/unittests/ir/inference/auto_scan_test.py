@@ -35,14 +35,11 @@ class SkipReasons(enum.Enum):
     TRT_NOT_IMPLEMENTED = 0
     # TRT not support.
     TRT_NOT_SUPPORT = 1
-    # Implement wrong.
-    ALGO_WRONG = 2
-    # Quant model, only to run in INT8 mode.
-    QUANT_MODEL = 3
 
 
 class AutoScanTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
+        np.random.seed(1024)
         paddle.enable_static()
         super(AutoScanTest, self).__init__(methodName)
         self.skip_cases = []
@@ -68,7 +65,7 @@ class AutoScanTest(unittest.TestCase):
         self.skip_cases.append((teller, reason, note))
 
     @abc.abstractmethod
-    def check_program_validity(self, program_config: ProgramConfig) -> bool:
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
         raise NotImplementedError
 
     def run_test_config(self, model, params, prog_config, pred_config,
