@@ -53,7 +53,10 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
     auto stream = dev_ctx->stream();
     auto w_name = ctx.InputName("W");
     VLOG(10) << "input W name:" << w_name;
-    if (w_name == "word_embedding_0" || w_name == "word_embedding_1") {
+    if (w_name == "word_embedding_0" || w_name == "word_embedding_1" ||
+        w_name == "word_embedding_2" || w_name == "word_embedding_3" ||
+        w_name == "word_embedding_4" || w_name == "word_embedding_5" ||
+        w_name == "word_embedding_6" || w_name == "word_embedding_7") {
       PADDLE_ENFORCE_NPU_SUCCESS(aclrtSynchronizeStream(stream));
 
       // get weight last two lines
