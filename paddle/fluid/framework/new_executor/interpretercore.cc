@@ -158,6 +158,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   max_memory_size_ = static_cast<size_t>(GetEagerDeletionThreshold());
   cur_memory_size_ = 0;
   WorkQueueOptions options;
+  options.num_threads = 1;
   gc_queue_ = CreateSingleThreadedWorkQueue(options);
 
   feed_names_ = feed_names;

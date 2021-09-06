@@ -7,6 +7,7 @@
 #include "paddle/fluid/framework/new_executor/workqueue.h"
 #include "paddle/fluid/framework/new_executor/nonblocking_threadpool.h"
 #include "paddle/fluid/framework/new_executor/workqueue_utils.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -103,7 +104,7 @@ WorkQueueGroupImpl::~WorkQueueGroupImpl() {
 
 void WorkQueueGroupImpl::AddTask(size_t queue_idx, std::function<void()> fn) {
   assert(queue_idx < queues_.size());
-  if (queues_options_[queue_idx].track_task) {
+  if (queues_options_.at(queue_idx).track_task) {
     fn = [
       task = std::move(fn), raii = CounterGuard<TaskTracker>(tracker_)
     ]() mutable {
@@ -122,7 +123,7 @@ void WorkQueueGroupImpl::WaitQueueGroupEmpty() {
 
 size_t WorkQueueGroupImpl::QueueNumThreads(size_t queue_idx) const {
   assert(queue_idx < queues_.size());
-  return queues_[queue_idx]->NumThreads();
+  return queues_.at(queue_idx)->NumThreads();
 }
 
 size_t WorkQueueGroupImpl::QueueGroupNumThreads() const {
@@ -137,21 +138,31 @@ size_t WorkQueueGroupImpl::QueueGroupNumThreads() const {
 
 std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue(
     const WorkQueueOptions& options) {
-  assert(options.num_threads == 1);
+  PADDLE_ENFORCE_EQ(options.num_threads, 1u,
+                    platform::errors::InvalidArgument(
+                        "For a SingleThreadedWorkQueue, "
+                        "WorkQueueOptions.num_threads must equals to 1."));
   std::unique_ptr<WorkQueue> ptr(new WorkQueueImpl(options));
   return std::move(ptr);
 }
 
 std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(
     const WorkQueueOptions& options) {
-  assert(options.num_threads > 1);
+  PADDLE_ENFORCE_GT(
+      options.num_threads, 1u,
+      platform::errors::InvalidArgument("For a MultiThreadedWorkQueue, "
+                                        "WorkQueueOptions.num_threads must be "
+                                        "greater than 1."));
   std::unique_ptr<WorkQueue> ptr(new WorkQueueImpl(options));
   return std::move(ptr);
 }
 
 std::unique_ptr<WorkQueueGroup> CreateWorkQueueGroup(
     const std::vector<WorkQueueOptions>& queues_options) {
-  assert(queues_options.size() > 1);
+  PADDLE_ENFORCE_GT(queues_options.size(), 1u,
+                    platform::errors::InvalidArgument(
+                        "For a WorkQueueGroup, the number of WorkQueueOptions "
+                        "must be greater than 1."));
   std::unique_ptr<WorkQueueGroup> ptr(new WorkQueueGroupImpl(queues_options));
   return std::move(ptr);
 }

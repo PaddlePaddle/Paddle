@@ -17,6 +17,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -47,9 +48,9 @@ class CounterGuard {
 
   // copy constructor deleted, we define this for std::function
   // never use it directly
-  CounterGuard(const CounterGuard& other)
-      : counter_holder_(other.counter_holder_) {
-    abort();
+  CounterGuard(const CounterGuard& other) {
+    PADDLE_THROW(platform::errors::Unavailable(
+        "Never use the copy constructor of CounterGuard."));
   }
 
   CounterGuard& operator=(const CounterGuard&) = delete;
