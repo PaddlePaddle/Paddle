@@ -23,6 +23,13 @@
 #else
 #include <hip/hip_runtime.h>
 #endif
+
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX  // msvc max/min macro conflict with std::min/max
+#endif            // NOMINMAX
+#endif            // _WIN32
+
 #include <stddef.h>
 #include <algorithm>
 #include <string>
