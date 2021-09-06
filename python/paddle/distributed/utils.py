@@ -160,7 +160,7 @@ def global_gather(x,
         helper.append_op(
             type=op_type,
             inputs={
-                'x': [x],
+                'X': [x],
                 'local_count': [local_count],
                 'global_count': [global_count]
             },
