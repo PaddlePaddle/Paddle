@@ -487,84 +487,53 @@ class DataParallel(layers.Layer):
             :name: dp-pylayer-example
 
                 # required: distributed
-                import random
-                import numpy as np
-
+                import numpy
                 import paddle
-                from paddle.fluid import core
-                from paddle.fluid import framework
-                from paddle.nn import Linear
                 import paddle.distributed as dist
                 from paddle.autograd import PyLayer
                 from paddle.distributed.fleet.utils.hybrid_parallel_util import fused_allreduce_gradients
 
-                def detach_variable(inputs):
-                    out = []
-                    for inp in inputs:
-                        if not isinstance(inp, core.VarBase):
-                            out.append(inp)
-                            continue
-                        x = inp.detach()
-                        x.stop_gradient = inp.stop_gradient
-                        out.append(x)
-                    return tuple(out)
-
-                class run_func(PyLayer):
+                class cus_tanh(PyLayer):
                     @staticmethod
-                    def forward(ctx, inputs, run_function):
-                        ctx.run_function = run_function
-                        ctx.save_for_backward(inputs)
-                        with paddle.no_grad():
-                            outputs = run_function(inputs)
-                        return outputs
+                    def forward(ctx, x):
+                        y = paddle.tanh(x)
+                        ctx.save_for_backward(y)
+                        return y
 
                     @staticmethod
-                    def backward(ctx, args):
-                        inputs = ctx.saved_tensor()
-                        tracer = framework._dygraph_tracer()
-                        tracer._has_grad = True
-                        detach_inputs = detach_variable(inputs)
-                        outputs = ctx.run_function(*detach_inputs)
-                        paddle.autograd.backward([outputs], [args])
-                        grads = list(inp._grad_ivar() for inp in detach_inputs)
-                        return grads
+                    def backward(ctx, dy):
+                        y, = ctx.saved_tensor()
+                        grad = dy * (1 - paddle.square(y))
+                        return grad
 
                 class SimpleNet(paddle.nn.Layer):
-                    def __init__(self,
-                                input_size=10):
+                    def __init__(self):
                         super(SimpleNet, self).__init__()
-                        self.runfunc0 = Linear(input_size, input_size, bias_attr=False)
-                        self.runfunc1 = Linear(input_size, input_size, bias_attr=False)
-                        self.runfunc2 = Linear(input_size, 1, bias_attr=False)
+                        self.linear = paddle.nn.Linear(2, 2)
 
                     def forward(self, inputs):
-                        inputs = run_func.apply(inputs, run_function=self.runfunc0)
-                        inputs = run_func.apply(inputs, run_function=self.runfunc1)
-                        inputs = run_func.apply(inputs, run_function=self.runfunc2)
-                        return inputs
+                        inputs = self.linear(inputs)
+                        return cus_tanh.apply(inputs)
 
                 if __name__ == '__main__':
                     dist.init_parallel_env()
-                    rank_id = dist.get_rank()
-                    np.random.seed(1024 + rank_id)
-                    paddle.seed(1024 + rank_id)
 
-                    batch_size, input_size = 1, 10
-                    model = SimpleNet(input_size)
-                    model = paddle.DataParallel(model, find_unused_parameters=True)
-                    loss_fn = paddle.nn.MSELoss(reduction='mean')
+                    model = SimpleNet()
+                    model = paddle.DataParallel(model)
                     opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
 
                     for step in range(10):
-                        x_data = np.random.randn(batch_size, input_size).astype(np.float32)
+                        x_data = numpy.random.randn(2, 2).astype(numpy.float32)
                         x = paddle.to_tensor(x_data)
                         x.stop_gradient = False
 
+                        # step 1 : skip gradient synchronization by 'no_sync'
                         with model.no_sync():
                             y_pred = model(x)
                             loss = y_pred.mean()
                             loss.backward()
 
+                        # step 2 : fuse + allreduce manually before optimization
                         fused_allreduce_gradients(list(model.parameters()), None)
 
                         opt.step()
