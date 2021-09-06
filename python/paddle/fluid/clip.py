@@ -498,6 +498,7 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     elif sum_square.dtype == core.VarDesc.VarType.FP32:
                         sum_square_list_fp32.append(sum_square)
                     else:
+                        # fp64
                         sum_square_list.append(sum_square)
 
             # all parameters have been filterd out
@@ -506,15 +507,21 @@ class ClipGradByGlobalNorm(ClipGradBase):
                 return params_grads
 
             with p.block.program._optimized_guard([p, g]):
+                sum_dtype = "float64" if len(sum_square_list) > 0 else "float32"
+
                 global_norm_var = []
                 if len(sum_square_list_fp16) > 0:
                     global_norm_var_fp16 = layers.sums(sum_square_list_fp16)
                     global_norm_var.append(
-                        global_norm_var_fp16.astype("float32"))
+                        global_norm_var_fp16.astype(sum_dtype))
                 if len(sum_square_list_fp32) > 0:
                     global_norm_var_fp32 = layers.sums(sum_square_list_fp32)
-                    global_norm_var.append(global_norm_var_fp32)
+                    append_norm_var = (global_norm_var_fp32
+                                       if sum_dtype == "float32" else
+                                       global_norm_var_fp32.astype(sum_dtype))
+                    global_norm_var.append(append_norm_var)
                 if len(sum_square_list) > 0:
+                    # fp64
                     global_norm_var_other_dtype = layers.sums(sum_square_list)
                     global_norm_var.append(global_norm_var_other_dtype)
                 global_norm_var = layers.sums(global_norm_var)
