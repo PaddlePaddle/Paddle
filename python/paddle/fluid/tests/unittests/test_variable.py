@@ -927,6 +927,80 @@ class TestListIndex(unittest.TestCase):
             index1 = index1[0]
             index2 = index2[0]
 
+    def test_static_graph_array_index_combine(self):
+        paddle.enable_static()
+        inps_shape = [3, 4, 5, 2, 6]
+        array = np.arange(
+            self.numel(inps_shape), dtype='float32').reshape(inps_shape)
+
+        index_shape = [2, 3]
+        index = np.arange(
+            self.numel(index_shape), dtype='int32').reshape(index_shape)
+        index_shape2 = [3]
+        index2 = np.arange(
+            self.numel(index_shape2), dtype='int32').reshape(index_shape2)
+
+        value_shape = [3, 1, 2]
+        value = np.arange(
+            self.numel(value_shape), dtype='float32').reshape(value_shape) + 1.5
+
+        index_mod = index % (min(array.shape))
+        index_mod2 = (index2 % (min(array.shape))).tolist()
+
+        combine_index1 = [slice(1, None)]
+        combine_index2 = [index_mod2, None, slice(1, 3), index_mod]
+        combine_index3 = [index_mod2, slice(1, None), 1, index_mod]
+        combine_index4 = [index_mod2, 1, slice(1, 3), None]
+        combine_index5 = [0, index_mod2, slice(1, 3, 2), 1]
+        # same with pytorch(shape=[1, 3, 2, 2, 6]), diff with numpy(shape=[3, 1, 2, 2, 6])
+        # combine_index6=[None,index_mod2,slice(0,2),1]
+
+        combine_index6 = [index_mod2, None, 1, None]
+        combine_index7 = [index_mod2, 0, 1, None]
+        combine_index8 = [0, index_mod2, 1, None]
+        combine_index9 = [0, None, index_mod2, 1]
+        combine_index10 = [0, 1, index_mod2, 1]
+        # same with numpy(shape=[3, 4, 5]), diff with pytorch(shape=[4, 5, 3]).
+        combine_index11 = [0, ..., index_mod2, 1]
+        combine_index12 = [slice(0, 1, None), index_mod2, 1]
+        combine_index13 = [0, 1, index_mod2, None]
+        combine_index14 = [0, index_mod2, slice(3, 0, -2), 1]
+        indexes = [
+            combine_index1, combine_index2, combine_index3, combine_index4,
+            combine_index5, combine_index6, combine_index7, combine_index8,
+            combine_index9, combine_index10, combine_index11, combine_index12,
+            combine_index13, combine_index14
+        ]
+        program = paddle.static.Program()
+        with paddle.static.program_guard(program):
+            x_get = [paddle.assign(array) for _ in range(len(indexes))]
+            x_set = [paddle.assign(array) for _ in range(len(indexes))]
+            array_get = [array.copy() for _ in range(len(indexes))]
+            array_set = [array.copy() for _ in range(len(indexes))]
+            np_get_result = []
+            pp_get_result = []
+            for i, index in enumerate(indexes):
+                np_get_result.append(array_get[i][index])
+                value = np_get_result[i][0] + 3.5
+
+                array_set[i][index] = value
+                pp_get_result.append(x_get[i][index])
+                x_set[i][index] = value
+
+            place = paddle.fluid.CPUPlace()
+
+            prog = paddle.static.default_main_program()
+            exe = paddle.static.Executor(place)
+
+            exe.run(paddle.static.default_startup_program())
+            fetch_list = [x.name
+                          for x in pp_get_result] + [x.name for x in x_set]
+            outputs = exe.run(prog, fetch_list=fetch_list)
+            for i in range(len(indexes)):
+                self.assertTrue(np.array_equal(np_get_result[i], outputs[i]))
+                self.assertTrue(
+                    np.array_equal(array_set[i], outputs[len(indexes) + i]))
+
 
 if __name__ == '__main__':
     unittest.main()

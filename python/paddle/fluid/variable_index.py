@@ -67,19 +67,36 @@ class SliceInfo:
     def __init__(self):
         self.pre_shape = None
         self.indexes = []
+        self.dims = []
+        self.shape_history = []
+        self.decrease_axes = []
+        self.none_axes = []
+        self.ellipsis_axes = []
 
-    def update(self, index):
-        if is_list_tuple(index, int) or isinstance(index, (
-                paddle.fluid.Variable, np.ndarray)):
-            # convert index to Tensor
-            if not isinstance(index, paddle.fluid.Variable):
+    def push_ellipsis_axes(self, axis):
+        self.ellipsis_axes.append(axis)
+
+    def get_none_axes(self):
+        return self.none_axes
+
+    def get_decrease_axes(self):
+        return self.decrease_axes
+
+    def update(self, index, dim):
+        self.dims.append(dim)
+        if is_list_tuple(index, int) or isinstance(
+                index, (paddle.fluid.core.VarBase, paddle.fluid.Variable,
+                        np.ndarray)):  # Tensor
+            if not isinstance(index, (paddle.fluid.core.VarBase)):
+
                 index = paddle.assign(index)
 
-            self.indexes.append(index)
-
             if self.pre_shape is None:
+                self.indexes.append(index)
                 self.pre_shape = index.shape
+
             else:
+                self.indexes.append(index.astype(self.indexes[-1].dtype))
                 if self.pre_shape != index.shape:
                     # broadcast 
                     cur_shape = paddle.broadcast_shape(self.pre_shape,
@@ -88,10 +105,85 @@ class SliceInfo:
                         self.indexes[i] = paddle.broadcast_to(self.indexes[i],
                                                               cur_shape)
                 self.pre_shape = self.indexes[-1].shape
+            self.shape_history.append(self.pre_shape)
         else:
             raise ValueError(
                 "Index should be list/tuple of int or Tensor, but received {}.".
                 format(index))
+
+    def update_slice_index(self,
+                           tensor_shape,
+                           starts,
+                           ends,
+                           steps,
+                           axes,
+                           decrease_axes=[],
+                           none_axes=[]):
+
+        decrease = []
+        nones = []
+        starts = list(starts)
+        ends = list(ends)
+        axes = list(axes)
+
+        for axis in self.ellipsis_axes:
+            for i_temp in range(len(axes) + len(self.ellipsis_axes)):
+                if axes[i_temp] > axis:
+                    axes.insert(i_temp, axis)
+                    starts.insert(i_temp, 0)
+                    ends.insert(i_temp, MAX_INTEGER)
+                    steps.insert(i_temp, 1)
+                    break
+
+        for axis in range(len(tensor_shape)):
+            if axis in none_axes:
+                cur_dim = 0
+                for i_temp, dim in enumerate(self.dims):
+                    if dim < axis + none_axes.index(axis):
+                        cur_dim = len(self.indexes[i_temp].shape)
+                    else:
+                        break
+                nones.append(cur_dim)
+            if axis in decrease_axes and axis <= self.dims[0]:
+                decrease.append(len(self.pre_shape) - 1)
+
+            if axis in axes:
+                i = axes.index(axis)
+                self.dims.insert(axis, axis)
+
+                slice_index = paddle.assign(list(range(tensor_shape[axis])))[
+                    starts[i]:ends[i]:steps[i]]
+
+                if axis > self.dims[0]:
+                    cur_shape = paddle.broadcast_shape(
+                        list(self.pre_shape) + [slice_index.shape[0], ],
+                        slice_index.shape)
+                    for i_temp in range(len(self.indexes)):
+                        expand_index = paddle.concat(
+                            [self.indexes[i_temp].unsqueeze(-1), ] *
+                            slice_index.shape[0], -1)
+                        self.indexes[i_temp] = expand_index
+                else:
+                    cur_shape = [slice_index.shape[0], ] + list(self.pre_shape)
+                    for i_temp in range(len(self.indexes)):
+                        expand_index = paddle.concat(
+                            [self.indexes[i_temp].unsqueeze(0), ] *
+                            slice_index.shape[0], 0)
+                        self.indexes[i_temp] = expand_index
+
+                    slice_index = slice_index.reshape([slice_index.shape[
+                        0], ] + [1, ] * len(self.pre_shape))
+
+                slice_index = paddle.broadcast_to(slice_index, cur_shape)
+                self.indexes.insert(axis, slice_index)
+                self.pre_shape = cur_shape
+
+            if axis in decrease_axes and axis > self.dims[0]:
+                decrease.append(len(self.pre_shape) - 1)
+        if decrease:
+            self.decrease_axes += decrease
+        if nones:
+            self.none_axes += nones
 
     def shape_stride(self, shape):
         s = [1] * len(shape)
@@ -125,7 +217,12 @@ class SliceInfo:
     def get_item(self, tensor):
         shape_transpose = self.get_offset_stride(tensor.shape)
         index = paddle.assign(shape_transpose)
-        return paddle.gather_nd(tensor, index)
+        gather_tensor = paddle.gather_nd(tensor, index)
+
+        if not self.decrease_axes:
+            return gather_tensor
+        else:
+            return gather_tensor.squeeze(self.decrease_axes)
 
     def set_item(self, tensor_origin, value):
 
@@ -150,16 +247,32 @@ class SliceInfo:
         gather_tensor_shape = get_list_index_shape(
             tensor.shape, [len(self.indexes), ] + list(self.indexes[-1].shape))
 
-        value_dims_bd = [1, ] * len(gather_tensor_shape)
+        gather_tensor_shape_real = list(gather_tensor_shape)
+        for temp_i in range(
+                len(gather_tensor_shape_real) + len(self.none_axes) - 1, 0, -1):
+            if temp_i in self.decrease_axes:
+                if gather_tensor_shape_real[temp_i] == 1:
+                    gather_tensor_shape_real.pop(temp_i)
+                else:
+                    raise ValueError(
+                        "{}'s {}'th dim should be 1, but received {}.".format(
+                            gather_tensor_shape, temp_i, gather_tensor_shape[
+                                temp_i]))
+
+            if temp_i in self.none_axes:
+
+                gather_tensor_shape_real.insert(temp_i, 1)
+
+        value_dims_bd = [1, ] * len(gather_tensor_shape_real)
         value_dims_bd[-len(value.shape):] = list(value.shape)
 
-        for i in range(len(gather_tensor_shape)):
-            if not (value_dims_bd[i] == gather_tensor_shape[i] or
+        for i in range(len(gather_tensor_shape_real)):
+            if not (value_dims_bd[i] == gather_tensor_shape_real[i] or
                     value_dims_bd[i] == 1):
                 raise ValueError("{} can not broadcast into {}".format(
-                    value.shape, gather_tensor_shape))
+                    value.shape, gather_tensor_shape_real))
 
-        value_broadcast = paddle.broadcast_to(value, gather_tensor_shape)
+        value_broadcast = paddle.broadcast_to(value, gather_tensor_shape_real)
 
         value_1d = value_broadcast.reshape([-1] + gather_tensor_shape[len(
             index.shape) - 1:])
@@ -308,6 +421,7 @@ def _getitem_impl_(var, item):
             step = slice_item.step
 
             if start is None and end is None and step is None:
+                slice_info.push_ellipsis_axes(dim)
                 continue
 
             step = 1 if step is None else step
@@ -321,7 +435,7 @@ def _getitem_impl_(var, item):
             all_bool = True
 
             if is_list_tuple(slice_item, int):
-                slice_info.update(slice_item)
+                slice_info.update(slice_item, dim)
                 continue
 
             for i in slice_item:
@@ -362,7 +476,7 @@ def _getitem_impl_(var, item):
             return index_select(var, index=idx, axis=0)
 
         elif isinstance(slice_item, np.ndarray):
-            slice_info.update(slice_item)
+            slice_info.update(slice_item, dim)
             continue
         elif isinstance(slice_item, (Variable)):
             if len(item) == 1:
@@ -389,10 +503,10 @@ def _getitem_impl_(var, item):
                     if len(slice_item.shape) == 1:
                         return index_select(var, index=slice_item, axis=0)
                     else:
-                        slice_info.update(slice_item)
+                        slice_info.update(slice_item, dim)
                         continue
             else:
-                slice_info.update(slice_item)
+                slice_info.update(slice_item, dim)
                 continue
 
         else:
@@ -407,44 +521,51 @@ def _getitem_impl_(var, item):
         use_strided_slice = True if step != 1 else use_strided_slice
 
     if slice_info.indexes:
-        if len(slice_info.indexes) != len(item):
-            raise IndexError(
-                "Valid index accept int or slice or ellipsis or list, but received {}.".
-                format(item))
-        return slice_info.get_item(var)
+        if len(slice_info.indexes) != len(item) + len(none_axes):
+            # raise IndexError(
+            #     "Valid index accept int or slice or ellipsis or list, but received {}.".
+            #     format(item))
 
-    inputs = {'Input': [var]}
-    attrs = {
-        'axes': axes,
-        'starts': [],
-        'ends': [],
-        'decrease_axis': decrease_axes
-    }
-    if use_strided_slice:
-        attrs['strides'] = []
+            slice_info.update_slice_index(var.shape, starts, ends, steps, axes,
+                                          decrease_axes, none_axes)
+            out = slice_info.get_item(var)
+        else:
+            return slice_info.get_item(var)
+    else:
 
-    infer_flags = [1] * len(axes)
-    deal_attrs(attrs, starts, "starts", "StartsTensorList", inputs, infer_flags)
-    deal_attrs(attrs, ends, "ends", "EndsTensorList", inputs, infer_flags)
-    deal_attrs(attrs, steps, "strides", "StridesTensorList", inputs,
-               infer_flags)
-    attrs['infer_flags'] = infer_flags
+        inputs = {'Input': [var]}
+        attrs = {
+            'axes': axes,
+            'starts': [],
+            'ends': [],
+            'decrease_axis': decrease_axes
+        }
+        if use_strided_slice:
+            attrs['strides'] = []
 
-    out = var
-    if len(axes) > 0:
-        target_block = default_main_program().current_block()
-        op_type = "strided_slice" if use_strided_slice else "slice"
+        infer_flags = [1] * len(axes)
+        deal_attrs(attrs, starts, "starts", "StartsTensorList", inputs,
+                   infer_flags)
+        deal_attrs(attrs, ends, "ends", "EndsTensorList", inputs, infer_flags)
+        deal_attrs(attrs, steps, "strides", "StridesTensorList", inputs,
+                   infer_flags)
+        attrs['infer_flags'] = infer_flags
 
-        slice_out_var = target_block.create_var(
-            name=unique_name.generate_with_ignorable_key(var.name + "_" +
-                                                         op_type),
-            dtype=var.dtype)
-        target_block.append_op(
-            type=op_type,
-            inputs=inputs,
-            outputs={'Out': [slice_out_var]},
-            attrs=attrs)
-        out = slice_out_var
+        out = var
+        if len(axes) > 0:
+            target_block = default_main_program().current_block()
+            op_type = "strided_slice" if use_strided_slice else "slice"
+
+            slice_out_var = target_block.create_var(
+                name=unique_name.generate_with_ignorable_key(var.name + "_" +
+                                                             op_type),
+                dtype=var.dtype)
+            target_block.append_op(
+                type=op_type,
+                inputs=inputs,
+                outputs={'Out': [slice_out_var]},
+                attrs=attrs)
+            out = slice_out_var
 
     if len(reverse_axes) > 0:
         from .layers.tensor import reverse
@@ -464,6 +585,9 @@ def _getitem_impl_(var, item):
         # For example:
         # # x.shape: (2,3,4)
         # out = x[0, 0:2, None] # out.shape : (2, 1, 4)
+        if slice_info.indexes:
+            none_axes = slice_info.get_none_axes()
+            decrease_axes = slice_info.get_decrease_axes()
         for idx, axis in enumerate(none_axes):
             l = len([i for i in decrease_axes if i < axis])
             new_axis = axis - l
@@ -514,10 +638,12 @@ def _setitem_impl_(var, item, value):
                 raise TypeError(
                     "Only support int or list in index list. But revceived {}.".
                     format(slice_item))
-            slice_info.update(slice_item)
+            slice_info.update(slice_item, dim)
+            dim += 1
             continue
         elif isinstance(slice_item, (Variable, np.ndarray)):
-            slice_info.update(slice_item)
+            slice_info.update(slice_item, dim)
+            dim += 1
             continue
 
         elif isinstance(slice_item, slice):
@@ -526,6 +652,7 @@ def _setitem_impl_(var, item, value):
             step = slice_item.step
 
             if start is None and end is None and step is None:
+                slice_info.push_ellipsis_axes(dim)
                 dim += 1
                 continue
 
@@ -557,12 +684,16 @@ def _setitem_impl_(var, item, value):
         ends.append(end)
         steps.append(step)
 
+        # dec_axis=[dim,] if dim in decrease_axes else []
+        # none_axis=[dim,] if dim in none_axes else []
+        # slice_info.update_slice_index(var.shape, [start,], [end,], [step,], [dim,],
+        #                                   dec_axis, none_axis)
+
         dim += 1
     if slice_info.indexes:
         if len(slice_info.indexes) != len(item):
-            raise IndexError(
-                "Valid index accept int or slice or ellipsis or list, but received {}.".
-                format(item))
+            slice_info.update_slice_index(var.shape, starts, ends, steps, axes,
+                                          decrease_axes, none_axes)
         return slice_info.set_item(var, value)
     attrs = {
         'axes': axes,
