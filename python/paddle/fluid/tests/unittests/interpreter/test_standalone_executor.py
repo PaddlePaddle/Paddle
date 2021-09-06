@@ -75,12 +75,14 @@ class LinearTestCase(unittest.TestCase):
         self.check_cost_info(cost_info)
 
     def check_cost_info(self, cost_info):
+        IS_WINDOWS = sys.platform.startswith('win')
 
         if core.is_compiled_with_cuda():
             # input `a` is on CPU, 16 bytes
             self.assertEqual(cost_info.host_memory_bytes(), 16)
-            # # w,bias,b, out, memory block is at least 256 bytes
-            self.assertGreater(cost_info.device_memory_bytes(), 256 * 4)
+            # # w,bias,b, out, memory block is at least 256 bytes on Linux
+            gt = 16 * 4 if IS_WINDOWS else 256 * 4
+            self.assertGreater(cost_info.device_memory_bytes(), gt)
             self.assertGreaterEqual(cost_info.device_total_memory_bytes(),
                                     cost_info.device_memory_bytes())
         else:
