@@ -105,15 +105,36 @@ void benchmark_fluid_accuracy_check(std::shared_ptr<imperative::VarBase>& X, std
     engine->Init(outs["Out"], grad_tensors, false /*retain_graph*/);
     engine->Execute();
     
+    
     // Fwd Check: Expects 8189 with max_num_runs = 10
     auto* tensor = outs["Out"][0]->MutableVar()->GetMutable<framework::LoDTensor>(); 
     float* t_ptr = tensor->mutable_data<float>(place);
+    std::vector<float> host_data(tensor->numel());
+    if(place == paddle::platform::CUDAPlace()) {
+        paddle::platform::DeviceContextPool& pool = paddle::platform::DeviceContextPool::Instance();
+        auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(pool.Get(place));
+        auto stream = dev_ctx->stream();
+
+        paddle::memory::Copy(paddle::platform::CPUPlace(), host_data.data(), paddle::platform::CUDAPlace(), t_ptr,
+                             sizeof(float)*tensor->numel(), stream);
+        t_ptr = host_data.data();
+    }
     PADDLE_ENFORCE(t_ptr[0] == 8189.0, 
         paddle::platform::errors::Fatal("Numerical Error, Expected %f", 8189.0));
 
     // Grad Check: Expects 1024.0 with max_num_runs = 10
     auto* grad_tensor = X->MutableGradVar()->GetMutable<framework::LoDTensor>(); 
     float* g_ptr = grad_tensor->mutable_data<float>(place);
+    std::vector<float> g_host_data(grad_tensor->numel());
+    if(place == paddle::platform::CUDAPlace()) {
+        paddle::platform::DeviceContextPool& pool = paddle::platform::DeviceContextPool::Instance();
+        auto* dev_ctx = dynamic_cast<paddle::platform::CUDADeviceContext*>(pool.Get(place));
+        auto stream = dev_ctx->stream();
+
+        paddle::memory::Copy(paddle::platform::CPUPlace(), g_host_data.data(), paddle::platform::CUDAPlace(), g_ptr,
+                             sizeof(float)*grad_tensor->numel(), stream);
+        g_ptr = g_host_data.data();
+    }
     PADDLE_ENFORCE(g_ptr[0] == 1024.0, 
         paddle::platform::errors::Fatal("Numerical Error, Expected %f", 1024.0));
     

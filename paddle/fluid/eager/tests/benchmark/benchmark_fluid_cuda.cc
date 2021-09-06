@@ -85,7 +85,7 @@ TEST(Benchmark, FluidPerformance) {
         paddle::memory::Copy(place, mutable_x, platform::CPUPlace(), src_data.data(),
                              sizeof(float) * src_data.size(), stream);
         
-        benchmark_fluid(X, Out);
+        benchmark_fluid(X, Out, platform::Place(place));
     }
 
     // Benchmakr

@@ -54,7 +54,7 @@ TEST(Benchmark, FluidAccuracy) {
     paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                          sizeof(float) * src_data.size());
 
-    benchmark_fluid_accuracy_check(X, Out);
+    benchmark_fluid_accuracy_check(X, Out, platform::Place(place));
 }
 
 TEST(Benchmark, FluidPerformance) {
@@ -78,7 +78,7 @@ TEST(Benchmark, FluidPerformance) {
     auto t_start = std::chrono::high_resolution_clock::now();
     
     ProfilerStart("fluid_cpu.out");
-    benchmark_fluid(X, Out);
+    benchmark_fluid(X, Out, platform::Place(place));
     ProfilerStop();
 
     auto t_end = std::chrono::high_resolution_clock::now();

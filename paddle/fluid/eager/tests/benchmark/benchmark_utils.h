@@ -27,8 +27,8 @@ void benchmark_eager(pt::Tensor& tensor);
 namespace paddle {
 namespace imperative {
 
-void benchmark_fluid_accuracy_check(std::shared_ptr<imperative::VarBase>& X, std::shared_ptr<imperative::VarBase>& Out);
-void benchmark_fluid(std::shared_ptr<imperative::VarBase>& X, std::shared_ptr<imperative::VarBase>& Out);
+void benchmark_fluid_accuracy_check(std::shared_ptr<imperative::VarBase>& X, std::shared_ptr<imperative::VarBase>& Out, const paddle::platform::Place& place);
+void benchmark_fluid(std::shared_ptr<imperative::VarBase>& X, std::shared_ptr<imperative::VarBase>& Out, const paddle::platform::Place& place);
 
 } // namespace imperative
 } // namespace paddle
