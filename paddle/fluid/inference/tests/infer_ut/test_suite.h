@@ -212,6 +212,29 @@ double SingleThreadProfile(paddle_infer::Predictor *predictor,
     auto output_names = predictor->GetOutputNames();
     for (auto &output_name : output_names) {
       auto output_tensor = predictor->GetOutputHandle(output_name);
+      std::vector<int> output_shape = output_tensor->shape();
+      int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
+                                    std::multiplies<int>());
+      switch (output_tensor->type()) {
+        case paddle::PaddleDType::INT64: {
+          std::vector<int64_t> out_data;
+          out_data.resize(out_num);
+          output_tensor->CopyToCpu(out_data.data());
+          break;
+        }
+        case paddle::PaddleDType::FLOAT32: {
+          std::vector<float> out_data;
+          out_data.resize(out_num);
+          output_tensor->CopyToCpu(out_data.data());
+          break;
+        }
+        case paddle::PaddleDType::INT32: {
+          std::vector<int32_t> out_data;
+          out_data.resize(out_num);
+          output_tensor->CopyToCpu(out_data.data());
+          break;
+        }
+      }
     }
   }
   timer.stop();

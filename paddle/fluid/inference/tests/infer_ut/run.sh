@@ -194,6 +194,7 @@ if [ $? -ne 0 ]; then
 fi
 
 if [ $WIN_DETECT != "" ]; then
+    #TODO(OliverLPH): enable test_ernie_text_cls on windows after fix compile issue
     echo "  skip test_ernie_text_cls  "
 else
     printf "${YELLOW} start test_ernie_text_cls ${NC} \n";
