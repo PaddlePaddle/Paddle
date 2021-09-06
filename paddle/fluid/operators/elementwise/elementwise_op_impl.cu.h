@@ -210,23 +210,23 @@ void LaunchSameDimsElementwiseCudaKernel(
   switch (vec_size) {
     case 4: {
       auto wrapper =
-          ElementwiseArgsWrapper<InT, InT, 4, kArity>(ins, outs, vec_len);
+          ElementwiseArgsWrapper<InT, OutT, 4, kArity>(ins, outs, vec_len);
       VectorizedElementwiseKernel<
-          InT, InT, 4, kArity, Functor><<<grid_size, block_size, 0, stream>>>(
+          InT, OutT, 4, kArity, Functor><<<grid_size, block_size, 0, stream>>>(
           wrapper, main_tid, tail_tid, func);
       break;
     }
     case 2: {
       auto wrapper =
-          ElementwiseArgsWrapper<InT, InT, 2, kArity>(ins, outs, vec_len);
+          ElementwiseArgsWrapper<InT, OutT, 2, kArity>(ins, outs, vec_len);
       VectorizedElementwiseKernel<
-          InT, InT, 2, kArity, Functor><<<grid_size, block_size, 0, stream>>>(
+          InT, OutT, 2, kArity, Functor><<<grid_size, block_size, 0, stream>>>(
           wrapper, main_tid, tail_tid, func);
       break;
     }
     case 1: {
-      auto wrapper = ElementwiseArgsWrapper<InT, InT, 1, kArity>(ins, outs, 0);
-      ScalarElementwiseKernel<InT, InT, kArity,
+      auto wrapper = ElementwiseArgsWrapper<InT, OutT, 1, kArity>(ins, outs, 0);
+      ScalarElementwiseKernel<InT, OutT, kArity,
                               Functor><<<grid_size, block_size, 0, stream>>>(
           wrapper, numel, func);
       break;
