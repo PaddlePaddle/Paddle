@@ -959,15 +959,6 @@ def psroi_pool(input,
                                    pooled_height, "pooled_width", pooled_width)
 
     helper = LayerHelper('psroi_pool', **locals())
-    # check attrs
-    if not isinstance(output_channels, int):
-        raise TypeError("output_channels must be int type")
-    if not isinstance(spatial_scale, float):
-        raise TypeError("spatial_scale must be float type")
-    if not isinstance(pooled_height, int):
-        raise TypeError("pooled_height must be int type")
-    if not isinstance(pooled_width, int):
-        raise TypeError("pooled_width must be int type")
     dtype = helper.input_dtype()
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
