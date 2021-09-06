@@ -78,7 +78,7 @@ class TestCumprod(OpTest):
         self.attrs = {'dim': None}
 
     def prepare_inputs_outputs_attrs(self, dim, zero_num):
-        self.x = np.random.random(self.shape).astype(self.dtype)
+        self.x = np.random.random(self.shape).astype(self.dtype) + 0.5
         if zero_num > 0:
             zero_num = min(zero_num, self.x.size)
             shape = self.x.shape
@@ -118,33 +118,29 @@ class TestCumprod(OpTest):
             for zero_num in self.zero_nums:
                 self.prepare_inputs_outputs_attrs(dim, zero_num)
                 self.init_grad_input_output(dim)
-                self.check_grad(
-                    ['X'],
-                    'Out',
-                    user_defined_grads=[self.grad_x],
-                    user_defined_grad_outputs=[self.grad_out])
+                if self.dtype == np.float64:
+                    self.check_grad(['X'], 'Out')
+                else:
+                    self.check_grad(
+                        ['X'],
+                        'Out',
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out])
 
 
+# test float32 case.
 class TestCumprod_float32(TestCumprod):
     def init_dtype(self):
         self.dtype = np.float32
 
 
-class TestCumprod_int32(TestCumprod):
-    def init_dtype(self):
-        self.dtype = np.int32
-
-
-class TestCumprod_int64(TestCumprod):
-    def init_dtype(self):
-        self.dtype = np.int64
-
-
+# test complex64 case.
 class TestCumprod_complex64(TestCumprod):
     def init_dtype(self):
         self.dtype = np.complex64
 
 
+# test complex128 case.
 class TestCumprod_complex128(TestCumprod):
     def init_dtype(self):
         self.dtype = np.complex128
@@ -196,15 +192,15 @@ class TestCumprodAPI(unittest.TestCase):
             run(place)
 
     # test error message.
-    # def test_error_message(self):
-    #     def run(place):
-    #         paddle.disable_static(place)
-    #         x = paddle.to_tensor(self.x)
-    #         out = paddle.cumprod(x, 10)
-    #         paddle.enable_static()
+    def test_error_message(self):
+        def run(place):
+            paddle.disable_static(place)
+            x = paddle.to_tensor(self.x)
+            out = paddle.cumprod(x, 10)
+            paddle.enable_static()
 
-    #     for place in self.place:
-    #         run(place)
+        for place in self.place:
+            run(place)
 
 
 if __name__ == "__main__":

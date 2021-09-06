@@ -143,8 +143,8 @@ struct FillFirstZeroPositionGradFunctor {
 /*
 Reference to
 https://github.com/pytorch/pytorch/blob/master/aten/src/ATen/native/ReduceOps.cpp
-input: x, y, dy
-output: dx
+input: x, y, dL/dy
+output: dL/dx
 dL/dx[i] = sum{0<=j<n} (dL/dy[j])*(dy[j]/dx[i]) (1)
          = sum(0<=j<n} (dL/dy[j])*(d(x[0]*x[1]*...*x[j])/dx[i])
 if x[i] != 0, dL/dx[i] = sum{i<=j<n} (dL/dy[j])*(y[j]/x[i]) (2)
