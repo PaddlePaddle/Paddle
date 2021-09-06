@@ -19,6 +19,9 @@
 #include "paddle/fluid/operators/math/padding.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/for_range.h"
+#if defined(__NVCC__) || defined(__HIPCC__)
+#include "thrust/device_vector.h"
+#endif
 
 namespace paddle {
 namespace operators {
@@ -104,11 +107,10 @@ template <typename T>
 struct FFTFillConjGradFunctor {
   T* input_;
   const size_t axis_;
-  const std::vector<int64_t>& strides_;
+  const int64_t* strides_;
   const size_t double_length_;
 
-  FFTFillConjGradFunctor(T* input, size_t axis,
-                         const std::vector<int64_t>& strides,
+  FFTFillConjGradFunctor(T* input, size_t axis, const int64_t* strides,
                          size_t double_length)
       : input_(input),
         axis_(axis),
@@ -116,10 +118,11 @@ struct FFTFillConjGradFunctor {
         double_length_(double_length) {}
 
   HOSTDEVICE void operator()(size_t index) {
+    size_t offtset = index;  // back
     size_t index_i;
     for (size_t i = 0; i <= axis_; i++) {
-      index_i = index / strides_[i];
-      index %= strides_[i];
+      index_i = offtset / strides_[i];
+      offtset %= strides_[i];
     }
 
     if ((0 < index_i) && (index_i < double_length_ + 1)) {
@@ -315,22 +318,28 @@ class FFTC2RGradKernel : public framework::OpKernel<T> {
     const auto* dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-    // C* pdx = dx->mutable_data<C>(ctx.GetPlace());
-    dx->mutable_data<C>(ctx.GetPlace());
+    C* pdx = dx->mutable_data<C>(ctx.GetPlace());
     auto normalization = get_norm_from_string(norm_str, forward);
 
     FFTR2CFunctor<DeviceContext, T, C> fft_r2c_func;
     fft_r2c_func(dev_ctx, dy, dx, axes, normalization, !forward, onesided);
 
-    // const int64_t double_length = dx->dims()[axes.back()] -
-    // dy->dims()[axes.back()];
-    // const std::vector<int64_t> strides =
-    // framework::vectorize(framework::stride(dx->dims()));
+    const int64_t double_length =
+        dy->dims()[axes.back()] - dx->dims()[axes.back()];
+    const framework::DDim strides = framework::stride(dx->dims());
 
-    // FFTFillConjGradFunctor<C> func(pdx, axes.back(), strides, double_length);
-    // size_t limit = dx->numel();
-    // platform::ForRange<DeviceContext> for_range(dev_ctx, limit);
-    // for_range(func);
+#if defined(__NVCC__) || defined(__HIPCC__)
+    const thrust::device_vector<int64_t> strides_g(
+        framework::vectorize(strides));
+    const int64_t* pstrides = thrust::raw_pointer_cast(strides_g.data());
+#else
+    const int64_t* pstrides = strides.Get();
+#endif
+
+    FFTFillConjGradFunctor<C> func(pdx, axes.back(), pstrides, double_length);
+    size_t limit = dx->numel();
+    platform::ForRange<DeviceContext> for_range(dev_ctx, limit);
+    for_range(func);
   }
 };
 
