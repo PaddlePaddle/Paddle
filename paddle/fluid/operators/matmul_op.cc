@@ -720,7 +720,7 @@ class MatMulOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<int>>("fused_reshape_X",
                               R"DOC(Shape of fused reshape of `X` input.)DOC")
         .SetDefault({})
-        ..AsExtra();
+        .AsExtra();
     AddAttr<std::vector<int>>("fused_reshape_Y",
                               R"DOC(Shape of fused reshape of `Y` input.)DOC")
         .SetDefault({})
