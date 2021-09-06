@@ -31,7 +31,27 @@ class MatMulNPUKernel : public framework::OpKernel<T> {
     bool transpose_x = ctx.Attr<bool>("transpose_X");
     bool transpose_y = ctx.Attr<bool>("transpose_Y");
 
-    if (x->dims().size() == 2) {
+    if (x->dims().size() == 3 && y->dims().size() == 2) {
+      if (transpose_x) {
+        PADDLE_THROW(
+            platform::errors::InvalidArgument("npu error: not support"));
+      }
+      Tensor tmp_x(x->type());
+      int64_t first_dim = x->dims()[0] * x->dims()[1];
+      int64_t sec_dim = x->dims()[2];
+      tmp_x.ShareDataWith(*x);
+      tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
+
+      out->mutable_data<T>(ctx.GetPlace());
+
+      const auto& runner = NpuOpRunner(
+          "MatMul", {tmp_x, *y}, {*out},
+          {{"transpose_x1", transpose_x}, {"transpose_x2", transpose_y}});
+      auto stream =
+          ctx.template device_context<paddle::platform::NPUDeviceContext>()
+              .stream();
+      runner.Run(stream);
+    } else if (x->dims().size() == 2) {
       out->mutable_data<T>(ctx.GetPlace());
 
       const auto& runner = NpuOpRunner(
@@ -54,6 +74,9 @@ class MatMulNPUKernel : public framework::OpKernel<T> {
           ctx.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
       runner.Run(stream);
+    } else {
+      PADDLE_THROW(
+          platform::errors::InvalidArgument("npu error: not support dims"));
     }
   }
 };
@@ -67,12 +90,62 @@ class MatMulGradNPUKernel : public framework::OpKernel<T> {
     auto* dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
+    bool transpose_x = ctx.Attr<bool>("transpose_X");
     bool transpose_y = ctx.Attr<bool>("transpose_Y");
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    if (x->dims().size() == 2) {
+    if (x->dims().size() == 3 && y->dims().size() == 2) {
+      if (transpose_x) {
+        PADDLE_THROW(
+            platform::errors::InvalidArgument("npu error: not support"));
+      }
+
+      Tensor tmp_dout(x->type());
+      int64_t dout_first_dim = dout->dims()[0] * dout->dims()[1];
+      int64_t dout_sec_dim = dout->dims()[2];
+      tmp_dout.ShareDataWith(*dout);
+      tmp_dout.Resize(framework::make_ddim({dout_first_dim, dout_sec_dim}));
+
+      if (dx) {
+        dx->mutable_data<T>(ctx.GetPlace());
+        if (transpose_y) {
+          // tmp_dout * y
+          const auto& runner_matmul =
+              NpuOpRunner("MatMul", {tmp_dout, *y}, {*dx},
+                          {{"transpose_x1", false}, {"transpose_x2", false}});
+          runner_matmul.Run(stream);
+        } else {
+          // tmp_dout * yT
+          const auto& runner_matmul =
+              NpuOpRunner("MatMul", {tmp_dout, *y}, {*dx},
+                          {{"transpose_x1", false}, {"transpose_x2", true}});
+          runner_matmul.Run(stream);
+        }
+      }
+      if (dy) {
+        Tensor tmp_x(x->type());
+        int64_t first_dim = x->dims()[0] * x->dims()[1];
+        int64_t sec_dim = x->dims()[2];
+        tmp_x.ShareDataWith(*x);
+        tmp_x.Resize(framework::make_ddim({first_dim, sec_dim}));
+        dy->mutable_data<T>(ctx.GetPlace());
+        if (transpose_y) {
+          // tmp_doutT * y
+          const auto& runner_dy =
+              NpuOpRunner("MatMul", {tmp_dout, tmp_x}, {*dy},
+                          {{"transpose_x1", true}, {"transpose_x2", false}});
+          runner_dy.Run(stream);
+        } else {
+          // tmp_xT * timp_dout
+          const auto& runner_dy =
+              NpuOpRunner("MatMul", {tmp_x, tmp_dout}, {*dy},
+                          {{"transpose_x1", true}, {"transpose_x2", false}});
+          runner_dy.Run(stream);
+        }
+      }
+    } else if (x->dims().size() == 2) {
       if (transpose_y) {
         if (dx) {
           dx->mutable_data<T>(ctx.GetPlace());

@@ -135,6 +135,36 @@ class TestMatMul4(TestMatMul):
         self.trans_y = False
 
 
+class TestMatMul5(TestMatMul):
+    """
+    case 5 x.dim=3 y.dim=2
+    """
+
+    def config(self):
+        self.x_shape = (2, 3, 4)
+        self.y_shape = (4, 3)
+        self.trans_x = False
+        self.trans_y = False
+
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['X'], 'Out')
+
+
+class TestMatMul6(TestMatMul):
+    """
+    case 6 x.dim=3 y.dim=2 with trans_y is True
+    """
+
+    def config(self):
+        self.x_shape = (2, 3, 4)
+        self.y_shape = (3, 4)
+        self.trans_x = False
+        self.trans_y = True
+
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['X'], 'Out')
+
+
 class TestMatMulNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
