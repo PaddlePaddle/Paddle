@@ -941,3 +941,137 @@ def mv(x, vec, name=None):
         type='mv', inputs={'X': x,
                            'Vec': vec}, outputs={'Out': out})
     return out
+
+
+def svd(x, full_matrices=False, name=None):
+    r"""
+    Computes the singular value decomposition of one 
+    matrix or batches of regular matrice.
+    Args:
+        x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
+            where ... is zero or more batch dimensions. N and M can be arbitraty
+            positive number. Note that if x is sigular matrices, the grad is numerical 
+            instability. The data type of x should be float32 or float64. 
+
+        full_matrices(bool): A flag to control the behavor of svd. 
+            If full_matrices = True, svd op will compute full U and V matrics, 
+            which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`.
+            If full_matrices = False, svd op will use a economic method to store U and V. 
+            which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`
+
+    Returns:
+        Tensor: Tensor U, the shape of U is controlled by full_matrices flag.
+        Tensor: Tensor S, the singular value of X. the shape of S is [..., K]
+        Tensor: Tensor VH, the conjugate transpose of V. the shape of V is controlled by full_matrices flag. 
+
+            import numpy as np
+
+            x = paddle.to_tensor([[1.0, 2.0], [1.0, 3.0], [4.0, 6.0]]).astype('float64')
+            x = x.reshape([3, 2])
+            u, s, vt = paddle.linalg.svd(x)
+            print (u)
+            print (s)
+            print (vt)
+
+            #U = [[ 0.27364809, -0.21695147  ],
+            #      [ 0.37892198, -0.87112408 ],
+            #      [ 0.8840446 ,  0.44053933 ]]
+
+            #S = [8.14753743, 0.78589688]
+
+            #VT= [[ 0.51411221,  0.85772294],
+            #     [ 0.85772294, -0.51411221]]
+            
+            # one can verify : U * S * VT = X ;     
+            #                  U * UH = I ; 
+            #                  V * VH = I
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.svd(x, 'full_matrices', full_matrices)
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
+    check_type(full_matrices, 'full_matrices', bool, 'svd')
+    helper = LayerHelper('svd', **locals())
+    u = helper.create_variable_for_type_inference(dtype=x.dtype)
+    vh = helper.create_variable_for_type_inference(dtype=x.dtype)
+    s = helper.create_variable_for_type_inference(dtype=x.dtype)
+    attrs = dict()
+    attrs['full_matrices'] = full_matrices
+    helper.append_op(
+        type='svd',
+        inputs={'X': [x]},
+        outputs={'U': u,
+                 'VH': vh,
+                 'S': s},
+        attr=attrs, )
+    return u, s, vh
+
+
+def matrix_power(x, n, name=None):
+    r"""
+    Computes the n-th power of a square matrix or a batch of square matrices.
+
+    Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`n` be
+    an exponent, the equation should be:
+
+    .. math::
+        Out = X ^ {n}
+    
+    Specifically,
+
+    - If `n > 0`, it returns the matrix or a batch of matrices raised to the power
+    of `n`.
+    
+    - If `n = 0`, it returns the identity matrix or a batch of identity matrices.
+
+    - If `n < 0`, it returns the inverse of each matrix (if invertible) raised to
+    the power of `abs(n)`.
+
+    Args:
+        x (Tensor): A square matrix or a batch of square matrices to be raised
+            to power `n`. Its shape should be `[*, M, M]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
+        n (int): The exponent. It can be any positive, negative integer or zero.
+        name (str, optional): Name for the operation (optional, default is None). 
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The n-th power of the matrix (or the batch of matrices) `x`. Its
+            data type should be the same as that of `x`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([[1, 2, 3],
+                                  [1, 4, 9],
+                                  [1, 8, 27]], dtype='float64')
+            print(paddle.matrix_power(x, 2))
+            # [[6.  , 34. , 102.],
+            #  [14. , 90. , 282.],
+            #  [36. , 250., 804.]]
+
+            print(paddle.matrix_power(x, 0))
+            # [[1., 0., 0.],
+            #  [0., 1., 0.],
+            #  [0., 0., 1.]]
+
+            print(paddle.matrix_power(x, -2))
+            # [[ 12.91666667, -12.75000000,  2.83333333 ],
+            #  [-7.66666667 ,  8.         , -1.83333333 ],
+            #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
+    """
+    if in_dygraph_mode():
+        return core.ops.matrix_power(x, "n", n)
+
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_power')
+    check_type(n, 'n', int, 'matrix_power')
+    helper = LayerHelper('matrix_power', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='matrix_power',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'n': n})
+    return out

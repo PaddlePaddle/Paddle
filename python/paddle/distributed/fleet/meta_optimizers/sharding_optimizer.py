@@ -319,7 +319,9 @@ class ShardingOptimizer(MetaOptimizerBase):
                     main_block._remove_op(idx)
 
         accumulated_grad_names = self._pp_optimizer._accumulate_gradients(
-            main_block, fp16_allreduce=fp16_allreduce)
+            main_block,
+            fp16_allreduce=fp16_allreduce,
+            user_defined_strategy=strategy)
 
         len_of_ops = len(main_block.ops)
         first_optimize_op_index = get_first_optimize_op_idx(main_block)
@@ -369,8 +371,11 @@ class ShardingOptimizer(MetaOptimizerBase):
         # FIXME(wangxi): mp should prune duplicated param_grads when calc
         # amp inf_var & clip global_norm_var
 
-        FP16Utils.sync_amp_check_nan_inf(main_block,
-                                         [self.mp_ring_id, self.pp_ring_id])
+        rings = [self.mp_ring_id, self.pp_ring_id]
+        # FIXME(wangxi): some problem with NPU found_finite, need sync with DP
+        if core.is_compiled_with_npu():
+            rings += [self.dp_ring_id]
+        FP16Utils.sync_amp_check_nan_inf(main_block, rings)
 
         gradientclip_helper = GradientClipHelper(None)
         gradientclip_helper.sync_global_norm(
