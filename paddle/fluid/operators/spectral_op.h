@@ -131,24 +131,6 @@ struct FFTFillConjGradFunctor {
   }
 };
 
-// template <typename DeviceContext, typename T>
-// void fixTensorFunctor(const DeviceContext& ctx, framework::Tensor* input,
-//                       const std::vector<int64_t>& axes, const int64_t
-//                       double_length){
-//   // for index in all_valid_indices of input
-//   auto input = input->data<T>();
-//   auto numel = input->numel();
-//   std::vector<int64_t> input_strides =
-//   framework::vectorize<int64_t>(framework::stride(input->dims()));
-
-//   for (size_t i = 0; i < numel; i++)
-//   {
-//     if(needMultiTwo(input, i, axes, input_strides, double_length)){
-//       input[i] = input[i]*2;
-//     }
-//   }
-// }
-
 template <typename DeviceContext, typename Ti, typename To>
 struct FFTC2CFunctor {
   void operator()(const DeviceContext& ctx, const Tensor* X, Tensor* out,
