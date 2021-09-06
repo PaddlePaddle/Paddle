@@ -22,11 +22,12 @@ using paddle::framework::LoDTensor;
 using platform::to_void_cast;
 using platform::GetMKLDNNFormat;
 
-inline std::vector<int> extract_shape(
+static std::vector<int> extract_shape(
     const std::vector<const Tensor*>& list_new_shape_tensor) {
   std::vector<int> vec_new_shape;
-  for (size_t i = 0; i < list_new_shape_tensor.size(); ++i) {
-    auto tensor = list_new_shape_tensor[i];
+  vec_new_shape.reserve(list_new_shape_tensor.size());
+
+  for (const auto& tensor : list_new_shape_tensor) {
     PADDLE_ENFORCE_EQ(
         tensor->dims(), framework::make_ddim({1}),
         platform::errors::InvalidArgument(
@@ -34,7 +35,7 @@ inline std::vector<int> extract_shape(
             "the element's shape must be [1]. But received the element's shape "
             "is [%s]",
             tensor->dims()));
-    vec_new_shape.push_back(static_cast<int32_t>(*tensor->data<int32_t>()));
+    vec_new_shape.emplace_back(*tensor->data<int32_t>());
   }
 
   return vec_new_shape;
