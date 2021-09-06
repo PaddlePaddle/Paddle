@@ -271,6 +271,8 @@ class ProcessMesh(object):
 
 
 def _dim_mapping_checker(tensor, mesh, dim_mapping):
+    assert isinstance(dim_mapping,
+                      list), 'The type of dim_mapping must be list.'
     assert len(tensor.shape) == len(dim_mapping)
     mesh_dim = len(mesh.topology)
     dim_set = set()
@@ -347,6 +349,7 @@ def set_shard_mask(x, mask):
             mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
             mask = [[1, 0, 1], [0, 1, 0]]
             x = paddle.ones([4, 6])
+            dist.shard_tensor(x, mesh, [-1, 1])
             dist.set_shard_mask(x, mask)
 
     """
