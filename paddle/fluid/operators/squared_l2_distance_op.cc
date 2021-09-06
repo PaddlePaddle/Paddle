@@ -120,7 +120,8 @@ class SquaredL2DistanceOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("sub_result",
               "(Tensor) Buffering subtraction result which "
               "will be reused in backward.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
     AddOutput("Out", "(Tensor) Squared l2 distance between input and target.");
     AddComment(R"DOC(
 SquaredL2Distance operator
