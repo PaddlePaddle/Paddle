@@ -142,11 +142,13 @@ void InstanceNormOpMaker::Make() {
   AddOutput("SavedMean",
             "Mean of the current mini batch, "
             "will apply to output when training")
-      .AsIntermediate();
+      .AsIntermediate()
+      .AsExtra();
   AddOutput("SavedVariance",
             "Variance of the current mini batch, "
             "will apply to output when training")
-      .AsIntermediate();
+      .AsIntermediate()
+      .AsExtra();
   AddComment(R"DOC(
 Instance Normalization.
 

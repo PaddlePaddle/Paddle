@@ -197,8 +197,9 @@ void BatchNormOpMaker::Make() {
   AddAttr<bool>("is_test",
                 "(bool, default false) Set to true for inference only, false "
                 "for training. Some layers may run faster when this is true.")
-      .SetDefault(false);
-  AddAttr<float>("momentum", "").SetDefault(0.9);
+      .SetDefault(false)
+      .AsExtra();
+  AddAttr<float>("momentum", "").SetDefault(0.9).AsExtra();
   AddAttr<float>("epsilon", "")
       .SetDefault(1e-5)
       .AddCustomChecker([](const float &epsilon) {
@@ -228,32 +229,40 @@ void BatchNormOpMaker::Make() {
            "(Tensor<float32>, optional) If provided, batch_norm will "
            "use this as momentum, this has a higher priority than "
            "attr(momentum), the shape of this tensor MUST BE [1].")
-      .AsDispensable();
+      .AsDispensable()
+      .AsExtra();
   AddOutput("Y", "result after normalization");
   AddOutput("MeanOut",
             "Share memory with Mean. "
-            "Store the global mean when training");
+            "Store the global mean when training")
+      .AsExtra();
   AddOutput("VarianceOut",
             "Share memory with Variance. "
-            "Store the global Variance when training");
+            "Store the global Variance when training")
+      .AsExtra();
   AddOutput("SavedMean",
             "Mean of the current mini batch, "
             "will apply to output when training")
-      .AsIntermediate();
+      .AsIntermediate()
+      .AsExtra();
   AddOutput("SavedVariance",
             "Variance of the current mini batch, "
             "will apply to output when training")
-      .AsIntermediate();
+      .AsIntermediate()
+      .AsExtra();
   AddOutput("ReserveSpace",
             "Reserve GPU space for triggering the new semi-persistent "
             "NHWC kernel")
-      .AsDispensable();
+      .AsDispensable()
+      .AsExtra();
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("fuse_with_relu",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("use_global_stats",
                 "(bool, default false) Whether to use global mean and "
                 "variance. In inference or test mode, set use_global_stats "
