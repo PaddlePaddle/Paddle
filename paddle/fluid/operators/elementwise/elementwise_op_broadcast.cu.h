@@ -228,7 +228,8 @@ struct BroadcastArgsWrapper {
            Rank * sizeof(platform::FastDivMod));
   }
 
-  __device__ __forceinline__ uint32_t GetOffsetByDivmod(int idx, int in_idx) {
+  __device__ __forceinline__ uint32_t GetOffsetByDivmod(int idx,
+                                                        int in_idx) const {
     uint32_t offset = 0;
 
 #pragma unroll(Rank)
@@ -241,12 +242,13 @@ struct BroadcastArgsWrapper {
   }
 
   __device__ __forceinline__ void LoadVectorizedDataCommon(
-      InVecType *vector_args, int tid, int idx) {
+      InVecType *vector_args, int tid, int idx) const {
     *vector_args = vec_in_data[idx][tid];
   }
 
   __device__ __forceinline__ void LoadVectorizedDataByDivmod(InT *scalar_args,
-                                                             int tid, int idx) {
+                                                             int tid,
+                                                             int idx) const {
     int index = tid * VecSize;
 #pragma unroll(VecSize)
     for (int i = 0; i < VecSize; ++i) {
@@ -256,18 +258,19 @@ struct BroadcastArgsWrapper {
   }
 
   __device__ __forceinline__ void LoadScalarizedDataCommon(InT args[], int tid,
-                                                           int idx) {
+                                                           int idx) const {
     args[idx] = in_data[idx][tid + scalar_cal_offset];
   }
 
   __device__ __forceinline__ void LoadScalarizedDataByDivmod(InT args[],
-                                                             int tid, int idx) {
+                                                             int tid,
+                                                             int idx) const {
     auto offset = GetOffsetByDivmod(tid + scalar_cal_offset, idx);
     args[idx] = in_data[idx][offset];
   }
 
   __device__ __forceinline__ void LoadVectorizedData(InT (*args)[VecSize],
-                                                     int tid) {
+                                                     int tid) const {
 #pragma unroll(ET)
     for (int j = 0; j < ET; ++j) {
       if (no_broadcast[j]) {
@@ -279,7 +282,8 @@ struct BroadcastArgsWrapper {
     }
   }
 
-  __device__ __forceinline__ void LoadScalarizedData(InT args[], int tid) {
+  __device__ __forceinline__ void LoadScalarizedData(InT args[],
+                                                     int tid) const {
 #pragma unroll(ET)
     for (int j = 0; j < ET; ++j) {
       if (no_broadcast[j]) {
@@ -291,11 +295,12 @@ struct BroadcastArgsWrapper {
   }
 
   __device__ __forceinline__ void StoreVectorizedData(OutVecType vec_args_out,
-                                                      int tid) {
+                                                      int tid) const {
     vec_out_data[tid] = vec_args_out;
   }
 
-  __device__ __forceinline__ void StoreScalarizedData(OutT args_out, int tid) {
+  __device__ __forceinline__ void StoreScalarizedData(OutT args_out,
+                                                      int tid) const {
     out_data[scalar_cal_offset + tid] = args_out;
   }
 };
@@ -303,7 +308,7 @@ struct BroadcastArgsWrapper {
 template <typename InT, typename OutT, typename BroadcastArgsWrapper,
           typename Functor, ElementwiseType ET>
 __device__ inline void ScalarizedBroadcastKernelImpl(
-    BroadcastArgsWrapper wrapper, Functor func, int tid) {
+    const BroadcastArgsWrapper &wrapper, Functor func, int tid) {
   InT args[ET];
   wrapper.LoadScalarizedData(args, tid);
   OutT args_out = platform::CallFunctor<InT, OutT, Functor>(func, args);
@@ -313,7 +318,7 @@ __device__ inline void ScalarizedBroadcastKernelImpl(
 template <typename InT, typename OutT, typename BroadcastArgsWrapper,
           typename Functor, ElementwiseType ET, int VecSize>
 __device__ inline void VectorizedBroadcastKernelImpl(
-    BroadcastArgsWrapper wrapper, Functor func, int tid) {
+    const BroadcastArgsWrapper &wrapper, Functor func, int tid) {
   using OutVecType = platform::AlignedVector<OutT, VecSize>;
 
   OutVecType args_out;

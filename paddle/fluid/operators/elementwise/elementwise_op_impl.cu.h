@@ -90,7 +90,8 @@ struct ElementwiseArgsWrapper {
     out_data = (*outs)[0]->data<OutT>();
   }
 
-  inline __device__ void LoadVectorizedData(InVecType vec_args[], int tid) {
+  inline __device__ void LoadVectorizedData(InVecType vec_args[],
+                                            int tid) const {
 #pragma unroll
     for (int i = 0; i < Arity; ++i) {
       const InVecType *in_vec_data =
@@ -99,27 +100,27 @@ struct ElementwiseArgsWrapper {
     }
   }
 
-  inline __device__ void LoadScalarizedData(InT args[], int tid) {
+  inline __device__ void LoadScalarizedData(InT args[], int tid) const {
 #pragma unroll
     for (int i = 0; i < Arity; ++i) {
       args[i] = in_data[i][tid + scalar_cal_offset];
     }
   }
 
-  inline __device__ void StoreVectorizedData(OutVecType res, int tid) {
+  inline __device__ void StoreVectorizedData(OutVecType res, int tid) const {
     OutVecType *out_vec = reinterpret_cast<OutVecType *>(out_data);
     out_vec[tid] = res;
   }
 
-  inline __device__ void StoreScalarizedData(OutT res, int tid) {
+  inline __device__ void StoreScalarizedData(OutT res, int tid) const {
     out_data[tid + scalar_cal_offset] = res;
   }
 };
 
 template <typename InT, typename OutT, int VecSize, int Arity, typename Functor>
 __device__ inline void VectorizedKernelImpl(
-    ElementwiseArgsWrapper<InT, OutT, VecSize, Arity> wrapper, Functor func,
-    int tid) {
+    const ElementwiseArgsWrapper<InT, OutT, VecSize, Arity> &wrapper,
+    Functor func, int tid) {
   using InVecType = platform::AlignedVector<InT, VecSize>;
   using OutVecType = platform::AlignedVector<OutT, VecSize>;
 
@@ -148,8 +149,8 @@ __device__ inline void VectorizedKernelImpl(
 
 template <typename InT, typename OutT, int VecSize, int Arity, typename Functor>
 __device__ inline void ScalarKernelImpl(
-    ElementwiseArgsWrapper<InT, OutT, VecSize, Arity> wrapper, Functor func,
-    int tid) {
+    const ElementwiseArgsWrapper<InT, OutT, VecSize, Arity> &wrapper,
+    Functor func, int tid) {
   InT ins[Arity];
   wrapper.LoadScalarizedData(ins, tid);
   OutT out = platform::CallFunctor<InT, OutT, Functor>(func, ins);
