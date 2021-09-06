@@ -83,18 +83,19 @@ class TestEighGPUCase(unittest.TestCase):
         self.rtol = 1e-5
         self.atol = 1e-5
 
-    def test_output_gpu_place(self):
-        with fluid.dygraph.guard(core.CUDAPlace(0)):
-            input_real_data = fluid.dygraph.to_variable(self.x_np)
-            expected_w, expected_v = np.linalg.eigh(self.x_np)
-            actual_w, actual_v = paddle.linalg.eigh(input_real_data)
-            np.testing.assert_allclose(
-                actual_w, expected_w, rtol=self.rtol, atol=self.atol)
-            np.testing.assert_allclose(
-                abs(actual_v.numpy()),
-                abs(expected_v),
-                rtol=self.rtol,
-                atol=self.atol)
+    def test_check_output_gpu(self):
+        if core.is_compiled_with_cuda():
+            with fluid.dygraph.guard(core.CUDAPlace(0)):
+                input_real_data = fluid.dygraph.to_variable(self.x_np)
+                expected_w, expected_v = np.linalg.eigh(self.x_np)
+                actual_w, actual_v = paddle.linalg.eigh(input_real_data)
+                np.testing.assert_allclose(
+                    actual_w, expected_w, rtol=self.rtol, atol=self.atol)
+                np.testing.assert_allclose(
+                    abs(actual_v.numpy()),
+                    abs(expected_v),
+                    rtol=self.rtol,
+                    atol=self.atol)
 
 
 class TestEighAPI(unittest.TestCase):

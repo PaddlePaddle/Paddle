@@ -65,7 +65,7 @@ class EighGPUKernel : public framework::OpKernel<T> {
     bool flag = (output_v_var.type() == framework::proto::VarType::FP32 &&
                  values_stride >= 32 && values_stride <= 512);
     syevjInfo_t syevj_params;
-#if CUDA_VERSION >= 9020 && !defined(_WIN32)
+
     if (flag) {
       platform::dynload::cusolverDnCreateSyevjInfo(&syevj_params);
       platform::dynload::cusolverDnSsyevj_bufferSize(
@@ -94,7 +94,6 @@ class EighGPUKernel : public framework::OpKernel<T> {
             lwork, info_ptr);
       }
     }
-#endif
     // check the info
     std::vector<int> error_info;
     error_info.resize(batch_size);
