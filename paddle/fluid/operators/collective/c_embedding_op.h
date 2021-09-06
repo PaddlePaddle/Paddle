@@ -44,6 +44,8 @@ void GetIdsEmbedding(const TIds* ids, size_t ids_len, int64_t start_idx,
       }
       */
       memcpy(out + i * width, table + local * width, width * sizeof(TData));
+    } else {
+      memset(out + i * width, 0, width * sizeof(TData));
     }
   }
 }
