@@ -111,48 +111,13 @@ class TestMatmulDoubleGradCheck2(unittest.TestCase):
             self.func(p)
 
 
-class TestMatmulDoubleGradCheck3(unittest.TestCase):
-    def setUp(self):
-        self.init_test()
-
-    def init_test(self):
-        self.x_shape = [2, 3, 4, 5]
-        self.y_shape = [2, 3, 3, 5]
-        self.transpose_x = False
-        self.transpose_y = True
-
-    @prog_scope()
-    def func(self, place):
-        eps = 0.005
-        dtype = np.float64
-        typename = "float64"
-        x = paddle.static.create_parameter(
-            dtype=typename, shape=self.x_shape, name='x')
-        y = paddle.static.create_parameter(
-            dtype=typename, shape=self.y_shape, name='y')
-        out = paddle.matmul(
-            x, y, self.transpose_x, self.transpose_y, name='out')
-
-        x_arr = np.random.uniform(-1, 1, self.x_shape).astype(dtype)
-        y_arr = np.random.uniform(-1, 1, self.y_shape).astype(dtype)
-        gradient_checker.double_grad_check(
-            [x, y], out, x_init=[x_arr, y_arr], place=place, eps=eps)
-
-    def test_grad(self):
-        places = [fluid.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(fluid.CUDAPlace(0))
-        for p in places:
-            self.func(p)
-
-
-class TestMatmulDoubleGradCheckCase4(unittest.TestCase):
+class TestMatmulDoubleGradCheckCase3(unittest.TestCase):
     def setUp(self):
         self.init_test()
 
     def init_test(self):
         self.x_shape = [10, 2, 5]
-        self.y_shape = [5, 20]
+        self.y_shape = [5, 2]
         self.transpose_x = False
         self.transpose_y = False
 
