@@ -68,7 +68,6 @@ class SliceInfo:
         self.pre_shape = None
         self.indexes = []
         self.dims = []
-        self.shape_history = []
         self.decrease_axes = []
         self.none_axes = []
         self.ellipsis_axes = []
@@ -105,7 +104,6 @@ class SliceInfo:
                         self.indexes[i] = paddle.broadcast_to(self.indexes[i],
                                                               cur_shape)
                 self.pre_shape = self.indexes[-1].shape
-            self.shape_history.append(self.pre_shape)
         else:
             raise ValueError(
                 "Index should be list/tuple of int or Tensor, but received {}.".
@@ -145,7 +143,7 @@ class SliceInfo:
                         break
                 nones.append(cur_dim)
             if axis in decrease_axes and axis <= self.dims[0]:
-                decrease.append(len(self.pre_shape) - 1)
+                decrease.append(axis)
 
             if axis in axes:
                 i = axes.index(axis)
@@ -162,19 +160,22 @@ class SliceInfo:
                         expand_index = paddle.concat(
                             [self.indexes[i_temp].unsqueeze(-1), ] *
                             slice_index.shape[0], -1)
-                        self.indexes[i_temp] = expand_index
+                        self.indexes[i_temp] = expand_index.astype(self.indexes[
+                            -1].dtype)
                 else:
                     cur_shape = [slice_index.shape[0], ] + list(self.pre_shape)
                     for i_temp in range(len(self.indexes)):
                         expand_index = paddle.concat(
                             [self.indexes[i_temp].unsqueeze(0), ] *
                             slice_index.shape[0], 0)
-                        self.indexes[i_temp] = expand_index
+                        self.indexes[i_temp] = expand_index.astype(self.indexes[
+                            -1].dtype)
 
                     slice_index = slice_index.reshape([slice_index.shape[
                         0], ] + [1, ] * len(self.pre_shape))
 
-                slice_index = paddle.broadcast_to(slice_index, cur_shape)
+                slice_index = paddle.broadcast_to(
+                    slice_index, cur_shape).astype(self.indexes[-1].dtype)
                 self.indexes.insert(axis, slice_index)
                 self.pre_shape = cur_shape
 
