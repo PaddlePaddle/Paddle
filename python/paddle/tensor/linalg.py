@@ -1010,6 +1010,7 @@ def svd(x, full_matrices=False, name=None):
 def matrix_power(x, n, name=None):
     r"""
     Computes the n-th power of a square matrix or a batch of square matrices.
+    
     Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`n` be
     an exponent, the equation should be:
 
