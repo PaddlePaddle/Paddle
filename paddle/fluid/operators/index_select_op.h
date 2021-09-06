@@ -73,7 +73,8 @@ void IndexSelectInner(const framework::ExecutionContext& context,
   VLOG(3) << "Index_Select_Debug; outer_nums: " << outer_nums
           << "; slice_size: " << slice_size << "; index_size: " << index_size;
 
-  LoDTensor input_copy = input;
+  LoDTensor input_copy;
+  TensorCopy(input, context.GetPlace(), &input_copy);
   input_copy.Resize(
       framework::make_ddim({outer_nums, input_dim[dim], slice_size}));
   output->Resize(framework::make_ddim({outer_nums, index_size, slice_size}));
