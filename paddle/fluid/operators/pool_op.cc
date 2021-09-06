@@ -469,6 +469,20 @@ Example:
 )DOC");
 }
 
+template <typename T>
+class Pool2dOpGradGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("pool2d_grad_grad");
+    grad_op->SetInput("X", this->OutputGrad(framework::GradVarName("X")));
+    grad_op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
 class PoolOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
   std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
@@ -687,7 +701,10 @@ REGISTER_OPERATOR(
     pool2d, ops::PoolOp, ops::Pool2dOpMaker, ops::PoolOpInferVarType,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
-REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad);
+REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad,
+                  ops::Pool2dOpGradGradMaker<paddle::framework::OpDesc>,
+                  ops::Pool2dOpGradGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(pool2d_grad_grad, ops::PoolOp);
 
 REGISTER_OP_CPU_KERNEL(
     pool2d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
@@ -695,6 +712,10 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     pool2d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    pool2d_grad_grad,
+    ops::PoolGradGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolGradGradKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OPERATOR(
     pool3d, ops::PoolOp, ops::Pool3dOpMaker, ops::PoolOpInferVarType,
