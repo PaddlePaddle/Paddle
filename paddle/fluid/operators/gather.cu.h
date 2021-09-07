@@ -42,7 +42,7 @@ __global__ void GatherCUDAKernel(const T* params, const IndexT* indices,
 }
 
 template <typename T, typename IndexT = int>
-__global__ void GatherNdCUDAKernel(const T* input, const int* input_dims,
+__global__ void GatherNdCUDAKernel(const T* input, const int64_t* input_dims,
                                    const IndexT* indices, T* output,
                                    size_t remain_size, size_t slice_size,
                                    size_t end_size) {
