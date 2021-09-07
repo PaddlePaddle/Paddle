@@ -105,11 +105,11 @@ class Tracer {
 
   void SetHasGrad(bool has_grad) { has_grad_ = has_grad; }
 
-  void SetEnableAutoCast(bool enabled) { enable_autocast_ = enabled; }
+  void SetEnableAMP(bool enabled) { enable_amp_ = enabled; }
 
-  bool IsAutoCastEnabled() const { return enable_autocast_; }
+  bool IsAMPEnabled() const { return enable_amp_; }
 
-  void SetEnablePureFp16(bool enable) { enable_pure_fp16_ = enable; }
+  void SetEnablePureFp16(bool enabled) { enable_pure_fp16_ = enabled; }
 
   bool IsPureFp16Enabled() const { return enable_pure_fp16_; }
 
@@ -122,7 +122,7 @@ class Tracer {
   bool enable_program_desc_tracing_{false};
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
-  bool enable_autocast_{false};
+  bool enable_amp_{false};
   GarbageCollectorMap gcs_;
   static thread_local bool has_grad_;
   bool enable_pure_fp16_{false};

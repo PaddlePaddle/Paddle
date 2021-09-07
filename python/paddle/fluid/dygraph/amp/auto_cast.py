@@ -24,7 +24,7 @@ import paddle
 import operator
 import types
 
-__all__ = ['amp_guard', 'pure_fp16_decorator']
+__all__ = ['amp_guard', 'amp_decorator']
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # safe and performance-critical. These ops are always converted to fp16.
@@ -67,27 +67,22 @@ AMP_RELATED_FLAGS_SETTING = {
     'FLAGS_cudnn_batchnorm_spatial_persistent': 1,
 }
 
-PURE_FP16_BLACK_LIST = {
-    'exp',
-    'square',
-    'log',
-    'mean',
-    'sum',
-    'cos_sim',
-    'softmax',
-    # default fp32 can avoid return inf when the sum value large than 65504
-    'reduce_sum',
-}
+PURE_FP16_BLACK_LIST = {' '}
+PURE_FP16_WHITE_LIST = {' '}
 
 
 #NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
 # The reason why not use AutoMixedPrecisionLists is that custom_black_varnames is not suitable for imperative mode.
-def _update_list(custom_white_list, custom_black_list):
+def _update_list(custom_white_list, custom_black_list, mode='L1'):
     """
     Update black and white list according to users' custom list.
     """
-    _white_list = copy.copy(WHITE_LIST)
-    _black_list = copy.copy(BLACK_LIST)
+    if mode == 'L1':
+        _white_list = copy.copy(WHITE_LIST)
+        _black_list = copy.copy(BLACK_LIST)
+    else:
+        _white_list = copy.copy(PURE_FP16_WHITE_LIST)
+        _black_list = copy.copy(PURE_FP16_BLACK_LIST)
     if custom_white_list and custom_black_list:
         for op_name in custom_white_list:
             if op_name in custom_black_list:
@@ -118,7 +113,7 @@ def _in_amp_guard():
 
 
 @dygraph_only
-def fp16_initialize(enable_pure_fp16, models, optimizers):
+def pure_fp16_initialize(enable_pure_fp16, models, optimizers):
     if not enable_pure_fp16:
         return models, optimizers
 
@@ -225,7 +220,7 @@ def check_optimizers(optimizers):
 def amp_guard(enable=True,
               custom_white_list=None,
               custom_black_list=None,
-              enable_pure_fp16=False):
+              mode='L1'):
     """
     :api_attr: imperative
 
@@ -260,6 +255,11 @@ def amp_guard(enable=True,
                 print(conv.dtype) # FP32
 
     """
+    if not (mode in ['L1', 'L2']):
+        raise ValueError(
+            "mode should be L1 or L2, L1 represent AMP train mode, L2 represent Pure fp16 train mode."
+        )
+
     tracer = _dygraph_tracer()
     if not tracer:
         raise ValueError(
@@ -272,26 +272,32 @@ def amp_guard(enable=True,
             % tracer._expected_place)
         enable = False
 
-    if (not enable) and enable_pure_fp16:
-        warnings.warn(
-            'When enable autocast is False, enable_pure_fp16 should be False, but current is %s, so it makes no effect.'
-            % enable_pure_fp16)
+    if mode == 'L1':
+        enable_amp = True
         enable_pure_fp16 = False
-
-    # use default white_list and black_list if no custom lists provided
-    _white_list = WHITE_LIST
-    if enable_pure_fp16:
-        _black_list = PURE_FP16_BLACK_LIST
-    else:
+        _white_list = WHITE_LIST
         _black_list = BLACK_LIST
+    else:
+        enable_amp = False
+        enable_pure_fp16 = True
+        _white_list = PURE_FP16_WHITE_LIST
+        _black_list = PURE_FP16_BLACK_LIST
+
     if custom_white_list or custom_black_list:
         _white_list, _black_list = _update_list(custom_white_list,
-                                                custom_black_list)
+                                                custom_black_list, mode)
+
+    if not enable:
+        enable_amp = False
+        enable_pure_fp16 = False
 
     if tracer:
         # enable auto_cast
-        original_enable = tracer._enable_autocast
-        tracer._enable_autocast = enable
+        original_enable_amp = tracer._enable_amp
+        tracer._enable_amp = enable_amp
+        original_pure_fp16_enable = tracer._enable_pure_fp16
+        tracer._enable_pure_fp16 = enable_pure_fp16
+
         # set amp op list
         original_white_list, original_black_list = tracer._get_amp_op_list()
         tracer._set_amp_op_list(_white_list, _black_list)
@@ -304,29 +310,19 @@ def amp_guard(enable=True,
         # original_flags = get_flags(AMP_RELATED_FLAGS)
         # set_flags(AMP_RELATED_FLAGS_SETTING)
 
-        original_pure_fp16_enable = tracer._enable_pure_fp16
-        tracer._enable_pure_fp16 = enable_pure_fp16
-
     # restore status
     try:
         yield
     finally:
         if tracer:
-            tracer._enable_autocast = original_enable
+            tracer._enable_amp = original_enable_amp
+            tracer._enable_pure_fp16 = original_pure_fp16_enable
             tracer._set_amp_op_list(original_white_list, original_black_list)
             # set_flags(original_flags)
-            tracer._enable_pure_fp16 = original_pure_fp16_enable
 
 
 @dygraph_only
-def pure_fp16_decorator(mode='pure_fp16', models=None, optimizers=None):
-    if mode in ['fp32', 'amp']:
-        return models, optimizers
-
-    if mode != 'pure_fp16':
-        raise ValueError(
-            "the input parameter mode should be fp32 or amp or pure_fp16.")
-
+def amp_decorator(models=None, optimizers=None):
     models_is_list = False
     if isinstance(models, paddle.nn.Layer):
         models_is_list = False
@@ -353,7 +349,7 @@ def pure_fp16_decorator(mode='pure_fp16', models=None, optimizers=None):
             "optimizers must be either a single optimizer or a list of optimizers."
         )
 
-    models, optimizers = fp16_initialize(
+    models, optimizers = pure_fp16_initialize(
         enable_pure_fp16=True, models=models, optimizers=optimizers)
 
     if models_is_list:
