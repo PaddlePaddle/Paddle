@@ -113,7 +113,7 @@ struct BuildStrategy {
   // Fuse_all_optimizer_ops and fuse_all_reduce_ops require that gradients
   // should not be sparse types
   paddle::optional<bool> fuse_all_optimizer_ops_{false};
-  paddle::optional<bool> fuse_all_reduce_ops_{boost::none};
+  paddle::optional<bool> fuse_all_reduce_ops_{paddle::none};
   // fuse_relu_depthwise_conv can fuse the `relu ->
   // depthwise_conv`
   bool fuse_relu_depthwise_conv_{false};
@@ -121,7 +121,7 @@ struct BuildStrategy {
   // faster. Because fusing broadcast OP equals delaying the execution of all
   // broadcast Ops, in this case, all nccl streams are used only for reduce
   // operations for a period of time.
-  paddle::optional<bool> fuse_broadcast_ops_{boost::none};
+  paddle::optional<bool> fuse_broadcast_ops_{paddle::none};
   // replace batch_norm with sync_batch_norm.
   bool sync_batch_norm_{false};
 
@@ -135,7 +135,7 @@ struct BuildStrategy {
   // By default, memory_optimize would be opened if gc is disabled, and
   // be closed if gc is enabled.
   // Users can forcely enable/disable memory_optimize by setting True/False.
-  paddle::optional<bool> memory_optimize_{boost::none};
+  paddle::optional<bool> memory_optimize_{paddle::none};
 
   // Turn on inplace by default.
   bool enable_inplace_{true};

@@ -225,6 +225,7 @@ size_t Used<platform::XPUPlace>(const platform::XPUPlace &place) {
 
 // For Ascend NPU
 #ifdef PADDLE_WITH_ASCEND_CL
+constexpr int EXTRA_PADDING_SIZE = 32;
 class NPUBuddyAllocatorList {
  private:
   NPUBuddyAllocatorList() : devices_(platform::GetSelectedNPUDevices()) {
@@ -257,10 +258,11 @@ class NPUBuddyAllocatorList {
 
     std::call_once(*init_flags_[pos], [this, pos] {
       platform::SetNPUDeviceId(devices_[pos]);
-      allocators_[pos].reset(new BuddyAllocator(
-          std::unique_ptr<detail::SystemAllocator>(
-              new detail::NPUAllocator(devices_[pos])),
-          platform::NPUMinChunkSize(), platform::NPUMaxChunkSize()));
+      allocators_[pos].reset(
+          new BuddyAllocator(std::unique_ptr<detail::SystemAllocator>(
+                                 new detail::NPUAllocator(devices_[pos])),
+                             platform::NPUMinChunkSize(),
+                             platform::NPUMaxChunkSize(), EXTRA_PADDING_SIZE));
       VLOG(10) << "\n\nNOTE:\n"
                << "You can set GFlags environment variable "
                << "'FLAGS_fraction_of_gpu_memory_to_use' "
