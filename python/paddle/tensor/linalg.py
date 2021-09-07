@@ -20,6 +20,7 @@ from ..fluid.framework import in_dygraph_mode, _varbase_creator
 from ..fluid.layers import transpose  # noqa: F401
 from paddle.common_ops_import import core
 from paddle.common_ops_import import VarDesc
+from paddle import _C_ops
 
 __all__ = []
 
@@ -131,7 +132,7 @@ def matmul(x, y, transpose_x=False, transpose_y=False, name=None):
     """
     op_type = 'matmul_v2'
     if in_dygraph_mode():
-        op = getattr(core.ops, op_type)
+        op = getattr(_C_ops, op_type)
         return op(x, y, 'trans_x', transpose_x, 'trans_y', transpose_y)
 
     attrs = {
@@ -244,10 +245,10 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             )
         if in_dygraph_mode():
             if dim is None:
-                return core.ops.frobenius_norm(input, 'keep_dim', keepdim,
-                                               'reduce_all', True)
-            return core.ops.frobenius_norm(input, 'dim', dim, 'keep_dim',
-                                           keepdim, 'reduce_all', False)
+                return _C_ops.frobenius_norm(input, 'keep_dim', keepdim,
+                                             'reduce_all', True)
+            return _C_ops.frobenius_norm(input, 'dim', dim, 'keep_dim', keepdim,
+                                         'reduce_all', False)
         attrs = {'dim': dim, 'keep_dim': keepdim, 'reduce_all': False}
         if dim is None:
             attrs['reduce_all'] = True
@@ -281,8 +282,8 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
         """
         if in_dygraph_mode():
             if axis is None: axis = -1
-            return core.ops.p_norm(input, 'porder', porder, 'axis', axis,
-                                   'keepdim', keepdim, 'asvector', asvector)
+            return _C_ops.p_norm(input, 'porder', porder, 'axis', axis,
+                                 'keepdim', keepdim, 'asvector', asvector)
         if porder is not None:
             check_type(porder, 'porder', (float, int), 'p_norm')
         if axis is not None:
@@ -576,7 +577,7 @@ def dot(x, y, name=None):
     op_type = 'dot'
     # skip var type check in dygraph mode to improve efficiency
     if in_dygraph_mode():
-        op = getattr(core.ops, op_type)
+        op = getattr(_C_ops, op_type)
         return op(x, y)
 
     assert x is not None, 'x cannot be None in {}'.format(op_type)
@@ -651,7 +652,7 @@ def t(input, name=None):
             return input
         # 2-D tensor
         perm = [1, 0]
-        out, _ = core.ops.transpose2(input, 'axis', perm)
+        out, _ = _C_ops.transpose2(input, 'axis', perm)
         return out
 
     check_variable_and_dtype(
@@ -713,9 +714,9 @@ def cross(x, y, axis=None, name=None):
     """
     if in_dygraph_mode():
         if axis is not None:
-            return core.ops.cross(x, y, 'dim', axis)
+            return _C_ops.cross(x, y, 'dim', axis)
         else:
-            return core.ops.cross(x, y)
+            return _C_ops.cross(x, y)
 
     helper = LayerHelper("cross", **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
@@ -771,7 +772,7 @@ def cholesky(x, upper=False, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.cholesky(x, "upper", upper)
+        return _C_ops.cholesky(x, "upper", upper)
     check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'cholesky')
     check_type(upper, 'upper', bool, 'cholesky')
     helper = LayerHelper('cholesky', **locals())
@@ -834,7 +835,7 @@ def bmm(x, y, name=None):
             format(x_shape, y_shape))
 
     if in_dygraph_mode():
-        return core.ops.bmm(x, y)
+        return _C_ops.bmm(x, y)
 
     helper = LayerHelper('bmm', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -867,7 +868,7 @@ def histogram(input, bins=100, min=0, max=0):
             print(result) # [0, 2, 1, 0]
     """
     if in_dygraph_mode():
-        return core.ops.histogram(input, "bins", bins, "min", min, "max", max)
+        return _C_ops.histogram(input, "bins", bins, "min", min, "max", max)
 
     helper = LayerHelper('histogram', **locals())
     check_variable_and_dtype(
@@ -914,7 +915,7 @@ def mv(x, vec, name=None):
             out = paddle.mv(x, vec)
     """
     if in_dygraph_mode():
-        out = core.ops.mv(x, vec)
+        out = _C_ops.mv(x, vec)
         return out
 
     def __check_input(x, vec):
@@ -944,9 +945,12 @@ def mv(x, vec, name=None):
 
 def det(x):
     """
-    Calculates determinant of a square matrix or batches of square matrices.
+    Calculates determinant value of a square matrix or batches of square matrices.
     Args:
-        x (Tensor)
+        x (Tensor): input (Tensor): the input matrix of size `(n, n)` or the batch of matrices of size
+                    `(*, n, n)` where `*` is one or more batch dimensions.
+    Returns:
+        y (Tensor):the determinant value of a square matrix or batches of square matrices.
 
     Returns:
     
@@ -981,12 +985,24 @@ def det(x):
 
 def slogdet(x):
     """
-    Calculates sin value and log value of determinant of a square matrix or batches of square matrices.
+    Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
+    The determinant can be computed with ``sign * exp(logabsdet)
+    
+    Supports input of bool, int32, int64, float16, float, double
+
+    Note that for matrices that have zero determinant, this returns ``(0, -inf)``
     Args:
-        x (Tensor)
+        x (Tensor): the batch of matrices of size :math:`(*, n, n)`
+            where math:`*` is one or more batch dimensions.
 
     Returns:
-    
+        y (Tensor): A namedtuple (sign, logabsdet) containing the sign of the determinant and the natural logarithm
+        of the absolute value of determinant, respectively.
+
+    Example::
+
+ 
+
     """
     if in_dygraph_mode():
         return core.ops.slogdeterminant(x)
@@ -994,7 +1010,8 @@ def slogdet(x):
     def __check_input(input):
         check_dtype(
             x.dtype, 'Input',
-            ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'], 'slogdet')
+            ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
+            'slogdet')
 
         input_shape = list(x.shape)
         assert len(input_shape) >= 2,                     \
@@ -1013,4 +1030,137 @@ def slogdet(x):
 
     helper.append_op(
         type='slogdeterminant', inputs={'Input': [x]}, outputs={'Out': [out]})
+
+
+def svd(x, full_matrices=False, name=None):
+    r"""
+    Computes the singular value decomposition of one 
+    matrix or batches of regular matrice.
+    Args:
+        x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
+            where ... is zero or more batch dimensions. N and M can be arbitraty
+            positive number. Note that if x is sigular matrices, the grad is numerical 
+            instability. The data type of x should be float32 or float64. 
+
+        full_matrices(bool): A flag to control the behavor of svd. 
+            If full_matrices = True, svd op will compute full U and V matrics, 
+            which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`.
+            If full_matrices = False, svd op will use a economic method to store U and V. 
+            which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`
+
+    Returns:
+        Tensor: Tensor U, the shape of U is controlled by full_matrices flag.
+        Tensor: Tensor S, the singular value of X. the shape of S is [..., K]
+        Tensor: Tensor VH, the conjugate transpose of V. the shape of V is controlled by full_matrices flag. 
+
+            import numpy as np
+
+            x = paddle.to_tensor([[1.0, 2.0], [1.0, 3.0], [4.0, 6.0]]).astype('float64')
+            x = x.reshape([3, 2])
+            u, s, vt = paddle.linalg.svd(x)
+            print (u)
+            print (s)
+            print (vt)
+
+            #U = [[ 0.27364809, -0.21695147  ],
+            #      [ 0.37892198, -0.87112408 ],
+            #      [ 0.8840446 ,  0.44053933 ]]
+
+            #S = [8.14753743, 0.78589688]
+
+            #VT= [[ 0.51411221,  0.85772294],
+            #     [ 0.85772294, -0.51411221]]
+            
+            # one can verify : U * S * VT = X ;     
+            #                  U * UH = I ; 
+            #                  V * VH = I
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.svd(x, 'full_matrices', full_matrices)
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
+    check_type(full_matrices, 'full_matrices', bool, 'svd')
+    helper = LayerHelper('svd', **locals())
+    u = helper.create_variable_for_type_inference(dtype=x.dtype)
+    vh = helper.create_variable_for_type_inference(dtype=x.dtype)
+    s = helper.create_variable_for_type_inference(dtype=x.dtype)
+    attrs = dict()
+    attrs['full_matrices'] = full_matrices
+    helper.append_op(
+        type='svd',
+        inputs={'X': [x]},
+        outputs={'U': u,
+                 'VH': vh,
+                 'S': s},
+        attr=attrs, )
+    return u, s, vh
+
+
+def matrix_power(x, n, name=None):
+    r"""
+    Computes the n-th power of a square matrix or a batch of square matrices.
+
+    Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`n` be
+    an exponent, the equation should be:
+
+    .. math::
+        Out = X ^ {n}
+    
+    Specifically,
+
+    - If `n > 0`, it returns the matrix or a batch of matrices raised to the power
+    of `n`.
+    
+    - If `n = 0`, it returns the identity matrix or a batch of identity matrices.
+
+    - If `n < 0`, it returns the inverse of each matrix (if invertible) raised to
+    the power of `abs(n)`.
+
+    Args:
+        x (Tensor): A square matrix or a batch of square matrices to be raised
+            to power `n`. Its shape should be `[*, M, M]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
+        n (int): The exponent. It can be any positive, negative integer or zero.
+        name (str, optional): Name for the operation (optional, default is None). 
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The n-th power of the matrix (or the batch of matrices) `x`. Its
+            data type should be the same as that of `x`.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([[1, 2, 3],
+                                  [1, 4, 9],
+                                  [1, 8, 27]], dtype='float64')
+            print(paddle.matrix_power(x, 2))
+            # [[6.  , 34. , 102.],
+            #  [14. , 90. , 282.],
+            #  [36. , 250., 804.]]
+
+            print(paddle.matrix_power(x, 0))
+            # [[1., 0., 0.],
+            #  [0., 1., 0.],
+            #  [0., 0., 1.]]
+
+            print(paddle.matrix_power(x, -2))
+            # [[ 12.91666667, -12.75000000,  2.83333333 ],
+            #  [-7.66666667 ,  8.         , -1.83333333 ],
+            #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
+    """
+    if in_dygraph_mode():
+        return core.ops.matrix_power(x, "n", n)
+
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'matrix_power')
+    check_type(n, 'n', int, 'matrix_power')
+    helper = LayerHelper('matrix_power', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='matrix_power',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'n': n})
     return out

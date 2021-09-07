@@ -16,8 +16,6 @@
 
 #include <string>
 
-#include "paddle/fluid/operators/controlflow/op_variant.h"
-
 namespace paddle {
 namespace framework {
 class ProgramDesc;
@@ -189,18 +187,10 @@ void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
 
 void PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOp(
     const framework::ProgramDesc &program,
-    const std::vector<framework::OperatorBase *> &ifelse_ops,
-    const std::vector<framework::OperatorBase *> &ifelse_grad_ops) {
-  std::vector<OpVariant> fwd_ops, bwd_ops;
-  fwd_ops.reserve(ifelse_ops.size());
-  for (auto *op : ifelse_ops) {
-    fwd_ops.emplace_back(op);
-  }
-
-  bwd_ops.reserve(ifelse_grad_ops.size());
-  for (auto *op : ifelse_grad_ops) {
-    bwd_ops.emplace_back(op);
-  }
+    const std::vector<OpVariant> &ifelse_ops,
+    const std::vector<OpVariant> &ifelse_grad_ops) {
+  std::vector<OpVariant> fwd_ops = ifelse_ops;
+  std::vector<OpVariant> bwd_ops = ifelse_grad_ops;
 
   PrepareSafeEagerDeletionOnConditionalOpAndConditionalGradOpImpl(
       program, &fwd_ops, &bwd_ops);

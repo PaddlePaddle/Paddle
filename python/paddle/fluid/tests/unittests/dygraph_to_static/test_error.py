@@ -98,6 +98,16 @@ class LayerErrorInCompiletime2(fluid.dygraph.Layer):
         return
 
 
+@paddle.jit.to_static
+def func_error_in_runtime_with_empty_line(x):
+    x = fluid.dygraph.to_variable(x)
+    two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")
+
+    x = fluid.layers.reshape(x, shape=[1, two])
+
+    return x
+
+
 class TestFlags(unittest.TestCase):
     def setUp(self):
         self.reset_flags_to_default()
@@ -218,7 +228,10 @@ class TestErrorStaticLayerCallInCompiletime(TestErrorBase):
             ['File "{}", line 35, in func_error_in_compile_time'.format(self.filepath),
              'inner_func()',
              'File "{}", line 28, in inner_func'.format(self.filepath),
+             'def inner_func():',
              'fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
+             '<--- HERE',
+             'return',
              ]
 
     def set_func_call(self):
@@ -242,7 +255,11 @@ class TestErrorStaticLayerCallInCompiletime_2(
         self.expected_message = \
             [
              'File "{}", line 46, in func_error_in_compile_time_2'.format(self.filepath),
-             'x = fluid.layers.reshape(x, shape=[1, 2])'
+             'def func_error_in_compile_time_2(x):',
+             'x = fluid.dygraph.to_variable(x)',
+             'x = fluid.layers.reshape(x, shape=[1, 2])',
+             '<--- HERE',
+             'return x'
              ]
 
 
@@ -261,7 +278,10 @@ class TestErrorStaticLayerCallInCompiletime_3(
     def set_message(self):
         self.expected_message = \
             ['File "{}", line 91, in forward'.format(self.filepath),
+             '@paddle.jit.to_static',
+             'def forward(self):',
              'self.test_func()',
+             '<--- HERE'
              ]
 
     def set_func_call(self):
@@ -283,7 +303,26 @@ class TestErrorStaticLayerCallInRuntime(TestErrorStaticLayerCallInCompiletime):
         self.expected_message = \
             [
                 'File "{}", line 54, in func_error_in_runtime'.format(self.filepath),
-                'x = fluid.layers.reshape(x, shape=[1, two])'
+                'x = fluid.dygraph.to_variable(x)',
+                'two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")',
+                'x = fluid.layers.reshape(x, shape=[1, two])',
+                '<--- HERE',
+                'return x'
+            ]
+
+
+class TestErrorStaticLayerCallInRuntime2(TestErrorStaticLayerCallInRuntime):
+    def set_func(self):
+        self.func = func_error_in_runtime_with_empty_line
+
+    def set_message(self):
+        self.expected_message = \
+            [
+                'File "{}", line 106, in func_error_in_runtime_with_empty_line'.format(self.filepath),
+                'two = fluid.layers.fill_constant(shape=[1], value=2, dtype="int32")',
+                'x = fluid.layers.reshape(x, shape=[1, two])',
+                '<--- HERE',
+                'return x'
             ]
 
 
@@ -318,7 +357,12 @@ class TestJitSaveInCompiletime(TestErrorBase):
     def set_message(self):
         self.expected_message = \
             ['File "{}", line 80, in forward'.format(self.filepath),
-             'fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
+             'def forward(self, x):',
+             'y = self._linear(x)',
+             'z = fluid.layers.fill_constant(shape=[1, 2], value=9, dtype="int")',
+             '<--- HERE',
+             'out = fluid.layers.mean(y[z])',
+             'return out'
              ]
 
     def set_func_call(self):
@@ -329,7 +373,7 @@ class TestJitSaveInCompiletime(TestErrorBase):
         self._test_raise_new_exception()
 
 
-# Situation 4: NotImplementedError
+# # Situation 4: NotImplementedError
 class TestErrorInOther(unittest.TestCase):
     def test(self):
         paddle.disable_static()

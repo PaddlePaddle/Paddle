@@ -32,22 +32,19 @@ import paddle.fluid.core as core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, OpProtoHolder, Variable
-from testsuite import create_op, set_input, append_input_output, append_loss_ops
-# from paddle.fluid.tests.unittests.testsuite import (
-#     create_op,
-#     set_input,
-#     append_input_output,
-#     append_loss_ops, )
-from paddle.fluid import unique_name
-from white_list import op_accuracy_white_list, check_shape_white_list, compile_vs_runtime_white_list, no_check_set_white_list, op_threshold_white_list, no_grad_set_white_list
-# from paddle.fluid.tests.unittests.white_list import (
-#     op_accuracy_white_list,
-#     check_shape_white_list,
-#     compile_vs_runtime_white_list,
-#     no_check_set_white_list,
-#     op_threshold_white_list,
-#     no_grad_set_white_list, )
+from paddle.fluid.framework import Program, OpProtoHolder, Variable, _current_expected_place
+from paddle.fluid.tests.unittests.testsuite import (
+    create_op,
+    set_input,
+    append_input_output,
+    append_loss_ops, )
+from paddle.fluid.tests.unittests.white_list import (
+    op_accuracy_white_list,
+    check_shape_white_list,
+    compile_vs_runtime_white_list,
+    no_check_set_white_list,
+    op_threshold_white_list,
+    no_grad_set_white_list, )
 
 
 def check_out_dtype(api_fn, in_specs, expect_dtypes, target_index=0, **configs):
@@ -1785,3 +1782,16 @@ class OpTest(unittest.TestCase):
                              fetch_list,
                              scope=scope,
                              return_numpy=False)))
+
+
+class OpTestTool:
+    @classmethod
+    def skip_if(cls, condition: object, reason: str):
+        return unittest.skipIf(condition, reason)
+
+    @classmethod
+    def skip_if_not_cpu_bf16(cls):
+        return OpTestTool.skip_if(
+            not (isinstance(_current_expected_place(), core.CPUPlace) and
+                 core.supports_bfloat16()),
+            "Place does not support BF16 evaluation")

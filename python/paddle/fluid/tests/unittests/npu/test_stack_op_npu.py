@@ -26,8 +26,6 @@ import paddle.fluid.core as core
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOpBase(OpTest):
     def initDefaultParameters(self):
         self.num_inputs = 4
@@ -74,53 +72,51 @@ class TestStackOpBase(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
+        if self.dtype == np.int32 or self.dtype == np.int64:
+            return
         self.check_grad_with_place(self.place, self.get_x_names(), 'Y')
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOp1(TestStackOpBase):
     def initParameters(self):
         self.num_inputs = 16
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOp2(TestStackOpBase):
     def initParameters(self):
         self.num_inputs = 20
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOp3(TestStackOpBase):
     def initParameters(self):
         self.axis = -1
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOp4(TestStackOpBase):
     def initParameters(self):
         self.axis = -4
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOp5(TestStackOpBase):
     def initParameters(self):
         self.axis = 1
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestStackOp6(TestStackOpBase):
     def initParameters(self):
         self.axis = 3
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+class TestStackOpINT32(TestStackOpBase):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
+class TestStackOpINT64(TestStackOpBase):
+    def init_dtype(self):
+        self.dtype = np.int64
+
+
 class TestStackAPIWithLoDTensorArray(unittest.TestCase):
     """
     Test stack api when the input(x) is a LoDTensorArray.
@@ -157,8 +153,6 @@ class TestStackAPIWithLoDTensorArray(unittest.TestCase):
                     [self.x] * self.iter_num, axis=self.axis)))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
     """
     Test stack api when the input(x) is a LoDTensorArray.
@@ -195,20 +189,18 @@ class TestTensorStackAPIWithLoDTensorArray(unittest.TestCase):
                     [self.x] * self.iter_num, axis=self.axis)))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class API_test(unittest.TestCase):
     def test_out(self):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            data1 = fluid.layers.data('data1', shape=[1, 2], dtype='float64')
-            data2 = fluid.layers.data('data2', shape=[1, 2], dtype='float64')
-            data3 = fluid.layers.data('data3', shape=[1, 2], dtype='float64')
+            data1 = fluid.layers.data('data1', shape=[1, 2], dtype='float32')
+            data2 = fluid.layers.data('data2', shape=[1, 2], dtype='float32')
+            data3 = fluid.layers.data('data3', shape=[1, 2], dtype='float32')
             result_stack = paddle.stack([data1, data2, data3], axis=0)
             place = paddle.NPUPlace(0)
             exe = fluid.Executor(place)
-            input1 = np.random.random([1, 2]).astype('float64')
-            input2 = np.random.random([1, 2]).astype('float64')
-            input3 = np.random.random([1, 2]).astype('float64')
+            input1 = np.random.random([1, 2]).astype('float32')
+            input2 = np.random.random([1, 2]).astype('float32')
+            input3 = np.random.random([1, 2]).astype('float32')
             result, = exe.run(
                 feed={"data1": input1,
                       "data2": input2,
@@ -223,8 +215,6 @@ class API_test(unittest.TestCase):
             self.assertRaises(TypeError, paddle.stack, x)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class API_DygraphTest(unittest.TestCase):
     def test_out(self):
         data1 = np.array([[1.0, 2.0]])

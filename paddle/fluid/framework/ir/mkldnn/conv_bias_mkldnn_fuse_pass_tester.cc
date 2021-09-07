@@ -52,7 +52,7 @@ void SetOp(ProgramDesc* prog, const std::string& type, const std::string& name,
       op->SetInput("Bias", {});
   } else if (type == "elementwise_add") {
     op->SetAttr("use_mkldnn", true);
-    op->SetAttr("axis", -1);
+    op->SetAttr("axis", 1);
     op->SetInput("X", {inputs[0]});
     op->SetInput("Y", {inputs[1]});
     op->SetOutput("Out", outputs);

@@ -14,13 +14,16 @@
 
 from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
+from .tensor.linalg import matrix_power  # noqa: F401
 from .tensor import inverse as inv  # noqa: F401
-from .tensor.linalg import det, slogdet
+from .tensor.linalg import svd, det, slogdet
 
 __all__ = [
     'cholesky',  #noqa
     'norm',
     'inv',
+    'svd',
+    'matrix_power',
     'det',
     'slogdet'
 ]

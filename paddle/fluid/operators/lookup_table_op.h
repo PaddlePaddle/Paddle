@@ -103,6 +103,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
 
             if (id_index != -1) {
               if (input_data_type == framework::proto::VarType::INT8 ||
+                  input_data_type == framework::proto::VarType::INT16 ||
                   input_data_type == framework::proto::VarType::BF16) {
                 memcpy(output + i * row_width, table + id_index * row_width,
                        row_width * sizeof(T));
@@ -130,6 +131,7 @@ class LookupTableKernel : public framework::OpKernel<T> {
                     id_index));
 
             if (input_data_type == framework::proto::VarType::INT8 ||
+                input_data_type == framework::proto::VarType::INT16 ||
                 input_data_type == framework::proto::VarType::BF16) {
               memcpy(output + i * row_width, table + id_index * row_width,
                      row_width * sizeof(T));

@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import astor
-import gast
+from paddle.utils import gast
 
 from paddle.fluid.dygraph.dygraph_to_static.static_analysis import AstNodeWrapper
 from paddle.fluid.dygraph.dygraph_to_static import utils

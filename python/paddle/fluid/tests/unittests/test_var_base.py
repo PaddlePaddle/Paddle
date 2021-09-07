@@ -72,10 +72,17 @@ class TestVarBase(unittest.TestCase):
                 if core.is_compiled_with_cuda():
                     y = x.pin_memory()
                     self.assertEqual(y.place.__repr__(), "CUDAPinnedPlace")
+                    y = x.cuda()
+                    y = x.cuda(None)
+                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
+                    y = x.cuda(device_id=0)
+                    self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
                     y = x.cuda(blocking=False)
                     self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
                     y = x.cuda(blocking=True)
                     self.assertEqual(y.place.__repr__(), "CUDAPlace(0)")
+                    with self.assertRaises(ValueError):
+                        y = x.cuda("test")
 
                 # support 'dtype' is core.VarType
                 x = paddle.rand((2, 2))
@@ -652,6 +659,119 @@ class TestVarBase(unittest.TestCase):
             np.array_equal(local_out[15], tensor_array[::-1, ::-1, ::-1]))
         self.assertTrue(np.array_equal(local_out[16], tensor_array[-4:4]))
 
+    def _test_for_getitem_ellipsis_index(self):
+        shape = (64, 3, 5, 256)
+        np_fp32_value = np.random.random(shape).astype('float32')
+        np_int_value = np.random.randint(1, 100, shape)
+
+        var_fp32 = paddle.to_tensor(np_fp32_value)
+        var_int = paddle.to_tensor(np_int_value)
+
+        def assert_getitem_ellipsis_index(var_tensor, var_np):
+            var = [
+                var_tensor[..., 0].numpy(),
+                var_tensor[..., 1, 0].numpy(),
+                var_tensor[0, ..., 1, 0].numpy(),
+                var_tensor[1, ..., 1].numpy(),
+                var_tensor[2, ...].numpy(),
+                var_tensor[2, 0, ...].numpy(),
+                var_tensor[2, 0, 1, ...].numpy(),
+                var_tensor[...].numpy(),
+                var_tensor[:, ..., 100].numpy(),
+            ]
+
+            self.assertTrue(np.array_equal(var[0], var_np[..., 0]))
+            self.assertTrue(np.array_equal(var[1], var_np[..., 1, 0]))
+            self.assertTrue(np.array_equal(var[2], var_np[0, ..., 1, 0]))
+            self.assertTrue(np.array_equal(var[3], var_np[1, ..., 1]))
+            self.assertTrue(np.array_equal(var[4], var_np[2, ...]))
+            self.assertTrue(np.array_equal(var[5], var_np[2, 0, ...]))
+            self.assertTrue(np.array_equal(var[6], var_np[2, 0, 1, ...]))
+            self.assertTrue(np.array_equal(var[7], var_np[...]))
+            self.assertTrue(np.array_equal(var[8], var_np[:, ..., 100]))
+
+        var_fp32 = paddle.to_tensor(np_fp32_value)
+        var_int = paddle.to_tensor(np_int_value)
+
+        assert_getitem_ellipsis_index(var_fp32, np_fp32_value)
+        assert_getitem_ellipsis_index(var_int, np_int_value)
+
+    def _test_none_index(self):
+        shape = (8, 64, 5, 256)
+        np_value = np.random.random(shape).astype('float32')
+        var_tensor = paddle.to_tensor(np_value)
+
+        var = [
+            var_tensor[1, 0, None].numpy(),
+            var_tensor[None, ..., 1, 0].numpy(),
+            var_tensor[:, :, :, None].numpy(),
+            var_tensor[1, ..., 1, None].numpy(),
+            var_tensor[2, ..., None, None].numpy(),
+            var_tensor[None, 2, 0, ...].numpy(),
+            var_tensor[None, 2, None, 1].numpy(),
+            var_tensor[None].numpy(),
+            var_tensor[0, 0, None, 0, 0, None].numpy(),
+            var_tensor[None, None, 0, ..., None].numpy(),
+            var_tensor[0, 1:10:2, None, None, ...].numpy(),
+        ]
+
+        self.assertTrue(np.array_equal(var[0], np_value[1, 0, None]))
+        self.assertTrue(np.array_equal(var[1], np_value[None, ..., 1, 0]))
+        self.assertTrue(np.array_equal(var[2], np_value[:, :, :, None]))
+        self.assertTrue(np.array_equal(var[3], np_value[1, ..., 1, None]))
+        self.assertTrue(np.array_equal(var[4], np_value[2, ..., None, None]))
+        self.assertTrue(np.array_equal(var[5], np_value[None, 2, 0, ...]))
+        self.assertTrue(np.array_equal(var[6], np_value[None, 2, None, 1]))
+        self.assertTrue(np.array_equal(var[7], np_value[None]))
+        self.assertTrue(
+            np.array_equal(var[8], np_value[0, 0, None, 0, 0, None]))
+        self.assertTrue(
+            np.array_equal(var[9], np_value[None, None, 0, ..., None]))
+
+        # TODO(zyfncg) there is a bug of dimensions when slice step > 1 and 
+        #              indexs has int type 
+        # self.assertTrue(
+        #     np.array_equal(var[10], np_value[0, 1:10:2, None, None, ...]))
+
+    def _test_bool_index(self):
+        shape = (4, 2, 5, 64)
+        np_value = np.random.random(shape).astype('float32')
+        var_tensor = paddle.to_tensor(np_value)
+        index = [[True, True, True, True], [True, False, True, True],
+                 [True, False, False, True], [False, 0, 1, True, True]]
+        index2d = np.array([[True, True], [False, False], [True, False],
+                            [True, True]])
+        tensor_index = paddle.to_tensor(index2d)
+        var = [
+            var_tensor[index[0]].numpy(),
+            var_tensor[index[1]].numpy(),
+            var_tensor[index[2]].numpy(),
+            var_tensor[index[3]].numpy(),
+            var_tensor[paddle.to_tensor(index[0])].numpy(),
+            var_tensor[tensor_index].numpy(),
+        ]
+        self.assertTrue(np.array_equal(var[0], np_value[index[0]]))
+        self.assertTrue(np.array_equal(var[1], np_value[index[1]]))
+        self.assertTrue(np.array_equal(var[2], np_value[index[2]]))
+        self.assertTrue(np.array_equal(var[3], np_value[index[3]]))
+        self.assertTrue(np.array_equal(var[4], np_value[index[0]]))
+        self.assertTrue(np.array_equal(var[5], np_value[index2d]))
+        self.assertTrue(
+            np.array_equal(var_tensor[var_tensor > 0.67], np_value[np_value >
+                                                                   0.67]))
+        self.assertTrue(
+            np.array_equal(var_tensor[var_tensor < 0.55], np_value[np_value <
+                                                                   0.55]))
+
+        with self.assertRaises(ValueError):
+            var_tensor[[False, False, False, False]]
+        with self.assertRaises(ValueError):
+            var_tensor[[True, False]]
+        with self.assertRaises(ValueError):
+            var_tensor[[True, False, False, False, False]]
+        with self.assertRaises(IndexError):
+            var_tensor[paddle.to_tensor([[True, False, False, False]])]
+
     def _test_for_var(self):
         np_value = np.random.random((30, 100, 100)).astype('float32')
         w = fluid.dygraph.to_variable(np_value)
@@ -659,11 +779,50 @@ class TestVarBase(unittest.TestCase):
         for i, e in enumerate(w):
             self.assertTrue(np.array_equal(e.numpy(), np_value[i]))
 
+    def _test_numpy_index(self):
+        array = np.arange(120).reshape([4, 5, 6])
+        t = paddle.to_tensor(array)
+        self.assertTrue(np.array_equal(t[np.longlong(0)].numpy(), array[0]))
+        self.assertTrue(
+            np.array_equal(t[np.longlong(0):np.longlong(4):np.longlong(2)]
+                           .numpy(), array[0:4:2]))
+        self.assertTrue(np.array_equal(t[np.int64(0)].numpy(), array[0]))
+        self.assertTrue(
+            np.array_equal(t[np.int32(1):np.int32(4):np.int32(2)].numpy(),
+                           array[1:4:2]))
+        self.assertTrue(
+            np.array_equal(t[np.int16(0):np.int16(4):np.int16(2)].numpy(),
+                           array[0:4:2]))
+
+    def _test_list_index(self):
+        # case1:
+        array = np.arange(120).reshape([6, 5, 4])
+        x = paddle.to_tensor(array)
+        py_idx = [[0, 2, 0, 1, 3], [0, 0, 1, 2, 0]]
+        idx = [paddle.to_tensor(py_idx[0]), paddle.to_tensor(py_idx[1])]
+        self.assertTrue(np.array_equal(x[idx].numpy(), array[py_idx]))
+        self.assertTrue(np.array_equal(x[py_idx].numpy(), array[py_idx]))
+        # case2:
+        tensor_x = paddle.to_tensor(
+            np.zeros(12).reshape(2, 6).astype(np.float32))
+        tensor_y1 = paddle.zeros([1]) + 2
+        tensor_y2 = paddle.zeros([1]) + 5
+        tensor_x[:, tensor_y1:tensor_y2] = 42
+        res = tensor_x.numpy()
+        exp = np.array([[0., 0., 42., 42., 42., 0.],
+                        [0., 0., 42., 42., 42., 0.]])
+        self.assertTrue(np.array_equal(res, exp))
+
     def test_slice(self):
         with fluid.dygraph.guard():
             self._test_slice()
             self._test_slice_for_tensor_attr()
             self._test_for_var()
+            self._test_for_getitem_ellipsis_index()
+            self._test_none_index()
+            self._test_bool_index()
+            self._test_numpy_index()
+            self._test_list_index()
 
             var = fluid.dygraph.to_variable(self.array)
             self.assertTrue(np.array_equal(var[1, :].numpy(), self.array[1, :]))
@@ -819,6 +978,57 @@ class TestVarBase(unittest.TestCase):
 
         expected = '''Tensor(shape=[0, 2], dtype=int64, place=CPUPlace, stop_gradient=True,
        [])'''
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
+    def test_tensor_str_linewidth(self):
+        paddle.disable_static(paddle.CPUPlace())
+        paddle.seed(2021)
+        x = paddle.rand([128])
+        paddle.set_printoptions(
+            precision=4, threshold=1000, edgeitems=3, linewidth=80)
+        a_str = str(x)
+
+        expected = '''Tensor(shape=[128], dtype=float32, place=CPUPlace, stop_gradient=True,
+       [0.3759, 0.0278, 0.2489, 0.3110, 0.9105, 0.7381, 0.1905, 0.4726, 0.2435,
+        0.9142, 0.3367, 0.7243, 0.7664, 0.9915, 0.2921, 0.1363, 0.8096, 0.2915,
+        0.9564, 0.9972, 0.2573, 0.2597, 0.3429, 0.2484, 0.9579, 0.7003, 0.4126,
+        0.4274, 0.0074, 0.9686, 0.9910, 0.0144, 0.6564, 0.2932, 0.7114, 0.9301,
+        0.6421, 0.0538, 0.1273, 0.5771, 0.9336, 0.6416, 0.1832, 0.9311, 0.7702,
+        0.7474, 0.4479, 0.3382, 0.5579, 0.0444, 0.9802, 0.9874, 0.3038, 0.5640,
+        0.2408, 0.5489, 0.8866, 0.1006, 0.5881, 0.7560, 0.7928, 0.8604, 0.4670,
+        0.9285, 0.1482, 0.4541, 0.1307, 0.6221, 0.4902, 0.1147, 0.4415, 0.2987,
+        0.7276, 0.2077, 0.7551, 0.9652, 0.4369, 0.2282, 0.0047, 0.2934, 0.4308,
+        0.4190, 0.1442, 0.3650, 0.3056, 0.6535, 0.1211, 0.8721, 0.7408, 0.4220,
+        0.5937, 0.3123, 0.9198, 0.0275, 0.5338, 0.4622, 0.7521, 0.3609, 0.4703,
+        0.1736, 0.8976, 0.7616, 0.3756, 0.2416, 0.2907, 0.3246, 0.4305, 0.5717,
+        0.0735, 0.0361, 0.5534, 0.4399, 0.9260, 0.6525, 0.3064, 0.4573, 0.9210,
+        0.8269, 0.2424, 0.7494, 0.8945, 0.7098, 0.8078, 0.4707, 0.5715, 0.7232,
+        0.4678, 0.5047])'''
+
+        self.assertEqual(a_str, expected)
+        paddle.enable_static()
+
+    def test_tensor_str_linewidth2(self):
+        paddle.disable_static(paddle.CPUPlace())
+        paddle.seed(2021)
+        x = paddle.rand([128])
+        paddle.set_printoptions(precision=4, linewidth=160, sci_mode=True)
+        a_str = str(x)
+
+        expected = '''Tensor(shape=[128], dtype=float32, place=CPUPlace, stop_gradient=True,
+       [3.7587e-01, 2.7798e-02, 2.4891e-01, 3.1097e-01, 9.1053e-01, 7.3811e-01, 1.9045e-01, 4.7258e-01, 2.4354e-01, 9.1415e-01, 3.3666e-01, 7.2428e-01,
+        7.6640e-01, 9.9146e-01, 2.9215e-01, 1.3625e-01, 8.0957e-01, 2.9153e-01, 9.5642e-01, 9.9718e-01, 2.5732e-01, 2.5973e-01, 3.4292e-01, 2.4841e-01,
+        9.5794e-01, 7.0029e-01, 4.1260e-01, 4.2737e-01, 7.3788e-03, 9.6863e-01, 9.9102e-01, 1.4416e-02, 6.5640e-01, 2.9318e-01, 7.1136e-01, 9.3008e-01,
+        6.4209e-01, 5.3849e-02, 1.2730e-01, 5.7712e-01, 9.3359e-01, 6.4155e-01, 1.8320e-01, 9.3110e-01, 7.7021e-01, 7.4736e-01, 4.4793e-01, 3.3817e-01,
+        5.5794e-01, 4.4412e-02, 9.8023e-01, 9.8735e-01, 3.0376e-01, 5.6397e-01, 2.4082e-01, 5.4893e-01, 8.8659e-01, 1.0065e-01, 5.8812e-01, 7.5600e-01,
+        7.9280e-01, 8.6041e-01, 4.6701e-01, 9.2852e-01, 1.4821e-01, 4.5410e-01, 1.3074e-01, 6.2210e-01, 4.9024e-01, 1.1466e-01, 4.4154e-01, 2.9868e-01,
+        7.2758e-01, 2.0766e-01, 7.5508e-01, 9.6522e-01, 4.3688e-01, 2.2823e-01, 4.7394e-03, 2.9342e-01, 4.3083e-01, 4.1902e-01, 1.4416e-01, 3.6500e-01,
+        3.0560e-01, 6.5350e-01, 1.2115e-01, 8.7206e-01, 7.4081e-01, 4.2203e-01, 5.9372e-01, 3.1230e-01, 9.1979e-01, 2.7486e-02, 5.3383e-01, 4.6224e-01,
+        7.5211e-01, 3.6094e-01, 4.7034e-01, 1.7355e-01, 8.9763e-01, 7.6165e-01, 3.7557e-01, 2.4157e-01, 2.9074e-01, 3.2458e-01, 4.3049e-01, 5.7171e-01,
+        7.3509e-02, 3.6087e-02, 5.5341e-01, 4.3993e-01, 9.2601e-01, 6.5248e-01, 3.0640e-01, 4.5727e-01, 9.2104e-01, 8.2688e-01, 2.4243e-01, 7.4937e-01,
+        8.9448e-01, 7.0981e-01, 8.0783e-01, 4.7065e-01, 5.7154e-01, 7.2319e-01, 4.6777e-01, 5.0465e-01])'''
 
         self.assertEqual(a_str, expected)
         paddle.enable_static()

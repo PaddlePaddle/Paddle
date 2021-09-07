@@ -255,6 +255,19 @@ class TestStrategyConfig(unittest.TestCase):
         strategy.a_sync_configs = configs
         self.assertEqual(strategy.a_sync_configs["k_steps"], 1000)
 
+    def test_trainer_desc_configs(self):
+        strategy = paddle.distributed.fleet.DistributedStrategy()
+        configs = {
+            "dump_fields_path": "dump_data",
+            "dump_fields": ["xxx", "yyy"],
+            "dump_param": []
+        }
+        strategy.trainer_desc_configs = configs
+        self.assertEqual(strategy.trainer_desc_configs["dump_fields_path"],
+                         "dump_data")
+        self.assertEqual(len(strategy.trainer_desc_configs["dump_fields"]), 2)
+        self.assertEqual(len(strategy.trainer_desc_configs["dump_param"]), 0)
+
     def test_elastic(self):
         strategy = paddle.distributed.fleet.DistributedStrategy()
         strategy.elastic = True

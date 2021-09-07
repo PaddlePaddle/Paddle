@@ -29,6 +29,7 @@ from functools import reduce, partial
 from ..data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
 from ... import compat as cpt
 from ..backward import _infer_var_data_type_shape_
+from paddle import _C_ops
 
 __all__ = [
     'While', 'Switch', 'increment', 'array_write', 'create_array', 'less_than',
@@ -1133,29 +1134,13 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
             refer to :ref:`api_guide_Name`. Default is None.
 
     Returns:
-        A list or tuple of tensors or LoDTensorArrays which returned by ``body`` .
-    
-    Returen type:
-        list(Variable)|tuple(Variable).
-
-    Raises:
-        TypeError: If the type of ``cond`` is not callable.
-        TypeError: If the type of ``body`` is not callable.
-        TypeError: If the type of ``loop_vars`` is not list or tuple.
-        TypeError: If the type of ``cond`` returns is not Variable.
-        TypeError: If the type of ``cond`` returns is not a boolean variable.
-        TypeError: If the shape of ``cond`` returns is not equals 1.
-        ValueError: If the ``var_loops`` is empty.
-        ValueError: If the length or type of ``body`` returns is not same as ``loop_vars``.
+        A list or tuple of Tensors or LoDTensorArrays which returned by ``body`` .
 
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
-            import paddle.fluid.layers as layers
             import paddle
             paddle.enable_static()
-
 
             def cond(i, ten):
                 return i < ten
@@ -1164,14 +1149,14 @@ def while_loop(cond, body, loop_vars, is_test=False, name=None):
                 i = i + 1
                 return [i, ten]
 
-            main_program = fluid.default_main_program()
-            startup_program = fluid.default_startup_program()
-            with fluid.program_guard(main_program, startup_program):
-                i = layers.fill_constant(shape=[1], dtype='int64', value=0)     # loop counter
-                ten = layers.fill_constant(shape=[1], dtype='int64', value=10)  # loop length
-                i, ten = layers.while_loop(cond, body, [i, ten])
+            main_program = paddle.static.default_main_program()
+            startup_program = paddle.static.default_startup_program()
+            with paddle.static.program_guard(main_program, startup_program):
+                i = paddle.full(shape=[1], fill_value=0, dtype='int64')     # loop counter
+                ten = paddle.full(shape=[1], fill_value=10, dtype='int64')  # loop length
+                i, ten = paddle.static.nn.while_loop(cond, body, [i, ten])
                 
-                exe = fluid.Executor(fluid.CPUPlace())
+                exe = paddle.static.Executor(paddle.CPUPlace())
                 res = exe.run(main_program, feed={}, fetch_list=[i])
                 print(res) # [array([10])]
     """
@@ -1553,7 +1538,7 @@ def array_write(x, i, array=None):
     return array
 
 
-def create_array(dtype):
+def create_array(dtype, initialized_list=None):
     """
     This OP creates an LOD_TENSOR_ARRAY. It is used as
     the input of :ref:`api_fluid_layers_array_read` and 
@@ -1563,6 +1548,8 @@ def create_array(dtype):
     Args:
         dtype (str): The data type of the elements in the lod_tensor_array.
                      Support data type: float32, float64, int32, int64.
+        initialized_list(list): Used to initialize as default value for created array.
+                    All values in initialized list should be a Tensor.
 
     Returns:
         Variable: The empty lod_tensor_array. The data type of elements in Tensor is ``dtype``.
@@ -1574,14 +1561,34 @@ def create_array(dtype):
           data = fluid.layers.create_array(dtype='float32') # Create a float32 LoDTensorArray.
 
     """
+    array = []
+    if initialized_list is not None:
+        if not isinstance(initialized_list, (list, tuple)):
+            raise TypeError(
+                "Require type(initialized_list) should be list/tuple, but received {}".
+                format(type(initialized_list)))
+        array = list(initialized_list)
+
+    # NOTE: Only support plain list like [x, y,...], not support nested list in static mode.
+    for val in array:
+        if not isinstance(val, Variable):
+            raise TypeError(
+                "All values in `initialized_list` should be Variable, but recevied {}.".
+                format(type(val)))
+
     if in_dygraph_mode():
-        return []
+        return array
 
     helper = LayerHelper("array", **locals())
-    return helper.create_variable(
+    tensor_array = helper.create_variable(
         name="{0}.out".format(helper.name),
         type=core.VarDesc.VarType.LOD_TENSOR_ARRAY,
         dtype=dtype)
+
+    for val in array:
+        array_write(x=val, i=array_length(tensor_array), array=tensor_array)
+
+    return tensor_array
 
 
 @templatedoc()
@@ -3805,7 +3812,7 @@ def is_empty(x, name=None):
 
     """
     if in_dygraph_mode():
-        return core.ops.is_empty(x)
+        return _C_ops.is_empty(x)
 
     check_variable_and_dtype(x, 'x', ['float32', 'float64', 'int32', 'int64'],
                              'is_empty')

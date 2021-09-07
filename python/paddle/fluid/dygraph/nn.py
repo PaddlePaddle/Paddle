@@ -33,6 +33,7 @@ import numbers
 import logging
 import os
 import paddle.utils.deprecated as deprecated
+from paddle import _C_ops
 
 __all__ = [
     'Conv2D', 'Conv3D', 'Pool2D', 'Linear', 'BatchNorm', 'Dropout', 'Embedding',
@@ -236,7 +237,7 @@ class Conv2D(layers.Layer):
                      'dilations', self._dilation, 'groups', self._groups
                      if self._groups else 1, 'use_cudnn', self._use_cudnn,
                      'use_mkldnn', self._use_mkldnn)
-            out = core.ops.conv2d(input, self.weight, *attrs)
+            out = _C_ops.conv2d(input, self.weight, *attrs)
             pre_bias = out
 
             pre_act = dygraph_utils._append_bias_in_dygraph(
@@ -866,7 +867,7 @@ class Pool2D(layers.Layer):
                      'use_cudnn', self._use_cudnn, 'ceil_mode', self._ceil_mode,
                      'use_mkldnn', self._use_mkldnn, 'exclusive',
                      self._exclusive, 'data_format', self._data_format)
-            return core.ops.pool2d(input, *attrs)
+            return _C_ops.pool2d(input, *attrs)
 
         check_variable_and_dtype(
             input, 'input', ['int8', 'uint8', 'float16', 'float32', 'float64'],
@@ -971,9 +972,9 @@ class Linear(layers.Layer):
     def forward(self, input):
         if in_dygraph_mode():
             pre_bias = _varbase_creator(dtype=input.dtype)
-            core.ops.matmul(input, self.weight, pre_bias, 'transpose_X', False,
-                            'transpose_Y', False, "alpha", 1, "use_mkldnn",
-                            self._use_mkldnn)
+            _C_ops.matmul(input, self.weight, pre_bias, 'transpose_X', False,
+                          'transpose_Y', False, "alpha", 1, "use_mkldnn",
+                          self._use_mkldnn)
             pre_act = dygraph_utils._append_bias_in_dygraph(
                 pre_bias,
                 self.bias,
@@ -1116,8 +1117,8 @@ class InstanceNorm(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            out, _, _ = core.ops.instance_norm(input, self.scale, self.bias,
-                                               'epsilon', self._epsilon)
+            out, _, _ = _C_ops.instance_norm(input, self.scale, self.bias,
+                                             'epsilon', self._epsilon)
             return out
 
         check_variable_and_dtype(input, 'input', ['float32', 'float64'],
@@ -1150,9 +1151,6 @@ class InstanceNorm(layers.Layer):
 
 class BatchNorm(layers.Layer):
     r"""
-    :alias_main: paddle.nn.BatchNorm
-	:alias: paddle.nn.BatchNorm,paddle.nn.layer.BatchNorm,paddle.nn.layer.norm.BatchNorm
-	:old_api: paddle.fluid.dygraph.BatchNorm
 
     This interface is used to construct a callable object of the ``BatchNorm`` class.
     For more details, refer to code examples.
@@ -1163,16 +1161,16 @@ class BatchNorm(layers.Layer):
     Internal Covariate Shift <https://arxiv.org/pdf/1502.03167.pdf>`_
     for more details.
 
-    When use_global_stats = False, the :math:`\\mu_{\\beta}` 
-    and :math:`\\sigma_{\\beta}^{2}` are the statistics of one mini-batch.
+    When use_global_stats = False, the :math:`\mu_{\beta}` 
+    and :math:`\sigma_{\beta}^{2}` are the statistics of one mini-batch.
     Calculated as follows:
 
     ..  math::
 
-        \\mu_{\\beta} &\\gets \\frac{1}{m} \\sum_{i=1}^{m} x_i \\qquad &//\\
-        \ mini-batch\ mean \\\\
-        \\sigma_{\\beta}^{2} &\\gets \\frac{1}{m} \\sum_{i=1}^{m}(x_i - \\
-        \\mu_{\\beta})^2 \\qquad &//\ mini-batch\ variance \\\\
+        \mu_{\beta} &\gets \frac{1}{m} \sum_{i=1}^{m} x_i \qquad &
+        //\ mini-batch\ mean \\
+        \sigma_{\beta}^{2} &\gets \frac{1}{m} \sum_{i=1}^{m}(x_i - \mu_{\beta})^2 \qquad &
+        //\ mini-batch\ variance \\
 
     - :math:`x` : mini-batch data
     - :math:`m` : the size of the mini-batch data
@@ -1190,13 +1188,14 @@ class BatchNorm(layers.Layer):
  
     ..  math::
 
-        \\hat{x_i} &\\gets \\frac{x_i - \\mu_\\beta} {\\sqrt{\\
-        \\sigma_{\\beta}^{2} + \\epsilon}} \\qquad &//\ normalize \\\\
-        y_i &\\gets \\gamma \\hat{x_i} + \\beta \\qquad &//\ scale\ and\ shift
+        \hat{x_i} &\gets \frac{x_i - \mu_\beta} {\sqrt{\
+        \sigma_{\beta}^{2} + \epsilon}} \qquad &//\ normalize \\
+        y_i &\gets \gamma \hat{x_i} + \beta \qquad &//\ scale\ and\ shift
 
-    - :math:`\\epsilon` : add a smaller value to the variance to prevent division by zero
-    - :math:`\\gamma` : trainable proportional parameter
-    - :math:`\\beta` : trainable deviation parameter
+
+    - :math:`\epsilon` : add a smaller value to the variance to prevent division by zero
+    - :math:`\gamma` : trainable proportional parameter
+    - :math:`\beta` : trainable deviation parameter
 
     Parameters:
         num_channels(int): Indicate the number of channels of the input ``Tensor``.
@@ -1337,7 +1336,7 @@ class BatchNorm(layers.Layer):
                      "fuse_with_relu", self._fuse_with_relu, "use_global_stats",
                      self._use_global_stats, 'trainable_statistics',
                      self._trainable_statistics)
-            batch_norm_out, _, _, _, _, _ = core.ops.batch_norm(
+            batch_norm_out, _, _, _, _, _ = _C_ops.batch_norm(
                 input, self.weight, self.bias, self._mean, self._variance,
                 mean_out, variance_out, *attrs)
             return dygraph_utils._append_activation_in_dygraph(
@@ -1488,7 +1487,7 @@ class Dropout(layers.Layer):
 
         if in_dygraph_mode():
             attrs = sum(attrs.items(), ())
-            out, mask = core.ops.dropout(input, *attrs)
+            out, mask = _C_ops.dropout(input, *attrs)
             return out
 
         out = self._helper.create_variable_for_type_inference(dtype=input.dtype)
@@ -1640,7 +1639,7 @@ class Embedding(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            return core.ops.lookup_table_v2(
+            return _C_ops.lookup_table_v2(
                 self.weight, input, 'is_sparse', self._is_sparse,
                 'is_distributed', self._is_distributed, 'remote_prefetch',
                 self._remote_prefetch, 'padding_idx', self._padding_idx)
@@ -1794,7 +1793,7 @@ class LayerNorm(layers.Layer):
                     1:] + ', but got input shape ' + str(input_shape))
 
         if in_dygraph_mode():
-            pre_act, _, _ = core.ops.layer_norm(
+            pre_act, _, _ = _C_ops.layer_norm(
                 input, self.weight, self.bias, 'epsilon', self._epsilon,
                 'begin_norm_axis', self._begin_norm_axis)
             return dygraph_utils._append_activation_in_dygraph(
@@ -1979,7 +1978,7 @@ class GRUUnit(layers.Layer):
 
     def forward(self, input, hidden):
         if in_dygraph_mode():
-            gate, reset_hidden_pre, updated_hidden = core.ops.gru_unit(
+            gate, reset_hidden_pre, updated_hidden = _C_ops.gru_unit(
                 input, hidden, self.weight, self.bias, 'activation',
                 self.activation, 'gate_activation', self.gate_activation)
             return updated_hidden, reset_hidden_pre, gate
@@ -2665,7 +2664,7 @@ class Conv2DTranspose(layers.Layer):
 
     def forward(self, input):
         if in_dygraph_mode():
-            op = getattr(core.ops, self._op_type)
+            op = getattr(_C_ops, self._op_type)
             out = op(input, self.weight, 'output_size', self._output_size,
                      'strides', self._stride, 'paddings', self._padding,
                      'dilations', self._dilation, 'groups', self._groups,
@@ -3010,9 +3009,9 @@ class SpectralNorm(layers.Layer):
 
     .. math::
 
-        \mathbf{v} := \\frac{\mathbf{W}^{T} \mathbf{u}}{\|\mathbf{W}^{T} \mathbf{u}\|_2}
+        \mathbf{v} := \frac{\mathbf{W}^{T} \mathbf{u}}{\|\mathbf{W}^{T} \mathbf{u}\|_2}
 
-        \mathbf{u} := \\frac{\mathbf{W}^{T} \mathbf{v}}{\|\mathbf{W}^{T} \mathbf{v}\|_2}
+        \mathbf{u} := \frac{\mathbf{W}^{T} \mathbf{v}}{\|\mathbf{W}^{T} \mathbf{v}\|_2}
 
     Step 3:
     Calculate :math:`\sigma(\mathbf{W})` and normalize weight values.
@@ -3021,7 +3020,7 @@ class SpectralNorm(layers.Layer):
 
         \sigma(\mathbf{W}) = \mathbf{u}^{T} \mathbf{W} \mathbf{v}
 
-        \mathbf{W} = \\frac{\mathbf{W}}{\sigma(\mathbf{W})}
+        \mathbf{W} = \frac{\mathbf{W}}{\sigma(\mathbf{W})}
 
 
     Refer to `Spectral Normalization <https://arxiv.org/abs/1802.05957>`_ .
@@ -3063,6 +3062,12 @@ class SpectralNorm(layers.Layer):
         self._dtype = dtype
 
         self._weight_shape = list(weight_shape)
+        assert np.prod(self._weight_shape) > 0,\
+            "Any dimension of `weight_shape` cannot be equal to 0."
+        assert dim < len(self._weight_shape), \
+            ("The input `dim` should be less than the "
+            "length of `weight_shape`, but received dim="
+            "{}".format(dim))
         h = self._weight_shape[self._dim]
         w = np.prod(self._weight_shape) // h
 

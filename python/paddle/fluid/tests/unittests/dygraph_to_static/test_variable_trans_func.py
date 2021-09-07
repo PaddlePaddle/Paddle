@@ -14,7 +14,7 @@
 
 from __future__ import print_function
 
-import gast
+from paddle.utils import gast
 import unittest
 
 import numpy as np

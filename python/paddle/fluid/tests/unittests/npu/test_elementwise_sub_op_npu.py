@@ -27,8 +27,6 @@ paddle.enable_static()
 SEED = 2021
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestElementwiseSubOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -64,7 +62,7 @@ class TestElementwiseSubOp(OpTest):
         self.axis = 0
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     # TODO(ascendrc): For grad tests, OpTest raises FatalError:Segmentation fault
     #  when call op.run, which may be caused by system environment exception
@@ -74,7 +72,7 @@ class TestElementwiseSubOp(OpTest):
     #         self.place, ['X', 'Y'],
     #         'Out',
     #         max_relative_error=0.006,
-    #         check_dygraph=False)
+    #         )
     #
     # def test_check_grad_ingore_x(self):
     #     self.check_grad_with_place(
@@ -82,18 +80,16 @@ class TestElementwiseSubOp(OpTest):
     #         'Out',
     #         no_grad_set=set("X"),
     #         max_relative_error=0.006,
-    #         check_dygraph=False)
+    #         )
     #
     # def test_check_grad_ingore_y(self):
     #     self.check_grad_with_place(
     #         self.place, ['X'],
     #         'Out',
     #         no_grad_set=set("Y"),
-    #         max_relative_error=0.006,check_dygraph=False)
+    #         max_relative_error=0.006,)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSubtractAPI(unittest.TestCase):
     def test_name(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -138,8 +134,6 @@ class TestSubtractAPI(unittest.TestCase):
                 msg="z_value = {}, but expected {}".format(z_value, z_expected))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSubtractError(unittest.TestCase):
     def test_errors(self):
         with paddle.static.program_guard(paddle.static.Program()):
@@ -158,8 +152,6 @@ class TestSubtractError(unittest.TestCase):
             self.assertRaises(TypeError, paddle.subtract, x2, y2)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSubtractNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()

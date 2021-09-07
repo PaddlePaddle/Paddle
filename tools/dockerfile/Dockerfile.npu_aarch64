@@ -1,17 +1,20 @@
 # A image for building paddle binaries
-# Use cann 5.0.2.alpha003 and aarch64 for A300t-9000
-# When you modify it, please be aware of cann version
+# Use cann 5.0.2.alpha005 and aarch64 for A300t-9000
+# Update CANN_VERSION if using other versions
 #
-# Build: CANN 5.0.2.alpha003
+# Build: CANN 5.0.2.alpha005
+# Download pkgs from https://www.hiascend.com/software/cann/community 
+# and copy them to current dir first, then run build commands
 # cd Paddle/tools/dockerfile
 # docker build -f Dockerfile.npu_aarch64  \
-# -t paddlepaddle/paddle:latest-cann5.0.2-gcc82-aarch64-dev .
+# --build-arg CANN_VERSION=5.0.2.alpha005 \
+# -t paddlepaddle/paddle:latest-dev-5.0.2.alpha005-gcc82-aarch64 .
 #
 # docker run -it --pids-limit 409600 \
 # -v /usr/local/Ascend/driver:/usr/local/Ascend/driver \
 # -v /usr/local/bin/npu-smi:/usr/local/bin/npu-smi \
 # -v /usr/local/dcmi:/usr/local/dcmi \
-# paddlepaddle/paddle:latest-cann5.0.2-gcc82-aarch64-dev /bin/bash
+# paddlepaddle/paddle:latest-dev-5.0.2.alpha005-gcc82-aarch64 /bin/bash
 
 FROM ubuntu:18.04
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
@@ -93,6 +96,8 @@ RUN localedef -i en_US -f UTF-8 en_US.UTF-8
 
 RUN apt-get install libprotobuf-dev -y
 
+RUN apt install lsof -y
+
 # Older versions of patchelf limited the size of the files being processed and were fixed in this pr.
 # https://github.com/NixOS/patchelf/commit/ba2695a8110abbc8cc6baf0eea819922ee5007fa
 # So install a newer version here.
@@ -126,17 +131,19 @@ COPY ascend_install.info /etc/ascend_install.info
 RUN mkdir -p /usr/local/Ascend/driver
 COPY version.info /usr/local/Ascend/driver/version.info
 
-# Packages from https://www.hiascend.com/software/cann/community
+# Download packages from https://www.hiascend.com/software/cann/community and copy them to current dir first
 WORKDIR /usr/local/Ascend
+ARG CANN_VERSION=5.0.2.alpha005
 # update envs for driver
 ENV LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64:$LD_LIBRARY_PATH
 ENV LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/common:$LD_LIBRARY_PATH
 ENV LD_LIBRARY_PATH=/usr/local/Ascend/driver/lib64/driver:$LD_LIBRARY_PATH
 
 # Install Ascend toolkit
-COPY Ascend-cann-toolkit_5.0.2.alpha003_linux-aarch64.run /usr/local/Ascend/
-RUN ./Ascend-cann-toolkit_5.0.2.alpha003_linux-aarch64.run --install --quiet
-RUN rm -rf Ascend-cann-toolkit_5.0.2.alpha003_linux-aarch64.run
+COPY Ascend-cann-toolkit_${CANN_VERSION}_linux-aarch64.run /usr/local/Ascend/
+RUN chmod +x Ascend-cann-toolkit_${CANN_VERSION}_linux-aarch64.run && \
+    ./Ascend-cann-toolkit_${CANN_VERSION}_linux-aarch64.run --install --quiet && \
+    rm -rf Ascend-cann-toolkit_${CANN_VERSION}_linux-aarch64.run
 # udpate envs for model transformation and operator develop
 ENV PATH=/usr/local/Ascend/ascend-toolkit/latest/atc/bin:$PATH
 ENV LD_LIBRARY_PATH=/usr/local/Ascend/ascend-toolkit/latest/atc/lib64:$LD_LIBRARY_PATH
@@ -146,9 +153,10 @@ ENV PYTHONPATH=/usr/local/Ascend/ascend-toolkit/latest/toolkit/python/site-packa
 ENV TOOLCHAIN_HOME=/usr/local/Ascend/ascend-toolkit/latest/toolkit
 
 # Install Ascend NNAE
-COPY Ascend-cann-nnae_5.0.2.alpha003_linux-aarch64.run /usr/local/Ascend/
-RUN ./Ascend-cann-nnae_5.0.2.alpha003_linux-aarch64.run --install --quiet
-RUN rm -rf Ascend-cann-nnae_5.0.2.alpha003_linux-aarch64.run
+COPY Ascend-cann-nnae_${CANN_VERSION}_linux-aarch64.run /usr/local/Ascend/
+RUN chmod +x Ascend-cann-nnae_${CANN_VERSION}_linux-aarch64.run && \
+    ./Ascend-cann-nnae_${CANN_VERSION}_linux-aarch64.run --install --quiet && \
+    rm -rf Ascend-cann-nnae_${CANN_VERSION}_linux-aarch64.run
 
 # update envs for third party AI framework develop
 ENV PATH=/usr/local/Ascend/nnae/latest/fwkacllib/bin:$PATH
