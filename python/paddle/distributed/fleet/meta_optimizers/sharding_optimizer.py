@@ -319,6 +319,10 @@ class ShardingOptimizer(MetaOptimizerBase):
         # step 3: get broadcast vars
         self._broadcast_vars = self._shard.find_broadcast_params(main_block)
 
+        # NOTE(wangxi): prune_main_program will prune cast if not add this
+        for param, grad in params_grads:
+            self._reduced_grads_to_param[grad.name] = param.name
+
         # step4: remove unneeded ops and vars from block
         self._prune_main_program(
             main_block, self._shard,
@@ -353,6 +357,10 @@ class ShardingOptimizer(MetaOptimizerBase):
                 if in_name not in main_block.vars:
                     main_block._remove_op(idx)
 
+        if self.optimizer_sharding:
+            # TODO(wangxi): support fuse grad merge with optimizer sharding
+            strategy.fuse_grad_merge = False
+
         optimizer_sharding = False
         if sharding_configs['dp_as_opt_sharding'] and self.dp_degree > 1:
             # TODO(wangxi): support fuse grad merge with optimizer sharding
@@ -386,9 +394,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             len_of_ops = len(main_block.ops)
 
         if optimizer_sharding:
-            logger.info("Pipeline Persistable grad is {}".format(
-                accumulated_grad_names))
-            accumulated_grad_names = insert_reduce_ops(
+            accumulated_grad_names = utils.insert_reduce_ops(
                 main_block,
                 first_optimize_op_index,
                 self.dp_ring_id,
@@ -397,19 +403,22 @@ class ShardingOptimizer(MetaOptimizerBase):
                 OpRole.Optimize,
                 use_calc_stream=True,
                 rank=self.dp_rank)
-            logger.info("PP-Sharding grad is {}".format(accumulated_grad_names))
+            logger.info("Optimizer grad in this rank {}".format(
+                accumulated_grad_names))
             first_optimize_op_index += (len(main_block.ops) - len_of_ops)
             len_of_ops = len(main_block.ops)
 
-            utils.insert_broadcast_param_ops(
+            optimizer_param = utils.insert_broadcast_param_ops(
                 main_block,
                 len_of_ops,
                 self.dp_ring_id,
-                self._shard.global_params,
+                self._params,
                 self._shard,
                 OpRole.Optimize,
                 use_calc_stream=True,
                 rank=self.dp_rank)
+            logger.info("Optimizer param in this rank {}".format(
+                optimizer_param))
         elif self.hybrid_dp and self.hybrid_dp_mode == "pp_hybrid_dp":
             insert_allreduce_ops(
                 main_block,
