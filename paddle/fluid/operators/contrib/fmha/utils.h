@@ -381,6 +381,8 @@ static inline __device__ uint32_t hrelu2(uint32_t x, uint32_t lb = 0) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
   asm volatile("max.f16x2 %0, %1, %2;\n" : "=r"(res) : "r"(x), "r"(lb));
 #else
+// PTX ISA >= 6.5
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 10020
   const uint32_t zero = 0u;
   asm volatile(
       "{\n"
@@ -390,6 +392,7 @@ static inline __device__ uint32_t hrelu2(uint32_t x, uint32_t lb = 0) {
       "}\n"
       : "=r"(res)
       : "r"(x), "r"(zero));
+#endif
 #endif
   return res;
 }
@@ -410,7 +413,9 @@ static inline __device__ T clamp(T x, T lb, T ub) {
 
 static inline __device__ uint16_t clamp_to_zero(uint16_t x) {
   uint16_t mask;
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 10020
   asm volatile("set.gtu %0, %1, 0;" : "=h"(mask) : "h"(x));
+#endif
   return mask & x;
 }
 
