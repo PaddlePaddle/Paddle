@@ -51,9 +51,12 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Seed",
              "The seed of dropout op, it has higher priority than the attr "
              "fix_seed and seed")
-        .AsDispensable();
+        .AsDispensable()
+        .AsExtra();
     AddOutput("Out", "The output of dropout op.");
-    AddOutput("Mask", "The random sampled dropout mask.").AsIntermediate();
+    AddOutput("Mask", "The random sampled dropout mask.")
+        .AsIntermediate()
+        .AsExtra();
 
     AddAttr<float>("dropout_prob", "Probability of setting units to zero.")
         .SetDefault(.5f)
@@ -65,8 +68,7 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
-        .SetDefault(false)
-        .AsExtra();
+        .SetDefault(false);
     AddAttr<bool>("fix_seed",
                   "A flag indicating whether to use a fixed seed to generate "
                   "random mask. NOTE: DO NOT set this flag to true in "
