@@ -67,19 +67,17 @@ void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   // slice size
   int slice_size = 1;
   for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
-  // input size
-  int input_size = src_dims[0] * slice_size;
 
   const size_t slice_bytes = slice_size * sizeof(T);
 
   for (int64_t i = 0; i < index_size; ++i) {
     IndexT index_ = p_index[i];
-    PADDLE_ENFORCE_LT(p_index[i], input_size,
+    PADDLE_ENFORCE_LT(p_index[i], src_dims[0],
                       platform::errors::OutOfRange(
-                          "The element of Index must be less than the size of "
-                          "input dim size of axis which is %d, but received "
-                          "index element which is %d in the %d index.",
-                          input_size, p_index[i], i));
+                          "The element of Index must be less than dim[0] of "
+                          "input, which is %d, when Axis is None or 0, but "
+                          "received element which is %d in the %d index.",
+                          src_dims[0], p_index[i], i));
     PADDLE_ENFORCE_GE(p_index[i], 0,
                       platform::errors::OutOfRange(
                           "The element of Index must be greater than or equal "
