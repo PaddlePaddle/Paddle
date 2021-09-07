@@ -390,7 +390,8 @@ def monkey_patch_varbase():
 
     def item(self, *args):
         """
-        Convert one element Tensor to a Python scalar.
+        Convert element at specific position in Tensor into Python scalars. If the position is not specified, the Tensor must be a 
+        single-element Tensor.
 
         Args:
             *args(int): The input coordinates. If it's single int, the data in the corresponding order of flattened Tensor will be returned.
@@ -426,8 +427,6 @@ def monkey_patch_varbase():
                 print(x.item(2))            #3.3
                 print(x.item(0, 2))         #3.3
 
-                x = paddle.to_tensor([1, 2])
-                x.item()               #ValueError: only one element tensor can be converted to Python scalar when no input coordinates.
         """
         return self._getitem_from_offset(*args).item()
 
