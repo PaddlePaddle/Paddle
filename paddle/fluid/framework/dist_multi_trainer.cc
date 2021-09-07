@@ -78,6 +78,11 @@ void DistMultiTrainer::DumpWork(int tid) {
   std::string path = string::format_string(
       "%s/part-%03d-%05d", dump_fields_path_.c_str(), mpi_rank_, tid);
 
+  if (user_define_dump_filename_ != "") {
+    path = string::format_string("%s/part-%s", dump_fields_path_.c_str(),
+                                 user_define_dump_filename_.c_str());
+  }
+
   std::shared_ptr<FILE> fp = fs_open_write(path, &err_no, dump_converter_);
   while (1) {
     std::string out_str;
