@@ -501,7 +501,6 @@ struct ReluCPUFunctor : public BaseActivationFunctor<T> {
     //     for (auto i = 0; i < out.size(); i++) {
     //       out(i) = x(i) > static_cast<T>(0) ? x(i) : 0;
     //     }
-
     out.device(d) = x.cwiseMax(static_cast<T>(0));
   }
 };
