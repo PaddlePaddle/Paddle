@@ -45,39 +45,55 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
             elif self.dims == 1:
                 return np.ones([24]).astype(np.float32)
 
-        for dims in [1, 2, 3, 4]:
-            for batch in [1, 2, 4]:
-                for scale in [0.0, 1.0]:
-                    for bias in [0.0, 1.2]:
-                        for bias_after_scale in [False, True]:
-                            self.dims = dims
-                            dics = [{
-                                "scale": scale,
-                                "bias": bias,
-                                "bias_after_scale": bias_after_scale
-                            }, {}]
-                            ops_config = [{
-                                "op_type": "scale",
-                                "op_inputs": {
-                                    "X": ["scale_input"]
-                                },
-                                "op_outputs": {
-                                    "Out": ["scale_out"]
-                                },
-                                "op_attrs": dics[0]
-                            }]
-                            ops = self.generate_op_config(ops_config)
-                            program_config = ProgramConfig(
-                                ops=ops,
-                                weights={},
-                                inputs={
-                                    "scale_input": TensorConfig(
-                                        data_gen=partial(generate_input1, dics,
-                                                         batch))
-                                },
-                                outputs=["scale_out"])
+        def generate_weight1(attrs: List[Dict[str, Any]]):
+            return np.ones([1]).astype(np.float32)
 
-                            yield program_config
+        for num_input in [0, 1]:
+            for dims in [1, 2, 3, 4]:
+                for batch in [1, 2, 4]:
+                    for scale in [0.0, 1.0]:
+                        for bias in [0.0, 1.2]:
+                            for bias_after_scale in [False, True]:
+                                self.num_input = num_input
+                                self.dims = dims
+                                dics = [{
+                                    "scale": scale,
+                                    "bias": bias,
+                                    "bias_after_scale": bias_after_scale
+                                }, {}]
+
+                                dics_intput = [{
+                                    "X": ["scale_input"],
+                                    "ScaleTensor": ["ScaleTensor"],
+                                }, {
+                                    "X": ["scale_input"]
+                                }]
+                                dics_intputs = [{
+                                    "ScaleTensor": TensorConfig(
+                                        data_gen=partial(generate_weight1,
+                                                         dics))
+                                }, {}]
+
+                                ops_config = [{
+                                    "op_type": "scale",
+                                    "op_inputs": dics_intput[num_input],
+                                    "op_outputs": {
+                                        "Out": ["scale_out"]
+                                    },
+                                    "op_attrs": dics[0]
+                                }]
+                                ops = self.generate_op_config(ops_config)
+                                program_config = ProgramConfig(
+                                    ops=ops,
+                                    weights=dics_intputs[num_input],
+                                    inputs={
+                                        "scale_input": TensorConfig(
+                                            data_gen=partial(generate_input1,
+                                                             dics, batch))
+                                    },
+                                    outputs=["scale_out"])
+
+                                yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
@@ -112,8 +128,10 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             # TODO: This is just the example, need to be fixed.
-
-            return 1, 2
+            if self.num_input == 0:
+                return 0, 3
+            else:
+                return 1, 2
 
         attrs = [
             program_config.ops[i].attrs
