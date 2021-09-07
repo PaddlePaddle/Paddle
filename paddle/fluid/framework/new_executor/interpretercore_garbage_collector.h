@@ -13,6 +13,13 @@
 // limitations under the License.
 #pragma once
 
+#if !defined(_WIN32)
+#include <sched.h>
+#else
+#define NOMINMAX
+#include <windows.h>
+#endif  // !_WIN32
+
 #include <queue>
 #include <vector>
 
