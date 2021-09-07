@@ -200,6 +200,10 @@ static inline void HandleViewBetweenInputAndOutput(
 static inline void HandleStopGradientInInplaceVar(
     const std::shared_ptr<imperative::VarBase>& inplace_var,
     const imperative::NameVarBaseMap& ins) {
+  if (!inplace_var->OverridedStopGradient()) return;
+  // In inplace op, for multiple inputs, as long as the stop_gradient
+  // of a var in the input is false, the stop_gradient of the inplace
+  // var is updated to false.
   bool find_grad = false;
   for (const auto& name_pair : ins) {
     for (const auto& var_base : name_pair.second) {
