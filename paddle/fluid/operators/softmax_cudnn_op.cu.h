@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math/math_cuda_utils.h"
-#include "paddle/fluid/operators/softmax_impl.cuh"
 #include "paddle/fluid/operators/softmax_op.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #ifdef PADDLE_WITH_HIP
@@ -74,6 +73,30 @@ static inline int log2_ceil(int value) {
   int log2_value = 0;
   while ((1 << log2_value) < value) ++log2_value;
   return log2_value;
+}
+
+template <typename T, int BatchSize, int WarpSize>
+__device__ __forceinline__ void WarpReduceSum(T* sum) {
+#pragma unroll
+  for (int offset = WarpSize / 2; offset > 0; offset /= 2) {
+#pragma unroll
+    for (int i = 0; i < BatchSize; ++i) {
+      T sum_val = platform::CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
+      sum[i] = sum[i] + sum_val;
+    }
+  }
+}
+
+template <typename T, int BatchSize, int WarpSize>
+__device__ __forceinline__ void WarpReduceMax(T* sum) {
+#pragma unroll
+  for (int offset = WarpSize / 2; offset > 0; offset /= 2) {
+#pragma unroll
+    for (int i = 0; i < BatchSize; ++i) {
+      T max_val = platform::CudaShuffleXorSync(0xFFFFFFFF, sum[i], offset);
+      sum[i] = max(sum[i], max_val);
+    }
+  }
 }
 
 /*
