@@ -156,6 +156,7 @@ struct Fragment_accumulator : public Fragment<float, 8> {
   template <typename Layout_a, typename Layout_b>
   inline __device__ void mma(const Fragment_a<Layout_a>& a,
                              const Fragment_b<Layout_b>& b) {
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
     asm volatile(
         "mma.sync.aligned.m16n8k16.row.col.f32.f16.f16.f32 \n"
         "    {%0, %1, %2, %3}, \n"
@@ -174,6 +175,7 @@ struct Fragment_accumulator : public Fragment<float, 8> {
         : "+f"(elt(4)), "+f"(elt(5)), "+f"(elt(6)), "+f"(elt(7))
         : "r"(a.reg(0)), "r"(a.reg(1)), "r"(a.reg(2)), "r"(a.reg(3)),
           "r"(b.reg(2)), "r"(b.reg(3)));
+#endif
   }
 };
 
