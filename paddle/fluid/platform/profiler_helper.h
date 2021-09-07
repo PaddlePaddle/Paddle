@@ -175,6 +175,8 @@ void ParseMemEvents(const std::vector<std::vector<MemEvent>> &events) {
 
   for (auto &tmp : events) {
     for (auto &e : tmp) {
+      // VLOG(2) << ">>>>>>>>mem event name:>>>>>>>" << e.type();
+      VLOG(2) << ">>>>>>>>mem event annotation:>>>>>>>" << e.annotation();
       if (e.type() == EventType::kPushRange) {
         annotation_report[e.place()][e.annotation()].alloc_times += 1;
         annotation_report[e.place()][e.annotation()].alloc_size += e.bytes();
@@ -321,6 +323,9 @@ void SetEvent(bool merge_thread, const Event &analyze_event,
       } else {
         event_time = gpu_time + cpu_time;
       }
+      VLOG(2) << ">>>>>>analyze_event.name():>>>>>>" << analyze_event.name();
+
+      VLOG(2) << ">>>>>>event_time:>>>>>>" << event_time;
 
       std::string event_name;
       if (merge_thread) {

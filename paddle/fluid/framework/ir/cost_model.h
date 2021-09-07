@@ -34,35 +34,35 @@ namespace framework {
 class Graph;
 
 class CostData {
-  public:
-    std::map<int, int64> GetTimeMap();
-    std::map<int, int64> GetMemMap();
-    int64 GetWholeTime();
-    int64 GetWholeMem();
+ public:
+  std::map<int, int64_t> GetTimeMap();
+  std::map<int, int64_t> GetMemMap();
+  int64_t GetWholeTime();
+  int64_t GetWholeMem();
 
-  private:
-    Graph* graph_;
-    Program* program_;
-    std::map<int, int64> time_; // from Op Node id to time
-    std::map<int, int64> memory_; // from Op Node id to total memory bytes
-    std::map<int, int64> comm_; // from Op Node id to communicate cost
-    int64 whole_time_; // time cost of the whole program or graph
-    int64 whole_memory; // memory cost of the whole program or graph
-    int64 whole_comm_;// communication cost of the whole program or graph
-    const static int NOT_MEASURED = -1;
-
+ private:
+  // const static int NOT_MEASURED = -1;
+  Graph* graph_;
+  ProgramDesc* program_;
+  std::map<int, int64_t> time_;    // from Op Node id to time
+  std::map<int, int64_t> memory_;  // from Op Node id to total memory bytes
+  std::map<int, int64_t> comm_;    // from Op Node id to communicate cost
+  int64_t whole_time_;             // time cost of the whole program or graph
+  int64_t whole_memory;            // memory cost of the whole program or graph
+  int64_t whole_comm_;  // communication cost of the whole program or graph
 };
 class CostModel {
  public:
-  CostData profile_measure(Program* program, std::string device, fetch_cost_list);
+  CostData ProfileMeasure(ProgramDesc* program, std::string device,
+                          std::vector<std::string> fetch_cost_list);
 
  private:
   // Number of times Node has been executed
   std::vector<int> count_;
   // Total execution time
-  std::vector<int>
+  std::vector<int> mem_;
   // Total Bytes output on each channel
-}
+};
 
 }  // namespace framework
 }  // namespace paddle

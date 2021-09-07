@@ -15,13 +15,14 @@
 import paddle
 import paddle.static as static
 import numpy as np
+from paddle.fluid import core
 
 
 class CostModel():
-    def __init__():
+    def __init__(self):
         pass
 
-    def build_program():
+    def build_program(self):
         paddle.enable_static()
 
         main_program = static.Program()
@@ -35,34 +36,31 @@ class CostModel():
             paddle.optimizer.SGD(learning_rate=0.01).minimize(loss)
 
         print("main program is: {}".format(main_program))
-        print("start up program is: {}".format(startup_program))
+        #print("start up program is: {}".format(startup_program))
 
         return startup_program, main_program
 
-    def start_cost_model():
-        paddle.fluid.profiler.start_profiler("GPU")
-
-    def stop_cost_model(cost_list=["time", "memory"]):
-
-        if not core.is_profiler_enabled():
-            return
-
-        cost_list = core.stop_cost_model(cost_list)
-        return cost_list
-
-    def get_cost(startup_program, main_program):
+    def profile_measure(self,
+                        startup_program,
+                        main_program,
+                        device='gpu',
+                        fetch_cost_list=['time', 'memory']):
 
         place = paddle.set_device('gpu')
         x = np.random.random(size=(10, 1)).astype('float32')
         exe = paddle.static.Executor(place)
 
         exe.run(startup_program)
-        self.start_cost_model()
+        paddle.fluid.profiler.start_profiler("All")
         exe.run(main_program, feed={"X": x}, fetch_list=[])
+        core.profile_measure(main_program, device, fetch_cost_list)
 
-        cost_list = self.stop_cost_model()
-        return cost_list
+        # cost_list = self.stop_cost_model()
+        # return cost_list
 
-    startup_program, main_program = build_program()
 
-    get_cost(startup_program, main_program)
+cost_model = CostModel()
+
+startup_program, main_program = cost_model.build_program()
+
+cost_model.profile_measure(startup_program, main_program)
