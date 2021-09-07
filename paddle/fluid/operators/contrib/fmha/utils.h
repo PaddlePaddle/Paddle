@@ -32,7 +32,14 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#if defined(CUDA_VERSION) && CUDA_VERSION >= 10020
 extern "C" __device__ uint32_t __nvvm_get_smem_pointer(void *ptr);
+#else
+__device__ uint32_t __nvvm_get_smem_pointer(void *ptr) {
+    assert(false && "not supported cuda version");
+    return 0;
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
