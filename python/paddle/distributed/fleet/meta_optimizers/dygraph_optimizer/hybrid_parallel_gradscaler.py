@@ -23,6 +23,8 @@ import types
 from paddle.fluid import core
 import paddle
 from paddle import _C_ops
+from paddle.fluid.dygraph import to_variable
+import numpy as np
 
 __all__ = []
 
@@ -65,8 +67,29 @@ class HybridParallelGradScaler:
             param._grad_ivar() for param in optimizer._parameter_list
             if param._grad_ivar() is not None
         ]
-        _C_ops.check_finite_and_unscale(param_grads, self._scale, param_grads,
-                                        self._found_inf)
+        param_grads_fp16 = [
+            param._grad_ivar() for param in optimizer._parameter_list
+            if (param._grad_ivar() is not None
+                ) and (param._grad_ivar().dtype == core.VarDesc.VarType.FP16)
+        ]
+        param_grads_fp32 = [
+            param._grad_ivar() for param in optimizer._parameter_list
+            if (param._grad_ivar() is not None
+                ) and (param._grad_ivar().dtype == core.VarDesc.VarType.FP32)
+        ]
+
+        temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
+        temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
+        if len(param_grads_fp16):
+            _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
+                                            param_grads_fp16,
+                                            temp_found_inf_fp16)
+        if len(param_grads_fp32):
+            _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
+                                            param_grads_fp32,
+                                            temp_found_inf_fp32)
+
+        self._found_inf = temp_found_inf_fp16 or temp_found_inf_fp32
         # allreduce_max found_inf in check_group
         if not self._use_dp_mode:
             self._found_inf = paddle.cast(self._found_inf, dtype="int32")
