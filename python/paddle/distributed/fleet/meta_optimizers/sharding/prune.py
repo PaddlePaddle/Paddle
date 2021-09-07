@@ -136,6 +136,13 @@ class ProgramDeps(object):
         # remove check_finite_and_unscale op if its input 'X' is empty
         if op.type == 'check_finite_and_unscale' and len(op.input('X')) == 0:
             return True
+
+        # NOTE: At present, it is found that the OP without output is
+        # only send_v2 and partial_send op, which will be used in
+        # all device
+        if len(op.desc.output_arg_names) == 0:
+            return False
+
         for output_name in op.desc.output_arg_names():
             if output_name not in self._should_removed_var:
                 return False

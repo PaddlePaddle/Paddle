@@ -329,7 +329,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             [self.mp_ring_id, self.pp_ring_id, self.dp_ring_id])
         self._prune_startup_program(startup_block, self._shard)
 
-    def _insert_allreduce_for_pp(self):
+    def _insert_allreduce_for_pp(self, params_grads):
         if self.pp_degree == 1: return
 
         strategy = self.user_defined_strategy
@@ -411,14 +411,14 @@ class ShardingOptimizer(MetaOptimizerBase):
             optimizer_param = utils.insert_broadcast_param_ops(
                 main_block,
                 len_of_ops,
-                self.dp_ring_id,
-                self._params,
+                self.dp_ring_id, [x[0].name for x in params_grads],
                 self._shard,
                 OpRole.Optimize,
                 use_calc_stream=True,
                 rank=self.dp_rank)
             logger.info("Optimizer param in this rank {}".format(
                 optimizer_param))
+            assert len(accumulated_grad_names) == len(optimizer_param)
         elif self.hybrid_dp and self.hybrid_dp_mode == "pp_hybrid_dp":
             insert_allreduce_ops(
                 main_block,
@@ -529,7 +529,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         self._apply_opt_sharding_pass(params_grads)
 
-        self._insert_allreduce_for_pp()
+        self._insert_allreduce_for_pp(params_grads)
 
         self._adapt_amp_clip_without_sharding()
 
@@ -896,7 +896,9 @@ class ShardingOptimizer(MetaOptimizerBase):
         for idx, op in enumerate(block.ops):
             input_names = op.desc.input_arg_names()
             output_names = op.desc.output_arg_names()
-            if op.type == "c_allreduce_sum":
+            # FIXME(wangxi): need use grads, pipeline grad is @GRAD@MERGE
+            if op.type == "c_allreduce_sum" and op.attr(
+                    'use_model_parallel') is False:
                 assert (len(output_names) == 1)
                 output_name = output_names[0]
                 reduced_grads.append(output_name)
