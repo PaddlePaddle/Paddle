@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import unittest
-from test_pipeline import TestPipeline
+import test_pipeline
 
 
-class TestPipelineWithIRPass(TestPipeline):
+class TestPipelineWithIRPass(test_pipeline.TestPipeline):
     def need_envs(self):
         return {'FLAGS_apply_pass_to_program': '1'}
 
