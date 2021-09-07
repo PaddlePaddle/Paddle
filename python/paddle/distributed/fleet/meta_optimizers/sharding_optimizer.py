@@ -64,7 +64,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         # reduced grads to param name
         self._reduced_grads_to_param = {}
         self._shard = Shard()
-        self._opt_shard = Shard()
         self._verbose = False
 
         # use sharding as outer parallelism (e.g. inner:Megatron & outer sharding)
@@ -155,8 +154,8 @@ class ShardingOptimizer(MetaOptimizerBase):
 
     def _get_hybrid_dp_mode(self):
         """ get
-        self.hybrid_dp_mode
-        self.gradient_merge_mode
+        self.hybrid_dp_mode = 'pp_hybrid_dp' or 'sharding_hybrid_dp'
+        self.gradient_merge_mode = 'pp_gm' or 'sharding_gm'
         self._gradient_merge_acc_step
         self.pp_allreduce_in_optimize
         """
@@ -297,35 +296,26 @@ class ShardingOptimizer(MetaOptimizerBase):
         strategy = self.user_defined_strategy
         sharding_configs = strategy.sharding_configs
 
-        # if sharding_configs.dp_as_opt_sharding is False: return
-        if self.dp_degree == 1: return
-
-        # TODO(wangxi): dp_as_opt_sharding need support with sharding
+        # TODO(wangxi): need support dp_as_opt_sharding with sharding
         if self.sharding_degree > 1: return
+        if sharding_configs.dp_as_opt_sharding is False: return
+        if self.dp_degree == 1: return
 
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
 
         # step1: build shard
-        self._opt_params = set([x[0].name for x in params_grads])
-        self._opt_shard.setup(params_grads, self.dp_rank, self.dp_degree)
+        self._params = set([x[0].name for x in params_grads])
+        self._shard.setup(params_grads, self.dp_rank, self.dp_degree)
 
         # step 3: get broadcast vars
-        self._opt_broadcast_vars = self._shard.find_broadcast_params(main_block)
-
-        main_block._sync_with_cpp()
-        startup_block._sync_with_cpp()
+        self._broadcast_vars = self._shard.find_broadcast_params(main_block)
 
         # step4: remove unneeded ops and vars from block
         self._prune_main_program(
-            main_block,
-            self._opt_shard,
-            # sharding_ring_id will be -1 for now
-            [
-                self.mp_ring_id, self.sharding_ring_id, self.pp_ring_id,
-                self.dp_ring_id
-            ])
-        self._prune_startup_program(startup_block, self._opt_shard)
+            main_block, self._shard,
+            [self.mp_ring_id, self.pp_ring_id, self.dp_ring_id])
+        self._prune_startup_program(startup_block, self._shard)
 
     def _insert_allreduce_for_pp(self):
         if self.pp_degree == 1: return
