@@ -20,7 +20,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
 
   foreach(target ${TEST_TRT_IR_PASSES})
     if(${target} STREQUAL "test_trt_slice_dynamic_plugin")
-      if(${TENSORRT_MAJOR_VERSION} VERSION_GREATER "6")
+      if("${TENSORRT_MAJOR_VERSION}.${TENSORRT_MINOR_VERSION}" VERSION_GREATER "7.1")
         py_test_modules(${target} MODULES ${target})
         set_tests_properties(${target} PROPERTIES TIMEOUT 60)
       endif()
