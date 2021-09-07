@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
+
 #if !defined(_WIN32)
 #include <sched.h>
 #else
