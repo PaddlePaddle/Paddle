@@ -331,7 +331,14 @@ GetVarBaseListFromPyHandle(const py::handle &handle) {
 
   return result;
 }
-
+static bool IsNumpyType(PyObject *obj) {
+  // It is not a good way to judge the type of obj by its type'name. Maybe using
+  // `PyArray_IsScalar` will be better. However, this interface cannot be used
+  // by including pybind11, and it needs to compile with numpy.
+  auto type_name = std::string(Py_TYPE(obj)->tp_name);
+  return type_name == "numpy.int64" || type_name == "numpy.longlong" ||
+         type_name == "numpy.int32" || type_name == "numpy.int16";
+}
 static imperative::NameVarBaseMap ConvertToNameVarBaseMap(
     const PyNameVarBaseMap &map) {
   imperative::NameVarBaseMap result;
@@ -372,7 +379,7 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
   if (r->step == Py_None) {
     *step = 1;
   } else {
-    if (PyCheckInteger(r->step)) {
+    if (PyCheckInteger(r->step) || IsNumpyType(r->step)) {
       *step = PyLong_AsLong(r->step);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -384,7 +391,7 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
   if (r->start == Py_None) {
     *start = *step < 0 ? length - 1 : 0;
   } else {
-    if (PyCheckInteger(r->start)) {
+    if (PyCheckInteger(r->start) || IsNumpyType(r->start)) {
       *start = PyLong_AsLong(r->start);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -398,7 +405,7 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
   if (r->stop == Py_None) {
     *stop = *step < 0 ? -1 : length;
   } else {
-    if (PyCheckInteger(r->stop)) {
+    if (PyCheckInteger(r->stop) || IsNumpyType(r->stop)) {
       *stop = PyLong_AsLong(r->stop);
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
@@ -456,7 +463,7 @@ static void ParseIndexingSlice(
 
     infer_flags->push_back(1);
     int dim_len = shape[dim];
-    if (PyCheckInteger(slice_item)) {
+    if (PyCheckInteger(slice_item) || IsNumpyType(slice_item)) {
       // integer, PyLong_AsLong supports both int and long
       int start = static_cast<int>(PyLong_AsLong(slice_item));
       auto s_t = start;

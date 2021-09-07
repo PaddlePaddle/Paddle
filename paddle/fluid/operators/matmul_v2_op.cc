@@ -141,12 +141,14 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"});
+        .InEnum({"float32", "bfloat16"})
+        .AsExtra();
     AddComment(
         R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K), 
         B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)). 
