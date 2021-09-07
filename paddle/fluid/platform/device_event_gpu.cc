@@ -95,6 +95,10 @@ void DeviceEventSetFinishedCUDA(const DeviceEvent* event) {
   // do nothing
 }
 
+void EventResetCUDA(const DeviceEvent* event) {
+  // do nothing
+}
+
 }  // namespace platform
 }  // namespace paddle
 
@@ -110,4 +114,5 @@ REGISTER_EVENT_WAIT_FUNCTION(kCUDA, kCUDA,
                              paddle::platform::DeviceEventCUDAWaitCUDA)
 REGISTER_EVENT_WAIT_FUNCTION(kCPU, kCUDA,
                              paddle::platform::DeviceEventCPUWaitCUDA)
+REGISTER_EVENT_RESET_FUNCTION(kCUDA, paddle::platform::EventResetCUDA)
 #endif

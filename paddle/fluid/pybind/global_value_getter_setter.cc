@@ -98,6 +98,8 @@ DECLARE_string(selected_xpus);
 #ifdef PADDLE_WITH_ASCEND_CL
 // device management
 DECLARE_string(selected_npus);
+// set minmum loss scaling value
+DECLARE_int32(min_loss_scaling);
 #endif
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -385,6 +387,7 @@ static void RegisterGlobalVarGetterSetter() {
 
 #ifdef PADDLE_WITH_ASCEND_CL
   REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_selected_npus);
+  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_min_loss_scaling);
 #endif
 
 #ifdef PADDLE_WITH_DITRIBUTE

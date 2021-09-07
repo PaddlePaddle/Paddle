@@ -705,7 +705,7 @@ class TestInferShape(unittest.TestCase):
             np_slice = x_arr[:, :, 0:1]
             self.assertTrue(np.array_equal(pp_slice, np_slice))
 
-            pp_slice = paddle.slice(x, [-100, ], [0], [1])
+            pp_slice = paddle.slice(x, (-100, ), [0], [1])
             np_slice = x_arr[0:1]
             self.assertTrue(np.array_equal(pp_slice, np_slice))
 
