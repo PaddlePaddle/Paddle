@@ -52,6 +52,31 @@ void InterpreterCoreGarbageCollector::Add(GarbageQueue& garbage,
   }
 }
 
+void InterpreterCoreGarbageCollector::Add(
+    std::shared_ptr<memory::Allocation> garbage,
+    paddle::platform::DeviceEvent& event, const platform::DeviceContext* ctx) {
+  if (max_memory_size_ <= 1) {
+    DoFree(garbage, event, ctx);
+  } else {
+    if (!garbage) return;
+    GarbageQueue* garbage_ptr = nullptr;
+    {
+      std::lock_guard<paddle::memory::SpinLock> guard(spinlock_);
+      cur_memory_size_ += garbage->size();
+      garbages_->push_back(std::move(garbage));
+
+      if (cur_memory_size_ >= max_memory_size_) {
+        cur_memory_size_ = 0;
+        garbage_ptr = garbages_.release();
+        garbages_.reset(new GarbageQueue());
+      }
+    }
+    if (garbage_ptr) {
+      DoFree(garbage_ptr, event, ctx);
+    }
+  }
+}
+
 void InterpreterCoreGarbageCollector::DoFree(
     GarbageQueue* garbage, paddle::platform::DeviceEvent& event,
     const platform::DeviceContext* ctx) {
@@ -67,6 +92,23 @@ void InterpreterCoreGarbageCollector::DoFree(
       continue;
     }
     delete container;
+  });
+}
+
+void InterpreterCoreGarbageCollector::DoFree(
+    std::shared_ptr<memory::Allocation>& garbage,
+    paddle::platform::DeviceEvent& event, const platform::DeviceContext* ctx) {
+  event.Record(ctx);
+  event.SetFininshed();  // Only for CPU Event
+  queue_->AddTask([ container = garbage, event = &event ]() {
+    while (!event->Query()) {
+#if defined(_WIN32)
+      SleepEx(50, FALSE);
+#else
+      sched_yield();
+#endif
+      continue;
+    }
   });
 }
 

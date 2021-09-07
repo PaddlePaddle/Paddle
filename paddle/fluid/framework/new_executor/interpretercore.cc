@@ -408,7 +408,6 @@ void InterpreterCore::CheckGC(size_t instr_id,
                               const VariableScope& var_scope,
                               const platform::Place& place,
                               std::vector<VariableMetaInfo>& working_var_ref) {
-  std::deque<std::shared_ptr<memory::Allocation>> garbages;
   for (auto var_id : gc_check_list) {
     --working_var_ref[var_id].var_ref_count_;
     if (var_scope.vec_meta_info_[var_id].vardesc_ &&
@@ -416,15 +415,18 @@ void InterpreterCore::CheckGC(size_t instr_id,
         working_var_ref[var_id].var_ref_count_ == 0) {
       Variable* var = var_scope.var_list[var_id];
       if (var->IsType<LoDTensor>()) {
-        garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
+        gc_.Add(var->GetMutable<LoDTensor>()->MoveMemoryHolder(),
+                gc_event_[instr_id], vec_instruction_[instr_id].dev_ctx_);
       } else if (var->IsType<SelectedRows>()) {
-        garbages.emplace_back(var->GetMutable<SelectedRows>()
-                                  ->mutable_value()
-                                  ->MoveMemoryHolder());
+        gc_.Add(var->GetMutable<SelectedRows>()
+                    ->mutable_value()
+                    ->MoveMemoryHolder(),
+                gc_event_[instr_id], vec_instruction_[instr_id].dev_ctx_);
       } else if (var->IsType<LoDTensorArray>()) {
         auto* tensor_arr = var->GetMutable<LoDTensorArray>();
         for (auto& t : *tensor_arr) {
-          garbages.emplace_back(t.MoveMemoryHolder());
+          gc_.Add(t.MoveMemoryHolder(), gc_event_[instr_id],
+                  vec_instruction_[instr_id].dev_ctx_);
         }
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
@@ -432,10 +434,6 @@ void InterpreterCore::CheckGC(size_t instr_id,
             framework::ToTypeName(var->Type())));
       }
     }
-  }
-
-  if (!garbages.empty()) {
-    gc_.Add(garbages, gc_event_[instr_id], vec_instruction_[instr_id].dev_ctx_);
   }
 }
 

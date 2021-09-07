@@ -39,9 +39,17 @@ class InterpreterCoreGarbageCollector {
            paddle::platform::DeviceEvent& event,  // NOLINT
            const platform::DeviceContext* ctx);
 
+  void Add(std::shared_ptr<memory::Allocation> garbage,  // NOLINT
+           paddle::platform::DeviceEvent& event,         // NOLINT
+           const platform::DeviceContext* ctx);
+
  private:
   void DoFree(GarbageQueue* garbage,
               paddle::platform::DeviceEvent& event,  // NOLINT
+              const platform::DeviceContext* ctx);
+
+  void DoFree(std::shared_ptr<memory::Allocation>& garbage,  // NOLINT
+              paddle::platform::DeviceEvent& event,          // NOLINT
               const platform::DeviceContext* ctx);
 
   std::unique_ptr<GarbageQueue> garbages_;
