@@ -294,6 +294,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.pp_degree == 1: return
 
         strategy = self.user_defined_strategy
+        fp16_allreduce = strategy.fp16_allreduce
+
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
 
@@ -317,33 +319,46 @@ class ShardingOptimizer(MetaOptimizerBase):
                     main_block._remove_op(idx)
 
         accumulated_grad_names = self._pp_optimizer._accumulate_gradients(
-            main_block)
-        # accumulated_grad_names = sorted(accumulated_grad_names)
+            main_block,
+            fp16_allreduce=fp16_allreduce,
+            user_defined_strategy=strategy)
+
+        len_of_ops = len(main_block.ops)
+        first_optimize_op_index = get_first_optimize_op_idx(main_block)
+
         if self.pp_allreduce_in_optimize:
-            print("persistable FP32 grad: ")
-            print(accumulated_grad_names)
-            first_optimize_op_index = get_first_check_finite_and_unscale_op_idx(
-                main_block, raise_error=strategy.amp)
-            insert_reduce_ops(
+            logger.info("Pipeline Persistable grad is {}".format(
+                accumulated_grad_names))
+            # FIXME(wangxi): accumulated_grad get from pipeline is not
+            #  include sharding's param@BroadCast grad when
+            #  pp_allreduce_in_optimize
+            accumulated_grad_names = insert_reduce_ops(
                 main_block,
                 first_optimize_op_index,
                 self.sharding_ring_id,
                 accumulated_grad_names,
                 self._shard,
                 core.op_proto_and_checker_maker.OpRole.Optimize,
-                use_calc_stream=True)
+                use_calc_stream=True,
+                rank=self.sharding_rank)
+
+            logger.info("PP-Sharding grad is {}".format(accumulated_grad_names))
+            first_optimize_op_index += (len(main_block.ops) - len_of_ops)
+            len_of_ops = len(main_block.ops)
+
         if self.hybrid_dp and self.hybrid_dp_mode == "pp_hybrid_dp":
-            first_optimize_op_index = get_first_check_finite_and_unscale_op_idx(
-                main_block, raise_error=strategy.amp)
-            if first_optimize_op_index >= 0:
-                insert_allreduce_ops(
-                    main_block,
-                    first_optimize_op_index,
-                    self.dp_ring_id,
-                    accumulated_grad_names,
-                    core.op_proto_and_checker_maker.OpRole.Optimize,
-                    use_calc_stream=True,
-                    user_defined_strategy=strategy)
+            insert_allreduce_ops(
+                main_block,
+                first_optimize_op_index,
+                self.dp_ring_id,
+                accumulated_grad_names,
+                core.op_proto_and_checker_maker.OpRole.Optimize,
+                use_calc_stream=True,
+                user_defined_strategy=strategy)
+            first_optimize_op_index += (len(main_block.ops) - len_of_ops)
+            len_of_ops = len(main_block.ops)
+
+        # FIXME(wangxi): if fp16_allreduce, put cast fp16->fp32 to there?
 
     def _adapt_amp_clip_without_sharding(self):
         if self.sharding_degree > 1: return
@@ -356,8 +371,11 @@ class ShardingOptimizer(MetaOptimizerBase):
         # FIXME(wangxi): mp should prune duplicated param_grads when calc
         # amp inf_var & clip global_norm_var
 
-        FP16Utils.sync_amp_check_nan_inf(main_block,
-                                         [self.mp_ring_id, self.pp_ring_id])
+        rings = [self.mp_ring_id, self.pp_ring_id]
+        # FIXME(wangxi): some problem with NPU found_finite, need sync with DP
+        if core.is_compiled_with_npu():
+            rings += [self.dp_ring_id]
+        FP16Utils.sync_amp_check_nan_inf(main_block, rings)
 
         gradientclip_helper = GradientClipHelper(None)
         gradientclip_helper.sync_global_norm(
@@ -387,7 +405,14 @@ class ShardingOptimizer(MetaOptimizerBase):
             logger.info("Sharding with optimize offload !")
             offload_helper = OffloadHelper()
             offload_helper.offload(main_block, startup_block)
+            # The optimize_cast is already included in offload_fp32param
             offload_helper.offload_fp32param(main_block, startup_block)
+        elif sharding_configs['optimize_cast']:
+            logger.info("Sharding with optimize cast !")
+            # NOTE(wangxi): optimize_cast will persist fp16 param, it
+            # will take more memory, but will be faster. Trade space for time.
+            offload_helper = OffloadHelper()
+            offload_helper.cast_fp32param_in_optimize(main_block, startup_block)
 
     def _dump_program_for_debug(self):
         main_block = self._main_program.global_block()
@@ -431,6 +456,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         # loss div dp_degree
         self._insert_loss_grad_scale_op()
 
+        # apply optimize offload or optimize cast
         self._apply_optimize_offload_pass()
 
         # step6: (optional) sharding gradient merge

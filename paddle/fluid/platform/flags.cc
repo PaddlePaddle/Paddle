@@ -93,10 +93,14 @@ DEFINE_string(selected_npus, "",
               "This option is useful when doing multi process training and "
               "each process have only one device (NPU). If you want to use "
               "all visible devices, set this to empty string.");
+DEFINE_bool(hccl_check_nan, true,
+            "Check Nan in tensor before hccl_allreduce_sum otherwise it'll "
+            "core when meets Nan value");
 DEFINE_string(
     npu_config_path, "",
     "The absolute path of configuration json file, like: /tmp/config.json. "
     "If proveided, it will be passed to aclInit().");
+DEFINE_int32(min_loss_scaling, 1, "set minmum loss scaling value!");
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -605,4 +609,18 @@ DEFINE_bool(check_kernel_launch, false,
  */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 DEFINE_bool(conv2d_disable_cudnn, false, "Disable cudnn in conv2d");
+#endif
+
+/**
+ * Distributed related FLAG
+ * Name: FLAGS_get_host_by_name_time
+ * Since Version: 2.2.0
+ * Value Range: int32, default=120
+ * Example:
+ * Note: Get host by name time.
+ */
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_XPU) || \
+    defined(PADDLE_WITH_ASCEND_CL) || defined(PADDLE_WITH_HIP)
+DEFINE_int32(get_host_by_name_time, 120,
+             "The maximum time for get host by name time");
 #endif
