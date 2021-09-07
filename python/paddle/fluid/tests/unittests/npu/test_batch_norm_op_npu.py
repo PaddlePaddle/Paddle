@@ -421,7 +421,7 @@ class TestDygraphBatchNormTrainableStats(unittest.TestCase):
             x = np.random.randn(*shape).astype("float32")
             y1 = compute(x, False, False)
             y2 = compute(x, True, True)
-            self.assertTrue(np.allclose(y1, y2))
+            self.assertTrue(np.allclose(y1, y2, atol=1e-5))
 
 
 if __name__ == "__main__":
