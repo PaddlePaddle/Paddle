@@ -317,10 +317,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         std::bitset<nvinfer1::Dims::MAX_DIMS> found;
         for (int i = 0; i < dims; ++i) {
           const int x = permutation[i];
-          if ((x < 0) || (x >= dims) || found[x]) {
-            std::cout << "x: " << x << std::endl;
+          if ((x < 0) || (x >= dims) || found[x])
             return false;  // Out of bounds or duplicate
-          }
           found.set(x);
         }
         return true;
