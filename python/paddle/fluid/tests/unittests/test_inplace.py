@@ -232,6 +232,19 @@ class TestDygraphInplace(unittest.TestCase):
         self.assertTrue(np.array_equal(grad_var_a_inplace, grad_var_a))
 
 
+class TestStopGradient(unittest.TestCase):
+    def test_stop_gradient(self):
+        a = paddle.to_tensor(2.)
+        b = paddle.to_tensor(3., stop_gradient=False)
+
+        a.add_(b)
+        self.assertTrue(not a.stop_gradient)
+
+        a.sum().backward()
+        grad_a = a.grad.numpy()
+        self.assertTrue(np.array_equal(grad_a, np.array([1.])))
+
+
 class TestDygraphInplaceUnsqueeze(TestDygraphInplace):
     def non_inplace_api_processing(self, var):
         return paddle.unsqueeze(var, -1)
