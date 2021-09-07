@@ -375,25 +375,26 @@ if "%WITH_GPU%"=="ON" (
 )
 
 set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
-set BCE_FILE=%cache_dir%/bce-python-sdk-0.8.33/BosClient.py
-set FILE_PUSH=OFF
+set UPLOAD_TP_FILE=OFF
 
 if not exist %THIRD_PARTY_PATH% (
-    echo Downloading third party from bce
     if not exist %THIRD_PARTY_HOME% mkdir "%THIRD_PARTY_HOME%"
     cd %THIRD_PARTY_HOME%
-
-    python -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/%sub_dir%/%md5%.tar.gz')" 1>nul 2>nul
+    echo Getting third party: downloading ...
+    %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/%sub_dir%/%md5%.tar.gz')" 
     if !ERRORLEVEL! EQU 0 (
-        tar -xf %THIRD_PARTY_HOME%/%md5%.tar.gz 
-    ) 
-    if not exist %THIRD_PARTY_PATH% (
-        echo Download third party failed
-        set FILE_PUSH=ON
+        echo Getting third party: extracting ...
+        tar -xf %THIRD_PARTY_HOME%\%md5%.tar.gz
+        if !ERRORLEVEL! EQU 0 ( 
+            echo Get third party successfully 
+        ) else (
+            echo Get third party failed, reason: extract failed
+        )
     ) else (
-        echo Download third party successfully
+        echo Get third party failed, reason: download failed
     )
-    cd %work_dir%/%BUILD_DIR%
+    if not exist %THIRD_PARTY_PATH% ( set UPLOAD_TP_FILE=ON ) 
+    cd %work_dir%\%BUILD_DIR%
 ) else (
     echo Get reusable third_party cache
 )
@@ -509,29 +510,38 @@ if %ERRORLEVEL% NEQ 0 (
     )
 )
 
-if %FILE_PUSH%==ON (
-    echo Push third_party to bce
-    if not exist %cache_dir%/bce-python-sdk-0.8.33 (
+set BCE_FILE=%cache_dir%\bce-python-sdk-0.8.33\BosClient.py
+if %UPLOAD_TP_FILE%==ON (
+    echo Uploading third_party: checking bce ...
+    if not exist %cache_dir%\bce-python-sdk-0.8.33 (
         echo There is not bce in this PC, will install bce.
         cd %cache_dir%
         echo Download package from https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz
-        %PYTHON_ROOT%/python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz')"
-        %PYTHON_ROOT%/python.exe -c "import shutil;shutil.unpack_archive('bce-python-sdk-0.8.33.tar.gz', extract_dir='./',format='gztar')"
-        cd %cache_dir%/bce-python-sdk-0.8.33
-        python setup.py install 1>nul 2>nul
+        %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz')"
+        %PYTHON_ROOT%\python.exe -c "import shutil;shutil.unpack_archive('bce-python-sdk-0.8.33.tar.gz', extract_dir='./',format='gztar')"
+        cd %cache_dir%\bce-python-sdk-0.8.33
+        %PYTHON_ROOT%\python.exe setup.py install
     )
     if !errorlevel! EQU 0 (
-        echo Install bce successfully, pushing third_party to bce now
-        tar -zcf %THIRD_PARTY_HOME%/%md5%.tar.gz -C %THIRD_PARTY_HOME%/ %md5%
-        cd %cache_dir%
-        %PYTHON_ROOT%/python.exe %BCE_FILE% %sub_dir%/%md5%.tar.gz 1>nul 2>nul
-    ) 
-    if !errorlevel! EQU 0 (
-        echo Push new third party to bce successfully
+        echo Uploading third_party: compressing ...
+        tar -zcf %THIRD_PARTY_HOME%\%md5%.tar.gz -C %THIRD_PARTY_HOME%\ %md5%
+        if !errorlevel! EQU 0 (
+            echo Uploading third_party: uploading ...
+            cd %cache_dir%
+            %PYTHON_ROOT%\python.exe %BCE_FILE% %sub_dir%\%md5%.tar.gz
+            if !errorlevel! EQU 0 (
+                echo Upload third party to bce successfully 
+            ) else (
+                echo Failed upload third party to bce, reason: upload failed
+            )
+            del %sub_dir%\%md5%.tar.gz
+            cd %work_dir%\%BUILD_DIR%
+        ) else (
+            echo Failed upload third party to bce, reason: compress failed
+        )
     ) else (
-        echo Push new third party to bce failed
+        echo Failed upload third party to bce, reason: install bce failed
     )
-    del %sub_dir%/%md5%.tar.gz
 )
 
 echo Build Paddle successfully!
