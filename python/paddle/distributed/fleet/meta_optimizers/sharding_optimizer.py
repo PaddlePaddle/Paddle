@@ -298,7 +298,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         # TODO(wangxi): need support dp_as_opt_sharding with sharding
         if self.sharding_degree > 1: return
-        if sharding_configs.dp_as_opt_sharding is False: return
+        if sharding_configs['dp_as_opt_sharding'] is False: return
         if self.dp_degree == 1: return
 
         main_block = self._main_program.global_block()
@@ -388,9 +388,14 @@ class ShardingOptimizer(MetaOptimizerBase):
         # FIXME(wangxi): if fp16_allreduce, put cast fp16->fp32 to there?
 
     def _adapt_amp_clip_without_sharding(self):
-        if self.sharding_degree > 1: return
+        strategy = self.user_defined_strategy
+        sharding_configs = strategy.sharding_configs
+
         # if not use sharding, adapt amp/clip, for remain parallelism.
         # cast --> amp --> clip --> opt
+        if self.sharding_degree > 1: return
+        if sharding_configs['dp_as_opt_sharding'] and self.dp_degree > 1:
+            return
 
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()

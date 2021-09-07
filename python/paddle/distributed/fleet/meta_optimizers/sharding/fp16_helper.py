@@ -205,10 +205,6 @@ class FP16Utils(object):
             name=inf_var_name + "@cast_int32",
             shape=inf_var.shape,
             dtype=core.VarDesc.VarType.INT32)
-        inf_var_global = block.create_var(
-            name=inf_var_name + "@GLOBAL_WORLD",
-            shape=inf_var.shape,
-            dtype=inf_var.dtype)
         block._insert_op_without_sync(
             update_loss_scaling_op_idx,
             type='cast',
