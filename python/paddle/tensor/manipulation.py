@@ -1348,7 +1348,7 @@ def scatter_nd_add(x, index, updates, name=None):
             output = [[67, 19], [-16, -27]]
 
     Args:
-        x (Tensor): The x input. Its dtype should be float32, float64.
+        x (Tensor): The x input. Its dtype should be int32, int64, float32, float64.
         index (Tensor): The index input with ndim > 1 and index.shape[-1] <= x.ndim.
                           Its dtype should be int32 or int64 as it is used as indexes.
         updates (Tensor): The updated value of scatter_nd_add op, and it must have the same dtype
