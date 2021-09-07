@@ -212,7 +212,7 @@ def fft_r2c(x, n, axis, norm, forward, onesided):
 
     if in_dygraph_mode():
         attrs = ('s', s, 'axes', axes, 'normalization', norm, 'forward',
-                 forward, 'onesided', True)
+                 forward, 'onesided', onesided)
         out = getattr(_C_ops, op_type)(x, *attrs)
     else:
         inputs = {'X': [x], }
@@ -221,7 +221,7 @@ def fft_r2c(x, n, axis, norm, forward, onesided):
             'axes': axes,
             'normalization': norm,
             'forward': forward,
-            'onesided': True,
+            'onesided': onesided,
         }
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  op_type)
@@ -231,15 +231,6 @@ def fft_r2c(x, n, axis, norm, forward, onesided):
         outputs = {"Out": [out]}
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
-
-    if not onesided:
-        last_fft_axis = axes[-1]
-        conj_amount = (x.shape[last_fft_axis] - 1) // 2
-        conj_part = paddle.conj(
-            paddle.flip(
-                paddle.slice(out, [last_fft_axis], [1], [1 + conj_amount]),
-                last_fft_axis))
-        out = paddle.concat([out, conj_part], last_fft_axis)
     return out
 
 
@@ -370,7 +361,7 @@ def fftn_r2c(x, s, axes, norm, forward, onesided):
 
     if in_dygraph_mode():
         attrs = ('s', s, 'axes', axes, 'normalization', norm, 'forward',
-                 forward, 'onesided', True)
+                 forward, 'onesided', onesided)
         out = getattr(_C_ops, op_type)(x, *attrs)
     else:
         inputs = {'X': [x], }
@@ -379,7 +370,7 @@ def fftn_r2c(x, s, axes, norm, forward, onesided):
             'axes': axes,
             'normalization': norm,
             'forward': forward,
-            'onesided': True,
+            'onesided': onesided,
         }
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
                                  op_type)
@@ -390,14 +381,6 @@ def fftn_r2c(x, s, axes, norm, forward, onesided):
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
 
-    if not onesided:
-        last_fft_axis = axes[-1]
-        conj_amount = (x.shape[last_fft_axis] - 1) // 2
-        conj_part = paddle.conj(
-            paddle.flip(
-                paddle.slice(out, [last_fft_axis], [1], [1 + conj_amount]),
-                last_fft_axis))
-        out = paddle.concat([out, conj_part], last_fft_axis)
     return out
 
 

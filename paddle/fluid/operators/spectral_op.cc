@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/spectral_op.h"
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <algorithm>
@@ -25,6 +23,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/operators/spectral_op.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/complex.h"
 
@@ -359,8 +358,6 @@ T compute_factor(int64_t size, FFTNormMode normalization) {
   PADDLE_THROW("Unsupported normalization type");
 }
 
-void fill_with_conjugate_symetry_cpu(const Tensor& input,
-                                     const std::vector<int64_t>& axes) {}
 ////////////////// Functors
 #if defined(PADDLE_WITH_ONEMKL)
 
@@ -504,22 +501,17 @@ DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
 #else
 #define LI "%lli"
 #endif
-
 static void dump_descriptor(DFTI_DESCRIPTOR_HANDLE hand) {
   //Execution status
   MKL_LONG status = 0;
-
   char version[DFTI_VERSION_LENGTH];
-
   enum DFTI_CONFIG_VALUE placement, precision, domain, storage, packfmt, wspace,
       cmtstatus;
   MKL_LONG rank, lengths[MAX_RANK];
   double fwd_scale, bwd_scale;
   MKL_LONG nut, is[1 + MAX_RANK], os[1 + MAX_RANK], ntr, idist, odist, tlimit;
-
   DftiGetValue(0, DFTI_VERSION, version);
   printf("%s\n", version);
-
   printf("  PRECISION = ");
   fflush(0);
   status = DftiGetValue(hand, DFTI_PRECISION, &precision);
@@ -532,7 +524,6 @@ static void dump_descriptor(DFTI_DESCRIPTOR_HANDLE hand) {
     printf("unknown (%i)\n", precision);
     goto failed;
   }
-
   printf("  FORWARD_DOMAIN = ");
   fflush(0);
   status = DftiGetValue(hand, DFTI_FORWARD_DOMAIN, &domain);
@@ -545,25 +536,21 @@ static void dump_descriptor(DFTI_DESCRIPTOR_HANDLE hand) {
     printf("unknown (%i)\n", domain);
     goto failed;
   }
-
   printf("  DIMENSION = ");
   fflush(0);
   status = DftiGetValue(hand, DFTI_DIMENSION, &rank);
   if (status != DFTI_NO_ERROR) goto failed;
   printf(LI "\n", rank);
-
   printf("  LENGTHS = ");
   fflush(0);
   status = DftiGetValue(hand, DFTI_LENGTHS, lengths);
   if (status != DFTI_NO_ERROR) goto failed;
-
   {
     int r = 0;
     printf(LI, lengths[0]);
     for (r = 1; r < rank; ++r) printf(", " LI, lengths[r]);
     printf("\n");
   }
-
   printf("  PLACEMENT = ");
   fflush(0);
   status = DftiGetValue(hand, DFTI_PLACEMENT, &placement);
@@ -576,7 +563,6 @@ static void dump_descriptor(DFTI_DESCRIPTOR_HANDLE hand) {
     printf("unknown (%i)\n", placement);
     goto failed;
   }
-
   printf("  F/B SCALES = ");
   fflush(0);
   if (precision == DFTI_DOUBLE) {
@@ -594,43 +580,36 @@ static void dump_descriptor(DFTI_DESCRIPTOR_HANDLE hand) {
     bwd_scale = (double)bs;
   }
   printf(" %lg, %lg\n", fwd_scale, bwd_scale);
-
   printf("  NO OF USER THREADS = ");
   fflush(0);
   status = DftiGetValue(hand, DFTI_NUMBER_OF_USER_THREADS, &nut);
   if (status != DFTI_NO_ERROR) goto failed;
   printf(LI "\n", nut);
-
   printf("  INPUT  STRIDES = ");
   fflush(0);
   status = DftiGetValue(hand, DFTI_INPUT_STRIDES, is);
   if (status != DFTI_NO_ERROR) goto failed;
-
   {
     int r = 0;
     printf(LI, is[0]);
     for (r = 1; r <= rank; ++r) printf(", " LI, is[r]);
     printf("\n");
   }
-
   printf("  OUTPUT STRIDES = ");
   fflush(0);
   status = DftiGetValue(hand, DFTI_OUTPUT_STRIDES, os);
   if (status != DFTI_NO_ERROR) goto failed;
-
   {
     int r = 0;
     printf(LI, os[0]);
     for (r = 1; r <= rank; ++r) printf(", " LI, os[r]);
     printf("\n");
   }
-
   printf("  NO OF TRANSFORMS = ");
   fflush(0);
   status = DftiGetValue(hand, DFTI_NUMBER_OF_TRANSFORMS, &ntr);
   if (status != DFTI_NO_ERROR) goto failed;
   printf(LI "\n", ntr);
-
   printf("  I/O DISTANCES = ");
   fflush(0);
   status = DftiGetValue(hand, DFTI_INPUT_DISTANCE, &idist);
@@ -638,7 +617,6 @@ static void dump_descriptor(DFTI_DESCRIPTOR_HANDLE hand) {
   status = DftiGetValue(hand, DFTI_OUTPUT_DISTANCE, &odist);
   if (status != DFTI_NO_ERROR) goto failed;
   printf(LI ", " LI "\n", idist, odist);
-
   if (domain == DFTI_COMPLEX) {
     printf("  COMPLEX STORAGE = ");
     fflush(0);
@@ -682,7 +660,6 @@ static void dump_descriptor(DFTI_DESCRIPTOR_HANDLE hand) {
       }
     }
   }
-
   printf("  WORKSPACE = ");
   fflush(0);
   status = DftiGetValue(hand, DFTI_WORKSPACE, &wspace);
@@ -697,7 +674,6 @@ static void dump_descriptor(DFTI_DESCRIPTOR_HANDLE hand) {
     printf("wrong (%i)\n", wspace);
     goto failed;
   }
-
   printf("  COMMIT STATUS = ");
   fflush(0);
   status = DftiGetValue(hand, DFTI_COMMIT_STATUS, &cmtstatus);
@@ -710,16 +686,13 @@ static void dump_descriptor(DFTI_DESCRIPTOR_HANDLE hand) {
     printf("wrong (%i)\n", cmtstatus);
     goto failed;
   }
-
   printf("  THREAD LIMIT = ");
   fflush(0);
   status = DftiGetValue(hand, DFTI_THREAD_LIMIT, &tlimit);
   if (status != DFTI_NO_ERROR) goto failed;
   printf(LI "\n", tlimit);
   fflush(0);
-
   return;
-
 failed:
   printf("Error, status = " LI "\n", status);
   exit(1);
@@ -839,15 +812,11 @@ template <typename Ti, typename To>
 struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
   void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
                   Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward, bool onesided) {
+                  FFTNormMode normalization, bool forward) {
     VLOG(5) << "[FFT][R2C][CPU][MKL]:"
-            << "Exec FFTR2CFunctor(onsided=" << onesided
-            << ", forward=" << forward << ")";
+            << "Exec FFTR2CFunctor(forward=" << forward << ")";
     exec_fft<platform::CPUDeviceContext, Ti, To>(ctx, x, out, axes,
                                                  normalization, forward);
-    if (!onesided) {
-      fill_with_conjugate_symetry_cpu(*out, axes);
-    }
   }
 };
 
@@ -912,7 +881,7 @@ template <typename Ti, typename To>
 struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
   void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
                   Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward, bool onesided) {
+                  FFTNormMode normalization, bool forward) {
     using R = Ti;
     using C = std::complex<R>;
 

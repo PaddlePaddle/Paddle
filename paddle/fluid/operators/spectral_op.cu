@@ -748,11 +748,6 @@ void exec_normalization(const DeviceContext& ctx, const Tensor* in, Tensor* out,
     framework::TensorCopy(*in, ctx.GetPlace(), out);
   }
 }
-
-// TODO(chenxiaoxu): fill other half tensor with conjugate symmetry
-template <typename DeviceContext, typename T>
-void fill_with_conj_symmetry(Tensor* in, const std::vector<int64_t> axes) {}
-
 }  // anonymous namespace
 
 // Use the optimized path to perform single R2C or C2R if transformation dim is
@@ -850,7 +845,7 @@ template <typename Ti, typename To>
 struct FFTR2CFunctor<platform::CUDADeviceContext, Ti, To> {
   void operator()(const platform::CUDADeviceContext& ctx, const Tensor* X,
                   Tensor* out, const std::vector<int64_t>& axes,
-                  FFTNormMode normalization, bool forward, bool onesided) {
+                  FFTNormMode normalization, bool forward) {
     // Step1: R2C transform on the last dimension
     framework::Tensor* r2c_out = out;
     const std::vector<int64_t> last_dim{axes.back()};
