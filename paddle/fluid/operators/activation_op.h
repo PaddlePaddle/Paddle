@@ -156,92 +156,6 @@ inline void ExtractActivationGradTensor(
   }
 }
 
-inline void test_multithread_elementwise() {
-  Eigen::Tensor<float, 3> in1(200, 30, 70);
-  Eigen::Tensor<float, 3> in2(200, 30, 70);
-  Eigen::Tensor<double, 3> out(200, 30, 70);
-
-  in1.setRandom();
-  in2.setRandom();
-
-  Eigen::ThreadPool tp(4);
-  Eigen::ThreadPoolDevice thread_pool_device(&tp, 4);
-  out.device(thread_pool_device) = (in1 + in2 * 3.14f).cast<double>();
-}
-template <typename Device>
-inline void test_multithread_elementwise_1(Device d) {
-  Eigen::Tensor<float, 3> in1(200, 30, 70);
-  Eigen::Tensor<float, 3> in2(200, 30, 70);
-  Eigen::Tensor<double, 3> out(200, 30, 70);
-
-  in1.setRandom();
-  in2.setRandom();
-
-  // Eigen::ThreadPool tp(4);
-  // Eigen::ThreadPoolDevice thread_pool_device(&tp, 4);
-  out.device(d) = (in1 + in2 * 3.14f).cast<double>();
-}
-
-inline void test_elementwise() {
-  Eigen::Tensor<float, 3> in1(200, 30, 70);
-  Eigen::Tensor<float, 3> in2(200, 30, 70);
-  Eigen::Tensor<double, 3> out(200, 30, 70);
-  in1.setRandom();
-  in2.setRandom();
-  for (int i = 0; i < 200; ++i) {
-    for (int j = 0; j < 30; ++j) {
-      for (int k = 0; k < 70; ++k) {
-        out(i, j, k) = static_cast<double>(in1(i, j, k) + in2(i, j, k) * 3.14f);
-      }
-    }
-  }
-}
-
-// std::vector<Eigen::ThreadPoolDevice*>
-// set_eigen_cpu_device(Eigen::ThreadPoolDevice* d){
-//   std::unique_ptr<Eigen::ThreadPoolDevice> eigen_device_;
-//   eigen_device_.reset(new Eigen::ThreadPoolDevice(
-//         threadpool, eigen_worker_threads_.num_threads,
-//         eigen_allocator_.get()));
-//   // std::vector<Eigen::ThreadPoolDevice*> eigen_cpu_devices_;
-//   // for (int i = 1; i <= d->numThreads(); ++i) {
-//   //   eigen_cpu_devices_.push_back(new Eigen::ThreadPoolDevice
-//   my_device(d->getPool(), i
-//   //    /* number of threads to use*/));
-//   // }
-//   // return eigen_cpu_devices_;
-// }
-
-// const Eigen::ThreadPoolDevice* eigen_cpu_device() {
-//   for(){
-
-//   }
-//   set_eigen_cpu_device();
-//   // const int parallelism = std::max<int>(
-//   //     1,
-//   //     std::min<int>(10, eigen_cpu_devices_.size()));
-//   // return eigen_cpu_devices_[parallelism - 1];
-// }
-
-inline static Eigen::ThreadPoolDevice* get_pool_device() {
-  Eigen::ThreadPool pool(20 /* number of threads in pool */);
-  std::unique_ptr<Eigen::ThreadPoolDevice> eigen_device_;
-  eigen_device_.reset(new Eigen::ThreadPoolDevice(&pool, 20));
-  // Create the Eigen ThreadPoolDevice.
-  // std::unique_ptr<Eigen::ThreadPoolDevice> pool_device_;
-  // pool_device_.reset(new Eigen::ThreadPoolDevice(&pool, 20) );
-  // Eigen::ThreadPool pool(20 /* number of threads in pool */);
-  // Create the Eigen ThreadPoolDevice.
-  return eigen_device_.get();
-  // Eigen::ThreadPoolDevice my_device();
-}
-
-// inline static int64_t size_x;
-// inline int64_t setSize(int64_t size){
-//   int size_x = size;
-//   return size_x;
-// }
-
 template <typename DeviceContext, typename Functor>
 class ActivationKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
@@ -277,7 +191,7 @@ class ActivationKernel
                       .pool_device();
       functor(*dev, x, out);
     } else {
-      functor(*place, To32BitIndex(x), To32BitIndex(out));
+      functor(*place, x, out);
     }
   }
 };
@@ -1711,6 +1625,7 @@ class ActivationDoubleGradKernel
     auto& place = ctx.template device_context<DeviceContext>();
 
     Functor functor;
+
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {
       *attr.second = ctx.Attr<float>(attr.first);
