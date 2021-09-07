@@ -488,7 +488,7 @@ def insert_broadcast_param_ops(block,
             outputs={'Out': param},
             attrs={
                 'ring_id': ring_id,
-                'root_id': root_id,
+                'root': root_id,
                 'use_calc_stream': use_calc_stream,
                 OP_ROLE_KEY: op_role
             })
