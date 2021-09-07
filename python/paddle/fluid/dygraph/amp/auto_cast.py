@@ -19,8 +19,12 @@ import contextlib
 from paddle.fluid.framework import Variable, in_dygraph_mode, OpProtoHolder, Parameter, _dygraph_tracer, dygraph_only, set_flags, get_flags
 import warnings
 import copy
+import functools
+import paddle
+import operator
+import types
 
-__all__ = ['amp_guard', 'amp_decorator']
+__all__ = ['amp_guard', 'pure_fp16_decorator']
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # safe and performance-critical. These ops are always converted to fp16.
@@ -314,7 +318,7 @@ def amp_guard(enable=True,
 
 
 @dygraph_only
-def amp_decorator(mode='pure_fp16', models=None, optimizers=None):
+def pure_fp16_decorator(mode='pure_fp16', models=None, optimizers=None):
     if mode in ['fp32', 'amp']:
         return models, optimizers
 

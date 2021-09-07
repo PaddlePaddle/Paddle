@@ -72,4 +72,4 @@ def auto_cast(enable=True,
 
 
 def amp_decorator(mode='pure_fp16', models=None, optimizers=None):
-    return amp_decorator(mode, models, optimizers)
+    return pure_fp16_decorator(mode, models, optimizers)
