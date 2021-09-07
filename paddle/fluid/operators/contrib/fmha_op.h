@@ -50,6 +50,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+#if defined(PADDLE_WITH_CUDA)
 template <typename T, typename Generator>
 void run_fmha_fprop_fp16(size_t batch_size, size_t max_seqlen, size_t num_head,
                          size_t head_size, float dropout_rate, void *d_qkv,
@@ -63,6 +64,7 @@ void run_fmha_dgrad_fp16(size_t batch_size, size_t max_seqlen, size_t num_head,
                          void *d_cu_seqlens, void *d_seqlens, void *d_out,
                          void *d_softmax_mask, void *d_dqkv,
                          cudaStream_t stream);
+#endif
 
 constexpr size_t SLEN_DIMS = 0;
 constexpr size_t THREE_DIMS = 1;
