@@ -800,7 +800,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
             If tol is not specified, and sigma is the largest singular value (or eigenvalue in absolute value), and eps is the 
             epsilon value for the dtype of x, then tol is computed with formula tol=sigma * max(m,n) * eps. Note that if x is 
             a batch of matrices, tol is computed this way for every batch.
-        hermitian (bool,optional):  indicates whether x is Hermitian. Default: False.
+        hermitian (bool,optional): indicates whether x is Hermitian. Default: False.
             When hermitian=True, x is assumed to be Hermitian, but x is not checked inside the function. Instead, We just use the 
             lower triangular of the matrix to compute.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
