@@ -84,7 +84,7 @@ if "%WITH_PYTHON%" == "ON" (
     where python
     where pip
     pip install wheel --user
-    pip install  -r %work_dir%\python\requirements_first.txt -r %work_dir%\python\requirements.txt --user
+    pip install -r %work_dir%\python\requirements.txt --user
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
         exit /b 7
