@@ -25,7 +25,7 @@
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/type_defs.h"
 
-#include "paddle/top/api/include/dev/core.h"
+#include "paddle/tcmpt/api/include/dev/core.h"
 
 DECLARE_bool(use_mkldnn);
 
@@ -185,7 +185,7 @@ class PreparedOp {
   framework::OpKernelType kernel_type_;
   framework::OperatorWithKernel::OpKernelFunc func_;
   platform::DeviceContext* dev_ctx_;
-  // TODo(chenweihang): Similar duplicate members are used for new top lib,
+  // TODo(chenweihang): Similar duplicate members are used for new tcmpt lib,
   // maybe we have better impl methods
   bool run_pt_kernel_{false};
   pt::OpKernelKey pt_kernel_key_;

@@ -38,7 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
 
-#include "paddle/top/api/include/dev/core.h"
+#include "paddle/tcmpt/api/include/dev/core.h"
 
 namespace paddle {
 namespace framework {
@@ -533,7 +533,7 @@ class OperatorWithKernel : public OperatorBase {
     return kernel_type_->place_;
   }
 
-  /* member functions for adapting to top lib */
+  /* member functions for adapting to tcmpt lib */
   // TODO(chenweihang): Temporarily as a class method
   virtual pt::OpKernelKey ConstructPtOpKernelKey(
       const VariableValueMap& inputs, const platform::Place& ctx_place) const;
@@ -580,7 +580,7 @@ class OperatorWithKernel : public OperatorBase {
   Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                    const std::string& name) const;
 
-  /* member functions for adapting to top lib */
+  /* member functions for adapting to tcmpt lib */
   void ChoosePtKernel(const RuntimeContext& ctx,
                       const platform::DeviceContext& dev_ctx) const;
 
@@ -594,7 +594,7 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;
   mutable bool enable_cache_transfer_scope_ = false;
-  // TODO(chenweihang): Similar duplicate members are used for new top lib,
+  // TODO(chenweihang): Similar duplicate members are used for new tcmpt lib,
   // maybe we have better impl methods
   mutable bool run_pt_kernel_ = false;
   mutable std::unique_ptr<pt::OpKernelKey> pt_kernel_key_;

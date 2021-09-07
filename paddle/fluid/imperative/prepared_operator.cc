@@ -16,7 +16,7 @@
 
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
-#include "paddle/fluid/framework/top_utils.h"
+#include "paddle/fluid/framework/tcmpt_utils.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu/xpu_op_list.h"
