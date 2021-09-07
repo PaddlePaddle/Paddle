@@ -195,6 +195,17 @@ void TensorRTEngine::FreezeNetwork() {
   if (with_dynamic_shape_) {
 #if IS_TRT_VERSION_GE(6000)
     LOG(INFO) << "Run Paddle-TRT Dynamic Shape mode.";
+
+    auto Vec2Str = [](const std::vector<int> &vec) -> std::string {
+      std::ostringstream os;
+      os << "(";
+      for (size_t i = 0; i < vec.size() - 1; ++i) {
+        os << vec[i] << ",";
+      }
+      os << vec[vec.size() - 1] << ")";
+      return os.str();
+    };
+
     for (auto &input : min_input_shape_) {
       VLOG(4) << "TRT dynamic_shape set " << input.first
               << " min: " << Vec2Str(input.second)

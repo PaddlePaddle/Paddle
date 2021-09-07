@@ -150,6 +150,9 @@ class TensorRTEngineOp : public framework::OperatorBase {
   std::string model_opt_cache_dir_;
   bool use_static_engine_;
   AnalysisConfig::Precision precision_mode_;
+  std::map<std::string, std::vector<int>> min_input_shape_{};
+  std::map<std::string, std::vector<int>> max_input_shape_{};
+  std::map<std::string, std::vector<int>> opt_input_shape_{};
 
  public:
   TensorRTEngineOp(const std::string &type,
@@ -173,6 +176,42 @@ class TensorRTEngineOp : public framework::OperatorBase {
     use_static_engine_ = Attr<bool>("use_static_engine");
     if (use_static_engine_) {
       model_opt_cache_dir_ = Attr<std::string>("model_opt_cache_dir");
+    }
+
+    if (HasAttr("dynamic_shape_names") && HasAttr("min_input_shape") &&
+        HasAttr("max_input_shape") && HasAttr("opt_input_shape")) {
+      std::vector<std::string> dynamic_shape_names;
+      std::vector<std::vector<int>> min_input_shapes;
+      std::vector<std::vector<int>> max_input_shapes;
+      std::vector<std::vector<int>> opt_input_shapes;
+      std::vector<int> dynamic_shape_lens;
+      dynamic_shape_names =
+          Attr<std::vector<std::string>>("dynamic_shape_names");
+      std::vector<int> min_shapes = Attr<std::vector<int>>("min_input_shape");
+      std::vector<int> max_shapes = Attr<std::vector<int>>("max_input_shape");
+      std::vector<int> opt_shapes = Attr<std::vector<int>>("opt_input_shape");
+      dynamic_shape_lens = Attr<std::vector<int>>("dynamic_shape_lens");
+      int idx = 0;
+      for (size_t i = 0; i < dynamic_shape_lens.size(); ++i) {
+        std::vector<int> tmp1, tmp2, tmp3;
+        for (int j = 0; j < dynamic_shape_lens[i]; ++j) {
+          tmp1.push_back(min_shapes[idx]);
+          tmp2.push_back(max_shapes[idx]);
+          tmp3.push_back(opt_shapes[idx++]);
+        }
+        min_input_shapes.emplace_back(tmp1);
+        max_input_shapes.emplace_back(tmp2);
+        opt_input_shapes.emplace_back(tmp3);
+      }
+
+      for (size_t i = 0; i < dynamic_shape_names.size(); ++i) {
+        min_input_shape_.insert(
+            std::make_pair(dynamic_shape_names[i], min_input_shapes[i]));
+        max_input_shape_.insert(
+            std::make_pair(dynamic_shape_names[i], max_input_shapes[i]));
+        opt_input_shape_.insert(
+            std::make_pair(dynamic_shape_names[i], opt_input_shapes[i]));
+      }
     }
 
     auto params = Attr<std::vector<std::string>>("parameters");
@@ -267,8 +306,11 @@ class TensorRTEngineOp : public framework::OperatorBase {
           trt_engine->ResetContext();
           trt_engine->ClearTensorMap();
           auto *anc = scope.parent();
-          while (anc->parent()) {
+          while (anc && anc->parent()) {
             anc = anc->parent();
+          }
+          if (anc == nullptr) {
+            anc = &scope;
           }
           PrepareTRTEngine(*anc, trt_engine);
 
@@ -527,7 +569,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
           inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
               .Create(engine_key_ + std::to_string(predictor_id_),
                       max_batch_size_, workspace_size_, precision_mode_,
-                      calibrator_.get(), device_id_);
+                      calibrator_.get(), device_id_, min_input_shape_,
+                      max_input_shape_, opt_input_shape_);
       PrepareTRTEngine(scope, trt_engine_);
     }
     return trt_engine_;
