@@ -143,6 +143,7 @@ class NCEKernel : public framework::OpKernel<T> {
     auto label = context.Input<Tensor>("Label");
     Tensor *sample_labels;
     Tensor *sample_out;
+    Tensor sample_labels_tmp, sample_out_tmp;
     if (is_test) {
       // set dims of output(SampleOut)
       int num_true_classes = label->dims().size() == 2 ? label->dims()[1] : 1;
@@ -150,11 +151,9 @@ class NCEKernel : public framework::OpKernel<T> {
       sample_out_dims.push_back(
           (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
 
-      Tensor sample_labels_tmp;
       sample_labels = &sample_labels_tmp;
       sample_labels->Resize(framework::make_ddim(sample_out_dims));
 
-      Tensor sample_out_tmp;
       sample_out = &sample_out_tmp;
       sample_out->Resize(framework::make_ddim(sample_out_dims));
     } else {
