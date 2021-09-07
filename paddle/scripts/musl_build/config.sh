@@ -25,6 +25,7 @@ BUILD_DOCKERFILE="$CUR_DIR/Dockerfile"
 PACKAGE_REQ="$CUR_DIR/package.txt"
 
 PYTHON_REQ="python/requirements.txt"
+PYTHON_REQ_FIRST="python/requirements_first.txt"
 UNITTEST_REQ="python/unittest_py/requirements.txt"
 
 function chksum(){
