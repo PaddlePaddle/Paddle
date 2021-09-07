@@ -207,8 +207,7 @@ void BatchNormOpMaker::Make() {
   AddAttr<bool>("is_test",
                 "(bool, default false) Set to true for inference only, false "
                 "for training. Some layers may run faster when this is true.")
-      .SetDefault(false)
-      .AsExtra();
+      .SetDefault(false);
   AddAttr<float>("momentum", "").SetDefault(0.9).AsExtra();
   AddAttr<float>("epsilon", "")
       .SetDefault(1e-5)
@@ -244,22 +243,18 @@ void BatchNormOpMaker::Make() {
   AddOutput("Y", "result after normalization");
   AddOutput("MeanOut",
             "Share memory with Mean. "
-            "Store the global mean when training")
-      .AsExtra();
+            "Store the global mean when training");
   AddOutput("VarianceOut",
             "Share memory with Variance. "
-            "Store the global Variance when training")
-      .AsExtra();
+            "Store the global Variance when training");
   AddOutput("SavedMean",
             "Mean of the current mini batch, "
             "will apply to output when training")
-      .AsIntermediate()
-      .AsExtra();
+      .AsIntermediate();
   AddOutput("SavedVariance",
             "Variance of the current mini batch, "
             "will apply to output when training")
-      .AsIntermediate()
-      .AsExtra();
+      .AsIntermediate();
   AddOutput("ReserveSpace",
             "Reserve GPU space for triggering the new semi-persistent "
             "NHWC kernel")
