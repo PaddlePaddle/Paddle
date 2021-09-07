@@ -32,6 +32,9 @@ class TestPipeline(TestDistBase):
         self._pipeline_mode = True
         self._nccl_comm_num = 1
 
+    def need_envs(self):
+        return {}
+
     def test_dist_train(self):
         if fluid.core.is_compiled_with_cuda():
             # TODO (sandyhouse) fix the delta value.
@@ -42,14 +45,8 @@ class TestPipeline(TestDistBase):
                 "pipeline_mnist.py",
                 delta=1e0,
                 check_error_log=True,
-                log_name=flag_name)
-
-            self.check_with_place(
-                "pipeline_mnist.py",
-                delta=1e0,
-                check_error_log=True,
                 log_name=flag_name,
-                need_envs={'FLAGS_apply_pass_to_program': '1'})
+                need_envs=self.need_envs())
 
     def test_dist_train_multi_device(self):
         if fluid.core.is_compiled_with_cuda():
@@ -57,27 +54,16 @@ class TestPipeline(TestDistBase):
                 "pipeline_mnist_multi_device.py",
                 check_error_log=True,
                 delta=1e0,
-                log_name=flag_name)
-
-            self.check_with_place(
-                "pipeline_mnist_multi_device.py",
-                check_error_log=True,
-                delta=1e0,
                 log_name=flag_name,
-                need_envs={'FLAGS_apply_pass_to_program': '1'})
+                need_envs=self.need_envs())
 
     def test_dist_train_one_device(self):
         if fluid.core.is_compiled_with_cuda():
             self.check_with_place(
                 "pipeline_mnist_one_device.py",
                 check_error_log=True,
-                log_name=flag_name)
-
-            self.check_with_place(
-                "pipeline_mnist_one_device.py",
-                check_error_log=True,
                 log_name=flag_name,
-                need_envs={'FLAGS_apply_pass_to_program': '1'})
+                need_envs=self.need_envs())
 
 
 if __name__ == '__main__':
