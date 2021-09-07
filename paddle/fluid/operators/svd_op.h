@@ -54,7 +54,6 @@ class SvdCPUKernel : public framework::OpKernel<T> {
         size_t(batches * col_v * cols * sizeof(math::Real<T>)));
     auto* S_out = S->mutable_data<math::Real<T>>(
         context.GetPlace(), size_t(batches * k * sizeof(math::Real<T>)));
-
     /*SVD Use the Eigen Library*/
     math::BatchSvd<T>(x_data, U_out, VH_out, S_out, rows, cols, batches, full);
   }
