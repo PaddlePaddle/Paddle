@@ -20,14 +20,14 @@
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/functors.h"
+#include "paddle/fluid/operators/diag_op.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/functors.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "paddle/fluid/operators/diag_op.h"
 
 namespace paddle {
 namespace operators {
@@ -127,17 +127,18 @@ static std::vector<int> GetBroadcastShape(InTensors ins) {
   return broadcast_shape;
 }
 
-#define DITO_TRANSPOSE_RANK_CASE(N) \
-case N: { \
-    math::Transpose<DeviceContext, T, N>trans; \
-    trans( dev_ctx, x, &ret, axis ) ; \
-    break; \
-}
-#define DITO_SLICE_RANK_CASE(N) \
-case N: { \
-    EigenSliceWrapper<N>(&x, offset, extends, &ret) ;  \
-    break; \
-}
+#define DITO_TRANSPOSE_RANK_CASE(N)             \
+  case N: {                                     \
+    math::Transpose<DeviceContext, T, N> trans; \
+    trans(dev_ctx, x, &ret, axis);              \
+    break;                                      \
+  }
+
+#define DITO_SLICE_RANK_CASE(N)                      \
+  case N: {                                          \
+    EigenSliceWrapper<N>(&x, offset, extends, &ret); \
+    break;                                           \
+  }
 
 template <typename DeviceContext, typename T>
 struct DeviceIndependenceTensorOperations {
@@ -164,11 +165,10 @@ struct DeviceIndependenceTensorOperations {
     for_range(functor);
     return out;
   }
-
-  framework::Tensor Matmul(const framework::Tensor& mat_a, 
+  framework::Tensor Matmul(const framework::Tensor& mat_a,
                            const framework::Tensor& mat_b, bool trans_a = false,
-                           bool trans_b = false){
-    framework::Tensor ret ; 
+                           bool trans_b = false) {
+    framework::Tensor ret;
     auto a_dim = mat_a.dims();
     auto b_dim = mat_b.dims();
     std::vector<int> x_vec = framework::vectorize<int>(a_dim);
@@ -176,11 +176,12 @@ struct DeviceIndependenceTensorOperations {
     x_vec[x_vec.size() - 1] = b_dim[b_dim.size() - (trans_b ? 2 : 1)];
     ret.Resize(framework::make_ddim(x_vec));
     ret.mutable_data<T>(context.GetPlace());
-    auto blas = GetBlas() ;
+    auto blas = GetBlas();
     auto mat_a_discrib = math::CreateMatrixDescriptor(a_dim, 0, trans_a);
     auto mat_b_discrib = math::CreateMatrixDescriptor(b_dim, 0, trans_b);
-    blas.MatMul(mat_a, mat_a_discrib, mat_b, mat_b_discrib, T(1.0), &ret, T(0.0)) ;
-    return ret; 
+    blas.MatMul(mat_a, mat_a_discrib, mat_b, mat_b_discrib, T(1.0), &ret,
+                T(0.0));
+    return ret;
   }
 
   framework::Tensor Transpose(const framework::Tensor& x) {
@@ -197,39 +198,41 @@ struct DeviceIndependenceTensorOperations {
     }
     std::swap(axis[rank - 1], axis[rank - 2]);
     auto& dev_ctx = context.template device_context<DeviceContext>();
-    ret.Resize(framework::make_ddim( x_vec ));
+    ret.Resize(framework::make_ddim(x_vec));
     ret.mutable_data<T>(context.GetPlace());
-    switch(rank){
-        DITO_TRANSPOSE_RANK_CASE(2) ; 
-        DITO_TRANSPOSE_RANK_CASE(3) ; 
-        DITO_TRANSPOSE_RANK_CASE(4) ; 
-        DITO_TRANSPOSE_RANK_CASE(5) ; 
-        DITO_TRANSPOSE_RANK_CASE(6) ; 
-        default: {
-            PADDLE_THROW(platform::errors::InvalidArgument(
-                "Invalid Rank number, currently only support rank between 2~6"
-            ));
-        }
+    switch (rank) {
+      DITO_TRANSPOSE_RANK_CASE(2);
+      DITO_TRANSPOSE_RANK_CASE(3);
+      DITO_TRANSPOSE_RANK_CASE(4);
+      DITO_TRANSPOSE_RANK_CASE(5);
+      DITO_TRANSPOSE_RANK_CASE(6);
+      default: {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Invalid Rank number, "
+            "currently only support rank between 2~6"));
+      }
     }
     return ret;
   }
-
   framework::Tensor Diag(const framework::Tensor& x, int offset = 0,
-    // FIXME  link error
+                         // FIXME  link error
                          int padding_value = 0) {
     PADDLE_ENFORCE_EQ(padding_value, 0,
-                    platform::errors::InvalidArgument(
-                        "Current diag only support padding_value = 0"));
+                      platform::errors::InvalidArgument(
+                          "Current diag only support padding_value = 0"));
     PADDLE_ENFORCE_EQ(offset, 0,
-                    platform::errors::InvalidArgument(
-                        "Current diag only support offset = 0, you can use DiagOp instead(not recommend)"));
+                      platform::errors::InvalidArgument(
+                          "Current diag only support offset = 0,"
+                          "you can use DiagOp instead(not recommend)"));
 
-    framework::Tensor ret ;
+    framework::Tensor ret;
     int x_rank = x.dims().size();
     std::vector<int> out_shape;
     if (x_rank == 2) {
-      PADDLE_THROW( platform::errors::InvalidArgument(
-                    "Current diag only support vector -> diagonalized matrix, not support matrix -> vector, Use DiagOp instead."));
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Current diag only support vector"
+          "-> diagonalized matrix, not support matrix -> vector,"
+          " Use DiagOp instead."));
     } else if (x_rank == 1) {
       out_shape.push_back(x.dims()[0]);
       out_shape.push_back(x.dims()[0]);
@@ -237,69 +240,56 @@ struct DeviceIndependenceTensorOperations {
       PADDLE_THROW(
           platform::errors::InvalidArgument("Rank must less or equal than 2"));
     }
-    ret = Zeros({out_shape[0], out_shape[0]}, framework::proto::VarType::FP32, 0.0); 
-    T * output = ret.mutable_data<T>(context.GetPlace());
+    ret = Fill({out_shape[0], out_shape[0]}, 0.0);
+    T* output = ret.mutable_data<T>(context.GetPlace());
     auto for_range = GetForRange(x.numel());
-    for_range( DiagFunctor<T>(x.data<T>(), x.numel(), output)) ; 
-    return ret ; 
+    for_range(DiagFunctor<T>(x.data<T>(), x.numel(), output));
+    return ret;
   }
-
   framework::Tensor Div(const framework::Tensor& x,
                         const framework::Tensor& y) {
-    framework::Tensor ret ; 
+    framework::Tensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(framework::make_ddim(out_shape));
     ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-        context, &x, &y, -1, DivFunctor<T>(), &ret
-    );
-    return ret ; 
+        context, &x, &y, -1, DivFunctor<T>(), &ret);
+    return ret;
   }
-
-  void print(const framework::Tensor & x, std::string name){
-    // Support tensor print in arbitrary devices.
-    framework::Tensor out ;
-    TensorCopy(x, platform::CPUPlace(), &out);
-    VLOG(4) << "NAME: " << name << out ;
-  }
-    
   framework::Tensor Add(const framework::Tensor& x,
                         const framework::Tensor& y) {
     // element wise add, support numpy broadcast.
-    framework::Tensor ret ; 
+    framework::Tensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(framework::make_ddim(out_shape));
     ElementwiseComputeEx<AddFunctor<T>, DeviceContext, T>(
-        context, &x, &y, -1, AddFunctor<T>(), &ret
-    );
-    return ret ; 
+        context, &x, &y, -1, AddFunctor<T>(), &ret);
+    return ret;
   }
-
   framework::Tensor Mul(const framework::Tensor& x,
                         const framework::Tensor& y) {
-    framework::Tensor ret ; 
+    framework::Tensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(framework::make_ddim(out_shape));
     ElementwiseComputeEx<MulFunctor<T>, DeviceContext, T>(
-        context, &x, &y, -1, MulFunctor<T>(), &ret
-    );
-    return ret ; 
+        context, &x, &y, -1, MulFunctor<T>(), &ret);
+    return ret;
   }
-
   framework::Tensor Sub(const framework::Tensor& x,
                         const framework::Tensor& y) {
-    framework::Tensor ret ; 
+    framework::Tensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(framework::make_ddim(out_shape));
     if (x.dims().size() >= y.dims().size()) {
-      ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(context, &x, &y, -1,
-                                                            SubFunctor<T>(), &ret);
+      ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
+          context, &x, &y, -1, SubFunctor<T>(), &ret);
     } else {
-      ElementwiseComputeEx<InverseSubFunctor<T>, DeviceContext, T>(  // This is copyed from elementwise_sub, which means we need reverse will xrank < yrank
+      ElementwiseComputeEx<InverseSubFunctor<T>, DeviceContext, T>(
+          // This is copyed from elementwise_sub, which means we
+          // need reverse will xrank < yrank
           context, &x, &y, -1, InverseSubFunctor<T>(), &ret);
     }
-    return ret ; 
+    return ret;
   }
-
   const framework::Tensor Unsqueeze(const framework::Tensor& x, int axis = 0) {
     // don't copy data, only change the dims
     framework::Tensor out;
@@ -315,33 +305,26 @@ struct DeviceIndependenceTensorOperations {
     out.Resize(framework::make_ddim(out_shape));
     return out;
   }
-
-  framework::Tensor Zeros(std::vector<int> shape,
-                          framework::proto::VarType::Type dtype,
-                          float fill_value) {
-    framework::Tensor ret ;
+  framework::Tensor Fill(std::vector<int> shape, float fill_value) {
+    framework::Tensor ret;
     ret.Resize(framework::make_ddim(shape));
     ret.mutable_data<T>(context.GetPlace());
     auto& dev_ctx = context.template device_context<DeviceContext>();
     SetConstant<DeviceContext, T>()(dev_ctx, &ret, T(fill_value));
-    return ret ; 
+    return ret;
   }
-
-  framework::Tensor Infinits(std::vector<int> shape,
-                             framework::proto::VarType::Type dtype) {
+  framework::Tensor Infinits(std::vector<int> shape) {
     auto value = static_cast<T>(std::numeric_limits<double>::infinity());
-    return Zeros(shape, dtype, value);
+    return Fill(shape, value);
   }
-
-  framework::Tensor Eye(int n, framework::proto::VarType::Type dtype) {
-    auto output = Zeros({n}, dtype, 1);
+  framework::Tensor Eye(int n) {
+    auto output = Fill({n}, 1);
     auto ret = Diag(output);
     return ret;
   }
-
   framework::Tensor Slice(const framework::Tensor& x, std::vector<int> axes,
                           std::vector<int> starts, std::vector<int> ends) {
-    framework::Tensor ret ; 
+    framework::Tensor ret;
     std::vector<int> new_axes = axes;
     std::vector<int> out_shape = framework::vectorize<int>(x.dims());
     size_t rank = out_shape.size();
@@ -362,31 +345,31 @@ struct DeviceIndependenceTensorOperations {
                             "C++ Slice Operation Not Support End < Start"));
       out_shape[axis] = ed - st;
     }
-    std::vector<int>offset(rank), extends(rank);
-    for (size_t i=0; i<rank;++i){
-        offset[i] = 0 ; 
-        extends[i] = x.dims()[i] ; 
+    std::vector<int> offset(rank), extends(rank);
+    for (size_t i = 0; i < rank; ++i) {
+      offset[i] = 0;
+      extends[i] = x.dims()[i];
     }
-    for (size_t i=0; i<new_axes.size(); ++i){
-        offset[new_axes[i]] = starts[i];
-        extends[new_axes[i]] = ends[i] - starts[i]; 
+    for (size_t i = 0; i < new_axes.size(); ++i) {
+      offset[new_axes[i]] = starts[i];
+      extends[new_axes[i]] = ends[i] - starts[i];
     }
     ret.Resize(framework::make_ddim(out_shape));
-    ret.mutable_data<T>(context.GetPlace()); 
+    ret.mutable_data<T>(context.GetPlace());
     switch (rank) {
-        DITO_SLICE_RANK_CASE(1);
-        DITO_SLICE_RANK_CASE(2);
-        DITO_SLICE_RANK_CASE(3);
-        DITO_SLICE_RANK_CASE(4);
-        DITO_SLICE_RANK_CASE(5);
-        DITO_SLICE_RANK_CASE(6);
-        default: {
-            PADDLE_THROW(platform::errors::InvalidArgument(
-                "Invalid Rank number, currently only support rank between 2~6"
-            ));
-        }
+      DITO_SLICE_RANK_CASE(1);
+      DITO_SLICE_RANK_CASE(2);
+      DITO_SLICE_RANK_CASE(3);
+      DITO_SLICE_RANK_CASE(4);
+      DITO_SLICE_RANK_CASE(5);
+      DITO_SLICE_RANK_CASE(6);
+      default: {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Invalid Rank number, "
+            "currently only support rank between 2~6"));
+      }
     }
-    return ret ; 
+    return ret;
   }
 
  private:
@@ -399,20 +382,24 @@ struct DeviceIndependenceTensorOperations {
     return platform::ForRange<DeviceContext>(dev_ctx, numel);
   }
   template <size_t D>
-  void EigenSliceWrapper(const framework::Tensor * in, 
-                         const std::vector<int>&start,
-                         const std::vector<int>&end, 
-                         framework::Tensor * out){
-    //Slice by call Eigen Tensor Function `.slice()`
-    size_t rank = in->dims().size() ; 
-    PADDLE_ENFORCE_EQ(start.size(), rank, 
-        platform::errors::InvalidArgument("EigenSliceWrapper function' start argument must have the same length as input rank."));
-    PADDLE_ENFORCE_EQ(end.size(), rank, 
-        platform::errors::InvalidArgument("EigenSliceWrapper function' start argument must have the same length as input rank."));
-    auto eigen_place_ptr = context.template device_context<DeviceContext>().eigen_device();
-    auto eigen_place = * eigen_place_ptr;
+  void EigenSliceWrapper(const framework::Tensor* in,
+                         const std::vector<int>& start,
+                         const std::vector<int>& end, framework::Tensor* out) {
+    // Slice by call Eigen Tensor Function `.slice()`
+    size_t rank = in->dims().size();
+    PADDLE_ENFORCE_EQ(start.size(), rank,
+                      platform::errors::InvalidArgument(
+                          "EigenSliceWrapper function start "
+                          "argument must have the same length as input rank."));
+    PADDLE_ENFORCE_EQ(end.size(), rank,
+                      platform::errors::InvalidArgument(
+                          "EigenSliceWrapper function end "
+                          "argument must have the same length as input rank."));
+    auto eigen_place_ptr =
+        context.template device_context<DeviceContext>().eigen_device();
+    auto eigen_place = *eigen_place_ptr;
     auto out_t = framework::EigenTensor<T, D>::From(*out, out->dims());
-    auto in_t =  framework::EigenTensor<T, D>::From(*in, in->dims());
+    auto in_t = framework::EigenTensor<T, D>::From(*in, in->dims());
     Eigen::DSizes<int, D> offsets_32bit, extents_32bit;
     for (size_t i = 0; i < D; i++) {
       offsets_32bit[i] = start[i];
@@ -422,15 +409,12 @@ struct DeviceIndependenceTensorOperations {
         eigen_place, framework::To32BitIndex(out_t),
         framework::To32BitIndex(in_t), offsets_32bit, extents_32bit);
   }
-
-
   framework::Tensor CreateOpRunAndReturnTensor(
       const std::string& type, const NameInTensorMap& inputs,
       const framework::AttributeMap& attrs, std::vector<int> out_shape,
       NameOutTensor out_str = {"Out"}) {
     // varialble set dims must be LoDTensor / SelectedRowTensor
     framework::Scope& local_scope = context.scope().NewScope();
-
     framework::VariableNameMap op_outputs;
     for (auto out_name : out_str) {
       local_scope.Var("tmp_" + out_name)->GetMutable<framework::LoDTensor>();
