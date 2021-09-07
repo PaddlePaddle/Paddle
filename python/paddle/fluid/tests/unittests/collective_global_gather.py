@@ -15,19 +15,13 @@
 from __future__ import print_function
 
 import numpy as np
-import argparse
 import os
 import sys
-import time
 import paddle
 import paddle.fluid as fluid
-import paddle.fluid.profiler as profiler
-import paddle.fluid.unique_name as nameGen
-from paddle.fluid import core
 import unittest
 import paddle.fluid.layers as layers
 from test_collective_api_base import TestCollectiveAPIRunnerBase, runtime_main
-import os
 import pickle
 
 paddle.enable_static()
@@ -39,7 +33,6 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
 
     def get_model(self, main_prog, startup_program, rank, indata=None):
         with fluid.program_guard(main_prog, startup_program):
-            import os
             seed = os.getpid()
             np.random.seed(seed)
             in_feat = 2
@@ -83,7 +76,7 @@ class TestCollectiveGlobalGatherAPI(TestCollectiveAPIRunnerBase):
         paddle.disable_static()
         np.random.seed(os.getpid())
         local_expert_count = np.random.randint(
-            0, 4, size=tot_expert).astype("int64")
+            1, 4, size=tot_expert).astype("int64")
         local_expert_count = paddle.to_tensor(local_expert_count)
         global_expert_count = []
         paddle.distributed.alltoall(

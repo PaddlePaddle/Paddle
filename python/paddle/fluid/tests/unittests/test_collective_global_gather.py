@@ -80,7 +80,7 @@ class TestCollectiveGlobalGatherAPI(TestDistBase):
 
             np.random.seed(pid0)
             local_expert_count1 = np.random.randint(
-                0, 4, size=tot_expert).astype("int")
+                1, 4, size=tot_expert).astype("int")
             expert_ptr1 = np.ones(tot_expert, dtype=np.int32)
             expert_ptr1[0] = 0
             for i in range(1, tot_expert):
@@ -88,7 +88,7 @@ class TestCollectiveGlobalGatherAPI(TestDistBase):
 
             np.random.seed(pid1)
             local_expert_count2 = np.random.randint(
-                0, 4, size=tot_expert).astype("int")
+                1, 4, size=tot_expert).astype("int")
             expert_ptr2 = np.ones(tot_expert, dtype=np.int32)
             expert_ptr2[0] = 0
             for i in range(1, tot_expert):
@@ -137,14 +137,32 @@ class TestCollectiveGlobalGatherAPI(TestDistBase):
             result2 = []
             for i in range(tot_expert):
                 for arr in output1[i]:
+                    if arr == []:
+                        continue
                     result1.append(arr)
             for i in range(tot_expert):
                 for arr in output2[i]:
+                    if arr == []:
+                        continue
                     result2.append(arr)
-            output1 = np.concatenate(
-                result1, axis=0).reshape(sum(local_expert_count1), in_feat)
-            output2 = np.concatenate(
-                result2, axis=0).reshape(sum(local_expert_count2), in_feat)
+            if result1 == []:
+                output1 = np.array([])
+            else:
+                output1 = np.concatenate(
+                    result1, axis=0).reshape(
+                        sum(local_expert_count1), in_feat)
+            if result2 == []:
+                output2 = np.array([])
+            else:
+                output2 = np.concatenate(
+                    result2, axis=0).reshape(
+                        sum(local_expert_count2), in_feat)
+
+            if tr0_out[0] is None or tr0_out[0].shape[0] == 0:
+                tr0_out[0] = np.array([])
+
+            if tr1_out[0] is None or tr1_out[0].shape[0] == 0:
+                tr1_out[0] = np.array([])
 
             self.assertTrue(
                 np.allclose(
@@ -152,7 +170,19 @@ class TestCollectiveGlobalGatherAPI(TestDistBase):
             self.assertTrue(
                 np.allclose(
                     tr1_out[0], output2, rtol=1e-05, atol=1e-05))
-
+            if static_mode == 0:
+                self.assertTrue(
+                    np.allclose(
+                        tr0_out[1],
+                        2 * local_input_buf1,
+                        rtol=1e-05,
+                        atol=1e-05))
+                self.assertTrue(
+                    np.allclose(
+                        tr1_out[1],
+                        2 * local_input_buf2,
+                        rtol=1e-05,
+                        atol=1e-05))
         else:
             pass
 
