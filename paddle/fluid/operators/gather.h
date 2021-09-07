@@ -75,8 +75,8 @@ void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
     PADDLE_ENFORCE_LT(p_index[i], src_dims[0],
                       platform::errors::OutOfRange(
                           "The element of Index must be less than dim[0] of "
-                          "input, which is %d, when Axis is None or 0, but "
-                          "received element which is %d in the %d index.",
+                          "input which is %d when Axis is None or 0, but "
+                          "received element is %d in the %d index.",
                           src_dims[0], p_index[i], i));
     PADDLE_ENFORCE_GE(p_index[i], 0,
                       platform::errors::OutOfRange(
