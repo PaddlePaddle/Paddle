@@ -6,4 +6,4 @@ Pillow
 six
 decorator
 astor
-git+https://github.com/jakpiase/bfloat.git@develop
+git+https://github.com/jakpiase/bfloat.git@develop2
