@@ -197,7 +197,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///       file will be used and autotune will not be performed again.
   /// \param precision Calculation accuracy of multi_encoder
   /// \param adaptive_seqlen Is the input of multi_encoder variable length
-  /// \param device_id device_id the XPU card to use (default is 0).
+  /// \param device_id the XPU card to use (default is 0).
   ///
   void EnableXpu(int l3_workspace_size = 0xfffc00, bool locked = false,
                  bool autotune = true, const std::string& autotune_file = "",
@@ -355,6 +355,12 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   bool tensorrt_engine_enabled() const { return use_tensorrt_; }
   ///
+  /// \brief  Get the TensorRT engine precision.
+  ///
+  /// \return Precision Get the TensorRT engine precision.
+  ///
+  Precision tensorrt_precision_mode() const { return tensorrt_precision_mode_; }
+  ///
   /// \brief Set min, max, opt shape for TensorRT Dynamic shape mode.
   /// \param min_input_shape The min input shape of the subgraph input.
   /// \param max_input_shape The max input shape of the subgraph input.
@@ -367,7 +373,14 @@ struct PD_INFER_DECL AnalysisConfig {
       std::map<std::string, std::vector<int>> max_input_shape,
       std::map<std::string, std::vector<int>> optim_input_shape,
       bool disable_trt_plugin_fp16 = false);
-
+  ///
+  /// \brief A boolean state telling whether the trt dynamic_shape is used.
+  ///
+  /// \return bool Whether the trt dynamic_shape is used.
+  ///
+  bool tensorrt_dynamic_shape_enabled() const {
+    return !min_input_shape_.empty();
+  }
   ///
   /// \brief Prevent ops running in Paddle-TRT
   /// NOTE: just experimental, not an official stable API, easy to be broken.

@@ -13,10 +13,8 @@
 // limitations under the License.
 
 #include "paddle/fluid/pybind/inference_api.h"
-
 #include <pybind11/numpy.h>
 #include <pybind11/stl.h>
-
 #include <cstring>
 #include <functional>
 #include <iostream>
@@ -28,7 +26,6 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_infer_contrib.h"
@@ -291,7 +288,7 @@ py::bytes SerializePDTensorToBytes(PaddleTensor &tensor) {  // NOLINT
   return static_cast<py::bytes>(ss.str());
 }
 
-void CopyPaddleInferTensor(paddle_infer::Tensor &dst,
+void CopyPaddleInferTensor(paddle_infer::Tensor &dst,  // NOLINT
                            const paddle_infer::Tensor &src) {
   return paddle_infer::contrib::TensorUtils::CopyTensor(&dst, src);
 }
@@ -320,13 +317,13 @@ void BindInferenceApi(py::module *m) {
          &paddle::CreatePaddlePredictor<AnalysisConfig>, py::arg("config"));
   m->def("create_paddle_predictor",
          &paddle::CreatePaddlePredictor<NativeConfig>, py::arg("config"));
-  m->def("create_predictor",
-         [](const paddle_infer::Config &config)
-             -> std::unique_ptr<paddle_infer::Predictor> {
-           auto pred = std::unique_ptr<paddle_infer::Predictor>(
-               new paddle_infer::Predictor(config));
-           return std::move(pred);
-         });
+  m->def("create_predictor", [](const paddle_infer::Config &config)
+                                 -> std::unique_ptr<paddle_infer::Predictor> {
+                                   auto pred =
+                                       std::unique_ptr<paddle_infer::Predictor>(
+                                           new paddle_infer::Predictor(config));
+                                   return std::move(pred);
+                                 });
   m->def("copy_tensor", &CopyPaddleInferTensor);
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
   m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
@@ -558,6 +555,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("min_subgraph_size") = 3,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
            py::arg("use_static") = false, py::arg("use_calib_mode") = true)
+      .def("tensorrt_precision_mode", &AnalysisConfig::tensorrt_precision_mode)
       .def("set_trt_dynamic_shape_info",
            &AnalysisConfig::SetTRTDynamicShapeInfo,
            py::arg("min_input_shape") =
@@ -567,6 +565,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("optim_input_shape") =
                std::map<std::string, std::vector<int>>({}),
            py::arg("disable_trt_plugin_fp16") = false)
+      .def("tensorrt_dynamic_shape_enabled",
+           &AnalysisConfig::tensorrt_dynamic_shape_enabled)
       .def("enable_tensorrt_oss", &AnalysisConfig::EnableTensorRtOSS)
       .def("tensorrt_oss_enabled", &AnalysisConfig::tensorrt_oss_enabled)
       .def("exp_disable_tensorrt_ops", &AnalysisConfig::Exp_DisableTensorRtOPs)
@@ -607,12 +607,11 @@ void BindAnalysisConfig(py::module *m) {
            [](AnalysisConfig &self, const std::string &pass) {
              self.pass_builder()->DeletePass(pass);
            })
-      .def(
-          "pass_builder",
-          [](AnalysisConfig &self) {
-            return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
-          },
-          py::return_value_policy::reference);
+      .def("pass_builder",
+           [](AnalysisConfig &self) {
+             return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
+           },
+           py::return_value_policy::reference);
 }
 
 #ifdef PADDLE_WITH_MKLDNN

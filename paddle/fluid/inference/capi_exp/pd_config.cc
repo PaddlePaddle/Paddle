@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/capi_exp/pd_config.h"
-
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/capi_exp/pd_types.h"
 #include "paddle/fluid/inference/capi_exp/utils_internal.h"
