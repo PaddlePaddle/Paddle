@@ -74,7 +74,7 @@ class TestCollectiveSelectScatterAPI(TestDistBase):
 
         if col_type == "global_scatter":
             np.random.seed(pid0)
-            local_expert_count1 = np.random.randint(0, 4, size=4).astype("int")
+            local_expert_count1 = np.random.randint(1, 4, size=4).astype("int")
             fwd_expert_count = sum(local_expert_count1)
             local_input_buf1 = np.random.rand(fwd_expert_count,
                                               2).astype("float32")
@@ -83,7 +83,7 @@ class TestCollectiveSelectScatterAPI(TestDistBase):
             for i in range(1, 4):
                 expert_ptr1[i] = expert_ptr1[i - 1] + local_expert_count1[i - 1]
             np.random.seed(pid1)
-            local_expert_count2 = np.random.randint(0, 4, size=4).astype("int")
+            local_expert_count2 = np.random.randint(1, 4, size=4).astype("int")
             fwd_expert_count = sum(local_expert_count2)
             local_input_buf2 = np.random.rand(fwd_expert_count,
                                               2).astype("float32")
@@ -108,8 +108,20 @@ class TestCollectiveSelectScatterAPI(TestDistBase):
                             expert_ptr1[idx]+local_expert_count1[idx]])
                         output2.append(local_input_buf2[expert_ptr2[idx]:\
                             expert_ptr2[idx]+local_expert_count2[idx]])
-            output1 = np.concatenate(output1)
-            output2 = np.concatenate(output2)
+            if output1 == []:
+                output1 = np.array([])
+            else:
+                output1 = np.concatenate(output1)
+            if output2 == []:
+                output2 = np.array([])
+            else:
+                output2 = np.concatenate(output2)
+
+            if tr0_out[0] is None or tr0_out[0].shape[0] == 0:
+                tr0_out[0] = np.array([])
+
+            if tr1_out[0] is None or tr1_out[0].shape[0] == 0:
+                tr1_out[0] = np.array([])
 
             self.assertTrue(
                 np.allclose(
@@ -117,6 +129,19 @@ class TestCollectiveSelectScatterAPI(TestDistBase):
             self.assertTrue(
                 np.allclose(
                     tr1_out[0], output2, rtol=1e-05, atol=1e-05))
+            if static_mode == 0:
+                self.assertTrue(
+                    np.allclose(
+                        tr0_out[1],
+                        2 * local_input_buf1,
+                        rtol=1e-05,
+                        atol=1e-05))
+                self.assertTrue(
+                    np.allclose(
+                        tr1_out[1],
+                        2 * local_input_buf2,
+                        rtol=1e-05,
+                        atol=1e-05))
 
 
 if __name__ == '__main__':
