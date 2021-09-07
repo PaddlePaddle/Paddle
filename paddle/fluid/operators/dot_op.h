@@ -47,7 +47,7 @@ struct DotGradFunction<DeviceContext, T, math::EnableComplex<T>> {
     if (1 == tensor_dout->dims().size()) {
       auto dout = framework::EigenVector<T>::Flatten(*tensor_dout);
 
-      if (tensor_dx && tensor_x) {
+      if (tensor_dx) {
         auto y = framework::EigenVector<T>::Flatten(*tensor_y);
         auto& dev_raw = ctx.template device_context<DeviceContext>();
         auto& dev = *dev_raw.eigen_device();
