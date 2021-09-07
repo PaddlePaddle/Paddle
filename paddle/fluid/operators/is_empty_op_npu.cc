@@ -19,4 +19,6 @@ namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(
     is_empty, ops::IsEmptyOpKernel<plat::NPUDeviceContext, float>,
-    ops::IsEmptyOpKernel<plat::NPUDeviceContext, plat::float16>);
+    ops::IsEmptyOpKernel<plat::NPUDeviceContext, plat::float16>,
+    ops::IsEmptyOpKernel<plat::NPUDeviceContext, int>,
+    ops::IsEmptyOpKernel<plat::NPUDeviceContext, int64_t>);
