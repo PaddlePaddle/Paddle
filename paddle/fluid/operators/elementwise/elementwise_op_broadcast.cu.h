@@ -314,8 +314,8 @@ void LaunchBroadcastElementwiseCudaKernel(
                         ins.size(), kArity));
   PADDLE_ENFORCE_EQ(kArity, 2,
                     platform::errors::InvalidArgument(
-                        "Currently, only Support binary calculation, "
-                        "but received %d input tensors.\n",
+                        "Currently only broadcast of binary is supported and "
+                        "verified, but received %d.",
                         kArity));
 
   int in_vec_size = 4;
