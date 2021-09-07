@@ -21,21 +21,27 @@ import unittest
 from op_test import OpTest
 
 
-def calc_psroi_pool_numpy(x, rois, rois_num, output_channels, spatial_scale,
-                          pooled_height, pooled_width):
+def calc_psroi_pool_numpy(x, rois, rois_num_per_img, output_channels,
+                          spatial_scale, pooled_height, pooled_width):
+    """
+    Psroi_pool implemented by Numpy.
+    x: 4-D as (N, C, H, W),
+    rois: 2-D as [[x1, y1, x2, y2], ...],
+    rois_num_per_img: 1-D as [nums_of_batch_0, nums_of_batch_1,  ...]
+    """
     output_shape = (len(rois), output_channels, pooled_height, pooled_width)
     out_data = np.zeros(output_shape)
     batch_id = 0
     rois_num_id = 0
-    rois_num_left = rois_num[rois_num_id]
+    rois_num_left = rois_num_per_img[rois_num_id]
     for i in range(len(rois)):
         roi = rois[i]
         roi_batch_id = batch_id
         rois_num_left -= 1
         if rois_num_left == 0:
             rois_num_id += 1
-            if rois_num_id < len(rois_num):
-                rois_num_left = rois_num[rois_num_id]
+            if rois_num_id < len(rois_num_per_img):
+                rois_num_left = rois_num_per_img[rois_num_id]
             batch_id += 1
         roi_start_w = round(roi[0]) * spatial_scale
         roi_start_h = round(roi[1]) * spatial_scale
@@ -83,7 +89,10 @@ class TestPSROIPoolOp(OpTest):
         self.init_test_case()
         self.make_rois()
         self.calc_psroi_pool()
-        self.inputs = {'X': self.x, 'ROIs': (self.rois[:, 1:5], self.rois_lod)}
+        self.inputs = {
+            'X': self.x,
+            'ROIs': (self.rois_with_batch_id[:, 1:5], self.rois_lod)
+        }
         self.attrs = {
             'output_channels': self.output_channels,
             'spatial_scale': self.spatial_scale,
@@ -125,14 +134,18 @@ class TestPSROIPoolOp(OpTest):
                 roi = [bno, x1, y1, x2, y2]
                 rois.append(roi)
         self.rois_num = len(rois)
-        self.rois = np.array(rois).astype('float64')
+        self.rois_with_batch_id = np.array(rois).astype('float64')
 
     def calc_psroi_pool(self):
+        """
+        self.rois_with_batch_id should be given as 2-D as [[batch_id, x1, y1, x2, y2], ...].
+        self.rois_num is the sum of rois, equals to len(self.rois_with_batch_id).
+        """
         output_shape = (self.rois_num, self.output_channels, self.pooled_height,
                         self.pooled_width)
         out_data = np.zeros(output_shape)
         for i in range(self.rois_num):
-            roi = self.rois[i]
+            roi = self.rois_with_batch_id[i]
             roi_batch_id = int(roi[0])
             roi_start_w = round(roi[1]) * self.spatial_scale
             roi_start_h = round(roi[2]) * self.spatial_scale

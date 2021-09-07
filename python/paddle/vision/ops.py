@@ -909,10 +909,10 @@ def psroi_pool(input,
                name=None):
     """
     Position sensitive region of interest pooling (also known as PSROIPooling) is to perform
-    position-sensitive average pooling on regions of interest specified by input, takes as 
-    input N position-sensitive score maps and a list of num_rois regions of interest. 
+    position-sensitive average pooling on regions of interest specified by input. It performs 
+    on inputs of nonuniform sizes to obtain fixed-size feature maps.
 
-    PSROIPooling for R-FCN. Please refer to https://arxiv.org/abs/1605.06409 for more details.
+    PSROIPooling is proposed by R-FCN. Please refer to https://arxiv.org/abs/1605.06409 for more details.
 
     Parameters:
         input (Tensor): Input features with shape (N, C, H, W).
@@ -921,9 +921,10 @@ def psroi_pool(input,
                          (x1, y1) is the top left coordinates, and (x2, y2) is the bottom
                          right coordinates.
         boxes_num (Tensor): The number of boxes contained in each picture in the batch.
-        output_size (int|Tuple(int, int))  The pooled output size(h, w), data type 
-                               is int32. If int, h and w are both equal to output_size.
-        spatial_scale (float): ${spatial_scale_comment} Default: 1.0
+        output_size (int|Tuple(int, int))  The pooled output size(H, W), data type 
+                               is int32. If int, H and W are both equal to output_size.
+        spatial_scale (float): Multiplicative spatial scale factor to translate ROI coords from their 
+                               input scale to the scale used when pooling. Default: 1.0
         name(str, optional): The default value is None.
                              Normally there is no need for user to set this property.
                              For more information, please refer to :ref:`api_guide_Name`
@@ -976,6 +977,39 @@ def psroi_pool(input,
 
 
 class PSRoIPool(Layer):
+    """
+    This interface is used to construct a callable object of the ``PSRoIPool`` class. Please
+    refer to :ref:`api_paddle_vision_ops_psroi_pool`.
+
+    Parameters:
+        output_size (int|Tuple(int, int))  The pooled output size(H, W), data type 
+                               is int32. If int, H and W are both equal to output_size.
+        spatial_scale (float): Multiplicative spatial scale factor to translate ROI coords from their 
+                               input scale to the scale used when pooling. Default: 1.0.
+
+    Shape:
+        - input: 4-D Tensor with shape (N, C, H, W).
+        - boxes: 2-D Tensor with shape (num_rois, 4).
+        - boxes_num: 1-D Tensor.
+        - output: 4-D tensor with shape (num_rois, output_channels, pooled_h, pooled_w).
+              The output_channels equal to C / (pooled_h * pooled_w), where C is the channels of input.
+
+    Returns:
+        None
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            psroi_module = paddle.vision.ops.PSRoIPool(7, 1.0)
+            x = paddle.uniform([2, 490, 28, 28], dtype='float32')
+            boxes = paddle.to_tensor([[1, 5, 8, 10], [4, 2, 6, 7], [12, 12, 19, 21]], dtype='float32')
+            boxes_num = paddle.to_tensor([1, 2], dtype='int32')
+            pool_out = psroi_module(x, boxes, boxes_num)
+
+    """
+
     def __init__(self, output_size, spatial_scale=1.0):
         super(PSRoIPool, self).__init__()
         self.output_size = output_size
