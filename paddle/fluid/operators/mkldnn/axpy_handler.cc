@@ -42,61 +42,39 @@ class AXPYHandler : public plat::MKLDNNHandlerT<T, dnnl::reorder> {
       : plat::MKLDNNHandlerT<T, dnnl::reorder>(
             dev_ctx, mkldnn_engine, cpu_place,
             plat::CreateKey(dev_ctx, static_cast<int64_t>(n),
-                            plat::MKLDNNGetDataType<T>(), alpha, "-axpy")),
-        alpha_(alpha),
-        n_(n) {}
-
-  std::shared_ptr<dnnl::memory> AcquireMemory(void *ptr,
-                                              const std::string &suffix) const {
-    /*Generate key*/
-    auto local_key = this->key_ + suffix;
-    auto mem_p = std::static_pointer_cast<dnnl::memory>(
-        this->dev_ctx_.GetBlob(local_key));
-    if (mem_p == nullptr) {
-      auto md = dnnl::memory::desc({n_}, plat::MKLDNNGetDataType<T>(),
-                                   dnnl::memory::format_tag::x);
-      mem_p = std::make_shared<dnnl::memory>(md, this->engine_, ptr);
-      this->dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      mem_p->set_data_handle(ptr);
+                            plat::MKLDNNGetDataType<T>(), alpha, "-axpy")) {
+    auto md = dnnl::memory::desc({n}, plat::MKLDNNGetDataType<T>(),
+                                 dnnl::memory::format_tag::x);
+    src_mem_ = dnnl::memory(md, this->engine_, DNNL_MEMORY_NONE);
+    dst_mem_ = dnnl::memory(md, this->engine_, DNNL_MEMORY_NONE);
+    dnnl::primitive_attr reorder_attr;
+    dnnl::post_ops post_operations;
+    if (alpha != 1.f) {
+      std::vector<float> scales(1, alpha);
+      reorder_attr.set_output_scales(0, scales);
     }
-    return mem_p;
+    post_operations.append_sum(1.0f);
+
+    reorder_attr.set_post_ops(post_operations);
+    reorder_p_ = dnnl::reorder(src_mem_, dst_mem_, reorder_attr);
   }
 
-  std::shared_ptr<dnnl::memory> AcquireSrcMemory(const T *x) const {
-    return this->AcquireMemory(plat::to_void_cast(x), "@user_src_mem_p");
+  dnnl::memory &AcquireSrcMemory(const T *x) {
+    src_mem_.set_data_handle(plat::to_void_cast<T>(x));
+    return src_mem_;
   }
 
-  std::shared_ptr<dnnl::memory> AcquireDstMemory(T *y) const {
-    return this->AcquireMemory(y, "@user_dst_mem_p");
+  dnnl::memory &AcquireDstMemory(T *y) {
+    dst_mem_.set_data_handle(y);
+    return dst_mem_;
   }
 
-  std::shared_ptr<dnnl::reorder> AcquireReorder(
-      std::shared_ptr<dnnl::memory> dst_memory_p,
-      std::shared_ptr<dnnl::memory> src_memory_p) const {
-    auto prim_key = this->key_ + "@reorder_p";
-    auto reorder_p = std::static_pointer_cast<dnnl::reorder>(
-        this->dev_ctx_.GetBlob(prim_key));
-    if (reorder_p == nullptr) {
-      // Here we pass Postops to mimick y -> a*X + y
-      dnnl::primitive_attr reorder_attr;
-      dnnl::post_ops post_operations;
-      if (this->alpha_ != 1.f) {
-        std::vector<float> scales(1, this->alpha_);
-        reorder_attr.set_output_scales(0, scales);
-      }
-      post_operations.append_sum(1.0f);
+  const dnnl::reorder &AcquireReorder() { return reorder_p_; }
 
-      reorder_attr.set_post_ops(post_operations);
-      reorder_p = std::make_shared<dnnl::reorder>(
-          *(src_memory_p), *(dst_memory_p), reorder_attr);
-      this->dev_ctx_.SetBlob(prim_key, reorder_p);
-    }
-    return reorder_p;
-  }
-
-  float alpha_;
-  int n_;
+ private:
+  dnnl::memory src_mem_;
+  dnnl::memory dst_mem_;
+  dnnl::reorder reorder_p_;
 };
 
 template class AXPYHandler<float>;
@@ -143,13 +121,11 @@ void OneDNNAXPYHandler<T>::Impl::operator()(const T *x, T *y) {
     return;
   }
 
-  auto reorder_src_memory_p = handler_->AcquireSrcMemory(x);
-  auto reorder_dst_memory_p = handler_->AcquireDstMemory(y);
-  auto reorder_p =
-      handler_->AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
-
+  auto &reorder_src_mem_p = handler_->AcquireSrcMemory(x);
+  auto &reorder_dst_mem_p = handler_->AcquireDstMemory(y);
+  auto reorder_p = handler_->AcquireReorder();
   auto &astream = plat::MKLDNNDeviceContext::tls().get_stream();
-  reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
+  reorder_p.execute(astream, reorder_src_mem_p, reorder_dst_mem_p);
   astream.wait();
 }
 
