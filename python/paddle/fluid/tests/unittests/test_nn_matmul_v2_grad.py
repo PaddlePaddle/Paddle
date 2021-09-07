@@ -116,8 +116,8 @@ class TestMatmulDoubleGradCheckCase3(unittest.TestCase):
         self.init_test()
 
     def init_test(self):
-        self.x_shape = [1, 1, 25, 4]
-        self.y_shape = [1, 2, 4, 25]
+        self.x_shape = [1, 1, 4, 25]
+        self.y_shape = [1, 2, 25, 4]
         self.transpose_x = False
         self.transpose_y = False
 

@@ -63,7 +63,7 @@ struct DotGradFunction<DeviceContext, T, math::EnableComplex<T>> {
         dx.device(dev) = dx * dout.broadcast(size);
       }
 
-      if (tensor_dy && tensor_x) {
+      if (tensor_dy) {
         auto x = framework::EigenVector<T>::Flatten(*tensor_x);
         auto& dev_raw = ctx.template device_context<DeviceContext>();
         auto& dev = *dev_raw.eigen_device();
@@ -81,7 +81,7 @@ struct DotGradFunction<DeviceContext, T, math::EnableComplex<T>> {
     } else {
       auto dout = framework::EigenMatrix<T>::From(*tensor_dout);
 
-      if (tensor_dx && tensor_y) {
+      if (tensor_dx) {
         tensor_dx->mutable_data<T>(ctx.GetPlace());
         auto y = framework::EigenMatrix<T>::From(*tensor_y);
         auto& dev_raw = ctx.template device_context<DeviceContext>();
@@ -98,7 +98,7 @@ struct DotGradFunction<DeviceContext, T, math::EnableComplex<T>> {
         dx.device(dev) = dx * dout.broadcast(size);
       }
 
-      if (tensor_dy && tensor_x) {
+      if (tensor_dy) {
         tensor_dy->mutable_data<T>(ctx.GetPlace());
         auto x = framework::EigenMatrix<T>::From(*tensor_x);
         auto& dev_raw = ctx.template device_context<DeviceContext>();
@@ -119,7 +119,7 @@ struct DotGradFunction<DeviceContext, T, math::EnableComplex<T>> {
 #else
     const auto* data_dout = tensor_dout->data<T>();
 
-    if (tensor_dx && tensor_y) {
+    if (tensor_dx) {
       auto* data_dx = tensor_dx->mutable_data<T>(ctx.GetPlace());
       const auto* data_y = tensor_y->data<T>();
       const framework::DDim& dim = tensor_x->dims();
@@ -134,7 +134,7 @@ struct DotGradFunction<DeviceContext, T, math::EnableComplex<T>> {
       }
     }
 
-    if (tensor_dy && tensor_x) {
+    if (tensor_dy) {
       auto* data_dy = tensor_dy->mutable_data<T>(ctx.GetPlace());
       const auto* data_x = tensor_x->data<T>();
       const framework::DDim& dim = tensor_y->dims();
