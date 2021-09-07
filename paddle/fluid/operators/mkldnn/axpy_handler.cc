@@ -149,15 +149,16 @@ void OneDNNAXPYHandler<T>::Impl::operator()(const T *x, T *y) {
       handler_->AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
 
   auto &astream = plat::MKLDNNDeviceContext::tls().get_stream();
-  plat::RecordEvent record_reorder("axpy_int_reorder",
-                                   plat::EventRole::kUniqueOp);
   reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
   astream.wait();
 }
 
 template <typename T>
 OneDNNAXPYHandler<T>::OneDNNAXPYHandler(int64_t n, T alpha)
-    : pimpl_{new Impl{n, alpha}, [](Impl *impl) { delete impl; }} {}
+    : pimpl_{new Impl{n, alpha}, [](Impl *impl) { delete impl; }} {
+  VLOG(4) << "[OneDNN] OneDNNAXPYHandler<" << typeid(T).name() << ">, "
+          << "n: " << n << ", alpha: " << alpha;
+}
 
 template <typename T>
 void OneDNNAXPYHandler<T>::operator()(const T *x, T *y) {
