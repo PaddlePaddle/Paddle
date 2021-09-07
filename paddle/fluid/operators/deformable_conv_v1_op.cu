@@ -99,7 +99,8 @@ __global__ void DeformableCol2imCUDAKernel(
               DmcnGetGradientWeight(cur_inv_h_data, cur_inv_w_data, cur_h + dy,
                                     cur_w + dx, height, width);
 
-          atomicAdd(grad_im + cur_bottom_grad_pos, weight * cur_top_grad);
+          platform::CudaAtomicAdd(grad_im + cur_bottom_grad_pos,
+                                  weight * cur_top_grad);
         }
       }
     }
@@ -604,6 +605,8 @@ class DeformableConvV1GradCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(deformable_conv_v1,
-                        ops::DeformableConvV1CUDAKernel<float>);
+                        ops::DeformableConvV1CUDAKernel<float>,
+                        ops::DeformableConvV1CUDAKernel<double>);
 REGISTER_OP_CUDA_KERNEL(deformable_conv_v1_grad,
-                        ops::DeformableConvV1GradCUDAKernel<float>);
+                        ops::DeformableConvV1GradCUDAKernel<float>,
+                        ops::DeformableConvV1GradCUDAKernel<double>);

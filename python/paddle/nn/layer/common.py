@@ -24,7 +24,7 @@ __all__ = []
 
 
 def _npairs(x, n):
-    if isinstance(x, (paddle.Tensor, list)):
+    if isinstance(x, (paddle.Tensor, list, tuple)):
         return x
     x = [x] * (n * 2)
     return x
