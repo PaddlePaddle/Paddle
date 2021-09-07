@@ -957,6 +957,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 # if all outputs of this op are in _should_removed_var
                 # _should_removed_var: opt state not cur shard
                 if program_deps.should_remove_op(idx):
+                    # NOTE(wangxi): need reserve all param in optimizer_sharding
                     reserved_vars = self._params if self.optimizer_sharding else None
                     program_deps.remove_op(idx, reserved_vars)
 
@@ -1194,12 +1195,16 @@ class ShardingOptimizer(MetaOptimizerBase):
             for output_name in op.desc.output_arg_names():
                 if shard.has_var(output_name):
                     continue
+                if self.optimizer_sharding and shard.is_param(output_name):
+                    continue
                 #TODO why do we remove op, when only one var is removed
                 block._remove_op(idx, sync=False)
                 break
 
         for var_name in list(block.vars.keys()):
             if shard.has_var(var_name):
+                continue
+            if self.optimizer_sharding and shard.is_param(var_name):
                 continue
             block._remove_var(var_name, sync=False)
         block._sync_with_cpp()
