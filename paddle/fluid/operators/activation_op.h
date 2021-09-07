@@ -259,6 +259,8 @@ class ActivationKernel
     auto out = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(Out, "Output", "Out", "Activation"));
 
+    auto* place =
+        context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {
@@ -267,14 +269,15 @@ class ActivationKernel
     // use 32bit index to speed up computation
     bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
     bool is_gpu_place = platform::is_gpu_place(context.GetPlace());
+    bool is_cpu_place = platform::is_cpu_place(context.GetPlace());
     if (use_32bit_index && is_gpu_place) {
-      auto* place =
-          context.template device_context<DeviceContext>().eigen_device();
       functor(*place, To32BitIndex(x), To32BitIndex(out));
-    } else {
-      auto* dev =
-          context.template device_context<DeviceContext>().pool_device();
+    } else if (is_cpu_place) {
+      auto* dev = context.template device_context<platform::CPUDeviceContext>()
+                      .pool_device();
       functor(*dev, x, out);
+    } else {
+      functor(*place, To32BitIndex(x), To32BitIndex(out));
     }
   }
 };
@@ -300,6 +303,8 @@ class ActivationGradKernel
     auto x = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(X, "Input", "X", "ActivationGrad"));
 
+    auto* place =
+        context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {
@@ -308,15 +313,16 @@ class ActivationGradKernel
     // use 32bit index to speed up computation
     bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
     bool is_gpu_place = platform::is_gpu_place(context.GetPlace());
+    bool is_cpu_place = platform::is_cpu_place(context.GetPlace());
     if (use_32bit_index && is_gpu_place) {
-      auto* place =
-          context.template device_context<DeviceContext>().eigen_device();
       functor(*place, To32BitIndex(x), To32BitIndex(out), To32BitIndex(dout),
               To32BitIndex(dx));
-    } else {
-      auto* dev =
-          context.template device_context<DeviceContext>().pool_device();
+    } else if (is_cpu_place) {
+      auto* dev = context.template device_context<platform::CPUDeviceContext>()
+                      .pool_device();
       functor(*dev, x, out, dout, dx);
+    } else {
+      functor(*place, x, out, dout, dx);
     }
   }
 };
