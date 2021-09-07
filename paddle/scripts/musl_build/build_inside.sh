@@ -52,8 +52,8 @@ fi
 
 if [ "$WITH_REQUIREMENT" ]; then
     echo ">>> install python requirement: $WITH_REQUIREMENT_FIRST $WITH_REQUIREMENT";
-    echo "pip install $PIP_ARGS -r $WITH_REQUIREMENT_FIRST -r $WITH_REQUIREMENT";
-    pip install $PIP_ARGS -r "$WITH_REQUIREMENT_FIRST" -r "$WITH_REQUIREMENT";
+    pip install $PIP_ARGS -r "$WITH_REQUIREMENT_FIRST";
+    pip install $PIP_ARGS -r "$WITH_REQUIREMENT";
 fi
 
 BUILD_ARG=""
