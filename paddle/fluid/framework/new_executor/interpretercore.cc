@@ -435,8 +435,7 @@ void InterpreterCore::CheckGC(size_t instr_id,
   }
 
   if (!garbages.empty()) {
-    gc_.Add(std::move(garbages), gc_event_[instr_id],
-            vec_instruction_[instr_id].dev_ctx_);
+    gc_.Add(garbages, gc_event_[instr_id], vec_instruction_[instr_id].dev_ctx_);
   }
 }
 

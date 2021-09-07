@@ -35,7 +35,7 @@ class InterpreterCoreGarbageCollector {
  public:
   InterpreterCoreGarbageCollector();
 
-  void Add(GarbageQueue garbage,
+  void Add(GarbageQueue& garbage,                 // NOLINT
            paddle::platform::DeviceEvent& event,  // NOLINT
            const platform::DeviceContext* ctx);
 

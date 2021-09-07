@@ -25,7 +25,7 @@ InterpreterCoreGarbageCollector::InterpreterCoreGarbageCollector() {
   queue_ = CreateSingleThreadedWorkQueue();
 }
 
-void InterpreterCoreGarbageCollector::Add(GarbageQueue garbage,
+void InterpreterCoreGarbageCollector::Add(GarbageQueue& garbage,
                                           paddle::platform::DeviceEvent& event,
                                           const platform::DeviceContext* ctx) {
   if (max_memory_size_ <= 1) {
