@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid.dygraph.amp import amp_guard
-from paddle.fluid.dygraph.amp import amp_decorator
+from paddle.fluid.dygraph.amp import pure_fp16_decorator
 
 __all__ = []
 

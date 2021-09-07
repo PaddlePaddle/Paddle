@@ -154,7 +154,7 @@ def fp16_initialize(enable_pure_fp16, models, optimizers):
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
             if len(layer._sub_layers) is 0:
-                '''
+
                 if (layer._dtype is 'float16') or isinstance(layer, (
                         paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
                     continue
@@ -163,6 +163,7 @@ def fp16_initialize(enable_pure_fp16, models, optimizers):
                 if (layer._dtype is 'float16'):
                     continue
                 layer.to(dtype='float16')
+                '''
 
                 #以group的dict形式输入的参数
                 if getattr(optimizers[idx], '_param_groups',
