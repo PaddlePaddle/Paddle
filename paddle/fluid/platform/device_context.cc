@@ -184,25 +184,14 @@ DeviceContextPool::DeviceContextPool(
 
 CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
-  std::cout << ">>>>>>>3>>>>>>>>>\n";
-  Eigen::ThreadPool pool(20 /*number of threads*/);
-  pool_device_.reset(new Eigen::ThreadPoolDevice(&pool, 20));
+  pool_.reset(new Eigen::ThreadPool(20));
+  pool_device_.reset(new Eigen::ThreadPoolDevice(pool_.get(), 20));
 }
 
 CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
   eigen_device_.reset(new Eigen::DefaultDevice());
-  std::cout << ">>>>>>>>>>>>>1>>>\n";
-  Eigen::ThreadPool pool(20 /* number of threads in pool */);
-  for (int i = 0; i < 20; i++) {
-    eigen_cpu_devices_.push_back(new Eigen::ThreadPoolDevice(&pool, 20));
-  }
-  pool_device_.reset(new Eigen::ThreadPoolDevice(&pool, 20));
-  // // pool_device_ = new Eigen::ThreadPoolDevice(&pool, 20);
-  // Eigen::ThreadPoolDevice* d = pool_device_.get();
-  // for(int i= 1; i <= d->numThreads(); ++i){
-  //   eigen_cpu_devices_.push_back(new Eigen::ThreadPoolDevice(d->getPool(), i,
-  //   nullptr));
-  // }
+  pool_.reset(new Eigen::ThreadPool(20));
+  pool_device_.reset(new Eigen::ThreadPoolDevice(pool_.get(), 20));
 }
 
 Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
@@ -210,19 +199,7 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 }
 
 Eigen::ThreadPoolDevice* CPUDeviceContext::pool_device() const {
-  // std::cout << "pool: " << pool_device_.get();
-  // Eigen::ThreadPool pool(20 /* number of threads in pool */);
-  // pool_device_.reset(new Eigen::ThreadPoolDevice(&pool, 20));
-  // srand((unsigned)time(NULL));
-  int a = 0;
-  int b = 19;
-  // int index = (rand() % (b - a + 1)) + a;
-  return eigen_cpu_devices_[1];
-  // std::cout << ">>>>>>>2>>>>>>>>>\n";
-  // const int parallelism = std::max<int>(
-  //     1,
-  //     std::min<int>(10,eigen_cpu_devices_.size()));
-  // return eigen_cpu_devices_[parallelism - 1];
+  return pool_device_.get();
 }
 
 Place CPUDeviceContext::GetPlace() const { return place_; }

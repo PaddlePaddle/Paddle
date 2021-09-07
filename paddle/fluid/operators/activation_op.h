@@ -249,65 +249,17 @@ class ActivationKernel
   using T = typename Functor::ELEMENT_TYPE;
 
   void Compute(const framework::ExecutionContext& context) const override {
-    // platform::Timer timeline;
-    // timeline.Start();
     const framework::Tensor* X = nullptr;
     framework::Tensor* Out = nullptr;
     ExtractActivationTensor(context, &X, &Out);
-    // size_x = X->numel();
     Out->mutable_data<T>(context.GetPlace());
 
     auto x = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(X, "Input", "X", "Activation"));
     auto out = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(Out, "Output", "Out", "Activation"));
-    // Eigen::initParallel();
-    // Eigen::setNbThreads(20);
-    auto* place =
-        context.template device_context<DeviceContext>().eigen_device();
-    // std::cout << "place: " << place << "\n";
-    // out.device(*place) = x.cwiseMax(static_cast<T>(0));
-    // std::cout << "place: 》》》》》》》"<< "\n";
-    // test_multithread_elementwise();
-    // timeline.Pause();
-    // std::cout << "\tcost time=" << timeline.ElapsedSec() << "\t";
 
-    // // timeline.Start();
-
-    // // std::cout << "x: " << x << std::endl;
-    // out.device(my_device) = x.cwiseMax(static_cast<T>(0));
-    // // test_multithread_elementwise_1(*place);
-    // timeline.Pause();
-    // std::cout << "\tcost time 2=" << timeline.ElapsedSec()<<"\t";
     Functor functor;
-    // Eigen::Tensor<float, 2> a(30, 40);
-    // Eigen::Tensor<float, 2> b(30, 40);
-    // platform::Timer timeline;
-    // timeline.Start();
-    // Create the Eigen ThreadPool
-    // Eigen::ThreadPool pool(20 /* number of threads in pool */);
-    // Create the Eigen ThreadPoolDevice.
-    // Eigen::ThreadPoolDevice my_device(&pool, 20 /* number of threads to
-    // use*/);
-    // // Now just use the device when evaluating expressions.
-    // Eigen::Tensor<float, 2> c(30, 50);
-    // c.device(my_device) = a.contract(b, 1);
-    // timeline.Pause();
-    // std::cout << "\tcost time=" << timeline.ElapsedSec() << "\t";
-
-    // timeline.Start();
-    // c.device(*place) = a.contract(b, 1);
-    // timeline.Pause();
-    // std::cout << "\tcost time 2=" << timeline.ElapsedSec()<<"\t";
-    // std::unique_ptr<Eigen::ThreadPoolDevice> pool_device_;
-    // Eigen::ThreadPool pool(20);
-    // pool_device_.reset(new Eigen::ThreadPoolDevice(&pool, 20));
-    // std::cout << "dev: " << pool_device_.get() << std::endl;
-    // auto dev = pool_device_.get();
-    // auto* dev =
-    //     context.template device_context<DeviceContext>().pool_device();
-    auto* dev = get_pool_device();
-    std::cout << "dev: " << dev << "\n";
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {
       *attr.second = context.Attr<float>(attr.first);
@@ -316,21 +268,14 @@ class ActivationKernel
     bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
     bool is_gpu_place = platform::is_gpu_place(context.GetPlace());
     if (use_32bit_index && is_gpu_place) {
-      // auto* place =
-      // context.template
-      // device_context<platform::CUDADeviceContext>().eigen_device();
+      auto* place =
+          context.template device_context<DeviceContext>().eigen_device();
       functor(*place, To32BitIndex(x), To32BitIndex(out));
     } else {
-      // auto cpu_ctx = paddle::platform::CPUDeviceContext();
-      // auto* place = cpu_ctx.pool_device();
-      // std::cout << ">>>>>>>>>>>>>>>>5\n";
-      // context.template
-      // device_context<platform::CPUDeviceContext>().pool_device();
+      auto* dev =
+          context.template device_context<DeviceContext>().pool_device();
       functor(*dev, x, out);
-      // std::cout << ">>>>>>>>>>>>>>>>4\n";
     }
-    // timeline.Pause();
-    // std::cout << "\tcost time =" << timeline.ElapsedSec()<<"\t";
   }
 };
 
@@ -354,14 +299,7 @@ class ActivationGradKernel
         GET_DATA_SAFELY(dX, "Input", "X@GRAD", "ActivationGrad"));
     auto x = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(X, "Input", "X", "ActivationGrad"));
-    auto* place =
-        context.template device_context<DeviceContext>().eigen_device();
-    // auto* place =
-    //     context.template device_context<DeviceContext>().pool_device();
-    // Eigen::ThreadPool pool(20 /* number of threads in pool */);
-    // Create the Eigen ThreadPoolDevice.
-    // Eigen::ThreadPoolDevice my_device(&pool, 20 /* number of threads to use
-    // */);
+
     Functor functor;
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {
@@ -371,10 +309,14 @@ class ActivationGradKernel
     bool use_32bit_index = out.size() < Eigen::NumTraits<int>::highest();
     bool is_gpu_place = platform::is_gpu_place(context.GetPlace());
     if (use_32bit_index && is_gpu_place) {
+      auto* place =
+          context.template device_context<DeviceContext>().eigen_device();
       functor(*place, To32BitIndex(x), To32BitIndex(out), To32BitIndex(dout),
               To32BitIndex(dx));
     } else {
-      functor(*place, x, out, dout, dx);
+      auto* dev =
+          context.template device_context<DeviceContext>().pool_device();
+      functor(*dev, x, out, dout, dx);
     }
   }
 };
@@ -553,28 +495,6 @@ template <typename T>
 struct ReluCPUFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    // std::cout << x.data() << std::endl;
-    // std::cout << x.NumDimensions << "\n";
-    // for(int i=0; i<x.NumDimensions; ++i){
-    //     std::cout <<  << "\n";
-    // }
-
-    // auto a =  framework::EigenVector<T>::Flatten(x);
-    // std::cout << a << "\n";
-    // std::cout << "xxxxx:" <<x(0) << "\n";
-    // std::cout << "xxxxx:" <<out(0) << "\n";
-    // auto saved_mean_x = x.reshape(Eigen::<int, 2>({1000, 1}));
-    // auto saved_mean_out = out.reshape(Eigen::array<int, 2>({1000, 1}));
-    // std::cout << saved_mean_x.size() << "\n";
-    // std::cout << saved_mean_out(0) << "\n";
-    // x.device(d) = x.reshape(Eigen::array<int, 2>({1000, 1}));
-    // out.device(d) = out.reshape(Eigen::array<int, 2>({1000, 1}));
-    // std::cout << x.NumDimensions().TotalSize() << "\n";
-    //  for (int i = 0; i < x.dimensions().TotalSize(); ++i) {
-    //   //  std::cout << x.coeff(i);
-    //       // VERIFY_IS_EQUAL(dst.coeff(i), golden.coeff(i));
-    // }
-
     // #ifdef PADDLE_WITH_MKLML
     // #pragma omp parallel for
     // #endif
@@ -582,39 +502,7 @@ struct ReluCPUFunctor : public BaseActivationFunctor<T> {
     //       out(i) = x(i) > static_cast<T>(0) ? x(i) : 0;
     //     }
 
-    // auto cpu_ctx = paddle::platform::CPUDeviceContext();
-    // auto dev = *cpu_ctx.pool_device();
-    // dev.parallelFor(out.size(), Eigen::TensorOpCost(2, 1,
-    // Eigen::TensorOpCost::AddCost<T>()),
-    //       [&x, &out](int start, int end) {
-    //                   for (int index = start; index < end; index++) {
-    //                     out.data()[index] = x.data()[index] >
-    //                     static_cast<T>(0)?x.data()[index]:static_cast<T>(0) ;
-    //                   }
-    //       });
-    //  std::cout << ">>>>";
-    //  Eigen::ThreadPool pool(20 /* number of threads in pool */);
-    // // // Create the Eigen ThreadPoolDevice.
-    // Eigen::ThreadPoolDevice my_device(&pool,20 /* number of threads to use
-    // */);
-    // // std::cout << "x: " << x << std::endl;
-    // platform::Timer timeline;
-    // timeline.Start();
-    //   Eigen::ThreadPool pool(8);
-    //   Eigen::ThreadPoolDevice dev(&pool, 4);
-    std::cout << ">>>>>>>>>>>1" << std::endl;
     out.device(d) = x.cwiseMax(static_cast<T>(0));
-    std::cout << "!!!!!!!!!!!!!!!1" << std::endl;
-    //  std::cout << cc << std::endl;
-    //  out.device(dev) = x > 0 x: 0?
-    //  std::cout << x.sizes() << std::endl;
-    // std::cout << ">>>>>>>>>>>>>>>>111\n";
-    // auto* place =
-    //     context.template device_context<d>().pool_eigen();
-
-    // std::cout << ">>>>>>>>>>>>>>>>1114\n";
-    // timeline.Pause();
-    // std::cout << "\tcost time=" << timeline.ElapsedSec() << "\t";
   }
 };
 
@@ -641,20 +529,6 @@ struct ReluGradFunctor : public BaseActivationFunctor<T> {
     //       dx(i) = dout(i) * t;
     //       // out(i) = x(i) > static_cast<T>(0)? x(i): 0;
     //     }
-    // std::cout << "out: " << out(0) << "\n";
-    // auto temp = (out > static_cast<T>(0)).template cast<T>();
-    // std::cout << temp << "\t";
-    // std::cout << x.size() << "\t";
-    // std::cout << out.size() << "\t";
-    // std::cout << dout.size() << "\t";
-    // std::cout << dx.size() << "\t";
-    //  Eigen::ThreadPool pool(20 /* number of threads in pool */);
-    // // // Create the Eigen ThreadPoolDevice.
-    // Eigen::ThreadPoolDevice my_device(&pool, 20 /* number of threads to use
-    // */);
-    // auto cpu_ctx = paddle::platform::CPUDeviceContext();
-    // auto* place =
-    //     context.template device_context<d>().pool_eigen();
     dx.device(d) = dout * (out > static_cast<T>(0)).template cast<T>();
   }
 

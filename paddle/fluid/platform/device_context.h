@@ -124,15 +124,13 @@ class CPUDeviceContext : public DeviceContext {
 
   Eigen::ThreadPoolDevice* pool_device() const;
 
-  void set_eigen_cpu_device(Eigen::ThreadPoolDevice* d);
-
   Place GetPlace() const override;
 
  private:
   CPUPlace place_;
   std::unique_ptr<Eigen::DefaultDevice> eigen_device_;
   std::unique_ptr<Eigen::ThreadPoolDevice> pool_device_;
-  std::vector<Eigen::ThreadPoolDevice*> eigen_cpu_devices_;
+  std::unique_ptr<Eigen::ThreadPool> pool_;
 };
 
 template <typename Place>
