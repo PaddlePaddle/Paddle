@@ -32,13 +32,6 @@ struct FunctionTraits : public FunctionTraits<decltype(&T::operator())> {};
 // A partial specialization of FunctionTraits for pointers to member functions.
 template <typename ClassType, typename ReturnType, typename... Args>
 struct FunctionTraits<ReturnType (ClassType::*)(Args...) const> {
-  typedef ReturnType result_type;
-
-  template <size_t i>
-  struct Arg {
-    typedef typename std::tuple_element<i, std::tuple<Args...>>::type Type;
-  };
-
   static const size_t arity = sizeof...(Args);
   static const bool has_pointer_args =
       (arity == 1) &&

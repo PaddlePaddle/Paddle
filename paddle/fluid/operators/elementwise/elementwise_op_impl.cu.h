@@ -73,13 +73,14 @@ int GetVectorizedSizeForTensors(
 
 template <ElementwiseType ET, typename InT, typename OutT, int VecSize,
           typename Functor>
-struct PrimitiveCaller {
+struct ComputePrimitiveCaller {
   __device__ inline OutT operator()(Functor func, InT (*args)[VecSize],
                                     OutT *result);
 };
 
 template <typename InT, typename OutT, int VecSize, typename Functor>
-struct PrimitiveCaller<ElementwiseType::kUnary, InT, OutT, VecSize, Functor> {
+struct ComputePrimitiveCaller<ElementwiseType::kUnary, InT, OutT, VecSize,
+                              Functor> {
   __device__ inline OutT operator()(Functor func, InT (*args)[VecSize],
                                     OutT *result) {
     kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(result, args[0],
@@ -88,7 +89,8 @@ struct PrimitiveCaller<ElementwiseType::kUnary, InT, OutT, VecSize, Functor> {
 };
 
 template <typename InT, typename OutT, int VecSize, typename Functor>
-struct PrimitiveCaller<ElementwiseType::kBinary, InT, OutT, VecSize, Functor> {
+struct ComputePrimitiveCaller<ElementwiseType::kBinary, InT, OutT, VecSize,
+                              Functor> {
   __device__ inline OutT operator()(Functor func, InT (*args)[VecSize],
                                     OutT *result) {
     kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(result, args[0],
@@ -97,7 +99,8 @@ struct PrimitiveCaller<ElementwiseType::kBinary, InT, OutT, VecSize, Functor> {
 };
 
 template <typename InT, typename OutT, int VecSize, typename Functor>
-struct PrimitiveCaller<ElementwiseType::kTernary, InT, OutT, VecSize, Functor> {
+struct ComputePrimitiveCaller<ElementwiseType::kTernary, InT, OutT, VecSize,
+                              Functor> {
   __device__ inline OutT operator()(Functor func, InT (*args)[VecSize],
                                     OutT *result) {
     kps::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
@@ -122,7 +125,7 @@ __device__ void DealSegment(
                                                   num);
   }
 
-  PrimitiveCaller<ET, InT, OutT, VecSize, Functor>()(func, args, result);
+  ComputePrimitiveCaller<ET, InT, OutT, VecSize, Functor>()(func, args, result);
   kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(out + data_offset, result,
                                                   num);
 }

@@ -202,7 +202,7 @@ __device__ void DealSegment(
                                                   use_broadcast[i]);
   }
 
-  PrimitiveCaller<ET, InT, OutT, VecSize, Functor>()(func, args, result);
+  ComputePrimitiveCaller<ET, InT, OutT, VecSize, Functor>()(func, args, result);
   kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(out + block_offset, result,
                                                   num);
 }
