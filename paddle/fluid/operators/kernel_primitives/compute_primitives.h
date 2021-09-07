@@ -21,10 +21,8 @@
 #include <hip/hip_fp16.h>
 #endif
 
-// #include <algorithm>
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/function_traits.h"
 
 namespace paddle {
 namespace operators {
@@ -136,13 +134,19 @@ __device__ __forceinline__ T BlockYReduce(T val, ReduceOp reducer) {
 
 /**
  * @brief unary function
- * @param：
+ * @param
  * T: data type of in
  * OutT: data type of out
  * NX: the cols of in
  * NY: the rows of in
  * BlockSize: the config of this device
- * OpFunc: compute functor eg: relu, exp
+ * OpFunc: compute functor which have an operator() as following
+ *     template <typename T, typename OutT>
+ *     struct XxxFunctor {
+ *       HOSTDEVICE OutT operator()(const T& a) const {
+ *         return ...;
+ *       }
+ *     };
  */
 template <typename T, typename OutT, int NX, int NY, int BlockSize,
           class OpFunc>
@@ -150,63 +154,100 @@ __device__ __forceinline__ void ElementwiseUnary(OutT* out, const T* in,
                                                  OpFunc compute) {
 #pragma unroll
   for (int idx = 0; idx < NX * NY; idx++) {
-    out[idx] = platform::CallFunctor<T, OutT, OpFunc>(compute, &in[idx]);
+    out[idx] = static_cast<OutT>(compute(in[idx]));
   }
 }
 
 /**
  * @brief binary function, in1 and in2 have same shape
- * @param：
+ * @param
  * T: data type of in1, in2
  * OutT: data type of out
  * NX: the cols of in1, in2
  * NY: the rows of in1, in2
  * BlockSize: the config of this device
- * OpFunc: compute functor eg: in1 + in2, in1 - in2
+ * OpFunc: compute functor which have an operator() as following
+ *     template <typename T, typename OutT>
+ *     struct XxxFunctor {
+ *       HOSTDEVICE OutT operator()(const T& a, const T& b) const {
+ *         return ...;
+ *       }
+ *     };
  */
 template <typename T, typename OutT, int NX, int NY, int BlockSize,
           class OpFunc>
 __device__ __forceinline__ void ElementwiseBinary(OutT* out, const T* in1,
                                                   const T* in2,
                                                   OpFunc compute) {
-  T args[2];
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
-    args[0] = in1[idx];
-    args[1] = in2[idx];
-    out[idx] = platform::CallFunctor<T, OutT, OpFunc>(compute, args);
+    out[idx] = static_cast<OutT>(compute(in1[idx], in2[idx]));
   }
 }
 
 /**
  * @brief ternary function, in1, in2 and in3 have same shape
- * @param：
+ * @param
  * T: data type of in1, in2, in3
  * OutT: data type of out
  * NX: the cols of in1, in2
  * NY: the rows of in1, in2
  * BlockSize: the config of this device
- * OpFunc: compute functor eg: out = in1 * in2 + in3
+ * OpFunc: compute functor which have an operator() as following
+ *     template <typename T, typename OutT>
+ *     struct XxxFunctor {
+ *       HOSTDEVICE OutT operator()(const T& a, const T& b, const T& c) const {
+ *         return ...;
+ *       }
+ *     };
  */
 template <typename T, typename OutT, int NX, int NY, int BlockSize,
           class OpFunc>
 __device__ __forceinline__ void ElementwiseTernary(OutT* out, const T* in1,
                                                    const T* in2, const T* in3,
                                                    OpFunc compute) {
-  T args[3];
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
-    args[0] = in1[idx];
-    args[1] = in2[idx];
-    args[2] = in3[idx];
-    out[idx] = platform::CallFunctor<T, OutT, OpFunc>(compute, args);
+    out[idx] = static_cast<OutT>(compute(in1[idx], in2[idx], in3[idx]));
+  }
+}
+
+/**
+ * @brief a general function for elementwise computation, all inputs have
+ *        the same shape.
+ * @param
+ * T: data type of in1, in2, in3
+ * OutT: data type of out
+ * NX: the cols of in1, in2
+ * NY: the rows of in1, in2
+ * BlockSize: the config of this device
+ * OpFunc: compute functor which have an operator() as following
+ *     template <typename T, typename OutT>
+ *     struct XxxFunctor {
+ *       HOSTDEVICE OutT operator()(const T* args) const {
+ *         return ...;
+ *       }
+ *     };
+ */
+template <typename T, typename OutT, int NX, int NY, int BlockSize, int Arity,
+          class OpFunc>
+__device__ __forceinline__ void ElementwiseAny(OutT* out, T** ins,
+                                               OpFunc compute) {
+  T args[Arity];
+#pragma unroll
+  for (int idx = 0; idx < NX * NY; ++idx) {
+#pragma unroll
+    for (int j = 0; j < Arity; ++j) {
+      args[j] = ins[idx][j];
+    }
+    out[idx] = static_cast<OutT>(compute(args));
   }
 }
 
 /**
  * @brief cycle binary function, in1's shape size is [1, NX], in2's shape size
  * is [NY, NX], out's shape size is [NY, NX]
- * @param：
+ * @param
  * T: data type of in1, in2
  * OutT: data type of out
  * NX: the cols of in1, in2
@@ -235,7 +276,7 @@ __device__ __forceinline__ void CycleBinary(OutT* out, const T* in1,
  * shape of out is [NY, NX]. If reduce_last_dim is false and reduce_num was
  * split, BlockYReduce will be called. If reduce_last_dim is true and
  * reduce_num was split, BlockXReduce will be called
- * @typename：
+ * @typename
  * T: data type of in
  * NX: the cols of in
  * NY: the rows of in

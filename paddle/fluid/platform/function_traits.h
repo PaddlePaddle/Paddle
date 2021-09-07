@@ -39,51 +39,5 @@ struct FunctionTraits<ReturnType (ClassType::*)(Args...) const> {
           typename std::tuple_element<0, std::tuple<Args...>>::type>::value);
 };
 
-namespace details {
-
-template <typename InT, typename OutT, typename Functor, int Arity,
-          bool HasPointerArgs = false>
-struct CallFunctorImpl {
-  HOSTDEVICE inline OutT operator()(Functor func, InT args[]);
-};
-
-template <typename InT, typename OutT, typename Functor>
-struct CallFunctorImpl<InT, OutT, Functor, 1, true> {
-  HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
-    return func(args);
-  }
-};
-
-template <typename InT, typename OutT, typename Functor>
-struct CallFunctorImpl<InT, OutT, Functor, 1, false> {
-  HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
-    return func(args[0]);
-  }
-};
-
-template <typename InT, typename OutT, typename Functor, bool HasPointerArgs>
-struct CallFunctorImpl<InT, OutT, Functor, 2, HasPointerArgs> {
-  HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
-    return func(args[0], args[1]);
-  }
-};
-
-template <typename InT, typename OutT, typename Functor, bool HasPointerArgs>
-struct CallFunctorImpl<InT, OutT, Functor, 3, HasPointerArgs> {
-  HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
-    return func(args[0], args[1], args[2]);
-  }
-};
-
-}  // namespace details
-
-template <typename InT, typename OutT, typename Functor>
-HOSTDEVICE inline OutT CallFunctor(Functor func, InT args[]) {
-  using Traits = FunctionTraits<Functor>;
-
-  return details::CallFunctorImpl<InT, OutT, Functor, Traits::arity,
-                                  Traits::has_pointer_args>()(func, args);
-}
-
 }  // namespace platform
 }  // namespace paddle

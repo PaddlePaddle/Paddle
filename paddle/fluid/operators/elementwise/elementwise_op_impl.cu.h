@@ -17,6 +17,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/aligned_vector.h"
+#include "paddle/fluid/platform/function_traits.h"
 
 #ifdef __HIPCC__
 #define ELEMENTWISE_BLOCK_SIZE 256
@@ -29,7 +30,7 @@ namespace operators {
 
 namespace kps = paddle::operators::kernel_primitives;
 
-enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kUnknown = -1 };
+enum ElementwiseType { kUnary = 1, kBinary = 2, kTernary = 3, kAny = -1 };
 
 /*
 * According to NVIDIA, if number of threads per block is 64/128/256/512,
@@ -71,82 +72,85 @@ int GetVectorizedSizeForTensors(
   return vec_size;
 }
 
-template <ElementwiseType ET, typename InT, typename OutT, int VecSize,
-          typename Functor>
+template <typename InT, typename OutT, int VecSize, typename Functor, int Arity,
+          bool CallElementwiseAny = false>
 struct ComputePrimitiveCaller {
-  __device__ inline OutT operator()(Functor func, InT (*args)[VecSize],
-                                    OutT *result);
+  __device__ inline OutT operator()(Functor func, InT **args, OutT *result);
+};
+
+template <typename InT, typename OutT, int VecSize, typename Functor, int Arity>
+struct ComputePrimitiveCaller<InT, OutT, VecSize, Functor, Arity, true> {
+  __device__ inline OutT operator()(Functor func, InT **args, OutT *result) {
+    kps::ElementwiseAny<InT, OutT, VecSize, 1, 1, Arity, Functor>(result, args,
+                                                                  func);
+  }
 };
 
 template <typename InT, typename OutT, int VecSize, typename Functor>
-struct ComputePrimitiveCaller<ElementwiseType::kUnary, InT, OutT, VecSize,
-                              Functor> {
-  __device__ inline OutT operator()(Functor func, InT (*args)[VecSize],
-                                    OutT *result) {
+struct ComputePrimitiveCaller<InT, OutT, VecSize, Functor, 1, false> {
+  __device__ inline OutT operator()(Functor func, InT **args, OutT *result) {
     kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(result, args[0],
                                                              func);
   }
 };
 
 template <typename InT, typename OutT, int VecSize, typename Functor>
-struct ComputePrimitiveCaller<ElementwiseType::kBinary, InT, OutT, VecSize,
-                              Functor> {
-  __device__ inline OutT operator()(Functor func, InT (*args)[VecSize],
-                                    OutT *result) {
+struct ComputePrimitiveCaller<InT, OutT, VecSize, Functor, 2, false> {
+  __device__ inline OutT operator()(Functor func, InT **args, OutT *result) {
     kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(result, args[0],
                                                               args[1], func);
   }
 };
 
 template <typename InT, typename OutT, int VecSize, typename Functor>
-struct ComputePrimitiveCaller<ElementwiseType::kTernary, InT, OutT, VecSize,
-                              Functor> {
-  __device__ inline OutT operator()(Functor func, InT (*args)[VecSize],
-                                    OutT *result) {
+struct ComputePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
+  __device__ inline OutT operator()(Functor func, InT **args, OutT *result) {
     kps::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
         result, args[0], args[1], args[2], func);
   }
 };
 
-template <ElementwiseType ET, int VecSize, typename InT, typename OutT,
-          typename Functor, bool IsBoundary>
+template <typename InT, typename OutT, typename Functor, int Arity, int VecSize,
+          bool IsBoundary>
 __device__ void DealSegment(
-    const framework::Array<const InT *__restrict__, ET> &in, OutT *out, int num,
-    Functor func) {
-  InT args[ET][VecSize];
+    const framework::Array<const InT *__restrict__, Arity> &in, OutT *out,
+    int num, Functor func) {
+  InT args[Arity][VecSize];
   OutT result[VecSize];
 
   int data_offset = VecSize * blockIdx.x * blockDim.x;
 
 #pragma unroll
-  for (int i = 0; i < ET; i++) {
+  for (int i = 0; i < Arity; i++) {
     kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f));
     kps::ReadData<InT, VecSize, 1, 1, IsBoundary>(args[i], in[i] + data_offset,
                                                   num);
   }
 
-  ComputePrimitiveCaller<ET, InT, OutT, VecSize, Functor>()(func, args, result);
+  const bool kCallElementwiseAny =
+      platform::FunctionTraits<Functor>::has_pointer_args;
+  ComputePrimitiveCaller<InT, OutT, VecSize, Functor, Arity,
+                         kCallElementwiseAny>()(
+      func, reinterpret_cast<InT **>(args), result);
   kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(out + data_offset, result,
                                                   num);
 }
 
-template <ElementwiseType ET, int VecSize, typename InT, typename OutT,
-          typename Functor>
+template <typename InT, typename OutT, typename Functor, int Arity, int VecSize>
 __global__ void ElementVectorizeKernel(
-    framework::Array<const InT *__restrict__, ET> in, OutT *out, int size,
+    framework::Array<const InT *__restrict__, Arity> in, OutT *out, int size,
     Functor func) {
   int data_offset = VecSize * blockIdx.x * blockDim.x;
   int num = size - data_offset;
   // the num this time have to deal with
   if (VecSize * blockDim.x > num) {  // reminder segment
-    DealSegment<ET, VecSize, InT, OutT, Functor, true>(in, out, num, func);
+    DealSegment<InT, OutT, Functor, Arity, VecSize, true>(in, out, num, func);
   } else {  // complete segment
-    DealSegment<ET, VecSize, InT, OutT, Functor, false>(in, out, num, func);
+    DealSegment<InT, OutT, Functor, Arity, VecSize, false>(in, out, num, func);
   }
 }
 
-template <ElementwiseType ET, typename InT, typename OutT, typename Functor,
-          int VecSize>
+template <typename InT, typename OutT, typename Functor, int Arity, int VecSize>
 void ElementwiseCudaKernel(const platform::CUDADeviceContext &ctx,
                            const std::vector<const framework::Tensor *> &ins,
                            std::vector<framework::Tensor *> *outs,
@@ -158,12 +162,12 @@ void ElementwiseCudaKernel(const platform::CUDADeviceContext &ctx,
 
   auto stream = ctx.stream();
   OutT *out = (*outs)[0]->data<OutT>();
-  framework::Array<const InT *__restrict__, ET> in;
-  for (int i = 0; i < ET; i++) {
+  framework::Array<const InT *__restrict__, Arity> in;
+  for (int i = 0; i < Arity; i++) {
     in[i] = ins[i]->data<InT>();
   }
-  ElementVectorizeKernel<ET, VecSize, InT, OutT,
-                         Functor><<<grid_size, block_size, 0, stream>>>(
+  ElementVectorizeKernel<InT, OutT, Functor, Arity,
+                         VecSize><<<grid_size, block_size, 0, stream>>>(
       in, out, numel, func);
 }
 
@@ -186,13 +190,16 @@ void LaunchSameDimsElementwiseCudaKernel(
   int vec_size = GetVectorizedSizeForTensors<InT, OutT>(ins, *outs);
   switch (vec_size) {
     case 4:
-      ElementwiseCudaKernel<ET, InT, OutT, Functor, 4>(ctx, ins, outs, func);
+      ElementwiseCudaKernel<InT, OutT, Functor, kArity, 4>(ctx, ins, outs,
+                                                           func);
       break;
     case 2:
-      ElementwiseCudaKernel<ET, InT, OutT, Functor, 2>(ctx, ins, outs, func);
+      ElementwiseCudaKernel<InT, OutT, Functor, kArity, 2>(ctx, ins, outs,
+                                                           func);
       break;
     case 1:
-      ElementwiseCudaKernel<ET, InT, OutT, Functor, 1>(ctx, ins, outs, func);
+      ElementwiseCudaKernel<InT, OutT, Functor, kArity, 1>(ctx, ins, outs,
+                                                           func);
       break;
     default: {
       PADDLE_THROW(platform::errors::Unimplemented(
