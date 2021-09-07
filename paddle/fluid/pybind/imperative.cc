@@ -1787,7 +1787,7 @@ void BindImperative(py::module *m_ptr) {
   // See details: https://github.com/pybind/pybind11/pull/679
   // https://github.com/pybind/pybind11/blob/028812ae7eee307dca5f8f69d467af7b92cc41c8/tests/test_methods_and_attributes.cpp#L284
   py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(
-      m, "Layer", py::metaclass(static_cast<PyObject *> & PyType_Type));
+      m, "Layer", py::metaclass((PyObject *)&PyType_Type));  // NOLINT
   layer.def(py::init<>())
       .def("forward",
            [](imperative::Layer &self,
