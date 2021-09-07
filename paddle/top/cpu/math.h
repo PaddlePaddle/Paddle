@@ -53,5 +53,3 @@ void Scale(const CPUContext& dev_ctx,
 //         SelectedRowsTensor* out);
 
 }  // namespace pt
-
-PT_DECLARE_KERNEL_2T(sign, CPU, NCHW, float, double);

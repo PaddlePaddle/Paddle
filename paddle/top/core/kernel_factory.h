@@ -29,6 +29,17 @@
 
 namespace pt {
 
+/**
+ * [ Naming considerations ]
+ *
+ * The tensor operation library contains many operations, and the operation
+ * in each specific scenario is represented by an operation kernel.
+ *
+ * We directly named it `Kernel` instead of `OpKernel`, the tensor operation
+ * library here and fluid are independent, avoiding developers from
+ * misunderstanding the relationship between the two concepts.
+ */
+
 class OpKernelContext;
 
 using OpKernelFn = void (*)(OpKernelContext* ctx);

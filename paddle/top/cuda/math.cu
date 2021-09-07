@@ -109,9 +109,9 @@ void Mean(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
 
 }  // namespace pt
 
-using float16 = paddle::platform::float16;
-PT_REGISTER_KERNEL_3T(sign, CUDA, NCHW, pt::Sign, float, double, float16);
-PT_REGISTER_KERNEL_3T(mean, CUDA, NCHW, pt::Mean, float, double, float16);
+// using float16 = paddle::platform::float16;
+// PT_REGISTER_KERNEL_3T(sign, CUDA, NCHW, pt::Sign, float, double, float16);
+// PT_REGISTER_KERNEL_3T(mean, CUDA, NCHW, pt::Mean, float, double, float16);
 // PT_REGISTER_KERNEL_8T(scale,
 //                       CUDA,
 //                       NCHW,
@@ -136,3 +136,7 @@ PT_REGISTER_KERNEL_3T(mean, CUDA, NCHW, pt::Mean, float, double, float16);
 //                       int16_t,
 //                       int,
 //                       int64_t);
+
+using float16 = paddle::platform::float16;
+PT_REGISTER_KERNEL("sign", CUDA, NCHW, pt::Sign, float, double, float16) {}
+PT_REGISTER_KERNEL("mean", CUDA, NCHW, pt::Mean, float, double, float16) {}

@@ -16,4 +16,4 @@
 
 #include "paddle/top/core/kernel_registry.h"
 
-PT_REGISTER_KERNEL_1T(sign, XPU, NCHW, pt::Sign, float);
+// PT_REGISTER_KERNEL_1T(sign, XPU, NCHW, pt::Sign, float);

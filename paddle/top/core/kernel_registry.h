@@ -30,35 +30,20 @@ class OpKernelRegistrar {
                     Backend backend,
                     DataLayout layout,
                     DataType dtype,
-                    OpKernelFn fn)
-      : op_name_(op_name), op_kernel_key_(backend, layout, dtype) {
-    OpKernel kernel(fn);
-    OpKernelFactory::Instance().kernels()[op_name_][op_kernel_key_] = kernel;
+                    OpKernelParamDefFn param_def_fn,
+                    OpKernelFn kernel_fn) {
+    OperationName final_op_name(op_name);
+    OpKernelKey op_kernel_key(backend, layout, dtype);
+    OpKernel kernel(kernel_fn);
+    param_def_fn(&kernel);
+
+    // TODO(chenweihang): use default input and output for verify
+    kernel.mutable_param_def()->AppendInput(backend, layout, dtype);
+    kernel.mutable_param_def()->AppendOutput(backend, layout, dtype);
+
+    OpKernelFactory::Instance().kernels()[final_op_name][op_kernel_key] =
+        kernel;
   }
-
-  OpKernelRegistrar& Input(Backend backend, DataLayout layout, DataType dtype) {
-    OpKernelFactory::Instance()
-        .kernels()[op_name_][op_kernel_key_]
-        .mutable_param_def()
-        ->AppendInput(backend, layout, dtype);
-    return *this;
-  }
-
-  OpKernelRegistrar& Output(Backend backend,
-                            DataLayout layout,
-                            DataType dtype) {
-    OpKernelFactory::Instance()
-        .kernels()[op_name_][op_kernel_key_]
-        .mutable_param_def()
-        ->AppendOutput(backend, layout, dtype);
-    return *this;
-  }
-
-  void Touch() {}
-
- private:
-  OperationName op_name_;
-  OpKernelKey op_kernel_key_;
 };
 
 #if defined(_WIN32)
@@ -68,11 +53,321 @@ class OpKernelRegistrar {
 #define UNUSED __attribute__((unused))
 #endif
 
-#define PT_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                     \
+#define PT_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg) \
+  _PT_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)
+
+#define _PT_STATIC_ASSERT_GLOBAL_NAMESPACE(uniq_name, msg)                    \
   struct __test_global_namespace_##uniq_name##__ {};                          \
   static_assert(std::is_same<::__test_global_namespace_##uniq_name##__,       \
                              __test_global_namespace_##uniq_name##__>::value, \
                 msg)
+
+#ifdef __COUNTER__
+#define PT_ID __COUNTER__
+#else
+#define PT_ID __LINE__
+#endif
+
+#define PT_CONCATENATE(arg1, arg2) PT_CONCATENATE1(arg1, arg2)
+#define PT_CONCATENATE1(arg1, arg2) PT_CONCATENATE2(arg1, arg2)
+#define PT_CONCATENATE2(arg1, arg2) arg1##arg2
+
+// reference:
+// https://stackoverflow.com/questions/1872220/is-it-possible-to-iterate-over-arguments-in-variadic-macros
+#define PT_NARGS(...) _PT_NARGS(__VA_ARGS__, _PT_RESQ_N())
+#define _PT_NARGS(...) _PT_ARG_N(__VA_ARGS__)
+#define _PT_ARG_N(_1, _2, _3, _4, _5, _6, _7, _8, N, ...) N
+#define _PT_RESQ_N() 8, 7, 6, 5, 4, 3, 2, 1, 0
+
+#define PT_REGISTER_KERNEL(                                   \
+    op_name, backend, layout, meta_kernel_fn, cpp_dtype, ...) \
+  _PT_REGISTER_KERNEL(                                        \
+      op_name, PT_ID, backend, layout, meta_kernel_fn, cpp_dtype, __VA_ARGS__)
+
+#define _PT_REGISTER_KERNEL(                                           \
+    op_name, func_id, backend, layout, meta_kernel_fn, cpp_dtype, ...) \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                   \
+      PT_CONCATENATE(pt_op_kernel_ns_check_, func_id),                 \
+      "PT_REGISTER_KERNEL must be called in global namespace.");       \
+  PT_KERNEL_SPECIALIZE(meta_kernel_fn, cpp_dtype, __VA_ARGS__);        \
+  static void PT_CONCATENATE(__PT_KERNEL_PARAM_DEF_FN_,                \
+                             func_id)(::pt::OpKernel*);                \
+  PT_KERNEL_REGISTRAR_INIT(                                            \
+      op_name,                                                         \
+      func_id,                                                         \
+      backend,                                                         \
+      layout,                                                          \
+      &PT_CONCATENATE(__PT_KERNEL_PARAM_DEF_FN_, func_id),             \
+      meta_kernel_fn,                                                  \
+      cpp_dtype,                                                       \
+      __VA_ARGS__);                                                    \
+  void PT_CONCATENATE(__PT_KERNEL_PARAM_DEF_FN_,                       \
+                      func_id)(::pt::OpKernel * kernel)
+
+#define PT_KERNEL_SPECIALIZE(meta_kernel_fn, cpp_dtype, ...) \
+  _PT_KERNEL_SPECIALIZE(PT_NARGS(cpp_dtype, __VA_ARGS__),    \
+                        meta_kernel_fn,                      \
+                        cpp_dtype,                           \
+                        __VA_ARGS__)
+
+#define _PT_KERNEL_SPECIALIZE(N, meta_kernel_fn, cpp_dtype, ...) \
+  PT_CONCATENATE(_PT_KERNEL_SPECIALIZE_, N)                      \
+  (meta_kernel_fn, cpp_dtype, __VA_ARGS__)
+
+#define _PT_KERNEL_SPECIALIZE_1(meta_kernel_fn, cpp_dtype, ...) \
+  template decltype(meta_kernel_fn<cpp_dtype>) meta_kernel_fn<cpp_dtype>
+#define _PT_KERNEL_SPECIALIZE_2(meta_kernel_fn, cpp_dtype, ...)           \
+  template decltype(meta_kernel_fn<cpp_dtype>) meta_kernel_fn<cpp_dtype>; \
+  _PT_KERNEL_SPECIALIZE_1(meta_kernel_fn, __VA_ARGS__)
+#define _PT_KERNEL_SPECIALIZE_3(meta_kernel_fn, cpp_dtype, ...)           \
+  template decltype(meta_kernel_fn<cpp_dtype>) meta_kernel_fn<cpp_dtype>; \
+  _PT_KERNEL_SPECIALIZE_2(meta_kernel_fn, __VA_ARGS__)
+#define _PT_KERNEL_SPECIALIZE_4(meta_kernel_fn, cpp_dtype, ...)           \
+  template decltype(meta_kernel_fn<cpp_dtype>) meta_kernel_fn<cpp_dtype>; \
+  _PT_KERNEL_SPECIALIZE_3(meta_kernel_fn, __VA_ARGS__)
+#define _PT_KERNEL_SPECIALIZE_5(meta_kernel_fn, cpp_dtype, ...)           \
+  template decltype(meta_kernel_fn<cpp_dtype>) meta_kernel_fn<cpp_dtype>; \
+  _PT_KERNEL_SPECIALIZE_4(meta_kernel_fn, __VA_ARGS__)
+#define _PT_KERNEL_SPECIALIZE_6(meta_kernel_fn, cpp_dtype, ...)           \
+  template decltype(meta_kernel_fn<cpp_dtype>) meta_kernel_fn<cpp_dtype>; \
+  _PT_KERNEL_SPECIALIZE_5(meta_kernel_fn, __VA_ARGS__)
+#define _PT_KERNEL_SPECIALIZE_7(meta_kernel_fn, cpp_dtype, ...)           \
+  template decltype(meta_kernel_fn<cpp_dtype>) meta_kernel_fn<cpp_dtype>; \
+  _PT_KERNEL_SPECIALIZE_6(meta_kernel_fn, __VA_ARGS__)
+#define _PT_KERNEL_SPECIALIZE_8(meta_kernel_fn, cpp_dtype, ...)           \
+  template decltype(meta_kernel_fn<cpp_dtype>) meta_kernel_fn<cpp_dtype>; \
+  _PT_KERNEL_SPECIALIZE_7(meta_kernel_fn, __VA_ARGS__)
+
+#define PT_KERNEL_REGISTRAR_INIT(op_name,                     \
+                                 func_id,                     \
+                                 backend,                     \
+                                 layout,                      \
+                                 param_def_fn,                \
+                                 meta_kernel_fn,              \
+                                 cpp_dtype,                   \
+                                 ...)                         \
+  _PT_KERNEL_REGISTRAR_INIT(PT_NARGS(cpp_dtype, __VA_ARGS__), \
+                            op_name,                          \
+                            func_id,                          \
+                            backend,                          \
+                            layout,                           \
+                            param_def_fn,                     \
+                            meta_kernel_fn,                   \
+                            cpp_dtype,                        \
+                            __VA_ARGS__)
+
+#define _PT_KERNEL_REGISTRAR_INIT(N,              \
+                                  op_name,        \
+                                  func_id,        \
+                                  backend,        \
+                                  layout,         \
+                                  param_def_fn,   \
+                                  meta_kernel_fn, \
+                                  cpp_dtype,      \
+                                  ...)            \
+  PT_CONCATENATE(_PT_KERNEL_REGISTRAR_INIT_, N)   \
+  (op_name,                                       \
+   func_id,                                       \
+   PT_ID,                                         \
+   backend,                                       \
+   layout,                                        \
+   param_def_fn,                                  \
+   meta_kernel_fn,                                \
+   cpp_dtype,                                     \
+   __VA_ARGS__)
+
+#define _PT_KERNEL_REGISTRAR_INIT_1(op_name,           \
+                                    func_id,           \
+                                    registrar_id,      \
+                                    backend,           \
+                                    layout,            \
+                                    param_def_fn,      \
+                                    meta_kernel_fn,    \
+                                    cpp_dtype,         \
+                                    ...)               \
+  static const ::pt::OpKernelRegistrar PT_CONCATENATE( \
+      __reg_pt_op_kernel_##func_id##_, registrar_id)(  \
+      op_name,                                         \
+      BACKEND(backend),                                \
+      DATALAYOUT(layout),                              \
+      ::pt::CppTypeToDataType<cpp_dtype>::Type(),      \
+      param_def_fn,                                    \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>));
+#define _PT_KERNEL_REGISTRAR_INIT_2(op_name,           \
+                                    func_id,           \
+                                    registrar_id,      \
+                                    backend,           \
+                                    layout,            \
+                                    param_def_fn,      \
+                                    meta_kernel_fn,    \
+                                    cpp_dtype,         \
+                                    ...)               \
+  static const ::pt::OpKernelRegistrar PT_CONCATENATE( \
+      __reg_pt_op_kernel_##func_id##_, registrar_id)(  \
+      op_name,                                         \
+      BACKEND(backend),                                \
+      DATALAYOUT(layout),                              \
+      ::pt::CppTypeToDataType<cpp_dtype>::Type(),      \
+      param_def_fn,                                    \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>));           \
+  _PT_KERNEL_REGISTRAR_INIT_1(op_name,                 \
+                              func_id,                 \
+                              PT_ID,                   \
+                              backend,                 \
+                              layout,                  \
+                              param_def_fn,            \
+                              meta_kernel_fn,          \
+                              __VA_ARGS__)
+#define _PT_KERNEL_REGISTRAR_INIT_3(op_name,           \
+                                    func_id,           \
+                                    registrar_id,      \
+                                    backend,           \
+                                    layout,            \
+                                    param_def_fn,      \
+                                    meta_kernel_fn,    \
+                                    cpp_dtype,         \
+                                    ...)               \
+  static const ::pt::OpKernelRegistrar PT_CONCATENATE( \
+      __reg_pt_op_kernel_##func_id##_, registrar_id)(  \
+      op_name,                                         \
+      BACKEND(backend),                                \
+      DATALAYOUT(layout),                              \
+      ::pt::CppTypeToDataType<cpp_dtype>::Type(),      \
+      param_def_fn,                                    \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>));           \
+  _PT_KERNEL_REGISTRAR_INIT_2(op_name,                 \
+                              func_id,                 \
+                              PT_ID,                   \
+                              backend,                 \
+                              layout,                  \
+                              param_def_fn,            \
+                              meta_kernel_fn,          \
+                              __VA_ARGS__)
+#define _PT_KERNEL_REGISTRAR_INIT_4(op_name,           \
+                                    func_id,           \
+                                    registrar_id,      \
+                                    backend,           \
+                                    layout,            \
+                                    param_def_fn,      \
+                                    meta_kernel_fn,    \
+                                    cpp_dtype,         \
+                                    ...)               \
+  static const ::pt::OpKernelRegistrar PT_CONCATENATE( \
+      __reg_pt_op_kernel_##func_id##_, registrar_id)(  \
+      op_name,                                         \
+      BACKEND(backend),                                \
+      DATALAYOUT(layout),                              \
+      ::pt::CppTypeToDataType<cpp_dtype>::Type(),      \
+      param_def_fn,                                    \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>));           \
+  _PT_KERNEL_REGISTRAR_INIT_3(op_name,                 \
+                              func_id,                 \
+                              PT_ID,                   \
+                              backend,                 \
+                              layout,                  \
+                              param_def_fn,            \
+                              meta_kernel_fn,          \
+                              __VA_ARGS__)
+#define _PT_KERNEL_REGISTRAR_INIT_5(op_name,           \
+                                    func_id,           \
+                                    registrar_id,      \
+                                    backend,           \
+                                    layout,            \
+                                    param_def_fn,      \
+                                    meta_kernel_fn,    \
+                                    cpp_dtype,         \
+                                    ...)               \
+  static const ::pt::OpKernelRegistrar PT_CONCATENATE( \
+      __reg_pt_op_kernel_##func_id##_, registrar_id)(  \
+      op_name,                                         \
+      BACKEND(backend),                                \
+      DATALAYOUT(layout),                              \
+      ::pt::CppTypeToDataType<cpp_dtype>::Type(),      \
+      param_def_fn,                                    \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>));           \
+  _PT_KERNEL_REGISTRAR_INIT_4(op_name,                 \
+                              func_id,                 \
+                              PT_ID,                   \
+                              backend,                 \
+                              layout,                  \
+                              param_def_fn,            \
+                              meta_kernel_fn,          \
+                              __VA_ARGS__)
+#define _PT_KERNEL_REGISTRAR_INIT_6(op_name,           \
+                                    func_id,           \
+                                    registrar_id,      \
+                                    backend,           \
+                                    layout,            \
+                                    param_def_fn,      \
+                                    meta_kernel_fn,    \
+                                    cpp_dtype,         \
+                                    ...)               \
+  static const ::pt::OpKernelRegistrar PT_CONCATENATE( \
+      __reg_pt_op_kernel_##func_id##_, registrar_id)(  \
+      op_name,                                         \
+      BACKEND(backend),                                \
+      DATALAYOUT(layout),                              \
+      ::pt::CppTypeToDataType<cpp_dtype>::Type(),      \
+      param_def_fn,                                    \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>));           \
+  _PT_KERNEL_REGISTRAR_INIT_5(op_name,                 \
+                              func_id,                 \
+                              PT_ID,                   \
+                              backend,                 \
+                              layout,                  \
+                              param_def_fn,            \
+                              meta_kernel_fn,          \
+                              __VA_ARGS__)
+#define _PT_KERNEL_REGISTRAR_INIT_7(op_name,           \
+                                    func_id,           \
+                                    registrar_id,      \
+                                    backend,           \
+                                    layout,            \
+                                    param_def_fn,      \
+                                    meta_kernel_fn,    \
+                                    cpp_dtype,         \
+                                    ...)               \
+  static const ::pt::OpKernelRegistrar PT_CONCATENATE( \
+      __reg_pt_op_kernel_##func_id##_, registrar_id)(  \
+      op_name,                                         \
+      BACKEND(backend),                                \
+      DATALAYOUT(layout),                              \
+      ::pt::CppTypeToDataType<cpp_dtype>::Type(),      \
+      param_def_fn,                                    \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>));           \
+  _PT_KERNEL_REGISTRAR_INIT_6(op_name,                 \
+                              func_id,                 \
+                              PT_ID,                   \
+                              backend,                 \
+                              layout,                  \
+                              param_def_fn,            \
+                              meta_kernel_fn,          \
+                              __VA_ARGS__)
+#define _PT_KERNEL_REGISTRAR_INIT_8(op_name,           \
+                                    func_id,           \
+                                    registrar_id,      \
+                                    backend,           \
+                                    layout,            \
+                                    param_def_fn,      \
+                                    meta_kernel_fn,    \
+                                    cpp_dtype,         \
+                                    ...)               \
+  static const ::pt::OpKernelRegistrar PT_CONCATENATE( \
+      __reg_pt_op_kernel_##func_id##_, registrar_id)(  \
+      op_name,                                         \
+      BACKEND(backend),                                \
+      DATALAYOUT(layout),                              \
+      ::pt::CppTypeToDataType<cpp_dtype>::Type(),      \
+      param_def_fn,                                    \
+      PT_KERNEL(meta_kernel_fn<cpp_dtype>));           \
+  _PT_KERNEL_REGISTRAR_INIT_7(op_name,                 \
+                              func_id,                 \
+                              PT_ID,                   \
+                              backend,                 \
+                              layout,                  \
+                              param_def_fn,            \
+                              meta_kernel_fn,          \
+                              __VA_ARGS__)
 
 #define PT_REGISTER_KERNEL_STANDARD(                                      \
     op_name, backend, layout, dtype, kernel_fn)                           \
@@ -111,188 +406,5 @@ class OpKernelRegistrar {
     __pt_op_kernel_##op_name##_##backend##_##layout##_##dtype##__.Touch();  \
     return 0;                                                               \
   }
-
-/**
- * In most cases, the backend, dtype and layout of Op's input and output
- * are the same as OpKernel itself. In order to simplify the registration
- * writing, we provide the following simple kernel registration macro.
- * If it is an special case, please use PT_REGISTER_KERNEL_STANDARD
- */
-// TODO(chenweihang): only work for single input and output now.
-// can we use function traits here to parse the input and output type?
-#define PT_REGISTER_KERNEL_1T(op_name, backend, layout, meta_kernel_fn, dtype) \
-  PT_REGISTER_KERNEL_AUTO_SPECIALIZE(                                          \
-      op_name, backend, layout, meta_kernel_fn, dtype)                         \
-      .Input(BACKEND(backend),                                                 \
-             DATALAYOUT(layout),                                               \
-             ::pt::CppTypeToDataType<dtype>::Type())                           \
-      .Output(BACKEND(backend),                                                \
-              DATALAYOUT(layout),                                              \
-              ::pt::CppTypeToDataType<dtype>::Type());                         \
-  PT_TOUCH_KERNEL_REGISTRAR(op_name, backend, layout, dtype)
-
-#define PT_REGISTER_KERNEL_2T(                                             \
-    op_name, backend, layout, meta_kernel_fn, dtype1, dtype2)              \
-  PT_REGISTER_KERNEL_1T(op_name, backend, layout, meta_kernel_fn, dtype1); \
-  PT_REGISTER_KERNEL_1T(op_name, backend, layout, meta_kernel_fn, dtype2)
-
-#define PT_REGISTER_KERNEL_3T(                                        \
-    op_name, backend, layout, meta_kernel_fn, dtype1, dtype2, dtype3) \
-  PT_REGISTER_KERNEL_2T(                                              \
-      op_name, backend, layout, meta_kernel_fn, dtype1, dtype2);      \
-  PT_REGISTER_KERNEL_1T(op_name, backend, layout, meta_kernel_fn, dtype3)
-
-#define PT_REGISTER_KERNEL_4T(                                                \
-    op_name, backend, layout, meta_kernel_fn, dtype1, dtype2, dtype3, dtype4) \
-  PT_REGISTER_KERNEL_2T(                                                      \
-      op_name, backend, layout, meta_kernel_fn, dtype1, dtype2);              \
-  PT_REGISTER_KERNEL_2T(                                                      \
-      op_name, backend, layout, meta_kernel_fn, dtype3, dtype4)
-
-#define PT_REGISTER_KERNEL_5T(op_name,                                   \
-                              backend,                                   \
-                              layout,                                    \
-                              meta_kernel_fn,                            \
-                              dtype1,                                    \
-                              dtype2,                                    \
-                              dtype3,                                    \
-                              dtype4,                                    \
-                              dtype5)                                    \
-  PT_REGISTER_KERNEL_3T(                                                 \
-      op_name, backend, layout, meta_kernel_fn, dtype1, dtype2, dtype3); \
-  PT_REGISTER_KERNEL_2T(                                                 \
-      op_name, backend, layout, meta_kernel_fn, dtype4, dtype5)
-
-#define PT_REGISTER_KERNEL_6T(op_name,                                   \
-                              backend,                                   \
-                              layout,                                    \
-                              meta_kernel_fn,                            \
-                              dtype1,                                    \
-                              dtype2,                                    \
-                              dtype3,                                    \
-                              dtype4,                                    \
-                              dtype5,                                    \
-                              dtype6)                                    \
-  PT_REGISTER_KERNEL_3T(                                                 \
-      op_name, backend, layout, meta_kernel_fn, dtype1, dtype2, dtype3); \
-  PT_REGISTER_KERNEL_3T(                                                 \
-      op_name, backend, layout, meta_kernel_fn, dtype4, dtype5, dtype6)
-
-#define PT_REGISTER_KERNEL_7T(op_name,        \
-                              backend,        \
-                              layout,         \
-                              meta_kernel_fn, \
-                              dtype1,         \
-                              dtype2,         \
-                              dtype3,         \
-                              dtype4,         \
-                              dtype5,         \
-                              dtype6,         \
-                              ftype7)         \
-  PT_REGISTER_KERNEL_4T(op_name,              \
-                        backend,              \
-                        layout,               \
-                        meta_kernel_fn,       \
-                        dtype1,               \
-                        dtype2,               \
-                        dtype3,               \
-                        dtype4);              \
-  PT_REGISTER_KERNEL_3T(                      \
-      op_name, backend, layout, meta_kernel_fn, dtype5, dtype6, dtype7)
-
-#define PT_REGISTER_KERNEL_8T(op_name,        \
-                              backend,        \
-                              layout,         \
-                              meta_kernel_fn, \
-                              dtype1,         \
-                              dtype2,         \
-                              dtype3,         \
-                              dtype4,         \
-                              dtype5,         \
-                              dtype6,         \
-                              dtype7,         \
-                              dtype8)         \
-  PT_REGISTER_KERNEL_4T(op_name,              \
-                        backend,              \
-                        layout,               \
-                        meta_kernel_fn,       \
-                        dtype1,               \
-                        dtype2,               \
-                        dtype3,               \
-                        dtype4);              \
-  PT_REGISTER_KERNEL_4T(op_name,              \
-                        backend,              \
-                        layout,               \
-                        meta_kernel_fn,       \
-                        dtype5,               \
-                        dtype6,               \
-                        dtype7,               \
-                        dtype8)
-
-/**
- * Op Kernel declare macros
- */
-
-#define PT_DECLARE_KERNEL_1T(op_name, backend, layout, dtype)                 \
-  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
-      __dec_pt_op_kernel_##op_name##_##backend##_##layout##_##dtype##__,      \
-      "PT_DECLARE_KERNEL_*T must be called in global namespace.");            \
-  extern int                                                                  \
-      TouchOpKernelRegistrar_##op_name##_##backend##_##dtype##_##layout();    \
-  UNUSED static int                                                           \
-      __declare_pt_op_kernel_##op_name##_##backend##_##layout##_##dtype##__ = \
-          TouchOpKernelRegistrar_##op_name##_##backend##_##dtype##_##layout()
-
-#define PT_DECLARE_KERNEL_2T(op_name, backend, layout, dtype1, dtype2) \
-  PT_DECLARE_KERNEL_1T(op_name, backend, layout, dtype1);              \
-  PT_DECLARE_KERNEL_1T(op_name, backend, layout, dtype2)
-
-#define PT_DECLARE_KERNEL_3T(op_name, backend, layout, dtype1, dtype2, dtype3) \
-  PT_REGISTER_KERNEL_2T(op_name, backend, layout, dtype1, dtype2);             \
-  PT_DECLARE_KERNEL_1T(op_name, backend, layout, dtype3)
-
-#define PT_DECLARE_KERNEL_4T(                                     \
-    op_name, backend, layout, dtype1, dtype2, dtype3, dtype4)     \
-  PT_DECLARE_KERNEL_2T(op_name, backend, layout, dtype1, dtype2); \
-  PT_DECLARE_KERNEL_2T(op_name, backend, layout, dtype3, dtype4)
-
-#define PT_DECLARE_KERNEL_5T(                                             \
-    op_name, backend, layout, dtype1, dtype2, dtype3, dtype4, dtype5)     \
-  PT_DECLARE_KERNEL_3T(op_name, backend, layout, dtype1, dtype2, dtype3); \
-  PT_DECLARE_KERNEL_2T(op_name, backend, layout, dtype4, dtype5)
-
-#define PT_DECLARE_KERNEL_6T(                                                 \
-    op_name, backend, layout, dtype1, dtype2, dtype3, dtype4, dtype5, dtype6) \
-  PT_DECLARE_KERNEL_3T(op_name, backend, layout, dtype1, dtype2, dtype3);     \
-  PT_DECLARE_KERNEL_3T(op_name, backend, layout, dtype4, dtype5, dtype6)
-
-#define PT_DECLARE_KERNEL_7T(op_name,                            \
-                             backend,                            \
-                             layout,                             \
-                             dtype1,                             \
-                             dtype2,                             \
-                             dtype3,                             \
-                             dtype4,                             \
-                             dtype5,                             \
-                             dtype6,                             \
-                             ftype7)                             \
-  PT_DECLARE_KERNEL_4T(                                          \
-      op_name, backend, layout, dtype1, dtype2, dtype3, dtype4); \
-  PT_DECLARE_KERNEL_3T(op_name, backend, layout, dtype5, dtype6, dtype7)
-
-#define PT_DECLARE_KERNEL_8T(op_name,                            \
-                             backend,                            \
-                             layout,                             \
-                             dtype1,                             \
-                             dtype2,                             \
-                             dtype3,                             \
-                             dtype4,                             \
-                             dtype5,                             \
-                             dtype6,                             \
-                             dtype7,                             \
-                             dtype8)                             \
-  PT_DECLARE_KERNEL_4T(                                          \
-      op_name, backend, layout, dtype1, dtype2, dtype3, dtype4); \
-  PT_DECLARE_KERNEL_4T(op_name, backend, layout, dtype5, dtype6, dtype7, dtype8)
 
 }  // namespace pt

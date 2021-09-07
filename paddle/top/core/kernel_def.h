@@ -16,7 +16,10 @@
 
 namespace pt {
 
+class OpKernel;
 class OpKernelContext;
+
 using OpKernelFn = void (*)(OpKernelContext* ctx);
+using OpKernelParamDefFn = void (*)(OpKernel* kernel);
 
 }  // namespace pt

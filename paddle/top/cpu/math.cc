@@ -85,8 +85,8 @@ void Mean(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
 // PT_TOUCH_KERNEL_REGISTRAR(sign, CPU, NCHW, FLOAT32);
 
 // Register method 3:
-PT_REGISTER_KERNEL_2T(sign, CPU, NCHW, pt::Sign, float, double);
-PT_REGISTER_KERNEL_2T(mean, CPU, NCHW, pt::Mean, float, double);
+// PT_REGISTER_KERNEL_2T(sign, CPU, NCHW, pt::Sign, float, double);
+// PT_REGISTER_KERNEL_2T(mean, CPU, NCHW, pt::Mean, float, double);
 // PT_REGISTER_KERNEL_8T(scale,
 //                       CPU,
 //                       NCHW,
@@ -111,3 +111,7 @@ PT_REGISTER_KERNEL_2T(mean, CPU, NCHW, pt::Mean, float, double);
 //                       int16_t,
 //                       int,
 //                       int64_t);
+
+// Register method 4:
+PT_REGISTER_KERNEL("sign", CPU, NCHW, pt::Sign, float, double) {}
+PT_REGISTER_KERNEL("mean", CPU, NCHW, pt::Mean, float, double) {}
