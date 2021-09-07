@@ -775,8 +775,12 @@ void MultiSlotDataFeed::PutToFeedVec(
                        total_instance * sizeof(int64_t));
     }
 
-    LoD data_lod{offset};
-    feed_vec_[i]->set_lod(data_lod);
+    // LoD data_lod{offset};
+    // feed_vec_[i]->set_lod(data_lod);
+    if (!use_slots_is_dense_[i]) {
+      LoD data_lod{offset};
+      feed_vec_[i]->set_lod(data_lod);
+    }
     if (use_slots_is_dense_[i]) {
       if (inductive_shape_index_[i] != -1) {
         use_slots_shape_[i][inductive_shape_index_[i]] =
@@ -1101,8 +1105,12 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
       CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(int64_t));
     }
     auto& slot_offset = offset[i];
-    LoD data_lod{slot_offset};
-    feed_vec_[i]->set_lod(data_lod);
+    // LoD data_lod{slot_offset};
+    // feed_vec_[i]->set_lod(data_lod);
+    if (!use_slots_is_dense_[i]) {
+      LoD data_lod{slot_offset};
+      feed_vec_[i]->set_lod(data_lod);
+    }
     if (use_slots_is_dense_[i]) {
       if (inductive_shape_index_[i] != -1) {
         use_slots_shape_[i][inductive_shape_index_[i]] =

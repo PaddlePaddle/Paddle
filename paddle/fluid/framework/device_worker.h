@@ -149,6 +149,7 @@ class DeviceWorker {
   bool use_cvm_;
   bool no_cvm_;
   bool scale_sparse_gradient_with_batch_size_;
+  float dump_prob_;
   std::vector<std::string> all_param_;
 };
 
@@ -226,6 +227,7 @@ class DownpourWorker : public HogwildWorker {
   void CopySparseTable();
   void CopyDenseTable();
   void CopyDenseVars();
+  void DumpParam(std::ostringstream& os);
   virtual void DumpParam(const int batch_id);
 
   DownpourWorkerParameter param_;
