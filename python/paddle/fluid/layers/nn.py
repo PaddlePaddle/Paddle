@@ -1816,6 +1816,10 @@ def conv3d(input,
             "Attr(data_format): %s." % str(data_format))
 
     channel_last = (data_format == "NDHWC")
+    if len(input.shape) != 5:
+        raise ValueError(
+            "Input should be 5D tensor, but received input with the shape of {}".
+            format(input.shape))
     num_channels = input.shape[4] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
@@ -1824,6 +1828,10 @@ def conv3d(input,
 
     if groups is None:
         num_filter_channels = num_channels
+    elif groups <= 0:
+        raise ValueError(
+            "the groups of conv3d should be greater than 0. Received groups: {}".
+            format(groups))
     else:
         if num_channels % groups != 0:
             raise ValueError(
@@ -3398,6 +3406,7 @@ def data_norm(input,
     }
     attrs = {
         "epsilon": epsilon,
+        "data_layout": data_layout,
         "sync_stats": sync_stats,
         "summary_decay_rate": summary_decay_rate,
     }
@@ -4243,10 +4252,15 @@ def conv3d_transpose(input,
         raise ValueError(
             "Param(data_format) of Op(fluid.layers.conv3d_transpose) got wrong value: received "
             + data_format + " but only NCDHW or NDHWC supported.")
+
     l_type = "conv3d_transpose"
     helper = LayerHelper(l_type, **locals())
     if not isinstance(input, Variable):
         raise TypeError("Input of conv3d_transpose must be Variable")
+    if len(input.shape) != 5:
+        raise ValueError(
+            "Input should be 5D tensor, but received input with the shape of {}".
+            format(input.shape))
     input_channel = input.shape[1] if data_format == 'NCDHW' else input.shape[
         -1]
 
@@ -4338,6 +4352,15 @@ def conv3d_transpose(input,
         raise ValueError("output_size should be int, list[int] or tuple[int]")
 
     groups = 1 if groups is None else groups
+    if groups <= 0:
+        raise ValueError(
+            "the groups of conv3d_transpose should be greater than 0. Received groups: {}".
+            format(groups))
+    if num_filters % groups != 0:
+        raise ValueError("Attr(num_filters) must be divisible by groups,"
+                         "Received: Attr(num_filters) is {}, the groups is {}".
+                         format(num_filters, groups))
+
     filter_shape = [input_channel, num_filters // groups] + filter_size
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
