@@ -18,7 +18,7 @@ To build on windows, run command with busybox
 busybox bash ./run.sh $PADDLE_ROOT $TURN_ON_MKL $TEST_GPU_CPU $DATA_DIR
 ```
 
-- After run command, it will build and execute tests and automatic download to ${DATA_DIR}.
+- After run command, it will build and execute tests and download to ${DATA_DIR} automatically.
 - `$PADDLE_ROOT`: paddle library path
 - `$TURN_ON_MKL`: use MKL or Openblas
 - `$TEST_GPU_CPU`: test both GPU/CPU mode or only CPU mode
