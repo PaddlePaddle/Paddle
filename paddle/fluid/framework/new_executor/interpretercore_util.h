@@ -31,6 +31,7 @@
 
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -468,5 +469,24 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const OperatorBase& op_;
   const RuntimeContext& ctx_;
 };
+
+static constexpr char kMemcpyH2D[] = "memcpy_h2d";
+static constexpr char kMemcpyD2H[] = "memcpy_d2h";
+
+std::string get_memcpy_type(const platform::Place& src_place,
+                            const platform::Place& dst_place);
+
+void build_variable_scope(const framework::ProgramDesc& pdesc,
+                          VariableScope* var_scope);
+
+void build_op_func_list(const platform::Place& place,
+                        const framework::ProgramDesc& pdesc,
+                        std::vector<OperatorBase*>* op_list,
+                        std::vector<OpFuncNode>* vec_func_list,
+                        VariableScope* var_scope);
+
+std::vector<size_t> merge_vector(const std::vector<size_t>& first,
+                                 const std::vector<size_t>& second);
+
 }  // namespace framework
 }  // namespace paddle
