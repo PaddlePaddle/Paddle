@@ -1075,3 +1075,62 @@ def matrix_power(x, n, name=None):
         outputs={'Out': out},
         attrs={'n': n})
     return out
+
+
+def eigvalsh(x, UPLO='L', name=None):
+    """
+    compute the eigenvalues of a 
+    complex Hermitian (conjugate symmetric) or a real symmetric matrix.
+
+    Args:
+        x (Tensor): A tensor with shape :math:`[_, M, M]` , The data type of the input Tensor x
+            should be one of float32, float64, complex64, complex128.
+        UPLO(str, optional): Lower triangular part of a (‘L’, default) or the upper triangular part (‘U’).
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: The tensor eigenvalues in ascending order.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x_data = np.array([[1, -2j], [2j, 5]])
+            x = paddle.to_tensor(x_data)
+            out_value = paddle.eigvalsh(x, UPLO='L')
+            print(out_value)
+            #[0.17157288, 5.82842712]
+    """
+    if in_dygraph_mode():
+        return _C_ops.eigvalsh(x, 'UPLO', UPLO)
+
+    def __check_input(x, UPLO):
+        x_shape = list(x.shape)
+        if len(x.shape) < 2:
+            raise ValueError(
+                "Input(input) only support >=2 tensor, but received "
+                "length of Input(input) is %s." % len(x.shape))
+        if x_shape[-1] != x_shape[-2]:
+            raise ValueError(
+                "The input matrix must be batches of square matrices. But received x's dimention: {}".
+                format(x_shape))
+        if UPLO is not 'L' and UPLO is not 'U':
+            raise ValueError(
+                "UPLO must be L or U. But received UPLO is: {}".format(UPLO))
+
+    __check_input(x, UPLO)
+
+    helper = LayerHelper('eigvalsh', **locals())
+    check_variable_and_dtype(
+        x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'eigvalsh')
+
+    out_value = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='eigvalsh',
+        inputs={'X': x},
+        outputs={'OutValue': out_value},
+        attrs={'UPLO': UPLO})
+    return out_value
