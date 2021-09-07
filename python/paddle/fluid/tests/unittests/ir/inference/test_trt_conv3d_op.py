@@ -29,7 +29,7 @@ class TensorRTSubgraphPassConv3dTest(InferencePassTest):
         self.set_params()
         with fluid.program_guard(self.main_program, self.startup_program):
             data = fluid.data(
-                name="data", shape=[-1, 3, 12, 32, 32], dtype="float32")
+                name="data", shape=[-1, 3, 6, 32, 32], dtype="float32")
             conv_out = fluid.layers.conv3d(
                 input=data,
                 num_filters=self.conv_num_filters,
@@ -41,7 +41,7 @@ class TensorRTSubgraphPassConv3dTest(InferencePassTest):
                 stride=self.stride,
                 act=None)
         self.feeds = {
-            "data": np.random.random([1, 3, 12, 32, 32]).astype("float32"),
+            "data": np.random.random([1, 3, 6, 32, 32]).astype("float32"),
         }
         self.enable_trt = True
         self.trt_parameters = TensorRTSubgraphPassConv3dTest.TensorRTParam(
@@ -120,7 +120,7 @@ class DynamicShapeTensorRTSubgraphPassConv3dTest(InferencePassTest):
                 stride=self.stride,
                 act=None)
         self.feeds = {
-            "data": np.random.random([1, 6, 64, 64, 8]).astype("float32"),
+            "data": np.random.random([1, 6, 32, 32, 8]).astype("float32"),
         }
         self.enable_trt = True
         self.trt_parameters = DynamicShapeTensorRTSubgraphPassConv3dTest.TensorRTParam(
@@ -128,7 +128,7 @@ class DynamicShapeTensorRTSubgraphPassConv3dTest(InferencePassTest):
         self.dynamic_shape_params = DynamicShapeTensorRTSubgraphPassConv3dTest.DynamicShapeParam(
             {
                 "data": [1, 6, 8, 8, 8],
-            }, {"data": [32, 6, 64, 64, 8], }, {"data": [16, 6, 16, 16, 8],
+            }, {"data": [32, 6, 32, 32, 8], }, {"data": [16, 6, 16, 16, 8],
                                                 }, False)
         self.fetch_list = [conv_out]
 
