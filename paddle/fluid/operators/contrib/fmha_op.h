@@ -73,7 +73,7 @@ constexpr size_t HIDDEN_DIMS = 2;
 template <typename DeviceContext, typename T>
 class FMHAKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(const framework::ExecutionContext &context) const override {
     PADDLE_ENFORCE_EQ(true, false, platform::errors::Unavailable(
                                        "FMHA CPU Kernel is not available"));
   }
@@ -82,7 +82,7 @@ class FMHAKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 class FMHAGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
+  void Compute(const framework::ExecutionContext &context) const override {
     PADDLE_ENFORCE_EQ(
         true, false,
         platform::errors::Unavailable("FMHA Grad CPU Kernel is not available"));

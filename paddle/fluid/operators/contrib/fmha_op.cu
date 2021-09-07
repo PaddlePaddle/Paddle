@@ -370,18 +370,18 @@ class FMHAGradGPUKernel : public framework::OpKernel<T> {
   }
 };
 
-template void run_fmha_fprop_fp16<paddle::platform::float16, std::shared_ptr<paddle::framework::Generator>>
-  (size_t batch_size, size_t max_seqlen, size_t num_head,
-                         size_t head_size, float dropout_rate, void *d_qkv,
-                         void *d_cu_seqlens, void *d_seqlens, void *d_out,
-                         void *d_softmax_mask, std::shared_ptr<paddle::framework::Generator> generator,
-                         cudaStream_t stream);
+template void run_fmha_fprop_fp16<
+    paddle::platform::float16, std::shared_ptr<paddle::framework::Generator>>(
+    size_t batch_size, size_t max_seqlen, size_t num_head, size_t head_size,
+    float dropout_rate, void *d_qkv, void *d_cu_seqlens, void *d_seqlens,
+    void *d_out, void *d_softmax_mask,
+    std::shared_ptr<paddle::framework::Generator> generator,
+    cudaStream_t stream);
 
-template void run_fmha_dgrad_fp16<paddle::platform::float16>(size_t batch_size, size_t max_seqlen, size_t num_head,
-                         size_t head_size, float dropout_rate, void *d_qkv,
-                         void *d_cu_seqlens, void *d_seqlens, void *d_out,
-                         void *d_softmax_mask, void *d_dqkv,
-                         cudaStream_t stream);
+template void run_fmha_dgrad_fp16<paddle::platform::float16>(
+    size_t batch_size, size_t max_seqlen, size_t num_head, size_t head_size,
+    float dropout_rate, void *d_qkv, void *d_cu_seqlens, void *d_seqlens,
+    void *d_out, void *d_softmax_mask, void *d_dqkv, cudaStream_t stream);
 
 }  // namespace operators
 }  // namespace paddle
