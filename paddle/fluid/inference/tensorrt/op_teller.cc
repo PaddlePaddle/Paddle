@@ -592,6 +592,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Output("Out").size();
         return false;
       }
+      if (BOOST_GET_CONST(bool, desc.GetAttr("approximate"))) return false;
     }
 
     if (op_type == "layer_norm") {
@@ -698,20 +699,42 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
     }
+
     if (op_type == "reshape" || op_type == "reshape2") {
       if (!desc.HasAttr("shape")) {
         return false;
       }
       // Paddle-TRT does not support the input tensors: Shape and ShapeTensor
       auto reshape_inputs = desc.Inputs();
-      if (reshape_inputs.find("Shape") != reshape_inputs.end() ||
-          reshape_inputs.find("ShapeTensor") != reshape_inputs.end()) {
-        return false;
+      if (reshape_inputs.find("Shape") != reshape_inputs.end()) {
+        if (desc.Input("Shape").size() >= 1) {
+          return false;
+        }
+      }
+      if (reshape_inputs.find("ShapeTensor") != reshape_inputs.end()) {
+        if (desc.Input("ShapeTensor").size() >= 1) {
+          return false;
+        }
       }
       std::vector<int> shape =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
       if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
       if (!with_dynamic_shape && shape[0] == -1) return false;
+    }
+
+    if (op_type == "clip") {
+      // Paddle-TRT does not support the input tensors: Min and Max
+      auto clip_inputs = desc.Inputs();
+      if (clip_inputs.find("Min") != clip_inputs.end()) {
+        if (desc.Input("Min").size() >= 1) {
+          return false;
+        }
+      }
+      if (clip_inputs.find("Max") != clip_inputs.end()) {
+        if (desc.Input("Max").size() >= 1) {
+          return false;
+        }
+      }
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean") {
