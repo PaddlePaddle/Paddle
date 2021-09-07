@@ -107,8 +107,14 @@ class DynamicShapeTensorRTSubgraphPassConv3dTransposeTest(InferencePassTest):
         self.dynamic_shape_params = DynamicShapeTensorRTSubgraphPassConv3dTransposeTest.DynamicShapeParam(
             {
                 "data": [1, 6, 8, 8, 8],
-            }, {"data": [32, 6, 32, 32, 8], }, {"data": [16, 6, 16, 16, 8],
-                                                }, False)
+                "conv3d_transpose_0.tmp_0": [1, 6, 8, 8, 1],
+            }, {
+                "data": [32, 6, 32, 32, 8],
+                "conv3d_transpose_0.tmp_0": [32, 6, 64, 64, 16],
+            }, {
+                "data": [16, 6, 16, 16, 8],
+                "conv3d_transpose_0.tmp_0": [16, 6, 16, 16, 8],
+            }, False)
         self.fetch_list = [conv_out]
 
     def set_params(self):

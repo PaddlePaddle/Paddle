@@ -759,9 +759,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 #endif
 
     if (op_type == "conv3d" || op_type == "conv3d_transpose") {
-      std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
-
       if (desc.HasAttr("padding_algorithm")) {
         std::string padding_algorithm =
             BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
@@ -772,6 +769,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           return false;
         }
       }
+
+#if !IS_TRT_VERSION_GE(7000)
+      // looks like some issues with trt6.0
+      if (with_dynamic_shape) {
+        return false;
+      }
+#endif
+      std::vector<int> paddings =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
 
       // conv3d and conv3d_transpose need padding check
       if (paddings.size() > 3) return false;
