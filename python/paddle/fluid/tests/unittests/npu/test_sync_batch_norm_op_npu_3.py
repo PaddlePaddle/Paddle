@@ -31,11 +31,55 @@ import paddle.nn as nn
 from paddle.fluid import compiler
 from paddle.fluid import Program, program_guard
 
+import paddle.distributed.fleet as fleet
+import paddle.distributed.fleet.base.role_maker as role_maker
+
 from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
-from paddle.fluid.tests.unittests.test_sync_batch_norm_op import create_or_get_tensor
+
+# from paddle.framework import _apply_pass
 
 _set_use_system_allocator(False)
 paddle.enable_static()
+
+role = role_maker.PaddleCloudRoleMaker(is_collective=True)
+fleet.init(role)
+
+
+def create_or_get_tensor(scope, var_name, var, place):
+    """Get tensor, if not found, create a new one."""
+    tensor = scope.var(var_name).get_tensor()
+    if var is not None:
+        assert isinstance(var, np.ndarray)
+        tensor.set_recursive_sequence_lengths([])
+        tensor.set(var, place)
+    return tensor
+
+
+def get_data_vars(program):
+    data_vars = []
+    for var_name, var in program.global_block().vars.items():
+        if var.is_data:
+            data_vars.append(var_name)
+    return data_vars
+
+
+def update_attr(attrs, attr_types, name, value, typ=None):
+    if name not in attrs:
+        attrs[name] = value
+    if typ:
+        attr_types[name] = typ
+
+
+def apply_pass(main_program, startup_program, name):
+    pass_attrs = {}
+    attrs = dict(pass_attrs)
+    attr_types = {}
+    update_attr(attrs, attr_types, "nranks", 1, "size_t")
+    update_attr(attrs, attr_types, "use_cuda", False, "bool")
+    # TODO(zjl): how to skip fetch variables ?
+    update_attr(attrs, attr_types, "mem_opt_skip_vars",
+                get_data_vars(main_program), "list[str]")
+    _apply_pass(main_program, startup_program, name, attrs, attr_types)
 
 
 @unittest.skipIf(False, "skip for tmp")
@@ -93,8 +137,19 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                 if not sync_bn:
                     out = out / core.get_npu_device_count()
                 if not only_forward:
-                    sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
-                    sgd_opt.backward(out)
+                    # if not sync_bn:
+                    if True:
+                        sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
+                        sgd_opt.backward(out)
+                    else:
+                        strategy = paddle.distributed.fleet.DistributedStrategy(
+                        )
+                        # strategy.auto = True
+                        strategy.sync_batch_norm = True
+                        sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
+                        sgd_opt = fleet.distributed_optimizer(
+                            sgd_opt, strategy=strategy)
+                        # sgd_opt.minimize(out)
         return main, startup, [out, conv, bn]
 
     def _compare(self, place, layout, only_forward):
@@ -108,6 +163,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         # Single-NPU, N = 32 per NPU
         main, startup, outs = self._build_program(place, layout, seed, False,
                                                   only_forward)
+
         exe = fluid.Executor(place)
         exe.run(startup)
         fetch_names = [v.name for v in outs] + [
@@ -135,12 +191,12 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         fetch_names = [v.name for v in outs] + [
             'bn_moving_mean', 'bn_moving_variance', 'bn_scale', 'bn_bias'
         ]
-        if not only_forward:
-            others = [
-                'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
-                'bn_bias@GRAD', 'batch_norm_0.tmp_3@GRAD', 'conv2d_0.tmp_0@GRAD'
-            ]
-            fetch_names += others
+        # if not only_forward:
+        # others = [
+        #     'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
+        #     'bn_bias@GRAD', 'batch_norm_0.tmp_3@GRAD', 'conv2d_0.tmp_0@GRAD'
+        # ]
+        # fetch_names += others
         for nm in fetch_names:
             fv = fluid.framework._get_var(str(nm), program=main)
             fv.persistable = True
@@ -151,14 +207,31 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         comp_prog = compiler.CompiledProgram(main).with_data_parallel(
             outs[0].name if not only_forward else None,
             build_strategy=build_strategy)
+
         comp_prog = main
+        # print('comp_prog: ', comp_prog.blocks[0].parent_idx)
+        # print('comp_prog: ', comp_prog.blocks[0].ops[1])
+
+        # print('comp_prog: ', type(comp_prog.blocks[0].ops[1]))
+        # print('comp_prog: ', type(comp_prog.blocks[0].ops[1].desc))
+        # print('comp_prog: ', comp_prog.blocks[0].ops[1].type)
+
+        # print('comp_prog: ', comp_prog.blocks[0].ops[1].desc.type())
+        comp_prog.blocks[0].ops[1].desc.set_type('sync_batch_norm')
+        # print('comp_prog: ', comp_prog.blocks[0].ops[1].desc.type())
+
+        # print('comp_prog: ', comp_prog.blocks[0].ops[1].type)
+        # print('comp_prog: ', comp_prog.blocks[0].ops[1])
+        # comp_prog.blocks[0].ops[1].type = 'sync_batch_norm'
+        # print('comp_prog: ', comp_prog.blocks[0].ops[1].type)
+
         sync_bn_fetches = exe.run(program=comp_prog,
                                   feed={'input': data},
                                   fetch_list=fetch_names)
 
         for i in six.moves.xrange(1, len(sync_bn_fetches)):
-            print('i: ', i)
-            print('fetch_names[i]: ', fetch_names[i])
+            # print('i: ', i)
+            # print('fetch_names[i]: ', fetch_names[i])
 
             bn_val = bn_fetches[i]
             sync_bn_val = sync_bn_fetches[i]
@@ -172,7 +245,14 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
 
     def test_train(self):
         """Test training."""
-        places = [core.NPUPlace(0)]
+
+        # places = [core.NPUPlace(0)]
+
+        place_id = int(os.getenv("FLAGS_selected_npus", "0"))
+        print("use selected_npus:", place_id)
+        place = paddle.NPUPlace(place_id)
+        places = [place]
+
         for place in places:
             for layout in ["NCHW", "NHWC"]:
                 self._compare(place, layout, False)
