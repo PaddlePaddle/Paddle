@@ -219,6 +219,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
                         self.run_test_config(model, params, prog_config,
                                              pred_config, feed_data))
                     self.assert_tensors_near(threshold, results[-1], results[0])
+                    if not skip_flag:
+                        self.assert_op_size(nodes_num[0], nodes_num[1])
                 except Exception as e:
                     self.fail_log(
                         str(prog_config) + ' vs ' + self.inference_config_str(
@@ -226,9 +228,6 @@ class TrtLayerAutoScanTest(AutoScanTest):
                         '\033[1;31m \nERROR INFO: {}\033[0m'.format(str(e)))
                     status = False
                     continue
-
-                if not skip_flag:
-                    self.assert_op_size(nodes_num[0], nodes_num[1])
 
                 self.success_log('RUN ' + str(prog_config) + ' vs ' +
                                  self.inference_config_str(pred_config))
