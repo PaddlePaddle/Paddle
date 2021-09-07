@@ -13,11 +13,15 @@
 # limitations under the License.
 
 from paddle.fluid.dygraph.amp import amp_guard
+from paddle.fluid.dygraph.amp import amp_decorator
 
 __all__ = []
 
 
-def auto_cast(enable=True, custom_white_list=None, custom_black_list=None):
+def auto_cast(enable=True,
+              custom_white_list=None,
+              custom_black_list=None,
+              enable_pure_fp16=False):
     """
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
     If enabled, the input data type (float32 or float16) of each operator is decided 
@@ -63,4 +67,9 @@ def auto_cast(enable=True, custom_white_list=None, custom_black_list=None):
             print(c.dtype) # FP16
 
     """
-    return amp_guard(enable, custom_white_list, custom_black_list)
+    return amp_guard(enable, custom_white_list, custom_black_list,
+                     enable_pure_fp16)
+
+
+def amp_decorator(mode='pure_fp16', models=None, optimizers=None):
+    return amp_decorator(mode, models, optimizers)

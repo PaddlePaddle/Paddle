@@ -20,7 +20,7 @@ from paddle.fluid.framework import Variable, in_dygraph_mode, OpProtoHolder, Par
 import warnings
 import copy
 
-__all__ = ['amp_guard']
+__all__ = ['amp_guard', 'amp_decorator']
 
 # The set of ops that support fp16 calculation and are considered numerically-
 # safe and performance-critical. These ops are always converted to fp16.
@@ -63,6 +63,18 @@ AMP_RELATED_FLAGS_SETTING = {
     'FLAGS_cudnn_batchnorm_spatial_persistent': 1,
 }
 
+PURE_FP16_BLACK_LIST = {
+    'exp',
+    'square',
+    'log',
+    'mean',
+    'sum',
+    'cos_sim',
+    'softmax',
+    # default fp32 can avoid return inf when the sum value large than 65504
+    'reduce_sum',
+}
+
 
 #NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
 # The reason why not use AutoMixedPrecisionLists is that custom_black_varnames is not suitable for imperative mode.
@@ -101,9 +113,114 @@ def _in_amp_guard():
         return False
 
 
+@dygraph_only
+def fp16_initialize(enable_pure_fp16, models, optimizers):
+    if not enable_pure_fp16:
+        return models, optimizers
+
+    if len(models) != len(optimizers):
+        raise RuntimeError(
+            "Current models num should be equal to optimizers num, but receive {} != {}.".
+            format(len(models), len(optimizers)))
+
+    for idx in range(len(models)):
+        if getattr(optimizers[idx], '_param_groups', None) and isinstance(
+                optimizers[idx]._param_groups[0], dict):
+            for p in models[idx].parameters():
+                contains = False
+                for param_group in optimizers[idx]._param_groups:
+                    for q in param_group['params']:
+                        if p is q:
+                            contains = True
+                if not contains:
+                    raise RuntimeError(
+                        "Current the order of models should be consistent with that of optimizers, but receive models_{} not corresponding to optimizers_{}.".
+                        format(idx, idx))
+        else:
+            for p in models[idx].parameters():
+                contains = False
+                for q in optimizers[idx]._parameter_list:
+                    if p is q:
+                        contains = True
+                if not contains:
+                    raise RuntimeError(
+                        "Current the order of models should be consistent with that of optimizers, but receive models_{} not corresponding to optimizers_{}.".
+                        format(idx, idx))
+
+    for idx in range(len(models)):
+        for layer in models[idx].sublayers(include_self=True):
+            if len(layer._sub_layers) is 0:
+                '''
+                if (layer._dtype is 'float16') or isinstance(layer, (
+                        paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
+                    continue
+                layer.to(dtype='float16')
+                '''
+                if (layer._dtype is 'float16'):
+                    continue
+                layer.to(dtype='float16')
+
+                #以group的dict形式输入的参数
+                if getattr(optimizers[idx], '_param_groups',
+                           None) and isinstance(
+                               optimizers[idx]._param_groups[0], dict):
+                    #更新group
+                    for param_group in optimizers[idx]._param_groups:
+                        for i, param in enumerate(param_group['params']):
+                            if id(param) in layer._parameters_transform_map:
+                                param_group['params'][
+                                    i] = layer._parameters_transform_map[id(
+                                        param)][0]
+                    #更新list
+                    for param_group in optimizers[idx]._parameter_list:
+                        params = param_group['params']
+                        for i, param in enumerate(params):
+                            if id(param) in layer._parameters_transform_map:
+                                params[i] = layer._parameters_transform_map[id(
+                                    param)][0]
+                #以list的形式输入的参数
+                else:
+                    for i, param in enumerate(optimizers[idx]._parameter_list):
+                        if id(param) in layer._parameters_transform_map:
+                            optimizers[idx]._parameter_list[
+                                i] = layer._parameters_transform_map[id(param)][
+                                    0]
+                            if hasattr(optimizers[idx], '_param_groups'):
+                                optimizers[idx]._param_groups[
+                                    i] = layer._parameters_transform_map[id(
+                                        param)][0]
+    '''
+    for idx in range(len(optimizers)):
+        if hasattr(optimizers[idx], '_multi_precision'):
+            optimizers[idx]._multi_precision = True
+    '''
+
+    return models, optimizers
+
+
+def check_models(models):
+    for model in models:
+        if not isinstance(model, paddle.nn.Layer):
+            raise RuntimeError(
+                "Current train mode is pure fp16, models should be paddle.nn.Layer, but receive {}.".
+                format(type(model)))
+
+
+def check_optimizers(optimizers):
+    for optimizer in optimizers:
+        if not isinstance(optimizer, (paddle.optimizer.Optimizer,
+                                      paddle.fluid.optimizer.Optimizer)):
+            raise RuntimeError(
+                "Current train mode is pure fp16, optimizers should be paddle.optimizer.Optimizer or paddle.fluid.optimizer.Optimizer, but receive {}.".
+                format(type(optimizer)))
+
+
 @signature_safe_contextmanager
 @dygraph_only
-def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
+def amp_guard(enable=True,
+              custom_white_list=None,
+              custom_black_list=None,
+              enable_pure_fp16=False):
     """
     :api_attr: imperative
 
@@ -150,9 +267,18 @@ def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
             % tracer._expected_place)
         enable = False
 
+    if (not enable) and enable_pure_fp16:
+        warnings.warn(
+            'When enable autocast is False, enable_pure_fp16 should be False, but current is %s, so it makes no effect.'
+            % enable_pure_fp16)
+        enable_pure_fp16 = False
+
     # use default white_list and black_list if no custom lists provided
     _white_list = WHITE_LIST
-    _black_list = BLACK_LIST
+    if enable_pure_fp16:
+        _black_list = PURE_FP16_BLACK_LIST
+    else:
+        _black_list = BLACK_LIST
     if custom_white_list or custom_black_list:
         _white_list, _black_list = _update_list(custom_white_list,
                                                 custom_black_list)
@@ -173,6 +299,9 @@ def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
         # original_flags = get_flags(AMP_RELATED_FLAGS)
         # set_flags(AMP_RELATED_FLAGS_SETTING)
 
+        original_pure_fp16_enable = tracer._enable_pure_fp16
+        tracer._enable_pure_fp16 = enable_pure_fp16
+
     # restore status
     try:
         yield
@@ -181,3 +310,54 @@ def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
             tracer._enable_autocast = original_enable
             tracer._set_amp_op_list(original_white_list, original_black_list)
             # set_flags(original_flags)
+            tracer._enable_pure_fp16 = original_pure_fp16_enable
+
+
+@dygraph_only
+def amp_decorator(mode='pure_fp16', models=None, optimizers=None):
+    if mode in ['fp32', 'amp']:
+        return models, optimizers
+
+    if mode != 'pure_fp16':
+        raise ValueError(
+            "the input parameter mode should be fp32 or amp or pure_fp16.")
+
+    models_is_list = False
+    if isinstance(models, paddle.nn.Layer):
+        models_is_list = False
+        models = [models]
+        check_models(models)
+    elif isinstance(models, list):
+        check_models(models)
+        models_is_list = True
+    else:
+        raise TypeError(
+            "models must be either a single model or a list of models.")
+
+    optimizers_is_list = False
+    if isinstance(optimizers, (paddle.optimizer.Optimizer,
+                               paddle.fluid.optimizer.Optimizer)):
+        optimizers_is_list = False
+        optimizers = [optimizers]
+        check_optimizers(optimizers)
+    elif isinstance(optimizers, list):
+        check_optimizers(optimizers)
+        optimizers_is_list = True
+    else:
+        raise TypeError(
+            "optimizers must be either a single optimizer or a list of optimizers."
+        )
+
+    models, optimizers = fp16_initialize(
+        enable_pure_fp16=True, models=models, optimizers=optimizers)
+
+    if models_is_list:
+        if optimizers_is_list:
+            return models, optimizers
+        else:
+            return models, optimizers[0]
+    else:
+        if optimizers_is_list:
+            return models[0], optimizers
+        else:
+            return models[0], optimizers[0]

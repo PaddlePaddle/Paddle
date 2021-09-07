@@ -109,6 +109,10 @@ class Tracer {
 
   bool IsAutoCastEnabled() const { return enable_autocast_; }
 
+  void SetEnablePureFp16(bool enable) { enable_pure_fp16_ = enable; }
+
+  bool IsPureFp16Enabled() const { return enable_pure_fp16_; }
+
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
       const platform::Place& place);
 
@@ -121,6 +125,7 @@ class Tracer {
   bool enable_autocast_{false};
   GarbageCollectorMap gcs_;
   static thread_local bool has_grad_;
+  bool enable_pure_fp16_{false};
 };
 
 // To access static variable current_tracer

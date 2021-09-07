@@ -66,12 +66,17 @@ class AutoCastGuard {
   AutoCastGuard(std::shared_ptr<Tracer> tracer, bool guard_mode)
       : tracer_(tracer) {
     pre_mode_ = tracer_->IsAutoCastEnabled();
+    pre_pure_fp16_mode_ = tracer_->IsPureFp16Enabled();
     if (pre_mode_ != guard_mode) {
       tracer_->SetEnableAutoCast(guard_mode);
+      tracer_->SetEnablePureFp16(guard_mode);
     }
   }
 
-  ~AutoCastGuard() { tracer_->SetEnableAutoCast(pre_mode_); }
+  ~AutoCastGuard() {
+    tracer_->SetEnableAutoCast(pre_mode_);
+    tracer_->SetEnablePureFp16(pre_pure_fp16_mode_);
+  }
 
   // forbid copy and operator=
   AutoCastGuard(const AutoCastGuard& guard) = delete;
@@ -80,10 +85,14 @@ class AutoCastGuard {
  private:
   std::shared_ptr<Tracer> tracer_;
   bool pre_mode_;
+  bool pre_pure_fp16_mode_;
 };
 
 NameVarBaseMap AutoCastInputs(const std::string& op_type,
                               const NameVarBaseMap& ins);
+
+NameVarBaseMap CastPureFp16Inputs(const std::string& op_type,
+                                  const NameVarBaseMap& ins);
 
 }  // namespace imperative
 }  // namespace paddle
