@@ -538,7 +538,7 @@ GenerateOpFunctions() {
     // since only OperatorWithKernel can run in dygraph mode.
     // if the tcmpt lib contains op kernel, we still generate ops method
     if (!all_kernels.count(op_type) &&
-        !pt::OpKernelFactory::Instance().ContainsOperation(op_type.c_str())) {
+        !pt::KernelFactory::Instance().ContainsKernel(op_type.c_str())) {
       continue;
     }
 

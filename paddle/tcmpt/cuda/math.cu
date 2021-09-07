@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "paddle/tcmpt/cuda/math.h"
 
-// #include "paddle/tcmpt/module/scale.h"
-// #include "paddle/tcmpt/module/sign.h"
+// #include "paddle/tcmpt/eigen/scale.h"
+// #include "paddle/tcmpt/eigen/sign.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"

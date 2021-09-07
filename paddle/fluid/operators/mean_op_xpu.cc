@@ -22,6 +22,24 @@ namespace paddle {
 namespace operators {
 
 template <typename DeviceContext, typename T>
+class MeanXPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* input = context.Input<Tensor>("X");
+    auto* output = context.Output<Tensor>("Out");
+    output->mutable_data<T>(context.GetPlace());
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    const float* x_data = input->data<float>();
+    float* y_data = output->data<float>();
+    int r = xpu::mean(dev_ctx.x_context(), x_data, y_data, input->numel());
+    PADDLE_ENFORCE_EQ(
+        r, xpu::Error_t::SUCCESS,
+        platform::errors::External(
+            "XPU kernel error, Mean op execution not succeed, error code=%d",
+            r));
+  }
+};
+template <typename DeviceContext, typename T>
 class MeanGradXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -46,6 +64,8 @@ class MeanGradXPUKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+REGISTER_OP_XPU_KERNEL(
+    mean, ops::MeanXPUKernel<paddle::platform::XPUDeviceContext, float>);
 REGISTER_OP_XPU_KERNEL(
     mean_grad,
     ops::MeanGradXPUKernel<paddle::platform::XPUDeviceContext, float>);

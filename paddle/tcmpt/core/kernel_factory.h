@@ -32,73 +32,73 @@ namespace pt {
 /**
  * [ Naming considerations ]
  *
- * The tensor operation library contains many operations, and the operation
- * in each specific scenario is represented by an operation kernel.
+ * The tensor Compute library contains many kernels, and the computation
+ * in each specific scenario is represented by an kernel.
  *
- * We directly named it `Kernel` instead of `OpKernel`, the tensor operation
+ * We directly named it `Kernel` instead of `Kernel`, the tensor Compute
  * library here and fluid are independent, avoiding developers from
  * misunderstanding the relationship between the two concepts.
  */
 
-class OpKernelContext;
+class KernelContext;
 
-using OpKernelFn = void (*)(OpKernelContext* ctx);
+using KernelFn = void (*)(KernelContext* ctx);
 
-struct OperationName final {
+struct KernelName final {
   // TODO(chenweihang): use string_view later?
-  std::string op_type;
-  std::string overload_type;
+  std::string name;
+  std::string overload_name;
   // Avoid calculating Hash value at runtime
   size_t hash_value;
 
-  OperationName(std::string op_type, std::string overload_type)
-      : op_type(std::move(op_type)), overload_type(std::move(overload_type)) {
-    hash_value = std::hash<std::string>()(op_type) ^
-                 (std::hash<std::string>()(overload_type) << 1);
+  KernelName(std::string name, std::string overload_name)
+      : name(std::move(name)), overload_name(std::move(overload_name)) {
+    hash_value = std::hash<std::string>()(name) ^
+                 (std::hash<std::string>()(overload_name) << 1);
   }
 
-  OperationName(const char* op_name) {
-    std::string op_name_str(op_name);
-    size_t pos = op_name_str.find_first_of('.');
+  KernelName(const char* kernel_name) {
+    std::string kernel_name_str(kernel_name);
+    size_t pos = kernel_name_str.find_first_of('.');
     if (pos == std::string::npos) {
-      op_type = op_name_str;
-      overload_type = "";
+      name = kernel_name_str;
+      overload_name = "";
     } else {
-      op_type = op_name_str.substr(0, pos);
-      PADDLE_ENFORCE_EQ(op_name_str.find('.', pos + 1),
+      name = kernel_name_str.substr(0, pos);
+      PADDLE_ENFORCE_EQ(kernel_name_str.find('.', pos + 1),
                         std::string::npos,
                         paddle::platform::errors::InvalidArgument(
-                            "OperationName only can contains one '.'."));
-      overload_type = op_name_str.substr(pos + 1, op_name_str.size());
+                            "KernelName only can contains one '.'."));
+      overload_name = kernel_name_str.substr(pos + 1, kernel_name_str.size());
     }
-    hash_value = std::hash<std::string>()(op_type) ^
-                 (std::hash<std::string>()(overload_type) << 1);
+    hash_value = std::hash<std::string>()(name) ^
+                 (std::hash<std::string>()(overload_name) << 1);
   }
 
   struct Hash {
-    size_t operator()(const OperationName& op_name) const {
-      return op_name.hash_value;
+    size_t operator()(const KernelName& kernel_name) const {
+      return kernel_name.hash_value;
     }
   };
 
-  bool operator<(const OperationName& op_name) const {
-    return hash_value < op_name.hash_value;
+  bool operator<(const KernelName& kernel_name) const {
+    return hash_value < kernel_name.hash_value;
   }
 
-  bool operator==(const OperationName& op_name) const {
-    return hash_value == op_name.hash_value;
+  bool operator==(const KernelName& kernel_name) const {
+    return hash_value == kernel_name.hash_value;
   }
 
-  bool operator!=(const OperationName& op_name) const {
-    return hash_value != op_name.hash_value;
+  bool operator!=(const KernelName& kernel_name) const {
+    return hash_value != kernel_name.hash_value;
   }
 };
 
-class OpKernelKey {
+class KernelKey {
  public:
-  OpKernelKey() = default;
+  KernelKey() = default;
 
-  OpKernelKey(Backend backend, DataLayout layout, DataType dtype)
+  KernelKey(Backend backend, DataLayout layout, DataType dtype)
       : backend_(backend), layout_(layout), dtype_(dtype) {
     // |----31-20------|---19-12---|---11-8----|---7-0---|
     // | For extension | DataType | DataLayout | Backend |
@@ -116,22 +116,20 @@ class OpKernelKey {
 
   uint32_t hash_value() const { return hash_value_; }
 
-  bool operator<(const OpKernelKey& key) const {
+  bool operator<(const KernelKey& key) const {
     return hash_value_ < key.hash_value();
   }
 
-  bool operator==(const OpKernelKey& key) const {
+  bool operator==(const KernelKey& key) const {
     return hash_value_ == key.hash_value();
   }
 
-  bool operator!=(const OpKernelKey& key) const {
+  bool operator!=(const KernelKey& key) const {
     return hash_value_ != key.hash_value();
   }
 
   struct Hash {
-    uint32_t operator()(const OpKernelKey& key) const {
-      return key.hash_value();
-    }
+    uint32_t operator()(const KernelKey& key) const { return key.hash_value(); }
   };
 
  private:
@@ -161,9 +159,9 @@ struct ParamDef {
       : backend(backend), layout(layout), dtype(dtype) {}
 };
 
-class OpKernelParamDef {
+class KernelParamDef {
  public:
-  OpKernelParamDef() = default;
+  KernelParamDef() = default;
 
   void AppendInput(Backend backend, DataLayout layout, DataType dtype) {
     input_defs_.emplace_back(ParamDef(backend, layout, dtype));
@@ -183,77 +181,76 @@ class OpKernelParamDef {
   std::vector<ParamDef> output_defs_{{}};
 };
 
-class OpKernel {
+class Kernel {
  public:
   // for map element contruct
-  OpKernel() = default;
+  Kernel() = default;
 
-  explicit OpKernel(OpKernelFn fn) : fn_(fn) {}
+  explicit Kernel(KernelFn fn) : fn_(fn) {}
 
-  void operator()(OpKernelContext* ctx) const { fn_(ctx); }
+  void operator()(KernelContext* ctx) const { fn_(ctx); }
 
-  OpKernelParamDef* mutable_param_def() { return &param_def_; }
+  KernelParamDef* mutable_param_def() { return &param_def_; }
 
-  const OpKernelParamDef& param_def() const { return param_def_; }
+  const KernelParamDef& param_def() const { return param_def_; }
 
  private:
-  OpKernelFn fn_{nullptr};
-  OpKernelParamDef param_def_;
+  KernelFn fn_{nullptr};
+  KernelParamDef param_def_;
 };
 
 /**
- * Note: Each Operation need a basic kernel map that named by op_type.
- *       Such as for scale op, OpKernelMap contains a `scale` kernel map,
+ * Note: Each Computation need a basic kernel map that named by kernel_name.
+ *       Such as for scale op, KernelMap contains a `scale` kernel map,
  *       if it still need other overload kernel, the op name can be
  *       `scale.***`.
  */
-class OpKernelFactory {
+class KernelFactory {
  public:
   // replaced by paddle::flat_hash_map later
-  using OpKernelMap = std::unordered_map<
-      OperationName,
-      std::unordered_map<OpKernelKey, OpKernel, OpKernelKey::Hash>,
-      OperationName::Hash>;
+  using KernelMap =
+      std::unordered_map<KernelName,
+                         std::unordered_map<KernelKey, Kernel, KernelKey::Hash>,
+                         KernelName::Hash>;
 
-  static OpKernelFactory& Instance();
+  static KernelFactory& Instance();
 
-  OpKernelMap& kernels() { return kernels_; }
+  KernelMap& kernels() { return kernels_; }
 
-  bool ContainsOperation(const char* op_type) const;
+  bool ContainsKernel(const char* name) const;
 
-  const OpKernel& SelectKernel(const OperationName& op_name,
-                               const OpKernelKey& kernel_key) const;
+  const Kernel& SelectKernel(const KernelName& kernel_name,
+                             const KernelKey& kernel_key) const;
 
-  const OpKernel& SelectKernel(const OperationName& op_name,
-                               Backend backend,
-                               DataLayout layout,
-                               DataType dtype) const;
+  const Kernel& SelectKernel(const KernelName& kernel_name,
+                             Backend backend,
+                             DataLayout layout,
+                             DataType dtype) const;
 
  private:
-  OpKernelFactory() = default;
+  KernelFactory() = default;
 
-  OpKernelMap kernels_;
+  KernelMap kernels_;
 };
 
 /** operator << overload **/
 
 inline std::ostream& operator<<(std::ostream& os,
-                                const OperationName& op_name) {
-  if (op_name.overload_type.empty()) {
-    os << op_name.op_type;
+                                const KernelName& kernel_name) {
+  if (kernel_name.overload_name.empty()) {
+    os << kernel_name.name;
   } else {
-    os << op_name.op_type << "." << op_name.overload_type;
+    os << kernel_name.name << "." << kernel_name.overload_name;
   }
   return os;
 }
 
-inline std::ostream& operator<<(std::ostream& os,
-                                const OpKernelKey& kernel_key) {
+inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {
   os << "(" << kernel_key.backend() << ", " << kernel_key.layout() << ", "
      << kernel_key.dtype() << ")";
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, OpKernelFactory& kernel_factory);
+std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory);
 
 }  // namespace pt

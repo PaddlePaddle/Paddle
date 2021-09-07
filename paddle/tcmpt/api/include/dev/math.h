@@ -17,6 +17,3 @@ limitations under the License. */
 // See Note: [ How do we organize the kernel directory ]
 #include "paddle/tcmpt/cpu/math.h"
 #include "paddle/tcmpt/cuda/math.h"
-#include "paddle/tcmpt/mkldnn/math.h"
-#include "paddle/tcmpt/npu/math.h"
-#include "paddle/tcmpt/xpu/math.h"

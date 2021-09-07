@@ -28,19 +28,19 @@ namespace pt {
 using DeviceContext = paddle::platform::DeviceContext;
 
 /**
- * Note: OpKernelContext doesn't manage the life if DeviceContext and Tensor
+ * Note: KernelContext doesn't manage the life if DeviceContext and Tensor
  *
- * Note: OpKernelContext does not couple the concept of framework,
+ * Note: KernelContext does not couple the concept of framework,
  *       its constructor can only take the members it needs as parameters,
  *       not Scope, RuntimeContext, etc. as parameters
  */
-class OpKernelContext {
+class KernelContext {
  public:
-  explicit OpKernelContext(const DeviceContext& dev_ctx) : dev_ctx_(dev_ctx) {}
-  OpKernelContext(const DeviceContext& dev_ctx,
-                  const std::vector<std::shared_ptr<TensorInterface>>& inputs,
-                  const std::vector<std::shared_ptr<TensorInterface>>& outputs,
-                  const std::vector<paddle::any>& attrs)
+  explicit KernelContext(const DeviceContext& dev_ctx) : dev_ctx_(dev_ctx) {}
+  KernelContext(const DeviceContext& dev_ctx,
+                const std::vector<std::shared_ptr<TensorInterface>>& inputs,
+                const std::vector<std::shared_ptr<TensorInterface>>& outputs,
+                const std::vector<paddle::any>& attrs)
       : dev_ctx_(dev_ctx), inputs_(inputs), outputs_(outputs), attrs_(attrs) {}
 
   template <typename CtxType>

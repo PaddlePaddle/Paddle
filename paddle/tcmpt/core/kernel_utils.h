@@ -39,17 +39,17 @@ using XPUContext = paddle::platform::XPUDeviceContext;
 #endif
 
 #define PT_KERNEL(...) \
-  ::pt::OpKernelImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
+  ::pt::KernelImpl<decltype(&__VA_ARGS__), &__VA_ARGS__>::Compute
 
-#define PT_SPECIALIZE_OpKernelCallHelper_FOR_DEVICE_CONTEXT(dev_ctx)         \
+#define PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(dev_ctx)           \
   template <typename... Tail>                                                \
-  struct OpKernelCallHelper<const dev_ctx&, Tail...> {                       \
+  struct KernelCallHelper<const dev_ctx&, Tail...> {                         \
     template <int dev_ctx_idx,                                               \
               int in_idx,                                                    \
               int attr_idx,                                                  \
               int out_idx,                                                   \
               typename... PreviousArgs>                                      \
-    static void Compute(OpKernelContext* ctx, PreviousArgs&... pargs) {      \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {        \
       static_assert(in_idx == 0,                                             \
                     "Kernel's DeviceContext should appear before Inputs.");  \
       static_assert(                                                         \
@@ -58,25 +58,25 @@ using XPUContext = paddle::platform::XPUDeviceContext;
       static_assert(out_idx == 0,                                            \
                     "Kernel's DeviceContext should appear before Outputs."); \
       const dev_ctx& arg = ctx->GetDeviceContext<dev_ctx>();                 \
-      OpKernelCallHelper<Tail...>::                                          \
+      KernelCallHelper<Tail...>::                                            \
           template Compute<dev_ctx_idx + 1, in_idx, attr_idx, out_idx>(      \
               ctx, pargs..., arg);                                           \
     }                                                                        \
   }
 
-#define PT_SPECIALIZE_OpKernelCallHelper_FOR_ATTRIBUTE(attr_type)         \
+#define PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(attr_type)           \
   template <typename... Tail>                                             \
-  struct OpKernelCallHelper<attr_type, Tail...> {                         \
+  struct KernelCallHelper<attr_type, Tail...> {                           \
     template <int dev_ctx_idx,                                            \
               int in_idx,                                                 \
               int attr_idx,                                               \
               int out_idx,                                                \
               typename... PreviousArgs>                                   \
-    static void Compute(OpKernelContext* ctx, PreviousArgs&... pargs) {   \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {     \
       static_assert(out_idx == 0,                                         \
                     "Kernel's Attributes should appear before Outputs."); \
       attr_type arg = ctx->AttrAt<attr_type>(attr_idx);                   \
-      OpKernelCallHelper<Tail...>::                                       \
+      KernelCallHelper<Tail...>::                                         \
           template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(   \
               ctx, pargs..., arg);                                        \
     }                                                                     \
@@ -86,48 +86,47 @@ template <typename T>
 struct TypeTag {};
 
 template <typename Fn, Fn fn>
-struct OpKernelImpl;
+struct KernelImpl;
 
 template <typename Return, typename... Args, Return (*kernel_fn)(Args...)>
-struct OpKernelImpl<Return (*)(Args...), kernel_fn> {
-  static void Compute(OpKernelContext* ctx) {
-    OpKernelCallHelper<Args..., TypeTag<int>>::template Compute<0, 0, 0, 0>(
-        ctx);
+struct KernelImpl<Return (*)(Args...), kernel_fn> {
+  static void Compute(KernelContext* ctx) {
+    KernelCallHelper<Args..., TypeTag<int>>::template Compute<0, 0, 0, 0>(ctx);
   }
 
  private:
   template <typename... RemainingArgs>
-  struct OpKernelCallHelper;
+  struct KernelCallHelper;
 
   /* DeviceContext Helpers */
 
-  PT_SPECIALIZE_OpKernelCallHelper_FOR_DEVICE_CONTEXT(CPUContext);
+  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CPUContext);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  PT_SPECIALIZE_OpKernelCallHelper_FOR_DEVICE_CONTEXT(CUDAContext);
+  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(CUDAContext);
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-  PT_SPECIALIZE_OpKernelCallHelper_FOR_DEVICE_CONTEXT(NPUContext);
+  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(NPUContext);
 #endif
 #ifdef PADDLE_WITH_XPU
-  PT_SPECIALIZE_OpKernelCallHelper_FOR_DEVICE_CONTEXT(XPUContext);
+  PT_SPECIALIZE_KernelCallHelper_FOR_DEVICE_CONTEXT(XPUContext);
 #endif
 
   /* Input Helpers */
 
   template <typename... Tail>
-  struct OpKernelCallHelper<const DenseTensor&, Tail...> {
+  struct KernelCallHelper<const DenseTensor&, Tail...> {
     template <int dev_ctx_idx,
               int in_idx,
               int attr_idx,
               int out_idx,
               typename... PreviousArgs>
-    static void Compute(OpKernelContext* ctx, PreviousArgs&... pargs) {
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {
       static_assert(attr_idx == 0,
                     "Kernel's Input should appear before Attributes.");
       static_assert(out_idx == 0,
                     "Kernel's Input should appear before Outputs.");
       const DenseTensor& arg = ctx->InputAt<DenseTensor>(in_idx);
-      OpKernelCallHelper<Tail...>::
+      KernelCallHelper<Tail...>::
           template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(
               ctx, pargs..., arg);
     }
@@ -135,21 +134,21 @@ struct OpKernelImpl<Return (*)(Args...), kernel_fn> {
 
   /* Attribute Helpers */
 
-  PT_SPECIALIZE_OpKernelCallHelper_FOR_ATTRIBUTE(bool);
-  PT_SPECIALIZE_OpKernelCallHelper_FOR_ATTRIBUTE(float);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(bool);
+  PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(float);
 
   /* Output Helpers */
 
   template <typename... Tail>
-  struct OpKernelCallHelper<DenseTensor*, Tail...> {
+  struct KernelCallHelper<DenseTensor*, Tail...> {
     template <int dev_ctx_idx,
               int in_idx,
               int attr_idx,
               int out_idx,
               typename... PreviousArgs>
-    static void Compute(OpKernelContext* ctx, PreviousArgs&... pargs) {
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {
       DenseTensor* arg = ctx->MutableOutputAt<DenseTensor>(out_idx);
-      OpKernelCallHelper<Tail...>::
+      KernelCallHelper<Tail...>::
           template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(
               ctx, pargs..., arg);
     }
@@ -157,9 +156,9 @@ struct OpKernelImpl<Return (*)(Args...), kernel_fn> {
 
   /* End case */
   template <typename T>
-  struct OpKernelCallHelper<TypeTag<T>> {
+  struct KernelCallHelper<TypeTag<T>> {
     template <int dev_ctx_idx, int in_idx, int attr_idx, int out_idx>
-    static void Compute(OpKernelContext* ctx, Args&... args) {
+    static void Compute(KernelContext* ctx, Args&... args) {
       static_assert(dev_ctx_idx > 0,
                     "Kernel should pass DeviceContext as argument.");
       static_assert(out_idx > 0, "Kernel should have output argument.");

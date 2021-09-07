@@ -268,7 +268,7 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
 
 #ifdef PADDLE_WITH_HIP
     if (pooling_type == "max") {
-      using OpKernelMap = paddle::framework::OperatorWithKernel::OpKernelMap;
+      using KernelMap = paddle::framework::OperatorWithKernel::KernelMap;
       using OpKernelFunc = paddle::framework::OperatorWithKernel::OpKernelFunc;
       auto &all_op_kernels =
           paddle::framework::OperatorWithKernel::AllOpKernels();
@@ -279,7 +279,7 @@ class PoolCUDNNGradOpKernel : public framework::OpKernel<T> {
           platform::errors::Unavailable(
               "There are no kernels which are registered in the %s operator.",
               op_type));
-      OpKernelMap &kernels = kernels_iter->second;
+      KernelMap &kernels = kernels_iter->second;
       paddle::framework::OpKernelType expected_kernel_key(
           paddle::framework::ToDataType(typeid(T)), ctx.GetPlace());
       auto kernel_iter = kernels.find(expected_kernel_key);

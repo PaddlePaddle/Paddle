@@ -21,8 +21,8 @@ namespace pt {
 /**
  * We need to ensure that the operator library is relatively independent
  * and does not depend on the framework. Therefore, before calling the kernel
- * in the Tensor operation library inside the framework, the internal
- * layout needs to be converted to the data type in the Tensor operation
+ * in the Tensor Compute library inside the framework, the internal
+ * layout needs to be converted to the data type in the Tensor Compute
  * library.
  *
  * Here we also can use the DataLayout in framework, they are all enum classes.

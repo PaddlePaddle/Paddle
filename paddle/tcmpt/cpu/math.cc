@@ -14,8 +14,8 @@
 
 #include "paddle/tcmpt/cpu/math.h"
 
-// #include "paddle/tcmpt/module/scale.h"
-// #include "paddle/tcmpt/module/sign.h"
+// #include "paddle/tcmpt/eigen/scale.h"
+// #include "paddle/tcmpt/eigen/sign.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/eigen.h"

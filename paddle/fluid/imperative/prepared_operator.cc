@@ -91,8 +91,8 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
 
 PreparedOp::PreparedOp(const framework::OperatorBase& op,
                        const framework::RuntimeContext& ctx,
-                       const pt::OpKernelKey& pt_kernel_key,
-                       const pt::OpKernel& pt_kernel,
+                       const pt::KernelKey& pt_kernel_key,
+                       const pt::Kernel& pt_kernel,
                        platform::DeviceContext* dev_ctx)
     : op_(op),
       ctx_(ctx),
@@ -105,7 +105,7 @@ PreparedOp::PreparedOp(const framework::OperatorBase& op,
       pt_kernel_(pt_kernel) {
   // TODO(chenweihang): PrepareData still use old impl, so here need save
   // old kernel type, trans it later
-  kernel_type_ = framework::TransPtOpKernelKeyToOpKernelType(pt_kernel_key_);
+  kernel_type_ = framework::TransPtKernelKeyToOpKernelType(pt_kernel_key_);
 }
 
 template <typename VarType>
@@ -147,13 +147,13 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 
   // 1. get expected kernel key
   bool run_pt_kernel =
-      pt::OpKernelFactory::Instance().ContainsOperation(op.Type().c_str());
+      pt::KernelFactory::Instance().ContainsKernel(op.Type().c_str());
   if (run_pt_kernel) {
-    pt::OperationName op_name(op.Type().c_str());
+    pt::KernelName op_name(op.Type().c_str());
     auto inputs = BuildInputMap<VarType>(ins);
-    auto pt_kernel_key = op.ConstructPtOpKernelKey(inputs, place);
+    auto pt_kernel_key = op.ConstructPtKernelKey(inputs, place);
     auto pt_kernel =
-        pt::OpKernelFactory::Instance().SelectKernel(op_name, pt_kernel_key);
+        pt::KernelFactory::Instance().SelectKernel(op_name, pt_kernel_key);
     // TODO(chenweihang): using CPUKernel when miss device kernel case
     return PreparedOp(op, ctx, pt_kernel_key, pt_kernel, dev_ctx);
   } else {
@@ -231,8 +231,8 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
 }
 
 template <typename VarType>
-static pt::OpKernelContext BuildDygraphOpKernelContext(
-    const pt::OpKernel& pt_kernel, const NameVarMap<VarType>& ins,
+static pt::KernelContext BuildDygraphKernelContext(
+    const pt::Kernel& pt_kernel, const NameVarMap<VarType>& ins,
     const NameVarMap<VarType>& outs, const platform::DeviceContext& dev_ctx) {
   // TODO(chenweihang): now only work for very simple case (sign op),
   // many cases need to be deal with later:
@@ -241,7 +241,7 @@ static pt::OpKernelContext BuildDygraphOpKernelContext(
   // 3. needless attributes remove
   // 4. use pt Tensor directly
   // 5. kernel input is not DenseTensor
-  pt::OpKernelContext op_kernel_ctx(dev_ctx);
+  pt::KernelContext op_kernel_ctx(dev_ctx);
   auto input_defs = pt_kernel.param_def().input_defs();
   auto output_defs = pt_kernel.param_def().output_defs();
 
@@ -266,7 +266,7 @@ static pt::OpKernelContext BuildDygraphOpKernelContext(
       auto* variable = var->MutableVar();
       auto* tensor = variable->template GetMutable<framework::LoDTensor>();
       // mutable_data before run kernel, to avoid share output form
-      // OpKernelContext to original tensor
+      // KernelContext to original tensor
       tensor->mutable_data(pt::TransToFluidPlace(out_def.backend),
                            pt::TransToProtoVarType(out_def.dtype));
       auto pt_out =
@@ -323,8 +323,8 @@ static void PreparedOpRunImpl(
 
 template <typename VarType>
 static void PreparedOpRunPtImpl(const framework::OperatorBase& op,
-                                const pt::OpKernelKey& pt_kernel_key,
-                                const pt::OpKernel& pt_kernel,
+                                const pt::KernelKey& pt_kernel_key,
+                                const pt::Kernel& pt_kernel,
                                 platform::DeviceContext* dev_ctx,
                                 const NameVarMap<VarType>& ins,
                                 const NameVarMap<VarType>& outs,
@@ -336,7 +336,7 @@ static void PreparedOpRunPtImpl(const framework::OperatorBase& op,
       &infer_shape_ctx);
 
   auto op_kernel_ctx =
-      BuildDygraphOpKernelContext<VarType>(pt_kernel, ins, outs, *dev_ctx);
+      BuildDygraphKernelContext<VarType>(pt_kernel, ins, outs, *dev_ctx);
   pt_kernel(&op_kernel_ctx);
 
   // TODO(chenweihang): add flags

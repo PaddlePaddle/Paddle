@@ -115,8 +115,7 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
 
-OpKernelType TransPtOpKernelKeyToOpKernelType(
-    const pt::OpKernelKey& kernel_key);
+OpKernelType TransPtKernelKeyToOpKernelType(const pt::KernelKey& kernel_key);
 
 class ExecutionContext;
 class OperatorBase;
@@ -535,10 +534,10 @@ class OperatorWithKernel : public OperatorBase {
 
   /* member functions for adapting to tcmpt lib */
   // TODO(chenweihang): Temporarily as a class method
-  virtual pt::OpKernelKey ConstructPtOpKernelKey(
+  virtual pt::KernelKey ConstructPtKernelKey(
       const VariableValueMap& inputs, const platform::Place& ctx_place) const;
 
-  virtual pt::OpKernelContext ConstructPtOpKernelContext(
+  virtual pt::KernelContext ConstructPtKernelContext(
       const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const;
 
  private:
@@ -597,8 +596,8 @@ class OperatorWithKernel : public OperatorBase {
   // TODO(chenweihang): Similar duplicate members are used for new tcmpt lib,
   // maybe we have better impl methods
   mutable bool run_pt_kernel_ = false;
-  mutable std::unique_ptr<pt::OpKernelKey> pt_kernel_key_;
-  mutable std::unique_ptr<pt::OpKernel> pt_kernel_;
+  mutable std::unique_ptr<pt::KernelKey> pt_kernel_key_;
+  mutable std::unique_ptr<pt::Kernel> pt_kernel_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

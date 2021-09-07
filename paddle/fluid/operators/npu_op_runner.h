@@ -24,8 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
-#include "paddle/tcmpt/api/include/dev/core.h"
-
 namespace paddle {
 namespace operators {
 
@@ -42,11 +40,6 @@ class NpuOpRunner {
   NpuOpRunner(const std::string &op_type,
               const std::vector<Tensor> &inputs = {},
               const std::vector<Tensor> &outputs = {},
-              const NPUAttributeMap &attrs = {});
-
-  NpuOpRunner(const std::string &op_type,
-              const std::vector<pt::DenseTensor> &inputs = {},
-              const std::vector<pt::DenseTensor> &outputs = {},
               const NPUAttributeMap &attrs = {});
 
   // NOTE(zhiqiu): why forbid copy and operator= ?
@@ -69,8 +62,6 @@ class NpuOpRunner {
 
   NpuOpRunner &AddInput(const Tensor &tensor);
 
-  NpuOpRunner &AddInput(const pt::DenseTensor &tensor);
-
   // NOTE(zhiqiu): CANN-5.0.2 support input tensors on host.
   // Specifically, the tensor of shape, tensor of dims, etc, which are are small
   // vector/list.
@@ -86,17 +77,11 @@ class NpuOpRunner {
 
   NpuOpRunner &AddOutput(const Tensor &tensor);
 
-  NpuOpRunner &AddOutput(const pt::DenseTensor &tensor);
-
   NpuOpRunner &AddInputs(const std::vector<Tensor> &tensors);
-
-  NpuOpRunner &AddInputs(const std::vector<pt::DenseTensor> &tensors);
 
   NpuOpRunner &AddInputNames(const std::vector<std::string> &names);
 
   NpuOpRunner &AddOutputs(const std::vector<Tensor> &tensors);
-
-  NpuOpRunner &AddOutputs(const std::vector<pt::DenseTensor> &tensors);
 
   aclTensorDesc *GetInputDesc(size_t index);
 
@@ -116,10 +101,6 @@ class NpuOpRunner {
   aclTensorDesc *CreateTensorDesc(Tensor tensor,
                                   aclMemType mem_type = ACL_MEMTYPE_DEVICE);
   aclDataBuffer *CreateDataBuffer(Tensor tensor);
-
-  aclTensorDesc *CreateTensorDesc(const pt::DenseTensor &tensor,
-                                  aclMemType mem_type = ACL_MEMTYPE_DEVICE);
-  aclDataBuffer *CreateDataBuffer(const pt::DenseTensor &tensor);
 
  private:
   std::string op_type_;

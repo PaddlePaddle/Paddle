@@ -1074,8 +1074,7 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
 }
 
-OpKernelType TransPtOpKernelKeyToOpKernelType(
-    const pt::OpKernelKey& kernel_key) {
+OpKernelType TransPtKernelKeyToOpKernelType(const pt::KernelKey& kernel_key) {
   proto::VarType::Type data_type = pt::TransToProtoVarType(kernel_key.dtype());
   platform::Place place = pt::TransToFluidPlace(kernel_key.backend());
   DataLayout data_layout = pt::TransToFluidDataLayout(kernel_key.layout());
@@ -1141,10 +1140,12 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // implementation, this is a gradual replacement process
   // TODO(chenweihang): only for debug, remove it after
   // print all registered kernels
-  VLOG(1) << pt::OpKernelFactory::Instance();
+  VLOG(1) << pt::KernelFactory::Instance();
 
-  run_pt_kernel_ =
-      pt::OpKernelFactory::Instance().ContainsOperation(type_.c_str());
+  // TODO(chenweihang): in the first phase of project, we only support CPU, CUDA
+  // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
+  // phase
+  run_pt_kernel_ = pt::KernelFactory::Instance().ContainsKernel(type_.c_str());
   if (run_pt_kernel_) {
     if (pt_kernel_key_.get() == nullptr || pt_kernel_.get() == nullptr) {
       ChoosePtKernel(*runtime_ctx, *dev_ctx);
@@ -1163,8 +1164,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        platform::EventRole::kInnerOp);
     if (need_prepare_data_) {
       if (run_pt_kernel_) {
-        kernel_type_.reset(new OpKernelType(
-            TransPtOpKernelKeyToOpKernelType(*pt_kernel_key_)));
+        kernel_type_.reset(
+            new OpKernelType(TransPtKernelKeyToOpKernelType(*pt_kernel_key_)));
       }
       transfer_scope = PrepareData(scope, *kernel_type_,
                                    &transfered_inplace_vars, runtime_ctx);
@@ -1196,7 +1197,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
                                        platform::EventRole::kInnerOp);
     if (run_pt_kernel_) {
       // TODO(chenweihang): here will intrduce copy
-      auto op_kernel_ctx = ConstructPtOpKernelContext(*runtime_ctx, *dev_ctx);
+      auto op_kernel_ctx = ConstructPtKernelContext(*runtime_ctx, *dev_ctx);
       (*pt_kernel_)(&op_kernel_ctx);
       // need share output into fluid tensor
 
@@ -1266,19 +1267,19 @@ void OperatorWithKernel::ChoosePtKernel(
     const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
   // 1. construct operation name
   // TODO(chenweihang): add rules for construct op name
-  pt::OperationName op_name(Type().c_str());
+  pt::KernelName kernel_name(Type().c_str());
   // TODO(chenweihang): polish judge rules
   if (ContainsSelectedRows(ctx.inputs)) {
-    op_name.overload_type = "selected_rows";
+    kernel_name.overload_name = "selected_rows";
   }
 
   // 2. construct op kernel key
-  pt_kernel_key_.reset(new pt::OpKernelKey(
-      ConstructPtOpKernelKey(ctx.inputs, dev_ctx.GetPlace())));
+  pt_kernel_key_.reset(
+      new pt::KernelKey(ConstructPtKernelKey(ctx.inputs, dev_ctx.GetPlace())));
 
   // 3. selecte op kernel
-  pt_kernel_.reset(new pt::OpKernel(
-      pt::OpKernelFactory::Instance().SelectKernel(op_name, *pt_kernel_key_)));
+  pt_kernel_.reset(new pt::Kernel(pt::KernelFactory::Instance().SelectKernel(
+      kernel_name, *pt_kernel_key_)));
 }
 
 void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
@@ -1783,7 +1784,7 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
                       tensor.layout());
 }
 
-pt::OpKernelKey OperatorWithKernel::ConstructPtOpKernelKey(
+pt::KernelKey OperatorWithKernel::ConstructPtKernelKey(
     const VariableValueMap& inputs, const platform::Place& ctx_place) const {
   // 1. get backend based place and attrs
   pt::Backend backend = pt::TransToPtBackend(ctx_place);
@@ -1817,11 +1818,11 @@ pt::OpKernelKey OperatorWithKernel::ConstructPtOpKernelKey(
           "DataType should be indicated by input Variable at %s.", Type()));
   pt::DataType dtype = pt::TransToPtDataType(data_type);
 
-  // 4. build pt OpKernelKey
-  return pt::OpKernelKey(backend, layout, dtype);
+  // 4. build pt KernelKey
+  return pt::KernelKey(backend, layout, dtype);
 }
 
-pt::OpKernelContext OperatorWithKernel::ConstructPtOpKernelContext(
+pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
     const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
   VLOG(1) << RuntimeContextDebugString(ctx);
 
@@ -1832,7 +1833,7 @@ pt::OpKernelContext OperatorWithKernel::ConstructPtOpKernelContext(
   // 3. needless attributes remove
   // 4. use pt Tensor directly
   // 5. kernel input is not DenseTensor
-  pt::OpKernelContext op_kernel_ctx(dev_ctx);
+  pt::KernelContext op_kernel_ctx(dev_ctx);
   auto input_defs = pt_kernel_->param_def().input_defs();
   auto output_defs = pt_kernel_->param_def().output_defs();
 
@@ -1846,7 +1847,7 @@ pt::OpKernelContext OperatorWithKernel::ConstructPtOpKernelContext(
     // TODO(chenweihang): skip special cases temporarily
     // TODO(chenweihang): deal with diff param in vector
     if (in.has_dispensable() && in.dispensable()) {
-      VLOG(1) << "BuildOpKernelContext: skip dispensable input - " << in.name();
+      VLOG(1) << "BuildKernelContext: skip dispensable input - " << in.name();
       continue;
     }
     auto in_name = in.name();
@@ -1874,7 +1875,7 @@ pt::OpKernelContext OperatorWithKernel::ConstructPtOpKernelContext(
     auto out_def = output_defs.at(i);
     for (auto* var : ctx.outputs.at(out_name)) {
       // mutable_data before run kernel, to avoid share output form
-      // OpKernelContext to original tensor
+      // KernelContext to original tensor
       if (var->IsType<LoDTensor>()) {
         auto* tensor = var->GetMutable<LoDTensor>();
         tensor->mutable_data(pt::TransToFluidPlace(out_def.backend),
@@ -1922,7 +1923,7 @@ pt::OpKernelContext OperatorWithKernel::ConstructPtOpKernelContext(
         // TODO(chenweihang): support other attrs type
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op `%s`'s attribute `%s` when construct "
-            "OpKernelContext.",
+            "KernelContext.",
             Type(), attr.name()));
     }
   }

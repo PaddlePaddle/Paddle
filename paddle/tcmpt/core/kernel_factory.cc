@@ -19,44 +19,44 @@
 
 namespace pt {
 
-OpKernelFactory& OpKernelFactory::Instance() {
-  static OpKernelFactory g_op_kernel_factory;
+KernelFactory& KernelFactory::Instance() {
+  static KernelFactory g_op_kernel_factory;
   return g_op_kernel_factory;
 }
 
-bool OpKernelFactory::ContainsOperation(const char* op_type) const {
-  auto iter = kernels_.find(OperationName(op_type));
+bool KernelFactory::ContainsKernel(const char* kernel_name) const {
+  auto iter = kernels_.find(KernelName(kernel_name));
   return (iter != kernels_.end());
 }
 
-const OpKernel& OpKernelFactory::SelectKernel(
-    const OperationName& op_name, const OpKernelKey& kernel_key) const {
-  auto iter = kernels_.find(op_name);
+const Kernel& KernelFactory::SelectKernel(const KernelName& kernel_name,
+                                          const KernelKey& kernel_key) const {
+  auto iter = kernels_.find(kernel_name);
   PADDLE_ENFORCE_NE(iter,
                     kernels_.end(),
                     paddle::platform::errors::NotFound(
-                        "The operation `%s` is not registered.", op_name));
+                        "The kernel `%s` is not registered.", kernel_name));
 
   auto kernel_iter = iter->second.find(kernel_key);
   PADDLE_ENFORCE_NE(
       kernel_iter,
       iter->second.end(),
       paddle::platform::errors::NotFound(
-          "The kernel with key %s of operation `%s` is not registered.",
+          "The kernel with key %s of kernel `%s` is not registered.",
           kernel_key,
-          op_name));
+          kernel_name));
 
   return kernel_iter->second;
 }
 
-const OpKernel& OpKernelFactory::SelectKernel(const OperationName& op_name,
-                                              Backend backend,
-                                              DataLayout layout,
-                                              DataType dtype) const {
-  return SelectKernel(op_name, OpKernelKey(backend, layout, dtype));
+const Kernel& KernelFactory::SelectKernel(const KernelName& kernel_name,
+                                          Backend backend,
+                                          DataLayout layout,
+                                          DataType dtype) const {
+  return SelectKernel(kernel_name, KernelKey(backend, layout, dtype));
 }
 
-std::ostream& operator<<(std::ostream& os, OpKernelFactory& kernel_factory) {
+std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
   for (const auto& op_kernel_pair : kernel_factory.kernels()) {
     os << "- op: " << op_kernel_pair.first << "\n";
     for (const auto& kernel_pair : op_kernel_pair.second) {

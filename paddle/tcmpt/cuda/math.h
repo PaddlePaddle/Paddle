@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/tcmpt/core/dense_tensor.h"
 #include "paddle/tcmpt/core/selected_rows_tensor.h"
 
-#include "paddle/tcmpt/module/scale.h"
-#include "paddle/tcmpt/module/sign.h"
+#include "paddle/tcmpt/eigen/scale.h"
+#include "paddle/tcmpt/eigen/sign.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"

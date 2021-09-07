@@ -24,12 +24,12 @@ limitations under the License. */
  * [ Why still include the fluid headers? ]
  *
  * We hope to organize the basic implementation of Tensor and the logic related
- * to Tensor operation into an independent library, which we call
- * [Tensor Operation Library, tcmpt], so we extract or rewrite the original
- * OpKernels.
+ * to Tensor computation into an independent library, which we call
+ * [Tensor Compute Library, tcmpt], so we extract or rewrite the original
+ * Kernels.
  *
  * In the future, the training library, inference library and custom operators
- * will link to this Tensor operation library.
+ * will link to this Tensor Compute library.
  *
  * However, if we directly split the link relation, we need to make too many
  * changes, which will affect the stability of the framework, so here we still
@@ -54,12 +54,12 @@ class AutogradMetaInterface {
 
 /**
  * Tensor is the API description of the basic data structure in the
- * [ Paddle "Tensor OPeration (tcmpt)" Library ].
+ * [ Paddle "Tensor CoMPuTe (tcmpt)" Library ].
  *
  * It is not limited to a simple n-dimensional array.
  * It contains a smart pointer to `TensorImpl`. The data description contained
  * in Tensor is defined by TensorImpl. Tensor only defines the interface for
- * operation.
+ * computation.
  *
  * This is a new Tensor design, which is independent of the original
  * framework::Tensor in fluid. The original Tensor will be gradually discarded

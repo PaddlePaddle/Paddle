@@ -16,8 +16,8 @@ limitations under the License. */
 
 #include "gtest/gtest.h"
 
-TEST(OpKernelFactory, OpKernelKey) {
-  pt::OpKernelKey key(
+TEST(KernelFactory, KernelKey) {
+  pt::KernelKey key(
       pt::Backend::kCPU, pt::DataLayout::kNCHW, pt::DataType::kFLOAT32);
   std::cout << key;
 }

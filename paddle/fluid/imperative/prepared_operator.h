@@ -151,8 +151,8 @@ class PreparedOp {
 
   PreparedOp(const framework::OperatorBase& op,
              const framework::RuntimeContext& ctx,
-             const pt::OpKernelKey& pt_kernel_key,
-             const pt::OpKernel& pt_kernel, platform::DeviceContext* dev_ctx);
+             const pt::KernelKey& pt_kernel_key, const pt::Kernel& pt_kernel,
+             platform::DeviceContext* dev_ctx);
 
   static PreparedOp Prepare(const NameVarMap<VarBase>& ins,
                             const NameVarMap<VarBase>& outs,
@@ -188,8 +188,8 @@ class PreparedOp {
   // TODo(chenweihang): Similar duplicate members are used for new tcmpt lib,
   // maybe we have better impl methods
   bool run_pt_kernel_{false};
-  pt::OpKernelKey pt_kernel_key_;
-  pt::OpKernel pt_kernel_;
+  pt::KernelKey pt_kernel_key_;
+  pt::Kernel pt_kernel_;
 };
 
 }  // namespace imperative
