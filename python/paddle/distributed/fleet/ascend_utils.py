@@ -119,7 +119,7 @@ def get_cloud_cluster(rank_table_file=None,
         node_ip = node_ips[0]
         device_count = 1
 
-    first_dev_idx = int(os.environ.get("FIRST_ASCEND_DEVICE_INDEX", 0))
+    first_dev_idx = int(os.environ.get("PADDLE_FIRST_ASCEND_DEV_IDX", 0))
     devices_per_proc = [str(x + first_dev_idx) for x in range(device_count)]
     free_ports = [
         x for x in range(start_port, start_port + len(devices_per_proc))
