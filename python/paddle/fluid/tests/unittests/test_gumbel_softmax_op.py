@@ -223,3 +223,7 @@ class TestGumbelSoftmaxOpError(unittest.TestCase):
                 paddle.nn.functional.gumbel_softmax(x_int32)
 
         self.assertRaises(TypeError, test_dtype)
+
+
+if __name__ == '__main__':
+    unittest.main()
