@@ -16,7 +16,8 @@ register_operators(EXCLUDES
     fusion_gru_op
     fusion_lstm_op
     fused_bn_add_activation_op
-    fused_transformer_op)
+    fused_transformer_op
+    resnet_unit_op)
 
 # fusion_gru_op does not have CUDA kernel
 op_library(fusion_gru_op)
@@ -75,5 +76,9 @@ if (WITH_GPU OR WITH_ROCM)
     # only support CUDA
     if(NOT WITH_ROCM)
         nv_test(test_fused_residual_dropout_bias SRCS fused_residual_dropout_bias_test.cu DEPS tensor op_registry dropout_op device_context generator memory)
+    # resnet_unit needs cudnn 8.0 above
+    if (NOT ${CUDNN_VERSION} VERSION_LESS 8000)
+        op_library(resnet_unit_op)
+        file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(resnet_unit);\n")
     endif()
 endif()
