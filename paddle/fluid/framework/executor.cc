@@ -28,7 +28,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor_gc_helper.h"
 
 DECLARE_bool(benchmark);
+#ifdef PADDLE_WITH_MKLDNN
 DECLARE_bool(use_mkldnn);
+#endif
 
 namespace paddle {
 namespace framework {
@@ -168,8 +170,8 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    const std::vector<std::string>& skip_ref_cnt_vars,
                    bool force_disable_gc, bool keep_kid_scopes) {
   platform::RecordBlock b(block_id);
-  if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
 #ifdef PADDLE_WITH_MKLDNN
+  if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
   auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
@@ -296,8 +298,8 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
                    const std::string& feed_holder_name,
                    const std::string& fetch_holder_name) {
   platform::RecordBlock b(kProgramId);
-  if (FLAGS_use_mkldnn) EnableMKLDNN(program);
 #ifdef PADDLE_WITH_MKLDNN
+  if (FLAGS_use_mkldnn) EnableMKLDNN(program);
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
   bool has_feed_ops =
@@ -571,8 +573,8 @@ void Executor::RunPreparedContext(
   }
 }
 
-void Executor::EnableMKLDNN(const ProgramDesc& program) {
 #ifdef PADDLE_WITH_MKLDNN
+void Executor::EnableMKLDNN(const ProgramDesc& program) {
   VLOG(3) << "use_mkldnn=True";
   for (size_t bid = 0; bid < program.Size(); ++bid) {
     auto* block = const_cast<ProgramDesc&>(program).MutableBlock(bid);
@@ -582,10 +584,7 @@ void Executor::EnableMKLDNN(const ProgramDesc& program) {
       }
     }
   }
-#else
-  LOG(WARNING)
-      << "'MKLDNN' is not supported, Please re-compile with WITH_MKLDNN option";
-#endif
 }
+#endif
 }  // namespace framework
 }  // namespace paddle

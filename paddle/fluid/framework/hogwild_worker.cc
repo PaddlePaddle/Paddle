@@ -23,6 +23,11 @@ limitations under the License. */
 #include "paddle/fluid/distributed/service/communicator.h"
 #endif
 
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_helper.h"
+DECLARE_bool(use_mkldnn);
+#endif
+
 namespace paddle {
 namespace framework {
 
@@ -110,8 +115,22 @@ void HogwildWorker::BindingDataFeedMemory() {
 }
 
 void HogwildWorker::CreateDeviceResource(const ProgramDesc &main_prog) {
+  auto EnableMKLDNN = [&](void) {
+    VLOG(3) << "use_mkldnn=True";
+    for (size_t bid = 0; bid < main_prog.Size(); ++bid) {
+      ProgramDesc *block = platform::to_void_cast(main_prog).MutableBlock(bid);
+      for (auto *op : block->AllOps()) {
+        if (op->HasAttr("use_mkldnn")) {
+          op->SetAttr("use_mkldnn", true);
+        }
+      }
+    }
+  };
   CreateThreadScope(main_prog);
   CreateThreadOperators(main_prog);
+#ifdef PADDLE_WITH_MKLDNN
+  if (FLAGS_use_mkldnn) EnableMKLDNN();
+#endif
 }
 
 void HogwildWorker::TrainFilesWithProfiler() {
