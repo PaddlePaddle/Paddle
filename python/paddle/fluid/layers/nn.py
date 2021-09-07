@@ -3177,6 +3177,8 @@ def instance_norm(input,
             hidden1 = paddle.static.nn.fc(x, size=200)
             hidden2 = paddle.static.nn.instance_norm(hidden1)
     """
+    if input.shape[0] == 0:
+        raise ValueError("input of instance_norm is null, please check it.")
     check_variable_and_dtype(input, 'input', ['float32', 'float64'],
                              'instance_norm')
     if param_attr is False:
