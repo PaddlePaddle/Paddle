@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
@@ -109,11 +110,8 @@ class InterpreterCore {
   InterpreterProfiler profiler_;
   std::map<size_t, std::shared_ptr<platform::DeviceEvent>> var_id2event_;
 
+  InterpreterCoreGarbageCollector gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;
-  std::unique_ptr<GarbageQueue> garbages_;
-  size_t max_memory_size_;
-  size_t cur_memory_size_;
-  std::unique_ptr<WorkQueue> gc_queue_;
 };
 }  // namespace framework
 }  // namespace paddle

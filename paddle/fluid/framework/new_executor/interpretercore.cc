@@ -154,11 +154,6 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       h2d_ctx_pool_({place}) {
   is_build_ = false;
 
-  garbages_.reset(new GarbageQueue());
-  max_memory_size_ = static_cast<size_t>(GetEagerDeletionThreshold());
-  cur_memory_size_ = 0;
-  gc_queue_ = CreateSingleThreadedWorkQueue();
-
   feed_names_ = feed_names;
 
   // Step1: add feedop and fetchop to main_program
@@ -263,8 +258,6 @@ void InterpreterCore::Convert() {
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    gc_event_.emplace_back(place_, platform::GenerateDeviceEventFlag());
-
     std::vector<size_t> vec_temp;
     for (auto& item : vec_instruction_[i].output_index_) {
       for (auto id : item.second) {
@@ -305,6 +298,11 @@ void InterpreterCore::Convert() {
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     BuildInstructionCtx(&vec_instruction_[i], *global_scope_, place_);
+  }
+
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    gc_event_.emplace_back(vec_instruction_[i].execution_ctx_.get()->GetPlace(),
+                           platform::GenerateDeviceEventFlag());
   }
 }
 
@@ -418,6 +416,7 @@ void InterpreterCore::CheckGC(size_t instr_id,
                               const VariableScope& var_scope,
                               const platform::Place& place,
                               std::vector<VariableMetaInfo>& working_var_ref) {
+  std::deque<std::shared_ptr<memory::Allocation>> garbages;
   for (auto var_id : gc_check_list) {
     --working_var_ref[var_id].var_ref_count_;
     if (var_scope.vec_meta_info_[var_id].vardesc_ &&
@@ -425,25 +424,15 @@ void InterpreterCore::CheckGC(size_t instr_id,
         working_var_ref[var_id].var_ref_count_ == 0) {
       Variable* var = var_scope.var_list[var_id];
       if (var->IsType<LoDTensor>()) {
-        garbages_->emplace_back(
-            var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-        if (garbages_->back()) {
-          cur_memory_size_ += garbages_->back()->size();
-        }
+        garbages.emplace_back(var->GetMutable<LoDTensor>()->MoveMemoryHolder());
       } else if (var->IsType<SelectedRows>()) {
-        garbages_->emplace_back(var->GetMutable<SelectedRows>()
-                                    ->mutable_value()
-                                    ->MoveMemoryHolder());
-        if (garbages_->back()) {
-          cur_memory_size_ += garbages_->back()->size();
-        }
+        garbages.emplace_back(var->GetMutable<SelectedRows>()
+                                  ->mutable_value()
+                                  ->MoveMemoryHolder());
       } else if (var->IsType<LoDTensorArray>()) {
         auto* tensor_arr = var->GetMutable<LoDTensorArray>();
         for (auto& t : *tensor_arr) {
-          garbages_->emplace_back(t.MoveMemoryHolder());
-          if (garbages_->back()) {
-            cur_memory_size_ += garbages_->back()->size();
-          }
+          garbages.emplace_back(t.MoveMemoryHolder());
         }
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
@@ -453,43 +442,9 @@ void InterpreterCore::CheckGC(size_t instr_id,
     }
   }
 
-  if (!garbages_->empty()) {
-    if (max_memory_size_ <= 1) {
-      gc_event_[instr_id].Record(
-          platform::DeviceContextPool::Instance().Get(place));
-      gc_event_[instr_id].SetFininshed();  // Only for CPU Event
-      gc_queue_->AddTask(
-          [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
-            while (!event->Query()) {
-#if defined(_WIN32)
-              SleepEx(50, FALSE);
-#else
-              sched_yield();
-#endif
-              continue;
-            }
-            delete container;
-          });
-      garbages_.reset(new GarbageQueue());
-    } else if (cur_memory_size_ >= max_memory_size_) {
-      gc_event_[instr_id].Record(
-          platform::DeviceContextPool::Instance().Get(place));
-      gc_event_[instr_id].SetFininshed();  // Only for CPU Event
-      gc_queue_->AddTask(
-          [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
-            while (!event->Query()) {
-#if defined(_WIN32)
-              SleepEx(50, FALSE);
-#else
-              sched_yield();
-#endif
-              continue;
-            }
-            delete container;
-          });
-      garbages_.reset(new GarbageQueue());
-      cur_memory_size_ = 0;
-    }
+  if (!garbages.empty()) {
+    gc_.Add(std::move(garbages), gc_event_[instr_id],
+            vec_instruction_[instr_id].dev_ctx_);
   }
 }
 
