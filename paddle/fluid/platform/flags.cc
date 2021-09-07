@@ -626,9 +626,10 @@ DEFINE_int32(get_host_by_name_time, 120,
  * Name: FLAGS_apply_pass_to_program
  * Since Version: 2.2.0
  * Value Range: bool, default=false
- * Example: FLAGS_apply_pass_to_program=true, apply IR Pass to When using
- *          Fleet APIs.
+ * Example: FLAGS_apply_pass_to_program=true would apply IR Pass to
+ *          program when using Fleet APIs.
  * Note: Apply IR pass to program. Be only useful when using Fleet APIs.
  */
-DEFINE_bool(apply_pass_to_program, false,
-            "Whether to apply IR pass to program when using Fleet APIs");
+DEFINE_bool(
+    apply_pass_to_program, false,
+    "It controls whether to apply IR pass to program when using Fleet APIs");
