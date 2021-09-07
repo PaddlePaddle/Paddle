@@ -378,6 +378,7 @@ set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
 set UPLOAD_TP_FILE=OFF
 
 if not exist %THIRD_PARTY_PATH% (
+    pip install wget 
     if not exist %THIRD_PARTY_HOME% mkdir "%THIRD_PARTY_HOME%"
     cd %THIRD_PARTY_HOME%
     echo Getting third party: downloading ...
@@ -535,13 +536,13 @@ if %UPLOAD_TP_FILE%==ON (
                 echo Failed upload third party to bce, reason: upload failed
             )
             del %sub_dir%\%md5%.tar.gz
-            cd %work_dir%\%BUILD_DIR%
         ) else (
             echo Failed upload third party to bce, reason: compress failed
         )
     ) else (
         echo Failed upload third party to bce, reason: install bce failed
     )
+    cd %work_dir%\%BUILD_DIR%
 )
 
 echo Build Paddle successfully!
