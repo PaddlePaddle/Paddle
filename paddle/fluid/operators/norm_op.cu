@@ -74,10 +74,10 @@ class NormCUDAKernel : public framework::OpKernel<T> {
     bool is_test = ctx.Attr<bool>("is_test");
 
     framework::Tensor* out_norm;
+    framework::Tensor out_norm_tmp;
     if (is_test) {
       auto out_dim = in_x->dims();
       out_dim[axis] = 1;
-      framework::Tensor out_norm_tmp;
       out_norm = &out_norm_tmp;
       out_norm->Resize(out_dim);
     } else {
