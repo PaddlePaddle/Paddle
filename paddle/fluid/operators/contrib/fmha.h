@@ -28,7 +28,6 @@
 
 #pragma once
 
-#include <cuda.h>
 #include <vector>
 
 #include "paddle/fluid/operators/contrib/fmha_utils.h"
