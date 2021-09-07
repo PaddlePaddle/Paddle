@@ -24,6 +24,7 @@
 // #include <algorithm>
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/fluid/platform/function_traits.h"
 
 namespace paddle {
 namespace operators {
@@ -133,7 +134,25 @@ __device__ __forceinline__ T BlockYReduce(T val, ReduceOp reducer) {
 
 }  // namespace details
 
-/*************************** Compute Function****************************/
+/**
+ * @brief unary function
+ * @param：
+ * T: data type of in
+ * OutT: data type of out
+ * NX: the cols of in
+ * NY: the rows of in
+ * BlockSize: the config of this device
+ * OpFunc: compute functor eg: relu, exp
+ */
+template <typename T, typename OutT, int NX, int NY, int BlockSize,
+          class OpFunc>
+__device__ __forceinline__ void ElementwiseUnary(OutT* out, const T* in,
+                                                 OpFunc compute) {
+#pragma unroll
+  for (int idx = 0; idx < NX * NY; idx++) {
+    out[idx] = platform::CallFunctor<T, OutT, OpFunc>(compute, &in[idx]);
+  }
+}
 
 /**
  * @brief binary function, in1 and in2 have same shape
@@ -155,7 +174,7 @@ __device__ __forceinline__ void ElementwiseBinary(OutT* out, const T* in1,
   for (int idx = 0; idx < NX * NY; ++idx) {
     args[0] = in1[idx];
     args[1] = in2[idx];
-    out[idx] = static_cast<OutT>(compute(args));
+    out[idx] = platform::CallFunctor<T, OutT, OpFunc>(compute, args);
   }
 }
 
@@ -180,7 +199,7 @@ __device__ __forceinline__ void ElementwiseTernary(OutT* out, const T* in1,
     args[0] = in1[idx];
     args[1] = in2[idx];
     args[2] = in3[idx];
-    out[idx] = static_cast<OutT>(compute(args));
+    out[idx] = platform::CallFunctor<T, OutT, OpFunc>(compute, args);
   }
 }
 
@@ -206,26 +225,6 @@ __device__ __forceinline__ void CycleBinary(OutT* out, const T* in1,
       out[idx + idy * NX] =
           static_cast<OutT>(compute(in1[idx], in2[idx + idy * NX]));
     }
-  }
-}
-
-/**
- * @brief unary function
- * @param：
- * T: data type of in
- * OutT: data type of out
- * NX: the cols of in
- * NY: the rows of in
- * BlockSize: the config of this device
- * OpFunc: compute functor eg: relu, exp
- */
-template <typename T, typename OutT, int NX, int NY, int BlockSize,
-          class OpFunc>
-__device__ __forceinline__ void ElementwiseUnary(OutT* out, const T* in,
-                                                 OpFunc compute) {
-#pragma unroll
-  for (int idx = 0; idx < NX * NY; idx++) {
-    out[idx] = static_cast<OutT>(compute(in + idx));
   }
 }
 
