@@ -31,8 +31,10 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-
         # number between sections and outputs restriction.
+        if len(inputs['split_input'].shape) <= attrs[0]['axis']:
+            return False
+
         if len(attrs[0]['sections']) == 0:
             if attrs[0]['num'] == 0:
                 return False
@@ -55,52 +57,56 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(attrs: List[Dict[str, Any]], batch):
-            if attrs[0]['axis'] == 3 or attrs[0]['axis'] == 2:
+            if self.dims == 4:
                 return np.ones([batch, 3, 3, 24]).astype(np.float32)
-            elif attrs[0]['axis'] == 1:
+            elif self.dims == 3:
                 return np.ones([batch, 3, 24]).astype(np.float32)
-            elif attrs[0]['axis'] == 0:
+            elif self.dims == 2:
                 return np.ones([batch, 24]).astype(np.float32)
+            elif self.dims == 1:
+                return np.ones([24]).astype(np.float32)
 
-        for batch in [3, 6, 9]:
-            for Out in [["output_var0", "output_var1"],
-                        ["output_var0", "output_var1", "output_var2"]]:
-                for sections in [[], [1, 2], [2, 1], [10, 14], [3, 7, 14],
-                                 [1, 1, 1], [2, 2, 2], [3, 3, 3]]:
-                    for num in [0, 3]:
-                        for axis in [0, 1, 2, 3]:
-                            dics = [{
-                                "sections": sections,
-                                "num": num,
-                                "axis": axis
-                            }, {}]
-                            ops_config = [{
-                                "op_type": "split",
-                                "op_inputs": {
-                                    "X": ["split_input"]
-                                },
-                                "op_outputs": {
-                                    "Out": Out
-                                },
-                                "op_attrs": dics[0]
-                            }]
-                            ops = self.generate_op_config(ops_config)
-                            program_config = ProgramConfig(
-                                ops=ops,
-                                weights={},
-                                inputs={
-                                    "split_input": TensorConfig(
-                                        data_gen=partial(generate_input1, dics,
-                                                         batch))
-                                },
-                                outputs=Out)
+        for dims in [1, 2, 3, 4]:
+            for batch in [3, 6, 9]:
+                for Out in [["output_var0", "output_var1"],
+                            ["output_var0", "output_var1", "output_var2"]]:
+                    for sections in [[], [1, 2], [2, 1], [10, 14], [3, 7, 14],
+                                     [1, 1, 1], [2, 2, 2], [3, 3, 3]]:
+                        for num in [0, 3]:
+                            for axis in [0, 1, 2, 3]:
+                                self.dims = dims
+                                dics = [{
+                                    "sections": sections,
+                                    "num": num,
+                                    "axis": axis
+                                }, {}]
+                                ops_config = [{
+                                    "op_type": "split",
+                                    "op_inputs": {
+                                        "X": ["split_input"]
+                                    },
+                                    "op_outputs": {
+                                        "Out": Out
+                                    },
+                                    "op_attrs": dics[0]
+                                }]
+                                ops = self.generate_op_config(ops_config)
+                                program_config = ProgramConfig(
+                                    ops=ops,
+                                    weights={},
+                                    inputs={
+                                        "split_input": TensorConfig(
+                                            data_gen=partial(generate_input1,
+                                                             dics, batch))
+                                    },
+                                    outputs=Out)
 
-                            yield program_config
+                                yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            if attrs[0]['axis'] == 3 or attrs[0]['axis'] == 2:
+            if self.dims == 4:
                 self.dynamic_shape.min_input_shape = {
                     "split_input": [1, 3, 3, 24]
                 }
@@ -110,14 +116,18 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                 self.dynamic_shape.opt_input_shape = {
                     "split_input": [1, 3, 3, 24]
                 }
-            elif attrs[0]['axis'] == 1:
+            elif self.dims == 3:
                 self.dynamic_shape.min_input_shape = {"split_input": [1, 3, 24]}
                 self.dynamic_shape.max_input_shape = {"split_input": [9, 3, 24]}
                 self.dynamic_shape.opt_input_shape = {"split_input": [1, 3, 24]}
-            elif attrs[0]['axis'] == 0:
+            elif self.dims == 2:
                 self.dynamic_shape.min_input_shape = {"split_input": [1, 24]}
                 self.dynamic_shape.max_input_shape = {"split_input": [9, 24]}
                 self.dynamic_shape.opt_input_shape = {"split_input": [1, 24]}
+            elif self.dims == 1:
+                self.dynamic_shape.min_input_shape = {"split_input": [24]}
+                self.dynamic_shape.max_input_shape = {"split_input": [24]}
+                self.dynamic_shape.opt_input_shape = {"split_input": [24]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
