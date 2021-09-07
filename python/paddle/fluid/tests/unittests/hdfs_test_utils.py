@@ -194,8 +194,8 @@ class FSTestBase(unittest.TestCase):
         fs.touch(file2)
 
         fs.download(src_file, dst_file)
-        self.assertTrue(local.is_exist(dst_file))
         local = LocalFS()
+        self.assertTrue(local.is_exist(dst_file))
         local.delete(dst_file)
         fs.delete(src_file)
 

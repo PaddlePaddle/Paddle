@@ -21,6 +21,7 @@ from . import no_grad
 
 import numpy as np
 import warnings
+from paddle import _C_ops
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -67,8 +68,8 @@ def monkey_patch_math_varbase():
     @no_grad
     def create_tensor(value, dtype, shape):
         out = _varbase_creator(dtype=dtype)
-        out = core.ops.fill_constant(out, 'dtype', dtype, 'shape', shape,
-                                     'value', value, 'force_cpu', False)
+        out = _C_ops.fill_constant(out, 'dtype', dtype, 'shape', shape, 'value',
+                                   value, 'force_cpu', False)
         out.stop_gradient = True
         return out
 
@@ -100,10 +101,10 @@ def monkey_patch_math_varbase():
         """
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-        return core.ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
+        return _C_ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
 
     def _scalar_elementwise_op_(var, scale, bias):
-        return core.ops.scale(var, 'scale', scale, 'bias', bias)
+        return _C_ops.scale(var, 'scale', scale, 'bias', bias)
 
     def _neg_(var):
         return _scalar_elementwise_op_(var, -1.0, 0.0)
@@ -242,7 +243,7 @@ def monkey_patch_math_varbase():
 
             # 4. calculation
             axis = -1
-            math_op = getattr(core.ops, op_type)
+            math_op = getattr(_C_ops, op_type)
             return math_op(self, other_var, 'axis', axis)
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment

@@ -113,5 +113,5 @@ void FeatureNode::recover_from_buffer(char* buffer) {
     feature.push_back(std::string(str));
   }
 }
-}
-}
+}  // namespace distributed
+}  // namespace paddle

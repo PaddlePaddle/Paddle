@@ -23,7 +23,6 @@ limitations under the License. */
 #include <utility>
 #include <vector>
 
-#include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/executor_cache.h"
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_registry.h"
@@ -43,6 +42,7 @@ namespace operators {
 
 using StepScopeVar = std::vector<framework::Scope *>;
 using BlockDesc = framework::BlockDesc;
+using ProgramDesc = framework::ProgramDesc;
 
 using Variable = framework::Variable;
 using LoDTensor = framework::LoDTensor;
@@ -188,6 +188,7 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     auto start_op_index = ctx.Attr<int64_t>("start_op_index");
     auto end_op_index = ctx.Attr<int64_t>("end_op_index");
     auto is_test = ctx.Attr<bool>("is_test");
+    auto program_id = ctx.Attr<int64_t>("program_id");
 
     // NOTE(chenweihang): In order not to add new variable type, use vector
     // here. Originally, here can use scope directly.
@@ -198,9 +199,6 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
             "The OutScope of RunProgramGradOp should only hold one scope."));
 
     // Step 2. prepare executor and init persistable variables
-    framework::Executor exe(ctx.GetPlace());
-    auto exe_ctx = framework::GetExecutorInfoFromCache(
-        exe, ctx, {output_var_names, dout_var_names}, /*is_grad=*/false);
 
     // NOTE(Aurelius84): While training some models, forward can be called many
     // times and then apply backpropagation all at once, such as Reinforcement
@@ -216,12 +214,31 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
     details::ShareVarsIntoScope(input_vars, input_var_names, &scope);
     details::ShareVarsIntoScope(param_vars, param_names, &scope);
 
-    // Step 3. run ops
-    exe.RunPartialPreparedContext(exe_ctx.get(), &scope, start_op_index,
-                                  end_op_index, /*create_local_scope=*/false,
-                                  /*create_vars=*/true,
-                                  /*keep_kids=*/!is_test);
+    if (end_op_index > start_op_index) {
+      auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
+      auto cache_info = framework::GetExecutorInfoFromCache(
+          *program, ctx.GetPlace(), start_op_index, end_op_index,
+          /*is_grad=*/false, program_id, &scope);
+      auto &parallel_executor = cache_info.first;
+      // all out_vars are skip_eager_var
+      auto &skip_eager_delete_vars =
+          framework::ExecutorInfoCache::Instance().SkipEagerDeleteVars(
+              program_id, false);
+      if (cache_info.second /*is_new_created*/) {
+        parallel_executor->SkipMemoryReuse(/*scope_idx=*/0, input_var_names);
+        skip_eager_delete_vars.insert(skip_eager_delete_vars.end(),
+                                      output_var_names.begin(),
+                                      output_var_names.end());
+        skip_eager_delete_vars.insert(skip_eager_delete_vars.end(),
+                                      dout_var_names.begin(),
+                                      dout_var_names.end());
+        framework::details::ParseSafeEagerDeletionSkipVars(
+            *program, end_op_index, output_var_names, &skip_eager_delete_vars);
+      }
 
+      // Step 3. run ops
+      parallel_executor->RunWithoutFetch(skip_eager_delete_vars);
+    }
     // Step 4. Get Output
     details::ShareVarsFromScope(output_vars, output_var_names, &scope);
     details::ShareVarsFromScope(dout_vars, dout_var_names, &scope);
@@ -268,6 +285,7 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 
     auto *block = ctx.Attr<BlockDesc *>("global_block");
     auto orig_end_op_index = ctx.Attr<int64_t>("end_op_index");
+    auto program_id = ctx.Attr<int64_t>("program_id");
     // NOTE: skip `shape` and `fill_constant` op created by
     // fluid.backward.gradients, one forward output will generate one `shape`
     // and `fill_constant`
@@ -290,21 +308,37 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 
     auto &scope = *(global_inner_scope->kids().front());
 
-    // Step 2. prepare executor and scope
-    framework::Executor exe(ctx.GetPlace());
-    auto exe_ctx = framework::GetExecutorInfoFromCache(
-        exe, ctx, {input_grad_var_names, param_grad_names},
-        /*is_grad=*/true);
+    if (end_op_index > start_op_index) {
+      // Step 2. prepare executor and scope
+      auto *program = ctx.Attr<BlockDesc *>("global_block")->Program();
+      auto cache_info = framework::GetExecutorInfoFromCache(
+          *program, ctx.GetPlace(), start_op_index, end_op_index,
+          /*is_grad*/ true, program_id, &scope);
+      auto &parallel_executor = cache_info.first;
 
-    details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
-                                &scope);
-    // Debug info: scope info when run end
-    VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
+      auto &skip_eager_delete_vars =
+          framework::ExecutorInfoCache::Instance().SkipEagerDeleteVars(
+              program_id, true);
+      if (cache_info.second /*is_new_created*/) {
+        parallel_executor->SkipMemoryReuse(/*scope_idx=*/0,
+                                           output_grad_var_names);
 
-    // Step 3. run ops
-    exe.RunPartialPreparedContext(exe_ctx.get(), &scope, start_op_index,
-                                  end_op_index, /*create_local_scope=*/false,
-                                  /*create_vars=*/true, /*keep_kids=*/false);
+        skip_eager_delete_vars.insert(skip_eager_delete_vars.end(),
+                                      input_grad_var_names.begin(),
+                                      input_grad_var_names.end());
+        framework::details::AppendSkipDeletionVars(param_grad_names,
+                                                   &skip_eager_delete_vars);
+      }
+
+      details::ShareVarsIntoScope(output_grad_vars, output_grad_var_names,
+                                  &scope);
+      // Debug info: scope info when run end
+      VLOG(3) << framework::GenScopeTreeDebugInfo(out_scope_vec->front());
+
+      // Step 3. run ops
+      parallel_executor->RunWithoutFetch(
+          /*skip_eager_delete_vars=*/skip_eager_delete_vars);
+    }
 
     // Step 4. get outputs
     details::ShareVarsFromScope(input_grad_vars, input_grad_var_names, &scope);

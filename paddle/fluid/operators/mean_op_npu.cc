@@ -91,13 +91,10 @@ class MeanGradNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_NPU_KERNEL(
-    mean, ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, double>,
+    mean, ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::MeanNPUKernel<paddle::platform::NPUDeviceContext, plat::float16>)
 
 REGISTER_OP_NPU_KERNEL(
-    mean_grad, ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    mean_grad,
     ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, double>,
     ops::MeanGradNPUKernel<paddle::platform::NPUDeviceContext, plat::float16>)

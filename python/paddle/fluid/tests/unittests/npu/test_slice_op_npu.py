@@ -27,8 +27,6 @@ SEED = 2021
 EPOCH = 100
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSliceOp(OpTest):
     def setUp(self):
         self.op_type = "slice"
@@ -60,27 +58,24 @@ class TestSliceOp(OpTest):
         self.place = paddle.NPUPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
             return
-        self.check_grad_with_place(
-            self.place, ['Input'], 'Out', check_dygraph=False)
+        self.check_grad_with_place(self.place, ['Input'], 'Out')
 
 
 class TestSliceOp2(TestSliceOp):
     def config(self):
-        self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
-        self.starts = [1, 0, -3]
-        self.ends = [3, 3, -1]
-        self.axes = [0, 1, 2]
-        self.infer_flags = [1, 1, 1]
-        self.out = self.input[1:3, 0:3, -3:-1, :]
+        self.input = np.random.random([10, 5, 6]).astype(self.dtype)
+        self.starts = [0]
+        self.ends = [1]
+        self.axes = [1]
+        self.infer_flags = [1]
+        self.out = self.input[:, 0:1, :]
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestSliceOpFp16(TestSliceOp):
     def init_dtype(self):
         self.dtype = np.float16
@@ -91,8 +86,160 @@ class TestSliceOpFp16(TestSliceOp):
         self.place = paddle.NPUPlace(0)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+class TestSliceOpTensor(TestSliceOp):
+    def setUp(self):
+        self.op_type = "slice"
+        self.set_npu()
+        self.init_dtype()
+        self.config()
+        self.inputs = {
+            'Input': self.input,
+            'StartsTensor': self.starts,
+            'EndsTensor': self.ends
+        }
+        self.outputs = {'Out': self.out}
+        self.attrs = {
+            'axes': self.axes,
+            'starts': [-1, -1, -1],
+            'ends': [-1, -1, -1],
+            'infer_flags': self.infer_flags
+        }
+
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
+        self.starts = np.array([1, 0, 2]).astype('int32')
+        self.ends = np.array([3, 3, 4]).astype('int32')
+        self.axes = [0, 1, 2]
+        self.infer_flags = [-1, -1, -1]
+        self.out = self.input[1:3, 0:3, 2:4, :]
+
+
+class TestSliceOpTensor2(TestSliceOpTensor):
+    def setUp(self):
+        self.op_type = "slice"
+        self.set_npu()
+        self.init_dtype()
+        self.config()
+        self.inputs = {
+            'Input': self.input,
+            'StartsTensor': self.starts,
+            'EndsTensor': self.ends
+        }
+        self.outputs = {'Out': self.out}
+        self.attrs = {
+            'axes': self.axes,
+            'starts': [-1],
+            'ends': [-1],
+            'infer_flags': self.infer_flags
+        }
+
+    def config(self):
+        self.input = np.random.random([10, 5, 6]).astype(self.dtype)
+        self.starts = np.array([0]).astype('int32')
+        self.ends = np.array([1]).astype('int32')
+        self.axes = [1]
+        self.infer_flags = [-1]
+        self.out = self.input[:, 0:1, :]
+
+
+class TestSliceOpFp16Tensor(TestSliceOpTensor):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+        self.__class__.no_need_check_grad = True
+        self.place = paddle.NPUPlace(0)
+
+
+class TestSliceOpTensorList(TestSliceOp):
+    def setUp(self):
+        self.op_type = "slice"
+        self.set_npu()
+        self.init_dtype()
+        self.config()
+
+        self.starts_tensor_list = []
+        for index, ele in enumerate(self.starts):
+            self.starts_tensor_list.append(("start" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+
+        self.ends_tensor_list = []
+        for index, ele in enumerate(self.ends):
+            self.ends_tensor_list.append(("end" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+
+        self.inputs = {
+            'Input': self.input,
+            'StartsTensorList': self.starts_tensor_list,
+            'EndsTensorList': self.ends_tensor_list
+        }
+        self.outputs = {'Out': self.out}
+        self.attrs = {
+            'axes': self.axes,
+            'starts': [-1, -1, -1],
+            'ends': [-1, -1, -1],
+            'infer_flags': self.infer_flags
+        }
+
+    def config(self):
+        self.input = np.random.random([3, 4, 5, 6]).astype(self.dtype)
+        self.starts = [1, 0, 2]
+        self.ends = [3, 3, 4]
+        self.axes = [0, 1, 2]
+        self.infer_flags = [-1, -1, -1]
+        self.out = self.input[1:3, 0:3, 2:4, :]
+
+
+class TestSliceOpTensorList2(TestSliceOpTensorList):
+    def setUp(self):
+        self.op_type = "slice"
+        self.set_npu()
+        self.init_dtype()
+        self.config()
+
+        self.starts_tensor_list = []
+        for index, ele in enumerate(self.starts):
+            self.starts_tensor_list.append(("start" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+
+        self.ends_tensor_list = []
+        for index, ele in enumerate(self.ends):
+            self.ends_tensor_list.append(("end" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+
+        self.inputs = {
+            'Input': self.input,
+            'StartsTensorList': self.starts_tensor_list,
+            'EndsTensorList': self.ends_tensor_list
+        }
+        self.outputs = {'Out': self.out}
+        self.attrs = {
+            'axes': self.axes,
+            'starts': [-1],
+            'ends': [-1],
+            'infer_flags': self.infer_flags
+        }
+
+    def config(self):
+        self.input = np.random.random([10, 5, 6]).astype(self.dtype)
+        self.starts = np.array([0]).astype('int32')
+        self.ends = np.array([1]).astype('int32')
+        self.axes = [1]
+        self.infer_flags = [-1]
+        self.out = self.input[:, 0:1, :]
+
+
+class TestSliceOpFp16TensorList(TestSliceOpTensorList):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def set_npu(self):
+        self.__class__.use_npu = True
+        self.__class__.no_need_check_grad = True
+        self.place = paddle.NPUPlace(0)
+
+
 class TestSliceNet(unittest.TestCase):
     def _test(self, run_npu=True):
         main_prog = paddle.static.Program()
@@ -118,8 +265,8 @@ class TestSliceNet(unittest.TestCase):
 
             prediction = paddle.static.nn.fc(z, size=2, activation='softmax')
 
-            cost = paddle.nn.functional.cross_entropy(
-                input=prediction, label=label)
+            cost = paddle.fluid.layers.softmax_with_cross_entropy(
+                logits=prediction, label=label)
             loss = paddle.mean(cost)
             sgd = paddle.optimizer.SGD(learning_rate=0.01)
             sgd.minimize(loss)

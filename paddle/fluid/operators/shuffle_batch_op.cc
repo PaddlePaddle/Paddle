@@ -53,6 +53,16 @@ class ShuffleBatchOp : public framework::OperatorWithKernel {
     auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string &var_name, const framework::Tensor &tensor,
+      const framework::OpKernelType &expected_kernel_type) const override {
+    if (var_name == "Seed") {
+      return expected_kernel_type;
+    }
+    return framework::OperatorWithKernel::GetKernelTypeForVar(
+        var_name, tensor, expected_kernel_type);
+  }
 };
 
 class ShuffleBatchOpMaker : public framework::OpProtoAndCheckerMaker {
