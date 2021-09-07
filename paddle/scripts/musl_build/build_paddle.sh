@@ -58,7 +58,6 @@ mkdir -p "$CACHE_DIR"
 echo ">>> local cache dir: $CACHE_DIR"
 
 RUN_ARGS+=("--env" "WITH_REQUIREMENT=$MOUNT_DIR/$PYTHON_REQ")
-RUN_ARGS+=("--env" "WITH_REQUIREMENT_FIRST=$MOUNT_DIR/$PYTHON_REQ_FIRST")
 echo ">>> install python requirement"
 
 

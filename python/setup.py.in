@@ -249,6 +249,11 @@ packages=['paddle',
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
 
+for index, requirement in enumerate(setup_requires):
+    if requirement == "git+https://github.com/jakpiase/bfloat.git@develop":
+        setup_requires[index] = "bfloat"
+
+
 # Note(wangzhongpu):
 # When compiling paddle under python36, the dependencies belonging to python2.7 will be imported, resulting in errors when installing paddle
 if sys.version_info >= (3,6) and sys.version_info < (3,7):
@@ -519,9 +524,6 @@ if '${WITH_STRIP}' == 'ON':
     if os.system(command) != 0:
         raise Exception("strip *.so failed, command: %s" % command)
 
-# numpy must be installed first because bfloat16's setup.py depends on it
-subprocess.check_call([sys.executable, "-m", "pip", "install", "numpy>=1.13"])
-
 with redirect_stdout():
     setup(name='${PACKAGE_NAME}',
         version='${PADDLE_VERSION}',
@@ -538,6 +540,7 @@ with redirect_stdout():
         license='Apache Software License',
         packages=packages,
         install_requires=setup_requires,
+        dependency_links=["git+https://github.com/jakpiase/bfloat16.git@develop#egg=bfloat"],
         ext_modules=ext_modules,
         package_data=package_data,
         package_dir=package_dir,

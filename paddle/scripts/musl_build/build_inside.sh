@@ -51,8 +51,7 @@ if [ "$pip_index" ]; then
 fi
 
 if [ "$WITH_REQUIREMENT" ]; then
-    echo ">>> install python requirement: $WITH_REQUIREMENT_FIRST $WITH_REQUIREMENT";
-    pip install $PIP_ARGS -r "$WITH_REQUIREMENT_FIRST";
+    echo ">>> install python requirement: $WITH_REQUIREMENT";
     pip install $PIP_ARGS -r "$WITH_REQUIREMENT";
 fi
 
