@@ -75,10 +75,10 @@ class TestFMHAOp(OpTest):
     def init_dtype_type(self):
         pass
 
-    def test_check_output(self):
+    def local_test_check_output(self):
         self.check_output_with_place(self.place, atol=1e-1)
 
-    def test_check_grad(self):
+    def local_test_check_grad(self):
         self.check_grad_with_place(
             self.place, ['X'], ['Out', 'SoftmaxMask'],
             user_defined_grads=[self.grad_x],
