@@ -797,7 +797,9 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
       }
 
       int count = platform::GetSelectedNPUDevices().size();
-      if (count > 1) {
+      LOG(WARNING) << "count: " << count;
+
+      if (count >= 1) {
         LOG(WARNING) << "before | saved_mean: ";
         PrintTensor<float>(*saved_mean, ctx);
 
@@ -826,9 +828,6 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
 
         // mean saved_mean
         {
-          LOG(WARNING) << "before | saved_mean: ";
-          PrintTensor<float>(*saved_mean, ctx);
-
           framework::NPUAttributeMap attr_input = {{"value", 1.0f / count}};
 
           const auto &runner =
@@ -841,9 +840,6 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
 
         // mean var_ref
         {
-          LOG(WARNING) << "before | var_ref: ";
-          PrintTensor<float>(var_ref, ctx);
-
           framework::NPUAttributeMap attr_input = {{"value", 1.0f / count}};
 
           const auto &runner =
