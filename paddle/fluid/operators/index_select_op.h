@@ -87,6 +87,7 @@ void IndexSelectInner(const framework::ExecutionContext& context,
     auto output_t = output_tensor.chip(j, 1);
     output_t.device(place) = input_tensor.chip(index_value, 1);
   }
+  input->Resize(input_dim);
   output->Resize(output_dim);
 }
 
