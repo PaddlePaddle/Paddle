@@ -301,9 +301,9 @@ template struct SelectedRowsAddToTensor<platform::CPUDeviceContext,
 namespace scatter {
 
 template <typename T>
-typename std::enable_if<std::is_floating_point<T>::value>::type
-elementwise_add_to(BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len,
-                   const T* in, T* out) {
+typename std::enable_if<!std::is_integral<T>::value>::type elementwise_add_to(
+    BlasT<platform::CPUDeviceContext, T>* blas, size_t data_len, const T* in,
+    T* out) {
   blas->AXPY(data_len, T(1.f), in, out);
 }
 
@@ -322,7 +322,9 @@ add_sparse_inputs(const std::vector<const framework::SelectedRows*>& inputs,
                   const std::unordered_map<int64_t, size_t>& rows_to_id,
                   int64_t input_width,
                   const platform::CPUDeviceContext& context, T* out_data) {
+#ifndef PADDLE_WITH_MKLDNN
   auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
+#endif
   for (auto* input : inputs) {
     if (input->rows().size() == 0) {
       continue;
@@ -354,6 +356,7 @@ add_sparse_inputs(const std::vector<const framework::SelectedRows*>& inputs,
                   const std::unordered_map<int64_t, size_t>& rows_to_id,
                   int64_t input_width,
                   const platform::CPUDeviceContext& context, T* out_data) {
+  VLOG(4) << "[CPU] add_sparse_inputs <" << typeid(T).name();
   auto blas = math::GetBlas<platform::CPUDeviceContext, T>(context);
   for (auto* input : inputs) {
     if (input->rows().size() == 0) {
