@@ -169,7 +169,7 @@ class TestCumprodAPI(unittest.TestCase):
                 x = paddle.fluid.data('X', self.shape, dtype=self.dtype)
                 out = paddle.cumprod(x, -2)
                 exe = paddle.static.Executor(place)
-                res = exe.run(feed={'X': self.x})
+                res = exe.run(feed={'X': self.x}, fetch_list=[out])
             out_ref = np.cumprod(self.x, -2)
 
             for r in res:

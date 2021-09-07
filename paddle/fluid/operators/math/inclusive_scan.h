@@ -106,6 +106,9 @@ struct InclusiveScanOuterOrMidDimFunctor {
   BinaryOp op_;
 };
 
+// Reference to
+// https://github.com/pytorch/pytorch/blob/master/aten/src/ATen/native/ReduceOps.cpp
+
 template <typename T, typename BinaryOp, size_t kThreadNumX, size_t kThreadNumY,
           bool kReverse>
 static __global__ void InclusiveScanInnerDimCUDAKernel(const T *x, T *y,
@@ -137,7 +140,7 @@ static __global__ void InclusiveScanInnerDimCUDAKernel(const T *x, T *y,
         col2 = col1 + kThreadNumX;
       }
 
-      if (col1 < num_rows) {
+      if (row < num_rows) {
         if (col1 < row_size) {
           row_buf[threadIdx.x] = row_x[col1];
         } else {

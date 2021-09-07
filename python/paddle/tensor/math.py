@@ -1957,6 +1957,14 @@ def cumprod(x, dim=None, dtype=None, name=None):
             #  [ 4  20 120  840]
             #  [ 8  72 720 7920]]
 
+            y = paddle.cumprod(data, dim=1, dtype='float64')
+            # [[ 0.   0.   0.    0.]
+            #  [ 4.  20. 120.  840.]
+            #  [ 8.  72. 720. 7920.]]
+
+            print(y.dtype)
+            # paddle.float64
+
     """
 
     if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
