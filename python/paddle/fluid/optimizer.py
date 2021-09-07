@@ -5049,16 +5049,15 @@ class PipelineOptimizer(object):
     def _accumulate_gradients(self,
                               block,
                               pp_allreduce_in_optimize=False,
-                              fp16_allreduce=False,
-                              user_defined_strategy=None):
+                              strategy=None):
         """
         Create a new merged gradient for each parameter and accumulate the
         corresponding gradient to it.
         """
-        if user_defined_strategy and user_defined_strategy.fuse_grad_merge:
+        fp16_allreduce = strategy.fp16_allreduce if strategy else False
+        if strategy and strategy.fuse_grad_merge:
             fused_gradient_names = self._accumulate_gradients_with_fuse(
-                block, fp16_allreduce,
-                user_defined_strategy.fuse_grad_size_in_MB)
+                block, fp16_allreduce, strategy.fuse_grad_size_in_MB)
             return fused_gradient_names
 
         merged_gradient_names = []

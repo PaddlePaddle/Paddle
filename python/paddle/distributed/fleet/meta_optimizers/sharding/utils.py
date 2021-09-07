@@ -438,7 +438,7 @@ def insert_reduce_ops(block,
                       use_calc_stream=False,
                       rank=None):
     """
-    _add_allreduce_ops
+    _add_reduce_ops
     """
     grad_in_this_device = []
     for var in reduce_vars:
@@ -461,6 +461,55 @@ def insert_reduce_ops(block,
             })
 
     return grad_in_this_device
+
+
+def insert_broadcast_param_ops(block,
+                               insert_idx,
+                               ring_id,
+                               params,
+                               shard,
+                               op_role=OpRole.Optimize,
+                               use_calc_stream=False,
+                               rank=None):
+    """
+    _add_broadcast_param_ops
+    """
+    param_in_this_device = []
+    for param in params:
+        root_id = shard.device(param)
+        assert root_id >= 0, "root id should be a positive int, but now root id is {}".format(
+            root_id)
+        if rank is not None and rank == root_id:
+            param_in_this_device.append(param)
+        block._insert_op_without_sync(
+            insert_idx,
+            type='c_broadcast',
+            inputs={'X': param},
+            outputs={'Out': param},
+            attrs={
+                'ring_id': ring_id,
+                'root_id': root_id,
+                'use_calc_stream': use_calc_stream,
+                OP_ROLE_KEY: op_role
+            })
+
+    return param_in_this_device
+
+    for broadcast_name, root_device in broadcast2root:
+        block._insert_op_without_sync
+        paddle.fluid.framework.Block.append_op()
+        block._insert_op_without_sync(
+            insert_idx,
+            type='c_broadcast',
+            inputs={'X': broadcast_name},
+            outputs={'Out': broadcast_name},
+            attrs={
+                'ring_id': ring_id,
+                'root': root_device,
+                OP_ROLE_KEY: op_role
+            })
+
+    return
 
 
 def get_grad_device(grad_name, shard):

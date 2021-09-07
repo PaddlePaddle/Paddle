@@ -27,6 +27,7 @@ from .sharding.weight_decay_helper import WeightDecayHelper
 from .sharding.gradient_clip_helper import GradientClipHelper
 from .sharding.offload_helper import OffloadHelper
 from .sharding.prune import ProgramDeps
+from .sharding import utils
 from .sharding.utils import *
 
 import logging
@@ -293,6 +294,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._prune_startup_program(startup_block, self._shard)
 
     def _apply_opt_sharding_pass(self, params_grads):
+        """ outer dp as optimizer sharding"""
         strategy = self.user_defined_strategy
         sharding_configs = strategy.sharding_configs
 
@@ -300,6 +302,9 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.sharding_degree > 1: return
         if sharding_configs['dp_as_opt_sharding'] is False: return
         if self.dp_degree == 1: return
+
+        # TODO(wangxi): need support without pp in future
+        if self.pp_degree == 1: return
 
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
@@ -321,7 +326,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.pp_degree == 1: return
 
         strategy = self.user_defined_strategy
-        fp16_allreduce = strategy.fp16_allreduce
+        sharding_configs = strategy.sharding_configs
 
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
@@ -345,10 +350,14 @@ class ShardingOptimizer(MetaOptimizerBase):
                 if in_name not in main_block.vars:
                     main_block._remove_op(idx)
 
+        optimizer_sharding = False
+        if sharding_configs['dp_as_opt_sharding'] and self.dp_degree > 1:
+            # TODO(wangxi): support fuse grad merge with optimizer sharding
+            strategy.fuse_grad_merge = False
+            optimizer_sharding = True
+
         accumulated_grad_names = self._pp_optimizer._accumulate_gradients(
-            main_block,
-            fp16_allreduce=fp16_allreduce,
-            user_defined_strategy=strategy)
+            main_block, strategy=strategy)
 
         len_of_ops = len(main_block.ops)
         first_optimize_op_index = get_first_optimize_op_idx(main_block)
@@ -373,7 +382,33 @@ class ShardingOptimizer(MetaOptimizerBase):
             first_optimize_op_index += (len(main_block.ops) - len_of_ops)
             len_of_ops = len(main_block.ops)
 
-        if self.hybrid_dp and self.hybrid_dp_mode == "pp_hybrid_dp":
+        if optimizer_sharding:
+            logger.info("Pipeline Persistable grad is {}".format(
+                accumulated_grad_names))
+            accumulated_grad_names = insert_reduce_ops(
+                main_block,
+                first_optimize_op_index,
+                self.dp_ring_id,
+                accumulated_grad_names,
+                self._shard,
+                OpRole.Optimize,
+                use_calc_stream=True,
+                rank=self.dp_rank)
+            logger.info("PP-Sharding grad is {}".format(accumulated_grad_names))
+            first_optimize_op_index += (len(main_block.ops) - len_of_ops)
+            len_of_ops = len(main_block.ops)
+
+            utils.insert_broadcast_param_ops(
+                main_block,
+                len_of_ops,
+                self.dp_ring_id,
+                self._shard.global_params,
+                self._shard,
+                OpRole.Optimize,
+                use_calc_stream=True,
+                rank=self.dp_rank)
+
+        elif self.hybrid_dp and self.hybrid_dp_mode == "pp_hybrid_dp":
             insert_allreduce_ops(
                 main_block,
                 first_optimize_op_index,
@@ -481,7 +516,6 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         self._apply_sharding_pass(params_grads)
 
-        # for tmp, can only apply when sharding_degree<=1
         self._apply_opt_sharding_pass(params_grads)
 
         self._insert_allreduce_for_pp()
