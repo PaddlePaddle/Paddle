@@ -159,6 +159,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         self.gradient_merge_mode = 'pp_gm' or 'sharding_gm'
         self._gradient_merge_acc_step
         self.pp_allreduce_in_optimize
+        self.optimizer_sharding
         """
         strategy = self.user_defined_strategy
         sharding_configs = strategy.sharding_configs
@@ -195,9 +196,16 @@ class ShardingOptimizer(MetaOptimizerBase):
             logger.info("Gradient merge in [{}], acc step = [{}]".format(
                 gm_mode, gm_acc_step))
 
+        optimizer_sharding = False
+        # TODO(wangxi): need support dp_as_opt_sharding with sharding
+        if self.sharding_degree == 1 and self.dp_degree > 1 \
+                and sharding_configs['dp_as_opt_sharding']:
+            optimizer_sharding = True
+
         self.hybrid_dp_mode = dp_mode
         self.gradient_merge_mode = gm_mode
         self._gradient_merge_acc_step = gm_acc_step
+        self.optimizer_sharding = optimizer_sharding
 
         # this feature is design for ascend, and should NOT be used in GPU training
         self.pp_allreduce_in_optimize = sharding_configs[
@@ -295,13 +303,8 @@ class ShardingOptimizer(MetaOptimizerBase):
 
     def _apply_opt_sharding_pass(self, params_grads):
         """ outer dp as optimizer sharding"""
-        strategy = self.user_defined_strategy
-        sharding_configs = strategy.sharding_configs
-
-        # TODO(wangxi): need support dp_as_opt_sharding with sharding
-        if self.sharding_degree > 1: return
-        if sharding_configs['dp_as_opt_sharding'] is False: return
-        if self.dp_degree == 1: return
+        if self.optimizer_sharding is False:
+            return
 
         # TODO(wangxi): need support without pp in future
         if self.pp_degree == 1: return
@@ -407,7 +410,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                 OpRole.Optimize,
                 use_calc_stream=True,
                 rank=self.dp_rank)
-
         elif self.hybrid_dp and self.hybrid_dp_mode == "pp_hybrid_dp":
             insert_allreduce_ops(
                 main_block,
@@ -946,7 +948,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                 # if all outputs of this op are in _should_removed_var
                 # _should_removed_var: opt state not cur shard
                 if program_deps.should_remove_op(idx):
-                    program_deps.remove_op(idx)
+                    reserved_vars = self._params if self.optimizer_sharding else None
+                    program_deps.remove_op(idx, reserved_vars)
 
         # NOTE (JZ-LIANG) revise and unify logic here
         # sharding support fp16_allreduce logic            

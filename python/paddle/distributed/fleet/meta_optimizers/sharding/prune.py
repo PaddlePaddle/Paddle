@@ -117,12 +117,16 @@ class ProgramDeps(object):
                     var_name] == []:
                 self._block._remove_var(var_name, sync=False)
 
-    def remove_op(self, op_idx):
+    def remove_op(self, op_idx, reserved_vars=None):
         # update deps
         op = self._block.ops[op_idx]
         for input_name in op.desc.input_arg_names():
+            if reserved_vars is not None and input_name in reserved_vars:
+                continue
             self.crop_input_var_from_op(op_idx, input_name)
         for output_name in op.desc.output_arg_names():
+            if reserved_vars is not None and output_name in reserved_vars:
+                continue
             self.crop_output_var_from_op(op_idx, output_name)
         self._block._remove_op(op_idx, sync=False)
 
