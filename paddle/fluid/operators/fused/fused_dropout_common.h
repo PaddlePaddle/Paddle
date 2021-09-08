@@ -20,16 +20,17 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/device_context.h"
-#include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/fluid/platform/float16.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
 
-#define MAX_CACHE_BYTES 16
+#define CACHE_LINE 128
+#define MAX_CACHE_BYTES (CACHE_LINE / CHAR_BIT)
 
 /**
  * get the threads for fused_residual_dropout_bias:
