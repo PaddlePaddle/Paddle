@@ -20,8 +20,6 @@
 namespace paddle {
 namespace operators {
 
-#define MAX_INPUT_NUM 3  // the max num of ET for BroadcacstConfig
-
 namespace kps = paddle::operators::kernel_primitives;
 
 struct DimensionsTransform {
@@ -185,9 +183,8 @@ template <typename InT, typename OutT, typename Functor, int Arity, int VecSize,
           int Rank, bool IsBoundary = false>
 __device__ void DealSegment(
     const framework::Array<const InT *__restrict__, Arity> &in, OutT *out,
-    const framework::Array<bool, MAX_INPUT_NUM> &use_broadcast, uint32_t numel,
-    const framework::Array<kps::details::BroadcastConfig<Rank>, MAX_INPUT_NUM>
-        &configlists,
+    const framework::Array<bool, Arity> &use_broadcast, uint32_t numel,
+    const framework::Array<kps::details::BroadcastConfig<Rank>, Arity> &configs,
     int num, Functor func) {
   InT args[Arity][VecSize];
   OutT result[VecSize];
@@ -197,9 +194,8 @@ __device__ void DealSegment(
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
     kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f));
-    LoadData<InT, VecSize, Rank, IsBoundary>(args[i], in[i], block_offset,
-                                             configlists[i], numel, num,
-                                             use_broadcast[i]);
+    LoadData<InT, VecSize, Rank, IsBoundary>(
+        args[i], in[i], block_offset, configs[i], numel, num, use_broadcast[i]);
   }
 
   const bool kCallElementwiseAny =
@@ -215,20 +211,19 @@ template <typename InT, typename OutT, typename Functor, int Arity, int VecSize,
           int Rank>
 __global__ void BroadcastKernel(
     framework::Array<const InT *__restrict__, Arity> in, OutT *out,
-    framework::Array<bool, MAX_INPUT_NUM> use_broadcast, uint32_t numel,
-    framework::Array<kps::details::BroadcastConfig<Rank>, MAX_INPUT_NUM>
-        configlists,
+    framework::Array<bool, Arity> use_broadcast, uint32_t numel,
+    framework::Array<kps::details::BroadcastConfig<Rank>, Arity> configs,
     int main_tid, int tail_tid, Functor func) {
   int block_offset = blockIdx.x * blockDim.x * VecSize;
   // data offset of this block
   if (blockIdx.x < main_tid) {
     int num = blockDim.x * VecSize;  // blockIdx.x < main_tid
     DealSegment<InT, OutT, Functor, Arity, VecSize, Rank, false>(
-        in, out, use_broadcast, numel, configlists, num, func);
+        in, out, use_broadcast, numel, configs, num, func);
   } else {  // reminder
     int num = tail_tid;
     DealSegment<InT, OutT, Functor, Arity, VecSize, Rank, true>(
-        in, out, use_broadcast, numel, configlists, num, func);
+        in, out, use_broadcast, numel, configs, num, func);
   }
 }
 
@@ -247,9 +242,8 @@ void LaunchKernel(const platform::CUDADeviceContext &ctx,
   auto stream = ctx.stream();
   OutT *out_data = out->data<OutT>();
 
-  framework::Array<kps::details::BroadcastConfig<Rank>, MAX_INPUT_NUM>
-      configlists;
-  framework::Array<bool, MAX_INPUT_NUM> use_broadcast;
+  framework::Array<kps::details::BroadcastConfig<Rank>, Arity> configs;
+  framework::Array<bool, Arity> use_broadcast;
   framework::Array<const InT *__restrict__, Arity> ins_data;
 
   for (int i = 0; i < Arity; i++) {
@@ -259,14 +253,14 @@ void LaunchKernel(const platform::CUDADeviceContext &ctx,
       // get the broadcast config,
       // if data shape is[m, n], then you should set data_dim = {n, m}
       // eg: out's shape [3, 45, 1]. then out_dims = {1, 45, 3}
-      configlists[i] = kps::details::BroadcastConfig<Rank>(
+      configs[i] = kps::details::BroadcastConfig<Rank>(
           merge_dims.out_dims, merge_dims.in_dims[i], merge_dims.dim_size);
     }
   }
 
   BroadcastKernel<InT, OutT, Functor, Arity, VecSize,
                   Rank><<<blocks, threads, 0, stream>>>(
-      ins_data, out_data, use_broadcast, numel, configlists, main_tid, tail_tid,
+      ins_data, out_data, use_broadcast, numel, configs, main_tid, tail_tid,
       func);
 }
 
@@ -380,8 +374,6 @@ void LaunchElementwiseCudaKernel(
                                                         axis, func);
   }
 }
-
-#undef MAX_INPUT_NUM
 
 }  // namespace operators
 }  // namespace paddle
