@@ -486,7 +486,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             }
           }
           if ((scale <= 0.f) && with_dynamic_shape) {
-            VLOG(3) << "dynamic shape not support Attr(scale) and Input(Scale) not set.";
+            VLOG(3) << "dynamic shape not support Attr(scale) and Input(Scale) "
+                       "not set.";
             return false;
           }
         }
@@ -577,13 +578,16 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             }
           }
           if (with_dynamic_shape) {
-            VLOG(3) << "dynamic shape not support Attr(scale) and Input(Scale) vector not set.";
+            VLOG(3) << "dynamic shape not support Attr(scale) and Input(Scale) "
+                       "vector not set.";
             return false;
           }
         } else {
-          for(size_t i = 0; i< scale.size(); i++) {
-            if(scale[i] <= 0 && with_dynamic_shape) {
-              VLOG(3) << "dynamic shape not support Attr(scale[" << i << "]) " << scale[i] << " less than 1 and Input(Scale) vector not set.";
+          for (size_t i = 0; i < scale.size(); i++) {
+            if (scale[i] <= 0 && with_dynamic_shape) {
+              VLOG(3) << "dynamic shape not support Attr(scale[" << i << "]) "
+                      << scale[i]
+                      << " less than 1 and Input(Scale) vector not set.";
               return false;
             }
           }
