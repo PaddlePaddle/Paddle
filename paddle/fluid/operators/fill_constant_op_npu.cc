@@ -12,9 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <memory>
-#include <string>
-
 #include "paddle/fluid/operators/fill_constant_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/utils.h"
@@ -22,7 +19,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class FillConstantNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -32,7 +29,6 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
     auto float_value = ctx.Attr<float>("value");
 
     auto* out_var = ctx.Output<framework::Tensor>("Out");
-    auto place = ctx.GetPlace();
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -63,25 +59,28 @@ class FillConstantNPUKernel : public framework::OpKernel<T> {
     }
     auto shape = GetShape(ctx);
 
-    Tensor tensor_tmp(data_type);
-    tensor_tmp.mutable_data<T>({1}, ctx.GetPlace());
-    FillNpuTensorWithConstant<T>(&tensor_tmp, value);
+    Tensor tensor_value(data_type);
+    tensor_value.mutable_data<T>({1}, ctx.GetPlace());
+    FillNpuTensorWithConstant<T>(&tensor_value, value);
 
-    out_var->mutable_data<T>(shape, place);
-    const auto& runner = NpuOpRunner("FillD", {tensor_tmp}, {*out_var},
-                                     {{"dims", framework::vectorize(shape)}});
-    runner.Run(stream);
+    out_var->mutable_data<T>(shape, ctx.GetPlace());
+
+    NpuOpRunner runner;
+    runner.SetType("Fill")
+        .AddInput(framework::vectorize(shape))
+        .AddInput(tensor_value)
+        .AddOutput(*out_var)
+        .Run(stream);
   }
 };
 }  // namespace operators
 }  // namespace paddle
 
-namespace ops = paddle::operators;
-
 REGISTER_OP_NPU_KERNEL(
-    fill_constant,
-    ops::FillConstantNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::FillConstantNPUKernel<paddle::platform::NPUDeviceContext, bool>,
-    ops::FillConstantNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::FillConstantNPUKernel<paddle::platform::NPUDeviceContext,
-                               paddle::platform::float16>);
+    fill_constant, paddle::operators::FillConstantNPUKernel<float>,
+    paddle::operators::FillConstantNPUKernel<bool>,
+    paddle::operators::FillConstantNPUKernel<int>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+    paddle::operators::FillConstantNPUKernel<int64_t>,
+#endif
+    paddle::operators::FillConstantNPUKernel<paddle::platform::float16>);
