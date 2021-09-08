@@ -1349,7 +1349,8 @@ class OpTest(unittest.TestCase):
         places = self._get_places()
         for place in places:
             res = self.check_output_with_place(place, atol, no_check_set,
-                                               equal_nan, check_dygraph)
+                                               equal_nan, check_dygraph,
+                                               inplace_atol)
             if check_dygraph:
                 outs, dygraph_outs, fetch_list = res
             else:
