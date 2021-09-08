@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import copy
 from .common import DistributedOperator
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator
 from .common import register_distributed_operator_impl
+from .common import set_distributed_attr_for_dist_op
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -223,13 +225,23 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
                 stop_gradient=X_var.stop_gradient)
+            # set intermediate_var_0's dist_attr
+            auto_paralle_context = op_dist_attr.get_owner_context()
+            dist_attr = copy.deepcopy(
+                auto_paralle_context.get_tensor_distributed_attr_for_program(
+                    X_var))
+            dist_attr._owner_tensor = intermediate_var_0
+            dist_attr._owner_context = auto_paralle_context.get_tensor_distributed_attr_for_program(
+                X_var)._owner_context
+            auto_paralle_context.set_tensor_distributed_attr_for_program(
+                intermediate_var_0, dist_attr)
 
             check_variable_and_dtype(
                 X_var, 'tensor',
                 ['float16', 'float32', 'float64', 'int32', 'int64'],
                 '_c_identity')
 
-            dst_block.append_op(
+            c_identity_op = dst_block.append_op(
                 type='c_identity',
                 inputs={'X': [X_var]},
                 outputs={'Out': intermediate_var_0},
@@ -250,11 +262,16 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
                 'alpha': 1,
             }
             inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
-            dst_block.append_op(
+            matmul_op = dst_block.append_op(
                 type='matmul',
                 inputs=inputs,
                 outputs={'Out': Out_var},
                 attrs=attrs)
+
+            set_distributed_attr_for_dist_op(
+                auto_paralle_context, c_identity_op, dst_block, op_dist_attr)
+            set_distributed_attr_for_dist_op(auto_paralle_context, matmul_op,
+                                             dst_block, op_dist_attr)
 
         if in_dygraph_mode():
             raise NotImplementedError(
@@ -369,13 +386,24 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
                 persistable=False,
                 is_data=False,
                 need_check_feed=Out_var.desc.need_check_feed())
-            dst_block.append_op(
+            # set intermediate_var_0's dist_attr
+            auto_paralle_context = op_dist_attr.get_owner_context()
+            dist_attr = copy.deepcopy(
+                auto_paralle_context.get_tensor_distributed_attr_for_program(
+                    Out_var))
+            dist_attr._owner_tensor = intermediate_var_0
+            dist_attr._owner_context = auto_paralle_context.get_tensor_distributed_attr_for_program(
+                Out_var)._owner_context
+            auto_paralle_context.set_tensor_distributed_attr_for_program(
+                intermediate_var_0, dist_attr)
+
+            matmul_op = dst_block.append_op(
                 type='matmul',
                 inputs=inputs,
                 outputs={'Out': intermediate_var_0},
                 attrs=attrs)
 
-            dst_block.append_op(
+            c_allreduce_sum_op = dst_block.append_op(
                 type='c_allreduce_sum',
                 inputs={'X': intermediate_var_0},
                 outputs={'Out': Out_var},
@@ -384,6 +412,12 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
                     'use_calc_stream': True,
                     'use_model_parallel': True
                 })
+
+            set_distributed_attr_for_dist_op(auto_paralle_context, matmul_op,
+                                             dst_block, op_dist_attr)
+            set_distributed_attr_for_dist_op(auto_paralle_context,
+                                             c_allreduce_sum_op, dst_block,
+                                             op_dist_attr)
 
         if in_dygraph_mode():
             raise NotImplementedError(
