@@ -459,6 +459,10 @@ def insert_fused_reduce_ops(block,
 
         fused_vars = []
         for segment in segments:
+            if len(segment) == 1:
+                fused_vars.append(segment[0])
+                continue
+
             tmp_var = block.create_var(
                 name=unique_name.generate('FusedOutput_{}'.format(segment[0]
                                                                   .name)),
