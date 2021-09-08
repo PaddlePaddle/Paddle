@@ -48,10 +48,6 @@ class TestInstanceNorm(unittest.TestCase):
                 instance_norm3d = paddle.nn.InstanceNorm3D(1)
                 instance_norm3d(fluid.dygraph.to_variable(x_data_4))
 
-            def test_input_is_null():
-                x_data_null = paddle.to_tensor([], dtype='float32')
-                paddle.static.nn.instance_norm(input)
-
             def weight_bias_false():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
                 instance_norm3d = paddle.nn.InstanceNorm3D(
@@ -62,7 +58,6 @@ class TestInstanceNorm(unittest.TestCase):
                 self.assertRaises(ValueError, error1d)
                 self.assertRaises(ValueError, error2d)
                 self.assertRaises(ValueError, error3d)
-                self.assertRaises(ValueError, test_input_is_null)
 
     def test_dygraph(self):
         places = [fluid.CPUPlace()]
