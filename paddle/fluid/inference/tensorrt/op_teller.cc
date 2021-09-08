@@ -59,7 +59,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("reshape2");
 #endif
 
-#if IS_TRT_VERSION_GE(8016)
+#if IS_TRT_VERSION_GE(10016)
     teller_set.insert("bilinear_interp");
     teller_set.insert("bilinear_interp_v2");
 #endif
@@ -485,6 +485,10 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
               return false;
             }
           }
+          if ((scale <= 0.f) && with_dynamic_shape) {
+            VLOG(3) << "dynamic shape not support Attr(scale) and Input(Scale) not set.";
+            return false;
+          }
         }
       }
     }
@@ -569,6 +573,17 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             if (out_w <= 0) {
               VLOG(3) << "The op_type " << op_type
                       << "'s out_w must be greater than 0 if scale is not set.";
+              return false;
+            }
+          }
+          if (with_dynamic_shape) {
+            VLOG(3) << "dynamic shape not support Attr(scale) and Input(Scale) vector not set.";
+            return false;
+          }
+        } else {
+          for(size_t i = 0; i< scale.size(); i++) {
+            if(scale[i] <= 0 && with_dynamic_shape) {
+              VLOG(3) << "dynamic shape not support Attr(scale[" << i << "]) " << scale[i] << " less than 1 and Input(Scale) vector not set.";
               return false;
             }
           }

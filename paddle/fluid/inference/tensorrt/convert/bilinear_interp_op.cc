@@ -137,7 +137,7 @@ class BilinearInterpolateOpConverter : public OpConverter {
       }
     }
 
-    if (scale_w > 0. && scale_h > 0.) {
+    if (scale_w > 0. && scale_h > 0. && (!with_dynamic)) {
       out_h = static_cast<int>(in_h * scale_h);
       out_w = static_cast<int>(in_w * scale_w);
     }
@@ -156,7 +156,7 @@ class BilinearInterpolateOpConverter : public OpConverter {
       out_w = out_size_d[1];
     }
 
-    if (scale_h <= 0 || scale_w <= 0) {
+    if ((scale_h <= 0 || scale_w <= 0) && (!with_dynamic)) {
       scale_h = static_cast<float>(out_h) / static_cast<float>(in_h);
       scale_w = static_cast<float>(out_w) / static_cast<float>(in_w);
     }
