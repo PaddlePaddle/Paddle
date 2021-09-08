@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License
 
+import copy
 from .common import DistributedOperator
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator
 from .common import register_distributed_operator_impl
+from .common import set_distributed_attr_for_dist_op
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -173,13 +175,23 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
                 stop_gradient=Out_var.stop_gradient)
+            # set intermediate_var_0's dist_attr
+            auto_paralle_context = op_dist_attr.get_owner_context()
+            dist_attr = copy.deepcopy(
+                auto_paralle_context.get_tensor_distributed_attr_for_program(
+                    Out_var))
+            dist_attr._owner_tensor = intermediate_var_0
+            dist_attr._owner_context = auto_paralle_context.get_tensor_distributed_attr_for_program(
+                Out_var)._owner_context
+            auto_paralle_context.set_tensor_distributed_attr_for_program(
+                intermediate_var_0, dist_attr)
 
             check_variable_and_dtype(
                 Out_var, 'tensor',
                 ['float16', 'float32', 'float64', 'int32', 'int64'],
                 'c_allreduce_sum')
 
-            dst_block.append_op(
+            c_embedding_op = dst_block.append_op(
                 type='c_embedding',
                 inputs={'Ids': [Ids_var],
                         'W': [Weight_var]},
@@ -187,7 +199,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 attrs={"start_index": relative_idx})
 
             # use_model_parallel
-            dst_block.append_op(
+            c_allreduce_sum_op = dst_block.append_op(
                 type='c_allreduce_sum',
                 inputs={'X': [intermediate_var_0]},
                 outputs={'Out': [Out_var]},
@@ -196,6 +208,12 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                     'use_calc_stream': True,
                     'use_model_parallel': True,
                 })
+
+            set_distributed_attr_for_dist_op(
+                auto_paralle_context, c_embedding_op, dst_block, op_dist_attr)
+            set_distributed_attr_for_dist_op(auto_paralle_context,
+                                             c_allreduce_sum_op, dst_block,
+                                             op_dist_attr)
 
         if in_dygraph_mode():
             raise NotImplementedError(
