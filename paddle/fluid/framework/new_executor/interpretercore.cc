@@ -11,16 +11,20 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "paddle/fluid/framework/new_executor/interpretercore.h"
-#include "paddle/fluid/framework/executor_gc_helper.h"
-#include "paddle/fluid/framework/new_executor/interpretercore_gc_helper.h"
 
-#if defined(PADDLE_WITH_CUDA)
-using ::paddle::platform::kCUDA;
-USE_EVENT(kCUDA);
-#endif
+#if !defined(_WIN32)
+#include <sched.h>
+#else
+#define NOMINMAX
+#include <windows.h>
+#endif  // !_WIN32
+
+#include "paddle/fluid/framework/new_executor/interpretercore.h"
 
 #include <unordered_set>
+
+#include "paddle/fluid/framework/executor_gc_helper.h"
+#include "paddle/fluid/framework/new_executor/interpretercore_gc_helper.h"
 
 namespace paddle {
 namespace framework {
@@ -74,27 +78,26 @@ std::vector<size_t> ParseEventVarIds(const Instruction& cur_instr,
 }
 
 void AssociateInputWithEvents(
-    const std::vector<size_t>& new_event_var_id, Instruction* next_instr,
-    std::map<size_t, std::shared_ptr<platform::CudaEvent>>* var_id2event,
+    const platform::Place& place, const std::vector<size_t>& new_event_var_id,
+    Instruction* next_instr,
+    std::map<size_t, std::shared_ptr<platform::DeviceEvent>>* var_id2event,
     bool is_sync) {
-#ifdef PADDLE_WITH_CUDA
   for (auto var_id : new_event_var_id) {
     if (var_id2event->count(var_id) == 0) {
-      auto cuda_event = std::make_shared<platform::CudaEvent>(
-          platform::get_cuda_flags(false, false, false));
-      var_id2event->emplace(var_id, std::move(cuda_event));
+      auto device_event = std::make_shared<platform::DeviceEvent>(
+          place, platform::GenerateDeviceEventFlag());
+      var_id2event->emplace(var_id, std::move(device_event));
     }
     // Add events for next_instr.inputs
     next_instr->intput_events_.emplace_back(var_id, var_id2event->at(var_id),
                                             is_sync);
   }
-#endif
 }
 
 void ParseDirectAndEventRunOps(
-    const std::vector<OpFuncNode>& op_func_nodes,
+    const platform::Place& place, const std::vector<OpFuncNode>& op_func_nodes,
     const std::vector<size_t>& downstream_ops, size_t op_index,
-    std::map<size_t, std::shared_ptr<platform::CudaEvent>>* var_id2event,
+    std::map<size_t, std::shared_ptr<platform::DeviceEvent>>* var_id2event,
     std::vector<Instruction>* instructions) {
   auto& op_func_type = op_func_nodes[op_index].type_;
   auto& cur_instr = instructions->at(op_index);
@@ -119,8 +122,8 @@ void ParseDirectAndEventRunOps(
 
       bool is_sync =
           (op_func_nodes[next_op_id].type_ == OpFuncType::kQueueSync);
-      AssociateInputWithEvents(new_event_var_ids, &next_instr, var_id2event,
-                               is_sync);
+      AssociateInputWithEvents(place, new_event_var_ids, &next_instr,
+                               var_id2event, is_sync);
 
       if (is_sync) {  // GPU -> CPU
         next_instruction.synchronize_run_.emplace_back(next_op_id);
@@ -128,7 +131,6 @@ void ParseDirectAndEventRunOps(
         next_instruction.event_wait_run_.emplace_back(next_op_id);
       }
     }
-#ifdef PADDLE_WITH_CUDA
     // Create events for these cross-stream vars
     VLOG(3) << cur_instr.kernel_func_.operator_base_->Type()
             << " event_var_ids.size: " << event_var_ids.size();
@@ -136,7 +138,6 @@ void ParseDirectAndEventRunOps(
       cur_instr.output_events_.emplace_back(var_id, var_id2event->at(var_id),
                                             false /*not used*/);
     }
-#endif
   }
 }
 }  // namespace
@@ -150,8 +151,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       main_program_(main_prog),
       global_scope_(global_scope),
       d2h_ctx_pool_({place}),
-      h2d_ctx_pool_({place}),
-      fetch_context_pool_({place}) {
+      h2d_ctx_pool_({place}) {
   is_build_ = false;
 
   garbages_.reset(new GarbageQueue());
@@ -263,12 +263,7 @@ void InterpreterCore::Convert() {
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-#if defined(PADDLE_WITH_CUDA)
-    int device_type = static_cast<int>(paddle::platform::DeviceType::CUDA);
-    paddle::platform::DeviceOption dev_opt(
-        device_type, BOOST_GET_CONST(platform::CUDAPlace, place_).device);
-    gc_event_.emplace_back(dev_opt);
-#endif
+    gc_event_.emplace_back(place_, platform::GenerateDeviceEventFlag());
 
     std::vector<size_t> vec_temp;
     for (auto& item : vec_instruction_[i].output_index_) {
@@ -287,8 +282,8 @@ void InterpreterCore::Convert() {
       }
     }
 
-    ParseDirectAndEventRunOps(vec_func_list_, filter_next, i, &var_id2event_,
-                              &vec_instruction_);
+    ParseDirectAndEventRunOps(place_, vec_func_list_, filter_next, i,
+                              &var_id2event_, &vec_instruction_);
 
     // checkout ouput
     for (auto& item : vec_instruction_[i].output_index_) {
@@ -348,9 +343,6 @@ void InterpreterCore::BuildInstructionCtx(Instruction* instr_node,
       new RuntimeInferShapeContext(*op_base, *instr_node->runtime_ctx_.get()));
 
   auto* dev_ctx = instr_node->dev_ctx_;
-  if (instr_node->kernel_func_.operator_base_->Type() == "fetch_v2") {
-    dev_ctx = fetch_context_pool_.Get(place);
-  }
   Scope scope;
 
   instr_node->execution_ctx_.reset(new ExecutionContext(
@@ -358,22 +350,19 @@ void InterpreterCore::BuildInstructionCtx(Instruction* instr_node,
 }
 
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
+  VLOG(3) << "RunInstruction:  "
+          << instr_node.kernel_func_.operator_base_->Type();
+
   static_cast<const framework::OperatorWithKernel*>(
       instr_node.kernel_func_.operator_base_)
       ->InferShape(instr_node.infershape_ctx_.get());
-
-  if (instr_node.kernel_func_.operator_base_->Type() == "fetch_v2") {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto* dev_ctx = pool.Get(place_);
-    dev_ctx->Wait();  // TODO(wanghuancoder)
-  }
 
   instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
 }
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr, const VariableScope& var_scope,
-    const platform::Place& place) {
+    const platform::Place& place, bool is_dry_run) {
   std::queue<size_t> working_queue;
   auto working_dependecy_count = dependecy_count_;
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
@@ -394,6 +383,11 @@ void InterpreterCore::ExecuteInstructionList(
     // step2: run instruction
     RunInstruction(instr_node);
     ++run_op_number;
+
+    if (is_dry_run) {
+      profiler_.ParseMemoryInfo(var_scope.var_list);
+    }
+
     // step3: insert event for out_vars if needed
     RecordEventInstruction(instr_node, vec_func_list_[instr_id]);
 
@@ -411,8 +405,6 @@ void InterpreterCore::ExecuteInstructionList(
     CheckGC(instr_id, instr_node.gc_check_var_list, var_scope, place,
             working_var_ref);
   }
-
-  fetch_context_pool_.Get(place)->Wait();
 
   for (size_t i = 0; i < working_var_ref.size(); ++i) {
     if (working_var_ref[i].var_ref_count_ != 0) {
@@ -463,41 +455,40 @@ void InterpreterCore::CheckGC(size_t instr_id,
 
   if (!garbages_->empty()) {
     if (max_memory_size_ <= 1) {
-#if defined(PADDLE_WITH_CUDA)
-      auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
+      gc_event_[instr_id].Record(
           platform::DeviceContextPool::Instance().Get(place));
-      gc_event_[instr_id].Record(place, dev_ctx);
+      gc_event_[instr_id].SetFininshed();  // Only for CPU Event
       gc_queue_->AddTask(
           [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
             while (!event->Query()) {
+#if defined(_WIN32)
+              SleepEx(50, FALSE);
+#else
+              sched_yield();
+#endif
               continue;
             }
             delete container;
           });
       garbages_.reset(new GarbageQueue());
-#else
-      delete garbages_.release();
-      garbages_.reset(new GarbageQueue());
-#endif
     } else if (cur_memory_size_ >= max_memory_size_) {
-#if defined(PADDLE_WITH_CUDA)
-      auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
+      gc_event_[instr_id].Record(
           platform::DeviceContextPool::Instance().Get(place));
-      gc_event_[instr_id].Record(place, dev_ctx);
+      gc_event_[instr_id].SetFininshed();  // Only for CPU Event
       gc_queue_->AddTask(
           [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
             while (!event->Query()) {
+#if defined(_WIN32)
+              SleepEx(50, FALSE);
+#else
+              sched_yield();
+#endif
               continue;
             }
             delete container;
           });
       garbages_.reset(new GarbageQueue());
       cur_memory_size_ = 0;
-#else
-      delete garbages_.release();
-      garbages_.reset(new GarbageQueue());
-      cur_memory_size_ = 0;
-#endif
     }
   }
 }
@@ -672,6 +663,9 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
                                       expected_kernel_key);
         if (!platform::is_same_place(kernel_type_for_var.place_,
                                      expected_kernel_key.place_)) {
+          if (op_base->Type() == "fetch_v2") {
+            op_base->SetAttr("deepcopy", false);
+          }
           // need trans place
           // 1. add var in scope
           // 2. add copy op
@@ -836,6 +830,48 @@ void InterpreterCore::BuildOpFuncList(const platform::Place& place,
     VLOG(3) << "run " << op_base->Type() << " done.";
   }
 }
+void InterpreterCore::Prepare(
+    const std::vector<framework::Tensor>& feed_tensors) {
+  auto FeedInput = [&] {
+    for (size_t i = 0; i < feed_names_.size(); ++i) {
+      auto it = global_scope_->name2id.find(feed_names_[i]);
+      assert(it != global_scope_->name2id.end());
+
+      auto feed_tensor = global_scope_->var_list[it->second]
+                             ->GetMutable<framework::LoDTensor>();
+      feed_tensor->ShareDataWith(feed_tensors[i]);
+    }
+  };
+
+  if (is_build_ == false) {
+    BuildVariableScope(main_program_, global_scope_);
+    FeedInput();
+    BuildOpFuncList(place_, main_program_, &op_list_, &vec_func_list_,
+                    global_scope_);
+    is_build_ = true;
+    // convert vec func_list to graph
+    Convert();
+  }
+  // NOTE: Because feed_tensor will be GC after BuildOpFuncList, so we should
+  // call
+  // FeedInput again.
+  FeedInput();
+}
+
+const CostInfo& InterpreterCore::DryRun(
+    const std::vector<framework::Tensor>& feed_tensors) {
+  Prepare(feed_tensors);
+  // DryRun may be called many times.
+  profiler_.Reset();
+  profiler_.Start();
+  ExecuteInstructionList(vec_instruction_, *global_scope_, place_,
+                         /*is_dry_run=*/true);
+  platform::DeviceContextPool::Instance().Get(place_)->Wait();
+
+  profiler_.Pause();
+  profiler_.TotalCUDAAllocatedMemorySize(place_);
+  return profiler_.GetCostInfo();
+}
 
 platform::DeviceContext* InterpreterCore::ParseDeviceContextForInstruction(
     const OpFuncNode& op_func_node, const OperatorBase& op_base) {
@@ -857,34 +893,23 @@ void InterpreterCore::RecordEventInstruction(const Instruction& instruction,
   // If InterpreterCore in on CPUPlace, do nothing.
   if (platform::is_cpu_place(place_)) return;
 
-#ifdef PADDLE_WITH_CUDA
-  const platform::CUDADeviceContext* dev_ctx =
-      reinterpret_cast<const platform::CUDADeviceContext*>(
-          instruction.dev_ctx_);
   for (auto& event : instruction.output_events_) {
     VLOG(3) << "Record event in out_var_id: " << event.var_id_;
-    event.event_->Record(*(dev_ctx->context()->Stream()));
+    event.event_->Record(instruction.dev_ctx_);
   }
-#endif
 }
 
 void InterpreterCore::WaitOrSync(const std::vector<EventInter>& events,
                                  const platform::DeviceContext* dev_ctx) {
-#ifdef PADDLE_WITH_CUDA
-  auto* cuda_dev_ctx =
-      reinterpret_cast<const platform::CUDADeviceContext*>(dev_ctx);
-
-  for (auto& event : events) {
-    if (event.is_sync_) {
-      VLOG(3) << "host sync wait in_var_id " << event.var_id_;
-      event.event_->Synchronize();
+  for (auto& event_iter : events) {
+    if (event_iter.is_sync_) {
+      VLOG(3) << "host sync wait in_var_id " << event_iter.var_id_;
+      event_iter.event_->Wait(platform::kCPU, dev_ctx);
     } else {
-      VLOG(3) << "stream async wait in_var_id " << event.var_id_;
-      cuda_dev_ctx->context()->Stream()->WaitEvent(
-          event.event_->GetRawCudaEvent());
+      VLOG(3) << "stream async wait in_var_id " << event_iter.var_id_;
+      event_iter.event_->Wait(platform::kCUDA, dev_ctx);
     }
   }
-#endif
 }
 
 void InterpreterCore::StreamWaitEventOrSync(const Instruction& instruction) {

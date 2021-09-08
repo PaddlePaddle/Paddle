@@ -514,9 +514,10 @@ def where(condition, x, y, name=None):
         check_variable_and_dtype(
             y, 'y', ['float32', 'float64', 'int32', 'int64'], 'where')
 
+    condition_shape = list(condition.shape)
     x_shape = list(x.shape)
     y_shape = list(y.shape)
-    if x_shape == y_shape:
+    if x_shape == y_shape and condition_shape == x_shape:
         if in_dygraph_mode():
             return _C_ops.where(condition, x, y)
         else:

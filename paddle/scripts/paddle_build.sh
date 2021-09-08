@@ -228,6 +228,7 @@ function cmake_base() {
         -DWITH_ARM=${WITH_ARM:-OFF}
         -DWITH_ASCEND=${WITH_ASCEND:-OFF}
         -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
+        -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
         -DWITH_STRIP=${WITH_STRIP:-ON}
         -DON_INFER=${ON_INFER:-OFF}
     ========================================
@@ -269,6 +270,7 @@ EOF
         -DWITH_ARM=${WITH_ARM:-OFF} \
         -DWITH_ASCEND=${WITH_ASCEND:-OFF} \
         -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF} \
+        -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF} \
         -DWITH_STRIP=${WITH_STRIP:-ON} \
         -DON_INFER=${ON_INFER:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
@@ -732,8 +734,8 @@ function check_whl_size() {
     dev_whl_size=`du -m ${PADDLE_ROOT}/build/python/dist/*.whl|awk '{print $1}'`
     echo "dev_whl_size: ${dev_whl_size}"
 
-    whldiffSize=`expr ${pr_whl_size} - ${dev_whl_size}`
-    if [ ${whldiffSize} -gt 10 ] ; then
+    whldiffSize=`echo $(($pr_whl_size - $dev_whl_size))`
+    if [ ${whldiffSize} -gt 10 ]; then
        approval_line=`curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000`
        APPROVALS=`echo ${approval_line}|python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 22334008 22361972`
        echo "current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
@@ -946,7 +948,11 @@ function assert_file_diff_approvals() {
 
 
 function check_coverage() {
-    /bin/bash ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
+    if [ ${WITH_COVERAGE:-ON} == "ON" ] ; then
+        /bin/bash ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
+    else
+        echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
+    fi
 }
 
 
@@ -1168,13 +1174,13 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
-            if [ "$added_ut_error" != 0 ];then
-                echo "========================================"
-                echo "Added UT should not exceed 15 seconds"
-                echo "========================================"
-                exit 8;
-            fi
+            #ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            #if [ "$added_ut_error" != 0 ];then
+            #    echo "========================================"
+            #    echo "Added UT should not exceed 15 seconds"
+            #    echo "========================================"
+            #    exit 8;
+            #fi
         fi
 set +x
         EXIT_CODE=0;
@@ -1445,7 +1451,7 @@ function show_ut_retry_result() {
         echo "${failed_test_lists_ult}"
         exit 8;
     else
-        read retry_unittests_ut_name <<< $(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
+        retry_unittests_ut_name=$(echo "$retry_unittests_record" | grep -oEi "\-.+\(" | sed 's/(//' | sed 's/- //' )
         retry_unittests_record_judge=$(echo ${retry_unittests_ut_name}| tr ' ' '\n' | sort | uniq -c | awk '{if ($1 >=3) {print $2}}')
         if [ -z "${retry_unittests_record_judge}" ];then
             echo "========================================"
@@ -1702,6 +1708,17 @@ set -x
 }
 
 function parallel_test_base_npu() {
+    # skipping if no NPU related files changed
+    if [ ${SKIP_NPU_TEST:-ON} == "ON" ] ; then
+        fetch_upstream_develop_if_not_exist
+        git diff --name-only remotes/upstream/$BRANCH
+        npu_cc_changes=$(git diff --name-only remotes/upstream/$BRANCH | grep "op_npu.cc" || true)
+        npu_py_changes=$(git diff --name-only remotes/upstream/$BRANCH | grep "op_npu.py" || true)
+        if [ -z "${npu_cc_changes}" ] && [ -z "${npu_py_changes}" ] ; then
+            echo "NO NPU operators files changed, skip NPU unit tests!"
+            exit 0
+        fi
+    fi
     mkdir -p ${PADDLE_ROOT}/build
     cd ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/npu
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
@@ -2350,6 +2367,30 @@ function main() {
         summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
         assert_api_spec_approvals
         check_whl_size
+        ;;
+      build_and_check_cpu)
+        set +e
+        find_temporary_files
+        generate_upstream_develop_api_spec ${PYTHON_ABI:-""} ${parallel_number}
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        check_sequence_op_unittest
+        generate_api_spec ${PYTHON_ABI:-""} "PR"
+        check_whl_size
+        ;;
+      build_and_check_gpu)
+        set +e
+        check_style_info=$(check_style)
+        check_style_code=$?
+        example_info_gpu=""
+        example_code_gpu=0
+        if [ "${WITH_GPU}" == "ON" ] ; then
+            example_info_gpu=$(exec_samplecode_test gpu)
+            example_code_gpu=$?
+        fi
+        example_info=$(exec_samplecode_test cpu)
+        example_code=$?
+        summary_check_problems $check_style_code $[${example_code_gpu} + ${example_code}] "$check_style_info" "${example_info_gpu}\n${example_info}"
+        assert_api_spec_approvals
         ;;
       build)
         cmake_gen ${PYTHON_ABI:-""}

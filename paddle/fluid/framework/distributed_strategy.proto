@@ -158,6 +158,7 @@ message PipelineConfig {
   optional int32 micro_batch_size = 1 [ default = 1 ];
   optional int32 accumulate_steps = 2 [ default = 1 ];
   optional string schedule_mode = 3 [ default = '1F1B' ];
+  optional bool p2p_cache_shape = 4 [ default = true ];
 }
 
 message TensorParallelConfig {
