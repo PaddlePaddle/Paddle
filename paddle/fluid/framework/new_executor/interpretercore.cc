@@ -297,7 +297,7 @@ void InterpreterCore::Convert() {
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    BuildAndCatchInstructionCtx(&vec_instruction_[i], *global_scope_, place_);
+    BuildAndCacheInstructionCtx(&vec_instruction_[i], *global_scope_, place_);
   }
 }
 
