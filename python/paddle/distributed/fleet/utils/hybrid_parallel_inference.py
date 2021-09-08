@@ -624,7 +624,8 @@ class HybridParallelInferenceHelper(object):
 
     def gen_infer_program(self,
                           sync_in_while_lastpp2firstpp_var_names=None,
-                          sync_in_while_var_names=None):
+                          sync_in_while_var_names=None,
+                          debug=False):
         """
         Generate inference program.
         Params:
@@ -636,10 +637,11 @@ class HybridParallelInferenceHelper(object):
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
 
-        with open(f'main_program.txt', 'w') as f:
-            f.write(str(self._main_program))
-        with open(f'startup_program.txt', 'w') as f:
-            f.write(str(self._startup_program))
+        if debug:
+            with open(f'main_program.txt', 'w') as f:
+                f.write(str(self._main_program))
+            with open(f'startup_program.txt', 'w') as f:
+                f.write(str(self._startup_program))
 
         # step1: add op_device attribute for all ops
         self._add_op_device_attr(startup_block)
@@ -673,10 +675,12 @@ class HybridParallelInferenceHelper(object):
         self._split_program(self._startup_program, self._stage, 0)
         self._split_program(self._main_program, self._stage, 0)
 
-        with open(f'main_program.txt.{self.rank}', 'w') as f:
-            f.write(str(self._main_program))
-        with open(f'startup_program.txt.{self.rank}', 'w') as f:
-            f.write(str(self._startup_program))
+        if debug:
+            with open(f'main_program.txt.{self.rank}', 'w') as f:
+                f.write(str(self._main_program))
+            with open(f'startup_program.txt.{self.rank}', 'w') as f:
+                f.write(str(self._startup_program))
+
         if self.init_comm:
             self._init_communication_group()
 
