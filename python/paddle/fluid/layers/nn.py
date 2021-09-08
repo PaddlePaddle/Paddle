@@ -11554,13 +11554,13 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
-
+        import paddle
         def gen_data():
             return {
                 "x": np.array([2, 3, 4]).astype('float32'),
                 "y": np.array([1, 5, 2]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_add(x, y)
@@ -11578,13 +11578,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.ones((2, 3, 4, 5)).astype('float32'),
                 "y": np.zeros((3, 4)).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_add(x, y, axis=1)
@@ -11603,13 +11604,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
                 "y": np.random.randint(1, 5, size=[5]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_add(x, y, axis=3)
@@ -11645,13 +11647,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.array([2, 3, 4]).astype('float32'),
                 "y": np.array([1, 5, 2]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_div(x, y)
@@ -11669,13 +11672,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.ones((2, 3, 4, 5)).astype('float32'),
                 "y": np.zeros((3, 4)).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_div(x, y, axis=1)
@@ -11694,13 +11698,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
                 "y": np.random.randint(1, 5, size=[5]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_div(x, y, axis=3)
@@ -11730,13 +11735,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.array([2, 3, 4]).astype('float32'),
                 "y": np.array([1, 5, 2]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_sub(x, y)
@@ -11754,13 +11760,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.ones((2, 3, 4, 5)).astype('float32'),
                 "y": np.zeros((3, 4)).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_sub(x, y, axis=1)
@@ -11779,13 +11786,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
                 "y": np.random.randint(1, 5, size=[5]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_sub(x, y, axis=3)
@@ -11816,13 +11824,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.array([2, 3, 4]).astype('float32'),
                 "y": np.array([1, 5, 2]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_mul(x, y)
@@ -11840,13 +11849,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.ones((2, 3, 4, 5)).astype('float32'),
                 "y": np.zeros((3, 4)).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_mul(x, y, axis=1)
@@ -11865,13 +11875,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
                 "y": np.random.randint(1, 5, size=[5]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_mul(x, y, axis=3)
@@ -11904,13 +11915,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.array([2, 3, 4]).astype('float32'),
                 "y": np.array([1, 5, 2]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_max(x, y)
@@ -11927,13 +11939,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.ones((2, 3, 4, 5)).astype('float32'),
                 "y": np.zeros((3, 4)).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_max(x, y, axis=1)
@@ -11966,13 +11979,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.array([2, 3, 4]).astype('float32'),
                 "y": np.array([1, 5, 2]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_min(x, y)
@@ -11988,13 +12002,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.ones((2, 3, 4, 5)).astype('float32'),
                 "y": np.zeros((3, 4)).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_min(x, y, axis=1)
@@ -12023,13 +12038,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.array([2, 3, 4]).astype('float32'),
                 "y": np.array([1, 5, 2]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_pow(x, y)
@@ -12057,13 +12073,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.array([10, 15, 8]).astype('int32'),
                 "y": np.array([3, 6, 5]).astype('int32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='int32')
         y = fluid.data(name="y", shape=[3], dtype='int32')
         z = fluid.layers.elementwise_mod(x, y)
@@ -12092,13 +12109,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.array([10, 15, 8]).astype('int32'),
                 "y": np.array([3, 7, 5]).astype('int32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='int32')
         y = fluid.data(name="y", shape=[3], dtype='int32')
         z = fluid.layers.elementwise_floordiv(x, y)
@@ -13419,8 +13437,8 @@ def shuffle_channel(x, group, name=None):
         .. code-block:: python
 
             import paddle
-	      import paddle.fluid as fluid
-	      paddle.enable_static()
+            import paddle.fluid as fluid
+            paddle.enable_static()
             input = fluid.data(name='input', shape=[None,4,2,2], dtype='float32')
             out = fluid.layers.shuffle_channel(x=input, group=2)
     """
