@@ -34,7 +34,6 @@ namespace framework {
 
 class InterpreterCore {
  public:
-  using GarbageQueue = std::deque<std::shared_ptr<memory::Allocation>>;
   InterpreterCore(const platform::Place& place, const ProgramDesc& main_prog,
                   VariableScope* global_scope,
                   const std::vector<std::string>& feed_names,

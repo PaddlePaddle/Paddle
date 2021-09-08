@@ -35,22 +35,24 @@ class InterpreterCoreGarbageCollector {
  public:
   InterpreterCoreGarbageCollector();
 
-  void Add(GarbageQueue& garbage,                 // NOLINT
-           paddle::platform::DeviceEvent& event,  // NOLINT
-           const platform::DeviceContext* ctx);
-
   void Add(std::shared_ptr<memory::Allocation> garbage,  // NOLINT
            paddle::platform::DeviceEvent& event,         // NOLINT
            const platform::DeviceContext* ctx);
 
- private:
-  void DoFree(GarbageQueue* garbage,
-              paddle::platform::DeviceEvent& event,  // NOLINT
-              const platform::DeviceContext* ctx);
+  void Add(paddle::framework::Variable* var,
+           paddle::platform::DeviceEvent& event,  // NOLINT
+           const platform::DeviceContext* ctx);
 
-  void DoFree(std::shared_ptr<memory::Allocation>& garbage,  // NOLINT
-              paddle::platform::DeviceEvent& event,          // NOLINT
-              const platform::DeviceContext* ctx);
+  DISABLE_COPY_AND_ASSIGN(InterpreterCoreGarbageCollector);
+
+ private:
+  void Free(GarbageQueue* garbages,
+            paddle::platform::DeviceEvent& event,  // NOLINT
+            const platform::DeviceContext* ctx);
+
+  void Free(std::shared_ptr<memory::Allocation>& garbage,  // NOLINT
+            paddle::platform::DeviceEvent& event,          // NOLINT
+            const platform::DeviceContext* ctx);
 
   std::unique_ptr<GarbageQueue> garbages_;
   size_t max_memory_size_;

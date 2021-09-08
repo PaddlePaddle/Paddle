@@ -413,26 +413,8 @@ void InterpreterCore::CheckGC(size_t instr_id,
     if (var_scope.vec_meta_info_[var_id].vardesc_ &&
         !var_scope.vec_meta_info_[var_id].vardesc_->Persistable() &&
         working_var_ref[var_id].var_ref_count_ == 0) {
-      Variable* var = var_scope.var_list[var_id];
-      if (var->IsType<LoDTensor>()) {
-        gc_.Add(var->GetMutable<LoDTensor>()->MoveMemoryHolder(),
-                gc_event_[instr_id], vec_instruction_[instr_id].dev_ctx_);
-      } else if (var->IsType<SelectedRows>()) {
-        gc_.Add(var->GetMutable<SelectedRows>()
-                    ->mutable_value()
-                    ->MoveMemoryHolder(),
-                gc_event_[instr_id], vec_instruction_[instr_id].dev_ctx_);
-      } else if (var->IsType<LoDTensorArray>()) {
-        auto* tensor_arr = var->GetMutable<LoDTensorArray>();
-        for (auto& t : *tensor_arr) {
-          gc_.Add(t.MoveMemoryHolder(), gc_event_[instr_id],
-                  vec_instruction_[instr_id].dev_ctx_);
-        }
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "The variable(%s) is not supported in eager deletion.",
-            framework::ToTypeName(var->Type())));
-      }
+      gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
+              vec_instruction_[instr_id].dev_ctx_);
     }
   }
 }
