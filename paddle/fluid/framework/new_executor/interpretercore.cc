@@ -191,7 +191,8 @@ paddle::framework::FetchList InterpreterCore::Run(
                                                              global_scope_);
     FeedInput();
     paddle::framework::interpretercore::build_op_func_list(
-        place_, main_program_, &op_list_, &vec_func_list_, global_scope_);
+        place_, main_program_, &op_list_, &vec_func_list_, &vec_skip_lod_,
+        global_scope_);
     is_build_ = true;
     // convert vec func_list to graph
     Convert();
@@ -220,6 +221,7 @@ void InterpreterCore::Convert() {
     temp_inst.kernel_func_.operator_base_ = op_base;
     temp_inst.input_index_ = vec_func_list_[i].input_index;
     temp_inst.output_index_ = vec_func_list_[i].output_index;
+    temp_inst.can_skip_lod_ = vec_skip_lod_[i];
 
     OpInOutInfo info;
 
@@ -336,6 +338,7 @@ void InterpreterCore::BuildAndCacheInstructionCtx(
 
   instr_node->infershape_ctx_.reset(
       new RuntimeInferShapeContext(*op_base, *instr_node->runtime_ctx_.get()));
+  instr_node->infershape_ctx_.get()->SetSkipLoD(instr_node->can_skip_lod_);
 
   auto* dev_ctx = instr_node->dev_ctx_;
   Scope scope;
@@ -500,7 +503,8 @@ void InterpreterCore::DryRunPrepare(
                                                              global_scope_);
     FeedInput();
     paddle::framework::interpretercore::build_op_func_list(
-        place_, main_program_, &op_list_, &vec_func_list_, global_scope_);
+        place_, main_program_, &op_list_, &vec_func_list_, &vec_skip_lod_,
+        global_scope_);
     is_build_ = true;
     // convert vec func_list to graph
     Convert();

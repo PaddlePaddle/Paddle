@@ -87,6 +87,8 @@ struct Instruction {
   std::vector<EventInter> output_events_;
 
   platform::DeviceContext* dev_ctx_;  // not owned
+
+  bool can_skip_lod_;
 };
 
 enum class OpFuncType {

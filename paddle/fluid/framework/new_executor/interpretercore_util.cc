@@ -125,6 +125,7 @@ void build_op_func_list(const platform::Place& place,
                         const framework::ProgramDesc& pdesc,
                         std::vector<OperatorBase*>* op_list,
                         std::vector<OpFuncNode>* vec_func_list,
+                        std::vector<bool>* vec_skip_lod,
                         VariableScope* var_scope) {
   auto& global_block = pdesc.Block(0);
   auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
@@ -337,10 +338,26 @@ void build_op_func_list(const platform::Place& place,
               OpKernelComputeFunc(kernel_iter->second);
           copy_op_func_node.kernel_func_(copy_exec_ctx);
           VLOG(3) << "Run " << memcpy_op_type << " done.";
+          bool can_skip_lod = true;
+          for (auto& input : copy_runtime_context.inputs) {
+            for (auto& var : input.second) {
+              if (var->IsType<LoDTensor>()) {
+                if (var->GetMutable<LoDTensor>()->lod().size() != 0) {
+                  can_skip_lod = false;
+                  break;
+                }
+              } else {
+                can_skip_lod = false;
+                break;
+              }
+            }
+          }
+
           copy_op_func_node.type_ = OpFuncType::kQueueAsync;
           copy_op_func_node.dev_ctx_ = dev_ctx;
           op_list->push_back(copy_op);
           vec_func_list->push_back(copy_op_func_node);
+          vec_skip_lod->push_back(can_skip_lod);
 
           var_name_item.second[i] = v;
         }
@@ -376,7 +393,23 @@ void build_op_func_list(const platform::Place& place,
 
     op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
     op_func_node.kernel_func_(exec_ctx);
+    bool can_skip_lod = true;
+    for (auto& input : runtime_context.inputs) {
+      for (auto& var : input.second) {
+        if (var->IsType<LoDTensor>()) {
+          if (var->Get<LoDTensor>().lod().size() != 0) {
+            can_skip_lod = false;
+            break;
+          }
+        } else {
+          can_skip_lod = false;
+          break;
+        }
+      }
+    }
+
     vec_func_list->push_back(op_func_node);
+    vec_skip_lod->push_back(can_skip_lod);
 
     // gc---------------------------------------------------------------------------
     auto iter = unused_var_map.find(op_base);

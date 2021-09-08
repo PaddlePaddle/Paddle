@@ -240,6 +240,9 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
                 size_t j = 0) const override {
+    if (can_skip_lod_) {
+      return;
+    }
     auto in_it = ctx_.inputs.find(in);
     auto out_it = ctx_.outputs.find(out);
     PADDLE_ENFORCE_NE(
@@ -368,6 +371,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
     SetDims(vars, dims);
   }
 
+  void SetSkipLoD(bool skip) { can_skip_lod_ = skip; }
+
  protected:
   DDim GetDim(Variable* var) const {
     PADDLE_ENFORCE_NOT_NULL(
@@ -468,6 +473,7 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
   const OperatorBase& op_;
   const RuntimeContext& ctx_;
+  bool can_skip_lod_;
 };
 
 namespace interpretercore {
@@ -485,6 +491,7 @@ void build_op_func_list(const platform::Place& place,
                         const framework::ProgramDesc& pdesc,
                         std::vector<OperatorBase*>* op_list,
                         std::vector<OpFuncNode>* vec_func_list,
+                        std::vector<bool>* vec_skip_lod,
                         VariableScope* var_scope);
 
 std::vector<size_t> merge_vector(const std::vector<size_t>& first,

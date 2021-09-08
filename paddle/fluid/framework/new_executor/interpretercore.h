@@ -94,6 +94,7 @@ class InterpreterCore {
 
   std::vector<paddle::framework::OpFuncNode> vec_func_list_;
   std::vector<paddle::framework::OperatorBase*> op_list_;
+  std::vector<bool> vec_skip_lod_;
 
   std::vector<std::string> feed_names_;
 
