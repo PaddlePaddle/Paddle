@@ -506,7 +506,6 @@ class DataParallel(layers.Layer):
                         grad = dy * (1 - paddle.square(y))
                         return grad
 
-
                 class SimpleNet(paddle.nn.Layer):
                     def __init__(self):
                         super(SimpleNet, self).__init__()
@@ -515,7 +514,6 @@ class DataParallel(layers.Layer):
                     def forward(self, inputs):
                         inputs = cus_tanh.apply(inputs)
                         return self.linear(inputs)
-
 
                 if __name__ == '__main__':
                     dist.init_parallel_env()
