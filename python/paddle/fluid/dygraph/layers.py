@@ -124,6 +124,8 @@ class Layer(core.Layer):
         self._parameters_transform_map = {}
         self._buffers_transform_map = {}
 
+        self._casted_by_pure_fp16 = False
+
     def train(self):
         """
         Sets this Layer and all its sublayers to training mode.

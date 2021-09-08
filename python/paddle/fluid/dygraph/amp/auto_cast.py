@@ -148,37 +148,31 @@ def pure_fp16_initialize(enable_pure_fp16, models, optimizers):
 
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
+            layer._casted_by_pure_fp16 = True
             if len(layer._sub_layers) is 0:
 
                 if (layer._dtype is 'float16') or isinstance(layer, (
                         paddle.nn.BatchNorm, paddle.nn.LayerNorm)):
                     continue
                 layer.to(dtype='float16')
-                '''
-                if (layer._dtype is 'float16'):
-                    continue
-                layer.to(dtype='float16')
-                '''
 
-                #以group的dict形式输入的参数
                 if getattr(optimizers[idx], '_param_groups',
                            None) and isinstance(
                                optimizers[idx]._param_groups[0], dict):
-                    #更新group
+                    # update _param_groups
                     for param_group in optimizers[idx]._param_groups:
                         for i, param in enumerate(param_group['params']):
                             if id(param) in layer._parameters_transform_map:
                                 param_group['params'][
                                     i] = layer._parameters_transform_map[id(
                                         param)][0]
-                    #更新list
+                    # update _parameter_list
                     for param_group in optimizers[idx]._parameter_list:
                         params = param_group['params']
                         for i, param in enumerate(params):
                             if id(param) in layer._parameters_transform_map:
                                 params[i] = layer._parameters_transform_map[id(
                                     param)][0]
-                #以list的形式输入的参数
                 else:
                     for i, param in enumerate(optimizers[idx]._parameter_list):
                         if id(param) in layer._parameters_transform_map:
@@ -189,11 +183,10 @@ def pure_fp16_initialize(enable_pure_fp16, models, optimizers):
                                 optimizers[idx]._param_groups[
                                     i] = layer._parameters_transform_map[id(
                                         param)][0]
-    '''
+
     for idx in range(len(optimizers)):
         if hasattr(optimizers[idx], '_multi_precision'):
             optimizers[idx]._multi_precision = True
-    '''
 
     return models, optimizers
 
