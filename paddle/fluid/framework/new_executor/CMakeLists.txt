@@ -1,4 +1,4 @@
-cc_library(workqueue SRCS workqueue.cc)
+cc_library(workqueue SRCS workqueue.cc DEPS enforce)
 cc_library(interpretercore_garbage_collector SRCS interpretercore_garbage_collector.cc DEPS workqueue ${DEVICE_EVENT_LIBS})
 cc_library(interpretercore SRCS interpretercore.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog

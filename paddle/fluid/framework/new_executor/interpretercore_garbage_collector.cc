@@ -22,7 +22,10 @@ InterpreterCoreGarbageCollector::InterpreterCoreGarbageCollector() {
   garbages_.reset(new GarbageQueue());
   max_memory_size_ = static_cast<size_t>(GetEagerDeletionThreshold());
   cur_memory_size_ = 0;
-  queue_ = CreateSingleThreadedWorkQueue();
+
+  WorkQueueOptions options;
+  options.num_threads = 1;
+  queue_ = CreateSingleThreadedWorkQueue(options);
 }
 
 void InterpreterCoreGarbageCollector::Add(GarbageQueue& garbage,
