@@ -1105,6 +1105,16 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
+#ifdef PADDLE_WITH_ASCEND_CL
+  // NOTE(wangxi): nan/inf cannot be detected on NPU by checking the variable
+  // values, but only through special `float_status` to checks whether
+  // the operation is overflow. More about `float_status`, see:
+  // https://gitee.com/ascend/modelzoo/issues/I3NF8V?from=project-issue
+  if (FLAGS_check_nan_inf) {
+    framework::details::NPUAllocAndClearFloatStatus(*this, scope, place);
+  }
+#endif
+
   if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
     ChooseKernel(*runtime_ctx, scope, place);
   }
