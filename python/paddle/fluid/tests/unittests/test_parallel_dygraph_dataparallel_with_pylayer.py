@@ -21,8 +21,8 @@ from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
 class TestDataParallelLayer(TestMultipleGpus):
-    def test_parallel_dygraph_dataparallel_no_sync(self):
-        self.run_mnist_2gpu('parallel_dygraph_no_sync_gradient_check.py')
+    def test_parallel_dygraph_dataparallel_with_pylayer(self):
+        self.run_mnist_2gpu('parallel_dygraph_dataparallel_with_pylayer.py')
 
 
 if __name__ == "__main__":

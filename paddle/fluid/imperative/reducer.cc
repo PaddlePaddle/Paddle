@@ -448,7 +448,7 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
       PADDLE_ENFORCE_NOT_NULL(
           grad_pending_node,
           platform::errors::NotFound("Grad pending node should not be null"));
-      // dp_layer is not supported in DataParallel
+      // py_layer is not supported in DataParallel
       auto begin = grad_pending_node->begin();
       auto end = grad_pending_node->end();
       for (auto op_base = begin; op_base != end; op_base++) {
