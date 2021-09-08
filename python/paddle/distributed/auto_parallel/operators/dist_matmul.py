@@ -463,7 +463,51 @@ register_distributed_operator("matmul_v2", DistributedMatmulV2("matmul_v2"))
 
 
 # ColumnParallel
-class DistributedMatmulV2Impl0(DistributedMatmulImpl0):
+class DistributedMatmulV2Impl0(DistributedOperatorImpl):
+    def __init__(self, name):
+        super(DistributedMatmulV2Impl0, self).__init__()
+        self._name = name
+        self._forward_implemented = True
+        self._backward_implemented = False
+
+    def is_process_mesh_compatible(self, op_dist_attr):
+        """ No restriction for now. """
+        return True
+
+    def is_input_compatible(self, op_dist_attr):
+        op_desc = op_dist_attr.get_owner_op().desc
+        x_name = op_desc.input('X')[0]
+        y_name = op_desc.input('Y')[0]
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
+        if is_dim_shard(x_dims_mapping[-1]):
+            return False
+        if is_dim_shard(y_dims_mapping[0]) or is_dim_replicate(y_dims_mapping[
+                1]):
+            return False
+        for mapping in x_dims_mapping[1:-1]:
+            if is_dim_shard(mapping):
+                return False
+        return True
+
+    def is_output_compatible(self, op_dist_attr):
+        op_desc = op_dist_attr.get_owner_op().desc
+        out_name = op_desc.output('Out')[0]
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        if is_dim_replicate(out_dims_mapping[-1]):
+            return False
+        for mapping in out_dims_mapping[1:-1]:
+            if is_dim_shard(mapping):
+                return False
+        return True
+
+    def update_dims_mapping(self, op_dist_attr):
+        changed = False
+        dim_changed = _update_dims_mapping_for_matmul(op_dist_attr)
+        if dim_changed:
+            changed = True
+        return changed
+
     def forward(self, serial_op):
         def static_handle(dst_block,
                           src_op,
@@ -496,12 +540,15 @@ class DistributedMatmulV2Impl0(DistributedMatmulImpl0):
             Out_var = dst_block.var(output_name_mapping['Out'][0])
 
             # TODO infer logic comm presentation
+            from ..process import new_process_group
+            from ..transpiler import _get_comm_group
             model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
             )._get_model_parallel_info()
-            group_ranks = _get_comm_group(process_mesh.process_group,
-                                          process_mesh.topology,
-                                          model_parallel_axis, rank_id)
+            group_ranks = _get_comm_group(process_mesh.topology,
+                                          model_parallel_axis,
+                                          process_mesh.process_group, rank_id)
             group = new_process_group(group_ranks)
+            # print("@@@@@@@@@@@@@@@@@@@@@ 5", group)
 
             intermediate_var_0 = dst_block.create_var(
                 name=unique_name.generate_with_ignorable_key(".".join(
@@ -549,7 +596,53 @@ class DistributedMatmulV2Impl0(DistributedMatmulImpl0):
 
 
 # RowParallel
-class DistributedMatmulV2Impl1(DistributedMatmulImpl1):
+class DistributedMatmulV2Impl1(DistributedOperatorImpl):
+    def __init__(self, name):
+        super(DistributedMatmulV2Impl1, self).__init__()
+        self._name = name
+        self._forward_implemented = True
+        self._backward_implemented = False
+
+    def is_process_mesh_compatible(self, op_dist_attr):
+        """ No restriction for now. """
+        return True
+
+    def is_input_compatible(self, op_dist_attr):
+        op_desc = op_dist_attr.get_owner_op().desc
+        x_name = op_desc.input('X')[0]
+        y_name = op_desc.input('Y')[0]
+        x_dims_mapping = op_dist_attr.get_input_dims_mapping(x_name)
+        y_dims_mapping = op_dist_attr.get_input_dims_mapping(y_name)
+        if is_dim_replicate(x_dims_mapping[-1]):
+            return False
+        if is_dim_replicate(y_dims_mapping[-2]) or is_dim_shard(y_dims_mapping[
+                -1]):
+            return False
+        # Other dimensions must be replicate except the batch dimension
+        for mapping in x_dims_mapping[1:-1]:
+            if is_dim_shard(mapping):
+                return False
+        return True
+
+    def is_output_compatible(self, op_dist_attr):
+        op_desc = op_dist_attr.get_owner_op().desc
+        out_name = op_desc.output('Out')[0]
+        out_dims_mapping = op_dist_attr.get_output_dims_mapping(out_name)
+        if is_dim_shard(out_dims_mapping[-1]):
+            return False
+        # Other dimensions must be replicate except the batch dimension
+        for mapping in out_dims_mapping[1:-1]:
+            if is_dim_shard(mapping):
+                return False
+        return True
+
+    def update_dims_mapping(self, op_dist_attr):
+        changed = False
+        dim_changed = _update_dims_mapping_for_matmul(op_dist_attr)
+        if dim_changed:
+            changed = True
+        return changed
+
     def forward(self, serial_op):
         def static_handle(dst_block,
                           src_op,
@@ -582,12 +675,15 @@ class DistributedMatmulV2Impl1(DistributedMatmulImpl1):
             Out_var = dst_block.var(output_name_mapping['Out'][0])
 
             # TODO infer logic comm presentation
+            from ..process import new_process_group
+            from ..transpiler import _get_comm_group
             model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
             )._get_model_parallel_info()
-            group_ranks = _get_comm_group(process_mesh.process_group,
-                                          process_mesh.topology,
-                                          model_parallel_axis, rank_id)
+            group_ranks = _get_comm_group(process_mesh.topology,
+                                          model_parallel_axis,
+                                          process_mesh.process_group, rank_id)
             group = new_process_group(group_ranks)
+            # print("@@@@@@@@@@@@@@@@@@@@@ 4", group)
 
             check_variable_and_dtype(
                 X_var, 'x', ['float16', 'float32', 'float64'], 'linear')

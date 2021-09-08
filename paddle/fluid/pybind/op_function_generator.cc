@@ -157,6 +157,8 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"rnn", {"DropoutState"}},
     {"run_program", {"Out", "DOut", "OutScope"}},
+    {"clear_float_status", {"FloatStatusOut"}},
+    {"get_float_status", {"FloatStatusOut"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.
