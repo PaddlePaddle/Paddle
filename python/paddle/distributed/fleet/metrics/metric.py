@@ -36,11 +36,11 @@ def sum(input, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
-          input = fluid.layers.cast(some_input, dtype='float32')
-          cnt = fluid.layers.reduce_sum(input)
-          global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
-          tmp = fluid.layers.elementwise_add(cnt, global_cnt)
-          fluid.layers.assign(tmp, global_cnt)
+          input = paddle.cast(some_input, dtype='float32')
+          cnt = paddle.sum(input)
+          global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          tmp = paddle.add(cnt, global_cnt)
+          paddle.assign(tmp, global_cnt)
           
           # in train.py, after train or infer
           res = np.array(scope.find_var(global_cnt.name).get_tensor())
@@ -76,11 +76,11 @@ def max(input, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
-          input = fluid.layers.cast(some_input, dtype='float32')
-          cnt = fluid.layers.reduce_sum(input)
-          global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
-          tmp = fluid.layers.elementwise_max(cnt, global_cnt)
-          fluid.layers.assign(tmp, global_cnt)
+          input = paddle.cast(some_input, dtype='float32')
+          cnt = paddle.sum(input)
+          global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          tmp = paddle.maximum(cnt, global_cnt)
+          paddle.assign(tmp, global_cnt)
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(global_cnt.name).get_tensor())
@@ -116,11 +116,11 @@ def min(input, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
-          input = fluid.layers.cast(some_input, dtype='float32')
-          cnt = fluid.layers.reduce_sum(input)
-          global_cnt = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
-          tmp = fluid.layers.elementwise_min(cnt, global_cnt)
-          fluid.layers.assign(tmp, global_cnt)
+          input = paddle.cast(some_input, dtype='float32')
+          cnt = paddle.sum(input)
+          global_cnt = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          tmp = paddle.minimum(cnt, global_cnt)
+          paddle.assign(tmp, global_cnt)
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(global_cnt.name).get_tensor())
@@ -157,9 +157,9 @@ def auc(stat_pos, stat_neg, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
-          similarity_norm = fluid.layers.sigmoid(fluid.layers.clip(output, min=-15.0, max=15.0))
-          binary_predict = fluid.layers.concat(
-              input=[fluid.layers.elementwise_sub(fluid.layers.ceil(similarity_norm), similarity_norm), similarity_norm], axis=1)
+          similarity_norm = paddle.nn.functional.sigmoid(paddle.clip(output, min=-15.0, max=15.0))
+          binary_predict = paddle.concat(
+              input=[fluid.layers.elementwise_sub(paddle.ceil(similarity_norm), similarity_norm), similarity_norm], axis=1)
           self.auc, batch_auc, [batch_stat_pos, batch_stat_neg, stat_pos, stat_neg] =
               fluid.layers.auc(input=binary_predict, label=label, curve='ROC', num_thresholds=4096)
 
@@ -240,7 +240,7 @@ def mae(abserr, total_ins_num, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
-          sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
+          sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, paddle.cast(x=label, dtype='float32'))
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(abserr.name).get_tensor())
@@ -289,7 +289,7 @@ def rmse(sqrerr, total_ins_num, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
-          sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
+          sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, paddle.cast(x=label, dtype='float32'))
 
           # in train.py, after train or infer
           res = np.array(scope.find_var(sqrerr.name).get_tensor())
@@ -338,7 +338,7 @@ def mse(sqrerr, total_ins_num, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
-          sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, fluid.layers.cast(x=label, dtype='float32'))
+          sqrerr, abserr, prob, q, pos, total = fluid.contrib.layers.ctr_metric_bundle(similarity_norm, paddle.cast(x=label, dtype='float32'))
 
           # in train.py, after train or infer
           metric = np.array(scope.find_var(sqrerr.name).get_tensor())
@@ -386,17 +386,17 @@ def acc(correct, total, scope=None, util=None):
         .. code-block:: python
 
           # in model.py
-          correct = fluid.layers.create_global_var(dtype='float32', shape=[1], value=0)
-          total = fluid.layers.create_global_var(dtype='float32', shape=[1], value=0)
+          correct = paddle.static.create_global_var(dtype='float32', shape=[1], value=0)
+          total = paddle.static.create_global_var(dtype='float32', shape=[1], value=0)
           acc = fluid.layers.acc(predict, label, k=1, correct=correct, total=total)
 
-          global_correct = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
-          tmp1 = fluid.layers.elementwise_min(correct, global_correct)
-          fluid.layers.assign(tmp1, global_correct)
+          global_correct = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          tmp1 = paddle.minimum(correct, global_correct)
+          paddle.assign(tmp1, global_correct)
 
-          global_total = fluid.layers.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
-          tmp2 = fluid.layers.elementwise_min(total, global_total)
-          fluid.layers.assign(tmp2, global_total)
+          global_total = paddle.static.create_global_var(persistable=True, dtype='float32', shape=[1], value=0)
+          tmp2 = paddle.minimum(total, global_total)
+          paddle.assign(tmp2, global_total)
 
           # in train.py, after train or infer
           correct_num = np.array(scope.find_var(correct.name).get_tensor())

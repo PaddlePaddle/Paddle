@@ -24,8 +24,9 @@ import six
 import subprocess
 from contextlib import closing
 import socket
-from paddle.fluid import core
 from distutils.util import strtobool
+from paddle.device import is_compiled_with_cuda
+from paddle.device import is_compiled_with_xpu
 
 __all__ = [     #noqa
            'get_host_name_ip',
@@ -421,7 +422,7 @@ def find_free_ports(num):
 
 
 def _prepare_trainer_env(cluster, trainer):
-    if core.is_compiled_with_xpu():
+    if is_compiled_with_xpu():
         proc_env = {
             "FLAGS_selected_xpus":
             "%s" % ",".join([str(g) for g in trainer.gpus]),
@@ -430,7 +431,7 @@ def _prepare_trainer_env(cluster, trainer):
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
         }
-    elif core.is_compiled_with_cuda():
+    elif is_compiled_with_cuda():
         proc_env = {
             "FLAGS_selected_gpus":
             "%s" % ",".join([str(g) for g in trainer.gpus]),

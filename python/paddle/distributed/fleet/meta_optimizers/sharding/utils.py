@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import paddle
-from paddle.fluid import core, unique_name
+from paddle.fluid import core
+from paddle.utils import unique_name
 from functools import reduce
 from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op, is_backward_op
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY

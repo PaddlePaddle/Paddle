@@ -29,6 +29,9 @@ import struct
 
 import paddle
 import paddle.fluid as fluid
+from paddle.device import is_compiled_with_cuda
+from paddle.device import is_compiled_with_xpu
+from paddle.device import is_compiled_with_npu
 from distutils.util import strtobool
 logger = logging.getLogger("root")
 logger.propagate = False
@@ -508,7 +511,7 @@ def start_local_trainers(cluster,
             proc_env["FLAGS_selected_accelerators"] = "%s" % ",".join(
                 [str(g) for g in t.accelerators])
         # to do: same code style in future
-        if fluid.core.is_compiled_with_xpu() and len(t.accelerators) > 0:
+        if is_compiled_with_xpu() and len(t.accelerators) > 0:
             proc_env["FLAGS_selected_xpus"] = "%s" % ",".join(
                 [str(g) for g in t.accelerators])
 
@@ -670,18 +673,17 @@ def get_xpus(xpus):
 
 
 def get_device_mode():
-    if fluid.core.is_compiled_with_npu() and \
+    if is_compiled_with_npu() and \
             fluid.core.get_npu_device_count() > 0:
         print("launch train in ascend npu mode!")
         return DeviceMode.ASCEND_NPU
 
-    if fluid.core.is_compiled_with_cuda() and \
+    if is_compiled_with_cuda() and \
             fluid.core.get_cuda_device_count() > 0:
         print("launch train in GPU mode!")
         return DeviceMode.GPU
 
-    if fluid.core.is_compiled_with_xpu() and fluid.core.get_xpu_device_count(
-    ) > 0:
+    if is_compiled_with_xpu() and fluid.core.get_xpu_device_count() > 0:
         print("launch train in XPU mode")
         return DeviceMode.XPU
 
@@ -1108,10 +1110,10 @@ class ParameterServerLauncher(object):
 
         heter_device_num = 0
         device_list = []
-        if fluid.core.is_compiled_with_cuda():
+        if is_compiled_with_cuda():
             device_list = get_gpus(args.gpus)
             heter_device_num = len(device_list)
-        elif fluid.core.is_compiled_with_xpu():
+        elif is_compiled_with_xpu():
             heter_device_num = fluid.core.get_xpu_device_count()
             device_list = [str(x) for x in range(0, heter_device_num)]
 
@@ -1176,10 +1178,10 @@ class ParameterServerLauncher(object):
 
         heter_device_num = 0
         device_list = []
-        if fluid.core.is_compiled_with_cuda():
+        if is_compiled_with_cuda():
             device_list = get_gpus(args.gpus)
             heter_device_num = len(device_list)
-        elif fluid.core.is_compiled_with_xpu():
+        elif is_compiled_with_xpu():
             heter_device_num = fluid.core.get_xpu_device_count()
             device_list = [str(x) for x in range(0, heter_device_num)]
         if heter_device_num == 0:

@@ -15,7 +15,7 @@
 """distributed operations"""
 """basic collective operations in python"""
 """remote file system"""
-
+import paddle
 from ..utils.fs import FS, LocalFS, HDFSClient
 from paddle.fluid.proto import framework_pb2
 from paddle.fluid.framework import Program
@@ -439,8 +439,8 @@ class UtilBase(object):
                 format(list(not_expected_op_types)))
             return False
 
-        place = fluid.CPUPlace()
-        exe = fluid.Executor(place)
+        place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
         scope = fluid.core.Scope()
         with fluid.scope_guard(scope):
             inference_program, feed_target_names, fetch_targets = \
@@ -453,7 +453,7 @@ class UtilBase(object):
                 for each_var in saved_params
             }
             for each_var in saved_params:
-                var_temp = fluid.global_scope().find_var(each_var.name)
+                var_temp = paddle.static.global_scope().find_var(each_var.name)
                 assert var_temp != None, "can't not find var: " + each_var.name
                 new_shape = (np.array(var_temp.get_tensor())).shape
                 assert each_var.name in orig_para_shape, each_var.name + "MUST in var list"

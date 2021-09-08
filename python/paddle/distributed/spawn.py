@@ -27,6 +27,8 @@ from paddle.distributed.utils import get_host_name_ip
 from paddle.distributed.cloud_utils import get_cluster_and_pod
 from paddle.distributed.fleet.cloud_utils import use_paddlecloud
 from paddle.device import get_device
+from paddle.device import is_compiled_with_cuda
+from paddle.device import is_compiled_with_xpu
 
 # deprecated module import
 from paddle.fluid import core
@@ -133,7 +135,7 @@ def _get_subprocess_env_list(nprocs, options):
     # if we set FLAGS_selected_gpus or FLAGS_selected_xpus to be `0,1,2,3`, it may cause error
     # when using `ParallelEnv`
     # NOTE(chenweihang): use absolute gpu or xpu card id
-    if core.is_compiled_with_cuda():
+    if is_compiled_with_cuda():
         args.selected_devices = options.get('gpus', None)
         if args.selected_devices is None:
             args.selected_devices = options.get('selected_devices', None)
@@ -168,7 +170,7 @@ def _get_subprocess_env_list(nprocs, options):
                                      "CUDA_VISIBLE_DEVICES (%s)." %
                                      (card_id, ",".join(env_devices_list)))
 
-    elif core.is_compiled_with_xpu():
+    elif is_compiled_with_xpu():
         args.selected_devices = options.get('xpus', None)
         if args.selected_devices is None:
             args.selected_devices = options.get('selected_devices', None)
@@ -242,9 +244,9 @@ def _set_trainer_env(env_dict):
     # main process and set the FLAGS once, but the environment variable has 
     # not been set at this time, which leads to the FLAGS_selected_gpus or FLAGS_selected_xpus
     # is keep same with mainprocess(usually empty), so manually update the flags here
-    if core.is_compiled_with_cuda():
+    if is_compiled_with_cuda():
         set_flags({'FLAGS_selected_gpus': env_dict['FLAGS_selected_gpus']})
-    elif core.is_compiled_with_xpu():
+    elif is_compiled_with_xpu():
         set_flags({'FLAGS_selected_xpus': env_dict['FLAGS_selected_xpus']})
     else:
         raise ValueError("PaddlePaddle should be compiled with XPU or CUDA.")

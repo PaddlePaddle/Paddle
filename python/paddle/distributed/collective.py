@@ -14,8 +14,8 @@
 
 import numpy as np
 import os
+from ..static import Variable
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.framework import Variable
 from ..fluid.framework import OpProtoHolder
 from ..fluid.framework import in_dygraph_mode
 from ..fluid.framework import convert_np_dtype_to_dtype_
@@ -25,16 +25,15 @@ from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.data_feeder import check_type
 from ..fluid.data_feeder import check_dtype
 from ..fluid.layers.tensor import fill_constant
-from ..fluid.layers import utils
-from ..fluid.dygraph import layers
 from ..fluid.dygraph.parallel import prepare_context
 import paddle
 from .fleet import fleet
-import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle import _C_ops
 import paddle.fluid.dygraph_utils as dygraph_utils
-
+from paddle.device import is_compiled_with_cuda
+from paddle.device import is_compiled_with_npu
+from paddle.nn import Layer
 __all__ = []
 
 
@@ -260,7 +259,7 @@ def new_group(ranks=None, backend=None):
             strategy.current_endpoint = genv.current_endpoint
             strategy.nrings = 1
 
-            if core.is_compiled_with_cuda():
+            if is_compiled_with_cuda():
                 place = core.CUDAPlace(genv.device_id)
                 core.NCCLParallelContext(strategy,
                                          place).init_with_ring_id(ring_id)
@@ -948,7 +947,7 @@ def _c_lookup_table(table, index, start_index=0, name=None):
     return tmp
 
 
-class _Linear(layers.Layer):
+class _Linear(Layer):
     """
     Linear
     """
@@ -1403,7 +1402,7 @@ def split(x,
             "but received vocabulary={} num_partitions={}".format(size[0], num_partitions)
 
         per_part_size = size[0] // num_partitions
-        if core.is_compiled_with_npu():
+        if is_compiled_with_npu():
             emb_out = _parallel_embedding_npu(
                 x,
                 per_part_size,

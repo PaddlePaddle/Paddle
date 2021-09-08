@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import os
-import paddle.fluid.framework as framework
 from paddle.fluid.optimizer import Optimizer
 import paddle.fluid.core as core
 import numpy as np

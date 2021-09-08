@@ -16,7 +16,7 @@ import numpy
 import copy
 import paddle
 import paddle.fluid.core as core
-from paddle.fluid.framework import Variable
+from paddle.static import Variable
 from paddle.fluid.framework import in_dygraph_mode
 
 __all__ = []
@@ -398,7 +398,7 @@ def shard_op(op_fn, mesh, dim_mapping_dict, **kwargs):
 
     """
     _static_mode_check()
-    main_prog = paddle.fluid.default_main_program()
+    main_prog = paddle.static.default_main_program()
     main_block = main_prog.global_block()
     op_size = len(main_block.ops)
     output = op_fn(**kwargs)

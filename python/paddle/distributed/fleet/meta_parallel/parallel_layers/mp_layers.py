@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import paddle
-from paddle.fluid.dygraph.layers import Layer
+from paddle.nn import Layer
 from .random import get_rng_state_tracker
 from paddle.nn import functional as F
 from paddle import framework
