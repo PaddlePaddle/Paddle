@@ -16,6 +16,7 @@ import os
 import copy
 import inspect
 import paddle
+from . import core
 from .framework import _apply_pass, OpProtoHolder
 from . import unique_name
 
@@ -36,6 +37,35 @@ def get_data_vars(program):
     return data_vars
 
 
+def _update_grad_persistable(main_program):
+    grad_merge_attr_name = "grad_merge_cond_name"
+    op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
+    has_grad_merge = False
+    has_persistable_grad_var = False
+    grad_vars = []
+    for block_id in range(main_program.num_blocks):
+        block = main_program.block(block_id)
+        for op in block.ops:
+            if grad_merge_attr_name in op.attr_names:
+                has_grad_merge = True
+
+            if op_role_var_attr_name not in op.attr_names:
+                continue
+
+            p_g = op.attr(op_role_var_attr_name)
+            for g in p_g[1::2]:
+                g_var = block._find_var_recursive(g)
+                if g_var is None:
+                    continue
+                grad_vars.append(g_var)
+                if g_var.persistable:
+                    has_persistable_grad_var = True
+
+    if has_grad_merge and has_persistable_grad_var:
+        for g_var in grad_vars:
+            g_var.persistable = True
+
+
 def apply_build_strategy(main_program, startup_program, build_strategy,
                          pass_attrs):
     def update_attr(attrs, attr_types, name, value, typ=None):
@@ -54,6 +84,7 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
                     get_data_vars(main_program), "list[str]")
         _apply_pass(main_program, startup_program, name, attrs, attr_types)
 
+    _update_grad_persistable(main_program)
     use_cuda = pass_attrs.get("use_cuda", False)
     build_strategy = build_strategy._copy()
     if build_strategy.sync_batch_norm:
@@ -75,9 +106,12 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
         apply_pass("fuse_elewise_add_act_pass")
         build_strategy.fuse_elewise_add_act_ops = False
     if build_strategy.fuse_all_optimizer_ops:
-        apply_pass("fuse_adam_op_pass")
-        apply_pass("fuse_sgd_op_pass")
-        apply_pass("fuse_momentum_op_pass")
+        apply_pass([
+            "coalesce_grad_tensor_pass",
+            "fuse_adam_op_pass",
+            "fuse_sgd_op_pass",
+            "fuse_momentum_op_pass",
+        ])
         build_strategy.fuse_all_optimizer_ops = False
     # TODO(zjl): support fuse all reduce ops
     if build_strategy.cache_runtime_context:

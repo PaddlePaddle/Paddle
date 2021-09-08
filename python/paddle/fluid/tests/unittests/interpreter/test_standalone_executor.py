@@ -25,10 +25,12 @@ paddle.enable_static()
 
 class LinearTestCase(unittest.TestCase):
     def setUp(self):
-        self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
+        place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else paddle.CPUPlace()
+        self.place = core.Place()
+        self.place.set_place(place)
 
-    def test_interp_base(self):
+    def build_program(self):
         a = paddle.static.data(name="a", shape=[2, 2], dtype='float32')
         b = paddle.ones([2, 2]) * 2
         t = paddle.static.nn.fc(a, 2)
@@ -36,11 +38,15 @@ class LinearTestCase(unittest.TestCase):
 
         main_program = paddle.fluid.default_main_program()
         startup_program = paddle.fluid.default_startup_program()
-        p = core.Place()
-        p.set_place(self.place)
-        standaloneexecutor = StandaloneExecutor(p, startup_program.desc,
-                                                main_program.desc, core.Scope())
 
+        return startup_program, main_program, c
+
+        return standaloneexecutor, c
+
+    def test_interp_base(self):
+        startup_program, main_program, c = self.build_program()
+        standaloneexecutor = StandaloneExecutor(
+            self.place, startup_program.desc, main_program.desc, core.Scope())
         out = standaloneexecutor.run({
             "a": np.ones(
                 [2, 2], dtype="float32") * 2
@@ -55,24 +61,35 @@ class LinearTestCase(unittest.TestCase):
             out = standaloneexecutor.run({
                 "a": np.ones(
                     [2, 2], dtype="float32") * i
-            }, [a.name, c.name])
+            }, ['a', c.name])
 
+    def test_dry_run(self):
+        startup_program, main_program, c = self.build_program()
+        standaloneexecutor = StandaloneExecutor(
+            self.place, startup_program.desc, main_program.desc, core.Scope())
         # test for cost_info
         cost_info = standaloneexecutor.dry_run({
             "a": np.ones(
-                [2, 2], dtype="float32") * i
+                [2, 2], dtype="float32")
         })
         self.check_cost_info(cost_info)
 
     def check_cost_info(self, cost_info):
+        IS_WINDOWS = sys.platform.startswith('win')
+
         if core.is_compiled_with_cuda():
+            # input `a` is on CPU, 16 bytes
             self.assertEqual(cost_info.host_memory_bytes(), 16)
-            self.assertGreater(cost_info.device_memory_bytes(), 0)
+            # # w,bias,b, out, memory block is at least 256 bytes on Linux
+            gt = 16 * 4 if IS_WINDOWS else 256 * 4
+            self.assertGreater(cost_info.device_memory_bytes(), gt)
             self.assertGreaterEqual(cost_info.device_total_memory_bytes(),
                                     cost_info.device_memory_bytes())
         else:
-            self.assertGreater(cost_info.host_memory_bytes(), 0)
+            # x(16 bytes), w(16 bytes), bias(8 bytes), b(16 bytes), out(16 bytes)
+            self.assertGreaterEqual(cost_info.host_memory_bytes(), 72)
             self.assertEqual(cost_info.device_memory_bytes(), 0)
+            self.assertGreaterEqual(cost_info.device_total_memory_bytes(), 0)
 
 
 class MultiStreamModelTestCase(unittest.TestCase):
