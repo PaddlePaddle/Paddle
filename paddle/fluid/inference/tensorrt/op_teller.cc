@@ -510,6 +510,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+    if (op_type == "scale") {
+      auto scale_inputs = desc.Inputs();
+      if (scale_inputs.find("ScaleTensor") != scale_inputs.end()) {
+        if (desc.Input("ScaleTensor").size() >= 1) {
+          return false;
+        }
+      }
+    }
+
     if (op_type == "slice") {
       if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
           !desc.HasAttr("ends")) {
