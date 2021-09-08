@@ -29,6 +29,7 @@ from .data_generator.data_generator import MultiSlotStringDataGenerator  # noqa:
 from . import metrics  # noqa: F401
 from .base.topology import CommunicateTopology
 from .base.topology import HybridCommunicateGroup  # noqa: F401
+from .utils.hybrid_parallel_inference import HybridParallelInferenceHelper  # noqa: F401
 
 __all__ = [ #noqa
       "CommunicateTopology",
@@ -40,7 +41,8 @@ __all__ = [ #noqa
       "Role",
       "MultiSlotDataGenerator",
       "PaddleCloudRoleMaker",
-      "Fleet"
+      "Fleet",
+      "HybridParallelInferenceHelper"
 ]
 
 fleet = Fleet()
