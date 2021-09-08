@@ -20,6 +20,7 @@ import paddle.fluid as fluid
 import paddle.fluid.core as core
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestClipOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "clip"
