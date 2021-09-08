@@ -180,7 +180,15 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
 #if CUDNN_VERSION >= 8000
-#define CUDNN_DNN_ROUTINE_EACH_R8(__macro) __macro(cudnnSetRNNDescriptor_v8);
+#define CUDNN_DNN_ROUTINE_EACH_R8(__macro)                    \
+  __macro(cudnnSetRNNDescriptor_v8);                          \
+  __macro(cudnnCreateSeqDataDescriptor);                      \
+  __macro(cudnnSetSeqDataDescriptor);                         \
+  __macro(cudnnCreateAttnDescriptor);                         \
+  __macro(cudnnSetAttnDescriptor);                            \
+  __macro(cudnnGetMultiHeadAttnBuffers);                      \
+  __macro(cudnnMultiHeadAttnForward);
+
 CUDNN_DNN_ROUTINE_EACH_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
