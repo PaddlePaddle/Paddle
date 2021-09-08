@@ -204,8 +204,8 @@ __device__ void DealSegment(
 
   const bool kCallElementwiseAny =
       platform::FunctionTraits<Functor>::has_pointer_args;
-  ComputePrimitiveCaller<InT, OutT, VecSize, Functor, Arity,
-                         kCallElementwiseAny>()(
+  ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, Arity,
+                             kCallElementwiseAny>()(
       func, reinterpret_cast<InT **>(args), result);
   kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(out + block_offset, result,
                                                   num);
