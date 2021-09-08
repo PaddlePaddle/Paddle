@@ -159,7 +159,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         self.gradient_merge_mode = 'pp_gm' or 'sharding_gm'
         self._gradient_merge_acc_step
         self.pp_allreduce_in_optimize
-        self.optimizer_sharding
+        self._optimizer_sharding
         """
         strategy = self.user_defined_strategy
         sharding_configs = strategy.sharding_configs
@@ -198,14 +198,15 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         optimizer_sharding = False
         # TODO(wangxi): need support dp_as_opt_sharding with sharding
-        if self.sharding_degree == 1 and self.dp_degree > 1 \
-                and sharding_configs['dp_as_opt_sharding']:
+        #               need support without pp in future
+        if self.sharding_degree == 1 and self.dp_degree > 1 and \
+                sharding_configs['dp_as_opt_sharding'] and self.pp_degree > 1:
             optimizer_sharding = True
 
         self.hybrid_dp_mode = dp_mode
         self.gradient_merge_mode = gm_mode
         self._gradient_merge_acc_step = gm_acc_step
-        self.optimizer_sharding = optimizer_sharding
+        self._optimizer_sharding = optimizer_sharding
 
         # this feature is design for ascend, and should NOT be used in GPU training
         self.pp_allreduce_in_optimize = sharding_configs[
@@ -285,7 +286,8 @@ class ShardingOptimizer(MetaOptimizerBase):
         startup_block = self._startup_program.global_block()
 
         # step1: build shard
-        self._build_shard(params_grads)
+        self._build_shard(params_grads, self.sharding_rank,
+                          self.sharding_degree)
 
         # step2: split_program
         self._split_program(main_block)
@@ -302,22 +304,15 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._prune_startup_program(startup_block, self._shard)
 
     def _apply_opt_sharding_pass(self, params_grads):
-        """ outer dp as optimizer sharding"""
-        if self.optimizer_sharding is False:
+        """ outer dp as optimizer sharding """
+        if self._optimizer_sharding is False:
             return
-
-        # TODO(wangxi): need support without pp in future
-        if self.pp_degree == 1: return
 
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
 
         # step1: build shard
-        self._params = set([x[0].name for x in params_grads])
-        self._shard.setup(params_grads, self.dp_rank, self.dp_degree)
-
-        # step 3: get broadcast vars
-        self._broadcast_vars = self._shard.find_broadcast_params(main_block)
+        self._build_shard(params_grads, self.dp_rank, self.dp_degree)
 
         # NOTE(wangxi): prune_main_program will prune cast if not add this
         for param, grad in params_grads:
@@ -357,15 +352,9 @@ class ShardingOptimizer(MetaOptimizerBase):
                 if in_name not in main_block.vars:
                     main_block._remove_op(idx)
 
-        if self.optimizer_sharding:
+        if self._optimizer_sharding:
             # TODO(wangxi): support fuse grad merge with optimizer sharding
             strategy.fuse_grad_merge = False
-
-        optimizer_sharding = False
-        if sharding_configs['dp_as_opt_sharding'] and self.dp_degree > 1:
-            # TODO(wangxi): support fuse grad merge with optimizer sharding
-            strategy.fuse_grad_merge = False
-            optimizer_sharding = True
 
         accumulated_grad_names = self._pp_optimizer._accumulate_gradients(
             main_block, strategy=strategy)
@@ -393,7 +382,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             first_optimize_op_index += (len(main_block.ops) - len_of_ops)
             len_of_ops = len(main_block.ops)
 
-        if optimizer_sharding:
+        if self._optimizer_sharding:
             accumulated_grad_names = utils.insert_reduce_ops(
                 main_block,
                 first_optimize_op_index,
@@ -440,8 +429,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         # if not use sharding, adapt amp/clip, for remain parallelism.
         # cast --> amp --> clip --> opt
         if self.sharding_degree > 1: return
-        if sharding_configs['dp_as_opt_sharding'] and self.dp_degree > 1:
-            return
+        if self._optimizer_sharding: return
 
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
@@ -710,7 +698,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         startup_block._sync_with_cpp()
 
-    def _build_shard(self, params_grads):
+    def _build_shard(self, params_grads, shard_rank, shard_size):
         # step 2: split params
         self._params = set([x[0].name for x in params_grads])
         self._shard.setup(params_grads, self.sharding_rank,
@@ -897,8 +885,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             input_names = op.desc.input_arg_names()
             output_names = op.desc.output_arg_names()
             # FIXME(wangxi): need use grads, pipeline grad is @GRAD@MERGE
-            if op.type == "c_allreduce_sum" and op.attr(
-                    'use_model_parallel') is False:
+            if op.type == "c_allreduce_sum" and \
+                    op.attr('use_model_parallel') is False:
                 assert (len(output_names) == 1)
                 output_name = output_names[0]
                 reduced_grads.append(output_name)
@@ -960,7 +948,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 # _should_removed_var: opt state not cur shard
                 if program_deps.should_remove_op(idx):
                     # NOTE(wangxi): need reserve all param in optimizer_sharding
-                    reserved_vars = self._params if self.optimizer_sharding else None
+                    reserved_vars = self._params if self._optimizer_sharding else None
                     program_deps.remove_op(idx, reserved_vars)
 
         # NOTE (JZ-LIANG) revise and unify logic here
@@ -1197,7 +1185,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             for output_name in op.desc.output_arg_names():
                 if shard.has_var(output_name):
                     continue
-                if self.optimizer_sharding and shard.is_param(output_name):
+                if self._optimizer_sharding and shard.is_param(output_name):
                     continue
                 #TODO why do we remove op, when only one var is removed
                 block._remove_op(idx, sync=False)
@@ -1206,7 +1194,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         for var_name in list(block.vars.keys()):
             if shard.has_var(var_name):
                 continue
-            if self.optimizer_sharding and shard.is_param(var_name):
+            if self._optimizer_sharding and shard.is_param(var_name):
                 continue
             block._remove_var(var_name, sync=False)
         block._sync_with_cpp()
