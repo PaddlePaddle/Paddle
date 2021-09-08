@@ -48,7 +48,6 @@ void ConvertConv3d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
   bool enable_int8 = op_desc.HasAttr("enable_int8");
 
   if (enable_int8) {
-#if IS_TRT_VERSION_GE(5000)
     float in_scale =
         BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale")) * 127;
     auto weight_scale =
@@ -56,7 +55,6 @@ void ConvertConv3d(TensorRTEngine* engine, const framework::proto::OpDesc& op,
     weight_data = engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t,
                                            true, weight_scale);
     engine->SetTensorDynamicRange(X, in_scale);
-#endif
   } else {
     weight_data =
         engine->GetWeightCPUData(op_desc.Input("Filter").front(), Y_t, false);
