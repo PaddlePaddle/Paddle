@@ -624,3 +624,16 @@ DEFINE_bool(conv2d_disable_cudnn, false, "Disable cudnn in conv2d");
 DEFINE_int32(get_host_by_name_time, 120,
              "The maximum time for get host by name time");
 #endif
+
+/**
+ * Distributed related FLAG
+ * Name: FLAGS_apply_pass_to_program
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_apply_pass_to_program=true would apply IR Pass to
+ *          program when using Fleet APIs.
+ * Note: Apply IR pass to program. Be only useful when using Fleet APIs.
+ */
+DEFINE_bool(
+    apply_pass_to_program, false,
+    "It controls whether to apply IR pass to program when using Fleet APIs");

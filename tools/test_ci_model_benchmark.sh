@@ -63,7 +63,7 @@ function compile_install_paddle {
     export WITH_UNITY_BUILD=ON
     check_whl
     cd /workspace/Paddle
-    git clone --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP --recurse-submodules=PaddleDetection --recurse-submodules=PaddleVideo --recurse-submodules=PaddleSeg --recurse-submodules=PaddleGAN --recurse-submodules=PaddleOCR --recurse-submodules=models https://github.com/paddlepaddle/benchmark.git
+    git clone --depth=100 --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP --recurse-submodules=PaddleDetection --recurse-submodules=PaddleVideo --recurse-submodules=PaddleSeg --recurse-submodules=PaddleGAN --recurse-submodules=PaddleOCR --recurse-submodules=models https://github.com/paddlepaddle/benchmark.git
 }
 
 function prepare_data {
