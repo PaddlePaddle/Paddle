@@ -553,6 +553,17 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
     LOG(WARNING) << "saved_variance dims: " << saved_variance->dims();
     LOG(WARNING) << "saved_variance numel: " << saved_variance->numel();
 
+    LOG(WARNING) << "Input Tensor | x: ";
+    PrintTensor<float>(*x, ctx);
+    LOG(WARNING) << "Input Tensor | scale: ";
+    PrintTensor<float>(*scale, ctx);
+    LOG(WARNING) << "Input Tensor | bias: ";
+    PrintTensor<float>(*bias, ctx);
+    LOG(WARNING) << "Input Tensor | mean: ";
+    PrintTensor<float>(*mean, ctx);
+    LOG(WARNING) << "Input Tensor | variance: ";
+    PrintTensor<float>(*variance, ctx);
+
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE_GE(x_dims.size(), 2,
                       platform::errors::InvalidArgument(
@@ -800,17 +811,28 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
       LOG(WARNING) << "count: " << count;
 
       if (count >= 1) {
-        LOG(WARNING) << "before | saved_mean: ";
+        LOG(WARNING) << "before hccl | saved_mean: ";
         PrintTensor<float>(*saved_mean, ctx);
 
-        LOG(WARNING) << "before | var_ref: ";
+        LOG(WARNING) << "before hccl | var_ref: ";
         PrintTensor<float>(var_ref, ctx);
 
         auto &dev_ctx = reinterpret_cast<const platform::NPUDeviceContext &>(
             ctx.device_context());
         auto *comm = dev_ctx.hccl_comm();
+        LOG(WARNING) << "comm: " << comm;
+
+        float device_counts = 1.0;
         if (comm) {
           int dtype = platform::ToHCCLDataType(mean_out->type());
+
+          // In-place operation
+          LOG(WARNING) << "before hccl | device_counts: " << device_counts;
+          PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
+              &device_counts, &device_counts, 1,
+              static_cast<HcclDataType>(dtype), HCCL_REDUCE_SUM, comm, stream));
+          LOG(WARNING) << "after hccl | device_counts: " << device_counts;
+
           // In-place operation
           PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
               saved_mean->data<float>(), saved_mean->data<float>(), C,
@@ -820,15 +842,16 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
               static_cast<HcclDataType>(dtype), HCCL_REDUCE_SUM, comm, stream));
         }
 
-        LOG(WARNING) << "after | saved_mean: ";
+        LOG(WARNING) << "after hccl | saved_mean: ";
         PrintTensor<float>(*saved_mean, ctx);
 
-        LOG(WARNING) << "after | var_ref: ";
+        LOG(WARNING) << "after hccl | var_ref: ";
         PrintTensor<float>(var_ref, ctx);
 
         // mean saved_mean
         {
-          framework::NPUAttributeMap attr_input = {{"value", 1.0f / count}};
+          framework::NPUAttributeMap attr_input = {
+              {"value", 1.0f / device_counts}};
 
           const auto &runner =
               NpuOpRunner("Muls", {*saved_mean}, {*saved_mean}, attr_input);
@@ -840,7 +863,8 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
 
         // mean var_ref
         {
-          framework::NPUAttributeMap attr_input = {{"value", 1.0f / count}};
+          framework::NPUAttributeMap attr_input = {
+              {"value", 1.0f / device_counts}};
 
           const auto &runner =
               NpuOpRunner("Muls", {var_ref}, {var_ref}, attr_input);
@@ -856,6 +880,17 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
                                scale, bias, mean, variance, mean_out,
                                variance_out, saved_mean, saved_variance, y);
     }
+
+    LOG(WARNING) << "Output Tensor | y: ";
+    PrintTensor<float>(*y, ctx);
+    LOG(WARNING) << "Output Tensor | mean_out: ";
+    PrintTensor<float>(*mean_out, ctx);
+    LOG(WARNING) << "Output Tensor | variance_out: ";
+    PrintTensor<float>(*variance_out, ctx);
+    LOG(WARNING) << "Output Tensor | saved_mean: ";
+    PrintTensor<float>(*saved_mean, ctx);
+    LOG(WARNING) << "Output Tensor | saved_variance: ";
+    PrintTensor<float>(*saved_variance, ctx);
   }
 };
 
