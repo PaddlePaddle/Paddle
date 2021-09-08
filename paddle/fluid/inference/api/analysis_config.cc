@@ -115,6 +115,9 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
 }
 
 void AnalysisConfig::SetXpuDeviceId(int device_id) {
+  PADDLE_ENFORCE_EQ(use_xpu_, true,
+                    platform::errors::PreconditionNotMet(
+                        "Should call EnableXpu before SetXpuDeviceId."));
   xpu_device_id_ = device_id;
   Update();
 }

@@ -275,6 +275,17 @@ TEST(AnalysisPredictor, bf16_pass_strategy) {
   passStrategy.EnableMkldnnBfloat16();
 }
 
+#ifdef PADDLE_WITH_XPU
+TEST(AnalysisPredictor, set_xpu_device_id) {
+  AnalysisConfig config;
+  config.EnableXpu();
+  config.SetXpuDeviceId(0);
+  ASSERT_EQ(config.xpu_device_id(), 0);
+  config.SetXpuDeviceId(1);
+  ASSERT_EQ(config.xpu_device_id(), 1);
+}
+#endif
+
 }  // namespace paddle
 
 namespace paddle_infer {
