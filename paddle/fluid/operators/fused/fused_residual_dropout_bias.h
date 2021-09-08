@@ -374,9 +374,8 @@ void LaunchResidualDropoutBiasGrad(const T *dout, const MaskType *mask,
       real_vec_size = 1;
     }
     auto threads = std::min(cols / real_vec_size, static_cast<uint32_t>(8));
-    auto blocks = std::max(
-        (uint32_t)1, std::min((cols / real_vec_size + threads - 1) / threads,
-                              (uint32_t)ctx.GetSMCount()));
+    auto blocks =
+        std::max((uint32_t)1, cols / real_vec_size + threads - 1 / threads);
     dim3 block_dim(threads, 128, 1);
     dim3 grid_dim(blocks, 1, 1);
 

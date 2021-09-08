@@ -316,3 +316,13 @@ TEST(FusedDropout, GPUFusedResidualDropoutBias5) {
   test.CheckOut(static_cast<float>(1e-5));
   test.CheckGrad(static_cast<float>(1e-5));
 }
+
+// test large shape
+TEST(FusedDropout, GPUFusedResidualDropoutBias6) {
+  const int rows = 256;
+  const int cols = 4096;
+  TestFusedResidualDropoutBias<float> test(rows, cols);
+  test.Run();
+  test.CheckOut(static_cast<float>(1e-5));
+  test.CheckGrad(static_cast<float>(1e-3));
+}
