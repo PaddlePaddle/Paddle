@@ -88,8 +88,8 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                     for Out in [["output_var0", "output_var1"],
                                 ["output_var0", "output_var1", "output_var2"]]:
                         for sections in [[], [1, 2], [2, 1], [10, 14],
-                                         [3, 7,
-                                          14], [1, 1, 1], [2, 2, 2], [3, 3, 3]]:
+                                         [1, 1,
+                                          1], [2, 2, 2], [3, 3, 3], [3, 7, 14]]:
                             for num in [0, 3]:
                                 for axis in [0, 1, 2, 3]:
                                     self.batch = batch
@@ -177,24 +177,16 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            if self.num_input == 0:
-                if len(program_config.outputs) == 2:
-                    if attrs[0]['axis'] != 0:
-                        return 0, 4
+            if len(program_config.outputs) == 2:
+                if attrs[0]['axis'] != 0:
+                    return 1, 3
                 else:
-                    if attrs[0]['axis'] != 0:
-                        return 0, 5
-            elif self.num_input == 1:
-                if len(program_config.outputs) == 2:
-                    if attrs[0]['axis'] != 0:
-                        return 1, 3
-                    else:
-                        return 0, 4
+                    return 0, 4
+            else:
+                if attrs[0]['axis'] != 0:
+                    return 1, 4
                 else:
-                    if attrs[0]['axis'] != 0:
-                        return 1, 4
-                    else:
-                        return 0, 5
+                    return 0, 5
 
         attrs = [
             program_config.ops[i].attrs
@@ -220,7 +212,15 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                                                                      True), 1e-2
 
     def add_skip_trt_case(self):
-        pass
+        def teller1(program_config, predictor_config):
+            if len(program_config.weights) == 3:
+                return True
+            return False
+
+        self.add_skip_case(
+            teller1, SkipReasons.TRT_NOT_SUPPORT,
+            "INPUT AxisTensor AND SectionsTensorList NOT SUPPORT: we need to add support in the future"
+        )
 
     def test(self):
         self.add_skip_trt_case()
