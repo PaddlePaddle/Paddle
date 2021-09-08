@@ -244,7 +244,7 @@ class TestWithEvenUpsample(TestConv2DTransposeOp):
         self.filter_size = [f_c, 6, 5, 5]
 
 
-class TestWithDilation_FP16(TestWithDilation):
+class TestWithEvenUpsample_FP16(TestWithEvenUpsample):
     def init_dtype(self):
         self.dtype = np.float16
         self.need_check_grad = False
