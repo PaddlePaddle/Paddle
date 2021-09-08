@@ -6974,6 +6974,7 @@ class GradientMergeOptimizer(object):
 
             # cur_block's forward_block & backward_block is itself
             cur_block._set_forward_block_idx(cur_block_idx)
+            op_maker = core.op_proto_and_checker_maker
 
             if self.avg:
                 for param, new_grad in new_params_grads:
@@ -6987,6 +6988,8 @@ class GradientMergeOptimizer(object):
                             'bias': 0.0,
                             'bias_after_scale': False
                         })
+                    new_grad.op._set_attr(op_maker.kOpRoleAttrName(),
+                                          op_maker.OpRole.Backward)
 
             for param, new_grad in new_params_grads:
                 # NOTE. regularization will append ops to grad.block,
@@ -7005,6 +7008,8 @@ class GradientMergeOptimizer(object):
                     dtype=new_grad.dtype,
                     value=0.0,
                     out=new_grad)
+                new_grad.op._set_attr(op_maker.kOpRoleAttrName(),
+                                      op_maker.OpRole.Optimize)
 
         # step3. apply gradient
         layers.cond(cond, true_fn=true_apply_gradient, false_fn=None)
