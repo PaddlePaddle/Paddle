@@ -49,7 +49,8 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
         for dims in [2, 3, 4]:
             for batch in [1, 2, 4]:
                 for axis in [[0, 1, 3, 2], [0, 3, 2, 1], [3, 2, 0, 1],
-                             [0, 1, 2, 3], [0, 1, 2], [2, 0, 1], [0, 1]]:
+                             [0, 1, 2, 3], [0, 1, 2], [2, 0, 1], [1, 0],
+                             [0, 1]]:
                     self.dims = dims
                     dics = [{"axis": axis}, {}]
                     ops_config = [{
@@ -127,10 +128,8 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-        self.trt_param.max_batch_size = 9
         # for static_shape
         clear_dynamic_shape()
-
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False), 1e-5
@@ -148,8 +147,15 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
                                                                      True), 1e-2
 
     def add_skip_trt_case(self):
-        # TODO(wilber): This is just the example to illustrate the skip usage.
-        pass
+        def teller1(program_config, predictor_config):
+            if program_config.ops[0].attrs['axis'] == [0, 1]:
+                return True
+            return False
+
+        self.add_skip_case(
+            teller1, SkipReasons.TRT_NOT_SUPPORT,
+            "INPUT AXIS [0, 1] NOT SUPPORT: we need to add support in the future"
+        )
 
     def test(self):
         self.add_skip_trt_case()

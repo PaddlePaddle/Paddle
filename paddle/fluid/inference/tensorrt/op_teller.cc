@@ -302,6 +302,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axis"));
       if (!with_dynamic_shape && axis[0] != 0) return false;
       if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+      if (axis[0] == 0 && axis.size() == 2) return false;
 
       auto* block = desc.Block();
       auto x_var_name = desc.Input("X")[0];
