@@ -1,4 +1,4 @@
-cc_library(workqueue SRCS workqueue.cc)
+cc_library(workqueue SRCS workqueue.cc DEPS enforce)
 cc_library(interpretercore SRCS interpretercore.cc DEPS op_registry
             device_context scope framework_proto data_feed_proto heter_service_proto trainer_desc_proto glog
             lod_rank_table fs shell fleet_wrapper heter_wrapper ps_gpu_wrapper box_wrapper lodtensor_printer feed_fetch_method

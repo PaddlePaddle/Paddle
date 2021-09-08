@@ -30,13 +30,15 @@ namespace kernel_primitives {
 namespace details {
 
 #ifdef __HIPCC__
-constexpr int kMaxThread = 256;
+constexpr int kReduceMaxThread = 256;
 constexpr int kWarpSize = 64;
 #else
-constexpr int kMaxThread = 128;
+constexpr int kReduceMaxThread = 128;
 constexpr int kWarpSize = 32;
 #endif
 
+// kGlobalMode: block reduce, each block gets an output;
+// kLocalMode: thread reduce, each thread gets an output;
 enum ReduceMode { kGlobalMode, kLocalMode };
 
 template <typename T>
@@ -117,7 +119,7 @@ __device__ __forceinline__ T BlockXReduce(T val, ReduceOp reducer) {
  */
 template <typename T, typename ReduceOp>
 __device__ __forceinline__ T BlockYReduce(T val, ReduceOp reducer) {
-  __shared__ T shared_memory[details::kMaxThread];
+  __shared__ T shared_memory[details::kReduceMaxThread];
   shared_memory[SharedMemoryIndex(0)] = val;
   for (int stride = blockDim.y / 2; stride > 0; stride >>= 1) {
     __syncthreads();
