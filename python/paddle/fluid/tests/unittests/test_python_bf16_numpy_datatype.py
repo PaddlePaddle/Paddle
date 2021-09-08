@@ -13,7 +13,7 @@
 # limitations under the License.
 
 import numpy as np
-from bfloat16 import bfloat16
+from bfloat import bfloat16
 import unittest
 
 
