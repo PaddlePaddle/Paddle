@@ -11,6 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+#if !defined(_WIN32)
+#include <sched.h>
+#else
+#define NOMINMAX
+#include <windows.h>
+#endif  // !_WIN32
+
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 
 #include <unordered_set>
@@ -149,7 +157,10 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   garbages_.reset(new GarbageQueue());
   max_memory_size_ = static_cast<size_t>(GetEagerDeletionThreshold());
   cur_memory_size_ = 0;
-  gc_queue_ = CreateSingleThreadedWorkQueue();
+  WorkQueueOptions options;
+  options.num_threads = 1;
+  gc_queue_ = CreateSingleThreadedWorkQueue(options);
+  
   aync_thread_pool_ = CreateSingleThreadedWorkQueue();
   // TODO(Aurelius84): Need more experiment to determine the num_thread.
   sync_thread_pool_ = CreateMultiThreadedWorkQueue(/*num_threads=*/4);
@@ -259,7 +270,7 @@ void InterpreterCore::Convert() {
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    gc_event_.emplace_back(place_);
+    gc_event_.emplace_back(place_, platform::GenerateDeviceEventFlag());
 
     std::vector<size_t> vec_temp;
     for (auto& item : vec_instruction_[i].output_index_) {
@@ -498,41 +509,40 @@ void InterpreterCore::CheckGC(size_t instr_id,
 
   if (!garbages_->empty()) {
     if (max_memory_size_ <= 1) {
-#if defined(PADDLE_WITH_CUDA)
-      auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
+      gc_event_[instr_id].Record(
           platform::DeviceContextPool::Instance().Get(place_));
-      gc_event_[instr_id].Record(dev_ctx);
+      gc_event_[instr_id].SetFininshed();  // Only for CPU Event
       gc_queue_->AddTask(
           [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
             while (!event->Query()) {
+#if defined(_WIN32)
+              SleepEx(50, FALSE);
+#else
+              sched_yield();
+#endif
               continue;
             }
             delete container;
           });
       garbages_.reset(new GarbageQueue());
-#else
-      delete garbages_.release();
-      garbages_.reset(new GarbageQueue());
-#endif
     } else if (cur_memory_size_ >= max_memory_size_) {
-#if defined(PADDLE_WITH_CUDA)
-      auto* dev_ctx = reinterpret_cast<platform::CUDADeviceContext*>(
+      gc_event_[instr_id].Record(
           platform::DeviceContextPool::Instance().Get(place_));
-      gc_event_[instr_id].Record(dev_ctx);
+      gc_event_[instr_id].SetFininshed();  // Only for CPU Event
       gc_queue_->AddTask(
           [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
             while (!event->Query()) {
+#if defined(_WIN32)
+              SleepEx(50, FALSE);
+#else
+              sched_yield();
+#endif
               continue;
             }
             delete container;
           });
       garbages_.reset(new GarbageQueue());
       cur_memory_size_ = 0;
-#else
-      delete garbages_.release();
-      garbages_.reset(new GarbageQueue());
-      cur_memory_size_ = 0;
-#endif
     }
   }
 }
