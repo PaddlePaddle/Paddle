@@ -184,6 +184,10 @@ endif()
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
 
+if (NOT WITH_GLOO)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel_cpuonly)
+endif()
+
 if ((NOT WITH_GPU) AND (NOT WITH_ROCM))
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
     LIST(REMOVE_ITEM TEST_OPS test_rank_attention_op) # TODO(shenliang03): rank_attention_op support CPU device in future
