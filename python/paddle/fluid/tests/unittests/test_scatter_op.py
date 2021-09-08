@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import os
 import paddle
 import paddle.fluid as fluid
 from op_test import OpTest
@@ -230,7 +231,7 @@ class TestScatterAPI(unittest.TestCase):
                                   np.array([[3., 3.],[6., 6.],[1., 1.]])).all(), True)
 
     def test_large_data(self):
-        if not paddle.is_compiled_with_cuda():
+        if os.name == "nt" or not paddle.is_compiled_with_cuda():
             return
 
         x = np.random.rand(183826, 256).astype("float32")
