@@ -168,6 +168,19 @@ class TensorDescriptor {
         transformed_dims.size(), transformed_dims.data()));
   }
 
+  void set(const std::vector<int>& dims, const cudnnTensorFormat_t format,
+           const cudnnDataType_t dtype) {
+    std::vector<int> transformed_dims;
+    if (format == CUDNN_TENSOR_NHWC) {
+      transformed_dims = TransformDimOrder(dims);
+    } else {
+      transformed_dims = dims;
+    }
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptorEx(
+        desc_.get(), format, dtype, transformed_dims.size(),
+        transformed_dims.data()));
+  }
+
  private:
   std::unique_ptr<T, Deleter> desc_;
 };
@@ -206,6 +219,22 @@ class FilterDescriptor {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetFilterNdDescriptor(
         desc_.get(), ToCudnnDataType(tensor.type()), format,
         transformed_dims.size(), transformed_dims.data()));
+  }
+
+  void set(const std::vector<int>& dims, const cudnnTensorFormat_t format,
+           const cudnnDataType_t dtype, const int groups = 1) {
+    std::vector<int> transformed_dims;
+    if (format == CUDNN_TENSOR_NHWC) {
+      transformed_dims = TransformDimOrder(dims);
+    } else {
+      transformed_dims = dims;
+    }
+    if (groups > 1) {
+      transformed_dims[1] = transformed_dims[1] / groups;
+    }
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetFilterNdDescriptor(
+        desc_.get(), dtype, format, transformed_dims.size(),
+        transformed_dims.data()));
   }
 
  private:

@@ -32,22 +32,13 @@ class CuDNNBNStatsFinalizeOp {
   {
     dtype_ = platform::CudnnDataType<T>::type;
     dtype_param_ = (dtype_ == CUDNN_DATA_HALF) ? CUDNN_DATA_FLOAT : dtype_;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::cudnnCreateTensorDescriptor(&out_desc_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::cudnnCreateTensorDescriptor(&in_desc_));
   }
 
-  ~CuDNNBNStatsFinalizeOp() {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::cudnnDestroyTensorDescriptor(out_desc_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::cudnnDestroyTensorDescriptor(in_desc_));
-  }
+  ~CuDNNBNStatsFinalizeOp() {}
 
   void Init(const framework::ExecutionContext &ctx,
-            const std::vector<int> &filter_shape) {
-    InitDescriptors(ctx, filter_shape);
+            const std::vector<int> &param_shape) {
+    InitDescriptors(ctx, param_shape);
 
 #if CUDNN_VERSION >= 8000
     // Set constant_param for train op
@@ -103,7 +94,7 @@ class CuDNNBNStatsFinalizeOp {
                float *saved_invstd_ptr, float *running_mean_ptr,
                float *running_var_ptr, T *equiv_scale_ptr, T *equiv_bias_ptr) {
 #if CUDNN_VERSION < 8000
-    LOG(FATAL) << "cuDNN version 8.0 or later is required.";
+    LOG(ERROR) << "cuDNN version 8.0 or later is required.";
 #else
     auto &op = true ? train_op_ : inference_op_;
 
@@ -145,18 +136,16 @@ class CuDNNBNStatsFinalizeOp {
 
  private:
   void InitDescriptors(const framework::ExecutionContext &ctx,
-                       const std::vector<int> &filter_shape) {
-    int c = filter_shape[0];
+                       const std::vector<int> &param_shape) {
     cudnnTensorFormat_t format = CUDNN_TENSOR_NHWC;
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensor4dDescriptor(
-        out_desc_, format, dtype_, 1, c, 1, 1));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensor4dDescriptor(
-        in_desc_, format, dtype_param_, 1, c, 1, 1));
+    in_desc_.set(param_shape, format_, dtype_);
+    out_desc_.set(param_shape, format_, dtype_param_);
   }
 
   cudnnDataType_t dtype_;
   cudnnDataType_t dtype_param_;
-  cudnnTensorDescriptor_t out_desc_, in_desc_;
+  platform::TensorDescriptor in_desc_;
+  platform::TensorDescriptor out_desc_;
 
 #if CUDNN_VERSION >= 8000
   CuDNNFusionOp train_op_;
