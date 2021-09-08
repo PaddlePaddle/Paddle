@@ -141,7 +141,7 @@ class AdamW(Adam):
                  epsilon=1e-8,
                  parameters=None,
                  weight_decay=0.01,
-                 lr_ratio = None,
+                 lr_ratio=None,
                  apply_decay_param_fun=None,
                  grad_clip=None,
                  lazy_mode=False,
@@ -283,8 +283,9 @@ class AdamW(Adam):
 
         # create the adamw optimize op
         if framework.in_dygraph_mode():
+            lr_ratio_ = 1. if self._lr_ratio is None else self._lr_ratio(
+                param_and_grad[0])
 
-            lr_ratio_ = 1. if self._lr_ratio is None else self._lr_ratio(param_and_grad[0])
             _beta1 = self._beta1 if not isinstance(
                 self._beta1, Variable) else self._beta1.numpy().item(0)
             _beta2 = self._beta2 if not isinstance(
@@ -294,7 +295,7 @@ class AdamW(Adam):
                 beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
                 moment2, beta1_pow_acc, beta2_pow_acc, 'epsilon', self._epsilon,
                 'lazy_mode', self._lazy_mode, 'min_row_size_to_use_multithread',
-                1000, 'beta1', _beta1, 'beta2', _beta2, 'coeff', self._coeff, 
+                1000, 'beta1', _beta1, 'beta2', _beta2, 'coeff', self._coeff,
                 "lr_ratio", lr_ratio_)
 
             return None
@@ -328,7 +329,8 @@ class AdamW(Adam):
             "multi_precision": find_master,
             "with_decay": with_decay,
             "coeff": self._coeff,
-            "lr_ratio": 1. if self._lr_ratio is None else self._lr_ratio(param_and_grad[0])
+            "lr_ratio": 1.
+            if self._lr_ratio is None else self._lr_ratio(param_and_grad[0])
         }
 
         if isinstance(self._beta1, Variable):

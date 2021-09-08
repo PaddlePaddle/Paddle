@@ -19,13 +19,13 @@ namespace paddle {
 namespace operators {
 
 template <typename T, typename MT>
-__global__ void AdamWKernelREG(MT beta1, MT beta2, MT epsilon, MT coeff, MT lr_ratio,
-                               MT beta1_pow_, MT beta2_pow_, const MT* moment1,
-                               MT* moment1_out, const MT* moment2,
-                               MT* moment2_out, const MT* lr_, const T* grad,
-                               const T* param, T* param_out,
-                               const MT* master_param, MT* master_param_out,
-                               int ndim) {
+__global__ void AdamWKernelREG(MT beta1, MT beta2, MT epsilon, MT coeff,
+                               MT lr_ratio, MT beta1_pow_, MT beta2_pow_,
+                               const MT* moment1, MT* moment1_out,
+                               const MT* moment2, MT* moment2_out,
+                               const MT* lr_, const T* grad, const T* param,
+                               T* param_out, const MT* master_param,
+                               MT* master_param_out, int ndim) {
   MT lr = *lr_ * lr_ratio;
   MT lr_orig = lr;
   MT beta1_pow = beta1_pow_;
@@ -45,7 +45,7 @@ __global__ void AdamWKernelREG(MT beta1, MT beta2, MT epsilon, MT coeff, MT lr_r
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
     p -= lr_orig * coeff * p;
     p -= lr * (mom1 /
-              (sqrt(mom2) + epsilon * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+               (sqrt(mom2) + epsilon * sqrt(static_cast<MT>(1.0) - beta2_pow)));
 
     moment1_out[id] = mom1;
     moment2_out[id] = mom2;
@@ -57,13 +57,11 @@ __global__ void AdamWKernelREG(MT beta1, MT beta2, MT epsilon, MT coeff, MT lr_r
 }
 
 template <typename T, typename MT>
-__global__ void AdamWKernelMEM(MT beta1, MT beta2, MT epsilon, MT coeff, MT lr_ratio,
-                               const MT* beta1_pow_, const MT* beta2_pow_,
-                               const MT* moment1, MT* moment1_out,
-                               const MT* moment2, MT* moment2_out,
-                               const MT* lr_, const T* grad, const T* param,
-                               T* param_out, const MT* master_param,
-                               MT* master_param_out, int ndim) {
+__global__ void AdamWKernelMEM(
+    MT beta1, MT beta2, MT epsilon, MT coeff, MT lr_ratio, const MT* beta1_pow_,
+    const MT* beta2_pow_, const MT* moment1, MT* moment1_out, const MT* moment2,
+    MT* moment2_out, const MT* lr_, const T* grad, const T* param, T* param_out,
+    const MT* master_param, MT* master_param_out, int ndim) {
   MT lr = *lr_ * lr_ratio;
   MT lr_orig = lr;
   MT beta1_pow = *beta1_pow_;
@@ -83,7 +81,7 @@ __global__ void AdamWKernelMEM(MT beta1, MT beta2, MT epsilon, MT coeff, MT lr_r
     mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
     p -= lr_orig * coeff * p;
     p -= lr * (mom1 /
-              (sqrt(mom2) + epsilon * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+               (sqrt(mom2) + epsilon * sqrt(static_cast<MT>(1.0) - beta2_pow)));
 
     moment1_out[id] = mom1;
     moment2_out[id] = mom2;
@@ -132,7 +130,7 @@ __global__ void SparseAdamWCUDAKernelREG(
       mom2 = beta2 * mom2 + (static_cast<MT>(1.0) - beta2) * g * g;
       p -= lr_orig * coeff * p;
       p -= lr * (mom1 / (sqrt(mom2) +
-                        epsilon * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+                         epsilon * sqrt(static_cast<MT>(1.0) - beta2_pow)));
 
       // Write back to global memory
       mom1_out_[id] = mom1;

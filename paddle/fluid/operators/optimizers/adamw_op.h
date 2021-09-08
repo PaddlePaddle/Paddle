@@ -128,8 +128,8 @@ class SparseAdamWFunctor<T, GPUAdamW, MT> {
     mom1 = beta1_ * mom1 + (static_cast<MT>(1.0) - beta1_) * g;
     mom2 = beta2_ * mom2 + (static_cast<MT>(1.0) - beta2_) * g * g;
     p -= lr_orig * coeff_ * p;
-    p -= lr * (mom1 /
-              (sqrt(mom2) + epsilon_ * sqrt(static_cast<MT>(1.0) - beta2_pow)));
+    p -= lr * (mom1 / (sqrt(mom2) +
+                       epsilon_ * sqrt(static_cast<MT>(1.0) - beta2_pow)));
 
     // Write back to global memory
     moment1_out_[i] = mom1;
@@ -202,7 +202,8 @@ class AdamWOpKernel : public AdamOpKernel<DeviceContext, T> {
       param = const_cast<LoDTensor*>(ctx.Input<LoDTensor>("Param"));
     }
 
-    AdamWFunctor<T, CPUAdamW> functor(coeff, lr_ratio, lr->data<T>(), param->data<T>());
+    AdamWFunctor<T, CPUAdamW> functor(coeff, lr_ratio, lr->data<T>(),
+                                      param->data<T>());
     functor(param->numel());
 
     AdamOpKernel<DeviceContext, T>::Compute(ctx);
