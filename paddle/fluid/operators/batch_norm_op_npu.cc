@@ -20,6 +20,25 @@ namespace operators {
 
 using NPUDeviceContext = platform::NPUDeviceContext;
 
+using Tensor = framework::Tensor;
+
+template <typename T>
+std::string outputVector(const std::vector<T> vec) {
+  std::ostringstream oss;
+  // for (auto ele : vec) oss << ele << ' ';
+  for (size_t i = 0; i < vec.size() && i < 10; ++i) {
+    oss << vec[i] << ' ';
+  }
+  return oss.str();
+}
+template <typename T>
+void PrintTensor(const framework::Tensor &src,
+                 const framework::ExecutionContext &ctx) {
+  std::vector<T> vec(src.numel());
+  TensorToVector(src, ctx.device_context(), &vec);
+  LOG(WARNING) << "vec: " << outputVector<T>(vec);
+}
+
 template <typename T>
 class NPUBatchNormOpKernel : public framework::OpKernel<T> {
  public:
@@ -47,6 +66,17 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
     const auto *running_var = ctx.Input<Tensor>("Variance");
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
+
+    LOG(WARNING) << "Input Tensor | x: ";
+    PrintTensor<float>(*x, ctx);
+    LOG(WARNING) << "Input Tensor | scale: ";
+    PrintTensor<float>(*scale, ctx);
+    LOG(WARNING) << "Input Tensor | bias: ";
+    PrintTensor<float>(*bias, ctx);
+    LOG(WARNING) << "Input Tensor | mean: ";
+    PrintTensor<float>(*running_mean, ctx);
+    LOG(WARNING) << "Input Tensor | variance: ";
+    PrintTensor<float>(*running_var, ctx);
 
     auto *y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
@@ -100,6 +130,17 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
           {y_tesnor, *mean_out, *variance_out, *saved_mean, *saved_variance},
           {{"factor", momentum}, {"epsilon", epsilon}});
       runner_update.Run(stream);
+
+      LOG(WARNING) << "Output Tensor | y: ";
+      PrintTensor<float>(*y, ctx);
+      LOG(WARNING) << "Output Tensor | mean_out: ";
+      PrintTensor<float>(*mean_out, ctx);
+      LOG(WARNING) << "Output Tensor | variance_out: ";
+      PrintTensor<float>(*variance_out, ctx);
+      LOG(WARNING) << "Output Tensor | saved_mean: ";
+      PrintTensor<float>(*saved_mean, ctx);
+      LOG(WARNING) << "Output Tensor | saved_variance: ";
+      PrintTensor<float>(*saved_variance, ctx);
     }
   }
 };
