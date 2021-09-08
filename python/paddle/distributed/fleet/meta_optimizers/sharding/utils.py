@@ -365,20 +365,15 @@ def insert_allreduce_ops(block,
     return
 
 
-def insert_fused_allreduce_ops(block,
-                               insert_idx,
-                               ring_id,
-                               allreduce_vars,
-                               op_role=OpRole.Backward,
-                               use_calc_stream=False,
-                               fuse_grad_size_in_MB=32):
+def get_fused_groups(block, allreduce_vars, fuse_grad_size):
+    """ coalesce tensor, get fused group """
     segments = []
     cur_size = 0.
     last_dtype = None
     for var in allreduce_vars:
         real_var = block.var(var)
         var_size = get_var_size(real_var)
-        if cur_size + var_size > fuse_grad_size_in_MB \
+        if cur_size + var_size > fuse_grad_size \
                 or len(segments) == 0 \
                 or real_var.dtype != last_dtype:
             segments.append([real_var])
@@ -387,6 +382,17 @@ def insert_fused_allreduce_ops(block,
         else:
             segments[-1].append(real_var)
             cur_size += var_size
+    return segments
+
+
+def insert_fused_allreduce_ops(block,
+                               insert_idx,
+                               ring_id,
+                               allreduce_vars,
+                               op_role=OpRole.Backward,
+                               use_calc_stream=False,
+                               fuse_grad_size_in_MB=32):
+    segments = get_fused_groups(block, allreduce_vars, fuse_grad_size_in_MB)
 
     fused_vars = []
     for segment in segments:
@@ -429,6 +435,72 @@ def insert_fused_allreduce_ops(block,
                 attrs={OP_ROLE_KEY: op_role})
 
 
+def insert_fused_reduce_ops(block,
+                            insert_idx,
+                            ring_id,
+                            reduce_vars,
+                            shard,
+                            op_role=OpRole.Backward,
+                            use_calc_stream=False,
+                            rank=None,
+                            fuse_grad_size=32):
+    nranks = shard.worker_num
+    device_to_vars = [[] for _ in range(nranks)]
+
+    for var in reduce_vars:
+        root_id = get_grad_device(var, shard)
+        assert 0 <= root_id < nranks, "root_id should >=0 and < nranks, " \
+            "but now nranks={}, the root_id of var={} is {}"\
+            .format(nranks, var, root_id)
+        device_to_vars[root_id].append(var)
+
+    for root_id, vars_name in enumerate(device_to_vars):
+        segments = get_fused_groups(block, vars_name, fuse_grad_size)
+
+        fused_vars = []
+        for segment in segments:
+            tmp_var = block.create_var(
+                name=unique_name.generate('FusedOutput_{}'.format(segment[0]
+                                                                  .name)),
+                dtype=segment[0].dtype,
+                persistable=False,
+                stop_gradient=True)
+            fused_vars.append(tmp_var)
+            block._insert_op_without_sync(
+                insert_idx,
+                type="coalesce_tensor",
+                inputs={"Input": segment},
+                outputs={"Output": segment,
+                         "FusedOutput": tmp_var},
+                attrs={
+                    "copy_data": True,
+                    "use_align": True,
+                    "dtype": segment[0].dtype,
+                    OP_ROLE_KEY: op_role
+                })
+
+        for fused_var in fused_vars:
+            block._insert_op_without_sync(
+                insert_idx + len(fused_vars),
+                type='c_reduce_sum',
+                inputs={'X': fused_var},
+                outputs={'Out': fused_var},
+                attrs={
+                    'ring_id': ring_id,
+                    'root_id': root_id,
+                    'use_calc_stream': use_calc_stream,
+                    OP_ROLE_KEY: op_role
+                })
+            if not use_calc_stream:
+                block._insert_op_without_sync(
+                    insert_idx + len(fused_vars),
+                    type='c_sync_calc_stream',
+                    inputs={'X': fused_var},
+                    outputs={'Out': fused_var},
+                    attrs={OP_ROLE_KEY: op_role})
+    return [] if rank is None else device_to_vars[rank]
+
+
 def insert_reduce_ops(block,
                       insert_idx,
                       ring_id,
@@ -436,10 +508,17 @@ def insert_reduce_ops(block,
                       shard,
                       op_role=OpRole.Backward,
                       use_calc_stream=False,
-                      rank=None):
+                      rank=None,
+                      strategy=None):
     """
     _add_reduce_ops
     """
+    if strategy and strategy.fuse_all_reduce_ops and \
+            not strategy.fuse_grad_merge:
+        return insert_fused_reduce_ops(block, insert_idx, ring_id, reduce_vars,
+                                       shard, op_role, use_calc_stream, rank,
+                                       strategy.fuse_grad_size_in_MB)
+
     grad_in_this_device = []
     for var in reduce_vars:
 

@@ -28,6 +28,7 @@ from .sharding.gradient_clip_helper import GradientClipHelper
 from .sharding.offload_helper import OffloadHelper
 from .sharding.prune import ProgramDeps
 from .sharding import utils
+# FIXME: import *
 from .sharding.utils import *
 
 import logging
@@ -305,8 +306,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
     def _apply_opt_sharding_pass(self, params_grads):
         """ outer dp as optimizer sharding """
-        if self._optimizer_sharding is False:
-            return
+        if self._optimizer_sharding is False: return
 
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
@@ -328,7 +328,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.pp_degree == 1: return
 
         strategy = self.user_defined_strategy
-        sharding_configs = strategy.sharding_configs
 
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
@@ -353,8 +352,10 @@ class ShardingOptimizer(MetaOptimizerBase):
                     main_block._remove_op(idx)
 
         if self._optimizer_sharding:
-            # TODO(wangxi): support fuse grad merge with optimizer sharding
+            # TODO(wangxi): support fuse_grad_merge and fp16_allreduce
+            #  with optimizer sharding
             strategy.fuse_grad_merge = False
+            strategy.fp16_allreduce = False
 
         accumulated_grad_names = self._pp_optimizer._accumulate_gradients(
             main_block, strategy=strategy)
