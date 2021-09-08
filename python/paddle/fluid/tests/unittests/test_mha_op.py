@@ -17,12 +17,8 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-import paddle
-import paddle.fluid.core as core
-import sys
-sys.path.append("..")
 from op_test import OpTest
-import paddle.fluid as fluid
+import paddle.fluid.core as core
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -30,13 +26,13 @@ import paddle.fluid as fluid
 class TestMHAOp(OpTest):
     def setUp(self):
         self.op_type = "mha"
-        self.dtype = np.float16
+        self.dtype = np.single
         self.init_dtype_type()
 
         batch_size = 2
-        nheads = 4
-        seq_len = 4
-        vec_size = 8
+        nheads = 2
+        seq_len = 3
+        vec_size = 4
         proj_size = vec_size // nheads
 
 
@@ -45,15 +41,11 @@ class TestMHAOp(OpTest):
         V = np.random.random((batch_size, 1, seq_len, vec_size)).astype(self.dtype)
         W = np.random.random((4*vec_size*vec_size,)).astype(self.dtype)
 
-        # WQ = W[0:64].reshape((vec_size, nheads, proj_size)).transpose(1, 2, 0)
-        # WK = W[64:128].reshape((vec_size, nheads, proj_size)).transpose(1, 2, 0)
-        # WV = W[128:192].reshape((vec_size, nheads, proj_size)).transpose(1, 2, 0)
-        # WO = W[192:].reshape((nheads, proj_size, vec_size))
-
-        WQ = W[0:64].reshape((vec_size, vec_size))
-        WK = W[64:128].reshape((vec_size, vec_size))
-        WV = W[128:192].reshape((vec_size, vec_size))
-        WO = W[192:].reshape((vec_size, vec_size))
+        stride = vec_size*vec_size
+        WQ = W[0:stride].reshape((vec_size, vec_size))
+        WK = W[stride:2*stride].reshape((vec_size, vec_size))
+        WV = W[2*stride:3*stride].reshape((vec_size, vec_size))
+        WO = W[3*stride:].reshape((vec_size, vec_size))
 
         q_seq_arr = np.full((batch_size, ), seq_len)
         k_seq_arr = np.full((batch_size, ), seq_len)
@@ -91,11 +83,10 @@ class TestMHAOp(OpTest):
             self.check_output_with_place(place, atol=2e-1)
 
     def test_check_grad_normal(self):
-        pass
-        # place = core.CUDAPlace(0)
-        # if core.is_float16_supported(place):
-        #     self.check_grad_with_place(
-        #         place, ['X', 'Y'], 'Out', max_relative_error=1.0)
+        place = core.CUDAPlace(0)
+        if core.is_float16_supported(place):
+            self.check_grad_with_place(
+                place, ['Q', 'K', 'V', 'W'], 'O', max_relative_error=1.0)
 
     def _get_attn_output(self, q, k, v, wq, wk, wv, wo, seq_len):
 
@@ -103,7 +94,7 @@ class TestMHAOp(OpTest):
         vec_size = self.attrs["attn_vec_size"]
         proj_size = vec_size // nheads
         sm_scaler = self.attrs["attn_sm_scaler"]
-        
+
         q_bar = q.reshape((-1, seq_len, vec_size))
         k_bar = k.reshape((-1, seq_len, vec_size))
         v_bar = v.reshape((-1, seq_len, vec_size))
@@ -117,25 +108,11 @@ class TestMHAOp(OpTest):
 
         h_bar = np.matmul(alpha, v_bar).transpose(0, 2, 1, 3).reshape((-1, seq_len, vec_size))
         out = np.matmul(h_bar, wo)
-        return out
+        return out.reshape((-1, self.attrs["attn_beam_size"], seq_len, vec_size))
 
     def _softmax(self, x):
-        e_x = np.exp(x - np.max(x, axis=0))
-        return e_x / e_x.sum(axis=0)
-        # nheads = self.attrs["attn_heads"]
-        # for i in range(nheads):
-        #     q_bar = np.dot(wq[i,:,:], q)
-        #     k_bar = np.dot(wk[i,:,:], k)
-        #     v_bar = np.dot(wv[i,:,:], v)
-
-        #     beta = scaler * np.dot(k_bar.transpose(), q_bar)
-        #     alpha = softmax(beta)
-
-        #     h_bar = np.dot(v_bar, alpha)
-        #     h = np.dot(wo[i,:,:], h_bar)
-        #     out = np.add(out, h)
-
-        # return out
+        e_x = np.exp(x - np.max(x, axis=3, keepdims=True))
+        return e_x / e_x.sum(axis=3, keepdims=True)
 
     # def test_check_grad_ingore_x(self):
     #     place = core.CUDAPlace(0)
