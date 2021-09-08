@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <tuple>
-#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace platform {
