@@ -116,10 +116,10 @@ def find_best_compatible_distributed_operator_impl(name, op_dist_attr,
     return best_compatible_impl, idx
 
 
-def set_distributed_attr_for_var(op_dist_attr, var, src_var):
+def set_distributed_attr_for_var(src_op_dist_attr, var, src_var):
     import copy
 
-    auto_paralle_context = op_dist_attr.get_owner_context()
+    auto_paralle_context = src_op_dist_attr.get_owner_context()
     dist_attr = copy.deepcopy(
         auto_paralle_context.get_tensor_distributed_attr_for_program(src_var))
     dist_attr._owner_tensor = var
@@ -132,7 +132,6 @@ def set_distributed_attr_for_dist_op(dist_op, dst_block, src_op_dist_attr):
     from ..attribute import OperatorDistributedAttribute
 
     auto_paralle_context = src_op_dist_attr.get_owner_context()
-
     op_dist_attr = OperatorDistributedAttribute(dist_op, auto_paralle_context)
     auto_paralle_context._copy_distributed_attr_from_op_desc(dist_op.desc,
                                                              op_dist_attr)
