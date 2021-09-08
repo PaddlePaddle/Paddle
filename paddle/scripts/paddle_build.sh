@@ -228,6 +228,7 @@ function cmake_base() {
         -DWITH_ARM=${WITH_ARM:-OFF}
         -DWITH_ASCEND=${WITH_ASCEND:-OFF}
         -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF}
+        -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
         -DWITH_STRIP=${WITH_STRIP:-ON}
         -DON_INFER=${ON_INFER:-OFF}
     ========================================
@@ -269,6 +270,7 @@ EOF
         -DWITH_ARM=${WITH_ARM:-OFF} \
         -DWITH_ASCEND=${WITH_ASCEND:-OFF} \
         -DWITH_ASCEND_CL=${WITH_ASCEND_CL:-OFF} \
+        -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF} \
         -DWITH_STRIP=${WITH_STRIP:-ON} \
         -DON_INFER=${ON_INFER:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
@@ -946,7 +948,11 @@ function assert_file_diff_approvals() {
 
 
 function check_coverage() {
-    /bin/bash ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
+    if [ ${WITH_COVERAGE:-ON} == "ON" ] ; then
+        /bin/bash ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
+    else
+        echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
+    fi
 }
 
 
@@ -1168,13 +1174,13 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
-            if [ "$added_ut_error" != 0 ];then
-                echo "========================================"
-                echo "Added UT should not exceed 15 seconds"
-                echo "========================================"
-                exit 8;
-            fi
+            #ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            #if [ "$added_ut_error" != 0 ];then
+            #    echo "========================================"
+            #    echo "Added UT should not exceed 15 seconds"
+            #    echo "========================================"
+            #    exit 8;
+            #fi
         fi
 set +x
         EXIT_CODE=0;
@@ -1703,11 +1709,13 @@ set -x
 
 function parallel_test_base_npu() {
     # skipping if no NPU related files changed
-    if [ ${SKIL_NPU_TEST:-ON} == "ON" ] ; then
-        npu_cc_files=$(git diff --name-only ${BRANCH} | grep "op_npu.cc" | wc -l)
-        npu_py_files=$(git diff --name-only ${BRANCH} | grep "python/paddle/fluid/tests/unittests/npu" | wc -l)
-        if [ "${npu_cc_files}" -eq 0 ] && [ "${npu_py_files}" -eq 0 ] ; then
-            echo "NO NPU operators files changed, skip NPU unit tests"
+    if [ ${SKIP_NPU_TEST:-ON} == "ON" ] ; then
+        fetch_upstream_develop_if_not_exist
+        git diff --name-only remotes/upstream/$BRANCH
+        npu_cc_changes=$(git diff --name-only remotes/upstream/$BRANCH | grep "op_npu.cc" || true)
+        npu_py_changes=$(git diff --name-only remotes/upstream/$BRANCH | grep "op_npu.py" || true)
+        if [ -z "${npu_cc_changes}" ] && [ -z "${npu_py_changes}" ] ; then
+            echo "NO NPU operators files changed, skip NPU unit tests!"
             exit 0
         fi
     fi
