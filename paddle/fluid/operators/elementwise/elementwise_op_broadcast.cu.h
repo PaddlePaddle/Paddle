@@ -199,8 +199,8 @@ struct StridesCalculation {
 template <typename InT, typename OutT, typename Functor, ElementwiseType ET,
           int VecSize, int kDims>
 struct BroadcastArgsWrapper {
-  using InVecType = platform::CudaAlignedVector<InT, VecSize>;
-  using OutVecType = platform::CudaAlignedVector<OutT, VecSize>;
+  using InVecType = platform::AlignedVector<InT, VecSize>;
+  using OutVecType = platform::AlignedVector<OutT, VecSize>;
 
   OutT *out_data;
   OutVecType *vec_out_data;
@@ -320,7 +320,7 @@ template <typename InT, typename OutT, typename BroadcastArgsWrapper,
           ElementwiseType ET, int VecSize>
 __device__ inline void VectorizedBroadcastKernelImpl(
     BroadcastArgsWrapper broadcast_wrapper, int tid) {
-  using OutVecType = platform::CudaAlignedVector<OutT, VecSize>;
+  using OutVecType = platform::AlignedVector<OutT, VecSize>;
   OutVecType args_out;
   InT ins[ET];
   InT args[ET][VecSize];

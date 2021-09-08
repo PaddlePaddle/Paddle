@@ -77,9 +77,9 @@ __global__ void DequantizeOneScaleQuantAxis1(const T* in, const T* scale,
 template <typename T>
 __global__ void DequantizeTwoScale(const T* in, const T* scale_one,
                                    const T* scale_two, T max_range, int num,
-                                   int batch_size, int channel, T* out) {
+                                   int iter_size, int channel, T* out) {
   int tid = threadIdx.x;
-  int channel_size = num / (batch_size * channel);
+  int channel_size = num / (iter_size * channel);
   int scale_index = blockIdx.x % channel;
   const T* in_c = in + blockIdx.x * channel_size;
   T* out_c = out + blockIdx.x * channel_size;
@@ -93,7 +93,7 @@ struct ChannelDequantizeFunctor<platform::CUDADeviceContext, T> {
   void operator()(const platform::CUDADeviceContext& dev_ctx,
                   const framework::Tensor* in, const framework::Tensor** scales,
                   const int scale_num, T max_range, const int quant_axis,
-                  framework::Tensor* out) {
+                  const int x_num_col_dims, framework::Tensor* out) {
     auto in_dims = in->dims();
     const T* in_data = in->data<T>();
     T* out_data = out->mutable_data<T>(dev_ctx.GetPlace());
@@ -116,14 +116,17 @@ struct ChannelDequantizeFunctor<platform::CUDADeviceContext, T> {
     } else if (scale_num == 2) {
       // Not need to consider quant_axis
       int num = in->numel();
-      int batch_size = in->dims()[0];
-      int channel = in->dims()[1];
+      int iter_size = 1;
+      for (int i = 0; i < x_num_col_dims; i++) {
+        iter_size *= in->dims()[i];
+      }
+      int channel = in->dims()[x_num_col_dims];
       const T* scale_one = scales[0]->data<T>();
       const T* scale_two = scales[1]->data<T>();
       int block = 1024;
-      int grid = batch_size * channel;
+      int grid = iter_size * channel;
       DequantizeTwoScale<T><<<grid, block, 0, dev_ctx.stream()>>>(
-          in_data, scale_one, scale_two, max_range, num, batch_size, channel,
+          in_data, scale_one, scale_two, max_range, num, iter_size, channel,
           out_data);
     }
   }

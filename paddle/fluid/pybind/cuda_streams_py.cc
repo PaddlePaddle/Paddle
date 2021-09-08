@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/stream/cuda_stream.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
@@ -331,7 +332,7 @@ void BindCudaStream(py::module *m_ptr) {
            [](paddle::platform::CudaEvent &self, bool enable_timing,
               bool blocking, bool interprocess) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-             unsigned int flags = platform::get_cuda_flags(
+             unsigned int flags = platform::GenerateDeviceEventFlag(
                  enable_timing, blocking, interprocess);
              new (&self) paddle::platform::CudaEvent(flags);
 #else
