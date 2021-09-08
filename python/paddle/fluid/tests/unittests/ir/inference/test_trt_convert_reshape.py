@@ -159,8 +159,6 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-        self.trt_param.max_batch_size = 9
-
         if attrs[0]['shape'][0] != 1 or self.dims == 1:
             pass
         else:
