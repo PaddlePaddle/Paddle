@@ -56,56 +56,84 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
         def generate_variance(attrs: List[Dict[str, Any]], batch):
             return np.full((3), 1.2).astype("float32")
 
-        for dims in [2, 3, 4]:
-            for batch in [1, 2, 4]:
-                for epsilon in [1e-6, 1e-5, 1e-4]:
-                    for data_layout in ["NCHW"]:
-                        self.dims = dims
-                        dics = [{
-                            "epsilon": epsilon,
-                            "data_layout": data_layout,
-                            "is_test": True,
-                            "trainable_statistics": False
-                        }, {}]
-                        ops_config = [{
-                            "op_type": "batch_norm",
-                            "op_inputs": {
-                                "X": ["batch_norm_input"],
-                                "Bias": ["Bias"],
-                                "Mean": ["Mean"],
-                                "Scale": ["Scale"],
-                                "Variance": ["Variance"]
-                            },
-                            "op_outputs": {
-                                "Y": ["batch_norm_out"],
-                                "MeanOut": ["Mean"],
-                                "VarianceOut": ["Variance"],
-                                "SavedMean": ["SavedMean"],
-                                "SavedVariance": ["SavedVariance"]
-                            },
-                            "op_attrs": dics[0]
-                        }]
-                        ops = self.generate_op_config(ops_config)
-                        program_config = ProgramConfig(
-                            ops=ops,
-                            weights={
-                                "Bias": TensorConfig(data_gen=partial(
-                                    generate_bias, dics, batch)),
-                                "Mean": TensorConfig(data_gen=partial(
-                                    generate_mean, dics, batch)),
-                                "Scale": TensorConfig(data_gen=partial(
-                                    generate_scale, dics, batch)),
-                                "Variance": TensorConfig(data_gen=partial(
-                                    generate_variance, dics, batch))
-                            },
-                            inputs={
-                                "batch_norm_input":
-                                TensorConfig(data_gen=partial(generate_input1,
-                                                              dics, batch))
-                            },
-                            outputs=["batch_norm_out"])
+        def generate_MomentumTensor(attrs: List[Dict[str, Any]], batch):
+            return np.full((3), 0.9).astype("float32")
 
-                        yield program_config
+        for dims in [2, 3, 4]:
+            for num_input in [0, 1]:
+                for batch in [1, 2, 4]:
+                    for epsilon in [1e-6, 1e-5, 1e-4]:
+                        for data_layout in ["NCHW"]:
+                            for momentum in [0.9, 0.8]:
+                                self.num_input = num_input
+                                self.dims = dims
+                                dics = [{
+                                    "epsilon": epsilon,
+                                    "data_layout": data_layout,
+                                    "momentum": momentum,
+                                    "is_test": True,
+                                    "trainable_statistics": False
+                                }, {}]
+                                dics_intput = [{
+                                    "X": ["batch_norm_input"],
+                                    "Bias": ["Bias"],
+                                    "Mean": ["Mean"],
+                                    "Scale": ["Scale"],
+                                    "Variance": ["Variance"],
+                                    "MomentumTensor": ["MomentumTensor"]
+                                }, {
+                                    "X": ["batch_norm_input"],
+                                    "Bias": ["Bias"],
+                                    "Mean": ["Mean"],
+                                    "Scale": ["Scale"],
+                                    "Variance": ["Variance"]
+                                }]
+                                dics_intputs = [{
+                                    "Bias": TensorConfig(data_gen=partial(
+                                        generate_bias, dics, batch)),
+                                    "Mean": TensorConfig(data_gen=partial(
+                                        generate_mean, dics, batch)),
+                                    "Scale": TensorConfig(data_gen=partial(
+                                        generate_scale, dics, batch)),
+                                    "Variance": TensorConfig(data_gen=partial(
+                                        generate_variance, dics, batch)),
+                                    "MomentumTensor":
+                                    TensorConfig(data_gen=partial(
+                                        generate_MomentumTensor, dics, batch)),
+                                }, {
+                                    "Bias": TensorConfig(data_gen=partial(
+                                        generate_bias, dics, batch)),
+                                    "Mean": TensorConfig(data_gen=partial(
+                                        generate_mean, dics, batch)),
+                                    "Scale": TensorConfig(data_gen=partial(
+                                        generate_scale, dics, batch)),
+                                    "Variance": TensorConfig(data_gen=partial(
+                                        generate_variance, dics, batch))
+                                }]
+                                ops_config = [{
+                                    "op_type": "batch_norm",
+                                    "op_inputs": dics_intput[num_input],
+                                    "op_outputs": {
+                                        "Y": ["batch_norm_out"],
+                                        "MeanOut": ["Mean"],
+                                        "VarianceOut": ["Variance"],
+                                        "SavedMean": ["SavedMean"],
+                                        "SavedVariance": ["SavedVariance"]
+                                    },
+                                    "op_attrs": dics[0]
+                                }]
+                                ops = self.generate_op_config(ops_config)
+                                program_config = ProgramConfig(
+                                    ops=ops,
+                                    weights=dics_intputs[num_input],
+                                    inputs={
+                                        "batch_norm_input": TensorConfig(
+                                            data_gen=partial(generate_input1,
+                                                             dics, batch))
+                                    },
+                                    outputs=["batch_norm_out"])
+
+                                yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
@@ -159,7 +187,10 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             # TODO: This is just the example, need to be fixed.
-            return 1, 2
+            if self.num_input == 0:
+                return 0, 3
+            else:
+                return 1, 2
 
         attrs = [
             program_config.ops[i].attrs
