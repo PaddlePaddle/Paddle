@@ -215,7 +215,8 @@ class Quant2Int8MkldnnPass(object):
         for op in graph.all_op_nodes():
             if op.op().has_attr("out_threshold"):
                 attr_scale = op.op().attr("out_threshold")
-                if attr_scale == 0.0: continue
+                if attr_scale == 0.0:
+                    continue
                 scale = np.array(1.0 / attr_scale).astype(np.float64)
                 scale[scale == np.Inf] = 0.0
                 scale_lod_tensor = self._convert_scale2tensor(scale)
@@ -559,15 +560,26 @@ class Quant2Int8MkldnnPass(object):
                     out_name = op.output(op_out_name)[0]
                     if out_name in self._var_quant_scales and predicate(op.op(
                     )):
-                        _, tensor = self._var_quant_scales[out_name]
+                        is_unsigned, tensor = self._var_quant_scales[out_name]
+                        if is_unsigned is False:
+                            # If the variable is signed, it means that the scales for this var
+                            # were computed for signed data, so the scale must be multiplied by 2
+                            # to fill the entire range of uint8
+                            scale = np.array(tensor) * 2
+                            tensor = self._convert_scale2tensor(
+                                scale.astype(np.float64))
                         self._var_quant_scales[out_name] = (True, tensor)
             return graph
 
-        conv_predicate = lambda op: op.attr("fuse_activation") in self._relu_ops
+        def conv_predicate(op):
+            return op.attr("fuse_activation") in self._relu_ops
+
         graph = _set_unsigned_scale(graph, self._conv_ops, "Output",
                                     conv_predicate)
 
-        fc_predicate = lambda op: op.attr("activation_type") in self._relu_ops
+        def fc_predicate(op):
+            return op.attr("activation_type") in self._relu_ops
+
         graph = _set_unsigned_scale(graph, self._fc_ops, "Out", fc_predicate)
 
         graph = _set_unsigned_scale(graph, self._relu_ops, 'Out',

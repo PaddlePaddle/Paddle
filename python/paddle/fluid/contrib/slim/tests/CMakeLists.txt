@@ -71,7 +71,7 @@ function(inference_quant2_int8_image_classification_test target quant_model_dir 
             ARGS --quant_model ${quant_model_dir}
                  --fp32_model ${fp32_model_dir}
                  --infer_data ${dataset_path}
-                 --batch_size 10
+                 --batch_size 50
                  --batch_num 2
                  --acc_diff_threshold 0.1)
 endfunction()
