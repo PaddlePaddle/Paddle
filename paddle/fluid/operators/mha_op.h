@@ -23,6 +23,31 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+class MHAMetaData {
+public:
+    static MHAMetaData& Instance() {
+        static MHAMetaData instance;
+        return instance;
+    }
+
+    MHAMetaData(MHAMetaData const&) = delete;
+    void operator=(MHAMetaData const&) = delete;
+
+    cudnnAttnDescriptor_t attn_desc = nullptr;
+    cudnnDropoutDescriptor_t attn_dropout_desc = nullptr;
+    cudnnDropoutDescriptor_t post_dropout_desc = nullptr;
+    cudnnSeqDataDescriptor_t q_desc = nullptr;
+    cudnnSeqDataDescriptor_t k_desc = nullptr;
+    cudnnSeqDataDescriptor_t v_desc = nullptr;
+    cudnnSeqDataDescriptor_t o_desc = nullptr;
+    void* workspace = nullptr;
+    void* reserve_space = nullptr;
+
+private:
+    MHAMetaData() {}
+
+};
+
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
@@ -56,23 +81,16 @@ class MHAKernel : public framework::OpKernel<T> {
     auto comp_prec = dtype == CUDNN_DATA_DOUBLE? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
 
     auto cudnn_handle = dev_ctx.cudnn_handle();
-    cudnnAttnDescriptor_t attn_desc = nullptr;
-    cudnnDropoutDescriptor_t attn_dropout_desc = nullptr;
-    cudnnDropoutDescriptor_t post_dropout_desc = nullptr;
-    cudnnSeqDataDescriptor_t q_desc = nullptr;
-    cudnnSeqDataDescriptor_t k_desc = nullptr;
-    cudnnSeqDataDescriptor_t v_desc = nullptr;
-    cudnnSeqDataDescriptor_t o_desc = nullptr;
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateAttnDescriptor(&attn_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateSeqDataDescriptor(&q_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateSeqDataDescriptor(&k_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateSeqDataDescriptor(&v_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateSeqDataDescriptor(&o_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateAttnDescriptor(&MHAMetaData::Instance().attn_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateSeqDataDescriptor(&MHAMetaData::Instance().q_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateSeqDataDescriptor(&MHAMetaData::Instance().k_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateSeqDataDescriptor(&MHAMetaData::Instance().v_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateSeqDataDescriptor(&MHAMetaData::Instance().o_desc));
 
     // Setup Attention Dropout
     if (attn_dropout_rate > 0.0) {
-        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateDropoutDescriptor(&attn_dropout_desc));
+        PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateDropoutDescriptor(&MHAMetaData::Instance().attn_dropout_desc));
 
         size_t dropout_buf_size;
         PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -81,16 +99,16 @@ class MHAKernel : public framework::OpKernel<T> {
         auto dropout_buf = memory::Alloc(dev_ctx, dropout_buf_size);
         PADDLE_ENFORCE_CUDA_SUCCESS(
             platform::dynload::cudnnSetDropoutDescriptor(
-            attn_dropout_desc, cudnn_handle, attn_dropout_rate, 
+            MHAMetaData::Instance().attn_dropout_desc, cudnn_handle, attn_dropout_rate, 
             static_cast<void*>(dropout_buf->ptr()), dropout_buf_size, 0));
     }
 
     // Setup Attention Desc
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnSetAttnDescriptor(
-          attn_desc, CUDNN_ATTN_QUERYMAP_ALL_TO_ONE, attn_heads, attn_sm_scaler,
+          MHAMetaData::Instance().attn_desc, CUDNN_ATTN_QUERYMAP_ALL_TO_ONE, attn_heads, attn_sm_scaler,
           dtype, comp_prec, CUDNN_DEFAULT_MATH,
-          attn_dropout_desc, post_dropout_desc,
+          MHAMetaData::Instance().attn_dropout_desc, MHAMetaData::Instance().post_dropout_desc,
           attn_vec_size, attn_vec_size, attn_vec_size,
           attn_q_proj_size, attn_k_proj_size, attn_v_proj_size, attn_o_proj_size,
           attn_max_qo_seq_len, attn_max_kv_seq_len, batch_size, attn_beam_size));
@@ -98,7 +116,7 @@ class MHAKernel : public framework::OpKernel<T> {
     size_t weights_size, wkspace_szie, reserve_size;
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnGetMultiHeadAttnBuffers(
-          cudnn_handle, attn_desc, &weights_size, &wkspace_szie, &reserve_size));
+          cudnn_handle, MHAMetaData::Instance().attn_desc, &weights_size, &wkspace_szie, &reserve_size));
     auto weight_buf = memory::Alloc(dev_ctx, weights_size);
     auto wkspace_buf = memory::Alloc(dev_ctx, wkspace_szie);
     auto reserve_buf = memory::Alloc(dev_ctx, reserve_size);
@@ -119,7 +137,7 @@ class MHAKernel : public framework::OpKernel<T> {
     dimA[CUDNN_SEQDATA_BATCH_DIM] = q->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnSetSeqDataDescriptor(
-        q_desc, dtype, CUDNN_SEQDATA_DIM_COUNT, dimA, axes,
+        MHAMetaData::Instance().q_desc, dtype, CUDNN_SEQDATA_DIM_COUNT, dimA, axes,
         batch_size*attn_beam_size, q_seq_size_arr.data(), nullptr));
 
     dimA[CUDNN_SEQDATA_VECT_DIM] = k->dims()[3];
@@ -128,7 +146,7 @@ class MHAKernel : public framework::OpKernel<T> {
     dimA[CUDNN_SEQDATA_BATCH_DIM] = k->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnSetSeqDataDescriptor(
-        k_desc, dtype, CUDNN_SEQDATA_DIM_COUNT, dimA, axes,
+        MHAMetaData::Instance().k_desc, dtype, CUDNN_SEQDATA_DIM_COUNT, dimA, axes,
         batch_size*attn_beam_size, k_seq_size_arr.data(), nullptr));
 
     dimA[CUDNN_SEQDATA_VECT_DIM] = v->dims()[3];
@@ -137,7 +155,7 @@ class MHAKernel : public framework::OpKernel<T> {
     dimA[CUDNN_SEQDATA_BATCH_DIM] = v->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnSetSeqDataDescriptor(
-        v_desc, dtype, CUDNN_SEQDATA_DIM_COUNT, dimA, axes,
+        MHAMetaData::Instance().v_desc, dtype, CUDNN_SEQDATA_DIM_COUNT, dimA, axes,
         batch_size*attn_beam_size, k_seq_size_arr.data(), nullptr));
 
     dimA[CUDNN_SEQDATA_VECT_DIM] = o->dims()[3];
@@ -146,7 +164,7 @@ class MHAKernel : public framework::OpKernel<T> {
     dimA[CUDNN_SEQDATA_BATCH_DIM] = o->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnSetSeqDataDescriptor(
-        o_desc, dtype, CUDNN_SEQDATA_DIM_COUNT, dimA, axes,
+        MHAMetaData::Instance().o_desc, dtype, CUDNN_SEQDATA_DIM_COUNT, dimA, axes,
         batch_size*attn_beam_size, q_seq_size_arr.data(), nullptr));
 
     std::vector<int> attn_low_windows = context.Attr<std::vector<int>>("attn_low_windows");
@@ -170,11 +188,11 @@ class MHAKernel : public framework::OpKernel<T> {
 
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnMultiHeadAttnForward(
-          cudnn_handle, attn_desc, -1,
+          cudnn_handle, MHAMetaData::Instance().attn_desc, -1,
           attn_low_windows.data(), attn_high_windows.data(),
-          q_seq_size_dev_ptr, k_seq_size_dev_ptr, q_desc, q_data, residuals,
-          k_desc, k_data, v_desc, v_data,
-          o_desc, o_data, weights_size, w_data,
+          q_seq_size_dev_ptr, k_seq_size_dev_ptr, MHAMetaData::Instance().q_desc, q_data, residuals,
+          MHAMetaData::Instance().k_desc, k_data, MHAMetaData::Instance().v_desc, v_data,
+          MHAMetaData::Instance().o_desc, o_data, weights_size, w_data,
           wkspace_szie, static_cast<void*>(wkspace_buf->ptr()),
           reserve_size, static_cast<void*>(reserve_buf->ptr())));
   }
