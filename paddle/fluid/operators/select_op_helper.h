@@ -37,13 +37,14 @@ inline int GetBranchNumber(const framework::LoDTensor &mask) {
   }
   // when platform::is_gpu_place(mask.place()) is ture
   std::unique_ptr<framework::LoDTensor> cpu_mask{new framework::LoDTensor()};
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_ASCEND_CL)
   framework::TensorCopySync(mask, platform::CPUPlace(), cpu_mask.get());
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(
-      "This version of PaddlePaddle does NOT support GPU, "
-      "but got GPU tensor 'Mask' in SelectInputOp or SelectOutputOp. "
-      "Please compile PaddlePaddle WITH_GPU first."));
+      "This version of PaddlePaddle does NOT support GPU/NPU, "
+      "but got GPU/NPU tensor 'Mask' in SelectInputOp or SelectOutputOp. "
+      "Please compile PaddlePaddle WITH_GPU/WITH_ASCEND_CL first."));
 #endif
   return cpu_mask->data<int>()[0];
 }
