@@ -962,6 +962,8 @@ def svd(x, full_matrices=False, name=None):
             which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`. K = min(M, N).
             If full_matrices = False, svd op will use a economic method to store U and V. 
             which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`. K = min(M, N).
+        name (str, optional): Name for the operation (optional, default is None). 
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tuple of 3 tensors: (U, S, VH). VH is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
@@ -970,7 +972,6 @@ def svd(x, full_matrices=False, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
             x = paddle.to_tensor([[1.0, 2.0], [1.0, 3.0], [4.0, 6.0]]).astype('float64')
             x = x.reshape([3, 2])
