@@ -36,7 +36,7 @@ from paddle.distributed.auto_parallel.utils import print_program_with_distribute
 from paddle.distributed.auto_parallel.context import DistributedContext
 
 paddle.enable_static()
-_global_parallel_stratergy = None
+_global_parallel_strategy = None
 _global_process_mesh = None
 ROOT_MESH = auto.ProcessMesh([[0, 1, 2, 3], [4, 5, 6, 7]])
 
@@ -106,10 +106,10 @@ class MultiHeadAttention(nn.Layer):
         """
         q = self.q_proj(query)
 
-        if _global_parallel_stratergy == "mp":
+        if _global_parallel_strategy == "mp":
             auto.shard_tensor(
                 self.q_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
-        elif _global_parallel_stratergy == "dp_mp":
+        elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
                 self.q_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
 
@@ -143,19 +143,19 @@ class MultiHeadAttention(nn.Layer):
         """
         k = self.k_proj(key)
 
-        if _global_parallel_stratergy == "mp":
+        if _global_parallel_strategy == "mp":
             auto.shard_tensor(
                 self.k_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
-        elif _global_parallel_stratergy == "dp_mp":
+        elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
                 self.k_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
 
         v = self.v_proj(value)
 
-        if _global_parallel_stratergy == "mp":
+        if _global_parallel_strategy == "mp":
             auto.shard_tensor(
                 self.v_proj.weight, _global_process_mesh, dim_mapping=[-1, 0])
-        elif _global_parallel_stratergy == "dp_mp":
+        elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
                 self.v_proj.weight, _global_process_mesh, dim_mapping=[-1, 1])
 
@@ -236,11 +236,11 @@ class MultiHeadAttention(nn.Layer):
         # project to output
         out = self.out_proj(out)
 
-        if _global_parallel_stratergy == "mp":
+        if _global_parallel_strategy == "mp":
             auto.shard_tensor(
                 self.out_proj.weight, _global_process_mesh,
                 dim_mapping=[0, -1])
-        elif _global_parallel_stratergy == "dp_mp":
+        elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
                 self.out_proj.weight, _global_process_mesh,
                 dim_mapping=[1, -1])
@@ -409,17 +409,17 @@ class TransformerDecoderLayer(nn.Layer):
         if self.normalize_before:
             tgt = self.norm2(tgt)
 
-        if _global_parallel_stratergy == "mp":
+        if _global_parallel_strategy == "mp":
             auto.shard_tensor(
                 self.linear1.weight, _global_process_mesh, dim_mapping=[-1, 0])
-        elif _global_parallel_stratergy == "dp_mp":
+        elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
                 self.linear1.weight, _global_process_mesh, dim_mapping=[-1, 1])
 
-        if _global_parallel_stratergy == "mp":
+        if _global_parallel_strategy == "mp":
             auto.shard_tensor(
                 self.linear2.weight, _global_process_mesh, dim_mapping=[0, -1])
-        elif _global_parallel_stratergy == "dp_mp":
+        elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
                 self.linear2.weight, _global_process_mesh, dim_mapping=[1, -1])
 
@@ -482,12 +482,12 @@ class GPTEmbeddings(nn.Layer):
 
         input_embedings = self.word_embeddings(input_ids)
 
-        if _global_parallel_stratergy == "mp":
+        if _global_parallel_strategy == "mp":
             auto.shard_tensor(
                 self.word_embeddings.weight,
                 _global_process_mesh,
                 dim_mapping=[0, -1])
-        elif _global_parallel_stratergy == "dp_mp":
+        elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
                 self.word_embeddings.weight,
                 _global_process_mesh,
@@ -715,10 +715,10 @@ def gpt_pretrain_forward(train_program, start_program):
         loss_mask = static.data(
             name="loss_mask", shape=[batch_size, sequence_len], dtype='float64')
 
-        if _global_parallel_stratergy == "dp":
+        if _global_parallel_strategy == "dp":
             auto.shard_tensor(
                 input_ids, _global_process_mesh, dim_mapping=[0, -1])
-        elif _global_parallel_stratergy == "dp_mp":
+        elif _global_parallel_strategy == "dp_mp":
             auto.shard_tensor(
                 input_ids, _global_process_mesh, dim_mapping=[0, -1])
 
@@ -750,8 +750,8 @@ def gpt_pretrain_forward(train_program, start_program):
 
 class TestGPTAutoCompletion(unittest.TestCase):
     def test_gpt_dp(self):
-        global _global_parallel_stratergy
-        _global_parallel_stratergy = "dp"
+        global _global_parallel_strategy
+        _global_parallel_strategy = "dp"
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh(
             mesh=[0, 1, 2, 3], parent=ROOT_MESH)
@@ -770,8 +770,8 @@ class TestGPTAutoCompletion(unittest.TestCase):
                                                dist_context))
 
     def test_gpt_mp(self):
-        global _global_parallel_stratergy
-        _global_parallel_stratergy = "mp"
+        global _global_parallel_strategy
+        _global_parallel_strategy = "mp"
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh(
             mesh=[0, 1, 2, 3], parent=ROOT_MESH)
@@ -790,8 +790,8 @@ class TestGPTAutoCompletion(unittest.TestCase):
                                                dist_context))
 
     def test_gpt_dp_mp(self):
-        global _global_parallel_stratergy
-        _global_parallel_stratergy = "dp_mp"
+        global _global_parallel_strategy
+        _global_parallel_strategy = "dp_mp"
         global _global_process_mesh
         _global_process_mesh = auto.ProcessMesh(
             mesh=[[0, 1, 2, 3], [4, 5, 6, 7]], parent=ROOT_MESH)

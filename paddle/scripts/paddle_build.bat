@@ -378,6 +378,7 @@ set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
 set UPLOAD_TP_FILE=OFF
 
 if not exist %THIRD_PARTY_PATH% (
+    echo There is no usable third_party cache locally, will download from bos.
     pip install wget
     if not exist %THIRD_PARTY_HOME% mkdir "%THIRD_PARTY_HOME%"
     cd %THIRD_PARTY_HOME%
@@ -391,13 +392,14 @@ if not exist %THIRD_PARTY_PATH% (
         ) else (
             echo Get third party failed, reason: extract failed
         )
+        del %THIRD_PARTY_HOME%\%md5%.tar.gz
     ) else (
         echo Get third party failed, reason: download failed
     )
     if not exist %THIRD_PARTY_PATH% ( set UPLOAD_TP_FILE=ON ) 
     cd %work_dir%\%BUILD_DIR%
 ) else (
-    echo Get reusable third_party cache
+    echo Found reusable third_party cache locally, will reuse it.
 )
 
 :cmake_impl
@@ -460,6 +462,7 @@ if %ERRORLEVEL% NEQ 0 (
 echo Build third_party successfully!
 
 set build_times=1
+
 :build_paddle
 :: reset clcache zero stats for collect PR's actual hit rate
 rem clcache.exe -z
@@ -535,10 +538,10 @@ if %UPLOAD_TP_FILE%==ON (
             ) else (
                 echo Failed upload third party to bce, reason: upload failed
             )
-            del %sub_dir%\%md5%.tar.gz
         ) else (
             echo Failed upload third party to bce, reason: compress failed
         )
+        del %md5%.tar.gz
     ) else (
         echo Failed upload third party to bce, reason: install bce failed
     )
