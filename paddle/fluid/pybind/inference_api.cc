@@ -523,6 +523,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("locked") = false, py::arg("autotune") = true,
            py::arg("autotune_file") = "", py::arg("precision") = "int16",
            py::arg("adaptive_seqlen") = false)
+      .def("set_xpu_device_id", &AnalysisConfig::SetXpuDeviceId,
+           py::arg("device_id") = 0)
       .def("enable_npu", &AnalysisConfig::EnableNpu, py::arg("device_id") = 0)
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
       .def("use_gpu", &AnalysisConfig::use_gpu)
