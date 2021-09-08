@@ -39,8 +39,8 @@ namespace operators {
  */
 inline platform::GpuLaunchConfig Get1DBlocksAnd2DGrids(
     const platform::CUDADeviceContext &ctx, const uint32_t rows,
-    const uint32_t cols, const int VecSize) {
-  const uint32_t tmp_cols = cols / VecSize;
+    const uint32_t cols, const int vec_size) {
+  const uint32_t tmp_cols = cols / vec_size;
   int threads = std::max(
       static_cast<uint32_t>(32),
       std::min(tmp_cols, static_cast<uint32_t>(ctx.GetMaxThreadsPerBlock())));
@@ -54,19 +54,26 @@ inline platform::GpuLaunchConfig Get1DBlocksAnd2DGrids(
   return config;
 }
 
-__forceinline__ __device__ void Rand1(curandStatePhilox4_32_10_t *state,
-                                      float *data) {
+template <int VecSize>
+__forceinline__ __device__ void RandVec(curandStatePhilox4_32_10_t *state,
+                                        float *data);
+
+template <>
+__forceinline__ __device__ void RandVec<1>(curandStatePhilox4_32_10_t *state,
+                                           float *data) {
   data[0] = curand_uniform(state);
 }
 
-__forceinline__ __device__ void Rand2(curandStatePhilox4_32_10_t *state,
-                                      float *data) {
+template <>
+__forceinline__ __device__ void RandVec<2>(curandStatePhilox4_32_10_t *state,
+                                           float *data) {
   data[0] = curand_uniform(state);
   data[1] = curand_uniform(state);
 }
 
-__forceinline__ __device__ void Rand4(curandStatePhilox4_32_10_t *state,
-                                      float *data) {
+template <>
+__forceinline__ __device__ void RandVec<4>(curandStatePhilox4_32_10_t *state,
+                                           float *data) {
   float4 rand4 = curand_uniform4(state);
   data[0] = rand4.x;
   data[1] = rand4.y;
@@ -74,25 +81,11 @@ __forceinline__ __device__ void Rand4(curandStatePhilox4_32_10_t *state,
   data[3] = rand4.z;
 }
 
-__forceinline__ __device__ void Rand8(curandStatePhilox4_32_10_t *state,
-                                      float *data) {
-  Rand4(state, data);
-  Rand4(state, data + 4);
-}
-
-__forceinline__ __device__ void RandVec(curandStatePhilox4_32_10_t *state,
-                                        float *data, const int VecSize) {
-  if (VecSize == 1) {
-    Rand1(state, data);
-  } else if (VecSize == 2) {
-    Rand2(state, data);
-  } else if (VecSize == 4) {
-    Rand4(state, data);
-  } else if (VecSize == 8) {
-    Rand8(state, data);
-  } else {
-    return;
-  }
+template <>
+__forceinline__ __device__ void RandVec<8>(curandStatePhilox4_32_10_t *state,
+                                           float *data) {
+  RandVec<4>(state, data);
+  RandVec<4>(state, data + 4);
 }
 
 }  // namespace operators

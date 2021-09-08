@@ -54,7 +54,7 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
   MaskStoreT mask_vec;
   if (!is_test) {
     float rand[VecSize];
-    RandVec(state, rand, VecSize);
+    RandVec<VecSize>(state, rand);
 #pragma unroll
     for (int ii = 0; ii < VecSize; ii++) {
       mask_vec[ii] = static_cast<MaskType>(rand[ii] >= dropout_prob);
@@ -106,15 +106,11 @@ __global__ void FusedResidualDropoutBias(
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, increment, &state);
 
-  T factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
-  if (!is_upscale_in_train) {
-    factor = static_cast<T>(1.0f);
-  }
+  T factor = is_upscale_in_train ? static_cast<T>(1.0f / (1.0f - dropout_prob))
+                                 : static_cast<T>(1.0f);
   if (is_test) {
-    factor = static_cast<T>(1.0f - dropout_prob);
-    if (is_upscale_in_train) {
-      factor = static_cast<T>(1.0f);
-    }
+    factor = is_upscale_in_train ? static_cast<T>(1.0f)
+                                 : static_cast<T>(1.0f - dropout_prob);
   }
   for (int r = row_id; r < rows; r += blockDim.y * gridDim.y) {
     for (int i = col_id * VecSize; i < cols;
@@ -287,9 +283,9 @@ void LaunchResidualDropoutBiasGrad(const T *dout, const MaskType *mask,
   const int VecSize = MAX_CACHE_BYTES / sizeof(T);
   int real_vec_size = cols % VecSize == 0 ? VecSize : 1;
   if (dbias != nullptr) {
-    auto threads = std::min(cols / real_vec_size, static_cast<uint32_t>(8));
-    auto blocks =
-        std::max((uint32_t)1, (cols / real_vec_size + threads - 1) / threads);
+    const auto threads = 8;
+    auto blocks = std::max(static_cast<uint32_t>(1),
+                           (cols / real_vec_size + threads - 1) / threads);
     dim3 block_dim(threads, 128, 1);
     dim3 grid_dim(blocks, 1, 1);
     if (cols % VecSize == 0) {
