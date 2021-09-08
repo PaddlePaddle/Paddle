@@ -49,7 +49,7 @@ namespace framework {
 class RuntimeInferShapeContext : public InferShapeContext {
  public:
   RuntimeInferShapeContext(const OperatorBase& op, const RuntimeContext& ctx)
-      : op_(op), ctx_(ctx) {}
+      : op_(op), ctx_(ctx), can_skip_lod_(false) {}
 
   bool HasInput(const std::string& name) const override {
     // has only one input
