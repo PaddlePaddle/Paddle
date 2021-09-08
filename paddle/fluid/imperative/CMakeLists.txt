@@ -29,6 +29,12 @@ if(NOT WIN32)
     endif()
     cc_library(data_loader SRCS data_loader.cc DEPS enforce)
 endif(NOT WIN32)
+if(WITH_GLOO)
+    cc_library(imperative_gloo_context SRCS gloo_context.cc DEPS collective_helper device_context tensor var_type_traits)
+    if ( WIN32 OR (NOT (WITH_NCCL OR WITH_RCCL OR WITH_XPU_BKCL) ))
+        cc_library(reducer SRCS reducer.cc DEPS layer)
+    endif()
+endif()
 
 cc_library(gradient_accumulator SRCS gradient_accumulator.cc DEPS blas operator lod_tensor selected_rows selected_rows_functor var_type_traits layer math_function)
 

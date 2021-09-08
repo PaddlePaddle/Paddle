@@ -18,7 +18,7 @@ import warnings
 import paddle
 import os
 import numpy as np
-from paddle.fluid.framework import dygraph_only
+from paddle.fluid.framework import dygraph_only, _global_flags
 from paddle.fluid import compiler
 from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
 from .strategy_compiler import StrategyCompiler
@@ -27,6 +27,7 @@ from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
+from paddle.fluid.ir import apply_build_strategy
 from . import topology as tp
 from .topology import ParallelMode
 from ..meta_parallel import TensorParallel, model_parallel_random_seed
@@ -35,6 +36,33 @@ from ..meta_optimizers import HybridParallelOptimizer
 from ..meta_optimizers import HybridParallelGradScaler
 
 __all__ = []
+
+
+def apply_ir_passes(main_program, startup_program, config):
+    build_strategy = config._user_defined_strategy.build_strategy._copy()
+    if not _global_flags()['FLAGS_apply_pass_to_program']:
+        return build_strategy
+
+    pipeline_opt = getattr(main_program, "_pipeline_opt", {})
+    if pipeline_opt:
+        main_program = pipeline_opt["section_program"]
+        startup_program = startup_program._pipeline_opt["startup_program"]
+
+    pass_attrs = {"use_cuda": config._is_collective}
+    fuse_all_reduce = config._user_defined_strategy.fuse_all_reduce_ops
+    if fuse_all_reduce and build_strategy.fuse_all_optimizer_ops:
+        # FIXME(zjl): currently, fuse_all_optimizer_ops
+        # have conflict with fuse_all_reduce_ops because 
+        # RawProgramOptimizer also inserts coalesce_tensor 
+        # into program. These two procedures may conflict  
+        # in which vars are to be fused. 
+        warnings.warn(
+            'Currently, the fuse_all_optimizer_ops pass has conflict with fuse_all_reduce_ops pass. Disable the fuse_all_optimizer_ops pass temporarily.'
+        )
+        build_strategy.fuse_all_optimizer_ops = False
+
+    return apply_build_strategy(main_program, startup_program, build_strategy,
+                                pass_attrs)
 
 
 def _inited_runtime_handler_(func):
@@ -1475,6 +1503,8 @@ class Fleet(object):
             # i.e. users can not modify current computation graph anymore
             context["graph_optimize_ops"] = optimize_ops
             context["graph_optimize_grads"] = params_grads
+        else:
+            apply_ir_passes(loss.block.program, startup_program, self)
 
         program = paddle.static.default_main_program()
         opt_info = {}
