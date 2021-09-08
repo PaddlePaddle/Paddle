@@ -44,41 +44,39 @@ class DeformableConvPlugin : public nvinfer1::IPluginV2Ext {
   DeformableConvPlugin(const void* data, size_t length);
   ~DeformableConvPlugin() override;
 
-  const char* getPluginType() const override;
-  const char* getPluginVersion() const override;
-  int getNbOutputs() const override;
+  const char* getPluginType() const TRT_NOEXCEPT override;
+  const char* getPluginVersion() const TRT_NOEXCEPT override;
+  int getNbOutputs() const TRT_NOEXCEPT override;
   nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims* inputs,
-                                     int nb_input_dims) override;
-  bool supportsFormat(nvinfer1::DataType type,
-                      nvinfer1::TensorFormat format) const override;
-  size_t getWorkspaceSize(int max_batch_size) const override;
+                                     int nb_input_dims) TRT_NOEXCEPT override;
+  bool supportsFormat(nvinfer1::DataType type, nvinfer1::TensorFormat format)
+      const TRT_NOEXCEPT override;
+  size_t getWorkspaceSize(int max_batch_size) const TRT_NOEXCEPT override;
 #if IS_TRT_VERSION_LT(8000)
   int enqueue(int batch_size, const void* const* inputs, void** outputs,
 #else
   int enqueue(int batch_size, const void* const* inputs, void* const* outputs,
 #endif
-              void* workspace, cudaStream_t stream) override;
-  template <typename T>
-  int enqueue_impl(int batch_size, const void* const* inputs, void** outputs,
-                   void* workspace, cudaStream_t stream);
-  int initialize() override;
-  void terminate() override;
-  size_t getSerializationSize() const override;
-  void serialize(void* buffer) const override;
-  void destroy() override;
-  void setPluginNamespace(const char* lib_namespace) override;
-  const char* getPluginNamespace() const override;
-
-  nvinfer1::DataType getOutputDataType(int index,
-                                       const nvinfer1::DataType* input_type,
-                                       int nb_inputs) const override;
+              void* workspace, cudaStream_t stream) TRT_NOEXCEPT override;
+  int initialize() TRT_NOEXCEPT override;
+  void terminate() TRT_NOEXCEPT override;
+  size_t getSerializationSize() const TRT_NOEXCEPT override;
+  void serialize(void* buffer) const TRT_NOEXCEPT override;
+  void destroy() TRT_NOEXCEPT override;
+  void setPluginNamespace(const char* lib_namespace) TRT_NOEXCEPT override;
+  const char* getPluginNamespace() const TRT_NOEXCEPT override;
+  nvinfer1::DataType getOutputDataType(
+      int index, const nvinfer1::DataType* input_type,
+      int nb_inputs) const TRT_NOEXCEPT override;
   bool isOutputBroadcastAcrossBatch(int output_index,
                                     const bool* input_is_broadcast,
-                                    int nb_inputs) const override;
-  bool canBroadcastInputAcrossBatch(int input_index) const override;
+                                    int nb_inputs) const TRT_NOEXCEPT override;
+  bool canBroadcastInputAcrossBatch(int input_index) const
+      TRT_NOEXCEPT override;
 
   void attachToContext(cudnnContext* cudnnContext, cublasContext* cublasContext,
-                       nvinfer1::IGpuAllocator* gpuAllocator) override;
+                       nvinfer1::IGpuAllocator* gpuAllocator)
+      TRT_NOEXCEPT override;
 
   void configurePlugin(const nvinfer1::Dims* input_dims, int nb_inputs,
                        const nvinfer1::Dims* output_dims, int nb_outputs,
@@ -87,10 +85,13 @@ class DeformableConvPlugin : public nvinfer1::IPluginV2Ext {
                        const bool* input_is_broadcast,
                        const bool* output_is_broadcast,
                        nvinfer1::PluginFormat float_format,
-                       int max_batct_size) override;
-  nvinfer1::IPluginV2Ext* clone() const override;
+                       int max_batct_size) TRT_NOEXCEPT override;
+  nvinfer1::IPluginV2Ext* clone() const TRT_NOEXCEPT override;
 
  private:
+  template <typename T>
+  int enqueue_impl(int batch_size, const void* const* inputs, void** outputs,
+                   void* workspace, cudaStream_t stream);
   nvinfer1::Weights copyToDevice(const void* hostData, size_t count);
   void serializeFromDevice(void** hostBuffer,
                            const nvinfer1::Weights& deviceWeights) const;
@@ -120,17 +121,18 @@ class DeformableConvPluginCreator : public nvinfer1::IPluginCreator {
   DeformableConvPluginCreator();
   ~DeformableConvPluginCreator() override = default;
 
-  void setPluginNamespace(const char* lib_namespace) override;
-  const char* getPluginNamespace() const override;
-  const char* getPluginName() const override;
-  const char* getPluginVersion() const override;
-  const nvinfer1::PluginFieldCollection* getFieldNames() override;
+  void setPluginNamespace(const char* lib_namespace) TRT_NOEXCEPT override;
+  const char* getPluginNamespace() const TRT_NOEXCEPT override;
+  const char* getPluginName() const TRT_NOEXCEPT override;
+  const char* getPluginVersion() const TRT_NOEXCEPT override;
+  const nvinfer1::PluginFieldCollection* getFieldNames() TRT_NOEXCEPT override;
 
   nvinfer1::IPluginV2Ext* createPlugin(
-      const char* name, const nvinfer1::PluginFieldCollection* fc) override;
-  nvinfer1::IPluginV2Ext* deserializePlugin(const char* name,
-                                            const void* serial_data,
-                                            size_t serial_length) override;
+      const char* name,
+      const nvinfer1::PluginFieldCollection* fc) TRT_NOEXCEPT override;
+  nvinfer1::IPluginV2Ext* deserializePlugin(
+      const char* name, const void* serial_data,
+      size_t serial_length) TRT_NOEXCEPT override;
 
  private:
   std::string namespace_;

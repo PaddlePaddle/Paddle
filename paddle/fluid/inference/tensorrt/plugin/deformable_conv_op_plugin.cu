@@ -136,16 +136,18 @@ DeformableConvPlugin::DeformableConvPlugin(const void* data, size_t length) {
 
 DeformableConvPlugin::~DeformableConvPlugin() {}
 
-const char* DeformableConvPlugin::getPluginType() const {
+const char* DeformableConvPlugin::getPluginType() const TRT_NOEXCEPT {
   return "deformable_conv_plugin";
 }
 
-const char* DeformableConvPlugin::getPluginVersion() const { return "1"; }
+const char* DeformableConvPlugin::getPluginVersion() const TRT_NOEXCEPT {
+  return "1";
+}
 
-int DeformableConvPlugin::getNbOutputs() const { return 1; }
+int DeformableConvPlugin::getNbOutputs() const TRT_NOEXCEPT { return 1; }
 
 nvinfer1::Dims DeformableConvPlugin::getOutputDimensions(
-    int index, const nvinfer1::Dims* inputs, int nb_input_dims) {
+    int index, const nvinfer1::Dims* inputs, int nb_input_dims) TRT_NOEXCEPT {
   assert(index == 0);
   assert(nb_inputs == 3);
   nvinfer1::Dims ret;
@@ -158,13 +160,14 @@ nvinfer1::Dims DeformableConvPlugin::getOutputDimensions(
   return ret;
 }
 
-bool DeformableConvPlugin::supportsFormat(nvinfer1::DataType type,
-                                          nvinfer1::TensorFormat format) const {
+bool DeformableConvPlugin::supportsFormat(
+    nvinfer1::DataType type, nvinfer1::TensorFormat format) const TRT_NOEXCEPT {
   return ((type == data_type_ || type == nvinfer1::DataType::kINT32) &&
           format == nvinfer1::TensorFormat::kLINEAR);
 }
 
-size_t DeformableConvPlugin::getWorkspaceSize(int max_batch_size) const {
+size_t DeformableConvPlugin::getWorkspaceSize(int max_batch_size) const
+    TRT_NOEXCEPT {
   int c_i = input_dim_[0], h_i = input_dim_[1], w_i = input_dim_[2];
   int k_h = kernel_dims_[2], k_w = kernel_dims_[3];
   int c_o = output_dim_[0], h_o = output_dim_[1], w_o = output_dim_[2];
@@ -180,7 +183,7 @@ int DeformableConvPlugin::enqueue(int batch_size, const void* const* inputs,
 #else
                                   void* const* outputs, void* workspace,
 #endif
-                                  cudaStream_t stream) {
+                                  cudaStream_t stream) TRT_NOEXCEPT {
   if (data_type_ == nvinfer1::DataType::kFLOAT) {
     return enqueue_impl<float>(batch_size, inputs, outputs, workspace, stream);
   } else if (data_type_ == nvinfer1::DataType::kHALF) {
@@ -382,11 +385,11 @@ int DeformableConvPlugin::enqueue_impl(int batch_size,
   }
 }
 
-int DeformableConvPlugin::initialize() { return 0; }
+int DeformableConvPlugin::initialize() TRT_NOEXCEPT { return 0; }
 
-void DeformableConvPlugin::terminate() {}
+void DeformableConvPlugin::terminate() TRT_NOEXCEPT {}
 
-size_t DeformableConvPlugin::getSerializationSize() const {
+size_t DeformableConvPlugin::getSerializationSize() const TRT_NOEXCEPT {
   size_t serialize_size = 0;
   serialize_size += SerializedSize(data_type_);
   serialize_size += SerializedSize(strides_);
@@ -406,7 +409,7 @@ size_t DeformableConvPlugin::getSerializationSize() const {
   return serialize_size;
 }
 
-void DeformableConvPlugin::serialize(void* buffer) const {
+void DeformableConvPlugin::serialize(void* buffer) const TRT_NOEXCEPT {
   SerializeValue(&buffer, data_type_);
   SerializeValue(&buffer, strides_);
   SerializeValue(&buffer, paddings_);
@@ -423,33 +426,37 @@ void DeformableConvPlugin::serialize(void* buffer) const {
   SerializeValue(&buffer, output_dim_);
 }
 
-void DeformableConvPlugin::destroy() {}
+void DeformableConvPlugin::destroy() TRT_NOEXCEPT {}
 
-void DeformableConvPlugin::setPluginNamespace(const char* lib_namespace) {
+void DeformableConvPlugin::setPluginNamespace(const char* lib_namespace)
+    TRT_NOEXCEPT {
   namespace_ = std::string(lib_namespace);
 }
 
-const char* DeformableConvPlugin::getPluginNamespace() const {
+const char* DeformableConvPlugin::getPluginNamespace() const TRT_NOEXCEPT {
   return namespace_.c_str();
 }
 
 nvinfer1::DataType DeformableConvPlugin::getOutputDataType(
-    int index, const nvinfer1::DataType* input_type, int nb_inputs) const {
+    int index, const nvinfer1::DataType* input_type,
+    int nb_inputs) const TRT_NOEXCEPT {
   return data_type_;
 }
 
 bool DeformableConvPlugin::isOutputBroadcastAcrossBatch(
-    int output_index, const bool* input_is_broadcast, int nb_inputs) const {
+    int output_index, const bool* input_is_broadcast,
+    int nb_inputs) const TRT_NOEXCEPT {
   return false;
 }
 
-bool DeformableConvPlugin::canBroadcastInputAcrossBatch(int input_index) const {
+bool DeformableConvPlugin::canBroadcastInputAcrossBatch(int input_index) const
+    TRT_NOEXCEPT {
   return false;
 }
 
 void DeformableConvPlugin::attachToContext(
     cudnnContext* cudnnContext, cublasContext* cublasContext,
-    nvinfer1::IGpuAllocator* gpuAllocator) {
+    nvinfer1::IGpuAllocator* gpuAllocator) TRT_NOEXCEPT {
   cublasHandle_ = cublasContext;
 }
 
@@ -459,7 +466,7 @@ void DeformableConvPlugin::configurePlugin(
     const nvinfer1::DataType* input_types,
     const nvinfer1::DataType* output_types, const bool* input_is_broadcast,
     const bool* output_is_broadcast, nvinfer1::PluginFormat float_format,
-    int max_batct_size) {
+    int max_batct_size) TRT_NOEXCEPT {
   assert(nb_inputs == 3);
   assert(nb_outputs == 1);
 
@@ -477,39 +484,40 @@ void DeformableConvPlugin::configurePlugin(
   }
 }
 
-nvinfer1::IPluginV2Ext* DeformableConvPlugin::clone() const {
+nvinfer1::IPluginV2Ext* DeformableConvPlugin::clone() const TRT_NOEXCEPT {
   return new DeformableConvPlugin(data_type_, weights_, kernel_dims_, strides_,
                                   paddings_, dilations_, groups_,
                                   deformable_groups_, im2col_step_, input_dim_,
                                   offset_dim_, mask_dim_, output_dim_);
 }
 
-DeformableConvPluginCreator::DeformableConvPluginCreator() {}
+DeformableConvPluginCreator::DeformableConvPluginCreator() TRT_NOEXCEPT {}
 
-void DeformableConvPluginCreator::setPluginNamespace(
-    const char* lib_namespace) {
+void DeformableConvPluginCreator::setPluginNamespace(const char* lib_namespace)
+    TRT_NOEXCEPT {
   namespace_ = std::string(lib_namespace);
 }
 
-const char* DeformableConvPluginCreator::getPluginNamespace() const {
+const char* DeformableConvPluginCreator::getPluginNamespace() const
+    TRT_NOEXCEPT {
   return namespace_.c_str();
 }
 
-const char* DeformableConvPluginCreator::getPluginName() const {
+const char* DeformableConvPluginCreator::getPluginName() const TRT_NOEXCEPT {
   return "deformable_conv_plugin";
 }
 
-const char* DeformableConvPluginCreator::getPluginVersion() const {
+const char* DeformableConvPluginCreator::getPluginVersion() const TRT_NOEXCEPT {
   return "1";
 }
 
 const nvinfer1::PluginFieldCollection*
-DeformableConvPluginCreator::getFieldNames() {
+DeformableConvPluginCreator::getFieldNames() TRT_NOEXCEPT {
   return &field_collection_;
 }
 
 nvinfer1::IPluginV2Ext* DeformableConvPluginCreator::createPlugin(
-    const char* name, const nvinfer1::PluginFieldCollection* fc) {
+    const char* name, const nvinfer1::PluginFieldCollection* fc) TRT_NOEXCEPT {
   const nvinfer1::PluginField* fields = fc->fields;
 
   nvinfer1::DataType data_type;
@@ -559,7 +567,8 @@ nvinfer1::IPluginV2Ext* DeformableConvPluginCreator::createPlugin(
 }
 
 nvinfer1::IPluginV2Ext* DeformableConvPluginCreator::deserializePlugin(
-    const char* name, const void* serial_data, size_t serial_length) {
+    const char* name, const void* serial_data,
+    size_t serial_length) TRT_NOEXCEPT {
   auto plugin = new DeformableConvPlugin(serial_data, serial_length);
   plugin->setPluginNamespace(namespace_.c_str());
   return plugin;
