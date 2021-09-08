@@ -293,6 +293,19 @@ static void SetAttrsToPass(
   }
 }
 
+static std::vector<std::string> GetPassNames(const py::object &names) {
+  try {
+    return {py::cast<std::string>(names)};
+  } catch (py::cast_error &) {
+    try {
+      return py::cast<std::vector<std::string>>(names);
+    } catch (py::cast_error &) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Pass names must be either str or list[str]"));
+    }
+  }
+}
+
 void BindPass(py::module *m) {
   // NOTE: pass_attr_types is a dict to indicate the type of each attribute.
   // Python has only one integral type "int", but C++ has many integral types.
@@ -301,6 +314,7 @@ void BindPass(py::module *m) {
   // pass_attr_types to indicate the type of "nranks" explicitly,
   // i.e. pass_attr_types = {"nranks": "size_t"} means that the type of
   // "nranks" is size_t in C++.
+  REGISTER_PASS_ATTR_GETTER_SETTER("bool", bool);
   REGISTER_PASS_ATTR_GETTER_SETTER("int", int64_t);
   REGISTER_PASS_ATTR_GETTER_SETTER("long", int64_t);
   REGISTER_PASS_ATTR_GETTER_SETTER("size_t", size_t);
@@ -309,26 +323,40 @@ void BindPass(py::module *m) {
   REGISTER_PASS_ATTR_GETTER_SETTER("float", double);
   REGISTER_PASS_ATTR_GETTER_SETTER("bytes", std::string);
   REGISTER_PASS_ATTR_GETTER_SETTER("str", std::string);
+  REGISTER_PASS_ATTR_GETTER_SETTER("list[str]", std::vector<std::string>);
 
-  m->def(
-      "apply_pass",
-      [](framework::ProgramDesc *main_program,
-         framework::ProgramDesc *startup_program, const std::string &pass_name,
-         const std::unordered_map<std::string, py::object> &pass_attrs,
-         std::unordered_map<std::string, std::string> pass_attr_types) {
-        auto pass = framework::ir::PassRegistry::Instance().Get(pass_name);
-        SetAttrsToPass(pass_attrs, &pass_attr_types, pass.get());
-        pass->Apply(main_program, startup_program);
-        std::unordered_map<std::string, py::object> result_attrs;
-        for (const auto &name_and_value : pass_attrs) {
-          const auto &attr_name = name_and_value.first;
-          const auto &attr_type = pass_attr_types.at(attr_name);
-          result_attrs[attr_name] =
-              PassAttrGetterSetterRegistry::Instance().Get(*pass, attr_name,
-                                                           attr_type);
-        }
-        return result_attrs;
-      });
+  m->def("apply_pass",
+         [](framework::ProgramDesc *main_program,
+            framework::ProgramDesc *startup_program,
+            const py::object &py_pass_names,
+            const std::unordered_map<std::string, py::object> &pass_attrs,
+            std::unordered_map<std::string, std::string> pass_attr_types) {
+           auto pass_names = GetPassNames(py_pass_names);
+           std::vector<std::unique_ptr<framework::ir::Pass>> passes;
+           std::vector<const framework::ir::Pass *> passes_not_owned;
+           passes.reserve(pass_names.size());
+           passes_not_owned.reserve(pass_names.size());
+           for (const auto &name : pass_names) {
+             auto pass = framework::ir::PassRegistry::Instance().Get(name);
+             SetAttrsToPass(pass_attrs, &pass_attr_types, pass.get());
+             passes.push_back(std::move(pass));
+             passes_not_owned.push_back(passes.back().get());
+           }
+
+           framework::ir::Pass::ApplyPassesToProgram(
+               passes_not_owned, main_program, startup_program);
+           std::unordered_map<std::string, py::object> result_attrs;
+           for (const auto &pass : passes) {
+             for (const auto &name_and_value : pass_attrs) {
+               const auto &attr_name = name_and_value.first;
+               const auto &attr_type = pass_attr_types.at(attr_name);
+               result_attrs[attr_name] =
+                   PassAttrGetterSetterRegistry::Instance().Get(
+                       *pass, attr_name, attr_type);
+             }
+           }
+           return result_attrs;
+         });
 }
 
 }  // namespace pybind

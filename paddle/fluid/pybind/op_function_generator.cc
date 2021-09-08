@@ -64,6 +64,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
     {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
     {"momentum", {"Param", "Grad", "Velocity", "LearningRate"}},
+    {"sparse_momentum", {"Param", "Grad", "Velocity", "Index", "LearningRate"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
     {"run_program", {"X", "Params"}},
 };
@@ -86,6 +87,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
     {"unique", {"Out", "Index", "Indices", "Counts"}},
+    {"unique_consecutive", {"Out", "Index", "Counts"}},
     {"generate_proposals", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
     {"collect_fpn_proposals", {"FpnRois", "RoisNum"}},
     {"matrix_nms", {"Out", "Index", "RoisNum"}},
@@ -96,6 +98,7 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"multiclass_nms3", {"Out", "NmsRoisNum"}},
     {"generate_proposals_v2", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
     {"momentum", {"ParamOut", "VelocityOut"}},
+    {"sparse_momentum", {"ParamOut", "VelocityOut"}},
     {"rnn", {"DropoutState", "Reserve", "Out", "State"}},
     {"lamb",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
@@ -117,10 +120,13 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"sgd", {"ParamOut"}},
     {"adam",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
+    {"adamw",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"average_accumulates",
      {"out_sum_1", "out_sum_2", "out_sum_3", "out_num_accumulates",
       "out_old_num_accumulates", "out_num_updates"}},
     {"momentum", {"ParamOut", "VelocityOut"}},
+    {"sparse_momentum", {"ParamOut", "VelocityOut"}},
     {"batch_norm", {"MeanOut", "VarianceOut"}},
     {"sync_batch_norm", {"MeanOut", "VarianceOut"}},
     {"accuracy", {"Correct", "Total"}},
@@ -151,6 +157,8 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"rnn", {"DropoutState"}},
     {"run_program", {"Out", "DOut", "OutScope"}},
+    {"clear_float_status", {"FloatStatusOut"}},
+    {"get_float_status", {"FloatStatusOut"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.

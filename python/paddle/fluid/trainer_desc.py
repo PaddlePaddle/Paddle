@@ -124,6 +124,10 @@ class TrainerDesc(object):
     def _set_no_cvm(self, no_cvm=False):
         self.proto_desc.no_cvm = no_cvm
 
+    def _set_scale_sparse_grad_with_batch_size(
+            self, scale_sparse_gradient_with_batch_size=True):
+        self.proto_desc.scale_sparse_gradient_with_batch_size = scale_sparse_gradient_with_batch_size
+
     def _set_scale_datanorm(self, scale_datanorm=-1):
         self.proto_desc.scale_datanorm = scale_datanorm
 

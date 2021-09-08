@@ -28,7 +28,7 @@ namespace paddle {
 namespace imperative {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO)
 // div the nranks
 void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
   framework::Tensor *tensor =
@@ -42,9 +42,12 @@ void Group::DivNRanks(const platform::DeviceContext &context, int64_t nranks) {
     DivNRanks(tensor, nranks, context);
 #endif
   } else if (platform::is_cpu_place(tensor->place())) {
+    VLOG(4) << "before div 2" << *tensor;
+    VLOG(4) << "NDiv for cpu devices : rank = " << nranks;
     framework::VisitDataTypeSmall(
         dtype_, DivNRanksForAllReduce<platform::CPUDeviceContext>(
                     tensor, nranks, context));
+    VLOG(4) << "after div 2" << *tensor;
   } else if (platform::is_xpu_place(tensor->place())) {
 #ifdef PADDLE_WITH_XPU_BKCL
 // TODO(liuyuhui) support xpu about div nranks in the future
@@ -527,6 +530,7 @@ void Reducer::TraverseBackwardGraph(
 void Reducer::PrepareForBackward(
     const std::vector<std::shared_ptr<imperative::VarBase>> &outputs) {
   VLOG(3) << "after forward, then reset count for backward.";
+  grad_need_hooks_ = true;
   next_group_ = 0;
   std::for_each(groups_.begin(), groups_.end(), [](Group &group) {
     group.pending_ = group.variable_indices_.size();
@@ -598,6 +602,11 @@ void Reducer::AddDistHook(size_t var_index) {
                         "Out of bounds variable index. it must be less"
                         "than %d, but it is %d",
                         variable_locators_.size(), var_index));
+
+  // gradient synchronization is not required when grad_need_hooks_ is false.
+  if (!grad_need_hooks_) {
+    return;
+  }
 
   VLOG(3) << "Var[" << var_index << "] ["
           << vars_[var_index]->GradVarBase()->Name()
@@ -692,8 +701,8 @@ void Reducer::MarkVarReady(const size_t var_index, const bool is_used_var) {
         auto var_base = vars_[var_index]->GradVarBase();
         auto tensor =
             var_base->MutableVar()->GetMutable<framework::LoDTensor>();
-        TensorCopy(*tensor, place_, *dev_ctx, &group_tensor);
-        group_tensor.Resize({static_cast<int64_t>(length)});
+        group_tensor.ShareDataWith(*tensor).Resize(
+            {static_cast<int64_t>(length)});
       } else {
         group_tensor.Resize({static_cast<int64_t>(length)});
         operators::math::set_constant(*dev_ctx, &group_tensor, 0.0);
@@ -758,8 +767,8 @@ void Reducer::MarkGroupReady(size_t group_index) {
 
   for (; next_group_ < groups_.size() && groups_[next_group_].pending_ == 0;
        ++next_group_) {
-    auto &group = groups_[next_group_];
-    const int run_order = next_group_ % nrings_;
+    UNUSED auto &group = groups_[next_group_];
+    UNUSED const int run_order = next_group_ % nrings_;
 
     // For CUDA or XPU, compute_stream --> comm_stream.
     // For CPU, do nothing.
@@ -786,11 +795,12 @@ void Reducer::MarkGroupReady(size_t group_index) {
         cv_.notify_all();
       }
     });
-#elif defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL)
+#elif defined(PADDLE_WITH_RCCL) || defined(PADDLE_WITH_NCCL) || \
+    defined(PADDLE_WITH_GLOO)
     FusedAllReduceSchedule(run_order, group, next_group_);
 #else
     PADDLE_THROW(platform::errors::PreconditionNotMet(
-        "Not compiled with BKCL or NCCL."));
+        "Not compiled with BKCL or NCCL or GLOO."));
 #endif
   }
 }
@@ -907,6 +917,10 @@ void Reducer::ProcessUnusedDenseVars() {
 
       // 3. create grad var base or get grad var base
       auto grad_var_base_tmp = dest_var_base->MutableGradVarBase();
+      // NOTE(haohongxiang): Calling SetIsEmpty here is to make sure that
+      // gradient accumulation can continue normally after clear_gradients()
+      // especiall in cases including complex control flow.
+      grad_var_base_tmp->SharedVar()->SetIsEmpty(false);
 
       // 4. set grad tensor
       auto *dest_grad_tensor =
@@ -942,6 +956,7 @@ bool Reducer::HasGrad(size_t var_index) {
 
 void Reducer::FinalizeBackward() {
   groups_need_finalize_ = false;
+  grad_need_hooks_ = false;
 #ifdef PADDLE_WITH_XPU_BKCL
   {
     std::unique_lock<std::mutex> lock(mutex_);
@@ -963,7 +978,8 @@ void Reducer::FinalizeBackward() {
 
   if (find_unused_vars_each_step_) {
 // TODO(liuyuhui) support xpu about Tensorcopy/TensorFromVector/TensorToVector
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_GLOO)
     ProcessUnusedDenseVars();
 #endif
     // Initialize local used vars
