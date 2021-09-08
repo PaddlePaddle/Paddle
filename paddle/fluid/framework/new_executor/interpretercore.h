@@ -119,8 +119,7 @@ class InterpreterCore {
   size_t max_memory_size_;
   size_t cur_memory_size_;
   std::unique_ptr<WorkQueue> gc_queue_;
-  std::unique_ptr<WorkQueue> aync_thread_pool_;
-  std::unique_ptr<WorkQueue> sync_thread_pool_;
+  std::unique_ptr<WorkQueueGroup> group_thread_pool_;
 
   memory::SpinLock spinlock_;  // for gc with multi-thread
 };

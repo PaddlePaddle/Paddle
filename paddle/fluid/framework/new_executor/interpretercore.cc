@@ -160,10 +160,13 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   WorkQueueOptions options;
   options.num_threads = 1;
   gc_queue_ = CreateSingleThreadedWorkQueue(options);
-  
-  aync_thread_pool_ = CreateSingleThreadedWorkQueue();
-  // TODO(Aurelius84): Need more experiment to determine the num_thread.
-  sync_thread_pool_ = CreateMultiThreadedWorkQueue(/*num_threads=*/4);
+
+  std::vector<WorkQueueOptions> group_options(2);
+  group_options[0].num_threads = 1;
+  group_options[0].track_task = true;
+  group_options[1].num_threads = 4;
+  group_options[1].track_task = true;
+  group_thread_pool_ = CreateWorkQueueGroup(group_options);
 
   feed_names_ = feed_names;
 
@@ -395,12 +398,12 @@ void InterpreterCore::ExecuteInstructionList(
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
       if (vec_instr[i].type_ == OpFuncType::kQueueAsync) {
-        aync_thread_pool_->AddTask([&, i, is_dry_run]() {
+        group_thread_pool_->AddTask(1, [&, i, is_dry_run]() {
           RunInstructionAsync(i, &working_dependecy_count, &working_var_ref,
                               &op_run_number, is_dry_run);
         });
       } else {
-        sync_thread_pool_->AddTask([&, i, is_dry_run]() {
+        group_thread_pool_->AddTask(0, [&, i, is_dry_run]() {
           RunInstructionAsync(i, &working_dependecy_count, &working_var_ref,
                               &op_run_number, is_dry_run);
         });
@@ -411,8 +414,7 @@ void InterpreterCore::ExecuteInstructionList(
   // Because two WorkQueue can't communicate with each other, it will lead that
   // even though we called WaitQueueEmpty(), it still can't guarantee all ops
   // are finished.
-  aync_thread_pool_->WaitQueueEmpty();
-  sync_thread_pool_->WaitQueueEmpty();
+  group_thread_pool_->WaitQueueGroupEmpty();
 
   while (op_run_number.load() != vec_instr.size()) {
     VLOG(3) << op_run_number.load() << " !=" << vec_instr.size();
@@ -449,12 +451,12 @@ void InterpreterCore::RunInstructionAsync(
     working_dependecy_count->at(next_i)->fetch_sub(1);
     if (working_dependecy_count->at(next_i)->load() == 0) {
       if (vec_instruction_[next_i].type_ == OpFuncType::kQueueAsync) {
-        aync_thread_pool_->AddTask([=]() {
+        group_thread_pool_->AddTask(1, [=]() {
           RunInstructionAsync(next_i, working_dependecy_count, working_var_ref,
                               op_run_number, is_dry_run);
         });
       } else {
-        sync_thread_pool_->AddTask([=]() {
+        group_thread_pool_->AddTask(0, [=]() {
           RunInstructionAsync(next_i, working_dependecy_count, working_var_ref,
                               op_run_number, is_dry_run);
         });
@@ -469,6 +471,8 @@ void InterpreterCore::CheckGC(size_t instr_id,
                               const std::vector<size_t>& gc_check_list,
                               AtomicVectorSizeT* working_var_ref) {
   auto& var_scope = *global_scope_;
+  // NOTE(Aurelius84): std::deque is not thread-safe
+  std::lock_guard<memory::SpinLock> guard(spinlock_);
 
   for (auto var_id : gc_check_list) {
     working_var_ref->at(var_id)->fetch_sub(1);
@@ -476,8 +480,7 @@ void InterpreterCore::CheckGC(size_t instr_id,
         !var_scope.vec_meta_info_[var_id].vardesc_->Persistable() &&
         working_var_ref->at(var_id)->load() == 0) {
       Variable* var = var_scope.var_list[var_id];
-      // NOTE(Aurelius84): std::deque is not thread-safe
-      std::lock_guard<memory::SpinLock> guard(spinlock_);
+      VLOG(3) << "start to GC " << var_id;
       if (var->IsType<LoDTensor>()) {
         garbages_->emplace_back(
             var->GetMutable<LoDTensor>()->MoveMemoryHolder());
@@ -504,6 +507,7 @@ void InterpreterCore::CheckGC(size_t instr_id,
             "The variable(%s) is not supported in eager deletion.",
             framework::ToTypeName(var->Type())));
       }
+      VLOG(3) << "end to GC " << var_id;
     }
   }
 
