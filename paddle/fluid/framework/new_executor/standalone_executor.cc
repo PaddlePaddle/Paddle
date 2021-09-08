@@ -49,8 +49,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
   // run startup program
   std::vector<paddle::framework::OpFuncNode> vec_func_list;
   std::vector<paddle::framework::OperatorBase*> op_list;
-  paddle::framework::build_op_func_list(place_, startup_prog, &op_list,
-                                        &vec_func_list, &global_scope_);
+  paddle::framework::interpretercore::build_op_func_list(
+      place_, startup_prog, &op_list, &vec_func_list, &global_scope_);
 }
 
 paddle::framework::FetchList StandaloneExecutor::Run(

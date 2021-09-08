@@ -16,6 +16,7 @@
 
 namespace paddle {
 namespace framework {
+namespace interpretercore {
 
 bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
   auto* var_desc = block.FindVar(name);
@@ -435,5 +436,6 @@ std::vector<size_t> merge_vector(const std::vector<size_t>& first,
   return out;
 }
 
+}  // namespace interpretercore
 }  // namespace framework
 }  // namespace paddle

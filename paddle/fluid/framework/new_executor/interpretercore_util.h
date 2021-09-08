@@ -470,6 +470,8 @@ class RuntimeInferShapeContext : public InferShapeContext {
   const RuntimeContext& ctx_;
 };
 
+namespace interpretercore {
+
 static constexpr char kMemcpyH2D[] = "memcpy_h2d";
 static constexpr char kMemcpyD2H[] = "memcpy_d2h";
 
@@ -488,5 +490,6 @@ void build_op_func_list(const platform::Place& place,
 std::vector<size_t> merge_vector(const std::vector<size_t>& first,
                                  const std::vector<size_t>& second);
 
+}  // namespace interpretercore
 }  // namespace framework
 }  // namespace paddle

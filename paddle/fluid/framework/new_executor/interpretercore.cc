@@ -185,10 +185,11 @@ paddle::framework::FetchList InterpreterCore::Run(
   };
 
   if (is_build_ == false) {
-    paddle::framework::build_variable_scope(main_program_, global_scope_);
+    paddle::framework::interpretercore::build_variable_scope(main_program_,
+                                                             global_scope_);
     FeedInput();
-    paddle::framework::build_op_func_list(place_, main_program_, &op_list_,
-                                          &vec_func_list_, global_scope_);
+    paddle::framework::interpretercore::build_op_func_list(
+        place_, main_program_, &op_list_, &vec_func_list_, global_scope_);
     is_build_ = true;
     // convert vec func_list to graph
     Convert();
@@ -270,7 +271,8 @@ void InterpreterCore::Convert() {
     std::vector<size_t> vec_temp;
     for (auto& item : vec_instruction_[i].output_index_) {
       for (auto id : item.second) {
-        vec_temp = merge_vector(vec_temp, input_var2op_info_[id]);
+        vec_temp =
+            interpretercore::merge_vector(vec_temp, input_var2op_info_[id]);
       }
     }
 
@@ -299,7 +301,7 @@ void InterpreterCore::Convert() {
   }
 }
 
-void InterpreterCore::BuildAndCatchInstructionCtx(
+void InterpreterCore::BuildAndCacheInstructionCtx(
     Instruction* instr_node, const VariableScope& var_scope,
     const platform::Place& place) {
   auto op_base = instr_node->kernel_func_.operator_base_;
@@ -492,10 +494,11 @@ void InterpreterCore::DryRunPrepare(
   };
 
   if (is_build_ == false) {
-    paddle::framework::build_variable_scope(main_program_, global_scope_);
+    paddle::framework::interpretercore::build_variable_scope(main_program_,
+                                                             global_scope_);
     FeedInput();
-    paddle::framework::build_op_func_list(place_, main_program_, &op_list_,
-                                          &vec_func_list_, global_scope_);
+    paddle::framework:: ::interpretercorebuild_op_func_list(
+        place_, main_program_, &op_list_, &vec_func_list_, global_scope_);
     is_build_ = true;
     // convert vec func_list to graph
     Convert();
@@ -526,10 +529,10 @@ platform::DeviceContext* InterpreterCore::ParseDeviceContextForInstruction(
     const OpFuncNode& op_func_node, const OperatorBase& op_base) {
   auto& op_type = op_base.Type();
   auto* dev_ctx = op_func_node.dev_ctx_;
-  if (op_type == kMemcpyH2D) {
+  if (op_type == interpretercore::kMemcpyH2D) {
     VLOG(3) << "Get dev_ctx from d2h_context_pool_";
     dev_ctx = d2h_ctx_pool_.Get(place_);
-  } else if (op_type == kMemcpyD2H) {
+  } else if (op_type == interpretercore::kMemcpyD2H) {
     VLOG(3) << "Get dev_ctx from h2d_context_pool_";
     dev_ctx = h2d_ctx_pool_.Get(place_);
   }

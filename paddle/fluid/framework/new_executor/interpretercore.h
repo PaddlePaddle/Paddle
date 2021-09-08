@@ -46,7 +46,7 @@ class InterpreterCore {
  private:
   void Convert();
 
-  void BuildAndCatchInstructionCtx(Instruction* instr_node,
+  void BuildAndCacheInstructionCtx(Instruction* instr_node,
                                    const VariableScope& var_scope,
                                    const platform::Place& place);
 
