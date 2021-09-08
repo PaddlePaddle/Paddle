@@ -295,13 +295,15 @@ def interpolate(x,
             "align_corners option can only be set with the interpolating modes: linear | bilinear | bicubic | trilinear"
         )
 
-    if resample == 'AREA' and len(x.shape) == 3:
-        return paddle.nn.functional.adaptive_avg_pool1d(x, size)
-
-    if resample == 'AREA' and len(x.shape) == 4:
-        return paddle.nn.functional.adaptive_avg_pool2d(x, size)
-    if resample == 'AREA' and len(x.shape) == 5:
-        return paddle.nn.functional.adaptive_avg_pool3d(x, size)
+    if resample == 'AREA':
+        if len(size) == 0:
+            raise ValueError("output size can not be empty")
+        if len(x.shape) == 3:
+            return paddle.nn.functional.adaptive_avg_pool1d(x, size)
+        elif len(x.shape) == 4:
+            return paddle.nn.functional.adaptive_avg_pool2d(x, size)
+        elif len(x.shape) == 5:
+            return paddle.nn.functional.adaptive_avg_pool3d(x, size)
 
     helper = LayerHelper('{}_interp_v2'.format(resample_type), **locals())
     dtype = helper.input_dtype(input_param_name='x')
