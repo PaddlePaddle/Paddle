@@ -150,35 +150,35 @@ class KernelKey {
 };
 
 // TODO(chenweihang): how deal with vector<Param>?
-struct ParamDef {
+struct ArgDef {
   Backend backend;
   DataLayout layout;
   DataType dtype;
 
-  ParamDef(Backend backend, DataLayout layout, DataType dtype)
+  ArgDef(Backend backend, DataLayout layout, DataType dtype)
       : backend(backend), layout(layout), dtype(dtype) {}
 };
 
-class KernelParamDef {
+class KernelArgsDef {
  public:
-  KernelParamDef() = default;
+  KernelArgsDef() = default;
 
   void AppendInput(Backend backend, DataLayout layout, DataType dtype) {
-    input_defs_.emplace_back(ParamDef(backend, layout, dtype));
+    input_defs_.emplace_back(ArgDef(backend, layout, dtype));
   }
 
   void AppendOutput(Backend backend, DataLayout layout, DataType dtype) {
-    output_defs_.emplace_back(ParamDef(backend, layout, dtype));
+    output_defs_.emplace_back(ArgDef(backend, layout, dtype));
   }
 
-  const std::vector<ParamDef>& input_defs() const { return input_defs_; }
+  const std::vector<ArgDef>& input_defs() const { return input_defs_; }
 
-  const std::vector<ParamDef>& output_defs() const { return output_defs_; }
+  const std::vector<ArgDef>& output_defs() const { return output_defs_; }
 
  private:
   // TODO(chenweihang): replaced by paddle::small_vector
-  std::vector<ParamDef> input_defs_{{}};
-  std::vector<ParamDef> output_defs_{{}};
+  std::vector<ArgDef> input_defs_{{}};
+  std::vector<ArgDef> output_defs_{{}};
 };
 
 class Kernel {
@@ -190,13 +190,13 @@ class Kernel {
 
   void operator()(KernelContext* ctx) const { fn_(ctx); }
 
-  KernelParamDef* mutable_param_def() { return &param_def_; }
+  KernelArgsDef* mutable_args_def() { return &args_def_; }
 
-  const KernelParamDef& param_def() const { return param_def_; }
+  const KernelArgsDef& args_def() const { return args_def_; }
 
  private:
   KernelFn fn_{nullptr};
-  KernelParamDef param_def_;
+  KernelArgsDef args_def_;
 };
 
 /**

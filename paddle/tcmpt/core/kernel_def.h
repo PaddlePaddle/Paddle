@@ -17,9 +17,13 @@
 namespace pt {
 
 class Kernel;
+class KernelKey;
+class KernelArgsDef;
 class KernelContext;
 
 using KernelFn = void (*)(KernelContext* ctx);
-using KernelParamDefFn = void (*)(Kernel* kernel);
+using KernelArgsDefFn = void (*)(Kernel* kernel);
+using KernelArgsParseFn = void (*)(const KernelKey& default_key,
+                                   KernelArgsDef* args_def);
 
 }  // namespace pt

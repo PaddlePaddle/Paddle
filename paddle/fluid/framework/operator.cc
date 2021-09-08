@@ -1145,6 +1145,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // TODO(chenweihang): in the first phase of project, we only support CPU, CUDA
   // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
   // phase
+  // TODO(chenweihang): ContainsKernel need more acurrate
   run_pt_kernel_ = pt::KernelFactory::Instance().ContainsKernel(type_.c_str());
   if (run_pt_kernel_) {
     if (pt_kernel_key_.get() == nullptr || pt_kernel_.get() == nullptr) {
@@ -1834,8 +1835,8 @@ pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
   // 4. use pt Tensor directly
   // 5. kernel input is not DenseTensor
   pt::KernelContext op_kernel_ctx(dev_ctx);
-  auto input_defs = pt_kernel_->param_def().input_defs();
-  auto output_defs = pt_kernel_->param_def().output_defs();
+  auto input_defs = pt_kernel_->args_def().input_defs();
+  auto output_defs = pt_kernel_->args_def().output_defs();
 
   // TODO(chenweihang): use ordered_map for VariableNameMap and VariableValueMap
   // If we the VariableValueMap are ordered, we can get tensor by iter the map,

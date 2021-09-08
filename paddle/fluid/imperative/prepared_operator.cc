@@ -242,8 +242,8 @@ static pt::KernelContext BuildDygraphKernelContext(
   // 4. use pt Tensor directly
   // 5. kernel input is not DenseTensor
   pt::KernelContext op_kernel_ctx(dev_ctx);
-  auto input_defs = pt_kernel.param_def().input_defs();
-  auto output_defs = pt_kernel.param_def().output_defs();
+  auto input_defs = pt_kernel.args_def().input_defs();
+  auto output_defs = pt_kernel.args_def().output_defs();
 
   size_t i = 0;
   for (auto& var_pair : ins) {
