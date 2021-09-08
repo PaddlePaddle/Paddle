@@ -497,7 +497,7 @@ void InterpreterCore::DryRunPrepare(
     paddle::framework::interpretercore::build_variable_scope(main_program_,
                                                              global_scope_);
     FeedInput();
-    paddle::framework::interpretercore::interpretercorebuild_op_func_list(
+    paddle::framework::interpretercore::build_op_func_list(
         place_, main_program_, &op_list_, &vec_func_list_, global_scope_);
     is_build_ = true;
     // convert vec func_list to graph
