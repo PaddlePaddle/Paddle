@@ -135,31 +135,23 @@ def initialization_check(mode, dist_context, dist_startup_prog,
     return True
 
 
-def get_var(op, main_program):
+def get_input_var_dist_attr(op, main_program, dist_context):
     varname = op.desc.input_arg_names()
     var = main_program.global_block().var(varname[0])
-    return var
-
-
-def get_input_var_dist_attr(op, main_program, dist_context):
-    var = get_var(op, main_program)
     dist_attr = dist_context.get_tensor_distributed_attr_for_program(var)
     return dist_attr
 
 
 def get_output_var_dist_attr(op, main_program, dist_context):
-    var = get_var(op, main_program)
+    varname = op.desc.output_arg_names()
+    var = main_program.global_block().var(varname[0])
     dist_attr = dist_context.get_tensor_distributed_attr_for_program(var)
     return dist_attr
 
 
-def check_equal_var_dist_attr(serial_op, dist_op, serial_main_prog,
-                              dist_main_prog, serial_dist_attr, dist_attr):
-    serial_var = get_var(serial_op, serial_main_prog)
-    dist_var = get_var(serial_op, serial_main_prog)
+def check_equal_var_dist_attr(serial_dist_attr, dist_attr):
     equal = True
-    if serial_var.desc.id() == dist_var.desc.id() or \
-        serial_dist_attr.get_process_mesh() != dist_attr.get_process_mesh() or \
+    if serial_dist_attr.get_process_mesh() != dist_attr.get_process_mesh() or \
         serial_dist_attr.is_parameter() != dist_attr.is_parameter() or \
         serial_dist_attr.get_dims_mapping() != dist_attr.get_dims_mapping():
         equal = False
@@ -227,9 +219,8 @@ def distributed_attr_check_for_dist_op(serial_main_prog, dist_main_prog,
             identity_out_dist_attr = get_output_var_dist_attr(
                 dist_op_0, dist_main_prog, dist_context)
             # check var dist_attr
-            equal = check_equal_var_dist_attr(
-                serial_op, dist_op_0, serial_main_prog, dist_main_prog,
-                serial_in_dist_attr, identity_out_dist_attr)
+            equal = check_equal_var_dist_attr(serial_in_dist_attr,
+                                              identity_out_dist_attr)
         else:
             # serial op output's dist_attr
             serial_out_dist_attr = get_output_var_dist_attr(
@@ -238,9 +229,8 @@ def distributed_attr_check_for_dist_op(serial_main_prog, dist_main_prog,
             out_dist_attr = get_output_var_dist_attr(dist_op_0, dist_main_prog,
                                                      dist_context)
             # check var dist_attr
-            equal = check_equal_var_dist_attr(
-                serial_op, dist_op_0, serial_main_prog, dist_main_prog,
-                serial_out_dist_attr, out_dist_attr)
+            equal = check_equal_var_dist_attr(serial_out_dist_attr,
+                                              out_dist_attr)
 
         # check op's dist_attr 
         equal = check_equal_dist_op_attr(dist_context, dist_main_prog,
@@ -999,16 +989,6 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
         # row and col allreduce
         dist_ops = dist_main_prog.global_block().ops
         dist_ops = [op.type for op in dist_ops]
-        [
-            'lookup_table_v2', 'lookup_table_v2', 'elementwise_add', 'dropout',
-            'layer_norm', 'matmul', 'elementwise_add', 'reshape2', 'transpose2',
-            'matmul', 'elementwise_add', 'matmul', 'elementwise_add',
-            'reshape2', 'transpose2', 'reshape2', 'transpose2', 'matmul',
-            'softmax', 'dropout', 'matmul_v2', 'transpose2', 'reshape2',
-            'matmul', 'elementwise_add', 'dropout', 'elementwise_add',
-            'layer_norm', 'matmul', 'elementwise_add', 'gelu', 'matmul',
-            'elementwise_add', 'dropout', 'elementwise_add'
-        ]
         ref_ops = [
             'c_embedding', 'c_allreduce_sum', 'lookup_table_v2',
             'elementwise_add', 'dropout', 'layer_norm', 'c_identity', 'matmul',
