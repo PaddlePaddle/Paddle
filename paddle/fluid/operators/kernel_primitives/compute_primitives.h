@@ -233,14 +233,14 @@ __device__ __forceinline__ void ElementwiseTernary(OutT* out, const T* in1,
  */
 template <typename T, typename OutT, int NX, int NY, int BlockSize, int Arity,
           class OpFunc>
-__device__ __forceinline__ void ElementwiseAny(OutT* out, T** ins,
+__device__ __forceinline__ void ElementwiseAny(OutT* out, T (*ins)[NX * NY],
                                                OpFunc compute) {
   T args[Arity];
 #pragma unroll
   for (int idx = 0; idx < NX * NY; ++idx) {
 #pragma unroll
     for (int j = 0; j < Arity; ++j) {
-      args[j] = ins[idx][j];
+      args[j] = ins[j][idx];
     }
     out[idx] = static_cast<OutT>(compute(args));
   }

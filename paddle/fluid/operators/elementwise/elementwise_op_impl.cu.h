@@ -75,12 +75,14 @@ int GetVectorizedSizeForTensors(
 template <typename InT, typename OutT, int VecSize, typename Functor, int Arity,
           bool CallElementwiseAny = false>
 struct ElementwisePrimitiveCaller {
-  __device__ inline OutT operator()(Functor func, InT **args, OutT *result);
+  __device__ inline OutT operator()(Functor func, InT (*args)[VecSize],
+                                    OutT *result);
 };
 
 template <typename InT, typename OutT, int VecSize, typename Functor, int Arity>
 struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, Arity, true> {
-  __device__ inline OutT operator()(Functor func, InT **args, OutT *result) {
+  __device__ inline OutT operator()(Functor func, InT (*args)[VecSize],
+                                    OutT *result) {
     kps::ElementwiseAny<InT, OutT, VecSize, 1, 1, Arity, Functor>(result, args,
                                                                   func);
   }
@@ -88,7 +90,8 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, Arity, true> {
 
 template <typename InT, typename OutT, int VecSize, typename Functor>
 struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 1, false> {
-  __device__ inline OutT operator()(Functor func, InT **args, OutT *result) {
+  __device__ inline OutT operator()(Functor func, InT (*args)[VecSize],
+                                    OutT *result) {
     kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(result, args[0],
                                                              func);
   }
@@ -96,7 +99,8 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 1, false> {
 
 template <typename InT, typename OutT, int VecSize, typename Functor>
 struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 2, false> {
-  __device__ inline OutT operator()(Functor func, InT **args, OutT *result) {
+  __device__ inline OutT operator()(Functor func, InT (*args)[VecSize],
+                                    OutT *result) {
     kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(result, args[0],
                                                               args[1], func);
   }
@@ -130,23 +134,22 @@ __device__ void DealSegment(
   const bool kCallElementwiseAny =
       platform::FunctionTraits<Functor>::has_pointer_args;
   ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, Arity,
-                             kCallElementwiseAny>()(
-      func, reinterpret_cast<InT **>(args), result);
+                             kCallElementwiseAny>()(func, args, result);
   kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(out + data_offset, result,
                                                   num);
 }
 
 template <typename InT, typename OutT, typename Functor, int Arity, int VecSize>
 __global__ void ElementVectorizeKernel(
-    framework::Array<const InT *__restrict__, Arity> in, OutT *out, int size,
+    framework::Array<const InT *__restrict__, Arity> ins, OutT *out, int size,
     Functor func) {
   int data_offset = VecSize * blockIdx.x * blockDim.x;
   int num = size - data_offset;
   // the num this time have to deal with
   if (VecSize * blockDim.x > num) {  // reminder segment
-    DealSegment<InT, OutT, Functor, Arity, VecSize, true>(in, out, num, func);
+    DealSegment<InT, OutT, Functor, Arity, VecSize, true>(ins, out, num, func);
   } else {  // complete segment
-    DealSegment<InT, OutT, Functor, Arity, VecSize, false>(in, out, num, func);
+    DealSegment<InT, OutT, Functor, Arity, VecSize, false>(ins, out, num, func);
   }
 }
 
@@ -161,14 +164,14 @@ void ElementwiseCudaKernel(const platform::CUDADeviceContext &ctx,
       ((numel + VecSize - 1) / VecSize + block_size - 1) / block_size;
 
   auto stream = ctx.stream();
-  OutT *out = (*outs)[0]->data<OutT>();
-  framework::Array<const InT *__restrict__, Arity> in;
+  OutT *out_data = (*outs)[0]->data<OutT>();
+  framework::Array<const InT *__restrict__, Arity> ins_data;
   for (int i = 0; i < Arity; i++) {
-    in[i] = ins[i]->data<InT>();
+    ins_data[i] = ins[i]->data<InT>();
   }
   ElementVectorizeKernel<InT, OutT, Functor, Arity,
                          VecSize><<<grid_size, block_size, 0, stream>>>(
-      in, out, numel, func);
+      ins_data, out_data, numel, func);
 }
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>

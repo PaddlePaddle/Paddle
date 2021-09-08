@@ -45,10 +45,9 @@ struct DimensionsTransform {
             axis++;
           } else {
             PADDLE_THROW(platform::errors::InvalidArgument(
-                "The %dth dimension of input tensor is expected to be equal "
-                "with"
-                "the %dth dimension of output tensor %d or 1, but recieved "
-                "%d.\n",
+                "The %d-th dimension of input tensor is expected to be equal "
+                "with the %d-th dimension of output tensor %d or 1, but "
+                "recieved %d.",
                 in_idx + 1, axis + 1, out_dims[axis], in_dim[in_idx]));
           }
         } while (in_idx < in_dim.size());
@@ -60,10 +59,9 @@ struct DimensionsTransform {
             in_idx++;
           } else {
             PADDLE_THROW(platform::errors::InvalidArgument(
-                "The %dth dimension of input tensor is expected to be equal "
-                "with"
-                "the %dth dimension of output tensor %d or 1, but recieved "
-                "%d.\n",
+                "The %d-th dimension of input tensor is expected to be equal "
+                "with the %d-th dimension of output tensor %d or 1, but "
+                "recieved %d.",
                 in_idx + 1, in_idx + 1, out_dims[in_idx], in_dim[in_idx]));
           }
         } while (in_idx < dim_size);
@@ -182,7 +180,7 @@ __device__ __forceinline__ void LoadData(
 template <typename InT, typename OutT, typename Functor, int Arity, int VecSize,
           int Rank, bool IsBoundary = false>
 __device__ void DealSegment(
-    const framework::Array<const InT *__restrict__, Arity> &in, OutT *out,
+    const framework::Array<const InT *__restrict__, Arity> &ins, OutT *out,
     const framework::Array<bool, Arity> &use_broadcast, uint32_t numel,
     const framework::Array<kps::details::BroadcastConfig<Rank>, Arity> &configs,
     int num, Functor func) {
@@ -194,15 +192,15 @@ __device__ void DealSegment(
 #pragma unroll
   for (int i = 0; i < Arity; i++) {
     kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f));
-    LoadData<InT, VecSize, Rank, IsBoundary>(
-        args[i], in[i], block_offset, configs[i], numel, num, use_broadcast[i]);
+    LoadData<InT, VecSize, Rank, IsBoundary>(args[i], ins[i], block_offset,
+                                             configs[i], numel, num,
+                                             use_broadcast[i]);
   }
 
   const bool kCallElementwiseAny =
       platform::FunctionTraits<Functor>::has_pointer_args;
   ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, Arity,
-                             kCallElementwiseAny>()(
-      func, reinterpret_cast<InT **>(args), result);
+                             kCallElementwiseAny>()(func, args, result);
   kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(out + block_offset, result,
                                                   num);
 }
@@ -210,7 +208,7 @@ __device__ void DealSegment(
 template <typename InT, typename OutT, typename Functor, int Arity, int VecSize,
           int Rank>
 __global__ void BroadcastKernel(
-    framework::Array<const InT *__restrict__, Arity> in, OutT *out,
+    framework::Array<const InT *__restrict__, Arity> ins, OutT *out,
     framework::Array<bool, Arity> use_broadcast, uint32_t numel,
     framework::Array<kps::details::BroadcastConfig<Rank>, Arity> configs,
     int main_tid, int tail_tid, Functor func) {
@@ -219,11 +217,11 @@ __global__ void BroadcastKernel(
   if (blockIdx.x < main_tid) {
     int num = blockDim.x * VecSize;  // blockIdx.x < main_tid
     DealSegment<InT, OutT, Functor, Arity, VecSize, Rank, false>(
-        in, out, use_broadcast, numel, configs, num, func);
+        ins, out, use_broadcast, numel, configs, num, func);
   } else {  // reminder
     int num = tail_tid;
     DealSegment<InT, OutT, Functor, Arity, VecSize, Rank, true>(
-        in, out, use_broadcast, numel, configs, num, func);
+        ins, out, use_broadcast, numel, configs, num, func);
   }
 }
 
