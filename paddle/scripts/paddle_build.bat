@@ -378,11 +378,11 @@ set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
 set UPLOAD_TP_FILE=OFF
 
 if not exist %THIRD_PARTY_PATH% (
-    pip install wget 
+    pip install wget
     if not exist %THIRD_PARTY_HOME% mkdir "%THIRD_PARTY_HOME%"
     cd %THIRD_PARTY_HOME%
     echo Getting third party: downloading ...
-    %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/%sub_dir%/%md5%.tar.gz')" 
+    %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/%sub_dir%/%md5%.tar.gz')" 2>nul
     if !ERRORLEVEL! EQU 0 (
         echo Getting third party: extracting ...
         tar -xf %THIRD_PARTY_HOME%\%md5%.tar.gz
@@ -524,12 +524,12 @@ if %UPLOAD_TP_FILE%==ON (
         %PYTHON_ROOT%\python.exe setup.py install
     )
     if !errorlevel! EQU 0 (
+        cd %THIRD_PARTY_HOME%
         echo Uploading third_party: compressing ...
-        tar -zcf %THIRD_PARTY_HOME%\%md5%.tar.gz -C %THIRD_PARTY_HOME%\ %md5%
+        tar -zcf %md5%.tar.gz %md5%
         if !errorlevel! EQU 0 (
             echo Uploading third_party: uploading ...
-            cd %cache_dir%
-            %PYTHON_ROOT%\python.exe %BCE_FILE% %sub_dir%\%md5%.tar.gz
+            %PYTHON_ROOT%\python.exe %BCE_FILE% %md5%.tar.gz paddle-windows/%sub_dir% 1>nul
             if !errorlevel! EQU 0 (
                 echo Upload third party to bce successfully 
             ) else (
