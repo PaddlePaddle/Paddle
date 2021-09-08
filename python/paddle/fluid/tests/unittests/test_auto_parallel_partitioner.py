@@ -37,6 +37,7 @@ from paddle.distributed import fleet
 from paddle.distributed.auto_parallel.partitioner import Partitioner
 from paddle.distributed.auto_parallel.utils import _get_comm_group
 from paddle.distributed.auto_parallel.process import new_process_group
+from test_auto_parallel_partitioner_attr import distributed_attr_check_for_dist_op
 
 paddle.enable_static()
 _global_parallel_stratergy = None
@@ -289,6 +290,13 @@ class TestMLPAutoPartitioner(unittest.TestCase):
                                  dist_startup_prog, serial_startup_prog,
                                  var_need_broadcast))
 
+        serial_op_idx = [1, 4]
+        dist_op_idx = [[1, 2], [5, 6]]
+        self.assertTrue(
+            distributed_attr_check_for_dist_op(serial_main_prog, dist_main_prog,
+                                               dist_context, serial_op_idx,
+                                               dist_op_idx))
+
     def test_mlp_dp_mp(self):
         global _global_parallel_stratergy
         _global_parallel_stratergy = "dp_mp"
@@ -335,6 +343,13 @@ class TestMLPAutoPartitioner(unittest.TestCase):
             initialization_check(_global_parallel_stratergy, dist_context,
                                  dist_startup_prog, serial_startup_prog,
                                  var_need_broadcast))
+
+        serial_op_idx = [1, 4]
+        dist_op_idx = [[1, 2], [5, 6]]
+        self.assertTrue(
+            distributed_attr_check_for_dist_op(serial_main_prog, dist_main_prog,
+                                               dist_context, serial_op_idx,
+                                               dist_op_idx))
 
 
 class AttentionLayer(nn.Layer):
@@ -547,6 +562,13 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
                                  dist_startup_prog, serial_startup_prog,
                                  var_need_broadcast))
 
+        serial_op_idx = [0, 4, 6, 18]
+        dist_op_idx = [[0, 1], [5, 6], [8, 9], [21, 22]]
+        self.assertTrue(
+            distributed_attr_check_for_dist_op(serial_main_prog, dist_main_prog,
+                                               dist_context, serial_op_idx,
+                                               dist_op_idx))
+
     def test_attn_dp_mp(self):
         global _global_parallel_stratergy
         _global_parallel_stratergy = "dp_mp"
@@ -597,6 +619,13 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
             initialization_check(_global_parallel_stratergy, dist_context,
                                  dist_startup_prog, serial_startup_prog,
                                  var_need_broadcast))
+
+        serial_op_idx = [0, 4, 6, 18]
+        dist_op_idx = [[0, 1], [5, 6], [8, 9], [21, 22]]
+        self.assertTrue(
+            distributed_attr_check_for_dist_op(serial_main_prog, dist_main_prog,
+                                               dist_context, serial_op_idx,
+                                               dist_op_idx))
 
 
 class DecoderLayer(nn.Layer):
@@ -857,6 +886,16 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
         # row and col allreduce
         dist_ops = dist_main_prog.global_block().ops
         dist_ops = [op.type for op in dist_ops]
+        [
+            'lookup_table_v2', 'lookup_table_v2', 'elementwise_add', 'dropout',
+            'layer_norm', 'matmul', 'elementwise_add', 'reshape2', 'transpose2',
+            'matmul', 'elementwise_add', 'matmul', 'elementwise_add',
+            'reshape2', 'transpose2', 'reshape2', 'transpose2', 'matmul',
+            'softmax', 'dropout', 'matmul_v2', 'transpose2', 'reshape2',
+            'matmul', 'elementwise_add', 'dropout', 'elementwise_add',
+            'layer_norm', 'matmul', 'elementwise_add', 'gelu', 'matmul',
+            'elementwise_add', 'dropout', 'elementwise_add'
+        ]
         ref_ops = [
             'c_embedding', 'c_allreduce_sum', 'lookup_table_v2',
             'elementwise_add', 'dropout', 'layer_norm', 'c_identity', 'matmul',
@@ -880,6 +919,14 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             initialization_check(_global_parallel_stratergy, dist_context,
                                  dist_startup_prog, serial_startup_prog,
                                  var_need_broadcast))
+
+        serial_op_idx = [0, 5, 9, 11, 23, 28, 31]
+        dist_op_idx = [[0, 1], [6, 7], [11, 12], [14, 15], [27, 28], [33, 34],
+                       [37, 38]]
+        self.assertTrue(
+            distributed_attr_check_for_dist_op(serial_main_prog, dist_main_prog,
+                                               dist_context, serial_op_idx,
+                                               dist_op_idx))
 
     def test_decoder_noparallel(self):
         global _global_parallel_stratergy
