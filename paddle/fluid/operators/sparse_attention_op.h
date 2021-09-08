@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,14 +20,6 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/dot_op.h"
-#include "paddle/fluid/operators/math/blas.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
-
-#if defined(__NVCC__) || defined(__HIPCC__)
-#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -38,13 +30,19 @@ template <typename DeviceContext, typename T>
 class SparseAttentionKernel : public framework::OpKernel<T> {
  public:
   void Compute(const paddle::framework::ExecutionContext& ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        platform::is_gpu_place(ctx.GetPlace()), true,
-        platform::errors::NotFound("This kernel only runs on GPU device."));
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::NotFound(
+                          "This sparse_attention op only runs on GPU device."));
+  }
+};
 
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
-    auto* output = ctx.Output<Tensor>("Out");
-    output->mutable_data<T>(ctx.GetPlace());
+template <typename DeviceContext, typename T>
+class SparseAttentionGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
+    PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+                      platform::errors::NotFound(
+                          "This sparse_attention op only runs on GPU device."));
   }
 };
 

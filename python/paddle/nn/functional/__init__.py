@@ -56,6 +56,7 @@ from .common import interpolate  # noqa: F401
 from .common import upsample  # noqa: F401
 from .common import bilinear  # noqa: F401
 from .common import class_center_sample  # noqa: F401
+from .common import sparse_attention
 from .conv import conv1d  # noqa: F401
 from .conv import conv1d_transpose  # noqa: F401
 from .common import linear  # noqa: F401

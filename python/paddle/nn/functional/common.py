@@ -1737,3 +1737,18 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
             'seed': seed if seed is not None else 0
         })
     return remapped_label, sampled_class_center
+
+
+def sparse_attention(x, name=None):
+    r"""
+    TODO
+    """
+    if in_dygraph_mode():
+        return _C_ops.sparse_attention(x)
+
+    helper = LayerHelper('sparse_attention', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(
+        type='sparse_attention', inputs={"X": x}, outputs={"Out": out})
+    return out

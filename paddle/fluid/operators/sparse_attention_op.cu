@@ -1,4 +1,4 @@
-/* Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <cusparse.h>
+#include <math.h>
 #include <iostream>
 #include <limits>
 #include <vector>
@@ -28,11 +29,7 @@ namespace operators {
 template <typename T>
 __forceinline__ __device__ T CudaShuffleXorSync(unsigned mask, T val,
                                                 int width = warpSize) {
-#if defined(PADDLE_WITH_HIP) || CUDA_VERSION < 9000
-  return __shfl_xor(val, width);
-#else
   return __shfl_xor_sync(mask, val, width);
-#endif
 }
 
 template <typename T, int BatchSize, int WarpSize>
@@ -180,17 +177,107 @@ __global__ void BlockSparseSoftmaxForward(T* softmax, const T* src, T scale,
   }
 }
 
-using Tensor = framework::Tensor;
+template <typename T, int BlockSize, int NnzBlockMax>
+__global__ void BlockSparseSoftmaxBackward(T* dst, const T* grad, const T* src,
+                                           T scale, const int* layout_rowptr,
+                                           const int* layout_colindex,
+                                           int seq_len) {
+  // constants
+  const int WarpSize = 32;
+  const int BlockSize2 = BlockSize * BlockSize;
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
+  // current thread related info
+  const int cur = blockIdx.x * blockDim.y + threadIdx.y;
+  const int cur_batch = cur / seq_len;
+  const int cur_seq = cur % seq_len;
+  const int cur_seqb = cur / BlockSize;
+  const int cur_inb = cur % BlockSize;
+
+  // number of nnz block in cur_seqb
+  const int cur_nnzb = layout_rowptr[cur_seqb + 1] - layout_rowptr[cur_seqb];
+
+  T srcdata[(BlockSize * NnzBlockMax + WarpSize - 1) / WarpSize];
+  T graddata[(BlockSize * NnzBlockMax + WarpSize - 1) / WarpSize];
+
+  // read tensor data, attn mask
+  if (BlockSize == 1) {  // BlockSize = 1
+    const int Iter = (cur_nnzb + WarpSize - 1) / WarpSize;
+    const T* srcptr = src + layout_rowptr[cur_seqb];
+    const T* gradptr = grad + layout_rowptr[cur_seqb];
+    for (int j = 0; j < Iter; j++) {
+      int xidx = j * WarpSize + threadIdx.x;
+      int didx = j;
+      if (xidx < cur_nnzb) {
+        srcdata[didx] = srcptr[xidx];
+        graddata[didx] = gradptr[xidx];
+      } else {
+        srcdata[didx] = 0;
+        graddata[didx] = 0;
+      }
+    }
+
+  } else if (BlockSize == 64 || BlockSize == 32) {  // BlockSize = 64, 32
+    for (int i = 0; i < cur_nnzb; i++) {
+      // BlockSize = 64, 32
+      const T* srcptr = src + layout_rowptr[cur_seqb] * BlockSize2 +
+                        i * BlockSize2 + cur_inb * BlockSize;
+      const T* gradptr = grad + layout_rowptr[cur_seqb] * BlockSize2 +
+                         i * BlockSize2 + cur_inb * BlockSize;
+      const int IterPerBlock = BlockSize / WarpSize;
+#pragma unroll
+      for (int j = 0; j < IterPerBlock; j++) {
+        int didx = i * IterPerBlock + j;
+        int xidx = threadIdx.x + j * WarpSize;
+        srcdata[didx] = srcptr[xidx];
+        graddata[didx] = gradptr[xidx];
+      }
+    }
+  }
+
+  T sum = 0;
+  const int kIteration = (cur_nnzb * BlockSize + WarpSize - 1) / WarpSize;
+#pragma unroll
+  for (int it = 0; it < kIteration; ++it) {
+    sum += srcdata[it] * graddata[it];
+  }
+  WarpReduceSum<T, 1, WarpSize>(&sum);
+
+  // compute softmax and write out
+  if (BlockSize == 1) {  // BlockSize = 1
+    const int Iter = (cur_nnzb + WarpSize - 1) / WarpSize;
+    T* dstptr = dst + layout_rowptr[cur_seqb];
+    for (int j = 0; j < Iter; j++) {
+      int xidx = j * WarpSize + threadIdx.x;
+      int didx = j;
+      if (xidx < cur_nnzb) {
+        dstptr[xidx] = scale * srcdata[didx] * (graddata[didx] - sum);
+      }
+    }
+  } else if (BlockSize == 64 || BlockSize == 32) {  // BlockSize = 64, 32
+    for (int i = 0; i < cur_nnzb; i++) {
+      // BlockSize = 64, 32
+      T* dstptr = dst + layout_rowptr[cur_seqb] * BlockSize2 + i * BlockSize2 +
+                  cur_inb * BlockSize;
+      const int IterPerBlock = BlockSize / WarpSize;
+      for (int j = 0; j < IterPerBlock; j++) {
+        int didx = i * IterPerBlock + j;
+        int xidx = threadIdx.x + j * WarpSize;
+        dstptr[xidx] = scale * srcdata[didx] * (graddata[didx] - sum);
+      }
+    }
+  }
+}
+
+using Tensor = framework::Tensor;
 /*
 input: sparse C in CSR format (num_rows,num_rows)
 output: sparse C after softmax operation
 */
 template <typename DeviceContext, typename T>
-void sparse_softmax(const platform::CUDADeviceContext& ctx,
-                    const Tensor* offset, const Tensor* columns, Tensor* input,
-                    Tensor* output, const int blocksize, const int num_rows) {
+void SparseSoftmaxForward(const platform::CUDADeviceContext& ctx,
+                          const Tensor* offset, const Tensor* columns,
+                          Tensor* input, Tensor* output, const int blocksize,
+                          const int num_rows, const int num_cols) {
   const int* offset_data = offset->data<int>();
   const int* columns_data = columns->data<int>();
   T* input_data = input->data<T>();
@@ -199,19 +286,47 @@ void sparse_softmax(const platform::CUDADeviceContext& ctx,
   const int BlockSize = 1;
   dim3 blocks(32, 4, 1);
   int grid = num_rows * BlockSize / 4;
-  BlockSparseSoftmaxForward<float, BlockSize, 4><<<grid, blocks>>>(
-      output_data, input_data, 1.0, NULL, NULL, offset_data, columns_data,
+  T scaling = pow(static_cast<double>(num_cols), -0.5);
+
+  const int NnzBlockMax = 256;
+  BlockSparseSoftmaxForward<double, BlockSize, NnzBlockMax><<<grid, blocks>>>(
+      output_data, input_data, scaling, NULL, NULL, offset_data, columns_data,
       num_rows);
 }
 
+template <typename DeviceContext, typename T>
+void SparseSoftmaxBackward(const platform::CUDADeviceContext& ctx,
+                           const Tensor* offset, const Tensor* columns,
+                           Tensor* dx, const Tensor* dout, const Tensor* out,
+                           const int blocksize, const int num_rows,
+                           const int num_cols) {
+  const int* offset_data = offset->data<int>();
+  const int* columns_data = columns->data<int>();
+  T* dx_data = dx->data<T>();
+  const T* dout_data = dout->data<T>();
+  const T* out_data = out->data<T>();
+
+  const int BlockSize = 1;
+  dim3 blocks(32, 4, 1);
+  int grid = num_rows * BlockSize / 4;
+  T scaling = pow(static_cast<double>(num_cols), -0.5);
+
+  const int NnzBlockMax = 256;
+  BlockSparseSoftmaxBackward<double, BlockSize, NnzBlockMax><<<grid, blocks>>>(
+      dx_data, dout_data, out_data, scaling, offset_data, columns_data,
+      num_rows);
+}
+
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
 /*
 input: dense A (num_rows,num_cols), dense B (num_rows,num_cols)
 output: sparse C in CSR format (num_rows,num_rows)
 */
 template <typename DeviceContext, typename T>
-void Dot_sdd(const platform::CUDADeviceContext& ctx, const Tensor* A,
-             const Tensor* B, const Tensor* C_offset, const Tensor* C_columns,
-             Tensor* C_value, const int num_rows, const int num_cols) {
+void DotSdd(const platform::CUDADeviceContext& ctx, const Tensor* A,
+            const Tensor* B, const Tensor* C_offset, const Tensor* C_columns,
+            Tensor* C_value, const int num_rows, const int num_cols,
+            const bool A_transpose, const bool B_transpose) {
   const T* A_data = A->data<T>();
   const T* B_data = B->data<T>();
 
@@ -229,36 +344,41 @@ void Dot_sdd(const platform::CUDADeviceContext& ctx, const Tensor* A,
 
   platform::dynload::cusparseCreate(&handle);
   // Create dense matrix A
-  //  the data_type must be float
   platform::dynload::cusparseCreateDnMat(&matA, num_rows, num_cols, num_cols,
-                                         const_cast<T*>(A_data), CUDA_R_32F,
+                                         const_cast<T*>(A_data), CUDA_R_64F,
                                          CUSPARSE_ORDER_ROW);
   // Create dense matrix B
 
-  platform::dynload::cusparseCreateDnMat(&matB, num_cols, num_rows, num_rows,
-                                         const_cast<T*>(B_data), CUDA_R_32F,
+  platform::dynload::cusparseCreateDnMat(&matB, num_rows, num_cols, num_cols,
+                                         const_cast<T*>(B_data), CUDA_R_64F,
                                          CUSPARSE_ORDER_ROW);
   // Create sparse matrix C in CSR format
   int C_nnz = C_columns->dims()[0];
   platform::dynload::cusparseCreateCsr(
       &matC, num_rows, num_rows, C_nnz, const_cast<int*>(C_offset_data),
       const_cast<int*>(C_columns_data), C_value_data, CUSPARSE_INDEX_32I,
-      CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F);
+      CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, CUDA_R_64F);
 
   // allocate an external buffer if needed
-  float alpha = 1.0f;
-  float beta = 0.0f;
+  double alpha = 1.0f;
+  double beta = 0.0f;
 
   platform::dynload::cusparseSDDMM_bufferSize(
-      handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
-      CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB, &beta, matC,
-      CUDA_R_32F, CUSPARSE_SDDMM_ALG_DEFAULT, &bufferSize);
+      handle, A_transpose ? CUSPARSE_OPERATION_TRANSPOSE
+                          : CUSPARSE_OPERATION_NON_TRANSPOSE,
+      B_transpose ? CUSPARSE_OPERATION_TRANSPOSE
+                  : CUSPARSE_OPERATION_NON_TRANSPOSE,
+      &alpha, matA, matB, &beta, matC, CUDA_R_64F, CUSPARSE_SDDMM_ALG_DEFAULT,
+      &bufferSize);
   cudaMalloc(&dBuffer, bufferSize);
 
-  platform::dynload::cusparseSDDMM(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
-                                   CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha,
-                                   matA, matB, &beta, matC, CUDA_R_32F,
-                                   CUSPARSE_SDDMM_ALG_DEFAULT, dBuffer);
+  platform::dynload::cusparseSDDMM(
+      handle, A_transpose ? CUSPARSE_OPERATION_TRANSPOSE
+                          : CUSPARSE_OPERATION_NON_TRANSPOSE,
+      B_transpose ? CUSPARSE_OPERATION_TRANSPOSE
+                  : CUSPARSE_OPERATION_NON_TRANSPOSE,
+      &alpha, matA, matB, &beta, matC, CUDA_R_64F, CUSPARSE_SDDMM_ALG_DEFAULT,
+      dBuffer);
 
   platform::dynload::cusparseDestroyDnMat(matA);
   platform::dynload::cusparseDestroyDnMat(matB);
@@ -272,12 +392,13 @@ input: sparse A in CSR format (num_rows,num_rows), dense B (num_rows,num_cols)
 output: dense C (num_rows,num_cols)
 */
 template <typename DeviceContext, typename T>
-void Dot_dsd(const platform::CUDADeviceContext& ctx, const Tensor* A_offset,
-             const Tensor* A_columns, Tensor* A_value, const Tensor* B,
-             Tensor* C, const int num_rows, const int num_cols) {
+void DotDsd(const platform::CUDADeviceContext& ctx, const Tensor* A_offset,
+            const Tensor* A_columns, const Tensor* A_value, const Tensor* B,
+            Tensor* C, const int num_rows, const int num_cols,
+            const bool A_transpose, const bool B_transpose) {
   const int* A_offset_data = A_offset->data<int>();
   const int* A_columns_data = A_columns->data<int>();
-  T* A_value_data = A_value->data<T>();
+  const T* A_value_data = A_value->data<T>();
 
   const T* B_data = B->data<T>();
   T* C_data = C->data<T>();
@@ -295,33 +416,40 @@ void Dot_dsd(const platform::CUDADeviceContext& ctx, const Tensor* A_offset,
   int A_nnz = A_columns->dims()[0];
   platform::dynload::cusparseCreateCsr(
       &matA, num_rows, num_rows, A_nnz, const_cast<int*>(A_offset_data),
-      const_cast<int*>(A_columns_data), A_value_data, CUSPARSE_INDEX_32I,
-      CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F);
+      const_cast<int*>(A_columns_data), const_cast<T*>(A_value_data),
+      CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO,
+      CUDA_R_64F);
 
   // Create dense matrix B
   platform::dynload::cusparseCreateDnMat(&matB, num_rows, num_cols, num_cols,
-                                         const_cast<T*>(B_data), CUDA_R_32F,
+                                         const_cast<T*>(B_data), CUDA_R_64F,
                                          CUSPARSE_ORDER_ROW);
   // Create dense matrix C
   platform::dynload::cusparseCreateDnMat(&matC, num_rows, num_cols, num_cols,
-                                         C_data, CUDA_R_32F,
+                                         C_data, CUDA_R_64F,
                                          CUSPARSE_ORDER_ROW);
 
   // allocate an external buffer if needed
-  float alpha = 1.0f;
-  float beta = 0.0f;
+  double alpha = 1.0f;
+  double beta = 0.0f;
 
   // allocate an external buffer if needed
   platform::dynload::cusparseSpMM_bufferSize(
-      handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
-      CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha, matA, matB, &beta, matC,
-      CUDA_R_32F, CUSPARSE_SPMM_ALG_DEFAULT, &bufferSize);
+      handle, A_transpose ? CUSPARSE_OPERATION_TRANSPOSE
+                          : CUSPARSE_OPERATION_NON_TRANSPOSE,
+      B_transpose ? CUSPARSE_OPERATION_TRANSPOSE
+                  : CUSPARSE_OPERATION_NON_TRANSPOSE,
+      &alpha, matA, matB, &beta, matC, CUDA_R_64F, CUSPARSE_SPMM_ALG_DEFAULT,
+      &bufferSize);
   cudaMalloc(&dBuffer, bufferSize);
 
-  platform::dynload::cusparseSpMM(handle, CUSPARSE_OPERATION_NON_TRANSPOSE,
-                                  CUSPARSE_OPERATION_NON_TRANSPOSE, &alpha,
-                                  matA, matB, &beta, matC, CUDA_R_32F,
-                                  CUSPARSE_SPMM_ALG_DEFAULT, dBuffer);
+  platform::dynload::cusparseSpMM(
+      handle, A_transpose ? CUSPARSE_OPERATION_TRANSPOSE
+                          : CUSPARSE_OPERATION_NON_TRANSPOSE,
+      B_transpose ? CUSPARSE_OPERATION_TRANSPOSE
+                  : CUSPARSE_OPERATION_NON_TRANSPOSE,
+      &alpha, matA, matB, &beta, matC, CUDA_R_64F, CUSPARSE_SPMM_ALG_DEFAULT,
+      dBuffer);
 
   platform::dynload::cusparseDestroySpMat(matA);
   platform::dynload::cusparseDestroyDnMat(matB);
@@ -338,6 +466,9 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
     auto ins = ctx.MultiInput<framework::Tensor>("X");
     auto* output = ctx.Output<Tensor>("Out");
+    auto* result_sdd = ctx.Output<Tensor>("ResultSdd");
+    auto* result_softmax = ctx.Output<Tensor>("ResultSoftmax");
+
     auto query = ins[0];
     auto key = ins[1];
     auto value = ins[2];
@@ -347,42 +478,105 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
     auto query_dims = query->dims();
     int batch_size = query_dims[0];
     int num_heads = query_dims[1];
-    int N = query_dims[2];
-    int M = query_dims[3];
+    int M = query_dims[2];
+    int N = query_dims[3];
     int stride = N * M;
 
     T* out_data = output->mutable_data<T>(ctx.GetPlace());
+    T* result_sdd_data = result_sdd->mutable_data<T>(ctx.GetPlace());
+    T* result_softmax_data = result_softmax->mutable_data<T>(ctx.GetPlace());
 
     const int iter_num = batch_size * num_heads;
     for (int i = 0; i < iter_num; i++) {
       const int now_stride = i * stride;
-      int nnz_num = columns->dims()[0];
-
-      Tensor A_value;
-      const std::vector<int> A_value_dims = {nnz_num};
-      auto A_value_dim = framework::make_ddim(A_value_dims);
-      A_value.Resize(A_value_dim);
-      A_value.mutable_data<T>(ctx.GetPlace());
-
       const auto& dev_ctx = ctx.cuda_device_context();
 
       // step1:sdd
-      Dot_sdd<DeviceContext, T>(dev_ctx, query, key, offset, columns, &A_value,
-                                N, M);
+      DotSdd<DeviceContext, T>(dev_ctx, query, key, offset, columns, result_sdd,
+                               M, N, false, true);
 
       // step2:softmax
-      Tensor B_value;
-      const std::vector<int> B_value_dims = {nnz_num};
-      auto B_value_dim = framework::make_ddim(B_value_dims);
-      B_value.Resize(B_value_dim);
-      B_value.mutable_data<T>(ctx.GetPlace());
-
-      sparse_softmax<DeviceContext, T>(dev_ctx, offset, columns, &A_value,
-                                       &B_value, 1, N);
+      SparseSoftmaxForward<DeviceContext, T>(
+          dev_ctx, offset, columns, result_sdd, result_softmax, 1, M, N);
 
       // step3:dsd
-      Dot_dsd<DeviceContext, T>(dev_ctx, offset, columns, &B_value, value,
-                                output, N, M);
+      DotDsd<DeviceContext, T>(dev_ctx, offset, columns, result_softmax, value,
+                               output, M, N, false, false);
+    }
+#endif
+  }
+};
+
+template <typename DeviceContext, typename T>
+class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
+    auto ins = ctx.MultiInput<Tensor>("X");
+    auto* ResultSdd = ctx.Input<Tensor>("ResultSdd");
+    auto* ResultSoftmax = ctx.Input<Tensor>("ResultSoftmax");
+    auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto dx = ctx.MultiOutput<Tensor>(framework::GradVarName("X"));
+
+    auto place = ctx.GetPlace();
+    const auto n = ins.size();
+    for (size_t i = 0; i < n; i++) {
+      dx[i]->mutable_data<T>(place);
+    }
+
+    auto dQuery = dx[0];
+    auto dKey = dx[1];
+    auto dValue = dx[2];
+
+    auto query = ins[0];
+    auto key = ins[1];
+    auto value = ins[2];
+    auto offset = ins[3];
+    auto columns = ins[4];
+
+    auto query_dims = query->dims();
+    int batch_size = query_dims[0];
+    int num_heads = query_dims[1];
+    int M = query_dims[2];
+    int N = query_dims[3];
+    int stride = N * M;
+
+    const int iter_num = batch_size * num_heads;
+    for (int i = 0; i < iter_num; i++) {
+      const auto& dev_ctx = ctx.cuda_device_context();
+
+      // dValue = transpose(result_softmax) * dOut
+      DotDsd<DeviceContext, T>(dev_ctx, offset, columns, ResultSoftmax, dout,
+                               dValue, M, N, true, false);
+
+      // dResultSoftmax = dOut * transpose(Value)
+      int nnz_num = columns->dims()[0];
+      Tensor dResultSoftmax;
+      const std::vector<int> dResultSoftmaxDims = {nnz_num};
+      auto dResultSoftmaxDim = framework::make_ddim(dResultSoftmaxDims);
+      dResultSoftmax.Resize(dResultSoftmaxDim);
+      dResultSoftmax.mutable_data<T>(ctx.GetPlace());
+
+      DotSdd<DeviceContext, T>(dev_ctx, dout, value, offset, columns,
+                               &dResultSoftmax, M, N, false, true);
+
+      // dResultSdd = dResultSoftmax * softmax'(ResultSdd)
+      Tensor dResultSdd;
+      const std::vector<int> dResultSddDims = {nnz_num};
+      auto dResultSddDim = framework::make_ddim(dResultSddDims);
+      dResultSdd.Resize(dResultSddDim);
+      dResultSdd.mutable_data<T>(ctx.GetPlace());
+      SparseSoftmaxBackward<DeviceContext, T>(dev_ctx, offset, columns,
+                                              &dResultSdd, &dResultSoftmax,
+                                              ResultSoftmax, 1, M, N);
+
+      // dQuery = dResultSdd * Key
+      DotDsd<DeviceContext, T>(dev_ctx, offset, columns, &dResultSdd, key,
+                               dQuery, M, N, false, false);
+
+      // dKey = transpose(dResultSdd) * Query
+      DotDsd<DeviceContext, T>(dev_ctx, offset, columns, &dResultSdd, query,
+                               dKey, M, N, true, false);
     }
 #endif
   }
@@ -390,7 +584,10 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
-
 REGISTER_OP_CUDA_KERNEL(
     sparse_attention,
-    ops::SparseAttentionCUDAKernel<plf::CUDADeviceContext, float>);
+    ops::SparseAttentionCUDAKernel<plf::CUDADeviceContext, double>);
+
+REGISTER_OP_CUDA_KERNEL(
+    sparse_attention_grad,
+    ops::SparseAttentionGradCUDAKernel<plf::CUDADeviceContext, double>);
