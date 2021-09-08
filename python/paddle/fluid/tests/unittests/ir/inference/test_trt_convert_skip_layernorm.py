@@ -12,100 +12,205 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest
-from program_config import TensorConfig
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
 import numpy as np
 import paddle.inference as paddle_infer
-import unittest
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
 
 
 class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
-    def setUp(self):
-        self.ops_config = [{
-            "op_type": "skip_layernorm",
-            "op_inputs": {
-                "X": ["skip_layernorm_inputX_data"],
-                "Y": ["skip_layernorm_inputY_data"],
-                "Bias": ["bias"],
-                "Scale": ["scale"]
-            },
-            "op_outputs": {
-                "Out": ["skip_layernorm_output_data"]
-            },
-            "op_attrs": {
-                "epsilon": [1e-5],
-                "begin_norm_axis": [0, 1, 2],
-                "enable_int8": [False, True]
-            }
-        }]
-        self.batch_size_set = [1, 2, 4]
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        # TODO: This is just the example to remove the wrong attrs.
+        inputs = program_config.inputs
+        weights = program_config.weights
+        outputs = program_config.outputs
 
-    def update_program_input_and_weight_with_attr(self, op_attr_list):
-        input_bias = np.random.randn(768).astype("float32")
-        input_scale = np.random.randn(768).astype("float32")
-        skip_layernorm_inputX_data = TensorConfig(shape=[1, 128, 768])
-        skip_layernorm_inputY_data = TensorConfig(shape=[1, 128, 768])
-        bias = TensorConfig(shape=[768], data=input_bias)
-        scale = TensorConfig(shape=[768], data=input_scale)
-        self.program_weights = {"bias": bias, "scale": scale}
-        self.program_inputs = {
-            "skip_layernorm_inputX_data": skip_layernorm_inputX_data,
-            "skip_layernorm_inputY_data": skip_layernorm_inputY_data
-        }
-        self.program_outputs = ["skip_layernorm_output_data"]
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
 
-    def test_check_fp32_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Float32
-        # the fused tensorrt engine num is 1, and paddle op num is 2(feed and fetch).
-        self.run_test(trt_engine_num=0, paddle_op_num=4, threshold=1e-5)
+        if attrs[0]['begin_norm_axis'] >= 0:
+            if len(inputs['skip_layernorm_inputX_data'].shape) <= attrs[0][
+                    'begin_norm_axis']:
+                return False
 
-    def test_check_fp16_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Half
-        self.run_test(trt_engine_num=0, paddle_op_num=4, threshold=1e-2)
+        return True
 
-    def test_dynamic_shape_fp32_check_output(self):
+    def sample_program_configs(self):
+        def generate_input1(attrs: List[Dict[str, Any]], batch):
+            if self.dims == 4:
+                return np.ones([batch, 6, 128, 768]).astype(np.float32)
+            elif self.dims == 3:
+                return np.ones([batch, 128, 768]).astype(np.float32)
+            elif self.dims == 2:
+                return np.ones([batch, 128, 768]).astype(np.float32)
+
+        def generate_input2(attrs: List[Dict[str, Any]], batch):
+            if self.dims == 4:
+                return np.ones([batch, 6, 128, 768]).astype(np.float32)
+            elif self.dims == 3:
+                return np.ones([batch, 128, 768]).astype(np.float32)
+            elif self.dims == 2:
+                return np.ones([batch, 128, 768]).astype(np.float32)
+
+        def generate_weight1(attrs: List[Dict[str, Any]]):
+            return np.random.random([768]).astype(np.float32)
+
+        def generate_weight2(attrs: List[Dict[str, Any]]):
+            return np.random.random([768]).astype(np.float32)
+
+        for dims in [3, 4]:
+            for batch in [1, 2]:
+                for epsilon in [1e-5]:
+                    for begin_norm_axis in [0, 1, 2, -1]:
+                        for enable_int8 in [False, True]:
+                            self.dims = dims
+                            dics = [{
+                                "epsilon": epsilon,
+                                "begin_norm_axis": begin_norm_axis,
+                                "enable_int8": enable_int8
+                            }, {}]
+                            ops_config = [{
+                                "op_type": "skip_layernorm",
+                                "op_inputs": {
+                                    "X": ["skip_layernorm_inputX_data"],
+                                    "Y": ["skip_layernorm_inputY_data"],
+                                    "Bias": ["Bias"],
+                                    "Scale": ["Scale"]
+                                },
+                                "op_outputs": {
+                                    "Out": ["skip_layernorm_out"]
+                                },
+                                "op_attrs": dics[0]
+                            }]
+                            ops = self.generate_op_config(ops_config)
+                            program_config = ProgramConfig(
+                                ops=ops,
+                                weights={
+                                    "Bias": TensorConfig(data_gen=partial(
+                                        generate_weight1, dics)),
+                                    "Scale": TensorConfig(data_gen=partial(
+                                        generate_weight2, dics))
+                                },
+                                inputs={
+                                    "skip_layernorm_inputX_data": TensorConfig(
+                                        data_gen=partial(generate_input1, dics,
+                                                         batch)),
+                                    "skip_layernorm_inputY_data": TensorConfig(
+                                        data_gen=partial(generate_input2, dics,
+                                                         batch))
+                                },
+                                outputs=["skip_layernorm_out"])
+
+                            yield program_config
+
+    def sample_predictor_configs(
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+        def generate_dynamic_shape(attrs):
+            if self.dims == 4:
+                self.dynamic_shape.min_input_shape = {
+                    "skip_layernorm_inputX_data": [1, 6, 128, 768],
+                    "skip_layernorm_inputY_data": [1, 6, 128, 768],
+                    "Bias": [768],
+                    "Scale": [768]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "skip_layernorm_inputX_data": [9, 6, 768, 3072],
+                    "skip_layernorm_inputY_data": [9, 6, 768, 3072],
+                    "Bias": [3072],
+                    "Scale": [3072]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "skip_layernorm_inputX_data": [1, 6, 128, 768],
+                    "skip_layernorm_inputY_data": [1, 6, 128, 768],
+                    "Bias": [768],
+                    "Scale": [768]
+                }
+            elif self.dims == 3:
+                self.dynamic_shape.min_input_shape = {
+                    "skip_layernorm_inputX_data": [1, 128, 768],
+                    "skip_layernorm_inputY_data": [1, 128, 768],
+                    "Bias": [768],
+                    "Scale": [768]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "skip_layernorm_inputX_data": [9, 768, 3072],
+                    "skip_layernorm_inputY_data": [9, 768, 3072],
+                    "Bias": [3072],
+                    "Scale": [3072]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "skip_layernorm_inputX_data": [1, 128, 768],
+                    "skip_layernorm_inputY_data": [1, 128, 768],
+                    "Bias": [768],
+                    "Scale": [768]
+                }
+            elif self.dims == 2:
+                self.dynamic_shape.min_input_shape = {
+                    "skip_layernorm_inputX_data": [1, 768],
+                    "skip_layernorm_inputY_data": [1, 768],
+                    "Bias": [768],
+                    "Scale": [768]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "skip_layernorm_inputX_data": [9, 3072],
+                    "skip_layernorm_inputY_data": [9, 3072],
+                    "Bias": [3072],
+                    "Scale": [3072]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "skip_layernorm_inputX_data": [1, 768],
+                    "skip_layernorm_inputY_data": [1, 768],
+                    "Bias": [768],
+                    "Scale": [768]
+                }
+
+        def clear_dynamic_shape():
+            self.dynamic_shape.min_input_shape = {}
+            self.dynamic_shape.max_input_shape = {}
+            self.dynamic_shape.opt_input_shape = {}
+
+        def generate_trt_nodes_num(attrs, dynamic_shape):
+            # TODO: This is just the example, need to be fixed.
+            if dynamic_shape == True:
+                return 1, 3
+            else:
+                return 0, 4
+
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
+        self.trt_param.max_batch_size = 9
+        # for static_shape
+        clear_dynamic_shape()
+
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        self.dynamic_shape.min_input_shape = {
-            "skip_layernorm_inputX_data": [1, 128, 768],
-            "skip_layernorm_inputY_data": [1, 128, 768],
-            "bias": [768],
-            "scale": [768]
-        }
-        self.dynamic_shape.max_input_shape = {
-            "skip_layernorm_inputX_data": [4, 768, 3072],
-            "skip_layernorm_inputY_data": [4, 128, 3072],
-            "bias": [3072],
-            "scale": [3072]
-        }
-        self.dynamic_shape.opt_input_shape = {
-            "skip_layernorm_inputX_data": [1, 128, 768],
-            "skip_layernorm_inputY_data": [1, 128, 768],
-            "bias": [768],
-            "scale": [768]
-        }
-        self.run_test(trt_engine_num=1, paddle_op_num=3, threshold=1e-5)
-
-    def test_dynamic_shape_fp32_check_output(self):
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        self.dynamic_shape.min_input_shape = {
-            "skip_layernorm_inputX_data": [1, 128, 768],
-            "skip_layernorm_inputY_data": [1, 128, 768],
-            "bias": [768],
-            "scale": [768]
-        }
-        self.dynamic_shape.max_input_shape = {
-            "skip_layernorm_inputX_data": [4, 768, 3072],
-            "skip_layernorm_inputY_data": [4, 128, 3072],
-            "bias": [3072],
-            "scale": [3072]
-        }
-        self.dynamic_shape.opt_input_shape = {
-            "skip_layernorm_inputX_data": [1, 128, 768],
-            "skip_layernorm_inputY_data": [1, 128, 768],
-            "bias": [768],
-            "scale": [768]
-        }
-        self.run_test(trt_engine_num=1, paddle_op_num=3, threshold=1e-2)
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-2
+
+        # for dynamic_shape
+        generate_dynamic_shape(attrs)
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
+                                                                     True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
+                                                                     True), 1e-2
+
+    def add_skip_trt_case(self):
+        # TODO(wilber): This is just the example to illustrate the skip usage.
+        pass
+
+    def test(self):
+        self.add_skip_trt_case()
+        self.run_test()
 
 
 if __name__ == "__main__":
