@@ -30,12 +30,12 @@ namespace operators {
 template <typename T>
 using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
 
-__device__ __forceinline__ float square_root(float x) { return sqrtf(x); }
-__device__ __forceinline__ double square_root(double x) { return sqrt(x); }
-__device__ __forceinline__ float fma_root(float x, float y, float z) {
+__device__ __forceinline__ float SquareRoot(float x) { return sqrtf(x); }
+__device__ __forceinline__ double SquareRoot(double x) { return sqrt(x); }
+__device__ __forceinline__ float FmaRoot(float x, float y, float z) {
   return fmaf(x, y, z);
 }
-__device__ __forceinline__ double fma_root(double x, double y, double z) {
+__device__ __forceinline__ double FmaRoot(double x, double y, double z) {
   return fma(x, y, z);
 }
 
@@ -72,8 +72,8 @@ __device__ inline void VectorizeLarsUpdateMP(
     for (int j = 0; j < 4; ++j) {
       MT grad = static_cast<MT>(g_data.val[j]) * rescale_grad;
       v_new.val[j] =
-          fma_root(v_data.val[j], mu,
-                   local_lr * fma_root(lars_weight_decay, p_data.val[j], grad));
+          FmaRoot(v_data.val[j], mu,
+                  local_lr * FmaRoot(lars_weight_decay, p_data.val[j], grad));
       p_new.val[j] = p_data.val[j] - v_new.val[j];
       p_out.val[j] = static_cast<T>(p_new.val[j]);
     }
@@ -86,7 +86,7 @@ __device__ inline void VectorizeLarsUpdateMP(
     MT grad = static_cast<MT>(g[i]) * rescale_grad;
     MT param = master_p[i];
     MT v_new =
-        fma_root(v[i], mu, local_lr * fma_root(lars_weight_decay, param, grad));
+        FmaRoot(v[i], mu, local_lr * FmaRoot(lars_weight_decay, param, grad));
     MT p_new = param - v_new;
     v_out[i] = v_new;
     p_out[i] = static_cast<T>(p_new);
@@ -100,28 +100,28 @@ __device__ inline void VectorizeLarsUpdate(
     MT* __restrict__ v_out, const MT* __restrict__ p, const MT mu, MT local_lr,
     const MT lars_weight_decay, const MT rescale_grad, const int tid,
     const int grid_stride, const int numel) {
-  using VecType = paddle::platform::AlignedVector<MT, VesSize>;
+  using VecMType = paddle::platform::AlignedVector<MT, VesSize>;
   int main = numel >> (VesSize >> 1);
   int tail_offset = main * VesSize;
 
-  const VecType* g_vec = reinterpret_cast<const VecType*>(g);
-  const VecType* v_vec = reinterpret_cast<const VecType*>(v);
-  const VecType* p_vec = reinterpret_cast<const VecType*>(p);
-  VecType* p_out_vec = reinterpret_cast<VecType*>(p_out);
-  VecType* v_out_vec = reinterpret_cast<VecType*>(v_out);
+  const VecMType* __restrict__ g_vec = reinterpret_cast<const VecMType*>(g);
+  const VecMType* __restrict__ v_vec = reinterpret_cast<const VecMType*>(v);
+  const VecMType* __restrict__ p_vec = reinterpret_cast<const VecMType*>(p);
+  VecMType* p_out_vec = reinterpret_cast<VecMType*>(p_out);
+  VecMType* v_out_vec = reinterpret_cast<VecMType*>(v_out);
 
   for (int i = tid; i < main; i += grid_stride) {
-    VecType v_new, p_new;
-    VecType g_data = g_vec[i];
-    VecType v_data = v_vec[i];
-    VecType p_data = p_vec[i];
+    VecMType v_new, p_new;
+    VecMType g_data = g_vec[i];
+    VecMType v_data = v_vec[i];
+    VecMType p_data = p_vec[i];
 
 #pragma unroll
     for (int j = 0; j < VesSize; ++j) {
       MT grad = g_data.val[j] * rescale_grad;
       v_new.val[j] =
-          fma_root(v_data.val[j], mu,
-                   local_lr * fma_root(lars_weight_decay, p_data.val[j], grad));
+          FmaRoot(v_data.val[j], mu,
+                  local_lr * FmaRoot(lars_weight_decay, p_data.val[j], grad));
       p_new.val[j] = p_data.val[j] - v_new.val[j];
     }
     v_out_vec[i] = v_new;
@@ -132,7 +132,7 @@ __device__ inline void VectorizeLarsUpdate(
     MT grad = g[i] * rescale_grad;
     MT param = p[i];
     MT v_new =
-        fma_root(v[i], mu, local_lr * fma_root(lars_weight_decay, param, grad));
+        FmaRoot(v[i], mu, local_lr * FmaRoot(lars_weight_decay, param, grad));
     v_out[i] = v_new;
     p_out[i] = param - v_new;
   }
@@ -146,10 +146,9 @@ __global__ void L2NormKernel(const T* __restrict__ p_data,
                              const int64_t repeat_times, const int64_t numel) {
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
   int grid_stride = LARS_BLOCK_SIZE * gridDim.x;
-  __shared__ MT p_buffer;
-  __shared__ MT g_buffer;
-  p_buffer = static_cast<MT>(0);
-  g_buffer = static_cast<MT>(0);
+  __shared__ MT s_buffer[2];
+  s_buffer[0] = static_cast<MT>(0);
+  s_buffer[1] = static_cast<MT>(0);
   MT p_tmp_val = static_cast<MT>(0);
   MT g_tmp_val = static_cast<MT>(0);
 
@@ -158,16 +157,18 @@ __global__ void L2NormKernel(const T* __restrict__ p_data,
       p_tmp_val = static_cast<MT>(p_data[tid]);
       g_tmp_val = static_cast<MT>(g_data[tid]);
     }
-    p_buffer += math::blockReduceSum<MT>(p_tmp_val * p_tmp_val, FINAL_MASK);
-    g_buffer += math::blockReduceSum<MT>(g_tmp_val * g_tmp_val, FINAL_MASK);
+    s_buffer[0] += math::blockReduceSum<MT>(p_tmp_val * p_tmp_val, FINAL_MASK);
+    s_buffer[1] += math::blockReduceSum<MT>(g_tmp_val * g_tmp_val, FINAL_MASK);
   } else {
     // To avoid occupy too much temp buffer.
     for (int i = 0; i < repeat_times; ++i) {
       p_tmp_val = static_cast<MT>(p_data[tid]);
       g_tmp_val = static_cast<MT>(g_data[tid]);
       tid += grid_stride;
-      p_buffer += math::blockReduceSum<MT>(p_tmp_val * p_tmp_val, FINAL_MASK);
-      g_buffer += math::blockReduceSum<MT>(g_tmp_val * g_tmp_val, FINAL_MASK);
+      s_buffer[0] +=
+          math::blockReduceSum<MT>(p_tmp_val * p_tmp_val, FINAL_MASK);
+      s_buffer[1] +=
+          math::blockReduceSum<MT>(g_tmp_val * g_tmp_val, FINAL_MASK);
       __syncthreads();
     }
     MT p_val = 0;
@@ -176,14 +177,14 @@ __global__ void L2NormKernel(const T* __restrict__ p_data,
       p_val = static_cast<MT>(p_data[tid]);
       g_val = static_cast<MT>(g_data[tid]);
     }
-    p_buffer += math::blockReduceSum<MT>(p_val * p_val, FINAL_MASK);
-    g_buffer += math::blockReduceSum<MT>(g_val * g_val, FINAL_MASK);
+    s_buffer[0] += math::blockReduceSum<MT>(p_val * p_val, FINAL_MASK);
+    s_buffer[1] += math::blockReduceSum<MT>(g_val * g_val, FINAL_MASK);
   }
   __syncthreads();
 
   if (threadIdx.x == 0) {
-    p_tmp_buffer[blockIdx.x] = p_buffer;
-    g_tmp_buffer[blockIdx.x] = g_buffer;
+    p_tmp_buffer[blockIdx.x] = s_buffer[0];
+    g_tmp_buffer[blockIdx.x] = s_buffer[1];
   }
 }
 
@@ -202,16 +203,15 @@ __global__ void MomentumLarsKernel(
   MT p_val = threadIdx.x < thresh ? p_tmp_buffer[threadIdx.x] : 0;
   MT g_val = threadIdx.x < thresh ? g_tmp_buffer[threadIdx.x] : 0;
   __syncthreads();
-  MT p_n = square_root(math::blockReduceSum<MT>(p_val, FINAL_MASK));
-  MT g_n = square_root(rescale_grad_pow *
-                       math::blockReduceSum<MT>(g_val, FINAL_MASK));
+  MT p_n = SquareRoot(math::blockReduceSum<MT>(p_val, FINAL_MASK));
+  MT g_n = SquareRoot(rescale_grad_pow *
+                      math::blockReduceSum<MT>(g_val, FINAL_MASK));
 
   const MT lr = learning_rate[0];
   MT local_lr = lr;
-  if (lars_weight_decay > static_cast<MT>(0) && p_n > static_cast<MT>(0) &&
-      g_n > static_cast<MT>(0)) {
+  if (lars_weight_decay > static_cast<MT>(0)) {
     local_lr = lr * lars_coeff * p_n /
-               (fma_root(lars_weight_decay, p_n, g_n) + epsilon);
+               (FmaRoot(lars_weight_decay, p_n, g_n) + epsilon);
   }
 
   if (master_p) {
@@ -219,7 +219,7 @@ __global__ void MomentumLarsKernel(
                                  local_lr, lars_weight_decay, rescale_grad, tid,
                                  grid_stride, numel);
   } else {
-    if (sizeof(T) < 64) {
+    if (sizeof(T) < 64) {  // 64 stands for sizeof(double)
       VectorizeLarsUpdate<MT, 4>(
           reinterpret_cast<const MT*>(g), v, reinterpret_cast<MT*>(p_out),
           v_out, reinterpret_cast<const MT*>(p), mu, local_lr,
@@ -240,12 +240,6 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const bool multi_precision = ctx.Attr<bool>("multi_precision");
-    InnerCompute(ctx, multi_precision);
-  }
-
- private:
-  void InnerCompute(const framework::ExecutionContext& ctx,
-                    const bool multi_precision) const {
     auto param_out = ctx.Output<framework::LoDTensor>("ParamOut");
     auto velocity_out = ctx.Output<framework::LoDTensor>("VelocityOut");
     auto param = ctx.Input<framework::LoDTensor>("Param");
