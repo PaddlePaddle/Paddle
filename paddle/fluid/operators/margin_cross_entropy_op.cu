@@ -323,6 +323,11 @@ class MarginCrossEntropyOpCUDAKernel : public framework::OpKernel<T> {
           T><<<NumBlocks(N), threads, 0, dev_ctx.stream()>>>(
           logits_ptr, labels->data<LabelT>(), margin1, margin2, margin3, rank,
           nranks, N, D, class_interval.data<int>());
+    } else {
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "margin_cross_entropy label type noly support int32 and int64, "
+          "but got %s",
+          label_type));
     }
 
     // scale by s
