@@ -24,7 +24,7 @@ from paddle.fluid.dygraph.nn import Linear
 from paddle.autograd import PyLayer
 from paddle.distributed.fleet.utils.hybrid_parallel_util import fused_allreduce_gradients
 
-batch = 2
+batch = 5
 in_dim = 20
 out_dim = 10
 
