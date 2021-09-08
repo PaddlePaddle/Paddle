@@ -12,6 +12,7 @@ endif()
 string(REPLACE ".py" "" DIST_TEST_OPS "${DIST_TEST_OPS}")
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_mnist)
 list(APPEND DIST_TEST_OPS test_pipeline)
+list(APPEND DIST_TEST_OPS test_ir_pass_pipeline)
 list(APPEND DIST_TEST_OPS test_static_model_parallel)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_se_resnext)
 list(APPEND DIST_TEST_OPS test_parallel_dygraph_sparse_embedding)
@@ -182,6 +183,10 @@ if(APPLE OR WIN32)
 endif()
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
+
+if (NOT WITH_GLOO)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel_cpuonly)
+endif()
 
 if ((NOT WITH_GPU) AND (NOT WITH_ROCM))
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
@@ -968,6 +973,7 @@ if((WITH_ROCM OR WITH_GPU) AND NOT WIN32)
     if(WITH_DISTRIBUTE)
         set_tests_properties(test_new_group_api PROPERTIES TIMEOUT 120)
         set_tests_properties(test_pipeline PROPERTIES TIMEOUT 120)
+        set_tests_properties(test_ir_pass_pipeline PROPERTIES TIMEOUT 120)
         set_tests_properties(test_static_model_parallel PROPERTIES TIMEOUT 240)
         set_tests_properties(test_collective_split_embedding
             test_collective_split_embedding_none_divisible
