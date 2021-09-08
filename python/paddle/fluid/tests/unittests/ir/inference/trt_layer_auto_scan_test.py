@@ -100,6 +100,9 @@ class TrtLayerAutoScanTest(AutoScanTest):
                             baseline: Dict[str, np.array]):
         for key, arr in tensor.items():
             self.assertTrue(
+                baseline[key].shape == arr.shape,
+                "The output shape of GPU and TensorRT are not equal.")
+            self.assertTrue(
                 np.allclose(
                     baseline[key], arr, atol=threshold),
                 "Output has diff between GPU and TensorRT. ")
