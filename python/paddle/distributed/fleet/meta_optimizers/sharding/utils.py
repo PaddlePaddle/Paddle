@@ -498,6 +498,7 @@ def insert_fused_reduce_ops(block,
                     inputs={'X': fused_var},
                     outputs={'Out': fused_var},
                     attrs={OP_ROLE_KEY: op_role})
+
     return [] if rank is None else device_to_vars[rank]
 
 
@@ -542,6 +543,73 @@ def insert_reduce_ops(block,
     return grad_in_this_device
 
 
+def insert_fused_broadcast_param_ops(block,
+                                     insert_idx,
+                                     ring_id,
+                                     params,
+                                     shard,
+                                     op_role=OpRole.Optimize,
+                                     use_calc_stream=False,
+                                     rank=None,
+                                     fuse_grad_size=32):
+    nranks = shard.worker_num
+    device_to_vars = [[] for _ in range(nranks)]
+
+    for var in params:
+        root_id = shard.device(var)
+        assert 0 <= root_id < nranks, "root_id should >=0 and < nranks, " \
+            "but now nranks={}, the root_id of var={} is {}"\
+            .format(nranks, var, root_id)
+        device_to_vars[root_id].append(var)
+
+    for root_id, vars_name in enumerate(device_to_vars):
+        segments = get_fused_groups(block, vars_name, fuse_grad_size)
+
+        fused_vars = []
+        for segment in segments:
+            tmp_var = block.create_var(
+                name=unique_name.generate('FusedParam_{}'.format(segment[0]
+                                                                 .name)),
+                dtype=segment[0].dtype,
+                persistable=False,
+                stop_gradient=True)
+            fused_vars.append(tmp_var)
+            block._insert_op_without_sync(
+                insert_idx,
+                type="coalesce_tensor",
+                inputs={"Input": segment},
+                outputs={"Output": segment,
+                         "FusedOutput": tmp_var},
+                attrs={
+                    "copy_data": True,
+                    "use_align": True,
+                    "dtype": segment[0].dtype,
+                    OP_ROLE_KEY: op_role
+                })
+
+        for fused_var in fused_vars:
+            block._insert_op_without_sync(
+                insert_idx + len(fused_vars),
+                type='c_broadcast',
+                inputs={'X': fused_var},
+                outputs={'Out': fused_var},
+                attrs={
+                    'ring_id': ring_id,
+                    'root': root_id,
+                    'use_calc_stream': use_calc_stream,
+                    OP_ROLE_KEY: op_role
+                })
+            if not use_calc_stream:
+                block._insert_op_without_sync(
+                    insert_idx + len(fused_vars),
+                    type='c_sync_calc_stream',
+                    inputs={'X': fused_var},
+                    outputs={'Out': fused_var},
+                    attrs={OP_ROLE_KEY: op_role})
+
+    return [] if rank is None else device_to_vars[rank]
+
+
 def insert_broadcast_param_ops(block,
                                insert_idx,
                                ring_id,
@@ -549,10 +617,16 @@ def insert_broadcast_param_ops(block,
                                shard,
                                op_role=OpRole.Optimize,
                                use_calc_stream=False,
-                               rank=None):
+                               rank=None,
+                               strategy=None):
     """
-    _add_broadcast_param_ops
+    add broadcast param ops
     """
+    if strategy and strategy.fuse_all_reduce_ops:
+        return insert_fused_broadcast_param_ops(
+            block, insert_idx, ring_id, params, shard, op_role, use_calc_stream,
+            rank, strategy.fuse_grad_size_in_MB)
+
     param_in_this_device = []
     for param in params:
         root_id = shard.device(param)
@@ -573,22 +647,6 @@ def insert_broadcast_param_ops(block,
             })
 
     return param_in_this_device
-
-    for broadcast_name, root_device in broadcast2root:
-        block._insert_op_without_sync
-        paddle.fluid.framework.Block.append_op()
-        block._insert_op_without_sync(
-            insert_idx,
-            type='c_broadcast',
-            inputs={'X': broadcast_name},
-            outputs={'Out': broadcast_name},
-            attrs={
-                'ring_id': ring_id,
-                'root': root_device,
-                OP_ROLE_KEY: op_role
-            })
-
-    return
 
 
 def get_grad_device(grad_name, shard):

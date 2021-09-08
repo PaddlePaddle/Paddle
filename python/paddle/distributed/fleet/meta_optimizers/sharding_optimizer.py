@@ -392,7 +392,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                 self._shard,
                 OpRole.Optimize,
                 use_calc_stream=True,
-                rank=self.dp_rank)
+                rank=self.dp_rank,
+                strategy=strategy)
             logger.info("Optimizer grad in this rank {}".format(
                 accumulated_grad_names))
             first_optimize_op_index += (len(main_block.ops) - len_of_ops)
@@ -405,7 +406,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                 self._shard,
                 OpRole.Optimize,
                 use_calc_stream=True,
-                rank=self.dp_rank)
+                rank=self.dp_rank,
+                strategy=strategy)
             logger.info("Optimizer param in this rank {}".format(
                 optimizer_param))
             assert len(accumulated_grad_names) == len(optimizer_param)
@@ -702,8 +704,7 @@ class ShardingOptimizer(MetaOptimizerBase):
     def _build_shard(self, params_grads, shard_rank, shard_size):
         # step 2: split params
         self._params = set([x[0].name for x in params_grads])
-        self._shard.setup(params_grads, self.sharding_rank,
-                          self.sharding_degree)
+        self._shard.setup(params_grads, shard_rank, shard_size)
 
         # step 3: get broadcast vars
         self._broadcast_vars = self._shard.find_broadcast_params(
