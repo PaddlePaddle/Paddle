@@ -18,6 +18,7 @@ import numpy as np
 import paddle.inference as paddle_infer
 from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
+import logging
 
 
 class TrtConvertGatherTest(TrtLayerAutoScanTest):
@@ -30,8 +31,6 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
         if len(inputs['input_data'].shape) <= attrs[0]['axis']:
             return False
 
-        if len(inputs) == 3:
-            return False
         return True
 
     def sample_program_configs(self):
@@ -57,6 +56,7 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
                                 "Axis": ["axis_data"]
                         }]:
                             self.shape = shape
+                            self.axis = axis
                             self.input_num = len(input)
                             dics = [{"overwrite": overwrite, "axis": axis}]
                             ops_config = [{
@@ -93,124 +93,56 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             if len(self.shape) == 1:
-                if self.input_num == 2:
-                    self.dynamic_shape.min_input_shape = {
-                        "input_data": [4],
-                        "index_data": [1]
-                    }
-                    self.dynamic_shape.max_input_shape = {
-                        "input_data": [128],
-                        "index_data": [4]
-                    }
-                    self.dynamic_shape.opt_input_shape = {
-                        "input_data": [16],
-                        "index_data": [2]
-                    }
-                else:
-                    self.dynamic_shape.min_input_shape = {
-                        "input_data": [4],
-                        "index_data": [1],
-                        "axis_data": [1]
-                    }
-                    self.dynamic_shape.max_input_shape = {
-                        "input_data": [128],
-                        "index_data": [4],
-                        "axis_data": [4]
-                    }
-                    self.dynamic_shape.opt_input_shape = {
-                        "input_data": [16],
-                        "index_data": [2],
-                        "axis_data": [2]
-                    }
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [4],
+                    "index_data": [1]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [128],
+                    "index_data": [4]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [16],
+                    "index_data": [2]
+                }
             elif len(self.shape) == 2:
-                if self.input_num == 2:
-                    self.dynamic_shape.min_input_shape = {
-                        "input_data": [2, 4],
-                        "index_data": [1]
-                    }
-                    self.dynamic_shape.max_input_shape = {
-                        "input_data": [256, 256],
-                        "index_data": [4]
-                    }
-                    self.dynamic_shape.opt_input_shape = {
-                        "input_data": [64, 32],
-                        "index_data": [2]
-                    }
-                else:
-                    self.dynamic_shape.min_input_shape = {
-                        "input_data": [2, 4],
-                        "index_data": [1],
-                        "axis_data": [1]
-                    }
-                    self.dynamic_shape.max_input_shape = {
-                        "input_data": [256, 256],
-                        "index_data": [4],
-                        "axis_data": [4]
-                    }
-                    self.dynamic_shape.opt_input_shape = {
-                        "input_data": [64, 32],
-                        "index_data": [2],
-                        "axis_data": [2]
-                    }
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [2, 4],
+                    "index_data": [1]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [256, 256],
+                    "index_data": [4]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [64, 32],
+                    "index_data": [2]
+                }
             elif len(self.shape) == 3:
-                if self.input_num == 2:
-                    self.dynamic_shape.min_input_shape = {
-                        "input_data": [2, 4, 4],
-                        "index_data": [1]
-                    }
-                    self.dynamic_shape.max_input_shape = {
-                        "input_data": [128, 256, 256],
-                        "index_data": [4]
-                    }
-                    self.dynamic_shape.opt_input_shape = {
-                        "input_data": [16, 64, 32],
-                        "index_data": [2]
-                    }
-                else:
-                    self.dynamic_shape.min_input_shape = {
-                        "input_data": [2, 4, 4],
-                        "index_data": [1],
-                        "axis_data": [1]
-                    }
-                    self.dynamic_shape.max_input_shape = {
-                        "input_data": [128, 256, 256],
-                        "index_data": [4],
-                        "axis_data": [4]
-                    }
-                    self.dynamic_shape.opt_input_shape = {
-                        "input_data": [16, 64, 32],
-                        "index_data": [2],
-                        "axis_data": [2]
-                    }
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [2, 4, 4],
+                    "index_data": [1]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [128, 256, 256],
+                    "index_data": [4]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [16, 64, 32],
+                    "index_data": [2]
+                }
             elif len(self.shape) == 4:
-                if self.input_num == 2:
-                    self.dynamic_shape.min_input_shape = {
-                        "input_data": [2, 4, 4, 2],
-                        "index_data": [1]
-                    }
-                    self.dynamic_shape.max_input_shape = {
-                        "input_data": [128, 256, 128, 256],
-                        "index_data": [4]
-                    }
-                    self.dynamic_shape.opt_input_shape = {
-                        "input_data": [16, 64, 16, 32],
-                        "index_data": [2]
-                    }
-                else:
-                    self.dynamic_shape.min_input_shape = {
-                        "input_data": [2, 4, 4, 2],
-                        "index_data": [1],
-                        "axis_data": [1]
-                    }
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [2, 4, 4, 2],
+                    "index_data": [1]
+                }
                 self.dynamic_shape.max_input_shape = {
                     "input_data": [128, 256, 128, 256],
-                    "index_data": [4],
-                    "axis_data": [4]
+                    "index_data": [4]
                 }
                 self.dynamic_shape.opt_input_shape = {
                     "input_data": [16, 64, 16, 32],
-                    "index_data": [2],
-                    "axis_data": [2]
+                    "index_data": [2]
                 }
 
         def clear_dynamic_shape():
@@ -220,12 +152,9 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(dynamic_shape):
             if self.input_num == 3:
-                if dynamic_shape:
-                    return 1, 4
-                else:
-                    return 0, 5
+                return 0, 5
             else:
-                if dynamic_shape:
+                if dynamic_shape and self.axis == 0:
                     return 1, 3
                 else:
                     return 0, 4
@@ -252,14 +181,28 @@ class TrtConvertGatherTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(True), 1e-5
 
     def add_skip_trt_case(self):
-        def teller(program_config, predictor_config):
+        def teller1(program_config, predictor_config):
             if len(self.dynamic_shape.min_input_shape) != 0:
+                inputs = program_config.inputs
+                if len(inputs['input_data'].shape) == 1 or len(inputs[
+                        'index_data'].shape) == 1:
+                    return True
+            return False
+
+        self.add_skip_case(
+            teller1, SkipReasons.TRT_NOT_SUPPORT,
+            "Need to repair the case: trt reshape out failed for dynamic shape mode when inputs' dims==1."
+        )
+
+        def teller2(program_config, predictor_config):
+            inputs = program_config.inputs
+            if "axis_data" in inputs.keys():
                 return True
             return False
 
         self.add_skip_case(
-            teller, SkipReasons.TRT_NOT_SUPPORT,
-            "Need to repair the case: trt reshape out failed for dynamic shape.")
+            teller2, SkipReasons.TRT_NOT_SUPPORT,
+            "Need to repair the case: trt do not support axis tensor input.")
 
     def test(self):
         self.add_skip_trt_case()
