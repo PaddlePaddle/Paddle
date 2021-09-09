@@ -17,6 +17,7 @@ import copy
 import warnings
 import paddle
 import os
+from types import MethodType
 import numpy as np
 from paddle.fluid.framework import dygraph_only, _global_flags
 from paddle.fluid import compiler
@@ -33,7 +34,7 @@ from .topology import ParallelMode
 from ..meta_parallel import TensorParallel, model_parallel_random_seed
 from ..meta_parallel import PipelineParallel, ShardingParallel
 from ..meta_optimizers import HybridParallelOptimizer
-from ..meta_optimizers import HybridParallelGradScaler
+from paddle import _C_ops
 
 __all__ = []
 
@@ -1540,4 +1541,32 @@ class Fleet(object):
 
     @dygraph_only
     def distributed_scaler(self, scaler):
-        return HybridParallelGradScaler(scaler, self._hcg)
+        def unscale_method(self, optimizer):
+            if not self._enable:
+                return
+            if getattr(optimizer, '_param_groups', None) and isinstance(
+                    optimizer._param_groups[0], dict):
+                param_grads = []
+                for group in optimizer._param_groups:
+                    for param in group['params']:
+                        if param._grad_ivar() is not None:
+                            param_grads.append(param._grad_ivar())
+            else:
+                param_grads = [
+                    param._grad_ivar() for param in optimizer._parameter_list
+                    if param._grad_ivar() is not None
+                ]
+            _C_ops.check_finite_and_unscale(param_grads, self._scale,
+                                            param_grads, self._found_inf)
+
+            self._found_inf = paddle.cast(self._found_inf, dtype="int32")
+
+            # TODO(shenliang03) Since dp allreduce in the optimizer is 
+            # after the gradscaler, check_finite needs to synchronize global 
+            # information. In the future, we should use check_group to speed.
+            paddle.distributed.all_reduce(
+                self._found_inf, op=paddle.distributed.ReduceOp.MAX, group=None)
+            self._found_inf = paddle.cast(self._found_inf, dtype="bool")
+
+        scaler._unscale = MethodType(unscale_method, scaler)
+        return scaler
