@@ -455,6 +455,10 @@ def fftn_c2c(x, s, axes, norm, forward, name):
         axes_argsoft = np.argsort(axes).tolist()
         axes = [axes[i] for i in axes_argsoft]
         if s is not None:
+            if len(s) != len(axes):
+                raise ValueError(
+                    "Length of s ({}) and length of axes ({}) does not match.".
+                    format(len(s), len(axes)))
             s = [s[i] for i in axes_argsoft]
 
     if s is not None:
@@ -497,6 +501,10 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
         axes_argsoft = np.argsort(axes[:-1]).tolist()
         axes = [axes[i] for i in axes_argsoft] + [axes[-1]]
         if s is not None:
+            if len(s) != len(axes):
+                raise ValueError(
+                    "Length of s ({}) and length of axes ({}) does not match.".
+                    format(len(s), len(axes)))
             s = [s[i] for i in axes_argsoft] + [s[-1]]
 
     if s is not None:
@@ -548,6 +556,10 @@ def fftn_c2r(x, s, axes, norm, forward, name):
         axes_argsoft = np.argsort(axes[:-1]).tolist()
         axes = [axes[i] for i in axes_argsoft] + [axes[-1]]
         if s is not None:
+            if len(s) != len(axes):
+                raise ValueError(
+                    "Length of s ({}) and length of axes ({}) does not match.".
+                    format(len(s), len(axes)))
             s = [s[i] for i in axes_argsoft] + [s[-1]]
 
     if s is not None:
