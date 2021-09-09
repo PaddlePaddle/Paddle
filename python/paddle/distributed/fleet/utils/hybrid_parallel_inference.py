@@ -22,12 +22,11 @@ import numpy as np
 
 class HybridParallelInferenceHelper(object):
     """
-    A helper class to split program for inference with pipeline parallelism.
+    A helper class to split program for inference with hybrid parallelism.
     
     Args:
         startup_program (Program): the startup program.
         main_program (Program): the main program.
-        num_mp (int): number of model parallel degree. Default ``1``.
         num_pp (int): number of pipeline parallel degree. Default ``1``.
         micro_batch_size (int): number of micro batch size. Default ``1``.
         beam_size (int): number of beam search size. Default ``1``.
@@ -38,7 +37,7 @@ class HybridParallelInferenceHelper(object):
     Returns:
         None.
         
-    Examples:
+    Write Paradigm:
         
         # while op pattern
         with paddle.fluid.device_guard(f'{device}:all'):
@@ -83,12 +82,104 @@ class HybridParallelInferenceHelper(object):
         with paddle.fluid.device_guard(f'{model._device}:all'):
             # use a empty lod_tensor_array to clear lod_tensor_array
             layers.assign(layers.create_array(data.dtype), arr)
+            
+            
+    Examples:
+    
+    .. code-block:: python
+        :name: code-example1
+    
+        # required: distributed
+        import os
+        import numpy as np
+        import paddle
+        import paddle.fluid.layers as layers
+        import paddle.distributed.fleet as fleet
+        paddle.enable_static()
+
+        nranks = int(os.getenv("PADDLE_TRAINERS_NUM", 1))
+        rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
+        dev_id = int(os.getenv("FLAGS_selected_gpus", 0))
+
+        main_program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+
+        if nranks > 1:
+            dist_strategy = fleet.DistributedStrategy()
+            dist_strategy.without_graph_optimization = True
+            fleet.init(is_collective=True, strategy=dist_strategy)
+
+        device = "gpu"
+
+        with paddle.static.program_guard(main_program, startup_program):
+            with paddle.fluid.device_guard(f'{device}:0'):
+                X = paddle.static.data(name='X', shape=[None, 2], dtype='float32')
+
+            with paddle.fluid.device_guard(f'{device}:all'):
+                max_len = layers.fill_constant(
+                    shape=[1], dtype="int64", value=5, force_cpu=False, name="n")
+                step_idx = layers.fill_constant(
+                    shape=[1], dtype="int64", value=0, force_cpu=False, name="i")
+
+                data = layers.array_write(X, step_idx)
+
+                cond_int = layers.fill_constant(shape=[1], dtype="int64", value=0, force_cpu=False, name="cond_int")
+                cond = layers.less_than(x=step_idx, y=max_len)
+                while_op = layers.While(cond, is_test=True)
+
+            with while_op.block():
+                with paddle.fluid.device_guard(f'{device}:all'):
+                    input = layers.array_read(array=data, i=step_idx)
+                    layers.increment(x=step_idx, value=1.0, in_place=True)
+                    layers.array_write(input, i=step_idx, array=data)
+
+                with paddle.fluid.device_guard(f'{device}:0'):
+                    param_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(1.0))
+                    weight1 = paddle.static.create_parameter(
+                        shape=[2, 5], dtype='float32', attr=param_attr, is_bias=False)
+                    hidden1 = paddle.matmul(input, weight1)
+
+                with paddle.fluid.device_guard(f'{device}:1'):
+                    param_attr = paddle.ParamAttr(initializer=paddle.nn.initializer.Constant(2.0))
+                    weight2 = paddle.static.create_parameter(
+                        shape=[5, 2], dtype='float32', attr=param_attr, is_bias=False)
+                    hidden2 = paddle.matmul(hidden1, weight2)
+
+                    layers.array_write(hidden2, i=step_idx, array=data)
+
+                    # update cond and assign to cond_int, we will sync cond_int
+                    layers.less_than(x=step_idx, y=max_len, cond=cond)
+                    layers.assign(layers.cast(cond, dtype="int32"), cond_int)
+
+                with paddle.fluid.device_guard(f'{device}:all'):
+                    # the code below must at end of while block and exists in device:all
+                    layers.assign(layers.cast(cond_int, dtype='bool'), cond)
+
+            with paddle.fluid.device_guard(f'{device}:all'):
+                out = layers.create_array(data.dtype)
+                layers.assign(data, out)
+
+            with paddle.fluid.device_guard(f'{device}:all'):
+                # use a empty lod_tensor_array to clear lod_tensor_array
+                layers.assign(layers.create_array(data.dtype), data)
+
+        helper = fleet.HybridParallelInferenceHelper(startup_program, main_program, micro_batch_size=2, num_pp=2, init_comm=nranks>1)
+        helper.gen_infer_program(['array_write_0.out'], ['cond_int.tmp_0'])
+
+        exe = paddle.static.Executor(paddle.CUDAPlace(dev_id))
+        exe.run(startup_program)
+        
+        np.random.seed(2333)
+        for step in range(5):
+            init_data = np.random.uniform(low=0.0, high=1.0, size=[2, 2]).astype('float32')
+            [res] = exe.run(main_program, feed={"X": init_data}, fetch_list=[out])
+            print('-------- step', step, ' --------')
+            print(res)
     """
 
     def __init__(self,
                  startup_program,
                  main_program,
-                 num_mp=1,
                  num_pp=1,
                  micro_batch_size=1,
                  beam_size=1,
@@ -120,8 +211,6 @@ class HybridParallelInferenceHelper(object):
 
         self.micro_batch_size = micro_batch_size
         self.beam_size = beam_size
-        self.num_mp = num_mp
-        self.num_pp = num_pp
         self.init_comm = init_comm
 
         self._output_var_to_op = None
@@ -145,8 +234,9 @@ class HybridParallelInferenceHelper(object):
         self.current_endpoint = self.endpoints[self.role_maker._worker_index()]
         self.rank = self.role_maker._worker_index()
         self.nranks = self.role_maker._worker_num()
-        assert self.nranks % self.num_mp == 0
-        assert self.num_pp * self.num_mp == self.nranks
+        assert self.nranks % num_pp == 0
+        self.num_pp = num_pp
+        self.num_mp = self.nranks // self.num_pp
 
         # global ring info
         self.global_endpoints = self.endpoints
@@ -401,11 +491,6 @@ class HybridParallelInferenceHelper(object):
             dev_type = device.split(':')[0]
             assert dev_type == self._device
             stage_id = int(device.split(':')[1])
-            # print(op, stage_id, pre_stage_id)
-            # if pre_stage_id is not None:
-            #     interval = stage_id - pre_stage_id
-            #     assert 0 <= interval <= 1, (
-            #         "The stage in the pipeline must be consecutive.")
             pre_stage_id = stage_id
 
     def _insert_sendrecv_ops_for_boundaries(self, block, is_while_block):
@@ -629,10 +714,11 @@ class HybridParallelInferenceHelper(object):
         """
         Generate inference program.
         Params:
-            sync_in_while_lastpp2firstpp_var_names: the vars in the last pipeline 
+            sync_in_while_lastpp2firstpp_var_names (list(str)): the vars in the last pipeline 
                 that need to send var to first pipeline and exclude bool dtype var
-            sync_in_while_var_names: the vars sync among all pipeline in while block
+            sync_in_while_var_names (list(str)): the vars sync among all pipeline in while block
                 e.g cond. Note that cond cannot be bool dtype.
+            debug (bool): the flag indicate debug
         """
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
@@ -683,103 +769,3 @@ class HybridParallelInferenceHelper(object):
 
         if self.init_comm:
             self._init_communication_group()
-
-if __name__ == "__main__":
-    import os
-    import numpy as np
-    import paddle
-    import paddle.fluid.layers as layers
-    import paddle.distributed.fleet as fleet
-    paddle.enable_static()
-
-    nranks = int(os.getenv("PADDLE_TRAINERS_NUM", 1))
-    rank = int(os.getenv("PADDLE_TRAINER_ID", 0))
-    dev_id = int(os.getenv("FLAGS_selected_gpus", 0))
-
-    main_program = paddle.static.Program()
-    startup_program = paddle.static.Program()
-
-    dist_strategy = fleet.DistributedStrategy()
-    dist_strategy.without_graph_optimization = True
-    fleet.init(is_collective=True, strategy=dist_strategy)
-
-    device = "gpu"
-
-    with paddle.static.program_guard(main_program, startup_program):
-        with paddle.fluid.device_guard(f'{device}:0'):
-            X = paddle.static.data(name='X', shape=[None, 2], dtype='float32')
-
-        with paddle.fluid.device_guard(f'{device}:all'):
-            max_len = layers.fill_constant(
-                shape=[1], dtype="int64", value=5, force_cpu=False, name="n")
-            step_idx = layers.fill_constant(
-                shape=[1], dtype="int64", value=0, force_cpu=False, name="i")
-
-            data = layers.array_write(X, step_idx)
-
-            cond_int = layers.fill_constant(
-                shape=[1],
-                dtype="int64",
-                value=0,
-                force_cpu=False,
-                name="cond_int")
-            cond = layers.less_than(x=step_idx, y=max_len)
-            while_op = layers.While(cond, is_test=True)
-
-        with while_op.block():
-            with paddle.fluid.device_guard(f'{device}:all'):
-                input = layers.array_read(array=data, i=step_idx)
-                layers.increment(x=step_idx, value=1.0, in_place=True)
-                layers.array_write(input, i=step_idx, array=data)
-
-            with paddle.fluid.device_guard(f'{device}:0'):
-                param_attr = paddle.ParamAttr(
-                    initializer=paddle.nn.initializer.Constant(1.0))
-                weight1 = paddle.static.create_parameter(
-                    shape=[2, 5],
-                    dtype='float32',
-                    attr=param_attr,
-                    is_bias=False)
-                hidden1 = paddle.matmul(input, weight1)
-
-            with paddle.fluid.device_guard(f'{device}:1'):
-                param_attr = paddle.ParamAttr(
-                    initializer=paddle.nn.initializer.Constant(2.0))
-                weight2 = paddle.static.create_parameter(
-                    shape=[5, 2],
-                    dtype='float32',
-                    attr=param_attr,
-                    is_bias=False)
-                hidden2 = paddle.matmul(hidden1, weight2)
-
-                layers.array_write(hidden2, i=step_idx, array=data)
-
-                # update cond and assign to cond_int, we will sync cond_int
-                layers.less_than(x=step_idx, y=max_len, cond=cond)
-                layers.assign(layers.cast(cond, dtype="int32"), cond_int)
-
-            with paddle.fluid.device_guard(f'{device}:all'):
-                # the code below must at end of while block and exists in device:all
-                layers.assign(layers.cast(cond_int, dtype='bool'), cond)
-
-        with paddle.fluid.device_guard(f'{device}:all'):
-            out = layers.create_array(data.dtype)
-            layers.assign(data, out)
-
-        with paddle.fluid.device_guard(f'{device}:all'):
-            # use a empty lod_tensor_array to clear lod_tensor_array
-            layers.assign(layers.create_array(data.dtype), data)
-
-    helper = HybridParallelInferenceHelper(
-        startup_program, main_program, num_mp=1, num_pp=2)
-    helper.gen_infer_program(['array_write_0.out'], ['cond_int.tmp_0'])
-
-    exe = paddle.static.Executor(paddle.CUDAPlace(dev_id))
-    exe.run(startup_program)
-    for step in range(5):
-        res = exe.run(main_program,
-                      feed={"X": np.array(
-                          [[1, 2], [3, 4]], dtype=np.float32)},
-                      fetch_list=[out])
-        print('-------- step', step, ' --------')
-        print(res)
