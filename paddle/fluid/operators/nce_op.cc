@@ -227,8 +227,7 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("is_test",
                   "(bool, default false) Set to true for inference "
                   "only, false for training.")
-        .SetDefault(false)
-        .AsExtra();
+        .SetDefault(false);
     AddComment(R"DOC(
 Compute and return the noise-contrastive estimation training loss. See
 `Noise-contrastive estimation: A new estimation principle for unnormalized
