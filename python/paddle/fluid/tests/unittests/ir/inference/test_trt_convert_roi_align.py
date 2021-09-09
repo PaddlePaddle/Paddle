@@ -31,7 +31,6 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-        # number between sections and outputs restriction.
         return True
 
     def sample_program_configs(self):
@@ -85,7 +84,7 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
                                         "ROIs": TensorConfig(
                                             data_gen=partial(generate_input2,
                                                              dics, batch),
-                                            lod=[[9988, 3]])
+                                            lod=[[32, 3]])
                                     }]
                                     ops_config = [{
                                         "op_type": "roi_align",
@@ -107,18 +106,35 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {
-                "roi_align_input": [1, 256, 32, 32],
-                "ROIs": [3, 4]
-            }
-            self.dynamic_shape.max_input_shape = {
-                "roi_align_input": [1, 256, 64, 64],
-                "ROIs": [3, 4]
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "roi_align_input": [1, 256, 64, 64],
-                "ROIs": [3, 4]
-            }
+            if self.num_input == 0:
+                self.dynamic_shape.min_input_shape = {
+                    "roi_align_input": [1, 256, 32, 32],
+                    "ROIs": [3, 4],
+                    "RoisNum": [1]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "roi_align_input": [1, 256, 64, 64],
+                    "ROIs": [3, 4],
+                    "RoisNum": [1]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "roi_align_input": [1, 256, 64, 64],
+                    "ROIs": [3, 4],
+                    "RoisNum": [1]
+                }
+            elif self.num_input == 1:
+                self.dynamic_shape.min_input_shape = {
+                    "roi_align_input": [1, 256, 32, 32],
+                    "ROIs": [3, 4]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "roi_align_input": [1, 256, 64, 64],
+                    "ROIs": [3, 4]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "roi_align_input": [1, 256, 64, 64],
+                    "ROIs": [3, 4]
+                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -128,8 +144,6 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
         def generate_trt_nodes_num(attrs, dynamic_shape):
             if self.num_input == 0:
                 if dynamic_shape == True:
-                    return 0, 5
-                else:
                     return 0, 5
             elif self.num_input == 1:
                 if dynamic_shape == True:
@@ -161,8 +175,25 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
                                                                      True), 1e-2
 
     def add_skip_trt_case(self):
-        # TODO(wilber): This is just the example to illustrate the skip usage.
-        pass
+        def teller1(program_config, predictor_config):
+            if len(program_config.inputs) == 3:
+                return True
+            return False
+
+        self.add_skip_case(
+            teller1, SkipReasons.TRT_NOT_SUPPORT,
+            "INPUT RoisNum NOT SUPPORT: we need to add support in the future")
+
+        def teller2(program_config, predictor_config):
+            if (program_config.ops[0].attrs['sampling_ratio'] == -1 and
+                    program_config.ops[0].attrs['aligned'] == True):
+                return True
+            return False
+
+        self.add_skip_case(
+            teller2, SkipReasons.TRT_NOT_SUPPORT,
+            "SAMPLING_RATIO EQUAL TO - 1 WHEN ALIGNED IS TRUE IS NOT SUPPORT: we need to add support in the future"
+        )
 
     def test(self):
         self.add_skip_trt_case()

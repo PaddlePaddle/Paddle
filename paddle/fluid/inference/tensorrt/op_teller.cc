@@ -661,6 +661,36 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "the roi_align will change the batch size.";
         return false;
       }
+      std::vector<std::string> attrs{"pooled_height", "pooled_width",
+                                     "spatial_scale", "sampling_ratio"};
+      for (auto const attr : attrs) {
+        if (!desc.HasAttr(attr)) return false;
+      }
+
+      const auto pooled_height =
+          BOOST_GET_CONST(int, desc.GetAttr("pooled_height"));
+      if (pooled_height <= 0) return false;
+
+      const auto pooled_width =
+          BOOST_GET_CONST(int, desc.GetAttr("pooled_width"));
+      if (pooled_width <= 0) return false;
+
+      const auto spatial_scale =
+          BOOST_GET_CONST(float, desc.GetAttr("spatial_scale"));
+      if (spatial_scale <= 0.f) return false;
+
+      const auto sampling_ratio =
+          BOOST_GET_CONST(int, desc.GetAttr("sampling_ratio"));
+      const auto aligned = BOOST_GET_CONST(bool, desc.GetAttr("aligned"));
+
+      if (sampling_ratio == -1 && aligned == true) return false;
+
+      auto roi_align_inputs = desc.Inputs();
+      if (roi_align_inputs.find("RoisNum") != roi_align_inputs.end()) {
+        if (desc.Input("RoisNum").size() >= 1) {
+          return false;
+        }
+      }
     }
 
     if (op_type == "shuffle_channel") {
