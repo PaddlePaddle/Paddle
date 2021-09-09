@@ -427,9 +427,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         # FIXME(wangxi): if fp16_allreduce, put cast fp16->fp32 to there?
 
     def _adapt_amp_clip_without_sharding(self):
-        strategy = self.user_defined_strategy
-        sharding_configs = strategy.sharding_configs
-
         # if not use sharding, adapt amp/clip, for remain parallelism.
         # cast --> amp --> clip --> opt
         if self.sharding_degree > 1: return
