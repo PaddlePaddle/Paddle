@@ -368,8 +368,8 @@ tensor_method_func  = [ #noqa
            'real',
            'imag',
            'digamma',
-           'diagonal'
-           'trunc'
+           'diagonal',
+           'trunc',
            'bitwise_and',
            'bitwise_or',
            'bitwise_xor',
