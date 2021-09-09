@@ -150,10 +150,10 @@ class FFTR2COp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
                       platform::errors::InvalidArgument(
-                          "Input(%s) of FFTC2ROp should not be null.", "X"));
+                          "Input(%s) of FFTR2COp should not be null.", "X"));
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       platform::errors::InvalidArgument(
-                          "Output(%s) of FFTC2ROp should not be null.", "Out"));
+                          "Output(%s) of FFTR2COp should not be null.", "Out"));
     const auto axes = ctx->Attrs().Get<std::vector<int64_t>>("axes");
     const bool onesided = ctx->Attrs().Get<bool>("onesided");
     if (!onesided) {
