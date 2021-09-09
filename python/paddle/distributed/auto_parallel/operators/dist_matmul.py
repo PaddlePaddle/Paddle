@@ -16,8 +16,8 @@ from .common import DistributedOperator
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator
 from .common import register_distributed_operator_impl
-from .common import set_distributed_attr_for_var
-from .common import set_distributed_attr_for_dist_op
+from .common import copy_distributed_attr_for_var
+from .common import copy_distributed_attr_for_dist_op
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -225,9 +225,9 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
                 stop_gradient=X_var.stop_gradient)
-            # set intermediate_var_0's dist_attr
-            set_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
-                                         X_var)
+            # copy X_var's dist_attr to intermediate_var_0's dist_attr
+            copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
+                                          X_var)
 
             check_variable_and_dtype(
                 X_var, 'tensor',
@@ -261,10 +261,11 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
                 outputs={'Out': Out_var},
                 attrs=attrs)
 
-            # set dist op's dist_attr
-            set_distributed_attr_for_dist_op(c_identity_op, dst_block,
-                                             op_dist_attr)
-            set_distributed_attr_for_dist_op(matmul_op, dst_block, op_dist_attr)
+            # copy serial op's dist_attr to dist op's dist_attr
+            copy_distributed_attr_for_dist_op(c_identity_op, dst_block,
+                                              op_dist_attr)
+            copy_distributed_attr_for_dist_op(matmul_op, dst_block,
+                                              op_dist_attr)
 
         if in_dygraph_mode():
             raise NotImplementedError(
@@ -379,9 +380,9 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
                 persistable=False,
                 is_data=False,
                 need_check_feed=Out_var.desc.need_check_feed())
-            # set intermediate_var_0's dist_attr
-            set_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
-                                         Out_var)
+            # copy Out_var's dist_attr to intermediate_var_0's dist_attr
+            copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
+                                          Out_var)
 
             matmul_op = dst_block.append_op(
                 type='matmul',
@@ -399,10 +400,11 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
                     'use_model_parallel': True
                 })
 
-            # set dist op's dist_attr
-            set_distributed_attr_for_dist_op(matmul_op, dst_block, op_dist_attr)
-            set_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
-                                             op_dist_attr)
+            # copy serial op's dist_attr to dist op's dist_attr
+            copy_distributed_attr_for_dist_op(matmul_op, dst_block,
+                                              op_dist_attr)
+            copy_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
+                                              op_dist_attr)
 
         if in_dygraph_mode():
             raise NotImplementedError(
@@ -577,9 +579,9 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
                 stop_gradient=X_var.stop_gradient)
-            # set intermediate_var_0's dist_attr
-            set_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
-                                         X_var)
+            # copy X_var's dist_attr to intermediate_var_0's dist_attr
+            copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
+                                          X_var)
 
             check_variable_and_dtype(
                 X_var, 'tensor',
@@ -609,11 +611,11 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                 outputs={'Out': Out_var},
                 attrs=attrs)
 
-            # set dist op's dist_attr
-            set_distributed_attr_for_dist_op(c_identity_op, dst_block,
-                                             op_dist_attr)
-            set_distributed_attr_for_dist_op(matmul_v2_op, dst_block,
-                                             op_dist_attr)
+            # copy serial op's dist_attr to dist op's dist_attr
+            copy_distributed_attr_for_dist_op(c_identity_op, dst_block,
+                                              op_dist_attr)
+            copy_distributed_attr_for_dist_op(matmul_v2_op, dst_block,
+                                              op_dist_attr)
 
         if in_dygraph_mode():
             raise NotImplementedError(
@@ -727,9 +729,9 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                 persistable=False,
                 is_data=False,
                 need_check_feed=Out_var.desc.need_check_feed())
-            # set intermediate_var_0's dist_attr
-            set_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
-                                         Out_var)
+            # copy Out_var's dist_attr to intermediate_var_0's dist_attr
+            copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
+                                          Out_var)
 
             matmul_v2_op = dst_block.append_op(
                 type='matmul_v2',
@@ -747,11 +749,11 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                     'use_model_parallel': True
                 })
 
-            # set dist op's dist_attr
-            set_distributed_attr_for_dist_op(matmul_v2_op, dst_block,
-                                             op_dist_attr)
-            set_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
-                                             op_dist_attr)
+            # copy serial op's dist_attr to dist op's dist_attr
+            copy_distributed_attr_for_dist_op(matmul_v2_op, dst_block,
+                                              op_dist_attr)
+            copy_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
+                                              op_dist_attr)
 
         if in_dygraph_mode():
             raise NotImplementedError(
