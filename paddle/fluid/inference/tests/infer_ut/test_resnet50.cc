@@ -32,7 +32,7 @@ paddle::test::Record PrepareInput(int batch_size) {
   return image_Record;
 }
 
-TEST(test_resnet50, analysis_gpu_bz1) {
+TEST(gpu_tester_resnet50, analysis_gpu_bz1) {
   // init input data
   std::map<std::string, paddle::test::Record> my_input_data_map;
   my_input_data_map["inputs"] = PrepareInput(1);
@@ -60,7 +60,7 @@ TEST(test_resnet50, analysis_gpu_bz1) {
   std::cout << "finish test" << std::endl;
 }
 
-TEST(test_resnet50, trt_fp32_bz2) {
+TEST(tensorrt_tester_resnet50, trt_fp32_bz2) {
   // init input data
   std::map<std::string, paddle::test::Record> my_input_data_map;
   my_input_data_map["inputs"] = PrepareInput(2);
@@ -91,7 +91,7 @@ TEST(test_resnet50, trt_fp32_bz2) {
   std::cout << "finish test" << std::endl;
 }
 
-TEST(test_resnet50, serial_diff_batch_trt_fp32) {
+TEST(tensorrt_tester_resnet50, serial_diff_batch_trt_fp32) {
   int max_batch_size = 5;
   // prepare groudtruth config
   paddle_infer::Config config, config_no_ir;
@@ -127,7 +127,7 @@ TEST(test_resnet50, serial_diff_batch_trt_fp32) {
   std::cout << "finish test" << std::endl;
 }
 
-TEST(test_resnet50, multi_thread4_trt_fp32_bz2) {
+TEST(tensorrt_tester_resnet50, multi_thread4_trt_fp32_bz2) {
   int thread_num = 4;
   // init input data
   std::map<std::string, paddle::test::Record> my_input_data_map;
@@ -170,7 +170,7 @@ TEST(test_resnet50, multi_thread4_trt_fp32_bz2) {
   std::cout << "finish multi-thread test" << std::endl;
 }
 
-TEST(test_resnet50, trt_int8_bz2) {
+TEST(tensorrt_tester_resnet50, trt_int8_bz2) {
   // init input data
   std::map<std::string, paddle::test::Record> my_input_data_map;
   my_input_data_map["inputs"] = PrepareInput(2);
@@ -197,6 +197,39 @@ TEST(test_resnet50, trt_int8_bz2) {
   // check outputs
   CompareRecord(&truth_output_data, &infer_output_data);
   std::cout << "finish test" << std::endl;
+}
+
+TEST(DISABLED_tensorrt_tester_resnet50, profile_multi_thread_trt_fp32) {
+  int batch_size = 2;
+  int thread_num = 4;
+  int repeat_time = 1000;
+  // init input data
+  std::map<std::string, paddle::test::Record> my_input_data_map;
+  my_input_data_map["inputs"] = PrepareInput(batch_size);
+  // init output data
+  std::map<std::string, paddle::test::Record> infer_output_data;
+  // prepare inference config
+  paddle_infer::Config config;
+  config.SetModel(FLAGS_modeldir + "/inference.pdmodel",
+                  FLAGS_modeldir + "/inference.pdiparams");
+  config.EnableUseGpu(100, 0);
+  config.EnableTensorRtEngine(
+      1 << 20, 2, 3, paddle_infer::PrecisionType::kFloat32, false, false);
+  // get infer results from multi threads
+  services::PredictorPool pred_pool(config, thread_num);
+  std::vector<std::future<double>> calcs;
+  for (int i = 0; i < thread_num; ++i) {
+    calcs.push_back(std::async(&paddle::test::SingleThreadProfile,
+                               pred_pool.Retrive(i), &my_input_data_map,
+                               repeat_time));
+  }
+  double total_time_ = 0.0;
+  for (auto&& fut : calcs) {
+    total_time_ += fut.get();
+  }
+  std::cout << total_time_ << std::endl;
+
+  std::cout << "finish multi-thread profile" << std::endl;
 }
 
 }  // namespace paddle_infer

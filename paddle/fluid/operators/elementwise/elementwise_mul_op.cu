@@ -121,6 +121,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseMulKernel<plat::CUDADeviceContext, bool>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::float16>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::complex<float>>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::complex<double>>);
@@ -130,6 +131,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, bool>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::float16>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext,
                                   plat::complex<float>>,
@@ -141,6 +143,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, bool>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, plat::float16>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext,
                                         plat::complex<float>>,
