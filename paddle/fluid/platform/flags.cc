@@ -635,5 +635,5 @@ DEFINE_int32(get_host_by_name_time, 120,
  * Note: Apply IR pass to program. Be only useful when using Fleet APIs.
  */
 DEFINE_bool(
-    apply_pass_to_program, false,
+    apply_pass_to_program, true,
     "It controls whether to apply IR pass to program when using Fleet APIs");
