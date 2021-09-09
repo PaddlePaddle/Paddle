@@ -42,6 +42,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/lod_tensor_array.h"
+#include "paddle/fluid/framework/new_executor/standalone_executor.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/op_version_registry.h"
@@ -72,6 +73,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/pybind/cuda_streams_py.h"
 #include "paddle/fluid/pybind/io.h"
+#include "paddle/utils/none.h"
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
@@ -505,6 +507,8 @@ PYBIND11_MODULE(core_noavx, m) {
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
+  m.def("disable_signal_handler", &DisableSignalHandler);
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::CudnnVersion);
 #endif
@@ -520,6 +524,12 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("from_dlpack", [](py::capsule *dltensor) {
     DLManagedTensor *dmt = reinterpret_cast<DLManagedTensor *>(
         PyCapsule_GetPointer(dltensor->ptr(), "dltensor"));
+
+    PADDLE_ENFORCE_NOT_NULL(
+        dmt, platform::errors::InvalidArgument(
+                 "from_dlpack received an invalid capsule. "
+                 "Note that a DLPack tensor can be consumed only once."));
+
     PyCapsule_SetName(dltensor->ptr(), "used_dltensor");
     DLTensor dl = dmt->dl_tensor;
     framework::Tensor tensor;
@@ -1631,7 +1641,13 @@ All parameter, weight, gradient are variables in Paddle.
       .def("__repr__", string::to_string<const platform::XPUPlace &>)
       .def("__str__", string::to_string<const platform::XPUPlace &>);
 #ifdef PADDLE_WITH_XPU
+  py::enum_<platform::XPUVersion>(m, "XPUVersion", py::arithmetic())
+      .value("XPU1", platform::XPUVersion::XPU1)
+      .value("XPU2", platform::XPUVersion::XPU2)
+      .export_values();
   m.def("get_xpu_device_count", platform::GetXPUDeviceCount);
+  m.def("get_xpu_device_version",
+        [](int device_id) { return platform::get_xpu_version(device_id); });
 #endif
 
   py::class_<paddle::platform::CPUPlace>(m, "CPUPlace", R"DOC(
@@ -1833,19 +1849,32 @@ All parameter, weight, gradient are variables in Paddle.
                   })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::CPUPlace &place) { self.Run(scope, place); })
+              const platform::CPUPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::XPUPlace &place) { self.Run(scope, place); })
+              const platform::XPUPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::NPUPlace &place) { self.Run(scope, place); })
+              const platform::NPUPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::CUDAPlace &place) { self.Run(scope, place); })
+              const platform::CUDAPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CUDAPinnedPlace &place) {
+             pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
       .def("type",
@@ -1935,6 +1964,63 @@ All parameter, weight, gradient are variables in Paddle.
                  fetch_vars);
       });
 
+  py::class_<framework::CostInfo>(m, "CostInfo")
+      .def(py::init<>())
+      .def("total_time", [](CostInfo &self) { return self.total_time; })
+      .def("host_memory_bytes",
+           [](CostInfo &self) { return self.host_memory_bytes; })
+      .def("device_memory_bytes",
+           [](CostInfo &self) { return self.device_memory_bytes; })
+      .def("device_total_memory_bytes",
+           [](CostInfo &self) { return self.device_total_memory_bytes; });
+
+  py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
+      .def(py::init<const platform::Place &, const ProgramDesc &,
+                    const ProgramDesc &, Scope *>())
+      .def("run",
+           [](StandaloneExecutor &self,
+              const std::unordered_map<std::string, py::array> &input_dict,
+              std::vector<std::string> fetch_names) {
+             std::vector<framework::Tensor> feed_tensors;
+             std::vector<std::string> feed_names;
+
+             for (auto &item : input_dict) {
+               framework::LoDTensor t;
+               SetTensorFromPyArray<platform::CPUPlace>(
+                   &t, item.second, platform::CPUPlace(), false);
+               feed_names.push_back(item.first);
+               feed_tensors.push_back(t);
+             }
+
+             paddle::framework::FetchList ret;
+             {
+               pybind11::gil_scoped_release release;
+               ret = self.Run(feed_names, feed_tensors, fetch_names);
+             }
+             return py::cast(std::move(ret));
+           })
+      .def("dry_run",
+           [](StandaloneExecutor &self,
+              const std::unordered_map<std::string, py::array> &input_dict) {
+             std::vector<framework::Tensor> feed_tensors;
+             std::vector<std::string> feed_names;
+
+             for (auto &item : input_dict) {
+               framework::LoDTensor t;
+               SetTensorFromPyArray<platform::CPUPlace>(
+                   &t, item.second, platform::CPUPlace(), false);
+               feed_names.push_back(item.first);
+               feed_tensors.push_back(t);
+             }
+
+             CostInfo cost_info;
+             {
+               pybind11::gil_scoped_release release;
+               cost_info = self.DryRun(feed_names, feed_tensors);
+             }
+             return cost_info;
+           });
+
   m.def("init_gflags", framework::InitGflags);
   m.def("init_glog", framework::InitGLOG);
   m.def("load_op_meta_info_and_register_op",
@@ -2019,6 +2105,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindOpDesc(&m);
   BindConstValue(&m);
   BindGlobalValueGetterSetter(&m);
+  BindProcessMeshDesc(&m);
 
   py::class_<framework::LoDRankTable>(m, "LodRankTable")
       .def("items", [](framework::LoDRankTable &table) {
@@ -2181,7 +2268,15 @@ All parameter, weight, gradient are variables in Paddle.
 
 #ifdef PADDLE_WITH_ASCEND_CL
   m.def("get_npu_device_count", platform::GetNPUDeviceCount);
-  m.def("npu_finalize", []() { platform::AclInstance::Instance().Finalize(); });
+  m.def("npu_finalize", []() {
+    auto &pool = platform::DeviceContextPool::Instance();
+    auto devices = platform::GetSelectedNPUDevices();
+    for (size_t i = 0; i < devices.size(); ++i) {
+      platform::NPUDeviceGuard guard(devices[i]);
+      pool.Get(platform::NPUPlace(devices[i]))->Wait();
+    }
+    platform::AclInstance::Instance().Finalize();
+  });
 
   py::class_<platform::NPUProfConfigWrapper>(m, "NPUProfConfigWrapper");
 
@@ -2509,6 +2604,7 @@ All parameter, weight, gradient are variables in Paddle.
       .value("Customized", BuildStrategy::GradientScaleStrategy::kCustomized);
 
   build_strategy.def(py::init())
+      .def("_clear_finalized", &BuildStrategy::ClearFinalized)
       .def_property(
           "reduce_strategy",
           [](const BuildStrategy &self) { return self.reduce_; },
@@ -2865,7 +2961,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property("fuse_broadcast_ops",
                     [](const BuildStrategy &self) {
                       return self.fuse_broadcast_ops_ == true ||
-                             self.fuse_broadcast_ops_ == boost::none;
+                             self.fuse_broadcast_ops_ == paddle::none;
                     },
                     [](BuildStrategy &self, bool b) {
                       PADDLE_ENFORCE_NE(self.IsFinalized(), true,
@@ -2895,7 +2991,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_property("fuse_all_optimizer_ops",
                     [](const BuildStrategy &self) {
                       return self.fuse_all_optimizer_ops_ == true ||
-                             self.fuse_all_optimizer_ops_ == boost::none;
+                             self.fuse_all_optimizer_ops_ == paddle::none;
                     },
                     [](BuildStrategy &self, bool b) {
                       PADDLE_ENFORCE_NE(self.IsFinalized(), true,
@@ -2944,7 +3040,7 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, const py::handle &value) {
             auto *py_obj = value.ptr();
             if (py_obj == nullptr || py_obj == Py_None) {
-              self.memory_optimize_ = boost::none;
+              self.memory_optimize_ = paddle::none;
             } else if (PyBool_Check(py_obj)) {
               self.memory_optimize_ = (py_obj == Py_True);
             } else {
@@ -3001,7 +3097,7 @@ All parameter, weight, gradient are variables in Paddle.
           "fuse_all_reduce_ops",
           [](const BuildStrategy &self) {
             return self.fuse_all_reduce_ops_ == true ||
-                   self.fuse_all_reduce_ops_ == boost::none;
+                   self.fuse_all_reduce_ops_ == paddle::none;
           },
           [](BuildStrategy &self, bool b) { self.fuse_all_reduce_ops_ = b; })
       .def_property("enable_backward_optimizer_op_deps",
@@ -3030,6 +3126,12 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, bool fix_op_run_order) {
             self.fix_op_run_order_ = fix_op_run_order;
           })
+      .def("_copy",
+           [](const BuildStrategy &self) {
+             auto new_bs = self;
+             new_bs.ClearFinalized();
+             return new_bs;
+           })
       .def("_finalize_strategy_and_create_passes",
            [](BuildStrategy &self) -> std::shared_ptr<ir::PassBuilder> {
              return self.CreatePassesFromStrategy(true);

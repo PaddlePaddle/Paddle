@@ -208,6 +208,7 @@ def __bootstrap__():
         'call_stack_level',
         'sort_sum_gradient',
         'max_inplace_grad_add',
+        'apply_pass_to_program',
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')
@@ -236,6 +237,7 @@ def __bootstrap__():
             'local_exe_sub_scope_limit',
             'gpu_memory_limit_mb',
             'conv2d_disable_cudnn',
+            'get_host_by_name_time',
         ]
 
     if core.is_compiled_with_npu():
@@ -246,6 +248,9 @@ def __bootstrap__():
             'reallocate_gpu_memory_in_mb',
             'gpu_memory_limit_mb',
             'npu_config_path',
+            'get_host_by_name_time',
+            'hccl_check_nan',
+            'min_loss_scaling',
         ]
 
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])

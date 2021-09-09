@@ -64,7 +64,11 @@ elseif(WITH_ROCM)
     hip_library(broadcast_op_handle SRCS broadcast_op_handle.cc DEPS op_handle_base scope ddim memory variable_visitor dynload_cuda)
     hip_library(fused_broadcast_op_handle SRCS fused_broadcast_op_handle.cc DEPS broadcast_op_handle)
 else()
-    cc_library(nan_inf_utils SRCS nan_inf_utils_detail.cc DEPS framework_proto scope place)
+    if (WITH_ASCEND_CL)
+        cc_library(nan_inf_utils SRCS nan_inf_utils_detail.cc DEPS npu_op_runner framework_proto scope place)
+    else()
+        cc_library(nan_inf_utils SRCS nan_inf_utils_detail.cc DEPS framework_proto scope place)
+    endif()
     cc_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
              variable_visitor)
     cc_library(fused_all_reduce_op_handle SRCS fused_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
@@ -141,7 +145,7 @@ if(NOT APPLE AND NOT WIN32 AND (WITH_GPU OR WITH_ROCM))
 endif()
 cc_library(build_strategy SRCS build_strategy.cc DEPS pass_builder ${IR_PASS_DEPS})
 cc_test(build_strategy_test SRCS build_strategy_test.cc
-        DEPS build_strategy op_registry op_proto_maker graph)
+        DEPS build_strategy op_registry op_proto_maker graph string_helper)
 
 if (WITH_MKLDNN)
   target_link_libraries(build_strategy mkldnn_placement_pass)

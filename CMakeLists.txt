@@ -130,7 +130,7 @@ if(WIN32)
         # NOTE(zhouwei25): GPU compile have too high memory utilization when parallel compiling,
         # For Visual Studio generators, /MP should be added. 
         # For other generators like Ninja, it is not need to add /MP.
-        if("${CMAKE_GENERATOR}" STREQUAL "Visual Studio" AND NOT WITH_GPU)
+        if(CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT WITH_GPU)
             math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")
             set(${flag_var} "${${flag_var}} /MP${PROCESS_MAX}")
         endif()
@@ -222,6 +222,9 @@ option(WITH_MIPS   "Compile PaddlePaddle with mips support"         OFF)
 option(WITH_MUSL        "Compile with musl libc instead of gblic"  OFF)
 option(WITH_UNITY_BUILD "Compile with UnityBuild mode"             OFF)
 option(WITH_STRIP       "Strip so files of Whl packages"         OFF)
+option(NEW_RELEASE_CUBIN   "PaddlePaddle next-level release strategy for pypi cubin package"             OFF)
+option(NEW_RELEASE_JIT   "PaddlePaddle next-level release strategy for backup jit package"             OFF)
+option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)

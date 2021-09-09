@@ -127,8 +127,6 @@ class TestReduceMaxOpWithOutDtype_int16(TestNPUReduceMaxOp):
             'out_dtype': int(core.VarDesc.VarType.INT16)
         }
 
-        self.out = self.inputs['X'].max(axis=tuple(self.attrs['dim']))
-
         self.outputs = {
             'Out':
             self.inputs['X'].max(axis=tuple(self.attrs['dim'])).astype(np.int16)
@@ -195,9 +193,6 @@ class TestReduceMaxOpWithOutDtype_fp16(TestNPUReduceMaxOp):
             'dim': [-2, -1],
             'out_dtype': int(core.VarDesc.VarType.FP16)
         }
-
-        self.out = self.inputs['X'].max(axis=tuple(self.attrs['dim']))
-
         self.outputs = {
             'Out': self.inputs['X'].max(
                 axis=tuple(self.attrs['dim'])).astype(np.float16)

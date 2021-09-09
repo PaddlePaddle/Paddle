@@ -22,7 +22,7 @@ import paddle
 from .. import framework
 from .. import core
 from .. import unique_name
-from ..framework import Variable, Parameter, ParamBase, _getitem_impl_
+from ..framework import Variable, Parameter, ParamBase, _getitem_impl_, _setitem_impl_
 from .base import switch_to_static_graph
 from .math_op_patch import monkey_patch_math_varbase
 from .parallel import scale_loss
@@ -390,7 +390,8 @@ def monkey_patch_varbase():
 
     def item(self, *args):
         """
-        Convert one element Tensor to a Python scalar.
+        Convert element at specific position in Tensor into Python scalars. If the position is not specified, the Tensor must be a 
+        single-element Tensor.
 
         Args:
             *args(int): The input coordinates. If it's single int, the data in the corresponding order of flattened Tensor will be returned.
@@ -426,8 +427,6 @@ def monkey_patch_varbase():
                 print(x.item(2))            #3.3
                 print(x.item(0, 2))         #3.3
 
-                x = paddle.to_tensor([1, 2])
-                x.item()               #ValueError: only one element tensor can be converted to Python scalar when no input coordinates.
         """
         return self._getitem_from_offset(*args).item()
 
@@ -543,23 +542,42 @@ def monkey_patch_varbase():
             array = array.astype(dtype)
         return array
 
+    def contain_tensor(item):
+        if not isinstance(item, (tuple, list)):
+            item = [item]
+
+        for slice_item in item:
+            if isinstance(slice_item, slice):
+                if isinstance(slice_item.start, Variable)  \
+                    or isinstance(slice_item.stop, Variable) \
+                        or isinstance(slice_item.step, Variable):
+                    return True
+            else:
+                if isinstance(slice_item,
+                              Variable) and Variable.dtype != paddle.bool:
+                    return True
+        return False
+
     def __getitem__(self, item):
-        def contain_tensor(item):
-            if not isinstance(item, tuple):
-                item = [item]
-
-            for slice_item in item:
-                if isinstance(slice_item, slice):
-                    if isinstance(slice_item.start, Variable)  \
-                        or isinstance(slice_item.stop, Variable) \
-                           or isinstance(slice_item.step, Variable):
-                        return True
+        def is_list_tuple(index, contain_type):
+            def _is_list_tuple(item):
+                if isinstance(item, (tuple, list)):
+                    for s in item:
+                        if not _is_list_tuple(s):
+                            return False
                 else:
-                    if isinstance(slice_item, Variable):
-                        return True
-            return False
+                    if type(item) != contain_type:
+                        return False
+                return True
 
-        if contain_tensor(item):
+            if not isinstance(index, (tuple, list)):
+                return False
+            for s in index:
+                if not _is_list_tuple(s):
+                    return False
+            return True
+
+        if contain_tensor(item) or is_list_tuple(item, int):
             # 1. Call _getitem_impl_ when item contains tensor.
             # Why not call a c++ function ? Because item can't be parsed when it contains tensor.
             return _getitem_impl_(self, item)
@@ -567,6 +585,49 @@ def monkey_patch_varbase():
         else:
             # 2. Call c++ func getitem_index_not_tensor to speedup.
             return self._getitem_index_not_tensor(item)
+
+    def __setitem__(self, item, value):
+        def contain_tensor_or_list(item):
+            if not isinstance(item, tuple):
+                item = [item]
+
+            for slice_item in item:
+                if isinstance(slice_item, list):
+                    return True
+                elif isinstance(slice_item, Variable):
+                    return True
+
+            return False
+
+        def is_combine_index(item):
+            var_type = None
+            item_type = None
+            if isinstance(item, (tuple, list)):
+                for slice_item in item:
+                    if item_type is None:
+                        item_type = type(slice_item)
+                    else:
+                        if type(slice_item) != item_type:
+                            return True
+
+                    if isinstance(slice_item, Variable):
+                        if var_type is None:
+                            var_type = slice_item.dtype
+                        else:
+                            if var_type != slice_item.dtype:
+                                return True
+                return False
+
+            return False
+
+        if contain_tensor_or_list(item) and not is_combine_index(item):
+            # To reuse code with static graph,
+            # Call _setitem_impl_ when item contains tensor or list.
+            return _setitem_impl_(self, item, value)
+
+        else:
+            # Call c++ func __setitem_varbase__ to speedup.
+            return self.__setitem_varbase__(item, value)
 
     for method_name, method in (
         ("__bool__", __bool__), ("__nonzero__", __nonzero__),
@@ -577,7 +638,8 @@ def monkey_patch_varbase():
         ("__str__", __str__), ("__repr__", __str__),
         ("__deepcopy__", __deepcopy__), ("__module__", "paddle"),
         ("__name__", "Tensor"), ("__array__", __array__),
-        ("__getitem__", __getitem__), ("item", item)):
+        ("__getitem__", __getitem__), ("item", item),
+        ("__setitem__", __setitem__)):
         setattr(core.VarBase, method_name, method)
 
     # NOTE(zhiqiu): pybind11 will set a default __str__ method of enum class.

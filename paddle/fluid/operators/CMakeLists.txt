@@ -81,10 +81,10 @@ op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS execu
 
 if (WITH_GPU OR WITH_ROCM)
     if(WITH_ROCM)
-        op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu.cc)
+        op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu)
     # warpctc_op needs cudnn 7 above
     elseif(${CUDNN_MAJOR_VERSION} VERSION_LESS 7)
-        op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu.cc)
+        op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale SRCS warpctc_op.cc warpctc_op.cu)
     else()
         op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
     endif()
@@ -157,6 +157,7 @@ cc_test(save_load_combine_op_test SRCS save_load_combine_op_test.cc DEPS save_co
 if (WITH_GPU)
     nv_test(dropout_op_test SRCS dropout_op_test.cc DEPS dropout_op tensor generator)
     nv_test(test_leaky_relu_grad_grad_functor SRCS test_leaky_relu_grad_grad_functor.cc test_leaky_relu_grad_grad_functor.cu DEPS tensor device_context eigen3)
+    nv_test(feed_forward_test SRCS feed_forward_test.cu DEPS elementwise_add_op matmul_op tensor generator)
 elseif(WITH_ROCM)
     hip_test(dropout_op_test SRCS dropout_op_test.cc DEPS dropout_op tensor generator)
     hip_test(test_leaky_relu_grad_grad_functor SRCS test_leaky_relu_grad_grad_functor.cc test_leaky_relu_grad_grad_functor.cu DEPS tensor device_context eigen3)

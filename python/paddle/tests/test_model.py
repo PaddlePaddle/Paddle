@@ -169,7 +169,7 @@ class TestModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not fluid.is_compiled_with_cuda():
-            cls.skipTest('module not tested when ONLY_CPU compling')
+            cls().skipTest('module not tested when ONLY_CPU compling')
         cls.device = paddle.set_device('gpu')
         fluid.enable_dygraph(cls.device)
 
@@ -662,6 +662,12 @@ class TestModelFunction(unittest.TestCase):
         np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
 
     def test_summary_input(self):
+        paddle.enable_static()
+        mymodel = MyModel()
+        input_data = paddle.rand([1, 20])
+        paddle.summary(mymodel, input=input_data)
+        paddle.disable_static()
+
         rnn = paddle.nn.SimpleRNN(16, 32, 2, direction='bidirectional')
         input_data = paddle.rand([4, 23, 16])
         paddle.summary(rnn, input=input_data)
