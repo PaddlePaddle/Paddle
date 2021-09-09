@@ -288,6 +288,12 @@ class CUDAContext {
 
   const std::unique_ptr<stream::CUDAStream>& Stream() const { return stream_; }
 
+  stream::CUDAStream* SetStream(stream::CUDAStream* new_stream_ptr) {
+    auto* old_stream_ptr = stream_.release();
+    stream_.reset(new_stream_ptr);
+    return old_stream_ptr;
+  }
+
   const gpuStream_t& RawStream() { return stream_->raw_stream(); }
 
 #ifdef PADDLE_WITH_HIP

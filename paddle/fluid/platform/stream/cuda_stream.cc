@@ -22,9 +22,9 @@ namespace platform {
 namespace stream {
 
 #ifdef PADDLE_WITH_HIP
-constexpr unsigned int kDefaultFlag = hipStreamDefault;
+constexpr unsigned int kDefaultFlag = hipStreamNonBlocking;
 #else
-constexpr unsigned int kDefaultFlag = cudaStreamDefault;
+constexpr unsigned int kDefaultFlag = cudaStreamNonBlocking;
 #endif
 
 bool CUDAStream::Init(const Place& place, const Priority& priority) {
@@ -118,6 +118,19 @@ CUDAStream* get_current_stream(int deviceId) {
 #endif
 }
 
+CUDAStream* set_current_stream(CUDAStream* stream) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+  auto& device = stream->GetPlace();
+  auto& pool = platform::DeviceContextPool::Instance();
+  return static_cast<platform::CUDADeviceContext*>(pool.Get(device))
+      ->context()
+      ->SetStream(stream);
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "Paddle is not compiled with CUDA. Cannot visit cuda current stream."));
+  return nullptr;
+#endif
+}
 }  // namespace stream
 }  // namespace platform
 }  // namespace paddle

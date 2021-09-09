@@ -40,6 +40,18 @@ void BindCudaStream(py::module *m_ptr) {
         },
         py::return_value_policy::reference);
 
+  m.def("_set_current_stream",
+        [](paddle::platform::stream::CUDAStream &stream) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+          return paddle::platform::stream::set_current_stream(&stream);
+#else
+          PADDLE_THROW(platform::errors::Unavailable(
+              "Paddle is not compiled with CUDA. Cannot set cuda current "
+              "stream."));
+#endif
+        },
+        py::return_value_policy::reference);
+
   m.def("_device_synchronize", [](int device_id) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     if (device_id == -1) {

@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import paddle
 from paddle.fluid import core
+from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
 
 from .streams import Stream  # noqa: F401
 from .streams import Event  # noqa: F401
@@ -23,6 +25,7 @@ __all__ = [
     'current_stream',
     'synchronize',
     'device_count',
+    'stream_guard',
 ]
 
 
@@ -117,3 +120,64 @@ def device_count():
         core, 'get_cuda_device_count') else 0
 
     return num_gpus
+
+
+def _set_current_stream(stream):
+    '''    
+    Set the current stream.
+
+    Parameters:
+        stream(paddle.device.cuda.Stream): The selected stream.
+
+    Returns:
+        CUDAStream: The previous stream.   
+ 
+    '''
+
+    if stream is None:
+        raise ValueError("input stream should not be None.")
+    if not isinstance(stream, paddle.device.cuda.Stream):
+        raise ValueError("stream type should be paddle.device.cuda.Stream")
+
+    cur_stream = current_stream()
+    if id(stream) == id(cur_stream):
+        return stream
+    return core._set_current_stream(stream)
+
+
+@signature_safe_contextmanager
+def stream_guard(stream=None):
+    '''
+    **Notes**:
+        **This API only supports dygraph mode currently.**
+
+    A context manager that specifies the current stream context by the given stream.
+
+    Parameters:
+        stream(paddle.device.cuda.Stream): the selected stream. 
+        If stream is None, just yield. Default: None.
+
+    Examples:
+        .. code-block:: python
+            import paddle
+            
+            s = paddle.device.cuda.Stream()
+            data1 = paddle.ones(shape=[20])
+            data2 = paddle.ones(shape=[20])
+            with paddle.device.cuda.stream_guard(s):
+                data3 = data1 + data2
+       
+    '''
+
+    if not isinstance(stream, paddle.device.cuda.Stream):
+        raise ValueError("stream type should be paddle.device.cuda.Stream")
+
+    cur_stream = current_stream()
+    if stream is None or id(stream) == id(cur_stream):
+        yield
+    else:
+        pre_stream = _set_current_stream(stream)
+        try:
+            yield
+        finally:
+            stream = _set_current_stream(pre_stream)
