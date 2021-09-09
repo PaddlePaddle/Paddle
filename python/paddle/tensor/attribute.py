@@ -51,6 +51,16 @@ def is_floating_point(x):
     return is_fp_dtype
 
 
+def is_interger(x):
+    dtype = x.dtype
+    is_int_dtype = (dtype == core.VarDesc.VarType.UINT8 or
+                    dtype == core.VarDesc.VarType.INT8 or
+                    dtype == core.VarDesc.VarType.INT16 or
+                    dtype == core.VarDesc.VarType.INT32 or
+                    dtype == core.VarDesc.VarType.INT64)
+    return is_int_dtype
+
+
 def real(x, name=None):
     """
     Returns a new tensor containing real values of the input tensor.
