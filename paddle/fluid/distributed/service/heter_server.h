@@ -158,8 +158,8 @@ class HeterService : public ::paddle::distributed::PsService {
     handler_map_[message_name] = func;
   }
 
-  void SetEndpoint(const std::string& end_point) { endpoint_ = end_point; }
-  void SetFanin(const int& fan_in) { fan_in_ = fan_in; }
+  void SetEndpoint(std::string& end_point) { endpoint_ = end_point; }
+  void SetFanin(int& fan_in) { fan_in_ = fan_in; }
   bool IsExit() { return is_exit_; }
 
  private:
