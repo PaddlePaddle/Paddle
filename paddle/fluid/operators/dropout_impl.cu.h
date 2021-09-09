@@ -29,37 +29,13 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/generator.h"
-// #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/dropout_op.h"
+#include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
-
-using Tensor = framework::Tensor;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenMatrix = framework::EigenMatrix<T, MajorType, IndexType>;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
-// aligned vector generates vectorized load/store on CUDA
-template <typename T, int Size>
-struct alignas(sizeof(T) * Size) AlignedVector {
-  T val[Size];
-};
-
-template <typename T>
-inline int VectorizedSize(const T* pointer) {
-  uint64_t address = reinterpret_cast<uint64_t>(pointer);
-  constexpr int vec4 = std::alignment_of<AlignedVector<T, 4>>::value;  // NOLINT
-  if (address % vec4 == 0) {
-    return 4;
-  }
-  return 1;
-}
 
 template <typename T, typename MaskType>
 __global__ void RandomGenerator(const size_t n, uint64_t seed,
@@ -117,8 +93,8 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
 
   MaskType mask;
   T dest;
-  using LoadT = AlignedVector<T, VecSize>;
-  using MaskLoadT = AlignedVector<MaskType, VecSize>;
+  using LoadT = platform::AlignedVector<T, VecSize>;
+  using MaskLoadT = platform::AlignedVector<MaskType, VecSize>;
   T factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
   for (int i = idx * VecSize; i < n; i += blockDim.x * gridDim.x * VecSize) {
     T src_vec[VecSize];
@@ -161,8 +137,8 @@ __global__ void DropoutGradCUDAKernel(const T* dout, const MaskType* mask,
                                       T* dx) {
   int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
 
-  using LoadT = AlignedVector<T, VecSize>;
-  using MaskLoadT = AlignedVector<MaskType, VecSize>;
+  using LoadT = platform::AlignedVector<T, VecSize>;
+  using MaskLoadT = platform::AlignedVector<MaskType, VecSize>;
 
   for (int i = idx * VecSize; i < size; i += blockDim.x * gridDim.x * VecSize) {
     T dout_vec[VecSize];
@@ -200,7 +176,6 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     size_t size = framework::product(mask->dims());
 
     auto* x_data = x.data<T>();
-    // auto* y_data = y->mutable_data<T>(context.GetPlace());
     auto* y_data = y->data<T>();
     if (dropout_prob == 1.0f) {
 #ifdef PADDLE_WITH_HIP
@@ -229,7 +204,7 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     // same as the previous calls.
     uint64_t seed_data;
     uint64_t increment;
-    int vec_size = VectorizedSize<T>(x_data);
+    int vec_size = platform::GetVectorizedSize<T>(x_data);
     auto offset = ((x_numel - 1) / (config.block_per_grid.x *
                                     config.thread_per_block.x * vec_size) +
                    1) *
@@ -241,7 +216,6 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     if ((seed) && platform::is_gpu_place(seed->place())) {
       framework::Tensor seed_cpu_tensor;
       TensorCopySync(*seed, platform::CPUPlace(), &seed_cpu_tensor);
-      // TensorCopySync_new(*seed, &seed_cpu_tensor);
       seed_data = static_cast<uint64_t>(seed_cpu_tensor.data<int>()[0]);
       increment = offset;
     } else if (gen_cuda->GetIsInitPy() && (!is_fix_seed)) {
@@ -311,7 +285,7 @@ void DropoutGradGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
     if (dropout_prob == 1.0f) {
       dX.device(place) = static_cast<T>(0) * dY;
     } else {
-      int vec_size = VectorizedSize<T>(grad_y.data<T>());
+      int vec_size = platform::GetVectorizedSize<T>(grad_y.data<T>());
       if (vec_size == 4 && size % 4 == 0) {
         auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
         auto stream = dev_ctx.stream();
