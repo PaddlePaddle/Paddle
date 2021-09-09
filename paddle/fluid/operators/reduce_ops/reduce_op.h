@@ -645,7 +645,8 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(-1);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddComment(string::Sprintf(R"DOC(
 %s Operator.
 

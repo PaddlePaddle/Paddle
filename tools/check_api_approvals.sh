@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
@@ -91,6 +92,7 @@ fi
 
 if [ -n "${echo_list}" ];then
   echo "****************"
+  echo "Please find RD for approval first, and then find TPM for approval."
   echo -e "${echo_list[@]}"
   echo "There are ${failed_num} approved errors."
   echo "****************"
