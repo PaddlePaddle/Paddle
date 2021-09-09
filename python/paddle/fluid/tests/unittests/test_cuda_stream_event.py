@@ -108,7 +108,7 @@ class TestCUDAEvent(unittest.TestCase):
 class TestStreamGuard(unittest.TestCase):
     '''
     Note: 
-        The asynchronous execution property of CUDA Stream can only be testted offline. 
+        The asynchronous execution property of CUDA Stream can only be tested offline. 
     '''
 
     def test_stream_guard_normal(self):
