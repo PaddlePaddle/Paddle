@@ -15,7 +15,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/mha_op.h"
 
-
 namespace paddle {
 namespace operators {
 
@@ -30,45 +29,62 @@ class MHAOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Q"), "Input", "Q", "MHA");
     OP_INOUT_CHECK(ctx->HasInput("K"), "Input", "K", "MHA");
     OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "MHA");
+    OP_INOUT_CHECK(ctx->HasInput("QO_Seqlen"), "Input", "QO_Seqlen", "MHA");
+    OP_INOUT_CHECK(ctx->HasInput("KV_Seqlen"), "Input", "KV_Seqlen", "MHA");
 
     auto q_dims = ctx->GetInputDim("Q");
-    PADDLE_ENFORCE_EQ(
-        q_dims.size(), CUDNN_SEQDATA_DIM_COUNT,
-        platform::errors::InvalidArgument(
-            "The input tensor Q's dimensions of MHAOp "
-            "should be equal to %d . But received Q's "
-            "dimensions = %d.",
-            CUDNN_SEQDATA_DIM_COUNT, q_dims.size()));
-  
+    PADDLE_ENFORCE_EQ(q_dims.size(), CUDNN_SEQDATA_DIM_COUNT,
+                      platform::errors::InvalidArgument(
+                          "The input tensor Q's dimensions of MHAOp "
+                          "should be equal to %d . But received Q's "
+                          "dimensions = %d.",
+                          CUDNN_SEQDATA_DIM_COUNT, q_dims.size()));
+
     auto k_dims = ctx->GetInputDim("K");
-    PADDLE_ENFORCE_EQ(
-        k_dims.size(), CUDNN_SEQDATA_DIM_COUNT,
-        platform::errors::InvalidArgument(
-            "The input tensor K's dimensions of MHAOp "
-            "should be equal to %d . But received K's "
-            "dimensions = %d.",
-            CUDNN_SEQDATA_DIM_COUNT, k_dims.size()));
-  
+    PADDLE_ENFORCE_EQ(k_dims.size(), CUDNN_SEQDATA_DIM_COUNT,
+                      platform::errors::InvalidArgument(
+                          "The input tensor K's dimensions of MHAOp "
+                          "should be equal to %d . But received K's "
+                          "dimensions = %d.",
+                          CUDNN_SEQDATA_DIM_COUNT, k_dims.size()));
+
     auto v_dims = ctx->GetInputDim("V");
-    PADDLE_ENFORCE_EQ(
-        v_dims.size(), CUDNN_SEQDATA_DIM_COUNT,
-        platform::errors::InvalidArgument(
-            "The input tensor V's dimensions of MHAOp "
-            "should be equal to %d . But received V's "
-            "dimensions = %d.",
-            CUDNN_SEQDATA_DIM_COUNT, v_dims.size()));
+    PADDLE_ENFORCE_EQ(v_dims.size(), CUDNN_SEQDATA_DIM_COUNT,
+                      platform::errors::InvalidArgument(
+                          "The input tensor V's dimensions of MHAOp "
+                          "should be equal to %d . But received V's "
+                          "dimensions = %d.",
+                          CUDNN_SEQDATA_DIM_COUNT, v_dims.size()));
+
+    auto qo_slen_dims = ctx->GetInputDim("QO_Seqlen");
+    PADDLE_ENFORCE_EQ(qo_slen_dims[0], q_dims[0],
+                      platform::errors::InvalidArgument(
+                          "The number of sequence length should be equal"
+                          " to batch size."));
+
+    auto kv_slen_dims = ctx->GetInputDim("KV_Seqlen");
+    PADDLE_ENFORCE_EQ(kv_slen_dims[0], k_dims[0],
+                      platform::errors::InvalidArgument(
+                          "The number of sequence length should be equal"
+                          " to batch size."));
 
     std::vector<int64_t> output_dims;
-    for (int i=0; i<q_dims.size(); ++i) {
+    for (int i = 0; i < q_dims.size(); ++i) {
       output_dims.push_back(q_dims[i]);
     }
+
     ctx->SetOutputDim("O", framework::make_ddim(output_dims));
     ctx->ShareLoD("Q", /*->*/ "O");
   }
 
-  // framework::OpKernelType GetExpectedKernelType(
-  //     const framework::ExecutionContext& ctx) const {
-  // }
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Q");
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
+  }
 };
 
 class MHAOpMaker : public framework::OpProtoAndCheckerMaker {
@@ -78,25 +94,28 @@ class MHAOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("K", "(Tensor), K");
     AddInput("V", "(Tensor), V");
     AddInput("W", "(Tensor), V");
+    AddInput("QO_Seqlen", "(Tensor), QO_Seqlen");
+    AddInput("KV_Seqlen", "(Tensor), KV_Seqlen");
 
     AddOutput("O", "(Tensor), O");
 
-    AddAttr<std::vector<int>>("Q_seq_size_arr", "(Tensor), Q_seq_size_arr");
-    AddAttr<std::vector<int>>("K_seq_size_arr", "(Tensor), K_seq_size_arr");
+    // AddAttr<std::vector<int>>("Q_seq_size_arr", "(Tensor), Q_seq_size_arr");
+    // AddAttr<std::vector<int>>("K_seq_size_arr", "(Tensor), K_seq_size_arr");
     AddAttr<std::vector<int>>("attn_low_windows", "(Tensor), attn_low_windows");
-    AddAttr<std::vector<int>>("attn_high_windows", "(Tensor), attn_high_windows");
+    AddAttr<std::vector<int>>("attn_high_windows",
+                              "(Tensor), attn_high_windows");
 
-    AddAttr<float>("attn_dropout_rate","");
-    AddAttr<int>("attn_heads","");
-    AddAttr<float>("attn_sm_scaler","");
-    AddAttr<int>("attn_vec_size","");
-    AddAttr<int>("attn_q_proj_size","");
-    AddAttr<int>("attn_k_proj_size","");
-    AddAttr<int>("attn_v_proj_size","");
-    AddAttr<int>("attn_o_proj_size","");
-    AddAttr<int>("attn_max_qo_seq_len","");
-    AddAttr<int>("attn_max_kv_seq_len","");
-    AddAttr<int>("attn_beam_size","");
+    AddAttr<float>("attn_dropout_rate", "");
+    AddAttr<int>("attn_heads", "");
+    AddAttr<float>("attn_sm_scaler", "");
+    AddAttr<int>("attn_vec_size", "");
+    AddAttr<int>("attn_q_proj_size", "");
+    AddAttr<int>("attn_k_proj_size", "");
+    AddAttr<int>("attn_v_proj_size", "");
+    AddAttr<int>("attn_o_proj_size", "");
+    AddAttr<int>("attn_max_qo_seq_len", "");
+    AddAttr<int>("attn_max_kv_seq_len", "");
+    AddAttr<int>("attn_beam_size", "");
 
     AddComment(R"DOC(MHA OP Test)DOC");
   }
@@ -116,7 +135,10 @@ class MHAGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("O")), "Input", "O@GRAD", "mha");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("O")), "Input",
+                   "O@GRAD", "mha");
+    OP_INOUT_CHECK(ctx->HasInput("QO_Seqlen"), "Input", "QO_Seqlen", "mha");
+    OP_INOUT_CHECK(ctx->HasInput("KV_Seqlen"), "Input", "KV_Seqlen", "mha");
 
     std::string var_names[4] = {"Q", "K", "V", "W"};
     for (auto s : var_names) {
@@ -128,6 +150,14 @@ class MHAGradOp : public framework::OperatorWithKernel {
         ctx->SetOutputDim(grad_name, dims);
       }
     }
+  }
+
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const {
+    framework::LibraryType library = framework::LibraryType::kPlain;
+    framework::DataLayout layout = framework::DataLayout::kAnyLayout;
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Q");
+    return framework::OpKernelType(data_type, ctx.GetPlace(), layout, library);
   }
 };
 
@@ -143,6 +173,8 @@ class MHAOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetInput("K", this->Input("K"));
     retv->SetInput("V", this->Input("V"));
     retv->SetInput("W", this->Input("W"));
+    retv->SetInput("QO_Seqlen", this->Input("QO_Seqlen"));
+    retv->SetInput("KV_Seqlen", this->Input("KV_Seqlen"));
     retv->SetInput(framework::GradVarName("O"), this->OutputGrad("O"));
     retv->SetOutput(framework::GradVarName("Q"), this->InputGrad("Q"));
     retv->SetOutput(framework::GradVarName("K"), this->InputGrad("K"));
@@ -165,8 +197,7 @@ REGISTER_OPERATOR(mha_grad, ops::MHAGradOp);
 namespace plat = paddle::platform;
 
 REGISTER_OP_CPU_KERNEL(
-    mha, 
-    ops::MHAKernel<paddle::platform::CPUDeviceContext, plat::float16>,
+    mha, ops::MHAKernel<paddle::platform::CPUDeviceContext, plat::float16>,
     ops::MHAKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MHAKernel<paddle::platform::CPUDeviceContext, double>);
 

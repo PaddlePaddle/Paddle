@@ -44,7 +44,6 @@ class MHAMetaData {
   }
 
   MHAMetaData() {
-    std::cerr << "MHAMetaData ctor" << std::endl;
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateAttnDescriptor(&attn_desc));
     PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -88,6 +87,8 @@ class MHAKernel : public framework::OpKernel<T> {
     const Tensor* k = context.Input<Tensor>("K");
     const Tensor* v = context.Input<Tensor>("V");
     const Tensor* w = context.Input<Tensor>("W");
+    const Tensor* qo_slen = context.Input<Tensor>("QO_Seqlen");
+    const Tensor* kv_slen = context.Input<Tensor>("KV_Seqlen");
 
     Tensor* o = context.Output<Tensor>("O");
 
@@ -149,18 +150,36 @@ class MHAKernel : public framework::OpKernel<T> {
         &MHASingleton::Instance().Data(key).workspace_size,
         &MHASingleton::Instance().Data(key).reserve_size));
 
-    MHASingleton::Instance().Data(key).workspace = reinterpret_cast<void*>(
-        memory::Alloc(dev_ctx,
-                      MHASingleton::Instance().Data(key).workspace_size)
-            ->ptr());
-    MHASingleton::Instance().Data(key).reserve_space = reinterpret_cast<void*>(
-        memory::Alloc(dev_ctx, MHASingleton::Instance().Data(key).reserve_size)
-            ->ptr());
+    if (MHASingleton::Instance().Data(key).workspace == nullptr &&
+        MHASingleton::Instance().Data(key).workspace_size > 0) {
+      MHASingleton::Instance().Data(key).workspace = reinterpret_cast<void*>(
+          memory::Alloc(dev_ctx,
+                        MHASingleton::Instance().Data(key).workspace_size)
+              ->ptr());
+    }
 
-    std::vector<int> q_seq_size_arr =
-        context.Attr<std::vector<int>>("Q_seq_size_arr");
-    std::vector<int> k_seq_size_arr =
-        context.Attr<std::vector<int>>("K_seq_size_arr");
+    if (MHASingleton::Instance().Data(key).reserve_space == nullptr &&
+        MHASingleton::Instance().Data(key).reserve_size > 0) {
+      MHASingleton::Instance().Data(key).reserve_space =
+          reinterpret_cast<void*>(
+              memory::Alloc(dev_ctx,
+                            MHASingleton::Instance().Data(key).reserve_size)
+                  ->ptr());
+    }
+
+    std::vector<int> qo_slen_host(qo_slen->dims()[0]);
+    std::vector<int> kv_slen_host(kv_slen->dims()[0]);
+
+    // TODO(rewang): use memory::Copy
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpy(qo_slen_host.data(),
+                   reinterpret_cast<const void*>(qo_slen->data<int>()),
+                   qo_slen->dims()[0] * sizeof(int), cudaMemcpyDeviceToHost));
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpy(kv_slen_host.data(),
+                   reinterpret_cast<const void*>(kv_slen->data<int>()),
+                   kv_slen->dims()[0] * sizeof(int), cudaMemcpyDeviceToHost));
 
     cudnnSeqDataAxis_t
         axes[CUDNN_SEQDATA_DIM_COUNT];  // [Batch, Beam, Seq, Vec]
@@ -177,7 +196,7 @@ class MHAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).q_desc, dtype,
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
-        q_seq_size_arr.data(), nullptr));
+        qo_slen_host.data(), nullptr));
 
     dimA[CUDNN_SEQDATA_VECT_DIM] = k->dims()[3];
     dimA[CUDNN_SEQDATA_TIME_DIM] = k->dims()[2];
@@ -186,7 +205,7 @@ class MHAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).k_desc, dtype,
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
-        k_seq_size_arr.data(), nullptr));
+        kv_slen_host.data(), nullptr));
 
     dimA[CUDNN_SEQDATA_VECT_DIM] = v->dims()[3];
     dimA[CUDNN_SEQDATA_TIME_DIM] = v->dims()[2];
@@ -195,7 +214,7 @@ class MHAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).v_desc, dtype,
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
-        k_seq_size_arr.data(), nullptr));
+        kv_slen_host.data(), nullptr));
 
     dimA[CUDNN_SEQDATA_VECT_DIM] = o->dims()[3];
     dimA[CUDNN_SEQDATA_TIME_DIM] = o->dims()[2];
@@ -204,7 +223,7 @@ class MHAKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).o_desc, dtype,
         CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
-        q_seq_size_arr.data(), nullptr));
+        qo_slen_host.data(), nullptr));
 
     std::vector<int> attn_low_windows =
         context.Attr<std::vector<int>>("attn_low_windows");
@@ -219,23 +238,11 @@ class MHAKernel : public framework::OpKernel<T> {
 
     T* o_data = o->data<T>();
     const T* residuals = nullptr;
-    auto q_seq_size_dev_buf =
-        memory::Alloc(dev_ctx, q_seq_size_arr.size() * sizeof(int));
-    int* q_seq_size_dev_ptr = static_cast<int*>(q_seq_size_dev_buf->ptr());
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
-        q_seq_size_dev_ptr, q_seq_size_arr.data(),
-        q_seq_size_arr.size() * sizeof(int), cudaMemcpyHostToDevice));
-    auto k_seq_size_dev_buf =
-        memory::Alloc(dev_ctx, k_seq_size_arr.size() * sizeof(int));
-    int* k_seq_size_dev_ptr = static_cast<int*>(k_seq_size_dev_buf->ptr());
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
-        k_seq_size_dev_ptr, k_seq_size_arr.data(),
-        k_seq_size_arr.size() * sizeof(int), cudaMemcpyHostToDevice));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnMultiHeadAttnForward(
         cudnn_handle, MHASingleton::Instance().Data(key).attn_desc, -1,
-        attn_low_windows.data(), attn_high_windows.data(), q_seq_size_dev_ptr,
-        k_seq_size_dev_ptr, MHASingleton::Instance().Data(key).q_desc, q_data,
+        attn_low_windows.data(), attn_high_windows.data(), qo_slen->data<int>(),
+        kv_slen->data<int>(), MHASingleton::Instance().Data(key).q_desc, q_data,
         residuals, MHASingleton::Instance().Data(key).k_desc, k_data,
         MHASingleton::Instance().Data(key).v_desc, v_data,
         MHASingleton::Instance().Data(key).o_desc, o_data,
@@ -259,6 +266,8 @@ class MHAGradKernel : public framework::OpKernel<T> {
     const Tensor* k = context.Input<Tensor>("K");
     const Tensor* v = context.Input<Tensor>("V");
     const Tensor* w = context.Input<Tensor>("W");
+    const Tensor* qo_slen = context.Input<Tensor>("QO_Seqlen");
+    const Tensor* kv_slen = context.Input<Tensor>("KV_Seqlen");
 
     Tensor* dq = context.Output<Tensor>(framework::GradVarName("Q"));
     Tensor* dk = context.Output<Tensor>(framework::GradVarName("K"));
@@ -270,24 +279,6 @@ class MHAGradKernel : public framework::OpKernel<T> {
     // TODO(Ming Huang): Need to come out a way to pass related variables from
     // FWD to BWD.
     std::string key = "ajskdlf";
-
-    std::vector<int> q_seq_size_arr =
-        context.Attr<std::vector<int>>("Q_seq_size_arr");
-    std::vector<int> k_seq_size_arr =
-        context.Attr<std::vector<int>>("K_seq_size_arr");
-
-    auto q_seq_size_dev_buf =
-        memory::Alloc(dev_ctx, q_seq_size_arr.size() * sizeof(int));
-    int* q_seq_size_dev_ptr = static_cast<int*>(q_seq_size_dev_buf->ptr());
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
-        q_seq_size_dev_ptr, q_seq_size_arr.data(),
-        q_seq_size_arr.size() * sizeof(int), cudaMemcpyHostToDevice));
-    auto k_seq_size_dev_buf =
-        memory::Alloc(dev_ctx, k_seq_size_arr.size() * sizeof(int));
-    int* k_seq_size_dev_ptr = static_cast<int*>(k_seq_size_dev_buf->ptr());
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
-        k_seq_size_dev_ptr, k_seq_size_arr.data(),
-        k_seq_size_arr.size() * sizeof(int), cudaMemcpyHostToDevice));
 
     std::vector<int> attn_low_windows =
         context.Attr<std::vector<int>>("attn_low_windows");
@@ -314,7 +305,7 @@ class MHAGradKernel : public framework::OpKernel<T> {
         platform::dynload::cudnnMultiHeadAttnBackwardData(
             cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
             attn_low_windows.data(), attn_high_windows.data(),
-            q_seq_size_dev_ptr, k_seq_size_dev_ptr,
+            qo_slen->data<int>(), kv_slen->data<int>(),
             MHASingleton::Instance().Data(key).o_desc, dout_data,
             MHASingleton::Instance().Data(key).q_desc, dq_data, q_data,
             MHASingleton::Instance().Data(key).k_desc, dk_data, k_data,
