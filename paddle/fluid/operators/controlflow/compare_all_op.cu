@@ -41,17 +41,15 @@ struct BitwiseAdd {
 template <typename T, typename Enable = void>
 struct CudaEqualReduceFunctor {
   using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T args[]) const {
-    return (args[0] == args[1]);
-  }
+  HOSTDEVICE bool operator()(const T& x, const T& y) const { return (x == y); }
 };
 
 template <typename T>
 struct CudaEqualReduceFunctor<
     T, typename std::enable_if<std::is_floating_point<T>::value>::type> {
   using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T args[]) const {
-    return fabs(static_cast<double>(args[0] - args[1])) < 1e-8;
+  HOSTDEVICE bool operator()(const T& x, const T& y) const {
+    return fabs(static_cast<double>(x - y)) < 1e-8;
   }
 };
 
