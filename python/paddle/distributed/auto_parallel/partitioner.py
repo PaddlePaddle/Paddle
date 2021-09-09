@@ -561,7 +561,7 @@ class Partitioner(object):
             if not var_dist_attr.is_parameter():
                 mapping = var_dist_attr.get_dims_mapping()
                 mesh = var_dist_attr.get_process_mesh().topology
-                if mapping[0] >= 0 and mesh[mapping[0]] > 1:
+                if mapping and mapping[0] >= 0 and mesh[mapping[0]] > 1:
                     self._enable_data_parallel = True
                     break
 
