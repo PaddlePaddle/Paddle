@@ -22,10 +22,6 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 class TrtConvertPreluTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        inputs = program_config.inputs
-        if len(inputs['input_data'].shape) == 1:
-            return False
-
         return True
 
     def sample_program_configs(self):
@@ -75,6 +71,8 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                             continue
 
                         for mode in ["all", "channel", "element"]:
+                            if mode == "channel" and dim1 == 0:
+                                continue
                             dics = [{"mode": mode}]
                             ops_config = [{
                                 "op_type": "prelu",
@@ -169,13 +167,21 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), (1, 2), 1e-5
 
     def add_skip_trt_case(self):
-        def teller(program_config, predictor_config):
+        def teller1(program_config, predictor_config):
             if self.dim1 == 0 and self.dim2 == 0 and self.dim3 == 0:
                 return True
             return False
 
-        self.add_skip_case(teller, SkipReasons.TRT_NOT_SUPPORT,
-                           "Need to repair the case: the input's dim is one.")
+        self.add_skip_case(teller1, SkipReasons.TRT_NOT_SUPPORT,
+                           "Need to repair the case: the input's dim is 1.")
+
+        def teller2(program_config, predictor_config):
+            if self.dim1 != 0 and self.dim2 == 0 and self.dim3 == 0:
+                return True
+            return False
+
+        self.add_skip_case(teller2, SkipReasons.TRT_NOT_SUPPORT,
+                           "Need to repair the case: the input's dim is 2.")
 
     def test(self):
         self.add_skip_trt_case()
