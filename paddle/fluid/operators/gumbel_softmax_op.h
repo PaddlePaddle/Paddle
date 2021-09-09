@@ -77,8 +77,6 @@ struct GumbleNoiseGenerator;
 
 template <typename DeviceContext, typename T>
 struct OneHotGenerator;
-template <typename DeviceContext, typename T>
-struct UniformRealDistribution;
 
 template <typename T>
 struct GumbleNoiseGenerator<platform::CPUDeviceContext, T> {

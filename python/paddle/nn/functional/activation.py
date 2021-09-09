@@ -1335,13 +1335,21 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
     r"""
     Samples from the Gumbel-Softmax distribution and optionally discretizes.
     temperature is denoted by t. The calculation process is as follows:
-    First, generate gumbel noise
+
+    First, generate gumbel noise:
+
     .. math::
+
         G_i = -log(-log(U_i)), U_i \sim U(0,1)
-    Second, add noise to ``x``
+
+    Second, add noise to ``x``:
+
     .. math::
+
         v = [x_1 + G_1,...,x_n + G_n]
-    Finally, calculate gumbel_softmax and generate samples
+
+    Finally, calculate gumbel_softmax and generate samples:
+
     .. math::
         gumbel\_softmax(v_i)=\frac{e^{v_i/t}}{\sum_{j=1}^n{e^{v_j/t}}},i=1,2,3...n
 
@@ -1361,11 +1369,12 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
     
     Returns:
         Sampled tensor of same shape as ``x`` from the Gumbel-Softmax distribution. 
-        If ``hard`` = True, the returned samples will be one-hot, otherwise they will be 
+        If ``hard = True``, the returned samples will be one-hot, otherwise they will be 
         probability distributions that sum to 1 across ``axis``.
     
     Examples:
         .. code-block:: python
+
         import paddle
         import paddle.nn.functional as F
 
@@ -1374,6 +1383,7 @@ def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
         gumbel_softmax = F.gumbel_softmax(logits, temperature)
         print(gumbel_softmax)
 
+        # out's value is as follows:
         # [[0.00000001, 1.        , 0.00000000, 0.00000000, 0.00000006, 0.00000000],
         # [0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 1.        ],
         # [0.00000062, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.99999940],

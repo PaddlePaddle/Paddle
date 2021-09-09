@@ -53,7 +53,7 @@ class GumbelSoftmaxOpMaker : public framework::OpProtoAndCheckerMaker {
         "hard",
         "(bool, default false) "
         "if True, the returned samples will be discretized as one-hot vectors, "
-        "but will be differentiated as if it is the soft sample in autograd")
+        "but will be differentiated as if it is the soft sample in autograd.")
         .SetDefault(false);
     AddAttr<int>("axis",
                  "(int, default -1)"
@@ -75,7 +75,7 @@ class GumbelSoftmaxGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "gumbel_softmax_grad");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@grad", "gumbel_softmax_grad");
+                   "Out@GRAD", "gumbel_softmax_grad");
     PADDLE_ENFORCE_EQ(
         ctx->GetInputDim("Out"),
         ctx->GetInputDim(framework::GradVarName("Out")),
@@ -84,14 +84,6 @@ class GumbelSoftmaxGradOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim(framework::GradVarName("X"),
                       ctx->GetInputDim(framework::GradVarName("Out")));
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
   }
 };
 

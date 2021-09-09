@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #pragma once
 
+#include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/operators/gumbel_softmax_op.h"
+
 #if defined(__NVCC__) || defined(__HIPCC__)
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -20,17 +24,14 @@ limitations under the License. */
 #ifdef __HIPCC__
 #include <hipcub/hipcub.hpp>
 namespace cub = hipcub;
-
 #endif
+
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include <thrust/random.h>
 #include <thrust/transform.h>
 #include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/operators/gumbel_softmax_op.h"
 
 namespace paddle {
 namespace operators {
@@ -39,17 +40,17 @@ template <typename K, typename V>
 using KeyValuePair = cub::KeyValuePair<K, V>;
 
 template <typename T>
-struct UniformGenerator {
+struct UniformCUDAGenerator {
   T min_, max_;
   unsigned int seed_;
   unsigned int offset_ = 0;
-  __host__ __device__ UniformGenerator(T min, T max, unsigned int seed)
+  HOSTDEVICE UniformCUDAGenerator(T min, T max, unsigned int seed)
       : min_(min), max_(max), seed_(seed) {}
-  __host__ __device__ UniformGenerator(T min, T max, unsigned int seed,
-                                       unsigned int offset)
+  HOSTDEVICE UniformCUDAGenerator(T min, T max, unsigned int seed,
+                                  unsigned int offset)
       : min_(min), max_(max), seed_(seed), offset_(offset) {}
 
-  __host__ __device__ T operator()(const unsigned int n) const {
+  HOSTDEVICE T operator()(const unsigned int n) const {
     thrust::minstd_rand rng;
     rng.seed(seed_);
     thrust::uniform_real_distribution<T> dist(min_, max_);
@@ -141,11 +142,11 @@ struct GumbleNoiseGenerator<platform::CUDADeviceContext, T> {
       thrust::transform(
           index_sequence_begin, index_sequence_begin + size,
           thrust::device_ptr<T>(random_data),
-          UniformGenerator<T>(0.00001, 1, seed_offset.first, gen_offset));
+          UniformCUDAGenerator<T>(0.00001, 1, seed_offset.first, gen_offset));
     } else {
       thrust::transform(index_sequence_begin, index_sequence_begin + size,
                         thrust::device_ptr<T>(random_data),
-                        UniformGenerator<T>(0.00001, 1, seed));
+                        UniformCUDAGenerator<T>(0.00001, 1, seed));
     }
 
     // add gumbel noise to X
