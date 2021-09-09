@@ -26,8 +26,6 @@ namespace operators {
 class MHAMetaData {
  public:
   cudnnAttnDescriptor_t attn_desc = nullptr;
-  cudnnDropoutDescriptor_t attn_dropout_desc = nullptr;
-  cudnnDropoutDescriptor_t post_dropout_desc = nullptr;
   cudnnSeqDataDescriptor_t q_desc = nullptr;
   cudnnSeqDataDescriptor_t k_desc = nullptr;
   cudnnSeqDataDescriptor_t v_desc = nullptr;
@@ -114,14 +112,17 @@ class MHAKernel : public framework::OpKernel<T> {
 
     auto cudnn_handle = dev_ctx.cudnn_handle();
 
+    // TODO(Ming Huang): Need to come out a way to pass related variables from
+    // FWD to BWD.
     std::string key = "ajskdlf";
     MHASingleton::Instance().Data(key).SetCudnnHandle(cudnn_handle);
 
+    cudnnDropoutDescriptor_t attn_dropout_desc = nullptr;
+    cudnnDropoutDescriptor_t post_dropout_desc = nullptr;
     // Setup Attention Dropout
     if (attn_dropout_rate > 0.0) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
-          platform::dynload::cudnnCreateDropoutDescriptor(
-              &MHASingleton::Instance().Data(key).attn_dropout_desc));
+          platform::dynload::cudnnCreateDropoutDescriptor(&attn_dropout_desc));
 
       size_t dropout_buf_size;
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnDropoutGetStatesSize(
@@ -129,21 +130,18 @@ class MHAKernel : public framework::OpKernel<T> {
 
       auto dropout_buf = memory::Alloc(dev_ctx, dropout_buf_size);
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetDropoutDescriptor(
-          MHASingleton::Instance().Data(key).attn_dropout_desc, cudnn_handle,
-          attn_dropout_rate, static_cast<void*>(dropout_buf->ptr()),
-          dropout_buf_size, 0));
+          attn_dropout_desc, cudnn_handle, attn_dropout_rate,
+          static_cast<void*>(dropout_buf->ptr()), dropout_buf_size, 0));
     }
 
     // Setup Attention Desc
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetAttnDescriptor(
         MHASingleton::Instance().Data(key).attn_desc,
         CUDNN_ATTN_QUERYMAP_ALL_TO_ONE, attn_heads, attn_sm_scaler, dtype,
-        comp_prec, CUDNN_DEFAULT_MATH,
-        MHASingleton::Instance().Data(key).attn_dropout_desc,
-        MHASingleton::Instance().Data(key).post_dropout_desc, attn_vec_size,
-        attn_vec_size, attn_vec_size, attn_q_proj_size, attn_k_proj_size,
-        attn_v_proj_size, attn_o_proj_size, attn_max_qo_seq_len,
-        attn_max_kv_seq_len, batch_size, attn_beam_size));
+        comp_prec, CUDNN_DEFAULT_MATH, attn_dropout_desc, post_dropout_desc,
+        attn_vec_size, attn_vec_size, attn_vec_size, attn_q_proj_size,
+        attn_k_proj_size, attn_v_proj_size, attn_o_proj_size,
+        attn_max_qo_seq_len, attn_max_kv_seq_len, batch_size, attn_beam_size));
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetMultiHeadAttnBuffers(
         cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
@@ -218,6 +216,7 @@ class MHAKernel : public framework::OpKernel<T> {
     const T* k_data = k->data<T>();
     const T* v_data = v->data<T>();
     const T* w_data = w->data<T>();
+
     T* o_data = o->data<T>();
     const T* residuals = nullptr;
     auto q_seq_size_dev_buf =
@@ -251,7 +250,93 @@ class MHAKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 class MHAGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {}
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto& dev_ctx =
+        context.template device_context<platform::CUDADeviceContext>();
+
+    const Tensor* dout = context.Input<Tensor>(framework::GradVarName("O"));
+    const Tensor* q = context.Input<Tensor>("Q");
+    const Tensor* k = context.Input<Tensor>("K");
+    const Tensor* v = context.Input<Tensor>("V");
+    const Tensor* w = context.Input<Tensor>("W");
+
+    Tensor* dq = context.Output<Tensor>(framework::GradVarName("Q"));
+    Tensor* dk = context.Output<Tensor>(framework::GradVarName("K"));
+    Tensor* dv = context.Output<Tensor>(framework::GradVarName("V"));
+    Tensor* dw = context.Output<Tensor>(framework::GradVarName("W"));
+
+    auto cudnn_handle = dev_ctx.cudnn_handle();
+
+    // TODO(Ming Huang): Need to come out a way to pass related variables from
+    // FWD to BWD.
+    std::string key = "ajskdlf";
+
+    std::vector<int> q_seq_size_arr =
+        context.Attr<std::vector<int>>("Q_seq_size_arr");
+    std::vector<int> k_seq_size_arr =
+        context.Attr<std::vector<int>>("K_seq_size_arr");
+
+    auto q_seq_size_dev_buf =
+        memory::Alloc(dev_ctx, q_seq_size_arr.size() * sizeof(int));
+    int* q_seq_size_dev_ptr = static_cast<int*>(q_seq_size_dev_buf->ptr());
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+        q_seq_size_dev_ptr, q_seq_size_arr.data(),
+        q_seq_size_arr.size() * sizeof(int), cudaMemcpyHostToDevice));
+    auto k_seq_size_dev_buf =
+        memory::Alloc(dev_ctx, k_seq_size_arr.size() * sizeof(int));
+    int* k_seq_size_dev_ptr = static_cast<int*>(k_seq_size_dev_buf->ptr());
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemcpy(
+        k_seq_size_dev_ptr, k_seq_size_arr.data(),
+        k_seq_size_arr.size() * sizeof(int), cudaMemcpyHostToDevice));
+
+    std::vector<int> attn_low_windows =
+        context.Attr<std::vector<int>>("attn_low_windows");
+    std::vector<int> attn_high_windows =
+        context.Attr<std::vector<int>>("attn_high_windows");
+
+    const T* dout_data = dout->data<T>();
+    const T* q_data = q->data<T>();
+    const T* k_data = k->data<T>();
+    const T* v_data = v->data<T>();
+    const T* w_data = w->data<T>();
+
+    dq->mutable_data<T>(context.GetPlace());
+    dk->mutable_data<T>(context.GetPlace());
+    dv->mutable_data<T>(context.GetPlace());
+    dw->mutable_data<T>(context.GetPlace());
+
+    T* dq_data = dq->data<T>();
+    T* dk_data = dk->data<T>();
+    T* dv_data = dv->data<T>();
+    T* dw_data = dw->data<T>();
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnMultiHeadAttnBackwardData(
+            cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
+            attn_low_windows.data(), attn_high_windows.data(),
+            q_seq_size_dev_ptr, k_seq_size_dev_ptr,
+            MHASingleton::Instance().Data(key).o_desc, dout_data,
+            MHASingleton::Instance().Data(key).q_desc, dq_data, q_data,
+            MHASingleton::Instance().Data(key).k_desc, dk_data, k_data,
+            MHASingleton::Instance().Data(key).v_desc, dv_data, v_data,
+            MHASingleton::Instance().Data(key).weights_size, w_data,
+            MHASingleton::Instance().Data(key).workspace_size,
+            MHASingleton::Instance().Data(key).workspace,
+            MHASingleton::Instance().Data(key).reserve_size,
+            MHASingleton::Instance().Data(key).reserve_space));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnMultiHeadAttnBackwardWeights(
+            cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
+            CUDNN_WGRAD_MODE_SET, MHASingleton::Instance().Data(key).q_desc,
+            q_data, MHASingleton::Instance().Data(key).k_desc, k_data,
+            MHASingleton::Instance().Data(key).v_desc, v_data,
+            MHASingleton::Instance().Data(key).o_desc, dout_data,
+            MHASingleton::Instance().Data(key).weights_size, w_data, dw_data,
+            MHASingleton::Instance().Data(key).workspace_size,
+            MHASingleton::Instance().Data(key).workspace,
+            MHASingleton::Instance().Data(key).reserve_size,
+            MHASingleton::Instance().Data(key).reserve_space));
+  }
 };
 
 }  // namespace operators

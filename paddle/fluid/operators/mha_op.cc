@@ -116,6 +116,18 @@ class MHAGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("O")), "Input", "O@GRAD", "mha");
+
+    std::string var_names[4] = {"Q", "K", "V", "W"};
+    for (auto s : var_names) {
+      OP_INOUT_CHECK(ctx->HasInput(s), "Input", s, "mha");
+      auto dims = ctx->GetInputDim(s);
+      auto grad_name = framework::GradVarName(s);
+
+      if (ctx->HasOutput(grad_name)) {
+        ctx->SetOutputDim(grad_name, dims);
+      }
+    }
   }
 };
 
@@ -126,6 +138,17 @@ class MHAOpGradMaker : public framework::SingleGradOpMaker<T> {
 
  protected:
   void Apply(GradOpPtr<T> retv) const override {
+    retv->SetType("mha_grad");
+    retv->SetInput("Q", this->Input("Q"));
+    retv->SetInput("K", this->Input("K"));
+    retv->SetInput("V", this->Input("V"));
+    retv->SetInput("W", this->Input("W"));
+    retv->SetInput(framework::GradVarName("O"), this->OutputGrad("O"));
+    retv->SetOutput(framework::GradVarName("Q"), this->InputGrad("Q"));
+    retv->SetOutput(framework::GradVarName("K"), this->InputGrad("K"));
+    retv->SetOutput(framework::GradVarName("V"), this->InputGrad("V"));
+    retv->SetOutput(framework::GradVarName("W"), this->InputGrad("W"));
+    retv->SetAttrMap(this->Attrs());
   }
 };
 

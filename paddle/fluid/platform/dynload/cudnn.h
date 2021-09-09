@@ -187,8 +187,9 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnCreateAttnDescriptor);                         \
   __macro(cudnnSetAttnDescriptor);                            \
   __macro(cudnnGetMultiHeadAttnBuffers);                      \
-  __macro(cudnnMultiHeadAttnForward);
-
+  __macro(cudnnMultiHeadAttnForward);                         \
+  __macro(cudnnMultiHeadAttnBackwardData);                    \
+  __macro(cudnnMultiHeadAttnBackwardWeights);
 CUDNN_DNN_ROUTINE_EACH_R8(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
 #endif
 
