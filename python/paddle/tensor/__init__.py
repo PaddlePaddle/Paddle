@@ -45,6 +45,7 @@ from .linalg import bmm  # noqa: F401
 from .linalg import histogram  # noqa: F401
 from .linalg import mv  # noqa: F401
 from .linalg import matrix_power  # noqa: F401
+from .linalg import svd  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
@@ -180,6 +181,7 @@ from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
 from .random import normal  # noqa: F401
 from .random import uniform  # noqa: F401
+from .random import uniform_  # noqa: F401
 from .random import randn  # noqa: F401
 from .random import rand  # noqa: F401
 from .random import randint  # noqa: F401
@@ -223,6 +225,7 @@ tensor_method_func  = [ #noqa
            'histogram',
            'mv',
            'matrix_power',
+           'svd',
            'abs',
            'acos',
            'all',
@@ -365,13 +368,14 @@ tensor_method_func  = [ #noqa
            'real',
            'imag',
            'digamma',
-           'diagonal'
-           'trunc'
+           'diagonal',
+           'trunc',
            'bitwise_and',
            'bitwise_or',
            'bitwise_xor',
            'bitwise_not',
            'broadcast_tensors',
+           'uniform_',
 ]
 
 #this list used in math_op_patch.py for magic_method bind

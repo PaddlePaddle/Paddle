@@ -18,8 +18,9 @@ import warnings
 import inspect
 
 from .. import core
-from ..framework import Variable, unique_name
+from ..framework import Variable, unique_name, static_only
 from .layer_function_generator import OpProtoHolder
+from .control_flow import array_write, array_length
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,
@@ -181,6 +182,24 @@ def monkey_patch_variable():
                    "out_dtype": out.dtype})
         out.stop_gradient = self.stop_gradient
         return out
+
+    @static_only
+    def append(self, var):
+        """
+         **Notes**:
+            **The type variable must be LoD Tensor Array.
+        
+        """
+        if not isinstance(var, Variable):
+            raise TypeError(
+                "Required input var should be Variable, but received {}".format(
+                    type(var)))
+        if self.type != core.VarDesc.VarType.LOD_TENSOR_ARRAY:
+            raise TypeError(
+                "Only Variable with VarType.LOD_TENSOR_ARRAY support `append` method, but received type: {}".
+                format(self.type))
+
+        array_write(x=var, i=array_length(self), array=self)
 
     def _scalar_op_(var, scale, bias):
         block = current_block(var)
@@ -344,6 +363,7 @@ def monkey_patch_variable():
         #   b=-a
         ('__neg__', _neg_),
         ('astype', astype),
+        ('append', append),
         ('dim', lambda x: len(x.shape)),
         ('ndimension', lambda x: len(x.shape)),
         ('ndim', _ndim_),
