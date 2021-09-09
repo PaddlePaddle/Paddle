@@ -419,7 +419,7 @@ class TrtConvertGatherNdTest_dim_2_2(TrtLayerAutoScanTest):
 
         self.add_skip_case(
             teller, SkipReasons.TRT_NOT_SUPPORT,
-            "Need to repair the case: the output of trt and GPU has diff when inputs' dims==1 or 2."
+            "Need to repair the case: the output of trt and GPU has diff when inputs' dim is 1 and 2."
         )
 
     def test(self):
