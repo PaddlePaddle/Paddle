@@ -1408,6 +1408,14 @@ class Fleet(object):
         context["origin_startup_program"] = startup_program
         context["role_maker"] = self._role_maker
 
+        # Use the auto-parallel's routines instead
+        if self._user_defined_strategy.semi_auto:
+            from ...auto_parallel.parallelizer import AutoParallelizer
+            auto_parallelizer = AutoParallelizer(self)
+            optimize_ops, params_grads, dist_startup_prog, dist_main_prog = auto_parallelizer.parallelize(
+                loss, startup_program, parameter_list, no_grad_set)
+            return optimize_ops, params_grads, dist_startup_prog, dist_main_prog
+
         # compile time
         distributed_optimizer_list = \
             MetaOptimizerFactory()._get_valid_meta_optimizers(
