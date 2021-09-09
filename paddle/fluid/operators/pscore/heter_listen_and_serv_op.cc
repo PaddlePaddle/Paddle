@@ -54,6 +54,7 @@ void HeterListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   VLOG(2) << "RunAsyncLoop";
   auto message_to_block_id_str =
       Attr<std::vector<std::string>>("message_to_block_id");
+
   DoubleFindMap<std::string, int32_t> message_to_block_id;
 
   auto append_block_maps = [](DoubleFindMap<std::string, int32_t> *out_map,
@@ -89,7 +90,9 @@ void HeterListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
     block_list.push_back(blkid);
   }
+
   auto optimize_prepared = executor->Prepare(*program, block_list);
+
   // execute global block if needed, block id 1 in the program is global
   // block if it's not bind to a grad var for it's update.
   if (block_list[0] == 1 &&
@@ -122,6 +125,14 @@ void HeterListenAndServOp::RunAsyncLoop(framework::Executor *executor,
                                                         cntl);
         });
   }
+  rpc_service_->RegisterServiceHandler(
+      "barrier_batch_finish",
+      [&](const MultiVarMsg *request, MultiVarMsg *response,
+          brpc::Controller *cntl) -> int {
+        return request_send_and_recv_handler_->Handle(request, response, cntl);
+      });
+
+  request_send_and_recv_handler_->Start();
 
   while (true) {
     if (rpc_service_->IsExit()) {
@@ -139,12 +150,14 @@ void RunServer(std::shared_ptr<paddle::distributed::HeterServer> service) {
 
 void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
                                    const platform::Place &dev_place) const {
+  auto mode = Attr<std::string>("mode");
   // Mark this as PS that it should decide profiling by listening from trainer.
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   auto &dev_ctx = *pool.Get(dev_place);
   VLOG(1) << "HeterListenAndServOp::RunImpl On gpu? "
           << platform::is_gpu_place(dev_place);
-  framework::Scope &recv_scope = scope.NewScope();
+
+  framework::Scope &recv_scope = scope.KidScope(0);  // minibatch_scope
 
   auto pserver_id = Attr<int>("pserver_id");
   auto fan_in = Attr<int>("fanin");
@@ -153,8 +166,10 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   PADDLE_ENFORCE_EQ(rpc_service_, nullptr,
                     platform::errors::PreconditionNotMet(
                         "RPC service has been created unexpectedly."));
-  std::string endpoint = Attr<std::string>("endpoint");
 
+  std::string endpoint = Attr<std::string>("endpoint");
+  int trainers = Attr<int>("trainers");
+  int trainer_id = Attr<int>("trainer_id");
   VLOG(4) << "pserver_id: " << pserver_id << ", end_point:" << endpoint;
 
   rpc_service_ = distributed::HeterServer::GetInstance();
@@ -172,10 +187,14 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
 
   request_send_and_recv_handler_.reset(
       new distributed::RequestSendAndRecvHandler());
+
   request_send_and_recv_handler_->SetScope(&recv_scope);
   request_send_and_recv_handler_->SetDevCtx(&dev_ctx);
   request_send_and_recv_handler_->SetProgram(program);
   request_send_and_recv_handler_->SetExecutor(&executor);
+  request_send_and_recv_handler_->SetMicroNum(recv_scope.NumKids());
+  request_send_and_recv_handler_->SetTrainers(trainers);
+  request_send_and_recv_handler_->SetTrainerId(trainer_id);
 
   VLOG(2) << "RunAsyncLoop";
   auto message_to_block_id_str =
@@ -185,7 +204,9 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
   VLOG(3) << "wait server thread to become ready...";
   rpc_service_->WaitServerReady();
+
   RunAsyncLoop(&executor, program, &recv_scope);
+
   VLOG(3) << "Wait for Server_thread_ stop";
   (server_thread_.get())->join();
   VLOG(3) << "Server_thread_ stop";
@@ -207,6 +228,9 @@ class HeterListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("pserver_id",
                  "(int, default -1), the parameter server index id")
         .SetDefault(-1);
+    AddAttr<int>("trainer_id", "(int, default 0), the trainer index id")
+        .SetDefault(0);
+    AddAttr<int>("trainers", "(int, default 0), the trainer num").SetDefault(0);
     AddAttr<std::vector<std::string>>(
         "message_to_block_id",
         "['param1@GRAD.block0:1', 'param2@GRAD.blockn:2'] "
@@ -223,6 +247,10 @@ class HeterListenAndServOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(1);
     AddAttr<int>("rpc_exec_thread_num", "pserver send thread num.")
         .SetDefault(1);
+    AddAttr<std::string>("mode",
+                         "(string, default sync)"
+                         "execution mode.")
+        .SetDefault("sync");
   }
 };
 

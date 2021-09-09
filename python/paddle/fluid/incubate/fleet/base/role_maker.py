@@ -547,6 +547,11 @@ class PaddleCloudRoleMaker(RoleMakerBase):
             self.generate_role()
         return self._server_endpoints
 
+    #def get_worker_endpoints(self):
+    #    if not self._role_is_generated:
+    #        self.generate_role()
+    #    return self._worker_endpoints
+
     def is_worker(self):
         if not self._role_is_generated:
             self.generate_role()

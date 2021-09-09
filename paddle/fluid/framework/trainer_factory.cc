@@ -66,6 +66,7 @@ std::shared_ptr<TrainerBase> TrainerFactory::CreateTrainer(
 
 REGISTER_TRAINER_CLASS(MultiTrainer);
 REGISTER_TRAINER_CLASS(DistMultiTrainer);
+REGISTER_TRAINER_CLASS(HeterPipelineTrainer);
 #if (defined PADDLE_WITH_CUDA || defined PADDLE_WITH_HIP || \
      defined PADDLE_WITH_XPU) &&                            \
     (defined PADDLE_WITH_PSLIB)

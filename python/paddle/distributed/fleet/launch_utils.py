@@ -26,7 +26,7 @@ import socket
 import warnings
 import six
 import struct
-import yaml_reader
+import paddle.distributed.fleet.yaml_reader as yaml_reader
 
 import paddle
 import paddle.fluid as fluid
@@ -403,13 +403,14 @@ def find_free_ports(num):
 
 
 def get_ports(num, offset):
-    if os.environ.get('FLAGS_START_PORT') is None:
-        ports = find_free_ports(num)
-        if ports is not None:
-            ports = list(ports)
-    else:
-        start_port = os.environ.get('FLAGS_START_PORT')
-        ports = range(start_port + offset, start_port + offset + num, 1)
+    start_port = 15024
+    #if os.environ.get('FLAGS_START_PORT') is None:
+    #    ports = find_free_ports(num)
+    #    if ports is not None:
+    #        ports = list(ports)
+    #else:
+    #start_port = os.environ.get('FLAGS_START_PORT')
+    ports = range(start_port + offset, start_port + offset + num, 1)
     return ports
 
 
@@ -834,10 +835,14 @@ class ParameterServerLauncher(object):
 
         if args.heter_config:
 
-            yaml_helper = yaml_reader.YamlHeler()
+            yaml_helper = yaml_reader.YamlHelper()
             config = yaml_helper.load_yaml(args.heter_config)
+            print("heterPS fleet config----------")
+            print(config)
+            print("heterPS fleet config----------")
             ## servers
-            self.server_endpoints = config['running_config']['servers']
+            server_endpoints_str = config['running_config']['server']
+            assert server_endpoints_str != "", "The setting of Parameter-Server must has servers."
 
             server_endpoints_ips = [
                 x.strip().split(":")[0] for x in server_endpoints_str.split(",")
@@ -861,15 +866,15 @@ class ParameterServerLauncher(object):
 
             ## workers, include cpu worker & heter worker
             ## every worker has next stage's corresponding endpoints 
-            worker_config = config['running_config']['workers']
-            self.stag_num = len(worker_config)
-
-            for i in range(stage_num):
-                heter_device_type = worker_config['stage' + str(i)][
+            worker_config = config['running_config']['worker']
+            assert worker_config != "", "The setting of Parameter-Server must has workers."
+            self.stage_num = len(worker_config)
+            for i in range(0, self.stage_num, 1):
+                heter_device_type = worker_config['stage' + str(i + 1)][
                     'device_type']
                 if i + 1 not in self.stage_device_map:
                     self.stage_device_map[i + 1] = heter_device_type
-                ip_port_list = worker_config['stage' + str(i)]['ips']
+                ip_port_list = worker_config['stage' + str(i + 1)]['ips']
                 if i == 0:  # worker_endpoints
                     worker_endpoints_ips = [
                         x.strip().split(":")[0] for x in ip_port_list.split(",")
@@ -893,15 +898,15 @@ class ParameterServerLauncher(object):
                         # create endpoints str
 
                         worker_endpoints = []
-                        for i in range(self.worker_num):
+                        for j in range(self.worker_num):
                             worker_endpoints.append(":".join((
-                                worker_endpoints_ips[i], str(
-                                    worker_endpoints_port[i]))))
+                                worker_endpoints_ips[j], str(
+                                    worker_endpoints_port[j]))))
                         self.worker_endpoints = ",".join(worker_endpoints)
                     else:
                         self.worker_endpoints = ip_port_list
+                    self.stage_heter_map[i + 1] = self.worker_endpoints
                 else:  ## for heter worker
-
                     heter_worker_endpoints_ips = [
                         x.strip().split(":")[0] for x in ip_port_list.split(",")
                     ]
@@ -916,10 +921,10 @@ class ParameterServerLauncher(object):
                             len(heter_worker_endpoints_ips), self.worker_num +
                             self.server_num + self.heter_worker_num)
                         heter_worker_endpoints = []
-                        for i in range(len(heter_worker_endpoints_ips)):
+                        for j in range(len(heter_worker_endpoints_ips)):
                             heter_worker_endpoints.append(":".join((
-                                heter_worker_endpoints_ips[i], str(
-                                    heter_worker_endpoints_port[i]))))
+                                heter_worker_endpoints_ips[j], str(
+                                    heter_worker_endpoints_port[j]))))
                         ip_port_list = ",".join(heter_worker_endpoints)
 
                     self.stage_heter_map[i + 1] = ip_port_list
@@ -928,8 +933,9 @@ class ParameterServerLauncher(object):
                     if self.heter_worker_endpoints != "":
                         self.heter_worker_endpoints += ","
                     self.heter_worker_endpoints += ip_port_list
-                    self.heter_worker_num += len(ip_port_split.split(","))
-
+                    self.heter_worker_num += len(ip_port_list.split(","))
+            if self.heter_worker_endpoints == "":
+                self.distribute_mode = DistributeMode.PS
                 # get server envs
         else:
             if args.server_num:
@@ -1014,7 +1020,8 @@ class ParameterServerLauncher(object):
         if args.http_port:
             self.http_port = args.http_port
         else:
-            http_port = get_ports(1, self.server_num + self.worker_num)
+            http_port = get_ports(
+                1, self.server_num + self.worker_num + self.heter_worker_num)
             http_ip = self.server_endpoints.split(",")[0].split(":")[0]
             self.http_port = http_ip + ":" + str(http_port[0])
 
@@ -1031,6 +1038,7 @@ class ParameterServerLauncher(object):
         self.worker_endpoints_port = [
             x.strip().split(":")[1] for x in self.worker_endpoints.split(",")
         ]
+
         self.node_ips = list(
             set(self.server_endpoints_ips + self.worker_endpoints_ips))
         if self.distribute_mode == DistributeMode.PS_HETER:
@@ -1231,6 +1239,7 @@ class ParameterServerLauncher(object):
                 "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,
                 "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
+                "STAGE_NUM": str(len(self.stage_heter_map)),
                 "PADDLE_HETER_TRAINER_IP_PORT_LIST": self.stage_heter_map[2]
                 if self.distribute_mode == DistributeMode.PS_HETER else "",
                 "TRAINING_ROLE": "TRAINER",
@@ -1302,10 +1311,14 @@ class ParameterServerLauncher(object):
                 "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
                 "PADDLE_HETER_TRAINER_IP_PORT_LIST":
                 self.stage_heter_map[stage_id + 1]
-                if stage_id < self.stage_num - 1 else "",
-                "PADDLE_PREVIOUSHETER_TRAINER_IP_PORORT_LIST":
+                if stage_id <= self.stage_num - 1 else "",
+                "PADDLE_PREVIOUS_HETER_TRAINER_IP_PORT_LIST":
                 self.stage_heter_map[stage_id - 1],
+                "PADDLE_ALL_HETER_TRAINER_IP_PORT_LIST":
+                self.heter_worker_endpoints,
                 "HETER_DEVICE_TYPE": self.stage_device_map[stage_id],
+                "STAGE_ID": str(stage_id),
+                "STAGE_NUM": str(len(self.stage_heter_map)),
                 "PADDLE_PORT": cur_heter_worker.endpoint.split(":")[1],
                 "TRAINING_ROLE": "HETER_TRAINER",
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),

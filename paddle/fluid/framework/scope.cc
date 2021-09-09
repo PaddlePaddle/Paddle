@@ -54,6 +54,25 @@ Scope& Scope::NewScope() const {
   return *child;
 }
 
+Scope& Scope::KidScope(int kidId) const {
+  SCOPE_KIDS_READER_LOCK
+  PADDLE_ENFORCE_LT(
+      kidId, this->kids_.size(),
+      platform::errors::InvalidArgument("kidId should less than kids size"));
+  int cnt = 0;
+  auto iter = this->kids_.begin();
+  while (cnt < kidId) {
+    iter++;
+    cnt++;
+  }
+  return *(*iter);
+}
+
+int Scope::NumKids() const {
+  SCOPE_KIDS_READER_LOCK
+  return this->kids_.size();
+}
+
 std::unique_ptr<Scope> Scope::NewTmpScope() const {
   return std::unique_ptr<Scope>(new Scope(this));
 }

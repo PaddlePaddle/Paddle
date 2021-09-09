@@ -59,6 +59,12 @@ class Scope {
   /// Mark it to const because that new kid scope cannot change parent scope.
   Scope& NewScope() const;
 
+  /// Get the kidId'th scope
+  Scope& KidScope(int kidId) const;
+
+  /// Get kids scope num
+  int NumKids() const;
+
   /// Create a sub-scope for current scope but do not record it in the kids to
   /// avoid performance problems.
   std::unique_ptr<Scope> NewTmpScope() const;

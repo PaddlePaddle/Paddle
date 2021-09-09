@@ -476,7 +476,7 @@ class Executor(object):
     """
     :api_attr: Static Graph
 
-    An Executor in Python, supports single/multiple-GPU running,
+    An Executor in Python, supports single/multiple-GPU ,
     and single/multiple-CPU running.
 
     Args:
@@ -555,6 +555,7 @@ class Executor(object):
             self.place = framework._get_paddle_place(place)
         self.program_caches = dict()
         self.ctx_caches = dict()
+        self.trainer_caches = dict()
         self.scope_caches = dict()
         self.var_caches = dict()
         self.pruned_program_caches = dict()
@@ -573,6 +574,9 @@ class Executor(object):
 
     def _get_ctx_cache(self, program_cache_key):
         return self.ctx_caches.get(program_cache_key, None)
+
+    def _get_trainer_cache(self, program_cache_key):
+        return self.trainer_caches.get(program_cache_key, None)
 
     def _get_program_cache(self, program_cache_key):
         return self.program_caches.get(program_cache_key, None)
@@ -594,6 +598,9 @@ class Executor(object):
 
     def _add_ctx_cache(self, ctx_cache_key, ctx):
         self.ctx_caches[ctx_cache_key] = ctx
+
+    def _add_trainer_cache(self, trainer_cache_key, ctx):
+        self.trainer_caches[trainer_cache_key] = ctx
 
     def _add_scope_cache(self, scope_cache_key, scope):
         self.scope_caches[scope_cache_key] = scope
@@ -1112,6 +1119,7 @@ class Executor(object):
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
                   fetch_var_name, scope, return_numpy, use_program_cache,
                   return_merged, use_prune):
+
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
 
@@ -1134,6 +1142,7 @@ class Executor(object):
         if isinstance(program, Program) and program._pipeline_opt:
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
+
             else:
                 return self._run_pipeline(
                     program,
@@ -1336,9 +1345,9 @@ class Executor(object):
         arr = scope.find_var(fetch_var_name).get_fetch_list()
         tensors = arr._move_to_list()
         if return_numpy:
-            return as_numpy(tensors)
+            return as_numpy(tensors), scope
         else:
-            return tensors
+            return tensors, scope
 
     def _run_inference(self, exe, feed):
         return exe.run(feed)
@@ -1374,7 +1383,9 @@ class Executor(object):
                          debug=False,
                          fetch_list=None,
                          fetch_info=None,
-                         print_period=100):
+                         print_period=100,
+                         use_program_cache=False):
+
         is_heter = 0
         use_ps_gpu = 0
         if not program._fleet_opt is None:
@@ -1391,6 +1402,12 @@ class Executor(object):
         if fetch_info is None:
             fetch_info = []
         assert len(fetch_list) == len(fetch_info)
+
+        cache_key = _get_strong_program_cache_key(program, None, fetch_list)
+        ctx = self._get_ctx_cache(cache_key)
+        if use_program_cache == True and ctx is not None:
+            return ctx
+
         compiled = isinstance(program, compiler.CompiledProgram)
         if is_heter:
             from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
@@ -1431,6 +1448,9 @@ class Executor(object):
 
         trainer._set_debug(debug)
         trainer._set_fetch_var_and_info(fetch_list, fetch_info, print_period)
+        ctx = [scope, trainer]
+        if use_program_cache == True:
+            self._add_ctx_cache(cache_key, ctx)
         return scope, trainer
 
     def _run_from_dataset(self,
@@ -1443,13 +1463,36 @@ class Executor(object):
                           fetch_list=None,
                           fetch_info=None,
                           print_period=100,
-                          fetch_handler=None):
-        if program._pipeline_opt is not None:
+                          fetch_handler=None,
+                          use_program_cache=False):
+
+        #if not trainer_ins == None:
+        #   dataset._prepare_to_run()
+        #   if dataset.use_ps_gpu is False:
+        #       dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
+        #   dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
+
+        #   trainer_ins.ResetDataset(dataset.dataset)
+        #   self._default_executor.run_from_dataset(trainer_ins)
+        #   #self._default_executor.release_trainer(trainer)
+        #   dataset._dynamic_adjust_after_train()
+        #   dataset._finish_to_run()
+
+        #if real_fetch_list:
+        #    arr = scope.find_var('fetch').get_fetch_list()
+        #    tensors = arr._move_to_list()
+        #    return as_numpy(tensors)
+
+        #   return trainer_ins, trainer
+
+        if (program._pipeline_opt is not None
+            ) and program._pipeline_opt["trainer"] != "HeterPipelineTrainer":
             import paddle
             if dataset is not None:
                 raise RuntimeError("dataset should be None for pipeline mode")
             # The following fake dataset is created to call 
             # the _prepare_trainer api, and it is meaningless.
+
             data_vars = []
             for var in program.global_block().vars.values():
                 if var.is_data:
@@ -1460,17 +1503,20 @@ class Executor(object):
             else:
                 dataset = paddle.fluid.DatasetFactory().create_dataset(
                     'FileInstantDataset')
+
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
             dataset.set_use_var(data_vars)
+
         else:
             if dataset is None:
                 raise RuntimeError("dataset is need and should be initialized")
 
         dataset._prepare_to_run()
         real_fetch_list = []
-        if program._pipeline_opt:
+        if program._pipeline_opt and program._pipeline_opt[
+                "trainer"] != "HeterPipelineTrainer":
             real_program = program._pipeline_opt["section_program"]
             for fetch_var in fetch_list:
                 if isinstance(fetch_var, Variable):
@@ -1495,6 +1541,19 @@ class Executor(object):
                         'op_role',
                         core.op_proto_and_checker_maker.OpRole.Optimize)
             fetch_list = None
+            fetch_info = None
+        else:
+            if fetch_list is not None:
+                if isinstance(fetch_list, Variable) or isinstance(
+                        fetch_list, str) or isinstance(fetch_list,
+                                                       six.string_types):
+                    fetch_list = [fetch_list]
+                assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
+                    "Currently , The fetch_list type only should be list or tuple, \n"\
+                    "but the input type is {}. For more information please refer to \n"\
+                    "the executor.run(...).".format(type(fetch_list))
+            else:
+                fetch_list = []
 
         scope, trainer = self._prepare_trainer(
             program=program,
@@ -1504,7 +1563,8 @@ class Executor(object):
             debug=debug,
             fetch_list=fetch_list,
             fetch_info=fetch_info,
-            print_period=print_period)
+            print_period=print_period,
+            use_program_cache=use_program_cache)
 
         trainer._set_infer(is_infer)
         trainer._gen_trainer_desc()
@@ -1516,8 +1576,18 @@ class Executor(object):
             dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
         dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
 
-        trainer_instance = self._default_executor.init_for_dataset(
-            program.desc, trainer._desc(), scope, dataset.dataset)
+        if not use_program_cache:
+            trainer_instance = self._default_executor.init_for_dataset(
+                program.desc, trainer._desc(), scope, dataset.dataset)
+        else:
+            cache_key = _get_strong_program_cache_key(program, None, fetch_list)
+            trainer_instance = self._get_trainer_cache(cache_key)
+            if trainer_instance is None:
+                trainer_instance = self._default_executor.init_for_dataset(
+                    program.desc, trainer._desc(), scope, dataset.dataset)
+                self._add_trainer_cache(cache_key, trainer_instance)
+            else:
+                trainer_instance.ResetDataset(dataset.dataset)
 
         if fetch_handler is not None:
             scope0 = trainer_instance.get_worker_scope(0)
@@ -1525,11 +1595,12 @@ class Executor(object):
             fetch_monitor.start()
             self._default_executor.run_from_dataset(trainer_instance)
             fetch_monitor.stop()
-            self._default_executor.release_trainer(trainer_instance)
+            if not use_program_cache:
+                self._default_executor.release_trainer(trainer_instance)
         else:
-
             self._default_executor.run_from_dataset(trainer_instance)
-            self._default_executor.release_trainer(trainer_instance)
+            if not use_program_cache:
+                self._default_executor.release_trainer(trainer_instance)
 
         dataset._dynamic_adjust_after_train()
         dataset._finish_to_run()
@@ -1537,8 +1608,6 @@ class Executor(object):
             arr = scope.find_var('fetch').get_fetch_list()
             tensors = arr._move_to_list()
             return as_numpy(tensors)
-
-        return None
 
     def _prepare_pipeline_ctx(self,
                               program=None,
@@ -1818,7 +1887,8 @@ class Executor(object):
                            fetch_list=None,
                            fetch_info=None,
                            print_period=100,
-                           fetch_handler=None):
+                           fetch_handler=None,
+                           use_program_cache=False):
         """
         Train from a pre-defined Dataset. Dataset is defined in paddle.fluid.dataset.
         Given a program, either a program or compiled program, train_from_dataset will
@@ -1873,6 +1943,6 @@ class Executor(object):
                                      dataset=dataset)
 
         """
-        return self._run_from_dataset(program, dataset, scope, thread, False,
-                                      debug, fetch_list, fetch_info,
-                                      print_period, fetch_handler)
+        return self._run_from_dataset(
+            program, dataset, scope, thread, False, debug, fetch_list,
+            fetch_info, print_period, fetch_handler, use_program_cache)

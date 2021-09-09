@@ -118,7 +118,9 @@ class YamlHelper(object):
 
     def get_all_inters_from_yaml(self, file, filters):
         _envs = self.parse_yaml(file)
-        all_flattens = {}
+        return _envs
+
+        #all_flattens = {}
 
         def fatten_env_namespace(namespace_nests, local_envs):
             for k, v in local_envs.items():
@@ -130,13 +132,13 @@ class YamlHelper(object):
                     global_k = ".".join(namespace_nests + [k])
                     all_flattens[global_k] = v
 
-        fatten_env_namespace([], _envs)
-        ret = {}
-        for k, v in all_flattens.items():
-            for f in filters:
-                if k.startswith(f):
-                    ret[k] = v
-        return ret
+        #fatten_env_namespace([], _envs)
+        #ret = {}
+        #for k, v in all_flattens.items():
+        #    for f in filters:
+        #        if k.startswith(f):
+        #            ret[k] = v
+        #return ret
 
     def workspace_adapter(self, config):
         workspace = config.get("workspace")

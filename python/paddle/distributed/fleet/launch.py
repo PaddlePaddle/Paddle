@@ -176,7 +176,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
     ps_group.add_argument(
         "--heter_worker_num", type=int, help="number of heter_workers")
     ps_group.add_argument(
-        "--heter_config", type=int, help="yaml config file for heterPS mode")
+        "--heter_config", type=str, help="yaml config file for heterPS mode")
     ps_group.add_argument("--http_port", type=int, help="Gloo http Port")
 
     # parameter elastic mode

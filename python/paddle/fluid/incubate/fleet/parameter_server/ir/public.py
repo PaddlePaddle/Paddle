@@ -222,11 +222,23 @@ class CompileTimeStrategy(object):
         except Exception:
             return self.role_maker.get_heter_worker_endpoint()
 
+    def get_trainer_endpoints(self):
+        try:
+            return self.role_maker._get_trainer_endpoints()
+        except Exception:
+            return self.role_maker.get_trainer_endpoints()
+
+    def get_trainer_endpoint(self):
+        try:
+            return self.role_maker._get_trainer_endpoint()
+        except Exception:
+            return self.role_maker.get_trainer_endpoint()
+
     def get_previous_stage_trainers(self):
         try:
             return self.role_maker._get_previous_trainers()
         except Exception:
-            return self.role_maker._get_previous_trainers()
+            return self.role_maker.get_previous_trainers()
 
     def get_origin_programs(self):
         return self.origin_main_program, self.origin_startup_program

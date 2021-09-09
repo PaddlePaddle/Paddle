@@ -24,11 +24,28 @@ __all__ = []
 
 
 class ParameterServerOptimizer(MetaOptimizerBase):
-    def __init__(self, optimizer):
+    def __init__(self, optimizer, start_cpu_core_id=0):
         super(ParameterServerOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
+
+        assert start_cpu_core_id >= 0, (
+            "start_cpu_core_id must be a non-negative integer.")
+        self._start_cpu_core_id = start_cpu_core_id
+
+    def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
+                        user_defined_strategy):
+        super(ParameterServerOptimizer, self)._set_basic_info(
+            loss, role_maker, user_defined_optimizer, user_defined_strategy)
+
+        self.micro_batch_size = user_defined_strategy.pipeline_configs[
+            'micro_batch_size']
+        self.num_microbatches = user_defined_strategy.pipeline_configs[
+            'accumulate_steps']
+        #self.schedule_mode = user_defined_strategy.pipeline_configs[
+        #    'schedule_mode']
+        self.use_sharding = user_defined_strategy.sharding
 
     def _is_graph_out(self):
         return False
@@ -94,14 +111,16 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             # for main program
             _main = worker.distributed_ops_pass(_main, compiled_config,
                                                 use_ps_gpu)
+
             if not use_ps_gpu:
                 _main = worker.delete_optimizer_pass(_main, compiled_config)
                 _main = worker.append_send_ops_pass(_main, compiled_config)
-                _startup = worker.delet_extra_optimizes_pass(_startup,
-                                                             compiled_config)
+                _startup = worker.delete_extra_optimizes_pass(_startup,
+                                                              compiled_config)
 
                 # for startup program
             _startup = worker.fake_init_ops_pass(_startup, compiled_config)
+
             if use_ps_gpu:
                 _main = worker.ps_gpu_pass(_main)
                 from paddle.fluid.transpiler.collective import SingleProcessMultiThread
@@ -122,15 +141,17 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 from paddle.fluid.incubate.fleet.parameter_server.ir import heter_trainer_pass as heter_worker
                 if self.role_maker._is_heter_worker():
                     # for heter worker
+                    stage_id = self.role_maker._get_stage_id()
+                    device = self.role_maker._heter_device_type().lower()
                     _main = heter_worker.split_heter_worker_ops_pass(
-                        _main, compiled_config)
+                        _main, compiled_config, stage_id, device)
                 else:
                     # for default worker
                     _main = heter_worker.split_trainer_ops_pass(_main,
                                                                 compiled_config)
                 # for startup change
-                _startup = heter_worker.delete_startup_useless_ops_var_pass(
-                    _startup, _main, compiled_config)
+                #_startup = heter_worker.delete_startup_useless_ops_var_pass(
+                #    _startup, _main, compiled_config)
         else:
             _main = worker.append_send_ops_pass(_main, compiled_config)
             _startup = _startup
@@ -317,24 +338,64 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         compiled_config.strategy = strategy
 
         if self.role_maker._is_worker() or self.role_maker._is_heter_worker():
+
             main_program, startup_program = self._build_trainer_programs(
                 compiled_config)
+            _origin_startup_program._pipeline_opt = {
+                "startup_program": startup_program,
+            }
+
+            if core.is_compiled_with_cuda():
+                place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+                place = core.CUDAPlace(0)
+            elif core.is_compiled_with_npu():
+                place_id = int(os.getenv("FLAGS_selected_npus", "0"))
+                place = core.NPUPlace(0)
+
+            loss.block.program._pipeline_opt = {
+                "trainer": "HeterPipelineTrainer",
+                "device_worker": "HeterSection",
+                "trainers":
+                int(self.role_maker._worker_num()),  ## used in cpu trainer
+                "trainer_id":
+                int(self.role_maker._role_id()),  ## used in cpu trainer
+                "pipeline_stage": int(self.role_maker._get_stage_id()) - 1,
+                "num_pipeline_stages": int(self.role_maker._get_num_stage()),
+                "inner_parallelism": int(self.role_maker._get_num_stage()),
+                "section_program": main_program,
+                "place": place,
+                "place_id": place_id,
+                "sync_steps": -1,
+                "num_microbatches": self.num_microbatches,
+                "start_cpu_core_id": self._start_cpu_core_id,
+            }
+
         elif self.role_maker._is_server():
             main_program, startup_program = self._build_pserver_programs(
                 compiled_config)
-
-        loss.block.program = main_program
-        fluid.framework.switch_startup_program(startup_program)
-
+            loss.block.program = main_program
+            fluid.framework.switch_startup_program(startup_program)
         return None, None
 
     def _disable_strategy(self, dist_strategy):
+        dist_strategy.pipeline = False
+        dist_strategy.pipeline_configs = {
+            "micro_batch_size": 1,
+            "accumulate_steps": 1,
+            "schedule_mode": "1F1B",
+        }
         dist_strategy.a_sync = False
         a_sync_configs = dist_strategy.a_sync_configs
         a_sync_configs["k_steps"] = -1
         dist_strategy.a_sync_configs = a_sync_configs
 
     def _enable_strategy(self, dist_strategy, context):
+        dist_strategy.pipeline = True
+        dist_strategy.pipeline_configs = {
+            "micro_batch_size": 1,
+            "accumulate_steps": 1,
+            "schedule_mode": "1F1B",
+        }
         a_sync_configs = dist_strategy.a_sync_configs
         if a_sync_configs["k_steps"] >= 0:
             return

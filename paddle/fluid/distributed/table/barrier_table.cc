@@ -41,7 +41,6 @@ int32_t BarrierTable::barrier(const uint32_t trainer_id,
     VLOG(1) << "barrier type: " << barrier_type
             << " add trainer id: " << trainer_id;
   }
-
   if (trainer_ids_.size() < trigger_.load()) {
     std::vector<uint32_t> diffs(trainer_all_.size());
     auto iter = std::set_difference(trainer_all_.begin(), trainer_all_.end(),

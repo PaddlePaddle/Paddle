@@ -16,7 +16,8 @@
 from __future__ import print_function
 
 __all__ = [
-    'DeviceWorker', 'Hogwild', 'DownpourSGD', 'Section', 'DownpourSGDOPT'
+    'DeviceWorker', 'Hogwild', 'DownpourSGD', 'Section', 'DownpourSGDOPT',
+    'HeterSection'
 ]
 
 
@@ -425,6 +426,44 @@ class Section(DeviceWorker):
             "for pipeline must be one of F-then-B or 1F1B")
         schedule_mode = 0 if schedule_mode_str == "F-then-B" else 1
         section_param.schedule_mode = schedule_mode
+        cfg = section_param.section_config
+        program = pipeline_opt["section_program"]
+        cfg.program_desc.ParseFromString(program._get_desc()
+                                         .serialize_to_string())
+        # TODO: why does not work
+        # cfg.program_desc.CopyFrom(program.program._get_desc())
+        place = pipeline_opt["place"]
+        place_id = pipeline_opt["place_id"]
+        if core.is_compiled_with_cuda():
+            assert isinstance(place, core.CUDAPlace)
+        elif core.is_compiled_with_npu():
+            assert isinstance(place, core.NPUPlace)
+        cfg.place = cfg.CUDAPlace
+        cfg.place_id = place_id
+
+
+class HeterSection(DeviceWorker):
+    """HeterSectionWorker."""
+
+    def __init__(self):
+        """Init."""
+        super(HeterSection, self).__init__()
+
+    def _gen_worker_desc(self, trainer_desc):
+        """
+        Generator worker desc, which device worker is HeterSectionWorker.
+        Args:
+            trainer_desc(TrainerDesc): a TrainerDesc object
+        """
+        from google.protobuf import text_format
+        from . import core
+        trainer_desc.device_worker_name = "HeterSectionWorker"
+        pipeline_opt = self._program._pipeline_opt
+        section_param = trainer_desc.section_param
+        section_param.num_microbatches = pipeline_opt["num_microbatches"]
+        section_param.start_cpu_core_id = pipeline_opt["start_cpu_core_id"]
+        section_param.pipeline_stage = pipeline_opt["pipeline_stage"]
+        section_param.num_pipeline_stages = pipeline_opt["num_pipeline_stages"]
         cfg = section_param.section_config
         program = pipeline_opt["section_program"]
         cfg.program_desc.ParseFromString(program._get_desc()

@@ -171,8 +171,10 @@ class PipelineOptimizer(MetaOptimizerBase):
 
         self.wrapped_opt = PO(self.inner_opt,
                               num_microbatches=self.num_microbatches)
+
         orig_startup_program = startup_program if startup_program else fluid.default_startup_program(
         )
+
         block = loss.block
         program = block.program
 
@@ -185,21 +187,28 @@ class PipelineOptimizer(MetaOptimizerBase):
         program._pipeline_opt['use_sharding'] = False
         program._pipeline_opt['mp_degree'] = 1
         program._pipeline_opt['mp_rank'] = 0
+
         optimize_ops, params_grads, prog_list, pp_pair, ring_map = self.wrapped_opt.minimize(
             loss, startup_program, parameter_list, no_grad_set)
+
         self.startup_program = orig_startup_program._pipeline_opt[
             'startup_program']
+
         self.inner_parallelism = program._pipeline_opt['inner_parallelism']
+
         assert self.nranks % self.inner_parallelism == 0
         assert prog_list
+
         self.pipeline_num = len(self.endpoints) // self.inner_parallelism
 
         self._init_process_group(pp_pair, ring_map)
 
         self.main_program_list = prog_list
         self.main_program = program
+
         if self.pipeline_num > 1:
             self._transpile_main_program(loss)
+
         return optimize_ops, params_grads
 
     def _transpile_main_program(self, loss):

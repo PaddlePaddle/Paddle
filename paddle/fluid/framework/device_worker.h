@@ -401,9 +401,11 @@ class HeterCpuWorker : public HogwildWorker {
   int xpu_begin_op_index_;
   int xpu_end_op_index_;
   ProgramDesc program_;
+
   HeterObjectPool<HeterTask> object_pool_;
   HeterList<int, std::shared_ptr<HeterTask>> run_queue_;
   HeterList<int, std::shared_ptr<HeterTask>> wait_queue_;
+
   bool need_dump_param_;
   std::vector<std::string> dump_param_;
   bool need_to_push_dense_;
@@ -543,6 +545,7 @@ class PSGPUWorker : public HogwildWorker {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_ASCEND_CL)
+
 class SectionWorker : public DeviceWorker {
  public:
   SectionWorker() {}
@@ -609,6 +612,63 @@ class SectionWorker : public DeviceWorker {
   platform::DeviceContext* dev_ctx_ = nullptr;
 };
 #endif
+
+class HeterSectionWorker : public DeviceWorker {
+ public:
+  HeterSectionWorker() {}
+  ~HeterSectionWorker() override {}
+
+  void Initialize(const TrainerDesc& desc) override;
+  void CreateDeviceResource(const ProgramDesc& main_prog) override{};
+
+  void TrainFiles() override;
+  void TrainFilesWithProfiler() override{};
+
+  void BindingDataFeedMemory() override {}
+  void BindingDataFeedMemory(int micro_id);
+  void PrintFetchVars() override {}
+  const platform::Place& place() const { return place_; }
+
+  void SetDeviceIndex(int tid) override {}
+  void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
+
+  void SetMicrobatchNum(int num) { num_microbatches_ = num; }
+  void SetPipelineStageNum(int num) { num_pipeline_stages_ = num; }
+  void SetPipelineStage(int stage) { pipeline_stage_ = stage; }
+  void SetMicrobatchScopes(const std::vector<Scope*>& scope) {
+    microbatch_scopes_ = scope;
+  }
+
+  void SetMinibatchScope(const Scope* scope) { minibatch_scope_ = scope; }
+  void SetTrainerId(int trainer_id) { this->trainer_id_ = trainer_id; }
+  void SetTrainers(int trainers) { this->trainers_ = trainers; }
+
+  void RunForward(int micro_id);
+  void RunListen();
+  void BatchBarrier();
+  void TrainerBarrier();
+  void Run();
+
+ protected:
+  int trainer_id_;
+  int trainers_;
+  int section_id_;
+  int thread_id_;
+  int num_microbatches_;
+  int num_pipeline_stages_;
+  int pipeline_stage_;
+  bool epoch_finish_;
+
+  std::vector<Scope*> microbatch_scopes_;
+  const Scope* minibatch_scope_;
+
+  std::vector<std::unique_ptr<OperatorBase>> ops_;
+  std::shared_ptr<framework::ProgramDesc> program_;
+
+  static uint64_t batch_id_;
+  std::shared_ptr<std::thread> listen_ptr = nullptr;
+  platform::DeviceContext* dev_ctx_ = nullptr;
+};
 
 }  // namespace framework
 }  // namespace paddle

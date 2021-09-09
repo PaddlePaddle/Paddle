@@ -528,6 +528,7 @@ class TheOnePSRuntime(RuntimeBase):
             split_dense_table=self.role_maker._is_heter_parameter_server_mode)
         send_ctx = self.compiled_strategy.get_the_one_send_context(
             split_dense_table=self.role_maker._is_heter_parameter_server_mode,
+            use_origin_program=True,
             ep_list=endpoints)
         trainer_config = self.async_strategy.get_trainer_runtime_config()
 
@@ -590,16 +591,28 @@ class TheOnePSRuntime(RuntimeBase):
             # for trainer wait server ready
             wait_server_ready(self.role_maker._get_pserver_endpoints())
 
-            # for ps-heter mode, wait heter worker ready
-            #if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(
-            #):
             if self.role_maker._is_heter_parameter_server_mode and self.role_maker._get_heter_worker_endpoints(
             ) != "":
 
                 wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
+            if self.role_maker._is_heter_parameter_server_mode:
+                previous_trainers = []
+                if self.role_maker._get_previous_trainers() != "":
+                    previous_trainers = self.role_maker._get_previous_trainers()
+                heter_workers = []
+                if self.role_maker._get_heter_worker_endpoints() != "":
+                    heter_workers = self.role_maker._get_heter_worker_endpoints(
+                    )
+
+                cur_endpoint = ""
+                if self.role_maker._is_worker():
+                    cur_endpoint = self.role_maker._get_trainer_endpoint()
+                elif self.role_maker._is_heter_worker():
+                    cur_endpoint = self.role_maker._get_heter_worker_endpoint()
+                assert cur_endpoint != "", "cur_endpoint should not be null"
                 self._heter_client = HeterClient(
-                    self.role_maker._get_heter_worker_endpoints(),
+                    heter_workers, previous_trainers, cur_endpoint,
                     self.role_maker._role_id())
 
     def _push_sparse_param(self,
@@ -890,7 +903,9 @@ class TheOnePSRuntime(RuntimeBase):
 
     def _init_heter_worker(self):
         executor = self._get_executor()
-        executor.run(fluid.default_startup_program())
+        startup_program = fluid.default_startup_program()
+        real_startup_program = startup_program._pipeline_opt["startup_program"]
+        executor.run(real_startup_program)
         self._init_worker()
 
     def _run_heter_worker(self):

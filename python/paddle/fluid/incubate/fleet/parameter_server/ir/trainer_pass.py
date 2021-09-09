@@ -404,7 +404,7 @@ def ps_gpu_pass(program):
     return program
 
 
-def delet_extra_optimizes_pass(program, config):
+def delete_extra_optimizes_pass(program, config):
     optimize_vars = []
     optimize_op_role_vars = []
     optimize_need_delete_vars = []
@@ -416,7 +416,6 @@ def delet_extra_optimizes_pass(program, config):
 
     optimize_vars = list(set(optimize_vars))
     optimize_op_role_vars = list(set(optimize_op_role_vars))
-
     for var in optimize_vars:
         if var not in optimize_op_role_vars:
             optimize_need_delete_vars.append(var)
@@ -481,7 +480,6 @@ def find_heter_ops(program, default_device="cpu"):
     default_ops = {default_device: {}}
     heter_ops = {}
     block_index = 0
-    # heter_ops: {"gpu": {1:[op1, op2, ...], 2:[op1, op2, ...] }; "xpu": {3:[op1, op2, ...], 4:[op1, op2, ...] }}
 
     current_heter_block_ops = []
     current_default_block_ops = []
@@ -493,7 +491,7 @@ def find_heter_ops(program, default_device="cpu"):
             is_heter = True
 
             # for cpu-op block append
-            if len(current_default_block_ops) >= 1:
+            if len(current_default_block_ops) > 1:
                 default_ops[default_device][
                     block_index] = current_default_block_ops
                 program_block_ops.append(current_default_block_ops)
@@ -579,65 +577,84 @@ def create_heter_program(program, config, heter_program, program_block_ops_list,
     send_grad_var_list = []
 
     pre_block_idx = heter_program.num_blocks - 1
-    heter_block_ops_forward = program_block_ops_list[stage_id]["forward"]
+    stage_id = int(stage_id)
+    print("stage id", stage_id)
+    heter_block_ops_forward = program_block_ops_list[stage_id - 1]["forward"]
 
-    heter_block_ops_backward = program_block_ops_list[stage_id]["backward"]
+    heter_block_ops_backward = program_block_ops_list[stage_id - 1]["backward"]
 
-    #for index, heter_block_ops in heter_ops[current_device].items():
-    ## not only add heter listen&serve, but also send&recv 
     heter_block = heter_program._create_block(pre_block_idx)
     optimizer_block.append(heter_block)
     for _, op in enumerate(heter_block_ops_forward):
         block_append_op(heter_program, program, heter_block, op)
 
-    entrance_vars = block_var_detail[stage_id]["forward"]["entrance"]
+    entrance_vars = block_var_detail[stage_id - 1]["forward"]["entrance"]
     add_vars_by_var_list(entrance_vars, program, heter_program, heter_block)
-    exit_vars = block_var_detail[stage_id]["forward"]["exit"]
+    exit_vars = block_var_detail[stage_id - 1]["forward"]["exit"]
     add_vars_by_var_list(exit_vars, program, heter_program, heter_block)
 
-    #append send&recv op
-    #def append_communicate_op(orign_program, config, heter_block, stage_id,
-    #                              block_var_detail):
-    if stage_id == len(block_var_detail) - 1:
-        static_var += append_communicate_op(program, config, heter_block,
-                                            stage_id, block_var_detail)
-        add_heter_trainer_useful_vars(config, program, heter_program,
-                                      heter_block, static_var)
+    first_op_index_fp = len(heter_block.ops)
 
-    for _, op in enumerate(heter_block_ops_backward):
-        block_append_op(heter_program, program, heter_block, op)
+    if stage_id < len(program_block_ops_list):
 
-    #heter_block_bp = heter_program._create_block(pre_block_idx)
-    #optimizer_block.append(heter_block_bp)
-    #for _, op in enumerate(heter_block_ops_backward):
-    #    block_append_op(heter_program, program, heter_block_bp, op)
+        heter_block_bp = heter_program._create_block(pre_block_idx)
+        optimizer_block.append(heter_block_bp)
 
-    bp_entrance_vars = block_var_detail[stage_id]["backward"]["entrance"]
-    add_vars_by_var_list(bp_entrance_vars, program, heter_program, heter_block)
-    bp_exit_vars = block_var_detail[stage_id]["backward"]["exit"]
-    add_vars_by_var_list(bp_exit_vars, program, heter_program, heter_block)
+        for _, op in enumerate(heter_block_ops_backward):
+            block_append_op(heter_program, program, heter_block_bp, op)
+
+        bp_entrance_vars = block_var_detail[stage_id - 1]["backward"][
+            "entrance"]
+        add_vars_by_var_list(bp_entrance_vars, program, heter_program,
+                             heter_block_bp)
+        bp_exit_vars = block_var_detail[stage_id - 1]["backward"]["exit"]
+        add_vars_by_var_list(bp_exit_vars, program, heter_program,
+                             heter_block_bp)
+        backward_comm_info = get_communicate_var_info(
+            program, stage_id, bp_entrance_vars, type="backward")
+
+        grad_to_block_id.append(backward_comm_info["block_input_var_name"] + ":"
+                                + str(heter_block_bp.idx))
+
+    else:
+        for _, op in enumerate(heter_block_ops_backward):
+            block_append_op(heter_program, program, heter_block, op)
+
+        bp_entrance_vars = block_var_detail[stage_id - 1]["backward"][
+            "entrance"]
+        add_vars_by_var_list(bp_entrance_vars, program, heter_program,
+                             heter_block)
+        bp_exit_vars = block_var_detail[stage_id - 1]["backward"]["exit"]
+        add_vars_by_var_list(bp_exit_vars, program, heter_program, heter_block)
+
+        heter_block_bp = heter_block
 
     forward_comm_info = get_communicate_var_info(
-        program, stage_id, entrance_vars, exit_vars, type="forward")
-    backward_comm_info = get_communicate_var_info(
-        program, stage_id, bp_entrance_vars, bp_exit_vars, type="backward")
+        program, stage_id, entrance_vars, type="forward")
 
     grad_to_block_id.append(forward_comm_info["block_input_var_name"] + ":" +
                             str(heter_block.idx))
-    grad_to_block_id.append(backward_comm_info["block_input_var_name"] + ":" +
-                            str(heter_block.idx))
 
-    first_op_index = 0
+    first_op_index_bp = len(heter_block_bp.ops)
+
+    if stage_id <= len(block_var_detail) - 1:
+        static_var = insert_communicate_op(program, config, heter_block,
+                                           stage_id, first_op_index_fp,
+                                           block_var_detail, current_device)
+    static_var_bp = insert_communicate_op(
+        program, config, heter_block_bp, stage_id, first_op_index_bp,
+        block_var_detail, current_device, False)
 
     # add send op
-    send_grad_var_list = add_heter_send_op(program, heter_program, heter_block,
-                                           block_var_detail[stage_id])
+    send_grad_var_list = add_heter_send_op(
+        program, heter_program, heter_block_bp, block_var_detail[stage_id - 1])
 
     # ---------------
     # add step conter
     send_input_vars = []
     dummy_output = []
     pserver_endpoints = config.get_ps_endpoints()
+
     # optimizer_block[-1].append_op(
     #     type="send",
     #     inputs={"X": send_input_vars},
@@ -651,18 +668,28 @@ def create_heter_program(program, config, heter_program, program_block_ops_list,
 
     # add info in listen&serv
     attrs = {
+        "mode": "sync",
+        "trainers": config.get_trainers(),
+        "trainer_id": config.get_role_id() + config.get_trainers(),
         "message_to_block_id": grad_to_block_id,
         "optimize_blocks": optimizer_block,
         # runtime attribute
         "endpoint": config.get_heter_worker_endpoint(),
-        "fanin": len(config.get_previous_stage_trainers()),
+        "fanin": len(config.get_previous_stage_trainers()) +
+        len(config.get_heter_worker_endpoints()),
         "pserver_id": config.get_role_id(),
         "distributed_mode": config.get_distributed_mode(),
-        "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32))
+        "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
+        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
     }
     # append the listen_and_serv op
     heter_program.global_block().append_op(
         type="heter_listen_and_serv", inputs={'X': []}, outputs={}, attrs=attrs)
+    heter_program.global_block().append_op(
+        type="trainer_barrier",
+        inputs={'X': []},
+        outputs={},
+        attrs={RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE})
     check_heter_compile_time_strategy(program, config, send_grad_var_list)
 
 
@@ -680,8 +707,8 @@ def check_heter_compile_time_strategy(program, config, send_grad_var_list):
         config.remove_var_pair_by_grad(useless_grad_var)
 
 
-def create_trainer_program(program, config, program_block_ops_list,
-                           block_var_detail):
+def create_trainer_program(program, origin_program, config,
+                           program_block_ops_list, block_var_detail):
     # This function mainly includes the following contents:
     # 1. For every heter block in origin program
     #     a) delete heter op and related variables
@@ -694,42 +721,149 @@ def create_trainer_program(program, config, program_block_ops_list,
     # 2. check every op's device
     static_var = []
     for heter_block_index in range(1, len(program_block_ops_list)):
+        ops_list = program_block_ops_list[heter_block_index][
+            "forward"] + program_block_ops_list[heter_block_index]["backward"]
         static_var += replace_ops_by_communicate_op(
-            program, config, heter_block_index,
-            program_block_ops_list[heter_block_index], block_var_detail)
+            program, config, heter_block_index, ops_list, block_var_detail)
         remove_trainer_send_op(program, config, heter_block_index,
                                block_var_detail)
-    ## how to use static_var
+
+    optimizer_block = []
+    grad_to_block_id = []
+
+    bp_ops_list = program_block_ops_list[0]["backward"]
+    delete_same_ops(program.global_block(), bp_ops_list)
     delete_trainer_useless_var(config, program, static_var)
-    check_op_device(program.global_block(), DEFAULT_DEVICE)
+    backward_block = create_backward_block(program, origin_program, config,
+                                           bp_ops_list, block_var_detail)
 
+    bp_entrance_vars = block_var_detail[0]["backward"]["entrance"]
+    backward_comm_info = get_communicate_var_info(
+        origin_program, 1, bp_entrance_vars, type="backward")
 
-def append_communicate_op(orign_program, config, heter_block, stage_id,
-                          block_var_detail):
+    grad_to_block_id.append(backward_comm_info["block_input_var_name"] + ":" +
+                            str(backward_block.idx))
+    optimizer_block.append(backward_block)
 
-    ## 之前是因为每个heter block的entrance和exit都需要从cpu trainer send & recv
-    ## 现在只需要第一个heter block的entrance和exit
-    mode = config.get_distributed_mode()
-    heter_worker_endpoint = config.get_heter_worker_endpoints()
-    entrance_var = block_var_detail[stage_id + 1]["forward"]["entrance"]
-    exit_var = block_var_detail[stage_id + 1]["backward"]["exit"]
-
-    comm_info = get_communicate_var_info(orign_program, stage_id, entrance_var,
-                                         exit_var)
-    heter_block.append_op(
+    attrs = {
+        "mode": "sync",
+        "trainers": config.get_trainers(),
+        "trainer_id": config.get_role_id(),
+        "message_to_block_id": grad_to_block_id,
+        "optimize_blocks": optimizer_block,
+        # runtime attribute
+        "endpoint": config.get_trainer_endpoint(),  ## get trainer endpoint
+        "fanin": len(config.get_heter_worker_endpoints()),  ## get heter worker
+        "pserver_id": config.get_role_id(),
+        "distributed_mode": config.get_distributed_mode(),
+        "rpc_exec_thread_num": int(os.getenv("CPU_NUM", 32)),
+        RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+    }
+    # append the listen_and_serv op
+    program.global_block()._insert_op(
+        index=0,
+        type="heter_listen_and_serv",
+        inputs={'X': []},
+        outputs={},
+        attrs=attrs)
+    ## append barrier op
+    program.global_block()._insert_op(
+        index=0,
         type="send_and_recv",
-        inputs={"X": heter_block.vars[entrance_var[0]]},
-        outputs={"Out": heter_block.vars[exit_var[0]]},
+        inputs={'X': origin_program.global_block().vars[static_var[0]]},
+        outputs={"Out": []},
         attrs={
-            "send_var_name": entrance_var,
-            "recv_var_name": exit_var,
-            "message_name": comm_info["block_input_var_name"],
-            "endpoints": heter_worker_endpoint,
+            "mode": "barrier",
+            "send_var_name": [],
+            "recv_var_name": [],
+            "message_name": "barrier_batch_finish",
+            "endpoints": config.get_heter_worker_endpoints(),
+            "previous_endpoints": [],
+            "cur_endpoint": config.get_trainer_endpoint(),
             "trainer_id": config.get_role_id(),
             RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
         })
 
-    return entrance_var + exit_var
+    ## add trainer barrier op
+    program.global_block()._insert_op(
+        index=0,
+        type="trainer_barrier",
+        inputs={'X': []},
+        outputs={},
+        attrs={RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE})
+    ## TODO add check for bp block
+    check_op_device(program.global_block(), DEFAULT_DEVICE)
+
+
+def insert_communicate_op(orign_program,
+                          config,
+                          heter_block,
+                          stage_id,
+                          first_op_index,
+                          block_var_detail,
+                          device,
+                          is_forward=True):
+
+    if is_forward:
+        heter_worker_endpoint = config.get_heter_worker_endpoints()
+        previous_endpoint = config.get_previous_stage_trainers()
+        entrance_var = block_var_detail[stage_id]["forward"]["entrance"]
+        comm_info = get_communicate_var_info(orign_program, stage_id + 1,
+                                             entrance_var)
+
+    else:
+        heter_worker_endpoint = config.get_heter_worker_endpoints()
+        if heter_worker_endpoint == "":
+            heter_worker_endpoint = []
+        previous_endpoint = config.get_previous_stage_trainers()
+        entrance_var = block_var_detail[stage_id - 1]["backward"]["exit"]
+        comm_info = get_communicate_var_info(orign_program, stage_id - 1,
+                                             entrance_var, "backward")
+
+    heter_block._insert_op(
+        index=first_op_index,
+        type="send_and_recv",
+        inputs={"X": heter_block.vars[entrance_var[0]]},
+        outputs={"Out": []},
+        attrs={
+            "mode": "forward" if is_forward else "backward",
+            "send_var_name": entrance_var + ["microbatch_id"],
+            "recv_var_name": [],
+            "message_name": comm_info["block_input_var_name"],
+            "endpoints": heter_worker_endpoint,
+            "previous_endpoints": previous_endpoint,
+            "cur_endpoint": config.get_heter_worker_endpoint(),
+            "trainer_id": config.get_role_id(),
+            "op_device": device,
+            RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
+        })
+
+    return entrance_var
+
+
+def create_backward_block(program, origin_program, config, bp_ops_list,
+                          block_var_detail):
+    pre_block_idx = program.num_blocks - 1
+    heter_block = program._create_block(pre_block_idx)
+
+    for _, op in enumerate(bp_ops_list):
+        if op.type == "send":
+            send_varnames = op.attr('send_varnames')
+            is_skip = False
+            for varname in send_varnames:
+                if varname not in program.global_block(
+                ).vars and varname not in heter_block.vars:
+                    is_skip = True
+                    break
+            if is_skip == True:
+                continue
+        block_append_op(program, origin_program, heter_block, op)
+
+    entrance_vars = block_var_detail[0]["backward"]["entrance"]
+    add_vars_by_var_list(entrance_vars, origin_program, program, heter_block)
+    exit_vars = block_var_detail[0]["backward"]["exit"]
+    add_vars_by_var_list(exit_vars, origin_program, program, heter_block)
+    return heter_block
 
 
 def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list,
@@ -744,40 +878,40 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list,
     assert first_op_idx != -1
     delete_same_ops(program.global_block(), ops_list)
 
-    ## 之前是因为每个heter block的entrance和exit都需要从cpu trainer send & recv
-    ## 现在只需要第一个heter block的entrance和exit
     entrance_var = []
-    exit_var = []
 
     if heter_block_index == 1:
         mode = config.get_distributed_mode()
         heter_worker_endpoint = config.get_heter_worker_endpoints()
+
         entrance_var = block_var_detail[heter_block_index]["forward"][
             "entrance"]
-        exit_var = block_var_detail[heter_block_index]["backward"]["exit"]
 
-        comm_info = get_communicate_var_info(program, heter_block_index,
-                                             entrance_var, exit_var)
-
+        comm_info = get_communicate_var_info(program, heter_block_index + 1,
+                                             entrance_var)
         program.global_block()._insert_op(
             index=first_op_idx,
             type="send_and_recv",
             inputs={"X": program.global_block().vars[entrance_var[0]]},
-            outputs={"Out": program.global_block().vars[exit_var[0]]},
+            outputs={"Out": []},
             attrs={
-                "send_var_name": entrance_var,
-                "recv_var_name": exit_var,
+                "mode": "forward",
+                "send_var_name": entrance_var + ["microbatch_id"],
+                "recv_var_name": [],
                 "message_name": comm_info["block_input_var_name"],
                 "endpoints": heter_worker_endpoint,
+                "previous_endpoints": [],
+                "cur_endpoint": config.get_trainer_endpoint(),
                 "trainer_id": config.get_role_id(),
                 RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE
             })
 
-    return entrance_var + exit_var
+    return entrance_var
 
 
 def remove_trainer_send_op(program, config, heter_block_index,
                            block_var_detaile):
+
     # if trainer do FF->BP->SEND, it has follow vars: var, var@GRAD
     # if trainer only do SEND, it has one var: var@GRAD
     # Delete Send op ,if trainer doesn't has pair var (var<->var@GRAD)
@@ -818,7 +952,7 @@ def add_heter_send_op(program, heter_program, block, block_var_detail):
     send_grad_var_list = []
     send_op_dict = _get_send_op_dict()
     table_dict = {}
-    for persistable_var in block_var_detail["persistables"]:
+    for persistable_var in block_var_detail["backward"]["persistables"]:
         # check var_name ==  var@GRAD
         if "@GRAD" not in persistable_var:
             continue
@@ -870,7 +1004,6 @@ def find_send_op(program):
 def get_communicate_var_info(program,
                              block_index,
                              entrance_var_list,
-                             exit_var_list,
                              type="forward"):
     input_var_reshape_dim = []
     input_var_reshape_name = []
@@ -882,17 +1015,7 @@ def get_communicate_var_info(program,
         block_input_var_name = "backward_joint_{}_{}@Heter".format(
             block_index + 1, block_index)
 
-    output_var_reshape_dim = []
-    output_var_reshape_name = []
-    if type == "forward":
-        block_output_var_name = "forward_joint_{}_{}@Heter".format(
-            block_index, block_index + 1)
-    else:
-        block_output_var_name = "backward_joint_{}_{}@Heter".format(
-            block_index, block_index - 1)
-
     entrance_var_list.sort()
-    exit_var_list.sort()
     # input
     # Heter_SERVER_BLOCK_index@JOINT_VAR -> slice -> var@Heter_SERVER_BLOCK@INPUT_RESHAPE_VAR -> reshape -> var
     for name in entrance_var_list:
@@ -908,25 +1031,25 @@ def get_communicate_var_info(program,
 
     # output
     # var -> reshape -> var@Heter_SERVER_BLOCK@INPUT_RESHAPE_VAR -> concat -> Heter_SERVER_BLOCK_index@JOINT_VAR
-    for var_name in exit_var_list:
-        var = program.global_block().vars[var_name]
-        shape = var.shape
-        # if len(shape) < 2 or shape[0] != -1:
-        #     raise ValueError(
-        #         "Variable {} not support heter training. its shape is {}".
-        #         format(var_name, shape))
-        send_reshape_dim = -1 * reduce(lambda x, y: x * y, shape)
-        output_var_reshape_dim.append(send_reshape_dim)
-        output_var_reshape_name.append("{}.output_reshape@Heter".format(
-            var_name))
+    #for var_name in exit_var_list:
+    #    var = program.global_block().vars[var_name]
+    #    shape = var.shape
+    #    # if len(shape) < 2 or shape[0] != -1:
+    #    #     raise ValueError(
+    #    #         "Variable {} not support heter training. its shape is {}".
+    #    #         format(var_name, shape))
+    #    send_reshape_dim = -1 * reduce(lambda x, y: x * y, shape)
+    #    output_var_reshape_dim.append(send_reshape_dim)
+    #    output_var_reshape_name.append("{}.output_reshape@Heter".format(
+    #        var_name))
 
     info = {
         "input_var_reshape_dim": input_var_reshape_dim,
         "input_var_reshape_name": input_var_reshape_name,
         "block_input_var_name": block_input_var_name,
-        "output_var_reshape_dim": output_var_reshape_dim,
-        "output_var_reshape_name": output_var_reshape_name,
-        "block_output_var_name": block_output_var_name
+        #    "output_var_reshape_dim": output_var_reshape_dim,
+        #    "output_var_reshape_name": output_var_reshape_name,
+        #    "block_output_var_name": block_output_var_name
     }
 
     return info
@@ -941,7 +1064,7 @@ def union_forward_gradient_op(program_block_ops_list):
     block_length = len(program_block_ops_list)
     union_program_block_ops_list = []
     assert block_length % 2 != 0, "the length of program_block_ops_list should be odd"
-    for i in range(0, block_length / 2):
+    for i in range(0, block_length // 2):
         block_op_list = {"forward": program_block_ops_list[i]}
         block_op_list.update({
             "backward": program_block_ops_list[block_length - 1 - i]
@@ -949,7 +1072,7 @@ def union_forward_gradient_op(program_block_ops_list):
         union_program_block_ops_list.append(block_op_list)
 
     block_op_list = {"forward": [], "backward": []}
-    for op in program_block_ops_list[block_length / 2]:
+    for op in program_block_ops_list[block_length // 2]:
         if not "_grad" in op.type:
             block_op_list["forward"].append(op)
         else:
@@ -965,6 +1088,7 @@ def find_block_joints(program, program_block_ops_list, heter_ops):
                                            block_var_detail, heter_ops)
     block_var_detail = delete_block_useless_exit(
         program, program_block_ops_list, block_var_detail)
+
     return block_var_detail
 
 
@@ -989,6 +1113,7 @@ def find_entrance_exit_private(program, program_block_ops_list):
                 "persistables": persistables
             }
         }
+
         ## backward
         bp_block_input, bp_block_output = find_ops_list_input_output(
             program, block_op_list["backward"])
@@ -1002,10 +1127,10 @@ def find_entrance_exit_private(program, program_block_ops_list):
         bp_block_exit = list(set(bp_block_output) - set(bp_block_private_vars))
         detail.update({
             "backward": {
-                "entrance": block_entrance,
-                "exit": block_exit,
-                "private": block_private_vars,
-                "persistables": persistables
+                "entrance": bp_block_entrance,
+                "exit": bp_block_exit,
+                "private": bp_block_private_vars,
+                "persistables": bp_persistables
             }
         })
         block_var_detail.append(detail)
@@ -1247,8 +1372,6 @@ def insert_recv_slice_op(program, block, index, var_name, var_shape, dtype,
 
 def add_heter_trainer_useful_vars(config, program, heter_program, heter_block,
                                   static_var):
-    #if config.role_maker._is_first_worker():
-    #    return []
     static_var = list(set(static_var))
     for var_name in static_var:
         if var_name not in heter_program.global_block(
@@ -1262,15 +1385,13 @@ def add_heter_trainer_useful_vars(config, program, heter_program, heter_block,
 
 
 def delete_trainer_useless_var(config, program, static_var):
-    if config.role_maker._is_first_worker():
-        return []
     static_var = list(set(static_var))
     program_useful_var_list = []
     for op in program.global_block().ops:
         input_var_list, output_var_list = find_op_input_output(
             program, program.global_block(), op)
         op_var_list = list(set(input_var_list).union(set(output_var_list)))
-        porgram_useful_var_list = list(
+        program_useful_var_list = list(
             set(program_useful_var_list).union(set(op_var_list)))
     program_useful_var_list += static_var
     program_useless_var_list = list(
@@ -1282,6 +1403,7 @@ def delete_trainer_useless_var(config, program, static_var):
 
 
 def block_append_op(program, origin_program, block, op):
+
     merge_ordereddict = origin_program.global_block().vars.copy()
     merge_ordereddict.update(block.vars)
     inputs = _get_input_map_from_op(merge_ordereddict, op)

@@ -1507,6 +1507,7 @@ class Fleet(object):
             apply_ir_passes(loss.block.program, startup_program, self)
 
         program = paddle.static.default_main_program()
+
         opt_info = {}
         opt_info["mpi_size"] = self.worker_num()
         opt_info["mpi_rank"] = self.worker_index()

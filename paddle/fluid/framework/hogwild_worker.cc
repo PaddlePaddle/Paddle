@@ -67,9 +67,11 @@ void HogwildWorker::CreateThreadScope(const ProgramDesc &program) {
 
   for (auto &var : block.AllVars()) {
     all_param_.push_back(var->Name());
+
     if (var->Persistable()) {
       auto *ptr = root_scope_->Var(var->Name());
       InitializeVariable(ptr, var->GetType());
+
       if (stat_var_name_map_.find(var->Name()) != stat_var_name_map_.end() &&
           thread_id_ != 0) {
         int tensor_dim =

@@ -471,7 +471,6 @@ class HalfAsyncCommunicator : public AsyncCommunicator {
     send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
     need_global_step_ =
         static_cast<bool>(std::stoi(envs.at("need_global_step")));
-
     VLOG(1) << "HalfAsyncCommunicator Initialized";
   }
 
@@ -516,7 +515,6 @@ class SyncCommunicator : public HalfAsyncCommunicator {
     send_queue_size_ = std::stoi(envs.at("communicator_send_queue_size"));
     need_global_step_ =
         static_cast<bool>(std::stoi(envs.at("need_global_step")));
-
     VLOG(1) << "SyncCommunicator Initialized";
   }
 

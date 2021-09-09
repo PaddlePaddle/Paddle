@@ -20,6 +20,7 @@ import paddle.fluid.framework as framework
 
 from paddle.fluid.transpiler.details.program_utils import delete_ops
 from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import find_heter_ops
+from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import union_forward_gradient_op
 from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import create_heter_program
 from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import create_trainer_program
 from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import find_block_joints
@@ -27,7 +28,7 @@ from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import find_op
 from paddle.fluid.incubate.fleet.parameter_server.ir.trainer_pass import get_vars_name_in_block
 
 
-def split_heter_worker_ops_pass(program, config, stage_id):
+def split_heter_worker_ops_pass(program, config, stage_id, device):
     """
     split heter worker program from origin-program
     1. find heter op (located on different device)
@@ -43,15 +44,11 @@ def split_heter_worker_ops_pass(program, config, stage_id):
         )
         return program
 
-    current_device = "gpu"
-    if current_device not in heter_ops:
-        raise ValueError("Op which run on device {} not exist.".format(
-            current_device))
     program_block_ops = union_forward_gradient_op(program_block_ops)
     block_vars_detail = find_block_joints(program, program_block_ops, heter_ops)
     heter_program = framework.Program()
-    create_heter_program(program, config, heter_program, heter_ops,
-                         block_vars_detail, current_device, stage_id)
+    create_heter_program(program, config, heter_program, program_block_ops,
+                         heter_ops, block_vars_detail, device, stage_id)
     return heter_program
 
 
@@ -67,10 +64,12 @@ def split_trainer_ops_pass(program, config):
     program, heter_ops, default_ops, program_block_ops = find_heter_ops(
         program, default_deveice)
     program_block_ops = union_forward_gradient_op(program_block_ops)
+
     block_vars_detail = find_block_joints(program, program_block_ops, heter_ops)
-    create_trainer_program(program, config, default_ops, heter_ops,
+    trainer_program = program.clone()
+    create_trainer_program(trainer_program, program, config, program_block_ops,
                            block_vars_detail)
-    return program
+    return trainer_program
 
 
 def delete_startup_useless_ops_var_pass(startup_program, main_program, config):
@@ -90,13 +89,14 @@ def delete_startup_useless_ops_var_pass(startup_program, main_program, config):
                                                    current_block, op)
             inputs += outputs
             # Todo: delete some concat op
-            if list(set(inputs) & set(vars_in_main_program)) == None:
+            if list(set(inputs) & set(vars_in_main_program)) == []:
                 need_delete_op.append(op)
         delete_ops(current_block, need_delete_op)
 
         # delete useless var
-        for var in current_block.vars:
-            if var.name not in vars_in_main_program:
-                startup_program._remove_var(var.name)
+        block_vars = list(current_block.vars)
+        for var in block_vars:
+            if var not in vars_in_main_program:
+                current_block._remove_var(var)
 
     return startup_program
