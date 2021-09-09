@@ -32,8 +32,14 @@ class MHAMetaData {
   cudnnSeqDataDescriptor_t k_desc = nullptr;
   cudnnSeqDataDescriptor_t v_desc = nullptr;
   cudnnSeqDataDescriptor_t o_desc = nullptr;
+
+  void* weights = nullptr;
   void* workspace = nullptr;
   void* reserve_space = nullptr;
+
+  size_t weights_size = 0;
+  size_t workspace_size = 0;
+  size_t reserve_size = 0;
 };
 
 class MHASingleton {
@@ -131,13 +137,23 @@ class MHAKernel : public framework::OpKernel<T> {
         attn_v_proj_size, attn_o_proj_size, attn_max_qo_seq_len,
         attn_max_kv_seq_len, batch_size, attn_beam_size));
 
-    size_t weights_size, wkspace_szie, reserve_size;
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetMultiHeadAttnBuffers(
         cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
-        &weights_size, &wkspace_szie, &reserve_size));
-    auto weight_buf = memory::Alloc(dev_ctx, weights_size);
-    auto wkspace_buf = memory::Alloc(dev_ctx, wkspace_szie);
-    auto reserve_buf = memory::Alloc(dev_ctx, reserve_size);
+        &MHASingleton::Instance().Data(key).weights_size,
+        &MHASingleton::Instance().Data(key).workspace_size,
+        &MHASingleton::Instance().Data(key).reserve_size));
+
+    MHASingleton::Instance().Data(key).weights = reinterpret_cast<void*>(
+        memory::Alloc(dev_ctx, MHASingleton::Instance().Data(key).weights_size)
+            ->ptr());
+
+    MHASingleton::Instance().Data(key).workspace = reinterpret_cast<void*>(
+        memory::Alloc(dev_ctx,
+                      MHASingleton::Instance().Data(key).workspace_size)
+            ->ptr());
+    MHASingleton::Instance().Data(key).reserve_space = reinterpret_cast<void*>(
+        memory::Alloc(dev_ctx, MHASingleton::Instance().Data(key).reserve_size)
+            ->ptr());
 
     std::vector<int> q_seq_size_arr =
         context.Attr<std::vector<int>>("Q_seq_size_arr");
@@ -219,9 +235,12 @@ class MHAKernel : public framework::OpKernel<T> {
         k_seq_size_dev_ptr, MHASingleton::Instance().Data(key).q_desc, q_data,
         residuals, MHASingleton::Instance().Data(key).k_desc, k_data,
         MHASingleton::Instance().Data(key).v_desc, v_data,
-        MHASingleton::Instance().Data(key).o_desc, o_data, weights_size, w_data,
-        wkspace_szie, static_cast<void*>(wkspace_buf->ptr()), reserve_size,
-        static_cast<void*>(reserve_buf->ptr())));
+        MHASingleton::Instance().Data(key).o_desc, o_data,
+        MHASingleton::Instance().Data(key).weights_size, w_data,
+        MHASingleton::Instance().Data(key).workspace_size,
+        MHASingleton::Instance().Data(key).workspace,
+        MHASingleton::Instance().Data(key).reserve_size,
+        MHASingleton::Instance().Data(key).reserve_space));
   }
 };
 
