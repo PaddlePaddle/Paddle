@@ -154,8 +154,6 @@ void TestTunedDynamic() {
   config_tuned.CollectShapeRangeInfo(shape_range);
 
   int batch_size = 1;
-  config_tuned.EnableTensorRtEngine(
-      1 << 30, batch_size, 0, AnalysisConfig::Precision::kFloat32, false, true);
   auto predictor_tuned = CreatePaddlePredictor(config_tuned);
 
   auto check_func = [batch_size](PaddlePredictor *predictor) {

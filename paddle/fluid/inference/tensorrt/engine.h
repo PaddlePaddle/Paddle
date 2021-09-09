@@ -362,9 +362,6 @@ class TensorRTEngine {
   void Execute(int batch_size, std::vector<void*>* buffers,
                cudaStream_t stream = nullptr);
 
-  // bool UniformDeclareInput(const std::string& name,
-  // framework::proto::VarType::Type dt, const std::vector<int64_t>& var_shape);
-
   nvinfer1::INetworkDefinition* network() { return infer_network_.get(); }
 
   ShapeMapType min_input_shape() { return min_input_shape_; }
