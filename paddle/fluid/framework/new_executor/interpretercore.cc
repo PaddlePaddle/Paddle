@@ -26,6 +26,8 @@
 
 #include <unordered_set>
 
+DEFINE_bool(new_executor_use_inplace, true, "Use inplace in new executor");
+
 namespace paddle {
 namespace framework {
 
@@ -323,6 +325,12 @@ void InterpreterCore::Convert() {
     BuildAndCacheInstructionCtx(&vec_instruction_[i], *global_scope_, place_);
   }
 
+  if (FLAGS_new_executor_use_inplace) {
+    BuildInplace();
+  }
+}
+
+void InterpreterCore::BuildInplace() {
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     if (!vec_instruction_[i]
              .kernel_func_.operator_base_->Info()
@@ -398,15 +406,19 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   VLOG(3) << "RunInstruction:  "
           << instr_node.kernel_func_.operator_base_->Type();
 
-  for (auto& pair : instr_node.vec_inplace_in_to_out_) {
-    const auto& in = GetTensorFromVar(pair.first);
-    auto* out = GetMutableTensorFromVar(pair.second);
-    out->ShareBufferWith(in);
-  }
-
   static_cast<const framework::OperatorWithKernel*>(
       instr_node.kernel_func_.operator_base_)
       ->InferShape(instr_node.infershape_ctx_.get());
+
+  if (FLAGS_new_executor_use_inplace) {
+    for (auto& pair : instr_node.vec_inplace_in_to_out_) {
+      const auto& in = GetTensorFromVar(pair.first);
+      auto* out = GetMutableTensorFromVar(pair.second);
+      if (in.dims() == out->dims()) {
+        out->ShareBufferWith(in);
+      }
+    }
+  }
 
   instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
 }
