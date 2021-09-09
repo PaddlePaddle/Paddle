@@ -34,7 +34,7 @@ class TrtConvertAnchorGeneratorTest(TrtLayerAutoScanTest):
                 for aspect_ratios in [[0.5], [1.0, 2.0], [0.5, 1.0, 2.0]]:
                     for variances in [[0.1, 0.1, 0.2, 0.2]]:
                         for stride in [[16.0, 16.0]]:
-                            for offset in [np.random.random()]:
+                            for offset in [0.5, 0.9]:
                                 dics = [{
                                     "anchor_sizes": anchor_sizes,
                                     "aspect_ratios": aspect_ratios,
@@ -97,10 +97,7 @@ class TrtConvertAnchorGeneratorTest(TrtLayerAutoScanTest):
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-2
-        self.trt_param.precision = paddle_infer.PrecisionType.Int8
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-1
+            attrs, False), 1e-5
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -109,10 +106,7 @@ class TrtConvertAnchorGeneratorTest(TrtLayerAutoScanTest):
                                                                      True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-2
-        self.trt_param.precision = paddle_infer.PrecisionType.Int8
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-1
+                                                                     True), 1e-5
 
     def test(self):
         self.run_test()
