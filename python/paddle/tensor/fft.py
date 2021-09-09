@@ -30,7 +30,7 @@ def _resize_fft_input(x, s, axes):
     paddings = []
     axes_to_slice = []
     slices = []
-    for i, axis in axes:
+    for i, axis in enumerate(axes):
         if shape[axis] < s[i]:
             axes_to_pad.append(axis)
             paddings.append(s[i] - shape[axis])
