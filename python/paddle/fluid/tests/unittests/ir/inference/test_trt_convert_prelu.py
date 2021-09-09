@@ -176,8 +176,9 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                            "Need to repair the case: the input's dim is 1.")
 
         def teller2(program_config, predictor_config):
-            if self.dim1 != 0 and self.dim2 == 0 and self.dim3 == 0:
-                return True
+            if (len(self.dynamic_shape.min_input_shape) == 0):
+                if self.dim1 != 0 and self.dim2 == 0 and self.dim3 == 0:
+                    return True
             return False
 
         self.add_skip_case(teller2, SkipReasons.TRT_NOT_SUPPORT,
