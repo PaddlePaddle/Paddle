@@ -253,9 +253,9 @@ from .framework import CUDAPlace  # noqa: F401
 from .framework import NPUPlace  # noqa: F401
 from .framework import CUDAPinnedPlace  # noqa: F401
 
-from .framework import grad  # noqa: F401
-from .framework import no_grad  # noqa: F401
-from .framework import set_grad_enabled  # noqa: F401
+from .autograd import grad  # noqa: F401
+from .autograd import no_grad  # noqa: F401
+from .autograd import set_grad_enabled  # noqa: F401
 from .framework import save  # noqa: F401
 from .framework import load  # noqa: F401
 from .framework import DataParallel  # noqa: F401
