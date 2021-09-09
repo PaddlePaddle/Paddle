@@ -14,7 +14,7 @@
 
 import numpy as np
 import paddle
-from .attribute import is_complex, is_floating_point, is_interger
+from .attribute import is_complex, is_floating_point, is_interger, _real_to_complex_dtype
 from ..fluid.framework import in_dygraph_mode
 from .. import _C_ops
 from ..fluid.data_feeder import check_variable_and_dtype
@@ -230,7 +230,7 @@ def ifftshift(x, axes=None, name=None):
 # internal functions
 def fft_c2c(x, n, axis, norm, forward, name):
     if is_interger(x):
-        x = paddle.cast(x, paddle.get_default_dtype())
+        x = paddle.cast(x, _real_to_complex_dtype(paddle.get_default_dtype()))
     _check_normalization(norm)
     axis = axis or -1
     axes = [axis]
@@ -241,14 +241,13 @@ def fft_c2c(x, n, axis, norm, forward, name):
         x = _resize_fft_input(x, s, axes)
     op_type = 'fft_c2c'
 
+    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
     if in_dygraph_mode():
         attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
         out = getattr(_C_ops, op_type)(x, *attrs)
     else:
         inputs = {'X': [x], }
         attrs = {'axes': axes, 'normalization': norm, 'forward': forward}
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 op_type)
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
@@ -270,6 +269,7 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
         _check_fft_shape(x, s)
         x = _resize_fft_input(x, s, axes)
     op_type = 'fft_r2c'
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], op_type)
 
     if in_dygraph_mode():
         attrs = ('axes', axes, 'normalization', norm, 'forward', forward,
@@ -283,8 +283,6 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
             'forward': forward,
             'onesided': onesided,
         }
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 op_type)
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
@@ -296,7 +294,7 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
 
 def fft_c2r(x, n, axis, norm, forward, name):
     if is_interger(x):
-        x = paddle.cast(x, paddle.get_default_dtype())
+        x = paddle.cast(x, _real_to_complex_dtype(paddle.get_default_dtype()))
     _check_normalization(norm)
     axis = axis or -1
     axes = [axis]
@@ -306,6 +304,7 @@ def fft_c2r(x, n, axis, norm, forward, name):
         _check_fft_shape(x, s)
         x = _resize_fft_input(x, s, axes)
     op_type = 'fft_c2r'
+    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
 
     if in_dygraph_mode():
         if n is not None:
@@ -319,8 +318,6 @@ def fft_c2r(x, n, axis, norm, forward, name):
         attrs = {'axes': axes, 'normalization': norm, 'forward': forward}
         if n is not None:
             attrs['last_dim_size'] = n
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 op_type)
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
@@ -332,7 +329,7 @@ def fft_c2r(x, n, axis, norm, forward, name):
 
 def fftn_c2c(x, s, axes, norm, forward, name):
     if is_interger(x):
-        x = paddle.cast(x, paddle.get_default_dtype())
+        x = paddle.cast(x, _real_to_complex_dtype(paddle.get_default_dtype()))
     _check_normalization(norm)
     if s is not None:
         _check_fft_shape(x, s)
@@ -355,6 +352,7 @@ def fftn_c2c(x, s, axes, norm, forward, name):
     if s is not None:
         x = _resize_fft_input(x, s, axes)
     op_type = 'fft_c2c'
+    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
 
     if in_dygraph_mode():
         attrs = ('axes', axes, 'normalization', norm, 'forward', forward)
@@ -362,8 +360,6 @@ def fftn_c2c(x, s, axes, norm, forward, name):
     else:
         inputs = {'X': [x], }
         attrs = {'axes': axes, 'normalization': norm, 'forward': forward}
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 op_type)
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
@@ -399,6 +395,7 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
         x = _resize_fft_input(x, s, axes)
 
     op_type = 'fft_r2c'
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], op_type)
 
     if in_dygraph_mode():
         attrs = ('axes', axes, 'normalization', norm, 'forward', forward,
@@ -412,8 +409,6 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
             'forward': forward,
             'onesided': onesided,
         }
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 op_type)
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)
@@ -426,7 +421,7 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
 
 def fftn_c2r(x, s, axes, norm, forward, name):
     if is_interger(x):
-        x = paddle.cast(x, paddle.get_default_dtype())
+        x = paddle.cast(x, _real_to_complex_dtype(paddle.get_default_dtype()))
     _check_normalization(norm)
     if s is not None:
         _check_fft_shape(x, s)
@@ -452,6 +447,7 @@ def fftn_c2r(x, s, axes, norm, forward, name):
         x = _resize_fft_input(x, fft_input_shape, axes)
 
     op_type = 'fft_c2r'
+    check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], op_type)
 
     if in_dygraph_mode():
         if s:
@@ -465,8 +461,6 @@ def fftn_c2r(x, s, axes, norm, forward, name):
         attrs = {'axes': axes, 'normalization': norm, 'forward': forward}
         if s:
             attrs["last_dim_size"] = s[-1]
-        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 op_type)
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
         out = helper.create_variable_for_type_inference(dtype)

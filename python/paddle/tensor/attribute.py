@@ -35,6 +35,15 @@ def _complex_to_real_dtype(dtype):
         return dtype
 
 
+def _real_to_complex_dtype(dtype):
+    if dtype == core.VarDesc.VarType.FP32:
+        return core.VarDesc.VarType.COMPLEX64
+    elif dtype == core.VarDesc.VarType.FP64:
+        return core.VarDesc.VarType.COMPLEX128
+    else:
+        return dtype
+
+
 def is_complex(x):
     dtype = x.dtype
     is_complex_dtype = (dtype == core.VarDesc.VarType.COMPLEX64 or
