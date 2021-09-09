@@ -17,6 +17,11 @@ from ..fluid.core import LoDTensor
 from ..fluid.framework import in_dygraph_mode
 from ..fluid.data_feeder import check_type, check_dtype, convert_dtype
 
+__all__ = [
+    'to_dlpack',
+    'from_dlpack',
+]
+
 
 def to_dlpack(x):
     """
