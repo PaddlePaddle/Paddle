@@ -948,7 +948,11 @@ function assert_file_diff_approvals() {
 
 
 function check_coverage() {
-    /bin/bash ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
+    if [ ${WITH_COVERAGE:-ON} == "ON" ] ; then
+        /bin/bash ${PADDLE_ROOT}/tools/coverage/paddle_coverage.sh
+    else
+        echo "WARNING: check_coverage need to compile with WITH_COVERAGE=ON, but got WITH_COVERAGE=OFF"
+    fi
 }
 
 
@@ -1170,13 +1174,13 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
-            if [ "$added_ut_error" != 0 ];then
-                echo "========================================"
-                echo "Added UT should not exceed 15 seconds"
-                echo "========================================"
-                exit 8;
-            fi
+            #ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            #if [ "$added_ut_error" != 0 ];then
+            #    echo "========================================"
+            #    echo "Added UT should not exceed 15 seconds"
+            #    echo "========================================"
+            #    exit 8;
+            #fi
         fi
 set +x
         EXIT_CODE=0;

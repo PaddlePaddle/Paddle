@@ -54,6 +54,7 @@ inline platform::GpuLaunchConfig Get1DBlocksAnd2DGrids(
   return config;
 }
 
+
 template <int VecSize>
 __forceinline__ __device__ void RandVec(curandStatePhilox4_32_10_t *state,
                                         float *data);
@@ -70,7 +71,7 @@ __forceinline__ __device__ void RandVec<2>(curandStatePhilox4_32_10_t *state,
   data[0] = curand_uniform(state);
   data[1] = curand_uniform(state);
 }
-
+  
 template <>
 __forceinline__ __device__ void RandVec<4>(curandStatePhilox4_32_10_t *state,
                                            float *data) {
