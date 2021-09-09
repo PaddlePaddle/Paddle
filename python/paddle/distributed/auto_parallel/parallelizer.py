@@ -14,6 +14,7 @@
 
 import paddle
 from paddle.distributed.fleet import cloud_utils
+import paddle.core as core
 from .context import DistributedContext
 from .context import get_default_distributed_context
 from .completion import complete_annotation
