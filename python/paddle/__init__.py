@@ -356,6 +356,7 @@ __all__ = [  # noqa
            'summary',
            'flops',
            'sort',
+           'searchsorted',
            'split',
            'logical_and',
            'full_like',

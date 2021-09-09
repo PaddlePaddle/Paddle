@@ -93,14 +93,13 @@ class SearchSortedOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("SortedSequence",
-             "(Tensor), N-D or 1-D tensor, The value of the tensor"
+             "(Tensor), N-D tensor, The value of the tensor"
              "monotonically increases in the innermost dimension.");
-    AddInput("Values",
-             "(Tensor or Scalar), N-D tensor or a Scalar given values.");
+    AddInput("Values", "(Tensor), N-D tensor given values.");
     AddOutput("Out", "(Tensor), The output tensor of searchsorted op.");
     AddAttr<bool>("out_int32",
-                  "the output tensor is int64 type if False and int32"
-                  "normally type if True.")
+                  "the output tensor is int64 type if False and On the"
+                  "contrary for int32")
         .SetDefault(false);
     AddAttr<bool>(
         "right",
