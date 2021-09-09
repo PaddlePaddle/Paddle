@@ -172,9 +172,8 @@ class TrtConvertPreluTest(TrtLayerAutoScanTest):
                 return True
             return False
 
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_SUPPORT,
-            "Need to repair the case: trt does not support 1-dimensional input.")
+        self.add_skip_case(teller1, SkipReasons.TRT_NOT_SUPPORT,
+                           "Trt does not support 1-dimensional input.")
 
         def teller2(program_config, predictor_config):
             if (len(self.dynamic_shape.min_input_shape) == 0):
