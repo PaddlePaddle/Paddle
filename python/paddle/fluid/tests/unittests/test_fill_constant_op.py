@@ -358,13 +358,6 @@ class TestFillConstantOpError(unittest.TestCase):
                 shape=[1],
                 value=5,
                 dtype='uint4')
-            self.assertRaises(
-                TypeError,
-                fluid.layers.fill_constant,
-                shape=[1],
-                value=5,
-                dtype='int16',
-                out=x1)
 
             self.assertRaises(
                 TypeError,
