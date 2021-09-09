@@ -16,6 +16,7 @@ import paddle
 import math
 import numpy as np
 from . import ptq_config
+from .ptq_registry import PTQRegistry
 
 
 def quant_forward_post_hook(layer, inputs, outputs):
@@ -24,5 +25,8 @@ def quant_forward_post_hook(layer, inputs, outputs):
     """
     assert hasattr(layer, '_quant_config'), \
         "The layer should have _quant_config attr"
-    layer._quant_config.in_act_quantizer.sample_data(layer, inputs)
-    layer._quant_config.out_act_quantizer.sample_data(layer, (outputs, ))
+
+    qc = layer._quant_config
+    if qc.enable_in_act_quantizer:
+        qc.in_act_quantizer.sample_data(layer, inputs)
+    qc.out_act_quantizer.sample_data(layer, (outputs, ))

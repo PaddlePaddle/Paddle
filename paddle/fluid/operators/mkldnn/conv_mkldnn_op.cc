@@ -893,7 +893,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
             fuse_residual_conn, propagation, output_shift_scale, sum_scale);
       } else {
         conv_pd = handler->AcquireConvolutionPrimitiveDescriptor(
-            src_md, weights_md, boost::none, dst_md, strides, dilations,
+            src_md, weights_md, paddle::none, dst_md, strides, dilations,
             paddings, mkldnn_engine, fuse_activation, fuse_alpha, fuse_beta,
             fuse_residual_conn, propagation, output_shift_scale, sum_scale);
       }

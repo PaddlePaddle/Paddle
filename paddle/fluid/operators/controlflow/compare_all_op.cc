@@ -30,29 +30,13 @@ class CompareReduceOpKernel
     auto* x = context.Input<Tensor>("X");
     auto* y = context.Input<Tensor>("Y");
     auto* z = context.Output<Tensor>("Out");
-    bool shape_same = true;
-
     Tensor tmp;
-    framework::DDim x_dims = x->dims();
-    framework::DDim y_dims = y->dims();
-
-    // judge the two inputs shape is same, if not same, just return false
-    if (x_dims.size() != y_dims.size()) {
-      shape_same = false;
-    } else {
-      for (auto i = 0; i < x_dims.size(); i++) {
-        if (x_dims[i] != y_dims[i]) {
-          shape_same = false;
-          break;
-        }
-      }
-    }
-
     bool* z_data = z->mutable_data<bool>(context.GetPlace());
-    if (!shape_same) {
+
+    if (x->dims() != y->dims()) {
       z_data[0] = false;
     } else {
-      tmp.mutable_data<bool>(x_dims, context.GetPlace());
+      tmp.mutable_data<bool>(x->dims(), context.GetPlace());
       if (x->numel() == 1 && y->numel() == 1) {
         bool* z_data = tmp.mutable_data<bool>(context.GetPlace());
         z_data[0] = Functor()(x->data<T>()[0], y->data<T>()[0]);

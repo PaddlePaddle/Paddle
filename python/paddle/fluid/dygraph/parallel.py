@@ -17,7 +17,11 @@ import six
 import numpy as np
 import warnings
 from collections import OrderedDict
+import itertools
+import warnings
+from contextlib import contextmanager
 
+import paddle
 from paddle.fluid import core
 from paddle.fluid import framework
 from paddle.fluid.dygraph import layers
@@ -26,9 +30,7 @@ from paddle.fluid.dygraph import to_variable, no_grad
 from paddle.utils import deprecated
 from ..layers import collective
 from paddle.fluid.dygraph import base as imperative_base
-import warnings
-import paddle
-import itertools
+from paddle.fluid.framework import ParamBase
 
 __all__ = ["prepare_context", "ParallelEnv", "DataParallel"]
 
@@ -353,8 +355,9 @@ def sync_params_buffers(model,
             raise TypeError("The data type of '%s' must be Varbase" %
                             param.name)
         # is_distributed param not need to sync when in mp mode
-        if is_model_parallel and param.is_distributed:
-            continue
+        if is_model_parallel and isinstance(param, ParamBase):
+            if param.is_distributed:
+                continue
 
         model_vars.append(param.detach())
     if len(model_vars) == 0:
@@ -481,6 +484,7 @@ class DataParallel(layers.Layer):
 
         self._layers = layers
         self.find_unused_parameters = find_unused_parameters
+        self.grad_need_sync = True
 
         # NOTE(chenweihang): The ParallelStrategy here is not strictly a strategy. 
         # It just stores some environment variables, which can be constructed by 
@@ -574,9 +578,55 @@ class DataParallel(layers.Layer):
             return itertools.chain(*map(self._find_varbase, obj.values()))
         return []
 
+    @contextmanager
+    def no_sync(self):
+        """
+        A context manager to stop gradient synchronization. Within no_sync(), 
+        gradients of parameters will only be accumulated on model and not 
+        synchronized util the first forward-backward out of this context.
+
+        Examples:
+            .. code-block:: python
+
+                # required: distributed
+                import paddle
+                import paddle.nn as nn
+                import paddle.distributed as dist
+
+                class SimpleNet(nn.Layer):
+                    def __init__(self):
+                        super(SimpleNet, self).__init__()
+                        self._linear = nn.Linear(10, 1)
+                        
+                    def forward(self, x):
+                        return self._linear(x)
+
+                dist.init_parallel_env()
+                model = SimpleNet()
+                dp_model = paddle.DataParallel(model)
+
+                inputs_1 = paddle.randn([10, 10], 'float32')
+                inputs_2 = paddle.ones([10, 10], 'float32')
+
+                with dp_model.no_sync():
+                    # gradients will not be synchronized
+                    dp_model(inputs_1).backward()
+
+                # synchronization happens here
+                dp_model(inputs_2).backward()
+
+        """
+        tmp_grad_need_sync = self.grad_need_sync
+        self.grad_need_sync = False
+        try:
+            yield
+        finally:
+            self.grad_need_sync = tmp_grad_need_sync
+
     def forward(self, *inputs, **kwargs):
         outputs = self._layers(*inputs, **kwargs)
-        if self._strategy.nranks > 1 and framework._dygraph_tracer()._has_grad:
+        if self._strategy.nranks > 1 and framework._dygraph_tracer(
+        )._has_grad and self.grad_need_sync:
             self._reducer.prepare_for_backward(
                 list(self._find_varbase(outputs)))
         return outputs

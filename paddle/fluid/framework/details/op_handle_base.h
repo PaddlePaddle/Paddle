@@ -136,6 +136,10 @@ class OpHandleBase {
   void SetLocalExecScopes(
       const std::unordered_map<Scope *, Scope *> &scope_map);
 
+  void SetIsVariantScope(bool is_variant_scope) {
+    is_variant_scope_ = is_variant_scope;
+  }
+
  protected:
   virtual std::vector<Scope *> GetLocalScopes() = 0;
 
@@ -156,6 +160,12 @@ class OpHandleBase {
 
   std::vector<Scope *> local_exec_scopes_;
   bool skip_running_ = false;
+  // NOTE(Aurelius84): Indicate whether scope held in OpHandle is chanageable.
+  // Ophandle's scope noramlly keep same in most cases, except running
+  // run_program_op from @to_static.
+  // The scope may be chanaged while each training iteration.
+  // See https://github.com/PaddlePaddle/Paddle/pull/32283
+  bool is_variant_scope_ = false;
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   std::unordered_map<int, gpuEvent_t> events_;

@@ -71,11 +71,6 @@ REGISTER_DEVICE_WORKER_CLASS(HeterCpuWorker);
 
 #if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
     (defined PADDLE_WITH_PSLIB)
-REGISTER_DEVICE_WORKER_CLASS(HeterBoxWorker);
-#endif
-
-#if (defined PADDLE_WITH_NCCL || defined PADDLE_WITH_RCCL) && \
-    (defined PADDLE_WITH_PSLIB)
 REGISTER_DEVICE_WORKER_CLASS(PSGPUWorker);
 #endif
 

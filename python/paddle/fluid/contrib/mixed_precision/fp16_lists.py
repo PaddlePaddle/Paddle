@@ -99,6 +99,8 @@ black_list = {
     # fp16 is slower than fp32, though fp16 is supported.
     'lookup_table',
     'lookup_table_v2',
+    # default fp32 can avoid return inf when the sum value large than 65504
+    'reduce_sum',
 }
 
 # This set contains two types of ops. All ops supported fp16 calculation. One 
@@ -148,12 +150,23 @@ gray_list = {
     'c_identity',
     'c_concat',
     'c_allreduce_sum',
+    'concat',
+    'split',
 }
 
 # The set of ops that don't support fp16 calculation
 # lookup_table fp16 is slower than fp32, though fp16 is supported.
-_, _, _sys_unsupported_fp16_list = core.op_supported_infos(
-    'GPU', core.VarDesc.VarType.FP16)
+_sys_unsupported_fp16_list = []
+if core.is_compiled_with_xpu():
+    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
+        'XPU', core.VarDesc.VarType.FP16)
+elif core.is_compiled_with_npu():
+    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
+        'NPU', core.VarDesc.VarType.FP16)
+else:
+    _, _, _sys_unsupported_fp16_list = core.op_supported_infos(
+        'GPU', core.VarDesc.VarType.FP16)
+
 unsupported_fp16_list = {'lookup_table',
                          'lookup_table_v2'} | _sys_unsupported_fp16_list
 

@@ -6,14 +6,26 @@ def {
   outputs {
     name: "Out"
   }
-}
-extra {
   attrs {
     name: "threshold"
     type: FLOAT
   }
+}
+extra {
+  attrs {
+    name: "name"
+    type: STRING
+  }
+  attrs {
+    name: "is_test"
+    type: FLOAT
+  }
   attrs {
     name: "use_mkldnn"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "@ENABLE_CACHE_RUNTIME_CONTEXT@"
     type: BOOLEAN
   }
   attrs {

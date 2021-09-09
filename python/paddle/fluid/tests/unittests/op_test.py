@@ -32,7 +32,7 @@ import paddle.fluid.core as core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, OpProtoHolder, Variable
+from paddle.fluid.framework import Program, OpProtoHolder, Variable, _current_expected_place
 from paddle.fluid.tests.unittests.testsuite import (
     create_op,
     set_input,
@@ -360,7 +360,9 @@ class OpTest(unittest.TestCase):
     def is_bfloat16_op(self):
         return self.dtype == np.uint16 or (
             hasattr(self, 'mkldnn_data_type') and
-            getattr(self, 'mkldnn_data_type') is "bfloat16")
+            getattr(self, 'mkldnn_data_type') is "bfloat16") or (
+                hasattr(self, 'attrs') and 'mkldnn_data_type' in self.attrs and
+                self.attrs['mkldnn_data_type'] == 'bfloat16')
 
     def infer_dtype_from_inputs_outputs(self, inputs, outputs):
         def is_np_data(input):
@@ -1347,7 +1349,8 @@ class OpTest(unittest.TestCase):
         places = self._get_places()
         for place in places:
             res = self.check_output_with_place(place, atol, no_check_set,
-                                               equal_nan, check_dygraph)
+                                               equal_nan, check_dygraph,
+                                               inplace_atol)
             if check_dygraph:
                 outs, dygraph_outs, fetch_list = res
             else:
@@ -1355,8 +1358,10 @@ class OpTest(unittest.TestCase):
             if self.op_type not in compile_vs_runtime_white_list.COMPILE_RUN_OP_WHITE_LIST:
                 self.check_compile_vs_runtime(fetch_list, outs)
 
-    def check_output_customized(self, checker):
+    def check_output_customized(self, checker, custom_place=None):
         places = self._get_places()
+        if custom_place:
+            places.append(custom_place)
         for place in places:
             outs = self.calc_output(place)
             outs = [np.array(out) for out in outs]
@@ -1436,6 +1441,9 @@ class OpTest(unittest.TestCase):
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
         op_attrs = self.attrs if hasattr(self, "attrs") else dict()
 
+        if self.is_bfloat16_op():
+            check_dygraph = False
+
         self._check_grad_helper()
         if self.dtype == np.float64 and \
             self.op_type not in op_threshold_white_list.NEED_FIX_FP64_CHECK_GRAD_THRESHOLD_OP_LIST:
@@ -1484,18 +1492,9 @@ class OpTest(unittest.TestCase):
         if not type(output_names) is list:
             output_names = [output_names]
 
-        # FIXME: Replace numeric_place with place to calculate numeric_grads.
-        # NOTE(liym27): There is an unknown error when call op.run() on NPUPlace, which
-        # needs to be fixed.
-        if hasattr(self.__class__,
-                   "use_npu") and self.__class__.use_npu == True:
-            numeric_place = paddle.CPUPlace()
-        else:
-            numeric_place = place
-
         numeric_grads = user_defined_grads or [
             get_numeric_gradient(
-                numeric_place,
+                place,
                 self.scope,
                 self.op,
                 self.inputs,
@@ -1776,3 +1775,16 @@ class OpTest(unittest.TestCase):
                              fetch_list,
                              scope=scope,
                              return_numpy=False)))
+
+
+class OpTestTool:
+    @classmethod
+    def skip_if(cls, condition: object, reason: str):
+        return unittest.skipIf(condition, reason)
+
+    @classmethod
+    def skip_if_not_cpu_bf16(cls):
+        return OpTestTool.skip_if(
+            not (isinstance(_current_expected_place(), core.CPUPlace) and
+                 core.supports_bfloat16()),
+            "Place does not support BF16 evaluation")

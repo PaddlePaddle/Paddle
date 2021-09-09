@@ -96,6 +96,7 @@ __all__ = [     #noqa
            'set_program_state',
            'cpu_places',
            'cuda_places',
+           'xpu_places',
            'Variable',
            'create_global_var',
            'accuracy',

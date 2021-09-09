@@ -17,7 +17,7 @@ import sys
 import paddle
 from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
-from ...utils.hybrid_parallel_util import fused_allreduce_gradients
+from ...utils.hybrid_parallel_util import fused_allreduce_gradients, sharding_reduce_gradients
 from ...base.topology import ParallelMode
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid import framework
@@ -98,6 +98,9 @@ class HybridParallelOptimizer:
 
         self._need_dp = (self._hcg.get_data_parallel_world_size() > 1)
 
+        self._sharding_enable = (
+            self._hcg.get_sharding_parallel_world_size() > 1)
+
         if isinstance(self._inner_opt._grad_clip,
                       ClipGradByGlobalNorm) and not self._use_dp_mode:
             logger.warning("using ClipGradByGlobalNorm in TensorParallel, the origin " \
@@ -108,6 +111,11 @@ class HybridParallelOptimizer:
     @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
+        # Here should use global parameter list 
+        if self._sharding_enable:
+            sharding_reduce_gradients(
+                list(self._inner_opt._parameter_list), self._hcg)
+
         if not self._use_dp_mode and self._need_dp:
             fused_allreduce_gradients(
                 list(self._inner_opt._parameter_list), self._hcg)
@@ -119,15 +127,19 @@ class HybridParallelOptimizer:
                  startup_program=None,
                  parameters=None,
                  no_grad_set=None):
-        assert isinstance(loss, Variable), "The loss should be an Tensor."
 
         parameter_list = parameters if parameters \
-            else self._parameter_list
+            else self._inner_opt._parameter_list
+
+        # Here should use global parameter list 
+        if self._sharding_enable:
+            sharding_reduce_gradients(
+                list(self._inner_opt._parameter_list), self._hcg)
 
         if not self._use_dp_mode and self._need_dp:
             fused_allreduce_gradients(list(parameter_list), self._hcg)
 
-        return self._inner_opt.minimize(loss, startup_program, parameters,
+        return self._inner_opt.minimize(loss, startup_program, parameter_list,
                                         no_grad_set)
 
     def __getattr__(self, item):

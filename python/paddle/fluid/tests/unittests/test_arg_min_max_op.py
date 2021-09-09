@@ -92,7 +92,7 @@ class TestCase4(BaseTestCase):
         self.axis = 0
 
 
-class TestCase3(BaseTestCase):
+class TestCase3_(BaseTestCase):
     def initTestCase(self):
         self.op_type = 'arg_max'
         self.dims = (3, )

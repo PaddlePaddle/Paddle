@@ -10,12 +10,12 @@ def {
     name: "axis"
     type: INT
   }
+}
+extra {
   attrs {
     name: "data_format"
     type: STRING
   }
-}
-extra {
   attrs {
     name: "op_role"
     type: INT

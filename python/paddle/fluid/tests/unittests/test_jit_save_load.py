@@ -1155,7 +1155,12 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
         self.assertTrue(float(((result_01 - result_11)).abs().max()) < 1e-5)
 
 
-class TestJitSaveLoadFunction(unittest.TestCase):
+# NOTE(weixin): When there are multiple test functions in an 
+# `unittest.TestCase`, functions will affect each other, 
+# and there is a risk of random failure. 
+# So divided into three TestCase: TestJitSaveLoadFunctionCase1, 
+# TestJitSaveLoadFunctionCase2, TestJitSaveLoadFunctionCase3.
+class TestJitSaveLoadFunctionCase1(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
 
@@ -1174,6 +1179,11 @@ class TestJitSaveLoadFunction(unittest.TestCase):
         load_result = load_func(inps)
         self.assertTrue((load_result - origin).abs().max() < 1e-10)
 
+
+class TestJitSaveLoadFunctionCase2(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
     def test_jit_save_load_function_input_spec(self):
         @paddle.jit.to_static(input_spec=[
             InputSpec(
@@ -1190,6 +1200,11 @@ class TestJitSaveLoadFunction(unittest.TestCase):
         load_func = paddle.jit.load(path)
         load_result = load_func(inps)
         self.assertTrue((load_result - origin).abs().max() < 1e-10)
+
+
+class TestJitSaveLoadFunctionCase3(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
 
     def test_jit_save_load_function_function(self):
         def fun(inputs):
@@ -1210,6 +1225,99 @@ class TestJitSaveLoadFunction(unittest.TestCase):
 
         load_result = load_func(inps)
         self.assertTrue((load_result - origin).abs().max() < 1e-10)
+
+
+class TestJitSaveLoadFunctionWithParamCase1(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_function(self):
+        class LinearNet(paddle.nn.Layer):
+            def __init__(self):
+                super(LinearNet, self).__init__()
+                self._linear = paddle.nn.Linear(5, 6)
+
+            def forward(self, x):
+                return paddle.tanh(x)
+
+            def anothor_forward(self, x):
+                return self._linear(x)
+
+        layer = LinearNet()
+
+        inps = paddle.rand([3, 5])
+        origin = layer.anothor_forward(inps)
+
+        func = paddle.jit.to_static(
+            layer.anothor_forward, [paddle.static.InputSpec(shape=[-1, 5])])
+        path = 'test_jit_save_load_function_with_params_case1/func'
+        paddle.jit.save(func, path)
+        load_func = paddle.jit.load(path)
+
+        load_result = load_func(inps)
+        self.assertTrue(np.array_equal(load_result.numpy(), origin.numpy()))
+
+
+class TestJitSaveLoadFunctionWithParamCase2(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_function(self):
+        class LinearNet(paddle.nn.Layer):
+            def __init__(self):
+                super(LinearNet, self).__init__()
+                self._linear = paddle.nn.Linear(5, 6)
+
+            def forward(self, x):
+                return paddle.tanh(x)
+
+            @paddle.jit.to_static(input_spec=[InputSpec(shape=[-1, 5])])
+            def anothor_forward(self, x):
+                return self._linear(x)
+
+        layer = LinearNet()
+
+        inps = paddle.rand([3, 5])
+
+        path = 'test_jit_save_load_function_with_params_case2/func'
+        paddle.jit.save(layer.anothor_forward, path)
+        origin_result = layer.anothor_forward(inps)
+        load_func = paddle.jit.load(path)
+
+        load_result = load_func(inps)
+
+        self.assertTrue(
+            np.array_equal(origin_result.numpy(), load_result.numpy()))
+
+
+class TestJitSaveLoadFunctionWithParamCase3(unittest.TestCase):
+    def setUp(self):
+        paddle.disable_static()
+
+    def test_jit_save_load_function(self):
+        class LinearNet(paddle.nn.Layer):
+            def __init__(self):
+                super(LinearNet, self).__init__()
+                self._linear = paddle.nn.Linear(5, 6)
+
+            def forward(self, x):
+                return paddle.tanh(x)
+
+            @paddle.jit.to_static
+            def anothor_forward(self, x):
+                return self._linear(x)
+
+        layer = LinearNet()
+
+        inps = paddle.rand([3, 5])
+        origin = layer.anothor_forward(inps)
+
+        path = 'test_jit_save_load_function_with_params_case3/func'
+        paddle.jit.save(layer.anothor_forward, path)
+        load_func = paddle.jit.load(path)
+
+        load_result = load_func(inps)
+        self.assertTrue(np.array_equal(load_result.numpy(), origin.numpy()))
 
 
 class TestJitSaveLoadDataParallel(unittest.TestCase):

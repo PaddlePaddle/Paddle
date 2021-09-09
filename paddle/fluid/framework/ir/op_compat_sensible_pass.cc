@@ -19,6 +19,15 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_def_api.h"
 #include "paddle/fluid/framework/op_info.h"
 
+namespace {
+std::unordered_set<std::string> global_extra_attrs = {
+    "op_role",       "op_role_var",      "op_namescope",
+    "op_callstack",  "op_device",        "@ENABLE_CACHE_RUNTIME_CONTEXT@",
+    "is_test",       "use_mkldnn",       "mkldnn_data_type",
+    "use_quantizer", "mkldnn_data_type", "use_cudnn",
+    "name"};
+}
+
 namespace paddle {
 namespace framework {
 namespace ir {
@@ -63,19 +72,29 @@ AttrCompat& AttrCompat::IsIntIn(const std::set<int>& candidates) {
 AttrCompat& AttrCompat::IsLeftDefault() {
   const std::string& op_name = op_compat_->Name();
   if (!OpInfoMap::Instance().Has(op_name)) {
-    LOG(WARNING) << "Op (" << op_name << ") is not registered!";
-    conditions_.emplace_back([](const Attribute& attr) { return false; });
+    conditions_.emplace_back([=](const Attribute& attr) {
+      LOG(WARNING) << "Op (" << op_name << ") is not find in op library!";
+      return false;
+    });
     return *this;
   }
   const OpInfo& op_info = OpInfoMap::Instance().Get(op_name);
   const AttributeMap attrs = op_info.Checker()->GetDefaultAttrsMap();
   if (attrs.find(attr_name_) == attrs.end()) {
-    LOG(WARNING) << "Op (" << op_name << ") has no default attr:" << attr_name_;
-    conditions_.emplace_back([](const Attribute& attr) { return false; });
+    conditions_.emplace_back([=](const Attribute& attr) {
+      LOG(WARNING) << "Op (" << op_name
+                   << ") has no default attr:" << attr_name_;
+      return false;
+    });
   } else {
     Attribute default_attr = attrs.at(attr_name_);
-    conditions_.emplace_back([default_attr](const Attribute& attr) -> bool {
-      return attr == default_attr;
+    conditions_.emplace_back([=](const Attribute& attr) -> bool {
+      if (attr == default_attr) {
+        return true;
+      }
+      LOG(WARNING) << "Attribute:(" << attr_name_ << ") of Op (" << op_name
+                   << ") not equal to default value!";
+      return false;
     });
   }
   return *this;
@@ -158,28 +177,39 @@ InputOrOutputCompat& OpCompat::AddOutput(const std::string& name) {
   return output_compats_.at(name);
 }
 
-bool OpCompat::Judge(const OpDesc& op_desc) {
+bool OpCompat::Judge(const OpDesc& op_desc, const std::string& pass_name) {
   if (is_first_judge_) {
     is_first_judge_ = false;
+    if (OpInfoMap::Instance().Has(op_name_)) {
+      auto& info = OpInfoMap::Instance().Get(op_name_);
+      if (info.proto_) {
+        for (const proto::OpProto::Attr& attr : info.proto_->attrs()) {
+          attrs_set_.emplace(attr.name());
+        }
+      }
+    }
     const proto::OpDef& op_def = GetOpDef(op_name_);
     if (op_def.has_extra()) {
       for (const proto::OpDef_AttrDef& attr : op_def.extra().attrs()) {
-        extra_attrs_.emplace(attr.name());
+        attrs_set_.erase(attr.name());
       }
     }
-  }
-
-  for (auto& attr_map : op_desc.GetAttrMap()) {
-    if (attr_compats_.find(attr_map.first) == attr_compats_.end()) {
-      if (extra_attrs_.find(attr_map.first) != extra_attrs_.end()) {
-        continue;
+    for (const std::string& attr : global_extra_attrs) {
+      attrs_set_.erase(attr);
+    }
+    for (const std::string& attr : attrs_set_) {
+      if (attr_compats_.find(attr) == attr_compats_.end()) {
+        attr_compats_.emplace(attr, AttrCompat(attr, this).IsLeftDefault());
       }
-      if (!AttrCompat(attr_map.first, this).IsLeftDefault()(op_desc)) {
-        LOG(WARNING)
-            << "The Attr(" << attr_map.first << ") of Op (" << op_name_
-            << ") not reigistered in OpCompat, not in extra attribute, not "
-               "equal to default value!";
-        return false;
+    }
+    for (auto& attr_compat : attr_compats_) {
+      if (attrs_set_.find(attr_compat.first) == attrs_set_.end()) {
+        LOG(WARNING) << " Attribute(" << attr_compat.first << ") of Op("
+                     << op_name_
+                     << ") is not defined in opProto or is in extra set!"
+                     << "The compatable check for this attribute is not use."
+                     << " Please remove it from the precondition of pass: "
+                     << pass_name.c_str();
       }
     }
   }
@@ -187,7 +217,8 @@ bool OpCompat::Judge(const OpDesc& op_desc) {
   for (auto& attr_compat : attr_compats_) {
     if (!attr_compat.second(op_desc)) {
       LOG(WARNING) << " Check the Attr(" << attr_compat.first << ") of Op("
-                   << op_name_ << ") failed!";
+                   << op_name_ << ") in pass(" << pass_name.c_str()
+                   << ") failed!";
       return false;
     }
   }
@@ -273,7 +304,7 @@ bool OpCompatSensiblePass::IsCompat(
       continue;
     }
     auto& judger = *op_compat_judgers_.at(op_type);
-    if (!judger.Judge(*(node_pair.second->Op()))) {
+    if (!judger.Judge(*(node_pair.second->Op()), Type())) {
       return false;
     }
   }

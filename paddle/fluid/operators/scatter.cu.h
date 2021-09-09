@@ -33,6 +33,14 @@ __global__ void ScatterInitCUDAKernel(const IndexT* indices, T* output,
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
+
+    PADDLE_ENFORCE(scatter_i >= 0,
+                   "The index is out of bounds, "
+                   "please check whether the dimensions of index and "
+                   "input meet the requirements. It should "
+                   "be greater than or equal to 0, but received [%d]",
+                   scatter_i);
+
     IndexT out_i = scatter_i * slice_size + slice_i;
     *(output + out_i) = static_cast<T>(0);
   }
@@ -46,6 +54,14 @@ __global__ void ScatterCUDAKernel(const T* params, const IndexT* indices,
     int indices_i = i / slice_size;
     int slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT scatter_i = indices[indices_i];
+
+    PADDLE_ENFORCE(scatter_i >= 0,
+                   "The index is out of bounds, "
+                   "please check whether the dimensions of index and "
+                   "input meet the requirements. It should "
+                   "be greater than or equal to 0, but received [%d]",
+                   scatter_i);
+
     IndexT out_i = scatter_i * slice_size + slice_i;
     if (overwrite) {
       *(output + out_i) = *(params + i);
@@ -67,6 +83,15 @@ __global__ void ScatterNdCUDAKernel(const T* update, const IndexT* indices,
     int64_t temp = slice_size;
     for (int64_t j = end_size - 1; j >= 0; --j) {
       IndexT index_value = indices[indices_i * end_size + j];
+
+      PADDLE_ENFORCE(
+          index_value >= 0 && index_value < output_dims[j],
+          "The index is out of bounds, "
+          "please check whether the dimensions of index and "
+          "input meet the requirements. It should "
+          "be less than [%d] and greater or equal to 0, but received [%d]",
+          output_dims[j], index_value);
+
       gather_i += (index_value * temp);
       temp *= output_dims[j];
     }

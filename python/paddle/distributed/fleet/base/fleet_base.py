@@ -18,7 +18,7 @@ import warnings
 import paddle
 import os
 import numpy as np
-from paddle.fluid.framework import dygraph_only
+from paddle.fluid.framework import dygraph_only, _global_flags
 from paddle.fluid import compiler
 from .role_maker import UserDefinedRoleMaker, PaddleCloudRoleMaker, RoleMakerBase
 from .strategy_compiler import StrategyCompiler
@@ -27,14 +27,42 @@ from .meta_optimizer_factory import MetaOptimizerFactory
 from .runtime_factory import RuntimeFactory
 from paddle.fluid.wrapped_decorator import wrap_decorator
 from paddle.fluid.dygraph import parallel_helper
+from paddle.fluid.ir import apply_build_strategy
 from . import topology as tp
 from .topology import ParallelMode
 from ..meta_parallel import TensorParallel, model_parallel_random_seed
-from ..meta_parallel import PipelineParallel
+from ..meta_parallel import PipelineParallel, ShardingParallel
 from ..meta_optimizers import HybridParallelOptimizer
 from ..meta_optimizers import HybridParallelGradScaler
 
 __all__ = []
+
+
+def apply_ir_passes(main_program, startup_program, config):
+    build_strategy = config._user_defined_strategy.build_strategy._copy()
+    if not _global_flags()['FLAGS_apply_pass_to_program']:
+        return build_strategy
+
+    pipeline_opt = getattr(main_program, "_pipeline_opt", {})
+    if pipeline_opt:
+        main_program = pipeline_opt["section_program"]
+        startup_program = startup_program._pipeline_opt["startup_program"]
+
+    pass_attrs = {"use_cuda": config._is_collective}
+    fuse_all_reduce = config._user_defined_strategy.fuse_all_reduce_ops
+    if fuse_all_reduce and build_strategy.fuse_all_optimizer_ops:
+        # FIXME(zjl): currently, fuse_all_optimizer_ops
+        # have conflict with fuse_all_reduce_ops because 
+        # RawProgramOptimizer also inserts coalesce_tensor 
+        # into program. These two procedures may conflict  
+        # in which vars are to be fused. 
+        warnings.warn(
+            'Currently, the fuse_all_optimizer_ops pass has conflict with fuse_all_reduce_ops pass. Disable the fuse_all_optimizer_ops pass temporarily.'
+        )
+        build_strategy.fuse_all_optimizer_ops = False
+
+    return apply_build_strategy(main_program, startup_program, build_strategy,
+                                pass_attrs)
 
 
 def _inited_runtime_handler_(func):
@@ -269,11 +297,27 @@ class Fleet(object):
             cg.set_comm_group('global', global_rank, global_world_size,
                               global_ring_id, global_ranks)
 
-            # hybrid group
-            if use_sharding is False: return
+            use_tensor_parallel = self._user_defined_strategy.tensor_parallel
+            use_mp = use_sharding or use_tensor_parallel
 
-            sharding_configs = self._user_defined_strategy.sharding_configs
-            mp_degree = int(sharding_configs['mp_degree'])
+            # hybrid group
+            if use_mp is False: return
+
+            mp_degree_sharding = 1
+            mp_degree_tensor_parallel = 1
+            if use_sharding:
+                sharding_configs = self._user_defined_strategy.sharding_configs
+                mp_degree_sharding = int(sharding_configs['mp_degree'])
+
+            if use_tensor_parallel:
+                tensor_parallel_configs = self._user_defined_strategy.tensor_parallel_configs
+                mp_degree_tensor_parallel = int(tensor_parallel_configs[
+                    'tensor_parallel_degree'])
+
+            if use_sharding and use_tensor_parallel:
+                assert mp_degree_sharding == mp_degree_tensor_parallel
+
+            mp_degree = mp_degree_sharding if use_sharding else mp_degree_tensor_parallel
 
             if mp_degree > 1:
                 assert global_world_size % mp_degree == 0
@@ -295,9 +339,11 @@ class Fleet(object):
         self.dp_degree = self.hybrid_configs["dp_degree"]
         self.mp_degree = self.hybrid_configs["mp_degree"]
         self.pp_degree = self.hybrid_configs["pp_degree"]
+        self.sharding_degree = self.hybrid_configs["sharding_degree"]
 
         assert self.mp_degree >= 0, "mp_degree should be greater or equal to 0"
         assert self.pp_degree >= 0, "pp_degree should be greater or equal to 0"
+        assert self.sharding_degree >= 0, "sharding_degree should be greater or equal to 0"
 
         self.mp_degree = max(self.mp_degree, 1)
         self.pp_degree = max(self.pp_degree, 1)
@@ -309,8 +355,11 @@ class Fleet(object):
         self.dp_degree = max(self.dp_degree, 1)
 
         self._topology = tp.CommunicateTopology(
-            hybrid_group_names=["data", "pipe", "model"],
-            dims=[self.dp_degree, self.pp_degree, self.mp_degree])
+            hybrid_group_names=["data", "pipe", "sharding", "model"],
+            dims=[
+                self.dp_degree, self.pp_degree, self.sharding_degree,
+                self.mp_degree
+            ])
 
         self._hcg = tp.HybridCommunicateGroup(self._topology)
 
@@ -886,7 +935,11 @@ class Fleet(object):
         assert model is not None, "model should not be None"
         if self.worker_num() <= 1:
             return model
-        if self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
+
+        if self._hcg.get_parallel_mode() == ParallelMode.SHARDING_PARALLEL:
+            distributed_model = ShardingParallel(
+                model, self._hcg, strategy=self._user_defined_strategy)
+        elif self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
             distributed_model = paddle.DataParallel(
                 model,
                 comm_buffer_size=self._user_defined_strategy.
@@ -901,6 +954,7 @@ class Fleet(object):
         elif self._hcg.get_parallel_mode() == ParallelMode.PIPELINE_PARALLEL:
             distributed_model = PipelineParallel(
                 model, self._hcg, strategy=self._user_defined_strategy)
+
         return distributed_model
 
     @dygraph_only
@@ -1354,6 +1408,14 @@ class Fleet(object):
         context["origin_startup_program"] = startup_program
         context["role_maker"] = self._role_maker
 
+        # Use the auto-parallel's routines instead
+        if self._user_defined_strategy.semi_auto:
+            from ...auto_parallel.parallelizer import AutoParallelizer
+            auto_parallelizer = AutoParallelizer(self)
+            optimize_ops, params_grads, dist_startup_prog, dist_main_prog = auto_parallelizer.parallelize(
+                loss, startup_program, parameter_list, no_grad_set)
+            return optimize_ops, params_grads, dist_startup_prog, dist_main_prog
+
         # compile time
         distributed_optimizer_list = \
             MetaOptimizerFactory()._get_valid_meta_optimizers(
@@ -1449,6 +1511,16 @@ class Fleet(object):
             # i.e. users can not modify current computation graph anymore
             context["graph_optimize_ops"] = optimize_ops
             context["graph_optimize_grads"] = params_grads
+        else:
+            apply_ir_passes(loss.block.program, startup_program, self)
+
+        program = paddle.static.default_main_program()
+        opt_info = {}
+        opt_info["mpi_size"] = self.worker_num()
+        opt_info["mpi_rank"] = self.worker_index()
+        for k, v in self._user_defined_strategy.trainer_desc_configs.items():
+            opt_info[k] = v
+        program._fleet_opt = opt_info
 
         if self._runtime_handle is None:
             self._runtime_handle = RuntimeFactory()._create_runtime(context)

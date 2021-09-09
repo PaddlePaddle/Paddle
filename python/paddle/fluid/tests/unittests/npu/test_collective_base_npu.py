@@ -27,6 +27,7 @@ from contextlib import closing
 import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
+from six import string_types
 
 
 class TestCollectiveRunnerBase(object):

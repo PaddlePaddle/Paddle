@@ -44,6 +44,8 @@ from .linalg import cholesky  # noqa: F401
 from .linalg import bmm  # noqa: F401
 from .linalg import histogram  # noqa: F401
 from .linalg import mv  # noqa: F401
+from .linalg import matrix_power  # noqa: F401
+from .linalg import svd  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
@@ -88,6 +90,7 @@ from .manipulation import squeeze_  # noqa: F401
 from .manipulation import stack  # noqa: F401
 from .manipulation import strided_slice  # noqa: F401
 from .manipulation import unique  # noqa: F401
+from .manipulation import unique_consecutive  # noqa: F401
 from .manipulation import unsqueeze  # noqa: F401
 from .manipulation import unsqueeze_  # noqa: F401
 from .manipulation import unstack  # noqa: F401
@@ -178,6 +181,7 @@ from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
 from .random import normal  # noqa: F401
 from .random import uniform  # noqa: F401
+from .random import uniform_  # noqa: F401
 from .random import randn  # noqa: F401
 from .random import rand  # noqa: F401
 from .random import randint  # noqa: F401
@@ -204,6 +208,8 @@ from .array import array_read  # noqa: F401
 from .array import array_write  # noqa: F401
 from .array import create_array  # noqa: F401
 
+from .einsum import einsum  # noqa: F401
+
 #this list used in math_op_patch.py for _binary_creator_
 tensor_method_func  = [ #noqa
            'matmul',
@@ -217,6 +223,8 @@ tensor_method_func  = [ #noqa
            'bmm',
            'histogram',
            'mv',
+           'matrix_power',
+           'svd',
            'abs',
            'acos',
            'all',
@@ -331,6 +339,7 @@ tensor_method_func  = [ #noqa
            'strided_slice',
            'transpose',
            'unique',
+           'unique_consecutive',
            'unsqueeze',
            'unsqueeze_',
            'unstack',
@@ -358,13 +367,14 @@ tensor_method_func  = [ #noqa
            'real',
            'imag',
            'digamma',
-           'diagonal'
-           'trunc'
+           'diagonal',
+           'trunc',
            'bitwise_and',
            'bitwise_or',
            'bitwise_xor',
            'bitwise_not',
            'broadcast_tensors',
+           'uniform_',
 ]
 
 #this list used in math_op_patch.py for magic_method bind

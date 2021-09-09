@@ -49,11 +49,17 @@ void BasicEngine::Init(
           "the size of tensors is %s, but the size of grad_tensors is %s.",
           tensors.size(), grad_tensors.size()));
 
+  PADDLE_ENFORCE_EQ(accumulators_.empty(), true,
+                    platform::errors::AlreadyExists(
+                        "Accumulators are not empty before preparing it for "
+                        "backward network execution."));
+
   for (size_t i = 0; i < tensors.size(); ++i) {
     auto var = tensors[i];
     auto grad_tensor = grad_tensors[i];
 
     auto init_node = var->GradVarBase()->GradNode();
+
     PADDLE_ENFORCE_EQ(
         var->GradVarBase()->GraphIsFreed(), false,
         platform::errors::Unavailable(
@@ -99,6 +105,16 @@ void BasicEngine::Init(
       paddle::framework::TensorCopy(
           grad_tensor->Var().Get<framework::LoDTensor>(), fwd_var.place(),
           *dev_ctx, grad_var);
+    }
+
+    VariableWrapper* init_grad_var = var->GradVarBase()->SharedVar().get();
+    auto& accumulator = accumulators_[init_grad_var];
+    if (!accumulator) {
+      if (FLAGS_sort_sum_gradient) {
+        accumulator.reset(new SortedGradientAccumulator(init_grad_var));
+      } else {
+        accumulator.reset(new EagerGradientAccumulator(init_grad_var));
+      }
     }
 
     init_nodes_.push_back(init_node);
@@ -237,10 +253,6 @@ void BasicEngine::PrepareDeps() {
       node_deps_.empty(), true,
       platform::errors::AlreadyExists("Op deps are not empty before preparing "
                                       "it for backward network execution."));
-  PADDLE_ENFORCE_EQ(accumulators_.empty(), true,
-                    platform::errors::AlreadyExists(
-                        "Accumulators are not empty before preparing it for "
-                        "backward network execution."));
   PADDLE_ENFORCE_EQ(accumulators_with_grad_node_.empty(), true,
                     platform::errors::AlreadyExists(
                         "Accumulators with grad_node as the key are not empty "
@@ -302,6 +314,68 @@ static std::shared_ptr<NameVarMap<VariableWrapper>> CallGradientHooks(
   return tmp_ins_ptr;
 }
 
+static bool IsInputCanInplace(const std::shared_ptr<VariableWrapper>& var) {
+  auto* inner_var = var->MutableVar();
+  if (inner_var->IsInitialized() && inner_var->IsType<framework::LoDTensor>()) {
+    auto tensor = inner_var->GetMutable<framework::LoDTensor>();
+    if (tensor->IsInitialized()) {
+      return true;
+    }
+  }
+  return false;
+}
+
+static void PerformBackwardInplace(const std::string& op_type,
+                                   const NameVarMap<VariableWrapper>& ins,
+                                   NameVarMap<VariableWrapper>* outs) {
+  auto& infer_inplace =
+      paddle::framework::OpInfoMap::Instance().Get(op_type).infer_inplace_;
+
+  if (infer_inplace) {
+    auto in_to_outs = infer_inplace(true);
+    for (auto& pair : in_to_outs) {
+      framework::LoDTensor *in_tensor = nullptr, *out_tensor = nullptr;
+      for (auto& p : ins) {
+        if (p.first == pair.first) {
+          // has at least one var
+          if (p.second.size() > 0 && p.second[0]) {
+            auto& in_var = p.second[0];
+            VLOG(10) << p.first << " use_count: " << in_var.use_count();
+            // the refcount of var to be inplaced should be 1
+            if (in_var.use_count() == 1) {
+              if (IsInputCanInplace(in_var)) {
+                in_tensor =
+                    in_var->MutableVar()->GetMutable<framework::LoDTensor>();
+              }
+            }
+          }
+        }
+      }
+      if (!in_tensor) {
+        continue;
+      }
+      for (auto& p : *outs) {
+        if (p.first == pair.second) {
+          if (p.second.size() > 0 && p.second[0]) {
+            auto& out_var = p.second[0];
+            if (out_var->Type() == framework::proto::VarType::LOD_TENSOR) {
+              out_tensor =
+                  out_var->MutableVar()->GetMutable<framework::LoDTensor>();
+            }
+          }
+        }
+      }
+      if (!out_tensor) {
+        continue;
+      }
+      out_tensor->ShareBufferWith(*in_tensor);
+      out_tensor->Resize(in_tensor->dims());
+      VLOG(4) << "Inplace performed in op " << op_type << ": " << pair.second
+              << " -> " << pair.first;
+    }
+  }
+}
+
 void BasicEngine::Execute() {
   if (init_nodes_.empty()) {
     return;
@@ -311,7 +385,9 @@ void BasicEngine::Execute() {
   // Start execute Computation graph
   std::queue<std::shared_ptr<GradOpNode>> q;
   for (size_t i = 0; i < init_nodes_.size(); ++i) {
-    q.push(std::move(init_nodes_[i]));
+    if (node_deps_[init_nodes_[i].get()] == 0) {
+      q.push(std::move(init_nodes_[i]));
+    }
   }
 
   size_t op_num = 0;
@@ -468,6 +544,10 @@ void BasicEngine::Execute() {
        *   hold hooks
        */
       auto tmp_ins_ptr = CallGradientHooks(bwd_ins, cur_op.Type());
+
+      if (!tmp_ins_ptr) {
+        PerformBackwardInplace(cur_op.Type(), bwd_ins, &tmp_outs);
+      }
 
       {
         VLOG(3) << "Start to execute grad op " << cur_op.Type();

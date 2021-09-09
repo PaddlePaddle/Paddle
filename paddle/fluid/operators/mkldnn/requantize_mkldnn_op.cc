@@ -84,12 +84,10 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
       auto src_dt = framework::ToMKLDNNDataType(input->type());
       auto dst_dt = with_shift ? framework::MKLDNNDataType::u8 : src_dt;
 
-      auto src_md =
-          platform::MKLDNNMemDesc({src_tz}, src_dt, MKLDNNMemoryFormat::nhwc);
+      auto src_md = platform::MKLDNNMemDesc({src_tz}, src_dt, input->format());
       src_memory = std::make_shared<dnnl::memory>(src_md, engine,
                                                   to_void_cast<T>(input_data));
-      auto dst_md =
-          platform::MKLDNNMemDesc({dst_tz}, dst_dt, MKLDNNMemoryFormat::nhwc);
+      auto dst_md = platform::MKLDNNMemDesc({dst_tz}, dst_dt, input->format());
 
       dnnl::primitive_attr attri;
       int mask = 0;

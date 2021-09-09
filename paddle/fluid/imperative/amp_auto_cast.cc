@@ -33,7 +33,8 @@ AmpOperators::AmpOperators()
   for (auto it = all_kernels.begin(); it != all_kernels.end(); it++) {
     bool supported = false;
     for (auto& kernel_type : it->second) {
-      if (platform::is_gpu_place(kernel_type.first.place_) &&
+      if ((platform::is_gpu_place(kernel_type.first.place_) ||
+           platform::is_xpu_place(kernel_type.first.place_)) &&
           kernel_type.first.data_type_ == fp16_dtype) {
         supported = true;
       }
@@ -91,7 +92,8 @@ inline std::string GetDtypeStr(
 
 inline bool NeedCast(const std::shared_ptr<VarBase>& var) {
   if (platform::is_gpu_place(var->Place()) ||
-      platform::is_cuda_pinned_place(var->Place())) {
+      platform::is_cuda_pinned_place(var->Place()) ||
+      platform::is_xpu_place(var->Place())) {
     // CudaPinndePlace is added for varbase created by dataloader
     if (var->DataType() == framework::proto::VarType::FP32 ||
         var->DataType() == framework::proto::VarType::FP16) {

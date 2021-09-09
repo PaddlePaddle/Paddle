@@ -117,6 +117,94 @@ using PvInstance = PvInstanceObject*;
 
 inline PvInstance make_pv_instance() { return new PvInstanceObject(); }
 
+struct SlotConf {
+  std::string name;
+  std::string type;
+  int use_slots_index;
+  int use_slots_is_dense;
+};
+
+class CustomParser {
+ public:
+  CustomParser() {}
+  virtual ~CustomParser() {}
+  virtual void Init(const std::vector<SlotConf>& slots) = 0;
+  virtual void ParseOneInstance(const char* str, Record* instance) = 0;
+};
+
+typedef paddle::framework::CustomParser* (*CreateParserObjectFunc)();
+
+class DLManager {
+  struct DLHandle {
+    void* module;
+    paddle::framework::CustomParser* parser;
+  };
+
+ public:
+  DLManager() {}
+
+  ~DLManager() {
+#ifdef _LINUX
+    std::lock_guard<std::mutex> lock(mutex_);
+    for (auto it = handle_map_.begin(); it != handle_map_.end(); ++it) {
+      delete it->second.parser;
+      dlclose(it->second.module);
+    }
+#endif
+  }
+
+  bool Close(const std::string& name) {
+#ifdef _LINUX
+    auto it = handle_map_.find(name);
+    if (it == handle_map_.end()) {
+      return true;
+    }
+    delete it->second.parser;
+    dlclose(it->second.module);
+#endif
+    VLOG(0) << "Not implement in windows";
+    return false;
+  }
+
+  paddle::framework::CustomParser* Load(const std::string& name,
+                                        const std::vector<SlotConf>& conf) {
+#ifdef _LINUX
+    std::lock_guard<std::mutex> lock(mutex_);
+    DLHandle handle;
+    std::map<std::string, DLHandle>::iterator it = handle_map_.find(name);
+    if (it != handle_map_.end()) {
+      return it->second.parser;
+    }
+
+    handle.module = dlopen(name.c_str(), RTLD_NOW);
+    if (handle.module == nullptr) {
+      VLOG(0) << "Create so of " << name << " fail";
+      return nullptr;
+    }
+
+    CreateParserObjectFunc create_parser_func =
+        (CreateParserObjectFunc)dlsym(handle.module, "CreateParserObject");
+    handle.parser = create_parser_func();
+    handle.parser->Init(conf);
+    handle_map_.insert({name, handle});
+
+    return handle.parser;
+#endif
+    VLOG(0) << "Not implement in windows";
+    return nullptr;
+  }
+
+  paddle::framework::CustomParser* ReLoad(const std::string& name,
+                                          const std::vector<SlotConf>& conf) {
+    Close(name);
+    return Load(name, conf);
+  }
+
+ private:
+  std::mutex mutex_;
+  std::map<std::string, DLHandle> handle_map_;
+};
+
 class DataFeed {
  public:
   DataFeed() {
@@ -252,6 +340,8 @@ class DataFeed {
   bool finish_set_filelist_;
   bool finish_start_;
   std::string pipe_command_;
+  std::string so_parser_name_;
+  std::vector<SlotConf> slot_conf_;
   std::vector<std::string> ins_id_vec_;
   std::vector<std::string> ins_content_vec_;
   platform::Place place_;
@@ -324,11 +414,15 @@ class InMemoryDataFeed : public DataFeed {
   virtual void SetEnablePvMerge(bool enable_pv_merge);
   virtual void SetCurrentPhase(int current_phase);
   virtual void LoadIntoMemory();
+  virtual void LoadIntoMemoryFromSo();
 
  protected:
   virtual bool ParseOneInstance(T* instance) = 0;
   virtual bool ParseOneInstanceFromPipe(T* instance) = 0;
+  virtual void ParseOneInstanceFromSo(const char* str, T* instance,
+                                      CustomParser* parser) {}
   virtual void PutToFeedVec(const std::vector<T>& ins_vec) = 0;
+  virtual void PutToFeedVec(const T* ins_vec, int num) = 0;
 
   int thread_id_;
   int thread_num_;
@@ -346,6 +440,11 @@ class InMemoryDataFeed : public DataFeed {
   paddle::framework::ChannelObject<PvInstance>* input_pv_channel_;
   paddle::framework::ChannelObject<PvInstance>* output_pv_channel_;
   paddle::framework::ChannelObject<PvInstance>* consume_pv_channel_;
+
+  std::vector<std::pair<int, int>> batch_offsets_;
+  uint64_t offset_index_ = 0;
+  bool enable_heterps_ = false;
+  T* records_ = nullptr;
 };
 
 // This class define the data type of instance(ins_vec) in MultiSlotDataFeed
@@ -508,7 +607,7 @@ paddle::framework::Archive<AR>& operator>>(paddle::framework::Archive<AR>& ar,
   for (size_t& x : offset) {
     uint64_t t;
     ar >> t;
-    x = (size_t)t;
+    x = static_cast<size_t>(t);
   }
 #endif
   ar >> ins.MutableFloatData();
@@ -684,13 +783,21 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   MultiSlotInMemoryDataFeed() {}
   virtual ~MultiSlotInMemoryDataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc);
+  void SetRecord(Record* records) { records_ = records; }
+  int GetDefaultBatchSize() { return default_batch_size_; }
+  void AddBatchOffset(const std::pair<int, int>& offset) {
+    batch_offsets_.push_back(offset);
+  }
 
  protected:
   virtual bool ParseOneInstance(Record* instance);
   virtual bool ParseOneInstanceFromPipe(Record* instance);
+  virtual void ParseOneInstanceFromSo(const char* str, Record* instance,
+                                      CustomParser* parser);
   virtual void PutToFeedVec(const std::vector<Record>& ins_vec);
   virtual void GetMsgFromLogKey(const std::string& log_key, uint64_t* search_id,
                                 uint32_t* cmatch, uint32_t* rank);
+  virtual void PutToFeedVec(const Record* ins_vec, int num);
   std::vector<std::vector<float>> batch_float_feasigns_;
   std::vector<std::vector<uint64_t>> batch_uint64_feasigns_;
   std::vector<std::vector<size_t>> offset_;

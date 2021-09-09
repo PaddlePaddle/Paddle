@@ -17,6 +17,18 @@ extra {
     type: BOOLEAN
   }
   attrs {
+    name: "name"
+    type: STRING
+  }
+  attrs {
+    name: "@ENABLE_CACHE_RUNTIME_CONTEXT@"
+    type: BOOLEAN
+  }
+  attrs {
+    name: "is_test"
+    type: BOOLEAN
+  }
+  attrs {
     name: "op_role"
     type: INT
   }

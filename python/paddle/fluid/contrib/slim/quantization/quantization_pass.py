@@ -133,6 +133,7 @@ _op_real_in_out_name = {
     "pad2d": [["X"], ["Out"]],
     "flatten": [["X"], ["Out"]],
     "flatten2": [["X"], ["Out"]],
+    "unsqueeze2": [["X"], ["Out"]],
 }
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
@@ -141,12 +142,21 @@ _channelwise_quant_axis1_ops = ['conv2d_transpose', 'mul']
 
 
 def _get_op_input_var_names(op):
-    """ """
+    """
+    Get the input var names of the op.
+    Args:
+        op(IrNode, Operator): the input op.
+    Returns:
+        input_var_names or None.
+    """
     assert isinstance(op, (IrNode, Operator)), \
         "The input op should be IrNode or Operator."
     var_names = []
     op_name = op.name() if isinstance(op, IrNode) \
         else op.type
+    if op_name not in _op_real_in_out_name:
+        return []
+
     name_list = _op_real_in_out_name[op_name][0]
     for name in name_list:
         var_name = op.input(name)
@@ -163,6 +173,9 @@ def _get_input_name_index(op, input_var_name):
         "The input op should be IrNode or Operator."
     op_name = op.name() if isinstance(op, IrNode) \
         else op.type
+    if op_name not in _op_real_in_out_name:
+        return None
+
     res = None
     for argname in _op_real_in_out_name[op_name][0]:
         var_names = op.input(argname)
@@ -179,6 +192,9 @@ def _get_op_output_var_names(op):
     var_names = []
     op_name = op.name() if isinstance(op, IrNode) \
         else op.type
+    if op_name not in _op_real_in_out_name:
+        return []
+
     name_list = _op_real_in_out_name[op_name][1]
     for name in name_list:
         var_name = op.output(name)
@@ -195,6 +211,9 @@ def _get_output_name_index(op, output_var_name):
         "The input op should be IrNode or Operator."
     op_name = op.name() if isinstance(op, IrNode) \
         else op.type
+    if op_name not in _op_real_in_out_name:
+        return None
+
     name_list = _op_real_in_out_name[op_name][1]
     res = None
     for name in name_list:
@@ -1255,12 +1274,17 @@ class QuantizationFreezePass(object):
             var_type=output_var_node.type(),
             shape=output_var_node.shape(),
             var_dtype=output_var_node.dtype())
+        if op_node.op().has_attr("x_num_col_dims"):
+            x_num_col_dims = op_node.op().attr("x_num_col_dims")
+        else:
+            x_num_col_dims = 1
         dequant_op_node = graph.create_op_node(
             op_type='fake_channel_wise_dequantize_max_abs',
             attrs={
                 'quant_bits': [self._weight_bits, self._activation_bits],
                 'quant_axis': quant_axis,
-                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
+                'x_num_col_dims': x_num_col_dims
             },
             inputs={
                 'X': output_var_node,
@@ -1294,6 +1318,7 @@ class QuantizationFreezePass(object):
                 assert self._is_float(
                     scale_v), 'The scale of parameter %s is not a float.' % (
                         original_var_name)
+                scale_v = 1e-8 if scale_v == 0.0 else scale_v
                 max_range *= param_range / scale_v
             else:
                 max_range *= act_range
@@ -1395,6 +1420,7 @@ class QuantizationFreezePass(object):
                     x[:, i] = _clip(x[:, i], s)
                     x[:, i] = np.round(x[:, i] / s * bnt)
         else:
+            scale = 1e-8 if scale == 0.0 else scale
             x = _clip(x, scale)
             x = np.round(x / scale * bnt)
         return x

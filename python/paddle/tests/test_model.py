@@ -68,6 +68,49 @@ class LeNetDygraph(paddle.nn.Layer):
         return x
 
 
+class ModelInner(paddle.nn.Layer):
+    def __init__(self):
+        super(ModelInner, self).__init__()
+        self.fc = paddle.nn.Linear(3, 4)
+
+    def forward(self, x):
+        y = self.fc(x)
+        return y, 0
+
+
+class ModelOutter(paddle.nn.Layer):
+    def __init__(self):
+        super(ModelOutter, self).__init__()
+        self.module1 = ModelInner()
+        self.module2 = paddle.nn.Linear(4, 5)
+
+    def forward(self, x):
+        y, dummpy = self.module1(x)
+        y = self.module2(y)
+        return y, 3
+
+
+class LeNetListInput(LeNetDygraph):
+    def forward(self, inputs):
+        x = inputs[0]
+        x = self.features(x)
+
+        if self.num_classes > 0:
+            x = paddle.flatten(x, 1)
+            x = self.fc(x + inputs[1])
+        return x
+
+
+class LeNetDictInput(LeNetDygraph):
+    def forward(self, inputs):
+        x = self.features(inputs['x1'])
+
+        if self.num_classes > 0:
+            x = paddle.flatten(x, 1)
+            x = self.fc(x + inputs['x2'])
+        return x
+
+
 class MnistDataset(MNIST):
     def __init__(self, mode, return_label=True, sample_num=None):
         super(MnistDataset, self).__init__(mode=mode)
@@ -126,7 +169,7 @@ class TestModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         if not fluid.is_compiled_with_cuda():
-            cls.skipTest('module not tested when ONLY_CPU compling')
+            cls().skipTest('module not tested when ONLY_CPU compling')
         cls.device = paddle.set_device('gpu')
         fluid.enable_dygraph(cls.device)
 
@@ -184,6 +227,12 @@ class TestModel(unittest.TestCase):
     def test_fit_static_with_rank(self):
         self.fit(False, 2, 0)
 
+    def test_fit_dynamic_with_num_iters(self):
+        self.fit(True, num_iters=1)
+
+    def test_fit_static_with_num_iters(self):
+        self.fit(False, num_iters=1)
+
     def test_evaluate_dygraph(self):
         self.evaluate(True)
 
@@ -199,7 +248,7 @@ class TestModel(unittest.TestCase):
     def test_prepare_context(self):
         prepare_distributed_context()
 
-    def fit(self, dynamic, num_replicas=None, rank=None):
+    def fit(self, dynamic, num_replicas=None, rank=None, num_iters=None):
         fluid.enable_dygraph(self.device) if dynamic else None
         seed = 333
         paddle.seed(seed)
@@ -217,6 +266,14 @@ class TestModel(unittest.TestCase):
 
         result = model.evaluate(self.val_dataset, batch_size=64)
         np.testing.assert_allclose(result['acc'], self.acc1)
+
+        model.fit(self.train_dataset,
+                  batch_size=64,
+                  shuffle=False,
+                  num_iters=num_iters)
+
+        result = model.evaluate(
+            self.val_dataset, batch_size=64, num_iters=num_iters)
 
         train_sampler = DistributedBatchSampler(
             self.train_dataset,
@@ -572,6 +629,9 @@ class TestModelFunction(unittest.TestCase):
             model.summary(input_size=[(20)])
             model.summary(input_size=(20), dtype='float32')
 
+    def test_summary_non_tensor(self):
+        paddle.summary(ModelOutter(), input_size=(-1, 3))
+
     def test_summary_nlp(self):
         def _get_param_from_state_dict(state_dict):
             params = 0
@@ -600,6 +660,28 @@ class TestModelFunction(unittest.TestCase):
         params_info = paddle.summary(rnn, (4, 23, 16))
         gt_params = _get_param_from_state_dict(rnn.state_dict())
         np.testing.assert_allclose(params_info['total_params'], gt_params / 2.0)
+
+    def test_summary_input(self):
+        paddle.enable_static()
+        mymodel = MyModel()
+        input_data = paddle.rand([1, 20])
+        paddle.summary(mymodel, input=input_data)
+        paddle.disable_static()
+
+        rnn = paddle.nn.SimpleRNN(16, 32, 2, direction='bidirectional')
+        input_data = paddle.rand([4, 23, 16])
+        paddle.summary(rnn, input=input_data)
+
+        lenet_List_input = LeNetListInput()
+        input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
+        paddle.summary(lenet_List_input, input=input_data)
+
+        lenet_dict_input = LeNetDictInput()
+        input_data = {
+            'x1': paddle.rand([1, 1, 28, 28]),
+            'x2': paddle.rand([1, 400])
+        }
+        paddle.summary(lenet_dict_input, input=input_data)
 
     def test_summary_dtype(self):
         input_shape = (3, 1)
@@ -717,6 +799,36 @@ class TestModelFunction(unittest.TestCase):
         model.prepare(optimizer=optim, loss=CrossEntropyLoss(reduction="sum"))
         model.save(save_dir, training=False)
         shutil.rmtree(save_dir)
+
+    def test_accumulate(self, ):
+        dim = 20
+        data = np.random.random(size=(4, dim)).astype(np.float32)
+        label = np.random.randint(0, 10, size=(4, 1)).astype(np.int64)
+        net = MyModel()
+        optim = fluid.optimizer.SGD(learning_rate=0.001,
+                                    parameter_list=net.parameters())
+        inputs = [InputSpec([None, dim], 'float32', 'x')]
+        labels = [InputSpec([None, 1], 'int64', 'label')]
+
+        for amp_cfg in [None, 'O1']:
+            model = Model(net, inputs, labels)
+            model.prepare(
+                optim,
+                loss=CrossEntropyLoss(reduction="sum"),
+                amp_configs=amp_cfg)
+            losses, grads = [], []
+            for stat in [False, False, True]:
+                loss, = model.train_batch([data], [label], update=stat)
+                losses.append(loss)
+                grads.append([p.grad.numpy() for p in net.parameters()])
+
+            for grad1, grad2, grad3 in zip(*grads):
+                np.testing.assert_almost_equal(grad1 * 2, grad2, decimal=4)
+                np.testing.assert_almost_equal(
+                    grad3, np.zeros_like(grad3), decimal=4)
+
+            np.testing.assert_almost_equal(losses[0], losses[1], decimal=4)
+            np.testing.assert_almost_equal(losses[0], losses[2], decimal=4)
 
 
 class TestModelWithLRScheduler(unittest.TestCase):

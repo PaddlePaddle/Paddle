@@ -16,6 +16,7 @@
 
 #include <cmath>
 #include <string>
+#include "paddle/fluid/framework/op_proto_maker.h"
 
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -25,6 +26,157 @@ namespace framework {
 namespace ir {
 
 class Node;
+
+MapMatmul2MulPass::MapMatmul2MulPass() {
+  AddOpCompat(OpCompat("matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsNumGE(0.99f)
+      .IsNumLE(1.01f)
+      .End()
+      .AddAttr("transpose_X")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("transpose_Y")
+      .IsBoolEQ(false)
+      .End();
+
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
+      .End();
+}
+
+Flatten2MatmulFusePass::Flatten2MatmulFusePass() {
+  AddOpCompat(OpCompat("matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsNumGE(0.99f)
+      .IsNumLE(1.01f)
+      .End()
+      .AddAttr("transpose_X")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("transpose_Y")
+      .IsBoolEQ(false)
+      .End();
+
+  AddOpCompat(OpCompat("flatten2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumGE(0)
+      .End();
+
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
+      .End();
+}
+
+Squeeze2MatmulFusePass::Squeeze2MatmulFusePass() {
+  AddOpCompat(OpCompat("matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsNumGE(0.99f)
+      .IsNumLE(1.01f)
+      .End()
+      .AddAttr("transpose_X")
+      .IsBoolEQ(false)
+      .End()
+      .AddAttr("transpose_Y")
+      .IsBoolEQ(false)
+      .End();
+
+  AddOpCompat(OpCompat("Squeeze2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsTensor()
+      .End()
+      .AddAttr("axes")
+      .IsType<std::vector<int>>()
+      .End();
+
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumEQ(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
+      .End();
+}
 
 void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -64,6 +216,10 @@ void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
            next_ops[0]->Name() == "elementwise_add";
 
     if (flag) {
+      if (!IsCompat(subgraph, g)) {
+        LOG(WARNING) << "Pass in op compat failed.";
+        return;
+      }
       OpDesc desc;
       desc.SetType("mul");
       desc.SetInput("X", {matmul_in_x->Name()});
@@ -82,6 +238,11 @@ void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
       IR_NODE_LINK_TO(mul_node, matmul_out);
       GraphSafeRemoveNodes(graph, {matmul_op});
       ++found_count;
+
+      if (!IsCompat(desc)) {
+        LOG(WARNING) << "MapMatmul2MulPass in out mul op compat failed.";
+        return;
+      }
     }
   };
 
@@ -134,6 +295,10 @@ void Squeeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
            next_ops[0]->Name() == "elementwise_add";
 
     if (flag) {
+      if (!IsCompat(subgraph, g)) {
+        LOG(WARNING) << "Pass in op compat failed.";
+        return;
+      }
       OpDesc desc;
       desc.SetType("mul");
       desc.SetInput("X", {squeeze2_in_x->Name()});
@@ -152,11 +317,77 @@ void Squeeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       IR_NODE_LINK_TO(mul_node, matmul_out);
       GraphSafeRemoveNodes(graph, {squeeze2_op, matmul_in_x, matmul_op});
       ++found_count;
+      if (!IsCompat(desc)) {
+        LOG(WARNING) << "Squeeze2MatmulFusePass in out mul op compat failed.";
+        return;
+      }
     }
   };
 
   gpd(graph, handler);
   AddStatis(found_count);
+}
+
+Reshape2MatmulFusePass::Reshape2MatmulFusePass() {
+  AddOpCompat(OpCompat("reshape2"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Shape")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ShapeTensor")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddOutput("XShape")
+      .IsTensor()
+      .End()
+      .AddAttr("shape")  // ints
+      .IsType<std::vector<int>>()
+      .End();
+
+  AddOpCompat(OpCompat("matmul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("alpha")
+      .IsNumGT(0.99999f)
+      .IsNumLT(1.00001f)
+      .End()
+      .AddAttr("transpose_X")
+      .IsBoolEQ("False")
+      .End()
+      .AddAttr("transpose_Y")
+      .IsBoolEQ("False")
+      .End();
+
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumEQ(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
+      .End();
 }
 
 void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
@@ -206,6 +437,10 @@ void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
            next_ops[0]->Name() == "elementwise_add";
 
     if (flag) {
+      if (!IsCompat(subgraph, g)) {
+        LOG(WARNING) << "Pass in op compat failed.";
+        return;
+      }
       OpDesc desc;
       desc.SetType("mul");
       desc.SetInput("X", {reshape2_in_x->Name()});
@@ -217,6 +452,10 @@ void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
         desc.SetAttr("enable_int8", matmul_op->Op()->GetAttr("enable_int8"));
         desc.SetAttr("X_scale", matmul_op->Op()->GetAttr("X_scale"));
         desc.SetAttr("weight_scale", matmul_op->Op()->GetAttr("weight_scale"));
+      }
+      if (!IsCompat(desc)) {
+        LOG(WARNING) << "reshape2 matmul pass in out mul op compat failed.";
+        return;
       }
       auto mul_node = g->CreateOpNode(&desc);
       IR_NODE_LINK_TO(reshape2_in_x, mul_node);
@@ -283,6 +522,10 @@ void Flatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
                     next_ops[0]->Name() == "elementwise_add";
 
     if (pattern_found) {
+      if (!IsCompat(subgraph, g)) {
+        LOG(WARNING) << "Pass in op compat failed.";
+        return;
+      }
       OpDesc desc;
       desc.SetType("mul");
       desc.SetInput("X", {flatten2_in_x->Name()});
@@ -301,6 +544,11 @@ void Flatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
       IR_NODE_LINK_TO(mul_node, matmul_out);
       GraphSafeRemoveNodes(graph, {flatten2_op, matmul_in_x, matmul_op});
       ++found_count;
+
+      if (!IsCompat(desc)) {
+        LOG(WARNING) << "Flatten2MatmulFusePass in out mul op compat failed.";
+        return;
+      }
     }
   };
 

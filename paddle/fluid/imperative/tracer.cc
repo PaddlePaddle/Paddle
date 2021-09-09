@@ -30,6 +30,8 @@ DECLARE_string(tracer_mkldnn_ops_off);
 namespace paddle {
 namespace imperative {
 
+thread_local bool Tracer::has_grad_ = true;
+
 static std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
 const std::shared_ptr<Tracer>& GetCurrentTracer() { return g_current_tracer; }
@@ -194,6 +196,14 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
 #else
       PADDLE_THROW(platform::errors::PreconditionNotMet(
           "PaddlePaddle should compile with XPU if use XPUPlace."));
+#endif
+    } else if (platform::is_npu_place(place)) {
+#ifdef PADDLE_WITH_ASCEND_CL
+      platform::SetNPUDeviceId(
+          BOOST_GET_CONST(platform::NPUPlace, place).device);
+#else
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "PaddlePaddle should compile with NPU if use NPUPlace."));
 #endif
     }
 
