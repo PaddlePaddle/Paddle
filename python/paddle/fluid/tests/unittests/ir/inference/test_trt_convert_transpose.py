@@ -22,7 +22,6 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 class TrtConvertTransposeTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        # TODO: This is just the example to remove the wrong attrs.
         inputs = program_config.inputs
         weights = program_config.weights
         outputs = program_config.outputs
@@ -115,7 +114,6 @@ class TrtConvertTransposeTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            # TODO: This is just the example, need to be fixed.
             if dynamic_shape == True:
                 return 1, 2
             else:
