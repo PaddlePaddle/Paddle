@@ -14,6 +14,7 @@
 
 import copy
 from collections import defaultdict
+from paddle.fluid import core
 
 
 class TensorDistributedAttribute:
@@ -77,6 +78,8 @@ class TensorDistributedAttribute:
         self._is_parameter = True
 
     def is_valid(self):
+        if self.get_owner_tensor().type == core.VarDesc.VarType.READER:
+            return True
         tensor_shape = self.get_owner_tensor().desc.shape()
         if len(tensor_shape) != len(self.get_dims_mapping()):
             return False
@@ -222,6 +225,8 @@ class OperatorDistributedAttribute:
         self._is_parameters[name] = True
 
     def is_valid(self):
+        if "read" in self.get_owner_op().type:
+            return True
         for name in self.get_owner_op().desc.input_arg_names():
             dims_mapping = self.get_input_dims_mapping(name)
             shape = self.get_input_shape(name)
