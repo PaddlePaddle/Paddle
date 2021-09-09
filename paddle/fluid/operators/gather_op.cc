@@ -138,7 +138,8 @@ class GatherOpMaker : public framework::OpProtoAndCheckerMaker {
         "In backward process, calc the grad when has same index,"
         "If true, update the grad using the overwrite mode in same index,"
         "If false, using the accumulate mode in same index.")
-        .SetDefault(true);
+        .SetDefault(true)
+        .AsExtra();
     AddAttr<int>(
         "axis",
         "The Tensor which contains the axis that we do gather operation.")
