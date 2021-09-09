@@ -442,6 +442,7 @@ struct DeviceIndependenceTensorOperations {
       }
       op_inputs[item.first] = name_vector;
     }
+
     auto op =
         framework::OpRegistry::CreateOp(type, op_inputs, op_outputs, attrs);
     op->Run(local_scope, context.GetPlace());
