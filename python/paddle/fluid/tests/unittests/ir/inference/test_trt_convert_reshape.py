@@ -22,6 +22,7 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 class TrtConvertReshapeTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        # TODO: This is just the example to remove the wrong attrs.
         inputs = program_config.inputs
         weights = program_config.weights
         outputs = program_config.outputs
@@ -30,6 +31,9 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
+        if self.dims == 1:
+            if len(attrs[0]['shape']) != 1:
+                return False
         return True
 
     def sample_program_configs(self):
@@ -55,7 +59,7 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
         for dims in [4, 3, 2, 1]:
             for num_input in [0, 1, 2, 3]:
                 for shape in [[1, 6, 8], [1, 2, 4, 6], [1, 6, 8], [2, 24],
-                              [3, 4, 4]]:
+                              [3, 4, 4], [48]]:
                     dics = [{"shape": shape, }, {}]
                     self.num_input = num_input
                     self.dims = dims
@@ -148,15 +152,14 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
+            # TODO: This is just the example, need to be fixed.
             return 1, 2
 
         attrs = [
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-        if attrs[0]['shape'][0] != 1 or self.dims == 1:
-            pass
-        else:
+        if attrs[0]['shape'][0] == 1:
             # for static_shape
             clear_dynamic_shape()
             self.trt_param.precision = paddle_infer.PrecisionType.Float32
