@@ -187,7 +187,7 @@ TEST(AnalysisPredictor, CollectShapeRangeInfo) {
   std::map<std::string, std::vector<int32_t>> opt_shape;
   inference::DeserializeShapeRangeInfo("shape_range.pbtxt", &min_shape,
                                        &max_shape, &opt_shape);
-  ASSERT_EQ(min_shape.size(), 14);
+  ASSERT_EQ(min_shape.size(), 14u);
 }
 
 TEST(AnalysisPredictor, Clone) {
