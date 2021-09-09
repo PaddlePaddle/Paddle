@@ -22,7 +22,6 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 class TrtConvertStackTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        # TODO: This is just the example to remove the wrong attrs.
         inputs = program_config.inputs
         weights = program_config.weights
         outputs = program_config.outputs
@@ -173,7 +172,6 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            # TODO: This is just the example, need to be fixed.
             if dynamic_shape == True:
                 return 1, 4
             else:
@@ -202,7 +200,6 @@ class TrtConvertStackTest(TrtLayerAutoScanTest):
                                                                      True), 1e-2
 
     def add_skip_trt_case(self):
-        # TODO(wilber): This is just the example to illustrate the skip usage.
         pass
 
     def test(self):
