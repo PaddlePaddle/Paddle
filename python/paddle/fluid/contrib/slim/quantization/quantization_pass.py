@@ -133,6 +133,7 @@ _op_real_in_out_name = {
     "pad2d": [["X"], ["Out"]],
     "flatten": [["X"], ["Out"]],
     "flatten2": [["X"], ["Out"]],
+    "unsqueeze2": [["X"], ["Out"]],
 }
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
@@ -1273,12 +1274,17 @@ class QuantizationFreezePass(object):
             var_type=output_var_node.type(),
             shape=output_var_node.shape(),
             var_dtype=output_var_node.dtype())
+        if op_node.op().has_attr("x_num_col_dims"):
+            x_num_col_dims = op_node.op().attr("x_num_col_dims")
+        else:
+            x_num_col_dims = 1
         dequant_op_node = graph.create_op_node(
             op_type='fake_channel_wise_dequantize_max_abs',
             attrs={
                 'quant_bits': [self._weight_bits, self._activation_bits],
                 'quant_axis': quant_axis,
-                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
+                'x_num_col_dims': x_num_col_dims
             },
             inputs={
                 'X': output_var_node,

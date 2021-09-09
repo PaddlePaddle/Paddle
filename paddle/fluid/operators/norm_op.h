@@ -38,9 +38,6 @@ class NormKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* in_x = ctx.Input<framework::Tensor>("X");
     auto* out_y = ctx.Output<framework::Tensor>("Out");
-    auto* out_norm = ctx.Output<framework::Tensor>("Norm");
-    out_y->mutable_data<T>(ctx.GetPlace());
-    out_norm->mutable_data<T>(ctx.GetPlace());
 
     auto xdim = in_x->dims();
     T eps = static_cast<T>(ctx.Attr<float>("epsilon"));
@@ -48,6 +45,22 @@ class NormKernel : public framework::OpKernel<T> {
     if (axis < 0) axis = xdim.size() + axis;
     int pre, n, post;
     GetDims(xdim, axis, &pre, &n, &post);
+
+    bool is_test = ctx.Attr<bool>("is_test");
+
+    framework::Tensor* out_norm;
+    framework::Tensor out_norm_tmp;
+    if (is_test) {
+      auto out_dim = in_x->dims();
+      out_dim[axis] = 1;
+      out_norm = &out_norm_tmp;
+      out_norm->Resize(out_dim);
+    } else {
+      out_norm = ctx.Output<framework::Tensor>("Norm");
+    }
+
+    out_y->mutable_data<T>(ctx.GetPlace());
+    out_norm->mutable_data<T>(ctx.GetPlace());
 
     auto* place = ctx.template device_context<DeviceContext>().eigen_device();
 
