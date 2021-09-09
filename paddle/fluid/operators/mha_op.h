@@ -32,14 +32,32 @@ class MHAMetaData {
   cudnnSeqDataDescriptor_t k_desc = nullptr;
   cudnnSeqDataDescriptor_t v_desc = nullptr;
   cudnnSeqDataDescriptor_t o_desc = nullptr;
+  cudnnHandle_t cudnn_handle = nullptr;
 
-  void* weights = nullptr;
   void* workspace = nullptr;
   void* reserve_space = nullptr;
 
   size_t weights_size = 0;
   size_t workspace_size = 0;
   size_t reserve_size = 0;
+
+  void SetCudnnHandle(cudnnHandle_t cudnn_handle) {
+    cudnn_handle = cudnn_handle;
+  }
+
+  MHAMetaData() {
+    std::cerr << "MHAMetaData ctor" << std::endl;
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateAttnDescriptor(&attn_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateSeqDataDescriptor(&q_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateSeqDataDescriptor(&k_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateSeqDataDescriptor(&v_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnCreateSeqDataDescriptor(&o_desc));
+  }
 };
 
 class MHASingleton {
@@ -97,17 +115,7 @@ class MHAKernel : public framework::OpKernel<T> {
     auto cudnn_handle = dev_ctx.cudnn_handle();
 
     std::string key = "ajskdlf";
-
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateAttnDescriptor(
-        &MHASingleton::Instance().Data(key).attn_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateSeqDataDescriptor(
-        &MHASingleton::Instance().Data(key).q_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateSeqDataDescriptor(
-        &MHASingleton::Instance().Data(key).k_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateSeqDataDescriptor(
-        &MHASingleton::Instance().Data(key).v_desc));
-    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnCreateSeqDataDescriptor(
-        &MHASingleton::Instance().Data(key).o_desc));
+    MHASingleton::Instance().Data(key).SetCudnnHandle(cudnn_handle);
 
     // Setup Attention Dropout
     if (attn_dropout_rate > 0.0) {
@@ -142,10 +150,6 @@ class MHAKernel : public framework::OpKernel<T> {
         &MHASingleton::Instance().Data(key).weights_size,
         &MHASingleton::Instance().Data(key).workspace_size,
         &MHASingleton::Instance().Data(key).reserve_size));
-
-    MHASingleton::Instance().Data(key).weights = reinterpret_cast<void*>(
-        memory::Alloc(dev_ctx, MHASingleton::Instance().Data(key).weights_size)
-            ->ptr());
 
     MHASingleton::Instance().Data(key).workspace = reinterpret_cast<void*>(
         memory::Alloc(dev_ctx,
