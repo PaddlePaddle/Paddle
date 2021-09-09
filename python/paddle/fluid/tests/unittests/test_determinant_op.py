@@ -25,6 +25,7 @@ import paddle.tensor as tensor
 
 paddle.enable_static()
 
+
 class TestDeterminantOp(OpTest):
     def setUp(self):
         self.op_type = "determinant"
@@ -35,7 +36,11 @@ class TestDeterminantOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Out')
+        self.check_grad(
+            ['Input'],
+            'Out',
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out])
 
     def init_config(self):
         self.case = np.random.randn(3, 3, 3, 3).astype('float64')
@@ -54,13 +59,17 @@ class TestDeterminantOpCase2(TestDeterminantOp):
     def init_config(self):
         self.case = np.random.randint(0, 2, (4, 2, 4, 4)).astype('float64')
         self.inputs = {'Input': self.case}
-        self.target = np.linalg.det(
-            self.inputs['Input'])
+        self.target = np.linalg.det(self.inputs['Input'])
         self.grad_x = np.eye(100).astype('int64')
         self.grad_out = np.ones(100).astype('int64')
 
     def test_check_grad(self):
-        self.check_grad(['Input'], 'Out')
+        self.check_grad(
+            ['Input'],
+            'Out',
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_out])
+
 
 class TestDeterminantAPI(unittest.TestCase):
     def setUp(self):
@@ -88,6 +97,7 @@ class TestDeterminantAPI(unittest.TestCase):
         self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-03), True)
         paddle.enable_static()
 
+
 class TestSlogDeterminantOp(OpTest):
     def setUp(self):
         self.op_type = "slogdeterminant"
@@ -104,7 +114,6 @@ class TestSlogDeterminantOp(OpTest):
             user_defined_grads=[self.grad_x],
             user_defined_grad_outputs=[self.grad_out])
 
-
     def init_config(self):
         self.case = np.random.randn(3, 3, 3, 3).astype('float64')
         self.inputs = {'Input': self.case}
@@ -116,11 +125,8 @@ class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
         self.case = np.random.randn(3, 3, 3, 3).astype('float32')
         self.inputs = {'Input': self.case}
         self.target = np.linalg.slogdet(self.inputs['Input'])
-        print(">>>>>>>>")
-        print(self.target)
         self.grad_x = np.eye(100).astype('int64')
         self.grad_out = np.ones(100).astype('int64')
-
 
 
 class TestSlogDeterminantOpCase2(TestSlogDeterminantOp):
@@ -128,6 +134,8 @@ class TestSlogDeterminantOpCase2(TestSlogDeterminantOp):
         self.case = np.random.randint(0, 2, (4, 2, 4, 4)).astype('int')
         self.inputs = {'Input': self.case}
         self.target = np.linalg.slogdet(self.inputs['Input'])
+        self.grad_x = np.eye(100).astype('int64')
+        self.grad_out = np.ones(100).astype('int64')
 
     def test_check_grad(self):
         self.check_grad(
@@ -161,6 +169,7 @@ class TestSlogDeterminantAPI(unittest.TestCase):
         out_ref = np.linalg.slogdet(self.x)
         self.assertEqual(np.allclose(out.numpy(), out_ref, rtol=1e-03), True)
         paddle.enable_static()
+
 
 if __name__ == '__main__':
     unittest.main()

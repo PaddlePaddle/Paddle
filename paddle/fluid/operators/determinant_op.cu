@@ -39,9 +39,6 @@ class DeterminantCUDAKernel : public framework::OpKernel<T> {
     auto input_dim_size = input->dims().size();
 
     std::vector<int64_t> res_in = vectorize(framework::stride(input->dims()));
-    paddle::framework::Tensor input_stride_tensor;
-    framework::TensorFromVector<int64_t>(res_in, context.device_context(),
-                                         &input_stride_tensor);
 
     auto* output = context.Output<framework::Tensor>("Out");
     auto* output_data = output->mutable_data<T>(context.GetPlace());
@@ -55,7 +52,8 @@ class DeterminantCUDAKernel : public framework::OpKernel<T> {
 
     auto rank = input_dim[input_dim_size - 1];
     DeterminantFunctor<T>()(*input, context, rank, batch_count, output);
-    auto output_dims = framework::slice_ddim(input->dims(), 0, input_dim_size - 2);
+    auto output_dims =
+        framework::slice_ddim(input->dims(), 0, input_dim_size - 2);
     output->Resize(output_dims);
   }
 };
@@ -90,10 +88,6 @@ class SlogDeterminantCUDAKernel : public framework::OpKernel<T> {
     auto input_dim_size = input->dims().size();
 
     std::vector<int64_t> res_in = vectorize(framework::stride(input->dims()));
-    paddle::framework::Tensor input_stride_tensor;
-    framework::TensorFromVector<int64_t>(res_in, context.device_context(),
-                                         &input_stride_tensor);
-
     auto* output = context.Output<framework::Tensor>("Out");
     auto* output_data = output->mutable_data<T>(context.GetPlace());
     auto output_dim = output->dims().Get();
@@ -107,7 +101,8 @@ class SlogDeterminantCUDAKernel : public framework::OpKernel<T> {
     auto rank = input_dim[input_dim_size - 1];
     SlogDeterminantFunctor<T>()(*input, context, rank, batch_count, output);
     std::vector<int> output_dim_vec(input_dim.begin(), input_dim.end() - 2);
-    output_dim_vec.insert(output_dim_vec.begin(), 2); // make the output dims as same as numpy
+    output_dim_vec.insert(output_dim_vec.begin(),
+                          2);  // make the output dims as same as numpy
     auto output_dims = framework::make_ddim(output_dim_vec);
     output->Resize(output_dims);
     VLOG(2) << "output dim:" << output->dims();
@@ -124,10 +119,6 @@ class SlogDeterminantGradCUDAKernel : public framework::OpKernel<T> {
     auto input_dim_size = input->dims().size();
 
     std::vector<int64_t> res_in = vectorize(framework::stride(input->dims()));
-    paddle::framework::Tensor input_stride_tensor;
-    framework::TensorFromVector<int64_t>(res_in, context.device_context(),
-                                         &input_stride_tensor);
-
     auto* output = context.Output<framework::Tensor>("Out");
     auto* output_data = output->mutable_data<T>(context.GetPlace());
     auto output_dim = output->dims().Get();
@@ -165,7 +156,7 @@ REGISTER_OP_CUDA_KERNEL(slogdeterminant, ops::SlogDeterminantCUDAKernel<int>,
                         ops::SlogDeterminantCUDAKernel<bool>);
 
 REGISTER_OP_CUDA_KERNEL(slogdeterminant_grad,
-                        ops::DeterminantGradCUDAKernel<int>,
+                        ops::SlogDeterminantGradCUDAKernel<int>,
                         ops::SlogDeterminantGradCUDAKernel<int64_t>,
                         ops::SlogDeterminantGradCUDAKernel<float>,
                         ops::SlogDeterminantGradCUDAKernel<double>);

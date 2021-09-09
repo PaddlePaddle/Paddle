@@ -34,7 +34,7 @@ class DeterminantOpMaker : public framework::OpProtoAndCheckerMaker {
         "Input",
         "(Tensor) The input tensor, from which the determinant are taken.");
     AddOutput("Out",
-              "(Tensor) The partial view of input with the its determinant "
+              "(Tensor) The output of determinant "
               "elements.");
 
     AddComment(R"DOC(
@@ -99,7 +99,7 @@ class SlogDeterminantOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "Input",
-        "(Tensor) The input tensor, from which the determinant are taken.");
+        "(Tensor) The input tensor, from which the slogdeterminant are taken.");
     AddOutput("Out",
               "(Tensor) The partial view of input with the its slogdeterminant "
               "elements.");
@@ -161,7 +161,6 @@ REGISTER_OPERATOR(determinant, ops::DeterminantOp, ops::DeterminantOpMaker,
 
 REGISTER_OPERATOR(determinant_grad, ops::DeterminantGradOp)
 
-
 REGISTER_OP_CPU_KERNEL(determinant, ops::DeterminantKernel<int>,
                        ops::DeterminantKernel<int64_t>,
                        ops::DeterminantKernel<float>,
@@ -179,7 +178,8 @@ REGISTER_OPERATOR(slogdeterminant, ops::SlogDeterminantOp,
                   ops::SlogDeterminantGradOpMaker<paddle::framework::OpDesc>,
                   ops::SlogDeterminantGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(slogdeterminant_grad, ops::DeterminantGradOp) // reuse det grad op
+REGISTER_OPERATOR(slogdeterminant_grad,
+                  ops::DeterminantGradOp)  // reuse det grad op
 
 REGISTER_OP_CPU_KERNEL(slogdeterminant, ops::SlogDeterminantKernel<int>,
                        ops::SlogDeterminantKernel<int64_t>,
