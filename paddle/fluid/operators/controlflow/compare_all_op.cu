@@ -17,9 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
 
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-
 namespace paddle {
 namespace operators {
 
@@ -35,21 +32,6 @@ struct BitwiseAdd {
   __host__ __device__ __forceinline__ T operator()(const T& a,
                                                    const T& b) const {
     return a & b;
-  }
-};
-
-template <typename T, typename Enable = void>
-struct CudaEqualReduceFunctor {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& x, const T& y) const { return (x == y); }
-};
-
-template <typename T>
-struct CudaEqualReduceFunctor<
-    T, typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  using ELEM_TYPE = T;
-  HOSTDEVICE bool operator()(const T& x, const T& y) const {
-    return fabs(static_cast<double>(x - y)) < 1e-8;
   }
 };
 
@@ -95,6 +77,9 @@ class CompareReduceOpKernel
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
+
 #define REGISTER_COMPARE_REDUCE_CUDA_KERNEL(op_type, functor)                  \
   REGISTER_OP_CUDA_KERNEL(                                                     \
       op_type,                                                                 \
@@ -107,5 +92,5 @@ class CompareReduceOpKernel
       ops::CompareReduceOpKernel<plat::CUDADeviceContext,                      \
                                  ops::functor<double>>);
 
-REGISTER_COMPARE_REDUCE_CUDA_KERNEL(equal_all, CudaEqualReduceFunctor)
+REGISTER_COMPARE_REDUCE_CUDA_KERNEL(equal_all, EqualReduceFunctor)
 #undef REGISTER_COMPARE_REDUCE_CUDA_KERNEL
