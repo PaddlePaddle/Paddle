@@ -14,7 +14,7 @@
 
 import paddle
 from paddle.distributed.fleet import cloud_utils
-import paddle.core as core
+import paddle.fluid.core as core
 from .context import DistributedContext
 from .context import get_default_distributed_context
 from .completion import complete_annotation
@@ -42,7 +42,8 @@ class AutoParallelizer:
     def _remove_distributed_attrs(self, main_program):
         suffix = core.kAutoParallelSuffix()
         for block in main_program.blocks:
-            for var in block.vars:
+            for var_name in block.vars:
+                var = block.var(var_name)
                 for attr_name in var.attr_names:
                     if suffix in attr_name: var._remove_attr(attr_name)
             for op in block.ops:
