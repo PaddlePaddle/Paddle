@@ -48,8 +48,11 @@ struct ReluGradFunctor {
 template <typename T>
 struct GeluFunctor {
   __host__ __device__ T operator()(const T *args) const {
-    math::GeluFunctor<T> gelu;
-    return gelu(args[0]);
+    using U = LayerNormParamType<T>;
+    U casted_x = static_cast<U>(args[0]);
+    auto temp = erf(casted_x * static_cast<U>(M_SQRT1_2));
+    auto out = (casted_x * static_cast<U>(0.5) * (static_cast<U>(1) + temp));
+    return static_cast<T>(out);
   }
 };
 
@@ -59,10 +62,17 @@ struct GeluFunctor {
 template <typename T>
 struct GeluGradFunctor {
   __host__ __device__ T operator()(const T *args) const {
-    const T grad = args[0];
-    const T x = args[1];
-    math::GeluGradFunctor<T> gelu_grad;
-    return grad * gelu_grad.UseOut(x);
+    using U = LayerNormParamType<T>;
+    auto casted_x = static_cast<U>(args[1]);
+    auto casted_dout = static_cast<U>(args[0]);
+
+    auto first =
+        static_cast<U>(0.5) *
+        (static_cast<U>(1) + erf(casted_x * static_cast<U>(M_SQRT1_2)));
+
+    auto second = static_cast<U>(0.5 * M_2_SQRTPI * M_SQRT1_2) * casted_x *
+                  exp(-static_cast<U>(0.5) * casted_x * casted_x);
+    return static_cast<T>(casted_dout * (first + second));
   }
 };
 
@@ -139,7 +149,8 @@ __global__ void FusedDropoutActBias(Functor act, const uint64_t seed,
 #pragma unroll
       for (int ii = 0; ii < VecSize; ii++) {
         const T tmp = src_vec[ii] + bias_vec[ii];
-        dest_vec[ii] = act(&tmp) * static_cast<T>(mask_vec[ii]) * factor;
+        const T act_out = act(&tmp);
+        dest_vec[ii] = act_out * static_cast<T>(mask_vec[ii]) * factor;
       }
       // store result to global
       platform::Store<T, VecSize>(dest_vec, &dst[r * cols + i]);

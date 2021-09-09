@@ -40,7 +40,7 @@ class TestFusedFFNOp(unittest.TestCase):
         self.d_model = np.random.randint(32, 1024)
         self.dim_feedforward = np.random.randint(32, 4096)
         self.normalize_before = False
-        self.act_method = "relu"
+        self.act_method = "gelu"
 
         self.weight_attr = None
         self.bias_attr = None
@@ -106,10 +106,22 @@ class TestFusedFFNOp(unittest.TestCase):
             seed1 = None
             seed2 = None
             x = paddle.to_tensor(self.src, stop_gradient=False)
-            out = F.fused_ffn(x, linear1_weight, linear2_weight, seed1, seed2,
-                              linear1_bias, linear2_bias, ln1_scale, ln1_bias,
-                              ln2_scale, ln2_bias, 0.0, 0.0, self.act_method,
-                              self.normalize_before)
+            out = F.fused_ffn(
+                x,
+                linear1_weight,
+                linear2_weight,
+                seed1,
+                seed2,
+                linear1_bias,
+                linear2_bias,
+                ln1_scale,
+                ln1_bias,
+                ln2_scale,
+                ln2_bias,
+                0.0,
+                0.0,
+                act_method=self.act_method,
+                normalize_pre_or_post=self.normalize_before)
             paddle.autograd.backward([out], [paddle.to_tensor(self.dout)])
             return out, x.grad
 
