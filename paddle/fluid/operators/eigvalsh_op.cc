@@ -25,12 +25,10 @@ class EigvalshOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Eigvalsh");
-    OP_INOUT_CHECK(ctx->HasOutput("OutValue"), "Output", "OutValue", "Eigvalsh");
-
-    bool is_test = ctx->Attrs().Get<bool>("is_test");
-    if (!is_test){
-        OP_INOUT_CHECK(ctx->HasOutput("OutVector"), "Output", "OutVector", "Eigvalsh");
-    }
+    OP_INOUT_CHECK(ctx->HasOutput("OutValue"), "Output", "OutValue",
+                   "Eigvalsh");
+    OP_INOUT_CHECK(ctx->HasOutput("OutVector"), "Output", "OutVector",
+                   "Eigvalsh");
 
     auto input_dim = ctx->GetInputDim("X");
     auto rank = input_dim.size();
@@ -39,7 +37,7 @@ class EigvalshOp : public framework::OperatorWithKernel {
       batch_size *= input_dim[i];
     }
     std::vector<int64_t> v_dim = {input_dim[1]};
-    if (batch_size > 1) {    
+    if (batch_size > 1) {
       v_dim = {batch_size, input_dim[1]};
     }
 
@@ -57,10 +55,7 @@ class EigvalshOp : public framework::OperatorWithKernel {
             input_dim[rank - 2], input_dim[rank - 1]));
 
     ctx->SetOutputDim("OutValue", framework::make_ddim(v_dim));
-    if (!is_test){
-        ctx->SetOutputDim("OutVector", input_dim);
-    }
-
+    ctx->SetOutputDim("OutVector", input_dim);
   }
 
  protected:
@@ -89,16 +84,13 @@ class EigvalshOpMaker : public framework::OpProtoAndCheckerMaker {
               "(Tensor), The column v[:, i] is the normalized eigenvector "
               "corresponding to the,"
               "eigenvalue w[i]. Will return a matrix object if a is a matrix "
-              "object. Only used when backward.").AsExtra();
+              "object. Used when backward.")
+        .AsIntermediate();
     AddAttr<std::string>("UPLO",
                          "(string, default L), the lower triangular part of a "
                          "(‘L’, default) or the upper "
                          "triangular part (‘U’)")
         .SetDefault("L");
-    AddAttr<bool>("is_test",
-                  "(bool, default false) Set to true for inference only, false "
-                  "for training.").AsExtra()
-        .SetDefault(false);
     AddComment(R"DOC(
 Eigvalsh Operator.
 
@@ -113,7 +105,8 @@ class EigvalshGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("OutValue"), "Input", "OutValue", "EigvalshGrad");
+    OP_INOUT_CHECK(ctx->HasInput("OutValue"), "Input", "OutValue",
+                   "EigvalshGrad");
     OP_INOUT_CHECK(ctx->HasInput("OutVector"), "Input", "OutVector",
                    "EigvalshGrad");
     OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("OutValue")), "Input",
@@ -162,18 +155,19 @@ REGISTER_OPERATOR(eigvalsh, ops::EigvalshOp, ops::EigvalshOpMaker,
 REGISTER_OPERATOR(eigvalsh_grad, ops::EigvalshGradOp);
 
 REGISTER_OP_CPU_KERNEL(
-    eigvalsh, ops::EigvalshKernel<paddle::platform::CPUDeviceContext, float, float>,
+    eigvalsh,
+    ops::EigvalshKernel<paddle::platform::CPUDeviceContext, float, float>,
     ops::EigvalshKernel<paddle::platform::CPUDeviceContext, double, double>,
     ops::EigvalshKernel<paddle::platform::CPUDeviceContext, float,
-                    paddle::platform::complex<float>>,
+                        paddle::platform::complex<float>>,
     ops::EigvalshKernel<paddle::platform::CPUDeviceContext, double,
-                    paddle::platform::complex<double>>);
+                        paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
     eigvals_grad,
     ops::EigvalshGradKernel<paddle::platform::CPUDeviceContext, float, float>,
     ops::EigvalshGradKernel<paddle::platform::CPUDeviceContext, double, double>,
     ops::EigvalshGradKernel<paddle::platform::CPUDeviceContext, float,
-                        paddle::platform::complex<float>>,
+                            paddle::platform::complex<float>>,
     ops::EigvalshGradKernel<paddle::platform::CPUDeviceContext, double,
-                        paddle::platform::complex<double>>);
+                            paddle::platform::complex<double>>);

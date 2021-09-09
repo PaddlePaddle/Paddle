@@ -40,10 +40,11 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
+// TODO(huangjun12) include in eigh_helper.h
 template <typename ValueType>
 void BatchEigenvalues(ValueType* x_data, ValueType* eigenvalues_data,
-                       int batches, int rows, int cols, bool is_test, 
-                       ValueType* eigenvectors_data=NULL,) {
+                      ValueType* eigenvectors_data, int batches, int rows,
+                      int cols) {
   using EigenMatrix =
       Eigen::Matrix<ValueType, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
   using InputMatrixMap = Eigen::Map<const EigenMatrix>;
@@ -52,8 +53,7 @@ void BatchEigenvalues(ValueType* x_data, ValueType* eigenvalues_data,
   for (int i = 0; i < batches; i++) {
     auto m = InputMatrixMap(x_data + i * stride, rows, cols);
 
-    Eigen::SelfAdjointEigenSolver<EigenMatrix>
-        eigen_solver(m);
+    Eigen::SelfAdjointEigenSolver<EigenMatrix> eigen_solver(m);
     PADDLE_ENFORCE_EQ(eigen_solver.info(), Eigen::Success,
                       platform::errors::InvalidArgument(
                           "Self Adjoint Eigen decomposition was"
@@ -61,18 +61,16 @@ void BatchEigenvalues(ValueType* x_data, ValueType* eigenvalues_data,
                           "%d-th input matrice "
                           "might not be not be positive definite.",
                           i));
-    auto eigenvalues = eigen_solver.eigenvalues().transpose();    
+    auto eigenvalues = eigen_solver.eigenvalues().transpose();
+    auto eigenvectors = eigen_solver.eigenvectors();
     memcpy(eigenvalues_data + i * rows, eigenvalues.data(),
            rows * sizeof(ValueType));
-
-    if (!is_test){
-        auto eigenvectors = eigen_solver.eigenvectors();
-        memcpy(eigenvectors_data + i * stride, eigenvectors.data(),
-               eigenvectors.size() * sizeof(ValueType));
-               }
+    memcpy(eigenvectors_data + i * stride, eigenvectors.data(),
+           eigenvectors.size() * sizeof(ValueType));
   }
 }
 
+// TODO(huangjun12) include in eigh_helper.h
 template <typename T, typename ValueType>
 void BatchComplexValues(T* x_data, ValueType* eigenvalues_data,
                         T* eigenvectors_data, int batches, int rows, int cols) {
@@ -87,10 +85,7 @@ void BatchComplexValues(T* x_data, ValueType* eigenvalues_data,
   for (int i = 0; i < batches; i++) {
     auto m = InputMatrixMap(input + i * stride, rows, cols);
 
-    Eigen::SelfAdjointEigenSolver<
-        Eigen::Matrix<std::complex<ValueType>, Eigen::Dynamic, Eigen::Dynamic,
-                      Eigen::RowMajor>>
-        eigen_solver(m);
+    Eigen::SelfAdjointEigenSolver<EigenMatrix> eigen_solver(m);
     PADDLE_ENFORCE_EQ(eigen_solver.info(), Eigen::Success,
                       platform::errors::InvalidArgument(
                           "Self Adjoint Eigen decomposition was"
@@ -201,6 +196,18 @@ struct DeviceIndependenceTensorOperations {
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
     out_vector.device(place) = x_vector * static_cast<T>(a);
+    return out;
+  }
+
+  Tensor ElementWiseMul(const Tensor& x, const Tensor& y) {
+    Tensor out;
+    out.mutable_data<T>(x.dims(), context.GetPlace());
+    auto x_vector = EigenVector<T>::Flatten(x);
+    auto y_vector = EigenVector<T>::Flatten(y);
+    auto out_vector = EigenVector<T>::Flatten(out);
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    out_vector.device(place) = x_vector * y_vector;
     return out;
   }
 

@@ -1105,7 +1105,7 @@ def eigvalsh(x, UPLO='L', name=None):
             #[0.17157288, 5.82842712]
     """
     if in_dygraph_mode():
-        return _C_ops.eigvalsh(x, 'UPLO', UPLO)
+        return _C_ops.eigvalsh(x, 'UPLO', UPLO)[0]
 
     def __check_input(x, UPLO):
         x_shape = list(x.shape)
@@ -1124,13 +1124,16 @@ def eigvalsh(x, UPLO='L', name=None):
     __check_input(x, UPLO)
 
     helper = LayerHelper('eigvalsh', **locals())
-    check_variable_and_dtype(
-        x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'eigvalsh')
+    check_variable_and_dtype(x, 'dtype',
+                             ['float32', 'float64', 'complex64', 'complex128'],
+                             'eigvalsh')
 
     out_value = helper.create_variable_for_type_inference(dtype=x.dtype)
+    out_vector = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(
         type='eigvalsh',
         inputs={'X': x},
-        outputs={'OutValue': out_value},
+        outputs={'OutValue': out_value,
+                 'OutVector': out_vector},
         attrs={'UPLO': UPLO})
     return out_value

@@ -28,11 +28,7 @@ class EigvalshKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& input_var = *ctx.Input<Tensor>("X");
     auto& output_w_var = *ctx.Output<Tensor>("OutValue");
-
-    bool is_test = ctx.Attr<bool>("is_test");
-    if (!is_test){
-        auto& output_v_var = *ctx.Output<Tensor>("OutVector");
-    }
+    auto& output_v_var = *ctx.Output<Tensor>("OutVector");
 
     std::string lower = ctx.Attr<std::string>("UPLO");
     auto dims = input_var.dims();
@@ -58,46 +54,39 @@ class EigvalshKernel : public framework::OpKernel<T> {
 
     if (framework::IsComplexType(input_var.type())) {
       auto* x_data = input.mutable_data<T>(dims, ctx.GetPlace());
-      if (!is_test){
-          auto* vector_data = output_v_var.mutable_data<T>(dims, ctx.GetPlace());
-          math::BatchComplexValues<T, ValueType>(x_data, value_data, 
-                                             batch_size, rows, cols, is_test, vector_data);  
-      }
-      else{
-          math::BatchComplexValues<T, ValueType>(x_data, value_data, 
-                                             batch_size, rows, cols, is_test);      
-      }
-
+      auto* vector_data = output_v_var.mutable_data<T>(dims, ctx.GetPlace());
+      math::BatchComplexValues<T, ValueType>(x_data, value_data, vector_data,
+                                             batch_size, rows, cols);
     } else {
       auto* x_data = input.mutable_data<ValueType>(dims, ctx.GetPlace());
       auto* vector_data =
           output_v_var.mutable_data<ValueType>(dims, ctx.GetPlace());
       math::BatchEigenvalues<ValueType>(x_data, value_data, vector_data,
-                                        batch_size, rows, cols, is_test);
+                                        batch_size, rows, cols);
     }
     output_v_var = dito.Transpose(output_v_var);
   }
 };
 
 template <typename DeviceContext, typename ValueType, typename T>
-class EighGradKernel : public framework::OpKernel<T> {
+class EigvalshGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& x_grad = *ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     x_grad.mutable_data<T>(ctx.GetPlace());
-    auto& output_w_var = *ctx.Input<Tensor>("OutValue");   // ValueType
+    // auto& output_w_var = *ctx.Input<Tensor>("OutValue");   // ValueType
     auto& output_v_var = *ctx.Input<Tensor>("OutVector");  // T
     auto& output_w_grad =
         *ctx.Input<Tensor>(framework::GradVarName("OutValue"));
-    auto& output_v_grad =
-        *ctx.Input<Tensor>(framework::GradVarName("OutVector"));
+    // auto& output_v_grad =
+    //     *ctx.Input<Tensor>(framework::GradVarName("OutVector"));
 
     auto& dims = output_v_var.dims();
     int batch_size = 1;
     for (int i = 0; i < dims.size() - 2; i++) {
       batch_size *= dims[i];
     }
-    int cols = dims[dims.size() - 1];
+    // int cols = dims[dims.size() - 1];
     auto dito =
         math::DeviceIndependenceTensorOperations<DeviceContext, T, ValueType>(
             ctx);
@@ -107,21 +96,28 @@ class EighGradKernel : public framework::OpKernel<T> {
     if (framework::IsComplexType(output_v_var.type())) {
       conj_res = dito.Conj(output_v_var);
     }
-    auto tV = dito.Transpose(conj_res);
-    auto w_sub =
-        dito.SubBroadcast(dito.Unsqueeze(output_w_var, -2),
-                          dito.Unsqueeze(output_w_var, -1), batch_size, cols);
+    auto tV = dito.Transpose(conj_res);  // Vh
+    x_grad = dito.Matmul(
+        dito.ElementWiseMul(output_v_var, dito.Unsqueeze(output_w_grad, -2)),
+        tV);
+    // x_grad = dito.Matmul(output_v_var * dito.Unsqueeze(output_w_grad, -2),
+    // tV);  // * make Error
 
-    Tensor result = dito.Matmul(tV, output_v_grad);
-    auto res_trans = dito.Transpose(result);
-    if (framework::IsComplexType(output_v_var.type())) {
-      res_trans = dito.Conj(res_trans);
-    }
-    result = dito.Sub(result, res_trans);
-    result = dito.Mul(result, 0.5);
-    result = dito.Div(result, w_sub);
-    result = dito.DiagFill(cols, cols, cols, 0, output_w_grad, result);
-    x_grad = dito.Matmul(output_v_var, dito.Matmul(result, tV));
+    // auto w_sub =
+    //     dito.SubBroadcast(dito.Unsqueeze(output_w_var, -2),
+    //                       dito.Unsqueeze(output_w_var, -1), batch_size,
+    //                       cols);
+
+    // Tensor result = dito.Matmul(tV, output_v_grad);
+    // auto res_trans = dito.Transpose(result);
+    // if (framework::IsComplexType(output_v_var.type())) {
+    //   res_trans = dito.Conj(res_trans);
+    // }
+    // result = dito.Sub(result, res_trans);
+    // result = dito.Mul(result, 0.5);
+    // result = dito.Div(result, w_sub);
+    // result = dito.DiagFill(cols, cols, cols, 0, output_w_grad, result);
+    // x_grad = dito.Matmul(output_v_var, dito.Matmul(result, tV));
   }
 };
 
