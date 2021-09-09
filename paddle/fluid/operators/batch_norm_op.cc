@@ -208,7 +208,7 @@ void BatchNormOpMaker::Make() {
                 "(bool, default false) Set to true for inference only, false "
                 "for training. Some layers may run faster when this is true.")
       .SetDefault(false);
-  AddAttr<float>("momentum", "").SetDefault(0.9).AsExtra();
+  AddAttr<float>("momentum", "").SetDefault(0.9);
   AddAttr<float>("epsilon", "")
       .SetDefault(1e-5)
       .AddCustomChecker([](const float &epsilon) {
@@ -238,8 +238,7 @@ void BatchNormOpMaker::Make() {
            "(Tensor<float32>, optional) If provided, batch_norm will "
            "use this as momentum, this has a higher priority than "
            "attr(momentum), the shape of this tensor MUST BE [1].")
-      .AsDispensable()
-      .AsExtra();
+      .AsDispensable();
   AddOutput("Y", "result after normalization");
   AddOutput("MeanOut",
             "Share memory with Mean. "
