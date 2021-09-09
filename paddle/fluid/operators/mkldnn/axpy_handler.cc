@@ -22,7 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/mkldnn_helper.h"
-#include "paddle/fluid/platform/mkldnn_reuse.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -34,19 +33,14 @@ namespace plat = paddle::platform;
 namespace {
 
 template <typename T>
-class AXPYHandler : public plat::MKLDNNHandlerT<T, dnnl::reorder> {
+class AXPYHandler {
  public:
-  AXPYHandler(const plat::MKLDNNDeviceContext &dev_ctx,
-              const dnnl::engine mkldnn_engine, plat::Place cpu_place, int n,
-              float alpha)
-      : plat::MKLDNNHandlerT<T, dnnl::reorder>(
-            dev_ctx, mkldnn_engine, cpu_place,
-            plat::CreateKey(dev_ctx, static_cast<int64_t>(n),
-                            plat::MKLDNNGetDataType<T>(), alpha, "-axpy")) {
+  AXPYHandler(const dnnl::engine mkldnn_engine, int n, float alpha) {
+    platform::MKLDNNDeviceContext::tls().log_lib_version();
     auto md = dnnl::memory::desc({n}, plat::MKLDNNGetDataType<T>(),
                                  dnnl::memory::format_tag::x);
-    src_mem_ = dnnl::memory(md, this->engine_, DNNL_MEMORY_NONE);
-    dst_mem_ = dnnl::memory(md, this->engine_, DNNL_MEMORY_NONE);
+    src_mem_ = dnnl::memory(md, mkldnn_engine, DNNL_MEMORY_NONE);
+    dst_mem_ = dnnl::memory(md, mkldnn_engine, DNNL_MEMORY_NONE);
     dnnl::primitive_attr reorder_attr;
     dnnl::post_ops post_operations;
     if (alpha != 1.f) {
@@ -110,8 +104,8 @@ OneDNNAXPYHandler<T>::Impl::Impl(int64_t n, T alpha) : n_{n}, alpha_{alpha} {
   auto *dev_ctx =
       dynamic_cast<plat::MKLDNNDeviceContext *>(pool.Get(cpu_place));
   auto &cpu_engine = dev_ctx->GetEngine();
-  handler_ = std::make_unique<AXPYHandler<T>>(*dev_ctx, cpu_engine, cpu_place,
-                                              n, static_cast<float>(alpha));
+  handler_ = std::make_unique<AXPYHandler<T>>(cpu_engine, n,
+                                              static_cast<float>(alpha));
 }
 
 template <typename T>
