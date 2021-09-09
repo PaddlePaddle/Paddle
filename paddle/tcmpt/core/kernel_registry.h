@@ -52,8 +52,10 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
         args_def->AppendOutput(
             default_key.backend(), default_key.layout(), default_key.dtype());
       } else {
-        // TODO(chenweihang): throw argument error
-        VLOG(1) << "invalid arg";
+        // Attribute deal with
+        // TODO(chenweihang): now here allow any types of attribute, maybe
+        // should add limits here
+        args_def->AppendAttribute(arg_type);
       }
     }
   }

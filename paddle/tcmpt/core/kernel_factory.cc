@@ -56,11 +56,19 @@ const Kernel& KernelFactory::SelectKernel(const KernelName& kernel_name,
   return SelectKernel(kernel_name, KernelKey(backend, layout, dtype));
 }
 
+std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
+  os << "InputNum(" << kernel.args_def().input_defs().size()
+     << "), AttributeNum(" << kernel.args_def().attribute_defs().size()
+     << "), OutputNum(" << kernel.args_def().output_defs().size() << ")";
+  return os;
+}
+
 std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory) {
   for (const auto& op_kernel_pair : kernel_factory.kernels()) {
-    os << "- op: " << op_kernel_pair.first << "\n";
+    os << "- kernel name: " << op_kernel_pair.first << "\n";
     for (const auto& kernel_pair : op_kernel_pair.second) {
-      os << "\t- kernel: " << kernel_pair.first << "\n";
+      os << "\t- kernel key: " << kernel_pair.first << " | "
+         << "kernel: " << kernel_pair.second << "\n";
     }
   }
   return os;

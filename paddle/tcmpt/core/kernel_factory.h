@@ -170,6 +170,13 @@ struct TensorArgDef {
   }
 };
 
+struct AttributeArgDef {
+  std::type_index type_index;
+
+  explicit AttributeArgDef(std::type_index type_index)
+      : type_index(type_index) {}
+};
+
 class KernelArgsDef {
  public:
   KernelArgsDef() = default;
@@ -182,18 +189,29 @@ class KernelArgsDef {
     output_defs_.emplace_back(TensorArgDef(backend, layout, dtype));
   }
 
+  void AppendAttribute(std::type_index type_index) {
+    attribute_defs_.emplace_back(AttributeArgDef(type_index));
+  }
+
   const std::vector<TensorArgDef>& input_defs() const { return input_defs_; }
 
   const std::vector<TensorArgDef>& output_defs() const { return output_defs_; }
+
+  const std::vector<AttributeArgDef>& attribute_defs() const {
+    return attribute_defs_;
+  }
 
   std::vector<TensorArgDef>& input_defs() { return input_defs_; }
 
   std::vector<TensorArgDef>& output_defs() { return output_defs_; }
 
+  std::vector<AttributeArgDef>& attribute_defs() { return attribute_defs_; }
+
  private:
   // TODO(chenweihang): replaced by paddle::small_vector
   std::vector<TensorArgDef> input_defs_{{}};
   std::vector<TensorArgDef> output_defs_{{}};
+  std::vector<AttributeArgDef> attribute_defs_{{}};
 };
 
 class Kernel {
@@ -269,6 +287,8 @@ inline std::ostream& operator<<(std::ostream& os, const KernelKey& kernel_key) {
      << kernel_key.dtype() << ")";
   return os;
 }
+
+std::ostream& operator<<(std::ostream& os, const Kernel& kernel);
 
 std::ostream& operator<<(std::ostream& os, KernelFactory& kernel_factory);
 

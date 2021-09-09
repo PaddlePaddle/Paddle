@@ -1850,16 +1850,18 @@ pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
   // If we the VariableValueMap are ordered, we can get tensor by iter the map,
   // and its order is same as OpProto
 
-  auto& op_proto = Info().proto_;
+  auto* op_proto = Info().proto_;
   for (int i = 0; i < op_proto->inputs_size(); ++i) {
     auto in = op_proto->inputs()[i];
     // TODO(chenweihang): skip special cases temporarily
     // TODO(chenweihang): deal with diff param in vector
-    if (in.has_dispensable() && in.dispensable()) {
+    if ((in.has_dispensable() && in.dispensable()) ||
+        (in.has_extra() && in.extra()) || (in.has_quant() && in.quant())) {
       VLOG(1) << "BuildKernelContext: skip dispensable input - " << in.name();
       continue;
     }
     auto in_name = in.name();
+    VLOG(1) << "Static graph PtKernel input: " << in_name;
     auto in_def = input_defs.at(i);
     for (auto* var : ctx.inputs.at(in_name)) {
       if (var->IsType<LoDTensor>()) {
@@ -1881,6 +1883,8 @@ pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
   }
   for (int i = 0; i < op_proto->outputs_size(); ++i) {
     auto out_name = op_proto->outputs()[i].name();
+    VLOG(1) << "Static graph PtKernel output: " << out_name;
+    // TODO(chenweihang): outputs also need skip some cases
     auto out_def = output_defs.at(i);
     for (auto* var : ctx.outputs.at(out_name)) {
       // mutable_data before run kernel, to avoid share output form
@@ -1909,15 +1913,17 @@ pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
   }
   for (int i = 0; i < op_proto->attrs_size(); ++i) {
     auto attr = op_proto->attrs()[i];
-    // TODO(chenweihang): skip extra attrs by extra value
-    // if (attr.has_extra() && attr.extra()) {
-    //   continue;
-    // }
+    VLOG(1) << "Static graph PtKernel attribute: " << attr.name();
+    if ((attr.has_extra() && attr.extra()) ||
+        (attr.has_quant() && attr.quant())) {
+      continue;
+    }
     if (attr.name() == "use_mkldnn" || attr.name() == "op_role" ||
         attr.name() == "op_role_var" || attr.name() == "op_namescope" ||
         attr.name() == "op_callstack" || attr.name() == "op_device") {
       continue;
     }
+    // TODO(chenweihang): support other attrs
     switch (attr.type()) {
       case proto::AttrType::INT:
         op_kernel_ctx.EmplaceBackAttr(Attr<int>(attr.name()));

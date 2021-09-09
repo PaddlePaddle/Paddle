@@ -46,6 +46,15 @@ const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
   }
 }
 
+template <typename T>
+static const T& GetAttr(const framework::AttributeMap& attrs,
+                        const std::string& name) {
+  PADDLE_ENFORCE_NE(
+      attrs.find(name), attrs.end(),
+      platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
+  return BOOST_GET_CONST(T, attrs.at(name));
+}
+
 template <typename VarType>
 static void HandleComplexGradToRealGrad(const NameVarMap<VarType>& outs) {
   for (auto& pair : outs) {
@@ -232,8 +241,10 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
 
 template <typename VarType>
 static pt::KernelContext BuildDygraphKernelContext(
-    const pt::Kernel& pt_kernel, const NameVarMap<VarType>& ins,
-    const NameVarMap<VarType>& outs, const platform::DeviceContext& dev_ctx) {
+    const pt::Kernel& pt_kernel, const framework::proto::OpProto& op_proto,
+    const NameVarMap<VarType>& ins, const NameVarMap<VarType>& outs,
+    const framework::AttributeMap& attrs,
+    const platform::DeviceContext& dev_ctx) {
   // TODO(chenweihang): now only work for very simple case (sign op),
   // many cases need to be deal with later:
   // 1. the input and output are not tensor
@@ -245,38 +256,109 @@ static pt::KernelContext BuildDygraphKernelContext(
   auto input_defs = pt_kernel.args_def().input_defs();
   auto output_defs = pt_kernel.args_def().output_defs();
 
-  size_t i = 0;
-  for (auto& var_pair : ins) {
-    auto in_def = input_defs.at(i);
-    for (auto var : var_pair.second) {
-      const auto& variable = var->Var();
-      const auto& tensor = variable.template Get<framework::LoDTensor>();
-      auto pt_in =
-          framework::MakeTensorImpl<pt::DenseTensor, framework::LoDTensor>(
-              tensor, in_def.backend, in_def.dtype, in_def.layout);
-      op_kernel_ctx.EmplaceBackInput(pt_in);
+  for (int i = 0; i < op_proto.inputs_size(); ++i) {
+    auto in = op_proto.inputs()[i];
+    // TODO(chenweihang): deal with diff param in vector
+    if ((in.has_dispensable() && in.dispensable()) ||
+        (in.has_extra() && in.extra()) || (in.has_quant() && in.quant())) {
+      VLOG(1) << "BuildDygraphKernelContext: skip dispensable input - "
+              << in.name();
+      continue;
     }
-    ++i;
+    auto in_name = in.name();
+    VLOG(1) << "Dygraph PtKernel input: " << in_name;
+    auto in_def = input_defs.at(i);
+    for (auto var : ins.at(in_name)) {
+      const auto& variable = var->Var();
+      if (variable.template IsType<framework::LoDTensor>()) {
+        const auto& tensor = variable.template Get<framework::LoDTensor>();
+        auto pt_in =
+            framework::MakeTensorImpl<pt::DenseTensor, framework::LoDTensor>(
+                tensor, in_def.backend, in_def.dtype, in_def.layout);
+        op_kernel_ctx.EmplaceBackInput(pt_in);
+      } else if (variable.template IsType<framework::SelectedRows>()) {
+        const auto& tensor = variable.template Get<framework::SelectedRows>();
+        auto pt_in = framework::MakeTensorImpl<pt::SelectedRowsTensor,
+                                               framework::SelectedRows>(
+            tensor, in_def.backend, in_def.dtype, in_def.layout);
+        op_kernel_ctx.EmplaceBackInput(pt_in);
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported shared input `%s` type now when call pt kernel.",
+            framework::ToTypeName(variable.Type())));
+      }
+    }
   }
 
-  i = 0;
-  for (auto it = outs.begin(); it != outs.end(); ++it) {
+  for (int i = 0; i < op_proto.outputs_size(); ++i) {
+    auto out_name = op_proto.outputs()[i].name();
+    VLOG(1) << "Dygraph PtKernel output: " << out_name;
+    // TODO(chenweihang): outputs also need skip some cases
     auto out_def = output_defs.at(i);
-    for (auto var : it->second) {
-      auto* variable = var->MutableVar();
-      auto* tensor = variable->template GetMutable<framework::LoDTensor>();
+    for (auto var : outs.at(out_name)) {
       // mutable_data before run kernel, to avoid share output form
       // KernelContext to original tensor
-      tensor->mutable_data(pt::TransToFluidPlace(out_def.backend),
-                           pt::TransToProtoVarType(out_def.dtype));
-      auto pt_out =
-          framework::MakeTensorImpl<pt::DenseTensor, framework::LoDTensor>(
-              *tensor, out_def.backend, out_def.dtype, out_def.layout);
-      op_kernel_ctx.EmplaceBackOutput(pt_out);
+      auto* variable = var->MutableVar();
+      if (variable->template IsType<framework::LoDTensor>()) {
+        auto* tensor = variable->template GetMutable<framework::LoDTensor>();
+        tensor->mutable_data(pt::TransToFluidPlace(out_def.backend),
+                             pt::TransToProtoVarType(out_def.dtype));
+        auto pt_out =
+            framework::MakeTensorImpl<pt::DenseTensor, framework::LoDTensor>(
+                *tensor, out_def.backend, out_def.dtype, out_def.layout);
+        op_kernel_ctx.EmplaceBackOutput(pt_out);
+      } else if (variable->template IsType<framework::SelectedRows>()) {
+        auto* tensor = variable->template GetMutable<framework::SelectedRows>();
+        tensor->mutable_value()->mutable_data(
+            pt::TransToFluidPlace(out_def.backend),
+            pt::TransToProtoVarType(out_def.dtype));
+        auto pt_out = framework::MakeTensorImpl<pt::SelectedRowsTensor,
+                                                framework::SelectedRows>(
+            *tensor, out_def.backend, out_def.dtype, out_def.layout);
+        op_kernel_ctx.EmplaceBackOutput(pt_out);
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported shared output `%s` type now when call pt kernel.",
+            framework::ToTypeName(variable->Type())));
+      }
     }
-    ++i;
   }
-  // TODO(chenweihang): append attrs
+
+  for (int i = 0; i < op_proto.attrs_size(); ++i) {
+    auto attr = op_proto.attrs()[i];
+    VLOG(1) << "Dygraph PtKernel attribute: " << attr.name();
+    if ((attr.has_extra() && attr.extra()) ||
+        (attr.has_quant() && attr.quant())) {
+      continue;
+    }
+    if (attr.name() == "use_mkldnn" || attr.name() == "op_role" ||
+        attr.name() == "op_role_var" || attr.name() == "op_namescope" ||
+        attr.name() == "op_callstack" || attr.name() == "op_device") {
+      continue;
+    }
+    // TODO(chenweihang): support other attrs
+    // In principle, the attr required by the dynamic mode should be
+    // passed in from the Python side, and there is no need to look up
+    // from the default_map
+    switch (attr.type()) {
+      case framework::proto::AttrType::INT:
+        op_kernel_ctx.EmplaceBackAttr(GetAttr<int>(attrs, attr.name()));
+        break;
+      case framework::proto::AttrType::FLOAT:
+        op_kernel_ctx.EmplaceBackAttr(GetAttr<float>(attrs, attr.name()));
+        break;
+      case framework::proto::AttrType::BOOLEAN:
+        op_kernel_ctx.EmplaceBackAttr(GetAttr<bool>(attrs, attr.name()));
+        break;
+      default:
+        // TODO(chenweihang): support other attrs type
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "unsupported cast op attribute `%s` when construct "
+            "KernelContext.",
+            attr.name()));
+    }
+  }
+
   return op_kernel_ctx;
 }
 
@@ -335,8 +417,8 @@ static void PreparedOpRunPtImpl(const framework::OperatorBase& op,
   static_cast<const framework::OperatorWithKernel&>(op).InferShape(
       &infer_shape_ctx);
 
-  auto op_kernel_ctx =
-      BuildDygraphKernelContext<VarType>(pt_kernel, ins, outs, *dev_ctx);
+  auto op_kernel_ctx = BuildDygraphKernelContext<VarType>(
+      pt_kernel, *(op.Info().proto_), ins, outs, attrs, *dev_ctx);
   pt_kernel(&op_kernel_ctx);
 
   // TODO(chenweihang): add flags
