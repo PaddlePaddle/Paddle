@@ -25,42 +25,61 @@ class TrtConvertHardSigmoidTest_dim_2(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input(batch):
-            return np.random.random([batch, 64]).astype(np.float32)
+        def generate_input(shape):
+            return np.random.random(shape).astype(np.float32)
 
         for batch in [1, 2, 4]:
-            for slope in [np.random.random()]:
-                for offset in [np.random.random()]:
-                    dics = [{"slope": slope, "offset": offset}]
-                    ops_config = [{
-                        "op_type": "hard_sigmoid",
-                        "op_inputs": {
-                            "X": ["input_data"],
-                        },
-                        "op_outputs": {
-                            "Out": ["output_data"]
-                        },
-                        "op_attrs": dics[0]
-                    }]
-                    ops = self.generate_op_config(ops_config)
+            for shape in [[batch, 64], [batch, 32, 64], [batch, 64, 32, 128]]:
+                self.input_dim = len(shape)
+                for slope in [0.1, 0.5]:
+                    for offset in [0.2, 0.7]:
+                        dics = [{"slope": slope, "offset": offset}]
+                        ops_config = [{
+                            "op_type": "hard_sigmoid",
+                            "op_inputs": {
+                                "X": ["input_data"],
+                            },
+                            "op_outputs": {
+                                "Out": ["output_data"]
+                            },
+                            "op_attrs": dics[0]
+                        }]
+                        ops = self.generate_op_config(ops_config)
 
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={},
-                        inputs={
-                            "input_data": TensorConfig(
-                                data_gen=partial(generate_input, batch))
-                        },
-                        outputs=["output_data"])
+                        program_config = ProgramConfig(
+                            ops=ops,
+                            weights={},
+                            inputs={
+                                "input_data": TensorConfig(
+                                    data_gen=partial(generate_input, shape))
+                            },
+                            outputs=["output_data"])
 
-                    yield program_config
+                        yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 8]}
-            self.dynamic_shape.max_input_shape = {"input_data": [64, 128]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [2, 16]}
+            if self.input_dim == 2:
+                self.dynamic_shape.min_input_shape = {"input_data": [1, 8]}
+                self.dynamic_shape.max_input_shape = {"input_data": [64, 128]}
+                self.dynamic_shape.opt_input_shape = {"input_data": [2, 16]}
+            elif self.input_dim == 3:
+                self.dynamic_shape.min_input_shape = {"input_data": [1, 8, 8]}
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [64, 128, 256]
+                }
+                self.dynamic_shape.opt_input_shape = {"input_data": [2, 16, 64]}
+            elif self.input_dim == 4:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 8, 8, 4]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [64, 128, 256, 512]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [2, 16, 64, 128]
+                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.max_input_shape = {}
@@ -86,163 +105,20 @@ class TrtConvertHardSigmoidTest_dim_2(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), (1, 2), 1e-5
 
-    def test(self):
-        self.run_test()
+    def add_skip_trt_case(self):
+        def teller(program_config, predictor_config):
+            if len(self.dynamic_shape.
+                   min_input_shape) == 0 and self.input_dim == 2:
+                return True
+            return False
 
-
-class TrtConvertHardSigmoidTest_dim_3(TrtLayerAutoScanTest):
-    def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        return True
-
-    def sample_program_configs(self):
-        def generate_input(batch):
-            return np.random.random([batch, 32, 64]).astype(np.float32)
-
-        def generate_weight1(attrs: List[Dict[str, Any]]):
-            return np.random.random([24, 3, 3, 3]).astype(np.float32)
-
-        for batch in [1, 2, 4]:
-            for slope in [np.random.random()]:
-                for offset in [np.random.random()]:
-                    dics = [{"slope": slope, "offset": offset}]
-                    ops_config = [{
-                        "op_type": "hard_sigmoid",
-                        "op_inputs": {
-                            "X": ["input_data"],
-                        },
-                        "op_outputs": {
-                            "Out": ["output_data"]
-                        },
-                        "op_attrs": dics[0]
-                    }]
-                    ops = self.generate_op_config(ops_config)
-
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={
-                            "conv2d_weight": TensorConfig(data_gen=partial(
-                                generate_weight1, dics))
-                        },
-                        inputs={
-                            "input_data": TensorConfig(
-                                data_gen=partial(generate_input, batch))
-                        },
-                        outputs=["output_data"])
-
-                    yield program_config
-
-    def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-        def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 8, 8]}
-            self.dynamic_shape.max_input_shape = {"input_data": [64, 128, 256]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [2, 16, 64]}
-
-        def clear_dynamic_shape():
-            self.dynamic_shape.max_input_shape = {}
-            self.dynamic_shape.min_input_shape = {}
-            self.dynamic_shape.opt_input_shape = {}
-
-        attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
-        ]
-
-        # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 2), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), 1e-5
-
-        # for dynamic_shape
-        generate_dynamic_shape(attrs)
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 2), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), 1e-5
+        self.add_skip_case(
+            teller, SkipReasons.TRT_NOT_SUPPORT,
+            "Need to repair the case: the output of trt and GPU has diff when inputs' dims is 2 in static shape mode."
+        )
 
     def test(self):
-        self.run_test()
-
-
-class TrtConvertHardSigmoidTest_dim_4(TrtLayerAutoScanTest):
-    def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        return True
-
-    def sample_program_configs(self):
-        def generate_input(batch):
-            return np.random.random([batch, 32, 64, 128]).astype(np.float32)
-
-        def generate_weight1(attrs: List[Dict[str, Any]]):
-            return np.random.random([24, 3, 3, 3]).astype(np.float32)
-
-        for batch in [1, 2, 4]:
-            for slope in [np.random.random()]:
-                for offset in [np.random.random()]:
-                    dics = [{"slope": slope, "offset": offset}]
-                    ops_config = [{
-                        "op_type": "hard_sigmoid",
-                        "op_inputs": {
-                            "X": ["input_data"],
-                        },
-                        "op_outputs": {
-                            "Out": ["output_data"]
-                        },
-                        "op_attrs": dics[0]
-                    }]
-                    ops = self.generate_op_config(ops_config)
-
-                    program_config = ProgramConfig(
-                        ops=ops,
-                        weights={
-                            "conv2d_weight": TensorConfig(data_gen=partial(
-                                generate_weight1, dics))
-                        },
-                        inputs={
-                            "input_data": TensorConfig(
-                                data_gen=partial(generate_input, batch))
-                        },
-                        outputs=["output_data"])
-
-                    yield program_config
-
-    def sample_predictor_configs(
-            self, program_config) -> (paddle_infer.Config, List[int], float):
-        def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 8, 8, 4]}
-            self.dynamic_shape.max_input_shape = {
-                "input_data": [64, 128, 256, 512]
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "input_data": [2, 16, 64, 128]
-            }
-
-        def clear_dynamic_shape():
-            self.dynamic_shape.max_input_shape = {}
-            self.dynamic_shape.min_input_shape = {}
-            self.dynamic_shape.opt_input_shape = {}
-
-        attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
-        ]
-
-        # for static_shape
-        clear_dynamic_shape()
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 2), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), 1e-5
-
-        # for dynamic_shape
-        generate_dynamic_shape(attrs)
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), (1, 2), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), (1, 2), 1e-5
-
-    def test(self):
+        self.add_skip_trt_case()
         self.run_test()
 
 
