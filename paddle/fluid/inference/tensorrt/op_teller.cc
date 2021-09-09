@@ -328,14 +328,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           VLOG(3) << "Gather does not support 1-dimensional input in tensorrt";
           return false;
         }
-
-        auto* index_var_desc = block->FindVar(desc.Input("Index")[0]);
-        const auto index_shape = index_var_desc->GetShape();
-        if (index_shape.size() == 1) {
-          VLOG(3) << "Gather does not support 1-dimensional input index in "
-                     "tensorrt";
-          return false;
-        }
       }
 
       auto inputs = desc.InputArgumentNames();
