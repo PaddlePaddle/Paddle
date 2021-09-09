@@ -25,15 +25,19 @@ namespace contrib {
 TEST(Status, ctor) { CHECK(Status::OK().ok()); }
 
 struct FakeException {
-  void pd_exception(int a, const std::string& msg) const {
-    PADDLE_ENFORCE_NE(a, a, paddle::platform::errors::InvalidArgument(msg));
+  void pd_exception(int a) const {
+    PADDLE_ENFORCE_NE(a, a,
+                      paddle::platform::errors::InvalidArgument(
+                          "This is a preset error message used to verify "
+                          "whether the exception meets expectations: %d, %d.",
+                          a, a));
   }
   void base_exception() const { throw std::exception(); }
 };
 
 TEST(Status, pd_exception) {
   FakeException e;
-  Status status = status_wrapper([&]() { e.pd_exception(1, "test"); });
+  Status status = status_wrapper([&]() { e.pd_exception(1); });
   CHECK(!status.ok());
   CHECK_NE(status.code(), 0);
 }
