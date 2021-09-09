@@ -22,7 +22,6 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        # TODO: This is just the example to remove the wrong attrs.
         inputs = program_config.inputs
         weights = program_config.weights
         outputs = program_config.outputs
@@ -30,6 +29,7 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
+
         return True
 
     def sample_program_configs(self):
@@ -186,11 +186,7 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            # TODO: This is just the example, need to be fixed.
-            if self.num_input == 0:
-                return 0, 3
-            else:
-                return 1, 2
+            return 1, 2
 
         attrs = [
             program_config.ops[i].attrs
@@ -215,8 +211,15 @@ class TrtConvertBatchNormTest(TrtLayerAutoScanTest):
                                                                      True), 1e-2
 
     def add_skip_trt_case(self):
-        # TODO(wilber): This is just the example to illustrate the skip usage.
-        pass
+        def teller1(program_config, predictor_config):
+            if len(program_config.weights) == 5:
+                return True
+            return False
+
+        self.add_skip_case(
+            teller1, SkipReasons.TRT_NOT_SUPPORT,
+            "INPUT MomentumTensor NOT SUPPORT: we need to add support in the future"
+        )
 
     def test(self):
         self.add_skip_trt_case()
