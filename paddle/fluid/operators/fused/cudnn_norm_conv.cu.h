@@ -23,28 +23,25 @@ using Tensor = framework::Tensor;
 namespace dynload = platform::dynload;
 template <typename T>
 class CuDNNNormConvolutionOp {
+#if CUDNN_VERSION < 8000
+  LOG(ERROR) << "cuDNN version 8.0 or later is required.";
+#else
+
  public:
   CuDNNNormConvolutionOp()
-#if CUDNN_VERSION >= 8000
-      : fwd_op_(CUDNN_FUSED_SCALE_BIAS_ACTIVATION_CONV_BNSTATS) {
-  }
-#endif
+      : fwd_op_(CUDNN_FUSED_SCALE_BIAS_ACTIVATION_CONV_BNSTATS) {}
   ~CuDNNNormConvolutionOp() {}
 
   void Init(const framework::ExecutionContext &ctx,
             const std::vector<int> &input_shape,
             const std::vector<int> &filter_shape,
             const std::vector<int> &output_shape) {
-#if CUDNN_VERSION < 8000
-    LOG(ERROR) << "cuDNN version 8.0 or later is required.";
-#else
     cudnn_fwd_compute_type_ = platform::CudnnDataType<float>::type;
     dtype_ = platform::CudnnDataType<T>::type;
     format_ = CUDNN_TENSOR_NHWC;
 
     InitDescriptors(ctx, input_shape, filter_shape, output_shape);
-    GetTempSize(ctx);
-#endif  // CUDNN_VERSION >= 8000
+    GetWorkspaceSize(ctx);
   }
 
   void Forward(const framework::ExecutionContext &ctx, const T *input_ptr,
@@ -53,9 +50,6 @@ class CuDNNNormConvolutionOp {
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
-#if CUDNN_VERSION < 8000
-    LOG(ERROR) << "cuDNN version 8.0 or later is required.";
-#else
     // Set variant_param
     // input ptr
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA,
@@ -76,7 +70,6 @@ class CuDNNNormConvolutionOp {
           fwd_op_.Execute(handle);
         },
         fwd_workspace_byte_);
-#endif  // CUDNN_VERSION < 8000
   }
 
   // TBD
@@ -87,9 +80,6 @@ class CuDNNNormConvolutionOp {
                        const std::vector<int> &input_shape,
                        const std::vector<int> &filter_shape,
                        const std::vector<int> &output_shape) {
-#if CUDNN_VERSION < 8000
-    LOG(ERROR) << "cuDNN version 8.0 or later is required.";
-#else
     // Set constant_param
     fwd_op_.SetOpConstParamAttr(
         {CUDNN_PARAM_XDATA_PLACEHOLDER, CUDNN_PARAM_WDATA_PLACEHOLDER,
@@ -107,41 +97,36 @@ class CuDNNNormConvolutionOp {
     std::vector<int> d_vec = {dilate, dilate};
     auto group = ctx.Attr<int>("group");
     int output_channel = filter_shape[0];
-    std::vector<int> stats_shape = {1, output_channel, 1, 1};
+    std::vector<int> stats_shape = {1, 1, 1, output_channel};
 
     // set conv desc
     conv_desc_.set(dtype_, p_vec, s_vec, d_vec, false, group);
-    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_CONV_DESC, conv_desc_);
+    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_CONV_DESC, conv_desc_.desc());
 
     // set input desc
     in_desc_.set(input_shape, format_, dtype_);
-    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_XDESC, in_desc_);
+    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_XDESC, in_desc_.desc());
 
     // set filter desc
     filter_desc_.set(filter_shape, format_, dtype_, group);
-    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_WDESC, filter_desc_);
+    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_WDESC, filter_desc_.desc());
 
     // set output desc
     out_desc_.set(output_shape, format_, dtype_);
-    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_YDESC, out_desc_);
+    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_YDESC, out_desc_.desc());
 
     // set output_stats desc
     out_stats_desc_.set(stats_shape, format_, cudnn_fwd_compute_type_);
-    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_YSTATS_DESC, out_stats_desc_);
+    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_YSTATS_DESC,
+                                out_stats_desc_.desc());
 
     fwd_op_.SetOpConstParamAttr(CUDNN_PARAM_BN_MODE, CUDNN_BATCHNORM_SPATIAL);
-
-#endif  // CUDNN_VERSION < 8000
   }
 
-  void GetTempSize(const framework::ExecutionContext &ctx) {
-#if CUDNN_VERSION < 8000
-    LOG(ERROR) << "cuDNN version 8.0 or later is required.";
-#else
+  void GetWorkspaceSize(const framework::ExecutionContext &ctx) {
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     fwd_workspace_byte_ = fwd_op_.GetWorkspaceSizeInBytes(handle);
-#endif  // CUDNN_VERSION < 8000
   }
 
   size_t fwd_workspace_byte_ = 0;
@@ -155,7 +140,6 @@ class CuDNNNormConvolutionOp {
   platform::ConvolutionDescriptor conv_desc_;
   cudnnTensorFormat_t format_;
 
-#if CUDNN_VERSION >= 8000
   CuDNNFusionOp fwd_op_;
 #endif
 };

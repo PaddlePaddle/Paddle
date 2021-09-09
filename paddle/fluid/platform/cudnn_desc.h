@@ -44,6 +44,9 @@ inline cudnnDataType_t ToCudnnDataType(const T& t) {
 
 inline std::vector<int> TransformDimOrder(const std::vector<int>& dims) {
   std::vector<int> transformed_dims(dims.begin(), dims.end());
+  if (dims.size() < 4) {
+    return transformed_dims;
+  }
   int H, W, D, C;
   if (dims.size() == 4) {
     H = dims[1];
@@ -155,19 +158,6 @@ class TensorDescriptor {
         dims_with_group.data(), strides.data()));
   }
 
-  void set(const Tensor& tensor, const cudnnTensorFormat_t format) {
-    auto dims = framework::vectorize<int>(tensor.dims());
-    std::vector<int> transformed_dims;
-    if (format == CUDNN_TENSOR_NHWC) {
-      transformed_dims = TransformDimOrder(dims);
-    } else {
-      transformed_dims = dims;
-    }
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptorEx(
-        desc_.get(), format, ToCudnnDataType(tensor.type()),
-        transformed_dims.size(), transformed_dims.data()));
-  }
-
   void set(const std::vector<int>& dims, const cudnnTensorFormat_t format,
            const cudnnDataType_t dtype) {
     std::vector<int> transformed_dims;
@@ -179,6 +169,12 @@ class TensorDescriptor {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptorEx(
         desc_.get(), format, dtype, transformed_dims.size(),
         transformed_dims.data()));
+  }
+
+  void set(const Tensor& tensor, const cudnnTensorFormat_t format) {
+    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dtype = ToCudnnDataType(tensor.type());
+    set(dims, format, dtype);
   }
 
  private:
@@ -204,23 +200,6 @@ class FilterDescriptor {
   T* desc() { return desc_.get(); }
   T* desc() const { return desc_.get(); }
 
-  void set(const Tensor& tensor, const cudnnTensorFormat_t format,
-           const int groups = 1) {
-    auto dims = framework::vectorize<int>(tensor.dims());
-    std::vector<int> transformed_dims;
-    if (format == CUDNN_TENSOR_NHWC) {
-      transformed_dims = TransformDimOrder(dims);
-    } else {
-      transformed_dims = dims;
-    }
-    if (groups > 1) {
-      transformed_dims[1] = transformed_dims[1] / groups;
-    }
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetFilterNdDescriptor(
-        desc_.get(), ToCudnnDataType(tensor.type()), format,
-        transformed_dims.size(), transformed_dims.data()));
-  }
-
   void set(const std::vector<int>& dims, const cudnnTensorFormat_t format,
            const cudnnDataType_t dtype, const int groups = 1) {
     std::vector<int> transformed_dims;
@@ -235,6 +214,13 @@ class FilterDescriptor {
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetFilterNdDescriptor(
         desc_.get(), dtype, format, transformed_dims.size(),
         transformed_dims.data()));
+  }
+
+  void set(const Tensor& tensor, const cudnnTensorFormat_t format,
+           const int groups = 1) {
+    auto dims = framework::vectorize<int>(tensor.dims());
+    auto dtype = ToCudnnDataType(tensor.type());
+    set(dims, format, dtype, groups);
   }
 
  private:

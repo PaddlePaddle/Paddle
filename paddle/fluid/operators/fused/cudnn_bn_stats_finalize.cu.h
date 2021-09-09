@@ -23,13 +23,14 @@ using Tensor = framework::Tensor;
 namespace dynload = platform::dynload;
 template <typename T>
 class CuDNNBNStatsFinalizeOp {
+#if CUDNN_VERSION < 8000
+  LOG(ERROR) << "cuDNN version 8.0 or later is required.";
+#else
+
  public:
   CuDNNBNStatsFinalizeOp()
-#if CUDNN_VERSION >= 8000
       : train_op_(CUDNN_FUSED_BN_FINALIZE_STATISTICS_TRAINING),
-        inference_op_(CUDNN_FUSED_BN_FINALIZE_STATISTICS_INFERENCE)
-#endif
-  {
+        inference_op_(CUDNN_FUSED_BN_FINALIZE_STATISTICS_INFERENCE) {
     dtype_ = platform::CudnnDataType<T>::type;
     dtype_param_ = (dtype_ == CUDNN_DATA_HALF) ? CUDNN_DATA_FLOAT : dtype_;
   }
@@ -40,7 +41,6 @@ class CuDNNBNStatsFinalizeOp {
             const std::vector<int> &param_shape) {
     InitDescriptors(ctx, param_shape);
 
-#if CUDNN_VERSION >= 8000
     // Set constant_param for train op
     train_op_.SetOpConstParamAttr(
         {CUDNN_PARAM_YSUM_PLACEHOLDER, CUDNN_PARAM_YSQSUM_PLACEHOLDER,
@@ -54,8 +54,9 @@ class CuDNNBNStatsFinalizeOp {
     // Set input and output desc for train op
     train_op_.SetOpConstParamDesc(
         {CUDNN_PARAM_YSTATS_DESC, CUDNN_PARAM_BN_SCALEBIAS_MEANVAR_DESC},
-        in_desc_);
-    train_op_.SetOpConstParamDesc(CUDNN_PARAM_BN_EQSCALEBIAS_DESC, out_desc_);
+        in_desc_.desc());
+    train_op_.SetOpConstParamDesc(CUDNN_PARAM_BN_EQSCALEBIAS_DESC,
+                                  out_desc_.desc());
 
     // Set constant_param for inference op
     inference_op_.SetOpConstParamAttr(
@@ -66,9 +67,9 @@ class CuDNNBNStatsFinalizeOp {
         CUDNN_PTR_ELEM_ALIGNED);
     // Set input and output desc for inference op
     inference_op_.SetOpConstParamDesc(CUDNN_PARAM_BN_SCALEBIAS_MEANVAR_DESC,
-                                      in_desc_);
+                                      in_desc_.desc());
     inference_op_.SetOpConstParamDesc(CUDNN_PARAM_BN_EQSCALEBIAS_DESC,
-                                      out_desc_);
+                                      out_desc_.desc());
 
     // Get workspace
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -85,7 +86,6 @@ class CuDNNBNStatsFinalizeOp {
                                    static_cast<void *>(nullptr));
       op->SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE, &workspace_size_bytes);
     }
-#endif
   }
 
   void Forward(const framework::ExecutionContext &ctx, float *sum_ptr,
@@ -93,9 +93,6 @@ class CuDNNBNStatsFinalizeOp {
                const float *bias_ptr, float *saved_mean_ptr,
                float *saved_invstd_ptr, float *running_mean_ptr,
                float *running_var_ptr, T *equiv_scale_ptr, T *equiv_bias_ptr) {
-#if CUDNN_VERSION < 8000
-    LOG(ERROR) << "cuDNN version 8.0 or later is required.";
-#else
     auto &op = true ? train_op_ : inference_op_;
 
     // Set variant_param for both inference_op_ and train_op_
@@ -128,7 +125,6 @@ class CuDNNBNStatsFinalizeOp {
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     op.Execute(handle);
-#endif  // CUDNN_VERSION >= 8000
   }
 
   // TBD
@@ -138,8 +134,8 @@ class CuDNNBNStatsFinalizeOp {
   void InitDescriptors(const framework::ExecutionContext &ctx,
                        const std::vector<int> &param_shape) {
     cudnnTensorFormat_t format = CUDNN_TENSOR_NHWC;
-    in_desc_.set(param_shape, format_, dtype_);
-    out_desc_.set(param_shape, format_, dtype_param_);
+    in_desc_.set(param_shape, format, dtype_param_);
+    out_desc_.set(param_shape, format, dtype_);
   }
 
   cudnnDataType_t dtype_;
@@ -147,7 +143,6 @@ class CuDNNBNStatsFinalizeOp {
   platform::TensorDescriptor in_desc_;
   platform::TensorDescriptor out_desc_;
 
-#if CUDNN_VERSION >= 8000
   CuDNNFusionOp train_op_;
   CuDNNFusionOp inference_op_;
 #endif

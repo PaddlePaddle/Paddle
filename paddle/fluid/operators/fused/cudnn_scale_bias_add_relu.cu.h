@@ -25,29 +25,29 @@ using Tensor = framework::Tensor;
 namespace dynload = platform::dynload;
 template <typename T>
 class CuDNNScaleBiasAddReluOp {
+#if CUDNN_VERSION < 8000
+  LOG(ERROR) << "cuDNN version 8.0 or later is required.";
+#else
+
  public:
   CuDNNScaleBiasAddReluOp()
-#if CUDNN_VERSION >= 8000
-      : fwd_op_(CUDNN_FUSED_SCALE_BIAS_ADD_ACTIVATION_GEN_BITMASK) {
-  }
-#endif
+      : fwd_op_(CUDNN_FUSED_SCALE_BIAS_ADD_ACTIVATION_GEN_BITMASK) {}
 
   ~CuDNNScaleBiasAddReluOp() {}
 
   void Init(const framework::ExecutionContext &ctx,
-            const std::vector<int> &out_shape, const std::vector<int> &x_shape,
+            const std::vector<int> &out_shape,
             const std::vector<int> &bitmask_shape,
+            const std::vector<int> &x_shape,
+            const std::vector<int> &param_shape,
             std::vector<int> z_shape = {}) {
-#if CUDNN_VERSION < 8000
-    LOG(ERROR) << "cuDNN version 8.0 or later is required.";
-#else
     has_shortcut_ = ctx.Attr<bool>("has_shortcut");
     fused_add_ = ctx.Attr<bool>("fused_add");
     dtype_ = platform::CudnnDataType<T>::type;
     format_ = CUDNN_TENSOR_NHWC;
-    InitDescriptors(ctx, out_shape, bitmask_shape, x_shape, z_shape);
-    GetTempSize(ctx);
-#endif
+    InitDescriptors(ctx, out_shape, bitmask_shape, x_shape, param_shape,
+                    z_shape);
+    GetWorkspaceSize(ctx);
   }
 
   void Forward(const framework::ExecutionContext &ctx, T *x_ptr, T *x_scale_ptr,
@@ -57,9 +57,6 @@ class CuDNNScaleBiasAddReluOp {
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     auto workspace_handle = dev_ctx.cudnn_workspace_handle();
-#if CUDNN_VERSION < 8000
-    LOG(ERROR) << "cuDNN version 8.0 or later is required.";
-#else
     // Set variant_param
     // input ptr
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, x_ptr);
@@ -90,7 +87,6 @@ class CuDNNScaleBiasAddReluOp {
           fwd_op_.Execute(handle);
         },
         fwd_workspace_byte_);
-#endif  // CUDNN_VERSION >= 8000
   }
 
   void Backward(const framework::ExecutionContext &ctx) {}
@@ -102,72 +98,58 @@ class CuDNNScaleBiasAddReluOp {
                        const std::vector<int> &x_shape,
                        const std::vector<int> &param_shape,
                        std::vector<int> z_shape = {}) {
-#if CUDNN_VERSION < 8000
-    LOG(ERROR) << "cuDNN version 8.0 or later is required.";
-#else
-
     // Set constant_param
     if (has_shortcut_) {
       fwd_op_.SetOpConstParamAttr(
-          {CUDNN_PARAM_XDATA_PLACEHOLDER, CUDNN_PARAM_ZDATA_PLACEHOLDER,
-           CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER,
-           CUDNN_PARAM_YDATA_PLACEHOLDER},
+          {CUDNN_PARAM_XDATA_PLACEHOLDER, CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
+           CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER, CUDNN_PARAM_YDATA_PLACEHOLDER,
+           CUDNN_PARAM_ZDATA_PLACEHOLDER, CUDNN_PARAM_BN_Z_EQSCALE_PLACEHOLDER,
+           CUDNN_PARAM_BN_Z_EQBIAS_PLACEHOLDER,
+           CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER},
           CUDNN_PTR_16B_ALIGNED);
-      fwd_op_.SetOpConstParamAttr({CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
-                                   CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER},
-                                  CUDNN_PTR_16B_ALIGNED);
-      fwd_op_.SetOpConstParamAttr({CUDNN_PARAM_BN_Z_EQSCALE_PLACEHOLDER,
-                                   CUDNN_PARAM_BN_Z_EQBIAS_PLACEHOLDER},
-                                  CUDNN_PTR_16B_ALIGNED);
     } else {
       if (fused_add_) {
         fwd_op_.SetOpConstParamAttr(
-            {CUDNN_PARAM_XDATA_PLACEHOLDER, CUDNN_PARAM_ZDATA_PLACEHOLDER,
-             CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER,
-             CUDNN_PARAM_YDATA_PLACEHOLDER},
+            {CUDNN_PARAM_XDATA_PLACEHOLDER, CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
+             CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER, CUDNN_PARAM_YDATA_PLACEHOLDER,
+             CUDNN_PARAM_ZDATA_PLACEHOLDER,
+             CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER},
             CUDNN_PTR_16B_ALIGNED);
-        fwd_op_.SetOpConstParamAttr({CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
-                                     CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER},
-                                    CUDNN_PTR_16B_ALIGNED);
       } else {
-        fwd_op_.SetOpConstParamAttr({CUDNN_PARAM_XDATA_PLACEHOLDER,
-                                     CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER,
-                                     CUDNN_PARAM_YDATA_PLACEHOLDER},
-                                    CUDNN_PTR_16B_ALIGNED);
-        fwd_op_.SetOpConstParamAttr({CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
-                                     CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER},
-                                    CUDNN_PTR_16B_ALIGNED);
+        fwd_op_.SetOpConstParamAttr(
+            {CUDNN_PARAM_XDATA_PLACEHOLDER, CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
+             CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER, CUDNN_PARAM_YDATA_PLACEHOLDER,
+             CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER},
+            CUDNN_PTR_16B_ALIGNED);
       }
     }
 
     // set input desc
     in_x_desc_.set(x_shape, format_, dtype_);
-    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_XDESC, in_x_desc_);
+    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_XDESC, in_x_desc_.desc());
     if (has_shortcut_ || fused_add_) {
       in_z_desc_.set(z_shape, format_, dtype_);
-      fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_ZDESC, in_z_desc_);
+      fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_ZDESC, in_z_desc_.desc());
     }
 
     // set scale/bias desc
     equiv_x_scale_bias_desc_.set(param_shape, format_, dtype_);
     fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_BN_EQSCALEBIAS_DESC,
-                                equiv_x_scale_bias_desc_);
+                                equiv_x_scale_bias_desc_.desc());
     if (has_shortcut_) {
       equiv_z_scale_bias_desc_.set(param_shape, format_, dtype_);
       fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_BN_Z_EQSCALEBIAS_DESC,
-                                  equiv_z_scale_bias_desc_);
+                                  equiv_z_scale_bias_desc_.desc());
     }
 
     // set output desc
     out_desc_.set(out_shape, format_, dtype_);
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetTensorNdDescriptorEx(
-        out_desc_, format_, dtype_, out_shape.size(), out_shape.data()));
-    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_YDESC, out_desc_);
+    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_YDESC, out_desc_.desc());
 
     // set bitmask desc
     bitmask_desc_.set(bitmask_shape, format_, CUDNN_DATA_INT32);
     fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_ACTIVATION_BITMASK_DESC,
-                                bitmask_desc_);
+                                bitmask_desc_.desc());
 
     // set activation desc
     cudnnActivationMode_t mode = CUDNN_ACTIVATION_IDENTITY;
@@ -178,33 +160,25 @@ class CuDNNScaleBiasAddReluOp {
               "Only relu activation supported in normalized convolution."));
       mode = CUDNN_ACTIVATION_RELU;
     }
-    auto nan_prop = CUDNN_NOT_PROPAGATE_NAN;
     double dummy_clip = 0.0;
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnSetActivationDescriptor(
-        activation_desc_, mode, nan_prop, dummy_clip));
+    activation_desc_.set(mode, dummy_clip);
     if (mode != CUDNN_ACTIVATION_IDENTITY) {
       fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_ACTIVATION_DESC,
-                                  activation_desc_);
+                                  activation_desc_.desc());
     }
 
     // others
     fwd_op_.SetOpConstParamAttr(CUDNN_PARAM_BN_MODE,
                                 CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
-#endif
   }
 
-  void GetTempSize(const framework::ExecutionContext &ctx) {
-#if CUDNN_VERSION < 8000
-    LOG(ERROR) << "cuDNN version 8.0 or later is required.";
-#else
+  void GetWorkspaceSize(const framework::ExecutionContext &ctx) {
     // Make op plan and get workspace size
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto handle = dev_ctx.cudnn_handle();
     fwd_workspace_byte_ = fwd_op_.GetWorkspaceSizeInBytes(handle);
-#endif
   }
 
-#if CUDNN_VERSION >= 8000
   bool has_shortcut_ = false;
   bool fused_add_ = false;
   size_t fwd_workspace_byte_;
