@@ -64,6 +64,10 @@ class AdamW(Adam):
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
         weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
+        lr_ratio (function|None, optional): If it is not None, 
+            the learning rate will be updated with layerwise learning rate ratio.
+            Otherwise, the learning rate is the original.
+            Default: None.
         apply_decay_param_fun (function|None, optional): If it is not None,
             only tensors that makes apply_decay_param_fun(Tensor.name)==True
             will be updated with weight decay. It only works when we want to specify tensors.
@@ -167,6 +171,9 @@ class AdamW(Adam):
         self._lr_to_coeff = dict()
         if lr_ratio is not None:
             assert isinstance(lr_ratio, Callable)
+            if core.is_compiled_with_xpu() or core.is_compiled_with_npu():
+                raise NotImplementedError(
+                    "'lr_ratio' is unimplemented in XPU and NPU")
         self._lr_ratio = lr_ratio
 
         super(AdamW, self).__init__(
