@@ -47,7 +47,7 @@ def _check_fft_axes(x, axes):
             "Length of fft axes should not be larger than the rank of input. "
             "Received, len of axes: {}, rank of x: {}".format(len(axes), ndim))
     for axis in axes:
-        if not isinstance(size, int) or axis < -ndim or axis >= ndim:
+        if not isinstance(axis, int) or axis < -ndim or axis >= ndim:
             raise ValueError("FFT axes {} contains invalid value ({})".format(
                 axes, axis))
 
