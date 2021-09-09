@@ -1,6 +1,7 @@
 add_subdirectory(nodes)
 add_subdirectory(tests)
 add_subdirectory(api)
+add_subdirectory(autocodegen)
 
 cc_library(autograd_meta SRCS autograd_meta.cc DEPS top)
 cc_library(backward SRCS backward.cc DEPS autograd_meta grad_node_info)
