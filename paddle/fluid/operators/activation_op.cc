@@ -415,7 +415,8 @@ class LeakyReluOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0.02f);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 LeakyRelu Activation Operator.
 
@@ -439,11 +440,13 @@ class SoftplusOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(20.0f);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<bool>(
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 :strong:`Softplus Activation Operator`
 
@@ -571,7 +574,8 @@ class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(6.0f);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 Relu6 Activation Operator.
 

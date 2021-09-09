@@ -70,7 +70,7 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"fused_ffn",
      {"Seed1", "Seed2", "Linear1Bias", "Linear2Bias", "Ln1Scale", "Ln1Bias",
       "Ln2Scale", "Ln2Bias"}},
-};
+    {"matrix_rank", {"X", "TolTensor"}}};
 
 // NOTE(zhiqiu): Like op_ins_map.
 // Commonly, the outputs in auto-generated OP function are determined by the
@@ -160,6 +160,8 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"rnn", {"DropoutState"}},
     {"run_program", {"Out", "DOut", "OutScope"}},
+    {"clear_float_status", {"FloatStatusOut"}},
+    {"get_float_status", {"FloatStatusOut"}},
 };
 
 // NOTE(pangyoki): Tensor View Strategy.

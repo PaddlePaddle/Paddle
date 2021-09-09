@@ -171,6 +171,7 @@ struct TestFusedResidualDropoutBias {
     auto config = paddle::operators::Get1DBlocksAnd2DGrids(
         *ctx, static_cast<uint64_t>(rows), static_cast<uint64_t>(cols),
         VecSize);
+
     const int increment = ((cols - 1) / (config.thread_per_block.x *
                                          config.block_per_grid.x * VecSize) +
                            1) *
