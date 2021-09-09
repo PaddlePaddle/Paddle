@@ -49,7 +49,7 @@ __all__ = [     #noqa
            'get_logger',
            'pull_worker_log',
            'global_scatter',
-           'global_gather'
+           'global_gather',
 ]
 
 
