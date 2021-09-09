@@ -36,5 +36,43 @@ class TensorUtils {
                              void* cb_params);
 };
 
+class Status {
+ public:
+  using Code = int;
+  Status() noexcept;
+  explicit Status(std::exception_ptr e) noexcept;
+
+  Status(const Status&) noexcept;
+  Status& operator=(const Status&) noexcept;
+
+  Status& operator=(Status&&) noexcept(
+      noexcept(std::declval<std::shared_ptr<Status>>().operator=(
+          std::declval<std::shared_ptr<Status>>()))) = default;
+
+  Status(Status&&) noexcept(noexcept(std::shared_ptr<Status>(
+      std::declval<std::shared_ptr<Status>>()))) = default;
+
+  static Status OK() noexcept;
+  bool ok() const noexcept;
+  Code code() const noexcept;
+  const std::string& error_message() const noexcept;
+  bool operator==(const Status& x) const noexcept;
+  bool operator!=(const Status& x) const noexcept;
+
+ private:
+  struct Impl;
+  std::shared_ptr<Impl> impl_;
+};
+
+template <typename Func, typename... Args>
+Status status_wrapper(Func func, Args&&... args) noexcept {
+  try {
+    func(std::forward<Args>(args)...);
+  } catch (...) {
+    return Status(std::current_exception());
+  }
+  return {};
+}
+
 }  // namespace contrib
 }  // namespace paddle_infer
