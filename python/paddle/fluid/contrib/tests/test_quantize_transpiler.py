@@ -169,7 +169,6 @@ class TestQuantizeTranspiler(unittest.TestCase):
             opt.minimize(loss)
             t = QuantizeTranspiler(activation_quantize_type=quant_type)
             t.training_transpile(main)
-            print(main)
             self.check_program(main)
 
     def test_residual_block_abs_max(self):

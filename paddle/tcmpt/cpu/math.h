@@ -18,9 +18,6 @@ limitations under the License. */
 #include "paddle/tcmpt/core/kernel_registry.h"
 #include "paddle/tcmpt/core/selected_rows_tensor.h"
 
-#include "paddle/tcmpt/eigen/scale.h"
-#include "paddle/tcmpt/eigen/sign.h"
-
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
 
@@ -40,16 +37,30 @@ void Scale(const CPUContext& dev_ctx,
            float scale,
            float bias,
            bool bias_after_scale,
-           DenseTensor* out) {
-  module::Scale<CPUContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
-}
+           DenseTensor* out);
 
-// template <typename T>
-// void ScaleSelectedRows(const CPUContext& dev_ctx,
-//         const SelectedRowsTensor& x,
-//         float scale,
-//         float bias,
-//         bool bias_after_scale,
-//         SelectedRowsTensor* out);
+template <typename T>
+void ScaleSelectedRows(const CPUContext& dev_ctx,
+                       const SelectedRowsTensor& x,
+                       float scale,
+                       float bias,
+                       bool bias_after_scale,
+                       SelectedRowsTensor* out);
+
+template <typename T>
+void ScaleDynamicAttr(const CPUContext& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& scale,
+                      float bias,
+                      bool bias_after_scale,
+                      DenseTensor* out);
+
+template <typename T>
+void ScaleSelectedRowsDynamicAttr(const CPUContext& dev_ctx,
+                                  const SelectedRowsTensor& x,
+                                  const DenseTensor& scale,
+                                  float bias,
+                                  bool bias_after_scale,
+                                  SelectedRowsTensor* out);
 
 }  // namespace pt

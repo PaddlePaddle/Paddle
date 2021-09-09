@@ -1210,8 +1210,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
       // TODO(chenweihang): here will intrduce copy
       auto op_kernel_ctx = ConstructPtKernelContext(*runtime_ctx, *dev_ctx);
       (*pt_kernel_)(&op_kernel_ctx);
-      // need share output into fluid tensor
-
     } else {
       (*kernel_func_)(
           ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));

@@ -42,17 +42,31 @@ void Scale(const CUDAContext& dev_ctx,
            float scale,
            float bias,
            bool bias_after_scale,
-           DenseTensor* out) {
-  module::Scale<CUDAContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
-}
+           DenseTensor* out);
 
-// template <typename T>
-// void ScaleSelectedRows(const CUDAContext& dev_ctx,
-//         const SelectedRowsTensor& x,
-//         float scale,
-//         float bias,
-//         bool bias_after_scale,
-//         SelectedRowsTensor* out);
+template <typename T>
+void ScaleSelectedRows(const CUDAContext& dev_ctx,
+                       const SelectedRowsTensor& x,
+                       float scale,
+                       float bias,
+                       bool bias_after_scale,
+                       SelectedRowsTensor* out);
+
+template <typename T>
+void ScaleDynamicAttr(const CUDAContext& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& scale,
+                      float bias,
+                      bool bias_after_scale,
+                      DenseTensor* out);
+
+template <typename T>
+void ScaleSelectedRowsDynamicAttr(const CUDAContext& dev_ctx,
+                                  const SelectedRowsTensor& x,
+                                  const DenseTensor& scale,
+                                  float bias,
+                                  bool bias_after_scale,
+                                  SelectedRowsTensor* out);
 
 }  // namespace pt
 

@@ -43,10 +43,12 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
   static void Parse(const KernelKey& default_key, KernelArgsDef* args_def) {
     auto args_type = ParseArgType(Indices{});
     for (auto arg_type : args_type) {
-      if (arg_type == std::type_index(typeid(const DenseTensor&))) {
+      if (arg_type == std::type_index(typeid(const DenseTensor&)) ||
+          arg_type == std::type_index(typeid(const SelectedRowsTensor&))) {
         args_def->AppendInput(
             default_key.backend(), default_key.layout(), default_key.dtype());
-      } else if (arg_type == std::type_index(typeid(DenseTensor*))) {
+      } else if (arg_type == std::type_index(typeid(DenseTensor*)) ||
+                 arg_type == std::type_index(typeid(SelectedRowsTensor*))) {
         args_def->AppendOutput(
             default_key.backend(), default_key.layout(), default_key.dtype());
       } else {
@@ -189,25 +191,28 @@ struct KernelRegistrar {
                             cpp_dtype,                        \
                             __VA_ARGS__)
 
-#define _PT_KERNEL_REGISTRAR_INIT(N,                 \
-                                  kernel_name,       \
-                                  func_id,           \
-                                  backend,           \
-                                  layout,            \
-                                  args_def_fn,       \
-                                  meta_kernel_fn,    \
-                                  cpp_dtype,         \
-                                  ...)               \
-  PT_CONCATENATE(_PT_KERNEL_REGISTRAR_INIT_, N)      \
-    (kernel_name,                                    \
-      func_id,                                       \
-      PT_ID,                                         \
-      backend,                                       \
-      layout,                                        \
-      args_def_fn,                                   \
-      meta_kernel_fn,                                \
-      cpp_dtype,                                     \
-      __VA_ARGS__)
+// The =pre-commit always treats this macro into the wrong format,
+// and multi-line macros cannot be skipped with NOLINT.
+// If there are only errors here, you can use -n to skip check
+#define _PT_KERNEL_REGISTRAR_INIT(N,              \
+                                  kernel_name,    \
+                                  func_id,        \
+                                  backend,        \
+                                  layout,         \
+                                  args_def_fn,    \
+                                  meta_kernel_fn, \
+                                  cpp_dtype,      \
+                                  ...)            \
+  PT_CONCATENATE(_PT_KERNEL_REGISTRAR_INIT_, N)   \
+  (kernel_name,                                   \
+   func_id,                                       \
+   PT_ID,                                         \
+   backend,                                       \
+   layout,                                        \
+   args_def_fn,                                   \
+   meta_kernel_fn,                                \
+   cpp_dtype,                                     \
+   __VA_ARGS__)
 
 #define _PT_KERNEL_REGISTRAR_INIT_1(kernel_name,      \
                                     func_id,          \

@@ -14,8 +14,8 @@
 
 #include "paddle/tcmpt/cpu/math.h"
 
-// #include "paddle/tcmpt/eigen/scale.h"
-// #include "paddle/tcmpt/eigen/sign.h"
+#include "paddle/tcmpt/eigen/scale.h"
+#include "paddle/tcmpt/eigen/sign.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/eigen.h"
@@ -45,73 +45,115 @@ void Mean(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   y_data.device(place) = x_data.mean();
 }
 
-// template <typename T>
-// void Scale(const CPUContext& dev_ctx,
-//            const DenseTensor& x,
-//            float scale,
-//            float bias,
-//            bool bias_after_scale,
-//            DenseTensor* out) {
-//   module::Scale<CPUContext, T>(dev_ctx, x, scale, bias, bias_after_scale,
-//   out);
-// }
+template <typename T>
+void Scale(const CPUContext& dev_ctx,
+           const DenseTensor& x,
+           float scale,
+           float bias,
+           bool bias_after_scale,
+           DenseTensor* out) {
+  module::Scale<CPUContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
+}
 
-// template <typename T>
-// void ScaleSelectedRows(const CPUContext& dev_ctx,
-//           const SelectedRowsTensor& x,
-//           float scale,
-//           float bias,
-//           bool bias_after_scale,
-//           SelectedRowsTensor* out) {
-//   out->set_rows(x.rows());
-//   out->set_height(x.height());
-//   Scale<T>(dev_ctx, x.value(), scale, bias, bias_after_scale, out->value());
-// }
+template <typename T>
+void ScaleSelectedRows(const CPUContext& dev_ctx,
+                       const SelectedRowsTensor& x,
+                       float scale,
+                       float bias,
+                       bool bias_after_scale,
+                       SelectedRowsTensor* out) {
+  out->set_rows(x.rows());
+  out->set_height(x.height());
+  Scale<T>(
+      dev_ctx, x.value(), scale, bias, bias_after_scale, out->mutable_value());
+}
+
+template <typename T>
+void ScaleDynamicAttr(const CPUContext& dev_ctx,
+                      const DenseTensor& x,
+                      const DenseTensor& scale,
+                      float bias,
+                      bool bias_after_scale,
+                      DenseTensor* out) {
+  module::Scale<CPUContext, T>(
+      dev_ctx, x, *scale.data<float>(), bias, bias_after_scale, out);
+}
+
+template <typename T>
+void ScaleSelectedRowsDynamicAttr(const CPUContext& dev_ctx,
+                                  const SelectedRowsTensor& x,
+                                  const DenseTensor& scale,
+                                  float bias,
+                                  bool bias_after_scale,
+                                  SelectedRowsTensor* out) {
+  out->set_rows(x.rows());
+  out->set_height(x.height());
+  Scale<T>(dev_ctx,
+           x.value(),
+           *scale.data<float>(),
+           bias,
+           bias_after_scale,
+           out->mutable_value());
+}
 
 }  // namespace pt
 
-// using bfloat16 = ::paddle::platform::bfloat16;
-
-// Register method 1:
-// PT_REGISTER_KERNEL_STANDARD(sign, CPU, NCHW, FLOAT32, pt::Sign<float>)
-//   .Input(BACKEND(CPU), DATALAYOUT(NCHW), DATATYPE(FLOAT32))
-//   .Output(BACKEND(CPU), DATALAYOUT(NCHW), DATATYPE(FLOAT32));
-// PT_TOUCH_KERNEL_REGISTRAR(sign, CPU, NCHW, FLOAT32);
-
-// Register method 2:
-// PT_REGISTER_KERNEL_AUTO_SPECIALIZE(sign, CPU, NCHW, pt::Sign, float)
-//   .Input(BACKEND(CPU), DATALAYOUT(NCHW), DATATYPE(FLOAT32))
-//   .Output(BACKEND(CPU), DATALAYOUT(NCHW), DATATYPE(FLOAT32));
-// PT_TOUCH_KERNEL_REGISTRAR(sign, CPU, NCHW, FLOAT32);
-
-// Register method 3:
-// PT_REGISTER_KERNEL_2T(sign, CPU, NCHW, pt::Sign, float, double);
-// PT_REGISTER_KERNEL_2T(mean, CPU, NCHW, pt::Mean, float, double);
-// PT_REGISTER_KERNEL_8T(scale,
-//                       CPU,
-//                       NCHW,
-//                       pt::Scale,
-//                       float,
-//                       double,
-//                       bfloat16,
-//                       uint8_t,
-//                       int8_t,
-//                       int16_t,
-//                       int,
-//                       int64_t);
-// PT_REGISTER_KERNEL_8T(scale.selected_rows,
-//                       CPU,
-//                       NCHW,
-//                       pt::ScaleSelectedRows,
-//                       float,
-//                       double,
-//                       bfloat16,
-//                       uint8_t,
-//                       int8_t,
-//                       int16_t,
-//                       int,
-//                       int64_t);
-
-// Register method 4:
+using bfloat16 = ::paddle::platform::bfloat16;
 PT_REGISTER_KERNEL("sign", CPU, NCHW, pt::Sign, float, double) {}
 PT_REGISTER_KERNEL("mean", CPU, NCHW, pt::Mean, float, double) {}
+PT_REGISTER_KERNEL("scale",
+                   CPU,
+                   NCHW,
+                   pt::Scale,
+                   float,
+                   double,
+                   bfloat16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+PT_REGISTER_KERNEL("scale.selectedrows",
+                   CPU,
+                   NCHW,
+                   pt::ScaleSelectedRows,
+                   float,
+                   double,
+                   bfloat16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {}
+PT_REGISTER_KERNEL("scale.dynamic_attr",
+                   CPU,
+                   NCHW,
+                   pt::ScaleDynamicAttr,
+                   float,
+                   double,
+                   bfloat16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {
+  kernel->InputAt(1)
+      .SetBackend(pt::Backend::kCPU)
+      .SetDataType(pt::DataType::kFLOAT32);
+}
+PT_REGISTER_KERNEL("scale.selectedrows.dynamic_attr",
+                   CPU,
+                   NCHW,
+                   pt::ScaleSelectedRowsDynamicAttr,
+                   float,
+                   double,
+                   bfloat16,
+                   uint8_t,
+                   int8_t,
+                   int16_t,
+                   int,
+                   int64_t) {
+  kernel->InputAt(1)
+      .SetBackend(pt::Backend::kCPU)
+      .SetDataType(pt::DataType::kFLOAT32);
+}

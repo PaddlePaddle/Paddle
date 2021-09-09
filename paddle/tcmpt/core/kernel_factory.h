@@ -65,10 +65,6 @@ struct KernelName final {
       overload_name = "";
     } else {
       name = kernel_name_str.substr(0, pos);
-      PADDLE_ENFORCE_EQ(kernel_name_str.find('.', pos + 1),
-                        std::string::npos,
-                        paddle::platform::errors::InvalidArgument(
-                            "KernelName only can contains one '.'."));
       overload_name = kernel_name_str.substr(pos + 1, kernel_name_str.size());
     }
     hash_value = std::hash<std::string>()(name) ^
@@ -150,13 +146,28 @@ class KernelKey {
 };
 
 // TODO(chenweihang): how deal with vector<Param>?
-struct ArgDef {
+struct TensorArgDef {
   Backend backend;
   DataLayout layout;
   DataType dtype;
 
-  ArgDef(Backend backend, DataLayout layout, DataType dtype)
+  TensorArgDef(Backend backend, DataLayout layout, DataType dtype)
       : backend(backend), layout(layout), dtype(dtype) {}
+
+  TensorArgDef& SetBackend(Backend backend) {
+    backend = backend;
+    return *this;
+  }
+
+  TensorArgDef& SetDataLayout(DataLayout layout) {
+    layout = layout;
+    return *this;
+  }
+
+  TensorArgDef& SetDataType(DataType dtype) {
+    dtype = dtype;
+    return *this;
+  }
 };
 
 class KernelArgsDef {
@@ -164,21 +175,25 @@ class KernelArgsDef {
   KernelArgsDef() = default;
 
   void AppendInput(Backend backend, DataLayout layout, DataType dtype) {
-    input_defs_.emplace_back(ArgDef(backend, layout, dtype));
+    input_defs_.emplace_back(TensorArgDef(backend, layout, dtype));
   }
 
   void AppendOutput(Backend backend, DataLayout layout, DataType dtype) {
-    output_defs_.emplace_back(ArgDef(backend, layout, dtype));
+    output_defs_.emplace_back(TensorArgDef(backend, layout, dtype));
   }
 
-  const std::vector<ArgDef>& input_defs() const { return input_defs_; }
+  const std::vector<TensorArgDef>& input_defs() const { return input_defs_; }
 
-  const std::vector<ArgDef>& output_defs() const { return output_defs_; }
+  const std::vector<TensorArgDef>& output_defs() const { return output_defs_; }
+
+  std::vector<TensorArgDef>& input_defs() { return input_defs_; }
+
+  std::vector<TensorArgDef>& output_defs() { return output_defs_; }
 
  private:
   // TODO(chenweihang): replaced by paddle::small_vector
-  std::vector<ArgDef> input_defs_{{}};
-  std::vector<ArgDef> output_defs_{{}};
+  std::vector<TensorArgDef> input_defs_{{}};
+  std::vector<TensorArgDef> output_defs_{{}};
 };
 
 class Kernel {
@@ -193,6 +208,10 @@ class Kernel {
   KernelArgsDef* mutable_args_def() { return &args_def_; }
 
   const KernelArgsDef& args_def() const { return args_def_; }
+
+  TensorArgDef& InputAt(size_t idx) { return args_def_.input_defs().at(idx); }
+
+  TensorArgDef& OutputAt(size_t idx) { return args_def_.output_defs().at(idx); }
 
  private:
   KernelFn fn_{nullptr};

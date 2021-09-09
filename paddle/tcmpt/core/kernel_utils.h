@@ -14,8 +14,10 @@
 
 #pragma once
 
+#include "paddle/tcmpt/core/dense_tensor.h"
 #include "paddle/tcmpt/core/kernel_context.h"
 #include "paddle/tcmpt/core/kernel_def.h"
+#include "paddle/tcmpt/core/selected_rows_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
@@ -64,6 +66,26 @@ using XPUContext = paddle::platform::XPUDeviceContext;
     }                                                                        \
   }
 
+#define PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(tensor_type)           \
+  template <typename... Tail>                                           \
+  struct KernelCallHelper<const tensor_type&, Tail...> {                \
+    template <int dev_ctx_idx,                                          \
+              int in_idx,                                               \
+              int attr_idx,                                             \
+              int out_idx,                                              \
+              typename... PreviousArgs>                                 \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {   \
+      static_assert(attr_idx == 0,                                      \
+                    "Kernel's Input should appear before Attributes."); \
+      static_assert(out_idx == 0,                                       \
+                    "Kernel's Input should appear before Outputs.");    \
+      const tensor_type& arg = ctx->InputAt<tensor_type>(in_idx);       \
+      KernelCallHelper<Tail...>::                                       \
+          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>( \
+              ctx, pargs..., arg);                                      \
+    }                                                                   \
+  }
+
 #define PT_SPECIALIZE_KernelCallHelper_FOR_ATTRIBUTE(attr_type)           \
   template <typename... Tail>                                             \
   struct KernelCallHelper<attr_type, Tail...> {                           \
@@ -80,6 +102,22 @@ using XPUContext = paddle::platform::XPUDeviceContext;
           template Compute<dev_ctx_idx, in_idx, attr_idx + 1, out_idx>(   \
               ctx, pargs..., arg);                                        \
     }                                                                     \
+  }
+
+#define PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(tensor_type)          \
+  template <typename... Tail>                                           \
+  struct KernelCallHelper<tensor_type*, Tail...> {                      \
+    template <int dev_ctx_idx,                                          \
+              int in_idx,                                               \
+              int attr_idx,                                             \
+              int out_idx,                                              \
+              typename... PreviousArgs>                                 \
+    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {   \
+      tensor_type* arg = ctx->MutableOutputAt<tensor_type>(out_idx);    \
+      KernelCallHelper<Tail...>::                                       \
+          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>( \
+              ctx, pargs..., arg);                                      \
+    }                                                                   \
   }
 
 template <typename T>
@@ -113,24 +151,8 @@ struct KernelImpl<Return (*)(Args...), kernel_fn> {
 
   /* Input Helpers */
 
-  template <typename... Tail>
-  struct KernelCallHelper<const DenseTensor&, Tail...> {
-    template <int dev_ctx_idx,
-              int in_idx,
-              int attr_idx,
-              int out_idx,
-              typename... PreviousArgs>
-    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {
-      static_assert(attr_idx == 0,
-                    "Kernel's Input should appear before Attributes.");
-      static_assert(out_idx == 0,
-                    "Kernel's Input should appear before Outputs.");
-      const DenseTensor& arg = ctx->InputAt<DenseTensor>(in_idx);
-      KernelCallHelper<Tail...>::
-          template Compute<dev_ctx_idx, in_idx + 1, attr_idx, out_idx>(
-              ctx, pargs..., arg);
-    }
-  };
+  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRowsTensor);
 
   /* Attribute Helpers */
 
@@ -139,20 +161,8 @@ struct KernelImpl<Return (*)(Args...), kernel_fn> {
 
   /* Output Helpers */
 
-  template <typename... Tail>
-  struct KernelCallHelper<DenseTensor*, Tail...> {
-    template <int dev_ctx_idx,
-              int in_idx,
-              int attr_idx,
-              int out_idx,
-              typename... PreviousArgs>
-    static void Compute(KernelContext* ctx, PreviousArgs&... pargs) {
-      DenseTensor* arg = ctx->MutableOutputAt<DenseTensor>(out_idx);
-      KernelCallHelper<Tail...>::
-          template Compute<dev_ctx_idx, in_idx, attr_idx, out_idx + 1>(
-              ctx, pargs..., arg);
-    }
-  };
+  PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(DenseTensor);
+  PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRowsTensor);
 
   /* End case */
   template <typename T>

@@ -39,6 +39,9 @@ std::ostream& operator<<(std::ostream& os, DataType dtype) {
     case DataType::kINT64:
       os << "int64";
       break;
+    case DataType::kBFLOAT16:
+      os << "bfloat16";
+      break;
     case DataType::kFLOAT16:
       os << "float16";
       break;
