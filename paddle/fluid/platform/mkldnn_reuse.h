@@ -988,7 +988,9 @@ class ActivationMKLDNNHandler
       //   out = scale*X + bias
       // else
       //   out = scale*(X + bias) = scale*X + scale*bias
-      if (!bias_after_scale) beta *= alpha;
+      if (!bias_after_scale) {
+        beta *= alpha;
+      }
     } else if (ctx.Type() == "clip") {
       alpha = ctx.HasInput("Min") ? ctx.Input<Tensor>("Min")->data<float>()[0]
                                   : ctx.Attr<float>("min");
