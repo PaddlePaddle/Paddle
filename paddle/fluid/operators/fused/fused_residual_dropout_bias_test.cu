@@ -254,8 +254,6 @@ struct TestFusedResidualDropoutBias {
 template <typename T>
 static void BaseTest(const bool is_fp16 = false) {
   const int rows = 16;
-  std::vector<int> cols_list = {16, 17};
-  bool has_bias[2] = {true, false};
   T default_diff = !is_fp16 ? static_cast<T>(1e-5) : default_diff =
                                                          static_cast<T>(1e-2);
   for (auto cols : {16, 17}) {
