@@ -40,7 +40,7 @@ class GlobalGatherOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ndim_input, 2,
                       platform::errors::InvalidArgument(
                           "The input tensor's dimension must be 2. "
-                          "But received input's dimension = [%s].",
+                          "But received input's dimension = %d.",
                           ndim_input));
     framework::DDim out_dims = framework::make_ddim({-1, -1});
     ctx->SetOutputDim("Out", out_dims);

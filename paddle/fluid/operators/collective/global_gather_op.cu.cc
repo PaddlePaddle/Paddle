@@ -30,29 +30,39 @@ class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
     auto x = ctx.Input<framework::LoDTensor>("X");
     auto local_count = ctx.Input<framework::LoDTensor>("local_count");
     auto global_count = ctx.Input<framework::LoDTensor>("global_count");
+    auto local_count_type = local_count->type();
+    auto global_count_type = global_count->type();
+    if (local_count_type != framework::proto::VarType::INT64) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Please use int64 type in local_count."));
+    }
+    if (global_count_type != framework::proto::VarType::INT64) {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Please use int64 type in global_count."));
+    }
     auto out = ctx.Output<framework::LoDTensor>("Out");
     const int64_t* cpu_local_count_data;
     const int64_t* cpu_global_count_data;
     auto local_count_len = 0;
 
     framework::Tensor cpu_local_count;
-    if (platform::is_gpu_place(local_count->place())) {
+    if (platform::is_cpu_place(local_count->place())) {
+      cpu_local_count_data = local_count->data<int64_t>();
+      local_count_len = local_count->numel();
+    } else {
       framework::TensorCopySync(*local_count, platform::CPUPlace(),
                                 &cpu_local_count);
       cpu_local_count_data = cpu_local_count.data<int64_t>();
       local_count_len = cpu_local_count.numel();
-    } else {
-      cpu_local_count_data = local_count->data<int64_t>();
-      local_count_len = local_count->numel();
     }
 
     framework::Tensor cpu_global_count;
-    if (platform::is_gpu_place(global_count->place())) {
+    if (platform::is_cpu_place(global_count->place())) {
+      cpu_global_count_data = global_count->data<int64_t>();
+    } else {
       framework::TensorCopySync(*global_count, platform::CPUPlace(),
                                 &cpu_global_count);
       cpu_global_count_data = cpu_global_count.data<int64_t>();
-    } else {
-      cpu_global_count_data = global_count->data<int64_t>();
     }
 
     ncclDataType_t dtype = platform::ToNCCLDataType(x->type());
@@ -111,7 +121,6 @@ class GlobalGatherOpCUDAKernel : public framework::OpKernel<T> {
         }
       }
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGroupEnd());
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(stream));
     }
 #else
     PADDLE_THROW(
