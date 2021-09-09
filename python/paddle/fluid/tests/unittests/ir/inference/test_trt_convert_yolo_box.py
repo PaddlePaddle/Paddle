@@ -47,7 +47,7 @@ class TrtConvertYoloBoxTest(TrtLayerAutoScanTest):
         for batch in [1, 2, 4]:
             for class_num in [80, 30]:
                 for anchors in [[10, 13, 16, 30, 33, 23]]:
-                    for downsample_ratio in [32, 16, 8]:
+                    for downsample_ratio in [32, 16]:
                         for conf_thresh in [0.01, 0.02]:
                             for clip_bbox in [True, False]:
                                 for scale_x_y in [1.0, 0.9]:
