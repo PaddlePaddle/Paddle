@@ -387,12 +387,13 @@ class FuseHelper(object):
         return groups
 
     @staticmethod
-    def coalesce_tensor(block,
-                        index,
-                        groups,
-                        op_role=OpRole.Backward,
-                        prefix="Output"):
+    def insert_coalesce_tensor(block,
+                               index,
+                               groups,
+                               op_role=OpRole.Backward,
+                               prefix="Output"):
         fused_vars = []
+        insert_num = 0
         for group in groups:
             assert len(group) >= 1
             if len(group) == 1:
@@ -419,7 +420,8 @@ class FuseHelper(object):
                     "dtype": group[0].dtype,
                     OP_ROLE_KEY: op_role
                 })
-        return fused_vars
+            insert_num += 1
+        return fused_vars, insert_num
 
 
 def insert_fused_allreduce_ops(block,
@@ -432,12 +434,12 @@ def insert_fused_allreduce_ops(block,
     groups = FuseHelper.get_fused_groups(block, allreduce_vars,
                                          fuse_grad_size_in_MB)
 
-    fused_vars = FuseHelper.coalesce_tensor(
+    fused_vars, insert_num = FuseHelper.insert_coalesce_tensor(
         block, insert_idx, groups, op_role, prefix="Grad")
 
     for fused_var in fused_vars:
         block._insert_op_without_sync(
-            insert_idx + len(fused_vars),
+            insert_idx + insert_num,
             type='c_allreduce_sum',
             inputs={'X': fused_var},
             outputs={'Out': fused_var},
@@ -448,7 +450,7 @@ def insert_fused_allreduce_ops(block,
             })
         if not use_calc_stream:
             block._insert_op_without_sync(
-                insert_idx + len(fused_vars),
+                insert_idx + insert_num,
                 type='c_sync_calc_stream',
                 inputs={'X': fused_var},
                 outputs={'Out': fused_var},
@@ -477,12 +479,12 @@ def insert_fused_reduce_ops(block,
     for root_id, vars_name in enumerate(device_to_vars):
         groups = FuseHelper.get_fused_groups(block, vars_name, fuse_grad_size)
 
-        fused_vars = FuseHelper.coalesce_tensor(
+        fused_vars, insert_num = FuseHelper.insert_coalesce_tensor(
             block, insert_idx, groups, op_role, prefix="Grad")
 
         for fused_var in fused_vars:
             block._insert_op_without_sync(
-                insert_idx + len(fused_vars),
+                insert_idx + insert_num,
                 type='c_reduce_sum',
                 inputs={'X': fused_var},
                 outputs={'Out': fused_var},
@@ -494,7 +496,7 @@ def insert_fused_reduce_ops(block,
                 })
             if not use_calc_stream:
                 block._insert_op_without_sync(
-                    insert_idx + len(fused_vars),
+                    insert_idx + insert_num,
                     type='c_sync_calc_stream',
                     inputs={'X': fused_var},
                     outputs={'Out': fused_var},
@@ -570,12 +572,12 @@ def insert_fused_broadcast_param_ops(block,
     for root_id, vars_name in enumerate(device_to_vars):
         groups = FuseHelper.get_fused_groups(block, vars_name, fuse_size)
 
-        fused_vars = FuseHelper.coalesce_tensor(
+        fused_vars, insert_num = FuseHelper.insert_coalesce_tensor(
             block, insert_idx, groups, op_role, prefix="Param")
 
         for fused_var in fused_vars:
             block._insert_op_without_sync(
-                insert_idx + len(fused_vars),
+                insert_idx + insert_num,
                 type='c_broadcast',
                 inputs={'X': fused_var},
                 outputs={'Out': fused_var},
@@ -587,7 +589,7 @@ def insert_fused_broadcast_param_ops(block,
                 })
             if not use_calc_stream:
                 block._insert_op_without_sync(
-                    insert_idx + len(fused_vars),
+                    insert_idx + insert_num,
                     type='c_sync_calc_stream',
                     inputs={'X': fused_var},
                     outputs={'Out': fused_var},
