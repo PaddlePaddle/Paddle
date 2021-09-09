@@ -91,7 +91,7 @@ def _normalize_axes(x, axes):
 
 # public APIs 1d
 def fft(x, n=None, axis=-1, norm="backward", name=None):
-    if is_floating_point(x):
+    if not is_complex(x):
         return fft_r2c(
             x, n, axis, norm, forward=True, onesided=False, name=name)
     else:
@@ -99,7 +99,7 @@ def fft(x, n=None, axis=-1, norm="backward", name=None):
 
 
 def ifft(x, n=None, axis=-1, norm="backward", name=None):
-    if is_floating_point(x):
+    if not is_complex(x):
         return fft_r2c(
             x, n, axis, norm, forward=False, onesided=False, name=name)
     else:
@@ -124,7 +124,7 @@ def ihfft(x, n=None, axis=-1, norm="backward", name=None):
 
 # public APIs nd
 def fftn(x, s=None, axes=None, norm="backward", name=None):
-    if is_floating_point(x):
+    if not is_complex(x):
         return fftn_r2c(
             x, s, axes, norm, forward=True, onesided=False, name=name)
     else:
@@ -132,7 +132,7 @@ def fftn(x, s=None, axes=None, norm="backward", name=None):
 
 
 def ifftn(x, s=None, axes=None, norm="backward", name=None):
-    if is_floating_point(x):
+    if not is_complex(x):
         return fftn_r2c(
             x, s, axes, norm, forward=False, onesided=False, name=name)
     else:
