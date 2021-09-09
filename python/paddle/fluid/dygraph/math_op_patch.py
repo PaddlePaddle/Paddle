@@ -148,6 +148,16 @@ def monkey_patch_math_varbase():
     def _size_(var):
         return np.prod(var.shape)
 
+    @property
+    def _T_(var):
+        if len(var.shape) == 1:
+            return var
+        perm = []
+        for i in range(len(var.shape)):
+            perm.insert(0, i)
+        out, _ = _C_ops.transpose2(var, 'axis', perm)
+        return out
+
     def _scalar_add_(var, value):
         return _scalar_elementwise_op_(var, 1.0, value)
 
@@ -271,6 +281,7 @@ def monkey_patch_math_varbase():
         ('ndimension', lambda x: len(x.shape)),
         ('ndim', _ndim_),
         ('size', _size_),
+        ('T', _T_),
         ('__add__',
          _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_)),
         ##  a+b == b+a. Do not need to reverse explicitly

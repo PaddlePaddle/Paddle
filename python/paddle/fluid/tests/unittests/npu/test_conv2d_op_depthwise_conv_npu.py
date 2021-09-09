@@ -22,8 +22,12 @@ import sys
 sys.path.append("..")
 from op_test import OpTest, skip_check_grad_ci
 from test_conv2d_op import conv2d_forward_naive
+from paddle import ParamAttr
+from paddle.regularizer import L2Decay
+from paddle.nn.initializer import KaimingNormal
 
 paddle.enable_static()
+SEED = 2021
 
 
 def create_test_channel_last_class(parent):
@@ -278,6 +282,152 @@ create_test_padding_SAME_class(TestDepthwiseConvNPU3_Padding)
 create_test_padding_VALID_class(TestDepthwiseConvNPU_Padding)
 create_test_padding_VALID_class(TestDepthwiseConvNPU2_Padding)
 create_test_padding_VALID_class(TestDepthwiseConvNPU3_Padding)
+
+
+class TestDepthwiseConvNet(unittest.TestCase):
+    def __init__(self, methodName='runTest'):
+        super().__init__(methodName=methodName)
+
+    def _test(self, run_npu=True):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        main_prog.random_seed = SEED
+        startup_prog.random_seed = SEED
+        np.random.seed(SEED)
+
+        a_np = np.random.random(size=(2, 4, 16, 16)).astype('float16')
+        b_np = np.random.random(size=(4, 1, 3, 3)).astype('float16')
+        if not run_npu:
+            a_np = a_np.astype('float32')
+            b_np = b_np.astype('float32')
+        label_np = np.random.randint(10, size=(2, 10)).astype('float32')
+        with paddle.static.program_guard(main_prog, startup_prog):
+            if run_npu:
+                a = paddle.static.data(
+                    name="a", shape=[2, 4, 16, 16], dtype='float16')
+                b = paddle.static.data(
+                    name="b", shape=[4, 1, 3, 3], dtype='float16')
+            else:
+                a = paddle.static.data(
+                    name="a", shape=[2, 4, 16, 16], dtype='float32')
+                b = paddle.static.data(
+                    name="b", shape=[4, 1, 3, 3], dtype='float32')
+            label = paddle.static.data(
+                name="label", shape=[2, 10], dtype='float32')
+
+            a *= 2.0
+            b += 0.01
+            fc_1 = paddle.nn.functional.conv2d(a, b, bias=None, groups=4)
+            if run_npu:
+                fc_1 = paddle.cast(fc_1, dtype='float32')
+            fc_1 = paddle.nn.functional.relu(fc_1)
+            prediction = fluid.layers.fc(input=fc_1, size=10, act='softmax')
+
+            cost = paddle.nn.functional.smooth_l1_loss(
+                input=prediction, label=label)
+            loss = paddle.sum(cost)
+            sgd = fluid.optimizer.SGD(learning_rate=0.00001)
+            sgd.minimize(loss)
+
+        if run_npu:
+            place = paddle.NPUPlace(0)
+        else:
+            place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+        exe.run(startup_prog)
+
+        print("Start run on {}".format(place))
+        for epoch in range(100):
+
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"a": a_np,
+                      "b": b_np,
+                      "label": label_np},
+                fetch_list=[prediction, loss])
+
+        return pred_res, loss_res
+
+    def test_npu(self):
+        cpu_pred, cpu_loss = self._test(False)
+        npu_pred, npu_loss = self._test(True)
+
+        self.assertTrue(np.allclose(npu_pred, cpu_pred, rtol=1e-04, atol=1e-03))
+        self.assertTrue(np.allclose(npu_loss, cpu_loss, rtol=1e-04, atol=1e-03))
+
+
+class TestDepthwiseConvNet_NHWC(unittest.TestCase):
+    def __init__(self, methodName='runTest'):
+        super().__init__(methodName=methodName)
+
+    def _test(self, run_npu=True):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        main_prog.random_seed = SEED
+        startup_prog.random_seed = SEED
+        np.random.seed(SEED)
+
+        a_np = np.random.random(size=(2, 16, 16, 4)).astype('float16')
+        b_np = np.random.random(size=(4, 1, 3, 3)).astype('float16')
+        if not run_npu:
+            a_np = a_np.astype('float32')
+            b_np = b_np.astype('float32')
+        label_np = np.random.randint(10, size=(2, 10)).astype('float32')
+        with paddle.static.program_guard(main_prog, startup_prog):
+            if run_npu:
+                a = paddle.static.data(
+                    name="a", shape=[2, 16, 16, 4], dtype='float16')
+                b = paddle.static.data(
+                    name="b", shape=[4, 1, 3, 3], dtype='float16')
+            else:
+                a = paddle.static.data(
+                    name="a", shape=[2, 16, 16, 4], dtype='float32')
+                b = paddle.static.data(
+                    name="b", shape=[4, 1, 3, 3], dtype='float32')
+            label = paddle.static.data(
+                name="label", shape=[2, 10], dtype='float32')
+
+            a *= 2.0
+            b += 0.01
+            fc_1 = paddle.nn.functional.conv2d(
+                a, b, bias=None, groups=4, data_format='NHWC')
+            if run_npu:
+                fc_1 = paddle.cast(fc_1, dtype='float32')
+            fc_1 = paddle.nn.functional.relu(fc_1)
+            prediction = fluid.layers.fc(input=fc_1, size=10, act='softmax')
+
+            cost = paddle.nn.functional.smooth_l1_loss(
+                input=prediction, label=label)
+            loss = paddle.sum(cost)
+            sgd = fluid.optimizer.SGD(learning_rate=0.00001)
+            sgd.minimize(loss)
+
+        if run_npu:
+            place = paddle.NPUPlace(0)
+        else:
+            place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+        exe.run(startup_prog)
+
+        print("Start run on {}".format(place))
+        for epoch in range(100):
+
+            pred_res, loss_res = exe.run(
+                main_prog,
+                feed={"a": a_np,
+                      "b": b_np,
+                      "label": label_np},
+                fetch_list=[prediction, loss])
+
+        return pred_res, loss_res
+
+    def test_npu(self):
+        cpu_pred, cpu_loss = self._test(False)
+        npu_pred, npu_loss = self._test(True)
+
+        self.assertTrue(np.allclose(npu_pred, cpu_pred, rtol=1e-04, atol=1e-03))
+        self.assertTrue(np.allclose(npu_loss, cpu_loss, rtol=1e-04, atol=1e-03))
+
 
 if __name__ == '__main__':
     unittest.main()
