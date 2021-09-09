@@ -136,9 +136,9 @@ def as_numpy(tensor, copy=False):
         numpy.ndarray
     """
     if isinstance(tensor, core.LoDTensorArray):
-        return [as_numpy(t) for t in tensor]
+        return [as_numpy(t, copy) for t in tensor]
     if isinstance(tensor, list):
-        return [as_numpy(t) for t in tensor]
+        return [as_numpy(t, copy) for t in tensor]
     assert isinstance(tensor, core.LoDTensor)
     lod = tensor.lod()
     if len(lod) > 0:
@@ -383,6 +383,18 @@ def _to_name_str(var):
         return _to_str(var)
 
 
+def _is_enable_standalone_executor():
+    """
+    Whether to use experimental executor `StandaloneExecutor`.
+    """
+    flag = False
+    env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', None)
+    if env_val in [1, '1', True, 'True', 'true']:
+        flag = True
+
+    return flag
+
+
 def _get_strong_program_cache_key(program, feed, fetch_list):
     return str(id(program)) + _get_program_cache_key(feed, fetch_list)
 
@@ -470,6 +482,121 @@ auc = Variable()
 var_dict = {"auc": auc}
 handler = FetchHandlerExample(var_dict=var_dict)
 """)
+
+
+class _StandaloneExecutor(object):
+    def __init__(self, place, main_program):
+        self._place = core.Place()
+        self._place.set_place(place)
+        self._main_program = main_program
+        self._new_exe = self._create_new_excutor()
+
+    def run(self, feed, fetch_list, return_numpy=True):
+        """
+        Args:
+            feed(list|dict): This parameter represents the input Tensors of the model.
+                If it is single card training, the feed is dict type, and if it is multi-card
+                training, the parameter feed can be dict or list of Tensors. If the
+                parameter type is dict, the data in the feed will be split and sent to
+                multiple devices (CPU/GPU), that is to say, the input data will be evenly
+                sent to different devices, so you should make sure the number of samples of
+                the current mini-batch must be greater than the number of places;
+                if the parameter type is list, those data are copied directly to each device,
+                so the length of this list should be equal to the number of places.
+                The default is None.
+            fetch_list(list): This parameter represents the Tensors that need to be returned
+                after the model runs. The default is None. 
+            return_numpy(bool): This parameter indicates whether convert the fetched Tensors
+                (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
+                the type of the return value is a list of :code:`LoDTensor`. The default is True.
+        """
+        feed = self._update_feed(feed)
+        fetch_list = self._check_fetch(fetch_list)
+
+        tensors = self._new_exe.run(feed, fetch_list)._move_to_list()
+        if return_numpy:
+            return as_numpy(tensors, copy=True)
+        else:
+            return tensors
+
+    def _create_new_excutor(self):
+        # NOTE: It's a trick to set emtpy start_up program.
+        startup_program = Program()
+        outer_scope = global_scope()
+        new_exe = core.StandaloneExecutor(self._place, startup_program.desc,
+                                          self._main_program.desc, outer_scope)
+
+        return new_exe
+
+    def _update_feed(self, feed):
+        """
+        Update the feed dict, remove the feed item which is pruned in program.  
+
+        Notes: This is a very low level API. Users should not use this API
+        directly. 
+
+        Args:
+            feed(list|dict): feed dict or list.
+
+        Returns:
+            feed:(list|dict)  updated feed.
+        """
+        global_block = self._main_program.global_block()
+        if feed is None:
+            feed = {}
+        elif isinstance(feed, dict):
+            for feed_name in list(feed.keys()):
+                if not global_block.has_var(feed_name):
+                    feed.pop(feed_name)
+                    warnings.warn(
+                        "The variable %s is not found in program. It is not declared or is pruned."
+                        % feed_name)
+        else:
+            raise TypeError("Only support feed with `dict`, but received {}".
+                            format(type(feed).__name__))
+
+        return feed
+
+    def _check_fetch(self, fetch_list):
+        if fetch_list is None:
+            fetch_list = []
+
+        res = []
+        for fetch_var in fetch_list:
+            if isinstance(fetch_var, Variable):
+                fetch_var = fetch_var.name
+            elif not isinstance(fetch_var, str):
+                raise TypeError(
+                    "Required fetch_var shall be str|Variable, but received {}".
+                    format(type(fetch_var).__name__))
+
+            res.append(fetch_var)
+        return res
+
+
+class _ExecutorCache(object):
+    def __init__(self, place):
+        # {Program : _StandaloneExecutor}
+        self._place = place
+        self._cached_executors = {}
+
+    def run(self, program, feed, fetch_list, return_numpy=True):
+        new_exe = self._get_exe_from_cache(program)
+        return new_exe.run(feed, fetch_list, return_numpy)
+
+    def _get_exe_from_cache(self, program):
+        """
+        Return cached _StandaloneExecutor instance. If not found, create associated 
+        _StandaloneExecutor instance with given program and cache it.
+        """
+        assert isinstance(
+            program, Program), "Required type(Program), but received {}".format(
+                type(program).__name__)
+        if program not in self._cached_executors:
+            new_exe = _StandaloneExecutor(self._place, program)
+            self._cached_executors[program] = new_exe
+
+        return self._cached_executors[program]
 
 
 class Executor(object):
@@ -567,6 +694,10 @@ class Executor(object):
 
         self._auto_checkpoint_name = unique_name.generate(
             "__auto_checkpoint_executor__")
+
+        # NOTE: Whether to use experimental executor `StandaloneExecutor`.
+        self._enable_interpreter_core = _is_enable_standalone_executor()
+        self._executor_cache = _ExecutorCache(self.place)
 
     def _get_scope_cache(self, program_cache_key):
         return self.scope_caches.get(program_cache_key, None)
@@ -1154,6 +1285,12 @@ class Executor(object):
 
         if scope is None:
             scope = global_scope()
+
+        # NOTE: This is an experimental feature. If `export FLAGS_USE_STANDALONE_EXECUTOR=1 `,
+        # use StandaloneExecutor to run the program.
+        if self._enable_interpreter_core and not program._is_start_up_program_:
+            return self._executor_cache.run(program, feed, fetch_list,
+                                            return_numpy)
 
         # use_prune can be overrided by putting optimize_ops in fetch_list
         _origin_fetch_list = fetch_list

@@ -4330,6 +4330,8 @@ class Program(object):
 
         # compiled program, i.e. Graph
         self._graph = None
+        # to tag whether is startup_program
+        self._is_start_up_program_ = False
 
     def _find_var_class_kwargs(self, new_desc):
         # NOTE: not all variables support shape/dtype/lod_level methods.
@@ -5943,6 +5945,7 @@ class ParamBase(core.VarBase):
 # program is a global instance.
 _main_program_ = Program()
 _startup_program_ = Program()
+_startup_program_._is_start_up_program_ = True
 
 
 def default_startup_program():
@@ -6091,6 +6094,8 @@ def program_guard(main_program, startup_program=None):
     if startup_program is not None:
         check_type(startup_program, 'startup_program', Program,
                    'paddle.static.program_guard')
+        # Tag the program __is_start_up as True
+        startup_program._is_start_up_program_ = True
         startup_program = switch_startup_program(startup_program)
     try:
         yield
