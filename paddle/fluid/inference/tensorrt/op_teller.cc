@@ -594,6 +594,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
               return false;
             }
           }
+        } else {
+          for (size_t i = 0; i < axes.size(); i++) {
+            if (starts[i] < 0 || ends[i] < 0) {
+              VLOG(3) << "Invalid slice attribute 'starts' or 'ends'. "
+                         "Negative starts or ends not supported in TensorRT "
+                         "when running in dynamic shape mode.";
+              return false;
+            }
+          }
         }
       }
     }

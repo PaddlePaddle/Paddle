@@ -53,6 +53,12 @@ void CheckOpHasNanOrInfInDygraph(const std::string& op_type,
   }
 }
 
+#ifdef PADDLE_WITH_ASCEND_CL
+void NPUAllocAndClearFloatStatus(const framework::OperatorBase& op,
+                                 const framework::Scope& scope,
+                                 const platform::Place& place);
+#endif
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
