@@ -18,8 +18,6 @@ from op_test import OpTest, skip_check_grad_ci
 from numpy.linalg import multi_dot
 from op_test import OpTest
 import paddle
-from paddle.fluid import Program, program_guard
-import paddle.fluid as fluid
 
 paddle.enable_static()
 
@@ -196,44 +194,46 @@ class TestMultiDotOp4MatFirstAndLast1D(TestMultiDotOp4Mat):
 #####python API test#######
 class TestMultiDotOpError(unittest.TestCase):
     def test_errors(self):
-        with program_guard(Program(), Program()):
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
             # The inputs type of multi_dot must be list matrix.
             input1 = 12
             self.assertRaises(TypeError, paddle.multi_dot, [input1, input1])
 
             # The inputs dtype of multi_dot must be float64, float64 or float16.
-            input2 = fluid.layers.data(
+            input2 = paddle.static.data(
                 name='input2', shape=[10, 10], dtype="int32")
             self.assertRaises(TypeError, paddle.multi_dot, [input2, input2])
 
             # the number of tensor must be larger than 1
-            x0 = fluid.data(name='x0', shape=[3, 2], dtype="float64")
+            x0 = paddle.static.data(name='x0', shape=[3, 2], dtype="float64")
             self.assertRaises(ValueError, paddle.multi_dot, [x0])
 
             #the first tensor must be 1D or 2D
-            x1 = fluid.data(name='x1', shape=[3, 2, 3], dtype="float64")
-            x2 = fluid.data(name='x2', shape=[3, 2], dtype="float64")
+            x1 = paddle.static.data(name='x1', shape=[3, 2, 3], dtype="float64")
+            x2 = paddle.static.data(name='x2', shape=[3, 2], dtype="float64")
             self.assertRaises(ValueError, paddle.multi_dot, [x1, x2])
 
             #the last tensor must be 1D or 2D
-            x3 = fluid.data(name='x3', shape=[3, 2], dtype="float64")
-            x4 = fluid.data(name='x4', shape=[3, 2, 2], dtype="float64")
+            x3 = paddle.static.data(name='x3', shape=[3, 2], dtype="float64")
+            x4 = paddle.static.data(name='x4', shape=[3, 2, 2], dtype="float64")
             self.assertRaises(ValueError, paddle.multi_dot, [x3, x4])
 
             #the tensor must be 2D, except first and last tensor
-            x5 = fluid.data(name='x5', shape=[3, 2], dtype="float64")
-            x6 = fluid.data(name='x6', shape=[2], dtype="float64")
-            x7 = fluid.data(name='x7', shape=[2, 2], dtype="float64")
+            x5 = paddle.static.data(name='x5', shape=[3, 2], dtype="float64")
+            x6 = paddle.static.data(name='x6', shape=[2], dtype="float64")
+            x7 = paddle.static.data(name='x7', shape=[2, 2], dtype="float64")
             self.assertRaises(ValueError, paddle.multi_dot, [x5, x6, x7])
 
 
 class APITestMultiDot(unittest.TestCase):
     def test_out(self):
-        with fluid.program_guard(fluid.Program()):
-            x0 = fluid.data(name='x0', shape=[3, 2], dtype="float64")
-            x1 = fluid.data(name='x1', shape=[2, 3], dtype='float64')
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            x0 = paddle.static.data(name='x0', shape=[3, 2], dtype="float64")
+            x1 = paddle.static.data(name='x1', shape=[2, 3], dtype='float64')
             result = paddle.multi_dot([x0, x1])
-            exe = fluid.Executor(fluid.CPUPlace())
+            exe = paddle.static.Executor(paddle.CPUPlace())
             data1 = np.random.rand(3, 2).astype("float64")
             data2 = np.random.rand(2, 3).astype("float64")
             np_res = exe.run(feed={'x0': data1,
@@ -248,14 +248,14 @@ class APITestMultiDot(unittest.TestCase):
             {}\n{}, check diff!".format(np_res, expected_result))
 
     def test_dygraph_without_out(self):
-        device = fluid.CPUPlace()
-        with fluid.dygraph.guard(device):
-            input_array1 = np.random.rand(3, 4).astype("float64")
-            input_array2 = np.random.rand(4, 3).astype("float64")
-            data1 = fluid.dygraph.to_variable(input_array1)
-            data2 = fluid.dygraph.to_variable(input_array2)
-            out = paddle.multi_dot([data1, data2])
-            expected_result = np.linalg.multi_dot([input_array1, input_array2])
+        paddle.disable_static()
+        device = paddle.CPUPlace()
+        input_array1 = np.random.rand(3, 4).astype("float64")
+        input_array2 = np.random.rand(4, 3).astype("float64")
+        data1 = paddle.to_tensor(input_array1)
+        data2 = paddle.to_tensor(input_array2)
+        out = paddle.multi_dot([data1, data2])
+        expected_result = np.linalg.multi_dot([input_array1, input_array2])
         self.assertTrue(np.allclose(expected_result, out.numpy()))
 
 
