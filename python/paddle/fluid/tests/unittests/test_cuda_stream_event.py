@@ -16,6 +16,7 @@ from paddle.device import cuda
 import paddle
 
 import unittest
+import numpy as np
 
 
 class TestCurrentStream(unittest.TestCase):
@@ -102,6 +103,33 @@ class TestCUDAEvent(unittest.TestCase):
 
             self.assertTrue(event_query_1)
             self.assertTrue(event_query_2)
+
+
+class TestStreamGuard(unittest.TestCase):
+    '''
+    Note: 
+        The asynchronous execution property of CUDA Stream can only be testted offline. 
+    '''
+
+    def test_stream_guard_normal(self):
+        if paddle.is_compiled_with_cuda():
+            s = paddle.device.cuda.Stream()
+            a = paddle.to_tensor(np.array([0, 2, 4], dtype="int32"))
+            b = paddle.to_tensor(np.array([1, 3, 5], dtype="int32"))
+            c = a + b
+            with paddle.device.cuda.stream_guard(s):
+                d = a + b
+
+            self.assertTrue(np.array_equal(np.array(c), np.array(d)))
+
+    def test_stream_guard_default_stream(self):
+        if paddle.is_compiled_with_cuda():
+            s1 = paddle.device.cuda.current_stream()
+            with paddle.device.cuda.stream_guard(s1):
+                pass
+            s2 = paddle.device.cuda.current_stream()
+
+            self.assertTrue(id(s1) == id(s2))
 
 
 if __name__ == "__main__":
