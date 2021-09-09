@@ -18,8 +18,14 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/fast_divmod.h
+#include "paddle/fluid/platform/fast_divmod.h"
 #include "paddle/fluid/platform/gpu_launch_config.h"
+
+#ifdef __HIPCC__
+#define BLOCK_SIZE 256
+#else
+#define BLOCK_SIZE 512
+#endif
 
 namespace paddle {
 namespace operators {
@@ -508,13 +514,8 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
-#ifdef __HIPCC__
-    constexpr int block_size = 256;
-#else
-    constexpr int block_size = 512;
-#endif
     int nthreads = batch_size * input_channels * input_height * input_width;
-    int blocks = GetThreadsPerBlock(context, block_size, nthreads);
+    int blocks = GetThreadsPerBlock(context, BLOCK_SIZE, nthreads);
     int grids = (nthreads + blocks - 1) / blocks;
 
     auto pool_divmod =
@@ -564,13 +565,8 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     const T* output_grad_data = output_grad.data<T>();
     T* input_grad_data = input_grad->mutable_data<T>(context.GetPlace());
 
-#ifdef __HIPCC__
-    constexpr int block_size = 256;
-#else
-    constexpr int block_size = 512;
-#endif
     int nthreads = batch_size * input_channels * input_height * input_width;
-    int blocks = GetThreadsPerBlock(context, block_size, nthreads);
+    int blocks = GetThreadsPerBlock(context, BLOCK_SIZE, nthreads);
     int grids = (nthreads + blocks - 1) / blocks;
 
     auto pool_divmod =
