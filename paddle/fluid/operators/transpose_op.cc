@@ -133,12 +133,14 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_quantizer",
         "(bool, default false) "
         "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"});
+        .InEnum({"float32", "int8", "bfloat16"})
+        .AsExtra();
     /* int8 parameters */
     AddComment(R"DOC(
 Transpose Operator.

@@ -29,6 +29,13 @@ REGISTER_OP_CUDA_KERNEL(
                         paddle::platform::float16>);
 
 REGISTER_OP_CUDA_KERNEL(
+    pool2d_grad_grad,
+    ops::PoolGradGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::PoolGradGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::PoolGradGradKernel<paddle::platform::CUDADeviceContext,
+                            paddle::platform::float16>);
+
+REGISTER_OP_CUDA_KERNEL(
     pool3d, ops::PoolKernel<paddle::platform::CUDADeviceContext, float>,
     ops::PoolKernel<paddle::platform::CUDADeviceContext, double>,
     ops::PoolKernel<paddle::platform::CUDADeviceContext,
