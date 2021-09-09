@@ -173,21 +173,58 @@ class GradScaler(AmpScaler):
                 scaler.step(optimizer)
                 optimizer.clear_grad()
         """
-        if not self._enable:
-            return optimizer.step()
+        return super(GradScaler, self).step(optimizer)
 
-        #  unscale the grad
-        self._unscale(optimizer)
+    def update(self):
+        """
+        Updates the loss_scaling.
+        
+        Examples:
+            .. code-block:: python
+            import paddle
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            data = paddle.rand([10, 3, 32, 32])
+            with paddle.amp.auto_cast():
+                conv = model(data)
+                loss = paddle.mean(conv)
+            scaled = scaler.scale(loss)  # scale the loss 
+            scaled.backward()            # do backward
+            scaler.unscale(optimizer)    # unscale the parameter
+            scaler.step(optimizer, scaled)
+            scaler.update()              # update the loss scaling ratio
+            optimizer.clear_grad() 
+        """
+        return super(GradScaler, self).update()
 
-        if self._found_inf:
-            self._cache_founf_inf = True
-        else:
-            optimizer.step()
-            self._cache_founf_inf = False
-
-        if self._use_dynamic_loss_scaling:
-            # uopdate the scale
-            self._update()
+    def unscale(self, optimizer):
+        """
+        Unscale the gradients of parameters, multiplies the gradients of parameters by 1/(loss scaling ratio).  
+        If this instance of :class:`GradScaler` is not enabled, output are returned unmodified.
+        Args:
+            optimizer(Optimizer):  The optimizer used to update parameters.
+        Returns:
+            The unscaled parameters or original parameters.
+        
+        Examples:
+            .. code-block:: python
+            import paddle
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            data = paddle.rand([10, 3, 32, 32])
+            with paddle.amp.auto_cast():
+                conv = model(data)
+                loss = paddle.mean(conv)
+            scaled = scaler.scale(loss)  # scale the loss 
+            scaled.backward()            # do backward
+            scaler.unscale(optimizer)    # unscale the parameter
+            scaler.step(optimizer, scaled)
+            scaler.update()  
+            optimizer.clear_grad() 
+        """
+        return super(GradScaler, self)._unscale(optimizer)
 
     def is_enable(self):
         """

@@ -168,7 +168,7 @@ class AmpScaler(object):
 
         return var * self._scale
 
-    def step(self, optimizer, *args, **kwargs):
+    def step(self, optimizer):
         """
         This function is similar as `Optimizer.step()`, which performs parameters updating.
         
@@ -194,11 +194,11 @@ class AmpScaler(object):
                     loss = fluid.layers.reduce_mean(conv)
                     scaled = scaler.scale(loss)
                     scaled.backward()
-                    scaler.step(optimizer, scaled)
+                    scaler.step(optimizer)
                     scaler.update() 
         """
         if not self._enable:
-            return optimizer.minimize(*args, **kwargs)
+            return optimizer.step()
 
         optimizer_state = self._optimizer_states[id(optimizer)]
         if optimizer_state["state"] is OptimizerState.STEPPED:
@@ -209,17 +209,13 @@ class AmpScaler(object):
         if optimizer_state["state"] is OptimizerState.INIT:
             self._unscale(optimizer)
 
-        optimize_ops, params_grads = (None, None)
-
         if self._found_inf:
             self._cache_founf_inf = True
         else:
-            optimize_ops, params_grads = optimizer.minimize(*args, **kwargs)
+            optimizer.step()
             self._cache_founf_inf = False
 
         optimizer_state["state"] = OptimizerState.STEPPED
-
-        return optimize_ops, params_grads
 
     def update(self):
         """
