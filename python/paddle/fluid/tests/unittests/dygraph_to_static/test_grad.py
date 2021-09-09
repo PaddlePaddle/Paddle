@@ -78,8 +78,6 @@ class TestGrad(unittest.TestCase):
         return ret
 
     def test_forward(self):
-        # @2021.9.3 zhulei17 close this test for double_grad of matmul_v2 is unavailable
-        return
         dygraph_res = self._run(self.func, to_static=False)
         static_res = self._run(self.func, to_static=True)
         self.assertTrue(np.allclose(static_res, dygraph_res))
@@ -94,8 +92,6 @@ class TestGradLinear(TestGrad):
         self.train_model_path = "double_grad_train_model"
 
     def test_save_infer_program(self):
-        # @2021.9.3 zhulei17 close this test for double_grad of matmul_v2 is unavailable
-        return
         input_spec = [
             paddle.static.InputSpec(
                 shape=[10, 2, 5], dtype='float32')
@@ -108,8 +104,6 @@ class TestGradLinear(TestGrad):
         self.assertTrue(np.allclose(origin_res, load_res))
 
     def test_save_train_program(self):
-        # @2021.9.3 zhulei17 close this test for double_grad of matmul_v2 is unavailable
-        return
         grad_clip = paddle.nn.ClipGradByGlobalNorm(2.0)
         optimizer = paddle.optimizer.SGD(learning_rate=0.01,
                                          grad_clip=grad_clip,
