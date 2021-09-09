@@ -42,13 +42,10 @@ class AutoParallelizer:
     def _remove_distributed_attrs(self, main_program):
         suffix = core.kAutoParallelSuffix()
         for block in main_program.blocks:
-            for var_name in block.vars:
-                var = block.var(var_name)
-                for attr_name in var.attr_names:
-                    if suffix in attr_name: var._remove_attr(attr_name)
             for op in block.ops:
                 for attr_name in op.attr_names:
-                    if suffix in attr_name: op._remove_attr(attr_name)
+                    if suffix in attr_name:
+                        op._remove_attr(attr_name)
 
     def parallelize(self,
                     loss,
