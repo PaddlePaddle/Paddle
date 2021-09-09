@@ -27,7 +27,7 @@ class TrtConvertEmbEltwiseLayernormTest1(TrtLayerAutoScanTest):
     def sample_program_configs(self):
         def generate_input(batch, input_size):
             return np.random.randint(
-                0, 100, size=(batch, input_size, 1)).astype(np.int64)
+                0, 7, size=(batch, input_size, 1)).astype(np.int64)
 
         def generate_weight1(size11, size2):
             return np.random.randn(size11, size2).astype(np.float32)
@@ -43,14 +43,12 @@ class TrtConvertEmbEltwiseLayernormTest1(TrtLayerAutoScanTest):
 
         for input_size in [16, 128, 256]:
             for batch in [1, 2, 4]:
-                for size11 in [4, 513, 20001]:
-                    for size12 in [4, 513, 20001]:
-                        for size13 in [4, 513, 20001]:
+                for size11 in [8, 513, 20001]:
+                    for size12 in [8, 513, 20001]:
+                        for size13 in [8, 513, 20001]:
                             for size2 in [32, 256, 768]:
-                                for norm_axis in [1, 2]:
-                                    for epsilon in [
-                                            np.random.uniform(0.0, 0.001)
-                                    ]:
+                                for norm_axis in [2]:
+                                    for epsilon in [0.0005, 0.0001]:
                                         for axis1 in [0, -1]:
                                             for axis2 in [0, -1]:
                                                 for type in [
