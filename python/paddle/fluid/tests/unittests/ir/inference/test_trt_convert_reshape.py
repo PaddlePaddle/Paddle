@@ -150,10 +150,7 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             # TODO: This is just the example, need to be fixed.
-            if self.num_input == 3:
-                return 1, 2
-            else:
-                return 0, 3
+            return 1, 2
 
         attrs = [
             program_config.ops[i].attrs
@@ -181,8 +178,15 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
                                                                      True), 1e-2
 
     def add_skip_trt_case(self):
-        # TODO(wilber): This is just the example to illustrate the skip usage.
-        pass
+        def teller1(program_config, predictor_config):
+            if len(program_config.weights) >= 1:
+                return True
+            return False
+
+        self.add_skip_case(
+            teller1, SkipReasons.TRT_NOT_SUPPORT,
+            "INPUT ShapeTensor and Shape NOT SUPPORT: we need to add support in the future"
+        )
 
     def test(self):
         self.add_skip_trt_case()
