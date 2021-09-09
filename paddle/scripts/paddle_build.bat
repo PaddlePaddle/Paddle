@@ -367,20 +367,19 @@ echo echo ${md5_content}^>md5.txt >> cache.sh
 
 set /p md5=< md5.txt
 if "%WITH_GPU%"=="ON" (
-    set cuda_version=%CUDA_PATH:~-4%
+    for /F "delims=" %%# in ('nvcc --version^|findstr V1') do set cuda_version=%%#
+    set cuda_version=!cuda_version:~-7,4!
     set sub_dir=cuda!cuda_version:.=!
 ) else (
     set sub_dir=cpu
 )
 
-set md5=%md5%123456
-echo %md5%
-set THIRD_PARTY_HOME=%cache_dir:\=/%/thidr_party_%sub_dir%
+set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party_%sub_dir%
 set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
 set UPLOAD_TP_FILE=OFF
-echo THIRD_PARTY_PATH
+
 if not exist %THIRD_PARTY_PATH% (
-    echo There is no usable third_party cache locally, will download from bos.
+    echo There is no usable third_party cache in %THIRD_PARTY_PATH%, will download from bos.
     pip install wget
     if not exist %THIRD_PARTY_HOME% mkdir "%THIRD_PARTY_HOME%"
     cd %THIRD_PARTY_HOME%
@@ -390,7 +389,7 @@ if not exist %THIRD_PARTY_PATH% (
         echo Getting third party: extracting ...
         tar -xf %md5%.tar.gz
         if !ERRORLEVEL! EQU 0 ( 
-            echo Get third party successfully 
+            echo Get third party from bos successfully
         ) else (
             echo Get third party failed, reason: extract failed, will build locally
         )
@@ -526,8 +525,8 @@ if %UPLOAD_TP_FILE%==ON (
         %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz')"
         %PYTHON_ROOT%\python.exe -c "import shutil;shutil.unpack_archive('bce-python-sdk-0.8.33.tar.gz', extract_dir='./',format='gztar')"
         cd %cache_dir%\bce-python-sdk-0.8.33
-        %PYTHON_ROOT%\python.exe setup.py install
-        del bce-python-sdk-0.8.33.tar.gz
+        %PYTHON_ROOT%\python.exe setup.py install 1>nul
+        del %cache_dir%\bce-python-sdk-0.8.33.tar.gz
     )
     if !errorlevel! EQU 0 (
         cd %THIRD_PARTY_HOME%
@@ -537,16 +536,16 @@ if %UPLOAD_TP_FILE%==ON (
             echo Uploading third_party: uploading ...
             %PYTHON_ROOT%\python.exe %BCE_FILE% %md5%.tar.gz paddle-windows/third_party/%sub_dir% 1>nul
             if !errorlevel! EQU 0 (
-                echo Upload third party to bce successfully 
+                echo Upload third party to bos paddle-windows/third_party/%sub_dir% successfully 
             ) else (
-                echo Failed upload third party to bce, reason: upload failed
+                echo Failed upload third party to bos, reason: upload failed
             )
         ) else (
-            echo Failed upload third party to bce, reason: compress failed
+            echo Failed upload third party to bos, reason: compress failed
         )
         del %md5%.tar.gz
     ) else (
-        echo Failed upload third party to bce, reason: install bce failed
+        echo Failed upload third party to bos, reason: install bce failed
     )
     cd %work_dir%\%BUILD_DIR%
 )
