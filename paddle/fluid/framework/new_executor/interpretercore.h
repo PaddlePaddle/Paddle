@@ -114,8 +114,6 @@ class InterpreterCore {
   size_t max_memory_size_;
   size_t cur_memory_size_;
   std::unique_ptr<WorkQueue> gc_queue_;
-
-  platform::DeviceContextPool fetch_context_pool_;
 };
 }  // namespace framework
 }  // namespace paddle

@@ -69,7 +69,8 @@ class AnalysisPredictor::MkldnnQuantizer {
                             bool is_unsigned);
   void CalculateSingleGRUWeightsScale(const std::string& var_name,
                                       const framework::LoDTensor& var_tensor);
-  void CalculateScalesForGRUWeights(const paddle::framework::OpDesc* op);
+  void CalculateScalesForRNNWeights(const paddle::framework::OpDesc* op,
+                                    bool gru);
   void CalculateScalesForOpOutputs(const paddle::framework::OpDesc* op);
   void CalculateScalesForOpInputs(const paddle::framework::OpDesc* op);
   void PrepareArgument() const;
@@ -88,6 +89,10 @@ class AnalysisPredictor::MkldnnQuantizer {
       bool is_transposed) const;
 
   std::pair<bool, framework::LoDTensor> GetMaxChGRUScalingFactor(
+      const framework::LoDTensor& wx_tensor,
+      const framework::LoDTensor& wh_tensor) const;
+
+  std::pair<bool, framework::LoDTensor> GetMaxChLSTMScalingFactor(
       const framework::LoDTensor& wx_tensor,
       const framework::LoDTensor& wh_tensor) const;
 

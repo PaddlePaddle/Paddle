@@ -42,8 +42,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
 
     float* weight_data = nullptr;
     bool enable_int8 = op_desc.HasAttr("enable_int8");
-    bool qkv2context_plugin_int8 =
-        BOOST_GET_CONST(bool, op_desc.GetAttr("qkv2context_plugin_int8"));
+    bool qkv2context_plugin_int8 = op_desc.HasAttr("qkv2context_plugin_int8");
     float in_scale = 0.;
 
     if (enable_int8) {

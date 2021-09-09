@@ -848,7 +848,8 @@ void BatchNormGradMaker<T>::Apply(GradOpPtr<T> op) const {
   }
 
   // used when setting use_global_stats True during training
-  if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats"))) {
+  if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats")) ||
+      BOOST_GET_CONST(bool, this->GetAttr("is_test"))) {
     op->SetInput("Mean", this->Output("MeanOut"));
     op->SetInput("Variance", this->Output("VarianceOut"));
   }
