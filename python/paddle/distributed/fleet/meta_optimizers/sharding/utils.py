@@ -365,24 +365,61 @@ def insert_allreduce_ops(block,
     return
 
 
-def get_fused_groups(block, allreduce_vars, fuse_grad_size):
-    """ coalesce tensor, get fused group """
-    segments = []
-    cur_size = 0.
-    last_dtype = None
-    for var in allreduce_vars:
-        real_var = block.var(var)
-        var_size = get_var_size(real_var)
-        if cur_size + var_size > fuse_grad_size \
-                or len(segments) == 0 \
-                or real_var.dtype != last_dtype:
-            segments.append([real_var])
-            cur_size = var_size
-            last_dtype = real_var.dtype
-        else:
-            segments[-1].append(real_var)
-            cur_size += var_size
-    return segments
+class FuseHelper(object):
+    @staticmethod
+    def get_fused_groups(block, vars_name, fuse_size=32.):
+        """ coalesce tensor, get fused group """
+        groups = []
+        cur_size = 0.
+        last_dtype = None
+        for var_name in vars_name:
+            real_var = block.var(var_name)
+            var_size = get_var_size(real_var)
+            if cur_size + var_size > fuse_size \
+                    or len(groups) == 0 \
+                    or real_var.dtype != last_dtype:
+                groups.append([real_var])
+                cur_size = var_size
+                last_dtype = real_var.dtype
+            else:
+                groups[-1].append(real_var)
+                cur_size += var_size
+        return groups
+
+    @staticmethod
+    def coalesce_tensor(block,
+                        index,
+                        groups,
+                        op_role=OpRole.Backward,
+                        prefix="Output"):
+        fused_vars = []
+        for group in groups:
+            assert len(group) >= 1
+            if len(group) == 1:
+                # no need fuse
+                fused_vars.append(group[0])
+                continue
+
+            fused_var = block.create_var(
+                name=unique_name.generate('Fused{}_{}'.format(prefix, group[0]
+                                                              .name)),
+                dtype=group[0].dtype,
+                persistable=False,
+                stop_gradient=True)
+            fused_vars.append(fused_var)
+            block._insert_op_without_sync(
+                index,
+                type="coalesce_tensor",
+                inputs={"Input": group},
+                outputs={"Output": group,
+                         "FusedOutput": fused_var},
+                attrs={
+                    "copy_data": True,
+                    "use_align": True,
+                    "dtype": group[0].dtype,
+                    OP_ROLE_KEY: op_role
+                })
+        return fused_vars
 
 
 def insert_fused_allreduce_ops(block,
@@ -392,28 +429,11 @@ def insert_fused_allreduce_ops(block,
                                op_role=OpRole.Backward,
                                use_calc_stream=False,
                                fuse_grad_size_in_MB=32):
-    segments = get_fused_groups(block, allreduce_vars, fuse_grad_size_in_MB)
+    groups = FuseHelper.get_fused_groups(block, allreduce_vars,
+                                         fuse_grad_size_in_MB)
 
-    fused_vars = []
-    for segment in segments:
-        tmp_var = block.create_var(
-            name=unique_name.generate('FusedOutput_{}'.format(segment[0].name)),
-            dtype=segment[0].dtype,
-            persistable=False,
-            stop_gradient=True)
-        fused_vars.append(tmp_var)
-        block._insert_op_without_sync(
-            insert_idx,
-            type="coalesce_tensor",
-            inputs={"Input": segment},
-            outputs={"Output": segment,
-                     "FusedOutput": tmp_var},
-            attrs={
-                "copy_data": True,
-                "use_align": True,
-                "dtype": segment[0].dtype,
-                OP_ROLE_KEY: op_role
-            })
+    fused_vars = FuseHelper.coalesce_tensor(
+        block, insert_idx, groups, op_role, prefix="Grad")
 
     for fused_var in fused_vars:
         block._insert_op_without_sync(
@@ -455,33 +475,10 @@ def insert_fused_reduce_ops(block,
         device_to_vars[root_id].append(var)
 
     for root_id, vars_name in enumerate(device_to_vars):
-        segments = get_fused_groups(block, vars_name, fuse_grad_size)
+        groups = FuseHelper.get_fused_groups(block, vars_name, fuse_grad_size)
 
-        fused_vars = []
-        for segment in segments:
-            if len(segment) == 1:
-                fused_vars.append(segment[0])
-                continue
-
-            tmp_var = block.create_var(
-                name=unique_name.generate('FusedOutput_{}'.format(segment[0]
-                                                                  .name)),
-                dtype=segment[0].dtype,
-                persistable=False,
-                stop_gradient=True)
-            fused_vars.append(tmp_var)
-            block._insert_op_without_sync(
-                insert_idx,
-                type="coalesce_tensor",
-                inputs={"Input": segment},
-                outputs={"Output": segment,
-                         "FusedOutput": tmp_var},
-                attrs={
-                    "copy_data": True,
-                    "use_align": True,
-                    "dtype": segment[0].dtype,
-                    OP_ROLE_KEY: op_role
-                })
+        fused_vars = FuseHelper.coalesce_tensor(
+            block, insert_idx, groups, op_role, prefix="Grad")
 
         for fused_var in fused_vars:
             block._insert_op_without_sync(
@@ -526,8 +523,12 @@ def insert_reduce_ops(block,
 
     grad_in_this_device = []
     for var in reduce_vars:
-
-        root_id = get_grad_device(var, shard)
+        grad_var = var
+        if strategy.fuse_grad_merge:
+            # TODO(wangxi): if support fp16_allreduce, need be
+            # 'FusedMergedGrad.cast_fp16._'
+            grad_var = var.replace('FusedMergedGrad_', '')
+        root_id = get_grad_device(grad_var, shard)
         assert root_id >= 0, "root id should be a positive int, but now root id is {}".format(
             root_id)
         if rank is not None and rank == root_id:
@@ -555,7 +556,7 @@ def insert_fused_broadcast_param_ops(block,
                                      op_role=OpRole.Optimize,
                                      use_calc_stream=False,
                                      rank=None,
-                                     fuse_grad_size=32):
+                                     fuse_size=32):
     nranks = shard.worker_num
     device_to_vars = [[] for _ in range(nranks)]
 
@@ -567,29 +568,10 @@ def insert_fused_broadcast_param_ops(block,
         device_to_vars[root_id].append(var)
 
     for root_id, vars_name in enumerate(device_to_vars):
-        segments = get_fused_groups(block, vars_name, fuse_grad_size)
+        groups = FuseHelper.get_fused_groups(block, vars_name, fuse_size)
 
-        fused_vars = []
-        for segment in segments:
-            tmp_var = block.create_var(
-                name=unique_name.generate('FusedParam_{}'.format(segment[0]
-                                                                 .name)),
-                dtype=segment[0].dtype,
-                persistable=False,
-                stop_gradient=True)
-            fused_vars.append(tmp_var)
-            block._insert_op_without_sync(
-                insert_idx,
-                type="coalesce_tensor",
-                inputs={"Input": segment},
-                outputs={"Output": segment,
-                         "FusedOutput": tmp_var},
-                attrs={
-                    "copy_data": True,
-                    "use_align": True,
-                    "dtype": segment[0].dtype,
-                    OP_ROLE_KEY: op_role
-                })
+        fused_vars = FuseHelper.coalesce_tensor(
+            block, insert_idx, groups, op_role, prefix="Param")
 
         for fused_var in fused_vars:
             block._insert_op_without_sync(
@@ -627,6 +609,7 @@ def insert_broadcast_param_ops(block,
     add broadcast param ops
     """
     if strategy and strategy.fuse_all_reduce_ops:
+        # TODO(wangxi): put fused var in startup_program, only need exec once
         return insert_fused_broadcast_param_ops(
             block, insert_idx, ring_id, params, shard, op_role, use_calc_stream,
             rank, strategy.fuse_grad_size_in_MB)
