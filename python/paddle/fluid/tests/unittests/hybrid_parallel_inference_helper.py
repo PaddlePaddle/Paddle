@@ -26,6 +26,7 @@ import paddle.distributed as dist
 import paddle.fluid as fluid
 import paddle.distributed.fleet as fleet
 from paddle import framework
+from paddle.distributed.fleet.utils.hybrid_parallel_inference import HybridParallelInferenceHelper
 paddle.enable_static()
 
 
@@ -135,7 +136,7 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
                 # use a empty lod_tensor_array to clear lod_tensor_array
                 layers.assign(layers.create_array(data.dtype), data)
 
-        helper = fleet.HybridParallelInferenceHelper(
+        helper = HybridParallelInferenceHelper(
             startup_program,
             main_program,
             micro_batch_size=2,
