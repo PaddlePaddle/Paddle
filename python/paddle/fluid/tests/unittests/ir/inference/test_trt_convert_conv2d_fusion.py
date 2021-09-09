@@ -20,7 +20,7 @@ from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
 
 
-class TrtConvertConv2dTest(TrtLayerAutoScanTest):
+class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return True
 
@@ -31,12 +31,15 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
             return np.ones([batch, 3, 64, 64]).astype(np.float32)
 
         def generate_weight1(attrs: List[Dict[str, Any]]):
-            return np.random.random([24, 3, 3, 3]).astype(np.float32)
+            return np.random.random([24, 1, 3, 3]).astype(np.float32)
+
+        def generate_weight2(attrs: List[Dict[str, Any]]):
+            return np.random.random([24, 1, 1]).astype(np.float32)
 
         for batch in [1, 2, 4]:
             for strides in [[1, 1], [2, 2]]:
                 for paddings in [[0, 3], [1, 2, 3, 4]]:
-                    for groups in [1]:
+                    for groups in [3]:
                         for padding_algorithm in ['EXPLICIT', 'SAME', 'VALID']:
                             for dilations in [[1, 1], [2, 2]]:
                                 for data_format in ['NCHW']:
@@ -49,41 +52,32 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
                                         "paddings": paddings,
                                         "strides": strides,
                                         "data_format": data_format
-                                    }, {}]
+                                    }, {
+                                        "axis": 1
+                                    }]
 
-                                    if padding_algorithm == 'EXPLICIT':
-                                        ops_config = [{
-                                            "op_type": "conv2d",
-                                            "op_inputs": {
-                                                "Input": ["input_data"],
-                                                "Filter": ["conv2d_weight"]
-                                            },
-                                            "op_outputs": {
-                                                "Output": ["conv_output_data"]
-                                            },
-                                            "op_attrs": dics[0]
-                                        }, {
-                                            "op_type": "relu",
-                                            "op_inputs": {
-                                                "X": ["conv_output_data"]
-                                            },
-                                            "op_outputs": {
-                                                "Out": ["output_data"]
-                                            },
-                                            "op_attrs": dics[1]
-                                        }]
-                                    else:
-                                        ops_config = [{
-                                            "op_type": "conv2d",
-                                            "op_inputs": {
-                                                "Input": ["input_data"],
-                                                "Filter": ["conv2d_weight"]
-                                            },
-                                            "op_outputs": {
-                                                "Output": ["output_data"]
-                                            },
-                                            "op_attrs": dics[0]
-                                        }]
+                                    ops_config = [{
+                                        "op_type": "conv2d",
+                                        "op_inputs": {
+                                            "Input": ["input_data"],
+                                            "Filter": ["conv2d_weight"]
+                                        },
+                                        "op_outputs": {
+                                            "Output": ["conv_output_data"]
+                                        },
+                                        "op_attrs": dics[0]
+                                    }, {
+                                        "op_type": "elementwise_add",
+                                        "op_inputs": {
+                                            "X": ["conv_output_data"],
+                                            "Y": ["elementwise_weight"]
+                                        },
+                                        "op_outputs": {
+                                            "Out": ["output_data"]
+                                        },
+                                        "op_attrs": dics[1]
+                                    }]
+
                                     ops = self.generate_op_config(ops_config)
 
                                     program_config = ProgramConfig(
@@ -91,7 +85,10 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
                                         weights={
                                             "conv2d_weight":
                                             TensorConfig(data_gen=partial(
-                                                generate_weight1, dics))
+                                                generate_weight1, dics)),
+                                            "elementwise_weight": TensorConfig(
+                                                data_gen=partial(
+                                                    generate_weight2, dics))
                                         },
                                         inputs={
                                             "input_data":
