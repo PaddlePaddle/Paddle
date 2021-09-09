@@ -22,14 +22,6 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 class TrtConvertShuffleChannelTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        inputs = program_config.inputs
-        weights = program_config.weights
-        outputs = program_config.outputs
-
-        attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
-        ]
         return True
 
     def sample_program_configs(self):
