@@ -157,6 +157,7 @@ class MHAKernel : public framework::OpKernel<T> {
     const T* k_data = k->data<T>();
     const T* v_data = v->data<T>();
     const T* w_data = w->data<T>();
+
     T* o_data = o->data<T>();
     const T *residuals = nullptr;
     auto q_seq_size_dev_buf = memory::Alloc(dev_ctx, q_seq_size_arr.size()*sizeof(int));
@@ -183,7 +184,74 @@ class MHAKernel : public framework::OpKernel<T> {
 template <typename DeviceContext, typename T>
 class MHAGradKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto& dev_ctx = context.template device_context<platform::CUDADeviceContext>();
+
+    const Tensor* dout = context.Input<Tensor>(framework::GradVarName("O"));
+    const Tensor* q = context.Input<Tensor>("Q");
+    const Tensor* k = context.Input<Tensor>("K");
+    const Tensor* v = context.Input<Tensor>("V");
+    const Tensor* w = context.Input<Tensor>("W");
+
+    Tensor* dq = context.Output<Tensor>(framework::GradVarName("Q"));
+    Tensor* dk = context.Output<Tensor>(framework::GradVarName("K"));
+    Tensor* dv = context.Output<Tensor>(framework::GradVarName("V"));
+    Tensor* dw = context.Output<Tensor>(framework::GradVarName("W"));
+
+    auto cudnn_handle = dev_ctx.cudnn_handle();
+    cudnnAttnDescriptor_t attn_desc = nullptr;
+    cudnnSeqDataDescriptor_t q_desc = nullptr;
+    cudnnSeqDataDescriptor_t k_desc = nullptr;
+    cudnnSeqDataDescriptor_t v_desc = nullptr;
+    cudnnSeqDataDescriptor_t o_desc = nullptr;
+
+    std::vector<int> q_seq_size_arr = context.Attr<std::vector<int>>("Q_seq_size_arr");
+    std::vector<int> k_seq_size_arr = context.Attr<std::vector<int>>("K_seq_size_arr");
+
+    auto q_seq_size_dev_buf = memory::Alloc(dev_ctx, q_seq_size_arr.size()*sizeof(int));
+    int* q_seq_size_dev_ptr = static_cast<int*>(q_seq_size_dev_buf->ptr());
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpy(q_seq_size_dev_ptr, q_seq_size_arr.data(), q_seq_size_arr.size()*sizeof(int), cudaMemcpyHostToDevice));
+    auto k_seq_size_dev_buf = memory::Alloc(dev_ctx, k_seq_size_arr.size()*sizeof(int));
+    int* k_seq_size_dev_ptr = static_cast<int*>(k_seq_size_dev_buf->ptr());
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaMemcpy(k_seq_size_dev_ptr, k_seq_size_arr.data(), k_seq_size_arr.size()*sizeof(int), cudaMemcpyHostToDevice));
+
+    std::vector<int> attn_low_windows = context.Attr<std::vector<int>>("attn_low_windows");
+    std::vector<int> attn_high_windows = context.Attr<std::vector<int>>("attn_high_windows");
+
+    size_t weights_size, wkspace_szie, reserve_size;
+    void *wkspace_ptr, *reserve_ptr;
+
+    const T* dout_data = dout->data<T>();
+    const T* q_data = q->data<T>();
+    const T* k_data = k->data<T>();
+    const T* v_data = v->data<T>();
+    const T* w_data = w->data<T>();
+
+    dq->mutable_data<T>(context.GetPlace());
+    dk->mutable_data<T>(context.GetPlace());
+    dv->mutable_data<T>(context.GetPlace());
+    dw->mutable_data<T>(context.GetPlace());
+
+    T* dq_data = dq->data<T>();
+    T* dk_data = dk->data<T>();
+    T* dv_data = dv->data<T>();
+    T* dw_data = dw->data<T>();
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnMultiHeadAttnBackwardData(
+            cudnn_handle, attn_desc, attn_low_windows.data(), attn_high_windows.data(),
+            q_seq_size_dev_ptr, k_seq_size_dev_ptr, o_desc, dout_data,
+            q_desc, dq_data, q_data, k_desc, dk_data, k_data, 
+            v_desc, dv_data, v_data, weights_size, w_data,
+            wkspace_szie, wkspace_ptr, reserve_size, reserve_ptr));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnMultiHeadAttnBackwardWeights(
+            cudnn_handle, attn_desc, CUDNN_WGRAD_MODE_SET,
+            q_desc, q_data, k_desc, k_data, v_desc, v_data,
+            o_desc, dout_data, weights_size, w_data, dw_data,
+            wkspace_szie, wkspace_ptr, reserve_size, reserve_ptr));
   }
 };
 
