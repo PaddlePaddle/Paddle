@@ -118,6 +118,9 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
 endif()
 
+# Temporally disable test_deprecated_decorator
+LIST(REMOVE_ITEM TEST_OPS test_deprecated_decorator)
+
 if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
