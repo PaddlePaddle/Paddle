@@ -122,6 +122,27 @@ void ParseDirectAndEventRunOps(
     }
   }
 }
+
+static inline const Tensor& GetTensorFromVar(const Variable* var) {
+  if (var->IsType<LoDTensor>()) {
+    return var->Get<LoDTensor>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Variable must be type of LoDTensor, but received %s.",
+        framework::ToTypeName(var->Type())));
+  }
+}
+
+static inline Tensor* GetMutableTensorFromVar(Variable* var) {
+  if (var->IsType<LoDTensor>()) {
+    return var->GetMutable<LoDTensor>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Variable must be type of LoDTensor, but received %s.",
+        framework::ToTypeName(var->Type())));
+  }
+}
+
 }  // namespace
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
@@ -301,6 +322,35 @@ void InterpreterCore::Convert() {
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     BuildAndCacheInstructionCtx(&vec_instruction_[i], *global_scope_, place_);
   }
+
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    if (!vec_instruction_[i]
+             .kernel_func_.operator_base_->Info()
+             .infer_inplace_) {
+      continue;
+    }
+
+    auto in_to_outs =
+        vec_instruction_[i].kernel_func_.operator_base_->Info().infer_inplace_(
+            platform::is_gpu_place(vec_instruction_[i].dev_ctx_->GetPlace()));
+
+    for (auto& pair : in_to_outs) {
+      auto iter = vec_instruction_[i].input_index_.find(pair.first);
+      if (iter != vec_instruction_[i].input_index_.end()) {
+        if (input_var2op_info_[iter->second[0]].size() == 1) {
+          auto iterout = vec_instruction_[i].output_index_.find(pair.second);
+          if (iterout != vec_instruction_[i].output_index_.end()) {
+            auto invar = global_scope_->var_list[iter->second[0]];
+            auto outvar = global_scope_->var_list[iterout->second[0]];
+            if (invar && outvar) {
+              vec_instruction_[i].vec_inplace_in_to_out_.emplace_back(invar,
+                                                                      outvar);
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 void InterpreterCore::BuildAndCacheInstructionCtx(
@@ -347,6 +397,12 @@ void InterpreterCore::BuildAndCacheInstructionCtx(
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   VLOG(3) << "RunInstruction:  "
           << instr_node.kernel_func_.operator_base_->Type();
+
+  for (auto& pair : instr_node.vec_inplace_in_to_out_) {
+    const auto& in = GetTensorFromVar(pair.first);
+    auto* out = GetMutableTensorFromVar(pair.second);
+    out->ShareBufferWith(in);
+  }
 
   static_cast<const framework::OperatorWithKernel*>(
       instr_node.kernel_func_.operator_base_)
