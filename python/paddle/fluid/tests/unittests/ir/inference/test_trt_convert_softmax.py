@@ -22,7 +22,6 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 class TrtConvertSoftmaxTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        # TODO: This is just the example to remove the wrong attrs.
         inputs = program_config.inputs
         weights = program_config.weights
         outputs = program_config.outputs
@@ -38,8 +37,6 @@ class TrtConvertSoftmaxTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(attrs: List[Dict[str, Any]], batch):
-            # TODO: This is just the example to illustrate the releation between axis and input.
-            # for each attr, can generate different datas
             if self.dims == 4:
                 return np.ones([batch, 3, 24, 24]).astype(np.float32)
             elif self.dims == 3:
@@ -108,14 +105,12 @@ class TrtConvertSoftmaxTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            # TODO: This is just the example, need to be fixed.
             return 1, 2
 
         attrs = [
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-
         # for static_shape
         clear_dynamic_shape()
         if attrs[0]['axis'] == 0:
@@ -138,7 +133,6 @@ class TrtConvertSoftmaxTest(TrtLayerAutoScanTest):
                                                                      True), 1e-2
 
     def add_skip_trt_case(self):
-        # TODO(wilber): This is just the example to illustrate the skip usage.
         pass
 
     def test(self):
