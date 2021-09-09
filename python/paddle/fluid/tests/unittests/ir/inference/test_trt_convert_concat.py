@@ -31,7 +31,6 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-
         if len(inputs['concat_input1'].shape) <= attrs[0]['axis']:
             return False
 
@@ -190,13 +189,13 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
                         "concat_input1": [24],
                         "concat_input2": [24],
                         "concat_input3": [24],
-                        "AxisTensor": [1]
+                        "AxisTensor": [0]
                     }
                     self.dynamic_shape.max_input_shape = {
                         "concat_input1": [48],
                         "concat_input2": [48],
                         "concat_input3": [48],
-                        "AxisTensor": [1]
+                        "AxisTensor": [0]
                     }
                     self.dynamic_shape.opt_input_shape = {
                         "concat_input1": [24],
@@ -277,28 +276,16 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
             # TODO: This is just the example, need to be fixed.
-            if self.num_input == 0:
-                if dynamic_shape == True:
-                    if attrs[0]['axis'] >= 0:
-                        return 0, 6
-                    else:
-                        return 0, 6
+            if dynamic_shape == True:
+                if attrs[0]['axis'] >= 0:
+                    return 1, 4
                 else:
-                    if attrs[0]['axis'] > 0:
-                        return 0, 6
-                    else:
-                        return 0, 6
-            elif self.num_input == 1:
-                if dynamic_shape == True:
-                    if attrs[0]['axis'] >= 0:
-                        return 1, 4
-                    else:
-                        return 0, 5
+                    return 0, 5
+            else:
+                if attrs[0]['axis'] > 0:
+                    return 1, 4
                 else:
-                    if attrs[0]['axis'] > 0:
-                        return 1, 4
-                    else:
-                        return 0, 5
+                    return 0, 5
 
         attrs = [
             program_config.ops[i].attrs
@@ -323,8 +310,14 @@ class TrtConvertConcatTest(TrtLayerAutoScanTest):
                                                                      True), 1e-2
 
     def add_skip_trt_case(self):
-        # TODO(wilber): This is just the example to illustrate the skip usage.
-        pass
+        def teller1(program_config, predictor_config):
+            if len(program_config.inputs) == 4:
+                return True
+            return False
+
+        self.add_skip_case(
+            teller1, SkipReasons.TRT_NOT_SUPPORT,
+            "INPUT AxisTensor NOT SUPPORT: we need to add support in the future")
 
     def test(self):
         self.add_skip_trt_case()
