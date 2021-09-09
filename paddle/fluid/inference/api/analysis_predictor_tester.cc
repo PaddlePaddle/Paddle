@@ -90,10 +90,6 @@ TEST(AnalysisPredictor, analysis_on) {
   std::vector<PaddleTensor> outputs;
   ASSERT_TRUE(predictor->Run(inputs, &outputs));
 
-  for (auto& output : outputs) {
-    LOG(INFO) << inference::DescribeTensor(output);
-  }
-
   // compare with NativePredictor
   auto naive_predictor =
       CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
@@ -148,7 +144,7 @@ TEST(AnalysisPredictor, CollectShapeRangeInfo) {
   config.SetModel(FLAGS_dirname);
   config.SwitchUseFeedFetchOps(false);
   config.EnableUseGpu(100, 0);
-  config.CollectShapeRangeInfo("shape_range.pbtxt");
+  config.CollectShapeRangeInfo(FLAGS_dirname + "/shape_range.pbtxt");
   LOG(INFO) << config.Summary();
   AnalysisConfig config2(config);
   auto predictor = CreatePaddlePredictor<AnalysisConfig>(config2);
@@ -185,8 +181,8 @@ TEST(AnalysisPredictor, CollectShapeRangeInfo) {
   std::map<std::string, std::vector<int32_t>> min_shape;
   std::map<std::string, std::vector<int32_t>> max_shape;
   std::map<std::string, std::vector<int32_t>> opt_shape;
-  inference::DeserializeShapeRangeInfo("shape_range.pbtxt", &min_shape,
-                                       &max_shape, &opt_shape);
+  inference::DeserializeShapeRangeInfo(FLAGS_dirname + "/shape_range.pbtxt",
+                                       &min_shape, &max_shape, &opt_shape);
   ASSERT_EQ(min_shape.size(), 14u);
 }
 
