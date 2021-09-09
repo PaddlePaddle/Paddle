@@ -375,7 +375,7 @@ class TestFillConstantOpError(unittest.TestCase):
                 out=x1)
 
             # The argument dtype of fill_constant_op must be one of bool, float16,
-            #float32, float64, uint8, int32 or int64
+            #float32, float64, uint8, int16, int32 or int64
             x2 = fluid.layers.data(name='x2', shape=[1], dtype="int32")
 
             self.assertRaises(
