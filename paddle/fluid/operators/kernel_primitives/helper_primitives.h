@@ -32,7 +32,6 @@ static __device__ __forceinline__ platform::float16 LogFunctor(
 static __device__ __forceinline__ float LogFunctor(float x) { return logf(x); }
 static __device__ __forceinline__ double LogFunctor(double x) { return log(x); }
 
-}  // namespace details
 /*************************** Compute Functor****************************/
 // for margin_cross_entropy
 template <typename Tx, typename Ty = Tx>
@@ -75,6 +74,7 @@ struct DivideFunctor {
   T n_inv;
 };
 
+}  // namespace details
 }  // namespace kernel_primitives
 }  // namespace operators
 }  // namespace paddle

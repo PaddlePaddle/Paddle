@@ -71,6 +71,8 @@ endif()
 if(WITH_GLOO)
   set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
   set(PYBIND_SRCS ${PYBIND_SRCS} gloo_context_py.cc)
+  set(PYBIND_DEPS ${PYBIND_DEPS} imperative_gloo_context)
+  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
 endif(WITH_GLOO)
 
 if (WITH_CRYPTO)
