@@ -24,6 +24,49 @@ namespace operators {
 typedef platform::float16 fp16;
 
 /**
+ *@brief the relu functor
+ */
+template <typename T>
+struct ReluFunctor {
+  __host__ __device__ T operator()(const T *args) const {
+    math::ReluFunctor<T> relu;
+    return relu(args[0]);
+  }
+};
+
+template <typename T>
+struct ReluGradFunctor {
+  __host__ __device__ __forceinline__ T operator()(const T *args) const {
+    math::ReluGradFunctor<T> relu_grad;
+    return args[0] * relu_grad.UseOut(args[1]);
+  }
+};
+
+/**
+ *@brief the gelu functor
+ */
+template <typename T>
+struct GeluFunctor {
+  __host__ __device__ T operator()(const T *args) const {
+    math::GeluFunctor<T> gelu;
+    return gelu(args[0]);
+  }
+};
+
+/**
+ *@brief the gelu grad functor
+ */
+template <typename T>
+struct GeluGradFunctor {
+  __host__ __device__ T operator()(const T *args) const {
+    const T grad = args[0];
+    const T x = args[1];
+    math::GeluGradFunctor<T> gelu_grad;
+    return grad * gelu_grad.UseOut(x);
+  }
+};
+
+/**
  * @brief dst = dropout(activation(src + bias));
  * the src, mask and dst shape is (rows, cols)
  * the bias shape is (1, cols)
@@ -96,7 +139,7 @@ __global__ void FusedDropoutActBias(Functor act, const uint64_t seed,
 #pragma unroll
       for (int ii = 0; ii < VecSize; ii++) {
         const T tmp = src_vec[ii] + bias_vec[ii];
-        dest_vec[ii] = act(tmp) * static_cast<T>(mask_vec[ii]) * factor;
+        dest_vec[ii] = act(&tmp) * static_cast<T>(mask_vec[ii]) * factor;
       }
       // store result to global
       platform::Store<T, VecSize>(dest_vec, &dst[r * cols + i]);
@@ -165,9 +208,10 @@ __global__ void FusedDropoutActGrad(Functor act_grad, const T *dout,
     StoreT dx_vec;
 #pragma unroll
     for (int ii = 0; ii < VecSize; ii++) {
-      T x = dout_vec[ii] * static_cast<T>(mask_vec[ii]) * factor;
-      T out = src_vec[ii];
-      dx_vec[ii] = act_grad.UseXAndOut(x, out);
+      T args[2];
+      args[0] = dout_vec[ii] * static_cast<T>(mask_vec[ii]) * factor;
+      args[1] = src_vec[ii];
+      dx_vec[ii] = act_grad(args);
     }
     platform::Store<T, VecSize>(dx_vec, &dx[i]);
   }
@@ -210,9 +254,10 @@ __global__ void FusedDropoutActBiasGrad(Functor act_grad, const T *dout,
 #pragma unroll
       for (int i = 0; i < VecSize; i++) {
         T val;
-        T x = dout_vec[i] * static_cast<T>(mask_vec[i]) * factor;
-        T out = src_vec[i] + bias_vec[i];
-        val = act_grad.UseXAndOut(x, out);
+        T args[2];
+        args[0] = dout_vec[i] * static_cast<T>(mask_vec[i]) * factor;
+        args[1] = src_vec[i] + bias_vec[i];
+        val = act_grad(args);
         dx_vec[i] = val;
         tmp_sum[i] += val;
       }
