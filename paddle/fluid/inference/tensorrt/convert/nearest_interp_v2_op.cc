@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -73,14 +73,6 @@ class NearestInterpolateV2OpConverter : public OpConverter {
       scale_w =
           static_cast<float>(out_w) / static_cast<float>(in_dim.d[w_axis]);
     } else {
-      PADDLE_ENFORCE_GT(
-          scale[0], 0,
-          platform::errors::InvalidArgument(
-              "scale factor should be > 0, but got %d.", scale[0]));
-      PADDLE_ENFORCE_GT(
-          scale[1], 0,
-          platform::errors::InvalidArgument(
-              "scale factor should be > 0, but got %d.", scale[1]));
       scale_h = scale[0];
       scale_w = scale[1];
     }
