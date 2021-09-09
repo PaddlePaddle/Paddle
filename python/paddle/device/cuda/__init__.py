@@ -129,6 +129,7 @@ def empty_cache():
 
     Examples:
         .. code-block:: python
+
             import paddle
 
             # required: gpu
