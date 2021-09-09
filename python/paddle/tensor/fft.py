@@ -14,7 +14,7 @@
 
 import numpy as np
 import paddle
-from .attribute import is_complex, is_floating_point, is_interger, _real_to_complex_dtype
+from .attribute import is_complex, is_floating_point, is_interger, _real_to_complex_dtype, _complex_to_real_dtype
 from ..fluid.framework import in_dygraph_mode
 from .. import _C_ops
 from ..fluid.data_feeder import check_variable_and_dtype
@@ -234,7 +234,7 @@ def fft_c2c(x, n, axis, norm, forward, name):
     _check_normalization(norm)
     axis = axis or -1
     axes = [axis]
-    axes = _normalize_axes(x, axis)
+    axes = _normalize_axes(x, axes)
     if n is not None:
         s = [n]
         _check_fft_shape(x, s)
@@ -285,7 +285,8 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
         }
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
-        out = helper.create_variable_for_type_inference(dtype)
+        out = helper.create_variable_for_type_inference(
+            _real_to_complex_dtype(dtype))
         outputs = {"Out": [out]}
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
@@ -320,7 +321,8 @@ def fft_c2r(x, n, axis, norm, forward, name):
             attrs['last_dim_size'] = n
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
-        out = helper.create_variable_for_type_inference(dtype)
+        out = helper.create_variable_for_type_inference(
+            _complex_to_real_dtype(dtype))
         outputs = {"Out": [out]}
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
@@ -411,7 +413,8 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
         }
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
-        out = helper.create_variable_for_type_inference(dtype)
+        out = helper.create_variable_for_type_inference(
+            _real_to_complex_dtype(dtype))
         outputs = {"Out": [out]}
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
@@ -463,7 +466,8 @@ def fftn_c2r(x, s, axes, norm, forward, name):
             attrs["last_dim_size"] = s[-1]
         helper = LayerHelper(op_type, **locals())
         dtype = helper.input_dtype(input_param_name='x')
-        out = helper.create_variable_for_type_inference(dtype)
+        out = helper.create_variable_for_type_inference(
+            _complex_to_real_dtype(dtype))
         outputs = {"Out": [out]}
         helper.append_op(
             type=op_type, inputs=inputs, outputs=outputs, attrs=attrs)
