@@ -1085,13 +1085,14 @@ def eigh(x, UPLO='L', name=None):
     Args:
         x (Tensor): A tensor with shape :math:`[_, M, M]` , The data type of the input Tensor x
             should be one of float32, float64, complex64, complex128.
-        UPLO(str, optional): Lower triangular part of a (‘L’, default) or the upper triangular part (‘U’).
+        UPLO(str, optional): (string, default 'L'), 'L' represents the lower triangular matrix,
+                        "'U' represents the upper triangular matrix.".
         name(str, optional): The default value is None.  Normally there is no need for user to set this
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The tensor eigenvalues in ascending order.
-        Tensor: The tensor eigenvectors corresponding to the eigenvalues ​​according to the column
+        out_value(Tensor):  A Tensor with shape [_, M]. The eigenvalues  of eigh op.
+        out_vector(Tensor): A Tensor with shape [_, M, M]. The eigenvectors  of eigh op.
 
     Examples:
         .. code-block:: python
@@ -1134,10 +1135,11 @@ def eigh(x, UPLO='L', name=None):
 
     out_value = helper.create_variable_for_type_inference(dtype=x.dtype)
     out_vector = helper.create_variable_for_type_inference(dtype=x.dtype)
+
     helper.append_op(
         type='eigh',
         inputs={'X': x},
-        outputs={'OutValue': out_value,
-                 'OutVector': out_vector},
+        outputs={'Eigenvalues': out_value,
+                 'Eigenvectors': out_vector},
         attrs={'UPLO': UPLO})
     return out_value, out_vector

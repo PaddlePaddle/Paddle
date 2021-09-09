@@ -1,4 +1,4 @@
-/* Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,78 +25,63 @@ class EighOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Eigh");
-    OP_INOUT_CHECK(ctx->HasOutput("OutValue"), "Output", "OutValue", "Eigh");
-    OP_INOUT_CHECK(ctx->HasOutput("OutVector"), "Output", "OutVector", "Eigh");
+    OP_INOUT_CHECK(ctx->HasOutput("Eigenvalues"), "Output", "Eigenvalues",
+                   "Eigh");
+    OP_INOUT_CHECK(ctx->HasOutput("Eigenvectors"), "Output", "Eigenvectors",
+                   "Eigh");
 
     auto input_dim = ctx->GetInputDim("X");
     auto rank = input_dim.size();
-    int64_t batch_size = 1;
-    for (int i = 0; i < rank - 2; i++) {
-      batch_size *= input_dim[i];
-    }
-    std::vector<int64_t> v_dim = {input_dim[1]};
-    if (batch_size > 1) {
-      v_dim = {batch_size, input_dim[1]};
-    }
 
     PADDLE_ENFORCE_GE(rank, 2,
                       platform::errors::InvalidArgument(
-                          "The Input(X) should have at least 2 dimensions. But "
-                          "received a %d dimension tensor.",
+                          "The Input(X) should have at least 2 dimensions."
+                          "But received a %d dimension tensor.",
                           rank));
     PADDLE_ENFORCE_EQ(
         input_dim[rank - 2], input_dim[rank - 1],
         platform::errors::InvalidArgument(
-            "The inner-most 2 dimensions of Input(X) all should be symmetric "
-            "Input matrices and have the same size. But received "
-            "X's shape[-2] = %d and shape[-1] = %d.",
+            "The inner-most 2 dimensions of Input(X) should be symmetric."
+            "But received X's shape[-2] = %d and shape[-1] = %d.",
             input_dim[rank - 2], input_dim[rank - 1]));
 
-    ctx->SetOutputDim("OutValue", framework::make_ddim(v_dim));
-    ctx->SetOutputDim("OutVector", input_dim);
-  }
+    int64_t batch_size = 1;
+    for (int i = 0; i < rank - 2; i++) {
+      batch_size *= input_dim[i];
+    }
 
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-    return framework::OpKernelType(data_type, ctx.device_context());
+    std::vector<int64_t> v_dim = {input_dim[1]};
+    if (rank > 2) {
+      v_dim = {batch_size, input_dim[1]};
+    }
+
+    ctx->SetOutputDim("Eigenvalues", framework::make_ddim(v_dim));
+    ctx->SetOutputDim("Eigenvectors", input_dim);
   }
 };
 
 class EignOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(
-        "X",
-        "(Tensor), Hermitian or real symmetric matrices whose eigenvalues and "
-        "eigenvectors are to be computed. Its shape should be [*, M, M] where "
-        "* "
-        "is zero or more batch dimensions,and matrices on the inner-most 2 "
-        "dimensions"
-        "all should be symmetric");
-    AddOutput("OutValue",
-              "(Tensor), The eigenvalues in ascending order, "
-              "each repeated according to its multiplicity.");
-    AddOutput("OutVector",
-              "(Tensor), The column v[:, i] is the normalized eigenvector "
-              "corresponding to the,"
-              "eigenvalue w[i]. Will return a matrix object if a is a matrix "
-              "object.");
-    AddAttr<std::string>("UPLO",
-                         "(string, default L), the lower triangular part of a "
-                         "(‘L’, default) or the upper "
-                         "triangular part (‘U’)")
+    AddInput("X",
+             "(Tensor), Hermitian or real symmetric matrices."
+             "Its shape should be [*, M, M] where "
+             "* is zero or more batch dimensions");
+    AddOutput("Eigenvalues", "(Tensor), The eigenvalues in ascending order.");
+    AddOutput("Eigenvectors",
+              "(Tensor), The column is the normalized eigenvector "
+              "corresponding to the eigenvalue.");
+    AddAttr<std::string>(
+        "UPLO",
+        "(string, default 'L'), 'L' represents the lower triangular matrix,"
+        "'U' represents the upper triangular matrix.")
         .SetDefault("L");
     AddComment(R"DOC(
 Eigh Operator.
 
-Return the eigenvalues and eigenvectors of a complex Hermitian
+Computes the eigenvalues and eigenvectors of a complex Hermitian
  (conjugate symmetric) or a real symmetric matrix.
 
-Returns two objects, a 1-D array containing the eigenvalues of a,
- and a 2-D square array or matrix (depending on the input type) 
-of the corresponding eigenvectors (in columns).
 )DOC");
   }
 };
@@ -106,14 +91,15 @@ class EighGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("OutValue"), "Input", "OutValue", "EighGrad");
-    OP_INOUT_CHECK(ctx->HasInput("OutVector"), "Input", "OutVector",
+    OP_INOUT_CHECK(ctx->HasInput("Eigenvalues"), "Input", "Eigenvalues",
                    "EighGrad");
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("OutValue")), "Input",
-                   "OutValue@GRAD", "EighGrad");
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("OutVector")), "Input",
-                   "OutVector@GRAD", "EighGrad");
-    auto dims = ctx->GetInputDim("OutVector");
+    OP_INOUT_CHECK(ctx->HasInput("Eigenvectors"), "Input", "Eigenvectors",
+                   "EighGrad");
+    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Eigenvalues")),
+                   "Input", "Eigenvalues@GRAD", "EighGrad");
+    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Eigenvectors")),
+                   "Input", "Eigenvectors@GRAD", "EighGrad");
+    auto dims = ctx->GetInputDim("Eigenvectors");
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
       ctx->SetOutputDim(x_grad_name, dims);
@@ -125,7 +111,7 @@ class EighGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(
-            ctx, framework::GradVarName("OutVector")),
+            ctx, framework::GradVarName("Eigenvectors")),
         ctx.device_context());
   }
 };
@@ -138,12 +124,12 @@ class EighGradOpMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
-    op->SetInput("OutValue", this->Output("OutValue"));
-    op->SetInput("OutVector", this->Output("OutVector"));
-    op->SetInput(framework::GradVarName("OutValue"),
-                 this->OutputGrad("OutValue"));
-    op->SetInput(framework::GradVarName("OutVector"),
-                 this->OutputGrad("OutVector"));
+    op->SetInput("Eigenvalues", this->Output("Eigenvalues"));
+    op->SetInput("Eigenvectors", this->Output("Eigenvectors"));
+    op->SetInput(framework::GradVarName("Eigenvalues"),
+                 this->OutputGrad("Eigenvalues"));
+    op->SetInput(framework::GradVarName("Eigenvectors"),
+                 this->OutputGrad("Eigenvectors"));
     op->SetAttrMap(this->Attrs());
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
