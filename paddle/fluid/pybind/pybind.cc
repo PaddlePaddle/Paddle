@@ -130,6 +130,10 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#include <cuda_runtime.h>
+#endif
+
 #include "pybind11/stl.h"
 
 DECLARE_bool(use_mkldnn);
@@ -2205,6 +2209,37 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
+  m.def("get_device_properties",
+        [](int64_t device_id) -> cudaDeviceProp * {
+          int64_t gpu_num = 0;
+          gpu_num = platform::GetCUDADeviceCount();
+          std::vector<cudaDeviceProp> cuda_device_props;
+          cuda_device_props.resize(gpu_num);
+          for (int i = 0; i < gpu_num; ++i) {
+            PADDLE_ENFORCE_CUDA_SUCCESS(
+                cudaGetDeviceProperties(&cuda_device_props[i], i));
+          }
+          return &cuda_device_props[device_id];
+        },
+        py::return_value_policy::reference);
+  py::class_<cudaDeviceProp>(m, "_CudaDeviceProperties")
+      .def_readonly("name", &cudaDeviceProp::name)
+      .def_readonly("major", &cudaDeviceProp::major)
+      .def_readonly("minor", &cudaDeviceProp::minor)
+      .def_readonly("is_multi_gpu_board", &cudaDeviceProp::isMultiGpuBoard)
+      .def_readonly("is_integrated", &cudaDeviceProp::integrated)
+      .def_readonly("multi_processor_count",
+                    &cudaDeviceProp::multiProcessorCount)
+      .def_readonly("total_memory", &cudaDeviceProp::totalGlobalMem)
+      .def("__repr__", [](const cudaDeviceProp &prop) {
+        std::ostringstream stream;
+        stream << "_CudaDeviceProperties(name='" << prop.name
+               << "', major=" << prop.major << ", minor=" << prop.minor
+               << ", total_memory=" << prop.totalGlobalMem / (1024 * 1024)
+               << "MB, multi_processor_count=" << prop.multiProcessorCount
+               << ")";
+        return stream.str();
+      });
 
 #if !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   m.def("nvprof_init", platform::CudaProfilerInit);
@@ -3189,6 +3224,6 @@ All parameter, weight, gradient are variables in Paddle.
   BindIndexSampler(&m);
   BindSparseShardingTools(&m);
 #endif
-}
+}  // namespace pybind
 }  // namespace pybind
 }  // namespace paddle
