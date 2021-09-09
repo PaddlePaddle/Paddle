@@ -776,7 +776,7 @@ def searchsorted(sorted_sequence,
     This OP is used to find the index of the corresponding `sorted_sequence` in the innermost dimension based on the given `values`.
 
     Args:
-        sorted_sequence(Tensor): An input N-D tensor with type int32, int64, float32, float64. The value of the tensor monotonically increases in the innermost dimension. 
+        sorted_sequence(Tensor): An input N-D or 1-D tensor with type int32, int64, float32, float64. The value of the tensor monotonically increases in the innermost dimension. 
         values(Tensor): An input N-D tensor value with type int32, int64, float32, float64.
         out_int32(bool, optional): Data type of the output tensor which can be int32, int64. The default value is False, and it indicates that the output data type is int64.
         right(bool, optional): Find the upper or lower bounds of the sorted_sequence range in the innermost dimension based on the given `values`. If the value of the sorted_sequence is nan or inf, return the size of the innermost dimension.
@@ -784,7 +784,7 @@ def searchsorted(sorted_sequence,
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
         
     Returns:
-        An N-D Tensor the same sizes of the `values`, return the tensor of `int32` if set :attr:`out_int32` is True, otherwise return the tensor of `int64`.  
+        Tensor（the same sizes of the `values`）, return the tensor of int32 if set :attr:`out_int32` is True, otherwise return the tensor of int64.  
     
     Examples:
 

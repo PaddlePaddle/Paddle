@@ -53,14 +53,11 @@ class SearchSortedOp : public framework::OperatorWithKernel {
           SearchsortedDimsMatchedBeforeLastDim(sequences_dims, values_dims),
           true,
           platform::errors::Unavailable(
-              "The dimensions of sorted_sequence tensor ( %s ) and "
-              "values tensor ( %s ) can not match. Because the input "
-              "sorted_sequence tensor must be "
-              "1 dimension or the first N-1 "
-              "dimensions of sorted_sequence tensor "
-              "and input values tensor must "
-              "match. Please input appropriate sorted_sequence and values "
-              "again! ",
+              "The dimensions of sorted_sequence tensor ( %s ) and values "
+              "tensor ( %s ) can not match. Because the input sorted_sequence "
+              "tensor must be 1 dimension or the first N-1 dimensions of "
+              "sorted_sequence tensor and input values tensor must match. "
+              "Please input appropriate sorted_sequence and values again! ",
               sequences_dims, values_dims));
     }
 
@@ -69,8 +66,8 @@ class SearchSortedOp : public framework::OperatorWithKernel {
           sequences_dims[sequences_dims.size() - 1],
           std::numeric_limits<int>::max(),
           platform::errors::Unavailable(
-              "The size of sorted_sequence %d exceed the maximum limit "
-              "d%. Because the size of sorted_sequence should be less than the "
+              "The size of sorted_sequence %d exceed the maximum limit d%. "
+              "Because the size of sorted_sequence should be less than the "
               "output maximum value for int32 bit. Please set appropriate "
               "sorted_sequence to meet this requirement! ",
               sequences_dims[sequences_dims.size() - 1],
@@ -93,12 +90,12 @@ class SearchSortedOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("SortedSequence",
-             "(Tensor), N-D tensor, The value of the tensor"
+             "(Tensor), N-D or 1-D tensor, The value of the tensor"
              "monotonically increases in the innermost dimension.");
     AddInput("Values", "(Tensor), N-D tensor given values.");
     AddOutput("Out", "(Tensor), The output tensor of searchsorted op.");
     AddAttr<bool>("out_int32",
-                  "the output tensor is int64 type if False and On the"
+                  "the output tensor is int64 type if False and on the"
                   "contrary for int32")
         .SetDefault(false);
     AddAttr<bool>(
@@ -109,8 +106,8 @@ class SearchSortedOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
   Searchsorted Operator.
 
-  This operator is used to find the index of the given value from the innermost dimension of sorted_sequence 
-
+  This OP is used to find the index of the corresponding sorted_sequence in the innermost dimension based on the given values.
+ 
 )DOC");
   }
 };
