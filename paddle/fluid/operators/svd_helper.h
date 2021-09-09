@@ -313,6 +313,22 @@ struct DeviceIndependenceTensorOperations {
     return CreateOpRunAndReturnTensor("slice", inputs, attrs, out_shape);
   }
 
+  framework::Tensor ReduceSum(const framework::Tensor& x,
+                              std::vector<int> out_dim) {
+    framework::AttributeMap attrs;
+    attrs["dim"] = std::vector<int>{-1};
+    NameInTensorMap inputs({{"X", {&x}}});
+    return CreateOpRunAndReturnTensor("reduce_sum", inputs, attrs, out_dim);
+  }
+
+  framework::Tensor ReduceMax(const framework::Tensor& x,
+                              std::vector<int> out_dim) {
+    framework::AttributeMap attrs;
+    attrs["dim"] = std::vector<int>{-1};
+    NameInTensorMap inputs({{"X", {&x}}});
+    return CreateOpRunAndReturnTensor("reduce_max", inputs, attrs, out_dim);
+  }
+
  private:
   const framework::ExecutionContext& context;
   BlasT<DeviceContext, T> GetBlas() {
