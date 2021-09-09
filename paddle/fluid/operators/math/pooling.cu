@@ -18,7 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/pooling.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
-#include "paddle/fluid/platform/fast_divmod.h"
+#include "paddle/fluid/platform/fast_divmod.h
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
@@ -361,8 +362,13 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
   const int padding_width = paddings[1];
 
   int nthreads = batch_size * output_channels * output_height * output_width;
-  int blocks = (nthreads + 1024 - 1) / 1024;
-  dim3 threads(1024, 1);
+  int thread_num = 1024;
+#ifdef WITH_NV_JETSON
+  // platform::ChangeThreadNum(context, &thread_num);
+  thread_num = 512;
+#endif
+  int blocks = (nthreads + thread_num - 1) / thread_num;
+  dim3 threads(thread_num, 1);
   dim3 grid(blocks, 1);
 
   KernelPool2D<PoolProcess, T><<<grid, threads, 0, stream>>>(
@@ -405,10 +411,13 @@ class Pool2dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_height * output_width;
-    int blocks = (nthreads + 1024 - 1) / 1024;
-    dim3 threads(1024, 1);
+    int thread_num = 1024;
+#ifdef WITH_NV_JETSON
+    platform::ChangeThreadNum(context, &thread_num);
+#endif
+    int blocks = (nthreads + thread_num - 1) / thread_num;
+    dim3 threads(thread_num, 1);
     dim3 grid(blocks, 1);
-
     KernelPool2D<PoolProcess, T><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, input_channels, input_height, input_width,
         output_height, output_width, ksize_height, ksize_width, stride_height,
@@ -448,10 +457,13 @@ class Pool2dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     T* output_data = output->mutable_data<T>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_height * output_width;
-    int blocks = (nthreads + 1024 - 1) / 1024;
-    dim3 threads(1024, 1);
+    int thread_num = 1024;
+#ifdef WITH_NV_JETSON
+    platform::ChangeThreadNum(context, &thread_num);
+#endif
+    int blocks = (nthreads + thread_num - 1) / thread_num;
+    dim3 threads(thread_num, 1);
     dim3 grid(blocks, 1);
-
     KernelPool2D<PoolProcess, T><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, input_channels, input_height, input_width,
         output_height, output_width, ksize_height, ksize_width, stride_height,
@@ -1034,8 +1046,12 @@ class Pool3dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
 
     int nthreads = batch_size * output_channels * output_depth * output_height *
                    output_width;
-    int blocks = (nthreads + 1024 - 1) / 1024;
-    dim3 threads(1024, 1);
+    int thread_num = 1024;
+#ifdef WITH_NV_JETSON
+    platform::ChangeThreadNum(context, &thread_num);
+#endif
+    int blocks = (nthreads + thread_num - 1) / thread_num;
+    dim3 threads(thread_num, 1);
     dim3 grid(blocks, 1);
 
     KernelPool3D<PoolProcess, T><<<grid, threads, 0, context.stream()>>>(
@@ -1085,8 +1101,12 @@ class Pool3dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
 
     int nthreads = batch_size * output_channels * output_depth * output_height *
                    output_width;
-    int blocks = (nthreads + 1024 - 1) / 1024;
-    dim3 threads(1024, 1);
+    int thread_num = 1024;
+#ifdef WITH_NV_JETSON
+    platform::ChangeThreadNum(context, &thread_num);
+#endif
+    int blocks = (nthreads + thread_num - 1) / thread_num;
+    dim3 threads(thread_num, 1);
     dim3 grid(blocks, 1);
 
     KernelPool3D<PoolProcess, T><<<grid, threads, 0, context.stream()>>>(
@@ -1500,10 +1520,14 @@ class MaxPool2dWithIndexFunctor<platform::CUDADeviceContext, T1, T2> {
     T2* mask_data = mask->mutable_data<T2>(context.GetPlace());
 
     int nthreads = batch_size * output_channels * output_height * output_width;
-    int blocks = (nthreads + 1024 - 1) / 1024;
-    dim3 threads(1024, 1);
-    dim3 grid(blocks, 1);
+    int thread_num = 1024;
+#ifdef WITH_NV_JETSON
+    platform::ChangeThreadNum(context, &thread_num);
+#endif
 
+    int blocks = (nthreads + thread_num - 1) / thread_num;
+    dim3 threads(thread_num, 1);
+    dim3 grid(blocks, 1);
     KernelMaxPool2dWithIdx<T1, T2><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, input_channels, input_height, input_width,
         output_height, output_width, ksize_height, ksize_width, stride_height,
@@ -1736,8 +1760,13 @@ class MaxPool3dWithIndexFunctor<platform::CUDADeviceContext, T1, T2> {
 
     int nthreads = batch_size * output_channels * output_depth * output_height *
                    output_width;
-    int blocks = (nthreads + 1024 - 1) / 1024;
-    dim3 threads(1024, 1);
+    int thread_num = 1024;
+#ifdef WITH_NV_JETSON
+    platform::ChangeThreadNum(context, &thread_num);
+#endif
+
+    int blocks = (nthreads + thread_num - 1) / thread_num;
+    dim3 threads(thread_num, 1);
     dim3 grid(blocks, 1);
 
     KernelMaxPool3DWithIdx<T1, T2><<<grid, threads, 0, context.stream()>>>(
