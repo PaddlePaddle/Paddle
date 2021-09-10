@@ -32,14 +32,16 @@ struct FakeException {
                           "whether the exception meets expectations: %d, %d.",
                           a, a));
   }
-  void base_exception() const { throw std::exception(); }
+  [[noreturn]] void base_exception() const { throw std::exception(); }
+  void no_exception() const noexcept {}
 };
 
 TEST(Status, pd_exception) {
   FakeException e;
   Status status = status_wrapper([&]() { e.pd_exception(1); });
   CHECK(!status.ok());
-  CHECK_NE(status.code(), 0);
+  CHECK_EQ(status.code(), paddle::platform::error::INVALID_ARGUMENT + 1);
+  LOG(INFO) << status.error_message();
 }
 
 TEST(Status, basic_exception) {
@@ -47,6 +49,14 @@ TEST(Status, basic_exception) {
   Status status;
   status = status_wrapper([&]() { e.base_exception(); });
   CHECK(!status.ok());
+  LOG(INFO) << status.error_message();
+}
+
+TEST(Status, no_exception) {
+  FakeException e;
+  Status status;
+  status = status_wrapper([&]() { e.no_exception(); });
+  CHECK(status.ok());
 }
 
 }  // namespace contrib
