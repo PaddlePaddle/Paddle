@@ -13,10 +13,14 @@
 // limitations under the License.
 
 #pragma once
-#include <Eigen/Dense>
-#include "Eigen/Core"
+#ifdef PADDLE_WITH_MKLML
+#define MKL_Complex8 std::complex<float>
+#define MKL_Complex16 std::complex<double>
+#else
+#define lapack_complex_float std::complex<float>
+#define lapack_complex_double std::complex<double>
+#endif
 #include "paddle/fluid/framework/op_registry.h"
-// #include "paddle/fluid/operators/eigh_helper.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -35,71 +39,60 @@ template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using InputMatrixMap = Eigen::Map<
-    const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>;
+template <typename T, typename ValueType>
+inline void computeEigenvaluesAndVectors(char jobz, char uplo, int n, T* a,
+                                         int lda, ValueType* w, T* work,
+                                         int lwork, ValueType* rwork,
+                                         int lrwork, int* iwork, int liwork,
+                                         int* info);
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using OutputMatrixMap = Eigen::Map<
-    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>;
-
-template <typename ValueType>
-inline void BatchEigenvalues(ValueType* x_data, ValueType* eigenvalues_data,
-                             ValueType* eigenvectors_data, int batches,
-                             int rows, int cols) {
-  int stride = rows * cols;
-  for (int i = 0; i < batches; i++) {
-    auto m = InputMatrixMap<ValueType>(x_data + i * stride, rows, cols);
-    auto eigenvalues =
-        OutputMatrixMap<ValueType>(eigenvalues_data + i * rows, 1, rows);
-    auto eigenvectors =
-        OutputMatrixMap<ValueType>(eigenvectors_data + i * stride, rows, cols);
-
-    Eigen::SelfAdjointEigenSolver<Eigen::Matrix<
-        ValueType, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-        eigen_solver(m);
-    PADDLE_ENFORCE_EQ(
-        eigen_solver.info(), Eigen::Success,
-        platform::errors::InvalidArgument(
-            "Self Adjoint Eigen decomposition is not successful. "
-            "The %d-th input matrice might not be not be positive definite.",
-            i));
-    eigenvalues = eigen_solver.eigenvalues().transpose();
-    eigenvectors = eigen_solver.eigenvectors().transpose();
-  }
+template <>
+inline void
+computeEigenvaluesAndVectors<paddle::platform::complex<double>, double>(
+    char jobz, char uplo, int n, paddle::platform::complex<double>* a, int lda,
+    double* w, paddle::platform::complex<double>* work, int lwork,
+    double* rwork, int lrwork, int* iwork, int liwork, int* info) {
+  zheevd_(&jobz, &uplo, &n, reinterpret_cast<std::complex<double>*>(a), &lda, w,
+          reinterpret_cast<std::complex<double>*>(work), &lwork, rwork, &lrwork,
+          iwork, &liwork, info);
 }
 
-template <typename T, typename ValueType>
-inline void BatchComplexValues(T* x_data, ValueType* eigenvalues_data,
-                               T* eigenvectors_data, int batches, int rows,
-                               int cols) {
-  using Complex = std::complex<ValueType>;
-  Complex* input = reinterpret_cast<Complex*>(x_data);
-  Complex* eigenvectors_data_ = reinterpret_cast<Complex*>(eigenvectors_data);
+template <>
+inline void
+computeEigenvaluesAndVectors<paddle::platform::complex<float>, float>(
+    char jobz, char uplo, int n, paddle::platform::complex<float>* a, int lda,
+    float* w, paddle::platform::complex<float>* work, int lwork, float* rwork,
+    int lrwork, int* iwork, int liwork, int* info) {
+  cheevd_(&jobz, &uplo, &n, reinterpret_cast<std::complex<float>*>(a), &lda, w,
+          reinterpret_cast<std::complex<float>*>(work), &lwork, rwork, &lrwork,
+          iwork, &liwork, info);
+}
 
-  int stride = rows * cols;
-  for (int i = 0; i < batches; i++) {
-    auto m = InputMatrixMap<Complex>(input + i * stride, rows, cols);
-    auto eigenvalues =
-        OutputMatrixMap<ValueType>(eigenvalues_data + i * rows, 1, rows);
-    auto eigenvectors =
-        OutputMatrixMap<Complex>(eigenvectors_data_ + i * stride, rows, cols);
+template <>
+inline void computeEigenvaluesAndVectors<double, double>(
+    char jobz, char uplo, int n, double* a, int lda, double* w, double* work,
+    int lwork, double* rwork, int lrwork, int* iwork, int liwork, int* info) {
+  (void)rwork;   // unused
+  (void)lrwork;  // unused
+  dsyevd_(&jobz, &uplo, &n, a, &lda, w, work, &lwork, iwork, &liwork, info);
+}
 
-    Eigen::SelfAdjointEigenSolver<
-        Eigen::Matrix<Complex, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-        eigen_solver(m);
-    PADDLE_ENFORCE_EQ(
-        eigen_solver.info(), Eigen::Success,
-        platform::errors::InvalidArgument(
-            "Self Adjoint Eigen decomposition is not successful. "
-            "The %d-th input matrice might not be not be positive definite.",
-            i));
+template <>
+inline void computeEigenvaluesAndVectors<float, float>(
+    char jobz, char uplo, int n, float* a, int lda, float* w, float* work,
+    int lwork, float* rwork, int lrwork, int* iwork, int liwork, int* info) {
+  (void)rwork;   // unused
+  (void)lrwork;  // unused
+  ssyevd_(&jobz, &uplo, &n, a, &lda, w, work, &lwork, iwork, &liwork, info);
+}
 
-    eigenvalues = eigen_solver.eigenvalues().transpose();
-    eigenvectors = eigen_solver.eigenvectors().transpose();
+inline int64_t GetBatchSize(framework::DDim dims) {
+  int64_t batch_size = 1;
+  auto dim_size = dims.size();
+  for (int i = 0; i < dim_size - 2; i++) {
+    batch_size *= dims[i];
   }
+  return batch_size;
 }
 
 template <typename T, typename ValueType>
@@ -286,41 +279,75 @@ class EighKernel : public framework::OpKernel<T> {
     auto& input_var = *ctx.Input<Tensor>("X");
     auto& output_w_var = *ctx.Output<Tensor>("Eigenvalues");
     auto& output_v_var = *ctx.Output<Tensor>("Eigenvectors");
-
     std::string lower = ctx.Attr<std::string>("UPLO");
-    auto dims = input_var.dims();
-    auto output_value_dim = output_w_var.dims();
 
-    int64_t batch_size = 1;
+    auto* out_value = output_w_var.mutable_data<ValueType>(ctx.GetPlace());
+    auto* out_vector = output_v_var.mutable_data<T>(ctx.GetPlace());
+
+    auto dims = input_var.dims();
     int dim_size = dims.size();
-    for (int64_t i = 0; i < dim_size - 2; i++) {
-      batch_size *= dims[i];
-    }
+    int64_t batch_size = GetBatchSize(dims);
+
     auto dito =
         DeviceIndependenceTensorOperations<DeviceContext, T, ValueType>(ctx);
-    Tensor input;
-    TensorCopy(input_var, ctx.GetPlace(), &input);
-    if (lower == "U") {
-      input = dito.Transpose(input_var);
-    }
-    int rows = dims[dims.size() - 2];
-    int cols = dims[dims.size() - 1];
+    Tensor output_v_var_trans = dito.Transpose(input_var);
+    TensorCopy(output_v_var_trans, ctx.GetPlace(), &output_v_var);
 
-    auto* value_data =
-        output_w_var.mutable_data<ValueType>(output_value_dim, ctx.GetPlace());
+    int vector_stride = dims[dim_size - 1] * dims[dim_size - 2];
+    int values_stride = dims[dim_size - 1];
+    char uplo = (lower == "L") ? 'L' : 'U';
+    char jobz = 'V';
+    auto n = dims[dim_size - 1];
+    auto lda = std::max<int64_t>(1, n);
 
-    if (framework::IsComplexType(input.type())) {
-      auto* x_data = input.data<T>();
-      auto* vector_data = output_v_var.mutable_data<T>(dims, ctx.GetPlace());
-      BatchComplexValues<T, ValueType>(x_data, value_data, vector_data,
-                                       batch_size, rows, cols);
-    } else {
-      auto* x_data = input.data<ValueType>();
-      auto* vector_data =
-          output_v_var.mutable_data<ValueType>(dims, ctx.GetPlace());
-      BatchEigenvalues<ValueType>(x_data, value_data, vector_data, batch_size,
-                                  rows, cols);
+    int lwork = -1;
+    int lrwork = -1;
+    int liwork = -1;
+    int iwork_buffer = -1;
+    T lwork_buffer = static_cast<T>(-1);
+    ValueType rwork_buffer = static_cast<ValueType>(-1);
+
+    Tensor info_tensor;
+    auto* infos_data = info_tensor.mutable_data<int>(
+        framework::make_ddim({batch_size}), ctx.GetPlace());
+
+    computeEigenvaluesAndVectors<T, ValueType>(
+        jobz, uplo, n, out_vector, lda, out_value, &lwork_buffer, lwork,
+        &rwork_buffer, lrwork, &iwork_buffer, liwork, infos_data);
+
+    lwork = std::max<int>(1, static_cast<int>(lwork_buffer));
+    liwork = std::max<int>(1, iwork_buffer);
+
+    Tensor rwork_tensor;
+    ValueType* rwork_data = nullptr;
+
+    // complex type
+    if (framework::IsComplexType(input_var.type())) {
+      lrwork = std::max<int>(1, static_cast<int>(rwork_buffer));
+      rwork_data = rwork_tensor.mutable_data<ValueType>(
+          framework::make_ddim({lrwork}), ctx.GetPlace());
     }
+
+    Tensor iwork_tensor, work_tensor;
+    auto* iwork_data = iwork_tensor.mutable_data<int>(
+        framework::make_ddim({liwork}), ctx.GetPlace());
+    auto* work_data = work_tensor.mutable_data<T>(framework::make_ddim({lwork}),
+                                                  ctx.GetPlace());
+
+    for (auto i = 0; i < batch_size; i++) {
+      auto* value_data = out_value + i * values_stride;
+      auto* vector_data = out_vector + i * vector_stride;
+      int* info_ptr = &infos_data[i];
+      computeEigenvaluesAndVectors<T, ValueType>(
+          jobz, uplo, n, vector_data, lda, value_data, work_data, lwork,
+          rwork_data, lrwork, iwork_data, liwork, info_ptr);
+      PADDLE_ENFORCE_EQ(
+          *info_ptr, 0,
+          platform::errors::PreconditionNotMet(
+              "For batch [%d]: the [%d] argument had an illegal value", i,
+              *info_ptr));
+    }
+
     output_v_var = dito.Transpose(output_v_var);
   }
 };

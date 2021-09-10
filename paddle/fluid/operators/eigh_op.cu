@@ -34,15 +34,12 @@ class EighGPUKernel : public framework::OpKernel<T> {
     auto &output_v_var = *ctx.Output<Tensor>("Eigenvectors");
     std::string lower = ctx.Attr<std::string>("UPLO");
 
-    auto &dims = input_var.dims();
-    int dim_size = dims.size();
-    int64_t batch_size = 1;
-    for (int i = 0; i < dim_size - 2; i++) {
-      batch_size *= dims[i];
-    }
-
     auto *out_value = output_w_var.mutable_data<ValueType>(ctx.GetPlace());
     auto *out_vector = output_v_var.mutable_data<T>(ctx.GetPlace());
+
+    auto &dims = input_var.dims();
+    int dim_size = dims.size();
+    int64_t batch_size = GetBatchSize(dims);
 
     cublasFillMode_t uplo =
         (lower == "L") ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER;
@@ -156,9 +153,10 @@ FUNC_WITH_TYPES(EVDBUFFER_INSTANCE);
   }
 
 FUNC_WITH_TYPES(EVD_INSTANCE);
+
 #undef FUNC_WITH_TYPES
-#undef EVD_INSTANCE
 #undef EVDBUFFER_INSTANCE
+#undef EVD_INSTANCE
 
 }  // namespace operators
 }  // namespace paddle

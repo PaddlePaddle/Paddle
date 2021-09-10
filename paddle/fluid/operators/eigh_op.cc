@@ -41,14 +41,12 @@ class EighOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         input_dim[rank - 2], input_dim[rank - 1],
         platform::errors::InvalidArgument(
-            "The inner-most 2 dimensions of Input(X) should be symmetric."
+            "Eigh op is designed for square matrix, consequently"
+            "inner-most 2 dimensions of Input(X) should be symmetric."
             "But received X's shape[-2] = %d and shape[-1] = %d.",
             input_dim[rank - 2], input_dim[rank - 1]));
 
-    int64_t batch_size = 1;
-    for (int i = 0; i < rank - 2; i++) {
-      batch_size *= input_dim[i];
-    }
+    int64_t batch_size = GetBatchSize(input_dim);
 
     std::vector<int64_t> v_dim = {input_dim[1]};
     if (rank > 2) {
