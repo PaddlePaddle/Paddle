@@ -28,6 +28,7 @@ class BinaryBitwiseOpKernel<platform::CUDADeviceContext, Functor>
     auto* x = ctx.Input<framework::Tensor>("X");
     auto* y = ctx.Input<framework::Tensor>("Y");
     auto* out = ctx.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
 
     auto functor = Functor();
     std::vector<const framework::Tensor*> ins = {x, y};
@@ -48,6 +49,7 @@ class UnaryBitwiseOpKernel<platform::CUDADeviceContext, Functor>
 
     auto* x = ctx.Input<framework::Tensor>("X");
     auto* out = ctx.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
 
     auto functor = Functor();
     std::vector<const framework::Tensor*> ins = {x};
