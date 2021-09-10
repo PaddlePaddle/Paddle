@@ -343,24 +343,10 @@ FFTNormMode get_norm_from_string(const std::string& norm, bool forward) {
       norm));
 }
 
-template <typename T>
-T compute_factor(int64_t size, FFTNormMode normalization) {
-  constexpr auto one = static_cast<T>(1);
-  switch (normalization) {
-    case FFTNormMode::none:
-      return one;
-    case FFTNormMode::by_n:
-      return one / static_cast<T>(size);
-    case FFTNormMode::by_sqrt_n:
-      return one / std::sqrt(static_cast<T>(size));
-  }
-  PADDLE_THROW(
-      platform::errors::InvalidArgument("Unsupported normalization type"));
-}
-
 // FFT Functors
 #if defined(PADDLE_WITH_ONEMKL)
 
+namespace {
 static inline void MKL_DFTI_CHECK(MKL_INT status) {
   if (status && !DftiErrorClass(status, DFTI_NO_ERROR)) {
     PADDLE_THROW(platform::errors::External(DftiErrorMessage(status)));
@@ -592,6 +578,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
   TransCompute<platform::CPUDeviceContext, To>(ndim, ctx, transposed_output,
                                                out, reverse_dim_permute);
 }
+}  // anonymous namespace
 
 template <typename Ti, typename To>
 struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
@@ -637,6 +624,24 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
 };
 
 #elif defined(PADDLE_WITH_POCKETFFT)
+
+namespace {
+template <typename T>
+T compute_factor(int64_t size, FFTNormMode normalization) {
+  constexpr auto one = static_cast<T>(1);
+  switch (normalization) {
+    case FFTNormMode::none:
+      return one;
+    case FFTNormMode::by_n:
+      return one / static_cast<T>(size);
+    case FFTNormMode::by_sqrt_n:
+      return one / std::sqrt(static_cast<T>(size));
+  }
+  PADDLE_THROW(
+      platform::errors::InvalidArgument("Unsupported normalization type"));
+}
+}  // anonymous namespace
+
 template <typename Ti, typename To>
 struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
   void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,

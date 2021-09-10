@@ -172,7 +172,6 @@ extern inline proto::VarType::Type ToComplexType(proto::VarType::Type t) {
 }
 
 extern inline proto::VarType::Type ToRealType(proto::VarType::Type t) {
-  std::cout<<t<<std::endl;
   switch (t) {
     case proto::VarType::COMPLEX64:
       return proto::VarType::FP32;
