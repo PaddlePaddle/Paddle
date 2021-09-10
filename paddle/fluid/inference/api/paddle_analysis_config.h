@@ -415,7 +415,7 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   /// \return the shape info path.
   ///
-  std::string shape_range_info_path();
+  const std::string& shape_range_info_path();
 
   ///
   /// \brief A boolean state telling whether to collect shape info.
