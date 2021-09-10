@@ -178,7 +178,6 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
       const int kMaxHeight = 2048;
       int gridx = input_height < kMaxHeight ? input_height : kMaxHeight;
       switch (GetDesiredBlockDim(input_width)) {
-        FIXED_BLOCK_DIM(
 #ifdef PADDLE_WITH_HIP
         FIXED_BLOCK_DIM(
             KeMatrixTopK<T, 20,
@@ -187,6 +186,7 @@ class TopkV2OpCUDAKernel : public framework::OpKernel<T> {
                 trans_input.data<T>(), input_width, input_width,
                 static_cast<int>(k), gridx, input_height, largest));
 #else
+        FIXED_BLOCK_DIM(
             KeMatrixTopK<T, 5,
                          kBlockDim><<<gridx, kBlockDim, 0, dev_ctx.stream()>>>(
                 trans_out.data<T>(), k, trans_ind.data<int64_t>(),
