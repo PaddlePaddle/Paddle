@@ -31,6 +31,7 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
             for i in range(len(program_config.ops))
         ]
 
+        #The input dimension should be less than or equal to the set axis.
         if attrs[0]['begin_norm_axis'] >= 0:
             if len(inputs['skip_layernorm_inputX_data'].shape) <= attrs[0][
                     'begin_norm_axis']:
@@ -62,7 +63,7 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
             return np.random.random([768]).astype(np.float32)
 
         for dims in [3, 4]:
-            for batch in [1, 2]:
+            for batch in [1, 2, 4]:
                 for epsilon in [1e-5]:
                     for begin_norm_axis in [0, 1, 2, -1]:
                         for enable_int8 in [False, True]:
@@ -117,8 +118,8 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
                     "Scale": [768]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "skip_layernorm_inputX_data": [9, 6, 768, 3072],
-                    "skip_layernorm_inputY_data": [9, 6, 768, 3072],
+                    "skip_layernorm_inputX_data": [4, 6, 768, 3072],
+                    "skip_layernorm_inputY_data": [4, 6, 768, 3072],
                     "Bias": [3072],
                     "Scale": [3072]
                 }
@@ -136,8 +137,8 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
                     "Scale": [768]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "skip_layernorm_inputX_data": [9, 768, 3072],
-                    "skip_layernorm_inputY_data": [9, 768, 3072],
+                    "skip_layernorm_inputX_data": [4, 768, 3072],
+                    "skip_layernorm_inputY_data": [4, 768, 3072],
                     "Bias": [3072],
                     "Scale": [3072]
                 }
@@ -155,8 +156,8 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
                     "Scale": [768]
                 }
                 self.dynamic_shape.max_input_shape = {
-                    "skip_layernorm_inputX_data": [9, 3072],
-                    "skip_layernorm_inputY_data": [9, 3072],
+                    "skip_layernorm_inputX_data": [4, 3072],
+                    "skip_layernorm_inputY_data": [4, 3072],
                     "Bias": [3072],
                     "Scale": [3072]
                 }
@@ -182,7 +183,6 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-        self.trt_param.max_batch_size = 9
         # for static_shape
         clear_dynamic_shape()
 
@@ -191,7 +191,7 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-2
+            attrs, False), 1e-5
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -200,7 +200,7 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
                                                                      True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-2
+                                                                     True), 1e-5
 
     def add_skip_trt_case(self):
         pass
