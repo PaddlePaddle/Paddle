@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#ifndef _USE_MATH_DEFINES
+#define _USE_MATH_DEFINES
+#endif
 
 #include "paddle/fluid/operators/fused/fused_dropout_common.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
@@ -28,7 +31,7 @@ typedef platform::float16 fp16;
  */
 template <typename T>
 struct ReluFunctor {
-  __host__ __device__ T operator()(const T *args) const {
+  inline __host__ __device__ T operator()(const T *args) const {
     math::ReluFunctor<T> relu;
     return relu(args[0]);
   }
@@ -36,7 +39,7 @@ struct ReluFunctor {
 
 template <typename T>
 struct ReluGradFunctor {
-  __host__ __device__ __forceinline__ T operator()(const T *args) const {
+  inline __host__ __device__ T operator()(const T *args) const {
     math::ReluGradFunctor<T> relu_grad;
     return args[0] * relu_grad.UseOut(args[1]);
   }
@@ -47,11 +50,11 @@ struct ReluGradFunctor {
  */
 template <typename T>
 struct GeluFunctor {
-  __host__ __device__ T operator()(const T *args) const {
+  inline __host__ __device__ T operator()(const T *args) const {
     using U = LayerNormParamType<T>;
-    U casted_x = static_cast<U>(args[0]);
-    auto temp = erf(casted_x * static_cast<U>(M_SQRT1_2));
-    auto out = (casted_x * static_cast<U>(0.5) * (static_cast<U>(1) + temp));
+    const U casted_x = static_cast<U>(args[0]);
+    const U temp = erf(casted_x * static_cast<U>(M_SQRT1_2));
+    const U out = (casted_x * static_cast<U>(0.5) * (static_cast<U>(1) + temp));
     return static_cast<T>(out);
   }
 };
@@ -61,7 +64,7 @@ struct GeluFunctor {
  */
 template <typename T>
 struct GeluGradFunctor {
-  __host__ __device__ T operator()(const T *args) const {
+  inline __host__ __device__ T operator()(const T *args) const {
     using U = LayerNormParamType<T>;
     auto casted_x = static_cast<U>(args[1]);
     auto casted_dout = static_cast<U>(args[0]);
@@ -112,9 +115,8 @@ __global__ void FusedDropoutActBias(Functor act, const uint64_t seed,
   using MaskLoadT = platform::AlignedVector<MaskType, VecSize>;
   using MaskStoreT = platform::AlignedVector<MaskType, VecSize>;
 
-  const int tmp_cols = cols / VecSize * VecSize;
   for (int r = row_id; r < rows; r += blockDim.y * gridDim.y) {
-    for (int i = col_id * VecSize; i < tmp_cols;
+    for (int i = col_id * VecSize; i < cols;
          i += blockDim.x * gridDim.x * VecSize) {
       LoadT src_vec;
       LoadT bias_vec;
@@ -154,7 +156,9 @@ __global__ void FusedDropoutActBias(Functor act, const uint64_t seed,
       }
       // store result to global
       platform::Store<T, VecSize>(dest_vec, &dst[r * cols + i]);
-      platform::Store<MaskType, VecSize>(mask_vec, &mask[r * cols + i]);
+      if (!is_test) {
+        platform::Store<MaskType, VecSize>(mask_vec, &mask[r * cols + i]);
+      }
     }
   }
 }
