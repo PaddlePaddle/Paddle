@@ -16,6 +16,7 @@ nv_library(tensorrt_converter
                 reduce_op.cc
                 gather_nd_op.cc
                 tile_op.cc
+                conv3d_op.cc
            DEPS tensorrt_engine tensorrt_plugin operator scope framework_proto op_registry)
 
 nv_test(test_op_converter SRCS test_op_converter.cc DEPS

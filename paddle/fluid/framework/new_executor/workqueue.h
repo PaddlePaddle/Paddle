@@ -16,13 +16,20 @@
 
 #include <functional>
 #include <memory>
+#include <vector>
 
 namespace paddle {
 namespace framework {
 
+struct WorkQueueOptions {
+  size_t num_threads{0};
+  bool allow_spinning{true};
+  bool track_task{false};
+};
+
 class WorkQueue {
  public:
-  WorkQueue() = default;
+  explicit WorkQueue(const WorkQueueOptions& options) : options_(options) {}
 
   WorkQueue(const WorkQueue&) = delete;
 
@@ -32,14 +39,49 @@ class WorkQueue {
 
   virtual void AddTask(std::function<void()> fn) = 0;
 
+  // set WorkQueueOptions.track_task = true before call this
+  // interface, otherwise will abort()
   virtual void WaitQueueEmpty() = 0;
 
-  virtual size_t NumThreads() = 0;
+  virtual size_t NumThreads() const = 0;
+
+ protected:
+  WorkQueueOptions options_;
 };
 
-std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue();
+class WorkQueueGroup {
+ public:
+  explicit WorkQueueGroup(const std::vector<WorkQueueOptions>& queues_options)
+      : queues_options_(queues_options) {}
 
-std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(int num_threads);
+  WorkQueueGroup(const WorkQueueGroup&) = delete;
+
+  WorkQueueGroup& operator=(const WorkQueueGroup&) = delete;
+
+  virtual ~WorkQueueGroup() = default;
+
+  virtual void AddTask(size_t queue_idx, std::function<void()> fn) = 0;
+
+  // set WorkQueueOptions.track_task = true for at least one of queues
+  // before call this interface, otherwise will abort()
+  virtual void WaitQueueGroupEmpty() = 0;
+
+  virtual size_t QueueNumThreads(size_t queue_idx) const = 0;
+
+  virtual size_t QueueGroupNumThreads() const = 0;
+
+ protected:
+  std::vector<WorkQueueOptions> queues_options_;
+};
+
+std::unique_ptr<WorkQueue> CreateSingleThreadedWorkQueue(
+    const WorkQueueOptions& options);
+
+std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(
+    const WorkQueueOptions& options);
+
+std::unique_ptr<WorkQueueGroup> CreateWorkQueueGroup(
+    const std::vector<WorkQueueOptions>& queues_options);
 
 }  // namespace framework
 }  // namespace paddle
