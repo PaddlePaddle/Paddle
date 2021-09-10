@@ -389,7 +389,6 @@ def launch():
     Paddle distribution training entry ``python -m paddle.distributed.launch``.
     
     Usage:
-    
     .. code-block:: bash
         :name: code-block-bash1
         
@@ -402,7 +401,6 @@ def launch():
 
 
     Base Parameters:
-    
         - ``--log_dir LOG_DIR``: The path for each process's log. e.g ``--log_dir=log``. If it's not set, the ``log`` will printed to default pipe.
 
         - ``--nproc_per_node NPROC_PER_NODE``: The number of processes to launch on a node. In gpu training, it should be less or equal to the gpus number of you system(or you set by --gpus). And so each process can bound to one or average number of gpus. e.g ``--nproc_per_node=8``
@@ -421,7 +419,6 @@ def launch():
         - ``--ips IPS``: Paddle cluster nodes ips, e.g ``--ips=192.168.0.16,192.168.0.17``
 
     Parameter-Server Parameters:
-    
         - ``--servers SERVERS``: User defined servers ip:port
 
         - ``--workers WORKERS``: User defined workers ip:port
@@ -437,7 +434,6 @@ def launch():
         - ``--http_port HTTP_PORT``: Gloo http Port
 
     Elastic Parameters:
-    
         - ``--elastic_server ELASTIC_SERVER``: etcd server host:port, e.g ``--elastic_server=127.0.0.1:2379``
 
         - ``--job_id JOB_ID``: job unique id, e.g ``--job_id=job1``
@@ -451,18 +447,15 @@ def launch():
         - ``--force FORCE``: update np force, not be used now!
 
     Returns:
-    
         ``None``
 
     Examples 1 (collective, single node):
-    
     .. code-block:: bash
         :name: code-block-bash2
         
         python -m paddle.distributed.launch --log_dir=log --gpus=0,1,2,3 train.py --output_dir=work_dir
         
     Examples 2 (collective, multi node):
-    
     .. code-block:: bash
         :name: code-block-bash3
         
@@ -476,14 +469,12 @@ def launch():
         python -m paddle.distributed.launch --log_dir=log --gpus=0,1,2,3 --ips=192.168.0.16,192.168.0.17 train.py --output_dir=work_dir
         
     Examples 3 (ps, cpu, single node):
-    
     .. code-block:: bash
         :name: code-block-bash4
         
         python -m paddle.distributed.launch --log_dir=log --server_num=2 --worker_num=2 train.py --output_dir=work_dir
         
     Examples 4 (ps, cpu, multi node):
-
     .. code-block:: bash
         :name: code-block-bash5
         
@@ -498,14 +489,12 @@ def launch():
         python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16,192.168.0.17,192.168.0.16,192.168.0.17" --server_num=2 --worker_num=4 train.py --output_dir=work_dir
         
     Examples 5 (ps, gpu, single node):
-
     .. code-block:: bash
         :name: code-block-bash6
         
         python -m paddle.distributed.launch --log_dir=log --gpus=0,1,2,3 train.py --output_dir=work_dir
         
     Examples 6 (elastic):
-
     .. code-block:: bash
         :name: code-block-bash7
         
