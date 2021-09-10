@@ -22,7 +22,7 @@ We provide users with four installation methods ,which are pip, conda, docker an
 
 #### <a id="PREQUISITES">PREQUISTIES</a>
 
-##### On Windows:
+##### On Windows:111
 
 - **Windows 7/8/10 Pro/Enterprise (64bit)**
   - **GPU version support CUDA 9.0/9.1/9.2/10.0/10.1，only supports single card**
