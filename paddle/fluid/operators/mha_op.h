@@ -150,14 +150,14 @@ class MHAKernel : public framework::OpKernel<T> {
         &MHASingleton::Instance().Data(key).workspace_size,
         &MHASingleton::Instance().Data(key).reserve_size));
 
-    if (MHASingleton::Instance().Data(key).workspace == nullptr &&
-        MHASingleton::Instance().Data(key).workspace_size > 0) {
+    // TODO(rewang): ensure workspace size will not be increased
+    if (MHASingleton::Instance().Data(key).workspace == nullptr) {
       MHASingleton::Instance().Data(key).workspace = memory::Alloc(
           dev_ctx, MHASingleton::Instance().Data(key).workspace_size);
     }
 
-    if (MHASingleton::Instance().Data(key).reserve_space == nullptr &&
-        MHASingleton::Instance().Data(key).reserve_size > 0) {
+    // TODO(rewang): ensure reserve_size size will not be increased
+    if (MHASingleton::Instance().Data(key).reserve_space == nullptr) {
       MHASingleton::Instance().Data(key).reserve_space = memory::Alloc(
           dev_ctx, MHASingleton::Instance().Data(key).reserve_size);
     }
