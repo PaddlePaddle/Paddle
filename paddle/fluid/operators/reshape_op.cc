@@ -229,13 +229,14 @@ class ReshapeOp : public framework::OperatorWithKernel {
     // by now we require that if the input tensor is zero shape, the target
     // shape of output must be zero
     if (in_size == 0) {
-      PADDLE_ENFORCE_EQ(capacity, in_size,
-                        platform::errors::InvalidArgument(
-                            "The 'shape' in ReshapeOp is invalid. "
-                            "The input tensor X'size is zero. "
-                            "But the target shape of Out is [%s],  the "
-                            "capacity of 'Out' is %d.",
-                            framework::make_ddim(shape), capacity));
+      PADDLE_ENFORCE_EQ(
+          capacity, in_size,
+          platform::errors::InvalidArgument(
+              "The 'shape' in ReshapeOp is invalid. "
+              "The input tensor X's shape = [%s], X's capacity = %d."
+              "But the target shape of Out is [%s],  the "
+              "capacity of 'Out' is %d.",
+              in_dims, in_size, framework::make_ddim(shape), capacity));
     }
 
     return framework::make_ddim(output_shape);
