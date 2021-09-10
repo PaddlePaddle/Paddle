@@ -2232,7 +2232,7 @@ All parameter, weight, gradient are variables in Paddle.
       },
       py::return_value_policy::reference);
 
-  // TO DO fill DOC
+  // This is copy the pytorch, only few changes, TO DO modify
   py::class_<cudaDeviceProp>(m, "_CudaDeviceProperties", R"DOC(
         _CudaDeviceProperties is stuct of device properties information.  
         )DOC")
