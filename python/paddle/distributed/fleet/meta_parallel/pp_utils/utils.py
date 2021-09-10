@@ -133,6 +133,7 @@ def _split_activation(tensor):
 
     # use inplace operation to save memory
     data = tensor.flatten_()
+
     part_size = tensor_numel // mp_degree
     start = part_size * mp_rank
     end = start + part_size

@@ -4103,15 +4103,15 @@ def conv3d_transpose(input,
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     In the above equation:
 
     * :math:`X`: Input value, a Tensor with NCDHW or NDHWC format.
     * :math:`W`: Filter value, a Tensor with MCDHW format.
-    * :math:`\\ast`: Convolution operation.
+    * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D Tensor with shape [M, 1].
-    * :math:`\\sigma`: Activation function.
+    * :math:`\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
@@ -4166,9 +4166,9 @@ def conv3d_transpose(input,
             calculate filter_size. Default: None. filter_size and output_size should not be
             None at the same time.
         padding(int|list|str|tuple, optional): The padding size. The padding argument effectively
-             adds `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a string,
-             either 'VALID' or 'SAME' supported, which is the padding algorithm. If `padding`
-             is a tuple or list, it could be in three forms: `[pad_depth, pad_height, pad_width]` or
+            adds `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a string,
+            either 'VALID' or 'SAME' supported, which is the padding algorithm. If `padding`
+            is a tuple or list, it could be in three forms: `[pad_depth, pad_height, pad_width]` or
             `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
             and when `data_format` is `'NCDHW'`, `padding` can be in the form
             `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
@@ -9780,7 +9780,7 @@ def prelu(x, mode, param_attr=None, name=None):
     prelu activation.
 
     .. math::
-        prelu(x) = max(0, x) + \\alpha * min(0, x)
+        prelu(x) = max(0, x) + \alpha * min(0, x)
 
     There are three modes for the activation:
 
@@ -9791,13 +9791,17 @@ def prelu(x, mode, param_attr=None, name=None):
         element: All elements do not share alpha. Each element has its own alpha.
 
     Parameters:
+    
         x (Tensor): The input Tensor or LoDTensor with data type float32.
+
         mode (str): The mode for weight sharing.
-        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable
-            weight (alpha), it can be create by ParamAttr. None by default.
-            For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+
+        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable \
+        weight (alpha), it can be create by ParamAttr. None by default. \
+        For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
+
+        name (str, optional): Name for the operation (optional, default is None). \
+        For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: A tensor with the same shape and data type as x.
