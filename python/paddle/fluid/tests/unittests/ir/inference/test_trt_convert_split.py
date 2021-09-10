@@ -30,13 +30,17 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-        # number between sections and outputs restriction.
+        # the dimensions of input and axis match
         if len(inputs['split_input'].shape) <= attrs[0]['axis']:
             return False
 
+        #Sections and num cannot both be equal to 0.
         if len(attrs[0]['sections']) == 0:
             if attrs[0]['num'] == 0:
                 return False
+
+        #When sections and num are not both equal to 0, sections has higher priority.
+        #The sum of sections should be equal to the input size.
         if len(attrs[0]['sections']) != 0:
             if attrs[0]['num'] != 0:
                 return False
@@ -48,10 +52,12 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
             if sum != inputs['split_input'].shape[attrs[0]['axis']]:
                 return False
 
+        #The size of num should be equal to the input dimension.
         if attrs[0]['num'] != 0:
             if len(outputs) != attrs[0]['num']:
                 return False
 
+        #Test AxisTensor and SectionsTensorList
         if self.num_input == 0:
             if self.dims == 2 and attrs[0]['sections'] == [10, 14] and len(
                     outputs) == 2:
@@ -87,8 +93,8 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                     for Out in [["output_var0", "output_var1"],
                                 ["output_var0", "output_var1", "output_var2"]]:
                         for sections in [[], [1, 2], [2, 1], [10, 14],
-                                         [1, 1, 1], [2, 2, 2], [3, 3, 3],
-                                         [3, 7, 14]]:
+                                         [1, 1,
+                                          1], [2, 2, 2], [3, 3, 3], [3, 7, 14]]:
                             for num in [0, 3]:
                                 for axis in [0, 1, 2, 3]:
                                     self.batch = batch
@@ -199,7 +205,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-2
+            attrs, False), 1e-5
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -208,7 +214,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                                                                      True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-2
+                                                                     True), 1e-5
 
     def add_skip_trt_case(self):
         def teller1(program_config, predictor_config):
