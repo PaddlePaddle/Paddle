@@ -12,6 +12,8 @@
 #pragma once
 #include <iostream>
 #include <memory>
+#include <string>
+#include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/eigen.h"
@@ -371,8 +373,6 @@ class FFTR2CGradKernel : public framework::OpKernel<T> {
     complex_dx.mutable_data<C>(dx->dims(), ctx.GetPlace());
 
     auto normalization = get_norm_from_string(norm_str, forward);
-    VLOG(5) << "[FFT][R2C][GRAD]"
-            << "Exec FFTR2CGradKernel(onesided=" << onesided << ")";
     FFTC2CFunctor<DeviceContext, C, C> fft_c2c_func;
 
     if (!onesided) {

@@ -12,24 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <stdio.h>
-#include <stdlib.h>
+#include "paddle/fluid/operators/spectral_op.h"
+
 #include <algorithm>
-// #include <iostream>
+#include <functional>
 #include <memory>
 #include <numeric>
-// #include <sstream>
 #include <string>
 #include <vector>
 
 #include "paddle/fluid/framework/eigen.h"
-#include "paddle/fluid/operators/spectral_op.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/complex.h"
 
 #if defined(PADDLE_WITH_ONEMKL)
 #include <mkl_dfti.h>
-// #include "mkl_service.h"
 #elif defined(PADDLE_WITH_POCKETFFT)
 #include "extern_pocketfft/pocketfft_hdronly.h"
 #endif
@@ -42,7 +39,7 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-//////////////// C2C
+// FFTC2C
 class FFTC2COpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -125,7 +122,7 @@ class FFTC2CGradOp : public framework::OperatorWithKernel {
   }
 };
 
-///////////////// R2C
+// FFTR2C
 class FFTR2COpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -217,7 +214,7 @@ class FFTR2CGradOp : public framework::OperatorWithKernel {
   }
 };
 
-//////////////// C2R
+// FFTC2R
 class FFTC2ROpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -326,7 +323,7 @@ class FFTC2RGradOp : public framework::OperatorWithKernel {
   }
 };
 
-//////////////// common
+// common functions
 FFTNormMode get_norm_from_string(const std::string& norm, bool forward) {
   if (norm.empty() || norm == "backward") {
     return forward ? FFTNormMode::none : FFTNormMode::by_n;
@@ -341,37 +338,25 @@ FFTNormMode get_norm_from_string(const std::string& norm, bool forward) {
   }
 
   PADDLE_THROW(platform::errors::InvalidArgument(
-      "Fft norm string must be forward or backward or ortho"));
+      "FFT norm string must be 'forward' or 'backward' or 'ortho', "
+      "received %s",
+      norm));
 }
 
-template <typename T>
-T compute_factor(int64_t size, FFTNormMode normalization) {
-  constexpr auto one = static_cast<T>(1);
-  switch (normalization) {
-    case FFTNormMode::none:
-      return one;
-    case FFTNormMode::by_n:
-      return one / static_cast<T>(size);
-    case FFTNormMode::by_sqrt_n:
-      return one / std::sqrt(static_cast<T>(size));
-  }
-  PADDLE_THROW("Unsupported normalization type");
-}
-
-////////////////// Functors
+// FFT Functors
 #if defined(PADDLE_WITH_ONEMKL)
 
+namespace {
 static inline void MKL_DFTI_CHECK(MKL_INT status) {
-  VLOG(4) << DftiErrorMessage(status) << "\n";
   if (status && !DftiErrorClass(status, DFTI_NO_ERROR)) {
-    PADDLE_THROW(DftiErrorMessage(status));
+    PADDLE_THROW(platform::errors::External(DftiErrorMessage(status)));
   }
 }
 
 struct DftiDescriptorDeleter {
   void operator()(DFTI_DESCRIPTOR_HANDLE handle) {
     if (handle != nullptr) {
-      MKL_DFTI_CHECK(DftiFreeDescriptor(&handle));
+      MKL_DFTI_CHECK(platform::errors::External(DftiFreeDescriptor(&handle)));
     }
   }
 };
@@ -381,7 +366,8 @@ class DftiDescriptor {
   void init(DFTI_CONFIG_VALUE precision, DFTI_CONFIG_VALUE signal_type,
             MKL_LONG signal_ndim, MKL_LONG* sizes) {
     if (desc_ != nullptr) {
-      PADDLE_THROW("DFT DESCRIPTOR can only be initialized once.");
+      PADDLE_THROW(platform::errors::AlreadyExists(
+          "DFT DESCRIPTOR can only be initialized once."));
     }
     DFTI_DESCRIPTOR* raw_desc;
     if (signal_ndim == 1) {
@@ -396,7 +382,8 @@ class DftiDescriptor {
 
   DFTI_DESCRIPTOR* get() const {
     if (desc_ == nullptr) {
-      PADDLE_THROW("DFTI DESCRIPTOR has not been initialized.");
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "DFTI DESCRIPTOR has not been initialized."));
     }
     return desc_.get();
   }
@@ -422,7 +409,8 @@ DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
       case framework::proto::VarType::COMPLEX128:
         return DFTI_DOUBLE;
       default:
-        PADDLE_THROW("MKL DFT does not support.");
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Input data type should be FP32, FP64, COMPLEX64 or COMPLEX128."));
     }
   }();
 
@@ -436,16 +424,16 @@ DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
     }
   }();
 
-  DftiDescriptor descriptor;  /////
+  DftiDescriptor descriptor;
   std::vector<MKL_LONG> fft_sizes(signal_sizes.cbegin(), signal_sizes.cend());
   const MKL_LONG signal_ndim = fft_sizes.size() - 1;
   descriptor.init(precision, domain, signal_ndim, fft_sizes.data() + 1);
 
-  // placement inplace?
+  // placement inplace or not inplace
   MKL_DFTI_CHECK(
       DftiSetValue(descriptor.get(), DFTI_PLACEMENT, DFTI_NOT_INPLACE));
 
-  // number of transformation
+  // number of transformations
   const MKL_LONG batch_size = fft_sizes[0];
   MKL_DFTI_CHECK(
       DftiSetValue(descriptor.get(), DFTI_NUMBER_OF_TRANSFORMS, batch_size));
@@ -491,213 +479,6 @@ DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
   MKL_DFTI_CHECK(DftiCommitDescriptor(descriptor.get()));
   return descriptor;
 }
-
-/* CODE TO print a DFTI_DESCRIPTOR
-// Maximum supported rank of multidimensional FFTs
-#define MAX_RANK 7
-// Define the format to printf MKL_LONG values
-#if !defined(MKL_ILP64)
-#define LI "%li"
-#else
-#define LI "%lli"
-#endif
-static void dump_descriptor(DFTI_DESCRIPTOR_HANDLE hand) {
-  //Execution status
-  MKL_LONG status = 0;
-  char version[DFTI_VERSION_LENGTH];
-  enum DFTI_CONFIG_VALUE placement, precision, domain, storage, packfmt, wspace,
-      cmtstatus;
-  MKL_LONG rank, lengths[MAX_RANK];
-  double fwd_scale, bwd_scale;
-  MKL_LONG nut, is[1 + MAX_RANK], os[1 + MAX_RANK], ntr, idist, odist, tlimit;
-  DftiGetValue(0, DFTI_VERSION, version);
-  printf("%s\n", version);
-  printf("  PRECISION = ");
-  fflush(0);
-  status = DftiGetValue(hand, DFTI_PRECISION, &precision);
-  if (status != DFTI_NO_ERROR) goto failed;
-  if (precision == DFTI_SINGLE)
-    printf("DFTI_SINGLE\n");
-  else if (precision == DFTI_DOUBLE)
-    printf("DFTI_DOUBLE\n");
-  else {
-    printf("unknown (%i)\n", precision);
-    goto failed;
-  }
-  printf("  FORWARD_DOMAIN = ");
-  fflush(0);
-  status = DftiGetValue(hand, DFTI_FORWARD_DOMAIN, &domain);
-  if (status != DFTI_NO_ERROR) goto failed;
-  if (domain == DFTI_COMPLEX)
-    printf("DFTI_COMPLEX\n");
-  else if (domain == DFTI_REAL)
-    printf("DFTI_REAL\n");
-  else {
-    printf("unknown (%i)\n", domain);
-    goto failed;
-  }
-  printf("  DIMENSION = ");
-  fflush(0);
-  status = DftiGetValue(hand, DFTI_DIMENSION, &rank);
-  if (status != DFTI_NO_ERROR) goto failed;
-  printf(LI "\n", rank);
-  printf("  LENGTHS = ");
-  fflush(0);
-  status = DftiGetValue(hand, DFTI_LENGTHS, lengths);
-  if (status != DFTI_NO_ERROR) goto failed;
-  {
-    int r = 0;
-    printf(LI, lengths[0]);
-    for (r = 1; r < rank; ++r) printf(", " LI, lengths[r]);
-    printf("\n");
-  }
-  printf("  PLACEMENT = ");
-  fflush(0);
-  status = DftiGetValue(hand, DFTI_PLACEMENT, &placement);
-  if (status != DFTI_NO_ERROR) goto failed;
-  if (placement == DFTI_NOT_INPLACE)
-    printf("DFTI_NOT_INPLACE\n");
-  else if (placement == DFTI_INPLACE)
-    printf("DFTI_INPLACE\n");
-  else {
-    printf("unknown (%i)\n", placement);
-    goto failed;
-  }
-  printf("  F/B SCALES = ");
-  fflush(0);
-  if (precision == DFTI_DOUBLE) {
-    status = DftiGetValue(hand, DFTI_FORWARD_SCALE, &fwd_scale);
-    if (status != DFTI_NO_ERROR) goto failed;
-    status = DftiGetValue(hand, DFTI_BACKWARD_SCALE, &bwd_scale);
-    if (status != DFTI_NO_ERROR) goto failed;
-  } else {
-    float fs, bs;
-    status = DftiGetValue(hand, DFTI_FORWARD_SCALE, &fs);
-    if (status != DFTI_NO_ERROR) goto failed;
-    status = DftiGetValue(hand, DFTI_BACKWARD_SCALE, &bs);
-    if (status != DFTI_NO_ERROR) goto failed;
-    fwd_scale = (double)fs;
-    bwd_scale = (double)bs;
-  }
-  printf(" %lg, %lg\n", fwd_scale, bwd_scale);
-  printf("  NO OF USER THREADS = ");
-  fflush(0);
-  status = DftiGetValue(hand, DFTI_NUMBER_OF_USER_THREADS, &nut);
-  if (status != DFTI_NO_ERROR) goto failed;
-  printf(LI "\n", nut);
-  printf("  INPUT  STRIDES = ");
-  fflush(0);
-  status = DftiGetValue(hand, DFTI_INPUT_STRIDES, is);
-  if (status != DFTI_NO_ERROR) goto failed;
-  {
-    int r = 0;
-    printf(LI, is[0]);
-    for (r = 1; r <= rank; ++r) printf(", " LI, is[r]);
-    printf("\n");
-  }
-  printf("  OUTPUT STRIDES = ");
-  fflush(0);
-  status = DftiGetValue(hand, DFTI_OUTPUT_STRIDES, os);
-  if (status != DFTI_NO_ERROR) goto failed;
-  {
-    int r = 0;
-    printf(LI, os[0]);
-    for (r = 1; r <= rank; ++r) printf(", " LI, os[r]);
-    printf("\n");
-  }
-  printf("  NO OF TRANSFORMS = ");
-  fflush(0);
-  status = DftiGetValue(hand, DFTI_NUMBER_OF_TRANSFORMS, &ntr);
-  if (status != DFTI_NO_ERROR) goto failed;
-  printf(LI "\n", ntr);
-  printf("  I/O DISTANCES = ");
-  fflush(0);
-  status = DftiGetValue(hand, DFTI_INPUT_DISTANCE, &idist);
-  if (status != DFTI_NO_ERROR) goto failed;
-  status = DftiGetValue(hand, DFTI_OUTPUT_DISTANCE, &odist);
-  if (status != DFTI_NO_ERROR) goto failed;
-  printf(LI ", " LI "\n", idist, odist);
-  if (domain == DFTI_COMPLEX) {
-    printf("  COMPLEX STORAGE = ");
-    fflush(0);
-    status = DftiGetValue(hand, DFTI_COMPLEX_STORAGE, &storage);
-    if (status != DFTI_NO_ERROR) goto failed;
-    if (storage == DFTI_COMPLEX_COMPLEX)
-      printf("DFTI_COMPLEX_COMPLEX\n");
-    else if (storage == DFTI_REAL_REAL)
-      printf("DFTI_REAL_REAL\n");
-    else {
-      printf("wrong (%i)\n", storage);
-      goto failed;
-    }
-  } else {
-    printf("  CONJUGATE EVEN STORAGE = ");
-    fflush(0);
-    status = DftiGetValue(hand, DFTI_CONJUGATE_EVEN_STORAGE, &storage);
-    if (status != DFTI_NO_ERROR) goto failed;
-    if (storage == DFTI_COMPLEX_COMPLEX)
-      printf("DFTI_COMPLEX_COMPLEX\n");
-    else if (storage == DFTI_COMPLEX_REAL)
-      printf("DFTI_COMPLEX_REAL\n");
-    else {
-      printf("wrong (%i)\n", storage);
-      goto failed;
-    }
-    if (storage == DFTI_COMPLEX_REAL) {
-      printf("     PACKED FORMAT = ");
-      fflush(0);
-      status = DftiGetValue(hand, DFTI_PACKED_FORMAT, &packfmt);
-      if (status != DFTI_NO_ERROR) goto failed;
-      if (packfmt == DFTI_CCS_FORMAT)
-        printf("DFTI_CCS_FORMAT\n");
-      else if (packfmt == DFTI_PACK_FORMAT)
-        printf("DFTI_PACK_FORMAT\n");
-      else if (packfmt == DFTI_PERM_FORMAT)
-        printf("DFTI_PERM_FORMAT\n");
-      else {
-        printf("wrong (%i)\n", packfmt);
-        goto failed;
-      }
-    }
-  }
-  printf("  WORKSPACE = ");
-  fflush(0);
-  status = DftiGetValue(hand, DFTI_WORKSPACE, &wspace);
-  if (status != DFTI_NO_ERROR) goto failed;
-  if (wspace == DFTI_ALLOW)
-    printf("DFTI_ALLOW\n");
-  else if (wspace == DFTI_AVOID)
-    printf("DFTI_AVOID\n");
-  else if (wspace == DFTI_NONE)
-    printf("DFTI_NONE\n");
-  else {
-    printf("wrong (%i)\n", wspace);
-    goto failed;
-  }
-  printf("  COMMIT STATUS = ");
-  fflush(0);
-  status = DftiGetValue(hand, DFTI_COMMIT_STATUS, &cmtstatus);
-  if (status != DFTI_NO_ERROR) goto failed;
-  if (cmtstatus == DFTI_COMMITTED)
-    printf("DFTI_COMMITTED\n");
-  else if (cmtstatus == DFTI_UNCOMMITTED)
-    printf("DFTI_UNCOMMITTED\n");
-  else {
-    printf("wrong (%i)\n", cmtstatus);
-    goto failed;
-  }
-  printf("  THREAD LIMIT = ");
-  fflush(0);
-  status = DftiGetValue(hand, DFTI_THREAD_LIMIT, &tlimit);
-  if (status != DFTI_NO_ERROR) goto failed;
-  printf(LI "\n", tlimit);
-  fflush(0);
-  return;
-failed:
-  printf("Error, status = " LI "\n", status);
-  exit(1);
-}
-*/
 
 // Execute a general fft operation (can be c2c, onesided r2c or onesided c2r)
 template <typename DeviceContext, typename Ti, typename To>
@@ -797,6 +578,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
   TransCompute<platform::CPUDeviceContext, To>(ndim, ctx, transposed_output,
                                                out, reverse_dim_permute);
 }
+} // namespace anonymous
 
 template <typename Ti, typename To>
 struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
@@ -813,8 +595,6 @@ struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
   void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
                   Tensor* out, const std::vector<int64_t>& axes,
                   FFTNormMode normalization, bool forward) {
-    VLOG(5) << "[FFT][R2C][CPU][MKL]:"
-            << "Exec FFTR2CFunctor(forward=" << forward << ")";
     exec_fft<platform::CPUDeviceContext, Ti, To>(ctx, x, out, axes,
                                                  normalization, forward);
   }
@@ -844,6 +624,24 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
 };
 
 #elif defined(PADDLE_WITH_POCKETFFT)
+
+namespace {
+template <typename T>
+T compute_factor(int64_t size, FFTNormMode normalization) {
+  constexpr auto one = static_cast<T>(1);
+  switch (normalization) {
+    case FFTNormMode::none:
+      return one;
+    case FFTNormMode::by_n:
+      return one / static_cast<T>(size);
+    case FFTNormMode::by_sqrt_n:
+      return one / std::sqrt(static_cast<T>(size));
+  }
+  PADDLE_THROW(
+      platform::errors::InvalidArgument("Unsupported normalization type"));
+}
+} //namespace anonymous
+
 template <typename Ti, typename To>
 struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
   void operator()(const platform::CPUDeviceContext& ctx, const Tensor* x,
@@ -863,7 +661,7 @@ struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
 
     const auto* in_data = reinterpret_cast<const C*>(x->data<Ti>());
     auto* out_data = reinterpret_cast<C*>(out->data<To>());
-    // well, we have to use std::vector<size_t> here
+    // pocketfft requires std::vector<size_t>
     std::vector<size_t> axes_(axes.size());
     std::copy(axes.begin(), axes.end(), axes_.begin());
     // compuet factor
@@ -910,10 +708,10 @@ struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
 
     const auto* in_data = x->data<R>();
     auto* out_data = reinterpret_cast<C*>(out->data<To>());
-    // well, we have to use std::vector<size_t> here
+    // pocketfft requires std::vector<size_t>
     std::vector<size_t> axes_(axes.size());
     std::copy(axes.begin(), axes.end(), axes_.begin());
-    // compuet facet
+    // compuet normalization factor
     int64_t signal_numel = 1;
     for (auto i : axes) {
       signal_numel *= in_sizes[i];
@@ -957,10 +755,10 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
 
     const auto* in_data = reinterpret_cast<const C*>(x->data<Ti>());
     auto* out_data = out->data<R>();
-    // well, we have to use std::vector<size_t> here
+    // pocketfft requires std::vector<size_t>
     std::vector<size_t> axes_(axes.size());
     std::copy(axes.begin(), axes.end(), axes_.begin());
-    // compuet facet
+    // compuet normalization factor
     int64_t signal_numel = 1;
     for (auto i : axes) {
       signal_numel *= out_sizes[i];
