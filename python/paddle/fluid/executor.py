@@ -1483,7 +1483,6 @@ class Executor(object):
             dataset.set_thread(1)
             dataset.set_filelist(['None'])
             dataset.set_use_var(data_vars)
-
         else:
             if dataset is None:
                 raise RuntimeError("dataset is need and should be initialized")

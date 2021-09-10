@@ -800,7 +800,6 @@ def cloud_ps_heter_env_set(args):
     logger.info("Set heter parameter server env: {}".format(
         pretty_print_envs(environs)))
 
-
 class ParameterServerLauncher(object):
     def __init__(self, args, distribute_mode):
         self.args = args
