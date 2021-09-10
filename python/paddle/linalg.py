@@ -17,7 +17,7 @@ from .tensor.linalg import norm  # noqa: F401
 from .tensor.linalg import matrix_power  # noqa: F401
 from .tensor import inverse as inv  # noqa: F401
 from .tensor.linalg import matrix_rank
-from .tensor.linalg import svd
+from .tensor.linalg import svd, det, slogdet
 
 __all__ = [
     'cholesky',  #noqa
@@ -25,5 +25,7 @@ __all__ = [
     'inv',
     'matrix_rank',
     'svd',
-    'matrix_power'
+    'matrix_power',
+    'det',
+    'slogdet'
 ]
