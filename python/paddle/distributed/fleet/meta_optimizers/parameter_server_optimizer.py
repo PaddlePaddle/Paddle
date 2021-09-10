@@ -334,32 +334,38 @@ class ParameterServerOptimizer(MetaOptimizerBase):
 
             main_program, startup_program = self._build_trainer_programs(
                 compiled_config)
-            _origin_startup_program._pipeline_opt = {
-                "startup_program": startup_program,
-            }
 
-            if core.is_compiled_with_cuda():
-                place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-                place = core.CUDAPlace(0)
-            elif core.is_compiled_with_npu():
-                place_id = int(os.getenv("FLAGS_selected_npus", "0"))
-                place = core.NPUPlace(0)
+            if self.role_maker._is_heter_parameter_server_mode:
+                _origin_startup_program._pipeline_opt = {
+                    "startup_program": startup_program,
+                }
 
-            loss.block.program._pipeline_opt = {
-                "trainer": "HeterPipelineTrainer",
-                "device_worker": "HeterSection",
-                "trainers":
-                int(self.role_maker._worker_num()),  ## used in cpu trainer
-                "trainer_id":
-                int(self.role_maker._role_id()),  ## used in cpu trainer
-                "pipeline_stage": int(self.role_maker._get_stage_id()) - 1,
-                "num_pipeline_stages": int(self.role_maker._get_num_stage()),
-                "section_program": main_program,
-                "place": place,
-                "place_id": place_id,
-                "sync_steps": -1,
-                "num_microbatches": self.num_microbatches,
-            }
+                if core.is_compiled_with_cuda():
+                    place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+                    place = core.CUDAPlace(0)
+                elif core.is_compiled_with_npu():
+                    place_id = int(os.getenv("FLAGS_selected_npus", "0"))
+                    place = core.NPUPlace(0)
+
+                loss.block.program._pipeline_opt = {
+                    "trainer": "HeterPipelineTrainer",
+                    "device_worker": "HeterSection",
+                    "trainers":
+                    int(self.role_maker._worker_num()),  ## used in cpu trainer
+                    "trainer_id":
+                    int(self.role_maker._role_id()),  ## used in cpu trainer
+                    "pipeline_stage": int(self.role_maker._get_stage_id()) - 1,
+                    "num_pipeline_stages":
+                    int(self.role_maker._get_num_stage()),
+                    "section_program": main_program,
+                    "place": place,
+                    "place_id": place_id,
+                    "sync_steps": -1,
+                    "num_microbatches": self.num_microbatches,
+                }
+            else:
+                loss.block.program = main_program
+                fluid.framework.switch_startup_program(startup_program)
 
         elif self.role_maker._is_server():
             main_program, startup_program = self._build_pserver_programs(
@@ -369,22 +375,24 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         return None, None
 
     def _disable_strategy(self, dist_strategy):
-        dist_strategy.pipeline = False
-        dist_strategy.pipeline_configs = {
-            "micro_batch_size": 1,
-            "accumulate_steps": 1,
-        }
+        if self.role_maker._is_heter_parameter_server_mode:
+            dist_strategy.pipeline = False
+            dist_strategy.pipeline_configs = {
+                "micro_batch_size": 1,
+                "accumulate_steps": 1,
+            }
         dist_strategy.a_sync = False
         a_sync_configs = dist_strategy.a_sync_configs
         a_sync_configs["k_steps"] = -1
         dist_strategy.a_sync_configs = a_sync_configs
 
     def _enable_strategy(self, dist_strategy, context):
-        dist_strategy.pipeline = True
-        dist_strategy.pipeline_configs = {
-            "micro_batch_size": 1,
-            "accumulate_steps": 1,
-        }
+        if self.role_maker._is_heter_parameter_server_mode:
+            dist_strategy.pipeline = True
+            dist_strategy.pipeline_configs = {
+                "micro_batch_size": 1,
+                "accumulate_steps": 1,
+            }
         a_sync_configs = dist_strategy.a_sync_configs
         if a_sync_configs["k_steps"] >= 0:
             return

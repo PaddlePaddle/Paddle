@@ -334,7 +334,7 @@ class HeterPipelineTrainer : public TrainerBase {
   void InitOtherEnv(const ProgramDesc& main_program) override;
   void Run() override;
   void Finalize() override;
-  Scope* GetWorkerScope(int thread_id) override;
+  virtual Scope* GetWorkerScope(int thread_id) override;
   void InitDumpEnv() override;
   virtual std::string GetDumpPath(int tid) override;
   void ResetDataset(Dataset* dataset_ptr) override;
@@ -349,7 +349,6 @@ class HeterPipelineTrainer : public TrainerBase {
 
   int num_pipeline_stages_;
   int pipeline_stage_;
-  std::future<void> section_thread_;
   std::shared_ptr<paddle::framework::DeviceWorker> worker_;
   Scope* minibatch_scope_;
   std::vector<Scope*> microbatch_scopes_;

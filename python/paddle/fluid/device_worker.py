@@ -461,7 +461,6 @@ class HeterSection(DeviceWorker):
         pipeline_opt = self._program._pipeline_opt
         section_param = trainer_desc.section_param
         section_param.num_microbatches = pipeline_opt["num_microbatches"]
-        section_param.start_cpu_core_id = pipeline_opt["start_cpu_core_id"]
         section_param.pipeline_stage = pipeline_opt["pipeline_stage"]
         section_param.num_pipeline_stages = pipeline_opt["num_pipeline_stages"]
         cfg = section_param.section_config

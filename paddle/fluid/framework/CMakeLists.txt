@@ -303,7 +303,7 @@ if(WITH_DISTRIBUTE)
     set_source_files_properties(hogwild_worker.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
   else()
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
-            dist_multi_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
+            dist_multi_trainer.cc heter_pipeline_trainer.cc trainer_factory.cc trainer.cc data_feed_factory.cc
             heterxpu_trainer.cc
             data_feed.cc device_worker.cc hogwild_worker.cc hetercpu_worker.cc ps_gpu_worker.cc
             ps_gpu_trainer.cc downpour_worker.cc downpour_worker_opt.cc

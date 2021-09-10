@@ -996,6 +996,8 @@ class ParameterServerLauncher(object):
 
             # get heter worker envs
             if self.distribute_mode == DistributeMode.PS_HETER:
+                assert False, "[*DEPRECATED*]launch heterps using heter_worker_num or heter_workers is deprecated"
+                '''
                 if args.heter_worker_num:
                     self.heter_worker_num = args.heter_worker_num
                     if args.heter_workers:
@@ -1015,6 +1017,7 @@ class ParameterServerLauncher(object):
                     self.heter_worker_endpoints = args.heter_workers
                     self.heter_worker_num = len(
                         self.heter_worker_endpoints.split(","))
+                '''
 
         # get http_port
         if args.http_port:
@@ -1240,7 +1243,8 @@ class ParameterServerLauncher(object):
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
                 "STAGE_NUM": str(len(self.stage_heter_map)),
                 "PADDLE_HETER_TRAINER_IP_PORT_LIST": self.stage_heter_map[2]
-                if self.distribute_mode == DistributeMode.PS_HETER else "",
+                if self.distribute_mode == DistributeMode.PS_HETER else
+                self.heter_worker_endpoints,
                 "TRAINING_ROLE": "TRAINER",
                 "PADDLE_TRAINER_ID": str(cur_worker.rank),
                 "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
