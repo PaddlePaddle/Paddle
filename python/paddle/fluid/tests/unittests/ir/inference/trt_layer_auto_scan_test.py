@@ -17,7 +17,10 @@ import unittest
 import itertools
 import abc
 import enum
+import sys
+import os
 import logging
+import time
 import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
@@ -68,6 +71,9 @@ class TrtLayerAutoScanTest(AutoScanTest):
             use_static=True,
             use_calib_mode=False)
         self.dynamic_shape = self.DynamicShapeParam({}, {}, {}, False)
+        self.num_percent_cases = float(
+            os.getenv(
+                'TEST_NUM_PERCENT_CASES', default='0.3'))
 
     def create_inference_config(self, use_trt=True) -> paddle_infer.Config:
         config = paddle_infer.Config()
@@ -166,8 +172,21 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
     def run_test(self, quant=False):
         status = True
-
+        np.random.seed(int(1000 * time.time()) % 2**32)
+        run_flags = []
         for prog_config in self.sample_program_configs():
+            # In CI, only run 30% cases
+            if np.random.rand() < self.num_percent_cases:
+                run_flags.append(True)
+            else:
+                run_flags.append(False)
+        np.random.seed(1024)
+
+        for prog_config, run_flags in zip(self.sample_program_configs(),
+                                          run_flags):
+            if not run_flags:
+                continue
+
             # if program is invalid, we should skip that cases.
             if not self.is_program_valid(prog_config):
                 continue
