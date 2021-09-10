@@ -75,8 +75,7 @@ class UpdateLossScalingOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "(Tensors) The input tensors of update_loss_scaling operator.")
-        .AsDuplicable()
-        .AsDispensable();
+        .AsDuplicable();
     AddInput("FoundInfinite",
              "(Tensor) 1-dim tensor, contains a bool scalar, which indicates "
              "whether there is any infinite gradient.");
@@ -90,8 +89,7 @@ class UpdateLossScalingOpMaker : public framework::OpProtoAndCheckerMaker {
              "gradients are infinite.");
     AddOutput("Out",
               "(Tensors) The output tensor of update_loss_scaling operator.")
-        .AsDuplicable()
-        .AsDispensable();
+        .AsDuplicable();
     AddOutput("LossScaling", "(Tensor) 1-dim tensor, updated loss scaling.");
     AddOutput("OutGoodSteps", "(Tensor) 1-dim tensor, pdated good steps.");
     AddOutput("OutBadSteps", "(Tensor) 1-dim tensor, updated bad steps.");

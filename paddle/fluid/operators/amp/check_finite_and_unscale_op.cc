@@ -57,8 +57,7 @@ class CheckFiniteAndUnscaleOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput(
         "X",
         "(Tensors) The input tensors of check_finite_and_unscale operator.")
-        .AsDuplicable()
-        .AsDispensable();
+        .AsDuplicable();
     AddInput("Scale",
              "(Tensor) 1-dim tensor, the scale of check_finite_and_unscale "
              "operator.");
@@ -71,8 +70,7 @@ class CheckFiniteAndUnscaleOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out",
               "(Tensors) The scaled output tensor of "
               "check_finite_and_unscale operator.")
-        .AsDuplicable()
-        .AsDispensable();
+        .AsDuplicable();
     AddOutput("FoundInfinite",
               "(Tensor) 1-dim tensor, contains a bool scalar, which indicates "
               "if there there is infinite or nan item in input X.");
