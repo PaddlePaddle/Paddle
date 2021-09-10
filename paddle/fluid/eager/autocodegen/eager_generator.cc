@@ -31,6 +31,7 @@ static std::unordered_set<std::string> operators_to_skip = {
     "reverse", // Attr Error
     "flip", // Attr Error
     "cast", // Attr Error 
+    "sum",
     "minus" // Multiple ops_
 };
 
@@ -306,21 +307,21 @@ int main() {
             std::map<std::string, SavedVariableWrapperList>* g_ins = op_base.GetMutableInsMap();
             std::map<std::string, SavedVariableWrapperList>* g_outs = op_base.GetMutableOutsMap();
 
-            for(const auto& iter : *g_ins) {
-                if(!grad_ins.count(iter.first))
-                    grad_ins[iter.first] = {};
-                for(auto vw_iter = iter.second.begin(); vw_iter != iter.second.end(); vw_iter++) {
+            for(const auto& it : *g_ins) {
+                if(!grad_ins.count(it.first))
+                    grad_ins[it.first] = {};
+                for(auto vw_iter = it.second.begin(); vw_iter != it.second.end(); vw_iter++) {
                     std::shared_ptr<VariableWrapper> vw = *vw_iter;
-                    grad_ins[iter.first].push_back(vw);
+                    grad_ins[it.first].push_back(vw);
                 }
             }
             
-            for(const auto& iter : *g_outs) {
-                if(!grad_outs.count(iter.first))
-                    grad_outs[iter.first] = {};
-                for(auto vw_iter = iter.second.begin(); vw_iter != iter.second.end(); vw_iter++) {
+            for(const auto& it : *g_outs) {
+                if(!grad_outs.count(it.first))
+                    grad_outs[it.first] = {};
+                for(auto vw_iter = it.second.begin(); vw_iter != it.second.end(); vw_iter++) {
                     std::shared_ptr<VariableWrapper> vw = *vw_iter;
-                    grad_outs[iter.first].push_back(vw);
+                    grad_outs[it.first].push_back(vw);
                 }
             }
         }
@@ -342,9 +343,9 @@ int main() {
         /* ------ Get Grad Attr Map ---- */
         
 
-        /* ---------------------------------- */
-        /* --------- CodeGen: Inner --------- */
-        /* ---------------------------------- */
+        /* -------------------------------- */
+        /* --------- CodeGen: All --------- */
+        /* -------------------------------- */
 
         /* ------ Maping forward slot name to fwd position ------ */
         std::unordered_map<std::string, size_t> fwd_inputs_name_pos_map;
@@ -365,6 +366,11 @@ int main() {
         for(const auto& iter : outs) {
             fwd_outputs_names.push_back(iter.first);
         }
+        
+        /* -------------------------------- */
+        /* --------- CodeGen: Forward ----- */
+        /* -------------------------------- */
+        {
         
         /* 
             // Forward Function Example:
@@ -538,10 +544,13 @@ int main() {
         std::string function_str = paddle::string::Sprintf(FWD_FUNCTION_TEMPLATE, return_type_str, function_name, dygraph_function_args_str, generated_function_body);
 
         VLOG(2) << function_str;
+        
+        }
 
+        {
         /*
             // GradNode Example:
-            vector<vector<Tensor>> GradNodeScale::operator()(vector<vector<Tensor>>& grads) {
+            vector<vector<Tensor>> GradNodeXXX::operator()(vector<vector<Tensor>>& grads) {
                 
                 const std::shared_ptr<Tracer>& tracer = imperative::GetCurrentTracer();
                 
@@ -572,15 +581,160 @@ int main() {
 
                 vector<vector<Tensor>> outputs(outs.size());
                 for(auto& kv : outs) {
-                    outputs["fwd_inputs_name_pos_map[grad_outs_slotname_map[kv.first]]"] = VarBasesToTensors(kv.second);
+                    outputs["fwd_inputs_name_pos_map[grad_outs_slotname_map[kv.first]]"] = VarBasesToTensors(outs["kv.first"]);
                 }
 
                 return outputs;
             }
         */
-
-        /* ------ Forward function generation ------ */
         
+        /* ---------------------------------- */
+        /* --------- CodeGen: Backward ------ */
+        /* ---------------------------------- */
+        
+        /* ------ Dygraph GradNode generation ------ */
+        std::string generated_grad_function_body = "";
+        
+        // [Generation] Get Tracer
+        generated_grad_function_body += "\n";
+        std::string tracer_str = "const std::shared_ptr<Tracer>& tracer = imperative::GetCurrentTracer();";
+        generated_grad_function_body += tracer_str;
+        generated_grad_function_body += "\n";
+        
+        // [Generation] Get Ins Map
+        generated_grad_function_body += "\n";
+        std::string ins_contents_str = "";
+        for (auto iter : grad_ins) {
+            const std::string& grad_input_name = iter.first;
+            
+            if(grad_ins_fwd_slotname_map.count(grad_input_name)) {
+                // Fwd Tensor
+                const std::string& fwd_input_name = grad_ins_fwd_slotname_map[grad_input_name];
+                const char* GRAD_INS_FWD_CONTENT_TEMPLATE = "{ \"%s\", this->%s },";
+                ins_contents_str += paddle::string::Sprintf(GRAD_INS_FWD_CONTENT_TEMPLATE, grad_input_name, fwd_input_name);
+            
+            } else if(grad_ins_grad_slotname_map.count(grad_input_name)) {
+                // Fwd Tensor's Grad
+                size_t fwd_output_position = fwd_outputs_name_pos_map[grad_ins_grad_slotname_map[grad_input_name]];
+                const char* GRAD_INS_GRAD_CONTENT_TEMPLATE = "{ \"%s\", TensorsToVarBases(grads[%d]) },";
+                ins_contents_str += paddle::string::Sprintf(GRAD_INS_GRAD_CONTENT_TEMPLATE, grad_input_name, fwd_output_position);
+            
+            } else {
+                PADDLE_THROW(platform::errors::Fatal("Unable to find forward slot name that matches %s", grad_input_name)); 
+            }
+        }
+        if(ins_contents_str.size() > 0)
+            ins_contents_str.pop_back(); // // Remove trailing ","
+        
+        const char* BWD_INS_MAP_TEMPLATE = "std::map<std::string, std::vector<std::shared_ptr<VarBase>>> ins = { %s };";
+        std::string ins_map_str = paddle::string::Sprintf(BWD_INS_MAP_TEMPLATE, ins_contents_str);
+        generated_grad_function_body += ins_map_str;
+        generated_grad_function_body += "\n";
+        
+        // [Generation] Get Outs Map
+        generated_grad_function_body += "\n";
+        std::string outs_contents_str = "";
+        for (auto iter : grad_outs) {
+            const std::string& grad_output_name = iter.first;
+            
+            if(grad_outs_slotname_map.count(grad_output_name)) {
+                // Fwd Tensor
+                size_t fwd_input_position = fwd_inputs_name_pos_map[grad_outs_slotname_map[grad_output_name]];
+                const char* GRAD_OUTS_CONTENT_TEMPLATE = "{ \"%s\", ConstructDuplicableOutput(this->in_ranks[%d]) },";
+                outs_contents_str += paddle::string::Sprintf(GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, fwd_input_position);
+            } else {
+                PADDLE_THROW(platform::errors::Fatal("Unable to find forward slot name that matches %s", grad_output_name)); 
+            }
+        }
+        if(outs_contents_str.size() > 0)
+            outs_contents_str.pop_back(); // // Remove trailing ","
+        
+        const char* BWD_OUTS_MAP_TEMPLATE = "std::map<std::string, std::vector<std::shared_ptr<VarBase>>> outs = { %s };";
+        std::string outs_map_str = paddle::string::Sprintf(BWD_OUTS_MAP_TEMPLATE, outs_contents_str);
+        generated_grad_function_body += outs_map_str;
+        generated_grad_function_body += "\n";
+
+        // [Generation] Get Attrs Map
+        generated_grad_function_body += "\n";
+        std::string trace_opbase_str = "";
+        
+        for(auto iter = grad_node->begin(); iter < grad_node->end(); iter++) {
+            // Each OpBase
+            OpBase& op_base = *iter;
+
+            std::string attr_contents_str = "";
+            for(auto& kv: op_base.DefaultAttrsMap()) {
+                const std::string& attr_name = kv.first;
+                const char* ATTR_CONTENT_TEMPLATE = "{ \"%s\", this->%s},";
+                attr_contents_str += paddle::string::Sprintf(ATTR_CONTENT_TEMPLATE, attr_name, attr_name);
+            }
+            if(attr_contents_str.size() > 0)
+                attr_contents_str.pop_back();
+            
+            const char* ATTRS_MAP_TEMPLATE = "framework::AttributeMap attrs = { %s };";
+            std::string attrs_map_str = paddle::string::Sprintf(ATTRS_MAP_TEMPLATE, attr_contents_str);
+            
+            const char* TRACE_OP_TEMPLATE = "tracer->TraceOp(%s, ins, outs, attrs, tracer->ExpectedPlace(), false, {});";
+            std::string trace_op_str = paddle::string::Sprintf(TRACE_OP_TEMPLATE, op_base.Type());
+
+            trace_opbase_str += "\n";
+            trace_opbase_str += attrs_map_str;
+            trace_opbase_str += "\n";
+            trace_opbase_str += trace_op_str;
+        }
+        
+        generated_grad_function_body += trace_opbase_str;
+        generated_grad_function_body += "\n";
+
+        // [Generation] Get Return
+        std::string outputs_str = "";
+        for(auto iter : grad_outs) {
+            const std::string& grad_out_name = iter.first;
+            size_t fwd_input_position = fwd_inputs_name_pos_map[grad_outs_slotname_map[grad_out_name]];
+
+            const char* BWD_OUTPUT_TEMPLATE = "outputs[%d] = VarBasesToTensors(outs[\"%s\"]);\n";
+            outputs_str += paddle::string::Sprintf(BWD_OUTPUT_TEMPLATE, fwd_input_position, grad_out_name);
+        }
+
+        const char* BWD_RETURN_TEMPLATE = "std::vector<std::vector<pt::Tensor>> outputs(outs.size());\n %s \n return outputs;";
+        std::string return_str = paddle::string::Sprintf(BWD_RETURN_TEMPLATE, outputs_str);
+
+        generated_grad_function_body += "\n";
+        generated_grad_function_body += return_str;
+
+        // [Generation] Get Full Grad Function
+        const char* GRAD_FUNCTION_TEMPLATE = "std::vector<std::vector<pt::Tensor>> GradNode%s::operator()(std::vector<std::vector<pt::Tensor>>& grads) {\n %s \n}";
+        std::string grad_function_str = paddle::string::Sprintf(GRAD_FUNCTION_TEMPLATE, op_type, generated_grad_function_body);
+        
+        VLOG(2) << grad_function_str;
+        
+        }
+
+        /* ---------------------------------- */
+        /* --------- CodeGen: GradNode ------ */
+        /* ---------------------------------- */
+        /*
+        const char* GRAD_NODE_TEMPLATE = "              \
+            class GradNode%s : public GradNodeBase {\n  \
+             public:\n                                  \
+                GradNode%s() : GradNodeBase() {}\n      \
+                ~GradNode%s() override = default;\n     \
+                                                        \
+                virtual std::vector<std::vector<pt::Tensor>> operator()(const std::vector<std::vector<pt::Tensor>>& grads) override;\n  \
+                                                        \
+                %s // SetX, SetY, ...                   \
+                                                        \
+                void SetAttributes(%s) {\n              \
+                    %s                                  \
+                }\n                                     \
+                                                        \
+             private:\n                                 \
+                %s // Attributes                        \
+                %s // TensorWrappers                    \
+            };\n                                        \
+            ";
+        */  
+
     }
 
     return 0;
