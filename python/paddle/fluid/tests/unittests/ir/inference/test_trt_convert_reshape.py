@@ -29,6 +29,18 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
         if self.dims == 1:
             if len(attrs[0]['shape']) != 1:
                 return False
+
+        #To test if the shape contains 0
+        if len(attrs[0]['shape']) == 3:
+            if attrs[0]['shape'][1] == 0:
+                if self.dims != 3:
+                    return False
+
+        if len(attrs[0]['shape']) == 4:
+            if attrs[0]['shape'][2] == 0:
+                if self.dims != 4:
+                    return False
+
         return True
 
     def sample_program_configs(self):
@@ -53,7 +65,8 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
 
         for dims in [4, 3, 2, 1]:
             for num_input in [0, 1, 2, 3]:
-                for shape in [[1, 6, 8], [1, 2, 4, 6], [1, 6, 8], [2, 24],
+                for shape in [[1, 6, 8], [1, 2, 4, 6], [1, 1, 0, 12],
+                              [1, 0, 6], [1, -1, 12], [2, -1], [3, 16],
                               [3, 4, 4], [48]]:
                     dics = [{"shape": shape, }, {}]
                     self.num_input = num_input
