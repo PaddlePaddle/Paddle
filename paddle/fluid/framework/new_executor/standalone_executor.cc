@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
+#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 
 namespace paddle {
 namespace framework {
@@ -48,8 +49,8 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
   // run startup program
   std::vector<paddle::framework::OpFuncNode> vec_func_list;
   std::vector<paddle::framework::OperatorBase*> op_list;
-  InterpreterCore::BuildOpFuncList(place_, startup_prog, &op_list,
-                                   &vec_func_list, &global_scope_);
+  paddle::framework::interpretercore::build_op_func_list(
+      place_, startup_prog, &op_list, &vec_func_list, &global_scope_);
 }
 
 paddle::framework::FetchList StandaloneExecutor::Run(
@@ -59,6 +60,15 @@ paddle::framework::FetchList StandaloneExecutor::Run(
   auto core = GetInterpreterCore(feed_names, fetch_names);
 
   return core->Run(feed_tensors);
+}
+
+const CostInfo& StandaloneExecutor::DryRun(
+    const std::vector<std::string>& feed_names,
+    const std::vector<framework::Tensor>& feed_tensors) {
+  auto core = GetInterpreterCore(feed_names, {});
+
+  auto& cost_info = core->DryRun(feed_tensors);
+  return cost_info;
 }
 
 void StandaloneExecutor::BuildVariableOuterScope(

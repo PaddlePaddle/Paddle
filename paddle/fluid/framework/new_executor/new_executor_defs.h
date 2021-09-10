@@ -70,6 +70,8 @@ struct InstructionInfo {
   std::vector<size_t> dependecy_count_;
 };
 
+class RuntimeInferShapeContext;
+
 struct Instruction {
   OpKernelFunc kernel_func_;
   std::shared_ptr<RuntimeContext> runtime_ctx_;
