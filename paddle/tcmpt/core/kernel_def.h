@@ -32,9 +32,9 @@ using KernelArgsParseFn = void (*)(const KernelKey& default_key,
 
 // For kernels that contains dynamic tensor attribute and it need to be always
 // on host device, such as `ScaleTensor`
-constexpr char kContainHostTensorSuffix[] = ".host";
+constexpr char kContainHostTensorSuffix[] = "host";
 
 // For kernels with SelectedRowsTensor input and output
-constexpr char kContainSelectedRowsSuffix[] = ".sr";
+constexpr char kContainSelectedRowsSuffix[] = "sr";
 
 }  // namespace pt

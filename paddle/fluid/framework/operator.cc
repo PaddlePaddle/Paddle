@@ -1148,9 +1148,6 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   // TODO(chenweihang): Now we are still reusing a lot of the original fluid
   // implementation, this is a gradual replacement process
-  // TODO(chenweihang): only for debug, remove it after
-  // print all registered kernels
-  VLOG(1) << pt::KernelFactory::Instance();
 
   // TODO(chenweihang): in the first phase of project, we only support CPU, CUDA
   // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
@@ -1290,14 +1287,17 @@ bool ContainHostTensor(const proto::OpProto& op_proto,
 static pt::KernelName ConstructPtKernelName(const std::string& op_type,
                                             const proto::OpProto& op_proto,
                                             const VariableValueMap& inputs) {
-  pt::KernelName kernel_name(op_type.c_str());
+  std::string overload_name;
   if (ContainSelectedRows(inputs)) {
-    kernel_name.overload_name += pt::kContainSelectedRowsSuffix;
+    overload_name = pt::kContainSelectedRowsSuffix;
   }
   if (ContainHostTensor(op_proto, inputs)) {
-    kernel_name.overload_name += pt::kContainHostTensorSuffix;
+    if (overload_name != "") {
+      overload_name += ".";
+    }
+    overload_name += pt::kContainHostTensorSuffix;
   }
-  return kernel_name;
+  return pt::KernelName(op_type, overload_name);
 }
 
 void OperatorWithKernel::ChoosePtKernel(
@@ -1314,6 +1314,11 @@ void OperatorWithKernel::ChoosePtKernel(
   // 3. selecte op kernel
   pt_kernel_.reset(new pt::Kernel(pt::KernelFactory::Instance().SelectKernel(
       kernel_name, *pt_kernel_key_)));
+
+  // for debug
+  VLOG(1) << "ChoosePtKernel - kernel name: " << kernel_name
+          << " | kernel key: " << *pt_kernel_key_
+          << " | kernel: " << *pt_kernel_;
 }
 
 void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
@@ -1875,17 +1880,38 @@ pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
   // If we the VariableValueMap are ordered, we can get tensor by iter the map,
   // and its order is same as OpProto
 
+  // TODO(chenweihang): For scale op, when the input has a `ScaleTensor`,
+  // the following scale attribute should be skipped, and there are many
+  // such ops, which require certain rules to process, now only for verify
+  // scale op
+  std::unordered_map<std::string, bool> contain_host_tensor_flags{
+      {"ScaleTensor", false}};
+  std::unordered_map<std::string, std::string> attr_to_host_tensor{
+      {"scale", "ScaleTensor"}};
+
   auto* op_proto = Info().proto_;
   for (int i = 0; i < op_proto->inputs_size(); ++i) {
     auto in = op_proto->inputs()[i];
     // TODO(chenweihang): skip special cases temporarily
     // TODO(chenweihang): deal with diff param in vector
-    if ((in.has_dispensable() && in.dispensable()) ||
-        (in.has_extra() && in.extra()) || (in.has_quant() && in.quant())) {
-      VLOG(1) << "BuildKernelContext: skip dispensable input - " << in.name();
+    if ((in.has_extra() && in.extra()) || (in.has_quant() && in.quant())) {
+      VLOG(1) << "Static graph PtKernel input: skip extra & quant input - "
+              << in.name();
       continue;
     }
     auto in_name = in.name();
+    if (in.has_dispensable() && in.dispensable()) {
+      if (contain_host_tensor_flags.count(in_name) > 0 &&
+          ctx.inputs.count(in_name) > 0 && ctx.inputs.at(in_name).size() > 0) {
+        VLOG(1) << "Static graph PtKernel input: contain host input - "
+                << in_name;
+        contain_host_tensor_flags[in_name] = true;
+      } else {
+        VLOG(1) << "Static graph PtKernel input: skip dispensable input - "
+                << in_name;
+        continue;
+      }
+    }
     VLOG(1) << "Static graph PtKernel input: " << in_name;
     auto in_def = input_defs.at(i);
     for (auto* var : ctx.inputs.at(in_name)) {
@@ -1938,14 +1964,26 @@ pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
   }
   for (int i = 0; i < op_proto->attrs_size(); ++i) {
     auto attr = op_proto->attrs()[i];
-    VLOG(1) << "Static graph PtKernel attribute: " << attr.name();
-    if ((attr.has_extra() && attr.extra()) ||
-        (attr.has_quant() && attr.quant())) {
-      continue;
-    }
     if (attr.name() == "use_mkldnn" || attr.name() == "op_role" ||
         attr.name() == "op_role_var" || attr.name() == "op_namescope" ||
         attr.name() == "op_callstack" || attr.name() == "op_device") {
+      VLOG(1) << "Static graph PtKernel attribute: skip needless attr - "
+              << attr.name();
+      continue;
+    }
+    VLOG(1) << "Static graph PtKernel attribute: " << attr.name();
+    if ((attr.has_extra() && attr.extra()) ||
+        (attr.has_quant() && attr.quant())) {
+      VLOG(1) << "Static graph PtKernel attribute: skip extra or quant attr - "
+              << attr.name();
+      continue;
+    }
+    if (attr_to_host_tensor.count(attr.name()) > 0 &&
+        contain_host_tensor_flags.at(attr_to_host_tensor.at(attr.name())) ==
+            true) {
+      VLOG(1) << "Static graph PtKernel attribute: skip dynaimc attr - "
+              << attr.name() << ", because "
+              << attr_to_host_tensor.at(attr.name()) << " exists.";
       continue;
     }
     // TODO(chenweihang): support other attrs

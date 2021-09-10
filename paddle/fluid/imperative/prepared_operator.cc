@@ -48,11 +48,18 @@ const framework::Tensor* GetTensorFromVar(const framework::Variable& var) {
 
 template <typename T>
 static const T& GetAttr(const framework::AttributeMap& attrs,
+                        const framework::AttributeMap& default_attrs,
                         const std::string& name) {
-  PADDLE_ENFORCE_NE(
-      attrs.find(name), attrs.end(),
+  auto it = attrs.find(name);
+  bool found = it != attrs.end();
+  if (!found) {
+    it = default_attrs.find(name);
+    found = it != default_attrs.end();
+  }
+  PADDLE_ENFORCE_EQ(
+      found, true,
       platform::errors::NotFound("(%s) is not found in AttributeMap.", name));
-  return BOOST_GET_CONST(T, attrs.at(name));
+  return BOOST_GET_CONST(T, it->second);
 }
 
 template <typename VarType>
@@ -161,14 +168,17 @@ template <typename VarType>
 static pt::KernelName ConstructPtKernelName(
     const std::string& op_type, const framework::proto::OpProto& op_proto,
     const NameVarMap<VarType>& inputs) {
-  pt::KernelName kernel_name(op_type.c_str());
+  std::string overload_name;
   if (ContainSelectedRows<VarType>(inputs)) {
-    kernel_name.overload_name += pt::kContainSelectedRowsSuffix;
+    overload_name = pt::kContainSelectedRowsSuffix;
   }
   if (ContainHostTensor<VarType>(op_proto, inputs)) {
-    kernel_name.overload_name += pt::kContainHostTensorSuffix;
+    if (overload_name != "") {
+      overload_name += ".";
+    }
+    overload_name += pt::kContainHostTensorSuffix;
   }
-  return kernel_name;
+  return pt::KernelName(op_type, overload_name);
 }
 
 template <typename VarType>
@@ -204,6 +214,9 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
     auto pt_kernel_key = op.ConstructPtKernelKey(inputs, place);
     auto pt_kernel =
         pt::KernelFactory::Instance().SelectKernel(kernel_name, pt_kernel_key);
+    // for debug
+    VLOG(1) << "PrepareImpl - kernel name: " << kernel_name
+            << " | kernel key: " << pt_kernel_key << " | kernel: " << pt_kernel;
     if (pt_kernel.IsValid()) {
       // TODO(chenweihang): using CPUKernel when miss device kernel case
       return PreparedOp(op, ctx, pt_kernel_key, pt_kernel, dev_ctx);
@@ -286,6 +299,7 @@ static pt::KernelContext BuildDygraphKernelContext(
     const pt::Kernel& pt_kernel, const framework::proto::OpProto& op_proto,
     const NameVarMap<VarType>& ins, const NameVarMap<VarType>& outs,
     const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs,
     const platform::DeviceContext& dev_ctx) {
   // TODO(chenweihang): now only work for very simple case (sign op),
   // many cases need to be deal with later:
@@ -298,16 +312,35 @@ static pt::KernelContext BuildDygraphKernelContext(
   auto input_defs = pt_kernel.args_def().input_defs();
   auto output_defs = pt_kernel.args_def().output_defs();
 
+  // TODO(chenweihang): For scale op, when the input has a `ScaleTensor`,
+  // the following scale attribute should be skipped, and there are many
+  // such ops, which require certain rules to process, now only for verify
+  // scale op
+  std::unordered_map<std::string, bool> contain_host_tensor_flags{
+      {"ScaleTensor", false}};
+  std::unordered_map<std::string, std::string> attr_to_host_tensor{
+      {"scale", "ScaleTensor"}};
+
   for (int i = 0; i < op_proto.inputs_size(); ++i) {
     auto in = op_proto.inputs()[i];
     // TODO(chenweihang): deal with diff param in vector
-    if ((in.has_dispensable() && in.dispensable()) ||
-        (in.has_extra() && in.extra()) || (in.has_quant() && in.quant())) {
-      VLOG(1) << "BuildDygraphKernelContext: skip dispensable input - "
+    if ((in.has_extra() && in.extra()) || (in.has_quant() && in.quant())) {
+      VLOG(1) << "Dygraph PtKernel input: skip extra & quant input - "
               << in.name();
       continue;
     }
     auto in_name = in.name();
+    if (in.has_dispensable() && in.dispensable()) {
+      if (contain_host_tensor_flags.count(in_name) > 0 &&
+          ins.count(in_name) > 0 && ins.at(in_name).size() > 0) {
+        VLOG(1) << "Dygraph PtKernel input: contain host input - " << in_name;
+        contain_host_tensor_flags[in_name] = true;
+      } else {
+        VLOG(1) << "Dygraph PtKernel input: skip dispensable input - "
+                << in_name;
+        continue;
+      }
+    }
     VLOG(1) << "Dygraph PtKernel input: " << in_name;
     auto in_def = input_defs.at(i);
     for (auto var : ins.at(in_name)) {
@@ -369,28 +402,43 @@ static pt::KernelContext BuildDygraphKernelContext(
   for (int i = 0; i < op_proto.attrs_size(); ++i) {
     auto attr = op_proto.attrs()[i];
     VLOG(1) << "Dygraph PtKernel attribute: " << attr.name();
-    if ((attr.has_extra() && attr.extra()) ||
-        (attr.has_quant() && attr.quant())) {
-      continue;
-    }
     if (attr.name() == "use_mkldnn" || attr.name() == "op_role" ||
         attr.name() == "op_role_var" || attr.name() == "op_namescope" ||
         attr.name() == "op_callstack" || attr.name() == "op_device") {
+      VLOG(1) << "Dygraph PtKernel attribute: skip needless attr - "
+              << attr.name();
+      continue;
+    }
+    if ((attr.has_extra() && attr.extra()) ||
+        (attr.has_quant() && attr.quant())) {
+      VLOG(1) << "Dygraph PtKernel attribute: skip extra & quant attr - "
+              << attr.name();
+      continue;
+    }
+    if (attr_to_host_tensor.count(attr.name()) > 0 &&
+        contain_host_tensor_flags.at(attr_to_host_tensor.at(attr.name())) ==
+            true) {
+      VLOG(1) << "Dygraph PtKernel attribute: skip dynaimc attr - "
+              << attr.name() << ", because "
+              << attr_to_host_tensor.at(attr.name()) << " exists.";
       continue;
     }
     // TODO(chenweihang): support other attrs
     // In principle, the attr required by the dynamic mode should be
     // passed in from the Python side, and there is no need to look up
-    // from the default_map
+    // from the default_map, but now this nor work
     switch (attr.type()) {
       case framework::proto::AttrType::INT:
-        op_kernel_ctx.EmplaceBackAttr(GetAttr<int>(attrs, attr.name()));
+        op_kernel_ctx.EmplaceBackAttr(
+            GetAttr<int>(attrs, default_attrs, attr.name()));
         break;
       case framework::proto::AttrType::FLOAT:
-        op_kernel_ctx.EmplaceBackAttr(GetAttr<float>(attrs, attr.name()));
+        op_kernel_ctx.EmplaceBackAttr(
+            GetAttr<float>(attrs, default_attrs, attr.name()));
         break;
       case framework::proto::AttrType::BOOLEAN:
-        op_kernel_ctx.EmplaceBackAttr(GetAttr<bool>(attrs, attr.name()));
+        op_kernel_ctx.EmplaceBackAttr(
+            GetAttr<bool>(attrs, default_attrs, attr.name()));
         break;
       default:
         // TODO(chenweihang): support other attrs type
@@ -459,8 +507,9 @@ static void PreparedOpRunPtImpl(const framework::OperatorBase& op,
   static_cast<const framework::OperatorWithKernel&>(op).InferShape(
       &infer_shape_ctx);
 
-  auto op_kernel_ctx = BuildDygraphKernelContext<VarType>(
-      pt_kernel, *(op.Info().proto_), ins, outs, attrs, *dev_ctx);
+  auto op_kernel_ctx =
+      BuildDygraphKernelContext<VarType>(pt_kernel, *(op.Info().proto_), ins,
+                                         outs, attrs, default_attrs, *dev_ctx);
   pt_kernel(&op_kernel_ctx);
 
   // TODO(chenweihang): add flags

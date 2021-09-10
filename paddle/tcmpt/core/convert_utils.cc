@@ -60,6 +60,8 @@ pt::DataType TransToPtDataType(
       return DataType::kCOMPLEX128;
     case paddle::framework::proto::VarType::FP16:
       return DataType::kFLOAT16;
+    case paddle::framework::proto::VarType::BF16:
+      return DataType::kBFLOAT16;
     case paddle::framework::proto::VarType::BOOL:
       return DataType::kBOOL;
     default:
@@ -129,6 +131,8 @@ paddle::framework::proto::VarType::Type TransToProtoVarType(
       return paddle::framework::proto::VarType::COMPLEX128;
     case DataType::kFLOAT16:
       return paddle::framework::proto::VarType::FP16;
+    case DataType::kBFLOAT16:
+      return paddle::framework::proto::VarType::BF16;
     case DataType::kBOOL:
       return paddle::framework::proto::VarType::BOOL;
     default:
