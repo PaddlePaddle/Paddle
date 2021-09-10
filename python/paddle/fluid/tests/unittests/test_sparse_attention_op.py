@@ -131,9 +131,9 @@ def init_csr_format(rows, blocksize):
     "core is not compiled with CUDA and cuda version need larger than 11.2")
 class TestSparseAttentionOp(OpTest):
     def config(self):
-        self.q_shape = (1, 1, 16, 16)
-        self.k_shape = (1, 1, 16, 16)
-        self.v_shape = (1, 1, 16, 16)
+        self.q_shape = (1, 1, 8, 8)
+        self.k_shape = (1, 1, 8, 8)
+        self.v_shape = (1, 1, 8, 8)
         self.blocksize = 2
 
     def init_kernel_type(self):
@@ -169,8 +169,11 @@ class TestSparseAttentionOp(OpTest):
         result = np.expand_dims(np.expand_dims(result, 0), 0)
 
         self.inputs = {
-            'X': [('Q', self.q), ('K', self.k), ('V', self.v),
-                  ('offset', self.offset), ('columns', self.columns)]
+            'Q': self.q,
+            'K': self.k,
+            'V': self.v,
+            'offset': self.offset,
+            'columns': self.columns
         }
         self.outputs = {'Out': result, 'ResultSdd': a, 'ResultSoftmax': b}
 
@@ -227,10 +230,9 @@ class TestSparseAttentionAPI(unittest.TestCase):
         paddle_offset = paddle.to_tensor(offset, place=self.place)
         paddle_colunmns = paddle.to_tensor(columns, place=self.place)
 
-        paddle_result, tmp_sdd, tmp_softmax = F.sparse_attention([
+        paddle_result, tmp_sdd, tmp_softmax = F.sparse_attention(
             paddle_query, paddle_key, paddle_value, paddle_offset,
-            paddle_colunmns
-        ])
+            paddle_colunmns)
 
         query = query.squeeze()
         key = key.squeeze()

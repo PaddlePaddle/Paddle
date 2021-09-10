@@ -464,16 +464,14 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
-    auto ins = ctx.MultiInput<framework::Tensor>("X");
+    auto* query = ctx.Input<Tensor>("Q");
+    auto* key = ctx.Input<Tensor>("K");
+    auto* value = ctx.Input<Tensor>("V");
+    auto* offset = ctx.Input<Tensor>("offset");
+    auto* columns = ctx.Input<Tensor>("columns");
     auto* output = ctx.Output<Tensor>("Out");
     auto* result_sdd = ctx.Output<Tensor>("ResultSdd");
     auto* result_softmax = ctx.Output<Tensor>("ResultSoftmax");
-
-    auto query = ins[0];
-    auto key = ins[1];
-    auto value = ins[2];
-    auto offset = ins[3];
-    auto columns = ins[4];
 
     auto query_dims = query->dims();
     int batch_size = query_dims[0];
@@ -516,27 +514,22 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
-    auto ins = ctx.MultiInput<Tensor>("X");
+    auto* query = ctx.Input<Tensor>("Q");
+    auto* key = ctx.Input<Tensor>("K");
+    auto* value = ctx.Input<Tensor>("V");
+    auto* offset = ctx.Input<Tensor>("offset");
+    auto* columns = ctx.Input<Tensor>("columns");
     auto* ResultSdd = ctx.Input<Tensor>("ResultSdd");
     auto* ResultSoftmax = ctx.Input<Tensor>("ResultSoftmax");
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto dx = ctx.MultiOutput<Tensor>(framework::GradVarName("X"));
+    auto* dQuery = ctx.Output<Tensor>(framework::GradVarName("Q"));
+    auto* dKey = ctx.Output<Tensor>(framework::GradVarName("K"));
+    auto* dValue = ctx.Output<Tensor>(framework::GradVarName("V"));
 
     auto place = ctx.GetPlace();
-    const auto n = ins.size();
-    for (size_t i = 0; i < n; i++) {
-      dx[i]->mutable_data<T>(place);
-    }
-
-    auto dQuery = dx[0];
-    auto dKey = dx[1];
-    auto dValue = dx[2];
-
-    auto query = ins[0];
-    auto key = ins[1];
-    auto value = ins[2];
-    auto offset = ins[3];
-    auto columns = ins[4];
+    dQuery->mutable_data<T>(place);
+    dKey->mutable_data<T>(place);
+    dValue->mutable_data<T>(place);
 
     auto query_dims = query->dims();
     int batch_size = query_dims[0];

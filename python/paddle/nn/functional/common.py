@@ -1739,16 +1739,24 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
     return remapped_label, sampled_class_center
 
 
-def sparse_attention(x, name=None):
+def sparse_attention(query, key, value, csr_offset, csr_columns, name=None):
     r"""
     TODO
     """
     if in_dygraph_mode():
-        return _C_ops.sparse_attention(x)
+        return _C_ops.sparse_attention(query, key, value, csr_offset,
+                                       csr_columns)
 
     helper = LayerHelper('sparse_attention', **locals())
-    dtype = helper.input_dtype(input_param_name='x')
+    dtype = helper.input_dtype(input_param_name='Q')
     out = helper.create_variable_for_type_inference(dtype)
+    inputs = {
+        'Q': query,
+        'K': key,
+        'V': value,
+        'offset': csr_offset,
+        'columns': csr_columns
+    }
     helper.append_op(
-        type='sparse_attention', inputs={"X": x}, outputs={"Out": out})
+        type='sparse_attention', inputs=inputs, outputs={"Out": out})
     return out
