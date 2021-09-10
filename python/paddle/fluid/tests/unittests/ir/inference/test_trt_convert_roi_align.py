@@ -154,7 +154,7 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-2
+            attrs, False), 1e-5
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -163,7 +163,7 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
                                                                      True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-2
+                                                                     True), 1e-5
 
     def add_skip_trt_case(self):
         def teller1(program_config, predictor_config):
@@ -171,9 +171,8 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
                 return True
             return False
 
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_SUPPORT,
-            "INPUT RoisNum NOT SUPPORT: we need to add support in the future")
+        self.add_skip_case(teller1, SkipReasons.TRT_NOT_SUPPORT,
+                           "INPUT RoisNum NOT SUPPORT")
 
         def teller2(program_config, predictor_config):
             if (program_config.ops[0].attrs['sampling_ratio'] == -1 and
@@ -183,8 +182,7 @@ class TrtConvertRoiAlignTest(TrtLayerAutoScanTest):
 
         self.add_skip_case(
             teller2, SkipReasons.TRT_NOT_SUPPORT,
-            "SAMPLING_RATIO EQUAL TO - 1 WHEN ALIGNED IS TRUE IS NOT SUPPORT: we need to add support in the future"
-        )
+            "SAMPLING_RATIO EQUAL TO - 1 WHEN ALIGNED IS TRUE IS NOT SUPPORT")
 
     def test(self):
         self.add_skip_trt_case()
