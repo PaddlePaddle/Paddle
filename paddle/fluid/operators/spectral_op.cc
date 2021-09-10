@@ -578,7 +578,7 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
   TransCompute<platform::CPUDeviceContext, To>(ndim, ctx, transposed_output,
                                                out, reverse_dim_permute);
 }
-} // namespace anonymous
+}  // anonymous namespace
 
 template <typename Ti, typename To>
 struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
@@ -640,7 +640,7 @@ T compute_factor(int64_t size, FFTNormMode normalization) {
   PADDLE_THROW(
       platform::errors::InvalidArgument("Unsupported normalization type"));
 }
-} //namespace anonymous
+}  // anonymous namespace
 
 template <typename Ti, typename To>
 struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {

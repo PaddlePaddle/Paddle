@@ -520,9 +520,10 @@ static inline PlanLRUCache& cufft_get_plan_cache(int64_t device_index) {
   return *plan_caches[device_index];
 }
 
-// Execute a general unnormalized fft operation (can be c2c, onesided r2c or onesided c2r)
+// Execute a general unnormalized fft operation (can be c2c, onesided r2c or
+// onesided c2r)
 template <typename DeviceContext, typename Ti, typename To>
-void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out, 
+void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
               const std::vector<int64_t>& dim, bool forward) {
   const auto x_dims = framework::vectorize(X->dims());
   const auto out_dims = framework::vectorize(out->dims());
@@ -753,8 +754,8 @@ struct FFTC2CFunctor<platform::CUDADeviceContext, Ti, To> {
           std::min(static_cast<size_t>(kMaxCUFFTNdim), working_axes.size());
       first_dims.assign(working_axes.end() - max_dims, working_axes.end());
 
-      exec_fft<platform::CUDADeviceContext, Ti, To>(
-          ctx, p_working_tensor, p_out, first_dims, forward);
+      exec_fft<platform::CUDADeviceContext, Ti, To>(ctx, p_working_tensor,
+                                                    p_out, first_dims, forward);
       working_axes.resize(working_axes.size() - max_dims);
       first_dims.clear();
 
@@ -781,8 +782,8 @@ struct FFTC2RFunctor<platform::CUDADeviceContext, Ti, To> {
       framework::Tensor x_copy(X->type());
       x_copy.mutable_data<Ti>(X->dims(), ctx.GetPlace());
       framework::TensorCopy(*X, ctx.GetPlace(), &x_copy);
-      exec_fft<platform::CUDADeviceContext, Ti, To>(ctx, &x_copy, out,
-                                                    axes, forward);
+      exec_fft<platform::CUDADeviceContext, Ti, To>(ctx, &x_copy, out, axes,
+                                                    forward);
     } else {
       framework::Tensor temp_tensor;
       temp_tensor.mutable_data<Ti>(X->dims(), ctx.GetPlace());
@@ -791,8 +792,8 @@ struct FFTC2RFunctor<platform::CUDADeviceContext, Ti, To> {
       FFTC2CFunctor<platform::CUDADeviceContext, Ti, Ti> c2c_functor;
       c2c_functor(ctx, X, &temp_tensor, dims, FFTNormMode::none, forward);
 
-      exec_fft<platform::CUDADeviceContext, Ti, To>(
-          ctx, &temp_tensor, out, {axes.back()}, forward);
+      exec_fft<platform::CUDADeviceContext, Ti, To>(ctx, &temp_tensor, out,
+                                                    {axes.back()}, forward);
     }
     exec_normalization<platform::CUDADeviceContext, To>(
         ctx, out, out, normalization, out_dims, axes);
@@ -809,8 +810,8 @@ struct FFTR2CFunctor<platform::CUDADeviceContext, Ti, To> {
     framework::Tensor* r2c_out = out;
     const std::vector<int64_t> last_dim{axes.back()};
     std::vector<int64_t> out_dims = framework::vectorize(out->dims());
-    exec_fft<platform::CUDADeviceContext, Ti, To>(ctx, X, r2c_out,
-                                                  last_dim, forward);
+    exec_fft<platform::CUDADeviceContext, Ti, To>(ctx, X, r2c_out, last_dim,
+                                                  forward);
 
     // Step2: C2C transform on the remaining dimension
     framework::Tensor c2c_out;
