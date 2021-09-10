@@ -296,8 +296,9 @@ def interpolate(x,
         )
 
     if resample == 'AREA':
-        if len(size) == 0:
-            raise ValueError("output size can not be empty")
+        if isinstance(size, list) or isinstance(size, tuple):
+            if len(size) == 0:
+                raise ValueError("output size can not be empty")
         if len(x.shape) == 3:
             return paddle.nn.functional.adaptive_avg_pool1d(x, size)
         elif len(x.shape) == 4:
@@ -344,14 +345,13 @@ def interpolate(x,
 
     out_shape = size
     scale = scale_factor
+
     if out_shape is not None and scale is not None:
         raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
-
         if isinstance(out_shape, Variable) and not in_dygraph_mode():
             out_shape.stop_gradient = True
             inputs['OutSize'] = out_shape
-
         else:
             if in_dygraph_mode():
                 if isinstance(out_shape, Variable):
