@@ -3238,6 +3238,6 @@ All parameter, weight, gradient are variables in Paddle.
   BindIndexSampler(&m);
   BindSparseShardingTools(&m);
 #endif
-}  // namespace pybind
+}
 }  // namespace pybind
 }  // namespace paddle
