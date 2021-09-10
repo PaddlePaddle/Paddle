@@ -32,8 +32,9 @@ static std::unordered_set<std::string> operators_to_skip = {
     "flip", // Attr Error
     "cast", // Attr Error 
     "minus" // Multiple ops_
-
 };
+
+static std::unordered_set<std::string> skipped_operators = {};
 
 using namespace paddle;
 using namespace framework;
@@ -43,6 +44,68 @@ using namespace imperative;
 // 1. Number of duplicable inputs not known at code generation time
 // 2. Number of duplicable outputs not known at code generation time
 // 3. Ops with duplicable outputs like SumOp need to be handled manually?
+
+std::string AttrTypeToString(const proto::AttrType& type) {
+    std::string ret;
+    switch(type) {
+        case(proto::AttrType::INT): {
+            ret = "int";
+            break;
+        }
+        case(proto::AttrType::FLOAT): {
+            ret = "float";
+            break;
+        }
+        case(proto::AttrType::STRING): {
+            ret = "std::string&";
+            break;
+        }
+        case(proto::AttrType::INTS): {
+            ret = "std::vector<int>&";
+            break;
+        }
+        case(proto::AttrType::FLOATS): {
+            ret = "std::vector<float>&";
+            break;
+        }
+        case(proto::AttrType::STRINGS): {
+            ret = "std::vector<std::string>&";
+            break;
+        }
+        case(proto::AttrType::BOOLEAN): {
+            ret = "bool";
+            break;
+        }
+        case(proto::AttrType::BOOLEANS): {
+            ret = "std::vector<bool>&";
+            break;
+        }
+        case(proto::AttrType::LONG): {
+            ret = "int64_t";
+            break;
+        }
+        case(proto::AttrType::LONGS): {
+            ret = "std::vector<int64_t>&";
+            break;
+        }
+        case(proto::AttrType::BLOCK): {
+            ret = "paddle::framework::BlockDesc*";
+            break;
+        }
+        case(proto::AttrType::BLOCKS): {
+            ret = "std::vector<paddle::framework::BlockDesc*>&";
+            break;
+        }
+        case(proto::AttrType::FLOAT64S): {
+            ret = "std::vector<double>&";
+            break;
+        }
+        default: {
+            PADDLE_THROW(platform::errors::Fatal("Unable to recognize AttrType: %d", type)); 
+        }
+    }
+    return ret;
+}
 
 void SlotNameMatching(const std::map<std::string, std::vector<std::shared_ptr<VariableWrapper>>>& grad_map,
                       const std::map<std::string, std::vector<std::shared_ptr<VariableWrapper>>>& fwd_ins,
@@ -140,8 +203,8 @@ int main() {
         
         if(operators_to_skip.count(op_type))
             continue;
-        //if(op_type != "matmul_v2")
-        //    continue;
+
+        //if(op_type != "matmul_v2") continue;
 
         /* --------------------------- */
         /* --------- Forward --------- */
@@ -184,16 +247,9 @@ int main() {
         }
         VLOG(2) << "Prepared Forward Outs Map, size = " << outs.size();
         
-        /* ------ Prepare "attrs" ------ */
         framework::AttributeMap attrs;
-        for (const proto::OpProto::Attr& attr : op_proto->attrs()) {
-            VLOG(2) << attr.name();
-            // Attrs only usable during codegen for fwd function or GradNode
-            // So we use default attrs for now
-        }
-
-        auto* attr_checker = op_info.Checker();
         paddle::framework::AttributeMap default_attrs;
+        auto* attr_checker = op_info.Checker();
         if (attr_checker) {
             attr_checker->Check(&attrs, true, /*only_check_exist_value=*/true);
             default_attrs = attr_checker->GetDefaultAttrMap();
@@ -226,6 +282,7 @@ int main() {
         /* ------ Run GradOpMaker ------ */
         if(!op_info.dygraph_grad_op_maker_) {
             VLOG(2) << op_type << " has no GradOpMaker, skip it";
+            skipped_operators.insert(op_type);
             continue;
         }
 
@@ -233,6 +290,7 @@ int main() {
 
         if(!grad_node) {
             VLOG(2) << "Got nullptr GradOpNode for " << op_type << " likely registered EmptyGradOpMaker, skip it";
+            skipped_operators.insert(op_type);
             continue;
         }
 
@@ -280,14 +338,15 @@ int main() {
         std::map<std::string, std::string> grad_outs_slotname_map;
         SlotNameMatching(grad_outs, fwd_ins, fwd_outs, grad_outs_slotname_map, grad_outs_slotname_map);
         VLOG(2) << "Finished Slotname Matching for Grad_Outs";
+        
+        /* ------ Get Grad Attr Map ---- */
+        
 
         /* ---------------------------------- */
         /* --------- CodeGen: Inner --------- */
         /* ---------------------------------- */
 
-        /* ------ Maping grad slot name to fwd position ------ */
-        // Example: 
-        // std::tuple<vector<Tensor>, ...> kernel_function(vector<Tensor>& X, vector<Tensor>& Y, Tensor& Z);
+        /* ------ Maping forward slot name to fwd position ------ */
         std::unordered_map<std::string, size_t> fwd_inputs_name_pos_map;
         std::unordered_map<std::string, size_t> fwd_outputs_name_pos_map;
         // Follow map's order
@@ -301,6 +360,227 @@ int main() {
             fwd_outputs_name_pos_map[iter.first] = out_pos;
             out_pos++;
         }
+        
+        std::vector<std::string> fwd_outputs_names;
+        for(const auto& iter : outs) {
+            fwd_outputs_names.push_back(iter.first);
+        }
+        
+        /* 
+            // Forward Function Example:
+            // Function Proto
+            std::tuple<vector<Tensor>, Tensor, vector<Tensor>> kernel_function(vector<vector<Tensor>>& Inputs, 
+                                                                               attr0, attr1, ..., size_t Out0Num, size_t Out1Num) {
+                
+                const std::shared_ptr<Tracer>& tracer = imperative::GetCurrentTracer();
+               
+                // Forward Function Body
+                // According to fwd_inputs_name_pos_map
+                std::map<std::string, std::vector<std::shared_ptr<VarBase>>> ins = 
+                        { {"X" , TensorsToVarBases(Inputs["fwd_inputs_name_pos_map["X"]"])}, { "Y" , TensorsToVarBases("fwd_inputs_name_pos_map["Y"]")} };
+
+                std::map<std::string, std::vector<std::shared_ptr<VarBase>>> outs = 
+                        { {"Out0" , ConstructDuplicableOutput(Out0Num)}, {"Out1" , ConstructDuplicableOutput(Out1Num)} };
+
+                // According to op_proto->attrs()
+                framework::AttributeMap attrs = { {"attr0", attr0}, {"attr1", attr1}, ... };
+                tracer->TraceOp("op_type", ins, outs, attrs, tracer->ExpectedPlace(), false, {});
+                
+                
+                // According to fwd_outputs_names
+                vector<Tensor> Out0 = VarBasesToTensors(outs["Out0"]); // if duplicable
+                Tensor Out1 = VarBaseToTensor(outs["Out1"])[0]; // if not duplicable
+                vector<Tensor> Out2 = VarBasesToTensors(outs["Out2"]); // if duplicable
+                
+                // Backward Function Body
+                ...
+                
+                return std::make_tuple(Out0, Out1, Out2);
+            }
+        */
+        
+        std::string generated_function_body = "";
+        std::string dygraph_function_args_str = "std::vector<std::vector<pt::Tensor>>& Inputs";
+
+        /* ------ Dygraph forward function generation ------ */
+        // [Generation] Get Tracer
+        generated_function_body += "\n";
+        std::string tracer_str = "const std::shared_ptr<Tracer>& tracer = imperative::GetCurrentTracer();";
+        generated_function_body += tracer_str;
+        generated_function_body += "\n";
+
+        // [Generation] Get Attrs
+        generated_function_body += "\n";
+        std::string attr_contents_str = "";
+        for (const proto::OpProto::Attr& attr : op_proto->attrs()) {
+            const std::string& attr_name = attr.name();
+            
+            proto::AttrType attr_type = attr.type();
+            const std::string attr_type_str = AttrTypeToString(attr_type);
+            
+            const char* FWD_KERNEL_ARG_TEMPLATE = ", %s %s";
+            std::string arg_str = paddle::string::Sprintf(FWD_KERNEL_ARG_TEMPLATE, attr_type_str, attr_name);
+            dygraph_function_args_str += arg_str;
+
+            const char* FWD_ATTR_CONTENT_TEMPLATE = "{ \"%s\", %s }, ";
+            std::string attr_content_str = paddle::string::Sprintf(FWD_ATTR_CONTENT_TEMPLATE, attr_name, attr_name);
+            attr_contents_str += attr_content_str;
+        }
+
+        const char* FWD_ATTR_MAP_TEMPLATE = "framework::AttributeMap attrs = { %s };";
+        std::string attr_map_str = paddle::string::Sprintf(FWD_ATTR_MAP_TEMPLATE, attr_contents_str);
+        generated_function_body += attr_map_str;
+        generated_function_body += "\n";
+
+        // [Generation] Get Ins Map
+        generated_function_body += "\n";
+        std::string ins_contents_str = "";
+        for (const proto::OpProto::Var& input : op_proto->inputs()) {
+            const std::string& input_name = input.name();
+            const char* FWD_INS_CONTENT_TEMPLATE = "{ \"%s\", TensorsToVarBases(Inputs[%s]) },";
+            ins_contents_str += paddle::string::Sprintf(FWD_INS_CONTENT_TEMPLATE, input_name, fwd_inputs_name_pos_map[input_name]);
+        }
+        if(ins_contents_str.size() > 0)
+            ins_contents_str.pop_back(); // // Remove trailing ","
+        
+        const char* FWD_INS_MAP_TEMPLATE = "std::map<std::string, std::vector<std::shared_ptr<VarBase>>> ins = { %s };";
+        std::string ins_map_str = paddle::string::Sprintf(FWD_INS_MAP_TEMPLATE, ins_contents_str);
+        generated_function_body += ins_map_str;
+        generated_function_body += "\n";
+        
+        // [Generation] Get Outs Map
+        generated_function_body += "\n";
+        std::string outs_contents_str = "";
+        for (const proto::OpProto::Var& output : op_proto->outputs()) {
+            const std::string& output_name = output.name();
+            std::string outnum = "1";
+            if(output.duplicable()) {
+                outnum = output_name + "Num";
+
+                const char* FWD_NUM_ARG_TEMPLATE = ", size_t %s";
+                std::string arg_str = paddle::string::Sprintf(FWD_NUM_ARG_TEMPLATE, outnum);
+                dygraph_function_args_str += arg_str;
+            }
+            const char* FWD_OUTS_CONTENT_TEMPLATE = "{ \"%s\", ConstructDuplicableOutput(%s) },";
+            outs_contents_str += paddle::string::Sprintf(FWD_OUTS_CONTENT_TEMPLATE, output_name, outnum);
+        }
+        if(outs_contents_str.size() > 0)
+            outs_contents_str.pop_back(); // Remove trailing ","
+
+        const char* FWD_OUTS_MAP_TEMPLATE = "std::map<std::string, std::vector<std::shared_ptr<VarBase>>> outs = { %s };";
+        std::string outs_map_str = paddle::string::Sprintf(FWD_OUTS_MAP_TEMPLATE, outs_contents_str);
+        generated_function_body += outs_map_str;
+        generated_function_body += "\n";
+        
+        // [Generation] Get TraceOp
+        generated_function_body += "\n";
+        const char* FWD_TRACE_OP_TEMPLATE = "tracer->TraceOp(\"%s\", ins, outs, attrs, tracer->ExpectedPlace(), false, {});";
+        std::string trace_op_str = paddle::string::Sprintf(FWD_TRACE_OP_TEMPLATE, op_proto->type());
+        generated_function_body += trace_op_str;
+        generated_function_body += "\n";
+        
+        // [Generation] Convert output VarBase to Vector/Tensor
+        generated_function_body += "\n";
+        std::vector<std::string> return_contents(outs.size());
+        std::vector<std::string> return_types(outs.size());
+        for (const proto::OpProto::Var& output : op_proto->outputs()) {
+            const std::string& output_name = output.name();
+            std::string out_tensor_str;
+            size_t return_position = fwd_outputs_name_pos_map[output_name];
+
+            if(output.duplicable()) {
+                const char* FWD_OUT_TENSORS_TEMPLATE = "std::vector<pt::Tensor> %s = VarBasesToTensors(outs[%s]);";
+                out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSORS_TEMPLATE, output_name, output_name);
+                return_types[return_position] = "std::vector<pt::Tensor>";
+            } else {
+                const char* FWD_OUT_TENSOR_TEMPLATE = "pt::Tensor %s = VarBasesToTensors(outs[%s])[0];";
+                out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE, output_name, output_name);
+                return_types[return_position] = "pt::Tensor";
+            }
+
+            return_contents[return_position] = output_name;
+            generated_function_body += out_tensor_str;
+            generated_function_body += "\n";
+        }
+        
+        // [Generation] Get Return Tuple/Vector/Tensor
+        generated_function_body += "\n";
+        std::string return_str;
+        std::string return_type_str = "";
+        if(return_contents.size() > 1) {
+            // Return tuple
+            std::string return_content_str = "";
+            for(const std::string& s : return_contents) {
+                return_content_str += s + ",";
+            }
+            return_content_str.pop_back(); // Remove trailing ","
+            
+            for(const std::string& s : return_types) {
+                return_type_str += s + ",";
+            }
+            return_type_str.pop_back(); // Remove trailing ","
+
+            const char* FWD_TUPLE_RETURN_TEMPLATE = "return std::make_tuple<%s>(%s);";
+            return_str = paddle::string::Sprintf(FWD_TUPLE_RETURN_TEMPLATE, return_type_str, return_content_str);
+        } else {
+            // Return vector<Tensor> or Tensor
+            return_type_str = return_types[0];
+            const char* FWD_TENSOR_RETURN_TEMPLATE = "return %s;";
+            return_str = paddle::string::Sprintf(FWD_TENSOR_RETURN_TEMPLATE, return_contents[0]);
+        }
+        generated_function_body += return_str;
+        generated_function_body += "\n";
+
+        // [Generation] Get Full Function 
+        std::string function_name = op_type + "_dygraph_function";
+
+        const char* FWD_FUNCTION_TEMPLATE = "%s %s(%s) {\n %s \n}";
+        std::string function_str = paddle::string::Sprintf(FWD_FUNCTION_TEMPLATE, return_type_str, function_name, dygraph_function_args_str, generated_function_body);
+
+        VLOG(2) << function_str;
+
+        /*
+            // GradNode Example:
+            vector<vector<Tensor>> GradNodeScale::operator()(vector<vector<Tensor>>& grads) {
+                
+                const std::shared_ptr<Tracer>& tracer = imperative::GetCurrentTracer();
+                
+                // Comes from "grad_ins"
+                std::map<std::string, std::vector<std::shared_ptr<VarBase>>> ins = 
+                        {"X" : this->"X", "Y" : this->"Y", 
+                         "Out0@Grad": TensorsToVarBases(grads["fwd_outputs_name_pos_map[grad_ins_grad_slotname_map["Out0@Grad"]]"]),
+                         "Out1@Grad": TensorsToVarBases(grads["fwd_outputs_name_pos_map[grad_ins_grad_slotname_map["Out1@Grad"]]"]) 
+                         };
+                
+                // Comes from "grad_outs"
+                std::map<std::string, std::vector<std::shared_ptr<VarBase>>> outs = 
+                        {"X@Grad" : ConstructDuplicableOutput(this->in_ranks["fwd_inputs_name_pos_map[grad_outs_slotname_map["X@Grad"]]"]), 
+                         "Y@Grad" : ConstructDuplicableOutput(this->in_ranks["fwd_inputs_name_pos_map[grad_outs_slotname_map["Y@Grad"]]"]) };
+                
+                // GradNode's ins/outs/attrs are superclass to each OpBase's ins/outs/attrs
+                // Visit each OpBase
+                for(auto iter = "grad_node->begin()"; iter < "grad_node->end()"; iter++) {
+                    framework::AttributeMap attrs;
+                    for("auto& kv : iter->Attrs()") {
+                        attrs[kv.first] = this->"kv.first";
+                    }
+                    for(auto& kv : "iter->DefaultAttrsMap()") {
+                        attrs[kv.first] = this->"kv.first";
+                    }
+                    tracer->TraceOp("iter->Type()", ins, outs, attrs, tracer->ExpectedPlace(), false, {});
+                }
+
+                vector<vector<Tensor>> outputs(outs.size());
+                for(auto& kv : outs) {
+                    outputs["fwd_inputs_name_pos_map[grad_outs_slotname_map[kv.first]]"] = VarBasesToTensors(kv.second);
+                }
+
+                return outputs;
+            }
+        */
+
+        /* ------ Forward function generation ------ */
+        
     }
 
     return 0;
