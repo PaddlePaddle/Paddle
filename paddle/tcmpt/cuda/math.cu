@@ -114,8 +114,15 @@ void ScaleHost(const CUDAContext& dev_ctx,
                float bias,
                bool bias_after_scale,
                DenseTensor* out) {
-  module::Scale<CUDAContext, T>(
-      dev_ctx, x, *scale.data<float>(), bias, bias_after_scale, out);
+  if (paddle::platform::is_gpu_place(scale.place())) {
+    throw std::runtime_error("scale host place error.");
+  }
+  module::Scale<CUDAContext, T>(dev_ctx,
+                                x,
+                                static_cast<float>(*scale.data<T>()),
+                                bias,
+                                bias_after_scale,
+                                out);
 }
 
 template <typename T>
@@ -129,7 +136,7 @@ void ScaleSelectedRowsHost(const CUDAContext& dev_ctx,
   out->set_height(x.height());
   Scale<T>(dev_ctx,
            x.value(),
-           *scale.data<float>(),
+           static_cast<float>(*scale.data<T>()),
            bias,
            bias_after_scale,
            out->mutable_value());
@@ -176,9 +183,7 @@ PT_REGISTER_KERNEL("scale.host",
                    int16_t,
                    int,
                    int64_t) {
-  kernel->InputAt(1)
-      .SetBackend(pt::Backend::kCPU)
-      .SetDataType(pt::DataType::kFLOAT32);
+  kernel->InputAt(1).SetBackend(pt::Backend::kCPU);
 }
 PT_REGISTER_KERNEL("scale.sr.host",
                    CUDA,
@@ -192,7 +197,5 @@ PT_REGISTER_KERNEL("scale.sr.host",
                    int16_t,
                    int,
                    int64_t) {
-  kernel->InputAt(1)
-      .SetBackend(pt::Backend::kCPU)
-      .SetDataType(pt::DataType::kFLOAT32);
+  kernel->InputAt(1).SetBackend(pt::Backend::kCPU);
 }

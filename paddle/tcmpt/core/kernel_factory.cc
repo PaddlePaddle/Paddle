@@ -25,7 +25,7 @@ KernelFactory& KernelFactory::Instance() {
 }
 
 bool KernelFactory::ContainsKernel(const char* kernel_name) const {
-  auto iter = kernels_.find(KernelName(kernel_name));
+  auto iter = kernels_.find(KernelName(kernel_name, ""));
   return (iter != kernels_.end());
 }
 
@@ -72,8 +72,12 @@ const Kernel& KernelFactory::SelectKernelOrThrowError(
 }
 
 std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {
-  os << "InputNum(" << kernel.args_def().input_defs().size()
-     << "), AttributeNum(" << kernel.args_def().attribute_defs().size()
+  os << "InputNum(" << kernel.args_def().input_defs().size() << "): [";
+  for (auto& in_def : kernel.args_def().input_defs()) {
+    os << "<" << in_def.backend << ", " << in_def.layout << ", " << in_def.dtype
+       << ">";
+  }
+  os << "]), AttributeNum(" << kernel.args_def().attribute_defs().size()
      << "), OutputNum(" << kernel.args_def().output_defs().size() << ")";
   return os;
 }

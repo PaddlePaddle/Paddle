@@ -45,11 +45,10 @@ namespace pt {
 
 class Tensor;
 
-class AutogradMetaInterface {
+class AbstractAutogradMeta {
  public:
-  virtual const Tensor& grad() const = 0;
-  virtual ~AutogradMetaInterface() = 0;
-  // TODO(yangjiabin): design other methods
+  // No AbstractAutogradMeta should be created
+  virtual ~AbstractAutogradMeta() {}
 };
 
 /**
@@ -136,22 +135,10 @@ class Tensor final {
   Place place() const { return impl_->place(); }
 
   /**
-   * @description: Convert the current Tensor to a Tensor of
-   *               a specific data type for a specific device
-   * @param {const} Backend
-   * @param {const} DataType
-   * @return {*}
-   */
-  // Tensor to(const Backend& backend, const DataType& dtype) {
-  //   // TODO(chenweihang): use kernels to impl later
-  // }
-
-  /**
    * Backend judgment APIs, shield the concept of Backend.
    */
-  // TODO(chenweihang): impl later
   bool is_cpu() const { return impl_->backend() == Backend::kCPU; }
-  bool is_cuda() const;
+  bool is_cuda() const { return impl_->backend() == Backend::kCUDA; }
   bool is_hip() const;
   bool is_xpu() const;
   bool is_npu() const;

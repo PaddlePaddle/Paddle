@@ -1258,7 +1258,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 }
 
-bool ContainSelectedRows(const VariableValueMap& inputs) {
+static bool ContainSelectedRows(const VariableValueMap& inputs) {
   for (auto& var_pair : inputs) {
     for (auto* var : var_pair.second) {
       if (var->IsType<SelectedRows>()) {
@@ -1269,17 +1269,26 @@ bool ContainSelectedRows(const VariableValueMap& inputs) {
   return false;
 }
 
+// TODO(chenweihang): now only check single var input
+static bool IsValidVar(const std::string& name,
+                       const VariableValueMap& inputs) {
+  auto it = inputs.find(name);
+  if (it == inputs.end()) {
+    return false;
+  }
+  auto* var = it->second.empty() ? nullptr : it->second[0];
+  return var != nullptr;
+}
+
 // TODO(chenweihang): enhance rules, not all dispensable inputs
 // are host tensor, now only for scale kernel verify
-bool ContainHostTensor(const proto::OpProto& op_proto,
-                       const VariableValueMap& inputs) {
+static bool ContainHostTensor(const proto::OpProto& op_proto,
+                              const VariableValueMap& inputs) {
   for (int i = 0; i < op_proto.inputs_size(); ++i) {
     auto in = op_proto.inputs()[i];
-    auto it = inputs.find(in.name());
-    if (it == inputs.end()) {
-      return false;
+    if (in.has_dispensable() && in.dispensable()) {
+      return IsValidVar(in.name(), inputs);
     }
-    return it->second.empty() ? false : true;
   }
   return false;
 }
@@ -1316,6 +1325,7 @@ void OperatorWithKernel::ChoosePtKernel(
       kernel_name, *pt_kernel_key_)));
 
   // for debug
+  // VLOG(1) << pt::KernelFactory::Instance();
   VLOG(1) << "ChoosePtKernel - kernel name: " << kernel_name
           << " | kernel key: " << *pt_kernel_key_
           << " | kernel: " << *pt_kernel_;
@@ -1861,6 +1871,7 @@ pt::KernelKey OperatorWithKernel::ConstructPtKernelKey(
   return pt::KernelKey(backend, layout, dtype);
 }
 
+// TODO(chenweihang): This function is too complicated and needs to be split
 pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
     const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
   VLOG(1) << RuntimeContextDebugString(ctx);
@@ -1902,7 +1913,7 @@ pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
     auto in_name = in.name();
     if (in.has_dispensable() && in.dispensable()) {
       if (contain_host_tensor_flags.count(in_name) > 0 &&
-          ctx.inputs.count(in_name) > 0 && ctx.inputs.at(in_name).size() > 0) {
+          IsValidVar(in_name, ctx.inputs)) {
         VLOG(1) << "Static graph PtKernel input: contain host input - "
                 << in_name;
         contain_host_tensor_flags[in_name] = true;
@@ -1914,17 +1925,43 @@ pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
     }
     VLOG(1) << "Static graph PtKernel input: " << in_name;
     auto in_def = input_defs.at(i);
+    VLOG(1) << "in_def: " << in_def.backend << ", " << in_def.dtype << ", "
+            << in_def.layout;
+    // TODO(chenweihang): input need to be transformed by in all define
+    auto expected_place = pt::TransToFluidPlace(in_def.backend);
+    VLOG(1) << "expected_place: " << expected_place;
     for (auto* var : ctx.inputs.at(in_name)) {
       if (var->IsType<LoDTensor>()) {
+        VLOG(1) << "var is LoDTensor";
         const auto& tensor = var->Get<LoDTensor>();
-        auto pt_in = MakeTensorImpl<pt::DenseTensor, LoDTensor>(
-            tensor, in_def.backend, in_def.dtype, in_def.layout);
-        op_kernel_ctx.EmplaceBackInput(pt_in);
+        if (!platform::is_same_place(tensor.place(), expected_place)) {
+          VLOG(1) << "var place is mismatch.";
+          LoDTensor tmp_tensor;
+          TensorCopySync(tensor, expected_place, &tmp_tensor);
+          auto pt_in = MakeTensorImpl<pt::DenseTensor, LoDTensor>(
+              tmp_tensor, in_def.backend, in_def.dtype, in_def.layout);
+          op_kernel_ctx.EmplaceBackInput(pt_in);
+        } else {
+          auto pt_in = MakeTensorImpl<pt::DenseTensor, LoDTensor>(
+              tensor, in_def.backend, in_def.dtype, in_def.layout);
+          op_kernel_ctx.EmplaceBackInput(pt_in);
+        }
       } else if (var->IsType<SelectedRows>()) {
         const auto& tensor = var->Get<SelectedRows>();
-        auto pt_in = MakeTensorImpl<pt::SelectedRowsTensor, SelectedRows>(
-            tensor, in_def.backend, in_def.dtype, in_def.layout);
-        op_kernel_ctx.EmplaceBackInput(pt_in);
+        if (!platform::is_same_place(tensor.value().place(), expected_place)) {
+          SelectedRows tmp_tensor;
+          tmp_tensor.set_rows(tensor.rows());
+          tmp_tensor.set_height(tensor.height());
+          TensorCopySync(tensor.value(), expected_place,
+                         tmp_tensor.mutable_value());
+          auto pt_in = MakeTensorImpl<pt::SelectedRowsTensor, SelectedRows>(
+              tmp_tensor, in_def.backend, in_def.dtype, in_def.layout);
+          op_kernel_ctx.EmplaceBackInput(pt_in);
+        } else {
+          auto pt_in = MakeTensorImpl<pt::SelectedRowsTensor, SelectedRows>(
+              tensor, in_def.backend, in_def.dtype, in_def.layout);
+          op_kernel_ctx.EmplaceBackInput(pt_in);
+        }
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported shared input `%s` type now when call pt kernel.",
@@ -1971,7 +2008,6 @@ pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
               << attr.name();
       continue;
     }
-    VLOG(1) << "Static graph PtKernel attribute: " << attr.name();
     if ((attr.has_extra() && attr.extra()) ||
         (attr.has_quant() && attr.quant())) {
       VLOG(1) << "Static graph PtKernel attribute: skip extra or quant attr - "
@@ -1986,6 +2022,7 @@ pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
               << attr_to_host_tensor.at(attr.name()) << " exists.";
       continue;
     }
+    VLOG(1) << "Static graph PtKernel attribute: " << attr.name();
     // TODO(chenweihang): support other attrs
     switch (attr.type()) {
       case proto::AttrType::INT:

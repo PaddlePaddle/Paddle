@@ -12,12 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/tcmpt/api/include/math.h"
 
-#include "paddle/tcmpt/api/include/tensor.h"
-
-namespace pt {
-
-Tensor sign(const Tensor& x);
-
-}  // namespace pt
+namespace pt {}  // namespace pt

@@ -44,8 +44,12 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
   static void Parse(const KernelKey& default_key, KernelArgsDef* args_def) {
     auto args_type = ParseArgType(Indices{});
     for (auto arg_type : args_type) {
-      if (arg_type == std::type_index(typeid(const DenseTensor&)) ||
-          arg_type == std::type_index(typeid(const SelectedRowsTensor&))) {
+      if (arg_type == std::type_index(typeid(const CPUContext&)) ||
+          arg_type == std::type_index(typeid(const CUDAContext&))) {
+        // do nothing, skip context arg now
+      } else if (arg_type == std::type_index(typeid(const DenseTensor&)) ||
+                 arg_type ==
+                     std::type_index(typeid(const SelectedRowsTensor&))) {
         args_def->AppendInput(
             default_key.backend(), default_key.layout(), default_key.dtype());
       } else if (arg_type == std::type_index(typeid(DenseTensor*)) ||

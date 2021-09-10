@@ -137,7 +137,7 @@ static framework::VariableValueMap BuildInputMap(
 }
 
 template <typename VarType>
-bool ContainSelectedRows(const NameVarMap<VarType>& inputs) {
+static bool ContainSelectedRows(const NameVarMap<VarType>& inputs) {
   for (auto& var_pair : inputs) {
     for (auto& var : var_pair.second) {
       if (var->Var().template IsType<framework::SelectedRows>()) {
@@ -148,18 +148,30 @@ bool ContainSelectedRows(const NameVarMap<VarType>& inputs) {
   return false;
 }
 
+// TODO(chenweihang): now only check single var input
+template <typename VarType>
+static bool IsValidVar(const std::string& name,
+                       const NameVarMap<VarType>& inputs) {
+  auto it = inputs.find(name);
+  if (it == inputs.end()) {
+    return false;
+  }
+  if (it->second.empty()) {
+    return false;
+  }
+  return it->second[0] != nullptr;
+}
+
 // TODO(chenweihang): enhance rules, not all dispensable inputs
 // are host tensor, now only for scale kernel verify
 template <typename VarType>
-bool ContainHostTensor(const framework::proto::OpProto& op_proto,
-                       const NameVarMap<VarType>& inputs) {
+static bool ContainHostTensor(const framework::proto::OpProto& op_proto,
+                              const NameVarMap<VarType>& inputs) {
   for (int i = 0; i < op_proto.inputs_size(); ++i) {
     auto in = op_proto.inputs()[i];
-    auto it = inputs.find(in.name());
-    if (it == inputs.end()) {
-      return false;
+    if (in.has_dispensable() && in.dispensable()) {
+      return IsValidVar<VarType>(in.name(), inputs);
     }
-    return it->second.empty() ? false : true;
   }
   return false;
 }
@@ -294,6 +306,7 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
                                       default_attrs);
 }
 
+// TODO(chenweihang): This function is too complicated and needs to be split
 template <typename VarType>
 static pt::KernelContext BuildDygraphKernelContext(
     const pt::Kernel& pt_kernel, const framework::proto::OpProto& op_proto,
@@ -332,7 +345,7 @@ static pt::KernelContext BuildDygraphKernelContext(
     auto in_name = in.name();
     if (in.has_dispensable() && in.dispensable()) {
       if (contain_host_tensor_flags.count(in_name) > 0 &&
-          ins.count(in_name) > 0 && ins.at(in_name).size() > 0) {
+          IsValidVar<VarType>(in_name, ins)) {
         VLOG(1) << "Dygraph PtKernel input: contain host input - " << in_name;
         contain_host_tensor_flags[in_name] = true;
       } else {
@@ -343,20 +356,42 @@ static pt::KernelContext BuildDygraphKernelContext(
     }
     VLOG(1) << "Dygraph PtKernel input: " << in_name;
     auto in_def = input_defs.at(i);
+    auto expected_place = pt::TransToFluidPlace(in_def.backend);
     for (auto var : ins.at(in_name)) {
       const auto& variable = var->Var();
       if (variable.template IsType<framework::LoDTensor>()) {
         const auto& tensor = variable.template Get<framework::LoDTensor>();
-        auto pt_in =
-            framework::MakeTensorImpl<pt::DenseTensor, framework::LoDTensor>(
-                tensor, in_def.backend, in_def.dtype, in_def.layout);
-        op_kernel_ctx.EmplaceBackInput(pt_in);
+        if (!platform::is_same_place(tensor.place(), expected_place)) {
+          framework::LoDTensor tmp_tensor;
+          framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
+          auto pt_in =
+              framework::MakeTensorImpl<pt::DenseTensor, framework::LoDTensor>(
+                  tmp_tensor, in_def.backend, in_def.dtype, in_def.layout);
+          op_kernel_ctx.EmplaceBackInput(pt_in);
+        } else {
+          auto pt_in =
+              framework::MakeTensorImpl<pt::DenseTensor, framework::LoDTensor>(
+                  tensor, in_def.backend, in_def.dtype, in_def.layout);
+          op_kernel_ctx.EmplaceBackInput(pt_in);
+        }
       } else if (variable.template IsType<framework::SelectedRows>()) {
         const auto& tensor = variable.template Get<framework::SelectedRows>();
-        auto pt_in = framework::MakeTensorImpl<pt::SelectedRowsTensor,
-                                               framework::SelectedRows>(
-            tensor, in_def.backend, in_def.dtype, in_def.layout);
-        op_kernel_ctx.EmplaceBackInput(pt_in);
+        if (!platform::is_same_place(tensor.value().place(), expected_place)) {
+          framework::SelectedRows tmp_tensor;
+          tmp_tensor.set_rows(tensor.rows());
+          tmp_tensor.set_height(tensor.height());
+          TensorCopySync(tensor.value(), expected_place,
+                         tmp_tensor.mutable_value());
+          auto pt_in = framework::MakeTensorImpl<pt::SelectedRowsTensor,
+                                                 framework::SelectedRows>(
+              tmp_tensor, in_def.backend, in_def.dtype, in_def.layout);
+          op_kernel_ctx.EmplaceBackInput(pt_in);
+        } else {
+          auto pt_in = framework::MakeTensorImpl<pt::SelectedRowsTensor,
+                                                 framework::SelectedRows>(
+              tensor, in_def.backend, in_def.dtype, in_def.layout);
+          op_kernel_ctx.EmplaceBackInput(pt_in);
+        }
       } else {
         PADDLE_THROW(platform::errors::Unimplemented(
             "Unsupported shared input `%s` type now when call pt kernel.",
@@ -401,7 +436,6 @@ static pt::KernelContext BuildDygraphKernelContext(
 
   for (int i = 0; i < op_proto.attrs_size(); ++i) {
     auto attr = op_proto.attrs()[i];
-    VLOG(1) << "Dygraph PtKernel attribute: " << attr.name();
     if (attr.name() == "use_mkldnn" || attr.name() == "op_role" ||
         attr.name() == "op_role_var" || attr.name() == "op_namescope" ||
         attr.name() == "op_callstack" || attr.name() == "op_device") {
@@ -423,6 +457,7 @@ static pt::KernelContext BuildDygraphKernelContext(
               << attr_to_host_tensor.at(attr.name()) << " exists.";
       continue;
     }
+    VLOG(1) << "Dygraph PtKernel attribute: " << attr.name();
     // TODO(chenweihang): support other attrs
     // In principle, the attr required by the dynamic mode should be
     // passed in from the Python side, and there is no need to look up

@@ -44,50 +44,58 @@ class KernelContext;
 
 using KernelFn = void (*)(KernelContext* ctx);
 
-struct KernelName final {
-  // TODO(chenweihang): use string_view later?
-  std::string name;
-  std::string overload_name;
-  // Avoid calculating Hash value at runtime
-  size_t hash_value;
-
+class KernelName final {
+ public:
   KernelName(std::string name, std::string overload_name)
-      : name(std::move(name)), overload_name(std::move(overload_name)) {
-    hash_value = std::hash<std::string>()(name) ^
-                 (std::hash<std::string>()(overload_name) << 1);
+      : name_(std::move(name)), overload_name_(std::move(overload_name)) {
+    hash_value_ = std::hash<std::string>()(name_) ^
+                  (std::hash<std::string>()(overload_name_) << 1);
   }
 
   KernelName(const char* kernel_name) {
     std::string kernel_name_str(kernel_name);
     size_t pos = kernel_name_str.find_first_of('.');
     if (pos == std::string::npos) {
-      name = kernel_name_str;
-      overload_name = "";
+      name_ = kernel_name_str;
+      overload_name_ = "";
     } else {
-      name = kernel_name_str.substr(0, pos);
-      overload_name = kernel_name_str.substr(pos + 1, kernel_name_str.size());
+      name_ = kernel_name_str.substr(0, pos);
+      overload_name_ = kernel_name_str.substr(pos + 1, kernel_name_str.size());
     }
-    hash_value = std::hash<std::string>()(name) ^
-                 (std::hash<std::string>()(overload_name) << 1);
+    hash_value_ = std::hash<std::string>()(name_) ^
+                  (std::hash<std::string>()(overload_name_) << 1);
   }
+
+  const std::string& name() const { return name_; }
+  const std::string& overload_name() const { return overload_name_; }
+  size_t hash_value() const { return hash_value_; }
 
   struct Hash {
     size_t operator()(const KernelName& kernel_name) const {
-      return kernel_name.hash_value;
+      return kernel_name.hash_value();
     }
   };
 
   bool operator<(const KernelName& kernel_name) const {
-    return hash_value < kernel_name.hash_value;
+    return hash_value_ < kernel_name.hash_value();
   }
 
   bool operator==(const KernelName& kernel_name) const {
-    return hash_value == kernel_name.hash_value;
+    return hash_value_ == kernel_name.hash_value();
   }
 
   bool operator!=(const KernelName& kernel_name) const {
-    return hash_value != kernel_name.hash_value;
+    return hash_value_ != kernel_name.hash_value();
   }
+
+ private:
+  // The members cannot be modified except by constructing,
+  // because the hash value need to be re calculated
+  // TODO(chenweihang): use string_view later?
+  std::string name_;
+  std::string overload_name_;
+  // Avoid calculating Hash value at runtime
+  size_t hash_value_;
 };
 
 class KernelKey {
@@ -151,21 +159,21 @@ struct TensorArgDef {
   DataLayout layout;
   DataType dtype;
 
-  TensorArgDef(Backend backend, DataLayout layout, DataType dtype)
-      : backend(backend), layout(layout), dtype(dtype) {}
+  TensorArgDef(Backend in_backend, DataLayout in_layout, DataType in_dtype)
+      : backend(in_backend), layout(in_layout), dtype(in_dtype) {}
 
-  TensorArgDef& SetBackend(Backend backend) {
-    backend = backend;
+  TensorArgDef& SetBackend(Backend in_backend) {
+    backend = in_backend;
     return *this;
   }
 
-  TensorArgDef& SetDataLayout(DataLayout layout) {
-    layout = layout;
+  TensorArgDef& SetDataLayout(DataLayout in_layout) {
+    layout = in_layout;
     return *this;
   }
 
-  TensorArgDef& SetDataType(DataType dtype) {
-    dtype = dtype;
+  TensorArgDef& SetDataType(DataType in_dtype) {
+    dtype = in_dtype;
     return *this;
   }
 };
@@ -279,10 +287,10 @@ class KernelFactory {
 
 inline std::ostream& operator<<(std::ostream& os,
                                 const KernelName& kernel_name) {
-  if (kernel_name.overload_name.empty()) {
-    os << kernel_name.name;
+  if (kernel_name.overload_name().empty()) {
+    os << kernel_name.name();
   } else {
-    os << kernel_name.name << "." << kernel_name.overload_name;
+    os << kernel_name.name() << "." << kernel_name.overload_name();
   }
   return os;
 }
