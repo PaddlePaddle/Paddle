@@ -43,7 +43,7 @@ __device__ __forceinline__ double fma_root(double x, double y, double z) {
   return fma(x, y, z);
 }
 
-#if CUDA_VERSION >= 9000
+#if CUDA_VERSION >= 11000
 template <typename T, typename MT>
 __device__ inline MT L2NormCalculation(
     const cooperative_groups::grid_group& cg, const T* __restrict__ data,
@@ -160,7 +160,7 @@ __global__ void MomentumLarsKernel(
     const MT rescale_grad, const int64_t numel) {
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
   int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
-#if CUDA_VERSION >= 9000
+#if CUDA_VERSION >= 11000
   const cooperative_groups::grid_group cg = cooperative_groups::this_grid();
   const int repeat_times = (numel + grid_stride - 1) / grid_stride;
   MT p_n = L2NormCalculation<T, MT>(cg, p, tmp_buffer, tid, repeat_times,
@@ -252,7 +252,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     int grid = (numel + LARS_BLOCK_SIZE - 1) / LARS_BLOCK_SIZE;
     auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
-#if CUDA_VERSION >= 9000
+#if CUDA_VERSION >= 11000
     /*
     Once model trainning with lars optimizer, whose principal implementation
     is achieved by following two steps:
