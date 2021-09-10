@@ -224,8 +224,7 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
 
         self.add_skip_case(
             teller1, SkipReasons.TRT_NOT_SUPPORT,
-            "INPUT AxisTensor AND SectionsTensorList NOT SUPPORT: we need to add support in the future"
-        )
+            "INPUT AxisTensor AND SectionsTensorList NOT SUPPORT.")
 
     def test(self):
         self.add_skip_trt_case()
