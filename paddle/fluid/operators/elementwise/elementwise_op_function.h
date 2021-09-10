@@ -1844,6 +1844,15 @@ void ElemwiseExplicitGradCompute(const framework::ExecutionContext &ctx,
   }
 }
 
+// It is a common implementation to compute binary calculation with the support
+// of broadcast, supporting both CPU and GPU.
+// - CPU implementation cannot support the case when x needs broadcast, thus
+//   this function need to be called with XxxFunctor and XxxInverseFunctor,
+//   like paddle/fluid/operators/elementwise/elementwise_add_op.h#L49 - L55.
+// - GPU implementation supports all the broadcast cases, thus there is no need
+//   to define and call with XxxInverseFunctor.
+// TODO(liuyiqun): optimize the CPU implementation to support all broadcast
+// cases and avoid the need of XxxInverseFunctor.
 template <typename Functor, typename DeviceContext, typename T,
           typename OutType = T>
 void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
