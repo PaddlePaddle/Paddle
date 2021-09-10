@@ -423,9 +423,9 @@ class TestSuggestionErrorInRuntime(TestErrorBase):
     def set_message(self):
         self.expected_message = \
             [
-                'File "{}", line 117, in forward'.format(self.filepath),
+                'File "{}", line 118, in forward'.format(self.filepath),
                 'return self.inner_net.forward(x)',
-                'File "{}", line 125, in forward'.format(self.filepath),
+                'File "{}", line 127, in forward'.format(self.filepath),
                 'def forward(self, x):',
                 'out = paddle.matmul(self.w, x)',
                 '<--- HERE',
