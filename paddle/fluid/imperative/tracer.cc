@@ -176,10 +176,10 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                               : attr_checker->GetDefaultAttrMap();
 
   NameVarBaseMap new_ins = ins;
-  if (enable_amp_) {
+  if (enable_amp_l1_) {
     VLOG(5) << "Auto mixed precision run operator: " << type;
     new_ins = AutoCastInputs(type, ins);
-  } else if (enable_pure_fp16_) {
+  } else if (enable_amp_l2_) {
     VLOG(5) << "Pure fp16 run operator: " << type;
     new_ins = CastPureFp16Inputs(type, ins);
   }

@@ -23,6 +23,7 @@ import functools
 import paddle
 import operator
 import types
+import paddle.fluid as fluid
 
 __all__ = ['amp_guard', 'amp_decorator']
 
@@ -107,7 +108,7 @@ def _in_amp_guard():
     """
     tracer = _dygraph_tracer()
     if tracer:
-        return tracer._enable_autocast
+        return tracer._enable_amp_l1
     else:
         return False
 
@@ -266,13 +267,13 @@ def amp_guard(enable=True,
         enable = False
 
     if mode == 'L1':
-        enable_amp = True
-        enable_pure_fp16 = False
+        enable_amp_l1 = True
+        enable_amp_l2 = False
         _white_list = WHITE_LIST
         _black_list = BLACK_LIST
     else:
-        enable_amp = False
-        enable_pure_fp16 = True
+        enable_amp_l1 = False
+        enable_amp_l2 = True
         _white_list = PURE_FP16_WHITE_LIST
         _black_list = PURE_FP16_BLACK_LIST
 
@@ -281,15 +282,15 @@ def amp_guard(enable=True,
                                                 custom_black_list, mode)
 
     if not enable:
-        enable_amp = False
-        enable_pure_fp16 = False
+        enable_amp_l1 = False
+        enable_amp_l2 = False
 
     if tracer:
         # enable auto_cast
-        original_enable_amp = tracer._enable_amp
-        tracer._enable_amp = enable_amp
-        original_pure_fp16_enable = tracer._enable_pure_fp16
-        tracer._enable_pure_fp16 = enable_pure_fp16
+        original_enable_amp_l1 = tracer._enable_amp_l1
+        tracer._enable_amp_l1 = enable_amp_l1
+        original_enable_amp_l2 = tracer._enable_amp_l2
+        tracer._enable_amp_l2 = enable_amp_l2
 
         # set amp op list
         original_white_list, original_black_list = tracer._get_amp_op_list()
@@ -308,14 +309,27 @@ def amp_guard(enable=True,
         yield
     finally:
         if tracer:
-            tracer._enable_amp = original_enable_amp
-            tracer._enable_pure_fp16 = original_pure_fp16_enable
+            tracer._enable_amp_l1 = original_enable_amp_l1
+            tracer._enable_amp_l2 = original_enable_amp_l2
             tracer._set_amp_op_list(original_white_list, original_black_list)
             # set_flags(original_flags)
 
 
+class StateDictHook(object):
+    def __init__(self, save_dtype):
+        self._save_dtype = save_dtype
+
+    def __call__(self, state_dict):
+        for key in state_dict:
+            param = state_dict[key]
+            with fluid.dygraph.guard():
+                param_applied = paddle.cast(param, self._save_dtype)
+                param_applied.name = param.name
+                state_dict[key] = param_applied
+
+
 @dygraph_only
-def amp_decorator(models=None, optimizers=None):
+def amp_decorator(models=None, optimizers=None, save_dtype=None):
     models_is_list = False
     if isinstance(models, paddle.nn.Layer):
         models_is_list = False
@@ -344,6 +358,15 @@ def amp_decorator(models=None, optimizers=None):
 
     models, optimizers = pure_fp16_initialize(
         enable_pure_fp16=True, models=models, optimizers=optimizers)
+
+    if save_dtype is not None:
+        if not (save_dtype in ['float16', 'float32', 'float64']):
+            raise ValueError(
+                "save_dtype can only be float16 float32 or float64, but your input save_dtype is %s."
+                % save_dtype)
+        for idx in range(len(models)):
+            for layer in models[idx].sublayers(include_self=True):
+                layer.register_state_dict_hook(StateDictHook(save_dtype))
 
     if models_is_list:
         if optimizers_is_list:
