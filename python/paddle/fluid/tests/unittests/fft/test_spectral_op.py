@@ -14,16 +14,18 @@
 
 from __future__ import print_function
 
+import sys.path
 import unittest
+
 import numpy as np
 import paddle
 import paddle.fluid.core as core
-import sys.path
-from ..op_test import OpTest
-from paddle.fluid import Program, program_guard
 import paddle.fluid.dygraph as dg
 import paddle.static as static
 from numpy.random import random as rand
+from paddle.fluid import Program, program_guard
+
+from ..op_test import OpTest
 
 paddle.enable_static()
 
@@ -60,3 +62,4 @@ class TestFFTC2ROp(OpTest):
             'Out',
             user_defined_grads=[self.grad_in],
             user_defined_grad_outputs=[self.grad_out])
+from ..op_test import OpTest
