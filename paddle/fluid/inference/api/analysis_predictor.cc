@@ -1347,6 +1347,8 @@ USE_TRT_CONVERTER(reduce_sum);
 USE_TRT_CONVERTER(gather_nd);
 USE_TRT_CONVERTER(reduce_mean);
 USE_TRT_CONVERTER(tile);
+USE_TRT_CONVERTER(conv3d);
+USE_TRT_CONVERTER(conv3d_transpose);
 #endif
 
 namespace paddle_infer {

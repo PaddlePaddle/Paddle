@@ -77,6 +77,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
                         "TensorRT's tensor input requires at least 1 "
                         "dimensions, but input %s has %d dims.",
                         input, shape.size()));
+
   auto ShapeStr = [](const std::vector<T>& shape) {
     std::ostringstream os;
     os << "[";
@@ -99,6 +100,14 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
             input, ShapeStr(shape)));
       }
       return nvinfer1::Dims3(shape[1], shape[2], shape[3]);
+    } else if (shape.size() == 5UL) {
+      if (shape[2] == -1 || shape[3] == -1 || shape[4] == -1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The input [%s] shape of trt subgraph is %s, please enable "
+            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
+            input, ShapeStr(shape)));
+      }
+      return nvinfer1::Dims4(shape[1], shape[2], shape[3], shape[4]);
     } else if (shape.size() == 3UL) {
       if (shape[1] == -1 || shape[2] == -1) {
         PADDLE_THROW(platform::errors::InvalidArgument(

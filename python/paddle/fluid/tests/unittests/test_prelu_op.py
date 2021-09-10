@@ -153,11 +153,12 @@ class TestNNPReluAPI(unittest.TestCase):
 
 class PReluTest(OpTest):
     def setUp(self):
+        self.init_dtype()
         self.init_input_shape()
         self.init_attr()
         self.op_type = "prelu"
 
-        x_np = np.random.uniform(-1, 1, self.x_shape)
+        x_np = np.random.uniform(-1, 1, self.x_shape).astype(self.dtype)
         # Since zero point in prelu is not differentiable, avoid randomize
         # zero.
         x_np[np.abs(x_np) < 0.005] = 0.02
@@ -168,6 +169,7 @@ class PReluTest(OpTest):
             alpha_np = np.random.uniform(-1, -0.5, [1, self.x_shape[1], 1, 1])
         else:
             alpha_np = np.random.uniform(-1, -0.5, [1] + self.x_shape[1:])
+        alpha_np = alpha_np.astype(self.dtype)
 
         self.inputs = {'X': x_np, 'Alpha': alpha_np}
 
@@ -183,6 +185,9 @@ class PReluTest(OpTest):
         out_np = out_np + np.minimum(self.inputs['X'], 0.) * reshaped_alpha
         assert out_np is not self.inputs['X']
         self.outputs = {'Out': out_np}
+
+    def init_dtype(self):
+        self.dtype = np.float64
 
     def init_input_shape(self):
         self.x_shape = [2, 100, 3, 4]
@@ -268,6 +273,44 @@ class TestModeElementRank6(PReluTest):
 
     def init_attr(self):
         self.attrs = {'mode': "element"}
+
+
+def create_test_fp16_class(parent,
+                           check_grad=True,
+                           atol=1e-3,
+                           max_relative_error=0.05):
+    @unittest.skipIf(not core.is_compiled_with_cuda(),
+                     "core is not compiled with CUDA")
+    class TestPReluFp16Case(parent):
+        def init_dtype(self):
+            self.dtype = np.float16
+
+        def test_check_output(self):
+            if core.is_compiled_with_cuda():
+                place = core.CUDAPlace(0)
+                if core.is_float16_supported(place):
+                    self.check_output_with_place(place, atol=atol)
+
+        def test_check_grad(self):
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place) and check_grad:
+                self.check_grad_with_place(
+                    place, ['X', 'Alpha'],
+                    'Out',
+                    max_relative_error=max_relative_error)
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Fp16Op")
+    TestPReluFp16Case.__name__ = cls_name
+    globals()[cls_name] = TestPReluFp16Case
+
+
+create_test_fp16_class(TestModeElt)
+create_test_fp16_class(TestModeAllRank3)
+create_test_fp16_class(TestModeAllRank6)
+create_test_fp16_class(TestModeChannelRank3)
+create_test_fp16_class(TestModeChannelRank6)
+create_test_fp16_class(TestModeElementRank3)
+create_test_fp16_class(TestModeElementRank6)
 
 
 def prelu_t(x, mode, param_attr=None, name=None):
