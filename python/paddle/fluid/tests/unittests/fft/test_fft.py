@@ -25,6 +25,8 @@ paddle.set_default_dtype('float64')
 
 TEST_CASE_NAME = 'test_case'
 
+paddle.set_device('cpu')
+
 
 def setUpModule():
     global rtol
