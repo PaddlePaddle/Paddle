@@ -30,12 +30,10 @@ class DeterminantOp : public framework::OperatorWithKernel {
 class DeterminantOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(
-        "Input",
-        "(Tensor) The input tensor, from which the determinant are taken.");
+    AddInput("Input", "(Tensor) The input tensor of determinant.");
     AddOutput("Out",
-              "(Tensor) The output of determinant "
-              "elements.");
+              "(Tensor) The output Tensor cotaining the determinant"
+              "value of a square matrix or batches of square matrices ");
 
     AddComment(R"DOC(
 Determinant Operator.)DOC");
@@ -97,12 +95,11 @@ class SlogDeterminantOp : public framework::OperatorWithKernel {
 class SlogDeterminantOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput(
-        "Input",
-        "(Tensor) The input tensor, from which the slogdeterminant are taken.");
+    AddInput("Input", "(Tensor) The input tensor of SlogDeterminant.");
     AddOutput("Out",
-              "(Tensor) The partial view of input with the its slogdeterminant "
-              "elements.");
+              "(Tensor) The output tensor containing the sign of the"
+              "determinant and the natural logarithm"
+              "of the absolute value of determinant,");
 
     AddComment(R"DOC(
 SlogDeterminant Operator.)DOC");

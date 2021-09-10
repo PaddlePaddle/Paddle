@@ -37,9 +37,6 @@ class DeterminantCUDAKernel : public framework::OpKernel<T> {
     const auto* input_data = input->data<T>();
     auto input_dim = input->dims().Get();
     auto input_dim_size = input->dims().size();
-
-    std::vector<int64_t> res_in = vectorize(framework::stride(input->dims()));
-
     auto* output = context.Output<framework::Tensor>("Out");
     auto* output_data = output->mutable_data<T>(context.GetPlace());
     auto output_dim = output->dims().Get();
@@ -86,8 +83,6 @@ class SlogDeterminantCUDAKernel : public framework::OpKernel<T> {
     const auto* input_data = input->data<T>();
     auto input_dim = vectorize(input->dims());
     auto input_dim_size = input->dims().size();
-
-    std::vector<int64_t> res_in = vectorize(framework::stride(input->dims()));
     auto* output = context.Output<framework::Tensor>("Out");
     auto* output_data = output->mutable_data<T>(context.GetPlace());
     auto output_dim = output->dims().Get();
@@ -117,8 +112,6 @@ class SlogDeterminantGradCUDAKernel : public framework::OpKernel<T> {
     const auto* input_data = input->data<T>();
     auto input_dim = input->dims().Get();
     auto input_dim_size = input->dims().size();
-
-    std::vector<int64_t> res_in = vectorize(framework::stride(input->dims()));
     auto* output = context.Output<framework::Tensor>("Out");
     auto* output_data = output->mutable_data<T>(context.GetPlace());
     auto output_dim = output->dims().Get();

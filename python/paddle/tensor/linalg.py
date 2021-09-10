@@ -952,7 +952,19 @@ def det(x):
     Returns:
         y (Tensor):the determinant value of a square matrix or batches of square matrices.
 
-    Returns:
+    Example: 
+        .. code-block:: python
+
+        import paddle
+
+        x =  paddle.randn([3,3,3])
+
+        A = paddle.det(x)
+
+        print(A)
+    
+        # [ 0.02547996,  2.52317095, -6.15900707])
+
     
     """
     if in_dygraph_mode():
@@ -996,12 +1008,22 @@ def slogdet(x):
             where math:`*` is one or more batch dimensions.
 
     Returns:
-        y (Tensor): A namedtuple (sign, logabsdet) containing the sign of the determinant and the natural logarithm
+        y (Tensor): A tuple (sign, logabsdet) containing the sign of the determinant and the natural logarithm
         of the absolute value of determinant, respectively.
 
-    Example::
+    Example:
+    .. code-block:: python
 
- 
+        import paddle
+
+        x =  paddle.randn([3,3,3])
+
+        A = paddle.slogdet(x)
+
+        print(A)
+    
+        # [[ 1.        ,  1.        , -1.        ],
+        # [-0.98610914, -0.43010661, -0.10872950]])
 
     """
     if in_dygraph_mode():
@@ -1030,6 +1052,7 @@ def slogdet(x):
 
     helper.append_op(
         type='slogdeterminant', inputs={'Input': [x]}, outputs={'Out': [out]})
+    return out
 
 
 def svd(x, full_matrices=False, name=None):

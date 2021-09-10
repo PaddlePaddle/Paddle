@@ -26,8 +26,8 @@ namespace operators {
 using Tensor = framework::Tensor;
 template <typename T>
 struct DeterminantFunctor {
-  void operator()(const Tensor& input, const framework::ExecutionContext ctx, int rank, int batch_count,
-                  Tensor* output) {
+  void operator()(const Tensor& input, const framework::ExecutionContext ctx,
+                  int rank, int batch_count, Tensor* output) {
     std::vector<T> input_vec;
     std::vector<float> output_vec;
     framework::TensorToVector(input, ctx.device_context(), &input_vec);
@@ -63,7 +63,8 @@ class DeterminantKernel : public framework::OpKernel<T> {
     VLOG(2) << "input dim:" << input->dims();
     auto rank = input_dim[input_dim_size - 1];  // square matrix length
     DeterminantFunctor<T>()(*input, context, rank, batch_count, output);
-    auto output_dims = framework::slice_ddim(input->dims(), 0, input_dim_size - 2);
+    auto output_dims =
+        framework::slice_ddim(input->dims(), 0, input_dim_size - 2);
     output->Resize(output_dims);
     VLOG(2) << "output dim:" << output->dims();
   }
@@ -93,8 +94,8 @@ T sign(T val) {
 }
 template <typename T>
 struct SlogDeterminantFunctor {
-  void operator()(const Tensor& input, const framework::ExecutionContext ctx, int rank, int batch_count,
-                  Tensor* output) {
+  void operator()(const Tensor& input, const framework::ExecutionContext ctx,
+                  int rank, int batch_count, Tensor* output) {
     std::vector<T> input_vec;
     std::vector<float> sign_vec;
     std::vector<float> log_vec;
@@ -115,7 +116,10 @@ struct SlogDeterminantFunctor {
       VLOG(2) << "matrix val: " << matrix;
       auto det_val = matrix.determinant();
       sign_vec.push_back(sign(det_val));
-      det_val >=0 ? log_vec.push_back(log(det_val)) : log_vec.push_back(-1.0*log(abs(det_val))); // for computing log value of a negative value.
+      det_val >= 0
+          ? log_vec.push_back(log(det_val))
+          : log_vec.push_back(log(
+                abs(det_val)));  // for computing log value of a negative value.
     }
     // merge sign_vec and log_vec as final output_vec
     output_vec.insert(output_vec.end(), sign_vec.begin(), sign_vec.end());
@@ -141,13 +145,13 @@ class SlogDeterminantKernel : public framework::OpKernel<T> {
     auto rank = input_dim[input_dim_size - 1];  // square matrix length
     SlogDeterminantFunctor<T>()(*input, context, rank, batch_count, output);
     std::vector<int> output_dim_vec(input_dim.begin(), input_dim.end() - 2);
-    output_dim_vec.insert(output_dim_vec.begin(), 2); // make the output dims as same as numpy
+    output_dim_vec.insert(output_dim_vec.begin(),
+                          2);  // make the output dims as same as numpy
     auto output_dims = framework::make_ddim(output_dim_vec);
     output->Resize(output_dims);
     VLOG(2) << "output dim:" << output->dims();
   }
 };
-
 
 }  // namespace operators
 }  // namespace paddle
