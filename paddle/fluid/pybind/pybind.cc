@@ -2234,7 +2234,7 @@ All parameter, weight, gradient are variables in Paddle.
 
   // TO DO fill DOC
   py::class_<cudaDeviceProp>(m, "_CudaDeviceProperties", R"DOC(
-        _CudaDeviceProperties .
+        _CudaDeviceProperties is stuct of device properties information.  
         )DOC")
       .def_readonly("name", &cudaDeviceProp::name)
       .def_readonly("major", &cudaDeviceProp::major)
