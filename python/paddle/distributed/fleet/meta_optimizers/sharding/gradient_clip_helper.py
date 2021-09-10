@@ -39,6 +39,7 @@ class GradientClipHelper(object):
             if not self._is_gradient_clip_op(op):
                 continue
             if op.type == "sum":
+                global_norm_sum_op_idx = idx
                 continue
             deperate_op = False
             for input_name in op.desc.input_arg_names():
@@ -61,7 +62,10 @@ class GradientClipHelper(object):
                     if output_name not in op.desc.input_arg_names():
                         deperated_vars.add(output_name)
 
-        if not deperated_vars:
+        # NOTE(wangxi): If only have 2 sharding, and 1 param.
+        # sharding 0 will not deperated_vars, will return, only
+        # sharding 1 will insert allreduce, then hang.
+        if not deperated_vars and global_norm_sum_op_idx == -1:
             # got no gradient_clip op
             return
 

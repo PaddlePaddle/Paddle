@@ -5079,8 +5079,8 @@ class PipelineOptimizer(object):
 
             if self._is_backward_op(op) and first_opt_op_idx is None:
                 first_opt_op_idx = index + 1
-                # no optimize phase
-                if first_opt_op_idx == len(block.ops): return
+                # maybe have no optimize
+                # if first_opt_op_idx == len(block.ops): return
 
             if self._is_backward_op(op) and (
                     self._op_role_var_key in op.attr_names):
