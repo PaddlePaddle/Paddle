@@ -190,54 +190,47 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
 
     def test_adamw_op(self):
         paddle.enable_static()
-        places = [fluid.CPUPlace(), fluid.CUDAPlace(0)]
-        for place in places:
-            train_prog = fluid.Program()
-            startup = fluid.Program()
-            with fluid.program_guard(train_prog, startup):
-                with fluid.unique_name.guard():
-                    x = fluid.data(name='x', shape=[None, 10], dtype='float32')
-                    y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+        place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
+            else fluid.CPUPlace()
+        train_prog = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(train_prog, startup):
+            with fluid.unique_name.guard():
+                x = fluid.data(name='x', shape=[None, 10], dtype='float32')
+                y = fluid.data(name='y', shape=[None, 1], dtype='float32')
 
-                    fc1 = fluid.layers.fc(input=x, size=32, act=None)
-                    prediction = fluid.layers.fc(input=fc1, size=1, act=None)
-                    cost = fluid.layers.square_error_cost(
-                        input=prediction, label=y)
-                    avg_cost = fluid.layers.mean(cost)
+                fc1 = fluid.layers.fc(input=x, size=32, act=None)
+                prediction = fluid.layers.fc(input=fc1, size=1, act=None)
+                cost = fluid.layers.square_error_cost(input=prediction, label=y)
+                avg_cost = fluid.layers.mean(cost)
 
-                    simple_lr_fun = partial(
-                        simple_lr_setting, decay_rate=0.8, n_layers=2)
+                simple_lr_fun = partial(
+                    simple_lr_setting, decay_rate=0.8, n_layers=2)
 
-                    beta1 = fluid.layers.create_global_var(
-                        shape=[1],
-                        value=0.85,
-                        dtype='float32',
-                        persistable=True)
-                    beta2 = fluid.layers.create_global_var(
-                        shape=[1],
-                        value=0.95,
-                        dtype='float32',
-                        persistable=True)
-                    betas = [beta1, beta2]
-                    opt = paddle.optimizer.AdamW(
-                        learning_rate=1e-5,
-                        beta1=beta1,
-                        beta2=beta2,
-                        weight_decay=0.01,
-                        epsilon=1e-8,
-                        lr_ratio=simple_lr_fun)
-                    opt.minimize(avg_cost)
+                beta1 = fluid.layers.create_global_var(
+                    shape=[1], value=0.85, dtype='float32', persistable=True)
+                beta2 = fluid.layers.create_global_var(
+                    shape=[1], value=0.95, dtype='float32', persistable=True)
+                betas = [beta1, beta2]
+                opt = paddle.optimizer.AdamW(
+                    learning_rate=1e-5,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01,
+                    epsilon=1e-8,
+                    lr_ratio=simple_lr_fun)
+                opt.minimize(avg_cost)
 
-            exe = fluid.Executor(place)
-            exe.run(startup)
-            for _ in range(2):
-                inputs = np.random.random(size=[8, 10]).astype('float32')
-                outputs = np.random.random(size=[8, 1]).astype('float32')
-                rets = exe.run(train_prog,
-                               feed={"x": inputs,
-                                     "y": outputs},
-                               fetch_list=[avg_cost])
-                assert rets[0] is not None
+        exe = fluid.Executor(place)
+        exe.run(startup)
+        for _ in range(2):
+            inputs = np.random.random(size=[8, 10]).astype('float32')
+            outputs = np.random.random(size=[8, 1]).astype('float32')
+            rets = exe.run(train_prog,
+                           feed={"x": inputs,
+                                 "y": outputs},
+                           fetch_list=[avg_cost])
+            assert rets[0] is not None
 
         paddle.disable_static()
 
