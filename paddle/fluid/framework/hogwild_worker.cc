@@ -115,10 +115,13 @@ void HogwildWorker::BindingDataFeedMemory() {
 }
 
 void HogwildWorker::CreateDeviceResource(const ProgramDesc &main_prog) {
+  CreateThreadScope(main_prog);
+  CreateThreadOperators(main_prog);
+#ifdef PADDLE_WITH_MKLDNN
   auto EnableMKLDNN = [&](void) {
     VLOG(3) << "use_mkldnn=True";
     for (size_t bid = 0; bid < main_prog.Size(); ++bid) {
-      ProgramDesc *block = platform::to_void_cast(main_prog).MutableBlock(bid);
+      auto *block = const_cast<ProgramDesc &>(program).MutableBlock(bid);
       for (auto *op : block->AllOps()) {
         if (op->HasAttr("use_mkldnn")) {
           op->SetAttr("use_mkldnn", true);
@@ -126,9 +129,6 @@ void HogwildWorker::CreateDeviceResource(const ProgramDesc &main_prog) {
       }
     }
   };
-  CreateThreadScope(main_prog);
-  CreateThreadOperators(main_prog);
-#ifdef PADDLE_WITH_MKLDNN
   if (FLAGS_use_mkldnn) EnableMKLDNN();
 #endif
 }
