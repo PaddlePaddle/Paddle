@@ -299,12 +299,20 @@ def conv1d(x,
     channel_last = (data_format == "NLC")
     channel_dim = -1 if channel_last else 1
     conv2d_data_format = "NHWC" if channel_last else "NCHW"
+    if len(x.shape) != 3:
+        raise ValueError(
+            "Input x should be 3D tensor, but received x with the shape of {}".
+            format(x.shape))
     num_channels = x.shape[channel_dim]
     num_filters = weight.shape[0]
     if num_channels < 0:
         raise ValueError("The channel dimension of the input({}) "
                          "should be defined. Received: {}.".format(
                              x.shape, num_channels))
+    if groups <= 0:
+        raise ValueError(
+            "The groups of conv1d should be greater than 0. Received groups: {}".
+            format(groups))
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
@@ -508,12 +516,20 @@ def conv2d(x,
 
     channel_last = (data_format == "NHWC")
     channel_dim = -1 if channel_last else 1
+    if len(x.shape) != 4:
+        raise ValueError(
+            "Input x should be 4D tensor, but received x with the shape of {}".
+            format(x.shape))
     num_channels = x.shape[channel_dim]
     num_filters = weight.shape[0]
     if num_channels < 0:
         raise ValueError("The channel dimension of the input({}) "
                          "should be defined. Received: {}.".format(
                              x.shape, num_channels))
+    if groups <= 0:
+        raise ValueError(
+            "The groups of conv2d should be greater than 0. Received groups: {}".
+            format(groups))
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
@@ -710,12 +726,20 @@ def conv1d_transpose(x,
                 data_format))
     channel_last = (data_format == "NLC")
     channel_dim = -1 if channel_last else 1
+    if len(x.shape) != 3:
+        raise ValueError(
+            "Input x should be 3D tensor, but received x with the shape of {}".
+            format(x.shape))
 
     num_channels = x.shape[channel_dim]
     if num_channels < 0:
         raise ValueError("The channel dimension of the input({}) "
                          "should be defined. Received: {}.".format(
                              x.shape, num_channels))
+    if groups <= 0:
+        raise ValueError(
+            "The groups of conv1d_transpose should be greater than 0. Received groups: {}".
+            format(groups))
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
@@ -964,11 +988,19 @@ def conv2d_transpose(x,
                 data_format))
     channel_last = (data_format == "NHWC")
     channel_dim = -1 if channel_last else 1
+    if len(x.shape) != 4:
+        raise ValueError(
+            "Input x should be 4D tensor, but received x with the shape of {}".
+            format(x.shape))
     num_channels = x.shape[channel_dim]
     if num_channels < 0:
         raise ValueError("The channel dimension of the input({}) "
                          "should be defined. Received: {}.".format(
                              x.shape, num_channels))
+    if groups <= 0:
+        raise ValueError(
+            "The groups of conv2d_transpose should be greater than 0. Received groups: {}".
+            format(groups))
     if num_channels % groups != 0:
         raise ValueError(
             "the channel of input must be divisible by groups,"
@@ -1167,12 +1199,20 @@ def conv3d(x,
 
     channel_last = (data_format == "NDHWC")
     channel_dim = -1 if channel_last else 1
+    if len(x.shape) != 5:
+        raise ValueError(
+            "Input x should be 5D tensor, but received x with the shape of {}".
+            format(x.shape))
     num_channels = x.shape[channel_dim]
     num_filters = weight.shape[0]
     if num_channels < 0:
         raise ValueError(
             "The channel dimension of the input({}) should be defined. "
             "Received: {}.".format(x.shape, num_channels))
+    if groups <= 0:
+        raise ValueError(
+            "The groups of conv3d should be greater than 0. Received groups: {}".
+            format(groups))
     if num_channels % groups != 0:
         raise ValueError(
             "The number of input channels must be divisible by Attr(groups). "
@@ -1358,12 +1398,20 @@ def conv3d_transpose(x,
 
     channel_last = (data_format == "NDHWC")
     channel_dim = -1 if channel_last else 1
+    if len(x.shape) != 5:
+        raise ValueError(
+            "Input x should be 5D tensor, but received x with the shape of {}".
+            format(x.shape))
     num_channels = x.shape[channel_dim]
     num_filters = weight.shape[1]
     if num_channels < 0:
         raise ValueError(
             "The channel dimension of the input({}) should be defined. "
             "Received: {}.".format(x.shape, num_channels))
+    if groups <= 0:
+        raise ValueError(
+            "The groups of conv3d_transpose should be greater than 0. Received groups: {}".
+            format(groups))
     if num_channels % groups != 0:
         raise ValueError(
             "The number of input channels must be divisible by Attr(groups). "

@@ -10,6 +10,10 @@ if(NOT ON_INFER)
     set_tests_properties(test_lac PROPERTIES TIMEOUT 120)
 endif()
 
+if(WIN32 AND NOT WITH_GPU)
+    list(REMOVE_ITEM TEST_OPS test_resnet_amp) # disable on Windows CPU CI for timeout
+endif()
+
 foreach(TEST_OP ${TEST_OPS})
     py_test_modules(${TEST_OP} MODULES ${TEST_OP} ENVS ${GC_ENVS})
 endforeach(TEST_OP)
@@ -32,6 +36,3 @@ if(NOT WIN32)
     set_tests_properties(test_tsm PROPERTIES TIMEOUT 900)
     #set_tests_properties(test_resnet PROPERTIES TIMEOUT 120)
 endif()
-#if(WIN32)
-#    set_tests_properties(test_resnet PROPERTIES TIMEOUT 300)
-#endif()

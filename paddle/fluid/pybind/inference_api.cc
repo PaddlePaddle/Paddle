@@ -28,6 +28,7 @@
 #include <vector>
 #include "paddle/fluid/inference/api/analysis_predictor.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_infer_contrib.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
 #include "paddle/fluid/inference/utils/io_utils.h"
@@ -286,6 +287,12 @@ py::bytes SerializePDTensorToBytes(PaddleTensor &tensor) {  // NOLINT
   paddle::inference::SerializePDTensorToStream(&ss, tensor);
   return static_cast<py::bytes>(ss.str());
 }
+
+void CopyPaddleInferTensor(paddle_infer::Tensor &dst,  // NOLINT
+                           const paddle_infer::Tensor &src) {
+  return paddle_infer::contrib::TensorUtils::CopyTensor(&dst, src);
+}
+
 }  // namespace
 
 void BindInferenceApi(py::module *m) {
@@ -317,6 +324,7 @@ void BindInferenceApi(py::module *m) {
                                            new paddle_infer::Predictor(config));
                                    return std::move(pred);
                                  });
+  m->def("copy_tensor", &CopyPaddleInferTensor);
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
   m->def("paddle_tensor_to_bytes", &SerializePDTensorToBytes);
   m->def("get_version", &paddle_infer::GetVersion);
@@ -547,6 +555,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("min_subgraph_size") = 3,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
            py::arg("use_static") = false, py::arg("use_calib_mode") = true)
+      .def("tensorrt_precision_mode", &AnalysisConfig::tensorrt_precision_mode)
       .def("set_trt_dynamic_shape_info",
            &AnalysisConfig::SetTRTDynamicShapeInfo,
            py::arg("min_input_shape") =
@@ -556,6 +565,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("optim_input_shape") =
                std::map<std::string, std::vector<int>>({}),
            py::arg("disable_trt_plugin_fp16") = false)
+      .def("tensorrt_dynamic_shape_enabled",
+           &AnalysisConfig::tensorrt_dynamic_shape_enabled)
       .def("enable_tensorrt_oss", &AnalysisConfig::EnableTensorRtOSS)
       .def("tensorrt_oss_enabled", &AnalysisConfig::tensorrt_oss_enabled)
       .def("exp_disable_tensorrt_ops", &AnalysisConfig::Exp_DisableTensorRtOPs)

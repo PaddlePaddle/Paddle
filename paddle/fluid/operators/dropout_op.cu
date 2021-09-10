@@ -38,7 +38,7 @@ namespace operators {
 template <typename T, typename MaskType>
 __global__ void RandomGenerator(const size_t n, uint64_t seed,
                                 const float dropout_prob, const T* src,
-                                MaskType* mask_data, T* dst,
+                                MaskType* mask, T* dst,
                                 bool is_upscale_in_train, uint64_t increment) {
   int idx = blockDim.x * blockIdx.x + threadIdx.x;
 #ifdef PADDLE_WITH_HIP
@@ -49,36 +49,36 @@ __global__ void RandomGenerator(const size_t n, uint64_t seed,
   curand_init(seed, idx, increment, &state);
 #endif
 
-  MaskType mask;
-  T dest;
+  MaskType mask_val;
+  T dst_val;
+  T factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
   for (; idx < n; idx += blockDim.x * gridDim.x) {
-    T s = src[idx];
+    T src_val = src[idx];
 #ifdef PADDLE_WITH_HIP
     if (hiprand_uniform(&state) < dropout_prob) {
 #else
     if (curand_uniform(&state) < dropout_prob) {
 #endif
-      mask = 0;
-      dest = 0;
+      mask_val = 0;
+      dst_val = 0;
     } else {
-      mask = 1;
-      if (is_upscale_in_train) {
-        dest = s / static_cast<T>(1.0f - dropout_prob);
-      } else {
-        dest = s;
-      }
+      mask_val = 1;
+      dst_val = is_upscale_in_train ? src_val * factor : src_val;
     }
-    mask_data[idx] = mask;
-    dst[idx] = dest;
+    mask[idx] = mask_val;
+    dst[idx] = dst_val;
   }
 }
 
 template <typename T, typename MaskType, int VecSize>
 __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
                                           const float dropout_prob,
-                                          const T* src, MaskType* mask_data,
-                                          T* dst, bool is_upscale_in_train,
+                                          const T* src, MaskType* mask, T* dst,
+                                          bool is_upscale_in_train,
                                           uint64_t increment) {
+  using LoadT = platform::AlignedVector<T, VecSize>;
+  using MaskLoadT = platform::AlignedVector<MaskType, VecSize>;
+
 #ifdef PADDLE_WITH_HIP
   int64_t idx = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
   hiprandStatePhilox4_32_10_t state;
@@ -89,43 +89,33 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
   curand_init(seed, idx, increment, &state);
 #endif
 
-  MaskType mask;
-  T dest;
-  using LoadT = AlignedVector<T, VecSize>;
-  using MaskLoadT = AlignedVector<MaskType, VecSize>;
   T factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
   for (int i = idx * VecSize; i < n; i += blockDim.x * gridDim.x * VecSize) {
-    T src_vec[VecSize];
-    LoadT* value = reinterpret_cast<LoadT*>(&src_vec);
-    *value = *reinterpret_cast<const LoadT*>(&src[i]);
+    LoadT src_val;
+    platform::Load<T, VecSize>(&src[i], &src_val);
+
 #ifdef PADDLE_WITH_HIP
     float4 rand = hiprand_uniform4(&state);
 #else
     float4 rand = curand_uniform4(&state);
 #endif
 
-    T dest_vec[VecSize];
-    MaskType mask_vec[VecSize];
+    LoadT dst_val;
+    MaskLoadT mask_val;
 
 #pragma unroll
-    for (int ii = 0; ii < VecSize; ii++) {
-      if ((&rand.x)[ii] < dropout_prob) {
-        dest_vec[ii] = 0;
-        mask_vec[ii] = 0;
+    for (int j = 0; j < VecSize; j++) {
+      if ((&rand.x)[j] < dropout_prob) {
+        dst_val[j] = 0;
+        mask_val[j] = 0;
       } else {
-        if (is_upscale_in_train) {
-          dest_vec[ii] = src_vec[ii] * factor;
-        } else {
-          dest_vec[ii] = src_vec[ii];
-        }
-        mask_vec[ii] = 1;
+        dst_val[j] = is_upscale_in_train ? src_val[j] * factor : src_val[j];
+        mask_val[j] = 1;
       }
     }
 
-    *(reinterpret_cast<LoadT*>(&dst[i])) =
-        *reinterpret_cast<LoadT*>(&dest_vec[0]);
-    *(reinterpret_cast<MaskLoadT*>(&mask_data[i])) =
-        *reinterpret_cast<MaskLoadT*>(&mask_vec[0]);
+    platform::Store<T, VecSize>(dst_val, &dst[i]);
+    platform::Store<MaskType, VecSize>(mask_val, &mask[i]);
   }
 }
 
@@ -185,7 +175,7 @@ class GPUDropoutKernel : public framework::OpKernel<T> {
       // same as the previous calls.
       uint64_t seed_data;
       uint64_t increment;
-      int vec_size = VectorizedSize<T>(x_data);
+      int vec_size = platform::GetVectorizedSize<T>(x_data);
       auto offset = ((x_numel - 1) / (config.block_per_grid.x *
                                       config.thread_per_block.x * vec_size) +
                      1) *

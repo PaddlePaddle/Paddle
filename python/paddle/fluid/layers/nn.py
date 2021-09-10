@@ -1816,6 +1816,10 @@ def conv3d(input,
             "Attr(data_format): %s." % str(data_format))
 
     channel_last = (data_format == "NDHWC")
+    if len(input.shape) != 5:
+        raise ValueError(
+            "Input should be 5D tensor, but received input with the shape of {}".
+            format(input.shape))
     num_channels = input.shape[4] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
@@ -1824,6 +1828,10 @@ def conv3d(input,
 
     if groups is None:
         num_filter_channels = num_channels
+    elif groups <= 0:
+        raise ValueError(
+            "the groups of conv3d should be greater than 0. Received groups: {}".
+            format(groups))
     else:
         if num_channels % groups != 0:
             raise ValueError(
@@ -3398,6 +3406,7 @@ def data_norm(input,
     }
     attrs = {
         "epsilon": epsilon,
+        "data_layout": data_layout,
         "sync_stats": sync_stats,
         "summary_decay_rate": summary_decay_rate,
     }
@@ -4094,15 +4103,15 @@ def conv3d_transpose(input,
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     In the above equation:
 
     * :math:`X`: Input value, a Tensor with NCDHW or NDHWC format.
     * :math:`W`: Filter value, a Tensor with MCDHW format.
-    * :math:`\\ast`: Convolution operation.
+    * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D Tensor with shape [M, 1].
-    * :math:`\\sigma`: Activation function.
+    * :math:`\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
@@ -4157,9 +4166,9 @@ def conv3d_transpose(input,
             calculate filter_size. Default: None. filter_size and output_size should not be
             None at the same time.
         padding(int|list|str|tuple, optional): The padding size. The padding argument effectively
-             adds `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a string,
-             either 'VALID' or 'SAME' supported, which is the padding algorithm. If `padding`
-             is a tuple or list, it could be in three forms: `[pad_depth, pad_height, pad_width]` or
+            adds `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a string,
+            either 'VALID' or 'SAME' supported, which is the padding algorithm. If `padding`
+            is a tuple or list, it could be in three forms: `[pad_depth, pad_height, pad_width]` or
             `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
             and when `data_format` is `'NCDHW'`, `padding` can be in the form
             `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
@@ -4243,10 +4252,15 @@ def conv3d_transpose(input,
         raise ValueError(
             "Param(data_format) of Op(fluid.layers.conv3d_transpose) got wrong value: received "
             + data_format + " but only NCDHW or NDHWC supported.")
+
     l_type = "conv3d_transpose"
     helper = LayerHelper(l_type, **locals())
     if not isinstance(input, Variable):
         raise TypeError("Input of conv3d_transpose must be Variable")
+    if len(input.shape) != 5:
+        raise ValueError(
+            "Input should be 5D tensor, but received input with the shape of {}".
+            format(input.shape))
     input_channel = input.shape[1] if data_format == 'NCDHW' else input.shape[
         -1]
 
@@ -4338,6 +4352,15 @@ def conv3d_transpose(input,
         raise ValueError("output_size should be int, list[int] or tuple[int]")
 
     groups = 1 if groups is None else groups
+    if groups <= 0:
+        raise ValueError(
+            "the groups of conv3d_transpose should be greater than 0. Received groups: {}".
+            format(groups))
+    if num_filters % groups != 0:
+        raise ValueError("Attr(num_filters) must be divisible by groups,"
+                         "Received: Attr(num_filters) is {}, the groups is {}".
+                         format(num_filters, groups))
+
     filter_shape = [input_channel, num_filters // groups] + filter_size
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
@@ -8589,7 +8612,7 @@ def scatter_nd_add(ref, index, updates, name=None):
             output = [[67, 19], [-16, -27]]
 
     Args:
-        ref (Variable): The ref input. Its dtype should be float32, float64.
+        ref (Variable): The ref input. Its dtype should be int32, int64, float32, float64.
         index (Variable): The index input with rank > 1 and index.shape[-1] <= ref.rank.
                           Its dtype should be int32 or int64 as it is used as indexes.
         updates (Variable): The updated value of scatter_nd_add op, and it must have the same dtype
@@ -9757,7 +9780,7 @@ def prelu(x, mode, param_attr=None, name=None):
     prelu activation.
 
     .. math::
-        prelu(x) = max(0, x) + \\alpha * min(0, x)
+        prelu(x) = max(0, x) + \alpha * min(0, x)
 
     There are three modes for the activation:
 
@@ -9768,13 +9791,17 @@ def prelu(x, mode, param_attr=None, name=None):
         element: All elements do not share alpha. Each element has its own alpha.
 
     Parameters:
+    
         x (Tensor): The input Tensor or LoDTensor with data type float32.
+
         mode (str): The mode for weight sharing.
-        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable
-            weight (alpha), it can be create by ParamAttr. None by default.
-            For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+
+        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable \
+        weight (alpha), it can be create by ParamAttr. None by default. \
+        For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
+
+        name (str, optional): Name for the operation (optional, default is None). \
+        For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: A tensor with the same shape and data type as x.
@@ -10975,6 +11002,23 @@ def slice(input, axes, starts, ends):
         attrs = ()
         starts_tensor = None
         ends_tensor = None
+
+        if isinstance(axes, (list, tuple)):
+            axes = list(axes)
+            if len(axes) == 0:
+                raise ValueError(
+                    "Input axes should not be an empty list/tuple.")
+            for i in range(len(axes)):
+                if axes[i] < 0:
+                    axes[i] = max(0, axes[i] + len(input.shape))
+                else:
+                    axes[i] = min(len(input.shape) - 1, axes[i])
+
+        else:
+            raise ValueError(
+                "Input axes must be a python list or tuple, but reveived {}".
+                format(type(axes)))
+
         infer_flags = list(1 for i in range(len(axes)))
 
         if isinstance(starts, (list, tuple)):

@@ -55,9 +55,17 @@ class FlattenOp : public framework::OperatorWithKernel {
     int64_t outer = 1, inner = 1;
     for (int i = 0; i < in_dims.size(); ++i) {
       if (i < axis) {
-        outer *= in_dims[i];
+        if (in_dims[i] == -1 || outer == -1) {
+          outer = -1;
+        } else {
+          outer *= in_dims[i];
+        }
       } else {
-        inner *= in_dims[i];
+        if (in_dims[i] == -1 || inner == -1) {
+          inner = -1;
+        } else {
+          inner *= in_dims[i];
+        }
       }
     }
     std::vector<int32_t> out_shape(2);
@@ -180,8 +188,8 @@ class Flatten2Op : public framework::OperatorWithKernel {
       // are the same.
       ctx->ShareLoD("X", "Out");
     }
-
-    OP_INOUT_CHECK(ctx->HasOutput("XShape"), "Output", "XShape", "Flatten2");
+    if (!ctx->HasOutput("XShape")) return;
+    // OP_INOUT_CHECK(ctx->HasOutput("XShape"), "Output", "XShape", "Flatten2");
     std::vector<int64_t> xshape_dims(in_dims.size() + 1);
     xshape_dims[0] = 0;
     for (int i = 0; i < in_dims.size(); ++i) {
@@ -199,7 +207,8 @@ class Flatten2OpMaker : public FlattenOpMaker {
     AddOutput("XShape",
               "XShape is just used to store the shape and lod of X, which will "
               "be used in FlattenGradOp.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
   }
 };
 
@@ -273,8 +282,8 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
       // are the same.
       ctx->ShareLoD("X", "Out");
     }
-
-    OP_INOUT_CHECK(ctx->HasOutput("XShape"), "Output", "XShape", "Flatten2");
+    if (!ctx->HasOutput("XShape")) return;
+    // OP_INOUT_CHECK(ctx->HasOutput("XShape"), "Output", "XShape", "Flatten2");
     std::vector<int64_t> xshape_dims(in_dims.size() + 1);
     xshape_dims[0] = 0;
     for (int i = 0; i < in_dims.size(); ++i) {
@@ -296,7 +305,11 @@ class FlattenContiguousRangeOp : public framework::OperatorWithKernel {
       out_shape.push_back(in_dims[i]);
     }
     for (int i = start_axis; i <= stop_axis; i++) {
-      outer *= in_dims[i];
+      if (in_dims[i] == -1 || outer == -1) {
+        outer = -1;
+      } else {
+        outer *= in_dims[i];
+      }
     }
     out_shape.push_back(outer);
     for (int i = stop_axis + 1; i < in_dims_size; i++) {
@@ -349,7 +362,8 @@ Case 2:
     AddOutput("XShape",
               "XShape is just used to store the shape and lod of X, which will "
               "be used in FlattenGradOp.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
   }
 };
 

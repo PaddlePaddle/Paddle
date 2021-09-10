@@ -45,6 +45,7 @@ BLACK_LIST = {
     'softmax',
     'softmax_with_cross_entropy',
     'sigmoid_cross_entropy_with_logits',
+    'c_softmax_with_cross_entropy',
     'cross_entropy',
     'cross_entropy2',
     # default fp32 can avoid return inf when the sum value large than 65504
