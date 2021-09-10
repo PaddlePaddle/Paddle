@@ -21,23 +21,21 @@ from op_test import OpTest
 
 
 def frame_from_librosa(x, frame_length, hop_length, axis=-1):
-    if axis == -1 and not x.flags["F_CONTIGUOUS"]:
-        x = np.asfortranarray(x)
-    elif axis == 0 and not x.flags["C_CONTIGUOUS"]:
+    if axis == -1 and not x.flags["C_CONTIGUOUS"]:
         x = np.ascontiguousarray(x)
+    elif axis == 0 and not x.flags["F_CONTIGUOUS"]:
+        x = np.asfortranarray(x)
 
     n_frames = 1 + (x.shape[axis] - frame_length) // hop_length
     strides = np.asarray(x.strides)
 
-    new_stride = np.prod(strides[strides > 0] // x.itemsize) * x.itemsize
-
     if axis == -1:
         shape = list(x.shape)[:-1] + [frame_length, n_frames]
-        strides = list(strides) + [hop_length * new_stride]
+        strides = list(strides) + [hop_length * x.itemsize]
 
     elif axis == 0:
         shape = [n_frames, frame_length] + list(x.shape)[1:]
-        strides = [hop_length * new_stride] + list(strides)
+        strides = [hop_length * x.itemsize] + list(strides)
 
     else:
         raise ValueError("Frame axis={} must be either 0 or -1".format(axis))
@@ -114,28 +112,29 @@ class TestCase3(TestFrameOp):
         return input_shape, input_type, attrs
 
 
-# FIXME(chenxiaojie06): There are bugs when input dims >= 3 in librosa.
-# class TestCase3(TestFrameOp):
-#     def initTestCase(self):
-#         input_shape = (4, 2, 150)
-#         input_type = 'int32'
-#         attrs = {
-#             'frame_length': 50,
-#             'hop_length': 15,
-#             'axis': -1,
-#         }
-#         return input_shape, input_type, attrs
+class TestCase4(TestFrameOp):
+    def initTestCase(self):
+        input_shape = (4, 2, 150)
+        input_type = 'float64'
+        attrs = {
+            'frame_length': 50,
+            'hop_length': 15,
+            'axis': -1,
+        }
+        return input_shape, input_type, attrs
 
-# class TestCase4(TestFrameOp):
-#     def initTestCase(self):
-#         input_shape = (150, 4, 2)
-#         input_type = 'int32'
-#         attrs = {
-#             'frame_length': 50,
-#             'hop_length': 15,
-#             'axis': 0,
-#         }
-#         return input_shape, input_type, attrs
+
+class TestCase5(TestFrameOp):
+    def initTestCase(self):
+        input_shape = (150, 4, 2)
+        input_type = 'float64'
+        attrs = {
+            'frame_length': 50,
+            'hop_length': 15,
+            'axis': 0,
+        }
+        return input_shape, input_type, attrs
+
 
 if __name__ == '__main__':
     unittest.main()

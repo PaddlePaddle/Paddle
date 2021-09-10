@@ -29,7 +29,8 @@ REGISTER_OP_CUDA_KERNEL(
                      paddle::platform::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
-    frame_grad,
+    frame_grad, ops::FrameGradKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::FrameGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
     ops::FrameGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FrameGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::FrameGradKernel<paddle::platform::CUDADeviceContext,
