@@ -56,11 +56,7 @@ extern void *cusolver_dso_handle;
   __macro(cusolverDnSsyevd);            \
   __macro(cusolverDnDsyevd);            \
   __macro(cusolverDnCheevd);            \
-  __macro(cusolverDnZheevd);            \
-  __macro(cusolverDnCreateSyevjInfo);   \
-  __macro(cusolverDnSsyevj_bufferSize); \
-  __macro(cusolverDnSsyevj);            \
-  __macro(cusolverDnDestroySyevjInfo);
+  __macro(cusolverDnZheevd);
 
 CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
 
@@ -73,7 +69,11 @@ CUSOLVER_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP);
   __macro(cusolverDnCreateGesvdjInfo);    \
   __macro(cusolverDnDgesvdj_bufferSize);  \
   __macro(cusolverDnSgesvdj);             \
-  __macro(cusolverDnDgesvdj);
+  __macro(cusolverDnDgesvdj);             \
+  __macro(cusolverDnCreateSyevjInfo);     \
+  __macro(cusolverDnSsyevj_bufferSize);   \
+  __macro(cusolverDnSsyevj);              \
+  __macro(cusolverDnDestroySyevjInfo);
 
 CUSOLVER_ROUTINE_EACH_R1(DECLARE_DYNAMIC_LOAD_CUSOLVER_WRAP)
 #endif

@@ -25,41 +25,39 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename ValueType, typename T>
-class EighGPUKernel : public framework::OpKernel<T> {
+struct MatrixEighFunctor {
  public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto &input_var = *ctx.Input<Tensor>("X");
-    auto &output_w_var = *ctx.Output<Tensor>("Eigenvalues");
-    auto &output_v_var = *ctx.Output<Tensor>("Eigenvectors");
-    std::string lower = ctx.Attr<std::string>("UPLO");
+  void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
+                  Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
+                  bool compute_v) {
+    auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
+    auto *out_vector = eigen_vectors->mutable_data<T>(ctx.GetPlace());
 
-    auto *out_value = output_w_var.mutable_data<ValueType>(ctx.GetPlace());
-    auto *out_vector = output_v_var.mutable_data<T>(ctx.GetPlace());
-
-    auto &dims = input_var.dims();
+    auto &dims = input.dims();
     int dim_size = dims.size();
     int64_t batch_size = GetBatchSize(dims);
 
     cublasFillMode_t uplo =
-        (lower == "L") ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER;
-    cusolverEigMode_t jobz = CUSOLVER_EIG_MODE_VECTOR;
+        is_lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER;
+    cusolverEigMode_t jobz =
+        compute_v ? CUSOLVER_EIG_MODE_VECTOR : CUSOLVER_EIG_MODE_NOVECTOR;
 
     int n = dims[dim_size - 1];
     int lda = std::max<int>(1, n);
     auto vector_stride = dims[dim_size - 1] * dims[dim_size - 2];
     auto values_stride = dims[dim_size - 1];
 
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto dito = DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
                                                    T, ValueType>(ctx);
-    Tensor output_v_var_trans = dito.Transpose(input_var);
-    TensorCopy(output_v_var_trans, ctx.GetPlace(), &output_v_var);
+    Tensor output_v_var_trans = dito.Transpose(input);
+    TensorCopy(output_v_var_trans, ctx.GetPlace(), eigen_vectors);
 
     int lwork = 0;
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batch_size);
     auto *info_ptr = reinterpret_cast<int *>(info->ptr());
 
-    bool flag = (output_v_var.type() == framework::proto::VarType::FP32 &&
+    bool flag = (eigen_vectors->type() == framework::proto::VarType::FP32 &&
                  values_stride >= 32 && values_stride <= 512);
 
     syevjInfo_t syevj_params;
@@ -110,7 +108,9 @@ class EighGPUKernel : public framework::OpKernel<T> {
           platform::dynload::cusolverDnDestroySyevjInfo(syevj_params));
     }
 
-    output_v_var = dito.Transpose(output_v_var);
+    if (compute_v) {
+      *eigen_vectors = dito.Transpose(*eigen_vectors);
+    }
   }
 
   void EvdBuffer(cusolverDnHandle_t handle, cusolverEigMode_t jobz,
@@ -122,6 +122,20 @@ class EighGPUKernel : public framework::OpKernel<T> {
            int lwork, int *devInfo) const;
 };
 
+template <typename ValueType, typename T>
+class EighGPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext &ctx) const override {
+    auto input_var = ctx.Input<Tensor>("X");
+    auto output_w_var = ctx.Output<Tensor>("Eigenvalues");
+    auto output_v_var = ctx.Output<Tensor>("Eigenvectors");
+    std::string lower = ctx.Attr<std::string>("UPLO");
+    bool is_lower = (lower == "L");
+    MatrixEighFunctor<ValueType, T> functor;
+    functor(ctx, *input_var, output_w_var, output_v_var, is_lower, true);
+  }
+};
+
 #define FUNC_WITH_TYPES(m)                                       \
   m(float, float, Ssy, float) m(double, double, Dsy, double)     \
       m(float, paddle::platform::complex<float>, Che, cuComplex) \
@@ -129,7 +143,7 @@ class EighGPUKernel : public framework::OpKernel<T> {
 
 #define EVDBUFFER_INSTANCE(ValueType, T, C, CastType)                          \
   template <>                                                                  \
-  void EighGPUKernel<ValueType, T>::EvdBuffer(                                 \
+  void MatrixEighFunctor<ValueType, T>::EvdBuffer(                             \
       cusolverDnHandle_t handle, cusolverEigMode_t jobz,                       \
       cublasFillMode_t uplo, int n, const T *A, int lda, const ValueType *W,   \
       int *lwork) const {                                                      \
@@ -143,7 +157,7 @@ FUNC_WITH_TYPES(EVDBUFFER_INSTANCE);
 
 #define EVD_INSTANCE(ValueType, T, C, CastType)                           \
   template <>                                                             \
-  void EighGPUKernel<ValueType, T>::Evd(                                  \
+  void MatrixEighFunctor<ValueType, T>::Evd(                              \
       cusolverDnHandle_t handle, cusolverEigMode_t jobz,                  \
       cublasFillMode_t uplo, int n, T *A, int lda, ValueType *W, T *work, \
       int lwork, int *devInfo) const {                                    \
