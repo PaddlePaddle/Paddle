@@ -3398,6 +3398,7 @@ def data_norm(input,
     }
     attrs = {
         "epsilon": epsilon,
+        "data_layout": data_layout,
         "sync_stats": sync_stats,
         "summary_decay_rate": summary_decay_rate,
     }
