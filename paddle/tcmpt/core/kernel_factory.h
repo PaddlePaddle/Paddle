@@ -231,6 +231,8 @@ class Kernel {
 
   TensorArgDef& OutputAt(size_t idx) { return args_def_.output_defs().at(idx); }
 
+  bool IsValid() { return fn_ != nullptr; }
+
  private:
   KernelFn fn_{nullptr};
   KernelArgsDef args_def_;
@@ -256,13 +258,16 @@ class KernelFactory {
 
   bool ContainsKernel(const char* name) const;
 
-  const Kernel& SelectKernel(const KernelName& kernel_name,
-                             const KernelKey& kernel_key) const;
+  const Kernel& SelectKernelOrThrowError(const KernelName& kernel_name,
+                                         const KernelKey& kernel_key) const;
 
-  const Kernel& SelectKernel(const KernelName& kernel_name,
-                             Backend backend,
-                             DataLayout layout,
-                             DataType dtype) const;
+  const Kernel& SelectKernelOrThrowError(const KernelName& kernel_name,
+                                         Backend backend,
+                                         DataLayout layout,
+                                         DataType dtype) const;
+
+  Kernel SelectKernel(const KernelName& kernel_name,
+                      const KernelKey& kernel_key) const;
 
  private:
   KernelFactory() = default;

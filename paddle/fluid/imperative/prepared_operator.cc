@@ -130,6 +130,48 @@ static framework::VariableValueMap BuildInputMap(
 }
 
 template <typename VarType>
+bool ContainSelectedRows(const NameVarMap<VarType>& inputs) {
+  for (auto& var_pair : inputs) {
+    for (auto& var : var_pair.second) {
+      if (var->Var().template IsType<framework::SelectedRows>()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// TODO(chenweihang): enhance rules, not all dispensable inputs
+// are host tensor, now only for scale kernel verify
+template <typename VarType>
+bool ContainHostTensor(const framework::proto::OpProto& op_proto,
+                       const NameVarMap<VarType>& inputs) {
+  for (int i = 0; i < op_proto.inputs_size(); ++i) {
+    auto in = op_proto.inputs()[i];
+    auto it = inputs.find(in.name());
+    if (it == inputs.end()) {
+      return false;
+    }
+    return it->second.empty() ? false : true;
+  }
+  return false;
+}
+
+template <typename VarType>
+static pt::KernelName ConstructPtKernelName(
+    const std::string& op_type, const framework::proto::OpProto& op_proto,
+    const NameVarMap<VarType>& inputs) {
+  pt::KernelName kernel_name(op_type.c_str());
+  if (ContainSelectedRows<VarType>(inputs)) {
+    kernel_name.overload_name += pt::kContainSelectedRowsSuffix;
+  }
+  if (ContainHostTensor<VarType>(op_proto, inputs)) {
+    kernel_name.overload_name += pt::kContainHostTensorSuffix;
+  }
+  return kernel_name;
+}
+
+template <typename VarType>
 PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                        const NameVarMap<VarType>& outs,
                        const framework::OperatorWithKernel& op,
@@ -155,69 +197,69 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #endif
 
   // 1. get expected kernel key
-  bool run_pt_kernel =
-      pt::KernelFactory::Instance().ContainsKernel(op.Type().c_str());
-  if (run_pt_kernel) {
-    pt::KernelName op_name(op.Type().c_str());
+  if (pt::KernelFactory::Instance().ContainsKernel(op.Type().c_str())) {
+    auto kernel_name =
+        ConstructPtKernelName<VarType>(op.Type(), (*op.Info().proto_), ins);
     auto inputs = BuildInputMap<VarType>(ins);
     auto pt_kernel_key = op.ConstructPtKernelKey(inputs, place);
     auto pt_kernel =
-        pt::KernelFactory::Instance().SelectKernel(op_name, pt_kernel_key);
-    // TODO(chenweihang): using CPUKernel when miss device kernel case
-    return PreparedOp(op, ctx, pt_kernel_key, pt_kernel, dev_ctx);
-  } else {
-    auto expected_kernel_key = op.GetExpectedKernelType(
-        DygraphExecutionContext<VarType>(op, framework::Scope(), *dev_ctx, ctx,
-                                         ins, outs, attrs, default_attrs));
-    VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
-
-    // 2. check if op[type] has kernel registered.
-    auto& all_op_kernels = op.AllOpKernels();
-    auto kernels_iter = all_op_kernels.find(op.Type());
-    PADDLE_ENFORCE_NE(
-        kernels_iter, all_op_kernels.end(),
-        platform::errors::NotFound(
-            "There are no kernels which are registered in the %s operator.",
-            op.Type()));
-
-    auto& kernels = kernels_iter->second;
-    auto kernel_iter = kernels.find(expected_kernel_key);
-#ifdef PADDLE_WITH_XPU
-    if (is_xpu_place(expected_kernel_key.place_) &&
-        (kernel_iter == kernels.end() ||
-         !paddle::platform::is_xpu_support_op(op.Type(), expected_kernel_key) ||
-         paddle::platform::is_in_xpu_black_list(op.Type()))) {
-      VLOG(3) << "missing XPU kernel: " << op.Type()
-              << ", expected_kernel_key:" << expected_kernel_key
-              << ", fallbacking to CPU one!";
-      expected_kernel_key.place_ = platform::CPUPlace();
-      kernel_iter = kernels.find(expected_kernel_key);
+        pt::KernelFactory::Instance().SelectKernel(kernel_name, pt_kernel_key);
+    if (pt_kernel.IsValid()) {
+      // TODO(chenweihang): using CPUKernel when miss device kernel case
+      return PreparedOp(op, ctx, pt_kernel_key, pt_kernel, dev_ctx);
     }
+  }
+
+  auto expected_kernel_key = op.GetExpectedKernelType(
+      DygraphExecutionContext<VarType>(op, framework::Scope(), *dev_ctx, ctx,
+                                       ins, outs, attrs, default_attrs));
+  VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
+
+  // 2. check if op[type] has kernel registered.
+  auto& all_op_kernels = op.AllOpKernels();
+  auto kernels_iter = all_op_kernels.find(op.Type());
+  PADDLE_ENFORCE_NE(
+      kernels_iter, all_op_kernels.end(),
+      platform::errors::NotFound(
+          "There are no kernels which are registered in the %s operator.",
+          op.Type()));
+
+  auto& kernels = kernels_iter->second;
+  auto kernel_iter = kernels.find(expected_kernel_key);
+#ifdef PADDLE_WITH_XPU
+  if (is_xpu_place(expected_kernel_key.place_) &&
+      (kernel_iter == kernels.end() ||
+       !paddle::platform::is_xpu_support_op(op.Type(), expected_kernel_key) ||
+       paddle::platform::is_in_xpu_black_list(op.Type()))) {
+    VLOG(3) << "missing XPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
 #endif
 #ifdef PADDLE_WITH_ASCEND_CL
-    if (kernel_iter == kernels.end() &&
-        is_npu_place(expected_kernel_key.place_)) {
-      VLOG(3) << "missing NPU kernel: " << op.Type()
-              << ", expected_kernel_key:" << expected_kernel_key
-              << ", fallbacking to CPU one!";
-      expected_kernel_key.place_ = platform::CPUPlace();
-      kernel_iter = kernels.find(expected_kernel_key);
-    }
-#endif
-    // TODO(jiabin): Add operator.cc's line 1000 part back when we need that
-    // case
-    PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
-                      platform::errors::NotFound(
-                          "Operator %s does not have kernel for %s.", op.Type(),
-                          KernelTypeToString(expected_kernel_key)));
-
-    if (!(expected_kernel_key.place_ == place)) {
-      dev_ctx = pool.Get(expected_kernel_key.place_);
-    }
-
-    return PreparedOp(op, ctx, expected_kernel_key, kernel_iter->second,
-                      dev_ctx);
+  if (kernel_iter == kernels.end() &&
+      is_npu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing NPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
   }
+#endif
+  // TODO(jiabin): Add operator.cc's line 1000 part back when we need that
+  // case
+  PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
+                    platform::errors::NotFound(
+                        "Operator %s does not have kernel for %s.", op.Type(),
+                        KernelTypeToString(expected_kernel_key)));
+
+  if (!(expected_kernel_key.place_ == place)) {
+    dev_ctx = pool.Get(expected_kernel_key.place_);
+  }
+
+  return PreparedOp(op, ctx, expected_kernel_key, kernel_iter->second, dev_ctx);
 }
 
 PreparedOp PreparedOp::Prepare(const NameVarMap<VarBase>& ins,

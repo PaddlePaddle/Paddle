@@ -29,8 +29,21 @@ bool KernelFactory::ContainsKernel(const char* kernel_name) const {
   return (iter != kernels_.end());
 }
 
-const Kernel& KernelFactory::SelectKernel(const KernelName& kernel_name,
-                                          const KernelKey& kernel_key) const {
+Kernel KernelFactory::SelectKernel(const KernelName& kernel_name,
+                                   const KernelKey& kernel_key) const {
+  auto iter = kernels_.find(kernel_name);
+  if (iter == kernels_.end()) {
+    return Kernel();
+  }
+  auto kernel_iter = iter->second.find(kernel_key);
+  if (kernel_iter == iter->second.end()) {
+    return Kernel();
+  }
+  return kernel_iter->second;
+}
+
+const Kernel& KernelFactory::SelectKernelOrThrowError(
+    const KernelName& kernel_name, const KernelKey& kernel_key) const {
   auto iter = kernels_.find(kernel_name);
   PADDLE_ENFORCE_NE(iter,
                     kernels_.end(),
@@ -49,11 +62,13 @@ const Kernel& KernelFactory::SelectKernel(const KernelName& kernel_name,
   return kernel_iter->second;
 }
 
-const Kernel& KernelFactory::SelectKernel(const KernelName& kernel_name,
-                                          Backend backend,
-                                          DataLayout layout,
-                                          DataType dtype) const {
-  return SelectKernel(kernel_name, KernelKey(backend, layout, dtype));
+const Kernel& KernelFactory::SelectKernelOrThrowError(
+    const KernelName& kernel_name,
+    Backend backend,
+    DataLayout layout,
+    DataType dtype) const {
+  return SelectKernelOrThrowError(kernel_name,
+                                  KernelKey(backend, layout, dtype));
 }
 
 std::ostream& operator<<(std::ostream& os, const Kernel& kernel) {

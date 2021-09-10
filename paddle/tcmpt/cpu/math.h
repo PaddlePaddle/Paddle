@@ -48,19 +48,19 @@ void ScaleSelectedRows(const CPUContext& dev_ctx,
                        SelectedRowsTensor* out);
 
 template <typename T>
-void ScaleDynamicAttr(const CPUContext& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& scale,
-                      float bias,
-                      bool bias_after_scale,
-                      DenseTensor* out);
+void ScaleHost(const CPUContext& dev_ctx,
+               const DenseTensor& x,
+               const DenseTensor& scale,
+               float bias,
+               bool bias_after_scale,
+               DenseTensor* out);
 
 template <typename T>
-void ScaleSelectedRowsDynamicAttr(const CPUContext& dev_ctx,
-                                  const SelectedRowsTensor& x,
-                                  const DenseTensor& scale,
-                                  float bias,
-                                  bool bias_after_scale,
-                                  SelectedRowsTensor* out);
+void ScaleSelectedRowsHost(const CPUContext& dev_ctx,
+                           const SelectedRowsTensor& x,
+                           const DenseTensor& scale,
+                           float bias,
+                           bool bias_after_scale,
+                           SelectedRowsTensor* out);
 
 }  // namespace pt

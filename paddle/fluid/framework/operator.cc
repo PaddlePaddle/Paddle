@@ -1155,13 +1155,13 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // TODO(chenweihang): in the first phase of project, we only support CPU, CUDA
   // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
   // phase
-  // TODO(chenweihang): ContainsKernel need more acurrate
-  run_pt_kernel_ = pt::KernelFactory::Instance().ContainsKernel(type_.c_str());
-  if (run_pt_kernel_) {
+  if (pt::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
     if (pt_kernel_key_.get() == nullptr || pt_kernel_.get() == nullptr) {
       ChoosePtKernel(*runtime_ctx, *dev_ctx);
     }
-  } else {
+    run_pt_kernel_ = pt_kernel_->IsValid();
+  }
+  if (!run_pt_kernel_) {
     if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
       ChooseKernel(*runtime_ctx, scope, place);
     }
@@ -1261,7 +1261,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 }
 
-bool ContainsSelectedRows(const VariableValueMap& inputs) {
+bool ContainSelectedRows(const VariableValueMap& inputs) {
   for (auto& var_pair : inputs) {
     for (auto* var : var_pair.second) {
       if (var->IsType<SelectedRows>()) {
@@ -1272,15 +1272,40 @@ bool ContainsSelectedRows(const VariableValueMap& inputs) {
   return false;
 }
 
+// TODO(chenweihang): enhance rules, not all dispensable inputs
+// are host tensor, now only for scale kernel verify
+bool ContainHostTensor(const proto::OpProto& op_proto,
+                       const VariableValueMap& inputs) {
+  for (int i = 0; i < op_proto.inputs_size(); ++i) {
+    auto in = op_proto.inputs()[i];
+    auto it = inputs.find(in.name());
+    if (it == inputs.end()) {
+      return false;
+    }
+    return it->second.empty() ? false : true;
+  }
+  return false;
+}
+
+static pt::KernelName ConstructPtKernelName(const std::string& op_type,
+                                            const proto::OpProto& op_proto,
+                                            const VariableValueMap& inputs) {
+  pt::KernelName kernel_name(op_type.c_str());
+  if (ContainSelectedRows(inputs)) {
+    kernel_name.overload_name += pt::kContainSelectedRowsSuffix;
+  }
+  if (ContainHostTensor(op_proto, inputs)) {
+    kernel_name.overload_name += pt::kContainHostTensorSuffix;
+  }
+  return kernel_name;
+}
+
 void OperatorWithKernel::ChoosePtKernel(
     const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
   // 1. construct operation name
   // TODO(chenweihang): add rules for construct op name
-  pt::KernelName kernel_name(Type().c_str());
-  // TODO(chenweihang): polish judge rules
-  if (ContainsSelectedRows(ctx.inputs)) {
-    kernel_name.overload_name = "selected_rows";
-  }
+  auto kernel_name =
+      ConstructPtKernelName(Type(), *(Info().proto_), ctx.inputs);
 
   // 2. construct op kernel key
   pt_kernel_key_.reset(

@@ -69,23 +69,23 @@ void ScaleSelectedRows(const CPUContext& dev_ctx,
 }
 
 template <typename T>
-void ScaleDynamicAttr(const CPUContext& dev_ctx,
-                      const DenseTensor& x,
-                      const DenseTensor& scale,
-                      float bias,
-                      bool bias_after_scale,
-                      DenseTensor* out) {
+void ScaleHost(const CPUContext& dev_ctx,
+               const DenseTensor& x,
+               const DenseTensor& scale,
+               float bias,
+               bool bias_after_scale,
+               DenseTensor* out) {
   module::Scale<CPUContext, T>(
       dev_ctx, x, *scale.data<float>(), bias, bias_after_scale, out);
 }
 
 template <typename T>
-void ScaleSelectedRowsDynamicAttr(const CPUContext& dev_ctx,
-                                  const SelectedRowsTensor& x,
-                                  const DenseTensor& scale,
-                                  float bias,
-                                  bool bias_after_scale,
-                                  SelectedRowsTensor* out) {
+void ScaleSelectedRowsHost(const CPUContext& dev_ctx,
+                           const SelectedRowsTensor& x,
+                           const DenseTensor& scale,
+                           float bias,
+                           bool bias_after_scale,
+                           SelectedRowsTensor* out) {
   out->set_rows(x.rows());
   out->set_height(x.height());
   Scale<T>(dev_ctx,
@@ -113,7 +113,7 @@ PT_REGISTER_KERNEL("scale",
                    int16_t,
                    int,
                    int64_t) {}
-PT_REGISTER_KERNEL("scale.selectedrows",
+PT_REGISTER_KERNEL("scale.sr",
                    CPU,
                    NCHW,
                    pt::ScaleSelectedRows,
@@ -125,10 +125,10 @@ PT_REGISTER_KERNEL("scale.selectedrows",
                    int16_t,
                    int,
                    int64_t) {}
-PT_REGISTER_KERNEL("scale.dynamic_attr",
+PT_REGISTER_KERNEL("scale.host",
                    CPU,
                    NCHW,
-                   pt::ScaleDynamicAttr,
+                   pt::ScaleHost,
                    float,
                    double,
                    bfloat16,
@@ -141,10 +141,10 @@ PT_REGISTER_KERNEL("scale.dynamic_attr",
       .SetBackend(pt::Backend::kCPU)
       .SetDataType(pt::DataType::kFLOAT32);
 }
-PT_REGISTER_KERNEL("scale.selectedrows.dynamic_attr",
+PT_REGISTER_KERNEL("scale.sr.host",
                    CPU,
                    NCHW,
-                   pt::ScaleSelectedRowsDynamicAttr,
+                   pt::ScaleSelectedRowsHost,
                    float,
                    double,
                    bfloat16,
