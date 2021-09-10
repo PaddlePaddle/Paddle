@@ -23,6 +23,20 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.framework as framework
 import paddle.nn.functional as F
+import os
+import re
+
+
+def get_cuda_version():
+    result = os.popen("nvcc --version").read()
+    regex = r'release (\S+),'
+    match = re.search(regex, result)
+    if match:
+        num = str(match.group(1))
+        integer, decimal = num.split('.')
+        return int(integer) * 1000 + int(float(decimal) * 10)
+    else:
+        return -1
 
 
 def softmax(x):
@@ -112,13 +126,14 @@ def init_csr_format(rows, blocksize):
     return offset, columns
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    "core is not compiled with CUDA and cuda version need larger than 11.2")
 class TestSparseAttentionOp(OpTest):
     def config(self):
-        self.q_shape = (1, 1, 8, 8)
-        self.k_shape = (1, 1, 8, 8)
-        self.v_shape = (1, 1, 8, 8)
+        self.q_shape = (1, 1, 16, 16)
+        self.k_shape = (1, 1, 16, 16)
+        self.v_shape = (1, 1, 16, 16)
         self.blocksize = 2
 
     def init_kernel_type(self):
@@ -168,8 +183,9 @@ class TestSparseAttentionOp(OpTest):
         self.check_grad_with_place(self.place, ['V'], 'Out')
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    "core is not compiled with CUDA and cuda version need larger than 11.2")
 class TestSparseAttentionAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
@@ -231,4 +247,6 @@ class TestSparseAttentionAPI(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    print("lxd_debug: cuda_version")
+    print(core.cuda_version())
     unittest.main()

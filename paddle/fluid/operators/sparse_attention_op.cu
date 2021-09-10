@@ -503,6 +503,10 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
       DotDsd<DeviceContext, T>(dev_ctx, offset, columns, result_softmax, value,
                                output, M, N, false, false);
     }
+#else
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The sparse_attention OP needs to use Nvidia GPU, and the CUDA version "
+        "cannot be less than 11.2"));
 #endif
   }
 };
@@ -578,6 +582,10 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
       DotDsd<DeviceContext, T>(dev_ctx, offset, columns, &dResultSdd, query,
                                dKey, M, N, true, false);
     }
+#else
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The sparse_attention OP needs to use Nvidia GPU, and the CUDA version "
+        "cannot be less than 11.2"));
 #endif
   }
 };
