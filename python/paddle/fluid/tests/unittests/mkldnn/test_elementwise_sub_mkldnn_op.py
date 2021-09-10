@@ -1,4 +1,4 @@
-#  Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
+#  Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ from paddle.fluid.tests.unittests.test_elementwise_sub_op import TestElementwise
 from paddle import enable_static
 
 
-# @skip_check_grad_ci(reason="Grad not yet implemented")
 class TestMKLDNNElementwiseSubOp(TestElementwiseSubOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
@@ -28,6 +27,7 @@ class TestMKLDNNElementwiseSubOp(TestElementwiseSubOp):
     def init_dtype(self):
         self.dtype = np.float32
 
+    # TODO(piotrekobiIntel): Enable when grad is ready
     def test_check_grad_normal(self):
         pass
 
@@ -58,13 +58,6 @@ class TestMKLDNNElementwiseSubOp4(TestMKLDNNElementwiseSubOp):
         self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
         self.out = np.subtract(self.x, self.y)
 
-    # TODO(jczaja): Enable when grad is ready
-    def test_check_grad_normal(self):
-        pass
-
-    def test_check_grad_ingore_y(self):
-        pass
-
 
 class TestMKLDNNElementwiseSubOp5(TestMKLDNNElementwiseSubOp):
     def init_input_output(self):
@@ -91,16 +84,6 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestMKLDNNElementwiseSubOp):
 
     def init_axis(self):
         self.axis = 2
-
-    # TODO(jczaja): Enable when grad is ready
-    def test_check_grad_normal(self):
-        pass
-
-    def test_check_grad_ingore_y(self):
-        pass
-
-    def test_check_grad_ingore_x(self):
-        pass
 
 
 @skip_check_grad_ci(
@@ -137,47 +120,6 @@ class TestInt8(TestElementwiseSubOp):
     def test_check_grad_ingore_y(self):
         pass
 
-
-# class TestInt8Scales(TestInt8):
-#     def quantize(self, tensor, dt="int8"):
-#         max_int = 127.0 if dt == "int8" else 255.0
-#         scale = max_int / np.abs(np.amax(tensor))
-#         quantized = np.round(scale * tensor).astype(dt)
-#         return scale, quantized
-
-#     def init_input_output(self):
-#         self.x_f = np.random.random((100, )).astype("float")
-#         self.y_f = np.random.random((100, )).astype("float")
-#         self.out_f = np.subtract(self.x_f, self.y_f)
-
-#         self.scale_x, self.x = self.quantize(self.x_f)
-#         self.scale_y, self.y = self.quantize(self.y_f)
-#         self.scale_o, self.out = self.quantize(self.out_f)
-
-#     def init_scales(self):
-#         self.attrs['Scale_x'] = self.scale_x
-#         self.attrs['Scale_y'] = self.scale_y
-#         self.attrs['Scale_out'] = self.scale_o
-
-#     def test_check_output(self):
-#         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-#         self.init_scales()
-#         int_atol = 1  # different quantization techniques
-#         self.check_output(check_dygraph=(self.use_mkldnn == False),
-#                           atol=int_atol)
-
-# class TestUint8Scales(TestInt8Scales):
-#     def init_input_output(self):
-#         self.x_f = np.random.random((100, )).astype("float")
-#         self.y_f = np.random.random((100, )).astype("float")
-#         self.out_f = np.add(self.x_f, self.y_f)
-
-#         self.scale_x, self.x = self.quantize(self.x_f, "uint8")
-#         self.scale_y, self.y = self.quantize(self.y_f, "uint8")
-#         self.scale_o, self.out = self.quantize(self.out_f, "uint8")
-
-#     def init_dtype(self):
-#         self.dtype = np.uint8
 
 if __name__ == '__main__':
     enable_static()
