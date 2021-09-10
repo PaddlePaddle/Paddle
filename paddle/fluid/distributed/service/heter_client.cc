@@ -86,7 +86,6 @@ void HeterClient::CreateClient2XpuConnection() {
   options.timeout_ms = FLAGS_pserver_timeout_ms;
 
   xpu_channels_.resize(xpu_list_.size());
-
   for (size_t i = 0; i < xpu_list_.size(); ++i) {
     xpu_channels_[i].reset(new brpc::Channel());
     if (xpu_channels_[i]->Init(xpu_list_[i].c_str(), "", &options) != 0) {
@@ -100,9 +99,7 @@ void HeterClient::CreateClient2XpuConnection() {
       }
     }
   }
-
   previous_xpu_channels_.resize(previous_xpu_list_.size());
-
   for (size_t i = 0; i < previous_xpu_list_.size(); ++i) {
     previous_xpu_channels_[i].reset(new brpc::Channel());
     if (previous_xpu_channels_[i]->Init(previous_xpu_list_[i].c_str(), "",
@@ -118,9 +115,7 @@ void HeterClient::CreateClient2XpuConnection() {
       }
     }
   }
-
   barrier_channel_.reset(new brpc::Channel());
-
   if (barrier_channel_->Init(cur_endpoint_.c_str(), "", &options) != 0) {
     VLOG(0) << "HeterClient channel init fail. Try Again";
     auto ip_port = paddle::string::Split(cur_endpoint_, ':');
@@ -147,7 +142,6 @@ void HeterClient::SendAndRecvAsync(
 
   VLOG(3) << "BRPCClient::SendAndRecv Begin, message_name: "
           << message_name_val;
-
   brpc::Channel* channel = nullptr;
   if (mode == "barrier") {
     PADDLE_ENFORCE_EQ(

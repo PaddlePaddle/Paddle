@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include <future>  // NOLINT
 #include <ostream>
-#include <sstream>
 
 #include "paddle/fluid/distributed/service/heter_client.h"
 #include "paddle/fluid/framework/blocking_queue.h"
@@ -32,9 +31,7 @@ class SendAndRecvKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto& scope = ctx.scope();
     const auto& place = ctx.GetPlace();
-
     auto message_name = ctx.Attr<std::string>("message_name");
-
     auto send_var_name = ctx.Attr<std::vector<std::string>>("send_var_name");
     auto recv_var_name = ctx.Attr<std::vector<std::string>>("recv_var_name");
     auto epmap = ctx.Attr<std::vector<std::string>>("endpoints");

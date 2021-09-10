@@ -590,10 +590,8 @@ class TheOnePSRuntime(RuntimeBase):
         if launch_barrier and launch_barrier_flag:
             # for trainer wait server ready
             wait_server_ready(self.role_maker._get_pserver_endpoints())
-
             if self.role_maker._is_heter_parameter_server_mode and self.role_maker._get_heter_worker_endpoints(
             ) != "":
-
                 wait_server_ready(self.role_maker._get_heter_worker_endpoints())
 
             if self.role_maker._is_heter_parameter_server_mode:
@@ -604,7 +602,6 @@ class TheOnePSRuntime(RuntimeBase):
                 if self.role_maker._get_heter_worker_endpoints() != "":
                     heter_workers = self.role_maker._get_heter_worker_endpoints(
                     )
-
                 cur_endpoint = ""
                 if self.role_maker._is_worker():
                     cur_endpoint = self.role_maker._get_trainer_endpoint()
@@ -620,10 +617,6 @@ class TheOnePSRuntime(RuntimeBase):
                            table_id=-1,
                            scope=fluid.global_scope()):
         self._communicator.push_sparse_param(var_name, table_id, scope)
-
-    '''
-      we add device attribute to role_maker 
-    '''
 
     def _get_executor(self):
         executor = fluid.Executor(fluid.CPUPlace())

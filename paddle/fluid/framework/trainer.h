@@ -27,7 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/device_worker.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
-#include "paddle/fluid/framework/fleet/heter_wrapper.h"
+//#include "paddle/fluid/framework/fleet/heter_wrapper.h"
 #include "paddle/fluid/framework/heter_util.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
@@ -327,17 +327,16 @@ class PipelineTrainer : public TrainerBase {
 class HeterPipelineTrainer : public TrainerBase {
  public:
   HeterPipelineTrainer() {}
-  ~HeterPipelineTrainer() override {}
+  virtual ~HeterPipelineTrainer() {}
   void Initialize(const TrainerDesc& trainer_desc, Dataset* data_set) override;
   void InitTrainerEnv(const ProgramDesc& main_program,
                       const platform::Place& place) override;
   void InitOtherEnv(const ProgramDesc& main_program) override;
   void Run() override;
   void Finalize() override;
-  virtual Scope* GetWorkerScope(int thread_id);
+  Scope* GetWorkerScope(int thread_id) override;
   void InitDumpEnv() override;
-  virtual std::string GetDumpPath(int tid);
-  void GetSkipVars(const ProgramDesc& main_program);
+  virtual std::string GetDumpPath(int tid) override;
   void ResetDataset(Dataset* dataset_ptr) override;
 
  protected:

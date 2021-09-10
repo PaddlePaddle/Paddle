@@ -47,8 +47,6 @@ namespace paddle {
 namespace framework {
 class Executor;
 class ProgramDesc;
-class LoDTensor;
-class Variable;
 }  // namespace framework
 namespace platform {
 class DeviceContext;
@@ -58,9 +56,6 @@ class DeviceContext;
 DECLARE_double(eager_delete_tensor_gb);
 namespace paddle {
 namespace distributed {
-
-class HeterRequestHandler;
-// class HeterServer;
 
 static void split(const std::string& str, char sep,
                   std::vector<std::string>* pieces) {
@@ -133,15 +128,6 @@ class HeterService : public ::paddle::distributed::PsService {
                            ::google::protobuf::Closure* done) {
     brpc::ClosureGuard done_guard(done);
     std::string message_name = request->message_name();
-
-    // if (message_name == "barrier_batch_finish") {
-
-    //    auto server = ::paddle::distributed::HeterServer::GetInstance();
-    //    server->WaitBatchFinished();
-    //    response->set_message_name(message_name);
-    //    return;
-    // }
-
     auto itr = handler_map_.find(message_name);
     brpc::Controller* cntl = static_cast<brpc::Controller*>(controller);
     PADDLE_ENFORCE_NE(
@@ -158,8 +144,8 @@ class HeterService : public ::paddle::distributed::PsService {
     handler_map_[message_name] = func;
   }
 
-  void SetEndpoint(std::string& end_point) { endpoint_ = end_point; }
-  void SetFanin(int& fan_in) { fan_in_ = fan_in; }
+  void SetEndpoint(const std::string& end_point) { endpoint_ = end_point; }
+  void SetFanin(const int& fan_in) { fan_in_ = fan_in; }
   bool IsExit() { return is_exit_; }
 
  private:
@@ -197,15 +183,15 @@ class HeterServer {
 
   bool IsExit() { return service_.IsExit(); }
 
-  // HeterServer() {}
+  HeterServer() {}
 
   void RegisterServiceHandler(std::string message_name,
                               HeterServiceHandler func);
 
   void StartHeterService();
 
-  void SetEndPoint(const std::string& endpoint);
-  void SetFanin(const int& fan_in);
+  void SetEndPoint(std::string& endpoint);
+  void SetFanin(int& fan_in);
 
   // HeterWrapper singleton
   static std::shared_ptr<HeterServer> GetInstance() {
@@ -218,10 +204,7 @@ class HeterServer {
   void WaitServerReady();
 
  private:
-  HeterServer() {}
-
   static std::shared_ptr<HeterServer> s_instance_;
-
   mutable std::mutex mutex_;
   std::condition_variable cv_;
   std::condition_variable condition_ready_;
@@ -254,10 +237,8 @@ class HeterRequestHandler {
   void SetMicroNum(int num_microbatch) { num_microbatch_ = num_microbatch; }
   void SetTrainers(int trainers) { trainers_ = trainers; }
   void SetTrainerId(int trainer_id) { trainer_id_ = trainer_id; }
-
   virtual void Start() {}
   virtual void Process() {}
-
   virtual void batch_finished() {}
 
   void SetGradToPreparedCtx(
@@ -309,12 +290,10 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
     }
     if (!has_forward) is_first_stage_ = true;
     if (!has_backward) is_last_stage_ = true;
-
     if (is_first_stage_) {
       real_microbatch_ = num_microbatch_ / trainers_;
       if (trainer_id_ < (num_microbatch_ % trainers_)) real_microbatch_++;
     }
-
     process_thread_.reset(
         new std::thread(std::bind(&RequestSendAndRecvHandler::Process, this)));
   }

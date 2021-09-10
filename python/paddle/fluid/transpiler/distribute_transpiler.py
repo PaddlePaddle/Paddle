@@ -902,7 +902,9 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
                         OP_ROLE_VAR_ATTR_NAME:
                         [param_varname, recv_op_role_var_name]
                     })
+
         self._update_remote_sparse_update_op(program, need_sparse_update_params)
+
         if self.sync_mode:
             # form a WAW dependency
             program.global_block().append_op(
@@ -1919,8 +1921,9 @@ WIKI: https://github.com/PaddlePaddle/Fleet/blob/develop/markdown_doc/transpiler
         # create table param and grad var in pserver program
         # create table optimize block in pserver program
         table_opt_op = [
-            op for op in self.optimize_ops if 'Param' in op.input_names and
-            op.input("Param")[0] == self.table_name
+            op for op in self.optimize_ops
+            if 'Param' in op.input_names and op.input("Param")[0] ==
+            self.table_name
         ][0]
 
         origin_param_var = self.origin_program.global_block().vars[

@@ -1038,7 +1038,6 @@ class ParameterServerLauncher(object):
         self.worker_endpoints_port = [
             x.strip().split(":")[1] for x in self.worker_endpoints.split(",")
         ]
-
         self.node_ips = list(
             set(self.server_endpoints_ips + self.worker_endpoints_ips))
         if self.distribute_mode == DistributeMode.PS_HETER:

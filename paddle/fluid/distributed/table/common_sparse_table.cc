@@ -560,6 +560,7 @@ int32_t CommonSparseTable::push_sparse_param(const uint64_t* keys,
         [this, shard_id, &keys, &offset_bucket, &values]() -> int {
           auto& block = shard_values_[shard_id];
           auto& offsets = offset_bucket[shard_id];
+
           for (int i = 0; i < offsets.size(); ++i) {
             auto offset = offsets[i];
             auto id = keys[offset];
@@ -571,6 +572,7 @@ int32_t CommonSparseTable::push_sparse_param(const uint64_t* keys,
           return 0;
         });
   }
+
   for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
     tasks[shard_id].wait();
   }

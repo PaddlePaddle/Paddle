@@ -24,15 +24,11 @@ __all__ = []
 
 
 class ParameterServerOptimizer(MetaOptimizerBase):
-    def __init__(self, optimizer, start_cpu_core_id=0):
+    def __init__(self, optimizer):
         super(ParameterServerOptimizer, self).__init__(optimizer)
         self.inner_opt = optimizer
         # we do not allow meta optimizer to be inner optimizer currently
         self.meta_optimizers_white_list = []
-
-        assert start_cpu_core_id >= 0, (
-            "start_cpu_core_id must be a non-negative integer.")
-        self._start_cpu_core_id = start_cpu_core_id
 
     def _set_basic_info(self, loss, role_maker, user_defined_optimizer,
                         user_defined_strategy):
@@ -43,9 +39,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             'micro_batch_size']
         self.num_microbatches = user_defined_strategy.pipeline_configs[
             'accumulate_steps']
-        #self.schedule_mode = user_defined_strategy.pipeline_configs[
-        #    'schedule_mode']
-        self.use_sharding = user_defined_strategy.sharding
 
     def _is_graph_out(self):
         return False
@@ -361,13 +354,11 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 int(self.role_maker._role_id()),  ## used in cpu trainer
                 "pipeline_stage": int(self.role_maker._get_stage_id()) - 1,
                 "num_pipeline_stages": int(self.role_maker._get_num_stage()),
-                "inner_parallelism": int(self.role_maker._get_num_stage()),
                 "section_program": main_program,
                 "place": place,
                 "place_id": place_id,
                 "sync_steps": -1,
                 "num_microbatches": self.num_microbatches,
-                "start_cpu_core_id": self._start_cpu_core_id,
             }
 
         elif self.role_maker._is_server():
@@ -382,7 +373,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         dist_strategy.pipeline_configs = {
             "micro_batch_size": 1,
             "accumulate_steps": 1,
-            "schedule_mode": "1F1B",
         }
         dist_strategy.a_sync = False
         a_sync_configs = dist_strategy.a_sync_configs
@@ -394,7 +384,6 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         dist_strategy.pipeline_configs = {
             "micro_batch_size": 1,
             "accumulate_steps": 1,
-            "schedule_mode": "1F1B",
         }
         a_sync_configs = dist_strategy.a_sync_configs
         if a_sync_configs["k_steps"] >= 0:

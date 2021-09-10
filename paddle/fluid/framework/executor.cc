@@ -128,15 +128,12 @@ std::shared_ptr<TrainerBase> Executor::InitForDataset(
   VLOG(3) << "Start to RunFromDataset in executor";
   TrainerDesc trainer_desc;
   bool success = trainer_desc.ParseFromString(trainer_desc_str);
-
   PADDLE_ENFORCE_EQ(success, true,
                     platform::errors::PreconditionNotMet(
                         "Fail to parse TrainerDesc from string:\n%s",
                         trainer_desc_str.c_str()));
-
   VLOG(3) << "Going to create trainer, trainer class is "
           << trainer_desc.class_name();
-
   std::shared_ptr<TrainerBase> trainer;
   trainer = TrainerFactory::CreateTrainer(trainer_desc.class_name());
   // initialize trainer

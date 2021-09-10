@@ -476,7 +476,7 @@ class Executor(object):
     """
     :api_attr: Static Graph
 
-    An Executor in Python, supports single/multiple-GPU ,
+    An Executor in Python, supports single/multiple-GPU running,
     and single/multiple-CPU running.
 
     Args:
@@ -1119,7 +1119,6 @@ class Executor(object):
     def _run_impl(self, program, feed, fetch_list, feed_var_name,
                   fetch_var_name, scope, return_numpy, use_program_cache,
                   return_merged, use_prune):
-
         if self._closed:
             raise RuntimeError("Attempted to use a closed Executor")
 
@@ -1142,7 +1141,6 @@ class Executor(object):
         if isinstance(program, Program) and program._pipeline_opt:
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
-
             else:
                 return self._run_pipeline(
                     program,
@@ -1345,9 +1343,9 @@ class Executor(object):
         arr = scope.find_var(fetch_var_name).get_fetch_list()
         tensors = arr._move_to_list()
         if return_numpy:
-            return as_numpy(tensors), scope
+            return as_numpy(tensors)
         else:
-            return tensors, scope
+            return tensors
 
     def _run_inference(self, exe, feed):
         return exe.run(feed)
@@ -1385,7 +1383,6 @@ class Executor(object):
                          fetch_info=None,
                          print_period=100,
                          use_program_cache=False):
-
         is_heter = 0
         use_ps_gpu = 0
         if not program._fleet_opt is None:
@@ -1465,26 +1462,6 @@ class Executor(object):
                           print_period=100,
                           fetch_handler=None,
                           use_program_cache=False):
-
-        #if not trainer_ins == None:
-        #   dataset._prepare_to_run()
-        #   if dataset.use_ps_gpu is False:
-        #       dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)
-        #   dataset._dynamic_adjust_before_train(trainer.proto_desc.thread_num)
-
-        #   trainer_ins.ResetDataset(dataset.dataset)
-        #   self._default_executor.run_from_dataset(trainer_ins)
-        #   #self._default_executor.release_trainer(trainer)
-        #   dataset._dynamic_adjust_after_train()
-        #   dataset._finish_to_run()
-
-        #if real_fetch_list:
-        #    arr = scope.find_var('fetch').get_fetch_list()
-        #    tensors = arr._move_to_list()
-        #    return as_numpy(tensors)
-
-        #   return trainer_ins, trainer
-
         if (program._pipeline_opt is not None
             ) and program._pipeline_opt["trainer"] != "HeterPipelineTrainer":
             import paddle
@@ -1492,7 +1469,6 @@ class Executor(object):
                 raise RuntimeError("dataset should be None for pipeline mode")
             # The following fake dataset is created to call 
             # the _prepare_trainer api, and it is meaningless.
-
             data_vars = []
             for var in program.global_block().vars.values():
                 if var.is_data:
@@ -1503,7 +1479,6 @@ class Executor(object):
             else:
                 dataset = paddle.fluid.DatasetFactory().create_dataset(
                     'FileInstantDataset')
-
             dataset.set_batch_size(1)
             dataset.set_thread(1)
             dataset.set_filelist(['None'])

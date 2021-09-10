@@ -144,18 +144,14 @@ class CompileTimeInferShapeContext : public InferShapeContext {
                           "The output variable index is out of range, expected "
                           "index less than %d, but received index is %d.",
                           Outputs(out).size(), j));
-
     PADDLE_ENFORCE_NE(Inputs(in)[i], framework::kEmptyVarName,
                       platform::errors::InvalidArgument(
                           "The input variable %s[%d] is empty.", in, i));
-
     PADDLE_ENFORCE_NE(Outputs(out)[j], framework::kEmptyVarName,
                       platform::errors::InvalidArgument(
                           "The output variable %s[%d] is empty.", out, j));
-
     auto *in_var = block_.FindVarRecursive(Inputs(in)[i]);
     auto *out_var = block_.FindVarRecursive(Outputs(out)[j]);
-
     if (in_var->GetType() != proto::VarType::LOD_TENSOR &&
         in_var->GetType() != proto::VarType::LOD_TENSOR_ARRAY) {
       VLOG(3) << "input " << in << " is not LoDTensor or LoDTensorArray.";

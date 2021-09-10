@@ -401,11 +401,9 @@ class HeterCpuWorker : public HogwildWorker {
   int xpu_begin_op_index_;
   int xpu_end_op_index_;
   ProgramDesc program_;
-
   HeterObjectPool<HeterTask> object_pool_;
   HeterList<int, std::shared_ptr<HeterTask>> run_queue_;
   HeterList<int, std::shared_ptr<HeterTask>> wait_queue_;
-
   bool need_dump_param_;
   std::vector<std::string> dump_param_;
   bool need_to_push_dense_;
@@ -545,7 +543,6 @@ class PSGPUWorker : public HogwildWorker {
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
     defined(PADDLE_WITH_ASCEND_CL)
-
 class SectionWorker : public DeviceWorker {
  public:
   SectionWorker() {}

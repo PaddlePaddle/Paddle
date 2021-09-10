@@ -54,7 +54,6 @@ void HeterListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   VLOG(2) << "RunAsyncLoop";
   auto message_to_block_id_str =
       Attr<std::vector<std::string>>("message_to_block_id");
-
   DoubleFindMap<std::string, int32_t> message_to_block_id;
 
   auto append_block_maps = [](DoubleFindMap<std::string, int32_t> *out_map,
@@ -90,9 +89,7 @@ void HeterListenAndServOp::RunAsyncLoop(framework::Executor *executor,
   for (size_t blkid = 1; blkid < num_blocks; ++blkid) {
     block_list.push_back(blkid);
   }
-
   auto optimize_prepared = executor->Prepare(*program, block_list);
-
   // execute global block if needed, block id 1 in the program is global
   // block if it's not bind to a grad var for it's update.
   if (block_list[0] == 1 &&
@@ -156,7 +153,6 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   auto &dev_ctx = *pool.Get(dev_place);
   VLOG(1) << "HeterListenAndServOp::RunImpl On gpu? "
           << platform::is_gpu_place(dev_place);
-
   framework::Scope &recv_scope = scope.KidScope(0);  // minibatch_scope
 
   auto pserver_id = Attr<int>("pserver_id");
@@ -187,7 +183,6 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
 
   request_send_and_recv_handler_.reset(
       new distributed::RequestSendAndRecvHandler());
-
   request_send_and_recv_handler_->SetScope(&recv_scope);
   request_send_and_recv_handler_->SetDevCtx(&dev_ctx);
   request_send_and_recv_handler_->SetProgram(program);
@@ -204,9 +199,7 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   server_thread_.reset(new std::thread(RunServer, rpc_service_));
   VLOG(3) << "wait server thread to become ready...";
   rpc_service_->WaitServerReady();
-
   RunAsyncLoop(&executor, program, &recv_scope);
-
   VLOG(3) << "Wait for Server_thread_ stop";
   (server_thread_.get())->join();
   VLOG(3) << "Server_thread_ stop";
