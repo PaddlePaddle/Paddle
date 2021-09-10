@@ -215,6 +215,29 @@ class ErrorData(object):
 
         return '\n'.join(message_lines)
 
+    def _create_revise_suggestion(self, bottom_error_message):
+        # {(keywords): [suggestions]}
+        suggestion_dict = {
+            ('is not initialized.', 'Hint:', 'IsInitialized'): [
+                "Ensure all sublayers inherit nn.Layer.",
+                "Ensure layer's inputs should be buffer Variables. For more information, please refer to: https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/04_dygraph_to_static/export_model/principle_cn.html#parameters-buffers"
+            ]
+        }
+        revise_suggestions = [
+            ' ' * BLANK_COUNT_BEFORE_FILE_STR + 'Revise suggestion: '
+        ]
+        for keywords in suggestion_dict.keys():
+            contain_keywords = [
+                True for i in keywords if i in ''.join(bottom_error_message)
+            ]
+            if len(contain_keywords) == len(
+                    keywords):  # all keywords should be in bottom_error_message
+                for suggestion in suggestion_dict[keywords]:
+                    suggestion_msg = ' ' * BLANK_COUNT_BEFORE_FILE_STR * 2 + '{}. {}'.format(
+                        str(len(revise_suggestions)), suggestion)
+                    revise_suggestions.append(suggestion_msg)
+        return revise_suggestions if len(revise_suggestions) > 1 else []
+
     def _simplify_error_value(self):
         """
         Simplifies error value to improve readability if error is raised in runtime.
@@ -240,6 +263,7 @@ class ErrorData(object):
         # use empty line to locate the bottom_error_message
         empty_line_idx = error_value_lines_strip.index('')
         bottom_error_message = error_value_lines[empty_line_idx + 1:]
+        revise_suggestion = self._create_revise_suggestion(bottom_error_message)
 
         filepath = ''
         error_from_user_code = []
@@ -269,6 +293,7 @@ class ErrorData(object):
             error_frame.insert(0, traceback_frame.formated_message())
 
         error_frame.extend(bottom_error_message)
+        error_frame.extend(revise_suggestion)
         error_value_str = '\n'.join(error_frame)
         self.error_value = self.error_type(error_value_str)
 

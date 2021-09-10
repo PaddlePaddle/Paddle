@@ -474,11 +474,11 @@ class PartialProgramLayer:
                 if isinstance(var, framework.Parameter):
                     if name not in param_and_buffer_names_set:
                         raise ValueError(
-                            "\n\tWe don't support to define layer with parameters in the function "
-                            "decorated by `@declarative`.\n\tBecause that will re-defined parameters "
-                            "every time when you run the function.\n\t"
-                            "But we found parameter(%s) was created in the decorated function.\n\t"
-                            "Please define the layer with parameters in `__init__` function."
+                            "\n\tWe don't support to define layer with parameters in the function decorated by `@to_static`."
+                            "\n\tBut we found parameter(%s) was created in the decorated function."
+                            "\n\tRevise suggestion: "
+                            "\n\t\t1. Ensure all sublayers inherit nn.Layer"
+                            "\n\t\t2. Should use nn.ParameterList and nn.LayerList as container instead of using a native Python container such as List"
                             % name)
 
     def _valid_vars(self, vars):
