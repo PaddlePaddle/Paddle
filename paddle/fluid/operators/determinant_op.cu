@@ -33,17 +33,15 @@ template <typename T>
 class DeterminantCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<framework::Tensor>("Input");
+    auto* input = context.Input<Tensor>("Input");
     const auto* input_data = input->data<T>();
     auto input_dim = input->dims().Get();
     auto input_dim_size = input->dims().size();
-    auto* output = context.Output<framework::Tensor>("Out");
+    auto* output = context.Output<Tensor>("Out");
     auto* output_data = output->mutable_data<T>(context.GetPlace());
-    auto output_dim = output->dims().Get();
-    auto output_dim_size = output->dims().size();
 
     int batch_count = 1;
-    for (int i = 0; i < input->dims().size() - 2; i++) {
+    for (int i = 0; i < input_dim_size - 2; i++) {
       batch_count *= input_dim[i];
     }
 
@@ -59,13 +57,11 @@ template <typename T>
 class DeterminantGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const auto* dout =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    const auto* dout = context.Input<Tensor>(framework::GradVarName("Out"));
     const T* dout_data = dout->data<T>();
     auto dout_dim = vectorize(dout->dims());
 
-    auto* dx =
-        context.Output<framework::Tensor>(framework::GradVarName("Input"));
+    auto* dx = context.Output<Tensor>(framework::GradVarName("Input"));
     T* dx_data = dx->mutable_data<T>(context.GetPlace());
 
     int64_t numel = dx->numel();
@@ -79,14 +75,12 @@ template <typename T>
 class SlogDeterminantCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<framework::Tensor>("Input");
+    auto* input = context.Input<Tensor>("Input");
     const auto* input_data = input->data<T>();
     auto input_dim = vectorize(input->dims());
     auto input_dim_size = input->dims().size();
-    auto* output = context.Output<framework::Tensor>("Out");
+    auto* output = context.Output<Tensor>("Out");
     auto* output_data = output->mutable_data<T>(context.GetPlace());
-    auto output_dim = output->dims().Get();
-    auto output_dim_size = output->dims().size();
 
     int batch_count = 1;
     for (int i = 0; i < input->dims().size() - 2; i++) {
@@ -108,14 +102,12 @@ template <typename T>
 class SlogDeterminantGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<framework::Tensor>("Input");
+    auto* input = context.Input<Tensor>("Input");
     const auto* input_data = input->data<T>();
     auto input_dim = input->dims().Get();
     auto input_dim_size = input->dims().size();
-    auto* output = context.Output<framework::Tensor>("Out");
+    auto* output = context.Output<Tensor>("Out");
     auto* output_data = output->mutable_data<T>(context.GetPlace());
-    auto output_dim = output->dims().Get();
-    auto output_dim_size = output->dims().size();
 
     int threads = PADDLE_CUDA_NUM_THREADS;
     auto numel = output->numel() / 2;
@@ -131,25 +123,15 @@ class SlogDeterminantGradCUDAKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(determinant, ops::DeterminantCUDAKernel<int>,
-                        ops::DeterminantCUDAKernel<int64_t>,
-                        ops::DeterminantCUDAKernel<float>,
-                        ops::DeterminantCUDAKernel<double>,
-                        ops::DeterminantCUDAKernel<bool>);
+REGISTER_OP_CUDA_KERNEL(determinant, ops::DeterminantCUDAKernel<float>,
+                        ops::DeterminantCUDAKernel<double>);
 
-REGISTER_OP_CUDA_KERNEL(determinant_grad, ops::DeterminantGradCUDAKernel<int>,
-                        ops::DeterminantGradCUDAKernel<int64_t>,
-                        ops::DeterminantGradCUDAKernel<float>,
+REGISTER_OP_CUDA_KERNEL(determinant_grad, ops::DeterminantGradCUDAKernel<float>,
                         ops::DeterminantGradCUDAKernel<double>);
 
-REGISTER_OP_CUDA_KERNEL(slogdeterminant, ops::SlogDeterminantCUDAKernel<int>,
-                        ops::SlogDeterminantCUDAKernel<int64_t>,
-                        ops::SlogDeterminantCUDAKernel<float>,
-                        ops::SlogDeterminantCUDAKernel<double>,
-                        ops::SlogDeterminantCUDAKernel<bool>);
+REGISTER_OP_CUDA_KERNEL(slogdeterminant, ops::SlogDeterminantCUDAKernel<float>,
+                        ops::SlogDeterminantCUDAKernel<double>);
 
 REGISTER_OP_CUDA_KERNEL(slogdeterminant_grad,
-                        ops::SlogDeterminantGradCUDAKernel<int>,
-                        ops::SlogDeterminantGradCUDAKernel<int64_t>,
                         ops::SlogDeterminantGradCUDAKernel<float>,
                         ops::SlogDeterminantGradCUDAKernel<double>);

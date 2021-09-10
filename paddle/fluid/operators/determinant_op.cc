@@ -32,7 +32,7 @@ class DeterminantOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Input", "(Tensor) The input tensor of determinant.");
     AddOutput("Out",
-              "(Tensor) The output Tensor cotaining the determinant"
+              "(Tensor) The output Tensor containing the determinant"
               "value of a square matrix or batches of square matrices ");
 
     AddComment(R"DOC(
@@ -47,6 +47,7 @@ class DeterminantGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input",
                    "DeterminantGradOp");
+    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "DeterminantGradOp");
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Input")), "Output",
                    framework::GradVarName("Input"), "DeterminantGradOp");
 
@@ -72,6 +73,7 @@ class DeterminantGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("determinant_grad");
     grad_op->SetInput("Input", this->Input("Input"));
+    grad_op->SetInput("Out", this->Output("Out"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("Input"),
                        this->InputGrad("Input"));
@@ -113,6 +115,9 @@ class SlogDeterminantGradOp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext *ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input",
                    "SlogDeterminantGradOp");
+    OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out",
+                   "SlogDeterminantGradOp");
+
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Input")), "Output",
                    framework::GradVarName("Input"), "SlogDeterminantGradOp");
 
@@ -138,6 +143,7 @@ class SlogDeterminantGradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> grad_op) const override {
     grad_op->SetType("slogdeterminant_grad");
     grad_op->SetInput("Input", this->Input("Input"));
+    grad_op->SetInput("Out", this->Output("Out"));
     grad_op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     grad_op->SetOutput(framework::GradVarName("Input"),
                        this->InputGrad("Input"));
@@ -158,17 +164,11 @@ REGISTER_OPERATOR(determinant, ops::DeterminantOp, ops::DeterminantOpMaker,
 
 REGISTER_OPERATOR(determinant_grad, ops::DeterminantGradOp)
 
-REGISTER_OP_CPU_KERNEL(determinant, ops::DeterminantKernel<int>,
-                       ops::DeterminantKernel<int64_t>,
-                       ops::DeterminantKernel<float>,
-                       ops::DeterminantKernel<double>,
-                       ops::DeterminantKernel<bool>);
+REGISTER_OP_CPU_KERNEL(determinant, ops::DeterminantKernel<float>,
+                       ops::DeterminantKernel<double>);
 
-REGISTER_OP_CPU_KERNEL(determinant_grad, ops::DeterminantGradKernel<int>,
-                       ops::DeterminantGradKernel<int64_t>,
-                       ops::DeterminantGradKernel<float>,
-                       ops::DeterminantGradKernel<double>,
-                       ops::DeterminantGradKernel<bool>);
+REGISTER_OP_CPU_KERNEL(determinant_grad, ops::DeterminantGradKernel<float>,
+                       ops::DeterminantGradKernel<double>);
 
 REGISTER_OPERATOR(slogdeterminant, ops::SlogDeterminantOp,
                   ops::SlogDeterminantOpMaker,
@@ -178,14 +178,8 @@ REGISTER_OPERATOR(slogdeterminant, ops::SlogDeterminantOp,
 REGISTER_OPERATOR(slogdeterminant_grad,
                   ops::DeterminantGradOp)  // reuse det grad op
 
-REGISTER_OP_CPU_KERNEL(slogdeterminant, ops::SlogDeterminantKernel<int>,
-                       ops::SlogDeterminantKernel<int64_t>,
-                       ops::SlogDeterminantKernel<float>,
-                       ops::SlogDeterminantKernel<double>,
-                       ops::SlogDeterminantKernel<bool>);
+REGISTER_OP_CPU_KERNEL(slogdeterminant, ops::SlogDeterminantKernel<float>,
+                       ops::SlogDeterminantKernel<double>);
 
-REGISTER_OP_CPU_KERNEL(slogdeterminant_grad, ops::DeterminantGradKernel<int>,
-                       ops::DeterminantGradKernel<int64_t>,
-                       ops::DeterminantGradKernel<float>,
-                       ops::DeterminantGradKernel<double>,
-                       ops::DeterminantGradKernel<bool>);
+REGISTER_OP_CPU_KERNEL(slogdeterminant_grad, ops::DeterminantGradKernel<float>,
+                       ops::DeterminantGradKernel<double>);

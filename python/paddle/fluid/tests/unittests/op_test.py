@@ -38,6 +38,7 @@ from paddle.fluid.tests.unittests.testsuite import (
     set_input,
     append_input_output,
     append_loss_ops, )
+from paddle.fluid import unique_name
 from paddle.fluid.tests.unittests.white_list import (
     op_accuracy_white_list,
     check_shape_white_list,

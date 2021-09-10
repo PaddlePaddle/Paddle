@@ -1059,9 +1059,7 @@ def det(x):
         return core.ops.determinant(x)
 
     def __check_input(input):
-        check_dtype(
-            x.dtype, 'Input',
-            ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'], 'det')
+        check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
 
         input_shape = list(x.shape)
         assert len(input_shape) >= 2,                     \
@@ -1118,10 +1116,7 @@ def slogdet(x):
         return core.ops.slogdeterminant(x)
 
     def __check_input(input):
-        check_dtype(
-            x.dtype, 'Input',
-            ['bool', 'int32', 'int64', 'float16', 'float32', 'float64'],
-            'slogdet')
+        check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
 
         input_shape = list(x.shape)
         assert len(input_shape) >= 2,                     \

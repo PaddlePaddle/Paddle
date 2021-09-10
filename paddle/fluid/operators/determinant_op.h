@@ -19,23 +19,43 @@
 #include <cmath>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+inline int64_t GetBatchSize(framework::DDim dims) {
+  int64_t batch_count = 1;
+  auto dim_size = dims.size();
+  PADDLE_ENFORCE_GT(dim_size, 2,
+                    platform::errors::InvalidArgument(
+                        "To get the number of batch square matrices, "
+                        "the size of dimension should greater than 2.",
+                        dim_size));
+
+  // Cumulative multiplying each dimension until the last 2 to get the batch
+  // count,
+  // for example a tensor with shape [3,3,3,3], the batch count of matrices is
+  // 9.
+  for (int i = 0; i < dims.size() - 2; i++) {
+    batch_count *= dims[i];
+  }
+
+  return batch_count;
+}
 template <typename T>
 struct DeterminantFunctor {
   void operator()(const Tensor& input, const framework::ExecutionContext ctx,
-                  int rank, int batch_count, Tensor* output) {
+                  int rank, int64_t batch_count, Tensor* output) {
     std::vector<T> input_vec;
     std::vector<float> output_vec;
     framework::TensorToVector(input, ctx.device_context(), &input_vec);
     for (int i = 0; i < batch_count; ++i) {  // maybe can be parallel
-      auto begin_idx = input_vec.begin() + i * rank * rank;
-      auto end_idx = input_vec.begin() + (i + 1) * rank * rank;
-      std::vector<T> sub_vec(begin_idx,
-                             end_idx);  // get every square matrix data
+      auto begin_iter = input_vec.begin() + i * rank * rank;
+      auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
+      std::vector<T> sub_vec(begin_iter,
+                             end_iter);  // get every square matrix data
       Eigen::MatrixXf matrix(rank, rank);
       for (int i = 0; i < rank; ++i) {
         for (int j = 0; j < rank; ++j) {
@@ -56,10 +76,7 @@ class DeterminantKernel : public framework::OpKernel<T> {
     auto input_dim_size = input_dim.size();
     auto* output = context.Output<framework::Tensor>("Out");
 
-    int batch_count = 1;
-    for (int i = 0; i < input->dims().size() - 2; i++) {
-      batch_count *= input_dim[i];
-    }
+    auto batch_count = GetBatchSize(input->dims());
     VLOG(2) << "input dim:" << input->dims();
     auto rank = input_dim[input_dim_size - 1];  // square matrix length
     DeterminantFunctor<T>()(*input, context, rank, batch_count, output);
@@ -102,10 +119,10 @@ struct SlogDeterminantFunctor {
     std::vector<float> output_vec;
     framework::TensorToVector(input, ctx.device_context(), &input_vec);
     for (int i = 0; i < batch_count; ++i) {  // maybe can be parallel
-      auto begin_idx = input_vec.begin() + i * rank * rank;
-      auto end_idx = input_vec.begin() + (i + 1) * rank * rank;
-      std::vector<T> sub_vec(begin_idx,
-                             end_idx);  // get every square matrix data
+      auto begin_iter = input_vec.begin() + i * rank * rank;
+      auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
+      std::vector<T> sub_vec(begin_iter,
+                             end_iter);  // get every square matrix data
       Eigen::MatrixXf matrix(rank, rank);
       for (int i = 0; i < rank; ++i) {
         for (int j = 0; j < rank; ++j) {
@@ -137,10 +154,7 @@ class SlogDeterminantKernel : public framework::OpKernel<T> {
     auto input_dim_size = input_dim.size();
     auto* output = context.Output<framework::Tensor>("Out");
 
-    int batch_count = 1;
-    for (int i = 0; i < input->dims().size() - 2; i++) {
-      batch_count *= input_dim[i];
-    }
+    auto batch_count = GetBatchSize(input->dims());
     VLOG(2) << "input dim:" << input->dims();
     auto rank = input_dim[input_dim_size - 1];  // square matrix length
     SlogDeterminantFunctor<T>()(*input, context, rank, batch_count, output);

@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -81,8 +81,6 @@ class TestDeterminantAPI(unittest.TestCase):
         out_ref = np.linalg.det(self.x)
 
         for out in res:
-            print("out:>>>>>", out)
-            print("out_ref:>>>>>", out_ref)
             self.assertEqual(np.allclose(out, out_ref, rtol=1e-03), True)
 
     def test_api_dygraph(self):
@@ -120,16 +118,6 @@ class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
         self.target = np.array(np.linalg.slogdet(self.inputs['Input']))
 
 
-class TestSlogDeterminantOpCase2(TestSlogDeterminantOp):
-    def init_data(self):
-        self.case = np.random.randint(0, 2, (4, 2, 4, 4)).astype('int')
-        self.inputs = {'Input': self.case}
-        self.target = np.array(np.linalg.slogdet(self.inputs['Input']))
-
-    def test_check_grad(self):
-        pass
-
-
 class TestSlogDeterminantAPI(unittest.TestCase):
     def setUp(self):
         self.shape = [3, 3, 3, 3]
@@ -142,7 +130,6 @@ class TestSlogDeterminantAPI(unittest.TestCase):
             x = paddle.fluid.data('X', self.shape)
             out = paddle.linalg.slogdet(x)
             exe = paddle.static.Executor(self.place)
-            print("out>>>>>", out)
             res = exe.run(feed={'X': self.x}, fetch_list=[out])
         out_ref = np.array(np.linalg.slogdet(self.x))
         for out in res:
