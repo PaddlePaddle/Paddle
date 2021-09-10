@@ -152,7 +152,7 @@ __global__ void L2NormKernel(const T* __restrict__ p_data,
   MT p_tmp_val = static_cast<MT>(0);
   MT g_tmp_val = static_cast<MT>(0);
 
-  if (repeat_times == 1) {
+  if (repeat_times == 0) {
     if (tid < numel) {
       p_tmp_val = static_cast<MT>(p_data[tid]);
       g_tmp_val = static_cast<MT>(g_data[tid]);
@@ -160,7 +160,10 @@ __global__ void L2NormKernel(const T* __restrict__ p_data,
     s_buffer[0] += math::blockReduceSum<MT>(p_tmp_val * p_tmp_val, FINAL_MASK);
     s_buffer[1] += math::blockReduceSum<MT>(g_tmp_val * g_tmp_val, FINAL_MASK);
   } else {
-    // To avoid occupy too much temp buffer.
+    /* To avoid occupy too much temp buffer. Hence, slice the whole data into 2
+    parts, the front of them whose quantity is excatly multiple of grid-thread
+    number, and this part of data is delt in for loop, the rest of data is delt
+    with another step to avoid visiting data address beyond bound. */
     for (int i = 0; i < repeat_times; ++i) {
       p_tmp_val = static_cast<MT>(p_data[tid]);
       g_tmp_val = static_cast<MT>(g_data[tid]);
