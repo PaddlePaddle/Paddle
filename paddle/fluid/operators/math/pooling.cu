@@ -79,9 +79,10 @@ struct PoolingFunctor {
 };
 
 /*
-Different from MaxPoolGrad, parameters like input_data and
-output_data is unnecessary in AvgPoolGrad, individual template
-specialization of AvgPoolGrad can gain more kernel performance.
+Different from MaxPoolGrad, parameters like input_data and output_data
+is unnecessary in AvgPoolGrad, therefore data reading of these param can
+be vacant, individual template specialization for AvgPoolGrad shall gain
+more kernel performance.
 */
 template <typename T, typename PoolProcess>
 struct PoolingFunctor<T, PoolProcess,
@@ -189,7 +190,7 @@ __global__ void KernelPool2DGrad(
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     T gradient = static_cast<T>(0);
-    int w_offset, h_offset, offsetC;
+    int w_offset, h_offset, c_offset;
     int phstart, phend, pwstart, pwend;
     int output_stride;
 
@@ -200,16 +201,16 @@ __global__ void KernelPool2DGrad(
       auto channel_divmod = divmods.channel.Divmod(input_height_divmod.val[0]);
       w_offset = input_width_divmod.val[1] + padding_width;
       h_offset = input_height_divmod.val[1] + padding_height;
-      offsetC = channel_divmod.val[1];
+      c_offset = channel_divmod.val[1];
       output_stride =
-          (channel_divmod.val[0] * divmods.channel.divisor + offsetC) *
+          (channel_divmod.val[0] * divmods.channel.divisor + c_offset) *
           output_height * output_width;
     } else { /* NHWC */
       auto c_divmod = divmods.channel.Divmod(index);
       auto input_width_divmod = divmods.input_w.Divmod(c_divmod.val[0]);
       auto input_height_divmod =
           divmods.input_h.Divmod(input_width_divmod.val[0]);
-      offsetC = c_divmod.val[1];
+      c_offset = c_divmod.val[1];
       w_offset = input_width_divmod.val[1] + padding_width;
       h_offset = input_height_divmod.val[1] + padding_height;
       output_stride = input_height_divmod.val[0] * output_height *
@@ -237,9 +238,9 @@ __global__ void KernelPool2DGrad(
                                 : ksize_h_divmod.val[0];
           int pool_size = tmp_height * tmp_width;
           int tmp_idx = ph * output_width + pw;
-          int output_sub_idx = channel_last
-                                   ? tmp_idx * divmods.channel.divisor + offsetC
-                                   : tmp_idx;
+          int output_sub_idx =
+              channel_last ? tmp_idx * divmods.channel.divisor + c_offset
+                           : tmp_idx;
           functor(output_grad, &gradient, pool_size, output_sub_idx);
         }
       }
@@ -264,7 +265,7 @@ __global__ void KernelPool2DGrad(
                                       : ksize_height * ksize_width;
             int tmp_idx = ph * output_width + pw;
             int output_sub_idx =
-                channel_last ? tmp_idx * divmods.channel.divisor + offsetC
+                channel_last ? tmp_idx * divmods.channel.divisor + c_offset
                              : tmp_idx;
             functor(output_grad, &gradient, pool_size, output_sub_idx);
           }
@@ -275,7 +276,7 @@ __global__ void KernelPool2DGrad(
             int pool_size = ksize_height * ksize_width;
             int tmp_idx = ph * output_width + pw;
             int output_sub_idx =
-                channel_last ? tmp_idx * divmods.channel.divisor + offsetC
+                channel_last ? tmp_idx * divmods.channel.divisor + c_offset
                              : tmp_idx;
             functor(output_grad, &gradient, pool_size, output_sub_idx);
           }
