@@ -93,8 +93,8 @@ class TrtConvertSplitTest(TrtLayerAutoScanTest):
                     for Out in [["output_var0", "output_var1"],
                                 ["output_var0", "output_var1", "output_var2"]]:
                         for sections in [[], [1, 2], [2, 1], [10, 14],
-                                         [1, 1,
-                                          1], [2, 2, 2], [3, 3, 3], [3, 7, 14]]:
+                                         [1, 1, 1], [2, 2, 2], [3, 3, 3],
+                                         [3, 7, 14]]:
                             for num in [0, 3]:
                                 for axis in [0, 1, 2, 3]:
                                     self.batch = batch
