@@ -1503,6 +1503,55 @@ class Variable(object):
         """
         return self.desc.type()
 
+    @property
+    def T(self):
+        """
+        Permute current Variable with its dimensions reversed.
+
+        If `n` is the dimensions of `x` , `x.T` is equivalent to `x.transpose([n-1, n-2, ..., 0])`.
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle
+                paddle.enable_static()
+
+                x = paddle.ones(shape=[2, 3, 5])
+                x_T = x.T
+
+                exe = paddle.static.Executor()
+                x_T_np = exe.run(paddle.static.default_main_program(), fetch_list=[x_T])[0]
+                print(x_T_np.shape)
+                # (5, 3, 2)
+        """
+        if len(self.shape) == 1:
+            return self
+        perm = []
+        for i in range(len(self.shape)):
+            perm.insert(0, i)
+
+        out = self.block.create_var(
+            name=unique_name.generate_with_ignorable_key(self.name + '.tmp'),
+            dtype=self.dtype,
+            type=self.type,
+            persistable=False,
+            stop_gradient=False)
+        input_shape = self.block.create_var(
+            name=unique_name.generate_with_ignorable_key(self.name + '.tmp'),
+            dtype=self.dtype,
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            persistable=False,
+            stop_gradient=False)
+
+        self.block.append_op(
+            type='transpose2',
+            inputs={'X': [self]},
+            outputs={'Out': [out],
+                     'XShape': [input_shape]},
+            attrs={'axis': perm})
+        return out
+
     def clone(self):
         """
         Returns a new static Variable, which is the clone of the original static
