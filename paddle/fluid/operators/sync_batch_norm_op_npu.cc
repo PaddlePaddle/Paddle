@@ -817,9 +817,12 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
         LOG(WARNING) << "before hccl | var_ref: ";
         PrintTensor<float>(var_ref, ctx);
 
-        auto &dev_ctx = reinterpret_cast<const platform::NPUDeviceContext &>(
-            ctx.device_context());
-        auto *comm = dev_ctx.hccl_comm();
+        // auto &dev_ctx = reinterpret_cast<const platform::NPUDeviceContext &>(
+        //     ctx.device_context());
+        // auto *comm = dev_ctx.hccl_comm();
+        // LOG(WARNING) << "comm: " << comm;
+
+        auto comm = paddle::platform::HCCLCommContext::Instance().Get(1, place);
         LOG(WARNING) << "comm: " << comm;
 
         float device_counts = 1.0;
@@ -830,16 +833,19 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
           LOG(WARNING) << "before hccl | device_counts: " << device_counts;
           PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
               &device_counts, &device_counts, 1,
-              static_cast<HcclDataType>(dtype), HCCL_REDUCE_SUM, comm, stream));
+              static_cast<HcclDataType>(dtype), HCCL_REDUCE_SUM, comm->comm(),
+              stream));
           LOG(WARNING) << "after hccl | device_counts: " << device_counts;
 
           // In-place operation
           PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
               saved_mean->data<float>(), saved_mean->data<float>(), C,
-              static_cast<HcclDataType>(dtype), HCCL_REDUCE_SUM, comm, stream));
+              static_cast<HcclDataType>(dtype), HCCL_REDUCE_SUM, comm->comm(),
+              stream));
           PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
               var_ref.data<float>(), var_ref.data<float>(), C,
-              static_cast<HcclDataType>(dtype), HCCL_REDUCE_SUM, comm, stream));
+              static_cast<HcclDataType>(dtype), HCCL_REDUCE_SUM, comm->comm(),
+              stream));
         }
 
         LOG(WARNING) << "after hccl | saved_mean: ";
