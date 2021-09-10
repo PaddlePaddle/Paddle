@@ -475,15 +475,30 @@ def launch():
         ``python -m paddle.distributed.launch --log_dir=log --gpus=0,1,2,3 train.py --output_dir=work_dir``
         
     Examples 2 (collective, multi node):
+        For multiple node training such as two node:192.168.0.16, 192.168.0.17
+        
+        On 192.168.0.16:
+        ``python -m paddle.distributed.launch --log_dir=log --gpus=0,1,2,3 --ips=192.168.0.16,192.168.0.17 train.py --output_dir=work_dir``
+
+        On 192.168.0.17:
         ``python -m paddle.distributed.launch --log_dir=log --gpus=0,1,2,3 --ips=192.168.0.16,192.168.0.17 train.py --output_dir=work_dir``
         
     Examples 3 (ps, cpu, single node):
-        ``python -m paddle.distributed.launch --log_dir=log --gpus=0,1,2,3 train.py --output_dir=work_dir``
-    
-    Examples 4 (ps, gpu, single node):
+        ``python -m paddle.distributed.launch --log_dir=log --server_num=2 --worker_num=2 train.py --output_dir=work_dir``
+        
+    Examples 4 (ps, cpu, multi node):
+        For multiple node training such as two node:192.168.0.16, 192.168.0.17 with 2 servers and 4 workers
+        
+        On 192.168.0.16:
+        ``python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16,192.168.0.17,192.168.0.16,192.168.0.17" --server_num=2 --worker_num=4 train.py --output_dir=work_dir``
+        
+        On 192.168.0.17:
+        ``python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16,192.168.0.17,192.168.0.16,192.168.0.17" --server_num=2 --worker_num=4 train.py --output_dir=work_dir``
+        
+    Examples 5 (ps, gpu, single node):
         ``python -m paddle.distributed.launch --log_dir=log --gpus=0,1,2,3 train.py --output_dir=work_dir``
         
-    Examples 5 (elastic):
+    Examples 6 (elastic):
         ``python -m paddle.distributed.launch --elastic_server=127.0.0.1:2379 --np=2 --job_id=job1 --log_dir=log --gpus=0,1,2,3 train.py``
         
     """
