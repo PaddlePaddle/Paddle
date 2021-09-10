@@ -2321,17 +2321,17 @@ def any(x, axis=None, keepdim=False, name=None):
             out1 = paddle.any(x)  # [True]
             print(out1)
             
-            # out2 should be [True, False]
-            out2 = paddle.any(x, axis=0)  # [True, False]
+            # out2 should be [True, True]
+            out2 = paddle.any(x, axis=0)  # [True, True]
             print(out2)
             
-            # keep_dim=False, out3 should be [True, False], out.shape should be (2,)
-            out3 = paddle.any(x, axis=-1)  # [True, False]
+            # keep_dim=False, out3 should be [True, True], out.shape should be (2,)
+            out3 = paddle.any(x, axis=-1)  # [True, True]
             print(out3)
             
-            # keep_dim=True, result should be [[True], [False]], out.shape should be (2,1)
+            # keep_dim=True, result should be [[True], [True]], out.shape should be (2,1)
             out4 = paddle.any(x, axis=1, keepdim=True)
-            out4 = paddle.cast(out4, 'int32')  # [[True], [False]]
+            out4 = paddle.cast(out4, 'int32')  # [[True], [True]]
             print(out4)
             
     """
