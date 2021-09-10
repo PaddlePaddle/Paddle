@@ -51,7 +51,7 @@ class FFTC2COpMaker : public framework::OpProtoAndCheckerMaker {
                          "fft_norm_type, the fft normalization type.");
     AddAttr<bool>("forward", "bool, the fft direction.");
     AddComment(R"DOC(
-      // add doc here
+      Compute complex to complex FFT.
     )DOC");
   }
 };
@@ -135,7 +135,7 @@ class FFTR2COpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("forward", "bool, the fft direction.");
     AddAttr<bool>("onesided", "bool, perform onesided fft.");
     AddComment(R"DOC(
-      // add doc here
+      Compute real to complex FFT.
     )DOC");
   }
 };
@@ -236,7 +236,7 @@ class FFTC2ROpMaker : public framework::OpProtoAndCheckerMaker {
         "specified by axis.")
         .SetDefault(0L);
     AddComment(R"DOC(
-      // add doc here
+      Compute complex to complex FFT.
     )DOC");
   }
 };

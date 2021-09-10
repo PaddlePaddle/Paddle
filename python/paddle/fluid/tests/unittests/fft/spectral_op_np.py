@@ -98,4 +98,11 @@ def fft_r2c_backward(dy, x, axes, normalization, forward, onesided):
 
 
 def fft_c2r(x, axes, normalization, forward, last_dim_size):
-    pass
+    a = asarray(x)
+    s, axes = _cook_nd_args(a, axes=axes, invreal=1)
+    if last_dim_size is not None:
+        s[-1] = last_dim_size
+    for ii in range(len(axes) - 1):
+        a = _fftc2c(a, s[ii], axes[ii], normalization, forward)
+    a = _fftc2r(a, s[-1], axes[-1], normalization, forward)
+    return a
