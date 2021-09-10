@@ -82,7 +82,7 @@ def _check_backend(backend):
         return True
 
 
-def init_parallel_env(backend='auto'):
+def init_parallel_env():
     """
     Initialize parallel training environment in dynamic graph mode.
 
@@ -154,6 +154,7 @@ def init_parallel_env(backend='auto'):
         return
     # NOTE(xiongkun): support cpu gloo only, add this environment variable to 
     #                 enable cpu only gloo prarllel training)
+    backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
     is_cpu_only = _check_backend(backend)
     # 1. gpu xpu check, must be gpu or xpu, 
     if not (is_cpu_only or core.is_compiled_with_cuda() or

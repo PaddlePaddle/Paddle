@@ -439,6 +439,15 @@ def _prepare_trainer_env(cluster, trainer):
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
         }
+    else:
+        # NOTE (xiongkun) default fall back into cpu only
+        proc_env = {
+            "PADDLE_TRAINER_ID": "%d" % trainer.rank,
+            "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
+            "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
+            "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
+            "PADDLE_DISTRI_BACKEND": 'gloo',
+        }
     return proc_env
 
 

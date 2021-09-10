@@ -231,8 +231,22 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
                        devices_per_proc)
 
 
+def cpuonly_check(args):
+    if args.ips and len(args.ips.split(',')) > 1:
+        raise RuntimeError(
+            "CPUONLY launch only support single trainer, that is len(ips)=1, but got %s."
+            % args.ips)
+    if args.run_mode:
+        assert args.run_mode == 'cpuonly', "CPUONLY launch only support run mode is CPUONLY"
+    if args.servers:
+        raise RuntimeError("CPUONLY launch can't have --servers as arguments.")
+    return True
+
+
 def launch_collective(args):
     # parse arguments, used for cloud-single-machine and local
+    if args.paddle_cpuonly:
+        cpuonly_check(args)
     (device_mode, devices_per_proc) = launch_utils.get_device_proc_info(args)
     trainers_num = cloud_utils.get_trainers_num()
     logger.debug("parsed from args trainerss_num:{} mode:{} devices:{}".format(
@@ -266,6 +280,8 @@ def launch_collective(args):
     global_envs["PADDLE_WITH_GLOO"] = str(os.getenv("PADDLE_WITH_GLOO", "0"))
     global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
     global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
+    if args.paddle_cpuonly:
+        global_envs["PADDLE_DISTRI_BACKEND"] = "gloo"
 
     procs = start_local_trainers(
         cluster,
@@ -373,10 +389,17 @@ def which_distributed_mode(args):
     else:
         if not fluid.core.is_compiled_with_cuda(
         ) and not fluid.core.is_compiled_with_xpu():
-            logger.warning(
-                "Not found distinct arguments and not compiled with cuda or xpu. Default use ps mode"
-            )
-            return DistributeMode.PS
+            if args.servers:
+                logger.warning(
+                    "Not found distinct arguments and not compiled with cuda or xpu. \
+But found args.servers not empty, default use ps mode")
+                return DistributeMode.PS
+            else:
+                logger.warning(
+                    "Not found distinct arguments and not compiled with cuda or xpu.\
+Not found args.servers, default use collective CPUONLY mode")
+                args.paddle_cpuonly = True
+                return DistributeMode.COLLECTIVE
         else:
             logger.warning(
                 "Not found distinct arguments and compiled with cuda or xpu. Default use collective mode"

@@ -66,8 +66,7 @@ class SimpleNet(fluid.Layer):
 
 class TestDistTraning(unittest.TestCase):
     def test_multiple_gpus(self):
-        backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
-        dist.init_parallel_env(backend)
+        dist.init_parallel_env()
         self.trainer_id = dist.get_rank()
 
         model_a = SimpleNet(self.trainer_id)

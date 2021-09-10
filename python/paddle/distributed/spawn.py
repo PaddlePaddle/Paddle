@@ -24,8 +24,10 @@ import warnings
 from paddle.distributed.utils import _print_arguments
 from paddle.distributed.utils import _prepare_trainer_env
 from paddle.distributed.utils import get_host_name_ip
-from paddle.distributed.cloud_utils import get_cluster_and_pod
+from paddle.distributed.cloud_utils import get_cluster_and_pod, _get_trainers_num
+from paddle.distributed.fleet.launch import get_cluster_from_args
 from paddle.distributed.fleet.cloud_utils import use_paddlecloud
+from paddle.distributed.fleet.launch_utils import DeviceMode
 from paddle.device import get_device
 
 # deprecated module import
@@ -95,6 +97,8 @@ def _get_default_nprocs():
         return core.get_cuda_device_count()
     elif 'xpu' in device:
         return core.get_xpu_device_count()
+    elif 'cpu' in device:
+        return multiprocessing.cpu_count()
     else:
         raise RuntimeError(
             "`paddle.distributed.spawn` does not support parallel training on device `{}` now.".
@@ -202,6 +206,21 @@ def _get_subprocess_env_list(nprocs, options):
                     raise ValueError("The selected xpu card %s cannot found in "
                                      "XPU_VISIBLE_DEVICES (%s)." %
                                      (card_id, ",".join(env_devices_list)))
+    elif get_device() == 'cpu':
+        # TODO check gpu / xpu flag must not exist
+        warnings.warn(
+            "start in CPUONLY mode, because your paddle is cpu version")
+        args.paddle_cpuonly = True
+        args.selected_devices = None
+        args.ips = args.cluster_node_ips
+        assert options.get(
+            'use_paddlecloud',
+            None) is None, "CPUONLY spawn doesn't support use paddle cloud"
+        assert len(
+            args.cluster_node_ips.split(',')
+        ) <= 1, "CPUONLY spawn only support single trainer, that is len(ips)=1, but got %s."
+        assert _get_trainers_num(
+        ) == 1, "CPUONLY spawn doesn't support multi-trainer"
 
     # set other inner args
     args.node_ip = options.get('node_ip', None)
@@ -215,7 +234,12 @@ def _get_subprocess_env_list(nprocs, options):
         args.use_paddlecloud = use_paddlecloud()
 
     # get cluster and pod config
-    cluster, pod = get_cluster_and_pod(args)
+    if args.paddle_cpuonly:
+        devices_per_proc = [x for x in range(0, nprocs)]
+        cluster, pod = get_cluster_from_args(args, DeviceMode.CPU,
+                                             devices_per_proc)
+    else:
+        cluster, pod = get_cluster_and_pod(args)
 
     # prepare subprocess env list
     for trainer in pod.trainers:
@@ -247,7 +271,10 @@ def _set_trainer_env(env_dict):
     elif core.is_compiled_with_xpu():
         set_flags({'FLAGS_selected_xpus': env_dict['FLAGS_selected_xpus']})
     else:
-        raise ValueError("PaddlePaddle should be compiled with XPU or CUDA.")
+        pass
+        #NOTE(xiongkun) cpuonly mode
+        #raise ValueError("PaddlePaddle should be compiled with XPU or CUDA.")
+        #set_flags({'PADDLE_DISTRI_BACKEND': 'gloo'})
     for var_name in env_dict:
         os.environ[var_name] = env_dict[var_name]
 
