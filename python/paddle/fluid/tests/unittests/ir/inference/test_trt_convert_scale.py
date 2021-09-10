@@ -150,10 +150,8 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
                 return True
             return False
 
-        self.add_skip_case(
-            teller1, SkipReasons.TRT_NOT_SUPPORT,
-            "INPUT ScaleTensor and Shape NOT SUPPORT: we need to add support in the future"
-        )
+        self.add_skip_case(teller1, SkipReasons.TRT_NOT_SUPPORT,
+                           "INPUT ScaleTensor and Shape NOT SUPPORT")
 
     def test(self):
         self.add_skip_trt_case()
