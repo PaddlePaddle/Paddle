@@ -610,6 +610,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_dequantize_mkldnn_op',
     'test_elementwise_add_mkldnn_op',
     'test_elementwise_add_bf16_mkldnn_op',
+    'test_elementwise_sub_mkldnn_op',
     'test_elementwise_mul_mkldnn_op',
     'test_elementwise_mul_bf16_mkldnn_op',
     'test_fc_mkldnn_op',
