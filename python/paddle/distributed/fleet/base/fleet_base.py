@@ -1568,5 +1568,9 @@ class Fleet(object):
                 self._found_inf, op=paddle.distributed.ReduceOp.MAX, group=None)
             self._found_inf = paddle.cast(self._found_inf, dtype="bool")
 
-        scaler._unscale = MethodType(unscale_method, scaler)
+        # Only tensor_parallel and pipeline_parallel need to modify scaler
+        if self._hcg.get_parallel_mode() in (ParallelMode.TENSOR_PARALLEL,
+                                             ParallelMode.PIPELINE_PARALLEL):
+            scaler._unscale = MethodType(unscale_method, scaler)
+
         return scaler
