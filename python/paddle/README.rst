@@ -29,7 +29,7 @@ We provide users with four installation methods ,which are pip, conda, docker an
 - **Python version 2.7.15+/3.5.1+/3.6/3.7/3.8 (64 bit)**
 - **pip version 9.0.1+ (64 bit)**
 
-##### On Linux:111
+##### On Linux:111222
 
 - **Linux Version (64 bit)**
   - **CentOS 6 (GPU Version Supports CUDA 9.0/9.1/9.2/10.0/10.1, only supports single card**)**
