@@ -170,6 +170,7 @@ def stft(x,
             'pad_mode should be "reflect" or "constant", but got "{}".'.format(pad_mode)
 
         pad_length = n_fft // 2
+        # FIXME: pad does not supprt complex input.
         x = paddle.nn.functional.pad(x.unsqueeze(-1),
                                      pad=[pad_length, pad_length],
                                      mode=pad_mode,
