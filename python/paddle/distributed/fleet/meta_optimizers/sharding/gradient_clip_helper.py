@@ -71,8 +71,8 @@ class GradientClipHelper(object):
             if idx in deperate_op_idx:
                 block._remove_op(idx, sync=False)
                 continue
-            reversed_inputs = []
             if op.type == "sum":
+                reversed_inputs = []
                 global_norm_sum_op_idx = idx
                 for input_name in op.desc.input_arg_names():
                     if input_name not in deperated_vars:
@@ -81,6 +81,28 @@ class GradientClipHelper(object):
                 op.desc.set_input("X", reversed_inputs)
                 assert (len(op.desc.output_arg_names()) == 1)
                 sum_res = op.desc.output_arg_names()[0]
+
+                # NOTE(wangxi): If we have 2 param, but sharding is 4,
+                # then the sum op in some cards will not have input.
+                # So we use fill_constant_op to set `sum_var` to zero,
+                # which does not affect correctness.
+                if len(reversed_inputs) == 0:
+                    sum_var = block.var(sum_res)
+                    namescope = op.attr("op_namescope")
+
+                    block._remove_op(idx, sync=False)
+                    op = block._insert_op_without_sync(
+                        idx,
+                        type='fill_constant',
+                        inputs={},
+                        outputs={'Out': sum_res},
+                        attrs={
+                            'shape': sum_var.shape,
+                            'dtype': sum_var.dtype,
+                            'value': 0.0,
+                            OP_ROLE_KEY: OpRole.Optimize
+                        })
+                    op._set_attr('op_namescope', namescope)
 
                 # allreduce(mp)->allreduce(sharding)->allreduce(pp)
                 idx_offset = 1
