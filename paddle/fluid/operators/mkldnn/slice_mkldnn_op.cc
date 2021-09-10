@@ -98,11 +98,9 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     out->Resize(framework::make_ddim(slice_dims));
 
     mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
-    auto key = platform::CreateKey(dev_ctx, x_vec_dims, axes, starts, ends,
-                                   x->format(), x_type);
 
     platform::ReorderMKLDNNHandler reorder_handler(
-        x_vec_dims, x->type(), x_type, dev_ctx, onednn_engine, key);
+        x_vec_dims, x->type(), x_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->format(), platform::to_void_cast(x->data<T>()));
@@ -201,11 +199,8 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
     mkldnn::memory::format_tag reorder_format_tag =
         platform::GetMKLDNNFormat(md.reshape(slice_dims));
 
-    auto key = platform::CreateKey(dev_ctx, dout_vec_dims, axes, starts, ends,
-                                   reorder_format_tag, dout_type);
-
     platform::ReorderMKLDNNHandler reorder_handler(
-        slice_dims, dout->type(), dout_type, dev_ctx, onednn_engine, key);
+        slice_dims, dout->type(), dout_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         reorder_format_tag, platform::to_void_cast(dout->data<T>()));
