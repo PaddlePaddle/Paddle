@@ -154,8 +154,7 @@ def stream_guard(stream=None):
     A context manager that specifies the current stream context by the given stream.
 
     Parameters:
-        stream(paddle.device.cuda.Stream): the selected stream. 
-        If stream is None, just yield. Default: None.
+        stream(paddle.device.cuda.Stream): the selected stream. If stream is None, just yield. The default value is None.
 
     Examples:
         .. code-block:: python
