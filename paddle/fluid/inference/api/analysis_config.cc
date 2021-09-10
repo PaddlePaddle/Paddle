@@ -839,7 +839,7 @@ void AnalysisConfig::CollectShapeRangeInfo(
   shape_range_info_path_ = shape_range_info_path;
 }
 
-std::string AnalysisConfig::shape_range_info_path() {
+const std::string &AnalysisConfig::shape_range_info_path() {
   return shape_range_info_path_;
 }
 
