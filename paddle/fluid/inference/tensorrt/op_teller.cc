@@ -606,6 +606,7 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Output("Out").size();
         return false;
       }
+      if (BOOST_GET_CONST(bool, desc.GetAttr("approximate"))) return false;
     }
 
     if (op_type == "layer_norm") {
@@ -733,6 +734,21 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
       if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
       if (!with_dynamic_shape && shape[0] == -1) return false;
+    }
+
+    if (op_type == "clip") {
+      // Paddle-TRT does not support the input tensors: Min and Max
+      auto clip_inputs = desc.Inputs();
+      if (clip_inputs.find("Min") != clip_inputs.end()) {
+        if (desc.Input("Min").size() >= 1) {
+          return false;
+        }
+      }
+      if (clip_inputs.find("Max") != clip_inputs.end()) {
+        if (desc.Input("Max").size() >= 1) {
+          return false;
+        }
+      }
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean") {
