@@ -30,33 +30,32 @@ class CuDNNScaleBiasAddReluOp {
 #else
 
  public:
-  CuDNNScaleBiasAddReluOp()
-      : fwd_op_(CUDNN_FUSED_SCALE_BIAS_ADD_ACTIVATION_GEN_BITMASK) {}
+  CuDNNScaleBiasAddReluOp(bool fused_add, bool has_shortcut)
+      : fused_add_(fused_add),
+        has_shortcut_(has_shortcut),
+        fwd_op_(CUDNN_FUSED_SCALE_BIAS_ADD_ACTIVATION_GEN_BITMASK) {}
 
   ~CuDNNScaleBiasAddReluOp() {}
 
-  void Init(const framework::ExecutionContext &ctx,
+  void Init(const platform::CUDADeviceContext &ctx, const std::string &act_type,
             const std::vector<int> &out_shape,
             const std::vector<int> &bitmask_shape,
             const std::vector<int> &x_shape,
             const std::vector<int> &param_shape,
             std::vector<int> z_shape = {}) {
-    has_shortcut_ = ctx.Attr<bool>("has_shortcut");
-    fused_add_ = ctx.Attr<bool>("fused_add");
     dtype_ = platform::CudnnDataType<T>::type;
     format_ = CUDNN_TENSOR_NHWC;
-    InitDescriptors(ctx, out_shape, bitmask_shape, x_shape, param_shape,
-                    z_shape);
+    InitDescriptors(ctx, act_type, out_shape, bitmask_shape, x_shape,
+                    param_shape, z_shape);
     GetWorkspaceSize(ctx);
   }
 
-  void Forward(const framework::ExecutionContext &ctx, T *x_ptr, T *x_scale_ptr,
+  void Forward(const platform::CUDADeviceContext &ctx, T *x_ptr, T *x_scale_ptr,
                T *x_bias_ptr, T *out_ptr, int32_t *bitmask_ptr,
                T *z_ptr = nullptr, T *z_scale_ptr = nullptr,
                T *z_bias_ptr = nullptr) {
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto handle = dev_ctx.cudnn_handle();
-    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+    auto handle = ctx.cudnn_handle();
+    auto workspace_handle = ctx.cudnn_workspace_handle();
     // Set variant_param
     // input ptr
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, x_ptr);
@@ -89,10 +88,11 @@ class CuDNNScaleBiasAddReluOp {
         fwd_workspace_byte_);
   }
 
-  void Backward(const framework::ExecutionContext &ctx) {}
+  void Backward(const platform::CUDADeviceContext &ctx) {}
 
  private:
-  void InitDescriptors(const framework::ExecutionContext &ctx,
+  void InitDescriptors(const platform::CUDADeviceContext &ctx,
+                       const std::string &act_type,
                        const std::vector<int> &out_shape,
                        const std::vector<int> &bitmask_shape,
                        const std::vector<int> &x_shape,
@@ -153,9 +153,9 @@ class CuDNNScaleBiasAddReluOp {
 
     // set activation desc
     cudnnActivationMode_t mode = CUDNN_ACTIVATION_IDENTITY;
-    if (ctx.Attr<std::string>("act_type") != "") {
+    if (act_type != "") {
       PADDLE_ENFORCE_EQ(
-          ctx.Attr<std::string>("act_type"), "relu",
+          act_type, "relu",
           platform::errors::InvalidArgument(
               "Only relu activation supported in normalized convolution."));
       mode = CUDNN_ACTIVATION_RELU;
@@ -172,15 +172,14 @@ class CuDNNScaleBiasAddReluOp {
                                 CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
   }
 
-  void GetWorkspaceSize(const framework::ExecutionContext &ctx) {
+  void GetWorkspaceSize(const platform::CUDADeviceContext &ctx) {
     // Make op plan and get workspace size
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto handle = dev_ctx.cudnn_handle();
+    auto handle = ctx.cudnn_handle();
     fwd_workspace_byte_ = fwd_op_.GetWorkspaceSizeInBytes(handle);
   }
 
-  bool has_shortcut_ = false;
   bool fused_add_ = false;
+  bool has_shortcut_ = false;
   size_t fwd_workspace_byte_;
 
   cudnnDataType_t dtype_;

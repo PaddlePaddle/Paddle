@@ -37,7 +37,7 @@ class CuDNNBNStatsFinalizeOp {
 
   ~CuDNNBNStatsFinalizeOp() {}
 
-  void Init(const framework::ExecutionContext &ctx,
+  void Init(const platform::CUDADeviceContext &ctx,
             const std::vector<int> &param_shape) {
     InitDescriptors(ctx, param_shape);
 
@@ -72,8 +72,7 @@ class CuDNNBNStatsFinalizeOp {
                                       out_desc_.desc());
 
     // Get workspace
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto handle = dev_ctx.cudnn_handle();
+    auto handle = ctx.cudnn_handle();
     for (auto op : {&train_op_, &inference_op_}) {
       op->SetOpConstParamAttr(CUDNN_PARAM_BN_MODE, CUDNN_BATCHNORM_SPATIAL);
       // Check workspace size, also creates plan.
@@ -88,11 +87,12 @@ class CuDNNBNStatsFinalizeOp {
     }
   }
 
-  void Forward(const framework::ExecutionContext &ctx, float *sum_ptr,
+  void Forward(const platform::CUDADeviceContext &ctx, float *sum_ptr,
                float *sum_of_squares_ptr, const float *scale_ptr,
                const float *bias_ptr, float *saved_mean_ptr,
                float *saved_invstd_ptr, float *running_mean_ptr,
-               float *running_var_ptr, T *equiv_scale_ptr, T *equiv_bias_ptr) {
+               float *running_var_ptr, T *equiv_scale_ptr, T *equiv_bias_ptr,
+               double eps, float momentum, int64_t ele_count) {
     auto &op = true ? train_op_ : inference_op_;
 
     // Set variant_param for both inference_op_ and train_op_
@@ -104,7 +104,6 @@ class CuDNNBNStatsFinalizeOp {
     op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_RUNNING_VAR, running_var_ptr);
     op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQSCALE, equiv_scale_ptr);
     op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQBIAS, equiv_bias_ptr);
-    double eps = static_cast<double>(ctx.Attr<float>("epsilon"));
     op.SetOpVariantParamAttrPtr<double>(CUDNN_SCALAR_DOUBLE_BN_EPSILON, &eps);
 
     // Set extra variant_param only for train_op_:
@@ -113,25 +112,22 @@ class CuDNNBNStatsFinalizeOp {
       op.SetOpVariantParamAttrPtr(CUDNN_PTR_YSQSUM, sum_of_squares_ptr);
       op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SAVED_MEAN, saved_mean_ptr);
       op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SAVED_INVSTD, saved_invstd_ptr);
-      double momentum = static_cast<double>(ctx.Attr<float>("momentum"));
       double avg_factor = 1.0 - momentum;
-      int64_t ele_count = static_cast<int64_t>(ctx.Attr<int>("ele_count"));
       op.SetOpVariantParamAttrPtr(CUDNN_SCALAR_INT64_T_BN_ACCUMULATION_COUNT,
                                   &ele_count);
       op.SetOpVariantParamAttrPtr(CUDNN_SCALAR_DOUBLE_BN_EXP_AVG_FACTOR,
                                   &avg_factor);
     }
     // fused op execute
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto handle = dev_ctx.cudnn_handle();
+    auto handle = ctx.cudnn_handle();
     op.Execute(handle);
   }
 
   // TBD
-  void Backward(const framework::ExecutionContext &ctx) {}
+  void Backward(const platform::CUDADeviceContext &ctx) {}
 
  private:
-  void InitDescriptors(const framework::ExecutionContext &ctx,
+  void InitDescriptors(const platform::CUDADeviceContext &ctx,
                        const std::vector<int> &param_shape) {
     cudnnTensorFormat_t format = CUDNN_TENSOR_NHWC;
     in_desc_.set(param_shape, format, dtype_param_);

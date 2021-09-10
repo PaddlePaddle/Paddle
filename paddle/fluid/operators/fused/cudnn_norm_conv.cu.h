@@ -32,24 +32,25 @@ class CuDNNNormConvolutionOp {
       : fwd_op_(CUDNN_FUSED_SCALE_BIAS_ACTIVATION_CONV_BNSTATS) {}
   ~CuDNNNormConvolutionOp() {}
 
-  void Init(const framework::ExecutionContext &ctx,
+  void Init(const platform::CUDADeviceContext &ctx,
             const std::vector<int> &input_shape,
             const std::vector<int> &filter_shape,
-            const std::vector<int> &output_shape) {
+            const std::vector<int> &output_shape, const int &pad,
+            const int &stride, const int &dilate, const int &group) {
     cudnn_fwd_compute_type_ = platform::CudnnDataType<float>::type;
     dtype_ = platform::CudnnDataType<T>::type;
     format_ = CUDNN_TENSOR_NHWC;
 
-    InitDescriptors(ctx, input_shape, filter_shape, output_shape);
+    InitDescriptors(ctx, input_shape, filter_shape, output_shape, pad, stride,
+                    dilate, group);
     GetWorkspaceSize(ctx);
   }
 
-  void Forward(const framework::ExecutionContext &ctx, const T *input_ptr,
+  void Forward(const platform::CUDADeviceContext &ctx, const T *input_ptr,
                const T *filter_ptr, T *output_ptr, float *sum_ptr,
                float *sum_of_squares_ptr) {
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto handle = dev_ctx.cudnn_handle();
-    auto workspace_handle = dev_ctx.cudnn_workspace_handle();
+    auto handle = ctx.cudnn_handle();
+    auto workspace_handle = ctx.cudnn_workspace_handle();
     // Set variant_param
     // input ptr
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA,
@@ -73,13 +74,14 @@ class CuDNNNormConvolutionOp {
   }
 
   // TBD
-  void Backward(const framework::ExecutionContext &ctx) {}
+  void Backward(const platform::CUDADeviceContext &ctx) {}
 
  private:
-  void InitDescriptors(const framework::ExecutionContext &ctx,
+  void InitDescriptors(const platform::CUDADeviceContext &ctx,
                        const std::vector<int> &input_shape,
                        const std::vector<int> &filter_shape,
-                       const std::vector<int> &output_shape) {
+                       const std::vector<int> &output_shape, const int &pad,
+                       const int &stride, const int &dilate, const int &group) {
     // Set constant_param
     fwd_op_.SetOpConstParamAttr(
         {CUDNN_PARAM_XDATA_PLACEHOLDER, CUDNN_PARAM_WDATA_PLACEHOLDER,
@@ -89,13 +91,9 @@ class CuDNNNormConvolutionOp {
         {CUDNN_PARAM_YSUM_PLACEHOLDER, CUDNN_PARAM_YSQSUM_PLACEHOLDER},
         CUDNN_PTR_16B_ALIGNED);
 
-    auto pad = ctx.Attr<int>("pad");
-    auto stride = ctx.Attr<int>("stride");
-    auto dilate = ctx.Attr<int>("dilate");
     std::vector<int> p_vec = {pad, pad};
     std::vector<int> s_vec = {stride, stride};
     std::vector<int> d_vec = {dilate, dilate};
-    auto group = ctx.Attr<int>("group");
     int output_channel = filter_shape[0];
     std::vector<int> stats_shape = {1, 1, 1, output_channel};
 
@@ -123,9 +121,8 @@ class CuDNNNormConvolutionOp {
     fwd_op_.SetOpConstParamAttr(CUDNN_PARAM_BN_MODE, CUDNN_BATCHNORM_SPATIAL);
   }
 
-  void GetWorkspaceSize(const framework::ExecutionContext &ctx) {
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto handle = dev_ctx.cudnn_handle();
+  void GetWorkspaceSize(const platform::CUDADeviceContext &ctx) {
+    auto handle = ctx.cudnn_handle();
     fwd_workspace_byte_ = fwd_op_.GetWorkspaceSizeInBytes(handle);
   }
 
