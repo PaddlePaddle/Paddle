@@ -747,6 +747,56 @@ class TestIhfftnException(unittest.TestCase):
         with self.assertRaises(self.expect_exception):
             paddle.fft.ihfftn(self.x, self.n, self.axis, self.norm)
 
+@parameterize((TEST_CASE_NAME, 'n', 'd', 'dtype'), [
+    ('test_without_d', 20, 1, 'float32'),
+    ('test_with_d', 20, 0.5, 'float32'),
+])
+class TestFftFreq(unittest.TestCase):
+    def test_fftfreq(self):
+        np.testing.assert_allclose(
+            np.fft.fftfreq(self.n, self.d).astype(self.dtype),
+            paddle.fft.fftfreq(self.n, self.d, self.dtype).numpy(),
+            rtol=rtol.get(str(self.dtype)),
+            atol=atol.get(str(self.dtype)))
+
+
+@parameterize((TEST_CASE_NAME, 'n', 'd', 'dtype'), [
+    ('test_without_d', 20, 1, 'float32'),
+    ('test_with_d', 20, 0.5, 'float32'),
+])
+class TestRfftFreq(unittest.TestCase):
+    def test_rfftfreq(self):
+        np.testing.assert_allclose(
+            np.fft.rfftfreq(self.n, self.d).astype(self.dtype),
+            paddle.fft.rfftfreq(self.n, self.d, self.dtype).numpy(),
+            rtol=rtol.get(str(self.dtype)),
+            atol=atol.get(str(self.dtype)))
+
+
+@parameterize((TEST_CASE_NAME, 'x', 'axes', 'dtype'), [
+    ('test_1d', np.random.randn(10), (0,), 'float64'),
+    ('test_2d', np.random.randn(10, 10), (0, 1), 'float64'),
+])
+class TestFftShift(unittest.TestCase):
+    def test_fftshift(self):
+        np.testing.assert_allclose(
+            np.fft.fftshift(self.x, self.axes),
+            paddle.fft.fftshift(paddle.to_tensor(self.x), self.axes).numpy(),
+            rtol=rtol.get(str(self.x.dtype)),
+            atol=atol.get(str(self.x.dtype)))
+
+
+@parameterize((TEST_CASE_NAME, 'x', 'axes'), [
+    ('test_1d', np.random.randn(10), (0,), 'float64'),
+    ('test_2d', np.random.randn(10, 10), (0, 1), 'float64'),
+])
+class TestIfftShift(unittest.TestCase):
+    def test_ifftshift(self):
+        np.testing.assert_allclose(
+            np.fft.ifftshift(self.x, self.axes),
+            paddle.fft.ifftshift(paddle.to_tensor(self.x), self.axes).numpy(),
+            rtol=rtol.get(str(self.x.dtype)),
+            atol=atol.get(str(self.x.dtype)))
 
 if __name__ == '__main__':
     unittest.main()
