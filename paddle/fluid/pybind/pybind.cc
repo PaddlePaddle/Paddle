@@ -2209,20 +2209,33 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
-  m.def("get_device_properties",
-        [](int64_t device_id) -> cudaDeviceProp * {
-          int64_t gpu_num = 0;
-          gpu_num = platform::GetCUDADeviceCount();
-          std::vector<cudaDeviceProp> cuda_device_props;
-          cuda_device_props.resize(gpu_num);
-          for (int i = 0; i < gpu_num; ++i) {
-            PADDLE_ENFORCE_CUDA_SUCCESS(
-                cudaGetDeviceProperties(&cuda_device_props[i], i));
-          }
-          return &cuda_device_props[device_id];
-        },
-        py::return_value_policy::reference);
-  py::class_<cudaDeviceProp>(m, "_CudaDeviceProperties")
+  m.def(
+      "get_device_properties",
+      [](int64_t device_id) -> cudaDeviceProp * {
+        int64_t gpu_num = 0;
+        gpu_num = platform::GetCUDADeviceCount();
+        PADDLE_ENFORCE_EQ(
+            device_id >= 0 && device_id < gpu_num, true,
+            platform::errors::Unavailable(
+                "The gpu id %d exceeds the number of gpus %d on this machine, "
+                "Because the gpu id should be smaller than the number of gpus. "
+                "Please input appropriate gpu id again!",
+                device_id, gpu_num));
+
+        std::vector<cudaDeviceProp> cuda_device_props;
+        cuda_device_props.resize(gpu_num);
+        for (int i = 0; i < gpu_num; ++i) {
+          PADDLE_ENFORCE_CUDA_SUCCESS(
+              cudaGetDeviceProperties(&cuda_device_props[i], i));
+        }
+        return &cuda_device_props[device_id];
+      },
+      py::return_value_policy::reference);
+
+  // TO DO fill DOC
+  py::class_<cudaDeviceProp>(m, "_CudaDeviceProperties", R"DOC(
+        _CudaDeviceProperties .
+        )DOC")
       .def_readonly("name", &cudaDeviceProp::name)
       .def_readonly("major", &cudaDeviceProp::major)
       .def_readonly("minor", &cudaDeviceProp::minor)
@@ -2231,13 +2244,14 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readonly("multi_processor_count",
                     &cudaDeviceProp::multiProcessorCount)
       .def_readonly("total_memory", &cudaDeviceProp::totalGlobalMem)
-      .def("__repr__", [](const cudaDeviceProp &prop) {
+      .def("__repr__", [](const cudaDeviceProp &cuda_device_prop) {
         std::ostringstream stream;
-        stream << "_CudaDeviceProperties(name='" << prop.name
-               << "', major=" << prop.major << ", minor=" << prop.minor
-               << ", total_memory=" << prop.totalGlobalMem / (1024 * 1024)
-               << "MB, multi_processor_count=" << prop.multiProcessorCount
-               << ")";
+        stream << "_CudaDeviceProperties(name='" << cuda_device_prop.name
+               << "', major=" << cuda_device_prop.major
+               << ", minor=" << cuda_device_prop.minor << ", total_memory="
+               << cuda_device_prop.totalGlobalMem / (1024 * 1024)
+               << "MB, multi_processor_count="
+               << cuda_device_prop.multiProcessorCount << ")";
         return stream.str();
       });
 

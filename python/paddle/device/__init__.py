@@ -242,10 +242,12 @@ def get_device_properties(device):
     '''
     Return the properties of given CUDA device.
 
-    Parameters:
-        device(paddle.CUDAPlace()|int, optional): The device or the ID of the device which want to get stream from. 
-        If device is None, the device is the current device. Default: None.
-    
+    Args:
+        device(paddle.CUDAPlace() or int): The device or the ID of the device which want to the properties of the device from. 
+
+    Returns:
+        _CudaDeviceProperties: the properties of the device.
+
     Examples:
     
         .. code-block:: python
@@ -253,12 +255,11 @@ def get_device_properties(device):
             # required: gpu
             import paddle
 
-            paddle.get_device_properties()
             paddle.get_device_properties(0)
             paddle.get_device_properties(paddle.CUDAPlace(0))
+
     '''
     device_id = -1
-
     if device is not None:
         if isinstance(device, int):
             device_id = device
