@@ -247,6 +247,4 @@ class TestSparseAttentionAPI(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    print("lxd_debug: cuda_version")
-    print(core.cuda_version())
     unittest.main()
