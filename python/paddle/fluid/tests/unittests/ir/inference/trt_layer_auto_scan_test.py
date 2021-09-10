@@ -73,7 +73,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
         self.dynamic_shape = self.DynamicShapeParam({}, {}, {}, False)
         self.num_percent_cases = float(
             os.getenv(
-                'TEST_NUM_PERCENT_CASES', default='0.3'))
+                'TEST_NUM_PERCENT_CASES', default='1.0'))
 
     def create_inference_config(self, use_trt=True) -> paddle_infer.Config:
         config = paddle_infer.Config()
@@ -102,7 +102,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
         return config
 
     def assert_tensors_near(self,
-                            threshold: float,
+                            atol: float,
+                            rtol: float,
                             tensor: Dict[str, np.array],
                             baseline: Dict[str, np.array]):
         for key, arr in tensor.items():
@@ -111,7 +112,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
                 "The output shape of GPU and TensorRT are not equal.")
             self.assertTrue(
                 np.allclose(
-                    baseline[key], arr, atol=threshold),
+                    baseline[key], arr, atol=atol, rtol=rtol),
                 "Output has diff between GPU and TensorRT. ")
 
     def assert_op_size(self, trt_engine_num, paddle_op_num):
@@ -214,6 +215,17 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
             for pred_config, nodes_num, threshold in self.sample_predictor_configs(
                     prog_config):
+
+                if isinstance(threshold, float):
+                    atol = threshold
+                    rtol = 1e-8
+                elif isinstance(threshold, list) or isinstance(threshold,
+                                                               tuple):
+                    atol = threshold[0]
+                    rtol = threshold[1]
+                else:
+                    raise NotImplementedError
+
                 if quant and pred_config.tensorrt_precision_mode(
                 ) != paddle_infer.PrecisionType.Int8:
                     continue
@@ -242,7 +254,8 @@ class TrtLayerAutoScanTest(AutoScanTest):
                     results.append(
                         self.run_test_config(model, params, prog_config,
                                              pred_config, feed_data))
-                    self.assert_tensors_near(threshold, results[-1], results[0])
+                    self.assert_tensors_near(atol, rtol, results[-1],
+                                             results[0])
                     if not skip_flag:
                         self.assert_op_size(nodes_num[0], nodes_num[1])
                     # deserialize test
