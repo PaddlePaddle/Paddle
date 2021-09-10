@@ -29,23 +29,6 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
   // init scope
   BuildVariableOuterScope(startup_prog, &global_scope_, scope);
 
-  if (outer_scope_ != nullptr) {
-    auto name_list = outer_scope_->LocalVarNames();
-    for (auto name : name_list) {
-      auto v = outer_scope_->Var(name);
-      if (global_scope_.name2id.find(name) == global_scope_.name2id.end()) {
-        global_scope_.name2id[name] = global_scope_.var_list.size();
-      }
-
-      global_scope_.var_list.push_back(v);
-
-      VariableMetaInfo info;
-      info.var_ref_count_ = 0;
-      info.vardesc_ = nullptr;
-      global_scope_.vec_meta_info_.push_back(info);
-    }
-  }
-
   // run startup program
   std::vector<paddle::framework::OpFuncNode> vec_func_list;
   std::vector<paddle::framework::OperatorBase*> op_list;

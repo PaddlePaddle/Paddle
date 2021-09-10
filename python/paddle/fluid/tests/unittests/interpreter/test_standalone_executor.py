@@ -188,6 +188,7 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else paddle.CPUPlace()
         self.exe = paddle.static.Executor(self.place)
+        self.iter_run = 2
 
     def build_program(self, is_double=False):
         main_program = paddle.static.Program()
@@ -213,9 +214,14 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
             fetch_vars = [x.name for x in fetch_vars]
         if add_wrong_fetch:  # test for wrong fetch type
             fetch_vars.append(1123)
-        out = self.exe.run(main_program, feed=feed, fetch_list=fetch_vars)
+        outs = []
+        for i in range(self.iter_run):
+            out = self.exe.run(main_program, feed=feed,
+                               fetch_list=fetch_vars)[0]
+            print(out)
+            outs.append(out)
 
-        return out
+        return outs
 
     def run_raw_executor(self, feed):
         # run construct program 1
