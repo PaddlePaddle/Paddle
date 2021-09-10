@@ -162,12 +162,14 @@ class SqueezeOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault({});
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"});
+        .InEnum({"float32", "bfloat16"})
+        .AsExtra();
     AddComment(R"DOC(
         Squeeze Operator.
 
@@ -223,7 +225,7 @@ class Squeeze2Op : public framework::OperatorWithKernel {
       ctx->ShareLoD("X", "Out");
     }
 
-    OP_INOUT_CHECK(ctx->HasOutput("XShape"), "Output", "XShape", "Squeeze2");
+    if (!ctx->HasOutput("XShape")) return;
 
     std::vector<int64_t> xshape_dims(x_dims.size() + 1);
     xshape_dims[0] = 0;
@@ -321,7 +323,8 @@ class Squeeze2OpMaker : public SqueezeOpMaker {
     AddOutput("XShape",
               "XShape is just used to store the shape and lod of X, which will "
               "be used in SqueezeGradOp.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
   }
 };
 

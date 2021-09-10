@@ -16,7 +16,7 @@
 
 
 function check_whl {
-    bash -x paddle/scripts/paddle_build.sh build
+    bash -x paddle/scripts/paddle_build.sh build_only
     [ $? -ne 0 ] && echo "build paddle failed." && exit 1
     pip uninstall -y paddlepaddle_gpu
     pip install build/python/dist/*.whl
@@ -29,14 +29,20 @@ function check_whl {
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
     [ $? -ne 0 ] && echo "install paddle failed." && exit 1
-    cd build
-    make -j `nproc`
+    rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
+    cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
+    if [ ${cmake_change} ];then
+        rm -rf ${PADDLE_ROOT}/build/third_party
+    fi
+
+    bash -x paddle/scripts/paddle_build.sh build_only
     [ $? -ne 0 ] && echo "build paddle failed." && exit 1
-    unzip -q python/dist/*.whl -d /tmp/develop
+    unzip -q build/python/dist/*.whl -d /tmp/develop
 
     sed -i '/version.py/d' /tmp/pr/*/RECORD
     sed -i '/version.py/d' /tmp/develop/*/RECORD
     diff_whl=`diff /tmp/pr/*/RECORD /tmp/develop/*/RECORD|wc -l`
+    [ $? -ne 0 ] && echo "diff paddle whl failed." && exit 1
     if [ ${diff_whl} -eq 0 ];then
         echo "paddle whl does not diff in PR-CI-Model-benchmark, so skip this ci"
         echo "ipipe_log_param_isSkipTest_model_benchmark: 1" 
@@ -50,14 +56,14 @@ function check_whl {
 function compile_install_paddle {
     export CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto}
     export PY_VERSION=3.7
-    export WITH_DISTRIBUTE=OFF
+    export WITH_DISTRIBUTE=ON
     export WITH_GPU=ON
     export WITH_TENSORRT=OFF
     export WITH_TESTING=OFF
     export WITH_UNITY_BUILD=ON
     check_whl
     cd /workspace/Paddle
-    git clone --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP https://github.com/paddlepaddle/benchmark.git
+    git clone --depth=1 --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP --recurse-submodules=PaddleDetection --recurse-submodules=PaddleVideo --recurse-submodules=PaddleSeg --recurse-submodules=PaddleGAN --recurse-submodules=PaddleOCR --recurse-submodules=models https://github.com/paddlepaddle/benchmark.git
 }
 
 function prepare_data {
@@ -78,7 +84,8 @@ function run_model_benchmark {
     cd /workspace/Paddle
     pip install build/pr_whl/*.whl
     cd ${cache_dir}/benchmark_data
-    export data_path=${cache_dir}/benchmark_data/dataset
+    export data_path=${cfs_dir}/model_dataset/model_benchmark_data
+    export prepare_path=${cfs_dir}/model_dataset/model_benchmark_prepare
     export BENCHMARK_ROOT=/workspace/Paddle/benchmark
     cd ${BENCHMARK_ROOT}/scripts/benchmark_ci
     bash model_ci.sh

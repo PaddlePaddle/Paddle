@@ -42,7 +42,7 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
             # update me. currently, if parameter server is used
             # graph execution optimizer can not be applied
             return False
-        return True
+        return not self.user_defined_strategy.without_graph_optimization
 
     def backward(self,
                  loss,

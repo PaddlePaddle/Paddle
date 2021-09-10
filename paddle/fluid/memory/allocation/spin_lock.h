@@ -14,22 +14,40 @@
 
 #pragma once
 
-#include "paddle/fluid/memory/allocation/spin_lock_c.h"
+#include <atomic>
+#if !defined(_WIN32)
+#include <sched.h>
+#else
+#include <windows.h>
+#endif  // !_WIN32
 
 namespace paddle {
 namespace memory {
 
 class SpinLock {
  public:
-  SpinLock() { INITIAL_LOCK(&mlock_); }
+  SpinLock() : mlock_(false) {}
 
-  void lock() { ACQUIRE_LOCK(&mlock_); }
+  void lock() {
+    bool expect = false;
+    uint64_t spin_cnt = 0;
+    while (!mlock_.compare_exchange_weak(expect, true)) {
+      expect = false;
+      if ((++spin_cnt & 0xFF) == 0) {
+#if defined(_WIN32)
+        SleepEx(50, FALSE);
+#else
+        sched_yield();
+#endif
+      }
+    }
+  }
 
-  void unlock() { RELEASE_LOCK(&mlock_); }
+  void unlock() { mlock_.store(false); }
   DISABLE_COPY_AND_ASSIGN(SpinLock);
 
  private:
-  MLOCK_T mlock_;
+  std::atomic<bool> mlock_;
 };
 
 }  // namespace memory
