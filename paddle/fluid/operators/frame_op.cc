@@ -32,6 +32,11 @@ class FrameOp : public framework::OperatorWithKernel {
     const auto x_dims = ctx->GetInputDim("X");
     const int x_rank = x_dims.size();
 
+    PADDLE_ENFORCE_GE(
+        x_rank, 1, platform::errors::InvalidArgument(
+                       "Input(X) of FrameOp should be a tensor which contains "
+                       "at least 1 dimension, but got rank %s.",
+                       x_rank));
     PADDLE_ENFORCE_GT(hop_length, 0,
                       platform::errors::InvalidArgument(
                           "Attribute(hop_length) of FrameOp should be greater "
@@ -111,7 +116,7 @@ class FrameOpMaker : public framework::OpProtoAndCheckerMaker {
     AddComment(R"DOC(
     Frame Operator.
 
-    Frame op slices frames from input sequence $X$.
+    Frame op convert time sequences into frames.
 
     )DOC");
   }
@@ -174,7 +179,9 @@ REGISTER_OP_CPU_KERNEL(
                      paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
-    frame_grad, ops::FrameGradKernel<paddle::platform::CPUDeviceContext, float>,
+    frame_grad, ops::FrameGradKernel<paddle::platform::CPUDeviceContext, int>,
+    ops::FrameGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::FrameGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::FrameGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::FrameGradKernel<paddle::platform::CPUDeviceContext,
                          paddle::platform::complex<float>>,
