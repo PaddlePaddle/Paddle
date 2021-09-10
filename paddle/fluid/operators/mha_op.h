@@ -32,8 +32,8 @@ class MHAMetaData {
   cudnnSeqDataDescriptor_t o_desc = nullptr;
   cudnnHandle_t cudnn_handle = nullptr;
 
-  void* workspace = nullptr;
-  void* reserve_space = nullptr;
+  memory::allocation::AllocationPtr workspace = nullptr;
+  memory::allocation::AllocationPtr reserve_space = nullptr;
 
   size_t weights_size = 0;
   size_t workspace_size = 0;
@@ -152,19 +152,14 @@ class MHAKernel : public framework::OpKernel<T> {
 
     if (MHASingleton::Instance().Data(key).workspace == nullptr &&
         MHASingleton::Instance().Data(key).workspace_size > 0) {
-      MHASingleton::Instance().Data(key).workspace = reinterpret_cast<void*>(
-          memory::Alloc(dev_ctx,
-                        MHASingleton::Instance().Data(key).workspace_size)
-              ->ptr());
+      MHASingleton::Instance().Data(key).workspace = memory::Alloc(
+          dev_ctx, MHASingleton::Instance().Data(key).workspace_size);
     }
 
     if (MHASingleton::Instance().Data(key).reserve_space == nullptr &&
         MHASingleton::Instance().Data(key).reserve_size > 0) {
-      MHASingleton::Instance().Data(key).reserve_space =
-          reinterpret_cast<void*>(
-              memory::Alloc(dev_ctx,
-                            MHASingleton::Instance().Data(key).reserve_size)
-                  ->ptr());
+      MHASingleton::Instance().Data(key).reserve_space = memory::Alloc(
+          dev_ctx, MHASingleton::Instance().Data(key).reserve_size);
     }
 
     std::vector<int> qo_slen_host(qo_slen->dims()[0]);
@@ -248,9 +243,9 @@ class MHAKernel : public framework::OpKernel<T> {
         MHASingleton::Instance().Data(key).o_desc, o_data,
         MHASingleton::Instance().Data(key).weights_size, w_data,
         MHASingleton::Instance().Data(key).workspace_size,
-        MHASingleton::Instance().Data(key).workspace,
+        MHASingleton::Instance().Data(key).workspace->ptr(),
         MHASingleton::Instance().Data(key).reserve_size,
-        MHASingleton::Instance().Data(key).reserve_space));
+        MHASingleton::Instance().Data(key).reserve_space->ptr()));
   }
 };
 
@@ -312,9 +307,9 @@ class MHAGradKernel : public framework::OpKernel<T> {
             MHASingleton::Instance().Data(key).v_desc, dv_data, v_data,
             MHASingleton::Instance().Data(key).weights_size, w_data,
             MHASingleton::Instance().Data(key).workspace_size,
-            MHASingleton::Instance().Data(key).workspace,
+            MHASingleton::Instance().Data(key).workspace->ptr(),
             MHASingleton::Instance().Data(key).reserve_size,
-            MHASingleton::Instance().Data(key).reserve_space));
+            MHASingleton::Instance().Data(key).reserve_space->ptr()));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnMultiHeadAttnBackwardWeights(
             cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
@@ -324,9 +319,9 @@ class MHAGradKernel : public framework::OpKernel<T> {
             MHASingleton::Instance().Data(key).o_desc, dout_data,
             MHASingleton::Instance().Data(key).weights_size, w_data, dw_data,
             MHASingleton::Instance().Data(key).workspace_size,
-            MHASingleton::Instance().Data(key).workspace,
+            MHASingleton::Instance().Data(key).workspace->ptr(),
             MHASingleton::Instance().Data(key).reserve_size,
-            MHASingleton::Instance().Data(key).reserve_space));
+            MHASingleton::Instance().Data(key).reserve_space->ptr()));
   }
 };
 
