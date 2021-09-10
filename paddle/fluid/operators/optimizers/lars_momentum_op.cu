@@ -97,8 +97,8 @@ __device__ inline void LarsUpdateMP(const T* __restrict__ g,
                                     const int grid_stride, const int numel) {
   // As for multiple-precision, type T and MT cannot be more than fp16 or fp32,
   // Then, the maximum data IO size could be set to 4.
-  using VecType = platform::CudaAlignedVector<T, 4>;
-  using VecMType = platform::CudaAlignedVector<MT, 4>;
+  using VecType = platform::AlignedVector<T, 4>;
+  using VecMType = platform::AlignedVector<MT, 4>;
   int main = numel >> 2;
   int tail_offset = main << 2;
 
