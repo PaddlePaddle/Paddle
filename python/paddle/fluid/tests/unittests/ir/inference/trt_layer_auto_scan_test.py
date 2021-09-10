@@ -65,7 +65,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
             max_batch_size=4,
             min_subgraph_size=0,
             precision=paddle_infer.PrecisionType.Float32,
-            use_static=False,
+            use_static=True,
             use_calib_mode=False)
         self.dynamic_shape = self.DynamicShapeParam({}, {}, {}, False)
 
@@ -73,6 +73,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
         config = paddle_infer.Config()
         config.disable_glog_info()
         config.enable_use_gpu(100, 0)
+        config.set_optim_cache_dir('trt_convert_cache_dir')
         if use_trt:
             config.switch_ir_debug()
             config.enable_tensorrt_engine(
@@ -218,12 +219,17 @@ class TrtLayerAutoScanTest(AutoScanTest):
                         break
 
                 try:
+                    pred_config_deserialize = paddle_infer.Config(pred_config)
                     results.append(
                         self.run_test_config(model, params, prog_config,
                                              pred_config, feed_data))
                     self.assert_tensors_near(threshold, results[-1], results[0])
                     if not skip_flag:
                         self.assert_op_size(nodes_num[0], nodes_num[1])
+                    # deserialize test
+                    if nodes_num[0] > 0:
+                        self.run_test_config(model, params, prog_config,
+                                             pred_config_deserialize, feed_data)
                 except Exception as e:
                     self.fail_log(
                         str(prog_config) + ' vs ' + self.inference_config_str(
