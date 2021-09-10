@@ -201,13 +201,15 @@ struct DeviceIndependenceTensorOperations {
 
   Tensor ElementWiseMul(const Tensor& x, const Tensor& y) {
     Tensor out;
+    // std::cout << "x.dims: " << x.dims() << " y.dims: " << y.dims() <<
+    // std::endl;
     out.mutable_data<T>(x.dims(), context.GetPlace());
     auto x_vector = EigenVector<T>::Flatten(x);
     auto y_vector = EigenVector<T>::Flatten(y);
     auto out_vector = EigenVector<T>::Flatten(out);
     auto& place =
         *context.template device_context<DeviceContext>().eigen_device();
-    out_vector.device(place) = x_vector * y_vector;
+    out_vector.device(place) = x_vector * y_vector.broadcast(x.dims());
     return out;
   }
 

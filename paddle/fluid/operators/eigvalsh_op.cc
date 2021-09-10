@@ -122,8 +122,7 @@ class EigvalshGradOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(
-            ctx, framework::GradVarName("OutVector")),
+        OperatorWithKernel::IndicateVarDataType(ctx, "OutVector"),
         ctx.GetPlace());
   }
 };
