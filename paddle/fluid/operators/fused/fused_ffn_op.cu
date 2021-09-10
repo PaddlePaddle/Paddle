@@ -171,10 +171,6 @@ class FusedFfnKernel : public framework::OpKernel<T> {
     int d_model = dim[0];
     int dim_feedforward = dim[dim.size() - 1];
     int bsz_seq = mat_dim_x.batch_size_ * mat_dim_x.height_;
-    math::SetConstant<platform::CUDADeviceContext, T> set_zero;
-    set_zero(context.cuda_device_context(), ln1_mean, static_cast<T>(0));
-    set_zero(context.cuda_device_context(), ln1_variance, static_cast<T>(0));
-    set_zero(context.cuda_device_context(), ln1_out, static_cast<T>(0));
 
     FFN(*x, *linear1_weight, linear1_bias, *linear2_weight, linear2_bias,
         ln1_scale, ln1_bias, ln2_scale, ln2_bias, out, dropout1_mask,
