@@ -209,9 +209,9 @@ from .array import array_read  # noqa: F401
 from .array import array_write  # noqa: F401
 from .array import create_array  # noqa: F401
 
+from .einsum import einsum  # noqa: F401
 from . import fft
 from . import signal
-
 
 #this list used in math_op_patch.py for _binary_creator_
 tensor_method_func  = [ #noqa
