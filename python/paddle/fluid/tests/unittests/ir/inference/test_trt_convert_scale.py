@@ -123,17 +123,15 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-        if self.dims == 1:
-            pass
-        else:
-            # for static_shape
-            clear_dynamic_shape()
-            self.trt_param.precision = paddle_infer.PrecisionType.Float32
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, False), 1e-5
-            self.trt_param.precision = paddle_infer.PrecisionType.Half
-            yield self.create_inference_config(), generate_trt_nodes_num(
-                attrs, False), 1e-5
+
+        # for static_shape
+        clear_dynamic_shape()
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, False), 1e-5
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -152,6 +150,14 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
 
         self.add_skip_case(teller1, SkipReasons.TRT_NOT_SUPPORT,
                            "INPUT ScaleTensor and Shape NOT SUPPORT")
+
+        def teller2(program_config, predictor_config):
+            if self.dims == 1 and self.dynamic_shape.min_input_shape == 0:
+                return True
+            return False
+
+        self.add_skip_case(teller2, SkipReasons.TRT_NOT_SUPPORT,
+                           "INPUT DIM EQUAL TO 1 OF STATIC SHAPE NOT SUPPORT")
 
     def test(self):
         self.add_skip_trt_case()
