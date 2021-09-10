@@ -1348,8 +1348,10 @@ def scatter(x, index, updates, overwrite=True, name=None):
         index (Tensor): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
         updates (Tensor): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 should be the same as input.
         overwrite (bool): The mode that updating the output when there are same indices. 
-          If True, use the overwrite mode to update the output of the same index,
-	      if False, use the accumulate mode to update the output of the same index.Default value is True.
+            
+            If True, use the overwrite mode to update the output of the same index,
+	        if False, use the accumulate mode to update the output of the same index.Default value is True.
+        
         name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
  
     Returns:
