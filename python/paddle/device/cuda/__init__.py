@@ -159,6 +159,8 @@ def stream_guard(stream=None):
 
     Examples:
         .. code-block:: python
+
+            # required: gpu
             import paddle
             
             s = paddle.device.cuda.Stream()
