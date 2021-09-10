@@ -166,7 +166,9 @@ class TrtConvertReshapeTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
-        if attrs[0]['shape'][0] == 1:
+        if attrs[0]['shape'][0] > 1 and len(attrs[0]['shape']) > 1:
+            pass
+        else:
             # for static_shape
             clear_dynamic_shape()
             self.trt_param.precision = paddle_infer.PrecisionType.Float32
