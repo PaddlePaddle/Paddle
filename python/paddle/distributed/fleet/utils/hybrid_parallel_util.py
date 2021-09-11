@@ -45,13 +45,9 @@ def _apply_collective_grads(parameters, comm_group):
 
     for coalesced_grad, _, _ in coalesced_grads_and_vars:
         # need to div nranks
-        if comm_group is None:
-            # support for DataParallel
-            div_factor = paddle.to_tensor(
-                dist.get_world_size(), dtype=coalesced_grad.dtype)
-        else:
-            div_factor = paddle.to_tensor(
-                comm_group.nranks, dtype=coalesced_grad.dtype)
+        nranks = dist.get_world_size(
+        ) if comm_group is None else comm_group.nranks
+        div_factor = paddle.to_tensor(nranks, dtype=coalesced_grad.dtype)
         paddle.fluid.framework._dygraph_tracer().trace_op(
             type="elementwise_div",
             inputs={'X': coalesced_grad,
