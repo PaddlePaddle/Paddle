@@ -30,7 +30,7 @@ from paddle.distributed.fleet.utils.hybrid_parallel_inference import HybridParal
 paddle.enable_static()
 
 
-def numpy_while(x, w1=1.0, w2=2.0, max_len=5):
+def numpy_while(x, w1=1.0, w2=2.0, max_len=2):
     data = [x]
     weight1 = np.empty([2, 5], dtype='float32')
     weight1.fill(w1)
@@ -71,7 +71,7 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
                 max_len = layers.fill_constant(
                     shape=[1],
                     dtype="int64",
-                    value=5,
+                    value=2,
                     force_cpu=False,
                     name="n")
                 step_idx = layers.fill_constant(
@@ -147,7 +147,7 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
         exe = paddle.static.Executor(paddle.CUDAPlace(dev_id))
         exe.run(startup_program)
 
-        for step in range(5):
+        for step in range(2):
             init_data = np.random.uniform(
                 low=0.0, high=1.0, size=[2, 2]).astype('float32')
             [res] = exe.run(main_program,
