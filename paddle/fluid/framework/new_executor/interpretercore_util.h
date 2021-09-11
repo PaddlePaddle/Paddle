@@ -241,33 +241,37 @@ class RuntimeInferShapeContext : public InferShapeContext {
   void ShareLoD(const std::string& in, const std::string& out, size_t i = 0,
                 size_t j = 0) const override {
     auto in_it = ctx_.inputs.find(in);
-    auto out_it = ctx_.outputs.find(out);
     PADDLE_ENFORCE_NE(
         in_it, ctx_.inputs.end(),
         platform::errors::NotFound("Input %s does not exist.", in));
-    PADDLE_ENFORCE_NE(
-        out_it, ctx_.outputs.end(),
-        platform::errors::NotFound("Output %s does not exist.", out));
     PADDLE_ENFORCE_LT(i, in_it->second.size(),
                       platform::errors::InvalidArgument(
                           "The index of input dimension is out of range, "
                           "excepted index less than %zu, but received %zu.",
                           in_it->second.size(), i));
+
+    Variable* in_var = in_it->second.at(i);
+    if (!in_var->IsType<LoDTensor>()) return;
+
+    auto out_it = ctx_.outputs.find(out);
+    PADDLE_ENFORCE_NE(
+        out_it, ctx_.outputs.end(),
+        platform::errors::NotFound("Output %s does not exist.", out));
     PADDLE_ENFORCE_LT(j, out_it->second.size(),
                       platform::errors::InvalidArgument(
                           "The index of output dimension is out of range, "
                           "excepted index less than %zu, but received %zu.",
                           out_it->second.size(), j));
 
-    Variable* in_var = in_it->second.at(i);
-    if (!in_var->IsType<LoDTensor>()) return;
     Variable* out_var = out_it->second.at(j);
     PADDLE_ENFORCE_EQ(
         out_var->IsType<LoDTensor>(), true,
         platform::errors::InvalidArgument(
             "The %zu-th output of Output(%s) must be LoDTensor.", j, out));
+
     auto& in_tensor = in_var->Get<LoDTensor>();
     auto* out_tensor = out_var->GetMutable<LoDTensor>();
+
     out_tensor->set_lod(in_tensor.lod());
 
 // TODO(dzhwinter) : reuse ShareLoD in most operators.
