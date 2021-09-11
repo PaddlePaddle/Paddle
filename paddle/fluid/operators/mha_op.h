@@ -179,14 +179,14 @@ class MHAKernel : public framework::OpKernel<T> {
     cudnnSeqDataAxis_t
         axes[CUDNN_SEQDATA_DIM_COUNT];  // [Batch, Beam, Seq, Vec]
     axes[0] = CUDNN_SEQDATA_BATCH_DIM;
-    axes[1] = CUDNN_SEQDATA_BEAM_DIM;
-    axes[2] = CUDNN_SEQDATA_TIME_DIM;
+    axes[1] = CUDNN_SEQDATA_TIME_DIM;
+    axes[2] = CUDNN_SEQDATA_BEAM_DIM;
     axes[3] = CUDNN_SEQDATA_VECT_DIM;
 
     int dimA[CUDNN_SEQDATA_DIM_COUNT];
     dimA[CUDNN_SEQDATA_VECT_DIM] = q->dims()[3];
-    dimA[CUDNN_SEQDATA_TIME_DIM] = q->dims()[2];
-    dimA[CUDNN_SEQDATA_BEAM_DIM] = q->dims()[1];
+    dimA[CUDNN_SEQDATA_BEAM_DIM] = q->dims()[2];
+    dimA[CUDNN_SEQDATA_TIME_DIM] = q->dims()[1];
     dimA[CUDNN_SEQDATA_BATCH_DIM] = q->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).q_desc, dtype,
@@ -194,8 +194,8 @@ class MHAKernel : public framework::OpKernel<T> {
         qo_slen_host.data(), nullptr));
 
     dimA[CUDNN_SEQDATA_VECT_DIM] = k->dims()[3];
-    dimA[CUDNN_SEQDATA_TIME_DIM] = k->dims()[2];
-    dimA[CUDNN_SEQDATA_BEAM_DIM] = k->dims()[1];
+    dimA[CUDNN_SEQDATA_BEAM_DIM] = k->dims()[2];
+    dimA[CUDNN_SEQDATA_TIME_DIM] = k->dims()[1];
     dimA[CUDNN_SEQDATA_BATCH_DIM] = k->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).k_desc, dtype,
@@ -203,8 +203,8 @@ class MHAKernel : public framework::OpKernel<T> {
         kv_slen_host.data(), nullptr));
 
     dimA[CUDNN_SEQDATA_VECT_DIM] = v->dims()[3];
-    dimA[CUDNN_SEQDATA_TIME_DIM] = v->dims()[2];
-    dimA[CUDNN_SEQDATA_BEAM_DIM] = v->dims()[1];
+    dimA[CUDNN_SEQDATA_BEAM_DIM] = v->dims()[2];
+    dimA[CUDNN_SEQDATA_TIME_DIM] = v->dims()[1];
     dimA[CUDNN_SEQDATA_BATCH_DIM] = v->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).v_desc, dtype,
@@ -212,8 +212,8 @@ class MHAKernel : public framework::OpKernel<T> {
         kv_slen_host.data(), nullptr));
 
     dimA[CUDNN_SEQDATA_VECT_DIM] = o->dims()[3];
-    dimA[CUDNN_SEQDATA_TIME_DIM] = o->dims()[2];
-    dimA[CUDNN_SEQDATA_BEAM_DIM] = o->dims()[1];
+    dimA[CUDNN_SEQDATA_BEAM_DIM] = o->dims()[2];
+    dimA[CUDNN_SEQDATA_TIME_DIM] = o->dims()[1];
     dimA[CUDNN_SEQDATA_BATCH_DIM] = o->dims()[0];
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
         MHASingleton::Instance().Data(key).o_desc, dtype,

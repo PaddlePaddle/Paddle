@@ -43,7 +43,7 @@ def _get_attn_output(q, k, v, wq, wk, wv, wo, seq_len, nheads, vec_size,
     h_bar = np.matmul(alpha, v_bar).transpose((0, 2, 1, 3)).reshape(
         (-1, seq_len, vec_size))
     out = np.matmul(h_bar, wo)
-    return out.reshape((-1, 1, seq_len, vec_size))
+    return out.reshape((-1, seq_len, 1, vec_size))
 
 
 def _softmax(x):
@@ -53,11 +53,11 @@ def _softmax(x):
 
 def _generate_data(batch_size, seq_len, vec_size, dtype):
     Q = (np.random.random(
-        (batch_size, 1, seq_len, vec_size)) - .5).astype(dtype)
+        (batch_size, seq_len, 1, vec_size)) - .5).astype(dtype)
     K = (np.random.random(
-        (batch_size, 1, seq_len, vec_size)) - .5).astype(dtype)
+        (batch_size, seq_len, 1, vec_size)) - .5).astype(dtype)
     V = (np.random.random(
-        (batch_size, 1, seq_len, vec_size)) - .5).astype(dtype)
+        (batch_size, seq_len, 1, vec_size)) - .5).astype(dtype)
     W = (np.random.random((4 * vec_size * vec_size, )) - .5).astype(dtype)
 
     stride = vec_size * vec_size
@@ -72,6 +72,13 @@ def _generate_data(batch_size, seq_len, vec_size, dtype):
     lo_win = np.zeros((seq_len, ), dtype=np.int32)
     hi_win = np.full((seq_len, ), seq_len, dtype=np.int32)
     return (Q, K, V, W, WQ, WK, WV, WO, q_seq_arr, k_seq_arr, lo_win, hi_win)
+
+
+def _generate_varlen_data(batch_size, max_slen, vec_size, dtype):
+    slen = np.random.randint(max_slen, size=batch_size) + 1  # [1, max_slen + 1)
+    assert (batch_size > 0, "batch size should greater than 0.")
+
+    QKV = np.random.random((1, 1, seq_len, vec_size))
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -153,6 +160,61 @@ class TestMHAOpFP64(TestMHAOpFP16):
         # TODO: (fix here)
         pass
 
+
+# @unittest.skipIf(not core.is_compiled_with_cuda(),
+#                  "core is not compiled with CUDA")
+# class TestMHAOpVarLenFP16(OpTest):
+#     def setUp(self):
+#         self.op_type = "mha"
+#         self.place = core.CUDAPlace(0)
+#         self.init_dtype_type()
+
+#         batch_size = 2
+#         nheads = 4
+#         seq_len = 8
+#         vec_size = 8
+#         proj_size = vec_size // nheads
+
+#         Q, K, V, W, \
+#         WQ, WK, WV, WO, \
+#         q_seq_arr, k_seq_arr, \
+#         lo_win, hi_win = _generate_varlen_data(batch_size, seq_len, vec_size, self.dtype)
+
+#         self.inputs = {
+#             'Q': Q,
+#             'K': K,
+#             'V': V,
+#             'W': W,
+#             'QO_Seqlen': q_seq_arr,
+#             'KV_Seqlen': k_seq_arr
+#         }
+
+#         self.attrs = {
+#             'attn_low_windows': lo_win,
+#             'attn_high_windows': hi_win,
+#             'attn_dropout_rate': 0.,
+#             'attn_heads': nheads,
+#             'attn_sm_scaler': 1.,
+#             'attn_vec_size': vec_size,
+#             'attn_q_proj_size': proj_size,
+#             'attn_k_proj_size': proj_size,
+#             'attn_v_proj_size': proj_size,
+#             'attn_o_proj_size': vec_size,
+#             'attn_max_qo_seq_len': seq_len,
+#             'attn_max_kv_seq_len': seq_len,
+#             'attn_beam_size': 1
+#         }
+
+#         O = _get_attn_output(Q, K, V, WQ, WK, WV, WO, seq_len, nheads, vec_size,
+#                              self.attrs["attn_sm_scaler"])
+#         self.outputs = {'O': O}
+
+#     def init_dtype_type(self):
+#         self.dtype = np.float16
+
+#     def test_check_output(self):
+#         if core.is_float16_supported(self.place):
+#             self.check_output_with_place(self.place, atol=1e-3)
 
 if __name__ == "__main__":
     unittest.main()
