@@ -153,55 +153,6 @@ def window_sumsquare(
         n_fft=2048,
         dtype=np.float32,
         norm=None, ):
-    """Compute the sum-square envelope of a window function at a given hop length.
-
-    This is used to estimate modulation effects induced by windowing observations
-    in short-time Fourier transforms.
-
-    Parameters
-    ----------
-    window : string, tuple, number, callable, or list-like
-        Window specification, as in `get_window`
-
-    n_frames : int > 0
-        The number of analysis frames
-
-    hop_length : int > 0
-        The number of samples to advance between frames
-
-    win_length : [optional]
-        The length of the window function.  By default, this matches ``n_fft``.
-
-    n_fft : int > 0
-        The length of each analysis frame.
-
-    dtype : np.dtype
-        The data type of the output
-
-    Returns
-    -------
-    wss : np.ndarray, shape=``(n_fft + hop_length * (n_frames - 1))``
-        The sum-squared envelope of the window function
-
-    Examples
-    --------
-    For a fixed frame length (2048), compare modulation effects for a Hann window
-    at different hop lengths:
-
-    >>> n_frames = 50
-    >>> wss_256 = librosa.filters.window_sumsquare('hann', n_frames, hop_length=256)
-    >>> wss_512 = librosa.filters.window_sumsquare('hann', n_frames, hop_length=512)
-    >>> wss_1024 = librosa.filters.window_sumsquare('hann', n_frames, hop_length=1024)
-
-    >>> import matplotlib.pyplot as plt
-    >>> fig, ax = plt.subplots(nrows=3, sharey=True)
-    >>> ax[0].plot(wss_256)
-    >>> ax[0].set(title='hop_length=256')
-    >>> ax[1].plot(wss_512)
-    >>> ax[1].set(title='hop_length=512')
-    >>> ax[2].plot(wss_1024)
-    >>> ax[2].set(title='hop_length=1024')
-    """
     if win_length is None:
         win_length = n_fft
 

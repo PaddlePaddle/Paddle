@@ -356,7 +356,7 @@ static inline void MKL_DFTI_CHECK(MKL_INT status) {
 struct DftiDescriptorDeleter {
   void operator()(DFTI_DESCRIPTOR_HANDLE handle) {
     if (handle != nullptr) {
-      MKL_DFTI_CHECK(platform::errors::External(DftiFreeDescriptor(&handle)));
+      MKL_DFTI_CHECK(DftiFreeDescriptor(&handle));
     }
   }
 };
@@ -409,7 +409,7 @@ DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
       case framework::proto::VarType::COMPLEX128:
         return DFTI_DOUBLE;
       default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
+        PADDLE_THROW(platform::errors::InvalidArgument(
             "Input data type should be FP32, FP64, COMPLEX64 or COMPLEX128."));
     }
   }();
