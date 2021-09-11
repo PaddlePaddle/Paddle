@@ -12,11 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
+from os import path
 import copy
 import inspect
 import paddle
-from . import core
 from .framework import _apply_pass, OpProtoHolder
 from . import unique_name
 
@@ -24,8 +23,7 @@ try:
     from .proto import pass_desc_pb2
 except ModuleNotFoundError:
     import sys
-    from .proto import framework_pb2
-    sys.path.append(framework_pb2.__file__.rsplit('/', 1)[0])
+    sys.path.append(path.join(path.dirname(__file__), 'proto'))
     from .proto import pass_desc_pb2
 
 
@@ -35,35 +33,6 @@ def get_data_vars(program):
         if var.is_data:
             data_vars.append(var_name)
     return data_vars
-
-
-def _update_grad_persistable(main_program):
-    grad_merge_attr_name = "grad_merge_cond_name"
-    op_role_var_attr_name = core.op_proto_and_checker_maker.kOpRoleVarAttrName()
-    has_grad_merge = False
-    has_persistable_grad_var = False
-    grad_vars = []
-    for block_id in range(main_program.num_blocks):
-        block = main_program.block(block_id)
-        for op in block.ops:
-            if grad_merge_attr_name in op.attr_names:
-                has_grad_merge = True
-
-            if op_role_var_attr_name not in op.attr_names:
-                continue
-
-            p_g = op.attr(op_role_var_attr_name)
-            for g in p_g[1::2]:
-                g_var = block._find_var_recursive(g)
-                if g_var is None:
-                    continue
-                grad_vars.append(g_var)
-                if g_var.persistable:
-                    has_persistable_grad_var = True
-
-    if has_grad_merge and has_persistable_grad_var:
-        for g_var in grad_vars:
-            g_var.persistable = True
 
 
 def apply_build_strategy(main_program, startup_program, build_strategy,
@@ -84,7 +53,6 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
                     get_data_vars(main_program), "list[str]")
         _apply_pass(main_program, startup_program, name, attrs, attr_types)
 
-    _update_grad_persistable(main_program)
     use_cuda = pass_attrs.get("use_cuda", False)
     build_strategy = build_strategy._copy()
     if build_strategy.sync_batch_norm:
@@ -106,12 +74,9 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
         apply_pass("fuse_elewise_add_act_pass")
         build_strategy.fuse_elewise_add_act_ops = False
     if build_strategy.fuse_all_optimizer_ops:
-        apply_pass([
-            "coalesce_grad_tensor_pass",
-            "fuse_adam_op_pass",
-            "fuse_sgd_op_pass",
-            "fuse_momentum_op_pass",
-        ])
+        apply_pass("fuse_adam_op_pass")
+        apply_pass("fuse_sgd_op_pass")
+        apply_pass("fuse_momentum_op_pass")
         build_strategy.fuse_all_optimizer_ops = False
     # TODO(zjl): support fuse all reduce ops
     if build_strategy.cache_runtime_context:
@@ -129,8 +94,8 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
 
 
 class RegisterPassHelper(object):
-    def __init__(self):
-        self._pass_type = ""
+    def __init__(self, pass_type=str()):
+        self._pass_type = pass_type
         self._pass_pairs = None
         self._input_specs = dict()
 
@@ -162,12 +127,8 @@ class RegisterPassHelper(object):
                 outs = [outs]
             for out in outs:
                 if isinstance(out, PassDesc.OpHelper):
-                    if out == PassDesc.OP_ANY:
-                        raise NotImplementedError(
-                            "Specific OP 'PassDesc.OP_ANY' is not implemented.")
-                    else:
-                        for out in out.Outputs().values():
-                            vars.extend(out)
+                    for out in out.Outputs().values():
+                        vars.extend(out)
                 elif isinstance(out, paddle.fluid.framework.Variable):
                     vars.append(out.name)
         program_desc.ParseFromString(program.desc.serialize_to_string())
@@ -238,9 +199,15 @@ class PassDesc(object):
             self._pattern_op_idx = index
 
     class OpHelper(object):
-        def __getattr__(self, type):
-            op = PassDesc.OpHelper()
-            op.Init(type)
+        def __init__(self, type=None):
+            self._type = type
+
+        def __getattr__(self, name):
+            if self._type is not None:
+                raise AttributeError(
+                    "type object 'OpHelper' has no attribute '{}'".format(name))
+            op = PassDesc.OpHelper(name)
+            op.Init()
             return op
 
         def __call__(self, *args, **kwargs):
@@ -248,8 +215,9 @@ class PassDesc(object):
                 in_arg_names = list()
                 if isinstance(in_args, (list, tuple)):
                     if len(in_args) == 0:
-                        raise ValueError("Argument {} of is not allowd empty.".
-                                         format(in_name, self._type))
+                        raise ValueError(
+                            "Input '{}' of operator '{}' cannot be empty.".
+                            format(in_name, self._type))
                 else:
                     in_args = [in_args]
                 for in_arg in in_args:
@@ -260,14 +228,13 @@ class PassDesc(object):
                 self._op_desc.set_input(in_name, in_arg_names)
             return self
 
-        def Init(self, type):
+        def Init(self):
             block = paddle.static.default_main_program().current_block()
-            self._type = type
             self._attrs = dict()
             self._op_idx = len(block.ops)
             self._op_desc = block.desc.append_op()
-            self._op_desc.set_type(type)
-            self._op_proto = OpProtoHolder.instance().get_op_proto(type)
+            self._op_desc.set_type(self._type)
+            self._op_proto = OpProtoHolder.instance().get_op_proto(self._type)
             block.ops.append(self)
 
         def Attr(self, name):
@@ -293,7 +260,7 @@ class PassDesc(object):
             block = paddle.static.default_main_program().current_block()
             for output_proto in self._op_proto.outputs:
                 name = unique_name.generate(self._type)
-                output = block.create_var(name=name)
+                block.create_var(name=name)
                 self._op_desc.set_output(output_proto.name, [name])
             return self._op_desc.outputs()
 
@@ -301,8 +268,37 @@ class PassDesc(object):
     OP_ANY = OpHelper()
 
 
-def RegisterPass(pass_name, input_specs=None):
-    """register pass
+def RegisterPass(function=None, input_specs=None):
+    """
+    The function decorator of Register Pass. Decorator @RegisterPass handles
+    the function and register it into a core.Pass instance. Use name of function
+    as Pass type.
+
+    Args:
+        function (callable): The function with return of callable pair(s) that
+            represents the pattern subgraph and the replace subgraph.
+        input_specs (dict[str, InputSpec]|None): Dict of InputSpec to specific the shape/dtype
+            information of Tensor. Some operators limit the shape and dtype of datas when
+            create subgraph with Paddle APIs. So user need specify InputSpec of data to
+            ensure create a correctly subgraph. Of course, this argument is not limited to
+            matching subgraph. The default is None.
+
+    Returns:
+        callables: Callable pair(s).
+
+    Examples:
+        .. code-block:: python
+
+        import paddle
+        from paddle.fluid.ir import RegisterPass
+
+        @RegisterPass
+        def multi_add_to_addn():
+            def pattern(x, y, z):
+                return paddle.add(paddle.add(x, y), z)
+            def replace(x, y, z):
+                return paddle.add_n([x, y, z])
+            return pattern, replace
     """
 
     def _is_pass_pair(check_pair):
@@ -312,22 +308,26 @@ def RegisterPass(pass_name, input_specs=None):
                     return True
         return False
 
-    def _register_pass_warpper(func):
-        register_func_sign = inspect.signature(func)
-        if len(register_func_sign.parameters) == 1:
+    def decorated(python_func):
+        pass_type = python_func.__name__
+        signature = inspect.signature(python_func)
+        if len(signature.parameters) > 0:
             raise NotImplementedError(
-                "register pass with graph is not implemented.")
-        elif len(register_func_sign.parameters) == 0:
-            pass_pairs = func()
+                "Pass function with parameter is not supported now.")
+        elif len(signature.parameters) == 0:
+            pass_pairs = python_func()
             if _is_pass_pair(pass_pairs):
                 pass_pairs = [pass_pairs]
             elif not all(map(_is_pass_pair, pass_pairs)):
-                raise ValueError("Error pass functions.")
-            register_helper = RegisterPassHelper()
-            register_helper.SetPassPairs(pass_pairs)
-            register_helper.SetInputSpecs(input_specs)
-        else:
-            raise ValueError("Error pass functions.")
-        return func
+                raise ValueError(
+                    "Return value of Pass function must be (callable, callable)."
+                )
+            helper = RegisterPassHelper(pass_type)
+            helper.SetPassPairs(pass_pairs)
+            helper.SetInputSpecs(input_specs)
+        return python_func
 
-    return _register_pass_warpper
+    if inspect.isfunction(function):
+        return decorated(function)
+
+    return decorated
