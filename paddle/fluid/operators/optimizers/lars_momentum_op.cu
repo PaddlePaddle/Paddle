@@ -29,9 +29,9 @@ limitations under the License. */
 #endif
 
 #if CUDA_VERSION >= 11000
-#define L2_NORM_FUNCTION_FLAG __device__
+#define FUNCTION_FLAG __device__
 #else
-#define L2_NORM_FUNCTION_FLAG __global__
+#define FUNCTION_FLAG __global__
 #endif
 
 namespace paddle {
@@ -149,9 +149,9 @@ __device__ inline void VectorizeLarsUpdateMP(
 }
 
 template <typename T, typename MT>
-L2_NORM_FUNCTION_FLAG inline void L2NormKernel(
+FUNCTION_FLAG void L2NormKernel(
     const T* __restrict__ p_data, const T* __restrict__ g_data,
-    MT* __restrict__ p_tmp_buffer, MT* __restrict__ g_tmp_buffer,
+    MT* __restrict__ p_buffer, MT* __restrict__ g_buffer,
     const int repeat_times, const int64_t numel, const MT rescale_grad,
     MT* __restrict__ p_n = nullptr, MT* __restrict__ g_n = nullptr) {
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
@@ -197,16 +197,16 @@ L2_NORM_FUNCTION_FLAG inline void L2NormKernel(
   __syncthreads();
 
   if (threadIdx.x == 0) {
-    p_tmp_buffer[blockIdx.x] = s_buffer[0];
-    g_tmp_buffer[blockIdx.x] = rescale_grad_pow * s_buffer[1];
+    p_buffer[blockIdx.x] = s_buffer[0];
+    g_buffer[blockIdx.x] = rescale_grad_pow * s_buffer[1];
   }
 
 #if CUDA_VERSION >= 11000
   // Grid sync for completely writring partial result back to gloabl memory
   const cooperative_groups::grid_group cg = cooperative_groups::this_grid();
   cg.sync();
-  MT p_partial_sum = threadIdx.x < gridDim.x ? p_tmp_buffer[threadIdx.x] : 0;
-  MT g_partial_sum = threadIdx.x < gridDim.x ? g_tmp_buffer[threadIdx.x] : 0;
+  MT p_partial_sum = threadIdx.x < gridDim.x ? p_buffer[threadIdx.x] : 0;
+  MT g_partial_sum = threadIdx.x < gridDim.x ? g_buffer[threadIdx.x] : 0;
   *p_n = SquareRoot(math::blockReduceSum<MT>(p_partial_sum, FINAL_MASK));
   *g_n = SquareRoot(math::blockReduceSum<MT>(g_partial_sum, FINAL_MASK));
 #endif
@@ -217,7 +217,7 @@ __global__ void MomentumLarsKernel(
     const T* __restrict__ p, const T* __restrict__ g, const MT* __restrict__ v,
     T* p_out, MT* v_out, const MT* __restrict__ master_p,
     MT* __restrict__ master_p_out, const MT* __restrict__ learning_rate,
-    MT* __restrict__ p_tmp_buffer, MT* __restrict__ g_tmp_buffer, const MT mu,
+    MT* __restrict__ p_buffer, MT* __restrict__ g_buffer, const MT mu,
     const MT lars_coeff, const MT lars_weight_decay, const MT epsilon,
     const MT rescale_grad, const int repeat_times, const int thresh,
     const int64_t numel) {
@@ -226,11 +226,11 @@ __global__ void MomentumLarsKernel(
 #if CUDA_VERSION >= 11000
   MT p_n = static_cast<MT>(0);
   MT g_n = static_cast<MT>(0);
-  L2NormKernel<T, MT>(p, g, p_tmp_buffer, g_tmp_buffer, repeat_times, numel,
+  L2NormKernel<T, MT>(p, g, p_buffer, g_buffer, repeat_times, numel,
                       rescale_grad, &p_n, &g_n);
 #else
-  MT p_val = threadIdx.x < thresh ? p_tmp_buffer[threadIdx.x] : 0;
-  MT g_val = threadIdx.x < thresh ? g_tmp_buffer[threadIdx.x] : 0;
+  MT p_val = threadIdx.x < thresh ? p_buffer[threadIdx.x] : 0;
+  MT g_val = threadIdx.x < thresh ? g_buffer[threadIdx.x] : 0;
   __syncthreads();
   MT p_n = SquareRoot(math::blockReduceSum<MT>(p_val, FINAL_MASK));
   MT g_n = SquareRoot(math::blockReduceSum<MT>(g_val, FINAL_MASK));
@@ -344,8 +344,8 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     framework::Tensor tmp_buffer_t =
         ctx.AllocateTmpTensor<MT, platform::CUDADeviceContext>(
             {LARS_BLOCK_SIZE << 1}, cuda_ctx);
-    auto* p_tmp_buffer = tmp_buffer_t.mutable_data<MT>(ctx.GetPlace());
-    auto* g_tmp_buffer = p_tmp_buffer + LARS_BLOCK_SIZE;
+    auto* p_buffer = tmp_buffer_t.mutable_data<MT>(ctx.GetPlace());
+    auto* g_buffer = p_buffer + LARS_BLOCK_SIZE;
     int grid_stride = LARS_BLOCK_SIZE * grid;
     int repeat_times = (numel + grid_stride - 1) / grid_stride - 1;
     int thresh = 0;
@@ -360,17 +360,16 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
         reinterpret_cast<void*>(&master_p),
         reinterpret_cast<void*>(&master_p_out),
         reinterpret_cast<void*>(&lr),
-        reinterpret_cast<void*>(&p_tmp_buffer),
-        reinterpret_cast<void*>(&g_tmp_buffer),  // Just a placeholder
+        reinterpret_cast<void*>(&p_buffer),
+        reinterpret_cast<void*>(&g_buffer),
         reinterpret_cast<void*>(&mu),
         reinterpret_cast<void*>(&lars_coeff),
         reinterpret_cast<void*>(&lars_weight_decay),
         reinterpret_cast<void*>(&epsilon),
         reinterpret_cast<void*>(&rescale_grad),
         reinterpret_cast<void*>(&repeat_times),
-        reinterpret_cast<void*>(&thresh),
-        reinterpret_cast<void*>(&numel),
-    };
+        reinterpret_cast<void*>(&thresh),  // Just a placeholder
+        reinterpret_cast<void*>(&numel)};
     // Lanuch all sm theads.
     cudaLaunchCooperativeKernel(
         reinterpret_cast<void*>(MomentumLarsKernel<T, MT>), grid_real,
@@ -382,24 +381,24 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
             ? (numel + (LARS_BLOCK_SIZE << 2) - 1) / (LARS_BLOCK_SIZE << 2)
             : (numel + (LARS_BLOCK_SIZE << 1) - 1) / (LARS_BLOCK_SIZE << 1);
 
-    grid = std::min(grid, LARS_BLOCK_SIZE);
+    int grid_norm = std::min(grid, LARS_BLOCK_SIZE);
     framework::Tensor p_buffer_t =
         ctx.AllocateTmpTensor<MT, platform::CUDADeviceContext>(
             {LARS_BLOCK_SIZE << 1}, cuda_ctx);
-    auto* p_tmp_buffer = p_buffer_t.mutable_data<MT>(ctx.GetPlace());
-    auto* g_tmp_buffer = p_tmp_buffer + LARS_BLOCK_SIZE;
+    auto* p_buffer = p_buffer_t.mutable_data<MT>(ctx.GetPlace());
+    auto* g_buffer = p_buffer + LARS_BLOCK_SIZE;
 
-    const int grid_stride = LARS_BLOCK_SIZE * grid;
+    const int grid_stride = LARS_BLOCK_SIZE * grid_norm;
     const int repeat_times = (numel + grid_stride - 1) / grid_stride - 1;
 
-    L2NormKernel<T, MT><<<grid, LARS_BLOCK_SIZE, 0, cuda_ctx.stream()>>>(
-        p, g, p_tmp_buffer, g_tmp_buffer, repeat_times, numel, rescale_grad);
+    L2NormKernel<T, MT><<<grid_norm, LARS_BLOCK_SIZE, 0, cuda_ctx.stream()>>>(
+        p, g, p_buffer, g_buffer, repeat_times, numel, rescale_grad);
 
     MomentumLarsKernel<
         T, MT><<<grid_lars, LARS_BLOCK_SIZE, 0, cuda_ctx.stream()>>>(
-        p, g, v, p_out, v_out, master_p, master_p_out, lr, p_tmp_buffer,
-        g_tmp_buffer, mu, lars_coeff, lars_weight_decay, epsilon, rescale_grad,
-        grid, numel);
+        p, g, v, p_out, v_out, master_p, master_p_out, lr, p_buffer, g_buffer,
+        mu, lars_coeff, lars_weight_decay, epsilon, rescale_grad, 0, grid_norm,
+        numel);  // 0 is just a placeholder.
 #endif
   }
 };
