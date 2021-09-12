@@ -79,7 +79,10 @@ class TestConv2DTransposeOp(OpTest):
     def test_check_grad_no_input(self):
         if self.need_check_grad:
             self.check_grad_with_place(
-                self.place, ['Filter'], 'Output', no_grad_set=set(['Input']))
+                self.place, ['Filter'],
+                'Output',
+                no_grad_set=set(['Input']),
+                numeric_place=paddle.CPUPlace())
 
     def test_check_grad_no_filter(self):
         if self.need_check_grad:
@@ -87,7 +90,8 @@ class TestConv2DTransposeOp(OpTest):
                 self.place, ['Input'],
                 'Output',
                 no_grad_set=set(['Filter']),
-                max_relative_error=0.006)
+                max_relative_error=0.006,
+                numeric_place=paddle.CPUPlace())
 
     def test_check_grad(self):
         if self.need_check_grad:
@@ -95,7 +99,8 @@ class TestConv2DTransposeOp(OpTest):
                 self.place,
                 set(['Input', 'Filter']),
                 'Output',
-                max_relative_error=0.02)
+                max_relative_error=0.02,
+                numeric_place=paddle.CPUPlace())
 
     def init_test_case(self):
         self.pad = [0, 0]
