@@ -152,12 +152,10 @@ __global__ void CrossEntropyExpHardLabel(T* loss, T* softmax,
 */
 template <typename T, typename VecT, typename AccT, int Log2Elements,
           SoftmaxMode mode, bool IgnoreIndex>
-__global__ void WarpSoftmaxForwardHardLabel(T* loss, T* softmax, const T* src,
-                                            const int64_t* label,
-                                            const int batch_size,
-                                            const int stride,
-                                            const int element_count,
-                                            const int ignore_index) {
+__global__ void WarpSoftmaxForward(T* loss, T* softmax, const T* src,
+                                   const int64_t* label, const int batch_size,
+                                   const int stride, const int element_count,
+                                   const int ignore_index) {
   constexpr int kDimCeil = 1 << Log2Elements;
   constexpr int kWarpSize = (kDimCeil < 32) ? kDimCeil : 32;
   constexpr int kVSize = sizeof(VecT) / sizeof(T);
@@ -374,29 +372,27 @@ __global__ void WarpSoftmaxForwardHardLabel(T* loss, T* softmax, const T* src,
   }
 }
 
-#define SOFTMAX_WARP_FORWARD_CASE(Log2Elements, VecT, AccT)                   \
-  case Log2Elements:                                                          \
-    WarpSoftmaxForwardHardLabel<T, VecT, AccT, Log2Elements, mode,            \
-                                IgnoreIndex><<<blocks, threads, 0, stream>>>( \
-        loss, softmax, src, label, batch_size, stride, element_count,         \
-        ignore_index);                                                        \
+#define SOFTMAX_WARP_FORWARD_CASE(Log2Elements, VecT, AccT)           \
+  case Log2Elements:                                                  \
+    WarpSoftmaxForward<T, VecT, AccT, Log2Elements, mode,             \
+                       IgnoreIndex><<<blocks, threads, 0, stream>>>(  \
+        loss, softmax, src, label, batch_size, stride, element_count, \
+        ignore_index);                                                \
     break;
 
 /*
   Wrapper of softmax with cross entropy forward hard label.
 */
 template <typename T, SoftmaxMode mode, bool IgnoreIndex>
-void SwitchWarpSoftmaxForwardHardLabel(T* loss, T* softmax, const T* src,
-                                       const int64_t* label,
-                                       const int batch_size, const int stride,
-                                       const int element_count,
-                                       const int ignore_index,
-                                       gpuStream_t stream) {
+void SwitchWarpSoftmaxForward(T* loss, T* softmax, const T* src,
+                              const int64_t* label, const int batch_size,
+                              const int stride, const int element_count,
+                              const int ignore_index, gpuStream_t stream) {
   using AccT = typename details::MPTypeTrait<T>::Type;
 
   // use 128 threads per block to maximimize gpu utilization
-  const int Log2Elements = static_cast<int>(Log2Ceil(element_count));
-  const int kDimCeil = 1 << Log2Elements;
+  const int log2_elements = static_cast<int>(Log2Ceil(element_count));
+  const int kDimCeil = 1 << log2_elements;
   int kWarpSize = (kDimCeil < 32) ? kDimCeil : 32;
   int batches_per_warp = (kDimCeil <= 128) ? 2 : 1;
   constexpr int threads_per_block = 128;
@@ -405,7 +401,7 @@ void SwitchWarpSoftmaxForwardHardLabel(T* loss, T* softmax, const T* src,
   int blocks = (batch_size + batches_per_block - 1) / batches_per_block;
   dim3 threads(kWarpSize, warps_per_block, 1);
 
-  switch (Log2Elements) {
+  switch (log2_elements) {
     SOFTMAX_WARP_FORWARD_CASE(0, T, AccT);
     SOFTMAX_WARP_FORWARD_CASE(1, T, AccT);
     SOFTMAX_WARP_FORWARD_CASE(2, T, AccT);
@@ -423,7 +419,7 @@ void SwitchWarpSoftmaxForwardHardLabel(T* loss, T* softmax, const T* src,
 
 /*
   Wrapper of softmax with cross entropy hard label.
-  - SwitchWarpSoftmaxForwardHardLabel for small size
+  - SwitchWarpSoftmaxForward for small size
   - cudnn function for large size
 */
 template <typename T, bool IgnoreIndex>
@@ -435,7 +431,7 @@ static void SoftmaxWithCrossEntropyHardLabel(
   constexpr int max_dim = 320;
   if (D == 1 && dim <= max_dim) {  // small size
     const SoftmaxMode mode = SoftmaxMode::kCrossEntropy;
-    SwitchWarpSoftmaxForwardHardLabel<T, mode, IgnoreIndex>(
+    SwitchWarpSoftmaxForward<T, mode, IgnoreIndex>(
         loss_data, softmax_data, logits_data, labels_data, N, dim, dim,
         ignore_index, stream);
   } else {
@@ -499,17 +495,25 @@ __global__ void SoftmaxWithCrossEntropyGradHardLabel(
 }
 
 /*
-  Cross entropy soft label with dynamic size on axis (Log2Elements is varibale).
+  Cross entropy soft label with dynamic size on axis (log2_elements is
+  varibale).
+  - if the input is softmax，compute loss with softmax
+  - if the input is log_softmax, compute loss with log_softmax and update
+  softmax
 */
 template <typename T, typename VecT, bool InLogMode = false>
 __global__ void CrossEntropySoftLabel(T* loss, T* softmaxwrt, const T* softmax,
                                       const T* labels, const int n,
                                       const int dim, const int d,
-                                      int Log2Elements) {
-  const int kDimCeil = 1 << Log2Elements;
+                                      int log2_elements) {
+  const int kDimCeil = 1 << log2_elements;
   const int kVSize = sizeof(VecT) / sizeof(T);
 
+#ifdef __HIPCC__
+  const int kThreadPerBlock = 256;
+#else
   const int kThreadPerBlock = 512;
+#endif
   const int kBatchPerBlock = 1;
   const int kWarpSize = 32;  // (dim < 32) ? dim : 32;
   const int kBatchSize = 1;
@@ -535,7 +539,7 @@ __global__ void CrossEntropySoftLabel(T* loss, T* softmaxwrt, const T* softmax,
 
       if (idx_n < n && idx_dim < dim) {
         VecT softmaxdata;
-        if (InLogMode == true) {
+        if (InLogMode) {
           softmaxdata = reinterpret_cast<VecT*>(&softmaxwrt[idx])[0];
         } else {
           softmaxdata = reinterpret_cast<const VecT*>(&softmax[idx])[0];
@@ -545,14 +549,14 @@ __global__ void CrossEntropySoftLabel(T* loss, T* softmaxwrt, const T* softmax,
         T* labelsptr = reinterpret_cast<T*>(&labelsdata);
 #pragma unroll
         for (int s = 0; s < kVSize; s++) {
-          if (InLogMode == true) {
+          if (InLogMode) {
             sum[i] -= softmaxptr[s] * labelsptr[s];
             softmaxptr[s] = Exp(softmaxptr[s]);
           } else {
             sum[i] -= Log(softmaxptr[s]) * labelsptr[s];
           }
         }
-        if (InLogMode == true) {
+        if (InLogMode) {
           reinterpret_cast<VecT*>(&softmaxwrt[idx])[0] = softmaxdata;
         }
       }
@@ -753,9 +757,9 @@ void SwitchWarpSoftmaxForwardSoftLabel(const int blocks, const dim3 threads,
                                        const T* src, const T* label,
                                        const int batch_size, const int stride,
                                        const int element_count,
-                                       const int Log2Elements) {
+                                       const int log2_elements) {
   using AccT = typename details::MPTypeTrait<T>::Type;
-  switch (Log2Elements) {
+  switch (log2_elements) {
     SOFTMAX_WARP_FORWARD_SOFT_CASE(0, T, AccT);
     SOFTMAX_WARP_FORWARD_SOFT_CASE(1, T, AccT);
     SOFTMAX_WARP_FORWARD_SOFT_CASE(2, T, AccT);
@@ -837,8 +841,12 @@ static void SoftmaxWithCrossEntropySoftLabel(
 
     const int kDimLog2 = static_cast<int>(Log2Ceil(dim));
     const int kDimCeil = 1 << kDimLog2;
-
+#ifdef __HIPCC__
+    int kThreadPerBlock = 256;
+#else
     int kThreadPerBlock = 512;
+#endif
+
     int kBatchPerBlock = 1;
     int blocks = (N * D + kBatchPerBlock - 1) / kBatchPerBlock;
     dim3 threads(kThreadPerBlock / kBatchPerBlock, kBatchPerBlock, 1);
@@ -973,7 +981,11 @@ class SoftmaxWithCrossEntropyCUDAKernel : public framework::OpKernel<T> {
 
         const int kDimLog2 = static_cast<int>(Log2Ceil(axis_dim));
         const int kDimCeil = 1 << kDimLog2;
+#ifdef __HIPCC__
+        int kThreadPerBlock = 256;
+#else
         int kThreadPerBlock = 512;
+#endif
         int kBatchPerBlock = 1;
         int blocks = (n * d + kBatchPerBlock - 1) / kBatchPerBlock;
         dim3 threads(kThreadPerBlock / kBatchPerBlock, kBatchPerBlock, 1);
@@ -1099,7 +1111,11 @@ class SoftmaxWithCrossEntropyGradCUDAKernel : public framework::OpKernel<T> {
     const int64_t d = SizeFromAxis(axis, logit_grad->dims());
     const int64_t remain = d / axis_dim;
 
+#ifdef __HIPCC__
+    int block = 256;
+#else
     int block = 512;
+#endif
     auto stream = context.cuda_device_context().stream();
     auto ignore_index = context.Attr<int>("ignore_index");
     auto use_softmax = context.Attr<bool>("use_softmax");
