@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/gpu_info.h"
 #include <cstdlib>
-
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #ifdef PADDLE_WITH_HIP
@@ -204,6 +203,21 @@ int GetCUDADriverVersion(int id) {
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaDriverGetVersion(&driver_version));
 #endif
   return driver_version;
+}
+
+void GetCUDADeviceName(int id, char *dev_name) {
+  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(),
+                    platform::errors::InvalidArgument(
+                        "Device id must be less than GPU count, "
+                        "but received id is: %d. GPU count is: %d.",
+                        id, GetCUDADeviceCount()));
+  cudaDeviceProp device_prop;
+#ifdef PADDLE_WITH_HIP
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipGetDeviceProperties(&device_prop, id));
+#else
+  PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetDeviceProperties(&device_prop, id));
+#endif
+  memcpy(dev_name, device_prop.name, strlen(device_prop.name) + 1);
 }
 
 bool TensorCoreAvailable() {

@@ -117,3 +117,38 @@ def device_count():
         core, 'get_cuda_device_count') else 0
 
     return num_gpus
+
+
+def get_device_name(device=None):
+    '''
+    Return the name of the device.
+
+    Parameters:
+        device(paddle.CUDAPlace()|int, optional): The device or the ID of the device.
+        If device is None, the device is the current device. Default: None.
+
+    Returns:
+        str: the name of the device.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            name1 = paddle.device.cuda.get_device_name()    
+
+            name2 = paddle.device.cuda.get_device_name(0) 
+
+            name3 = paddle.device.cuda.get_device_name(paddle.CUDAPlace(0)) 
+            
+    '''
+    device_id = -1
+
+    if device is not None:
+        if isinstance(device, int):
+            device_id = device
+        elif isinstance(device, core.CUDAPlace):
+            device_id = device.get_device_id()
+        else:
+            raise ValueError("device type must be int or paddle.CUDAPlace")
+    return core._get_device_name(device_id)

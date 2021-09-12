@@ -13,7 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-
 #ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
 #endif
@@ -45,6 +44,9 @@ int GetCUDARuntimeVersion(int id);
 
 //! Get the driver version of the ith GPU
 int GetCUDADriverVersion(int id);
+
+//! Get the device name of the ith GPU
+void GetCUDADeviceName(int id, char *dev_name);
 
 //! Wheter the current device support TensorCore
 bool TensorCoreAvailable();

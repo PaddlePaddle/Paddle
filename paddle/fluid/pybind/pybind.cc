@@ -2255,6 +2255,17 @@ All parameter, weight, gradient are variables in Paddle.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
 
+  m.def("_get_device_name",
+        [](int device_id) -> char * {
+          if (device_id == -1) {
+            device_id = paddle::platform::GetCurrentDeviceId();
+          }
+          char *device_name = new char[256];
+          paddle::platform::GetCUDADeviceName(device_id, device_name);
+          return device_name;
+        },
+        py::return_value_policy::reference);
+
 #if !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   m.def("nvprof_init", platform::CudaProfilerInit);
   m.def("nvprof_start", platform::CudaProfilerStart);
