@@ -27,8 +27,8 @@
 
 #include "Eigen/Core"
 #include "Eigen/Eigenvalues"
-#include "Eigen/src/misc/lapacke.h"                // LAPACK_dgeev
 #include "paddle/fluid/operators/eig_op_helper.h"  // must before lapack.h
+#include "Eigen/src/misc/lapacke.h"                // LAPACK_dgeev
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/transpose_op.h"  // TransCompute()
