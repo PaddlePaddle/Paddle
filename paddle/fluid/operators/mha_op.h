@@ -115,7 +115,7 @@ class MHAKernel : public framework::OpKernel<T> {
 
     // TODO(Ming Huang): Need to come out a way to pass related variables from
     // FWD to BWD.
-    std::string key = "ajskdlf";
+    const std::string key = typeid(T).name();
     MHASingleton::Instance().Data(key).SetCudnnHandle(cudnn_handle);
 
     cudnnDropoutDescriptor_t attn_dropout_desc = nullptr;
@@ -273,7 +273,7 @@ class MHAGradKernel : public framework::OpKernel<T> {
 
     // TODO(Ming Huang): Need to come out a way to pass related variables from
     // FWD to BWD.
-    std::string key = "ajskdlf";
+    const std::string key = typeid(T).name();
 
     std::vector<int> attn_low_windows =
         context.Attr<std::vector<int>>("attn_low_windows");
