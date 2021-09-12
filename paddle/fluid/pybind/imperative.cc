@@ -1734,6 +1734,12 @@ void BindImperative(py::module *m_ptr) {
             } else if (self.Var().IsType<framework::SelectedRows>()) {
               return framework::vectorize<int>(
                   self.Var().Get<framework::SelectedRows>().value().dims());
+            } else if (self.Var().IsType<framework::STRINGS>()) {
+              return std::vector<int>{static_cast<int>(
+                  self.Var().Get<framework::STRINGS>().size())};
+            } else if (self.Var().IsType<framework::STRING_MAP>()) {
+              return std::vector<int>{static_cast<int>(
+                  self.Var().Get<framework::STRING_MAP>().size())};
             } else {
               VLOG(2) << "It is meaningless to get shape of "
                          "variable type "

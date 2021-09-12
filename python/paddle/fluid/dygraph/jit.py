@@ -796,10 +796,15 @@ def save(layer, path, input_spec=None, **configs):
             # 3. share parameters from Layer to scope & record var info
             for param_or_buffer in concrete_program.parameters:
                 # share to scope
-                param_or_buffer_tensor = scope.var(
-                    param_or_buffer.name).get_tensor()
-                src_tensor = param_or_buffer.value().get_tensor()
-                param_or_buffer_tensor._share_data_with(src_tensor)
+                if param_or_buffer.type == core.VarDesc.VarType.STRING_MAP:
+                    scr_tensor = param_or_buffer.value().get_map_tensor()
+                    tgt_var = scope.var(param_or_buffer.name)
+                    tgt_var.set_string_map(scr_tensor)
+                else:
+                    param_or_buffer_tensor = scope.var(
+                        param_or_buffer.name).get_tensor()
+                    src_tensor = param_or_buffer.value().get_tensor()
+                    param_or_buffer_tensor._share_data_with(src_tensor)
                 # record var info
                 if param_or_buffer.name not in extra_var_info:
                     extra_info_dict = dict()

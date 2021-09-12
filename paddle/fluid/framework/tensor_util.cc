@@ -31,6 +31,69 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+std::wstring ConvertStrToWstr(const std::string& src) {
+  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+  return converter.from_bytes(src);
+}
+
+std::string ConvertWstrToStr(const std::wstring& src) {
+  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+  return converter.to_bytes(src);
+}
+
+void SerializeStringMap::write(std::ostream& ss, int32_t t) {
+  ss.write(reinterpret_cast<const char*>(&t), sizeof(t));
+}
+
+void SerializeStringMap::write(std::ostream& ss, std::string& str) {
+  size_t length = str.size();
+  ss.write(reinterpret_cast<const char*>(&length), sizeof(length));
+  ss.write(reinterpret_cast<const char*>(str.data()), length);
+}
+
+void SerializeStringMap::read(std::istream& is, int32_t token_id) {
+  is.read(reinterpret_cast<char*>(&token_id), sizeof(token_id));
+}
+
+void SerializeStringMap::read(std::istream& is, std::string& str) {
+  size_t length;
+  is.read(reinterpret_cast<char*>(&length), sizeof(length));
+  str.resize(length);
+  char* tmp = new char[length + 1];
+  is.read(tmp, length);
+  str = tmp;
+}
+
+void SerializeStringMap::MapTensorToStream(std::ostream& ss) {
+  size_t t = this->size();
+  ss.write(reinterpret_cast<const char*>(&t), sizeof(t));
+  for (auto& i : (*this)) {
+    std::string str = i.first;
+    int32_t value = i.second;
+    write(ss, str);
+    write(ss, value);
+  }
+}
+
+void SerializeStringMap::MapTensorFromStream(std::istream& is) {
+  size_t map_size;
+  is.read(reinterpret_cast<char*>(&map_size), sizeof(map_size));
+  for (size_t i = 0; i < map_size; ++i) {
+    std::string key;
+    std::int32_t value;
+    read(is, key);
+    read(is, value);
+    (*this)[key] = value;
+  }
+}
+
+void SerializeStringMap::show() {
+  for (auto& i : (*this)) {
+    std::cout << i.first << ":" << i.second << std::endl;
+  }
+  std::cout << std::endl;
+}
+
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 const platform::DeviceContext& ctx, Tensor* dst) {
   if (&src == dst) {

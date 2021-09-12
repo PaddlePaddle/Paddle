@@ -102,9 +102,12 @@ void Executor::CreateVariables(const ProgramDesc& pdesc, Scope* scope,
 
       if (var->Persistable()) {
         auto* ptr = const_cast<Scope*>(ancestor_scope)->Var(var->Name());
+
+        VLOG(3) << "Initialize Variable " << var->Name();
         InitializeVariable(ptr, var->GetType());
         VLOG(3) << "Create Variable " << var->Name()
-                << " global, which pointer is " << ptr;
+                << " global, which pointer is " << ptr << " type is "
+                << static_cast<int>(var->GetType());
       } else {
         auto* ptr = scope->Var(var->Name());
         InitializeVariable(ptr, var->GetType());

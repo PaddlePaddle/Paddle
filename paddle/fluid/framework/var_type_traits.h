@@ -91,8 +91,6 @@ class OrderedMultiDeviceLoDTensorBlockingQueueHolder;
 namespace paddle {
 namespace framework {
 
-using STRING_MAP = std::unordered_map<std::wstring, std::int32_t>;
-
 const char *ToTypeName(int var_id);
 const std::type_index &VarTraitIdToTypeIndex(int var_id);
 int TypeIndexToVarTraitId(const std::type_index &type);

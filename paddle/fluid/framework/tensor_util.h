@@ -13,11 +13,17 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#include <algorithm>
+#include <codecvt>
+#include <locale>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/dlpack_tensor.h"
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -46,6 +52,22 @@ class PrintOptions {
 
  private:
   PrintOptions() {}
+};
+
+std::wstring ConvertStrToWstr(const std::string& src);
+std::string ConvertWstrToStr(const std::wstring& src);
+
+class SerializeStringMap : public std::unordered_map<std::string, int32_t> {
+ private:
+  void write(std::ostream& ss, int32_t t);
+  void write(std::ostream& ss, const std::string& str);
+  void read(std::istream& is, int32_t token_id);
+  void read(std::istream& is, std::string& str);
+
+ public:
+  void MapTensorToStream(std::ostream& ss);
+  void MapTensorFromStream(std::istream& is);
+  void show(void);
 };
 
 // NOTE(zcd): Because TensorCopy is an async operation, when the src_place

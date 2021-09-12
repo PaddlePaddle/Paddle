@@ -142,8 +142,13 @@ template <typename T>
 class TokenizerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* text = ctx.Input<std::vector<std::string>>("Text");
-    auto* vocab = ctx.Input<std::unordered_map<std::wstring, int>>("Vocab");
+    auto* text = ctx.Input<paddle::framework::STRINGS>("Text");
+    auto* vocab = ctx.Input<paddle::framework::STRING_MAP>("Vocab");
+
+    wcout << L" check vocab" << vocab->size() << endl;
+    for (auto iter = vocab->begin(); iter != vocab->end(); ++iter) {
+      wcout << iter->first << L":" << iter->second << endl;
+    }
 
     auto* input_ids = ctx.Output<framework::Tensor>("InputIds");
     auto* seg_ids = ctx.Output<framework::Tensor>("SegmentIds");
@@ -166,6 +171,12 @@ class TokenizerKernel : public framework::OpKernel<T> {
     // only support cpu now
     size_t batch_max_seq_len = 0;
     size_t batch_size = text->size();
+
+    VLOG(0) << "&&&&&&&&&&&&&&&&&&&&&&&& input_text input_text input_text";
+    for (size_t i = 0; i < batch_size; ++i) {
+      VLOG(0) << text->at(i);
+    }
+
     unordered_map<size_t, vector<T>> batch_input_ids;
     unordered_map<size_t, vector<T>> batch_seg_ids;
     vector<unordered_map<string, vector<int64_t>>> batch_encode_inputs;

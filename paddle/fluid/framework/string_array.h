@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 namespace paddle {
@@ -21,6 +22,7 @@ namespace framework {
 
 using STRING = std::string;
 using STRINGS = std::vector<STRING>;
+using STRING_MAP = std::unordered_map<std::wstring, std::int32_t>;
 
 }  // namespace framework
 }  // namespace paddle

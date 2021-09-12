@@ -261,12 +261,20 @@ vector<wstring> BasicTokenizer::run_split_on_punc(const wstring& text) const {
 }
 
 vector<wstring> BasicTokenizer::Tokenize(const string& text) const {
+  VLOG(0) << "In BasicTokenizer::Tokenize ";
+  VLOG(0) << "input text" << text;
   wstring unicode_text = ConvertStrToWstr(text);
   unicode_text = clean_text(unicode_text);
 
   unicode_text = tokenize_chinese_chars(unicode_text);
-
+  std::wcout << "ConvertStrToWstr " << unicode_text << endl
+             << "original_tokens:";
   const vector<wstring>& original_tokens = WhiteSpaceTokenize(unicode_text);
+  for (size_t i = 0; i < original_tokens.size(); ++i) {
+    std::wcout << original_tokens[i] << "*";
+  }
+  std::wcout << endl;
+
   vector<wstring> split_tokens;
   for (wstring token : original_tokens) {
     if (do_lower_case_) {
@@ -276,6 +284,10 @@ vector<wstring> BasicTokenizer::Tokenize(const string& text) const {
     const auto& tokens = run_split_on_punc(token);
     split_tokens.insert(split_tokens.end(), tokens.begin(), tokens.end());
   }
+  for (size_t i = 0; i < split_tokens.size(); ++i) {
+    std::wcout << split_tokens[i] << "*";
+  }
+  std::wcout << endl;
   return WhiteSpaceTokenize(boost::join(split_tokens, L" "));
 }
 
@@ -592,6 +604,11 @@ vector<int64_t> BertTokenizer::GetSpecialTokensMask(
 
 vector<int64_t> BertTokenizer::get_input_ids(const string& text) const {
   vector<wstring> tokens = Tokenize(text);
+  wcout << L"After BertTokenizer::Tokenize()";
+  for (size_t i = 0; i < tokens.size(); ++i) {
+    wcout << tokens[i] << L" ";
+  }
+  wcout << endl;
   vector<int64_t> token_ids = ConvertTokensToIds(tokens);
   return token_ids;
 }
@@ -616,6 +633,11 @@ unordered_map<string, vector<int64_t>> BertTokenizer::Encode(
     bool return_overflowing_tokens /* = false */,
     bool return_special_tokens_mask /* = false */) const {
   vector<int64_t> ids = get_input_ids(text);
+  VLOG(0) << "after get_input_ids "
+          << "****" << ids.size() << "&&&&" << ids[0] << endl;
+  for (size_t tmp = 0; tmp < ids.size(); ++tmp) {
+    VLOG(0) << ids[tmp];
+  }
   vector<int64_t> pair_ids;
   if (text_pair != "") {
     vector<int64_t> res = get_input_ids(text_pair);

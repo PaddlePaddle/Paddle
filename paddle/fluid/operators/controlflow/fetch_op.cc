@@ -109,6 +109,10 @@ class FetchOp : public framework::OperatorBase {
       auto &src_item = fetch_var->Get<framework::LoDTensor>();
       auto *dst_item = &(BOOST_GET(framework::LoDTensor, fetch_list->at(col)));
       DataCopy(src_item, fetch_var_name, dst_item);
+    } else if (fetch_var->IsType<framework::STRING_MAP>()) {
+      auto &src_item = fetch_var->Get<framework::STRING_MAP>();
+      auto *dst_item = &(BOOST_GET(framework::STRING_MAP, fetch_list->at(col)));
+      *dst_item = src_item;
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();
       framework::LoDTensorArray tmp(src_item.size());
@@ -126,10 +130,12 @@ class FetchOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor) The resulted LoDTensor which is expected to return "
+             "(LoDTensor|unorder_map<string, int32_t>) The resulted LoDTensor"
+             " or unorder_map<string, int32_t> which is expected to return "
              "to users.");
     AddOutput("Out",
-              "(vector<LoDTensor>) A fetching list of LoDTensor which may have "
+              "(vector<LoDTensor>|unorder_map<string, int32_t>) A fetching list"
+              " of LoDTensor|unorder_map<string, int32_t> which may have "
               "different dimension, shape and data type.");
     AddAttr<int>("col", "(int) The column index of fetching object.");
     AddComment(R"DOC(

@@ -19,6 +19,7 @@ limitations under the License. */
 #include <numeric>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/data_type_transform.h"
@@ -66,34 +67,50 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
           inp_vars[i],
           platform::errors::InvalidArgument("Cannot find variable %s to save.",
                                             inp_var_names[i]));
-      PADDLE_ENFORCE_EQ(inp_vars[i]->IsType<framework::LoDTensor>(), true,
-                        platform::errors::InvalidArgument(
-                            "SaveCombine operator only supports saving "
-                            "LoDTensor variable, %s has wrong type.",
-                            inp_var_names[i]));
-
-      auto &tensor = inp_vars[i]->Get<framework::LoDTensor>();
       PADDLE_ENFORCE_EQ(
-          tensor.IsInitialized(), true,
-          platform::errors::InvalidArgument(
-              "The Tensor of Variable(%s) to be saved is not initialized.",
-              inp_var_names[i]));
-      // Serialize tensors one by one
-      // Check types to see if a fp16 transformation is required
-      auto in_dtype = tensor.type();
-      auto out_dtype =
-          save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
+          inp_vars[i]->IsType<framework::LoDTensor>() ||
+              inp_vars[i]->IsType<framework::STRING_MAP>(),
+          true, platform::errors::InvalidArgument(
+                    "SaveCombine operator only supports saving "
+                    "LoDTensor or STRING_MAP variable, %s has wrong type.",
+                    inp_var_names[i]));
 
-      if (in_dtype != out_dtype) {
-        auto in_kernel_type = framework::OpKernelType(in_dtype, place);
-        auto out_kernel_type = framework::OpKernelType(out_dtype, place);
-        framework::LoDTensor out;
-        // copy LoD info to the new tensor
-        out.set_lod(tensor.lod());
-        framework::TransDataType(in_kernel_type, out_kernel_type, tensor, &out);
-        framework::SerializeToStream(ss, out, dev_ctx);
+      if (inp_vars[i]->IsType<framework::LoDTensor>()) {
+        auto &tensor = inp_vars[i]->Get<framework::LoDTensor>();
+        PADDLE_ENFORCE_EQ(
+            tensor.IsInitialized(), true,
+            platform::errors::InvalidArgument(
+                "The Tensor of Variable(%s) to be saved is not initialized.",
+                inp_var_names[i]));
+        // Serialize tensors one by one
+        // Check types to see if a fp16 transformation is required
+        auto in_dtype = tensor.type();
+        auto out_dtype =
+            save_as_fp16 ? framework::proto::VarType::FP16 : in_dtype;
+
+        if (in_dtype != out_dtype) {
+          auto in_kernel_type = framework::OpKernelType(in_dtype, place);
+          auto out_kernel_type = framework::OpKernelType(out_dtype, place);
+          framework::LoDTensor out;
+          // copy LoD info to the new tensor
+          out.set_lod(tensor.lod());
+          framework::TransDataType(in_kernel_type, out_kernel_type, tensor,
+                                   &out);
+          framework::SerializeToStream(ss, out, dev_ctx);
+        } else {
+          framework::SerializeToStream(ss, tensor, dev_ctx);
+        }
       } else {
-        framework::SerializeToStream(ss, tensor, dev_ctx);
+        auto &tensor = inp_vars[i]->Get<framework::STRING_MAP>();
+        VLOG(0)
+            << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&"
+            << tensor.size();
+        framework::SerializeStringMap data;
+        for (auto it = tensor.begin(); it != tensor.end(); ++it) {
+          std::string t = framework::ConvertWstrToStr(it->first);
+          data.insert({t, it->second});
+        }
+        data.MapTensorToStream(ss);
       }
     }
     if (save_to_memory) {
