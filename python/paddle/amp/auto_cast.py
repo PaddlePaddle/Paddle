@@ -70,5 +70,5 @@ def auto_cast(enable=True,
     return amp_guard(enable, custom_white_list, custom_black_list, mode)
 
 
-def pure_fp16_decorator(models=None, optimizers=None, save_dtype=None):
-    return amp_decorator(models, optimizers, save_dtype)
+def decorator(models=None, optimizers=None, mode='L2', save_dtype=None):
+    return amp_decorator(models, optimizers, mode, save_dtype)

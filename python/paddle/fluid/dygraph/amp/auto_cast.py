@@ -329,7 +329,15 @@ class StateDictHook(object):
 
 
 @dygraph_only
-def amp_decorator(models=None, optimizers=None, save_dtype=None):
+def amp_decorator(models=None, optimizers=None, mode='L2', save_dtype=None):
+    if not (mode in ['L1', 'L2']):
+        raise ValueError(
+            "mode should be L1 or L2, L1 represent AMP train mode, L2 represent Pure fp16 train mode."
+        )
+
+    if mode == 'L1':
+        return models, optimizers
+
     models_is_list = False
     if isinstance(models, paddle.nn.Layer):
         models_is_list = False

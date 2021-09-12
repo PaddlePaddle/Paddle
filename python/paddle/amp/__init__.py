@@ -14,6 +14,6 @@
 
 from .auto_cast import auto_cast  # noqa: F401
 from .grad_scaler import GradScaler  # noqa: F401
-from .auto_cast import pure_fp16_decorator  # noqa: F401
+from .auto_cast import decorator  # noqa: F401
 
-__all__ = ['auto_cast', 'GradScaler', 'pure_fp16_decorator']
+__all__ = ['auto_cast', 'GradScaler', 'decorator']
