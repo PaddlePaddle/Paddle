@@ -417,8 +417,10 @@ void FleetWrapper::PushSparseFromTensorWithLabelAsync(
   return;
 }
 
-void FleetWrapper::LoadModel(const std::string& path, const int mode) {
-  auto ret = pserver_ptr_->_worker_ptr->load(path, std::to_string(mode));
+void FleetWrapper::LoadModel(const std::string& path, const std::string& mode) {
+  auto* communicator = Communicator::GetInstance();
+  auto ret = communicator->_worker_ptr->load(path, mode);
+  // auto ret = pserver_ptr_->_worker_ptr->load(path, std::to_string(mode));
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model from path:" << path << " failed";
@@ -429,8 +431,11 @@ void FleetWrapper::LoadModel(const std::string& path, const int mode) {
 
 void FleetWrapper::LoadModelOneTable(const uint64_t table_id,
                                      const std::string& path, const int mode) {
+  auto* communicator = Communicator::GetInstance();
   auto ret =
-      pserver_ptr_->_worker_ptr->load(table_id, path, std::to_string(mode));
+      communicator->_worker_ptr->load(table_id, path, std::to_string(mode));
+  // auto ret =
+  //    pserver_ptr_->_worker_ptr->load(table_id, path, std::to_string(mode));
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model of table id: " << table_id

@@ -15,12 +15,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/fill_constant_op.h"
 
 namespace ops = paddle::operators;
-REGISTER_OP_CUDA_KERNEL(fill_constant, ops::FillConstantKernel<float>,
-                        ops::FillConstantKernel<double>,
-                        ops::FillConstantKernel<uint8_t>,
-                        ops::FillConstantKernel<int64_t>,
-                        ops::FillConstantKernel<int>,
-                        ops::FillConstantKernel<bool>,
-                        ops::FillConstantKernel<paddle::platform::float16>,
-                        ops::FillConstantKernel<paddle::platform::complex64>,
-                        ops::FillConstantKernel<paddle::platform::complex128>);
+REGISTER_OP_CUDA_KERNEL(
+    fill_constant, ops::FillConstantKernel<float>,
+    ops::FillConstantKernel<double>, ops::FillConstantKernel<uint8_t>,
+    ops::FillConstantKernel<int64_t>, ops::FillConstantKernel<int>,
+    ops::FillConstantKernel<bool>,
+    ops::FillConstantKernel<paddle::platform::float16>,
+    ops::FillConstantKernel<paddle::platform::complex<float>>,
+    ops::FillConstantKernel<paddle::platform::complex<double>>);

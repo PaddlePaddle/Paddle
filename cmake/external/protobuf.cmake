@@ -198,16 +198,16 @@ FUNCTION(build_protobuf TARGET_NAME BUILD_FOR_HOST)
             "-Dprotobuf_MSVC_STATIC_RUNTIME=${MSVC_STATIC_CRT}")
     ENDIF()
 
-if(WITH_ASCEND AND NOT WITH_ASCEND_CXX11)
-    SET(PROTOBUF_REPOSITORY  https://gitee.com/tianjianhe/protobuf.git)
-    SET(PROTOBUF_TAG         v3.8.0)
-elseif(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
-    SET(PROTOBUF_REPOSITORY  https://gitee.com/tianjianhe/protobuf.git)
-    SET(PROTOBUF_TAG         v3.8.0)
-else()
-    SET(PROTOBUF_REPOSITORY  ${GIT_URL}/protocolbuffers/protobuf.git)
-    SET(PROTOBUF_TAG         9f75c5aa851cd877fb0d93ccc31b8567a6706546)
-endif()
+    if(WITH_ASCEND AND NOT WITH_ASCEND_CXX11)
+        SET(PROTOBUF_REPOSITORY  https://gitee.com/tianjianhe/protobuf.git)
+        SET(PROTOBUF_TAG         v3.8.0)
+    elseif(WITH_ASCEND_CL AND NOT WITH_ASCEND_CXX11)
+        SET(PROTOBUF_REPOSITORY  https://gitee.com/tianjianhe/protobuf.git)
+        SET(PROTOBUF_TAG         v3.8.0)
+    else()
+        SET(PROTOBUF_REPOSITORY  ${GIT_URL}/protocolbuffers/protobuf.git)
+        SET(PROTOBUF_TAG         9f75c5aa851cd877fb0d93ccc31b8567a6706546)
+    endif()
 
     cache_third_party(${TARGET_NAME}
         REPOSITORY    ${PROTOBUF_REPOSITORY}
@@ -239,6 +239,10 @@ endif()
                         -DCMAKE_VERBOSE_MAKEFILE:BOOL=OFF
                         -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON
                         ${OPTIONAL_CACHE_ARGS}
+        BUILD_BYPRODUCTS ${PROTOBUF_INSTALL_DIR}/lib/libprotobuf${CMAKE_STATIC_LIBRARY_SUFFIX}
+        BUILD_BYPRODUCTS ${PROTOBUF_INSTALL_DIR}/lib/libprotobuf-lite${CMAKE_STATIC_LIBRARY_SUFFIX}
+        BUILD_BYPRODUCTS ${PROTOBUF_INSTALL_DIR}/lib/libprotoc${CMAKE_STATIC_LIBRARY_SUFFIX}
+        BUILD_BYPRODUCTS ${PROTOBUF_INSTALL_DIR}/bin/protoc${CMAKE_EXECUTABLE_SUFFIX}
     )
 ENDFUNCTION()
 

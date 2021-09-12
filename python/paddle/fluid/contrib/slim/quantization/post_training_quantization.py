@@ -33,6 +33,7 @@ from .quantization_pass import _get_op_output_var_names
 from .quantization_pass import _get_output_name_index
 from .quantization_pass import _get_input_name_index
 from .quantization_pass import _channelwise_quant_axis1_ops
+from .cal_kl_threshold import cal_kl_threshold
 
 __all__ = ['PostTrainingQuantization', 'WeightQuantization']
 
@@ -577,6 +578,7 @@ class PostTrainingQuantization(object):
             var_tensor = _load_variable_data(self._scope, var_name)
             var_tensor = var_tensor.flatten()
             abs_max_value = float(np.max(np.abs(var_tensor)))
+            abs_max_value = 1e-8 if abs_max_value == 0.0 else abs_max_value
             s = 0.3
             if var_name not in self._best_mse_loss:
                 self._best_mse_loss[var_name] = float('inf')
@@ -703,6 +705,7 @@ class PostTrainingQuantization(object):
                                  self._quantized_var_min[var_name])
                     op._set_attr(var_name + ".max",
                                  self._quantized_var_max[var_name])
+                    op._set_attr("with_quant_attr", True)
 
     def _collect_activation_abs_min_max(self):
         '''
@@ -763,8 +766,9 @@ class PostTrainingQuantization(object):
         for var_name in self._quantized_act_var_name:
             hist, hist_edeges = self._sampling_act_histogram[var_name]
             if self._algo == "KL":
+                bin_width = hist_edeges[1] - hist_edeges[0]
                 self._quantized_var_threshold[var_name] = \
-                    self._get_kl_scaling_factor(hist, hist_edeges)
+                    cal_kl_threshold(hist, bin_width, self._activation_bits)
             elif self._algo == "hist":
                 self._quantized_var_threshold[var_name] = \
                     self._get_hist_scaling_factor(hist, hist_edeges)
@@ -846,6 +850,7 @@ class PostTrainingQuantization(object):
                 "The output ({}) of {} node does not have threshold.".format(
                 out_var_name, op_node.type)
             op_node._set_attr(out_info_name, threshold_map[var_name])
+            op_node._set_attr("with_quant_attr", True)
             if op_node.type in self._quantizable_op_type:
                 op._set_attr("quantization_type", quantized_type)
 
@@ -918,6 +923,7 @@ class PostTrainingQuantization(object):
                     op._set_attr(argname + str(index) + "_threshold", threshold)
                     op._set_attr("quantization_type", quantization_type)
                     op._set_attr("bit_length", self._weight_bits)
+                    op._set_attr("with_quant_attr", True)
 
     def _get_hist_scaling_factor(self, hist, hist_edges):
         '''
@@ -934,107 +940,6 @@ class PostTrainingQuantization(object):
                 break
         bin_width = hist_edges[1] - hist_edges[0]
         return (hist_index - 0.5) * bin_width
-
-    def _get_kl_scaling_factor(self, hist, hist_edeges):
-        '''
-        Using the KL-divergenc method to get the more precise scaling factor.
-        '''
-        num_quantized_bins = 2**(self._activation_bits - 1) - 1
-        ending_iter = self._histogram_bins - 1
-        starting_iter = int(ending_iter * 0.7)
-        bin_width = hist_edeges[1] - hist_edeges[0]
-
-        P_sum = np.sum(np.array(hist).ravel())
-        min_kl_divergence = 0
-        min_kl_index = 0
-        kl_inited = False
-        for i in range(starting_iter, ending_iter + 1):
-            reference_distr_P = hist[0:i].tolist()
-            outliers_count = sum(hist[i:2048])
-            if reference_distr_P[i - 1] == 0:
-                continue
-            reference_distr_P[i - 1] += outliers_count
-            reference_distr_bins = reference_distr_P[:]
-            candidate_distr_Q = hist[0:i].tolist()
-            num_merged_bins = int(i / num_quantized_bins)
-            candidate_distr_Q_quantized = [0] * num_quantized_bins
-            j_start = 0
-            j_end = num_merged_bins
-            for idx in range(num_quantized_bins):
-                candidate_distr_Q_quantized[idx] = sum(candidate_distr_Q[
-                    j_start:j_end])
-                j_start += num_merged_bins
-                j_end += num_merged_bins
-                if (idx + 1) == num_quantized_bins - 1:
-                    j_end = i
-            candidate_distr_Q = self._expand_quantized_bins(
-                candidate_distr_Q_quantized, reference_distr_bins)
-            Q_sum = sum(candidate_distr_Q)
-            kl_divergence = self._safe_entropy(reference_distr_P, P_sum,
-                                               candidate_distr_Q, Q_sum)
-            if not kl_inited:
-                min_kl_divergence = kl_divergence
-                min_kl_index = i
-                kl_inited = True
-            elif kl_divergence < min_kl_divergence:
-                min_kl_divergence = kl_divergence
-                min_kl_index = i
-            else:
-                pass
-        if min_kl_index == 0:
-            while starting_iter > 0:
-                if hist[starting_iter] == 0:
-                    starting_iter -= 1
-                    continue
-                else:
-                    break
-            min_kl_index = starting_iter
-        return (min_kl_index + 0.5) * bin_width
-
-    def _expand_quantized_bins(self, quantized_bins, reference_bins):
-        '''
-        '''
-        expanded_quantized_bins = [0] * len(reference_bins)
-        num_merged_bins = int(len(reference_bins) / len(quantized_bins))
-        j_start = 0
-        j_end = num_merged_bins
-        for idx in range(len(quantized_bins)):
-            zero_count = reference_bins[j_start:j_end].count(0)
-            num_merged_bins = j_end - j_start
-            if zero_count == num_merged_bins:
-                avg_bin_ele = 0
-            else:
-                avg_bin_ele = quantized_bins[idx] / (
-                    num_merged_bins - zero_count + 0.0)
-            for idx1 in range(j_start, j_end):
-                expanded_quantized_bins[idx1] = (0 if reference_bins[idx1] == 0
-                                                 else avg_bin_ele)
-            j_start += num_merged_bins
-            j_end += num_merged_bins
-            if (idx + 1) == len(quantized_bins) - 1:
-                j_end = len(reference_bins)
-        return expanded_quantized_bins
-
-    def _safe_entropy(self, reference_distr_P, P_sum, candidate_distr_Q, Q_sum):
-        '''
-        Calculate the entropy.
-        '''
-        assert len(reference_distr_P) == len(candidate_distr_Q)
-        tmp_sum1 = 0
-        tmp_sum2 = 0
-        for idx in range(len(reference_distr_P)):
-            p_idx = reference_distr_P[idx]
-            q_idx = candidate_distr_Q[idx]
-            if p_idx == 0:
-                tmp_sum1 += 0
-                tmp_sum2 += 0
-            else:
-                if q_idx == 0:
-                    _logger.error("Fatal error!, idx = " + str(idx) +
-                                  " qindex = 0! p_idx = " + str(p_idx))
-                tmp_sum1 += p_idx * (math.log(Q_sum * p_idx))
-                tmp_sum2 += p_idx * (math.log(P_sum * q_idx))
-        return (tmp_sum1 - tmp_sum2) / P_sum
 
 
 class WeightQuantization(object):
@@ -1282,6 +1187,7 @@ class WeightQuantization(object):
         op._set_attr('quantization_type', 'post_weight_abs_max')
         op._set_attr('quantize_weight_bits', weight_bits)
         op._set_attr(var_name + "_quant_scale", [scale])  # Save as list
+        op._set_attr("with_quant_attr", True)
 
     def _weight_channel_wise_abs_max_quantization(
             self, scope, place, weight_bits, op, var_name, for_test):
@@ -1323,6 +1229,7 @@ class WeightQuantization(object):
         op._set_attr('quantization_type', 'post_weight_channel_wise_abs_max')
         op._set_attr('quantize_weight_bits', weight_bits)
         op._set_attr(var_name + "_quant_scale", scales)
+        op._set_attr("with_quant_attr", True)
 
     def _conv_channel_wise_quantization(self, weight_data, quantize_range,
                                         save_weight_dtype):

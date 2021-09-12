@@ -42,17 +42,17 @@ int32_t PsLocalClient::initialize() {
 ::std::future<int32_t> PsLocalClient::load(const std::string& epoch,
                                            const std::string& mode) {
   // TODO
-  // for (auto& it : _table_map) {
-  //    load(it.first, epoch, mode);
-  //}
+  for (auto& it : _table_map) {
+    load(it.first, epoch, mode);
+  }
   return done();
 }
 ::std::future<int32_t> PsLocalClient::load(uint32_t table_id,
                                            const std::string& epoch,
                                            const std::string& mode) {
   // TODO
-  // auto* table_ptr = table(table_id);
-  // table_ptr->load(epoch, mode);
+  auto* table_ptr = table(table_id);
+  table_ptr->load(epoch, mode);
   return done();
 }
 
@@ -245,7 +245,6 @@ int32_t PsLocalClient::initialize() {
 ::std::future<int32_t> PsLocalClient::push_sparse_raw_gradient(
     size_t table_id, const uint64_t* keys, const float** update_values,
     size_t num, void* callback) {
-  VLOG(1) << "wxx push_sparse_raw_gradient";
   PSClientClosure* closure = reinterpret_cast<PSClientClosure*>(callback);
   auto* accessor = table_accessor(table_id);
   auto* table_ptr = table(table_id);

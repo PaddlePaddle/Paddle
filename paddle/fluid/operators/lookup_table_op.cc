@@ -118,6 +118,11 @@ class LookupTableOpMaker : public framework::OpProtoAndCheckerMaker {
                          ") for entry attribute.")
         .SetDefault("none");
 
+    AddAttr<std::string>("table_class",
+                         "(std::string, default "
+                         ") for table_class.")
+        .SetDefault("none");
+
     AddAttr<std::vector<std::string>>(
         "table_names",
         "(string vector, the split table names that will be fetched from "
@@ -224,6 +229,7 @@ REGISTER_OPERATOR(lookup_table_grad, ops::LookupTableOpGrad,
 REGISTER_OP_CPU_KERNEL(lookup_table, ops::LookupTableKernel<float>,
                        ops::LookupTableKernel<double>,
                        ops::LookupTableKernel<int8_t>,
+                       ops::LookupTableKernel<int16_t>,
                        ops::LookupTableKernel<paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(lookup_table_grad, ops::LookupTableGradKernel<float>,
                        ops::LookupTableGradKernel<double>,

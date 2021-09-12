@@ -20,8 +20,7 @@ limitations under the License. */
 #include <hip/hip_runtime.h>
 #endif
 #include <stdio.h>
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -135,18 +134,18 @@ CUDA_ATOMIC_WRAPPER(Add, float16) {
 }
 #endif
 
-CUDA_ATOMIC_WRAPPER(Add, complex64) {
+CUDA_ATOMIC_WRAPPER(Add, complex<float>) {
   float *real = reinterpret_cast<float *>(address);
   float *imag = real + 1;
-  return complex64(CudaAtomicAdd(real, val.real),
-                   CudaAtomicAdd(imag, val.imag));
+  return complex<float>(CudaAtomicAdd(real, val.real),
+                        CudaAtomicAdd(imag, val.imag));
 }
 
-CUDA_ATOMIC_WRAPPER(Add, complex128) {
+CUDA_ATOMIC_WRAPPER(Add, complex<double>) {
   double *real = reinterpret_cast<double *>(address);
   double *imag = real + 1;
-  return complex128(CudaAtomicAdd(real, val.real),
-                    CudaAtomicAdd(imag, val.imag));
+  return complex<double>(CudaAtomicAdd(real, val.real),
+                         CudaAtomicAdd(imag, val.imag));
 }
 
 // For atomicMax

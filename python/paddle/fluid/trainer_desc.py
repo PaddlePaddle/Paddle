@@ -17,7 +17,7 @@ import sys
 import os
 __all__ = [
     'TrainerDesc', 'MultiTrainer', 'DistMultiTrainer', 'PipelineTrainer',
-    'HeterXpuTrainer', 'HeterBoxWorker'
+    'HeterXpuTrainer'
 ]
 
 
@@ -123,6 +123,10 @@ class TrainerDesc(object):
 
     def _set_no_cvm(self, no_cvm=False):
         self.proto_desc.no_cvm = no_cvm
+
+    def _set_scale_sparse_grad_with_batch_size(
+            self, scale_sparse_gradient_with_batch_size=True):
+        self.proto_desc.scale_sparse_gradient_with_batch_size = scale_sparse_gradient_with_batch_size
 
     def _set_scale_datanorm(self, scale_datanorm=-1):
         self.proto_desc.scale_datanorm = scale_datanorm
@@ -339,30 +343,6 @@ class HeterXpuTrainer(TrainerDesc):
     def _gen_trainer_desc(self):
         super(HeterXpuTrainer, self)._gen_trainer_desc()
         self.proto_desc.class_name = "HeterXpuTrainer"
-        if self._program == None:
-            raise RuntimeError("None Program")
-        self._device_worker._set_infer(self._infer)
-        self._device_worker._set_program(self._program)
-        self._device_worker._gen_worker_desc(self.proto_desc)
-
-
-class HeterBoxTrainer(TrainerDesc):
-    """
-    Implement of HeterBoxTrainer.
-    It's for Distributed training.
-    """
-
-    def __init__(self):
-        super(HeterBoxTrainer, self).__init__()
-        pass
-
-    def _set_program(self, program):
-        super(HeterBoxTrainer, self)._set_program(program)
-        self._program = program
-
-    def _gen_trainer_desc(self):
-        super(HeterBoxTrainer, self)._gen_trainer_desc()
-        self.proto_desc.class_name = "HeterBoxTrainer"
         if self._program == None:
             raise RuntimeError("None Program")
         self._device_worker._set_infer(self._infer)

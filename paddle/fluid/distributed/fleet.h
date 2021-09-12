@@ -200,7 +200,7 @@ class FleetWrapper {
   void PrintTableStat(const uint64_t table_id);
   // mode = 0, load all feature
   // mode = 1, load delta feature, which means load diff
-  void LoadModel(const std::string& path, const int mode);
+  void LoadModel(const std::string& path, const std::string& mode);
   // mode = 0, load all feature
   // mode = 1, load delta feature, which means load diff
   void LoadModelOneTable(const uint64_t table_id, const std::string& path,

@@ -38,10 +38,7 @@ import multiprocessing
 import signal
 
 # NOTE: queue has a different name in python2 and python3
-if six.PY2:
-    import Queue as queue
-else:
-    import queue
+import queue
 
 # NOTE: [ avoid hanging & failed quickly ] These value is used in getting data from another process
 QUEUE_GET_TIMEOUT = 60
@@ -328,7 +325,8 @@ class DataLoader(object):
                  use_buffer_reader=True,
                  use_shared_memory=True,
                  timeout=0,
-                 worker_init_fn=None):
+                 worker_init_fn=None,
+                 persistent_workers=False):
         self.return_list = return_list
         self.collate_fn = collate_fn
         self.use_buffer_reader = use_buffer_reader
@@ -403,12 +401,16 @@ class DataLoader(object):
                     shuffle=shuffle,
                     drop_last=drop_last)
 
+        self.drop_last = drop_last
         self.auto_collate_batch = self.batch_sampler is not None
 
         self.pin_memory = False
         if in_dygraph_mode():
             self.pin_memory = True if use_pinned_memory(
             ) is None else use_pinned_memory()
+
+        self._persistent_workers = persistent_workers
+        self._iterator = None
 
     def __len__(self):
         if self.dataset_kind == _DatasetKind.ITER:
@@ -422,6 +424,12 @@ class DataLoader(object):
     def __iter__(self):
         if self.num_workers == 0:
             return _DataLoaderIterSingleProcess(self)
+        elif self._persistent_workers:
+            if self._iterator is None:
+                self._iterator = _DataLoaderIterMultiProcess(self)
+            else:
+                self._iterator._reset()
+            return self._iterator
         else:
             return _DataLoaderIterMultiProcess(self)
 
@@ -1291,7 +1299,7 @@ class GeneratorLoader(DataLoaderBase):
             except Exception as ex:
                 self._queue.kill()
                 self._thread = None
-                logging.warn('Your reader has raised an exception!')
+                logging.warning('Your reader has raised an exception!')
                 six.reraise(*sys.exc_info())
 
         self._thread = threading.Thread(

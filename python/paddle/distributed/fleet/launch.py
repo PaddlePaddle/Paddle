@@ -75,6 +75,8 @@ from paddle.distributed.fleet.launch_utils import *
 import paddle.distributed.fleet.cloud_utils as cloud_utils
 import paddle.distributed.fleet.ascend_utils as ascend_utils
 
+from paddle.distributed.fleet.elastic import enable_elastic, launch_elastic
+
 __all__ = []
 
 
@@ -175,6 +177,18 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--heter_worker_num", type=int, help="number of heter_workers")
     ps_group.add_argument("--http_port", type=int, help="Gloo http Port")
 
+    # parameter elastic mode
+    elastic_group = parser.add_argument_group("Elastic Parameters")
+    elastic_group.add_argument(
+        "--elastic_server", type=str, help="etcd server host:port")
+    elastic_group.add_argument("--job_id", type=str, help="job unique id")
+    elastic_group.add_argument("--np", type=int, help="job pod/node number")
+    elastic_group.add_argument("--scale", type=int, default=0, help="scale np")
+    elastic_group.add_argument(
+        "--host", type=str, help="bind host, default to POD_IP env")
+    elastic_group.add_argument(
+        "--force", type=bool, default=False, help="update np force")
+
     return parser.parse_args()
 
 
@@ -183,7 +197,10 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
     if len(node_ips) == 1:
         node_ip = node_ips[0]
     else:
-        _, node_ip = get_host_name_ip()
+        if args.host:
+            node_ip = args.host
+        else:
+            _, node_ip = get_host_name_ip()
 
     assert node_ip in node_ips, "Can't find your local ip {%s} in node_ips: {%s}" \
         % (node_ip, node_ips)
@@ -262,14 +279,20 @@ def launch_collective(args):
         print("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
 
     while True:
-        alive = watch_local_trainers(procs, cluster.trainers_nranks())
+        try:
+            alive = watch_local_trainers(procs, cluster.trainers_nranks())
 
-        if not alive:
-            logger.info("Local processes completed.")
-            logger.debug("POD info:{}".format(pod))
-            break
+            if not alive:
+                logger.info("Local processes completed.")
+                logger.debug("POD info:{}".format(pod))
+                break
 
-        time.sleep(3)
+            time.sleep(3)
+
+        except:
+            logger.warning("Terminating... exit")
+            terminate_local_procs(procs)
+            exit(1)
 
     if os.path.exists(gloo_rendezvous_dir):
         shutil.rmtree(gloo_rendezvous_dir)
@@ -367,6 +390,11 @@ def launch():
     _print_arguments(args)
 
     distribute_mode = which_distributed_mode(args)
+
+    if enable_elastic(args, distribute_mode):
+        launch_elastic(args, distribute_mode)
+        return
+
     if distribute_mode == DistributeMode.COLLECTIVE:
         launch_collective(args)
     else:

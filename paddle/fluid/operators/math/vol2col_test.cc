@@ -116,6 +116,9 @@ void testVol2col() {
   for (int i = 0; i < 12; ++i) {
     EXPECT_EQ(in_ptr[i], col_2_vol[i]);
   }
+
+  delete place;
+  delete context;
 }
 
 TEST(math, vol2col) {

@@ -187,7 +187,6 @@ __global__ void grid_sample_cuda_kernel(const int nthreads, int n, int out_c,
   int out_sC = out_h * out_w;
   int out_sH = out_w;
   int out_sW = 1;
-
   CUDA_KERNEL_LOOP(index, nthreads) {
     const int w = index % out_w;
     const int h = (index / out_w) % out_h;
@@ -199,7 +198,6 @@ __global__ void grid_sample_cuda_kernel(const int nthreads, int n, int out_c,
 
     ix = compute_positions(ix, in_w, padding_mode, align_corners);
     iy = compute_positions(iy, in_h, padding_mode, align_corners);
-
     if (mode == Mode::bilinear) {
       int ix_nw = static_cast<int>(floor(ix));
       int iy_nw = static_cast<int>(floor(iy));
@@ -216,6 +214,7 @@ __global__ void grid_sample_cuda_kernel(const int nthreads, int n, int out_c,
       T se = (ix - ix_nw) * (iy - iy_nw);
 
       auto inp_offset_NC = n * inp_sN;
+
       auto out_ptr_NCHW = output + n * out_sN + h * out_sH + w * out_sW;
       for (int c = 0; c < out_c;
            ++c, inp_offset_NC += inp_sC, out_ptr_NCHW += out_sC) {
@@ -291,17 +290,17 @@ class GridSampleOpCUDAKernel : public framework::OpKernel<T> {
             << "; out_w: " << out_w;
     auto* output = ctx.Output<Tensor>("Output");
     auto* output_data = output->mutable_data<T>(ctx.GetPlace());
-
-    VLOG(3) << "set constant";
+    VLOG(3) << "out dims: " << output->dims()[0] << "; " << output->dims()[1]
+            << "; " << output->dims()[2] << "; " << output->dims()[3];
     math::SetConstant<paddle::platform::CUDADeviceContext, T>()(
         dev_ctx, output, static_cast<T>(0));
     int count = static_cast<int>(n * out_h * out_w);
-
     auto cu_stream = dev_ctx.stream();
-
-    int block = 512;
-    int grid_size = (count + block - 1) / block;
-    grid_sample_cuda_kernel<T><<<block, grid_size, 0, cu_stream>>>(
+    int block_size = 512;
+    int grid_size = (count + block_size - 1) / block_size;
+    VLOG(3) << "cuda launch - grid dims: " << grid_size << "; block dims"
+            << block_size;
+    grid_sample_cuda_kernel<T><<<grid_size, block_size, 0, cu_stream>>>(
         count, n, c, out_h, out_w, in_h, in_w, input->data<T>(),
         grid->data<T>(), output_data, mode, padding_mode, align_corners);
   }
@@ -475,9 +474,12 @@ class GridSampleGradOpCUDAKernel : public framework::OpKernel<T> {
 
     int count = static_cast<int>(n * out_h * out_w);
     auto cu_stream = dev_ctx.stream();
-    int block = 512;
-    int grid_size = (count + block - 1) / block;
-    grid_sampler_cuda_backward_kernel<T><<<block, grid_size, 0, cu_stream>>>(
+    int block_size = 512;
+    int grid_size = (count + block_size - 1) / block_size;
+    VLOG(3) << "cuda launch grad kernel - grid dims: " << grid_size
+            << "; block dims" << block_size << "; count: " << count;
+    grid_sampler_cuda_backward_kernel<
+        T><<<grid_size, block_size, 0, cu_stream>>>(
         count, output_grad->data<T>(), input->data<T>(), grid->data<T>(), n, c,
         out_h, out_w, in_h, in_w, input_grad->data<T>(), grid_grad_data, mode,
         padding_mode, align_corners);

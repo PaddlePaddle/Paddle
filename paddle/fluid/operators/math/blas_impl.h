@@ -23,8 +23,7 @@
 
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/bfloat16.h"
-#include "paddle/fluid/platform/complex128.h"
-#include "paddle/fluid/platform/complex64.h"
+#include "paddle/fluid/platform/complex.h"
 
 namespace paddle {
 namespace operators {
@@ -48,6 +47,15 @@ struct CBlas;
 
 template <>
 struct CBlas<int8_t> {
+  template <typename... ARGS>
+  static void VCOPY(ARGS... args) {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Blas VCOPY do not supported on CPU, please check your code"));
+  }
+};
+
+template <>
+struct CBlas<int16_t> {
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -324,11 +332,11 @@ struct CBlas<double> {
 };
 
 template <>
-struct CBlas<platform::complex64> {
+struct CBlas<platform::complex<float>> {
   template <typename... ARGS>
-  static void AXPY(int n, const paddle::platform::complex64 alpha,
-                   const paddle::platform::complex64 *X, const int incX,
-                   paddle::platform::complex64 *Y, const int incY) {
+  static void AXPY(int n, const paddle::platform::complex<float> alpha,
+                   const paddle::platform::complex<float> *X, const int incX,
+                   paddle::platform::complex<float> *Y, const int incY) {
     platform::dynload::cblas_caxpy(n, &alpha, X, incX, Y, incY);
   }
 
@@ -363,35 +371,35 @@ struct CBlas<platform::complex64> {
   */
 
   template <typename... ARGS>
-  static void VADD(int n, const paddle::platform::complex64 *a,
-                   const paddle::platform::complex64 *b,
-                   paddle::platform::complex64 *y) {
+  static void VADD(int n, const paddle::platform::complex<float> *a,
+                   const paddle::platform::complex<float> *b,
+                   paddle::platform::complex<float> *y) {
     for (int i = 0; i < n; ++i) {
       y[i] = a[i] + b[i];
     }
   }
 
   template <typename... ARGS>
-  static void VSUB(int n, const paddle::platform::complex64 *a,
-                   const paddle::platform::complex64 *b,
-                   paddle::platform::complex64 *y) {
+  static void VSUB(int n, const paddle::platform::complex<float> *a,
+                   const paddle::platform::complex<float> *b,
+                   paddle::platform::complex<float> *y) {
     for (int i = 0; i < n; ++i) {
       y[i] = a[i] - b[i];
     }
   }
 
   template <typename... ARGS>
-  static void VMUL(int n, const paddle::platform::complex64 *a,
-                   const paddle::platform::complex64 *b,
-                   paddle::platform::complex64 *y) {
+  static void VMUL(int n, const paddle::platform::complex<float> *a,
+                   const paddle::platform::complex<float> *b,
+                   paddle::platform::complex<float> *y) {
     for (int i = 0; i < n; ++i) {
       y[i] = a[i] * b[i];
     }
   }
   template <typename... ARGS>
-  static void VDIV(int n, const paddle::platform::complex64 *a,
-                   const paddle::platform::complex64 *b,
-                   paddle::platform::complex64 *y) {
+  static void VDIV(int n, const paddle::platform::complex<float> *a,
+                   const paddle::platform::complex<float> *b,
+                   paddle::platform::complex<float> *y) {
     for (int i = 0; i < n; ++i) {
       y[i] = a[i] / b[i];
     }
@@ -399,11 +407,11 @@ struct CBlas<platform::complex64> {
 
   template <typename... ARGS>
   static void GEMV(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE trans, int M, int N,
-                   paddle::platform::complex64 alpha,
-                   const paddle::platform::complex64 *A, int lda,
-                   const paddle::platform::complex64 *X, int incx,
-                   paddle::platform::complex64 beta,
-                   paddle::platform::complex64 *Y, int incy) {
+                   paddle::platform::complex<float> alpha,
+                   const paddle::platform::complex<float> *A, int lda,
+                   const paddle::platform::complex<float> *X, int incx,
+                   paddle::platform::complex<float> beta,
+                   paddle::platform::complex<float> *Y, int incy) {
     const void *a_ = (const void *)(A);
     const void *x_ = (const void *)(X);
     void *y_ = static_cast<void *>(Y);
@@ -414,11 +422,11 @@ struct CBlas<platform::complex64> {
   template <typename... ARGS>
   static void GEMM(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE trans_a,
                    CBLAS_TRANSPOSE trans_b, int M, int N, int K,
-                   paddle::platform::complex64 alpha,
-                   const paddle::platform::complex64 *A, int lda,
-                   const paddle::platform::complex64 *B, int ldb,
-                   paddle::platform::complex64 beta,
-                   paddle::platform::complex64 *C, int ldc) {
+                   paddle::platform::complex<float> alpha,
+                   const paddle::platform::complex<float> *A, int lda,
+                   const paddle::platform::complex<float> *B, int ldb,
+                   paddle::platform::complex<float> beta,
+                   paddle::platform::complex<float> *C, int ldc) {
     const void *a_ = (const void *)(A);
     const void *b_ = (const void *)(B);
     void *c_ = static_cast<void *>(C);
@@ -429,11 +437,12 @@ struct CBlas<platform::complex64> {
   template <typename... ARGS>
   static void GEMM_BATCH(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE *trans_a,
                          CBLAS_TRANSPOSE *trans_b, int *M, int *N, int *K,
-                         paddle::platform::complex64 *alpha,
-                         const paddle::platform::complex64 **A, const int *lda,
-                         const paddle::platform::complex64 **B, const int *ldb,
-                         paddle::platform::complex64 *beta,
-                         paddle::platform::complex64 **C, const int *ldc,
+                         paddle::platform::complex<float> *alpha,
+                         const paddle::platform::complex<float> **A,
+                         const int *lda,
+                         const paddle::platform::complex<float> **B,
+                         const int *ldb, paddle::platform::complex<float> *beta,
+                         paddle::platform::complex<float> **C, const int *ldc,
                          int group_count, int *group_size) {
     const void **A_void = (const void **)(&(*A));
     const void **B_void = (const void **)(&(*B));
@@ -451,11 +460,11 @@ struct CBlas<platform::complex64> {
 };
 
 template <>
-struct CBlas<platform::complex128> {
+struct CBlas<platform::complex<double>> {
   template <typename... ARGS>
-  static void AXPY(int n, const paddle::platform::complex128 alpha,
-                   const paddle::platform::complex128 *X, const int incX,
-                   paddle::platform::complex128 *Y, const int incY) {
+  static void AXPY(int n, const paddle::platform::complex<double> alpha,
+                   const paddle::platform::complex<double> *X, const int incX,
+                   paddle::platform::complex<double> *Y, const int incY) {
     platform::dynload::cblas_zaxpy(n, &alpha, X, incX, Y, incY);
   }
 
@@ -490,35 +499,35 @@ struct CBlas<platform::complex128> {
   */
 
   template <typename... ARGS>
-  static void VADD(int n, const paddle::platform::complex128 *a,
-                   const paddle::platform::complex128 *b,
-                   paddle::platform::complex128 *y) {
+  static void VADD(int n, const paddle::platform::complex<double> *a,
+                   const paddle::platform::complex<double> *b,
+                   paddle::platform::complex<double> *y) {
     for (int i = 0; i < n; ++i) {
       y[i] = a[i] + b[i];
     }
   }
 
   template <typename... ARGS>
-  static void VSUB(int n, const paddle::platform::complex128 *a,
-                   const paddle::platform::complex128 *b,
-                   paddle::platform::complex128 *y) {
+  static void VSUB(int n, const paddle::platform::complex<double> *a,
+                   const paddle::platform::complex<double> *b,
+                   paddle::platform::complex<double> *y) {
     for (int i = 0; i < n; ++i) {
       y[i] = a[i] - b[i];
     }
   }
 
   template <typename... ARGS>
-  static void VMUL(int n, const paddle::platform::complex128 *a,
-                   const paddle::platform::complex128 *b,
-                   paddle::platform::complex128 *y) {
+  static void VMUL(int n, const paddle::platform::complex<double> *a,
+                   const paddle::platform::complex<double> *b,
+                   paddle::platform::complex<double> *y) {
     for (int i = 0; i < n; ++i) {
       y[i] = a[i] * b[i];
     }
   }
   template <typename... ARGS>
-  static void VDIV(int n, const paddle::platform::complex128 *a,
-                   const paddle::platform::complex128 *b,
-                   paddle::platform::complex128 *y) {
+  static void VDIV(int n, const paddle::platform::complex<double> *a,
+                   const paddle::platform::complex<double> *b,
+                   paddle::platform::complex<double> *y) {
     for (int i = 0; i < n; ++i) {
       y[i] = a[i] / b[i];
     }
@@ -526,11 +535,11 @@ struct CBlas<platform::complex128> {
 
   template <typename... ARGS>
   static void GEMV(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE trans, int M, int N,
-                   paddle::platform::complex128 alpha,
-                   const paddle::platform::complex128 *A, int lda,
-                   const paddle::platform::complex128 *X, int incx,
-                   paddle::platform::complex128 beta,
-                   paddle::platform::complex128 *Y, int incy) {
+                   paddle::platform::complex<double> alpha,
+                   const paddle::platform::complex<double> *A, int lda,
+                   const paddle::platform::complex<double> *X, int incx,
+                   paddle::platform::complex<double> beta,
+                   paddle::platform::complex<double> *Y, int incy) {
     const void *a_ = (const void *)(A);
     const void *x_ = (const void *)(X);
     void *y_ = static_cast<void *>(Y);
@@ -541,11 +550,11 @@ struct CBlas<platform::complex128> {
   template <typename... ARGS>
   static void GEMM(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE trans_a,
                    CBLAS_TRANSPOSE trans_b, int M, int N, int K,
-                   paddle::platform::complex128 alpha,
-                   const paddle::platform::complex128 *A, int lda,
-                   const paddle::platform::complex128 *B, int ldb,
-                   paddle::platform::complex128 beta,
-                   paddle::platform::complex128 *C, int ldc) {
+                   paddle::platform::complex<double> alpha,
+                   const paddle::platform::complex<double> *A, int lda,
+                   const paddle::platform::complex<double> *B, int ldb,
+                   paddle::platform::complex<double> beta,
+                   paddle::platform::complex<double> *C, int ldc) {
     const void *a_ = (const void *)(A);
     const void *b_ = (const void *)(B);
     void *c_ = static_cast<void *>(C);
@@ -556,11 +565,13 @@ struct CBlas<platform::complex128> {
   template <typename... ARGS>
   static void GEMM_BATCH(CBLAS_LAYOUT layout, CBLAS_TRANSPOSE *trans_a,
                          CBLAS_TRANSPOSE *trans_b, int *M, int *N, int *K,
-                         paddle::platform::complex128 *alpha,
-                         const paddle::platform::complex128 **A, const int *lda,
-                         const paddle::platform::complex128 **B, const int *ldb,
-                         paddle::platform::complex128 *beta,
-                         paddle::platform::complex128 **C, const int *ldc,
+                         paddle::platform::complex<double> *alpha,
+                         const paddle::platform::complex<double> **A,
+                         const int *lda,
+                         const paddle::platform::complex<double> **B,
+                         const int *ldb,
+                         paddle::platform::complex<double> *beta,
+                         paddle::platform::complex<double> **C, const int *ldc,
                          int group_count, int *group_size) {
     const void **A_void = (const void **)(&(*A));
     const void **B_void = (const void **)(&(*B));
@@ -636,76 +647,76 @@ struct CBlas<double> {
 };
 
 template <>
-struct CBlas<platform::complex64> {
+struct CBlas<platform::complex<float>> {
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
     cblas_ccopy(args...);
   }
 
   template <typename... ARGS>
-  static void AXPY(int n, const paddle::platform::complex64 alpha,
-                   const paddle::platform::complex64 *X, const int incX,
-                   paddle::platform::complex64 *Y, const int incY) {
+  static void AXPY(int n, const paddle::platform::complex<float> alpha,
+                   const paddle::platform::complex<float> *X, const int incX,
+                   paddle::platform::complex<float> *Y, const int incY) {
     cblas_caxpy(n, &alpha, X, incX, Y, incY);
   }
 
   template <typename... ARGS>
   static void GEMV(const CBLAS_LAYOUT layout, const CBLAS_TRANSPOSE TransA,
                    const int M, const int N,
-                   const paddle::platform::complex64 alpha,
-                   const paddle::platform::complex64 *A, const int lda,
-                   const paddle::platform::complex64 *X, const int incX,
-                   const paddle::platform::complex64 beta,
-                   paddle::platform::complex64 *Y, const int incY) {
+                   const paddle::platform::complex<float> alpha,
+                   const paddle::platform::complex<float> *A, const int lda,
+                   const paddle::platform::complex<float> *X, const int incX,
+                   const paddle::platform::complex<float> beta,
+                   paddle::platform::complex<float> *Y, const int incY) {
     cblas_cgemv(layout, TransA, M, N, &alpha, A, lda, X, incX, &beta, Y, incY);
   }
 
   template <typename... ARGS>
   static void GEMM(const CBLAS_LAYOUT layout, const CBLAS_TRANSPOSE TransA,
                    const CBLAS_TRANSPOSE TransB, const int M, const int N,
-                   const int K, const paddle::platform::complex64 alpha,
-                   const paddle::platform::complex64 *A, const int lda,
-                   const paddle::platform::complex64 *B, const int ldb,
-                   const paddle::platform::complex64 beta,
-                   paddle::platform::complex64 *C, const int ldc) {
+                   const int K, const paddle::platform::complex<float> alpha,
+                   const paddle::platform::complex<float> *A, const int lda,
+                   const paddle::platform::complex<float> *B, const int ldb,
+                   const paddle::platform::complex<float> beta,
+                   paddle::platform::complex<float> *C, const int ldc) {
     cblas_cgemm(layout, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta,
                 C, ldc);
   }
 };
 
 template <>
-struct CBlas<platform::complex128> {
+struct CBlas<platform::complex<double>> {
   template <typename... ARGS>
   static void VCOPY(ARGS... args) {
     cblas_zcopy(args...);
   }
 
   template <typename... ARGS>
-  static void AXPY(int n, const paddle::platform::complex128 alpha,
-                   const paddle::platform::complex128 *X, const int incX,
-                   paddle::platform::complex128 *Y, const int incY) {
+  static void AXPY(int n, const paddle::platform::complex<double> alpha,
+                   const paddle::platform::complex<double> *X, const int incX,
+                   paddle::platform::complex<double> *Y, const int incY) {
     cblas_zaxpy(n, &alpha, X, incX, Y, incY);
   }
 
   template <typename... ARGS>
   static void GEMV(const CBLAS_LAYOUT layout, const CBLAS_TRANSPOSE TransA,
                    const int M, const int N,
-                   const paddle::platform::complex128 alpha,
-                   const paddle::platform::complex128 *A, const int lda,
-                   const paddle::platform::complex128 *X, const int incX,
-                   const paddle::platform::complex128 beta,
-                   paddle::platform::complex128 *Y, const int incY) {
+                   const paddle::platform::complex<double> alpha,
+                   const paddle::platform::complex<double> *A, const int lda,
+                   const paddle::platform::complex<double> *X, const int incX,
+                   const paddle::platform::complex<double> beta,
+                   paddle::platform::complex<double> *Y, const int incY) {
     cblas_zgemv(layout, TransA, M, N, &alpha, A, lda, X, incX, &beta, Y, incY);
   }
 
   template <typename... ARGS>
   static void GEMM(const CBLAS_LAYOUT layout, const CBLAS_TRANSPOSE TransA,
                    const CBLAS_TRANSPOSE TransB, const int M, const int N,
-                   const int K, const paddle::platform::complex128 alpha,
-                   const paddle::platform::complex128 *A, const int lda,
-                   const paddle::platform::complex128 *B, const int ldb,
-                   const paddle::platform::complex128 beta,
-                   paddle::platform::complex128 *C, const int ldc) {
+                   const int K, const paddle::platform::complex<double> alpha,
+                   const paddle::platform::complex<double> *A, const int lda,
+                   const paddle::platform::complex<double> *B, const int ldb,
+                   const paddle::platform::complex<double> beta,
+                   paddle::platform::complex<double> *C, const int ldc) {
     cblas_zgemm(layout, TransA, TransB, M, N, K, &alpha, A, lda, B, ldb, &beta,
                 C, ldc);
   }
@@ -1030,6 +1041,12 @@ void Blas<platform::CPUDeviceContext>::BatchedGEMM(
     CBLAS_TRANSPOSE transA, CBLAS_TRANSPOSE transB, int M, int N, int K,
     T alpha, const T *A, const T *B, T beta, T *C, int batchCount,
     int64_t strideA, int64_t strideB) const {
+  PADDLE_ENFORCE_NOT_NULL(
+      A, platform::errors::InvalidArgument("Pointer A should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      B, platform::errors::InvalidArgument("Pointer B should not be null."));
+  PADDLE_ENFORCE_NOT_NULL(
+      C, platform::errors::InvalidArgument("Pointer C should not be null."));
 #ifdef PADDLE_WITH_MKLML
   int lda = (transA == CblasNoTrans) ? K : M;
   int ldb = (transB == CblasNoTrans) ? N : K;

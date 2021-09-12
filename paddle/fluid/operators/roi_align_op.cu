@@ -16,6 +16,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/roi_align_op.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
@@ -124,8 +125,10 @@ __global__ void GPUROIAlignForward(
 
     T roi_width = roi_xmax - roi_xmin;
     T roi_height = roi_ymax - roi_ymin;
-    roi_width = max(roi_width, static_cast<T>(1.));
-    roi_height = max(roi_height, static_cast<T>(1.));
+    if (!continuous_coordinate) {
+      roi_width = max(roi_width, static_cast<T>(1.));
+      roi_height = max(roi_height, static_cast<T>(1.));
+    }
 
     T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
     T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
@@ -138,7 +141,7 @@ __global__ void GPUROIAlignForward(
                              : ceil(roi_height / pooled_height);
     int roi_bin_grid_w =
         (sampling_ratio > 0) ? sampling_ratio : ceil(roi_width / pooled_width);
-    const T count = roi_bin_grid_h * roi_bin_grid_w;
+    const T count = max(roi_bin_grid_h * roi_bin_grid_w, 1);
     T output_val = 0;
     for (int iy = 0; iy < roi_bin_grid_h; iy++) {
       const T y = roi_ymin + ph * bin_size_h +
@@ -180,9 +183,10 @@ __global__ void GPUROIAlignBackward(
 
     T roi_width = roi_xmax - roi_xmin;
     T roi_height = roi_ymax - roi_ymin;
-    roi_width = max(roi_width, static_cast<T>(1.));
-    roi_height = max(roi_height, static_cast<T>(1.));
-
+    if (!continuous_coordinate) {
+      roi_width = max(roi_width, static_cast<T>(1.));
+      roi_height = max(roi_height, static_cast<T>(1.));
+    }
     T bin_size_h = static_cast<T>(roi_height) / static_cast<T>(pooled_height);
     T bin_size_w = static_cast<T>(roi_width) / static_cast<T>(pooled_width);
 
@@ -258,7 +262,9 @@ class GPUROIAlignOpKernel : public framework::OpKernel<T> {
     int output_size = out->numel();
     int blocks = NumBlocks(output_size);
     int threads = kNumCUDAThreads;
-
+#ifdef WITH_NV_JETSON
+    platform::ChangeThreadNum(ctx.cuda_device_context(), &threads, 256);
+#endif
     Tensor roi_batch_id_list;
     roi_batch_id_list.Resize({rois_num});
     auto cplace = platform::CPUPlace();

@@ -135,6 +135,49 @@ Tensor Tensor::Slice(int64_t begin_idx, int64_t end_idx) const {
   }
 }
 
+std::vector<Tensor> Tensor::Split(int64_t split_size, int64_t axis) const {
+  check_memory_size();
+  PADDLE_ENFORCE_GE(dims_.size(), 0,
+                    platform::errors::OutOfRange(
+                        "split expects at least a 1-dimensional tensor"));
+  PADDLE_ENFORCE_GE(
+      split_size, 0,
+      platform::errors::OutOfRange(
+          "split expects split_size be non-negative, but got split_size is %d",
+          split_size));
+  int64_t numel_size = dims_[axis];
+
+  int64_t num_splits = 1;
+  if (split_size != 0) {
+    num_splits =
+        std::max<int64_t>((numel_size + split_size - 1) / split_size, 1);
+  }
+
+  std::vector<Tensor> splits(num_splits);
+  int64_t last_split_size = split_size - (split_size * num_splits - numel_size);
+
+  for (int64_t i = 0; i < num_splits; ++i) {
+    int64_t length = i < num_splits - 1 ? split_size : last_split_size;
+    splits[i] = Slice(i * split_size, i * split_size + length);
+  }
+  return splits;
+}
+
+std::vector<Tensor> Tensor::Chunk(int64_t chunks, int64_t axis) const {
+  check_memory_size();
+  PADDLE_ENFORCE_GE(dims_.size(), 0,
+                    platform::errors::OutOfRange(
+                        "split expects at least a 1-dimensional tensor"));
+  PADDLE_ENFORCE_GE(
+      chunks, 0,
+      platform::errors::OutOfRange(
+          "chunks expects to be greater than 0, but got chunks is %d", chunks));
+
+  int64_t numel_size = dims_[axis];
+  int64_t split_size = (numel_size + chunks - 1) / chunks;
+  return Split(split_size, axis);
+}
+
 Tensor& Tensor::Resize(const DDim& dims) {
   dims_ = dims;
   return *this;

@@ -20,7 +20,7 @@ import paddle
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid import core
-from paddle.fluid.contrib.slim.quantization.imperative import quant_nn
+import paddle.nn.quant.quant_layers as quant_layers
 
 paddle.enable_static()
 
@@ -45,7 +45,7 @@ class TestMovingAverageAbsMaxScaleOp(unittest.TestCase):
                 name='image', shape=[784], dtype='float32')
             label = fluid.layers.data(name='label', shape=[1], dtype='int64')
             fc_tmp = fluid.layers.fc(image, size=10, act='softmax')
-            out_scale = quant_nn.MovingAverageAbsMaxScale(
+            out_scale = quant_layers.MovingAverageAbsMaxScale(
                 name=fc_tmp.name, dtype=fc_tmp.dtype)
             fc_tmp_1 = out_scale(fc_tmp)
             cross_entropy = fluid.layers.softmax_with_cross_entropy(fc_tmp,

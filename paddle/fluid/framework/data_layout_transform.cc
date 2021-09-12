@@ -143,7 +143,7 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
 
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
                                     const Tensor& in, Tensor* out,
-                                    platform::Place place) {
+                                    platform::Place place, bool always_copy) {
   PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::undef,
                     platform::errors::InvalidArgument(
                         "Input tensor format is invalid. Input tensor should "
@@ -177,7 +177,7 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   // output tensor has the same dims as input. Reorder don't change dims
   out->Resize(in.dims());
 
-  if (in_format != out_format) {
+  if ((in_format != out_format) || always_copy) {
     void* in_data = GetDataFromTensor(in, in_type);
     std::string key =
         platform::CreateKey(*dev_ctx, in_tz, in_format, out_format, in_type);

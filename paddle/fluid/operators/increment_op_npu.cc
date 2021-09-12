@@ -14,22 +14,11 @@
 
 #include "paddle/fluid/operators/increment_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
-#include "paddle/fluid/platform/float16.h"
-
-namespace paddle {
-namespace framework {
-class OpDesc;
-class Variable;
-}  // namespace framework
-namespace imperative {
-class OpBase;
-}  // namespace imperative
-}  // namespace paddle
 
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class IncrementalNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -43,7 +32,7 @@ class IncrementalNPUKernel : public framework::OpKernel<T> {
     step_tensor.mutable_data<T>({1}, context.GetPlace());
     FillNpuTensorWithConstant<T>(&step_tensor, static_cast<T>(step));
 
-    auto runner =
+    const auto& runner =
         NpuOpRunner("Add", {*x_tensor, step_tensor}, {*out_tensor}, {});
 
     auto stream =
@@ -56,14 +45,11 @@ class IncrementalNPUKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-namespace plat = paddle::platform;
-namespace ops = paddle::operators;
-
 REGISTER_OP_NPU_KERNEL(
-    increment,
-    ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
-    ops::IncrementalNPUKernel<paddle::platform::NPUDeviceContext,
-                              plat::float16>)
+    increment, paddle::operators::IncrementalNPUKernel<float>,
+    paddle::operators::IncrementalNPUKernel<double>,
+    paddle::operators::IncrementalNPUKernel<int>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+    paddle::operators::IncrementalNPUKernel<int64_t>,
+#endif
+    paddle::operators::IncrementalNPUKernel<paddle::platform::float16>)

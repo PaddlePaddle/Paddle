@@ -44,8 +44,8 @@ if [ "$1" == "gcc82" ]; then
   ln -s /usr/local/gcc-8.2/lib64/libstdc++.so.6 ${lib_so_6} && \
   cp /usr/local/gcc-8.2/lib64/libstdc++.so.6.0.25 ${lib_path}
 elif [ "$1" == "gcc54" ]; then
-  wget -q http://ftp.tsukuba.wide.ad.jp/software/gcc/releases/gcc-5.4.0/gcc-5.4.0.tar.bz2 
-  tar -xvf gcc-5.4.0.tar.bz2 && \
+  wget -q https://paddle-ci.gz.bcebos.com/gcc-5.4.0.tar.gz
+  tar -xzf gcc-5.4.0.tar.gz && \
   cd gcc-5.4.0 && \
   unset LIBRARY_PATH CPATH C_INCLUDE_PATH PKG_CONFIG_PATH CPLUS_INCLUDE_PATH INCLUDE && \
   ./contrib/download_prerequisites && \

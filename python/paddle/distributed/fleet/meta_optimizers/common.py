@@ -77,9 +77,12 @@ class CollectiveHelper(object):
                            wait_port,
                            global_ring_id=None,
                            sync=True):
-        nranks = len(endpoints)
-        other_endpoints = endpoints[:]
-        other_endpoints.remove(current_endpoint)
+        # if current_endpoint is None, it means just for sync,
+        # no group is created.
+        if current_endpoint:
+            nranks = len(endpoints)
+            other_endpoints = endpoints[:]
+            other_endpoints.remove(current_endpoint)
 
         if rank == 0 and wait_port:
             wait_server_ready(other_endpoints)
@@ -117,11 +120,17 @@ class CollectiveHelper(object):
                 attrs={OP_ROLE_KEY: OpRole.Forward})
 
         block = program.global_block()
+        if current_endpoint is None:
+            assert endpoints is None
+            assert sync
+            _add_sync_by_allreduce(block)
+            return
+
+        comm_id_var = block.create_var(
+            name=unique_name.generate('comm_id'),
+            persistable=True,
+            type=core.VarDesc.VarType.RAW)
         if core.is_compiled_with_cuda():
-            comm_id_var = block.create_var(
-                name=unique_name.generate('nccl_id'),
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
             block.append_op(
                 type='c_gen_nccl_id',
                 inputs={},
@@ -130,6 +139,7 @@ class CollectiveHelper(object):
                     'rank': rank,
                     'endpoint': current_endpoint,
                     'other_endpoints': other_endpoints,
+                    'ring_id': ring_id,
                     OP_ROLE_KEY: OpRole.Forward
                 })
             block.append_op(
@@ -143,10 +153,6 @@ class CollectiveHelper(object):
                     OP_ROLE_KEY: OpRole.Forward
                 })
         elif core.is_compiled_with_xpu():
-            comm_id_var = block.create_var(
-                name=unique_name.generate('bkcl_id'),
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
             block.append_op(
                 type='c_gen_bkcl_id',
                 inputs={},
@@ -155,6 +161,7 @@ class CollectiveHelper(object):
                     'rank': rank,
                     'endpoint': current_endpoint,
                     'other_endpoints': other_endpoints,
+                    'ring_id': ring_id,
                     OP_ROLE_KEY: OpRole.Forward
                 })
             block.append_op(
@@ -168,24 +175,20 @@ class CollectiveHelper(object):
                     OP_ROLE_KEY: OpRole.Forward
                 })
         elif core.is_compiled_with_npu():
-            hccl_id_var = block.create_var(
-                name=unique_name.generate('hccl_id'),
-                persistable=True,
-                type=core.VarDesc.VarType.RAW)
-            endpoint_to_index_map = {e: idx for idx, e in enumerate(endpoints)}
             block.append_op(
                 type='c_gen_hccl_id',
                 inputs={},
-                outputs={'Out': hccl_id_var},
+                outputs={'Out': comm_id_var},
                 attrs={
                     'rank': rank,
                     'endpoint': current_endpoint,
                     'other_endpoints': other_endpoints,
+                    'ring_id': ring_id,
                     OP_ROLE_KEY: OpRole.Forward
                 })
             block.append_op(
                 type='c_comm_init_hccl',
-                inputs={'X': hccl_id_var},
+                inputs={'X': comm_id_var},
                 outputs={},
                 attrs={
                     'rank': rank,

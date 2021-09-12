@@ -174,3 +174,16 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     pad_grad, ops::PadGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PadGradKernel<paddle::platform::CPUDeviceContext, double>);
+
+REGISTER_OP_CUDA_KERNEL(
+    pad, ops::PadKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::PadKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::PadKernel<paddle::platform::CUDADeviceContext, int>,
+    ops::PadKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::PadKernel<paddle::platform::CUDADeviceContext,
+                   paddle::platform::float16>);
+REGISTER_OP_CUDA_KERNEL(
+    pad_grad, ops::PadGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::PadGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::PadGradKernel<paddle::platform::CUDADeviceContext,
+                       paddle::platform::float16>);

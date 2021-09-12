@@ -95,16 +95,6 @@ class TestRNNOp(OpTest):
 
             self._get_places = rocm_rnn_get_place
 
-            if self.is_bidirec:
-                for i in range(0, len(flat_w), 4):
-                    flat_w[i + 1], flat_w[i + 2] = flat_w[i + 2], flat_w[i + 1]
-
-            for i in range(len(flat_w)):
-                w = np.split(flat_w[i][1], 4, 0)
-                w = [w[0], w[1], w[3], w[2]]
-                w = np.concatenate(w)
-                flat_w[i] = (flat_w[i][0], w)
-
         init_h = np.zeros((self.num_layers * self.direction_num, batch_size,
                            hidden_size)).astype(self.dtype)
         init_c = np.zeros((self.num_layers * self.direction_num, batch_size,

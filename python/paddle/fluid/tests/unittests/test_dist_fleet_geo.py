@@ -42,7 +42,9 @@ class TestDistGeoCtr_2x2(TestFleetBase):
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "FLAGS_rpc_deadline": "5000",  # 5sec to fail fast
-            "http_proxy": ""
+            "http_proxy": "",
+            "LOG_DIRNAME": "/tmp",
+            "LOG_PREFIX": self.__class__.__name__,
         }
 
         required_envs.update(need_envs)
@@ -55,7 +57,7 @@ class TestDistGeoCtr_2x2(TestFleetBase):
 
     def test_dist_train(self):
         self.check_with_place(
-            "dist_fleet_ctr.py", delta=1e-5, check_error_log=True)
+            "dist_fleet_ctr.py", delta=1e-5, check_error_log=False)
 
 
 class TestGeoSgdTranspiler(unittest.TestCase):

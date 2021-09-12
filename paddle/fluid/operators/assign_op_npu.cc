@@ -43,7 +43,7 @@ class AssignNPUKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<framework::LoDTensor>("Out");
     out->mutable_data<T>(ctx.GetPlace());
 
-    auto runner = NpuOpRunner("Assign", {*out, *x}, {*out}, {});
+    const auto& runner = NpuOpRunner("Assign", {*out, *x}, {*out}, {});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();

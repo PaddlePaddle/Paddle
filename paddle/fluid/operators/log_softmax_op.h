@@ -131,8 +131,10 @@ class LogSoftmaxKernel : public framework::OpKernel<T> {
     // allocate memory on device.
     Out->mutable_data<T>(context.GetPlace());
 
-    LogSoftmaxFunctor<DeviceContext, T>()(
-        context.template device_context<DeviceContext>(), X, Out, axis);
+    if (X->numel() != 0) {
+      LogSoftmaxFunctor<DeviceContext, T>()(
+          context.template device_context<DeviceContext>(), X, Out, axis);
+    }
   }
 };
 
@@ -183,8 +185,11 @@ class LogSoftmaxGradKernel : public framework::OpKernel<T> {
     // allocate memory on device.
     dX->mutable_data<T>(context.GetPlace());
 
-    LogSoftmaxGradFunctor<DeviceContext, T>()(
-        context.template device_context<DeviceContext>(), Out, dOut, dX, axis);
+    if (Out->numel() != 0) {
+      LogSoftmaxGradFunctor<DeviceContext, T>()(
+          context.template device_context<DeviceContext>(), Out, dOut, dX,
+          axis);
+    }
   }
 };
 

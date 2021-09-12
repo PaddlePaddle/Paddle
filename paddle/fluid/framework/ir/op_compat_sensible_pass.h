@@ -29,9 +29,15 @@ class OpCompat;
 class AttrCompat {
  public:
   AttrCompat(const std::string& attr_name, OpCompat* op_compat)
-      : attr_name_(attr_name), op_compat_(op_compat) {}
+      : optional_(false), attr_name_(attr_name), op_compat_(op_compat) {}
+
+  //! Assert the attribute type is `T`.
+  template <typename T>
+  AttrCompat& IsType();
 
   // @{ String-related methods
+  //! Assert the attribute is an string in the `candidates` domain.
+  AttrCompat& IsStringEQ(const std::string& value);
   //! Assert the attribute is an string in the `candidates` domain.
   AttrCompat& IsStringIn(const std::set<std::string>& candidates);
   //! Assert the attribute is a string and match a custom judging function.
@@ -70,12 +76,15 @@ class AttrCompat {
   //! Tell whether this attribute is left as default value.
   AttrCompat& IsLeftDefault();
 
+  AttrCompat& IsOptional();
+
   //! Jump back to retrieve OpCompat instance.
   OpCompat& End() { return *op_compat_; }
 
   bool operator()(const OpDesc& op_desc);
 
  private:
+  bool optional_;
   std::string attr_name_;
   OpCompat* op_compat_;
   std::vector<std::function<bool(const Attribute&)>> conditions_;
@@ -129,14 +138,16 @@ class OpCompat {
   InputOrOutputCompat& AddOutput(const std::string& name);
 
   //! Judge whether an OpDesc match the defined Op compatibility.
-  bool Judge(const OpDesc& op_desc);
+  bool Judge(const OpDesc& op_desc, const std::string& pass_name);
   const std::string& Name() const { return op_name_; }
 
  private:
   std::string op_name_;
-  std::vector<AttrCompat> attr_compats_;
+  std::unordered_map<std::string, AttrCompat> attr_compats_;
   std::unordered_map<std::string, InputOrOutputCompat> input_compats_;
   std::unordered_map<std::string, InputOrOutputCompat> output_compats_;
+  std::unordered_set<std::string> attrs_set_;
+  bool is_first_judge_ = true;
 };
 
 /**
@@ -179,15 +190,6 @@ class OpCompat {
  * };
  */
 class OpCompatSensiblePass : public Pass {
- public:
-  //! Access the subgraph and pattern.
-  void AccessSubgraph(const GraphPatternDetector::subgraph_t& subgraph,
-                      Graph* g) {
-    if (IsCompat(subgraph, g)) {
-      AccessSubgraphImpl(subgraph, g);
-    }
-  }
-
  protected:
   /**
    * Developer should push the compatibility `teller` for each kind of Op in the
@@ -197,43 +199,26 @@ class OpCompatSensiblePass : public Pass {
    */
   OpCompat& AddOpCompat(OpCompat&& op_compat);
 
-  //! Modify the subgraph.
-  virtual bool AccessSubgraphImpl(
-      const GraphPatternDetector::subgraph_t& subgraph, Graph* g) const {
-    return true;
-  }
-
   //! Tell the Op compability of a subgraph.
   bool IsCompat(const GraphPatternDetector::subgraph_t& subgraph,
-                Graph* g) const {
-    CHECK(!op_compat_judgers_.empty())
-        << "At least one OpCompat instance should be added in the "
-           "OpCompatSensiblePass.";
-    // Check the all the ops in the subgraph are contained in the
-    // op_compat.
-    for (auto& node_pair : subgraph) {
-      if (!node_pair.first->IsOp()) continue;
-      auto op_type = node_pair.second->Op()->Type();
-      if (!op_compat_judgers_.count(op_type)) {
-        return false;
-      }
-      auto& judger = *op_compat_judgers_.at(op_type);
-      if (!judger.Judge(*(node_pair.second->Op()))) {
-        return false;
-      }
-    }
-    return true;
-  }
+                Graph* g) const;
 
   //! Tell the op compatibility of a single Op.
   bool IsCompat(const OpDesc& op_desc) const {
     if (!op_compat_judgers_.count(op_desc.Type())) return false;
-    return op_compat_judgers_.at(op_desc.Type())->Judge(op_desc);
+    return op_compat_judgers_.at(op_desc.Type())->Judge(op_desc, Type());
   }
 
  private:
   std::map<std::string, std::unique_ptr<OpCompat>> op_compat_judgers_;
 };
+
+template <typename T>
+AttrCompat& AttrCompat::IsType() {
+  conditions_.emplace_back(
+      [](const Attribute& attr) -> bool { return attr.type() == typeid(T); });
+  return *this;
+}
 
 template <typename T>
 AttrCompat& AttrCompat::IsNumGT(T v) {

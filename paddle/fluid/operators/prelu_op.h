@@ -39,13 +39,19 @@ class PReluKernel : public framework::OpKernel<T> {
     int index = 0;
     int i = 0;
     if (mode == "channel") {
-      int temp = numel / (dim[0] * dim[1]);
+      int temp = 1;
+      for (int j = 2; j < dim.size(); j++) {
+        temp *= dim[j];
+      }
       for (i = 0; i < numel; i++) {
         index = (i / temp) % dim[1];
         o_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : alpha_ptr[index] * x_ptr[i];
       }
     } else if (mode == "element") {
-      int temp = numel / dim[0];
+      int temp = 1;
+      for (int j = 1; j < dim.size(); j++) {
+        temp *= dim[j];
+      }
       for (i = 0; i < numel; i++) {
         index = i % temp;
         o_ptr[i] = x_ptr[i] > 0 ? x_ptr[i] : alpha_ptr[index] * x_ptr[i];
@@ -75,18 +81,23 @@ class PReluGradKernel : public framework::OpKernel<T> {
     auto dim = x->dims();
     int index = 0;
     int i = 0;
-    int temp = 0;
     if (dx) {
       T* dx_ptr = dx->mutable_data<T>(context.GetPlace());
       if (mode == "channel") {
+        int temp = 1;
+        for (int j = 2; j < dim.size(); j++) {
+          temp *= dim[j];
+        }
         for (i = 0; i < numel; i++) {
-          temp = numel / (dim[0] * dim[1]);
           index = (i / temp) % dim[1];
           dx_ptr[i] =
               x_ptr[i] > 0 ? dout_ptr[i] : alpha_ptr[index] * dout_ptr[i];
         }
       } else if (mode == "element") {
-        temp = numel / dim[0];
+        int temp = 1;
+        for (int j = 1; j < dim.size(); j++) {
+          temp *= dim[j];
+        }
         for (i = 0; i < numel; i++) {
           index = i % temp;
           dx_ptr[i] =
@@ -105,13 +116,19 @@ class PReluGradKernel : public framework::OpKernel<T> {
       memset(dalpha_ptr, 0, sizeof(T) * dalpha->numel());
 
       if (mode == "channel") {
+        int temp = 1;
+        for (int j = 2; j < dim.size(); j++) {
+          temp *= dim[j];
+        }
         for (i = 0; i < numel; i++) {
-          temp = numel / (dim[0] * dim[1]);
           index = (i / temp) % dim[1];
           dalpha_ptr[index] += x_ptr[i] > 0 ? 0 : x_ptr[i] * dout_ptr[i];
         }
       } else if (mode == "element") {
-        temp = numel / dim[0];
+        int temp = 1;
+        for (int j = 1; j < dim.size(); j++) {
+          temp *= dim[j];
+        }
         for (i = 0; i < numel; i++) {
           index = i % temp;
           dalpha_ptr[index] += x_ptr[i] > 0 ? 0 : x_ptr[i] * dout_ptr[i];

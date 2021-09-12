@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include <sys/time.h>
+
 #include <functional>
 #include <memory>
 #include <string>
@@ -83,5 +85,11 @@ std::string to_string(const std::vector<T>& vec) {
   }
   return ss.str();
 }
+
+inline double GetCurrentUS() {
+  struct timeval time;
+  gettimeofday(&time, NULL);
+  return 1e+6 * time.tv_sec + time.tv_usec;
 }
-}
+}  // namespace distributed
+}  // namespace paddle

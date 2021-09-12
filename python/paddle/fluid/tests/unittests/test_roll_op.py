@@ -63,6 +63,7 @@ class TestRollAPI(unittest.TestCase):
     def test_roll_op_api(self):
         self.input_data()
 
+        paddle.enable_static()
         # case 1:
         with program_guard(Program(), Program()):
             x = fluid.layers.data(name='x', shape=[-1, 3])

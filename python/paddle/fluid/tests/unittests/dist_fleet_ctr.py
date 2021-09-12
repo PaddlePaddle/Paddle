@@ -230,6 +230,10 @@ class TestDistCTR2x2(FleetDistRunnerBase):
             except fluid.core.EOFException:
                 self.reader.reset()
 
+        dirname = os.getenv("SAVE_DIRNAME", None)
+        if dirname:
+            fleet.save_persistables(exe, dirname=dirname)
+
         model_dir = tempfile.mkdtemp()
         fleet.save_inference_model(
             exe, model_dir, [feed.name for feed in self.feeds], self.avg_cost)
@@ -278,6 +282,10 @@ class TestDistCTR2x2(FleetDistRunnerBase):
                                        self.avg_cost)
             self.check_model_right(model_dir)
             shutil.rmtree(model_dir)
+
+        dirname = os.getenv("SAVE_DIRNAME", None)
+        if dirname:
+            fleet.save_persistables(exe, dirname=dirname)
 
 if __name__ == "__main__":
     runtime_main(TestDistCTR2x2)

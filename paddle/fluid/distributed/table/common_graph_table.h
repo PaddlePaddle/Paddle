@@ -36,18 +36,22 @@ class GraphShard {
   size_t get_size();
   GraphShard() {}
   GraphShard(int shard_num) { this->shard_num = shard_num; }
+  ~GraphShard();
   std::vector<Node *> &get_bucket() { return bucket; }
   std::vector<Node *> get_batch(int start, int end, int step);
   std::vector<uint64_t> get_ids_by_range(int start, int end) {
     std::vector<uint64_t> res;
-    for (int i = start; i < end && i < bucket.size(); i++) {
+    for (int i = start; i < end && i < (int)bucket.size(); i++) {
       res.push_back(bucket[i]->get_id());
     }
     return res;
   }
+
   GraphNode *add_graph_node(uint64_t id);
   FeatureNode *add_feature_node(uint64_t id);
   Node *find_node(uint64_t id);
+  void delete_node(uint64_t id);
+  void clear();
   void add_neighboor(uint64_t id, uint64_t dst_id, float weight);
   std::unordered_map<uint64_t, int> get_node_location() {
     return node_location;
@@ -85,6 +89,11 @@ class GraphTable : public SparseTable {
 
   int32_t load_nodes(const std::string &path, std::string node_type);
 
+  int32_t add_graph_node(std::vector<uint64_t> &id_list,
+                         std::vector<bool> &is_weight_list);
+
+  int32_t remove_graph_node(std::vector<uint64_t> &id_list);
+
   Node *find_node(uint64_t id);
 
   virtual int32_t pull_sparse(float *values,
@@ -97,6 +106,7 @@ class GraphTable : public SparseTable {
     return 0;
   }
 
+  virtual int32_t clear_nodes();
   virtual void clear() {}
   virtual int32_t flush() { return 0; }
   virtual int32_t shrink(const std::string &param) { return 0; }
@@ -105,12 +115,18 @@ class GraphTable : public SparseTable {
     return 0;
   }
   virtual int32_t initialize_shard() { return 0; }
+  virtual uint32_t get_thread_pool_index_by_shard_index(uint64_t shard_index);
   virtual uint32_t get_thread_pool_index(uint64_t node_id);
   virtual std::pair<int32_t, std::string> parse_feature(std::string feat_str);
 
   virtual int32_t get_node_feat(const std::vector<uint64_t> &node_ids,
                                 const std::vector<std::string> &feature_names,
                                 std::vector<std::vector<std::string>> &res);
+
+  virtual int32_t set_node_feat(
+      const std::vector<uint64_t> &node_ids,
+      const std::vector<std::string> &feature_names,
+      const std::vector<std::vector<std::string>> &res);
 
  protected:
   std::vector<GraphShard> shards;
@@ -126,6 +142,8 @@ class GraphTable : public SparseTable {
   std::string table_type;
 
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
+  std::vector<std::shared_ptr<std::mt19937_64>> _shards_task_rng_pool;
 };
 }  // namespace distributed
+
 };  // namespace paddle

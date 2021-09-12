@@ -38,7 +38,7 @@ class ReduceAnyNPUKernel : public framework::OpKernel<T> {
     // set attr
     NPUAttributeMap attr = {{"keep_dims", keep_dim}, {"axes", dims}};
 
-    auto runner = NpuOpRunner("ReduceAnyD", {*x}, {*out}, attr);
+    const auto& runner = NpuOpRunner("ReduceAnyD", {*x}, {*out}, attr);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();

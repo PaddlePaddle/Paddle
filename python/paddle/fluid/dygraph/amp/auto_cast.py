@@ -29,6 +29,8 @@ WHITE_LIST = {
     'matmul',
     'matmul_v2',
     'mul',
+    'fake_quantize_dequantize_abs_max',
+    'fake_quantize_dequantize_moving_average_abs_max',
 }
 
 # The set of ops that support fp16 calculation and are considered numerically-
@@ -43,8 +45,11 @@ BLACK_LIST = {
     'softmax',
     'softmax_with_cross_entropy',
     'sigmoid_cross_entropy_with_logits',
+    'c_softmax_with_cross_entropy',
     'cross_entropy',
     'cross_entropy2',
+    # default fp32 can avoid return inf when the sum value large than 65504
+    'reduce_sum',
 }
 
 AMP_RELATED_FLAGS = [
@@ -84,6 +89,17 @@ def _update_list(custom_white_list, custom_black_list):
                 _white_list.remove(op_name)
             _black_list.add(op_name)
     return _white_list, _black_list
+
+
+def _in_amp_guard():
+    """
+    Judge whether current code block is in `amp_guard` context.
+    """
+    tracer = _dygraph_tracer()
+    if tracer:
+        return tracer._enable_autocast
+    else:
+        return False
 
 
 @signature_safe_contextmanager
@@ -128,9 +144,10 @@ def amp_guard(enable=True, custom_white_list=None, custom_black_list=None):
         raise ValueError(
             "current_tracer is None, maybe it is not in imperative mode.")
 
-    if enable and not tracer._expected_place.is_gpu_place():
+    if enable and not (tracer._expected_place.is_gpu_place() or
+                       tracer._expected_place.is_xpu_place()):
         warnings.warn(
-            'amp_guard can only be enabled on CUDAPlace, current place is %s, so it makes no effect.'
+            'amp_guard can only be enabled on CUDAPlace and XPUPlace, current place is %s, so it makes no effect.'
             % tracer._expected_place)
         enable = False
 

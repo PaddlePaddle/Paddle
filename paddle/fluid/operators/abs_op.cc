@@ -164,9 +164,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::AbsKernel<paddle::platform::CPUDeviceContext, int>,
     ops::AbsKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::AbsKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::complex64>,
+                   paddle::platform::complex<float>>,
     ops::AbsKernel<paddle::platform::CPUDeviceContext,
-                   paddle::platform::complex128>);
+                   paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
     abs_grad, ops::AbsGradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -174,9 +174,9 @@ REGISTER_OP_CPU_KERNEL(
     ops::AbsGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::AbsGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::AbsGradKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex64>,
+                       paddle::platform::complex<float>>,
     ops::AbsGradKernel<paddle::platform::CPUDeviceContext,
-                       paddle::platform::complex128>);
+                       paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
     abs_grad_grad,
@@ -187,6 +187,6 @@ REGISTER_OP_CPU_KERNEL(
     ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext,
                              paddle::platform::float16>,
     ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex64>,
+                             paddle::platform::complex<float>>,
     ops::AbsDoubleGradKernel<paddle::platform::CPUDeviceContext,
-                             paddle::platform::complex128>);
+                             paddle::platform::complex<double>>);

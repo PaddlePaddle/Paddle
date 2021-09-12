@@ -515,6 +515,13 @@ class TestBatchNormOpTrainingCase2(TestBatchNormOpTraining):
         os.environ['FLAGS_cudnn_batchnorm_spatial_persistent'] = "1"
 
 
+class TestBatchNormOpTrainingCase3(TestBatchNormOpTraining):
+    def init_test_case(self):
+        self.use_global_stats = False
+        self.no_grad_set = set(['x@GRAD'])
+        self.fetch_list = ['y', 'mean', 'variance', 'scale@GRAD', 'bias@GRAD']
+
+
 class TestBatchNormOpTrainingMomentumVariable(TestBatchNormOpTraining):
     def init_test_case(self):
         self.use_momentum_variable = True

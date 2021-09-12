@@ -111,6 +111,10 @@ class FS(object):
     def touch(self, fs_path, exist_ok=True):
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def cat(self, fs_path=None):
+        raise NotImplementedError
+
 
 class LocalFS(FS):
     """
@@ -676,14 +680,35 @@ class HDFSClient(FS):
 
         return True
 
+    def upload_dir(self, local_dir, dest_dir, overwrite=False):
+        """
+        upload dir to hdfs
+        Args:
+            local_dir(str): local dir
+            dest_dir(str): hdfs dest dir
+            overwrite(bool): is overwrite
+        Returns:
+            return code
+        """
+        local_dir = local_dir.rstrip("/")
+        dest_dir = dest_dir.rstrip("/")
+        local_basename = os.path.basename(local_dir)
+        if self.is_exist(dest_dir + "/" + local_basename) and overwrite:
+            self.delete(dest_dir + "/" + local_basename)
+        if not self.is_exist(dest_dir):
+            self.mkdirs(dest_dir)
+        self._try_upload(local_dir, dest_dir)
+
     # can't retry
-    def upload(self, local_path, fs_path):
+    def upload(self, local_path, fs_path, multi_processes=1, overwrite=False):
         """
         Upload the local path to remote HDFS.
 
         Args:
             local_path(str): The local path.
             fs_path(str): The HDFS path.
+            multi_processes(int|1): the upload data process at the same time, default=5
+            overwrite(bool|False): will overwrite file on HDFS or not
 
         Examples:
 
@@ -700,21 +725,67 @@ class HDFSClient(FS):
                 client = HDFSClient(hadoop_home, configs)
                 client.upload("test_hdfs_client", "hdfs:/test_hdfs_client")
         """
-        if self.is_exist(fs_path):
-            raise FSFileExistsError("{} exists".format(fs_path))
+
+        def __subprocess_upload(hdfs_path_single, datas):
+            for data in datas:
+                self._try_upload(data, hdfs_path_single)
+
+        def get_local_files(path):
+            """
+            get local files
+            Args:
+                path(str): local path
+            Returns:
+                list of local files
+            """
+            rlist = []
+
+            if not os.path.exists(path):
+                return rlist
+
+            if os.path.isdir(path):
+                for file in os.listdir(path):
+                    t = os.path.join(path, file)
+                    rlist.append(t)
+            else:
+                rlist.append(path)
+            return rlist
 
         local = LocalFS()
         if not local.is_exist(local_path):
             raise FSFileNotExistsError("{} not exists".format(local_path))
+        # upload_dir
+        if local.is_dir(local_path):
+            self.upload_dir(local_path, fs_path, overwrite=overwrite)
+            return
+        # upload files
+        all_files = get_local_files(local_path)
+        if not all_files:
+            print("there are nothing need to upload, function exit")
+            return
 
-        return self._try_upload(local_path, fs_path)
+        if self.is_exist(fs_path) and overwrite:
+            self.delete(fs_path)
+            self.mkdirs(fs_path)
+
+        procs = []
+        for i in range(multi_processes):
+            process_datas = self._split_files(all_files, i, multi_processes)
+            p = multiprocessing.Process(
+                target=__subprocess_upload, args=(fs_path, process_datas))
+            procs.append(p)
+            p.start()
+
+        # complete the processes
+        for proc in procs:
+            proc.join()
 
     @_handle_errors()
     def _try_upload(self, local_path, fs_path):
         cmd = "put {} {}".format(local_path, fs_path)
         ret = 0
         try:
-            ret, lines = self._run_cmd(cmd)
+            ret, _ = self._run_cmd(cmd)
             if ret != 0:
                 raise ExecuteError(cmd)
         except Exception as e:
@@ -722,13 +793,15 @@ class HDFSClient(FS):
             raise e
 
     # can't retry
-    def download(self, fs_path, local_path):
+    def download(self, fs_path, local_path, multi_processes=1, overwrite=False):
         """
         Download remote HDFS path to the local.
 
         Args:
             fs_path(str):  The HDFS path.
             local_path(str): The local path.
+            multi_processes(int|1): the download data process at the same time, default=1
+            overwrite(bool): is overwrite
 
         Examples:
 
@@ -745,17 +818,43 @@ class HDFSClient(FS):
                 client = HDFSClient(hadoop_home, configs)
                 client.download("hdfs:/test_hdfs_client", "./")
         """
+
+        def __subprocess_download(local_path, datas):
+            """
+            download file from HDFS
+            Args:
+                local_path(str): the local file path
+                datas(str): the hdfs file path list
+            """
+            for data in datas:
+                self._try_download(data, local_path)
+
         if not self.is_exist(fs_path):
             raise FSFileNotExistsError("{} not exits".format(fs_path))
+        # download file
+        if self.is_file(fs_path):
+            return self._try_download(fs_path, local_path)
+        # download dir
+        _, all_files = self.ls_dir(fs_path)
 
-        return self._try_download(fs_path, local_path)
+        procs = []
+        for i in range(multi_processes):
+            process_datas = self._split_files(all_files, i, multi_processes)
+            p = multiprocessing.Process(
+                target=__subprocess_download, args=(local_path, process_datas))
+            procs.append(p)
+            p.start()
+
+        # complete the processes
+        for proc in procs:
+            proc.join()
 
     @_handle_errors()
     def _try_download(self, fs_path, local_path):
         cmd = "get {} {}".format(fs_path, local_path)
         ret = 0
         try:
-            ret, lines = self._run_cmd(cmd)
+            ret, _ = self._run_cmd(cmd)
             if ret != 0:
                 raise ExecuteError(cmd)
         except Exception as e:
@@ -803,7 +902,7 @@ class HDFSClient(FS):
 
         if out_hdfs and not self.is_exist(fs_path):
             cmd = "mkdir -p {}".format(fs_path)
-            ret, lines = self._run_cmd(cmd)
+            ret, _ = self._run_cmd(cmd)
             if ret != 0:
                 raise ExecuteError(cmd)
 
@@ -841,8 +940,7 @@ class HDFSClient(FS):
                     fs_src_path))
 
             if self.is_exist(fs_dst_path):
-                raise FSFileExistsError("{} exists already".format(
-                    fs_src_path, fs_dst_path, fs_dst_path))
+                raise FSFileExistsError("{} exists already".format(fs_dst_path))
 
         return self._try_mv(fs_src_path, fs_dst_path)
 
@@ -940,7 +1038,71 @@ class HDFSClient(FS):
         cmd = "touchz {}".format(fs_path)
         ret, _ = self._run_cmd(cmd)
         if ret != 0:
-            raise ExecuteError
+            raise ExecuteError(cmd)
 
     def need_upload_download(self):
         return True
+
+    def cat(self, fs_path=None):
+        """
+        Cat a remote HDFS file.
+
+        Args:
+            fs_path(str): The HDFS file path.
+
+        Returns:
+            file content
+
+        Examples:
+
+            .. code-block:: text
+
+                from paddle.distributed.fleet.utils import HDFSClient
+
+                hadoop_home = "/home/client/hadoop-client/hadoop/"
+                configs = {
+                    "fs.default.name": "hdfs://xxx.hadoop.com:54310",
+                    "hadoop.job.ugi": "hello,hello123"
+                }
+
+                client = HDFSClient(hadoop_home, configs)
+                client.cat("hdfs:/test_hdfs_client")
+        """
+        if self.is_file(fs_path):
+            output = self._try_cat(fs_path)
+            return "\n".join(output)
+        else:
+            return ""
+
+    @_handle_errors()
+    def _try_cat(self, fs_path):
+        cmd = "cat {}".format(fs_path)
+        ret, output = self._run_cmd(cmd)
+        if ret != 0:
+            raise ExecuteError(cmd)
+        return output
+
+    def _split_files(self, files, trainer_id, trainers):
+        """
+        split file list
+        Args:
+            files(list): file list
+            trainer_id(int): trainer mpi rank id
+            trainers(int): all trainers num
+        Returns:
+            fileist(list): file list of current trainer
+        """
+        remainder = len(files) % trainers
+        blocksize = len(files) // trainers
+
+        blocks = [blocksize] * trainers
+        for i in range(remainder):
+            blocks[i] += 1
+
+        trainer_files = [[]] * trainers
+        begin = 0
+        for i in range(trainers):
+            trainer_files[i] = files[begin:begin + blocks[i]]
+            begin += blocks[i]
+
+        return trainer_files[trainer_id]

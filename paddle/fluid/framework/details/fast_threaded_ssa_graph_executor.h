@@ -60,7 +60,7 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
       atomic_op_deps_;
   ExceptionHolder exception_;
 
-  ::ThreadPool pool_;
+  std::unique_ptr<::ThreadPool> pool_;
   ::ThreadPool prepare_pool_;
 
   std::vector<OpHandleBase *> traced_ops_;

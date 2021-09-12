@@ -47,7 +47,7 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
       if (indices->type() != framework::proto::VarType::INT32) {
         cast_indices.Resize(indices->dims());
         cast_indices.mutable_data<int>(ctx.GetPlace());
-        auto runner_cast_indices =
+        const auto& runner_cast_indices =
             NpuOpRunner("Cast", {*indices}, {cast_indices},
                         {{"dst_type", static_cast<int>(dst_dtype)}});
         runner_cast_indices.Run(stream);
@@ -57,7 +57,7 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
       if (label->type() != framework::proto::VarType::INT32) {
         cast_label.Resize(label->dims());
         cast_label.mutable_data<int>(ctx.GetPlace());
-        auto runner_cast_label =
+        const auto& runner_cast_label =
             NpuOpRunner("Cast", {*label}, {cast_label},
                         {{"dst_type", static_cast<int>(dst_dtype)}});
         runner_cast_label.Run(stream);
@@ -73,7 +73,7 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     Tensor tmp_equal(framework::proto::VarType::BOOL);
     tmp_equal.Resize(inference->dims());
     tmp_equal.mutable_data<bool>(ctx.GetPlace());
-    auto runner_equal =
+    const auto& runner_equal =
         NpuOpRunner("Equal", {cast_indices, cast_label}, {tmp_equal}, {});
     runner_equal.Run(stream);
 
@@ -81,7 +81,7 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     Tensor tmp_equal_cast(framework::proto::VarType::FP32);
     tmp_equal_cast.Resize(inference->dims());
     tmp_equal_cast.mutable_data<float>(ctx.GetPlace());
-    auto runner_cast_equal = NpuOpRunner(
+    const auto& runner_cast_equal = NpuOpRunner(
         "Cast", {tmp_equal}, {tmp_equal_cast},
         {{"dst_type",
           static_cast<int>(ConvertToNpuDtype(tmp_equal_cast.type()))}});
@@ -92,7 +92,7 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     Tensor tmp_correct_max(framework::proto::VarType::FP32);
     tmp_correct_max.Resize(framework::make_ddim({num_samples}));
     tmp_correct_max.mutable_data<float>(ctx.GetPlace());
-    auto runner_reduce_max =
+    const auto& runner_reduce_max =
         NpuOpRunner("ReduceMaxD", {tmp_equal_cast}, {tmp_correct_max},
                     {{"axes", std::vector<int>{1}}, {"keep_dims", false}});
     runner_reduce_max.Run(stream);
@@ -101,14 +101,14 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
     Tensor tmp_correct(framework::proto::VarType::FP32);
     tmp_correct.Resize(correct->dims());
     tmp_correct.mutable_data<float>(ctx.GetPlace());
-    auto runner_reduce_sum =
+    const auto& runner_reduce_sum =
         NpuOpRunner("ReduceSumD", {tmp_correct_max}, {tmp_correct},
                     {{"axes", std::vector<int>{0}}, {"keep_dims", false}});
     runner_reduce_sum.Run(stream);
 
     // cast to int
     correct->mutable_data<int>(ctx.GetPlace());
-    auto runner_cast_correct = NpuOpRunner(
+    const auto& runner_cast_correct = NpuOpRunner(
         "Cast", {tmp_correct}, {*correct},
         {{"dst_type", static_cast<int>(ConvertToNpuDtype(correct->type()))}});
     runner_cast_correct.Run(stream);
@@ -126,7 +126,7 @@ class AccuracyNPUKernel : public framework::OpKernel<T> {
 
     // [accuracy]
     accuracy->mutable_data<float>(ctx.GetPlace());
-    auto runner_accuracy =
+    const auto& runner_accuracy =
         NpuOpRunner("Div", {tmp_correct, tmp_total}, {*accuracy}, {});
     runner_accuracy.Run(stream);
   }

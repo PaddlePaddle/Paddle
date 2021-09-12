@@ -78,9 +78,9 @@ REGISTER_OPERATOR(conj, ops::ConjOp, ops::ConjOpMaker,
 
 REGISTER_OP_CPU_KERNEL(
     conj, ops::ConjKernel<paddle::platform::CPUDeviceContext,
-                          paddle::platform::complex64>,
+                          paddle::platform::complex<float>>,
     ops::ConjKernel<paddle::platform::CPUDeviceContext,
-                    paddle::platform::complex128>,
+                    paddle::platform::complex<double>>,
     ops::ConjKernel<paddle::platform::CPUDeviceContext, float>,
     ops::ConjKernel<paddle::platform::CPUDeviceContext, double>,
     ops::ConjKernel<paddle::platform::CPUDeviceContext, int>,

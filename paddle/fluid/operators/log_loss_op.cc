@@ -154,3 +154,8 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     log_loss_grad,
     ops::LogLossGradKernel<paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    log_loss, ops::LogLossKernel<paddle::platform::CUDADeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(
+    log_loss_grad,
+    ops::LogLossGradKernel<paddle::platform::CUDADeviceContext, float>);

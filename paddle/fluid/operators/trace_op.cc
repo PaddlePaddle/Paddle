@@ -167,18 +167,18 @@ REGISTER_OP_CPU_KERNEL(
     ops::TraceKernel<paddle::platform::CPUDeviceContext, double>,
     ops::TraceKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::TraceKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::complex64>,
+                     paddle::platform::complex<float>>,
     ops::TraceKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::complex128>);
+                     paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     trace_grad, ops::TraceGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::TraceGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TraceGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::TraceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::TraceGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex64>,
+                         paddle::platform::complex<float>>,
     ops::TraceGradKernel<paddle::platform::CPUDeviceContext,
-                         paddle::platform::complex128>);
+                         paddle::platform::complex<double>>);
 
 /* ==========================  register checkpoint ===========================*/
 REGISTER_OP_VERSION(trace)

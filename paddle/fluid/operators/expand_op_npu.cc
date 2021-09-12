@@ -11,7 +11,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifdef PADDLE_WITH_ASCEND_CL
 #include <iostream>
 #include <memory>
 #include <string>
@@ -40,7 +39,26 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
             "The number of dimensions of the input 'x' for Op(expand) "
             "must be less than or equal to %d, but the value received is %d.",
             MAX_RANK_SUPPORTED, rank));
-    switch (rank) { REP_EXPAND_TEMPLATE(MAX_RANK_SUPPORTED) }
+    switch (rank) {
+      case 1:
+        Expand<1>(context);
+        break;
+      case 2:
+        Expand<2>(context);
+        break;
+      case 3:
+        Expand<3>(context);
+        break;
+      case 4:
+        Expand<4>(context);
+        break;
+      case 5:
+        Expand<5>(context);
+        break;
+      case 6:
+        Expand<6>(context);
+        break;
+    }
   }
 
  protected:
@@ -65,7 +83,7 @@ class ExpandNPUKernel : public framework::OpKernel<T> {
 
     out0->Resize(out_dims);
     out0->mutable_data<T>(context.device_context().GetPlace());
-    auto runner =
+    const auto& runner =
         NpuOpRunner("TileD", {*in0}, {*out0}, {{"multiples", expand_times}});
     auto stream =
         context.template device_context<paddle::platform::NPUDeviceContext>()
@@ -82,5 +100,3 @@ REGISTER_OP_NPU_KERNEL(
     ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext, int>,
     ops::ExpandNPUKernel<paddle::platform::NPUDeviceContext,
                          paddle::platform::float16>);
-
-#endif

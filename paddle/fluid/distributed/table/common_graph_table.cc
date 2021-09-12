@@ -15,12 +15,15 @@
 #include "paddle/fluid/distributed/table/common_graph_table.h"
 #include <time.h>
 #include <algorithm>
+#include <chrono>
 #include <set>
 #include <sstream>
 #include "paddle/fluid/distributed/common/utils.h"
 #include "paddle/fluid/distributed/table/graph/graph_node.h"
+#include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/string/printf.h"
 #include "paddle/fluid/string/string_helper.h"
+
 namespace paddle {
 namespace distributed {
 
@@ -35,6 +38,77 @@ std::vector<Node *> GraphShard::get_batch(int start, int end, int step) {
 
 size_t GraphShard::get_size() { return bucket.size(); }
 
+int32_t GraphTable::add_graph_node(std::vector<uint64_t> &id_list,
+                                   std::vector<bool> &is_weight_list) {
+  size_t node_size = id_list.size();
+  std::vector<std::vector<std::pair<uint64_t, bool>>> batch(task_pool_size_);
+  for (size_t i = 0; i < node_size; i++) {
+    size_t shard_id = id_list[i] % shard_num;
+    if (shard_id >= shard_end || shard_id < shard_start) {
+      continue;
+    }
+    batch[get_thread_pool_index(id_list[i])].push_back(
+        {id_list[i], i < is_weight_list.size() ? is_weight_list[i] : false});
+  }
+  std::vector<std::future<int>> tasks;
+  for (size_t i = 0; i < batch.size(); ++i) {
+    if (!batch[i].size()) continue;
+    tasks.push_back(_shards_task_pool[i]->enqueue([&batch, i, this]() -> int {
+      for (auto &p : batch[i]) {
+        size_t index = p.first % this->shard_num - this->shard_start;
+        this->shards[index].add_graph_node(p.first)->build_edges(p.second);
+      }
+      return 0;
+    }));
+  }
+  for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
+  return 0;
+}
+
+int32_t GraphTable::remove_graph_node(std::vector<uint64_t> &id_list) {
+  size_t node_size = id_list.size();
+  std::vector<std::vector<uint64_t>> batch(task_pool_size_);
+  for (size_t i = 0; i < node_size; i++) {
+    size_t shard_id = id_list[i] % shard_num;
+    if (shard_id >= shard_end || shard_id < shard_start) continue;
+    batch[get_thread_pool_index(id_list[i])].push_back(id_list[i]);
+  }
+  std::vector<std::future<int>> tasks;
+  for (size_t i = 0; i < batch.size(); ++i) {
+    if (!batch[i].size()) continue;
+    tasks.push_back(_shards_task_pool[i]->enqueue([&batch, i, this]() -> int {
+      for (auto &p : batch[i]) {
+        size_t index = p % this->shard_num - this->shard_start;
+        this->shards[index].delete_node(p);
+      }
+      return 0;
+    }));
+  }
+  for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
+  return 0;
+}
+
+void GraphShard::clear() {
+  for (size_t i = 0; i < bucket.size(); i++) {
+    delete bucket[i];
+  }
+  bucket.clear();
+  node_location.clear();
+}
+
+GraphShard::~GraphShard() { clear(); }
+void GraphShard::delete_node(uint64_t id) {
+  auto iter = node_location.find(id);
+  if (iter == node_location.end()) return;
+  int pos = iter->second;
+  delete bucket[pos];
+  if (pos != (int)bucket.size() - 1) {
+    bucket[pos] = bucket.back();
+    node_location[bucket.back()->get_id()] = pos;
+  }
+  node_location.erase(id);
+  bucket.pop_back();
+}
 GraphNode *GraphShard::add_graph_node(uint64_t id) {
   if (node_location.find(id) == node_location.end()) {
     node_location[id] = bucket.size();
@@ -79,11 +153,7 @@ int32_t GraphTable::get_nodes_ids_by_ranges(
   int start = 0, end, index = 0, total_size = 0;
   res.clear();
   std::vector<std::future<std::vector<uint64_t>>> tasks;
-  // std::string temp = "";
-  // for(int i = 0;i < shards.size();i++)
-  //   temp+= std::to_string((int)shards[i].get_size()) + " ";
-  // VLOG(0)<<"range distribution "<<temp;
-  for (int i = 0; i < shards.size() && index < ranges.size(); i++) {
+  for (size_t i = 0; i < shards.size() && index < (int)ranges.size(); i++) {
     end = total_size + shards[i].get_size();
     start = total_size;
     while (start < end && index < ranges.size()) {
@@ -97,7 +167,6 @@ int32_t GraphTable::get_nodes_ids_by_ranges(
         start = second;
         first -= total_size;
         second -= total_size;
-        // VLOG(0)<<" FIND RANGE "<<i<<" "<<first<<" "<<second;
         tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
             [this, first, second, i]() -> std::vector<uint64_t> {
               return shards[i].get_ids_by_range(first, second);
@@ -106,7 +175,7 @@ int32_t GraphTable::get_nodes_ids_by_ranges(
     }
     total_size += shards[i].get_size();
   }
-  for (int i = 0; i < tasks.size(); i++) {
+  for (size_t i = 0; i < tasks.size(); i++) {
     auto vec = tasks[i].get();
     for (auto &id : vec) {
       res.push_back(id);
@@ -219,7 +288,7 @@ int32_t GraphTable::load_edges(const std::string &path, bool reverse_edge) {
 
   for (auto &shard : shards) {
     auto bucket = shard.get_bucket();
-    for (int i = 0; i < bucket.size(); i++) {
+    for (size_t i = 0; i < bucket.size(); i++) {
       bucket[i]->build_sampler(sample_type);
     }
   }
@@ -238,10 +307,29 @@ Node *GraphTable::find_node(uint64_t id) {
 uint32_t GraphTable::get_thread_pool_index(uint64_t node_id) {
   return node_id % shard_num % shard_num_per_table % task_pool_size_;
 }
+
+uint32_t GraphTable::get_thread_pool_index_by_shard_index(
+    uint64_t shard_index) {
+  return shard_index % shard_num_per_table % task_pool_size_;
+}
+
+int32_t GraphTable::clear_nodes() {
+  std::vector<std::future<int>> tasks;
+  for (size_t i = 0; i < shards.size(); i++) {
+    tasks.push_back(
+        _shards_task_pool[get_thread_pool_index_by_shard_index(i)]->enqueue(
+            [this, i]() -> int {
+              this->shards[i].clear();
+              return 0;
+            }));
+  }
+  for (size_t i = 0; i < tasks.size(); i++) tasks[i].get();
+  return 0;
+}
+
 int32_t GraphTable::random_sample_nodes(int sample_size,
                                         std::unique_ptr<char[]> &buffer,
                                         int &actual_size) {
-  bool need_feature = false;
   int total_size = 0;
   for (int i = 0; i < shards.size(); i++) {
     total_size += shards[i].get_size();
@@ -281,7 +369,7 @@ int32_t GraphTable::random_sample_nodes(int sample_size,
   }
   std::vector<std::pair<int, int>> first_half, second_half;
   int start_index = rand() % total_size;
-  for (int i = 0; i < ranges_len.size() && i < ranges_pos.size(); i++) {
+  for (size_t i = 0; i < ranges_len.size() && i < ranges_pos.size(); i++) {
     if (ranges_pos[i] + ranges_len[i] - 1 + start_index < total_size)
       first_half.push_back({ranges_pos[i] + start_index,
                             ranges_pos[i] + ranges_len[i] + start_index});
@@ -314,31 +402,34 @@ int32_t GraphTable::random_sample_neighboors(
     uint64_t &node_id = node_ids[idx];
     std::unique_ptr<char[]> &buffer = buffers[idx];
     int &actual_size = actual_sizes[idx];
-    tasks.push_back(_shards_task_pool[get_thread_pool_index(node_id)]->enqueue(
-        [&]() -> int {
-          Node *node = find_node(node_id);
 
-          if (node == nullptr) {
-            actual_size = 0;
-            return 0;
-          }
-          std::vector<int> res = node->sample_k(sample_size);
-          actual_size = res.size() * (Node::id_size + Node::weight_size);
-          int offset = 0;
-          uint64_t id;
-          float weight;
-          char *buffer_addr = new char[actual_size];
-          buffer.reset(buffer_addr);
-          for (int &x : res) {
-            id = node->get_neighbor_id(x);
-            weight = node->get_neighbor_weight(x);
-            memcpy(buffer_addr + offset, &id, Node::id_size);
-            offset += Node::id_size;
-            memcpy(buffer_addr + offset, &weight, Node::weight_size);
-            offset += Node::weight_size;
-          }
-          return 0;
-        }));
+    int thread_pool_index = get_thread_pool_index(node_id);
+    auto rng = _shards_task_rng_pool[thread_pool_index];
+
+    tasks.push_back(_shards_task_pool[thread_pool_index]->enqueue([&]() -> int {
+      Node *node = find_node(node_id);
+
+      if (node == nullptr) {
+        actual_size = 0;
+        return 0;
+      }
+      std::vector<int> res = node->sample_k(sample_size, rng);
+      actual_size = res.size() * (Node::id_size + Node::weight_size);
+      int offset = 0;
+      uint64_t id;
+      float weight;
+      char *buffer_addr = new char[actual_size];
+      buffer.reset(buffer_addr);
+      for (int &x : res) {
+        id = node->get_neighbor_id(x);
+        weight = node->get_neighbor_weight(x);
+        memcpy(buffer_addr + offset, &id, Node::id_size);
+        offset += Node::id_size;
+        memcpy(buffer_addr + offset, &weight, Node::weight_size);
+        offset += Node::weight_size;
+      }
+      return 0;
+    }));
   }
   for (size_t idx = 0; idx < node_num; ++idx) {
     tasks[idx].get();
@@ -378,6 +469,34 @@ int32_t GraphTable::get_node_feat(const std::vector<uint64_t> &node_ids,
   return 0;
 }
 
+int32_t GraphTable::set_node_feat(
+    const std::vector<uint64_t> &node_ids,
+    const std::vector<std::string> &feature_names,
+    const std::vector<std::vector<std::string>> &res) {
+  size_t node_num = node_ids.size();
+  std::vector<std::future<int>> tasks;
+  for (size_t idx = 0; idx < node_num; ++idx) {
+    uint64_t node_id = node_ids[idx];
+    tasks.push_back(_shards_task_pool[get_thread_pool_index(node_id)]->enqueue(
+        [&, idx, node_id]() -> int {
+          size_t index = node_id % this->shard_num - this->shard_start;
+          auto node = shards[index].add_feature_node(node_id);
+          node->set_feature_size(this->feat_name.size());
+          for (int feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {
+            const std::string &feature_name = feature_names[feat_idx];
+            if (feat_id_map.find(feature_name) != feat_id_map.end()) {
+              node->set_feature(feat_id_map[feature_name], res[feat_idx][idx]);
+            }
+          }
+          return 0;
+        }));
+  }
+  for (size_t idx = 0; idx < node_num; ++idx) {
+    tasks[idx].get();
+  }
+  return 0;
+}
+
 std::pair<int32_t, std::string> GraphTable::parse_feature(
     std::string feat_str) {
   // Return (feat_id, btyes) if name are in this->feat_name, else return (-1,
@@ -386,7 +505,6 @@ std::pair<int32_t, std::string> GraphTable::parse_feature(
   if (this->feat_id_map.count(fields[0])) {
     int32_t id = this->feat_id_map[fields[0]];
     std::string dtype = this->feat_dtype[id];
-    int32_t shape = this->feat_shape[id];
     std::vector<std::string> values(fields.begin() + 1, fields.end());
     if (dtype == "feasign") {
       return std::make_pair<int32_t, std::string>(
@@ -428,7 +546,6 @@ int32_t GraphTable::pull_graph_list(int start, int total_size,
     int end = start + (count - 1) * step + 1;
     tasks.push_back(_shards_task_pool[i % task_pool_size_]->enqueue(
         [this, i, start, end, step, size]() -> std::vector<Node *> {
-
           return this->shards[i].get_batch(start - size, end - size, step);
         }));
     start += count * step;
@@ -462,6 +579,7 @@ int32_t GraphTable::initialize() {
   _shards_task_pool.resize(task_pool_size_);
   for (size_t i = 0; i < _shards_task_pool.size(); ++i) {
     _shards_task_pool[i].reset(new ::ThreadPool(1));
+    _shards_task_rng_pool.push_back(paddle::framework::GetCPURandomEngine(0));
   }
   server_num = _shard_num;
   // VLOG(0) << "in init graph table server num = " << server_num;
@@ -502,5 +620,5 @@ int32_t GraphTable::initialize() {
   shards = std::vector<GraphShard>(shard_num_per_table, GraphShard(shard_num));
   return 0;
 }
-}
-};
+}  // namespace distributed
+};  // namespace paddle

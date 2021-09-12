@@ -93,31 +93,58 @@ class TestAdamWOp(unittest.TestCase):
             adam = paddle.optimizer.AdamW(
                 0.1, epsilon=-1, parameters=linear.parameters())
 
-    def test_adamw_lr_decay(self):
+
+class TestAdamWOpGroup(TestAdamWOp):
+    def test_adamw_op_dygraph(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
         a = paddle.to_tensor(value)
-        linear = paddle.nn.Linear(13, 5)
-
-        lr = paddle.optimizer.lr.NoamDecay(d_model=0.01, warmup_steps=10)
-        wd = 0.1
+        linear_1 = paddle.nn.Linear(13, 5)
+        linear_2 = paddle.nn.Linear(5, 3)
         adam = paddle.optimizer.AdamW(
-            learning_rate=lr,
-            parameters=linear.parameters(),
+            learning_rate=0.01,
+            parameters=[{
+                'params': linear_1.parameters()
+            }, {
+                'params': linear_2.parameters(),
+                'weight_decay': 0.001
+            }],
             apply_decay_param_fun=lambda name: True,
-            weight_decay=wd)
+            weight_decay=0.01)
 
         for _ in range(2):
-            out = linear(a)
+            out = linear_1(a)
+            out = linear_2(out)
             out.backward()
-            lr_to_coeff = adam._lr_to_coeff
             adam.step()
+            adam.clear_gradients()
 
-            for i, value in enumerate(lr_to_coeff.values()):
-                self.assertAlmostEqual(value.numpy()[0], 1.0 - lr() * wd)
-            self.assertEqual(len(adam._lr_to_coeff), 0)
 
-            lr.step()
+class TestAdamWOpGroupWithLR(TestAdamWOp):
+    def test_adamw_op_dygraph(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear_1 = paddle.nn.Linear(13, 5)
+        linear_2 = paddle.nn.Linear(5, 3)
+        adam = paddle.optimizer.AdamW(
+            learning_rate=paddle.optimizer.lr.PiecewiseDecay(
+                boundaries=[3, 6], values=[0.1, 0.2, 0.3]),
+            parameters=[{
+                'params': linear_1.parameters(),
+                'learning_rate': 0.1,
+            }, {
+                'params': linear_2.parameters(),
+                'weight_decay': 0.001,
+            }],
+            apply_decay_param_fun=lambda name: True,
+            weight_decay=0.01)
+
+        for _ in range(2):
+            out = linear_1(a)
+            out = linear_2(out)
+            out.backward()
+            adam.step()
             adam.clear_gradients()
 
 

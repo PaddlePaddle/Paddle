@@ -14,14 +14,18 @@ limitations under the License. */
 
 #include <thrust/fill.h>
 #include "paddle/fluid/operators/controlflow/compare_all_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
+
 namespace paddle {
 namespace operators {
 
 template <typename T>
 struct IdentityFunctor {
   HOSTDEVICE explicit inline IdentityFunctor() {}
-
   HOSTDEVICE inline T operator()(const T& x) const { return x; }
 };
 
@@ -33,6 +37,24 @@ struct BitwiseAdd {
     return a & b;
   }
 };
+
+template <typename T, typename Enable = void>
+struct CudaEqualReduceFunctor {
+  using ELEM_TYPE = T;
+  HOSTDEVICE bool operator()(const T args[]) const {
+    return (args[0] == args[1]);
+  }
+};
+
+template <typename T>
+struct CudaEqualReduceFunctor<
+    T, typename std::enable_if<std::is_floating_point<T>::value>::type> {
+  using ELEM_TYPE = T;
+  HOSTDEVICE bool operator()(const T args[]) const {
+    return fabs(static_cast<double>(args[0] - args[1])) < 1e-8;
+  }
+};
+
 template <typename DeviceContext, typename Functor>
 class CompareReduceOpKernel
     : public framework::OpKernel<typename Functor::ELEM_TYPE> {
@@ -44,32 +66,22 @@ class CompareReduceOpKernel
     auto* x = context.Input<Tensor>("X");
     auto* y = context.Input<Tensor>("Y");
     auto* z = context.Output<Tensor>("Out");
-    bool shape_same = true;
-
-    Tensor tmp;
-    framework::DDim x_dims = x->dims();
-    framework::DDim y_dims = y->dims();
-
-    if (x_dims.size() != y_dims.size()) {
-      shape_same = false;
-    } else {
-      for (auto i = 0; i < x_dims.size(); i++) {
-        if (x_dims[i] != y_dims[i]) {
-          shape_same = false;
-          break;
-        }
-      }
-    }
-
     bool* z_data = z->mutable_data<bool>(context.GetPlace());
-    if (!shape_same) {
+    Tensor tmp;
+
+    if (x->dims() != y->dims()) {
       thrust::device_ptr<bool> z_dev_ptr(z_data);
       thrust::fill(z_dev_ptr, z_dev_ptr + 1, false);
       return;
     } else {
-      tmp.mutable_data<bool>(x_dims, context.GetPlace());
-      ElementwiseComputeEx<Functor, DeviceContext, T, bool>(context, x, y, 0,
-                                                            Functor(), &tmp);
+      tmp.mutable_data<bool>(x->dims(), context.GetPlace());
+      const auto& cuda_ctx =
+          context.template device_context<platform::CUDADeviceContext>();
+      std::vector<const framework::Tensor*> ins = {x, y};
+      std::vector<framework::Tensor*> outs = {&tmp};
+      LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kBinary, T, bool>(
+          cuda_ctx, ins, &outs, Functor());
+
       // Reduce by 'bitwise and' operator
       std::vector<int> reduce_dims;
       reduce_dims.resize(tmp.dims().size());
@@ -85,15 +97,17 @@ class CompareReduceOpKernel
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_COMPARE_REDUCE_CUDA_KERNEL(op_type, functor)          \
-  REGISTER_OP_CUDA_KERNEL(                                             \
-      op_type, paddle::operators::CompareReduceOpKernel<               \
-                   paddle::platform::CUDADeviceContext, functor<int>>, \
-      paddle::operators::CompareReduceOpKernel<                        \
-          paddle::platform::CUDADeviceContext, functor<int64_t>>,      \
-      paddle::operators::CompareReduceOpKernel<                        \
-          paddle::platform::CUDADeviceContext, functor<float>>,        \
-      paddle::operators::CompareReduceOpKernel<                        \
-          paddle::platform::CUDADeviceContext, functor<double>>);
-REGISTER_COMPARE_REDUCE_CUDA_KERNEL(equal_all,
-                                    paddle::operators::EqualReduceFunctor);
+#define REGISTER_COMPARE_REDUCE_CUDA_KERNEL(op_type, functor)                  \
+  REGISTER_OP_CUDA_KERNEL(                                                     \
+      op_type,                                                                 \
+      ops::CompareReduceOpKernel<plat::CUDADeviceContext, ops::functor<bool>>, \
+      ops::CompareReduceOpKernel<plat::CUDADeviceContext, ops::functor<int>>,  \
+      ops::CompareReduceOpKernel<plat::CUDADeviceContext,                      \
+                                 ops::functor<int64_t>>,                       \
+      ops::CompareReduceOpKernel<plat::CUDADeviceContext,                      \
+                                 ops::functor<float>>,                         \
+      ops::CompareReduceOpKernel<plat::CUDADeviceContext,                      \
+                                 ops::functor<double>>);
+
+REGISTER_COMPARE_REDUCE_CUDA_KERNEL(equal_all, CudaEqualReduceFunctor)
+#undef REGISTER_COMPARE_REDUCE_CUDA_KERNEL

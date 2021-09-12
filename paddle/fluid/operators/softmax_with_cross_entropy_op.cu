@@ -18,7 +18,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math/cross_entropy.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/softmax_impl.cuh"
+#include "paddle/fluid/operators/softmax_cudnn_op.cu.h"
 #include "paddle/fluid/operators/softmax_with_cross_entropy_op.h"
 #include "paddle/fluid/platform/for_range.h"
 #ifdef PADDLE_WITH_HIP

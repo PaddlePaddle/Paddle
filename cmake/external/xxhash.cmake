@@ -21,16 +21,24 @@ set(XXHASH_INCLUDE_DIR "${XXHASH_INSTALL_DIR}/include")
 set(XXHASH_REPOSITORY  ${GIT_URL}/Cyan4973/xxHash.git)
 set(XXHASH_TAG         v0.6.5)
 
-cache_third_party(extern_xxhash
-    REPOSITORY    ${XXHASH_REPOSITORY}
-    TAG           ${XXHASH_TAG}
-    DIR           XXHASH_SOURCE_DIR)
+INCLUDE_DIRECTORIES(${XXHASH_INCLUDE_DIR})
 
 IF(APPLE)
   SET(BUILD_CMD sed -i \"\" "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g" ${XXHASH_SOURCE_DIR}/Makefile && make lib)
 ELSEIF(UNIX)
   SET(BUILD_CMD sed -i "s/-Wstrict-prototypes -Wundef/-Wstrict-prototypes -Wundef -fPIC/g" ${XXHASH_SOURCE_DIR}/Makefile && make lib)
 ENDIF()
+
+if (WIN32)
+  set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/xxhash.lib")
+else()
+  set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/libxxhash.a")
+endif ()
+
+cache_third_party(extern_xxhash
+    REPOSITORY    ${XXHASH_REPOSITORY}
+    TAG           ${XXHASH_TAG}
+    DIR           XXHASH_SOURCE_DIR)
 
 if(WIN32)
   ExternalProject_Add(
@@ -54,6 +62,7 @@ if(WIN32)
                       -DBUILD_SHARED_LIBS=OFF
                       ${OPTIONAL_CACHE_ARGS}
       TEST_COMMAND      ""
+      BUILD_BYPRODUCTS ${XXHASH_LIBRARIES}
   )
 else()
   ExternalProject_Add(
@@ -68,15 +77,9 @@ else()
       BUILD_COMMAND     ${BUILD_CMD}
       INSTALL_COMMAND   make PREFIX=${XXHASH_INSTALL_DIR} install
       TEST_COMMAND      ""
+      BUILD_BYPRODUCTS  ${XXHASH_LIBRARIES}
   )
 endif()
-
-if (WIN32)
-  set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/xxhash.lib")
-else()
-  set(XXHASH_LIBRARIES "${XXHASH_INSTALL_DIR}/lib/libxxhash.a")
-endif ()
-INCLUDE_DIRECTORIES(${XXHASH_INCLUDE_DIR})
 
 add_library(xxhash STATIC IMPORTED GLOBAL)
 set_property(TARGET xxhash PROPERTY IMPORTED_LOCATION ${XXHASH_LIBRARIES})

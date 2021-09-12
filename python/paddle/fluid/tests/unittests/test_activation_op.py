@@ -18,7 +18,7 @@ import unittest
 import numpy as np
 from scipy.special import expit, erf
 
-from op_test import OpTest, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16, skip_check_grad_ci
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
@@ -71,6 +71,70 @@ class TestActivation(OpTest):
 
     def init_kernel_type(self):
         pass
+
+
+class TestExpm1(TestActivation):
+    def setUp(self):
+        self.op_type = "expm1"
+        self.init_dtype()
+
+        np.random.seed(2049)
+        x = np.random.uniform(0.1, 1, [11, 17]).astype(self.dtype)
+        out = np.expm1(x)
+
+        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
+        self.outputs = {'Out': out}
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out')
+
+
+class TestExpm1API(unittest.TestCase):
+    def init_dtype(self):
+        self.dtype = 'float64'
+        self.shape = [11, 17]
+
+    def setUp(self):
+        self.init_dtype()
+        self.x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
+        self.out_ref = np.expm1(self.x)
+
+        self.place = [paddle.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+    def test_static_api(self):
+        paddle.enable_static()
+
+        def run(place):
+            with paddle.static.program_guard(paddle.static.Program()):
+                X = paddle.fluid.data('X', self.shape, dtype=self.dtype)
+                out = paddle.expm1(X)
+                exe = paddle.static.Executor(place)
+                res = exe.run(feed={'X': self.x})
+            for r in res:
+                self.assertEqual(np.allclose(self.out_ref, r), True)
+
+        for place in self.place:
+            run(place)
+
+    def test_dygraph_api(self):
+        def run(place):
+            paddle.disable_static(place)
+            X = paddle.to_tensor(self.x)
+            out = paddle.expm1(X)
+            self.assertEqual(np.allclose(self.out_ref, out.numpy()), True)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+    def test_errors(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            X = paddle.fluid.data('X', self.shape, dtype='int32')
+            self.assertRaises(TypeError, paddle.expm1, X)
+        # The input dtype must be float16, float32, float64.
 
 
 class TestParameter(object):
@@ -1555,7 +1619,6 @@ class TestHardSwish(TestActivation):
         self.op_type = 'hard_swish'
         self.init_dtype()
 
-        from op_test import skip_check_grad_ci
         skip_check_grad_ci(reason="not implemented yet")
 
         np.random.seed(1024)
@@ -2701,6 +2764,7 @@ def create_test_act_fp16_class(parent,
 
 
 create_test_act_fp16_class(TestActivation)
+create_test_act_fp16_class(TestExpm1)
 create_test_act_fp16_class(TestSigmoid)
 create_test_act_fp16_class(TestSilu)
 create_test_act_fp16_class(TestLogSigmoid)

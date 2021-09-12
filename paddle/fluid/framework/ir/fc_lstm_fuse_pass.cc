@@ -29,8 +29,149 @@ namespace ir {
 
 class Node;
 
-int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
-                bool with_fc_bias) {
+MulLstmFusePass::MulLstmFusePass() {
+  AddOpCompat(OpCompat("lstm"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("H0")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("C0")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("Weight")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Hidden")
+      .IsTensor()
+      .End()
+      .AddOutput("Cell")
+      .IsTensor()
+      .End()
+      .AddOutput("BatchGate")
+      .IsTensor()
+      .End()
+      .AddOutput("BatchCellPreAct")
+      .IsTensor()
+      .End()
+      .AddAttr("use_peepholes")
+      .IsType<bool>()
+      .End()
+      .AddAttr("is_reverse")
+      .IsType<bool>()
+      .End()
+      .AddAttr("gate_activation")
+      .IsStringIn({"sigmoid", "tanh", "relu", "identity"})
+      .End()
+      .AddAttr("cell_activation")
+      .IsStringIn({"sigmoid", "tanh", "relu", "identity"})
+      .End()
+      .AddAttr("candidate_activation")
+      .IsStringIn({"sigmoid", "tanh", "relu", "identity"})
+      .End();
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumEQ(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
+      .End();
+}
+
+FCLstmFusePass::FCLstmFusePass() {
+  AddOpCompat(OpCompat("lstm"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("H0")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("C0")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("Weight")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .End()
+      .AddOutput("Hidden")
+      .IsTensor()
+      .End()
+      .AddOutput("Cell")
+      .IsTensor()
+      .End()
+      .AddOutput("BatchGate")
+      .IsTensor()
+      .End()
+      .AddOutput("BatchCellPreAct")
+      .IsTensor()
+      .End()
+      .AddAttr("use_peepholes")
+      .IsType<bool>()
+      .End()
+      .AddAttr("is_reverse")
+      .IsType<bool>()
+      .End()
+      .AddAttr("gate_activation")
+      .IsStringIn({"sigmoid", "tanh", "relu", "identity"})
+      .End()
+      .AddAttr("cell_activation")
+      .IsStringIn({"sigmoid", "tanh", "relu", "identity"})
+      .End()
+      .AddAttr("candidate_activation")
+      .IsStringIn({"sigmoid", "tanh", "relu", "identity"})
+      .End();
+  AddOpCompat(OpCompat("mul"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("x_num_col_dims")
+      .IsNumEQ(1)
+      .End()
+      .AddAttr("y_num_col_dims")
+      .IsNumEQ(1)
+      .End();
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsNumGE(-1)
+      .End();
+}
+
+int FCLstmFusePass::BuildFusion(Graph* graph, const std::string& name_scope,
+                                Scope* scope, bool with_fc_bias) const {
   GraphPatternDetector gpd;
   auto* pattern = gpd.mutable_pattern();
 
@@ -47,7 +188,7 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
   // Create New OpDesc
   auto lstm_creator = [&](Node* lstm, Node* input, Node* weight_x,
                           Node* weight_h, Node* bias, Node* hidden, Node* cell,
-                          Node* xx, Node* fc_bias) {
+                          Node* xx, Node* fc_bias, const bool use_mkldnn) {
     OpDesc op_desc;
     op_desc.SetType("fusion_lstm");
 #define SET_IN(Key, node__) op_desc.SetInput(#Key, {node__->Name()});
@@ -88,6 +229,7 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
     op_desc.SetOutput("XX", {xx->Name()});
     op_desc.SetAttr("is_reverse", lstm->Op()->GetAttr("is_reverse"));
     op_desc.SetAttr("use_peepholes", lstm->Op()->GetAttr("use_peepholes"));
+    op_desc.SetAttr("use_mkldnn", use_mkldnn);
     // TODO(TJ): get from attr
     op_desc.SetAttr("use_seq", true);
 
@@ -139,6 +281,10 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
 
   auto handler = [&](const GraphPatternDetector::subgraph_t& subgraph,
                      Graph* g) {
+    if (!IsCompat(subgraph, g)) {
+      LOG(WARNING) << "Pass in op compat failed.";
+      return;
+    }
     GET_IR_NODE_FROM_SUBGRAPH(lstm, lstm, lstm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(Weight, Weight, lstm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(Bias, Bias, lstm_pattern);
@@ -148,13 +294,22 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
     GET_IR_NODE_FROM_SUBGRAPH(Cell, Cell, lstm_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(w, w, fc_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(mul, mul, fc_pattern);
+    const bool use_mkldnn =
+        (mul->Op()->GetAttrIfExists<bool>("use_mkldnn") &&
+         lstm->Op()->GetAttrIfExists<std::string>("gate_activation") ==
+             "sigmoid" &&
+         lstm->Op()->GetAttrIfExists<std::string>("cell_activation") ==
+             "tanh" &&
+         lstm->Op()->GetAttrIfExists<std::string>("candidate_activation") ==
+             "tanh");
+
     if (with_fc_bias) {
       GET_IR_NODE_FROM_SUBGRAPH(fc_out, elementwise_add_out, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(fc_bias, bias, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(mul_out, mul_out, fc_pattern);
       GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, fc_pattern);
       lstm_creator(lstm, subgraph.at(x), w, Weight, Bias, Hidden, Cell, fc_out,
-                   fc_bias);
+                   fc_bias, use_mkldnn);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
           {mul, lstm, elementwise_add, mul_out, BatchGate, BatchCellPreAct});
@@ -162,7 +317,7 @@ int BuildFusion(Graph* graph, const std::string& name_scope, Scope* scope,
     } else {
       GET_IR_NODE_FROM_SUBGRAPH(fc_out, mul_out, fc_pattern);
       lstm_creator(lstm, subgraph.at(x), w, Weight, Bias, Hidden, Cell, fc_out,
-                   nullptr);
+                   nullptr, use_mkldnn);
       // Remove unneeded nodes.
       std::unordered_set<const Node*> marked_nodes(
           {mul, lstm, BatchGate, BatchCellPreAct});

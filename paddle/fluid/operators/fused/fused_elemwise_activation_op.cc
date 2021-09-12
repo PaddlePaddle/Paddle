@@ -69,7 +69,7 @@ static bool IsSupportedCompound(const std::vector<std::string> &functors) {
           functors.size(), 2));
 
   static std::unordered_set<std::string> unary_fun = {"scale", "relu", "tanh",
-                                                      "sigmoid"};
+                                                      "sigmoid", "gelu"};
   static std::unordered_set<std::string> binary_fun = {"elementwise_add",
                                                        "elementwise_mul"};
 

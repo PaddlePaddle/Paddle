@@ -22,12 +22,12 @@ from paddle.fluid.log_helper import get_logger
 local_logger = get_logger(
     __name__, logging.INFO, fmt='%(asctime)s-%(levelname)s: %(message)s')
 
-from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer, HeterXpuTrainer, HeterBoxTrainer, PSGPUTrainer
+from .trainer_desc import MultiTrainer, DistMultiTrainer, PipelineTrainer, HeterXpuTrainer, PSGPUTrainer
 from .device_worker import Hogwild, DownpourSGD, Section, DownpourSGDOPT
 from .framework import Variable
 from multiprocessing import Process, Manager
 
-__all__ = ["TrainerFactory", "FetchHandler", "FetchHandlerMonitor"]
+__all__ = ["TrainerFactory", "FetchHandlerMonitor"]
 
 
 class TrainerFactory(object):
@@ -95,6 +95,10 @@ class TrainerFactory(object):
                     trainer._set_use_cvm(opt_info["use_cvm"])
                 if opt_info.get("no_cvm") is not None:
                     trainer._set_no_cvm(opt_info["no_cvm"])
+                if opt_info.get(
+                        "scale_sparse_gradient_with_batch_size") is not None:
+                    trainer._set_scale_sparse_grad_with_batch_size(opt_info[
+                        "scale_sparse_gradient_with_batch_size"])
                 if opt_info.get("scale_datanorm") is not None:
                     trainer._set_scale_datanorm(opt_info["scale_datanorm"])
                 if opt_info.get("adjust_ins_weight") is not None:

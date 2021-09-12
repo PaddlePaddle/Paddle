@@ -1,4 +1,5 @@
 // Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -41,12 +42,14 @@ message ShardingConfig {
   optional bool optimize_offload = 9 [ default = false ];
   optional bool pp_allreduce_in_optimize = 10 [ default = false ];
   optional int32 pp_degree = 11 [ default = 1 ];
+  optional bool optimize_cast = 12 [ default = false ];
 }
 
 message HybridConfig {
   optional int32 dp_degree = 1 [ default = -1 ];
   optional int32 mp_degree = 2 [ default = 1 ];
   optional int32 pp_degree = 3 [ default = 1 ];
+  optional int32 sharding_degree = 4 [ default = 1 ];
 }
 
 message AMPConfig {
@@ -109,6 +112,7 @@ message BuildStrategy {
   optional bool fuse_bn_add_act_ops = 10 [ default = true ];
   optional bool enable_auto_fusion = 11 [ default = false ];
   optional bool enable_addto = 12 [ default = false ];
+  optional bool fix_op_run_order = 13 [ default = false ];
 }
 
 message ExecutionStrategy {
@@ -116,6 +120,16 @@ message ExecutionStrategy {
   optional int32 num_iteration_per_drop_scope = 2 [ default = 10 ];
   optional int32 num_iteration_per_run = 3 [ default = 1 ];
   optional bool use_thread_barrier = 4 [ default = false ];
+}
+
+message GradientScaleConfig {
+  // Optional value ['avg', 'sum', 'customized']
+  // If avg, loss@grad will be divided by the number of devices,
+  // that is, the gradient will be accumulated and averaged among
+  // multiple devices.
+  // Else if sum, the gradient will accumulated among multiple
+  // devices.
+  optional string scale_strategy = 1 [ default = 'avg' ];
 }
 
 message AsyncConfig {
@@ -133,10 +147,18 @@ message AsyncConfig {
   optional int32 use_ps_gpu = 12 [ default = 0 ];
 }
 
+message TrainerDescConfig {
+  optional string dump_fields_path = 1;
+  repeated string dump_fields = 2;
+  repeated string dump_param = 3;
+  repeated string stat_var_names = 4;
+}
+
 message PipelineConfig {
   optional int32 micro_batch_size = 1 [ default = 1 ];
   optional int32 accumulate_steps = 2 [ default = 1 ];
   optional string schedule_mode = 3 [ default = '1F1B' ];
+  optional bool p2p_cache_shape = 4 [ default = true ];
 }
 
 message TensorParallelConfig {
@@ -176,6 +198,11 @@ message DistributedStrategy {
   optional bool find_unused_parameters = 28 [ default = false ];
   optional bool tensor_parallel = 29 [ default = false ];
   optional bool without_graph_optimization = 30 [ default = false ];
+  optional int32 fuse_grad_size_in_num = 31 [ default = 8 ];
+  optional bool calc_comm_same_stream = 32 [ default = false ];
+  optional bool asp = 33 [ default = false ];
+  optional bool fuse_grad_merge = 34 [ default = false ];
+  optional bool semi_auto = 35 [ default = false ];
 
   optional RecomputeConfig recompute_configs = 101;
   optional AMPConfig amp_configs = 102;
@@ -190,8 +217,10 @@ message DistributedStrategy {
   optional ShardingConfig sharding_configs = 111;
   optional HybridConfig hybrid_configs = 112;
   optional TensorParallelConfig tensor_parallel_configs = 113;
+  optional TrainerDescConfig trainer_desc_configs = 114;
   optional BuildStrategy build_strategy = 201;
   optional ExecutionStrategy execution_strategy = 202;
+  optional GradientScaleConfig gradient_scale_configs = 203;
 }
 
 message DistributedJobInfo {

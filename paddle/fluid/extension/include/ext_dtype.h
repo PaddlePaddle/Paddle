@@ -16,15 +16,14 @@ limitations under the License. */
 #include <cstdint>
 #include <string>
 
-#include "complex128.h"     // NOLINT
-#include "complex64.h"      // NOLINT
+#include "complex.h"        // NOLINT
 #include "ext_exception.h"  // NOLINT
 #include "float16.h"        // NOLINT
 
 namespace paddle {
 
-using complex64 = paddle::platform::complex64;
-using complex128 = paddle::platform::complex128;
+using complex64 = paddle::platform::complex<float>;
+using complex128 = paddle::platform::complex<double>;
 using float16 = paddle::platform::float16;
 
 enum class DataType {

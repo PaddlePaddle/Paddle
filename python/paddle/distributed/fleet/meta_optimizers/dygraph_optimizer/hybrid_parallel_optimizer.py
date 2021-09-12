@@ -14,14 +14,17 @@
 
 from __future__ import print_function
 import sys
+import paddle
 from paddle.optimizer import Optimizer
 from paddle.fluid.clip import ClipGradByGlobalNorm
-from ...utils.hybrid_parallel_util import fused_allreduce_gradients
+from ...utils.hybrid_parallel_util import fused_allreduce_gradients, sharding_reduce_gradients
 from ...base.topology import ParallelMode
 from paddle.fluid.dygraph import base as imperative_base
 from paddle.fluid import framework
 from paddle.fluid.framework import Variable
 from ...utils.log_util import logger
+from paddle.fluid import core
+from paddle.fluid import layers
 
 __all__ = []
 
@@ -89,12 +92,17 @@ class HybridParallelOptimizer:
         self._inner_opt = optimizer
         self._strategy = strategy
         self._hcg = hcg
-        self._is_mp = (
-            self._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL)
+
+        self._use_dp_mode = (
+            self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL)
+
         self._need_dp = (self._hcg.get_data_parallel_world_size() > 1)
 
+        self._sharding_enable = (
+            self._hcg.get_sharding_parallel_world_size() > 1)
+
         if isinstance(self._inner_opt._grad_clip,
-                      ClipGradByGlobalNorm) and self._is_mp:
+                      ClipGradByGlobalNorm) and not self._use_dp_mode:
             logger.warning("using ClipGradByGlobalNorm in TensorParallel, the origin " \
                   "optmizer'grad clip will be changed.")
             self._inner_opt._grad_clip = HybridParallelClipGrad(
@@ -103,7 +111,12 @@ class HybridParallelOptimizer:
     @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
-        if self._is_mp and self._need_dp:
+
+        if self._sharding_enable:
+            sharding_reduce_gradients(
+                list(self._inner_opt._parameter_list), self._hcg)
+
+        if not self._use_dp_mode and self._need_dp:
             fused_allreduce_gradients(
                 list(self._inner_opt._parameter_list), self._hcg)
         self._inner_opt.step()
@@ -114,15 +127,18 @@ class HybridParallelOptimizer:
                  startup_program=None,
                  parameters=None,
                  no_grad_set=None):
-        assert isinstance(loss, Variable), "The loss should be an Tensor."
 
         parameter_list = parameters if parameters \
-            else self._parameter_list
+            else self._inner_opt._parameter_list
 
-        if self._is_mp and self._need_dp:
+        # Here shardinng should use global parameter list 
+        if self._sharding_enable:
+            sharding_reduce_gradients(
+                list(self._inner_opt._parameter_list), self._hcg)
+
+        if not self._use_dp_mode and self._need_dp:
             fused_allreduce_gradients(list(parameter_list), self._hcg)
-
-        return self._inner_opt.minimize(loss, startup_program, parameters,
+        return self._inner_opt.minimize(loss, startup_program, parameter_list,
                                         no_grad_set)
 
     def __getattr__(self, item):

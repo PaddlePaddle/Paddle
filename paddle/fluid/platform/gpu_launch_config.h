@@ -23,6 +23,7 @@
 #else
 #include <hip/hip_runtime.h>
 #endif
+
 #include <stddef.h>
 #include <algorithm>
 #include <string>
@@ -33,14 +34,27 @@ namespace platform {
 
 inline int DivUp(int a, int b) { return (a + b - 1) / b; }
 
+#ifdef WITH_NV_JETSON
+// The number of threads cannot be assigned 1024 in some cases when the device
+// is nano or tx2 .
+inline void ChangeThreadNum(const platform::CUDADeviceContext& context,
+                            int* num_thread, int alternative_num_thread = 512) {
+  if (context.GetComputeCapability() == 53 ||
+      context.GetComputeCapability() == 62) {
+    *num_thread = alternative_num_thread;
+  }
+}
+#endif
+
 struct GpuLaunchConfig {
   dim3 theory_thread_count = dim3(1, 1, 1);
   dim3 thread_per_block = dim3(1, 1, 1);
   dim3 block_per_grid = dim3(1, 1, 1);
+  int compute_capability = 0;
 };
 
 inline GpuLaunchConfig GetGpuLaunchConfig1D(
-    const platform::CUDADeviceContext& context, int element_count,
+    const platform::CUDADeviceContext& context, int64_t element_count,
 #ifdef PADDLE_WITH_HIP
     // HIP will throw GPU memory access fault if threads > 256
     int max_threads = 256) {
@@ -60,18 +74,28 @@ inline GpuLaunchConfig GetGpuLaunchConfig1D(
 
   // Compute physical threads we need, should small than max sm threads
   const int physical_thread_count =
-      std::min(max_physical_threads, theory_thread_count);
+      (std::min)(max_physical_threads, theory_thread_count);
+
+  // Get compute_capability
+  const int capability = context.GetComputeCapability();
+
+#ifdef WITH_NV_JETSON
+  if (capability == 53 || capability == 62) {
+    max_threads = 512;
+  }
+#endif
 
   // Need get from device
   const int thread_per_block =
-      std::min(max_threads, context.GetMaxThreadsPerBlock());
+      (std::min)(max_threads, context.GetMaxThreadsPerBlock());
   const int block_count =
-      std::min(DivUp(physical_thread_count, thread_per_block), sm);
+      (std::min)(DivUp(physical_thread_count, thread_per_block), sm);
 
   GpuLaunchConfig config;
   config.theory_thread_count.x = theory_thread_count;
   config.thread_per_block.x = thread_per_block;
   config.block_per_grid.x = block_count;
+  config.compute_capability = capability;
   return config;
 }
 
@@ -87,19 +111,20 @@ inline GpuLaunchConfig GetGpuLaunchConfig2D(
                                   y_dim));
 
   const int kThreadsPerBlock = 256;
-  int block_cols = std::min(x_dim, kThreadsPerBlock);
-  int block_rows = std::max(kThreadsPerBlock / block_cols, 1);
+  int block_cols = (std::min)(x_dim, kThreadsPerBlock);
+  int block_rows = (std::max)(kThreadsPerBlock / block_cols, 1);
 
   int max_physical_threads = context.GetMaxPhysicalThreadCount();
-  const int max_blocks = std::max(max_physical_threads / kThreadsPerBlock, 1);
+  const int max_blocks = (std::max)(max_physical_threads / kThreadsPerBlock, 1);
 
   GpuLaunchConfig config;
   // Noticed, block size is not align to 32, if needed do it yourself.
   config.theory_thread_count = dim3(x_dim, y_dim, 1);
   config.thread_per_block = dim3(block_cols, block_rows, 1);
 
-  int grid_x = std::min(DivUp(x_dim, block_cols), max_blocks);
-  int grid_y = std::min(max_blocks / grid_x, std::max(y_dim / block_rows, 1));
+  int grid_x = (std::min)(DivUp(x_dim, block_cols), max_blocks);
+  int grid_y =
+      (std::min)(max_blocks / grid_x, (std::max)(y_dim / block_rows, 1));
 
   config.block_per_grid = dim3(grid_x, grid_y, 1);
   return config;

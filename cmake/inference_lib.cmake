@@ -72,6 +72,12 @@ function(copy_part_of_thrid_party TARGET DST)
             copy(${TARGET}
                     SRCS ${MKLML_LIB} ${MKLML_IOMP_LIB} ${MKLML_INC_DIR}
                     DSTS ${dst_dir}/lib ${dst_dir}/lib ${dst_dir})
+            if(WITH_STRIP)
+                    add_custom_command(TARGET ${TARGET} POST_BUILD
+                            COMMAND strip -s ${dst_dir}/lib/libiomp5.so
+                            COMMAND strip -s ${dst_dir}/lib/libmklml_intel.so
+                            COMMENT "striping libiomp5.so\nstriping libmklml_intel.so")
+            endif()
         endif()
     elseif(${CBLAS_PROVIDER} STREQUAL EXTERN_OPENBLAS)
         set(dst_dir "${DST}/third_party/install/openblas")
@@ -94,8 +100,17 @@ function(copy_part_of_thrid_party TARGET DST)
                     DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib)
         else()
             copy(${TARGET}
-                    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB} ${MKLDNN_SHARED_LIB_1} ${MKLDNN_SHARED_LIB_2}
-                    DSTS ${dst_dir} ${dst_dir}/lib ${dst_dir}/lib ${dst_dir}/lib)
+                    SRCS ${MKLDNN_INC_DIR} ${MKLDNN_SHARED_LIB}
+                    DSTS ${dst_dir} ${dst_dir}/lib)
+            if(WITH_STRIP)
+                    add_custom_command(TARGET ${TARGET} POST_BUILD
+                            COMMAND strip -s ${dst_dir}/lib/libmkldnn.so.0
+                            COMMENT "striping libmkldnn.so.0")
+            endif()
+            add_custom_command(TARGET ${TARGET} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink libmkldnn.so.0 ${dst_dir}/lib/libdnnl.so.1
+                    COMMAND ${CMAKE_COMMAND} -E create_symlink libmkldnn.so.0 ${dst_dir}/lib/libdnnl.so.2
+                    COMMENT "Make a symbol link of libmkldnn.so.0")
         endif()
     endif()
 
@@ -146,12 +161,19 @@ copy(inference_lib_dist
         SRCS ${THREADPOOL_INCLUDE_DIR}/ThreadPool.h
         DSTS ${dst_dir})
 
-# Only GPU need cudaErrorMessage.pb
+# GPU must copy externalErrorMsg.pb
 IF(WITH_GPU)
-        set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/cudaerror/data")
-        copy(inference_lib_dist
-                SRCS ${cudaerror_INCLUDE_DIR}
-                DSTS ${dst_dir})
+    set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/externalError/data")
+    copy(inference_lib_dist
+            SRCS ${externalError_INCLUDE_DIR}
+            DSTS ${dst_dir})
+ENDIF()
+
+IF(WITH_XPU)
+    set(dst_dir "${PADDLE_INFERENCE_INSTALL_DIR}/third_party/install/xpu")
+    copy(inference_lib_dist
+        SRCS ${XPU_INC_DIR} ${XPU_LIB_DIR}
+        DSTS ${dst_dir} ${dst_dir})
 ENDIF()
 
 # CMakeCache Info
@@ -193,13 +215,13 @@ copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include/*
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
 copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex64.h
-        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
-copy(inference_lib_dist
-        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex128.h
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/complex.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
 copy(inference_lib_dist
         SRCS  ${PADDLE_SOURCE_DIR}/paddle/fluid/platform/float16.h
+        DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
+copy(inference_lib_dist
+        SRCS  ${PADDLE_SOURCE_DIR}/paddle/utils/any.h
         DSTS  ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/include/experimental/)
 
 # CAPI inference library for only inference
@@ -217,6 +239,13 @@ endif(WIN32)
 copy(inference_lib_dist
       SRCS  ${src_dir}/inference/capi_exp/pd_*.h  ${paddle_inference_c_lib}
       DSTS  ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/include ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/lib)
+
+if(WITH_STRIP AND NOT WIN32)
+        add_custom_command(TARGET inference_lib_dist POST_BUILD
+                COMMAND strip -s ${PADDLE_INFERENCE_C_INSTALL_DIR}/paddle/lib/libpaddle_inference_c.so
+                COMMAND strip -s ${PADDLE_INFERENCE_INSTALL_DIR}/paddle/lib/libpaddle_inference.so
+                COMMENT "striping libpaddle_inference_c.so\nstriping libpaddle_inference.so")
+endif()
 
 # fluid library for both train and inference
 set(fluid_lib_deps inference_lib_dist)
@@ -259,7 +288,7 @@ copy(fluid_lib_dist
 set(module "platform")
 set(platform_lib_deps profiler_proto error_codes_proto)
 if(WITH_GPU)
-  set(platform_lib_deps ${platform_lib_deps} cuda_error_proto)
+  set(platform_lib_deps ${platform_lib_deps} external_error_proto)
 endif(WITH_GPU)
 
 add_dependencies(fluid_lib_dist ${platform_lib_deps})
@@ -323,16 +352,22 @@ function(version version_file)
             "GIT COMMIT ID: ${PADDLE_GIT_COMMIT}\n"
             "WITH_MKL: ${WITH_MKL}\n"
             "WITH_MKLDNN: ${WITH_MKLDNN}\n"
-            "WITH_GPU: ${WITH_GPU}\n")
+            "WITH_GPU: ${WITH_GPU}\n"
+            "WITH_ROCM: ${WITH_ROCM}\n")
     if(WITH_GPU)
         file(APPEND ${version_file}
                 "CUDA version: ${CUDA_VERSION}\n"
                 "CUDNN version: v${CUDNN_MAJOR_VERSION}.${CUDNN_MINOR_VERSION}\n")
     endif()
+    if(WITH_ROCM)
+        file(APPEND ${version_file}
+                "HIP version: ${HIP_VERSION}\n"
+                "MIOpen version: v${MIOPEN_MAJOR_VERSION}.${MIOPEN_MINOR_VERSION}\n")
+    endif()
     file(APPEND ${version_file} "CXX compiler version: ${CMAKE_CXX_COMPILER_VERSION}\n")
     if(TENSORRT_FOUND)
         file(APPEND ${version_file}
-                "WITH_TENSORRT: ${TENSORRT_FOUND}\n" "TensorRT version: v${TENSORRT_MAJOR_VERSION}\n")
+                "WITH_TENSORRT: ${TENSORRT_FOUND}\n" "TensorRT version: v${TENSORRT_MAJOR_VERSION}.${TENSORRT_MINOR_VERSION}.${TENSORRT_PATCH_VERSION}.${TENSORRT_BUILD_VERSION}\n")
     endif()
     if(WITH_LITE)
         file(APPEND ${version_file} "WITH_LITE: ${WITH_LITE}\n" "LITE_GIT_TAG: ${LITE_GIT_TAG}\n")

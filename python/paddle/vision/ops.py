@@ -21,9 +21,14 @@ from ..nn import Layer
 from ..fluid.initializer import Normal
 
 from paddle.common_ops_import import *
+from paddle import _C_ops
 
-__all__ = [
-    'yolo_loss', 'yolo_box', 'deform_conv2d', 'DeformConv2D', 'read_file',
+__all__ = [ #noqa
+    'yolo_loss',
+    'yolo_box',
+    'deform_conv2d',
+    'DeformConv2D',
+    'read_file',
     'decode_jpeg'
 ]
 
@@ -99,8 +104,7 @@ def yolo_loss(x,
     Final loss will be represented as follows.
 
     $$
-    loss = (loss_{xy} + loss_{wh}) * weight_{box}
-         + loss_{conf} + loss_{class}
+    loss = (loss_{xy} + loss_{wh}) * weight_{box} + loss_{conf} + loss_{class}
     $$
 
     While :attr:`use_label_smooth` is set to be :attr:`True`, the classification
@@ -185,7 +189,7 @@ def yolo_loss(x,
     """
 
     if in_dygraph_mode() and gt_score is None:
-        loss = core.ops.yolov3_loss(
+        loss = _C_ops.yolov3_loss(
             x, gt_box, gt_label, 'anchors', anchors, 'anchor_mask', anchor_mask,
             'class_num', class_num, 'ignore_thresh', ignore_thresh,
             'downsample_ratio', downsample_ratio, 'use_label_smooth',
@@ -247,7 +251,9 @@ def yolo_box(x,
              downsample_ratio,
              clip_bbox=True,
              name=None,
-             scale_x_y=1.):
+             scale_x_y=1.,
+             iou_aware=False,
+             iou_aware_factor=0.5):
     r"""
 
     This operator generates YOLO detection boxes from output of YOLOv3 network.
@@ -256,7 +262,8 @@ def yolo_box(x,
     should be the same, H and W specify the grid size, each grid point predict 
     given number boxes, this given number, which following will be represented as S,
     is specified by the number of anchors. In the second dimension(the channel
-    dimension), C should be equal to S * (5 + class_num), class_num is the object 
+    dimension), C should be equal to S * (5 + class_num) if :attr:`iou_aware` is false,
+    otherwise C should be equal to S * (6 + class_num). class_num is the object
     category number of source dataset(such as 80 in coco dataset), so the 
     second(channel) dimension, apart from 4 box location coordinates x, y, w, h, 
     also includes confidence score of the box and class one-hot key of each anchor 
@@ -292,6 +299,15 @@ def yolo_box(x,
     score_{pred} = score_{conf} * score_{class}
     $$
 
+    where the confidence scores follow the formula bellow
+
+    .. math::
+
+        score_{conf} = \begin{case}
+                         obj, \text{if } iou_aware == flase \\
+                         obj^{1 - iou_aware_factor} * iou^{iou_aware_factor}, \text{otherwise}
+                       \end{case}
+
     Args:
         x (Tensor): The input tensor of YoloBox operator is a 4-D tensor with
                       shape of [N, C, H, W]. The second dimension(C) stores box
@@ -313,13 +329,14 @@ def yolo_box(x,
                                 should be set for the first, second, and thrid
                                 :attr:`yolo_box` layer.
         clip_bbox (bool): Whether clip output bonding box in :attr:`img_size`
-                          boundary. Default true."
-        "
+                          boundary. Default true.
         scale_x_y (float): Scale the center point of decoded bounding box.
                            Default 1.0
         name (string): The default value is None.  Normally there is no need 
                        for user to set this property.  For more information, 
                        please refer to :ref:`api_guide_Name`
+        iou_aware (bool): Whether use iou aware. Default false
+        iou_aware_factor (float): iou aware factor. Default 0.5
 
     Returns:
         Tensor: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
@@ -355,10 +372,11 @@ def yolo_box(x,
                                                    scale_x_y=1.)
     """
     if in_dygraph_mode():
-        boxes, scores = core.ops.yolo_box(
+        boxes, scores = _C_ops.yolo_box(
             x, img_size, 'anchors', anchors, 'class_num', class_num,
             'conf_thresh', conf_thresh, 'downsample_ratio', downsample_ratio,
-            'clip_bbox', clip_bbox, 'scale_x_y', scale_x_y)
+            'clip_bbox', clip_bbox, 'scale_x_y', scale_x_y, 'iou_aware',
+            iou_aware, 'iou_aware_factor', iou_aware_factor)
         return boxes, scores
 
     helper = LayerHelper('yolo_box', **locals())
@@ -378,6 +396,8 @@ def yolo_box(x,
         "downsample_ratio": downsample_ratio,
         "clip_bbox": clip_bbox,
         "scale_x_y": scale_x_y,
+        "iou_aware": iou_aware,
+        "iou_aware_factor": iou_aware_factor
     }
 
     helper.append_op(
@@ -531,11 +551,10 @@ def deform_conv2d(x,
                  'im2col_step', 1)
         if use_deform_conv2d_v1:
             op_type = 'deformable_conv_v1'
-            pre_bias = getattr(core.ops, op_type)(x, offset, weight, *attrs)
+            pre_bias = getattr(_C_ops, op_type)(x, offset, weight, *attrs)
         else:
             op_type = 'deformable_conv'
-            pre_bias = getattr(core.ops, op_type)(x, offset, mask, weight,
-                                                  *attrs)
+            pre_bias = getattr(_C_ops, op_type)(x, offset, mask, weight, *attrs)
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=1)
         else:
@@ -639,8 +658,8 @@ class DeformConv2D(Layer):
 
         .. math::
 
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+            H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\
+            W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
 
     Parameters:
@@ -667,7 +686,7 @@ class DeformConv2D(Layer):
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If it is set to None, the parameter
             is initialized with :math:`Normal(0.0, std)`, and the :math:`std` is
-            :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. The default value is None.
+            :math:`(\frac{2.0 }{filter\_elem\_num})^{0.5}`. The default value is None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of conv2d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d
@@ -681,10 +700,14 @@ class DeformConv2D(Layer):
         - offset: :math:`(N, 2 * H_f * W_f, H_{out}, W_{out})`
         - mask: :math:`(N, H_f * W_f, H_{out}, W_{out})`
         - output: :math:`(N, C_{out}, H_{out}, W_{out})`
+        
         Where
+        
         ..  math::
-           H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1
-           W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
+
+            H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1 \\
+            W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
+
     Examples:
         .. code-block:: python
 
@@ -819,7 +842,7 @@ def read_file(filename, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.read_file('filename', filename)
+        return _C_ops.read_file('filename', filename)
 
     inputs = dict()
     attrs = {'filename': filename}
@@ -866,7 +889,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.decode_jpeg(x, "mode", mode)
+        return _C_ops.decode_jpeg(x, "mode", mode)
 
     inputs = {'X': x}
     attrs = {"mode": mode}

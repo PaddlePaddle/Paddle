@@ -88,7 +88,7 @@ void GraphPatternDetector::operator()(Graph *graph,
   ValidateByNodeRole(&subgraphs);
 
   if (subgraphs.empty()) return;
-  LOG(INFO) << "---  detected " << subgraphs.size() << " subgraphs";
+
   int id = 0;
   for (auto &g : subgraphs) {
     VLOG(3) << "optimizing #" << id++ << " subgraph";
@@ -2249,9 +2249,10 @@ PDNode *patterns::MultipleQuantize::operator()() {
 PDNode *patterns::QuantizePlacement::operator()(
     const std::unordered_set<std::string> &quantize_enabled_op_types) {
   std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>(
-          {"concat", "conv2d", "elementwise_add", "fc", "matmul", "pool2d",
-           "prior_box", "relu", "reshape2", "transpose2", "fusion_gru"});
+      std::unordered_set<std::string>({"concat", "conv2d", "elementwise_add",
+                                       "fc", "matmul", "pool2d", "prior_box",
+                                       "reshape2", "transpose2", "fusion_gru",
+                                       "fusion_lstm", "multi_gru"});
   if (!quantize_enabled_op_types.empty()) {
     supported_op_types = quantize_enabled_op_types;
   }
@@ -2262,11 +2263,15 @@ PDNode *patterns::QuantizePlacement::operator()(
 PDNode *patterns::Bfloat16Placement::operator()(
     const std::unordered_set<std::string> &bfloat16_enabled_op_types) {
   std::unordered_set<std::string> supported_op_types =
-      std::unordered_set<std::string>({"concat", "conv2d", "conv2d_transpose",
-                                       "elementwise_add", "elementwise_mul",
-                                       "fc", "fusion_gru", "gelu", "layer_norm",
-                                       "matmul", "pool2d", "relu", "reshape2",
-                                       "softmax", "sum", "transpose2"});
+      std::unordered_set<std::string>(
+          {"concat",          "conv2d",          "conv2d_transpose",
+           "elementwise_add", "elementwise_mul", "fc",
+           "fusion_gru",      "fusion_lstm",     "gelu",
+           "layer_norm",      "matmul",          "matmul_v2",
+           "pool2d",          "prelu",           "relu",
+           "reshape2",        "softmax",         "split",
+           "squeeze",         "squeeze2",        "sum",
+           "transpose2"});
   if (!bfloat16_enabled_op_types.empty()) {
     supported_op_types = bfloat16_enabled_op_types;
   }
@@ -2340,16 +2345,7 @@ PDNode *patterns::DuplicatedInputs::operator()() {
 
 PDNode *patterns::MKLDNNInPlace::operator()() {
   const std::unordered_set<std::string> &supported_op_types = {
-      "abs",
-      "elementwise_mul",
-      "elementwise_add",
-      "gelu",
-      "leaky_relu",
-      "relu",
-      "softmax",
-      "sqrt",
-      "swish",
-      "tanh"};
+      "abs", "gelu", "leaky_relu", "relu", "softmax", "sqrt", "swish", "tanh"};
 
   auto possible_inplace_op = pattern->NewNode(inplace_to_be_op_repr())
                                  ->assert_is_ops(supported_op_types);
@@ -2726,6 +2722,26 @@ PDNode *patterns::FusionGru::operator()() {
                  ->assert_is_op_output("fusion_gru", "Hidden");
   op->LinksFrom({x, weight_h, weight_x}).LinksTo({out});
   return out;
+}
+
+PDNode *patterns::FusionLSTM::operator()() {
+  auto op = pattern->NewNode(op_repr())->assert_is_op("fusion_lstm");
+  auto x = pattern->NewNode(x_repr())->AsInput()->assert_is_op_input(
+      "fusion_lstm", "X");
+  auto weight_h = pattern->NewNode(weight_h_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("fusion_lstm", "WeightH");
+  auto weight_x = pattern->NewNode(weight_x_repr())
+                      ->AsInput()
+                      ->assert_is_op_input("fusion_lstm", "WeightX");
+  auto hidden = pattern->NewNode(hidden_repr())
+                    ->AsOutput()
+                    ->assert_is_op_output("fusion_lstm", "Hidden");
+  auto cell = pattern->NewNode(cell_repr())
+                  ->AsOutput()
+                  ->assert_is_op_output("fusion_lstm", "Cell");
+  op->LinksFrom({x, weight_h, weight_x}).LinksTo({hidden, cell});
+  return hidden;
 }
 
 PDNode *patterns::TwoFusionGruConcat::operator()() {

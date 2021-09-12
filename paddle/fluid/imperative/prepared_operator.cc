@@ -15,7 +15,12 @@
 #include "paddle/fluid/imperative/prepared_operator.h"
 
 #include "paddle/fluid/framework/data_type_transform.h"
+#include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/xpu/xpu_op_list.h"
+#endif
+DECLARE_bool(check_nan_inf);
 
 namespace paddle {
 namespace imperative {
@@ -88,7 +93,8 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
                        const NameVarMap<VarType>& outs,
                        const framework::OperatorWithKernel& op,
                        const platform::Place& place,
-                       const framework::AttributeMap& attrs) {
+                       const framework::AttributeMap& attrs,
+                       const framework::AttributeMap& default_attrs) {
   platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
   auto* dev_ctx = pool.Get(place);
 
@@ -100,14 +106,17 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   // Const qualifier of Attrs had to be discarded to overwrite it.
   if (FLAGS_use_mkldnn) {
     auto& mutable_op_attrs = const_cast<framework::AttributeMap&>(op.Attrs());
-    mutable_op_attrs = attrs;
+    mutable_op_attrs = default_attrs;
+    for (auto& attr : attrs) {
+      mutable_op_attrs[attr.first] = attr.second;
+    }
   }
 #endif
 
   // 1. get expected kernel key
-  auto expected_kernel_key =
-      op.GetExpectedKernelType(DygraphExecutionContext<VarType>(
-          op, framework::Scope(), *dev_ctx, ctx, ins, outs, attrs));
+  auto expected_kernel_key = op.GetExpectedKernelType(
+      DygraphExecutionContext<VarType>(op, framework::Scope(), *dev_ctx, ctx,
+                                       ins, outs, attrs, default_attrs));
   VLOG(3) << "expected_kernel_key:" << expected_kernel_key;
 
   // 2. check if op[type] has kernel registered.
@@ -122,8 +131,23 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   auto& kernels = kernels_iter->second;
   auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_XPU
+  if (is_xpu_place(expected_kernel_key.place_) &&
+      (kernel_iter == kernels.end() ||
+       !paddle::platform::is_xpu_support_op(op.Type(), expected_kernel_key) ||
+       paddle::platform::is_in_xpu_black_list(op.Type()))) {
+    VLOG(3) << "missing XPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
+    expected_kernel_key.place_ = platform::CPUPlace();
+    kernel_iter = kernels.find(expected_kernel_key);
+  }
+#endif
+#ifdef PADDLE_WITH_ASCEND_CL
   if (kernel_iter == kernels.end() &&
-      is_xpu_place(expected_kernel_key.place_)) {
+      is_npu_place(expected_kernel_key.place_)) {
+    VLOG(3) << "missing NPU kernel: " << op.Type()
+            << ", expected_kernel_key:" << expected_kernel_key
+            << ", fallbacking to CPU one!";
     expected_kernel_key.place_ = platform::CPUPlace();
     kernel_iter = kernels.find(expected_kernel_key);
   }
@@ -145,16 +169,19 @@ PreparedOp PreparedOp::Prepare(const NameVarMap<VarBase>& ins,
                                const NameVarMap<VarBase>& outs,
                                const framework::OperatorWithKernel& op,
                                const platform::Place& place,
-                               const framework::AttributeMap& attrs) {
-  return PrepareImpl<VarBase>(ins, outs, op, place, attrs);
+                               const framework::AttributeMap& attrs,
+                               const framework::AttributeMap& default_attrs) {
+  return PrepareImpl<VarBase>(ins, outs, op, place, attrs, default_attrs);
 }
 
 PreparedOp PreparedOp::Prepare(const NameVarMap<VariableWrapper>& ins,
                                const NameVarMap<VariableWrapper>& outs,
                                const framework::OperatorWithKernel& op,
                                const platform::Place& place,
-                               const framework::AttributeMap& attrs) {
-  return PrepareImpl<VariableWrapper>(ins, outs, op, place, attrs);
+                               const framework::AttributeMap& attrs,
+                               const framework::AttributeMap& default_attrs) {
+  return PrepareImpl<VariableWrapper>(ins, outs, op, place, attrs,
+                                      default_attrs);
 }
 
 template <typename VarType>
@@ -163,17 +190,23 @@ static void PreparedOpRunImpl(
     const framework::OpKernelType& kernel_type,
     const framework::OperatorWithKernel::OpKernelFunc& func,
     platform::DeviceContext* dev_ctx, const NameVarMap<VarType>& ins,
-    const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs) {
+    const NameVarMap<VarType>& outs, const framework::AttributeMap& attrs,
+    const framework::AttributeMap& default_attrs) {
   // TODO(zjl): remove scope in dygraph
   framework::Scope scope;
 
   DygraphInferShapeContext<VarType> infer_shape_ctx(&ins, &outs, &attrs,
-                                                    op.Type());
+                                                    &default_attrs, op.Type());
   static_cast<const framework::OperatorWithKernel&>(op).InferShape(
       &infer_shape_ctx);
 
   func(DygraphExecutionContext<VarType>(op, scope, *dev_ctx, ctx, ins, outs,
-                                        attrs));
+                                        attrs, default_attrs));
+
+  if (FLAGS_check_nan_inf) {
+    framework::details::CheckOpHasNanOrInfInDygraph<VarType>(
+        op.Type(), outs, dev_ctx->GetPlace());
+  }
 
   /**
    * [ Why need handle complex gradient to real gradient? ]
@@ -194,16 +227,18 @@ static void PreparedOpRunImpl(
 
 void PreparedOp::Run(const NameVarMap<VarBase>& ins,
                      const NameVarMap<VarBase>& outs,
-                     const framework::AttributeMap& attrs) {
+                     const framework::AttributeMap& attrs,
+                     const framework::AttributeMap& default_attrs) {
   PreparedOpRunImpl<VarBase>(op_, ctx_, kernel_type_, func_, dev_ctx_, ins,
-                             outs, attrs);
+                             outs, attrs, default_attrs);
 }
 
 void PreparedOp::Run(const NameVarMap<VariableWrapper>& ins,
                      const NameVarMap<VariableWrapper>& outs,
-                     const framework::AttributeMap& attrs) {
+                     const framework::AttributeMap& attrs,
+                     const framework::AttributeMap& default_attrs) {
   PreparedOpRunImpl<VariableWrapper>(op_, ctx_, kernel_type_, func_, dev_ctx_,
-                                     ins, outs, attrs);
+                                     ins, outs, attrs, default_attrs);
 }
 
 }  // namespace imperative

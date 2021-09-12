@@ -29,7 +29,7 @@ class TransposeNPUKernel : public framework::OpKernel<T> {
     std::vector<int> axis = ctx.Attr<std::vector<int>>("axis");
     framework::NPUAttributeMap attr_input = {{"perm", axis}};
     out->mutable_data<T>(ctx.device_context().GetPlace());
-    auto runner = NpuOpRunner("TransposeD", {*x}, {*out}, attr_input);
+    const auto& runner = NpuOpRunner("TransposeD", {*x}, {*out}, attr_input);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
@@ -52,7 +52,8 @@ class TransposeGradNPUKernel : public framework::OpKernel<T> {
     }
     x_grad->mutable_data<T>(ctx.GetPlace());
     framework::NPUAttributeMap attr_input = {{"perm", reversed_axis}};
-    auto runner = NpuOpRunner("TransposeD", {*out_grad}, {*x_grad}, attr_input);
+    const auto& runner =
+        NpuOpRunner("TransposeD", {*out_grad}, {*x_grad}, attr_input);
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();

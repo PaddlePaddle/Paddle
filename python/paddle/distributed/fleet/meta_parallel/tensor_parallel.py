@@ -16,7 +16,7 @@ from paddle.fluid.dygraph.layers import Layer
 from .meta_parallel_base import MetaParallelBase
 from ..utils.hybrid_parallel_util import broadcast_dp_parameters
 from ..utils.hybrid_parallel_util import broadcast_input_data
-from ..utils.hybrid_parallel_util import broadcast_mp_parameters
+from ..utils.hybrid_parallel_util import broadcast_mp_parameters, broadcast_sharding_parameters
 from ..utils.log_util import logger
 
 __all__ = []
@@ -29,6 +29,10 @@ class TensorParallel(MetaParallelBase):
     def _prepare_for_model(self):
         logger.info("start broadcast mp parameters")
         broadcast_mp_parameters(self._layers, self._hcg)
+
+        if self._hcg.get_sharding_parallel_world_size() > 1:
+            logger.info("start broadcast sharding parameters")
+            broadcast_sharding_parameters(self._layers, self._hcg)
 
         logger.info("start broadcast dp parameters")
         broadcast_dp_parameters(self._layers, self._hcg)

@@ -16,6 +16,7 @@
 #include <vector>
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace paddle {
 namespace operators {
@@ -23,7 +24,7 @@ template <typename DeviceContext, typename T, int Rank>
 struct ReverseFunctor {
   void operator()(const DeviceContext& context, const framework::LoDTensor& in,
                   framework::LoDTensor* out, const std::vector<int>& axis) {
-    Eigen::array<bool, Rank> reverse_axis;
+    Eigen::DSizes<bool, Rank> reverse_axis;
     for (int i = 0; i < Rank; ++i) {
       reverse_axis[i] = false;
     }
@@ -37,9 +38,10 @@ struct ReverseFunctor {
 
     auto in_eigen = framework::EigenTensor<T, Rank>::From(in);
     auto out_eigen = framework::EigenTensor<T, Rank>::From(*out);
-    auto* dev = context.eigen_device();
+    auto& dev = *context.eigen_device();
 
-    out_eigen.device(*dev) = in_eigen.reverse(reverse_axis);
+    EigenReverse<std::decay_t<decltype(dev)>, T, Rank>::Eval(
+        dev, out_eigen, in_eigen, reverse_axis);
   }
 };
 

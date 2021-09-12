@@ -16,6 +16,7 @@
 #include "paddle/fluid/distributed/service/brpc_ps_server.h"
 
 #include <thread>  // NOLINT
+#include <utility>
 #include "butil/endpoint.h"
 #include "iomanip"
 #include "paddle/fluid/distributed/service/brpc_ps_client.h"
@@ -23,6 +24,14 @@
 #include "paddle/fluid/platform/profiler.h"
 namespace paddle {
 namespace distributed {
+
+#define CHECK_TABLE_EXIST(table, request, response)        \
+  if (table == NULL) {                                     \
+    std::string err_msg("table not found with table_id:"); \
+    err_msg.append(std::to_string(request.table_id()));    \
+    set_response_code(response, -1, err_msg.c_str());      \
+    return -1;                                             \
+  }
 
 int32_t GraphBrpcServer::initialize() {
   auto &service_config = _config.downpour_server_param().service_param();
@@ -71,6 +80,58 @@ uint64_t GraphBrpcServer::start(const std::string &ip, uint32_t port) {
   return 0;
 }
 
+int32_t GraphBrpcService::clear_nodes(Table *table,
+                                      const PsRequestMessage &request,
+                                      PsResponseMessage &response,
+                                      brpc::Controller *cntl) {
+  ((GraphTable *)table)->clear_nodes();
+  return 0;
+}
+
+int32_t GraphBrpcService::add_graph_node(Table *table,
+                                         const PsRequestMessage &request,
+                                         PsResponseMessage &response,
+                                         brpc::Controller *cntl) {
+  CHECK_TABLE_EXIST(table, request, response)
+  if (request.params_size() < 1) {
+    set_response_code(
+        response, -1,
+        "graph_get_node_feat request requires at least 2 arguments");
+    return 0;
+  }
+
+  size_t node_num = request.params(0).size() / sizeof(uint64_t);
+  uint64_t *node_data = (uint64_t *)(request.params(0).c_str());
+  std::vector<uint64_t> node_ids(node_data, node_data + node_num);
+  std::vector<bool> is_weighted_list;
+  if (request.params_size() == 2) {
+    size_t weight_list_size = request.params(1).size() / sizeof(bool);
+    bool *is_weighted_buffer = (bool *)(request.params(1).c_str());
+    is_weighted_list = std::vector<bool>(is_weighted_buffer,
+                                         is_weighted_buffer + weight_list_size);
+  }
+
+  ((GraphTable *)table)->add_graph_node(node_ids, is_weighted_list);
+  return 0;
+}
+int32_t GraphBrpcService::remove_graph_node(Table *table,
+                                            const PsRequestMessage &request,
+                                            PsResponseMessage &response,
+                                            brpc::Controller *cntl) {
+  CHECK_TABLE_EXIST(table, request, response)
+  if (request.params_size() < 1) {
+    set_response_code(
+        response, -1,
+        "graph_get_node_feat request requires at least 1 argument");
+    return 0;
+  }
+  size_t node_num = request.params(0).size() / sizeof(uint64_t);
+  uint64_t *node_data = (uint64_t *)(request.params(0).c_str());
+  std::vector<uint64_t> node_ids(node_data, node_data + node_num);
+
+  ((GraphTable *)table)->remove_graph_node(node_ids);
+  return 0;
+}
 int32_t GraphBrpcServer::port() { return _server.listen_address().port; }
 
 int32_t GraphBrpcService::initialize() {
@@ -92,20 +153,18 @@ int32_t GraphBrpcService::initialize() {
       &GraphBrpcService::graph_random_sample_nodes;
   _service_handler_map[PS_GRAPH_GET_NODE_FEAT] =
       &GraphBrpcService::graph_get_node_feat;
-
+  _service_handler_map[PS_GRAPH_CLEAR] = &GraphBrpcService::clear_nodes;
+  _service_handler_map[PS_GRAPH_ADD_GRAPH_NODE] =
+      &GraphBrpcService::add_graph_node;
+  _service_handler_map[PS_GRAPH_REMOVE_GRAPH_NODE] =
+      &GraphBrpcService::remove_graph_node;
+  _service_handler_map[PS_GRAPH_SET_NODE_FEAT] =
+      &GraphBrpcService::graph_set_node_feat;
   // shard初始化,server启动后才可从env获取到server_list的shard信息
   initialize_shard_info();
 
   return 0;
 }
-
-#define CHECK_TABLE_EXIST(table, request, response)        \
-  if (table == NULL) {                                     \
-    std::string err_msg("table not found with table_id:"); \
-    err_msg.append(std::to_string(request.table_id()));    \
-    set_response_code(response, -1, err_msg.c_str());      \
-    return -1;                                             \
-  }
 
 int32_t GraphBrpcService::initialize_shard_info() {
   if (!_is_initialize_shard_info) {
@@ -344,5 +403,44 @@ int32_t GraphBrpcService::graph_get_node_feat(Table *table,
 
   return 0;
 }
+
+int32_t GraphBrpcService::graph_set_node_feat(Table *table,
+                                              const PsRequestMessage &request,
+                                              PsResponseMessage &response,
+                                              brpc::Controller *cntl) {
+  CHECK_TABLE_EXIST(table, request, response)
+  if (request.params_size() < 3) {
+    set_response_code(
+        response, -1,
+        "graph_set_node_feat request requires at least 2 arguments");
+    return 0;
+  }
+  size_t node_num = request.params(0).size() / sizeof(uint64_t);
+  uint64_t *node_data = (uint64_t *)(request.params(0).c_str());
+  std::vector<uint64_t> node_ids(node_data, node_data + node_num);
+
+  std::vector<std::string> feature_names =
+      paddle::string::split_string<std::string>(request.params(1), "\t");
+
+  std::vector<std::vector<std::string>> features(
+      feature_names.size(), std::vector<std::string>(node_num));
+
+  const char *buffer = request.params(2).c_str();
+
+  for (size_t feat_idx = 0; feat_idx < feature_names.size(); ++feat_idx) {
+    for (size_t node_idx = 0; node_idx < node_num; ++node_idx) {
+      size_t feat_len = *(size_t *)(buffer);
+      buffer += sizeof(size_t);
+      auto feat = std::string(buffer, feat_len);
+      features[feat_idx][node_idx] = feat;
+      buffer += feat_len;
+    }
+  }
+
+  ((GraphTable *)table)->set_node_feat(node_ids, feature_names, features);
+
+  return 0;
+}
+
 }  // namespace distributed
 }  // namespace paddle

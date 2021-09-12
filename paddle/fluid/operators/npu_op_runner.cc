@@ -32,6 +32,8 @@ namespace operators {
 static std::map<framework::proto::VarType::Type, aclDataType>
     DTYPE_2_ACL_DTYPE = {
         {framework::proto::VarType::BOOL, ACL_BOOL},
+        {framework::proto::VarType::UINT8, ACL_UINT8},
+        {framework::proto::VarType::INT8, ACL_INT8},
         {framework::proto::VarType::INT16, ACL_INT16},
         {framework::proto::VarType::INT32, ACL_INT32},
         {framework::proto::VarType::INT64, ACL_INT64},
@@ -74,28 +76,50 @@ aclrtStream GetCurrentNPUStream(int device_id) {
   return dev_ctx->stream();
 }
 
-NpuOpRunner::NpuOpRunner(std::string op_type) : op_type_(op_type) {
-  attr_ = aclopCreateAttr();
-}
+NpuOpRunner::NpuOpRunner() {}
 
-NpuOpRunner::NpuOpRunner(std::string op_type, const std::vector<Tensor> &inputs,
+NpuOpRunner::NpuOpRunner(const std::string &op_type) : op_type_(op_type) {}
+
+NpuOpRunner::NpuOpRunner(const std::string &op_type,
+                         const std::vector<Tensor> &inputs,
                          const std::vector<Tensor> &outputs,
                          const NPUAttributeMap &attrs)
     : op_type_(op_type) {
-  attr_ = aclopCreateAttr();
   AddInputs(inputs);
   AddOutputs(outputs);
   AddAttrs(attrs);
 }
 
 NpuOpRunner::~NpuOpRunner() {
-  // TODO(zhiqiu): handle free
+  VLOG(5) << "Free NpuOpRunner(" << this << ") of " << op_type_;
+  // Is it safe to free the descs/buffers after run called in host ?
+  aclopDestroyAttr(attr_);  // return void
+  for (auto desc : input_descs_) {
+    aclDestroyTensorDesc(desc);
+  }
+  for (auto desc : output_descs_) {
+    aclDestroyTensorDesc(desc);
+  }
+  for (auto buffer : input_buffers_) {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclDestroyDataBuffer(buffer));
+  }
+  for (auto buffer : output_buffers_) {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclDestroyDataBuffer(buffer));
+  }
 }
 
 const std::string &NpuOpRunner::Type() { return op_type_; }
 
+NpuOpRunner &NpuOpRunner::SetType(const std::string &name) {
+  op_type_ = name;
+  return *this;
+}
+
 NpuOpRunner &NpuOpRunner::AddAttr(const std::string &name,
                                   const NPUAttribute &attr) {
+  if (!attr_) {
+    attr_ = aclopCreateAttr();
+  }
   if (attr.type() == typeid(bool)) {
     PADDLE_ENFORCE_NPU_SUCCESS(
         aclopSetAttrBool(attr_, name.c_str(), BOOST_GET_CONST(bool, attr)));
@@ -177,6 +201,78 @@ NpuOpRunner &NpuOpRunner::AddInput(const Tensor &tensor) {
   return *this;
 }
 
+NpuOpRunner &NpuOpRunner::AddInput(const Tensor &tensor, aclMemType mem_type) {
+  // create aclTensorDesc
+  input_descs_.emplace_back(CreateTensorDesc(tensor, mem_type));
+  // create aclDataBuffer
+  input_buffers_.emplace_back(CreateDataBuffer(tensor));
+  return *this;
+}
+
+NpuOpRunner &NpuOpRunner::AddInput(std::vector<int32_t> &&dims) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx =
+      static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
+  Tensor host_tensor;
+  TensorFromVector(dims, *dev_ctx, &host_tensor);
+  host_tensors_.emplace_back(host_tensor);
+
+  // create aclTensorDesc
+  input_descs_.emplace_back(CreateTensorDesc(host_tensor, ACL_MEMTYPE_HOST));
+  // create aclDataBuffer
+  input_buffers_.emplace_back(CreateDataBuffer(host_tensor));
+
+  return *this;
+}
+
+NpuOpRunner &NpuOpRunner::AddInput(std::vector<int64_t> &&dims) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx =
+      static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
+  Tensor host_tensor;
+  TensorFromVector(dims, *dev_ctx, &host_tensor);
+  host_tensors_.emplace_back(host_tensor);
+
+  // create aclTensorDesc
+  input_descs_.emplace_back(CreateTensorDesc(host_tensor, ACL_MEMTYPE_HOST));
+  // create aclDataBuffer
+  input_buffers_.emplace_back(CreateDataBuffer(host_tensor));
+
+  return *this;
+}
+
+NpuOpRunner &NpuOpRunner::AddInput(std::vector<float> &&values) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx =
+      static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
+  Tensor host_tensor;
+  TensorFromVector(values, *dev_ctx, &host_tensor);
+  host_tensors_.emplace_back(host_tensor);
+
+  // create aclTensorDesc
+  input_descs_.emplace_back(CreateTensorDesc(host_tensor, ACL_MEMTYPE_HOST));
+  // create aclDataBuffer
+  input_buffers_.emplace_back(CreateDataBuffer(host_tensor));
+
+  return *this;
+}
+
+NpuOpRunner &NpuOpRunner::AddInput(std::vector<double> &&values) {
+  platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
+  auto *dev_ctx =
+      static_cast<platform::CPUDeviceContext *>(pool.Get(platform::CPUPlace()));
+  Tensor host_tensor;
+  TensorFromVector(values, *dev_ctx, &host_tensor);
+  host_tensors_.emplace_back(host_tensor);
+
+  // create aclTensorDesc
+  input_descs_.emplace_back(CreateTensorDesc(host_tensor, ACL_MEMTYPE_HOST));
+  // create aclDataBuffer
+  input_buffers_.emplace_back(CreateDataBuffer(host_tensor));
+
+  return *this;
+}
+
 NpuOpRunner &NpuOpRunner::AddOutput(const Tensor &tensor) {
   // create aclTensorDesc
   output_descs_.emplace_back(CreateTensorDesc(tensor));
@@ -186,6 +282,8 @@ NpuOpRunner &NpuOpRunner::AddOutput(const Tensor &tensor) {
 }
 
 NpuOpRunner &NpuOpRunner::AddInputs(const std::vector<Tensor> &tensors) {
+  input_descs_.reserve(tensors.size());
+  input_buffers_.reserve(tensors.size());
   for (auto tensor : tensors) {
     // create aclTensorDesc
     input_descs_.emplace_back(CreateTensorDesc(tensor));
@@ -211,6 +309,8 @@ NpuOpRunner &NpuOpRunner::AddInputNames(const std::vector<std::string> &names) {
 }
 
 NpuOpRunner &NpuOpRunner::AddOutputs(const std::vector<Tensor> &tensors) {
+  output_descs_.reserve(tensors.size());
+  output_buffers_.reserve(tensors.size());
   for (auto tensor : tensors) {
     // create aclTensorDesc
     output_descs_.emplace_back(CreateTensorDesc(tensor));
@@ -254,21 +354,32 @@ std::vector<aclDataBuffer *> &NpuOpRunner::GetOutputBuffers() {
   return output_buffers_;
 }
 
-aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor) {
+aclTensorDesc *NpuOpRunner::CreateTensorDesc(Tensor tensor,
+                                             aclMemType mem_type) {
   auto dtype = ConvertToNpuDtype(tensor.type());
   auto format = ConvertToNpuFormat(tensor.layout());
   auto dims = framework::vectorize(tensor.dims());
+  int size = dims.size();
+  // TODO(pangyoki): `keep_prob` used in `DropOutGenMask` NPU
+  // OP must be a scalar with shape[0]. At present, the shape
+  // of the `prob` Tensor of this OP is forced to be set to 0
+  // in `npu_op_runner.cc`, which needs to be optimized later.
+  if (op_type_ == "DropOutGenMask" && size == 1 && *(dims.data()) == 1) {
+    size = 0;
+  }
 
   VLOG(4) << "NPU dtype:" << dtype << " "
           << "rank:" << dims.size() << " dims:" << tensor.dims()
           << " format:" << format;
 
-  auto *desc = aclCreateTensorDesc(dtype, dims.size(), dims.data(), format);
+  auto *desc = aclCreateTensorDesc(dtype, size, dims.data(), format);
   PADDLE_ENFORCE_NOT_NULL(
       desc, platform::errors::External("Call aclCreateTensorDesc failed."));
   PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageFormat(desc, format));
-  PADDLE_ENFORCE_NPU_SUCCESS(
-      aclSetTensorStorageShape(desc, dims.size(), dims.data()));
+  PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorStorageShape(desc, size, dims.data()));
+  if (mem_type == ACL_MEMTYPE_HOST) {
+    PADDLE_ENFORCE_NPU_SUCCESS(aclSetTensorPlaceMent(desc, mem_type));
+  }
   return desc;
 }
 
@@ -281,12 +392,12 @@ aclDataBuffer *NpuOpRunner::CreateDataBuffer(Tensor tensor) {
   return buffer;
 }
 
-void NpuOpRunner::Run(aclrtStream stream) {
+void NpuOpRunner::Run(aclrtStream stream) const {
   if (!stream) {
     VLOG(4) << "Run with default current npu stream: " << stream;
     stream = GetCurrentNPUStream();
   }
-
+  VLOG(5) << "NpuOpRunner(" << this << ") Run:";
   VLOG(4) << "op_type: " << op_type_;
   VLOG(4) << "input_desc.size: " << input_descs_.size();
   VLOG(4) << "output_desc.size: " << output_descs_.size();

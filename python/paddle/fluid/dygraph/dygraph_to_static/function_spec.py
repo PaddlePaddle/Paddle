@@ -103,8 +103,11 @@ class FunctionSpec(object):
         for idx, input_var in enumerate(flatten(args)):
             if isinstance(input_var, np.ndarray):
                 input_var = paddle.static.InputSpec.from_numpy(input_var)
+                _set_spec_stop_gradient(input_var, True)
             elif isinstance(input_var, core.VarBase):
+                stop_gradient = input_var.stop_gradient
                 input_var = paddle.static.InputSpec.from_tensor(input_var)
+                _set_spec_stop_gradient(input_var, stop_gradient)
 
             args_with_spec.append(input_var)
 
@@ -172,13 +175,15 @@ class FunctionSpec(object):
         block = main_program.global_block()
         for i, var_spec in enumerate(flat_input_spec):
             if isinstance(var_spec, paddle.static.InputSpec):
+                stop_gradient = getattr(var_spec, 'stop_gradient', False)
                 feed_layer = block.create_var(
                     # TODO(Aurelius84): consider a more elegant way to name this
                     name=var_spec.name or "feed_%s" % i,
                     shape=var_spec.shape,
                     dtype=var_spec.dtype,
                     is_data=True,
-                    need_check_feed=False)
+                    need_check_feed=False,
+                    stop_gradient=stop_gradient)
             else:
                 feed_layer = var_spec
             inputs.append(feed_layer)
@@ -193,14 +198,8 @@ class FunctionSpec(object):
             raise TypeError(
                 "The type(input_spec) should be one of (tuple, list), but received {}.".
                 format(type_name(input_spec)))
-        input_spec = tuple(input_spec)
-        for spec in flatten(input_spec):
-            if not isinstance(spec, paddle.static.InputSpec):
-                raise ValueError(
-                    "The type(elem) from input_spec should be `InputSpec`, but received {}.".
-                    format(type_name(spec)))
 
-        return input_spec
+        return tuple(input_spec)
 
     def __repr__(self):
         return "function: {}({}), input_spec: {}".format(
@@ -308,7 +307,7 @@ def convert_to_input_spec(inputs, input_spec):
                 if isinstance(rest_input, (core.VarBase, np.ndarray)):
                     logging_utils.warn(
                         "The inputs constain `{}` without specificing InputSpec, its shape and dtype will be treated immutable. "
-                        "Please specific InputSpec information in `@declarative` if you expect them as mutable inputs.".
+                        "Please specific InputSpec information in `@to_static` if you expect them as mutable inputs.".
                         format(type_name(rest_input)))
         input_with_spec.extend(inputs[len(input_spec):])
 
@@ -326,9 +325,8 @@ def convert_to_input_spec(inputs, input_spec):
     elif isinstance(input_spec, paddle.static.InputSpec):
         return input_spec
     else:
-        raise TypeError(
-            "The type(input_spec) should be a `InputSpec` or dict/list/tuple of it, but received {}.".
-            type_name(input_spec))
+        # NOTE(Aurelius84): Support non-Tensor type as input spec info
+        return input_spec
 
 
 def replace_spec_empty_name(args_name, input_with_spec):
@@ -387,3 +385,12 @@ def _replace_spec_name(name, input_spec):
         return processed_specs
     else:
         return input_spec
+
+
+def _set_spec_stop_gradient(spec, stop_gradient):
+    """
+    Set new attribute ``stop_gradient`` for InputSpec to avoid generating redundant grad_op
+    while append_backward.
+    """
+    assert isinstance(spec, paddle.static.InputSpec)
+    spec.stop_gradient = stop_gradient

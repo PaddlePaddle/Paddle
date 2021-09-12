@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/platform/bfloat16.h"
@@ -84,45 +85,7 @@ struct npy_format_descriptor<paddle::platform::bfloat16> {
   static constexpr auto name = _("bfloat16");
 };
 
-// we register paddle::platform::complex64 as numpy.complex64.
-template <>
-struct npy_format_descriptor<paddle::platform::complex64> {
-  static py::dtype dtype() {
-    handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_COMPLEX64);
-    return reinterpret_borrow<py::dtype>(ptr);
-  }
-
-  static std::string format() {
-    // Note: "F" represents complex64.
-    // Details at:
-    // https://stackoverflow.com/questions/13997087/what-are-the-available-datatypes-for-dtype-with-numpys-loadtxt-an-genfromtx
-    // for k, v in np.sctypeDict.iteritems():
-    //     print '{0:14s} : {1:40s}'.format(str(k), v)
-    return "F";
-  }
-  static constexpr auto name = _("complext64");
-};
-
-// we register paddle::platform::complex128 as numpy.complex128.
-template <>
-struct npy_format_descriptor<paddle::platform::complex128> {
-  static py::dtype dtype() {
-    handle ptr = npy_api::get().PyArray_DescrFromType_(NPY_COMPLEX128);
-    return reinterpret_borrow<py::dtype>(ptr);
-  }
-
-  static std::string format() {
-    // Note: "D" represents complex128.
-    // Details at:
-    // https://stackoverflow.com/questions/13997087/what-are-the-available-datatypes-for-dtype-with-numpys-loadtxt-an-genfromtx
-    // for k, v in np.sctypeDict.iteritems():
-    //     print '{0:14s} : {1:40s}'.format(str(k), v)
-    return "D";
-  }
-  static constexpr auto name = _("complext128");
-};
-
-// we register paddle::platform::complex64 as numpy.complex64.
+// we register paddle::platform::complex<float> as numpy.complex64.
 template <>
 struct npy_format_descriptor<paddle::platform::complex<float>> {
   static py::dtype dtype() {
@@ -205,8 +168,6 @@ struct ValidDTypeToPyArrayChecker {
 
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::float16);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::bfloat16);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex64);
-DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex128);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex<float>);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(platform::complex<double>);
 DECLARE_VALID_DTYPE_TO_PY_ARRAY(float);
@@ -227,10 +188,6 @@ inline std::string TensorDTypeToPyDTypeStr(
     } else if (std::is_same<T, platform::bfloat16>::value) {                \
       /* NumPy character code of uint16 due to no support for bfloat16 */   \
       return "H";                                                           \
-    } else if (std::is_same<T, platform::complex64>::value) {               \
-      return "F";                                                           \
-    } else if (std::is_same<T, platform::complex128>::value) {              \
-      return "D";                                                           \
     } else if (std::is_same<T, platform::complex<float>>::value) {          \
       return "F";                                                           \
     } else if (std::is_same<T, platform::complex<double>>::value) {         \
@@ -259,6 +216,7 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
   PADDLE_ENFORCE_LT(offset, self.numel(),
                     platform::errors::InvalidArgument(
                         "The offset exceeds the size of tensor."));
+
   T b = static_cast<T>(0);
   if (platform::is_cpu_place(self.place())) {
     b = self.data<T>()[offset];
@@ -275,7 +233,16 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
                          nullptr);
 #endif
+  } else if (platform::is_npu_place(self.place())) {
+#if defined(PADDLE_WITH_ASCEND_CL)
+    const T *a = self.data<T>();
+    auto p = BOOST_GET_CONST(platform::NPUPlace, self.place());
+    paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
+                         nullptr);
+#endif
   }
+  VLOG(10) << "TensorGetElement, place: " << self.place()
+           << ", offset: " << offset << ", element: " << b;
   return b;
 }
 
@@ -284,6 +251,8 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
   PADDLE_ENFORCE_LT(offset, self->numel(),
                     platform::errors::InvalidArgument(
                         "The offset exceeds the size of tensor."));
+  VLOG(10) << "TensorSetElement, place: " << self->place()
+           << ", offset: " << offset << ", element: " << elem;
   if (platform::is_cpu_place(self->place())) {
     self->mutable_data<T>(self->place())[offset] = elem;
   } else if (platform::is_xpu_place(self->place())) {
@@ -295,6 +264,13 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
   } else if (platform::is_gpu_place(self->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto p = BOOST_GET_CONST(platform::CUDAPlace, self->place());
+    T *a = self->mutable_data<T>(p);
+    paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
+                         nullptr);
+#endif
+  } else if (platform::is_npu_place(self->place())) {
+#if defined(PADDLE_WITH_ASCEND_CL)
+    auto p = BOOST_GET_CONST(platform::NPUPlace, self->place());
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
                          nullptr);
@@ -410,12 +386,6 @@ void SetTensorFromPyArray(framework::Tensor *self, const py::object &obj,
   } else if (py::isinstance<py::array_t<paddle::platform::float16>>(array)) {
     SetTensorFromPyArrayT<paddle::platform::float16, P>(self, array, place,
                                                         zero_copy);
-  } else if (py::isinstance<py::array_t<paddle::platform::complex64>>(array)) {
-    SetTensorFromPyArrayT<paddle::platform::complex64, P>(self, array, place,
-                                                          zero_copy);
-  } else if (py::isinstance<py::array_t<paddle::platform::complex128>>(array)) {
-    SetTensorFromPyArrayT<paddle::platform::complex128, P>(self, array, place,
-                                                           zero_copy);
   } else if (py::isinstance<py::array_t<paddle::platform::complex<float>>>(
                  array)) {
     SetTensorFromPyArrayT<paddle::platform::complex<float>, P>(
@@ -452,8 +422,8 @@ void _sliceCompute(const framework::Tensor *in, framework::Tensor *out,
   auto out_dims = out->dims();
   auto in_dims = in->dims();
 
-  auto offsets = Eigen::array<int, D>();
-  auto extents = Eigen::array<int, D>();
+  auto offsets = Eigen::DSizes<Eigen::DenseIndex, D>();
+  auto extents = Eigen::DSizes<Eigen::DenseIndex, D>();
   for (size_t i = 0; i < D; ++i) {
     offsets[i] = 0;
     extents[i] = out_dims[i];
@@ -473,7 +443,8 @@ void _sliceCompute(const framework::Tensor *in, framework::Tensor *out,
   auto out_t =
       framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
           *out);
-  out_t.device(eigen_place) = in_t.slice(offsets, extents);
+  operators::EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
+      eigen_place, out_t, in_t, offsets, extents);
 }
 
 template <typename T>
@@ -645,9 +616,9 @@ inline framework::Tensor *_sliceTensor(const framework::Tensor &self,
     case framework::proto::VarType::BF16:
       return _sliceAndConcat<paddle::platform::bfloat16>(self, obj, dim);
     case framework::proto::VarType::COMPLEX64:
-      return _sliceAndConcat<paddle::platform::complex64>(self, obj, dim);
+      return _sliceAndConcat<paddle::platform::complex<float>>(self, obj, dim);
     case framework::proto::VarType::COMPLEX128:
-      return _sliceAndConcat<paddle::platform::complex128>(self, obj, dim);
+      return _sliceAndConcat<paddle::platform::complex<double>>(self, obj, dim);
     case framework::proto::VarType::FP32:
       return _sliceAndConcat<float>(self, obj, dim);
     case framework::proto::VarType::FP64:
@@ -724,7 +695,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
 
   size_t numel = 1;
   for (int i = tensor_dims.size() - 1; i >= 0; --i) {
-    py_dims[i] = (size_t)tensor_dims[i];
+    py_dims[i] = static_cast<size_t>(tensor_dims[i]);
     py_strides[i] = sizeof_dtype * numel;
     numel *= py_dims[i];
   }

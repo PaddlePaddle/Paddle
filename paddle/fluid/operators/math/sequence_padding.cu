@@ -23,7 +23,9 @@ template <typename T, CopyType Type>
 __global__ void SequencePaddingKernel(
     T* dst, const T* src, const T* pad_value, bool is_constant_pad,
     const size_t* seq_offsets, const size_t seq_num, const size_t pad_seq_len,
-    const size_t step_width, bool norm_by_len, const PadLayout layout) {
+    const size_t step_width, bool norm_by_len, bool norm_by_batchsize,
+    bool norm_by_total_logits_len, int total_logits_len,
+    const PadLayout layout) {
   size_t seq_idx = blockIdx.y;
   size_t seq_len = seq_offsets[seq_idx + 1] - seq_offsets[seq_idx];
 
@@ -38,7 +40,15 @@ __global__ void SequencePaddingKernel(
       src + (Type == kSeqToPad ? seq_data_offset : pad_data_offset);
 
   if (step_idx < seq_len) {
-    float scale = norm_by_len ? (1.0f / static_cast<float>(seq_len)) : 1.0f;
+    float scale = 1.0f;
+    if (norm_by_total_logits_len) {
+      scale = 1.0f / static_cast<float>(total_logits_len);
+    } else if (norm_by_batchsize) {
+      scale = 1.0f / static_cast<float>(seq_num);
+    } else if (norm_by_len) {
+      scale = norm_by_len ? (1.0f / static_cast<float>(seq_len)) : 1.0f;
+    }
+
     for (size_t i = threadIdx.x; i < step_width; i += blockDim.x) {
       dst_data[i] = scale * src_data[i];
     }
@@ -57,6 +67,8 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
                   framework::LoDTensor* pad_tensor,
                   const framework::LoDTensor& pad_value, int pad_seq_len = -1,
                   int lod_level = 0, bool norm_by_times = false,
+                  bool norm_by_batchsize = false,
+                  bool norm_by_total_logits_len = false,
                   const PadLayout layout = kBatchLengthWidth) {
     auto seq_lod = seq_tensor.lod();
     const auto seq_offsets = framework::ToAbsOffset(seq_lod)[lod_level];
@@ -107,7 +119,7 @@ class PaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
     SequencePaddingKernel<T, kSeqToPad><<<grid, threads, 0, context.stream()>>>(
         pad_data, seq_data, pad_value_data, pad_value.numel() == 1,
         seq_offsets.CUDAData(context.GetPlace()), seq_num, pad_seq_len,
-        step_width, norm_by_times, layout);
+        step_width, norm_by_times, false, false, 0, layout);
   }
 };
 
@@ -118,6 +130,8 @@ class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
                   const framework::LoDTensor& pad_tensor,
                   framework::LoDTensor* seq_tensor, int pad_seq_len = -1,
                   int lod_level = 0, bool norm_by_times = false,
+                  bool norm_by_batchsize = false,
+                  bool norm_by_total_logits_len = false,
                   const PadLayout layout = kBatchLengthWidth) {
     auto seq_offsets = framework::ToAbsOffset(seq_tensor->lod())[lod_level];
     const auto& seq_tensor_dims = seq_tensor->dims();
@@ -126,6 +140,7 @@ class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
     if (pad_seq_len == -1) {
       pad_seq_len = max_seq_len;
     }
+    int total_logits_len = TotalSequenceLength(seq_offsets);
     int step_width = seq_tensor->numel() / seq_tensor_dims[0];
     int seq_num = seq_offsets.size() - 1;
 
@@ -159,7 +174,8 @@ class UnpaddingLoDTensorFunctor<platform::CUDADeviceContext, T> {
     SequencePaddingKernel<T, kPadToSeq><<<grid, threads, 0, context.stream()>>>(
         seq_data, pad_data, nullptr, false,
         seq_offsets.CUDAData(context.GetPlace()), seq_num, pad_seq_len,
-        step_width, norm_by_times, layout);
+        step_width, norm_by_times, norm_by_batchsize, norm_by_total_logits_len,
+        total_logits_len, layout);
   }
 };
 

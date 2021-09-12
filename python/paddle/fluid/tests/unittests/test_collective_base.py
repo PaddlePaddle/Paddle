@@ -18,14 +18,12 @@ import unittest
 import time
 import argparse
 import os
-import six
 import sys
 import subprocess
 import traceback
 import functools
 import pickle
 from contextlib import closing
-from six import string_types
 import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
@@ -37,7 +35,6 @@ class TestCollectiveRunnerBase(object):
             "get model should be implemented by child class.")
 
     def wait_server_ready(self, endpoints):
-        assert not isinstance(endpoints, string_types)
         while True:
             all_ok = True
             not_ready_endpoints = []
@@ -115,10 +112,7 @@ class TestCollectiveRunnerBase(object):
         out = exe.run(train_prog,
                       feed={'tindata': indata},
                       fetch_list=[result.name])
-        if six.PY2:
-            print(pickle.dumps(out))
-        else:
-            sys.stdout.buffer.write(pickle.dumps(out))
+        sys.stdout.buffer.write(pickle.dumps(out))
 
 
 def runtime_main(test_class, col_type, sub_type):
@@ -221,7 +215,7 @@ class TestDistBase(unittest.TestCase):
             "PYTHONPATH": os.getenv("PYTHONPATH", ""),
             "LD_LIBRARY_PATH": os.getenv("LD_LIBRARY_PATH", ""),
             "LD_PRELOAD": os.getenv("LD_PRELOAD", ""),
-            "GLOG_v": "0",
+            "GLOG_v": "3",
             "NCCL_P2P_DISABLE": "1"
         }
         required_envs.update(need_envs)
@@ -306,5 +300,14 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     tr1_out, need_result2, rtol=1e-05, atol=1e-05))
+        elif col_type == "sendrecv_array":
+            need_result1 = np.array([[0, 1, 2]])
+            need_result2 = np.array([[3, 4, 5]])
+            self.assertTrue(
+                np.allclose(
+                    tr1_out[0][0], need_result1, rtol=1e-05, atol=1e-05))
+            self.assertTrue(
+                np.allclose(
+                    tr1_out[0][1], need_result2, rtol=1e-05, atol=1e-05))
         else:
             pass
