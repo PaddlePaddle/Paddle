@@ -27,8 +27,8 @@
 
 #include "Eigen/Core"
 #include "Eigen/Eigenvalues"
-#include "paddle/fluid/operators/eig_op_helper.h"  // must before lapack.h
 #include "Eigen/src/misc/lapacke.h"                // LAPACK_dgeev
+#include "paddle/fluid/operators/eig_op_helper.h"  // must before lapack.h
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/transpose_op.h"  // TransCompute()
@@ -401,9 +401,9 @@ class EigGradKernel : public framework::OpKernel<T> {  //
     //   diag_real_VhgV = dito.Diag(VhgV,batch_count);
     // }
     LOG(INFO) << "🐽 VhgV dims: " << VhgV.dims();
-    math::ShowTensor<Tout>(VhgV);
+    // math::ShowTensor<Tout>(VhgV);
     diag_real_VhgV = dito.Diag(VhgV, batch_count);  // ⭕️
-    math::ShowTensor<Tout>(diag_real_VhgV);
+    // math::ShowTensor<Tout>(diag_real_VhgV);
     LOG(INFO) << "🐽 VhgV after diag: " << diag_real_VhgV.dims();
     LOG(INFO) << "HERE 7";
     //(2.3) auto result = VhgV - at::matmul(Vh, V * diag_re_VhgV.unsqueeze(-2));
