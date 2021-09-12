@@ -21,6 +21,7 @@ from ..fluid.layers import transpose  # noqa: F401
 from paddle.common_ops_import import core
 from paddle.common_ops_import import VarDesc
 from paddle import _C_ops
+import paddle
 
 __all__ = []
 
@@ -941,3 +942,43 @@ def mv(x, vec, name=None):
         type='mv', inputs={'X': x,
                            'Vec': vec}, outputs={'Out': out})
     return out
+
+
+def eig(x):
+    """
+    This API performs the eigenvalue decomposition.
+
+    Args:
+        x (Tensor): A tensor with shape math:`[*, N, N]`, The data type of the input tensor x
+            shoulf be one of float32, float64, compplex64 and complex128.
+
+    Returns:
+        Tensors: One is the eigenvalues and the other is eigenvectors.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            x_data = np.random.random((3, 3)).astype("float32")
+            x = paddle.to_tensor(x_data)
+            w, v = paddle.linalg.eig(x)
+    """
+    if in_dygraph_mode():
+        w, v = core.ops.eig(x)
+        return w, v
+
+    check_variable_and_dtype(
+        x, 'X', ['float32', 'float64', 'complex64', 'complex128'], 'eig')
+    helper = LayerHelper('eig', **locals())
+
+    w = helper.create_variable_for_type_inference(x.dtype)
+    v = helper.create_variable_for_type_inference(x.dtype)
+
+    inputs = {'X': x}
+    outputs = {'OutValues': w, 'OutVectors': v}
+    outs = [w, v]
+    helper.append_op(type='eig', inputs=inputs, outputs=outputs)
+
+    return tuple(outs)

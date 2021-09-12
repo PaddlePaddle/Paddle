@@ -44,6 +44,7 @@ from .linalg import cholesky  # noqa: F401
 from .linalg import bmm  # noqa: F401
 from .linalg import histogram  # noqa: F401
 from .linalg import mv  # noqa: F401
+from .linalg import eig  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
@@ -369,6 +370,7 @@ tensor_method_func  = [ #noqa
            'bitwise_xor',
            'bitwise_not',
            'broadcast_tensors',
+           'eig',
 ]
 
 #this list used in math_op_patch.py for magic_method bind
