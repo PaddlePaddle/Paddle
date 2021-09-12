@@ -686,12 +686,15 @@ class Conv2DGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("Filter", this->Input("Filter"));
-    op->SetInput("Bias", this->Input("Bias"));
     op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
 
     op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
     op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
-    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+
+    if (this->HasInput("Bias")) {
+      op->SetInput("Bias", this->Input("Bias"));
+      op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+    }
     op->SetAttrMap(this->Attrs());
   }
 };

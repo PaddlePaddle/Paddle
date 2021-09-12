@@ -1342,8 +1342,8 @@ set +x
         retry_unittests_record=''
         retry_time=4
         exec_time_array=('first' 'second' 'third' 'fourth')
-        parallel_failed_tests_exec_retry_threshold=80
-        exec_retry_threshold=10
+        parallel_failed_tests_exec_retry_threshold=120
+        exec_retry_threshold=30
         is_retry_execuate=0
         rerun_ut_startTime_s=`date +%s`
         if [ -n "$failed_test_lists" ];then
@@ -1443,6 +1443,9 @@ set +x
                         one_card_retry=''
                         multiple_card_retry=''
                         exclusive_retry='' 
+                    
+                    else 
+                        break
                     fi 
                 done
         fi
@@ -1786,8 +1789,8 @@ set +x
         retry_unittests_record=''
         retry_time=4
         exec_time_array=('first' 'second' 'third' 'fourth')
-        parallel_failed_tests_exec_retry_threshold=80
-        exec_retry_threshold=10
+        parallel_failed_tests_exec_retry_threshold=120
+        exec_retry_threshold=30
         is_retry_execuate=0
         rerun_ut_startTime_s=`date +%s`
         if [ -n "$failed_test_lists" ];then
@@ -1855,7 +1858,10 @@ set +x
                         collect_failed_tests
                         rm -f $tmp_dir/*
                         one_card_retry=''
-                    fi 
+                    else 
+                        break
+                    fi
+
                 done
         fi
 

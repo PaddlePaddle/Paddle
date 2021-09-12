@@ -940,6 +940,14 @@ class Fleet(object):
             distributed_model = ShardingParallel(
                 model, self._hcg, strategy=self._user_defined_strategy)
         elif self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL:
+
+            # NOTE (JZ-LIANG) init parameters broadcast within sharding group
+            # normally it should be done inside DataParallel
+            if self.sharding_degree > 1:
+                from paddle.distributed.fleet.utils.hybrid_parallel_util import broadcast_mp_parameters, broadcast_sharding_parameters
+                assert self.sharding_degree == self._hcg.get_sharding_parallel_world_size(
+                )
+                broadcast_sharding_parameters(model, self._hcg)
             distributed_model = paddle.DataParallel(
                 model,
                 comm_buffer_size=self._user_defined_strategy.
