@@ -37,11 +37,11 @@ struct FastDivModForPooling {
   platform::FastDivMod width;
   platform::FastDivMod height;
 
-  explicit HOSTDEVICE FastDivModForPooling(
-        const int channels, const int output_width, 
-        const int output_height) {
+  explicit HOSTDEVICE FastDivModForPooling(const int channels,
+                                           const int output_width,
+                                           const int output_height) {
     channel = platform::FastDivMod(channels);
-    width  = platform::FastDivMod(output_width);
+    width = platform::FastDivMod(output_width);
     height = platform::FastDivMod(output_height);
   }
 };
@@ -56,10 +56,10 @@ struct FastDivModForPoolingWithMore {
   platform::FastDivMod stride_w;
   platform::FastDivMod stride_h;
 
-  explicit HOSTDEVICE FastDivModForPoolingWithMore(const int channels, 
-              const int input_width, const int input_height, 
-              const int ksize_width, const int ksize_height, 
-              const int stride_width, const int stride_height) {
+  explicit HOSTDEVICE FastDivModForPoolingWithMore(
+      const int channels, const int input_width, const int input_height,
+      const int ksize_width, const int ksize_height, const int stride_width,
+      const int stride_height) {
     channel = platform::FastDivMod(channels);
     width = platform::FastDivMod(input_width);
     height = platform::FastDivMod(input_height);
@@ -70,30 +70,31 @@ struct FastDivModForPoolingWithMore {
   }
 };
 
-template<typename FastDivModForPooling>
-__device__ void ParamPreparationByDatalayout(int index, bool channel_last, 
-                FastDivModForPooling divmods, const int pad_width, 
-                const int pad_height, const int aux_width, const int aux_height, 
-                int* w_offset, int* h_offset, int* c_offset, int* stride) {
-      if (!channel_last) { /* NCHW */
-      auto input_width_divmod = divmods.width.Divmod(index);
-      auto input_height_divmod = divmods.height.Divmod(input_width_divmod.val[0]);
-      auto channel_divmod = divmods.channel.Divmod(input_height_divmod.val[0]);
-      *w_offset = input_width_divmod.val[1] + pad_width;
-      *h_offset = input_height_divmod.val[1] + pad_height;
-      *c_offset = channel_divmod.val[1];
-      *stride = (channel_divmod.val[0] * divmods.channel.divisor + *c_offset) *
-                      aux_height * aux_width;
-    } else { /* NHWC */
-      auto c_divmod = divmods.channel.Divmod(index);
-      auto input_width_divmod = divmods.width.Divmod(c_divmod.val[0]);
-      auto input_height_divmod = divmods.height.Divmod(input_width_divmod.val[0]);
-      *c_offset = c_divmod.val[1];
-      *w_offset = input_width_divmod.val[1] + pad_width;
-      *h_offset = input_height_divmod.val[1] + pad_height;
-      *stride = input_height_divmod.val[0] * aux_height *
-                              aux_width * divmods.channel.divisor;
-    }
+template <typename FastDivModForPooling>
+__device__ void ParamPreparationByDatalayout(
+    int index, bool channel_last, FastDivModForPooling divmods,
+    const int pad_width, const int pad_height, const int aux_width,
+    const int aux_height, int* w_offset, int* h_offset, int* c_offset,
+    int* stride) {
+  if (!channel_last) { /* NCHW */
+    auto input_width_divmod = divmods.width.Divmod(index);
+    auto input_height_divmod = divmods.height.Divmod(input_width_divmod.val[0]);
+    auto channel_divmod = divmods.channel.Divmod(input_height_divmod.val[0]);
+    *w_offset = input_width_divmod.val[1] + pad_width;
+    *h_offset = input_height_divmod.val[1] + pad_height;
+    *c_offset = channel_divmod.val[1];
+    *stride = (channel_divmod.val[0] * divmods.channel.divisor + *c_offset) *
+              aux_height * aux_width;
+  } else { /* NHWC */
+    auto c_divmod = divmods.channel.Divmod(index);
+    auto input_width_divmod = divmods.width.Divmod(c_divmod.val[0]);
+    auto input_height_divmod = divmods.height.Divmod(input_width_divmod.val[0]);
+    *c_offset = c_divmod.val[1];
+    *w_offset = input_width_divmod.val[1] + pad_width;
+    *h_offset = input_height_divmod.val[1] + pad_height;
+    *stride = input_height_divmod.val[0] * aux_height * aux_width *
+              divmods.channel.divisor;
+  }
 }
 
 template <typename T, typename PoolProcess, typename Enable = void>
@@ -103,10 +104,10 @@ struct PoolingGradProcess {
   T input;
 
   explicit PoolingGradProcess(const T* __restrict__ _input_data,
-                          const T* __restrict__ _output_data)
+                              const T* __restrict__ _output_data)
       : input_data(_input_data), output_data(_output_data) {}
 
-  /* To get the input_data from global memeory, and move the address 
+  /* To get the input_data from global memeory, and move the address
      represented by output_data. */
   inline DEVICE void ParameterUpdate(int tid, int output_stride) {
     input = input_data[tid];
@@ -115,8 +116,8 @@ struct PoolingGradProcess {
 
   // To get the input_data_grad.
   inline DEVICE void Compute(const T* __restrict__ output_grad,
-                             T* __restrict__ input_data_grad, 
-                             int pool_size, int index) const {
+                             T* __restrict__ input_data_grad, int pool_size,
+                             int index) const {
     *input_data_grad +=
         output_grad[index] * static_cast<T>(input == output_data[index]);
   }
@@ -125,15 +126,15 @@ struct PoolingGradProcess {
 /* Different from MaxPoolGrad, input_data and output_data is unnecessary
 in AvgPoolGrad. So data reading of these parts can be vacant. */
 template <typename T, typename PoolProcess>
-struct PoolingGradProcess<T, PoolProcess,
-                      typename std::enable_if<std::is_same<
-                          PoolProcess, math::AvgPoolGrad<T>>::value>::type> {
+struct PoolingGradProcess<
+    T, PoolProcess, typename std::enable_if<std::is_same<
+                        PoolProcess, math::AvgPoolGrad<T>>::value>::type> {
   explicit PoolingGradProcess(const T* __restrict__ _input_data,
                               const T* __restrict__ _output_data) {}
   inline DEVICE void ParameterUpdate(int tid, int output_stride) {}
   inline DEVICE void Compute(const T* __restrict__ output_grad,
-                             T* __restrict__ input_data_grad, 
-                             int pool_size, int index) const {
+                             T* __restrict__ input_data_grad, int pool_size,
+                             int index) const {
     *input_data_grad += output_grad[index] / static_cast<T>(pool_size);
   }
 };
@@ -155,24 +156,23 @@ int GetThreadsPerBlock(const platform::CUDADeviceContext& ctx,
 }
 
 template <typename PoolProcess, typename T>
-__global__ void KernelPool2D(const int nthreads, const T* input_data,
-                             const int channels, const int input_height,
-                             const int input_width, const int output_height,
-                             const int output_width, const int ksize_height,
-                             const int ksize_width, const int stride_height,
-                             const int stride_width, const int padding_height,
-                             const int padding_width, FastDivModForPooling divmods,
-                             PoolProcess pool_process, bool exclusive, bool adaptive,
-                             T* output_data, bool channel_last = false) {
+__global__ void KernelPool2D(
+    const int nthreads, const T* input_data, const int channels,
+    const int input_height, const int input_width, const int output_height,
+    const int output_width, const int ksize_height, const int ksize_width,
+    const int stride_height, const int stride_width, const int padding_height,
+    const int padding_width, FastDivModForPooling divmods,
+    PoolProcess pool_process, bool exclusive, bool adaptive, T* output_data,
+    bool channel_last = false) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int pw, ph, c, batch_idx, input_stride;
     int hstart, hend, wstart, wend;
-    ParamPreparationByDatalayout<FastDivModForPooling>(index, 
-                channel_last, divmods, 0, 0, input_width, input_height, 
-                &pw, &ph, &c, &input_stride);
+    ParamPreparationByDatalayout<FastDivModForPooling>(
+        index, channel_last, divmods, 0, 0, input_width, input_height, &pw, &ph,
+        &c, &input_stride);
     input_data += input_stride;
-    
+
     if (adaptive) {
       hstart = AdaptStartIndex(ph, input_height, output_height);
       hend = AdaptEndIndex(ph, input_height, output_height);
@@ -188,7 +188,7 @@ __global__ void KernelPool2D(const int nthreads, const T* input_data,
       wend = min(wstart + ksize_width, input_width);
       wstart = max(wstart, 0);
     }
-    
+
     T ele = pool_process.initial();
     for (int h = hstart; h < hend; ++h) {
       for (int w = wstart; w < wend; ++w) {
@@ -206,23 +206,22 @@ __global__ void KernelPool2D(const int nthreads, const T* input_data,
 
 template <typename T, typename PoolingGradProcess>
 __global__ void KernelPool2DGrad(
-    const int nthreads, const T* __restrict__ output_grad, T* __restrict__ input_grad, 
-    const int output_width, const int output_height, 
-    const int input_width, const int input_height, 
-    const int ksize_width, const int ksize_height,
-    const int stride_width, const int stride_height, 
+    const int nthreads, const T* __restrict__ output_grad,
+    T* __restrict__ input_grad, const int output_width, const int output_height,
+    const int input_width, const int input_height, const int ksize_width,
+    const int ksize_height, const int stride_width, const int stride_height,
     const int padding_width, const int padding_height,
-    FastDivModForPoolingWithMore divmods, PoolingGradProcess pool_grad_process, 
+    FastDivModForPoolingWithMore divmods, PoolingGradProcess pool_grad_process,
     bool exclusive, bool adaptive, bool channel_last = false) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     T input_grad_data = static_cast<T>(0);
     int w_offset, h_offset, c_offset;
     int phstart, phend, pwstart, pwend, output_stride;
-    ParamPreparationByDatalayout<FastDivModForPoolingWithMore>(index, 
-                channel_last, divmods, padding_width, padding_height, 
-                output_width, output_height, &w_offset, &h_offset, 
-                &c_offset, &output_stride);
+    ParamPreparationByDatalayout<FastDivModForPoolingWithMore>(
+        index, channel_last, divmods, padding_width, padding_height,
+        output_width, output_height, &w_offset, &h_offset, &c_offset,
+        &output_stride);
     output_grad += output_stride;
     pool_grad_process.ParameterUpdate(index, output_stride);
 
@@ -248,7 +247,8 @@ __global__ void KernelPool2DGrad(
           int output_sub_idx =
               channel_last ? tmp_idx * divmods.channel.divisor + c_offset
                            : tmp_idx;
-          pool_grad_process.Compute(output_grad, &input_grad_data, pool_size, output_sub_idx);
+          pool_grad_process.Compute(output_grad, &input_grad_data, pool_size,
+                                    output_sub_idx);
         }
       }
     } else {
@@ -268,10 +268,13 @@ __global__ void KernelPool2DGrad(
             int wend = min(wstart + ksize_width, input_width);
             hstart = max(hstart, 0);
             wstart = max(wstart, 0);
-            int pool_size =(hend - hstart) * (wend - wstart);
+            int pool_size = (hend - hstart) * (wend - wstart);
             int tmp_idx = ph * output_width + pw;
-            int output_sub_idx = channel_last ? tmp_idx * divmods.channel.divisor + c_offset : tmp_idx;
-            pool_grad_process.Compute(output_grad, &input_grad_data, pool_size, output_sub_idx);
+            int output_sub_idx =
+                channel_last ? tmp_idx * divmods.channel.divisor + c_offset
+                             : tmp_idx;
+            pool_grad_process.Compute(output_grad, &input_grad_data, pool_size,
+                                      output_sub_idx);
           }
         }
       } else {
@@ -279,8 +282,11 @@ __global__ void KernelPool2DGrad(
           for (int pw = pwstart; pw < pwend; ++pw) {
             int pool_size = ksize_height * ksize_width;
             int tmp_idx = ph * output_width + pw;
-            int output_sub_idx = channel_last ? tmp_idx * divmods.channel.divisor + c_offset : tmp_idx;
-            pool_grad_process.Compute(output_grad, &input_grad_data, pool_size, output_sub_idx);
+            int output_sub_idx =
+                channel_last ? tmp_idx * divmods.channel.divisor + c_offset
+                             : tmp_idx;
+            pool_grad_process.Compute(output_grad, &input_grad_data, pool_size,
+                                      output_sub_idx);
           }
         }
       }
@@ -300,9 +306,9 @@ __global__ void KernelMaxPool2DGrad(
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int pw, ph, c, batch_idx, input_stride;
-    ParamPreparationByDatalayout<FastDivModForPooling>(index, channel_last,
-                divmods, 0, 0, input_width, input_height, &pw, &ph, &c, 
-                &input_stride);
+    ParamPreparationByDatalayout<FastDivModForPooling>(
+        index, channel_last, divmods, 0, 0, input_width, input_height, &pw, &ph,
+        &c, &input_stride);
     input_data += input_stride;
     input_grad += input_stride;
 
@@ -365,13 +371,13 @@ void Pool2dDirectCUDAFunctor<PoolProcess, T>::operator()(
   int blocks = (nthreads + thread_num - 1) / thread_num;
   dim3 threads(thread_num, 1);
   dim3 grid(blocks, 1);
-  auto pool_divmods_fwd = FastDivModForPooling(input_channels, 
-                                      output_width, output_height);
+  auto pool_divmods_fwd =
+      FastDivModForPooling(input_channels, output_width, output_height);
 
   KernelPool2D<PoolProcess, T><<<grid, threads, 0, stream>>>(
       nthreads, input, input_channels, input_height, input_width, output_height,
       output_width, ksize_height, ksize_width, stride_height, stride_width,
-      padding_height, padding_width, pool_divmods_fwd, pool_compute, exclusive, 
+      padding_height, padding_width, pool_divmods_fwd, pool_compute, exclusive,
       adaptive, output);
 }
 
@@ -416,8 +422,8 @@ class Pool2dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     int blocks = (nthreads + thread_num - 1) / thread_num;
     dim3 threads(thread_num, 1);
     dim3 grid(blocks, 1);
-    auto pool_divmods_fwd = FastDivModForPooling(input_channels, 
-                                        output_width, output_height);
+    auto pool_divmods_fwd =
+        FastDivModForPooling(input_channels, output_width, output_height);
 
     KernelPool2D<PoolProcess, T><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, input_channels, input_height, input_width,
@@ -465,13 +471,13 @@ class Pool2dFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     int blocks = (nthreads + thread_num - 1) / thread_num;
     dim3 threads(thread_num, 1);
     dim3 grid(blocks, 1);
-    auto pool_divmods_fwd = FastDivModForPooling(input_channels, 
-                                        output_width, output_height);
+    auto pool_divmods_fwd =
+        FastDivModForPooling(input_channels, output_width, output_height);
 
     KernelPool2D<PoolProcess, T><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, input_channels, input_height, input_width,
         output_height, output_width, ksize_height, ksize_width, stride_height,
-        stride_width, padding_height, padding_width, pool_divmods_fwd, 
+        stride_width, padding_height, padding_width, pool_divmods_fwd,
         pool_process, exclusive, adaptive, output_data, channel_last);
   }
 };
@@ -516,14 +522,16 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     int blocks = GetThreadsPerBlock(context, POOLING_GRAD_BLOCK_SIZE, nthreads);
     int grids = (nthreads + blocks - 1) / blocks;
 
-    auto pool_divmod = FastDivModForPoolingWithMore(input_channels, input_width,
-                        input_height, ksize_width, ksize_height, 
-                        stride_width, stride_height);
-    auto pool_grad_process = PoolingGradProcess<T, PoolProcess>(input_data, output_data);
+    auto pool_divmod = FastDivModForPoolingWithMore(
+        input_channels, input_width, input_height, ksize_width, ksize_height,
+        stride_width, stride_height);
+    auto pool_grad_process =
+        PoolingGradProcess<T, PoolProcess>(input_data, output_data);
     KernelPool2DGrad<T><<<grids, blocks, 0, context.stream()>>>(
-        nthreads, output_grad_data, input_grad_data, output_width, output_height, 
-        input_width, input_height, ksize_width, ksize_height, stride_width, stride_height,
-        padding_width, padding_height, pool_divmod, pool_grad_process, exclusive, adaptive);
+        nthreads, output_grad_data, input_grad_data, output_width,
+        output_height, input_width, input_height, ksize_width, ksize_height,
+        stride_width, stride_height, padding_width, padding_height, pool_divmod,
+        pool_grad_process, exclusive, adaptive);
   }
   void operator()(const platform::CUDADeviceContext& context,
                   const framework::Tensor& input,
@@ -565,15 +573,16 @@ class Pool2dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     int blocks = GetThreadsPerBlock(context, POOLING_GRAD_BLOCK_SIZE, nthreads);
     int grids = (nthreads + blocks - 1) / blocks;
 
-    auto pool_divmod = FastDivModForPoolingWithMore(input_channels, input_width, 
-                         input_height, ksize_width, ksize_height, 
-                         stride_width, stride_height);
-    auto pool_grad_process = PoolingGradProcess<T, PoolProcess>(input_data, output_data);
+    auto pool_divmod = FastDivModForPoolingWithMore(
+        input_channels, input_width, input_height, ksize_width, ksize_height,
+        stride_width, stride_height);
+    auto pool_grad_process =
+        PoolingGradProcess<T, PoolProcess>(input_data, output_data);
     KernelPool2DGrad<T><<<grids, blocks, 0, context.stream()>>>(
-        nthreads, output_grad_data, input_grad_data, output_width, output_height,
-        input_width, input_height, ksize_width, ksize_height, stride_width, stride_height,
-        padding_width, padding_height, pool_divmod, pool_grad_process, exclusive,
-        adaptive, channel_last);
+        nthreads, output_grad_data, input_grad_data, output_width,
+        output_height, input_width, input_height, ksize_width, ksize_height,
+        stride_width, stride_height, padding_width, padding_height, pool_divmod,
+        pool_grad_process, exclusive, adaptive, channel_last);
   }
 };
 
@@ -618,8 +627,8 @@ class MaxPool2dGradFunctor<platform::CUDADeviceContext, T> {
     int blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
-    auto pooling_divmods_grad = FastDivModForPooling(input_channels,
-                                      output_width, output_height);
+    auto pooling_divmods_grad =
+        FastDivModForPooling(input_channels, output_width, output_height);
     KernelMaxPool2DGrad<T><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, output_data, output_grad_data, input_channels,
         input_height, input_width, output_height, output_width, ksize_height,
@@ -664,8 +673,8 @@ class MaxPool2dGradFunctor<platform::CUDADeviceContext, T> {
     int blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
-    auto pooling_divmods_grad = FastDivModForPooling(input_channels,
-                                      output_width, output_height);
+    auto pooling_divmods_grad =
+        FastDivModForPooling(input_channels, output_width, output_height);
     KernelMaxPool2DGrad<T><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, output_data, output_grad_data, input_channels,
         input_height, input_width, output_height, output_width, ksize_height,
@@ -807,14 +816,14 @@ __global__ void KernelPool3D(
 
 template <typename T, typename PoolingGradProcess>
 __global__ void KernelPool3DGrad(
-    const int nthreads, const T* output_grad, const int channels, 
-    const int input_depth, const int input_height, const int input_width, 
+    const int nthreads, const T* output_grad, const int channels,
+    const int input_depth, const int input_height, const int input_width,
     const int output_depth, const int output_height, const int output_width,
-    const int ksize_depth, const int ksize_height, const int ksize_width, 
+    const int ksize_depth, const int ksize_height, const int ksize_width,
     const int stride_depth, const int stride_height, const int stride_width,
-    const int padding_depth, const int padding_height, const int padding_width, 
-    PoolingGradProcess pool_grad_process, bool exclusive, bool adaptive, T* input_grad,
-    bool channel_last = false) {
+    const int padding_depth, const int padding_height, const int padding_width,
+    PoolingGradProcess pool_grad_process, bool exclusive, bool adaptive,
+    T* input_grad, bool channel_last = false) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int w_offset, h_offset, d_offset, offsetC, batch_idx;
@@ -908,7 +917,8 @@ __global__ void KernelPool3DGrad(
                   ? ((pd * output_height + ph) * output_width + pw) * channels +
                         offsetC
                   : (pd * output_height + ph) * output_width + pw;
-          pool_grad_process.Compute(output_grad, &input_grad_data, pool_size, output_sub_idx);
+          pool_grad_process.Compute(output_grad, &input_grad_data, pool_size,
+                                    output_sub_idx);
         }
       }
     }
@@ -1155,12 +1165,13 @@ class Pool3dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     int blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
-    auto pool_grad_process = PoolingGradProcess<T, PoolProcess>(input_data, output_data);
+    auto pool_grad_process =
+        PoolingGradProcess<T, PoolProcess>(input_data, output_data);
     KernelPool3DGrad<T><<<grid, threads, 0, context.stream()>>>(
-        nthreads, output_grad_data, input_channels, input_depth, input_height, 
-        input_width, output_depth, output_height, output_width, ksize_depth, 
-        ksize_height, ksize_width, stride_depth, stride_height, stride_width, 
-        padding_depth, padding_height, padding_width, pool_grad_process, 
+        nthreads, output_grad_data, input_channels, input_depth, input_height,
+        input_width, output_depth, output_height, output_width, ksize_depth,
+        ksize_height, ksize_width, stride_depth, stride_height, stride_width,
+        padding_depth, padding_height, padding_width, pool_grad_process,
         exclusive, adaptive, input_grad_data);
   }
   void operator()(const platform::CUDADeviceContext& context,
@@ -1209,13 +1220,15 @@ class Pool3dGradFunctor<platform::CUDADeviceContext, PoolProcess, T> {
     int blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
-    auto pool_grad_process = PoolingGradProcess<T, PoolProcess>(input_data, output_data);
+    auto pool_grad_process =
+        PoolingGradProcess<T, PoolProcess>(input_data, output_data);
     KernelPool3DGrad<T><<<grid, threads, 0, context.stream()>>>(
-        nthreads, output_grad_data, input_channels, input_depth, input_height, 
-        input_width, output_depth, output_height, output_width, ksize_depth, 
-        ksize_height, ksize_width, stride_depth, stride_height, stride_width, 
-        padding_depth, padding_height, padding_width, pool_grad_process, exclusive, 
-        adaptive, input_grad_data, channel_last);  // add channel_last
+        nthreads, output_grad_data, input_channels, input_depth, input_height,
+        input_width, output_depth, output_height, output_width, ksize_depth,
+        ksize_height, ksize_width, stride_depth, stride_height, stride_width,
+        padding_depth, padding_height, padding_width, pool_grad_process,
+        exclusive, adaptive, input_grad_data,
+        channel_last);  // add channel_last
   }
 };
 
@@ -1382,9 +1395,9 @@ __global__ void KernelMaxPool2dWithIdx(
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int pw, ph, c, input_stride;
-    ParamPreparationByDatalayout<FastDivModForPooling>(index, 
-                false, divmods, 0, 0, input_width, input_height, 
-                &pw, &ph, &c, &input_stride);
+    ParamPreparationByDatalayout<FastDivModForPooling>(
+        index, false, divmods, 0, 0, input_width, input_height, &pw, &ph, &c,
+        &input_stride);
     input_data += input_stride;
 
     int hstart, hend;
@@ -1433,9 +1446,9 @@ __global__ void KernelMaxPool2DWithIdxGrad(
        index += blockDim.x * gridDim.x) {
     int phstart, phend, pwstart, pwend;
     int w_offset, h_offset, c_offset, output_stride;
-    ParamPreparationByDatalayout<FastDivModForPooling>(index, 
-                false, divmods, 0, 0, output_width, output_height, 
-                &w_offset, &h_offset, &c_offset, &output_stride);
+    ParamPreparationByDatalayout<FastDivModForPooling>(
+        index, false, divmods, 0, 0, output_width, output_height, &w_offset,
+        &h_offset, &c_offset, &output_stride);
     mask_data += output_stride;
     output_grad += output_stride;
 
@@ -1460,7 +1473,7 @@ __global__ void KernelMaxPool2DWithIdxGrad(
       pwend = min((w_offset + padding_width) / stride_width + 1, output_width);
     }
 
-    T1 input_grad_data = static_cast<T1>(0);;
+    T1 input_grad_data = static_cast<T1>(0);
     int input_current_featuremap_idx = h_offset * input_width + w_offset;
 
     for (int ph = phstart; ph < phend; ++ph) {
@@ -1513,8 +1526,8 @@ class MaxPool2dWithIndexFunctor<platform::CUDADeviceContext, T1, T2> {
     int blocks = (nthreads + thread_num - 1) / thread_num;
     dim3 threads(thread_num, 1);
     dim3 grid(blocks, 1);
-    auto pooling_divmods_grad = FastDivModForPooling(input_channels,
-                                          input_width, input_height);
+    auto pooling_divmods_grad =
+        FastDivModForPooling(input_channels, input_width, input_height);
     KernelMaxPool2dWithIdx<T1, T2><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, input_channels, input_height, input_width,
         output_height, output_width, ksize_height, ksize_width, stride_height,
@@ -1558,8 +1571,8 @@ class MaxPool2dWithIndexGradFunctor<platform::CUDADeviceContext, T1, T2> {
     int blocks = (nthreads + 1024 - 1) / 1024;
     dim3 threads(1024, 1);
     dim3 grid(blocks, 1);
-    auto pool_divmods_grad = FastDivModForPooling(input_channels, input_width,
-                                                  input_height);
+    auto pool_divmods_grad =
+        FastDivModForPooling(input_channels, input_width, input_height);
     KernelMaxPool2DWithIdxGrad<T1, T2><<<grid, threads, 0, context.stream()>>>(
         nthreads, output_grad_data, mask_data, input_channels, input_height,
         input_width, output_height, output_width, ksize_height, ksize_width,
