@@ -18,8 +18,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/optimizers/lars_momentum_op.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 
-#ifdef __NVCC__
+#if defined(__NVCC__) && CUDA_VERSION >= 11000
 #include <cooperative_groups.h>
+#define LARS_FUNCTION_FLAG __device__
+#else
+#define LARS_FUNCTION_FLAG __global__
 #endif
 
 #ifdef __HIPCC__
@@ -28,36 +31,21 @@ limitations under the License. */
 #define LARS_BLOCK_SIZE 512
 #endif
 
-#if CUDA_VERSION >= 11000
-#define FUNCTION_FLAG __device__
-#else
-#define FUNCTION_FLAG __global__
-#endif
-
 namespace paddle {
 namespace operators {
 
 template <typename T>
 using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
 
-__device__ __forceinline__ float SquareRoot(float x) { return sqrtf(x); }
-__device__ __forceinline__ double SquareRoot(double x) { return sqrt(x); }
-__device__ __forceinline__ float FmaRoot(float x, float y, float z) {
-  return fmaf(x, y, z);
-}
-__device__ __forceinline__ double FmaRoot(double x, double y, double z) {
-  return fma(x, y, z);
-}
-
-template <typename MT, int VesSize>
+template <typename MT, int VecSize>
 __device__ inline void VectorizeLarsUpdate(
     const MT* __restrict__ g, const MT* __restrict__ v, MT* __restrict__ p_out,
     MT* __restrict__ v_out, const MT* __restrict__ p, const MT mu, MT local_lr,
     const MT lars_weight_decay, const MT rescale_grad, const int tid,
     const int grid_stride, const int numel) {
-  using VecMType = paddle::platform::AlignedVector<MT, VesSize>;
-  int main = numel >> (VesSize >> 1);
-  int tail_offset = main * VesSize;
+  using VecMType = paddle::platform::AlignedVector<MT, VecSize>;
+  int main = numel >> (VecSize >> 1);
+  int tail_offset = main * VecSize;
 
   const VecMType* __restrict__ g_vec = reinterpret_cast<const VecMType*>(g);
   const VecMType* __restrict__ v_vec = reinterpret_cast<const VecMType*>(v);
@@ -72,11 +60,11 @@ __device__ inline void VectorizeLarsUpdate(
     VecMType p_data = p_vec[i];
 
 #pragma unroll
-    for (int j = 0; j < VesSize; ++j) {
+    for (int j = 0; j < VecSize; ++j) {
       MT grad = g_data.val[j] * rescale_grad;
       v_new.val[j] =
-          FmaRoot(v_data.val[j], mu,
-                  local_lr * FmaRoot(lars_weight_decay, p_data.val[j], grad));
+          fma(v_data.val[j], mu,
+              local_lr * fma(lars_weight_decay, p_data.val[j], grad));
       p_new.val[j] = p_data.val[j] - v_new.val[j];
     }
     v_out_vec[i] = v_new;
@@ -86,8 +74,7 @@ __device__ inline void VectorizeLarsUpdate(
   for (int i = tid + tail_offset; i < numel; i += grid_stride) {
     MT grad = g[i] * rescale_grad;
     MT param = p[i];
-    MT v_new =
-        FmaRoot(v[i], mu, local_lr * FmaRoot(lars_weight_decay, param, grad));
+    MT v_new = fma(v[i], mu, local_lr * fma(lars_weight_decay, param, grad));
     v_out[i] = v_new;
     p_out[i] = param - v_new;
   }
@@ -126,8 +113,8 @@ __device__ inline void VectorizeLarsUpdateMP(
     for (int j = 0; j < 4; ++j) {
       MT grad = static_cast<MT>(g_data.val[j]) * rescale_grad;
       v_new.val[j] =
-          FmaRoot(v_data.val[j], mu,
-                  local_lr * FmaRoot(lars_weight_decay, p_data.val[j], grad));
+          fma(v_data.val[j], mu,
+              local_lr * fma(lars_weight_decay, p_data.val[j], grad));
       p_new.val[j] = p_data.val[j] - v_new.val[j];
       p_out.val[j] = static_cast<T>(p_new.val[j]);
     }
@@ -139,8 +126,7 @@ __device__ inline void VectorizeLarsUpdateMP(
   for (int i = tid + tail_offset; i < numel; i += grid_stride) {
     MT grad = static_cast<MT>(g[i]) * rescale_grad;
     MT param = master_p[i];
-    MT v_new =
-        FmaRoot(v[i], mu, local_lr * FmaRoot(lars_weight_decay, param, grad));
+    MT v_new = fma(v[i], mu, local_lr * fma(lars_weight_decay, param, grad));
     MT p_new = param - v_new;
     v_out[i] = v_new;
     p_out[i] = static_cast<T>(p_new);
@@ -149,7 +135,7 @@ __device__ inline void VectorizeLarsUpdateMP(
 }
 
 template <typename T, typename MT>
-FUNCTION_FLAG void L2NormKernel(
+LARS_FUNCTION_FLAG void L2NormKernel(
     const T* __restrict__ p_data, const T* __restrict__ g_data,
     MT* __restrict__ p_buffer, MT* __restrict__ g_buffer,
     const int repeat_times, const int64_t numel, const MT rescale_grad,
@@ -207,8 +193,8 @@ FUNCTION_FLAG void L2NormKernel(
   cg.sync();
   MT p_partial_sum = threadIdx.x < gridDim.x ? p_buffer[threadIdx.x] : 0;
   MT g_partial_sum = threadIdx.x < gridDim.x ? g_buffer[threadIdx.x] : 0;
-  *p_n = SquareRoot(math::blockReduceSum<MT>(p_partial_sum, FINAL_MASK));
-  *g_n = SquareRoot(math::blockReduceSum<MT>(g_partial_sum, FINAL_MASK));
+  *p_n = sqrt(math::blockReduceSum<MT>(p_partial_sum, FINAL_MASK));
+  *g_n = sqrt(math::blockReduceSum<MT>(g_partial_sum, FINAL_MASK));
 #endif
 }
 
@@ -232,15 +218,15 @@ __global__ void MomentumLarsKernel(
   MT p_val = threadIdx.x < thresh ? p_buffer[threadIdx.x] : 0;
   MT g_val = threadIdx.x < thresh ? g_buffer[threadIdx.x] : 0;
   __syncthreads();
-  MT p_n = SquareRoot(math::blockReduceSum<MT>(p_val, FINAL_MASK));
-  MT g_n = SquareRoot(math::blockReduceSum<MT>(g_val, FINAL_MASK));
+  MT p_n = sqrt(math::blockReduceSum<MT>(p_val, FINAL_MASK));
+  MT g_n = sqrt(math::blockReduceSum<MT>(g_val, FINAL_MASK));
 #endif
 
   const MT lr = learning_rate[0];
   MT local_lr = lr;
   if (lars_weight_decay > static_cast<MT>(0)) {
-    local_lr = lr * lars_coeff * p_n /
-               (FmaRoot(lars_weight_decay, p_n, g_n) + epsilon);
+    local_lr =
+        lr * lars_coeff * p_n / (fma(lars_weight_decay, p_n, g_n) + epsilon);
   }
 
   if (master_p) {
