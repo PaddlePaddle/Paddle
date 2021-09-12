@@ -193,8 +193,16 @@ def create_global_var(shape,
                     numpy.int64), 'create_global_var')
 
     check_dtype(dtype, 'dtype', [
-        'bool', 'float16', 'float32', 'float64', 'int8', 'int16', 'int32',
-        'int64', 'uint8'
+        'bool',
+        'float16',
+        'float32',
+        'float64',
+        'int8',
+        'int16',
+        'int32',
+        'int64',
+        'uint8',
+        'uint16',
     ], 'create_global_var')
 
     helper = LayerHelper("global_var", **locals())
@@ -530,10 +538,10 @@ def sums(input, out=None):
     if isinstance(input, list) or isinstance(input, tuple):
         for input_section in input:
             check_variable_and_dtype(input_section, "input", \
-                    ['float32', 'float64', 'int32', 'int64'], 'sums')
+                    ['float16', 'float32', 'float64', 'int32', 'int64'], 'sums')
     else:
         check_variable_and_dtype(input, "input", \
-                ['float32', 'float64', 'int32', 'int64'], 'sums')
+                ['float16', 'float32', 'float64', 'int32', 'int64'], 'sums')
 
     helper = LayerHelper('sum', **locals())
     if out is None:

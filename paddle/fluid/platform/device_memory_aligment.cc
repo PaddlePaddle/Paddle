@@ -37,6 +37,9 @@ size_t Alignment(size_t size, const platform::Place &place, int align_size) {
 #endif
     }
   }
+  if (is_npu_place(place)) {
+    size += 32;  // required by ascendcl
+  }
   size_t remaining = size % alignment;
   return remaining == 0 ? size : size + (alignment - remaining);
 }

@@ -15,11 +15,17 @@
 from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
 from .tensor.linalg import eig  # noqa: F401
+from .tensor.linalg import matrix_power  # noqa: F401
 from .tensor import inverse as inv  # noqa: F401
+from .tensor.linalg import matrix_rank
+from .tensor.linalg import svd
 
 __all__ = [
     'cholesky',  #noqa
     'norm',
     'inv',
-    'eig'
+    'eig',
+    'matrix_rank',
+    'svd',
+    'matrix_power'
 ]
