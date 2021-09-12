@@ -223,7 +223,7 @@ class Transpose2Op : public TransposeOp {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     TransposeOp::InferShape(ctx);
-    OP_INOUT_CHECK(ctx->HasOutput("XShape"), "Output", "XShape", "Transpose2");
+    if (!ctx->HasOutput("XShape")) return;
     const auto &in_dims = ctx->GetInputDim("X");
     std::vector<int64_t> x_shape_dim(in_dims.size() + 1);
     x_shape_dim[0] = 0;
