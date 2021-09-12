@@ -19,6 +19,7 @@ from .parallel_layers.pp_layers import PipelineLayer
 
 from ..utils.hybrid_parallel_util import broadcast_mp_parameters
 from ..utils.hybrid_parallel_util import broadcast_dp_parameters
+from ..utils.hybrid_parallel_util import broadcast_sharding_parameters
 from ..utils.log_util import logger
 from ..meta_optimizers.dygraph_optimizer import HybridParallelOptimizer, HybridParallelGradScaler
 from .pp_utils import p2p_communication as p2p
@@ -34,6 +35,8 @@ class PipelineParallel(MetaParallelBase):
         super(PipelineParallel, self).__init__(layers, hcg, strategy)
         self.use_data_parallel = self._hcg.get_data_parallel_world_size() > 1
         self.use_model_parallel = self._hcg.get_model_parallel_world_size() > 1
+        self.use_sharding_parallel = self._hcg.get_sharding_parallel_world_size(
+        ) > 1
 
         self.total_loss = None
 
@@ -65,6 +68,10 @@ class PipelineParallel(MetaParallelBase):
         if self.use_model_parallel:
             logger.info("start broadcast mp parameters")
             broadcast_mp_parameters(self._layers, self._hcg)
+
+        if self.use_sharding_parallel:
+            logger.info("start broadcast sharding parameters")
+            broadcast_sharding_parameters(self._layers, self._hcg)
 
         if self.use_data_parallel:
             logger.info("start broadcast dp parameters")
