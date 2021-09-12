@@ -173,7 +173,7 @@ class TestMHAOpFP64(TestMHAOpFP16):
 @skip_check_grad_ci(reason="Developing")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestMHAOpVarLenFP16(OpTest):
+class TestMHAOpPadVarLenFP16(OpTest):
     def setUp(self):
         self.op_type = "mha"
         self.place = core.CUDAPlace(0)
@@ -253,7 +253,7 @@ class TestMHAOpVarLenFP16(OpTest):
 @skip_check_grad_ci(reason="Developing")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestMHAOpVarLenFP32(TestMHAOpVarLenFP16):
+class TestMHAOpPadVarLenFP32(TestMHAOpPadVarLenFP16):
     def init_dtype_type(self):
         self.dtype = np.single
 
