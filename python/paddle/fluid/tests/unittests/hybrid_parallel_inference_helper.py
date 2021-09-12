@@ -140,9 +140,11 @@ class TestHybridParallelInferenceHelperClass(unittest.TestCase):
             startup_program,
             main_program,
             micro_batch_size=2,
+            num_mp=1,
             num_pp=2,
-            init_comm=nranks > 1)
-        helper.gen_infer_program(['array_write_0.out'], ['cond_int.tmp_0'])
+            init_comm=nranks > 1, )
+        helper.gen_infer_program(
+            ['array_write_0.out'], ['cond_int.tmp_0'], debug=True)
 
         exe = paddle.static.Executor(paddle.CUDAPlace(dev_id))
         exe.run(startup_program)

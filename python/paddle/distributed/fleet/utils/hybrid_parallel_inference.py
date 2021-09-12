@@ -27,6 +27,7 @@ class HybridParallelInferenceHelper(object):
     Args:
         startup_program (Program): the startup program.
         main_program (Program): the main program.
+        num_mp (int): number of model parallel degree. Default ``1``.
         num_pp (int): number of pipeline parallel degree. Default ``1``.
         micro_batch_size (int): number of micro batch size. Default ``1``.
         beam_size (int): number of beam search size. Default ``1``.
@@ -38,6 +39,9 @@ class HybridParallelInferenceHelper(object):
         None.
         
     Write Paradigm:
+    
+    .. code-block:: bash
+        :name: bash-example1
         
         # while op pattern
         with paddle.fluid.device_guard(f'{device}:all'):
@@ -180,6 +184,7 @@ class HybridParallelInferenceHelper(object):
     def __init__(self,
                  startup_program,
                  main_program,
+                 num_mp=1,
                  num_pp=1,
                  micro_batch_size=1,
                  beam_size=1,
@@ -234,9 +239,9 @@ class HybridParallelInferenceHelper(object):
         self.current_endpoint = self.endpoints[self.role_maker._worker_index()]
         self.rank = self.role_maker._worker_index()
         self.nranks = self.role_maker._worker_num()
-        assert self.nranks % num_pp == 0
+        assert num_mp * num_pp == self.nranks
         self.num_pp = num_pp
-        self.num_mp = self.nranks // self.num_pp
+        self.num_mp = num_mp
 
         # global ring info
         self.global_endpoints = self.endpoints
@@ -398,24 +403,24 @@ class HybridParallelInferenceHelper(object):
 
         return used_var_names
 
-    def _find_post_op(self, index, var_name):
-        """
-        Find the post op that has variable named var_name as input.
-        """
-        # bugfix for uniform hybrid parallelism
-        if '.cast_fp32' in var_name:
-            var_name = var_name.replace('.cast_fp32', '')
-        if '.cast_fp16' in var_name:
-            var_name = var_name.replace('.cast_fp16', '')
+#     def _find_post_op(self, index, var_name):
+#         """
+#         Find the post op that has variable named var_name as input.
+#         """
+#         # bugfix for uniform hybrid parallelism
+#         if '.cast_fp32' in var_name:
+#             var_name = var_name.replace('.cast_fp32', '')
+#         if '.cast_fp16' in var_name:
+#             var_name = var_name.replace('.cast_fp16', '')
 
-        post_ops = self._input_var_to_op[var_name]
-        if post_ops == None: return None
-        result_op = None
-        for post_op, post_idx in reversed(post_ops):
-            if post_idx > index:
-                result_op = post_op
-                break
-        return result_op
+#         post_ops = self._input_var_to_op[var_name]
+#         if post_ops == None: return None
+#         result_op = None
+#         for post_op, post_idx in reversed(post_ops):
+#             if post_idx > index:
+#                 result_op = post_op
+#                 break
+#         return result_op
 
     def _find_prev_op(self, index, var_name):
         """
@@ -757,7 +762,7 @@ class HybridParallelInferenceHelper(object):
                 while_block, sync_in_while_lastpp2firstpp_var_names,
                 sync_in_while_var_names, self._stage)
 
-# step3: split programs
+        # step3: split programs
         self._split_program(self._startup_program, self._stage, 0)
         self._split_program(self._main_program, self._stage, 0)
 
