@@ -76,12 +76,49 @@ def _generate_data(batch_size, max_seq_len, vec_size, dtype):
     return (Q, K, V, W, WQ, WK, WV, WO)
 
 
-def _generate_seq_len(batch, min_seq_len, max_seq_len):
+def _generate_varlen_data(seq_lens, vec_size, dtype):
+    """
+    seq_lens (list): the desired seq_lens
+    """
+
+    assert len(seq_lens) > 0, "batch size should be greater than 0"
+
+    Qs = [(np.random.random((1, seq_len, 1, vec_size)) - .5).astype(dtype)
+          for seq_len in seq_lens]
+    Ks = [(np.random.random((1, seq_len, 1, vec_size)) - .5).astype(dtype)
+          for seq_len in seq_lens]
+    Vs = [(np.random.random((1, seq_len, 1, vec_size)) - .5).astype(dtype)
+          for seq_len in seq_lens]
+
+    Q = np.concatenate(Qs, axis=1)
+    K = np.concatenate(Ks, axis=1)
+    V = np.concatenate(Vs, axis=1)
+    W = (np.random.random((4 * vec_size * vec_size, )) - .5).astype(dtype)
+
+    stride = vec_size * vec_size
+    WQ = W[0:stride].reshape((vec_size, vec_size))
+    WK = W[stride:2 * stride].reshape((vec_size, vec_size))
+    WV = W[2 * stride:3 * stride].reshape((vec_size, vec_size))
+    WO = W[3 * stride:].reshape((vec_size, vec_size))
+
+    return (Q, K, V, W, WQ, WK, WV, WO)
+
+
+def _generate_seq_len(batch, min_seq_len, max_seq_len, is_pad=True):
     seq_len = np.random.randint(
         low=min_seq_len, high=max_seq_len + 1, size=(batch, ), dtype=np.int32)
-    lo_win = np.zeros((max_seq_len, ), dtype=np.int32)
-    hi_win = np.full(
-        (max_seq_len, ), max_seq_len, dtype=np.int32)  # set a large number
+    if is_pad:
+        # if pad, then nothing to do
+        lo_win = np.zeros((max_seq_len, ), dtype=np.int32)
+        hi_win = np.full(
+            (max_seq_len, ), max_seq_len, dtype=np.int32)  # set a large number
+    else:
+        # if not pad, we should set the low, high windows inside a batch for each sequence
+        cumsum = np.cumsum(seq_len)
+        lo_win = np.insert(cumsum[:-1], 0, 0)  # compute for each sequence
+        lo_win = np.repeat(lo_win, seq_len)  # set for each token
+        hi_win = cumsum
+        hi_win = np.repeat(hi_win, seq_len)
     return seq_len, seq_len, lo_win, hi_win
 
 
@@ -140,7 +177,8 @@ class TestMHAOpFP16(OpTest):
         if self.dtype == np.float16 and not core.is_float16_supported(
                 self.place):
             return
-        self.check_output_with_place(self.place, atol=1e-1)
+        self.check_output_with_place(self.place, atol=1e-3)
+        print(f'MHA {self.dtype} fwd passed.')
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
@@ -148,6 +186,7 @@ class TestMHAOpFP16(OpTest):
             return
         self.check_grad_with_place(
             self.place, ['Q', 'K', 'V', 'W'], 'O', max_relative_error=1.)
+        print(f'MHA {self.dtype} bwd passed.')
 
 
 @skip_check_grad_ci(reason="Developing")
@@ -241,19 +280,105 @@ class TestMHAOpPadVarLenFP16(OpTest):
         if self.dtype == np.float16 and not core.is_float16_supported(
                 self.place):
             return
-        self.check_output_with_place(self.place, atol=1e-1)
+        self.check_output_with_place(self.place, atol=1e-3)
+        print(f'MHA padded varlen {self.dtype} fwd passed.')
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
                 self.place):
             return
-        self.check_output_with_place(self.place, atol=1e-1)
+        self.check_grad_with_place(
+            self.place, ['Q', 'K', 'V', 'W'], 'O', max_relative_error=1.)
+        print(f'MHA padded varlen {self.dtype} bwd passed.')
 
 
 @skip_check_grad_ci(reason="Developing")
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestMHAOpPadVarLenFP32(TestMHAOpPadVarLenFP16):
+    def init_dtype_type(self):
+        self.dtype = np.single
+
+
+@skip_check_grad_ci(reason="Developing")
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestMHAOpVarLenFP16(OpTest):
+    def setUp(self):
+        self.op_type = "mha"
+        self.place = core.CUDAPlace(0)
+        self.init_dtype_type()
+
+        batch_size = 4
+        nheads = 4
+        max_seq_len = 4
+        vec_size = 8
+        proj_size = vec_size // nheads
+
+        qo_slen, kv_slen, lo_win, hi_win = _generate_seq_len(
+            batch_size, min_seq_len=1, max_seq_len=max_seq_len, is_pad=False)
+        Q, K, V, W, WQ, WK, WV, WO = _generate_varlen_data(qo_slen, vec_size,
+                                                           self.dtype)
+
+        self.inputs = {
+            'Q': Q,
+            'K': K,
+            'V': V,
+            'W': W,
+            'QO_Seqlen': np.sum(qo_slen, dtype=np.int32).reshape(1, ),
+            'KV_Seqlen': np.sum(kv_slen, dtype=np.int32).reshape(1, )
+        }
+
+        self.attrs = {
+            'attn_low_windows': lo_win,
+            'attn_high_windows': hi_win,
+            'attn_dropout_rate': 0.,
+            'attn_heads': nheads,
+            'attn_sm_scaler': 1.,
+            'attn_vec_size': vec_size,
+            'attn_q_proj_size': proj_size,
+            'attn_k_proj_size': proj_size,
+            'attn_v_proj_size': proj_size,
+            'attn_o_proj_size': vec_size,
+            'attn_max_qo_seq_len': np.sum(qo_slen, dtype=np.int32),
+            'attn_max_kv_seq_len': np.sum(kv_slen, dtype=np.int32),
+            'attn_beam_size': 1
+        }
+
+        offset = np.insert(np.cumsum(qo_slen), 0, 0)
+        O = None
+        for sid, slen in enumerate(qo_slen):
+            sub_o = _get_attn_output(Q[0, offset[sid]:offset[sid + 1], :, :],
+                                     K[0, offset[sid]:offset[sid + 1], :, :],
+                                     V[0, offset[sid]:offset[sid + 1], :, :],
+                                     WQ, WK, WV, WO, slen, nheads, vec_size,
+                                     self.attrs["attn_sm_scaler"])
+            if O is not None:
+                O = np.concatenate((O, sub_o), axis=1)
+            else:
+                O = sub_o
+        self.outputs = {'O': O}
+
+    def init_dtype_type(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if self.dtype == np.float16 and not core.is_float16_supported(
+                self.place):
+            return
+        self.check_output_with_place(self.place, atol=1e-3)
+        print(f'MHA varlen {self.dtype} fwd passed.')
+
+    def test_check_grad_normal(self):
+        if self.dtype == np.float16 and not core.is_float16_supported(
+                self.place):
+            return
+        self.check_grad_with_place(
+            self.place, ['Q', 'K', 'V', 'W'], 'O', max_relative_error=1.)
+        print(f'MHA varlen {self.dtype} bwd passed.')
+
+
+class TestMHAOpVarLenFP32(TestMHAOpVarLenFP16):
     def init_dtype_type(self):
         self.dtype = np.single
 
