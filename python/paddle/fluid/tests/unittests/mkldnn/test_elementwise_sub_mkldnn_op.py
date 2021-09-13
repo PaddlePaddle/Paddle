@@ -106,7 +106,7 @@ class TestInt8(TestElementwiseSubOp):
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.init_scales()
-        self.check_output(check_dygraph=(self.use_mkldnn == False))
+        self.check_output()
 
     def test_check_grad_normal(self):
         pass

@@ -45,34 +45,25 @@ class TestElementwiseSubOp(OpTest):
 
     def test_check_output(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=(self.use_mkldnn == False))
+        self.check_output()
 
     def test_check_grad_normal(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X', 'Y'], 'Out', check_dygraph=(self.use_mkldnn == False))
+        self.check_grad(['X', 'Y'], 'Out')
 
     def test_check_grad_ingore_x(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-            check_dygraph=(self.use_mkldnn == False))
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
 
     def test_check_grad_ingore_y(self):
         # TODO(wangzhongpu): support mkldnn op in dygraph mode
         if self.dtype == np.float16:
             return
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-            check_dygraph=(self.use_mkldnn == False))
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
     def init_input_output(self):
         self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
@@ -97,8 +88,7 @@ class TestFP16ElementwiseSubOp(TestElementwiseSubOp):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
-                self.check_output_with_place(
-                    place, check_dygraph=(self.use_mkldnn == False))
+                self.check_output_with_place(place)
 
 
 @skip_check_grad_ci(
