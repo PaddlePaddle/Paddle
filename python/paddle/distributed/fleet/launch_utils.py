@@ -723,10 +723,9 @@ def get_device_proc_info(args):
         else:
             devices_per_proc = xpus
     elif device_mode == DeviceMode.CPU:
-    if hasattr(args, "paddle_cpuonly") and args.nproc_per_node is None:
+        if hasattr(args, "paddle_cpuonly") and args.nproc_per_node is None:
             #NOTE (xiongkun03) set it to cpu core number
             args.nproc_per_node = multiprocessing.cpu_count()
-
         if args.nproc_per_node is None:
             devices_per_proc = [0]
         else:
