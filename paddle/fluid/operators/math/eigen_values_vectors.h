@@ -12,10 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #ifndef PADDLE_WITH_HIP
 // HIP not support cusolver
-
-#pragma once
 
 #include "Eigen/Core"
 #include "paddle/fluid/memory/memory.h"
