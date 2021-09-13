@@ -22,10 +22,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/strided_memcpy.h"
 #include "paddle/fluid/operators/utils.h"
 
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
-
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
@@ -41,11 +37,11 @@ inline framework::DDim ComputeAndCheckShape(
   bool is_vector = false;
   framework::DDim out_dim;
 
-  if (first_dim.size() > 2) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "multi_dot: the first input tensor must be 1D or 2D but got[%d]!",
-        static_cast<int>(first_dim.size())));
-  }
+  PADDLE_ENFORCE_LT(
+      first_dim.size(), static_cast<size_t>(3),
+      platform::errors::InvalidArgument(
+          "multi_dot: the first input tensor must be 1D or 2D but got[%d]!",
+          static_cast<int>(first_dim.size())));
 
   // If the first tensor is 1D of size n view it as a row vector (1, n)
   if (first_dim.size() == 1) {
@@ -54,11 +50,11 @@ inline framework::DDim ComputeAndCheckShape(
   }
 
   auto last_dim = inputs_dims[n - 1];
-  if (last_dim.size() > 2) {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "the last input tensor of multi_dot op must be 1D or 2D but got[%d]!",
-        static_cast<int>(last_dim.size())));
-  }
+  PADDLE_ENFORCE_LT(
+      last_dim.size(), static_cast<size_t>(3),
+      platform::errors::InvalidArgument(
+          "the last input tensor of multi_dot must be 1D or 2D but got[%d]!",
+          static_cast<int>(first_dim.size())));
 
   // If the last tensor is 1D of size n view it as a column vector (n, 1)
   if (last_dim.size() == 1) {
@@ -226,10 +222,6 @@ class MultiDotOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "The input tensors of multi_dot operator.").AsDuplicable();
     AddOutput("Out", "The output tensor of multi_dot operator");
-    AddAttr<bool>(
-        "use_mkldnn",
-        "(bool, default false) Indicates if MKL-DNN kernel will be used")
-        .SetDefault(false);
     AddComment(R"DOC(
 Compute the dot product of two or more arrays in a single function call, while automatically selecting the fastest evaluation order.
 
@@ -258,44 +250,6 @@ class MultiDotOp : public framework::OperatorWithKernel {
     auto out_dims = ComputeAndCheckShape(ctx->IsRuntime(), inputs_dims);
     ctx->SetOutputDim("Out", out_dims);
     ctx->ShareLoD("X", "Out");
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    auto inputs = ctx.MultiInput<Tensor>("X");
-    auto input_data_type = framework::proto::VarType::Type(0);
-    for (auto* input : inputs) {
-      if (!input->IsInitialized()) {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "The inputs of multi_dot OP are Empty!"));
-        break;
-      }
-    }
-    input_data_type = inputs[0]->type();
-
-#ifdef PADDLE_WITH_MKLDNN
-    using mkldnn::memory;
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
-  }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const framework::Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const {
-    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
-      // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
-    } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
-    }
   }
 };
 
@@ -378,21 +332,6 @@ class MultiDotOpGrad : public framework::OperatorWithKernel {
     auto ins_dims = ctx->GetInputsDim(in_x);
     ctx->SetOutputsDim(out_x_g_n, ins_dims);
     ctx->ShareAllLoD(in_x, out_x_g_n);
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.GetPlace());
-  }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string& var_name, const Tensor& tensor,
-      const framework::OpKernelType& expected_kernel_type) const override {
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
   }
 };
 
