@@ -666,6 +666,17 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+    if (op_type == "scale") {
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 1) {
+        VLOG(3) << "dropout op does not support input's dim is 1 in tensorrt.";
+        return false;
+      }
+    }
+
     if (op_type == "prelu") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "Invalid input X's size of prelu TRT converter. "
