@@ -20,11 +20,12 @@ limitations under the License. */
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
 #include "paddle/fluid/operators/fused/fused_dropout_test.h"
+#include "paddle/fluid/operators/math/functors.h"
 
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace details = paddle::operators::details;
-namespace operators = paddle::operators;
+namespace math = paddle::operators::math;
 
 /**
  * @brief the unittest of fused_dropout_act_bias
@@ -111,16 +112,12 @@ struct TestFusedDropoutActBias {
     }
 
     {
-      out.Resize({rows, cols});
-      out.mutable_data<T>(place);
-      mask.Resize({rows, cols});
-      mask.mutable_data<uint8_t>(place);
-      dsrc.Resize({rows, cols});
-      dsrc.mutable_data<T>(place);
+      out.mutable_data<T>({rows, cols}, place);
+      mask.mutable_data<uint8_t>({rows, cols}, place);
+      dsrc.mutable_data<T>({rows, cols}, place);
 
       if (has_bias) {
-        dbias.Resize({cols});
-        dbias.mutable_data<T>(place);
+        dbias.mutable_data<T>({cols}, place);
       }
     }
   }
@@ -133,7 +130,7 @@ struct TestFusedDropoutActBias {
       for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
           const T tmp = src_vec[i * cols + j] + bias_vec[j];
-          out1[i * cols + j] = act(&tmp);
+          out1[i * cols + j] = act(tmp);
         }
       }
       // call dropout
@@ -143,7 +140,7 @@ struct TestFusedDropoutActBias {
       for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
           const T tmp = src_vec[i * cols + j];
-          out1[i * cols + j] = act(&tmp);
+          out1[i * cols + j] = act(tmp);
         }
       }
 
@@ -164,21 +161,21 @@ struct TestFusedDropoutActBias {
     GradFunctor act_grad;
     for (int i = 0; i < rows; i++) {
       for (int j = 0; j < cols; j++) {
+        T args[2];
+        args[0] = _out[i * cols + j];
         if (has_bias) {
-          T args[2];
-          args[0] = _out[i * cols + j];
           args[1] = src_vec[i * cols + j] + bias_vec[j];
-          T val = act_grad(args);
-          correct_dbias[j] += val;
-          correct_dsrc[i * cols + j] = val;
         } else {
-          T args[2];
-          args[0] = _out[i * cols + j];
           args[1] = src_vec[i * cols + j];
-          T val = act_grad(args);
-          correct_dsrc[i * cols + j] = val;
         }
+        T val = args[0] * act_grad.UseOut(args[1]);
+        correct_dsrc[i * cols + j] = val;
       }
+    }
+
+    if (has_bias) {
+      // reduce_sum: keep the same calculate order as the GPU
+      ReduceSum<T>(correct_dsrc, &correct_dbias, rows, cols);
     }
   }
 
@@ -273,47 +270,41 @@ static void BaseTest(const bool is_fp16 = false) {
   const int rows = 16;
   std::vector<int> cols_list = {16, 17};
   bool has_bias[2] = {true, false};
-  T default_diff = !is_fp16 ? static_cast<T>(1e-3) : default_diff =
-                                                         static_cast<T>(1e-2);
+  T default_diff = !is_fp16 ? static_cast<T>(1e-5) : static_cast<T>(1e-1);
   for (auto cols : {16, 17}) {
     for (auto has_bias : {true, false}) {
       TestFusedDropoutActBias<T, Functor, GradFunctor> test(rows, cols);
       test.has_bias = has_bias;
       test.Run();
       test.CheckOut(default_diff);
-      if (!is_fp16) {
-        test.CheckGrad(default_diff);
-      }
+      test.CheckGrad(default_diff);
     }
   }
 }
 
 TEST(FusedDropout, GPUFusedDorpoutActBias) {
-  BaseTest<float, paddle::operators::ReluFunctor<float>,
-           paddle::operators::ReluGradFunctor<float>>();
-  BaseTest<float, operators::GeluFunctor<float>,
-           operators::GeluGradFunctor<float>>();
+  BaseTest<float, math::ReluFunctor<float>, math::ReluGradFunctor<float>>();
+  BaseTest<float, paddle::operators::GeluFunctor<float>,
+           paddle::operators::GeluGradFunctor<float>>();
 }
 TEST(FusedDropout, GPUFusedDropoutActBiasDouble) {
-  BaseTest<double, operators::ReluFunctor<double>,
-           operators::ReluGradFunctor<double>>();
-  BaseTest<double, operators::GeluFunctor<double>,
-           operators::GeluGradFunctor<double>>();
+  BaseTest<double, math::ReluFunctor<double>, math::ReluGradFunctor<double>>();
+  BaseTest<double, paddle::operators::GeluFunctor<double>,
+           paddle::operators::GeluGradFunctor<double>>();
 }
 
 // test fp16, For inference, check_grad is not required. ref: test_dropout_op.py
 TEST(FusedDropout, GPUFusedDropoutActBiasFp16) {
   using fp16 = platform::float16;
-  BaseTest<fp16, operators::ReluFunctor<fp16>,
-           operators::ReluGradFunctor<fp16>>(true);
+  BaseTest<fp16, math::ReluFunctor<fp16>, math::ReluGradFunctor<fp16>>(true);
 }
 
 TEST(FusedDropout, GPUFusedDropoutActBiasIsUpscaleInTrain) {
   const int rows = 16;
   const int cols = 16;
   for (auto is_upscale_in_train : {true, false}) {
-    TestFusedDropoutActBias<float, operators::ReluFunctor<float>,
-                            operators::ReluGradFunctor<float>>
+    TestFusedDropoutActBias<float, math::ReluFunctor<float>,
+                            math::ReluGradFunctor<float>>
         test(rows, cols, 0, 1.0, is_upscale_in_train, false);
     test.Run();
     test.CheckOut(static_cast<float>(1e-5));
@@ -324,8 +315,8 @@ TEST(FusedDropout, GPUFusedDropoutActBiasIsUpscaleInTrain) {
 TEST(FusedDropout, GPUFusedDropoutActBiasIsTest) {
   const int rows = 16;
   const int cols = 16;
-  TestFusedDropoutActBias<float, operators::ReluFunctor<float>,
-                          operators::ReluGradFunctor<float>>
+  TestFusedDropoutActBias<float, math::ReluFunctor<float>,
+                          math::ReluGradFunctor<float>>
       test(rows, cols, 0, 0.35, true, true);
   test.Run();
   test.CheckOut(static_cast<float>(1e-5));
@@ -335,8 +326,8 @@ TEST(FusedDropout, GPUFusedDropoutActBiasIsTest) {
 TEST(FusedDropout, GPUFusedDropoutActBiasSeed) {
   const int rows = 16;
   const int cols = 16;
-  TestFusedDropoutActBias<float, operators::ReluFunctor<float>,
-                          operators::ReluGradFunctor<float>>
+  TestFusedDropoutActBias<float, math::ReluFunctor<float>,
+                          math::ReluGradFunctor<float>>
       test(rows, cols, 125, 0.0, false, false);
   test.Run();
   test.CheckOut(static_cast<float>(1e-5));
@@ -346,8 +337,8 @@ TEST(FusedDropout, GPUFusedDropoutActBiasSeed) {
 TEST(FusedDropout, GPUFusedDropoutActBiasLargeShape) {
   const int rows = 256;
   const int cols = 4096;
-  TestFusedDropoutActBias<float, operators::ReluFunctor<float>,
-                          operators::ReluGradFunctor<float>>
+  TestFusedDropoutActBias<float, math::ReluFunctor<float>,
+                          math::ReluGradFunctor<float>>
       test(rows, cols);
   test.Run();
   test.CheckOut(static_cast<float>(1e-5));
