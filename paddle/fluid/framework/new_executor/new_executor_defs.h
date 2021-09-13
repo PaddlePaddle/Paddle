@@ -71,8 +71,8 @@ struct InstructionInfo {
 };
 
 enum class OpFuncType {
-  kQueueAsync,  // GPU Kernel or d2h, h2d, send, recv, broadcast
-  kQueueSync,   // CPU kernel, block host
+  kQueueSync = 0,   // CPU kernel, block host
+  kQueueAsync = 1,  // GPU Kernel or d2h, h2d, send, recv, broadcast
 };
 class RuntimeInferShapeContext;
 

@@ -391,15 +391,17 @@ void InterpreterCore::ExecuteInstructionList(
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
       if (vec_instr[i].type_ == OpFuncType::kQueueAsync) {
-        group_thread_pool_->AddTask(1, [&, i, is_dry_run]() {
-          RunInstructionAsync(i, &working_dependecy_count, &working_var_ref,
-                              &op_run_number, is_dry_run);
-        });
+        group_thread_pool_->AddTask(
+            static_cast<size_t>(OpFuncType::kQueueAsync), [&, i, is_dry_run]() {
+              RunInstructionAsync(i, &working_dependecy_count, &working_var_ref,
+                                  &op_run_number, is_dry_run);
+            });
       } else {
-        group_thread_pool_->AddTask(0, [&, i, is_dry_run]() {
-          RunInstructionAsync(i, &working_dependecy_count, &working_var_ref,
-                              &op_run_number, is_dry_run);
-        });
+        group_thread_pool_->AddTask(
+            static_cast<size_t>(OpFuncType::kQueueSync), [&, i, is_dry_run]() {
+              RunInstructionAsync(i, &working_dependecy_count, &working_var_ref,
+                                  &op_run_number, is_dry_run);
+            });
       }
     }
   }
@@ -409,9 +411,10 @@ void InterpreterCore::ExecuteInstructionList(
   // are finished.
   group_thread_pool_->WaitQueueGroupEmpty();
 
-  while (op_run_number.load() != vec_instr.size()) {
-    VLOG(3) << op_run_number.load() << " !=" << vec_instr.size();
-  }
+  PADDLE_ENFORCE_EQ(
+      op_run_number.load(), vec_instr.size(),
+      "Required op_run_number == %d, but received op_run_number = %d.",
+      vec_instr.size(), op_run_number.load());
 }
 
 void InterpreterCore::RunInstructionAsync(
