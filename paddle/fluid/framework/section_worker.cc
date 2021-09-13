@@ -35,35 +35,25 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
     // cache the op type during the init part
     // reduce unnecessary op visit during 1F1B
     int op_role = op->Attr<int>("op_role");
-    bool is_forward_with_lr =
-        ((op_role == static_cast<int>(OpRole::kForward)) ||
-         (op_role == (static_cast<int>(OpRole::kForward) |
-                      static_cast<int>(OpRole::kLoss))) ||
-         (op_role == static_cast<int>(OpRole::kLRSched)));
-    bool is_forward = ((op_role == static_cast<int>(OpRole::kForward)) ||
-                       (op_role == (static_cast<int>(OpRole::kForward) |
-                                    static_cast<int>(OpRole::kLoss))));
-    bool is_backward = ((op_role == static_cast<int>(OpRole::kBackward)) ||
-                        (op_role == (static_cast<int>(OpRole::kBackward) |
-                                     static_cast<int>(OpRole::kLoss))));
-    bool is_optimizer = (op_role == static_cast<int>(OpRole::kOptimize));
-    if (is_forward_with_lr) {
+    if ((op_role == static_cast<int>(OpRole::kForward)) ||
+        (op_role == (static_cast<int>(OpRole::kForward) |
+                     static_cast<int>(OpRole::kLoss))) ||
+        (op_role == static_cast<int>(OpRole::kLRSched))) {
       forward_and_lr_ops_.push_back(op.get());
-    }
-    if (is_forward) {
-      forward_ops_.push_back(op.get());
-    }
-    if (is_backward) {
+      if ((op_role != static_cast<int>(OpRole::kLRSched))) {
+        forward_ops_.push_back(op.get());
+      }
+    } else if ((op_role == static_cast<int>(OpRole::kBackward)) ||
+               (op_role == (static_cast<int>(OpRole::kBackward) |
+                            static_cast<int>(OpRole::kLoss)))) {
       backward_ops_.push_back(op.get());
-    }
-    if (is_optimizer) {
+    } else if (op_role == static_cast<int>(OpRole::kOptimize)) {
       optimizer_ops_.push_back(op.get());
+    } else {
+      PADDLE_THROW(platform::errors::PreconditionNotMet(
+          "The op %s is None of LRSchel, Forward, Backward or Optimize.",
+          op->Type()));
     }
-    PADDLE_ENFORCE_EQ(
-        is_forward_with_lr || is_forward || is_backward || is_optimizer, true,
-        platform::errors::PreconditionNotMet(
-            "The op %s is None of LRSchel, Forward, Backward or Optimize.",
-            op->Type()));
   }
 
   // if not 1F1B scheduler
