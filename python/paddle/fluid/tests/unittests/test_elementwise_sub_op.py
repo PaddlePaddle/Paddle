@@ -18,7 +18,7 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
 
 import paddle.fluid as fluid
 
@@ -77,8 +77,8 @@ class TestElementwiseSubOp(OpTest):
         self.axis = -1
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
+@OpTestTool.skip_if(not core.is_compiled_with_cuda(),
+                    "core is not compiled with CUDA")
 class TestFP16ElementwiseSubOp(TestElementwiseSubOp):
     def init_dtype(self):
         self.dtype = np.float16
@@ -91,20 +91,12 @@ class TestFP16ElementwiseSubOp(TestElementwiseSubOp):
                 self.check_output_with_place(place)
 
 
+@OpTestTool.skip_if(True, "Grad not yet implemented")
 class TestElementwiseSubOp_scalar(TestElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
         self.out = self.x - self.y
-
-    def test_check_grad_normal(self):
-        pass
-
-    def test_check_grad_ingore_x(self):
-        pass
-
-    def test_check_grad_ingore_y(self):
-        pass
 
 
 class TestFP16ElementwiseSubOp_scalar(TestFP16ElementwiseSubOp):
@@ -114,20 +106,12 @@ class TestFP16ElementwiseSubOp_scalar(TestFP16ElementwiseSubOp):
         self.out = self.x - self.y
 
 
+@OpTestTool.skip_if(True, "Grad not yet implemented")
 class TestElementwiseSubOp_scalar2(TestElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1, 1).astype(self.dtype)
         self.out = self.x - self.y
-
-    def test_check_grad_normal(self):
-        pass
-
-    def test_check_grad_ingore_x(self):
-        pass
-
-    def test_check_grad_ingore_y(self):
-        pass
 
 
 class TestFP16ElementwiseSubOp_scalar2(TestFP16ElementwiseSubOp):
@@ -300,6 +284,7 @@ class TestFP16ElementwiseSubOp_rowwise_add_0(TestFP16ElementwiseSubOp):
         self.axis = 1
 
 
+@OpTestTool.skip_if(True, "Grad not yet implemented")
 class TestElementwiseSubOp_rowwise_add_1(TestElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(100, 1).astype(self.dtype)
@@ -308,15 +293,6 @@ class TestElementwiseSubOp_rowwise_add_1(TestElementwiseSubOp):
 
     def init_axis(self):
         self.axis = 1
-
-    def test_check_grad_normal(self):
-        pass
-
-    def test_check_grad_ingore_x(self):
-        pass
-
-    def test_check_grad_ingore_y(self):
-        pass
 
 
 class TestFP16ElementwiseSubOp_rowwise_add_1(TestFP16ElementwiseSubOp):
@@ -403,10 +379,10 @@ class TestElementwiseSubOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
             # the input of elementwise_add must be Variable.
-            x1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
-            y1 = fluid.create_lod_tensor(
-                np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
+            x1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.CPUPlace())
+            y1 = fluid.create_lod_tensor(np.array([-1, 3, 5, 5]),
+                                         [[1, 1, 1, 1]], fluid.CPUPlace())
             self.assertRaises(TypeError, fluid.layers.elementwise_add, x1, y1)
 
             # the input dtype of elementwise_add must be float16 or float32 or float64 or int32 or int64
@@ -548,8 +524,8 @@ class TestComplexElementwiseSubOp(OpTest):
         self.out = self.x + self.y
 
     def init_grad_input_output(self):
-        self.grad_out = np.ones(self.shape, self.dtype) + 1J * np.ones(
-            self.shape, self.dtype)
+        self.grad_out = np.ones(
+            self.shape, self.dtype) + 1J * np.ones(self.shape, self.dtype)
         self.grad_x = self.grad_out
         self.grad_y = self.grad_out
 
@@ -557,27 +533,24 @@ class TestComplexElementwiseSubOp(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(
-            ['X', 'Y'],
-            'Out',
-            user_defined_grads=[self.grad_x, self.grad_y],
-            user_defined_grad_outputs=[self.grad_out])
+        self.check_grad(['X', 'Y'],
+                        'Out',
+                        user_defined_grads=[self.grad_x, self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out])
 
     def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'],
-            'Out',
-            no_grad_set=set("X"),
-            user_defined_grads=[self.grad_y],
-            user_defined_grad_outputs=[self.grad_out])
+        self.check_grad(['Y'],
+                        'Out',
+                        no_grad_set=set("X"),
+                        user_defined_grads=[self.grad_y],
+                        user_defined_grad_outputs=[self.grad_out])
 
     def test_check_grad_ingore_y(self):
-        self.check_grad(
-            ['X'],
-            'Out',
-            no_grad_set=set('Y'),
-            user_defined_grads=[self.grad_x],
-            user_defined_grad_outputs=[self.grad_out])
+        self.check_grad(['X'],
+                        'Out',
+                        no_grad_set=set('Y'),
+                        user_defined_grads=[self.grad_x],
+                        user_defined_grad_outputs=[self.grad_out])
 
 
 class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
@@ -588,8 +561,8 @@ class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
         self.out = self.x + self.y
 
     def init_grad_input_output(self):
-        self.grad_out = np.ones(self.shape, self.dtype) + 1J * np.ones(
-            self.shape, self.dtype)
+        self.grad_out = np.ones(
+            self.shape, self.dtype) + 1J * np.ones(self.shape, self.dtype)
         self.grad_x = np.real(self.grad_out)
         self.grad_y = self.grad_out
 
