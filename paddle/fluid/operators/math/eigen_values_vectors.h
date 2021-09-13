@@ -65,6 +65,7 @@ inline void ComputeFloatEigenvaluesAndVectors(ValueType *x_data,
             "Self Adjoint Eigen decomposition is not successful. "
             "The %d-th input matrice might not be not be positive definite.",
             i));
+
     eigenvalues = eigen_solver.eigenvalues().transpose();
     if (compute_vectors) {
       eigenvectors = eigen_solver.eigenvectors().transpose();
