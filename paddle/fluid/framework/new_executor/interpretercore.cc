@@ -306,10 +306,11 @@ void InterpreterCore::Convert() {
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     BuildAndCacheInstructionCtx(&vec_instruction_[i], *global_scope_, place_);
   }
-  
+
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     gc_event_.emplace_back(vec_instruction_[i].execution_ctx_.get()->GetPlace(),
                            platform::GenerateDeviceEventFlag());
+  }
 
   if (FLAGS_new_executor_use_inplace) {
     BuildInplace();
