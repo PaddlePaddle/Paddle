@@ -188,14 +188,9 @@ class FusedFeedForward(Layer):
                  bias_attr=None):
 
         super(FusedFeedForward, self).__init__()
-        assert d_model > 0, ("Expected d_model to be greater than 0, "
-                             "but recieved {}".format(d_model))
-        assert dim_feedforward > 0, (
-            "Expected dim_feedforward to be greater than 0, "
-            "but recieved {}".format(dim_feedforward))
 
-        self._weight_attrs = _convert_param_attr_to_list(weight_attr, 2)
-        self._bias_attrs = _convert_param_attr_to_list(bias_attr, 2)
+        #self._weight_attrs = _convert_param_attr_to_list(weight_attr, 2)
+        #self._bias_attrs = _convert_param_attr_to_list(bias_attr, 2)
 
         self._dtype = self._helper.get_default_dtype()
         self._d_model = d_model
@@ -204,47 +199,44 @@ class FusedFeedForward(Layer):
         self._act_dropout = dropout if act_dropout is None else act_dropout
         self._act_method = activation
         self._normalize_before = normalize_before
-        self._weight_attr = self._weight_attrs[1]
-        self._bias_attr = self._bias_attrs[1]
+        #self._weight_attr = self._weight_attrs[1]
+        #self._bias_attr = self._bias_attrs[1]
 
         self._linear1_weight = self.create_parameter(
             shape=[d_model, dim_feedforward],
-            attr=self._weight_attr,
+            attr=weight_attr,
             dtype=self._dtype,
             is_bias=False)
         self._linear1_bias = self.create_parameter(
             shape=[dim_feedforward],
-            attr=self._bias_attr,
+            attr=bias_attr,
             dtype=self._dtype,
             is_bias=True)
 
         self._linear2_weight = self.create_parameter(
             shape=[dim_feedforward, d_model],
-            attr=self._weight_attr,
+            attr=weight_attr,
             dtype=self._dtype,
             is_bias=False)
 
         self._linear2_bias = self.create_parameter(
-            shape=[d_model],
-            attr=self._bias_attr,
-            dtype=self._dtype,
-            is_bias=True)
+            shape=[d_model], attr=bias_attr, dtype=self._dtype, is_bias=True)
 
         self._ln1_scale = self.create_parameter(
             shape=[d_model],
-            attr=self._weight_attr,
+            attr=weight_attr,
             is_bias=False,
             default_initializer=Constant(1.0))
         self._ln1_bias = self.create_parameter(
-            shape=[d_model], attr=self._bias_attr, is_bias=True)
+            shape=[d_model], attr=bias_attr, is_bias=True)
 
         self._ln2_scale = self.create_parameter(
             shape=[d_model],
-            attr=self._weight_attr,
+            attr=weight_attr,
             is_bias=False,
             default_initializer=Constant(1.0))
         self._ln2_bias = self.create_parameter(
-            shape=[d_model], attr=self._bias_attr, is_bias=True)
+            shape=[d_model], attr=bias_attr, is_bias=True)
         self._seed1 = None
         self._seed2 = None
 
@@ -256,6 +248,7 @@ class FusedFeedForward(Layer):
                           self._act_dropout, self._act_method,
                           self._normalize_before)
         return out
+
 
 class FusedTransformerEncoderLayer(Layer):
     """
@@ -330,7 +323,35 @@ class FusedTransformerEncoderLayer(Layer):
         self._config.pop("__class__", None)  # py3
 
         super(FusedTransformerEncoderLayer, self).__init__()
-        raise NotImplementedError()
+        assert d_model > 0, ("Expected d_model to be greater than 0, "
+                             "but recieved {}".format(d_model))
+        assert nhead > 0, ("Expected nhead to be greater than 0, "
+                           "but recieved {}".format(nhead))
+        assert dim_feedforward > 0, (
+            "Expected dim_feedforward to be greater than 0, "
+            "but recieved {}".format(dim_feedforward))
+        attn_dropout = dropout if attn_dropout is None else attn_dropout
+        act_dropout = dropout if act_dropout is None else act_dropout
+        self.normalize_before = normalize_before
+
+        weight_attrs = _convert_param_attr_to_list(weight_attr, 2)
+        bias_attrs = _convert_param_attr_to_list(bias_attr, 2)
+
+        self.fused_attn = FusedMultiHeadAttention(
+            d_model,
+            nhead,
+            dropout=attn_dropout,
+            weight_attr=weight_attrs[0],
+            bias_attr=bias_attrs[0])
+
+        self.ffn = FusedFeedForward(
+            d_model,
+            dim_feedforward,
+            dropout=dropout,
+            act_dropout=act_dropout,
+            normalize_before=self.normalize_before,
+            weight_attrs[1],
+            bias_attrs[1])
 
     def forward(self, src, src_mask=None, cache=None):
         """
@@ -362,7 +383,15 @@ class FusedTransformerEncoderLayer(Layer):
                 incremental length. See `MultiHeadAttention.gen_cache` and \
                 `MultiHeadAttention.forward` for more details.
         """
-        raise NotImplementedError()
+        src_mask = _convert_attention_mask(src_mask, src.dtype)
+        if cache is None:
+            attn_out = self.fused_attn(src, attn_mask=src_mask)
+        else:
+            attn_out, incremental_cache = self.fused_attn(
+                src, attn_mask=src_mask, cache)
+
+        ffn_out = self.ffn(attn_out)
+        return ffn_out if cache is None else (ffn_out, incremental_cache)
 
 
 class FusedTransformer(Layer):

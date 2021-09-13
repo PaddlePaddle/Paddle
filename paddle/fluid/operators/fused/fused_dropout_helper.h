@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/math/functors.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #ifdef __NVCC__
 #include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
@@ -157,8 +158,8 @@ class FusedDropoutHelper {
           dropout_param_.dropout_prob, dropout_param_.is_upscale_in_train,
           dropout_param_.is_test, src, bias, out, mask, ctx);
     } else if (act_method == "relu") {
-      ReluFunctor<T> relu;
-      LaunchDropoutActBias<T, MaskType, ReluFunctor<T>>(
+      math::ReluFunctor<T> relu;
+      LaunchDropoutActBias<T, MaskType, math::ReluFunctor<T>>(
           relu, dropout_param_.seed, rows_, cols_, increment,
           dropout_param_.dropout_prob, dropout_param_.is_upscale_in_train,
           dropout_param_.is_test, src, bias, out, mask, ctx);
@@ -177,8 +178,8 @@ class FusedDropoutHelper {
           gelu_grad, dout, mask, src, bias, dropout_param_.dropout_prob,
           dropout_param_.is_upscale_in_train, rows_, cols_, dsrc, dbias, ctx);
     } else if (act_method == "relu") {
-      ReluGradFunctor<T> relu_grad;
-      LaunchDropoutActBiasGrad<T, MaskType, ReluGradFunctor<T>>(
+      math::ReluGradFunctor<T> relu_grad;
+      LaunchDropoutActBiasGrad<T, MaskType, math::ReluGradFunctor<T>>(
           relu_grad, dout, mask, src, bias, dropout_param_.dropout_prob,
           dropout_param_.is_upscale_in_train, rows_, cols_, dsrc, dbias, ctx);
     } else {
