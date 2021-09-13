@@ -111,7 +111,7 @@ class HybridParallelOptimizer:
     @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
-        # Here should use global parameter list 
+
         if self._sharding_enable:
             sharding_reduce_gradients(
                 list(self._inner_opt._parameter_list), self._hcg)
@@ -131,14 +131,13 @@ class HybridParallelOptimizer:
         parameter_list = parameters if parameters \
             else self._inner_opt._parameter_list
 
-        # Here should use global parameter list 
+        # Here shardinng should use global parameter list 
         if self._sharding_enable:
             sharding_reduce_gradients(
                 list(self._inner_opt._parameter_list), self._hcg)
 
         if not self._use_dp_mode and self._need_dp:
             fused_allreduce_gradients(list(parameter_list), self._hcg)
-
         return self._inner_opt.minimize(loss, startup_program, parameter_list,
                                         no_grad_set)
 

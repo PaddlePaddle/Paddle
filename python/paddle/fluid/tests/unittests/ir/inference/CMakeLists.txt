@@ -31,7 +31,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
 
   foreach(target ${TEST_TRT_CONVERTER})
     py_test_modules(${target} MODULES ${target})
-    set_tests_properties(${target} PROPERTIES TIMEOUT 100)
+    set_tests_properties(${target} PROPERTIES TIMEOUT 300)
   endforeach()
 endif()
 
