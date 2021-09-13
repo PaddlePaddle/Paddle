@@ -31,6 +31,41 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
     ops_.push_back(OpRegistry::CreateOp(*op_desc));
   }
 
+  for (auto &op : ops_) {
+    // cache the op type during the init part
+    // reduce unnecessary op visit during 1F1B
+    int op_role = op->Attr<int>("op_role");
+    bool is_forward_with_lr =
+        ((op_role == static_cast<int>(OpRole::kForward)) ||
+         (op_role == (static_cast<int>(OpRole::kForward) |
+                      static_cast<int>(OpRole::kLoss))) ||
+         (op_role == static_cast<int>(OpRole::kLRSched)));
+    bool is_forward = ((op_role == static_cast<int>(OpRole::kForward)) ||
+                       (op_role == (static_cast<int>(OpRole::kForward) |
+                                    static_cast<int>(OpRole::kLoss))));
+    bool is_backward = ((op_role == static_cast<int>(OpRole::kBackward)) ||
+                        (op_role == (static_cast<int>(OpRole::kBackward) |
+                                     static_cast<int>(OpRole::kLoss))));
+    bool is_optimizer = (op_role == static_cast<int>(OpRole::kOptimize));
+    if (is_forward_with_lr) {
+      forward_and_lr_ops_.push_back(op.get());
+    }
+    if (is_forward) {
+      forward_ops_.push_back(op.get());
+    }
+    if (is_backward) {
+      backward_ops_.push_back(op.get());
+    }
+    if (is_optimizer) {
+      optimizer_ops_.push_back(op.get());
+    }
+    PADDLE_ENFORCE_EQ(
+        is_forward_with_lr || is_forward || is_backward || is_optimizer, true,
+        platform::errors::PreconditionNotMet(
+            "The op %s is None of LRSchel, Forward, Backward or Optimize.",
+            op->Type()));
+  }
+
   // if not 1F1B scheduler
   if (schedule_mode_ != 1) return;
 
@@ -55,31 +90,6 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
     backward_send_vars_.push_back(var_name);
     skip_vars_.push_back(var_name);
   }
-
-  for (auto &op : ops_) {
-    // cache the op type during the init part
-    // reduce unnecessary op visit during 1F1B
-    int op_role = op->Attr<int>("op_role");
-    if ((op_role == static_cast<int>(OpRole::kForward)) ||
-        (op_role == (static_cast<int>(OpRole::kForward) |
-                     static_cast<int>(OpRole::kLoss))) ||
-        (op_role == static_cast<int>(OpRole::kLRSched))) {
-      forward_first_ops_.push_back(op.get());
-    }
-    if ((op_role == static_cast<int>(OpRole::kForward)) ||
-        (op_role == (static_cast<int>(OpRole::kForward) |
-                     static_cast<int>(OpRole::kLoss)))) {
-      forward_other_ops_.push_back(op.get());
-    }
-    if ((op_role == static_cast<int>(OpRole::kBackward)) ||
-        (op_role == (static_cast<int>(OpRole::kBackward) |
-                     static_cast<int>(OpRole::kLoss)))) {
-      backward_ops_.push_back(op.get());
-    }
-    if (op_role == static_cast<int>(OpRole::kOptimize)) {
-      optimizer_ops_.push_back(op.get());
-    }
-  }
 }
 
 void SectionWorker::PrepareUnusedVar() {
@@ -92,7 +102,7 @@ void SectionWorker::RunForward(
     std::unordered_map<const OperatorBase *, std::vector<std::string>>
         &unused_vars_) {
   std::vector<OperatorBase *> &forward_tmp =
-      micro_id == 0 ? forward_first_ops_ : forward_other_ops_;
+      micro_id == 0 ? forward_and_lr_ops_ : forward_ops_;
   for (auto &op : forward_tmp) {
     VLOG(3) << "Forward: running op " << op->Type() << " for micro-batch "
             << micro_id;

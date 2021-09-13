@@ -601,8 +601,8 @@ class SectionWorker : public DeviceWorker {
   std::vector<std::string> backward_send_vars_;
 
   std::vector<std::unique_ptr<OperatorBase>> ops_;
-  std::vector<OperatorBase*> forward_first_ops_;
-  std::vector<OperatorBase*> forward_other_ops_;
+  std::vector<OperatorBase*> forward_and_lr_ops_;
+  std::vector<OperatorBase*> forward_ops_;
   std::vector<OperatorBase*> backward_ops_;
   std::vector<OperatorBase*> optimizer_ops_;
   std::shared_ptr<framework::ProgramDesc> program_;
