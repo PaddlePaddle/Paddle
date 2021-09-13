@@ -138,7 +138,7 @@ class TestClassCenterSampleV2(unittest.TestCase):
             label = paddle.static.data(
                 name='label', shape=[self.batch_size], dtype=self.dtype)
             remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(
-                label, self.num_classes, self.num_samples, seed=self.seed)
+                label, self.num_classes, self.num_samples)
 
             remapped_label_np, sampled_class_center_np = class_center_sample_numpy(
                 label_np, [self.num_classes], self.num_samples)
@@ -163,7 +163,7 @@ class TestClassCenterSampleV2(unittest.TestCase):
             label = paddle.to_tensor(label_np, dtype=self.dtype)
 
             remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(
-                label, self.num_classes, self.num_samples, seed=self.seed)
+                label, self.num_classes, self.num_samples)
 
             remapped_label_np, sampled_class_center_np = class_center_sample_numpy(
                 label_np, [self.num_classes], self.num_samples)
@@ -210,12 +210,40 @@ class TestClassCenterSampleAPIError(unittest.TestCase):
                     label = paddle.to_tensor(label_np)
 
                     remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(
-                        label,
-                        self.num_classes,
-                        self.num_samples,
-                        seed=self.seed)
+                        label, self.num_classes, self.num_samples)
 
         self.assertRaises(ValueError, test_num_samples)
+
+
+class TestClassCenterSampleAPIError1(unittest.TestCase):
+    def setUp(self):
+        self.initParams()
+        np.random.seed(self.seed)
+        self.places = [paddle.fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            self.places.append(paddle.fluid.CUDAPlace(0))
+
+    def initParams(self):
+        self.batch_size = 5
+        self.num_samples = 5
+        self.num_classes = 10
+        self.seed = 2021
+        self.init_dtype()
+
+    def init_dtype(self):
+        self.dtype = np.int64
+
+    def test_dynamic_errors(self):
+        def test_empty_label():
+            for place in self.places:
+                with paddle.fluid.dygraph.guard(place):
+                    label = paddle.to_tensor(np.array([], dtype=self.dtype))
+
+                    remapped_label, sampled_class_index = paddle.nn.functional.class_center_sample(
+                        label, self.num_classes, self.num_samples)
+                    print(remapped_label, sampled_class_index)
+
+        self.assertRaises(ValueError, test_empty_label)
 
 
 if __name__ == '__main__':
