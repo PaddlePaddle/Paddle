@@ -128,7 +128,7 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
   is_build_ = false;
 
   feed_names_ = feed_names;
-  
+
   std::vector<WorkQueueOptions> group_options(2);
   group_options[0].num_threads = 1;
   group_options[0].track_task = true;
@@ -452,7 +452,7 @@ void InterpreterCore::CheckGC(size_t instr_id,
     working_var_ref->at(var_id)->fetch_sub(1);
     if (var_scope.vec_meta_info_[var_id].vardesc_ &&
         !var_scope.vec_meta_info_[var_id].vardesc_->Persistable() &&
-        working_var_ref[var_id].var_ref_count_ == 0) {
+        working_var_ref->at(var_id)->load() == 0) {
       gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
               vec_instruction_[instr_id].dev_ctx_);
     }
