@@ -15,6 +15,7 @@
 import paddle
 import unittest
 from paddle.fluid import core
+from paddle.device import *
 
 
 class TestGetDeviceProperties(unittest.TestCase):
@@ -25,9 +26,10 @@ class TestGetDeviceProperties(unittest.TestCase):
             self.assertIsNotNone(props)
 
     def test_get_device_properties_CUDA(self):
-        device = core.CUDAPlace(0)
-        props = paddle.get_device_properties(device)
-        self.assertIsNotNone(props)
+        if is_compiled_with_cuda:
+            device = core.CUDAPlace(0)
+            props = paddle.get_device_properties(device)
+            self.assertIsNotNone(props)
 
 
 if __name__ == "__main__":

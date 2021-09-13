@@ -2254,7 +2254,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
-  std::vector<cudaDeviceProp> cuda_device_props;
   m.def("get_device_properties",
         [](int64_t device_id) -> cudaDeviceProp * {
           int64_t gpu_num = 0;
@@ -2267,7 +2266,7 @@ All parameter, weight, gradient are variables in Paddle.
                   "than the number of gpus. Please input appropriate device id "
                   "again!",
                   device_id, gpu_num));
-          static std::vector<cudaDeviceProp> cuda_device_props;
+          std::vector<cudaDeviceProp> cuda_device_props;
           cuda_device_props.resize(gpu_num);
           for (int i = 0; i < gpu_num; ++i) {
             PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -2275,7 +2274,7 @@ All parameter, weight, gradient are variables in Paddle.
           }
           return &cuda_device_props[device_id];
         },
-        py::return_value_policy::reference);
+        py::return_value_policy::copy);
 
   // This is copy the pytorch, only few changes, TO DO modify
   py::class_<cudaDeviceProp>(m, "_CudaDeviceProperties", R"DOC(
