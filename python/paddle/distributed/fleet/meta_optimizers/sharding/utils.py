@@ -526,7 +526,8 @@ def insert_reduce_ops(block,
     grad_in_this_device = []
     for var in reduce_vars:
         grad_var = var
-        if strategy.fuse_grad_merge:
+        if strategy and strategy.fuse_all_reduce_ops and \
+                strategy.fuse_grad_merge:
             # TODO(wangxi): if support fp16_allreduce, need be
             # 'FusedMergedGrad.cast_fp16._'
             grad_var = var.replace('FusedMergedGrad_', '')
