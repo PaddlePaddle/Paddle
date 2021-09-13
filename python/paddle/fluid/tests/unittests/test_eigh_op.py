@@ -23,6 +23,7 @@ from gradient_checker import grad_check
 
 class TestEighOp(OpTest):
     def setUp(self):
+        paddle.enable_static()
         self.op_type = "eigh"
         self.init_input()
         self.init_config()
@@ -30,6 +31,8 @@ class TestEighOp(OpTest):
         self.place = paddle.CUDAPlace(0) if paddle.is_compiled_with_cuda() \
             else paddle.CPUPlace()
         out_w, out_v = np.linalg.eigh(self.x_np, self.UPLO)
+        self.init_param()
+        out_v = out_v * self.param
         self.inputs = {"X": self.x_np}
         self.attrs = {"UPLO": self.UPLO}
         self.outputs = {'Eigenvalues': out_w, "Eigenvectors": out_v}
@@ -42,16 +45,46 @@ class TestEighOp(OpTest):
         self.x_type = np.float64
         self.x_np = np.random.random(self.x_shape).astype(self.x_type)
 
+    def init_param(self):
+        if (self.place == paddle.CPUPlace()):
+            self.param = np.ones(self.x_shape)
+            self.param[:, 0] = -1
+            self.param[:, 4] = -1
+            self.param[:, 8] = -1
+            self.param[:, 9] = -1
+        else:
+            self.param = np.ones(self.x_shape)
+
     def test_check_output(self):
-        self.check_output()
+        self.check_output_with_place(place=self.place)
 
     def test_grad(self):
         self.check_grad(["X"], ["Eigenvalues"])
 
 
 class TestEighUPLOCase(TestEighOp):
+    def init_param(self):
+        if (self.place == paddle.CPUPlace()):
+            self.param = np.ones(self.x_shape)
+            self.param[:, 3] = -1
+            self.param[:, 4] = -1
+            self.param[:, 6] = -1
+            self.param[:, 7] = -1
+        else:
+            self.param = np.ones(self.x_shape)
+
     def init_config(self):
         self.UPLO = 'U'
+
+
+class TestEighGPUCase(unittest.TestCase):
+    def setUp(self):
+        self.x_shape = [32, 32]
+        self.dtype = "float32"
+        np.random.seed(123)
+        self.x_np = np.random.random(self.x_shape).astype(self.dtype)
+        self.rtol = 1e-5
+        self.atol = 1e-5
 
 
 class TestEighGPUCase(unittest.TestCase):
@@ -197,5 +230,4 @@ class TestEighAPIError(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()

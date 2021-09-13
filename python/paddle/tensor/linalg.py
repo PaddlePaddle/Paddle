@@ -1187,10 +1187,9 @@ def eigh(x, UPLO='L', name=None):
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tuple of 2 tensors: (out_value, out_vector). out_value is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
 
-        out_value(Tensor):  A Tensor with shape [*, N]. The eigenvalues  of eigh op.
-        out_vector(Tensor): A Tensor with shape [*, N, N]. The eigenvectors  of eigh op.
+        out_value(Tensor):  A Tensor with shape [*, N] and data type of float32 and float64. The eigenvalues of eigh op.
+        out_vector(Tensor): A Tensor with shape [*, N, N] and data type of float32,float64,complex64 and complex128. The eigenvectors of eigh op.
 
     Examples:
         .. code-block:: python
