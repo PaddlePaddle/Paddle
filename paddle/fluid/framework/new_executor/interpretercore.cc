@@ -12,15 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-
-#if !defined(_WIN32)
-#include <sched.h>
-#else
-#define NOMINMAX
-#include <windows.h>
-#endif  // !_WIN32
-
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 
@@ -136,21 +127,14 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
       h2d_ctx_pool_({place}) {
   is_build_ = false;
 
-  garbages_.reset(new GarbageQueue());
-  max_memory_size_ = static_cast<size_t>(GetEagerDeletionThreshold());
-  cur_memory_size_ = 0;
-  WorkQueueOptions options;
-  options.num_threads = 1;
-  gc_queue_ = CreateSingleThreadedWorkQueue(options);
-
+  feed_names_ = feed_names;
+  
   std::vector<WorkQueueOptions> group_options(2);
   group_options[0].num_threads = 1;
   group_options[0].track_task = true;
   group_options[1].num_threads = 4;
   group_options[1].track_task = true;
   group_thread_pool_ = CreateWorkQueueGroup(group_options);
-
-  feed_names_ = feed_names;
 
   // Step1: add feedop and fetchop to main_program
   AddFetch(fetch_names);
@@ -276,8 +260,6 @@ void InterpreterCore::Convert() {
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    gc_event_.emplace_back(place_, platform::GenerateDeviceEventFlag());
-
     std::vector<size_t> vec_temp;
     for (auto& item : vec_instruction_[i].output_index_) {
       for (auto id : item.second) {
@@ -308,6 +290,11 @@ void InterpreterCore::Convert() {
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     BuildAndCacheInstructionCtx(&vec_instruction_[i], *global_scope_, place_);
+  }
+
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    gc_event_.emplace_back(vec_instruction_[i].execution_ctx_.get()->GetPlace(),
+                           platform::GenerateDeviceEventFlag());
   }
 }
 
@@ -460,82 +447,14 @@ void InterpreterCore::CheckGC(size_t instr_id,
                               const std::vector<size_t>& gc_check_list,
                               AtomicVectorSizeT* working_var_ref) {
   auto& var_scope = *global_scope_;
-  // NOTE(Aurelius84): std::deque is not thread-safe
-  std::lock_guard<memory::SpinLock> guard(spinlock_);
 
   for (auto var_id : gc_check_list) {
     working_var_ref->at(var_id)->fetch_sub(1);
     if (var_scope.vec_meta_info_[var_id].vardesc_ &&
         !var_scope.vec_meta_info_[var_id].vardesc_->Persistable() &&
-        working_var_ref->at(var_id)->load() == 0) {
-      Variable* var = var_scope.var_list[var_id];
-      VLOG(3) << "start to GC " << var_id;
-      if (var->IsType<LoDTensor>()) {
-        garbages_->emplace_back(
-            var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-        if (garbages_->back()) {
-          cur_memory_size_ += garbages_->back()->size();
-        }
-      } else if (var->IsType<SelectedRows>()) {
-        garbages_->emplace_back(var->GetMutable<SelectedRows>()
-                                    ->mutable_value()
-                                    ->MoveMemoryHolder());
-        if (garbages_->back()) {
-          cur_memory_size_ += garbages_->back()->size();
-        }
-      } else if (var->IsType<LoDTensorArray>()) {
-        auto* tensor_arr = var->GetMutable<LoDTensorArray>();
-        for (auto& t : *tensor_arr) {
-          garbages_->emplace_back(t.MoveMemoryHolder());
-          if (garbages_->back()) {
-            cur_memory_size_ += garbages_->back()->size();
-          }
-        }
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "The variable(%s) is not supported in eager deletion.",
-            framework::ToTypeName(var->Type())));
-      }
-      VLOG(3) << "end to GC " << var_id;
-    }
-  }
-
-  if (!garbages_->empty()) {
-    if (max_memory_size_ <= 1) {
-      gc_event_[instr_id].Record(
-          platform::DeviceContextPool::Instance().Get(place_));
-      gc_event_[instr_id].SetFininshed();  // Only for CPU Event
-      gc_queue_->AddTask(
-          [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
-            while (!event->Query()) {
-#if defined(_WIN32)
-              SleepEx(50, FALSE);
-#else
-              sched_yield();
-#endif
-              continue;
-            }
-            delete container;
-          });
-      garbages_.reset(new GarbageQueue());
-    } else if (cur_memory_size_ >= max_memory_size_) {
-      gc_event_[instr_id].Record(
-          platform::DeviceContextPool::Instance().Get(place_));
-      gc_event_[instr_id].SetFininshed();  // Only for CPU Event
-      gc_queue_->AddTask(
-          [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
-            while (!event->Query()) {
-#if defined(_WIN32)
-              SleepEx(50, FALSE);
-#else
-              sched_yield();
-#endif
-              continue;
-            }
-            delete container;
-          });
-      garbages_.reset(new GarbageQueue());
-      cur_memory_size_ = 0;
+        working_var_ref[var_id].var_ref_count_ == 0) {
+      gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
+              vec_instruction_[instr_id].dev_ctx_);
     }
   }
 }

@@ -19,6 +19,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
+#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
 #include "paddle/fluid/framework/new_executor/workqueue.h"
@@ -34,7 +36,6 @@ using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
 
 class InterpreterCore {
  public:
-  using GarbageQueue = std::deque<std::shared_ptr<memory::Allocation>>;
   InterpreterCore(const platform::Place& place, const ProgramDesc& main_prog,
                   VariableScope* global_scope,
                   const std::vector<std::string>& feed_names,
@@ -105,14 +106,9 @@ class InterpreterCore {
 
   std::map<size_t, std::shared_ptr<platform::DeviceEvent>> var_id2event_;
 
+  InterpreterCoreGarbageCollector gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;
-  std::unique_ptr<GarbageQueue> garbages_;
-  size_t max_memory_size_;
-  size_t cur_memory_size_;
-  std::unique_ptr<WorkQueue> gc_queue_;
   std::unique_ptr<WorkQueueGroup> group_thread_pool_;
-
-  memory::SpinLock spinlock_;  // for gc with multi-thread
 };
 }  // namespace framework
 }  // namespace paddle
