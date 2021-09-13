@@ -83,9 +83,6 @@ void BindCudaStream(py::module *m_ptr) {
         priority(int|None, optional): The priority of stream. The priority can be 1(high) or 2(normal).
         If priority is None, the priority is 2(normal). Default: None. 
 
-        flag(int|None, optional): The blocking flag of stream. The flag currently can be 0(blocking) or 1(nonblocking). 
-        If flag is None, the flag is 1(nonblocking). Default: None. 
-
       Examples:
         .. code-block:: python
 
@@ -208,14 +205,14 @@ void BindCudaStream(py::module *m_ptr) {
 #endif
       .def("__init__",
            [](paddle::platform::stream::CUDAStream &self,
-              platform::CUDAPlace *device, int priority, int flag) {
+              platform::CUDAPlace *device, int priority) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
              if (priority != 1 && priority != 2) {
                PADDLE_THROW(platform::errors::InvalidArgument(
                    "Priority should be 1(high) or 2(normal) "));
              }
              auto prio = paddle::platform::stream::Priority(priority);
-             auto stream_flag = paddle::platform::stream::StreamFlag(flag);
+             auto stream_flag = paddle::platform::stream::StreamFlag(1);
 
              if (device == nullptr) {
                int curr_device_id = platform::GetCurrentDeviceId();
@@ -230,19 +227,18 @@ void BindCudaStream(py::module *m_ptr) {
         "Class CUDAStream can only be initialized on the GPU platform."));
 #endif
            },
-           py::arg("device") = nullptr, py::arg("priority") = 2,
-           py::arg("flag") = 1)
+           py::arg("device") = nullptr, py::arg("priority") = 2)
       .def(
           "__init__",
           [](paddle::platform::stream::CUDAStream &self, int device,
-             int priority, int flag) {
+             int priority) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
             if (priority != 1 && priority != 2) {
               PADDLE_THROW(platform::errors::InvalidArgument(
                   "Priority should be 1(high) or 2(normal) "));
             }
             auto prio = paddle::platform::stream::Priority(priority);
-            auto stream_flag = paddle::platform::stream::StreamFlag(flag);
+            auto stream_flag = paddle::platform::stream::StreamFlag(1);
 
             int device_count = platform::GetCUDADeviceCount();
             if (device < 0) {
@@ -261,7 +257,7 @@ void BindCudaStream(py::module *m_ptr) {
         "Class CUDAStream can only be initialized on the GPU platform."));
 #endif
           },
-          py::arg("device") = -1, py::arg("priority") = 2, py::arg("flag") = 1)
+          py::arg("device") = -1, py::arg("priority") = 2)
       .def("__init__", [](paddle::platform::stream::CUDAStream &self) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         auto prio = paddle::platform::stream::Priority::kNormal;

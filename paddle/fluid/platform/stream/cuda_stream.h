@@ -37,7 +37,6 @@ enum class Priority : uint8_t {
 enum class StreamFlag : uint8_t {
   kDefaultFlag = 0x0,
   kStreamNonBlocking = 0x1,
-  kStreamPerThread = 0x2,
 };
 
 #endif
