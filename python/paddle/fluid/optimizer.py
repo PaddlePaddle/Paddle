@@ -3960,12 +3960,12 @@ class ExponentialMovingAverage(object):
 
     Args:
 	decay (float, optional): The exponential decay rate, usually close to 1, such as 
-            0.999, 0.9999, ... . Default 0.999.
-        thres_steps (Variable|None): If not `None`, schedule the decay rate. 
-            Default None.
-        name (str|None): For detailed information, please refer to 
-            :ref:`api_guide_Name`. Usually name is no need to set and None by 
-            default.
+        0.999, 0.9999, ... . Default 0.999.
+    thres_steps (Variable|None, optional): If not `None`, schedule the decay rate. 
+        Default None.
+    name (str|None, optional): For detailed information, please refer to 
+        :ref:`api_guide_Name`. Usually name is no need to set and None by 
+        default.
 
 
     Examples:
@@ -3973,48 +3973,49 @@ class ExponentialMovingAverage(object):
 	.. code-block:: python
 
 	    import numpy
-	    import paddle
-	    import paddle.fluid as fluid
+        import paddle
+        import paddle.static as static
+        from paddle.optimizer.ema import ExponentialMovingAverage
 
-	    data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
-	    hidden = fluid.layers.fc(input=data, size=10)
-	    cost = fluid.layers.mean(hidden)
+        paddle.enable_static()
 
-	    test_program = fluid.default_main_program().clone(for_test=True)
+        data = static.data(name='x', shape=[-1, 5], dtype='float32')
+        hidden = static.nn.fc(x=data, size=10)
+        cost = paddle.mean(hidden)
 
-	    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-	    optimizer.minimize(cost)
+        test_program = static.default_main_program().clone(for_test=True)
+        optimizer = paddle.optimizer.Adam(learning_rate=0.001)
+        optimizer.minimize(cost)
 
-	    global_steps = fluid.layers.autoincreased_step_counter()
-	    ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
-	    ema.update()
+        ema = ExponentialMovingAverage(0.999)
+        ema.update()
 
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
+        place = paddle.CPUPlace()
+        exe = static.Executor(place)
+        exe.run(static.default_startup_program())
 
-	    for pass_id in range(3):
-		for batch_id in range(6):
-		    data = numpy.random.random(size=(10, 5)).astype('float32')
-		    exe.run(program=fluid.default_main_program(),
-			feed={'x': data}, 
-			fetch_list=[cost.name])
+        for pass_id in range(3):
+            for batch_id in range(6):
+                data = numpy.random.random(size=(10, 5)).astype('float32')
+                exe.run(program=static.default_main_program(),
+                feed={'x': data}, 
+                fetch_list=[cost.name])
 
-		# usage 1
-		with ema.apply(exe):
-		    data = numpy.random.random(size=(10, 5)).astype('float32')
-		    exe.run(program=test_program,
-			    feed={'x': data}, 
-			    fetch_list=[hidden.name])
-			    
+            # usage 1
+            with ema.apply(exe):
+                data = numpy.random.random(size=(10, 5)).astype('float32')
+                exe.run(program=test_program,
+                    feed={'x': data}, 
+                    fetch_list=[hidden.name])
 
-		 # usage 2
-		with ema.apply(exe, need_restore=False):
-		    data = numpy.random.random(size=(10, 5)).astype('float32')
-		    exe.run(program=test_program,
-			    feed={'x': data}, 
-			    fetch_list=[hidden.name])
-		ema.restore(exe)
+                # usage 2
+            with ema.apply(exe, need_restore=False):
+                data = numpy.random.random(size=(10, 5)).astype('float32')
+                exe.run(program=test_program,
+                    feed={'x': data}, 
+                    fetch_list=[hidden.name])
+            ema.restore(exe)
+
     """
 
     def __init__(self, decay=0.999, thres_steps=None, name=None):

@@ -17,14 +17,13 @@ from __future__ import print_function
 import unittest
 import numpy as np
 import paddle
-import paddle.fluid as fluid
+import paddle.utils as utils
 import paddle.static as static
 from paddle.distributed import fleet
-from paddle.optimizer.ema import EMA
 
 
 def gen_data():
-    return {'x': np.random.random(size=(10, 5)).astype('float32')}
+    return np.random.random(size=(10, 5)).astype('float32')
 
 
 class TestParallelExecutorEMA(unittest.TestCase):
@@ -41,49 +40,43 @@ class TestParallelExecutorEMA(unittest.TestCase):
         fleet.init(is_collective=True, strategy=strategy)
 
         with static.program_guard(self._train_program, self._startup_prog):
-            with paddle.utils.unique_name.guard():
+            with utils.unique_name.guard():
                 data = static.data(name='x', shape=[-1, 5], dtype='float32')
                 hidden = static.nn.fc(x=data,
                                       size=10,
                                       weight_attr=self._param_name)
                 cost = paddle.mean(hidden)
-                self._cost = cost
-                optimizer = paddle.optimizer.Adam(learning_rate=0.001)
-                optimizer.minimize(cost)
 
                 self._test_program = static.default_main_program().clone(
                     for_test=True)
-                self._ema = EMA(self._ema_decay)
+
+                optimizer = paddle.optimizer.Adam(learning_rate=0.001)
+                # optimizer = fleet.distributed_optimizer(optimizer, strategy)
+                optimizer.minimize(cost)
+
+                self._ema = static.ExponentialMovingAverage(self._ema_decay)
                 self._ema.update()
 
     def train(self, place):
         exe = static.Executor(place)
         exe.run(self._startup_prog)
 
-        use_cuda = False if place is paddle.CPUPlace else True
-        train_exe = static.ParallelExecutor(
-            use_cuda=use_cuda,
-            main_program=self._train_program,
-            loss_name=self._cost.name)
-        test_exe = static.ParallelExecutor(
-            use_cuda=use_cuda,
-            main_program=self._test_program,
-            share_vars_from=train_exe)
-
-        fetch_list = [self._cost.name]
-
         params = []
         for pass_id in range(2):
             for batch_id in range(3):
-                train_exe.run(feed=gen_data(), fetch_list=fetch_list)
+                tmp_param = np.array(static.global_scope().find_var(
+                    self._param_name).get_tensor())
+                exe.run(program=self._train_program, feed={'x': gen_data()})
                 tmp_param = np.array(static.global_scope().find_var(
                     self._param_name).get_tensor())
                 params.append(tmp_param)
-        with self._ema.apply(exe, gen_data(), fetch_list):
             final_ema = np.array(static.global_scope().find_var(
                 self._param_name).get_tensor())
-            test_exe.run(feed=gen_data(), fetch_list=fetch_list)
 
+        with self._ema.apply(exe):
+            final_ema = np.array(static.global_scope().find_var(
+                self._param_name).get_tensor())
+            exe.run(program=self._test_program, feed={'x': gen_data()})
         return params, final_ema
 
     def test_check_ema(self):
@@ -95,9 +88,6 @@ class TestParallelExecutorEMA(unittest.TestCase):
                     manu_ema = self._ema_decay * manu_ema + (1 - self._ema_decay
                                                              ) * param
                 manu_ema = manu_ema / (1.0 - self._ema_decay**len(params))
-            # print("\n======== ", place, " =========")
-            # print("\nmanu_ema : ", manu_ema)
-            # print("\nfinal_ema : ", final_ema)
             self.assertTrue(np.allclose(manu_ema, final_ema))
 
 
