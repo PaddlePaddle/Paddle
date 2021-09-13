@@ -152,5 +152,20 @@ class TestGroupNormAPIV2_With_General_Dimensions(unittest.TestCase):
                 self.assertTrue(np.allclose(result2, expect_res2, atol=1e-5))
 
 
+class TestGroupNormDimException(unittest.TestCase):
+    def test_exception(self):
+        def test_empty_input_static_API():
+            x = paddle.to_tensor([], dtype='float32')
+            paddle.static.nn.group_norm(x, 3)
+
+        self.assertRaises(ValueError, test_empty_input_static_API)
+
+        def test_one_dim_input_static_API():
+            x = paddle.randn((3, ), dtype='float32')
+            paddle.static.nn.group_norm(x, 3)
+
+        self.assertRaises(ValueError, test_one_dim_input_static_API)
+
+
 if __name__ == '__main__':
     unittest.main()

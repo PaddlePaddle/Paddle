@@ -1960,7 +1960,11 @@ void BindImperative(py::module *m_ptr) {
       .def_property_readonly("type", &imperative::VarBase::Type)
       .def_property_readonly("dtype", &imperative::VarBase::DataType);
 
-  py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(m, "Layer");
+  // NOTE(zhiqiu): set the metaclass of Layer.
+  // See details: https://github.com/pybind/pybind11/pull/679
+  // https://github.com/pybind/pybind11/blob/028812ae7eee307dca5f8f69d467af7b92cc41c8/tests/test_methods_and_attributes.cpp#L284
+  py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(
+      m, "Layer", py::metaclass((PyObject *)&PyType_Type));  // NOLINT
   layer.def(py::init<>())
       .def("forward",
            [](imperative::Layer &self,
