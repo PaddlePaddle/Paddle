@@ -202,7 +202,7 @@ class ImperativeQuantAware(object):
 
         self._quantize_inputs = ImperativeQuantizeInputs(**kwargs)
 
-        self._quantize_outputs = ImperativeQuantizeOutputs()
+        self._quantize_outputs = ImperativeQuantizeOutputs(moving_rate)
 
     def quantize(self, model):
         """
@@ -413,6 +413,8 @@ class ImperativeQuantizeOutputs(object):
             "The model must be the instance of dygraph.Layer."
 
         for cur_name, cur_layer in model.named_sublayers():
+            if '_act_preprocess' in cur_name:
+                continue
             if not self._is_target_layer(cur_layer):
                 continue
 
@@ -546,6 +548,7 @@ class ImperativeQuantizeOutputs(object):
                             op, in_var_name)
                         op._set_attr(argname + str(index) + "_threshold",
                                      in_scale)
+                        op._set_attr("with_quant_attr", True)
 
         def _gather_output_scale():
             target_ops = []
@@ -566,11 +569,13 @@ class ImperativeQuantizeOutputs(object):
                 out_scale = utils.fp_numpy_to_naive(out_scale)
 
                 if previous_op.type != "feed":
-                    argname, index = utils._get_output_name_index(previous_op,
-                                                                  in_var_name)
-                    previous_op._set_attr(argname + str(index) + "_threshold",
-                                          out_scale)
-                    previous_op._set_attr("out_threshold", out_scale)
+                    res = utils._get_output_name_index(previous_op, in_var_name)
+                    if res is not None:
+                        argname, index = res
+                        previous_op._set_attr(
+                            argname + str(index) + "_threshold", out_scale)
+                        previous_op._set_attr("out_threshold", out_scale)
+                        previous_op._set_attr("with_quant_attr", True)
 
                 for next_op in next_ops:
                     next_op._rename_input(out_var_name, in_var_name)
@@ -586,6 +591,7 @@ class ImperativeQuantizeOutputs(object):
             for op in block.ops:
                 if self._is_skip_quant_op(block, op):
                     op._set_attr("skip_quant", True)
+                    op._set_attr("with_quant_attr", True)
 
     def _is_skip_quant_op(self, block, in_op):
         """

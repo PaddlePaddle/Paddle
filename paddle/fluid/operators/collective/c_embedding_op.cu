@@ -105,6 +105,9 @@ class CEmbeddingCUDAKernel : public framework::OpKernel<T> {
       CEmbedding<T, int64_t><<<blocks, threads, 0, dev_ctx.stream()>>>(
           output, table, ids_t->data<int64_t>(), K, D, N, start_idx, end_idx,
           limit);
+    } else {
+      PADDLE_THROW(platform::errors::Unavailable(
+          "GPU c_embedding ids only support int32 or int64."));
     }
   }
 };

@@ -29,6 +29,8 @@ using XPUOpMap = std::unordered_map<std::string, XPUKernelSet>;
 XPUOpMap& get_kl2_ops() {
   // KL1支持的op，通过op_name, data_type, place来索引
   static XPUOpMap s_xpu2_kernels{
+      {"label_smooth",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
       {"mul", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                             pOpKernelType(vartype::FP16, XPUPlace())})},
       {"elementwise_sub",
@@ -73,6 +75,39 @@ XPUOpMap& get_kl2_ops() {
       {"elementwise_min_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"momentum", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"batch_norm", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"batch_norm_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"layer_norm", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                                   pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"layer_norm_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"mean", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                             pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"mean_grad", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                                  pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"adam", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"adamw", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"softmax_with_cross_entropy",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"softmax_with_cross_entropy_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"sum", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                            pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"transpose", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                                  pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"transpose_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"transpose2", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                                   pOpKernelType(vartype::FP16, XPUPlace())})},
+      {"transpose2_grad",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
+                     pOpKernelType(vartype::FP16, XPUPlace())})},
+
       // AddMore
   };
 
