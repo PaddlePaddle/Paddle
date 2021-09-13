@@ -444,7 +444,7 @@ class Trainer(object):
     def __ne__(self, t):
         return not self == t
 
-    def rank(self):
+    def get_rank(self):
         return self.rank
 
 
