@@ -83,58 +83,52 @@ static Tensor FoldFirstAndLastDims(const MKLDNNDeviceContext& dev_ctx,
 
 template <typename T>
 class MatMulMKLDNNHandler
-    : public paddle::platform::MKLDNNHandlerT<T, dnnl::matmul> {
+    : public paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul> {
  public:
-  MatMulMKLDNNHandler(const MKLDNNDeviceContext& dev_ctx,
-                      const mkldnn::engine engine,
+  MatMulMKLDNNHandler(const mkldnn::engine engine,
                       paddle::platform::Place cpu_place, Tensor* x,
                       bool trans_x, Tensor* y, bool trans_y, Tensor* out,
-                      float scale, const std::string& uniq_name)
-      : paddle::platform::MKLDNNHandlerT<T, dnnl::matmul>(
-            dev_ctx, engine, cpu_place,
-            paddle::platform::CreateKey(dev_ctx, vectorize(x->dims()),
-                                        uniq_name)) {
-    if (!this->isCached()) {
-      auto mat_dim_x = paddle::operators::math::CreateMatrixDescriptor(
-          x->dims(), 0, trans_x);
-      auto mat_dim_y = paddle::operators::math::CreateMatrixDescriptor(
-          y->dims(), 0, trans_y);
+                      float scale)
+      : paddle::platform::MKLDNNHandlerNoCachingT<T, dnnl::matmul>(engine,
+                                                                   cpu_place) {
+    auto mat_dim_x =
+        paddle::operators::math::CreateMatrixDescriptor(x->dims(), 0, trans_x);
+    auto mat_dim_y =
+        paddle::operators::math::CreateMatrixDescriptor(y->dims(), 0, trans_y);
 
-      memory::dim x_bs = mat_dim_x.batch_size_;
-      memory::dim y_bs = mat_dim_y.batch_size_;
+    memory::dim x_bs = mat_dim_x.batch_size_;
+    memory::dim y_bs = mat_dim_y.batch_size_;
 
-      memory::dim out_bs = x_bs || y_bs ? std::max(x_bs, y_bs) : 1;
-      const memory::dim M = mat_dim_x.height_;
-      const memory::dim N = mat_dim_y.width_;
-      const memory::dim K = mat_dim_x.width_;
+    memory::dim out_bs = x_bs || y_bs ? std::max(x_bs, y_bs) : 1;
+    const memory::dim M = mat_dim_x.height_;
+    const memory::dim N = mat_dim_y.width_;
+    const memory::dim K = mat_dim_x.width_;
 
-      memory::dims x_dims = {x_bs > 0 ? x_bs : 1, M, K};
-      memory::dims y_dims = {y_bs > 0 ? y_bs : 1, K, N};
-      memory::dims out_dims = {out_bs, M, N};
+    memory::dims x_dims = {x_bs > 0 ? x_bs : 1, M, K};
+    memory::dims y_dims = {y_bs > 0 ? y_bs : 1, K, N};
+    memory::dims out_dims = {out_bs, M, N};
 
-      memory::dims x_strides =
-          !trans_x ? memory::dims{M * K, K, 1} : memory::dims{M * K, 1, M};
+    memory::dims x_strides =
+        !trans_x ? memory::dims{M * K, K, 1} : memory::dims{M * K, 1, M};
 
-      memory::dims y_strides =
-          !trans_y ? memory::dims{N * K, N, 1} : memory::dims{N * K, 1, K};
-      memory::dims out_strides = memory::dims{M * N, N, 1};
+    memory::dims y_strides =
+        !trans_y ? memory::dims{N * K, N, 1} : memory::dims{N * K, 1, K};
+    memory::dims out_strides = memory::dims{M * N, N, 1};
 
-      auto x_md = memory::desc(x_dims, MKLDNNGetDataType<T>(), x_strides);
-      auto y_md = memory::desc(y_dims, MKLDNNGetDataType<T>(), y_strides);
-      auto out_md = memory::desc(out_dims, MKLDNNGetDataType<T>(), out_strides);
+    auto x_md = memory::desc(x_dims, MKLDNNGetDataType<T>(), x_strides);
+    auto y_md = memory::desc(y_dims, MKLDNNGetDataType<T>(), y_strides);
+    auto out_md = memory::desc(out_dims, MKLDNNGetDataType<T>(), out_strides);
 
-      dnnl::primitive_attr attrs;
-      if (scale != 1.0f) attrs.set_output_scales(0, {scale});
+    dnnl::primitive_attr attrs;
+    if (scale != 1.0f) attrs.set_output_scales(0, {scale});
 
-      this->AcquireForwardPrimitiveDescriptor(attrs, x_md, y_md, out_md);
-    }
+    this->AcquireForwardPrimitiveDescriptor(attrs, x_md, y_md, out_md);
   }
 
   std::shared_ptr<memory> AcquireWeightsMemory(const Tensor* input) {
     const T* input_data = input->data<T>();
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->weights_desc(),
-                                            to_void_cast<T>(input_data),
-                                            "@weights_mem_p");
+                                            to_void_cast<T>(input_data));
   }
 };
 
@@ -565,7 +559,7 @@ void MatMulGradMKLDNNKernel<T>::ExecuteMatMulGrad(
     const ExecutionContext& ctx, const MKLDNNDeviceContext& dev_ctx,
     const mkldnn::engine& engine, Tensor* x, bool trans_x,
     bool is_fold_init_dims_x, Tensor* y, bool trans_y, bool is_fold_init_dims_y,
-    Tensor* out, int execution_number) const {
+    Tensor* out) const {
   // gradient is calculated in a different way when broadcasting is used
   bool need_combine = (x->dims().size() == 3 || y->dims().size() == 3) &&
                       out->dims().size() == 2;
@@ -583,10 +577,8 @@ void MatMulGradMKLDNNKernel<T>::ExecuteMatMulGrad(
 
   float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 1.0f;
 
-  MatMulMKLDNNHandler<T> handler(dev_ctx, engine, ctx.GetPlace(), &x_combined,
-                                 trans_x, &y_combined, trans_y, out, alpha,
-                                 ctx.InputName(framework::GradVarName("Out")) +
-                                     std::to_string(execution_number));
+  MatMulMKLDNNHandler<T> handler(engine, ctx.GetPlace(), &x_combined, trans_x,
+                                 &y_combined, trans_y, out, alpha);
 
   const auto src_memory_p = handler.AcquireSrcMemory(&x_combined);
   const auto weights_memory_p = handler.AcquireWeightsMemory(&y_combined);
@@ -645,24 +637,24 @@ void MatMulGradMKLDNNKernel<T>::RunKernel(const ExecutionContext& ctx) const {
 
   if (transpose_x && transpose_y) {
     this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &y, true, true, &dout,
-                            true, false, dx, 0);
+                            true, false, dx);
     this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &dout, true, true, &x,
-                            true, false, dy, 1);
+                            true, false, dy);
   } else if (transpose_x) {
     this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &y, false, false,
-                            &dout, true, false, dx, 0);
+                            &dout, true, false, dx);
     this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &x, false, false,
-                            &dout, false, true, dy, 1);
+                            &dout, false, true, dy);
   } else if (transpose_y) {
     this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &dout, false, false,
-                            &y, false, true, dx, 0);
+                            &y, false, true, dx);
     this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &dout, true, true, &x,
-                            false, true, dy, 1);
+                            false, true, dy);
   } else {
     this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &dout, false, false,
-                            &y, true, false, dx, 0);
+                            &y, true, false, dx);
     this->ExecuteMatMulGrad(ctx, dev_ctx, onednn_engine, &x, true, true, &dout,
-                            false, true, dy, 1);
+                            false, true, dy);
   }
 
   if (dx) {

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 /*************************************************************************
-  > File Name: new_exec_util.h
+  > File Name: interpretercore_util.h
   > Author: guanshanshan@baidu.com
   > Created Time: Fri 23 Jul 2021 06:19:19 AM UTC
  ************************************************************************/
