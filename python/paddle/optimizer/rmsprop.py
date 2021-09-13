@@ -71,9 +71,9 @@ class RMSProp(Optimizer):
     Parameters:
         learning_rate (float|LRScheduler): The learning rate used to update ``Parameter``.
           It can be a float value or a LRScheduler.
-        rho(float): rho is :math:`\rho` in equation, default is 0.95.
+        rho(float): rho is :math:`\rho` in equation, default is 0.99.
         epsilon(float): :math:`\epsilon` in equation is smoothing term to
-          avoid division by zero, default is 1e-6.
+          avoid division by zero, default is 1e-8.
         momentum(float): :math:`\beta` in equation is the momentum term,
           default is 0.0.
         centered(bool): If True, gradients are normalized by the estimated variance of
@@ -148,8 +148,8 @@ class RMSProp(Optimizer):
 
     def __init__(self,
                  learning_rate,
-                 rho=0.95,
-                 epsilon=1.0e-6,
+                 rho=0.99,
+                 epsilon=1.0e-8,
                  momentum=0.0,
                  centered=False,
                  parameters=None,
