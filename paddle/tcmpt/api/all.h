@@ -19,3 +19,5 @@ limitations under the License. */
 #include "paddle/tcmpt/api/include/dev/math.h"
 
 // user apis
+#include "paddle/tcmpt/api/include/math.h"
+#include "paddle/tcmpt/api/include/tensor.h"

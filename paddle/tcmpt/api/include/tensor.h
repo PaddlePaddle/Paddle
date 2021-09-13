@@ -45,10 +45,10 @@ namespace pt {
 
 class Tensor;
 
-class AbstractAutogradMeta {
+class AutogradMetaInterface {
  public:
-  // No AbstractAutogradMeta should be created
-  virtual ~AbstractAutogradMeta() {}
+  // No AutogradMetaInterface should be created
+  virtual ~AutogradMetaInterface() {}
 };
 
 /**
@@ -166,6 +166,13 @@ class Tensor final {
    */
   std::shared_ptr<TensorInterface> impl() const { return impl_; }
 
+  /**
+   * @description: Set the implemention of current Tensor.
+   * @param {std::shared_ptr<TensorInterface>}
+   * @return None
+   */
+  void set_impl(const std::shared_ptr<TensorInterface>& impl) { impl_ = impl; }
+
   // Whether API Tensor need `data` and `mutable_data`?
 
   // TODO(chenweihang): slice and split methods use kernels?
@@ -195,18 +202,33 @@ class Tensor final {
   /* Part 6: Operator overloading */
   Tensor& operator=(const Tensor& x) & {
     impl_ = x.impl_;
+    autograd_meta_ = x.autograd_meta_;
     return *this;
   }
   Tensor& operator=(Tensor&& x) & {
     impl_ = std::move(x.impl_);
+    autograd_meta_ = std::move(x.autograd_meta_);
     return *this;
   }
   // TODO(chenweihang): impl later
-  Tensor& operator=(const Tensor&) &&;
-  Tensor& operator=(Tensor&&) &&;
+  // Tensor& operator=(const Tensor&) &&;
+  // Tensor& operator=(Tensor&&) &&;
 
   /* Part 7: Autograd methods */
   // TODO(yangjiabin): Design autograd methods
+  void SetAutoGradMeta(
+      const std::shared_ptr<AutogradMetaInterface>& auto_grad_meta) {
+    // Copy this shared_ptr
+    autograd_meta_ = auto_grad_meta;
+  }
+
+  AutogradMetaInterface* get_autograd_meta() const {
+    return autograd_meta_.get();
+  }
+
+  void set_autograd_meta(std::shared_ptr<AutogradMetaInterface> autograd_meta) {
+    autograd_meta_ = std::move(autograd_meta);
+  }
 
   /* Part 8: Auto generated Tensor methods */
   // ...
@@ -243,7 +265,7 @@ class Tensor final {
    *    information, not Tensor data description-related information.
    * 2. Kernel calculation does not require AutogradMeta.
    */
-  std::unique_ptr<AutogradMetaInterface> autograd_meta_ = nullptr;
+  std::shared_ptr<AutogradMetaInterface> autograd_meta_ = nullptr;
 };
 
 }  // namespace pt

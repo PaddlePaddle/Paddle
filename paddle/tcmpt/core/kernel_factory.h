@@ -52,18 +52,13 @@ class KernelName final {
                   (std::hash<std::string>()(overload_name_) << 1);
   }
 
+  KernelName(const std::string& kernel_name) {
+    ParseNameAndOverloadNameFromString(kernel_name);
+  }
+
   KernelName(const char* kernel_name) {
     std::string kernel_name_str(kernel_name);
-    size_t pos = kernel_name_str.find_first_of('.');
-    if (pos == std::string::npos) {
-      name_ = kernel_name_str;
-      overload_name_ = "";
-    } else {
-      name_ = kernel_name_str.substr(0, pos);
-      overload_name_ = kernel_name_str.substr(pos + 1, kernel_name_str.size());
-    }
-    hash_value_ = std::hash<std::string>()(name_) ^
-                  (std::hash<std::string>()(overload_name_) << 1);
+    ParseNameAndOverloadNameFromString(kernel_name_str);
   }
 
   const std::string& name() const { return name_; }
@@ -89,6 +84,19 @@ class KernelName final {
   }
 
  private:
+  void ParseNameAndOverloadNameFromString(const std::string& kernel_name) {
+    size_t pos = kernel_name.find_first_of('.');
+    if (pos == std::string::npos) {
+      name_ = kernel_name;
+      overload_name_ = "";
+    } else {
+      name_ = kernel_name.substr(0, pos);
+      overload_name_ = kernel_name.substr(pos + 1, kernel_name.size());
+    }
+    hash_value_ = std::hash<std::string>()(name_) ^
+                  (std::hash<std::string>()(overload_name_) << 1);
+  }
+
   // The members cannot be modified except by constructing,
   // because the hash value need to be re calculated
   // TODO(chenweihang): use string_view later?

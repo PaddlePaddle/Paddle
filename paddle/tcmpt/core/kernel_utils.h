@@ -25,7 +25,7 @@
 
 namespace pt {
 
-// TODO(chenweihang): replaced by new DeviceContext later
+// TODO(shixiaowei): replaced by new DeviceContext later
 using CPUContext = paddle::platform::CPUDeviceContext;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 using CUDAContext = paddle::platform::CUDADeviceContext;

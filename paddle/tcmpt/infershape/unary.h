@@ -14,10 +14,20 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/tcmpt/api/include/tensor.h"
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/framework/ddim.h"
 
 namespace pt {
 
-Tensor mean(const Tensor& x);
+using DDim = paddle::framework::DDim;
+
+// Common InferShape Functions, The format like:
+//
+//   1. DDim [OpName]InferShape(const DDim& x_dim, ...) {}
+//   2. std::pair<DDim, DDim> [OpName]InferShape(const DDim& x_dim, ...) {}
+//   3. std::tuple<DDim, DDim, DDim> [OpName]InferShape(const DDim& x_dim, ...)
+//   {}
+
+DDim UnchangedInferShape(const DDim& x_dim) { return x_dim; }
 
 }  // namespace pt

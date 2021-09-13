@@ -29,12 +29,10 @@ class Place;
 
 namespace pt {
 
-// TODO(chenweihang): Use the existing DDim directly?
-// or design a abstract interface of DDim?
+// TODO(shixiaowei): replace by new DDim
 using DDim = paddle::framework::DDim;
 
-// TODO(chenweihang): Use the existing Place directly?
-// or design a abstract interface of Place?
+// TODO(shixiaowei): replace by new Place?
 using Place = paddle::platform::Place;
 
 /**

@@ -6,4 +6,6 @@ if(WITH_GPU OR WITH_ROCM)
   set(TCMPT_DEPS ${TCMPT_DEPS} math_cuda)
 endif()
 
+set(TCMPT_DEPS ${TCMPT_DEPS} math_api)
+
 cc_library(tcmpt SRCS all.cc DEPS ${TCMPT_DEPS})
