@@ -243,10 +243,13 @@ def get_device_properties(device):
     Return the properties of given CUDA device.
 
     Args:
-        device(paddle.CUDAPlace() or int): The device or the ID of the device which want to the properties of the device from. 
+        device(paddle.CUDAPlace() or int): The device or the ID of the device which want to get the properties of the device from. 
 
     Returns:
-        _CudaDeviceProperties: the properties of the device.
+        _CudaDeviceProperties: the properties of the device which include ASCII string identifying device, major compute capability, minor compute capability, 
+                               global memory available on device in bytes and the number of multiprocessors on the device.
+
+
 
     Examples:
     
@@ -267,4 +270,5 @@ def get_device_properties(device):
             device_id = device.get_device_id()
         else:
             raise ValueError("device type must be int or paddle.CUDAPlace")
+
     return core.get_device_properties(device_id)

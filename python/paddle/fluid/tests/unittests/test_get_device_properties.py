@@ -14,14 +14,20 @@
 
 import paddle
 import unittest
+from paddle.fluid import core
 
 
 class TestGetDeviceProperties(unittest.TestCase):
-    def test_get_device_properties(self):
+    def test_get_device_properties_int(self):
         gpu_num = paddle.device.cuda.device_count()
         for i in range(gpu_num):
             props = paddle.get_device_properties(i)
             self.assertIsNotNone(props)
+
+    def test_get_device_properties_CUDA(self):
+        device = core.CUDAPlace(0)
+        props = paddle.get_device_properties(device)
+        self.assertIsNotNone(props)
 
 
 if __name__ == "__main__":

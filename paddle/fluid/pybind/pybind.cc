@@ -130,10 +130,6 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#include <cuda_runtime.h>
-#endif
-
 #include "pybind11/stl.h"
 
 DECLARE_bool(use_mkldnn);
@@ -2258,28 +2254,28 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
-  m.def(
-      "get_device_properties",
-      [](int64_t device_id) -> cudaDeviceProp * {
-        int64_t gpu_num = 0;
-        gpu_num = platform::GetCUDADeviceCount();
-        PADDLE_ENFORCE_EQ(
-            device_id >= 0 && device_id < gpu_num, true,
-            platform::errors::Unavailable(
-                "The gpu id %d exceeds the number of gpus %d on this machine, "
-                "Because the gpu id should be smaller than the number of gpus. "
-                "Please input appropriate gpu id again!",
-                device_id, gpu_num));
-
-        std::vector<cudaDeviceProp> cuda_device_props;
-        cuda_device_props.resize(gpu_num);
-        for (int i = 0; i < gpu_num; ++i) {
-          PADDLE_ENFORCE_CUDA_SUCCESS(
-              cudaGetDeviceProperties(&cuda_device_props[i], i));
-        }
-        return &cuda_device_props[device_id];
-      },
-      py::return_value_policy::reference);
+  std::vector<cudaDeviceProp> cuda_device_props;
+  m.def("get_device_properties",
+        [](int64_t device_id) -> cudaDeviceProp * {
+          int64_t gpu_num = 0;
+          gpu_num = platform::GetCUDADeviceCount();
+          PADDLE_ENFORCE_EQ(
+              device_id >= 0 && device_id < gpu_num, true,
+              platform::errors::OutOfRange(
+                  "The device id %d exceeds out of range [0, number of devices "
+                  "%d on this machine), Because the gpu id should be smaller "
+                  "than the number of gpus. Please input appropriate device id "
+                  "again!",
+                  device_id, gpu_num));
+          static std::vector<cudaDeviceProp> cuda_device_props;
+          cuda_device_props.resize(gpu_num);
+          for (int i = 0; i < gpu_num; ++i) {
+            PADDLE_ENFORCE_CUDA_SUCCESS(
+                cudaGetDeviceProperties(&cuda_device_props[i], i));
+          }
+          return &cuda_device_props[device_id];
+        },
+        py::return_value_policy::reference);
 
   // This is copy the pytorch, only few changes, TO DO modify
   py::class_<cudaDeviceProp>(m, "_CudaDeviceProperties", R"DOC(
