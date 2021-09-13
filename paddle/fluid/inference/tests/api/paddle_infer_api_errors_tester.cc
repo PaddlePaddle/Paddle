@@ -38,8 +38,10 @@ struct FakeException {
 
 TEST(Status, pd_exception) {
   FakeException e;
-  Status status = status_wrapper([&]() { e.pd_exception(1); });
+  Status status = get_status([&]() { e.pd_exception(1); });
   CHECK(!status.ok());
+  CHECK(status == status);
+  CHECK(!(status != status));
   CHECK_EQ(status.code(), paddle::platform::error::INVALID_ARGUMENT + 1);
   LOG(INFO) << status.error_message();
 }
@@ -47,7 +49,7 @@ TEST(Status, pd_exception) {
 TEST(Status, basic_exception) {
   FakeException e;
   Status status;
-  status = status_wrapper([&]() { e.base_exception(); });
+  status = get_status([&]() { e.base_exception(); });
   CHECK(!status.ok());
   LOG(INFO) << status.error_message();
 }
@@ -55,8 +57,14 @@ TEST(Status, basic_exception) {
 TEST(Status, no_exception) {
   FakeException e;
   Status status;
-  status = status_wrapper([&]() { e.no_exception(); });
+  status = get_status([&]() { e.no_exception(); });
   CHECK(status.ok());
+}
+
+TEST(Status, copy) {
+  Status status;
+  Status status_1(status);
+  status_1 = status;
 }
 
 }  // namespace contrib

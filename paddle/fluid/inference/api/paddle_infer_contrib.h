@@ -112,7 +112,7 @@ class Status {
 /// \return State result of calling function.
 ///
 template <typename Func, typename... Args>
-Status status_wrapper(Func func, Args&&... args) noexcept(
+Status get_status(Func func, Args&&... args) noexcept(
     noexcept(Status(std::declval<Status>()))) {
   try {
     func(std::forward<Args>(args)...);
