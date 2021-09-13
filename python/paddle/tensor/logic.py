@@ -157,7 +157,7 @@ def equal(x, y, name=None):
 
     Args:
         x(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
-        y(Tensor|int|float|bool): int, float, bool or Tensor, tensor data type is bool, float32, float64, int32, int64.
+        y(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
