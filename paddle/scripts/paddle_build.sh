@@ -426,6 +426,7 @@ function cmake_gen_and_build() {
     cmake_gen $1
     build $2
     endTime_s=`date +%s`
+    [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
@@ -755,6 +756,7 @@ function generate_upstream_develop_api_spec() {
     cur_branch=`git branch | grep \* | cut -d ' ' -f2`
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
+    startTime_firstBuild=`date +%s`
     cmake_gen $1
     build $2
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
