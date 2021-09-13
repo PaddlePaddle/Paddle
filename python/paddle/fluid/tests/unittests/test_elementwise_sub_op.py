@@ -18,7 +18,7 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 
-from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.op_test import OpTest
 
 import paddle.fluid as fluid
 
@@ -91,17 +91,22 @@ class TestFP16ElementwiseSubOp(TestElementwiseSubOp):
                 self.check_output_with_place(place)
 
 
-@skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestElementwiseSubOp_scalar(TestElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
         self.out = self.x - self.y
 
+    def test_check_grad_normal(self):
+        pass
 
-@skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+    def test_check_grad_ingore_x(self):
+        pass
+
+    def test_check_grad_ingore_y(self):
+        pass
+
+
 class TestFP16ElementwiseSubOp_scalar(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
@@ -109,17 +114,22 @@ class TestFP16ElementwiseSubOp_scalar(TestFP16ElementwiseSubOp):
         self.out = self.x - self.y
 
 
-@skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
 class TestElementwiseSubOp_scalar2(TestElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
         self.y = np.random.rand(1, 1).astype(self.dtype)
         self.out = self.x - self.y
 
+    def test_check_grad_normal(self):
+        pass
 
-@skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1,1) to test broadcast.")
+    def test_check_grad_ingore_x(self):
+        pass
+
+    def test_check_grad_ingore_y(self):
+        pass
+
+
 class TestFP16ElementwiseSubOp_scalar2(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
@@ -290,8 +300,6 @@ class TestFP16ElementwiseSubOp_rowwise_add_0(TestFP16ElementwiseSubOp):
         self.axis = 1
 
 
-@skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestElementwiseSubOp_rowwise_add_1(TestElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(100, 1).astype(self.dtype)
@@ -301,9 +309,16 @@ class TestElementwiseSubOp_rowwise_add_1(TestElementwiseSubOp):
     def init_axis(self):
         self.axis = 1
 
+    def test_check_grad_normal(self):
+        pass
 
-@skip_check_grad_ci(
-    reason="[skip shape check] Use y_shape(1) to test broadcast.")
+    def test_check_grad_ingore_x(self):
+        pass
+
+    def test_check_grad_ingore_y(self):
+        pass
+
+
 class TestFP16ElementwiseSubOp_rowwise_add_1(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(100, 1).astype(self.dtype)
