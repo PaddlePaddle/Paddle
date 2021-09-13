@@ -176,3 +176,22 @@ void LayerNorm(const std::vector<LayerNormParamType<T>> &scale,
   framework::TensorToVector(*tensor_variance, ctx, vars);
   ctx.Wait();
 }
+
+template <typename T>
+inline void ReduceSum(const std::vector<T> &dout, std::vector<T> *dbias,
+                      const int rows, const int cols) {
+  for (int j = 0; j < cols; j++) {
+    std::vector<T> tmp_dbias(rows);
+    for (int i = 0; i < rows; i++) {
+      tmp_dbias[i] = dout[i * cols + j];
+    }
+    int tmp_rows = rows / 2;
+    while (tmp_rows) {
+      for (int i = 0; i < tmp_rows; i++) {
+        tmp_dbias[i] += tmp_dbias[i + tmp_rows];
+      }
+      tmp_rows /= 2;
+    }
+    (*dbias)[j] = tmp_dbias[0];
+  }
+}

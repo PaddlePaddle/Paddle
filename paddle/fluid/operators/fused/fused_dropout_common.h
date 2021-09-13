@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/operators/layer_norm_kernel.cu.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -54,7 +55,6 @@ inline platform::GpuLaunchConfig Get1DBlocksAnd2DGrids(
   return config;
 }
 
-
 template <int VecSize>
 __forceinline__ __device__ void RandVec(curandStatePhilox4_32_10_t *state,
                                         float *data);
@@ -71,7 +71,7 @@ __forceinline__ __device__ void RandVec<2>(curandStatePhilox4_32_10_t *state,
   data[0] = curand_uniform(state);
   data[1] = curand_uniform(state);
 }
-  
+
 template <>
 __forceinline__ __device__ void RandVec<4>(curandStatePhilox4_32_10_t *state,
                                            float *data) {
@@ -87,6 +87,50 @@ __forceinline__ __device__ void RandVec<8>(curandStatePhilox4_32_10_t *state,
                                            float *data) {
   RandVec<4>(state, data);
   RandVec<4>(state, data + 4);
+}
+
+template <typename T>
+inline void SetZero(const platform::CUDADeviceContext &ctx, T *ptr,
+                    const size_t size) {
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaMemsetAsync(ptr, 0, size * sizeof(T), ctx.stream()));
+}
+
+/**
+ * reduce the sum of 128 cols data by 8*VecSize warps
+ */
+template <typename T, int VecSize, int BlockSizeX, int BlockSizeY>
+inline __device__ void CalculateDBias(const T *tmp_sum, T *dbias,
+                                      const int cols) {
+  // save temporary sum to cache and do transpose
+  __shared__ T cache[BlockSizeX * VecSize][BlockSizeY];
+  for (int i = 0; i < VecSize; i++) {
+    cache[threadIdx.x * VecSize + i][threadIdx.y] = tmp_sum[i];
+  }
+  __syncthreads();
+  // reduce sum
+  T sum = static_cast<T>(0);
+  int tid = threadIdx.y * blockDim.x + threadIdx.x;
+  int x = tid >> 5;  // warp id
+  int y = tid & 31;  // thread id on warp 0~31
+
+  // need BlockSizeX * VecSize warps
+  if (x < BlockSizeX * VecSize) {
+// reduce 128 to 32
+#pragma unroll
+    for (int i = 0; i < (BlockSizeY >> 5); i++) {
+      sum += cache[x][y + i * 32];
+    }
+  }
+
+  // reduce 32 to 1
+  sum = WarpReduceSum(sum);
+
+  // save sum to dbias
+  int bias_id = blockIdx.x * blockDim.x * VecSize + x;
+  if (y == 0 && x < VecSize * BlockSizeX && bias_id < cols) {
+    dbias[bias_id] = sum;
+  }
 }
 
 }  // namespace operators

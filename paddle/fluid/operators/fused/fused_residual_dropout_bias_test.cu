@@ -114,16 +114,12 @@ struct TestFusedResidualDropoutBias {
     }
 
     {
-      out.Resize({rows, cols});
-      out.mutable_data<T>(place);
-      mask.Resize({rows, cols});
-      mask.mutable_data<uint8_t>(place);
-      dsrc.Resize({rows, cols});
-      dsrc.mutable_data<T>(place);
+      out.mutable_data<T>({rows, cols}, place);
+      mask.mutable_data<uint8_t>({rows, cols}, place);
+      dsrc.mutable_data<T>({rows, cols}, place);
 
       if (has_bias) {
-        dbias.Resize({cols});
-        dbias.mutable_data<T>(place);
+        dbias.mutable_data<T>({cols}, place);
       }
     }
   }
@@ -159,10 +155,8 @@ struct TestFusedResidualDropoutBias {
                    dropout_prob, is_upscale_in_train);
     // calc dbias
     memset(&correct_dbias[0], 0, cols * sizeof(T));
-    for (int i = 0; i < rows; i++) {
-      for (int j = 0; j < cols; j++) {
-        correct_dbias[j] += correct_out[i * cols + j];
-      }
+    if (has_bias) {
+      ReduceSum<T>(correct_out, &correct_dbias, rows, cols);
     }
   }
 
@@ -254,19 +248,14 @@ struct TestFusedResidualDropoutBias {
 template <typename T>
 static void BaseTest(const bool is_fp16 = false) {
   const int rows = 16;
-  T default_diff = !is_fp16 ? static_cast<T>(1e-5) : default_diff =
-                                                         static_cast<T>(1e-2);
+  T default_diff = !is_fp16 ? static_cast<T>(1e-5) : static_cast<T>(1e-1);
   for (auto cols : {16, 17}) {
     for (auto has_bias : {true, false}) {
       TestFusedResidualDropoutBias<T> test(rows, cols);
       test.has_bias = has_bias;
       test.Run();
       test.CheckOut(default_diff);
-      if (!is_fp16) {
-        // test fp16, For inference, check_grad is not required. ref:
-        // testdropout_op.py
-        test.CheckGrad(default_diff);
-      }
+      test.CheckGrad(default_diff);
     }
   }
 }
