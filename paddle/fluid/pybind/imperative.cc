@@ -35,6 +35,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/bkcl_context.h"
 #include "paddle/fluid/imperative/data_loader.h"
+#include "paddle/fluid/imperative/gloo_context.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
@@ -1790,7 +1791,11 @@ void BindImperative(py::module *m_ptr) {
       .def_property_readonly("type", &imperative::VarBase::Type)
       .def_property_readonly("dtype", &imperative::VarBase::DataType);
 
-  py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(m, "Layer");
+  // NOTE(zhiqiu): set the metaclass of Layer.
+  // See details: https://github.com/pybind/pybind11/pull/679
+  // https://github.com/pybind/pybind11/blob/028812ae7eee307dca5f8f69d467af7b92cc41c8/tests/test_methods_and_attributes.cpp#L284
+  py::class_<imperative::Layer, Layer /* <--- trampoline*/> layer(
+      m, "Layer", py::metaclass((PyObject *)&PyType_Type));  // NOLINT
   layer.def(py::init<>())
       .def("forward",
            [](imperative::Layer &self,
@@ -2017,7 +2022,7 @@ void BindImperative(py::module *m_ptr) {
       py::call_guard<py::gil_scoped_release>());
 
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
+    defined(PADDLE_WITH_XPU_BKCL) || defined(PADDLE_WITH_GLOO)
   py::class_<imperative::ParallelContext,
              std::shared_ptr<imperative::ParallelContext>>(m,
                                                            "ParallelContext");
@@ -2062,6 +2067,20 @@ void BindImperative(py::module *m_ptr) {
            &imperative::BKCLParallelContext::InitWithRingID,
            py::arg("ring_id"));
 #endif
+
+#if defined(PADDLE_WITH_GLOO)
+  // xiongkun
+  py::class_<imperative::GLOOParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::GLOOParallelContext>>(
+      m, "GLOOParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::CPUPlace &>())
+      .def("init", [](imperative::GLOOParallelContext &self) { self.Init(); })
+      .def("init_with_ring_id",
+           &imperative::GLOOParallelContext::InitWithRingID,
+           py::arg("ring_id"));
+#endif
+
   m.def("pylayer_apply",
         [](const platform::CPUPlace &place, const py::object &cls,
            const py::args args, const py::kwargs kwargs) {
