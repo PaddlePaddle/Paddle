@@ -95,7 +95,7 @@ def create_paddle_case(op_type, callback):
                                      "y": self.input_y},
                                fetch_list=[out])
             self.assertEqual((res == self.real_result).all(), True)
-        
+
         def test_api_float(self):
             if self.op_type == "equal":
                 paddle.enable_static()
@@ -106,8 +106,8 @@ def create_paddle_case(op_type, callback):
                     out = op(x, y)
                     exe = fluid.Executor(self.place)
                     res, = exe.run(feed={"x": self.input_x,
-                                        "y": 1.0},
-                                fetch_list=[out])
+                                         "y": 1.0},
+                                   fetch_list=[out])
                 self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
                 self.assertEqual((res == self.real_result).all(), True)
 
@@ -119,7 +119,7 @@ def create_paddle_case(op_type, callback):
             out = op(x, y)
             self.assertEqual((out.numpy() == self.real_result).all(), True)
             paddle.enable_static()
-        
+
         def test_dynamic_api_int(self):
             if self.op_type == "equal":
                 paddle.disable_static()
