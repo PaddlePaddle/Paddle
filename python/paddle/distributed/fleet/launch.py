@@ -245,7 +245,7 @@ def cpuonly_check(args):
 
 def launch_collective(args):
     # parse arguments, used for cloud-single-machine and local
-    if args.paddle_cpuonly:
+    if hasattr(args, "paddle_cpuonly"):
         cpuonly_check(args)
     (device_mode, devices_per_proc) = launch_utils.get_device_proc_info(args)
     trainers_num = cloud_utils.get_trainers_num()

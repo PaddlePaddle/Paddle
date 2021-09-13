@@ -234,7 +234,7 @@ def _get_subprocess_env_list(nprocs, options):
         args.use_paddlecloud = use_paddlecloud()
 
     # get cluster and pod config
-    if args.paddle_cpuonly:
+    if hasattr(args, "paddle_cpuonly"):
         devices_per_proc = [x for x in range(0, nprocs)]
         cluster, pod = get_cluster_from_args(args, DeviceMode.CPU,
                                              devices_per_proc)
