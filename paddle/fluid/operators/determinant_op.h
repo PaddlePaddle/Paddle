@@ -330,20 +330,18 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
     det_grad.Resize(det_grad.dims().reshape(det_grad_vec));
 
     // Fifth: unsqueeze(dslA, [-1, -2])
-    framework::Tensor unsqueeze_dA;
-    unsqueeze_dA.ShareDataWith(det_grad);
     auto unsqueeze_dims = UnsqueezeKernel<DeviceContext, T>::GetOutputShape(
         {-1, -2}, det_grad.dims());
-    unsqueeze_dA.Resize(unsqueeze_dims);
+    det_grad.Resize(unsqueeze_dims);
 
-    VLOG(3) << "unsqueezed(dslA) dims: " << unsqueeze_dA.dims();
+    VLOG(3) << "unsqueezed(dslA) dims: " << det_grad.dims();
 
     // Finally: unsqueeze(dslA) * inverse(A)
     dslogdet->Resize(transpose_inverse_A.dims());
     dslogdet->mutable_data<T>(context.GetPlace());
 
     ElementwiseMulFunctor<DeviceContext, T> elem_mul;
-    elem_mul(context, &unsqueeze_dA, &transpose_inverse_A, dslogdet);
+    elem_mul(context, &det_grad, &transpose_inverse_A, dslogdet);
 
     VLOG(3) << "dsl|A| dims: " << dslogdet->dims();
   }
