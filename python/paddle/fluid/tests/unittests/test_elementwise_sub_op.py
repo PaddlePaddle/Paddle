@@ -98,7 +98,7 @@ class TestFP16ElementwiseSubOp(TestElementwiseSubOp):
             place = core.CUDAPlace(0)
             if core.is_float16_supported(place):
                 self.check_output_with_place(
-                    place, atol=1e-3, check_dygraph=(self.use_mkldnn == False))
+                    place, check_dygraph=(self.use_mkldnn == False))
 
 
 @skip_check_grad_ci(

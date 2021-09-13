@@ -15,7 +15,6 @@
 from __future__ import print_function
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import skip_check_grad_ci
 from paddle.fluid.tests.unittests.test_elementwise_sub_op import TestElementwiseSubOp
 from paddle import enable_static
 
@@ -86,8 +85,6 @@ class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestMKLDNNElementwiseSubOp):
         self.axis = 2
 
 
-@skip_check_grad_ci(
-    reason="oneDNN's int8 elementwise_ops don't implemend grad kernel.")
 class TestInt8(TestElementwiseSubOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
