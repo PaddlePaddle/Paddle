@@ -319,6 +319,17 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "gather") {
       if (!with_dynamic_shape) return false;
+
+      if (with_dynamic_shape) {
+        auto* block = desc.Block();
+        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+        const auto x_shape = x_var_desc->GetShape();
+        if (x_shape.size() == 1) {
+          VLOG(3) << "Gather does not support 1-dimensional input in tensorrt";
+          return false;
+        }
+      }
+
       auto inputs = desc.InputArgumentNames();
       for (auto& input : inputs) {
         if (input == "Axis" && desc.Input("Axis").size() > 0) return false;
@@ -328,6 +339,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "gather_nd") {
+      if (!with_dynamic_shape) return false;
+
       auto* block = desc.Block();
       auto x_var_name = desc.Input("X")[0];
       auto index_var_name = desc.Input("Index")[0];
@@ -343,12 +356,17 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
       const auto index_shape = index_var_desc->GetShape();
       const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() <= 2) {
+        VLOG(3) << "gather_nd op requires the input's dimension to be greater "
+                   "than 2";
+        return false;
+      }
+
       if (x_shape.size() != index_shape.size()) {
         VLOG(3) << "gather_nd op Index input dims size [" << index_shape.size()
                 << " ] not equal to x dims size [" << x_shape.size() << "]";
         return false;
       }
-      if (!with_dynamic_shape) return false;
     }
 
     if (op_type == "yolo_box") {
