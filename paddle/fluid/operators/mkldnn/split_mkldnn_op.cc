@@ -96,8 +96,8 @@ class SplitMKLDNNKernel : public framework::OpKernel<T> {
 
     std::vector<int64_t> offset(x_vec_dims.size(), 0);
 
-    platform::ReorderMKLDNNHandler reorder_handler(
-        x_vec_dims, x->type(), x_type, onednn_engine);
+    platform::ReorderMKLDNNHandler reorder_handler(x_vec_dims, x->type(),
+                                                   x_type, onednn_engine);
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->format(), platform::to_void_cast(x->data<T>()));
 
@@ -109,7 +109,7 @@ class SplitMKLDNNKernel : public framework::OpKernel<T> {
       auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
           outs[i], out_vec_dims, x->format(), ctx.GetPlace());
       auto reorder_p =
-          reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p, i);
+          reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p);
 
       reorder_p->execute(astream, *slice_mem_p, *reorder_dst_memory_p);
 
