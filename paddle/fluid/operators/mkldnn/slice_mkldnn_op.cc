@@ -35,7 +35,6 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<Tensor>("Out");
 
     auto x_vec_dims = framework::vectorize(x->dims());
-    auto out_vec_dims = framework::vectorize(out->dims());
 
     auto axes_int = ctx.Attr<std::vector<int>>("axes");
     auto starts_int = ctx.Attr<std::vector<int>>("starts");
@@ -79,11 +78,27 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
         reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p);
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     reorder_p->execute(astream, *slice_mem_p, *reorder_dst_memory_p);
+
+    std::vector<int64_t> new_out_dims(slice_dims.size() - decrease_axis.size());
+
+    for (size_t i = 0; i < decrease_axis.size(); ++i) {
+      slice_dims[decrease_axis[i]] = 0;
+    }
+
+    int j = 0;
+    for (size_t i = 0; i < slice_dims.size(); ++i) {
+      if (slice_dims[i] != 0) new_out_dims[j++] = slice_dims[i];
+    }
+
+    // paddle doesn't support rank 0 tensors, instead we use [1]
+    if (new_out_dims.size() == 0) new_out_dims.emplace_back(1);
+
     astream.wait();
 
+    out->Resize(framework::make_ddim(new_out_dims));
     out->set_layout(framework::DataLayout::kMKLDNN);
     out->set_format(platform::GetMKLDNNFormat(
-        reorder_dst_memory_p->get_desc().reshape(out_vec_dims)));
+        reorder_dst_memory_p->get_desc().reshape(new_out_dims)));
   }
 };
 

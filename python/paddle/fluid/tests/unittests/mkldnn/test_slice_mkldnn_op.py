@@ -150,6 +150,28 @@ class TestSlice3DOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
         self.out = self.input[:, :, -1]
 
 
+class TestSlice4DInferDimsOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
+    def config(self):
+        self.input = np.random.random([1, 1, 10, 10]).astype("float32")
+        self.starts = [1, 2]
+        self.ends = [9, 9]
+        self.axes = [2, 3]
+        self.decrease_axis = [1]
+        self.infer_flags = [-1, -1]
+        self.out = self.input[:, :, 1:9, 2:9]
+
+
+class TestSlice4DInferDimsOneDNNOp2(TestSliceDecrease1AxisOneDNNOp):
+    def config(self):
+        self.input = np.random.random([1, 1, 10, 10]).astype("float32")
+        self.starts = [4, 2]
+        self.ends = [7, 8]
+        self.axes = [2, 3]
+        self.decrease_axis = [0, 1]
+        self.infer_flags = [-1, -1]
+        self.out = self.input[:, :, 4:7, 2:8]
+
+
 #   BF16 TESTS
 def create_bf16_test_class(parent):
     @OpTestTool.skip_if_not_cpu_bf16()
