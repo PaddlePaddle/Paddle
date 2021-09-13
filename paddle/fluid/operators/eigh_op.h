@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef PADDLE_WITH_HIP
+// HIP not support cusolver
+
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
@@ -78,3 +81,5 @@ class EighGradKernel : public framework::OpKernel<T> {
 
 }  // namespace operators
 }  // namespace paddle
+
+#endif  // not PADDLE_WITH_HIP
