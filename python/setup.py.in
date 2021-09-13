@@ -249,7 +249,6 @@ packages=['paddle',
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
 
-
 # Note(wangzhongpu):
 # When compiling paddle under python36, the dependencies belonging to python2.7 will be imported, resulting in errors when installing paddle
 if sys.version_info >= (3,6) and sys.version_info < (3,7):
