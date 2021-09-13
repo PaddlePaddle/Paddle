@@ -391,7 +391,6 @@ def _is_enable_standalone_executor():
     env_val = os.environ.get('FLAGS_USE_STANDALONE_EXECUTOR', None)
     if env_val in [1, '1', True, 'True', 'true']:
         flag = True
-
     return flag
 
 
@@ -489,7 +488,7 @@ class _StandaloneExecutor(object):
         self._place = core.Place()
         self._place.set_place(place)
         self._main_program = main_program
-        self._new_exe = self._create_new_excutor()
+        self._new_exe = self._create_new_executor()
 
     def run(self, feed, fetch_list, return_numpy=True):
         """
@@ -519,8 +518,8 @@ class _StandaloneExecutor(object):
         else:
             return tensors
 
-    def _create_new_excutor(self):
-        # NOTE: It's a trick to set emtpy start_up program.
+    def _create_new_executor(self):
+        # NOTE: It's a trick to set empty start_up program.
         startup_program = Program()
         outer_scope = global_scope()
         new_exe = core.StandaloneExecutor(self._place, startup_program.desc,

@@ -166,7 +166,7 @@ class MultiStreamModelTestCase(unittest.TestCase):
         return outs
 
 
-class SwitchExectuorInterfaceTestCase(MultiStreamModelTestCase):
+class SwitchExecutorInterfaceTestCase(MultiStreamModelTestCase):
     def run_new_executor(self):
         paddle.seed(2020)
         os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
@@ -187,7 +187,6 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0) if core.is_compiled_with_cuda(
         ) else paddle.CPUPlace()
-        self.exe = paddle.static.Executor(self.place)
         self.iter_run = 2
 
     def build_program(self, is_double=False):
@@ -208,7 +207,9 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
 
         main_program, startup_program, fetch_vars = self.build_program(
             is_double)
-        self.exe.run(startup_program)
+
+        exe = paddle.static.Executor(self.place)
+        exe.run(startup_program)
 
         if use_str:  # test for fetch name
             fetch_vars = [x.name for x in fetch_vars]
@@ -216,9 +217,8 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
             fetch_vars.append(1123)
         outs = []
         for i in range(self.iter_run):
-            out = self.exe.run(main_program, feed=feed,
-                               fetch_list=fetch_vars)[0]
-            print(out)
+            out = exe.run(main_program, feed=feed, fetch_list=fetch_vars)[0]
+
             outs.append(out)
 
         return outs
@@ -241,13 +241,13 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         data = np.ones([2, 2], dtype="float32")
         feed = {"a": data, 'fake_input': data}
 
-        gt = self.run_raw_executor(feed)
         res = self.run_new_executor(feed)
+        gt = self.run_raw_executor(feed)
         for x, y in zip(gt, res):
             self.assertTrue(np.array_equal(x, y))
 
-    def tetst_with_error(self):
-        feed = [{'x': np.ones([2, 2], dtype="float32")}]
+    def test_with_error(self):
+        feed = [{'a': np.ones([2, 2], dtype="float32")}]
 
         with self.assertRaises(TypeError):
             res = self.run_new_executor(feed)
