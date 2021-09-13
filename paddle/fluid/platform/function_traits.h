@@ -28,9 +28,18 @@ struct FunctionTraits;
 template <typename T>
 struct FunctionTraits : public FunctionTraits<decltype(&T::operator())> {};
 
-// A partial specialization of FunctionTraits for pointers to member functions.
+// A partial specialization of FunctionTraits for pointers to member functions
+// and has const/non-const class member functions.
 template <typename ClassType, typename ReturnType, typename... Args>
-struct FunctionTraits<ReturnType (ClassType::*)(Args...) const> {
+struct FunctionTraits<ReturnType (ClassType::*)(Args...) const>
+    : public FunctionTraits<ReturnType(Args...)> {};
+template <typename ClassType, typename ReturnType, typename... Args>
+struct FunctionTraits<ReturnType (ClassType::*)(Args...)>
+    : public FunctionTraits<ReturnType(Args...)> {};
+
+// An implementation for common function.
+template <typename ReturnType, typename... Args>
+struct FunctionTraits<ReturnType(Args...)> {
   static const size_t arity = sizeof...(Args);
   static const bool has_pointer_args =
       (arity == 1) &&
