@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/optimizers/adam_op.h"
 #include "gflags/gflags.h"
+#include "paddle/fluid/operators/optimizers/adam_op.h"
 
 namespace paddle {
 namespace operators {
@@ -21,8 +21,8 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 #ifdef PADDLE_WITH_XPU
-template <typename DeviceContext, typename T>
-class AdamOpXPUKernel : public framework::OpKernel<T> {
+template <typename T>
+class AdamwOpXPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto* param_var = ctx.InputVar("Param");
@@ -72,29 +72,20 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
                      &skip_update_vec);
       skip_update = skip_update_vec[0];
     }
+    auto& dev_ctx = ctx.template device_context<platform::XPUDeviceContext>();
     // skip_update=true, just copy input to output, and TensorCopy will call
     // mutable_data
     if (skip_update) {
       VLOG(4) << "Adam skip update";
-      framework::TensorCopy(
-          param, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), &param_out);
-      framework::TensorCopy(
-          mom1, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), &mom1_out);
-      framework::TensorCopy(
-          mom2, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(), &mom2_out);
-      framework::TensorCopy(
-          beta1_pow, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(),
-          beta1_pow_out);
-      framework::TensorCopy(
-          beta2_pow, ctx.GetPlace(),
-          ctx.template device_context<platform::DeviceContext>(),
-          beta2_pow_out);
+      framework::TensorCopy(param, ctx.GetPlace(), dev_ctx, &param_out);
+      framework::TensorCopy(mom1, ctx.GetPlace(), dev_ctx, &mom1_out);
+      framework::TensorCopy(mom2, ctx.GetPlace(), dev_ctx, &mom2_out);
+      framework::TensorCopy(beta1_pow, ctx.GetPlace(), dev_ctx, beta1_pow_out);
+      framework::TensorCopy(beta2_pow, ctx.GetPlace(), dev_ctx, beta2_pow_out);
       return;
     }
+
+    bool with_decay = ctx.Attr<bool>("with_decay");
 
     PADDLE_ENFORCE_EQ(beta1_pow_out->numel(), 1,
                       platform::errors::InvalidArgument(
@@ -131,7 +122,7 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
     if (grad_var->IsType<framework::LoDTensor>()) {
       auto& grad = GET_DATA_SAFELY(ctx.Input<LoDTensor>("Grad"), "Input",
                                    "Grad", "Adam");
-      auto& dev_ctx = ctx.template device_context<DeviceContext>();
+
       const float* beta1_pow_ptr = beta1_pow.template data<float>();
       const float* beta2_pow_ptr = beta2_pow.template data<float>();
       Tensor xpu_beta1_pow;
@@ -144,15 +135,39 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
         beta1_pow_ptr = xpu_beta1_pow.template data<float>();
         beta2_pow_ptr = xpu_beta2_pow.template data<float>();
       }
+      if (with_decay) {
+        float coeff = ctx.Attr<float>("coeff");
+        int r =
+            xpu::adamw(dev_ctx.x_context(), grad.template data<T>(),
+                       mom1.template data<float>(), mom2.template data<float>(),
+                       param.template data<T>(), beta1_pow_ptr, beta2_pow_ptr,
+                       lr.template data<float>(),
+                       mom1_out.template mutable_data<float>(ctx.GetPlace()),
+                       mom2_out.template mutable_data<float>(ctx.GetPlace()),
+                       param_out.template mutable_data<T>(ctx.GetPlace()),
+                       beta1, beta2, epsilon, coeff, param.numel());
+        PADDLE_ENFORCE_EQ(
+            r, xpu::SUCCESS,
+            platform::errors::External(
+                "XPU kernel adamw occur error in adamw error code ", r,
+                XPUAPIErrorMsg[r]));
+      } else {
+        int r =
+            xpu::adam(dev_ctx.x_context(), grad.template data<T>(),
+                      mom1.template data<float>(), mom2.template data<float>(),
+                      param.template data<T>(), beta1_pow_ptr, beta2_pow_ptr,
+                      lr.template data<float>(),
+                      mom1_out.template mutable_data<float>(ctx.GetPlace()),
+                      mom2_out.template mutable_data<float>(ctx.GetPlace()),
+                      param_out.template mutable_data<T>(ctx.GetPlace()), beta1,
+                      beta2, epsilon, param.numel());
+        PADDLE_ENFORCE_EQ(
+            r, xpu::SUCCESS,
+            platform::errors::External(
+                "XPU kernel adam occur error in adamw error code ", r,
+                XPUAPIErrorMsg[r]));
+      }
 
-      int r = xpu::adam(dev_ctx.x_context(), grad.template data<T>(),
-                        mom1.template data<T>(), mom2.template data<T>(),
-                        param.template data<float>(), beta1_pow_ptr,
-                        beta2_pow_ptr, lr.template data<float>(),
-                        mom1_out.template mutable_data<float>(ctx.GetPlace()),
-                        mom2_out.template mutable_data<float>(ctx.GetPlace()),
-                        param_out.template mutable_data<float>(ctx.GetPlace()),
-                        beta1, beta2, epsilon, param.numel());
       if (!use_global_beta_pow) {
         // update in cpu and then copy to xpu
         if (beta1_pow.place() == platform::CPUPlace() &&
@@ -185,16 +200,10 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
                   "XPU kernel scale occur error in adamw error code ", r,
                   XPUAPIErrorMsg[r]));
         }
-
-        PADDLE_ENFORCE_EQ(r == xpu::Error_t::SUCCESS, true,
-                          platform::errors::External(
-                              "XPU API return wrong value[%d], please check "
-                              "where Baidu Kunlun Card is properly installed.",
-                              r));
       }
     } else {
       PADDLE_ENFORCE_EQ(1, 2, platform::errors::InvalidArgument(
-                                  "Variable type not supported by adam_op"));
+                                  "Variable type not supported by adamw_op"));
     }
   }
 };
@@ -205,6 +214,5 @@ class AdamOpXPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 #ifdef PADDLE_WITH_XPU
-REGISTER_OP_XPU_KERNEL(
-    adam, ops::AdamOpXPUKernel<paddle::platform::XPUDeviceContext, float>);
+REGISTER_OP_XPU_KERNEL(adamw, ops::AdamwOpXPUKernel<float>);
 #endif
