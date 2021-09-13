@@ -1241,7 +1241,7 @@ class ParameterServerLauncher(object):
                 "PADDLE_TRAINER_ENDPOINTS": self.worker_endpoints,
                 "PADDLE_TRAINERS_NUM": str(self.worker_num),
                 "STAGE_NUM": str(len(self.stage_heter_map)) 
-                if self.distribute_mode == DistributeMode.PS_HETER else "0",
+                if self.distribute_mode == DistributeMode.PS_HETER else "1",
                 "PADDLE_HETER_TRAINER_IP_PORT_LIST": self.stage_heter_map[2]
                 if self.distribute_mode == DistributeMode.PS_HETER else
                 self.heter_worker_endpoints,

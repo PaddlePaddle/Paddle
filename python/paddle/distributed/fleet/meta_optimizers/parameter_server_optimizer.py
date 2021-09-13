@@ -35,10 +35,11 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         super(ParameterServerOptimizer, self)._set_basic_info(
             loss, role_maker, user_defined_optimizer, user_defined_strategy)
 
-        self.micro_batch_size = user_defined_strategy.pipeline_configs[
-            'micro_batch_size']
-        self.num_microbatches = user_defined_strategy.pipeline_configs[
-            'accumulate_steps']
+        if self.role_maker._is_heter_parameter_server_mode:
+            self.micro_batch_size = user_defined_strategy.pipeline_configs[
+                'micro_batch_size']
+            self.num_microbatches = user_defined_strategy.pipeline_configs[
+                'accumulate_steps']
 
     def _is_graph_out(self):
         return False
