@@ -109,6 +109,7 @@ from .math import cos  # noqa: F401
 from .math import tan  # noqa: F401
 from .math import cosh  # noqa: F401
 from .math import cumsum  # noqa: F401
+from .math import cumprod  # noqa: F401
 from .math import exp  # noqa: F401
 from .math import exp_  # noqa: F401
 from .math import expm1  # noqa: F401
@@ -190,6 +191,7 @@ from .random import randperm  # noqa: F401
 from .search import argmax  # noqa: F401
 from .search import argmin  # noqa: F401
 from .search import argsort  # noqa: F401
+from .search import searchsorted  # noqa: F401
 from .search import topk  # noqa: F401
 from .search import where  # noqa: F401
 from .search import index_select  # noqa: F401
@@ -225,7 +227,6 @@ tensor_method_func  = [ #noqa
            'histogram',
            'mv',
            'matrix_power',
-           'svd',
            'abs',
            'acos',
            'all',
@@ -237,6 +238,7 @@ tensor_method_func  = [ #noqa
            'cos',
            'cosh',
            'cumsum',
+           'cumprod',
            'exp',
            'exp_',
            'floor',

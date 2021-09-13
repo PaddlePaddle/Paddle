@@ -441,7 +441,7 @@ void OperatorBase::CheckAllInputOutputSet() const {
   if (info_ == nullptr || info_->proto_ == nullptr) return;
 
   for (auto& in : info_->Proto().inputs()) {
-    if (!in.dispensable()) {
+    if (!in.dispensable() && !in.extra()) {
       PADDLE_ENFORCE_NE(
           inputs_.find(in.name()), inputs_.end(),
           platform::errors::NotFound("Operator %s's input (%s) is not set.",
@@ -450,7 +450,7 @@ void OperatorBase::CheckAllInputOutputSet() const {
   }
 
   for (auto& out : info_->Proto().outputs()) {
-    if (!out.dispensable()) {
+    if (!out.dispensable() && !out.extra()) {
       PADDLE_ENFORCE_NE(
           outputs_.find(out.name()), outputs_.end(),
           platform::errors::NotFound("Operator %s's output (%s) is not set.",

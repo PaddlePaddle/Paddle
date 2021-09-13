@@ -253,10 +253,7 @@ class Unsqueeze2Op : public UnsqueezeOp {
     UnsqueezeOp::InferShape(ctx);
     const auto &x_dims = ctx->GetInputDim("X");
 
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput("XShape"), true,
-        platform::errors::InvalidArgument("Output(XShape) of Unsqueeze "
-                                          "operator should not be null."));
+    if (!ctx->HasOutput("XShape")) return;
     std::vector<int64_t> xshape_dims(x_dims.size() + 1);
     xshape_dims[0] = 0;
     for (int i = 0; i < x_dims.size(); ++i) {
@@ -274,7 +271,8 @@ class Unsqueeze2OpMaker : public UnsqueezeOpMaker {
     AddOutput("XShape",
               "XShape is just used to store the shape and lod of X, which will "
               "be used in UnsqueezeGradOp.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
   }
 };
 

@@ -217,6 +217,10 @@ def run_multi_thread(list_file, thread_num=4):
     for item in thread_list:
         item.join()
 
+    # add a flag
+    with open("flag_change_file.txt", "w", encoding="utf-8") as f:
+        f.write("change successfully!")
+
     print("------change successfully!-------")
 
 
@@ -232,15 +236,58 @@ def transform_list_to_str(list_op):
     return res[:-1]
 
 
+def run_file_change(op_list_file):
+    """
+    if file has changed, the file should not be changed again.
+    :param op_list_file:
+    :return:
+    """
+    if (os.path.exists("flag_change_file.txt")):
+        print(
+            "-----maybe op_file has changed, so don't need to change again------"
+        )
+    else:
+        run_multi_thread(op_list_file)
+
+
+def run_test_first(op_list_file):
+    """
+    run all op test.
+    :param op_list_file:
+    :return:
+    """
+    old_list = get_op_list(op_list_file)
+    new_list = filter(lambda x: x not in black_list, old_list)
+    op_test = transform_list_to_str(new_list)
+    os.system("ctest -R \"(" + op_test + ")\" >& test_op_log.txt")
+
+
+def run_test_second():
+    """
+    run failed op again.
+    :return:
+    """
+    os.system(
+        "sed -n '/(Failed)$/p'  test_op_log.txt | awk '{print $3}' >& rerun_op.txt"
+    )
+    rerun_list = get_op_list('rerun_op.txt')
+    if (len(rerun_list)):
+        print("-------there are " + str(len(rerun_list)) +
+              " op(s) need to rerun!!!-------")
+        for failed_op in rerun_list:
+            os.system("ctest -R \"(" + failed_op + ")\" ")
+    else:
+        print("-------all op passed successfully!!!-------")
+
+
 if __name__ == '__main__':
     arg = parse_arguments()
     print("------start get op list!------")
     os.system("bash " + arg.shell_name + " " + arg.op_list_file)
     print("------start change op file!------")
-    run_multi_thread(arg.op_list_file)
-    old_list = get_op_list(arg.op_list_file)
-    new_list = filter(lambda x: x not in black_list, old_list)
-    op_test = transform_list_to_str(new_list)
-    print("------start run  op test!------")
-    os.system("ctest -R \"(" + op_test + ")\" --output-on-failure")
+    run_file_change(arg.op_list_file)
+    print("------start run  op  test first!------")
+    run_test_first(arg.op_list_file)
+    print("------start run  failed_op  test!------")
+    run_test_second()
     print("------do well!------")
