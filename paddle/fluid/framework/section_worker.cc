@@ -54,9 +54,12 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
 
     backward_send_vars_.push_back(var_name);
     skip_vars_.push_back(var_name);
+  }
 
+  for (auto &op : ops_) {
     // cache the op type during the init part
     // reduce unnecessary op visit during 1F1B
+    int op_role = op->Attr<int>("op_role");
     if ((op_role == static_cast<int>(OpRole::kForward)) ||
         (op_role == (static_cast<int>(OpRole::kForward) |
                      static_cast<int>(OpRole::kLoss))) ||
