@@ -212,7 +212,7 @@ std::string GetCUDADeviceName(int id) {
                         "but received id is: %d. GPU count is: %d.",
                         id, GetCUDADeviceCount()));
 #ifdef PADDLE_WITH_HIP
-  hipDeviceProp device_prop;
+  hipDeviceProp_t device_prop;
   PADDLE_ENFORCE_CUDA_SUCCESS(hipGetDeviceProperties(&device_prop, id));
 #else
   cudaDeviceProp device_prop;
