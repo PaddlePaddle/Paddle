@@ -548,6 +548,7 @@ class ImperativeQuantizeOutputs(object):
                             op, in_var_name)
                         op._set_attr(argname + str(index) + "_threshold",
                                      in_scale)
+                        op._set_attr("with_quant_attr", True)
 
         def _gather_output_scale():
             target_ops = []
@@ -574,6 +575,7 @@ class ImperativeQuantizeOutputs(object):
                         previous_op._set_attr(
                             argname + str(index) + "_threshold", out_scale)
                         previous_op._set_attr("out_threshold", out_scale)
+                        previous_op._set_attr("with_quant_attr", True)
 
                 for next_op in next_ops:
                     next_op._rename_input(out_var_name, in_var_name)
@@ -589,6 +591,7 @@ class ImperativeQuantizeOutputs(object):
             for op in block.ops:
                 if self._is_skip_quant_op(block, op):
                     op._set_attr("skip_quant", True)
+                    op._set_attr("with_quant_attr", True)
 
     def _is_skip_quant_op(self, block, in_op):
         """

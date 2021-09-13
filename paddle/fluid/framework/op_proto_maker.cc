@@ -98,6 +98,12 @@ void OpProtoAndCheckerMaker::operator()(proto::OpProto* proto,
   AddAttr<std::string>(OpDeviceAttrName(), "Device type of this operator.")
       .SetDefault("")
       .AsExtra();
+
+  AddAttr<bool>(OpWithQuantAttrName(),
+                "Whether the operator has attributes used by quantization. ")
+      .SetDefault(false)
+      .AsExtra();
+
   Validate();
 }
 
