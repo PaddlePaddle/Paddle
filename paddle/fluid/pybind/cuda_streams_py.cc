@@ -212,7 +212,8 @@ void BindCudaStream(py::module *m_ptr) {
                    "Priority should be 1(high) or 2(normal) "));
              }
              auto prio = paddle::platform::stream::Priority(priority);
-             auto stream_flag = paddle::platform::stream::StreamFlag(1);
+             auto stream_flag =
+                 paddle::platform::stream::StreamFlag::kStreamNonBlocking;
 
              if (device == nullptr) {
                int curr_device_id = platform::GetCurrentDeviceId();
@@ -238,7 +239,8 @@ void BindCudaStream(py::module *m_ptr) {
                   "Priority should be 1(high) or 2(normal) "));
             }
             auto prio = paddle::platform::stream::Priority(priority);
-            auto stream_flag = paddle::platform::stream::StreamFlag(1);
+            auto stream_flag =
+                paddle::platform::stream::StreamFlag::kStreamNonBlocking;
 
             int device_count = platform::GetCUDADeviceCount();
             if (device < 0) {
