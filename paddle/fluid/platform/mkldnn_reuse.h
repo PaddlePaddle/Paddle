@@ -1080,7 +1080,8 @@ class ReorderMKLDNNHandler {
         vtype_(vtype),
         vtype_dst_(vtype),
         dtype_(dtype),
-        dtype_dst_(dtype) {}
+        dtype_dst_(dtype),
+        engine_(engine) {}
 
   ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
                        framework::proto::VarType::Type vtype,
@@ -1092,7 +1093,8 @@ class ReorderMKLDNNHandler {
         vtype_(vtype),
         vtype_dst_(vtype_dst),
         dtype_(dtype),
-        dtype_dst_(dtype_dst) {}
+        dtype_dst_(dtype_dst),
+        engine_(engine) {}
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const MKLDNNMemoryFormat& fmt, void* ptr) {
@@ -1135,6 +1137,7 @@ class ReorderMKLDNNHandler {
   std::vector<int64_t> dims_;
   framework::proto::VarType::Type vtype_, vtype_dst_;
   mkldnn::memory::data_type dtype_, dtype_dst_;
+  mkldnn::engine engine_;
 };
 
 template <typename T>
