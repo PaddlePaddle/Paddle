@@ -26,7 +26,6 @@ __all__ = [  # noqa
     'get_cudnn_version',
     'set_device',
     'get_device',
-    'get_device_properties',
     'XPUPlace',
     'is_compiled_with_xpu',
     'is_compiled_with_cuda',
@@ -236,37 +235,3 @@ def get_device():
         device = 'npu:' + str(device_id)
 
     return device
-
-
-def get_device_properties(device):
-    '''
-    Return the properties of given CUDA device.
-
-    Args:
-        device(paddle.CUDAPlace() or int): The device or the ID of the device which want to get the properties of the device from. 
-
-    Returns:
-        _CudaDeviceProperties: the properties of the device which include ASCII string identifying device, major compute capability, minor compute capability, 
-                               global memory available on device in bytes and the number of multiprocessors on the device.
-
-    Examples:
-    
-        .. code-block:: python
-
-            # required: gpu
-            import paddle
-
-            paddle.get_device_properties(0)
-            paddle.get_device_properties(paddle.CUDAPlace(0))
-
-    '''
-    device_id = -1
-    if device is not None:
-        if isinstance(device, int):
-            device_id = device
-        elif isinstance(device, core.CUDAPlace):
-            device_id = device.get_device_id()
-        else:
-            raise ValueError("device type must be int or paddle.CUDAPlace")
-
-    return core.get_device_properties(device_id)

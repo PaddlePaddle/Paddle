@@ -273,7 +273,6 @@ from .tensor.stat import median  # noqa: F401
 from .device import get_cudnn_version  # noqa: F401
 from .device import set_device  # noqa: F401
 from .device import get_device  # noqa: F401
-from .device import get_device_properties  # noqa: F401
 from .fluid.framework import is_compiled_with_cuda  # noqa: F401
 from .fluid.framework import is_compiled_with_rocm  # noqa: F401
 from .fluid.framework import disable_signal_handler  # noqa: F401
