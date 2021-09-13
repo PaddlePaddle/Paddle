@@ -1131,6 +1131,11 @@ def matrix_power(x, n, name=None):
         Tensor: The n-th power of the matrix (or the batch of matrices) `x`. Its
             data type should be the same as that of `x`.
 
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
             x = paddle.to_tensor([[1, 2, 3],
                                   [1, 4, 9],
                                   [1, 8, 27]], dtype='float64')

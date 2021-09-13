@@ -83,6 +83,20 @@ inline int MatrixStride(const Tensor& matrices) {
   return dims_list[num_dims - 1] * dims_list[num_dims - 2];
 }
 
+std::vector<int> ExtendDims(const framework::DDim& in_dims, int batch_size) {
+  int cum = 1;
+  std::vector<int> res;
+  for (int i = 0; i < in_dims.size(); ++i) {
+    cum *= in_dims[i];
+    LOG(INFO) << "vec push: " << in_dims[i];
+    res.push_back(in_dims[i]);
+    if (cum == batch_size) {
+      break;
+    }
+  }
+  return res;
+}
+
 template <class T, class Tin = T>
 void LapackEig(char jobvl, char jobvr, int n, T* a, int lda, T* w, T* vl,
                int ldvl, T* vr, int ldvr, T* work, int lwork, Tin* rwork,
@@ -339,10 +353,12 @@ class EigGradKernel : public framework::OpKernel<T> {  //
     LOG(INFO) << "👉 backward starts";
     // using Tin = typename TemplateInTemplate<T>::type;
 
-    auto& L = *context.Input<Tensor>("OutValues");
-    auto& V = *context.Input<Tensor>("OutVectors");
-    auto& gL = *context.Input<Tensor>(framework::GradVarName("OutValues"));
-    auto& gV = *context.Input<Tensor>(framework::GradVarName("OutVectors"));
+    auto& L = const_cast<Tensor&>(*context.Input<Tensor>("OutValues"));
+    auto& V = const_cast<Tensor&>(*context.Input<Tensor>("OutVectors"));
+    auto& gL = const_cast<Tensor&>(
+        *context.Input<Tensor>(framework::GradVarName("OutValues")));
+    auto& gV = const_cast<Tensor&>(
+        *context.Input<Tensor>(framework::GradVarName("OutVectors")));
 
     auto& x_grad = *context.Output<Tensor>(framework::GradVarName("X"));
     auto* x_grad_data =
@@ -357,10 +373,25 @@ class EigGradKernel : public framework::OpKernel<T> {  //
     // LOG(INFO) << "preparation DONE";
 
     auto& dims = V.dims();
-    int num_dims = dims.size();
+    framework::DDim dim_origin = dims;
+    int num_dims = dim_origin.size();
     int batch_count = BatchCount(V);
-    const int order = dims[num_dims - 1];  // the order"阶" of matrix input
-    // int tensor_size = batch_count * order * order;
+    const int order =
+        dim_origin[num_dims - 1];  // the order"阶" of matrix input
+
+    if (num_dims > 3) {
+      L.Resize(framework::make_ddim({batch_count, order}));
+      V.Resize(framework::make_ddim({batch_count, order, order}));
+      gL.Resize(framework::make_ddim({batch_count, order}));
+      gV.Resize(framework::make_ddim({batch_count, order, order}));
+      x_grad.Resize(framework::make_ddim({batch_count, order, order}));
+    }
+
+    LOG(INFO) << "backward input L (values): " << L.dims();
+    LOG(INFO) << "backward input V (vectors): " << V.dims();
+    LOG(INFO) << "backward input gL (grad_val): " << gL.dims();
+    LOG(INFO) << "backward input gV (grad_vec): " << gV.dims();
+    LOG(INFO) << "backward output x_grad: " << x_grad.dims();
 
     LOG(INFO) << "HERE 0";
 
@@ -411,7 +442,7 @@ class EigGradKernel : public framework::OpKernel<T> {  //
     Tensor res1 = dito.Matmul(V, dito.Unsqueeze(diag_real_VhgV, -2));
     Tensor res2 = dito.Matmul(Vh, res1);
     Tensor result = dito.Sub(VhgV, res2);
-    result.mutable_data<Tout>(dims, context.GetPlace());  // T
+    result.mutable_data<Tout>(/*dims*/ V.dims(), context.GetPlace());  // T
     LOG(INFO) << "HERE 8";
 
     //(3.1) result.div_(Econj);
@@ -444,6 +475,16 @@ class EigGradKernel : public framework::OpKernel<T> {  //
 
     //(5) return self.is_complex() ? result : at::real(result);
     // x_grad.ShareDataWith(result);
+
+    //(-1) extend Batch_size to the original dims
+    if (num_dims > 3) {
+      std::vector<int> dim_origin_vec = ExtendDims(dim_origin, batch_count);
+      LOG(INFO) << "dims: " << dim_origin;
+      dim_origin_vec.push_back(order);
+      dim_origin_vec.push_back(order);
+      x_grad.Resize(framework::make_ddim(dim_origin_vec));
+    }
+    LOG(INFO) << "x_grad dims: " << x_grad.dims();
     LOG(INFO) << "👍 backward DONE";
   }
 };
