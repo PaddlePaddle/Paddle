@@ -158,6 +158,7 @@ DECLARE_NO_NEED_BUFFER_VARS_INFERER(SlogDeterminantGradNoNeedBufferVarsInferer,
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OPERATOR(determinant, ops::DeterminantOp, ops::DeterminantOpMaker,
                   ops::DeterminantGradOpMaker<paddle::framework::OpDesc>,
                   ops::DeterminantGradOpMaker<paddle::imperative::OpBase>);
@@ -167,8 +168,9 @@ REGISTER_OPERATOR(determinant_grad, ops::DeterminantGradOp)
 REGISTER_OP_CPU_KERNEL(determinant, ops::DeterminantKernel<float>,
                        ops::DeterminantKernel<double>);
 
-REGISTER_OP_CPU_KERNEL(determinant_grad, ops::DeterminantGradKernel<float>,
-                       ops::DeterminantGradKernel<double>);
+REGISTER_OP_CPU_KERNEL(
+    determinant_grad, ops::DeterminantGradKernel<plat::CPUDeviceContext, float>,
+    ops::DeterminantGradKernel<plat::CPUDeviceContext, double>);
 
 REGISTER_OPERATOR(slogdeterminant, ops::SlogDeterminantOp,
                   ops::SlogDeterminantOpMaker,
@@ -181,5 +183,7 @@ REGISTER_OPERATOR(slogdeterminant_grad,
 REGISTER_OP_CPU_KERNEL(slogdeterminant, ops::SlogDeterminantKernel<float>,
                        ops::SlogDeterminantKernel<double>);
 
-REGISTER_OP_CPU_KERNEL(slogdeterminant_grad, ops::DeterminantGradKernel<float>,
-                       ops::DeterminantGradKernel<double>);
+REGISTER_OP_CPU_KERNEL(
+    slogdeterminant_grad,
+    ops::SlogDeterminantGradKernel<plat::CPUDeviceContext, float>,
+    ops::SlogDeterminantGradKernel<plat::CPUDeviceContext, double>);

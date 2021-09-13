@@ -14,21 +14,35 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/determinant_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
 namespace paddle {
 namespace operators {
 
-using platform::PADDLE_CUDA_NUM_THREADS;
 using Tensor = framework::Tensor;
 
 template <typename T>
-__global__ void DeterminantGrad(const size_t numel, T* out) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  if (tid < numel) {
-    out[tid] = static_cast<T>(1);
+struct CudaMulFunctor {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    return args[0] * args[1];
   }
-}
+};
+
+template <typename T>
+struct ElementwiseMulFunctor<platform::CUDADeviceContext, T> {
+  void operator()(const framework::ExecutionContext& ctx,
+                  const framework::Tensor* x, const framework::Tensor* y,
+                  framework::Tensor* z) {
+    std::vector<const framework::Tensor*> ins = {x, y};
+    std::vector<framework::Tensor*> outs = {z};
+    const auto& cuda_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+        cuda_ctx, ins, &outs, -1, CudaMulFunctor<T>());
+  }
+};
+
 template <typename T>
 class DeterminantCUDAKernel : public framework::OpKernel<T> {
  public:
@@ -50,24 +64,6 @@ class DeterminantCUDAKernel : public framework::OpKernel<T> {
     auto output_dims =
         framework::slice_ddim(input->dims(), 0, input_dim_size - 2);
     output->Resize(output_dims);
-  }
-};
-
-template <typename T>
-class DeterminantGradCUDAKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const auto* dout = context.Input<Tensor>(framework::GradVarName("Out"));
-    const T* dout_data = dout->data<T>();
-    auto dout_dim = vectorize(dout->dims());
-
-    auto* dx = context.Output<Tensor>(framework::GradVarName("Input"));
-    T* dx_data = dx->mutable_data<T>(context.GetPlace());
-
-    int64_t numel = dx->numel();
-    for (int64_t idx = 0; idx < numel; idx++) {
-      dx_data[idx] = static_cast<T>(1);
-    }
   }
 };
 
@@ -98,26 +94,6 @@ class SlogDeterminantCUDAKernel : public framework::OpKernel<T> {
   }
 };
 
-template <typename T>
-class SlogDeterminantGradCUDAKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<Tensor>("Input");
-    const auto* input_data = input->data<T>();
-    auto input_dim = input->dims().Get();
-    auto input_dim_size = input->dims().size();
-    auto* output = context.Output<Tensor>("Out");
-    auto* output_data = output->mutable_data<T>(context.GetPlace());
-
-    int threads = PADDLE_CUDA_NUM_THREADS;
-    auto numel = output->numel() / 2;
-    int blocks = (numel + threads - 1) / threads;
-
-    auto rank = input_dim[input_dim_size - 1];
-    DeterminantGrad<T><<<blocks, threads>>>(numel, output_data);
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -126,12 +102,15 @@ namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(determinant, ops::DeterminantCUDAKernel<float>,
                         ops::DeterminantCUDAKernel<double>);
 
-REGISTER_OP_CUDA_KERNEL(determinant_grad, ops::DeterminantGradCUDAKernel<float>,
-                        ops::DeterminantGradCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    determinant_grad,
+    ops::DeterminantGradKernel<plat::CUDADeviceContext, float>,
+    ops::DeterminantGradKernel<plat::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(slogdeterminant, ops::SlogDeterminantCUDAKernel<float>,
                         ops::SlogDeterminantCUDAKernel<double>);
 
-REGISTER_OP_CUDA_KERNEL(slogdeterminant_grad,
-                        ops::SlogDeterminantGradCUDAKernel<float>,
-                        ops::SlogDeterminantGradCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    slogdeterminant_grad,
+    ops::SlogDeterminantGradKernel<plat::CUDADeviceContext, float>,
+    ops::SlogDeterminantGradKernel<plat::CUDADeviceContext, double>);
