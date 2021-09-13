@@ -400,8 +400,9 @@ void InterpreterCore::ExecuteInstructionList(
 
   PADDLE_ENFORCE_EQ(
       op_run_number.load(), vec_instr.size(),
-      "Required op_run_number == %d, but received op_run_number = %d.",
-      vec_instr.size(), op_run_number.load());
+      platform::errors::Fatal(
+          "Required op_run_number == %d, but received op_run_number = %d.",
+          vec_instr.size(), op_run_number.load()));
 }
 
 void InterpreterCore::RunInstructionAsync(
