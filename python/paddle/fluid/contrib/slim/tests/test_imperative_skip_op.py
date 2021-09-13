@@ -93,8 +93,11 @@ class TestImperativeOutSclae(unittest.TestCase):
 
         conv2d_count, matmul_count = 0, 0
         conv2d_skip_count, matmul_skip_count = 0, 0
+        find_conv2d = False
+        find_matmul = False
         for i, op in enumerate(model_ops):
             if op.type == 'conv2d':
+                find_conv2d = True
                 if op.has_attr("skip_quant"):
                     conv2d_skip_count += 1
                 if conv2d_count > 0:
@@ -106,6 +109,7 @@ class TestImperativeOutSclae(unittest.TestCase):
                 conv2d_count += 1
 
             if op.type == 'matmul':
+                find_matmul = True
                 if op.has_attr("skip_quant"):
                     matmul_skip_count += 1
                 if matmul_count > 0:
@@ -116,8 +120,10 @@ class TestImperativeOutSclae(unittest.TestCase):
                         'fake_quantize_dequantize' not in model_ops[i - 1].type)
                 matmul_count += 1
 
-        self.assertTrue(conv2d_skip_count == 1)
-        self.assertTrue(matmul_skip_count == 1)
+        if find_conv2d:
+            self.assertTrue(conv2d_skip_count == 1)
+        if find_matmul:
+            self.assertTrue(matmul_skip_count == 1)
 
 
 if __name__ == '__main__':

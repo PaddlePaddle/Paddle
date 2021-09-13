@@ -538,10 +538,10 @@ def sums(input, out=None):
     if isinstance(input, list) or isinstance(input, tuple):
         for input_section in input:
             check_variable_and_dtype(input_section, "input", \
-                    ['float32', 'float64', 'int32', 'int64'], 'sums')
+                    ['float16', 'float32', 'float64', 'int32', 'int64'], 'sums')
     else:
         check_variable_and_dtype(input, "input", \
-                ['float32', 'float64', 'int32', 'int64'], 'sums')
+                ['float16', 'float32', 'float64', 'int32', 'int64'], 'sums')
 
     helper = LayerHelper('sum', **locals())
     if out is None:
@@ -674,7 +674,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             If ``shape`` is a list or tuple, the elements of it should be integers or Tensors with shape [1].
             If ``shape`` is an Tensor, it should be an 1-D Tensor with date type int32 or int64.
         dtype(np.dtype|str): Data type of the output Tensor which can
-            be float16, float32, float64, uint8, int32, int64.
+            be float16, float32, float64, uint8, int16, int32, int64.
         value(bool|float|int|Tensor): The constant value used to initialize 
             the Tensor to be created. If ``value`` is an Tensor, it should be an 1-D Tensor.
         force_cpu(bool, optional): data should be on CPU if it's true, default value is False.
@@ -712,7 +712,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
     attrs = {'force_cpu': force_cpu}
     dtype = convert_dtype(dtype)
     if not isinstance(value, Variable):
-        if dtype in ['uint8', 'int64', 'int32']:
+        if dtype in ['uint8', 'int16', 'int32', 'int64']:
             attrs['str_value'] = str(int(value))
             attrs['value'] = int(value)
         else:
@@ -725,7 +725,7 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
             out = _varbase_creator(dtype=dtype)
 
         if isinstance(value, Variable):
-            if dtype in ['uint8', 'int64', 'int32']:
+            if dtype in ['uint8', 'int16', 'int32', 'int64']:
                 attrs['str_value'] = str(int(value.numpy().item(0)))
             else:
                 attrs['str_value'] = str(float(value.numpy().item(0)))
@@ -745,10 +745,10 @@ def fill_constant(shape, dtype, value, force_cpu=False, out=None, name=None):
         inputs['ValueTensor'] = value
 
     check_shape(shape)
-    check_dtype(
-        dtype, 'dtype',
-        ['bool', 'float16', 'float32', 'float64', 'uint8', 'int32', 'int64'],
-        'fill_constant')
+    check_dtype(dtype, 'dtype', [
+        'bool', 'float16', 'float32', 'float64', 'uint8', 'int16', 'int32',
+        'int64'
+    ], 'fill_constant')
     check_type(shape, 'shape', (Variable, list, tuple), 'fill_constant')
 
     if out is not None:
