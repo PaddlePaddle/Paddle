@@ -1131,6 +1131,16 @@ class Executor(object):
         else:
             fetch_list = []
 
+        if isinstance(program, Program) and program._event_based_exe_opt:
+            program._event_based_exe_opt["program"] = \
+                self._add_feed_fetch_ops(
+                    program=program,
+                    feed=feed,
+                    fetch_list=fetch_list,
+                    feed_var_name=feed_var_name,
+                    fetch_var_name=fetch_var_name)
+            self._run_using_event_based_exe(program)
+
         if isinstance(program, Program) and program._pipeline_opt:
             if "startup_program" in program._pipeline_opt:
                 program = program._pipeline_opt["startup_program"]
@@ -1254,6 +1264,66 @@ class Executor(object):
                 return_numpy=return_numpy,
                 return_merged=return_merged)
 
+    def _run_using_event_based_exe(self, program):
+        event_based_exe = core.EventBasedExecutor()
+        if program._event_based_exe_opt["grain"] == "coarse":
+            if isinstance(program, Program) and program._pipeline_opt:
+                pass
+            else:
+                # Add a list of ops and vars into block
+                def _add_ops_vars_into_block(block, ops, vars):
+                    unique_var_names = set()
+                    for op in ops:
+                        new_op_desc = block.desc.append_op()
+                        new_op_desc.copy_from(op.desc)
+                        for name in op.input_arg_names:
+                            unique_var_names.add(name)
+                        for name in op.output_arg_names:
+                            unique_var_names.add(name)
+                    for name in unique_var_names:
+                        block._clone_variable(vars[name])
+                    block._sync_with_cpp()
+                # Partition the program to multiple blocks
+                def _partition_program_to_multiple_blocks(program):
+                    new_program = framework.Program()
+                    feed_ops = []
+                    forward_ops = []
+                    backward_ops = []
+                    comm_ops = []
+                    optimizer_ops = []
+                    fetch_ops = []
+                    comm_ops_white_list = ['c_allreduce_sum', 'c_sync_comm_stream']
+                    vars = program.block(0).vars
+                    for op in program.block(0).ops:
+                        if op.type == "feed":
+                            feed_ops.append(op)
+                        elif op.type == "fetch":
+                            fetch_ops.append(op)
+                        elif op.attr("op_role") == 0 or op.attr("op_role") == 256:
+                            forward_ops.append(op)
+                        elif op.attr("op_role") == 1 or op.attr("op_role") == 257:
+                            if op.type in comm_ops_white_list:
+                                comm_ops.append(op)
+                            else:
+                                backward_ops.append(op)
+                        elif op.attr("op_role") == 2:
+                            optimizer_ops.append(op)
+                        else:
+                            print("Op accidently ignored by event based executor")
+                    _add_ops_vars_into_block(new_program.block(0), feed_ops, vars)
+                    _add_ops_vars_into_block(new_program._create_block(), forward_ops, vars)
+                    _add_ops_vars_into_block(new_program._create_block(), backward_ops, vars)
+                    _add_ops_vars_into_block(new_program._create_block(), comm_ops, vars)
+                    _add_ops_vars_into_block(new_program._create_block(), optimizer_ops, vars)
+                    _add_ops_vars_into_block(new_program._create_block(), fetch_ops, vars)
+                    return new_program
+                new_program = \
+                    _partition_program_to_multiple_blocks(program._event_based_exe_opt["program"]
+                event_based_exe.compile(new_program.desc, "coarse")
+            elif program._event_based_exe_opt["grain"] == "fine":
+                pass
+            event_based_exe.run()
+                    
     def _run_program(self, program, feed, fetch_list, feed_var_name,
                      fetch_var_name, scope, return_numpy, use_program_cache):
         from paddle.optimizer.lr import LRScheduler

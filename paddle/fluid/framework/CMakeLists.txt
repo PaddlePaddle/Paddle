@@ -351,6 +351,7 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         fast_threaded_ssa_graph_executor variable_helper)
 
 cc_library(executor_cache SRCS executor_cache.cc DEPS parallel_executor)
+cc_library(event_based_executor SRCS event_based_executor.cc runtime_graph.cc DEPS framework_proto)
 if(WITH_PSCORE)
     get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
     cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
@@ -440,7 +441,7 @@ endif()
 #cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
 #cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 
-set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
+set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator event_based_executor)
 
 cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 
