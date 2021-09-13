@@ -78,7 +78,49 @@ def auto_cast(enable=True,
 
 def decorator(models=None, optimizers=None, mode='L2', save_dtype=None):
     """
-    Decorator models and optimizers for amp.
+    Decorator models and optimizers for auto-mixed-precision. When mode is L1(amp), the decorator will do nothing. 
+    When mode is L2(pure fp16), the decorator will cast all parameters of models to FP16, except BatchNorm and LayerNorm.
+    
+    Commonly, it is used together with `auto_cast` to achieve Pure fp16 in imperative mode.
 
+    Args:
+        models(Layer|list of Layer, optional): The defined models by user, models must be either a single model or a list of models. Default is None.
+        optimizers(Optimizer|list of Optimizer, optional): The defined optimizers by user, optimizers must be either a single optimizer or a list of optimizers. Default is None.
+        mode(str, optional): Auto mixed precision level. Accepted values are "L1" and "L2": L1 represent mixed precision, the decorator will do nothing; 
+             L2 represent Pure fp16, the decorator will cast all parameters of models to FP16, except BatchNorm and LayerNorm. Default is L2(pure fp16)
+        save_dtype(float, optional): The save model parameter dtype when use `paddle.save` or `paddle.jit.save`,it should be float16, float32, float64 or None.
+             The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
+
+    Examples:
+
+     .. code-block:: python   
+
+        # Demo1: single model and optimizer:
+        import paddle
+
+        model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
+        optimzier = paddle.optimizer.SGD(parameters=model.parameters())
+
+        model, optimizer = paddle.amp.decorator(models=model, optimizers=optimzier, mode='L2')
+
+        data = paddle.rand([10, 3, 32, 32])
+
+        with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, mode='L2'):
+            output = model(data)
+            print(output.dtype) # FP16
+
+        # Demo2: multi models and optimizers:
+        model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
+        optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
+
+        models, optimizers = paddle.amp.decorator(models=[model, model2], optimizers=[optimzier, optimizer2], mode='L2')
+
+        data = paddle.rand([10, 3, 32, 32])
+
+        with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, mode='L2'):
+            output = models[0](data)
+            output2 = models[1](data)
+            print(output.dtype) # FP16
+            print(output2.dtype) # FP16
     """
     return amp_decorator(models, optimizers, mode, save_dtype)

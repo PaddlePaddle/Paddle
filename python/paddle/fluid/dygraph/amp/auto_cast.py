@@ -219,17 +219,24 @@ def amp_guard(enable=True,
     """
     :api_attr: imperative
 
-    Create a context which enables auto-mixed-precision(AMP) of operators executed in imperative mode.
+    Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
     If enabled, the input data type (float32 or float16) of each operator is decided 
     by autocast algorithm for better performance. 
     
-    Commonly, it is used together with `AmpScaler` to achieve Auto-Mixed-Precision in 
-    imperative mode.
+    Commonly, it is used together with `GradScaler` to achieve Auto-Mixed-Precision in 
+    imperative mode. It is used together with `decorator` to achieve Pure fp16 in imperative mode.
 
     Args:
         enable(bool, optional): Enable auto-mixed-precision or not. Default is True.
-        custom_white_list(set|list, optional): The custom white_list.
-        custom_black_list(set|list, optional): The custom black_list.
+        custom_white_list(set|list|tuple, optional): The custom white_list. It's the set of ops that support
+             fp16 calculation and are considered numerically-safe and performance-critical. These ops 
+             will be converted to fp16.
+        custom_black_list(set|list|tuple, optional): The custom black_list. The set of ops that support fp16
+             calculation and are considered numerically-dangerous and whose effects may also be 
+             observed in downstream ops. These ops will not be converted to fp16.
+        mode(str, optional): Auto mixed precision level. Accepted values are "L1" and "L2": L1 represent mixed precision, the input data type of each operator will be casted by white_list and black_list; 
+             L2 represent Pure fp16, all operators parameters and input data will be casted to fp16, except operators in black_list, don't support fp16 kernel and batchnorm. Default is L1(amp)
+
         
     Examples:
 
@@ -331,6 +338,53 @@ class StateDictHook(object):
 
 @dygraph_only
 def amp_decorator(models=None, optimizers=None, mode='L2', save_dtype=None):
+    """
+    Decorator models and optimizers for auto-mixed-precision. When mode is L1(amp), the decorator will do nothing. 
+    When mode is L2(pure fp16), the decorator will cast all parameters of models to FP16, except BatchNorm and LayerNorm.
+    
+    Commonly, it is used together with `amp_guard` to achieve Pure fp16 in imperative mode.
+
+    Args:
+        models(Layer|list of Layer, optional): The defined models by user, models must be either a single model or a list of models. Default is None.
+        optimizers(Optimizer|list of Optimizer, optional): The defined optimizers by user, optimizers must be either a single optimizer or a list of optimizers. Default is None.
+        mode(str, optional): Auto mixed precision level. Accepted values are "L1" and "L2": L1 represent mixed precision, the decorator will do nothing; 
+             L2 represent Pure fp16, the decorator will cast all parameters of models to FP16, except BatchNorm and LayerNorm. Default is L2(pure fp16)
+        save_dtype(float, optional): The save model parameter dtype when use `paddle.save` or `paddle.jit.save`,it should be float16, float32, float64 or None.
+             The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
+
+    Examples:
+
+     .. code-block:: python   
+
+        # Demo1: single model and optimizer:
+        import paddle
+        import paddle.fluid as fluid
+
+        model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
+        optimzier = paddle.optimizer.SGD(parameters=model.parameters())
+
+        model, optimizer = fluid.dygraph.amp_decorator(models=model, optimizers=optimzier, mode='L2')
+
+        data = paddle.rand([10, 3, 32, 32])
+
+        with fluid.dygraph.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, mode='L2'):
+            output = model(data)
+            print(output.dtype) # FP16
+
+        # Demo2: multi models and optimizers:
+        model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
+        optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
+
+        models, optimizers = fluid.dygraph.amp_decorator(models=[model, model2], optimizers=[optimzier, optimizer2], mode='L2')
+
+        data = paddle.rand([10, 3, 32, 32])
+
+        with fluid.dygraph.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, mode='L2'):
+            output = models[0](data)
+            output2 = models[1](data)
+            print(output.dtype) # FP16
+            print(output2.dtype) # FP16
+    """
     if not (mode in ['L1', 'L2']):
         raise ValueError(
             "mode should be L1 or L2, L1 represent AMP train mode, L2 represent Pure fp16 train mode."
