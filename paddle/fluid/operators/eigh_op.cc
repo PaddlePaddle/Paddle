@@ -50,7 +50,6 @@ class EighOp : public framework::OperatorWithKernel {
     if (rank > 2) {
       for (auto i = 0; i < rank - 1; i++) {
         values_dim.emplace_back(input_dim[i]);
-        std::cout << "i: " << i << "\n";
       }
     } else {
       values_dim = {input_dim[1]};
@@ -66,12 +65,16 @@ class EignOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "(Tensor), Hermitian or real symmetric matrices."
-             "Its shape should be [*, N, N] where "
-             "* is zero or more batch dimensions");
-    AddOutput("Eigenvalues", "(Tensor), The eigenvalues in ascending order.");
-    AddOutput("Eigenvectors",
-              "(Tensor), The column is the normalized eigenvector "
-              "corresponding to the eigenvalue.");
+             "Its shape should be [*, N, N] where * is zero or"
+             "more batch dimensions. The data type is float32 ,"
+             "float64, complex64, complex128.");
+    AddOutput("Eigenvalues",
+              "(Tensor), The eigenvalues in ascending order."
+              "The data type is float32 or float64.");
+    AddOutput(
+        "Eigenvectors",
+        "(Tensor), The column is the normalized eigenvector "
+        "corresponding to the eigenvalue. The data type is the same as ``X``.");
     AddAttr<std::string>(
         "UPLO",
         "(string, default 'L'), 'L' represents the lower triangular matrix,"

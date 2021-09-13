@@ -58,20 +58,19 @@ class EighGradKernel : public framework::OpKernel<T> {
 
     auto& dims = output_v_var.dims();
     const int m = dims[dims.size() - 1];
-
-    auto dito = math::DeviceIndependenceTensorOperations<DeviceContext, T>(ctx);
-
+    auto dito =
+        math::DeviceIndependenceTensorOperations<DeviceContext, T, ValueType>(
+            ctx);
     auto tV = dito.Transpose(dito.Conj(output_v_var));
-    auto W = dito.Sub(dito.Unsqueeze(output_w_var, -2),
-                      dito.Unsqueeze(output_w_var, -1));
+    auto W = dito.Sub_(dito.Unsqueeze(output_w_var, -2),
+                       dito.Unsqueeze(output_w_var, -1));
     Tensor result = dito.Matmul(tV, output_v_grad);
     result.mutable_data<T>(dims, ctx.GetPlace());
-
     std::vector<int> out_shape = framework::vectorize<int>(dims);
     auto constant = dito.Fill(out_shape, 0.5);
     result = dito.Sub(result, dito.Conj(dito.Transpose(result)));
     result = dito.Mul(result, constant);
-    result = dito.Div(result, W);
+    result = dito.Div_(result, W);
     result = dito.DiagFill(m, m, m, 0, output_w_grad, result);
     x_grad = dito.Matmul(output_v_var, dito.Matmul(result, tV));
   }

@@ -12,9 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#ifndef PADDLE_WITH_HIP
-// HIP not support cusolver
-
 #include "paddle/fluid/operators/eigh_op.h"
 
 namespace paddle {
@@ -54,5 +51,3 @@ REGISTER_OP_CUDA_KERNEL(
                         paddle::platform::complex<float>>,
     ops::EighGradKernel<paddle::platform::CUDADeviceContext, double,
                         paddle::platform::complex<double>>);
-
-#endif  // not PADDLE_WITH_HIP
