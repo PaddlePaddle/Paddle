@@ -411,7 +411,8 @@ class TestMLPAutoPartitioner(unittest.TestCase):
                                  var_need_broadcast))
 
         # check var and op all have dist_attr in dist_main_program
-        distributed_attr_check_for_program(dist_main_prog, dist_context)
+        self.assertTrue(
+            distributed_attr_check_for_program(dist_main_prog, dist_context))
         # check distribured attr for dist op
         serial_op_idx = [1, 4]
         dist_op_idx = [[1, 2], [5, 6]]
@@ -468,7 +469,8 @@ class TestMLPAutoPartitioner(unittest.TestCase):
                                  var_need_broadcast))
 
         # check var and op all have dist_attr in dist_main_program
-        distributed_attr_check_for_program(dist_main_prog, dist_context)
+        self.assertTrue(
+            distributed_attr_check_for_program(dist_main_prog, dist_context))
         # check distribured attr for dist op
         serial_op_idx = [1, 4]
         dist_op_idx = [[1, 2], [5, 6]]
@@ -689,7 +691,8 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
                                  var_need_broadcast))
 
         # check var and op all have dist_attr in dist_main_program
-        distributed_attr_check_for_program(dist_main_prog, dist_context)
+        self.assertTrue(
+            distributed_attr_check_for_program(dist_main_prog, dist_context))
         # check distribured attr for dist op
         serial_op_idx = [0, 4, 6, 18]
         dist_op_idx = [[0, 1], [5, 6], [8, 9], [21, 22]]
@@ -750,7 +753,8 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
                                  var_need_broadcast))
 
         # check var and op all have dist_attr in dist_main_program
-        distributed_attr_check_for_program(dist_main_prog, dist_context)
+        self.assertTrue(
+            distributed_attr_check_for_program(dist_main_prog, dist_context))
         # check distribured attr for dist op
         serial_op_idx = [0, 4, 6, 18]
         dist_op_idx = [[0, 1], [5, 6], [8, 9], [21, 22]]
@@ -1043,7 +1047,8 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
                                  var_need_broadcast))
 
         # check var and op all have dist_attr in dist_main_program
-        distributed_attr_check_for_program(dist_main_prog, dist_context)
+        self.assertTrue(
+            distributed_attr_check_for_program(dist_main_prog, dist_context))
         # check distribured attr
         serial_op_idx = [0, 5, 9, 11, 23, 28, 31]
         dist_op_idx = [[0, 1], [6, 7], [11, 12], [14, 15], [27, 28], [33, 34],
