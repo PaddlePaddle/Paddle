@@ -28,6 +28,7 @@ from ..fluid.layers import logical_xor  # noqa: F401
 
 from paddle.common_ops_import import core
 from paddle import _C_ops
+from paddle.tensor.creation import full
 
 __all__ = []
 
@@ -156,7 +157,7 @@ def equal(x, y, name=None):
 
     Args:
         x(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
-        y(Tensor): Tensor, data type is bool, float32, float64, int32, int64.
+        y(Tensor|int|float|bool): int, float, bool or Tensor, tensor data type is bool, float32, float64, int32, int64.
         name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`.
 
@@ -174,6 +175,9 @@ def equal(x, y, name=None):
           result1 = paddle.equal(x, y)
           print(result1)  # result1 = [True False False]
     """
+    if not isinstance(y, Variable):
+        y = full(shape = [1], dtype = x.dtype ,fill_value = y)
+
     if in_dygraph_mode():
         return _C_ops.equal(x, y)
 
