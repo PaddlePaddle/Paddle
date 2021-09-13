@@ -2254,6 +2254,19 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
+
+#if !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
+  m.def("nvprof_init", platform::CudaProfilerInit);
+  m.def("nvprof_start", platform::CudaProfilerStart);
+  m.def("nvprof_stop", platform::CudaProfilerStop);
+  m.def("nvprof_nvtx_push", platform::CudaNvtxRangePush);
+  m.def("nvprof_nvtx_pop", platform::CudaNvtxRangePop);
+  m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
+  m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
+#endif
+#endif
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_device_properties",
         [](int64_t device_id) -> cudaDeviceProp * {
           int64_t gpu_num = 0;
@@ -2266,6 +2279,7 @@ All parameter, weight, gradient are variables in Paddle.
                   "than the number of gpus. Please input appropriate device id "
                   "again!",
                   device_id, gpu_num));
+#ifdef PADDLE_WITH_CUDA
           std::vector<cudaDeviceProp> cuda_device_props;
           cuda_device_props.resize(gpu_num);
           for (int i = 0; i < gpu_num; ++i) {
@@ -2273,12 +2287,23 @@ All parameter, weight, gradient are variables in Paddle.
                 cudaGetDeviceProperties(&cuda_device_props[i], i));
           }
           return &cuda_device_props[device_id];
+#else
+          std::vector<hipDeviceProp_t> hip_device_props;
+          hip_device_props.resize(gpu_num);
+          for (int i = 0; i < gpu_num; ++i) {
+            PADDLE_ENFORCE_CUDA_SUCCESS(
+                hipGetDeviceProperties(&hip_device_props[i], i));
+          }
+          return &hip_device_props[device_id];
+#endif
         },
         py::return_value_policy::copy);
+#endif
 
+#ifdef PADDLE_WITH_CUDA
   // This is copy the pytorch, only few changes, TO DO modify
   py::class_<cudaDeviceProp>(m, "_CudaDeviceProperties", R"DOC(
-        _CudaDeviceProperties is stuct of device properties information.  
+        _CudaDeviceProperties is struct of device properties information.  
         )DOC")
       .def_readonly("name", &cudaDeviceProp::name)
       .def_readonly("major", &cudaDeviceProp::major)
@@ -2298,16 +2323,31 @@ All parameter, weight, gradient are variables in Paddle.
                << cuda_device_prop.multiProcessorCount << ")";
         return stream.str();
       });
-
-#if !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
-  m.def("nvprof_init", platform::CudaProfilerInit);
-  m.def("nvprof_start", platform::CudaProfilerStart);
-  m.def("nvprof_stop", platform::CudaProfilerStop);
-  m.def("nvprof_nvtx_push", platform::CudaNvtxRangePush);
-  m.def("nvprof_nvtx_pop", platform::CudaNvtxRangePop);
-  m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
-  m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
 #endif
+
+#ifdef PADDLE_WITH_HIP
+  // This is copy the pytorch, only few changes, TO DO modify
+  py::class_<hipDeviceProp_t>(m, "_hipDeviceProperties", R"DOC(
+        _hipDeviceProperties is struct of device properties information.  
+        )DOC")
+      .def_readonly("name", &hipDeviceProp_t::name)
+      .def_readonly("major", &hipDeviceProp_t::major)
+      .def_readonly("minor", &hipDeviceProp_t::minor)
+      .def_readonly("is_multi_gpu_board", &hipDeviceProp_t::isMultiGpuBoard)
+      .def_readonly("is_integrated", &hipDeviceProp_t::integrated)
+      .def_readonly("multi_processor_count",
+                    &hipDeviceProp_t::multiProcessorCount)
+      .def_readonly("total_memory", &hipDeviceProp_t::totalGlobalMem)
+      .def("__repr__", [](const hipDeviceProp_t &hip_device_prop) {
+        std::ostringstream stream;
+        stream << "_hipDeviceProperties(name='" << hip_device_prop.name
+               << "', major=" << hip_device_prop.major
+               << ", minor=" << hip_device_prop.minor << ", total_memory="
+               << hip_device_prop.totalGlobalMem / (1024 * 1024)
+               << "MB, multi_processor_count="
+               << hip_device_prop.multiProcessorCount << ")";
+        return stream.str();
+      });
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL

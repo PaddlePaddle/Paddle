@@ -249,8 +249,6 @@ def get_device_properties(device):
         _CudaDeviceProperties: the properties of the device which include ASCII string identifying device, major compute capability, minor compute capability, 
                                global memory available on device in bytes and the number of multiprocessors on the device.
 
-
-
     Examples:
     
         .. code-block:: python

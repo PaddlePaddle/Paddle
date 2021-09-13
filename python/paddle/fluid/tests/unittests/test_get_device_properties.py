@@ -20,12 +20,13 @@ from paddle.device import *
 
 class TestGetDeviceProperties(unittest.TestCase):
     def test_get_device_properties_int(self):
-        gpu_num = paddle.device.cuda.device_count()
-        for i in range(gpu_num):
-            props = paddle.get_device_properties(i)
-            self.assertIsNotNone(props)
+        if is_compiled_with_cuda:
+            gpu_num = paddle.device.cuda.device_count()
+            for i in range(gpu_num):
+                props = paddle.get_device_properties(i)
+                self.assertIsNotNone(props)
 
-    def test_get_device_properties_CUDA(self):
+    def test_get_device_properties_CUDAPlace(self):
         if is_compiled_with_cuda:
             device = core.CUDAPlace(0)
             props = paddle.get_device_properties(device)
