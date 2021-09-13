@@ -41,7 +41,7 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
         for num_input in [0, 1]:
             for dims in [1, 2, 3, 4]:
                 for batch in [1, 2, 4]:
-                    for scale in [0.0, 1.0]:
+                    for scale in [0.1, 1.0]:
                         for bias in [0.0, 1.2]:
                             for bias_after_scale in [False, True]:
                                 self.num_input = num_input
@@ -100,11 +100,11 @@ class TrtConvertScaleTest(TrtLayerAutoScanTest):
                 }
             elif self.dims == 3:
                 self.dynamic_shape.min_input_shape = {"scale_input": [1, 3, 24]}
-                self.dynamic_shape.max_input_shape = {"scale_input": [9, 3, 24]}
+                self.dynamic_shape.max_input_shape = {"scale_input": [9, 6, 48]}
                 self.dynamic_shape.opt_input_shape = {"scale_input": [1, 3, 24]}
             elif self.dims == 2:
                 self.dynamic_shape.min_input_shape = {"scale_input": [1, 24]}
-                self.dynamic_shape.max_input_shape = {"scale_input": [9, 24]}
+                self.dynamic_shape.max_input_shape = {"scale_input": [9, 48]}
                 self.dynamic_shape.opt_input_shape = {"scale_input": [1, 24]}
             elif self.dims == 1:
                 self.dynamic_shape.min_input_shape = {"scale_input": [24]}
