@@ -23,8 +23,9 @@ EventCreateFunction DeviceEvent::event_creator_[MaxDeviceTypes];
 EventRecordFunction DeviceEvent::event_recorder_[MaxDeviceTypes];
 EventQueryFunction DeviceEvent::event_querier_[MaxDeviceTypes];
 EventFinishFunction DeviceEvent::event_finisher_[MaxDeviceTypes];
-EventFinishFunction DeviceEvent::event_finished_setter_[MaxDeviceTypes];
+EventSetFinishedFunction DeviceEvent::event_finished_setter_[MaxDeviceTypes];
 EventWaitFunction DeviceEvent::event_waiter_[MaxDeviceTypes][MaxDeviceTypes];
+EventResetFunction DeviceEvent::event_resetter_[MaxDeviceTypes];
 
 /*
  * Generate flag used to create event on all sorts of equipment.
@@ -60,9 +61,20 @@ void DeviceEventRecordCPU(DeviceEvent* event, const DeviceContext* context) {
   auto* wrapper = static_cast<CPUDeviceEventWrapper*>(event->GetEvent().get());
 
   std::unique_lock<std::mutex> lock(wrapper->mutex_);
-  PADDLE_ENFORCE_NE(wrapper->status_.load(), EventStatus::SCHEDULED,
-                    platform::errors::PreconditionNotMet(
-                        "EventStatus shall be not SCHEDULED before Record()"));
+  // NOTE: As for CudaEvent_t, it can be used to Record() repeatly. CudaEvent_t
+  // internally reset its status from finished into initialized.
+  // So we simulate the process here.
+  if (wrapper->status_.load() == EventStatus::SUCCESS) {
+    VLOG(3) << "Found EventStatus is SUCCESS before RecordCPU. Reset it into "
+               "INITIALIZED.";
+    wrapper->status_ = EventStatus::INITIALIZED;
+  }
+
+  PADDLE_ENFORCE_LT(
+      wrapper->status_.load(), EventStatus::SCHEDULED,
+      platform::errors::PreconditionNotMet(
+          "EventStatus shall be not SCHEDULED before Record(), but received %s",
+          wrapper->status_.load()));
   if (wrapper->status_ == EventStatus::INITIALIZED) {
     wrapper->status_ = EventStatus::SCHEDULED;
   }
@@ -104,6 +116,12 @@ void EventSetFinishedCPU(const DeviceEvent* event) {
   wrapper->cv_completed_.notify_all();
 }
 
+void EventResetCPU(const DeviceEvent* event) {
+  auto* wrapper = static_cast<CPUDeviceEventWrapper*>(event->GetEvent().get());
+  std::unique_lock<std::mutex> lock(wrapper->mutex_);
+  wrapper->status_ = EventStatus::INITIALIZED;
+}
+
 }  // namespace platform
 }  // namespace paddle
 
@@ -113,6 +131,7 @@ REGISTER_EVENT_RECORD_FUNCTION(kCPU, paddle::platform::DeviceEventRecordCPU)
 REGISTER_EVENT_QUERY_FUNCTION(kCPU, paddle::platform::DeviceEventQueryCPU)
 REGISTER_EVENT_FINISH_FUNCTION(kCPU, paddle::platform::DeviceEventFinishCPU)
 REGISTER_EVENT_SET_FINISHED_FUNCTION(kCPU,
-                                     paddle::platform::EventSetFinishedCPU);
+                                     paddle::platform::EventSetFinishedCPU)
 REGISTER_EVENT_WAIT_FUNCTION(kCPU, kCPU,
                              paddle::platform::DeviceEventCPUWaitCPU)
+REGISTER_EVENT_RESET_FUNCTION(kCPU, paddle::platform::EventResetCPU)

@@ -15,9 +15,9 @@
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype, check_type
-from ..fluid.framework import in_dygraph_mode, _varbase_creator
+from ..fluid.framework import in_dygraph_mode, _varbase_creator, Variable
 
-from ..fluid.layers import transpose  # noqa: F401
+from ..fluid.layers import transpose, cast  # noqa: F401
 from paddle.common_ops_import import core
 from paddle.common_ops_import import VarDesc
 from paddle import _C_ops
@@ -785,6 +785,94 @@ def cholesky(x, upper=False, name=None):
     return out
 
 
+def matrix_rank(x, tol=None, hermitian=False, name=None):
+    r"""
+    Computes the rank of a matrix.
+
+    The rank of a matrix is the number of singular values that are greater than the specified tol threshold when hermitian=False, 
+    or the number of eigenvalues in absolute value that are greater than the specified tol threshold when hermitian=True.
+
+    Args:
+        x (Tensor): The input tensor. 
+            Its shape should be [..., m, n], where ... is zero or more batch dimensions. If x is a batch of matrices then the output 
+            has the same batch dimensions. The data type of x should be float32 or float64. 
+        tol (float,Tensor,optional): the tolerance value. Default: None. 
+            If tol is not specified, and sigma is the largest singular value (or eigenvalue in absolute value), and eps is the 
+            epsilon value for the dtype of x, then tol is computed with formula tol=sigma * max(m,n) * eps. Note that if x is 
+            a batch of matrices, tol is computed this way for every batch.
+        hermitian (bool,optional): indicates whether x is Hermitian. Default: False.
+            When hermitian=True, x is assumed to be Hermitian, but x is not checked inside the function. Instead, We just use the 
+            lower triangular of the matrix to compute.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: Rank of tensor x.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            a = paddle.eye(10)
+            b = paddle.linalg.matrix_rank(a)
+            print(b)
+            # b = [10]
+
+            c = paddle.ones(shape=[3, 4, 5, 5])
+            d = paddle.linalg.matrix_rank(c, tol=0.01, hermitian=True)
+            print(d)
+            # d = [[1, 1, 1, 1],
+            #      [1, 1, 1, 1],
+            #      [1, 1, 1, 1]]
+    
+    """
+
+    if in_dygraph_mode():
+        if tol is None:
+            tol_tensor = None
+            tol_attr = 0.0
+            use_default_tol = True
+        elif isinstance(tol, Variable):
+            if tol.dtype != x.dtype:
+                tol_tensor = cast(tol, x.dtype)
+            else:
+                tol_tensor = tol
+            tol_attr = 0.0
+            use_default_tol = False
+        else:
+            tol_tensor = None
+            tol_attr = float(tol)
+            use_default_tol = False
+        return _C_ops.matrix_rank(x, tol_tensor, "tol", tol_attr, 'hermitian',
+                                  hermitian, 'use_default_tol', use_default_tol)
+
+    inputs = {}
+    attrs = {}
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'matrix_rank')
+    inputs['X'] = x
+    if tol is None:
+        attrs['use_default_tol'] = True
+    elif isinstance(tol, Variable):
+        check_variable_and_dtype(tol, 'tol', ['float32'], 'matrix_rank')
+        attrs['use_default_tol'] = False
+        if tol.dtype != x.dtype:
+            inputs['TolTensor'] = cast(tol, x.dtype)
+        else:
+            inputs['TolTensor'] = tol
+    else:
+        check_type(tol, 'tol', float, 'matrix_rank')
+        attrs['use_default_tol'] = False
+        attrs['tol'] = tol
+    check_type(hermitian, 'hermitian', bool, 'matrix_rank')
+    attrs['hermitian'] = hermitian
+
+    helper = LayerHelper('matrix_rank', **locals())
+    out = helper.create_variable_for_type_inference(dtype='int32')
+    helper.append_op(
+        type='matrix_rank', inputs=inputs, outputs={'Out': out}, attrs=attrs)
+    return out
+
+
 def bmm(x, y, name=None):
     """
     Applies batched matrix multiplication to two tensors.
@@ -803,21 +891,24 @@ def bmm(x, y, name=None):
         Tensor: The product Tensor.
 
     Examples:
-        import paddle
+        .. code-block:: python
 
-        # In imperative mode:
-        # size x: (2, 2, 3) and y: (2, 3, 2)
-        x = paddle.to_tensor([[[1.0, 1.0, 1.0],
-                               [2.0, 2.0, 2.0]],
-                              [[3.0, 3.0, 3.0],
-                               [4.0, 4.0, 4.0]]])
-        y = paddle.to_tensor([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],
-                              [[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
-        out = paddle.bmm(x, y)
-        #output size: (2, 2, 2)
-        #output value:
-        #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
-        out_np = out.numpy()
+            import paddle
+
+            # In imperative mode:
+            # size x: (2, 2, 3) and y: (2, 3, 2)
+            x = paddle.to_tensor([[[1.0, 1.0, 1.0],
+                                [2.0, 2.0, 2.0]],
+                                [[3.0, 3.0, 3.0],
+                                [4.0, 4.0, 4.0]]])
+            y = paddle.to_tensor([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],
+                                [[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
+            out = paddle.bmm(x, y)
+            #output size: (2, 2, 2)
+            #output value:
+            #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
+            out_np = out.numpy()
+            
     """
     x_shape = x.shape
     y_shape = y.shape
@@ -941,6 +1032,75 @@ def mv(x, vec, name=None):
         type='mv', inputs={'X': x,
                            'Vec': vec}, outputs={'Out': out})
     return out
+
+
+def svd(x, full_matrices=False, name=None):
+    r"""
+    Computes the singular value decomposition of one matrix or a batch of regular matrices.
+
+    Let :math:`X` be the input matrix or a batch of input matrices, the output should satisfies:
+
+    .. math::
+        X = U * diag(S) * VT 
+ 
+    Args:
+        x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
+            where `...` is zero or more batch dimensions. N and M can be arbitraty
+            positive number. Note that if x is sigular matrices, the grad is numerical 
+            instable. The data type of x should be float32 or float64. 
+        full_matrices (bool): A flag to control the behavor of svd. 
+            If full_matrices = True, svd op will compute full U and V matrics, 
+            which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`. K = min(M, N).
+            If full_matrices = False, svd op will use a economic method to store U and V. 
+            which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`. K = min(M, N).
+        name (str, optional): Name for the operation (optional, default is None). 
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tuple of 3 tensors: (U, S, VH). VH is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([[1.0, 2.0], [1.0, 3.0], [4.0, 6.0]]).astype('float64')
+            x = x.reshape([3, 2])
+            u, s, vh = paddle.linalg.svd(x)
+            print (u)
+            #U = [[ 0.27364809, -0.21695147  ],
+            #      [ 0.37892198, -0.87112408 ],
+            #      [ 0.8840446 ,  0.44053933 ]]
+
+            print (s)
+            #S = [8.14753743, 0.78589688]
+            print (vh)
+            #VT= [[ 0.51411221,  0.85772294],
+            #     [ 0.85772294, -0.51411221]]
+            
+            # one can verify : U * S * VT == X
+            #                  U * UH == I 
+            #                  V * VH == I
+    """
+
+    if in_dygraph_mode():
+        return _C_ops.svd(x, 'full_matrices', full_matrices)
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'svd')
+    check_type(full_matrices, 'full_matrices', bool, 'svd')
+    helper = LayerHelper('svd', **locals())
+    u = helper.create_variable_for_type_inference(dtype=x.dtype)
+    vh = helper.create_variable_for_type_inference(dtype=x.dtype)
+    s = helper.create_variable_for_type_inference(dtype=x.dtype)
+    attrs = dict()
+    attrs['full_matrices'] = full_matrices
+    helper.append_op(
+        type='svd',
+        inputs={'X': [x]},
+        outputs={'U': u,
+                 'VH': vh,
+                 'S': s},
+        attr=attrs, )
+    return u, s, vh
 
 
 def matrix_power(x, n, name=None):

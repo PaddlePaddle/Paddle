@@ -65,10 +65,10 @@ class TestEigvalsOp(OpTest):
 
     def set_dtype(self):
         #self.dtype = np.complex128
-        self.dtype = np.float64
+        self.dtype = np.float32
 
     def set_input_dims(self):
-        self.input_dims = (3, 3)
+        self.input_dims = (5, 5)
 
     def set_input_data(self):
         if(self.dtype == np.float32 or self.dtype == np.float64):
@@ -77,9 +77,10 @@ class TestEigvalsOp(OpTest):
             self.input_data = (np.random.random(self.input_dims) + np.random.random(self.input_dims) * 1j).astype(self.dtype)
 
     def test_check_output(self):
-        #self.__class__.no_need_check_grad = True
+        self.__class__.no_need_check_grad = True
         self.check_output_customized(checker = self.verify_output)
     
+    ''' The gradient kernel of this operator does not yet developed.
     def test_check_grad_normal(self):
         self.grad_dtype = self.dtype
         if self.dtype == np.float32:
@@ -96,7 +97,8 @@ class TestEigvalsOp(OpTest):
         self.check_grad(['X'], 'Out', 
             user_defined_grads=[self.x_grad],
             user_defined_grad_outputs=[self.out_grad])
-       
+    '''
+
     def verify_output(self, outs):
         actual_outs = np.array(outs[0])
         expect_outs = np.array(self.outputs['Out'])
@@ -124,7 +126,7 @@ class TestEigvalsOp(OpTest):
                                 str(actual_row) + " mismatch."
                                 )
                         
-'''
+
 class TestEigvalsOpFloat64(TestEigvalsOp):
     def set_dtype(self):
         self.dtype = np.float64
@@ -317,6 +319,6 @@ class TestEigvalsAPIComplex64(TestEigvalsAPI):
 class TestEigvalsAPIComplex128(TestEigvalsAPI): 
     def set_dtype(self):
         self.dtype = np.complex128 
-'''
+
 if __name__ == "__main__":
     unittest.main()
