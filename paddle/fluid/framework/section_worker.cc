@@ -54,6 +54,26 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
 
     backward_send_vars_.push_back(var_name);
     skip_vars_.push_back(var_name);
+
+    // cache the op type during the init part
+    // reduce unnecessary op visit during 1F1B
+    int op_role = op->Attr<int>(std::string("op_role"));
+    if ((op_role == static_cast<int>(OpRole::kForward)) ||
+        (op_role == (static_cast<int>(OpRole::kForward) |
+                     static_cast<int>(OpRole::kLoss))) ||
+        (op_role == static_cast<int>(OpRole::kLRSched))) {
+      forward_first_ops_.push_back(op);
+    } else if ((op_role == static_cast<int>(OpRole::kForward)) ||
+               (op_role == (static_cast<int>(OpRole::kForward) |
+                            static_cast<int>(OpRole::kLoss)))) {
+      forward_other_ops_.push_back(op);
+    } else if ((op_role == static_cast<int>(OpRole::kBackward)) ||
+               (op_role == (static_cast<int>(OpRole::kBackward) |
+                            static_cast<int>(OpRole::kLoss)))) {
+      backward_ops_.push_back(op);
+    } else if (op_role == static_cast<int>(OpRole::kOptimize)) {
+      optimizer_ops_.push_back(op);
+    }
   }
 }
 
@@ -66,25 +86,15 @@ void SectionWorker::RunForward(
     int micro_id, std::unique_ptr<GarbageCollector> &gc,
     std::unordered_map<const OperatorBase *, std::vector<std::string>>
         &unused_vars_) {
-  for (auto &op : ops_) {
-    int op_role = op->Attr<int>(std::string("op_role"));
-    // We run op with op_role = kLRSched only for the first microbatch
-    // to avoid increasing the @LR_DECAY_STEP@ multiple times.
-    bool run_first_mbatch = (op_role == static_cast<int>(OpRole::kForward)) ||
-                            (op_role == (static_cast<int>(OpRole::kForward) |
-                                         static_cast<int>(OpRole::kLoss))) ||
-                            (op_role == static_cast<int>(OpRole::kLRSched));
-    bool run_others = (op_role == static_cast<int>(OpRole::kForward)) ||
-                      (op_role == (static_cast<int>(OpRole::kForward) |
-                                   static_cast<int>(OpRole::kLoss)));
-    if ((micro_id == 0 && run_first_mbatch) || (micro_id != 0 && run_others)) {
-      VLOG(3) << "Forward: running op " << op->Type() << " for micro-batch "
-              << micro_id;
-      op->Run(*microbatch_scopes_[micro_id], place_);
-      if (gc) {
-        DeleteUnusedTensors(*microbatch_scopes_[micro_id], op.get(),
-                            unused_vars_, gc.get());
-      }
+  std::vector<std::unique_ptr<OperatorBase>> &forward_tmp =
+      micro_id == 0 ? forward_first_ops_ : forward_other_ops_;
+  for (auto &op : forward_tmp) {
+    VLOG(3) << "Forward: running op " << op->Type() << " for micro-batch "
+            << micro_id;
+    op->Run(*microbatch_scopes_[micro_id], place_);
+    if (gc) {
+      DeleteUnusedTensors(*microbatch_scopes_[micro_id], op.get(), unused_vars_,
+                          gc.get());
     }
   }
 }
@@ -93,18 +103,13 @@ void SectionWorker::RunBackward(
     int micro_id, std::unique_ptr<GarbageCollector> &gc,
     std::unordered_map<const OperatorBase *, std::vector<std::string>>
         &unused_vars_) {
-  for (auto &op : ops_) {
-    int op_role = op->Attr<int>(std::string("op_role"));
-    if ((op_role == static_cast<int>(OpRole::kBackward)) ||
-        (op_role == (static_cast<int>(OpRole::kBackward) |
-                     static_cast<int>(OpRole::kLoss)))) {
-      VLOG(3) << "Backward: running op " << op->Type() << " for micro-batch "
-              << micro_id;
-      op->Run(*microbatch_scopes_[micro_id], place_);
-      if (gc) {
-        DeleteUnusedTensors(*microbatch_scopes_[micro_id], op.get(),
-                            unused_vars_, gc.get());
-      }
+  for (auto &op : backward_ops_) {
+    VLOG(3) << "Backward: running op " << op->Type() << " for micro-batch "
+            << micro_id;
+    op->Run(*microbatch_scopes_[micro_id], place_);
+    if (gc) {
+      DeleteUnusedTensors(*microbatch_scopes_[micro_id], op.get(), unused_vars_,
+                          gc.get());
     }
   }
 }
@@ -113,15 +118,12 @@ void SectionWorker::RunUpdate(
     std::unique_ptr<GarbageCollector> &gc,
     std::unordered_map<const OperatorBase *, std::vector<std::string>>
         &unused_vars_) {
-  for (auto &op : ops_) {
-    int op_role = op->Attr<int>(std::string("op_role"));
-    if (op_role == static_cast<int>(OpRole::kOptimize)) {
-      VLOG(3) << "Update: running op " << op->Type();
-      op->Run(*microbatch_scopes_[num_microbatches_ - 1], place_);
-      if (gc) {
-        DeleteUnusedTensors(*microbatch_scopes_[num_microbatches_ - 1],
-                            op.get(), unused_vars_, gc.get());
-      }
+  for (auto &op : optimizer_ops_) {
+    VLOG(3) << "Update: running op " << op->Type();
+    op->Run(*microbatch_scopes_[num_microbatches_ - 1], place_);
+    if (gc) {
+      DeleteUnusedTensors(*microbatch_scopes_[num_microbatches_ - 1], op.get(),
+                          unused_vars_, gc.get());
     }
   }
 }
