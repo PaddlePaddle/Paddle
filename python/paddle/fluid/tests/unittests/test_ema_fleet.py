@@ -29,8 +29,8 @@ def gen_data():
 class TestParallelExecutorEMA(unittest.TestCase):
     def setUp(self):
         self._places = [paddle.CPUPlace()]
-        # if paddle.device.is_compiled_with_cuda():
-        #     self._places.append(paddle.CUDAPlace(0))
+        if paddle.device.is_compiled_with_cuda():
+            self._places.append(paddle.CUDAPlace(0))
         self._ema_decay = 0.999
         self._param_name = "fc.weight"
         self._train_program = static.Program()
