@@ -24,9 +24,8 @@ limitations under the License. */
 
 #include <boost/algorithm/string.hpp>
 
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/tokenizer_op.h"
-
-#include "paddle/fluid/framework/framework.pb.h"
 
 namespace paddle {
 namespace operators {
@@ -80,18 +79,18 @@ bool IsPunctuation(const wchar_t& ch) {
   return false;
 }
 
-string NormalizeNfd(const string& s) {
-  string ret;
-  char* result = reinterpret_cast<char*>(
-      utf8proc_NFD(reinterpret_cast<const unsigned char*>(s.c_str())));
-  if (result) {
-    ret = string(result);
-    free(result);
-    result = nullptr;
-  }
+// string NormalizeNfd(const string& s) {
+//   string ret;
+//   char* result = reinterpret_cast<char*>(
+//       utf8proc_NFD(reinterpret_cast<const unsigned char*>(s.c_str())));
+//   if (result) {
+//     ret = string(result);
+//     free(result);
+//     result = nullptr;
+//   }
 
-  return ret;
-}
+//   return ret;
+// }
 
 bool IsStripChar(const wchar_t& ch) {
   return kStripChars.find(ch) != wstring::npos;
@@ -120,15 +119,15 @@ vector<wstring> WhiteSpaceTokenize(const wstring& text) {
   return Split(text);
 }
 
-wstring ConvertStrToWstr(const string& src) {
-  wstring_convert<codecvt_utf8<wchar_t>> converter;
-  return converter.from_bytes(src);
-}
+// wstring ConvertStrToWstr(const string& src) {
+//   wstring_convert<codecvt_utf8<wchar_t>> converter;
+//   return converter.from_bytes(src);
+// }
 
-string ConvertWstrToStr(const wstring& src) {
-  wstring_convert<codecvt_utf8<wchar_t>> converter;
-  return converter.to_bytes(src);
-}
+// string ConvertWstrToStr(const wstring& src) {
+//   wstring_convert<codecvt_utf8<wchar_t>> converter;
+//   return converter.to_bytes(src);
+// }
 
 wstring ToLower(const wstring& s) {
   wstring ret(s.size(), L' ');
@@ -149,7 +148,7 @@ shared_ptr<Vocab> LoadVocab(const string& vocab_file) {
   string line;
   int index = 0;
   while (getline(ifs, line)) {
-    wstring token = ConvertStrToWstr(line);
+    wstring token = framework::ConvertStrToWstr(line);
     // The input line cann't be converted to unicode.
     // The drop it.
     if (token.empty()) continue;
@@ -171,7 +170,7 @@ int LoadVocab(const string& vocab_file, shared_ptr<Vocab> vocab) {
     string line;
     int64_t index = 0;
     while (getline(ifs, line)) {
-      wstring token = ConvertStrToWstr(line);
+      wstring token = framework::ConvertStrToWstr(line);
       // The input line cann't be converted to unicode.
       // The drop it.
       if (token.empty()) continue;
@@ -226,7 +225,8 @@ wstring BasicTokenizer::run_strip_accents(const wstring& text) const {
   // Strips accents from a piece of text.
   wstring unicode_text;
   try {
-    unicode_text = ConvertStrToWstr(NormalizeNfd(ConvertWstrToStr(text)));
+    unicode_text = framework::ConvertStrToWstr(
+        framework::NormalizeNfd(framework::ConvertWstrToStr(text)));
   } catch (bad_cast& e) {
     VLOG(2) << e.what() << endl;
     return L"";
@@ -261,19 +261,11 @@ vector<wstring> BasicTokenizer::run_split_on_punc(const wstring& text) const {
 }
 
 vector<wstring> BasicTokenizer::Tokenize(const string& text) const {
-  VLOG(0) << "In BasicTokenizer::Tokenize ";
-  VLOG(0) << "input text" << text;
-  wstring unicode_text = ConvertStrToWstr(text);
+  wstring unicode_text = framework::ConvertStrToWstr(text);
   unicode_text = clean_text(unicode_text);
 
   unicode_text = tokenize_chinese_chars(unicode_text);
-  std::wcout << "ConvertStrToWstr " << unicode_text << endl
-             << "original_tokens:";
   const vector<wstring>& original_tokens = WhiteSpaceTokenize(unicode_text);
-  for (size_t i = 0; i < original_tokens.size(); ++i) {
-    std::wcout << original_tokens[i] << "*";
-  }
-  std::wcout << endl;
 
   vector<wstring> split_tokens;
   for (wstring token : original_tokens) {
@@ -284,10 +276,6 @@ vector<wstring> BasicTokenizer::Tokenize(const string& text) const {
     const auto& tokens = run_split_on_punc(token);
     split_tokens.insert(split_tokens.end(), tokens.begin(), tokens.end());
   }
-  for (size_t i = 0; i < split_tokens.size(); ++i) {
-    std::wcout << split_tokens[i] << "*";
-  }
-  std::wcout << endl;
   return WhiteSpaceTokenize(boost::join(split_tokens, L" "));
 }
 
@@ -423,7 +411,7 @@ vector<wstring> BertTokenizer::ConvertIdsToTokens(
 
 string BertTokenizer::ConvertTokensToString(
     const vector<wstring>& tokens) const {
-  string text = ConvertWstrToStr(boost::join(tokens, L" "));
+  string text = framework::ConvertWstrToStr(boost::join(tokens, L" "));
   return text;
 }
 
@@ -604,11 +592,6 @@ vector<int64_t> BertTokenizer::GetSpecialTokensMask(
 
 vector<int64_t> BertTokenizer::get_input_ids(const string& text) const {
   vector<wstring> tokens = Tokenize(text);
-  wcout << L"After BertTokenizer::Tokenize()";
-  for (size_t i = 0; i < tokens.size(); ++i) {
-    wcout << tokens[i] << L" ";
-  }
-  wcout << endl;
   vector<int64_t> token_ids = ConvertTokensToIds(tokens);
   return token_ids;
 }
@@ -633,11 +616,6 @@ unordered_map<string, vector<int64_t>> BertTokenizer::Encode(
     bool return_overflowing_tokens /* = false */,
     bool return_special_tokens_mask /* = false */) const {
   vector<int64_t> ids = get_input_ids(text);
-  VLOG(0) << "after get_input_ids "
-          << "****" << ids.size() << "&&&&" << ids[0] << endl;
-  for (size_t tmp = 0; tmp < ids.size(); ++tmp) {
-    VLOG(0) << ids[tmp];
-  }
   vector<int64_t> pair_ids;
   if (text_pair != "") {
     vector<int64_t> res = get_input_ids(text_pair);

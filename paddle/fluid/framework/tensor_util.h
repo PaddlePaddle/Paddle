@@ -56,16 +56,17 @@ class PrintOptions {
 
 std::wstring ConvertStrToWstr(const std::string& src);
 std::string ConvertWstrToStr(const std::wstring& src);
+std::string NormalizeNfd(const std::string& s);
 
 class SerializeStringMap : public std::unordered_map<std::string, int32_t> {
  private:
-  void write(std::ostream& ss, int32_t t);
-  void write(std::ostream& ss, const std::string& str);
-  void read(std::istream& is, int32_t token_id);
-  void read(std::istream& is, std::string& str);
+  void write(std::ostream& os, int32_t* num);
+  void write(std::ostream& os, std::string* str);
+  void read(std::istream& is, int32_t* token_id);
+  void read(std::istream& is, std::string* str);
 
  public:
-  void MapTensorToStream(std::ostream& ss);
+  void MapTensorToStream(std::ostream& os);
   void MapTensorFromStream(std::istream& is);
   void show(void);
 };

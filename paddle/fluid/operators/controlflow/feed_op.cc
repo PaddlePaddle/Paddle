@@ -117,11 +117,11 @@ class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(vector<LoDTensor>|vector<vector<std::wstring>>) "
+             "(vector<LoDTensor>|vector<vector<std::string>>) "
              "A feeding list of LoDTensor or wstring, which may have "
              "different dimension and data type.");
     AddOutput("Out",
-              "(LoDTensor|vector<std::wstring>) The LoDTensor which is a copy "
+              "(LoDTensor|vector<std::string>) The LoDTensor which is a copy "
               "of the col-th feeding "
               "object.");
     AddAttr<int>("col", "(int) The column index of current feeding object.");

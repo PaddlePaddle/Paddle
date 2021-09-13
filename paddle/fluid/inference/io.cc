@@ -17,11 +17,13 @@ limitations under the License. */
 #include <algorithm>
 #include <fstream>
 #include <vector>
+
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/version.h"
 #include "paddle/fluid/platform/cpu_helper.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/pybind.h"
 
 DEFINE_string(devices, "", "The devices to be used which is joined by comma.");
@@ -85,10 +87,12 @@ void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
       framework::VarDesc* new_var = load_block->Var(var->Name());
       new_var->SetShape(var->GetShape());
       new_var->SetDataType(var->GetDataType());
-      new_var->SetType(var->GetType());
+      auto var_type = var->GetType();
+      new_var->SetType(var_type);
 
-      if (var->GetType() !=
-          framework::proto::VarType::Type::VarType_Type_SELECTED_ROWS) {
+      if ((var_type !=
+           framework::proto::VarType::Type::VarType_Type_SELECTED_ROWS) &&
+          (var_type != framework::proto::VarType::STRING_MAP)) {
         new_var->SetLoDLevel(var->GetLoDLevel());
       }
 

@@ -20,6 +20,7 @@
 #include <utility>
 
 #include "paddle/fluid/framework/op_kernel_type.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/op_base.h"
@@ -153,6 +154,15 @@ class VariableWrapper {
         tensor = &(var_.Get<framework::LoDTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
         tensor = &(var_.Get<framework::SelectedRows>().value());
+      } else if (type_ == framework::proto::VarType::STRING_MAP) {
+        const framework::STRING_MAP* data = nullptr;
+        data = &(var_.Get<framework::STRING_MAP>());
+        if (data && data->size() != 0) {
+          VLOG(6) << "The tensor of variable " << name_
+                  << " is not initialized";
+          return data_type_;
+        }
+        return framework::proto::VarType::STRING_MAP;
       } else {
         VLOG(6) << "Variable " << name_ << " is not initialized";
         return data_type_;

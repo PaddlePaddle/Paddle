@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/tensor_util.h"
+#include <utf8proc.h>
 
 #include <algorithm>
 #include <limits>
@@ -22,6 +22,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler.h"
 #ifdef PADDLE_WITH_MKLDNN
@@ -41,35 +42,49 @@ std::string ConvertWstrToStr(const std::wstring& src) {
   return converter.to_bytes(src);
 }
 
-void SerializeStringMap::write(std::ostream& ss, int32_t t) {
-  ss.write(reinterpret_cast<const char*>(&t), sizeof(t));
+std::string NormalizeNfd(const std::string& s) {
+  std::string ret;
+  char* result = reinterpret_cast<char*>(
+      utf8proc_NFD(reinterpret_cast<const unsigned char*>(s.c_str())));
+  if (result) {
+    ret = std::string(result);
+    free(result);
+    result = nullptr;
+  }
+
+  return ret;
 }
 
-void SerializeStringMap::write(std::ostream& ss, std::string& str) {
-  size_t length = str.size();
-  ss.write(reinterpret_cast<const char*>(&length), sizeof(length));
-  ss.write(reinterpret_cast<const char*>(str.data()), length);
+void SerializeStringMap::write(std::ostream& os, int32_t* t) {
+  os.write(reinterpret_cast<const char*>(t), sizeof(*t));
 }
 
-void SerializeStringMap::read(std::istream& is, int32_t token_id) {
-  is.read(reinterpret_cast<char*>(&token_id), sizeof(token_id));
+void SerializeStringMap::write(std::ostream& os, std::string* str) {
+  size_t length = str->size();
+  os.write(reinterpret_cast<const char*>(&length), sizeof(length));
+  os.write(reinterpret_cast<const char*>(str->data()), length);
 }
 
-void SerializeStringMap::read(std::istream& is, std::string& str) {
+void SerializeStringMap::read(std::istream& is, int32_t* token_id) {
+  is.read(reinterpret_cast<char*>(token_id), sizeof(*token_id));
+}
+
+void SerializeStringMap::read(std::istream& is, std::string* str) {
   size_t length;
   is.read(reinterpret_cast<char*>(&length), sizeof(length));
-  str.resize(length);
   char* tmp = new char[length + 1];
   is.read(tmp, length);
-  str = tmp;
+  *str = tmp;
 }
 
 void SerializeStringMap::MapTensorToStream(std::ostream& ss) {
   size_t t = this->size();
   ss.write(reinterpret_cast<const char*>(&t), sizeof(t));
-  for (auto& i : (*this)) {
-    std::string str = i.first;
-    int32_t value = i.second;
+  for (auto it = this->begin(); it != this->end(); ++it) {
+    std::string str = it->first;
+    int32_t value = it->second;
+    VLOG(0) << "SerializeStringMap::MapTensorToStream " << str << " : "
+            << value;
     write(ss, str);
     write(ss, value);
   }
@@ -80,9 +95,11 @@ void SerializeStringMap::MapTensorFromStream(std::istream& is) {
   is.read(reinterpret_cast<char*>(&map_size), sizeof(map_size));
   for (size_t i = 0; i < map_size; ++i) {
     std::string key;
-    std::int32_t value;
+    int32_t value;
     read(is, key);
     read(is, value);
+    VLOG(0) << "SerializeStringMap::MapTensorFromStream " << key << " : "
+            << value;
     (*this)[key] = value;
   }
 }

@@ -1192,8 +1192,6 @@ All parameter, weight, gradient are variables in Paddle.
            })
       .def("set_string_list",
            [](Variable &self, STRINGS str_list) {
-             VLOG(0) << "set_string_list set_string_list set_string_list "
-                        "set_string_list set_string_list set_string_list";
              *self.GetMutable<STRINGS>() = str_list;
            })
       .def("set_string_map",

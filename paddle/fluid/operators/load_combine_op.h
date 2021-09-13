@@ -91,7 +91,8 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
                 << data.size();
         for (auto it = data.begin(); it != data.end(); ++it) {
           VLOG(4) << it->first << ":" << it->second << std::endl;
-          std::wstring token = framework::ConvertStrToWstr(it->first);
+          std::wstring token =
+              framework::ConvertStrToWstr(framework::NormalizeNfd(it->first));
           tensor->insert({token, it->second});
         }
 
