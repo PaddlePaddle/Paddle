@@ -1104,7 +1104,7 @@ class ReorderMKLDNNHandler {
 
   std::shared_ptr<mkldnn::memory> AcquireSubmemory(
       const std::vector<int64_t>& dims, const std::vector<int64_t>& offset,
-      const std::shared_ptr<mkldnn::memory>& mem_p, int submemory_number = 0) {
+      const std::shared_ptr<mkldnn::memory>& mem_p) {
     auto sub_md = mem_p->get_desc().submemory_desc(dims, {offset});
     auto sub_mem_p = std::make_shared<mkldnn::memory>(sub_md, engine_,
                                                       mem_p->get_data_handle());

@@ -205,7 +205,7 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         reorder_format_tag, platform::to_void_cast(dout->data<T>()));
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        dx, dx_vec_dims, 0, reorder_format_tag, ctx.GetPlace());
+        dx, dx_vec_dims, reorder_format_tag, ctx.GetPlace());
     memset(dx->data<T>(), 0, reorder_dst_memory_p->get_desc().get_size());
 
     auto slice_mem_p = reorder_handler.AcquireSubmemory(slice_dims, offsets,
