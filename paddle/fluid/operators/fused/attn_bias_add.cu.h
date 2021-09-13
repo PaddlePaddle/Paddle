@@ -52,8 +52,10 @@ template <typename T>
 using ReduceParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 template <typename T>
-struct AddFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a + b; }
+struct CudaAddFunctor {
+  inline HOSTDEVICE T operator()(const T* args) const {
+    return args[0] + args[1];
+  }
 };
 
 template <typename InT, typename OutT, int ShapeSize, int VecSize,
@@ -126,7 +128,7 @@ void LaunchBiasAddFwKernel(const platform::CUDADeviceContext& ctx, int m, int n,
   std::vector<int64_t> out_dims = {n, m};
   configlists[1] = kps::details::BroadcastConfig<2>(out_dims, input1_dims, 2);
 
-  auto func = AddFunctor<T>();
+  auto func = CudaAddFunctor<T>();
   auto stream = ctx.stream();
   switch (vec_size) {
     case 4: {
