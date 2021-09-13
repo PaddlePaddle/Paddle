@@ -74,6 +74,7 @@ function compile_install_paddle {
 function init_benchmark {
     cd /workspace/Paddle/benchmark
     git clone PaddleClas.bundle PaddleClas
+
 }
 
 function prepare_data {
