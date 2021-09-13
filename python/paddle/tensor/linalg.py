@@ -1036,51 +1036,46 @@ def mv(x, vec, name=None):
 
 def svd(x, full_matrices=False, name=None):
     r"""
-    Computes the singular value decomposition of one matrix or a batch of regular matrices.
-
-    Let :math:`X` be the input matrix or a batch of input matrices, the output should satisfies:
-
-    .. math::
-        X = U * diag(S) * VT 
- 
+    Computes the singular value decomposition of one 
+    matrix or batches of regular matrice.
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
-            where `...` is zero or more batch dimensions. N and M can be arbitraty
+            where ... is zero or more batch dimensions. N and M can be arbitraty
             positive number. Note that if x is sigular matrices, the grad is numerical 
-            instable. The data type of x should be float32 or float64. 
-        full_matrices (bool): A flag to control the behavor of svd. 
+            instability. The data type of x should be float32 or float64. 
+
+        full_matrices(bool): A flag to control the behavor of svd. 
             If full_matrices = True, svd op will compute full U and V matrics, 
-            which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`. K = min(M, N).
+            which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`.
             If full_matrices = False, svd op will use a economic method to store U and V. 
-            which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`. K = min(M, N).
-        name (str, optional): Name for the operation (optional, default is None). 
-            For more information, please refer to :ref:`api_guide_Name`.
+            which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`
 
     Returns:
-        Tuple of 3 tensors: (U, S, VH). VH is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
+        Tensor: Tensor U, the shape of U is controlled by full_matrices flag.
+        Tensor: Tensor S, the singular value of X. the shape of S is [..., K]
+        Tensor: Tensor VH, the conjugate transpose of V. the shape of V is controlled by full_matrices flag. 
 
-    Examples:
-        .. code-block:: python
-
-            import paddle
+            import numpy as np
 
             x = paddle.to_tensor([[1.0, 2.0], [1.0, 3.0], [4.0, 6.0]]).astype('float64')
             x = x.reshape([3, 2])
-            u, s, vh = paddle.linalg.svd(x)
+            u, s, vt = paddle.linalg.svd(x)
             print (u)
+            print (s)
+            print (vt)
+
             #U = [[ 0.27364809, -0.21695147  ],
             #      [ 0.37892198, -0.87112408 ],
             #      [ 0.8840446 ,  0.44053933 ]]
 
-            print (s)
             #S = [8.14753743, 0.78589688]
-            print (vh)
+
             #VT= [[ 0.51411221,  0.85772294],
             #     [ 0.85772294, -0.51411221]]
             
-            # one can verify : U * S * VT == X
-            #                  U * UH == I 
-            #                  V * VH == I
+            # one can verify : U * S * VT = X ;     
+            #                  U * UH = I ; 
+            #                  V * VH = I
     """
 
     if in_dygraph_mode():
