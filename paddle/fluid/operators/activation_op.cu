@@ -610,7 +610,7 @@ template <typename T>
 struct CudaRsqrtGradFunctor : public BaseActivationFunctor<T> {
   T minus_one_half = static_cast<T>(-0.5f);
 
-  // dx = dout * -0.5 / out^3
+  // dx = -0.5 * dout * out^3
   __device__ __forceinline__ T operator()(const T& dout, const T& out) const {
     return minus_one_half * dout * out * out * out;
   }
