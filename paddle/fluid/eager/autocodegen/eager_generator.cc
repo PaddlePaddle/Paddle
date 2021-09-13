@@ -46,7 +46,8 @@ using namespace imperative;
 // 2. Number of duplicable outputs not known at code generation time
 // 3. Ops with duplicable outputs like SumOp need to be handled manually?
 
-std::string AttrTypeToString(const proto::AttrType& type) {
+
+static std::string AttrTypeToString(const proto::AttrType& type) {
     std::string ret;
     switch(type) {
         case(proto::AttrType::INT): {
@@ -108,11 +109,125 @@ std::string AttrTypeToString(const proto::AttrType& type) {
     return ret;
 }
 
-void SlotNameMatching(const std::map<std::string, std::vector<std::shared_ptr<VariableWrapper>>>& grad_map,
-                      const std::map<std::string, std::vector<std::shared_ptr<VariableWrapper>>>& fwd_ins,
-                      const std::map<std::string, std::vector<std::shared_ptr<VariableWrapper>>>& fwd_outs,
-                      std::map<std::string, std::string>& grad_fwd_slotname_map,
-                      std::map<std::string, std::string>& grad_grad_slotname_map) {
+template<typename T>
+static std::string GetAttrValue(const framework::Attribute& attr, bool is_vector) {
+    std::string val = "";
+    if(is_vector) {
+        val += "{";
+        for(auto x : boost::get<std::vector<T>>(attr)) {
+            val += std::to_string(x) + ",";
+        }
+        if(val.size() > 1)
+            val.pop_back();
+        val += "}";
+    } else {
+        val = std::to_string(boost::get<T>(attr));
+    }
+    return val;
+}
+
+static std::pair<std::string, std::string> GetAttrType(const framework::Attribute& attr, bool is_arg) {
+    /*
+        Attribute = boost::variant<
+            boost::blank, int, float, std::string, std::vector<int>, std::vector<float>,
+            std::vector<std::string>, bool, std::vector<bool>, BlockDesc*, int64_t,
+            std::vector<BlockDesc*>, std::vector<int64_t>, std::vector<double>>;
+    */
+    std::string ret = "";
+    std::string val = "";
+    size_t variant_pos = attr.which();
+    switch(variant_pos) {
+        case(1) : {
+            ret = "int";
+            val = GetAttrValue<int>(attr, false);
+            break;
+        }
+        case(2) : {
+            ret = "float";
+            val = GetAttrValue<float>(attr, false);
+            break;
+        }
+        case(3) : {
+            ret = "std::string";
+            if(is_arg) ret += "&";
+            val = "\"" + boost::get<std::string>(attr) + "\"";
+            break;
+        }
+        case(4) : {
+            ret = "std::vector<int>";
+            if(is_arg) ret += "&";
+            val = GetAttrValue<int>(attr, true);
+            break;
+        }
+        case(5) : {
+            ret = "std::vector<float>";
+            if(is_arg) ret += "&";
+            val = GetAttrValue<float>(attr, true);
+            break;
+        }
+        case(6) : {
+            ret = "std::vector<std::string>";
+            if(is_arg) ret += "&";
+            val += "{";
+            for(auto x : boost::get<std::vector<std::string>>(attr)) {
+                val += "\"" + x + "\"" + ",";
+            }
+            if(val.size() > 1)
+                val.pop_back();
+            val += "};";
+            break;
+        }
+        case(7) : {
+            ret = "bool";
+            val = GetAttrValue<bool>(attr, false);
+            break;
+        }
+        case(8) : {
+            ret = "std::vector<bool>";
+            if(is_arg) ret += "&";
+            val = GetAttrValue<bool>(attr, true);
+            break;
+        }
+        case(9) : {
+            ret = "BlockDesc*";
+            break;
+        }
+        case(10) : {
+            ret = "int64_t";
+            val = GetAttrValue<int64_t>(attr, false);
+            break;
+        }
+        case(11) : {
+            ret = "std::vector<BlockDesc*>";
+            if(is_arg) ret += "&";
+            break;
+        }
+        case(12) : {
+            ret = "std::vector<int64_t>";
+            if(is_arg) ret += "&";
+            val = GetAttrValue<int64_t>(attr, true);
+            break;
+        }
+        case(13) : {
+            ret = "std::vector<double>";
+            if(is_arg) ret += "&";
+            val = GetAttrValue<double>(attr, true);
+            break;
+        }
+        default : {
+            PADDLE_THROW(platform::errors::Fatal("Unable to recognize AttrType: %d", variant_pos)); 
+                      
+        }
+    }
+    return {ret, val};
+}
+
+
+static void SlotNameMatching(const std::map<std::string, std::vector<std::shared_ptr<VariableWrapper>>>& grad_map,
+                              const std::map<std::string, std::vector<std::shared_ptr<VariableWrapper>>>& fwd_ins,
+                              const std::map<std::string, std::vector<std::shared_ptr<VariableWrapper>>>& fwd_outs,
+                              std::map<std::string, std::string>& grad_fwd_slotname_map,
+                              std::map<std::string, std::string>& grad_grad_slotname_map) {
     
     for(const auto& iter : grad_map) {
         const std::string& grad_slot_name = iter.first;
@@ -179,10 +294,19 @@ void SlotNameMatching(const std::map<std::string, std::vector<std::shared_ptr<Va
     }
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    if (argc != 2) {
+        std::cerr << "argc must be 2" << std::endl;
+        return -1; 
+    }
+    std::string eager_root = argv[1];
+    std::string nodes_dir = eager_root + "/generated/nodes/";
+    std::string forwards_dir = eager_root + "/generated/forwards/";
+
     auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
     auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
     for (auto& pair : op_info_map) {
+
         /* --------------------------- */
         /* ------ Preprocessing ------ */
         /* --------------------------- */
@@ -295,6 +419,13 @@ int main() {
             continue;
         }
 
+        if(grad_node->size() > 1) {
+            // Backward attributes can be super complicated
+            VLOG(2) << "Skip GradOpNode with multiple OpBases for now: " << op_type;
+            skipped_operators.insert(op_type);
+            continue;
+        }
+
         VLOG(2) << "Prepared GradOpNode";
         
         /* ------ Get Grad ins/outs ---- */
@@ -370,12 +501,13 @@ int main() {
         /* -------------------------------- */
         /* --------- CodeGen: Forward ----- */
         /* -------------------------------- */
+        std::string fwd_function_str;
         {
         
         /* 
             // Forward Function Example:
             // Function Proto
-            std::tuple<vector<Tensor>, Tensor, vector<Tensor>> kernel_function(vector<vector<Tensor>>& Inputs, 
+            std::tuple<vector<Tensor>, Tensor, vector<Tensor>> kernel_function(vector<Tensor>& X, Tensor& Y, 
                                                                                attr0, attr1, ..., size_t Out0Num, size_t Out1Num) {
                 
                 const std::shared_ptr<Tracer>& tracer = imperative::GetCurrentTracer();
@@ -383,7 +515,7 @@ int main() {
                 // Forward Function Body
                 // According to fwd_inputs_name_pos_map
                 std::map<std::string, std::vector<std::shared_ptr<VarBase>>> ins = 
-                        { {"X" , TensorsToVarBases(Inputs["fwd_inputs_name_pos_map["X"]"])}, { "Y" , TensorsToVarBases("fwd_inputs_name_pos_map["Y"]")} };
+                        { {"X" , TensorsToVarBases(X)}, { "Y" , TensorsToVarBases({Y})} };
 
                 std::map<std::string, std::vector<std::shared_ptr<VarBase>>> outs = 
                         { {"Out0" , ConstructDuplicableOutput(Out0Num)}, {"Out1" , ConstructDuplicableOutput(Out1Num)} };
@@ -406,17 +538,47 @@ int main() {
         */
         
         std::string generated_function_body = "";
-        std::string dygraph_function_args_str = "std::vector<std::vector<pt::Tensor>>& Inputs";
+        std::string dygraph_function_args_str = "";
 
         /* ------ Dygraph forward function generation ------ */
         // [Generation] Get Tracer
-        generated_function_body += "\n";
-        std::string tracer_str = "const std::shared_ptr<Tracer>& tracer = imperative::GetCurrentTracer();";
+        std::string tracer_str = "  const std::shared_ptr<Tracer>& tracer = imperative::GetCurrentTracer();\n";
+        generated_function_body += "  // Dygraph Forward Pass\n";
         generated_function_body += tracer_str;
         generated_function_body += "\n";
 
-        // [Generation] Get Attrs
+        // [Generation] Get Ins Map
+        std::string ins_contents_str = "";
+        std::vector<std::string> input_args_str_list(op_proto->inputs().size());
+        for (const proto::OpProto::Var& input : op_proto->inputs()) {
+            const std::string& input_name = input.name();
+            size_t input_position = fwd_inputs_name_pos_map[input_name];
+            if(input.duplicable()) {
+                const char* FWD_INS_ARG_TEMPLATE = "std::vector<pt::Tensor>& %s";
+                input_args_str_list[input_position] = paddle::string::Sprintf(FWD_INS_ARG_TEMPLATE, input_name);
+            } else {
+                const char* FWD_INS_ARG_TEMPLATE = "pt::Tensor& %s";
+                input_args_str_list[input_position] = paddle::string::Sprintf(FWD_INS_ARG_TEMPLATE, input_name);
+            }
+            const char* FWD_INS_CONTENT_TEMPLATE = "{ \"%s\", TensorsToVarBases(%s) },";
+            ins_contents_str += paddle::string::Sprintf(FWD_INS_CONTENT_TEMPLATE, input_name, input_name);
+        }
+        if(ins_contents_str.size() > 0)
+            ins_contents_str.pop_back(); // // Remove trailing ","
+        
+        for(const std::string& arg : input_args_str_list) {
+            dygraph_function_args_str += arg;
+            dygraph_function_args_str += ",";
+        }
+        if(dygraph_function_args_str.size() > 0)
+            dygraph_function_args_str.pop_back();
+
+        const char* FWD_INS_MAP_TEMPLATE = "  std::map<std::string, std::vector<std::shared_ptr<VarBase>>> ins = { %s };\n";
+        std::string ins_map_str = paddle::string::Sprintf(FWD_INS_MAP_TEMPLATE, ins_contents_str);
+        generated_function_body += ins_map_str;
         generated_function_body += "\n";
+
+        // [Generation] Get Attrs
         std::string attr_contents_str = "";
         for (const proto::OpProto::Attr& attr : op_proto->attrs()) {
             const std::string& attr_name = attr.name();
@@ -433,29 +595,12 @@ int main() {
             attr_contents_str += attr_content_str;
         }
 
-        const char* FWD_ATTR_MAP_TEMPLATE = "framework::AttributeMap attrs = { %s };";
+        const char* FWD_ATTR_MAP_TEMPLATE = "  framework::AttributeMap attrs = { %s };\n";
         std::string attr_map_str = paddle::string::Sprintf(FWD_ATTR_MAP_TEMPLATE, attr_contents_str);
         generated_function_body += attr_map_str;
         generated_function_body += "\n";
-
-        // [Generation] Get Ins Map
-        generated_function_body += "\n";
-        std::string ins_contents_str = "";
-        for (const proto::OpProto::Var& input : op_proto->inputs()) {
-            const std::string& input_name = input.name();
-            const char* FWD_INS_CONTENT_TEMPLATE = "{ \"%s\", TensorsToVarBases(Inputs[%s]) },";
-            ins_contents_str += paddle::string::Sprintf(FWD_INS_CONTENT_TEMPLATE, input_name, fwd_inputs_name_pos_map[input_name]);
-        }
-        if(ins_contents_str.size() > 0)
-            ins_contents_str.pop_back(); // // Remove trailing ","
-        
-        const char* FWD_INS_MAP_TEMPLATE = "std::map<std::string, std::vector<std::shared_ptr<VarBase>>> ins = { %s };";
-        std::string ins_map_str = paddle::string::Sprintf(FWD_INS_MAP_TEMPLATE, ins_contents_str);
-        generated_function_body += ins_map_str;
-        generated_function_body += "\n";
         
         // [Generation] Get Outs Map
-        generated_function_body += "\n";
         std::string outs_contents_str = "";
         for (const proto::OpProto::Var& output : op_proto->outputs()) {
             const std::string& output_name = output.name();
@@ -473,16 +618,142 @@ int main() {
         if(outs_contents_str.size() > 0)
             outs_contents_str.pop_back(); // Remove trailing ","
 
-        const char* FWD_OUTS_MAP_TEMPLATE = "std::map<std::string, std::vector<std::shared_ptr<VarBase>>> outs = { %s };";
+        const char* FWD_OUTS_MAP_TEMPLATE = "  std::map<std::string, std::vector<std::shared_ptr<VarBase>>> outs = { %s };\n";
         std::string outs_map_str = paddle::string::Sprintf(FWD_OUTS_MAP_TEMPLATE, outs_contents_str);
         generated_function_body += outs_map_str;
         generated_function_body += "\n";
         
         // [Generation] Get TraceOp
-        generated_function_body += "\n";
-        const char* FWD_TRACE_OP_TEMPLATE = "tracer->TraceOp(\"%s\", ins, outs, attrs, tracer->ExpectedPlace(), false, {});";
+        const char* FWD_TRACE_OP_TEMPLATE = "  tracer->TraceOp(\"%s\", ins, outs, attrs, tracer->ExpectedPlace(), false, {});\n";
         std::string trace_op_str = paddle::string::Sprintf(FWD_TRACE_OP_TEMPLATE, op_proto->type());
         generated_function_body += trace_op_str;
+        generated_function_body += "\n";
+        
+        
+        // [Generation] Construct GradOpNode
+        // Run ComputeRequiredGrad
+        std::string get_autograd_meta_str = "  // Prepare Autograd Meta \n";
+        std::vector<std::string> autograd_meta_in_list(op_proto->inputs().size());
+        for (const proto::OpProto::Var& input : op_proto->inputs()) {
+            const std::string& input_name = input.name();
+            const std::string& input_autograd_name = "p_autograd_"+input_name;
+            size_t input_position = fwd_inputs_name_pos_map[input_name];
+
+            if(input.duplicable()) {
+                const char* GET_MULTI_AUTOGRAD_META_TEMPLATE = "  std::vector<egr::AutogradMeta*> %s = egr::EagerUtils::multi_autograd_meta(%s);\n";
+                get_autograd_meta_str += paddle::string::Sprintf(GET_MULTI_AUTOGRAD_META_TEMPLATE, input_autograd_name, input_name);
+
+                const char* AUTOGRAD_META_IN_TEMPLATE = "  for(egr::AutogradMeta* meta : %s) {\n    p_autograd_in.push_back(meta);\n  }\n";
+                autograd_meta_in_list[input_position] = paddle::string::Sprintf(AUTOGRAD_META_IN_TEMPLATE, input_autograd_name);
+            } else {
+                const char* GET_SINGLE_AUTOGRAD_META_TEMPLATE = "  egr::AutogradMeta* %s = egr::EagerUtils::autograd_meta(%s);\n";
+                get_autograd_meta_str += paddle::string::Sprintf(GET_SINGLE_AUTOGRAD_META_TEMPLATE, input_autograd_name, input_name);
+                
+                const char* AUTOGRAD_META_IN_TEMPLATE = "  p_autograd_in.push_back(%s);\n";
+                autograd_meta_in_list[input_position] = paddle::string::Sprintf(AUTOGRAD_META_IN_TEMPLATE, input_autograd_name);
+            }
+        }
+        // Keep autograd_meta_in same as input order for AddEdges()
+        std::string autograd_meta_in_str = "  std::vector<egr::AutogradMeta*> p_autograd_in;\n";
+        for(const std::string& str : autograd_meta_in_list) {
+            autograd_meta_in_str += str;
+        }
+
+        std::string autograd_meta_out_str = "  std::vector<egr::AutogradMeta*> p_autograd_out;\n";
+        for (const proto::OpProto::Var& output : op_proto->outputs()) {
+            const std::string& output_name = output.name();
+            const std::string& output_autograd_name = "p_autograd_"+output_name;
+            if(output.duplicable()) {
+                const char* GET_MULTI_AUTOGRAD_META_TEMPLATE = "  std::vector<egr::AutogradMeta*> %s = egr::EagerUtils::multi_autograd_meta(%s);\n";
+                get_autograd_meta_str += paddle::string::Sprintf(GET_MULTI_AUTOGRAD_META_TEMPLATE, output_autograd_name, output_name);
+
+                const char* AUTOGRAD_META_OUT_TEMPLATE = "  for(egr::AutogradMeta* meta : %s) {\n    p_autograd_out.push_back(meta);\n}\n";
+                autograd_meta_out_str += paddle::string::Sprintf(AUTOGRAD_META_OUT_TEMPLATE, output_autograd_name);
+            } else {
+                const char* GET_SINGLE_AUTOGRAD_META_TEMPLATE = "  egr::AutogradMeta* %s = egr::EagerUtils::autograd_meta(%s);\n";
+                get_autograd_meta_str += paddle::string::Sprintf(GET_SINGLE_AUTOGRAD_META_TEMPLATE, output_autograd_name, output_name);
+                
+                const char* AUTOGRAD_META_OUT_TEMPLATE = "  p_autograd_out.push_back(%s);\n";
+                autograd_meta_out_str += paddle::string::Sprintf(AUTOGRAD_META_OUT_TEMPLATE, output_autograd_name);
+            }
+        }
+        generated_function_body += get_autograd_meta_str;
+        generated_function_body += "\n";
+        generated_function_body += autograd_meta_in_str;
+        generated_function_body += "\n";
+        generated_function_body += autograd_meta_out_str;
+        generated_function_body += "\n";
+        
+        std::string grad_node_creation_str = "";
+        // Generate GradOpNode
+        const char* GRAD_OP_NODE_TEMPLATE = "    auto grad_node = std::make_shared<GradNode%s>();\n";
+        grad_node_creation_str += "    // Create GradOpNode\n";
+        grad_node_creation_str += paddle::string::Sprintf(GRAD_OP_NODE_TEMPLATE, op_type);
+        grad_node_creation_str += "\n";
+
+        // Add Edges 
+        grad_node_creation_str += "    // Set Edges for Input Tensors\n";
+        grad_node_creation_str += "    grad_node->AddEdges({ p_auto_grad_in });\n";
+        grad_node_creation_str += "\n";
+
+        // Set Attrs
+        if(grad_node->size() > 1)
+            PADDLE_THROW(platform::errors::Fatal("%s GradOpNode has more than 1 OpBases", op_type)); 
+        
+        grad_node_creation_str += "    // Set Attributes\n";
+        for(auto iter = grad_node->begin(); iter < grad_node->end(); iter++) {
+            // Each OpBase
+            OpBase& op_base = *iter;
+            for(auto& kv: op_base.DefaultAttrsMap()) {
+                const std::string& attr_name = kv.first;
+                const char* SET_ATTR_TEMPLATE = "    grad_node->SetAttr%s(%s);\n";
+                grad_node_creation_str += paddle::string::Sprintf(SET_ATTR_TEMPLATE, attr_name, attr_name);
+            }
+        }
+        grad_node_creation_str += "\n";
+
+        // Set TensorWrappers
+        grad_node_creation_str += "    // Set Tensor Wrappers\n";
+        for(auto& kv : grad_ins_fwd_slotname_map) {
+            const std::string& tensor_wrapper_name = kv.second;
+            const char* SET_TENSOR_WRAPPER_TEMPLATE = "    grad_node->SetTensorWrapper%s(%s);\n";
+            grad_node_creation_str += paddle::string::Sprintf(SET_TENSOR_WRAPPER_TEMPLATE, tensor_wrapper_name, tensor_wrapper_name);
+        }
+        grad_node_creation_str += "\n";
+
+        // Set OutputRank for tensor
+        grad_node_creation_str += "    // Set OutRank for Output Tensors\n";
+        for (const proto::OpProto::Var& output : op_proto->outputs()) {
+            const std::string& output_name = output.name();
+            const std::string& output_autograd_name = "p_autograd_"+output_name;
+            size_t output_position = fwd_outputs_name_pos_map[output_name];
+
+            const char* SET_TENSOR_OUTRANK_TEMPLATE = "    %s->SetOutRank(%d);\n";
+            grad_node_creation_str += paddle::string::Sprintf(SET_TENSOR_OUTRANK_TEMPLATE, output_autograd_name, output_position);
+        }
+        grad_node_creation_str += "\n";
+
+        // Set InRank for node
+        grad_node_creation_str += "    // Set InRank for GradOpNode\n";
+        for (const proto::OpProto::Var& input : op_proto->inputs()) {
+            const std::string& input_name = input.name();
+            size_t input_position = fwd_inputs_name_pos_map[input_name];
+
+            const char* SET_INRANK_TEMPLATE = "    grad_node->SetInRank(%d, %s);\n";
+            if(input.duplicable()) {
+                grad_node_creation_str += paddle::string::Sprintf(SET_INRANK_TEMPLATE, input_position, input_name+".size()");
+            } else {
+                grad_node_creation_str += paddle::string::Sprintf(SET_INRANK_TEMPLATE, input_position, "1");
+            }
+        }
+        grad_node_creation_str += "\n";
+
+        // Set History
+        grad_node_creation_str += "    // Set History for Output Tensors\n";
+        grad_node_creation_str += "    egr::EagerUtils::SetHistory(p_autograd_out, grad_node);\n";
+
+        const char* GRAD_NODE_CREATION_TEMPLATE = "  if(egr::EagerUtils::ComputeRequiredGrad(p_autograd_in.data(), p_autograd_in.size(), p_autograd_out.data(), p_autograd_out.size())) {\n%s\n  }";
+        generated_function_body += paddle::string::Sprintf(GRAD_NODE_CREATION_TEMPLATE, grad_node_creation_str);
         generated_function_body += "\n";
         
         // [Generation] Convert output VarBase to Vector/Tensor
@@ -495,11 +766,11 @@ int main() {
             size_t return_position = fwd_outputs_name_pos_map[output_name];
 
             if(output.duplicable()) {
-                const char* FWD_OUT_TENSORS_TEMPLATE = "std::vector<pt::Tensor> %s = VarBasesToTensors(outs[%s]);";
+                const char* FWD_OUT_TENSORS_TEMPLATE = "  std::vector<pt::Tensor> %s = VarBasesToTensors(outs[%s]);";
                 out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSORS_TEMPLATE, output_name, output_name);
                 return_types[return_position] = "std::vector<pt::Tensor>";
             } else {
-                const char* FWD_OUT_TENSOR_TEMPLATE = "pt::Tensor %s = VarBasesToTensors(outs[%s])[0];";
+                const char* FWD_OUT_TENSOR_TEMPLATE = "  pt::Tensor %s = VarBasesToTensors(outs[%s])[0];";
                 out_tensor_str = paddle::string::Sprintf(FWD_OUT_TENSOR_TEMPLATE, output_name, output_name);
                 return_types[return_position] = "pt::Tensor";
             }
@@ -513,6 +784,7 @@ int main() {
         generated_function_body += "\n";
         std::string return_str;
         std::string return_type_str = "";
+        std::string function_proto_return_type_str = "";
         if(return_contents.size() > 1) {
             // Return tuple
             std::string return_content_str = "";
@@ -526,13 +798,17 @@ int main() {
             }
             return_type_str.pop_back(); // Remove trailing ","
 
-            const char* FWD_TUPLE_RETURN_TEMPLATE = "return std::make_tuple<%s>(%s);";
+            const char* FWD_TUPLE_RETURN_TEMPLATE = "  return std::make_tuple<%s>(%s);";
             return_str = paddle::string::Sprintf(FWD_TUPLE_RETURN_TEMPLATE, return_type_str, return_content_str);
+            
+            const char* FWD_FUNCTION_PROTO_RETURN_TEMPLATE = "std::tuple<%s>;";
+            function_proto_return_type_str = paddle::string::Sprintf(FWD_FUNCTION_PROTO_RETURN_TEMPLATE, return_type_str);
         } else {
             // Return vector<Tensor> or Tensor
             return_type_str = return_types[0];
-            const char* FWD_TENSOR_RETURN_TEMPLATE = "return %s;";
+            const char* FWD_TENSOR_RETURN_TEMPLATE = "  return %s;";
             return_str = paddle::string::Sprintf(FWD_TENSOR_RETURN_TEMPLATE, return_contents[0]);
+            function_proto_return_type_str = return_type_str;
         }
         generated_function_body += return_str;
         generated_function_body += "\n";
@@ -540,13 +816,19 @@ int main() {
         // [Generation] Get Full Function 
         std::string function_name = op_type + "_dygraph_function";
 
-        const char* FWD_FUNCTION_TEMPLATE = "%s %s(%s) {\n %s \n}";
-        std::string function_str = paddle::string::Sprintf(FWD_FUNCTION_TEMPLATE, return_type_str, function_name, dygraph_function_args_str, generated_function_body);
+        const char* FWD_FUNCTION_TEMPLATE = "%s %s(%s) {\n\n%s\n}";
+        fwd_function_str = paddle::string::Sprintf(FWD_FUNCTION_TEMPLATE, function_proto_return_type_str, function_name, dygraph_function_args_str, generated_function_body);
 
-        VLOG(2) << function_str;
+        VLOG(2) << fwd_function_str;
+        
+        /* ----------------------------------------------- */
+        /* --------- CodeGen: Backward Function Body ----- */
+        /* ----------------------------------------------- */
+
         
         }
 
+        std::string grad_function_str;
         {
         /*
             // GradNode Example:
@@ -597,21 +879,20 @@ int main() {
         
         // [Generation] Get Tracer
         generated_grad_function_body += "\n";
-        std::string tracer_str = "const std::shared_ptr<Tracer>& tracer = imperative::GetCurrentTracer();";
+        std::string tracer_str = "  const std::shared_ptr<Tracer>& tracer = imperative::GetCurrentTracer();\n";
         generated_grad_function_body += tracer_str;
         generated_grad_function_body += "\n";
         
         // [Generation] Get Ins Map
-        generated_grad_function_body += "\n";
         std::string ins_contents_str = "";
         for (auto iter : grad_ins) {
             const std::string& grad_input_name = iter.first;
             
             if(grad_ins_fwd_slotname_map.count(grad_input_name)) {
                 // Fwd Tensor
-                const std::string& fwd_input_name = grad_ins_fwd_slotname_map[grad_input_name];
+                const std::string& struct_fwd_input_name = grad_ins_fwd_slotname_map[grad_input_name] + "_";
                 const char* GRAD_INS_FWD_CONTENT_TEMPLATE = "{ \"%s\", this->%s },";
-                ins_contents_str += paddle::string::Sprintf(GRAD_INS_FWD_CONTENT_TEMPLATE, grad_input_name, fwd_input_name);
+                ins_contents_str += paddle::string::Sprintf(GRAD_INS_FWD_CONTENT_TEMPLATE, grad_input_name, struct_fwd_input_name);
             
             } else if(grad_ins_grad_slotname_map.count(grad_input_name)) {
                 // Fwd Tensor's Grad
@@ -626,13 +907,11 @@ int main() {
         if(ins_contents_str.size() > 0)
             ins_contents_str.pop_back(); // // Remove trailing ","
         
-        const char* BWD_INS_MAP_TEMPLATE = "std::map<std::string, std::vector<std::shared_ptr<VarBase>>> ins = { %s };";
+        const char* BWD_INS_MAP_TEMPLATE = "  std::map<std::string, std::vector<std::shared_ptr<VarBase>>> ins = { %s };\n";
         std::string ins_map_str = paddle::string::Sprintf(BWD_INS_MAP_TEMPLATE, ins_contents_str);
         generated_grad_function_body += ins_map_str;
-        generated_grad_function_body += "\n";
         
         // [Generation] Get Outs Map
-        generated_grad_function_body += "\n";
         std::string outs_contents_str = "";
         for (auto iter : grad_outs) {
             const std::string& grad_output_name = iter.first;
@@ -640,7 +919,7 @@ int main() {
             if(grad_outs_slotname_map.count(grad_output_name)) {
                 // Fwd Tensor
                 size_t fwd_input_position = fwd_inputs_name_pos_map[grad_outs_slotname_map[grad_output_name]];
-                const char* GRAD_OUTS_CONTENT_TEMPLATE = "{ \"%s\", ConstructDuplicableOutput(this->in_ranks[%d]) },";
+                const char* GRAD_OUTS_CONTENT_TEMPLATE = "{ \"%s\", ConstructDuplicableOutput(this->GetInRank[%d]) },";
                 outs_contents_str += paddle::string::Sprintf(GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, fwd_input_position);
             } else {
                 PADDLE_THROW(platform::errors::Fatal("Unable to find forward slot name that matches %s", grad_output_name)); 
@@ -649,15 +928,13 @@ int main() {
         if(outs_contents_str.size() > 0)
             outs_contents_str.pop_back(); // // Remove trailing ","
         
-        const char* BWD_OUTS_MAP_TEMPLATE = "std::map<std::string, std::vector<std::shared_ptr<VarBase>>> outs = { %s };";
+        const char* BWD_OUTS_MAP_TEMPLATE = "  std::map<std::string, std::vector<std::shared_ptr<VarBase>>> outs = { %s };\n";
         std::string outs_map_str = paddle::string::Sprintf(BWD_OUTS_MAP_TEMPLATE, outs_contents_str);
         generated_grad_function_body += outs_map_str;
         generated_grad_function_body += "\n";
 
         // [Generation] Get Attrs Map
-        generated_grad_function_body += "\n";
         std::string trace_opbase_str = "";
-        
         for(auto iter = grad_node->begin(); iter < grad_node->end(); iter++) {
             // Each OpBase
             OpBase& op_base = *iter;
@@ -665,26 +942,25 @@ int main() {
             std::string attr_contents_str = "";
             for(auto& kv: op_base.DefaultAttrsMap()) {
                 const std::string& attr_name = kv.first;
+                const std::string& struct_attr_name = kv.first + "_";
                 const char* ATTR_CONTENT_TEMPLATE = "{ \"%s\", this->%s},";
-                attr_contents_str += paddle::string::Sprintf(ATTR_CONTENT_TEMPLATE, attr_name, attr_name);
+                attr_contents_str += paddle::string::Sprintf(ATTR_CONTENT_TEMPLATE, attr_name, struct_attr_name);
             }
             if(attr_contents_str.size() > 0)
                 attr_contents_str.pop_back();
             
-            const char* ATTRS_MAP_TEMPLATE = "framework::AttributeMap attrs = { %s };";
+            const char* ATTRS_MAP_TEMPLATE = "  framework::AttributeMap attrs = { %s };\n";
             std::string attrs_map_str = paddle::string::Sprintf(ATTRS_MAP_TEMPLATE, attr_contents_str);
             
-            const char* TRACE_OP_TEMPLATE = "tracer->TraceOp(%s, ins, outs, attrs, tracer->ExpectedPlace(), false, {});";
+            const char* TRACE_OP_TEMPLATE = "  tracer->TraceOp(%s, ins, outs, attrs, tracer->ExpectedPlace(), false, {});\n";
             std::string trace_op_str = paddle::string::Sprintf(TRACE_OP_TEMPLATE, op_base.Type());
 
-            trace_opbase_str += "\n";
             trace_opbase_str += attrs_map_str;
             trace_opbase_str += "\n";
             trace_opbase_str += trace_op_str;
         }
         
         generated_grad_function_body += trace_opbase_str;
-        generated_grad_function_body += "\n";
 
         // [Generation] Get Return
         std::string outputs_str = "";
@@ -692,11 +968,11 @@ int main() {
             const std::string& grad_out_name = iter.first;
             size_t fwd_input_position = fwd_inputs_name_pos_map[grad_outs_slotname_map[grad_out_name]];
 
-            const char* BWD_OUTPUT_TEMPLATE = "outputs[%d] = VarBasesToTensors(outs[\"%s\"]);\n";
+            const char* BWD_OUTPUT_TEMPLATE = "  outputs[%d] = VarBasesToTensors(outs[\"%s\"]);\n";
             outputs_str += paddle::string::Sprintf(BWD_OUTPUT_TEMPLATE, fwd_input_position, grad_out_name);
         }
 
-        const char* BWD_RETURN_TEMPLATE = "std::vector<std::vector<pt::Tensor>> outputs(outs.size());\n %s \n return outputs;";
+        const char* BWD_RETURN_TEMPLATE = "  std::vector<std::vector<pt::Tensor>> outputs(outs.size());\n%s\n  return outputs;";
         std::string return_str = paddle::string::Sprintf(BWD_RETURN_TEMPLATE, outputs_str);
 
         generated_grad_function_body += "\n";
@@ -704,37 +980,110 @@ int main() {
 
         // [Generation] Get Full Grad Function
         const char* GRAD_FUNCTION_TEMPLATE = "std::vector<std::vector<pt::Tensor>> GradNode%s::operator()(std::vector<std::vector<pt::Tensor>>& grads) {\n %s \n}";
-        std::string grad_function_str = paddle::string::Sprintf(GRAD_FUNCTION_TEMPLATE, op_type, generated_grad_function_body);
+        grad_function_str = paddle::string::Sprintf(GRAD_FUNCTION_TEMPLATE, op_type, generated_grad_function_body);
         
         VLOG(2) << grad_function_str;
         
         }
-
+        
+        std::string grad_node_str;
+        {
         /* ---------------------------------- */
         /* --------- CodeGen: GradNode ------ */
         /* ---------------------------------- */
-        /*
-        const char* GRAD_NODE_TEMPLATE = "              \
-            class GradNode%s : public GradNodeBase {\n  \
-             public:\n                                  \
-                GradNode%s() : GradNodeBase() {}\n      \
-                ~GradNode%s() override = default;\n     \
-                                                        \
-                virtual std::vector<std::vector<pt::Tensor>> operator()(const std::vector<std::vector<pt::Tensor>>& grads) override;\n  \
-                                                        \
-                %s // SetX, SetY, ...                   \
-                                                        \
-                void SetAttributes(%s) {\n              \
-                    %s                                  \
-                }\n                                     \
-                                                        \
-             private:\n                                 \
-                %s // Attributes                        \
-                %s // TensorWrappers                    \
-            };\n                                        \
-            ";
-        */  
+        const char* GRAD_NODE_TEMPLATE =
+"class GradNode%s : public GradNodeBase {\n\
+ public:\n\
+   GradNode%s() : GradNodeBase() {}\n\
+   ~GradNode%s() override = default;\n\
+\n\
+   virtual std::vector<std::vector<pt::Tensor>> operator()(const std::vector<std::vector<pt::Tensor>>& grads) override;\n\
+\n\
+   // SetX, SetY, ...\n\
+%s\n\
+   // SetAttr0, SetAttr1, ...\n\
+%s\n\
+\n\
+ private:\n\
+   // TensorWrappers\n\
+%s\n\
+   // Attribute Members\n\
+%s\n\
+};";
+        
+        // [Generation] Get Backward Attrs Map
+        // *We skipped cases where GradOpNode holds multiple OpBases
+        if(grad_node->size() > 1)
+            PADDLE_THROW(platform::errors::Fatal("%s GradOpNode has more than 1 OpBases", op_type)); 
 
+        std::string set_attrs_str = "";
+        std::string attr_members_str = "";
+        for(auto iter = grad_node->begin(); iter < grad_node->end(); iter++) {
+            // Each OpBase
+            OpBase& op_base = *iter;
+
+            for(auto& kv: op_base.DefaultAttrsMap()) {
+                const std::string& attr_name = kv.first;
+                const std::string& struct_attr_name = kv.first + "_";
+                framework::Attribute attr = kv.second;
+                
+                std::string attr_arg_type = GetAttrType(attr, true).first;
+                const char* SET_ATTR_TEMPLATE = "   void SetAttr%s(%s) {\n     %s\n   }\n";
+                const char* SET_ATTR_BODY_TEMPLATE = "%s = %s;";
+                const char* ATTR_ARGS_TEMPLATE = "%s %s";
+
+                std::string attr_args_str = paddle::string::Sprintf(ATTR_ARGS_TEMPLATE, attr_arg_type, attr_name);
+                std::string set_attr_body_str = paddle::string::Sprintf(SET_ATTR_BODY_TEMPLATE, struct_attr_name, attr_name);
+                set_attrs_str += paddle::string::Sprintf(SET_ATTR_TEMPLATE, attr_name, attr_args_str, set_attr_body_str);
+
+                std::string attr_member_type = GetAttrType(attr, false).first;
+                std::string attr_value = GetAttrType(attr, false).second;
+
+                const char* ATTR_MEMBER_TEMPLATE = "   %s %s = %s;\n";
+                attr_members_str += paddle::string::Sprintf(ATTR_MEMBER_TEMPLATE, attr_member_type, struct_attr_name, attr_value);
+            }
+        }
+        
+        // [Generation] Get TensorWrappers
+        std::string set_tensor_wrappers_str = "";
+        std::string tensor_wrapper_members_str = "";
+        for(auto& kv : grad_ins_fwd_slotname_map) {
+            const std::string& tensor_wrapper_name = kv.second;
+            const std::string& struct_tensor_wrapper_name = kv.second + "_";
+            
+            const char* SET_TENSOR_WRAPPER_TEMPLATE = "   void SetTensorWrapper%s(%s) {\n     %s\n   }\n";
+            const char* ATTR_TENSOR_WRAPPER_ARG_TEMPLATE = "std::vector<pt::Tensor>& %s";
+            const char* SET_TENSOR_WRAPPER_BODY_TEMPLATE = "%s = %s;";
+            std::string tensor_wrapper_arg_str = paddle::string::Sprintf(ATTR_TENSOR_WRAPPER_ARG_TEMPLATE, tensor_wrapper_name);
+            std::string tensor_wrapper_body_str = paddle::string::Sprintf(SET_TENSOR_WRAPPER_BODY_TEMPLATE, struct_tensor_wrapper_name, tensor_wrapper_name);
+
+            set_tensor_wrappers_str += paddle::string::Sprintf(SET_TENSOR_WRAPPER_TEMPLATE, tensor_wrapper_name, tensor_wrapper_arg_str, tensor_wrapper_body_str);
+                
+            const char* TENSOR_WRAPPER_MEMBER_TEMPLATE = "   std::vector<pt::Tensor> %s;\n";
+            tensor_wrapper_members_str += paddle::string::Sprintf(TENSOR_WRAPPER_MEMBER_TEMPLATE, struct_tensor_wrapper_name);
+        }
+
+        grad_node_str = paddle::string::Sprintf(GRAD_NODE_TEMPLATE, op_type, op_type, op_type, set_tensor_wrappers_str, set_attrs_str, tensor_wrapper_members_str, attr_members_str);
+        
+        VLOG(2) << grad_node_str;        
+        }
+
+        /* -------- Output Files -------- */
+        std::string node_header_path = nodes_dir + op_type + "_node.h";
+        std::string node_cxx_path = nodes_dir + op_type + "_node.cc";
+        std::string forward_cxx_path = forwards_dir + op_type + "_dygraph.cc";
+        
+        std::ofstream node_header_stream(node_header_path, std::ios::out);
+        std::ofstream node_cxx_stream(node_cxx_path, std::ios::out);
+        std::ofstream forward_cxx_stream(forward_cxx_path, std::ios::out);
+
+        node_header_stream << grad_node_str;
+        node_cxx_stream << grad_function_str;
+        forward_cxx_stream << fwd_function_str;
+
+        node_header_stream.close();
+        node_cxx_stream.close();
+        forward_cxx_stream.close();
     }
 
     return 0;
