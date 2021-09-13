@@ -80,9 +80,7 @@ class PipelineParallel(MetaParallelBase):
     def train_batch(self, data, optimizer, lr_scheduler=None, scaler=None):
         assert isinstance(optimizer, HybridParallelOptimizer), (
             'optimizer should be HybridParallelOptimizer subclass.')
-        if scaler is not None:
-            assert isinstance(scaler, HybridParallelGradScaler), (
-                'scaler should be HybridParallelGradScaler subclass or None.')
+
         assert fluid.framework._dygraph_tracer()._has_grad, (
             'Please enable the generation of gradients.')
 
@@ -212,7 +210,12 @@ class PipelineParallel(MetaParallelBase):
             if not last_iter:
                 input_tensor = p2p.recv_forward()
 
-        return self.total_loss if self._compute_loss else output_buffers
+        if self._compute_loss:
+            self.train_loss = self._broadcast_final_loss()
+        else:
+            self.train_loss = output_buffers
+
+        return self.train_loss
 
     def _forward_step(self, input_tensor):
         if self.stage_id == 0:
@@ -325,7 +328,7 @@ class PipelineParallel(MetaParallelBase):
 
     def _optimizer_step(self):
         if self.scaler:
-            self.scaler.minimize(self.optimizer, self.train_loss)
+            self.scaler.step(self.optimizer)
         else:
             self.optimizer.step()
 
