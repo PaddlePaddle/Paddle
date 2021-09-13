@@ -47,6 +47,7 @@ __all__ = [
     'default_main_program',
     'eager_guard',
     'in_eager_mode',
+    '_encode_place_for_eager',
     'program_guard',
     'name_scope',
     'cuda_places',
@@ -76,6 +77,21 @@ _current_device = None
 global_prog_seed = 0
 _current_pipeline_stage = None
 _global_flags_ = core.globals()
+_eager_mode_ = False
+
+
+@signature_safe_contextmanager
+def eager_guard():
+    global _eager_mode_
+    _eager_mode_ = True
+    try:
+        yield
+    finally:
+        _eager_mode_ = False
+
+
+def in_eager_mode():
+    return _eager_mode_
 
 
 def require_version(min_version, max_version=None):
@@ -326,10 +342,65 @@ def _set_dygraph_tracer_expected_place(place):
         _dygraph_tracer_._expected_place = place
 
 
+# PlaceType value must equal Backend
+class PlaceType:
+    kUndef = 0
+    kCPUPlace = 1
+    kCUDAPlace = 2
+    kCUDAPinnedPlace = 3
+    kHIPPlace = 4
+    kXPUPlace = 5
+    kNPUPlace = 6
+    kNPUPinnedPlace = 7
+    kMKLDNNPlace = 8
+    kCUDNNPlace = 9
+
+
+def _encode_place_for_eager(place):
+    place_id = PlaceType.kUndef
+    device_id = -1
+    if isinstance(place, core.Place):
+        if place.is_cpu_place():
+            place_id = PlaceType.kCPUPlace
+            device_id = -1
+        elif place.is_cuda_pinned_place():
+            place_id = PlaceType.kCUDAPinnedPlace
+            device_id = -1
+        elif place.is_gpu_place():
+            place_id = PlaceType.kCUDAPlace
+            device_id = place.gpu_device_id()
+        elif place.is_xpu_place():
+            place_id = PlaceType.kXPUPlace
+            device_id = place.xpu_device_id()
+        elif place.is_npu_place():
+            place_id = PlaceType.kNPUPlace
+            device_id = place.npu_device_id()
+    elif isinstance(place, core.CPUPlace):
+        place_id = PlaceType.kCPUPlace
+        device_id = -1
+    elif isinstance(place, core.CUDAPinnedPlace):
+        place_id = PlaceType.kCUDAPinnedPlace
+        device_id = -1
+    elif isinstance(place, core.CUDAPlace):
+        place_id = PlaceType.kCUDAPlace
+        device_id = place.get_device_id()
+    elif isinstance(place, core.XPUPlace):
+        place_id = PlaceType.kXPUPlace
+        device_id = place.get_device_id()
+    elif isinstance(place, core.NPUPlace):
+        place_id = PlaceType.kNPUPlace
+        device_id = place.get_device_id()
+    return place_id, device_id
+
+
 def _set_expected_place(place):
     global _global_expected_place_
     _global_expected_place_ = place
-    _set_dygraph_tracer_expected_place(place)
+    if in_eager_mode():
+        place_id, device_id = _encode_place_for_eager(place)
+        return core.eager._set_expected_place(place_id, device_id)
+    else:
+        _set_dygraph_tracer_expected_place(place)
 
 
 # TODO(zhiqiu): remove this function.
@@ -5940,23 +6011,6 @@ class ParamBase(core.VarBase):
         return new_param
 
     __repr__ = __str__
-
-
-_eager_mode_ = False
-
-
-@signature_safe_contextmanager
-def eager_guard():
-    global _eager_mode_
-    _eager_mode_ = True
-    try:
-        yield
-    finally:
-        _eager_mode_ = False
-
-
-def in_eager_mode():
-    return _eager_mode_
 
 
 # program is a global instance.

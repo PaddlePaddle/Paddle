@@ -23,6 +23,7 @@ limitations under the License. */
 
 #include "paddle/fluid/eager/api/api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
+#include "paddle/fluid/eager/function_api.h"
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -170,6 +171,47 @@ static PyObject* eager_tensor_method_is_initialized(EagerTensorObject* self,
   return ToPyObject(self->eagertensor.initialized());
 }
 
+static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
+                                              PyObject* kwargs) {
+  int place_id = CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 0), 0);
+  int device_id = CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 1), 1);
+
+  switch (static_cast<pt::Backend>(place_id)) {
+    case pt::Backend::kCPU:
+      egr::SetExpectedPlace(paddle::platform::CPUPlace());
+      break;
+    case pt::Backend::kCUDA:
+      egr::SetExpectedPlace(paddle::platform::CUDAPlace(device_id));
+      break;
+    case pt::Backend::kCUDAPinned:
+      egr::SetExpectedPlace(paddle::platform::CUDAPinnedPlace());
+      break;
+    case pt::Backend::kHIP:
+      egr::SetExpectedPlace(paddle::platform::CUDAPlace(device_id));
+      break;
+    case pt::Backend::kXPU:
+      egr::SetExpectedPlace(paddle::platform::XPUPlace(device_id));
+      break;
+    case pt::Backend::kNPU:
+      egr::SetExpectedPlace(paddle::platform::NPUPlace(device_id));
+      break;
+    case pt::Backend::kNPUPinned:
+      egr::SetExpectedPlace(paddle::platform::NPUPinnedPlace());
+      break;
+    case pt::Backend::kMKLDNN:
+      egr::SetExpectedPlace(paddle::platform::CPUPlace());
+      break;
+    case pt::Backend::kCUDNN:
+      egr::SetExpectedPlace(paddle::platform::CUDAPlace(device_id));
+      break;
+    default:
+      break;
+  }
+
+  Py_INCREF(Py_None);
+  return Py_None;
+}
+
 static PyObject* eager_api_scale(PyObject* self, PyObject* args,
                                  PyObject* kwargs) {
   std::vector<pt::Tensor> ret =
@@ -284,29 +326,32 @@ PyMethodDef variable_methods[] = {
 PyMethodDef variable_functions[] = {
     {"to_tensor", (PyCFunction)(void (*)(void))eager_api_to_tensor,
      METH_VARARGS | METH_KEYWORDS, NULL},
+    {"_set_expected_place",
+     (PyCFunction)(void (*)(void))eager_api_set_expected_place,
+     METH_VARARGS | METH_KEYWORDS, NULL},
     {"scale", (PyCFunction)(void (*)(void))eager_api_scale,
      METH_VARARGS | METH_KEYWORDS, NULL},
     {NULL, NULL, 0, NULL}};
 
 static PyTypeObject EagerTensorType = {
-    PyVarObject_HEAD_INIT(NULL, 0) "core_avx.eager.EagerTensor", /* tp_name */
-    sizeof(EagerTensorObject),       /* tp_basicsize */
-    0,                               /* tp_itemsize */
-    (destructor)eagertensor_dealloc, /* tp_dealloc */
-    0,                               /* tp_vectorcall_offset */
-    0,                               /* tp_getattr */
-    0,                               /* tp_setattr */
-    0,                               /* tp_reserved */
-    0,                               /* tp_repr */
-    0,                               /* tp_as_number */
-    0,                               /* tp_as_sequence */
-    0,                               /* tp_as_mapping */
-    0,                               /* tp_hash  */
-    0,                               /* tp_call */
-    0,                               /* tp_str */
-    0,                               /* tp_getattro */
-    0,                               /* tp_setattro */
-    0,                               /* tp_as_buffer */
+    PyVarObject_HEAD_INIT(NULL, 0) "Tensor", /* tp_name */
+    sizeof(EagerTensorObject),               /* tp_basicsize */
+    0,                                       /* tp_itemsize */
+    (destructor)eagertensor_dealloc,         /* tp_dealloc */
+    0,                                       /* tp_vectorcall_offset */
+    0,                                       /* tp_getattr */
+    0,                                       /* tp_setattr */
+    0,                                       /* tp_reserved */
+    0,                                       /* tp_repr */
+    0,                                       /* tp_as_number */
+    0,                                       /* tp_as_sequence */
+    0,                                       /* tp_as_mapping */
+    0,                                       /* tp_hash  */
+    0,                                       /* tp_call */
+    0,                                       /* tp_str */
+    0,                                       /* tp_getattro */
+    0,                                       /* tp_setattro */
+    0,                                       /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE |
         Py_TPFLAGS_HEAPTYPE,    /* tp_flags */
     0,                          /* tp_doc */

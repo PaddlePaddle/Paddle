@@ -23,6 +23,7 @@ import unittest
 class EagerScaleTestCase(unittest.TestCase):
     def test_scale_base(self):
         with eager_guard():
+            paddle.set_device("cpu")
             arr = np.ones([4, 16, 16, 32]).astype('float32')
             a = paddle.to_tensor(arr, 'float32', core.CPUPlace())
             a = core.eager.scale(a, 2.0, 0.9, True, False)
