@@ -34,11 +34,7 @@ class PReluOpConverter : public OpConverter {
     auto* input = engine_->GetITensor(op_desc.Input("X")[0]);
     // Get attrs
     std::string mode = BOOST_GET_CONST(std::string, op_desc.GetAttr("mode"));
-    //
     auto* alpha_var = scope.FindVar(op_desc.Input("Alpha")[0]);
-    PADDLE_ENFORCE_NOT_NULL(
-        alpha_var, platform::errors::NotFound(
-                       "Variable Alpha of prelu TRT converter is not found."));
     auto* alpha_tensor = alpha_var->GetMutable<framework::LoDTensor>();
 
     platform::CPUPlace cpu_place;
@@ -50,15 +46,9 @@ class PReluOpConverter : public OpConverter {
 
     nvinfer1::ILayer* layer = nullptr;
     if (engine_->with_dynamic_shape()) {
-#if IS_TRT_VERSION_GE(6000)
       plugin::PReluPluginDynamic* plugin = new plugin::PReluPluginDynamic(
           alpha_data, alpha_tensor_temp->numel(), mode);
       layer = engine_->AddDynamicPlugin(&input, input_num, plugin);
-#else
-      PADDLE_THROW(platform::errors::Fatal(
-          "You are running the TRT Dynamic Shape mode, need to confirm that "
-          "your TRT version is no less than 6.0"));
-#endif
     } else {
 #if IS_TRT_VERSION_GE(7000)
       float* alpha_weight_data = engine_->GetWeightCPUData(

@@ -186,9 +186,7 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default: False) "
                   "whether to compute reversed LSTM.")
         .SetDefault(false);
-    AddAttr<bool>("is_test", "True if in test phase.")
-        .SetDefault(false)
-        .AsExtra();
+    AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
     AddAttr<std::string>(
         "gate_activation",
         "(string, default: sigmoid)"
