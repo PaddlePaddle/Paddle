@@ -42,17 +42,9 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
             for strides in [[1, 1], [2, 2], [1, 2]]:
                 for paddings in [[0, 3], [1, 2, 3, 4]]:
                     for groups in [1, 2, 3]:
-                        #                       for padding_algorithm in ['EXPLICIT', 'SAME', 'VALID']:
-                        for padding_algorithm in ['EXPLICIT']:
+                        for padding_algorithm in ['EXPLICIT', 'SAME', 'VALID']:
                             for dilations in [[1, 1], [2, 2], [1, 2]]:
                                 for data_format in ['NCHW']:
-                                    #        for batch in [4]:
-                                    #           for strides in [[2, 2]]:
-                                    #               for paddings in [[1, 2, 3, 4]]:
-                                    #                   for groups in [2]:
-                                    #                       for padding_algorithm in ['EXPLICIT']:
-                                    #                           for dilations in [[1, 1]]:
-                                    #                               for data_format in ['NCHW']:
 
                                     dics = [{
                                         "data_fromat": data_format,

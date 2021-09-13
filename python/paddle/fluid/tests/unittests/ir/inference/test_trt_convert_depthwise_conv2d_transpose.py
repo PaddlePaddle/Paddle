@@ -22,23 +22,47 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        inputs = program_config.inputs
+        weights = program_config.weights
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
+
+        if inputs['input_data'].shape[1] != weights['conv2d_weight'].shape[
+                1] * attrs[0]['groups']:
+            return False
+
+        if inputs['input_data'].shape[1] != weights['conv2d_weight'].shape[1]:
+            return False
+
+        if inputs['input_data'].shape[1] != attrs[0]['groups']:
+            return False
+
+        return True
+
+    def sample_program_configs(self):
         return True
 
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
-            return np.ones([batch, 3, 64, 64]).astype(np.float32)
+            return np.ones(
+                [batch, attrs[0]['groups'], 64, 64]).astype(np.float32)
 
         def generate_weight1(attrs: List[Dict[str, Any]]):
-            return np.random.random([3, 1, 3, 3]).astype(np.float32)
+            return np.random.random(
+                [attrs[0]['groups'], 1, 3, 3]).astype(np.float32)
 
         for batch in [1, 2, 4]:
-            for strides in [[1, 1], [2, 2]]:
+            for strides in [[1, 1], [2, 2], [1, 2]]:
                 for paddings in [[0, 3], [1, 2, 3, 4]]:
-                    for groups in [3]:
-                        for padding_algorithm in ['EXPLICIT', 'SAME', 'VALID']:
-                            for dilations in [[1, 1], [2, 2]]:
+                    for groups in [1, 2, 3]:
+                        #    for padding_algorithm in ['EXPLICIT', 'SAME', 'VALID']:
+                        for padding_algorithm in ['EXPLICIT']:
+                            #       for dilations in [[1, 1], [2, 2], [1, 2]]:
+                            for dilations in [[1, 1]]:
                                 for data_format in ['NCHW']:
 
                                     dics = [{
@@ -86,16 +110,16 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
             self.dynamic_shape.min_input_shape = {
-                "input_data": [1, 3, 32, 32],
-                "output_data": [1, 24, 32, 32]
+                "input_data": [1, attrs[0]['groups'], 32, 32],
+                "output_data": [1, attrs[0]['groups'], 32, 32]
             }
             self.dynamic_shape.max_input_shape = {
-                "input_data": [4, 3, 64, 64],
-                "output_data": [4, 24, 64, 64]
+                "input_data": [4, attrs[0]['groups'], 64, 64],
+                "output_data": [4, attrs[0]['groups'], 64, 64]
             }
             self.dynamic_shape.opt_input_shape = {
-                "input_data": [1, 3, 64, 64],
-                "output_data": [1, 24, 64, 64]
+                "input_data": [1, attrs[0]['groups'], 64, 64],
+                "output_data": [1, attrs[0]['groups'], 64, 64]
             }
 
         def clear_dynamic_shape():

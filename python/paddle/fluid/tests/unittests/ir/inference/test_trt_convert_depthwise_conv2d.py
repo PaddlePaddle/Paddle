@@ -20,25 +20,48 @@ from functools import partial
 from typing import Optional, List, Callable, Dict, Any, Set
 
 
-class TrtConvertConv2dTest(TrtLayerAutoScanTest):
+class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        inputs = program_config.inputs
+        weights = program_config.weights
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
+
+        if inputs['input_data'].shape[1] != weights['conv2d_weight'].shape[
+                1] * attrs[0]['groups']:
+            return False
+
+        if inputs['input_data'].shape[1] != attrs[0]['groups']:
+            return False
+
+        if weights['conv2d_weight'].shape[0] % inputs['input_data'].shape[
+                1] != 0:
+            return False
+
         return True
 
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
-            return np.ones([batch, 3, 64, 64]).astype(np.float32)
+            if attrs[0]['groups'] == 1:
+                return np.ones([batch, 1, 64, 64]).astype(np.float32)
+            elif attrs[0]['groups'] == 2:
+                return np.ones([batch, 2, 64, 64]).astype(np.float32)
+            else:
+                return np.ones([batch, 3, 64, 64]).astype(np.float32)
 
         def generate_weight1(attrs: List[Dict[str, Any]]):
-            return np.random.random([24, 3, 3, 3]).astype(np.float32)
+            return np.random.random([24, 1, 3, 3]).astype(np.float32)
 
         for batch in [1, 2, 4]:
-            for strides in [[1, 1], [2, 2]]:
+            for strides in [[1, 1], [2, 2], [1, 2]]:
                 for paddings in [[0, 3], [1, 2, 3, 4]]:
-                    for groups in [1]:
+                    for groups in [1, 2, 3]:
                         for padding_algorithm in ['EXPLICIT', 'SAME', 'VALID']:
-                            for dilations in [[1, 1], [2, 2]]:
+                            for dilations in [[1, 1], [2, 2], [1, 2]]:
                                 for data_format in ['NCHW']:
 
                                     dics = [{
@@ -49,41 +72,19 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
                                         "paddings": paddings,
                                         "strides": strides,
                                         "data_format": data_format
-                                    }, {}]
+                                    }]
 
-                                    if padding_algorithm == 'EXPLICIT':
-                                        ops_config = [{
-                                            "op_type": "conv2d",
-                                            "op_inputs": {
-                                                "Input": ["input_data"],
-                                                "Filter": ["conv2d_weight"]
-                                            },
-                                            "op_outputs": {
-                                                "Output": ["conv_output_data"]
-                                            },
-                                            "op_attrs": dics[0]
-                                        }, {
-                                            "op_type": "relu",
-                                            "op_inputs": {
-                                                "X": ["conv_output_data"]
-                                            },
-                                            "op_outputs": {
-                                                "Out": ["output_data"]
-                                            },
-                                            "op_attrs": dics[1]
-                                        }]
-                                    else:
-                                        ops_config = [{
-                                            "op_type": "conv2d",
-                                            "op_inputs": {
-                                                "Input": ["input_data"],
-                                                "Filter": ["conv2d_weight"]
-                                            },
-                                            "op_outputs": {
-                                                "Output": ["output_data"]
-                                            },
-                                            "op_attrs": dics[0]
-                                        }]
+                                    ops_config = [{
+                                        "op_type": "depthwise_conv2d",
+                                        "op_inputs": {
+                                            "Input": ["input_data"],
+                                            "Filter": ["conv2d_weight"]
+                                        },
+                                        "op_outputs": {
+                                            "Output": ["output_data"]
+                                        },
+                                        "op_attrs": dics[0]
+                                    }]
                                     ops = self.generate_op_config(ops_config)
 
                                     program_config = ProgramConfig(
@@ -105,18 +106,45 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {
-                "input_data": [1, 3, 32, 32],
-                "output_data": [1, 24, 32, 32]
-            }
-            self.dynamic_shape.max_input_shape = {
-                "input_data": [4, 3, 64, 64],
-                "output_data": [4, 24, 64, 64]
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "input_data": [1, 3, 64, 64],
-                "output_data": [1, 24, 64, 64]
-            }
+            if attrs[0]['groups'] == 1:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 1, 32, 32],
+                    "output_data": [1, 24, 32, 32]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [4, 1, 64, 64],
+                    "output_data": [4, 24, 64, 64]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [1, 1, 64, 64],
+                    "output_data": [1, 24, 64, 64]
+                }
+            elif attrs[0]['groups'] == 2:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 2, 32, 32],
+                    "output_data": [1, 24, 32, 32]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [4, 2, 64, 64],
+                    "output_data": [4, 24, 64, 64]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [1, 2, 64, 64],
+                    "output_data": [1, 24, 64, 64]
+                }
+            else:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 3, 32, 32],
+                    "output_data": [1, 24, 32, 32]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [4, 3, 64, 64],
+                    "output_data": [4, 24, 64, 64]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [1, 3, 64, 64],
+                    "output_data": [1, 24, 64, 64]
+                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}

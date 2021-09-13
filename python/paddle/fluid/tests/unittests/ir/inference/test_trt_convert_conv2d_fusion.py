@@ -28,7 +28,10 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
-            return np.ones([batch, 3, 64, 64]).astype(np.float32)
+            if attrs[0]['groups'] == 2:
+                return np.ones([batch, 2, 64, 64]).astype(np.float32)
+            else:
+                return np.ones([batch, 3, 64, 64]).astype(np.float32)
 
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 1, 3, 3]).astype(np.float32)
@@ -37,11 +40,11 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
             return np.random.random([24, 1, 1]).astype(np.float32)
 
         for batch in [1, 2, 4]:
-            for strides in [[1, 1], [2, 2]]:
+            for strides in [[1, 1], [2, 2], [1, 2]]:
                 for paddings in [[0, 3], [1, 2, 3, 4]]:
-                    for groups in [3]:
+                    for groups in [2, 3]:
                         for padding_algorithm in ['EXPLICIT', 'SAME', 'VALID']:
-                            for dilations in [[1, 1], [2, 2]]:
+                            for dilations in [[1, 1], [2, 2], [1, 2]]:
                                 for data_format in ['NCHW']:
 
                                     dics = [{
