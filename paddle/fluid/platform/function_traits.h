@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include <tuple>
-#include "paddle/fluid/platform/hostdevice.h"
 
 namespace paddle {
 namespace platform {
@@ -32,65 +31,12 @@ struct FunctionTraits : public FunctionTraits<decltype(&T::operator())> {};
 // A partial specialization of FunctionTraits for pointers to member functions.
 template <typename ClassType, typename ReturnType, typename... Args>
 struct FunctionTraits<ReturnType (ClassType::*)(Args...) const> {
-  typedef ReturnType result_type;
-
-  template <size_t i>
-  struct Arg {
-    typedef typename std::tuple_element<i, std::tuple<Args...>>::type Type;
-  };
-
   static const size_t arity = sizeof...(Args);
   static const bool has_pointer_args =
       (arity == 1) &&
       (std::is_pointer<
           typename std::tuple_element<0, std::tuple<Args...>>::type>::value);
 };
-
-namespace details {
-
-template <typename InT, typename OutT, typename Functor, int Arity,
-          bool HasPointerArgs = false>
-struct ApplyImpl {
-  HOSTDEVICE inline OutT operator()(Functor func, InT args[]);
-};
-
-template <typename InT, typename OutT, typename Functor>
-struct ApplyImpl<InT, OutT, Functor, 1, true> {
-  HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
-    return func(args);
-  }
-};
-
-template <typename InT, typename OutT, typename Functor>
-struct ApplyImpl<InT, OutT, Functor, 1, false> {
-  HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
-    return func(args[0]);
-  }
-};
-
-template <typename InT, typename OutT, typename Functor, bool HasPointerArgs>
-struct ApplyImpl<InT, OutT, Functor, 2, HasPointerArgs> {
-  HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
-    return func(args[0], args[1]);
-  }
-};
-
-template <typename InT, typename OutT, typename Functor, bool HasPointerArgs>
-struct ApplyImpl<InT, OutT, Functor, 3, HasPointerArgs> {
-  HOSTDEVICE inline OutT operator()(Functor func, InT args[]) {
-    return func(args[0], args[1], args[2]);
-  }
-};
-
-}  // namespace details
-
-template <typename InT, typename OutT, typename Functor>
-HOSTDEVICE inline OutT Apply(Functor func, InT args[]) {
-  using Traits = FunctionTraits<Functor>;
-
-  return details::ApplyImpl<InT, OutT, Functor, Traits::arity,
-                            Traits::has_pointer_args>()(func, args);
-}
 
 }  // namespace platform
 }  // namespace paddle

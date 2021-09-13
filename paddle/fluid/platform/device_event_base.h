@@ -34,6 +34,7 @@ typedef bool (*EventQueryFunction)(const DeviceEvent*);
 typedef void (*EventFinishFunction)(const DeviceEvent*);
 typedef void (*EventSetFinishedFunction)(const DeviceEvent*);
 typedef void (*EventWaitFunction)(const DeviceEvent*, const DeviceContext*);
+typedef void (*EventResetFunction)(const DeviceEvent*);
 
 inline int DeviceTypeToId(const DeviceType& device_type) {
   return static_cast<int>(device_type);
@@ -104,6 +105,14 @@ class DeviceEvent {
     event_finished_setter_[type_id_](this);
   }
 
+  void Reset() {
+    PADDLE_ENFORCE_NOT_NULL(
+        event_resetter_[type_id_],
+        platform::errors::Unavailable(
+            "event_resetter_[%d] shall not be nullptr.", type_id_));
+    event_resetter_[type_id_](this);
+  }
+
   void Wait(const DeviceType& waiter_type, const DeviceContext* context) const {
     auto waiter_idx = DeviceTypeToId(waiter_type);
     PADDLE_ENFORCE_NOT_NULL(event_waiter_[waiter_idx][type_id_],
@@ -127,8 +136,9 @@ class DeviceEvent {
   static EventRecordFunction event_recorder_[MaxDeviceTypes];
   static EventQueryFunction event_querier_[MaxDeviceTypes];
   static EventFinishFunction event_finisher_[MaxDeviceTypes];
-  static EventFinishFunction event_finished_setter_[MaxDeviceTypes];
+  static EventSetFinishedFunction event_finished_setter_[MaxDeviceTypes];
   static EventWaitFunction event_waiter_[MaxDeviceTypes][MaxDeviceTypes];
+  static EventResetFunction event_resetter_[MaxDeviceTypes];
 
   template <DeviceType device_typ>
   friend struct EventCreateFunctionRegisterer;
@@ -147,6 +157,9 @@ class DeviceEvent {
 
   template <DeviceType waiter_typ, DeviceType event_type>
   friend struct EventWaitFunctionRegisterer;
+
+  template <DeviceType device_typ>
+  friend struct EventResetFunctionRegisterer;
 };
 
 /**
@@ -163,7 +176,6 @@ template <DeviceType device_type>
 struct EventCreateFunctionRegisterer : public framework::Registrar {
   explicit EventCreateFunctionRegisterer(EventCreateFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
-    VLOG(3) << "register event_creator with type_id :" << type_idx;
     DeviceEvent::event_creator_[type_idx] = func;
   }
 };
@@ -184,7 +196,6 @@ template <DeviceType device_type>
 struct EventRecordFunctionRegisterer : public framework::Registrar {
   explicit EventRecordFunctionRegisterer(EventRecordFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
-    VLOG(3) << "register event_recorder with type_id :" << type_idx;
     DeviceEvent::event_recorder_[type_idx] = func;
   }
 };
@@ -205,7 +216,6 @@ template <DeviceType device_type>
 struct EventQueryFunctionRegisterer : public framework::Registrar {
   explicit EventQueryFunctionRegisterer(EventQueryFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
-    VLOG(3) << "register event_querier with type_id :" << type_idx;
     DeviceEvent::event_querier_[type_idx] = func;
   }
 };
@@ -226,7 +236,6 @@ template <DeviceType device_type>
 struct EventFinishFunctionRegisterer : public framework::Registrar {
   explicit EventFinishFunctionRegisterer(EventFinishFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
-    VLOG(3) << "register event_finisher with type_id :" << type_idx;
     DeviceEvent::event_finisher_[type_idx] = func;
   }
 };
@@ -247,7 +256,6 @@ template <DeviceType device_type>
 struct EventSetFinishedFunctionRegisterer : public framework::Registrar {
   explicit EventSetFinishedFunctionRegisterer(EventSetFinishedFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
-    VLOG(3) << "register event_finished_setter with type_id :" << type_idx;
     DeviceEvent::event_finished_setter_[type_idx] = func;
   }
 };
@@ -269,8 +277,6 @@ struct EventWaitFunctionRegisterer : public framework::Registrar {
   explicit EventWaitFunctionRegisterer(EventWaitFunction func) {
     auto waiter_idx = DeviceTypeToId(waiter_type);
     auto event_idx = DeviceTypeToId(event_type);
-    VLOG(3) << "register event_finisher with waiter_idx : " << waiter_idx
-            << ", event_idx : " << event_idx;
     DeviceEvent::event_waiter_[waiter_idx][event_idx] = func;
   }
 };
@@ -287,12 +293,33 @@ struct EventWaitFunctionRegisterer : public framework::Registrar {
     return 0;                                                             \
   }
 
+// =============== Register for Reset ===============
+template <DeviceType device_type>
+struct EventResetFunctionRegisterer : public framework::Registrar {
+  explicit EventResetFunctionRegisterer(EventResetFunction func) {
+    auto type_idx = DeviceTypeToId(device_type);
+    DeviceEvent::event_resetter_[type_idx] = func;
+  }
+};
+
+#define REGISTER_EVENT_RESET_FUNCTION(device_type, func)                   \
+  STATIC_ASSERT_GLOBAL_NAMESPACE(                                          \
+      __reg_event_resetter__##device_type,                                 \
+      "REGISTER_EVENT_RESET_FUNCTION must be called in global namespace"); \
+  static ::paddle::platform::EventResetFunctionRegisterer<device_type>     \
+      __reg_event_resetter_##device_type##__(func);                        \
+  int TouchDeviceEventReset##device_type() {                               \
+    __reg_event_resetter_##device_type##__.Touch();                        \
+    return 0;                                                              \
+  }
+
 #define USE_EVENT(device_type)                                \
   extern int TouchDeviceEventCreate##device_type();           \
   extern int TouchDeviceEventRecord##device_type();           \
   extern int TouchDeviceEventQuery##device_type();            \
   extern int TouchDeviceEventFinish##device_type();           \
   extern int TouchDeviceEventSetFinished##device_type();      \
+  extern int TouchDeviceEventReset##device_type();            \
   UNUSED static int use_event_creator_##device_type =         \
       TouchDeviceEventCreate##device_type();                  \
   UNUSED static int use_event_recorder_##device_type =        \
@@ -302,7 +329,9 @@ struct EventWaitFunctionRegisterer : public framework::Registrar {
   UNUSED static int use_event_finisher_##device_type =        \
       TouchDeviceEventFinish##device_type();                  \
   UNUSED static int use_event_finished_setter_##device_type = \
-      TouchDeviceEventSetFinished##device_type();
+      TouchDeviceEventSetFinished##device_type();             \
+  UNUSED static int use_event_resetter_##device_type =        \
+      TouchDeviceEventReset##device_type();
 
 #define USE_EVENT_WAIT(waiter_type, event_type)                  \
   extern int TouchDeviceEventWait##waiter_type##event_type();    \
