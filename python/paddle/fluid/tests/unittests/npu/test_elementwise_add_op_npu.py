@@ -96,12 +96,20 @@ class TestElementwiseAddOp(OpTest):
             no_grad_set=set("Y"),
             max_relative_error=0.006, )
 
-
+"""
 class TestFP16ElementwiseAddOp(TestElementwiseAddOp):
     def init_dtype(self):
         self.dtype = np.float16
+"""
+class TestINTElementwiseAddOp(TestElementwiseAddOp):
+    def init_dtype(self):
+        self.dtype = np.int
 
+class TestINT64ElementwiseAddOp(TestElementwiseAddOp):
+    def init_dtype(self):
+        self.dtype = np.int64
 
+"""
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestElementwiseAddOp_scalar(TestElementwiseAddOp):
@@ -578,7 +586,8 @@ class TestAddInplaceBroadcastError3(TestAddInplaceBroadcastError):
     def init_data(self):
         self.x_numpy = np.random.rand(5, 2, 1, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
-
+"""
 
 if __name__ == '__main__':
     unittest.main()
+

@@ -42,27 +42,22 @@ class ElementwiseAddNPUKernel : public framework::OpKernel<T> {
     auto y_dims = y->dims();
     axis = (axis == -1 ? std::abs(x_dims.size() - y_dims.size()) : axis);
     if (x_dims.size() >= y_dims.size()) {
-      direct_compute =
-          y_dims == framework::slice_ddim(x_dims, axis, x_dims.size());
+      direct_compute = x_dims.size() == (y_dims.size() + axis);
     } else {
-      direct_compute =
-          x_dims == framework::slice_ddim(y_dims, axis, y_dims.size());
+      direct_compute = y_dims.size() == (x_dims.size() + axis);
     }
 
-    Tensor transformed_x, transformed_y;
     if (direct_compute) {
-      transformed_x.ShareDataWith(*x);
-      transformed_y.ShareDataWith(*y);
+      const auto& runner = NpuOpRunner("Add", {*x, *y}, {*out}, {});
+      runner.Run(dev_ctx.stream());
     } else {
+      Tensor transformed_x, transformed_y;
       NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &transformed_x,
                                    &transformed_y);
+      const auto& runner =
+          NpuOpRunner("Add", {transformed_x, transformed_y}, {*out}, {});
+      runner.Run(dev_ctx.stream());
     }
-    const auto& runner =
-        NpuOpRunner("Add", {transformed_x, transformed_y}, {*out}, {});
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
   }
 };
 
@@ -151,8 +146,13 @@ namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OP_NPU_KERNEL(elementwise_add, ops::ElementwiseAddNPUKernel<float>,
+                       ops::ElementwiseAddNPUKernel<int>,
+                       ops::ElementwiseAddNPUKernel<int64_t>,
                        ops::ElementwiseAddNPUKernel<plat::float16>);
 
 REGISTER_OP_NPU_KERNEL(elementwise_add_grad,
                        ops::ElementwiseAddGradNPUKernel<float>,
+                       ops::ElementwiseAddGradNPUKernel<int>,
+                       ops::ElementwiseAddGradNPUKernel<int64_t>,
                        ops::ElementwiseAddGradNPUKernel<plat::float16>);
+

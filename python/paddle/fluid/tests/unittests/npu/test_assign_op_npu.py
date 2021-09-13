@@ -50,5 +50,11 @@ class TestAssign(OpTest):
         self.check_output_with_place(self.place)
 
 
+class TestAssignINT64(TestAssign):
+    def init_dtype(self):
+        self.dtype = np.int64
+
+
 if __name__ == '__main__':
     unittest.main()
+

@@ -55,6 +55,14 @@ class TestNotEmpty(TestEmpty):
         self.inputs = {'X': np.array([])}
         self.outputs = {'Out': np.array([True])}
 
+class TestEmptyINT(TestEmpty):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+class TestEmptyINT64(TestEmpty):
+    def init_dtype(self):
+        self.dtype = np.int64
+
 
 @unittest.skipIf(not paddle.is_compiled_with_npu(),
                  "core is not compiled with NPU")
@@ -99,3 +107,4 @@ class TestIsEmptyOpDygraph(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -17,9 +17,24 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/mul_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
+#include "paddle/fluid/framework/tensor_util.h"
 
 namespace paddle {
 namespace operators {
+
+template <typename T>
+void PrintTensor(const framework::Tensor& src, const framework::ExecutionContext& ctx){
+    std::vector<T> vec(src.numel());
+    TensorToVector(src, ctx.device_context(), &vec);
+    // for(int i=0; i< static_cast<int>(vec.size()); ++i){
+    int len = 10;
+    if (len > static_cast<int>(vec.size())) {
+      len = static_cast<int>(vec.size());  
+    }
+    for(int i=0; i< static_cast<int>(10); ++i){
+        VLOG(3) << "vec[" << i<< "] : "<< vec[i];
+    }
+}
 
 template <typename DeviceContext, typename T>
 class MulNPUKernel : public framework::OpKernel<T> {
@@ -227,6 +242,20 @@ class MulGradNPUKernel : public framework::OpKernel<T> {
         runner_dy.Run(stream);
       }
     }
+    VLOG(3) << "yoki: x: ";
+    PrintTensor<T>(*x, ctx);
+    VLOG(3) << "yoki: y: ";
+    PrintTensor<T>(*y, ctx);
+    VLOG(3) << "yoki: dout: ";
+    PrintTensor<T>(*dout, ctx);
+    if (dx) {
+      VLOG(3) << "yoki: dx: ";
+      PrintTensor<T>(*dx, ctx);
+    }
+    if (dy) {
+      VLOG(3) << "yoki: dy: ";
+      PrintTensor<T>(*dy, ctx);
+    }
   }
 };
 
@@ -243,3 +272,4 @@ REGISTER_OP_NPU_KERNEL(
     mul_grad, ops::MulGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::MulGradNPUKernel<paddle::platform::NPUDeviceContext,
                           paddle::platform::float16>);
+

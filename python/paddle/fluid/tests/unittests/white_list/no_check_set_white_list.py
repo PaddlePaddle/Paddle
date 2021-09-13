@@ -32,4 +32,5 @@ no_check_set_white_list = [
     'fusion_lstm',
     'softmax_with_cross_entropy',
     'class_center_sample',
+    'dropout',
 ]

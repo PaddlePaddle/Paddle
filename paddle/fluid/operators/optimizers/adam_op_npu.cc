@@ -25,6 +25,20 @@ namespace operators {
 using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
+template <typename T>
+void PrintTensor(const framework::Tensor& src, const framework::ExecutionContext& ctx){
+    std::vector<T> vec(src.numel());
+    TensorToVector(src, ctx.device_context(), &vec);
+    // for(int i=0; i< static_cast<int>(vec.size()); ++i){
+    int len = 10;
+    if (len > static_cast<int>(vec.size())) {
+      len = static_cast<int>(vec.size());  
+    }
+    for(int i=0; i< static_cast<int>(10); ++i){
+        VLOG(3) << "vec[" << i<< "] : "<< vec[i];
+    }
+}
+
 template <typename DeviceContext, typename T>
 class AdamNPUKernel : public framework::OpKernel<T> {
  public:
@@ -48,6 +62,9 @@ class AdamNPUKernel : public framework::OpKernel<T> {
     auto* mom1 = ctx.Input<LoDTensor>("Moment1");
     auto* mom2 = ctx.Input<LoDTensor>("Moment2");
     auto* lr = ctx.Input<LoDTensor>("LearningRate");
+
+    VLOG(3) << "yoki: grad: ";
+    PrintTensor<T>(*grad, ctx);
 
     auto* beta1_pow = ctx.Input<Tensor>("Beta1Pow");
     auto* beta2_pow = ctx.Input<Tensor>("Beta2Pow");
@@ -222,6 +239,9 @@ class AdamNPUKernel : public framework::OpKernel<T> {
           NpuOpRunner("Mul", {*beta2_pow, *beta2_tensor}, {*beta2_pow_out}, {});
       runner_m2.Run(stream);
     }
+
+    VLOG(3) << "yoki: param_out: ";
+    PrintTensor<T>(*param_out, ctx);
   }
 };
 
@@ -310,3 +330,4 @@ REGISTER_OP_NPU_KERNEL(
 
 REGISTER_OP_NPU_KERNEL(adamw, ops::AdamWNPUKernel<float>,
                        ops::AdamWNPUKernel<paddle::platform::float16>);
+

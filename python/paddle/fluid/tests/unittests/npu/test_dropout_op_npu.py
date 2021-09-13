@@ -53,7 +53,7 @@ class TestDropoutOp(OpTest):
         self.place = paddle.NPUPlace(0)
 
     def test_check_output(self):
-        self.check_output_with_place(self.place)
+        self.check_output_with_place(self.place, no_check_set=['Mask'])
 
     def test_check_grad_normal(self):
         if self.dtype == np.float16:
@@ -274,3 +274,4 @@ class TestDropoutAPI(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

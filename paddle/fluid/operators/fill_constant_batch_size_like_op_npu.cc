@@ -76,17 +76,36 @@ class FillConstantBatchSizeLikeOpNPUKernel : public framework::OpKernel<T> {
               out, static_cast<T>(value));
     } else {
       out->mutable_data(ctx.GetPlace(), data_type);
-      Tensor tensor_tmp(data_type);
-      tensor_tmp.mutable_data<T>({1}, ctx.GetPlace());
-      FillNpuTensorWithConstant<T>(&tensor_tmp, value);
-
       auto stream =
           ctx.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
-      const auto &runner =
-          NpuOpRunner("FillD", {tensor_tmp}, {*out},
-                      {{"dims", framework::vectorize(out->dims())}});
-      runner.Run(stream);
+      
+      if (out->type() == framework::proto::VarType::INT64) {
+        Tensor tensor_tmp(framework::proto::VarType::INT32);
+        Tensor cast_out(framework::proto::VarType::INT32);
+        tensor_tmp.mutable_data<int>({1}, ctx.GetPlace());
+        FillNpuTensorWithConstant<int>(&tensor_tmp, static_cast<int>(value));
+        cast_out.Resize(out->dims());
+        cast_out.mutable_data<int>(ctx.GetPlace());
+
+        const auto& runner = NpuOpRunner("FillD", {tensor_tmp}, {cast_out},
+                                      {{"dims", framework::vectorize(out->dims())}});
+        runner.Run(stream);
+
+        auto dst_dtype = ConvertToNpuDtype(out->type());
+        const auto& runner_cast_scale =
+            NpuOpRunner("Cast", {cast_out}, {*out},
+                        {{"dst_type", static_cast<int>(dst_dtype)}});
+        runner_cast_scale.Run(stream);
+      } else {
+        Tensor tensor_tmp(data_type);
+        tensor_tmp.mutable_data<T>({1}, ctx.GetPlace());
+        FillNpuTensorWithConstant<T>(&tensor_tmp, value);
+
+        const auto& runner = NpuOpRunner("FillD", {tensor_tmp}, {*out},
+                                      {{"dims", framework::vectorize(out->dims())}});
+        runner.Run(stream);
+      }
     }
   }
 };
@@ -102,4 +121,7 @@ REGISTER_OP_NPU_KERNEL(
     ops::FillConstantBatchSizeLikeOpNPUKernel<
         paddle::platform::NPUDeviceContext, int>,
     ops::FillConstantBatchSizeLikeOpNPUKernel<
+        paddle::platform::NPUDeviceContext, int64_t>,
+    ops::FillConstantBatchSizeLikeOpNPUKernel<
         paddle::platform::NPUDeviceContext, paddle::platform::float16>);
+

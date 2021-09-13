@@ -34,6 +34,20 @@ static std::map<framework::proto::VarType::Type, aclDataType>
 
 using Tensor = framework::Tensor;
 
+template <typename T>
+void PrintTensor(const framework::Tensor& src, const framework::ExecutionContext& ctx){
+    std::vector<T> vec(src.numel());
+    TensorToVector(src, ctx.device_context(), &vec);
+    // for(int i=0; i< static_cast<int>(vec.size()); ++i){
+    int len = 10;
+    if (len > static_cast<int>(vec.size())) {
+      len = static_cast<int>(vec.size());  
+    }
+    for(int i=0; i< static_cast<int>(len); ++i){
+        VLOG(3) << "vec[" << i<< "] : "<< vec[i];
+    }
+}
+
 template <typename DeviceContext, typename T>
 class CastNPUKernel : public framework::OpKernel<T> {
  public:
@@ -81,6 +95,14 @@ class CastNPUKernel : public framework::OpKernel<T> {
     const auto& runner = NpuOpRunner(
         "Cast", {*x}, {*out}, {{"dst_type", static_cast<int32_t>(aclDtype)}});
     runner.Run(stream);
+
+    VLOG(3) << "yoki: x: ";
+    PrintTensor<T>(*x, ctx);
+
+    if (out->type() == framework::proto::VarType::FP32) {
+      VLOG(3) << "yoki: out: ";
+      PrintTensor<float>(*out, ctx);
+    }
   }
 };
 }  // namespace operators
@@ -98,3 +120,4 @@ REGISTER_OP_NPU_KERNEL(
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext, float>,
     ops::CastNPUKernel<paddle::platform::NPUDeviceContext,
                        paddle::platform::float16>);
+
