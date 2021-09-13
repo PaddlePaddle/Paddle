@@ -383,6 +383,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       auto data_layout = framework::StringToDataLayout(
           BOOST_GET_CONST(std::string, desc.GetAttr("data_layout")));
       if (data_layout != framework::DataLayout::kNCHW) return false;
+
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 2) {
+        return false;
+      }
     }
 
     if (op_type == "multiclass_nms") {

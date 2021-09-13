@@ -25,59 +25,94 @@ class TrtConvertAffineChannelTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        def generate_input1(batch, attrs: List[Dict[str, Any]]):
-            if attrs[0]['data_layout'] == "NCHW":
-                return np.ones([batch, 3, 64, 64]).astype(np.float32)
+        def generate_input1(batch, dims, attrs: List[Dict[str, Any]]):
+            if dims == 2:
+                return np.ones([batch, 64]).astype(np.float32)
             else:
-                return np.ones([batch, 64, 64, 3]).astype(np.float32)
+                if attrs[0]['data_layout'] == "NCHW":
+                    return np.ones([batch, 3, 64, 64]).astype(np.float32)
+                else:
+                    return np.ones([batch, 64, 64, 3]).astype(np.float32)
 
-        def generate_weight1(attrs: List[Dict[str, Any]]):
-            return np.random.random([3]).astype(np.float32)
+        def generate_weight1(dims, attrs: List[Dict[str, Any]]):
+            if dims == 2:
+                return np.random.random([64]).astype(np.float32)
+            else:
+                return np.random.random([3]).astype(np.float32)
 
-        for batch in [1, 2, 4]:
-            for data_layout in ["NCHW", "NHWC"]:
-                dics = [{"data_layout": data_layout}]
+        for dims in [2, 4]:
+            for batch in [1, 2, 4]:
+                for data_layout in ["NCHW", "NHWC"]:
 
-                ops_config = [{
-                    "op_type": "affine_channel",
-                    "op_inputs": {
-                        "X": ["input_data"],
-                        "Scale": ["scale"],
-                        "Bias": ["bias"]
-                    },
-                    "op_outputs": {
-                        "Out": ["output_data"]
-                    },
-                    "op_attrs": dics[0]
-                }]
-                ops = self.generate_op_config(ops_config)
+                    self.dims = dims
+                    dics = [{"data_layout": data_layout}]
 
-                program_config = ProgramConfig(
-                    ops=ops,
-                    weights={
-                        "scale": TensorConfig(data_gen=partial(generate_weight1,
-                                                               dics)),
-                        "bias": TensorConfig(data_gen=partial(generate_weight1,
-                                                              dics))
-                    },
-                    inputs={
-                        "input_data": TensorConfig(data_gen=partial(
-                            generate_input1, batch, dics))
-                    },
-                    outputs=["output_data"])
+                    ops_config = [{
+                        "op_type": "affine_channel",
+                        "op_inputs": {
+                            "X": ["input_data"],
+                            "Scale": ["scale"],
+                            "Bias": ["bias"]
+                        },
+                        "op_outputs": {
+                            "Out": ["output_data"]
+                        },
+                        "op_attrs": dics[0]
+                    }]
+                    ops = self.generate_op_config(ops_config)
 
-                yield program_config
+                    program_config = ProgramConfig(
+                        ops=ops,
+                        weights={
+                            "scale": TensorConfig(data_gen=partial(
+                                generate_weight1, dims, dics)),
+                            "bias": TensorConfig(data_gen=partial(
+                                generate_weight1, dims, dics))
+                        },
+                        inputs={
+                            "input_data": TensorConfig(data_gen=partial(
+                                generate_input1, batch, dims, dics))
+                        },
+                        outputs=["output_data"])
+
+                    yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+            if self.dims == 2:
+                self.dynamic_shape.min_input_shape = {"input_data": [1, 32]}
+                self.dynamic_shape.max_input_shape = {"input_data": [4, 64]}
+                self.dynamic_shape.opt_input_shape = {"input_data": [2, 64]}
+            else:
+                if attrs[0]['data_layout'] == "NCHW":
+                    self.dynamic_shape.min_input_shape = {
+                        "input_data": [1, 3, 32, 32]
+                    }
+                    self.dynamic_shape.max_input_shape = {
+                        "input_data": [4, 3, 64, 64]
+                    }
+                    self.dynamic_shape.opt_input_shape = {
+                        "input_data": [1, 3, 64, 64]
+                    }
+                else:
+                    self.dynamic_shape.min_input_shape = {
+                        "input_data": [1, 32, 32, 3]
+                    }
+                    self.dynamic_shape.max_input_shape = {
+                        "input_data": [4, 64, 64, 3]
+                    }
+                    self.dynamic_shape.opt_input_shape = {
+                        "input_data": [1, 64, 64, 3]
+                    }
+
+        def clear_dynamic_shape():
+            self.dynamic_shape.min_input_shape = {}
+            self.dynamic_shape.max_input_shape = {}
+            self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
-            # TODO: This is just the example, need to be fixed.
-            if attrs[0]['data_layout'] == "NCHW":
+            if self.dims == 4 and attrs[0]['data_layout'] == "NCHW":
                 return 1, 2
             else:
                 return 0, 3
@@ -88,15 +123,13 @@ class TrtConvertAffineChannelTest(TrtLayerAutoScanTest):
         ]
 
         # for static_shape
+        clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-2
-        self.trt_param.precision = paddle_infer.PrecisionType.Int8
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-1
+            attrs, False), 1e-5
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -105,10 +138,7 @@ class TrtConvertAffineChannelTest(TrtLayerAutoScanTest):
                                                                      True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-2
-        self.trt_param.precision = paddle_infer.PrecisionType.Int8
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-1
+                                                                     True), 1e-5
 
     def test(self):
         self.run_test()
