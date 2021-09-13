@@ -65,15 +65,18 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
                      static_cast<int>(OpRole::kLoss))) ||
         (op_role == static_cast<int>(OpRole::kLRSched))) {
       forward_first_ops_.push_back(op.get());
-    } else if ((op_role == static_cast<int>(OpRole::kForward)) ||
-               (op_role == (static_cast<int>(OpRole::kForward) |
-                            static_cast<int>(OpRole::kLoss)))) {
+    }
+    if ((op_role == static_cast<int>(OpRole::kForward)) ||
+        (op_role == (static_cast<int>(OpRole::kForward) |
+                     static_cast<int>(OpRole::kLoss)))) {
       forward_other_ops_.push_back(op.get());
-    } else if ((op_role == static_cast<int>(OpRole::kBackward)) ||
-               (op_role == (static_cast<int>(OpRole::kBackward) |
-                            static_cast<int>(OpRole::kLoss)))) {
+    }
+    if ((op_role == static_cast<int>(OpRole::kBackward)) ||
+        (op_role == (static_cast<int>(OpRole::kBackward) |
+                     static_cast<int>(OpRole::kLoss)))) {
       backward_ops_.push_back(op.get());
-    } else if (op_role == static_cast<int>(OpRole::kOptimize)) {
+    }
+    if (op_role == static_cast<int>(OpRole::kOptimize)) {
       optimizer_ops_.push_back(op.get());
     }
   }
