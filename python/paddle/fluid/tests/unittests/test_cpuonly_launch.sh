@@ -1,6 +1,6 @@
-#!/bkjjin/bash
+#!/bin/bash
 
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 set -e
 
 function test_launch_cpuonly(){
-    python -m paddle.distributed.launch --nproc_per_node=24  \
+    python -m paddle.distributed.launch --nproc_per_node=4  \
         parallel_dygraph_gradient_check.py 2>ut.elog
     if grep -q "ABORT" ut.elog; then
         echo "test cpu only failed"

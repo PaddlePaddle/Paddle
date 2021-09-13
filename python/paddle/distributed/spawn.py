@@ -209,7 +209,9 @@ def _get_subprocess_env_list(nprocs, options):
     elif get_device() == 'cpu':
         # TODO check gpu / xpu flag must not exist
         warnings.warn(
-            "start in CPUONLY mode, because your paddle is cpu version")
+            "Your model will be trained under CPUONLY mode by using GLOO,"
+            "because CPUPlace is specified manually or your installed PaddlePaddle only support CPU Device."
+        )
         args.paddle_cpuonly = True
         args.selected_devices = None
         args.ips = args.cluster_node_ips
@@ -271,10 +273,10 @@ def _set_trainer_env(env_dict):
     elif core.is_compiled_with_xpu():
         set_flags({'FLAGS_selected_xpus': env_dict['FLAGS_selected_xpus']})
     else:
+        #NOTE(xiongkun) why not raise Error ? 
+        # So far, we added support for CPU parallel, and will be applied when paddle is not 
+        # compiled with cuda or xpu
         pass
-        #NOTE(xiongkun) cpuonly mode
-        #raise ValueError("PaddlePaddle should be compiled with XPU or CUDA.")
-        #set_flags({'PADDLE_DISTRI_BACKEND': 'gloo'})
     for var_name in env_dict:
         os.environ[var_name] = env_dict[var_name]
 

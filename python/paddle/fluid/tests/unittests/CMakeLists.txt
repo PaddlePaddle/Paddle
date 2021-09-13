@@ -187,6 +187,10 @@ list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
 if (NOT WITH_GLOO)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel_cpuonly)
     LIST(REMOVE_ITEM TEST_OPS test_cpuonly_launch)
+endif()
+
+if (NOT WITH_GLOO OR WITH_GPU OR WITH_XPU)
+    # only enable when with gloo and cpu version
     LIST(REMOVE_ITEM TEST_OPS test_cpuonly_spawn)
 endif()
 

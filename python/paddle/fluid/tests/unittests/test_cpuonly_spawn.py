@@ -57,41 +57,10 @@ def train(print_result=False):
     adam.clear_grad()
 
 
-# Usage 1: only pass function.
-# If your training method no need any argument, and
-# use all visible devices for parallel training.
 class TestSpawn(unittest.TestCase):
     def test_spawn(self):
         dist.spawn(train)
-        #train(print_result=True)
 
 
 if __name__ == '__main__':
     unittest.main()
-
-## Usage 2: pass function and arguments.
-## If your training method need some arguments, and
-## use all visible devices for parallel training.
-#if __name__ == '__main__':
-#dist.spawn(train, args=(True,))
-
-## Usage 3: pass function, arguments and nprocs.
-## If your training method need some arguments, and
-## only use part of visible devices for parallel training.
-## If your machine hold 8 cards {0,1,2,3,4,5,6,7},
-## this case will use cards {0,1}; If you set
-## CUDA_VISIBLE_DEVICES=4,5,6,7, this case will use
-## cards {4,5}
-#if __name__ == '__main__':
-#dist.spawn(train, args=(True,), nprocs=2)
-
-## Usage 4: pass function, arguments, nprocs and gpus.
-## If your training method need some arguments, and
-## only use part of visible devices for parallel training,
-## but you can't set your machine's environment variable
-## CUDA_VISIBLE_DEVICES, such as it is None or all cards
-## {0,1,2,3,4,5,6,7}, you can pass `gpus` to
-## select the GPU cards you want to use. For example,
-## this case will use cards {4,5} if your machine hold 8 cards.
-#if __name__ == '__main__':
-#dist.spawn(train, args=(True,), nprocs=2, gpus='4,5')
