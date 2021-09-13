@@ -46,17 +46,15 @@ class CuDNNNormConvolutionOp {
     GetWorkspaceSize(ctx);
   }
 
-  void Forward(const platform::CUDADeviceContext &ctx, const T *input_ptr,
-               const T *filter_ptr, T *output_ptr, float *sum_ptr,
+  void Forward(const platform::CUDADeviceContext &ctx, T *input_ptr,
+               T *filter_ptr, T *output_ptr, float *sum_ptr,
                float *sum_of_squares_ptr) {
     auto handle = ctx.cudnn_handle();
     auto workspace_handle = ctx.cudnn_workspace_handle();
     // Set variant_param
     // input ptr
-    fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA,
-                                     const_cast<T *>(input_ptr));
-    fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_WDATA,
-                                     const_cast<T *>(filter_ptr));
+    fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, input_ptr);
+    fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_WDATA, filter_ptr);
     fwd_op_.SetOpVariantParamAttrPtr(
         CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &fwd_workspace_byte_);
     // output ptr
