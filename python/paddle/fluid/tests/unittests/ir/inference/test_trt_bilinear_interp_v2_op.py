@@ -12,325 +12,113 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from trt_layer_auto_scan_test import TrtLayerAutoScanTest
-from program_config import TensorConfig
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
 import numpy as np
-import unittest
 import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
 
 
-class TrtConvertBilinearInterpV2Test_all(TrtLayerAutoScanTest):
-    def init(self):
-        self.data_layout = "NCHW"
-        self.interp_method = "bilinear"
-        self.align_corners = False
-        self.align_mode = 1
-        self.scale = [2., 2.]
-        self.out_h = 32
-        self.out_w = 64
-        self.trt_engine_num = 1
-        self.paddle_op_num = 2
+class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        inputs = program_config.inputs
+        weights = program_config.weights
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
 
-    def setUp(self):
-        self.init()
-        self.ops_config = [{
-            "op_type": "bilinear_interp_v2",
-            "op_inputs": {
-                "X": ["input_data"],
-                "Scale": ["input_scale"]
-            },
-            "op_outputs": {
-                "Out": ["output_data"]
-            },
-            "op_attrs": {
-                "data_layout": [self.data_layout],
-                "interp_method": [self.interp_method],
-                "align_corners": [self.align_corners],
-                "align_mode": [self.align_mode],
-                "scale": [self.scale],
-                "out_h": [self.out_h],
-                "out_w": [self.out_w]
-            }
-        }]
+        return True
 
-        self.batch_size_set = [1, 2, 4]
+    def sample_program_configs(self):
+        def generate_input1(attrs: List[Dict[str, Any]]):
+            return np.ones([1, 3, 64, 64]).astype(np.float32)
 
-    def update_program_input_and_weight_with_attr(self, op_attr_list):
-        op_attr_list[0]["align_mode"] = self.align_mode
-        input_data = TensorConfig(shape=[-1, 3, 64, 64])
-        alpha = np.random.uniform(low=0.5, high=6.0, size=(2)).astype("float32")
-        input_scale = TensorConfig(shape=[2], data=alpha)
+        def generate_input2(attrs: List[Dict[str, Any]]):
+            return np.random.uniform(low=0.5, high=6.0, size=(2)).astype("float32")
 
-        self.program_weights = {"input_scale": input_scale}
-        self.program_inputs = {"input_data": input_data}
-        self.program_outputs = ["output_data"]
+        for data_layout in ["NCHW", "NHWC"]:
+            for interp_method in ["bilinear"]:
+                for align_corners in [True, False]:
+                    for align_model in [0, 1]:
+                        for scale_y in [2.0, -1.0, 0.0]:
+                            for scale_x in [2.0, -1.0, 0.0]:
+                                scale = [scale_y, scale_x]
+                                for out_h in [32, 64, 128 - 32]:
+                                    for out_w in [32, -32]:
+                                        dics = [{
+                                            "data_layout": data_layout,
+                                            "interp_method": interp_method,
+                                            "align_corners": align_corners,
+                                            "align_mode": align_model,
+                                            "scale": scale,
+                                            "out_h": out_h,
+                                            "out_w": out_w
+                                        }]
+        
+                                        ops_config = [{
+                                            "op_type": "bilinear_interp_v2",
+                                            "op_inputs": {
+                                                "X": ["input_data"],
+                                                "Scale": ["input_scale"]
+                                            },
+                                            "op_outputs": {
+                                                "Out": ["bilinear_interp_v2_output_data"]
+                                            },
+                                            "op_attrs": dics[0]
+                                        }]
+                                        ops = self.generate_op_config(ops_config)
+        
+                                        program_config = ProgramConfig(
+                                            ops=ops,
+                                            weights={},
+                                            inputs={
+                                                "input_data": TensorConfig(
+                                                    data_gen=partial(generate_input1,
+                                                                     dics)),
+                                                "input_scale": TensorConfig(
+                                                    data_gen=partial(generate_input2,
+                                                                     dics))
+                                            },
+                                            outputs=["bilinear_interp_v2_output_data"])
+        
+                                        yield program_config
 
-    def test_check_fp32_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Float32
-        # the fused tensorrt engine num is 1, and paddle op num is 2(feed and fetch).
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-5)
+    def sample_predictor_configs(
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+        def generate_dynamic_shape(attrs):
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
 
-    def test_check_fp16_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Half
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-2)
+        def clear_dynamic_shape():
+            self.dynamic_shape.min_input_shape = {}
+            self.dynamic_shape.max_input_shape = {}
+            self.dynamic_shape.opt_input_shape = {}
 
-    def test_dynamic_shape_fp32_check_output(self):
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
+
+        # for static_shape
+        clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-        self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-        self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-5)
-
-    def test_dynamic_shape_fp16_check_output(self):
+        yield self.create_inference_config(), (1, 2), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-        self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-        self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-2)
+        yield self.create_inference_config(), (1, 2), 1e-5
 
-
-class TrtConvertBilinearInterpV2Test1(TrtLayerAutoScanTest):
-    def init(self):
-        self.data_layout = "NCHW"
-        self.interp_method = "bilinear"
-        self.align_corners = False
-        self.align_mode = 0
-        self.scale = [2., 2.]
-        self.in_h = 16
-        self.in_w = 32
-        self.out_h = 32
-        self.out_w = 64
-        self.trt_engine_num = 1
-        self.paddle_op_num = 2
-
-    def setUp(self):
-        self.init()
-        self.ops_config = [{
-            "op_type": "bilinear_interp_v2",
-            "op_inputs": {
-                "X": ["input_data"],
-                "Scale": ["input_scale"]
-            },
-            "op_outputs": {
-                "Out": ["output_data"]
-            },
-            "op_attrs": {
-                "data_layout": [self.data_layout],
-                "interp_method": [self.interp_method],
-                "align_corners": [self.align_corners],
-                "align_mode": [self.align_mode],
-                "scale": [self.scale],
-                "out_h": [self.out_h],
-                "out_w": [self.out_w]
-            }
-        }]
-
-        self.batch_size_set = [1, 2, 4]
-
-    def update_program_input_and_weight_with_attr(self, op_attr_list):
-        op_attr_list[0]["align_mode"] = self.align_mode
-        input_data = TensorConfig(shape=[-1, 3, 64, 64])
-        alpha = np.random.uniform(low=0.5, high=6.0, size=(2)).astype("float32")
-        input_scale = TensorConfig(shape=[2], data=alpha)
-
-        self.program_weights = {"input_scale": input_scale}
-        self.program_inputs = {"input_data": input_data}
-        self.program_outputs = ["output_data"]
-
-    def test_check_fp32_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Float32
-        # the fused tensorrt engine num is 1, and paddle op num is 2(feed and fetch).
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-5)
-
-    def test_check_fp16_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Half
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-2)
-
-    def test_dynamic_shape_fp32_check_output(self):
+        # for dynamic_shape
+        generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-        self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-        self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-5)
-
-    def test_dynamic_shape_fp16_check_output(self):
+        yield self.create_inference_config(), (1, 2), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-        self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-        self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-2)
+        yield self.create_inference_config(), (1, 2), 1e-5
 
-    def update_program_input_and_weight_with_attr(self, op_attr_list):
-        input_data = TensorConfig(shape=[-1, 3, 64, 64])
-        alpha = np.random.uniform(low=0.5, high=6.0, size=(2)).astype("float32")
-        input_scale = TensorConfig(shape=[2], data=alpha)
-
-        self.program_weights = {"input_scale": input_scale}
-        self.program_inputs = {"input_data": input_data}
-        self.program_outputs = ["output_data"]
-
-
-class TrtConvertBilinearInterpV2Test2(TrtLayerAutoScanTest):
-    def init(self):
-        self.data_layout = "NCHW"
-        self.interp_method = "bilinear"
-        self.align_corners = True
-        self.align_mode = 0
-        self.scale = [2., 2.]
-        self.in_h = 16
-        self.in_w = 32
-        self.out_h = 32
-        self.out_w = 64
-        self.trt_engine_num = 1
-        self.paddle_op_num = 2
-
-    def setUp(self):
-        self.init()
-        self.ops_config = [{
-            "op_type": "bilinear_interp_v2",
-            "op_inputs": {
-                "X": ["input_data"],
-                "Scale": ["input_scale"]
-            },
-            "op_outputs": {
-                "Out": ["output_data"]
-            },
-            "op_attrs": {
-                "data_layout": [self.data_layout],
-                "interp_method": [self.interp_method],
-                "align_corners": [self.align_corners],
-                "align_mode": [self.align_mode],
-                "scale": [self.scale],
-                "out_h": [self.out_h],
-                "out_w": [self.out_w]
-            }
-        }]
-
-        self.batch_size_set = [1, 2, 4]
-
-    def update_program_input_and_weight_with_attr(self, op_attr_list):
-        op_attr_list[0]["align_mode"] = self.align_mode
-        input_data = TensorConfig(shape=[-1, 3, 64, 64])
-        alpha = np.random.uniform(low=0.5, high=6.0, size=(2)).astype("float32")
-        input_scale = TensorConfig(shape=[2], data=alpha)
-
-        self.program_weights = {"input_scale": input_scale}
-        self.program_inputs = {"input_data": input_data}
-        self.program_outputs = ["output_data"]
-    
-    def test_check_fp32_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Float32
-        # the fused tensorrt engine num is 1, and paddle op num is 2(feed and fetch).
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-5)
-
-    def test_check_fp16_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Half
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-2)
-
-    def test_dynamic_shape_fp32_check_output(self):
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-        self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-        self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-5)
-
-    def test_dynamic_shape_fp16_check_output(self):
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-        self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-        self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-2)
-
-    def update_program_input_and_weight_with_attr(self, op_attr_list):
-        input_data = TensorConfig(shape=[-1, 3, 64, 64])
-        alpha = np.random.uniform(low=0.5, high=6.0, size=(2)).astype("float32")
-        input_scale = TensorConfig(shape=[2], data=alpha)
-
-        self.program_weights = {"input_scale": input_scale}
-        self.program_inputs = {"input_data": input_data}
-        self.program_outputs = ["output_data"]
-
-
-class TrtConvertBilinearInterpV2Test3(TrtLayerAutoScanTest):
-    def init(self):
-        self.data_layout = "NCHW"
-        self.interp_method = "bilinear"
-        self.align_corners = True
-        self.align_mode = 1
-        self.scale = [2., 2.]
-        self.in_h = 16
-        self.in_w = 32
-        self.out_h = 32
-        self.out_w = 64
-        self.trt_engine_num = 1
-        self.paddle_op_num = 2
-
-    def setUp(self):
-        self.init()
-        self.ops_config = [{
-            "op_type": "bilinear_interp_v2",
-            "op_inputs": {
-                "X": ["input_data"],
-                "Scale": ["input_scale"]
-            },
-            "op_outputs": {
-                "Out": ["output_data"]
-            },
-            "op_attrs": {
-                "data_layout": [self.data_layout],
-                "interp_method": [self.interp_method],
-                "align_corners": [self.align_corners],
-                "align_mode": [self.align_mode],
-                "scale": [self.scale],
-                "out_h": [self.out_h],
-                "out_w": [self.out_w]
-            }
-        }]
-
-        self.batch_size_set = [1, 2, 4]
-
-    def update_program_input_and_weight_with_attr(self, op_attr_list):
-        op_attr_list[0]["align_mode"] = self.align_mode
-        input_data = TensorConfig(shape=[-1, 3, 64, 64])
-        alpha = np.random.uniform(low=0.5, high=6.0, size=(2)).astype("float32")
-        input_scale = TensorConfig(shape=[2], data=alpha)
-
-        self.program_weights = {"input_scale": input_scale}
-        self.program_inputs = {"input_data": input_data}
-        self.program_outputs = ["output_data"]
-
-
-    def test_check_fp32_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Float32
-        # the fused tensorrt engine num is 1, and paddle op num is 2(feed and fetch).
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-5)
-
-    def test_check_fp16_output(self):
-        self.trt_param.precision == paddle_infer.PrecisionType.Half
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-2)
-
-    def test_dynamic_shape_fp32_check_output(self):
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-        self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-        self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-5)
-
-    def test_dynamic_shape_fp16_check_output(self):
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-        self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-        self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
-        self.run_test(self.trt_engine_num, self.paddle_op_num, threshold=1e-2)
-
-    def update_program_input_and_weight_with_attr(self, op_attr_list):
-        input_data = TensorConfig(shape=[-1, 3, 64, 64])
-        alpha = np.random.uniform(low=0.5, high=6.0, size=(2)).astype("float32")
-        input_scale = TensorConfig(shape=[2], data=alpha)
-
-        self.program_weights = {"input_scale": input_scale}
-        self.program_inputs = {"input_data": input_data}
-        self.program_outputs = ["output_data"]
+    def test(self):
+        self.run_test()
 
 if __name__ == "__main__":
     unittest.main()

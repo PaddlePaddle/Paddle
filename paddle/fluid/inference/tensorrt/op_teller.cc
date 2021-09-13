@@ -59,7 +59,7 @@ struct SimpleOpTypeSetTeller : public Teller {
     teller_set.insert("reshape2");
 #endif
 
-#if IS_TRT_VERSION_GE(10016)
+#if IS_TRT_VERSION_GE(8016)
     teller_set.insert("bilinear_interp");
     teller_set.insert("bilinear_interp_v2");
 #endif
