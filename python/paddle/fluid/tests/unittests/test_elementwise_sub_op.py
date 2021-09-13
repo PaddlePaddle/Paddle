@@ -18,7 +18,7 @@ import numpy as np
 import paddle
 import paddle.fluid.core as core
 
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, skip_check_grad_ci
 
 import paddle.fluid as fluid
 
@@ -294,7 +294,8 @@ class TestElementwiseSubOp_rowwise_add_1(TestElementwiseSubOp):
     def init_axis(self):
         self.axis = 1
 
-
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestFP16ElementwiseSubOp_rowwise_add_1(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(100, 1).astype(self.dtype)
