@@ -28,7 +28,7 @@ def auto_cast(enable=True,
     by autocast algorithm for better performance. 
     
     Commonly, it is used together with `GradScaler` to achieve Auto-Mixed-Precision in 
-    imperative mode.
+    imperative mode. It is used together with `decorator` to achieve Pure fp16 in imperative mode.
 
     Args:
         enable(bool, optional): Enable auto-mixed-precision or not. Default is True.
@@ -38,6 +38,7 @@ def auto_cast(enable=True,
         custom_black_list(set|list|tuple, optional): The custom black_list. The set of ops that support fp16
              calculation and are considered numerically-dangerous and whose effects may also be 
              observed in downstream ops. These ops will not be converted to fp16.
+        mode(str, optional): Auto mixed precision level. Accepted values are "L1" and "L2", L1 represent amp, L2 represent Pure fp16. Default is L1(amp)
         
     Examples:
 
