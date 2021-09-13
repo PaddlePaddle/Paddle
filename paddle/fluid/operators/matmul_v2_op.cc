@@ -35,6 +35,14 @@ class MatMulV2Op : public framework::OperatorWithKernel {
         paddle::framework::vectorize(ctx->GetInputDim("Y"));
     auto ndims_x = dims_x.size();
     auto ndims_y = dims_y.size();
+    PADDLE_ENFORCE_GT(ndims_x, 0,
+                      platform::errors::InvalidArgument(
+                          "The Input(X) dims size must be greater than 0,"
+                          " but reviced dims size is 0. "));
+    PADDLE_ENFORCE_GT(ndims_y, 0,
+                      platform::errors::InvalidArgument(
+                          "The Input(Y) dims size must be greater than 0,"
+                          " but reviced dims size is 0. "));
 
     bool x_broadcasted = false, y_broadcasted = false;
     if (ndims_x == 1) {
@@ -133,12 +141,14 @@ class MatMulV2OpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(false);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "bfloat16"});
+        .InEnum({"float32", "bfloat16"})
+        .AsExtra();
     AddComment(
         R"DOC(Matrix multiplication Out = X * Y. A has shape (d0, d1 ... M, K), 
         B has shape (d0, d1 ... K, N), Out has shape ((d0, d1 ... M, N)). 
@@ -218,6 +228,59 @@ class MatMulV2GradOpMaker : public framework::SingleGradOpMaker<T> {
   }
 };
 
+class MatMulV2OpDoubleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+ protected:
+  void InferShape(framework::InferShapeContext* context) const override {
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "matmul");
+    OP_INOUT_CHECK(context->HasInput("Y"), "Input", "Y", "matmul");
+    OP_INOUT_CHECK(context->HasInput("DOut"), "Input", "DOut", "matmul");
+
+    if (context->HasOutput("DX") && context->HasInput("DDY")) {
+      context->ShareDim("X", "DX");
+    }
+
+    if (context->HasOutput("DY") && context->HasInput("DDX")) {
+      context->ShareDim("Y", "DY");
+    }
+
+    if (context->HasOutput("DDOut") &&
+        (context->HasInput("DDY") || context->HasInput("DDX"))) {
+      context->ShareDim("DOut", "DDOut");
+    }
+  }
+};
+
+template <typename T>
+class MatMulV2OpDoubleGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("matmul_v2_grad_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetInput("DDY", this->OutputGrad(framework::GradVarName("Y")));
+
+    auto ddx = this->OutputGrad(framework::GradVarName("X"));
+    auto ddy = this->OutputGrad(framework::GradVarName("Y"));
+
+    if (!ddx.empty() || !ddy.empty()) {
+      op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+    }
+    op->SetOutput("DX",
+                  ddy.empty() ? this->EmptyInputGrad() : this->InputGrad("X"));
+    op->SetOutput("DY",
+                  ddx.empty() ? this->EmptyInputGrad() : this->InputGrad("Y"));
+
+    op->SetAttrMap(this->Attrs());
+  }
+};
 }  // namespace operators
 }  // namespace paddle
 
@@ -226,7 +289,11 @@ REGISTER_OPERATOR(matmul_v2, ops::MatMulV2Op, ops::MatMulV2OpMaker,
                   ops::MatMulV2GradOpMaker<paddle::framework::OpDesc>,
                   ops::MatMulV2GradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(matmul_v2_grad, ops::MatMulV2OpGrad);
+REGISTER_OPERATOR(matmul_v2_grad, ops::MatMulV2OpGrad,
+                  ops::MatMulV2OpDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::MatMulV2OpDoubleGradMaker<paddle::imperative::OpBase>);
+
+REGISTER_OPERATOR(matmul_v2_grad_grad, ops::MatMulV2OpDoubleGrad);
 
 REGISTER_OP_CPU_KERNEL(
     matmul_v2, ops::MatMulV2Kernel<paddle::platform::CPUDeviceContext, float>,
@@ -244,3 +311,11 @@ REGISTER_OP_CPU_KERNEL(
                             paddle::platform::complex<float>>,
     ops::MatMulV2GradKernel<paddle::platform::CPUDeviceContext,
                             paddle::platform::complex<double>>);
+REGISTER_OP_CPU_KERNEL(
+    matmul_v2_grad_grad,
+    ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex<float>>,
+    ops::MatMulV2DoubleGradKernel<paddle::platform::CPUDeviceContext,
+                                  paddle::platform::complex<double>>);

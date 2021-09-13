@@ -29,7 +29,11 @@ class TestMPClipGrad(TestDistMPTraning):
             learning_rate=0.001, gamma=0.999, verbose=True)
         optimizer = paddle.optimizer.SGD(scheduler,
                                          grad_clip=grad_clip,
-                                         parameters=model.parameters())
+                                         parameters=[{
+                                             'params': model.parameters(),
+                                             'weight_decay': 0.001,
+                                             'learning_rate': 0.1
+                                         }])
         return optimizer
 
     def train_batch(self, batch, model, optimizer, is_mp):
@@ -43,7 +47,7 @@ class TestMPClipGrad(TestDistMPTraning):
         scaled = scaler.scale(loss)  # scale the loss
         scaled.backward()  # do backward
 
-        scaler.minimize(optimizer, scaled)  # update parameters
+        scaler.step(optimizer)  # update parameters
         optimizer.clear_grad()
         return scaled
 

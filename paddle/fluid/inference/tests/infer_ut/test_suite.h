@@ -15,6 +15,7 @@
 #include <math.h>
 #include <algorithm>
 #include <fstream>
+#include <future>
 #include <iostream>
 #include <numeric>
 #include <string>
@@ -35,6 +36,7 @@ class Record {
   std::vector<float> data;
   std::vector<int32_t> shape;
   paddle::PaddleDType type;
+  int label;
 };
 
 std::string read_file(std::string filename) {
@@ -145,6 +147,98 @@ void CompareRecord(std::map<std::string, Record> *truth_output_data,
                 epislon);
     }
   }
+}
+
+// Timer, count in ms
+class Timer {
+ public:
+  Timer() { reset(); }
+  void start() { start_t = std::chrono::high_resolution_clock::now(); }
+  void stop() {
+    auto end_t = std::chrono::high_resolution_clock::now();
+    typedef std::chrono::microseconds ms;
+    auto diff = end_t - start_t;
+    ms counter = std::chrono::duration_cast<ms>(diff);
+    total_time += counter.count();
+  }
+  void reset() { total_time = 0.; }
+  double report() { return total_time / 1000.0; }
+
+ private:
+  double total_time;
+  std::chrono::high_resolution_clock::time_point start_t;
+};
+
+// single thread inference benchmark, return double time in ms
+double SingleThreadProfile(paddle_infer::Predictor *predictor,
+                           std::map<std::string, Record> *input_data_map,
+                           int repeat_times = 2) {
+  // prepare input tensor
+  auto input_names = predictor->GetInputNames();
+  for (const auto & [ key, value ] : *input_data_map) {
+    switch (value.type) {
+      case paddle::PaddleDType::INT64: {
+        std::vector<int64_t> input_value =
+            std::vector<int64_t>(value.data.begin(), value.data.end());
+        auto input_tensor = predictor->GetInputHandle(key);
+        input_tensor->Reshape(value.shape);
+        input_tensor->CopyFromCpu(input_value.data());
+        break;
+      }
+      case paddle::PaddleDType::INT32: {
+        std::vector<int32_t> input_value =
+            std::vector<int32_t>(value.data.begin(), value.data.end());
+        auto input_tensor = predictor->GetInputHandle(key);
+        input_tensor->Reshape(value.shape);
+        input_tensor->CopyFromCpu(input_value.data());
+        break;
+      }
+      case paddle::PaddleDType::FLOAT32: {
+        std::vector<float> input_value =
+            std::vector<float>(value.data.begin(), value.data.end());
+        auto input_tensor = predictor->GetInputHandle(key);
+        input_tensor->Reshape(value.shape);
+        input_tensor->CopyFromCpu(input_value.data());
+        break;
+      }
+    }
+  }
+
+  Timer timer;  // init prediction timer
+  timer.start();
+  // inference
+  for (size_t i = 0; i < repeat_times; ++i) {
+    CHECK(predictor->Run());
+    auto output_names = predictor->GetOutputNames();
+    for (auto &output_name : output_names) {
+      auto output_tensor = predictor->GetOutputHandle(output_name);
+      std::vector<int> output_shape = output_tensor->shape();
+      int out_num = std::accumulate(output_shape.begin(), output_shape.end(), 1,
+                                    std::multiplies<int>());
+      switch (output_tensor->type()) {
+        case paddle::PaddleDType::INT64: {
+          std::vector<int64_t> out_data;
+          out_data.resize(out_num);
+          output_tensor->CopyToCpu(out_data.data());
+          break;
+        }
+        case paddle::PaddleDType::FLOAT32: {
+          std::vector<float> out_data;
+          out_data.resize(out_num);
+          output_tensor->CopyToCpu(out_data.data());
+          break;
+        }
+        case paddle::PaddleDType::INT32: {
+          std::vector<int32_t> out_data;
+          out_data.resize(out_num);
+          output_tensor->CopyToCpu(out_data.data());
+          break;
+        }
+      }
+    }
+  }
+  timer.stop();
+  return timer.report();
 }
 
 }  // namespace test

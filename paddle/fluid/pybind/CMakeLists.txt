@@ -69,6 +69,8 @@ endif()
 if(WITH_GLOO)
   set(PYBIND_DEPS ${PYBIND_DEPS} gloo_context)
   set(PYBIND_SRCS ${PYBIND_SRCS} gloo_context_py.cc)
+  set(PYBIND_DEPS ${PYBIND_DEPS} imperative_gloo_context)
+  set(PYBIND_DEPS ${PYBIND_DEPS} reducer)
 endif(WITH_GLOO)
 
 if (WITH_CRYPTO)
@@ -200,6 +202,7 @@ if(WITH_PYTHON)
   endif(WIN32)
   add_custom_target(op_function_generator_cmd ALL DEPENDS ${impl_file})
 
+  list(APPEND PYBIND_DEPS interpretercore standalone_executor)
   cc_library(paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
