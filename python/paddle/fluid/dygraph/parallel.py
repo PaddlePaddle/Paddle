@@ -430,49 +430,49 @@ class DataParallel(layers.Layer):
         .. code-block:: python
             :name: dp-example
 
-                # required: distributed
-                import paddle
-                import paddle.nn as nn
-                import paddle.optimizer as opt
-                import paddle.distributed as dist
+            # required: distributed
+            import paddle
+            import paddle.nn as nn
+            import paddle.optimizer as opt
+            import paddle.distributed as dist
 
-                class LinearNet(nn.Layer):
-                    def __init__(self):
-                        super(LinearNet, self).__init__()
-                        self._linear1 = nn.Linear(10, 10)
-                        self._linear2 = nn.Linear(10, 1)
-                        
-                    def forward(self, x):
-                        return self._linear2(self._linear1(x))
-
-                def train():
-                    # 1. initialize parallel environment
-                    dist.init_parallel_env()
-
-                    # 2. create data parallel layer & optimizer
-                    layer = LinearNet()
-                    dp_layer = paddle.DataParallel(layer)
-
-                    loss_fn = nn.MSELoss()
-                    adam = opt.Adam(
-                        learning_rate=0.001, parameters=dp_layer.parameters())
-
-                    # 3. run layer
-                    inputs = paddle.randn([10, 10], 'float32')
-                    outputs = dp_layer(inputs)
-                    labels = paddle.randn([10, 1], 'float32')
-                    loss = loss_fn(outputs, labels)
+            class LinearNet(nn.Layer):
+                def __init__(self):
+                    super(LinearNet, self).__init__()
+                    self._linear1 = nn.Linear(10, 10)
+                    self._linear2 = nn.Linear(10, 1)
                     
-                    loss.backward()
+                def forward(self, x):
+                    return self._linear2(self._linear1(x))
 
-                    adam.step()
-                    adam.clear_grad()
+            def train():
+                # 1. initialize parallel environment
+                dist.init_parallel_env()
 
-                if __name__ == '__main__':
-                    # 1. start by ``paddle.distributed.spawn`` (default)
-                    dist.spawn(train, nprocs=2)
-                    # 2. start by ``paddle.distributed.launch``
-                    # train()
+                # 2. create data parallel layer & optimizer
+                layer = LinearNet()
+                dp_layer = paddle.DataParallel(layer)
+
+                loss_fn = nn.MSELoss()
+                adam = opt.Adam(
+                    learning_rate=0.001, parameters=dp_layer.parameters())
+
+                # 3. run layer
+                inputs = paddle.randn([10, 10], 'float32')
+                outputs = dp_layer(inputs)
+                labels = paddle.randn([10, 1], 'float32')
+                loss = loss_fn(outputs, labels)
+                
+                loss.backward()
+
+                adam.step()
+                adam.clear_grad()
+
+            if __name__ == '__main__':
+                # 1. start by ``paddle.distributed.spawn`` (default)
+                dist.spawn(train, nprocs=2)
+                # 2. start by ``paddle.distributed.launch``
+                # train()
 
 
     .. note::
@@ -486,58 +486,58 @@ class DataParallel(layers.Layer):
         .. code-block:: python
             :name: dp-pylayer-example
 
-                # required: distributed
-                import numpy
-                import paddle
-                import paddle.distributed as dist
-                from paddle.autograd import PyLayer
-                from paddle.distributed.fleet.utils.hybrid_parallel_util import fused_allreduce_gradients
+            # required: distributed
+            import numpy
+            import paddle
+            import paddle.distributed as dist
+            from paddle.autograd import PyLayer
+            from paddle.distributed.fleet.utils.hybrid_parallel_util import fused_allreduce_gradients
 
-                class cus_tanh(PyLayer):
-                    @staticmethod
-                    def forward(ctx, x):
-                        y = paddle.tanh(x)
-                        ctx.save_for_backward(y)
-                        return y
+            class cus_tanh(PyLayer):
+                @staticmethod
+                def forward(ctx, x):
+                    y = paddle.tanh(x)
+                    ctx.save_for_backward(y)
+                    return y
 
-                    @staticmethod
-                    def backward(ctx, dy):
-                        y, = ctx.saved_tensor()
-                        grad = dy * (1 - paddle.square(y))
-                        return grad
+                @staticmethod
+                def backward(ctx, dy):
+                    y, = ctx.saved_tensor()
+                    grad = dy * (1 - paddle.square(y))
+                    return grad
 
-                class SimpleNet(paddle.nn.Layer):
-                    def __init__(self):
-                        super(SimpleNet, self).__init__()
-                        self.linear = paddle.nn.Linear(2, 2)
+            class SimpleNet(paddle.nn.Layer):
+                def __init__(self):
+                    super(SimpleNet, self).__init__()
+                    self.linear = paddle.nn.Linear(2, 2)
 
-                    def forward(self, inputs):
-                        inputs = cus_tanh.apply(inputs)
-                        return self.linear(inputs)
+                def forward(self, inputs):
+                    inputs = cus_tanh.apply(inputs)
+                    return self.linear(inputs)
 
-                if __name__ == '__main__':
-                    dist.init_parallel_env()
+            if __name__ == '__main__':
+                dist.init_parallel_env()
 
-                    model = SimpleNet()
-                    model = paddle.DataParallel(model)
-                    opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
+                model = SimpleNet()
+                model = paddle.DataParallel(model)
+                opt = paddle.optimizer.SGD(learning_rate=0.01, parameters=model.parameters())
 
-                    for step in range(10):
-                        x_data = numpy.random.randn(2, 2).astype(numpy.float32)
-                        x = paddle.to_tensor(x_data)
-                        x.stop_gradient = False
+                for step in range(10):
+                    x_data = numpy.random.randn(2, 2).astype(numpy.float32)
+                    x = paddle.to_tensor(x_data)
+                    x.stop_gradient = False
 
-                        # step 1 : skip gradient synchronization by 'no_sync'
-                        with model.no_sync():
-                            y_pred = model(x)
-                            loss = y_pred.mean()
-                            loss.backward()
+                    # step 1 : skip gradient synchronization by 'no_sync'
+                    with model.no_sync():
+                        y_pred = model(x)
+                        loss = y_pred.mean()
+                        loss.backward()
 
-                        # step 2 : fuse + allreduce manually before optimization
-                        fused_allreduce_gradients(list(model.parameters()), None)
+                    # step 2 : fuse + allreduce manually before optimization
+                    fused_allreduce_gradients(list(model.parameters()), None)
 
-                        opt.step()
-                        opt.clear_grad()
+                    opt.step()
+                    opt.clear_grad()
 
     """
 
