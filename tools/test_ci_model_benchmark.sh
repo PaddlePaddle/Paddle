@@ -71,6 +71,11 @@ function compile_install_paddle {
     set -x
 }
 
+function init_benchmark {
+    cd /workspace/Paddle/benchmark
+    git clone PaddleClas.bundle PaddleClas
+}
+
 function prepare_data {
     cd ${cache_dir}
     if [ -d "benchmark_data" ];then 
@@ -101,6 +106,7 @@ case $1 in
     compile_install_paddle
   ;;
   run_benchmark)
+    init_benchmark
     prepare_data
     run_model_benchmark
   ;;
