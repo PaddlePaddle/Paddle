@@ -2266,7 +2266,7 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined PADDLE_WITH_CUDA
   m.def("get_device_properties",
         [](int64_t device_id) -> cudaDeviceProp * {
           int64_t gpu_num = 0;
@@ -2274,12 +2274,11 @@ All parameter, weight, gradient are variables in Paddle.
           PADDLE_ENFORCE_EQ(
               device_id >= 0 && device_id < gpu_num, true,
               platform::errors::OutOfRange(
-                  "The device id %d exceeds out of range [0, number of devices "
-                  "%d on this machine), Because the gpu id should be smaller "
-                  "than the number of gpus. Please input appropriate device id "
-                  "again!",
+                  "The device id %d exceeds out of range [0, the number of "
+                  "devices %d on this machine), Because the gpu id should be "
+                  "smaller than the number of gpus. Please input appropriate "
+                  "device id again!",
                   device_id, gpu_num));
-#ifdef PADDLE_WITH_CUDA
           std::vector<cudaDeviceProp> cuda_device_props;
           cuda_device_props.resize(gpu_num);
           for (int i = 0; i < gpu_num; ++i) {
@@ -2287,24 +2286,12 @@ All parameter, weight, gradient are variables in Paddle.
                 cudaGetDeviceProperties(&cuda_device_props[i], i));
           }
           return &cuda_device_props[device_id];
-#else
-          std::vector<hipDeviceProp_t> hip_device_props;
-          hip_device_props.resize(gpu_num);
-          for (int i = 0; i < gpu_num; ++i) {
-            PADDLE_ENFORCE_CUDA_SUCCESS(
-                hipGetDeviceProperties(&hip_device_props[i], i));
-          }
-          return &hip_device_props[device_id];
-#endif
         },
         py::return_value_policy::copy);
-#endif
 
-#ifdef PADDLE_WITH_CUDA
-  // This is copy the pytorch, only few changes, TO DO modify
   py::class_<cudaDeviceProp>(m, "_CudaDeviceProperties", R"DOC(
-        _CudaDeviceProperties is struct of device properties information.  
-        )DOC")
+    _CudaDeviceProperties is struct of device properties information.  
+    )DOC")
       .def_readonly("name", &cudaDeviceProp::name)
       .def_readonly("major", &cudaDeviceProp::major)
       .def_readonly("minor", &cudaDeviceProp::minor)
@@ -2325,11 +2312,33 @@ All parameter, weight, gradient are variables in Paddle.
       });
 #endif
 
-#ifdef PADDLE_WITH_HIP
+#if defined PADDLE_WITH_HIP
+  m.def("get_device_properties",
+        [](int64_t device_id) -> hipDeviceProp_t * {
+          int64_t gpu_num = 0;
+          gpu_num = platform::GetCUDADeviceCount();
+          PADDLE_ENFORCE_EQ(
+              device_id >= 0 && device_id < gpu_num, true,
+              platform::errors::OutOfRange(
+                  "The device id %d exceeds out of range [0, number of devices "
+                  "%d on this machine), Because the gpu id should be smaller "
+                  "than the number of gpus. Please input appropriate device id "
+                  "again!",
+                  device_id, gpu_num));
+          std::vector<hipDeviceProp_t> hip_device_props;
+          hip_device_props.resize(gpu_num);
+          for (int i = 0; i < gpu_num; ++i) {
+            PADDLE_ENFORCE_CUDA_SUCCESS(
+                hipGetDeviceProperties(&hip_device_props[i], i));
+          }
+          return &hip_device_props[device_id];
+        },
+        py::return_value_policy::copy);
+
   // This is copy the pytorch, only few changes, TO DO modify
   py::class_<hipDeviceProp_t>(m, "_hipDeviceProperties", R"DOC(
-        _hipDeviceProperties is struct of device properties information.  
-        )DOC")
+    _hipDeviceProperties is struct of device properties information.  
+    )DOC")
       .def_readonly("name", &hipDeviceProp_t::name)
       .def_readonly("major", &hipDeviceProp_t::major)
       .def_readonly("minor", &hipDeviceProp_t::minor)
