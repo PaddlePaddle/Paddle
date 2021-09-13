@@ -23,14 +23,15 @@ namespace operators {
  * @brief The fused function called by every thread
  * VecSize can be 1, 2, 4 or 8
  */
-template <typename T, typename MaskType, int VecSize, bool ComputeLayerNorm>
+template <typename T, typename MaskType, int VecSize, bool ComputeLayerNorm,
+          bool Activation, typename Functor>
 __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
     const int row_id, const int col_id, const int cols,
     curandStatePhilox4_32_10_t *state, const float dropout_prob, const T factor,
     const T *__restrict__ src, const T *__restrict__ residual,
     const T *__restrict__ bias, T *dst, MaskType *mask, const bool is_test,
     typename details::MPTypeTrait<T>::Type *mean_val,
-    typename details::MPTypeTrait<T>::Type *var_val) {
+    typename details::MPTypeTrait<T>::Type *var_val, Functor act_func) {
   using LoadT = platform::AlignedVector<T, VecSize>;
   using StoreT = platform::AlignedVector<T, VecSize>;
   using MaskStoreT = platform::AlignedVector<MaskType, VecSize>;
@@ -42,10 +43,14 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
 #pragma unroll
   for (int ii = 0; ii < VecSize; ii++) {
     bias_vec[ii] = static_cast<T>(0);
+    residual_vec[ii] = static_cast<T>(0);
   }
   // vectorize load data from global
   platform::Load<T, VecSize>(&src[row_id * cols + col_id], &src_vec);
-  platform::Load<T, VecSize>(&residual[row_id * cols + col_id], &residual_vec);
+  if (residual) {
+    platform::Load<T, VecSize>(&residual[row_id * cols + col_id],
+                               &residual_vec);
+  }
 
   if (bias) {
     platform::Load<T, VecSize>(&bias[col_id], &bias_vec);
@@ -70,9 +75,12 @@ __forceinline__ __device__ void FusedResidualDropoutBiasOneThread(
 
 #pragma unroll
   for (int ii = 0; ii < VecSize; ii++) {
+    T tmp = src_vec[ii] + bias_vec[ii];
+    if (Activation) {
+      tmp = act_func(tmp);
+    }
     dest_vec[ii] =
-        (src_vec[ii] + bias_vec[ii]) * static_cast<T>(mask_vec[ii]) * factor +
-        residual_vec[ii];
+        tmp * static_cast<T>(mask_vec[ii]) * factor + residual_vec[ii];
     if (ComputeLayerNorm) {
       U tmp = static_cast<U>(dest_vec[ii]);
       *mean_val += tmp;
@@ -107,18 +115,15 @@ __global__ void FusedResidualDropoutBias(
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, increment, &state);
 
-  T factor = is_upscale_in_train ? static_cast<T>(1.0f / (1.0f - dropout_prob))
-                                 : static_cast<T>(1.0f);
-  if (is_test) {
-    factor = is_upscale_in_train ? static_cast<T>(1.0f)
-                                 : static_cast<T>(1.0f - dropout_prob);
-  }
+  const T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
+  math::ReluFunctor<T> relu;
   for (int r = row_id; r < rows; r += blockDim.y * gridDim.y) {
     for (int i = col_id * VecSize; i < cols;
          i += blockDim.x * gridDim.x * VecSize) {
-      FusedResidualDropoutBiasOneThread<T, MaskType, VecSize, false>(
+      FusedResidualDropoutBiasOneThread<T, MaskType, VecSize, false, false,
+                                        math::ReluFunctor<T>>(
           r, i, cols, &state, dropout_prob, factor, src, residual, bias, dst,
-          mask, is_test, nullptr, nullptr);
+          mask, is_test, nullptr, nullptr, relu);
     }
   }
 }

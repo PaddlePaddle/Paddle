@@ -116,12 +116,14 @@ __global__ void FusedLayernormResidualDropoutBias(
   __shared__ U shared_mean[32];
   __shared__ U shared_var[32];
 
+  math::ReluFunctor<T> relu;
   U mean_val = 0;
   U var_val = 0;
   for (int i = col_id * VecSize; i < cols; i += blockDim.x * VecSize) {
-    FusedResidualDropoutBiasOneThread<T, MaskType, VecSize, true>(
+    FusedResidualDropoutBiasOneThread<T, MaskType, VecSize, true, false,
+                                      math::ReluFunctor<T>>(
         row_id, i, cols, &state, dropout_prob, factor, src, residual, bias, dst,
-        mask, is_test, &mean_val, &var_val);
+        mask, is_test, &mean_val, &var_val, relu);
   }
 
   mean_val = BlockReduceSum<U>(mean_val, shared_mean);
