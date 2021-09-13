@@ -176,7 +176,7 @@ def equal(x, y, name=None):
           print(result1)  # result1 = [True False False]
     """
     if not isinstance(y, Variable):
-        y = full(shape = [1], dtype = x.dtype ,fill_value = y)
+        y = full(shape=[1], dtype=x.dtype, fill_value=y)
 
     if in_dygraph_mode():
         return _C_ops.equal(x, y)
