@@ -90,51 +90,51 @@ struct SimpleOpTypeSetTeller : public Teller {
                                                   "elementwise_mul",
                                                   "conv2d_transpose",
                                                   "hard_swish"};
-  std::unordered_set<std::string> teller_set{
-      "mul",
-      "matmul",
-      "conv2d",
-      "conv2d_fusion",
-      "pool2d",
-      "relu",
-      "softmax",
-      "sigmoid",
-      "hard_swish",
-      "depthwise_conv2d",
-      "batch_norm",
-      "concat",
-      "tanh",
-      "pad",
-      "elementwise_add",
-      "elementwise_mul",
-      "dropout",
-      "prelu",
-      "conv2d_transpose",
-      "depthwise_conv2d_transpose",
-      "leaky_relu",
-      "fc",
-      "shuffle_channel",
-      "swish",
-      "split",
-      "instance_norm",
-      "gelu",
-      "layer_norm",
-      "scale",
-      "stack",
-      "transpose2",
-      "transpose",
-      "flatten2",
-      "flatten",
-      "gather",
-      "gather_nd",
-      "yolo_box",
-      "roi_align",
-      "affine_channel",
-      "nearest_interp",
-      "anchor_generator",
-      "reduce_sum",
-      "reduce_mean",
-  };
+  std::unordered_set<std::string> teller_set{"mul",
+                                             "matmul",
+                                             "conv2d",
+                                             "conv2d_fusion",
+                                             "pool2d",
+                                             "relu",
+                                             "softmax",
+                                             "sigmoid",
+                                             "hard_swish",
+                                             "depthwise_conv2d",
+                                             "batch_norm",
+                                             "concat",
+                                             "tanh",
+                                             "pad",
+                                             "elementwise_add",
+                                             "elementwise_mul",
+                                             "dropout",
+                                             "prelu",
+                                             "conv2d_transpose",
+                                             "depthwise_conv2d_transpose",
+                                             "leaky_relu",
+                                             "fc",
+                                             "shuffle_channel",
+                                             "swish",
+                                             "split",
+                                             "instance_norm",
+                                             "gelu",
+                                             "layer_norm",
+                                             "scale",
+                                             "stack",
+                                             "transpose2",
+                                             "transpose",
+                                             "flatten2",
+                                             "flatten",
+                                             "gather",
+                                             "gather_nd",
+                                             "yolo_box",
+                                             "roi_align",
+                                             "affine_channel",
+                                             "nearest_interp",
+                                             "anchor_generator",
+                                             "reduce_sum",
+                                             "reduce_mean",
+                                             "conv3d",
+                                             "conv3d_transpose"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -661,6 +661,28 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Output("Out").size() << ".";
         return false;
       }
+
+      auto* block = desc.Block();
+      auto* var_desc = block->FindVar(desc.Input("Alpha")[0]);
+      if (!var_desc) {
+        VLOG(3) << "Variable Alpha of prelu TRT converter not found.";
+        return false;
+      }
+
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 1) {
+        VLOG(3) << "prelu op does not support input's dim is 1 in tensorrt.";
+        return false;
+      }
+
+      if (!with_dynamic_shape) {
+        if (x_shape.size() == 2) {
+          VLOG(3) << "prelu op does not support input's dim is 2 in tensorrt.";
+          return false;
+        }
+      }
     }
 
     if (op_type == "roi_align") {
@@ -766,6 +788,65 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!with_dynamic_shape && !desc.HasAttr("repeat_times")) return false;
     }
 #endif
+
+    if (op_type == "conv3d" || op_type == "conv3d_transpose") {
+      if (desc.HasAttr("padding_algorithm")) {
+        std::string padding_algorithm =
+            BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
+
+        // trt error is arised if conv3d_transpose and SAME
+        if (op_type == "conv3d_transpose" && padding_algorithm == "SAME" &&
+            !with_dynamic_shape) {
+          return false;
+        }
+      }
+
+#if !IS_TRT_VERSION_GE(7000)
+      // looks like some issues with trt6.0
+      if (with_dynamic_shape) {
+        return false;
+      }
+#endif
+      std::vector<int> paddings =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+
+      // conv3d and conv3d_transpose need padding check
+      if (paddings.size() > 3) return false;
+
+      if (desc.Input("Input").size() != 1) {
+        VLOG(3) << "TRT Conv3d expect 1 input, but got "
+                << desc.Input("Input").size() << " input.";
+        return false;
+      }
+
+      if (desc.Input("Filter").size() != 1) {
+        VLOG(3) << "TRT Conv3d expect 1 filter, but got "
+                << desc.Input("Filter").size() << " filter.";
+        return false;
+      }
+
+      if (op_type == "conv3d_transpose") {
+        if (!desc.HasAttr("dilations")) {
+          return false;
+        } else {
+          const std::vector<int> dilations =
+              BOOST_GET_CONST(std::vector<int>, desc.GetAttr("dilations"));
+          if (dilations[0] != 1 || dilations[1] != 1 || dilations[2] != 1) {
+            VLOG(3) << "In conv3d_transpose, Dilations must be (1, 1, 1) for "
+                       "tensorRT, but given ("
+                    << dilations[0] << ", " << dilations[1] << ", "
+                    << dilations[2] << ")";
+            return false;
+          }
+        }
+      }
+
+      if (desc.Output("Output").size() != 1) {
+        VLOG(3) << "TRT Conv3d expect 1 output, but got "
+                << desc.Output("Output").size() << " output.";
+        return false;
+      }
+    }
 
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
