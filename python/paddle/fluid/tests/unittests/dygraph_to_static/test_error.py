@@ -431,8 +431,8 @@ class TestSuggestionErrorInRuntime(TestErrorBase):
                 '<--- HERE',
                 'return out',
                 'Revise suggestion:',
-                'Ensure all sublayers inherit nn.Layer.',
-                'Ensure layer\'s inputs should be buffer Variables. For more information, please refer to:'
+                'Please ensure all your sublayers are inheritted from nn.Layer.',
+                'Please ensure there is no tensor created explicitly depended on external data, we suggest to register it as buffer tensor. See'
             ]
 
     def set_func_call(self):
