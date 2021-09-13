@@ -15,24 +15,6 @@
 
 #include "paddle/fluid/operators/elementwise/mkldnn/elementwise_mkldnn_op.h"
 
-namespace paddle {
-namespace framework {
-class ExecutionContext;
-}  // namespace framework
-namespace platform {
-class CPUDeviceContext;
-struct CPUPlace;
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
-namespace operators {
-template <typename T>
-class EltwiseSubMKLDNNGradKernel : public ElemwiseGradKernel<T> {};
-
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(
@@ -42,7 +24,3 @@ REGISTER_OP_KERNEL(
                              dnnl::algorithm::binary_sub>,
     ops::EltwiseMKLDNNKernel<int8_t, dnnl::algorithm::binary_sub>,
     ops::EltwiseMKLDNNKernel<uint8_t, dnnl::algorithm::binary_sub>)
-
-REGISTER_OP_KERNEL(elementwise_sub_grad, MKLDNN, ::paddle::platform::CPUPlace,
-                   ops::EltwiseSubMKLDNNGradKernel<paddle::platform::bfloat16>,
-                   ops::EltwiseSubMKLDNNGradKernel<float>)
