@@ -20,5 +20,4 @@ def monkey_patch_eagertensor():
         from paddle.tensor.to_string import eager_tensor_to_string
         return eager_tensor_to_string(self)
 
-    for method_name, method in (("__str__", __str__)):
-        setattr(core.eager.EagerTensor, method_name, method)
+    setattr(core.eager.EagerTensor, "__str__", __str__)
