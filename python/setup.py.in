@@ -249,9 +249,9 @@ packages=['paddle',
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
 
-for index, requirement in enumerate(setup_requires):
-    if requirement == "git+https://github.com/jakpiase/bfloat.git@1.1.1":
-        setup_requires[index] = "bfloat"
+#for index, requirement in enumerate(setup_requires):
+#    if requirement == "git+https://github.com/jakpiase/bfloat.git@1.1.1":
+#        setup_requires[index] = "bfloat"
 
 
 # Note(wangzhongpu):
