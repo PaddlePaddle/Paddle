@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/lapack_function.h"
 #include "paddle/fluid/operators/math/matrix_inverse.h"
 
 namespace paddle {
@@ -32,6 +33,22 @@ class InverseKernel : public framework::OpKernel<T> {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     math::MatrixInverseFunctor<DeviceContext, T> mat_inv;
     mat_inv(dev_ctx, *input, output);
+
+    // Just test lapack in OP, not merge
+    int m = 5;
+    int n = 3;
+    double A[5][3] = {{1, 2, 3}, {4, 5, 1}, {3, 5, 2}, {4, 1, 4}, {2, 5, 3}};
+    int lda = 5;
+    int ipiv[3] = {0, 0, 0};
+    int info = 0;
+
+    VLOG(0) << "=====before dgetrf_:======" << A[0][0] << "===" << ipiv[0]
+            << "===" << info;
+
+    math::lapackLu<double>(m, n, A[0], lda, ipiv, &info);
+
+    VLOG(0) << "=====after dgetrf_:======" << A[0][0] << "===" << ipiv[0]
+            << "===" << info;
   }
 };
 

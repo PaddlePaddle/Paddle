@@ -12,37 +12,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-#include <string>
+#include "paddle/fluid/platform/dynload/lapack.h"
+#include <mutex>
 
 namespace paddle {
 namespace platform {
 namespace dynload {
 
-#ifndef _WIN32
-#define DECLARE_TYPE(__name, ...) decltype(__name(__VA_ARGS__))
-#else
-#define DECLARE_TYPE(__name, ...) decltype(auto)
-#endif
+std::once_flag lapack_dso_flag;
+void* lapack_dso_handle = nullptr;
 
-void* GetCublasDsoHandle();
-void* GetCUDNNDsoHandle();
-void* GetCUPTIDsoHandle();
-void* GetCurandDsoHandle();
-void* GetNvjpegDsoHandle();
-void* GetCusolverDsoHandle();
-void* GetNVRTCDsoHandle();
-void* GetCUDADsoHandle();
-void* GetWarpCTCDsoHandle();
-void* GetNCCLDsoHandle();
-void* GetHCCLDsoHandle();
-void* GetTensorRtDsoHandle();
-void* GetMKLMLDsoHandle();
-void* GetLAPACKDsoHandle();
-void* GetOpDsoHandle(const std::string& dso_name);
-void* GetNvtxDsoHandle();
+#define DEFINE_WRAP(__name) DynLoad__##__name __name
 
-void SetPaddleLibPath(const std::string&);
+LAPACK_ROUTINE_EACH(DEFINE_WRAP);
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

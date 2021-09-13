@@ -227,6 +227,9 @@ class TestVarBase(unittest.TestCase):
                 self.assertTrue(np.array_equal(x.numpy(), numpy_array))
                 self.assertEqual(x.type, core.VarDesc.VarType.LOD_TENSOR)
 
+                x = paddle.to_tensor([[2, 0], [0, 2]], dtype='float32')
+                print(x.inverse)  # [[0.5, 0], [0, 0.5]]
+
                 with self.assertRaises(ValueError):
                     paddle.randn([3, 2, 2]).item()
                 with self.assertRaises(ValueError):

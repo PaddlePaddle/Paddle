@@ -108,7 +108,7 @@ endif()
 
 cc_library(common_infer_shape_functions SRCS common_infer_shape_functions.cc DEPS operator)
 
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows lapack_function
 lod_tensor maxouting unpooling pooling lod_rank_table context_project
 sequence_pooling segment_pooling executor device_memory_aligment generator)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)

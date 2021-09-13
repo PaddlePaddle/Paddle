@@ -1147,6 +1147,7 @@ function card_test() {
 }
 
 function parallel_test_base_gpu() {
+    GLOG_v=3 python3.7 -c "import paddle;paddle.to_tensor([[2, 0], [0, 2]], dtype='float32').inverse()"
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
     ========================================
