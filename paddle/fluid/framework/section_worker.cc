@@ -39,8 +39,10 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
         (op_role == (static_cast<int>(OpRole::kForward) |
                      static_cast<int>(OpRole::kLoss))) ||
         (op_role == static_cast<int>(OpRole::kLRSched))) {
+      // forward ops and lr schedule ops, used for first micro step
       forward_and_lr_ops_.push_back(op.get());
       if ((op_role != static_cast<int>(OpRole::kLRSched))) {
+        // only forward ops, used for second and later micro steps
         forward_ops_.push_back(op.get());
       }
     } else if ((op_role == static_cast<int>(OpRole::kBackward)) ||
