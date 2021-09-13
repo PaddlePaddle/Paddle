@@ -1099,7 +1099,7 @@ class ReorderMKLDNNHandler {
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const MKLDNNMemoryFormat& fmt, void* ptr) {
     auto md = mkldnn::memory::desc(dims_, dtype_, fmt);
-    return mem_p = std::make_shared<mkldnn::memory>(md, engine_, ptr);
+    return std::make_shared<mkldnn::memory>(md, engine_, ptr);
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSubmemory(
