@@ -198,12 +198,13 @@ static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
     case pt::Backend::kNPUPinned:
       egr::SetExpectedPlace(paddle::platform::NPUPinnedPlace());
       break;
-    case pt::Backend::kMKLDNN:
-      egr::SetExpectedPlace(paddle::platform::CPUPlace());
-      break;
-    case pt::Backend::kCUDNN:
-      egr::SetExpectedPlace(paddle::platform::CUDAPlace(device_id));
-      break;
+    // TODO(wanghuancoder)
+    // case pt::Backend::kMKLDNN:
+    //   egr::SetExpectedPlace(paddle::platform::CPUPlace());
+    //   break;
+    // case pt::Backend::kCUDNN:
+    //   egr::SetExpectedPlace(paddle::platform::CUDAPlace(device_id));
+    //   break;
     default:
       break;
   }
@@ -334,24 +335,24 @@ PyMethodDef variable_functions[] = {
     {NULL, NULL, 0, NULL}};
 
 static PyTypeObject EagerTensorType = {
-    PyVarObject_HEAD_INIT(NULL, 0) "Tensor", /* tp_name */
-    sizeof(EagerTensorObject),               /* tp_basicsize */
-    0,                                       /* tp_itemsize */
-    (destructor)eagertensor_dealloc,         /* tp_dealloc */
-    0,                                       /* tp_vectorcall_offset */
-    0,                                       /* tp_getattr */
-    0,                                       /* tp_setattr */
-    0,                                       /* tp_reserved */
-    0,                                       /* tp_repr */
-    0,                                       /* tp_as_number */
-    0,                                       /* tp_as_sequence */
-    0,                                       /* tp_as_mapping */
-    0,                                       /* tp_hash  */
-    0,                                       /* tp_call */
-    0,                                       /* tp_str */
-    0,                                       /* tp_getattro */
-    0,                                       /* tp_setattro */
-    0,                                       /* tp_as_buffer */
+    PyVarObject_HEAD_INIT(NULL, 0) "core_avx.eager.EagerTensor", /* tp_name */
+    sizeof(EagerTensorObject),       /* tp_basicsize */
+    0,                               /* tp_itemsize */
+    (destructor)eagertensor_dealloc, /* tp_dealloc */
+    0,                               /* tp_vectorcall_offset */
+    0,                               /* tp_getattr */
+    0,                               /* tp_setattr */
+    0,                               /* tp_reserved */
+    0,                               /* tp_repr */
+    0,                               /* tp_as_number */
+    0,                               /* tp_as_sequence */
+    0,                               /* tp_as_mapping */
+    0,                               /* tp_hash  */
+    0,                               /* tp_call */
+    0,                               /* tp_str */
+    0,                               /* tp_getattro */
+    0,                               /* tp_setattro */
+    0,                               /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE |
         Py_TPFLAGS_HEAPTYPE,    /* tp_flags */
     0,                          /* tp_doc */
