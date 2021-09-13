@@ -106,7 +106,7 @@ def create_paddle_case(op_type, callback):
                     out = op(x, y)
                     exe = fluid.Executor(self.place)
                     res, = exe.run(feed={"x": self.input_x,
-                                        "y": 1},
+                                        "y": 1.0},
                                 fetch_list=[out])
                 self.real_result = np.array([1, 0, 0, 0]).astype(np.int64)
                 self.assertEqual((res == self.real_result).all(), True)
