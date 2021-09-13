@@ -33,7 +33,7 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
 
   for (auto &op : ops_) {
     // cache the op type during the init part
-    // reduce unnecessary op visit during 1F1B
+    // reduce unnecessary op visit during running
     int op_role = op->Attr<int>("op_role");
     if ((op_role == static_cast<int>(OpRole::kForward)) ||
         (op_role == (static_cast<int>(OpRole::kForward) |
@@ -53,7 +53,7 @@ void SectionWorker::Initialize(const TrainerDesc &desc) {
       optimizer_ops_.push_back(op.get());
     } else {
       PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "The op %s is None of LRSchel, Forward, Backward or Optimize.",
+          "The op %s is None of LRSched, Forward, Backward or Optimize.",
           op->Type()));
     }
   }
