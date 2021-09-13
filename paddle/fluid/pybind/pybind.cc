@@ -2265,22 +2265,24 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
 #endif
 #endif
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+
   m.def("_get_device_name",
         [](int device_id) -> std::string {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
           if (device_id == -1) {
             device_id = paddle::platform::GetCurrentDeviceId();
           }
           std::string device_name =
               paddle::platform::GetCUDADeviceName(device_id);
           return device_name;
+#else
+          PADDLE_THROW(platform::errors::Unavailable(
+              "Only PADDLE WITH CUDA and PADDLE WITH HIP support the "
+              "get_device_name"));
+#endif
         },
         py::return_value_policy::copy);
-#else
-  PADDLE_THROW(platform::errors::Unavailable(
-      "Only PADDLE WITH CUDA and PADDLE WITH HIP support the get_device_name"));
 
-#endif
 #ifdef PADDLE_WITH_ASCEND_CL
   m.def("get_npu_device_count", platform::GetNPUDeviceCount);
   m.def("npu_finalize", []() {
