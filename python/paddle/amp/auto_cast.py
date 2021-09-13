@@ -38,7 +38,8 @@ def auto_cast(enable=True,
         custom_black_list(set|list|tuple, optional): The custom black_list. The set of ops that support fp16
              calculation and are considered numerically-dangerous and whose effects may also be 
              observed in downstream ops. These ops will not be converted to fp16.
-        mode(str, optional): Auto mixed precision level. Accepted values are "L1" and "L2", L1 represent amp, L2 represent Pure fp16. Default is L1(amp)
+        mode(str, optional): Auto mixed precision level. Accepted values are "L1" and "L2": L1 represent mixed precision, the input data type of each operator will be casted by white_list and black_list; 
+             L2 represent Pure fp16, all operators parameters and input data will be casted to fp16, except operators in black_list, don't support fp16 kernel and batchnorm. Default is L1(amp)
         
     Examples:
 
@@ -66,10 +67,18 @@ def auto_cast(enable=True,
         with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}):
             c = a + b
             print(c.dtype) # FP16
+        
+        with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}, mode='L2'):
+            d = a + b
+            print(d.dtype) # FP16
 
     """
     return amp_guard(enable, custom_white_list, custom_black_list, mode)
 
 
 def decorator(models=None, optimizers=None, mode='L2', save_dtype=None):
+    """
+    Decorator models and optimizers for amp.
+
+    """
     return amp_decorator(models, optimizers, mode, save_dtype)
