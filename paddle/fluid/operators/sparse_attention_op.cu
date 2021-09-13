@@ -65,14 +65,11 @@ __global__ void BlockSparseSoftmaxForward(T* softmax, const T* src, T scale,
                                           int seq_len) {
   // constants
   const int WarpSize = 32;
-  const int BlockSize2 = BlockSize * BlockSize;
 
   // current thread related info
   const int cur = blockIdx.x * blockDim.y + threadIdx.y;
   const int cur_batch = cur / seq_len;
-  const int cur_seq = cur % seq_len;
   const int cur_seqb = cur / BlockSize;
-  const int cur_inb = cur % BlockSize;
 
   // number of nnz block in cur_seqb
   const int cur_nnzb = layout_rowptr[cur_seqb + 1] - layout_rowptr[cur_seqb];
@@ -108,30 +105,6 @@ __global__ void BlockSparseSoftmaxForward(T* softmax, const T* src, T scale,
         srcdata[didx] = -std::numeric_limits<T>::infinity();
       }
     }
-  } else if (BlockSize == 64 || BlockSize == 32) {  // BlockSize = 64, 32
-    for (int i = 0; i < cur_nnzb; i++) {
-      const T* srcptr = src + layout_rowptr[cur_seqb] * BlockSize2 +
-                        i * BlockSize2 + cur_inb * BlockSize;
-      const T* attnptr =
-          attn_mask + cur_seq * seq_len + layout_colindex[cur_seqb] * BlockSize;
-      const int IterPerBlock = BlockSize / WarpSize;
-#pragma unroll
-      for (int j = 0; j < IterPerBlock; j++) {
-        int didx = i * IterPerBlock + j;
-        int xidx = threadIdx.x + j * WarpSize;
-
-        if (AttnMode == true) {
-          if (std::abs(attnptr[xidx]) < std::numeric_limits<T>::epsilon()) {
-            srcdata[didx] =
-                -std::numeric_limits<T>::infinity() * scale + datakp_mask;
-          } else {
-            srcdata[didx] = scale * srcptr[xidx] + datakp_mask;
-          }
-        } else {
-          srcdata[didx] = scale * srcptr[xidx] + datakp_mask;
-        }
-      }
-    }
   }
 
   // max value
@@ -163,17 +136,6 @@ __global__ void BlockSparseSoftmaxForward(T* softmax, const T* src, T scale,
         softmaxptr[xidx] = srcdata[didx] / sum;
       }
     }
-  } else if (BlockSize == 64 || BlockSize == 32) {  // BlockSize = 64, 32
-    for (int i = 0; i < cur_nnzb; i++) {
-      T* softmaxptr = softmax + layout_rowptr[cur_seqb] * BlockSize2 +
-                      i * BlockSize2 + cur_inb * BlockSize;
-      const int IterPerBlock = BlockSize / WarpSize;
-      for (int j = 0; j < IterPerBlock; j++) {
-        int didx = i * IterPerBlock + j;
-        int xidx = threadIdx.x + j * WarpSize;
-        softmaxptr[xidx] = srcdata[didx] / sum;
-      }
-    }
   }
 }
 
@@ -184,14 +146,12 @@ __global__ void BlockSparseSoftmaxBackward(T* dst, const T* grad, const T* src,
                                            int seq_len) {
   // constants
   const int WarpSize = 32;
-  const int BlockSize2 = BlockSize * BlockSize;
 
   // current thread related info
   const int cur = blockIdx.x * blockDim.y + threadIdx.y;
   const int cur_batch = cur / seq_len;
   const int cur_seq = cur % seq_len;
   const int cur_seqb = cur / BlockSize;
-  const int cur_inb = cur % BlockSize;
 
   // number of nnz block in cur_seqb
   const int cur_nnzb = layout_rowptr[cur_seqb + 1] - layout_rowptr[cur_seqb];
@@ -215,23 +175,6 @@ __global__ void BlockSparseSoftmaxBackward(T* dst, const T* grad, const T* src,
         graddata[didx] = 0;
       }
     }
-
-  } else if (BlockSize == 64 || BlockSize == 32) {  // BlockSize = 64, 32
-    for (int i = 0; i < cur_nnzb; i++) {
-      // BlockSize = 64, 32
-      const T* srcptr = src + layout_rowptr[cur_seqb] * BlockSize2 +
-                        i * BlockSize2 + cur_inb * BlockSize;
-      const T* gradptr = grad + layout_rowptr[cur_seqb] * BlockSize2 +
-                         i * BlockSize2 + cur_inb * BlockSize;
-      const int IterPerBlock = BlockSize / WarpSize;
-#pragma unroll
-      for (int j = 0; j < IterPerBlock; j++) {
-        int didx = i * IterPerBlock + j;
-        int xidx = threadIdx.x + j * WarpSize;
-        srcdata[didx] = srcptr[xidx];
-        graddata[didx] = gradptr[xidx];
-      }
-    }
   }
 
   T sum = 0;
@@ -250,18 +193,6 @@ __global__ void BlockSparseSoftmaxBackward(T* dst, const T* grad, const T* src,
       int xidx = j * WarpSize + threadIdx.x;
       int didx = j;
       if (xidx < cur_nnzb) {
-        dstptr[xidx] = scale * srcdata[didx] * (graddata[didx] - sum);
-      }
-    }
-  } else if (BlockSize == 64 || BlockSize == 32) {  // BlockSize = 64, 32
-    for (int i = 0; i < cur_nnzb; i++) {
-      // BlockSize = 64, 32
-      T* dstptr = dst + layout_rowptr[cur_seqb] * BlockSize2 + i * BlockSize2 +
-                  cur_inb * BlockSize;
-      const int IterPerBlock = BlockSize / WarpSize;
-      for (int j = 0; j < IterPerBlock; j++) {
-        int didx = i * IterPerBlock + j;
-        int xidx = threadIdx.x + j * WarpSize;
         dstptr[xidx] = scale * srcdata[didx] * (graddata[didx] - sum);
       }
     }

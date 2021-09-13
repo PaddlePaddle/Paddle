@@ -47,19 +47,6 @@ def softmax(x):
     return f_x
 
 
-def get_csr_value(mat, layout, nnz):
-    row = mat.shape[0]
-    col = mat.shape[1]
-    value = np.zeros(nnz)
-    ptr = 0
-    for i in range(row):
-        for j in range(col):
-            if layout[i][j] == 1:
-                value[ptr] = mat[i][j]
-                ptr += 1
-    return value
-
-
 def ref_sparse_attention(q, k, v, offset, columns):
     row = q.shape[0]
     col = q.shape[1]
@@ -73,28 +60,19 @@ def ref_sparse_attention(q, k, v, offset, columns):
             mat[cur_row][cur_col] = 1
     # sdd
     a = np.dot(q, k.T) * mat
-
-    # Get nnz of a
-    nnz = columns.shape[0]
-    a_value = get_csr_value(a, mat, nnz)
-
     # scale
     head_dim = col
     scaling = float(head_dim)**-0.5
     a = scaling * a
-
     for i in range(row):
         for j in range(row):
             if mat[i][j] == 0:
                 a[i][j] = float('-inf')
-
     # softmax
     b = softmax(a)
-    b_value = get_csr_value(b, mat, nnz)
     # dsd
     result = np.dot(b, v)
-
-    return result, a_value, b_value
+    return result
 
 
 def init_csr_format(rows, blocksize):
@@ -131,9 +109,7 @@ def init_csr_format(rows, blocksize):
     "core is not compiled with CUDA and cuda version need larger than 11.2")
 class TestSparseAttentionOp(OpTest):
     def config(self):
-        self.q_shape = (1, 1, 8, 8)
-        self.k_shape = (1, 1, 8, 8)
-        self.v_shape = (1, 1, 8, 8)
+        self.shape = (1, 1, 8, 8)
         self.blocksize = 2
 
     def init_kernel_type(self):
@@ -146,9 +122,9 @@ class TestSparseAttentionOp(OpTest):
         self.config()
         self.op_type = "sparse_attention"
         self.place = paddle.CUDAPlace(0)
-        nq = np.random.random(self.q_shape).astype(self.dtype)
-        nk = np.random.random(self.k_shape).astype(self.dtype)
-        nv = np.random.random(self.v_shape).astype(self.dtype)
+        nq = np.random.random(self.shape).astype(self.dtype)
+        nk = np.random.random(self.shape).astype(self.dtype)
+        nv = np.random.random(self.shape).astype(self.dtype)
         self.q = nq
         self.k = nk
         self.v = nv
@@ -164,7 +140,7 @@ class TestSparseAttentionOp(OpTest):
         self.offset = noffset.astype('int32')
         self.columns = ncolumns.astype('int32')
 
-        result, a, b = ref_sparse_attention(nq, nk, nv, noffset, ncolumns)
+        result = ref_sparse_attention(nq, nk, nv, noffset, ncolumns)
         result = result.astype(self.dtype)
         result = np.expand_dims(np.expand_dims(result, 0), 0)
 
@@ -238,8 +214,7 @@ class TestSparseAttentionAPI(unittest.TestCase):
         key = key.squeeze()
         value = value.squeeze()
 
-        numpy_result, tmp_a, tmp_b = ref_sparse_attention(query, key, value,
-                                                          offset, columns)
+        numpy_result = ref_sparse_attention(query, key, value, offset, columns)
         numpy_result = numpy_result.astype(self.dtype)
         numpy_result = np.expand_dims(np.expand_dims(numpy_result, 0), 0)
 

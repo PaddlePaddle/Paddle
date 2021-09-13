@@ -27,7 +27,6 @@ class SparseAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("V", "tensor of shape ");
     AddInput("offset", "tensor of offset in CSR format ");
     AddInput("columns", "tensor of columns in CSR format ");
-
     AddOutput("Out", "The output tensor of sparse_mat operator");
     AddOutput("ResultSdd", "The computation result of sdd operation.")
         .AsIntermediate();
@@ -67,7 +66,6 @@ class SparseAttentionOp : public framework::OperatorWithKernel {
     auto ndims_q = dims_q.size();
     auto ndims_k = dims_k.size();
     auto ndims_v = dims_v.size();
-
     int64_t columns_dim = dims_columns[0];
 
     // q,k,v must be 4 dims
@@ -93,7 +91,6 @@ class SparseAttentionOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     auto input_data_type =
         OperatorWithKernel::IndicateOrPromoteVarDataTypes(ctx, "Q", "K");
-
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
