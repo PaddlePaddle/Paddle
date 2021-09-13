@@ -134,10 +134,8 @@ def empty_cache():
 
             # required: gpu
             paddle.set_device("gpu")
-            # nvidia-smi
             tensor = paddle.randn([512, 512, 512], "float")
             del tensor
-            # nvidia-smi
             paddle.device.cuda.empty_cache()
     """
 
