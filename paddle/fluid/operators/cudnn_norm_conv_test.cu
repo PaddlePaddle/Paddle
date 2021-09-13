@@ -28,6 +28,7 @@ namespace platform = paddle::platform;
 namespace op = paddle::operators;
 
 USE_OP(conv2d);
+USE_OP_DEVICE_KERNEL(conv2d, CUDNN);
 
 // get paddle conv2d op results as baseline
 template <typename T>
@@ -54,11 +55,15 @@ void GetConv2DOp(const std::vector<T> &x, const std::vector<T> &w,
   auto size_w = static_cast<size_t>(framework::product(w_dim));
   auto size_y = static_cast<size_t>(framework::product(y_dim));
   cudaMemcpy(x_ptr, x.data(), size_x * sizeof(T), cudaMemcpyHostToDevice);
-  cudaMemcpy(w_ptr, w.data(), size_y * sizeof(T), cudaMemcpyHostToDevice);
+  cudaMemcpy(w_ptr, w.data(), size_w * sizeof(T), cudaMemcpyHostToDevice);
 
   framework::AttributeMap attrs;
-  attrs.insert({"use_cudnn", true});
-  attrs.insert({"data_format", "NHWC"});
+  bool use_cudnn = true;
+  std::string data_format = "NHWC";
+  std::string padding_algorithm = "SAME";
+  attrs.insert({"use_cudnn", use_cudnn});
+  attrs.insert({"data_format", data_format});
+  attrs.insert({"padding_algorithm", padding_algorithm});
 
   auto op = framework::OpRegistry::CreateOp(
       "conv2d", {{"Input", {"Input"}}, {"Filter", {"Filter"}}},
@@ -124,6 +129,7 @@ class TestCuDNNNormConvOpForward {
       filter_raw_vec_[i] = static_cast<T>(dis(random));
     }
     // transpoes for filter
+    // NCHW->NHWC
     for (int oc = 0; oc < output_channels_; ++oc) {
       for (int kh = 0; kh < kernel_size_; ++kh) {
         for (int kw = 0; kw < kernel_size_; ++kw) {
@@ -140,8 +146,8 @@ class TestCuDNNNormConvOpForward {
       }
     }
     for (int i = 0; i < output_size_; ++i) {
-      output_vec_[i] = static_cast<T>(0.0f);
-      base_output_vec_[i] = static_cast<T>(0.0f);
+      output_vec_[i] = static_cast<T>(1.0f);
+      base_output_vec_[i] = static_cast<T>(1.0f);
     }
 
     framework::TensorFromVector<T>(input_vec_, *ctx_, &input_);
@@ -153,11 +159,9 @@ class TestCuDNNNormConvOpForward {
     filter_pro_.Resize(
         {output_channels_, kernel_size_, kernel_size_, input_channels_});
     output_.Resize({batch_size_, height_, width_, output_channels_});
-    output_.mutable_data<T>(place_);
     sum_.Resize({1, 1, 1, output_channels_});
-    sum_.mutable_data<T>(place_);
     sum_of_squares_.Resize({1, 1, 1, output_channels_});
-    sum_of_squares_.mutable_data<T>(place_);
+    ctx_->Wait();
   }
 
   void BaselineForward() {
@@ -173,9 +177,9 @@ class TestCuDNNNormConvOpForward {
     auto output_shape = framework::vectorize<int>(output_.dims());
     T *input_ptr = input_.data<T>();
     T *filter_ptr = filter_pro_.data<T>();
-    T *output_ptr = output_.data<T>();
-    float *sum_ptr = sum_.data<float>();
-    float *sum_of_squares_ptr = sum_of_squares_.data<float>();
+    T *output_ptr = output_.mutable_data<T>(place_);
+    float *sum_ptr = sum_.mutable_data<float>(place_);
+    float *sum_of_squares_ptr = sum_of_squares_.mutable_data<float>(place_);
 
     op::CuDNNNormConvolutionOp<T> *conv_op =
         new op::CuDNNNormConvolutionOp<T>();
@@ -225,13 +229,45 @@ class TestCuDNNNormConvOpForward {
   platform::CUDADeviceContext *ctx_;
 };
 
-// test for fp16
-TEST(CuDNNNormConvForward, GPUCuDNNNormConvForwardFp16) {
+// test for fp16, kernel = 1, output_channels = input_channels
+TEST(CuDNNNormConvForward, GPUCuDNNNormConvForward1Fp16) {
   int batch_size = 408;
   int height = 56;
   int width = 56;
   int input_channels = 64;
   int output_channels = 64;
+  int kernel_size = 1;
+  int stride = 1;
+  TestCuDNNNormConvOpForward<paddle::platform::float16> test(
+      batch_size, height, width, input_channels, output_channels, kernel_size,
+      stride);
+  test.Run();
+  test.CheckOut(static_cast<paddle::platform::float16>(1e-5));
+}
+
+// test for fp16, kernel = 3, output_channels = input_channels
+TEST(CuDNNNormConvForward, GPUCuDNNNormConvForward2Fp16) {
+  int batch_size = 408;
+  int height = 56;
+  int width = 56;
+  int input_channels = 64;
+  int output_channels = 64;
+  int kernel_size = 3;
+  int stride = 1;
+  TestCuDNNNormConvOpForward<paddle::platform::float16> test(
+      batch_size, height, width, input_channels, output_channels, kernel_size,
+      stride);
+  test.Run();
+  test.CheckOut(static_cast<paddle::platform::float16>(1e-5));
+}
+
+// test for fp16, kernel = 1, output_channels = input_channels * 4
+TEST(CuDNNNormConvForward, GPUCuDNNNormConvForward3Fp16) {
+  int batch_size = 408;
+  int height = 56;
+  int width = 56;
+  int input_channels = 64;
+  int output_channels = 256;
   int kernel_size = 1;
   int stride = 1;
   TestCuDNNNormConvOpForward<paddle::platform::float16> test(
