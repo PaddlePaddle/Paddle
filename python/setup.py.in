@@ -249,10 +249,6 @@ packages=['paddle',
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
     setup_requires = f.read().splitlines()
 
-for index, requirement in enumerate(setup_requires):
-    if requirement == "git+https://github.com/jakpiase/bfloat.git@1.1.1":
-        setup_requires[index] = "bfloat==1.1.1"
-
 
 # Note(wangzhongpu):
 # When compiling paddle under python36, the dependencies belonging to python2.7 will be imported, resulting in errors when installing paddle
@@ -540,7 +536,6 @@ with redirect_stdout():
         license='Apache Software License',
         packages=packages,
         install_requires=setup_requires,
-        dependency_links=["https://github.com/jakpiase/bfloat/tarball/1.1.1#egg=bfloat-1.1.1"],
         ext_modules=ext_modules,
         package_data=package_data,
         package_dir=package_dir,
