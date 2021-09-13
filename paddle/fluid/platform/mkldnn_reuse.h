@@ -1075,8 +1075,7 @@ class ReorderMKLDNNHandler {
  public:
   ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
                        framework::proto::VarType::Type vtype,
-                       mkldnn::memory::data_type dtype,
-                       mkldnn::engine engine)
+                       mkldnn::memory::data_type dtype, mkldnn::engine engine)
       : dims_(dims),
         vtype_(vtype),
         vtype_dst_(vtype),
@@ -1097,34 +1096,32 @@ class ReorderMKLDNNHandler {
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const MKLDNNMemoryFormat& fmt, void* ptr) {
-      auto md = mkldnn::memory::desc(dims, dtype, fmt);
-      return mem_p = std::make_shared<mkldnn::memory>(md, engine_, ptr);
+    auto md = mkldnn::memory::desc(dims_, dtype_, fmt);
+    return mem_p = std::make_shared<mkldnn::memory>(md, engine_, ptr);
   }
 
   std::shared_ptr<mkldnn::memory> AcquireSubmemory(
       const std::vector<int64_t>& dims, const std::vector<int64_t>& offset,
       const std::shared_ptr<mkldnn::memory>& mem_p, int submemory_number = 0) {
-
     auto sub_md = mem_p->get_desc().submemory_desc(dims, {offset});
-    auto sub_mem_p = std::make_shared<mkldnn::memory>(sub_md, engine_, mem_p->get_data_handle());
+    auto sub_mem_p = std::make_shared<mkldnn::memory>(sub_md, engine_,
+                                                      mem_p->get_data_handle());
     return sub_mem_p;
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
       framework::Tensor* output, const MKLDNNMemoryFormat& fmt,
       platform::Place place) {
-      auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_dst_, fmt);
-      auto dst_data =
-          output->mutable_data(place, vtype_dst_, dst_md.get_size());
+    auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_dst_, fmt);
+    auto dst_data = output->mutable_data(place, vtype_dst_, dst_md.get_size());
     return std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
       framework::Tensor* output, const std::vector<int64_t>& dims,
       const MKLDNNMemoryFormat& fmt, platform::Place place) {
-      auto dst_md = platform::MKLDNNMemDesc(dims, dtype_dst_, fmt);
-      auto dst_data =
-          output->mutable_data(place, vtype_dst_, dst_md.get_size());
+    auto dst_md = platform::MKLDNNMemDesc(dims, dtype_dst_, fmt);
+    auto dst_data = output->mutable_data(place, vtype_dst_, dst_md.get_size());
     return std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
   }
 
