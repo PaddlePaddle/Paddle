@@ -18,16 +18,19 @@ import unittest
 
 class TestDeviceCount(unittest.TestCase):
     def test_device_name_default(self):
-        name = paddle.device.cuda.get_device_name()
-        self.assertIsNotNone(name)
+        if paddle.is_compiled_with_cuda():
+            name = paddle.device.cuda.get_device_name()
+            self.assertIsNotNone(name)
 
     def test_device_name_int(self):
-        name = paddle.device.cuda.get_device_name(0)
-        self.assertIsNotNone(name)
+        if paddle.is_compiled_with_cuda():
+            name = paddle.device.cuda.get_device_name(0)
+            self.assertIsNotNone(name)
 
     def test_device_name_paddle(self):
-        name = paddle.device.cuda.get_device_name(paddle.CUDAPlace(0))
-        self.assertIsNotNone(name)
+        if paddle.is_compiled_with_cuda():
+            name = paddle.device.cuda.get_device_name(paddle.CUDAPlace(0))
+            self.assertIsNotNone(name)
 
 
 if __name__ == "__main__":
