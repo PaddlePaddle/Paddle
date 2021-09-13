@@ -67,10 +67,11 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"sparse_momentum", {"Param", "Grad", "Velocity", "Index", "LearningRate"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
     {"run_program", {"X", "Params"}},
+    {"matrix_rank", {"X", "TolTensor"}},
     {"adam",
      {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
       "Beta2Pow", "MasterParam"}},
-    {"matrix_rank", {"X", "TolTensor"}}};
+};
 
 // NOTE(zhiqiu): Like op_ins_map.
 // Commonly, the outputs in auto-generated OP function are determined by the
