@@ -24,15 +24,15 @@ struct CudaAbsFunctor;
 
 template <typename T>
 struct CudaAbsFunctor<T, math::Complex<T, math::Real<T>>> {
-  __device__ __forceinline__ math::Real<T> operator()(const T& x) const {
-    return abs(x);
+  __device__ __forceinline__ math::Real<T> operator()(const T* args) const {
+    return abs(args[0]);
   }
 };
 
 template <typename T>
 struct CudaAbsFunctor<T, math::NoComplex<T, math::Real<T>>> {
-  __device__ __forceinline__ T operator()(const T& x) const {
-    return std::abs(x);
+  __device__ __forceinline__ T operator()(const T* args) const {
+    return std::abs(args[0]);
   }
 };
 
