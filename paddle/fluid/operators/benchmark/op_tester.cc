@@ -142,7 +142,8 @@ OpTester::GetOpProtoAttrNames() {
       framework::OpProtoAndCheckerMaker::OpRoleAttrName(),
       framework::OpProtoAndCheckerMaker::OpRoleVarAttrName(),
       framework::OpProtoAndCheckerMaker::OpNamescopeAttrName(),
-      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName()};
+      framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName(),
+      framework::OpProtoAndCheckerMaker::OpWithQuantAttrName()};
   for (int i = 0; i != proto.attrs_size(); ++i) {
     const auto &attr = proto.attrs(i);
     if (!Has(skipped_attrs, attr.name())) {
