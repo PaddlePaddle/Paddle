@@ -23,7 +23,6 @@ from gradient_checker import grad_check
 
 class TestEighOp(OpTest):
     def setUp(self):
-        paddle.enable_static()
         self.op_type = "eigh"
         self.init_input()
         self.init_config()

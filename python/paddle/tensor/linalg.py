@@ -1079,11 +1079,11 @@ def matrix_power(x, n, name=None):
 
 def eigh(x, UPLO='L', name=None):
     """
-    compute the eigenvalues and eigenvectors of a 
+    Compute the eigenvalues and eigenvectors of a 
     complex Hermitian (conjugate symmetric) or a real symmetric matrix.
 
     Args:
-        x (Tensor): A tensor with shape :math:`[_, M, M]` , The data type of the input Tensor x
+        x (Tensor): A tensor with shape :math:`[*, N, N]` , The data type of the input Tensor x
             should be one of float32, float64, complex64, complex128.
         UPLO(str, optional): (string, default 'L'), 'L' represents the lower triangular matrix,
                         "'U' represents the upper triangular matrix.".
@@ -1091,8 +1091,10 @@ def eigh(x, UPLO='L', name=None):
             property.  For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        out_value(Tensor):  A Tensor with shape [_, M]. The eigenvalues  of eigh op.
-        out_vector(Tensor): A Tensor with shape [_, M, M]. The eigenvectors  of eigh op.
+        Tuple of 2 tensors: (out_value, out_vector). out_value is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
+
+        out_value(Tensor):  A Tensor with shape [*, N]. The eigenvalues  of eigh op.
+        out_vector(Tensor): A Tensor with shape [*, N, N]. The eigenvectors  of eigh op.
 
     Examples:
         .. code-block:: python

@@ -46,14 +46,17 @@ class EighOp : public framework::OperatorWithKernel {
             "But received X's shape[-2] = %d and shape[-1] = %d.",
             input_dim[rank - 2], input_dim[rank - 1]));
 
-    int64_t batch_size = GetBatchSize(input_dim);
-
-    std::vector<int64_t> v_dim = {input_dim[1]};
+    std::vector<int64_t> values_dim;
     if (rank > 2) {
-      v_dim = {batch_size, input_dim[1]};
+      for (auto i = 0; i < rank - 1; i++) {
+        values_dim.emplace_back(input_dim[i]);
+        std::cout << "i: " << i << "\n";
+      }
+    } else {
+      values_dim = {input_dim[1]};
     }
 
-    ctx->SetOutputDim("Eigenvalues", framework::make_ddim(v_dim));
+    ctx->SetOutputDim("Eigenvalues", framework::make_ddim(values_dim));
     ctx->SetOutputDim("Eigenvectors", input_dim);
   }
 };
@@ -63,7 +66,7 @@ class EignOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X",
              "(Tensor), Hermitian or real symmetric matrices."
-             "Its shape should be [*, M, M] where "
+             "Its shape should be [*, N, N] where "
              "* is zero or more batch dimensions");
     AddOutput("Eigenvalues", "(Tensor), The eigenvalues in ascending order.");
     AddOutput("Eigenvectors",
@@ -137,6 +140,7 @@ class EighGradOpMaker : public framework::SingleGradOpMaker<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+
 REGISTER_OPERATOR(eigh, ops::EighOp, ops::EignOpMaker,
                   ops::EighGradOpMaker<paddle::framework::OpDesc>,
                   ops::EighGradOpMaker<paddle::imperative::OpBase>);
