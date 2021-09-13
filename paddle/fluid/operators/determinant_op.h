@@ -20,9 +20,11 @@
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
+#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/matrix_inverse.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/unsqueeze_op.h"
+#include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
 namespace operators {
@@ -96,11 +98,18 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
     auto* ddet =
         context.Output<framework::Tensor>(framework::GradVarName("Input"));
 
+    PADDLE_ENFORCE_EQ(grad->dims().size() + 2, input->dims().size(),
+                      platform::errors::InvalidArgument(
+                          "The grad tensor of det dims size should 2 less than"
+                          " input tensor's, but here differ %d",
+                          input->dims().size() - grad->dims().size()));
+
     // let |A| = Determinant(A)
     // In pytorch:
-    // d|A| = det(A).unsqueeze(-1).unsqueeze(-2) * inverse(A).transpose(-2, -1)
+    // d|A| = (dA * |A|).unsqueeze(-1).unsqueeze(-2) * inverse(A).transpose(-2,
+    // -1)
     // In tensorflow:
-    // d|A| = det(A).reshape(tf.concat([det(A).shape, [1, 1]], 0)) * inv(A,
+    // d|A| = (dA * |A|).reshape(tf.concat([|A|.shape, [1, 1]], 0)) * inv(A,
     // adjoint=True)
     // And ref to https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
     // we set d|A| = unsqueeze(dA * |A|, [-1, -2]) * inverse(A).transpose(-2,
@@ -124,23 +133,26 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
     transpose_inverse_A.Resize(inverse_A.dims());
     transpose_inverse_A.mutable_data<T>(context.GetPlace());
 
+    // Transpose the last two dimension
     auto inverse_A_rank = inverse_A.dims().size();
     std::vector<int> trans_axis(inverse_A_rank);
     for (int i = 0; i < inverse_A_rank; ++i) {
       trans_axis[i] = i;
     }
-    // Transpose the last two dimension
     trans_axis[inverse_A_rank - 1] = inverse_A_rank - 2;
     trans_axis[inverse_A_rank - 2] = inverse_A_rank - 1;
     TransCompute<DeviceContext, T>(inverse_A_rank, dev_ctx, inverse_A,
                                    &transpose_inverse_A, trans_axis);
 
     // Third: dA * |A|
-    ElementwiseMulFunctor<DeviceContext, T> elem_mul;
     framework::Tensor mul_dA_detA;
     mul_dA_detA.Resize(grad->dims());
     mul_dA_detA.mutable_data<T>(context.GetPlace());
+
+    ElementwiseMulFunctor<DeviceContext, T> elem_mul;
     elem_mul(context, grad, det, &mul_dA_detA);
+
+    VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
 
     // Fourth: unsqueeze(dA * |A|, [-1, -2])
     auto unsqueeze_dims = UnsqueezeKernel<DeviceContext, T>::GetOutputShape(
@@ -152,6 +164,7 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
     // Finally: unsqueeze(dA * |A|) * inverse(A)
     ddet->Resize(transpose_inverse_A.dims());
     ddet->mutable_data<T>(context.GetPlace());
+
     elem_mul(context, &mul_dA_detA, &transpose_inverse_A, ddet);
 
     VLOG(3) << "d|A| dims: " << ddet->dims();
@@ -222,6 +235,117 @@ class SlogDeterminantKernel : public framework::OpKernel<T> {
     auto output_dims = framework::make_ddim(output_dim_vec);
     output->Resize(output_dims);
     VLOG(2) << "output dim:" << output->dims();
+  }
+};
+
+template <typename DeviceContext, typename T>
+class SlogDeterminantGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    const auto* input = context.Input<framework::Tensor>("Input");
+    const auto* grad =
+        context.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* dslogdet =
+        context.Output<framework::Tensor>(framework::GradVarName("Input"));
+
+    PADDLE_ENFORCE_EQ(grad->dims()[0], 2,
+                      platform::errors::InvalidArgument(
+                          "The grad tensor of SlogDet should contain two"
+                          " grad: sign and absslogdet, but here %ld.",
+                          grad->dims()[0]));
+    PADDLE_ENFORCE_EQ(
+        grad->dims().size() + 1, input->dims().size(),
+        platform::errors::InvalidArgument(
+            "The grad tensor of slogdet dims size should 1 less than"
+            " input tensor's, but here differ %d",
+            input->dims().size() - grad->dims().size()));
+
+    // let sl|A| = SlogDeterminant(A)
+    // In pytorch:
+    // dsl|A| = dslA.unsqueeze(-1).unsqueeze(-2) *
+    // inverse(A).conj().transpose(-2, -1)
+    // In tensorflow:
+    // dsl|A| = dslA.reshape(tf.concat([sl|A|.shape, [1, 1]], 0)) * inv(A,
+    // adjoint=True)
+    // And ref to https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
+    // we set dsl|A| = unsqueeze(dslA, [-1, -2]) *
+    // inverse(A).conj().transpose(-2, -1)
+
+    // First: inverse(A)
+    framework::Tensor inverse_A;
+    // A must be square matrices!
+    inverse_A.Resize(input->dims());
+    inverse_A.mutable_data<T>(context.GetPlace());
+
+    math::MatrixInverseFunctor<DeviceContext, T> mat_inv;
+    mat_inv(dev_ctx, *input, &inverse_A);
+
+    VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
+
+    // Second: inverse(A).conj()
+    framework::Tensor conj_inverse_A;
+    conj_inverse_A.Resize(inverse_A.dims());
+    auto numel = input->numel();
+    auto* conj_data = conj_inverse_A.mutable_data<T>(context.GetPlace(),
+                                                     size_t(numel * sizeof(T)));
+
+    platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
+    math::ConjFunctor<T> functor(input->data<T>(), numel, conj_data);
+    for_range(functor);
+
+    VLOG(3) << "inverse(A).conj() dims: " << conj_inverse_A.dims();
+
+    // Third: inverse(A).conj().transpose(-2, -1)
+    framework::Tensor transpose_inverse_A;
+    // A must be square matrix! Transpose the last two dimension not change
+    // the shape
+    transpose_inverse_A.Resize(conj_inverse_A.dims());
+    transpose_inverse_A.mutable_data<T>(context.GetPlace());
+
+    // Transpose the last two dimension
+    auto inverse_A_rank = conj_inverse_A.dims().size();
+    std::vector<int> trans_axis(inverse_A_rank);
+    for (int i = 0; i < inverse_A_rank; ++i) {
+      trans_axis[i] = i;
+    }
+    trans_axis[inverse_A_rank - 1] = inverse_A_rank - 2;
+    trans_axis[inverse_A_rank - 2] = inverse_A_rank - 1;
+    TransCompute<DeviceContext, T>(inverse_A_rank, dev_ctx, conj_inverse_A,
+                                   &transpose_inverse_A, trans_axis);
+
+    VLOG(3) << "inverse(A).conj().transpose(-2, -1) dims: "
+            << transpose_inverse_A.dims();
+
+    // Fourth: split grad value to [sign_grad, absslogdet_grad]
+    auto grad_vec = grad->Split(1, 0);
+    auto det_grad = grad_vec[1];
+
+    // remmove useless first dimension
+    int det_grad_size = det_grad.dims().size();
+    std::vector<int> det_grad_vec;
+    for (int i = 1; i < det_grad_size; ++i) {
+      det_grad_vec.emplace_back(det_grad.dims()[i]);
+    }
+    det_grad.Resize(det_grad.dims().reshape(det_grad_vec));
+
+    // Fifth: unsqueeze(dslA, [-1, -2])
+    framework::Tensor unsqueeze_dA;
+    unsqueeze_dA.ShareDataWith(det_grad);
+    auto unsqueeze_dims = UnsqueezeKernel<DeviceContext, T>::GetOutputShape(
+        {-1, -2}, det_grad.dims());
+    unsqueeze_dA.Resize(unsqueeze_dims);
+
+    VLOG(3) << "unsqueezed(dslA) dims: " << unsqueeze_dA.dims();
+
+    // Finally: unsqueeze(dslA) * inverse(A)
+    dslogdet->Resize(transpose_inverse_A.dims());
+    dslogdet->mutable_data<T>(context.GetPlace());
+
+    ElementwiseMulFunctor<DeviceContext, T> elem_mul;
+    elem_mul(context, &unsqueeze_dA, &transpose_inverse_A, dslogdet);
+
+    VLOG(3) << "dsl|A| dims: " << dslogdet->dims();
   }
 };
 

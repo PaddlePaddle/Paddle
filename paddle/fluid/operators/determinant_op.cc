@@ -193,5 +193,5 @@ REGISTER_OP_CPU_KERNEL(slogdeterminant, ops::SlogDeterminantKernel<int>,
 
 REGISTER_OP_CPU_KERNEL(
     slogdeterminant_grad,
-    ops::DeterminantGradKernel<plat::CPUDeviceContext, float>,
-    ops::DeterminantGradKernel<plat::CPUDeviceContext, double>);
+    ops::SlogDeterminantGradKernel<plat::CPUDeviceContext, float>,
+    ops::SlogDeterminantGradKernel<plat::CPUDeviceContext, double>);
