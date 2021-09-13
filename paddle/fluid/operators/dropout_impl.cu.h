@@ -37,101 +37,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// template <typename T, typename MaskType>
-// __global__ void RandomGenerator(const size_t n, uint64_t seed,
-//                                 const float dropout_prob, const T* src,
-//                                 MaskType* mask_data, T* dst,
-//                                 bool is_upscale_in_train, uint64_t increment)
-//                                 {
-//   int idx = blockDim.x * blockIdx.x + threadIdx.x;
-// #ifdef PADDLE_WITH_HIP
-//   hiprandStatePhilox4_32_10_t state;
-//   hiprand_init(seed, idx, increment, &state);
-// #else
-//   curandStatePhilox4_32_10_t state;
-//   curand_init(seed, idx, increment, &state);
-// #endif
-
-//   MaskType mask;
-//   T dest;
-//   for (; idx < n; idx += blockDim.x * gridDim.x) {
-//     T s = src[idx];
-// #ifdef PADDLE_WITH_HIP
-//     if (hiprand_uniform(&state) < dropout_prob) {
-// #else
-//     if (curand_uniform(&state) < dropout_prob) {
-// #endif
-//       mask = 0;
-//       dest = 0;
-//     } else {
-//       mask = 1;
-//       if (is_upscale_in_train) {
-//         dest = s / static_cast<T>(1.0f - dropout_prob);
-//       } else {
-//         dest = s;
-//       }
-//     }
-//     mask_data[idx] = mask;
-//     dst[idx] = dest;
-//   }
-// }
-
-// template <typename T, typename MaskType, int VecSize>
-// __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
-//                                           const float dropout_prob,
-//                                           const T* src, MaskType* mask_data,
-//                                           T* dst, bool is_upscale_in_train,
-//                                           uint64_t increment) {
-// #ifdef PADDLE_WITH_HIP
-//   int64_t idx = hipBlockDim_x * hipBlockIdx_x + hipThreadIdx_x;
-//   hiprandStatePhilox4_32_10_t state;
-//   hiprand_init(seed, idx, increment, &state);
-// #else
-//   int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
-//   curandStatePhilox4_32_10_t state;
-//   curand_init(seed, idx, increment, &state);
-// #endif
-
-//   MaskType mask;
-//   T dest;
-//   using LoadT = platform::AlignedVector<T, VecSize>;
-//   using MaskLoadT = platform::AlignedVector<MaskType, VecSize>;
-//   T factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
-//   for (int i = idx * VecSize; i < n; i += blockDim.x * gridDim.x * VecSize) {
-//     T src_vec[VecSize];
-//     LoadT* value = reinterpret_cast<LoadT*>(&src_vec);
-//     *value = *reinterpret_cast<const LoadT*>(&src[i]);
-// #ifdef PADDLE_WITH_HIP
-//     float4 rand = hiprand_uniform4(&state);
-// #else
-//     float4 rand = curand_uniform4(&state);
-// #endif
-
-//     T dest_vec[VecSize];
-//     MaskType mask_vec[VecSize];
-
-// #pragma unroll
-//     for (int ii = 0; ii < VecSize; ii++) {
-//       if ((&rand.x)[ii] < dropout_prob) {
-//         dest_vec[ii] = 0;
-//         mask_vec[ii] = 0;
-//       } else {
-//         if (is_upscale_in_train) {
-//           dest_vec[ii] = src_vec[ii] * factor;
-//         } else {
-//           dest_vec[ii] = src_vec[ii];
-//         }
-//         mask_vec[ii] = 1;
-//       }
-//     }
-
-//     *(reinterpret_cast<LoadT*>(&dst[i])) =
-//         *reinterpret_cast<LoadT*>(&dest_vec[0]);
-//     *(reinterpret_cast<MaskLoadT*>(&mask_data[i])) =
-//         *reinterpret_cast<MaskLoadT*>(&mask_vec[0]);
-//   }
-// }
-
 template <typename T, typename MaskType>
 __global__ void RandomGenerator(const size_t n, uint64_t seed,
                                 const float dropout_prob, const T* src,
@@ -215,37 +120,6 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
     platform::Store<MaskType, VecSize>(mask_val, &mask[i]);
   }
 }
-
-// template <typename T, typename MaskType, int VecSize>
-// __global__ void DropoutGradCUDAKernel(const T* dout, const MaskType* mask,
-//                                       const T factor, const int64_t size,
-//                                       T* dx) {
-//   int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
-
-//   using LoadT = platform::AlignedVector<T, VecSize>;
-//   using MaskLoadT = platform::AlignedVector<MaskType, VecSize>;
-
-//   for (int i = idx * VecSize; i < size; i += blockDim.x * gridDim.x *
-//   VecSize) {
-//     T dout_vec[VecSize];
-//     LoadT* dout_value = reinterpret_cast<LoadT*>(&dout_vec);
-//     *dout_value = *reinterpret_cast<const LoadT*>(&dout[i]);
-
-//     MaskType mask_vec[VecSize];
-//     MaskLoadT* mask_value = reinterpret_cast<MaskLoadT*>(&mask_vec);
-//     *mask_value = *reinterpret_cast<const MaskLoadT*>(&mask[i]);
-
-//     T dx_vec[VecSize];
-
-// #pragma unroll
-//     for (int ii = 0; ii < VecSize; ii++) {
-//       dx_vec[ii] = dout_vec[ii] * static_cast<T>(mask_vec[ii]) * factor;
-//     }
-
-//     *(reinterpret_cast<LoadT*>(&dx[i])) =
-//     *reinterpret_cast<LoadT*>(&dx_vec[0]);
-//   }
-// }
 
 template <typename T, typename MaskType, int VecSize>
 __global__ void DropoutGradCUDAKernel(const T* dout, const MaskType* mask,
