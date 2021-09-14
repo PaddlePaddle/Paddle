@@ -214,10 +214,10 @@ std::string GetCUDADeviceName(int id) {
                         "but received id is: %d. GPU count is: %d.",
                         id, GetCUDADeviceCount()));
 
-  PADDLE_ENFORCE_GT(id, 0, platform::errors::InvalidArgument(
-                               "Device id must be greater than GPU count, "
-                               "but received id is: %d. ",
-                               id));
+  PADDLE_ENFORCE_GT(id, -1, platform::errors::InvalidArgument(
+                                "Device id must be greater than -1, "
+                                "but received id is: %d. ",
+                                id));
 #ifdef PADDLE_WITH_HIP
   hipDeviceProp_t device_prop;
   PADDLE_ENFORCE_CUDA_SUCCESS(hipGetDeviceProperties(&device_prop, id));
