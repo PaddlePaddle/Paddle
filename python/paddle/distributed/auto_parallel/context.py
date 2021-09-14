@@ -429,3 +429,32 @@ class DistributedContext:
     def _get_model_parallel_info(self):
         # This function is a hard code, and will be obsoleted in the future
         return self._model_parallel_axis, self._process_mesh
+
+
+class DistributedContext:
+    """
+    DistributedContext is used to collect related distributed information for program and graph.
+    One auto-parallel run should use its own DistributedContext to avoid interfering other run.
+    """
+
+    def __init__(self):
+        self._is_initialized_for_program = False
+        self._is_initialized_for_graph = False
+        self._tensor_distributed_attr_map_for_program = {}
+        self._op_distributed_attr_map_for_program = {}
+        self._tensor_distributed_attr_map_for_graph = {}
+        self._op_distributed_attr_map_for_graph = {}
+        # The following is a hard code and will be removed in the future
+        self._data_parallel_axis = None
+        self._model_parallel_axis = None
+        self._process_mesh = _g_process_mesh_map.get(0, None)
+        if self._process_mesh is not None:
+            if self._process_mesh.ndim == 1:
+                self._data_parallel_axis = 0
+                self._model_parallel_axis = 0
+            else:
+                self._data_parallel_axis = 0
+                self._model_parallel_axis = 1
+        else:
+            self._data_parallel_axis = -1
+            self._model_parallel_axis = -1

@@ -36,10 +36,12 @@ class DistributedOperatorImpl:
         self._forward_implemented = False
         self._backward_implemented = False
 
-    def forward(self, dist_ctx, *args, **kwargs):
+    @staticmethod
+    def forward(dist_ctx, *args, **kwargs):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
-    def backward(self, dist_ctx, *grad_outputs):
+    @staticmethod
+    def backward(dist_ctx, *grad_outputs, **kwargs):
         raise NotImplementedError("Please Implement this method in Subclass.")
 
     def get_name(self):
