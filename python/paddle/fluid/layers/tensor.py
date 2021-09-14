@@ -322,10 +322,13 @@ def concat(input, axis=0, name=None):
         if isinstance(axis, Variable):
             axis = axis.numpy()
             axis = axis.item(0)
+        if not isinstance(input, Variable):
+            input = [t for t in input if max(t.shape) > 0]
         return _C_ops.concat(input, 'axis', axis)
 
     check_type(input, 'input', (list, tuple, Variable), 'concat')
     if not isinstance(input, Variable):
+        input = [t for t in input if max(t.shape) > 0]
         for id, x in enumerate(input):
             check_variable_and_dtype(
                 x, 'input[' + str(id) + ']',
