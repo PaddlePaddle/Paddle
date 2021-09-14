@@ -18,6 +18,7 @@ namespace paddle {
 namespace pybind {
 
 void BindEager(pybind11::module* m);
+void BindFunctions(PyObject* module);
 
 }  // namespace pybind
 }  // namespace paddle

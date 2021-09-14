@@ -54,8 +54,6 @@ set(PYBIND_SRCS
   box_helper_py.cc
   data_set_py.cc
   imperative.cc
-  eager.cc
-  eager_utils.cc
   ir.cc
   inference_api.cc
   compatible.cc
@@ -203,7 +201,12 @@ if(WITH_PYTHON)
   add_custom_target(op_function_generator_cmd ALL DEPENDS ${impl_file})
 
   list(APPEND PYBIND_DEPS interpretercore standalone_executor)
-  list(APPEND PYBIND_DEPS eager_api autograd_meta backward function_api grad_node_info top)
+
+  cc_library(paddle_eager
+    SRCS eager.cc eager_functions.cc eager_method.cc eager_properties.cc eager_utils.cc
+    DEPS eager_api autograd_meta backward function_api grad_node_info top)
+  list(APPEND PYBIND_DEPS paddle_eager)
+
   cc_library(paddle_pybind SHARED
     SRCS ${PYBIND_SRCS}
     DEPS ${PYBIND_DEPS} ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS})
