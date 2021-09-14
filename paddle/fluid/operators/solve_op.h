@@ -57,7 +57,7 @@ static inline bool is_vector_rhs(const Tensor& input, const Tensor& other) {
   return vector_case;
 }
 
-// to_unsqueeze's helper func
+// unsqueeze operation helper
 static framework::DDim GetOutputShapeUnsqueeze(
     const std::vector<int> unsqz_dims, const framework::DDim& in_dims) {
   int output_size = in_dims.size() + static_cast<int>(unsqz_dims.size());
@@ -143,10 +143,12 @@ Container infer_size_impl(std::vector<int64_t> a, std::vector<int64_t> b) {
     int64_t sizeA = (dimA >= 0) ? a[dimA] : 1;
     int64_t sizeB = (dimB >= 0) ? b[dimB] : 1;
 
-    PADDLE_ENFORCE(sizeA == sizeB || sizeA == 1 || sizeB == 1,
-                   "The size of tensor a (%d) must match the size of tensor b "
-                   "(%d) at non-singleton dimension %d.",
-                   sizeA, sizeB, i);
+    PADDLE_ENFORCE_EQ(
+        (sizeA == sizeB || sizeA == 1 || sizeB == 1), true,
+        platform::errors::PreconditionNotMet(
+            "The size of tensor a (%d) must match the size of tensor b "
+            "(%d) at non-singleton dimension %d.",
+            sizeA, sizeB, i));
 
     expandedSizes[i] = sizeA == 1 ? sizeB : sizeA;
   }

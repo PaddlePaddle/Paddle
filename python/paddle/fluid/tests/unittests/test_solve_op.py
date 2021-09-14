@@ -27,8 +27,8 @@ from paddle.fluid import Program, program_guard
 
 class TestSolveOp(OpTest):
     def config(self):
-        self.input_x_matrix_shape = [30, 30]
-        self.input_y_matrix_shape = [30, 10]
+        self.input_x_matrix_shape = [15, 15]
+        self.input_y_matrix_shape = [15, 10]
         self.dtype = "float64"
 
     def setUp(self):
@@ -52,14 +52,14 @@ class TestSolveOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out')
 
 
-class TestSolveOpBatched_case1(OpTest):
+class TestSolveOpBatched(OpTest):
     def setUp(self):
         self.op_type = "solve"
         self.dtype = "float64"
         np.random.seed(2021)
         self.inputs = {
-            'X': np.random.random((3, 20, 20)).astype(self.dtype),
-            'Y': np.random.random((3, 20, 10)).astype(self.dtype)
+            'X': np.random.random((3, 6, 6)).astype(self.dtype),
+            'Y': np.random.random((3, 6, 7)).astype(self.dtype)
         }
         result = np.linalg.solve(self.inputs['X'], self.inputs['Y'])
         self.outputs = {'Out': result}
@@ -69,29 +69,6 @@ class TestSolveOpBatched_case1(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out')
-
-
-class TestSolveOpBatched_case2(OpTest):
-    def setUp(self):
-        self.op_type = "solve"
-        self.dtype = "float64"
-        self.init_dtype_type()
-        np.random.seed(2021)
-        self.inputs = {
-            'X': np.random.random((3, 20, 20)).astype(self.dtype),
-            'Y': np.random.random((1, 20, 10)).astype(self.dtype)
-        }
-        result = np.linalg.solve(self.inputs['X'], self.inputs['Y'])
-        self.outputs = {'Out': result}
-
-    def init_dtype_type(self):
-        pass
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.001)
 
 
 class TestSolveOpError(unittest.TestCase):
@@ -170,8 +147,8 @@ class TestSolveOpAPI(unittest.TestCase):
         def run(place):
             paddle.disable_static(place)
             np.random.seed(2021)
-            input_x_np = np.random.random([30, 30]).astype("float64")
-            input_y_np = np.random.random([30, 10]).astype("float64")
+            input_x_np = np.random.random([15, 15]).astype("float64")
+            input_y_np = np.random.random([15, 10]).astype("float64")
 
             tensor_input_x = paddle.to_tensor(input_x_np)
             tensor_input_y = paddle.to_tensor(input_y_np)

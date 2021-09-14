@@ -12,7 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/math/matrix_solve.h"
-#include <type_traits>
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -141,7 +140,7 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
     // Copy the addresses of A and tmp_b from host to device.
     memory::allocation::AllocationPtr tmp_gpu_ptrs_data =
         memory::Alloc(context, cpu_ptrs.size() * sizeof(T*));
-    memory::Copy(boost::get<platform::CUDAPlace>(context.GetPlace()),
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()),
                  tmp_gpu_ptrs_data->ptr(), platform::CPUPlace(),
                  static_cast<void*>(cpu_ptrs.data()),
                  cpu_ptrs.size() * sizeof(T*), context.stream());
