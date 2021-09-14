@@ -102,6 +102,51 @@ struct ElementwiseMulFunctor {
   }
 };
 
+template <typename T>
+struct FoundZeroFunctor {
+  FoundZeroFunctor(const T* x, int64_t numel, bool* res)
+      : x_(x), numel_(numel), res_(res) {}
+  HOSTDEVICE void operator()(size_t idx) const {
+    if (*res_ || idx >= static_cast<size_t>(numel_)) {
+      // founded zero number
+      return;
+    }
+    *res_ = (x_[idx] == static_cast<T>(0));
+  }
+  const T* x_;
+  int64_t numel_;
+  bool* res_;
+};
+
+template <typename DeviceContext, typename T>
+inline bool CheckMatrixInvertible(const framework::ExecutionContext& ctx,
+                                  const framework::Tensor* det) {
+  auto& dev_ctx = ctx.template device_context<DeviceContext>();
+  auto numel = det->numel();
+
+  framework::Tensor dev_tensor;
+  auto* data = dev_tensor.mutable_data<bool>({1}, ctx.GetPlace());
+
+  // set false
+  math::SetConstant<DeviceContext, bool> zero;
+  zero(dev_ctx, &dev_tensor, false);
+
+  // find whether zero
+  platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
+  FoundZeroFunctor<T> functor(det->data<T>(), numel, data);
+  for_range(functor);
+
+  // copy to host
+  dev_ctx.Wait();
+  framework::Tensor cpu_tensor;
+  framework::TensorCopy(dev_tensor, platform::CPUPlace(), &cpu_tensor);
+
+  // if founded zero, the matrix is not invertible
+  // else the matrix is invertible
+  auto* res = cpu_tensor.data<bool>();
+  return !(*res);
+}
+
 template <typename DeviceContext, typename T>
 class DeterminantGradKernel : public framework::OpKernel<T> {
  public:
@@ -120,6 +165,19 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
                           " input tensor's, but here differ %d",
                           input->dims().size() - grad->dims().size()));
 
+    // Check Whether the matrix is invertible
+    // (matrix A not invertible) == (det(A)=0)
+    if (!CheckMatrixInvertible<DeviceContext, T>(context, det)) {
+      // The matrix is not invertible
+      VLOG(3) << "The input matrix not invertible!";
+      ddet->Resize(input->dims());
+      ddet->mutable_data<T>(context.GetPlace());
+      math::SetConstant<DeviceContext, T> zero;
+      zero(dev_ctx, ddet, static_cast<T>(0.0f));
+      return;
+    }
+
+    // The matrix is invertible
     // let |A| = Determinant(A)
     // In pytorch:
     // d|A| = (dA * |A|).unsqueeze(-1).unsqueeze(-2) * inverse(A).transpose(-2,
@@ -255,6 +313,7 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
   void Compute(const framework::ExecutionContext& context) const override {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     const auto* input = context.Input<framework::Tensor>("Input");
+    const auto* slogdet = context.Input<framework::Tensor>("Out");
     const auto* grad =
         context.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* dslogdet =
@@ -272,6 +331,21 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
             " input tensor's, but here differ %d",
             input->dims().size() - grad->dims().size()));
 
+    // Check Whether the matrix is invertible
+    // (matrix A not invertible) == (absslogdet(A)=0)
+    auto slogdet_vec = slogdet->Split(1, 0);
+    auto absslogdet_val = slogdet_vec[0];
+    if (!CheckMatrixInvertible<DeviceContext, T>(context, &absslogdet_val)) {
+      // The matrix is not invertible
+      VLOG(3) << "The input matrix not invertible!";
+      dslogdet->Resize(input->dims());
+      dslogdet->mutable_data<T>(context.GetPlace());
+      math::SetConstant<DeviceContext, T> zero;
+      zero(dev_ctx, dslogdet, std::numeric_limits<T>::quiet_NaN());
+      return;
+    }
+
+    // The matrix is invertible
     // let sl|A| = SlogDeterminant(A)
     // In pytorch:
     // dsl|A| = dslA.unsqueeze(-1).unsqueeze(-2) *
@@ -302,7 +376,7 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
                                                      size_t(numel * sizeof(T)));
 
     platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    math::ConjFunctor<T> functor(input->data<T>(), numel, conj_data);
+    math::ConjFunctor<T> functor(inverse_A.data<T>(), numel, conj_data);
     for_range(functor);
 
     VLOG(3) << "inverse(A).conj() dims: " << conj_inverse_A.dims();
