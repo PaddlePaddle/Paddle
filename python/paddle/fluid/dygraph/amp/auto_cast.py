@@ -70,7 +70,7 @@ AMP_RELATED_FLAGS_SETTING = {
 }
 
 PURE_FP16_BLACK_LIST = {' '}
-PURE_FP16_WHITE_LIST = {' '}
+PURE_FP16_WHITE_LIST = {'lookup_table', 'lookup_table_v2'}
 
 
 #NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
