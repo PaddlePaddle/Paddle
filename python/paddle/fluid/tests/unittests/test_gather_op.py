@@ -248,6 +248,17 @@ class API_TestDygraphGather(unittest.TestCase):
         self.assertTrue(np.allclose(output_np, expected_output))
         paddle.enable_static()
 
+    def test_zero_index(self):
+        paddle.disable_static()
+        x = paddle.to_tensor([[1, 2], [3, 4]])
+        index = paddle.to_tensor(np.array([]).astype('int64'))
+        for axis in range(len(x.shape)):
+            out = paddle.gather(x, index, axis)
+            expected_shape = list(x.shape)
+            expected_shape[axis] = 0
+            self.assertEqual(list(out.shape), expected_shape)
+        paddle.enable_static()
+
     def test_large_data(self):
         if not paddle.is_compiled_with_cuda():
             return
@@ -340,4 +351,5 @@ class TestCheckOutType(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    paddle.enable_static()
     unittest.main()
