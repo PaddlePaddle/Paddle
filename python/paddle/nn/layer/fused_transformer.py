@@ -16,7 +16,9 @@ import copy
 from .. import functional as F
 from paddle.nn import Layer
 from ...framework import ParamAttr
+import paddle
 from ...fluid.data_feeder import convert_dtype
+from ..initializer import Constant
 
 import collections
 
@@ -256,7 +258,7 @@ class FusedMultiHeadAttention(Layer):
         if attn_mask is not None:
             # Support bool or int mask
             attn_mask = _convert_attention_mask(attn_mask, query.dtype)
-        ln_out, out_linear_out, residual_out, out = F.fused_multihead_attention(
+        out = F.fused_multihead_attention(
             x=query,
             qkv_weight=self.qkv_weight,
             out_linear_weight=self.out_linear_weight,
@@ -272,11 +274,7 @@ class FusedMultiHeadAttention(Layer):
             dropout=self.dropout,
             attn_dropout=self.attn_dropout,
             ln2_epsilon=1e-05)
-        # todo:  
-        if (self.normalize_before):
-            return ln_out, out_linear_out, residual_out, out
-        else:
-            return out_linear_out, residual_out, out
+        return out
 
 
 class FusedFeedForward(Layer):

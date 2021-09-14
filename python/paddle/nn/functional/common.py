@@ -1581,15 +1581,16 @@ def fused_multihead_attention(x,
             out_linear_weight, out_linear_bias, ln_2_scale, ln_2_bias,
             'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
             'dropout_prob', dropout, 'attn_dropout_prob', attn_dropout)
-        return ln_out, qkv_out, qkv_bias_out, transpose_out_2, qk_out, qktv_out, softmax_out, src_mask_out, fmha_out, out_linear_out, bias_dropout_residual_out, final_out
+        #return ln_out, qkv_out, qkv_bias_out, transpose_out_2, qk_out, qktv_out, softmax_out, src_mask_out, fmha_out, out_linear_out, bias_dropout_residual_out, final_out
+        return final_out
     else:
-        helper = LayerHelper('fused_attention', **locals())
+        helper = LayerHelper('fused_multihead_attention', **locals())
         dtype = x.dtype
         # check dtypes
         check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
-                                 'fused_attention')
+                                 'fused_multihead_attention')
         check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
-                    'fused_attention')
+                    'fused_multihead_attention')
 
         # set inputs
         inputs = dict()
@@ -1610,9 +1611,11 @@ def fused_multihead_attention(x,
 
         # set attrs
         attrs = {
-            'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon, 'ln2_epsilon',
-            ln2_epsilon, 'dropout_prob', dropout, 'attn_dropout_prob',
-            attn_dropout
+            'pre_layer_norm': pre_layer_norm,
+            'epsilon': epsilon,
+            'ln2_epsilon': ln2_epsilon,
+            'dropout_prob': dropout,
+            'attn_dropout_prob': attn_dropout
         }
 
         # set outputs
@@ -1640,8 +1643,8 @@ def fused_multihead_attention(x,
         ln_2_variance_out = helper.create_variable_for_type_inference(
             dtype=dtype, stop_gradient=True)
         bias_dropout_residual_out = helper.create_variable_for_type_inference(
-            dtype)
-        final_out = helper.create_variable_for_type_inference(dtype)
+            dtype=dtype)
+        final_out = helper.create_variable_for_type_inference(dtype=dtype)
 
         helper.append_op(
             type='fused_attention',
