@@ -35,6 +35,7 @@ _set_use_system_allocator(True)
 
 
 def create_or_get_tensor(scope, var_name, var, place):
+    print(create_or_get_tensor)
     """Get tensor, if not found, create a new one."""
     tensor = scope.var(var_name).get_tensor()
     if var is not None:

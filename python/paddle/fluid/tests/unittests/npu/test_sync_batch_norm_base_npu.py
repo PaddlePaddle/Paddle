@@ -19,6 +19,7 @@ import time
 import argparse
 import os
 import sys
+sys.path.append("..")
 import subprocess
 import traceback
 import functools
@@ -28,10 +29,45 @@ import paddle.fluid as fluid
 import paddle.fluid.unique_name as nameGen
 from paddle.fluid import core
 from six import string_types
+import paddle
+
+from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
 
 
-class TestCollectiveRunnerBase(object):
-    def get_model(self, train_prog, startup_prog):
+def create_or_get_tensor(scope, var_name, var, place):
+    print('test_sync_batch_norm_base_npu.py create_or_get_tensor')
+    print('var_name: ', var_name)
+    # print('var: ', var)
+    print('place: ', place)
+    """Get tensor, if not found, create a new one."""
+    tensor = scope.var(var_name).get_tensor()
+    # print('tensor: ', tensor)
+    print('create_or_get_tensor 41')
+    # with paddle.static.device_guard('NPUPlace(0)'):
+    # with paddle.static.device_guard(place):
+    with paddle.static.device_guard('npu'):
+        if var is not None:
+            print('create_or_get_tensor 43')
+            assert isinstance(var, np.ndarray)
+            print('create_or_get_tensor 44')
+            tensor.set_recursive_sequence_lengths([])
+            print('create_or_get_tensor 47')
+            tensor.set(var, place)
+            print('create_or_get_tensor 49')
+        print('create_or_get_tensor 50')
+    return tensor
+
+
+class TestSyncBatchNormRunnerBase(object):
+    # def get_model(self, train_prog, startup_prog):
+    def get_model(self,
+                  main,
+                  startup,
+                  place,
+                  layout,
+                  seed,
+                  sync_bn=False,
+                  only_forward=False):
         raise NotImplementedError(
             "get model should be implemented by child class.")
 
@@ -93,30 +129,64 @@ class TestCollectiveRunnerBase(object):
             })
 
     def run_trainer(self, args):
+        print('test_sync_batch_norm_base_npu.py run_trainer')
+
+        device_id = int(os.getenv("FLAGS_selected_npus", "0"))
+        print("use selected_npus:", device_id)
+        place = fluid.NPUPlace(device_id)
+
+        print('run_trainer 124')
+        seed = 10
+        scope = core.Scope()
+        print('run_trainer 127')
+        data = np.random.random(size=self.dshape).astype(self.dtype) * 4. - 2
+        # print('data: ', data)
+        print('run_trainer 129')
+        data = create_or_get_tensor(scope, "input",
+                                    OpTest.np_dtype_to_fluid_dtype(data), place)
+        # data = create_or_get_tensor(scope, "input",
+        #                             data, place)
+
+        print('run_trainer 135')
+
         train_prog = fluid.Program()
         startup_prog = fluid.Program()
+
+        print('train_prog: ', train_prog)
+        print('startup_prog: ', startup_prog)
+
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
         self.initCommunicator(startup_prog, rank, nranks, True,
                               current_endpoint, endpoints)
+        print('startup_prog: ', startup_prog)
         self.rank = rank
-        result = self.get_model(train_prog, startup_prog)
-        device_id = int(os.getenv("FLAGS_selected_npus", "0"))
-        place = fluid.NPUPlace(device_id)
+
+        outs = self.get_model(train_prog, startup_prog, place, "NCHW", seed)
+
+        print('train_prog: ', train_prog)
         exe = fluid.Executor(place)
-        exe.run(startup_prog)
-        np.random.seed(os.getpid())
-        indata = np.random.random((10, 1000))
-        out = exe.run(train_prog,
-                      feed={'tindata': indata},
-                      fetch_list=[result.name])
-        sys.stdout.buffer.write(pickle.dumps(out))
+        exe.run(startup)
+        fetch_names = [v.name for v in outs] + [
+            'bn_moving_mean', 'bn_moving_variance', 'bn_scale', 'bn_bias'
+        ]
+        if not only_forward:
+            others = [
+                'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
+                'bn_bias@GRAD', 'batch_norm_0.tmp_3@GRAD', 'conv2d_0.tmp_0@GRAD'
+            ]
+            fetch_names += others
+        bn_fetches = exe.run(program=main,
+                             feed={'input': data},
+                             fetch_list=fetch_names)
+        sys.stdout.buffer.write(pickle.dumps(bn_fetches))
 
 
 def runtime_main(test_class, col_type, sub_type):
-    print('test_collective_base_npu.py 119')
+    print('test_sync_batch_norm_base_npu.py runtime_main')
+
     args = {}
     model = test_class()
     args["deviceid"] = os.getenv("FLAGS_selected_npus")
@@ -155,6 +225,7 @@ class TestDistBase(unittest.TestCase):
                 return port
 
     def _run_cluster(self, model_file, envs):
+        print('test_sync_batch_norm_base_npu.py _run_cluster')
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
         print("w0_ep:", w0_ep, " w1_ep:", w1_ep)
@@ -182,6 +253,7 @@ class TestDistBase(unittest.TestCase):
         tr0_pipe = open("/tmp/tr0_err.log", "wb")
         tr1_pipe = open("/tmp/tr1_err.log", "wb")
         print(tr0_cmd)
+        # print(tr1_cmd) 
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(),
             stdout=subprocess.PIPE,
@@ -198,27 +270,30 @@ class TestDistBase(unittest.TestCase):
         tr1_out, tr1_err = tr1_proc.communicate()
 
         print('tr0_out: ', tr0_out)
-        print('tr1_out: ', tr1_out)
-        print('tr0_err: ', tr0_err)
-        print('tr1_err: ', tr1_err)
+        # print('tr1_out: ', tr1_out)
+        # print('tr0_err: ', tr0_err)
+        # print('tr1_err: ', tr1_err)
 
         sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
         sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
-        return pickle.loads(tr0_out), pickle.loads(
-            tr1_out), tr0_proc.pid, tr1_proc.pid
+        # return pickle.loads(tr0_out), pickle.loads(
+        #     tr1_out), tr0_proc.pid, tr1_proc.pid
 
     def check_with_place(self, model_file, col_type, need_envs={}):
+        print('test_sync_batch_norm_base_npu.py check_with_place')
 
-        tr0_out, tr1_out, pid0, pid1 = self._run_cluster(model_file, need_envs)
-        np.random.seed(pid0)
-        input1 = np.random.random((10, 1000))
-        np.random.seed(pid1)
-        input2 = np.random.random((10, 1000))
-        if col_type == "identity":
-            need_result1 = input1
-            need_result2 = input2
-            self.assertTrue(np.allclose(tr0_out, need_result1, rtol=0, atol=0))
-            self.assertTrue(np.allclose(tr1_out, need_result2, rtol=0, atol=0))
+        self._run_cluster(model_file, need_envs)
+
+        # tr0_out, tr1_out, pid0, pid1 = self._run_cluster(model_file, need_envs)
+        # np.random.seed(pid0)
+        # input1 = np.random.random((10, 1000))
+        # np.random.seed(pid1)
+        # input2 = np.random.random((10, 1000))
+        # if col_type == "identity":
+        #     need_result1 = input1
+        #     need_result2 = input2
+        #     self.assertTrue(np.allclose(tr0_out, need_result1, rtol=0, atol=0))
+        #     self.assertTrue(np.allclose(tr1_out, need_result2, rtol=0, atol=0))
