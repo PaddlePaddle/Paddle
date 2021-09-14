@@ -76,23 +76,6 @@ struct InverseDivFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b / a; }
 };
 
-// Floor Divide
-template <typename T>
-struct FloorDivFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const {
-    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
-    return static_cast<T>(std::trunc(a / b));
-  }
-};
-
-template <typename T>
-struct InverseFloorDivFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const {
-    PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
-    return static_cast<T>(std::trunc(b / a));
-  }
-};
-
 // Maximum
 template <typename T>
 struct MaxFunctor {
@@ -103,45 +86,6 @@ struct MaxFunctor {
 template <typename T>
 struct MinFunctor {
   inline HOSTDEVICE T operator()(T a, T b) const { return a < b ? a : b; }
-};
-
-// Mod
-template <typename T, typename Enable = void>
-struct ModFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    T res = a % b;
-
-    // Accoding to PR#26732: in dividen % divsor
-    // remainder shall have the same sign as divsor.
-    return ((res != 0) && ((b ^ res) < 0)) ? res + b : res;
-  }
-};
-
-template <typename T>
-struct ModFunctor<T,
-                  typename std::enable_if_t<std::is_floating_point<T>::value>> {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    T res = fmod(a, b);
-    return ((res != 0) && ((res < 0) != (b < 0))) ? res + b : res;
-  }
-};
-
-template <typename T, typename Enable = void>
-struct InverseModFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    T res = b % a;
-    res = ((res != 0) && ((a ^ res) < 0)) ? res + a : res;
-    return res;
-  }
-};
-
-template <typename T>
-struct InverseModFunctor<
-    T, typename std::enable_if_t<std::is_floating_point<T>::value>> {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    T res = fmod(b, a);
-    return ((res != 0) && ((res < 0) != (a < 0))) ? res + a : res;
-  }
 };
 
 // Pow
