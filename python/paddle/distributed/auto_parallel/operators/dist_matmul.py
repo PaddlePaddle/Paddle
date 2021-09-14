@@ -561,15 +561,12 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             Out_var = dst_block.var(output_name_mapping['Out'][0])
 
             # TODO infer logic comm presentation
-            from ..process import new_process_group
-            from ..transpiler import _get_comm_group
             model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
             )._get_model_parallel_info()
             group_ranks = _get_comm_group(process_mesh.topology,
                                           model_parallel_axis,
                                           process_mesh.process_group, rank_id)
             group = new_process_group(group_ranks)
-            # print("@@@@@@@@@@@@@@@@@@@@@ 5", group)
 
             intermediate_var_0 = dst_block.create_var(
                 name=unique_name.generate_with_ignorable_key(".".join(
@@ -705,15 +702,12 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             Out_var = dst_block.var(output_name_mapping['Out'][0])
 
             # TODO infer logic comm presentation
-            from ..process import new_process_group
-            from ..transpiler import _get_comm_group
             model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
             )._get_model_parallel_info()
             group_ranks = _get_comm_group(process_mesh.topology,
                                           model_parallel_axis,
                                           process_mesh.process_group, rank_id)
             group = new_process_group(group_ranks)
-            # print("@@@@@@@@@@@@@@@@@@@@@ 4", group)
 
             check_variable_and_dtype(
                 X_var, 'x', ['float16', 'float32', 'float64'], 'linear')
