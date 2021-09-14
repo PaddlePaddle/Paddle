@@ -703,7 +703,7 @@ class Executor(object):
                     "The item in fetch_list should be str, variable or optimize_op, but recieved %s.",
                     type(item))
 
-        for item in fetch_list:
+        for index, item in enumerate(fetch_list):
             # NOTE(zhiqiu): to support (optimizer_ops, param_and_grads) and optimizer_ops in fetch_list
             # we should handle tuple and list in fetch_list.
             # TODO(zhiqiu): find a better way to handle that.
