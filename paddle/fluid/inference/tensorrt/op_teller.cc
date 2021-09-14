@@ -666,6 +666,33 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+    if (op_type == "instance_norm") {
+      if (with_dynamic_shape) {
+        VLOG(3) << "trt instance_norm op does not support dynamic shape ";
+        return false;
+      }
+      if (desc.Input("X").size() != 1) {
+        VLOG(3) << "input of instance_norm op converter should be 1, got "
+                << desc.Input("X").size();
+        return false;
+      }
+      if (desc.Input("Bias").size() != 1) {
+        VLOG(3) << "Bias of instance_norm op converter should be 1, got "
+                << desc.Input("Bias").size();
+        return false;
+      }
+      if (desc.Input("Scale").size() != 1) {
+        VLOG(3) << "Scale of instance_norm op converter should be 1, got "
+                << desc.Input("Scale").size();
+        return false;
+      }
+      if (desc.Output("Y").size() != 1) {
+        VLOG(3) << "output of layer_norm op converter should be 1, got "
+                << desc.Output("Y").size();
+        return false;
+      }
+    }
+
     if (op_type == "leaky_relu") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "Invalid number of TRT leaky_relu op converter "
