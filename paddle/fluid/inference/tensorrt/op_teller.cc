@@ -318,24 +318,18 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "gather") {
-      if (!with_dynamic_shape) return false;
-
-      if (with_dynamic_shape) {
-        auto* block = desc.Block();
-        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
-        const auto x_shape = x_var_desc->GetShape();
-        if (x_shape.size() == 1) {
-          VLOG(3) << "Gather does not support 1-dimensional input in tensorrt";
-          return false;
-        }
-      }
-
       auto inputs = desc.InputArgumentNames();
       for (auto& input : inputs) {
         if (input == "Axis" && desc.Input("Axis").size() > 0) return false;
       }
-      // current not support axis from input, use default 0
-      if (desc.GetAttrIfExists<int>("axis")) return false;
+      if (!with_dynamic_shape) {
+        if (desc.HasAttr("axis")) {
+          int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
+          if (axis < 1) return false;
+        } else {
+          return false;
+        }
+      }
     }
 
     if (op_type == "gather_nd") {
