@@ -141,7 +141,7 @@ class OperatorBase {
   OperatorBase(const std::string& type, const VariableNameMap& inputs,
                const VariableNameMap& outputs, const AttributeMap& attrs);
 
-  virtual ~OperatorBase() {}
+  virtual ~OperatorBase();
 
   /// Executor will call this interface function to Run an op.
   //  The implementation should be written at RunImpl
@@ -233,6 +233,10 @@ class OperatorBase {
 
   // Whether this operator executes in an Executor.
   bool run_by_executor_{true};
+
+  class OperatorBaseInternal;
+
+  mutable std::unique_ptr<OperatorBaseInternal> internal_;
 
  private:
   void GenerateTemporaryNames();

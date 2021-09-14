@@ -109,6 +109,9 @@ DECLARE_int32(rpc_get_thread_num);
 DECLARE_int32(rpc_prefetch_thread_num);
 #endif
 
+DECLARE_bool(enable_cache_op_run);
+DECLARE_bool(enable_cache_tensor_address);
+
 namespace paddle {
 namespace pybind {
 
@@ -369,7 +372,8 @@ static void RegisterGlobalVarGetterSetter() {
       FLAGS_benchmark, FLAGS_inner_op_parallelism, FLAGS_tracer_profile_fname,
       FLAGS_paddle_num_threads, FLAGS_use_mkldnn, FLAGS_max_inplace_grad_add,
       FLAGS_tracer_mkldnn_ops_on, FLAGS_tracer_mkldnn_ops_off,
-      FLAGS_apply_pass_to_program);
+      FLAGS_apply_pass_to_program, FLAGS_enable_cache_op_run,
+      FLAGS_enable_cache_tensor_address);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   REGISTER_PUBLIC_GLOBAL_VAR(

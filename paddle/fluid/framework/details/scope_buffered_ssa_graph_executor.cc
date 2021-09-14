@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/details/scope_buffered_ssa_graph_executor.h"
 
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -23,6 +24,9 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/profiler.h"
+
+DECLARE_bool(enable_cache_tensor_address);
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -47,6 +51,10 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
           "number of local execution scopes is %d.",
           local_scopes_.size(), local_exec_scopes_.size()));
   PrepareLocalExeScopes();
+  if (FLAGS_enable_cache_tensor_address) {
+    strategy_.num_iteration_per_drop_scope_ =
+        std::numeric_limits<size_t>::max();
+  }
 }
 
 FetchResultType ScopeBufferedSSAGraphExecutor::Run(

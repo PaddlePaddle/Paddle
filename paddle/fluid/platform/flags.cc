@@ -637,3 +637,6 @@ DEFINE_int32(get_host_by_name_time, 120,
 DEFINE_bool(
     apply_pass_to_program, false,
     "It controls whether to apply IR pass to program when using Fleet APIs");
+
+DEFINE_bool(enable_cache_op_run, false, "");
+DEFINE_bool(enable_cache_tensor_address, false, "");

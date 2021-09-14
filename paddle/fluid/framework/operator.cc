@@ -49,6 +49,8 @@ DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
 
+DECLARE_bool(enable_cache_op_run);
+
 namespace paddle {
 namespace framework {
 
@@ -187,9 +189,22 @@ RuntimeContext::RuntimeContext(const VariableNameMap& innames,
   }
 }
 
+class OperatorBase::OperatorBaseInternal {
+ public:
+  std::function<void()> run_method_;
+};
+
+OperatorBase::~OperatorBase() = default;
+
 void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
   try {
     VLOG(4) << place << " " << DebugStringEx(&scope);
+    if (internal_ && internal_->run_method_) {
+      VLOG(10) << "use cached op run for " << Type();
+      internal_->run_method_();
+      VLOG(3) << GetExecutionPlace(place) << " " << DebugStringEx(&scope);
+      return;
+    }
     if (platform::is_gpu_place(place)) {
 #if !defined(PADDLE_WITH_CUDA) && !defined(PADDLE_WITH_HIP)
       PADDLE_THROW(platform::errors::Unavailable(
@@ -1154,6 +1169,21 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   {
     platform::RecordEvent record_event("compute",
                                        platform::EventRole::kInnerOp);
+    if (FLAGS_enable_cache_op_run) {
+      PADDLE_ENFORCE_EQ(&exec_scope, &scope);
+      auto runtime_ctx_copied = *runtime_ctx;
+      internal_ = std::make_unique<OperatorBase::OperatorBaseInternal>();
+      auto* p_scope = &exec_scope;
+      auto kernel_func = *kernel_func_;
+      internal_->run_method_ = [kernel_func, this, p_scope, dev_ctx,
+                                runtime_ctx_copied] {
+        kernel_func(
+            ExecutionContext(*this, *p_scope, *dev_ctx, runtime_ctx_copied));
+      };
+      VLOG(10) << "cache op " << Type();
+    } else {
+      VLOG(10) << "do not cache op " << Type();
+    }
     (*kernel_func_)(
         ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
   }

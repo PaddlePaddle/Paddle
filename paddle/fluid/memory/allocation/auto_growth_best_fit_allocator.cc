@@ -30,6 +30,8 @@ DEFINE_bool(free_when_no_cache_hit, false,
             "chunk would be freed when out of memory occurs. This flag "
             "only works when FLAGS_allocator_strategy=auto_growth.");
 
+DECLARE_bool(enable_cache_tensor_address);
+
 namespace paddle {
 namespace memory {
 namespace allocation {
@@ -74,7 +76,9 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
     try {
       chunks_.emplace_back(underlying_allocator_->Allocate(realloc_size));
     } catch (BadAlloc &ex) {
-      if (FLAGS_free_when_no_cache_hit) throw ex;
+      if (FLAGS_free_when_no_cache_hit || FLAGS_enable_cache_tensor_address) {
+        throw ex;
+      }
       FreeIdleChunks();
       chunks_.emplace_back(underlying_allocator_->Allocate(realloc_size));
     }

@@ -130,6 +130,7 @@ limitations under the License. */
 #include "paddle/fluid/pybind/fleet_py.h"
 #endif
 
+#include "paddle/fluid/framework/scope_guard.h"
 #include "pybind11/stl.h"
 
 DECLARE_bool(use_mkldnn);
@@ -482,6 +483,23 @@ static int GetNCCLVersion() {
 }
 #endif
 
+#ifdef PADDLE_WITH_CUDA
+static cudaGraph_t g_cuda_graph = nullptr;
+static cudaGraphExec_t g_cuda_graph_exec = nullptr;
+
+static void DestroyCUDAGraph() {
+  if (g_cuda_graph) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphDestroy(g_cuda_graph));
+    g_cuda_graph = nullptr;
+  }
+
+  if (g_cuda_graph_exec) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphExecDestroy(g_cuda_graph_exec));
+    g_cuda_graph_exec = nullptr;
+  }
+}
+#endif
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -504,6 +522,40 @@ PYBIND11_MODULE(core_noavx, m) {
   using namespace paddle::framework;  // NOLINT
 
   BindException(&m);
+
+#ifdef PADDLE_WITH_CUDA
+  m.def("pre_allocate", [](int64_t bytes, const platform::CUDAPlace &place) {
+    framework::Tensor t;
+    t.Resize({bytes});
+    t.mutable_data<uint8_t>(place);
+  });
+
+  m.def("record_cuda_graph", [](const py::object &callable,
+                                const platform::CUDAPlace &place,
+                                int capture_mode) {
+    // DEFINE_PADDLE_SCOPE_GUARD(DestroyCUDAGraph);
+    auto stream =
+        platform::DeviceContextPool::Instance().GetByPlace(place)->stream();
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamBeginCapture(
+        stream, static_cast<cudaStreamCaptureMode>(capture_mode)));
+    callable();
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamEndCapture(stream, &g_cuda_graph));
+    constexpr size_t kBufferSize = 65536;
+    std::unique_ptr<char[]> log_buffer(new char[kBufferSize + 1]);
+    auto err = cudaGraphInstantiate(&g_cuda_graph_exec, g_cuda_graph, nullptr,
+                                    log_buffer.get(), kBufferSize);
+    if (err != cudaSuccess) {
+      LOG(ERROR) << log_buffer.get();
+    }
+    PADDLE_ENFORCE_CUDA_SUCCESS(err);
+  });
+
+  m.def("run_cuda_graph", [](const platform::CUDAPlace &place) {
+    auto stream =
+        platform::DeviceContextPool::Instance().GetByPlace(place)->stream();
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphLaunch(g_cuda_graph_exec, stream));
+  });
+#endif
 
   m.def("set_num_threads", &platform::SetNumThreads);
 
@@ -717,6 +769,10 @@ PYBIND11_MODULE(core_noavx, m) {
            [](framework::Tensor &self, paddle::platform::NPUPlace &place,
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
+           })
+      .def("_copy_from",
+           [](framework::Tensor &self, const framework::Tensor &other) {
+             framework::TensorCopy(other, other.place(), &self);
            })
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
