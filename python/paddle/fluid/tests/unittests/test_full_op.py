@@ -84,7 +84,7 @@ class TestFullOpError(unittest.TestCase):
                 TypeError, paddle.full, shape=[1], fill_value=5, dtype='uint4')
 
             # The argument dtype of full must be one of bool, float16,
-            #float32, float64, uint8, int32 or int64
+            #float32, float64, uint8, int16, int32 or int64
 
             # The argument shape's type of full_op  must be list, tuple or Variable.
             def test_shape_type():

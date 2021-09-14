@@ -100,7 +100,8 @@ DEFAULT_OP_ATTR_NAMES = [
     core.op_proto_and_checker_maker.kOpRoleVarAttrName(),
     core.op_proto_and_checker_maker.kOpNameScopeAttrName(),
     core.op_proto_and_checker_maker.kOpCreationCallstackAttrName(),
-    core.op_proto_and_checker_maker.kOpDeviceAttrName()
+    core.op_proto_and_checker_maker.kOpDeviceAttrName(),
+    core.op_proto_and_checker_maker.kOpWithQuantAttrName()
 ]
 
 
