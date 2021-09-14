@@ -134,10 +134,8 @@ def _set_current_stream(stream):
  
     '''
 
-    if stream is None:
-        raise ValueError("input stream should not be None.")
     if not isinstance(stream, paddle.device.cuda.Stream):
-        raise ValueError("stream type should be paddle.device.cuda.Stream")
+        raise TypeError("stream type should be paddle.device.cuda.Stream")
 
     cur_stream = current_stream()
     if id(stream) == id(cur_stream):
@@ -170,8 +168,8 @@ def stream_guard(stream=None):
        
     '''
 
-    if not isinstance(stream, paddle.device.cuda.Stream):
-        raise ValueError("stream type should be paddle.device.cuda.Stream")
+    if stream is not None and not isinstance(stream, paddle.device.cuda.Stream):
+        raise TypeError("stream type should be paddle.device.cuda.Stream")
 
     cur_stream = current_stream()
     if stream is None or id(stream) == id(cur_stream):

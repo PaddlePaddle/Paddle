@@ -131,6 +131,30 @@ class TestStreamGuard(unittest.TestCase):
 
             self.assertTrue(id(s1) == id(s2))
 
+    def test_set_current_stream_default_stream(self):
+        if paddle.is_compiled_with_cuda():
+            cur_stream = paddle.device.cuda.current_stream()
+            new_stream = paddle.device.cuda._set_current_stream(cur_stream)
+
+            self.assertTrue(id(cur_stream) == id(new_stream))
+
+    def test_stream_guard_raise_error(self):
+        if paddle.is_compiled_with_cuda():
+
+            def test_not_correct_stream_guard_input():
+                tmp = np.zeros(5)
+                with paddle.device.cuda.stream_guard(tmp):
+                    pass
+
+            self.assertRaises(TypeError, test_not_correct_stream_guard_input)
+
+    def test_set_current_stream_raise_error(self):
+        if paddle.is_compiled_with_cuda():
+            self.assertRaises(TypeError, paddle.device.cuda._set_current_stream,
+                              np.zeros(5))
+            self.assertRaises(TypeError, paddle.device.cuda._set_current_stream,
+                              None)
+
 
 if __name__ == "__main__":
     unittest.main()
