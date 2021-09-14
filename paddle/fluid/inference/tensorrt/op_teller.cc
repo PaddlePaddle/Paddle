@@ -660,6 +660,19 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Output("Out").size();
         return false;
       }
+
+      if (desc.HasAttr("approximate")) {
+        if (BOOST_GET_CONST(bool, desc.GetAttr("approximate"))) return false;
+      }
+
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 1) {
+        VLOG(3) << "gelu op does not support input's dim is 1 in tensorrt.";
+        return false;
+      }
     }
 
     if (op_type == "layer_norm") {
