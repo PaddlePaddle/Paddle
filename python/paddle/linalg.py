@@ -24,7 +24,6 @@ __all__ = [
     'cholesky',  #noqa
     'norm',
     'inv',
-    'matrix_power',
     'eigvals',
     'matrix_rank',
     'svd',
