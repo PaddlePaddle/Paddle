@@ -1119,17 +1119,7 @@ class Executor(object):
         if program is None:
             program = default_main_program()
 
-        if fetch_list is not None:
-            if isinstance(fetch_list, Variable) or isinstance(
-                    fetch_list, str) or isinstance(fetch_list,
-                                                   six.string_types):
-                fetch_list = [fetch_list]
-            assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
-                "Currently , The fetch_list type only should be list or tuple, \n"\
-                "but the input type is {}. For more information please refer to \n"\
-                "the executor.run(...).".format(type(fetch_list))
-        else:
-            fetch_list = []
+        fetch_list = self._check_fetch_list(fetch_list)
 
         if isinstance(program, Program) and program._pipeline_opt:
             if "startup_program" in program._pipeline_opt:
@@ -1342,6 +1332,26 @@ class Executor(object):
 
     def _run_inference(self, exe, feed):
         return exe.run(feed)
+
+    def _check_fetch_list(self, fetch_list):
+        if fetch_list is not None:
+            if isinstance(fetch_list, (Variable, str, six.string_types)):
+                fetch_list = [fetch_list]
+            else:
+                assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
+                    "Currently , The fetch_list type only should be list or tuple, \n"\
+                    "but the input type is {}. For more information please refer to \n"\
+                    "the executor.run(...).".format(type(fetch_list))
+                for i, fetch_var in enumerate(fetch_list):
+                    if not isinstance(fetch_var,
+                                      (Variable, str, six.string_types)):
+                        raise TypeError(
+                            "Require fetch_list[{}] 's type shall be one of (Variable, str), but received {}.".
+                            format(i, type(fetch_var).__name__))
+        else:
+            fetch_list = []
+
+        return fetch_list
 
     def _dump_debug_info(self, program=None, trainer=None):
         with open(str(id(program)) + "_train_desc.prototxt", "w") as fout:
