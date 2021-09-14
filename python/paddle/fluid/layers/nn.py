@@ -3205,6 +3205,10 @@ def instance_norm(input,
         dtype = core.VarDesc.VarType.FP32
 
     input_shape = input.shape
+    if len(input.shape) < 2 or len(input.shape) > 5:
+        raise ValueError(
+            'expected 2D or 3D or 4D or 5D input (got {}D input, input shape is: {})'.
+            format(len(input.shape), input_shape))
     channel_num = input_shape[1]
 
     param_shape = [channel_num]
@@ -3581,7 +3585,7 @@ def group_norm(input,
     Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
 
     Parameters:
-        input(Tensor): 4-D Tensor, the data type is float32 or float64.
+        input(Tensor): Tensor with dimension greater than 1, the data type is float32 or float64.
         groups(int): The number of groups that divided from channels, the data type
             is int32.
         epsilon(float, optional): The small value added to the variance to prevent
@@ -3598,12 +3602,12 @@ def group_norm(input,
         data_layout(str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
+            `[batch_size, input_channels, *]`.
         name (str, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Tensor: A 4-D Tensor has same data type and data format with `input`.
+        Tensor: A Tensor has same data type and data format with `input`.
 
     Examples:
        .. code-block:: python
@@ -3622,6 +3626,10 @@ def group_norm(input,
     # create intput and parameters
     inputs = {'X': input}
     input_shape = input.shape
+    if len(input_shape) < 2:
+        raise ValueError(
+            f"The dimensions of Op(fluid.layers.group_norm)'s input should be more than 1. But received {len(input_shape)}"
+        )
     if data_layout != 'NCHW' and data_layout != 'NHWC':
         raise ValueError(
             "Param(data_layout) of Op(fluid.layers.group_norm) got wrong value: received "
