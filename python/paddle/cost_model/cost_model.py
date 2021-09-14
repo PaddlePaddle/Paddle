@@ -53,8 +53,11 @@ class CostModel():
         exe.run(startup_program)
         paddle.fluid.profiler.start_profiler("All")
         exe.run(main_program, feed={"X": x}, fetch_list=[])
-        core.profile_measure(main_program, device, fetch_cost_list)
+        # core.CostModel.ProfileMeasure(main_program, device)
+        print("core:<<<<<<<")
 
+        cost_model = core.CostModel()
+        cost_data = cost_model.ProfileMeasure(device)
         # cost_list = self.stop_cost_model()
         # return cost_list
 

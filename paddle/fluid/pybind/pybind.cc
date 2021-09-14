@@ -2270,7 +2270,8 @@ All parameter, weight, gradient are variables in Paddle.
            [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
 
   py::class_<CostModel> cost_model(m, "CostModel");
-  cost_model.def(py::init()).def("profile_measure", &CostModel::ProfileMeasure);
+  cost_model.def(py::init()).def("ProfileMeasure", &CostModel::ProfileMeasure);
+  py::class_<CostData> cost_data(m, "CostData");
   // -- python binds for parallel executor.
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
   py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(

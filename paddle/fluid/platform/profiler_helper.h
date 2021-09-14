@@ -197,6 +197,7 @@ void DealWithShowName() {
       for (auto &r : block) {
         auto event_name = r.name();
         auto origin_event_name = event_name;
+        VLOG(2) << "origin_event_name:" << origin_event_name;
         size_t start = origin_event_name.find('%', 0);
         size_t end = origin_event_name.find('%', start + 1);
         size_t start_replace = start;
@@ -212,9 +213,14 @@ void DealWithShowName() {
           auto it = profiler_name_info.find(prefix_str);
           if (it == profiler_name_info.end()) {
             std::vector<std::string> op_name_vector{search_str};
+            // VLOG(2)<<"op_name_vector::search_str<<"<<op_name_vector[0];
             profiler_name_info[prefix_str] = op_name_vector;
           } else {
             auto op_name_vector = it->second;
+            // for (auto it = op_name_vector.begin(); it!= op_name_vector.end();
+            // it++){
+            // VLOG(2)<<"op_name_vector::<<<<"<<*it;
+            // }
             auto iter =
                 find(op_name_vector.begin(), op_name_vector.end(), search_str);
             if (iter == op_name_vector.end()) {
@@ -234,6 +240,7 @@ void DealWithShowName() {
           end_replace = event_name.find('%', start_replace + 1);
           prefix_str = origin_event_name.substr(0, start);
         }
+        VLOG(2) << "replaced_event_name:" << event_name;
         r.set_name(event_name);
       }
     }
@@ -699,6 +706,7 @@ void AnalyzeEvent(
       }
     }
   }
+  VLOG(2) << "AAaAAAAAAAAA";
   for (size_t i = 0; i < (*analyze_events).size(); i++) {
     double total = 0.;  // the total time in one thread
     std::list<Event> pushed_events;
@@ -799,6 +807,7 @@ void AnalyzeEvent(
 void ParseEvents(const std::vector<std::vector<Event>> &events,
                  bool merge_thread,
                  EventSortingKey sorted_by = EventSortingKey::kDefault) {
+  VLOG(2) << "1111111";
   if (g_state == ProfilerState::kDisabled) return;
   if (merge_thread && events.size() < 2) return;
 
@@ -825,7 +834,7 @@ void ParseEvents(const std::vector<std::vector<Event>> &events,
   std::multimap<std::string, EventItem> child_map;
   size_t max_name_width = 0;
   OverHead overhead;
-
+  VLOG(2) << "xxxxxxxxxxxxxxx";
   AnalyzeEvent(analyze_events, &events_table, &child_map, sorted_func,
                sorted_by, &max_name_width, &overhead, merge_thread);
 

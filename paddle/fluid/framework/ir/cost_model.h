@@ -35,6 +35,10 @@ class Graph;
 
 class CostData {
  public:
+  CostData() {}
+
+  virtual ~CostData() {}
+
   std::map<int, int64_t> GetTimeMap();
   std::map<int, int64_t> GetMemMap();
   int64_t GetWholeTime();
@@ -53,15 +57,11 @@ class CostData {
 };
 class CostModel {
  public:
-  CostData ProfileMeasure(ProgramDesc* program, std::string device,
-                          std::vector<std::string> fetch_cost_list);
+  CostModel() {}
 
- private:
-  // Number of times Node has been executed
-  std::vector<int> count_;
-  // Total execution time
-  std::vector<int> mem_;
-  // Total Bytes output on each channel
+  virtual ~CostModel() {}
+
+  CostData ProfileMeasure(const std::string& device);
 };
 
 }  // namespace framework

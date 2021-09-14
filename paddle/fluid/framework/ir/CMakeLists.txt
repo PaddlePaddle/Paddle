@@ -43,7 +43,7 @@ cc_library(graph SRCS graph.cc DEPS node pretty_log)
 cc_library(graph_helper SRCS graph_helper.cc DEPS graph)
 cc_library(pass SRCS pass.cc DEPS graph node graph_helper)
 cc_library(graph_traits SRCS graph_traits.cc DEPS graph)
-cc_library(cost_model SRCS cost_model.cc DEPS graph program profiler profiler_helper device_tracer)
+cc_library(cost_model SRCS cost_model.cc DEPS graph profiler device_tracer)
 
 SET(GRAPH_PATTERN_DETECTOR_DEPS graph graph_helper graph_traits)
 if (WITH_TESTING)
