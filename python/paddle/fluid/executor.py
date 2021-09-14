@@ -1362,7 +1362,7 @@ class Executor(object):
             else:
                 raise TypeError(
                     "Require fetch_list[{}] 's type shall be one of (Variable, str), but received {}.".
-                    format(i, type(fetch_var).__name__))
+                    format(i, type(var).__name__))
 
         return res
 
