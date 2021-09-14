@@ -184,14 +184,20 @@ DeviceContextPool::DeviceContextPool(
 
 CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
-  pool_.reset(new Eigen::ThreadPool(20));
-  pool_device_.reset(new Eigen::ThreadPoolDevice(pool_.get(), 20));
+#ifdef PADDLE_WITH_MKLML
+  int64_t omp_num_threads = omp_in_parallel() ? 1 : omp_get_max_threads();
+  pool_.reset(new Eigen::ThreadPool(omp_num_threads));
+  pool_device_.reset(new Eigen::ThreadPoolDevice(pool_.get(), omp_num_threads));
+#endif
 }
 
 CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
   eigen_device_.reset(new Eigen::DefaultDevice());
-  pool_.reset(new Eigen::ThreadPool(20));
-  pool_device_.reset(new Eigen::ThreadPoolDevice(pool_.get(), 20));
+#ifdef PADDLE_WITH_MKLML
+  int64_t omp_num_threads = omp_in_parallel() ? 1 : omp_get_max_threads();
+  pool_.reset(new Eigen::ThreadPool(omp_num_threads));
+  pool_device_.reset(new Eigen::ThreadPoolDevice(pool_.get(), omp_num_threads));
+#endif
 }
 
 Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
