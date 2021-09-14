@@ -476,9 +476,6 @@ class RuntimeInferShapeContext : public InferShapeContext {
 
 namespace interpretercore {
 
-static constexpr char kMemcpyH2D[] = "memcpy_h2d";
-static constexpr char kMemcpyD2H[] = "memcpy_d2h";
-
 std::string get_memcpy_type(const platform::Place& src_place,
                             const platform::Place& dst_place);
 
