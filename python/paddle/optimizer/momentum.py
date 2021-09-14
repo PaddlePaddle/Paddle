@@ -170,7 +170,7 @@ class Momentum(Optimizer):
             'regularization_method': self._regularization_method,
             'regularization_coeff': self._regularization_coeff,
         }
-
+        '''
         if framework.in_dygraph_mode():
             self.helper = LayerHelper(self.__class__.__name__)
             if isinstance(self._parameter_list[0], dict):
@@ -180,6 +180,7 @@ class Momentum(Optimizer):
             else:
                 for p in parameters:
                     self._add_accumulator(self._velocity_acc_str, p)
+        '''
 
     def _update_regularization(self, weight_decay):
         reg_method = ""
