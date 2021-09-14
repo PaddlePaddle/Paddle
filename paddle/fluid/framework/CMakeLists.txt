@@ -28,6 +28,7 @@ add_subdirectory(io)
 add_subdirectory(new_executor)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
+proto_library(pass_desc_proto SRCS pass_desc.proto DEPS framework_proto)
 
 proto_library(op_def_proto SRCS op_def.proto DEPS framework_proto)
 cc_library(op_def_api SRCS op_def_api.cc DEPS op_def_proto boost)
