@@ -21,6 +21,8 @@ from .. import _C_ops
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.layer_helper import LayerHelper
 
+__all__ = []
+
 
 def _check_normalization(norm):
     if norm not in ['forward', 'backward', 'ortho']:
@@ -163,7 +165,7 @@ def fft(x, n=None, axis=-1, norm="backward", name=None):
 
             x = np.exp(3j * np.pi * np.arange(7) / 7)
             xp = paddle.to_tensor(x)
-            fft_xp = paddle.tensor.fft.fft(xp).numpy()
+            fft_xp = paddle.fft.fft(xp).numpy()
             print(fft_xp)
             #  [1.+1.25396034e+00j 1.+4.38128627e+00j 1.-4.38128627e+00j
             #   1.-1.25396034e+00j 1.-4.81574619e-01j 1.+8.88178420e-16j
@@ -171,7 +173,7 @@ def fft(x, n=None, axis=-1, norm="backward", name=None):
 
 
     """
-    if not is_complex(x):
+    if is_interger(x) or is_floating_point(x):
         return fft_r2c(
             x, n, axis, norm, forward=True, onesided=False, name=name)
     else:
@@ -227,7 +229,7 @@ def ifft(x, n=None, axis=-1, norm="backward", name=None):
 
             x = np.exp(3j * np.pi * np.arange(7) / 7)
             xp = paddle.to_tensor(x)
-            ifft_xp = paddle.tensor.fft.ifft(xp).numpy()
+            ifft_xp = paddle.fft.ifft(xp).numpy()
             print(ifft_xp)
             #  [0.14285714+1.79137191e-01j 0.14285714+6.87963741e-02j
             #   0.14285714+1.26882631e-16j 0.14285714-6.87963741e-02j
@@ -235,7 +237,7 @@ def ifft(x, n=None, axis=-1, norm="backward", name=None):
             #   0.14285714+6.25898038e-01j]
 
     """
-    if not is_complex(x):
+    if is_interger(x) or is_floating_point(x):
         return fft_r2c(
             x, n, axis, norm, forward=False, onesided=False, name=name)
     else:
@@ -335,7 +337,7 @@ def irfft(x, n=None, axis=-1, norm="backward", name=None):
 
             x = np.array([1, -1j, -1])
             xp = paddle.to_tensor(x)
-            irfft_xp = paddle.tensor.fft.irfft(xp).numpy()
+            irfft_xp = paddle.fft.irfft(xp).numpy()
             print(irfft_xp)
             #  [0. 0. 0. 4.]
 
@@ -379,7 +381,7 @@ def hfft(x, n=None, axis=-1, norm="backward", name=None):
 
             x = np.array([1, -1j, -1])
             xp = paddle.to_tensor(x)
-            hfft_xp = paddle.tensor.fft.hfft(xp).numpy()
+            hfft_xp = paddle.fft.hfft(xp).numpy()
             print(hfft_xp)
             #  [0. 0. 0. 4.]
     """
@@ -477,7 +479,7 @@ def fftn(x, s=None, axes=None, norm="backward", name=None):
 
             x = x = np.mgrid[:4, :4, :4][1]
             xp = paddle.to_tensor(x)
-            fftn_xp = paddle.tensor.fft.fftn(xp, axes=(1, 2)).numpy()
+            fftn_xp = paddle.fft.fftn(xp, axes=(1, 2)).numpy()
             print(fftn_xp)
             #  [[[24.+0.j  0.+0.j  0.+0.j  0.-0.j]
             #   [-8.+8.j  0.+0.j  0.+0.j  0.-0.j]
@@ -496,7 +498,7 @@ def fftn(x, s=None, axes=None, norm="backward", name=None):
             #   [-8.+0.j  0.+0.j  0.+0.j  0.-0.j]
             #   [-8.-8.j  0.+0.j  0.+0.j  0.-0.j]]]
     """
-    if not is_complex(x):
+    if is_interger(x) or is_floating_point(x):
         return fftn_r2c(
             x, s, axes, norm, forward=True, onesided=False, name=name)
     else:
@@ -552,7 +554,7 @@ def ifftn(x, s=None, axes=None, norm="backward", name=None):
 
             x = np.eye(3)
             xp = paddle.to_tensor(x)
-            ifftn_xp = paddle.tensor.fft.ifftn(xp, axes=(1,)).numpy()
+            ifftn_xp = paddle.fft.ifftn(xp, axes=(1,)).numpy()
             print(ifftn_xp)
 
             #   [[ 0.33333333+0.j          0.33333333+0.j          0.33333333-0.j        ]
@@ -560,7 +562,7 @@ def ifftn(x, s=None, axes=None, norm="backward", name=None):
             #   [ 0.33333333+0.j         -0.16666667-0.28867513j -0.16666667+0.28867513j]]
 
     """
-    if not is_complex(x):
+    if is_interger(x) or is_floating_point(x):
         return fftn_r2c(
             x, s, axes, norm, forward=False, onesided=False, name=name)
     else:
@@ -694,7 +696,7 @@ def irfftn(x, s=None, axes=None, norm="backward", name=None):
             x = (np.array([2, 2, 3]) + 1j * np.array([2, 2, 3])).astype(np.complex128)
             x[0, 0, 0] = 3 * 2 * 2
             xp = paddle.to_tensor(x)
-            irfftn_xp = paddle.tensor.fft.irfftn(xp).numpy()
+            irfftn_xp = paddle.fft.irfftn(xp).numpy()
             print(irfftn_xp)
             #  [ 2.25 -1.25  0.25  0.75]
     
@@ -745,7 +747,7 @@ def hfftn(x, s=None, axes=None, norm="backward", name=None):
 
             x = (np.array([2, 2, 3]) + 1j * np.array([2, 2, 3])).astype(np.complex128)
             xp = paddle.to_tensor(x)
-            hfftn_xp = paddle.tensor.fft.hfftn(xp).numpy()
+            hfftn_xp = paddle.fft.hfftn(xp).numpy()
             print(hfftn_xp)
             #  [ 9.  3.  1. -5.]
 
@@ -843,7 +845,7 @@ def fft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
             x = np.mgrid[:2, :2][1]
             xp = paddle.to_tensor(x)
-            fft2_xp = paddle.tensor.fft.fft2(xp).numpy()
+            fft2_xp = paddle.fft.fft2(xp).numpy()
             print(fft2_xp)
             #  [[ 2.+0.j -2.+0.j]
             #   [ 0.+0.j  0.+0.j]]
@@ -914,7 +916,7 @@ def ifft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
             x = np.mgrid[:2, :2][1]
             xp = paddle.to_tensor(x)
-            ifft2_xp = paddle.tensor.fft.ifft2(xp).numpy()
+            ifft2_xp = paddle.fft.ifft2(xp).numpy()
             print(ifft2_xp)
             #  [[ 0.5+0.j -0.5+0.j]
             #   [ 0. +0.j  0. +0.j]]
@@ -1019,7 +1021,7 @@ def irfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
             x = (np.array([[3,2,3],[2, 2, 3]]) + 1j * np.array([[3,2,3],[2, 2, 3]])).astype(np.complex128)
             xp = paddle.to_tensor(x)
-            irfft2_xp = paddle.tensor.fft.irfft2(xp).numpy()
+            irfft2_xp = paddle.fft.irfft2(xp).numpy()
             print(irfft2_xp)
             #  [[ 2.375 -1.125  0.375  0.875]
             #   [ 0.125  0.125  0.125  0.125]]
@@ -1071,7 +1073,7 @@ def hfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
 
             x = (np.array([[3,2,3],[2, 2, 3]]) + 1j * np.array([[3,2,3],[2, 2, 3]])).astype(np.complex128)
             xp = paddle.to_tensor(x)
-            hfft2_xp = paddle.tensor.fft.hfft2(xp).numpy()
+            hfft2_xp = paddle.fft.hfft2(xp).numpy()
             print(hfft2_xp)
             #  [[19.  7.  3. -9.]
             #   [ 1.  1.  1.  1.]]
@@ -1160,7 +1162,7 @@ def fftfreq(n, d=1.0, dtype=None, name=None):
             x = np.array([3, 1, 2, 2, 3], dtype=float)
             scalar_temp = 0.5
             n = x.size
-            fftfreq_xp = paddle.tensor.fft.fftfreq(n, d=scalar_temp)
+            fftfreq_xp = paddle.fft.fftfreq(n, d=scalar_temp)
             print(fftfreq_xp)
 
             #  Tensor(shape=[5], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
@@ -1209,7 +1211,7 @@ def rfftfreq(n, d=1.0, dtype=None, name=None):
             x = np.array([3, 1, 2, 2, 3], dtype=float)
             scalar_temp = 0.3
             n = x.size
-            rfftfreq_xp = paddle.tensor.fft.rfftfreq(n, d=scalar_temp)
+            rfftfreq_xp = paddle.fft.rfftfreq(n, d=scalar_temp)
             print(rfftfreq_xp)
 
             #  Tensor(shape=[3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
@@ -1251,7 +1253,7 @@ def fftshift(x, axes=None, name=None):
             x = np.array([3, 1, 2, 2, 3], dtype=float)
             scalar_temp = 0.3
             n = x.size
-            fftfreq_xp = paddle.tensor.fft.fftfreq(n, d=scalar_temp)
+            fftfreq_xp = paddle.fft.fftfreq(n, d=scalar_temp)
             res = paddle.fft.fftshift(temp).numpy()
             print(res)
             #  [-1.3333334 -0.6666667  0.         0.6666667  1.3333334]
@@ -1295,7 +1297,7 @@ def ifftshift(x, axes=None, name=None):
             x = np.array([3, 1, 2, 2, 3], dtype=float)
             scalar_temp = 0.3
             n = x.size
-            fftfreq_xp = paddle.tensor.fft.fftfreq(n, d=scalar_temp)
+            fftfreq_xp = paddle.fft.fftfreq(n, d=scalar_temp)
             res = paddle.fft.ifftshift(temp).numpy()
             print(res)
             #  [ 1.3333334 -1.3333334 -0.6666667  0.         0.6666667]
@@ -1318,6 +1320,8 @@ def ifftshift(x, axes=None, name=None):
 def fft_c2c(x, n, axis, norm, forward, name):
     if is_interger(x):
         x = paddle.cast(x, _real_to_complex_dtype(paddle.get_default_dtype()))
+    elif is_floating_point(x):
+        x = paddle.cast(x, _real_to_complex_dtype(x.dtype))
     _check_normalization(norm)
 
     axis = axis or -1
@@ -1386,6 +1390,8 @@ def fft_r2c(x, n, axis, norm, forward, onesided, name):
 def fft_c2r(x, n, axis, norm, forward, name):
     if is_interger(x):
         x = paddle.cast(x, _real_to_complex_dtype(paddle.get_default_dtype()))
+    elif is_floating_point(x):
+        x = paddle.cast(x, _real_to_complex_dtype(x.dtype))
     _check_normalization(norm)
     axis = axis or -1
     _check_fft_axis(x, axis)
@@ -1423,6 +1429,8 @@ def fft_c2r(x, n, axis, norm, forward, name):
 def fftn_c2c(x, s, axes, norm, forward, name):
     if is_interger(x):
         x = paddle.cast(x, _real_to_complex_dtype(paddle.get_default_dtype()))
+    elif is_floating_point(x):
+        x = paddle.cast(x, _real_to_complex_dtype(x.dtype))
     _check_normalization(norm)
     if s is not None:
         _check_fft_shape(x, s)
@@ -1524,6 +1532,8 @@ def fftn_r2c(x, s, axes, norm, forward, onesided, name):
 def fftn_c2r(x, s, axes, norm, forward, name):
     if is_interger(x):
         x = paddle.cast(x, _real_to_complex_dtype(paddle.get_default_dtype()))
+    elif is_floating_point(x):
+        x = paddle.cast(x, _real_to_complex_dtype(x.dtype))
     _check_normalization(norm)
     if s is not None:
         _check_fft_shape(x, s)

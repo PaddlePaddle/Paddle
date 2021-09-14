@@ -21,6 +21,7 @@
 #include <string>
 #include <vector>
 
+#include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/complex.h"
@@ -61,13 +62,8 @@ class FFTC2COp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(%s) of FFTC2COp should not be null.", "X"));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(%s) of FFTC2COp should not be null.", "Out"));
-
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fft_c2c");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "fft_c2c");
     ctx->ShareDim("X", /*->*/ "Out");  // only for c2c
   }
 
@@ -99,17 +95,14 @@ class FFTC2CGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
-        platform::errors::InvalidArgument(
-            "Input(%s) of FFTC2CGradOp should not be null.", "DOut"));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("X")), true,
-        platform::errors::InvalidArgument(
-            "Output(%s) of FFTC2CGradOp should not be null.", "DX"));
-    auto x_grad_name = framework::GradVarName("X");
-    ctx->SetOutputDim(x_grad_name,
-                      ctx->GetInputDim(framework::GradVarName("Out")));
+    const auto out_grad_name = framework::GradVarName("Out");
+    OP_INOUT_CHECK(ctx->HasInput(out_grad_name), "Input", out_grad_name,
+                   "fft_c2c_grad");
+    const auto x_grad_name = framework::GradVarName("X");
+    OP_INOUT_CHECK(ctx->HasOutput(x_grad_name), "Output", x_grad_name,
+                   "fft_c2c_grad");
+
+    ctx->SetOutputDim(x_grad_name, ctx->GetInputDim(out_grad_name));
   }
 
  protected:
@@ -145,16 +138,13 @@ class FFTR2COp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(%s) of FFTR2COp should not be null.", "X"));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(%s) of FFTR2COp should not be null.", "Out"));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fft_r2c");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "fft_r2c");
+
     const auto axes = ctx->Attrs().Get<std::vector<int64_t>>("axes");
     const bool onesided = ctx->Attrs().Get<bool>("onesided");
     if (!onesided) {
-      ctx->ShareDim("X", /*->*/ "Out");  //
+      ctx->ShareDim("X", /*->*/ "Out");
     } else {
       framework::DDim out_dim(ctx->GetInputDim("X"));
       const int64_t last_fft_axis = axes.back();
@@ -192,16 +182,16 @@ class FFTR2CGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
-        platform::errors::InvalidArgument(
-            "Input(%s) of FFTR2CGradOp should not be null.", "DOut"));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("X")), true,
-        platform::errors::InvalidArgument(
-            "Output(%s) of FFTR2CGradOp should not be null.", "DX"));
-    auto x_grad_name = framework::GradVarName("X");
-    ctx->ShareDim("X", /*->*/ x_grad_name);  //
+    const auto out_grad_name = framework::GradVarName("Out");
+    OP_INOUT_CHECK(ctx->HasInput(out_grad_name), "Input", out_grad_name,
+                   "fft_r2c_grad");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fft_r2c_grad");
+
+    const auto x_grad_name = framework::GradVarName("X");
+    OP_INOUT_CHECK(ctx->HasOutput(x_grad_name), "Output", x_grad_name,
+                   "fft_r2c_grad");
+
+    ctx->ShareDim("X", /*->*/ x_grad_name);
   }
 
  protected:
@@ -246,12 +236,9 @@ class FFTC2ROp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("X"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(%s) of FFTC2ROp should not be null.", "X"));
-    PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
-                      platform::errors::InvalidArgument(
-                          "Output(%s) of FFTC2ROp should not be null.", "Out"));
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fft_c2r");
+    OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "fft_c2r");
+
     const auto axes = ctx->Attrs().Get<std::vector<int64_t>>("axes");
 
     const int64_t last_dim_size = ctx->Attrs().Get<int64_t>("last_dim_size");
@@ -294,16 +281,14 @@ class FFTC2RGradOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInput(framework::GradVarName("Out")), true,
-        platform::errors::InvalidArgument(
-            "Input(%s) of FFTC2RGradOp should not be null.", "DOut"));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutput(framework::GradVarName("X")), true,
-        platform::errors::InvalidArgument(
-            "Output(%s) of FFTC2RGradOp should not be null.", "DX"));
-    auto x_grad_name = framework::GradVarName("X");
-    auto out_grad_name = framework::GradVarName("Out");
+    const auto out_grad_name = framework::GradVarName("Out");
+    OP_INOUT_CHECK(ctx->HasInput(out_grad_name), "Input", out_grad_name,
+                   "fft_c2r_grad");
+
+    const auto x_grad_name = framework::GradVarName("X");
+    OP_INOUT_CHECK(ctx->HasOutput(x_grad_name), "Output", x_grad_name,
+                   "fft_c2r_grad");
+
     const auto axes = ctx->Attrs().Get<std::vector<int64_t>>("axes");
 
     const auto out_grad_dim = ctx->GetInputDim(out_grad_name);

@@ -252,9 +252,9 @@ void fill_conj(const DeviceContext& ctx, const Tensor* src, Tensor* dst,
   const auto last_axis = axes.back();
   const auto last_axis_size = dst->dims().at(last_axis) / 2 + 1;
   const int64_t rank = dst->dims().size();
-  thrust::host_vector<bool> is_fft_axis(rank, false);
+  auto _is_fft_axis = std::make_unique<bool[]>(rank);
   for (const auto i : axes) {
-    is_fft_axis[i] = true;
+    _is_fft_axis[i] = true;
   }
 
 #if defined(__NVCC__) || defined(__HIPCC__)
@@ -264,13 +264,14 @@ void fill_conj(const DeviceContext& ctx, const Tensor* src, Tensor* dst,
   const auto dst_strides = thrust::raw_pointer_cast(dst_strides_g.data());
   const thrust::device_vector<int64_t> dst_shape_g(dst_shape_v);
   const auto dst_shape = thrust::raw_pointer_cast(dst_shape_g.data());
-  const thrust::device_vector<bool> is_fft_axis_g(is_fft_axis);
+  const thrust::device_vector<bool> is_fft_axis_g(_is_fft_axis.get(),
+                                                  _is_fft_axis.get() + rank);
   const auto p_is_fft_axis = thrust::raw_pointer_cast(is_fft_axis_g.data());
 #else
   const auto src_strides = src_strides_v.data();
   const auto dst_strides = dst_strides_v.data();
   const auto dst_shape = dst_shape_v.data();
-  const auto p_is_fft_axis = is_fft_axis.data();
+  const auto p_is_fft_axis = _is_fft_axis.get();
 #endif
   platform::ForRange<DeviceContext> for_range(ctx, dst->numel());
   FFTFillConjFunctor<C> fill_conj_functor(src_data, dst_data, src_strides,
