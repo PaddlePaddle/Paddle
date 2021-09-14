@@ -14,6 +14,7 @@
 
 from __future__ import print_function
 
+import os
 import unittest
 import numpy as np
 import paddle
@@ -28,15 +29,15 @@ def gen_data():
 
 class TestParallelExecutorEMA(unittest.TestCase):
     def setUp(self):
-        self._places = [paddle.CPUPlace()]
-        if paddle.device.is_compiled_with_cuda():
-            self._places.append(paddle.CUDAPlace(0))
+        self._place = paddle.CUDAPlace(
+            int(os.environ.get('FLAGS_selected_gpus', 0)))
         self._ema_decay = 0.999
         self._param_name = "fc.weight"
         self._train_program = static.Program()
         self._startup_prog = static.Program()
 
         strategy = fleet.DistributedStrategy()
+        strategy.without_graph_optimization = True
         fleet.init(is_collective=True, strategy=strategy)
 
         with static.program_guard(self._train_program, self._startup_prog):
@@ -52,7 +53,7 @@ class TestParallelExecutorEMA(unittest.TestCase):
 
                 optimizer = paddle.optimizer.Adam(learning_rate=0.001)
                 optimizer = fleet.distributed_optimizer(optimizer, strategy)
-                # optimizer.minimize(cost)
+                optimizer.minimize(cost)
 
                 self._ema = static.ExponentialMovingAverage(self._ema_decay)
                 self._ema.update()
@@ -68,8 +69,6 @@ class TestParallelExecutorEMA(unittest.TestCase):
                 tmp_param = np.array(static.global_scope().find_var(
                     self._param_name).get_tensor())
                 params.append(tmp_param)
-            final_ema = np.array(static.global_scope().find_var(
-                self._param_name).get_tensor())
 
         with self._ema.apply(exe):
             final_ema = np.array(static.global_scope().find_var(
@@ -78,15 +77,14 @@ class TestParallelExecutorEMA(unittest.TestCase):
         return params, final_ema
 
     def test_check_ema(self):
-        for place in self._places:
-            params, final_ema = self.train(place)
-            manu_ema = np.zeros_like(final_ema)
-            if len(params) > 0:
-                for param in params:
-                    manu_ema = self._ema_decay * manu_ema + (1 - self._ema_decay
-                                                             ) * param
-                manu_ema = manu_ema / (1.0 - self._ema_decay**len(params))
-            self.assertTrue(np.allclose(manu_ema, final_ema))
+        params, final_ema = self.train(self._place)
+        manu_ema = np.zeros_like(final_ema)
+        if len(params) > 0:
+            for param in params:
+                manu_ema = self._ema_decay * manu_ema + (1 - self._ema_decay
+                                                         ) * param
+            manu_ema = manu_ema / (1.0 - self._ema_decay**len(params))
+        self.assertTrue(np.allclose(manu_ema, final_ema))
 
 
 if __name__ == '__main__':
