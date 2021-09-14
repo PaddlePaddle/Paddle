@@ -722,5 +722,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_c_embedding_op',
     'test_class_center_sample_op',
     'test_fill_diagonal_tensor_op',
+    'test_fill_any_op',
     'test_margin_cross_entropy_op',
 ]
