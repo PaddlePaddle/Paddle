@@ -389,6 +389,7 @@ def launch():
     Paddle distribution training entry ``python -m paddle.distributed.launch``.
     
     Usage:
+    
     .. code-block:: bash
         :name: code-block-bash1
 
@@ -455,13 +456,13 @@ def launch():
 
     Examples 1 (collective, single node):
         .. code-block:: bash
-            :name: code-block-bash2
+            :name: code-block-example-bash1
 
             python -m paddle.distributed.launch --log_dir=log --gpus=0,1,2,3 train.py --output_dir=work_dir
         
     Examples 2 (collective, multi node):
         .. code-block:: bash
-            :name: code-block-bash3
+            :name: code-block-example-bash2
 
             # For multiple node training such as two node:192.168.0.16, 192.168.0.17
 
@@ -474,14 +475,14 @@ def launch():
         
     Examples 3 (ps, cpu, single node):
         .. code-block:: bash
-            :name: code-block-bash4
+            :name: code-block-example-bash3
 
             # 2 server and 4 worker
             python -m paddle.distributed.launch --log_dir=log --server_num=2 --worker_num=4 train.py --output_dir=work_dir
         
     Examples 4 (ps, cpu, multi node):
         .. code-block:: bash
-            :name: code-block-bash5
+            :name: code-block-example-bash4
 
             # For multiple node training such as two node:192.168.0.16, 192.168.0.17 with 2 servers and total 4 workers
 
@@ -495,7 +496,7 @@ def launch():
 
     Examples 5 (ps, gpu, single node):
         .. code-block:: bash
-            :name: code-block-bash6
+            :name: code-block-example-bash5
 
             # 2 server and 4 worker, each worker use single gpu
             export CUDA_VISIBLE_DEVICES=0,1,2,3
@@ -503,7 +504,7 @@ def launch():
             
     Examples 6 (ps, gpu, multi node):
         .. code-block:: bash
-            :name: code-block-bash5
+            :name: code-block-example-bash6
 
             # For multiple node training such as two node:192.168.0.16, 192.168.0.17 with 2 servers and total 4 workers
 
@@ -516,10 +517,10 @@ def launch():
 
             export CUDA_VISIBLE_DEVICES=0,1
             python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --output_dir=work_dir
-            
+
     Examples 7 (ps-heter, cpu + gpu, single node):
         .. code-block:: bash
-            :name: code-block-bash6
+            :name: code-block-example-bash7
 
             # 2 server and 4 worker, two worker use gpu, two worker use cpu
             export CUDA_VISIBLE_DEVICES=0,1
@@ -527,7 +528,7 @@ def launch():
             
     Examples 8 (ps-heter, cpu + gpu, multi node):
         .. code-block:: bash
-            :name: code-block-bash5
+            :name: code-block-example-bash8
 
             # For multiple node training such as two node:192.168.0.16, 192.168.0.17 with 2 servers and total 4 workers
 
@@ -543,7 +544,7 @@ def launch():
 
     Examples 9 (elastic):
         .. code-block:: bash
-            :name: code-block-bash7
+            :name: code-block-example-bash9
 
             python -m paddle.distributed.launch --elastic_server=127.0.0.1:2379 --np=2 --job_id=job1 --log_dir=log --gpus=0,1,2,3 train.py
         
