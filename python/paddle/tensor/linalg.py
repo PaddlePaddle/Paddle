@@ -789,20 +789,18 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
     r"""
     Computes the rank of a matrix.
 
-    The rank of a matrix is the number of singular values that are greater than the specified tol threshold when hermitian=False, 
-    or the number of eigenvalues in absolute value that are greater than the specified tol threshold when hermitian=True.
+    The rank of a matrix is the number of singular values that are greater than the specified `tol` threshold when hermitian=False, 
+    or the number of eigenvalues in absolute value that are greater than the specified `tol` threshold when hermitian=True.
 
     Args:
-        x (Tensor): The input tensor. 
-            Its shape should be [..., m, n], where ... is zero or more batch dimensions. If x is a batch of matrices then the output 
-            has the same batch dimensions. The data type of x should be float32 or float64. 
-        tol (float,Tensor,optional): the tolerance value. Default: None. 
-            If tol is not specified, and sigma is the largest singular value (or eigenvalue in absolute value), and eps is the 
-            epsilon value for the dtype of x, then tol is computed with formula tol=sigma * max(m,n) * eps. Note that if x is 
-            a batch of matrices, tol is computed this way for every batch.
-        hermitian (bool,optional): indicates whether x is Hermitian. Default: False.
-            When hermitian=True, x is assumed to be Hermitian, but x is not checked inside the function. Instead, We just use the 
-            lower triangular of the matrix to compute.
+        x (Tensor): The input tensor. Its shape should be `[..., m, n]`, where `...` is zero or more batch dimensions. If `x` is a batch 
+            of matrices then the output has the same batch dimensions. The data type of `x` should be float32 or float64. 
+        tol (float,Tensor,optional): the tolerance value. Default: None. If `tol` is not specified, and `sigma` is the largest 
+            singular value (or eigenvalues in absolute value), and `eps` is the epsilon value for the dtype of `x`, then `tol` is computed 
+            with formula `tol=sigma * max(m,n) * eps`. Note that if `x` is a batch of matrices, `tol` is computed this way for every batch.
+        hermitian (bool,optional): indicates whether `x` is Hermitian. Default: False. When hermitian=True, `x` is assumed to be Hermitian, 
+            enabling a more efficient method for finding eigenvalues, but `x` is not checked inside the function. Instead, We just use 
+            the lower triangular of the matrix to compute.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
