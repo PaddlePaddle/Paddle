@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
+#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 
 namespace paddle {
 namespace framework {
@@ -37,25 +38,37 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       }
 
       global_scope_.var_list.push_back(v);
+
+      VariableMetaInfo info;
+      info.var_ref_count_ = 0;
+      info.vardesc_ = nullptr;
+      global_scope_.vec_meta_info_.push_back(info);
     }
   }
 
   // run startup program
   std::vector<paddle::framework::OpFuncNode> vec_func_list;
   std::vector<paddle::framework::OperatorBase*> op_list;
-  InterpreterCore::BuildOpFuncList(place_, startup_prog, &op_list,
-                                   &vec_func_list, &global_scope_);
+  paddle::framework::interpretercore::build_op_func_list(
+      place_, startup_prog, &op_list, &vec_func_list, &global_scope_);
 }
 
-int StandaloneExecutor::Run(const std::vector<std::string>& feed_names,
-                            const std::vector<framework::Tensor>& feed_tensors,
-                            const std::vector<std::string>& fetch_names,
-                            std::vector<framework::Tensor>* fetch_tensors) {
+paddle::framework::FetchList StandaloneExecutor::Run(
+    const std::vector<std::string>& feed_names,
+    const std::vector<framework::Tensor>& feed_tensors,
+    const std::vector<std::string>& fetch_names) {
   auto core = GetInterpreterCore(feed_names, fetch_names);
 
-  core->Run(feed_tensors, fetch_tensors);
+  return core->Run(feed_tensors);
+}
 
-  return 0;
+const CostInfo& StandaloneExecutor::DryRun(
+    const std::vector<std::string>& feed_names,
+    const std::vector<framework::Tensor>& feed_tensors) {
+  auto core = GetInterpreterCore(feed_names, {});
+
+  auto& cost_info = core->DryRun(feed_tensors);
+  return cost_info;
 }
 
 void StandaloneExecutor::BuildVariableOuterScope(
@@ -73,6 +86,11 @@ void StandaloneExecutor::BuildVariableOuterScope(
       auto v = outer_scope->Var(var->Name());
       InitializeVariable(v, var->GetType());
       var_scope->var_list.push_back(v);
+
+      VariableMetaInfo info;
+      info.var_ref_count_ = 0;
+      info.vardesc_ = var;
+      var_scope->vec_meta_info_.push_back(info);
     }
   }
 }
@@ -93,6 +111,7 @@ std::shared_ptr<InterpreterCore> StandaloneExecutor::GetInterpreterCore(
   auto iter = interpretercores_.find(oss.str());
 
   if (iter == interpretercores_.end()) {
+    VLOG(3) << "create interpreter_core for " << oss.str();
     auto core = std::make_shared<InterpreterCore>(
         place_, main_prog_, &global_scope_, feed_names, fetch_names);
     interpretercores_.emplace(oss.str(), core);
