@@ -4550,6 +4550,8 @@ class PipelineOptimizer(object):
             is_data=ref_var.is_data,
             need_check_feed=ref_var.desc.need_check_feed())
         new_var.stop_gradient = ref_var.stop_gradient
+        if hasattr(ref_var, 'is_distributed'):
+            new_var.is_distributed = ref_var.is_distributed
         return new_var
 
     def _strip_grad_suffix(self, name):
@@ -5211,6 +5213,8 @@ class PipelineOptimizer(object):
                 persistable=True,
                 stop_gradient=False)
             real_param = main_block.var(param)
+            if hasattr(real_param, 'is_distributed'):
+                merged_grad_var.is_distributed = real_param.is_distributed
             tmp_size = self._get_var_size(real_grad)
             # two strategies for splitting the grad
             # 1. the current segment's size reach the user defined grad_size_in_MB
