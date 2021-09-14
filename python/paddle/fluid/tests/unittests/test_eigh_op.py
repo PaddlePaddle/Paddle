@@ -45,7 +45,6 @@ class TestEighOp(OpTest):
 
     def test_check_output(self):
         self.check_output(no_check_set=['Eigenvectors'])
-        # self.check_output_with_place(place=self.place)
 
     def test_grad(self):
         self.check_grad(["X"], ["Eigenvalues"])
