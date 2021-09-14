@@ -3975,7 +3975,7 @@ class ExponentialMovingAverage(object):
 	    import numpy
         import paddle
         import paddle.static as static
-        from paddle.optimizer.ema import ExponentialMovingAverage
+        from paddle.static import ExponentialMovingAverage
 
         paddle.enable_static()
 
@@ -4008,7 +4008,7 @@ class ExponentialMovingAverage(object):
                     feed={'x': data}, 
                     fetch_list=[hidden.name])
 
-                # usage 2
+            # usage 2
             with ema.apply(exe, need_restore=False):
                 data = numpy.random.random(size=(10, 5)).astype('float32')
                 exe.run(program=test_program,

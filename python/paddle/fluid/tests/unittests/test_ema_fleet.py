@@ -51,8 +51,8 @@ class TestParallelExecutorEMA(unittest.TestCase):
                     for_test=True)
 
                 optimizer = paddle.optimizer.Adam(learning_rate=0.001)
-                # optimizer = fleet.distributed_optimizer(optimizer, strategy)
-                optimizer.minimize(cost)
+                optimizer = fleet.distributed_optimizer(optimizer, strategy)
+                # optimizer.minimize(cost)
 
                 self._ema = static.ExponentialMovingAverage(self._ema_decay)
                 self._ema.update()
@@ -64,8 +64,6 @@ class TestParallelExecutorEMA(unittest.TestCase):
         params = []
         for pass_id in range(2):
             for batch_id in range(3):
-                tmp_param = np.array(static.global_scope().find_var(
-                    self._param_name).get_tensor())
                 exe.run(program=self._train_program, feed={'x': gen_data()})
                 tmp_param = np.array(static.global_scope().find_var(
                     self._param_name).get_tensor())
