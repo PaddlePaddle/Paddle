@@ -1178,7 +1178,7 @@ def eigvals(x, name=None):
     Compute the eigenvalues of one or more general matrices.
     
     Warning: 
-        The gradient kernel of this operator does not yet developed. If you want to backpropagate through this operator, please replace it with paddle.linalg.eig.
+        The gradient kernel of this operator does not yet developed. If you need back propagation through this operator, please replace it with paddle.linalg.eig.
 
     Args:
         x (Tensor): A square matrix or a batch of square matrices whose eigenvalues will be computed.
@@ -1188,7 +1188,7 @@ def eigvals(x, name=None):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A tensor cointaining the unsorted eigenvalues. The eigenvalues are complex-valued even when `x` is real.
+        Tensor: A tensor containing the unsorted eigenvalues which has the same batch dimensions with `x`. The eigenvalues are complex-valued even when `x` is real.
 
     Examples:
         .. code-block:: python
@@ -1203,30 +1203,26 @@ def eigvals(x, name=None):
             print(paddle.linalg.eigvals(x))
             # [(-0.003106318667270132+0j), (0.3449088087647463+0j), (1.4454182494638632+0j)] #complex128
     """
-   
-    check_variable_and_dtype(x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'eigvals')
-    
+
+    check_variable_and_dtype(x, 'dtype',
+                             ['float32', 'float64', 'complex64', 'complex128'],
+                             'eigvals')
+
     x_shape = list(x.shape)
     if len(x_shape) < 2:
         raise ValueError(
             "The dimension of Input(x) should be at least 2, but received x's dimention = {}, x's shape = {}".
             format(len(x_shape), x_shape))
-        
+
     if x_shape[-1] != x_shape[-2]:
-        raise ValueError(   
+        raise ValueError(
             "The last two dimensions of Input(x) should be equal, but received x's shape = {}".
             format(x_shape))
-    
+
     if in_dygraph_mode():
         return _C_ops.eigvals(x)
 
     helper = LayerHelper('eigvals', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
-    helper.append_op(
-        type='eigvals',
-        inputs={'X': x},
-        outputs={'Out': out})
+    helper.append_op(type='eigvals', inputs={'X': x}, outputs={'Out': out})
     return out
-
-    
-
