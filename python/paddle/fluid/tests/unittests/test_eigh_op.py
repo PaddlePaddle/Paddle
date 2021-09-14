@@ -64,16 +64,6 @@ class TestEighGPUCase(unittest.TestCase):
         self.rtol = 1e-5
         self.atol = 1e-5
 
-
-class TestEighGPUCase(unittest.TestCase):
-    def setUp(self):
-        self.x_shape = [32, 32]
-        self.dtype = "float32"
-        np.random.seed(123)
-        self.x_np = np.random.random(self.x_shape).astype(self.dtype)
-        self.rtol = 1e-5
-        self.atol = 1e-5
-
     def test_check_output_gpu(self):
         if paddle.is_compiled_with_cuda():
             paddle.disable_static(place=paddle.CUDAPlace(0))
