@@ -839,7 +839,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       std::vector<int> shape =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
       if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
-      if (!with_dynamic_shape && shape[0] == -1) return false;
+      if (!with_dynamic_shape && (shape[0] == -1 || shape.size() == 1))
+        return false;
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean") {
