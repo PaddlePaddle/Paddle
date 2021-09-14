@@ -196,10 +196,10 @@ def _elementwise_op(helper):
     assert x is not None, 'x cannot be None in {}'.format(original_op_type)
     assert y is not None, 'y cannot be None in {}'.format(original_op_type)
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
         original_op_type)
     check_variable_and_dtype(
-        y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        y, 'y', ['float16', 'float32', 'float64', 'int32', 'int64', 'bool'],
         original_op_type)
 
     axis = helper.kwargs.get('axis', -1)
@@ -473,8 +473,8 @@ def multiply(x, y, name=None):
     ``paddle.multiply`` supports broadcasting. If you would like to know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
 
     Args:
-        x (Tensor): the input tensor, its data type should be float32, float64, int32, int64.
-        y (Tensor): the input tensor, its data type should be float32, float64, int32, int64.
+        x (Tensor): the input tensor, its data type should be one of float32, float64, int32, int64, bool.
+        y (Tensor): the input tensor, its data type should be one of float32, float64, int32, int64, bool.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1657,12 +1657,6 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
             data2 = paddle.trace(case2, offset=1, axis1=1, axis2=2) # data2.shape = [3]
             data3 = paddle.trace(case3, offset=-3, axis1=1, axis2=-1) # data2.shape = [3, 5]
     """
-    if in_dygraph_mode():
-        return _C_ops.trace(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
-
-    inputs = {'Input': [x]}
-    attrs = {'offset': offset, 'axis1': axis1, 'axis2': axis2}
-
     def __check_input(input, offset, dim1, dim2):
         check_dtype(x.dtype, 'Input',
                     ['int32', 'int64', 'float16', 'float32', 'float64'],
@@ -1677,11 +1671,11 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
         axis1_ = axis1 if axis1 >= 0 else len(input_shape) + axis1
         axis2_ = axis2 if axis2 >= 0 else len(input_shape) + axis2
 
-        assert axis1_ < len(input_shape),     \
+        assert ((0 <= axis1_) and (axis1_ < len(input_shape))),     \
             "The argument axis1 is out of range (expected to be in range of [%d, %d], but got %d).\n"  \
             % (-(len(input_shape)), len(input_shape) - 1, axis1)
 
-        assert axis2_ < len(input_shape),   \
+        assert ((0 <= axis2_) and (axis2_ < len(input_shape))),   \
             "The argument axis2 is out of range (expected to be in range of [%d, %d], but got %d).\n"   \
             % (-(len(input_shape)), len(input_shape) - 1, axis2)
 
@@ -1691,6 +1685,11 @@ def trace(x, offset=0, axis1=0, axis2=1, name=None):
                 "But received axis1 = %d, axis2 = %d\n"%(axis1, axis2)
 
     __check_input(input, offset, axis1, axis2)
+    if in_dygraph_mode():
+        return _C_ops.trace(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
+
+    inputs = {'Input': [x]}
+    attrs = {'offset': offset, 'axis1': axis1, 'axis2': axis2}
     helper = LayerHelper('trace', **locals())
 
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1920,6 +1919,67 @@ def cumsum(x, axis=None, dtype=None, name=None):
             kwargs[name] = val
     _cum_sum_ = generate_layer_fn('cumsum')
     return _cum_sum_(**kwargs)
+
+def cumprod(x, dim=None, dtype=None, name=None):
+    """
+    Compute the cumulative product of the input tensor x along a given dimension dim.
+
+    **Note**:
+    The first element of the result is the same as the first element of the input.
+
+    Args:
+        x (Tensor): the input tensor need to be cumproded.
+        dim (int): the dimension along which the input tensor will be accumulated. It need to be in the range of [-x.rank, x.rank), where x.rank means the dimensions of the input tensor x and -1 means the last dimension.
+        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64, complex64, complex128. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
+        name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor, the result of cumprod operator.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            data = paddle.arange(12)
+            data = paddle.reshape(data, (3, 4))
+            # [[ 0  1  2  3 ]
+            #  [ 4  5  6  7 ]
+            #  [ 8  9  10 11]]
+
+            y = paddle.cumprod(data, dim=0)
+            # [[ 0  1   2   3]
+            #  [ 0  5  12  21]
+            #  [ 0 45 120 231]]
+
+            y = paddle.cumprod(data, dim=-1)
+            # [[ 0   0   0    0]
+            #  [ 4  20 120  840]
+            #  [ 8  72 720 7920]]
+
+            y = paddle.cumprod(data, dim=1, dtype='float64')
+            # [[ 0.   0.   0.    0.]
+            #  [ 4.  20. 120.  840.]
+            #  [ 8.  72. 720. 7920.]]
+
+            print(y.dtype)
+            # paddle.float64
+
+    """
+
+    if dtype is not None and x.dtype != convert_np_dtype_to_dtype_(dtype):
+        x = layers.cast(x, dtype)
+
+    if in_dygraph_mode():
+        return _C_ops.cumprod(x, 'dim', dim)
+
+    check_variable_and_dtype(x, "x", ['complex64', 'complex128', 'float32', 'float64', 'int32', 'int64'], 'cumprod')
+    check_type(dim, 'dim', int, 'cumprod')
+
+    helper = LayerHelper('cumprod', **locals())
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(type='cumprod', inputs={'X': x}, outputs={'Out': out}, attrs={'dim': dim})
+    return out
 
 def isfinite(x, name=None):
     """
@@ -2322,17 +2382,17 @@ def any(x, axis=None, keepdim=False, name=None):
             out1 = paddle.any(x)  # [True]
             print(out1)
             
-            # out2 should be [True, False]
-            out2 = paddle.any(x, axis=0)  # [True, False]
+            # out2 should be [True, True]
+            out2 = paddle.any(x, axis=0)  # [True, True]
             print(out2)
             
-            # keep_dim=False, out3 should be [True, False], out.shape should be (2,)
-            out3 = paddle.any(x, axis=-1)  # [True, False]
+            # keep_dim=False, out3 should be [True, True], out.shape should be (2,)
+            out3 = paddle.any(x, axis=-1)  # [True, True]
             print(out3)
             
-            # keep_dim=True, result should be [[True], [False]], out.shape should be (2,1)
+            # keep_dim=True, result should be [[True], [True]], out.shape should be (2,1)
             out4 = paddle.any(x, axis=1, keepdim=True)
-            out4 = paddle.cast(out4, 'int32')  # [[True], [False]]
+            out4 = paddle.cast(out4, 'int32')  # [[True], [True]]
             print(out4)
             
     """
