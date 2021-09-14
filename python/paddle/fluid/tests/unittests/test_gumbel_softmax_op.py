@@ -179,7 +179,7 @@ class TestGumbelSoftmaxAPI(unittest.TestCase):
         # test dygrapg api
         paddle.disable_static()
         x = paddle.to_tensor(self.x)
-        y = paddle.nn.functional.gumbel_softmax(x)
+        y = paddle.nn.functional.gumbel_softmax(x, hard=True)
         out_np = np.array(y)
         self.assertEqual(out_np.sum(), self.count_expected)
         paddle.enable_static()
