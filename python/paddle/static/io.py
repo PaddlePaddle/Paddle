@@ -430,11 +430,7 @@ def save_to_file(path, content):
 
 
 @static_only
-def save_inference_model(path_prefix,
-                         feed_vars,
-                         fetch_vars,
-                         executor,
-                         clip_extra=False,
+def save_inference_model(path_prefix, feed_vars, fetch_vars, executor,
                          **kwargs):
     """
     :api_attr: Static Graph
@@ -451,8 +447,9 @@ def save_inference_model(path_prefix,
         fetch_vars(Variable | list[Variable]): Variables returned by inference.
         executor(Executor): The executor that saves the inference model. You can refer
                             to :ref:`api_guide_executor_en` for more details.
-        kwargs: Supported keys including 'program'.Attention please, kwargs is used for backward compatibility mainly.
+        kwargs: Supported keys including 'program' and "clip_extra". Attention please, kwargs is used for backward compatibility mainly.
           - program(Program): specify a program if you don't want to use default main program.
+          - clip_extra(bool): set to True if you want to clip extra information for every operator.
     Returns:
         None
 
@@ -513,6 +510,7 @@ def save_inference_model(path_prefix,
     _check_vars('fetch_vars', fetch_vars)
 
     program = _get_valid_program(kwargs.get('program', None))
+    clip_extra = kwargs.get('clip_extra', False)
     program = normalize_program(program, feed_vars, fetch_vars)
     # serialize and save program
     program_bytes = _serialize_program(

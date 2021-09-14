@@ -1343,11 +1343,7 @@ class TracedLayer(object):
             return self._run(self._build_feed(inputs))
 
     @switch_to_static_graph
-    def save_inference_model(self,
-                             path,
-                             feed=None,
-                             fetch=None,
-                             clip_extra=False):
+    def save_inference_model(self, path, feed=None, fetch=None, **kwargs):
         """
         Save the TracedLayer to a model for inference. The saved
         inference model can be loaded by C++ inference APIs.
@@ -1365,6 +1361,7 @@ class TracedLayer(object):
                 saved inference model. If None, all output variables of the
                 TracedLayer object would be the outputs of the saved inference
                 model. Default None.
+            kwargs: Supported keys including 'clip_extra'.set to True if you want to clip extra information for every operator.
 
         Returns:
             None
@@ -1414,7 +1411,7 @@ class TracedLayer(object):
             for f in fetch:
                 check_type(f, "each element of fetch", int,
                            "fluid.dygraph.jit.TracedLayer.save_inference_model")
-
+        clip_extra = kwargs.get('clip_extra', False)
         # path check
         file_prefix = os.path.basename(path)
         if file_prefix == "":
