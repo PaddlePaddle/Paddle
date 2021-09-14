@@ -246,7 +246,7 @@ void HogwildWorker::TrainFiles() {
   timeline.Pause();
   VLOG(3) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
           << " seconds, ins_num: " << total_ins_num;
-  
+
   if (need_dump_field_ || need_dump_param_) {
     writer_.Flush();
   }
