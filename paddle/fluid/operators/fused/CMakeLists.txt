@@ -16,7 +16,8 @@ register_operators(EXCLUDES
     fusion_gru_op
     fusion_lstm_op
     fused_bn_add_activation_op
-    fused_transformer_op)
+    fused_transformer_op
+    fused_ffn_op)
 
 # fusion_gru_op does not have CUDA kernel
 op_library(fusion_gru_op)
@@ -74,6 +75,11 @@ if (WITH_GPU OR WITH_ROCM)
     # fused_dropout
     # only support CUDA
     if(NOT WITH_ROCM)
-        nv_test(test_fused_residual_dropout_bias SRCS fused_residual_dropout_bias_test.cu DEPS tensor op_registry dropout_op device_context generator memory)
+        nv_test(test_fused_residual_dropout_bias SRCS fused_residual_dropout_bias_test.cu DEPS tensor op_registry dropout_op layer_norm_op device_context generator memory)
+        nv_test(test_fused_dropout_act_bias SRCS fused_dropout_act_bias_test.cu DEPS tensor op_registry dropout_op layer_norm_op device_context generator memory)
+        nv_test(test_fused_layernorm_residual_dropout_bias SRCS fused_layernorm_residual_dropout_bias_test.cu DEPS tensor op_registry dropout_op layer_norm_op device_context generator memory)
+
+        op_library(fused_ffn_op)
+        file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_ffn);\n")
     endif()
 endif()

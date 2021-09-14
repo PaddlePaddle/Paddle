@@ -12,6 +12,59 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
+from .. import functional as F
+from paddle.nn import Layer
+from ...framework import ParamAttr
+
+import collections
+
+
+def _convert_param_attr_to_list(param_attr, n):
+    """
+    If `param_attr` is a list or tuple, convert every element in it to a
+    ParamAttr instance. Otherwise, repeat `param_attr` `n` times to
+    construct a list, and rename every one by appending a increasing index
+    suffix to avoid having same names when `param_attr` contains a name.
+
+    Parameters:
+        param_attr (list|tuple|ParamAttr): A list, tuple or something can be
+            converted to a ParamAttr instance by `ParamAttr._to_attr`.
+        n (int): The times to repeat to construct a list when `param_attr`
+            is not a list or tuple.
+
+    Returns:
+        list: A list composed of each including cell's `param_attr`.
+    """
+    if isinstance(param_attr, (list, tuple)):
+        assert len(param_attr) == n, (
+            "length of param_attr should be %d when it is a list/tuple" % n)
+        param_attrs = []
+        for attr in param_attr:
+            if isinstance(attr, bool):
+                if attr:
+                    param_attrs.append(ParamAttr._to_attr(None))
+                else:
+                    param_attrs.append(False)
+            else:
+                param_attrs.append(ParamAttr._to_attr(attr))
+        # param_attrs = [ParamAttr._to_attr(attr) for attr in param_attr]
+    elif isinstance(param_attr, bool):
+        param_attrs = []
+        if param_attr:
+            param_attrs = [ParamAttr._to_attr(None) for i in range(n)]
+        else:
+            param_attrs = [False] * n
+    else:
+        param_attrs = []
+        attr = ParamAttr._to_attr(param_attr)
+        for i in range(n):
+            attr_i = copy.deepcopy(attr)
+            if attr.name:
+                attr_i.name = attr_i.name + "_" + str(i)
+            param_attrs.append(attr_i)
+    return param_attrs
+
 
 class FusedMultiHeadAttention(Layer):
     """
@@ -40,7 +93,7 @@ class FusedMultiHeadAttention(Layer):
             Default: None, which means the default bias parameter property is used.
             If it is set to False, this layer will not have trainable bias parameter.
             See usage for details in :code:`ParamAttr` .
-         
+
     Examples:
 
         .. code-block:: python
@@ -90,11 +143,11 @@ class FusedMultiHeadAttention(Layer):
                 to prevents attention to some unwanted positions, usually the
                 paddings or the subsequent positions. It is a tensor with shape
                 broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`.
-                When the data type is bool, the unwanted positions have `False` 
-                values and the others have `True` values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 1 
-                values. When the data type is float, the unwanted positions have 
-                `-INF` values and the others have 0 values. It can be None when 
+                When the data type is bool, the unwanted positions have `False`
+                values and the others have `True` values. When the data type is
+                int, the unwanted positions have 0 values and the others have 1
+                values. When the data type is float, the unwanted positions have
+                `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
             cache (MultiHeadAttention.Cache|MultiHeadAttention.StaticCache, optional):
                 It is a namedtuple with `k` and `v` as fields, and stores tensors
@@ -135,10 +188,66 @@ class FusedFeedForward(Layer):
                  bias_attr=None):
 
         super(FusedFeedForward, self).__init__()
-        raise NotImplementedError()
+
+        #self._weight_attrs = _convert_param_attr_to_list(weight_attr, 2)
+        #self._bias_attrs = _convert_param_attr_to_list(bias_attr, 2)
+
+        self._dtype = self._helper.get_default_dtype()
+        self._d_model = d_model
+        self._dim_feedforward = dim_feedforward
+        self._dropout = dropout
+        self._act_dropout = dropout if act_dropout is None else act_dropout
+        self._act_method = activation
+        self._normalize_before = normalize_before
+        #self._weight_attr = self._weight_attrs[1]
+        #self._bias_attr = self._bias_attrs[1]
+
+        self._linear1_weight = self.create_parameter(
+            shape=[d_model, dim_feedforward],
+            attr=weight_attr,
+            dtype=self._dtype,
+            is_bias=False)
+        self._linear1_bias = self.create_parameter(
+            shape=[dim_feedforward],
+            attr=bias_attr,
+            dtype=self._dtype,
+            is_bias=True)
+
+        self._linear2_weight = self.create_parameter(
+            shape=[dim_feedforward, d_model],
+            attr=weight_attr,
+            dtype=self._dtype,
+            is_bias=False)
+
+        self._linear2_bias = self.create_parameter(
+            shape=[d_model], attr=bias_attr, dtype=self._dtype, is_bias=True)
+
+        self._ln1_scale = self.create_parameter(
+            shape=[d_model],
+            attr=weight_attr,
+            is_bias=False,
+            default_initializer=Constant(1.0))
+        self._ln1_bias = self.create_parameter(
+            shape=[d_model], attr=bias_attr, is_bias=True)
+
+        self._ln2_scale = self.create_parameter(
+            shape=[d_model],
+            attr=weight_attr,
+            is_bias=False,
+            default_initializer=Constant(1.0))
+        self._ln2_bias = self.create_parameter(
+            shape=[d_model], attr=bias_attr, is_bias=True)
+        self._seed1 = None
+        self._seed2 = None
 
     def forward(self, src, cache=None):
-        raise NotImplementedError()
+        out = F.fused_ffn(src, self._linear1_weight, self._linear2_weight,
+                          self._seed1, self._seed2, self._linear1_bias,
+                          self._linear2_bias, self._ln1_scale, self._ln1_bias,
+                          self._ln2_scale, self._ln2_bias, self._dropout,
+                          self._act_dropout, self._act_method,
+                          self._normalize_before)
+        return out
 
 
 class FusedTransformerEncoderLayer(Layer):
@@ -173,7 +282,7 @@ class FusedTransformerEncoderLayer(Layer):
             MHA, and `weight_attr[1]` would be used as `weight_attr` for linear in FFN.
             Otherwise, MHA and FFN both use it as `weight_attr` to create parameters.
             Default: None, which means the default weight parameter property is used.
-            See usage for details in :code:`ParamAttr` . 
+            See usage for details in :code:`ParamAttr` .
         bias_attr (ParamAttr|list|tuple|bool, optional): To specify the bias parameter property.
             If it is a list/tuple, `bias_attr[0]` would be used as `bias_attr` for
             MHA, and `bias_attr[1]` would be used as `bias_attr` for linear in FFN.
@@ -181,7 +290,7 @@ class FusedTransformerEncoderLayer(Layer):
             The `False` value means the corresponding layer would not have trainable
             bias parameter. See usage for details in :code:`ParamAttr` . Default: None,
             which means the default bias parameter property is used.
-            
+
 
     Examples:
 
@@ -214,7 +323,35 @@ class FusedTransformerEncoderLayer(Layer):
         self._config.pop("__class__", None)  # py3
 
         super(FusedTransformerEncoderLayer, self).__init__()
-        raise NotImplementedError()
+        assert d_model > 0, ("Expected d_model to be greater than 0, "
+                             "but recieved {}".format(d_model))
+        assert nhead > 0, ("Expected nhead to be greater than 0, "
+                           "but recieved {}".format(nhead))
+        assert dim_feedforward > 0, (
+            "Expected dim_feedforward to be greater than 0, "
+            "but recieved {}".format(dim_feedforward))
+        attn_dropout = dropout if attn_dropout is None else attn_dropout
+        act_dropout = dropout if act_dropout is None else act_dropout
+        self.normalize_before = normalize_before
+
+        weight_attrs = _convert_param_attr_to_list(weight_attr, 2)
+        bias_attrs = _convert_param_attr_to_list(bias_attr, 2)
+
+        self.fused_attn = FusedMultiHeadAttention(
+            d_model,
+            nhead,
+            dropout=attn_dropout,
+            weight_attr=weight_attrs[0],
+            bias_attr=bias_attrs[0])
+
+        self.ffn = FusedFeedForward(
+            d_model,
+            dim_feedforward,
+            dropout=dropout,
+            act_dropout=act_dropout,
+            normalize_before=self.normalize_before,
+            weight_attrs[1],
+            bias_attrs[1])
 
     def forward(self, src, src_mask=None, cache=None):
         """
@@ -227,11 +364,11 @@ class FusedTransformerEncoderLayer(Layer):
                 to prevents attention to some unwanted positions, usually the
                 paddings or the subsequent positions. It is a tensor with shape
                 broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`.
-                When the data type is bool, the unwanted positions have `False` 
-                values and the others have `True` values. When the data type is 
-                int, the unwanted positions have 0 values and the others have 1 
-                values. When the data type is float, the unwanted positions have 
-                `-INF` values and the others have 0 values. It can be None when 
+                When the data type is bool, the unwanted positions have `False`
+                values and the others have `True` values. When the data type is
+                int, the unwanted positions have 0 values and the others have 1
+                values. When the data type is float, the unwanted positions have
+                `-INF` values and the others have 0 values. It can be None when
                 nothing wanted or needed to be prevented attention to. Default None.
             cache (Tensor, optional): It is an instance of `MultiHeadAttention.Cache`.
                 See `TransformerEncoderLayer.gen_cache` for more details. It is
@@ -246,7 +383,15 @@ class FusedTransformerEncoderLayer(Layer):
                 incremental length. See `MultiHeadAttention.gen_cache` and \
                 `MultiHeadAttention.forward` for more details.
         """
-        raise NotImplementedError()
+        src_mask = _convert_attention_mask(src_mask, src.dtype)
+        if cache is None:
+            attn_out = self.fused_attn(src, attn_mask=src_mask)
+        else:
+            attn_out, incremental_cache = self.fused_attn(
+                src, attn_mask=src_mask, cache)
+
+        ffn_out = self.ffn(attn_out)
+        return ffn_out if cache is None else (ffn_out, incremental_cache)
 
 
 class FusedTransformer(Layer):
@@ -257,12 +402,12 @@ class FusedTransformer(Layer):
 
     Please refer to `Attention is all you need <http://papers.nips.cc/paper/7181-attention-is-all-you-need.pdf>`_ ,
     and see `TransformerEncoder` and `TransformerDecoder` for more details.
-    
+
     Users can configurate the model architecture with corresponding parameters.
     Note the usage of `normalize_before` representing where to apply layer
     normalization (in pre-process or post-precess of multi-head attention or FFN),
     and some transformer like models are different on this, such as
-    `BERT <https://arxiv.org/abs/1810.04805>`_ and `GPT2 <https://d4mucfpksywv.cloudfront.net/better-language-models/language-models.pdf>`_ . 
+    `BERT <https://arxiv.org/abs/1810.04805>`_ and `GPT2 <https://d4mucfpksywv.cloudfront.net/better-language-models/language-models.pdf>`_ .
     The default architecture here places layer normalization in post-process and
     applies another layer normalization on the output of last encoder/decoder layer.
 
@@ -288,30 +433,30 @@ class FusedTransformer(Layer):
             Otherwise, no pre-process and post-precess includes dropout, residual
             connection, layer normalization. Default False
         weight_attr(ParamAttr|list|tuple, optional): To specify the weight parameter property.
-            If it is a list/tuple, the length of `weight_attr` could be 1, 2 or 3. If it is 3, 
-            `weight_attr[0]` would be used as `weight_attr` for self attention, `weight_attr[1]` 
-            would be used as `weight_attr` for cross attention of `TransformerDecoder`, 
-            and `weight_attr[2]` would be used as `weight_attr` for linear in FFN. 
-            If it is 2, `weight_attr[0]` would be used as `weight_attr` both for self attention 
-            and cross attntion and `weight_attr[1]` would be used as `weight_attr` for 
-            linear in FFN. If it is 1, `weight_attr[0]` would be used as `weight_attr` 
-            for self attention, cross attention and linear in FFN. Otherwise, 
-            the three sub-layers all uses it as `weight_attr` to create parameters. 
-            Default: None, which means the default weight parameter property is used. 
+            If it is a list/tuple, the length of `weight_attr` could be 1, 2 or 3. If it is 3,
+            `weight_attr[0]` would be used as `weight_attr` for self attention, `weight_attr[1]`
+            would be used as `weight_attr` for cross attention of `TransformerDecoder`,
+            and `weight_attr[2]` would be used as `weight_attr` for linear in FFN.
+            If it is 2, `weight_attr[0]` would be used as `weight_attr` both for self attention
+            and cross attntion and `weight_attr[1]` would be used as `weight_attr` for
+            linear in FFN. If it is 1, `weight_attr[0]` would be used as `weight_attr`
+            for self attention, cross attention and linear in FFN. Otherwise,
+            the three sub-layers all uses it as `weight_attr` to create parameters.
+            Default: None, which means the default weight parameter property is used.
             See usage for details
-            in :code:`ParamAttr` . 
+            in :code:`ParamAttr` .
         bias_attr (ParamAttr|list|tuple|bool, optional): To specify the bias parameter property.
-            If it is a list/tuple, the length of `bias_attr` could be 1, 2 or 3. If it is 3, 
-            `bias_attr[0]` would be used as `bias_attr` for self attention, `bias_attr[1]` 
-            would be used as `bias_attr` for cross attention of `TransformerDecoder`, 
-            and `bias_attr[2]` would be used as `bias_attr` for linear in FFN. 
-            If it is 2, `bias_attr[0]` would be used as `bias_attr` both for self attention 
-            and cross attntion and `bias_attr[1]` would be used as `bias_attr` for 
-            linear in FFN. If it is 1, `bias_attr[0]` would be used as `bias_attr` 
-            for self attention, cross attention and linear in FFN. Otherwise, 
-            the three sub-layers all uses it as `bias_attr` to create parameters. 
-            The `False` value means the corresponding layer would not have trainable 
-            bias parameter. See usage for details in :code:`ParamAttr` . 
+            If it is a list/tuple, the length of `bias_attr` could be 1, 2 or 3. If it is 3,
+            `bias_attr[0]` would be used as `bias_attr` for self attention, `bias_attr[1]`
+            would be used as `bias_attr` for cross attention of `TransformerDecoder`,
+            and `bias_attr[2]` would be used as `bias_attr` for linear in FFN.
+            If it is 2, `bias_attr[0]` would be used as `bias_attr` both for self attention
+            and cross attntion and `bias_attr[1]` would be used as `bias_attr` for
+            linear in FFN. If it is 1, `bias_attr[0]` would be used as `bias_attr`
+            for self attention, cross attention and linear in FFN. Otherwise,
+            the three sub-layers all uses it as `bias_attr` to create parameters.
+            The `False` value means the corresponding layer would not have trainable
+            bias parameter. See usage for details in :code:`ParamAttr` .
             Default: None,which means the default bias parameter property is used.
         custom_encoder (Layer, optional): If custom encoder is provided, use it as the encoder.
             Default None
