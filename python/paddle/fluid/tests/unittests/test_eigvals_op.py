@@ -32,6 +32,7 @@ def np_eigvals(a):
     return res
 
 
+''' Keep it for testing gradient kernel in the future.
 def np_eigvals_grad(a, out_grad):
     l, v = np.linalg.eig(a)
     print("l:")
@@ -48,6 +49,7 @@ def np_eigvals_grad(a, out_grad):
     print(a_grad)
 
     return a_grad.astype(a.dtype)
+'''
 
 
 class TestEigvalsOp(OpTest):
@@ -81,9 +83,10 @@ class TestEigvalsOp(OpTest):
 
     def test_check_output(self):
         self.__class__.no_need_check_grad = True
-        self.check_output_customized(checker=self.verify_output)
+        self.check_output_with_place_customized(
+            checker=self.verify_output, place=core.CPUPlace())
 
-    ''' The gradient kernel of this operator does not yet developed.
+    ''' The gradient kernel of this operator does not yet develop.
     def test_check_grad_normal(self):
         self.grad_dtype = self.dtype
         if self.dtype == np.float32:
@@ -248,10 +251,10 @@ class TestEigvalsAPI(unittest.TestCase):
 
     def run_dygraph(self, place):
         paddle.disable_static()
-
-        small_input_tensor = paddle.to_tensor(self.small_input)
-        large_input_tensor = paddle.to_tensor(self.large_input)
-        batch_input_tensor = paddle.to_tensor(self.batch_input)
+        paddle.set_device("cpu")
+        small_input_tensor = paddle.to_tensor(self.small_input, place=place)
+        large_input_tensor = paddle.to_tensor(self.large_input, place=place)
+        batch_input_tensor = paddle.to_tensor(self.batch_input, place=place)
 
         paddle_outs = paddle.linalg.eigvals(small_input_tensor, name='small_x')
         np_outs = np_eigvals(self.small_input)

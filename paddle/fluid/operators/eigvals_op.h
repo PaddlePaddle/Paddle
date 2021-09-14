@@ -66,9 +66,9 @@ using EigenMatrixStd =
 template <typename T>
 using EigenVectorStd = Eigen::Matrix<StdCType<T>, Eigen::Dynamic, 1>;
 
-static void SpiltBatchSquareMatrix(const Tensor *input,
+static void SpiltBatchSquareMatrix(const Tensor &input,
                                    std::vector<Tensor> *output) {
-  DDim input_dims = input->dims();
+  DDim input_dims = input.dims();
   int last_dim = input_dims.size() - 1;
   int n_dim = input_dims[last_dim];
 
@@ -80,7 +80,7 @@ static void SpiltBatchSquareMatrix(const Tensor *input,
   }
 
   Tensor flattened_input;
-  flattened_input.ShareDataWith(*input);
+  flattened_input.ShareDataWith(input);
   flattened_input.Resize(flattened_input_dims);
   (*output) = flattened_input.Split(1, 0);
 }
@@ -99,7 +99,7 @@ class EigvalsKernel : public framework::OpKernel<T> {
     output->mutable_data(ctx.GetPlace(), output_type);
 
     std::vector<Tensor> input_matrices;
-    SpiltBatchSquareMatrix(input, /*->*/ &input_matrices);
+    SpiltBatchSquareMatrix(*input, /*->*/ &input_matrices);
 
     int n_dim = input_matrices[0].dims()[1];
     int n_batch = input_matrices.size();
