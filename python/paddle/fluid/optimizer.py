@@ -4382,6 +4382,8 @@ class PipelineOptimizer(object):
                 else:
                     dest_var = block._clone_variable(source_var, False)
                 dest_var.stop_gradient = source_var.stop_gradient
+                if hasattr(source_var, 'is_distributed'):
+                    dest_var.is_distributed = source_var.is_distributed
             # When use with sharding, allreduce_sum and allreduce_max
             # used for global gradient clip and amp will be added by sharding.
             op_idx += 1
