@@ -47,20 +47,16 @@ def test_dygraph_assert_true(self, x_list, p_list):
 def gen_input():
     # generate square matrix or batches of square matrices
     input_1 = np.random.rand(10, 10).astype('float32')
-    input_2 = np.random.rand(2, 7, 7).astype('float32')
-    input_3 = np.random.rand(3, 6, 6).astype('float64')
-    input_4 = np.random.rand(5, 5, 5).astype('float64')
-    input_5 = np.random.rand(2, 3, 4, 4).astype('float32')
+    input_2 = np.random.rand(3, 6, 6).astype('float64')
+    input_3 = np.random.rand(2, 3, 4, 4).astype('float32')
 
     # generate non-square matrix or batches of non-square matrices
-    input_6 = np.random.rand(9, 11).astype('float32')
-    input_7 = np.random.rand(12, 8).astype('float64')
-    input_8 = np.random.rand(7, 4, 3).astype('float32')
-    input_9 = np.random.rand(10, 1, 10).astype('float64')
-    input_10 = np.random.rand(2, 3, 4, 5).astype('float32')
+    input_4 = np.random.rand(9, 11).astype('float64')
+    input_5 = np.random.rand(7, 4, 3).astype('float32')
+    input_6 = np.random.rand(4, 6, 2, 3).astype('float32')
 
-    list_n_n = (input_1, input_2, input_3, input_4, input_5)
-    list_m_n = (input_6, input_7, input_8, input_9, input_10)
+    list_n_n = (input_1, input_2, input_3)
+    list_m_n = (input_4, input_5, input_6)
     return list_n_n, list_m_n
 
 
@@ -69,16 +65,14 @@ def gen_empty_input():
     input_1 = np.random.rand(0, 7, 7).astype('float32')
     input_2 = np.random.rand(0, 9, 9).astype('float32')
     input_3 = np.random.rand(0, 5, 5, 5).astype('float64')
-    input_4 = np.random.rand(6, 0, 4, 4).astype('float64')
 
     # generate non-square matrix or batches of non-square matrices which are empty tensor
-    input_5 = np.random.rand(0, 9, 11).astype('float32')
-    input_6 = np.random.rand(0, 12, 8).astype('float64')
-    input_7 = np.random.rand(7, 0, 4, 3).astype('float32')
-    input_8 = np.random.rand(0, 10, 1, 10).astype('float64')
+    input_4 = np.random.rand(0, 9, 11).astype('float32')
+    input_5 = np.random.rand(0, 12, 8).astype('float64')
+    input_6 = np.random.rand(7, 0, 4, 3).astype('float32')
 
-    list_n_n = (input_1, input_2, input_3, input_4)
-    list_m_n = (input_5, input_6, input_7, input_8)
+    list_n_n = (input_1, input_2, input_3)
+    list_m_n = (input_4, input_5, input_6)
     return list_n_n, list_m_n
 
 
