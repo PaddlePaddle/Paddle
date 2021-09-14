@@ -5019,6 +5019,18 @@ class Program(object):
                     "All feeded_var_names of Program._prune_with_input() can only be "
                     "str, but received %s." % type(var))
 
+        # find out all variables that can be generated or updated with given feed
+        generatable_vars = set()
+        for idx, op in enumerate(self.global_block().ops):
+            runnable_op = True
+            for name in op.input_arg_names:
+                if not self.global_block().var(name).persistable:
+                    if name not in generatable_vars.union(feeded_var_names):
+                        runnable_op = False
+                        break
+            if runnable_op:
+                generatable_vars = generatable_vars.union(op.output_arg_names)
+
         targets_idx = []
         for t in targets:
             if not isinstance(t, Operator):
@@ -5031,6 +5043,14 @@ class Program(object):
                         "All targets of Program._prune_with_input() can only be "
                         "Variable or Operator, but received %s." % type(t))
 
+                # NOTEZ(zhiqiu): For variable to be fed in fetch_list, there two cases:
+                # (1) the variable is leaf, it has no op that generates it;
+                # (2) the variable is not leaf, and we need to prune the op that generates it.
+                # In both cases, wo can just skip target_op of that it.
+                if name in feeded_var_names:
+                    # however if the var is also updated by a runnable op, will shall keep it
+                    if name not in generatable_vars:
+                        continue
 
                 # After transpiler processing, the op that output this
                 # variable maybe has been changed, so t.op is not reliable
@@ -5049,14 +5069,9 @@ class Program(object):
                             target_op = op
 
                 if target_op is None:
-                    # NOTEZ(zhiqiu): For variable to be fed in fetch_list, there two cases:
-                    # (1) the variable is leaf, it has no op that generates it;
-                    # (2) the variable is not leaf, and we need to prune the op that generates it.
-                    # In both cases, wo can just skip target_op of that it.
-                    if name not in feeded_var_names:
-                        raise ValueError(
-                            "The target variable used for pruning should have an "
-                            "associated operator that generates it.")
+                    raise ValueError(
+                        "The target variable used for pruning should have an "
+                        "associated operator that generates it.")
                 else:
                     targets_idx.append([target_op.block.idx, target_op.idx])
             else:

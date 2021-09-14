@@ -1420,6 +1420,11 @@ def save_inference_model(dirname,
         main_program = main_program._inference_optimize(prune_read_op=True)
         fetch_var_names = [v.name for v in target_vars]
 
+        for target_v in target_vars:
+            if not main_program.global_block().has_var(target_v.name):
+                main_program.global_block().create_var(name=target_v.name,
+                        shape=target_v.shape, dtype=target_v.dtype)
+
         prepend_feed_ops(main_program, feeded_var_names)
         append_fetch_ops(main_program, fetch_var_names)
 
