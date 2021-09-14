@@ -175,11 +175,6 @@ def equal(x, y, name=None):
           result1 = paddle.equal(x, y)
           print(result1)  # result1 = [True False False]
     """
-    if isinstance(y, str):
-        raise TypeError(
-            "Please use int, float, bool or tensor as the input y, but your type is str . "
-        )
-
     if not isinstance(y, Variable):
         y = full(shape=[1], dtype=x.dtype, fill_value=y)
 
