@@ -24,6 +24,7 @@ __all__ = [
     'synchronize',
     'device_count',
     'get_device_name',
+    'empty_cache',
 ]
 
 
@@ -155,3 +156,26 @@ def get_device_name(device=None):
             raise ValueError("device type must be int or paddle.CUDAPlace")
 
     return core._get_device_name(device_id)
+
+
+def empty_cache():
+    """
+    Releases idle cached memory held by the allocator so that those can be used in other GPU
+    application and visible in `nvidia-smi`. In most cases you don't need to use this function,
+    Paddle does not release the memory back to the OS when you remove Tensors on the GPU,
+    Because it keeps gpu memory in a pool so that next allocations can be done much faster.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            # required: gpu
+            paddle.set_device("gpu")
+            tensor = paddle.randn([512, 512, 512], "float")
+            del tensor
+            paddle.device.cuda.empty_cache()
+    """
+
+    if core.is_compiled_with_cuda():
+        core.cuda_empty_cache()
