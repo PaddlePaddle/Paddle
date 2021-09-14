@@ -2462,8 +2462,7 @@ _hipDeviceProperties is struct of device properties information.
   // -- python binds for parallel executor.
 
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
-  py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy",
-                                              R"DOC(
+  py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
     ExecutionStrategy allows the user to more preciously control how to run
     the program in ParallelExecutor by setting the property.
 
@@ -2536,8 +2535,8 @@ _hipDeviceProperties is struct of device properties information.
           [](const ExecutionStrategy &self) { return self.use_device_; },
           [](ExecutionStrategy &self, paddle::platform::DeviceType use_device) {
             self.use_device_ = use_device;
-          })  // NOTE(liuyuhui): Doesn't add doc for 'use_device',
-              // because use_device isn‘t exposed to users.
+          })  // NOTE(liuyuhui): Doesn't add doc for 'use_device', because
+              // use_device isn‘t exposed to users.
       .def_property(
           "allow_op_delay",
           [](const ExecutionStrategy &self) { return self.allow_op_delay_; },
@@ -2849,8 +2848,7 @@ _hipDeviceProperties is struct of device properties information.
           [](BuildStrategy &self, int num_trainers) {
 #ifdef WIN32
             PADDLE_THROW(platform::errors::Unavailable(
-                "Distribution mode is not supported on Windows "
-                "platform."));
+                "Distribution mode is not supported on Windows platform."));
 #endif
             self.num_trainers_ = num_trainers;
           })
@@ -3112,8 +3110,7 @@ _hipDeviceProperties is struct of device properties information.
               self.memory_optimize_ = (py_obj == Py_True);
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
-                  "BuildStrategy.memory_optimize must be set to None, "
-                  "False "
+                  "BuildStrategy.memory_optimize must be set to None, False "
                   "or True"));
             }
           },
@@ -3144,8 +3141,7 @@ _hipDeviceProperties is struct of device properties information.
 #ifdef WIN32
             if (b) {
               PADDLE_THROW(platform::errors::Unavailable(
-                  "Distribution mode is not supported on Windows "
-                  "platform."));
+                  "Distribution mode is not supported on Windows platform."));
             }
 #else
             self.is_distribution_ = b;
@@ -3219,10 +3215,10 @@ _hipDeviceProperties is struct of device properties information.
                   const std::vector<std::string> &, const std::string &,
                   Scope *, std::vector<Scope *> &, const ExecutionStrategy &,
                   const BuildStrategy &, ir::Graph *>())
-      // NOTE: even we return a vec<Scope*>* to Python use reference
-      // policy. We still cannot get local_scope from this vector, since
-      // the element of vec<Scope*> will be freed by Python GC. We can
-      // only return Scope* one by one and mark them as reference.
+      // NOTE: even we return a vec<Scope*>* to Python use reference policy.
+      // We still cannot get local_scope from this vector, since the element
+      // of vec<Scope*> will be freed by Python GC. We can only return Scope*
+      // one by one and mark them as reference.
       .def("local_scopes",
            [](ParallelExecutor &self) -> std::vector<Scope *> * {
              return &self.GetLocalScopes();

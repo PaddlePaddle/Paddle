@@ -22,6 +22,7 @@ limitations under the License. */
 #else
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #endif
+
 #include <deque>
 #include <mutex>
 #include <vector>
@@ -31,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/string/split.h"
+
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
