@@ -165,7 +165,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
         block = self.main_program.global_block()
 
         first_optimize_op_idx = None
-        for i, op in reversed(enumerate(list(gm_block.ops))):
+        for i, op in reversed(list(enumerate(gm_block.ops))):
             if is_backward_op(op) and first_optimize_op_idx is None:
                 first_optimize_op_idx = i + 1
                 break
