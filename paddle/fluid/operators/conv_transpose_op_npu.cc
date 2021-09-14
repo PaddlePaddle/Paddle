@@ -18,30 +18,25 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+using NPUDeviceContext = platform::NPUDeviceContext;
+
 template <typename T>
 class Conv2DTransposeNPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    // input
-    const Tensor* input = context.Input<Tensor>("Input");
-    const Tensor* filter = context.Input<Tensor>("Filter");
-    // output
-    Tensor* output = context.Output<Tensor>("Output");
-    output->mutable_data<T>(context.GetPlace());
-    // attr
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
+    Tensor* output = ctx.Output<Tensor>("Output");
+    output->mutable_data<T>(ctx.GetPlace());
     std::vector<int> output_padding =
-        context.Attr<std::vector<int>>("output_padding");
-    const std::vector<int> stride = context.Attr<std::vector<int>>("strides");
-    std::vector<int> padding = context.Attr<std::vector<int>>("paddings");
-    std::vector<int> dilation = context.Attr<std::vector<int>>("dilations");
-    const std::string data_format = context.Attr<std::string>("data_format");
-    int groups = context.Attr<int>("groups");
+        ctx.Attr<std::vector<int>>("output_padding");
+    const std::vector<int> stride = ctx.Attr<std::vector<int>>("strides");
+    std::vector<int> padding = ctx.Attr<std::vector<int>>("paddings");
+    std::vector<int> dilation = ctx.Attr<std::vector<int>>("dilations");
+    const std::string data_format = ctx.Attr<std::string>("data_format");
+    int groups = ctx.Attr<int>("groups");
     const std::string padding_algorithm =
-        context.Attr<std::string>("padding_algorithm");
-
-    // npu stream
-    auto stream =
-        context.template device_context<platform::NPUDeviceContext>().stream();
+        ctx.Attr<std::string>("padding_algorithm");
 
     // check dimension
     const bool channel_last = data_format == "NHWC";
@@ -89,7 +84,8 @@ class Conv2DTransposeNPUKernel : public framework::OpKernel<T> {
       output_padding.insert(output_padding.begin(), 0);
     }
     auto output_dim_vec = framework::vectorize(output_tensor.dims());
-    // CANN OP
+
+    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     const auto& runner =
         NpuOpRunner("Conv2DTransposeD", {input_tensor, *filter},
                     {output_tensor}, {{"input_size", output_dim_vec},
@@ -103,12 +99,109 @@ class Conv2DTransposeNPUKernel : public framework::OpKernel<T> {
   }
 };
 
+template <typename T>
+class Conv2DTransposeGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
+    const Tensor* output_grad =
+        ctx.Input<Tensor>(framework::GradVarName("Output"));
+    Tensor* input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    Tensor* filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+
+    if ((!input_grad) && (!filter_grad)) return;
+
+    std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
+    std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
+    std::vector<int> dilations = ctx.Attr<std::vector<int>>("dilations");
+    const int groups = ctx.Attr<int>("groups");
+    std::string padding_algorithm = ctx.Attr<std::string>("padding_algorithm");
+    const std::string data_format = ctx.Attr<std::string>("data_format");
+    const framework::DataLayout data_layout =
+        framework::StringToDataLayout(data_format);
+
+    auto in_dims = input->dims();
+    auto filter_dims = filter->dims();
+    // auto out_grad_dims = output_grad->dims();
+    // const int batch_size = static_cast<int>(input->dims()[0]);
+
+    const bool channel_last = (data_layout == framework::DataLayout::kNHWC);
+
+    framework::DDim in_data_dims;
+    if (channel_last) {
+      in_data_dims = framework::slice_ddim(in_dims, 1, in_dims.size() - 1);
+    } else {
+      in_data_dims = framework::slice_ddim(in_dims, 2, in_dims.size());
+    }
+    framework::DDim filter_data_dims =
+        framework::slice_ddim(filter_dims, 2, filter_dims.size());
+    std::vector<int> ksize = framework::vectorize<int>(filter_data_dims);
+    UpdatePaddingAndDilation(&paddings, &dilations, padding_algorithm,
+                             in_data_dims, strides, ksize);
+
+    std::vector<int> strides_vec(4, 1);
+    std::vector<int> dilations_vec(4, 1);
+
+    Tensor input_tensor, output_grad_tensor;
+    input_tensor.ShareDataWith(*input);
+    output_grad_tensor.ShareDataWith(*output_grad);
+    if (channel_last) {
+      input_tensor.set_layout(DataLayout::kNHWC);
+      output_grad_tensor.set_layout(DataLayout::kNHWC);
+      strides_vec[1] = strides[0];
+      strides_vec[2] = strides[1];
+      dilations_vec[1] = dilations[0];
+      dilations_vec[2] = dilations[1];
+    } else {
+      strides_vec[2] = strides[0];
+      strides_vec[3] = strides[1];
+      dilations_vec[2] = dilations[0];
+      dilations_vec[3] = dilations[1];
+    }
+
+    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
+    if (filter_grad) {
+      filter_grad->mutable_data<T>(ctx.GetPlace());
+      const auto& runner =
+          NpuOpRunner("Conv2DBackpropFilterD",
+                      {output_grad_tensor, input_tensor}, {*filter_grad},
+                      {{"filter_size", framework::vectorize<int>(filter_dims)},
+                       {"strides", strides_vec},
+                       {"pads", paddings},
+                       {"dilations", dilations_vec},
+                       {"groups", groups},
+                       {"data_format", data_format}});
+      runner.Run(stream);
+    }
+    if (input_grad) {
+      input_grad->mutable_data<T>(ctx.GetPlace());
+      Tensor input_grad_tensor;
+      input_grad_tensor.ShareDataWith(*input_grad);
+      if (channel_last) {
+        input_grad_tensor.set_layout(DataLayout::kNHWC);
+      }
+      const auto& runner =
+          NpuOpRunner("Conv2D", {output_grad_tensor, *filter},
+                      {input_grad_tensor}, {{"strides", strides_vec},
+                                            {"pads", paddings},
+                                            {"dilations", dilations_vec},
+                                            {"groups", groups},
+                                            {"data_format", data_format}});
+      runner.Run(stream);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-// conv2d
 REGISTER_OP_NPU_KERNEL(conv2d_transpose, ops::Conv2DTransposeNPUKernel<float>,
                        ops::Conv2DTransposeNPUKernel<plat::float16>);
+
+REGISTER_OP_NPU_KERNEL(conv2d_transpose_grad,
+                       ops::Conv2DTransposeGradNPUKernel<float>,
+                       ops::Conv2DTransposeGradNPUKernel<plat::float16>);
