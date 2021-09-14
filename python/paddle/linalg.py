@@ -17,11 +17,13 @@ from .tensor.linalg import norm  # noqa: F401
 from .tensor.linalg import matrix_power  # noqa: F401
 from .tensor import inverse as inv  # noqa: F401
 from .tensor.linalg import svd
+from .tensor.linalg import qr
 
 __all__ = [
     'cholesky',  #noqa
     'norm',
     'inv',
     'svd',
+    'qr',
     'matrix_power'
 ]

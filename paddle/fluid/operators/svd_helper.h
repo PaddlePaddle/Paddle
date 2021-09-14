@@ -313,6 +313,19 @@ struct DeviceIndependenceTensorOperations {
     return CreateOpRunAndReturnTensor("slice", inputs, attrs, out_shape);
   }
 
+  framework::Tensor TrilTriu(const framework::Tensor& x, int diagonal,
+                             bool lower) {
+    framework::AttributeMap attrs;
+    attrs["diagonal"] = diagonal;
+    attrs["lower"] = lower;
+    NameInTensorMap inputs({{"X", {&x}}});
+    int x_rank = x.dims().size();
+    PADDLE_ENFORCE_GE(x_rank, 2, platform::errors::InvalidArgument(
+                                     "Rank must be at least 2."));
+    std::vector<int> out_shape = framework::vectorize<int>(x.dims());
+    return CreateOpRunAndReturnTensor("tril_triu", inputs, attrs, out_shape);
+  }
+
  private:
   const framework::ExecutionContext& context;
   BlasT<DeviceContext, T> GetBlas() {
