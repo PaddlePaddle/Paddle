@@ -513,7 +513,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           return false;
         }
       }
-
+      auto batch_norm_inputs = desc.Inputs();
+      if (batch_norm_inputs.find("MomentumTensor") != batch_norm_inputs.end()) {
+        if (desc.Input("MomentumTensor").size() >= 1) {
+          return false;
+        }
+      }
       if (desc.Output("Y").size() != 1) {
         VLOG(3) << "Invalid output Y's size of batch_norm TRT "
                    "converter. Expected 1, received "
