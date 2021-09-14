@@ -192,7 +192,7 @@ def stream_guard(stream):
 
     '''
 
-    if not isinstance(stream, paddle.device.cuda.Stream):
+    if stream is not None and not isinstance(stream, paddle.device.cuda.Stream):
         raise TypeError("stream type should be paddle.device.cuda.Stream")
 
     cur_stream = current_stream()
