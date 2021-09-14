@@ -156,6 +156,19 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (paddings.size() > 2) return false;
     }
 
+    if (op_type == "relu" || op_type == "relu6" || op_type == "tanh" ||
+        op_type == "sigmoid") {
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 1) {
+        VLOG(3) << op_type
+                << " op does not support input's dim is 1 in tensorrt.";
+        return false;
+      }
+    }
+
     if (op_type == "pool2d") {
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
