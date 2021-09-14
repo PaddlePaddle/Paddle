@@ -100,7 +100,6 @@ from .tensor.linalg import bmm  # noqa: F401
 from .tensor.linalg import histogram  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
 from .tensor.linalg import matrix_power  # noqa: F401
-from .tensor.linalg import svd  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
 from .tensor.logic import greater_than  # noqa: F401
@@ -163,6 +162,7 @@ from .tensor.math import cos  # noqa: F401
 from .tensor.math import tan  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
+from .tensor.math import cumprod  # noqa: F401
 from .tensor.math import exp  # noqa: F401
 from .tensor.math import expm1  # noqa: F401
 from .tensor.math import floor  # noqa: F401
@@ -232,6 +232,7 @@ from .tensor.random import randperm  # noqa: F401
 from .tensor.search import argmax  # noqa: F401
 from .tensor.search import argmin  # noqa: F401
 from .tensor.search import argsort  # noqa: F401
+from .tensor.search import searchsorted  # noqa: F401
 from .tensor.search import masked_select  # noqa: F401
 from .tensor.search import topk  # noqa: F401
 from .tensor.search import where  # noqa: F401
@@ -330,6 +331,7 @@ __all__ = [  # noqa
            'empty_like',
            'eye',
            'cumsum',
+           'cumprod',
            'sign',
            'is_empty',
            'equal',
@@ -356,6 +358,7 @@ __all__ = [  # noqa
            'summary',
            'flops',
            'sort',
+           'searchsorted',
            'split',
            'logical_and',
            'full_like',
@@ -494,7 +497,6 @@ __all__ = [  # noqa
            'sqrt',
            'cholesky',
            'matrix_power',
-           'svd',
            'randperm',
            'linspace',
            'reshape',

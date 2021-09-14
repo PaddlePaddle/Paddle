@@ -33,10 +33,13 @@ class NCEOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Weight"), "Input", "Weight", "nce");
 
     OP_INOUT_CHECK(ctx->HasOutput("Cost"), "Output", "Cost", "nce");
-    OP_INOUT_CHECK(ctx->HasOutput("SampleLogits"), "Output", "SampleLogits",
-                   "nce");
-    OP_INOUT_CHECK(ctx->HasOutput("SampleLabels"), "Output", "SampleLabels",
-                   "nce");
+    bool is_test = ctx->Attrs().Get<bool>("is_test");
+    if (!is_test) {
+      OP_INOUT_CHECK(ctx->HasOutput("SampleLogits"), "Output", "SampleLogits",
+                     "nce");
+      OP_INOUT_CHECK(ctx->HasOutput("SampleLabels"), "Output", "SampleLabels",
+                     "nce");
+    }
 
     auto x_dims = ctx->GetInputDim("Input");
     auto label_dims = ctx->GetInputDim("Label");
@@ -89,13 +92,15 @@ class NCEOp : public framework::OperatorWithKernel {
     out_dims.push_back(1);
     ctx->SetOutputDim("Cost", framework::make_ddim(out_dims));
 
-    // set dims of output(SampleOut)
-    std::vector<int64_t> sample_out_dims;
-    sample_out_dims.push_back(x_dims[0]);
-    sample_out_dims.push_back(
-        (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
-    ctx->SetOutputDim("SampleLogits", framework::make_ddim(sample_out_dims));
-    ctx->SetOutputDim("SampleLabels", framework::make_ddim(sample_out_dims));
+    if (!is_test) {
+      // set dims of output(SampleOut)
+      std::vector<int64_t> sample_out_dims;
+      sample_out_dims.push_back(x_dims[0]);
+      sample_out_dims.push_back(
+          (num_true_classes == -1) ? -1 : (num_neg_samples + num_true_classes));
+      ctx->SetOutputDim("SampleLogits", framework::make_ddim(sample_out_dims));
+      ctx->SetOutputDim("SampleLabels", framework::make_ddim(sample_out_dims));
+    }
   }
 
  protected:
@@ -162,14 +167,16 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
               "Given X is  the dot product of input tensor and sampled labels' "
               "weights."
               "Then 'SampleLogits' is sigmoid(X).")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
     AddOutput("SampleLabels",
               "An intermediate tensor of shape[batch_size, num_neg_samples + "
               "num_pos_samples]."
               "This tensor is output of forward kernel and used in backward "
               "kernel to compute grads."
               "")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
 
     AddAttr<int>("num_total_classes",
                  "Total number of classes in all samples.");
@@ -189,28 +196,38 @@ class NCEOpMaker : public framework::OpProtoAndCheckerMaker {
 
     // for parameter prefetch
     AddAttr<bool>("remote_prefetch", "").SetDefault(false);
-    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.").SetDefault(0);
+    AddAttr<int>("trainer_id", "trainer id from 0 ~ worker_num.")
+        .SetDefault(0)
+        .AsExtra();
     AddAttr<std::vector<int64_t>>("height_sections",
                                   "Height for each output SelectedRows.")
-        .SetDefault(std::vector<int64_t>({}));
+        .SetDefault(std::vector<int64_t>({}))
+        .AsExtra();
     AddAttr<std::vector<std::string>>(
         "epmap",
         "(string vector, default 127.0.0.1:6164)"
         "Server endpoints in the order of input variables for mapping")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
     AddAttr<std::vector<std::string>>(
         "table_names",
         "(string vector, the split table names that will be fetched from "
         "parameter server)"
         "in the order of input variables for mapping")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
 
     AddAttr<std::vector<int>>("custom_neg_classes",
                               "This attribute only be used in unitest. Classes "
                               "in this list wiil be used as negative classes "
                               "for every samples. Under normal conditions, "
                               "user should avoid setting this attribute.")
-        .SetDefault({});
+        .SetDefault({})
+        .AsExtra();
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference "
+                  "only, false for training.")
+        .SetDefault(false);
     AddComment(R"DOC(
 Compute and return the noise-contrastive estimation training loss. See
 `Noise-contrastive estimation: A new estimation principle for unnormalized

@@ -502,17 +502,17 @@ def xpu_places(device_ids=None):
     """
     **Note**:
         For multi-card tasks, please use `FLAGS_selected_xpus` environment variable to set the visible XPU device.
-    This function creates a list of :code:`paddle.XPUPlace` objects.
-    If :code:`device_ids` is None, environment variable of
-    :code:`FLAGS_selected_xpus` would be checked first. For example, if
-    :code:`FLAGS_selected_xpus=0,1,2`, the returned list would
-    be [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
-    If :code:`FLAGS_selected_xpus` is not set, all visible
-    xpu places would be returned.
-    If :code:`device_ids` is not None, it should be the device
-    ids of XPUs. For example, if :code:`device_ids=[0,1,2]`,
-    the returned list would be 
-    [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
+        This function creates a list of :code:`paddle.XPUPlace` objects.
+        If :code:`device_ids` is None, environment variable of
+        :code:`FLAGS_selected_xpus` would be checked first. For example, if
+        :code:`FLAGS_selected_xpus=0,1,2`, the returned list would
+        be [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
+        If :code:`FLAGS_selected_xpus` is not set, all visible
+        xpu places would be returned.
+        If :code:`device_ids` is not None, it should be the device
+        ids of XPUs. For example, if :code:`device_ids=[0,1,2]`,
+        the returned list would be 
+        [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
     
     Parameters:
         device_ids (list or tuple of int, optional): list of XPU device ids.
@@ -520,6 +520,7 @@ def xpu_places(device_ids=None):
         list of paddle.XPUPlace: Created XPU place list.
     Examples:
         .. code-block:: python
+
             # required: xpu
 
             import paddle
@@ -864,6 +865,7 @@ class Variable(object):
             new_variable = cur_block.create_var(name="X",
                                                 shape=[-1, 23, 48],
                                                 dtype='float32')
+
         In `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_  Mode:
 
         .. code-block:: python
@@ -1395,8 +1397,8 @@ class Variable(object):
         Indicating name of the gradient Variable of current Variable.
 
         **Notes: This is a read-only property. It simply returns name of
-          gradient Variable from a naming convention but doesn't guarantee
-          the gradient exists.**
+        gradient Variable from a naming convention but doesn't guarantee
+        the gradient exists.**
 
         Examples:
           .. code-block:: python
