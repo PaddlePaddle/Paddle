@@ -56,14 +56,25 @@ function check_whl {
 function compile_install_paddle {
     export CUDA_ARCH_NAME=${CUDA_ARCH_NAME:-Auto}
     export PY_VERSION=3.7
-    export WITH_DISTRIBUTE=OFF
+    export WITH_DISTRIBUTE=ON
     export WITH_GPU=ON
     export WITH_TENSORRT=OFF
     export WITH_TESTING=OFF
     export WITH_UNITY_BUILD=ON
     check_whl
     cd /workspace/Paddle
-    git clone --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP https://github.com/paddlepaddle/benchmark.git
+    git clone --depth=1 https://github.com/paddlepaddle/benchmark.git
+    cd benchmark
+    set +x
+    wget -q --no-proxy https://xly-devops.bj.bcebos.com/benchmark/new_clone/benchmark/benchmark_allgit.tar.gz
+    tar xf benchmark_allgit.tar.gz
+    set -x
+}
+
+function init_benchmark {
+    cd /workspace/Paddle/benchmark
+    git clone PaddleClas.bundle PaddleClas
+
 }
 
 function prepare_data {
@@ -84,7 +95,8 @@ function run_model_benchmark {
     cd /workspace/Paddle
     pip install build/pr_whl/*.whl
     cd ${cache_dir}/benchmark_data
-    export data_path=${cache_dir}/benchmark_data/dataset
+    export data_path=${cfs_dir}/model_dataset/model_benchmark_data
+    export prepare_path=${cfs_dir}/model_dataset/model_benchmark_prepare
     export BENCHMARK_ROOT=/workspace/Paddle/benchmark
     cd ${BENCHMARK_ROOT}/scripts/benchmark_ci
     bash model_ci.sh
@@ -95,6 +107,7 @@ case $1 in
     compile_install_paddle
   ;;
   run_benchmark)
+    init_benchmark
     prepare_data
     run_model_benchmark
   ;;
