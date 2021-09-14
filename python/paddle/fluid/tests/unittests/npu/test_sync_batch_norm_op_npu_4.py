@@ -32,10 +32,34 @@ from paddle.fluid import compiler
 from paddle.fluid import Program, program_guard
 
 from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
-from paddle.fluid.tests.unittests.test_sync_batch_norm_op import create_or_get_tensor
+# from paddle.fluid.tests.unittests.test_sync_batch_norm_op import create_or_get_tensor
 
 _set_use_system_allocator(False)
 paddle.enable_static()
+
+
+def create_or_get_tensor(scope, var_name, var, place):
+    print('test_sync_batch_norm_base_npu.py create_or_get_tensor')
+    print('var_name: ', var_name)
+    # print('var: ', var)
+    print('place: ', place)
+    """Get tensor, if not found, create a new one."""
+    tensor = scope.var(var_name).get_tensor()
+    # print('tensor: ', tensor)
+    print('create_or_get_tensor 41')
+    # with paddle.static.device_guard('NPUPlace(0)'):
+    # with paddle.static.device_guard(place):
+    with paddle.static.device_guard('npu'):
+        if var is not None:
+            print('create_or_get_tensor 43')
+            assert isinstance(var, np.ndarray)
+            print('create_or_get_tensor 44')
+            tensor.set_recursive_sequence_lengths([])
+            print('create_or_get_tensor 47')
+            tensor.set(var, place)
+            print('create_or_get_tensor 49')
+        print('create_or_get_tensor 50')
+    return tensor
 
 
 @unittest.skipIf(False, "skip for tmp")

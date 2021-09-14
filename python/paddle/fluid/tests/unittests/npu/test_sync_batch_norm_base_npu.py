@@ -33,6 +33,9 @@ import paddle
 
 from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
 
+_set_use_system_allocator(False)
+paddle.enable_static()
+
 
 def create_or_get_tensor(scope, var_name, var, place):
     print('test_sync_batch_norm_base_npu.py create_or_get_tensor')
@@ -135,25 +138,24 @@ class TestSyncBatchNormRunnerBase(object):
         print("use selected_npus:", device_id)
         place = fluid.NPUPlace(device_id)
 
-        print('run_trainer 124')
+        print(' run_trainer 124 ')
         seed = 10
         scope = core.Scope()
-        print('run_trainer 127')
+        print(' run_trainer 127 ')
         data = np.random.random(size=self.dshape).astype(self.dtype) * 4. - 2
-        # print('data: ', data)
+        print(' data: ', data)
         print('run_trainer 129')
         data = create_or_get_tensor(scope, "input",
                                     OpTest.np_dtype_to_fluid_dtype(data), place)
-        # data = create_or_get_tensor(scope, "input",
-        #                             data, place)
+        print(' data: ', data)
 
-        print('run_trainer 135')
+        print(' run_trainer 135')
 
         train_prog = fluid.Program()
         startup_prog = fluid.Program()
 
-        print('train_prog: ', train_prog)
-        print('startup_prog: ', startup_prog)
+        # print('train_prog: ', train_prog)
+        # print('startup_prog: ', startup_prog)
 
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
@@ -161,27 +163,34 @@ class TestSyncBatchNormRunnerBase(object):
         nranks = 2
         self.initCommunicator(startup_prog, rank, nranks, True,
                               current_endpoint, endpoints)
-        print('startup_prog: ', startup_prog)
+        # self.initCommunicator(train_prog, rank, nranks, True,
+        #                       current_endpoint, endpoints)
+        # print('startup_prog: ', startup_prog)
         self.rank = rank
 
         outs = self.get_model(train_prog, startup_prog, place, "NCHW", seed)
 
-        print('train_prog: ', train_prog)
+        # print('before train_prog: ', train_prog)
+        # print(' ', train_prog.blocks[0].ops[3], '')
+        # train_prog.blocks[0].ops[3].desc.set_type('sync_batch_norm')
+        # train_prog.blocks[0].ops[9].desc.set_type('sync_batch_norm_grad')
+        # print('after train_prog: ', train_prog)
         exe = fluid.Executor(place)
-        exe.run(startup)
+        exe.run(startup_prog)
         fetch_names = [v.name for v in outs] + [
             'bn_moving_mean', 'bn_moving_variance', 'bn_scale', 'bn_bias'
         ]
+        only_forward = False
         if not only_forward:
             others = [
                 'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
                 'bn_bias@GRAD', 'batch_norm_0.tmp_3@GRAD', 'conv2d_0.tmp_0@GRAD'
             ]
             fetch_names += others
-        bn_fetches = exe.run(program=main,
+        bn_fetches = exe.run(program=train_prog,
                              feed={'input': data},
                              fetch_list=fetch_names)
-        sys.stdout.buffer.write(pickle.dumps(bn_fetches))
+        # sys.stdout.buffer.write(pickle.dumps(bn_fetches))
 
 
 def runtime_main(test_class, col_type, sub_type):
@@ -225,7 +234,9 @@ class TestDistBase(unittest.TestCase):
                 return port
 
     def _run_cluster(self, model_file, envs):
-        print('test_sync_batch_norm_base_npu.py _run_cluster')
+        print(' test_sync_batch_norm_base_npu.py _run_cluster ')
+        # print(' envs: ', envs)
+
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
         print("w0_ep:", w0_ep, " w1_ep:", w1_ep)
@@ -247,6 +258,9 @@ class TestDistBase(unittest.TestCase):
         #update environment
         env0.update(envs)
         env1.update(envs)
+        # print(' env0: ', env0)
+        # print(' env1: ', env1)
+
         tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
