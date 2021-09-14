@@ -12,16 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef PADDLE_WITH_HIP
-// HIP not support cusolver
-
 #pragma once
 
 #include "Eigen/Core"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/svd_helper.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cusolver.h"
+#endif  // PADDLE_WITH_CUDA
 
 namespace paddle {
 namespace operators {
@@ -166,6 +165,8 @@ struct MatrixEighFunctorCPU {
   }
 };
 
+#ifdef PADDLE_WITH_CUDA
+
 // Calculates the eigenvalues ​​and eigenvectors of Hermitian or real
 // symmetric matrices on GPU, and uses the variable compute_vectors
 // to control whether to return the eigenvectors.
@@ -307,8 +308,8 @@ FUNC_WITH_TYPES(EVD_INSTANCE);
 #undef EVDBUFFER_INSTANCE
 #undef EVD_INSTANCE
 
+#endif  // PADDLE_WITH_CUDA
+
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
-
-#endif  // not PADDLE_WITH_HIP
