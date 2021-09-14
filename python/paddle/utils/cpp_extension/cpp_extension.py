@@ -355,6 +355,8 @@ class BuildExtension(build_ext, object):
         super(BuildExtension, self).__init__(*args, **kwargs)
         self.no_python_abi_suffix = kwargs.get("no_python_abi_suffix", True)
         self.output_dir = kwargs.get("output_dir", None)
+        # whether containing cuda source file in Extensions
+        self.contain_cuda_file = False
 
     def initialize_options(self):
         super(BuildExtension, self).initialize_options()
@@ -432,6 +434,9 @@ class BuildExtension(build_ext, object):
                 # shared library have same ABI suffix with core_(no)avx.so.
                 # See https://stackoverflow.com/questions/34571583/understanding-gcc-5s-glibcxx-use-cxx11-abi-or-the-new-abi
                 add_compile_flag(['-D_GLIBCXX_USE_CXX11_ABI=1'], cflags)
+                # Append this macor only when jointly compiling .cc with .cu
+                if not is_cuda_file(src) and self.contain_cuda_file:
+                    cflags.append('-DPADDLE_WITH_CUDA')
 
                 add_std_without_repeat(
                     cflags, self.compiler.compiler_type, use_std14=True)
@@ -506,6 +511,9 @@ class BuildExtension(build_ext, object):
                 elif isinstance(self.cflags, list):
                     cflags = MSVC_COMPILE_FLAGS + self.cflags
                     cmd += cflags
+                # Append this macor only when jointly compiling .cc with .cu
+                if not is_cuda_file(src) and self.contain_cuda_file:
+                    cmd.append('-DPADDLE_WITH_CUDA')
 
                 return original_spawn(cmd)
 
@@ -633,6 +641,8 @@ class BuildExtension(build_ext, object):
 
         for i, extension in enumerate(self.extensions):
             sources = [os.path.abspath(s) for s in extension.sources]
+            if not self.contain_cuda_file:
+                self.contain_cuda_file = any([is_cuda_file(s) for s in sources])
             op_names = parse_op_name_from(sources)
 
             for op_name in op_names:
