@@ -156,6 +156,19 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (paddings.size() > 2) return false;
     }
 
+    if (op_type == "relu" || op_type == "relu6" || op_type == "tanh" ||
+        op_type == "sigmoid") {
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 1) {
+        VLOG(3) << op_type
+                << " op does not support input's dim is 1 in tensorrt.";
+        return false;
+      }
+    }
+
     if (op_type == "pool2d") {
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
@@ -291,6 +304,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           if (axis < 0) return false;
         } else {
           if (axis <= 0) return false;
+        }
+        auto concat_inputs = desc.Inputs();
+        if (concat_inputs.find("AxisTensor") != concat_inputs.end()) {
+          if (desc.Input("AxisTensor").size() >= 1) {
+            return false;
+          }
         }
       }
     }
@@ -500,7 +519,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           return false;
         }
       }
-
+      auto batch_norm_inputs = desc.Inputs();
+      if (batch_norm_inputs.find("MomentumTensor") != batch_norm_inputs.end()) {
+        if (desc.Input("MomentumTensor").size() >= 1) {
+          return false;
+        }
+      }
       if (desc.Output("Y").size() != 1) {
         VLOG(3) << "Invalid output Y's size of batch_norm TRT "
                    "converter. Expected 1, received "
@@ -653,6 +677,33 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+    if (op_type == "instance_norm") {
+      if (with_dynamic_shape) {
+        VLOG(3) << "trt instance_norm op does not support dynamic shape ";
+        return false;
+      }
+      if (desc.Input("X").size() != 1) {
+        VLOG(3) << "input of instance_norm op converter should be 1, got "
+                << desc.Input("X").size();
+        return false;
+      }
+      if (desc.Input("Bias").size() != 1) {
+        VLOG(3) << "Bias of instance_norm op converter should be 1, got "
+                << desc.Input("Bias").size();
+        return false;
+      }
+      if (desc.Input("Scale").size() != 1) {
+        VLOG(3) << "Scale of instance_norm op converter should be 1, got "
+                << desc.Input("Scale").size();
+        return false;
+      }
+      if (desc.Output("Y").size() != 1) {
+        VLOG(3) << "output of layer_norm op converter should be 1, got "
+                << desc.Output("Y").size();
+        return false;
+      }
+    }
+
     if (op_type == "leaky_relu") {
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "Invalid number of TRT leaky_relu op converter "
@@ -672,6 +723,29 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (pad_value != 0.0f) {
         VLOG(3) << "The pad layer of TRT only support zero.";
         return false;
+      }
+      std::vector<int64_t> shape;
+      auto* block = desc.Block();
+      for (auto& param_name : desc.Inputs()) {
+        for (auto& var_name : param_name.second) {
+          auto* var_desc = block->FindVar(var_name);
+          shape = var_desc->GetShape();
+        }
+      }
+      int nbDims = shape.size();
+      std::vector<int> paddings =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+      int pad_size = paddings.size();
+      if (nbDims < 2) {
+        return false;
+      }
+      if (nbDims * 2 != pad_size) {
+        return false;
+      }
+      for (int i = 0; i < pad_size - 4; i++) {
+        if (paddings[i] != 0) {
+          return false;
+        }
       }
     }
 
@@ -718,6 +792,36 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "because that "
                    "the roi_align will change the batch size.";
         return false;
+      }
+      std::vector<std::string> attrs{"pooled_height", "pooled_width",
+                                     "spatial_scale", "sampling_ratio"};
+      for (auto const attr : attrs) {
+        if (!desc.HasAttr(attr)) return false;
+      }
+
+      const auto pooled_height =
+          BOOST_GET_CONST(int, desc.GetAttr("pooled_height"));
+      if (pooled_height <= 0) return false;
+
+      const auto pooled_width =
+          BOOST_GET_CONST(int, desc.GetAttr("pooled_width"));
+      if (pooled_width <= 0) return false;
+
+      const auto spatial_scale =
+          BOOST_GET_CONST(float, desc.GetAttr("spatial_scale"));
+      if (spatial_scale <= 0.f) return false;
+
+      const auto sampling_ratio =
+          BOOST_GET_CONST(int, desc.GetAttr("sampling_ratio"));
+      const auto aligned = BOOST_GET_CONST(bool, desc.GetAttr("aligned"));
+
+      if (sampling_ratio == -1 && aligned == true) return false;
+
+      auto roi_align_inputs = desc.Inputs();
+      if (roi_align_inputs.find("RoisNum") != roi_align_inputs.end()) {
+        if (desc.Input("RoisNum").size() >= 1) {
+          return false;
+        }
       }
     }
 
@@ -776,7 +880,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       std::vector<int> shape =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("shape"));
       if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
-      if (!with_dynamic_shape && shape[0] == -1) return false;
+      if (!with_dynamic_shape && (shape[0] == -1 || shape.size() == 1))
+        return false;
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean") {
