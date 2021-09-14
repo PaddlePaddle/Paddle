@@ -188,12 +188,6 @@ if (NOT WITH_GLOO)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel_cpuonly)
 endif()
 
-if (NOT WITH_GLOO OR WITH_GPU OR WITH_XPU)
-    # only enable when with gloo and only cpu
-    LIST(REMOVE_ITEM TEST_OPS test_cpuonly_launch)
-    LIST(REMOVE_ITEM TEST_OPS test_cpuonly_spawn)
-endif()
-
 if ((NOT WITH_GPU) AND (NOT WITH_ROCM))
     LIST(REMOVE_ITEM TEST_OPS test_conv2d_fusion_op)
     LIST(REMOVE_ITEM TEST_OPS test_rank_attention_op) # TODO(shenliang03): rank_attention_op support CPU device in future
@@ -626,6 +620,12 @@ if(WITH_DISTRIBUTE)
         bash_test_modules(test_cpuonly_launch START_BASH test_cpuonly_launch.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}" PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR} )
         bash_test_modules(test_new_group START_BASH test_new_group.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}+20" PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR} )
     endif(NOT APPLE)
+endif()
+
+if (NOT WITH_GLOO OR WITH_GPU OR WITH_XPU)
+    # only enable when with gloo and only cpu
+    LIST(REMOVE_ITEM TEST_OPS test_cpuonly_launch)
+    LIST(REMOVE_ITEM TEST_OPS test_cpuonly_spawn)
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
