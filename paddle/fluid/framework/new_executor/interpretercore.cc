@@ -188,6 +188,8 @@ void InterpreterCore::Convert() {
     BuildAndCacheInstructionCtx(&vec_instruction_[i], *global_scope_, place_);
   }
 
+  BuildSkipShareLoDInfo();
+
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     gc_event_.emplace_back(vec_instruction_[i].execution_ctx_.get()->GetPlace(),
                            platform::GenerateDeviceEventFlag());
@@ -225,14 +227,34 @@ void InterpreterCore::BuildAndCacheInstructionCtx(
   instr_node->runtime_ctx_->inputs.swap(ins_map);
   instr_node->runtime_ctx_->outputs.swap(outs_map);
 
-  instr_node->infershape_ctx_.reset(
-      new RuntimeInferShapeContext(*op_base, *instr_node->runtime_ctx_.get()));
+  instr_node->infershape_ctx_.reset(new InterpretercoreInferShapeContext(
+      *op_base, *instr_node->runtime_ctx_.get()));
 
   auto* dev_ctx = instr_node->dev_ctx_;
   Scope scope;
 
   instr_node->execution_ctx_.reset(new ExecutionContext(
       *op_base, scope, *dev_ctx, *instr_node->runtime_ctx_.get()));
+}
+
+void InterpreterCore::BuildSkipShareLoDInfo() {
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    bool can_skip_lod = true;
+    for (auto& input : vec_instruction_[i].runtime_ctx_.get()->inputs) {
+      for (auto& var : input.second) {
+        if (var->IsType<LoDTensor>()) {
+          if (var->Get<LoDTensor>().lod().size() != 0) {
+            can_skip_lod = false;
+            break;
+          }
+        } else {
+          can_skip_lod = false;
+          break;
+        }
+      }
+    }
+    vec_instruction_[i].infershape_ctx_.get()->SetSkipLoD(can_skip_lod);
+  }
 }
 
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
