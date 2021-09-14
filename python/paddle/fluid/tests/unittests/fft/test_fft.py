@@ -129,7 +129,7 @@ class TestFft(unittest.TestCase):
 class TestFftException(unittest.TestCase):
     def test_Fft(self):
         with self.assertRaises(self.expect_exception):
-            paddle.fft.fft(self.x, self.n, self.axis, self.norm)
+            paddle.fft.fft(paddle.to_tensor(self.x), self.n, self.axis, self.norm)
 
 
 @place(DEVICES)
@@ -183,7 +183,7 @@ class TestFft2Exception(unittest.TestCase):
     def test_fft2(self):
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
-                paddle.fft.fft2(self.x, self.n, self.axis, self.norm)
+                paddle.fft.fft2(paddle.to_tensor(self.x), self.n, self.axis, self.norm)
 
 
 @place(DEVICES)
@@ -451,7 +451,7 @@ class TestHfftException(unittest.TestCase):
     def test_hfft(self):
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
-                paddle.fft.rfft(self.x, self.n, self.axis, self.norm)
+                paddle.fft.rfft(paddle.to_tensor(self.x), self.n, self.axis, self.norm)
 
 
 @place(DEVICES)
@@ -492,7 +492,7 @@ class TestIrfftException(unittest.TestCase):
     def test_irfft(self):
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
-                paddle.tensor.fft.irfft(self.x, self.n, self.axis, self.norm)
+                paddle.tensor.fft.irfft(paddle.to_tensor(self.x), self.n, self.axis, self.norm)
 
 
 @place(DEVICES)
@@ -532,7 +532,7 @@ class TestHfft2Exception(unittest.TestCase):
     def test_hfft2(self):
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
-                paddle.tensor.fft.hfft2(self.x, self.n, self.axis, self.norm)
+                paddle.tensor.fft.hfft2(paddle.to_tensor(self.x), self.n, self.axis, self.norm)
 
 
 @place(DEVICES)
@@ -577,7 +577,7 @@ class TestIrfft2Exception(unittest.TestCase):
     def test_irfft2(self):
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
-                paddle.tensor.fft.irfft2(self.x, self.n, self.axis, self.norm)
+                paddle.tensor.fft.irfft2(paddle.to_tensor(self.x), self.n, self.axis, self.norm)
 
 
 @place(DEVICES)
@@ -617,7 +617,7 @@ class TestHfftnException(unittest.TestCase):
     def test_hfftn(self):
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
-                paddle.tensor.fft.hfftn(self.x, self.n, self.axis, self.norm)
+                paddle.tensor.fft.hfftn(paddle.to_tensor(self.x), self.n, self.axis, self.norm)
 
 
 @place(DEVICES)
@@ -662,7 +662,7 @@ class TestIrfftnException(unittest.TestCase):
     def test_irfftn(self):
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
-                paddle.fft.irfftn(self.x, self.n, self.axis, self.norm)
+                paddle.fft.irfftn(paddle.to_tensor(self.x), self.n, self.axis, self.norm)
 
 
 @place(DEVICES)
@@ -700,7 +700,7 @@ class TestRfft(unittest.TestCase):
 class TestRfftException(unittest.TestCase):
     def test_rfft(self):
         with self.assertRaises(self.expect_exception):
-            paddle.fft.rfft(self.x, self.n, self.axis, self.norm)
+            paddle.fft.rfft(paddle.to_tensor(self.x), self.n, self.axis, self.norm)
 
 
 @place(DEVICES)
@@ -750,7 +750,7 @@ class TestRfft2Exception(unittest.TestCase):
     def test_rfft(self):
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
-                paddle.fft.rfft2(self.x, self.n, self.axis, self.norm)
+                paddle.fft.rfft2(paddle.to_tensor(self.x), self.n, self.axis, self.norm)
 
 
 @place(DEVICES)
@@ -792,7 +792,7 @@ class TestRfftnException(unittest.TestCase):
     def test_rfft(self):
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
-                paddle.fft.rfftn(self.x, self.n, self.axis, self.norm)
+                paddle.fft.rfftn(paddle.to_tensor(self.x), self.n, self.axis, self.norm)
 
 
 @place(DEVICES)
@@ -830,7 +830,7 @@ class TestIhfftException(unittest.TestCase):
     def test_ihfft(self):
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
-                paddle.fft.ihfft(self.x, self.n, self.axis, self.norm)
+                paddle.fft.ihfft(paddle.to_tensor(self.x), self.n, self.axis, self.norm)
 
 
 @place(DEVICES)
@@ -882,7 +882,7 @@ class TestIhfft2Exception(unittest.TestCase):
     def test_rfft(self):
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
-                paddle.fft.ihfft2(self.x, self.n, self.axis, self.norm)
+                paddle.fft.ihfft2(paddle.to_tensor(self.x), self.n, self.axis, self.norm)
 
 
 @place(DEVICES)
@@ -922,7 +922,7 @@ class TestIhfftnException(unittest.TestCase):
     def test_rfft(self):
         with paddle.fluid.dygraph.guard(self.place):
             with self.assertRaises(self.expect_exception):
-                paddle.fft.ihfftn(self.x, self.n, self.axis, self.norm)
+                paddle.fft.ihfftn(paddle.to_tensor(self.x), self.n, self.axis, self.norm)
 
 
 @place(DEVICES)
