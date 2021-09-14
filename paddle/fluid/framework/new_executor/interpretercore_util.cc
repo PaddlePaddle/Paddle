@@ -117,6 +117,13 @@ void build_variable_scope(const framework::ProgramDesc& pdesc,
       info.var_ref_count_ = 0;
       info.vardesc_ = var;
       var_scope->vec_meta_info_.push_back(info);
+    } else {
+      auto var_id = var_scope->name2id[var->Name()];
+      if (nullptr == var_scope->vec_meta_info_[var_id].vardesc_) {
+        VLOG(3) << "update var:" << var->Name() << " desc from nullptr into "
+                << var;
+        var_scope->vec_meta_info_[var_id].vardesc_ = var;
+      }
     }
   }
 }
