@@ -15,6 +15,26 @@ limitations under the License. */
 #include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
+static mkldnn::memory::format_tag get_plain_format_tag(
+    const paddle::framework::Tensor* tensor) {
+  auto tensor_dims_size = tensor->dims().size();
+
+  switch (tensor_dims_size) {
+    case 1:
+      return mkldnn::memory::format_tag::a;
+    case 2:
+      return mkldnn::memory::format_tag::ab;
+    case 3:
+      return mkldnn::memory::format_tag::abc;
+    case 4:
+      return mkldnn::memory::format_tag::abcd;
+    case 5:
+      return mkldnn::memory::format_tag::abcde;
+  }
+
+  return mkldnn::memory::format_tag::abcdef;
+}
+
 namespace paddle {
 namespace operators {
 
@@ -89,7 +109,7 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     auto slice_mem_p = reorder_handler.AcquireSubmemory(slice_dims, offsets,
                                                         reorder_src_memory_p);
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        out, slice_dims, 0, x->format(), ctx.GetPlace());
+        out, slice_dims, 0, get_plain_format_tag(x), ctx.GetPlace());
 
     auto reorder_p =
         reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p);
@@ -98,27 +118,26 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
 
     std::vector<int64_t> new_out_dims(slice_dims.size() - decrease_axis.size());
 
-    for (size_t i = 0; i < decrease_axis.size(); ++i) {
-      slice_dims[decrease_axis[i]] = 0;
-    }
+    if (new_out_dims.size() == 0) {
+      new_out_dims.emplace_back(1);
+    } else {
+      for (const auto& axis : decrease_axis) {
+        slice_dims[axis] = 0;
+      }
 
-    int j = 0;
-    for (size_t i = 0; i < slice_dims.size(); ++i) {
-      if (slice_dims[i] != 0) new_out_dims[j++] = slice_dims[i];
+      int i = 0;
+      for (const auto& slice_dim : slice_dims) {
+        if (slice_dim != 0) new_out_dims[i++] = slice_dim;
+      }
     }
-
-    // paddle doesn't support rank 0 tensors, instead we use [1]
-    if (new_out_dims.size() == 0) new_out_dims.emplace_back(1);
 
     astream.wait();
-
     out->Resize(framework::make_ddim(new_out_dims));
     out->set_layout(framework::DataLayout::kMKLDNN);
     out->set_format(platform::GetMKLDNNFormat(
         reorder_dst_memory_p->get_desc().reshape(new_out_dims)));
   }
 };
-
 template <typename T>
 class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
  public:
