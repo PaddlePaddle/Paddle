@@ -781,30 +781,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!with_dynamic_shape && shape[0] == -1) return false;
     }
 
-    if (op_type == "clip") {
-      // Paddle-TRT does not support the input tensors: Min and Max
-      auto clip_inputs = desc.Inputs();
-      if (clip_inputs.find("Min") != clip_inputs.end()) {
-        if (desc.Input("Min").size() >= 1) {
-          return false;
-        }
-      }
-      if (clip_inputs.find("Max") != clip_inputs.end()) {
-        if (desc.Input("Max").size() >= 1) {
-          return false;
-        }
-      }
-
-      auto* block = desc.Block();
-      auto x_var_name = desc.Input("X")[0];
-      auto* x_var_desc = block->FindVar(x_var_name);
-      const auto x_shape = x_var_desc->GetShape();
-      if (x_shape.size() == 1) {
-        VLOG(3) << "clip op does not support input's dim is 1 in tensorrt.";
-        return false;
-      }
-    }
-
     if (op_type == "reduce_sum" || op_type == "reduce_mean") {
       if (!(desc.HasAttr("keep_dim") && desc.HasAttr("dim") &&
             desc.HasAttr("reduce_all"))) {
