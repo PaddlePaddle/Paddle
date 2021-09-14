@@ -99,6 +99,8 @@ class TestElementwiseSubOp_scalar(TestElementwiseSubOp):
         self.out = self.x - self.y
 
 
+@skip_check_grad_ci(
+    reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestFP16ElementwiseSubOp_scalar(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
