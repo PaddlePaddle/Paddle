@@ -185,6 +185,8 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 framework::make_ddim(shape), i, shape[i]));
       }
 
+      // NOTE all non-zero values will be converted to True (include negative
+      // value)
       capacity *= (shape[i] ? shape[i] : in_dims[i]);
       output_shape[i] =
           (shape[i] ? static_cast<int64_t>(shape[i]) : in_dims[i]);
@@ -222,6 +224,21 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 in_dims, in_size, framework::make_ddim(shape), capacity));
       }
     }
+
+    // support reshape with zero-input(input tensor with product(shape) == 0)
+    // by now we require that if the input tensor is zero shape, the target
+    // shape of output must be zero
+    if (in_size == 0) {
+      PADDLE_ENFORCE_EQ(
+          capacity, in_size,
+          platform::errors::InvalidArgument(
+              "The 'shape' in ReshapeOp is invalid. "
+              "The input tensor X's shape = [%s], X's capacity = %d."
+              "But the target shape of Out is [%s],  the "
+              "capacity of 'Out' is %d.",
+              in_dims, in_size, framework::make_ddim(shape), capacity));
+    }
+
     return framework::make_ddim(output_shape);
   }
 
