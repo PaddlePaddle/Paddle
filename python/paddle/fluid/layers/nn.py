@@ -5083,7 +5083,12 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
 
     if len(x.shape) == 1:
         axis = 0
-    check_variable_and_dtype(x, "X", ("float32", "float64"), "norm")
+    if in_dygraph_mode():
+        out, _ = _C_ops.norm(x, 'axis', 1
+                             if axis is None else axis, 'epsilon', epsilon)
+        return out
+
+    check_variable_and_dtype(x, "X", ("float16", "float32", "float64"), "norm")
 
     helper = LayerHelper("l2_normalize", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
