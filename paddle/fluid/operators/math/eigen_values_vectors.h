@@ -165,6 +165,9 @@ struct MatrixEighFunctorCPU {
   }
 };
 
+#ifdef PADDLE_WITH_CUDA
+// HIP not support cusolver
+
 // Calculates the eigenvalues ​​and eigenvectors of Hermitian or real
 // symmetric matrices on GPU, and uses the variable compute_vectors
 // to control whether to return the eigenvectors.
@@ -309,3 +312,5 @@ FUNC_WITH_TYPES(EVD_INSTANCE);
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
+
+#endif  // not PADDLE_WITH_HIP
