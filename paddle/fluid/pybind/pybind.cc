@@ -38,6 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/ir/coalesce_grad_tensor_pass.h"
+#include "paddle/fluid/framework/ir/generate_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -2324,6 +2325,19 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("is_profiler_enabled", platform::IsProfileEnabled);
   m.def("reset_profiler", platform::ResetProfiler);
+  m.def("register_pass", [](const std::string &pass_type, py::object callable) {
+    PADDLE_ENFORCE_EQ(
+        framework::ir::PassRegistry::Instance().Has(pass_type), false,
+        platform::errors::AlreadyExists(
+            "Pass '%s' is registered more than once.", pass_type));
+    framework::ir::PassRegistry::Instance().Insert(pass_type, [pass_type,
+                                                               callable]() {
+      py::gil_scoped_acquire guard;
+      std::unique_ptr<framework::ir::Pass> pass(
+          new framework::ir::GeneratePass(py::cast<std::string>(callable())));
+      return pass;
+    });
+  });
   m.def("get_pass", [](const std::string &pass_type) {
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_type);
     return std::shared_ptr<framework::ir::Pass>(std::move(pass));

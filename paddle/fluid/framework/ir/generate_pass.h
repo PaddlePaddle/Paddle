@@ -24,6 +24,8 @@ namespace ir {
 // Generate a substitute pass from protobuf.
 class GeneratePass : public Pass {
  public:
+  // from binary_str
+  explicit GeneratePass(const std::string& binary_str);
   // from PassDesc/MultiPassDesc
   explicit GeneratePass(const proto::MultiPassDesc& multi_pass_desc);
   virtual ~GeneratePass() {}
@@ -37,7 +39,7 @@ class GeneratePass : public Pass {
   // Verify desc
   void VerifyDesc() const;
   // Verify graph
-  bool VerifyGraph() const;
+  static bool VerifyGraph(const Graph& graph);
 
   proto::MultiPassDesc multi_pass_desc_;
 };
