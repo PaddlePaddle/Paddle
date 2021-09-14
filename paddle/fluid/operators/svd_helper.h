@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #pragma once
+
 #include <Eigen/src/Core/util/Constants.h>
 #include <Eigen/Dense>
 #include <Eigen/SVD>
@@ -295,14 +296,23 @@ struct DeviceIndependenceTensorOperations {
     framework::Tensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(framework::make_ddim(out_shape));
-    if (x.dims().size() >= y.dims().size()) {
+    if (platform::is_gpu_place(context.GetPlace())) {
+#if defined(__NVCC__) || defined(__HIPCC__)
+      // For GPU, there is no need to define XxxInverseFunctor and call
+      // ElementwiseComputeEx in two branches.
       ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
           context, &x, &y, -1, SubFunctor<T>(), &ret);
+#endif
     } else {
-      ElementwiseComputeEx<InverseSubFunctor<T>, DeviceContext, T>(
-          // This is copyed from elementwise_sub, which means we
-          // need reverse will xrank < yrank
-          context, &x, &y, -1, InverseSubFunctor<T>(), &ret);
+      if (x.dims().size() >= y.dims().size()) {
+        ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
+            context, &x, &y, -1, SubFunctor<T>(), &ret);
+      } else {
+        ElementwiseComputeEx<InverseSubFunctor<T>, DeviceContext, T>(
+            // This is copyed from elementwise_sub, which means we
+            // need reverse will xrank < yrank
+            context, &x, &y, -1, InverseSubFunctor<T>(), &ret);
+      }
     }
     return ret;
   }
