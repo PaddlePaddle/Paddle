@@ -163,7 +163,6 @@ class TestWithNoGrad(unittest.TestCase):
             linear_net(x)
 
             _, partial_layer = linear_net.forward.program_cache.last()[-1]
-            # check default mode is for training
             self.assertEqual(partial_layer.program,
                              partial_layer._train_program)
 
