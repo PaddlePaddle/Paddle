@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
@@ -24,21 +25,6 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 
-/*
-   input: an array;
-   return: the result of the math functor
-   1. For Unary Op, the length of input array is 1,
-      e.g. Relu: return args[0] > 0 ? args[0] : 0;
-   2. For Binary Op, the length of input array is 2,
-      e.g. Add: return args[0] expr args[1];
-*/
-template <typename T>
-struct CudaAddFunctor {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    return args[0] + args[1];
-  }
-};
-
 template <typename T>
 class ElementwiseAddKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
@@ -51,7 +37,7 @@ class ElementwiseAddKernel<platform::CUDADeviceContext, T>
 
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, CudaAddFunctor<T>());
+        cuda_ctx, ins, &outs, axis, AddFunctor<T>());
   }
 };
 

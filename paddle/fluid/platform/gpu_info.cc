@@ -27,10 +27,12 @@ limitations under the License. */
 #include <mutex>
 #include <vector>
 
+#include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/string/split.h"
 
 DECLARE_double(fraction_of_gpu_memory_to_use);
@@ -703,6 +705,13 @@ uint64_t RecordedCudaMallocSize(int dev_id) {
 
 bool IsCudaMallocRecorded(int dev_id) {
   return RecordedCudaMallocHelper::Instance(dev_id)->NeedRecord();
+}
+
+void EmptyCache(void) {
+  std::vector<int> devices = GetSelectedDevices();
+  for (auto device : devices) {
+    memory::Release(CUDAPlace(device));
+  }
 }
 
 }  // namespace platform
