@@ -38,6 +38,12 @@ namespace paddle {
 namespace framework {
 
 template <typename T>
+struct IsComplex : public std::false_type {};
+
+template <typename T>
+struct IsComplex<platform::complex<T>> : public std::true_type {};
+
+template <typename T>
 struct DataTypeTrait {};
 
 // Stub handle for void

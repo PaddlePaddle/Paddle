@@ -25,8 +25,9 @@ import paddle.fluid.core as core
 class TestClipByNormOp(OpTest):
     def setUp(self):
         self.max_relative_error = 0.006
+        self.init_dtype()
         self.initTestCase()
-        input = np.random.random(self.shape).astype("float32")
+        input = np.random.random(self.shape).astype(self.dtype)
         input[np.abs(input) < self.max_relative_error] = 0.5
         self.op_type = "clip_by_norm"
         self.inputs = {'X': input, }
@@ -46,6 +47,9 @@ class TestClipByNormOp(OpTest):
         self.shape = (100, )
         self.max_norm = 1.0
 
+    def init_dtype(self):
+        self.dtype = np.float32
+
 
 class TestCase1(TestClipByNormOp):
     def initTestCase(self):
@@ -60,6 +64,35 @@ class TestCase2(TestClipByNormOp):
 
 
 class TestCase3(TestClipByNormOp):
+    def initTestCase(self):
+        self.shape = (4, 8, 16)
+        self.max_norm = 1.0
+
+
+class TestClipByNormOpFp16(TestClipByNormOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def test_check_output(self):
+        if core.is_compiled_with_cuda():
+            place = core.CUDAPlace(0)
+            if core.is_float16_supported(place):
+                self.check_output_with_place(place, atol=0.001)
+
+
+class TestClipByNormOpFp16Case1(TestClipByNormOpFp16):
+    def initTestCase(self):
+        self.shape = (100, )
+        self.max_norm = 1e20
+
+
+class TestClipByNormOpFp16Case2(TestClipByNormOpFp16):
+    def initTestCase(self):
+        self.shape = (16, 16)
+        self.max_norm = 0.1
+
+
+class TestClipByNormOpFp16Case3(TestClipByNormOpFp16):
     def initTestCase(self):
         self.shape = (4, 8, 16)
         self.max_norm = 1.0

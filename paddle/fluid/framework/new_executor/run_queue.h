@@ -194,7 +194,7 @@ class RunQueue {
  private:
   static const unsigned kMask = kSize - 1;
   static const unsigned kMask2 = (kSize << 1) - 1;
-  struct Elem {
+  struct alignas(64) Elem {
     std::atomic<uint8_t> state;
     Work w;
   };
@@ -212,8 +212,8 @@ class RunQueue {
   // position, these conditions would be indistinguishable); (2) obtain
   // consistent snapshot of front_/back_ for Size operation using the
   // modification counters.
-  std::atomic<unsigned> front_;
-  std::atomic<unsigned> back_;
+  alignas(64) std::atomic<unsigned> front_;
+  alignas(64) std::atomic<unsigned> back_;
   Elem array_[kSize];
 
   // SizeOrNotEmpty returns current queue size; if NeedSizeEstimate is false,
