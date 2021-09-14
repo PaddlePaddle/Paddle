@@ -46,7 +46,7 @@ class TestGumbelSoftmaxOp(OpTest):
         self.check_output_customized(self.verify_output)
 
     def test_check_grad(self):
-        self.check_grad(["X"], "Out", max_relative_error=0.01)
+        self.check_grad(["X"], "Out")
 
 
 class TestGumbelSoftmaxOp2(TestGumbelSoftmaxOp):
