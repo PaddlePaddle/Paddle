@@ -305,6 +305,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         } else {
           if (axis <= 0) return false;
         }
+        auto concat_inputs = desc.Inputs();
+        if (concat_inputs.find("AxisTensor") != concat_inputs.end()) {
+          if (desc.Input("AxisTensor").size() >= 1) {
+            return false;
+          }
+        }
       }
     }
     if (op_type == "transpose2" || op_type == "transpose") {
