@@ -426,6 +426,7 @@ function cmake_gen_and_build() {
     cmake_gen $1
     build $2
     endTime_s=`date +%s`
+    [ -n "$startTime_firstBuild" ] && startTime_s=$startTime_firstBuild
     echo "Build Time: $[ $endTime_s - $startTime_s ]s"
     echo "ipipe_log_param_Build_Time: $[ $endTime_s - $startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
 }
@@ -755,6 +756,7 @@ function generate_upstream_develop_api_spec() {
     cur_branch=`git branch | grep \* | cut -d ' ' -f2`
     git checkout .
     git checkout -b develop_base_pr upstream/$BRANCH
+    startTime_firstBuild=`date +%s`
     cmake_gen $1
     build $2
     cp ${PADDLE_ROOT}/python/requirements.txt /tmp
@@ -1153,6 +1155,8 @@ function parallel_test_base_gpu() {
 EOF
 
 set -x
+        # set trt_convert ut to run 30% cases.
+        export TEST_NUM_PERCENT_CASES=0.3
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
@@ -1178,13 +1182,14 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            #ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
-            #if [ "$added_ut_error" != 0 ];then
-            #    echo "========================================"
-            #    echo "Added UT should not exceed 15 seconds"
-            #    echo "========================================"
-            #    exit 8;
-            #fi
+            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
+            if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
+                echo "========================================"
+                echo "Added UT should not exceed 15 seconds"
+                echo "========================================"
+                exit 8;
+            fi
         fi
 set +x
         EXIT_CODE=0;
@@ -1342,8 +1347,8 @@ set +x
         retry_unittests_record=''
         retry_time=4
         exec_time_array=('first' 'second' 'third' 'fourth')
-        parallel_failed_tests_exec_retry_threshold=80
-        exec_retry_threshold=10
+        parallel_failed_tests_exec_retry_threshold=120
+        exec_retry_threshold=30
         is_retry_execuate=0
         rerun_ut_startTime_s=`date +%s`
         if [ -n "$failed_test_lists" ];then
@@ -1443,6 +1448,9 @@ set +x
                         one_card_retry=''
                         multiple_card_retry=''
                         exclusive_retry='' 
+                    
+                    else 
+                        break
                     fi 
                 done
         fi
@@ -1743,11 +1751,14 @@ function parallel_test_base_npu() {
     # skipping if no NPU related files changed
     if [ ${SKIP_NPU_TEST:-ON} == "ON" ] ; then
         fetch_upstream_develop_if_not_exist
+        # get npu py or npu cc file changes
         git diff --name-only remotes/upstream/$BRANCH
         npu_cc_changes=$(git diff --name-only remotes/upstream/$BRANCH | grep "op_npu.cc" || true)
         npu_py_changes=$(git diff --name-only remotes/upstream/$BRANCH | grep "op_npu.py" || true)
-        if [ -z "${npu_cc_changes}" ] && [ -z "${npu_py_changes}" ] ; then
-            echo "NO NPU operators files changed, skip NPU unit tests!"
+        # get PR name
+        npu_pr_tile=$(curl https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} 2>/dev/null | grep "<title>" | grep "NPU" || true)
+        if [ -z "${npu_cc_changes}" ] && [ -z "${npu_py_changes}" ] && [ -z "${npu_pr_tile}" ]; then
+            echo "NO NPU operators files changed and no '[NPU]' found in PR title, skip NPU unit tests!"
             exit 0
         fi
     fi
@@ -1786,18 +1797,18 @@ set +x
         retry_unittests_record=''
         retry_time=4
         exec_time_array=('first' 'second' 'third' 'fourth')
-        parallel_failed_tests_exec_retry_threshold=80
-        exec_retry_threshold=10
+        parallel_failed_tests_exec_retry_threshold=120
+        exec_retry_threshold=30
         is_retry_execuate=0
         rerun_ut_startTime_s=`date +%s`
         if [ -n "$failed_test_lists" ];then
             if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
                 bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
             fi
-            read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             need_retry_ut_arr=(${need_retry_ut_str})
             need_retry_ut_count=${#need_retry_ut_arr[@]}
-            read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
             while ( [ $exec_times -lt $retry_time ] )
                 do
                     if [[ "${exec_times}" == "0" ]] ;then
@@ -1807,7 +1818,7 @@ set +x
                             is_retry_execuate=1
                         fi
                     elif [[ "${exec_times}" == "1" ]] ;then
-                        read need_retry_ut_str <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                         need_retry_ut_arr=(${need_retry_ut_str})
                         need_retry_ut_count=${#need_retry_ut_arr[@]} 
                         if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
@@ -1825,7 +1836,7 @@ set +x
                             if [[ "${failed_test_lists}" == "" ]];then
                                 break
                             else
-                                read retry_unittests <<< $(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                                retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
                             fi
                         fi
                         echo "========================================="
@@ -1835,7 +1846,7 @@ set +x
                         echo "${retry_unittests}"                    
                         for line in ${retry_unittests[@]} ;
                             do
-                                read tmp_one_tmp <<< "$( echo $single_card_tests | grep -oEi $line )"
+                                tmp_one_tmp="$( echo $single_card_tests | grep -oEi $line )"
 
                                 if [[ "$tmp_one_tmp" != ""  ]]; then
                                     if [[ "$one_card_retry" == "" ]]; then
@@ -1855,7 +1866,10 @@ set +x
                         collect_failed_tests
                         rm -f $tmp_dir/*
                         one_card_retry=''
-                    fi 
+                    else 
+                        break
+                    fi
+
                 done
         fi
 

@@ -37,6 +37,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/variant.h"
+#include "paddle/utils/flat_hash_map.h"
 
 namespace paddle {
 namespace framework {
@@ -473,9 +474,9 @@ class OperatorWithKernel : public OperatorBase {
                      const VariableNameMap& outputs, const AttributeMap& attrs)
       : OperatorBase(type, inputs, outputs, attrs) {}
 
-  static std::unordered_map<std::string /* op_type */, OpKernelMap>&
+  static paddle::flat_hash_map<std::string /* op_type */, OpKernelMap>&
   AllOpKernels() {
-    static std::unordered_map<std::string, OpKernelMap> g_all_op_kernels;
+    static paddle::flat_hash_map<std::string, OpKernelMap> g_all_op_kernels;
     return g_all_op_kernels;
   }
 
