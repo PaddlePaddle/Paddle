@@ -20,8 +20,11 @@ import os
 import sys
 sys.path.append("..")
 
+from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
+
 from test_sync_batch_norm_base_npu import TestDistBase
 
+_set_use_system_allocator(False)
 paddle.enable_static()
 
 

@@ -822,7 +822,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
         // auto *comm = dev_ctx.hccl_comm();
         // LOG(WARNING) << "comm: " << comm;
 
-        auto comm = paddle::platform::HCCLCommContext::Instance().Get(1, place);
+        auto comm = paddle::platform::HCCLCommContext::Instance().Get(0, place);
         LOG(WARNING) << "comm: " << comm;
 
         float device_counts = 1.0;
