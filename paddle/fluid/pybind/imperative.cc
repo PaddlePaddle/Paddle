@@ -1009,14 +1009,16 @@ void BindImperative(py::module *m_ptr) {
               imperative::NameVarBaseMap ins = {{"Input", {self}}};
               imperative::NameVarBaseMap outs = {{"Out", {self}}};
 
-              PADDLE_ENFORCE_EQ(
-                  self->IsLeaf() && !self->OverridedStopGradient(), false,
-                  platform::errors::InvalidArgument(
-                      "Leaf Tensor (%s) that doesn't stop gradient can't use "
-                      "inplace strategy.",
-                      self->Name()));
-
               const auto &tracer = imperative::GetCurrentTracer();
+
+              if (tracer->HasGrad()) {
+                PADDLE_ENFORCE_EQ(
+                    self->IsLeaf() && !self->OverridedStopGradient(), false,
+                    platform::errors::InvalidArgument(
+                        "Leaf Tensor (%s) that doesn't stop gradient can't use "
+                        "inplace strategy.",
+                        self->Name()));
+              }
 
               if (PyCheckTensor(value_obj.ptr())) {
                 auto value_tensor =
