@@ -340,15 +340,12 @@ if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
     if %day_now% EQU 21 (
-        rmdir %cache_dir%\third_party_GPU /s/q
         rmdir %cache_dir%\third_party /s/q
     )
     if %day_now% EQU 11 (
-        rmdir %cache_dir%\third_party_GPU /s/q
         rmdir %cache_dir%\third_party /s/q
     )
     if %day_now% EQU 01 (
-        rmdir %cache_dir%\third_party_GPU /s/q
         rmdir %cache_dir%\third_party /s/q
     )
 )
@@ -374,7 +371,7 @@ if "%WITH_GPU%"=="ON" (
     set sub_dir=cpu
 )
 
-set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party_%sub_dir%
+set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party/%sub_dir%
 set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
 set UPLOAD_TP_FILE=OFF
 
@@ -519,7 +516,7 @@ set BCE_FILE=%cache_dir%\bce-python-sdk-0.8.33\BosClient.py
 if %UPLOAD_TP_FILE%==ON (
     echo Uploading third_party: checking bce ...
     if not exist %cache_dir%\bce-python-sdk-0.8.33 (
-        echo There is not bce in this PC, will install bce.
+        echo There is no bce in this PC, will install bce.
         cd %cache_dir%
         echo Download package from https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz
         %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz')"
