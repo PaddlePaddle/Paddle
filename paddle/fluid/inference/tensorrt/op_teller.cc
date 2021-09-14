@@ -746,6 +746,41 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                    "but x_num_col_dims = %d.";
         return false;
       }
+
+      auto input_names = desc.InputNames();
+      bool with_bias = input_names.size() >= 3;
+      std::string w_name = "Y";
+      std::string i_name = "X";
+      if (with_bias) {
+        w_name = "W";
+        i_name = "Input";
+      }
+      auto* block = desc.Block();
+      auto* var_desc = block->FindVar(desc.Input(w_name).front());
+      if (!var_desc) {
+        VLOG(3) << "Can not find " << w_name
+                << " presistale var of fc in scope.";
+        return false;
+      }
+
+      const auto shape = var_desc->GetShape();
+      if (shape.size() != 2UL) {
+        VLOG(3) << "The fc's weight should be a matrix with 2 dims, but it's "
+                << shape.size() << "-dimensional.";
+        return false;
+      }
+
+      if (desc.HasAttr("enable_int8")) {
+        if (!desc.HasAttr("out_threshold")) {
+          VLOG(3) << "Fc layer must have out threshold in int8 mode";
+          return false;
+        }
+
+        if (!desc.HasAttr(i_name + "_scale")) {
+          VLOG(3) << "Fc layer must have " << i_name << "_scale in int8 mode";
+          return false;
+        }
+      }
     }
 
     if (op_type == "reshape" || op_type == "reshape2") {
