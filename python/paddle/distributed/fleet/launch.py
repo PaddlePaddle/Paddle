@@ -389,15 +389,15 @@ def launch():
     Paddle distribution training entry ``python -m paddle.distributed.launch``.
     
     Usage:
-        .. code-block:: bash
-            :name: code-block-bash1
+    .. code-block:: bash
+        :name: code-block-bash1
 
-            python -m paddle.distributed.launch [-h] [--log_dir LOG_DIR] [--nproc_per_node NPROC_PER_NODE] [--run_mode RUN_MODE] [--gpus GPUS]
-                             [--selected_gpus GPUS] [--ips IPS] [--servers SERVERS] [--workers WORKERS] [--heter_workers HETER_WORKERS]
-                             [--worker_num WORKER_NUM] [--server_num SERVER_NUM] [--heter_worker_num HETER_WORKER_NUM]
-                             [--http_port HTTP_PORT] [--elastic_server ELASTIC_SERVER] [--job_id JOB_ID] [--np NP] [--scale SCALE]
-                             [--host HOST] [--force FORCE]
-                             training_script ...    
+        python -m paddle.distributed.launch [-h] [--log_dir LOG_DIR] [--nproc_per_node NPROC_PER_NODE] [--run_mode RUN_MODE] [--gpus GPUS]
+                         [--selected_gpus GPUS] [--ips IPS] [--servers SERVERS] [--workers WORKERS] [--heter_workers HETER_WORKERS]
+                         [--worker_num WORKER_NUM] [--server_num SERVER_NUM] [--heter_worker_num HETER_WORKER_NUM]
+                         [--http_port HTTP_PORT] [--elastic_server ELASTIC_SERVER] [--job_id JOB_ID] [--np NP] [--scale SCALE]
+                         [--host HOST] [--force FORCE]
+                         training_script ...    
 
 
     Base Parameters:
@@ -483,15 +483,15 @@ def launch():
         .. code-block:: bash
             :name: code-block-bash5
 
-            # For multiple node training such as two node:192.168.0.16, 192.168.0.17 with 2 servers and 4 workers
+            # For multiple node training such as two node:192.168.0.16, 192.168.0.17 with 2 servers and total 4 workers
 
             # On 192.168.0.16:
 
-            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.17:6172,192.168.0.16:6171,192.168.0.17:6172" --server_num=2 --worker_num=4 train.py --output_dir=work_dir
+            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --output_dir=work_dir
 
             # On 192.168.0.17:
 
-            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.17:6172,192.168.0.16:6171,192.168.0.17:6172" --server_num=2 --worker_num=4 train.py --output_dir=work_dir
+            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --output_dir=work_dir
 
     Examples 5 (ps, gpu, single node):
         .. code-block:: bash
@@ -505,41 +505,41 @@ def launch():
         .. code-block:: bash
             :name: code-block-bash5
 
-            # For multiple node training such as two node:192.168.0.16, 192.168.0.17 with 2 servers and 4 workers
+            # For multiple node training such as two node:192.168.0.16, 192.168.0.17 with 2 servers and total 4 workers
 
             # On 192.168.0.16:
 
-            export CUDA_VISIBLE_DEVICES=0,1,2,3
-            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.17:6172,192.168.0.16:6171,192.168.0.17:6172" --server_num=2 --worker_num=4 train.py --output_dir=work_dir
+            export CUDA_VISIBLE_DEVICES=0,1
+            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --output_dir=work_dir
 
             # On 192.168.0.17:
 
-            export CUDA_VISIBLE_DEVICES=0,1,2,3
-            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.17:6172,192.168.0.16:6171,192.168.0.17:6172" --server_num=2 --worker_num=4 train.py --output_dir=work_dir
+            export CUDA_VISIBLE_DEVICES=0,1
+            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --output_dir=work_dir
             
-    Examples 7 (ps-heter, gpu, single node):
+    Examples 7 (ps-heter, cpu + gpu, single node):
         .. code-block:: bash
             :name: code-block-bash6
 
-            # 2 server and 4 worker, each worker use single gpu
-            export CUDA_VISIBLE_DEVICES=0,1,2,3
-            python -m paddle.distributed.launch --log_dir=log --server_num=2 --worker_num=4 train.py --output_dir=work_dir
+            # 2 server and 4 worker, two worker use gpu, two worker use cpu
+            export CUDA_VISIBLE_DEVICES=0,1
+            python -m paddle.distributed.launch --log_dir=log --server_num=2 --worker_num=2 --heter_worker_num=2 train.py --output_dir=work_dir
             
-    Examples 8 (ps-heter, gpu, multi node):
+    Examples 8 (ps-heter, cpu + gpu, multi node):
         .. code-block:: bash
             :name: code-block-bash5
 
-            # For multiple node training such as two node:192.168.0.16, 192.168.0.17 with 2 servers and 4 workers
+            # For multiple node training such as two node:192.168.0.16, 192.168.0.17 with 2 servers and total 4 workers
 
             # On 192.168.0.16:
 
-            export CUDA_VISIBLE_DEVICES=0,1,2,3
-            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.17:6172,192.168.0.16:6171,192.168.0.17:6172" --server_num=2 --worker_num=4 train.py --output_dir=work_dir
+            export CUDA_VISIBLE_DEVICES=0
+            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.17:6171" --heter_workers="192.168.0.16:6172,192.168.0.17:6172" train.py --output_dir=work_dir
 
             # On 192.168.0.17:
 
-            export CUDA_VISIBLE_DEVICES=0,1,2,3
-            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.17:6172,192.168.0.16:6171,192.168.0.17:6172" --server_num=2 --worker_num=4 train.py --output_dir=work_dir
+            export CUDA_VISIBLE_DEVICES=0
+            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.17:6171" --heter_workers="192.168.0.16:6172,192.168.0.17:6172" train.py --output_dir=work_dir
 
     Examples 9 (elastic):
         .. code-block:: bash
