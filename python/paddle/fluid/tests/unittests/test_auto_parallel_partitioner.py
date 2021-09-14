@@ -397,8 +397,8 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         dist_ops = dist_main_prog.global_block().ops
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
-            'layer_norm', 'c_identity', 'matmul', 'elementwise_add', 'gelu',
-            'matmul', 'c_allreduce_sum', 'elementwise_add', 'dropout'
+            'layer_norm', 'c_identity', 'matmul_v2', 'elementwise_add', 'gelu',
+            'matmul_v2', 'c_allreduce_sum', 'elementwise_add', 'dropout'
         ]
         self.assertTrue(dist_ops == ref_ops)
 
@@ -455,8 +455,8 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         dist_ops = dist_main_prog.global_block().ops
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
-            'layer_norm', 'c_identity', 'matmul', 'elementwise_add', 'gelu',
-            'matmul', 'c_allreduce_sum', 'elementwise_add', 'dropout'
+            'layer_norm', 'c_identity', 'matmul_v2', 'elementwise_add', 'gelu',
+            'matmul_v2', 'c_allreduce_sum', 'elementwise_add', 'dropout'
         ]
         self.assertTrue(dist_ops == ref_ops)
 
@@ -674,12 +674,12 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         dist_ops = dist_main_prog.global_block().ops
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
-            'c_identity', 'matmul', 'elementwise_add', 'reshape2', 'transpose2',
-            'c_identity', 'matmul', 'elementwise_add', 'c_identity', 'matmul',
-            'elementwise_add', 'reshape2', 'transpose2', 'reshape2',
-            'transpose2', 'matmul', 'softmax', 'dropout', 'matmul_v2',
-            'transpose2', 'reshape2', 'matmul', 'c_allreduce_sum',
-            'elementwise_add'
+            'c_identity', 'matmul_v2', 'elementwise_add', 'reshape2',
+            'transpose2', 'c_identity', 'matmul_v2', 'elementwise_add',
+            'c_identity', 'matmul_v2', 'elementwise_add', 'reshape2',
+            'transpose2', 'reshape2', 'transpose2', 'matmul', 'softmax',
+            'dropout', 'matmul_v2', 'transpose2', 'reshape2', 'matmul_v2',
+            'c_allreduce_sum', 'elementwise_add'
         ]
         self.assertTrue(dist_ops == ref_ops)
 
@@ -736,12 +736,12 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         dist_ops = dist_main_prog.global_block().ops
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
-            'c_identity', 'matmul', 'elementwise_add', 'reshape2', 'transpose2',
-            'c_identity', 'matmul', 'elementwise_add', 'c_identity', 'matmul',
-            'elementwise_add', 'reshape2', 'transpose2', 'reshape2',
-            'transpose2', 'matmul', 'softmax', 'dropout', 'matmul_v2',
-            'transpose2', 'reshape2', 'matmul', 'c_allreduce_sum',
-            'elementwise_add'
+            'c_identity', 'matmul_v2', 'elementwise_add', 'reshape2',
+            'transpose2', 'c_identity', 'matmul_v2', 'elementwise_add',
+            'c_identity', 'matmul_v2', 'elementwise_add', 'reshape2',
+            'transpose2', 'reshape2', 'transpose2', 'matmul', 'softmax',
+            'dropout', 'matmul_v2', 'transpose2', 'reshape2', 'matmul_v2',
+            'c_allreduce_sum', 'elementwise_add'
         ]
         self.assertTrue(dist_ops == ref_ops)
 
@@ -1024,15 +1024,16 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
             'c_embedding', 'c_allreduce_sum', 'lookup_table_v2',
-            'elementwise_add', 'dropout', 'layer_norm', 'c_identity', 'matmul',
-            'elementwise_add', 'reshape2', 'transpose2', 'c_identity', 'matmul',
-            'elementwise_add', 'c_identity', 'matmul', 'elementwise_add',
-            'reshape2', 'transpose2', 'reshape2', 'transpose2', 'matmul',
-            'softmax', 'dropout', 'matmul_v2', 'transpose2', 'reshape2',
-            'matmul', 'c_allreduce_sum', 'elementwise_add', 'dropout',
-            'elementwise_add', 'layer_norm', 'c_identity', 'matmul',
-            'elementwise_add', 'gelu', 'matmul', 'c_allreduce_sum',
-            'elementwise_add', 'dropout', 'elementwise_add'
+            'elementwise_add', 'dropout', 'layer_norm', 'c_identity',
+            'matmul_v2', 'elementwise_add', 'reshape2', 'transpose2',
+            'c_identity', 'matmul_v2', 'elementwise_add', 'c_identity',
+            'matmul_v2', 'elementwise_add', 'reshape2', 'transpose2',
+            'reshape2', 'transpose2', 'matmul', 'softmax', 'dropout',
+            'matmul_v2', 'transpose2', 'reshape2', 'matmul_v2',
+            'c_allreduce_sum', 'elementwise_add', 'dropout', 'elementwise_add',
+            'layer_norm', 'c_identity', 'matmul_v2', 'elementwise_add', 'gelu',
+            'matmul_v2', 'c_allreduce_sum', 'elementwise_add', 'dropout',
+            'elementwise_add'
         ]
         self.assertTrue(dist_ops == ref_ops)
 
@@ -1100,13 +1101,13 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
             'lookup_table_v2', 'lookup_table_v2', 'elementwise_add', 'dropout',
-            'layer_norm', 'matmul', 'elementwise_add', 'reshape2', 'transpose2',
-            'matmul', 'elementwise_add', 'matmul', 'elementwise_add',
-            'reshape2', 'transpose2', 'reshape2', 'transpose2', 'matmul',
-            'softmax', 'dropout', 'matmul_v2', 'transpose2', 'reshape2',
-            'matmul', 'elementwise_add', 'dropout', 'elementwise_add',
-            'layer_norm', 'matmul', 'elementwise_add', 'gelu', 'matmul',
-            'elementwise_add', 'dropout', 'elementwise_add'
+            'layer_norm', 'matmul_v2', 'elementwise_add', 'reshape2',
+            'transpose2', 'matmul_v2', 'elementwise_add', 'matmul_v2',
+            'elementwise_add', 'reshape2', 'transpose2', 'reshape2',
+            'transpose2', 'matmul', 'softmax', 'dropout', 'matmul_v2',
+            'transpose2', 'reshape2', 'matmul_v2', 'elementwise_add', 'dropout',
+            'elementwise_add', 'layer_norm', 'matmul_v2', 'elementwise_add',
+            'gelu', 'matmul_v2', 'elementwise_add', 'dropout', 'elementwise_add'
         ]
         self.assertTrue(dist_ops == ref_ops)
         dist_ops = dist_startup_prog.global_block().ops
