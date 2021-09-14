@@ -19,11 +19,15 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/framework/new_executor/profiler.h"
+#include "paddle/fluid/framework/new_executor/workqueue.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/platform/device_event.h"
 
 namespace paddle {
 namespace framework {
@@ -38,50 +42,68 @@ class InterpreterCore {
   paddle::framework::FetchList Run(
       const std::vector<framework::Tensor>& feed_tensors);
 
-  static void BuildOpFuncList(const platform::Place& place,
-                              const framework::ProgramDesc& pdesc,
-                              std::vector<OperatorBase*>* op_list,
-                              std::vector<OpFuncNode>* vec_func_list,
-                              VariableScope* var_scope);
+  const CostInfo& DryRun(const std::vector<framework::Tensor>& feed_tensors);
 
  private:
   void Convert();
 
-  void BuildInstructionCtx(Instruction* instr_node,
-                           const VariableScope& var_scope,
-                           const platform::Place& place);
+  void BuildAndCacheInstructionCtx(Instruction* instr_node,
+                                   const VariableScope& var_scope,
+                                   const platform::Place& place);
 
   void RunInstruction(const Instruction& instr_node);
 
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr,
                               const VariableScope& var_scope,
-                              const platform::Place& place);
+                              const platform::Place& place,
+                              bool is_dry_run = false);
 
-  std::vector<size_t> MergeVector(const std::vector<size_t>& first,
-                                  const std::vector<size_t>& second);
+  void DryRunPrepare(const std::vector<framework::Tensor>& feed_tensors);
 
-  void BuildVariableScope(const framework::ProgramDesc& pdesc,
-                          VariableScope* var_scope);
+  void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list,
+               const VariableScope& var_scope, const platform::Place& place,
+               std::vector<VariableMetaInfo>& working_var_ref);  // NOLINT
+
+  platform::DeviceContext* ParseDeviceContextForInstruction(
+      const OpFuncNode& op_func_node, const OperatorBase& op_base);
+
+  void RecordEventInstruction(const Instruction& instruction,
+                              const OpFuncNode& op_func_node);
+
+  void WaitOrSync(const std::vector<EventInter>& events,
+                  const platform::DeviceContext* dev_ctx);
+
+  void StreamWaitEventOrSync(const Instruction& instruction);
+
+  void AddFetch(const std::vector<std::string>& fetch_names);
+
+  bool is_build_;
 
   const platform::Place& place_;
   ProgramDesc main_program_;
   VariableScope* global_scope_;
+
+  platform::DeviceContextPool d2h_ctx_pool_;
+  platform::DeviceContextPool h2d_ctx_pool_;
+
+  std::vector<Instruction> vec_instruction_;
+  InstructionInfo instruction_info_;
+  std::vector<size_t> dependecy_count_;
+  std::vector<std::vector<size_t>> input_var2op_info_;
+  std::vector<VariableMetaInfo> ref_coun_info_;
   std::vector<VariableMetaInfo> vec_meta_info_;
 
   std::vector<paddle::framework::OpFuncNode> vec_func_list_;
   std::vector<paddle::framework::OperatorBase*> op_list_;
 
-  std::vector<Instruction> vec_instruction_;
-  InstructionInfo instruction_info_;
-  std::vector<size_t> dependecy_count_;
-  std::vector<VariableMetaInfo> ref_coun_info_;
-  std::vector<std::vector<size_t>> input_var2op_info_;
-
-  bool is_build_;
-
   std::vector<std::string> feed_names_;
 
-  platform::DeviceContextPool fetch_context_pool_;
+  InterpreterProfiler dry_run_profiler_;
+
+  std::map<size_t, std::shared_ptr<platform::DeviceEvent>> var_id2event_;
+
+  InterpreterCoreGarbageCollector gc_;
+  std::vector<paddle::platform::DeviceEvent> gc_event_;
 };
 }  // namespace framework
 }  // namespace paddle

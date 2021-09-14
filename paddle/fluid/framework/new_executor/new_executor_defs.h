@@ -19,6 +19,8 @@
 #include <vector>
 
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/platform/device_event_base.h"
+#include "paddle/fluid/platform/event.h"
 
 namespace paddle {
 namespace framework {
@@ -34,28 +36,41 @@ struct OpKernelFunc {
 
 struct VariableMetaInfo {
   int var_ref_count_;
+  paddle::framework::VarDesc* vardesc_;
 };
 
 struct VariableScope {
   std::vector<Variable*> var_list;
   std::map<std::string, int> name2id;
+  std::vector<VariableMetaInfo> vec_meta_info_;
 };
 
+struct EventRun {
+  explicit EventRun(size_t op_id) : op_id_(op_id) {}
+  size_t op_id_;
+};
 struct NextInstruction {
   std::vector<size_t> direct_run_;
+  std::vector<EventRun> event_wait_run_;
+  std::vector<EventRun> synchronize_run_;
+  std::vector<size_t> all_next_ops_;
 };
 
-struct EventInter {};
+struct EventInter {
+  explicit EventInter(size_t var_id,
+                      std::shared_ptr<platform::DeviceEvent> event,
+                      bool is_sync)
+      : var_id_(var_id), event_(event), is_sync_(is_sync) {}
+  size_t var_id_;
+  std::shared_ptr<platform::DeviceEvent> event_;
+  bool is_sync_;
+};
 
 struct InstructionInfo {
   std::vector<size_t> dependecy_count_;
 };
 
-struct EventRun {
-  EventInter event_inter;
-  std::vector<size_t> same_device_run_;
-  std::vector<size_t> synchronized_run;
-};
+class RuntimeInferShapeContext;
 
 struct Instruction {
   OpKernelFunc kernel_func_;
@@ -67,7 +82,16 @@ struct Instruction {
 
   std::vector<size_t> gc_check_var_list;
   NextInstruction next_instruction_;
-  std::vector<EventInter> vec_event_list_;
+
+  std::vector<EventInter> intput_events_;
+  std::vector<EventInter> output_events_;
+
+  platform::DeviceContext* dev_ctx_;  // not owned
+};
+
+enum class OpFuncType {
+  kQueueAsync,  // GPU Kernel or d2h, h2d, send, recv, broadcast
+  kQueueSync,   // CPU kernel, block host
 };
 
 struct OpFuncNode {
@@ -76,6 +100,8 @@ struct OpFuncNode {
   std::map<std::string, std::vector<int>> output_index;
 
   OpKernelComputeFunc kernel_func_;
+  platform::DeviceContext* dev_ctx_;  // not owned
+  OpFuncType type_;
 };
 
 }  // namespace framework

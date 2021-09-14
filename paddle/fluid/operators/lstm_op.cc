@@ -30,10 +30,15 @@ class LSTMOp : public framework::OperatorWithKernel {
 
     OP_INOUT_CHECK(ctx->HasOutput("Hidden"), "Output", "Hidden", "LSTM");
     OP_INOUT_CHECK(ctx->HasOutput("Cell"), "Output", "Cell", "LSTM");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchGate"), "Output", "BatchGate", "LSTM");
-    OP_INOUT_CHECK(ctx->HasOutput("BatchCellPreAct"), "Output",
-                   "BatchCellPreAct", "LSTM");
 
+    bool is_test = ctx->Attrs().Get<bool>("is_test");
+
+    if (!is_test) {
+      OP_INOUT_CHECK(ctx->HasOutput("BatchGate"), "Output", "BatchGate",
+                     "LSTM");
+      OP_INOUT_CHECK(ctx->HasOutput("BatchCellPreAct"), "Output",
+                     "BatchCellPreAct", "LSTM");
+    }
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_EQ(
         in_dims.size(), 2,
@@ -103,8 +108,10 @@ class LSTMOp : public framework::OperatorWithKernel {
     framework::DDim out_dims({in_dims[0], frame_size});
     ctx->SetOutputDim("Hidden", out_dims);
     ctx->SetOutputDim("Cell", out_dims);
-    ctx->SetOutputDim("BatchGate", in_dims);
-    ctx->SetOutputDim("BatchCellPreAct", out_dims);
+    if (!is_test) {
+      ctx->SetOutputDim("BatchGate", in_dims);
+      ctx->SetOutputDim("BatchCellPreAct", out_dims);
+    }
     ctx->ShareLoD("Input", "Hidden");
     ctx->ShareLoD("Input", "Cell");
   }
@@ -164,11 +171,13 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
               "LoD is the batch offsets and the second LoD contains the "
               "indexes, which denote the position of reorganized sequence "
               "in the raw input.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
     AddOutput("BatchCellPreAct",
               "(LoDTensor) This LoDTensor is obtained in the forward and used "
               "in the backward.")
-        .AsIntermediate();
+        .AsIntermediate()
+        .AsExtra();
     AddAttr<bool>("use_peepholes",
                   "(bool, default: True) "
                   "whether to enable diagonal/peephole connections.")
@@ -177,6 +186,7 @@ class LSTMOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default: False) "
                   "whether to compute reversed LSTM.")
         .SetDefault(false);
+    AddAttr<bool>("is_test", "True if in test phase.").SetDefault(false);
     AddAttr<std::string>(
         "gate_activation",
         "(string, default: sigmoid)"
