@@ -266,7 +266,7 @@ class TestFP16ElementwiseSubOp_broadcast_6(TestFP16ElementwiseSubOp):
         self.out = self.x - self.y
 
 
-class TestElementwiseSubOp_rowwise_add_0(TestElementwiseSubOp):
+class TestElementwiseSubOp_rowwise_sub_0(TestElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -276,7 +276,7 @@ class TestElementwiseSubOp_rowwise_add_0(TestElementwiseSubOp):
         self.axis = 1
 
 
-class TestFP16ElementwiseSubOp_rowwise_add_0(TestFP16ElementwiseSubOp):
+class TestFP16ElementwiseSubOp_rowwise_sub_0(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -287,7 +287,7 @@ class TestFP16ElementwiseSubOp_rowwise_add_0(TestFP16ElementwiseSubOp):
 
 
 @OpTestTool.skip_if(True, "Grad not yet implemented")
-class TestElementwiseSubOp_rowwise_add_1(TestElementwiseSubOp):
+class TestElementwiseSubOp_rowwise_sub_1(TestElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(100, 1).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
@@ -298,7 +298,7 @@ class TestElementwiseSubOp_rowwise_add_1(TestElementwiseSubOp):
 
 
 @OpTestTool.skip_if(True, "Grad not yet implemented")
-class TestFP16ElementwiseSubOp_rowwise_add_1(TestFP16ElementwiseSubOp):
+class TestFP16ElementwiseSubOp_rowwise_sub_1(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(100, 1).astype(self.dtype)
         self.y = np.random.rand(1).astype(self.dtype)
@@ -308,7 +308,7 @@ class TestFP16ElementwiseSubOp_rowwise_add_1(TestFP16ElementwiseSubOp):
         self.axis = 1
 
 
-class TestElementwiseSubOp_channelwise_add(TestElementwiseSubOp):
+class TestElementwiseSubOp_channelwise_sub(TestElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100, 1, 1).astype(self.dtype)
@@ -318,7 +318,7 @@ class TestElementwiseSubOp_channelwise_add(TestElementwiseSubOp):
         self.axis = -1
 
 
-class TestFP16ElementwiseSubOp_channelwise_add(TestFP16ElementwiseSubOp):
+class TestFP16ElementwiseSubOp_channelwise_sub(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
         self.y = np.random.rand(100, 1, 1).astype(self.dtype)
@@ -328,7 +328,7 @@ class TestFP16ElementwiseSubOp_channelwise_add(TestFP16ElementwiseSubOp):
         self.axis = -1
 
 
-class TestElementwiseSubOp_commonuse_add1(TestElementwiseSubOp):
+class TestElementwiseSubOp_commonuse_sub1(TestElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 100).astype(self.dtype)
         self.y = np.random.rand(1, 1, 100).astype(self.dtype)
@@ -338,7 +338,7 @@ class TestElementwiseSubOp_commonuse_add1(TestElementwiseSubOp):
         self.axis = -1
 
 
-class TestElementwiseFP16AddOp_commonuse_add1(TestFP16ElementwiseSubOp):
+class TestElementwiseFP16SubOp_commonuse_sub1(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 100).astype(self.dtype)
         self.y = np.random.rand(1, 1, 100).astype(self.dtype)
@@ -348,7 +348,7 @@ class TestElementwiseFP16AddOp_commonuse_add1(TestFP16ElementwiseSubOp):
         self.axis = -1
 
 
-class TestElementwiseSubOp_commonuse_add2(TestElementwiseSubOp):
+class TestElementwiseSubOp_commonuse_sub2(TestElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(10, 3, 1, 4).astype(self.dtype)
         self.y = np.random.rand(10, 1, 12, 1).astype(self.dtype)
@@ -358,7 +358,7 @@ class TestElementwiseSubOp_commonuse_add2(TestElementwiseSubOp):
         self.axis = -1
 
 
-class TestElementwiseSubOp_xsize_lessthan_ysize_add(TestElementwiseSubOp):
+class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(10, 12).astype(self.dtype)
         self.y = np.random.rand(2, 2, 10, 12).astype(self.dtype)
@@ -395,7 +395,7 @@ class TestElementwiseSubOpError(unittest.TestCase):
             self.assertRaises(TypeError, fluid.layers.elementwise_add, x2, y2)
 
 
-class TestAddApi(unittest.TestCase):
+class TestSubApi(unittest.TestCase):
     def _executed_api(self, x, y, name=None):
         return paddle.add(x, y, name)
 
@@ -438,12 +438,12 @@ class TestAddApi(unittest.TestCase):
             self.assertEqual((np_z == z_expected).all(), True)
 
 
-class TestAddInplaceApi(TestAddApi):
+class TestSubInplaceApi(TestSubApi):
     def _executed_api(self, x, y, name=None):
         return x.add_(y, name)
 
 
-class TestAddInplaceBroadcastSuccess(unittest.TestCase):
+class TestSubInplaceBroadcastSuccess(unittest.TestCase):
     def init_data(self):
         self.x_numpy = np.random.rand(2, 3, 4).astype('float')
         self.y_numpy = np.random.rand(3, 4).astype('float')
@@ -459,19 +459,19 @@ class TestAddInplaceBroadcastSuccess(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestAddInplaceBroadcastSuccess2(TestAddInplaceBroadcastSuccess):
+class TestSubInplaceBroadcastSuccess2(TestSubInplaceBroadcastSuccess):
     def init_data(self):
         self.x_numpy = np.random.rand(1, 2, 3, 1).astype('float')
         self.y_numpy = np.random.rand(3, 1).astype('float')
 
 
-class TestAddInplaceBroadcastSuccess3(TestAddInplaceBroadcastSuccess):
+class TestSubInplaceBroadcastSuccess3(TestSubInplaceBroadcastSuccess):
     def init_data(self):
         self.x_numpy = np.random.rand(2, 3, 1, 5).astype('float')
         self.y_numpy = np.random.rand(1, 3, 1, 5).astype('float')
 
 
-class TestAddInplaceBroadcastError(unittest.TestCase):
+class TestSubInplaceBroadcastError(unittest.TestCase):
     def init_data(self):
         self.x_numpy = np.random.rand(3, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
@@ -489,13 +489,13 @@ class TestAddInplaceBroadcastError(unittest.TestCase):
         paddle.enable_static()
 
 
-class TestAddInplaceBroadcastError2(TestAddInplaceBroadcastError):
+class TestSubInplaceBroadcastError2(TestSubInplaceBroadcastError):
     def init_data(self):
         self.x_numpy = np.random.rand(2, 1, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
 
 
-class TestAddInplaceBroadcastError3(TestAddInplaceBroadcastError):
+class TestSubInplaceBroadcastError3(TestSubInplaceBroadcastError):
     def init_data(self):
         self.x_numpy = np.random.rand(5, 2, 1, 4).astype('float')
         self.y_numpy = np.random.rand(2, 3, 4).astype('float')
@@ -573,8 +573,8 @@ class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
         self.grad_y = self.grad_out
 
 
-class TestBoolAddFloatElementwiseSubOp(unittest.TestCase):
-    def test_static_add(self):
+class TestBoolSubFloatElementwiseSubOp(unittest.TestCase):
+    def test_static_sub(self):
         paddle.enable_static()
         a = 1.5
         b = paddle.full([4, 5, 6], True, dtype='bool')
@@ -582,7 +582,7 @@ class TestBoolAddFloatElementwiseSubOp(unittest.TestCase):
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
         paddle.enable_static()
 
-    def test_dygraph_add(self):
+    def test_dygraph_sub(self):
         paddle.disable_static()
         a = 1.5
         b = paddle.full([4, 5, 6], True, dtype='bool')

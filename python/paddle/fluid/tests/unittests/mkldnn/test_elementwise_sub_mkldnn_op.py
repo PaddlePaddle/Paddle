@@ -75,7 +75,7 @@ class TestMKLDNNElementwiseSubOp_broadcast_3(TestMKLDNNElementwiseSubOp):
         self.axis = 1
 
 
-class TestElementwiseAddOp_xsize_lessthan_ysize_add(TestMKLDNNElementwiseSubOp):
+class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestMKLDNNElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(10, 12).astype(self.dtype)
         self.y = np.random.rand(2, 2, 10, 12).astype(self.dtype)
