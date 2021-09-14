@@ -462,6 +462,10 @@ if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_dataset)
 endif()
 
+if (NOT WITH_GLOO OR WITH_GPU OR WITH_XPU)
+    LIST(REMOVE_ITEM TEST_OPS test_cpuonly_spawn)
+endif()
+
 if(NOT WITH_GPU OR WIN32 OR APPLE)
   list(REMOVE_ITEM TEST_OPS test_build_strategy_fusion_group_pass)
 endif()
@@ -623,9 +627,7 @@ if(WITH_DISTRIBUTE)
 endif()
 
 if (NOT WITH_GLOO OR WITH_GPU OR WITH_XPU)
-    # only enable when with gloo and only cpu
     LIST(REMOVE_ITEM TEST_OPS test_cpuonly_launch)
-    LIST(REMOVE_ITEM TEST_OPS test_cpuonly_spawn)
 endif()
 
 py_test_modules(test_parallel_executor_crf MODULES test_parallel_executor_crf)
