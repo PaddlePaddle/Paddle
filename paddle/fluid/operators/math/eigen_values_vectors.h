@@ -14,14 +14,13 @@
 
 #pragma once
 
-#ifndef PADDLE_WITH_HIP
-// HIP not support cusolver
-
 #include "Eigen/Core"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/svd_helper.h"
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cusolver.h"
+#endif  // PADDLE_WITH_CUDA
 
 namespace paddle {
 namespace operators {
@@ -310,5 +309,3 @@ FUNC_WITH_TYPES(EVD_INSTANCE);
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle
-
-#endif  // not PADDLE_WITH_HIP
