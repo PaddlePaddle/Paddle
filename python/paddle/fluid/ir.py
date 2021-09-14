@@ -127,10 +127,11 @@ def apply_build_strategy(main_program, startup_program, build_strategy,
 
 
 class RegisterPassHelper(object):
-    def __init__(self, pass_type=str()):
+    def __init__(self, pass_pairs, pass_type=str(), input_specs=dict()):
         self._pass_type = pass_type
-        self._pass_pairs = None
-        self._input_specs = dict()
+        self._pass_pairs = pass_pairs
+        if isinstance(input_specs, dict):
+            self._input_specs = input_specs
 
     def _get_args_from_func(self, func):
         args = list()
@@ -173,13 +174,6 @@ class RegisterPassHelper(object):
                 attrs.extend(op._attrs.values())
             return vars, attrs
         return vars
-
-    def SetPassPairs(self, pass_pairs):
-        self._pass_pairs = pass_pairs
-
-    def SetInputSpecs(self, input_specs):
-        if isinstance(input_specs, dict):
-            self._input_specs = input_specs
 
     def SerializeMultiPassDesc(self):
         switch_static_mode = paddle.in_dynamic_mode()
@@ -298,7 +292,6 @@ class PassDesc(object):
             return self._op_desc.outputs()
 
     OP = OpHelper()
-    OP_ANY = OpHelper()
 
 
 def RegisterPass(function=None, input_specs=None):
@@ -355,9 +348,7 @@ def RegisterPass(function=None, input_specs=None):
                 raise ValueError(
                     "Return value of Pass function must be (callable, callable)."
                 )
-            helper = RegisterPassHelper(pass_type)
-            helper.SetPassPairs(pass_pairs)
-            helper.SetInputSpecs(input_specs)
+            helper = RegisterPassHelper(pass_pairs, pass_type, input_specs)
         return python_func
 
     if inspect.isfunction(function):
