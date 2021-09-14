@@ -47,9 +47,21 @@ def softmax(x):
     return f_x
 
 
+def get_csr_value(mat, layout, nnz):
+    row = mat.shape[0]
+    col = mat.shape[1]
+    value = np.zeros(nnz)
+    ptr = 0
+    for i in range(row):
+        for j in range(col):
+            if layout[i][j] == 1:
+                value[ptr] = mat[i][j]
+                ptr += 1
+    return value
+
+
 def ref_sparse_attention(q, k, v, offset, columns):
     row = q.shape[0]
-    col = q.shape[1]
     mat = np.zeros((row, row))
     # init mat from CSR format
     for cur_row in range(row):
@@ -60,8 +72,11 @@ def ref_sparse_attention(q, k, v, offset, columns):
             mat[cur_row][cur_col] = 1
     # sdd
     a = np.dot(q, k.T) * mat
+    # Get nnz of a
+    nnz = columns.shape[0]
+    a_value = get_csr_value(a, mat, nnz)
     # scale
-    head_dim = col
+    head_dim = q.shape[1]
     scaling = float(head_dim)**-0.5
     a = scaling * a
     for i in range(row):
@@ -70,12 +85,30 @@ def ref_sparse_attention(q, k, v, offset, columns):
                 a[i][j] = float('-inf')
     # softmax
     b = softmax(a)
+    b_value = get_csr_value(b, mat, nnz)
     # dsd
     result = np.dot(b, v)
-    return result
+    return result, a_value, b_value
 
 
-def init_csr_format(rows, blocksize):
+def ref_batch_sparse_attention(q, k, v, offset, columns):
+    batch_size, num_heads, row, col = q.shape
+    nnz = columns.shape[2]
+    result = np.zeros((batch_size, num_heads, row, col))
+    result_sdd = np.zeros((batch_size, num_heads, nnz))
+    result_softmax = np.zeros((batch_size, num_heads, nnz))
+    for i in range(batch_size):
+        for j in range(num_heads):
+            cur_q, cur_k, cur_v, cur_offset, cur_columns = q[i][j], k[i][j], v[
+                i][j], offset[i][j], columns[i][j]
+            cur_result, cur_sdd, cur_softmax = ref_sparse_attention(
+                cur_q, cur_k, cur_v, cur_offset, cur_columns)
+            result[i][j], result_sdd[i][j], result_softmax[i][
+                j] = cur_result, cur_sdd, cur_softmax
+    return result, result_sdd, result_softmax
+
+
+def init_csr_format(batch_size, num_heads, rows, blocksize):
     block_num = rows / blocksize
     block_last = rows % blocksize
     nnz_num = block_num * blocksize * blocksize + block_last * block_last
@@ -85,14 +118,10 @@ def init_csr_format(rows, blocksize):
     for i in range(0, rows, blocksize):
         for x in range(blocksize):
             for y in range(blocksize):
-                p_x = i + x
-                p_y = i + y
+                p_x, p_y = i + x, i + y
                 if (p_x < rows) and (p_y < rows):
                     mat[p_x][p_y] = 1
-
-    p_offset = 0
-    p_column = 0
-    count = 0
+    p_offset, p_column, count = 0, 0, 0
     for i in range(rows):
         for j in range(rows):
             if mat[i][j] != 0:
@@ -101,6 +130,12 @@ def init_csr_format(rows, blocksize):
                 p_column += 1
         p_offset += 1
         offset[p_offset] = count
+    offset = np.expand_dims(np.expand_dims(offset, 0), 0)
+    offset = offset.repeat(num_heads, axis=1)
+    offset = offset.repeat(batch_size, axis=0)
+    columns = np.expand_dims(np.expand_dims(columns, 0), 0)
+    columns = columns.repeat(num_heads, axis=1)
+    columns = columns.repeat(batch_size, axis=0)
     return offset, columns
 
 
@@ -111,38 +146,23 @@ class TestSparseAttentionOp(OpTest):
     def config(self):
         self.shape = (1, 1, 8, 8)
         self.blocksize = 2
-
-    def init_kernel_type(self):
         self.dtype = "float64"
 
     def setUp(self):
-        # init tensor
         paddle.enable_static()
-        self.init_kernel_type()
         self.config()
         self.op_type = "sparse_attention"
         self.place = paddle.CUDAPlace(0)
-        nq = np.random.random(self.shape).astype(self.dtype)
-        nk = np.random.random(self.shape).astype(self.dtype)
-        nv = np.random.random(self.shape).astype(self.dtype)
-        self.q = nq
-        self.k = nk
-        self.v = nv
-        nq = nq.squeeze()
-        nk = nk.squeeze()
-        nv = nv.squeeze()
+        self.q = np.random.random(self.shape).astype(self.dtype)
+        self.k = np.random.random(self.shape).astype(self.dtype)
+        self.v = np.random.random(self.shape).astype(self.dtype)
+        offset, columns = init_csr_format(self.shape[0], self.shape[1],
+                                          self.shape[2], self.blocksize)
+        self.offset = offset.astype('int32')
+        self.columns = columns.astype('int32')
 
-        # init CSR format in numpy
-        row = nq.shape[0]
-        noffset, ncolumns = init_csr_format(row, self.blocksize)
-
-        # init CSR format in paddle Tensor
-        self.offset = noffset.astype('int32')
-        self.columns = ncolumns.astype('int32')
-
-        result = ref_sparse_attention(nq, nk, nv, noffset, ncolumns)
-        result = result.astype(self.dtype)
-        result = np.expand_dims(np.expand_dims(result, 0), 0)
+        result, result_sdd, result_softmax = ref_batch_sparse_attention(
+            self.q, self.k, self.v, self.offset, self.columns)
 
         self.inputs = {
             'Q': self.q,
@@ -151,7 +171,11 @@ class TestSparseAttentionOp(OpTest):
             'offset': self.offset,
             'columns': self.columns
         }
-        self.outputs = {'Out': result, 'ResultSdd': a, 'ResultSoftmax': b}
+        self.outputs = {
+            'Out': result.astype(self.dtype),
+            'ResultSdd': result_sdd.astype(self.dtype),
+            'ResultSoftmax': result_softmax.astype(self.dtype)
+        }
 
     def test_check_output(self):
         self.check_output_with_place(self.place)
@@ -162,65 +186,25 @@ class TestSparseAttentionOp(OpTest):
         self.check_grad_with_place(self.place, ['V'], 'Out')
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "core is not compiled with CUDA and cuda version need larger than 11.2")
-class TestSparseAttentionAPI(unittest.TestCase):
-    def setUp(self):
-        self.place = paddle.CUDAPlace(0)
-        self.shape = (1, 1, 8, 8)
+class TestSparseAttentionOpFp32Test(TestSparseAttentionOp):
+    def config(self):
+        self.shape = (1, 1, 4, 4)
         self.blocksize = 2
-        self.dtype = 'float64'
+        self.dtype = "float32"
 
-    # def check_static_result(self, place):
-    #     with paddle.static.program_guard(Program(), Program()):
-    #         paddle.enable_static()
-    #         q = paddle.static.data(name="Q", shape=[1, 1, 16, 16], dtype="float32")
-    #         k = paddle.static.data(name="K", shape=[1, 1, 16, 16], dtype="float32")
-    #         v = paddle.static.data(name="V", shape=[1, 1, 16, 16], dtype="float32")
 
-    #         result = paddle.fluid.core.sparse_attention([q,k,v,])
+class TestSparseAttentionOpShapeTest1(TestSparseAttentionOp):
+    def config(self):
+        self.shape = (2, 2, 8, 8)
+        self.blocksize = 2
+        self.dtype = "float64"
 
-    #         x_np = np.random.random([4, 3]).astype("float32")
-    #         y_np = np.random.random([3, 4]).astype("float32")
 
-    #         exe = fluid.Executor(self.place)
-    #         fetches = exe.run(fluid.default_main_program(),
-    #                           feed={"input_x": x_np,
-    #                                 "input_y": y_np},
-    #                           fetch_list=[result])
-
-    def test_dygraph(self):
-        paddle.disable_static()
-        rows = self.shape[2]
-        offset, columns = init_csr_format(rows, self.blocksize)
-        offset = offset.astype('int32')
-        columns = columns.astype('int32')
-        query = np.random.random(self.shape).astype(self.dtype)
-        key = np.random.random(self.shape).astype(self.dtype)
-        value = np.random.random(self.shape).astype(self.dtype)
-
-        paddle_query = paddle.to_tensor(query, place=self.place)
-        paddle_key = paddle.to_tensor(key, place=self.place)
-        paddle_value = paddle.to_tensor(value, place=self.place)
-        paddle_offset = paddle.to_tensor(offset, place=self.place)
-        paddle_colunmns = paddle.to_tensor(columns, place=self.place)
-
-        paddle_result, tmp_sdd, tmp_softmax = paddle.fluid.core.sparse_attention(
-            paddle_query, paddle_key, paddle_value, paddle_offset,
-            paddle_colunmns)
-
-        query = query.squeeze()
-        key = key.squeeze()
-        value = value.squeeze()
-
-        numpy_result = ref_sparse_attention(query, key, value, offset, columns)
-        numpy_result = numpy_result.astype(self.dtype)
-        numpy_result = np.expand_dims(np.expand_dims(numpy_result, 0), 0)
-
-        self.assertTrue(
-            np.allclose(
-                paddle_result.numpy(), numpy_result, atol=1e-5))
+class TestSparseAttentionOpShapeTest2(TestSparseAttentionOp):
+    def config(self):
+        self.shape = (2, 2, 64, 32)
+        self.blocksize = 8
+        self.dtype = "float64"
 
 
 if __name__ == '__main__':

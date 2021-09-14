@@ -12,9 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/sparse_attention_op.h"
 #include <string>
 #include <vector>
+#include "paddle/fluid/framework/data_type.h"
+#include "paddle/fluid/framework/op_registry.h"
 
 namespace paddle {
 namespace operators {
@@ -22,17 +23,23 @@ namespace operators {
 class SparseAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Q", "tensor of shape ");
-    AddInput("K", "tensor of shape ");
-    AddInput("V", "tensor of shape ");
+    AddInput("Q", "The input tensors of query in sparse_attention operator.");
+    AddInput("K", "The input tensors of key in sparse_attention operator.");
+    AddInput("V", "The input tensors of value in sparse_attention operator.");
     AddInput("offset", "tensor of offset in CSR format ");
     AddInput("columns", "tensor of columns in CSR format ");
-    AddOutput("Out", "The output tensor of sparse_mat operator");
-    AddOutput("ResultSdd", "The computation result of sdd operation.")
+
+    AddOutput("Out", "The output tensor of sparse_attention operator");
+    AddOutput("ResultSdd",
+              "The computation result of sparse_dot_sdd operation.")
         .AsIntermediate();
     AddOutput("ResultSoftmax", "The computation result of softmax operation.")
         .AsIntermediate();
     AddComment(R"DOC(
+      Compute the value of the sparse attention module. Its input value includes five tensors.
+      Q, K, and V represent query, key, and value in the Attention module, respectively. 
+      The CSR format is used to represent the sparsity feature in the Attention module. 
+      The CSR format contains two tensors, offset and columns.
       )DOC");
   }
 };
@@ -66,9 +73,8 @@ class SparseAttentionOp : public framework::OperatorWithKernel {
     auto ndims_q = dims_q.size();
     auto ndims_k = dims_k.size();
     auto ndims_v = dims_v.size();
-    int64_t columns_dim = dims_columns[0];
+    int64_t columns_dim = dims_columns[2];
 
-    // q,k,v must be 4 dims
     PADDLE_ENFORCE_EQ(ndims_q, 4,
                       "ShapeError: Dimension in query' shapes must be 4. ");
     PADDLE_ENFORCE_EQ(ndims_k, 4,
@@ -78,11 +84,13 @@ class SparseAttentionOp : public framework::OperatorWithKernel {
 
     std::vector<int64_t> new_dims;
     new_dims.assign(dims_q.begin(), dims_q.end());
-
     auto out_dims = framework::make_ddim(new_dims);
+
+    auto batch_size = dims_q[0];
+    auto num_heads = dims_q[1];
     ctx->SetOutputDim("Out", out_dims);
-    ctx->SetOutputDim("ResultSdd", {columns_dim});
-    ctx->SetOutputDim("ResultSoftmax", {columns_dim});
+    ctx->SetOutputDim("ResultSdd", {batch_size, num_heads, columns_dim});
+    ctx->SetOutputDim("ResultSoftmax", {batch_size, num_heads, columns_dim});
     ctx->ShareLoD("Q", "Out");
   }
 
@@ -98,7 +106,6 @@ class SparseAttentionOp : public framework::OperatorWithKernel {
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
     if (framework::IsComplexType(expected_kernel_type.data_type_)) {
-      // only promote inputs’s types when contains complex input
       return framework::OpKernelType(tensor.type(), tensor.place(),
                                      tensor.layout());
     } else {
@@ -202,6 +209,26 @@ class SparseAttentionDoubleGradOpMaker
     grad_op->SetOutput("DDQ", this->OutputGrad(framework::GradVarName("Q")));
     grad_op->SetOutput("DDK", this->OutputGrad(framework::GradVarName("K")));
     grad_op->SetOutput("DDV", this->OutputGrad(framework::GradVarName("V")));
+  }
+};
+
+template <typename DeviceContext, typename T>
+class SparseAttentionKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The sparse_attention OP needs to use Nvidia GPU, and the CUDA version "
+        "cannot be less than 11.2"));
+  }
+};
+
+template <typename DeviceContext, typename T>
+class SparseAttentionGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const paddle::framework::ExecutionContext& ctx) const override {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The sparse_attention OP needs to use Nvidia GPU, and the CUDA version "
+        "cannot be less than 11.2"));
   }
 };
 
