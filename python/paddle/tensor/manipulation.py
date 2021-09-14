@@ -1720,7 +1720,8 @@ def expand_as(x, y, name=None):
 
     check_variable_and_dtype(
         x, 'x', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand_as')
-    check_type(y, 'y', Variable, 'expand_as')
+    check_variable_and_dtype(
+        y, 'y', ['bool', 'float32', 'float64', 'int32', 'int64'], 'expand_as')
 
     if convert_dtype(x.dtype) == 'bool' and x.stop_gradient == False:
         raise ValueError(
@@ -1728,12 +1729,10 @@ def expand_as(x, y, name=None):
             "you must set its stop_gradient to be False by "
             "some_var.stop_gradient = True, supporting "
             "some_var as the input 'x'.")
-    inputs = {"X": [x]}
+    y.stop_gradient = True
+    inputs = {"X": [x], "Y": [y]}
 
     helper = LayerHelper('expand_as', **locals())
-    if isinstance(y, Variable):
-        y.stop_gradient = True
-        inputs['Y'] = y
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
