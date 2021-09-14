@@ -119,35 +119,6 @@ def pure_fp16_initialize(enable_pure_fp16, models, optimizers):
     if not enable_pure_fp16:
         return models, optimizers
 
-    if len(models) != len(optimizers):
-        raise RuntimeError(
-            "Current models num should be equal to optimizers num, but receive {} != {}.".
-            format(len(models), len(optimizers)))
-
-    for idx in range(len(models)):
-        if getattr(optimizers[idx], '_param_groups', None) and isinstance(
-                optimizers[idx]._param_groups[0], dict):
-            for p in models[idx].parameters():
-                contains = False
-                for param_group in optimizers[idx]._param_groups:
-                    for q in param_group['params']:
-                        if p is q:
-                            contains = True
-                if not contains:
-                    raise RuntimeError(
-                        "Current the order of models should be consistent with that of optimizers, but receive models_{} not corresponding to optimizers_{}.".
-                        format(idx, idx))
-        else:
-            for p in models[idx].parameters():
-                contains = False
-                for q in optimizers[idx]._parameter_list:
-                    if p is q:
-                        contains = True
-                if not contains:
-                    raise RuntimeError(
-                        "Current the order of models should be consistent with that of optimizers, but receive models_{} not corresponding to optimizers_{}.".
-                        format(idx, idx))
-
     for idx in range(len(models)):
         for layer in models[idx].sublayers(include_self=True):
             layer._casted_by_pure_fp16 = True
@@ -158,37 +129,41 @@ def pure_fp16_initialize(enable_pure_fp16, models, optimizers):
                     continue
                 layer.to(dtype='float16')
 
-                if getattr(optimizers[idx], '_param_groups',
-                           None) and isinstance(
-                               optimizers[idx]._param_groups[0], dict):
-                    # update _param_groups
-                    for param_group in optimizers[idx]._param_groups:
-                        for i, param in enumerate(param_group['params']):
+    for idx_opt in range(len(optimizers)):
+        # update _param_groups
+        if getattr(optimizers[idx_opt], '_param_groups', None) and isinstance(
+                optimizers[idx_opt]._param_groups[0], dict):
+            for param_group in optimizers[idx_opt]._param_groups:
+                for i, param in enumerate(param_group['params']):
+                    for idx_model in range(len(models)):
+                        for layer in models[idx_model].sublayers(
+                                include_self=True):
                             if id(param) in layer._parameters_transform_map:
                                 param_group['params'][
                                     i] = layer._parameters_transform_map[id(
                                         param)][0]
-                    # update _parameter_list
-                    for param_group in optimizers[idx]._parameter_list:
-                        params = param_group['params']
-                        for i, param in enumerate(params):
+            for param_group in optimizers[idx_opt]._parameter_list:
+                params = param_group['params']
+                for i, param in enumerate(params):
+                    for idx_model in range(len(models)):
+                        for layer in models[idx_model].sublayers(
+                                include_self=True):
                             if id(param) in layer._parameters_transform_map:
                                 params[i] = layer._parameters_transform_map[id(
                                     param)][0]
-                else:
-                    for i, param in enumerate(optimizers[idx]._parameter_list):
+        # update _parameter_list
+        else:
+            for i, param in enumerate(optimizers[idx_opt]._parameter_list):
+                for idx_model in range(len(models)):
+                    for layer in models[idx_model].sublayers(include_self=True):
                         if id(param) in layer._parameters_transform_map:
-                            optimizers[idx]._parameter_list[
+                            optimizers[idx_opt]._parameter_list[
                                 i] = layer._parameters_transform_map[id(param)][
                                     0]
-                            if hasattr(optimizers[idx], '_param_groups'):
-                                optimizers[idx]._param_groups[
+                            if hasattr(optimizers[idx_opt], '_param_groups'):
+                                optimizers[idx_opt]._param_groups[
                                     i] = layer._parameters_transform_map[id(
                                         param)][0]
-
-    for idx in range(len(optimizers)):
-        if hasattr(optimizers[idx], '_multi_precision'):
-            optimizers[idx]._multi_precision = True
 
     return models, optimizers
 

@@ -470,35 +470,6 @@ class TestAmpDecorator(unittest.TestCase):
 
         self.assertRaises(TypeError, test_error_model_optimizer)
 
-        def test_no_match_model_optimizer1():
-            model1 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
-            model2 = fluid.dygraph.Conv2D(4, 5, 6, bias_attr=False, act=None)
-            opt1 = paddle.optimizer.SGD(learning_rate=0.0001,
-                                        parameters=model1.parameters())
-            opt2 = paddle.optimizer.Adam(
-                learning_rate=0.0001,
-                parameters=model2.parameters(),
-                multi_precision=True)
-            with fluid.dygraph.guard():
-                paddle.amp.decorator(models=model1, optimizers=opt2, mode='L2')
-
-        self.assertRaises(RuntimeError, test_no_match_model_optimizer1)
-
-        def test_no_match_model_optimizer2():
-            model1 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
-            model2 = fluid.dygraph.Conv2D(4, 5, 6, bias_attr=False, act=None)
-            opt1 = paddle.optimizer.SGD(learning_rate=0.0001,
-                                        parameters=model1.parameters())
-            opt2 = paddle.optimizer.Adam(
-                learning_rate=0.0001,
-                parameters=model2.parameters(),
-                multi_precision=True)
-            with fluid.dygraph.guard():
-                paddle.amp.decorator(
-                    models=[model1, model2], optimizers=opt2, mode='L2')
-
-        self.assertRaises(RuntimeError, test_no_match_model_optimizer2)
-
 
 class TestPureFp16SaveLoad(unittest.TestCase):
     def test_save_dtype_exception(self):
