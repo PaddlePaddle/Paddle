@@ -711,6 +711,10 @@ class Executor(object):
                 for i in item:
                     _get_targets(_optimize_ops, _fetch_list, i)
             elif isinstance(item, tuple):
+                if not isinstance(item[0], (list, tuple)):
+                    raise TypeError(
+                        "Requires fetch_list[{}][0] shall be one of (list, tuple) when type(fetch_list[{}]) is `tuple`, but received fetch_list[{}][0]'s type is `{}`.".
+                        format(index, index, index, type(item[0]).__name__))
                 for i in item[0]:
                     _get_targets(_optimize_ops, _fetch_list, i)
             else:
@@ -1334,24 +1338,33 @@ class Executor(object):
         return exe.run(feed)
 
     def _check_fetch_list(self, fetch_list):
-        if fetch_list is not None:
-            if isinstance(fetch_list, (Variable, str, six.string_types)):
-                fetch_list = [fetch_list]
-            else:
-                assert isinstance(fetch_list, tuple) or isinstance(fetch_list, list), \
-                    "Currently , The fetch_list type only should be list or tuple, \n"\
-                    "but the input type is {}. For more information please refer to \n"\
-                    "the executor.run(...).".format(type(fetch_list))
-                for i, fetch_var in enumerate(fetch_list):
-                    if not isinstance(fetch_var,
-                                      (Variable, str, six.string_types)):
-                        raise TypeError(
-                            "Require fetch_list[{}] 's type shall be one of (Variable, str), but received {}.".
-                            format(i, type(fetch_var).__name__))
-        else:
-            fetch_list = []
+        is_fetch_var = lambda var: isinstance(var, (Variable, str, six.string_types))
+        is_tuple_list = lambda var: isinstance(var, (tuple, list))
 
-        return fetch_list
+        if fetch_list is None: return []
+        if is_fetch_var(fetch_list): return [fetch_list]
+
+        assert is_tuple_list(fetch_list), \
+            "Currently , The fetch_list type only should be list or tuple, \n"\
+            "but the input type is {}. For more information please refer to \n"\
+            "the executor.run(...).".format(type(fetch_list))
+
+        res = []
+        for i, var in enumerate(fetch_list):
+            if is_fetch_var(var):
+                res.append(var)
+            # such as [x, 'mean_out', loss]
+            elif is_tuple_list(var):
+                if all(is_fetch_var(v) for v in var):
+                    res.extend(list(var))
+                else:
+                    res.append(var)
+            else:
+                raise TypeError(
+                    "Require fetch_list[{}] 's type shall be one of (Variable, str), but received {}.".
+                    format(i, type(fetch_var).__name__))
+
+        return res
 
     def _dump_debug_info(self, program=None, trainer=None):
         with open(str(id(program)) + "_train_desc.prototxt", "w") as fout:
