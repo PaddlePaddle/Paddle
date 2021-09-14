@@ -71,6 +71,7 @@ class Quant2Int8MkldnnPass(object):
         self._relu_ops = ['relu', 'relu6']
         self._matmul_ops = ['matmul']
         self._gru_ops = ['fusion_gru', 'multi_gru']
+        self._lstm_ops = ['fusion_lstm']
         self._weight_thresholds = {}
         # Collect the Input and Output sclaes from Fake quant models
         self._var_quant_scales = {}
@@ -215,7 +216,8 @@ class Quant2Int8MkldnnPass(object):
         for op in graph.all_op_nodes():
             if op.op().has_attr("out_threshold"):
                 attr_scale = op.op().attr("out_threshold")
-                if attr_scale == 0.0: continue
+                if attr_scale == 0.0:
+                    continue
                 scale = np.array(1.0 / attr_scale).astype(np.float64)
                 scale[scale == np.Inf] = 0.0
                 scale_lod_tensor = self._convert_scale2tensor(scale)
@@ -534,10 +536,38 @@ class Quant2Int8MkldnnPass(object):
                         self._var_quant_scales[wx_var_name] = (use_unsigned_int,
                                                                lod_tensor)
 
+        def _compute_single_lstm_weight_scales(wx_var_name, wh_var_name):
+            wx = np.array(self._load_param(self._scope, wx_var_name))
+            wh = np.array(self._load_param(self._scope, wh_var_name))
+
+            lstm_weights_scale = 1.0 / np.max(
+                np.abs(np.concatenate(
+                    [wx[:, :], wh[:, :]], axis=0)), axis=0)
+            lstm_weights_scale = lstm_weights_scale.astype('float')
+
+            return self._convert_scale2tensor(lstm_weights_scale)
+
+        def _compute_lstm_weight_scales(wx_name, wh_name):
+            for op in graph.all_op_nodes():
+                if op.op().type() in self._lstm_ops:
+                    assert len(op.input(wx_name)) == len(
+                        op.input(wh_name)
+                    ), 'Mismatch in number of weights inputs ({} for WeightX vs. {} for WeightH).'.format(
+                        len(op.input(wx_name)), len(op.input(wh_name)))
+                    for i, wx_var_name in enumerate(op.input(wx_name)):
+                        wh_var_name = op.input(wh_name)[i]
+                        use_unsigned_int = False
+                        lod_tensor = _compute_single_lstm_weight_scales(
+                            wx_var_name, wh_var_name)
+                        self._var_quant_scales[wx_var_name] = (use_unsigned_int,
+                                                               lod_tensor)
+
         _compute_var_scales(self._conv_ops, "Filter", axis=1)
         _compute_var_scales(self._fc_ops, "W", axis=0)
         _compute_var_scales(self._gru_ops, "WeightH", axis=0)
+        _compute_var_scales(self._lstm_ops, "WeightH", axis=0)
         _compute_gru_weight_scales("WeightX", "WeightH")
+        _compute_lstm_weight_scales("WeightX", "WeightH")
         return graph
 
     def _find_avg_pooling_ids(self, graph):
@@ -559,15 +589,26 @@ class Quant2Int8MkldnnPass(object):
                     out_name = op.output(op_out_name)[0]
                     if out_name in self._var_quant_scales and predicate(op.op(
                     )):
-                        _, tensor = self._var_quant_scales[out_name]
+                        is_unsigned, tensor = self._var_quant_scales[out_name]
+                        if is_unsigned is False:
+                            # If the variable is signed, it means that the scales for this var
+                            # were computed for signed data, so the scale must be multiplied by 2
+                            # to fill the entire range of uint8
+                            scale = np.array(tensor) * 2
+                            tensor = self._convert_scale2tensor(
+                                scale.astype(np.float64))
                         self._var_quant_scales[out_name] = (True, tensor)
             return graph
 
-        conv_predicate = lambda op: op.attr("fuse_activation") in self._relu_ops
+        def conv_predicate(op):
+            return op.attr("fuse_activation") in self._relu_ops
+
         graph = _set_unsigned_scale(graph, self._conv_ops, "Output",
                                     conv_predicate)
 
-        fc_predicate = lambda op: op.attr("activation_type") in self._relu_ops
+        def fc_predicate(op):
+            return op.attr("activation_type") in self._relu_ops
+
         graph = _set_unsigned_scale(graph, self._fc_ops, "Out", fc_predicate)
 
         graph = _set_unsigned_scale(graph, self._relu_ops, 'Out',

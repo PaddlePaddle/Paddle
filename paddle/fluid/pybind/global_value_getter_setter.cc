@@ -67,6 +67,7 @@ DECLARE_bool(benchmark);
 DECLARE_int32(inner_op_parallelism);
 DECLARE_int32(max_inplace_grad_add);
 DECLARE_string(tracer_profile_fname);
+DECLARE_bool(apply_pass_to_program);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 // cudnn
 DECLARE_uint64(conv_workspace_size_limit);
@@ -98,6 +99,8 @@ DECLARE_string(selected_xpus);
 #ifdef PADDLE_WITH_ASCEND_CL
 // device management
 DECLARE_string(selected_npus);
+// set minmum loss scaling value
+DECLARE_int32(min_loss_scaling);
 #endif
 
 #ifdef PADDLE_WITH_DISTRIBUTE
@@ -365,7 +368,8 @@ static void RegisterGlobalVarGetterSetter() {
       FLAGS_memory_fraction_of_eager_deletion, FLAGS_use_pinned_memory,
       FLAGS_benchmark, FLAGS_inner_op_parallelism, FLAGS_tracer_profile_fname,
       FLAGS_paddle_num_threads, FLAGS_use_mkldnn, FLAGS_max_inplace_grad_add,
-      FLAGS_tracer_mkldnn_ops_on, FLAGS_tracer_mkldnn_ops_off);
+      FLAGS_tracer_mkldnn_ops_on, FLAGS_tracer_mkldnn_ops_off,
+      FLAGS_apply_pass_to_program);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   REGISTER_PUBLIC_GLOBAL_VAR(
@@ -385,6 +389,7 @@ static void RegisterGlobalVarGetterSetter() {
 
 #ifdef PADDLE_WITH_ASCEND_CL
   REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_selected_npus);
+  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_min_loss_scaling);
 #endif
 
 #ifdef PADDLE_WITH_DITRIBUTE

@@ -12,16 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device_event.h"
+#include "paddle/fluid/operators/searchsorted_op.h"
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-namespace paddle {
-namespace platform {
-
-EventCreateFunction DeviceEvent::event_creator_[MaxDeviceTypes];
-EventRecordFunction DeviceEvent::event_recorder_[MaxDeviceTypes];
-EventQueryFunction DeviceEvent::event_querier_[MaxDeviceTypes];
-EventFinishFunction DeviceEvent::event_finisher_[MaxDeviceTypes];
-EventWaitFunction DeviceEvent::event_waiter_[MaxDeviceTypes][MaxDeviceTypes];
-
-}  // namespace platform
-}  // namespace paddle
+REGISTER_OP_CUDA_KERNEL(
+    searchsorted, ops::SearchSortedKernel<plat::CUDADeviceContext, float>,
+    ops::SearchSortedKernel<plat::CUDADeviceContext, double>,
+    ops::SearchSortedKernel<plat::CUDADeviceContext, int>,
+    ops::SearchSortedKernel<plat::CUDADeviceContext, int64_t>);
