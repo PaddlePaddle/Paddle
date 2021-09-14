@@ -15,7 +15,6 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 
