@@ -1155,6 +1155,8 @@ function parallel_test_base_gpu() {
 EOF
 
 set -x
+        # set trt_convert ut to run 30% cases.
+        export TEST_NUM_PERCENT_CASES=0.3
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
@@ -1180,13 +1182,14 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            #ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
-            #if [ "$added_ut_error" != 0 ];then
-            #    echo "========================================"
-            #    echo "Added UT should not exceed 15 seconds"
-            #    echo "========================================"
-            #    exit 8;
-            #fi
+            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
+            if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
+                echo "========================================"
+                echo "Added UT should not exceed 15 seconds"
+                echo "========================================"
+                exit 8;
+            fi
         fi
 set +x
         EXIT_CODE=0;
@@ -1753,7 +1756,7 @@ function parallel_test_base_npu() {
         npu_cc_changes=$(git diff --name-only remotes/upstream/$BRANCH | grep "op_npu.cc" || true)
         npu_py_changes=$(git diff --name-only remotes/upstream/$BRANCH | grep "op_npu.py" || true)
         # get PR name
-        npu_pr_tile=$(curl https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} 2>/dev/null | grep "<title>" | grep "[NPU]" || true)
+        npu_pr_tile=$(curl https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} 2>/dev/null | grep "<title>" | grep "NPU" || true)
         if [ -z "${npu_cc_changes}" ] && [ -z "${npu_py_changes}" ] && [ -z "${npu_pr_tile}" ]; then
             echo "NO NPU operators files changed and no '[NPU]' found in PR title, skip NPU unit tests!"
             exit 0

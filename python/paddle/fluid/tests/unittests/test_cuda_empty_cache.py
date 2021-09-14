@@ -12,18 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
+import paddle
 import unittest
-import paddle.fluid as fluid
-
-from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
-class TestDataParallelLayer(TestMultipleGpus):
-    def test_parallel_dygraph_dataparallel_no_sync(self):
-        self.run_mnist_2gpu('parallel_dygraph_no_sync_gradient_check.py')
+class TestEmptyCache(unittest.TestCase):
+    def test_empty_cache(self):
+        x = paddle.randn((2, 10, 12)).astype('float32')
+        del x
+        self.assertIsNone(paddle.device.cuda.empty_cache())
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     unittest.main()
