@@ -25,6 +25,7 @@ import subprocess
 from contextlib import closing
 import socket
 from paddle.fluid import core
+from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
 from distutils.util import strtobool
 
 __all__ = [     #noqa
@@ -420,8 +421,10 @@ def find_free_ports(num):
     return None
 
 
-def _prepare_trainer_env(cluster, trainer):
-    if core.is_compiled_with_xpu():
+def _prepare_trainer_env(cluster, trainer, backend=None):
+    if backend == None:
+        backend = get_backend_by_compile_flag()  # for compatibility
+    if backend == 'nccl':
         proc_env = {
             "FLAGS_selected_xpus":
             "%s" % ",".join([str(g) for g in trainer.gpus]),
@@ -430,7 +433,7 @@ def _prepare_trainer_env(cluster, trainer):
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
         }
-    elif core.is_compiled_with_cuda():
+    elif backend == 'bkcl':
         proc_env = {
             "FLAGS_selected_gpus":
             "%s" % ",".join([str(g) for g in trainer.gpus]),
@@ -439,15 +442,19 @@ def _prepare_trainer_env(cluster, trainer):
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
         }
-    else:
+    elif backend == 'gloo':
         # NOTE (xiongkun) default fall back into cpu only
         proc_env = {
             "PADDLE_TRAINER_ID": "%d" % trainer.rank,
             "PADDLE_CURRENT_ENDPOINT": "%s" % trainer.endpoint,
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints()),
-            "PADDLE_DISTRI_BACKEND": 'gloo',
+            "PADDLE_DISTRI_BACKEND":
+            backend,  # only add here, other will be auto
         }
+    else:
+        raise ValueError("backend must be one of 'gloo, nccl, bkcl'")
+
     return proc_env
 
 

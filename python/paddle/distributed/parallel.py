@@ -26,6 +26,7 @@ from paddle import compat as cpt
 from paddle.fluid import core
 from paddle.fluid.framework import _set_expected_place
 from paddle.fluid.dygraph import parallel_helper
+from paddle.distributed.fleet.launch_utils import check_backend
 from paddle.fluid.dygraph.parallel import ParallelEnv
 from paddle.distributed.fleet.base.private_helper_function import wait_server_ready  # noqa: F401
 
@@ -55,25 +56,8 @@ def _start_kv_server(port, http_server_d, size):
     http_server.stop()
 
 
-def _check_backend(backend):
-    if backend not in ['nccl', 'gloo', 'bkcl', 'auto']:
-        raise ValueError(
-            "paddle.distributed initialize error, "
-            "backend argument can only be one of 'nccl', 'gloo', 'bkcl', 'auto', but got %s"
-            % backend)
-
-    if backend == 'nccl' and not core.is_compiled_with_cuda():
-        raise ValueError(
-            "paddle.distributed initialize error, "
-            "your paddle is not compiled with cuda but you assign 'nccl' as backend."
-        )
-
-    if backend == 'bkcl' and not core.is_compiled_with_xpu():
-        raise ValueError(
-            "paddle.distributed initialize error, "
-            "your paddle is not compiled with xpu but you assign 'bkcl' as backend."
-        )
-
+def _is_cpuonly(backend):
+    check_backend(backend)
     if backend in ['auto', 'nccl', 'bkcl'] and (core.is_compiled_with_cuda() or
                                                 core.is_compiled_with_xpu()):
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
@@ -155,7 +139,7 @@ def init_parallel_env():
     # NOTE(xiongkun): support cpu gloo only, add this environment variable to 
     #                 enable cpu only gloo prarllel training)
     backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
-    is_cpu_only = _check_backend(backend)
+    is_cpu_only = _is_cpuonly(backend)
     # 1. gpu xpu check, must be gpu or xpu, 
     if not (is_cpu_only or core.is_compiled_with_cuda() or
             core.is_compiled_with_xpu()):

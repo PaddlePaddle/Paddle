@@ -59,7 +59,13 @@ def train(print_result=False):
 
 class TestSpawn(unittest.TestCase):
     def test_spawn(self):
-        dist.spawn(train)
+        dist.spawn(train, backend='gloo', nprocs=4)
+
+    def test_wrong_backend(self):
+        try:
+            dist.spawn(train, backend='something', nprocs=4)
+        except ValueError as e:
+            self.assertEqual(type(e), ValueError)
 
 
 if __name__ == '__main__':
