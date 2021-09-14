@@ -46,7 +46,6 @@ from .linalg import histogram  # noqa: F401
 from .linalg import mv  # noqa: F401
 from .linalg import eig  # noqa: F401
 from .linalg import matrix_power  # noqa: F401
-from .linalg import svd  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
@@ -227,7 +226,6 @@ tensor_method_func  = [ #noqa
            'histogram',
            'mv',
            'matrix_power',
-           'svd',
            'abs',
            'acos',
            'all',

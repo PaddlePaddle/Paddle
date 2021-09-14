@@ -116,10 +116,13 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
           "the output channels is %d, the filter's shape is [%s], "
           "the groups is %d.",
           filter_dims[0], filter_dims, groups));
-  PADDLE_ENFORCE_GT(
-      filter_dims[0], 0,
-      platform::errors::InvalidArgument(
-          "the size of filter at axis 0 should be greater than 0"));
+
+  if (ctx->IsRuntime()) {
+    PADDLE_ENFORCE_GT(
+        filter_dims[0], 0,
+        platform::errors::InvalidArgument(
+            "the size of filter at axis 0 should be greater than 0"));
+  }
 
   framework::DDim in_data_dims;
   if (channel_last) {

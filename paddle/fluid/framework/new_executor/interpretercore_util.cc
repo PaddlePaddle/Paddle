@@ -117,6 +117,13 @@ void build_variable_scope(const framework::ProgramDesc& pdesc,
       info.var_ref_count_ = 0;
       info.vardesc_ = var;
       var_scope->vec_meta_info_.push_back(info);
+    } else {
+      auto var_id = var_scope->name2id[var->Name()];
+      if (nullptr == var_scope->vec_meta_info_[var_id].vardesc_) {
+        VLOG(3) << "update var:" << var->Name() << " desc from nullptr into "
+                << var;
+        var_scope->vec_meta_info_[var_id].vardesc_ = var;
+      }
     }
   }
 }
@@ -199,7 +206,7 @@ void build_op_func_list(const platform::Place& place,
     RuntimeContext runtime_context({}, {});
     runtime_context.inputs.swap(ins_map);
     runtime_context.outputs.swap(outs_map);
-    RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
+    InterpretercoreInferShapeContext infer_shape_ctx(*op_base, runtime_context);
     static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
         &infer_shape_ctx);
     auto kernels_iter = all_op_kernels.find(op->Type());
@@ -313,8 +320,8 @@ void build_op_func_list(const platform::Place& place,
           RuntimeContext copy_runtime_context({}, {});
           copy_runtime_context.inputs.swap(copy_ins_value_map);
           copy_runtime_context.outputs.swap(copy_outs_value_map);
-          RuntimeInferShapeContext copy_infer_shape_ctx(*copy_op,
-                                                        copy_runtime_context);
+          InterpretercoreInferShapeContext copy_infer_shape_ctx(
+              *copy_op, copy_runtime_context);
           static_cast<const framework::OperatorWithKernel*>(copy_op)
               ->InferShape(&copy_infer_shape_ctx);
 
