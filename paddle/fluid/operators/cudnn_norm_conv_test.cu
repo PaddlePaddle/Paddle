@@ -146,8 +146,8 @@ class TestCuDNNNormConvOpForward {
       }
     }
     for (int i = 0; i < output_size_; ++i) {
-      output_vec_[i] = static_cast<T>(1.0f);
-      base_output_vec_[i] = static_cast<T>(1.0f);
+      output_vec_[i] = static_cast<T>(0.0f);
+      base_output_vec_[i] = static_cast<T>(0.0f);
     }
 
     framework::TensorFromVector<T>(input_vec_, *ctx_, &input_);
@@ -196,7 +196,7 @@ class TestCuDNNNormConvOpForward {
     FusedForward();
   }
 
-  // check forward correctness between baseline and results of feedforward.
+  // check forward correctness between baseline and results of normconv.
   void CheckOut(const T diff, bool is_relative_atol = false) {
     TensorToVector(output_, *ctx_, &output_vec_);
     ctx_->Wait();
