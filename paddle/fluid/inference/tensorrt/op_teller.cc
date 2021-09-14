@@ -637,6 +637,29 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "The pad layer of TRT only support zero.";
         return false;
       }
+      std::vector<int64_t> shape;
+      auto* block = desc.Block();
+      for (auto& param_name : desc.Inputs()) {
+        for (auto& var_name : param_name.second) {
+          auto* var_desc = block->FindVar(var_name);
+          shape = var_desc->GetShape();
+        }
+      }
+      int nbDims = shape.size();
+      std::vector<int> paddings =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+      int pad_size = paddings.size();
+      if (nbDims < 2) {
+        return false;
+      }
+      if (nbDims * 2 != pad_size) {
+        return false;
+      }
+      for (int i = 0; i < pad_size - 4; i++) {
+        if (paddings[i] != 0) {
+          return false;
+        }
+      }
     }
 
     if (op_type == "prelu") {
