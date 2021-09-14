@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
 
 namespace paddle {
@@ -47,7 +48,21 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     std::vector<int64_t> ends(ctx.Attr<std::vector<int>>("ends").begin(),
                               ctx.Attr<std::vector<int>>("ends").end());
 
+    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    if (ctx.HasInput("StartsTensor")) {
+      starts = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("StartsTensor"));
+    } else if (starts_tensor_list.size() > 0) {
+      starts = GetDataFromTensorList<int64_t>(starts_tensor_list);
+    }
+
     auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");
+
+    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    if (ctx.HasInput("EndsTensor")) {
+      ends = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("EndsTensor"));
+    } else if (ends_tensor_list.size() > 0) {
+      ends = GetDataFromTensorList<int64_t>(ends_tensor_list);
+    }
 
     std::vector<int64_t> offsets(x_vec_dims.size(), 0);
     std::vector<int64_t> slice_dims(x_vec_dims);
@@ -59,6 +74,8 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
       offsets[axes[i]] = starts[i];
       slice_dims[axes[i]] = ends[i] - starts[i];
     }
+
+    out->Resize(framework::make_ddim(slice_dims));
 
     mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
     auto key = platform::CreateKey(dev_ctx, x_vec_dims, axes, starts, ends,
@@ -130,6 +147,20 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
                                 ctx.Attr<std::vector<int>>("starts").end());
     std::vector<int64_t> ends(ctx.Attr<std::vector<int>>("ends").begin(),
                               ctx.Attr<std::vector<int>>("ends").end());
+
+    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    if (ctx.HasInput("StartsTensor")) {
+      starts = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("StartsTensor"));
+    } else if (starts_tensor_list.size() > 0) {
+      starts = GetDataFromTensorList<int64_t>(starts_tensor_list);
+    }
+
+    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    if (ctx.HasInput("EndsTensor")) {
+      ends = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("EndsTensor"));
+    } else if (ends_tensor_list.size() > 0) {
+      ends = GetDataFromTensorList<int64_t>(ends_tensor_list);
+    }
 
     auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");
 
