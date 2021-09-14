@@ -142,13 +142,43 @@ class GradientClipHelper(object):
         return
 
     # TODO (JZ-LIANG) revise this for uniform mixed parallelism
-    def sync_global_norm(self, block, ring_ids):
+    def sync_global_norm(self, block, ring_ids, mp_rank):
         """
         prune gradient_clip related ops for params that not belong to cur shard
         prune: square, reduce_sum, elementwise_mul
         keep: sum, sqrt, elementwise_max, elementwise_div
         """
-        # FIXME(wangxi): mp should prune duplicated param_grads
+        removed_op_idx = []
+        removed_tmp_var = []
+        for idx, op in list(enumerate(block.ops)):
+            if not self._is_gradient_clip_op(op):
+                continue
+            if op.type == 'sum':
+                break
+            for input_name in op.input_arg_names:
+                input_var = block.var(input_name)
+                if hasattr(input_var, 'is_distributed') \
+                        and not input_var.is_distributed and mp_rank != 0:
+                    removed_op_idx.append(idx)
+                    removed_tmp_var.extend(op.output_arg_names)
+
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if not self._is_gradient_clip_op(op):
+                continue
+            if idx in removed_op_idx:
+                block._remove_op(idx, sync=False)
+                continue
+
+        for idx, op in list(enumerate(block.ops)):
+            if not self._is_gradient_clip_op(op):
+                continue
+            if op.type == 'sum' and mp_rank != 0:
+                reserved_vars = []
+                for input_name in op.input_arg_names:
+                    if input_name not in removed_tmp_var:
+                        reserved_vars.append(input_name)
+                op.desc.set_input("X", reserved_vars)
+
         for idx, op in reversed(list(enumerate(block.ops))):
             if not self._is_gradient_clip_op(op):
                 continue
