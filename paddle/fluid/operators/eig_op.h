@@ -368,7 +368,8 @@ class EigGradKernel : public framework::OpKernel<T> {  //
     LOG(INFO) << "backward input V (vectors): " << V.dims();
     LOG(INFO) << "backward input gL (grad_val): " << gL.dims();
     LOG(INFO) << "backward input gV (grad_vec): " << gV.dims();
-    LOG(INFO) << "backward output x_grad: " << x_grad.dims();
+    LOG(INFO) << "backward output x_grad: " << x_grad.dims()
+              << "x_grad type: " << x_grad.type();
 
     // LOG(INFO) << "preparation DONE";
 
@@ -422,26 +423,44 @@ class EigGradKernel : public framework::OpKernel<T> {  //
     //(2.1) const auto VhgV = at::matmul(Vh, gV);
     Tensor VhgV = dito.Matmul(Vh, gV);  // matmul会批处理吗√
     LOG(INFO) << "HERE 6";
-
+    LOG(INFO) << "HERE 7";
     //(2.2) const auto diag_re_VhgV = at::real(VhgV).diagonal(0, -2, -1);
     Tensor diag_real_VhgV;
-    // if (framework::IsComplexType(V.type())) {  // vectors总是复数
-    //   LOG(INFO) << "V is COMPLEX";
-    //   diag_real_VhgV = dito.Diag(dito.Real(VhgV),batch_count);
-    // } else {
-    //   diag_real_VhgV = dito.Diag(VhgV,batch_count);
-    // }
+    Tensor diag_VhgV;
     LOG(INFO) << "🐽 VhgV dims: " << VhgV.dims();
-    // math::ShowTensor<Tout>(VhgV);
-    diag_real_VhgV = dito.Diag(VhgV, batch_count);  // ⭕️
-    // math::ShowTensor<Tout>(diag_real_VhgV);
-    LOG(INFO) << "🐽 VhgV after diag: " << diag_real_VhgV.dims();
-    LOG(INFO) << "HERE 7";
     //(2.3) auto result = VhgV - at::matmul(Vh, V * diag_re_VhgV.unsqueeze(-2));
-    //⭕️ * 是对应元素乘还是矩阵乘
-    Tensor res1 = dito.Matmul(V, dito.Unsqueeze(diag_real_VhgV, -2));
+    Tensor diag_tmp /*实*/ = dito.Real(VhgV);
+    math::ShowTensor<Tout>(VhgV, "VhgV");
+    math::ShowTensor<math::Real<Tout>>(diag_tmp, "Real(VhgV)");
+    LOG(INFO) << "🐽 0 diag_tmp.type " << diag_tmp.type();
+    Tensor diag_res /*实*/ = dito.Diag(diag_tmp /*实*/, batch_count);
+    LOG(INFO) << "🐽 1";
+    Tensor diag_un /*实*/ = dito.Unsqueeze(diag_res /*实*/, -2);
+    math::ShowTensor<math::Real<Tout>>(diag_un, "Unsqueeze(Diag)");
+    LOG(INFO) << "🐽 2";
+    // 1) diag_un -> 变复数，+0j
+    auto numel = diag_un.numel();
+    Tensor diag_un_com;
+    auto* data_diag_un = diag_un.data<math::Real<Tout>>();
+    auto* data_diag_un_com = diag_un_com.mutable_data<Tout>(
+        diag_un.dims(), context.GetPlace(),
+        static_cast<size_t>(numel * sizeof(Tout)));
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
+    math::RealToComplexFunctor<Tout> functor(data_diag_un, data_diag_un_com,
+                                             numel);
+    for_range(functor);
+    math::ShowTensor<Tout>(diag_un_com, "实数变复数");
+    // 2) 重新定义此处的 两复数相乘
+
+    Tensor res1 = dito.ElementwiseMul(diag_un_com /*复*/, V /*复*/);
+    LOG(INFO) << "🐽 3";
+
+    math::ShowTensor<Tout>(res1, "ElementwiseMul res1");
+
     Tensor res2 = dito.Matmul(Vh, res1);
     Tensor result = dito.Sub(VhgV, res2);
+
     result.mutable_data<Tout>(/*dims*/ V.dims(), context.GetPlace());  // T
     LOG(INFO) << "HERE 8";
 
@@ -484,8 +503,11 @@ class EigGradKernel : public framework::OpKernel<T> {  //
       dim_origin_vec.push_back(order);
       x_grad.Resize(framework::make_ddim(dim_origin_vec));
     }
-    LOG(INFO) << "x_grad dims: " << x_grad.dims();
+    LOG(INFO) << "x_grad dims: " << x_grad.dims()
+              << "x_grad type: " << x_grad.type();
+
     LOG(INFO) << "👍 backward DONE";
+    math::ShowTensor<Tout>(x_grad, "x_grad");
   }
 };
 

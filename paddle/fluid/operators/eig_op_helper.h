@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/functors.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -32,6 +33,7 @@
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
+//#include "paddle/fluid/operators/svd_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -42,6 +44,62 @@ using InTensors = std::vector<const Tensor*>;
 using OutTensors = std::vector<Tensor*>;
 using Shape = std::vector<int>;
 using OpName = std::string;
+
+template <typename T>
+void ShowTensor(Tensor& x, std::string name) {
+  LOG(INFO) << name << ": ";
+  T* x_data = x.data<T>();
+  std::vector<int> in_dims = framework::vectorize<int>(x.dims());
+  // LOG(INFO) << "in_dims: "<< in_dims;
+  for (int i = 0; i < x.numel(); ++i) {
+    std::cout << x_data[i] << " ";
+    if ((i + 1) % in_dims.back() == 0) {
+      std::cout << std::endl;
+    }
+  }
+  std::cout << std::endl;
+}
+
+// // batch_diag
+// template <typename Tin, typename T>
+// Tensor Diag(const Tensor& x, int batch) {
+//   Tensor out;
+//   // if (framework::IsComplexType(x.type())) {
+//   //   auto* out_data = out.mutable_data<T>(x.dims(), context.GetPlace());
+//   //   auto* x_data = x.data<T>();
+//   // } else {
+//   //   auto* out_data = out.mutable_data<math::Real<T>>(x.dims(),
+//   context.GetPlace());
+//   //   auto* x_data = x.data<math::Real<T>>();
+//   // }
+
+//   auto x_dims = x.dims();
+//   LOG(INFO) << "🌸 x_dims: " << x_dims;
+//   int num_dims = x_dims.size();  //
+//   LOG(INFO) << "🌸 num_dims: " << num_dims;
+//   std::vector<int> out_shape;
+
+//   for (int i = 0; i < num_dims - 1; ++i) {
+//     out_shape.push_back(x.dims()[i]);
+//   }
+//   out.Resize(framework::make_ddim(out_shape));
+//   auto out_dims = out.dims();
+
+//   int order = x.dims()[num_dims - 1];
+//   // int batch = BatchCount(x);
+//   auto out_length = batch * order;
+//   LOG(INFO) << "out_dims[0]: " << out_length;
+
+//   int stride_out = order * order;
+//   int stride_in = order + 1;
+//   for (int i = 0; i < batch; ++i) {
+//     for (int j = 0; j < order; ++j) {
+//       out_data[i * order + j] = x_data[stride_out * i + stride_in * j];
+//     }
+//   }
+//   LOG(INFO) << "🌸 out_dims: " << out_dims;
+//   return out;
+// }
 
 // T : paddle::complex
 template <typename DeviceContext, typename T>
@@ -64,7 +122,6 @@ void SolveLinearSystem(T* matrix_data, T* rhs_data, T* out_data, int order,
       reinterpret_cast<std::complex<Treal>*>(matrix_data);
   std::complex<Treal>* rhs_data_ =
       reinterpret_cast<std::complex<Treal>*>(rhs_data);
-  // 输出会写入out_data吗！！！！
   std::complex<Treal>* out_data_ =
       reinterpret_cast<std::complex<Treal>*>(out_data);
 
@@ -184,6 +241,44 @@ void SolveNonComplexInput(Tbase* x_data, Tout* eigenvalues_data,
   // LOG(INFO) << "🛑 NonComplex Input 1";
 }
 
+using InTensors = std::vector<const Tensor*>;
+static std::vector<int> GetBroadcastShape(InTensors ins) {
+  // TODO(xiongkun03) check the operators and output
+  PADDLE_ENFORCE_EQ(ins.size(), 2, platform::errors::InvalidArgument(
+                                       "GetBroadcastShape Receive 2 tensors"
+                                       "but got [%d]",
+                                       ins.size()));
+  auto x_dim = ins[0]->dims();
+  auto y_dim = ins[1]->dims();
+  std::vector<int> broadcast_shape =
+      (x_dim.size() > y_dim.size() ? framework::vectorize<int>(x_dim)
+                                   : framework::vectorize<int>(y_dim));
+  int rank_min = std::min(x_dim.size(), y_dim.size());
+  int rank_x = x_dim.size();
+  int rank_y = y_dim.size();
+  int final_rank = broadcast_shape.size();
+  for (int i = 1; i <= rank_min; ++i) {
+    if (x_dim[rank_x - i] == y_dim[rank_y - i]) {
+      broadcast_shape[final_rank - i] = x_dim[rank_x - i];
+      continue;
+    }
+    if (x_dim[rank_x - i] == 1) {
+      broadcast_shape[final_rank - i] = y_dim[rank_y - i];
+      continue;
+    }
+    if (y_dim[rank_y - i] == 1) {
+      broadcast_shape[final_rank - i] = x_dim[rank_x - i];
+      continue;
+    }
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Wrong Input Shape in broadcast operator: "
+        "Input(X)'s shape must follow the broadcast rule with Input(Y)'s "
+        "shape, but received [%s] (X) vs [%s] (Y).",
+        x_dim, y_dim));
+  }
+  return broadcast_shape;
+}
+
 using Tensor = framework::Tensor;
 
 template <typename T, size_t D, int MajorType = Eigen::RowMajor,
@@ -281,7 +376,8 @@ struct DeviceIndependenceTensorOperations {
     Tensor out;
     auto numel = x.numel();
     auto* out_data = out.mutable_data<math::Real<T>>(
-        context.GetPlace(), static_cast<size_t>(numel * sizeof(math::Real<T>)));
+        x.dims(), context.GetPlace(),
+        static_cast<size_t>(numel * sizeof(math::Real<T>)));
     auto* x_data = x.data<T>();
     auto for_range = GetForRange(numel);
     math::RealFunctor<T> functor(x_data, out_data, numel);
@@ -379,8 +475,12 @@ struct DeviceIndependenceTensorOperations {
   // batch_diag
   Tensor Diag(const Tensor& x, int batch) {
     Tensor out;
-    auto* out_data = out.mutable_data<T>(x.dims(), context.GetPlace());
-    auto* x_data = x.data<T>();
+    auto* x_data = x.data<math::Real<T>>();
+    auto numel = x.numel();
+    auto* out_data = out.mutable_data<math::Real<T>>(
+        x.dims(), context.GetPlace(),
+        static_cast<size_t>(numel * sizeof(math::Real<T>)));
+
     auto x_dims = x.dims();
     LOG(INFO) << "🌸 x_dims: " << x_dims;
     int num_dims = x_dims.size();  //
@@ -407,6 +507,16 @@ struct DeviceIndependenceTensorOperations {
     }
     LOG(INFO) << "🌸 out_dims: " << out_dims;
     return out;
+  }
+
+  framework::Tensor ElementwiseMul(const framework::Tensor& x,
+                                   const framework::Tensor& y) {
+    framework::Tensor ret;
+    std::vector<int> out_shape = GetBroadcastShape({&x, &y});
+    ret.Resize(framework::make_ddim(out_shape));
+    ElementwiseComputeEx<RealMulComplexFunctor<T>, DeviceContext, T>(
+        context, &x, &y, -1, RealMulComplexFunctor<T>(), &ret);
+    return ret;
   }
 
  private:
