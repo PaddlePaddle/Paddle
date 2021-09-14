@@ -725,7 +725,7 @@ void Blas<platform::CUDADeviceContext>::BatchedGETRS(
   rocblas_operation cuTrans = (trans == CblasNoTrans)
                                   ? rocblas_operation_none
                                   : rocblas_operation_transpose;
-  context_.CublasCall([&](cublasHandle_t handle) {
+  context_.CublasCall([&](rocblas_handle handle) {
     CUBlas<T>::GETRS_BATCH(handle, cuTrans, n, nrhs, a, lda, ipiv, b, ldb, info,
                            batch_size);
   });
