@@ -381,31 +381,31 @@ class TestElementwiseSubOp_same_shape_ysize_large(TestElementwiseSubOp):
 class TestElementwiseSubOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            # the input of elementwise_add must be Variable.
+            # the input of elementwise_sub must be Variable.
             x1 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
             y1 = fluid.create_lod_tensor(
                 np.array([-1, 3, 5, 5]), [[1, 1, 1, 1]], fluid.CPUPlace())
-            self.assertRaises(TypeError, fluid.layers.elementwise_add, x1, y1)
+            self.assertRaises(TypeError, fluid.layers.elementwise_sub, x1, y1)
 
-            # the input dtype of elementwise_add must be float16 or float32 or float64 or int32 or int64
+            # the input dtype of elementwise_sub must be float16 or float32 or float64 or int32 or int64
             # float16 only can be set on GPU place
             x2 = fluid.layers.data(name='x2', shape=[3, 4, 5, 6], dtype="uint8")
             y2 = fluid.layers.data(name='y2', shape=[3, 4, 5, 6], dtype="uint8")
-            self.assertRaises(TypeError, fluid.layers.elementwise_add, x2, y2)
+            self.assertRaises(TypeError, fluid.layers.elementwise_sub, x2, y2)
 
 
 class TestSubApi(unittest.TestCase):
     def _executed_api(self, x, y, name=None):
-        return paddle.add(x, y, name)
+        return paddle.add(x, -y, name)
 
     def test_name(self):
         with fluid.program_guard(fluid.Program()):
             x = fluid.data(name="x", shape=[2, 3], dtype="float32")
             y = fluid.data(name='y', shape=[2, 3], dtype='float32')
 
-            y_1 = self._executed_api(x, y, name='add_res')
-            self.assertEqual(('add_res' in y_1.name), True)
+            y_1 = self._executed_api(x, y, name='sub_res')
+            self.assertEqual(('sub_res' in y_1.name), True)
 
     def test_declarative(self):
         with fluid.program_guard(fluid.Program()):
@@ -423,7 +423,7 @@ class TestSubApi(unittest.TestCase):
             place = fluid.CPUPlace()
             exe = fluid.Executor(place)
             z_value = exe.run(feed=gen_data(), fetch_list=[z.name])
-            z_expected = np.array([3., 8., 6.])
+            z_expected = np.array([1., -2., 2.])
             self.assertEqual((z_value == z_expected).all(), True)
 
     def test_dygraph(self):
@@ -434,13 +434,13 @@ class TestSubApi(unittest.TestCase):
             y = fluid.dygraph.to_variable(np_y)
             z = self._executed_api(x, y)
             np_z = z.numpy()
-            z_expected = np.array([3., 8., 6.])
+            z_expected = np.array([1., -2., 2.])
             self.assertEqual((np_z == z_expected).all(), True)
 
 
 class TestSubInplaceApi(TestSubApi):
     def _executed_api(self, x, y, name=None):
-        return x.add_(y, name)
+        return x.add_(-y, name)
 
 
 class TestSubInplaceBroadcastSuccess(unittest.TestCase):
@@ -453,8 +453,8 @@ class TestSubInplaceBroadcastSuccess(unittest.TestCase):
         self.init_data()
         x = paddle.to_tensor(self.x_numpy)
         y = paddle.to_tensor(self.y_numpy)
-        inplace_result = x.add_(y)
-        numpy_result = self.x_numpy + self.y_numpy
+        inplace_result = x.add_(-y)
+        numpy_result = self.x_numpy - self.y_numpy
         self.assertEqual((inplace_result.numpy() == numpy_result).all(), True)
         paddle.enable_static()
 
@@ -483,7 +483,7 @@ class TestSubInplaceBroadcastError(unittest.TestCase):
         y = paddle.to_tensor(self.y_numpy)
 
         def broadcast_shape_error():
-            x.add_(y)
+            x.add_(-y)
 
         self.assertRaises(ValueError, broadcast_shape_error)
         paddle.enable_static()
@@ -503,7 +503,7 @@ class TestSubInplaceBroadcastError3(TestSubInplaceBroadcastError):
 
 class TestComplexElementwiseSubOp(OpTest):
     def setUp(self):
-        self.op_type = "elementwise_add"
+        self.op_type = "elementwise_sub"
         self.dtype = np.float64
         self.shape = (2, 3, 4, 5)
         self.init_input_output()
@@ -524,13 +524,13 @@ class TestComplexElementwiseSubOp(OpTest):
             self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
         self.y = np.random.random(self.shape).astype(
             self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
-        self.out = self.x + self.y
+        self.out = self.x - self.y
 
     def init_grad_input_output(self):
         self.grad_out = np.ones(self.shape, self.dtype) + 1J * np.ones(
             self.shape, self.dtype)
         self.grad_x = self.grad_out
-        self.grad_y = self.grad_out
+        self.grad_y = -self.grad_out
 
     def test_check_output(self):
         self.check_output()
@@ -564,13 +564,13 @@ class TestRealComplexElementwiseSubOp(TestComplexElementwiseSubOp):
         self.x = np.random.random(self.shape).astype(self.dtype)
         self.y = np.random.random(self.shape).astype(
             self.dtype) + 1J * np.random.random(self.shape).astype(self.dtype)
-        self.out = self.x + self.y
+        self.out = self.x - self.y
 
     def init_grad_input_output(self):
         self.grad_out = np.ones(self.shape, self.dtype) + 1J * np.ones(
             self.shape, self.dtype)
         self.grad_x = np.real(self.grad_out)
-        self.grad_y = self.grad_out
+        self.grad_y = -self.grad_out
 
 
 class TestBoolSubFloatElementwiseSubOp(unittest.TestCase):
@@ -578,7 +578,7 @@ class TestBoolSubFloatElementwiseSubOp(unittest.TestCase):
         paddle.enable_static()
         a = 1.5
         b = paddle.full([4, 5, 6], True, dtype='bool')
-        c = a + b
+        c = a - b
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
         paddle.enable_static()
 
@@ -586,7 +586,7 @@ class TestBoolSubFloatElementwiseSubOp(unittest.TestCase):
         paddle.disable_static()
         a = 1.5
         b = paddle.full([4, 5, 6], True, dtype='bool')
-        c = a + b
+        c = a - b
         self.assertTrue(c.dtype == core.VarDesc.VarType.FP32)
 
 
