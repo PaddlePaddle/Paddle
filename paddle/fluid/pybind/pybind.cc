@@ -1849,19 +1849,32 @@ All parameter, weight, gradient are variables in Paddle.
                   })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::CPUPlace &place) { self.Run(scope, place); })
+              const platform::CPUPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::XPUPlace &place) { self.Run(scope, place); })
+              const platform::XPUPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::NPUPlace &place) { self.Run(scope, place); })
+              const platform::NPUPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::CUDAPlace &place) { self.Run(scope, place); })
+              const platform::CUDAPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CUDAPinnedPlace &place) {
+             pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
       .def("type",
@@ -2241,6 +2254,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
+  m.def("cuda_empty_cache", platform::EmptyCache);
 
 #if !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   m.def("nvprof_init", platform::CudaProfilerInit);

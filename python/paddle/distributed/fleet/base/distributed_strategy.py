@@ -1597,6 +1597,41 @@ class DistributedStrategy(object):
             print("WARNING: auto should have value of bool type")
 
     @property
+    def semi_auto(self):
+        """
+        Indicating whether we are using semi-auto parallel function
+        This feature is currently an experimental feature. Currently, 
+        auto-parallelism can be used only when a user does not set any other
+        strategy configs except semi-auto. For details, please reference the following
+        code example
+        Default Value: False
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+            import paddle.distributed.fleet as fleet
+
+            strategy = fleet.DistributedStrategy()
+            strategy.semi_auto = True
+            # if set other strategy at the same time, auto will not apply
+            # strategy.amp = True
+
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+            optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        """
+        return self.strategy.semi_auto
+
+    @semi_auto.setter
+    def semi_auto(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.semi_auto = flag
+        else:
+            print("WARNING: semi-auto should have value of bool type")
+
+    @property
     def cudnn_exhaustive_search(self):
         """
         Indicating whether to use exhaustive search method to choose convolution algorithms.

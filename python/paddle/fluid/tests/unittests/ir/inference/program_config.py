@@ -78,7 +78,17 @@ class ProgramConfig:
                  inputs: Dict[str, TensorConfig],
                  outputs: List[str]):
         self.ops = ops
-        self.weights = weights
+        # if no weight need to save, we create a place_holder to help seriazlie params.
+        if not weights:
+
+            def generate_weight():
+                return np.array([1]).astype(np.float32)
+
+            self.weights = {
+                "place_holder_weight": TensorConfig(data_gen=generate_weight)
+            }
+        else:
+            self.weights = weights
         self.inputs = inputs
         self.outputs = outputs
 
@@ -91,6 +101,8 @@ class ProgramConfig:
                 log_str += repr(self.ops[i])
         log_str += ' -- '
         for t, v in self.inputs.items():
+            log_str += '[' + t + ': ' + str(v) + ']'
+        for t, v in self.weights.items():
             log_str += '[' + t + ': ' + str(v) + ']'
 
         return log_str

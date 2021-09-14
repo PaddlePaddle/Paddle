@@ -25,6 +25,11 @@
 namespace paddle {
 namespace framework {
 
+namespace interpretercore {
+static constexpr char kMemcpyH2D[] = "memcpy_h2d";
+static constexpr char kMemcpyD2H[] = "memcpy_d2h";
+}  // namespace interpretercore
+
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 using OpKernelMap =
     std::unordered_map<OpKernelType, OpKernelComputeFunc, OpKernelType::Hash>;
@@ -69,6 +74,8 @@ struct EventInter {
 struct InstructionInfo {
   std::vector<size_t> dependecy_count_;
 };
+
+class RuntimeInferShapeContext;
 
 struct Instruction {
   OpKernelFunc kernel_func_;
