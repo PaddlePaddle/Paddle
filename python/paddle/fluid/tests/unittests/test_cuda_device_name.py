@@ -27,7 +27,7 @@ class TestDeviceCount(unittest.TestCase):
             name = paddle.device.cuda.get_device_name(0)
             self.assertIsNotNone(name)
 
-    def test_device_name_paddle(self):
+    def test_device_name_CUDAPlace(self):
         if paddle.is_compiled_with_cuda():
             name = paddle.device.cuda.get_device_name(paddle.CUDAPlace(0))
             self.assertIsNotNone(name)
