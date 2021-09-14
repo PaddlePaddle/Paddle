@@ -148,6 +148,17 @@ class GradientClipHelper(object):
         prune: square, reduce_sum, elementwise_mul
         keep: sum, sqrt, elementwise_max, elementwise_div
         """
+        is_clip_grad_by_global_norm = False
+        for idx, op in list(enumerate(block.ops)):
+            if not self._is_gradient_clip_op(op):
+                continue
+            if op.type == 'sum':
+                is_clip_grad_by_global_norm = True
+                break
+        if not is_clip_grad_by_global_norm:
+            # TODO(Yuang Liu): need some extra handles when clip_grad_norm for mp
+            return
+
         removed_op_idx = []
         removed_tmp_var = []
         for idx, op in list(enumerate(block.ops)):
@@ -157,8 +168,8 @@ class GradientClipHelper(object):
                 break
             for input_name in op.input_arg_names:
                 input_var = block.var(input_name)
-                if hasattr(input_var, 'is_distributed') \
-                        and not input_var.is_distributed and mp_rank != 0:
+                if mp_rank != 0 and (not hasattr(input_var, 'is_distributed') or
+                                     input_var.is_distributed):
                     removed_op_idx.append(idx)
                     removed_tmp_var.extend(op.output_arg_names)
 
