@@ -1211,6 +1211,8 @@ class Variable(object):
             var_str = "{name} : {type}.shape{shape}.dtype({dtype}).stop_gradient({stop_gradient})".\
                 format(name=self.name, type=type_str, shape=self.shape,
                        dtype=dtype_str, stop_gradient=self.stop_gradient)
+            if hasattr(self, 'is_distributed'):
+                var_str += ".is_distributed({})".format(self.is_distributed)
         else:
             var_str = "{name} : {type})".\
                 format(name=self.name, type=type_str)
