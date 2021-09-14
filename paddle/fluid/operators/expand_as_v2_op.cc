@@ -50,6 +50,9 @@ class ExpandAsV2OpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X",
              "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
              "X is the input to be expanded.");
+    AddInput("Y",
+             "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
+             "Expand X according to the shape of Y.");
     AddOutput("Out",
               "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
               "The rank of Output(Out) have the same with Input(X). "
@@ -99,6 +102,7 @@ class ExpandAsV2GradOpMaker : public framework::SingleGradOpMaker<T> {
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("expand_as_v2_grad");
     op->SetInput("X", this->Input("X"));
+    op->SetInput("Y", this->Input("Y"));
     op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());

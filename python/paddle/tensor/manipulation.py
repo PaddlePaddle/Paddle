@@ -1731,6 +1731,9 @@ def expand_as(x, y, name=None):
     inputs = {"X": [x]}
 
     helper = LayerHelper('expand_as', **locals())
+    if isinstance(y, Variable):
+        y.stop_gradient = True
+        inputs['Y'] = y
     dtype = helper.input_dtype(input_param_name='x')
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
