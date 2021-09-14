@@ -296,7 +296,8 @@ class PartialProgramLayer:
 
     @property
     def program(self):
-        if self.training:
+        tracer = framework._dygraph_tracer()
+        if self.training and tracer._has_grad:
             return self._train_amp_program if _in_amp_guard(
             ) else self._train_program
         else:
@@ -304,7 +305,8 @@ class PartialProgramLayer:
 
     @property
     def program_id(self):
-        if self.training:
+        tracer = framework._dygraph_tracer()
+        if self.training and tracer._has_grad:
             return self._train_amp_program_id if _in_amp_guard(
             ) else self._train_program_id
         else:
