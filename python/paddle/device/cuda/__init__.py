@@ -168,7 +168,7 @@ def _set_current_stream(stream):
 
 
 @signature_safe_contextmanager
-def stream_guard(stream=None):
+def stream_guard(stream):
     '''
     **Notes**:
         **This API only supports dygraph mode currently.**
@@ -192,7 +192,7 @@ def stream_guard(stream=None):
 
     '''
 
-    if stream is not None and not isinstance(stream, paddle.device.cuda.Stream):
+    if not isinstance(stream, paddle.device.cuda.Stream):
         raise TypeError("stream type should be paddle.device.cuda.Stream")
 
     cur_stream = current_stream()
