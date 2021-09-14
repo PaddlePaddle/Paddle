@@ -19,10 +19,12 @@
 #include <unordered_map>
 #include <vector>
 
+#include "paddle/fluid/framework/new_executor/event_manager.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 #include "paddle/fluid/framework/new_executor/profiler.h"
+#include "paddle/fluid/framework/new_executor/stream_analyzer.h"
 #include "paddle/fluid/framework/new_executor/workqueue.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -63,15 +65,6 @@ class InterpreterCore {
   void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list,
                AtomicVectorSizeT* working_var_ref);
 
-  platform::DeviceContext* ParseDeviceContextForInstruction(
-      const OpFuncNode& op_func_node, const OperatorBase& op_base);
-
-  void RecordEventInstruction(const Instruction& instruction);
-
-  void WaitOrSync(const std::vector<EventInter>& events,
-                  const platform::DeviceContext* dev_ctx);
-
-  void StreamWaitEventOrSync(const Instruction& instruction);
 
   AtomicVectorSizeT PrepareAtomicDeps();
   AtomicVectorSizeT PrepareAtomicVarRef();
@@ -81,14 +74,13 @@ class InterpreterCore {
                            std::atomic<size_t>* op_run_number, bool is_dry_run);
   void AddFetch(const std::vector<std::string>& fetch_names);
 
+  void BuildSkipShareLoDInfo();
+
   bool is_build_;
 
   const platform::Place& place_;
   ProgramDesc main_program_;
   VariableScope* global_scope_;
-
-  platform::DeviceContextPool d2h_ctx_pool_;
-  platform::DeviceContextPool h2d_ctx_pool_;
 
   std::vector<Instruction> vec_instruction_;
   InstructionInfo instruction_info_;
@@ -103,8 +95,8 @@ class InterpreterCore {
   std::vector<std::string> feed_names_;
 
   InterpreterProfiler dry_run_profiler_;
-
-  std::map<size_t, std::shared_ptr<platform::DeviceEvent>> var_id2event_;
+  StreamAnalyzer stream_analyzer_;
+  EventManager event_manager_;
 
   InterpreterCoreGarbageCollector gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;

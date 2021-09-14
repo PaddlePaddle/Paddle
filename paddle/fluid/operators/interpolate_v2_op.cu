@@ -1035,9 +1035,9 @@ static void Interpolate1DCUDAFwd(const framework::ExecutionContext& ctx,
                               : static_cast<float>(new_scale_w);
   }
 
-  int in_cw = c * in_w;
-  int out_cw = c * out_w;
-  int pixelNum = n * out_cw;
+  int64_t in_cw = c * in_w;
+  int64_t out_cw = c * out_w;
+  auto pixelNum = n * out_cw;
 
   platform::GpuLaunchConfig config =
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
@@ -1169,12 +1169,12 @@ static void Interpolate2DCUDAFwd(const framework::ExecutionContext& ctx,
                               : static_cast<float>(new_scale_w);
   }
 
-  int in_hw = in_h * in_w;
-  int out_hw = out_h * out_w;
-  int in_chw = c * in_hw;
-  int out_chw = c * out_hw;
+  int64_t in_hw = in_h * in_w;
+  int64_t out_hw = out_h * out_w;
+  int64_t in_chw = c * in_hw;
+  int64_t out_chw = c * out_hw;
 
-  int pixelNum = n * out_chw;
+  auto pixelNum = n * out_chw;
 
   platform::GpuLaunchConfig config =
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
@@ -1355,12 +1355,12 @@ static void Interpolate3DCUDAFwd(const framework::ExecutionContext& ctx,
                               : static_cast<float>(new_scale_w);
   }
 
-  int in_dhw = in_d * in_h * in_w;
-  int out_dhw = out_d * out_h * out_w;
-  int in_cdhw = c * in_dhw;
-  int out_cdhw = c * out_dhw;
+  int64_t in_dhw = in_d * in_h * in_w;
+  int64_t out_dhw = out_d * out_h * out_w;
+  int64_t in_cdhw = c * in_dhw;
+  int64_t out_cdhw = c * out_dhw;
 
-  int pixelNum = n * out_cdhw;
+  auto pixelNum = n * out_cdhw;
 
   platform::GpuLaunchConfig config =
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
@@ -1456,9 +1456,9 @@ static void Interpolate1DCUDABwd(const framework::ExecutionContext& ctx,
     ratio_w = (align_corners) ? static_cast<float>(in_w - 1) / (out_w - 1)
                               : static_cast<float>(new_scale_w);
   }
-  int in_cw = c * in_w;
-  int out_cw = c * out_w;
-  int pixelNum = n * out_cw;
+  int64_t in_cw = c * in_w;
+  int64_t out_cw = c * out_w;
+  auto pixelNum = n * out_cw;
 
   platform::GpuLaunchConfig config =
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
@@ -1587,11 +1587,11 @@ static void Interpolate2DCUDABwd(const framework::ExecutionContext& ctx,
                               : static_cast<float>(new_scale_w);
   }
 
-  int in_hw = in_h * in_w;
-  int out_hw = out_h * out_w;
-  int in_chw = c * in_hw;
-  int out_chw = c * out_hw;
-  int pixelNum = n * out_chw;
+  int64_t in_hw = in_h * in_w;
+  int64_t out_hw = out_h * out_w;
+  int64_t in_chw = c * in_hw;
+  int64_t out_chw = c * out_hw;
+  auto pixelNum = n * out_chw;
 
   platform::GpuLaunchConfig config =
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
@@ -1773,12 +1773,12 @@ static void Interpolate3DCUDABwd(const framework::ExecutionContext& ctx,
                               : static_cast<float>(new_scale_w);
   }
 
-  int in_dhw = in_d * in_h * in_w;
-  int out_dhw = out_d * out_h * out_w;
-  int in_cdhw = c * in_dhw;
-  int out_cdhw = c * out_dhw;
+  int64_t in_dhw = in_d * in_h * in_w;
+  int64_t out_dhw = out_d * out_h * out_w;
+  int64_t in_cdhw = c * in_dhw;
+  int64_t out_cdhw = c * out_dhw;
 
-  int pixelNum = n * out_cdhw;
+  auto pixelNum = n * out_cdhw;
 
   platform::GpuLaunchConfig config =
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), pixelNum);
