@@ -99,7 +99,7 @@ class EigvalsKernel : public framework::OpKernel<T> {
     output->mutable_data(ctx.GetPlace(), output_type);
 
     std::vector<Tensor> input_matrices;
-    SpiltBatchSquareMatrix(input, /*->*/ input_matrices);
+    SpiltBatchSquareMatrix(input, /*->*/ &input_matrices);
 
     int n_dim = input_matrices[0].dims()[1];
     int n_batch = input_matrices.size();

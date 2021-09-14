@@ -91,7 +91,8 @@ class TestEigvalsOp(OpTest):
         elif self.dtype == np.float64:
             self.grad_dtype = np.complex128
 
-        self.out_grad = (np.random.random(self.input_dims[-1:]) + np.random.random(self.input_dims[-1:]) * 1j).astype(self.grad_dtype)
+        self.out_grad = (np.random.random(self.input_dims[-1:]) + 
+            np.random.random(self.input_dims[-1:]) * 1j).astype(self.grad_dtype)
         self.x_grad = np_eigvals_grad(self.input_data, self.out_grad)
 
         print("np_eigvals_grad:\n")
@@ -106,8 +107,8 @@ class TestEigvalsOp(OpTest):
         actual_outs = np.array(outs[0])
         expect_outs = np.array(self.outputs['Out'])
         self.assertTrue(
-            actual_outs.shape == expect_outs.shape, "Output shape has diff."
-            "\nExpect shape " + str(expect_outs.shape) + "\n" + "But Got" +
+            actual_outs.shape == expect_outs.shape, "Output shape has diff.\n"
+            "Expect shape " + str(expect_outs.shape) + "\n" + "But Got" +
             str(actual_outs.shape) + " in class " + self.__class__.__name__)
 
         n_dim = actual_outs.shape[-1]

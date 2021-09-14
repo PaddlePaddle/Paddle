@@ -1178,7 +1178,8 @@ def eigvals(x, name=None):
     Compute the eigenvalues of one or more general matrices.
     
     Warning: 
-        The gradient kernel of this operator does not yet developed. If you need back propagation through this operator, please replace it with paddle.linalg.eig.
+        The gradient kernel of this operator does not yet developed. 
+        If you need back propagation through this operator, please replace it with paddle.linalg.eig.
 
     Args:
         x (Tensor): A square matrix or a batch of square matrices whose eigenvalues will be computed.
@@ -1188,7 +1189,8 @@ def eigvals(x, name=None):
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A tensor containing the unsorted eigenvalues which has the same batch dimensions with `x`. The eigenvalues are complex-valued even when `x` is real.
+        Tensor: A tensor containing the unsorted eigenvalues which has the same batch dimensions with `x`. 
+            The eigenvalues are complex-valued even when `x` is real.
 
     Examples:
         .. code-block:: python
