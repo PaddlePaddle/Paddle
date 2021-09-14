@@ -892,7 +892,7 @@ set_tests_properties(test_multiprocess_dataloader_iterable_dataset_static PROPER
 set_tests_properties(test_lstm_cudnn_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_stack_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_bilinear_interp_v2_op PROPERTIES TIMEOUT 120)
-set_tests_properties(test_svd_op PROPERTIES TIMEOUT 40)
+set_tests_properties(test_svd_op PROPERTIES TIMEOUT 80)
 set_tests_properties(test_deformable_psroi_pooling PROPERTIES TIMEOUT 120)
 set_tests_properties(test_trilinear_interp_v2_op PROPERTIES TIMEOUT 120)
 set_tests_properties(test_imperative_static_runner_mnist PROPERTIES TIMEOUT 120)
