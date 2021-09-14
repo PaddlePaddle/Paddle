@@ -180,7 +180,8 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
   if ((in_format != out_format) || always_copy) {
     void* in_data = GetDataFromTensor(in, in_type);
 
-    platform::ReorderMKLDNNHandler handler(in_tz, in.type(), in_type, cpu_engine);
+    platform::ReorderMKLDNNHandler handler(in_tz, in.type(), in_type,
+                                           cpu_engine);
 
     auto reorder_src_memory_p = handler.AcquireSrcMemory(in_format, in_data);
     auto reorder_dst_memory_p =

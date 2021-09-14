@@ -1125,7 +1125,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         mkldnn::memory::format_tag out_format =
             weights_tz.size() == 6 ? mkldnn::memory::format_tag::goidhw
                                    : mkldnn::memory::format_tag::goihw;
-        platform::ReorderMKLDNNHandler handler( weights_tz, filter->type(), in_type, mkldnn_engine);
+        platform::ReorderMKLDNNHandler handler(weights_tz, filter->type(),
+                                               in_type, mkldnn_engine);
         auto reorder_dst_memory_p =
             handler.AcquireDstMemory(filter_grad, out_format, ctx.GetPlace());
 
