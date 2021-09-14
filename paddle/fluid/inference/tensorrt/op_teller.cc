@@ -695,19 +695,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
-    if (op_type == "mish") {
-      if (desc.Input("X").size() != 1) {
-        VLOG(3) << "Mish op has only 1 input, but got "
-                << desc.Input("X").size();
-        return false;
-      }
-      if (desc.Output("Out").size() != 1) {
-        VLOG(3) << "Mish op has only 1 output, but got "
-                << desc.Output("Out").size();
-        return false;
-      }
-    }
-
     if (op_type == "batch_norm") {
       const std::vector<std::string> bn_inputs = {"X", "Bias", "Mean", "Scale",
                                                   "Variance"};
