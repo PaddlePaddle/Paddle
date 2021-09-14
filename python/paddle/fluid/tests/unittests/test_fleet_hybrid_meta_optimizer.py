@@ -33,7 +33,7 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         self.dp_ring_id = 2
         self.global_ring_id = 3
         self.pp_pair_ring_id = 20
-        self._debug = True
+        self._debug = False
 
     def test_opt_sharding_with_pp(self):
         train_prog, startup_prog = static.Program(), static.Program()

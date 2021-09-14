@@ -105,10 +105,10 @@ class TestFleetMetaOptimizer(unittest.TestCase):
             fleet.init(is_collective=True)
             x = paddle.static.data(name='x', shape=[-1, 4], dtype='float32')
             with paddle.static.device_guard('gpu:0'):
-                linear = paddle.nn.Linear(4, 8, bias_attr=False)
+                linear = fluid.Linear(4, 8, bias_attr=False)
                 out = linear(x)
             with paddle.static.device_guard('gpu:1'):
-                linear = paddle.nn.Linear(8, 5, bias_attr=False)
+                linear = fluid.Linear(8, 5, bias_attr=False)
                 out = linear(out)
                 avg_cost = paddle.mean(out)
             strategy = fleet.DistributedStrategy()
