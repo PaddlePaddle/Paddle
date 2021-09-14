@@ -38,7 +38,7 @@ class SolveOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "Solve");
 
     auto x_dims = ctx->GetInputDim("X");
-    // auto y_dims = ctx->GetInputDim("Y");
+    auto y_dims = ctx->GetInputDim("Y");
 
     std::vector<int64_t> x_dims_vec =
         paddle::framework::vectorize(ctx->GetInputDim("X"));
@@ -54,6 +54,13 @@ class SolveOp : public framework::OperatorWithKernel {
                           "should be larger than 1. But received X's "
                           "dimensions = %d, X's shape = [%s]",
                           x_dims_n, x_dims));
+
+    PADDLE_ENFORCE_GE(y_dims_n, 1,
+                      platform::errors::InvalidArgument(
+                          "The input tensor Y's dimensions of SolveOp "
+                          "should be larger than or equal 1. But received Y's "
+                          "dimensions = %d, Y's shape = [%s]",
+                          y_dims_n, y_dims));
 
     PADDLE_ENFORCE_EQ(x_dims[x_dims_n - 2], x_dims[x_dims_n - 1],
                       platform::errors::InvalidArgument(
@@ -198,6 +205,7 @@ class SolveGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "solve");
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    "Out@GRAD", "solve");
+    // reuse the linalg.solve forward output
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "solve");
 
     auto x_dims = ctx->GetInputDim("X");
@@ -226,6 +234,7 @@ class SolveOpGradMaker : public framework::SingleGradOpMaker<T> {
     retv->SetInput("X", this->Input("X"));
     retv->SetInput("Y", this->Input("Y"));
     retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    // reuse the linalg.solve forward output
     retv->SetInput("Out", this->Output("Out"));
     retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     retv->SetOutput(framework::GradVarName("Y"), this->InputGrad("Y"));

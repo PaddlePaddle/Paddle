@@ -717,6 +717,19 @@ void Blas<platform::CUDADeviceContext>::BatchedMatInv(int n, const T **a,
   });
 }
 
+template <>
+template <typename T>
+void Blas<platform::CUDADeviceContext>::BatchedGETRS(
+    CBLAS_TRANSPOSE trans, int n, int nrhs, const T **a, int lda, int *ipiv,
+    T **b, int ldb, int *info, int batch_size) const {
+  // use CUBLAS_OP_C (conjugate transpose) for complex
+  cublasOperation_t cuTrans =
+      (trans == CblasNoTrans) ? CUBLAS_OP_N : CUBLAS_OP_T;
+  context_.CublasCall([&](cublasHandle_t handle) {
+    CUBlas<T>::GETRS_BATCH(handle, cuTrans, n, nrhs, a, lda, ipiv, b, ldb, info,
+                           batch_size);
+  });
+}
 }  // namespace math
 }  // namespace operators
 }  // namespace paddle

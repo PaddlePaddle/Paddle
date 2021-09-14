@@ -51,12 +51,6 @@ class TestSolveOp(OpTest):
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out')
 
-    def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
-
-    def test_check_grad_ingore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
-
 
 class TestSolveOpBatched_case1(OpTest):
     def setUp(self):
@@ -76,12 +70,6 @@ class TestSolveOpBatched_case1(OpTest):
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out')
 
-    def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set('X'))
-
-    def test_check_grad_ignore_y(self):
-        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
-
 
 class TestSolveOpBatched_case2(OpTest):
     def setUp(self):
@@ -90,8 +78,8 @@ class TestSolveOpBatched_case2(OpTest):
         self.init_dtype_type()
         np.random.seed(2021)
         self.inputs = {
-            'X': np.random.random((2, 3, 8, 8)).astype(self.dtype),
-            'Y': np.random.random((2, 3, 8, 7)).astype(self.dtype)
+            'X': np.random.random((3, 20, 20)).astype(self.dtype),
+            'Y': np.random.random((1, 20, 10)).astype(self.dtype)
         }
         result = np.linalg.solve(self.inputs['X'], self.inputs['Y'])
         self.outputs = {'Out': result}
@@ -103,41 +91,7 @@ class TestSolveOpBatched_case2(OpTest):
         self.check_output()
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.008)
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(['Y'], 'Out', no_grad_set=set('X'))
-
-    def test_check_grad_ignore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.008, no_grad_set=set('Y'))
-
-
-class TestSolveOpBatched_case3(OpTest):
-    def setUp(self):
-        self.op_type = "solve"
-        self.dtype = "float64"
-        np.random.seed(2021)
-        self.inputs = {
-            'X': np.random.random((2, 2, 2, 5, 5)).astype(self.dtype),
-            'Y': np.random.random((2, 2, 2, 5, 8)).astype(self.dtype)
-        }
-        result = np.linalg.solve(self.inputs['X'], self.inputs['Y'])
-        self.outputs = {'Out': result}
-
-    def test_check_output(self):
-        self.check_output()
-
-    def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.6)
-
-    def test_check_grad_ingore_x(self):
-        self.check_grad(
-            ['Y'], 'Out', max_relative_error=0.1, no_grad_set=set('X'))
-
-    def test_check_grad_ignore_y(self):
-        self.check_grad(
-            ['X'], 'Out', max_relative_error=0.6, no_grad_set=set('Y'))
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.001)
 
 
 class TestSolveOpError(unittest.TestCase):
@@ -167,7 +121,7 @@ class TestSolveOpError(unittest.TestCase):
             y5 = fluid.data(name="y5", shape=[30, 10], dtype="float16")
             self.assertRaises(TypeError, paddle.linalg.solve, x5, y5)
 
-            # The number of dimensions of input must be >= 2.
+            # The number of dimensions of input'X must be >= 2.
             x6 = fluid.data(name="x6", shape=[30], dtype="float64")
             y6 = fluid.data(name="y6", shape=[30], dtype="float64")
             self.assertRaises(ValueError, paddle.linalg.solve, x6, y6)
@@ -299,14 +253,6 @@ class TestFP64SolveOp1(TestSolveOp):
     def test_check_grad_normal(self):
         place = core.CUDAPlace(0)
         self.check_grad_with_place(place, ['X', 'Y'], 'Out')
-
-    def test_check_grad_ingore_x(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['Y'], 'Out', no_grad_set=set("X"))
-
-    def test_check_grad_ingore_y(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X'], 'Out', no_grad_set=set('Y'))
 
 
 if __name__ == "__main__":

@@ -1014,25 +1014,30 @@ def matrix_power(x, n, name=None):
 
 
 def solve(x, y, name=None):
-    """
+    r"""
     Computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
 
-    Let :math: `X` be a sqaure matrix or a batch of square matrices, 
-    this system of linear equations has one solution if and only if input 'X' is invertible. 
-
-    the equation should be:
-    $$Out = X^-1 * Y$$
+    Let :math: `X` be a sqaure matrix or a batch of square matrices, :math:`Y` be
+    a vector/matrix or a batch of vectors/matrices, the equation should be:
     
-    Also see comments of `matmul_v2` for more details about * operation.
+    .. math::
+        Out = X^-1 * Y
+
+    Specifically,
+
+    - This system of linear equations has one solution if and only if input 'X' is invertible.
 
     Args:
-        x (Tensor): The input tensor which is a Tensor.
-        y (Tensor): The input tensor which is a Tensor.
-        name(str|None): A name for this layer(optional). If set None, the layer
-            will be named automatically.
+        x (Tensor): A square matrix or a batch of square matrices. Its shape should be `[*, M, M]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
+        y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be `[*, M, K]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
+        name(str, optional): Name for the operation (optional, default is None). 
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The output Tensor.
+        Tensor: The solution of a square system of linear equations with a unique solution for input 'x' and 'y'. 
+        Its data type should be the same as that of `x`.
 
     Examples:
 
@@ -1047,13 +1052,12 @@ def solve(x, y, name=None):
        
         np_x = np.array([[3, 1],[1, 2]])
         np_y = np.array([9, 8])
-        x = paddle.to_tensor(np_x, dtype="float64", stop_gradient=False)
-        y = paddle.to_tensor(np_y, dtype="float64", stop_gradient=False)
+        x = paddle.to_tensor(np_x, dtype="float64")
+        y = paddle.to_tensor(np_y, dtype="float64")
         out = paddle.linalg.solve(x, y)
         
-        # out
-        # Tensor(shape=[2], dtype=float64, place=CUDAPlace(0), stop_gradient=False,
-        # [2.00000000, 3.        ])
+        print(out)
+        # [2., 3.])
 
     """
     if in_dygraph_mode():
