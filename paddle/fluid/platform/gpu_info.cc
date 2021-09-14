@@ -22,12 +22,15 @@ limitations under the License. */
 #else
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #endif
+#include <deque>
+#include <mutex>
+#include <vector>
+
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
 #include "paddle/fluid/platform/macros.h"
 #include "paddle/fluid/platform/monitor.h"
 #include "paddle/fluid/string/split.h"
-
 DECLARE_double(fraction_of_gpu_memory_to_use);
 DECLARE_uint64(initial_gpu_memory_in_mb);
 DECLARE_uint64(reallocate_gpu_memory_in_mb);
@@ -36,6 +39,18 @@ DECLARE_string(selected_gpus);
 DECLARE_uint64(gpu_memory_limit_mb);
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
+
+static std::once_flag init_flag;
+static std::deque<std::once_flag> device_flags;
+static int gpu_num = -1;
+
+#ifdef PADDLE_WITH_CUDA
+static std::vector<cudaDeviceProp> device_props;
+#endif
+
+#ifdef PADDLE_WITH_HIP
+static std::vector<hipDeviceProp_t> device_props;
+#endif
 
 USE_GPU_MEM_STAT;
 namespace paddle {
@@ -294,6 +309,64 @@ std::vector<int> GetSelectedDevices() {
   }
   return devices;
 }
+
+#ifdef PADDLE_WITH_CUDA
+cudaDeviceProp *GetDeviceProperties(int id) {
+  std::call_once(init_flag, [&] {
+    gpu_num = platform::GetCUDADeviceCount();
+    device_flags.resize(gpu_num);
+    device_props.resize(gpu_num);
+  });
+
+  if (id == -1) id = platform::GetCurrentDeviceId();
+
+  PADDLE_ENFORCE_EQ(
+      id >= 0 && id < gpu_num, true,
+      platform::errors::OutOfRange(
+          "The device id %d exceeds out of range [0, the number of "
+          "devices %d on this machine), Because the gpu id should be "
+          "smaller than the number of gpus. Please input appropriate "
+          "device id again!",
+          id, gpu_num));
+
+  std::call_once(device_flags[id], [&] {
+    cudaDeviceProp device_prop;
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetDeviceProperties(&device_prop, id));
+    device_props[id] = device_prop;
+  });
+
+  return &device_props[id];
+}
+#endif
+
+#ifdef PADDLE_WITH_HIP
+hipDeviceProp_t *GetDeviceProperties(int id) {
+  std::call_once(init_flag, [&] {
+    gpu_num = platform::GetCUDADeviceCount();
+    device_flags.resize(gpu_num);
+    device_props.resize(gpu_num);
+  });
+
+  if (id == -1) id = platform::GetCurrentDeviceId();
+
+  PADDLE_ENFORCE_EQ(
+      id >= 0 && id < gpu_num, true,
+      platform::errors::OutOfRange(
+          "The device id %d exceeds out of range [0, the number of "
+          "devices %d on this machine), Because the gpu id should be "
+          "smaller than the number of gpus. Please input appropriate "
+          "device id again!",
+          id, gpu_num));
+
+  std::call_once(device_flags[id], [&] {
+    hipDeviceProp_t device_prop;
+    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetDeviceProperties(&device_prop, id));
+    device_props[id] = device_prop;
+  });
+
+  return &device_props[id];
+}
+#endif
 
 void SetDeviceId(int id) {
   // TODO(qijun): find a better way to cache the cuda device count

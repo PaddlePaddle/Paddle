@@ -2266,32 +2266,26 @@ All parameter, weight, gradient are variables in Paddle.
 #endif
 #endif
 
-#if defined PADDLE_WITH_CUDA
+#ifdef PADDLE_WITH_CUDA
   m.def("get_device_properties",
-        [](int64_t device_id) -> cudaDeviceProp * {
-          int64_t gpu_num = 0;
-          gpu_num = platform::GetCUDADeviceCount();
-          PADDLE_ENFORCE_EQ(
-              device_id >= 0 && device_id < gpu_num, true,
-              platform::errors::OutOfRange(
-                  "The device id %d exceeds out of range [0, the number of "
-                  "devices %d on this machine), Because the gpu id should be "
-                  "smaller than the number of gpus. Please input appropriate "
-                  "device id again!",
-                  device_id, gpu_num));
-          std::vector<cudaDeviceProp> cuda_device_props;
-          cuda_device_props.resize(gpu_num);
-          for (int i = 0; i < gpu_num; ++i) {
-            PADDLE_ENFORCE_CUDA_SUCCESS(
-                cudaGetDeviceProperties(&cuda_device_props[i], i));
-          }
-          return &cuda_device_props[device_id];
+        [](int id) -> cudaDeviceProp * {
+          return platform::GetDeviceProperties(id);
         },
         py::return_value_policy::copy);
+#endif
 
+#ifdef PADDLE_WITH_HIP
+  m.def("get_device_properties",
+        [](int id) -> hipDeviceProp_t * {
+          return platform::GetDeviceProperties(id);
+        },
+        py::return_value_policy::copy);
+#endif
+
+#ifdef PADDLE_WITH_CUDA
   py::class_<cudaDeviceProp>(m, "_CudaDeviceProperties", R"DOC(
-    _CudaDeviceProperties is struct of device properties information.  
-    )DOC")
+_CudaDeviceProperties is struct of device properties information.  
+)DOC")
       .def_readonly("name", &cudaDeviceProp::name)
       .def_readonly("major", &cudaDeviceProp::major)
       .def_readonly("minor", &cudaDeviceProp::minor)
@@ -2312,33 +2306,11 @@ All parameter, weight, gradient are variables in Paddle.
       });
 #endif
 
-#if defined PADDLE_WITH_HIP
-  m.def("get_device_properties",
-        [](int64_t device_id) -> hipDeviceProp_t * {
-          int64_t gpu_num = 0;
-          gpu_num = platform::GetCUDADeviceCount();
-          PADDLE_ENFORCE_EQ(
-              device_id >= 0 && device_id < gpu_num, true,
-              platform::errors::OutOfRange(
-                  "The device id %d exceeds out of range [0, number of devices "
-                  "%d on this machine), Because the gpu id should be smaller "
-                  "than the number of gpus. Please input appropriate device id "
-                  "again!",
-                  device_id, gpu_num));
-          std::vector<hipDeviceProp_t> hip_device_props;
-          hip_device_props.resize(gpu_num);
-          for (int i = 0; i < gpu_num; ++i) {
-            PADDLE_ENFORCE_CUDA_SUCCESS(
-                hipGetDeviceProperties(&hip_device_props[i], i));
-          }
-          return &hip_device_props[device_id];
-        },
-        py::return_value_policy::copy);
-
+#ifdef PADDLE_WITH_HIP
   // This is copy the pytorch, only few changes, TO DO modify
   py::class_<hipDeviceProp_t>(m, "_hipDeviceProperties", R"DOC(
-    _hipDeviceProperties is struct of device properties information.  
-    )DOC")
+_hipDeviceProperties is struct of device properties information.  
+)DOC")
       .def_readonly("name", &hipDeviceProp_t::name)
       .def_readonly("major", &hipDeviceProp_t::major)
       .def_readonly("minor", &hipDeviceProp_t::minor)
@@ -2490,7 +2462,8 @@ All parameter, weight, gradient are variables in Paddle.
   // -- python binds for parallel executor.
 
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
-  py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
+  py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy",
+                                              R"DOC(
     ExecutionStrategy allows the user to more preciously control how to run
     the program in ParallelExecutor by setting the property.
 
@@ -2563,8 +2536,8 @@ All parameter, weight, gradient are variables in Paddle.
           [](const ExecutionStrategy &self) { return self.use_device_; },
           [](ExecutionStrategy &self, paddle::platform::DeviceType use_device) {
             self.use_device_ = use_device;
-          })  // NOTE(liuyuhui): Doesn't add doc for 'use_device', because
-              // use_device isn‘t exposed to users.
+          })  // NOTE(liuyuhui): Doesn't add doc for 'use_device',
+              // because use_device isn‘t exposed to users.
       .def_property(
           "allow_op_delay",
           [](const ExecutionStrategy &self) { return self.allow_op_delay_; },
@@ -2876,7 +2849,8 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, int num_trainers) {
 #ifdef WIN32
             PADDLE_THROW(platform::errors::Unavailable(
-                "Distribution mode is not supported on Windows platform."));
+                "Distribution mode is not supported on Windows "
+                "platform."));
 #endif
             self.num_trainers_ = num_trainers;
           })
@@ -3138,7 +3112,8 @@ All parameter, weight, gradient are variables in Paddle.
               self.memory_optimize_ = (py_obj == Py_True);
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
-                  "BuildStrategy.memory_optimize must be set to None, False "
+                  "BuildStrategy.memory_optimize must be set to None, "
+                  "False "
                   "or True"));
             }
           },
@@ -3169,7 +3144,8 @@ All parameter, weight, gradient are variables in Paddle.
 #ifdef WIN32
             if (b) {
               PADDLE_THROW(platform::errors::Unavailable(
-                  "Distribution mode is not supported on Windows platform."));
+                  "Distribution mode is not supported on Windows "
+                  "platform."));
             }
 #else
             self.is_distribution_ = b;
@@ -3243,10 +3219,10 @@ All parameter, weight, gradient are variables in Paddle.
                   const std::vector<std::string> &, const std::string &,
                   Scope *, std::vector<Scope *> &, const ExecutionStrategy &,
                   const BuildStrategy &, ir::Graph *>())
-      // NOTE: even we return a vec<Scope*>* to Python use reference policy.
-      // We still cannot get local_scope from this vector, since the element
-      // of vec<Scope*> will be freed by Python GC. We can only return Scope*
-      // one by one and mark them as reference.
+      // NOTE: even we return a vec<Scope*>* to Python use reference
+      // policy. We still cannot get local_scope from this vector, since
+      // the element of vec<Scope*> will be freed by Python GC. We can
+      // only return Scope* one by one and mark them as reference.
       .def("local_scopes",
            [](ParallelExecutor &self) -> std::vector<Scope *> * {
              return &self.GetLocalScopes();
