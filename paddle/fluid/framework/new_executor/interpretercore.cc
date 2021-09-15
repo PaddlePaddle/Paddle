@@ -301,13 +301,13 @@ void InterpreterCore::RunInstructionAsync(
     size_t instr_id, AtomicVectorSizeT* working_dependecy_count,
     AtomicVectorSizeT* working_var_ref, std::atomic<size_t>* op_run_number,
     bool is_dry_run) {
-  VLOG(3) << "Start to run instr_id: " << instr_id;
   auto& instr_node = vec_instruction_[instr_id];
   event_manager_.WaitEvent(instr_node, place_);
+
   RunInstruction(instr_node);
+
   event_manager_.RecordEvent(instr_node, place_);
   op_run_number->fetch_add(1);
-  VLOG(3) << "end to run instr_id: " << instr_id;
 
   if (is_dry_run) {
     dry_run_profiler_.ParseMemoryInfo(global_scope_->var_list);
