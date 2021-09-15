@@ -1196,7 +1196,8 @@ def eigvals(x, name=None):
         .. code-block:: python
 
             import paddle
-
+            
+            paddle.set_device("cpu")
             paddle.seed(1234)
 
             x = paddle.rand(shape=[3, 3], dtype='float64')

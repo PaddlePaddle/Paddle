@@ -54,6 +54,7 @@ def np_eigvals_grad(a, out_grad):
 
 class TestEigvalsOp(OpTest):
     def setUp(self):
+        np.random.seed(0)
         paddle.enable_static()
         self.op_type = "eigvals"
         self.set_dtype()
@@ -188,6 +189,8 @@ class TestEigvalsOpBatch3(TestEigvalsOp):
 
 class TestEigvalsAPI(unittest.TestCase):
     def setUp(self):
+        np.random.seed(0)
+
         self.small_dims = [6, 6]
         self.large_dims = [128, 128]
         self.batch_dims = [6, 9, 2, 2]
