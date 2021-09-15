@@ -107,8 +107,8 @@ class TestEigvalsOp(OpTest):
     '''
 
     def verify_output(self, outs):
-        actual_outs = np.array(outs[0])
-        expect_outs = np.array(self.outputs['Out'])
+        actual_outs = np.sort(np.array(outs[0]))
+        expect_outs = np.sort(np.array(self.outputs['Out']))
         self.assertTrue(
             actual_outs.shape == expect_outs.shape, "Output shape has diff.\n"
             "Expect shape " + str(expect_outs.shape) + "\n" + "But Got" +
