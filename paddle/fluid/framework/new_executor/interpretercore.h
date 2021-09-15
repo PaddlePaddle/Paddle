@@ -65,9 +65,6 @@ class InterpreterCore {
   void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list,
                AtomicVectorSizeT* working_var_ref);
 
-
-  AtomicVectorSizeT PrepareAtomicDeps();
-  AtomicVectorSizeT PrepareAtomicVarRef();
   void RunInstructionAsync(size_t instr_id,
                            AtomicVectorSizeT* working_dependecy_count,
                            AtomicVectorSizeT* working_var_ref,
@@ -97,6 +94,7 @@ class InterpreterCore {
   InterpreterProfiler dry_run_profiler_;
   StreamAnalyzer stream_analyzer_;
   EventManager event_manager_;
+  interpretercore::AsyncWorkQueue async_work_queue_;
 
   InterpreterCoreGarbageCollector gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;

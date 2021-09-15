@@ -22,9 +22,14 @@ namespace paddle {
 namespace framework {
 
 struct WorkQueueOptions {
-  size_t num_threads{0};
-  bool allow_spinning{true};
-  bool track_task{false};
+  WorkQueueOptions(size_t num_threads, bool allow_spinning, bool track_task)
+      : num_threads(num_threads),
+        allow_spinning(allow_spinning),
+        track_task(track_task) {}
+
+  size_t num_threads;
+  bool allow_spinning;
+  bool track_task;
 };
 
 class WorkQueue {

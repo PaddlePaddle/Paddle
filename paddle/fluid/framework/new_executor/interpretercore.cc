@@ -19,6 +19,8 @@
 
 namespace paddle {
 namespace framework {
+// NOTE(Aurelius84): Need a better strategy to determine it.
+static constexpr size_t kHostNumThreads = 4;
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const ProgramDesc& main_prog,
@@ -28,17 +30,11 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     : place_(place),
       main_program_(main_prog),
       global_scope_(global_scope),
-      stream_analyzer_(place) {
+      stream_analyzer_(place),
+      async_work_queue_(kHostNumThreads) {
   is_build_ = false;
 
   feed_names_ = feed_names;
-
-  std::vector<WorkQueueOptions> group_options(2);
-  group_options[0].num_threads = 1;
-  group_options[0].track_task = true;
-  group_options[1].num_threads = 4;
-  group_options[1].track_task = true;
-  group_thread_pool_ = CreateWorkQueueGroup(group_options);
 
   // Step1: add feedop and fetchop to main_program
   AddFetch(fetch_names);
@@ -172,8 +168,8 @@ void InterpreterCore::Convert() {
       }
     }
 
-    // In Program, op order is a very import information.
-    // Op can noly add op after it as next as next ops.
+    // In Program, op order is a very important information.
+    // Op can only add op after it as next as next ops.
     std::vector<size_t> filter_next;
     filter_next.reserve(vec_temp.size());
     for (auto item : vec_temp) {
@@ -276,53 +272,23 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
 }
 
-AtomicVectorSizeT InterpreterCore::PrepareAtomicDeps() {
-  AtomicVectorSizeT working_dependecy_count(dependecy_count_.size());
-  for (size_t i = 0; i < dependecy_count_.size(); ++i) {
-    working_dependecy_count[i] =
-        std::make_unique<std::atomic<size_t>>(dependecy_count_[i]);
-  }
-  return std::move(working_dependecy_count);
-}
-
-AtomicVectorSizeT InterpreterCore::PrepareAtomicVarRef() {
-  AtomicVectorSizeT working_var_ref(vec_meta_info_.size());
-
-  for (size_t i = 0; i < vec_meta_info_.size(); ++i) {
-    working_var_ref[i] =
-        std::make_unique<std::atomic<size_t>>(vec_meta_info_[i].var_ref_count_);
-  }
-  return std::move(working_var_ref);
-}
-
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr, bool is_dry_run) {
-  auto working_dependecy_count = PrepareAtomicDeps();
-  auto working_var_ref = PrepareAtomicVarRef();
+  auto working_dependecy_count =
+      async_work_queue_.PrepareAtomicDeps(dependecy_count_);
+  auto working_var_ref = async_work_queue_.PrepareAtomicVarRef(vec_meta_info_);
   std::atomic<size_t> op_run_number{0};
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
-      if (vec_instr[i].type_ == OpFuncType::kQueueAsync) {
-        group_thread_pool_->AddTask(
-            static_cast<size_t>(OpFuncType::kQueueAsync), [&, i, is_dry_run]() {
-              RunInstructionAsync(i, &working_dependecy_count, &working_var_ref,
-                                  &op_run_number, is_dry_run);
-            });
-      } else {
-        group_thread_pool_->AddTask(
-            static_cast<size_t>(OpFuncType::kQueueSync), [&, i, is_dry_run]() {
-              RunInstructionAsync(i, &working_dependecy_count, &working_var_ref,
-                                  &op_run_number, is_dry_run);
-            });
-      }
+      async_work_queue_.AddTask(vec_instr[i].type_, [&, i, is_dry_run]() {
+        RunInstructionAsync(i, &working_dependecy_count, &working_var_ref,
+                            &op_run_number, is_dry_run);
+      });
     }
   }
-  // TODO(Aurelius84): [ Why we need a while_loop to check op_run_number ? ]
-  // Because two WorkQueue can't communicate with each other, it will lead that
-  // even though we called WaitQueueEmpty(), it still can't guarantee all ops
-  // are finished.
-  group_thread_pool_->WaitQueueGroupEmpty();
+
+  async_work_queue_.WaitEmpty();
 
   PADDLE_ENFORCE_EQ(
       op_run_number.load(), vec_instr.size(),
@@ -352,18 +318,12 @@ void InterpreterCore::RunInstructionAsync(
 
   for (auto next_i : next_instr) {
     working_dependecy_count->at(next_i)->fetch_sub(1);
+
     if (working_dependecy_count->at(next_i)->load() == 0) {
-      if (vec_instruction_[next_i].type_ == OpFuncType::kQueueAsync) {
-        group_thread_pool_->AddTask(1, [=]() {
-          RunInstructionAsync(next_i, working_dependecy_count, working_var_ref,
-                              op_run_number, is_dry_run);
-        });
-      } else {
-        group_thread_pool_->AddTask(0, [=]() {
-          RunInstructionAsync(next_i, working_dependecy_count, working_var_ref,
-                              op_run_number, is_dry_run);
-        });
-      }
+      async_work_queue_.AddTask(vec_instruction_[next_i].type_, [=]() {
+        RunInstructionAsync(next_i, working_dependecy_count, working_var_ref,
+                            op_run_number, is_dry_run);
+      });
     }
   }
   // GC infomation
