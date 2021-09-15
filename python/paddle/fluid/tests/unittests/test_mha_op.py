@@ -138,7 +138,7 @@ class TestMHAOpFP16(OpTest):
 
         Q, K, V, W, WQ, WK, WV, WO = _generate_data(batch_size, seq_len,
                                                     vec_size, self.dtype)
-        q_slen, k_slen, lo_win, hi_win = _generate_seq_len(
+        qo_slen, kv_slen, lo_win, hi_win = _generate_seq_len(
             batch_size, min_seq_len=seq_len, max_seq_len=seq_len)
 
         self.inputs = {
@@ -146,11 +146,14 @@ class TestMHAOpFP16(OpTest):
             'K': K,
             'V': V,
             'W': W,
-            'QO_Seqlen': q_slen,
-            'KV_Seqlen': k_slen
+            'QO_Seqlen': qo_slen,
+            'KV_Seqlen': kv_slen
         }
 
         self.attrs = {
+            'cache_key': str(id(type(self))),
+            'attn_QO_Seqlen': qo_slen,
+            'attn_KV_Seqlen': kv_slen,
             'attn_low_windows': lo_win,
             'attn_high_windows': hi_win,
             'attn_dropout_rate': 0.,
@@ -243,6 +246,9 @@ class TestMHAOpPadVarLenFP16(OpTest):
         }
 
         self.attrs = {
+            'cache_key': str(id(type(self))),
+            'attn_QO_Seqlen': qo_slen,
+            'attn_KV_Seqlen': kv_slen,
             'attn_low_windows': lo_win,
             'attn_high_windows': hi_win,
             'attn_dropout_rate': 0.,
@@ -330,16 +336,25 @@ class TestMHAOpVarLenFP16(OpTest):
         Q, K, V, W, WQ, WK, WV, WO = _generate_varlen_data(qo_slen, vec_size,
                                                            self.dtype)
 
+        qo_slens = np.sum(qo_slen, dtype=np.int32).reshape(1, )
+        kv_slens = np.sum(kv_slen, dtype=np.int32).reshape(1, )
         self.inputs = {
             'Q': Q,
             'K': K,
             'V': V,
             'W': W,
-            'QO_Seqlen': np.sum(qo_slen, dtype=np.int32).reshape(1, ),
-            'KV_Seqlen': np.sum(kv_slen, dtype=np.int32).reshape(1, )
+            'QO_Seqlen': qo_slens,
+            'KV_Seqlen': kv_slens
         }
 
+        # TODO(Ming Huang): Is is a work around for 1 batch size. 
+        # due to attribute cannot be get as std::vector when list lenght==1
+        qo_slens_host = [*qo_slens, 0]
+        kv_slens_host = [*kv_slens, 0]
         self.attrs = {
+            'cache_key': str(id(type(self))),
+            'attn_QO_Seqlen': qo_slens_host,
+            'attn_KV_Seqlen': kv_slens_host,
             'attn_low_windows': lo_win,
             'attn_high_windows': hi_win,
             'attn_dropout_rate': 0.,

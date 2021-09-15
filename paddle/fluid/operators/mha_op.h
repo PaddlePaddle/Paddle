@@ -113,9 +113,9 @@ class MHAKernel : public framework::OpKernel<T> {
 
     auto cudnn_handle = dev_ctx.cudnn_handle();
 
-    // TODO(Ming Huang): Need to come out a way to pass related variables from
-    // FWD to BWD.
-    const std::string key = typeid(T).name();
+    // TODO(Ming Huang): Work around now is using user-defined key
+    const std::string key = context.Attr<std::string>("cache_key");
+
     MHASingleton::Instance().Data(key).SetCudnnHandle(cudnn_handle);
 
     cudnnDropoutDescriptor_t attn_dropout_desc = nullptr;
@@ -162,19 +162,25 @@ class MHAKernel : public framework::OpKernel<T> {
           dev_ctx, MHASingleton::Instance().Data(key).reserve_size);
     }
 
-    std::vector<int> qo_slen_host(qo_slen->dims()[0]);
-    std::vector<int> kv_slen_host(kv_slen->dims()[0]);
+    std::vector<int> qo_slen_host =
+        context.Attr<std::vector<int>>("attn_QO_Seqlen");
+    std::vector<int> kv_slen_host =
+        context.Attr<std::vector<int>>("attn_KV_Seqlen");
+    // std::vector<int> qo_slen_host(qo_slen->dims()[0]);
+    // std::vector<int> kv_slen_host(kv_slen->dims()[0]);
 
-    // TODO(rewang): use memory::Copy
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMemcpy(qo_slen_host.data(),
-                   reinterpret_cast<const void*>(qo_slen->data<int>()),
-                   qo_slen->dims()[0] * sizeof(int), cudaMemcpyDeviceToHost));
+    // // TODO(rewang): use memory::Copy
+    // PADDLE_ENFORCE_CUDA_SUCCESS(
+    //     cudaMemcpy(qo_slen_host.data(),
+    //                reinterpret_cast<const void*>(qo_slen->data<int>()),
+    //                qo_slen->dims()[0] * sizeof(int),
+    //                cudaMemcpyDeviceToHost));
 
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaMemcpy(kv_slen_host.data(),
-                   reinterpret_cast<const void*>(kv_slen->data<int>()),
-                   kv_slen->dims()[0] * sizeof(int), cudaMemcpyDeviceToHost));
+    // PADDLE_ENFORCE_CUDA_SUCCESS(
+    //     cudaMemcpy(kv_slen_host.data(),
+    //                reinterpret_cast<const void*>(kv_slen->data<int>()),
+    //                kv_slen->dims()[0] * sizeof(int),
+    //                cudaMemcpyDeviceToHost));
 
     cudnnSeqDataAxis_t axes[CUDNN_SEQDATA_DIM_COUNT];
     axes[0] = CUDNN_SEQDATA_BATCH_DIM;
@@ -270,9 +276,8 @@ class MHAGradKernel : public framework::OpKernel<T> {
 
     auto cudnn_handle = dev_ctx.cudnn_handle();
 
-    // TODO(Ming Huang): Need to come out a way to pass related variables from
-    // FWD to BWD.
-    const std::string key = typeid(T).name();
+    // TODO(Ming Huang): Work around now is using user-defined key
+    const std::string key = context.Attr<std::string>("cache_key");
 
     std::vector<int> attn_low_windows =
         context.Attr<std::vector<int>>("attn_low_windows");

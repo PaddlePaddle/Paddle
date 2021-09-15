@@ -99,6 +99,10 @@ class MHAOpMaker : public framework::OpProtoAndCheckerMaker {
 
     AddOutput("O", "(Tensor), O");
 
+    AddAttr<std::string>("cache_key", "");
+
+    AddAttr<std::vector<int>>("attn_QO_Seqlen", "");
+    AddAttr<std::vector<int>>("attn_KV_Seqlen", "");
     AddAttr<std::vector<int>>("attn_low_windows", "(Tensor), attn_low_windows");
     AddAttr<std::vector<int>>("attn_high_windows",
                               "(Tensor), attn_high_windows");
