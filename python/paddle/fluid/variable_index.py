@@ -516,6 +516,7 @@ def _setitem_impl_(var, item, value):
     ends = []
     steps = []
 
+    item = replace_ndarray(item)
     item, none_axes = replace_none(item)
     item = replace_ellipsis(var, item)
     slice_info = SliceInfo()
