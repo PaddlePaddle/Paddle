@@ -17,34 +17,12 @@
 
 #include <unordered_set>
 
+#include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
+
 DEFINE_bool(new_executor_use_inplace, true, "Use inplace in new executor");
 
 namespace paddle {
 namespace framework {
-
-namespace {
-
-static inline const Tensor& GetTensorFromVar(const Variable* var) {
-  if (var->IsType<LoDTensor>()) {
-    return var->Get<LoDTensor>();
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of LoDTensor, but received %s.",
-        framework::ToTypeName(var->Type())));
-  }
-}
-
-static inline Tensor* GetMutableTensorFromVar(Variable* var) {
-  if (var->IsType<LoDTensor>()) {
-    return var->GetMutable<LoDTensor>();
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Variable must be type of LoDTensor, but received %s.",
-        framework::ToTypeName(var->Type())));
-  }
-}
-
-}  // namespace
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const ProgramDesc& main_prog,
@@ -306,8 +284,9 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
   if (FLAGS_new_executor_use_inplace) {
     for (auto& pair : instr_node.vec_inplace_in_to_out_) {
-      const auto& in = GetTensorFromVar(pair.first);
-      auto* out = GetMutableTensorFromVar(pair.second);
+      const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
+      auto* out =
+          paddle::framework::details::GetMutableTensorFromVar(pair.second);
       if (in.dims() == out->dims()) {
         out->ShareBufferWith(in);
       }
