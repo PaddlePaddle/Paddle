@@ -827,15 +827,25 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
 
         float device_counts = 1.0;
         if (comm) {
-          int dtype = platform::ToHCCLDataType(mean_out->type());
+          stream = comm->stream();
 
-          // In-place operation
-          LOG(WARNING) << "before hccl | device_counts: " << device_counts;
-          PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
-              &device_counts, &device_counts, 1,
-              static_cast<HcclDataType>(dtype), HCCL_REDUCE_SUM, comm->comm(),
-              stream));
-          LOG(WARNING) << "after hccl | device_counts: " << device_counts;
+          HcclDataType dtype = platform::ToHCCLDataType(mean_out->type());
+
+          {
+            float device_counts_result = 0.0;
+
+            void *sendbuff = reinterpret_cast<void *>(&device_counts);
+            void *recvbuff = reinterpret_cast<void *>(&device_counts_result);
+            LOG(WARNING) << "sendbuff: " << sendbuff;
+            LOG(WARNING) << "recvbuff: " << recvbuff;
+
+            // In-place operation
+            LOG(WARNING) << "before hccl | device_counts: " << device_counts;
+            PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
+                sendbuff, recvbuff, 1, dtype, HCCL_REDUCE_SUM, comm->comm(),
+                reinterpret_cast<void *>(stream)));
+            LOG(WARNING) << "after hccl | device_counts: " << device_counts;
+          }
 
           // In-place operation
           PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
