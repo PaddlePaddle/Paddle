@@ -34,7 +34,7 @@ using Tensor = framework::Tensor;
 inline int64_t GetBatchSize(framework::DDim dims) {
   int64_t batch_count = 1;
   auto dim_size = dims.size();
-  PADDLE_ENFORCE_GT(dim_size, 2,
+  PADDLE_ENFORCE_GE(dim_size, 2,
                     platform::errors::InvalidArgument(
                         "To get the number of batch square matrices, "
                         "the size of dimension should greater than 2.",
@@ -73,7 +73,7 @@ struct DeterminantFunctor {
     framework::TensorFromVector(output_vec, output);
   }
 };
-template <typename T>
+template <typename DeviceContext, typename T>
 class DeterminantKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -88,7 +88,12 @@ class DeterminantKernel : public framework::OpKernel<T> {
     DeterminantFunctor<T>()(*input, context, rank, batch_count, output);
     auto output_dims =
         framework::slice_ddim(input->dims(), 0, input_dim_size - 2);
-    output->Resize(output_dims);
+    if (input_dim_size != 2) {
+      output->Resize(output_dims);
+    } else {
+      // when input is a two-dimension matrix, The det value is a number.
+      output->Resize({1});
+    }
     VLOG(2) << "output dim:" << output->dims();
   }
 };
@@ -159,11 +164,25 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
     auto* ddet =
         context.Output<framework::Tensor>(framework::GradVarName("Input"));
 
-    PADDLE_ENFORCE_EQ(grad->dims().size() + 2, input->dims().size(),
-                      platform::errors::InvalidArgument(
-                          "The grad tensor of det dims size should 2 less than"
-                          " input tensor's, but here differ %d",
-                          input->dims().size() - grad->dims().size()));
+    auto input_dims_size = input->dims().size();
+    if (input_dims_size > 2) {
+      PADDLE_ENFORCE_EQ(
+          grad->dims().size() + 2, input_dims_size,
+          platform::errors::InvalidArgument(
+              "The grad tensor of det dims size should 2 less than"
+              " input tensor's, but here differ %d",
+              input_dims_size - grad->dims().size()));
+    } else if (input_dims_size == 2) {
+      // input dims size 2 and grad dims size 1 is possible
+      PADDLE_ENFORCE_EQ(
+          grad->dims().size(), 1,
+          platform::errors::InvalidArgument(
+              "The grad tensor of det dims size should 2 less than"
+              " input tensor's, but here differ %d",
+              input_dims_size - grad->dims().size()));
+    } else {
+      // checked in forward, pass
+    }
 
     // Check Whether the matrix is invertible
     // (matrix A not invertible) == (det(A)=0)
@@ -179,13 +198,7 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
 
     // The matrix is invertible
     // let |A| = Determinant(A)
-    // In pytorch:
-    // d|A| = (dA * |A|).unsqueeze(-1).unsqueeze(-2) * inverse(A).transpose(-2,
-    // -1)
-    // In tensorflow:
-    // d|A| = (dA * |A|).reshape(tf.concat([|A|.shape, [1, 1]], 0)) * inv(A,
-    // adjoint=True)
-    // And ref to https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
+    // Ref to https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
     // we set d|A| = unsqueeze(dA * |A|, [-1, -2]) * inverse(A).transpose(-2,
     // -1)
 
@@ -285,7 +298,7 @@ struct SlogDeterminantFunctor {
   }
 };
 
-template <typename T>
+template <typename DeviceContext, typename T>
 class SlogDeterminantKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -299,6 +312,10 @@ class SlogDeterminantKernel : public framework::OpKernel<T> {
     auto rank = input_dim[input_dim_size - 1];  // square matrix length
     SlogDeterminantFunctor<T>()(*input, context, rank, batch_count, output);
     std::vector<int> output_dim_vec(input_dim.begin(), input_dim.end() - 2);
+    if (input_dim.size() == static_cast<size_t>(2)) {
+      // when input is a two-dimension matrix, The det value is a number.
+      output_dim_vec = {1};
+    }
     output_dim_vec.insert(output_dim_vec.begin(),
                           2);  // make the output dims as same as numpy
     auto output_dims = framework::make_ddim(output_dim_vec);
@@ -324,12 +341,17 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
                           "The grad tensor of SlogDet should contain two"
                           " grad: sign and absslogdet, but here %ld.",
                           grad->dims()[0]));
-    PADDLE_ENFORCE_EQ(
-        grad->dims().size() + 1, input->dims().size(),
-        platform::errors::InvalidArgument(
-            "The grad tensor of slogdet dims size should 1 less than"
-            " input tensor's, but here differ %d",
-            input->dims().size() - grad->dims().size()));
+    if (input->dims().size() > 2) {
+      PADDLE_ENFORCE_EQ(
+          grad->dims().size() + 1, input->dims().size(),
+          platform::errors::InvalidArgument(
+              "The grad tensor of slogdet dims size should 1 less than"
+              " input tensor's, but here differ %d",
+              input->dims().size() - grad->dims().size()));
+    } else {
+      // input dims size 2 and grad dims size 2 is possible
+      // pass
+    }
 
     // Check Whether the matrix is invertible
     // (matrix A not invertible) == (absslogdet(A)=0)
@@ -347,13 +369,7 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
 
     // The matrix is invertible
     // let sl|A| = SlogDeterminant(A)
-    // In pytorch:
-    // dsl|A| = dslA.unsqueeze(-1).unsqueeze(-2) *
-    // inverse(A).conj().transpose(-2, -1)
-    // In tensorflow:
-    // dsl|A| = dslA.reshape(tf.concat([sl|A|.shape, [1, 1]], 0)) * inv(A,
-    // adjoint=True)
-    // And ref to https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
+    // Ref to https://people.maths.ox.ac.uk/gilesm/files/NA-08-01.pdf
     // we set dsl|A| = unsqueeze(dslA, [-1, -2]) *
     // inverse(A).conj().transpose(-2, -1)
 

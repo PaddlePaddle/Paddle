@@ -42,73 +42,23 @@ struct ElementwiseMulFunctor<platform::CUDADeviceContext, T> {
         cuda_ctx, ins, &outs, -1, CudaMulFunctor<T>());
   }
 };
-
-template <typename T>
-class DeterminantCUDAKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<Tensor>("Input");
-    const auto* input_data = input->data<T>();
-    auto input_dim = input->dims().Get();
-    auto input_dim_size = input->dims().size();
-    auto* output = context.Output<Tensor>("Out");
-    auto* output_data = output->mutable_data<T>(context.GetPlace());
-
-    int batch_count = 1;
-    for (int i = 0; i < input_dim_size - 2; i++) {
-      batch_count *= input_dim[i];
-    }
-
-    auto rank = input_dim[input_dim_size - 1];
-    DeterminantFunctor<T>()(*input, context, rank, batch_count, output);
-    auto output_dims =
-        framework::slice_ddim(input->dims(), 0, input_dim_size - 2);
-    output->Resize(output_dims);
-  }
-};
-
-template <typename T>
-class SlogDeterminantCUDAKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* input = context.Input<Tensor>("Input");
-    const auto* input_data = input->data<T>();
-    auto input_dim = vectorize(input->dims());
-    auto input_dim_size = input->dims().size();
-    auto* output = context.Output<Tensor>("Out");
-    auto* output_data = output->mutable_data<T>(context.GetPlace());
-
-    int batch_count = 1;
-    for (int i = 0; i < input->dims().size() - 2; i++) {
-      batch_count *= input_dim[i];
-    }
-
-    auto rank = input_dim[input_dim_size - 1];
-    SlogDeterminantFunctor<T>()(*input, context, rank, batch_count, output);
-    std::vector<int> output_dim_vec(input_dim.begin(), input_dim.end() - 2);
-    output_dim_vec.insert(output_dim_vec.begin(),
-                          2);  // make the output dims as same as numpy
-    auto output_dims = framework::make_ddim(output_dim_vec);
-    output->Resize(output_dims);
-    VLOG(2) << "output dim:" << output->dims();
-  }
-};
-
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(determinant, ops::DeterminantCUDAKernel<float>,
-                        ops::DeterminantCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    determinant, ops::DeterminantKernel<plat::CUDADeviceContext, float>,
+    ops::DeterminantKernel<plat::CUDADeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
     determinant_grad,
     ops::DeterminantGradKernel<plat::CUDADeviceContext, float>,
     ops::DeterminantGradKernel<plat::CUDADeviceContext, double>);
 
-REGISTER_OP_CUDA_KERNEL(slogdeterminant, ops::SlogDeterminantCUDAKernel<float>,
-                        ops::SlogDeterminantCUDAKernel<double>);
+REGISTER_OP_CUDA_KERNEL(
+    slogdeterminant, ops::SlogDeterminantKernel<plat::CPUDeviceContext, float>,
+    ops::SlogDeterminantKernel<plat::CPUDeviceContext, double>);
 
 REGISTER_OP_CUDA_KERNEL(
     slogdeterminant_grad,
