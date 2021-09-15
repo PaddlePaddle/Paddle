@@ -123,7 +123,7 @@ class TestCuDNNNormConvOpForward {
     std::default_random_engine random(time(NULL));
     std::uniform_real_distribution<float> dis(0.0, 1.0);
     for (int i = 0; i < input_size_; ++i) {
-      input_vec_[i] = static_cast<T>(dis(random));
+      input_vec_[i] = static_cast<T>(1.0f);
     }
     for (int i = 0; i < filter_size_; ++i) {
       filter_raw_vec_[i] = static_cast<T>(dis(random));
