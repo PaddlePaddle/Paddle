@@ -174,7 +174,7 @@ class GradientClipHelper(object):
                 # by global norm. Those vars either doesn't have is_distributed attr
                 # or the is_distributed attr has been set as False.
                 # Therefore, we prune those duplicated vars for grad clip.
-                if mp_rank > 1 and (not (hasattr(input_var, 'is_distributed')
+                if mp_rank > 0 and (not (hasattr(input_var, 'is_distributed')
                                          and input_var.is_distributed)):
                     removed_op_idx.append(idx)
                     removed_tmp_var.extend(op.output_arg_names)
