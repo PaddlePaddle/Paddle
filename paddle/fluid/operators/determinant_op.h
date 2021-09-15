@@ -19,11 +19,9 @@
 #include <cmath>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/matrix_inverse.h"
-#include "paddle/fluid/operators/transpose_op.h"
-#include "paddle/fluid/operators/unsqueeze_op.h"
+#include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/for_range.h"
 
@@ -118,15 +116,6 @@ class DeterminantKernel : public framework::OpKernel<T> {
       output->Resize({1});
     }
     VLOG(2) << "output dim:" << output->dims();
-  }
-};
-
-template <typename DeviceContext, typename T>
-struct ElementwiseMulFunctor {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* y,
-                  framework::Tensor* z) {
-    default_elementwise_mul<DeviceContext, T>(ctx, x, y, z);
   }
 };
 
@@ -225,6 +214,8 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
     // we set d|A| = unsqueeze(dA * |A|, [-1, -2]) * inverse(A).transpose(-2,
     // -1)
 
+    math::DeviceIndependenceTensorOperations<DeviceContext, T> helper(context);
+
     // First: inverse(A)
     framework::Tensor inverse_A;
     // A must be square matrices!
@@ -237,44 +228,27 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
     VLOG(3) << "inverse(A) dims: " << inverse_A.dims();
 
     // Second: inverse(A).transpose(-2, -1)
-    framework::Tensor transpose_inverse_A;
-    // A must be square matrix! Transpose the last two dimension not change
-    // the shape
-    transpose_inverse_A.Resize(inverse_A.dims());
-    transpose_inverse_A.mutable_data<T>(context.GetPlace());
-
-    // Transpose the last two dimension
-    auto inverse_A_rank = inverse_A.dims().size();
-    std::vector<int> trans_axis(inverse_A_rank);
-    for (int i = 0; i < inverse_A_rank; ++i) {
-      trans_axis[i] = i;
-    }
-    trans_axis[inverse_A_rank - 1] = inverse_A_rank - 2;
-    trans_axis[inverse_A_rank - 2] = inverse_A_rank - 1;
-    TransCompute<DeviceContext, T>(inverse_A_rank, dev_ctx, inverse_A,
-                                   &transpose_inverse_A, trans_axis);
+    framework::Tensor transpose_inverse_A = helper.Transpose(inverse_A);
+    VLOG(3) << "(dA * |A|).transpose(-2, -1) dims: "
+            << transpose_inverse_A.dims();
 
     // Third: dA * |A|
-    framework::Tensor mul_dA_detA;
-    mul_dA_detA.Resize(grad->dims());
-    mul_dA_detA.mutable_data<T>(context.GetPlace());
-
-    ElementwiseMulFunctor<DeviceContext, T> elem_mul;
-    elem_mul(context, grad, det, &mul_dA_detA);
-
+    auto mul_dA_detA = helper.Mul(*grad, *det);
     VLOG(3) << "dA * |A| dims: " << mul_dA_detA.dims();
 
     // Fourth: unsqueeze(dA * |A|, [-1, -2])
-    auto unsqueeze_dims = UnsqueezeKernel<DeviceContext, T>::GetOutputShape(
-        {-1, -2}, mul_dA_detA.dims());
-    mul_dA_detA.Resize(unsqueeze_dims);
-
-    VLOG(3) << "unsqueezed(dA * |A|) dims: " << mul_dA_detA.dims();
+    auto unsqueeze1 = helper.Unsqueeze(mul_dA_detA, -1);
+    auto unsqueeze2 = helper.Unsqueeze(unsqueeze1, -2);
+    VLOG(3) << "unsqueezed(dA * |A|) dims: " << unsqueeze2.dims();
 
     // Finally: unsqueeze(dA * |A|) * inverse(A)
-    ddet->Resize(transpose_inverse_A.dims());
-    elem_mul(context, &mul_dA_detA, &transpose_inverse_A, ddet);
+    auto res = helper.Mul(unsqueeze2, transpose_inverse_A);
 
+    VLOG(3) << "unsqueeze(dA * |A|) * inverse(A) dims: " << res.dims();
+
+    framework::TensorCopy(res, context.GetPlace(), ddet);
+
+    ddet->Resize(input->dims());
     VLOG(3) << "d|A| dims: " << ddet->dims();
   }
 };
@@ -404,6 +378,8 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
     // we set dsl|A| = unsqueeze(dslA, [-1, -2]) *
     // inverse(A).conj().transpose(-2, -1)
 
+    math::DeviceIndependenceTensorOperations<DeviceContext, T> helper(context);
+
     // First: inverse(A)
     framework::Tensor inverse_A;
     // A must be square matrices!
@@ -429,23 +405,7 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
     VLOG(3) << "inverse(A).conj() dims: " << conj_inverse_A.dims();
 
     // Third: inverse(A).conj().transpose(-2, -1)
-    framework::Tensor transpose_inverse_A;
-    // A must be square matrix! Transpose the last two dimension not change
-    // the shape
-    transpose_inverse_A.Resize(conj_inverse_A.dims());
-    transpose_inverse_A.mutable_data<T>(context.GetPlace());
-
-    // Transpose the last two dimension
-    auto inverse_A_rank = conj_inverse_A.dims().size();
-    std::vector<int> trans_axis(inverse_A_rank);
-    for (int i = 0; i < inverse_A_rank; ++i) {
-      trans_axis[i] = i;
-    }
-    trans_axis[inverse_A_rank - 1] = inverse_A_rank - 2;
-    trans_axis[inverse_A_rank - 2] = inverse_A_rank - 1;
-    TransCompute<DeviceContext, T>(inverse_A_rank, dev_ctx, conj_inverse_A,
-                                   &transpose_inverse_A, trans_axis);
-
+    framework::Tensor transpose_inverse_A = helper.Transpose(conj_inverse_A);
     VLOG(3) << "inverse(A).conj().transpose(-2, -1) dims: "
             << transpose_inverse_A.dims();
 
@@ -462,18 +422,16 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
     det_grad.Resize(det_grad.dims().reshape(det_grad_vec));
 
     // Fifth: unsqueeze(dslA, [-1, -2])
-    auto unsqueeze_dims = UnsqueezeKernel<DeviceContext, T>::GetOutputShape(
-        {-1, -2}, det_grad.dims());
-    det_grad.Resize(unsqueeze_dims);
-
-    VLOG(3) << "unsqueezed(dslA) dims: " << det_grad.dims();
+    auto unsqueeze1 = helper.Unsqueeze(det_grad, -1);
+    auto unsqueeze2 = helper.Unsqueeze(unsqueeze1, -2);
+    VLOG(3) << "unsqueezed(dslA, [-1, -2]) dims: " << unsqueeze2.dims();
 
     // Finally: unsqueeze(dslA) * inverse(A)
-    dslogdet->Resize(transpose_inverse_A.dims());
+    auto res = helper.Mul(unsqueeze2, transpose_inverse_A);
+    VLOG(3) << "unsqueeze(dslA) * inverse(A) dims: " << res.dims();
 
-    ElementwiseMulFunctor<DeviceContext, T> elem_mul;
-    elem_mul(context, &det_grad, &transpose_inverse_A, dslogdet);
-
+    framework::TensorCopy(res, context.GetPlace(), dslogdet);
+    dslogdet->Resize(input->dims());
     VLOG(3) << "dsl|A| dims: " << dslogdet->dims();
   }
 };

@@ -17,34 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
 
-namespace paddle {
-namespace operators {
-
-using Tensor = framework::Tensor;
-
-template <typename T>
-struct CudaMulFunctor {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    return args[0] * args[1];
-  }
-};
-
-template <typename T>
-struct ElementwiseMulFunctor<platform::CUDADeviceContext, T> {
-  void operator()(const framework::ExecutionContext& ctx,
-                  const framework::Tensor* x, const framework::Tensor* y,
-                  framework::Tensor* z) {
-    std::vector<const framework::Tensor*> ins = {x, y};
-    std::vector<framework::Tensor*> outs = {z};
-    const auto& cuda_ctx =
-        ctx.template device_context<platform::CUDADeviceContext>();
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, -1, CudaMulFunctor<T>());
-  }
-};
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
