@@ -106,6 +106,6 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
 
 
 if __name__ == "__main__":
-    print('sync_batch_norm_op_npu.py __main__')
+    # print('sync_batch_norm_op_npu.py __main__')
 
     runtime_main(TestSyncBatchNormOpTraining, "identity", 0)
