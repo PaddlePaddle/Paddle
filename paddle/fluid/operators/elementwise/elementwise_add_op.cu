@@ -147,10 +147,10 @@ elementwise_add_grad(const framework::ExecutionContext& ctx,
   } else if (dx_data != dout_data && dy_data != dout_data) {
     auto size = x->numel();
     int vec_size = max(static_cast<int>(sizeof(float4) / sizeof(T)), 1);
-    dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
+    dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
     dim3 grid_size =
-        dim3(((size + vec_size - 1) / vec_size + PADDLE_CUDA_THREAD_SIZE - 1) /
-                 PADDLE_CUDA_THREAD_SIZE,
+        dim3(((size + vec_size - 1) / vec_size + ELEMENTWISE_BLOCK_SIZE - 1) /
+                 ELEMENTWISE_BLOCK_SIZE,
              1);
     SimpleElemwiseAddGradCUDAKernel<
         T><<<grid_size, block_size, 0,
