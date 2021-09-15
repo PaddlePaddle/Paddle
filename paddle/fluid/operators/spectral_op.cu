@@ -26,6 +26,7 @@
 #include "paddle/fluid/operators/conj_op.h"
 #include "paddle/fluid/operators/spectral_op.h"
 #include "paddle/fluid/operators/transpose_op.h"
+#include "paddle/fluid/platform/dynload/cufft.h"
 
 namespace paddle {
 namespace operators {
@@ -141,7 +142,7 @@ class CuFFTHandle {
   ::cufftHandle handle_;
 
  public:
-  CuFFTHandle() { CUFFT_CHECK(cufftCreate(&handle_)); }
+  CuFFTHandle() { CUFFT_CHECK(platform::dynload::cufftCreate(&handle_)); }
 
   ::cufftHandle& get() { return handle_; }
   const ::cufftHandle& get() const { return handle_; }
@@ -149,7 +150,8 @@ class CuFFTHandle {
   ~CuFFTHandle() {
 // Not using fftDestroy() for rocFFT to work around double freeing of handles
 #ifndef __HIPCC__
-    cufftDestroy(handle_);
+    std::cout << "Dtor of CuFFTHandle" << std::endl;
+    CUFFT_CHECK(platform::dynload::cufftDestroy(handle_));
 #endif
   }
 };
@@ -245,7 +247,8 @@ class CuFFTConfig {
 #endif
 
     // disable auto allocation of workspace to use THC allocator
-    CUFFT_CHECK(cufftSetAutoAllocation(plan(), /* autoAllocate */ 0));
+    CUFFT_CHECK(platform::dynload::cufftSetAutoAllocation(
+        plan(), /* autoAllocate */ 0));
 
     size_t ws_size_t;
 
@@ -258,7 +261,7 @@ class CuFFTConfig {
         batch, &ws_size_t));
 #else
 
-    CUFFT_CHECK(cufftXtMakePlanMany(
+    CUFFT_CHECK(platform::dynload::cufftXtMakePlanMany(
         plan(), signal_ndim, signal_sizes.data(),
         /* inembed */ nullptr, /* base_istride */ 1, /* idist */ 1, itype,
         /* onembed */ nullptr, /* base_ostride */ 1, /* odist */ 1, otype,
@@ -362,6 +365,11 @@ class PlanLRUCache {
     _cache_map = std::move(other._cache_map);
     _max_size = other._max_size;
     return *this;
+  }
+
+  ~PlanLRUCache() {
+    std::cout << "DTor of PlanLRUCache" << std::endl;
+    clear();
   }
 
   // If key is in this cache, return the cached config. Otherwise, emplace the
@@ -498,8 +506,8 @@ static void exec_cufft_plan(const CuFFTConfig& config, void* in_data,
   PADDLE_THROW(platform::errors::InvalidArgument(
       "hipFFT only support transforms of type float32 and float64"));
 #else
-  CUFFT_CHECK(cufftXtExec(plan, in_data, out_data,
-                          forward ? CUFFT_FORWARD : CUFFT_INVERSE));
+  CUFFT_CHECK(platform::dynload::cufftXtExec(
+      plan, in_data, out_data, forward ? CUFFT_FORWARD : CUFFT_INVERSE));
 #endif
 }
 
@@ -641,10 +649,11 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   auto& plan = config->plan();
 
   // prepare cufft for execution
-  CUFFT_CHECK(cufftSetStream(plan, ctx.stream()));
+  CUFFT_CHECK(platform::dynload::cufftSetStream(plan, ctx.stream()));
   framework::Tensor workspace_tensor;
   workspace_tensor.mutable_data<To>(tensor_place, config->workspace_size());
-  CUFFT_CHECK(cufftSetWorkArea(plan, workspace_tensor.data<To>()));
+  CUFFT_CHECK(
+      platform::dynload::cufftSetWorkArea(plan, workspace_tensor.data<To>()));
 
   // execute transform plan
   if (fft_type == FFTTransformType::C2R && forward) {

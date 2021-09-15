@@ -122,6 +122,7 @@ static constexpr char* win_cusolver_lib =
 static constexpr char* win_cusparse_lib =
     "cusparse64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusparse64_" CUDA_VERSION_MAJOR ".dll";
+static constexpr char* win_cufft_lib = "cufft64_" CUDA_MAJOR_VERSION ".dll";
 #endif  // CUDA_VERSION
 #endif
 
@@ -486,6 +487,16 @@ void* GetNvtxDsoHandle() {
       platform::errors::Unimplemented("Nvtx do not support without CUDA."));
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvToolsExt.so");
+#endif
+}
+
+void* GetCUFFTDsoHandle() {
+#if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cufft_lib, true,
+                                    {cuda_lib_path});
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so", false,
+                                    {cuda_lib_path});
 #endif
 }
 
