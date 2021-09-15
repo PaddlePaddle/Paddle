@@ -81,7 +81,7 @@ struct InverseDivFunctor {
 // Floor Divide
 template <typename T>
 struct FloorDivFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
     PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
     return static_cast<T>(std::trunc(a / b));
   }
@@ -89,7 +89,7 @@ struct FloorDivFunctor {
 
 template <typename T>
 struct InverseFloorDivFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
     PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
     return static_cast<T>(std::trunc(b / a));
   }
@@ -100,13 +100,17 @@ struct InverseFloorDivFunctor {
 // Maximum
 template <typename T>
 struct MaxFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a > b ? a : b; }
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
+    return a > b ? a : b;
+  }
 };
 
 // Minmum
 template <typename T>
 struct MinFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a < b ? a : b; }
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
+    return a < b ? a : b;
+  }
 };
 
 }  // namespace operators
