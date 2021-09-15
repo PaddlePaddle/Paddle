@@ -780,10 +780,11 @@ def save(layer, path, input_spec=None, **configs):
         dygraph_state_dict = None
         if isinstance(inner_layer, Layer):
             dygraph_state_dict = inner_layer.state_dict(
-                include_non_persistable_buffer='True')
+                include_non_persistable_buffer=True)
         elif isinstance(attr_func, StaticFunction):
             if attr_func._class_instance:
-                dygraph_state_dict = attr_func._class_instance.state_dict()
+                dygraph_state_dict = attr_func._class_instance.state_dict(
+                    include_non_persistable_buffer=True)
 
         if dygraph_state_dict:
             # NOTE(chenweihang): we maintain the mapping of variable name to

@@ -1289,13 +1289,6 @@ class Layer(core.Layer):
                 if buffer is not None:
                     destination[structured_name_prefix + name] = buffer
 
-            if buffer is not None:
-                if include_non_persistable_buffer:
-                    destination[structured_name_prefix + name] = buffer
-                else:
-                    if name not in self._non_persistable_buffer_names_set:
-                        destination[structured_name_prefix + name] = buffer
-
         if include_sublayers:
             for layer_name, layer_item in self._sub_layers.items():
                 if layer_item is not None:
@@ -1303,7 +1296,8 @@ class Layer(core.Layer):
                     destination_temp.update(
                         layer_item.state_dict(
                             destination_temp, include_sublayers,
-                            structured_name_prefix + layer_name + "."))
+                            structured_name_prefix + layer_name + ".",
+                            include_non_persistable_buffer))
                     destination = destination_temp
 
         for state_dict_hook in self._state_dict_hooks.values():
