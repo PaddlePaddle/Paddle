@@ -23,7 +23,6 @@ from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.fluid.backward import append_backward, _some_in_set_, _append_grad_suffix_
 from paddle.distributed.auto_parallel.operators.common import get_distributed_operator
-from paddle.distributed.auto_parallel.operators.common import find_best_compatible_distributed_operator_impl
 from paddle.fluid.clip import GradientClipBase, GradientClipByNorm, error_clip_callback, append_gradient_clip_ops, ClipGradByGlobalNorm
 from paddle.distributed.fleet.base.distributed_strategy import DistributedStrategy
 from paddle.distributed.auto_parallel.context import DistributedContext
@@ -314,6 +313,19 @@ class Partitioner(object):
         serial_global_block = serial_main_program.global_block()
         serial_ops = serial_main_program.global_block().ops
 
+        # allow user only partition main program for inference
+        if serial_startup_program == None:
+            partitioned_startup_prog = None
+        else:
+            partitioned_startup_prog = fluid.Program()
+
+        from .context import DistOpContext
+        ctx = DistOpContext()
+        ctx.set_dst_main_program(partitioned_main_prog)
+        ctx.set_dst_startup_program(partitioned_startup_prog)
+        ctx.set_varname_mapping(self._serial2dist_varname_mapping)
+        ctx.set_rank_id(self._rank_id)
+
         # transpile main program
         for op in serial_ops:
 
@@ -344,15 +356,28 @@ class Partitioner(object):
                         serial_output_varname] = new_varname
 
             # partition op
+            dist_attr = self._auto_parallel_context.get_op_distributed_attr_for_program(
+                op)
+            kinputs, koutputs = ctx.prepare_cur_context(op, dist_attr)
+
             if _found_match_dist_op(self._auto_parallel_context, op):
-                # replace with corresponding dist op
-                _insert_dist_op(op, partitioned_global_block,
-                                self._serial2dist_varname_mapping,
-                                self._auto_parallel_context, self._rank_id)
+                dist_ops = get_distributed_operator(op.type)
+                dist_op_impl = dist_ops.get_impl(dist_attr.get_impl_idx())
+                # TO REMOVE
+                append_op_handle = dist_op_impl.forward(op)
+                append_op_handle(
+                    ctx.get_dst_main_program().global_block(),
+                    op,
+                    ctx.get_cur_dist_attr(),
+                    kinputs,
+                    koutputs,
+                    rank_id=ctx.get_rank_id())
+
             else:
                 # replicate op
-                _insert_src_op(op, partitioned_global_block,
-                               self._serial2dist_varname_mapping)
+                dist_ops = get_distributed_operator("default")
+                dist_op_impl = dist_ops.get_impl(0)
+                dist_op_impl.forward(ctx, **kinputs, **koutputs)
 
         # transpile startup program
         if serial_startup_program == None:

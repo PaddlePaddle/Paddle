@@ -22,3 +22,4 @@ from . import dist_matmul
 from . import dist_reshape
 from . import dist_softmax
 from . import dist_transpose
+from . import dist_default
