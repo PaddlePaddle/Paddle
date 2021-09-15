@@ -191,7 +191,7 @@ class ActivationKernel
       auto* dev = context.template device_context<platform::CPUDeviceContext>()
                       .pool_device();
       functor(*dev, x, out);
-#elif
+#else
       functor(*place, x, out);
 #endif
     } else {
@@ -240,7 +240,7 @@ class ActivationGradKernel
       auto* dev = context.template device_context<platform::CPUDeviceContext>()
                       .pool_device();
       functor(*dev, x, out, dout, dx);
-#elif
+#else
       functor(*place, x, out, dout, dx);
 #endif
 
