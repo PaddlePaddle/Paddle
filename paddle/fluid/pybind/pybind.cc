@@ -1248,7 +1248,7 @@ All parameter, weight, gradient are variables in Paddle.
              PADDLE_ENFORCE_GT(
                  scope_vec->size(), 0,
                  platform::errors::InvalidArgument(
-                     "The size of scope_vec should greater than 0"));
+                     "The size of scope_vec should be greater than 0"));
              return scope_vec->front();
            },
            py::return_value_policy::reference)
