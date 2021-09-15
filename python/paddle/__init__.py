@@ -493,7 +493,6 @@ __all__ = [  # noqa
            'expand_as',
            'stack',
            'sqrt',
-           'cond',
            'cholesky',
            'matrix_power',
            'svd',
