@@ -197,7 +197,26 @@ class GradientClipHelper(object):
                 for input_name in op.input_arg_names:
                     if input_name not in removed_tmp_var:
                         reserved_vars.append(input_name)
-                op.desc.set_input("X", reserved_vars)
+                if len(reserved_vars) > 0:
+                    op.desc.set_input("X", reserved_vars)
+                else:
+                    # If all input of sum op should be removed, then remove the sum op.
+                    # And set the output's value of sum to 0.
+                    sum_rst_var = block.var(op.output_arg_names[0])
+                    namescope = op.attr("op_namescope")
+                    block._remove_op(idx, sync=False)
+                    fill_constant_op = block._insert_op_without_sync(
+                        idx,
+                        type='fill_constant',
+                        inputs={},
+                        outputs={'Out': sum_rst_var},
+                        attrs={
+                            'shape': sum_rst_var.shape,
+                            'dtype': sum_rst_var.dtype,
+                            'value': 0.0,
+                            OP_ROLE_KEY: op.attr(OP_ROLE_KEY)
+                        })
+                    fill_constant_op._set_attr('op_namescope', namescope)
                 break
 
         for idx, op in reversed(list(enumerate(block.ops))):
