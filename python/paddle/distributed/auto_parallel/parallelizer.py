@@ -41,6 +41,8 @@ class AutoParallelizer:
 
     def _remove_distributed_attrs(self, main_program):
         suffix = core.kAutoParallelSuffix()
+        # distributed attributes for variable have been removed
+        # in previous process.
         for block in main_program.blocks:
             for op in block.ops:
                 for attr_name in op.attr_names:
