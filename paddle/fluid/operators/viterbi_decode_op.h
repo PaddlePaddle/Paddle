@@ -39,13 +39,12 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
-using Tensor = framework::Tensor;
 using LoDTensor = framework::LoDTensor;
 
-#define CREATE_TENSOR(tensor, ...)                    \
+#define CREATE_TENSOR(tensor, dtype, ...)             \
   LoDTensor tensor;                                   \
   tensor.Resize(framework::make_ddim({__VA_ARGS__})); \
-  tensor.mutable_data<T>(ctx.GetPlace())
+  tensor.mutable_data<dtype>(ctx.GetPlace())
 
 #define ELE_MAX(input, output, dims)                                          \
   auto cast_out_dtype =                                                       \
@@ -54,25 +53,28 @@ using LoDTensor = framework::LoDTensor;
                            ReduceKernelFunctor<DeviceContext, T, MaxFunctor>( \
                                &input, &output, dims, false, false, ctx));
 
-#define ELEMENT_BINARY_OP(lhs, rhs, output, Functor)                      \
-  ElementwiseComputeEx<Functor<T>, DeviceContext, T>(ctx, &lhs, &rhs, -1, \
-                                                     Functor<T>(), &output)
+#define ELEMENT_BINARY_OP(lhs, rhs, output, Functor, dtype)   \
+  ElementwiseComputeEx<Functor<dtype>, DeviceContext, dtype>( \
+      ctx, &lhs, &rhs, -1, Functor<dtype>(), &output)
 
 // output = lhs + rhs
-#define ADD(lhs, rhs, output) ELEMENT_BINARY_OP(lhs, rhs, output, AddFunctor)
+#define ADD(lhs, rhs, output, dtype) \
+  ELEMENT_BINARY_OP(lhs, rhs, output, AddFunctor, dtype)
 
-#define SUB(lhs, rhs, output) ELEMENT_BINARY_OP(lhs, rhs, output, SubFunctor)
+#define SUB(lhs, rhs, output, dtype) \
+  ELEMENT_BINARY_OP(lhs, rhs, output, SubFunctor, dtype)
 
-#define INVERSE_SUB(lhs, rhs, output) \
-  ELEMENT_BINARY_OP(lhs, rhs, output, InverseSubFunctor)
+#define INVERSE_SUB(lhs, rhs, output, dtype) \
+  ELEMENT_BINARY_OP(lhs, rhs, output, InverseSubFunctor, dtype)
 
-#define MUL(lhs, rhs, output) ELEMENT_BINARY_OP(lhs, rhs, output, MulFunctor)
+#define MUL(lhs, rhs, output, dtype) \
+  ELEMENT_BINARY_OP(lhs, rhs, output, MulFunctor, dtype)
 
-#define GET_CAST_MASK(lhs, rhs, mask, compare_functor, dtype)           \
-  ElementwiseComputeEx<compare_functor<int64_t>, DeviceContext, bool>(  \
-      ctx, &lhs, &rhs, -1, compare_functor<int64_t>(), &mask);          \
-  CastOpFunctor<DeviceContext, bool> cast_functor(&tag_mask, &tag_mask, \
-                                                  dev_ctx);             \
+#define GET_CAST_MASK(lhs, rhs, mask, float_mask, compare_functor, dtype) \
+  ElementwiseComputeEx<compare_functor<int64_t>, DeviceContext, int64_t>( \
+      ctx, &lhs, &rhs, -1, compare_functor<int64_t>(), &mask);            \
+  CastOpFunctor<DeviceContext, int64_t> cast_functor(&mask, &float_mask,  \
+                                                     dev_ctx);            \
   cast_functor.template apply<dtype>()
 
 template <typename DeviceContext, typename T>
@@ -80,6 +82,8 @@ class ViterbiDecodeCPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     bool with_start_stop_tag = ctx.Attr<bool>("with_start_stop_tag");
+    auto& dev_ctx = ctx.template device_context<DeviceContext>();
+    auto curr_place = ctx.GetPlace();
 
     auto* input = ctx.Input<Tensor>("Input");
     auto batch_size = static_cast<int>(input->dims()[0]);
@@ -88,106 +92,116 @@ class ViterbiDecodeCPUKernel : public framework::OpKernel<T> {
 
     auto* scores = ctx.Output<Tensor>("Scores");
     auto* path = ctx.Output<Tensor>("Path");
+    scores->mutable_data<T>(curr_place);
+    path->mutable_data<int64_t>(curr_place);
 
-    CREATE_TENSOR(temp_path, seq_len, batch_size);
+    CREATE_TENSOR(temp_path, int64_t, seq_len, batch_size);
     auto batch_path = Unbind(temp_path);
     for (auto it = batch_path.begin(); it != batch_path.end(); ++it) {
       it->Resize({batch_size});
     }
 
-    std::vector<int> axis{seq_len, batch_size, n_labels};
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto curr_place = ctx.GetPlace();
-
-    CREATE_TENSOR(inputs_t_exp, seq_len, batch_size, n_labels);
+    CREATE_TENSOR(inputs_t_exp, T, seq_len, batch_size, n_labels);
+    std::vector<int> axis{1, 0, 2};
     TransCompute<DeviceContext, T>(axis.size(), dev_ctx, *input, &inputs_t_exp,
                                    axis);
 
     auto* transition = ctx.Input<Tensor>("Transition");
-    CREATE_TENSOR(trans_exp, 1, n_labels, n_labels);
+    CREATE_TENSOR(trans_exp, T, 1, n_labels, n_labels);
     framework::TensorCopy(*transition, curr_place, dev_ctx, &trans_exp);
 
     auto* length = ctx.Input<Tensor>("Length");
-    CREATE_TENSOR(left_length, batch_size, 1);
+    CREATE_TENSOR(left_length, int64_t, batch_size, 1);
     framework::TensorCopy(*length, curr_place, dev_ctx, &left_length);
 
     int64_t max_seq_len =
         *std::max_element(left_length.data<int64_t>(),
                           left_length.data<int64_t>() + left_length.numel());
 
-    CREATE_TENSOR(alpha, batch_size, n_labels);
-    math::SetConstant<platform::CPUDeviceContext, T> functor;
+    CREATE_TENSOR(alpha, T, batch_size, n_labels);
+    math::SetConstant<platform::CPUDeviceContext, T> float_functor;
+    math::SetConstant<platform::CPUDeviceContext, int64_t> int_functor;
 
     if (with_start_stop_tag) {
-      CREATE_TENSOR(initial_alpha, batch_size, n_labels - 1);
-      functor(dev_ctx, &initial_alpha, static_cast<T>(-10000.0));
-      CREATE_TENSOR(alpha_start, batch_size, 1);
-      functor(dev_ctx, &alpha_start, static_cast<T>(0.0));
+      CREATE_TENSOR(initial_alpha, T, batch_size, n_labels - 1);
+      float_functor(dev_ctx, &initial_alpha, static_cast<T>(-10000.0));
+      CREATE_TENSOR(alpha_start, T, batch_size, 1);
+      float_functor(dev_ctx, &alpha_start, static_cast<T>(0.0));
 
       math::ConcatFunctor<platform::CPUDeviceContext, T> concat_functor;
       concat_functor(dev_ctx, {initial_alpha, alpha_start}, 1, &alpha);
     } else {
-      functor(dev_ctx, &alpha, static_cast<T>(0.0));
+      float_functor(dev_ctx, &alpha, static_cast<T>(0.0));
     }
 
     std::vector<Tensor> historys;
-    CREATE_TENSOR(zero, 1);
-    CREATE_TENSOR(one, 1);
-    CREATE_TENSOR(alpha_trn_sum, batch_size, n_labels, n_labels);
-    CREATE_TENSOR(alpha_max, batch_size, n_labels);
-    CREATE_TENSOR(alpha_argmax, batch_size, n_labels);
-    CREATE_TENSOR(alpha_nxt, batch_size, n_labels);
-    CREATE_TENSOR(mask, batch_size, 1);
-    CREATE_TENSOR(inv_mask, batch_size, 1);
-    CREATE_TENSOR(tag_mask, batch_size);
-    CREATE_TENSOR(alpha_temp, batch_size, 1);
-    CREATE_TENSOR(stop_trans_exp, 1, n_labels, 1);
-    CREATE_TENSOR(start_trans_exp, 1, n_labels, 1);
-    CREATE_TENSOR(rest_trans_exp, 1, n_labels, n_labels - 2);
-    CREATE_TENSOR(last_ids, batch_size);
-    CREATE_TENSOR(batch_offset, batch_size);
-    CREATE_TENSOR(gather_idx, batch_size);
-
+    CREATE_TENSOR(zero, int64_t, 1);
+    int_functor(dev_ctx, &zero, 0);
+    CREATE_TENSOR(one, int64_t, 1);
+    int_functor(dev_ctx, &one, 1);
+    CREATE_TENSOR(float_one, T, 1);
+    float_functor(dev_ctx, &float_one, static_cast<T>(1.0));
+    CREATE_TENSOR(alpha_trn_sum, T, batch_size, n_labels, n_labels);
+    CREATE_TENSOR(alpha_max, T, batch_size, n_labels);
+    CREATE_TENSOR(alpha_argmax, int64_t, seq_len - 1, batch_size, n_labels);
+    auto alpha_argmax_unbind = Unbind(alpha_argmax);
+    CREATE_TENSOR(alpha_nxt, T, batch_size, n_labels);
+    CREATE_TENSOR(mask, int64_t, batch_size, 1);
+    CREATE_TENSOR(tag_mask, int64_t, batch_size);
+    CREATE_TENSOR(int_mask, int64_t, batch_size);
+    CREATE_TENSOR(inv_mask, T, batch_size, 1);
+    CREATE_TENSOR(float_mask, T, batch_size, 1);
+    CREATE_TENSOR(alpha_temp, T, batch_size, n_labels);
+    CREATE_TENSOR(stop_trans_exp, T, 1, 1, n_labels);
+    CREATE_TENSOR(start_trans_exp, T, 1, 1, n_labels);
+    CREATE_TENSOR(rest_trans_exp, T, 1, n_labels - 2, n_labels);
+    CREATE_TENSOR(last_ids, int64_t, batch_size);
+    CREATE_TENSOR(batch_offset, int64_t, batch_size);
+    CREATE_TENSOR(gather_idx, int64_t, batch_size);
+    ArgMinMaxFunctor<DeviceContext, T, int64_t, 3, ArgMinMaxType::kArgMax>
+        argmax3;
     for (int64_t i = 0; i < max_seq_len; ++i) {
       Tensor logit = inputs_t_exp.Slice(i, i + 1);
       logit.Resize({batch_size, n_labels});
       if (i == 0 && !with_start_stop_tag) {
         framework::TensorCopy(logit, curr_place, dev_ctx, &alpha);
-        SUB(left_length, one, left_length);
+        SUB(left_length, one, left_length, int64_t);
+        continue;
       }
       Tensor& alpha_exp = alpha.Resize({batch_size, n_labels, 1});
 
-      ADD(alpha_exp, trans_exp, alpha_trn_sum);
+      ADD(alpha_exp, trans_exp, alpha_trn_sum, T);
 
       ELE_MAX(alpha_trn_sum, alpha_max, {1});
 
       if (i >= 1) {
-        ArgMinMaxFunctor<DeviceContext, T, int64_t, 3, ArgMinMaxType::kArgMax>
-            argmax;
-        argmax(dev_ctx, alpha_trn_sum, &alpha_argmax, alpha_trn_sum.dims(), 1,
-               false);
-        historys.push_back(alpha_argmax);
+        auto alpha_argmax_temp = alpha_argmax_unbind[i - 1];
+        alpha_argmax_temp.Resize({batch_size, n_labels});
+        argmax3(dev_ctx, alpha_trn_sum,
+                reinterpret_cast<LoDTensor*>(&alpha_argmax_temp),
+                alpha_trn_sum.dims(), 1, false);
+        historys.push_back(alpha_argmax_temp);
       }
 
-      ADD(alpha_max, logit, alpha_nxt);
+      ADD(alpha_max, logit, alpha_nxt, T);
 
       alpha.Resize({batch_size, n_labels});
 
       // mask = paddle.cast((left_length > 0), dtype='float32')
       // alpha = mask * alpha_nxt + (1 - mask) * alpha
-      GET_CAST_MASK(left_length, zero, mask, GreaterThanFunctor, T);
+      GET_CAST_MASK(left_length, zero, mask, float_mask, GreaterThanFunctor, T);
 
       // inv_mask = 1 - mask
-      INVERSE_SUB(one, mask, inv_mask);
+      INVERSE_SUB(float_one, float_mask, inv_mask, T);
       // alpha = (1 - mask) * alpha
-      MUL(alpha, inv_mask, alpha);
+      MUL(alpha, inv_mask, alpha, T);
       // alpha_temp = mask * alpha_nxt
-      MUL(alpha_nxt, mask, alpha_temp);
+      MUL(alpha_nxt, float_mask, alpha_temp, T);
       // alpha += alpha_temp
-      ADD(alpha, alpha_temp, alpha);
+      ADD(alpha, alpha_temp, alpha, T);
 
       if (with_start_stop_tag) {
-        GET_CAST_MASK(left_length, one, mask, EqualFunctor, T);
+        GET_CAST_MASK(left_length, one, mask, float_mask, EqualFunctor, T);
         // trans_exp: [1, n, n]
         // alpha += mask * trans_exp[:, self.stop_idx]
         std::vector<const Tensor*> shape_refer{&rest_trans_exp, &stop_trans_exp,
@@ -195,58 +209,57 @@ class ViterbiDecodeCPUKernel : public framework::OpKernel<T> {
         std::vector<Tensor*> outputs{&rest_trans_exp, &stop_trans_exp,
                                      &start_trans_exp};
         math::SplitFunctor<DeviceContext, T> functor;
-        functor(dev_ctx, trans_exp, shape_refer, 2, &outputs);
+        functor(dev_ctx, trans_exp, shape_refer, 1, &outputs);
 
         stop_trans_exp.Resize({1, n_labels});
-        MUL(stop_trans_exp, mask, alpha_temp);
+        MUL(stop_trans_exp, float_mask, alpha_temp, T);
         stop_trans_exp.Resize({1, n_labels, 1});
-        ADD(alpha, alpha_temp, alpha);
+        ADD(alpha, alpha_temp, alpha, T);
       }
-      // left_length = left_length - 1
-      SUB(left_length, one, left_length);
+      SUB(left_length, one, left_length, int64_t);
     }
 
     // scores, last_ids = alpha.max(1), alpha.argmax(1)
     ELE_MAX(alpha, (*scores), {1});
     ArgMinMaxFunctor<DeviceContext, T, int64_t, 2, ArgMinMaxType::kArgMax>
-        argmax;
-    argmax(dev_ctx, alpha, &last_ids, alpha.dims(), 1, false);
+        argmax2;
+    argmax2(dev_ctx, alpha, &last_ids, alpha.dims(), 1, false);
 
     // tag_mask = paddle.cast((left_length >= 0), 'int64')
     left_length.Resize({batch_size});
-    GET_CAST_MASK(left_length, zero, tag_mask, GreaterEqualFunctor, int64_t);
+    GET_CAST_MASK(left_length, zero, tag_mask, int_mask, GreaterEqualFunctor,
+                  int64_t);
 
     // last_ids_update = last_ids * tag_mask
     int last_ids_index = 1;
-    MUL(last_ids, tag_mask, batch_path[seq_len - last_ids_index]);
-
+    MUL(last_ids, int_mask, batch_path[seq_len - last_ids_index], int64_t);
     int64_t* batch_offset_ptr = batch_offset.data<int64_t>();
     for (int64_t i = 0; i < batch_size; ++i) {
       batch_offset_ptr[i] = i * n_labels;
     }
 
     for (auto hist = historys.rbegin(); hist != historys.rend(); ++hist) {
-      --last_ids_index;
-      ADD(left_length, one, left_length);
-      ADD(batch_offset, last_ids, gather_idx);
+      ++last_ids_index;
+      ADD(left_length, one, left_length, int64_t);
+      ADD(batch_offset, last_ids, gather_idx, int64_t);
       // tag_mask = paddle.cast((left_length >= 0), 'int64')
       // last_ids_update = paddle.gather(hist.flatten(), gather_idx) * tag_mask
+      Tensor& last_ids_update = batch_path[seq_len - last_ids_index];
       hist->Resize({batch_size * n_labels});
-      CPUGather<T, int64_t>(dev_ctx, *hist, gather_idx,
-                            &batch_path[seq_len - last_ids_index]);
-      GET_CAST_MASK(left_length, zero, tag_mask, GreaterEqualFunctor, int64_t);
-      MUL(batch_path[seq_len - last_ids_index], tag_mask,
-          batch_path[seq_len - last_ids_index]);
-
+      CPUGather<int64_t, int64_t>(dev_ctx, *hist, gather_idx, &last_ids_update);
+      GET_CAST_MASK(left_length, zero, tag_mask, int_mask, GreaterEqualFunctor,
+                    int64_t);
+      MUL(last_ids_update, int_mask, last_ids_update, int64_t);
       // tag_mask = 1 - tag_mask
-      INVERSE_SUB(one, tag_mask, tag_mask);
+      SUB(one, int_mask, int_mask, int64_t);
       // last_ids = last_ids_update + last_ids * (1 - tag_mask)
-      MUL(last_ids, tag_mask, last_ids);
-      ADD(batch_path[seq_len - last_ids_index], last_ids, last_ids);
+      MUL(last_ids, int_mask, last_ids, int64_t);
+      ADD(last_ids_update, last_ids, last_ids, int64_t);
     }
     // transpose batch_path
-    TransCompute<DeviceContext, T>(2, dev_ctx, temp_path, path,
-                                   {batch_size, seq_len});
+    axis = {1, 0};
+    TransCompute<DeviceContext, int64_t>(axis.size(), dev_ctx, temp_path, path,
+                                         axis);
   }
 };
 
