@@ -18,10 +18,10 @@ from .checkpoint import auto_checkpoint  # noqa: F401
 from ..fluid.layer_helper import LayerHelper  # noqa: F401
 from .operators import softmax_mask_fuse_upper_triangle  # noqa: F401
 from .operators import softmax_mask_fuse  # noqa: F401
-from .math import segment_sum
-from .math import segment_mean
-from .math import segment_max
-from .math import segment_min
+from .tensor import segment_sum
+from .tensor import segment_mean
+from .tensor import segment_max
+from .tensor import segment_min
 
 __all__ = [
     'LookAhead',

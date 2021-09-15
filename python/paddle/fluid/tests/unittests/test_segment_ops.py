@@ -224,7 +224,6 @@ class API_SegmentOpsTest(unittest.TestCase):
             ret = exe.run(feed={'x': data1,
                                 'y': data2},
                           fetch_list=[res_sum, res_mean, res_max, res_min])
-            print(ret)
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
             self.assertTrue(
@@ -250,7 +249,6 @@ class API_SegmentOpsTest(unittest.TestCase):
             np_min = np.array([[1, 2, 1], [4, 5, 6]], dtype="float32")
 
             ret = [res_sum, res_mean, res_max, res_min]
-            print(ret)
 
         for np_res, ret_res in zip([np_sum, np_mean, np_max, np_min], ret):
             self.assertTrue(
