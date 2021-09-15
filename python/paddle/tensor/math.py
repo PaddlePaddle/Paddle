@@ -950,7 +950,7 @@ def mm(input, mat2, name=None):
     """
     if in_dygraph_mode():
         out = _varbase_creator(dtype=input.dtype)
-        _C_ops.matmul(input, mat2, out)
+        _C_ops.matmul_v2(input, mat2, out)
         return out
 
     def __check_input(x, y):
@@ -991,7 +991,7 @@ def mm(input, mat2, name=None):
     helper = LayerHelper('mm', **locals())
     out = helper.create_variable_for_type_inference(dtype=input.dtype)
     helper.append_op(
-        type='matmul', inputs={'X': input,
+        type='matmul_v2', inputs={'X': input,
                                'Y': mat2}, outputs={'Out': out})
     return out
 
