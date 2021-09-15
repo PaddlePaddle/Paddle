@@ -1223,22 +1223,6 @@ def solve(x, y, name=None):
     if in_dygraph_mode():
         return _C_ops.solve(x, y)
 
-    # def __check_input(x, y):
-    #     var_names = {'x': x, 'y': y}
-    #     for X, Y in var_names.items():
-    #         check_variable_and_dtype(X, Y, ['float32', 'float64'], 'solve')
-    #     x_shape = list(x.shape)
-    #     y_shape = list(y.shape)
-    #     if len(x_shape) < 2:
-    #         raise ValueError(
-    #             "x should be 2-dimensional or bigger. But received x's dimention: {}".
-    #             format(x_shape))
-    #     if len(y_shape) < 1:
-    #         raise ValueError(
-    #             "y should be 1-dimensional or bigger. But received y's dimention: {}".
-    #             format(y_shape))
-
-    # __check_input(x, y)
     inputs = {"X": [x], "Y": [y]}
     helper = LayerHelper("solve", **locals())
     check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'solve')
