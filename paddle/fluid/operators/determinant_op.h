@@ -25,6 +25,26 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+template <typename T>
+T sign(T val) {
+  return static_cast<T>(T(0) < val) - (val < T(0));
+}
+
+template <typename T>
+class EigenMatrix {};
+
+template <>
+class EigenMatrix<float> {
+ public:
+  using MatrixType = Eigen::MatrixXf;
+};
+
+template <>
+class EigenMatrix<double> {
+ public:
+  using MatrixType = Eigen::MatrixXd;
+};
+
 inline int64_t GetBatchCount(framework::DDim dims) {
   int64_t batch_count = 1;
   auto dim_size = dims.size();
@@ -44,12 +64,13 @@ inline int64_t GetBatchCount(framework::DDim dims) {
 
   return batch_count;
 }
+
 template <typename T>
 struct DeterminantFunctor {
   void operator()(const Tensor& input, const framework::ExecutionContext ctx,
                   int rank, int64_t batch_count, Tensor* output) {
     std::vector<T> input_vec;
-    std::vector<float> output_vec;
+    std::vector<T> output_vec;
     framework::TensorToVector(input, ctx.device_context(), &input_vec);
     for (int i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
@@ -67,7 +88,7 @@ struct DeterminantFunctor {
     framework::TensorFromVector(output_vec, output);
   }
 };
-template <typename T>
+template <typename DeviceContext, typename T>
 class DeterminantKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -78,7 +99,7 @@ class DeterminantKernel : public framework::OpKernel<T> {
 
     auto batch_count = GetBatchCount(input->dims());
     VLOG(2) << "input dim:" << input->dims();
-    PADDLE_ENFORCE_GT(
+    PADDLE_ENFORCE_GE(
         input_dim_size, 2,
         platform::errors::InvalidArgument(
             "the input matrix dimension size should greater than 2."));
@@ -88,52 +109,22 @@ class DeterminantKernel : public framework::OpKernel<T> {
                           "the input matrix should be square matrix."));
     auto rank = input_dim[input_dim_size - 1];  // square matrix length
     DeterminantFunctor<T>()(*input, context, rank, batch_count, output);
-    auto output_dims =
-        framework::slice_ddim(input->dims(), 0, input_dim_size - 2);
-    output->Resize(output_dims);
+    if (input_dim_size > 2) {
+      auto output_dims =
+          framework::slice_ddim(input->dims(), 0, input_dim_size - 2);
+      output->Resize(output_dims);
+    }
     VLOG(2) << "output dim:" << output->dims();
   }
 };
 
-template <typename T>
+template <typename DeviceContext, typename T>
 class DeterminantGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    const auto* dout =
-        context.Input<framework::Tensor>(framework::GradVarName("Out"));
-    auto dout_dim = vectorize(dout->dims());
-    auto* dx =
-        context.Output<framework::Tensor>(framework::GradVarName("Input"));
-    T* dx_data = dx->mutable_data<T>(context.GetPlace());
-
-    int64_t numel = dx->numel();
-    for (int64_t idx = 0; idx < numel; idx++) {
-      dx_data[idx] = static_cast<T>(1);
-    }
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Not support DeterminantGrad at this time."));
   }
-};
-
-template <typename T>
-T sign(T val) {
-  return static_cast<T>(T(0) < val) - (val < T(0));
-}
-
-template <typename T>
-class EigenMatrix {
- public:
-  using MatrixType = Eigen::MatrixXf;
-};
-
-template <>
-class EigenMatrix<float> {
- public:
-  using MatrixType = Eigen::MatrixXf;
-};
-
-template <>
-class EigenMatrix<double> {
- public:
-  using MatrixType = Eigen::MatrixXd;
 };
 
 template <typename T>
@@ -172,7 +163,7 @@ struct SlogDeterminantFunctor {
   }
 };
 
-template <typename T>
+template <typename DeviceContext, typename T>
 class SlogDeterminantKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -183,7 +174,7 @@ class SlogDeterminantKernel : public framework::OpKernel<T> {
 
     auto batch_count = GetBatchCount(input->dims());
     VLOG(2) << "input dim:" << input->dims();
-    PADDLE_ENFORCE_GT(
+    PADDLE_ENFORCE_GE(
         input_dim_size, 2,
         platform::errors::InvalidArgument(
             "the input matrix dimension size should greater than 2."));
@@ -199,6 +190,15 @@ class SlogDeterminantKernel : public framework::OpKernel<T> {
     auto output_dims = framework::make_ddim(output_dim_vec);
     output->Resize(output_dims);
     VLOG(2) << "output dim:" << output->dims();
+  }
+};
+
+template <typename DeviceContext, typename T>
+class SlogDeterminantGradKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Not support SlogDeterminantGrad at this time."));
   }
 };
 
