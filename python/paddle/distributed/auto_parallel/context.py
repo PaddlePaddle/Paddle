@@ -431,30 +431,75 @@ class DistributedContext:
         return self._model_parallel_axis, self._process_mesh
 
 
-class DistributedContext:
+class DistOpContext:
     """
-    DistributedContext is used to collect related distributed information for program and graph.
-    One auto-parallel run should use its own DistributedContext to avoid interfering other run.
+    DistOpContext is used to create a dist op desc in Program.
+    Every time to create a new dist op, the context should be updated for it accordingly.
     """
 
     def __init__(self):
-        self._is_initialized_for_program = False
-        self._is_initialized_for_graph = False
-        self._tensor_distributed_attr_map_for_program = {}
-        self._op_distributed_attr_map_for_program = {}
-        self._tensor_distributed_attr_map_for_graph = {}
-        self._op_distributed_attr_map_for_graph = {}
-        # The following is a hard code and will be removed in the future
-        self._data_parallel_axis = None
-        self._model_parallel_axis = None
-        self._process_mesh = _g_process_mesh_map.get(0, None)
-        if self._process_mesh is not None:
-            if self._process_mesh.ndim == 1:
-                self._data_parallel_axis = 0
-                self._model_parallel_axis = 0
-            else:
-                self._data_parallel_axis = 0
-                self._model_parallel_axis = 1
-        else:
-            self._data_parallel_axis = -1
-            self._model_parallel_axis = -1
+        self._dst_main_program = None
+        self._dst_startup_program = None
+        self._varname_mapping = None
+        self._rank_id = None
+        self._cur_src_op = None
+        self._cur_dist_attr = None
+
+    def set_dst_main_program(self, prog):
+        self._dst_main_program = prog
+
+    def get_dst_main_program(self):
+        return self._dst_main_program
+
+    def set_dst_startup_program(self, prog):
+        self._dst_startup_program = prog
+
+    def get_dst_startup_program(self):
+        return self._dst_startup_program
+
+    def set_varname_mapping(self, mapping):
+        self._varname_mapping = mapping
+
+    def get_varname_mapping(self):
+        return self._varname_mapping
+
+    def set_rank_id(self, rank_id):
+        self._rank_id = rank_id
+
+    def get_rank_id(self):
+        return self._rank_id
+
+    def set_cur_src_op(self, cur_src_op):
+        self._cur_src_op = cur_src_op
+
+    def get_cur_src_op(self):
+        return self._cur_src_op
+
+    def set_cur_dist_attr(self, cur_dist_attr):
+        self._cur_dist_attr = cur_dist_attr
+
+    def get_cur_dist_attr(self):
+        return self._cur_dist_attr
+
+    def prepare_cur_context(self, src_op, dist_attr):
+
+        self.set_cur_src_op(src_op)
+        self.set_cur_dist_attr(dist_attr)
+
+        # build input varname mapping
+        kinputs = {}
+        for input_name in src_op.desc.input_names():
+            varnames = []
+            for varname in src_op.desc.input(input_name):
+                varnames.append(self._varname_mapping[varname])
+            kinputs[input_name] = varnames
+
+        # build output varname mapping
+        koutputs = {}
+        for output_name in src_op.desc.output_names():
+            varnames = []
+            for varname in src_op.desc.output(output_name):
+                varnames.append(self._varname_mapping[varname])
+            koutputs[output_name] = varnames
+
+        return kinputs, koutputs

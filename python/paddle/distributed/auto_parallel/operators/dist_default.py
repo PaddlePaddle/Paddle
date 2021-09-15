@@ -59,10 +59,11 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
     def update_dims_mapping(self, op_dist_attr):
         raise NotImplementedError("Please Implement this method.")
 
+    @staticmethod
     def forward(ctx, *args, **kwargs):
 
-        dst_block = ctx.get_dist_block()
-        src_op = ctx.get_src_op()
+        dst_block = ctx.get_dst_main_program().global_block()
+        src_op = ctx.get_cur_src_op()
         varname_mapping = ctx.get_varname_mapping()
 
         # check validation of inputs / outputs 
@@ -76,7 +77,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             assert output_name in kwargs, "input [{}] is not given".format(
                 output_name)
             assert len(kwargs[output_name]) == len(
-                src_op.desc.input(output_name)
+                src_op.desc.output(output_name)
             ), "number of tensor for input [{}] is not match".format(
                 output_name)
 
