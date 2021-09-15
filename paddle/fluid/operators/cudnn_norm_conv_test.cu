@@ -120,10 +120,10 @@ class TestCuDNNNormConvOpForward {
     sum_of_squares_vec_.resize(param_size_);
     base_output_vec_.resize(output_size_);
 
-    std::default_random_engine random(time(NULL));
+    std::default_random_engine random(0);
     std::uniform_real_distribution<float> dis(0.0, 1.0);
     for (int i = 0; i < input_size_; ++i) {
-      input_vec_[i] = static_cast<T>(1.0f);
+      input_vec_[i] = static_cast<T>(dis(random));
     }
     for (int i = 0; i < filter_size_; ++i) {
       filter_raw_vec_[i] = static_cast<T>(dis(random));
@@ -234,8 +234,8 @@ TEST(CuDNNNormConvForward, GPUCuDNNNormConvForward1Fp16) {
   int batch_size = 4;
   int height = 56;
   int width = 56;
-  int input_channels = 64;
-  int output_channels = 64;
+  int input_channels = 32;
+  int output_channels = 32;
   int kernel_size = 1;
   int stride = 1;
   TestCuDNNNormConvOpForward<paddle::platform::float16> test(
@@ -247,11 +247,11 @@ TEST(CuDNNNormConvForward, GPUCuDNNNormConvForward1Fp16) {
 
 // test for fp16, kernel = 3, output_channels = input_channels
 TEST(CuDNNNormConvForward, GPUCuDNNNormConvForward2Fp16) {
-  int batch_size = 64;
+  int batch_size = 4;
   int height = 56;
   int width = 56;
-  int input_channels = 64;
-  int output_channels = 64;
+  int input_channels = 32;
+  int output_channels = 32;
   int kernel_size = 3;
   int stride = 1;
   TestCuDNNNormConvOpForward<paddle::platform::float16> test(
@@ -266,8 +266,8 @@ TEST(CuDNNNormConvForward, GPUCuDNNNormConvForward3Fp16) {
   int batch_size = 4;
   int height = 56;
   int width = 56;
-  int input_channels = 64;
-  int output_channels = 256;
+  int input_channels = 32;
+  int output_channels = 128;
   int kernel_size = 1;
   int stride = 1;
   TestCuDNNNormConvOpForward<paddle::platform::float16> test(
