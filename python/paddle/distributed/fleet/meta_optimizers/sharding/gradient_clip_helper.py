@@ -159,8 +159,8 @@ class GradientClipHelper(object):
             # TODO(Yuang Liu): need some extra handles when clip_grad_norm for mp
             return
 
-        removed_op_idx = []
-        removed_tmp_var = []
+        removed_op_idx = set()
+        removed_tmp_var = set()
         for idx, op in list(enumerate(block.ops)):
             if not self._is_gradient_clip_op(op):
                 continue
@@ -174,10 +174,11 @@ class GradientClipHelper(object):
                 # by global norm. Those vars either doesn't have is_distributed attr
                 # or the is_distributed attr has been set as False.
                 # Therefore, we prune those duplicated vars for grad clip.
-                if mp_rank > 0 and (not (hasattr(input_var, 'is_distributed')
-                                         and input_var.is_distributed)):
-                    removed_op_idx.append(idx)
-                    removed_tmp_var.extend(op.output_arg_names)
+                if mp_rank >= 1 and (not (hasattr(input_var, 'is_distributed')
+                                          and input_var.is_distributed)):
+                    removed_op_idx.add(idx)
+                    for output_name in op.output_arg_names:
+                        removed_tmp_var.add(output_name)
 
         for idx, op in reversed(list(enumerate(block.ops))):
             if not self._is_gradient_clip_op(op):
@@ -191,7 +192,7 @@ class GradientClipHelper(object):
         for idx, op in list(enumerate(block.ops)):
             if not self._is_gradient_clip_op(op):
                 continue
-            if op.type == 'sum' and mp_rank != 0:
+            if op.type == 'sum' and mp_rank >= 1:
                 reserved_vars = []
                 for input_name in op.input_arg_names:
                     if input_name not in removed_tmp_var:
