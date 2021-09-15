@@ -231,6 +231,8 @@ function cmake_base() {
         -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
         -DWITH_STRIP=${WITH_STRIP:-ON}
         -DON_INFER=${ON_INFER:-OFF}
+        -DWITH_HETERPS=${DWITH_HETERPS:-OFF}
+        -DWITH_FLUID_ONLY=${DWITH_FLUID_ONLY:-OFF} 
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -273,6 +275,8 @@ EOF
         -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF} \
         -DWITH_STRIP=${WITH_STRIP:-ON} \
         -DON_INFER=${ON_INFER:-OFF} \
+        -DWITH_HETERPS=${DWITH_HETERPS:-OFF} \
+        -DWITH_FLUID_ONLY=${DWITH_FLUID_ONLY:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -2574,6 +2578,9 @@ function main() {
         ;;
       gpu_cicheck_py35)
         parallel_test
+        ;;
+      build_gpubox)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       check_xpu)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
