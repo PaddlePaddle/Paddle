@@ -404,7 +404,7 @@ def launch():
 
         - ``--nproc_per_node``: The number of processes to launch on a node. In gpu training, it should be less or equal to the gpus number of you system(or you set by --gpus). And so each process can bound to one or average number of gpus. e.g ``--nproc_per_node=8``
 
-        - ``--run_mode``: run mode of job, can be:collective/ps/ps-heter. e.g ``--run_mode=collective``. Default ``collective``.
+        - ``--run_mode``: run mode of job, can be:collective/ps/ps-heter. e.g ``--run_mode=ps``. Default ``collective``.
 
         - ``--gpus``: It's for gpu training. e.g ``--gpus=0,1,2,3`` will launch four training processes each bound to one gpu.
 
@@ -419,7 +419,7 @@ def launch():
         - ``training_script_args``: The args of training_script. e.g ``--lr=0.1``
 
     Collective Parameters:
-        - ``--ips``: Paddle cluster nodes ips, e.g ``--ips=192.168.0.16,192.168.0.17``
+        - ``--ips``: Paddle cluster nodes ips, e.g ``--ips=192.168.0.16,192.168.0.17``. Default ``--ips=127.0.0.1``.
 
     Parameter-Server Parameters:
         - ``--servers``: User defined servers ip:port, e.g ``--servers="192.168.0.16:6170,192.168.0.17:6170"``
