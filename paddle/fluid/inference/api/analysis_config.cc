@@ -861,9 +861,9 @@ LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheBuffers(
   PADDLE_ENFORCE_EQ(model_cache_buffer.empty(), false,
                     platform::errors::InvalidArgument(
                         "model_cache_buffer should not be empty."));
-  PADDLE_ENFORCE_EQ(model_cache_buffers.count(model_cache_token), false,
-                    platform::errors::InvalidArgument(
-                        "model_cache_token has already been set."));
+  PADDLE_ENFORCE_EQ(nnadapter_model_cache_buffers.count(model_cache_token),
+                    false, platform::errors::InvalidArgument(
+                               "model_cache_token has already been set."));
 
   nnadapter_model_cache_buffers[model_cache_token] = model_cache_buffer;
   return *this;
