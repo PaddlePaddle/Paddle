@@ -63,7 +63,18 @@ function compile_install_paddle {
     export WITH_UNITY_BUILD=ON
     check_whl
     cd /workspace/Paddle
-    git clone --depth=1 --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP --recurse-submodules=PaddleDetection --recurse-submodules=PaddleVideo --recurse-submodules=PaddleSeg --recurse-submodules=PaddleGAN --recurse-submodules=PaddleOCR --recurse-submodules=models https://github.com/paddlepaddle/benchmark.git
+    git clone --depth=1 https://github.com/paddlepaddle/benchmark.git
+    cd benchmark
+    set +x
+    wget -q --no-proxy https://xly-devops.bj.bcebos.com/benchmark/new_clone/benchmark/benchmark_allgit.tar.gz
+    tar xf benchmark_allgit.tar.gz
+    set -x
+}
+
+function init_benchmark {
+    cd /workspace/Paddle/benchmark
+    git clone PaddleClas.bundle PaddleClas
+
 }
 
 function prepare_data {
@@ -96,6 +107,7 @@ case $1 in
     compile_install_paddle
   ;;
   run_benchmark)
+    init_benchmark
     prepare_data
     run_model_benchmark
   ;;
