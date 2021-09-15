@@ -168,8 +168,14 @@ class GradientClipHelper(object):
                 break
             for input_name in op.input_arg_names:
                 input_var = block.var(input_name)
-                if mp_rank != 0 and (not hasattr(input_var, 'is_distributed') or
-                                     input_var.is_distributed):
+                # NOTE: when mp_degree > 1, some vars will be split into each mp rank.
+                # However, there still some vars such as Scale, Bias are not split.
+                # Those not be split vars should only be counted once during grad clip
+                # by global norm. Those vars either doesn't have is_distributed attr
+                # or the is_distributed attr has been set as False.
+                # Therefore, we prune those duplicated vars for grad clip.
+                if mp_rank > 1 and (not (hasattr(input_var, 'is_distributed')
+                                         and input_var.is_distributed)):
                     removed_op_idx.append(idx)
                     removed_tmp_var.extend(op.output_arg_names)
 
@@ -178,7 +184,6 @@ class GradientClipHelper(object):
                 continue
             if idx in removed_op_idx:
                 block._remove_op(idx, sync=False)
-                continue
 
         for idx, op in list(enumerate(block.ops)):
             if not self._is_gradient_clip_op(op):
@@ -189,6 +194,7 @@ class GradientClipHelper(object):
                     if input_name not in removed_tmp_var:
                         reserved_vars.append(input_name)
                 op.desc.set_input("X", reserved_vars)
+                break
 
         for idx, op in reversed(list(enumerate(block.ops))):
             if not self._is_gradient_clip_op(op):
