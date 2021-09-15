@@ -400,11 +400,11 @@ def launch():
 
 
     Base Parameters:
-        - ``--log_dir``: The path for each process's log. e.g ``--log_dir=log``. Default ``log``.
+        - ``--log_dir``: The path for each process's log. e.g ``--log_dir=output_dir``. Default ``--log_dir=log``.
 
         - ``--nproc_per_node``: The number of processes to launch on a node. In gpu training, it should be less or equal to the gpus number of you system(or you set by --gpus). And so each process can bound to one or average number of gpus. e.g ``--nproc_per_node=8``
 
-        - ``--run_mode``: run mode of job, can be:collective/ps/ps-heter. e.g ``--run_mode=ps``. Default ``collective``.
+        - ``--run_mode``: run mode of job, can be:collective/ps/ps-heter. e.g ``--run_mode=ps``. Default ``--run_mode=collective``.
 
         - ``--gpus``: It's for gpu training. e.g ``--gpus=0,1,2,3`` will launch four training processes each bound to one gpu.
 
