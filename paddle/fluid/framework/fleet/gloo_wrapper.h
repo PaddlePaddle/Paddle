@@ -99,7 +99,7 @@ class ParallelConnectContext : public gloo::rendezvous::Context {
                        std::shared_ptr<transport::Device>& dev);  // NOLINT
 
  protected:
-  int thread_num_ = 6;
+  int thread_num_ = 1;
 };
 #endif
 }  // namespace rendezvous
