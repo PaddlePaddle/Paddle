@@ -19,8 +19,10 @@
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/inference/api/helper.h"
+#include "paddle/fluid/inference/api/paddle_api.h"
 #include "paddle/fluid/inference/api/paddle_inference_api.h"
 #include "paddle/fluid/inference/tests/api/tester_helper.h"
+#include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/platform/cpu_info.h"
 
 DEFINE_string(dirname, "", "dirname to tests.");
@@ -32,6 +34,8 @@ TEST(AnalysisPredictor, analysis_off) {
   config.SetModel(FLAGS_dirname);
   config.SwitchIrOptim(false);
   LOG(INFO) << config.Summary();
+  LOG(INFO) << "Shape Info collected: " << config.shape_range_info_collected()
+            << ", path: " << config.shape_range_info_path();
 
   auto _predictor = CreatePaddlePredictor<AnalysisConfig>(config);
   auto* predictor = static_cast<AnalysisPredictor*>(_predictor.get());
@@ -86,10 +90,6 @@ TEST(AnalysisPredictor, analysis_on) {
   std::vector<PaddleTensor> outputs;
   ASSERT_TRUE(predictor->Run(inputs, &outputs));
 
-  for (auto& output : outputs) {
-    LOG(INFO) << inference::DescribeTensor(output);
-  }
-
   // compare with NativePredictor
   auto naive_predictor =
       CreatePaddlePredictor<NativeConfig>(config.ToNativeConfig());
@@ -137,6 +137,54 @@ TEST(AnalysisPredictor, ZeroCopy) {
   LOG(INFO) << "output size: " << size / sizeof(float);
   LOG(INFO) << "output_data: " << out_data;
   predictor->TryShrinkMemory();
+}
+
+TEST(AnalysisPredictor, CollectShapeRangeInfo) {
+  AnalysisConfig config;
+  config.SetModel(FLAGS_dirname);
+  config.SwitchUseFeedFetchOps(false);
+  config.EnableUseGpu(100, 0);
+  config.CollectShapeRangeInfo(FLAGS_dirname + "/shape_range.pbtxt");
+  LOG(INFO) << config.Summary();
+  AnalysisConfig config2(config);
+  auto predictor = CreatePaddlePredictor<AnalysisConfig>(config2);
+
+  auto w0 = predictor->GetInputTensor("firstw");
+  auto w1 = predictor->GetInputTensor("secondw");
+  auto w2 = predictor->GetInputTensor("thirdw");
+  auto w3 = predictor->GetInputTensor("forthw");
+
+  w0->Reshape({4, 1});
+  w1->Reshape({4, 1});
+  w2->Reshape({4, 1});
+  w3->Reshape({4, 1});
+
+  auto* w0_data = w0->mutable_data<int64_t>(PaddlePlace::kCPU);
+  auto* w1_data = w1->mutable_data<int64_t>(PaddlePlace::kCPU);
+  auto* w2_data = w2->mutable_data<int64_t>(PaddlePlace::kCPU);
+  auto* w3_data = w3->mutable_data<int64_t>(PaddlePlace::kCPU);
+
+  for (int i = 0; i < 4; i++) {
+    w0_data[i] = i;
+    w1_data[i] = i;
+    w2_data[i] = i;
+    w3_data[i] = i;
+  }
+
+  predictor->ZeroCopyRun();
+
+  auto out = predictor->GetOutputTensor("fc_1.tmp_2");
+  PaddlePlace place;
+  int size = 0;
+  out->data<float>(&place, &size);
+  LOG(INFO) << "output size: " << size / sizeof(float);
+  // TODO(wilber): check for windows
+  // std::map<std::string, std::vector<int32_t>> min_shape;
+  // std::map<std::string, std::vector<int32_t>> max_shape;
+  // std::map<std::string, std::vector<int32_t>> opt_shape;
+  // inference::DeserializeShapeRangeInfo(FLAGS_dirname + "/shape_range.pbtxt",
+  //                                     &min_shape, &max_shape, &opt_shape);
+  // ASSERT_EQ(min_shape.size(), 14u);
 }
 
 TEST(AnalysisPredictor, Clone) {
@@ -274,6 +322,17 @@ TEST(AnalysisPredictor, bf16_pass_strategy) {
   PassStrategy passStrategy(passes);
   passStrategy.EnableMkldnnBfloat16();
 }
+
+#ifdef PADDLE_WITH_XPU
+TEST(AnalysisPredictor, set_xpu_device_id) {
+  AnalysisConfig config;
+  config.EnableXpu();
+  config.SetXpuDeviceId(0);
+  ASSERT_EQ(config.xpu_device_id(), 0);
+  config.SetXpuDeviceId(1);
+  ASSERT_EQ(config.xpu_device_id(), 1);
+}
+#endif
 
 }  // namespace paddle
 

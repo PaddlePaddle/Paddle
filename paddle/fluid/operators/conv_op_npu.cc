@@ -19,33 +19,26 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+using NPUDeviceContext = platform::NPUDeviceContext;
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class DepthwiseConvNPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    // input
-    const Tensor* input = context.Input<Tensor>("Input");
-    const Tensor* filter = context.Input<Tensor>("Filter");
-    // output
-    Tensor* output = context.Output<Tensor>("Output");
-    output->mutable_data<T>(context.GetPlace());
-    // attr
-    const std::vector<int> stride = context.Attr<std::vector<int>>("strides");
-    std::vector<int> padding = context.Attr<std::vector<int>>("paddings");
-    std::vector<int> dilation = context.Attr<std::vector<int>>("dilations");
-    const std::string data_format = context.Attr<std::string>("data_format");
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
+    Tensor* output = ctx.Output<Tensor>("Output");
+    output->mutable_data<T>(ctx.GetPlace());
+
+    const std::vector<int> stride = ctx.Attr<std::vector<int>>("strides");
+    std::vector<int> padding = ctx.Attr<std::vector<int>>("paddings");
+    std::vector<int> dilation = ctx.Attr<std::vector<int>>("dilations");
+    const std::string data_format = ctx.Attr<std::string>("data_format");
     const std::string padding_algorithm =
-        context.Attr<std::string>("padding_algorithm");
+        ctx.Attr<std::string>("padding_algorithm");
 
-    // npu stream
-    auto stream =
-        context.template device_context<platform::NPUDeviceContext>().stream();
-
-    // check dimension
     const bool channel_last = data_format == "NHWC";
     if (channel_last) {
-      // NHWC
       PADDLE_ENFORCE_EQ(
           output->dims()[output->dims().size() - 1],
           input->dims()[input->dims().size() - 1],
@@ -56,7 +49,6 @@ class DepthwiseConvNPUKernel : public framework::OpKernel<T> {
               output->dims()[output->dims().size() - 1],
               input->dims()[input->dims().size() - 1]));
     } else {
-      // NCHW
       PADDLE_ENFORCE_EQ(
           output->dims()[1], input->dims()[1],
           platform::errors::InvalidArgument(
@@ -66,7 +58,6 @@ class DepthwiseConvNPUKernel : public framework::OpKernel<T> {
               output->dims()[1], input->dims()[1]));
     }
 
-    // update padding and dilation
     auto in_dims = input->dims();
     auto filter_dims = filter->dims();
     framework::DDim in_data_dims;
@@ -83,17 +74,6 @@ class DepthwiseConvNPUKernel : public framework::OpKernel<T> {
     UpdatePaddingAndDilation(&padding, &dilation, padding_algorithm,
                              in_data_dims, stride, ksize);
 
-    // Transform filter (n, 1, h, w) --> (1, n, h, w)
-    Tensor transformed_filter(filter->type());
-    transformed_filter.mutable_data<T>({filter->dims()[1], filter->dims()[0],
-                                        filter->dims()[2], filter->dims()[3]},
-                                       context.device_context().GetPlace());
-    std::vector<int> perm = {1, 0, 2, 3};
-    const auto& runner_trans = NpuOpRunner(
-        "TransposeD", {*filter}, {transformed_filter}, {{"perm", perm}});
-    runner_trans.Run(stream);
-
-    // construct NPU attr
     std::vector<int> strides(4, 1);
     std::vector<int> dilations(4, 1);
 
@@ -115,7 +95,18 @@ class DepthwiseConvNPUKernel : public framework::OpKernel<T> {
       dilations[3] = dilation[1];
     }
 
-    // CANN OP
+    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
+
+    // Transform filter (n, 1, h, w) --> (1, n, h, w)
+    Tensor transformed_filter(filter->type());
+    transformed_filter.mutable_data<T>({filter->dims()[1], filter->dims()[0],
+                                        filter->dims()[2], filter->dims()[3]},
+                                       ctx.device_context().GetPlace());
+    std::vector<int> perm = {1, 0, 2, 3};
+    const auto& runner_trans = NpuOpRunner(
+        "TransposeD", {*filter}, {transformed_filter}, {{"perm", perm}});
+    runner_trans.Run(stream);
+
     const auto& runner =
         NpuOpRunner("DepthwiseConv2D", {input_tensor, transformed_filter},
                     {output_tensor}, {{"strides", strides},
@@ -129,27 +120,20 @@ class DepthwiseConvNPUKernel : public framework::OpKernel<T> {
 template <typename T>
 class DepthwiseConvGradNPUKernel : public framework::OpKernel<T> {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    // input
-    const Tensor* input = context.Input<Tensor>("Input");
-    const Tensor* filter = context.Input<Tensor>("Filter");
-    // output
-    auto output_grad = context.Input<Tensor>(framework::GradVarName("Output"));
-    auto input_grad = context.Output<Tensor>(framework::GradVarName("Input"));
-    auto filter_grad = context.Output<Tensor>(framework::GradVarName("Filter"));
-    // attr
-    const std::vector<int> stride = context.Attr<std::vector<int>>("strides");
-    std::vector<int> padding = context.Attr<std::vector<int>>("paddings");
-    std::vector<int> dilation = context.Attr<std::vector<int>>("dilations");
-    const std::string data_format = context.Attr<std::string>("data_format");
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    const Tensor* input = ctx.Input<Tensor>("Input");
+    const Tensor* filter = ctx.Input<Tensor>("Filter");
+    auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
+    auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
+    auto filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+
+    const std::vector<int> stride = ctx.Attr<std::vector<int>>("strides");
+    std::vector<int> padding = ctx.Attr<std::vector<int>>("paddings");
+    std::vector<int> dilation = ctx.Attr<std::vector<int>>("dilations");
+    const std::string data_format = ctx.Attr<std::string>("data_format");
     const std::string padding_algorithm =
-        context.Attr<std::string>("padding_algorithm");
+        ctx.Attr<std::string>("padding_algorithm");
 
-    // npu stream
-    auto stream =
-        context.template device_context<platform::NPUDeviceContext>().stream();
-
-    // check dimension
     const bool channel_last = data_format == "NHWC";
 
     // update padding and dilation
@@ -169,11 +153,13 @@ class DepthwiseConvGradNPUKernel : public framework::OpKernel<T> {
     UpdatePaddingAndDilation(&padding, &dilation, padding_algorithm,
                              in_data_dims, stride, ksize);
 
+    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
+
     // Transform filter (n, 1, h, w) --> (1, n, h, w)
     Tensor transformed_filter(filter->type());
     transformed_filter.mutable_data<T>({filter->dims()[1], filter->dims()[0],
                                         filter->dims()[2], filter->dims()[3]},
-                                       context.device_context().GetPlace());
+                                       ctx.device_context().GetPlace());
     std::vector<int> perm = {1, 0, 2, 3};
     const auto& runner_trans = NpuOpRunner(
         "TransposeD", {*filter}, {transformed_filter}, {{"perm", perm}});
@@ -200,39 +186,52 @@ class DepthwiseConvGradNPUKernel : public framework::OpKernel<T> {
       dilations[3] = dilation[1];
     }
 
-    if (filter_grad) {
-      filter_grad->mutable_data<T>(context.GetPlace());
-      std::vector<int> filter_shape_vec =
-          framework::vectorize<int>(transformed_filter.dims());
+    // LOG(INFO) << "strides = " << framework::make_ddim(strides).to_str();
+    // LOG(INFO) << "dilations = " << framework::make_ddim(dilations).to_str();
+    // LOG(INFO) << "padding = " << framework::make_ddim(padding).to_str();
+    // LOG(INFO) << "data_format = " << data_format;
 
-      const auto& runner = NpuOpRunner(
-          "DepthwiseConv2DBackpropFilterD", {input_tensor, output_grad_tensor},
-          {*filter_grad}, {{"filter_size", filter_shape_vec},
-                           {"strides", strides},
-                           {"pads", padding},
-                           {"dilations", dilations},
-                           {"data_format", data_format}});
-      runner.Run(stream);
+    if (filter_grad) {
+      filter_grad->mutable_data<T>(ctx.GetPlace());
+
+      PADDLE_ENFORCE_EQ(
+          (dilations[2] == 1 && dilations[3] == 1), true,
+          platform::errors::InvalidArgument(
+              "dilation_h and dilation_w in DepthwiseConv2DBackpropFilterD "
+              "must be equal to 1, but got dilation_h %d, dilation_w %d",
+              dilation[2], dilation[3]));
+
+      NpuOpRunner runner;
+      runner.SetType("DepthwiseConv2DBackpropFilterD")
+          .AddInput(input_tensor)
+          .AddInput(output_grad_tensor)
+          .AddOutput(*filter_grad)
+          .AddAttr("filter_size",
+                   framework::vectorize(transformed_filter.dims()))
+          .AddAttr("strides", strides)
+          .AddAttr("dilations", dilations)
+          .AddAttr("pads", padding)
+          .AddAttr("data_format", data_format)
+          .Run(stream);
     }
     if (input_grad) {
-      input_grad->mutable_data<T>(context.GetPlace());
-      std::vector<int> input_shape_vec =
-          framework::vectorize<int>(input->dims());
-
+      input_grad->mutable_data<T>(ctx.GetPlace());
       Tensor input_grad_tensor;
       input_grad_tensor.ShareDataWith(*input_grad);
       if (channel_last) {
         input_grad_tensor.set_layout(DataLayout::kNHWC);
       }
-      const auto& runner =
-          NpuOpRunner("DepthwiseConv2DBackpropInputD",
-                      {transformed_filter, output_grad_tensor},
-                      {input_grad_tensor}, {{"input_size", input_shape_vec},
-                                            {"strides", strides},
-                                            {"pads", padding},
-                                            {"dilations", dilations},
-                                            {"data_format", data_format}});
-      runner.Run(stream);
+      NpuOpRunner runner;
+      runner.SetType("DepthwiseConv2DBackpropInputD")
+          .AddInput(transformed_filter)
+          .AddInput(output_grad_tensor)
+          .AddOutput(input_grad_tensor)
+          .AddAttr("input_size", framework::vectorize(input->dims()))
+          .AddAttr("strides", strides)
+          .AddAttr("dilations", dilations)
+          .AddAttr("pads", padding)
+          .AddAttr("data_format", data_format)
+          .Run(stream);
     }
   }
 };
@@ -241,7 +240,6 @@ template <typename T>
 class NPUConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& dev_ctx = ctx.template device_context<platform::NPUDeviceContext>();
     const Tensor* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
     auto* output = ctx.Output<Tensor>("Output");
@@ -293,6 +291,7 @@ class NPUConvOpKernel : public framework::OpKernel<T> {
       dilations_vec[3] = dilations[1];
     }
 
+    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     const auto& runner =
         NpuOpRunner("Conv2D", {input_tensor, *filter}, {output_tensor},
                     {{"strides", strides_vec},
@@ -300,7 +299,7 @@ class NPUConvOpKernel : public framework::OpKernel<T> {
                      {"dilations", dilations_vec},
                      {"groups", groups},
                      {"data_format", data_format}});
-    runner.Run(dev_ctx.stream());
+    runner.Run(stream);
   }
 };
 
@@ -308,8 +307,6 @@ template <typename T>
 class NPUConvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto& dev_ctx = ctx.template device_context<platform::NPUDeviceContext>();
-
     auto input = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
     auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
@@ -363,6 +360,7 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
       dilations_vec[3] = dilations[1];
     }
 
+    auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     if (filter_grad) {
       filter_grad->mutable_data<T>(ctx.GetPlace());
       std::vector<int> filter_shape_vec =
@@ -376,7 +374,7 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
                            {"dilations", dilations_vec},
                            {"groups", groups},
                            {"data_format", data_format}});
-      runner.Run(dev_ctx.stream());
+      runner.Run(stream);
     }
     if (input_grad) {
       input_grad->mutable_data<T>(ctx.GetPlace());
@@ -396,7 +394,7 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
                                             {"dilations", dilations_vec},
                                             {"groups", groups},
                                             {"data_format", data_format}});
-      runner.Run(dev_ctx.stream());
+      runner.Run(stream);
     }
   }
 };
@@ -404,15 +402,17 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(
-    depthwise_conv2d,
-    ops::DepthwiseConvNPUKernel<paddle::platform::NPUDeviceContext,
-                                paddle::platform::float16>);
-REGISTER_OP_NPU_KERNEL(
-    depthwise_conv2d_grad,
-    ops::DepthwiseConvGradNPUKernel<paddle::platform::float16>);
+REGISTER_OP_NPU_KERNEL(depthwise_conv2d, ops::DepthwiseConvNPUKernel<float>,
+                       ops::DepthwiseConvNPUKernel<plat::float16>);
+
+REGISTER_OP_NPU_KERNEL(depthwise_conv2d_grad,
+                       ops::DepthwiseConvGradNPUKernel<float>,
+                       ops::DepthwiseConvGradNPUKernel<plat::float16>);
+
 REGISTER_OP_NPU_KERNEL(conv2d, ops::NPUConvOpKernel<float>,
-                       ops::NPUConvOpKernel<paddle::platform::float16>);
+                       ops::NPUConvOpKernel<plat::float16>);
+
 REGISTER_OP_NPU_KERNEL(conv2d_grad, ops::NPUConvGradOpKernel<float>,
-                       ops::NPUConvGradOpKernel<paddle::platform::float16>);
+                       ops::NPUConvGradOpKernel<plat::float16>);
