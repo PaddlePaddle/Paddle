@@ -30,6 +30,7 @@ from paddle.fluid import layers
 from paddle.distributed import fleet
 import paddle.distributed.auto_parallel as auto
 from paddle.distributed.auto_parallel.utils import print_program_with_distributed_attr
+import paddle.fluid.core as core
 
 paddle.enable_static()
 _global_parallel_strategy = None
@@ -130,6 +131,11 @@ class TestMLPAutoParallelizer(unittest.TestCase):
         optimizer = fleet.distributed_optimizer(optimizer)
         _, _, distributed_startup_program, distributed_main_program = optimizer.minimize(
             loss, start_program)
+        suffix = core.kAutoParallelSuffix()
+        for block in distributed_main_program.blocks:
+            for op in block.ops:
+                for attr_name in op.attr_names:
+                    self.assertTrue(suffix not in attr_name)
         # print_program_with_distributed_attr(distributed_main_program)
         self.assertIsNotNone(distributed_startup_program)
         self.assertIsNotNone(distributed_main_program)
