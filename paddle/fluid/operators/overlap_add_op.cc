@@ -44,6 +44,7 @@ class OverlapAddOp : public framework::OperatorWithKernel {
             "Attribute(hop_length) of OverlapAddOp should be greater "
             "than 0, but got %s.",
             hop_length));
+
     PADDLE_ENFORCE_EQ(
         (axis == 0 || axis == -1), true,
         platform::errors::InvalidArgument(
@@ -67,6 +68,13 @@ class OverlapAddOp : public framework::OperatorWithKernel {
       start_axis = 0;
       end_axis = x_rank - 3;
     }
+
+    PADDLE_ENFORCE_LE(
+        hop_length, frame_length,
+        platform::errors::InvalidArgument(
+            "Attribute(hop_length) of OverlapAddOp should be less or equal "
+            "than frame_length, but got hop_length(%s) > frame_length(%s).",
+            hop_length, frame_length));
 
     const int seq_length = (n_frames - 1) * hop_length + frame_length;
 

@@ -79,10 +79,10 @@ class TestOverlapAddOp(OpTest):
         self.outputs = {'Out': overlap_add(x=self.inputs['X'], **self.attrs)}
 
     def initTestCase(self):
-        input_shape = (150, 30)
+        input_shape = (50, 3)
         input_type = 'float64'
         attrs = {
-            'hop_length': 20,
+            'hop_length': 4,
             'axis': -1,
         }
         return input_shape, input_type, attrs
@@ -100,10 +100,10 @@ class TestOverlapAddOp(OpTest):
 
 class TestCase1(TestOverlapAddOp):
     def initTestCase(self):
-        input_shape = (30, 150)
+        input_shape = (3, 50)
         input_type = 'float64'
         attrs = {
-            'hop_length': 15,
+            'hop_length': 4,
             'axis': 0,
         }
         return input_shape, input_type, attrs
@@ -111,10 +111,10 @@ class TestCase1(TestOverlapAddOp):
 
 class TestCase2(TestOverlapAddOp):
     def initTestCase(self):
-        input_shape = (2, 250, 10)
+        input_shape = (2, 40, 5)
         input_type = 'float64'
         attrs = {
-            'hop_length': 50,
+            'hop_length': 10,
             'axis': -1,
         }
         return input_shape, input_type, attrs
@@ -122,10 +122,10 @@ class TestCase2(TestOverlapAddOp):
 
 class TestCase3(TestOverlapAddOp):
     def initTestCase(self):
-        input_shape = (10, 250, 2)
+        input_shape = (5, 40, 2)
         input_type = 'float64'
         attrs = {
-            'hop_length': 30,
+            'hop_length': 10,
             'axis': 0,
         }
         return input_shape, input_type, attrs
@@ -133,10 +133,10 @@ class TestCase3(TestOverlapAddOp):
 
 class TestCase4(TestOverlapAddOp):
     def initTestCase(self):
-        input_shape = (3, 5, 70, 20)
+        input_shape = (3, 5, 12, 8)
         input_type = 'float64'
         attrs = {
-            'hop_length': 27,
+            'hop_length': 5,
             'axis': -1,
         }
         return input_shape, input_type, attrs
@@ -144,10 +144,10 @@ class TestCase4(TestOverlapAddOp):
 
 class TestCase5(TestOverlapAddOp):
     def initTestCase(self):
-        input_shape = (20, 70, 5, 3)
+        input_shape = (8, 12, 5, 3)
         input_type = 'float64'
         attrs = {
-            'hop_length': 33,
+            'hop_length': 5,
             'axis': 0,
         }
         return input_shape, input_type, attrs

@@ -32,9 +32,82 @@ __all__ = [
 
 
 def frame(x, frame_length, hop_length, axis=-1, name=None):
-    '''
-        TODO(chenxiaojie06): Doc of frame.
-    '''
+    """
+    Slice the N-dimensional (where N >= 1) input into (overlapping) frames.
+
+    Args:
+        x (Tensor): The input data which is a N-dimensional (where N >= 1) Tensor
+            with shape `[..., seq_length]` or `[seq_length, ...]`.
+        frame_length (int): Length of the frame and `0 < frame_length < x.shape[axis]`.
+        hop_length (int): Number of steps to advance between adjacent frames
+            and `0 < hop_length`. 
+        axis (int, optional): Specify the axis to operate on the input Tensors. Its
+            value should be 0(the first dimension) or -1(the last dimension). If not
+            specified, the last axis is used by default. 
+
+    Returns:
+        The output frames tensor with shape `[..., frame_length, num_frames]` if `axis==-1`,
+            otherwise `[num_frames, frame_length, ...]` where
+        
+            `num_framse = 1 + (x.shape[axis] - frame_length) // hop_length`
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+        from paddle.tensor.signal import frame
+        
+        # 1D
+        x = paddle.arange(8)
+        y0 = frame(x, frame_length=4, hop_length=2, axis=-1)  # [4, 3]
+        # [[0, 2, 4],
+        #  [1, 3, 5],
+        #  [2, 4, 6],
+        #  [3, 5, 7]]
+
+        y1 = frame(x, frame_length=4, hop_length=2, axis=0)   # [3, 4]
+        # [[0, 1, 2, 3],
+        #  [2, 3, 4, 5],
+        #  [4, 5, 6, 7]]
+
+        # 2D
+        x0 = paddle.arange(16).reshape([2, 8])
+        y0 = frame(x0, frame_length=4, hop_length=2, axis=-1)  # [2, 4, 3]
+        # [[[0, 2, 4],
+        #   [1, 3, 5],
+        #   [2, 4, 6],
+        #   [3, 5, 7]],
+        #
+        #  [[8 , 10, 12],
+        #   [9 , 11, 13],
+        #   [10, 12, 14],
+        #   [11, 13, 15]]]
+
+        x1 = paddle.arange(16).reshape([8, 2])
+        y1 = frame(x1, frame_length=4, hop_length=2, axis=0)   # [3, 4, 2]
+        # [[[0 , 1 ],
+        #   [2 , 3 ],
+        #   [4 , 5 ],
+        #   [6 , 7 ]],
+        #
+        #   [4 , 5 ],
+        #   [6 , 7 ],
+        #   [8 , 9 ],
+        #   [10, 11]],
+        #
+        #   [8 , 9 ],
+        #   [10, 11],
+        #   [12, 13],
+        #   [14, 15]]]
+
+        # > 2D
+        x0 = paddle.arange(32).reshape([2, 2, 8])
+        y0 = frame(x0, frame_length=4, hop_length=2, axis=-1)  # [2, 2, 4, 3]
+
+        x1 = paddle.arange(32).reshape([8, 2, 2])
+        y1 = frame(x1, frame_length=4, hop_length=2, axis=0)   # [3, 4, 2, 2]
+    """
     if axis not in [0, -1]:
         raise ValueError(f'Unexpected axis: {axis}. It should be 0 or -1.')
 
@@ -80,9 +153,58 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
 
 
 def overlap_add(x, hop_length, axis=-1, name=None):
-    '''
-        TODO(chenxiaojie06): Doc of overlap_add.
-    '''
+    """
+    Reconstructs a tensor consisted of overlap added sequences from input frames.
+
+    Args:
+        x (Tensor): The input data which is a N-dimensional (where N >= 2) Tensor
+            with shape `[..., frame_length, num_frames]` or
+            `[num_frames, frame_length ...]`.
+        hop_length (int): Number of steps to advance between adjacent frames and
+            `0 < hop_length <= frame_length`. 
+        axis (int, optional): Specify the axis to operate on the input Tensors. Its
+            value should be 0(the first dimension) or -1(the last dimension). If not
+            specified, the last axis is used by default. 
+
+    Returns:
+        The output frames tensor with shape `[..., seq_length]` if `axis==-1`,
+            otherwise `[seq_length, ...]` where
+
+            `seq_length = (n_frames - 1) * hop_length + frame_length`
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+        from paddle.tensor.signal import overlap_add
+        
+        # 2D
+        x0 = paddle.arange(16).reshape([8, 2])
+        # [[0 , 1 ],
+        #  [2 , 3 ],
+        #  [4 , 5 ],
+        #  [6 , 7 ],
+        #  [8 , 9 ],
+        #  [10, 11],
+        #  [12, 13],
+        #  [14, 15]]
+        y0 = overlap_add(x0, hop_length=2, axis=-1)  # [10]
+        # [0 , 2 , 5 , 9 , 13, 17, 21, 25, 13, 15]
+
+        x1 = paddle.arange(16).reshape([2, 8])
+        # [[0 , 1 , 2 , 3 , 4 , 5 , 6 , 7 ],
+        #  [8 , 9 , 10, 11, 12, 13, 14, 15]]
+        y1 = overlap_add(x1, hop_length=2, axis=0)   # [10]
+        # [0 , 1 , 10, 12, 14, 16, 18, 20, 14, 15]
+
+        # > 2D
+        x0 = paddle.arange(32).reshape([2, 1, 8, 2])
+        y0 = overlap_add(x0, hop_length=2, axis=-1)  # [2, 1, 10]
+
+        x1 = paddle.arange(32).reshape([2, 8, 1, 2])
+        y1 = overlap_add(x1, hop_length=2, axis=0)   # [10, 1, 2] 
+    """
     if axis not in [0, -1]:
         raise ValueError(f'Unexpected axis: {axis}. It should be 0 or -1.')
 
@@ -123,9 +245,68 @@ def stft(x,
          normalized=False,
          onesided=True,
          name=None):
-    '''
-        TODO(chenxiaojie06): Doc of stft.
-    '''
+    """
+    Short-time Fourier transform (STFT).
+
+    The STFT computes the discrete Fourier transforms (DFT) of short overlapping
+    windows of the input using this formula:
+    
+    .. math::
+        X_t[\omega] = \sum_{n = 0}^{N-1}%
+                      \text{window}[n]\ x[t \times H + n]\ %
+                      e^{-{2 \pi j \omega n}/{N}}
+    
+    Where:
+    - :math:`t`: The :math:`t`-th input window.
+    - :math:`\omega`: Frequency :math:`0 \leq \omega < \text{n\_fft}` for `onesided=False`,
+        or :math:`0 \leq \omega < \lfloor \text{n\_fft} / 2 \rfloor + 1` for `onesided=True`. 
+    - :math:`N`: Value of `n_fft`.
+    - :math:`H`: Value of `hop_length`.  
+    
+    Args:
+        x (Tensor): The input data which is a 1-dimensional or 2-dimensional Tensor with
+            shape `[..., seq_length]`. It can be a real-valued or a complex Tensor.
+        n_fft (int): The number of input samples to perform Fourier transform.
+        hop_length (int, optional): Number of steps to advance between adjacent windows
+            and `0 < hop_length`. Default: `None`(treated as equal to `n_fft//4`)
+        win_length (int, optional): The size of window. Default: `None`(treated as equal
+            to `n_fft`)
+        window (Tensor, optional): A 1-dimensional tensor of size `win_length`. It will
+            be center padded to length `n_fft` if `win_length < n_fft`. Default: `None`(
+            treated as a rectangle window with value equal to 1 of size `win_length`).
+        center (bool, optional): Whether to pad `x` to make that the
+            :math:`t \times hop\_length` at the center of :math:`t`-th frame. Default: `True`.
+        pad_mode (str, optional): Choose padding pattern when `center` is `True`. See
+            `paddle.nn.functional.pad` for all padding options. Default: `"reflect"`
+        normalized (bool, optional): Control whether to scale the output by `1/sqrt(n_fft)`.
+            Default: `False`
+        onesided (bool, optional): Control whether to return half of the Fourier transform
+            output that satisfies the conjugate symmetry condition when input is a real-valued
+            tensor. It can not be `True` if input is a complex tensor. Default: `True`
+        name (str, optional): The default value is None. Normally there is no need for user
+            to set this property. For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        The complex STFT output tensor with shape `[..., n_fft//2 + 1, num_frames]`(
+            real-valued input and `onesided` is `True`) or `[..., n_fft, num_frames]`(
+            `onesided` is `False`)
+    
+    Exampels:
+        .. code-block:: python
+    
+            import paddle
+            from paddle.tensor.signal import stft
+    
+            # real-valued input
+            x = paddle.randn([8, 48000], dtype=paddle.float64)
+            y1 = stft(x, n_fft=512)  # [8, 257, 376]
+            y2 = stft(x, n_fft=512, onesided=False)  # [8, 512, 376]
+    
+            # complex input
+            x = paddle.randn([8, 48000], dtype=paddle.float64) + \
+                    paddle.randn([8, 48000], dtype=paddle.float64)*1j  # [8, 48000] complex128
+            y1 = stft(x, n_fft=512, center=False, onesided=False)  # [8, 512, 372]
+    """
     check_variable_and_dtype(
         x, 'x', ['float16', 'float32', 'float64', 'complex64', 'complex128'],
         'stft')
@@ -170,7 +351,7 @@ def stft(x,
             'pad_mode should be "reflect" or "constant", but got "{}".'.format(pad_mode)
 
         pad_length = n_fft // 2
-        # FIXME: pad does not supprt complex input.
+        # FIXME: Input `x` can be a complex tensor but pad does not supprt complex input.
         x = paddle.nn.functional.pad(x.unsqueeze(-1),
                                      pad=[pad_length, pad_length],
                                      mode=pad_mode,
@@ -219,9 +400,78 @@ def istft(x,
           length=None,
           return_complex=False,
           name=None):
-    '''
-        TODO(chenxiaojie06): Doc of istft.
-    '''
+    """
+    Inverse short-time Fourier transform (ISTFT).
+
+    Reconstruct time-domain signal from the giving complex input and window tensor when
+        nonzero overlap-add (NOLA) condition is met: 
+
+    .. math::
+        \sum_{t = -\infty}^{\infty}%
+            \text{window}^2[n - t \times H]\ \neq \ 0, \ \text{for } all \ n
+
+    Where:
+    - :math:`t`: The :math:`t`-th input window.
+    - :math:`N`: Value of `n_fft`.
+    - :math:`H`: Value of `hop_length`.
+
+    Result of `istft` expected to be the inverse of `paddle.tensor.signal.stft`, but it is
+        not guaranteed to reconstruct a exactly realizible time-domain signal from a STFT
+        complex tensor which has been modified (via masking or otherwise). Therefore, `istft`
+        gives the [Griffin-Lim optimal estimate](https://ieeexplore.ieee.org/document/1164317)
+        (optimal in a least-squares sense) for the corresponding signal.
+
+    Args:
+        x (Tensor): The input data which is a 2-dimensional or 3-dimensional **complesx**
+            Tensor with shape `[..., n_fft, num_frames]`. 
+        n_fft (int): The size of Fourier transform.
+        hop_length (int, optional): Number of steps to advance between adjacent windows
+            from time-domain signal and `0 < hop_length < win_length`. Default: `None`(
+            treated as equal to `n_fft//4`)
+        win_length (int, optional): The size of window. Default: `None`(treated as equal
+            to `n_fft`)
+        window (Tensor, optional): A 1-dimensional tensor of size `win_length`. It will
+            be center padded to length `n_fft` if `win_length < n_fft`. It should be a
+            real-valued tensor if `return_complex` is False. Default: `None`(treated as
+            a rectangle window with value equal to 1 of size `win_length`).
+        center (bool, optional): It means that whether the time-domain signal has been
+            center padded. Default: `True`.
+        normalized (bool, optional): Control whether to scale the output by `1/sqrt(n_fft)`.
+            Default: `False`
+        onesided (bool, optional): It means that whether the input STFT tensor is a half
+            of the conjugate symmetry STFT tensor transformed from a real-valued signal
+            and `istft` will return a real-valued tensor when it is set to `True`.
+            Default: `True`.
+        length (int, optional): Specify the length of time-domain signal. Default: `None`(
+            treated as the whole length of signal). 
+        return_complex (bool, optional): It means that whether the time-domain signal is
+            real-valued. If `return_complex` is set to `True`, `onesided` should be set to
+            `False` cause the output is complex. 
+        name (str, optional): The default value is None. Normally there is no need for user
+            to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        A tensor of least squares estimation of the reconstructed signal(s) with shape
+            `[..., seq_length]`
+
+    Exampels:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+            from paddle.tensor.signal import stft, istft
+
+            paddle.seed(0)
+
+            # STFT
+            x = paddle.randn([8, 48000], dtype=paddle.float64)
+            y = stft(x, n_fft=512)  # [8, 257, 376]
+
+            # ISTFT
+            x_ = istft(y, n_fft=512)  # [8, 48000]
+
+            np.allclose(x, x_)  # True
+    """
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'istft')
 
     x_rank = len(x.shape)
@@ -263,6 +513,7 @@ def istft(x,
     if win_length < n_fft:
         pad_left = (n_fft - win_length) // 2
         pad_right = n_fft - win_length - pad_left
+        # FIXME: Input `window` can be a complex tensor but pad does not supprt complex input.
         window = paddle.nn.functional.pad(window,
                                           pad=[pad_left, pad_right],
                                           mode='constant')
@@ -291,7 +542,6 @@ def istft(x,
         hop_length=hop_length,
         axis=-1)  # (batch, seq_length)
 
-    # FIXME: Use paddle.square when it supports complex tensor.
     window_envelop = overlap_add(
         x=paddle.tile(
             x=window * window, repeat_times=[n_frames, 1]).transpose(
