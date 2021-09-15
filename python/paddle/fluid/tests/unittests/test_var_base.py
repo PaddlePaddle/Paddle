@@ -813,6 +813,11 @@ class TestVarBase(unittest.TestCase):
                         [0., 0., 42., 42., 42., 0.]])
         self.assertTrue(np.array_equal(res, exp))
 
+        # case3:
+        row = np.array([0, 1, 2])
+        col = np.array([2, 1, 3])
+        self.assertTrue(np.array_equal(array[row, col], x[row, col].numpy()))
+
     def test_slice(self):
         with fluid.dygraph.guard():
             self._test_slice()
@@ -833,6 +838,10 @@ class TestVarBase(unittest.TestCase):
 
             with self.assertRaises(IndexError):
                 y = var[0 - self.shape[0] - 1]
+
+            with self.assertRaises(IndexError):
+                mask = np.array([1, 0, 1, 0], dtype=bool)
+                var[paddle.to_tensor([0, 1]), mask]
 
     def test_var_base_to_np(self):
         with fluid.dygraph.guard():
