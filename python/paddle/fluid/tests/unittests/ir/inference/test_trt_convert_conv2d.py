@@ -22,6 +22,17 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 class TrtConvertConv2dTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        inputs = program_config.inputs
+        weights = program_config.weights
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
+
+        if inputs['input_data'].shape[1] != weights['conv2d_weight'].shape[
+                1] * attrs[0]['groups']:
+            return False
+
         return True
 
     def sample_program_configs(self):
@@ -38,12 +49,20 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
 
-        for batch in [1, 2, 4]:
-            for strides in [[1, 1], [2, 2], [1, 2]]:
-                for paddings in [[0, 3], [1, 2, 3, 4]]:
-                    for groups in [1, 2, 3]:
-                        for padding_algorithm in ['EXPLICIT', 'SAME', 'VALID']:
-                            for dilations in [[1, 1], [2, 2], [1, 2]]:
+#        for batch in [1, 2, 4]:
+#            for strides in [[1, 1], [2, 2], [1, 2]]:
+#                for paddings in [[0, 3], [1, 2, 3, 4]]:
+#                    for groups in [1, 2, 3]:
+#                        for padding_algorithm in ['EXPLICIT', 'SAME', 'VALID']:
+#                            for dilations in [[1, 1], [2, 2], [1, 2]]:
+#                                for data_format in ['NCHW']:
+
+        for batch in [4]:
+            for strides in [[1, 1]]:
+                for paddings in [[0, 3]]:
+                    for groups in [2]:
+                        for padding_algorithm in ['EXPLICIT']:
+                            for dilations in [[1, 2]]:
                                 for data_format in ['NCHW']:
 
                                     dics = [{
@@ -170,22 +189,23 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-2
+            attrs, False), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-1
+            attrs, False), (1e-5, 1e-5)
 
         # for dynamic_shape
-        generate_dynamic_shape(attrs)
-        self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-2
-        self.trt_param.precision = paddle_infer.PrecisionType.Int8
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-1
+
+    #        generate_dynamic_shape(attrs)
+    #        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+    #        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
+    #                                                                     True), 1e-5
+    #        self.trt_param.precision = paddle_infer.PrecisionType.Half
+    #        yield self.create_inference_config(), generate_trt_nodes_num(
+    #            attrs, True), (1e-5, 1e-5)
+    #        self.trt_param.precision = paddle_infer.PrecisionType.Int8
+    #        yield self.create_inference_config(), generate_trt_nodes_num(
+    #            attrs, True), (1e-5, 1e-5)
 
     def add_skip_trt_case(self):
         def teller1(program_config, predictor_config):
@@ -207,7 +227,6 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
     def test_quant(self):
         self.add_skip_trt_case()
         self.run_test(quant=True)
-
 
 if __name__ == "__main__":
     unittest.main()
