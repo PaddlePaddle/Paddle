@@ -18,6 +18,7 @@ import unittest
 import time
 import argparse
 import os
+import six
 import sys
 sys.path.append("..")
 import subprocess
@@ -35,6 +36,8 @@ from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocat
 
 _set_use_system_allocator(False)
 paddle.enable_static()
+
+SEED = 10
 
 
 def create_or_get_tensor(scope, var_name, var, place):
@@ -134,31 +137,99 @@ class TestSyncBatchNormRunnerBase(object):
     def run_trainer(self, args):
         # print('test_sync_batch_norm_base_npu.py run_trainer')
 
-        train_prog = fluid.Program()
-        startup_prog = fluid.Program()
-        sys.stderr.write("train_prog: " + train_prog.to_string(True) + "\n")
-        sys.stderr.write("startup_prog: " + startup_prog.to_string(True) + "\n")
-        sys.stderr.flush()
-
         device_id = int(os.getenv("FLAGS_selected_npus", "0"))
         # print("use selected_npus:", device_id)
         place = fluid.NPUPlace(device_id)
+        places = [place]
 
-        # print(' run_trainer 124 ')
-        seed = 10
+        for place in places:
+            for layout in ["NCHW", "NHWC"]:
+                self._compare(args, place, layout, False)
+
+    def _compare(self, args, place, layout, only_forward):
         scope = core.Scope()
-        # print(' run_trainer 127 ')
         data = np.random.random(size=self.dshape).astype(self.dtype) * 4. - 2
-        # print(' data: ', data)
-        # print('run_trainer 129')
         data = create_or_get_tensor(scope, "input",
                                     OpTest.np_dtype_to_fluid_dtype(data), place)
-        # print(' data: ', data)
 
-        # print(' run_trainer 135')
+        bn_fetches = self._cal_single_card(args, data, place, layout,
+                                           only_forward)
+        fetch_names, sync_bn_fetches = self._cal_multiple_cards(
+            args, data, place, layout, only_forward)
 
-        # print('train_prog: ', train_prog)
-        # print('startup_prog: ', startup_prog)
+        sys.stderr.write("len(sync_bn_fetches): " + str(len(sync_bn_fetches)) +
+                         "\n")
+        for i in six.moves.xrange(1, len(sync_bn_fetches)):
+            # print('i: ', i)
+            # print('fetch_names[i]: ', fetch_names[i])
+            sys.stderr.write("i: " + str(i) + "\n")
+            sys.stderr.write("fetch_names[i]): " + fetch_names[i] + "\n")
+
+            bn_val = bn_fetches[i]
+            sync_bn_val = sync_bn_fetches[i]
+            if sync_bn_val.shape != bn_val.shape:
+                sync_bn_val = sync_bn_val[:bn_val.shape[0]]
+
+            # if fetch_names[i] == 'bn_moving_variance':
+            #     print('skip bn_moving_variance (VarianceOut)')
+
+            #     print('bn_val: ', str(bn_val))
+            #     print('sync_bn_val: ', str(sync_bn_val))
+
+            #     continue
+
+            # if fetch_names[i] == 'batch_norm_0.tmp_1':
+            #     print('skip batch_norm_0.tmp_1 (SavedVariance)')
+
+            #     print('bn_val: ', str(bn_val))
+            #     print('sync_bn_val: ', str(sync_bn_val))
+
+            #     continue
+
+            assert np.allclose(
+                bn_val, sync_bn_val, atol=self.atol), "Output (" + fetch_names[
+                    i] + ") has diff. \n" + "\nBN     " + str(
+                        bn_val) + "\n" + "Sync BN " + str(sync_bn_val)
+
+    def _cal_single_card(self, args, data, place, layout, only_forward):
+        # Single-NPU, N = 32 per NPU
+        train_prog = fluid.Program()
+        startup_prog = fluid.Program()
+        # sys.stderr.write("train_prog: " + train_prog.to_string(True) + "\n")
+        # sys.stderr.write("startup_prog: " + startup_prog.to_string(True) + "\n")
+        # sys.stderr.flush()
+
+        outs = self.get_model(train_prog, startup_prog, place, "NCHW", SEED)
+        # sys.stderr.write("after get_model, train_prog: " + train_prog.to_string(
+        #     True) + "\n")
+        # sys.stderr.write("after get_model, startup_prog: " +
+        #                  startup_prog.to_string(True) + "\n")
+
+        exe = fluid.Executor(place)
+        exe.run(startup_prog)
+        fetch_names = [v.name for v in outs] + [
+            'bn_moving_mean', 'bn_moving_variance', 'bn_scale', 'bn_bias'
+        ]
+        if not only_forward:
+            others = [
+                'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
+                'bn_bias@GRAD', 'batch_norm_0.tmp_3@GRAD', 'conv2d_0.tmp_0@GRAD'
+            ]
+            fetch_names += others
+        bn_fetches = exe.run(program=train_prog,
+                             feed={'input': data},
+                             fetch_list=fetch_names)
+        # sys.stdout.buffer.write(pickle.dumps(bn_fetches))
+
+        return bn_fetches
+
+    def _cal_multiple_cards(self, args, data, place, layout, only_forward):
+        # Single-NPU, N = 32 per NPU
+        train_prog = fluid.Program()
+        startup_prog = fluid.Program()
+        # sys.stderr.write("train_prog: " + train_prog.to_string(True) + "\n")
+        # sys.stderr.write("startup_prog: " + startup_prog.to_string(True) + "\n")
+        # sys.stderr.flush()
 
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
@@ -171,19 +242,11 @@ class TestSyncBatchNormRunnerBase(object):
             True) + "\n")
 
         self.rank = rank
-        outs = self.get_model(train_prog, startup_prog, place, "NCHW", seed)
-        sys.stderr.write("after get_model, train_prog: " + train_prog.to_string(
-            True) + "\n")
-        sys.stderr.write("after get_model, startup_prog: " +
-                         startup_prog.to_string(True) + "\n")
-
-        # print('before train_prog: ', train_prog)
-        # print(' ', train_prog.blocks[0].ops[3], '')
-
-        # sys.stderr.write("op type: " + train_prog.blocks[0].ops[1].type + "\n")
-        # sys.stderr.write("op type: " + train_prog.blocks[0].ops[10].type + "\n")
-        # train_prog.blocks[0].ops[1].desc.set_type('sync_batch_norm')
-        # train_prog.blocks[0].ops[10].desc.set_type('sync_batch_norm_grad')
+        outs = self.get_model(train_prog, startup_prog, place, "NCHW", SEED)
+        # sys.stderr.write("after get_model, train_prog: " + train_prog.to_string(
+        #     True) + "\n")
+        # sys.stderr.write("after get_model, startup_prog: " +
+        #                  startup_prog.to_string(True) + "\n")
 
         ops = train_prog.blocks[0].ops
         for i, op in enumerate(ops):
@@ -197,25 +260,26 @@ class TestSyncBatchNormRunnerBase(object):
                 op.desc.set_type('sync_batch_norm_grad')
 
         # print('after train_prog: ', train_prog)
-        sys.stderr.write("after update sync_batch_norm, train_prog: " +
-                         train_prog.to_string(True) + "\n")
+        # sys.stderr.write("after update sync_batch_norm, train_prog: " +
+        #                  train_prog.to_string(True) + "\n")
 
         exe = fluid.Executor(place)
         exe.run(startup_prog)
         fetch_names = [v.name for v in outs] + [
             'bn_moving_mean', 'bn_moving_variance', 'bn_scale', 'bn_bias'
         ]
-        only_forward = False
         if not only_forward:
             others = [
                 'batch_norm_0.tmp_0', 'batch_norm_0.tmp_1', 'bn_scale@GRAD',
                 'bn_bias@GRAD', 'batch_norm_0.tmp_3@GRAD', 'conv2d_0.tmp_0@GRAD'
             ]
             fetch_names += others
-        bn_fetches = exe.run(program=train_prog,
-                             feed={'input': data},
-                             fetch_list=fetch_names)
-        # sys.stdout.buffer.write(pickle.dumps(bn_fetches))
+        sync_bn_fetches = exe.run(program=train_prog,
+                                  feed={'input': data},
+                                  fetch_list=fetch_names)
+        # sys.stdout.buffer.write(pickle.dumps(sync_bn_fetches))
+
+        return fetch_names, sync_bn_fetches
 
 
 def runtime_main(test_class, col_type, sub_type):
