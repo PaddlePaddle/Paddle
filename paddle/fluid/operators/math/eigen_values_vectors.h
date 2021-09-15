@@ -45,7 +45,7 @@ inline void ComputeFloatEigenvaluesAndVectors(ValueType *x_data,
                                               ValueType *eigenvalues_data,
                                               ValueType *eigenvectors_data,
                                               int batches, int rows, int cols,
-                                              bool compute_vectors) {
+                                              bool has_vectors) {
   int stride = rows * cols;
   for (int i = 0; i < batches; i++) {
     auto m = InputMatrixMap<ValueType>(x_data + i * stride, rows, cols);
@@ -56,8 +56,8 @@ inline void ComputeFloatEigenvaluesAndVectors(ValueType *x_data,
 
     Eigen::SelfAdjointEigenSolver<Eigen::Matrix<
         ValueType, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-        eigen_solver(m, compute_vectors ? Eigen::ComputeEigenvectors
-                                        : Eigen::EigenvaluesOnly);
+        eigen_solver(m, has_vectors ? Eigen::ComputeEigenvectors
+                                    : Eigen::EigenvaluesOnly);
     PADDLE_ENFORCE_EQ(
         eigen_solver.info(), Eigen::Success,
         platform::errors::InvalidArgument(
@@ -66,7 +66,7 @@ inline void ComputeFloatEigenvaluesAndVectors(ValueType *x_data,
             i));
 
     eigenvalues = eigen_solver.eigenvalues().transpose();
-    if (compute_vectors) {
+    if (has_vectors) {
       eigenvectors = eigen_solver.eigenvectors().transpose();
     }
   }
@@ -77,7 +77,7 @@ inline void ComputeComplexEigenvaluesAndVectors(T *x_data,
                                                 ValueType *eigenvalues_data,
                                                 T *eigenvectors_data,
                                                 int batches, int rows, int cols,
-                                                bool compute_vectors) {
+                                                bool has_vectors) {
   using Complex = std::complex<ValueType>;
   Complex *input = reinterpret_cast<Complex *>(x_data);
   Complex *eigenvectors_data_ = reinterpret_cast<Complex *>(eigenvectors_data);
@@ -92,8 +92,8 @@ inline void ComputeComplexEigenvaluesAndVectors(T *x_data,
 
     Eigen::SelfAdjointEigenSolver<
         Eigen::Matrix<Complex, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-        eigen_solver(m, compute_vectors ? Eigen::ComputeEigenvectors
-                                        : Eigen::EigenvaluesOnly);
+        eigen_solver(m, has_vectors ? Eigen::ComputeEigenvectors
+                                    : Eigen::EigenvaluesOnly);
     PADDLE_ENFORCE_EQ(
         eigen_solver.info(), Eigen::Success,
         platform::errors::InvalidArgument(
@@ -102,7 +102,7 @@ inline void ComputeComplexEigenvaluesAndVectors(T *x_data,
             i));
 
     eigenvalues = eigen_solver.eigenvalues().transpose();
-    if (compute_vectors) {
+    if (has_vectors) {
       eigenvectors = eigen_solver.eigenvectors().transpose();
     }
   }
@@ -118,14 +118,14 @@ inline int64_t GetBatchSize(framework::DDim dims) {
 }
 
 // Calculates the eigenvalues ​​and eigenvectors of Hermitian or real
-// symmetric matrices, and uses the variable compute_vectors to
+// symmetric matrices, and uses the variable has_vectors to
 // control whether to return the eigenvectors.
 template <typename DeviceContext, typename ValueType, typename T>
 struct MatrixEighFunctorCPU {
  public:
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
-                  bool compute_vectors) {
+                  bool has_vectors) {
     auto dims = input.dims();
     auto output_value_dim = eigen_values->dims();
 
@@ -149,17 +149,15 @@ struct MatrixEighFunctorCPU {
       auto *x_data = input_tensor.data<T>();
       auto *vector_data = eigen_vectors->mutable_data<T>(dims, ctx.GetPlace());
       ComputeComplexEigenvaluesAndVectors<T, ValueType>(
-          x_data, value_data, vector_data, batch_size, rows, rows,
-          compute_vectors);
+          x_data, value_data, vector_data, batch_size, rows, rows, has_vectors);
     } else {
       auto *x_data = input_tensor.data<ValueType>();
       auto *vector_data =
           eigen_vectors->mutable_data<ValueType>(dims, ctx.GetPlace());
-      ComputeFloatEigenvaluesAndVectors<ValueType>(x_data, value_data,
-                                                   vector_data, batch_size,
-                                                   rows, rows, compute_vectors);
+      ComputeFloatEigenvaluesAndVectors<ValueType>(
+          x_data, value_data, vector_data, batch_size, rows, rows, has_vectors);
     }
-    if (compute_vectors) {
+    if (has_vectors) {
       *eigen_vectors = dito.Transpose(*eigen_vectors);
     }
   }
@@ -168,14 +166,14 @@ struct MatrixEighFunctorCPU {
 #ifdef PADDLE_WITH_CUDA
 
 // Calculates the eigenvalues ​​and eigenvectors of Hermitian or real
-// symmetric matrices on GPU, and uses the variable compute_vectors
+// symmetric matrices on GPU, and uses the variable has_vectors
 // to control whether to return the eigenvectors.
 template <typename ValueType, typename T>
 struct MatrixEighFunctor {
  public:
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
-                  bool compute_vectors) {
+                  bool has_vectors) {
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
     auto *out_vector = eigen_vectors->mutable_data<T>(ctx.GetPlace());
 
@@ -186,7 +184,7 @@ struct MatrixEighFunctor {
     cublasFillMode_t uplo =
         is_lower ? CUBLAS_FILL_MODE_LOWER : CUBLAS_FILL_MODE_UPPER;
     cusolverEigMode_t jobz =
-        compute_vectors ? CUSOLVER_EIG_MODE_VECTOR : CUSOLVER_EIG_MODE_NOVECTOR;
+        has_vectors ? CUSOLVER_EIG_MODE_VECTOR : CUSOLVER_EIG_MODE_NOVECTOR;
 
     int n = dims[dim_size - 1];
     int lda = std::max<int>(1, n);
@@ -207,11 +205,12 @@ struct MatrixEighFunctor {
     // When the input type is float32, and the feature value input dimension is
     // greater than or equal to [*,32,32]  and less than or equal to
     // [*,512,512], Syevj has better performance.
-    bool flag = (eigen_vectors->type() == framework::proto::VarType::FP32 &&
-                 values_stride >= 32 && values_stride <= 512);
+    bool use_syevj =
+        (eigen_vectors->type() == framework::proto::VarType::FP32 &&
+         values_stride >= 32 && values_stride <= 512);
 
     syevjInfo_t syevj_params;
-    if (flag) {
+    if (use_syevj) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cusolverDnCreateSyevjInfo(&syevj_params));
       PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -232,7 +231,7 @@ struct MatrixEighFunctor {
       auto vector_data = out_vector + i * vector_stride;
       auto value_data = out_value + i * values_stride;
       auto handle = dev_ctx.cusolver_dn_handle();
-      if (flag) {
+      if (use_syevj) {
         PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnSsyevj(
             handle, jobz, uplo, n, reinterpret_cast<float *>(vector_data), lda,
             reinterpret_cast<float *>(value_data),
@@ -253,12 +252,12 @@ struct MatrixEighFunctor {
               error_info));
     }
 
-    if (flag) {
+    if (use_syevj) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cusolverDnDestroySyevjInfo(syevj_params));
     }
 
-    if (compute_vectors) {
+    if (has_vectors) {
       *eigen_vectors = dito.Transpose(*eigen_vectors);
     }
   }

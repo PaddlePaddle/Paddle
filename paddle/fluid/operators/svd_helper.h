@@ -172,6 +172,7 @@ struct DiagAndFillFunctor {
     }
   }
 
+ private:
   const int m_, n_, num_lower_diags_, num_upper_diags_;
   const ValueType* scale_;
   const T* input_;
