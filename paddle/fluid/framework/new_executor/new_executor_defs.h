@@ -522,6 +522,8 @@ struct Instruction {
   std::vector<EventInter> output_events_;
 
   platform::DeviceContext* dev_ctx_;  // not owned
+
+  std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
 };
 
 enum class OpFuncType {
