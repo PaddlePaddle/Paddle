@@ -825,7 +825,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
         auto comm = paddle::platform::HCCLCommContext::Instance().Get(0, place);
         LOG(WARNING) << "comm: " << comm;
 
-        float device_counts = 1.0;
+        float device_counts = 2.0;
         if (comm) {
           stream = comm->stream();
           HcclDataType dtype = platform::ToHCCLDataType(mean_out->type());
@@ -841,6 +841,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
             PrintTensor<float>(device_count, ctx);
           }
 
+          // HcclAllReduce device_count
           {
             void *sendbuff = reinterpret_cast<void *>(
                 const_cast<float *>(device_count.data<float>()));
@@ -858,15 +859,33 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
             PrintTensor<float>(device_count, ctx);
           }
 
-          // In-place operation
-          PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
-              saved_mean->data<float>(), saved_mean->data<float>(), C,
-              static_cast<HcclDataType>(dtype), HCCL_REDUCE_SUM, comm->comm(),
-              stream));
-          PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
-              var_ref.data<float>(), var_ref.data<float>(), C,
-              static_cast<HcclDataType>(dtype), HCCL_REDUCE_SUM, comm->comm(),
-              stream));
+          // HcclAllReduce saved_mean
+          {
+            // In-place operation
+            void *sendbuff = reinterpret_cast<void *>(
+                const_cast<float *>(saved_mean->data<float>()));
+            void *recvbuff = sendbuff;
+            LOG(WARNING) << "sendbuff: " << sendbuff;
+            LOG(WARNING) << "recvbuff: " << recvbuff;
+
+            PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
+                sendbuff, recvbuff, C, dtype, HCCL_REDUCE_SUM, comm->comm(),
+                reinterpret_cast<void *>(stream)));
+          }
+
+          // HcclAllReduce saved_mean
+          {
+            // In-place operation
+            void *sendbuff = reinterpret_cast<void *>(
+                const_cast<float *>(var_ref.data<float>()));
+            void *recvbuff = sendbuff;
+            LOG(WARNING) << "sendbuff: " << sendbuff;
+            LOG(WARNING) << "recvbuff: " << recvbuff;
+
+            PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
+                sendbuff, recvbuff, C, dtype, HCCL_REDUCE_SUM, comm->comm(),
+                reinterpret_cast<void *>(stream)));
+          }
         }
 
         LOG(WARNING) << "after hccl | saved_mean: ";
