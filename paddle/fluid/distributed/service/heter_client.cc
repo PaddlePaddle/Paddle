@@ -154,6 +154,7 @@ void HeterClient::SendAndRecvAsync(
     distributed::MultiVarMsg request, response;
     channel = barrier_channel_.get();
     ::paddle::distributed::PsService_Stub stub(channel);
+
     distributed::SerializeToMultiVarMsgAndIOBuf(
         message_name_val, send_var_name_val, recv_var_name_val, *p_ctx, p_scope,
         &request, &request_io_buffer);

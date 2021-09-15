@@ -628,28 +628,29 @@ class HeterSectionWorker : public DeviceWorker {
 
   void SetDeviceIndex(int tid) override {}
   void SetThreadIndex(int thread_id) { thread_id_ = thread_id; }
-
+  void SetThreadNum(int thread_num) { thread_num_ = thread_num; }
   void SetMicrobatchNum(int num) { num_microbatches_ = num; }
   void SetPipelineStageNum(int num) { num_pipeline_stages_ = num; }
   void SetPipelineStage(int stage) { pipeline_stage_ = stage; }
   void SetMicrobatchScopes(const std::vector<Scope*>& scope) {
     microbatch_scopes_ = scope;
   }
-
+  void CopyParameters(int microbatch_id, const ProgramDesc& program, const platform::Place& place);
   void SetMinibatchScope(const Scope* scope) { minibatch_scope_ = scope; }
   void SetTrainerId(int trainer_id) { this->trainer_id_ = trainer_id; }
   void SetTrainers(int trainers) { this->trainers_ = trainers; }
-
+  void CreateMicrobatchScopes();
   void RunForward(int micro_id);
   void RunListen();
-  void BatchBarrier();
+  void BatchBarrier(int barrier_id);
   void TrainerBarrier();
   void Run();
 
  protected:
+  // use trainer_id_ & thread_id_ & num_microbatches to ensure micro_id
   int trainer_id_;
   int trainers_;
-  int section_id_;
+  int thread_num_;
   int thread_id_;
   int num_microbatches_;
   int num_pipeline_stages_;

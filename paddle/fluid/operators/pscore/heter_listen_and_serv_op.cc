@@ -153,7 +153,10 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
   auto &dev_ctx = *pool.Get(dev_place);
   VLOG(1) << "HeterListenAndServOp::RunImpl On gpu? "
           << platform::is_gpu_place(dev_place);
-  framework::Scope &recv_scope = scope.KidScope(0);  // minibatch_scope
+
+  framework::Scope &recv_scope = scope.KidScope(0);  // the first minibatch scope
+  int minibatch_num = scope.NumKids();
+  int microbatch_per_minibatch = recv_scope.NumKids();
 
   auto pserver_id = Attr<int>("pserver_id");
   auto fan_in = Attr<int>("fanin");
@@ -179,15 +182,22 @@ void HeterListenAndServOp::RunImpl(const framework::Scope &scope,
                         "optimize blocks is less than 1. Optimize blocks "
                         "should be 1 at least on the pserver side."));
   auto *program = optimize_blocks[0]->Program();
+
+  std::vector<framework::Executor> executor_pool;
+  for (int i = 0; i < minibatch_num; i++) {
+    executor_pool.emplace_back(dev_place);
+  }
+
   framework::Executor executor(dev_place);
 
   request_send_and_recv_handler_.reset(
       new distributed::RequestSendAndRecvHandler());
-  request_send_and_recv_handler_->SetScope(&recv_scope);
+  request_send_and_recv_handler_->SetScope(&scope);
   request_send_and_recv_handler_->SetDevCtx(&dev_ctx);
   request_send_and_recv_handler_->SetProgram(program);
-  request_send_and_recv_handler_->SetExecutor(&executor);
-  request_send_and_recv_handler_->SetMicroNum(recv_scope.NumKids());
+  request_send_and_recv_handler_->SetExecutor(&executor_pool);
+  request_send_and_recv_handler_->SetMicroNum(microbatch_per_minibatch);
+  request_send_and_recv_handler_->SetMiniNum(minibatch_num);
   request_send_and_recv_handler_->SetTrainers(trainers);
   request_send_and_recv_handler_->SetTrainerId(trainer_id);
 

@@ -774,7 +774,7 @@ def create_trainer_program(program, origin_program, config,
         outputs={"Out": []},
         attrs={
             "mode": "barrier",
-            "send_var_name": [],
+            "send_var_name": ["microbatch_id"],
             "recv_var_name": [],
             "message_name": "barrier_batch_finish",
             "endpoints": config.get_heter_worker_endpoints(),

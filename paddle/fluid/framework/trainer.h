@@ -342,14 +342,21 @@ class HeterPipelineTrainer : public TrainerBase {
  protected:
   int trainer_id_;
   int trainers_;
+  int thread_num_;
+  std::vector<std::thread> threads_;
 
+  std::vector<std::string> need_merge_var_names_;
+#ifdef PADDLE_WITH_HETERPS
+  std::vector<platform::Place> places_;
+#endif
+  
   int num_microbatches_;
   platform::Place place_;
   TrainerDesc trainer_desc_;
 
   int num_pipeline_stages_;
   int pipeline_stage_;
-  std::shared_ptr<paddle::framework::DeviceWorker> worker_;
+  std::vector<std::shared_ptr<paddle::framework::DeviceWorker>> workers_;
   Scope* minibatch_scope_;
   std::vector<Scope*> microbatch_scopes_;
   platform::DeviceContext* dev_ctx_ = nullptr;

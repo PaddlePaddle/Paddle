@@ -22,6 +22,7 @@ class TrainerDesc;
 uint64_t HeterSectionWorker::batch_id_(0);
 
 void HeterSectionWorker::Initialize(const TrainerDesc &desc) {
+  trainer_desc_ = desc;
   dev_ctx_ = platform::DeviceContextPool::Instance().Get(place_);
   program_.reset(
       new ProgramDesc(desc.section_param().section_config().program_desc()));
@@ -30,7 +31,7 @@ void HeterSectionWorker::Initialize(const TrainerDesc &desc) {
   }
 }
 
-void HeterSectionWorker::BatchBarrier() {
+void HeterSectionWorker::BatchBarrier(int barrier_id) {
   for (auto &op : ops_) {
     auto op_type = op->Type();
     if (op_type != "send_and_recv") continue;
@@ -38,7 +39,7 @@ void HeterSectionWorker::BatchBarrier() {
     if (op_mode == "barrier") {
       VLOG(3) << op_mode << " "
               << op->Attr<std::string>(std::string("message_name"));
-      op->Run(*microbatch_scopes_[trainer_id_], place_);
+      op->Run(*microbatch_scopes_[barrier_id], place_);
     }
   }
 }
@@ -52,10 +53,16 @@ void HeterSectionWorker::TrainerBarrier() {
 }
 
 void HeterSectionWorker::RunListen() {
+  bool is_first_stage = (pipeline_stage_ == 0);
   for (auto &op : ops_) {
     auto op_type = op->Type();
     if (op_type == "heter_listen_and_serv") {
-      op->Run(*root_scope_, place_);
+      if (is_first_stage) {
+        if (thread_id_ == 0)
+          op->Run(*root_scope_, place_);
+      } else {
+        op->Run(*root_scope_, place_);
+      }
     }
   }
 }
@@ -109,19 +116,115 @@ void HeterSectionWorker::BindingDataFeedMemory(int micro_id) {
   }
 }
 
+
+void HeterSectionWorker::CreateMicrobatchScopes() {
+
+  PADDLE_ENFORCE_NOT_NULL(minibatch_scope_, platform::errors::InvalidArgument(
+                                           "minibatch_scope_ can not be nullptr when create MicroBatch Scope"));
+  microbatch_scopes_.resize(num_microbatches_);
+  VLOG(3) << "Create microbatch scopes...";
+  std::shared_ptr<framework::ProgramDesc> program;
+  program.reset(new ProgramDesc(
+      trainer_desc_.section_param().section_config().program_desc()));
+  for (int j = 0; j < num_microbatches_; ++j) {
+    microbatch_scopes_[j] = &minibatch_scope_->NewScope();
+    CopyParameters(j, *program, place_);
+  }
+}
+
+void HeterSectionWorker::CopyParameters(int microbatch_id,
+                                          const ProgramDesc& program,
+                                          const platform::Place& place) {
+  auto& global_block = program.Block(0);
+  auto var_list = global_block.AllVars();
+  if (program.Size() > 1) {
+    auto& heter_block = program.Block(1);
+    auto heter_var_list = heter_block.AllVars();
+    var_list.insert(var_list.end(), heter_var_list.begin(),
+                    heter_var_list.end());
+  }
+  if (program.Size() > 2) {
+    auto& heter_block = program.Block(2);
+    auto heter_var_list = heter_block.AllVars();
+    var_list.insert(var_list.end(), heter_var_list.begin(),
+                    heter_var_list.end());
+  }
+
+  // create microbatch_id variable
+  // and set micro id value
+  auto* ptr = microbatch_scopes_[microbatch_id]->Var("microbatch_id");
+
+  InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
+
+  framework::Variable* var =
+      microbatch_scopes_[microbatch_id]->FindVar("microbatch_id");
+  PADDLE_ENFORCE_EQ(var->IsType<framework::LoDTensor>(), 1,
+                    platform::errors::InvalidArgument(
+                        "the type of microbatch_id  should be LoDTensor"));
+  auto* tensor = var->GetMutable<framework::LoDTensor>();
+
+  std::vector<int> dims{1};
+  tensor->Resize(framework::make_ddim(dims));
+
+  void* tensor_data =
+      tensor->mutable_data(place, framework::proto::VarType::FP32);
+
+  if (platform::is_gpu_place(place)) {
+#ifdef PADDLE_WITH_CUDA
+    char* temp_ptr =
+        new char[tensor->numel() * framework::SizeOfType(tensor->type())];
+    float* temp_ptr_float = reinterpret_cast<float*>(temp_ptr);
+    temp_ptr_float[0] = microbatch_id + thread_id_ * num_microbatches_;
+    auto stream =
+        reinterpret_cast<const platform::CUDADeviceContext&>(*dev_ctx_)
+            .stream();
+    memory::Copy(BOOST_GET_CONST(platform::CUDAPlace, place), tensor_data,
+                 platform::CPUPlace(), reinterpret_cast<void*>(temp_ptr),
+                 tensor->numel() * framework::SizeOfType(tensor->type()),
+                 stream);
+    delete[] temp_ptr;
+#endif
+  } else {
+    float* temp_ptr = reinterpret_cast<float*>(tensor_data);
+    temp_ptr[0] = microbatch_id + thread_id_ * num_microbatches_;
+  }
+
+  for (auto& var : var_list) {
+    if (var->Persistable() && microbatch_id == 0) {
+      if (root_scope_->FindVar(var->Name()) != nullptr) continue;
+      auto* ptr = root_scope_->Var(var->Name());
+      InitializeVariable(ptr, var->GetType());
+      VLOG(5) << "Create persistable var: " << var->Name()
+              << ", which pointer is " << ptr;
+    } else if (!var->Persistable()) {
+      auto* ptr = microbatch_scopes_[microbatch_id]->Var(var->Name());
+      VLOG(5) << "Create variable " << var->Name() << " for microbatch "
+              << microbatch_id << ", which pointer is " << ptr;
+      InitializeVariable(ptr, var->GetType());
+    }
+  }
+}
+
 void HeterSectionWorker::Run() {
   bool is_first_stage = (pipeline_stage_ == 0);
   if (listen_ptr == nullptr) {
     listen_ptr.reset(
         new std::thread(std::bind(&HeterSectionWorker::RunListen, this)));
   }
-
   if (is_first_stage) {
-    for (int i = trainer_id_; i < num_microbatches_; i += trainers_) {
-      VLOG(5) << "Run " << i << " stage" << std::endl;
-      RunForward(i);
-      if (epoch_finish_ == true) return;
+    int barrier_id = -1;
+    for (int i = trainer_id_; i < thread_num_ * num_microbatches_; i+= trainers_) {
+      if (i >= thread_id_ * num_microbatches_ && i < (thread_id_ + 1) * num_microbatches_) {
+        VLOG(5) << "Run " << i << " stage" << std::endl;
+        if (barrier_id == -1) barrier_id = i - thread_id_ * num_microbatches_;
+        RunForward(i - thread_id_ * num_microbatches_);
+        // TODO
+        if (epoch_finish_ == true) return;
+      }
     }
+    BatchBarrier(barrier_id);
+  } else {
+    (listen_ptr.get())->join();
   }
 }
 
@@ -164,9 +267,6 @@ void HeterSectionWorker::TrainFiles() {
     Run();
     dev_ctx_->Wait();
     if (epoch_finish_ == true) return;
-    if (is_first_stage) {
-      BatchBarrier();
-    }
     ++batch_id_;
   }
 }
