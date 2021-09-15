@@ -185,6 +185,9 @@ class GradientClipHelper(object):
             if idx in removed_op_idx:
                 block._remove_op(idx, sync=False)
 
+        for var_name in removed_tmp_var:
+            block._remove_var(var_name, sync=False)
+
         for idx, op in list(enumerate(block.ops)):
             if not self._is_gradient_clip_op(op):
                 continue
