@@ -274,16 +274,15 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr, bool is_dry_run) {
-  auto working_dependecy_count =
-      async_work_queue_.PrepareAtomicDeps(dependecy_count_);
-  auto working_var_ref = async_work_queue_.PrepareAtomicVarRef(vec_meta_info_);
+  auto atomic_deps = async_work_queue_.PrepareAtomicDeps(dependecy_count_);
+  auto atomic_var_ref = async_work_queue_.PrepareAtomicVarRef(vec_meta_info_);
   std::atomic<size_t> op_run_number{0};
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
       async_work_queue_.AddTask(vec_instr[i].type_, [&, i, is_dry_run]() {
-        RunInstructionAsync(i, &working_dependecy_count, &working_var_ref,
-                            &op_run_number, is_dry_run);
+        RunInstructionAsync(i, &atomic_deps, &atomic_var_ref, &op_run_number,
+                            is_dry_run);
       });
     }
   }
@@ -297,17 +296,18 @@ void InterpreterCore::ExecuteInstructionList(
           vec_instr.size(), op_run_number.load()));
 }
 
-void InterpreterCore::RunInstructionAsync(
-    size_t instr_id, AtomicVectorSizeT* working_dependecy_count,
-    AtomicVectorSizeT* working_var_ref, std::atomic<size_t>* op_run_number,
-    bool is_dry_run) {
+void InterpreterCore::RunInstructionAsync(size_t instr_id,
+                                          AtomicVectorSizeT* atomic_deps,
+                                          AtomicVectorSizeT* atomic_var_ref,
+                                          std::atomic<size_t>* op_run_number,
+                                          bool is_dry_run) {
   auto& instr_node = vec_instruction_[instr_id];
   event_manager_.WaitEvent(instr_node, place_);
 
   RunInstruction(instr_node);
 
   event_manager_.RecordEvent(instr_node, place_);
-  op_run_number->fetch_add(1);
+  op_run_number->fetch_add(1, std::memory_order_relaxed);
 
   if (is_dry_run) {
     dry_run_profiler_.ParseMemoryInfo(global_scope_->var_list);
@@ -317,29 +317,29 @@ void InterpreterCore::RunInstructionAsync(
   auto& next_instr = instr_node.next_instruction_.all_next_ops_;
 
   for (auto next_i : next_instr) {
-    working_dependecy_count->at(next_i)->fetch_sub(1);
+    atomic_deps->at(next_i)->fetch_sub(1, std::memory_order_relaxed);
 
-    if (working_dependecy_count->at(next_i)->load() == 0) {
+    if (atomic_deps->at(next_i)->load() == 0) {
       async_work_queue_.AddTask(vec_instruction_[next_i].type_, [=]() {
-        RunInstructionAsync(next_i, working_dependecy_count, working_var_ref,
-                            op_run_number, is_dry_run);
+        RunInstructionAsync(next_i, atomic_deps, atomic_var_ref, op_run_number,
+                            is_dry_run);
       });
     }
   }
   // GC infomation
-  CheckGC(instr_id, instr_node.gc_check_var_list, working_var_ref);
+  CheckGC(instr_id, instr_node.gc_check_var_list, atomic_var_ref);
 }
 
 void InterpreterCore::CheckGC(size_t instr_id,
                               const std::vector<size_t>& gc_check_list,
-                              AtomicVectorSizeT* working_var_ref) {
+                              AtomicVectorSizeT* atomic_var_ref) {
   auto& var_scope = *global_scope_;
 
   for (auto var_id : gc_check_list) {
-    working_var_ref->at(var_id)->fetch_sub(1);
+    atomic_var_ref->at(var_id)->fetch_sub(1, std::memory_order_relaxed);
     if (var_scope.vec_meta_info_[var_id].vardesc_ &&
         !var_scope.vec_meta_info_[var_id].vardesc_->Persistable() &&
-        working_var_ref->at(var_id)->load() == 0) {
+        atomic_var_ref->at(var_id)->load() == 0) {
       gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
               vec_instruction_[instr_id].dev_ctx_);
     }
