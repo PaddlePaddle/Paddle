@@ -1547,6 +1547,13 @@ def conv2d(input,
             core.is_compiled_with_rocm()):
         l_type = 'depthwise_conv2d'
 
+    # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
+    if core.is_compiled_with_npu():
+        if (num_channels == groups and num_channels == num_filters):
+            l_type = 'depthwise_conv2d'
+        else:
+            l_type = 'conv2d'
+
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
 
