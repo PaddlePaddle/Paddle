@@ -521,6 +521,7 @@ def launch():
             :name: code-block-example-bash7
 
             # 2 server and 4 worker, two worker use gpu, two worker use cpu
+            
             export CUDA_VISIBLE_DEVICES=0,1
             python -m paddle.distributed.launch --server_num=2 --worker_num=2 --heter_worker_num=2 train.py --lr=0.01
             
