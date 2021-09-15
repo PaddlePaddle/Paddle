@@ -16,12 +16,11 @@ import unittest
 import paddle
 import os
 import paddle.distributed.fleet as fleet
-import paddle.distributed.fleet.base.role_maker as role_maker
-import paddle.fluid.core as core
 import paddle.fluid as fluid
 
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
 import paddle.distributed.fleet.meta_optimizers.sharding as sharding
+from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op
 
 paddle.enable_static()
 
@@ -397,11 +396,14 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         self.assertEqual(dp_group_waiting_ports, ['127.0.0.1:36002'])
 
         # check loss scale for sharding hybrid dp
-        scale_ = -1
         for op in main_prog_ops:
-            if op.type == "scale":
-                scale_ = float(op.desc.attr("scale"))
-        self.assertEqual(scale_, 0.25)
+            if is_loss_grad_op(op):
+                self.assertEqual(op.type, 'fill_constant')
+                self.assertTrue(op.has_attr('value'))
+                scale = strategy.sharding_configs[
+                    'sharding_degree'] * strategy.sharding_configs['dp_degree']
+                loss_scale = 1.0 / scale
+                self.assertAlmostEqual(float(op.attr('value')), loss_scale)
 
         # check program (allreudce)
         ops = [op.type for op in main_prog_ops]

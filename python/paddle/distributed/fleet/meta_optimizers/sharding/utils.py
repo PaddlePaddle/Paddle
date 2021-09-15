@@ -742,7 +742,7 @@ def insert_scale_loss_grad_ops(block, scale=1.0):
                 "loss_grad_op must be fill_constant op, " \
                 "but this op is {}".format(op.type)
             assert op.has_attr('value')
-            loss_scale = float(op.value('value'))
+            loss_scale = float(op.attr('value'))
             loss_scale = loss_scale / scale
             op._set_attr('value', loss_scale)
             break

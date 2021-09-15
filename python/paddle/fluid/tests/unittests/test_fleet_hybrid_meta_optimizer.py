@@ -18,6 +18,7 @@ import paddle.static as static
 import unittest
 
 from fleet_meta_optimizer_base import TestFleetMetaOptimizer
+from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op
 
 paddle.enable_static()
 
@@ -327,7 +328,10 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
         self._debug = False
 
     def test_opt_sharding_with_pp_amp_gclip_boundary(self):
-        """ test optimizer sharding without parameter """
+        """
+        test optimizer sharding without parameter
+        test loss grad scale value
+        """
         train_prog, startup_prog = static.Program(), static.Program()
         avg_cost, strategy = self.boundary_net(train_prog, startup_prog)
 
@@ -356,6 +360,16 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
         # check program
         startup_prog_op_types = [op.type for op in startup_prog_ops]
         main_prog_op_types = [op.type for op in main_prog_ops]
+
+        # check loss scale for hybrid
+        for op in main_prog_ops:
+            if is_loss_grad_op(op):
+                self.assertEqual(op.type, 'fill_constant')
+                self.assertTrue(op.has_attr('value'))
+                scale = strategy.pipeline_configs[
+                    'accumulate_steps'] * strategy.sharding_configs['dp_degree']
+                loss_scale = 1.0 / scale
+                self.assertAlmostEqual(float(op.attr('value')), loss_scale)
 
         # global, sharding, pp_send, pp_recv
         self.assertEqual(startup_prog_op_types, [

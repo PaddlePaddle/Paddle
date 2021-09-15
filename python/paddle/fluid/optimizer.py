@@ -5023,7 +5023,7 @@ class PipelineOptimizer(object):
                     "loss_grad_op must be fill_constant op, " \
                     "but this op is {}".format(op.type)
                 assert op.has_attr('value')
-                loss_scale = float(op.value('value'))
+                loss_scale = float(op.attr('value'))
                 loss_scale = loss_scale / self._num_microbatches
                 op._set_attr('value', loss_scale)
                 break
