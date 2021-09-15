@@ -48,6 +48,12 @@ DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
+  ​
+static double getCurrentTime(){
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return tv.tv_sec + tv.tv_usec * 1.0e-6;
+}
 
 namespace paddle {
 namespace framework {
@@ -222,6 +228,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
 #endif
     }
 
+    double t1; = getCurrentTime();
     {
       // TODO(wangchaochaohu) : refine code to use only one RecordEvent)
       // in order to record different op type cost time
@@ -232,8 +239,9 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
           op_name, platform::EventRole::kUniqueOp);
       RunImpl(scope, place);
     }
+    double t2 = getCurrentTime();
 
-    VLOG(3) << GetExecutionPlace(place) << " " << DebugStringEx(&scope);
+    VLOG(3) << GetExecutionPlace(place) << " " << DebugStringEx(&scope) << " time: " << (t2 - t1);
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
