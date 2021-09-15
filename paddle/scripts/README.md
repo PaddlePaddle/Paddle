@@ -1,4 +1,4 @@
-# Building PaddlePaddle 
+# Building PaddlePaddle
 
 ## Goals
 
