@@ -21,7 +21,30 @@ from .. import _C_ops
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.layer_helper import LayerHelper
 
-__all__ = []
+__all__ = [
+    'fft',
+    'fft2',
+    'fftn',
+    'ifft',
+    'ifft2',
+    'ifftn',
+    'rfft',
+    'rfft2',
+    'rfftn',
+    'irfft',
+    'irfft2',
+    'irfftn',
+    'hfft',
+    'hfft2',
+    'hfftn',
+    'ihfft',
+    'ihfft2',
+    'ihfftn',
+    'fftfreq',
+    'rfftfreq',
+    'fftshift',
+    'ifftshift',
+]
 
 
 def _check_normalization(norm):

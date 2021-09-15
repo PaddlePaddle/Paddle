@@ -24,7 +24,6 @@
 #include "paddle/fluid/operators/math/padding.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/for_range.h"
-#include "thrust/host_vector.h"
 #if defined(__NVCC__) || defined(__HIPCC__)
 #include "thrust/device_vector.h"
 #endif
