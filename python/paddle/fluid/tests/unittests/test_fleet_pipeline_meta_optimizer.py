@@ -45,6 +45,8 @@ class TestFleetMetaOptimizer(unittest.TestCase):
 
         with static.device_guard("gpu:1"):
             fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
+            # for pipeline check_pipeline_persist_var coverage
+            fc_2.persistable = True
             fc_2 = fc_2 * input_z
             prediction = paddle.fluid.layers.fc(input=[fc_2],
                                                 size=2,
