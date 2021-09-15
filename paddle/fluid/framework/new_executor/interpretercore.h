@@ -68,6 +68,8 @@ class InterpreterCore {
 
   void AddFetch(const std::vector<std::string>& fetch_names);
 
+  void BuildSkipShareLoDInfo();
+
   bool is_build_;
 
   const platform::Place& place_;

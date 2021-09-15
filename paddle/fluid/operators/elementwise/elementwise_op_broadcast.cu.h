@@ -16,10 +16,9 @@
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
+
 namespace paddle {
 namespace operators {
-
-#define MAX_INPUT_NUM 3  // the max num of ET for BroadcacstConfig
 
 namespace kps = paddle::operators::kernel_primitives;
 
@@ -46,10 +45,9 @@ struct DimensionsTransform {
             axis++;
           } else {
             PADDLE_THROW(platform::errors::InvalidArgument(
-                "The %dth dimension of input tensor is expected to be equal "
-                "with"
-                "the %dth dimension of output tensor %d or 1, but recieved "
-                "%d.\n",
+                "The %d-th dimension of input tensor is expected to be equal "
+                "with the %d-th dimension of output tensor %d or 1, but "
+                "recieved %d.",
                 in_idx + 1, axis + 1, out_dims[axis], in_dim[in_idx]));
           }
         } while (in_idx < in_dim.size());
@@ -61,10 +59,9 @@ struct DimensionsTransform {
             in_idx++;
           } else {
             PADDLE_THROW(platform::errors::InvalidArgument(
-                "The %dth dimension of input tensor is expected to be equal "
-                "with"
-                "the %dth dimension of output tensor %d or 1, but recieved "
-                "%d.\n",
+                "The %d-th dimension of input tensor is expected to be equal "
+                "with the %d-th dimension of output tensor %d or 1, but "
+                "recieved %d.",
                 in_idx + 1, in_idx + 1, out_dims[in_idx], in_dim[in_idx]));
           }
         } while (in_idx < dim_size);
@@ -165,79 +162,71 @@ struct DimensionsTransform {
   }
 };
 
-template <typename T, int VecSize, int ShapeSize, bool IsBoundary = false>
+template <typename T, int VecSize, int Rank, bool IsBoundary = false>
 __device__ __forceinline__ void LoadData(
     T *dst, const T *__restrict__ src, uint32_t block_offset,
-    const kps::details::BroadcastConfig<ShapeSize> &config, int numel, int num,
+    const kps::details::BroadcastConfig<Rank> &config, int numel, int num,
     bool need_broadcast) {
   // numel : whole num of output
   // num: how many data will be deal with in this time
   if (need_broadcast) {
-    kps::ReadDataBc<T, VecSize, 1, 1, ShapeSize, IsBoundary>(
-        dst, src, block_offset, config, numel, 1, 1);
+    kps::ReadDataBc<T, VecSize, 1, 1, Rank, IsBoundary>(dst, src, block_offset,
+                                                        config, numel, 1, 1);
   } else {
     kps::ReadData<T, VecSize, 1, 1, IsBoundary>(dst, src + block_offset, num);
   }
 }
 
-template <ElementwiseType ET, typename InT, typename OutT, int ShapeSize,
-          int VecSize, typename Functor, bool IsBoundary = false>
+template <typename InT, typename OutT, typename Functor, int Arity, int VecSize,
+          int Rank, bool IsBoundary = false>
 __device__ void DealSegment(
-    const framework::Array<const InT *__restrict__, ET> &in, OutT *out,
-    const framework::Array<bool, MAX_INPUT_NUM> &use_broadcast, uint32_t numel,
-    const framework::Array<kps::details::BroadcastConfig<ShapeSize>,
-                           MAX_INPUT_NUM> &configlists,
+    const framework::Array<const InT *__restrict__, Arity> &ins, OutT *out,
+    const framework::Array<bool, Arity> &use_broadcast, uint32_t numel,
+    const framework::Array<kps::details::BroadcastConfig<Rank>, Arity> &configs,
     int num, Functor func) {
-  InT args[ET][VecSize];
+  InT args[Arity][VecSize];
   OutT result[VecSize];
+
   int block_offset = blockIdx.x * blockDim.x * VecSize;
-// load
+
 #pragma unroll
-  for (int i = 0; i < ET; i++) {
+  for (int i = 0; i < Arity; i++) {
     kps::Init<InT, VecSize>(args[i], static_cast<InT>(1.0f));
-    LoadData<InT, VecSize, ShapeSize, IsBoundary>(args[i], in[i], block_offset,
-                                                  configlists[i], numel, num,
-                                                  use_broadcast[i]);
+    LoadData<InT, VecSize, Rank, IsBoundary>(args[i], ins[i], block_offset,
+                                             configs[i], numel, num,
+                                             use_broadcast[i]);
   }
-  // compute
-  if (ET == kUnary) {
-    kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(result, args[0],
-                                                             func);
-  } else if (ET == kBinary) {
-    kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(result, args[0],
-                                                              args[1], func);
-  } else {
-    kps::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
-        result, args[0], args[1], args[2], func);
-  }
-  // compute
+
+  const bool kCallElementwiseAny =
+      platform::FunctionTraits<Functor>::has_pointer_args;
+  ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, Arity,
+                             kCallElementwiseAny>()(func, args, result);
   kps::WriteData<OutT, VecSize, 1, 1, IsBoundary>(out + block_offset, result,
                                                   num);
 }
 
-template <ElementwiseType ET, typename InT, typename OutT, int ShapeSize,
-          int VecSize, typename Functor>
+template <typename InT, typename OutT, typename Functor, int Arity, int VecSize,
+          int Rank>
 __global__ void BroadcastKernel(
-    framework::Array<const InT *__restrict__, ET> in, OutT *out,
-    framework::Array<bool, MAX_INPUT_NUM> use_broadcast, uint32_t numel,
-    framework::Array<kps::details::BroadcastConfig<ShapeSize>, MAX_INPUT_NUM>
-        configlists,
+    framework::Array<const InT *__restrict__, Arity> ins, OutT *out,
+    framework::Array<bool, Arity> use_broadcast, uint32_t numel,
+    framework::Array<kps::details::BroadcastConfig<Rank>, Arity> configs,
     int main_tid, int tail_tid, Functor func) {
   int block_offset = blockIdx.x * blockDim.x * VecSize;
   // data offset of this block
   if (blockIdx.x < main_tid) {
     int num = blockDim.x * VecSize;  // blockIdx.x < main_tid
-    DealSegment<ET, InT, OutT, ShapeSize, VecSize, Functor, false>(
-        in, out, use_broadcast, numel, configlists, num, func);
+    DealSegment<InT, OutT, Functor, Arity, VecSize, Rank, false>(
+        ins, out, use_broadcast, numel, configs, num, func);
   } else {  // reminder
     int num = tail_tid;
-    DealSegment<ET, InT, OutT, ShapeSize, VecSize, Functor, true>(
-        in, out, use_broadcast, numel, configlists, num, func);
+    DealSegment<InT, OutT, Functor, Arity, VecSize, Rank, true>(
+        ins, out, use_broadcast, numel, configs, num, func);
   }
 }
 
-template <typename InT, typename OutT, ElementwiseType ET, int VecSize,
-          int Size, typename Functor>
+template <typename InT, typename OutT, typename Functor, int Arity, int VecSize,
+          int Rank>
 void LaunchKernel(const platform::CUDADeviceContext &ctx,
                   const std::vector<const framework::Tensor *> &ins,
                   framework::Tensor *out, Functor func,
@@ -251,53 +240,58 @@ void LaunchKernel(const platform::CUDADeviceContext &ctx,
   auto stream = ctx.stream();
   OutT *out_data = out->data<OutT>();
 
-  framework::Array<kps::details::BroadcastConfig<Size>, MAX_INPUT_NUM>
-      configlists;
-  framework::Array<bool, MAX_INPUT_NUM> use_broadcast;
-  framework::Array<const InT *__restrict__, ET> ins_data;
+  framework::Array<kps::details::BroadcastConfig<Rank>, Arity> configs;
+  framework::Array<bool, Arity> use_broadcast;
+  framework::Array<const InT *__restrict__, Arity> ins_data;
 
-  for (int i = 0; i < ET; i++) {
+  for (int i = 0; i < Arity; i++) {
     use_broadcast[i] = (ins[i]->numel() != numel);
     ins_data[i] = ins[i]->data<InT>();
     if (use_broadcast[i]) {
       // get the broadcast config,
       // if data shape is[m, n], then you should set data_dim = {n, m}
       // eg: out's shape [3, 45, 1]. then out_dims = {1, 45, 3}
-      configlists[i] = kps::details::BroadcastConfig<Size>(
+      configs[i] = kps::details::BroadcastConfig<Rank>(
           merge_dims.out_dims, merge_dims.in_dims[i], merge_dims.dim_size);
     }
   }
 
-  BroadcastKernel<ET, InT, OutT, Size, VecSize,
-                  Functor><<<blocks, threads, 0, stream>>>(
-      ins_data, out_data, use_broadcast, numel, configlists, main_tid, tail_tid,
+  BroadcastKernel<InT, OutT, Functor, Arity, VecSize,
+                  Rank><<<blocks, threads, 0, stream>>>(
+      ins_data, out_data, use_broadcast, numel, configs, main_tid, tail_tid,
       func);
 }
 
-template <typename InT, typename OutT, ElementwiseType ET, int VecSize,
-          typename Functor>
-void LaunchBroadcastKernelForDifferentDimSize(
+template <typename InT, typename OutT, typename Functor, int Arity, int VecSize>
+void LaunchBroadcastKernelForDifferentVecSize(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins, framework::Tensor *out,
     int axis, Functor func) {
   const auto merge_dims = DimensionsTransform(ins, out->dims(), axis);
-#define DIM_SIZE(size)                                                       \
-  case size: {                                                               \
-    LaunchKernel<InT, OutT, ET, VecSize, size, Functor>(ctx, ins, out, func, \
-                                                        merge_dims);         \
+
+#define CALL_BROADCAST_FOR_DIM_SIZE(rank)                                     \
+  case rank: {                                                                \
+    LaunchKernel<InT, OutT, Functor, Arity, VecSize, rank>(ctx, ins, out,     \
+                                                           func, merge_dims); \
   } break;
 
   switch (merge_dims.dim_size) {
-    DIM_SIZE(1);
-    DIM_SIZE(2);
-    DIM_SIZE(3);
-    DIM_SIZE(4);
-    DIM_SIZE(5);
-    DIM_SIZE(6);
-    DIM_SIZE(7);
-    DIM_SIZE(8);
+    CALL_BROADCAST_FOR_DIM_SIZE(1);
+    CALL_BROADCAST_FOR_DIM_SIZE(2);
+    CALL_BROADCAST_FOR_DIM_SIZE(3);
+    CALL_BROADCAST_FOR_DIM_SIZE(4);
+    CALL_BROADCAST_FOR_DIM_SIZE(5);
+    CALL_BROADCAST_FOR_DIM_SIZE(6);
+    CALL_BROADCAST_FOR_DIM_SIZE(7);
+    CALL_BROADCAST_FOR_DIM_SIZE(8);
+    default: {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "The maximum dimension of input tensor is expected to be less than "
+          "%d, but recieved %d.\n",
+          merge_dims.dim_size, framework::DDim::kMaxRank));
+    }
   }
-#undef DIM_SIZE
+#undef CALL_BROADCAST_FOR_DIM_SIZE
 }
 
 template <ElementwiseType ET, typename InT, typename OutT, typename Functor>
@@ -305,11 +299,21 @@ void LaunchBroadcastElementwiseCudaKernel(
     const platform::CUDADeviceContext &ctx,
     const std::vector<const framework::Tensor *> &ins,
     std::vector<framework::Tensor *> *outs, int axis, Functor func) {
-  PADDLE_ENFORCE_EQ(ET, ElementwiseType::kBinary,
+  using Traits = platform::FunctionTraits<Functor>;
+  const int kArity =
+      Traits::has_pointer_args ? static_cast<int>(ET) : Traits::arity;
+  PADDLE_ENFORCE_EQ(ins.size(), kArity,
                     platform::errors::InvalidArgument(
-                        "Currently, only Support binary calculation, "
-                        "but received %d input tensors.\n",
-                        static_cast<int>(ET)));
+                        "The number of inputs is expected to be equal to the "
+                        "arity of functor. But recieved: the number of inputs "
+                        "is %d, the arity of functor is %d.",
+                        ins.size(), kArity));
+  PADDLE_ENFORCE_EQ(kArity, 2,
+                    platform::errors::InvalidArgument(
+                        "Currently only broadcast of binary is supported and "
+                        "verified, but received %d.",
+                        kArity));
+
   int in_vec_size = 4;
   framework::Tensor *out = (*outs)[0];
   for (auto *in : ins) {
@@ -322,18 +326,18 @@ void LaunchBroadcastElementwiseCudaKernel(
 
   switch (vec_size) {
     case 4: {
-      LaunchBroadcastKernelForDifferentDimSize<InT, OutT, ET, 4>(ctx, ins, out,
-                                                                 axis, func);
+      LaunchBroadcastKernelForDifferentVecSize<InT, OutT, Functor, kArity, 4>(
+          ctx, ins, out, axis, func);
       break;
     }
     case 2: {
-      LaunchBroadcastKernelForDifferentDimSize<InT, OutT, ET, 2>(ctx, ins, out,
-                                                                 axis, func);
+      LaunchBroadcastKernelForDifferentVecSize<InT, OutT, Functor, kArity, 2>(
+          ctx, ins, out, axis, func);
       break;
     }
     case 1: {
-      LaunchBroadcastKernelForDifferentDimSize<InT, OutT, ET, 1>(ctx, ins, out,
-                                                                 axis, func);
+      LaunchBroadcastKernelForDifferentVecSize<InT, OutT, Functor, kArity, 1>(
+          ctx, ins, out, axis, func);
       break;
     }
     default: {
@@ -368,8 +372,6 @@ void LaunchElementwiseCudaKernel(
                                                         axis, func);
   }
 }
-
-#undef MAX_INPUT_NUM
 
 }  // namespace operators
 }  // namespace paddle

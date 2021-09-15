@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/tensorrt/op_teller.h"
-
+#include <bitset>
 #include "paddle/fluid/framework/block_desc.h"
 #include "paddle/fluid/framework/data_layout.h"
 
@@ -316,11 +316,36 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "transpose2" || op_type == "transpose") {
       if (!desc.HasAttr("axis")) {
         return false;
-      } else {
-        std::vector<int> axis =
-            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axis"));
-        if (!with_dynamic_shape && axis[0] != 0) return false;
-        if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+      }
+      std::vector<int> axis =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("axis"));
+      if (!with_dynamic_shape && axis[0] != 0) return false;
+      if (axis.size() >= nvinfer1::Dims::MAX_DIMS) return false;
+      if (axis[0] == 0 && axis.size() == 2) return false;
+
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      int dims = x_shape.size();
+      std::vector<int> perm(nvinfer1::Dims::MAX_DIMS);
+      for (int i = 0; i < dims; i++) {
+        perm[i] = axis[i];
+      }
+      auto is_valid_permutation = [&](int dims,
+                                      const std::vector<int>& permutation) {
+        std::bitset<nvinfer1::Dims::MAX_DIMS> found;
+        for (int i = 0; i < dims; ++i) {
+          const int x = permutation[i];
+          if ((x < 0) || (x >= dims) || found[x])
+            return false;  // Out of bounds or duplicate
+          found.set(x);
+        }
+        return true;
+      };
+      if (!is_valid_permutation(dims, perm)) {
+        VLOG(3) << "Invalid permutation dimensions for trt transpose op "
+                   "converter: duplicate or out of bound.";
       }
     }
     if (op_type == "flatten2" || op_type == "flatten") {
@@ -476,6 +501,10 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             return false;
           }
         }
+        if ((scale <= 0.f) && with_dynamic_shape) {
+          VLOG(3) << "dynamic shape not support scale not set.";
+          return false;
+        }
       }
     }
 
@@ -548,21 +577,95 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << desc.Input("X").size() << ".";
         return false;
       }
-      if (!desc.HasAttr("axis")) {
-        return false;
-      } else {
-        int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
-        if (axis == 0) {
-          VLOG(3) << "Invalid split axis. Split on batch is not supported in "
-                     "TensorRT";
+      auto split_inputs = desc.Inputs();
+      if (split_inputs.find("AxisTensor") != split_inputs.end()) {
+        if (desc.Input("AxisTensor").size() >= 1) {
           return false;
         }
       }
-    }
+      if (split_inputs.find("SectionsTensorList") != split_inputs.end()) {
+        if (desc.Input("SectionsTensorList").size() >= 1) {
+          return false;
+        }
+      }
+      if (!desc.HasAttr("axis")) {
+        return false;
+      }
+      int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
 
+      if (axis == 0) {
+        VLOG(3) << "Invalid split axis. Split on batch is not supported in "
+                   "TensorRT";
+        return false;
+      }
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      size_t output_num = desc.Output("Out").size();
+      std::vector<int> output_lengths;
+      int num = 0;
+      if (desc.HasAttr("num")) {
+        num = BOOST_GET_CONST(int, desc.GetAttr("num"));
+      }
+      if (desc.HasAttr("sections")) {
+        output_lengths =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("sections"));
+      }
+      if (output_lengths.size() == 0 && num == 0) {
+        VLOG(3) << "sections and num cannot be equal to 0 at the same time";
+        return false;
+      }
+      if (with_dynamic_shape) {
+#if IS_TRT_VERSION_GE(6000)
+#else
+        VLOG(3) << "You are running the TRT Dynamic Shape mode, need to "
+                   "confirm that "
+                   "your TRT version is no less than 6.0";
+        return false;
+#endif
+      }
+      axis += (axis < 0) ? x_shape.size() : 0;
+      if (x_shape[axis] == -1) {
+        VLOG(3) << "The (" << axis << ") dim of input should not be -1";
+        return false;
+      }
+      if (output_lengths.size() == 0) {
+        if (num > 0) {
+          int64_t in_axis_dim = x_shape[axis];
+          if (in_axis_dim % num != 0) {
+            VLOG(3) << "Invalid number to split. Tensor split does not result"
+                       " in an equal division of dimensions. Axis dim = "
+                    << in_axis_dim << " num = " << num << "!= 0";
+            return false;
+          }
+          size_t out_axis_dim = in_axis_dim / num;
+          for (int i = 0; i < num; ++i) {
+            output_lengths.push_back(out_axis_dim);
+          }
+        }
+      }
+      if (output_lengths.size() != output_num) {
+        VLOG(3) << "The output_length should be equal to the output size.";
+        return false;
+      }
+    }
+    if (op_type == "scale") {
+      auto scale_inputs = desc.Inputs();
+      if (scale_inputs.find("ScaleTensor") != scale_inputs.end()) {
+        if (desc.Input("ScaleTensor").size() >= 1) {
+          return false;
+        }
+      }
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (!with_dynamic_shape && x_shape.size() == 1) return false;
+    }
     if (op_type == "slice") {
       if (!desc.HasAttr("axes") || !desc.HasAttr("starts") ||
-          !desc.HasAttr("ends")) {
+          !desc.HasAttr("ends") || !desc.HasAttr("decrease_axis")) {
         return false;
       } else {
         std::vector<int> axes =
@@ -571,7 +674,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("starts"));
         std::vector<int> ends =
             BOOST_GET_CONST(std::vector<int>, desc.GetAttr("ends"));
+        std::vector<int> decrease_axis =
+            BOOST_GET_CONST(std::vector<int>, desc.GetAttr("decrease_axis"));
         if (axes.size() != starts.size() || axes.size() != ends.size()) {
+          return false;
+        }
+        if (decrease_axis.size() > 0) {
+          VLOG(3) << "Invalid slice decrease_axis. decrease_axis.size() > 0"
+                     "is not supported in TensorRT";
           return false;
         }
         if (!with_dynamic_shape) {
@@ -658,6 +768,19 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (desc.Output("Out").size() != 1) {
         VLOG(3) << "gelu op has only 1 output, but got "
                 << desc.Output("Out").size();
+        return false;
+      }
+
+      if (desc.HasAttr("approximate")) {
+        if (BOOST_GET_CONST(bool, desc.GetAttr("approximate"))) return false;
+      }
+
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 1) {
+        VLOG(3) << "gelu op does not support input's dim is 1 in tensorrt.";
         return false;
       }
     }
@@ -754,6 +877,28 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         if (paddings[i] != 0) {
           return false;
         }
+      }
+    }
+
+    if (op_type == "scale") {
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 1) {
+        VLOG(3) << "dropout op does not support input's dim is 1 in tensorrt.";
+        return false;
+      }
+    }
+
+    if (op_type == "swish") {
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 1) {
+        VLOG(3) << "swish op does not support input's dim is 1 in tensorrt.";
+        return false;
       }
     }
 
@@ -890,6 +1035,30 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (shape.size() >= nvinfer1::Dims::MAX_DIMS) return false;
       if (!with_dynamic_shape && (shape[0] == -1 || shape.size() == 1))
         return false;
+    }
+
+    if (op_type == "clip") {
+      // Paddle-TRT does not support the input tensors: Min and Max
+      auto clip_inputs = desc.Inputs();
+      if (clip_inputs.find("Min") != clip_inputs.end()) {
+        if (desc.Input("Min").size() >= 1) {
+          return false;
+        }
+      }
+      if (clip_inputs.find("Max") != clip_inputs.end()) {
+        if (desc.Input("Max").size() >= 1) {
+          return false;
+        }
+      }
+
+      auto* block = desc.Block();
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 1) {
+        VLOG(3) << "clip op does not support input's dim is 1 in tensorrt.";
+        return false;
+      }
     }
 
     if (op_type == "reduce_sum" || op_type == "reduce_mean") {
