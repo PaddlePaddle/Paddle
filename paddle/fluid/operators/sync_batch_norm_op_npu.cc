@@ -828,23 +828,34 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
         float device_counts = 1.0;
         if (comm) {
           stream = comm->stream();
-
           HcclDataType dtype = platform::ToHCCLDataType(mean_out->type());
 
+          Tensor device_count;
           {
-            float device_counts_result = 0.0;
+            device_count.Resize({1});
+            device_count.mutable_data<float>(place);
 
-            void *sendbuff = reinterpret_cast<void *>(&device_counts);
-            void *recvbuff = reinterpret_cast<void *>(&device_counts_result);
+            FillNpuTensorWithConstant<float>(&device_count, 1);
+
+            LOG(WARNING) << "device_count: ";
+            PrintTensor<float>(device_count, ctx);
+          }
+
+          {
+            void *sendbuff = reinterpret_cast<void *>(
+                const_cast<float *>(device_count.data<float>()));
+            void *recvbuff = sendbuff;
             LOG(WARNING) << "sendbuff: " << sendbuff;
             LOG(WARNING) << "recvbuff: " << recvbuff;
 
             // In-place operation
-            LOG(WARNING) << "before hccl | device_counts: " << device_counts;
+            LOG(WARNING) << "before hccl | device_count: ";
+            PrintTensor<float>(device_count, ctx);
             PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
                 sendbuff, recvbuff, 1, dtype, HCCL_REDUCE_SUM, comm->comm(),
                 reinterpret_cast<void *>(stream)));
-            LOG(WARNING) << "after hccl | device_counts: " << device_counts;
+            LOG(WARNING) << "after hccl | device_count";
+            PrintTensor<float>(device_count, ctx);
           }
 
           // In-place operation

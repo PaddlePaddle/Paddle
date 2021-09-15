@@ -179,10 +179,23 @@ class TestSyncBatchNormRunnerBase(object):
 
         # print('before train_prog: ', train_prog)
         # print(' ', train_prog.blocks[0].ops[3], '')
-        sys.stderr.write("op type: " + train_prog.blocks[0].ops[1].type + "\n")
-        sys.stderr.write("op type: " + train_prog.blocks[0].ops[7].type + "\n")
-        train_prog.blocks[0].ops[1].desc.set_type('sync_batch_norm')
-        train_prog.blocks[0].ops[7].desc.set_type('sync_batch_norm_grad')
+
+        # sys.stderr.write("op type: " + train_prog.blocks[0].ops[1].type + "\n")
+        # sys.stderr.write("op type: " + train_prog.blocks[0].ops[10].type + "\n")
+        # train_prog.blocks[0].ops[1].desc.set_type('sync_batch_norm')
+        # train_prog.blocks[0].ops[10].desc.set_type('sync_batch_norm_grad')
+
+        ops = train_prog.blocks[0].ops
+        for i, op in enumerate(ops):
+            if op.type == 'batch_norm':
+                sys.stderr.write("i: " + str(i) + "\n")
+                sys.stderr.write("op type: " + op.type + "\n")
+                op.desc.set_type('sync_batch_norm')
+            if op.type == 'batch_norm_grad':
+                sys.stderr.write("i: " + str(i) + "\n")
+                sys.stderr.write("op type: " + op.type + "\n")
+                op.desc.set_type('sync_batch_norm_grad')
+
         # print('after train_prog: ', train_prog)
         sys.stderr.write("after update sync_batch_norm, train_prog: " +
                          train_prog.to_string(True) + "\n")
