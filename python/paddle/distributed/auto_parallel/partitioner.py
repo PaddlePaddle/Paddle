@@ -372,6 +372,7 @@ class Partitioner(object):
                     kinputs,
                     koutputs,
                     rank_id=ctx.get_rank_id())
+                # dist_op_impl.forward(ctx, **kinputs, **koutputs)
 
             else:
                 # replicate op
