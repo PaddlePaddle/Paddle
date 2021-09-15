@@ -53,6 +53,7 @@ struct SimpleOpTypeSetTeller : public Teller {
 #endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
+    teller_set.insert("multiclass_nms");
 #endif
 #if CUDA_VERSION >= 10020
     teller_set.insert("reshape");
