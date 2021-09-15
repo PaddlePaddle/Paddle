@@ -137,6 +137,21 @@ func TestCollectShapeInfo(t *testing.T) {
 	predictor = nil
 	runtime.GC()
 	time.Sleep(2 * time.Second)
+
+	trt_config := NewConfig()
+	trt_config.SetModel("./mobilenetv1/inference.pdmodel", "./mobilenetv1/inference.pdiparams")
+	trt_config.EnableUseGpu(100, 0)
+	trt_config.EnableTensorRtEngine(102400, 4, 3, PrecisionFloat32, false, false)
+	trt_config.EnableTunedTensorRtDynamicShape("shape_range_info.pbtxt", true)
+	trt_predictor := NewPredictor(trt_config)
+	trt_inNames := trt_predictor.GetInputNames()
+	trt_inHandle := trt_predictor.GetInputHandle(trt_inNames[0])
+	trt_inHandle.Reshape([]int32{1, 3, 224, 224})
+
+	trt_inHandle.CopyFromCpu(data)
+
+	trt_predictor.Run()
+
 }
 
 func numElements(shape []int32) int32 {
