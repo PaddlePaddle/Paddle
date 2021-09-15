@@ -114,6 +114,14 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
   Update();
 }
 
+void AnalysisConfig::SetXpuDeviceId(int device_id) {
+  PADDLE_ENFORCE_EQ(use_xpu_, true,
+                    platform::errors::PreconditionNotMet(
+                        "Should call EnableXpu before SetXpuDeviceId."));
+  xpu_device_id_ = device_id;
+  Update();
+}
+
 void AnalysisConfig::EnableNpu(int device_id) {
 #ifdef PADDLE_WITH_ASCEND_CL
   use_npu_ = true;
