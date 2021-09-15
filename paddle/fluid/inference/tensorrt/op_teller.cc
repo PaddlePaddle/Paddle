@@ -337,15 +337,20 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "gather") {
-      auto inputs = desc.InputArgumentNames();
-      for (auto& input : inputs) {
-        if (input == "Axis" && desc.Input("Axis").size() > 0) return false;
+      auto gather_inputs = desc.Inputs();
+      if (gather_inputs.find("Axis") != gather_inputs.end()) {
+        if (desc.Input("Axis").size() >= 1) {
+          return false;
+        }
       }
       if (!with_dynamic_shape) {
-        if (desc.HasAttr("axis")) {
-          int axis = BOOST_GET_CONST(int, desc.GetAttr("axis"));
-          if (axis < 1) return false;
-        } else {
+        return false;
+      } else {
+        auto* block = desc.Block();
+        auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
+        const auto x_shape = x_var_desc->GetShape();
+        if (x_shape.size() == 1) {
+          VLOG(3) << "Gather does not support 1-dimensional input in tensorrt";
           return false;
         }
       }
@@ -969,13 +974,16 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 #if IS_TRT_VERSION_GE(7000)
     if (op_type == "tile") {
       // Paddle-TRT does not support the input tensors.
-      auto inputs = desc.InputArgumentNames();
-      for (auto& input : inputs) {
-        if (input == "repeat_times_tensor" &&
-            desc.Input("repeat_times_tensor").size() > 0)
+      auto tile_inputs = desc.Inputs();
+      if (tile_inputs.find("repeat_times_tensor") != tile_inputs.end()) {
+        if (desc.Input("repeat_times_tensor").size() >= 1) {
           return false;
-        if (input == "RepeatTimes" && desc.Input("RepeatTimes").size() > 0)
+        }
+      }
+      if (tile_inputs.find("RepeatTimes") != tile_inputs.end()) {
+        if (desc.Input("RepeatTimes").size() >= 1) {
           return false;
+        }
       }
       if (with_dynamic_shape) return false;
       if (!with_dynamic_shape && !desc.HasAttr("repeat_times")) return false;

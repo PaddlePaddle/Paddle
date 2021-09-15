@@ -47,16 +47,13 @@ class GatherOpConverter : public OpConverter {
     int axis = 0;
     if (op_desc.HasAttr("axis")) {
       axis = BOOST_GET_CONST(int, op_desc.GetAttr("axis"));
-      if (!engine_->with_dynamic_shape()) {
-        axis -= 1;
-      }
     }
 
     auto reshape_layer = TRT_ENGINE_ADD_LAYER(engine_, Shuffle, *index_tensor);
 
     nvinfer1::Dims index_shape{};
     index_shape.nbDims = 1;
-    index_shape.d[0] = 0;
+    index_shape.d[0] = -1;
 
     reshape_layer->setReshapeDimensions(index_shape);
 
