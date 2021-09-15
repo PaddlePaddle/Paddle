@@ -738,14 +738,13 @@ def insert_scale_loss_grad_ops(block, scale=1.0):
     '''
     for idx, op in reversed(list(enumerate(block.ops))):
         if is_loss_grad_op(op):
-            loss_grad_var = block.vars[op.output_arg_names[0]]
-            block._insert_op_without_sync(
-                idx + 1,
-                type='scale',
-                inputs={'X': loss_grad_var},
-                outputs={'Out': loss_grad_var},
-                attrs={'scale': scale,
-                       OP_ROLE_KEY: OpRole.Backward})
+            assert op.type == 'fill_constant', \
+                "loss_grad_op must be fill_constant op, " \
+                "but this op is {}".format(op.type)
+            assert op.has_attr('value')
+            loss_scale = float(op.value('value'))
+            loss_scale = loss_scale / scale
+            op._set_attr('value', loss_scale)
             break
 
 

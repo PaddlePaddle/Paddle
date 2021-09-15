@@ -5019,16 +5019,13 @@ class PipelineOptimizer(object):
         if self._num_microbatches == 1: return
         for index, op in reversed(tuple(enumerate(list(block.ops)))):
             if self._is_loss_grad_op(op):
-                loss_grad_var = block.vars[op.output_arg_names[0]]
-                block._insert_op(
-                    index=index + 1,
-                    type='scale',
-                    inputs={'X': loss_grad_var},
-                    outputs={'Out': loss_grad_var},
-                    attrs={
-                        'scale': 1.0 / self._num_microbatches,
-                        self._op_role_key: self._op_role.Backward
-                    })
+                assert op.type == 'fill_constant', \
+                    "loss_grad_op must be fill_constant op, " \
+                    "but this op is {}".format(op.type)
+                assert op.has_attr('value')
+                loss_scale = float(op.value('value'))
+                loss_scale = loss_scale / self._num_microbatches
+                op._set_attr('value', loss_scale)
                 break
 
     def _rename_gradient_var_name(self, block):

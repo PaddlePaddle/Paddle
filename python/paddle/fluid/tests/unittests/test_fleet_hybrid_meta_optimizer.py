@@ -77,10 +77,10 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
             'recv_v2', 'mul', 'elementwise_add', 'tanh', 'mul',
             'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh', 'mul',
             'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
-            'fill_constant', 'scale', 'scale', 'mean_grad',
-            'cross_entropy_grad2', 'softmax_grad', 'elementwise_add_grad',
-            'mul_grad', 'tanh_grad', 'elementwise_add_grad', 'mul_grad',
-            'tanh_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'fill_constant', 'mean_grad', 'cross_entropy_grad2', 'softmax_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
             'fill_constant', 'sum', 'fill_constant', 'sum', 'fill_constant',
             'sum', 'fill_constant', 'sum', 'fill_constant', 'sum',
@@ -158,10 +158,10 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
             'recv_v2', 'mul', 'elementwise_add', 'tanh', 'mul',
             'elementwise_add', 'tanh', 'mul', 'elementwise_add', 'tanh', 'mul',
             'elementwise_add', 'softmax', 'cross_entropy2', 'mean',
-            'fill_constant', 'scale', 'scale', 'mean_grad',
-            'cross_entropy_grad2', 'softmax_grad', 'elementwise_add_grad',
-            'mul_grad', 'tanh_grad', 'elementwise_add_grad', 'mul_grad',
-            'tanh_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'fill_constant', 'mean_grad', 'cross_entropy_grad2', 'softmax_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
+            'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
             'fill_constant', 'sum', 'fill_constant', 'sum', 'fill_constant',
             'sum', 'fill_constant', 'sum', 'fill_constant', 'sum',
@@ -220,8 +220,8 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
             'tanh', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'cast',
             'tanh', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'softmax',
             'cast', 'cross_entropy2', 'mean', 'elementwise_mul',
-            'fill_constant', 'scale', 'scale', 'elementwise_mul_grad',
-            'mean_grad', 'cross_entropy_grad2', 'cast', 'softmax_grad',
+            'fill_constant', 'elementwise_mul_grad', 'mean_grad',
+            'cross_entropy_grad2', 'cast', 'softmax_grad',
             'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
             'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
             'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
@@ -293,23 +293,23 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
             'tanh', 'cast', 'cast', 'mul', 'cast', 'elementwise_add', 'softmax',
             'cast', 'cross_entropy2', 'mean', 'elementwise_mul',
             'coalesce_tensor', 'coalesce_tensor', 'coalesce_tensor',
-            'coalesce_tensor', 'fill_constant', 'scale', 'scale',
-            'elementwise_mul_grad', 'mean_grad', 'cross_entropy_grad2', 'cast',
-            'softmax_grad', 'elementwise_add_grad', 'mul_grad', 'cast',
-            'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad', 'cast',
-            'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad', 'cast',
-            'tanh_grad', 'cast', 'elementwise_add_grad', 'mul_grad', 'cast',
-            'c_sync_calc_stream', 'send_v2', 'cast', 'sum', 'cast', 'sum',
-            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream',
-            'check_finite_and_unscale', 'cast', 'c_allreduce_max',
-            'c_allreduce_max', 'cast', 'update_loss_scaling', 'squared_l2_norm',
-            'squared_l2_norm', 'squared_l2_norm', 'squared_l2_norm',
-            'squared_l2_norm', 'sum', 'c_allreduce_sum', 'c_allreduce_sum',
-            'sqrt', 'fill_constant', 'elementwise_max', 'elementwise_div',
+            'coalesce_tensor', 'fill_constant', 'elementwise_mul_grad',
+            'mean_grad', 'cross_entropy_grad2', 'cast', 'softmax_grad',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'c_sync_calc_stream',
+            'send_v2', 'cast', 'sum', 'cast', 'sum', 'c_reduce_sum',
+            'c_reduce_sum', 'c_sync_comm_stream', 'check_finite_and_unscale',
+            'cast', 'c_allreduce_max', 'c_allreduce_max', 'cast',
+            'update_loss_scaling', 'squared_l2_norm', 'squared_l2_norm',
+            'squared_l2_norm', 'squared_l2_norm', 'squared_l2_norm', 'sum',
+            'c_allreduce_sum', 'c_allreduce_sum', 'sqrt', 'fill_constant',
+            'elementwise_max', 'elementwise_div', 'elementwise_mul',
             'elementwise_mul', 'elementwise_mul', 'elementwise_mul',
-            'elementwise_mul', 'elementwise_mul', 'momentum', 'momentum',
-            'momentum', 'momentum', 'momentum', 'coalesce_tensor',
-            'c_broadcast', 'coalesce_tensor', 'c_broadcast'
+            'elementwise_mul', 'momentum', 'momentum', 'momentum', 'momentum',
+            'momentum', 'coalesce_tensor', 'c_broadcast', 'coalesce_tensor',
+            'c_broadcast'
         ])
 
 
@@ -367,14 +367,13 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
 
         self.assertEqual(main_prog_op_types, [
             'recv_v2', 'cast', 'matmul', 'cast', 'reduce_mean',
-            'elementwise_mul', 'fill_constant', 'scale', 'scale',
-            'elementwise_mul_grad', 'reduce_mean_grad', 'cast', 'matmul_grad',
-            'c_sync_calc_stream', 'send_v2', 'fill_constant', 'cast', 'sum',
-            'c_reduce_sum', 'c_sync_comm_stream', 'check_finite_and_unscale',
-            'cast', 'c_allreduce_max', 'c_allreduce_max', 'cast',
-            'update_loss_scaling', 'fill_constant', 'c_allreduce_sum',
-            'c_allreduce_sum', 'sqrt', 'fill_constant', 'elementwise_max',
-            'elementwise_div', 'c_broadcast'
+            'elementwise_mul', 'fill_constant', 'elementwise_mul_grad',
+            'reduce_mean_grad', 'cast', 'matmul_grad', 'c_sync_calc_stream',
+            'send_v2', 'fill_constant', 'cast', 'sum', 'c_reduce_sum',
+            'c_sync_comm_stream', 'check_finite_and_unscale', 'cast',
+            'c_allreduce_max', 'c_allreduce_max', 'cast', 'update_loss_scaling',
+            'fill_constant', 'c_allreduce_sum', 'c_allreduce_sum', 'sqrt',
+            'fill_constant', 'elementwise_max', 'elementwise_div', 'c_broadcast'
         ])
 
     def test_opt_sharding_with_pp_amp_gclip_boundary_card1(self):
@@ -419,14 +418,14 @@ class TestFleetHybridOptimizerBoundary(TestFleetMetaOptimizer):
 
         self.assertEqual(main_prog_op_types, [
             'recv_v2', 'cast', 'matmul', 'cast', 'reduce_mean',
-            'elementwise_mul', 'fill_constant', 'scale', 'scale',
-            'elementwise_mul_grad', 'reduce_mean_grad', 'cast', 'matmul_grad',
-            'c_sync_calc_stream', 'send_v2', 'fill_constant', 'cast', 'sum',
-            'c_reduce_sum', 'c_sync_comm_stream', 'check_finite_and_unscale',
-            'cast', 'c_allreduce_max', 'c_allreduce_max', 'cast',
-            'update_loss_scaling', 'squared_l2_norm', 'sum', 'c_allreduce_sum',
-            'c_allreduce_sum', 'sqrt', 'fill_constant', 'elementwise_max',
-            'elementwise_div', 'elementwise_mul', 'momentum', 'c_broadcast'
+            'elementwise_mul', 'fill_constant', 'elementwise_mul_grad',
+            'reduce_mean_grad', 'cast', 'matmul_grad', 'c_sync_calc_stream',
+            'send_v2', 'fill_constant', 'cast', 'sum', 'c_reduce_sum',
+            'c_sync_comm_stream', 'check_finite_and_unscale', 'cast',
+            'c_allreduce_max', 'c_allreduce_max', 'cast', 'update_loss_scaling',
+            'squared_l2_norm', 'sum', 'c_allreduce_sum', 'c_allreduce_sum',
+            'sqrt', 'fill_constant', 'elementwise_max', 'elementwise_div',
+            'elementwise_mul', 'momentum', 'c_broadcast'
         ])
 
 
