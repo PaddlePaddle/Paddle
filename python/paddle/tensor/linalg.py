@@ -1058,7 +1058,7 @@ def det(x):
     if in_dygraph_mode():
         return core.ops.determinant(x)
 
-    def __check_input(input):
+    def _check_input(input):
         check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
 
         input_shape = list(x.shape)
@@ -1072,7 +1072,7 @@ def det(x):
                 "but received %s by %s matrix.\n" \
                 %(input_shape[-2], input_shape[-1]) \
 
-    __check_input(input)
+    _check_input(input)
     helper = LayerHelper('determinant', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
@@ -1086,7 +1086,7 @@ def slogdet(x):
     Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
     The determinant can be computed with ``sign * exp(logabsdet)
     
-    Supports input of bool, int32, int64, float16, float, double
+    Supports input of float, double
 
     Note that for matrices that have zero determinant, this returns ``(0, -inf)``
     Args:
@@ -1094,7 +1094,7 @@ def slogdet(x):
             where math:`*` is one or more batch dimensions.
 
     Returns:
-        y (Tensor): A tuple (sign, logabsdet) containing the sign of the determinant and the natural logarithm
+        y (Tensor): A tensor containing the sign of the determinant and the natural logarithm
         of the absolute value of determinant, respectively.
 
     Example:
@@ -1115,7 +1115,7 @@ def slogdet(x):
     if in_dygraph_mode():
         return core.ops.slogdeterminant(x)
 
-    def __check_input(input):
+    def _check_input(x):
         check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
 
         input_shape = list(x.shape)
@@ -1129,7 +1129,7 @@ def slogdet(x):
                 "but received %s by %s matrix.\n" \
                 %(input_shape[-2], input_shape[-1]) \
 
-    __check_input(input)
+    _check_input(x)
     helper = LayerHelper('slogdeterminant', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 

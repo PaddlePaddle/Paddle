@@ -78,6 +78,14 @@ class DeterminantKernel : public framework::OpKernel<T> {
 
     auto batch_count = GetBatchCount(input->dims());
     VLOG(2) << "input dim:" << input->dims();
+    PADDLE_ENFORCE_GT(
+        input_dim_size, 2,
+        platform::errors::InvalidArgument(
+            "the input matrix dimension size should greater than 2."));
+    PADDLE_ENFORCE_EQ(input_dim[input_dim_size - 1],
+                      input_dim[input_dim_size - 2],
+                      platform::errors::InvalidArgument(
+                          "the input matrix should be square matrix."));
     auto rank = input_dim[input_dim_size - 1];  // square matrix length
     DeterminantFunctor<T>()(*input, context, rank, batch_count, output);
     auto output_dims =
@@ -175,6 +183,14 @@ class SlogDeterminantKernel : public framework::OpKernel<T> {
 
     auto batch_count = GetBatchCount(input->dims());
     VLOG(2) << "input dim:" << input->dims();
+    PADDLE_ENFORCE_GT(
+        input_dim_size, 2,
+        platform::errors::InvalidArgument(
+            "the input matrix dimension size should greater than 2."));
+    PADDLE_ENFORCE_EQ(input_dim[input_dim_size - 1],
+                      input_dim[input_dim_size - 2],
+                      platform::errors::InvalidArgument(
+                          "the input matrix should be square matrix."));
     auto rank = input_dim[input_dim_size - 1];  // square matrix length
     SlogDeterminantFunctor<T>()(*input, context, rank, batch_count, output);
     std::vector<int> output_dim_vec(input_dim.begin(), input_dim.end() - 2);
