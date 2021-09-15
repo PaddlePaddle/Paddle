@@ -40,7 +40,6 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/fast_divmod.h"
 
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
-// #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 namespace paddle {
 namespace operators {
@@ -53,12 +52,6 @@ template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
 using ReduceParamType = typename CudnnDataType<T>::BatchNormParamType;
-
-// template <typename T>
-// struct AddFunctor {
-//   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a +
-//   b; }
-// };
 
 template <typename InT, typename OutT, int ShapeSize, int VecSize,
           int DATA_PER_THREAD, typename Functor>

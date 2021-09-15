@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/operators/dropout_impl.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/softmax_cudnn_op.cu.h"
@@ -24,16 +25,49 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+class AttnDropoutParam {
+ public:
+  AttnDropoutParam() {
+    is_test_ = false;
+    dropout_implementation_ = "downgrade_in_infer";
+    dropout_prob_ = 0.5;
+    is_upscale_in_train_ = false;
+    is_fix_seed_ = false;
+    seed_val_ = 0;
+    seed_ = nullptr;
+  }
+  AttnDropoutParam(bool is_test, const std::string dropout_implementation,
+                   float dropout_prob, bool is_upscale_in_train,
+                   bool is_fix_seed, int seed_val, const Tensor* seed) {
+    is_test_ = is_test;
+    dropout_implementation_ = dropout_implementation;
+    dropout_prob_ = dropout_prob;
+    is_upscale_in_train_ = is_upscale_in_train;
+    is_fix_seed_ = is_fix_seed;
+    seed_val_ = seed_val;
+    seed_ = seed;
+  }
+  bool is_test_;
+  std::string dropout_implementation_;
+  float dropout_prob_;
+  bool is_upscale_in_train_;
+  bool is_fix_seed_;
+  int seed_val_;
+  const Tensor* seed_;
+};
+
 template <typename T>
 class FMHARef {
  public:
   FMHARef(const platform::CUDADeviceContext& dev_ctx, int64_t batch_size,
-          int64_t seq_len, int64_t num_head, int64_t head_dim)
+          int64_t seq_len, int64_t num_head, int64_t head_dim,
+          AttnDropoutParam param)
       : dev_ctx_(dev_ctx),
         batch_size_(batch_size),
         seq_len_(seq_len),
         num_head_(num_head),
-        head_dim_(head_dim) {}
+        head_dim_(head_dim),
+        dropout_param_(param) {}
 
   ~FMHARef() {}
 
@@ -41,7 +75,9 @@ class FMHARef {
                       const Tensor& src_mask_tensor,
                       Tensor* transpose_2_out_tensor, Tensor* qk_out_tensor,
                       Tensor* src_mask_out_tensor, Tensor* softmax_out_tensor,
-                      Tensor* qktv_out_tensor, Tensor* fmha_out_tensor) {
+                      Tensor* dropout_mask_out_tensor,
+                      Tensor* dropout_out_tensor, Tensor* qktv_out_tensor,
+                      Tensor* fmha_out_tensor) {
     // input shape: [bs, seq_len, 3, num_head, head_dim]
     // transpose with perm [2, 0, 1, 3, 4],
     // output_shape: [3, bs, num_head, seq_len, head_dim]
@@ -54,6 +90,7 @@ class FMHARef {
     T* qk_out_data = qk_out_tensor->data<T>();
     T* qktv_out_data = qktv_out_tensor->data<T>();
     T* softmax_out_data = softmax_out_tensor->data<T>();
+    T* dropout_out_data = dropout_out_tensor->data<T>();
     T* fmha_out_data = fmha_out_tensor->data<T>();
 #endif
 
@@ -94,8 +131,6 @@ class FMHARef {
     int softmax_axis = -1;
     if (&src_mask_tensor != nullptr) {
       // mask_out = qk_out + src_mask
-      //   LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-      //       dev_ctx_, ins, &outs, elewise_add_axis, CudaAddFunctor<T>());
       LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
           dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
       // softmax(mask_out)
@@ -108,10 +143,7 @@ class FMHARef {
                                         softmax_out_tensor);
 #endif
     }
-// todo: add dropout
 
-// softmax_out * v, batched_gemm
-// output shape: [batch_size, num_heads, seq_len, head_dim]
 #if 1
     transB = CblasNoTrans;
     gemm_m = seq_len_;
@@ -120,10 +152,27 @@ class FMHARef {
     alpha = static_cast<T>(1.0);
     stride_a = gemm_m * gemm_k;
     stride_b = gemm_k * gemm_n;
-    blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
-                     softmax_out_data, v_ptr, beta, qktv_out_data,
-                     gemm_batch_size, stride_a, stride_b);
+
+    if (dropout_param_.dropout_prob_) {
+      DropoutFwGPUKernelDriver<T>(
+          dev_ctx_, dropout_param_.is_test_,
+          static_cast<const std::string>(
+              dropout_param_.dropout_implementation_),
+          dropout_param_.dropout_prob_, dropout_param_.is_upscale_in_train_,
+          dropout_param_.is_fix_seed_, dropout_param_.seed_val_,
+          static_cast<const Tensor&>(*softmax_out_tensor), dropout_param_.seed_,
+          dropout_mask_out_tensor, dropout_out_tensor);
+      blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
+                       dropout_out_data, v_ptr, beta, qktv_out_data,
+                       gemm_batch_size, stride_a, stride_b);
+    } else {
+      // softmax_out * v, batched_gemm
+      // output shape: [batch_size, num_heads, seq_len, head_dim]
+      blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
+                       softmax_out_data, v_ptr, beta, qktv_out_data,
+                       gemm_batch_size, stride_a, stride_b);
 #endif
+    }
     // transpose: [0, 2, 1, 3]
     // output shape: [batch_size, seq_len, num_heads, head_dim]
     std::vector<int> perm_3 = {0, 2, 1, 3};
@@ -134,12 +183,13 @@ class FMHARef {
 
   void ComputeBackward(
       const Tensor& transpose_2_out_tensor, const Tensor& src_mask_tensor,
-      const Tensor& softmax_out_tensor, const Tensor& qk_out_tensor,
+      const Tensor& softmax_out_tensor, const Tensor& dropout_mask_out_tensor,
+      const Tensor& dropout_out_tensor, const Tensor& qk_out_tensor,
       const Tensor& src_mask_out_tensor, const Tensor& fmha_out_grad_tensor,
-      Tensor* qktv_out_grad_tensor, Tensor* softmax_out_grad_tensor,
-      Tensor* src_mask_out_grad_tensor, Tensor* qk_out_grad_tensor,
-      Tensor* transpose_2_out_grad_tensor, Tensor* src_mask_grad_tensor,
-      Tensor* qkv_input_grad_tensor) {
+      Tensor* qktv_out_grad_tensor, Tensor* dropout_out_grad_tensor,
+      Tensor* softmax_out_grad_tensor, Tensor* src_mask_out_grad_tensor,
+      Tensor* qk_out_grad_tensor, Tensor* transpose_2_out_grad_tensor,
+      Tensor* src_mask_grad_tensor, Tensor* qkv_input_grad_tensor) {
     auto blas = math::GetBlas<platform::CUDADeviceContext, T>(dev_ctx_);
     int q_size = batch_size_ * seq_len_ * num_head_ * head_dim_;
     int k_size = q_size;
@@ -159,6 +209,8 @@ class FMHARef {
 #endif
     const T* softmax_out_data = softmax_out_tensor.data<T>();
     T* softmax_out_grad_data = softmax_out_grad_tensor->data<T>();
+    const T* dropout_out_data = dropout_out_tensor.data<T>();
+    T* dropout_out_grad_data = dropout_out_grad_tensor->data<T>();
     T* qktv_out_grad_data = qktv_out_grad_tensor->data<T>();
 
     // transpose bw
@@ -180,9 +232,15 @@ class FMHARef {
     int64_t stride_a = gemm_m * gemm_k;
     int64_t stride_b = gemm_k * gemm_n;
     // bw: dy = x^t * dout
-    blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
-                     softmax_out_data, qktv_out_grad_data, beta, v_grad_ptr,
-                     gemm_batch_size, stride_a, stride_b);
+    if (dropout_param_.dropout_prob_) {
+      blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
+                       dropout_out_data, qktv_out_grad_data, beta, v_grad_ptr,
+                       gemm_batch_size, stride_a, stride_b);
+    } else {
+      blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
+                       softmax_out_data, qktv_out_grad_data, beta, v_grad_ptr,
+                       gemm_batch_size, stride_a, stride_b);
+    }
     // bw: dx = dout * y^t
     transA = CblasNoTrans;
     transB = CblasTrans;
@@ -191,11 +249,26 @@ class FMHARef {
     gemm_k = head_dim_;
     stride_a = gemm_m * gemm_k;
     stride_b = gemm_k * gemm_n;
-    blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
-                     qktv_out_grad_data, v_ptr, beta, softmax_out_grad_data,
-                     gemm_batch_size, stride_a, stride_b);
-
+    if (dropout_param_.dropout_prob_) {
+      blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
+                       qktv_out_grad_data, v_ptr, beta, dropout_out_grad_data,
+                       gemm_batch_size, stride_a, stride_b);
+    } else {
+      blas.BatchedGEMM(transA, transB, gemm_m, gemm_n, gemm_k, alpha,
+                       qktv_out_grad_data, v_ptr, beta, softmax_out_grad_data,
+                       gemm_batch_size, stride_a, stride_b);
+    }
     // dropout bw
+    if (dropout_param_.dropout_prob_) {
+      DropoutGradGPUKernelDriver<T>(
+          dev_ctx_, static_cast<const std::string>(
+                        dropout_param_.dropout_implementation_),
+          dropout_param_.dropout_prob_,
+          static_cast<const Tensor&>(*dropout_out_grad_tensor),
+          dropout_mask_out_tensor, softmax_out_grad_tensor->numel(),
+          softmax_out_grad_tensor);
+    }
+
     if (&src_mask_tensor != nullptr) {
       SoftmaxBackwardCUDAKernelDriver<T>(dev_ctx_, softmax_out_tensor,
                                          *softmax_out_grad_tensor, softmax_axis,
@@ -262,6 +335,8 @@ class FMHARef {
   int64_t seq_len_;
   int64_t num_head_;
   int64_t head_dim_;
+
+  AttnDropoutParam dropout_param_;
 };
 
 }  // namespace operators

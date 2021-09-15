@@ -1576,7 +1576,7 @@ def fused_multihead_attention(x,
         #ln_mean, ln_variance, ln_out, qkv_out, qkv_bias_out, transpose_out_2, qk_out, qktv_out, softmax_out, src_mask_out, fmha_out, out_linear_out, final_out = _C_ops.fused_attention(x, ln_scale, ln_bias, qkv_weight, qkv_bias, src_mask, out_linear_weight, out_linear_bias, 'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon, 'dropout_prob', dropout)
 
         ## finally code
-        ln_mean, ln_variance, ln_out, qkv_out, qkv_bias_out, transpose_out_2, qk_out, qktv_out, softmax_out, src_mask_out, fmha_out, out_linear_out, dropout_mask_out, ln2_mean_out, ln2_var_out, bias_dropout_residual_out, final_out = _C_ops.fused_attention(
+        ln_mean, ln_variance, ln_out, qkv_out, qkv_bias_out, transpose_out_2, qk_out, qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, src_mask_out, fmha_out, out_linear_out, dropout_mask_out, ln2_mean_out, ln2_var_out, bias_dropout_residual_out, final_out = _C_ops.fused_attention(
             x, ln_scale, ln_bias, qkv_weight, qkv_bias, src_mask,
             out_linear_weight, out_linear_bias, ln_2_scale, ln_2_bias,
             'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
@@ -1623,19 +1623,23 @@ def fused_multihead_attention(x,
             dtype=dtype, stop_gradient=True)
         ln_variance_out = helper.create_variable_for_type_inference(
             dtype=dtype, stop_gradient=True)
-        ln_out = helper.create_variable_for_type_inference(dtype)
+        ln_out = helper.create_variable_for_type_inference(dtype=dtype)
 
-        qkv_out = helper.create_variable_for_type_inference(dtype)
-        qkv_bias_out = helper.create_variable_for_type_inference(dtype)
+        qkv_out = helper.create_variable_for_type_inference(dtype=dtype)
+        qkv_bias_out = helper.create_variable_for_type_inference(dtype=dtype)
 
-        transpose_out_2 = helper.create_variable_for_type_inference(dtype)
-        qk_out = helper.create_variable_for_type_inference(dtype)
-        qktv_out = helper.create_variable_for_type_inference(dtype)
-        softmax_out = helper.create_variable_for_type_inference(dtype)
+        transpose_out_2 = helper.create_variable_for_type_inference(dtype=dtype)
+        qk_out = helper.create_variable_for_type_inference(dtype=dtype)
+        qktv_out = helper.create_variable_for_type_inference(dtype=dtype)
+        softmax_out = helper.create_variable_for_type_inference(dtype=dtype)
+        attn_dropout_mask_out = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+        attn_dropout_out = helper.create_variable_for_type_inference(
+            dtype=dtype)
         # todo: stop_gradient?
-        src_mask_out = helper.create_variable_for_type_inference(dtype)
-        fmha_out = helper.create_variable_for_type_inference(dtype)
-        out_linear_out = helper.create_variable_for_type_inference(dtype)
+        src_mask_out = helper.create_variable_for_type_inference(dtype=dtype)
+        fmha_out = helper.create_variable_for_type_inference(dtype=dtype)
+        out_linear_out = helper.create_variable_for_type_inference(dtype=dtype)
         dropout_mask_out = helper.create_variable_for_type_inference(
             dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
         ln_2_mean_out = helper.create_variable_for_type_inference(
@@ -1659,6 +1663,8 @@ def fused_multihead_attention(x,
                 "QKOut": qk_out,
                 "QKTVOut": qktv_out,
                 "SoftmaxOut": softmax_out,
+                "AttnDropoutMaskOut": attn_dropout_mask_out,
+                "AttnDropoutOut": attn_dropout_out,
                 "SrcMaskOut": src_mask_out,
                 "FMHAOut": fmha_out,
                 "OutLinearOut": out_linear_out,

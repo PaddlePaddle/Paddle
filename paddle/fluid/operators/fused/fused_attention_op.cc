@@ -63,6 +63,10 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                    "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasOutput("SoftmaxOut"), "Output", "SoftmaxOut",
                    "FusedAttentionOp");
+    OP_INOUT_CHECK(ctx->HasOutput("AttnDropoutMaskOut"), "Output",
+                   "AttnDropoutMaskOut", "FusedAttentionOp");
+    OP_INOUT_CHECK(ctx->HasOutput("AttnDropoutOut"), "Output", "AttnDropoutOut",
+                   "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasOutput("FMHAOut"), "Output", "FMHAOut",
                    "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasOutput("OutLinearOut"), "Output", "OutLinearOut",
@@ -132,12 +136,12 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("QKOut", {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
     ctx->SetOutputDim("SrcMaskOut", {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
     // the same as QKOut's shape.
-    // ctx->SetOutputDim("AttnDropoutOut",  {x_dim[0], y_dim[1], x_dim[1],
-    // x_dim[1]});
-    // if (ctx->Attrs().Get<bool>("is_test") == false) {
-    // ctx->SetOutputDim("AttnDropoutMaskOut", {x_dim[0], y_dim[1], x_dim[1],
-    // x_dim[1]});
-    // }
+    ctx->SetOutputDim("AttnDropoutOut",
+                      {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+    if (ctx->Attrs().Get<bool>("is_test1") == false) {
+      ctx->SetOutputDim("AttnDropoutMaskOut",
+                        {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
+    }
     ctx->SetOutputDim("SoftmaxOut", {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
     // check shape [batch_size, num_heads, seq_len, head_dim]
     ctx->SetOutputDim("QKTVOut", {x_dim[0], y_dim[1], x_dim[1], y_dim[2]});
@@ -216,9 +220,9 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("TransposeOut2", "Result in fmha.").AsIntermediate();
     AddOutput("QKOut", "Result in fmha.").AsIntermediate();
     AddOutput("QKTVOut", "Result in fmha.").AsIntermediate();
-    // AddOutput("AttnDropoutOut", "Result in fmha.").AsIntermediate();
-    // AddOutput("AttnDropoutMaskOut", "Result in fmha.").AsIntermediate();
     AddOutput("SoftmaxOut", "Result in fmha.").AsIntermediate();
+    AddOutput("AttnDropoutMaskOut", "Result in fmha.").AsIntermediate();
+    AddOutput("AttnDropoutOut", "Result in fmha.").AsIntermediate();
     AddOutput("SrcMaskOut", "Result in fmha.").AsIntermediate();
     AddOutput("FMHAOut", "Result after fmha.").AsIntermediate();
 
@@ -285,7 +289,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                   "training. Setting this flag to true is only useful in "
                   "unittest or for debug that always the same output units "
                   "will be dropped.")
-        .SetDefault(false);
+        .SetDefault(true);
     AddAttr<int>("seed1", "Dropout random seed.").SetDefault(0);
     AddAttr<std::string>(
         "dropout_implementation1",
@@ -303,7 +307,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         "   inference: out = input"
         "   dropout op can be removed from the program. the program will be "
         "efficient")
-        .SetDefault("downgrade_in_infer")
+        .SetDefault("upscale_in_train")
         .AddCustomChecker([](const std::string &type) {
           PADDLE_ENFORCE_EQ(
               type == "downgrade_in_infer" || type == "upscale_in_train", true,
@@ -331,7 +335,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                   "training. Setting this flag to true is only useful in "
                   "unittest or for debug that always the same output units "
                   "will be dropped.")
-        .SetDefault(false);
+        .SetDefault(true);
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
     AddAttr<std::string>(
         "dropout_implementation",
@@ -467,6 +471,8 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
                       ctx->GetInputDim("QKOut"));
     ctx->SetOutputDim(framework::GradVarName("SoftmaxOut"),
                       ctx->GetInputDim("SoftmaxOut"));
+    ctx->SetOutputDim(framework::GradVarName("AttnDropoutOut"),
+                      ctx->GetInputDim("AttnDropoutOut"));
     ctx->SetOutputDim(framework::GradVarName("SrcMaskOut"),
                       ctx->GetInputDim("SrcMaskOut"));
     ctx->SetOutputDim(framework::GradVarName("QKVOut"),
@@ -476,8 +482,8 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
 #if 1
     ctx->SetOutputDim(framework::GradVarName("OutLinearOut"),
                       ctx->GetInputDim("OutLinearOut"));
-    ctx->SetOutputDim(framework::GradVarName("DropoutMaskOut"),
-                      ctx->GetInputDim("DropoutMaskOut"));
+    // ctx->SetOutputDim(framework::GradVarName("DropoutMaskOut"),
+    //                   ctx->GetInputDim("DropoutMaskOut"));
     ctx->SetOutputDim(framework::GradVarName("BiasDropoutResidualOut"),
                       ctx->GetInputDim("BiasDropoutResidualOut"));
 #endif
@@ -551,6 +557,8 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("QKOut", this->Output("QKOut"));
     op->SetInput("QKTVOut", this->Output("QKTVOut"));
     op->SetInput("SoftmaxOut", this->Output("SoftmaxOut"));
+    op->SetInput("AttnDropoutMaskOut", this->Output("AttnDropoutMaskOut"));
+    op->SetInput("AttnDropoutOut", this->Output("AttnDropoutOut"));
     op->SetInput("SrcMaskOut", this->Output("SrcMaskOut"));
     op->SetInput("FMHAOut", this->Output("FMHAOut"));
     op->SetInput("OutLinearOut", this->Output("OutLinearOut"));
@@ -577,13 +585,15 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("QKOut"), this->OutputGrad("QKOut"));
     op->SetOutput(framework::GradVarName("SoftmaxOut"),
                   this->OutputGrad("SoftmaxOut"));
+    op->SetOutput(framework::GradVarName("AttnDropoutOut"),
+                  this->OutputGrad("AttnDropoutOut"));
     op->SetOutput(framework::GradVarName("SrcMaskOut"),
                   this->OutputGrad("SrcMaskOut"));
     op->SetOutput(framework::GradVarName("FMHAOut"),
                   this->OutputGrad("FMHAOut"));
 #if 1
-    op->SetOutput(framework::GradVarName("DropoutMaskOut"),
-                  this->OutputGrad("DropoutMaskOut"));
+    // op->SetOutput(framework::GradVarName("DropoutMaskOut"),
+    //               this->OutputGrad("DropoutMaskOut"));
     op->SetOutput(framework::GradVarName("BiasDropoutResidualOut"),
                   this->OutputGrad("BiasDropoutResidualOut"));
 #endif

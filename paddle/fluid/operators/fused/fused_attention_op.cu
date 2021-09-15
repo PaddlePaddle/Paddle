@@ -76,6 +76,8 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     auto *qk_out = ctx.Output<Tensor>("QKOut");
     auto *qktv_out = ctx.Output<Tensor>("QKTVOut");
     auto *softmax_out = ctx.Output<Tensor>("SoftmaxOut");
+    auto *attn_dropout_mask_out = ctx.Output<Tensor>("AttnDropoutMaskOut");
+    auto *attn_dropout_out = ctx.Output<Tensor>("AttnDropoutOut");
     auto *src_mask_out = ctx.Output<Tensor>("SrcMaskOut");
     auto *fmha_out = ctx.Output<Tensor>("FMHAOut");
 
@@ -96,16 +98,19 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     const float ln2epsilon = ctx.Attr<float>("ln2epsilon");
 #endif
 
-    // #if 0
-    //     auto& dropout_implementation_1 =
-    //           ctx.Attr<std::string>("dropout_implementation1");
-    //     bool is_upscale_in_train_1 = (dropout_implementation_1 ==
-    //     "upscale_in_train");
-    //     bool is_test_1 = ctx.Attr<bool>("is_test1");
-    //     auto* seed_1 = ctx.HasInput("Seed1") ? ctx.Input<Tensor>("Seed1") :
-    //     nullptr;
-    //     float attn_dropout_prob = ctx.Attr<float>("attn_dropout_prob");
-    // #endif
+#if 1
+    float attn_dropout_prob = ctx.Attr<float>("attn_dropout_prob");
+    std::cout << "limin: attn_dropout_prob = " << attn_dropout_prob
+              << std::endl;
+    bool is_test_1 = ctx.Attr<bool>("is_test1");
+    auto &dropout_implementation_1 =
+        ctx.Attr<std::string>("dropout_implementation1");
+    bool is_upscale_in_train_1 =
+        (dropout_implementation_1 == "upscale_in_train");
+    auto *seed_1 = ctx.HasInput("Seed1") ? ctx.Input<Tensor>("Seed1") : nullptr;
+    bool is_fix_seed_1 = ctx.Attr<bool>("fix_seed1");
+    int seed_val_1 = ctx.Attr<int>("seed1");
+#endif
 
     // final output.
     auto *out = ctx.Output<Tensor>("Y");
@@ -134,6 +139,10 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     auto *qktv_out_data = qktv_out->mutable_data<T>(ctx.GetPlace());
     auto *src_mask_out_data = src_mask_out->mutable_data<T>(ctx.GetPlace());
     auto *softmax_out_data = softmax_out->mutable_data<T>(ctx.GetPlace());
+    auto *attn_dropout_mask_out_data =
+        attn_dropout_mask_out->mutable_data<uint8_t>(ctx.GetPlace());
+    auto *attn_dropout_out_data =
+        attn_dropout_out->mutable_data<T>(ctx.GetPlace());
     auto *fmha_out_data = fmha_out->mutable_data<T>(ctx.GetPlace());
 
     // get data ptr for out_linear.
@@ -176,8 +185,16 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     auto qkv_compute =
         AttnMatMul<T>(ctx.cuda_device_context(), transA, transB, bsz_seq,
                       output_size, input_size, compute_bias);
-    auto fmha_ref_compute = FMHARef<T>(ctx.cuda_device_context(), batch_size,
-                                       max_seq_len, num_head, dim_head);
+
+    // AttnDropoutParam(bool is_test, const std::string dropout_implementation,
+    // float dropout_prob, bool is_upscale_in_train,
+    // bool is_fix_seed, int seed_val, const Tensor* seed) {
+    AttnDropoutParam attn_dropout_param(
+        is_test_1, dropout_implementation_1, attn_dropout_prob,
+        is_upscale_in_train_1, is_fix_seed_1, seed_val_1, seed_1);
+    auto fmha_ref_compute =
+        FMHARef<T>(ctx.cuda_device_context(), batch_size, max_seq_len, num_head,
+                   dim_head, attn_dropout_param);
     // out_linear
     output_size = hidden_size;
     transA = false;
@@ -205,8 +222,9 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     }
     // compute FMHA
     fmha_ref_compute.ComputeForward(*qkv_bias_out, *src_mask, transpose_out_2,
-                                    qk_out, src_mask_out, softmax_out, qktv_out,
-                                    fmha_out);
+                                    qk_out, src_mask_out, softmax_out,
+                                    attn_dropout_mask_out, attn_dropout_out,
+                                    qktv_out, fmha_out);
 // fmha_out: [batch_size, seq_len, num_head, head_dim]
 // weight: [1024, 1024], [embed_dim, embed_dim]
 // out_linear_out: [batch_size, seq_len, embed_dim]
@@ -234,6 +252,18 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     const float epsilon = ctx.Attr<float>("epsilon");
 #if 1
     const float ln2epsilon = ctx.Attr<float>("ln2epsilon");
+#endif
+
+#if 1
+    float attn_dropout_prob = ctx.Attr<float>("attn_dropout_prob");
+    bool is_test_1 = ctx.Attr<bool>("is_test1");
+    auto &dropout_implementation_1 =
+        ctx.Attr<std::string>("dropout_implementation1");
+    bool is_upscale_in_train_1 =
+        (dropout_implementation_1 == "upscale_in_train");
+    auto *seed_1 = ctx.HasInput("Seed1") ? ctx.Input<Tensor>("Seed1") : nullptr;
+    bool is_fix_seed_1 = ctx.Attr<bool>("fix_seed1");
+    int seed_val_1 = ctx.Attr<int>("seed1");
 #endif
 
     // get inputs.
@@ -273,6 +303,8 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     auto *qk_out = ctx.Input<Tensor>("QKOut");
     auto *qktv_out = ctx.Input<Tensor>("QKTVOut");
     auto *softmax_out = ctx.Input<Tensor>("SoftmaxOut");
+    auto *attn_dropout_mask_out = ctx.Input<Tensor>("AttnDropoutMaskOut");
+    auto *attn_dropout_out = ctx.Input<Tensor>("AttnDropoutOut");
     auto *src_mask_out = ctx.Input<Tensor>("SrcMaskOut");
     auto *out_linear_out = ctx.Input<Tensor>("OutLinearOut");
 #if 1
@@ -311,14 +343,16 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     auto *d_qk_out = ctx.Output<Tensor>(framework::GradVarName("QKOut"));
     auto *d_softmax_out =
         ctx.Output<Tensor>(framework::GradVarName("SoftmaxOut"));
+    auto *d_attn_dropout_out =
+        ctx.Output<Tensor>(framework::GradVarName("AttnDropoutOut"));
     auto *d_src_mask_out =
         ctx.Output<Tensor>(framework::GradVarName("SrcMaskOut"));
     auto *d_fmha_out = ctx.Output<Tensor>(framework::GradVarName("FMHAOut"));
     auto *d_out_linear_out =
         ctx.Output<Tensor>(framework::GradVarName("OutLinearOut"));
 #if 1
-    auto *d_dropout_mask_out =
-        ctx.Output<Tensor>(framework::GradVarName("DropoutMaskOut"));
+    // auto *d_dropout_mask_out =
+    //     ctx.Output<Tensor>(framework::GradVarName("DropoutMaskOut"));
     auto *d_bias_dropout_residual_out =
         ctx.Output<Tensor>(framework::GradVarName("BiasDropoutResidualOut"));
 #endif
@@ -331,13 +365,15 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
         d_transpose_out_2->mutable_data<T>(ctx.GetPlace());
     auto *d_qk_out_data = d_qk_out->mutable_data<T>(ctx.GetPlace());
     auto *d_softmax_out_data = d_softmax_out->mutable_data<T>(ctx.GetPlace());
+    auto *d_attn_dropout_out_data =
+        d_attn_dropout_out->mutable_data<T>(ctx.GetPlace());
     auto *d_src_mask_out_data = d_src_mask_out->mutable_data<T>(ctx.GetPlace());
     auto *d_fmha_out_data = d_fmha_out->mutable_data<T>(ctx.GetPlace());
     auto *d_out_linear_out_data =
         d_out_linear_out->mutable_data<T>(ctx.GetPlace());
 #if 1
-    auto *d_dropout_mask_out_data =
-        d_dropout_mask_out->mutable_data<uint8_t>(ctx.GetPlace());
+    // auto *d_dropout_mask_out_data =
+    //     d_dropout_mask_out->mutable_data<uint8_t>(ctx.GetPlace());
     auto *d_bias_dropout_residual_out_data =
         d_bias_dropout_residual_out->mutable_data<T>(ctx.GetPlace());
 #endif
@@ -404,8 +440,12 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
         AttnMatMul<T>(ctx.cuda_device_context(), transA, transB, bsz_seq,
                       output_size, input_size, compute_bias);
     // fmha
-    auto fmha_ref_compute = FMHARef<T>(ctx.cuda_device_context(), batch_size,
-                                       max_seq_len, num_head, dim_head);
+    AttnDropoutParam attn_dropout_param(
+        is_test_1, dropout_implementation_1, attn_dropout_prob,
+        is_upscale_in_train_1, is_fix_seed_1, seed_val_1, seed_1);
+    auto fmha_ref_compute =
+        FMHARef<T>(ctx.cuda_device_context(), batch_size, max_seq_len, num_head,
+                   dim_head, attn_dropout_param);
     // out_linear
     output_size = hidden_size;
     transA = false;
@@ -437,8 +477,9 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
 #endif
 #if 1
     fmha_ref_compute.ComputeBackward(
-        *transpose_out_2, *src_mask, *softmax_out, *qk_out, *src_mask_out,
-        *d_fmha_out, d_qktv_out, d_softmax_out, d_src_mask_out, d_qk_out,
+        *transpose_out_2, *src_mask, *softmax_out, *attn_dropout_mask_out,
+        *attn_dropout_out, *qk_out, *src_mask_out, *d_fmha_out, d_qktv_out,
+        d_attn_dropout_out, d_softmax_out, d_src_mask_out, d_qk_out,
         d_transpose_out_2, nullptr, d_qkv_bias_out);
     // d_qkv_bias_out->d_qkv_out
     // batch_size, seq_len, 3, num_head, head_size
@@ -466,9 +507,6 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     ins.emplace_back(d_x);
     outs.emplace_back(d_x);
     int elewise_add_axis = -1;
-    // LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-    //     ctx.cuda_device_context(), ins, &outs, elewise_add_axis,
-    //     CudaAddFunctor<T>());
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
         ctx.cuda_device_context(), ins, &outs, elewise_add_axis,
         AddFunctor<T>());
