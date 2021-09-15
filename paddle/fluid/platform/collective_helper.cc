@@ -72,8 +72,8 @@ class NCCLCommImpl : public NCCLComm {
   std::shared_ptr<platform::CudaEventObject> comm_event_;
 };
 
-NCCLComm* NCCLCommContext::CreateNCCLComm(ncclUniqueId* nccl_id, int nranks,
-                                          int rank, int dev_id, int ring_id) {
+NCCLComm* NCCLCommContext::CreateComm(ncclUniqueId* nccl_id, int nranks,
+                                      int rank, int dev_id, int ring_id) {
   PADDLE_ENFORCE_NOT_NULL(nccl_id,
                           platform::errors::InvalidArgument(
                               "The nccl unique id should not be null."));
@@ -133,6 +133,50 @@ void NCCLCommContext::CreateAllNCCLComms(const std::vector<int>& dev_ids,
     AssignNCCLComm(comms[i], dev_ids.size(), i, dev_ids[i], ring_id);
     VLOG(1) << "nccl communicator of rank " << i << " in ring " << ring_id
             << " has been created on device " << dev_ids[i];
+  }
+
+  std::call_once(once_flag_, []() {
+    std::atexit([]() { NCCLCommContext::Instance().ReleaseNCCLComms(); });
+  });
+}
+
+void NCCLCommContext::CreateNCCLCommMultiTrainer(
+    const std::vector<int>& dev_ids, ncclUniqueId* nccl_id, int ntrainers,
+    int train_id, int ring_id) {
+  PADDLE_ENFORCE_GT(
+      dev_ids.size(), 0,
+      paddle::platform::errors::InvalidArgument(
+          "dev ids = [%d], it should greater than 0.", dev_ids.size()));
+  const int kDevices = dev_ids.size();
+  VLOG(3) << "Begin CreateNCCLCommMultiTrainer. device number: " << kDevices
+          << ", ntrainers: " << ntrainers << ", train_id: " << train_id
+          << ", rind_id: " << ring_id;
+  ncclComm_t comms[kDevices];
+  {
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupStart());
+    for (int i = 0; i < kDevices; i++) {
+#ifdef PADDLE_WITH_HIP
+      PADDLE_ENFORCE_CUDA_SUCCESS(hipSetDevice(i));
+#else
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaSetDevice(i));
+#endif
+      platform::dynload::ncclCommInitRank(comms + i, kDevices * ntrainers,
+                                          *nccl_id, train_id * kDevices + i);
+      VLOG(3) << "ncclCommInitRank: " << i;
+    }
+    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupEnd());
+    VLOG(3) << "nccl group end seccessss";
+  }
+  PADDLE_ENFORCE_EQ(comm_map_.count(ring_id), 0,
+                    platform::errors::InvalidArgument(
+                        "comm_map_ of ring_id: %s should be 0. %s is provided",
+                        ring_id, comm_map_.count(ring_id)));
+  for (int i = 0; i < kDevices; ++i) {
+    AssignNCCLComm(comms[i], kDevices * ntrainers, train_id * kDevices + i,
+                   dev_ids[i], ring_id);
+    VLOG(3) << "nccl communicator of train_id " << train_id * kDevices + i
+            << " in ring " << ring_id << " has been created on device "
+            << dev_ids[i];
   }
 
   std::call_once(once_flag_, []() {
@@ -225,8 +269,8 @@ class BKCLCommImpl : public BKCLComm {
   std::unique_ptr<XPUDeviceContext> dev_ctx_;
 };
 
-BKCLComm* BKCLCommContext::CreateBKCLComm(BKCLUniqueId* bkcl_id, int nranks,
-                                          int rank, int dev_id, int ring_id) {
+BKCLComm* BKCLCommContext::CreateComm(BKCLUniqueId* bkcl_id, int nranks,
+                                      int rank, int dev_id, int ring_id) {
   PADDLE_ENFORCE_NOT_NULL(bkcl_id,
                           platform::errors::InvalidArgument(
                               "The bkcl unique id should not be null."));

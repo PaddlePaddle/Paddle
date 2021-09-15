@@ -32,7 +32,7 @@ import paddle.fluid.core as core
 from paddle.fluid.backward import append_backward
 from paddle.fluid.op import Operator
 from paddle.fluid.executor import Executor
-from paddle.fluid.framework import Program, OpProtoHolder, Variable
+from paddle.fluid.framework import Program, OpProtoHolder, Variable, _current_expected_place
 from paddle.fluid.tests.unittests.testsuite import (
     create_op,
     set_input,
@@ -1349,7 +1349,8 @@ class OpTest(unittest.TestCase):
         places = self._get_places()
         for place in places:
             res = self.check_output_with_place(place, atol, no_check_set,
-                                               equal_nan, check_dygraph)
+                                               equal_nan, check_dygraph,
+                                               inplace_atol)
             if check_dygraph:
                 outs, dygraph_outs, fetch_list = res
             else:
@@ -1434,7 +1435,8 @@ class OpTest(unittest.TestCase):
                               max_relative_error=0.005,
                               user_defined_grads=None,
                               user_defined_grad_outputs=None,
-                              check_dygraph=True):
+                              check_dygraph=True,
+                              numeric_place=None):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -1491,13 +1493,7 @@ class OpTest(unittest.TestCase):
         if not type(output_names) is list:
             output_names = [output_names]
 
-        # FIXME: Replace numeric_place with place to calculate numeric_grads.
-        # NOTE(liym27): There is an unknown error when call op.run() on NPUPlace, which
-        # needs to be fixed.
-        if hasattr(self.__class__,
-                   "use_npu") and self.__class__.use_npu == True:
-            numeric_place = paddle.CPUPlace()
-        else:
+        if numeric_place is None:
             numeric_place = place
 
         numeric_grads = user_defined_grads or [
@@ -1783,3 +1779,16 @@ class OpTest(unittest.TestCase):
                              fetch_list,
                              scope=scope,
                              return_numpy=False)))
+
+
+class OpTestTool:
+    @classmethod
+    def skip_if(cls, condition: object, reason: str):
+        return unittest.skipIf(condition, reason)
+
+    @classmethod
+    def skip_if_not_cpu_bf16(cls):
+        return OpTestTool.skip_if(
+            not (isinstance(_current_expected_place(), core.CPUPlace) and
+                 core.supports_bfloat16()),
+            "Place does not support BF16 evaluation")

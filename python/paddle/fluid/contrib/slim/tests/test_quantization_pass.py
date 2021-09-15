@@ -678,7 +678,7 @@ class TestAddQuantDequantPass(unittest.TestCase):
         self.residual_block_quant(
             quantizable_op_type, skip_pattern='skip_quant', for_ci=True)
 
-    def test_residual_block_skip_pattern(self):
+    def test_residual_block_skip_pattern_1(self):
         quantizable_op_type = ['elementwise_add', 'pool2d', 'mul', 'matmul']
         self.residual_block_quant(
             quantizable_op_type,

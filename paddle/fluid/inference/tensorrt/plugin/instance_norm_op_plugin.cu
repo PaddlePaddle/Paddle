@@ -17,7 +17,6 @@
 #include <vector>
 #include "glog/logging.h"
 #include "paddle/fluid/inference/tensorrt/plugin/instance_norm_op_plugin.h"
-#include "paddle/fluid/inference/tensorrt/plugin/trt_plugin_factory.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
 
 namespace paddle {
@@ -40,22 +39,22 @@ cudnnStatus_t convert_trt2cudnn_dtype(nvinfer1::DataType trt_dtype,
   return CUDNN_STATUS_SUCCESS;
 }
 
-InstanceNormPlugin *CreateInstanceNormPluginDeserialize(const void *buffer,
-                                                        size_t length) {
-  return new InstanceNormPlugin(buffer, length);
-}
-REGISTER_TRT_PLUGIN("instance_norm_plugin",
-                    CreateInstanceNormPluginDeserialize);
-
-int InstanceNormPlugin::initialize() { return 0; }
+int InstanceNormPlugin::initialize() TRT_NOEXCEPT { return 0; }
 
 nvinfer1::Dims InstanceNormPlugin::getOutputDimensions(
-    int index, const nvinfer1::Dims *inputDims, int nbInputs) {
+    int index, const nvinfer1::Dims *inputDims, int nbInputs) TRT_NOEXCEPT {
   assert(nbInputs == 1);
   assert(index < this->getNbOutputs());
   nvinfer1::Dims const &input_dims = inputDims[0];
   nvinfer1::Dims output_dims = input_dims;
   return output_dims;
+}
+
+bool InstanceNormPlugin::supportsFormat(
+    nvinfer1::DataType type, nvinfer1::PluginFormat format) const TRT_NOEXCEPT {
+  return ((type == nvinfer1::DataType::kFLOAT ||
+           type == nvinfer1::DataType::kHALF) &&
+          (format == nvinfer1::PluginFormat::kLINEAR));
 }
 
 int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,
@@ -64,7 +63,7 @@ int InstanceNormPlugin::enqueue(int batch_size, const void *const *inputs,
 #else
                                 void *const *outputs, void *workspace,
 #endif
-                                cudaStream_t stream) {
+                                cudaStream_t stream) TRT_NOEXCEPT {
   const auto &input_dims = this->getInputDims(0);
 
   PADDLE_ENFORCE_EQ(input_dims.nbDims, 3,

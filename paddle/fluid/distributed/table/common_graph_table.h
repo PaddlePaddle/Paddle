@@ -46,6 +46,7 @@ class GraphShard {
     }
     return res;
   }
+
   GraphNode *add_graph_node(uint64_t id);
   FeatureNode *add_feature_node(uint64_t id);
   Node *find_node(uint64_t id);
@@ -122,6 +123,11 @@ class GraphTable : public SparseTable {
                                 const std::vector<std::string> &feature_names,
                                 std::vector<std::vector<std::string>> &res);
 
+  virtual int32_t set_node_feat(
+      const std::vector<uint64_t> &node_ids,
+      const std::vector<std::string> &feature_names,
+      const std::vector<std::vector<std::string>> &res);
+
  protected:
   std::vector<GraphShard> shards;
   size_t shard_start, shard_end, server_num, shard_num_per_table, shard_num;
@@ -136,6 +142,7 @@ class GraphTable : public SparseTable {
   std::string table_type;
 
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
+  std::vector<std::shared_ptr<std::mt19937_64>> _shards_task_rng_pool;
 };
 }  // namespace distributed
 

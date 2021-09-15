@@ -45,6 +45,7 @@ BLACK_LIST = {
     'softmax',
     'softmax_with_cross_entropy',
     'sigmoid_cross_entropy_with_logits',
+    'c_softmax_with_cross_entropy',
     'cross_entropy',
     'cross_entropy2',
     # default fp32 can avoid return inf when the sum value large than 65504
@@ -88,6 +89,17 @@ def _update_list(custom_white_list, custom_black_list):
                 _white_list.remove(op_name)
             _black_list.add(op_name)
     return _white_list, _black_list
+
+
+def _in_amp_guard():
+    """
+    Judge whether current code block is in `amp_guard` context.
+    """
+    tracer = _dygraph_tracer()
+    if tracer:
+        return tracer._enable_autocast
+    else:
+        return False
 
 
 @signature_safe_contextmanager

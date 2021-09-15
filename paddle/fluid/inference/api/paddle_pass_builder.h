@@ -144,6 +144,10 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \return A bool variable implying whether we are in xpu mode.
   bool use_xpu() const { return use_xpu_; }
 
+  /// \brief Check if we are using npu.
+  /// \return A bool variable implying whether we are in npu mode.
+  bool use_npu() const { return use_npu_; }
+
   /// \brief Default destructor.
   virtual ~PassStrategy() = default;
 
@@ -151,6 +155,7 @@ class PD_INFER_DECL PassStrategy : public PaddlePassBuilder {
   /// \cond Protected
   bool use_xpu_{false};
   bool use_gpu_{false};
+  bool use_npu_{false};
   bool use_mkldnn_{false};
   /// \endcond
 };
@@ -236,7 +241,22 @@ class PD_INFER_DECL GpuPassStrategy : public PassStrategy {
 /// mode.
 class PD_INFER_DECL XpuPassStrategy final : public PassStrategy {
  public:
-  XpuPassStrategy() : PassStrategy({}) {}
+  XpuPassStrategy() : PassStrategy({}) { use_xpu_ = true; }
+};
+
+/// \class NpuPassStrategy
+/// \brief The NPU passes controller, it is used in AnalysisPredictor with NPU
+/// mode.
+class PD_INFER_DECL NpuPassStrategy final : public PassStrategy {
+ public:
+  NpuPassStrategy() : PassStrategy({}) { use_npu_ = true; }
+
+  /// \brief Construct by copying another NpuPassStrategy object.
+  /// \param[in] other The NpuPassStrategy object we want to copy.
+  explicit NpuPassStrategy(const NpuPassStrategy &other)
+      : PassStrategy(other.AllPasses()) {
+    use_npu_ = true;
+  }
 };
 
 /// \brief List of tensorRT subgraph passes.

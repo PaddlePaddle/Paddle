@@ -15,6 +15,9 @@ def {
   inputs {
     name: "Variance"
   }
+  inputs {
+    name: "MomentumTensor"
+  }
   outputs {
     name: "Y"
   }
@@ -39,28 +42,17 @@ def {
   }
 }
 extra {
-  inputs {
-    name: "MomentumTensor"
-  }
-   attrs {
-    name: "@ENABLE_CACHE_RUNTIME_CONTEXT@"
-    type: BOOLEAN
-  } 
-  attrs {
-    name: "is_test"
-    type: BOOLEAN
-  }
   attrs {
     name: "momentum"
     type: FLOAT
   }
   attrs {
-    name: "data_layout"
-    type: STRING
+    name: "Y0_threshold"
+    type: FLOAT
   }
   attrs {
-    name: "use_mkldnn"
-    type: BOOLEAN
+    name: "data_layout"
+    type: STRING
   }
   attrs {
     name: "fuse_with_relu"
@@ -73,26 +65,6 @@ extra {
   attrs {
     name: "trainable_statistics"
     type: BOOLEAN
-  }
-  attrs {
-    name: "op_role"
-    type: INT
-  }
-  attrs {
-    name: "op_role_var"
-    type: STRINGS
-  }
-  attrs {
-    name: "op_namescope"
-    type: STRING
-  }
-  attrs {
-    name: "op_callstack"
-    type: STRINGS
-  }
-  attrs {
-    name: "op_device"
-    type: STRING
   }
 }
 

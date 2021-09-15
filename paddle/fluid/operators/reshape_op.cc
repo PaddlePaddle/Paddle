@@ -185,6 +185,8 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 framework::make_ddim(shape), i, shape[i]));
       }
 
+      // NOTE all non-zero values will be converted to True (include negative
+      // value)
       capacity *= (shape[i] ? shape[i] : in_dims[i]);
       output_shape[i] =
           (shape[i] ? static_cast<int64_t>(shape[i]) : in_dims[i]);
@@ -222,15 +224,38 @@ class ReshapeOp : public framework::OperatorWithKernel {
                 in_dims, in_size, framework::make_ddim(shape), capacity));
       }
     }
+
+    // support reshape with zero-input(input tensor with product(shape) == 0)
+    // by now we require that if the input tensor is zero shape, the target
+    // shape of output must be zero
+    if (in_size == 0) {
+      PADDLE_ENFORCE_EQ(
+          capacity, in_size,
+          platform::errors::InvalidArgument(
+              "The 'shape' in ReshapeOp is invalid. "
+              "The input tensor X's shape = [%s], X's capacity = %d."
+              "But the target shape of Out is [%s],  the "
+              "capacity of 'Out' is %d.",
+              in_dims, in_size, framework::make_ddim(shape), capacity));
+    }
+
     return framework::make_ddim(output_shape);
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(
@@ -269,6 +294,10 @@ class ReshapeOpMaker : public framework::OpProtoAndCheckerMaker {
         "It has the lowest priority compare with Input(Shape) and "
         " Input(ShapeTensor).")
         .SetDefault({});
+    AddAttr<bool>("use_mkldnn",
+                  "(bool, default false) Only used in mkldnn kernel")
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 Reshape Operator.
 
@@ -334,9 +363,17 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"),
-        ctx.device_context());
+    auto input_data_type =
+        framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
 
@@ -517,9 +554,17 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(OperatorWithKernel::IndicateVarDataType(
-                                       ctx, framework::GradVarName("Out")),
-                                   ctx.device_context());
+    auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
+        ctx, framework::GradVarName("Out"));
+
+#ifdef PADDLE_WITH_MKLDNN
+    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+                                     framework::DataLayout::kMKLDNN,
+                                     framework::LibraryType::kMKLDNN);
+    }
+#endif
+    return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
   framework::OpKernelType GetKernelTypeForVar(

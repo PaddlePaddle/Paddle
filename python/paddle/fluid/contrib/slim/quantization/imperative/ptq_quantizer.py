@@ -24,11 +24,9 @@ from . import utils
 from ..cal_kl_threshold import cal_kl_threshold
 
 __all__ = [
-    'BaseQuantizer',
-    'AbsmaxQuantizer',
-    'PerChannelAbsmaxQuantizer',
-    'KLQuantizer',
-    'HistQuantizer',
+    'BaseQuantizer', 'AbsmaxQuantizer', 'PerChannelAbsmaxQuantizer',
+    'KLQuantizer', 'HistQuantizer', 'SUPPORT_ACT_QUANTIZERS',
+    'SUPPORT_WT_QUANTIZERS'
 ]
 
 
@@ -110,6 +108,7 @@ class BaseQuantizer(object):
 
         self.quant_bits = quant_bits
 
+        self.abs_max_vals = []
         self.thresholds = []
 
     @abc.abstractmethod
@@ -133,10 +132,10 @@ class AbsmaxQuantizer(BaseQuantizer):
         assert isinstance(tensors, tuple)
 
         abs_max_vals = [abs_max_value(t) for t in tensors]
-        self.thresholds = merge_max_value(self.thresholds, abs_max_vals)
+        self.abs_max_vals = merge_max_value(self.abs_max_vals, abs_max_vals)
 
     def cal_thresholds(self):
-        pass
+        self.thresholds = self.abs_max_vals
 
 
 class PerChannelAbsmaxQuantizer(BaseQuantizer):
@@ -164,10 +163,11 @@ class PerChannelAbsmaxQuantizer(BaseQuantizer):
                 ]
                 abs_max_vals_list.append(abs_max_vals)
 
-        self.thresholds = merge_max_value(self.thresholds, abs_max_vals_list)
+        self.abs_max_vals = merge_max_value(self.abs_max_vals,
+                                            abs_max_vals_list)
 
     def cal_thresholds(self):
-        pass
+        self.thresholds = self.abs_max_vals
 
 
 @six.add_metaclass(abc.ABCMeta)
@@ -180,7 +180,6 @@ class BaseHistQuantizer(BaseQuantizer):
         self.bins = bins
         self.upsample_bins = upsample_bins
 
-        self.abs_max_vals = []
         self.hists = []
 
     def sample_data(self, layer, tensors):
@@ -262,3 +261,7 @@ class KLQuantizer(BaseHistQuantizer):
                 bin_width = abs_max_val / hist.shape[0]
                 threshold = cal_kl_threshold(hist, bin_width, self.quant_bits)
                 self.thresholds.append(threshold)
+
+
+SUPPORT_ACT_QUANTIZERS = [AbsmaxQuantizer, HistQuantizer, KLQuantizer]
+SUPPORT_WT_QUANTIZERS = [AbsmaxQuantizer, PerChannelAbsmaxQuantizer]

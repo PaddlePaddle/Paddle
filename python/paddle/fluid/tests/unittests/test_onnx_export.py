@@ -52,7 +52,7 @@ class TestExportWithTensor(unittest.TestCase):
         paddle.onnx.export(model, 'linear_net', input_spec=[self.x_spec])
 
 
-class TestExportWithTensor(unittest.TestCase):
+class TestExportWithTensor1(unittest.TestCase):
     def setUp(self):
         self.x = paddle.to_tensor(np.random.random((1, 128)))
 

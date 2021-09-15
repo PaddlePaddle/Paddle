@@ -36,16 +36,17 @@ inline void CheckAndUpdateSliceAttrs(const framework::DDim in_dims,
       if (infer_flags != nullptr && (*infer_flags)[i] == -1) {
         continue;
       }
-      T start = (*starts)[i] < 0 ? ((*starts)[i] + dim_value) : (*starts)[i];
-      start = std::max(start, static_cast<T>(0));
-
-      T end = (*ends)[i] < 0 ? ((*ends)[i] + dim_value) : (*ends)[i];
-      end = std::min(end, dim_value);
-
       T step = steps == nullptr ? 1 : (*steps)[i];
       PADDLE_ENFORCE_NE(
           step, 0, platform::errors::InvalidArgument(
                        "Step should not be 0, but received step = %d.", step));
+
+      T start = (*starts)[i] < 0 ? ((*starts)[i] + dim_value) : (*starts)[i];
+      start = std::max(start, static_cast<T>(0));
+
+      T end =
+          0 < step && (*ends)[i] < 0 ? ((*ends)[i] + dim_value) : (*ends)[i];
+      end = std::min(end, dim_value);
 
       if (step > 0) {
         start = std::min(start, dim_value);

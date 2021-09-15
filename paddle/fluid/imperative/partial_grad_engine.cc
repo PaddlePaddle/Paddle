@@ -73,6 +73,7 @@ static void GetGraphInfoBetweenTargets(
     std::unordered_map<OpBase *, size_t> *op_deps_ptr,
     std::unordered_set<VariableWrapper *> *related_grad_vars_ptr,
     const std::unordered_set<VariableWrapper *> &no_grad_var_grad) {
+  VLOG(10) << "prune graph starts";
   /**
    * Step 1. Find the candidate startup grad ops, prepared for following BFS.
    */
@@ -117,6 +118,8 @@ static void GetGraphInfoBetweenTargets(
     auto *op = op_node_pair.first;
     auto *node = op_node_pair.second;
 
+    VLOG(10) << "Visit node " << node << " , visit op " << op->Type();
+
     for (auto &output_pair : op->GetOutsMap()) {
       if (!output_pair.second.IsGrad()) {
         VLOG(10) << "WARNING: " << op->Type() << " outputs a forward var";
@@ -135,6 +138,7 @@ static void GetGraphInfoBetweenTargets(
 
     for (auto &pending_node : node->GradPendingNodes()) {
       if (visited.count(pending_node.get()) == 0) {
+        visited.insert(pending_node.get());
         for (auto &pending_op : *pending_node) {
           preceding_ops[&pending_op].insert(op);
           q.emplace(&pending_op, pending_node.get());
@@ -142,6 +146,8 @@ static void GetGraphInfoBetweenTargets(
       }
     }
   }
+
+  VLOG(10) << "Found endpoint op ends";
 
   /**
    * Step 3. Based on the found input_target_grads, BFS the graph in reverse
@@ -245,6 +251,8 @@ static void GetGraphInfoBetweenTargets(
       startup_ops.insert(op);
     }
   }
+
+  VLOG(10) << "Found startup op ends";
 
   /**
    * Step 4. Prune output_targets which is not the input of startup_ops

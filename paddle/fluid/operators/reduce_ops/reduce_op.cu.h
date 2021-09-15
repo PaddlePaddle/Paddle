@@ -33,35 +33,21 @@ namespace cub = hipcub;
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/amp/fp16_type_traits.h"
+#include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
+#include "paddle/fluid/platform/fast_divmod.h"
 
 // Reduce split or not, Whether to use ReduceHigherDim
 #define REDUCE_SPLIT_BOUNDARY 512
+#define REDUCE_VEC_SIZE 4
 
 namespace paddle {
 namespace operators {
-namespace detail {
 
-// Post processing function for sum, max, min, prod, any
-template <typename Tx, typename Ty = Tx>
-struct IdentityFunctor {
-  HOSTDEVICE explicit inline IdentityFunctor(int n) {}
+namespace kps = paddle::operators::kernel_primitives;
 
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(x);
-  }
-};
-
-// Post processing function for mean
-template <typename T>
-struct DivideFunctor {
-  HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((T)(1.0 / n)) {}
-
-  HOSTDEVICE inline T operator()(const T& x) const { return x * n_inv; }
-
- private:
-  T n_inv;
-};
+namespace details {
 
 static inline int GetLastPow2(int n) {
   n |= (n >> 1);
@@ -71,6 +57,8 @@ static inline int GetLastPow2(int n) {
   n |= (n >> 16);
   return std::max(1, n - (n >> 1));
 }
+
+static inline int64_t AlignUp(int64_t a, int64_t b) { return (a + b - 1) / b; }
 
 // get strides of x_dim, reduce_dim and left_dim for reduceLastDim and reduceAny
 static inline std::vector<int> GetDimStrides(const std::vector<int>& dims,
@@ -85,17 +73,11 @@ static inline std::vector<int> GetDimStrides(const std::vector<int>& dims,
   return strides;
 }
 
-#ifdef __HIPCC__
-constexpr int kMaxThread = 256;
-constexpr int kWarpSize = 64;
-#else
-constexpr int kMaxThread = 128;
-constexpr int kWarpSize = 32;
-#endif
-
 // get blockDim for reduceLastDim and reduceAny
 static inline int GetBlockDim(int block_dim) {
-  return block_dim >= kMaxThread ? kMaxThread : GetLastPow2(block_dim);
+  return block_dim >= kps::details::kReduceMaxThread
+             ? kps::details::kReduceMaxThread
+             : GetLastPow2(block_dim);
 }
 
 // check reduce rand is valid
@@ -122,10 +104,10 @@ static inline void CheckReduceRank(int reduce_rank, int rank) {
 template <typename T, size_t ElementCount, typename VectorLikeType>
 static inline paddle::framework::Array<T, ElementCount> VectorToArray(
     const VectorLikeType& vec) {
-  PADDLE_ENFORCE_EQ(vec.size(), ElementCount,
+  PADDLE_ENFORCE_LE(vec.size(), ElementCount,
                     platform::errors::InvalidArgument(
                         "Cub reduce Array: size not match. Received "
-                        "vec.size() %d !=  ElementCount %d.",
+                        "vec.size() %d > ElementCount %d.",
                         vec.size(), ElementCount));
   size_t n = static_cast<size_t>(vec.size());
   paddle::framework::Array<T, ElementCount> ret;
@@ -135,15 +117,60 @@ static inline paddle::framework::Array<T, ElementCount> VectorToArray(
   return ret;
 }
 
-}  // namespace detail
+}  // namespace details
 
 using Tensor = framework::Tensor;
+constexpr int kMaxRank = framework::DDim::kMaxRank;
 
 enum ReduceType {
-  kReduceAll = 0x00,        // when reduce_rank == x_rank
   kReduceLastDim = 0x01,    // when reduce_dim[0] == x_dim.size() - 1;
   kReduceHigherDim = 0x02,  // ReduceFirstDim or reduceSecondDim
   kReduceAny = 0x03,        // when reduce_dim.size() > 1
+};
+
+struct IndexCalculator {
+  IndexCalculator(int dim, const std::vector<int>& cal_dims,
+                  const std::vector<int>& cal_strides,
+                  const std::vector<int>& full_strides)
+      : dim(dim) {
+    dims = details::VectorToArray<int, kMaxRank>(cal_dims);
+    strides = details::VectorToArray<int, kMaxRank>(full_strides);
+    std::vector<platform::FastDivMod> cal_divmoders;
+    // fast divmod
+    for (auto i : cal_strides) {
+      cal_divmoders.push_back(platform::FastDivMod(i));
+    }
+    divmoders =
+        details::VectorToArray<platform::FastDivMod, kMaxRank>(cal_divmoders);
+  }
+
+  __device__ inline int operator()(int offset) const {
+    int index = 0;
+#pragma unroll
+    for (int i = 0; i < kMaxRank; ++i) {
+      if (i == dim) {
+        break;
+      }
+      auto divmod = divmoders[i].Divmod(offset);
+      index += (divmod.val[0] * strides[dims[i]]);
+      offset = divmod.val[1];
+    }
+    return index;
+  }
+
+  int dim;
+  framework::Array<int, kMaxRank> dims;
+  framework::Array<int, kMaxRank> strides;
+  framework::Array<platform::FastDivMod, kMaxRank> divmoders;
+};
+
+// when reduce_type == kReduceLastDim this struct will be used
+// for higher performance
+struct LastDimIndexCal {
+  explicit LastDimIndexCal(int num) : stride(num) {}
+
+  __device__ inline int operator()(int index) const { return index * stride; }
+  int stride;
 };
 
 // reduce config
@@ -264,6 +291,9 @@ struct ReduceConfig {
     }
 
     left_dim.assign(left_set.begin(), left_set.end());
+
+    // if the last dim gets involved in reduction
+    reduce_last_dim = (reduce_dim.back() == x_dim.size() - 1);
   }
 
   // set x_strides, reduce_strides, left_strides for reduceLastDim and reduceAny
@@ -276,9 +306,9 @@ struct ReduceConfig {
       idx_dim.push_back(i);
     }
 
-    x_strides = detail::GetDimStrides(x_dim, idx_dim);
-    reduce_strides = detail::GetDimStrides(x_dim, reduce_dim);
-    left_strides = detail::GetDimStrides(x_dim, left_dim);
+    x_strides = details::GetDimStrides(x_dim, idx_dim);
+    reduce_strides = details::GetDimStrides(x_dim, reduce_dim);
+    left_strides = details::GetDimStrides(x_dim, left_dim);
     reduce_num = reduce_strides[0] * x_dim[reduce_dim[0]];
 
     left_num = 1;
@@ -295,22 +325,81 @@ struct ReduceConfig {
   void SetReduceType() {
     int rank = x_dim.size();
     int reduce_rank = reduce_dim.size();
-    bool is_large_enough = (reduce_num > REDUCE_SPLIT_BOUNDARY / 2) ||
-                           (left_num > REDUCE_SPLIT_BOUNDARY);
-
-    if (rank == reduce_rank) {
-      reduce_type = static_cast<int>(ReduceType::kReduceAll);
-
-    } else if (rank == 2 && reduce_rank == 1 && reduce_dim[0] == 1) {
+    bool is_last_dim =
+        (rank == 2) && (reduce_rank == 1) && (reduce_dim[0] == 1);
+    if (rank == reduce_rank || is_last_dim) {
       reduce_type = static_cast<int>(ReduceType::kReduceLastDim);
-
-    } else if (reduce_rank == 1 &&
-               ((rank == 2 && is_large_enough) || rank != 2)) {
+    } else if (reduce_rank == 1) {
       // ReduceFirstDim and reduceSecondDim
       reduce_type = static_cast<int>(ReduceType::kReduceHigherDim);
-
     } else {
       reduce_type = static_cast<int>(ReduceType::kReduceAny);
+    }
+  }
+
+  void SetBlockDimForReduceAny(dim3* block_dim, dim3* grid_dim) {
+    constexpr int min_reduce_num_per_thread = 16;
+    constexpr int max_reduce_num_per_thread = 256;
+    constexpr int max_num_threads = kps::details::kReduceMaxThread;
+
+    // set block size.
+    // 1. If reduce_last_dim == true, all the threads whose threadIdx.y are same
+    //    will process the reduction for one output.
+    //    The number of output for one block is blockDim.y;
+    // 2. If reduce_last_dim == false, different threadIdx.x will process
+    //    different reduction and gets the output separately. If it is
+    //    necessary, it should reduce in block y.
+    //    The number of output for one block is blockDim.x;
+    int block_x, block_y;
+    int grid_num, reduce_num_per_thread;
+    if (reduce_last_dim) {
+      block_x = details::GetBlockDim(reduce_num);
+      block_y = details::GetBlockDim(left_num);
+      block_dim->x = block_x;
+      block_dim->y =
+          std::min(block_y, static_cast<int>(max_num_threads / block_dim->x));
+      grid_num = details::AlignUp(left_num, block_dim->y);
+      reduce_num_per_thread = details::AlignUp(reduce_num, block_dim->x);
+    } else {
+      block_x = details::GetBlockDim(left_num);
+      block_y = details::GetBlockDim(reduce_num);
+      block_dim->x = std::min(block_x, 32);
+      block_dim->y =
+          std::min(block_y, static_cast<int>(max_num_threads / block_dim->x));
+      block_dim->x =
+          std::min(block_x, static_cast<int>(max_num_threads / block_dim->y));
+      grid_num = details::AlignUp(left_num, block_dim->x);
+      reduce_num_per_thread = details::AlignUp(reduce_num, block_dim->y);
+    }
+    int device_id = platform::GetCurrentDeviceId();
+    int max_mp = platform::GetCUDAMultiProcessors(device_id);
+    int max_threads_per_mp =
+        platform::GetCUDAMaxThreadsPerMultiProcessor(device_id);
+    int max_threads = max_threads_per_mp * max_mp;
+    int num_threads = block_dim->x * block_dim->y;
+    int max_num_blocks = max_threads / num_threads;
+
+    // set grid size.
+    // Whether to set grid.y larger than 1, there are 3 following rules:
+    // 1. The number that each thread process should no less than
+    //    min_reduce_num_per_threadbut no more than max_reduce_num_per_thread;
+    // 2. It should maximize the utilization of SM.
+    // So we choose the minimum between input_split_num_1 and input_split_num_3
+    // to make each thread process as mush data as possible. Meanwhile,
+    // the number cannot be larger than max_reduce_num_per_thread, so we
+    // choose the maximum between the result above and input_split_num_2.
+    int input_split_num_1 =
+        details::AlignUp(reduce_num_per_thread, min_reduce_num_per_thread);
+    int input_split_num_2 =
+        details::AlignUp(reduce_num_per_thread, max_reduce_num_per_thread);
+    int input_split_num_3 = details::AlignUp(max_num_blocks, grid_num);
+
+    grid_dim->x = grid_num;
+    grid_dim->y = std::max(std::min(input_split_num_1, input_split_num_3),
+                           input_split_num_2);
+    // if grid.y > 1, we need launch reduce kernel again.
+    if (grid_dim->y > 1) {
+      should_reduce_again = true;
     }
   }
 
@@ -320,7 +409,7 @@ struct ReduceConfig {
   // for others: block(block_num, 1) , grid(left_num, 1)
   void SetBlockDim() {
     // init
-    int block_num = detail::GetBlockDim(reduce_num);
+    int block_num = details::GetBlockDim(reduce_num);
     should_reduce_again = false;
 
     dim3 block_dim(block_num, 1);
@@ -346,28 +435,30 @@ struct ReduceConfig {
       int num_block = (max_threads / left_num);
 
       if (num_block > 1 && reduce_num >= REDUCE_SPLIT_BOUNDARY) {
-        blocking_size = detail::GetLastPow2(reduce_num / num_block);
+        blocking_size = details::GetLastPow2(reduce_num / num_block);
 
         if (blocking_size <= 1) {
-          blocking_size = detail::GetLastPow2(sqrt(reduce_num));
+          blocking_size = details::GetLastPow2(sqrt(reduce_num));
         } else if (blocking_size * 2 < reduce_num) {
           blocking_size *= 2;
         }
 
         should_reduce_again = true;
 
-        block_dim.x = 32;
+        block_dim.x = details::GetBlockDim(left_num);
         block_dim.y = 1;
         grid_dim.x = (left_num + block_dim.x - 1) / block_dim.x;
         grid_dim.y = (reduce_num + blocking_size - 1) / blocking_size;
 
       } else {
-        block_dim.x = 32;
+        block_dim.x = details::GetBlockDim(left_num);
         block_dim.y = 1;
         blocking_size = reduce_num;
         grid_dim.x = (left_num + block_dim.x - 1) / block_dim.x;
         grid_dim.y = 1;
       }
+    } else {
+      SetBlockDimForReduceAny(&block_dim, &grid_dim);
     }
 
     block = block_dim;
@@ -388,287 +479,211 @@ struct ReduceConfig {
   int left_num;
   int blocking_size;
   bool should_reduce_again;
+  bool reduce_last_dim;
 
   Ty* output_data;
 
   dim3 block;
   dim3 grid;
 };
-
-template <typename T, typename ReduceOp>
-__device__ __forceinline__ T WarpReduce(T val, ReduceOp reducer) {
-  unsigned mask = 0u;
-  CREATE_SHFL_MASK(mask, true);
-  for (int stride = detail::kWarpSize / 2; stride > 0; stride >>= 1) {
-    T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
-    val = reducer(val, temp);
-  }
-  return val;
-}
-
-/* e.g.
- * |---------block---------|
- * |warp0|warp1|warp2|warp3|
- * |0~31|32~63|64~95|96~127|  ---->blockDim.x = 128
- *  \|/  \|/   \|/    \|/     ---->1. First WarpReduce in each warp
- * res0  res1  res2  res3     ---->2. Store result of each warp to shared memory
- *   \    \    /     /        ---->3. Load the result above from shared memory
- *        res                         to warp0 and process the second WarpReduce
+/* size : how many colonms left have to be reduced
+ * loop : how many rows data have to be reduced
+ * block_size: max rows this block to reduce
  */
-template <typename T, typename ReduceOp>
-__device__ __forceinline__ T BlockReduce(T val, ReduceOp reducer) {
-  using detail::kWarpSize;
-  __shared__ T shared[kWarpSize];
-  int block_dim_x = blockDim.x;
-  if (blockDim.x > kWarpSize) {
-    block_dim_x = blockDim.x / kWarpSize;
-    int lane = threadIdx.x % kWarpSize;
-    int wid = threadIdx.x / kWarpSize;
-    val = WarpReduce(val, reducer);
-    if (lane == 0) {
-      shared[wid] = val;
-    }
-    __syncthreads();
-    val = shared[lane];
-  }
-
-  unsigned mask = 0u;
-  CREATE_SHFL_MASK(mask, true);
-  for (int stride = 1; stride < block_dim_x; stride <<= 1) {
-    T temp = paddle::platform::CudaShuffleDownSync(mask, val, stride);
-    val = reducer(val, temp);
-  }
-  return val;
-}
-
-// when reduce_dim.size() == 1 and reduce_dim[0] == x_dim.size() - 1, this
-// function will be used
-// blockId.x -> left_num, threadId.x -> reduce_num
-template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
-__device__ __forceinline__ void ReduceLastDim(const Tx* x, Ty* y,
-                                              ReduceOp reducer,
-                                              TransformOp transformer, Ty init,
-                                              int reduce_num) {
-  int idx_x = blockIdx.x * reduce_num;
-  int idx_y = threadIdx.x;
-  Ty reduce_var = init;
-  for (int idx_y = threadIdx.x; idx_y < reduce_num; idx_y += blockDim.x) {
-    reduce_var =
-        reducer(reduce_var, static_cast<Ty>(transformer(x[idx_x + idx_y])));
-  }
-  __syncthreads();
-
-  reduce_var = BlockReduce(reduce_var, reducer);
-
-  if (threadIdx.x == 0) {
-    y[blockIdx.x] = reduce_var;
-  }
-}
-
-// when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
-// function will be used
-// eg: x_dim = {nz, ny, nx}, nx != 1, axis can be 0 or 1
-//     if axis = 1 then grid.z = nz, grid.y = ny / block_size, grid.x = nx / 32
-//     else grid.z = 1, grid.y = ny / block_size, grid.x = nx /32
-template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp>
-__device__ __forceinline__ void ReduceHigherDim(const Tx* x, Ty* y,
-                                                ReduceOp reducer,
-                                                TransformOp transformer,
-                                                Ty init, int reduce_num,
-                                                int left_num, int block_size) {
-  int idx = blockIdx.x * blockDim.x + threadIdx.x;
+template <typename Tx, typename Ty, typename MPType, typename ReduceOp,
+          typename TransformOp, bool IsBoundary = false>
+__device__ void HigherDimDealSegment(const Tx* x, Ty* y, ReduceOp reducer,
+                                     TransformOp transformer, MPType init,
+                                     int reduce_num, int left_num,
+                                     int block_size) {
+  const int NY = 1;
+  int idx = blockIdx.x * blockDim.x;
   int idy = blockIdx.y * block_size;
+  // block_offset of rows
+  Tx reduce_input[NY];
+  MPType reduce_compute[NY];
+  MPType result = init;
+  // the offset of this block
+  int block_offset = idy * left_num + idx + blockIdx.z * reduce_num * left_num;
+  const Tx* input = x + block_offset;
+  int store_offset =
+      blockIdx.y * left_num + blockIdx.z * gridDim.y * left_num + idx;
+  // how many columns left
+  int size = left_num - idx;
+  // how many rows have to be reduced
+  int loop = reduce_num - idy;
+  loop = loop > block_size ? block_size : loop;
 
-  Ty reduce_var = init;
-
-  if (idx < left_num) {
-    int loop = reduce_num - idy;
-    loop = loop > block_size ? block_size : loop;
-
-    for (int iy = 0; iy < loop; iy++) {
-      int id = (idy + iy) * left_num + idx + blockIdx.z * reduce_num * left_num;
-      reduce_var = reducer(reduce_var, static_cast<Ty>(transformer(x[id])));
-    }
-
-    y[idx + blockIdx.y * left_num + blockIdx.z * gridDim.y * left_num] =
-        reduce_var;
+  for (int loop_index = 0; loop_index < loop; loop_index += NY) {
+    kps::ReadData<Tx, Tx, 1, NY, 1, IsBoundary>(
+        &reduce_input[0], input + loop_index * left_num, size, NY, 1, left_num);
+    kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
+        &reduce_compute[0], &reduce_input[0], transformer);
+    kps::Reduce<MPType, NY, 1, 1, ReduceOp,
+                kps::details::ReduceMode::kLocalMode>(
+        &result, &reduce_compute[0], reducer, false);
   }
+
+  Ty temp_data = static_cast<Ty>(result);
+  kps::WriteData<Ty, 1, 1, 1, IsBoundary>(y + store_offset, &temp_data, size);
 }
 
+// when reduce_dim.size() == 1 and reduce_dim[0] == x_dim.size() - 1, or
 // when reduce_dim.size() != 1 and reduce_dim.size() != x_dim.size(), this
 // function will be used
-// blockId.x -> left_num, threadId.x -> reduce_num
-template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
-          int Rank, int ReduceRank>
-__device__ __forceinline__ void ReduceAny(
-    const Tx* x, Ty* y, ReduceOp reducer, TransformOp transformer,
-    int reduce_num, paddle::framework::Array<int, Rank> x_strides,
-    paddle::framework::Array<int, ReduceRank> reduce_dim,
-    paddle::framework::Array<int, ReduceRank> reduce_strides,
-    paddle::framework::Array<int, Rank - ReduceRank> left_dim,
-    paddle::framework::Array<int, Rank - ReduceRank> left_strides) {
-  int sub_index[Rank];
-  int left_idx = blockIdx.x;
-  for (int i = 0; i < Rank - ReduceRank; ++i) {
-    sub_index[left_dim[i]] = left_idx / left_strides[i];
-    left_idx %= left_strides[i];
-  }
-
-  int reduce_idx = threadIdx.x;
-  for (int j = 0; j < ReduceRank; ++j) {
-    sub_index[reduce_dim[j]] = reduce_idx / reduce_strides[j];
-    reduce_idx %= reduce_strides[j];
-  }
-
-  int idx_x = 0;
-  for (int k = 0; k < Rank; ++k) {
-    idx_x += (sub_index[k] * x_strides[k]);
-  }
-  Ty reduce_var = static_cast<Ty>(transformer(x[idx_x]));
-
-  for (int i = threadIdx.x + blockDim.x; i < reduce_num; i += blockDim.x) {
-    int reduce_idx = i;
-
-    for (int j = 0; j < ReduceRank; ++j) {
-      sub_index[reduce_dim[j]] = reduce_idx / reduce_strides[j];
-      reduce_idx %= reduce_strides[j];
-    }
-
-    int idx_x = 0;
-    for (int k = 0; k < Rank; ++k) {
-      idx_x += (sub_index[k] * x_strides[k]);
-    }
-
-    reduce_var = static_cast<Ty>(
-        reducer(reduce_var, static_cast<Ty>(transformer(x[idx_x]))));
-  }
-  __syncthreads();
-
-  reduce_var = BlockReduce(reduce_var, reducer);
-  if (threadIdx.x == 0) {
-    y[blockIdx.x] = reduce_var;
-  }
-}
-
-// module function designed for global function
-template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
-          int Rank, int ReduceRank>
-__device__ __forceinline__ void ReduceModule(
-    const Tx* x, Ty* y, ReduceOp reducer, TransformOp transformer, Ty init,
-    int reduce_num, int left_num, int blocking_size, int reduce_type,
-    paddle::framework::Array<int, Rank> x_strides,
-    paddle::framework::Array<int, ReduceRank> reduce_dim,
-    paddle::framework::Array<int, ReduceRank> reduce_strides,
-    paddle::framework::Array<int, Rank - ReduceRank> left_dim,
-    paddle::framework::Array<int, Rank - ReduceRank> left_strides) {
-  // reduce_rank == 1 && reduce_dim[0] == x_dim.size() - 1
-  if (reduce_type == ReduceType::kReduceLastDim) {
-    ReduceLastDim<Tx, Ty, ReduceOp, TransformOp>(x, y, reducer, transformer,
-                                                 init, reduce_num);
-
-    // reduce_rank == 1 && reduce_dim[0] != x_dim.size() - 1
-  } else if (reduce_type == ReduceType::kReduceHigherDim) {
-    ReduceHigherDim<Tx, Ty, ReduceOp, TransformOp>(
-        x, y, reducer, transformer, init, reduce_num, left_num, blocking_size);
-
-    // reduce_rank >= 2
+template <typename Tx, typename Ty, typename MPType, typename ReduceOp,
+          typename TransformOp, typename Calculator>
+__global__ void ReduceAnyKernel(const Tx* x, Ty* y, ReduceOp reducer,
+                                TransformOp transformer, MPType init,
+                                int reduce_num, int left_num,
+                                bool reduce_last_dim,
+                                const Calculator reduce_index_calculator,
+                                const Calculator left_index_calculator) {
+  int input_idx, left_idx, stride;
+  int block_size = 0;
+  bool need_store = true;
+  int tid = 0;
+  // the last dim gets involved in reduction
+  if (reduce_last_dim) {
+    input_idx = blockIdx.y * blockDim.x;
+    left_idx = blockIdx.x * blockDim.y + threadIdx.y;
+    stride = gridDim.y * blockDim.x;
+    block_size = blockDim.x;
+    need_store = (threadIdx.x == 0) && (left_idx < left_num);
+    tid = threadIdx.x;
   } else {
-    ReduceAny<Tx, Ty, ReduceOp, TransformOp, Rank, ReduceRank>(
-        x, y, reducer, transformer, reduce_num, x_strides, reduce_dim,
-        reduce_strides, left_dim, left_strides);
+    input_idx = blockIdx.y * blockDim.y;
+    left_idx = blockIdx.x * blockDim.x + threadIdx.x;
+    stride = gridDim.y * blockDim.y;
+    block_size = blockDim.y;
+    need_store = (threadIdx.y == 0) && (left_idx < left_num);
+    tid = threadIdx.y;
+  }
+  int store_offset = blockIdx.y * left_num + left_idx;
+  // calculate the offset, means the addr where each thread really start.
+  int input_offset = left_index_calculator(left_idx);
+  const Tx* input = x + input_offset;
+  MPType reduce_var = init;
+  Ty store_data;
+
+  // 1. reduce for each thread
+  if (left_idx < left_num) {
+    // load REDUCE_VEC_SIZE data once, and then compute
+    Tx input_reg[REDUCE_VEC_SIZE];
+    MPType input_compute[REDUCE_VEC_SIZE];
+    int bound = reduce_num - (REDUCE_VEC_SIZE - 1) * stride;
+    for (; input_idx + block_size < bound;
+         input_idx += REDUCE_VEC_SIZE * stride) {
+      kps::ReadDataReduce<Tx, 1, REDUCE_VEC_SIZE, 1, 1, Calculator>(
+          &input_reg[0], input, input_idx, reduce_index_calculator, 1,
+          reduce_num, 1, stride, reduce_last_dim);
+      kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
+          &input_compute[0], &input_reg[0], transformer);
+      kps::Reduce<MPType, REDUCE_VEC_SIZE, 1, 1, ReduceOp,
+                  kps::details::ReduceMode::kLocalMode>(
+          &reduce_var, &input_compute[0], reducer, reduce_last_dim);
+    }
+
+    kps::Init<MPType, REDUCE_VEC_SIZE>(&input_compute[0], init);
+    kps::ReadDataReduce<Tx, 1, REDUCE_VEC_SIZE, 1, 1, Calculator, true>(
+        &input_reg[0], input, input_idx, reduce_index_calculator, 1, reduce_num,
+        1, stride, reduce_last_dim);
+    input_idx += tid;
+#pragma unroll
+    for (int i = 0; i < REDUCE_VEC_SIZE; ++i) {
+      if (input_idx >= reduce_num) {
+        break;
+      }
+      input_compute[i] = static_cast<MPType>(transformer(input_reg[i]));
+      input_idx += stride;
+    }
+    kps::Reduce<MPType, REDUCE_VEC_SIZE, 1, 1, ReduceOp,
+                kps::details::ReduceMode::kLocalMode>(
+        &reduce_var, &input_compute[0], reducer, reduce_last_dim);
+  }
+
+  kps::Reduce<MPType, 1, 1, 1, ReduceOp, kps::details::kGlobalMode>(
+      &reduce_var, &reduce_var, reducer, reduce_last_dim);
+  if (need_store) {
+    y[store_offset] = static_cast<Ty>(reduce_var);
   }
 }
 
-template <typename Tx, typename Ty, typename ReduceOp, typename TransformOp,
-          int Rank, int ReduceRank>
-__global__ void ReduceKernelFunction(
-    const Tx* x, Ty* y, ReduceOp reducer, TransformOp transformer, Ty init,
-    int reduce_num, int left_num, int block_size, int reduce_type,
-    paddle::framework::Array<int, Rank> x_strides,
-    paddle::framework::Array<int, ReduceRank> reduce_dim,
-    paddle::framework::Array<int, ReduceRank> reduce_strides,
-    paddle::framework::Array<int, Rank - ReduceRank> left_dim,
-    paddle::framework::Array<int, Rank - ReduceRank> left_strides) {
-  ReduceModule<Tx, Ty, ReduceOp, TransformOp, Rank, ReduceRank>(
-      x, y, reducer, transformer, init, reduce_num, left_num, block_size,
-      reduce_type, x_strides, reduce_dim, reduce_strides, left_dim,
-      left_strides);
+template <typename Tx, typename Ty, typename MPType, typename ReduceOp,
+          typename TransformOp>
+__global__ void ReduceHigherDimKernel(const Tx* x, Ty* y, ReduceOp reducer,
+                                      TransformOp transformer, MPType init,
+                                      int reduce_num, int left_num,
+                                      int blocking_size) {
+  // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
+  // function will be used
+  // eg: x_dim = {nz, ny, nx}, nx != 1, axis can be 0 or 1
+  //     if axis = 1 then grid.z = nz, grid.y = ny / block_size, grid.x = nx /
+  //     32
+  //     else grid.z = 1, grid.y = ny / block_size, grid.x = nx /32
+  int idx = blockIdx.x * blockDim.x;
+  int size = left_num - idx;
+  if (size >= blockDim.x) {  // complete segment
+    HigherDimDealSegment<Tx, Ty, MPType, ReduceOp, TransformOp>(
+        x, y, reducer, transformer, init, reduce_num, left_num, blocking_size);
+  } else {
+    HigherDimDealSegment<Tx, Ty, MPType, ReduceOp, TransformOp, true>(
+        x, y, reducer, transformer, init, reduce_num, left_num, blocking_size);
+  }
 }
 
-template <typename Tx, typename Ty, typename ReduceOp, int Rank, int ReduceRank>
+template <typename Tx, typename Ty, typename MPType, typename ReduceOp>
 static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
-                               const ReduceOp& reducer, Ty init,
+                               const ReduceOp& reducer, MPType init,
                                gpuStream_t stream, ReduceConfig<Ty> config) {
   using TransformOp = typename ReduceOp::Transformer;
 
-  ReduceKernelFunction<Tx, Ty, ReduceOp, TransformOp, Rank,
-                       ReduceRank><<<config.grid, config.block, 0, stream>>>(
-      x_data, config.output_data, reducer, TransformOp(config.reduce_num), init,
-      config.reduce_num, config.left_num, config.blocking_size,
-      config.reduce_type, detail::VectorToArray<int, Rank>(config.x_strides),
-      detail::VectorToArray<int, ReduceRank>(config.reduce_dim),
-      detail::VectorToArray<int, ReduceRank>(config.reduce_strides),
-      detail::VectorToArray<int, Rank - ReduceRank>(config.left_dim),
-      detail::VectorToArray<int, Rank - ReduceRank>(config.left_strides));
+  if (config.reduce_type == kReduceLastDim) {
+    int stride_reduce = 1;
+    int stride_left = config.reduce_num;
+    // for higher performance
+    auto reduce_index_calculator = LastDimIndexCal(stride_reduce);
+    auto left_index_calculator = LastDimIndexCal(stride_left);
+
+    ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp,
+                    LastDimIndexCal><<<config.grid, config.block, 0, stream>>>(
+        x_data, config.output_data, reducer, TransformOp(config.reduce_num),
+        init, config.reduce_num, config.left_num, config.reduce_last_dim,
+        reduce_index_calculator, left_index_calculator);
+
+  } else {
+    int reduce_rank = config.reduce_strides.size();
+    int left_rank = config.left_strides.size();
+    auto reduce_index_calculator =
+        IndexCalculator(reduce_rank, config.reduce_dim, config.reduce_strides,
+                        config.x_strides);
+    auto left_index_calculator = IndexCalculator(
+        left_rank, config.left_dim, config.left_strides, config.x_strides);
+    ReduceAnyKernel<Tx, Ty, MPType, ReduceOp, TransformOp,
+                    IndexCalculator><<<config.grid, config.block, 0, stream>>>(
+        x_data, config.output_data, reducer, TransformOp(config.reduce_num),
+        init, config.reduce_num, config.left_num, config.reduce_last_dim,
+        reduce_index_calculator, left_index_calculator);
+  }
 
   if (config.should_reduce_again) {
-    dim3 block(config.block.x, 1, 1);
-    dim3 grid(config.grid.x, 1, config.grid.z);
+    dim3 block;
+    dim3 grid;
+    if (config.reduce_last_dim) {
+      block = dim3(32, 1, 1);
+      grid = dim3(details::AlignUp(config.left_num, 32), 1, 1);
+    } else {
+      block = dim3(config.block.x, 1, 1);
+      grid = dim3(config.grid.x, 1, config.grid.z);
+    }
 
-    ReduceKernelFunction<Ty, Ty, ReduceOp, detail::IdentityFunctor<Ty>, Rank,
-                         ReduceRank><<<grid, block, 0, stream>>>(
+    ReduceHigherDimKernel<
+        Ty, Ty, MPType, ReduceOp,
+        kps::details::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
         config.output_data, y_data, reducer,
-        detail::IdentityFunctor<Ty>(config.grid.y), init, config.grid.y,
-        config.left_num, config.grid.y, ReduceType::kReduceHigherDim,
-        detail::VectorToArray<int, Rank>(config.x_strides),
-        detail::VectorToArray<int, ReduceRank>(config.reduce_dim),
-        detail::VectorToArray<int, ReduceRank>(config.reduce_strides),
-        detail::VectorToArray<int, Rank - ReduceRank>(config.left_dim),
-        detail::VectorToArray<int, Rank - ReduceRank>(config.left_strides));
+        kps::details::IdentityFunctor<Ty, MPType>(config.grid.y), init,
+        config.grid.y, config.left_num, config.grid.y);
   }
-}
-
-template <typename Tx, typename Ty, typename ReduceOp>
-static void ReduceKernelImpl(const Tx* x_data, Ty* y_data,
-                             const ReduceOp& reducer, Ty init,
-                             gpuStream_t stream, ReduceConfig<Ty> config) {
-  int reduce_rank = config.reduce_strides.size();
-  int rank = config.x_strides.size();
-
-#define CUB_RANK_CASE(i, ...)             \
-  case i: {                               \
-    constexpr auto Rank = i;              \
-    switch (reduce_rank) { __VA_ARGS__; } \
-  } break
-
-#define CUB_REDUCE_RANK_CASE(i, ...)                        \
-  case i: {                                                 \
-    constexpr auto ReduceRank = i;                          \
-    LaunchReduceKernel<Tx, Ty, ReduceOp, Rank, ReduceRank>( \
-        x_data, y_data, reducer, init, stream, config);     \
-  } break
-
-  detail::CheckReduceRank(reduce_rank, rank);
-  switch (rank) {
-    CUB_RANK_CASE(2, CUB_REDUCE_RANK_CASE(1););
-
-    CUB_RANK_CASE(3, CUB_REDUCE_RANK_CASE(1); CUB_REDUCE_RANK_CASE(2););
-
-    CUB_RANK_CASE(4, CUB_REDUCE_RANK_CASE(2););
-
-    CUB_RANK_CASE(5, CUB_REDUCE_RANK_CASE(2); CUB_REDUCE_RANK_CASE(3););
-
-    CUB_RANK_CASE(6, CUB_REDUCE_RANK_CASE(3););
-
-    CUB_RANK_CASE(7, CUB_REDUCE_RANK_CASE(3); CUB_REDUCE_RANK_CASE(4););
-
-    CUB_RANK_CASE(8, CUB_REDUCE_RANK_CASE(4););
-
-    CUB_RANK_CASE(9, CUB_REDUCE_RANK_CASE(4); CUB_REDUCE_RANK_CASE(5););
-  }
-
-#undef CUB_REDUCE_RANK_CASE
-#undef CUB_RANK_CASE
 }
 
 template <typename Tx, typename Ty,
@@ -679,11 +694,11 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   auto x_dim = framework::vectorize<int>(x.dims());
   auto config = ReduceConfig<Ty>(origin_reduce_dims, x_dim);
   config.Run();  // get the parameters of LaunchReduceKernel
-
+  int numel = x.numel();
   // after config.run()
   // SetOutputData for ReduceHigherDim when should_reduce_again is true,
-  //   temp_output should be stored temp_data in output_data space or stored in
-  //   y_data;
+  // temp_output should be stored temp_data in output_data space or stored in
+  // y_data;
   framework::Tensor tmp;
   auto x_data = x.data<Tx>();
   auto y_data = y->mutable_data<Ty>(x.place());
@@ -696,11 +711,12 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   }
 
   config.SetOutputData(y_data, x.place(), &tmp);
-
-  using TransformOp = typename ReduceOp<Tx, Ty>::Transformer;
-  auto reducer = ReduceOp<Tx, Ty>();
-  // launch CUB::Reduce
-  if (config.reduce_type == static_cast<int>(ReduceType::kReduceAll)) {
+  bool use_cub_reduce = (config.reduce_num == numel) &&
+                        (!std::is_same<Tx, paddle::platform::float16>::value);
+  if (use_cub_reduce) {
+    // launch CUB::Reduce
+    using TransformOp = typename ReduceOp<Tx, Ty>::Transformer;
+    auto reducer = ReduceOp<Tx, Ty>();
     cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(
         x_data, TransformOp(config.reduce_num));
     size_t temp_storage_bytes = 0;
@@ -718,8 +734,43 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
     return;
   }
 
-  ReduceKernelImpl<Tx, Ty, ReduceOp<Tx, Ty>>(x_data, y_data, reducer,
-                                             reducer.initial(), stream, config);
+  using MPType = typename details::MPTypeTrait<Ty>::Type;
+  auto reducer = ReduceOp<Tx, MPType>();
+  // launch ReduceHigherDimKernel
+  // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
+  // function will be used
+  // eg: x_dim = {nz, ny, nx}, nx != 1, axis can be 0 or 1
+  //     if axis = 1 then grid.z = nz, grid.y = ny / block_size, grid.x = nx /
+  //     32
+  //     else grid.z = 1, grid.y = ny / block_size, grid.x = nx /32
+  if (config.reduce_type == ReduceType::kReduceHigherDim) {
+    using TransformOp = typename ReduceOp<Tx, MPType>::Transformer;
+
+    ReduceHigherDimKernel<
+        Tx, Ty, MPType, ReduceOp<Tx, MPType>,
+        TransformOp><<<config.grid, config.block, 0, stream>>>(
+        x_data, config.output_data, reducer, TransformOp(config.reduce_num),
+        reducer.initial(), config.reduce_num, config.left_num,
+        config.blocking_size);
+
+    if (config.should_reduce_again) {
+      dim3 block = dim3(config.block.x, 1, 1);
+      dim3 grid = dim3(config.grid.x, 1, config.grid.z);
+      ReduceHigherDimKernel<Ty, Ty, MPType, ReduceOp<Tx, MPType>,
+                            kps::details::IdentityFunctor<
+                                Ty, MPType>><<<grid, block, 0, stream>>>(
+          config.output_data, y_data, reducer,
+          kps::details::IdentityFunctor<Ty, MPType>(config.grid.y),
+          reducer.initial(), config.grid.y, config.left_num, config.grid.y);
+    }
+    return;
+  }
+
+  // when reduce_dim.size() == 1 and reduce_dim[0] == x_dim.size() - 1, or
+  // when reduce_dim.size() != 1 and reduce_dim.size() != x_dim.size(), this
+  // function will be used
+  LaunchReduceKernel<Tx, Ty, MPType, ReduceOp<Tx, MPType>>(
+      x_data, y_data, reducer, reducer.initial(), stream, config);
 }
 
 template <typename Tx, template <typename, typename> class ReduceOp>

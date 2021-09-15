@@ -106,6 +106,20 @@ def mkl():
 
 write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version.py')
 
+def write_cuda_env_config_py(filename='paddle/cuda_env.py'):
+    cnt = ""
+    if '${JIT_RELEASE_WHL}' == 'ON':
+        cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
+#
+import os
+os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
+'''
+
+    with open(filename, 'w') as f:
+        f.write(cnt)
+
+write_cuda_env_config_py(filename='@PADDLE_BINARY_DIR@/python/paddle/cuda_env.py')
+
 def write_distributed_training_mode_py(filename='paddle/fluid/incubate/fleet/parameter_server/version.py'):
     cnt = '''from __future__ import print_function
 
@@ -139,6 +153,7 @@ write_distributed_training_mode_py(filename='@PADDLE_BINARY_DIR@/python/paddle/f
 packages=['paddle',
           'paddle.libs',
           'paddle.utils',
+          'paddle.utils.gast',
           'paddle.utils.cpp_extension',
           'paddle.dataset',
           'paddle.reader',
@@ -146,8 +161,10 @@ packages=['paddle',
           'paddle.incubate',
           'paddle.incubate.optimizer',
           'paddle.incubate.checkpoint',
+          'paddle.incubate.operators',
           'paddle.distributed.fleet',
           'paddle.distributed.fleet.base',
+          'paddle.distributed.fleet.elastic',
           'paddle.distributed.fleet.meta_optimizers',
           'paddle.distributed.fleet.meta_optimizers.sharding',
           'paddle.distributed.fleet.meta_optimizers.ascend',
@@ -161,6 +178,8 @@ packages=['paddle',
           'paddle.distributed.fleet.meta_parallel',
           'paddle.distributed.fleet.meta_parallel.pp_utils',
           'paddle.distributed.fleet.meta_parallel.parallel_layers',
+          'paddle.distributed.auto_parallel',
+          'paddle.distributed.auto_parallel.operators',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
@@ -223,6 +242,8 @@ packages=['paddle',
           'paddle.tensor',
           'paddle.onnx',
           'paddle.autograd',
+          'paddle.device',
+          'paddle.device.cuda',
           ]
 
 with open('@PADDLE_SOURCE_DIR@/python/requirements.txt') as f:
@@ -390,11 +411,11 @@ def find_files(pattern, root, recursive=False):
 headers = (
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle')) +
     list(find_files('*.h', '@PADDLE_SOURCE_DIR@/paddle/fluid/extension/include')) +  # extension
-    list(find_files('*', '${BOOST_INCLUDE_DIR}/boost', True)) + # boost
     # For paddle uew custom op, only copy data type headers from `paddle/fluid/platform`
     # to `extension/incude`,
     ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/complex.h'] +
-    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'])
+    ['@PADDLE_SOURCE_DIR@/paddle/fluid/platform/float16.h'] +
+    ['@PADDLE_SOURCE_DIR@/paddle/utils/any.h'])
 
 if '${WITH_MKLDNN}' == 'ON':
     headers += list(find_files('*', '${MKLDNN_INSTALL_DIR}/include')) # mkldnn
@@ -407,10 +428,9 @@ class InstallCommand(InstallCommandBase):
     def finalize_options(self):
         ret = InstallCommandBase.finalize_options(self)
         self.install_lib = self.install_platlib
-        self.install_headers = os.path.join(self.install_platlib, 'paddle',
-                                            'include')
+        self.install_headers = os.path.join(self.install_platlib, 'paddle', 'include')
+        
         return ret
-
 
 class InstallHeaders(Command):
     """Override how headers are copied.
@@ -441,12 +461,12 @@ class InstallHeaders(Command):
         elif 'third_party' not in header:
             # paddle headers
             install_dir = re.sub('@PADDLE_SOURCE_DIR@/', '', header)
-            if 'fluid' in install_dir:
+            if 'fluid' in install_dir or 'utils' in install_dir:
                 install_dir = "paddle/extension/include/"
         else:
             # third_party
             install_dir = re.sub('${THIRD_PARTY_PATH}', 'third_party', header)
-            patterns = ['boost/src/extern_boost', 'install/mkldnn/include']
+            patterns = ['install/mkldnn/include']
             for pattern in patterns:
                 install_dir = re.sub(pattern, '', install_dir)
         install_dir = os.path.join(self.install_dir, os.path.dirname(install_dir))

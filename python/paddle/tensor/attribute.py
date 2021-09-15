@@ -21,6 +21,7 @@ from ..fluid.data_feeder import check_variable_and_dtype
 # TODO: define functions to get tensor attributes  
 from ..fluid.layers import rank  # noqa: F401
 from ..fluid.layers import shape  # noqa: F401
+from paddle import _C_ops
 
 __all__ = []
 
@@ -68,7 +69,7 @@ def real(x, name=None):
             #         [4., 5., 6.]])
     """
     if in_dygraph_mode():
-        return core.ops.real(x)
+        return _C_ops.real(x)
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'real')
     helper = LayerHelper('real', **locals())
@@ -112,7 +113,7 @@ def imag(x, name=None):
             #         [3., 2., 1.]])
     """
     if in_dygraph_mode():
-        return core.ops.imag(x)
+        return _C_ops.imag(x)
 
     check_variable_and_dtype(x, 'x', ['complex64', 'complex128'], 'imag')
     helper = LayerHelper('imag', **locals())

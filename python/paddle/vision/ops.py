@@ -21,6 +21,7 @@ from ..nn import Layer
 from ..fluid.initializer import Normal
 
 from paddle.common_ops_import import *
+from paddle import _C_ops
 
 __all__ = [ #noqa
     'yolo_loss',
@@ -103,8 +104,7 @@ def yolo_loss(x,
     Final loss will be represented as follows.
 
     $$
-    loss = (loss_{xy} + loss_{wh}) * weight_{box}
-         + loss_{conf} + loss_{class}
+    loss = (loss_{xy} + loss_{wh}) * weight_{box} + loss_{conf} + loss_{class}
     $$
 
     While :attr:`use_label_smooth` is set to be :attr:`True`, the classification
@@ -189,7 +189,7 @@ def yolo_loss(x,
     """
 
     if in_dygraph_mode() and gt_score is None:
-        loss = core.ops.yolov3_loss(
+        loss = _C_ops.yolov3_loss(
             x, gt_box, gt_label, 'anchors', anchors, 'anchor_mask', anchor_mask,
             'class_num', class_num, 'ignore_thresh', ignore_thresh,
             'downsample_ratio', downsample_ratio, 'use_label_smooth',
@@ -372,7 +372,7 @@ def yolo_box(x,
                                                    scale_x_y=1.)
     """
     if in_dygraph_mode():
-        boxes, scores = core.ops.yolo_box(
+        boxes, scores = _C_ops.yolo_box(
             x, img_size, 'anchors', anchors, 'class_num', class_num,
             'conf_thresh', conf_thresh, 'downsample_ratio', downsample_ratio,
             'clip_bbox', clip_bbox, 'scale_x_y', scale_x_y, 'iou_aware',
@@ -551,11 +551,10 @@ def deform_conv2d(x,
                  'im2col_step', 1)
         if use_deform_conv2d_v1:
             op_type = 'deformable_conv_v1'
-            pre_bias = getattr(core.ops, op_type)(x, offset, weight, *attrs)
+            pre_bias = getattr(_C_ops, op_type)(x, offset, weight, *attrs)
         else:
             op_type = 'deformable_conv'
-            pre_bias = getattr(core.ops, op_type)(x, offset, mask, weight,
-                                                  *attrs)
+            pre_bias = getattr(_C_ops, op_type)(x, offset, mask, weight, *attrs)
         if bias is not None:
             out = nn.elementwise_add(pre_bias, bias, axis=1)
         else:
@@ -659,8 +658,8 @@ class DeformConv2D(Layer):
 
         .. math::
 
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+            H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\
+            W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
 
     Parameters:
@@ -687,7 +686,7 @@ class DeformConv2D(Layer):
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If it is set to None, the parameter
             is initialized with :math:`Normal(0.0, std)`, and the :math:`std` is
-            :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. The default value is None.
+            :math:`(\frac{2.0 }{filter\_elem\_num})^{0.5}`. The default value is None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of conv2d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d
@@ -701,10 +700,14 @@ class DeformConv2D(Layer):
         - offset: :math:`(N, 2 * H_f * W_f, H_{out}, W_{out})`
         - mask: :math:`(N, H_f * W_f, H_{out}, W_{out})`
         - output: :math:`(N, C_{out}, H_{out}, W_{out})`
+        
         Where
+        
         ..  math::
-           H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1
-           W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
+
+            H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1 \\
+            W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
+
     Examples:
         .. code-block:: python
 
@@ -839,7 +842,7 @@ def read_file(filename, name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.read_file('filename', filename)
+        return _C_ops.read_file('filename', filename)
 
     inputs = dict()
     attrs = {'filename': filename}
@@ -886,7 +889,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
     """
 
     if in_dygraph_mode():
-        return core.ops.decode_jpeg(x, "mode", mode)
+        return _C_ops.decode_jpeg(x, "mode", mode)
 
     inputs = {'X': x}
     attrs = {"mode": mode}

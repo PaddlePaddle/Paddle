@@ -84,6 +84,8 @@ class TestDistTraning(unittest.TestCase):
             "mp_degree": self.model_parallel_size,
             "sharding_degree": 2,
         }
+        strategy.tensor_parallel = True
+        strategy.tensor_parallel_configs = {"tensor_parallel_degree": 2}
         fleet.init(is_collective=True, strategy=strategy)
 
     def get_program(self):
@@ -102,7 +104,8 @@ class TestDistTraning(unittest.TestCase):
             ops = main_program.global_block().ops
             ops = [op.type for op in ops]
             self.assertEqual(
-                ops, ['c_identity', 'matmul', 'elementwise_add', 'c_concat'])
+                ops,
+                ['c_identity', 'matmul_v2', 'elementwise_add', 'c_concat'])
 
             weight = model_a.parallel_linear.weight
             bias = model_a.parallel_linear.bias
@@ -125,7 +128,7 @@ class TestDistTraning(unittest.TestCase):
             ops = [op.type for op in ops]
             self.assertEqual(
                 ops,
-                ['c_split', 'matmul', 'c_allreduce_sum', 'elementwise_add'])
+                ['c_split', 'matmul_v2', 'c_allreduce_sum', 'elementwise_add'])
 
             weight = model_a.parallel_linear.weight
             bias = model_a.parallel_linear.bias

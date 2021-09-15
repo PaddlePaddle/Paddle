@@ -117,7 +117,8 @@ class ConditionalBlockOpProtoMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::vector<std::string>>(ConditionalOp::kSkipEagerDeletionVars,
                                       "Vars that would not be deleted when "
                                       "garbage collection strategy enables")
-        .SetDefault(std::vector<std::string>());
+        .SetDefault(std::vector<std::string>())
+        .AsExtra();
     AddComment(R"DOC(Conditional block operator
 
 If `is_scalar_condition` is True, the conditional variable (Cond) is a scalar,

@@ -29,6 +29,7 @@ limitations under the License. */
 #include <gloo/broadcast.h>
 #include "paddle/fluid/framework/fleet/gloo_wrapper.h"
 #endif
+#include "paddle/fluid/distributed/thirdparty/round_robin.h"
 #include "paddle/fluid/framework/data_set.h"
 #include "paddle/fluid/framework/fleet/heter_context.h"
 #include "paddle/fluid/framework/fleet/heter_ps/heter_ps_base.h"
@@ -270,7 +271,7 @@ class PSGPUWrapper {
   std::vector<int> heter_devices_;
   std::unordered_set<std::string> gpu_ps_config_keys_;
   HeterObjectPool<HeterContext> gpu_task_pool_;
-  std::vector<std::vector<std::unordered_set<uint64_t>>> thread_keys_;
+  std::vector<std::vector<robin_hood::unordered_set<uint64_t>>> thread_keys_;
   int thread_keys_thread_num_ = 37;
   int thread_keys_shard_num_ = 37;
   uint64_t max_fea_num_per_pass_ = 5000000000;

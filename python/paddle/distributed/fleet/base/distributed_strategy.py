@@ -361,6 +361,45 @@ class DistributedStrategy(object):
         assign_configs_value(self.strategy.a_sync_configs, configs)
 
     @property
+    def trainer_desc_configs(self):
+        """
+        Set trainer desc configurations. 
+
+        **Notes**:
+            dump_fields_path(str): the path of dump fields
+
+            dump_fields(list(str)): the fields that you want to dump
+
+            dump_param(list(str)): the param that you want to dump
+
+            stat_var_names(list(str)): 
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle.distributed.fleet as fleet
+            role_maker = fleet.PaddleCloudRoleMaker()
+            fleet.init(role_maker)
+
+            strategy = fleet.DistributedStrategy()
+            configs = {"dump_fields_path": "./dump_data", "dump_fields": ["xxx", "yyy"]}
+            strategy.trainer_desc_configs = configs
+
+            # code block for defining loss and local optimizer
+            # sgd = fleet.distributed_optimizer(optimizer, strategy)
+
+        """
+        return get_msg_dict(self.strategy.trainer_desc_configs)
+
+    @trainer_desc_configs.setter
+    @is_strict_auto
+    def trainer_desc_configs(self, configs):
+        check_configs_key(self.strategy.trainer_desc_configs, configs,
+                          "trainer_desc_configs")
+        assign_configs_value(self.strategy.trainer_desc_configs, configs)
+
+    @property
     def amp(self):
         """
         Indicating whether we are using automatic mixed precision training
@@ -849,6 +888,9 @@ class DistributedStrategy(object):
             pp_allreduce_in_optimize(bool, optional): [Hybrid parallelism ONLY] move the allreduce operations from backward stage to update(optimize) stage when pipeline parallelsim is on. 
             This configuration will affect the communication speed of Hybrid parallelism training depeneded on network topology. this strategy is experimental by now..  Default is False.
 
+            optimize_cast(bool, optional): [Hybrid parallelism ONLY] Move the cast op of AMP which cast fp32 param to fp16 param to optimizer. optimize_cast will persist fp16 param, it
+            will take more memory, but will be faster, trade space for time. Recommend to turn on only when using pipeline or gradient_merge_acc_step large.
+
 
         Examples:
 
@@ -924,6 +966,28 @@ class DistributedStrategy(object):
             print(
                 "WARNING: calc_comm_same_stream should have value of boolean type"
             )
+
+    @property
+    def fuse_grad_merge(self):
+        """
+        Set whether fuse the grad for gradient merge.
+        Note: this flag will only effect the gradient merge under pipeline mode
+        The default value for the fuse_grad_merge is False
+        Examples:
+          .. code-block:: python
+            import paddle.distributed.fleet as fleet
+            strategy = fleet.DistributedStrategy()
+            strategy.fuse_param_grad = True
+        """
+        return self.strategy.fuse_grad_merge
+
+    @fuse_grad_merge.setter
+    @is_strict_auto
+    def fuse_grad_merge(self, fuse_grad_merge):
+        if isinstance(fuse_grad_merge, bool):
+            self.strategy.fuse_grad_merge = fuse_grad_merge
+        else:
+            print("WARNING: fuse_grad_merge should have value of boolean type")
 
     @property
     def fuse_grad_size_in_num(self):
@@ -1531,6 +1595,41 @@ class DistributedStrategy(object):
             self.strategy.auto = flag
         else:
             print("WARNING: auto should have value of bool type")
+
+    @property
+    def semi_auto(self):
+        """
+        Indicating whether we are using semi-auto parallel function
+        This feature is currently an experimental feature. Currently, 
+        auto-parallelism can be used only when a user does not set any other
+        strategy configs except semi-auto. For details, please reference the following
+        code example
+        Default Value: False
+
+        Examples:
+
+          .. code-block:: python
+
+            import paddle
+            paddle.enable_static()
+            import paddle.distributed.fleet as fleet
+
+            strategy = fleet.DistributedStrategy()
+            strategy.semi_auto = True
+            # if set other strategy at the same time, auto will not apply
+            # strategy.amp = True
+
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01)
+            optimizer = fleet.distributed_optimizer(optimizer, strategy)
+        """
+        return self.strategy.semi_auto
+
+    @semi_auto.setter
+    def semi_auto(self, flag):
+        if isinstance(flag, bool):
+            self.strategy.semi_auto = flag
+        else:
+            print("WARNING: semi-auto should have value of bool type")
 
     @property
     def cudnn_exhaustive_search(self):

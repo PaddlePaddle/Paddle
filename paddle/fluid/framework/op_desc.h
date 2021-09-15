@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <atomic>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -66,6 +67,8 @@ class OpDesc {
   void SetOutput(const std::string &param_name,
                  const std::vector<std::string> &args);
   void RemoveOutput(const std::string &name);
+
+  void RemoveInput(const std::string &name);
 
   bool HasAttr(const std::string &name) const {
     return attrs_.find(name) != attrs_.end();
@@ -122,6 +125,16 @@ class OpDesc {
 
   const VariableNameMap &Outputs() const { return outputs_; }
 
+  VariableNameMap *MutableInputs() {
+    this->need_update_ = true;
+    return &this->inputs_;
+  }
+
+  VariableNameMap *MutableOutputs() {
+    this->need_update_ = true;
+    return &this->outputs_;
+  }
+
   AttributeMap *MutableAttrMap() {
     this->need_update_ = true;
     return &this->attrs_;
@@ -140,6 +153,18 @@ class OpDesc {
   BlockDesc *Block() { return this->block_; }
 
   const BlockDesc *Block() const { return this->block_; }
+
+  // This thread-safe implementation seems to be redudent since the neural
+  // networks
+  // are usually constructed in a single thread
+  static uint64_t GenerateId() {
+    static std::atomic<std::uint64_t> id{0};
+    return ++id;
+  }
+
+  // Note: the identity only used as a key for referring to its
+  // distributed attribute now.
+  uint64_t Id() { return id_; }
 
  private:
   template <typename MapType>
@@ -163,6 +188,8 @@ class OpDesc {
   // need_update_ indicate there some local changes not be synchronized. If
   // local changes should be synchronized, need_update_ should be set to true.
   bool need_update_{false};
+
+  uint64_t id_ = GenerateId();
 };
 }  // namespace framework
 }  // namespace paddle

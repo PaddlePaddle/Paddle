@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
@@ -37,8 +38,9 @@ function add_failed(){
 }
 
 
+api_params_diff=`python ${PADDLE_ROOT}/tools/check_api_compatible.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec` 
 api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api` 
-if [ "$api_spec_diff" != "" ]; then
+if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
     echo_line="You must have one RD (XiaoguangHu01 or lanxianghit) approval for API change.\n"
     echo_line="${echo_line} and one TPM approval for API change: \n"
     echo_line="${echo_line} jzhang533/ZhangJun, dingjiaweiww/DingJiaWei, Heeenrrry/LiKunLun, TCChenlong/ChenLong for general APIs\n"
@@ -62,7 +64,7 @@ fi
 api_src_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5` 
 if [ "$api_src_spec_diff" != "" ]; then
     echo_line="APIs without core.ops: \n${api_src_spec_diff}\n"
-    echo_line="${echo_line}You must have one RD (zhiqiu (Recommend) or phlrain) approval for the api change for the opreator-related api without 'core.ops'.\n"
+    echo_line="${echo_line}You must have one RD (zhiqiu (Recommend) or phlrain) approval for the api change for the opreator-related api without '_C_ops'.\n"
     echo_line="${echo_line}For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/paddle_api_development_manual.md]\n"
     check_approval 1 6888866 43953930
 fi
@@ -87,8 +89,10 @@ if [ "${ADDED_OP_USE_DEFAULT_GRAD_MAKER}" != "" ]; then
   check_approval 1 6888866 7913861
 fi
 
+
 if [ -n "${echo_list}" ];then
   echo "****************"
+  echo "Please find RD for approval first, and then find TPM for approval."
   echo -e "${echo_list[@]}"
   echo "There are ${failed_num} approved errors."
   echo "****************"
@@ -97,6 +101,9 @@ if [ -n "${echo_list}" ];then
   if [ "${api_spec_diff}" != "" -o "${api_doc_spec_diff}" != "" ] ; then
     python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec
   fi
+  if [ "${api_params_diff}" != "" ] ; then
+    echo "api_params_diff: ${api_params_diff}"
+  fi 
   if [ "${op_type_spec_diff}" != "" ] ; then
     echo "op_type_spec_diff: ${op_type_spec_diff}"
   fi 

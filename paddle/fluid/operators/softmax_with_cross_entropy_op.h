@@ -44,10 +44,24 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
       const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
       int axis_dim = softmax->dims()[axis];
 
+      PADDLE_ENFORCE_GT(
+          axis_dim, 0,
+          platform::errors::InvalidArgument(
+              "The axis dimention should be larger than 0, but received "
+              "axis dimention is %d.",
+              axis_dim));
+
       softmax_out->mutable_data<T>(context.GetPlace());
       loss->mutable_data<T>(context.GetPlace());
 
       const int n = SizeToAxis(axis, softmax->dims());
+
+      PADDLE_ENFORCE_GT(
+          n, 0, platform::errors::InvalidArgument(
+                    "The size of axis should be larger than 0, but received "
+                    "SizeToAxis of softmax is %d.",
+                    n));
+
       const int d = SizeFromAxis(axis, softmax->dims());
 
       Tensor softmax_2d, labels_2d, loss_2d, softmax_out_2d;
@@ -80,11 +94,23 @@ class SoftmaxWithCrossEntropyKernel : public framework::OpKernel<T> {
     const int rank = logits->dims().size();
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = logits->dims()[axis];
+    PADDLE_ENFORCE_GT(
+        axis_dim, 0,
+        platform::errors::InvalidArgument(
+            "The axis dimention should be larger than 0, but received "
+            "axis dimention is %d.",
+            axis_dim));
 
     softmax->mutable_data<T>(context.GetPlace());
     loss->mutable_data<T>(context.GetPlace());
 
     const int n = SizeToAxis(axis, logits->dims());
+    PADDLE_ENFORCE_GT(
+        n, 0, platform::errors::InvalidArgument(
+                  "The size of axis should be larger than 0, but received "
+                  "SizeToAxis of logits is %d.",
+                  n));
+
     const int d = SizeFromAxis(axis, logits->dims());
     Tensor logits_2d, softmax_2d, labels_2d, loss_2d;
     logits_2d.ShareDataWith(*logits).Resize({n, d});
@@ -111,29 +137,37 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
     const Tensor* labels = context.Input<Tensor>("Label");
     Tensor* logit_grad =
         context.Output<Tensor>(framework::GradVarName("Logits"));
-
     const Tensor* softmax = context.Input<Tensor>("Softmax");
     const bool use_softmax = context.Attr<bool>("use_softmax");
-
     if (logit_grad != softmax || !use_softmax) {
       framework::TensorCopy(*softmax, context.GetPlace(),
                             context.device_context(), logit_grad);
     }
-
     const bool soft_label = context.Attr<bool>("soft_label");
     auto ignore_index = context.Attr<int>("ignore_index");
 
     const int rank = logit_grad->dims().size();
     const int axis = CanonicalAxis(context.Attr<int>("axis"), rank);
     int axis_dim = logit_grad->dims()[axis];
+    PADDLE_ENFORCE_GT(
+        axis_dim, 0,
+        platform::errors::InvalidArgument(
+            "The axis dimention should be larger than 0, but received "
+            "axis dimention is %d.",
+            axis_dim));
 
     const int n = SizeToAxis(axis, logit_grad->dims());
+    PADDLE_ENFORCE_GT(
+        n, 0, platform::errors::InvalidArgument(
+                  "The size of axis should be larger than 0, but received "
+                  "SizeToAxis of logit_grad is %d.",
+                  n));
+
     const int d = SizeFromAxis(axis, logit_grad->dims());
     Tensor logit_grad_2d, labels_2d, out_grad_2d;
     logit_grad_2d.ShareDataWith(*logit_grad).Resize({n, d});
     labels_2d.ShareDataWith(*labels).Resize({n, labels->numel() / n});
     out_grad_2d.ShareDataWith(*out_grad).Resize({n, d / axis_dim});
-
     auto out_grad_mat = framework::EigenMatrix<T>::From(out_grad_2d);
     auto logit_grad_mat = framework::EigenMatrix<T>::From(logit_grad_2d);
     auto& place = *context.template device_context<platform::CPUDeviceContext>()
@@ -147,9 +181,8 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
         logit_grad_mat.device(place) =
             out_grad_mat.broadcast(Eigen::DSizes<int, 2>(1, axis_dim)) *
             logit_grad_mat;
-      }
-      // use_softmax step2
-      else {
+      } else {
+        // use_softmax step2
         const int64_t* label_data = labels->data<int64_t>();
         T* logit_grad_data = logit_grad->data<T>();
         const T* out_grad_data = out_grad->data<T>();
@@ -180,7 +213,6 @@ class SoftmaxWithCrossEntropyGradKernel : public framework::OpKernel<T> {
       }
       return;
     }
-
     // for use_softmax=False, continue
 
     if (soft_label) {

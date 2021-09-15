@@ -27,6 +27,7 @@ from ..param_attr import ParamAttr
 from ..initializer import NumpyArrayInitializer, Constant
 from .. import core
 import warnings
+from paddle import _C_ops
 
 __all__ = [
     'center_loss',
@@ -261,8 +262,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
         return cross_entropy2(input, label, ignore_index)
 
     if in_dygraph_mode():
-        return core.ops.cross_entropy(input, label, "soft_label", soft_label,
-                                      "ignore_index", ignore_index)
+        return _C_ops.cross_entropy(input, label, "soft_label", soft_label,
+                                    "ignore_index", ignore_index)
 
     inputs = {'X': [input], 'Label': [label]}
     attrs = {"soft_label": soft_label, "ignore_index": ignore_index}
@@ -278,8 +279,8 @@ def cross_entropy(input, label, soft_label=False, ignore_index=kIgnoreIndex):
 
 def cross_entropy2(input, label, ignore_index=kIgnoreIndex):
     if in_dygraph_mode():
-        loss, _, _ = core.ops.cross_entropy2(input, label, 'ignore_index',
-                                             ignore_index)
+        loss, _, _ = _C_ops.cross_entropy2(input, label, 'ignore_index',
+                                           ignore_index)
         return loss
 
     inputs = {'X': [input], 'Label': [label]}
@@ -335,8 +336,8 @@ def square_error_cost(input, label):
 
     """
     if in_dygraph_mode():
-        minus_out = core.ops.elementwise_sub(input, label)
-        square_out = core.ops.square(minus_out)
+        minus_out = _C_ops.elementwise_sub(input, label)
+        square_out = _C_ops.square(minus_out)
         return square_out
 
     check_variable_and_dtype(input, "input", ['float32', 'float64'],
@@ -477,7 +478,9 @@ def warpctc(input,
             blank=0,
             norm_by_times=False,
             input_length=None,
-            label_length=None):
+            label_length=None,
+            norm_by_batchsize=False,
+            norm_by_total_logits_len=False):
     """
     An operator integrating the open source Warp-CTC library
     (https://github.com/baidu-research/warp-ctc)
@@ -514,6 +517,12 @@ def warpctc(input,
          of Tensor type, it should have shape `[batch_size]` and dtype int64.
        label_length(Variable): The length for each label sequence if it is
          of Tensor type, it should have shape `[batch_size]` and dtype int64.
+       norm_by_batchsize (bool): normalize the loss by the batch size. 
+            If `True`, supersedes  `norm_by_times`
+            (default: `False`)
+       norm_by_total_logits_len (bool): normalize the loss by the total number of frames
+            in the batch. If `True`, supersedes `norm_by_batchsize` and `norm_by_times`
+            (default: `False`)
 
     Returns:
         Variable: The Connectionist Temporal Classification (CTC) loss,
@@ -600,16 +609,13 @@ def warpctc(input,
             raise ValueError(
                 "input_length and label_length must not be None in dygraph mode!"
             )
-        grad, loss_out = core.ops.warpctc(
-            input,
-            label,
-            input_length,
-            label_length,
-            'blank',
-            blank,
-            'norm_by_times',
-            norm_by_times, )
+        grad, loss_out = _C_ops.warpctc(
+            input, label, input_length, label_length, 'blank', blank,
+            'norm_by_times', norm_by_times, 'norm_by_batchsize',
+            norm_by_batchsize, 'norm_by_total_logits_len',
+            norm_by_total_logits_len)
         return loss_out
+
     helper = LayerHelper('warpctc', **locals())
     check_variable_and_dtype(input, 'input', ['float32', 'float64'], "warpctc")
     check_variable_and_dtype(label, 'label', ['int32'], "warpctc")
@@ -633,6 +639,8 @@ def warpctc(input,
         attrs={
             'blank': blank,
             'norm_by_times': norm_by_times,
+            'norm_by_batchsize': norm_by_batchsize,
+            'norm_by_total_logits_len': norm_by_total_logits_len,
         })
     return loss_out
 
@@ -1260,12 +1268,12 @@ def softmax_with_cross_entropy(logits,
     """
     if in_dygraph_mode():
         if core.is_compiled_with_npu():
-            softmax, backprop, loss = core.ops.softmax_with_cross_entropy(
+            softmax, backprop, loss = _C_ops.softmax_with_cross_entropy(
                 logits, label, 'soft_label', soft_label, 'ignore_index',
                 ignore_index, 'numeric_stable_mode', numeric_stable_mode,
                 'axis', axis)
         else:
-            softmax, loss = core.ops.softmax_with_cross_entropy(
+            softmax, loss = _C_ops.softmax_with_cross_entropy(
                 logits, label, 'soft_label', soft_label, 'ignore_index',
                 ignore_index, 'numeric_stable_mode', numeric_stable_mode,
                 'axis', axis)

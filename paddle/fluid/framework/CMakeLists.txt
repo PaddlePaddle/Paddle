@@ -17,7 +17,7 @@ function(windows_symbolic TARGET)
     add_custom_command(OUTPUT ${final_path}/.${src}.cu
             COMMAND ${CMAKE_COMMAND} -E copy_if_different "${final_path}/${src}.cc" "${final_path}/.${src}.cu"
             COMMENT "create hidden file of ${src}.cu")
-    add_custom_target(${TARGET} ALL DEPENDS .${src}.cu)
+    add_custom_target(${TARGET} ALL DEPENDS ${final_path}/.${src}.cu)
   endforeach()
 endfunction()
 
@@ -25,10 +25,11 @@ add_subdirectory(ir)
 add_subdirectory(details)
 add_subdirectory(fleet)
 add_subdirectory(io)
+add_subdirectory(new_executor)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
 
-proto_library(op_def_proto SRCS op_def.proto)
+proto_library(op_def_proto SRCS op_def.proto DEPS framework_proto)
 cc_library(op_def_api SRCS op_def_api.cc DEPS op_def_proto boost)
 
 FILE(GLOB OP_DEF_FILES ${PADDLE_SOURCE_DIR}/paddle/fluid/operators/compat/*.pbtxt)
@@ -188,8 +189,13 @@ cc_library(op_kernel_type SRCS op_kernel_type.cc DEPS device_context place)
 
 cc_library(unused_var_check SRCS unused_var_check.cc DEPS glog no_need_buffer_vars_inference)
 
+IF(WITH_XPU)
+cc_library(operator SRCS operator.cc DEPS xpu_op_list op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
+    shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils)
+ELSE()
 cc_library(operator SRCS operator.cc DEPS op_info device_context tensor scope glog trainer_desc_proto data_feed_proto
     shape_inference data_transform lod_tensor profiler transfer_scope_cache op_kernel_type op_call_stack unused_var_check nan_inf_utils)
+ENDIF()
 
 cc_test(operator_test SRCS operator_test.cc DEPS operator op_registry device_context)
 cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op_registry device_context)
@@ -197,12 +203,16 @@ cc_test(operator_exception_test SRCS operator_exception_test.cc DEPS operator op
 cc_library(version SRCS version.cc)
 cc_test(version_test SRCS version_test.cc DEPS version)
 
-cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc DEPS shape_inference op_info operator glog version)
+cc_library(proto_desc SRCS var_desc.cc op_desc.cc block_desc.cc program_desc.cc process_mesh_desc.cc DEPS attribute shape_inference op_info operator glog version)
 
 cc_library(op_registry SRCS op_registry.cc DEPS op_proto_maker op_info operator glog proto_desc)
 
 cc_library(op_call_stack SRCS op_call_stack.cc DEPS op_proto_maker enforce)
 cc_test(op_call_stack_test SRCS op_call_stack_test.cc DEPS op_call_stack)
+
+cc_library(program_processing SRCS program_processing.cc DEPS boost proto_desc)
+cc_test(program_processing_test SRCS program_processing_test.cc DEPS proto_desc program_processing)
+
 if(WITH_GPU)
   nv_test(op_registry_test SRCS op_registry_test.cc DEPS op_registry)
 elseif(WITH_ROCM)
@@ -254,7 +264,7 @@ cc_library(variable_helper SRCS variable_helper.cc DEPS lod_tensor)
 
 cc_library(naive_executor SRCS naive_executor.cc DEPS op_registry denormal device_context scope framework_proto glog lod_rank_table feed_fetch_method graph_to_program_pass variable_helper)
 
-cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector)
+cc_library(executor_gc_helper SRCS executor_gc_helper.cc DEPS scope proto_desc operator garbage_collector op_registry while_op_helper recurrent_op_helper conditional_block_op_helper)
 if(WITH_DISTRIBUTE)
   if(WITH_PSLIB)
     cc_library(executor SRCS executor.cc multi_trainer.cc pipeline_trainer.cc dataset_factory.cc
@@ -340,14 +350,14 @@ cc_library(parallel_executor SRCS parallel_executor.cc DEPS
         graph build_strategy bind_threaded_ssa_graph_executor collective_helper
         fast_threaded_ssa_graph_executor variable_helper)
 
-cc_library(executor_cache SRCS executor_cache.cc DEPS executor)
+cc_library(executor_cache SRCS executor_cache.cc DEPS parallel_executor)
 if(WITH_PSCORE)
     get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
     cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
-        conditional_block_op executor ${RPC_DEPS})
+        conditional_block_op executor gloo_wrapper ${RPC_DEPS})
 else()
     cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
-        conditional_block_op executor)
+        conditional_block_op executor gloo_wrapper)
 endif()
 cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
@@ -401,12 +411,34 @@ configure_file(commit.h.in commit.h)
 # Adapt to custom op mechanism: Include the header files related to the data type
 # to avoid exposing the path of the underlying file
 include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/platform)
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../extension/include)
+include_directories(${PADDLE_SOURCE_DIR}/paddle/fluid/extension/include)
+include_directories(${PADDLE_SOURCE_DIR}/paddle/utils)
 
-cc_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
+if (WITH_GPU)
+  if (WIN32)
+    windows_symbolic(ext_tensor_cu SRCS ext_tensor.cu PATH ../extension/src)
+    nv_library(custom_tensor SRCS ../extension/src/.ext_tensor.cu DEPS lod_tensor memory enforce)
+    add_dependencies(custom_tensor ext_tensor_cu)
+  else()
+    nv_library(custom_tensor SRCS ../extension/src/ext_tensor.cu DEPS lod_tensor memory enforce)
+  endif(WIN32)
+elseif (WITH_ROCM)
+  hip_library(custom_tensor SRCS ../extension/src/ext_tensor.cu DEPS lod_tensor memory enforce)
+else()
+  cc_library(custom_tensor SRCS ../extension/src/ext_tensor.cc DEPS lod_tensor memory enforce)
+endif()
+
 cc_library(op_meta_info SRCS ../extension/src/ext_op_meta_info.cc DEPS custom_tensor)
 cc_library(custom_operator SRCS custom_operator.cc DEPS tensor attribute framework_proto op_registry operator dynamic_loader string_helper custom_tensor op_meta_info)
-cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
+
+if(WITH_ROCM)
+  hip_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
+else()
+  cc_test(custom_tensor_test SRCS custom_tensor_test.cc DEPS custom_tensor glog)
+endif()
+
+#cc_binary(test_executor SRCS test_executor.cc DEPS executor op_registry ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} )
+#cc_binary(new_executor SRCS new_exec_test.cc DEPS operator op_registry executor ${GLOB_OP_LIB} ${GLOB_OPERATOR_DEPS} profiler)
 
 set(FLUID_FRAMEWORK_MODULES proto_desc memory lod_tensor executor data_feed_proto layer dynamic_loader custom_operator)
 
@@ -415,3 +447,5 @@ cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 if(WITH_TESTING AND TEST selected_rows_test)
   set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
 endif()
+
+cc_test(scope_guard_test SRCS scope_guard_test.cc)

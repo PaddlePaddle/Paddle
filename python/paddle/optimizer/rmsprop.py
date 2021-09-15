@@ -30,9 +30,9 @@ class RMSProp(Optimizer):
 
     ..  math::
 
-        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2
+        r(w, t) & = \rho r(w, t-1) + (1 - \rho)(\nabla Q_{i}(w))^2
 
-        w & = w - \\frac{\\eta} {\\sqrt{r(w,t) + \\epsilon}} \\nabla Q_{i}(w)
+        w & = w - \frac{\eta} {\sqrt{r(w,t) + \epsilon}} \nabla Q_{i}(w)
 
     The first equation calculates moving average of the squared gradient for
     each weight. Then dividing the gradient by :math:`sqrt{v(w,t)}`.
@@ -42,10 +42,10 @@ class RMSProp(Optimizer):
 
     ..  math::
 
-        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2
+        r(w, t) & = \rho r(w, t-1) + (1 - \rho)(\nabla Q_{i}(w))^2
 
-        v(w, t) & = \\beta v(w, t-1) + \\frac{\\eta} {\\sqrt{r(w,t) +
-            \\epsilon}} \\nabla Q_{i}(w)
+        v(w, t) & = \beta v(w, t-1) + \frac{\eta} {\sqrt{r(w,t) +
+            \epsilon}} \nabla Q_{i}(w)
 
         w & = w - v(w, t)
 
@@ -53,52 +53,52 @@ class RMSProp(Optimizer):
 
     ..  math::
 
-        r(w, t) & = \\rho r(w, t-1) + (1 - \\rho)(\\nabla Q_{i}(w))^2
+        r(w, t) & = \rho r(w, t-1) + (1 - \rho)(\nabla Q_{i}(w))^2
 
-        g(w, t) & = \\rho g(w, t-1) + (1 - \\rho)\\nabla Q_{i}(w)
+        g(w, t) & = \rho g(w, t-1) + (1 - \rho)\nabla Q_{i}(w)
 
-        v(w, t) & = \\beta v(w, t-1) + \\frac{\\eta} {\\sqrt{r(w,t) - (g(w, t))^2 +
-            \\epsilon}} \\nabla Q_{i}(w)
+        v(w, t) & = \beta v(w, t-1) + \frac{\eta} {\sqrt{r(w,t) - (g(w, t))^2 +
+            \epsilon}} \nabla Q_{i}(w)
 
         w & = w - v(w, t)
 
-    where, :math:`\\rho` is a hyperparameter and typical values are 0.9, 0.95
-    and so on. :math: `beta` is the momentum term. :math: `\\epsilon` is a
+    where, :math:`\rho` is a hyperparameter and typical values are 0.9, 0.95
+    and so on. :math:`\beta` is the momentum term. :math:`\epsilon` is a
     smoothing term to avoid division by zero, usually set somewhere in range
     from 1e-4 to 1e-8.
 
 
     Parameters:
         learning_rate (float|LRScheduler): The learning rate used to update ``Parameter``.
-            It can be a float value or a LRScheduler.
-        rho(float): rho is :math: `\\rho` in equation, default is 0.95.
-        epsilon(float): :math: `\\epsilon` in equation is smoothing term to
-            avoid division by zero, default is 1e-6.
-        momentum(float): :math:`\\beta` in equation is the momentum term,
-            default is 0.0.
+          It can be a float value or a LRScheduler.
+        rho(float): rho is :math:`\rho` in equation, default is 0.95.
+        epsilon(float): :math:`\epsilon` in equation is smoothing term to
+          avoid division by zero, default is 1e-6.
+        momentum(float): :math:`\beta` in equation is the momentum term,
+          default is 0.0.
         centered(bool): If True, gradients are normalized by the estimated variance of
-            the gradient; if False, by the uncentered second moment. Setting this to
-            True may help with training, but is slightly more expensive in terms of
-            computation and memory. Defaults to False.
-	parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. \
-	    This parameter is required in dygraph mode. And you can specify different options for \
-            different parameter groups such as the learning rate, weight decay, etc, \
-            then the parameters are list of dict. Note that the learning_rate in paramter groups \
-            represents the scale of base learning_rate. \
-	    The default value is None in static mode, at this time all parameters will be updated.
-	weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. \
-	    It canbe a float value as coeff of L2 regularization or \
-	    :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
-	    If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
-	    the regularization setting here in optimizer will be ignored for this parameter. \
-	    Otherwise, the regularization setting here in optimizer will take effect. \
-	    Default None, meaning there is no regularization.
+          the gradient; if False, by the uncentered second moment. Setting this to
+          True may help with training, but is slightly more expensive in terms of
+          computation and memory. Defaults to False.
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` to update to minimize ``loss``. 
+          This parameter is required in dygraph mode. And you can specify different options for 
+          different parameter groups such as the learning rate, weight decay, etc, 
+          then the parameters are list of dict. Note that the learning_rate in paramter groups 
+          represents the scale of base learning_rate. 
+          The default value is None in static mode, at this time all parameters will be updated.
+        weight_decay (float|WeightDecayRegularizer, optional): The strategy of regularization. 
+          It canbe a float value as coeff of L2 regularization or \
+          :ref:`api_fluid_regularizer_L1Decay`, :ref:`api_fluid_regularizer_L2Decay`.
+          If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, 
+          the regularization setting here in optimizer will be ignored for this parameter. 
+          Otherwise, the regularization setting here in optimizer will take effect. 
+          Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
-            some derived class of ``GradientClipBase`` . There are three cliping strategies
-            ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
-            :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
-        name (str, optional): This parameter is used by developers to print debugging information. \
-            For details, please refer to :ref:`api_guide_Name`. Default is None.
+          some derived class of ``GradientClipBase`` . There are three cliping strategies
+          ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
+          :ref:`api_fluid_clip_GradientClipByValue` ). Default None, meaning there is no gradient clipping.
+        name (str, optional): This parameter is used by developers to print debugging information. 
+          For details, please refer to :ref:`api_guide_Name`. Default is None.
 
     Raises:
         ValueError: If learning_rate, rho, epsilon, momentum are None.
