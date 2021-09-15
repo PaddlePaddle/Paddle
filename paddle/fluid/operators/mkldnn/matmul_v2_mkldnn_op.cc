@@ -364,6 +364,7 @@ REGISTER_OP_KERNEL(matmul_v2, MKLDNN, ::paddle::platform::CPUPlace,
                    MatMulV2MKLDNNKernel<float>,
                    MatMulV2MKLDNNKernel<paddle::platform::bfloat16>);
 
-REGISTER_OP_KERNEL(matmul_v2_grad, MKLDNN, ::paddle::platform::CPUPlace,
-                   MatMulV2GradMKLDNNKernel<float>,
-                   MatMulV2GradMKLDNNKernel<paddle::platform::bfloat16>);
+// TODO jakpiase enable matmul_v2 grad when fixed
+// REGISTER_OP_KERNEL(matmul_v2_grad, MKLDNN, ::paddle::platform::CPUPlace,
+//                   MatMulV2GradMKLDNNKernel<float>,
+//                   MatMulV2GradMKLDNNKernel<paddle::platform::bfloat16>);
