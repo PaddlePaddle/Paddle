@@ -23,7 +23,13 @@ from .math import segment_mean
 from .math import segment_max
 from .math import segment_min
 
-__all__ = [  # noqa
-    'LookAhead', 'ModelAverage', 'softmax_mask_fuse_upper_triangle', 'softmax_mask_fuse',
-    'segment_sum', 'segment_mean', 'segment_max', 'segment_min',
+__all__ = [
+    'LookAhead',
+    'ModelAverage',
+    'softmax_mask_fuse_upper_triangle',
+    'softmax_mask_fuse',
+    'segment_sum',
+    'segment_mean',
+    'segment_max',
+    'segment_min',
 ]

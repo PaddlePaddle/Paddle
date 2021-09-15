@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .segment_ops import segmemt_sum
-from .segment_ops import segmemt_max
-from .segment_ops import segmemt_mean
-from .segment_ops import segmemt_min
+from .segment_ops import segment_sum
+from .segment_ops import segment_mean
+from .segment_ops import segment_max
+from .segment_ops import segment_min
 
 __all__ = [
     'segment_sum',
