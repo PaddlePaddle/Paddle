@@ -583,6 +583,28 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             regularization=regularization)
         momentum.minimize(loss)
 
+    def test_momentum_dygraph_master_weight(self):
+        paddle.disable_static()
+        inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
+        inp = paddle.to_tensor(inp)
+
+        model = paddle.nn.Linear(10, 10)
+        opt = paddle.fluid.contrib.optimizer.Momentum(
+            learning_rate=0.01,
+            momentum=0.9,
+            parameter_list=model.parameters(),
+            multi_precision=True)
+        model, opt = paddle.amp.decorator(
+            models=model, optimizers=opt, mode='L2')
+        with paddle.amp.auto_cast(
+                enable=True,
+                custom_black_list=None,
+                custom_white_list=None,
+                mode='L2'):
+            out = model(inp)
+            loss = paddle.mean(out)
+        opt.minimize(loss)
+
     def test_momentum_dygraph_1(self):
         self._test_momentum_dygraph_common(
             regularization=paddle.fluid.regularizer.L2Decay(

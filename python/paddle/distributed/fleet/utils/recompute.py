@@ -100,8 +100,6 @@ class RecomputeFunction(PyLayer):
         tracer = framework._dygraph_tracer()
         ctx.is_fw_autocast = tracer._enable_amp_l1 or tracer._enable_amp_l2
         ctx.amp_mode = 'L1'
-        if tracer._enable_amp_l2:
-            ctx.amp_mode = 'L2'
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
         with paddle.no_grad():
