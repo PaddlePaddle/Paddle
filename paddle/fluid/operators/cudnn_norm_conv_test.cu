@@ -231,7 +231,7 @@ class TestCuDNNNormConvOpForward {
 
 // test for fp16, kernel = 1, output_channels = input_channels
 TEST(CuDNNNormConvForward, GPUCuDNNNormConvForward1Fp16) {
-  int batch_size = 2;
+  int batch_size = 4;
   int height = 56;
   int width = 56;
   int input_channels = 64;
@@ -247,7 +247,7 @@ TEST(CuDNNNormConvForward, GPUCuDNNNormConvForward1Fp16) {
 
 // test for fp16, kernel = 3, output_channels = input_channels
 TEST(CuDNNNormConvForward, GPUCuDNNNormConvForward2Fp16) {
-  int batch_size = 408;
+  int batch_size = 64;
   int height = 56;
   int width = 56;
   int input_channels = 64;
@@ -263,7 +263,7 @@ TEST(CuDNNNormConvForward, GPUCuDNNNormConvForward2Fp16) {
 
 // test for fp16, kernel = 1, output_channels = input_channels * 4
 TEST(CuDNNNormConvForward, GPUCuDNNNormConvForward3Fp16) {
-  int batch_size = 2;
+  int batch_size = 4;
   int height = 56;
   int width = 56;
   int input_channels = 64;
