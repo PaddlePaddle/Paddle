@@ -24,6 +24,8 @@ using DDim = framework::DDim;
 
 template <typename DeviceContext, typename T>
 class LayerNormXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
@@ -39,15 +41,17 @@ class LayerNormXPUKernel : public framework::OpKernel<T> {
     auto* mean = ctx.Output<Tensor>("Mean");
     auto* variance = ctx.Output<Tensor>("Variance");
     const auto* x_data = x->data<T>();
-    const auto* scale_data = (scale == nullptr ? nullptr : scale->data<T>());
-    const auto* bias_data = (bias == nullptr ? nullptr : bias->data<T>());
+    const auto* scale_data =
+        (scale == nullptr ? nullptr : scale->data<float>());
+    const auto* bias_data = (bias == nullptr ? nullptr : bias->data<float>());
     auto* y_data = y->mutable_data<T>(ctx.GetPlace());
-    auto* mean_data = mean->mutable_data<T>(ctx.GetPlace());
-    auto* variance_data = variance->mutable_data<T>(ctx.GetPlace());
+    auto* mean_data = mean->mutable_data<float>(ctx.GetPlace());
+    auto* variance_data = variance->mutable_data<float>(ctx.GetPlace());
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::layer_norm(dev_ctx.x_context(), x_data, y_data, left, right,
-                            epsilon, scale_data, bias_data, mean_data,
-                            variance_data);
+    int r = xpu::layer_norm(
+        dev_ctx.x_context(), reinterpret_cast<const XPUType*>(x_data),
+        reinterpret_cast<XPUType*>(y_data), left, right, epsilon, scale_data,
+        bias_data, mean_data, variance_data);
     PADDLE_ENFORCE_EQ(r, XPU_SUCCESS,
                       platform::errors::External(
                           "XPU layer_norm kernel return wrong value[%d %s]", r,
@@ -57,6 +61,8 @@ class LayerNormXPUKernel : public framework::OpKernel<T> {
 
 template <typename DeviceContext, typename T>
 class LayerNormGradXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     const auto begin_norm_axis = ctx.Attr<int>("begin_norm_axis");
@@ -75,19 +81,24 @@ class LayerNormGradXPUKernel : public framework::OpKernel<T> {
     auto* dbias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
     const auto* x_data = x->data<T>();
     const auto* dy_data = dy->data<T>();
-    const auto* mean_data = mean->data<T>();
-    const auto* variance_data = variance->data<T>();
-    const auto* scale_data = (scale == nullptr ? nullptr : scale->data<T>());
+    const auto* mean_data = mean->data<float>();
+    const auto* variance_data = variance->data<float>();
+    const auto* scale_data =
+        (scale == nullptr ? nullptr : scale->data<float>());
     auto* dscale_data =
-        (dscale == nullptr ? nullptr : dscale->mutable_data<T>(ctx.GetPlace()));
-    auto* dbias_data =
-        (dbias == nullptr ? nullptr : dbias->mutable_data<T>(ctx.GetPlace()));
+        (dscale == nullptr ? nullptr
+                           : dscale->mutable_data<float>(ctx.GetPlace()));
+    auto* dbias_data = (dbias == nullptr ? nullptr : dbias->mutable_data<float>(
+                                                         ctx.GetPlace()));
     auto* dx_data =
         (dx == nullptr ? nullptr : dx->mutable_data<T>(ctx.GetPlace()));
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    int r = xpu::layer_norm_grad(dev_ctx.x_context(), x_data, dy_data, dx_data,
-                                 left, right, epsilon, scale_data, mean_data,
-                                 variance_data, dscale_data, dbias_data);
+
+    int r = xpu::layer_norm_grad(
+        dev_ctx.x_context(), reinterpret_cast<const XPUType*>(x_data),
+        reinterpret_cast<const XPUType*>(dy_data),
+        reinterpret_cast<XPUType*>(dx_data), left, right, epsilon, scale_data,
+        mean_data, variance_data, dscale_data, dbias_data);
     PADDLE_ENFORCE_EQ(
         r, XPU_SUCCESS,
         platform::errors::External(
@@ -103,9 +114,13 @@ namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(
     layer_norm,
-    ops::LayerNormXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    ops::LayerNormXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::LayerNormXPUKernel<paddle::platform::XPUDeviceContext,
+                            paddle::platform::float16>);
 REGISTER_OP_XPU_KERNEL(
     layer_norm_grad,
-    ops::LayerNormGradXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    ops::LayerNormGradXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::LayerNormGradXPUKernel<paddle::platform::XPUDeviceContext,
+                                paddle::platform::float16>);
 
 #endif  // PADDLE_WITH_XPU

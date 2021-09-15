@@ -17,6 +17,7 @@ from .tensor.linalg import norm  # noqa: F401
 from .tensor.linalg import cond  # noqa: F401
 from .tensor.linalg import matrix_power  # noqa: F401
 from .tensor import inverse as inv  # noqa: F401
+from .tensor.linalg import matrix_rank
 from .tensor.linalg import svd
 
 __all__ = [
@@ -24,6 +25,7 @@ __all__ = [
     'norm',
     'cond',
     'inv',
+    'matrix_rank',
     'svd',
     'matrix_power'
 ]

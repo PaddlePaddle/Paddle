@@ -32,6 +32,7 @@ limitations under the License. */
 #include "paddle/fluid/inference/tensorrt/plugin/trt_plugin.h"
 #include "paddle/fluid/inference/tensorrt/trt_int8_calibrator.h"
 #include "paddle/fluid/inference/utils/singleton.h"
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/utils/any.h"
 
 namespace paddle {
@@ -76,11 +77,7 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
                         "TensorRT's tensor input requires at least 1 "
                         "dimensions, but input %s has %d dims.",
                         input, shape.size()));
-  PADDLE_ENFORCE_LE(shape.size(), 4UL,
-                    platform::errors::InvalidArgument(
-                        "TensorRT's tensor input requires at most 4 "
-                        "dimensions, but input %s has %d dims.",
-                        input, shape.size()));
+
   auto ShapeStr = [](const std::vector<T>& shape) {
     std::ostringstream os;
     os << "[";
@@ -103,6 +100,14 @@ nvinfer1::Dims Vec2TRT_Dims(const std::vector<T>& shape, std::string input,
             input, ShapeStr(shape)));
       }
       return nvinfer1::Dims3(shape[1], shape[2], shape[3]);
+    } else if (shape.size() == 5UL) {
+      if (shape[2] == -1 || shape[3] == -1 || shape[4] == -1) {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "The input [%s] shape of trt subgraph is %s, please enable "
+            "trt dynamic_shape mode by SetTRTDynamicShapeInfo.",
+            input, ShapeStr(shape)));
+      }
+      return nvinfer1::Dims4(shape[1], shape[2], shape[3], shape[4]);
     } else if (shape.size() == 3UL) {
       if (shape[1] == -1 || shape[2] == -1) {
         PADDLE_THROW(platform::errors::InvalidArgument(
@@ -222,6 +227,7 @@ class TensorRTEngine {
                      const std::string& name);
   // Set the itensor_map_[name] as the network's output, and set its name.
   void DeclareOutput(const std::string& name);
+  void ClearTensorMap() { itensor_map_.clear(); }
 
   void SetITensor(const std::string& name, nvinfer1::ITensor* tensor);
   // Get an ITensor called name.
@@ -239,6 +245,16 @@ class TensorRTEngine {
       infer_context_[tid].reset(infer_engine_->createExecutionContext());
     }
     return infer_context_[tid].get();
+  }
+  void ResetContext() {
+    std::unique_lock<std::mutex> lock(mutex_);
+    const std::thread::id tid = std::this_thread::get_id();
+    PADDLE_ENFORCE_NOT_NULL(
+        infer_engine_,
+        platform::errors::InvalidArgument(
+            "You should build engine first and then set the context."));
+    infer_context_[tid].reset(nullptr);
+    infer_context_.erase(tid);
   }
 
   nvinfer1::IHostMemory* Serialize() {
@@ -360,6 +376,55 @@ class TensorRTEngine {
   ShapeMapType min_input_shape() { return min_input_shape_; }
   ShapeMapType max_input_shape() { return max_input_shape_; }
   ShapeMapType optim_input_shape() { return optim_input_shape_; }
+
+  bool AdjustDynamicShapeRange(const ShapeMapType& runtime_input_shape,
+                               std::vector<std::string>* changed) {
+    bool ret = false;
+    changed->clear();
+    for (const auto& it : runtime_input_shape) {
+      auto name = it.first;
+      auto input_shape = it.second;
+      PADDLE_ENFORCE_EQ(
+          min_input_shape_.count(name), true,
+          platform::errors::InvalidArgument(
+              "TRT dynamic_shape min_input_shape %s not found.", name));
+      PADDLE_ENFORCE_EQ(min_input_shape_[name].size(), input_shape.size(),
+                        platform::errors::InvalidArgument(
+                            "TRT dynamic_shape min_input_shape %s size not "
+                            "equal, the min_input_shape[%s].size()=%d"
+                            ", but the runtime_input_shape[%s].size()=%d.",
+                            name, name, min_input_shape_[name].size(), name,
+                            input_shape.size()));
+      auto bak_min_shape = min_input_shape_[name];
+      auto bak_max_shape = max_input_shape_[name];
+      bool min_change = false;
+      bool max_change = false;
+      for (size_t d = 0; d < input_shape.size(); ++d) {
+        if (input_shape[d] < min_input_shape_[name][d]) {
+          ret = true;
+          min_change = true;
+          min_input_shape_[name][d] = input_shape[d];
+        }
+        if (input_shape[d] > max_input_shape_[name][d]) {
+          ret = true;
+          max_change = true;
+          max_input_shape_[name][d] = input_shape[d];
+        }
+      }
+
+      if (min_change)
+        LOG(INFO) << "refactor shape range: " << name << ", min_shape from "
+                  << Vec2Str(bak_min_shape) << " to "
+                  << Vec2Str(min_input_shape_[name]);
+      if (max_change)
+        LOG(INFO) << "refactor shape range: " << name << ", max_shape from "
+                  << Vec2Str(bak_max_shape) << " to "
+                  << Vec2Str(max_input_shape_[name]);
+      if (min_change || max_change) changed->push_back(name);
+    }
+    return ret;
+  }
+
   bool use_oss() { return use_oss_; }
   bool with_ernie() { return with_ernie_; }
   bool disable_trt_plugin_fp16() { return disable_trt_plugin_fp16_; }

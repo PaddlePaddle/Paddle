@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/standalone_executor.h"
+#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 
 namespace paddle {
 namespace framework {
@@ -34,22 +35,21 @@ StandaloneExecutor::StandaloneExecutor(const platform::Place& place,
       auto v = outer_scope_->Var(name);
       if (global_scope_.name2id.find(name) == global_scope_.name2id.end()) {
         global_scope_.name2id[name] = global_scope_.var_list.size();
+        global_scope_.var_list.push_back(v);
+
+        VariableMetaInfo info;
+        info.var_ref_count_ = 0;
+        info.vardesc_ = nullptr;
+        global_scope_.vec_meta_info_.push_back(info);
       }
-
-      global_scope_.var_list.push_back(v);
-
-      VariableMetaInfo info;
-      info.var_ref_count_ = 0;
-      info.vardesc_ = nullptr;
-      global_scope_.vec_meta_info_.push_back(info);
     }
   }
 
   // run startup program
   std::vector<paddle::framework::OpFuncNode> vec_func_list;
   std::vector<paddle::framework::OperatorBase*> op_list;
-  InterpreterCore::BuildOpFuncList(place_, startup_prog, &op_list,
-                                   &vec_func_list, &global_scope_);
+  paddle::framework::interpretercore::build_op_func_list(
+      place_, startup_prog, &op_list, &vec_func_list, &global_scope_);
 }
 
 paddle::framework::FetchList StandaloneExecutor::Run(

@@ -779,6 +779,45 @@ class TestVarBase(unittest.TestCase):
         for i, e in enumerate(w):
             self.assertTrue(np.array_equal(e.numpy(), np_value[i]))
 
+    def _test_numpy_index(self):
+        array = np.arange(120).reshape([4, 5, 6])
+        t = paddle.to_tensor(array)
+        self.assertTrue(np.array_equal(t[np.longlong(0)].numpy(), array[0]))
+        self.assertTrue(
+            np.array_equal(t[np.longlong(0):np.longlong(4):np.longlong(2)]
+                           .numpy(), array[0:4:2]))
+        self.assertTrue(np.array_equal(t[np.int64(0)].numpy(), array[0]))
+        self.assertTrue(
+            np.array_equal(t[np.int32(1):np.int32(4):np.int32(2)].numpy(),
+                           array[1:4:2]))
+        self.assertTrue(
+            np.array_equal(t[np.int16(0):np.int16(4):np.int16(2)].numpy(),
+                           array[0:4:2]))
+
+    def _test_list_index(self):
+        # case1:
+        array = np.arange(120).reshape([6, 5, 4])
+        x = paddle.to_tensor(array)
+        py_idx = [[0, 2, 0, 1, 3], [0, 0, 1, 2, 0]]
+        idx = [paddle.to_tensor(py_idx[0]), paddle.to_tensor(py_idx[1])]
+        self.assertTrue(np.array_equal(x[idx].numpy(), array[py_idx]))
+        self.assertTrue(np.array_equal(x[py_idx].numpy(), array[py_idx]))
+        # case2:
+        tensor_x = paddle.to_tensor(
+            np.zeros(12).reshape(2, 6).astype(np.float32))
+        tensor_y1 = paddle.zeros([1]) + 2
+        tensor_y2 = paddle.zeros([1]) + 5
+        tensor_x[:, tensor_y1:tensor_y2] = 42
+        res = tensor_x.numpy()
+        exp = np.array([[0., 0., 42., 42., 42., 0.],
+                        [0., 0., 42., 42., 42., 0.]])
+        self.assertTrue(np.array_equal(res, exp))
+
+        # case3:
+        row = np.array([0, 1, 2])
+        col = np.array([2, 1, 3])
+        self.assertTrue(np.array_equal(array[row, col], x[row, col].numpy()))
+
     def test_slice(self):
         with fluid.dygraph.guard():
             self._test_slice()
@@ -787,6 +826,8 @@ class TestVarBase(unittest.TestCase):
             self._test_for_getitem_ellipsis_index()
             self._test_none_index()
             self._test_bool_index()
+            self._test_numpy_index()
+            self._test_list_index()
 
             var = fluid.dygraph.to_variable(self.array)
             self.assertTrue(np.array_equal(var[1, :].numpy(), self.array[1, :]))
@@ -797,6 +838,10 @@ class TestVarBase(unittest.TestCase):
 
             with self.assertRaises(IndexError):
                 y = var[0 - self.shape[0] - 1]
+
+            with self.assertRaises(IndexError):
+                mask = np.array([1, 0, 1, 0], dtype=bool)
+                var[paddle.to_tensor([0, 1]), mask]
 
     def test_var_base_to_np(self):
         with fluid.dygraph.guard():
