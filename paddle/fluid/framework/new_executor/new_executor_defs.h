@@ -529,6 +529,8 @@ struct Instruction {
 
   platform::DeviceContext* dev_ctx_;  // not owned
   OpFuncType type_;
+
+  std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
 };
 
 struct OpFuncNode {
