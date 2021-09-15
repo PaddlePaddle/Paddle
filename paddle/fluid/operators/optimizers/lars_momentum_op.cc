@@ -23,28 +23,36 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("Param",
              "(LoDTensor, default LoDTensor<float>) "
-             "Input parameter that has to be updated");
+             "Input parameter that has to be updated")
+        .AsDuplicable();
     AddInput("Grad",
              "(LoDTensor, default LoDTensor<float>) "
-             "Input gradient of the parameter");
+             "Input gradient of the parameter")
+        .AsDuplicable();
     AddInput("Velocity",
              "(LoDTensor, default LoDTensor<float>) "
              "Input velocity (corresponding to the parameter) "
-             "that has to be updated");
+             "that has to be updated")
+        .AsDuplicable();
     AddInput("LearningRate",
              "(LoDTensor, default LoDTensor<float>) "
-             "Input learning rate");
-    AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
-
+             "Input learning rate")
+        .AsDuplicable();
+    AddInput("MasterParam", "FP32 master weight for AMP.")
+        .AsDuplicable()
+        .AsDispensable();
     AddOutput("ParamOut",
               "(LoDTensor) This output is updated parameter. "
-              "It shared memory with Input(Param).");
+              "It shared memory with Input(Param).")
+        .AsDuplicable();
     AddOutput("VelocityOut",
               "(LoDTensor) This output is updated velocity. "
-              "It shared memory with Input(Velocity).");
+              "It shared memory with Input(Velocity).")
+        .AsDuplicable();
     AddOutput("MasterParamOut",
               "The updated FP32 master weight for AMP. "
               "It shared memory with Input(MasterParam).")
+        .AsDuplicable()
         .AsDispensable();
 
     AddAttr<float>("mu", "(float) Momentum coefficient");
