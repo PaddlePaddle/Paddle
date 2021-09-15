@@ -1241,6 +1241,17 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<framework::ReaderHolder>();
            },
            py::return_value_policy::reference)
+      .def("get_scope",
+           [](Variable &self) -> Scope * {
+             auto scope_vec =
+                 self.GetMutable<std::vector<framework::Scope *>>();
+             PADDLE_ENFORCE_GT(
+                 scope_vec->size(), 0,
+                 platform::errors::InvalidArgument(
+                     "The size of scope_vec should greater than 0"));
+             return scope_vec->front();
+           },
+           py::return_value_policy::reference)
       .def("set_scope", [](Variable &self, Scope &scope) {
         auto scope_vec = self.GetMutable<std::vector<framework::Scope *>>();
         scope_vec->emplace_back(&scope);

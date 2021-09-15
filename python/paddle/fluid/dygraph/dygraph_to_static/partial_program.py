@@ -290,14 +290,18 @@ class PartialProgramLayer:
             self._valid_vars(self._params),
             self._valid_vars(out_vars), self._tmp_scope_vec, self._double_grads,
             *attrs)
-
+        self.drop_kids_in_nograd()
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 
+    def drop_kids_in_nograd(self):
+        tracer = framework._dygraph_tracer()
+        if self.training and not tracer._has_grad:
+            self._tmp_scope_vec.value().get_scope().drop_kids()
+
     @property
     def program(self):
-        tracer = framework._dygraph_tracer()
-        if self.training and tracer._has_grad:
+        if self.training:
             return self._train_amp_program if _in_amp_guard(
             ) else self._train_program
         else:
@@ -305,8 +309,7 @@ class PartialProgramLayer:
 
     @property
     def program_id(self):
-        tracer = framework._dygraph_tracer()
-        if self.training and tracer._has_grad:
+        if self.training:
             return self._train_amp_program_id if _in_amp_guard(
             ) else self._train_program_id
         else:
