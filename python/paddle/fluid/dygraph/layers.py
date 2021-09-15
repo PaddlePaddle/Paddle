@@ -1275,13 +1275,20 @@ class Layer(core.Layer):
                           destination=None,
                           include_sublayers=True,
                           structured_name_prefix="",
-                          include_non_persistable_buffer='False'):
+                          include_non_persistable_buffer=False):
         if destination is None:
             destination = collections.OrderedDict()
         for name, data in self._parameters.items():
             if data is not None:
                 destination[structured_name_prefix + name] = data
         for name, buffer in self._buffers.items():
+            if not include_non_persistable_buffer:
+                if buffer is not None and name not in self._non_persistable_buffer_names_set:
+                    destination[structured_name_prefix + name] = buffer
+            else:
+                if buffer is not None:
+                    destination[structured_name_prefix + name] = buffer
+
             if buffer is not None:
                 if include_non_persistable_buffer:
                     destination[structured_name_prefix + name] = buffer
@@ -1310,13 +1317,14 @@ class Layer(core.Layer):
                    destination=None,
                    include_sublayers=True,
                    structured_name_prefix="",
-                   include_non_persistable_buffer='False'):
+                   include_non_persistable_buffer=False):
         '''
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
             destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
+            include_non_persistable_buffer(bool, optional): If true, include non persistable buffers of current layer and its sub-layers, it is used in pure fp16 and jit.save. Default: False
 
         Retruns:
             dict: a dict contains all the parameters and persistable buffers.
@@ -1337,33 +1345,6 @@ class Layer(core.Layer):
             include_sublayers=include_sublayers,
             structured_name_prefix=structured_name_prefix,
             include_non_persistable_buffer=include_non_persistable_buffer)
-        '''
-        if destination is None:
-            destination = collections.OrderedDict()
-        for name, data in self._parameters.items():
-            if data is not None:
-                destination[structured_name_prefix + name] = data
-        for name, buffer in self._buffers.items():
-            if buffer is not None and name not in self._non_persistable_buffer_names_set:
-                destination[structured_name_prefix + name] = buffer
-
-        if include_sublayers:
-            for layer_name, layer_item in self._sub_layers.items():
-                if layer_item is not None:
-                    destination_temp = destination.copy()
-                    destination_temp.update(
-                        layer_item.state_dict(
-                            destination_temp, include_sublayers,
-                            structured_name_prefix + layer_name + "."))
-                    destination = destination_temp
-
-        for state_dict_hook in self._state_dict_hooks.values():
-            hook_result = state_dict_hook(destination)
-            if hook_result is not None:
-                destination = hook_result
-
-        return destination
-        '''
 
     @framework.deprecate_stat_dict
     def set_state_dict(self, state_dict, use_structured_name=True):

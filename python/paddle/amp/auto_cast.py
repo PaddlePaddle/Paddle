@@ -95,6 +95,7 @@ def decorator(models=None, optimizers=None, mode='L2', save_dtype=None):
 
      .. code-block:: python   
 
+        # required: gpu
         # Demo1: single model and optimizer:
         import paddle
 
@@ -108,7 +109,8 @@ def decorator(models=None, optimizers=None, mode='L2', save_dtype=None):
         with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, mode='L2'):
             output = model(data)
             print(output.dtype) # FP16
-
+            
+        # required: gpu
         # Demo2: multi models and optimizers:
         model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
