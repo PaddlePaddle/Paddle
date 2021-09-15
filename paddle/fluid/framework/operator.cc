@@ -237,8 +237,8 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       uint64_t t2 = paddle::platform::PosixInNsec();
       duration = t2 - t1;
     }
-
-    VLOG(3) << GetExecutionPlace(place) << " " << DebugStringEx(&scope) << " time: " << (duration);
+    VLOG(0) << GetExecutionPlace(place) << " " << DebugStringEx(&scope) << " time: " << duration;
+    VLOG(3) << GetExecutionPlace(place) << " " << DebugStringEx(&scope);
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
