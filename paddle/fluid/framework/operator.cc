@@ -44,16 +44,12 @@ class LoDTensor;
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
 
+#include "paddle/fluid/platform/device_tracer.h"
+
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
 DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
-  ​
-static double getCurrentTime(){
-  struct timeval tv;
-  gettimeofday(&tv, NULL);
-  return tv.tv_sec + tv.tv_usec * 1.0e-6;
-}
 
 namespace paddle {
 namespace framework {
@@ -227,8 +223,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       platform::SetNPUDeviceId(dev_id);
 #endif
     }
-
-    double t1; = getCurrentTime();
+    uint64_t duration;
     {
       // TODO(wangchaochaohu) : refine code to use only one RecordEvent)
       // in order to record different op type cost time
@@ -237,11 +232,13 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       auto op_name = platform::OpName(outputs_, Type());
       platform::RecordEvent op_name_record_event(
           op_name, platform::EventRole::kUniqueOp);
+      uint64_t t1 = paddle::platform::PosixInNsec();
       RunImpl(scope, place);
+      uint64_t t2 = paddle::platform::PosixInNsec();
+      duration = t2 - t1;
     }
-    double t2 = getCurrentTime();
 
-    VLOG(3) << GetExecutionPlace(place) << " " << DebugStringEx(&scope) << " time: " << (t2 - t1);
+    VLOG(3) << GetExecutionPlace(place) << " " << DebugStringEx(&scope) << " time: " << (duration);
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
