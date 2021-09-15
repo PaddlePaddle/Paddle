@@ -1,8 +1,11 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
+
     http://www.apache.org/licenses/LICENSE-2.0
+
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -12,72 +15,61 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/logical_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-
 namespace paddle {
 namespace operators {
 
-#define LOGICAL_BINARY_FUNCTOR(func_name, op)                          \
-  template <typename T>                                                \
-  struct func_name {                                                   \
-    using ELEMENT_TYPE = T;                                            \
-    HOSTDEVICE bool operator()(const T* args) const {                  \
-      return static_cast<bool>(args[0]) op static_cast<bool>(args[1]); \
-    }                                                                  \
-  };
+template <typename Functor>
+class BinaryLogicalOpKernel<platform::CUDADeviceContext, Functor>
+    : public framework::OpKernel<typename Functor::ELEM_TYPE> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    using InT = typename Functor::ELEM_TYPE;
+    using OutT = bool;
 
-LOGICAL_BINARY_FUNCTOR(CudaOrFunctor, ||)
-LOGICAL_BINARY_FUNCTOR(CudaAndFunctor, &&)
-LOGICAL_BINARY_FUNCTOR(CudaXorFunctor, ^)
-#undef LOGICAL_BINARY_FUNCTOR
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* y = ctx.Input<framework::Tensor>("Y");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
 
-template <typename T>
-struct CudaNotFunctor {
-  using ELEMENT_TYPE = T;
-  HOSTDEVICE bool operator()(const T* args) const { return !args[0]; }
+    auto functor = Functor();
+    std::vector<const framework::Tensor*> ins = {x, y};
+    std::vector<framework::Tensor*> outs = {out};
+    const auto& cuda_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
+        cuda_ctx, ins, &outs, -1, functor);
+  }
 };
 
 template <typename Functor>
-class BinaryLogicalOpKernel<platform::CUDADeviceContext, Functor>
-    : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
+class UnaryLogicalOpKernel<platform::CUDADeviceContext, Functor>
+    : public framework::OpKernel<typename Functor::ELEM_TYPE> {
  public:
-  using InT = typename Functor::ELEMENT_TYPE;
-  using OutT = bool;
   void Compute(const framework::ExecutionContext& ctx) const override {
+    using InT = typename Functor::ELEM_TYPE;
+    using OutT = bool;
+
+    auto* x = ctx.Input<framework::Tensor>("X");
+    auto* out = ctx.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(ctx.GetPlace());
+
     auto functor = Functor();
-    std::vector<const framework::Tensor*> ins;
-    std::vector<framework::Tensor*> outs;
+    std::vector<const framework::Tensor*> ins = {x};
+    std::vector<framework::Tensor*> outs = {out};
     const auto& cuda_ctx =
         ctx.template device_context<platform::CUDADeviceContext>();
-    int axis = PackTensorsIntoVector<OutT>(ctx, &ins, &outs);
-
-    if (ins.size() == 1) {
-      LaunchElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT>(
-          cuda_ctx, ins, &outs, axis, functor);
-    } else {
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, InT, OutT>(
-          cuda_ctx, ins, &outs, axis, functor);
-    }
+    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, InT, OutT>(
+        cuda_ctx, ins, &outs, functor);
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
-#define REGISTER_LOGICAL_CUDA_KERNEL(op_name, func)                            \
-  REGISTER_OP_CUDA_KERNEL(                                                     \
-      op_name,                                                                 \
-      ops::BinaryLogicalOpKernel<plat::CUDADeviceContext, ops::func<bool>>,    \
-      ops::BinaryLogicalOpKernel<plat::CUDADeviceContext, ops::func<int8_t>>,  \
-      ops::BinaryLogicalOpKernel<plat::CUDADeviceContext, ops::func<int16_t>>, \
-      ops::BinaryLogicalOpKernel<plat::CUDADeviceContext, ops::func<int>>,     \
-      ops::BinaryLogicalOpKernel<plat::CUDADeviceContext, ops::func<int64_t>>, \
-      ops::BinaryLogicalOpKernel<plat::CUDADeviceContext, ops::func<float>>,   \
-      ops::BinaryLogicalOpKernel<plat::CUDADeviceContext, ops::func<double>>);
+namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-REGISTER_LOGICAL_CUDA_KERNEL(logical_or, CudaOrFunctor)
-REGISTER_LOGICAL_CUDA_KERNEL(logical_and, CudaAndFunctor)
-REGISTER_LOGICAL_CUDA_KERNEL(logical_xor, CudaXorFunctor)
-REGISTER_LOGICAL_CUDA_KERNEL(logical_not, CudaNotFunctor)
-#undef REGISTER_LOGICAL_CUDA_KERNEL
+REGISTER_BINARY_LOGICAL_KERNEL(logical_or, CUDA, ops::LogicalOrFunctor)
+REGISTER_BINARY_LOGICAL_KERNEL(logical_and, CUDA, ops::LogicalAndFunctor)
+REGISTER_BINARY_LOGICAL_KERNEL(logical_xor, CUDA, ops::LogicalXorFunctor)
+REGISTER_UNARY_LOGICAL_KERNEL(logical_not, CUDA, ops::LogicalNotFunctor)
