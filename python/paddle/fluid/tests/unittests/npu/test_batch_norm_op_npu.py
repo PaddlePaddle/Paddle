@@ -125,7 +125,7 @@ class TestBatchNormOpInference(unittest.TestCase):
         place = core.NPUPlace(0)
         for data_format in self.data_formats:
             self.check_with_place(place, data_format, self.dtype, [2, 3, 4, 5])
-        self.check_with_place(place, "NCHW", self.dtype, [3, 8, 5])
+            self.check_with_place(place, data_format, self.dtype, [3, 8, 5])
 
     def init_kernel_type(self):
         pass
@@ -314,7 +314,7 @@ class TestBatchNormOpTraining(unittest.TestCase):
 
         for data_format in self.data_formats:
             test_with_place(core.NPUPlace(0), data_format, [2, 3, 4, 5])
-        test_with_place(core.NPUPlace(0), "NCHW", [3, 8, 5])
+            test_with_place(core.NPUPlace(0), data_format, [3, 8, 5])
 
     def init_kernel_type(self):
         pass

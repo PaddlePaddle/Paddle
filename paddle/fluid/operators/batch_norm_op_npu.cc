@@ -14,74 +14,11 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
-#include "paddle/fluid/operators/tensor_formatter.h"
 
 namespace paddle {
 namespace operators {
 
-void PrintTensor(const Tensor *tensor, const std::string name,
-                 const std::string msg) {
-  std::cout << "=================== Print Tensor <" << name << ">, Place <"
-            << tensor->place() << "> ===================" << std::endl;
-  framework::LoDTensor cpu_tensor;
-  cpu_tensor.Resize(tensor->dims());
-  framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
-
-  operators::TensorFormatter formatter;
-  formatter.Print(cpu_tensor, name, msg);
-}
-
 using NPUDeviceContext = platform::NPUDeviceContext;
-
-static void BNSumReduceFwd(const framework::ExecutionContext &ctx,
-                           const aclrtStream &stream, const Tensor &input,
-                           Tensor *sum, Tensor *square_sum) {
-  const size_t rank = input.dims().size();
-  const DataLayout data_layout = input.layout();
-  NpuOpRunner runner_sum;
-  NpuOpRunner runner_square_sum;
-  runner_sum.SetType("ReduceSumD")
-      .AddInput(input)
-      .AddOutput(*sum)
-      .AddAttr("keep_dims", false);
-  runner_square_sum.SetType("SquareSumV1")
-      .AddInput(input)
-      .AddOutput(*square_sum)
-      .AddAttr("keep_dims", false);
-  if (rank == 4UL) {
-    switch (data_layout) {
-      case DataLayout::kNCHW:
-        runner_sum.AddAttr("axes", std::vector<int>{0, 2, 3});
-        runner_square_sum.AddAttr("axis", std::vector<int>{0, 2, 3});
-        break;
-      case DataLayout::kNHWC:
-        runner_sum.AddAttr("axes", std::vector<int>{0, 1, 2});
-        runner_square_sum.AddAttr("axis", std::vector<int>{0, 1, 2});
-        break;
-      default:
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported data layout code(%s) in BatchNorm.",
-            framework::DataLayoutToString(data_layout)));
-    }
-  } else {
-    switch (data_layout) {
-      case DataLayout::kNCHW:  // NCL
-        runner_sum.AddAttr("axes", std::vector<int>{0, 2});
-        runner_square_sum.AddAttr("axis", std::vector<int>{0, 2});
-        break;
-      case DataLayout::kNHWC:  // NLC
-        runner_sum.AddAttr("axes", std::vector<int>{0, 1});
-        runner_square_sum.AddAttr("axis", std::vector<int>{0, 1});
-        break;
-      default:
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported data layout code(%s) in BatchNorm.",
-            framework::DataLayoutToString(data_layout)));
-    }
-  }
-  runner_sum.Run(stream);
-  runner_square_sum.Run(stream);
-}
 
 template <typename T>
 class NPUBatchNormOpKernel : public framework::OpKernel<T> {
@@ -157,18 +94,22 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
       sum.mutable_data<float>(running_mean->dims(), ctx.GetPlace());
       square_sum.mutable_data<float>(running_mean->dims(), ctx.GetPlace());
 
-      // BNTrainingReduce ONLY support rank = 4 when NHWC
-      if (data_layout == DataLayout::kNHWC && x_dims.size() == 3UL) {
-        BNSumReduceFwd(ctx, stream, x_tensor, &sum, &square_sum);
-      } else {
-        const auto &runner_reduce =
-            NpuOpRunner("BNTrainingReduce", {x_tensor}, {sum, square_sum},
-                        {{"epsilon", epsilon}});
-        runner_reduce.Run(stream);
+      // BNTrainingReduce ONLY support rank = 4
+      if (x->dims().size() == 3) {
+        auto x_shape_vec = framework::vectorize(x->dims());
+        if (data_layout == DataLayout::kNCHW) {
+          x_shape_vec.push_back(1);  // expand NCL -> NCL1
+        } else {
+          x_shape_vec.insert(x_shape_vec.begin() + 2, 1);  // expand NLC -> NL1C
+        }
+        auto x_new_shape = framework::make_ddim(x_shape_vec);
+        x_tensor.Resize(x_new_shape);
+        x_tensor.Resize(x_new_shape);
       }
-
-      PrintTensor(&sum, "sum", "BN - fwd");
-      PrintTensor(&square_sum, "square_sum", "BN - fwd");
+      const auto &runner_reduce =
+          NpuOpRunner("BNTrainingReduce", {x_tensor}, {sum, square_sum},
+                      {{"epsilon", epsilon}});
+      runner_reduce.Run(stream);
 
       const auto &runner_update = NpuOpRunner(
           "BNTrainingUpdate", {x_tensor, sum, square_sum, *scale, *bias,
@@ -253,9 +194,14 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
       dx_tensor.ShareDataWith(*d_x);
       if (use_global_stats) {
         if (x->dims().size() == 3) {
-          // BNInferGrad only support x rank = 4, need to expand NCL -> NCL1
+          // BNInferGrad only support x rank = 4,
           auto x_shape_vec = framework::vectorize(d_x->dims());
-          x_shape_vec.push_back(1);
+          if (data_layout == DataLayout::kNCHW) {
+            x_shape_vec.push_back(1);  // expand NCL -> NCL1
+          } else {
+            x_shape_vec.insert(x_shape_vec.begin() + 2,
+                               1);  // expand NLC -> NL1C
+          }
           auto x_new_shape = framework::make_ddim(x_shape_vec);
           dx_tensor.Resize(x_new_shape);
           dy_tensor.Resize(x_new_shape);

@@ -184,8 +184,6 @@ if (WITH_ASCEND_CL)
     cc_test(transpose_op_npu_test SRCS transpose_op_npu_test.cc DEPS op_registry transpose_op scope device_context enforce executor)
 endif()
 
-# for debug
-cc_test(batch_norm_op_test SRCS batch_norm_op_test.cc DEPS op_registry batch_norm_op scope device_context enforce executor selected_rows_functor tensor_formatter)
 
 if(WITH_MKLDNN)
 include(mkldnn/inplace_op_tests.cmake)
