@@ -44,6 +44,7 @@ from .activation import tanhshrink  # noqa: F401
 from .activation import thresholded_relu  # noqa: F401
 from .activation import log_softmax  # noqa: F401
 from .activation import glu  # noqa: F401
+from .activation import gumbel_softmax  # noqa: F401
 from .common import dropout  # noqa: F401
 from .common import dropout2d  # noqa: F401
 from .common import dropout3d  # noqa: F401
@@ -151,6 +152,7 @@ __all__ = [     #noqa
            'thresholded_relu',
            'log_softmax',
            'glu',
+           'gumbel_softmax',
            'diag_embed',
            'sequence_mask',
            'dropout',
