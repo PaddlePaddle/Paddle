@@ -21,6 +21,8 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
+// Define the binary functors used in elementwise ops.
+
 // Add
 template <typename T>
 struct AddFunctor {
@@ -76,6 +78,25 @@ struct InverseDivFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b / a; }
 };
 
+// Floor Divide
+template <typename T>
+struct FloorDivFunctor {
+  inline HOSTDEVICE T operator()(T a, T b) const {
+    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+    return static_cast<T>(std::trunc(a / b));
+  }
+};
+
+template <typename T>
+struct InverseFloorDivFunctor {
+  inline HOSTDEVICE T operator()(T a, T b) const {
+    PADDLE_ENFORCE(a != 0, DIV_ERROR_INFO);
+    return static_cast<T>(std::trunc(b / a));
+  }
+};
+
+#undef DIV_ERROR_INFO
+
 // Maximum
 template <typename T>
 struct MaxFunctor {
@@ -86,25 +107,6 @@ struct MaxFunctor {
 template <typename T>
 struct MinFunctor {
   inline HOSTDEVICE T operator()(T a, T b) const { return a < b ? a : b; }
-};
-
-// Pow
-template <typename T>
-struct PowFunctor {
-  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-// TODO(wujionghao): A potential speed improvement is supporting different
-// types in C++.
-#if defined(__CUDA_ARCH__) || defined(__HIPCC__)
-    // On CUDAPlace, std::pow(3, 1) calls pow(float, float), and
-    // it will return a float number like 2.99... , which floor to 2
-    // when cast to int by default and it is wrong.
-    // Use llrint to cast it to the nearest integer, which is 3.
-    if (std::is_integral<T>::value) {
-      return std::llrint(std::pow(a, b));
-    }
-#endif
-    return std::pow(a, b);
-  }
 };
 
 }  // namespace operators
