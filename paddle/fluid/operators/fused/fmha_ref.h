@@ -94,8 +94,10 @@ class FMHARef {
     int softmax_axis = -1;
     if (&src_mask_tensor != nullptr) {
       // mask_out = qk_out + src_mask
+      //   LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+      //       dev_ctx_, ins, &outs, elewise_add_axis, CudaAddFunctor<T>());
       LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-          dev_ctx_, ins, &outs, elewise_add_axis, CudaAddFunctor<T>());
+          dev_ctx_, ins, &outs, elewise_add_axis, AddFunctor<T>());
       // softmax(mask_out)
       SoftmaxForwardCUDAKernelDriver<T>(dev_ctx_, *src_mask_out_tensor,
                                         softmax_axis, softmax_out_tensor);

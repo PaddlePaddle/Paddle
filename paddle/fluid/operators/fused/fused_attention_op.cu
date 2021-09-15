@@ -466,9 +466,12 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     ins.emplace_back(d_x);
     outs.emplace_back(d_x);
     int elewise_add_axis = -1;
+    // LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+    //     ctx.cuda_device_context(), ins, &outs, elewise_add_axis,
+    //     CudaAddFunctor<T>());
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
         ctx.cuda_device_context(), ins, &outs, elewise_add_axis,
-        CudaAddFunctor<T>());
+        AddFunctor<T>());
 #endif
   }
 };
