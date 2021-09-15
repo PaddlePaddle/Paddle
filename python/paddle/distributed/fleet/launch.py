@@ -102,8 +102,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--log_dir",
         type=str,
         default="log",
-        help="The path for each process's log.If it's not set, the log will printed to default pipe."
-    )
+        help="The path for each process's log. Default --log_dir=log/")
 
     base_group.add_argument(
         "--nproc_per_node",
@@ -401,17 +400,17 @@ def launch():
 
 
     Base Parameters:
-        - ``--log_dir LOG_DIR``: The path for each process's log. e.g ``--log_dir=log``. If it's not set, the ``log`` will printed to default pipe.
+        - ``--log_dir``: The path for each process's log. e.g ``--log_dir=log``. Default ``log``.
 
-        - ``--nproc_per_node NPROC_PER_NODE``: The number of processes to launch on a node. In gpu training, it should be less or equal to the gpus number of you system(or you set by --gpus). And so each process can bound to one or average number of gpus. e.g ``--nproc_per_node=8``
+        - ``--nproc_per_node``: The number of processes to launch on a node. In gpu training, it should be less or equal to the gpus number of you system(or you set by --gpus). And so each process can bound to one or average number of gpus. e.g ``--nproc_per_node=8``
 
-        - ``--run_mode RUN_MODE``: run mode of job, can be:collective/ps/ps-heter. e.g ``--run_mode=collective``. Default ``collective``.
+        - ``--run_mode``: run mode of job, can be:collective/ps/ps-heter. e.g ``--run_mode=collective``. Default ``collective``.
 
-        - ``--gpus GPUS``: It's for gpu training. e.g ``--gpus=0,1,2,3`` will launch four training processes each bound to one gpu.
+        - ``--gpus``: It's for gpu training. e.g ``--gpus=0,1,2,3`` will launch four training processes each bound to one gpu.
 
-        - ``--selected_gpus GPUS``: gpus aliases, recommend to use ``--gpus``.
+        - ``--selected_gpus``: gpus aliases, recommend to use ``--gpus``.
         
-        - ``--xpus XPUS``: It's for xpu training if xpu is available. e.g ``--xpus=0,1,2,3``.
+        - ``--xpus``: It's for xpu training if xpu is available. e.g ``--xpus=0,1,2,3``.
         
         - ``--selected_xpus``: xpus aliases, recommend to use ``--xpus``.
 
@@ -420,35 +419,35 @@ def launch():
         - ``training_script_args``: The args of training_script. e.g ``lr=0.1``
 
     Collective Parameters:
-        - ``--ips IPS``: Paddle cluster nodes ips, e.g ``--ips=192.168.0.16,192.168.0.17``
+        - ``--ips``: Paddle cluster nodes ips, e.g ``--ips=192.168.0.16,192.168.0.17``
 
     Parameter-Server Parameters:
-        - ``--servers SERVERS``: User defined servers ip:port
+        - ``--servers``: User defined servers ip:port, e.g ``--servers="192.168.0.16:6170,192.168.0.17:6170"``
 
-        - ``--workers WORKERS``: User defined workers ip:port
+        - ``--workers``: User defined workers ip:port, e.g ``--workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172"``
 
-        - ``--heter_workers HETER_WORKERS``: User defined heter workers ip:port
+        - ``--heter_workers``: User defined heter workers ip:port, e.g ``--heter_workers="192.168.0.16:6172,192.168.0.17:6172"``
 
-        - ``--worker_num WORKER_NUM``: Number of workers
+        - ``--worker_num``: Number of workers (It recommend to set when in the emulated distributed environment using single node)
 
-        - ``--server_num SERVER_NUM``: Number of servers
+        - ``--server_num``: Number of servers (It recommend to set when in the emulated distributed environment using single node)
 
-        - ``--heter_worker_num HETER_WORKER_NUM``: number of heter_workers
+        - ``--heter_worker_num``: Number of heter_workers (It recommend to set when in the emulated distributed environment using single node)
 
-        - ``--http_port HTTP_PORT``: Gloo http Port
+        - ``--http_port``: Gloo http Port
 
     Elastic Parameters:
-        - ``--elastic_server ELASTIC_SERVER``: etcd server host:port, e.g ``--elastic_server=127.0.0.1:2379``
+        - ``--elastic_server``: etcd server host:port, e.g ``--elastic_server=127.0.0.1:2379``
 
-        - ``--job_id JOB_ID``: job unique id, e.g ``--job_id=job1``
+        - ``--job_id``: job unique id, e.g ``--job_id=job1``
 
-        - ``--np NP``: job pod/node number, e.g ``--np=2``
+        - ``--np``: job pod/node number, e.g ``--np=2``
 
-        - ``--scale SCALE``: scale np, not be used now!
+        - ``--scale``: scale np, not be used now!
 
-        - ``--host HOST``: bind host, default to POD_IP env.
+        - ``--host``: bind host, default to POD_IP env.
 
-        - ``--force FORCE``: update np force, not be used now!
+        - ``--force``: update np force, not be used now!
 
     Returns:
         ``None``
@@ -457,7 +456,7 @@ def launch():
         .. code-block:: bash
             :name: code-block-example-bash1
 
-            python -m paddle.distributed.launch --log_dir=log --gpus=0,1,2,3 train.py --output_dir=work_dir
+            python -m paddle.distributed.launch --gpus=0,1,2,3 train.py --lr=0.01
         
     Examples 2 (collective, multi node):
         .. code-block:: bash
@@ -467,17 +466,17 @@ def launch():
 
             # On 192.168.0.16:
 
-            python -m paddle.distributed.launch --log_dir=log --gpus=0,1,2,3 --ips=192.168.0.16,192.168.0.17 train.py --output_dir=work_dir
+            python -m paddle.distributed.launch --gpus=0,1,2,3 --ips=192.168.0.16,192.168.0.17 train.py --lr=0.01
 
             # On 192.168.0.17:
-            python -m paddle.distributed.launch --log_dir=log --gpus=0,1,2,3 --ips=192.168.0.16,192.168.0.17 train.py --output_dir=work_dir
+            python -m paddle.distributed.launch --gpus=0,1,2,3 --ips=192.168.0.16,192.168.0.17 train.py --lr=0.01
         
     Examples 3 (ps, cpu, single node):
         .. code-block:: bash
             :name: code-block-example-bash3
 
             # 2 server and 4 worker
-            python -m paddle.distributed.launch --log_dir=log --server_num=2 --worker_num=4 train.py --output_dir=work_dir
+            python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
         
     Examples 4 (ps, cpu, multi node):
         .. code-block:: bash
@@ -487,11 +486,11 @@ def launch():
 
             # On 192.168.0.16:
 
-            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --output_dir=work_dir
+            python -m paddle.distributed.launch --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --lr=0.01
 
             # On 192.168.0.17:
 
-            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --output_dir=work_dir
+            python -m paddle.distributed.launch --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --lr=0.01
 
     Examples 5 (ps, gpu, single node):
         .. code-block:: bash
@@ -499,7 +498,7 @@ def launch():
 
             # 2 server and 4 worker, each worker use single gpu
             export CUDA_VISIBLE_DEVICES=0,1,2,3
-            python -m paddle.distributed.launch --log_dir=log --server_num=2 --worker_num=4 train.py --output_dir=work_dir
+            python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
             
     Examples 6 (ps, gpu, multi node):
         .. code-block:: bash
@@ -510,12 +509,12 @@ def launch():
             # On 192.168.0.16:
 
             export CUDA_VISIBLE_DEVICES=0,1
-            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --output_dir=work_dir
+            python -m paddle.distributed.launch --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --lr=0.01
 
             # On 192.168.0.17:
 
             export CUDA_VISIBLE_DEVICES=0,1
-            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --output_dir=work_dir
+            python -m paddle.distributed.launch --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --lr=0.01
 
     Examples 7 (ps-heter, cpu + gpu, single node):
         .. code-block:: bash
@@ -523,7 +522,7 @@ def launch():
 
             # 2 server and 4 worker, two worker use gpu, two worker use cpu
             export CUDA_VISIBLE_DEVICES=0,1
-            python -m paddle.distributed.launch --log_dir=log --server_num=2 --worker_num=2 --heter_worker_num=2 train.py --output_dir=work_dir
+            python -m paddle.distributed.launch --server_num=2 --worker_num=2 --heter_worker_num=2 train.py --lr=0.01
             
     Examples 8 (ps-heter, cpu + gpu, multi node):
         .. code-block:: bash
@@ -534,18 +533,18 @@ def launch():
             # On 192.168.0.16:
 
             export CUDA_VISIBLE_DEVICES=0
-            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.17:6171" --heter_workers="192.168.0.16:6172,192.168.0.17:6172" train.py --output_dir=work_dir
+            python -m paddle.distributed.launch --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.17:6171" --heter_workers="192.168.0.16:6172,192.168.0.17:6172" train.py --lr=0.01
 
             # On 192.168.0.17:
 
             export CUDA_VISIBLE_DEVICES=0
-            python -m paddle.distributed.launch --log_dir=log --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.17:6171" --heter_workers="192.168.0.16:6172,192.168.0.17:6172" train.py --output_dir=work_dir
+            python -m paddle.distributed.launch --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.17:6171" --heter_workers="192.168.0.16:6172,192.168.0.17:6172" train.py --lr=0.01
 
     Examples 9 (elastic):
         .. code-block:: bash
             :name: code-block-example-bash9
 
-            python -m paddle.distributed.launch --elastic_server=127.0.0.1:2379 --np=2 --job_id=job1 --log_dir=log --gpus=0,1,2,3 train.py
+            python -m paddle.distributed.launch --elastic_server=127.0.0.1:2379 --np=2 --job_id=job1  --gpus=0,1,2,3 train.py
         
     """
 
