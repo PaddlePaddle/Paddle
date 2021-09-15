@@ -19,13 +19,17 @@
 
 TEST(WorkQueue, TestSingleThreadedWorkQueue) {
   VLOG(1) << "In Test";
+  using paddle::framework::WorkQueueOptions;
   using paddle::framework::WorkQueue;
   using paddle::framework::CreateSingleThreadedWorkQueue;
   std::atomic<bool> finished{false};
   std::atomic<unsigned> counter{0};
   constexpr unsigned kLoopNum = 1000000;
   // CreateSingleThreadedWorkQueue
-  std::unique_ptr<WorkQueue> work_queue = CreateSingleThreadedWorkQueue();
+  WorkQueueOptions options;
+  options.num_threads = 1;
+  options.track_task = true;
+  auto work_queue = CreateSingleThreadedWorkQueue(options);
   // NumThreads
   EXPECT_EQ(work_queue->NumThreads(), 1u);
   // AddTask
@@ -46,14 +50,18 @@ TEST(WorkQueue, TestSingleThreadedWorkQueue) {
 
 TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   VLOG(1) << "In Test";
+  using paddle::framework::WorkQueueOptions;
   using paddle::framework::WorkQueue;
   using paddle::framework::CreateMultiThreadedWorkQueue;
   std::atomic<bool> finished{false};
   std::atomic<unsigned> counter{0};
   constexpr unsigned kExternalLoopNum = 100;
   constexpr unsigned kLoopNum = 1000000;
-  // CreateSingleThreadedWorkQueue
-  std::unique_ptr<WorkQueue> work_queue = CreateMultiThreadedWorkQueue(10);
+  // CreateMultiThreadedWorkQueue
+  WorkQueueOptions options;
+  options.num_threads = 10;
+  options.track_task = true;
+  auto work_queue = CreateMultiThreadedWorkQueue(options);
   // NumThreads
   EXPECT_EQ(work_queue->NumThreads(), 10u);
   // AddTask
@@ -72,4 +80,43 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   work_queue->WaitQueueEmpty();
   EXPECT_EQ(finished.load(), true);
   EXPECT_EQ(counter.load(), kLoopNum * kExternalLoopNum);
+}
+
+TEST(WorkQueue, TestWorkQueueGroup) {
+  using paddle::framework::WorkQueueOptions;
+  using paddle::framework::WorkQueueGroup;
+  using paddle::framework::CreateWorkQueueGroup;
+  std::atomic<bool> finished{false};
+  std::atomic<unsigned> counter{0};
+  constexpr unsigned kExternalLoopNum = 100;
+  constexpr unsigned kLoopNum = 1000000;
+  // CreateMultiThreadedWorkQueue
+  WorkQueueOptions sq_options;
+  sq_options.num_threads = 1;
+  sq_options.track_task = true;
+  WorkQueueOptions mq_options;
+  mq_options.num_threads = 10;
+  mq_options.track_task = true;
+  auto queue_group = CreateWorkQueueGroup({sq_options, mq_options});
+  // NumThreads
+  EXPECT_EQ(queue_group->QueueNumThreads(0), 1u);
+  EXPECT_EQ(queue_group->QueueNumThreads(1), 10u);
+  EXPECT_EQ(queue_group->QueueGroupNumThreads(), 11u);
+  // AddTask
+  EXPECT_EQ(counter.load(), 0u);
+  for (unsigned i = 0; i < kExternalLoopNum; ++i) {
+    queue_group->AddTask(1, [&counter, &finished, kLoopNum]() {
+      for (unsigned i = 0; i < kLoopNum; ++i) {
+        ++counter;
+      }
+    });
+  }
+  queue_group->AddTask(0, [&counter, &finished, kLoopNum]() {
+    for (unsigned i = 0; i < kLoopNum; ++i) {
+      ++counter;
+    }
+  });
+  //  WaitQueueGroupEmpty()
+  queue_group->WaitQueueGroupEmpty();
+  EXPECT_EQ(counter.load(), kLoopNum * kExternalLoopNum + kLoopNum);
 }
