@@ -29,12 +29,81 @@ from ..fluid.layers import unstack  # noqa: F401
 
 from ..fluid.layers import scatter_nd  # noqa: F401
 from ..fluid.layers import shard_index  # noqa: F401
+from ..fluid.layers.nn import _elementwise_op_in_dygraph
 from ..fluid import layers
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
 from paddle import _C_ops
 
 __all__ = []
+
+
+@dygraph_only
+def fill_(x, value):
+    """
+    **Notes**:
+        **This API is ONLY available in Dygraph mode**
+
+    This function fill the Tensor with value inplace.
+
+    Args:
+        x(Tensor): ``x`` is the Tensor we want to filled data inplace
+        value(Scale): ``value`` is the value to be filled in x
+
+    Returns:
+        x(Tensor): Tensor x filled with value inplace
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            tensor = paddle.to_tensor([0, 1, 2, 3, 4])
+
+            tensor.fill_(0)
+            print(tensor.tolist())   #[0, 0, 0, 0, 0]
+
+    """
+    if not isinstance(value, (float, int)):
+        raise TypeError(
+            "The type of 'value'  must be int or float, but received %s." %
+            (type(value)))
+    return core.ops.fill_any_(x, "value_float",
+                              float(value), "value_int", int(value))
+
+
+setattr(core.VarBase, 'fill_', fill_)
+
+
+@dygraph_only
+def zero_(x):
+    """
+    **Notes**:
+        **This API is ONLY available in Dygraph mode**
+
+    This function fill the Tensor with zero inplace.
+
+    Args:
+        x(Tensor): ``x`` is the Tensor we want to filled with zero inplace
+
+    Returns:
+        x(Tensor): Tensor x filled with zero inplace
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            tensor = paddle.to_tensor([0, 1, 2, 3, 4])
+
+            tensor.zero_()
+            print(tensor.tolist())   #[0, 0, 0, 0, 0]
+
+    """
+    return core.ops.fill_any_(x, "value_float", 0., "value_int", int(0))
+
+
+setattr(core.VarBase, 'zero_', zero_)
 
 
 @dygraph_only
@@ -84,6 +153,112 @@ def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
 
 
 setattr(core.VarBase, 'fill_diagonal_', fill_diagonal_)
+
+
+def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
+    inshape = x.shape
+    assert dim1 < len(inshape) and dim1 >= -len(inshape), (
+        'dim1 should between [-rank,rank) in fill_diagonal_tensor_')
+    assert dim2 < len(inshape) and dim2 >= -len(inshape), (
+        'dim2 should between [-rank,rank) in fill_diagonal_tensor_')
+    assert len(inshape) >= 2, (
+        'Tensor dims should >= 2 in fill_diagonal_tensor_')
+    dim1 %= len(inshape)
+    dim2 %= len(inshape)
+
+    predshape = []
+    for i in range(len(inshape)):
+        if i != dim1 and i != dim2:
+            predshape.append(inshape[i])
+    diaglen = min(
+        min(inshape[dim1], inshape[dim1] + offset),
+        min(inshape[dim2], inshape[dim2] - offset))
+    predshape.append(diaglen)
+    assert tuple(predshape) == tuple(y.shape), (
+        "the y shape should be {}".format(predshape))
+    if len(y.shape) == 1:
+        y = y.reshape([1, -1])
+
+    if inplace:
+        return core.ops.fill_diagonal_tensor_(x, y, 'dim1', dim1, 'dim2', dim2,
+                                              'offset', offset)
+    return core.ops.fill_diagonal_tensor(x, y, 'dim1', dim1, 'dim2', dim2,
+                                         'offset', offset)
+
+
+def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
+    """
+    **Notes**:
+        **This API is ONLY available in Dygraph mode**
+
+    This function fill the source Tensor y into the x Tensor's diagonal inplace.
+
+    Args:
+        x(Tensor): ``x`` is the original Tensor
+        y(Tensor): ``y`` is the Tensor to filled in x
+        dim1(int,optional): first dimension with respect to which to fill diagonal. Default: 0.
+        dim2(int,optional): second dimension with respect to which to fill diagonal. Default: 1.
+        offset(int,optional): the offset to the main diagonal. Default: 0 (main diagonal).
+        name(str,optional): Name for the operation (optional, default is None)
+
+    Returns:
+        Tensor: Tensor with diagonal filled with y.
+
+    Returns type:
+        list: dtype is same as x Tensor
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.ones((4, 3)) * 2
+            y = paddle.ones((3,))
+            x.fill_diagonal_tensor_(y)
+            print(x.tolist())   #[[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
+
+    """
+    return _fill_diagonal_tensor_impl(
+        x, y, offset=offset, dim1=dim1, dim2=dim2, inplace=True)
+
+
+setattr(core.VarBase, 'fill_diagonal_tensor_', fill_diagonal_tensor_)
+
+
+def fill_diagonal_tensor(x, y, offset=0, dim1=0, dim2=1, name=None):
+    """
+    This function fill the source Tensor y into the x Tensor's diagonal.
+
+    Args:
+        x(Tensor): ``x`` is the original Tensor
+        y(Tensor): ``y`` is the Tensor to filled in x
+        dim1(int,optional): first dimension with respect to which to fill diagonal. Default: 0.
+        dim2(int,optional): second dimension with respect to which to fill diagonal. Default: 1.
+        offset(int,optional): the offset to the main diagonal. Default: 0 (main diagonal).
+        name(str,optional): Name for the operation (optional, default is None)
+
+    Returns:
+        Tensor: Tensor with diagonal filled with y.
+
+    Returns type:
+        list: dtype is same as x Tensor
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.ones((4, 3)) * 2
+            y = paddle.ones((3,))
+            nx = x.fill_diagonal_tensor(y)
+            print(nx.tolist())   #[[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
+
+    """
+    return _fill_diagonal_tensor_impl(
+        x, y, offset=offset, dim1=dim1, dim2=dim2, inplace=False)
+
+
+setattr(core.VarBase, 'fill_diagonal_tensor', fill_diagonal_tensor)
 
 
 @dygraph_only
@@ -1242,8 +1417,10 @@ def scatter(x, index, updates, overwrite=True, name=None):
         index (Tensor): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
         updates (Tensor): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 should be the same as input.
         overwrite (bool): The mode that updating the output when there are same indices. 
-          If True, use the overwrite mode to update the output of the same index,
-	      if False, use the accumulate mode to update the output of the same index.Default value is True.
+            
+            If True, use the overwrite mode to update the output of the same index,
+	        if False, use the accumulate mode to update the output of the same index.Default value is True.
+        
         name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
  
     Returns:
