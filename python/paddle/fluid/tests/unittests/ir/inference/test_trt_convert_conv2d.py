@@ -49,20 +49,12 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
 
-#        for batch in [1, 2, 4]:
-#            for strides in [[1, 1], [2, 2], [1, 2]]:
-#                for paddings in [[0, 3], [1, 2, 3, 4]]:
-#                    for groups in [1, 2, 3]:
-#                        for padding_algorithm in ['EXPLICIT', 'SAME', 'VALID']:
-#                            for dilations in [[1, 1], [2, 2], [1, 2]]:
-#                                for data_format in ['NCHW']:
-
-        for batch in [4]:
-            for strides in [[1, 1]]:
-                for paddings in [[0, 3]]:
-                    for groups in [2]:
-                        for padding_algorithm in ['EXPLICIT']:
-                            for dilations in [[1, 2]]:
+        for batch in [1, 2, 4]:
+            for strides in [[1, 1], [2, 2], [1, 2]]:
+                for paddings in [[0, 3], [1, 2, 3, 4]]:
+                    for groups in [1, 2, 3]:
+                        for padding_algorithm in ['EXPLICIT', 'SAME', 'VALID']:
+                            for dilations in [[1, 1], [2, 2], [1, 2]]:
                                 for data_format in ['NCHW']:
 
                                     dics = [{
@@ -227,6 +219,7 @@ class TrtConvertConv2dTest(TrtLayerAutoScanTest):
     def test_quant(self):
         self.add_skip_trt_case()
         self.run_test(quant=True)
+
 
 if __name__ == "__main__":
     unittest.main()

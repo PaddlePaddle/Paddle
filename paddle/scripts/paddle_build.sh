@@ -1155,6 +1155,8 @@ function parallel_test_base_gpu() {
 EOF
 
 set -x
+        # set trt_convert ut to run 30% cases.
+        export TEST_NUM_PERCENT_CASES=0.3
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
@@ -1754,7 +1756,7 @@ function parallel_test_base_npu() {
         npu_cc_changes=$(git diff --name-only remotes/upstream/$BRANCH | grep "op_npu.cc" || true)
         npu_py_changes=$(git diff --name-only remotes/upstream/$BRANCH | grep "op_npu.py" || true)
         # get PR name
-        npu_pr_tile=$(curl https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} 2>/dev/null | grep "<title>" | grep "[NPU]" || true)
+        npu_pr_tile=$(curl https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} 2>/dev/null | grep "<title>" | grep "NPU" || true)
         if [ -z "${npu_cc_changes}" ] && [ -z "${npu_py_changes}" ] && [ -z "${npu_pr_tile}" ]; then
             echo "NO NPU operators files changed and no '[NPU]' found in PR title, skip NPU unit tests!"
             exit 0

@@ -266,10 +266,9 @@ class TestFleetShardingMetaOptimizer(TestFleetMetaOptimizer):
             'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum', 'c_reduce_sum',
             'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream',
             'squared_l2_norm', 'squared_l2_norm', 'squared_l2_norm', 'sum',
-            'c_allreduce_sum', 'sum', 'c_allreduce_sum', 'sqrt',
-            'fill_constant', 'elementwise_max', 'elementwise_div',
-            'elementwise_mul', 'elementwise_mul', 'elementwise_mul', 'momentum',
-            'momentum', 'momentum'
+            'c_allreduce_sum', 'sqrt', 'fill_constant', 'elementwise_max',
+            'elementwise_div', 'elementwise_mul', 'elementwise_mul',
+            'elementwise_mul', 'momentum', 'momentum', 'momentum'
         ])
 
     def test_sharding_clone_for_test(self):
@@ -613,7 +612,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         for op in main_prog_ops:
             if op.type == 'c_allreduce_sum':
-                assert 'FusedOutput' in op.input_arg_names[0]
+                assert 'FusedGrad' in op.input_arg_names[0]
 
     def test_hybrid_with_mp_pp_amp_gclip(self):
         train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
