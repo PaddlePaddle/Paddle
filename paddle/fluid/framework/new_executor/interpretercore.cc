@@ -313,13 +313,13 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id,
     dry_run_profiler_.ParseMemoryInfo(global_scope_->var_list);
   }
 
-  // step4: update working_queue
   auto& next_instr = instr_node.next_instruction_.all_next_ops_;
 
   for (auto next_i : next_instr) {
-    atomic_deps->at(next_i)->fetch_sub(1, std::memory_order_relaxed);
-
-    if (atomic_deps->at(next_i)->load() == 0) {
+    // fetch_sub return value before applying sub
+    bool is_ready =
+        atomic_deps->at(next_i)->fetch_sub(1, std::memory_order_relaxed) == 1;
+    if (is_ready) {
       async_work_queue_.AddTask(vec_instruction_[next_i].type_, [=]() {
         RunInstructionAsync(next_i, atomic_deps, atomic_var_ref, op_run_number,
                             is_dry_run);
@@ -336,10 +336,10 @@ void InterpreterCore::CheckGC(size_t instr_id,
   auto& var_scope = *global_scope_;
 
   for (auto var_id : gc_check_list) {
-    atomic_var_ref->at(var_id)->fetch_sub(1, std::memory_order_relaxed);
-    if (var_scope.vec_meta_info_[var_id].vardesc_ &&
-        !var_scope.vec_meta_info_[var_id].vardesc_->Persistable() &&
-        atomic_var_ref->at(var_id)->load() == 0) {
+    bool is_ready = atomic_var_ref->at(var_id)->fetch_sub(
+                        1, std::memory_order_relaxed) == 1;
+    if (is_ready && var_scope.vec_meta_info_[var_id].vardesc_ &&
+        !var_scope.vec_meta_info_[var_id].vardesc_->Persistable()) {
       gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
               vec_instruction_[instr_id].dev_ctx_);
     }
