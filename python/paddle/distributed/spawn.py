@@ -132,6 +132,16 @@ def _get_node_ip(ips):
 
 
 def _get_subprocess_env_list(nprocs, options):
+    # NOTE (xiongkun03) Why put backend deduction  here ? 
+    # Becase _get_subprocess_env_list is used by many testcases. 
+    # So for campability, we put backend deduction here 
+
+    # logic for handle backend option
+    if 'backend' not in options or options['backend'] == 'auto':
+        options['backend'] = _get_default_backend()
+    check_backend(options['backend'])
+    block_windows_and_macos(options['backend'])
+
     # contruct processes env list
     processes_env_list = []
 
@@ -509,12 +519,6 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
     # Give an error hint when the users enter a configuration option 
     # that does not exist
     _options_valid_check(options)
-
-    # logic for handle backend option
-    if 'backend' not in options or options['backend'] == 'auto':
-        options['backend'] = _get_default_backend()
-    check_backend(options['backend'])
-    block_windows_and_macos(options['backend'])
 
     # get default nprocs
     if nprocs == -1:
