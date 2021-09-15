@@ -389,7 +389,6 @@ def launch():
     Paddle distribution training entry ``python -m paddle.distributed.launch``.
     
     Usage:
-    
     .. code-block:: bash
         :name: code-block-bash1
 
