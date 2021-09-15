@@ -478,6 +478,7 @@ def launch():
             :name: code-block-example-bash3
 
             # The emulated distributed environment using single node, 2 server and 4 worker
+            
             python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
         
     Examples 4 (ps, cpu, multi node):
