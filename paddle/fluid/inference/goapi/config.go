@@ -714,8 +714,8 @@ func (config *Config) ModelFromMemory() bool {
 /// \brief Turn on memory optimize
 /// NOTE still in development.
 ///
-func (config *Config) EnableMemoryOptim() {
-	C.PD_ConfigEnableMemoryOptim(config.c, cvtGoBoolToPD(true))
+func (config *Config) EnableMemoryOptim(x bool) {
+	C.PD_ConfigEnableMemoryOptim(config.c, cvtGoBoolToPD(x))
 }
 
 ///
