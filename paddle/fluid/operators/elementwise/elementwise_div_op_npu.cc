@@ -63,14 +63,21 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    Tensor y_power(y->type());
-    y_power.mutable_data<T>(y->dims(), place);
-    const auto& runner_y_power = NpuOpRunner(
-        "Power", {*y}, {y_power}, {{"power", static_cast<float>(-1)}});
-    runner_y_power.Run(stream);
-
     if (dx) {
       dx->mutable_data<T>(place);
+
+      Tensor tensor_one(y->type());
+      tensor_one.mutable_data<float>({1}, place);
+      FillNpuTensorWithConstant<float>(&tensor_one, static_cast<float>(1.0));
+
+      // Use `Div` CANN OP to achieve `1/y` instead of `Power` CANN OP.
+      // Because `Power` will cause precision overflow, that is, `float_status`
+      // will be set to 1.
+      Tensor y_div(y->type());
+      y_div.mutable_data<T>(y->dims(), place);
+      const auto& runner_one_div_y =
+          NpuOpRunner("Div", {tensor_one, *y}, {y_div}, {});
+      runner_one_div_y.Run(stream);
 
       Tensor tensor_zeros(x->type());
       tensor_zeros.mutable_data<T>(x->dims(), place);
@@ -100,7 +107,7 @@ class ElementwiseDivGradNPUKernel : public framework::OpKernel<T> {
       Tensor x_grad_w(x->type());
       x_grad_w.mutable_data<T>(x->dims(), place);
       const auto& runner_x_grad_w =
-          NpuOpRunner("Mul", {x_nozero_f, y_power}, {x_grad_w}, {});
+          NpuOpRunner("Mul", {x_nozero_f, y_div}, {x_grad_w}, {});
       runner_x_grad_w.Run(stream);
 
       const auto& runner_x_grad =

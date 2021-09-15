@@ -24,6 +24,7 @@ MSVC_STATIC_CRT=$6
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
 EXIT_CODE=0 # init default exit code
 WIN_DETECT=$(echo `uname` | grep "Win") # detect current platform
+test_suite_list="cpu_tester*" # init test suite list, pass to --gtest_filter
 
 export RED='\033[0;31m' # red color
 export NC='\033[0m' # no color
@@ -33,22 +34,29 @@ cd `dirname $0`
 current_dir=`pwd`
 build_dir=${current_dir}/build
 log_dir=${current_dir}/log
+
+# check mkldnn installation
 if [ $2 == ON ]; then
   # You can export yourself if move the install path
   MKL_LIB=${inference_install_dir}/third_party/install/mklml/lib
   export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${MKL_LIB}
+  test_suite_list="${test_suite_list}:mkldnn_tester*"
 fi
+
 if [ $3 == ON ]; then
   use_gpu_list='true false'
+  test_suite_list="${test_suite_list}:gpu_tester*"
 else
   use_gpu_list='false'
 fi
 
+# check tensorrt installation
+TENSORRT_COMPILED=$(cat "${inference_install_dir}/version.txt" | grep "WITH_TENSORRT")
 USE_TENSORRT=OFF
-if [ -d "$TENSORRT_ROOT_DIR" ]; then
+if [ -d "$TENSORRT_ROOT_DIR" ] && [ ! -z "$TENSORRT_COMPILED" ]  ; then
   USE_TENSORRT=ON
+  test_suite_list="${test_suite_list}:tensorrt_tester*"
 fi
-
 
 function download() {
   url_prefix=$1
@@ -146,104 +154,119 @@ mkdir -p ${log_dir}
 cd ${build_dir}
 rm -rf *
 
-# ---------tensorrt gpu tests on linux---------
-if [ $USE_TENSORRT == ON -a $TEST_GPU_CPU == ON ]; then
-    rm -rf *
+if [ $WIN_DETECT != "" ]; then
+    exe_dir=${build_dir}/Release
+else
+    exe_dir=${build_dir}
+fi;
 
-    if [ $WIN_DETECT != "" ]; then
-        exe_dir=${build_dir}/Release
-    else
-        exe_dir=${build_dir}
-    fi;
+printf "${YELLOW} start test_resnet50 ${NC} \n";
+compile_test "test_resnet50"
+${exe_dir}/test_resnet50 \
+    --modeldir=$DATA_DIR/resnet50/resnet50 \
+    --gtest_filter=${test_suite_list} \
+    --gtest_output=xml:${log_dir}/test_resnet50.xml
+if [ $? -ne 0 ]; then
+    echo "${RED} test_resnet50 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+    EXIT_CODE=8
+fi
 
-    printf "${YELLOW} start test_resnet50 ${NC} \n";
-    compile_test "test_resnet50"
-    ${exe_dir}/test_resnet50 \
-        --modeldir=$DATA_DIR/resnet50/resnet50 \
-        --gtest_output=xml:${log_dir}/test_resnet50.xml
+printf "${YELLOW} start test_det_mv3_db ${NC} \n";
+compile_test "test_det_mv3_db"
+${exe_dir}/test_det_mv3_db \
+    --modeldir=$DATA_DIR/ocr_det_mv3_db/ocr_det_mv3_db \
+    --gtest_filter=${test_suite_list} \
+    --gtest_output=xml:${log_dir}/test_det_mv3_db.xml
+if [ $? -ne 0 ]; then
+    echo "${RED} test_det_mv3_db runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+    EXIT_CODE=8
+fi
+
+printf "${YELLOW} start test_LeViT ${NC} \n";
+compile_test "test_LeViT"
+${exe_dir}/test_LeViT \
+    --modeldir=$DATA_DIR/LeViT/LeViT \
+    --gtest_filter=${test_suite_list} \
+    --gtest_output=xml:${log_dir}/test_LeViT.xml
+if [ $? -ne 0 ]; then
+    echo "${RED} test_LeViT runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+    EXIT_CODE=8
+fi
+
+if [ $WIN_DETECT != "" ]; then
+    #TODO(OliverLPH): enable test_ernie_text_cls on windows after fix compile issue
+    echo "  skip test_ernie_text_cls  "
+else
+    printf "${YELLOW} start test_ernie_text_cls ${NC} \n";
+    compile_test "test_ernie_text_cls"
+    ${exe_dir}/test_ernie_text_cls \
+        --modeldir=$DATA_DIR/ernie_text_cls/ernie_text_cls \
+        --gtest_filter=${test_suite_list} \
+        --gtest_output=xml:${log_dir}/test_ernie_text_cls.xml
     if [ $? -ne 0 ]; then
-        echo "${RED} test_resnet50 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+        echo "${RED} test_ernie_text_cls runs failed ${NC}" >> ${exe_dir}/test_summary.txt
         EXIT_CODE=8
     fi
+fi;
 
-    printf "${YELLOW} start test_det_mv3_db ${NC} \n";
-    compile_test "test_det_mv3_db"
-    ${exe_dir}/test_det_mv3_db \
-        --modeldir=$DATA_DIR/ocr_det_mv3_db/ocr_det_mv3_db \
-        --gtest_output=xml:${log_dir}/test_det_mv3_db.xml
-    if [ $? -ne 0 ]; then
-        echo "${RED} test_det_mv3_db runs failed ${NC}" >> ${exe_dir}/test_summary.txt
-        EXIT_CODE=8
-    fi
+printf "${YELLOW} start test_yolov3 ${NC} \n";
+compile_test "test_yolov3"
+${exe_dir}/test_yolov3 \
+    --modeldir=$DATA_DIR/yolov3/yolov3 \
+    --gtest_filter=${test_suite_list} \
+    --gtest_output=xml:${log_dir}/test_yolov3.xml
+if [ $? -ne 0 ]; then
+    echo "${RED} test_yolov3 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+    EXIT_CODE=8
+fi
 
-    printf "${YELLOW} start test_LeViT ${NC} \n";
-    compile_test "test_LeViT"
-    ${exe_dir}/test_LeViT \
-        --modeldir=$DATA_DIR/LeViT/LeViT \
-        --gtest_output=xml:${log_dir}/test_LeViT.xml
-    if [ $? -ne 0 ]; then
-        echo "${RED} test_LeViT runs failed ${NC}" >> ${exe_dir}/test_summary.txt
-        EXIT_CODE=8
-    fi
+printf "${YELLOW} start test_ppyolo_mbv3 ${NC} \n";
+compile_test "test_ppyolo_mbv3"
+${exe_dir}/test_ppyolo_mbv3 \
+    --modeldir=$DATA_DIR/ppyolo_mbv3/ppyolo_mbv3 \
+    --gtest_filter=${test_suite_list} \
+    --gtest_output=xml:${log_dir}/test_ppyolo_mbv3.xml
+if [ $? -ne 0 ]; then
+    echo "${RED} test_ppyolo_mbv3 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+    EXIT_CODE=8
+fi
 
-    if [ $WIN_DETECT != "" ]; then
-        echo "  skip test_ernie_text_cls  "
-    else
-        printf "${YELLOW} start test_ernie_text_cls ${NC} \n";
-        compile_test "test_ernie_text_cls"
-        ${exe_dir}/test_ernie_text_cls \
-            --modeldir=$DATA_DIR/ernie_text_cls/ernie_text_cls \
-            --gtest_output=xml:${log_dir}/test_ernie_text_cls.xml
-        if [ $? -ne 0 ]; then
-            echo "${RED} test_ernie_text_cls runs failed ${NC}" >> ${exe_dir}/test_summary.txt
-            EXIT_CODE=8
-        fi
-    fi;
+printf "${YELLOW} start test_ppyolov2_r50vd ${NC} \n";
+compile_test "test_ppyolov2_r50vd"
+${exe_dir}/test_ppyolov2_r50vd \
+    --modeldir=$DATA_DIR/ppyolov2_r50vd/ppyolov2_r50vd \
+    --gtest_filter=${test_suite_list} \
+    --gtest_output=xml:${log_dir}/test_ppyolov2_r50vd.xml
+if [ $? -ne 0 ]; then
+    echo "${RED} test_ppyolov2_r50vd runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+    EXIT_CODE=8
+fi
 
-    printf "${YELLOW} start test_yolov3 ${NC} \n";
-    compile_test "test_yolov3"
-    ${exe_dir}/test_yolov3 \
-        --modeldir=$DATA_DIR/yolov3/yolov3 \
-        --gtest_output=xml:${log_dir}/test_yolov3.xml
-    if [ $? -ne 0 ]; then
-        echo "${RED} test_yolov3 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
-        EXIT_CODE=8
-    fi
-
-    printf "${YELLOW} start test_ppyolo_mbv3 ${NC} \n";
-    compile_test "test_ppyolo_mbv3"
-    ${exe_dir}/test_ppyolo_mbv3 \
-        --modeldir=$DATA_DIR/ppyolo_mbv3/ppyolo_mbv3 \
-        --gtest_output=xml:${log_dir}/test_ppyolo_mbv3.xml
-    if [ $? -ne 0 ]; then
-        echo "${RED} test_ppyolo_mbv3 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
-        EXIT_CODE=8
-    fi
-
-    printf "${YELLOW} start test_ppyolov2_r50vd ${NC} \n";
-    compile_test "test_ppyolov2_r50vd"
-    ${exe_dir}/test_ppyolov2_r50vd \
-        --modeldir=$DATA_DIR/ppyolov2_r50vd/ppyolov2_r50vd \
-        --gtest_output=xml:${log_dir}/test_ppyolov2_r50vd.xml
-    if [ $? -ne 0 ]; then
-        echo "${RED} test_ppyolov2_r50vd runs failed ${NC}" >> ${exe_dir}/test_summary.txt
-        EXIT_CODE=8
-    fi
-
-    printf "${YELLOW} start test_resnet50_quant ${NC} \n";
-    compile_test "test_resnet50_quant"
-    ${exe_dir}/test_resnet50_quant \
-        --int8dir=$DATA_DIR/resnet50_quant/resnet50_quant/resnet50_quant \
-        --modeldir=$DATA_DIR/resnet50/resnet50 \
-        --datadir=$DATA_DIR/resnet50_quant/resnet50_quant/imagenet-eval-binary/9.data \
-        --gtest_output=xml:${log_dir}/test_resnet50_quant.xml
-    if [ $? -ne 0 ]; then
-        echo "${RED} test_resnet50_quant runs failed ${NC}" >> ${exe_dir}/test_summary.txt
-        EXIT_CODE=8
-    fi
+printf "${YELLOW} start test_resnet50_quant ${NC} \n";
+compile_test "test_resnet50_quant"
+${exe_dir}/test_resnet50_quant \
+    --int8dir=$DATA_DIR/resnet50_quant/resnet50_quant/resnet50_quant \
+    --modeldir=$DATA_DIR/resnet50/resnet50 \
+    --datadir=$DATA_DIR/resnet50_quant/resnet50_quant/imagenet-eval-binary/9.data \
+    --gtest_filter=${test_suite_list} \
+    --gtest_output=xml:${log_dir}/test_resnet50_quant.xml
+if [ $? -ne 0 ]; then
+    echo "${RED} test_resnet50_quant runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+    EXIT_CODE=8
 fi
 
 set +x
+
+test_suites=$(echo ${test_suite_list} | sed 's/:/ /g')
+echo " "
+echo "CI Tested Following Patterns: "
+echo "=====================test patterns======================"
+for test_suite in ${test_suites}; do
+  echo "  ${test_suite}"
+done
+echo "========================================================"
+echo " "
+
 if [[ -f ${exe_dir}/test_summary.txt ]];then
   echo " "
   echo "Summary Failed Tests ..."
