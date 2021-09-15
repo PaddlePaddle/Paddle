@@ -13,69 +13,48 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/cost_model.h"
+
+#include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/device_tracer.h"
+#include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
 // #include "paddle/fluid/platform/profiler_helper.h"
 
 namespace paddle {
-
-namespace platform {
-
-extern std::mutex profiler_mu;
-// extern static ProfilerState g_state;
-
-void PrintMemProfiler(
-    const std::map<Place, std::unordered_map<std::string, MemoryProfierReport>>&
-        annotation_report,
-    const size_t name_width, const size_t data_width);
-
-void SynchronizeAllDevice();
-void DealWithShowName();
-void ParseEvents(const std::vector<std::vector<Event>>& events,
-                 bool merge_thread,
-                 EventSortingKey sorted_by = EventSortingKey::kDefault);
-}  // namespace platform
-
 namespace framework {
 
-using paddle::framework::CostModel;
-using paddle::framework::CostData;
-
-CostData CostModel::ProfileMeasure(const std::string& device) {
-  // if (fetch_cost_list == None) fetch_cost_list = {"time", "memory"};
+CostData CostModel::ProfileMeasure(const ProgramDesc& program,
+                                   const std::string& device) {
   CostData cost_data;
-  VLOG(2) << "Printing from Cost Model ";
-  // VLOG(10)
-  // <<paddle::platform::g_enable_nvprof_hook<<paddle::platform::should_send_profile_state<<paddle::platform::profiler_lister_id;
-  SynchronizeAllDevice();
 
-  MemEvenRecorder::Instance().Flush();
-
-  std::lock_guard<std::mutex> l(profiler_mu);
-  // if (g_state == ProfilerState::kDisabled) return cost_data;
-  // Mark the profiling stop.
-  Mark("_stop_profiler_");
-  DealWithShowName();
-  // VLOG(2) << "22222222";
-
-  DeviceTracer* tracer = GetDeviceTracer();
-  if (tracer->IsEnabled()) {
-    tracer->Disable();
-    tracer->GenEventKernelCudaElapsedTime();
-    // tracer->GenProfile(profile_path);
+  SetTracerOption(platform::TracerOption::kAllOpDetail);
+  // TODO(zhhsplendid): handle the case that Profiler is already enabled
+  platform::ProfilerState profiler_state;
+  platform::Place place;
+  // TODO(zhhsplendid): add code to transform string to lower case
+  std::string device_lower_case = device;
+  if (device_lower_case == "cpu") {
+    profiler_state = platform::ProfilerState::kCPU;
+    place = platform::CPUPlace();
+  } else if (device_lower_case == "gpu") {
+    profiler_state = platform::ProfilerState::kAll;
+    place = platform::CUDAPlace();
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Not support %s in CostModel now", device));
   }
 
-  std::vector<std::vector<Event>> all_events = GetAllEvents();
+  Executor executor(place);
+  Scope scope;
 
-  VLOG(2) << "GetAllEvents, all events lenth:" << all_events.size()
-          << all_events[0].size();
-  ParseEvents(all_events, true);
-  ParseEvents(all_events, false);
-  // std::vector<std::vector<MemEvent>> all_mem_events = GetMemEvents();
-  // VLOG(2) << "GetAllMemEvents, all mem events lenth:" <<
-  // all_mem_events.size();
+  EnableProfiler(profiler_state);
+  executor.Run(program, &scope, /*block_id = */ 0);
 
-  // ResetProfiler();
+  // TODO(zhhsplendid): modify from print to cost data
+  DisableProfiler(platform::EventSortingKey::kDefault,
+                  "/tmp/huihuang_profile_tmp");
+
   return cost_data;
 }
 

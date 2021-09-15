@@ -28,16 +28,15 @@
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
-
 namespace framework {
 
-class Graph;
+using ir::Graph;
 
 class CostData {
  public:
   CostData() {}
 
-  virtual ~CostData() {}
+  ~CostData() {}
 
   std::map<int, int64_t> GetTimeMap();
   std::map<int, int64_t> GetMemMap();
@@ -46,8 +45,8 @@ class CostData {
 
  private:
   // const static int NOT_MEASURED = -1;
-  Graph* graph_;
-  ProgramDesc* program_;
+  Graph* graph_;                   // not owned
+  ProgramDesc* program_;           // not owned
   std::map<int, int64_t> time_;    // from Op Node id to time
   std::map<int, int64_t> memory_;  // from Op Node id to total memory bytes
   std::map<int, int64_t> comm_;    // from Op Node id to communicate cost
@@ -55,13 +54,14 @@ class CostData {
   int64_t whole_memory;            // memory cost of the whole program or graph
   int64_t whole_comm_;  // communication cost of the whole program or graph
 };
+
 class CostModel {
  public:
   CostModel() {}
+  ~CostModel() {}
 
-  virtual ~CostModel() {}
-
-  CostData ProfileMeasure(const std::string& device);
+  CostData ProfileMeasure(const ProgramDesc& program,
+                          const std::string& device);
 };
 
 }  // namespace framework
