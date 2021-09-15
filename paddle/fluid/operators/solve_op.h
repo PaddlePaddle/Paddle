@@ -23,8 +23,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/math/matrix_solve.h"
-#include "paddle/fluid/operators/matmul_v2_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_sum_op.h"
 #include "paddle/fluid/operators/squeeze_op.h"
+#if defined(__NVCC__) || defined(__HIPCC__)
+#include "paddle/fluid/operators/reduce_ops/cub_reduce.h"
+#endif
 
 #define MAX_RANK_SUPPORTED 6
 
@@ -35,6 +38,31 @@ using Tensor = framework::Tensor;
 using framework::To32BitIndex;
 
 constexpr int kMULMKLDNNINT8 = 1;
+
+struct IdentityFunctor {
+  HOSTDEVICE explicit inline IdentityFunctor() {}
+
+  template <typename U>
+  HOSTDEVICE inline U operator()(const U& x) const {
+    return x;
+  }
+};
+
+template <typename DeviceContext, typename T>
+void ReduceSumForSolveGrad(const Tensor* input, Tensor* output,
+                           const std::vector<int>& reduce_dims, bool keep_dim,
+                           const paddle::framework::ExecutionContext& ctx) {
+#if defined(__NVCC__) || defined(__HIPCC__)
+  auto stream = ctx.cuda_device_context().stream();
+  TensorReduce<T, T, cub::Sum, IdentityFunctor>(*input, output, reduce_dims,
+                                                static_cast<T>(0), cub::Sum(),
+                                                IdentityFunctor(), stream);
+#else
+  ReduceKernelFunctor<DeviceContext, T, ops::SumFunctor>(
+      input, output, reduce_dims, keep_dim, false, ctx)
+      .template apply<T>();
+#endif
+}
 
 // check the input other is vector_case or not
 static inline bool is_vector_rhs(const Tensor& input, const Tensor& other) {
@@ -630,8 +658,12 @@ class SolveGradKernel : public framework::OpKernel<T> {
         if (dy_reduce_dims.empty()) {
           *dy = std::move(dy_help);
         } else {
-          ReduceSumForMatmulGrad<DeviceContext, T>(&dy_help, dy, dy_reduce_dims,
-                                                   ctx);
+          bool keep_dim = true;
+          if (dy_help.dims().size() != dy->dims().size()) {
+            keep_dim = false;
+          }
+          ReduceSumForSolveGrad<DeviceContext, T>(&dy_help, dy, dy_reduce_dims,
+                                                  keep_dim, ctx);
         }
         dy->Resize(y->dims());
       }
@@ -676,8 +708,12 @@ class SolveGradKernel : public framework::OpKernel<T> {
         if (dx_reduce_dims.empty()) {
           *dx = std::move(dx_help);
         } else {
-          ReduceSumForMatmulGrad<DeviceContext, T>(&dx_help, dx, dx_reduce_dims,
-                                                   ctx);
+          bool keep_dim = true;
+          if (dx_help.dims().size() != dx->dims().size()) {
+            keep_dim = false;
+          }
+          ReduceSumForSolveGrad<DeviceContext, T>(&dx_help, dx, dx_reduce_dims,
+                                                  keep_dim, ctx);
         }
         dx->Resize(input->dims());
       }

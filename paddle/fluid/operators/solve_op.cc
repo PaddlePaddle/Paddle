@@ -18,9 +18,6 @@ limitations under the License. */
 #include <unordered_map>
 #include <vector>
 #include "paddle/fluid/framework/ddim.h"
-#ifdef PADDLE_WITH_MKLDNN
-#include "paddle/fluid/platform/mkldnn_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -123,19 +120,6 @@ class SolveOp : public framework::OperatorWithKernel {
     int customized_type_value =
         framework::OpKernelType::kDefaultCustomizedTypeValue;
     auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
-#ifdef PADDLE_WITH_MKLDNN
-    if (library == framework::LibraryType::kPlain &&
-        this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      library = framework::LibraryType::kMKLDNN;
-      layout = framework::DataLayout::kMKLDNN;
-
-      if (input_data_type == framework::DataTypeTrait<int8_t>::DataType() ||
-          input_data_type == framework::DataTypeTrait<uint8_t>::DataType()) {
-        customized_type_value = kMULMKLDNNINT8;
-      }
-    }
-#endif
-
     return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
                                    library, customized_type_value);
   }
@@ -147,42 +131,13 @@ class SolveOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor), The first input tensor of solve op.");
     AddInput("Y", "(Tensor), The second input tensor of solve op.");
     AddOutput("Out", "(Tensor), The output tensor of solve op.");
-    AddAttr<bool>("use_mkldnn",
-                  "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
-    AddAttr<float>(
-        "scale_x",
-        "scale_x to be used for int8 solve input data x. scale_x has the"
-        "same purpose as scale_in in OPs that support quantization."
-        "Only to be used with MKL-DNN INT8")
-        .SetDefault(1.0f);
-    AddAttr<std::vector<float>>(
-        "scale_y",
-        "scale_y to be used for int8 solve input data y. scale_y has the"
-        "same purpose as scale_weights in OPs that support quantization."
-        "Only to be used with MKL-DNN INT8")
-        .SetDefault({1.0f});
-    AddAttr<float>("scale_out",
-                   "scale_out to be used for int8 output data."
-                   "Only used with MKL-DNN INT8")
-        .SetDefault(1.0f);
-    AddAttr<bool>(
-        "force_fp32_output",
-        "(bool, default false) Force quantize kernel output FP32, only "
-        "used in quantized MKL-DNN.")
-        .SetDefault(false);
     AddComment(R"DOC(
-Solve Operator.
+          Solve Operator.
+          This operator is used to computes the solution of a square system of 
+          linear equations with a unique solution for input $X$ and $Y$.
 
-This operator is used to computes the solution of a square system of linear equations with a unique solution for input $X$ and $Y$.
-
-The equation is:
-
-$$Out = X^-1 * Y$$
-
-Both the input $X$ and $Y$ can carry the LoD (Level of Details) information,
-or not. But the output only shares the LoD information with input $X$.
-
+          The equation is:
+          $$Out = X^-1 * Y$$
 )DOC");
   }
 };

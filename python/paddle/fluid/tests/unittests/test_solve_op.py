@@ -25,6 +25,7 @@ import paddle.fluid as fluid
 from paddle.fluid import Program, program_guard
 
 
+# 2D normal case
 class TestSolveOp(OpTest):
     def config(self):
         self.input_x_matrix_shape = [15, 15]
@@ -52,7 +53,88 @@ class TestSolveOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out')
 
 
-class TestSolveOpBatched(OpTest):
+# x broadcast + 3D batch case 
+class TestSolveOpBatched_case0(OpTest):
+    def setUp(self):
+        self.op_type = "solve"
+        self.dtype = "float64"
+        np.random.seed(2021)
+        self.inputs = {
+            'X': np.random.random((11, 11)).astype(self.dtype),
+            'Y': np.random.random((2, 11, 7)).astype(self.dtype)
+        }
+        result = np.linalg.solve(self.inputs['X'], self.inputs['Y'])
+        self.outputs = {'Out': result}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=1e-1)
+
+
+# 3D batch + y vector case
+class TestSolveOpBatched_case1(OpTest):
+    def setUp(self):
+        self.op_type = "solve"
+        self.dtype = "float64"
+        np.random.seed(2021)
+        self.inputs = {
+            'X': np.random.random((20, 6, 6)).astype(self.dtype),
+            'Y': np.random.random((20, 6)).astype(self.dtype)
+        }
+        result = np.linalg.solve(self.inputs['X'], self.inputs['Y'])
+        self.outputs = {'Out': result}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.04)
+
+
+# 3D batch + y broadcast case
+class TestSolveOpBatched_case2(OpTest):
+    def setUp(self):
+        self.op_type = "solve"
+        self.dtype = "float64"
+        np.random.seed(2021)
+        self.inputs = {
+            'X': np.random.random((2, 10, 10)).astype(self.dtype),
+            'Y': np.random.random((1, 10, 10)).astype(self.dtype)
+        }
+        result = np.linalg.solve(self.inputs['X'], self.inputs['Y'])
+        self.outputs = {'Out': result}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.02)
+
+
+# x broadcast + 3D batch case 
+class TestSolveOpBatched_case3(OpTest):
+    def setUp(self):
+        self.op_type = "solve"
+        self.dtype = "float64"
+        np.random.seed(2021)
+        self.inputs = {
+            'X': np.random.random((1, 10, 10)).astype(self.dtype),
+            'Y': np.random.random((2, 10, 10)).astype(self.dtype)
+        }
+        result = np.linalg.solve(self.inputs['X'], self.inputs['Y'])
+        self.outputs = {'Out': result}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.02)
+
+
+# 3D normal batch case 
+class TestSolveOpBatched_case4(OpTest):
     def setUp(self):
         self.op_type = "solve"
         self.dtype = "float64"
@@ -69,6 +151,86 @@ class TestSolveOpBatched(OpTest):
 
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out')
+
+
+# 4D normal batch case
+class TestSolveOpBatched_case5(OpTest):
+    def setUp(self):
+        self.op_type = "solve"
+        self.dtype = "float64"
+        np.random.seed(2021)
+        self.inputs = {
+            'X': np.random.random((2, 2, 6, 6)).astype(self.dtype),
+            'Y': np.random.random((2, 2, 6, 6)).astype(self.dtype)
+        }
+        result = np.linalg.solve(self.inputs['X'], self.inputs['Y'])
+        self.outputs = {'Out': result}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+
+# 4D batch + y broadcast case
+class TestSolveOpBatched_case6(OpTest):
+    def setUp(self):
+        self.op_type = "solve"
+        self.dtype = "float64"
+        np.random.seed(2021)
+        self.inputs = {
+            'X': np.random.random((2, 2, 6, 6)).astype(self.dtype),
+            'Y': np.random.random((1, 2, 6, 9)).astype(self.dtype)
+        }
+        result = np.linalg.solve(self.inputs['X'], self.inputs['Y'])
+        self.outputs = {'Out': result}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+
+# 5D normal batch case
+class TestSolveOpBatched_case7(OpTest):
+    def setUp(self):
+        self.op_type = "solve"
+        self.dtype = "float64"
+        np.random.seed(2021)
+        self.inputs = {
+            'X': np.random.random((2, 2, 2, 4, 4)).astype(self.dtype),
+            'Y': np.random.random((2, 2, 2, 4, 4)).astype(self.dtype)
+        }
+        result = np.linalg.solve(self.inputs['X'], self.inputs['Y'])
+        self.outputs = {'Out': result}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.04)
+
+
+# 5D batch + y broadcast case
+class TestSolveOpBatched_case8(OpTest):
+    def setUp(self):
+        self.op_type = "solve"
+        self.dtype = "float64"
+        np.random.seed(2021)
+        self.inputs = {
+            'X': np.random.random((2, 2, 2, 4, 4)).astype(self.dtype),
+            'Y': np.random.random((1, 2, 2, 4, 7)).astype(self.dtype)
+        }
+        result = np.linalg.solve(self.inputs['X'], self.inputs['Y'])
+        self.outputs = {'Out': result}
+
+    def test_check_output(self):
+        self.check_output()
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.04)
 
 
 class TestSolveOpError(unittest.TestCase):
@@ -109,23 +271,25 @@ class TestSolveOpError(unittest.TestCase):
             self.assertRaises(ValueError, paddle.linalg.solve, x7, y7)
 
 
-class TestSolveOpAPI(unittest.TestCase):
+# 2D + vector case, FP64
+class TestSolveOpAPI_1(unittest.TestCase):
     def setUp(self):
         np.random.seed(2021)
         self.place = [paddle.CPUPlace()]
+        self.dtype = "float64"
         if core.is_compiled_with_cuda():
             self.place.append(paddle.CUDAPlace(0))
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
             paddle_input_x = fluid.data(
-                name="input_x", shape=[20, 20], dtype="float64")
+                name="input_x", shape=[3, 3], dtype=self.dtype)
             paddle_input_y = fluid.data(
-                name="input_y", shape=[20, 4], dtype="float64")
+                name="input_y", shape=[3], dtype=self.dtype)
             paddle_result = paddle.linalg.solve(paddle_input_x, paddle_input_y)
 
-            np_input_x = np.random.random([20, 20]).astype("float64")
-            np_input_y = np.random.random([20, 4]).astype("float64")
+            np_input_x = np.random.random([3, 3]).astype(self.dtype)
+            np_input_y = np.random.random([3]).astype(self.dtype)
 
             np_result = np.linalg.solve(np_input_x, np_input_y)
 
@@ -147,8 +311,185 @@ class TestSolveOpAPI(unittest.TestCase):
         def run(place):
             paddle.disable_static(place)
             np.random.seed(2021)
-            input_x_np = np.random.random([15, 15]).astype("float64")
-            input_y_np = np.random.random([15, 10]).astype("float64")
+            input_x_np = np.random.random([3, 3]).astype(self.dtype)
+            input_y_np = np.random.random([3]).astype(self.dtype)
+
+            tensor_input_x = paddle.to_tensor(input_x_np)
+            tensor_input_y = paddle.to_tensor(input_y_np)
+
+            numpy_output = np.linalg.solve(input_x_np, input_y_np)
+            paddle_output = paddle.linalg.solve(tensor_input_x, tensor_input_y)
+            self.assertEqual(
+                np.allclose(numpy_output, paddle_output.numpy()), True)
+            self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+
+# 2D normal case, FP64
+class TestSolveOpAPI_2(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2021)
+        self.place = [paddle.CPUPlace()]
+        self.dtype = "float64"
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        paddle.enable_static()
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            paddle_input_x = fluid.data(
+                name="input_x", shape=[10, 10], dtype=self.dtype)
+            paddle_input_y = fluid.data(
+                name="input_y", shape=[10, 4], dtype=self.dtype)
+            paddle_result = paddle.linalg.solve(paddle_input_x, paddle_input_y)
+
+            np_input_x = np.random.random([10, 10]).astype(self.dtype)
+            np_input_y = np.random.random([10, 4]).astype(self.dtype)
+
+            np_result = np.linalg.solve(np_input_x, np_input_y)
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"input_x": np_input_x,
+                      "input_y": np_input_y},
+                fetch_list=[paddle_result])
+            self.assertTrue(
+                np.allclose(fetches[0], np.linalg.solve(np_input_x,
+                                                        np_input_y)))
+
+    def test_static(self):
+        for place in self.place:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            np.random.seed(2021)
+            input_x_np = np.random.random([10, 10]).astype(self.dtype)
+            input_y_np = np.random.random([10, 4]).astype(self.dtype)
+
+            tensor_input_x = paddle.to_tensor(input_x_np)
+            tensor_input_y = paddle.to_tensor(input_y_np)
+
+            numpy_output = np.linalg.solve(input_x_np, input_y_np)
+            paddle_output = paddle.linalg.solve(tensor_input_x, tensor_input_y)
+            self.assertEqual(
+                np.allclose(numpy_output, paddle_output.numpy()), True)
+            self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+
+# 2D normal case, FP32
+class TestSolveOpAPI_3(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2021)
+        self.place = [paddle.CPUPlace()]
+        self.dtype = "float32"
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        paddle.enable_static()
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            paddle_input_x = fluid.data(
+                name="input_x", shape=[10, 10], dtype=self.dtype)
+            paddle_input_y = fluid.data(
+                name="input_y", shape=[10, 4], dtype=self.dtype)
+            paddle_result = paddle.linalg.solve(paddle_input_x, paddle_input_y)
+
+            np_input_x = np.random.random([10, 10]).astype(self.dtype)
+            np_input_y = np.random.random([10, 4]).astype(self.dtype)
+
+            np_result = np.linalg.solve(np_input_x, np_input_y)
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"input_x": np_input_x,
+                      "input_y": np_input_y},
+                fetch_list=[paddle_result])
+            self.assertTrue(
+                np.allclose(
+                    fetches[0],
+                    np.linalg.solve(np_input_x, np_input_y),
+                    rtol=1.e-4))
+
+    def test_static(self):
+        for place in self.place:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            np.random.seed(2021)
+            input_x_np = np.random.random([10, 10]).astype(self.dtype)
+            input_y_np = np.random.random([10, 4]).astype(self.dtype)
+
+            tensor_input_x = paddle.to_tensor(input_x_np)
+            tensor_input_y = paddle.to_tensor(input_y_np)
+
+            numpy_output = np.linalg.solve(input_x_np, input_y_np)
+            paddle_output = paddle.linalg.solve(tensor_input_x, tensor_input_y)
+            self.assertEqual(
+                np.allclose(
+                    numpy_output, paddle_output.numpy(), rtol=1.e-4),
+                True)
+            self.assertEqual(numpy_output.shape, paddle_output.numpy().shape)
+            paddle.enable_static()
+
+        for place in self.place:
+            run(place)
+
+
+# 3D + y broadcast case, FP64
+class TestSolveOpAPI_4(unittest.TestCase):
+    def setUp(self):
+        np.random.seed(2021)
+        self.place = [paddle.CPUPlace()]
+        self.dtype = "float64"
+        if core.is_compiled_with_cuda():
+            self.place.append(paddle.CUDAPlace(0))
+
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            paddle_input_x = fluid.data(
+                name="input_x", shape=[2, 3, 3], dtype=self.dtype)
+            paddle_input_y = fluid.data(
+                name="input_y", shape=[1, 3, 3], dtype=self.dtype)
+            paddle_result = paddle.linalg.solve(paddle_input_x, paddle_input_y)
+
+            np_input_x = np.random.random([2, 3, 3]).astype(self.dtype)
+            np_input_y = np.random.random([1, 3, 3]).astype(self.dtype)
+
+            np_result = np.linalg.solve(np_input_x, np_input_y)
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(
+                fluid.default_main_program(),
+                feed={"input_x": np_input_x,
+                      "input_y": np_input_y},
+                fetch_list=[paddle_result])
+            self.assertTrue(
+                np.allclose(fetches[0], np.linalg.solve(np_input_x,
+                                                        np_input_y)))
+
+    def test_static(self):
+        for place in self.place:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        def run(place):
+            paddle.disable_static(place)
+            np.random.seed(2021)
+            input_x_np = np.random.random([2, 3, 3]).astype(self.dtype)
+            input_y_np = np.random.random([1, 3, 3]).astype(self.dtype)
 
             tensor_input_x = paddle.to_tensor(input_x_np)
             tensor_input_y = paddle.to_tensor(input_y_np)
@@ -168,18 +509,19 @@ class TestSolveOpSingularAPI(unittest.TestCase):
     # Singular matrix is ​​not invertible
     def setUp(self):
         self.places = [fluid.CPUPlace()]
+        self.dtype = "float64"
         if core.is_compiled_with_cuda():
             self.places.append(fluid.CUDAPlace(0))
 
     def check_static_result(self, place):
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            x = fluid.data(name="x", shape=[4, 4], dtype="float64")
-            y = fluid.data(name="y", shape=[4, 4], dtype="float64")
+            x = fluid.data(name="x", shape=[4, 4], dtype=self.dtype)
+            y = fluid.data(name="y", shape=[4, 4], dtype=self.dtype)
 
             result = paddle.linalg.solve(x, y)
 
-            input_x_np = np.ones([4, 4]).astype("float64")
-            input_y_np = np.ones([4, 4]).astype("float64")
+            input_x_np = np.ones([4, 4]).astype(self.dtype)
+            input_y_np = np.ones([4, 4]).astype(self.dtype)
 
             exe = fluid.Executor(place)
             try:
@@ -202,8 +544,8 @@ class TestSolveOpSingularAPI(unittest.TestCase):
     def test_dygraph(self):
         for place in self.places:
             with fluid.dygraph.guard(place):
-                input_x_np = np.ones([4, 4]).astype("float64")
-                input_y_np = np.ones([4, 4]).astype("float64")
+                input_x_np = np.ones([4, 4]).astype(self.dtype)
+                input_y_np = np.ones([4, 4]).astype(self.dtype)
                 input_x = fluid.dygraph.to_variable(input_x_np)
                 input_y = fluid.dygraph.to_variable(input_y_np)
 
@@ -215,21 +557,6 @@ class TestSolveOpSingularAPI(unittest.TestCase):
                 except ValueError as ex:
                     print("The mat is singular")
                     pass
-
-
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "core is not compiled with CUDA")
-class TestFP64SolveOp1(TestSolveOp):
-    def init_dtype_type(self):
-        self.dtype = np.float64
-
-    def test_check_output(self):
-        place = core.CUDAPlace(0)
-        self.check_output_with_place(place)
-
-    def test_check_grad_normal(self):
-        place = core.CUDAPlace(0)
-        self.check_grad_with_place(place, ['X', 'Y'], 'Out')
 
 
 if __name__ == "__main__":
