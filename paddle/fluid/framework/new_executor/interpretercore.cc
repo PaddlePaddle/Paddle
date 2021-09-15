@@ -327,6 +327,10 @@ void InterpreterCore::CheckGC(size_t instr_id,
         working_var_ref[var_id].var_ref_count_ == 0) {
       gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
               vec_instruction_[instr_id].dev_ctx_);
+    } else if (var_scope.vec_meta_info_[var_id].vardesc_ == nullptr &&
+               working_var_ref[var_id].var_ref_count_ == 0) {
+      gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
+              vec_instruction_[instr_id].dev_ctx_);
     }
   }
 }
