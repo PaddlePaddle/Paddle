@@ -56,11 +56,12 @@ class AsyncWorkQueue {
   explicit AsyncWorkQueue(size_t host_num_threads)
       : host_num_thread_(host_num_threads) {
     std::vector<WorkQueueOptions> group_options;
-    // for launch device Kernel
-    group_options.emplace_back(/*num_threads*/ 1, /*allow_spinning*/ true,
-                               /*track_task*/ true);
     // for execute host Kernel
-    group_options.emplace_back(/*num_threads*/ host_num_thread_,
+    group_options.emplace_back(/*num_threads*/ host_num_threads,
+                               /*allow_spinning*/ true,
+                               /*track_task*/ true);
+    // for launch device Kernel
+    group_options.emplace_back(/*num_threads*/ 1,
                                /*allow_spinning*/ true, /*track_task*/ true);
     queue_group_ = CreateWorkQueueGroup(group_options);
   }
