@@ -37,7 +37,7 @@ endif()
 
 if (LITE_WITH_NNADAPTER)
   add_definitions(-DLITE_SUBGRAPH_WITH_NNADAPTER) 
-  if (NNADAPTER_WITH_NPU)
+  if (NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
     add_definitions(-DLITE_SUBGRAPH_WITH_NPU)
     set(NPU_SDK_ROOT "/usr/local/Ascend/ascend-toolkit/latest" CACHE STRING "default NPU SDK ROOT")
   endif()
@@ -76,7 +76,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DXPU_SDK_URL=${XPU_BASE_URL}
                            -DXPU_SDK_ENV=${XPU_SDK_ENV}
                            -DLITE_WITH_NNADAPTER=${LITE_WITH_NNADAPTER}
-                           -DNNADAPTER_WITH_HUAWEI_ASCEND_NPU=${NNADAPTER_WITH_NPU}
+                           -DNNADAPTER_WITH_HUAWEI_ASCEND_NPU=${NNADAPTER_WITH_HUAWEI_ASCEND_NPU}
                            -DNNADAPTER_HUAWEI_ASCEND_NPU_SDK_ROOT=${NPU_SDK_ROOT}
                            -DLITE_WITH_CODE_META_INFO=OFF
                            -DLITE_WITH_ARM=ON)
@@ -122,7 +122,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
                            -DXPU_SDK_URL=${XPU_BASE_URL}
                            -DXPU_SDK_ENV=${XPU_SDK_ENV}
                            -DLITE_WITH_NNADAPTER=${LITE_WITH_NNADAPTER}
-                           -DNNADAPTER_WITH_HUAWEI_ASCEND_NPU=${NNADAPTER_WITH_NPU}
+                           -DNNADAPTER_WITH_HUAWEI_ASCEND_NPU=${NNADAPTER_WITH_HUAWEI_ASCEND_NPU}
                            -DNNADAPTER_HUAWEI_ASCEND_NPU_SDK_ROOT=${NPU_SDK_ROOT}
                            -DLITE_WITH_CODE_META_INFO=OFF
                            -DLITE_WITH_ARM=OFF)
@@ -162,7 +162,7 @@ if (WITH_ARM)
     set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8.xpu)
   elseif(LITE_WITH_NNADAPTER)
     message("Enable LITE_WITH_NNADAPTER")
-    if (NNADAPTER_WITH_NPU)
+    if (NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
       set(LITE_OUTPUT_BIN_DIR inference_lite_lib.armlinux.armv8.nnadapter)
     endif()
   else()
@@ -195,7 +195,7 @@ set(LITE_SHARED_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_
 
 if (LITE_WITH_NNADAPTER)
   set(LITE_NNADAPTER_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so)
-  if (NNADAPTER_WITH_NPU)
+  if (NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
     external_lite_libs(lite_nnadapter ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter_driver_huawei_ascend_npu.so)
     set(LITE_DEPS lite_full_static lite_nnadapter)
     set(LITE_NNADAPTER_NPU_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter_driver_huawei_ascend_npu.so)

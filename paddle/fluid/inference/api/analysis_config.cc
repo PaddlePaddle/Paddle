@@ -828,19 +828,19 @@ std::string AnalysisConfig::Summary() {
 
 LiteNNAdapterConfig &LiteNNAdapterConfig::SetDeviceNames(
     const std::vector<std::string> &names) {
-  device_names = names;
+  nnadapter_device_names = names;
   return *this;
 }
 
 LiteNNAdapterConfig &LiteNNAdapterConfig::SetContextProperties(
     const std::string &properties) {
-  context_properties = properties;
+  nnadapter_context_properties = properties;
   return *this;
 }
 
 LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheDir(
     const std::string &dir) {
-  model_cache_dir = dir;
+  nnadapter_model_cache_dir = dir;
   return *this;
 }
 
@@ -857,19 +857,19 @@ LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheBuffers(
                     platform::errors::InvalidArgument(
                         "model_cache_token has already been set."));
 
-  model_cache_buffers[model_cache_token] = model_cache_buffer;
+  nnadapter_model_cache_buffers[model_cache_token] = model_cache_buffer;
   return *this;
 }
 
 LiteNNAdapterConfig &LiteNNAdapterConfig::SetSubgraphPartitionConfigPath(
     const std::string &path) {
-  subgraph_partition_config_path = path;
+  nnadapter_subgraph_partition_config_path = path;
   return *this;
 }
 
 LiteNNAdapterConfig &LiteNNAdapterConfig::SetSubgraphPartitionConfigBuffer(
     const std::string &buffer) {
-  subgraph_partition_config_buffer = buffer;
+  nnadapter_subgraph_partition_config_buffer = buffer;
   return *this;
 }
 LiteNNAdapterConfig &LiteNNAdapterConfig::Enable() {

@@ -50,12 +50,12 @@ struct MkldnnQuantizerConfig;
 
 struct LiteNNAdapterConfig {
   bool use_nnadapter{false};
-  std::string model_cache_dir;
-  std::map<std::string, std::vector<char>> model_cache_buffers;
-  std::vector<std::string> device_names;
-  std::string context_properties;
-  std::string subgraph_partition_config_path;
-  std::string subgraph_partition_config_buffer;
+  std::string nnadapter_model_cache_dir;
+  std::map<std::string, std::vector<char>> nnadapter_model_cache_buffers;
+  std::vector<std::string> nnadapter_device_names;
+  std::string nnadapter_context_properties;
+  std::string nnadapter_subgraph_partition_config_path;
+  std::string nnadapter_subgraph_partition_config_buffer;
 
   LiteNNAdapterConfig& SetDeviceNames(const std::vector<std::string>& names);
 

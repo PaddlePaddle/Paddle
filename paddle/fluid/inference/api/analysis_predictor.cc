@@ -626,17 +626,19 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
     // NNAdapter related
     argument_.SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
-    argument_.SetNNAdapterDeviceNames(config_.NNAdapter().device_names);
+    argument_.SetNNAdapterDeviceNames(
+        config_.NNAdapter().nnadapter_device_names);
     argument_.SetNNAdapterContextProperties(
-        config_.NNAdapter().context_properties);
-    argument_.SetNNAdapterModelCacheDir(config_.NNAdapter().model_cache_dir);
+        config_.NNAdapter().nnadapter_context_properties);
+    argument_.SetNNAdapterModelCacheDir(
+        config_.NNAdapter().nnadapter_model_cache_dir);
     argument_.SetNNAdapterSubgraphPartitionConfigBuffer(
-        config_.NNAdapter().subgraph_partition_config_buffer);
+        config_.NNAdapter().nnadapter_subgraph_partition_config_buffer);
     argument_.SetNNAdapterSubgraphPartitionConfigPath(
-        config_.NNAdapter().subgraph_partition_config_path);
+        config_.NNAdapter().nnadapter_subgraph_partition_config_path);
     std::vector<std::string> buffer_keys;
     std::vector<std::vector<char>> buffer_vals;
-    for (auto it : config_.NNAdapter().model_cache_buffers) {
+    for (auto it : config_.NNAdapter().nnadapter_model_cache_buffers) {
       buffer_keys.emplace_back(it.first);
       buffer_vals.emplace_back(it.second);
     }
