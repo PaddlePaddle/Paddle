@@ -422,9 +422,9 @@ def find_free_ports(num):
 
 
 def _prepare_trainer_env(cluster, trainer, backend=None):
-    if backend == None:
+    if backend is None:
         backend = get_backend_by_compile_flag()  # for compatibility
-    if backend == 'nccl':
+    if backend == 'bkcl':
         proc_env = {
             "FLAGS_selected_xpus":
             "%s" % ",".join([str(g) for g in trainer.gpus]),
@@ -433,7 +433,7 @@ def _prepare_trainer_env(cluster, trainer, backend=None):
             "PADDLE_TRAINERS_NUM": "%d" % cluster.trainers_nranks(),
             "PADDLE_TRAINER_ENDPOINTS": ",".join(cluster.trainers_endpoints())
         }
-    elif backend == 'bkcl':
+    elif backend == 'nccl':
         proc_env = {
             "FLAGS_selected_gpus":
             "%s" % ",".join([str(g) for g in trainer.gpus]),

@@ -1279,12 +1279,10 @@ def block_windows_and_macos(backend):
 
 
 def get_backend_by_compile_flag():
-    if fluid.core.is_compiled_with_cuda() and \
-            fluid.core.get_cuda_device_count() > 0:
+    if fluid.core.is_compiled_with_cuda():
         return 'nccl'
 
-    if fluid.core.is_compiled_with_xpu() and \
-            fluid.core.get_cuda_device_count() > 0:
+    if fluid.core.is_compiled_with_xpu():
         return 'bkcl'
 
     return 'gloo'
