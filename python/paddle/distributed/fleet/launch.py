@@ -455,6 +455,8 @@ def launch():
     Examples 1 (collective, single node):
         .. code-block:: bash
             :name: code-block-example-bash1
+            
+            # For single node training using 4 gpus
 
             python -m paddle.distributed.launch --gpus=0,1,2,3 train.py --lr=0.01
         
@@ -475,7 +477,7 @@ def launch():
         .. code-block:: bash
             :name: code-block-example-bash3
 
-            # 2 server and 4 worker
+            # The emulated distributed environment using single node, 2 server and 4 worker
             python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
         
     Examples 4 (ps, cpu, multi node):
@@ -496,7 +498,8 @@ def launch():
         .. code-block:: bash
             :name: code-block-example-bash5
 
-            # 2 server and 4 worker, each worker use single gpu
+            # The emulated distributed environment using single node, 2 server and 4 worker, each worker use single gpu
+            
             export CUDA_VISIBLE_DEVICES=0,1,2,3
             python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
             
@@ -520,7 +523,7 @@ def launch():
         .. code-block:: bash
             :name: code-block-example-bash7
 
-            # 2 server and 4 worker, two worker use gpu, two worker use cpu
+            # The emulated distributed environment using single node, 2 server and 4 worker, two worker use gpu, two worker use cpu
             
             export CUDA_VISIBLE_DEVICES=0,1
             python -m paddle.distributed.launch --server_num=2 --worker_num=2 --heter_worker_num=2 train.py --lr=0.01
