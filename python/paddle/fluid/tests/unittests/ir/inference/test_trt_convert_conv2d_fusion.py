@@ -22,6 +22,20 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        inputs = program_config.inputs
+        weights = program_config.weights
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
+
+        if inputs['input_data'].shape[1] != weights['conv2d_weight'].shape[
+                1] * attrs[0]['groups']:
+            return False
+
+        if attrs[0]['groups'] <= 1:
+            return False
+
         return True
 
     def sample_program_configs(self):
