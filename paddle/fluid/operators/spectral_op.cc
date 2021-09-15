@@ -681,11 +681,11 @@ struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
     const auto& input_dim = x->dims();
     const std::vector<size_t> in_sizes =
         framework::vectorize<size_t>(input_dim);
-    std::vector<int64_t> in_strides =
-        framework::vectorize<int64_t>(framework::stride(input_dim));
+    std::vector<std::ptrdiff_t> in_strides =
+        framework::vectorize<std::ptrdiff_t>(framework::stride(input_dim));
     const int64_t data_size = sizeof(C);
     std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
-                   [](int64_t s) { return s * data_size; });
+                   [](std::ptrdiff_t s) { return s * data_size; });
 
     const auto* in_data = reinterpret_cast<const C*>(x->data<Ti>());
     auto* out_data = reinterpret_cast<C*>(out->data<To>());
@@ -714,24 +714,24 @@ struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
     const auto& input_dim = x->dims();
     const std::vector<size_t> in_sizes =
         framework::vectorize<size_t>(input_dim);
-    std::vector<int64_t> in_strides =
-        framework::vectorize<int64_t>(framework::stride(input_dim));
+    std::vector<std::ptrdiff_t> in_strides =
+        framework::vectorize<std::ptrdiff_t>(framework::stride(input_dim));
     {
       const int64_t data_size = sizeof(R);
       std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
-                     [](int64_t s) { return s * data_size; });
+                     [](std::ptrdiff_t s) { return s * data_size; });
     }
 
     const auto& output_dim = out->dims();
     const std::vector<size_t> out_sizes =
         framework::vectorize<size_t>(output_dim);
-    std::vector<int64_t> out_strides =
-        framework::vectorize<int64_t>(framework::stride(output_dim));
+    std::vector<std::ptrdiff_t> out_strides =
+        framework::vectorize<std::ptrdiff_t>(framework::stride(output_dim));
     {
       const int64_t data_size = sizeof(C);
       std::transform(out_strides.begin(), out_strides.end(),
                      out_strides.begin(),
-                     [](int64_t s) { return s * data_size; });
+                     [](std::ptrdiff_t s) { return s * data_size; });
     }
 
     const auto* in_data = x->data<R>();
@@ -761,24 +761,24 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
     const auto& input_dim = x->dims();
     const std::vector<size_t> in_sizes =
         framework::vectorize<size_t>(input_dim);
-    std::vector<int64_t> in_strides =
-        framework::vectorize<int64_t>(framework::stride(input_dim));
+    std::vector<std::ptrdiff_t> in_strides =
+        framework::vectorize<std::ptrdiff_t>(framework::stride(input_dim));
     {
       const int64_t data_size = sizeof(C);
       std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
-                     [](int64_t s) { return s * data_size; });
+                     [](std::ptrdiff_t s) { return s * data_size; });
     }
 
     const auto& output_dim = out->dims();
     const std::vector<size_t> out_sizes =
         framework::vectorize<size_t>(output_dim);
-    std::vector<int64_t> out_strides =
-        framework::vectorize<int64_t>(framework::stride(output_dim));
+    std::vector<std::ptrdiff_t> out_strides =
+        framework::vectorize<std::ptrdiff_t>(framework::stride(output_dim));
     {
       const int64_t data_size = sizeof(R);
       std::transform(out_strides.begin(), out_strides.end(),
                      out_strides.begin(),
-                     [](int64_t s) { return s * data_size; });
+                     [](std::ptrdiff_t s) { return s * data_size; });
     }
 
     const auto* in_data = reinterpret_cast<const C*>(x->data<Ti>());
