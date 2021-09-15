@@ -43,6 +43,8 @@ message ShardingConfig {
   optional bool pp_allreduce_in_optimize = 10 [ default = false ];
   optional int32 pp_degree = 11 [ default = 1 ];
   optional bool optimize_cast = 12 [ default = false ];
+  // Optimizer sharding. Temporary plans and may be deprecated
+  optional bool _dp_as_optimizer_sharding = 13 [ default = false ];
 }
 
 message HybridConfig {
