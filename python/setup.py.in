@@ -322,6 +322,12 @@ else:
 if '${WITH_LITE}' == 'ON':
     shutil.copy('${LITE_SHARED_LIB}', libs_path)
     package_data['paddle.libs']+=['libpaddle_full_api_shared' + ext_name]
+    if '${LITE_WITH_NNADAPTER}' == 'ON':
+        shutil.copy('${LITE_NNADAPTER_LIB}', libs_path)
+        package_data['paddle.libs']+=['libnnadapter' + ext_name]
+        if '${NNADAPTER_WITH_NPU}' == 'ON':
+            shutil.copy('${LITE_NNADAPTER_NPU_LIB}', libs_path)
+            package_data['paddle.libs']+=['libnnadapter_driver_huawei_ascend_npu' + ext_name]
 
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)

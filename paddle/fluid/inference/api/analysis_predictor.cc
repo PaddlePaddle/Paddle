@@ -276,6 +276,29 @@ bool AnalysisPredictor::CreateExecutor() {
         "You tried to use NPU forward propagation, but Paddle was not compiled "
         "with WITH_ASCEND_CL."));
 #endif
+  } else if (config_.NNAdapter().use_nnadapter) {
+    if (config_.lite_engine_enabled()) {
+#ifdef LITE_SUBGRAPH_WITH_NNADAPTER
+      // Currently, Paddle-Lite's NNAdapter user interface only supports the
+      // transfer
+      // of Host data pointers. If it is currently used as a subgraph, execution
+      // efficiency will be sacrificed, so it is temporarily set to cpu place.
+      // And, the current lite engine of xpu must execute all parts of the
+      // model.
+      place_ = paddle::platform::CPUPlace();
+#else
+      PADDLE_THROW(
+          platform::errors::Unavailable("You tried to use an NNAdapter lite "
+                                        "engine, but Paddle was not compiled "
+                                        "with it."));
+#endif  // LITE_SUBGRAPH_WITH_NNADAPTER
+    } else {
+      PADDLE_THROW(
+          platform::errors::Unavailable("You tried to use NNadapter forward "
+                                        "propagation (inference without lite "
+                                        "engine), but Paddle was not compiled "
+                                        "with LITE_WITH_NNADAPTER."));
+    }
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -601,6 +624,24 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetXpuAutotuneFile(config_.xpu_autotune_file_);
     argument_.SetXpuPrecision(config_.xpu_precision_);
     argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
+    // NNAdapter related
+    argument_.SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
+    argument_.SetNNAdapterDeviceNames(config_.NNAdapter().device_names);
+    argument_.SetNNAdapterContextProperties(
+        config_.NNAdapter().context_properties);
+    argument_.SetNNAdapterModelCacheDir(config_.NNAdapter().model_cache_dir);
+    argument_.SetNNAdapterSubgraphPartitionConfigBuffer(
+        config_.NNAdapter().subgraph_partition_config_buffer);
+    argument_.SetNNAdapterSubgraphPartitionConfigPath(
+        config_.NNAdapter().subgraph_partition_config_path);
+    std::vector<std::string> buffer_keys;
+    std::vector<std::vector<char>> buffer_vals;
+    for (auto it : config_.NNAdapter().model_cache_buffers) {
+      buffer_keys.emplace_back(it.first);
+      buffer_vals.emplace_back(it.second);
+    }
+    argument_.SetNNAdapterModelCacheToken(buffer_keys);
+    argument_.SetNNAdapterModelCacheBuffer(buffer_vals);
     LOG(INFO) << "Lite subgraph engine is enabled";
   }
 
