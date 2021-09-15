@@ -240,15 +240,29 @@ class FFTC2ROp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "fft_c2r");
 
     const auto axes = ctx->Attrs().Get<std::vector<int64_t>>("axes");
+    const auto x_dim = ctx->GetInputDim("X");
+    for (size_t i = 0; i < axes.size() - 1L; i++) {
+      const auto fft_n_point = (x_dim[axes[i]] - 1) * 2;
+      PADDLE_ENFORCE_GT(fft_n_point, 0,
+                        platform::errors::InvalidArgument(
+                            "Invalid fft n-point (%d).", fft_n_point));
+    }
 
     const int64_t last_dim_size = ctx->Attrs().Get<int64_t>("last_dim_size");
     framework::DDim out_dim(ctx->GetInputDim("X"));
     const int64_t last_fft_axis = axes.back();
     if (last_dim_size == 0) {
       const int64_t last_fft_dim_size = out_dim.at(last_fft_axis);
-      out_dim.at(last_fft_axis) = (last_fft_dim_size - 1) * 2;
+      const int64_t fft_n_point = (last_fft_dim_size - 1) * 2;
+      PADDLE_ENFORCE_GT(fft_n_point, 0,
+                        platform::errors::InvalidArgument(
+                            "Invalid fft n-point (%d).", fft_n_point));
+      out_dim.at(last_fft_axis) = fft_n_point;
     } else {
-      out_dim.at(last_fft_axis) = ctx->Attrs().Get<int64_t>("last_dim_size");
+      PADDLE_ENFORCE_GT(last_dim_size, 0,
+                        platform::errors::InvalidArgument(
+                            "Invalid fft n-point (%d).", last_dim_size));
+      out_dim.at(last_fft_axis) = last_dim_size;
     }
     ctx->SetOutputDim("Out", out_dim);
   }
@@ -681,11 +695,11 @@ struct FFTC2CFunctor<platform::CPUDeviceContext, Ti, To> {
     const auto& input_dim = x->dims();
     const std::vector<size_t> in_sizes =
         framework::vectorize<size_t>(input_dim);
-    std::vector<int64_t> in_strides =
-        framework::vectorize<int64_t>(framework::stride(input_dim));
+    std::vector<std::ptrdiff_t> in_strides =
+        framework::vectorize<std::ptrdiff_t>(framework::stride(input_dim));
     const int64_t data_size = sizeof(C);
     std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
-                   [](int64_t s) { return s * data_size; });
+                   [](std::ptrdiff_t s) { return s * data_size; });
 
     const auto* in_data = reinterpret_cast<const C*>(x->data<Ti>());
     auto* out_data = reinterpret_cast<C*>(out->data<To>());
@@ -714,24 +728,24 @@ struct FFTR2CFunctor<platform::CPUDeviceContext, Ti, To> {
     const auto& input_dim = x->dims();
     const std::vector<size_t> in_sizes =
         framework::vectorize<size_t>(input_dim);
-    std::vector<int64_t> in_strides =
-        framework::vectorize<int64_t>(framework::stride(input_dim));
+    std::vector<std::ptrdiff_t> in_strides =
+        framework::vectorize<std::ptrdiff_t>(framework::stride(input_dim));
     {
       const int64_t data_size = sizeof(R);
       std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
-                     [](int64_t s) { return s * data_size; });
+                     [](std::ptrdiff_t s) { return s * data_size; });
     }
 
     const auto& output_dim = out->dims();
     const std::vector<size_t> out_sizes =
         framework::vectorize<size_t>(output_dim);
-    std::vector<int64_t> out_strides =
-        framework::vectorize<int64_t>(framework::stride(output_dim));
+    std::vector<std::ptrdiff_t> out_strides =
+        framework::vectorize<std::ptrdiff_t>(framework::stride(output_dim));
     {
       const int64_t data_size = sizeof(C);
       std::transform(out_strides.begin(), out_strides.end(),
                      out_strides.begin(),
-                     [](int64_t s) { return s * data_size; });
+                     [](std::ptrdiff_t s) { return s * data_size; });
     }
 
     const auto* in_data = x->data<R>();
@@ -761,24 +775,24 @@ struct FFTC2RFunctor<platform::CPUDeviceContext, Ti, To> {
     const auto& input_dim = x->dims();
     const std::vector<size_t> in_sizes =
         framework::vectorize<size_t>(input_dim);
-    std::vector<int64_t> in_strides =
-        framework::vectorize<int64_t>(framework::stride(input_dim));
+    std::vector<std::ptrdiff_t> in_strides =
+        framework::vectorize<std::ptrdiff_t>(framework::stride(input_dim));
     {
       const int64_t data_size = sizeof(C);
       std::transform(in_strides.begin(), in_strides.end(), in_strides.begin(),
-                     [](int64_t s) { return s * data_size; });
+                     [](std::ptrdiff_t s) { return s * data_size; });
     }
 
     const auto& output_dim = out->dims();
     const std::vector<size_t> out_sizes =
         framework::vectorize<size_t>(output_dim);
-    std::vector<int64_t> out_strides =
-        framework::vectorize<int64_t>(framework::stride(output_dim));
+    std::vector<std::ptrdiff_t> out_strides =
+        framework::vectorize<std::ptrdiff_t>(framework::stride(output_dim));
     {
       const int64_t data_size = sizeof(R);
       std::transform(out_strides.begin(), out_strides.end(),
                      out_strides.begin(),
-                     [](int64_t s) { return s * data_size; });
+                     [](std::ptrdiff_t s) { return s * data_size; });
     }
 
     const auto* in_data = reinterpret_cast<const C*>(x->data<Ti>());

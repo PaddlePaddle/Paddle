@@ -12,37 +12,33 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
-#include <string>
+#include "paddle/fluid/platform/dynload/cufft.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace platform {
 namespace dynload {
+std::once_flag cufft_dso_flag;
+void* cufft_dso_handle = nullptr;
 
-#ifndef _WIN32
-#define DECLARE_TYPE(__name, ...) decltype(__name(__VA_ARGS__))
-#else
-#define DECLARE_TYPE(__name, ...) decltype(auto)
-#endif
+#define DEFINE_WRAP(__name) DynLoad__##__name __name
 
-void* GetCublasDsoHandle();
-void* GetCUDNNDsoHandle();
-void* GetCUPTIDsoHandle();
-void* GetCurandDsoHandle();
-void* GetNvjpegDsoHandle();
-void* GetCusolverDsoHandle();
-void* GetNVRTCDsoHandle();
-void* GetCUDADsoHandle();
-void* GetWarpCTCDsoHandle();
-void* GetNCCLDsoHandle();
-void* GetHCCLDsoHandle();
-void* GetTensorRtDsoHandle();
-void* GetMKLMLDsoHandle();
-void* GetOpDsoHandle(const std::string& dso_name);
-void* GetNvtxDsoHandle();
-void* GetCUFFTDsoHandle();
+CUFFT_FFT_ROUTINE_EACH(DEFINE_WRAP);
 
-void SetPaddleLibPath(const std::string&);
+bool HasCUFFT() {
+  std::call_once(cufft_dso_flag,
+                 []() { cufft_dso_handle = GetCUFFTDsoHandle(); });
+  return cufft_dso_handle != nullptr;
+}
+
+void EnforceCUFFTLoaded(const char* fn_name) {
+  PADDLE_ENFORCE_NOT_NULL(
+      cufft_dso_handle,
+      platform::errors::PreconditionNotMet(
+          "Cannot load cufft shared library. Cannot invoke method %s.",
+          fn_name));
+}
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
