@@ -1171,3 +1171,65 @@ def matrix_power(x, n, name=None):
         outputs={'Out': out},
         attrs={'n': n})
     return out
+
+
+def qr(x, mode="reduced", name=None):
+    r"""
+    Computes the QR decomposition of one matrix or batches of matrice.
+    Args:
+        x (Tensor): The input tensor. Its shape should be `[..., M, N]`,
+            where ... is zero or more batch dimensions. M and N can be arbitrary
+            positive number. The data type of x should be float32 or float64. 
+
+        mode (str, optional): A flag to control the behavior of qr, the default is "reduced". 
+            Suppose x's shape is `[..., M, N]` and denoting :math:`K = min(M, N)`:
+            If mode = "reduced", qr op will return reduced Q and R matrices, 
+            which means Q's shape is `[..., M, K]` and R's shape is `[..., K, N]`.
+            If mode = "complete", qr op will return complete Q and R matrices, 
+            which means Q's shape is `[..., M, M]` and R's shape is `[..., M, N]`.
+            If mode = "r", qr op will only return reduced R matrix, which means
+            R's shape is `[..., K, N]`.
+
+        name (str, optional): Name for the operation (optional, default is None). 
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        If mode = "reduced" or mode = "complete", qr will return a two tensor-tuple, which represents Q and R 
+        If mode = "r", qr will return a tensor which represents R.
+
+            import paddle 
+
+            x = paddle.to_tensor([[1.0, 2.0], [1.0, 3.0], [4.0, 6.0]]).astype('float64')
+            q, r = paddle.linalg.qr(x)
+            print (q)
+            print (r)
+
+            # Q = [[-0.23570226, -0.25767356],
+            #      [-0.23570226, -0.92026272],
+            #      [-0.94280904,  0.29448407]]
+
+            # R = [[-4.24264069, -6.83536555],
+                   [ 0.        , -1.50923086]]
+            
+            # one can verify : X = Q * R ;     
+    """
+    if in_dygraph_mode():
+        q, r = _C_ops.qr(x, 'mode', mode)
+        if mode == "r":
+            return r
+        else:
+            return q, r
+    check_variable_and_dtype(x, 'dtype', ['float32', 'float64'], 'qr')
+    check_type(mode, 'mode', str, 'qr')
+    helper = LayerHelper('qr', **locals())
+    q = helper.create_variable_for_type_inference(dtype=x.dtype)
+    r = helper.create_variable_for_type_inference(dtype=x.dtype)
+    attrs = dict()
+    attrs['mode'] = mode
+    helper.append_op(
+        type='qr', inputs={'X': [x]}, outputs={'Q': q,
+                                               'R': r}, attrs=attrs)
+    if mode == "r":
+        return r
+    else:
+        return q, r
