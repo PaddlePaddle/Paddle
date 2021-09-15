@@ -47,8 +47,8 @@ class TrtConvertReduceSumTest(TrtLayerAutoScanTest):
             return np.random.random([1, 3, 64, 64]).astype(np.float32)
 
         for keep_dim in [False, True]:
-            for dim in [[], [1], [0], [0, 1], [1, 2, 3], [-2, 0, 3],
-                        [-1, 0, 2], [-3], [-4, 1], [3, 4, 5]]:
+            for dim in [[], [1], [0], [0, 1], [1, 2, 3], [-2, 0, 3], [-3],
+                        [-4, 1], [3, 4, 5]]:
                 for reduce_all in [False, True]:
                     for out_dtype in [-1, 0, 1]:
                         dics = [{
