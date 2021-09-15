@@ -7192,7 +7192,8 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
     assert input.numel() > 0 and label.numel() > 0, \
         "Any dimension of input and label cannot be equal to 0."
 
-    label = one_hot(label, depth=input.shape[-1])
+    label = squeeze(label, [-1])
+    label = paddle.nn.functional.one_hot(label, input.shape[-1])
     reduce_dim = list(range(1, len(input.shape)))
     inse = reduce_sum(input * label, dim=reduce_dim)
     dice_denominator = reduce_sum(
