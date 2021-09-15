@@ -594,16 +594,19 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             momentum=0.9,
             parameter_list=model.parameters(),
             multi_precision=True)
-        model, opt = paddle.amp.decorator(
-            models=model, optimizers=opt, mode='L2')
-        with paddle.amp.auto_cast(
-                enable=True,
-                custom_black_list=None,
-                custom_white_list=None,
-                mode='L2'):
-            out = model(inp)
-            loss = paddle.mean(out)
-        opt.minimize(loss)
+        if paddle.is_compiled_with_cuda():
+            model, opt = paddle.amp.decorator(
+                models=model, optimizers=opt, mode='L2')
+            with paddle.amp.auto_cast(
+                    enable=True,
+                    custom_black_list=None,
+                    custom_white_list=None,
+                    mode='L2'):
+                out = model(inp)
+                loss = paddle.mean(out)
+            opt.minimize(loss)
+        else:
+            return
 
     def test_momentum_dygraph_1(self):
         self._test_momentum_dygraph_common(
