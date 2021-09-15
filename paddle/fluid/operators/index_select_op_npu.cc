@@ -64,51 +64,59 @@ class IndexSelectGradNPUKernel : public framework::OpKernel<T> {
       dim += out_dims.size();
     }
 
-    std::vector<int> in_trans_perm;
-    in_trans_perm.push_back(dim);
-    for (int i = 0; i < out_dims.size(); ++i) {
-      if (i == dim) continue;
-      in_trans_perm.push_back(i);
-    }
-    framework::DDim transed_out_dims(out_dims);
-    for (size_t i = 0; i < in_trans_perm.size(); ++i) {
-      transed_out_dims[i] = out_dims[in_trans_perm[i]];
-    }
-    Tensor transed_out_grad;
-    transed_out_grad.mutable_data<T>(transed_out_dims, ctx.GetPlace());
-    framework::NPUAttributeMap in_trans_attr = {{"perm", in_trans_perm}};
-
-    const auto& in_trans_runner = NpuOpRunner(
-        "TransposeD", {*out_grad}, {transed_out_grad}, in_trans_attr);
-    in_trans_runner.Run(stream);
-
-    framework::DDim sum_dims(x_dims);
-    sum_dims[0] = x_dims[dim];
-    auto idx = 1;
-    for (int i = 0; i < x_dims.size(); ++i) {
-      if (i == dim) continue;
-      sum_dims[idx++] = x_dims[i];
-    }
-    Tensor sum_out;
-    sum_out.mutable_data<T>(sum_dims, ctx.GetPlace());
-
-    const auto& zeros_runner = NpuOpRunner("ZerosLike", {sum_out}, {sum_out});
-    zeros_runner.Run(stream);
-
-    if (index->type() == framework::proto::VarType::INT32) {
-      NpuOpRunner runner;
-      runner.SetType("UnsortedSegmentSum")
-          .AddInput(transed_out_grad)
-          .AddInput(*index)
-          .AddInput(std::vector<int64_t>{x_dims[dim]})
-          .AddOutput(sum_out);
-      runner.Run(stream);
-    } else {
-      Tensor casted_index;
+    Tensor casted_index;
+    if (index->type() != framework::proto::VarType::INT32) {
       casted_index.mutable_data<int32_t>(index->dims(), ctx.GetPlace());
       const auto& cast_runner = NpuOpRunner("Cast", {*index}, {casted_index},
                                             {{"dst_type", ACL_INT32}});
       cast_runner.Run(stream);
+    } else {
+      casted_index.ShareDataWith(*index);
+    }
+
+    if (dim == 0) {
+      x_grad->mutable_data<T>(ctx.GetPlace());
+      const auto& zeros_runner = NpuOpRunner("ZerosLike", {*x_grad}, {*x_grad});
+      zeros_runner.Run(stream);
+
+      NpuOpRunner runner;
+      runner.SetType("UnsortedSegmentSum")
+          .AddInput(*out_grad)
+          .AddInput(casted_index)
+          .AddInput(std::vector<int64_t>{x_dims[dim]})
+          .AddOutput(*x_grad);
+      runner.Run(stream);
+    } else {
+      Tensor transed_out_grad;
+      std::vector<int> in_trans_perm;
+      in_trans_perm.push_back(dim);
+      for (int i = 0; i < out_dims.size(); ++i) {
+        if (i == dim) continue;
+        in_trans_perm.push_back(i);
+      }
+      framework::DDim transed_out_dims(out_dims);
+      for (size_t i = 0; i < in_trans_perm.size(); ++i) {
+        transed_out_dims[i] = out_dims[in_trans_perm[i]];
+      }
+      transed_out_grad.mutable_data<T>(transed_out_dims, ctx.GetPlace());
+      framework::NPUAttributeMap in_trans_attr = {{"perm", in_trans_perm}};
+
+      const auto& in_trans_runner = NpuOpRunner(
+          "TransposeD", {*out_grad}, {transed_out_grad}, in_trans_attr);
+      in_trans_runner.Run(stream);
+
+      Tensor sum_out;
+      framework::DDim sum_dims(x_dims);
+      sum_dims[0] = x_dims[dim];
+      auto idx = 1;
+      for (int i = 0; i < x_dims.size(); ++i) {
+        if (i == dim) continue;
+        sum_dims[idx++] = x_dims[i];
+      }
+      sum_out.mutable_data<T>(sum_dims, ctx.GetPlace());
+      const auto& zeros_runner = NpuOpRunner("ZerosLike", {sum_out}, {sum_out});
+      zeros_runner.Run(stream);
+
       NpuOpRunner runner;
       runner.SetType("UnsortedSegmentSum")
           .AddInput(transed_out_grad)
@@ -116,21 +124,21 @@ class IndexSelectGradNPUKernel : public framework::OpKernel<T> {
           .AddInput(std::vector<int64_t>{x_dims[dim]})
           .AddOutput(sum_out);
       runner.Run(stream);
-    }
 
-    std::vector<int> out_trans_perm;
-    for (int i = 1; i < 1 + dim; ++i) {
-      out_trans_perm.push_back(i);
+      std::vector<int> out_trans_perm;
+      for (int i = 1; i < 1 + dim; ++i) {
+        out_trans_perm.push_back(i);
+      }
+      out_trans_perm.push_back(0);
+      for (int i = 1 + dim; i < x_dims.size(); ++i) {
+        out_trans_perm.push_back(i);
+      }
+      framework::NPUAttributeMap out_trans_attr = {{"perm", out_trans_perm}};
+      x_grad->mutable_data<T>(ctx.GetPlace());
+      const auto& out_trans_runner =
+          NpuOpRunner("TransposeD", {sum_out}, {*x_grad}, out_trans_attr);
+      out_trans_runner.Run(stream);
     }
-    out_trans_perm.push_back(0);
-    for (int i = 1 + dim; i < x_dims.size(); ++i) {
-      out_trans_perm.push_back(i);
-    }
-    framework::NPUAttributeMap out_trans_attr = {{"perm", out_trans_perm}};
-    x_grad->mutable_data<T>(ctx.GetPlace());
-    const auto& out_trans_runner =
-        NpuOpRunner("TransposeD", {sum_out}, {*x_grad}, out_trans_attr);
-    out_trans_runner.Run(stream);
   }
 };
 
