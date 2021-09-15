@@ -348,7 +348,7 @@ static bool PyCheckTensor(PyObject *obj) {
 
 // cast numpy type form S to T, this may allocate new memory
 template <class T, class S>
-static py::array_t<T> cast_numpy_type(py::array_t<S> array) {
+static py::array_t<T> CastNumpyType(py::array_t<S> array) {
   if (std::is_same<T, S>::value) {
     return array;
   }
@@ -364,17 +364,17 @@ static py::array_t<T> cast_numpy_type(py::array_t<S> array) {
 }
 
 template <class T>
-static py::array_t<T> cast_numpy_array(const py::object &array) {
+static py::array_t<T> CastNumpyArray(const py::object &array) {
   if (py::isinstance<py::array_t<float>>(array)) {
-    return cast_numpy_type<T>(array.cast<py::array_t<float>>());
+    return CastNumpyType<T>(array.cast<py::array_t<float>>());
   } else if (py::isinstance<py::array_t<double>>(array)) {
-    return cast_numpy_type<T>(array.cast<py::array_t<double>>());
+    return CastNumpyType<T>(array.cast<py::array_t<double>>());
   } else if (py::isinstance<py::array_t<int32_t>>(array)) {
-    return cast_numpy_type<T>(array.cast<py::array_t<int32_t>>());
+    return CastNumpyType<T>(array.cast<py::array_t<int32_t>>());
   } else if (py::isinstance<py::array_t<int64_t>>(array)) {
-    return cast_numpy_type<T>(array.cast<py::array_t<int64_t>>());
+    return CastNumpyType<T>(array.cast<py::array_t<int64_t>>());
   } else if (py::isinstance<py::array_t<bool>>(array)) {
-    return cast_numpy_type<T>(array.cast<py::array_t<bool>>());
+    return CastNumpyType<T>(array.cast<py::array_t<bool>>());
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Value type error. The assign numpy value allows integer, float, "
@@ -410,6 +410,27 @@ static bool PyCheckInteger(PyObject *obj) {
 #endif
 }
 
+static Py_ssize_t GetSliceIndexFromTensor(
+    const std::shared_ptr<imperative::VarBase> &tensor_index) {
+  const auto &tensor = tensor_index->Var().Get<framework::LoDTensor>();
+  if (tensor.numel() == 1) {
+    if (tensor.type() == framework::proto::VarType::INT32) {
+      return static_cast<Py_ssize_t>(operators::GetValue<int32_t>(&tensor));
+    } else if (tensor.type() == framework::proto::VarType::INT64) {
+      return static_cast<Py_ssize_t>(operators::GetValue<int64_t>(&tensor));
+    } else {
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Currently, the type of tensor in slice indices only allows "
+          "int32 and int64, please check the type of index tensor."));
+    }
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Currently, tensor in slice indices only allows 1 element, "
+        "but received %d.",
+        tensor.numel()));
+  }
+}
+
 // NOTE(zhiqiu): Revised version of PySlice_GetIndices. From:
 // https://github.com/python/cpython/blob/8d21aa21f2cbc6d50aab3f420bb23be1d081dac4/Objects/sliceobject.c#L103
 // Original PySlice_GetIndices return wrong result when
@@ -429,32 +450,12 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
     if (PyCheckInteger(r->step) || IsNumpyType(r->step)) {
       *step = PyLong_AsLong(r->step);
     } else if (PyCheckTensor(r->step)) {
-      auto *step_tensor =
-          &(py::cast<std::shared_ptr<imperative::VarBase>>(r->step)
-                ->Var()
-                .Get<framework::LoDTensor>());
-      if (step_tensor->numel() == 1) {
-        if (step_tensor->type() == framework::proto::VarType::INT32) {
-          *step = static_cast<Py_ssize_t>(
-              operators::GetValue<int32_t>(step_tensor));
-        } else if (step_tensor->type() == framework::proto::VarType::INT64) {
-          *step = static_cast<Py_ssize_t>(
-              operators::GetValue<int64_t>(step_tensor));
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "Currently, the type of tensor in slice indices only allows "
-              "int32 and int64, please check the type of index tensor."));
-        }
-      } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Currently, tensor in slice indices only allows 1 element, "
-            "but received %d.",
-            step_tensor->numel()));
-      }
+      *step = GetSliceIndexFromTensor(
+          py::cast<std::shared_ptr<imperative::VarBase>>(r->step));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Currently, slice indices only allows None, integers, and "
-          "int of tensor or numpy in slice item, but received %s.",
+          "Currently, slice indices only allows None, integers, "
+          "tensor(int) and numpy(int) in slice item, but received %s.",
           std::string(Py_TYPE(r->step)->tp_name)));
     }
   }
@@ -464,32 +465,12 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
     if (PyCheckInteger(r->start) || IsNumpyType(r->start)) {
       *start = PyLong_AsLong(r->start);
     } else if (PyCheckTensor(r->start)) {
-      auto *start_tensor =
-          &(py::cast<std::shared_ptr<imperative::VarBase>>(r->start)
-                ->Var()
-                .Get<framework::LoDTensor>());
-      if (start_tensor->numel() == 1) {
-        if (start_tensor->type() == framework::proto::VarType::INT32) {
-          *start = static_cast<Py_ssize_t>(
-              operators::GetValue<int32_t>(start_tensor));
-        } else if (start_tensor->type() == framework::proto::VarType::INT64) {
-          *start = static_cast<Py_ssize_t>(
-              operators::GetValue<int64_t>(start_tensor));
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "Currently, the type of tensor in slice indices only allows "
-              "int32 and int64, please check the type of index tensor."));
-        }
-      } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Currently, tensor in slice indices only allows 1 element, "
-            "but received %d.",
-            start_tensor->numel()));
-      }
+      *start = GetSliceIndexFromTensor(
+          py::cast<std::shared_ptr<imperative::VarBase>>(r->start));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Currently, slice indices only allows None, integers, and "
-          "int of tensor or numpy in slice item, but received %s.",
+          "Currently, slice indices only allows None, integers, "
+          "tensor(int) and numpy(int) in slice item, but received %s.",
           std::string(Py_TYPE(r->start)->tp_name)));
     }
     if (*start < 0) *start += length;
@@ -501,32 +482,12 @@ static int _PySlice_GetIndices(PySliceObject *r, Py_ssize_t length,
     if (PyCheckInteger(r->stop) || IsNumpyType(r->stop)) {
       *stop = PyLong_AsLong(r->stop);
     } else if (PyCheckTensor(r->stop)) {
-      auto *stop_tensor =
-          &(py::cast<std::shared_ptr<imperative::VarBase>>(r->stop)
-                ->Var()
-                .Get<framework::LoDTensor>());
-      if (stop_tensor->numel() == 1) {
-        if (stop_tensor->type() == framework::proto::VarType::INT32) {
-          *stop = static_cast<Py_ssize_t>(
-              operators::GetValue<int32_t>(stop_tensor));
-        } else if (stop_tensor->type() == framework::proto::VarType::INT64) {
-          *stop = static_cast<Py_ssize_t>(
-              operators::GetValue<int64_t>(stop_tensor));
-        } else {
-          PADDLE_THROW(platform::errors::InvalidArgument(
-              "Currently, the type of tensor in slice indices only allows "
-              "int32 and int64, please check the type of index tensor."));
-        }
-      } else {
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "Currently, tensor in slice indices only allows 1 element, "
-            "but received %d.",
-            stop_tensor->numel()));
-      }
+      *stop = GetSliceIndexFromTensor(
+          py::cast<std::shared_ptr<imperative::VarBase>>(r->stop));
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Currently, slice indices only allows None, integers, and "
-          "int of tensor or numpy in slice item, but received %s.",
+          "Currently, slice indices only allows None, integers, "
+          "tensor(int) and numpy(int) in slice item, but received %s.",
           std::string(Py_TYPE(r->stop)->tp_name)));
     }
     if (0 < *step && *stop < 0) *stop += length;
@@ -669,7 +630,7 @@ static void ParseIndexingSlice(
 
     } else {
       PADDLE_THROW(platform::errors::InvalidArgument(
-          "Currently, VarBase.__indices__() only allows indexing "
+          "Currently, Tensor.__indices__() only allows indexing "
           "by Integers, Slices, Ellipsis, None, tuples of these types "
           "and list of Bool and Integers, but received "
           "%s in %dth slice item",
@@ -993,7 +954,7 @@ void BindImperative(py::module *m_ptr) {
               std::vector<int> axes, starts, ends, steps, decrease_axes,
                   none_axes, infer_flags, list_select_idxs;
               // if index is a list, list_select_flag will be true
-              bool list_select_flag;
+              bool list_select_flag = false;
               ParseIndexingSlice(self_tensor, index_ptr, &axes, &starts, &ends,
                                  &steps, &decrease_axes, &none_axes,
                                  &infer_flags, &list_select_idxs,
@@ -1031,27 +992,27 @@ void BindImperative(py::module *m_ptr) {
                 py::object value = value_obj;
                 if (self->DataType() == framework::proto::VarType::FP32) {
                   if (!py::isinstance<py::array_t<float>>(value_obj)) {
-                    value = cast_numpy_array<float>(value_obj);
+                    value = CastNumpyArray<float>(value_obj);
                   }
                 } else if (self->DataType() ==
                            framework::proto::VarType::FP64) {
                   if (!py::isinstance<py::array_t<double>>(value_obj)) {
-                    value = cast_numpy_array<double>(value_obj);
+                    value = CastNumpyArray<double>(value_obj);
                   }
                 } else if (self->DataType() ==
                            framework::proto::VarType::INT32) {
                   if (!py::isinstance<py::array_t<int32_t>>(value_obj)) {
-                    value = cast_numpy_array<int32_t>(value_obj);
+                    value = CastNumpyArray<int32_t>(value_obj);
                   }
                 } else if (self->DataType() ==
                            framework::proto::VarType::INT64) {
                   if (!py::isinstance<py::array_t<int64_t>>(value_obj)) {
-                    value = cast_numpy_array<int64_t>(value_obj);
+                    value = CastNumpyArray<int64_t>(value_obj);
                   }
                 } else if (self->DataType() ==
                            framework::proto::VarType::BOOL) {
                   if (!py::isinstance<py::array_t<bool>>(value_obj)) {
-                    value = cast_numpy_array<bool>(value_obj);
+                    value = CastNumpyArray<bool>(value_obj);
                   }
                 } else {
                   PADDLE_THROW(platform::errors::InvalidArgument(
