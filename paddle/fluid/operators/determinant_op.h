@@ -31,7 +31,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-inline int64_t GetBatchSize(framework::DDim dims) {
+inline int64_t GetBatchCount(framework::DDim dims) {
   int64_t batch_count = 1;
   auto dim_size = dims.size();
   PADDLE_ENFORCE_GE(dim_size, 2,
@@ -82,8 +82,16 @@ class DeterminantKernel : public framework::OpKernel<T> {
     auto input_dim_size = input_dim.size();
     auto* output = context.Output<framework::Tensor>("Out");
 
-    auto batch_count = GetBatchSize(input->dims());
+    auto batch_count = GetBatchCount(input->dims());
     VLOG(2) << "input dim:" << input->dims();
+    PADDLE_ENFORCE_GT(
+        input_dim_size, 2,
+        platform::errors::InvalidArgument(
+            "the input matrix dimension size should greater than 2."));
+    PADDLE_ENFORCE_EQ(input_dim[input_dim_size - 1],
+                      input_dim[input_dim_size - 2],
+                      platform::errors::InvalidArgument(
+                          "the input matrix should be square matrix."));
     auto rank = input_dim[input_dim_size - 1];  // square matrix length
     DeterminantFunctor<T>()(*input, context, rank, batch_count, output);
     auto output_dims =
@@ -262,21 +270,40 @@ template <typename T>
 T sign(T val) {
   return static_cast<T>(T(0) < val) - (val < T(0));
 }
+
+template <typename T>
+class EigenMatrix {
+ public:
+  using MatrixType = Eigen::MatrixXf;
+};
+
+template <>
+class EigenMatrix<float> {
+ public:
+  using MatrixType = Eigen::MatrixXf;
+};
+
+template <>
+class EigenMatrix<double> {
+ public:
+  using MatrixType = Eigen::MatrixXd;
+};
+
 template <typename T>
 struct SlogDeterminantFunctor {
   void operator()(const Tensor& input, const framework::ExecutionContext ctx,
                   int rank, int batch_count, Tensor* output) {
     std::vector<T> input_vec;
-    std::vector<float> sign_vec;
-    std::vector<float> log_vec;
-    std::vector<float> output_vec;
+    std::vector<T> sign_vec;
+    std::vector<T> log_vec;
+    std::vector<T> output_vec;
     framework::TensorToVector(input, ctx.device_context(), &input_vec);
     for (int i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
       std::vector<T> sub_vec(begin_iter,
                              end_iter);  // get every square matrix data
-      Eigen::MatrixXf matrix(rank, rank);
+      typename EigenMatrix<T>::MatrixType matrix(rank, rank);
       for (int i = 0; i < rank; ++i) {
         for (int j = 0; j < rank; ++j) {
           matrix(i, j) = sub_vec[rank * i + j];
@@ -307,8 +334,16 @@ class SlogDeterminantKernel : public framework::OpKernel<T> {
     auto input_dim_size = input_dim.size();
     auto* output = context.Output<framework::Tensor>("Out");
 
-    auto batch_count = GetBatchSize(input->dims());
+    auto batch_count = GetBatchCount(input->dims());
     VLOG(2) << "input dim:" << input->dims();
+    PADDLE_ENFORCE_GT(
+        input_dim_size, 2,
+        platform::errors::InvalidArgument(
+            "the input matrix dimension size should greater than 2."));
+    PADDLE_ENFORCE_EQ(input_dim[input_dim_size - 1],
+                      input_dim[input_dim_size - 2],
+                      platform::errors::InvalidArgument(
+                          "the input matrix should be square matrix."));
     auto rank = input_dim[input_dim_size - 1];  // square matrix length
     SlogDeterminantFunctor<T>()(*input, context, rank, batch_count, output);
     std::vector<int> output_dim_vec(input_dim.begin(), input_dim.end() - 2);

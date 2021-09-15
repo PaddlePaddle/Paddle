@@ -891,21 +891,24 @@ def bmm(x, y, name=None):
         Tensor: The product Tensor.
 
     Examples:
-        import paddle
+        .. code-block:: python
 
-        # In imperative mode:
-        # size x: (2, 2, 3) and y: (2, 3, 2)
-        x = paddle.to_tensor([[[1.0, 1.0, 1.0],
-                               [2.0, 2.0, 2.0]],
-                              [[3.0, 3.0, 3.0],
-                               [4.0, 4.0, 4.0]]])
-        y = paddle.to_tensor([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],
-                              [[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
-        out = paddle.bmm(x, y)
-        #output size: (2, 2, 2)
-        #output value:
-        #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
-        out_np = out.numpy()
+            import paddle
+
+            # In imperative mode:
+            # size x: (2, 2, 3) and y: (2, 3, 2)
+            x = paddle.to_tensor([[[1.0, 1.0, 1.0],
+                                [2.0, 2.0, 2.0]],
+                                [[3.0, 3.0, 3.0],
+                                [4.0, 4.0, 4.0]]])
+            y = paddle.to_tensor([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],
+                                [[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
+            out = paddle.bmm(x, y)
+            #output size: (2, 2, 2)
+            #output value:
+            #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
+            out_np = out.numpy()
+            
     """
     x_shape = x.shape
     y_shape = y.shape
@@ -1058,7 +1061,7 @@ def det(x):
     if in_dygraph_mode():
         return core.ops.determinant(x)
 
-    def __check_input(input):
+    def _check_input(input):
         check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
 
         input_shape = list(x.shape)
@@ -1072,7 +1075,7 @@ def det(x):
                 "but received %s by %s matrix.\n" \
                 %(input_shape[-2], input_shape[-1]) \
 
-    __check_input(input)
+    _check_input(input)
     helper = LayerHelper('determinant', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
@@ -1086,7 +1089,7 @@ def slogdet(x):
     Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
     The determinant can be computed with ``sign * exp(logabsdet)
     
-    Supports input of bool, int32, int64, float16, float, double
+    Supports input of float, double
 
     Note that for matrices that have zero determinant, this returns ``(0, -inf)``
     Args:
@@ -1094,7 +1097,7 @@ def slogdet(x):
             where math:`*` is one or more batch dimensions.
 
     Returns:
-        y (Tensor): A tuple (sign, logabsdet) containing the sign of the determinant and the natural logarithm
+        y (Tensor): A tensor containing the sign of the determinant and the natural logarithm
         of the absolute value of determinant, respectively.
 
     Example:
@@ -1115,7 +1118,7 @@ def slogdet(x):
     if in_dygraph_mode():
         return core.ops.slogdeterminant(x)
 
-    def __check_input(input):
+    def _check_input(x):
         check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
 
         input_shape = list(x.shape)
@@ -1129,7 +1132,7 @@ def slogdet(x):
                 "but received %s by %s matrix.\n" \
                 %(input_shape[-2], input_shape[-1]) \
 
-    __check_input(input)
+    _check_input(x)
     helper = LayerHelper('slogdeterminant', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
@@ -1140,46 +1143,51 @@ def slogdet(x):
 
 def svd(x, full_matrices=False, name=None):
     r"""
-    Computes the singular value decomposition of one 
-    matrix or batches of regular matrice.
+    Computes the singular value decomposition of one matrix or a batch of regular matrices.
+
+    Let :math:`X` be the input matrix or a batch of input matrices, the output should satisfies:
+
+    .. math::
+        X = U * diag(S) * VT 
+ 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
-            where ... is zero or more batch dimensions. N and M can be arbitraty
+            where `...` is zero or more batch dimensions. N and M can be arbitraty
             positive number. Note that if x is sigular matrices, the grad is numerical 
-            instability. The data type of x should be float32 or float64. 
-
-        full_matrices(bool): A flag to control the behavor of svd. 
+            instable. The data type of x should be float32 or float64. 
+        full_matrices (bool): A flag to control the behavor of svd. 
             If full_matrices = True, svd op will compute full U and V matrics, 
-            which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`.
+            which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`. K = min(M, N).
             If full_matrices = False, svd op will use a economic method to store U and V. 
-            which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`
+            which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`. K = min(M, N).
+        name (str, optional): Name for the operation (optional, default is None). 
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: Tensor U, the shape of U is controlled by full_matrices flag.
-        Tensor: Tensor S, the singular value of X. the shape of S is [..., K]
-        Tensor: Tensor VH, the conjugate transpose of V. the shape of V is controlled by full_matrices flag. 
+        Tuple of 3 tensors: (U, S, VH). VH is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
 
-            import numpy as np
+    Examples:
+        .. code-block:: python
+
+            import paddle
 
             x = paddle.to_tensor([[1.0, 2.0], [1.0, 3.0], [4.0, 6.0]]).astype('float64')
             x = x.reshape([3, 2])
-            u, s, vt = paddle.linalg.svd(x)
+            u, s, vh = paddle.linalg.svd(x)
             print (u)
-            print (s)
-            print (vt)
-
             #U = [[ 0.27364809, -0.21695147  ],
             #      [ 0.37892198, -0.87112408 ],
             #      [ 0.8840446 ,  0.44053933 ]]
 
+            print (s)
             #S = [8.14753743, 0.78589688]
-
+            print (vh)
             #VT= [[ 0.51411221,  0.85772294],
             #     [ 0.85772294, -0.51411221]]
             
-            # one can verify : U * S * VT = X ;     
-            #                  U * UH = I ; 
-            #                  V * VH = I
+            # one can verify : U * S * VT == X
+            #                  U * UH == I 
+            #                  V * VH == I
     """
 
     if in_dygraph_mode():

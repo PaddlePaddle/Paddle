@@ -42,14 +42,14 @@ class TestDeterminantOp(OpTest):
     def init_data(self):
         self.case = np.random.randn(3, 3, 3, 3, 3).astype('float64')
         self.inputs = {'Input': self.case}
-        self.target = np.linalg.det(self.inputs['Input'])
+        self.target = np.linalg.det(self.case)
 
 
 class TestDeterminantOpCase1(TestDeterminantOp):
     def init_data(self):
         self.case = np.random.randn(3, 3, 3, 3).astype('float32')
         self.inputs = {'Input': self.case}
-        self.target = np.linalg.det(self.inputs['Input'])
+        self.target = np.linalg.det(self.case)
 
     def test_check_grad(self):
         pass
@@ -59,7 +59,7 @@ class TestDeterminantOpCase2(TestDeterminantOp):
     def init_data(self):
         self.case = np.random.randint(0, 2, (4, 2, 4, 4)).astype('float64')
         self.inputs = {'Input': self.case}
-        self.target = np.linalg.det(self.inputs['Input'])
+        self.target = np.linalg.det(self.case)
 
     def test_check_grad(self):
         pass
@@ -108,14 +108,14 @@ class TestSlogDeterminantOp(OpTest):
     def init_data(self):
         self.case = np.random.randn(3, 3, 3, 3).astype('float64')
         self.inputs = {'Input': self.case}
-        self.target = np.array(np.linalg.slogdet(self.inputs['Input']))
+        self.target = np.array(np.linalg.slogdet(self.case))
 
 
 class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
     def init_data(self):
         self.case = np.random.randn(3, 3, 3, 3).astype('float32')
         self.inputs = {'Input': self.case}
-        self.target = np.array(np.linalg.slogdet(self.inputs['Input']))
+        self.target = np.array(np.linalg.slogdet(self.case))
 
 
 class TestSlogDeterminantAPI(unittest.TestCase):
