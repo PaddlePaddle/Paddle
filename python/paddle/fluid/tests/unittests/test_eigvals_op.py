@@ -66,7 +66,6 @@ class TestEigvalsOp(OpTest):
         self.outputs = {'Out': np_output}
 
     def set_dtype(self):
-        #self.dtype = np.complex128
         self.dtype = np.float32
 
     def set_input_dims(self):
