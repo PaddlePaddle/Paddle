@@ -554,7 +554,6 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
   DftiDescriptor desc =
       _plan_mkl_fft(x->type(), out->type(), input_stride, output_stride,
                     signal_sizes, normalization, forward);
-  dump_descriptor(desc.get());
 
   const FFTTransformType fft_type = GetFFTTransformType(x->type(), out->type());
   if (fft_type == FFTTransformType::C2R && forward) {
