@@ -1269,9 +1269,13 @@ def check_backend(backend):
 def block_windows_and_macos(backend):
     if backend != 'gloo': return
     if utils.OS_NAME.startswith('darwin'):  # MACOS , block
-        assert "You are going to using gloo on macos, but currently is not supported"
-    if utils.OS_NAME.startswith('win'):  # MACOS , block
-        assert "You are going to using gloo on windows, but currently is not supported"
+        raise ValueError(
+            "You are going to using gloo on macos, but currently is not supported"
+        )
+    if utils.IS_WINDOWS:  # MACOS , block
+        raise ValueError(
+            "You are going to using gloo on windows, but currently is not supported"
+        )
 
 
 def get_backend_by_compile_flag():

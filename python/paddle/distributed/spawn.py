@@ -511,8 +511,8 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
     _options_valid_check(options)
 
     # logic for handle backend option
-    if 'backend' not in options: options['backend'] = 'auto'
-    if options['backend'] == 'auto': options['backend'] = _get_default_backend()
+    if 'backend' not in options or options['backend'] == 'auto':
+        options['backend'] = _get_default_backend()
     check_backend(options['backend'])
     block_windows_and_macos(options['backend'])
 
