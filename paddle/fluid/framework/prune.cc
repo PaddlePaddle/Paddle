@@ -179,7 +179,7 @@ void prune_impl(const proto::ProgramDesc& input, proto::ProgramDesc* output,
   std::vector<bool> should_run;
   for (auto op_iter = ops.rbegin(); op_iter != ops.rend(); ++op_iter) {
     auto& op_desc = *op_iter;
-    
+
     // TODO(wanghaipeng03) reconstruct the follwing if/else block
     //                     to extract common code
     //

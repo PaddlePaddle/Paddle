@@ -1042,7 +1042,7 @@ def load_params(executor, dirname, main_program=None, filename=None):
 def load_persistables(executor, dirname, main_program=None, filename=None):
     """
     :api_attr: Static Graph
-    
+
     This API filters out all variables with ``persistable==True`` from the
     given ``main_program`` and then tries to load these variables from the
     directory ``dirname`` or the file ``filename``.
@@ -1422,8 +1422,10 @@ def save_inference_model(dirname,
 
         for target_v in target_vars:
             if not main_program.global_block().has_var(target_v.name):
-                main_program.global_block().create_var(name=target_v.name,
-                        shape=target_v.shape, dtype=target_v.dtype)
+                main_program.global_block().create_var(
+                    name=target_v.name,
+                    shape=target_v.shape,
+                    dtype=target_v.dtype)
 
         prepend_feed_ops(main_program, feeded_var_names)
         append_fetch_ops(main_program, fetch_var_names)
