@@ -130,9 +130,9 @@ class TestMHAOpFP16(OpTest):
         self.place = core.CUDAPlace(0)
         self.init_dtype_type()
 
-        batch_size = 2
+        batch_size = 4
         nheads = 4
-        seq_len = 8
+        seq_len = 4
         vec_size = 8
         proj_size = vec_size // nheads
 
@@ -172,12 +172,13 @@ class TestMHAOpFP16(OpTest):
 
     def init_dtype_type(self):
         self.dtype = np.float16
+        self.atol = 1e-2
 
     def test_check_output(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
                 self.place):
             return
-        self.check_output_with_place(self.place, atol=1e-3)
+        self.check_output_with_place(self.place, atol=self.atol)
         print(f'MHA {self.dtype} fwd passed.')
 
     def test_check_grad_normal(self):
@@ -195,6 +196,7 @@ class TestMHAOpFP16(OpTest):
 class TestMHAOpFP32(TestMHAOpFP16):
     def init_dtype_type(self):
         self.dtype = np.single
+        self.atol = 1e-3
 
 
 @skip_check_grad_ci(reason="Developing")
@@ -203,10 +205,7 @@ class TestMHAOpFP32(TestMHAOpFP16):
 class TestMHAOpFP64(TestMHAOpFP16):
     def init_dtype_type(self):
         self.dtype = np.double
-
-    def test_check_grad_normal(self):
-        # TODO: (fix gradient too large)
-        pass
+        self.atol = 1e-6
 
 
 @skip_check_grad_ci(reason="Developing")
@@ -275,12 +274,13 @@ class TestMHAOpPadVarLenFP16(OpTest):
 
     def init_dtype_type(self):
         self.dtype = np.float16
+        self.atol = 1e-2
 
     def test_check_output(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
                 self.place):
             return
-        self.check_output_with_place(self.place, atol=1e-3)
+        self.check_output_with_place(self.place, atol=self.atol)
         print(f'MHA padded varlen {self.dtype} fwd passed.')
 
     def test_check_grad_normal(self):
@@ -298,6 +298,16 @@ class TestMHAOpPadVarLenFP16(OpTest):
 class TestMHAOpPadVarLenFP32(TestMHAOpPadVarLenFP16):
     def init_dtype_type(self):
         self.dtype = np.single
+        self.atol = 1e-3
+
+
+@skip_check_grad_ci(reason="Developing")
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestMHAOpPadVarLenFP64(TestMHAOpPadVarLenFP16):
+    def init_dtype_type(self):
+        self.dtype = np.double
+        self.atol = 1e-6
 
 
 @skip_check_grad_ci(reason="Developing")
@@ -361,12 +371,13 @@ class TestMHAOpVarLenFP16(OpTest):
 
     def init_dtype_type(self):
         self.dtype = np.float16
+        self.atol = 1e-2
 
     def test_check_output(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
                 self.place):
             return
-        self.check_output_with_place(self.place, atol=1e-3)
+        self.check_output_with_place(self.place, atol=self.atol)
         print(f'MHA varlen {self.dtype} fwd passed.')
 
     def test_check_grad_normal(self):
@@ -381,6 +392,13 @@ class TestMHAOpVarLenFP16(OpTest):
 class TestMHAOpVarLenFP32(TestMHAOpVarLenFP16):
     def init_dtype_type(self):
         self.dtype = np.single
+        self.atol = 1e-3
+
+
+class TestMHAOpVarLenFP64(TestMHAOpVarLenFP16):
+    def init_dtype_type(self):
+        self.dtype = np.double
+        self.atol = 1e-6
 
 
 if __name__ == "__main__":

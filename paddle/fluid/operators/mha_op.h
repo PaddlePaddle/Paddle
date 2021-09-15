@@ -176,8 +176,7 @@ class MHAKernel : public framework::OpKernel<T> {
                    reinterpret_cast<const void*>(kv_slen->data<int>()),
                    kv_slen->dims()[0] * sizeof(int), cudaMemcpyDeviceToHost));
 
-    cudnnSeqDataAxis_t
-        axes[CUDNN_SEQDATA_DIM_COUNT];  // [Batch, Beam, Seq, Vec]
+    cudnnSeqDataAxis_t axes[CUDNN_SEQDATA_DIM_COUNT];
     axes[0] = CUDNN_SEQDATA_BATCH_DIM;
     axes[1] = CUDNN_SEQDATA_TIME_DIM;
     axes[2] = CUDNN_SEQDATA_BEAM_DIM;
