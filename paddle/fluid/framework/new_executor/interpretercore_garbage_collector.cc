@@ -66,19 +66,6 @@ void InterpreterCoreGarbageCollector::Add(paddle::framework::Variable* var,
     for (auto& t : *tensor_arr) {
       Add(t.MoveMemoryHolder(), event, ctx);
     }
-  } else if (var->IsType<FetchList>()) {
-    auto* fetch_list = var->GetMutable<FetchList>();
-    for (auto& item : *fetch_list) {
-      if (item.type() == typeid(LoDTensor)) {
-        auto t = BOOST_GET_CONST(LoDTensor, item);
-        Add(t.MoveMemoryHolder(), event, ctx);
-      } else {  // LoDTensorArray
-        auto tensor_arr = BOOST_GET_CONST(LoDTensorArray, item);
-        for (auto& t : tensor_arr) {
-          Add(t.MoveMemoryHolder(), event, ctx);
-        }
-      }
-    }
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(
         "The variable(%s) is not supported in eager deletion.",
