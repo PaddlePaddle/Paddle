@@ -416,7 +416,7 @@ def launch():
 
         - ``training_script``: The full path to the single GPU training program/script to be launched in parallel, followed by all the arguments for the training script. e.g ``traing.py``
 
-        - ``training_script_args``: The args of training_script. e.g ``lr=0.1``
+        - ``training_script_args``: The args of training_script. e.g ``--lr=0.1``
 
     Collective Parameters:
         - ``--ips``: Paddle cluster nodes ips, e.g ``--ips=192.168.0.16,192.168.0.17``
