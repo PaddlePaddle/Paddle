@@ -462,7 +462,7 @@ if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_dataset)
 endif()
 
-if (NOT WITH_GLOO OR WITH_GPU OR WITH_XPU)
+if (NOT WITH_GLOO)
     LIST(REMOVE_ITEM TEST_OPS test_cpuonly_spawn)
 endif()
 
@@ -621,7 +621,7 @@ if(WITH_DISTRIBUTE)
         endforeach(TEST_OP)
         # solve it later.
         bash_test_modules(test_fleet_launch_ps START_BASH test_fleet_launch_ps.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}" PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR} )
-        if (WITH_GLOO AND (NOT WITH_GPU) AND (NOT WITH_XPU))
+        if (WITH_GLOO)
             bash_test_modules(test_cpuonly_launch START_BASH test_cpuonly_launch.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}" PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR} )
         endif()
         bash_test_modules(test_new_group START_BASH test_new_group.sh SERIAL LABELS "RUN_TYPE=EXCLUSIVE" ENVS "PADDLE_DIST_UT_PORT=${dist_ut_port}+20" PADDLE_BINARY_DIR=${PADDLE_BINARY_DIR} )
