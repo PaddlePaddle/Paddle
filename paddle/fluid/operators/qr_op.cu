@@ -71,7 +71,7 @@ class QrGPUKernel : public framework::OpKernel<T> {
     auto tau_dims_vec = framework::vectorize<int>(x_dims);
     tau_dims_vec.pop_back();
     tau_dims_vec[tau_dims_vec.size() - 1] = min_mn;
-    Tensor tau = dito.Zeros(tau_dims_vec, qr.type(), 0);
+    Tensor tau = dito.Fill(tau_dims_vec, 0);
 
     // Transpose 'qr' to conform the column-major order
     auto tmp_qr = dito.Transpose(qr);
@@ -108,7 +108,7 @@ class QrGPUKernel : public framework::OpKernel<T> {
         if (m > n) {
           auto new_qr_dims_vec = framework::vectorize<int>(x_dims);
           new_qr_dims_vec[new_qr_dims_vec.size() - 1] = m;
-          Tensor new_qr = dito.Zeros(new_qr_dims_vec, qr.type(), 0);
+          Tensor new_qr = dito.Fill(new_qr_dims_vec, 0);
           auto new_qr_data = new_qr.mutable_data<T>(context.GetPlace());
           auto new_qr_stride = m * m;
           for (int i = 0; i < batch_size; ++i) {
