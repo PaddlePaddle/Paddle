@@ -41,7 +41,8 @@ struct GaussianGenerator {
     thrust::normal_distribution<T> dist(mean_, std_);
     unsigned int new_n = n + offset_;
     rng.discard(new_n);
-    return dist(rng);
+    // return dist(rng);
+    return 0.33;
   }
 };
 
