@@ -192,43 +192,37 @@ class GradientClipHelper(object):
         for idx, op in list(enumerate(block.ops)):
             if not self._is_gradient_clip_op(op):
                 continue
-            if op.type == 'sum' and mp_rank >= 1:
-                reserved_vars = []
-                for input_name in op.input_arg_names:
-                    if input_name not in removed_tmp_var:
-                        reserved_vars.append(input_name)
-                if len(reserved_vars) > 0:
-                    op.desc.set_input("X", reserved_vars)
-                else:
-                    # If all input of sum op should be removed, then remove the sum op.
-                    # And set the output's value of sum to 0.
-                    sum_rst_var = block.var(op.output_arg_names[0])
-                    namescope = op.attr("op_namescope")
-                    block._remove_op(idx, sync=False)
-                    fill_constant_op = block._insert_op_without_sync(
-                        idx,
-                        type='fill_constant',
-                        inputs={},
-                        outputs={'Out': sum_rst_var},
-                        attrs={
-                            'shape': sum_rst_var.shape,
-                            'dtype': sum_rst_var.dtype,
-                            'value': 0.0,
-                            OP_ROLE_KEY: OpRole.Optimize
-                        })
-                    fill_constant_op._set_attr('op_namescope', namescope)
-                    # insert redundant allreduce to prevent hang
-                    self._insert_allreduce(block, ring_ids, idx, sum_rst_var)
+            if op.type == 'sum':
+                # If mp_rank == 0, no extra handles, just allreduce
+                # If mp_rank >= 1, some extra handles is needed
+                sum_rst_var = block.var(op.output_arg_names[0])
+                if mp_rank >= 1:
+                    reserved_vars = []
+                    for input_name in op.input_arg_names:
+                        if input_name not in removed_tmp_var:
+                            reserved_vars.append(input_name)
+
+                    if len(reserved_vars) > 0:
+                        op.desc.set_input("X", reserved_vars)
+                    else:
+                        # If all input of sum op should be removed, then remove the sum op.
+                        # And set the output's value of sum to 0.
+                        namescope = op.attr("op_namescope")
+                        block._remove_op(idx, sync=False)
+                        fill_constant_op = block._insert_op_without_sync(
+                            idx,
+                            type='fill_constant',
+                            inputs={},
+                            outputs={'Out': sum_rst_var},
+                            attrs={
+                                'shape': sum_rst_var.shape,
+                                'dtype': sum_rst_var.dtype,
+                                'value': 0.0,
+                                OP_ROLE_KEY: OpRole.Optimize
+                            })
+                        fill_constant_op._set_attr('op_namescope', namescope)
+                self._insert_allreduce(block, ring_ids, idx, sum_rst_var)
                 break
-
-        for idx, op in reversed(list(enumerate(block.ops))):
-            if not self._is_gradient_clip_op(op):
-                continue
-
-            if op.type == "sum":
-                sum_res = op.desc.output_arg_names()[0]
-                self._insert_allreduce(block, ring_ids, idx, sum_res)
-                return
 
     @staticmethod
     def _insert_allreduce(block, ring_ids, idx, var):
