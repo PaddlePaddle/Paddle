@@ -61,7 +61,7 @@ const ExportedFlagInfoMap &GetExportedFlagInfoMap();
 
 #define PADDLE_DEFINE_EXPORTED_bool(name, default_value, doc) \
   __PADDLE_DEFINE_EXPORTED_FLAG(name, true, bool, bool, default_value, doc)
-#define PADDLE_DEFINE_READONLY_EXPORTED_bool(name, default_value, doc) \
+#define PADDLE_DEFINE_EXPORTED_READONLY_bool(name, default_value, doc) \
   __PADDLE_DEFINE_EXPORTED_FLAG(name, false, bool, bool, default_value, doc)
 
 #define PADDLE_DEFINE_EXPORTED_int32(name, default_value, doc) \
