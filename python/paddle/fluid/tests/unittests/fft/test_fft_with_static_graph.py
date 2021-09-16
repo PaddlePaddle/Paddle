@@ -322,10 +322,10 @@ class Testhfftn(unittest.TestCase):
      (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)
       ).astype(np.complex128), None, (-2, -1), "backward"),
     ('test_n_grater_input_length',
-     np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), [1, 2], (-2, -1),
+     np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), [4, 8], (-2, -1),
      "backward"),
     ('test_n_smaller_input_length',
-     np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), [2, 1], (-2, -1),
+     np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), [2, 4], (-2, -1),
      "backward"),
     ('test_axis_not_last',
      np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), None, (-2, -1),
@@ -357,7 +357,7 @@ class Testhfft2(unittest.TestCase):
      (np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4)
       ).astype(np.complex128), None, (-2, -1), "backward"),
     ('test_n_equal_input_length',
-     np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (2, 1), (-2, -1),
+     np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (2, 4), (-2, -1),
      "backward"),
     ('test_axis_not_last',
      np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), None, (-2, -1),

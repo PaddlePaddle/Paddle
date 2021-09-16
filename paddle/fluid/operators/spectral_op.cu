@@ -9,6 +9,7 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
+#ifdef PADDLE_WITH_CUDA
 #include <cufft.h>
 #include <cufftXt.h>
 
@@ -150,7 +151,6 @@ class CuFFTHandle {
   ~CuFFTHandle() {
 // Not using fftDestroy() for rocFFT to work around double freeing of handles
 #ifndef __HIPCC__
-    std::cout << "Dtor of CuFFTHandle" << std::endl;
     CUFFT_CHECK(platform::dynload::cufftDestroy(handle_));
 #endif
   }
@@ -367,10 +367,7 @@ class PlanLRUCache {
     return *this;
   }
 
-  ~PlanLRUCache() {
-    std::cout << "DTor of PlanLRUCache" << std::endl;
-    clear();
-  }
+  ~PlanLRUCache() { clear(); }
 
   // If key is in this cache, return the cached config. Otherwise, emplace the
   // config in this cache and return it.
@@ -869,3 +866,4 @@ REGISTER_OP_CUDA_KERNEL(
     fft_r2c_grad,
     ops::FFTR2CGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FFTR2CGradKernel<paddle::platform::CUDADeviceContext, double>);
+#endif

@@ -12,7 +12,28 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/operators/utils.h"
 #include "paddle/fluid/platform/mkldnn_reuse.h"
+
+static mkldnn::memory::format_tag get_plain_format_tag(
+    const paddle::framework::Tensor* tensor) {
+  auto tensor_dims_size = tensor->dims().size();
+
+  switch (tensor_dims_size) {
+    case 1:
+      return mkldnn::memory::format_tag::a;
+    case 2:
+      return mkldnn::memory::format_tag::ab;
+    case 3:
+      return mkldnn::memory::format_tag::abc;
+    case 4:
+      return mkldnn::memory::format_tag::abcd;
+    case 5:
+      return mkldnn::memory::format_tag::abcde;
+  }
+
+  return mkldnn::memory::format_tag::abcdef;
+}
 
 namespace paddle {
 namespace operators {
@@ -35,7 +56,6 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     auto* out = ctx.Output<Tensor>("Out");
 
     auto x_vec_dims = framework::vectorize(x->dims());
-    auto out_vec_dims = framework::vectorize(out->dims());
 
     auto axes_int = ctx.Attr<std::vector<int>>("axes");
     auto starts_int = ctx.Attr<std::vector<int>>("starts");
@@ -48,7 +68,21 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     std::vector<int64_t> ends(ctx.Attr<std::vector<int>>("ends").begin(),
                               ctx.Attr<std::vector<int>>("ends").end());
 
+    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    if (ctx.HasInput("StartsTensor")) {
+      starts = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("StartsTensor"));
+    } else if (starts_tensor_list.size() > 0) {
+      starts = GetDataFromTensorList<int64_t>(starts_tensor_list);
+    }
+
     auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");
+
+    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    if (ctx.HasInput("EndsTensor")) {
+      ends = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("EndsTensor"));
+    } else if (ends_tensor_list.size() > 0) {
+      ends = GetDataFromTensorList<int64_t>(ends_tensor_list);
+    }
 
     std::vector<int64_t> offsets(x_vec_dims.size(), 0);
     std::vector<int64_t> slice_dims(x_vec_dims);
@@ -60,6 +94,8 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
       offsets[axes[i]] = starts[i];
       slice_dims[axes[i]] = ends[i] - starts[i];
     }
+
+    out->Resize(framework::make_ddim(slice_dims));
 
     mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
     auto key = platform::CreateKey(dev_ctx, x_vec_dims, axes, starts, ends,
@@ -73,20 +109,35 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     auto slice_mem_p = reorder_handler.AcquireSubmemory(slice_dims, offsets,
                                                         reorder_src_memory_p);
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        out, slice_dims, 0, x->format(), ctx.GetPlace());
+        out, slice_dims, 0, get_plain_format_tag(x), ctx.GetPlace());
 
     auto reorder_p =
         reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p);
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     reorder_p->execute(astream, *slice_mem_p, *reorder_dst_memory_p);
-    astream.wait();
 
+    std::vector<int64_t> new_out_dims(slice_dims.size() - decrease_axis.size());
+
+    if (new_out_dims.size() == 0) {
+      new_out_dims.emplace_back(1);
+    } else {
+      for (const auto& axis : decrease_axis) {
+        slice_dims[axis] = 0;
+      }
+
+      int i = 0;
+      for (const auto& slice_dim : slice_dims) {
+        if (slice_dim != 0) new_out_dims[i++] = slice_dim;
+      }
+    }
+
+    astream.wait();
+    out->Resize(framework::make_ddim(new_out_dims));
     out->set_layout(framework::DataLayout::kMKLDNN);
     out->set_format(platform::GetMKLDNNFormat(
-        reorder_dst_memory_p->get_desc().reshape(out_vec_dims)));
+        reorder_dst_memory_p->get_desc().reshape(new_out_dims)));
   }
 };
-
 template <typename T>
 class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
  public:
@@ -115,6 +166,20 @@ class SliceGradMKLDNNKernel : public framework::OpKernel<T> {
                                 ctx.Attr<std::vector<int>>("starts").end());
     std::vector<int64_t> ends(ctx.Attr<std::vector<int>>("ends").begin(),
                               ctx.Attr<std::vector<int>>("ends").end());
+
+    auto starts_tensor_list = ctx.MultiInput<Tensor>("StartsTensorList");
+    if (ctx.HasInput("StartsTensor")) {
+      starts = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("StartsTensor"));
+    } else if (starts_tensor_list.size() > 0) {
+      starts = GetDataFromTensorList<int64_t>(starts_tensor_list);
+    }
+
+    auto ends_tensor_list = ctx.MultiInput<Tensor>("EndsTensorList");
+    if (ctx.HasInput("EndsTensor")) {
+      ends = GetDataFromTensor<int64_t>(ctx.Input<Tensor>("EndsTensor"));
+    } else if (ends_tensor_list.size() > 0) {
+      ends = GetDataFromTensorList<int64_t>(ends_tensor_list);
+    }
 
     auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");
 
