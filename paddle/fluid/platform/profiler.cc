@@ -272,6 +272,38 @@ void DisableProfiler(EventSortingKey sorted_key,
   should_send_profile_state = true;
 }
 
+void CompleteProfilerEvents(proto::Profile *tracer_profile,
+                            std::vector<std::vector<Event>> *time_events,
+                            std::vector<std::vector<MemEvent>> *mem_events) {
+  SynchronizeAllDevice();
+  MemEvenRecorder::Instance().Flush();
+
+  std::lock_guard<std::mutex> l(profiler_mu);
+  if (g_state == ProfilerState::kDisabled) return;
+
+  // Mark the profiling stop.
+  Mark("_stop_profiler_");
+
+  DeviceTracer *tracer = GetDeviceTracer();
+  if (tracer->IsEnabled() && tracer_profile != nullptr) {
+    tracer->Disable();
+    tracer->GenEventKernelCudaElapsedTime();
+    *tracer_profile = tracer->GetProfile();
+  }
+
+  if (time_events != nullptr) {
+    *time_events = GetAllEvents();
+  }
+  if (mem_events != nullptr) {
+    *mem_events = GetMemEvents();
+  }
+
+  ResetProfiler();
+  g_state = ProfilerState::kDisabled;
+  g_tracer_option = TracerOption::kDefault;
+  should_send_profile_state = true;
+}
+
 std::vector<std::vector<Event>> GetAllEvents() {
   std::lock_guard<std::mutex> guard(g_all_event_lists_mutex);
   std::vector<std::vector<Event>> result;

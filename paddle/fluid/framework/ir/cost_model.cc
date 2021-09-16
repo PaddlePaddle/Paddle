@@ -16,20 +16,183 @@
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/platform/device_tracer.h"
 #include "paddle/fluid/platform/place.h"
-#include "paddle/fluid/platform/profiler.h"
-// #include "paddle/fluid/platform/profiler_helper.h"
 
 namespace paddle {
 namespace framework {
 
+using platform::Event;
+using platform::MemEvent;
+
+CostData::~CostData() {
+  if (graph_ != nullptr) {
+    delete graph_;
+  }
+  if (program_ != nullptr) {
+    delete program_;
+  }
+}
+
+double CostData::GetOpTimeMs(int op_id) const { return op_time_ms_.at(op_id); }
+double CostData::GetOpMemoryBytes(int op_id) const {
+  return op_memory_bytes_.at(op_id);
+}
+double CostData::GetWholeTimeMs() const { return whole_time_ms_; }
+double CostData::GetWholeMemoryBytes() const { return whole_memory_bytes_; }
+
+bool CostData::SetCostData(const ProgramDesc& program,
+                           const std::vector<std::vector<Event>>& time_events) {
+  // Make a copy because we would like CostData be available even if SWE changes
+  // Program
+  program_ = new ProgramDesc(program);
+  if (program_->Size() == 0) {
+    whole_time_ms_ = 0;
+    whole_memory_bytes_ = 0;
+    return true;
+  }
+
+  if (time_events.empty()) {
+    LOG(WARNING) << "Input time_events for CostModel is empty";
+    return false;
+  }
+
+  std::vector<Event> main_thread_events = time_events[0];
+  // Support global block only
+  // TODO(zhhsplendid): support sub blocks
+  const BlockDesc& global_block = program_->Block(0);
+  size_t op_size = global_block.OpSize();
+  if (op_size == 0) {
+    whole_time_ms_ = 0;
+    whole_memory_bytes_ = 0;
+    return true;
+  }
+
+  bool event_to_cost_success = true;
+  size_t event_index = 0;
+  for (size_t i = 0; i < op_size; ++i) {
+    const OpDesc* op_desc = global_block.Op(i);
+    std::string op_type = op_desc->Type();
+
+    while (event_index < main_thread_events.size()) {
+      if (main_thread_events[event_index].name() == op_type &&
+          main_thread_events[event_index].type() ==
+              platform::EventType::kPushRange) {
+        break;
+      }
+      ++event_index;
+    }
+    if (event_index >= main_thread_events.size()) {
+      LOG(WARNING) << "Input time_events for Op " << i << ", type '" << op_type
+                   << "' have wrong format, skip this Op.";
+      event_to_cost_success = false;
+      continue;
+    }
+    size_t op_push_index = event_index;
+
+    while (event_index < main_thread_events.size()) {
+      // Is it possible to Push a lot of Ops with same type and then Pop?
+      // ControlFlow Op can be like that, but this version only support global
+      // block
+      // TODO(zhhsplendid): make a more strict mapping between push and pop
+      if (main_thread_events[event_index].name() == op_type &&
+          main_thread_events[event_index].type() ==
+              platform::EventType::kPopRange) {
+        break;
+      }
+      ++event_index;
+    }
+    if (event_index >= main_thread_events.size()) {
+      LOG(WARNING) << "Input time_events for Op " << i << ", type '" << op_type
+                   << "' have wrong format, skip this Op.";
+      event_to_cost_success = false;
+      continue;
+    }
+    size_t op_pop_index = event_index;
+    double cpu_time_ms = main_thread_events[op_push_index].CpuElapsedMs(
+        main_thread_events[op_pop_index]);
+    double gpu_time_ms = 0;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    gpu_time_ms = main_thread_events[op_push_index].CudaElapsedMs(
+        main_thread_events[op_pop_index]);
+#endif
+    double time_ms = gpu_time_ms + cpu_time_ms;
+    op_time_ms_[i] = time_ms;
+  }
+
+  event_index = 0;
+  size_t start_profiler_idx = 0;
+  size_t stop_profiler_idx = 0;
+  while (event_index < main_thread_events.size()) {
+    if (main_thread_events[event_index].name() == "_start_profiler_") {
+      start_profiler_idx = event_index;
+    } else if (main_thread_events[event_index].name() == "_stop_profiler_") {
+      stop_profiler_idx = event_index;
+      break;
+    }
+    ++event_index;
+  }
+  if (start_profiler_idx != 0 && stop_profiler_idx != 0) {
+    double cpu_time_ms = main_thread_events[start_profiler_idx].CpuElapsedMs(
+        main_thread_events[stop_profiler_idx]);
+    double gpu_time_ms = 0;
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    gpu_time_ms = main_thread_events[start_profiler_idx].CudaElapsedMs(
+        main_thread_events[stop_profiler_idx]);
+#endif
+    whole_time_ms_ = gpu_time_ms + cpu_time_ms;
+  } else {
+    LOG(WARNING) << "Input time_events for whole time have wrong format";
+    event_to_cost_success = false;
+  }
+
+  return event_to_cost_success;
+}
+
+void PrintEvents(std::vector<std::vector<Event>>* time_events,
+                 std::vector<std::vector<MemEvent>>* mem_events) {
+  for (size_t i = 0; i < time_events->size(); ++i) {
+    for (size_t j = 0; j < (*time_events)[i].size(); ++j) {
+      VLOG(4) << "Print time event (" << i << ", " << j << ")" << std::endl;
+      VLOG(4) << (*time_events)[i][j].name() << " "
+              << (*time_events)[i][j].attr() << std::endl;
+      VLOG(4) << "This: " << &(*time_events)[i][j]
+              << ", Parent: " << (*time_events)[i][j].parent() << std::endl;
+      if ((*time_events)[i][j].role() == platform::EventRole::kInnerOp) {
+        VLOG(4) << "role kInnerOp" << std::endl;
+      } else if ((*time_events)[i][j].role() ==
+                 platform::EventRole::kUniqueOp) {
+        VLOG(4) << "role kUniqueOp" << std::endl;
+      } else if ((*time_events)[i][j].role() ==
+                 platform::EventRole::kOrdinary) {
+        VLOG(4) << "role kOrdinary" << std::endl;
+      } else if ((*time_events)[i][j].role() == platform::EventRole::kSpecial) {
+        VLOG(4) << "role kSpecial" << std::endl;
+      }
+
+      if ((*time_events)[i][j].type() == platform::EventType::kPopRange) {
+        VLOG(4) << "type kPopRange" << std::endl;
+      } else if ((*time_events)[i][j].type() ==
+                 platform::EventType::kPushRange) {
+        VLOG(4) << "type kPushRange" << std::endl;
+      } else if ((*time_events)[i][j].type() == platform::EventType::kMark) {
+        VLOG(4) << "type kMark" << std::endl;
+      }
+      VLOG(4) << std::endl;
+    }
+  }
+
+  for (size_t i = 0; i < mem_events->size(); ++i) {
+    for (size_t j = 0; j < (*mem_events)[i].size(); ++j) {
+      VLOG(4) << "Print mem event (" << i << ", " << j << ")" << std::endl;
+      VLOG(4) << (*mem_events)[i][j].annotation() << std::endl;
+    }
+  }
+}
+
 CostData CostModel::ProfileMeasure(const ProgramDesc& program,
                                    const std::string& device) {
-  CostData cost_data;
+  // TODO(zhhsplendid): support different fetch data
 
-  SetTracerOption(platform::TracerOption::kAllOpDetail);
-  // TODO(zhhsplendid): handle the case that Profiler is already enabled
   platform::ProfilerState profiler_state;
   platform::Place place;
   // TODO(zhhsplendid): add code to transform string to lower case
@@ -48,12 +211,27 @@ CostData CostModel::ProfileMeasure(const ProgramDesc& program,
   Executor executor(place);
   Scope scope;
 
+  // TODO(zhhsplendid): handle the case that Profiler is already enabled
+  SetTracerOption(platform::TracerOption::kAllOpDetail);
   EnableProfiler(profiler_state);
   executor.Run(program, &scope, /*block_id = */ 0);
 
-  // TODO(zhhsplendid): modify from print to cost data
-  DisableProfiler(platform::EventSortingKey::kDefault,
-                  "/tmp/huihuang_profile_tmp");
+  std::vector<std::vector<Event>>* time_events =
+      new std::vector<std::vector<Event>>();
+  std::vector<std::vector<MemEvent>>* mem_events =
+      new std::vector<std::vector<MemEvent>>();
+
+  CompleteProfilerEvents(nullptr, time_events, mem_events);
+
+  // TODO(zhhsplendid): remove debug vlog after this series of work
+  PrintEvents(time_events, mem_events);
+
+  // Convert events to cost data
+  CostData cost_data;
+  cost_data.SetCostData(program, *time_events);
+
+  delete time_events;
+  delete mem_events;
 
   return cost_data;
 }

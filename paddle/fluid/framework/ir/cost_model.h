@@ -25,34 +25,47 @@
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/node.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/platform/profiler.h"
 #include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace framework {
 
 using ir::Graph;
+using platform::Event;
 
 class CostData {
  public:
   CostData() {}
 
-  ~CostData() {}
+  ~CostData();
 
-  std::map<int, int64_t> GetTimeMap();
-  std::map<int, int64_t> GetMemMap();
-  int64_t GetWholeTime();
-  int64_t GetWholeMem();
+  // Support global block only
+  // TODO(zhhsplendid): add support for sub-block
+  double GetOpTimeMs(int op_id) const;
+  double GetOpMemoryBytes(int op_id) const;
+  double GetWholeTimeMs() const;
+  double GetWholeMemoryBytes() const;
+
+  // Support Time Event only
+  // TODO(zhhsplendid): add memory
+  bool SetCostData(const ProgramDesc& program,
+                   const std::vector<std::vector<Event>>& time_events);
 
  private:
-  // const static int NOT_MEASURED = -1;
-  Graph* graph_;                   // not owned
-  ProgramDesc* program_;           // not owned
-  std::map<int, int64_t> time_;    // from Op Node id to time
-  std::map<int, int64_t> memory_;  // from Op Node id to total memory bytes
-  std::map<int, int64_t> comm_;    // from Op Node id to communicate cost
-  int64_t whole_time_;             // time cost of the whole program or graph
-  int64_t whole_memory;            // memory cost of the whole program or graph
-  int64_t whole_comm_;  // communication cost of the whole program or graph
+  constexpr static double NOT_MEASURED = -1;
+  Graph* graph_{nullptr};
+  ProgramDesc* program_{nullptr};
+  std::map<int, double> op_time_ms_;  // from Op Node id to time
+  std::map<int, double>
+      op_memory_bytes_;         // from Op Node id to total memory bytes
+  std::map<int, double> comm_;  // from Op Node id to communicate cost
+  double whole_time_ms_{
+      NOT_MEASURED};  // time cost of the whole program or graph
+  double whole_memory_bytes_{
+      NOT_MEASURED};  // memory cost of the whole program or graph
+  double whole_comm_{
+      NOT_MEASURED};  // communication cost of the whole program or graph
 };
 
 class CostModel {

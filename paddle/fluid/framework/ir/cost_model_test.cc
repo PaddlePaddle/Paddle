@@ -42,6 +42,11 @@ class FakeTestOp : public OperatorBase {
   void RunImpl(const Scope &scope,
                const platform::Place &place) const override {
     // Fake RunImpl, for test only
+    Variable *var = scope.FindVar("X");
+    if (var != nullptr) {
+      LoDTensor *tensor = var->GetMutable<LoDTensor>();
+      tensor->mutable_data<float>(place);
+    }
     int count = 0;
     while (count <= 1000) {
       ++count;
@@ -59,7 +64,9 @@ namespace paddle {
 namespace framework {
 
 ProgramDesc CreateTestProgram() {
-  // create a ProgramDesc: Out = fake_test_op(X, Y)
+  // create a ProgramDesc:
+  //   Z = fake_test_op(X, Y)
+  //   Out = fake_test_op(Z, W)
   ProgramDesc program;
   auto *global_block = program.MutableBlock(0);
 
@@ -80,10 +87,24 @@ ProgramDesc CreateTestProgram() {
   op->SetInput("X", {x->Name()});
   op->SetInput("Y", {y->Name()});
 
+  auto *z = global_block->Var("Z");
+  z->SetType(proto::VarType::LOD_TENSOR);
+  op->SetOutput("Out", {z->Name()});
+
+  auto *w = global_block->Var("W");
+  w->SetType(proto::VarType::LOD_TENSOR);
+  w->SetLoDLevel(0);
+  w->SetDataType(proto::VarType::FP32);
+  w->SetShape({100, 10});
+
+  auto *op2 = global_block->AppendOp();
+  op2->SetType("fake_test_op");
+  op2->SetInput("X", {z->Name()});
+  op2->SetInput("Y", {w->Name()});
+
   auto *out = global_block->Var("Out");
   out->SetType(proto::VarType::LOD_TENSOR);
-  op->SetOutput("Out", {out->Name()});
-
+  op2->SetOutput("Out", {out->Name()});
   return program;
 }
 
