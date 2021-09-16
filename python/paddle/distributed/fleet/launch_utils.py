@@ -29,6 +29,7 @@ import struct
 
 import paddle
 import paddle.fluid as fluid
+import paddle.distributed.fleet.cloud_utils as cloud_utils
 from distutils.util import strtobool
 logger = logging.getLogger("root")
 logger.propagate = False
@@ -796,6 +797,94 @@ def cloud_ps_heter_env_set(args):
         os.environ[k] = str(v)
     logger.info("Set heter parameter server env: {}".format(
         pretty_print_envs(environs)))
+
+
+def get_mapped_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
+                       node_mapping_ranks):
+    assert type(trainer_endpoints) is list, "trainer_endpoints must be list"
+    assert device_mode == DeviceMode.GPU, \
+        "Only support get mapped cluster for gpu now."
+    cluster = Cluster(hdfs=None)
+    for node_rank, ip in enumerate(node_ips):
+        pod = Pod()
+        pod.rank = node_rank
+        pod.addr = ip
+        pod.device_mode = device_mode
+        cur_node_endpoints = trainer_endpoints[node_rank]
+
+        # choose rank from global mapped ranks and set it to the trainer.
+        ranks_per_node = node_mapping_ranks[node_rank]
+        for i in range(len(ranks_per_node)):
+            trainer = Trainer()
+            # change global rank(mapped) to relative rank within each node.
+            # e.g. mapped ranks of node: 3,4,7 -> 0,1,2
+            relative_rank = ranks_per_node.index(ranks_per_node[i])
+            trainer.accelerators.append(relative_rank)
+            pod.accelerators.append(relative_rank)
+            trainer.endpoint = "%s" % (cur_node_endpoints[i])
+            trainer.rank = ranks_per_node[i]
+
+            pod.trainers.append(trainer)
+        cluster.pods.append(pod)
+
+    pod_rank = node_ips.index(node_ip)
+    return cluster, cluster.pods[pod_rank]
+
+
+def get_mapped_cluster_from_args(args, device_mode):
+    assert device_mode == DeviceMode.GPU, "Only support get mapped cluster for gpu now."
+    node_ips = [x.strip() for x in args.ips.split(',')]
+    if len(node_ips) == 1:
+        node_ip = node_ips[0]
+    else:
+        if args.host:
+            node_ip = args.host
+        else:
+            _, node_ip = get_host_name_ip()
+
+    assert node_ip in node_ips, "Can't find your local ip {%s} in node_ips: {%s}" \
+        % (node_ip, node_ips)
+    node_rank = node_ips.index(node_ip)
+
+    assert args.ranks is not None, \
+        "ranks should be provided when enable_rank_mapping is set."
+    node_mapping_ranks_tmp = [x.strip() for x in args.ranks.split(';')]
+    node_mapping_ranks = []
+    gpus_num = fluid.core.get_cuda_device_count()
+    for s in node_mapping_ranks_tmp:
+        ranks_in_node = [int(x.strip()) for x in s.split(',')]
+        assert len(ranks_in_node) <= gpus_num, \
+            "number of ranks should not exceed the max."
+        node_mapping_ranks.append([int(x.strip()) for x in s.split(',')])
+    assert len(node_mapping_ranks) == len(node_ips), \
+        "ranks length should be equal to ips length."
+
+    logger.debug("parsed from args: node_ips:{} node_ip:{} "
+                 "node_rank:{} node_mapping_ranks:{}".format(
+                     node_ips, node_ip, node_rank, node_mapping_ranks[
+                         node_rank]))
+
+    # NOTE: there are different number of global mapped ranks on each node.
+    trainer_endpoints = []
+    for ip in node_ips:
+        node_rank = node_ips.index(ip)
+        free_ports = None
+        if not cloud_utils.use_paddlecloud() and len(
+                node_ips) <= 1 and os.environ.get('FLAGS_START_PORT') is None:
+            free_ports = find_free_ports(len(node_mapping_ranks[node_rank]))
+            if free_ports is not None:
+                free_ports = list(free_ports)
+        else:
+            start_port = 6070
+            if os.environ.get('FLAGS_START_PORT') is not None:
+                start_port = int(os.environ.get('FLAGS_START_PORT'))
+
+            end_port = start_port + len(node_mapping_ranks[node_rank])
+            free_ports = [x for x in range(start_port, end_port)]
+        trainer_endpoints.append(["%s:%d" % (ip, port) for port in free_ports])
+
+    return get_mapped_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
+                              node_mapping_ranks)
 
 
 class ParameterServerLauncher(object):

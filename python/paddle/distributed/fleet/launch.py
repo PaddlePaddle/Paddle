@@ -158,6 +158,19 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         type=str,
         default="127.0.0.1",
         help="Paddle cluster nodes ips, such as 192.168.0.16,192.168.0.17..")
+    collective_group.add_argument(
+        "--ranks",
+        type=str,
+        default="",
+        help="Specificlly for lazy launch for auto-paralle, "
+        "some of the ranks in each node may not use and "
+        "the rank indexing should be kept the same as the splited task. "
+        "Paddle cluster nodes ranks mapping, such as 0,1;4,5,6;3,7..")
+    collective_group.add_argument(
+        "--enable_rank_mapping",
+        type=bool,
+        default=False,
+        help="Set true to enable the lazy launch for auto-parallel scenario.")
 
     ps_group = parser.add_argument_group("Parameter-Server Parameters")
     # for parameter server
@@ -254,6 +267,9 @@ def launch_collective(args):
             rank_table_file=os.getenv("RANK_TABLE_FILE", None),
             device_mode=device_mode,
             start_port=start_port)
+    elif args.enable_rank_mapping == True:
+        # lazy launch for auto-parallel
+        cluster, pod = get_mapped_cluster_from_args(args, device_mode)
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
         cluster, pod = get_cluster_from_args(args, device_mode,
