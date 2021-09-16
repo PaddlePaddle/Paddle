@@ -35,17 +35,16 @@ class TestGetDeviceProperties(unittest.TestCase):
 
 class TestGetDevicePropertiesError(unittest.TestCase):
     def test_error_api(self):
-        def test_device_indexError_error():
-            if is_compiled_with_cuda():
+        if is_compiled_with_cuda():
+            def test_device_indexError_error():
                 device_error = device_count()+1
                 props = get_device_properties(device_error)
-        self.assertRaises(IndexError, test_device_indexError_error)
+            self.assertRaises(IndexError, test_device_indexError_error)
         
-        def test_device_value_error():
-            if is_compiled_with_cuda():
+            def test_device_value_error():
                 device_error = float(device_count())
                 props = get_device_properties(device_error)
-        self.assertRaises(ValueError, test_device_value_error)
+            self.assertRaises(ValueError, test_device_value_error)
 
 
 if __name__ == "__main__":
