@@ -73,6 +73,7 @@ void HdfsStore::set(const std::string& key, const std::vector<char>& data) {
   paddle::framework::fs_mv(tmp, path);
   auto start = std::chrono::steady_clock::now();
   while (paddle::framework::fs_exists(path) == false) {
+    VLOG(0) << "HdfsStore::set fs_mv retrying...";
     paddle::framework::fs_mv(tmp, path);
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - start);
@@ -151,6 +152,7 @@ void HdfsStore::wait(const std::vector<std::string>& keys,
   auto start = std::chrono::steady_clock::now();
   std::vector<bool> check_key_status(keys.size(), false);
   while (!Check(keys, &check_key_status)) {
+    VLOG(0) << "HdfsStore::wait checking repeatedly...";
     auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(
         std::chrono::steady_clock::now() - start);
     if (wait_timeout_ != gloo::kNoTimeout && elapsed > wait_timeout_) {
@@ -280,7 +282,7 @@ void ParallelConnectContext::connectFullMesh(
                 transportContext->getPair(i)->connect(addr);
                 break;
               } catch (...) {
-                VLOG(0) << "throw gloo::IoException";
+                VLOG(0) << "gloo connect failed, retrying...";
               }
             }
             transportContext->getPair(i)->connect(addr);
