@@ -1502,6 +1502,182 @@ def linear(x, weight, bias=None, name=None):
         return res
 
 
+def fused_multihead_attention(x,
+                              qkv_weight,
+                              out_linear_weight,
+                              pre_layer_norm=False,
+                              ln_scale=None,
+                              ln_bias=None,
+                              ln_2_scale=None,
+                              ln_2_bias=None,
+                              epsilon=1e-05,
+                              qkv_bias=None,
+                              out_linear_bias=None,
+                              src_mask=None,
+                              dropout=0.,
+                              attn_dropout=0.,
+                              ln2_epsilon=1e-05,
+                              name=None):
+    r"""
+
+    Fused multihead_attention operator. For each input :math:`X` ,
+    the equation is:
+
+    .. math::
+
+        if (pre_layer_norm)
+            ln_out = layer_norm(X)
+            qkv_out = get_qkv(ln_out, qkv_weight, qkv_bias)
+        else 
+            qkv_out = get_qkv(X, qkv_weight, qkv_bias)
+        fmha_out = fmha(qkv_out, xxx)
+        out_linear_out = out_linear(fmha_out, out_linear_weight)
+        out = bias_dropout_residual_layer_norm(out_linear_out, out_linear_bias)
+
+    # where :math:`W` is the weight and :math:`b` is the bias.
+
+    # If the weight is a 2-D tensor of shape :math:`[in\_features, out\_features]` ,
+    # input should be a multi-dimensional tensor of shape
+    # :math:`[batch\_size, *, in\_features]` , where :math:`*` means any number of
+    # additional dimensions. The linear operator multiplies input tensor with
+    # weight and produces an output tensor of shape :math:`[batch\_size, *, out\_features]` , 
+    # If :math:`bias` is not None, the bias should be a 1-D tensor of shape
+    # :math:`[out\_features]` and will be added to the output.
+
+    Parameters:
+        x (Tensor): Input tensor with shape [batch\_size, seq\_len, dim_embed]. 
+                    The data type should be float16, float32 or float64.
+        qkv_weight (Tensor): QKV Weight tensor with shape [3 * num_head * dim_head, dim_embed]. 
+                    The data type should be float16, float32 or float64.
+        ## tood: check shape!
+        out_linear_weight (Tensor): Out_linear Weight tensor with shape [xx, dim_embed]. 
+                                    The data type should be float16, float32 or float64.
+        qkv_bias (Tensor, optional): QKV Bias tensor with shape [3 * num_head * dim_head]. 
+                                 The data type should be float16, float32 or float64.
+                                 If it is set to None, no bias will be added to the output units.
+        ## tood: check shape!
+        out_linear_bias (Tensor, optional): Out_linear Bias tensor with shape []. 
+                                 The data type should be float16, float32 or float64.
+                                 If it is set to None, no bias will be added to the output units.
+        name (str, optional): Normally there is no need for user to set this parameter.
+                              For detailed information, please refer to :ref:`api_guide_Name` .
+
+    Returns:
+        Tensor, the shape is :math:`[batch\_size, seq\_len, dim_embed]` and the
+        data type is the same with input :math:`x` .
+
+    Examples:
+        .. code-block:: python
+          
+          import paddle
+    """
+    if in_dygraph_mode():
+        ## before integrate kaihuo's code
+        #ln_mean, ln_variance, ln_out, qkv_out, qkv_bias_out, transpose_out_2, qk_out, qktv_out, softmax_out, src_mask_out, fmha_out, out_linear_out, final_out = _C_ops.fused_attention(x, ln_scale, ln_bias, qkv_weight, qkv_bias, src_mask, out_linear_weight, out_linear_bias, 'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon, 'dropout_prob', dropout)
+
+        ## finally code
+        ln_mean, ln_variance, ln_out, qkv_out, qkv_bias_out, transpose_out_2, qk_out, qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, src_mask_out, fmha_out, out_linear_out, dropout_mask_out, ln2_mean_out, ln2_var_out, bias_dropout_residual_out, final_out = _C_ops.fused_attention(
+            x, ln_scale, ln_bias, qkv_weight, qkv_bias, src_mask,
+            out_linear_weight, out_linear_bias, ln_2_scale, ln_2_bias,
+            'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
+            'dropout_prob', dropout, 'attn_dropout_prob', attn_dropout)
+        #return ln_out, qkv_out, qkv_bias_out, transpose_out_2, qk_out, qktv_out, softmax_out, src_mask_out, fmha_out, out_linear_out, bias_dropout_residual_out, final_out
+        return final_out
+    else:
+        helper = LayerHelper('fused_multihead_attention', **locals())
+        dtype = x.dtype
+        # check dtypes
+        check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                                 'fused_multihead_attention')
+        check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'],
+                    'fused_multihead_attention')
+
+        # set inputs
+        inputs = dict()
+        inputs['X'] = [x]
+        if ln_scale:
+            inputs['LnScale'] = [ln_scale]
+        if ln_bias:
+            inputs['LnBias'] = [ln_bias]
+        inputs['QKVW'] = [qkv_weight]
+        inputs['QKVBias'] = [qkv_bias]
+        inputs['SrcMask'] = src_mask
+        inputs['OutLinearW'] = [out_linear_weight]
+        inputs['OutLinearBias'] = [out_linear_bias]
+        if ln_2_scale:
+            inputs['Ln2Scale'] = [ln_2_scale]
+        if ln_2_bias:
+            inputs['Ln2Bias'] = [ln_2_bias]
+
+        # set attrs
+        attrs = {
+            'pre_layer_norm': pre_layer_norm,
+            'epsilon': epsilon,
+            'ln2_epsilon': ln2_epsilon,
+            'dropout_prob': dropout,
+            'attn_dropout_prob': attn_dropout
+        }
+
+        # set outputs
+        ln_mean_out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True)
+        ln_variance_out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True)
+        ln_out = helper.create_variable_for_type_inference(dtype=dtype)
+
+        qkv_out = helper.create_variable_for_type_inference(dtype=dtype)
+        qkv_bias_out = helper.create_variable_for_type_inference(dtype=dtype)
+
+        transpose_out_2 = helper.create_variable_for_type_inference(dtype=dtype)
+        qk_out = helper.create_variable_for_type_inference(dtype=dtype)
+        qktv_out = helper.create_variable_for_type_inference(dtype=dtype)
+        softmax_out = helper.create_variable_for_type_inference(dtype=dtype)
+        attn_dropout_mask_out = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+        attn_dropout_out = helper.create_variable_for_type_inference(
+            dtype=dtype)
+        # todo: stop_gradient?
+        src_mask_out = helper.create_variable_for_type_inference(dtype=dtype)
+        fmha_out = helper.create_variable_for_type_inference(dtype=dtype)
+        out_linear_out = helper.create_variable_for_type_inference(dtype=dtype)
+        dropout_mask_out = helper.create_variable_for_type_inference(
+            dtype=core.VarDesc.VarType.UINT8, stop_gradient=True)
+        ln_2_mean_out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True)
+        ln_2_variance_out = helper.create_variable_for_type_inference(
+            dtype=dtype, stop_gradient=True)
+        bias_dropout_residual_out = helper.create_variable_for_type_inference(
+            dtype=dtype)
+        final_out = helper.create_variable_for_type_inference(dtype=dtype)
+
+        helper.append_op(
+            type='fused_attention',
+            inputs=inputs,
+            outputs={
+                "LnMean": ln_mean_out,
+                "LnVariance": ln_variance_out,
+                "LnOut": ln_out,
+                "QKVOut": qkv_out,
+                "QKVBiasOut": qkv_bias_out,
+                "TransposeOut2": transpose_out_2,
+                "QKOut": qk_out,
+                "QKTVOut": qktv_out,
+                "SoftmaxOut": softmax_out,
+                "AttnDropoutMaskOut": attn_dropout_mask_out,
+                "AttnDropoutOut": attn_dropout_out,
+                "SrcMaskOut": src_mask_out,
+                "FMHAOut": fmha_out,
+                "OutLinearOut": out_linear_out,
+                "DropoutMaskOut": dropout_mask_out,
+                "Ln2Mean": ln_2_mean_out,
+                "Ln2Variance": ln_2_variance_out,
+                "BiasDropoutResidualOut": bias_dropout_residual_out,
+                'Y': final_out
+            },
+            attrs=attrs)
+        return final_out
+
+
 def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     r"""
     Label smoothing is a mechanism to regularize the classifier layer and is called

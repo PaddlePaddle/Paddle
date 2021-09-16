@@ -40,6 +40,9 @@
 // need to manually specify them in this map.
 std::map<std::string, std::set<std::string>> op_ins_map = {
     {"layer_norm", {"X", "Scale", "Bias"}},
+    {"fused_attention",
+     {"X", "LnScale", "LnBias", "QKVW", "QKVBias", "SrcMask", "OutLinearW",
+      "OutLinearBias", "Ln2Scale", "Ln2Bias"}},
     {"instance_norm", {"X", "Scale", "Bias"}},
     {"gru_unit", {"Input", "HiddenPrev", "Weight", "Bias"}},
     {"label_smooth", {"X", "PriorDist"}},
@@ -67,6 +70,9 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"sparse_momentum", {"Param", "Grad", "Velocity", "Index", "LearningRate"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
     {"run_program", {"X", "Params"}},
+    {"fused_ffn",
+     {"Seed1", "Seed2", "Linear1Bias", "Linear2Bias", "Ln1Scale", "Ln1Bias",
+      "Ln2Scale", "Ln2Bias"}},
     {"matrix_rank", {"X", "TolTensor"}}};
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -83,6 +89,11 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"batch_norm",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
+    {"fused_attention",
+     {"LnMean", "LnVariance", "LnOut", "QKVOut", "QKVBiasOut", "TransposeOut2",
+      "QKOut", "QKTVOut", "SoftmaxOut", "AttnDropoutMaskOut", "AttnDropoutOut",
+      "SrcMaskOut", "FMHAOut", "OutLinearOut", "Ln2Mean", "Ln2Variance",
+      "BiasDropoutResidualOut", "DropoutMaskOut", "Y"}},
     {"sync_batch_norm",
      {"Y", "MeanOut", "VarianceOut", "SavedMean", "SavedVariance",
       "ReserveSpace"}},
