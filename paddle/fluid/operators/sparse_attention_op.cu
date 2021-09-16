@@ -18,7 +18,9 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/framework/op_registry.h"
+#if defined(PADDLE_WITH_CUDA)
 #include "paddle/fluid/platform/dynload/cusparse.h"
+#endif
 
 namespace ops = paddle::operators;
 namespace plf = paddle::platform;
