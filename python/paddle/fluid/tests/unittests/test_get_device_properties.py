@@ -27,7 +27,7 @@ class TestGetDeviceProperties(unittest.TestCase):
 
     def test_get_device_properties_str(self):
         if is_compiled_with_cuda():
-            props = get_device_properties('gpu:1')
+            props = get_device_properties('gpu:0')
             self.assertIsNotNone(props)
 
     def test_get_device_properties_int(self):
