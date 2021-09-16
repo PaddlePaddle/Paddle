@@ -39,7 +39,7 @@ namespace cub = hipcub;
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
+#include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 
 namespace paddle {
 namespace operators {
