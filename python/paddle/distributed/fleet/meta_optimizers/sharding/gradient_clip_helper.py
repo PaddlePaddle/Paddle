@@ -214,9 +214,10 @@ class GradientClipHelper(object):
                             'shape': sum_rst_var.shape,
                             'dtype': sum_rst_var.dtype,
                             'value': 0.0,
-                            OP_ROLE_KEY: op.attr(OP_ROLE_KEY)
+                            OP_ROLE_KEY: OpRole.Optimize
                         })
                     fill_constant_op._set_attr('op_namescope', namescope)
+                    self._insert_allreduce(block, ring_ids, idx, sum_rst_var)
                 break
 
         for idx, op in reversed(list(enumerate(block.ops))):
@@ -225,19 +226,24 @@ class GradientClipHelper(object):
 
             if op.type == "sum":
                 sum_res = op.desc.output_arg_names()[0]
-                for ring_id in ring_ids:
-                    if ring_id == -1: continue
-
-                    idx = idx + 1
-                    block._insert_op_without_sync(
-                        idx,
-                        type='c_allreduce_sum',
-                        inputs={'X': sum_res},
-                        outputs={'Out': sum_res},
-                        attrs={
-                            'ring_id': ring_id,
-                            'op_namescope': "/gradient_clip_model_parallelism",
-                            'use_calc_stream': True,
-                            OP_ROLE_KEY: OpRole.Optimize,
-                        })
+                self._insert_allreduce(block, ring_ids, idx, sum_res)
                 return
+
+    @staticmethod
+    def _insert_allreduce(block, ring_ids, idx, var):
+        for ring_id in ring_ids:
+            if ring_id == -1:
+                continue
+
+            idx = idx + 1
+            block._insert_op_without_sync(
+                idx,
+                type='c_allreduce_sum',
+                inputs={'X': var},
+                outputs={'Out': var},
+                attrs={
+                    'ring_id': ring_id,
+                    'op_namescope': "/gradient_clip_model_parallelism",
+                    'use_calc_stream': True,
+                    OP_ROLE_KEY: OpRole.Optimize,
+                })
