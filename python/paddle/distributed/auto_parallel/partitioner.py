@@ -364,15 +364,15 @@ class Partitioner(object):
                 dist_ops = get_distributed_operator(op.type)
                 dist_op_impl = dist_ops.get_impl(dist_attr.get_impl_idx())
                 # TO REMOVE
-                append_op_handle = dist_op_impl.forward(op)
-                append_op_handle(
-                    ctx.get_dst_main_program().global_block(),
-                    op,
-                    ctx.get_cur_dist_attr(),
-                    kinputs,
-                    koutputs,
-                    rank_id=ctx.get_rank_id())
-                # dist_op_impl.forward(ctx, **kinputs, **koutputs)
+                # append_op_handle = dist_op_impl.forward(op)
+                # append_op_handle(
+                #     ctx.get_dst_main_program().global_block(),
+                #     op,
+                #     ctx.get_cur_dist_attr(),
+                #     kinputs,
+                #     koutputs,
+                #     rank_id=ctx.get_rank_id())
+                dist_op_impl.forward(ctx, **kinputs, **koutputs)
 
             else:
                 # replicate op
