@@ -22,7 +22,7 @@ from collections import defaultdict
 
 import paddle
 from paddle.fluid.distribute_lookup_table import find_distributed_lookup_table
-from paddle.fluid.framework import Program, Variable, name_scope, default_main_program, default_startup_program, device_guard
+from paddle.fluid.framework import Program, Variable, Parameter, name_scope, default_main_program, default_startup_program, device_guard
 
 from . import framework
 from . import layers
@@ -4234,14 +4234,14 @@ class PipelineOptimizer(object):
             self._device = "gpu"
         if framework.in_dygraph_mode():
             raise Exception("In dygraph, don't support PipelineOptimizer.")
-        if not isinstance(optimizer, Optimizer) and not isinstance(
-                optimizer, paddle.optimizer.Optimizer) and not isinstance(
-                    optimizer, paddle.fluid.contrib.mixed_precision.decorator.
-                    OptimizerWithMixedPrecision):
+        valid_optimizers = (Optimizer, paddle.optimizer.Optimizer,
+                            paddle.fluid.contrib.mixed_precision.decorator.
+                            OptimizerWithMixedPrecision)
+        if not isinstance(optimizer, valid_optimizers):
             raise ValueError("The 'optimizer' parameter for "
                              "PipelineOptimizer must be an instance of "
-                             "Optimizer, but the given type is {}.".format(
-                                 type(optimizer)))
+                             "{}, but the given type is {}.".format(
+                                 valid_optimizers, type(optimizer)))
         self._optimizer = optimizer
 
         # Get the original optimizer defined by users, such as SGD
@@ -4774,13 +4774,12 @@ class PipelineOptimizer(object):
                 # skip data var
                 if var.is_data: continue
                 prev_device = None
-                generate_ops = self.output_var_to_op.get(var_name)
-                if generate_ops is None:
+
+                prev_op = self._find_prev_op(index, var_name)
+                if prev_op is None:
                     if var_name not in self._param_device_map:
                         continue
                     prev_device = self._param_device_map[var_name]
-
-                prev_op = self._find_prev_op(index, var_name)
 
                 if not prev_device:
                     prev_device = prev_op.attr(self._op_device_key) \
@@ -4928,9 +4927,14 @@ class PipelineOptimizer(object):
                                 self._op_role_key: op_role,
                             })
                         extra_index_info['index'] += 1
+                        prefix_name = var.name.split('@')[0]
+                        prefix_var = block.var(prefix_name)
+                        is_param = True if isinstance(prefix_var,
+                                                      Parameter) else False
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
-                            type='send_v2' if not use_mp else 'partial_send',
+                            type='send_v2'
+                            if not use_mp or is_param else 'partial_send',
                             inputs={'X': var},
                             attrs={
                                 self._op_device_key: prev_dev,
@@ -4966,7 +4970,8 @@ class PipelineOptimizer(object):
                             extra_index_info['index'] += 1
                         block._insert_op_without_sync(
                             index=index + extra_index_info['index'],
-                            type='recv_v2' if not use_mp else 'partial_recv',
+                            type='recv_v2'
+                            if not use_mp or is_param else 'partial_recv',
                             outputs={'Out': [var]},
                             attrs={
                                 'out_shape': var_shape,
@@ -4981,7 +4986,7 @@ class PipelineOptimizer(object):
                                 'id': self.mp_rank,
                             })
                         extra_index_info['index'] += 1
-                        if use_mp:
+                        if use_mp and not is_param:
                             block._insert_op_without_sync(
                                 index=index + extra_index_info['index'],
                                 type='partial_allgather',
@@ -5014,16 +5019,13 @@ class PipelineOptimizer(object):
         if self._num_microbatches == 1: return
         for index, op in reversed(tuple(enumerate(list(block.ops)))):
             if self._is_loss_grad_op(op):
-                loss_grad_var = block.vars[op.output_arg_names[0]]
-                block._insert_op(
-                    index=index + 1,
-                    type='scale',
-                    inputs={'X': loss_grad_var},
-                    outputs={'Out': loss_grad_var},
-                    attrs={
-                        'scale': 1.0 / self._num_microbatches,
-                        self._op_role_key: self._op_role.Backward
-                    })
+                assert op.type == 'fill_constant', \
+                    "loss_grad_op must be fill_constant op, " \
+                    "but this op is {}".format(op.type)
+                assert op.has_attr('value')
+                loss_scale = float(op.attr('value'))
+                loss_scale = loss_scale / self._num_microbatches
+                op._set_attr('value', loss_scale)
                 break
 
     def _rename_gradient_var_name(self, block):
@@ -5044,16 +5046,16 @@ class PipelineOptimizer(object):
     def _accumulate_gradients(self,
                               block,
                               pp_allreduce_in_optimize=False,
-                              fp16_allreduce=False,
-                              user_defined_strategy=None):
+                              strategy=None,
+                              shard=None):
         """
         Create a new merged gradient for each parameter and accumulate the
         corresponding gradient to it.
         """
-        if user_defined_strategy and user_defined_strategy.fuse_grad_merge:
+        fp16_allreduce = strategy.fp16_allreduce if strategy else False
+        if strategy and strategy.fuse_grad_merge:
             fused_gradient_names = self._accumulate_gradients_with_fuse(
-                block, fp16_allreduce,
-                user_defined_strategy.fuse_grad_size_in_MB)
+                block, fp16_allreduce, strategy.fuse_grad_size_in_MB, shard)
             return fused_gradient_names
 
         merged_gradient_names = []
@@ -5074,8 +5076,8 @@ class PipelineOptimizer(object):
 
             if self._is_backward_op(op) and first_opt_op_idx is None:
                 first_opt_op_idx = index + 1
-                # no optimize phase
-                if first_opt_op_idx == len(block.ops): return
+                # maybe have no optimize
+                # if first_opt_op_idx == len(block.ops): return
 
             if self._is_backward_op(op) and (
                     self._op_role_var_key in op.attr_names):
@@ -5185,44 +5187,9 @@ class PipelineOptimizer(object):
 
         return merged_gradient_names
 
-    def _accumulate_gradients_with_fuse(self, main_block, fp16, fused_size):
-        first_opt_op_idx = None
-        grad_param_pairs = []
-        # obtain all param/grad pairs that needed to be fused
-        for index, op in reversed(tuple(enumerate(list(main_block.ops)))):
-            # remove the cast op of fp16 grad to fp32 grad
-            if self._is_optimize_op(op) and op.type == 'cast':
-                in_name = op.input_arg_names[0]
-                out_name = op.output_arg_names[0]
-                if out_name.strip('@GRAD') in self._param_device_map:
-                    assert in_name.replace('.cast_fp16', '') == out_name
-                    main_block._remove_op(index)
-                    continue
-
-            if self._is_backward_op(op) and first_opt_op_idx is None:
-                first_opt_op_idx = index + 1
-                # no optimize phase
-                if first_opt_op_idx == len(main_block.ops):
-                    return
-
-            if self._is_backward_op(op) and (
-                    self._op_role_var_key in op.attr_names):
-                op_role_var = op.attr(self._op_role_var_key)
-                if len(op_role_var) == 0:
-                    continue
-                assert len(op_role_var) % 2 == 0
-                for i in range(0, len(op_role_var), 2):
-                    param_name = op_role_var[i]
-                    if not main_block.has_var(param_name):
-                        continue
-                    if '@BroadCast' in param_name:
-                        continue
-                    grad_param_pairs.append(
-                        (op_role_var[i + 1], op_role_var[i]))
-
-        if len(grad_param_pairs) == 0:
-            return
-
+    def _insert_accumulate_gradients_with_fuse(self, main_block, fp16,
+                                               fused_size, grad_param_pairs,
+                                               first_opt_op_idx):
         grad_param_pairs = self._sort_grad_param_by_dtype(main_block,
                                                           grad_param_pairs)
 
@@ -5421,9 +5388,66 @@ class PipelineOptimizer(object):
         for i in range(len(fused_merged_gradients)):
             fused_merged_gradients[i] = fused_merged_gradients[i].name
 
-        main_block._sync_with_cpp()
+        return fused_merged_gradients, first_opt_op_idx
 
-        return fused_merged_gradients
+    def _accumulate_gradients_with_fuse(self,
+                                        main_block,
+                                        fp16,
+                                        fused_size,
+                                        shard=None):
+        first_opt_op_idx = None
+        grad_param_pairs = []
+        # obtain all param/grad pairs that needed to be fused
+        for index, op in reversed(tuple(enumerate(list(main_block.ops)))):
+            # remove the cast op of fp16 grad to fp32 grad
+            if self._is_optimize_op(op) and op.type == 'cast':
+                in_name = op.input_arg_names[0]
+                out_name = op.output_arg_names[0]
+                if out_name.strip('@GRAD') in self._param_device_map:
+                    assert in_name.replace('.cast_fp16', '') == out_name
+                    main_block._remove_op(index)
+                    continue
+
+            if self._is_backward_op(op) and first_opt_op_idx is None:
+                first_opt_op_idx = index + 1
+                # no optimize phase
+                if first_opt_op_idx == len(main_block.ops):
+                    return
+
+            if self._is_backward_op(op) and (
+                    self._op_role_var_key in op.attr_names):
+                op_role_var = op.attr(self._op_role_var_key)
+                if len(op_role_var) == 0:
+                    continue
+                assert len(op_role_var) % 2 == 0
+                for i in range(0, len(op_role_var), 2):
+                    param_name = op_role_var[i]
+                    if not main_block.has_var(param_name):
+                        continue
+                    if '@BroadCast' in param_name:
+                        continue
+                    grad_param_pairs.append(
+                        (op_role_var[i + 1], op_role_var[i]))
+
+        if len(grad_param_pairs) == 0:
+            return
+
+        nranks = shard.worker_num if shard else 1
+        device_to_pairs = [[] for _ in range(nranks)]
+        for pair in grad_param_pairs:
+            root_id = shard.device(pair[1]) if shard else 0
+            assert 0 <= root_id < nranks
+            device_to_pairs[root_id].append(pair)
+
+        all_fused_merged_gradients = []
+        for pairs in device_to_pairs:
+            fused_merged_gradients, first_opt_op_idx = \
+                self._insert_accumulate_gradients_with_fuse(
+                    main_block, fp16, fused_size, pairs, first_opt_op_idx)
+            all_fused_merged_gradients += fused_merged_gradients
+
+        main_block._sync_with_cpp()
+        return all_fused_merged_gradients
 
     def _sort_grad_param_by_dtype(self, main_block, grad_param_pairs):
         # sort the grad param paris by the dtype
@@ -5710,6 +5734,35 @@ class PipelineOptimizer(object):
                 backward_insert_index += 1
         block._sync_with_cpp()
 
+    def _check_pipeline_persist_var(self, program):
+        """
+        Pipeline may need multiple forward before
+        """
+        block = program.global_block()
+
+        persist_output = set()
+        used_in_backward = set()
+        for op in block.ops:
+            if self._is_forward_op(op):
+                for var_name in op.output_arg_names:
+                    var = block.vars[var_name]
+                    if var.persistable:
+                        persist_output.add(var_name)
+            elif self._is_backward_op(op):
+                for var_name in op.input_arg_names:
+                    if var_name in persist_output:
+                        used_in_backward.add(var_name)
+        if len(used_in_backward) == 0:
+            return
+        warnings.warn(
+            "The pipeline requires multiple forward calculations before backward, "
+            "so when the persistable var is changed in the forward, it may cause "
+            "errors in the backward calculation who using this persistable var. "
+            "However, some backward op don't need this var(NoNeedBufferVars), "
+            "there will be no error at this time.\n"
+            "So please check these persistable vars which changed in "
+            "forward and used in backward:\n{}".format(used_in_backward))
+
     def minimize(self,
                  loss,
                  startup_program=None,
@@ -5826,6 +5879,11 @@ class PipelineOptimizer(object):
         # A pass to move the recv op to the beginning of
         # the forward/backward phase
         self._mv_head_recv(program_list[self.local_rank])
+
+        # A pass to check pipeline persist var which changed in
+        # forward and used in backward
+        self._check_pipeline_persist_var(program_list[self.local_rank])
+
         main_program._pipeline_opt = {
             "trainer": "PipelineTrainer",
             "device_worker": "Section",
@@ -6879,7 +6937,7 @@ class GradientMergeOptimizer(object):
             shape=[1],
             value=bool(0),
             dtype='bool',
-            persistable=True,
+            persistable=False,
             force_cpu=True)
 
         with device_guard("cpu"):
@@ -6969,6 +7027,7 @@ class GradientMergeOptimizer(object):
 
             # cur_block's forward_block & backward_block is itself
             cur_block._set_forward_block_idx(cur_block_idx)
+            op_maker = core.op_proto_and_checker_maker
 
             if self.avg:
                 for param, new_grad in new_params_grads:
@@ -6982,6 +7041,8 @@ class GradientMergeOptimizer(object):
                             'bias': 0.0,
                             'bias_after_scale': False
                         })
+                    new_grad.op._set_attr(op_maker.kOpRoleAttrName(),
+                                          op_maker.OpRole.Backward)
 
             for param, new_grad in new_params_grads:
                 # NOTE. regularization will append ops to grad.block,
@@ -7000,6 +7061,8 @@ class GradientMergeOptimizer(object):
                     dtype=new_grad.dtype,
                     value=0.0,
                     out=new_grad)
+                new_grad.op._set_attr(op_maker.kOpRoleAttrName(),
+                                      op_maker.OpRole.Optimize)
 
         # step3. apply gradient
         layers.cond(cond, true_fn=true_apply_gradient, false_fn=None)

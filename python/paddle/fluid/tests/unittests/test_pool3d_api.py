@@ -471,6 +471,34 @@ class TestPool3DError_API(unittest.TestCase):
 
         self.assertRaises(ValueError, run10)
 
+        def run_kernel_out_of_range():
+            with fluid.dygraph.guard():
+                input_np = np.random.uniform(
+                    -1, 1, [2, 3, 32, 32, 32]).astype(np.float32)
+                input_pd = fluid.dygraph.to_variable(input_np)
+                res_pd = avg_pool3d(
+                    input_pd,
+                    kernel_size=-1,
+                    stride=2,
+                    padding="VALID",
+                    ceil_mode=True)
+
+        self.assertRaises(ValueError, run_kernel_out_of_range)
+
+        def run_size_out_of_range():
+            with fluid.dygraph.guard():
+                input_np = np.random.uniform(
+                    -1, 1, [2, 3, 32, 32, 32]).astype(np.float32)
+                input_pd = fluid.dygraph.to_variable(input_np)
+                res_pd = avg_pool3d(
+                    input_pd,
+                    kernel_size=2,
+                    stride=0,
+                    padding="VALID",
+                    ceil_mode=True)
+
+        self.assertRaises(ValueError, run_size_out_of_range)
+
 
 if __name__ == '__main__':
     unittest.main()

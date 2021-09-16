@@ -52,10 +52,8 @@ template <typename T>
 using ReduceParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 template <typename T>
-struct CudaAddFunctor {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    return args[0] + args[1];
-  }
+struct AddFunctor {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a + b; }
 };
 
 template <typename InT, typename OutT, int ShapeSize, int VecSize,
@@ -128,7 +126,7 @@ void LaunchBiasAddFwKernel(const platform::CUDADeviceContext& ctx, int m, int n,
   std::vector<int64_t> out_dims = {n, m};
   configlists[1] = kps::details::BroadcastConfig<2>(out_dims, input1_dims, 2);
 
-  auto func = CudaAddFunctor<T>();
+  auto func = AddFunctor<T>();
   auto stream = ctx.stream();
   switch (vec_size) {
     case 4: {
@@ -202,9 +200,9 @@ void SetConfigForColumnReduce(const int max_threads, const int reduce_num,
 
   int num_block = (max_threads / left_num);
   if (num_block > 1 && reduce_num >= REDUCE_SPLIT_BOUNDARY) {
-    *blocking_size = detail::GetLastPow2(reduce_num / num_block);
+    *blocking_size = details::GetLastPow2(reduce_num / num_block);
     if (*blocking_size <= 1) {
-      *blocking_size = detail::GetLastPow2(sqrt(reduce_num));
+      *blocking_size = details::GetLastPow2(sqrt(reduce_num));
     } else if (*blocking_size * 2 < reduce_num) {
       *blocking_size *= 2;
     }
