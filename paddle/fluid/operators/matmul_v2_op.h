@@ -380,6 +380,14 @@ class MatMulV2Kernel : public framework::OpKernel<T> {
     auto* Out = ctx.Output<Tensor>("Out");
     bool trans_x = ctx.Attr<bool>("trans_x");
     bool trans_y = ctx.Attr<bool>("trans_y");
+    PADDLE_ENFORCE_NE(framework::product(X->dims()), 0,
+                      platform::errors::InvalidArgument(
+                          "The Input(X) dims size must not be equal 0,"
+                          " but reviced dims size is 0. "));
+    PADDLE_ENFORCE_NE(framework::product(Y->dims()), 0,
+                      platform::errors::InvalidArgument(
+                          "The Input(Y) dims size must not be equal 0,"
+                          " but reviced dims size is 0. "));
     MatMulFunction<DeviceContext, T>(X, Y, Out, trans_x, trans_y, ctx);
   }
 };
