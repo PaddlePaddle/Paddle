@@ -242,7 +242,7 @@ TEST(CuDNNNormConvForward, GPUCuDNNNormConvForward1Fp16) {
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
   test.Run();
-  test.CheckOut(static_cast<paddle::platform::float16>(1e-5));
+  test.CheckOut(static_cast<paddle::platform::float16>(1e-5), true);
 }
 
 // test for fp16, kernel = 3, output_channels = input_channels
@@ -258,7 +258,7 @@ TEST(CuDNNNormConvForward, GPUCuDNNNormConvForward2Fp16) {
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
   test.Run();
-  test.CheckOut(static_cast<paddle::platform::float16>(1e-5));
+  test.CheckOut(static_cast<paddle::platform::float16>(1e-5), true);
 }
 
 // test for fp16, kernel = 1, output_channels = input_channels * 4
@@ -274,5 +274,5 @@ TEST(CuDNNNormConvForward, GPUCuDNNNormConvForward3Fp16) {
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
   test.Run();
-  test.CheckOut(static_cast<paddle::platform::float16>(1e-5));
+  test.CheckOut(static_cast<paddle::platform::float16>(1e-5), true);
 }
