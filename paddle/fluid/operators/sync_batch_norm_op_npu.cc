@@ -644,15 +644,17 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
 
       // cacl saved_mean and var_ref
       Tensor var_ref;
+      var_ref.Resize({C});
+      var_ref.mutable_data<float>(place);
       {
-        var_ref.Resize({C});
-        var_ref.mutable_data<float>(place);
-      }
-      {
-        // cacl saved_mean
+        Tensor x_sum;
+        // cacl x_sum
         {
-          LOG(WARNING) << "x: ";
-          PrintTensor<T>(*x, ctx);
+          framework::NPUAttributeMap attr_input = {{"keep_dims", false},
+                                                   {"axes", axes}};
+
+          x_sum.Resize({C});
+          x_sum.mutable_data<float>(place);
 
           if (x->type() == framework::proto::VarType::FP16) {
             Tensor x_tmp;
@@ -674,153 +676,81 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
             }
 
             {
-              saved_mean->mutable_data<float>(place);
-
-              framework::NPUAttributeMap attr_input = {{"keep_dims", false},
-                                                       {"axes", axes}};
-
-              const auto &runner = NpuOpRunner("ReduceMeanD", {x_tmp},
-                                               {*saved_mean}, attr_input);
-
+              const auto &runner =
+                  NpuOpRunner("ReduceSumD", {x_tmp}, {x_sum}, attr_input);
               runner.Run(stream);
 
-              LOG(WARNING) << "saved_mean: ";
-              PrintTensor<float>(*saved_mean, ctx);
+              LOG(WARNING) << "x_sum: ";
+              PrintTensor<float>(x_sum, ctx);
             }
           } else {
-            saved_mean->mutable_data<float>(place);
-
-            framework::NPUAttributeMap attr_input = {{"keep_dims", false},
-                                                     {"axes", axes}};
-
             const auto &runner =
-                NpuOpRunner("ReduceMeanD", {*x}, {*saved_mean}, attr_input);
-
+                NpuOpRunner("ReduceSumD", {*x}, {x_sum}, attr_input);
             runner.Run(stream);
 
-            LOG(WARNING) << "saved_mean: ";
-            PrintTensor<float>(*saved_mean, ctx);
+            LOG(WARNING) << "x_sum: ";
+            PrintTensor<float>(x_sum, ctx);
           }
         }
 
-        // cacl var_ref
+        Tensor x_square;
+        // cacl x_square
         {
-          Tensor x_square;
-          // cacl x_square
-          {
-            x_square.Resize(x->dims());
-            x_square.mutable_data<float>(place);
+          x_square.Resize(x->dims());
+          x_square.mutable_data<float>(place);
 
-            if (x->type() == framework::proto::VarType::FP16) {
-              Tensor x_tmp;
-              {
-                auto dst_dtype =
-                    ConvertToNpuDtype(framework::proto::VarType::FP32);
-                framework::NPUAttributeMap attr_input = {
-                    {"dst_type", static_cast<int>(dst_dtype)}};
+          if (x->type() == framework::proto::VarType::FP16) {
+            Tensor x_tmp;
+            {
+              auto dst_dtype =
+                  ConvertToNpuDtype(framework::proto::VarType::FP32);
+              framework::NPUAttributeMap attr_input = {
+                  {"dst_type", static_cast<int>(dst_dtype)}};
 
-                x_tmp.Resize(x->dims());
-                x_tmp.mutable_data<float>(place);
+              x_tmp.Resize(x->dims());
+              x_tmp.mutable_data<float>(place);
 
-                const auto &runner =
-                    NpuOpRunner("Cast", {*x}, {x_tmp}, attr_input);
-                runner.Run(stream);
+              const auto &runner =
+                  NpuOpRunner("Cast", {*x}, {x_tmp}, attr_input);
+              runner.Run(stream);
 
-                LOG(WARNING) << "x_tmp: ";
-                PrintTensor<float>(x_tmp, ctx);
-              }
+              LOG(WARNING) << "x_tmp: ";
+              PrintTensor<float>(x_tmp, ctx);
+            }
 
-              {
-                const auto &runner =
-                    NpuOpRunner("Square", {x_tmp}, {x_square}, {});
-                runner.Run(stream);
-
-                LOG(WARNING) << "x_square: ";
-                PrintTensor<float>(x_square, ctx);
-              }
-            } else {
-              const auto &runner = NpuOpRunner("Square", {*x}, {x_square}, {});
+            {
+              const auto &runner =
+                  NpuOpRunner("Square", {x_tmp}, {x_square}, {});
               runner.Run(stream);
 
               LOG(WARNING) << "x_square: ";
               PrintTensor<float>(x_square, ctx);
             }
-          }
-
-          Tensor x_square_sum;
-          // cacl x_square_sum
-          {
-            framework::NPUAttributeMap attr_input = {{"keep_dims", false},
-                                                     {"axes", axes}};
-
-            x_square_sum.Resize({C});
-            x_square_sum.mutable_data<float>(place);
-
-            const auto &runner = NpuOpRunner("ReduceSumD", {x_square},
-                                             {x_square_sum}, attr_input);
+          } else {
+            const auto &runner = NpuOpRunner("Square", {*x}, {x_square}, {});
             runner.Run(stream);
 
-            LOG(WARNING) << "x_square_sum: ";
-            PrintTensor<float>(x_square_sum, ctx);
-          }
-
-          Tensor x_square_sum_mean;
-          // cacl x_square_sum_mean
-          {
-            framework::NPUAttributeMap attr_input = {
-                {"value", 1.0f * C / x_numel}};
-
-            x_square_sum_mean.Resize({C});
-            x_square_sum_mean.mutable_data<float>(place);
-
-            const auto &runner = NpuOpRunner("Muls", {x_square_sum},
-                                             {x_square_sum_mean}, attr_input);
-            runner.Run(stream);
-
-            LOG(WARNING) << "x_square_sum_mean: ";
-            PrintTensor<float>(x_square_sum_mean, ctx);
-          }
-
-          Tensor mean_square;
-          // cacl mean_square
-          {
-            mean_square.Resize(mean->dims());
-            mean_square.mutable_data<float>(place);
-
-            const auto &runner =
-                NpuOpRunner("Square", {*mean}, {mean_square}, {});
-            runner.Run(stream);
-
-            LOG(WARNING) << "mean_square: ";
-            PrintTensor<float>(mean_square, ctx);
-          }
-
-          // cacl var_ref
-          {
-            const auto &runner = NpuOpRunner(
-                "Sub", {x_square_sum_mean, mean_square}, {var_ref}, {});
-            runner.Run(stream);
-
-            LOG(WARNING) << "var_ref: ";
-            PrintTensor<float>(var_ref, ctx);
+            LOG(WARNING) << "x_square: ";
+            PrintTensor<float>(x_square, ctx);
           }
         }
-      }
 
-      int count = platform::GetSelectedNPUDevices().size();
-      LOG(WARNING) << "count: " << count;
+        Tensor x_square_sum;
+        // cacl x_square_sum
+        {
+          framework::NPUAttributeMap attr_input = {{"keep_dims", false},
+                                                   {"axes", axes}};
 
-      if (count >= 1) {
-        LOG(WARNING) << "before hccl | saved_mean: ";
-        PrintTensor<float>(*saved_mean, ctx);
+          x_square_sum.Resize({C});
+          x_square_sum.mutable_data<float>(place);
 
-        LOG(WARNING) << "before hccl | var_ref: ";
-        PrintTensor<float>(var_ref, ctx);
+          const auto &runner =
+              NpuOpRunner("ReduceSumD", {x_square}, {x_square_sum}, attr_input);
+          runner.Run(stream);
 
-        // auto &dev_ctx = reinterpret_cast<const platform::NPUDeviceContext &>(
-        //     ctx.device_context());
-        // auto *comm = dev_ctx.hccl_comm();
-        // LOG(WARNING) << "comm: " << comm;
+          LOG(WARNING) << "x_square_sum: ";
+          PrintTensor<float>(x_square_sum, ctx);
+        }
 
         auto comm = paddle::platform::HCCLCommContext::Instance().Get(0, place);
         LOG(WARNING) << "comm: " << comm;
@@ -830,94 +760,128 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
           stream = comm->stream();
           HcclDataType dtype = platform::ToHCCLDataType(mean_out->type());
 
-          Tensor device_count;
+          Tensor device_count_tensor;
           {
-            device_count.Resize({1});
-            device_count.mutable_data<float>(place);
+            device_count_tensor.Resize({1});
+            device_count_tensor.mutable_data<float>(place);
 
-            FillNpuTensorWithConstant<float>(&device_count, 1);
+            FillNpuTensorWithConstant<float>(&device_count_tensor, 1);
 
-            LOG(WARNING) << "device_count: ";
-            PrintTensor<float>(device_count, ctx);
+            LOG(WARNING) << "device_count_tensor: ";
+            PrintTensor<float>(device_count_tensor, ctx);
           }
 
-          // HcclAllReduce device_count
+          // HcclAllReduce device_count_tensor
           {
+            // In-place operation
             void *sendbuff = reinterpret_cast<void *>(
-                const_cast<float *>(device_count.data<float>()));
+                const_cast<float *>(device_count_tensor.data<float>()));
             void *recvbuff = sendbuff;
             LOG(WARNING) << "sendbuff: " << sendbuff;
             LOG(WARNING) << "recvbuff: " << recvbuff;
 
-            // In-place operation
-            LOG(WARNING) << "before hccl | device_count: ";
-            PrintTensor<float>(device_count, ctx);
+            LOG(WARNING) << "before hccl | device_count_tensor: ";
+            PrintTensor<float>(device_count_tensor, ctx);
             PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
                 sendbuff, recvbuff, 1, dtype, HCCL_REDUCE_SUM, comm->comm(),
                 reinterpret_cast<void *>(stream)));
-            LOG(WARNING) << "after hccl | device_count";
-            PrintTensor<float>(device_count, ctx);
+            LOG(WARNING) << "after hccl | device_count_tensor";
+            PrintTensor<float>(device_count_tensor, ctx);
           }
 
-          // HcclAllReduce saved_mean
+          // HcclAllReduce x_sum
           {
             // In-place operation
             void *sendbuff = reinterpret_cast<void *>(
-                const_cast<float *>(saved_mean->data<float>()));
+                const_cast<float *>(x_square.data<float>()));
             void *recvbuff = sendbuff;
             LOG(WARNING) << "sendbuff: " << sendbuff;
             LOG(WARNING) << "recvbuff: " << recvbuff;
 
+            LOG(WARNING) << "before hccl | x_sum: ";
+            PrintTensor<float>(x_sum, ctx);
             PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
                 sendbuff, recvbuff, C, dtype, HCCL_REDUCE_SUM, comm->comm(),
                 reinterpret_cast<void *>(stream)));
+            LOG(WARNING) << "after hccl | x_sum";
+            PrintTensor<float>(x_sum, ctx);
           }
 
-          // HcclAllReduce saved_mean
+          // HcclAllReduce x_square_sum
           {
             // In-place operation
             void *sendbuff = reinterpret_cast<void *>(
-                const_cast<float *>(var_ref.data<float>()));
+                const_cast<float *>(x_square_sum.data<float>()));
             void *recvbuff = sendbuff;
             LOG(WARNING) << "sendbuff: " << sendbuff;
             LOG(WARNING) << "recvbuff: " << recvbuff;
 
+            LOG(WARNING) << "before hccl | x_square_sum: ";
+            PrintTensor<float>(x_square_sum, ctx);
             PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
                 sendbuff, recvbuff, C, dtype, HCCL_REDUCE_SUM, comm->comm(),
                 reinterpret_cast<void *>(stream)));
+            LOG(WARNING) << "after hccl | x_square_sum";
+            PrintTensor<float>(x_square_sum, ctx);
           }
         }
 
-        LOG(WARNING) << "after hccl | saved_mean: ";
-        PrintTensor<float>(*saved_mean, ctx);
-
-        LOG(WARNING) << "after hccl | var_ref: ";
-        PrintTensor<float>(var_ref, ctx);
-
-        // mean saved_mean
+        // cacl saved_mean
         {
           framework::NPUAttributeMap attr_input = {
-              {"value", 1.0f / device_counts}};
+              {"value", 1.0f * C / x_numel / device_counts}};
+
+          saved_mean->mutable_data<float>(place);
 
           const auto &runner =
-              NpuOpRunner("Muls", {*saved_mean}, {*saved_mean}, attr_input);
+              NpuOpRunner("Muls", {x_sum}, {*saved_mean}, attr_input);
           runner.Run(stream);
 
-          LOG(WARNING) << "after | saved_mean: ";
+          LOG(WARNING) << "saved_mean: ";
           PrintTensor<float>(*saved_mean, ctx);
         }
 
-        // mean var_ref
+        // cacl var_ref
         {
-          framework::NPUAttributeMap attr_input = {
-              {"value", 1.0f / device_counts}};
+          Tensor saved_mean_square;
+          // cacl saved_mean_square
+          {
+            saved_mean_square.Resize({C});
+            saved_mean_square.mutable_data<float>(place);
 
-          const auto &runner =
-              NpuOpRunner("Muls", {var_ref}, {var_ref}, attr_input);
-          runner.Run(stream);
+            const auto &runner =
+                NpuOpRunner("Square", {*saved_mean}, {saved_mean_square}, {});
+            runner.Run(stream);
 
-          LOG(WARNING) << "after | var_ref: ";
-          PrintTensor<float>(var_ref, ctx);
+            LOG(WARNING) << "saved_mean_square: ";
+            PrintTensor<float>(saved_mean_square, ctx);
+          }
+
+          Tensor var_ref_tmp;
+          var_ref_tmp.Resize({C});
+          var_ref_tmp.mutable_data<float>(place);
+          // cacl var_ref_tmp
+          {
+            framework::NPUAttributeMap attr_input = {
+                {"value", 1.0f * C / x_numel / device_counts}};
+
+            const auto &runner =
+                NpuOpRunner("Muls", {x_square_sum}, {var_ref_tmp}, attr_input);
+            runner.Run(stream);
+
+            LOG(WARNING) << "var_ref_tmp: ";
+            PrintTensor<float>(var_ref_tmp, ctx);
+          }
+
+          // cacl var_ref
+          {
+            const auto &runner = NpuOpRunner(
+                "Sub", {var_ref_tmp, saved_mean_square}, {var_ref}, {});
+            runner.Run(stream);
+
+            LOG(WARNING) << "var_ref: ";
+            PrintTensor<float>(var_ref, ctx);
+          }
         }
       }
 
