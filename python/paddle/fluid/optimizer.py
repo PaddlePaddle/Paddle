@@ -5019,16 +5019,13 @@ class PipelineOptimizer(object):
         if self._num_microbatches == 1: return
         for index, op in reversed(tuple(enumerate(list(block.ops)))):
             if self._is_loss_grad_op(op):
-                loss_grad_var = block.vars[op.output_arg_names[0]]
-                block._insert_op(
-                    index=index + 1,
-                    type='scale',
-                    inputs={'X': loss_grad_var},
-                    outputs={'Out': loss_grad_var},
-                    attrs={
-                        'scale': 1.0 / self._num_microbatches,
-                        self._op_role_key: self._op_role.Backward
-                    })
+                assert op.type == 'fill_constant', \
+                    "loss_grad_op must be fill_constant op, " \
+                    "but this op is {}".format(op.type)
+                assert op.has_attr('value')
+                loss_scale = float(op.attr('value'))
+                loss_scale = loss_scale / self._num_microbatches
+                op._set_attr('value', loss_scale)
                 break
 
     def _rename_gradient_var_name(self, block):
@@ -5049,16 +5046,16 @@ class PipelineOptimizer(object):
     def _accumulate_gradients(self,
                               block,
                               pp_allreduce_in_optimize=False,
-                              fp16_allreduce=False,
-                              user_defined_strategy=None):
+                              strategy=None,
+                              shard=None):
         """
         Create a new merged gradient for each parameter and accumulate the
         corresponding gradient to it.
         """
-        if user_defined_strategy and user_defined_strategy.fuse_grad_merge:
+        fp16_allreduce = strategy.fp16_allreduce if strategy else False
+        if strategy and strategy.fuse_grad_merge:
             fused_gradient_names = self._accumulate_gradients_with_fuse(
-                block, fp16_allreduce,
-                user_defined_strategy.fuse_grad_size_in_MB)
+                block, fp16_allreduce, strategy.fuse_grad_size_in_MB, shard)
             return fused_gradient_names
 
         merged_gradient_names = []
@@ -5079,8 +5076,8 @@ class PipelineOptimizer(object):
 
             if self._is_backward_op(op) and first_opt_op_idx is None:
                 first_opt_op_idx = index + 1
-                # no optimize phase
-                if first_opt_op_idx == len(block.ops): return
+                # maybe have no optimize
+                # if first_opt_op_idx == len(block.ops): return
 
             if self._is_backward_op(op) and (
                     self._op_role_var_key in op.attr_names):
@@ -5190,44 +5187,9 @@ class PipelineOptimizer(object):
 
         return merged_gradient_names
 
-    def _accumulate_gradients_with_fuse(self, main_block, fp16, fused_size):
-        first_opt_op_idx = None
-        grad_param_pairs = []
-        # obtain all param/grad pairs that needed to be fused
-        for index, op in reversed(tuple(enumerate(list(main_block.ops)))):
-            # remove the cast op of fp16 grad to fp32 grad
-            if self._is_optimize_op(op) and op.type == 'cast':
-                in_name = op.input_arg_names[0]
-                out_name = op.output_arg_names[0]
-                if out_name.strip('@GRAD') in self._param_device_map:
-                    assert in_name.replace('.cast_fp16', '') == out_name
-                    main_block._remove_op(index)
-                    continue
-
-            if self._is_backward_op(op) and first_opt_op_idx is None:
-                first_opt_op_idx = index + 1
-                # no optimize phase
-                if first_opt_op_idx == len(main_block.ops):
-                    return
-
-            if self._is_backward_op(op) and (
-                    self._op_role_var_key in op.attr_names):
-                op_role_var = op.attr(self._op_role_var_key)
-                if len(op_role_var) == 0:
-                    continue
-                assert len(op_role_var) % 2 == 0
-                for i in range(0, len(op_role_var), 2):
-                    param_name = op_role_var[i]
-                    if not main_block.has_var(param_name):
-                        continue
-                    if '@BroadCast' in param_name:
-                        continue
-                    grad_param_pairs.append(
-                        (op_role_var[i + 1], op_role_var[i]))
-
-        if len(grad_param_pairs) == 0:
-            return
-
+    def _insert_accumulate_gradients_with_fuse(self, main_block, fp16,
+                                               fused_size, grad_param_pairs,
+                                               first_opt_op_idx):
         grad_param_pairs = self._sort_grad_param_by_dtype(main_block,
                                                           grad_param_pairs)
 
@@ -5426,9 +5388,66 @@ class PipelineOptimizer(object):
         for i in range(len(fused_merged_gradients)):
             fused_merged_gradients[i] = fused_merged_gradients[i].name
 
-        main_block._sync_with_cpp()
+        return fused_merged_gradients, first_opt_op_idx
 
-        return fused_merged_gradients
+    def _accumulate_gradients_with_fuse(self,
+                                        main_block,
+                                        fp16,
+                                        fused_size,
+                                        shard=None):
+        first_opt_op_idx = None
+        grad_param_pairs = []
+        # obtain all param/grad pairs that needed to be fused
+        for index, op in reversed(tuple(enumerate(list(main_block.ops)))):
+            # remove the cast op of fp16 grad to fp32 grad
+            if self._is_optimize_op(op) and op.type == 'cast':
+                in_name = op.input_arg_names[0]
+                out_name = op.output_arg_names[0]
+                if out_name.strip('@GRAD') in self._param_device_map:
+                    assert in_name.replace('.cast_fp16', '') == out_name
+                    main_block._remove_op(index)
+                    continue
+
+            if self._is_backward_op(op) and first_opt_op_idx is None:
+                first_opt_op_idx = index + 1
+                # no optimize phase
+                if first_opt_op_idx == len(main_block.ops):
+                    return
+
+            if self._is_backward_op(op) and (
+                    self._op_role_var_key in op.attr_names):
+                op_role_var = op.attr(self._op_role_var_key)
+                if len(op_role_var) == 0:
+                    continue
+                assert len(op_role_var) % 2 == 0
+                for i in range(0, len(op_role_var), 2):
+                    param_name = op_role_var[i]
+                    if not main_block.has_var(param_name):
+                        continue
+                    if '@BroadCast' in param_name:
+                        continue
+                    grad_param_pairs.append(
+                        (op_role_var[i + 1], op_role_var[i]))
+
+        if len(grad_param_pairs) == 0:
+            return
+
+        nranks = shard.worker_num if shard else 1
+        device_to_pairs = [[] for _ in range(nranks)]
+        for pair in grad_param_pairs:
+            root_id = shard.device(pair[1]) if shard else 0
+            assert 0 <= root_id < nranks
+            device_to_pairs[root_id].append(pair)
+
+        all_fused_merged_gradients = []
+        for pairs in device_to_pairs:
+            fused_merged_gradients, first_opt_op_idx = \
+                self._insert_accumulate_gradients_with_fuse(
+                    main_block, fp16, fused_size, pairs, first_opt_op_idx)
+            all_fused_merged_gradients += fused_merged_gradients
+
+        main_block._sync_with_cpp()
+        return all_fused_merged_gradients
 
     def _sort_grad_param_by_dtype(self, main_block, grad_param_pairs):
         # sort the grad param paris by the dtype
@@ -6918,7 +6937,7 @@ class GradientMergeOptimizer(object):
             shape=[1],
             value=bool(0),
             dtype='bool',
-            persistable=True,
+            persistable=False,
             force_cpu=True)
 
         with device_guard("cpu"):
