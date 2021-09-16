@@ -1073,7 +1073,7 @@ def det(x):
         assert (input_shape[-1] == input_shape[-2]),    \
                 "Expect squared input," \
                 "but received %s by %s matrix.\n" \
-                %(input_shape[-2], input_shape[-1]) \
+                %(input_shape[-2], input_shape[-1])
 
     _check_input(input)
     helper = LayerHelper('determinant', **locals())
@@ -1130,7 +1130,7 @@ def slogdet(x):
         assert (input_shape[-1] == input_shape[-2]),    \
                 "Expect squared input," \
                 "but received %s by %s matrix.\n" \
-                %(input_shape[-2], input_shape[-1]) \
+                %(input_shape[-2], input_shape[-1])
 
     _check_input(x)
     helper = LayerHelper('slogdeterminant', **locals())

@@ -527,7 +527,7 @@ __all__ = [  # noqa
            'broadcast_tensors',
            'det',
            'slogdet',
-           'einsum'
+           'einsum',
            'set_flags',
            'get_flags'
 ]

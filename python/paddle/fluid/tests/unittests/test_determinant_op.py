@@ -26,7 +26,6 @@ import paddle.tensor as tensor
 paddle.enable_static()
 
 
-@skip_check_grad_ci(reason="determinant grad is in progress.")
 class TestDeterminantOp(OpTest):
     def setUp(self):
         self.init_data()
@@ -37,38 +36,33 @@ class TestDeterminantOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        pass
+        self.check_grad(['Input'], ['Out'])
 
     def init_data(self):
-        self.case = np.random.randn(3, 3, 3, 3, 3).astype('float64')
+        self.case = np.random.rand(3, 3, 3, 5, 5).astype('float64')
         self.inputs = {'Input': self.case}
         self.target = np.linalg.det(self.case)
 
 
 class TestDeterminantOpCase1(TestDeterminantOp):
     def init_data(self):
-        self.case = np.random.randn(3, 3, 3, 3).astype('float32')
+        self.case = np.random.randn(10, 10).astype('float32')
         self.inputs = {'Input': self.case}
         self.target = np.linalg.det(self.case)
-
-    def test_check_grad(self):
-        pass
 
 
 class TestDeterminantOpCase2(TestDeterminantOp):
     def init_data(self):
-        self.case = np.random.randint(0, 2, (4, 2, 4, 4)).astype('float64')
+        # not invertible matrix
+        self.case = np.ones([4, 2, 5, 5]).astype('float32')
         self.inputs = {'Input': self.case}
         self.target = np.linalg.det(self.case)
-
-    def test_check_grad(self):
-        pass
 
 
 class TestDeterminantAPI(unittest.TestCase):
     def setUp(self):
-        self.shape = [3, 3, 3, 3]
-        self.x = np.random.random((3, 3, 3, 3)).astype(np.float32)
+        self.shape = [3, 3, 5, 5]
+        self.x = np.random.random(self.shape).astype(np.float32)
         self.place = paddle.CPUPlace()
 
     def test_api_static(self):
@@ -92,7 +86,6 @@ class TestDeterminantAPI(unittest.TestCase):
         paddle.enable_static()
 
 
-@skip_check_grad_ci(reason="slogdeterminant grad is in progress.")
 class TestSlogDeterminantOp(OpTest):
     def setUp(self):
         self.op_type = "slogdeterminant"
@@ -103,25 +96,26 @@ class TestSlogDeterminantOp(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        pass
+        # the slog det's grad value is always huge
+        self.check_grad(['Input'], ['Out'], max_relative_error=0.1)
 
     def init_data(self):
-        self.case = np.random.randn(3, 3, 3, 3).astype('float64')
+        self.case = np.random.rand(3, 3, 5, 5).astype('float64')
         self.inputs = {'Input': self.case}
         self.target = np.array(np.linalg.slogdet(self.case))
 
 
 class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
     def init_data(self):
-        self.case = np.random.randn(3, 3, 3, 3).astype('float32')
+        self.case = np.random.randn(2, 10, 10).astype('float32')
         self.inputs = {'Input': self.case}
         self.target = np.array(np.linalg.slogdet(self.case))
 
 
 class TestSlogDeterminantAPI(unittest.TestCase):
     def setUp(self):
-        self.shape = [3, 3, 3, 3]
-        self.x = np.random.random((3, 3, 3, 3)).astype(np.float32)
+        self.shape = [3, 3, 5, 5]
+        self.x = np.random.random(self.shape).astype(np.float32)
         self.place = paddle.CPUPlace()
 
     def test_api_static(self):
