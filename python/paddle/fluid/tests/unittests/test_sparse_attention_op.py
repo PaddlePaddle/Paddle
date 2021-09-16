@@ -12,17 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
 import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
-from paddle.static import Program, program_guard
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.framework as framework
-import paddle.nn.functional as F
 import os
 import re
 
@@ -48,8 +42,7 @@ def softmax(x):
 
 
 def get_csr_value(mat, layout, nnz):
-    row = mat.shape[0]
-    col = mat.shape[1]
+    row, col = mat.shape[0], mat.shape[1]
     value = np.zeros(nnz)
     ptr = 0
     for i in range(row):
@@ -61,7 +54,7 @@ def get_csr_value(mat, layout, nnz):
 
 
 def ref_sparse_attention(q, k, v, offset, columns):
-    row = q.shape[0]
+    row, col, nnz = q.shape[0], q.shape[1], columns.shape[0]
     mat = np.zeros((row, row))
     # init mat from CSR format
     for cur_row in range(row):
@@ -72,12 +65,9 @@ def ref_sparse_attention(q, k, v, offset, columns):
             mat[cur_row][cur_col] = 1
     # sdd
     a = np.dot(q, k.T) * mat
-    # Get nnz of a
-    nnz = columns.shape[0]
     a_value = get_csr_value(a, mat, nnz)
     # scale
-    head_dim = q.shape[1]
-    scaling = float(head_dim)**-0.5
+    scaling = float(col)**-0.5
     a = scaling * a
     for i in range(row):
         for j in range(row):
@@ -109,8 +99,7 @@ def ref_batch_sparse_attention(q, k, v, offset, columns):
 
 
 def init_csr_format(batch_size, num_heads, rows, blocksize):
-    block_num = rows / blocksize
-    block_last = rows % blocksize
+    block_num, block_last = rows / blocksize, rows % blocksize
     nnz_num = block_num * blocksize * blocksize + block_last * block_last
     offset = np.zeros(rows + 1)
     columns = np.zeros(int(nnz_num))
@@ -193,14 +182,7 @@ class TestSparseAttentionOpFp32Test(TestSparseAttentionOp):
         self.dtype = "float32"
 
 
-class TestSparseAttentionOpShapeTest1(TestSparseAttentionOp):
-    def config(self):
-        self.shape = (2, 2, 8, 8)
-        self.blocksize = 2
-        self.dtype = "float64"
-
-
-class TestSparseAttentionOpShapeTest2(TestSparseAttentionOp):
+class TestSparseAttentionOpShapeTest(TestSparseAttentionOp):
     def config(self):
         self.shape = (2, 2, 64, 32)
         self.blocksize = 8

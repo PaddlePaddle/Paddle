@@ -28,7 +28,6 @@ class SparseAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("V", "The input tensors of value in sparse_attention operator.");
     AddInput("offset", "tensor of offset in CSR format ");
     AddInput("columns", "tensor of columns in CSR format ");
-
     AddOutput("Out", "The output tensor of sparse_attention operator");
     AddOutput("ResultSdd",
               "The computation result of sparse_dot_sdd operation.")
@@ -70,16 +69,11 @@ class SparseAttentionOp : public framework::OperatorWithKernel {
     std::vector<int64_t> dims_columns =
         paddle::framework::vectorize(ctx->GetInputDim("columns"));
 
-    auto ndims_q = dims_q.size();
-    auto ndims_k = dims_k.size();
-    auto ndims_v = dims_v.size();
-    int64_t columns_dim = dims_columns[2];
-
-    PADDLE_ENFORCE_EQ(ndims_q, 4,
+    PADDLE_ENFORCE_EQ(dims_q.size(), 4,
                       "ShapeError: Dimension in query' shapes must be 4. ");
-    PADDLE_ENFORCE_EQ(ndims_k, 4,
+    PADDLE_ENFORCE_EQ(dims_k.size(), 4,
                       "ShapeError: Dimension in key' shapes must be 4. ");
-    PADDLE_ENFORCE_EQ(ndims_v, 4,
+    PADDLE_ENFORCE_EQ(dims_v.size(), 4,
                       "ShapeError: Dimension in value' shapes must be 4. ");
 
     std::vector<int64_t> new_dims;
@@ -88,9 +82,10 @@ class SparseAttentionOp : public framework::OperatorWithKernel {
 
     auto batch_size = dims_q[0];
     auto num_heads = dims_q[1];
+    auto sparse_nnz = dims_columns[2];
     ctx->SetOutputDim("Out", out_dims);
-    ctx->SetOutputDim("ResultSdd", {batch_size, num_heads, columns_dim});
-    ctx->SetOutputDim("ResultSoftmax", {batch_size, num_heads, columns_dim});
+    ctx->SetOutputDim("ResultSdd", {batch_size, num_heads, sparse_nnz});
+    ctx->SetOutputDim("ResultSoftmax", {batch_size, num_heads, sparse_nnz});
     ctx->ShareLoD("Q", "Out");
   }
 
@@ -105,13 +100,8 @@ class SparseAttentionOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const framework::Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const {
-    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
-    } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
-    }
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
   }
 };
 
@@ -120,37 +110,33 @@ class SparseAttentionOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
-  void InferShape(framework::InferShapeContext* context) const override {
-    OP_INOUT_CHECK(context->HasInput("Q"), "Input", "Q", "sparse_attention");
-    OP_INOUT_CHECK(context->HasInput("K"), "Input", "K", "sparse_attention");
-    OP_INOUT_CHECK(context->HasInput("V"), "Input", "V", "sparse_attention");
-    OP_INOUT_CHECK(context->HasInput("offset"), "Input", "offset",
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    OP_INOUT_CHECK(ctx->HasInput("Q"), "Input", "Q", "sparse_attention");
+    OP_INOUT_CHECK(ctx->HasInput("K"), "Input", "K", "sparse_attention");
+    OP_INOUT_CHECK(ctx->HasInput("V"), "Input", "V", "sparse_attention");
+    OP_INOUT_CHECK(ctx->HasInput("offset"), "Input", "offset",
                    "sparse_attention");
-    OP_INOUT_CHECK(context->HasInput("columns"), "Input", "columns",
+    OP_INOUT_CHECK(ctx->HasInput("columns"), "Input", "columns",
                    "sparse_attention");
-    OP_INOUT_CHECK(context->HasInput("ResultSdd"), "Input", "ResultSdd",
+    OP_INOUT_CHECK(ctx->HasInput("ResultSdd"), "Input", "ResultSdd",
                    "sparse_attention");
-    OP_INOUT_CHECK(context->HasInput("ResultSoftmax"), "Input", "ResultSoftmax",
+    OP_INOUT_CHECK(ctx->HasInput("ResultSoftmax"), "Input", "ResultSoftmax",
                    "sparse_attention");
-    OP_INOUT_CHECK(context->HasInput(framework::GradVarName("Out")), "Input",
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
                    "Out@GRAD", "sparse_attention");
-
-    auto x_dims = context->GetInputDim("Q");
-    auto y_dims = context->GetInputDim("K");
-    auto z_dims = context->GetInputDim("V");
 
     auto x_grad_name = framework::GradVarName("Q");
     auto y_grad_name = framework::GradVarName("K");
     auto z_grad_name = framework::GradVarName("V");
 
-    if (context->HasOutput(x_grad_name)) {
-      context->SetOutputDim(x_grad_name, x_dims);
+    if (ctx->HasOutput(x_grad_name)) {
+      ctx->SetOutputDim(x_grad_name, ctx->GetInputDim("Q"));
     }
-    if (context->HasOutput(y_grad_name)) {
-      context->SetOutputDim(y_grad_name, y_dims);
+    if (ctx->HasOutput(y_grad_name)) {
+      ctx->SetOutputDim(y_grad_name, ctx->GetInputDim("K"));
     }
-    if (context->HasOutput(z_grad_name)) {
-      context->SetOutputDim(z_grad_name, z_dims);
+    if (ctx->HasOutput(z_grad_name)) {
+      ctx->SetOutputDim(z_grad_name, ctx->GetInputDim("V"));
     }
   }
 

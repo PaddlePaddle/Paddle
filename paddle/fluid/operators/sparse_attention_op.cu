@@ -12,9 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <cusparse.h>
 #include <math.h>
-#include <iostream>
 #include <limits>
 #include <string>
 #include <vector>
@@ -232,6 +230,19 @@ void SparseSoftmaxBackward(const platform::CUDADeviceContext& ctx,
 }
 
 #if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
+int GetGpuType(std::string data_type) {
+  int gpu_type = -1;
+  if (data_type == "float") {
+    gpu_type = 0;
+  } else if (data_type == "double") {
+    gpu_type = 1;
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "Not support tensor type in sparse_attention OP: %s", data_type));
+  }
+  return gpu_type;
+}
+
 /*
 input: dense A (num_rows,num_cols), dense B (num_rows,num_cols)
 output: sparse C in CSR format (num_rows,num_rows)
@@ -248,24 +259,13 @@ void DotSdd(const platform::CUDADeviceContext& ctx, const Tensor* A,
   T* C_value_data = C_value->data<T>();
 
   std::string data_type = framework::DataTypeToString(C_value->type());
-  int gpu_type = -1;
-  if (data_type == "float") {
-    gpu_type = 0;
-  } else if (data_type == "double") {
-    gpu_type = 1;
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Not support tensor type in sparse_attention OP: %s", data_type));
-  }
+  int gpu_type = GetGpuType(data_type);
 
   cusparseHandle_t handle = NULL;
   cusparseDnMatDescr_t matA, matB;
   cusparseSpMatDescr_t matC;
-
-  void* dBuffer = NULL;
-  size_t bufferSize = 0;
-
   platform::dynload::cusparseCreate(&handle);
+
   // Create dense matrix A
   platform::dynload::cusparseCreateDnMat(
       &matA, num_rows, num_cols, num_cols, const_cast<T*>(A_data),
@@ -285,6 +285,8 @@ void DotSdd(const platform::CUDADeviceContext& ctx, const Tensor* A,
   T alpha = 1;
   T beta = 0;
 
+  void* dBuffer = NULL;
+  size_t bufferSize = 0;
   platform::dynload::cusparseSDDMM_bufferSize(
       handle, A_transpose ? CUSPARSE_OPERATION_TRANSPOSE
                           : CUSPARSE_OPERATION_NON_TRANSPOSE,
@@ -325,23 +327,11 @@ void DotDsd(const platform::CUDADeviceContext& ctx, const Tensor* A_offset,
   T* C_data = C->data<T>();
 
   std::string data_type = framework::DataTypeToString(C->type());
-  int gpu_type = -1;
-  if (data_type == "float") {
-    gpu_type = 0;
-  } else if (data_type == "double") {
-    gpu_type = 1;
-  } else {
-    PADDLE_THROW(platform::errors::InvalidArgument(
-        "Not support tensor type in sparse_attention OP: %s", data_type));
-  }
+  int gpu_type = GetGpuType(data_type);
 
   cusparseHandle_t handle = NULL;
   cusparseSpMatDescr_t matA;
   cusparseDnMatDescr_t matB, matC;
-
-  void* dBuffer = NULL;
-  size_t bufferSize = 0;
-
   platform::dynload::cusparseCreate(&handle);
 
   // Create sparse matrix A in CSR format
@@ -360,9 +350,12 @@ void DotDsd(const platform::CUDADeviceContext& ctx, const Tensor* A_offset,
   platform::dynload::cusparseCreateDnMat(
       &matC, num_rows, num_cols, num_cols, C_data,
       gpu_type == 0 ? CUDA_R_32F : CUDA_R_64F, CUSPARSE_ORDER_ROW);
+
   T alpha = 1;
   T beta = 0;
 
+  void* dBuffer = NULL;
+  size_t bufferSize = 0;
   // allocate an external buffer if needed
   platform::dynload::cusparseSpMM_bufferSize(
       handle, A_transpose ? CUSPARSE_OPERATION_TRANSPOSE
@@ -412,24 +405,22 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
     auto value = *ctx.Input<Tensor>("V");
     auto offset = *ctx.Input<Tensor>("offset");
     auto columns = *ctx.Input<Tensor>("columns");
-
-    auto query_dims = query.dims();
-    int batch_size = query_dims[0];
-    int num_heads = query_dims[1];
-    int M = query_dims[2];
-    int N = query_dims[3];
-
     auto outputPtr = ctx.Output<Tensor>("Out");
     outputPtr->mutable_data<T>(ctx.GetPlace());
     auto ResultSddPtr = ctx.Output<Tensor>("ResultSdd");
     ResultSddPtr->mutable_data<T>(ctx.GetPlace());
     auto ResultSoftmaxPtr = ctx.Output<Tensor>("ResultSoftmax");
     ResultSoftmaxPtr->mutable_data<T>(ctx.GetPlace());
-    const int iter_num = batch_size * num_heads;
 
     auto output = *outputPtr;
     auto result_sdd = *ResultSddPtr;
     auto result_softmax = *ResultSoftmaxPtr;
+
+    auto query_dims = query.dims();
+    int batch_size = query_dims[0];
+    int num_heads = query_dims[1];
+    int M = query_dims[2];
+    int N = query_dims[3];
 
     std::vector<Tensor> query_lists = GetSplitTensor(&query);
     std::vector<Tensor> key_lists = GetSplitTensor(&key);
@@ -441,18 +432,16 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
     std::vector<Tensor> output_lists = GetSplitTensor(&output);
 
     const auto& dev_ctx = ctx.cuda_device_context();
+    const int iter_num = batch_size * num_heads;
     for (int i = 0; i < iter_num; i++) {
-      // step1:sdd
       DotSdd<DeviceContext, T>(dev_ctx, &query_lists[i], &key_lists[i],
                                &offset_lists[i], &columns_lists[i],
                                &result_sdd_lists[i], M, N, false, true);
 
-      // step2:softmax
       SparseSoftmaxForward<DeviceContext, T>(
           dev_ctx, &offset_lists[i], &columns_lists[i], &result_sdd_lists[i],
           &result_softmax_lists[i], 1, M, N);
 
-      // step3:dsd
       DotDsd<DeviceContext, T>(dev_ctx, &offset_lists[i], &columns_lists[i],
                                &result_softmax_lists[i], &value_lists[i],
                                &output_lists[i], M, N, false, false);
@@ -481,12 +470,9 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
     auto* dQueryPtr = ctx.Output<Tensor>(framework::GradVarName("Q"));
     auto* dKeyPtr = ctx.Output<Tensor>(framework::GradVarName("K"));
     auto* dValuePtr = ctx.Output<Tensor>(framework::GradVarName("V"));
-
-    auto place = ctx.GetPlace();
-    dQueryPtr->mutable_data<T>(place);
-    dKeyPtr->mutable_data<T>(place);
-    dValuePtr->mutable_data<T>(place);
-
+    dQueryPtr->mutable_data<T>(ctx.GetPlace());
+    dKeyPtr->mutable_data<T>(ctx.GetPlace());
+    dValuePtr->mutable_data<T>(ctx.GetPlace());
     auto dQuery = *dQueryPtr;
     auto dKey = *dKeyPtr;
     auto dValue = *dValuePtr;
@@ -522,7 +508,6 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
       Tensor dResultSoftmax;
       dResultSoftmax.Resize({nnz_num});
       dResultSoftmax.mutable_data<T>(ctx.GetPlace());
-
       DotSdd<DeviceContext, T>(dev_ctx, &dout_lists[i], &value_lists[i],
                                &offset_lists[i], &columns_lists[i],
                                &dResultSoftmax, M, N, false, true);
