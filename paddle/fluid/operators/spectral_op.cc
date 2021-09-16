@@ -242,10 +242,9 @@ class FFTC2ROp : public framework::OperatorWithKernel {
     const auto axes = ctx->Attrs().Get<std::vector<int64_t>>("axes");
     const auto x_dim = ctx->GetInputDim("X");
     for (size_t i = 0; i < axes.size() - 1L; i++) {
-      const auto fft_n_point = (x_dim[axes[i]] - 1) * 2;
-      PADDLE_ENFORCE_GT(fft_n_point, 0,
+      PADDLE_ENFORCE_GT(x_dim[axes[i]], 0,
                         platform::errors::InvalidArgument(
-                            "Invalid fft n-point (%d).", fft_n_point));
+                            "Invalid fft n-point (%d).", x_dim[axes[i]]));
     }
 
     const int64_t last_dim_size = ctx->Attrs().Get<int64_t>("last_dim_size");
