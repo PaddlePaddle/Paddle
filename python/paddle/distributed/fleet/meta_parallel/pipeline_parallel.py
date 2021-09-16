@@ -159,12 +159,13 @@ class PipelineParallel(MetaParallelBase):
                                                     output_tensor_grad)
             p2p.send_backward(input_tensor_grad)
 
-        self._layers.allreduce_shared_weight_gradients()
-
         self.train_loss = self._broadcast_final_loss()
 
         # optimizer
-        self._optimizer_step()
+        with paddle.amp.auto_cast(enable=False):
+            self._layers.allreduce_shared_weight_gradients()
+            self._optimizer_step()
+
         return self.train_loss
 
     def eval_batch(self, data, compute_loss=False):

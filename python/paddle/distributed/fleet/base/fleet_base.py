@@ -35,6 +35,8 @@ from ..meta_parallel import TensorParallel, model_parallel_random_seed
 from ..meta_parallel import PipelineParallel, ShardingParallel
 from ..meta_optimizers import HybridParallelOptimizer
 from paddle import _C_ops
+from paddle.fluid import core
+from paddle.fluid.dygraph import to_variable
 
 __all__ = []
 
@@ -1547,23 +1549,48 @@ class Fleet(object):
             if getattr(optimizer, '_param_groups', None) and isinstance(
                     optimizer._param_groups[0], dict):
                 param_grads = []
+                param_grads_fp16 = []
+                param_grads_fp32 = []
                 for group in optimizer._param_groups:
                     for param in group['params']:
                         if param._grad_ivar() is not None:
                             param_grads.append(param._grad_ivar())
+                            if param._grad_ivar(
+                            ).dtype == core.VarDesc.VarType.FP16:
+                                param_grads_fp16.append(param._grad_ivar())
+                            else:
+                                param_grads_fp32.append(param._grad_ivar())
             else:
                 param_grads = [
                     param._grad_ivar() for param in optimizer._parameter_list
                     if param._grad_ivar() is not None
                 ]
-            _C_ops.check_finite_and_unscale(param_grads, self._scale,
-                                            param_grads, self._found_inf)
-
-            self._found_inf = paddle.cast(self._found_inf, dtype="int32")
+                param_grads_fp16 = [
+                    param._grad_ivar() for param in optimizer._parameter_list
+                    if (param._grad_ivar() is not None) and (param._grad_ivar(
+                    ).dtype == core.VarDesc.VarType.FP16)
+                ]
+                param_grads_fp32 = [
+                    param._grad_ivar() for param in optimizer._parameter_list
+                    if (param._grad_ivar() is not None) and (param._grad_ivar(
+                    ).dtype == core.VarDesc.VarType.FP32)
+                ]
+            temp_found_inf_fp16 = to_variable(np.array([0]).astype(np.bool))
+            temp_found_inf_fp32 = to_variable(np.array([0]).astype(np.bool))
+            if len(param_grads_fp16):
+                _C_ops.check_finite_and_unscale(param_grads_fp16, self._scale,
+                                                param_grads_fp16,
+                                                temp_found_inf_fp16)
+            if len(param_grads_fp32):
+                _C_ops.check_finite_and_unscale(param_grads_fp32, self._scale,
+                                                param_grads_fp32,
+                                                temp_found_inf_fp32)
+            self._found_inf = temp_found_inf_fp16 or temp_found_inf_fp32
 
             # TODO(shenliang03) Since dp allreduce in the optimizer is 
             # after the gradscaler, check_finite needs to synchronize global 
             # information. In the future, we should use check_group to speed.
+            self._found_inf = paddle.cast(self._found_inf, dtype="int32")
             paddle.distributed.all_reduce(
                 self._found_inf, op=paddle.distributed.ReduceOp.MAX, group=None)
             self._found_inf = paddle.cast(self._found_inf, dtype="bool")
