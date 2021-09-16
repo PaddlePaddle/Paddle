@@ -97,6 +97,8 @@ class CheckFiniteAndUnscaleGpuKernel : public framework::OpKernel<T> {
         scale_data, inverse_scale_v, found_inf_data);
 
     size_t xs_size = xs.size();
+    if (xs_size == 0) return;
+
     const auto& cpu_place = platform::CPUPlace();
     // calculate each tensor's start index and copy to device
     auto h_starts_tensor =

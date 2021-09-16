@@ -203,6 +203,12 @@ struct PD_INFER_DECL AnalysisConfig {
                  const std::string& precision = "int16",
                  bool adaptive_seqlen = false);
   ///
+  /// \brief Set XPU device id.
+  ///
+  /// \param device_id the XPU card to use (default is 0).
+  ///
+  void SetXpuDeviceId(int device_id = 0);
+  ///
   /// \brief Turn on NPU.
   ///
   /// \param device_id device_id the NPU card to use (default is 0).
