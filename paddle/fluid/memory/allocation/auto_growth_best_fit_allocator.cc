@@ -17,18 +17,21 @@
 #include <algorithm>
 #include <mutex>  // NOLINT
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
+#include "paddle/fluid/platform/flags.h"
 
-DEFINE_bool(free_idle_chunk, false,
-            "Whether to free idle chunk when each allocation is freed. "
-            "If false, all freed allocation would be cached to speed up next "
-            "allocation request. If true, no allocation would be cached. This "
-            "flag only works when FLAGS_allocator_strategy=auto_growth.");
+PADDLE_DEFINE_READONLY_EXPORTED_bool(
+    free_idle_chunk, false,
+    "Whether to free idle chunk when each allocation is freed. "
+    "If false, all freed allocation would be cached to speed up next "
+    "allocation request. If true, no allocation would be cached. This "
+    "flag only works when FLAGS_allocator_strategy=auto_growth.");
 
-DEFINE_bool(free_when_no_cache_hit, false,
-            "Whether to free idle chunks when no cache hit. If true, idle "
-            "chunk would be freed when no cache hit; if false, idle "
-            "chunk would be freed when out of memory occurs. This flag "
-            "only works when FLAGS_allocator_strategy=auto_growth.");
+PADDLE_DEFINE_READONLY_EXPORTED_bool(
+    free_when_no_cache_hit, false,
+    "Whether to free idle chunks when no cache hit. If true, idle "
+    "chunk would be freed when no cache hit; if false, idle "
+    "chunk would be freed when out of memory occurs. This flag "
+    "only works when FLAGS_allocator_strategy=auto_growth.");
 
 namespace paddle {
 namespace memory {
