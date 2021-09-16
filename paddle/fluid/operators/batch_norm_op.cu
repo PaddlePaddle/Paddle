@@ -140,6 +140,8 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    LOG(WARNING) << "BatchNormKernel";
+
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
@@ -585,6 +587,17 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
                       ctx.GetPlace())));
 #endif
         }
+
+        LOG(WARNING) << "Output Tensor | y: ";
+        PrintTensor<float>(*y, ctx);
+        LOG(WARNING) << "Output Tensor | mean_out: ";
+        PrintTensor<float>(*mean_out, ctx);
+        LOG(WARNING) << "Output Tensor | variance_out: ";
+        PrintTensor<float>(*variance_out, ctx);
+        LOG(WARNING) << "Output Tensor | saved_mean: ";
+        PrintTensor<float>(*saved_mean, ctx);
+        LOG(WARNING) << "Output Tensor | saved_variance: ";
+        PrintTensor<float>(*saved_variance, ctx);
       }
     }
 

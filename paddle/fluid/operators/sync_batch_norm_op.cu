@@ -67,6 +67,17 @@ class SyncBatchNormKernel<platform::CUDADeviceContext, T>
         ctx, layout, x, y, est_mean, est_var, mean_out, variance_out,
         saved_mean, saved_inv_variance, epsilon, momentum, test_mode,
         use_global_stats);
+
+    LOG(WARNING) << "Output Tensor | y: ";
+    PrintTensor<float>(*y, ctx);
+    LOG(WARNING) << "Output Tensor | mean_out: ";
+    PrintTensor<float>(*mean_out, ctx);
+    LOG(WARNING) << "Output Tensor | variance_out: ";
+    PrintTensor<float>(*variance_out, ctx);
+    LOG(WARNING) << "Output Tensor | saved_mean: ";
+    PrintTensor<float>(*saved_mean, ctx);
+    LOG(WARNING) << "Output Tensor | saved_variance: ";
+    PrintTensor<float>(*saved_inv_variance, ctx);
   }
 };
 

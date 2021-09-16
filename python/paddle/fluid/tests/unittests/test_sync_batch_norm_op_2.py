@@ -72,6 +72,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         startup = fluid.Program()
         main.random_seed = seed
         startup.random_seed = seed
+        paddle.seed(seed)
         use_cudnn = self.dtype == np.float16
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
@@ -115,6 +116,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         os.environ['FLAGS_cudnn_deterministic'] = "1"
         scope = core.Scope()
         data = np.random.random(size=self.dshape).astype(self.dtype) * 4. - 2
+        print('data: ', str(data))
         data = create_or_get_tensor(scope, "input",
                                     OpTest.np_dtype_to_fluid_dtype(data), place)
 
