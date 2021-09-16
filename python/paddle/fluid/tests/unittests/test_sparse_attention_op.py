@@ -99,12 +99,12 @@ def ref_batch_sparse_attention(q, k, v, offset, columns):
     result_softmax = np.zeros((batch_size, num_heads, nnz))
     for i in range(batch_size):
         for j in range(num_heads):
-            cur_q, cur_k, cur_v, cur_offset, cur_columns = q[i][j], k[i][j], v[
-                i][j], offset[i][j], columns[i][j]
+            cur_q, cur_k, cur_v, = q[i][j], k[i][j], v[i][j]
+            cur_offset, cur_columns = offset[i][j], columns[i][j]
             cur_result, cur_sdd, cur_softmax = ref_sparse_attention(
                 cur_q, cur_k, cur_v, cur_offset, cur_columns)
-            result[i][j], result_sdd[i][j], result_softmax[i][
-                j] = cur_result, cur_sdd, cur_softmax
+            result[i][j] = cur_result
+            result_sdd[i][j], result_softmax[i][j] = cur_sdd, cur_softmax
     return result, result_sdd, result_softmax
 
 
