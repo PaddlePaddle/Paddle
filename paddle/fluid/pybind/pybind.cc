@@ -1999,6 +1999,26 @@ All parameter, weight, gradient are variables in Paddle.
              }
              return py::cast(std::move(ret));
            })
+      .def("run",
+           [](StandaloneExecutor &self,
+              const std::unordered_map<std::string, framework::Tensor>
+                  &input_dict,
+              std::vector<std::string> fetch_names) {
+             std::vector<framework::Tensor> feed_tensors;
+             std::vector<std::string> feed_names;
+
+             for (auto &item : input_dict) {
+               feed_names.push_back(item.first);
+               feed_tensors.push_back(item.second);
+             }
+
+             paddle::framework::FetchList ret;
+             {
+               pybind11::gil_scoped_release release;
+               ret = self.Run(feed_names, feed_tensors, fetch_names);
+             }
+             return py::cast(std::move(ret));
+           })
       .def("dry_run",
            [](StandaloneExecutor &self,
               const std::unordered_map<std::string, py::array> &input_dict) {
@@ -2254,6 +2274,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
+  m.def("cuda_empty_cache", platform::EmptyCache);
 
 #if !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   m.def("nvprof_init", platform::CudaProfilerInit);

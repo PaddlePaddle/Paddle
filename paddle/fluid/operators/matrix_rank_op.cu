@@ -129,17 +129,10 @@ class MatrixRankGPUKernel : public framework::OpKernel<T> {
     compare_result.mutable_data<int64_t>(detail::NewAxisDim(dim_out, k),
                                          context.GetPlace());
     int axis = -1;
-    if (eigenvalue_tensor.dims().size() >= tol_tensor.dims().size()) {
-      ElementwiseComputeEx<GreaterThanFunctor<T>, platform::CUDADeviceContext,
-                           T, int64_t>(context, &eigenvalue_tensor, &tol_tensor,
-                                       axis, GreaterThanFunctor<T>(),
-                                       &compare_result);
-    } else {
-      ElementwiseComputeEx<LessThanFunctor<T>, platform::CUDADeviceContext, T,
-                           int64_t>(context, &eigenvalue_tensor, &tol_tensor,
-                                    axis, LessThanFunctor<T>(),
-                                    &compare_result);
-    }
+    ElementwiseComputeEx<GreaterThanFunctor<T>, platform::CUDADeviceContext, T,
+                         int64_t>(context, &eigenvalue_tensor, &tol_tensor,
+                                  axis, GreaterThanFunctor<T>(),
+                                  &compare_result);
     auto dito_int =
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
                                                  int64_t>(context);

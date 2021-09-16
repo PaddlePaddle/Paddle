@@ -45,6 +45,7 @@ from .linalg import bmm  # noqa: F401
 from .linalg import histogram  # noqa: F401
 from .linalg import mv  # noqa: F401
 from .linalg import matrix_power  # noqa: F401
+from .linalg import multi_dot  # noqa: F401
 from .linalg import svd  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
@@ -190,6 +191,7 @@ from .random import randperm  # noqa: F401
 from .search import argmax  # noqa: F401
 from .search import argmin  # noqa: F401
 from .search import argsort  # noqa: F401
+from .search import searchsorted  # noqa: F401
 from .search import topk  # noqa: F401
 from .search import where  # noqa: F401
 from .search import index_select  # noqa: F401
@@ -227,7 +229,6 @@ tensor_method_func  = [ #noqa
            'histogram',
            'mv',
            'matrix_power',
-           'svd',
            'abs',
            'acos',
            'all',

@@ -29,12 +29,81 @@ from ..fluid.layers import unstack  # noqa: F401
 
 from ..fluid.layers import scatter_nd  # noqa: F401
 from ..fluid.layers import shard_index  # noqa: F401
+from ..fluid.layers.nn import _elementwise_op_in_dygraph
 from ..fluid import layers
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
 from paddle import _C_ops
 
 __all__ = []
+
+
+@dygraph_only
+def fill_(x, value):
+    """
+    **Notes**:
+        **This API is ONLY available in Dygraph mode**
+
+    This function fill the Tensor with value inplace.
+
+    Args:
+        x(Tensor): ``x`` is the Tensor we want to filled data inplace
+        value(Scale): ``value`` is the value to be filled in x
+
+    Returns:
+        x(Tensor): Tensor x filled with value inplace
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            tensor = paddle.to_tensor([0, 1, 2, 3, 4])
+
+            tensor.fill_(0)
+            print(tensor.tolist())   #[0, 0, 0, 0, 0]
+
+    """
+    if not isinstance(value, (float, int)):
+        raise TypeError(
+            "The type of 'value'  must be int or float, but received %s." %
+            (type(value)))
+    return core.ops.fill_any_(x, "value_float",
+                              float(value), "value_int", int(value))
+
+
+setattr(core.VarBase, 'fill_', fill_)
+
+
+@dygraph_only
+def zero_(x):
+    """
+    **Notes**:
+        **This API is ONLY available in Dygraph mode**
+
+    This function fill the Tensor with zero inplace.
+
+    Args:
+        x(Tensor): ``x`` is the Tensor we want to filled with zero inplace
+
+    Returns:
+        x(Tensor): Tensor x filled with zero inplace
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            tensor = paddle.to_tensor([0, 1, 2, 3, 4])
+
+            tensor.zero_()
+            print(tensor.tolist())   #[0, 0, 0, 0, 0]
+
+    """
+    return core.ops.fill_any_(x, "value_float", 0., "value_int", int(0))
+
+
+setattr(core.VarBase, 'zero_', zero_)
 
 
 @dygraph_only

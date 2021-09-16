@@ -638,7 +638,7 @@ TETRAD_PARALLEL_JOB_NEW = [
     'test_pool3d_op', 'test_static_save_load', 'test_trilinear_interp_v2_op',
     'test_trilinear_interp_op', 'test_trt_gather_nd_op', 'test_trt_gather_op',
     'test_trt_flatten_op', 'test_trt_instance_norm_op', 'test_trt_yolo_box_op',
-    'test_trt_reshape_op', 'test_trt_reduce_mean_op', 'test_trt_pool_op',
+    'test_trt_reshape_op', 'test_trt_reduce_mean_op',
     'test_trt_dynamic_shape_ernie_ser_deser', 'test_trt_elementwise_op',
     'test_trt_affine_channel_op', 'test_trt_conv_pass',
     'test_softmax_with_cross_entropy_op', 'test_trt_matmul',

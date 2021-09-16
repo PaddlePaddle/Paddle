@@ -977,8 +977,8 @@ class ActivationMKLDNNHandler
                                                                     cpu_place) {
     float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
     float beta = ctx.HasAttr("beta") ? ctx.Attr<float>("beta") : 0;
-    // eltwise_linear means we are in scale op
-    if (algorithm == mkldnn::algorithm::eltwise_linear) {
+
+    if (ctx.Type() == "scale") {
       bool bias_after_scale = ctx.Attr<bool>("bias_after_scale");
       auto* scale_tensor = ctx.Input<Tensor>("ScaleTensor");
       alpha = (scale_tensor == nullptr) ? ctx.Attr<float>("scale")
@@ -988,7 +988,14 @@ class ActivationMKLDNNHandler
       //   out = scale*X + bias
       // else
       //   out = scale*(X + bias) = scale*X + scale*bias
-      if (!bias_after_scale) beta *= alpha;
+      if (!bias_after_scale) {
+        beta *= alpha;
+      }
+    } else if (ctx.Type() == "clip") {
+      alpha = ctx.HasInput("Min") ? ctx.Input<Tensor>("Min")->data<float>()[0]
+                                  : ctx.Attr<float>("min");
+      beta = ctx.HasInput("Max") ? ctx.Input<Tensor>("Max")->data<float>()[0]
+                                 : ctx.Attr<float>("max");
     } else {
       // paddle uses beta but mkldnn uses alpha for swish
       if (algorithm == mkldnn::algorithm::eltwise_swish) {
@@ -1028,6 +1035,13 @@ class ActivationMKLDNNHandler
       std::swap(alpha, beta);
     } else if (algorithm == dnnl::algorithm::eltwise_bounded_relu) {
       alpha = ctx.Attr<float>("threshold");
+    }
+
+    if (ctx.Type() == "clip_grad") {
+      alpha = ctx.HasInput("Min") ? ctx.Input<Tensor>("Min")->data<float>()[0]
+                                  : ctx.Attr<float>("min");
+      beta = ctx.HasInput("Max") ? ctx.Input<Tensor>("Max")->data<float>()[0]
+                                 : ctx.Attr<float>("max");
     }
 
     auto diff_dst_tz = framework::vectorize<int64_t>(out_grad->dims());
