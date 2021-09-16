@@ -15,8 +15,8 @@
 import paddle
 from paddle.fluid import core
 from paddle.fluid import framework
-from paddle.device import is_compiled_with_cuda
 from paddle.fluid.wrapped_decorator import signature_safe_contextmanager
+from paddle.device import is_compiled_with_cuda
 
 from .streams import Stream  # noqa: F401
 from .streams import Event  # noqa: F401
@@ -28,8 +28,8 @@ __all__ = [
     'synchronize',
     'device_count',
     'empty_cache',
-    'get_device_properties',
     'stream_guard',
+    'get_device_properties',
 ]
 
 
@@ -125,6 +125,7 @@ def device_count():
 
     return num_gpus
 
+
 def empty_cache():
     '''
     Releases idle cached memory held by the allocator so that those can be used in other GPU
@@ -148,47 +149,6 @@ def empty_cache():
         core.cuda_empty_cache()
 
 
-def get_device_properties(device):
-    '''
-    Return the properties of given CUDA device.
-
-    Args:
-        device(paddle.CUDAPlace() or int): The device or the ID of the device which want to get the properties of the device from. 
-
-    Returns:
-        _CudaDeviceProperties: the properties of the device which include ASCII string identifying device, major compute capability, minor compute capability, 
-                               global memory available on device in bytes and the number of multiprocessors on the device.
-
-    Examples:
-    
-        .. code-block:: python
-
-            # required: gpu
-
-            import paddle
-            paddle.set_device("gpu")
-            paddle.device.cuda.get_device_properties(0)
-            paddle.device.cuda.get_device_properties(paddle.CUDAPlace(0))
-
-    '''
-
-    place = framework._current_expected_place()
-    if not isinstance(place, core.CUDAPlace) or not is_compiled_with_cuda():  
-        raise ValueError("Current device: {} is not expected. Because get_device_properties only support cuda device." 
-                         "Please change device and input device again!".format(place))
-
-    device_id = -1
-    
-    if device is not None:
-        if isinstance(device, int):
-            device_id = device
-        elif isinstance(device, core.CUDAPlace):
-            device_id = device.get_device_id()
-        else:
-            raise ValueError("Input device type: {} is illegal. Because get_device_properties only support device type." 
-                             "must be int or paddle.CUDAPlace. Please input appropriate device again!".format(device))
-
-    return core.get_device_properties(device_id)
 def _set_current_stream(stream):
     '''
     Set the current stream.
@@ -247,3 +207,46 @@ def stream_guard(stream):
             yield
         finally:
             stream = _set_current_stream(pre_stream)
+
+
+def get_device_properties(device):
+    '''
+    Return the properties of given CUDA device.
+
+    Args:
+        device(paddle.CUDAPlace() or int): The device or the ID of the device which want to get the properties of the device from. 
+
+    Returns:
+        _CudaDeviceProperties: the properties of the device which include ASCII string identifying device, major compute capability, minor compute capability, 
+                               global memory available on device in bytes and the number of multiprocessors on the device.
+
+    Examples:
+    
+        .. code-block:: python
+
+            # required: gpu
+
+            import paddle
+            paddle.set_device("gpu")
+            paddle.device.cuda.get_device_properties(0)
+            paddle.device.cuda.get_device_properties(paddle.CUDAPlace(0))
+
+    '''
+
+    place = framework._current_expected_place()
+    if not isinstance(place, core.CUDAPlace) or not is_compiled_with_cuda():  
+        raise ValueError("Current device: {} is not expected. Because get_device_properties only support cuda device." 
+                         "Please change device and input device again!".format(place))
+
+    device_id = -1
+    
+    if device is not None:
+        if isinstance(device, int):
+            device_id = device
+        elif isinstance(device, core.CUDAPlace):
+            device_id = device.get_device_id()
+        else:
+            raise ValueError("Input device type: {} is illegal. Because get_device_properties only support device type." 
+                             "must be int or paddle.CUDAPlace. Please input appropriate device again!".format(device))
+
+    return core.get_device_properties(device_id)

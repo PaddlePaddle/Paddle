@@ -1882,8 +1882,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("outputs",
            [](const OperatorBase &op)
                -> std::map<std::string, std::vector<std::string>> {
-             return op.Outputs();
-           })
+                 return op.Outputs();
+               })
       .def("output_vars",
            [](const OperatorBase &op) { return op.OutputVars(true); })
       .def("inputs", [](const OperatorBase &op) { return op.Inputs(); })
