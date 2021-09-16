@@ -187,13 +187,9 @@ class ActivationKernel
     if (use_32bit_index && is_gpu_place) {
       functor(*place, To32BitIndex(x), To32BitIndex(out));
     } else if (is_cpu_place) {
-#ifdef PADDLE_WITH_MKLML
       auto* dev = context.template device_context<platform::CPUDeviceContext>()
                       .pool_device();
       functor(*dev, x, out);
-#else
-      functor(*place, x, out);
-#endif
     } else {
       functor(*place, x, out);
     }
@@ -236,14 +232,9 @@ class ActivationGradKernel
       functor(*place, To32BitIndex(x), To32BitIndex(out), To32BitIndex(dout),
               To32BitIndex(dx));
     } else if (is_cpu_place) {
-#ifdef PADDLE_WITH_MKLML
       auto* dev = context.template device_context<platform::CPUDeviceContext>()
                       .pool_device();
       functor(*dev, x, out, dout, dx);
-#else
-      functor(*place, x, out, dout, dx);
-#endif
-
     } else {
       functor(*place, x, out, dout, dx);
     }

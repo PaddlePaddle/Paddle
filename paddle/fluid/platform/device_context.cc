@@ -19,6 +19,9 @@ limitations under the License. */
 #include <time.h>
 #include "glog/logging.h"
 #include "paddle/fluid/platform/profiler.h"
+#ifdef PADDLE_WITH_MKLML
+#include <omp.h>
+#endif
 
 namespace paddle {
 namespace memory {
@@ -184,20 +187,22 @@ DeviceContextPool::DeviceContextPool(
 
 CPUDeviceContext::CPUDeviceContext() {
   eigen_device_.reset(new Eigen::DefaultDevice());
+  int64_t omp_num_threads = 1;
 #ifdef PADDLE_WITH_MKLML
-  int64_t omp_num_threads = omp_in_parallel() ? 1 : omp_get_max_threads();
+  omp_num_threads = omp_get_max_threads();
+#endif
   pool_.reset(new Eigen::ThreadPool(omp_num_threads));
   pool_device_.reset(new Eigen::ThreadPoolDevice(pool_.get(), omp_num_threads));
-#endif
 }
 
 CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
   eigen_device_.reset(new Eigen::DefaultDevice());
+  int64_t omp_num_threads = 1;
 #ifdef PADDLE_WITH_MKLML
-  int64_t omp_num_threads = omp_in_parallel() ? 1 : omp_get_max_threads();
+  omp_num_threads = omp_get_max_threads();
+#endif
   pool_.reset(new Eigen::ThreadPool(omp_num_threads));
   pool_device_.reset(new Eigen::ThreadPoolDevice(pool_.get(), omp_num_threads));
-#endif
 }
 
 Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
