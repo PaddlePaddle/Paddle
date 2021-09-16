@@ -389,7 +389,7 @@ static size_t GpuAllocSize(bool realloc) {
   size_t flag_mb = realloc ? FLAGS_reallocate_gpu_memory_in_mb
                            : FLAGS_initial_gpu_memory_in_mb;
   size_t alloc_bytes =
-       (flag_mb > 0ul ? flag_mb << 20 : available_to_alloc *
+      (flag_mb > 0ul ? flag_mb << 20 : available_to_alloc *
                                            FLAGS_fraction_of_gpu_memory_to_use);
   PADDLE_ENFORCE_GE(
       available_to_alloc, alloc_bytes,
