@@ -223,6 +223,7 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
       platform::SetNPUDeviceId(dev_id);
 #endif
     }
+      
     uint64_t duration;
     {
       // TODO(wangchaochaohu) : refine code to use only one RecordEvent)
