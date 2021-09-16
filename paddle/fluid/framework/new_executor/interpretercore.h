@@ -53,6 +53,8 @@ class InterpreterCore {
                                    const VariableScope& var_scope,
                                    const platform::Place& place);
 
+  void BuildInplace();
+
   void RunInstruction(const Instruction& instr_node);
 
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr,
@@ -67,6 +69,8 @@ class InterpreterCore {
                std::vector<VariableMetaInfo>& working_var_ref);  // NOLINT
 
   void AddFetch(const std::vector<std::string>& fetch_names);
+
+  void BuildSkipShareLoDInfo();
 
   bool is_build_;
 

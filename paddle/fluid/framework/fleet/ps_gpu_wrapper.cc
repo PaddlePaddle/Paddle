@@ -235,13 +235,15 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
 
   timeline.Start();
   std::vector<std::vector<std::pair<uint64_t, char*>>> pass_values;
-  uint16_t pass_id = 0;
 
   bool record_status = false;
+#ifdef PADDLE_WITH_PSLIB
+  uint16_t pass_id = 0;
   if (multi_node_) {
     record_status = fleet_ptr->pslib_ptr_->_worker_ptr->take_sparse_record(
         table_id_, pass_id, pass_values);
   }
+#endif
   auto build_func = [device_num, record_status, &pass_values, &local_keys,
                      &local_ptr, &device_keys, &device_vals,
                      &device_mutex](int i) {
@@ -260,6 +262,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
       task_keys[shard].push_back(local_keys[i][j]);
       task_ptrs[shard].push_back(local_ptr[i][j]);
     }
+#ifdef PADDLE_WITH_PSLIB
     if (record_status) {
       size_t local_keys_size = local_keys.size();
       size_t pass_values_size = pass_values.size();
@@ -275,6 +278,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
         }
       }
     }
+#endif
     for (int dev = 0; dev < device_num; dev++) {
       device_mutex[dev]->lock();
 
