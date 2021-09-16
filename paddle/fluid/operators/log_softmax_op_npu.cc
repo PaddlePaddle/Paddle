@@ -14,9 +14,13 @@
 
 #include "paddle/fluid/operators/log_softmax_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
+
 namespace paddle {
 namespace operators {
-template <typename DeviceContext, typename T>
+
+using NPUDeviceContext = platform::NPUDeviceContext;
+
+template <typename T>
 class LogSoftmaxNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -24,22 +28,47 @@ class LogSoftmaxNPUKernel : public framework::OpKernel<T> {
     auto* Out = ctx.Output<framework::Tensor>("Out");
     const int rank = X->dims().size();
     const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
-    std::vector<int> axes;
-    axes.push_back(axis);
-    framework::NPUAttributeMap attr_input = {{"axes", axes}};
     Out->mutable_data<T>(ctx.GetPlace());
-    const auto& runner = NpuOpRunner("LogSoftmaxV2", {*X}, {*Out}, attr_input);
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
+
+    if (X->numel() != 0) {
+      auto stream = ctx.template device_context<NPUDeviceContext>().stream();
+      const auto& runner = NpuOpRunner("LogSoftmaxV2", {*X}, {*Out},
+                                       {{"axes", std::vector<int>{axis}}});
+      runner.Run(stream);
+    }
   }
 };
+
+template <typename T>
+class LogSoftmaxGradNPUKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* Out = ctx.Input<framework::Tensor>("Out");
+    auto* dOut = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
+    auto* dX = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
+    const int rank = dOut->dims().size();
+    const int axis = CanonicalAxis(ctx.Attr<int>("axis"), rank);
+
+    // allocate memory on device.
+    dX->mutable_data<T>(ctx.GetPlace());
+
+    if (dOut->numel() != 0) {
+      auto stream = ctx.template device_context<NPUDeviceContext>().stream();
+      const auto& runner = NpuOpRunner("LogSoftmaxGrad", {*dOut, *Out}, {*dX},
+                                       {{"axis", std::vector<int>{axis}}});
+      runner.Run(stream);
+    }
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
+
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_NPU_KERNEL(
-    log_softmax,
-    ops::LogSoftmaxNPUKernel<paddle::platform::NPUDeviceContext, float>);
+REGISTER_OP_NPU_KERNEL(log_softmax, ops::LogSoftmaxNPUKernel<float>,
+                       ops::LogSoftmaxNPUKernel<plat::float16>);
+
+REGISTER_OP_NPU_KERNEL(log_softmax_grad, ops::LogSoftmaxGradNPUKernel<float>,
+                       ops::LogSoftmaxGradNPUKernel<plat::float16>);

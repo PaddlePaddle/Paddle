@@ -123,7 +123,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
   }
   timeline.Pause();
 
-  VLOG(1) << "GpuPs task unique11111 cost " << timeline.ElapsedSec()
+  VLOG(1) << "GpuPs task add keys cost " << timeline.ElapsedSec()
           << " seconds.";
   timeline.Start();
   gpu_task->UniqueKeys();
@@ -138,19 +138,74 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
   timeline.Start();
   auto ptl_func = [this, &local_keys, &local_ptr, &fleet_ptr](int i) {
     size_t key_size = local_keys[i].size();
+    int32_t status = -1;
 #ifdef PADDLE_WITH_PSLIB
-    auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
-        reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
-        local_keys[i].data(), key_size);
+    // auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
+    //    reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
+    //    local_keys[i].data(), key_size);
+    int32_t cnt = 0;
+    while (true) {
+      auto tt = fleet_ptr->pslib_ptr_->_worker_ptr->pull_sparse_ptr(
+          reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
+          local_keys[i].data(), key_size);
+      bool flag = true;
+
+      tt.wait();
+
+      try {
+        status = tt.get();
+      } catch (const std::future_error& e) {
+        VLOG(0) << "Caught a future_error with code" << e.code()
+                << ", Message:" << e.what();
+      }
+      if (status != 0) {
+        VLOG(0) << "fleet pull sparse failed, status[" << status << "]";
+        sleep(sleep_seconds_before_fail_exit_);
+        flag = false;
+        cnt++;
+      }
+      if (cnt > 3) {
+        VLOG(0) << "fleet pull sparse failed, retry 3 times";
+        exit(-1);
+      }
+
+      if (flag) {
+        break;
+      }
+    }
 #endif
 #ifdef PADDLE_WITH_PSCORE
-    auto tt = fleet_ptr->_worker_ptr->pull_sparse_ptr(
-        reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
-        local_keys[i].data(), key_size);
+    int32_t cnt = 0;
+    while (true) {
+      auto tt = fleet_ptr->_worker_ptr->pull_sparse_ptr(
+          reinterpret_cast<char**>(local_ptr[i].data()), this->table_id_,
+          local_keys[i].data(), key_size);
+      bool flag = true;
+
+      tt.wait();
+
+      try {
+        status = tt.get();
+      } catch (const std::future_error& e) {
+        VLOG(0) << "Caught a future_error with code" << e.code()
+                << ", Message:" << e.what();
+      }
+      if (status != 0) {
+        VLOG(0) << "fleet pull sparse failed, status[" << status << "]";
+        sleep(sleep_seconds_before_fail_exit_);
+        flag = false;
+        cnt++;
+      }
+      if (cnt > 3) {
+        VLOG(0) << "fleet pull sparse failed, retry 3 times";
+        exit(-1);
+      }
+
+      if (flag) {
+        break;
+      }
+    }
 #endif
-    tt.wait();
-    auto status = tt.get();
-    // auto status = 0;
     if (status != 0) {
       LOG(ERROR) << "fleet pull sparse failed, status[" << status << "]";
       sleep(300);
@@ -169,10 +224,29 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
   timeline.Pause();
   VLOG(1) << "pull sparse from CpuPS into GpuPS cost " << timeline.ElapsedSec()
           << " seconds.";
+  if (multi_node_) {
+    auto gloo_wrapper = paddle::framework::GlooWrapper::GetInstance();
+    if (!gloo_wrapper->IsInitialized()) {
+      VLOG(0) << "GLOO is not inited";
+      gloo_wrapper->Init();
+    }
+    gloo_wrapper->Barrier();
+  }
 
   timeline.Start();
-  auto build_func = [device_num, &local_keys, &local_ptr, &device_keys,
-                     &device_vals, &device_mutex](int i) {
+  std::vector<std::vector<std::pair<uint64_t, char*>>> pass_values;
+
+  bool record_status = false;
+#ifdef PADDLE_WITH_PSLIB
+  uint16_t pass_id = 0;
+  if (multi_node_) {
+    record_status = fleet_ptr->pslib_ptr_->_worker_ptr->take_sparse_record(
+        table_id_, pass_id, pass_values);
+  }
+#endif
+  auto build_func = [device_num, record_status, &pass_values, &local_keys,
+                     &local_ptr, &device_keys, &device_vals,
+                     &device_mutex](int i) {
     std::vector<std::vector<FeatureKey>> task_keys(device_num);
 #ifdef PADDLE_WITH_PSLIB
     std::vector<std::vector<paddle::ps::DownpourFixedFeatureValue*>> task_ptrs(
@@ -188,7 +262,23 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
       task_keys[shard].push_back(local_keys[i][j]);
       task_ptrs[shard].push_back(local_ptr[i][j]);
     }
-
+#ifdef PADDLE_WITH_PSLIB
+    if (record_status) {
+      size_t local_keys_size = local_keys.size();
+      size_t pass_values_size = pass_values.size();
+      for (size_t j = 0; j < pass_values_size; j += local_keys_size) {
+        auto& shard_values = pass_values[j];
+        for (size_t pair_idx = 0; pair_idx < pass_values[j].size();
+             pair_idx++) {
+          auto& cur_pair = shard_values[pair_idx];
+          int shard = cur_pair.first % device_num;
+          task_keys[shard].push_back(cur_pair.first);
+          task_ptrs[shard].push_back(
+              (paddle::ps::DownpourFixedFeatureValue*)cur_pair.second);
+        }
+      }
+    }
+#endif
     for (int dev = 0; dev < device_num; dev++) {
       device_mutex[dev]->lock();
 

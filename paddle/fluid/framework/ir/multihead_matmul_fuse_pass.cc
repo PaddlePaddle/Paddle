@@ -903,8 +903,6 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
             float, softmax_qk_op_desc->GetAttr("out_threshold"));
         multihead_op_desc.SetAttr("dp_probs", qkv_plugin_scale);
       }
-    } else {
-      multihead_op_desc.SetAttr("qkv2context_plugin_int8", false);
     }
 
     auto* multihead = graph->CreateOpNode(&multihead_op_desc);

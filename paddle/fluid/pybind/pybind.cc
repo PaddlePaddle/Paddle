@@ -1241,6 +1241,17 @@ All parameter, weight, gradient are variables in Paddle.
              return self.GetMutable<framework::ReaderHolder>();
            },
            py::return_value_policy::reference)
+      .def("get_scope",
+           [](Variable &self) -> Scope * {
+             auto scope_vec =
+                 self.GetMutable<std::vector<framework::Scope *>>();
+             PADDLE_ENFORCE_GT(
+                 scope_vec->size(), 0,
+                 platform::errors::InvalidArgument(
+                     "The size of scope_vec should be greater than 0"));
+             return scope_vec->front();
+           },
+           py::return_value_policy::reference)
       .def("set_scope", [](Variable &self, Scope &scope) {
         auto scope_vec = self.GetMutable<std::vector<framework::Scope *>>();
         scope_vec->emplace_back(&scope);
@@ -1849,19 +1860,32 @@ All parameter, weight, gradient are variables in Paddle.
                   })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::CPUPlace &place) { self.Run(scope, place); })
+              const platform::CPUPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::XPUPlace &place) { self.Run(scope, place); })
+              const platform::XPUPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::NPUPlace &place) { self.Run(scope, place); })
+              const platform::NPUPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
-              const platform::CUDAPlace &place) { self.Run(scope, place); })
+              const platform::CUDAPlace &place) {
+             pybind11::gil_scoped_release release;
+             self.Run(scope, place);
+           })
       .def("run",
            [](OperatorBase &self, const Scope &scope,
               const platform::CUDAPinnedPlace &place) {
+             pybind11::gil_scoped_release release;
              self.Run(scope, place);
            })
       .def("type",
@@ -1977,6 +2001,26 @@ All parameter, weight, gradient are variables in Paddle.
                    &t, item.second, platform::CPUPlace(), false);
                feed_names.push_back(item.first);
                feed_tensors.push_back(t);
+             }
+
+             paddle::framework::FetchList ret;
+             {
+               pybind11::gil_scoped_release release;
+               ret = self.Run(feed_names, feed_tensors, fetch_names);
+             }
+             return py::cast(std::move(ret));
+           })
+      .def("run",
+           [](StandaloneExecutor &self,
+              const std::unordered_map<std::string, framework::Tensor>
+                  &input_dict,
+              std::vector<std::string> fetch_names) {
+             std::vector<framework::Tensor> feed_tensors;
+             std::vector<std::string> feed_names;
+
+             for (auto &item : input_dict) {
+               feed_names.push_back(item.first);
+               feed_tensors.push_back(item.second);
              }
 
              paddle::framework::FetchList ret;
@@ -2241,6 +2285,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
+  m.def("cuda_empty_cache", platform::EmptyCache);
 
 #if !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   m.def("nvprof_init", platform::CudaProfilerInit);
