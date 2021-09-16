@@ -214,7 +214,7 @@ def get_device_properties(device=None):
     Return the properties of given CUDA device.
 
     Args:
-        device(paddle.CUDAPlace() or int or str): The device, the ID of the device or device string name like 'gpu:x' which to get the properties of the device from. 
+        device(paddle.CUDAPlace() or int or str): The device, the ID of the device or the string name of device like 'gpu:x' which to get the properties of the device from. 
         If device is None, the device is the current device. Default: None.
 
     Returns:
@@ -238,7 +238,7 @@ def get_device_properties(device=None):
     place = framework._current_expected_place()
     if not isinstance(place, core.CUDAPlace) or not is_compiled_with_cuda():
         raise ValueError(
-            "Current device: {} is not expected. Because paddle.device.cuda.get_device_properties only support cuda device"
+            "The current device: {} is not expected. Because paddle.device.cuda.get_device_properties only support cuda device"
             "Please change device and input device again!".format(place))
 
     device_id = -1
@@ -253,13 +253,12 @@ def get_device_properties(device=None):
                 device_id = int(device[4:])
             else:
                 raise ValueError(
-                    "Current string input: {} is not expected, Because paddle.device.cuda.get_device_properties only support string"
+                    "The current string: {} is not expected. Because paddle.device.cuda.get_device_properties only support string"
                     "which is like 'gpu:x'. Please input appropriat string again!".
                     format(device))
         else:
             raise ValueError(
-                "Input device type: {} is not expected. Because paddle.device.cuda.get_device_properties only support device type"
-                "must be int, str or paddle.CUDAPlace. Please input appropriate device again!".
+                "The device type: {} is not expected. Because paddle.device.cuda.get_device_properties only support int, str or paddle.CUDAPlace. Please input appropriate device again!".
                 format(device))
 
     return core.get_device_properties(device_id)
