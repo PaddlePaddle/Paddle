@@ -148,11 +148,8 @@ void InterpreterCore::Convert() {
       for (auto id : item.second) {
         if (input_var2op_info_[id].size() == 0) {
           // output var not be used by any kernel
-          if (vec_instruction_[i].kernel_func_.operator_base_->Type() !=
-              "fetch_v2") {
-            vec_instruction_[i].gc_check_var_list.push_back(id);
-            vec_meta_info_[id].var_ref_count_++;
-          }
+          vec_instruction_[i].gc_check_var_list.push_back(id);
+          vec_meta_info_[id].var_ref_count_++;
         }
       }
     }
