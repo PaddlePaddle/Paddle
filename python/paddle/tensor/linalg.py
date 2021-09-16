@@ -1173,7 +1173,6 @@ def matrix_power(x, n, name=None):
     return out
 
 
-
 def eigvals(x, name=None):
     """
     Compute the eigenvalues of one or more general matrices.
@@ -1231,8 +1230,9 @@ def eigvals(x, name=None):
     helper = LayerHelper('eigvals', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
     helper.append_op(type='eigvals', inputs={'X': x}, outputs={'Out': out})
+    return out
 
-    
+
 def multi_dot(x, name=None):
     """
     Multi_dot is an operator that calculates multiple matrix multiplications.
