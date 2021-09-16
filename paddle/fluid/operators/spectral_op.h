@@ -10,6 +10,7 @@
    limitations under the License. */
 
 #pragma once
+#define NOMINMAX  // to use std::min std::max correctly on windows
 #include <iostream>
 #include <memory>
 #include <string>
