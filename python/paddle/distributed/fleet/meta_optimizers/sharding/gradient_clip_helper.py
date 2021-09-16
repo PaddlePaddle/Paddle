@@ -219,7 +219,6 @@ class GradientClipHelper(object):
                     fill_constant_op._set_attr('op_namescope', namescope)
                     # insert redundant allreduce to prevent hang
                     self._insert_allreduce(block, ring_ids, idx, sum_rst_var)
-                    return
                 break
 
         for idx, op in reversed(list(enumerate(block.ops))):
