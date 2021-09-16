@@ -26,87 +26,16 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
-using InputMatrixMap = Eigen::Map<
-    const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>;
+using EigenMatrix =
+    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using OutputMatrixMap = Eigen::Map<
-    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>;
+template <typename T>
+using InputMatrixMap = Eigen::Map<const EigenMatrix<T>>;
 
-template <typename ValueType>
-inline void ComputeFloatEigenvaluesAndVectors(ValueType *x_data,
-                                              ValueType *eigenvalues_data,
-                                              ValueType *eigenvectors_data,
-                                              int batches, int rows, int cols,
-                                              bool has_vectors) {
-  int stride = rows * cols;
-  for (int i = 0; i < batches; i++) {
-    auto m = InputMatrixMap<ValueType>(x_data + i * stride, rows, cols);
-    auto eigenvalues =
-        OutputMatrixMap<ValueType>(eigenvalues_data + i * rows, 1, rows);
-    auto eigenvectors =
-        OutputMatrixMap<ValueType>(eigenvectors_data + i * stride, rows, cols);
-
-    Eigen::SelfAdjointEigenSolver<Eigen::Matrix<
-        ValueType, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-        eigen_solver(m, has_vectors ? Eigen::ComputeEigenvectors
-                                    : Eigen::EigenvaluesOnly);
-    PADDLE_ENFORCE_EQ(
-        eigen_solver.info(), Eigen::Success,
-        platform::errors::InvalidArgument(
-            "Self Adjoint Eigen decomposition is not successful. "
-            "The %d-th input matrice might not be not be positive definite.",
-            i));
-
-    eigenvalues = eigen_solver.eigenvalues().transpose();
-    if (has_vectors) {
-      eigenvectors = eigen_solver.eigenvectors().transpose();
-    }
-  }
-}
-
-template <typename T, typename ValueType>
-inline void ComputeComplexEigenvaluesAndVectors(T *x_data,
-                                                ValueType *eigenvalues_data,
-                                                T *eigenvectors_data,
-                                                int batches, int rows, int cols,
-                                                bool has_vectors) {
-  using Complex = std::complex<ValueType>;
-  Complex *input = reinterpret_cast<Complex *>(x_data);
-  Complex *eigenvectors_data_ = reinterpret_cast<Complex *>(eigenvectors_data);
-
-  int stride = rows * cols;
-  for (int i = 0; i < batches; i++) {
-    auto m = InputMatrixMap<Complex>(input + i * stride, rows, cols);
-    auto eigenvalues =
-        OutputMatrixMap<ValueType>(eigenvalues_data + i * rows, 1, rows);
-    auto eigenvectors =
-        OutputMatrixMap<Complex>(eigenvectors_data_ + i * stride, rows, cols);
-
-    Eigen::SelfAdjointEigenSolver<
-        Eigen::Matrix<Complex, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-        eigen_solver(m, has_vectors ? Eigen::ComputeEigenvectors
-                                    : Eigen::EigenvaluesOnly);
-    PADDLE_ENFORCE_EQ(
-        eigen_solver.info(), Eigen::Success,
-        platform::errors::InvalidArgument(
-            "Self Adjoint Eigen decomposition is not successful. "
-            "The %d-th input matrice might not be not be positive definite.",
-            i));
-
-    eigenvalues = eigen_solver.eigenvalues().transpose();
-    if (has_vectors) {
-      eigenvectors = eigen_solver.eigenvectors().transpose();
-    }
-  }
-}
+template <typename T>
+using OutputMatrixMap = Eigen::Map<EigenMatrix<T>>;
 
 inline int64_t GetBatchSize(framework::DDim dims) {
   int64_t batch_size = 1;
@@ -117,11 +46,18 @@ inline int64_t GetBatchSize(framework::DDim dims) {
   return batch_size;
 }
 
+template <typename DeviceContext, typename ValueType, typename T>
+struct MatrixEighFunctor {
+  void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
+                  Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
+                  bool has_vectors);
+};
+
 // Calculates the eigenvalues ​​and eigenvectors of Hermitian or real
 // symmetric matrices, and uses the variable has_vectors to
 // control whether to return the eigenvectors.
-template <typename DeviceContext, typename ValueType, typename T>
-struct MatrixEighFunctorCPU {
+template <typename ValueType, typename T>
+struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
  public:
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
@@ -134,7 +70,8 @@ struct MatrixEighFunctorCPU {
     for (int64_t i = 0; i < dim_size - 2; i++) {
       batch_size *= dims[i];
     }
-    auto dito = DeviceIndependenceTensorOperations<DeviceContext, T>(ctx);
+    auto dito =
+        DeviceIndependenceTensorOperations<platform::CPUDeviceContext, T>(ctx);
     Tensor input_tensor;
     TensorCopy(input, ctx.GetPlace(), &input_tensor);
     if (!is_lower) {
@@ -145,23 +82,53 @@ struct MatrixEighFunctorCPU {
     auto *value_data =
         eigen_values->mutable_data<ValueType>(output_value_dim, ctx.GetPlace());
 
-    if (framework::IsComplexType(input_tensor.type())) {
-      auto *x_data = input_tensor.data<T>();
-      auto *vector_data = eigen_vectors->mutable_data<T>(dims, ctx.GetPlace());
-      ComputeComplexEigenvaluesAndVectors<T, ValueType>(
-          x_data, value_data, vector_data, batch_size, rows, rows, has_vectors);
-    } else {
-      auto *x_data = input_tensor.data<ValueType>();
-      auto *vector_data =
-          eigen_vectors->mutable_data<ValueType>(dims, ctx.GetPlace());
-      ComputeFloatEigenvaluesAndVectors<ValueType>(
-          x_data, value_data, vector_data, batch_size, rows, rows, has_vectors);
-    }
-    if (has_vectors) {
-      *eigen_vectors = dito.Transpose(*eigen_vectors);
-    }
+    auto *x_data = input_tensor.data<T>();
+    auto *vector_data = eigen_vectors->mutable_data<T>(dims, ctx.GetPlace());
+    ComputeEigenvaluesAndVectors(x_data, value_data, vector_data, batch_size,
+                                 rows, has_vectors);
   }
+
+  inline void ComputeEigenvaluesAndVectors(T *x_data, ValueType *value_data,
+                                           T *vector_data, int batches,
+                                           int rows, bool has_vectors) const;
 };
+
+#define EIGEN_INSTANCE(ValueType, T, CastType)                                \
+  template <>                                                                 \
+  inline void MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T>::   \
+      ComputeEigenvaluesAndVectors(T *x_data, ValueType *value_data,          \
+                                   T *vector_data, int batches, int rows,     \
+                                   bool has_vectors) const {                  \
+    int stride = rows * rows;                                                 \
+    for (int i = 0; i < batches; i++) {                                       \
+      auto x_data_ = reinterpret_cast<CastType *>(x_data);                    \
+      auto vector_data_ = reinterpret_cast<CastType *>(vector_data);          \
+      auto eigenvalues =                                                      \
+          OutputMatrixMap<ValueType>(value_data + i * rows, 1, rows);         \
+      auto m = InputMatrixMap<CastType>(x_data_ + i * stride, rows, rows);    \
+      auto eigenvectors =                                                     \
+          OutputMatrixMap<CastType>(vector_data_ + i * stride, rows, rows);   \
+      Eigen::SelfAdjointEigenSolver<EigenMatrix<CastType>> eigen_solver(      \
+          m,                                                                  \
+          has_vectors ? Eigen::ComputeEigenvectors : Eigen::EigenvaluesOnly); \
+      PADDLE_ENFORCE_EQ(                                                      \
+          eigen_solver.info(), Eigen::Success,                                \
+          platform::errors::InvalidArgument(                                  \
+              "Self Adjoint Eigen decomposition is not successful. "          \
+              "The %d-th input matrice might not be not be positive "         \
+              "definite.",                                                    \
+              i));                                                            \
+      eigenvalues = eigen_solver.eigenvalues().transpose();                   \
+      if (has_vectors) {                                                      \
+        eigenvectors = eigen_solver.eigenvectors();                           \
+      }                                                                       \
+    }                                                                         \
+  }
+
+EIGEN_INSTANCE(float, float, float);
+EIGEN_INSTANCE(double, double, double);
+EIGEN_INSTANCE(double, paddle::platform::complex<double>, std::complex<double>);
+EIGEN_INSTANCE(float, paddle::platform::complex<float>, std::complex<float>);
 
 #ifdef PADDLE_WITH_CUDA
 
@@ -169,7 +136,7 @@ struct MatrixEighFunctorCPU {
 // symmetric matrices on GPU, and uses the variable has_vectors
 // to control whether to return the eigenvectors.
 template <typename ValueType, typename T>
-struct MatrixEighFunctor {
+struct MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T> {
  public:
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
@@ -278,7 +245,8 @@ struct MatrixEighFunctor {
 
 #define EVDBUFFER_INSTANCE(ValueType, T, C, CastType)                          \
   template <>                                                                  \
-  inline void MatrixEighFunctor<ValueType, T>::EvdBuffer(                      \
+  inline void                                                                  \
+  MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T>::EvdBuffer(     \
       cusolverDnHandle_t handle, cusolverEigMode_t jobz,                       \
       cublasFillMode_t uplo, int n, const T *A, int lda, const ValueType *W,   \
       int *lwork) const {                                                      \
@@ -292,7 +260,8 @@ FUNC_WITH_TYPES(EVDBUFFER_INSTANCE);
 
 #define EVD_INSTANCE(ValueType, T, C, CastType)                           \
   template <>                                                             \
-  inline void MatrixEighFunctor<ValueType, T>::Evd(                       \
+  inline void                                                             \
+  MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T>::Evd(      \
       cusolverDnHandle_t handle, cusolverEigMode_t jobz,                  \
       cublasFillMode_t uplo, int n, T *A, int lda, ValueType *W, T *work, \
       int lwork, int *devInfo) const {                                    \

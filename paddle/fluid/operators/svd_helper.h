@@ -289,10 +289,20 @@ struct DeviceIndependenceTensorOperations {
   framework::Tensor Div(const framework::Tensor& x,
                         const framework::Tensor& y) {
     framework::Tensor ret;
-    std::vector<int> out_shape = GetBroadcastShape({&x, &y});
-    ret.Resize(framework::make_ddim(out_shape));
-    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-        context, &x, &y, -1, DivFunctor<T>(), &ret);
+    if (x.type() != y.type()) {
+      ret.mutable_data<T>(x.dims(), context.GetPlace());
+      auto x_vector = EigenVector<T>::Flatten(x);
+      auto y_vector = EigenVector<ValueType>::Flatten(y);
+      auto out_vector = EigenVector<T>::Flatten(ret);
+      auto& place =
+          *context.template device_context<DeviceContext>().eigen_device();
+      out_vector.device(place) = x_vector / y_vector;
+    } else {
+      std::vector<int> out_shape = GetBroadcastShape({&x, &y});
+      ret.Resize(framework::make_ddim(out_shape));
+      ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
+          context, &x, &y, -1, DivFunctor<T>(), &ret);
+    }
     return ret;
   }
   framework::Tensor Add(const framework::Tensor& x,
@@ -330,7 +340,7 @@ struct DeviceIndependenceTensorOperations {
     NameInTensorMap inputs({{"X", {&x}}});
     return CreateOpRunAndReturnTensor("reduce_max", inputs, attrs, out_dim);
   }
-
+  template <typename T1 = T>
   framework::Tensor Sub(const framework::Tensor& x,
                         const framework::Tensor& y) {
     framework::Tensor ret;
@@ -340,18 +350,18 @@ struct DeviceIndependenceTensorOperations {
 #if defined(__NVCC__) || defined(__HIPCC__)
       // For GPU, there is no need to define XxxInverseFunctor and call
       // ElementwiseComputeEx in two branches.
-      ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-          context, &x, &y, -1, SubFunctor<T>(), &ret);
+      ElementwiseComputeEx<SubFunctor<T1>, DeviceContext, T1>(
+          context, &x, &y, -1, SubFunctor<T1>(), &ret);
 #endif
     } else {
       if (x.dims().size() >= y.dims().size()) {
-        ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-            context, &x, &y, -1, SubFunctor<T>(), &ret);
+        ElementwiseComputeEx<SubFunctor<T1>, DeviceContext, T1>(
+            context, &x, &y, -1, SubFunctor<T1>(), &ret);
       } else {
-        ElementwiseComputeEx<InverseSubFunctor<T>, DeviceContext, T>(
+        ElementwiseComputeEx<InverseSubFunctor<T1>, DeviceContext, T1>(
             // This is copyed from elementwise_sub, which means we
             // need reverse will xrank < yrank
-            context, &x, &y, -1, InverseSubFunctor<T>(), &ret);
+            context, &x, &y, -1, InverseSubFunctor<T1>(), &ret);
       }
     }
     return ret;
@@ -461,36 +471,23 @@ struct DeviceIndependenceTensorOperations {
     return out;
   }
 
-  // Support x and y are different data types
-  Tensor Div_(const Tensor& x, const Tensor& y) {
-    Tensor out;
-    out.mutable_data<T>(x.dims(), context.GetPlace());
-    auto x_vector = EigenVector<T>::Flatten(x);
-    auto y_vector = EigenVector<ValueType>::Flatten(y);
-    auto out_vector = EigenVector<T>::Flatten(out);
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
-    out_vector.device(place) = x_vector / y_vector;
-    return out;
-  }
-
-  framework::Tensor Sub_(const framework::Tensor& x,
-                         const framework::Tensor& y) {
-    framework::Tensor ret;
-    std::vector<int> out_shape = GetBroadcastShape({&x, &y});
-    ret.Resize(framework::make_ddim(out_shape));
-    if (x.dims().size() >= y.dims().size()) {
-      ElementwiseComputeEx<SubFunctor<ValueType>, DeviceContext, ValueType>(
-          context, &x, &y, -1, SubFunctor<ValueType>(), &ret);
-    } else {
-      ElementwiseComputeEx<InverseSubFunctor<ValueType>, DeviceContext,
-                           ValueType>(
-          // This is copyed from elementwise_sub, which means we
-          // need reverse will xrank < yrank
-          context, &x, &y, -1, InverseSubFunctor<ValueType>(), &ret);
-    }
-    return ret;
-  }
+  // framework::Tensor Sub_(const framework::Tensor& x,
+  //                        const framework::Tensor& y) {
+  //   framework::Tensor ret;
+  //   std::vector<int> out_shape = GetBroadcastShape({&x, &y});
+  //   ret.Resize(framework::make_ddim(out_shape));
+  //   if (x.dims().size() >= y.dims().size()) {
+  //     ElementwiseComputeEx<SubFunctor<ValueType>, DeviceContext, ValueType>(
+  //         context, &x, &y, -1, SubFunctor<ValueType>(), &ret);
+  //   } else {
+  //     ElementwiseComputeEx<InverseSubFunctor<ValueType>, DeviceContext,
+  //                          ValueType>(
+  //         // This is copyed from elementwise_sub, which means we
+  //         // need reverse will xrank < yrank
+  //         context, &x, &y, -1, InverseSubFunctor<ValueType>(), &ret);
+  //   }
+  //   return ret;
+  // }
 
  private:
   const framework::ExecutionContext& context;
