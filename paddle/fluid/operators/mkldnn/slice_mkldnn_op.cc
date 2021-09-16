@@ -107,7 +107,7 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     auto slice_mem_p = reorder_handler.AcquireSubmemory(slice_dims, offsets,
                                                         reorder_src_memory_p);
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        out, slice_dims, x->format(), ctx.GetPlace());
+        out, slice_dims, 0, get_plain_format_tag(x), ctx.GetPlace());
 
     auto reorder_p =
         reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p);
