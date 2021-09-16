@@ -455,7 +455,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         global_dp_degree = self.sharding_degree * self.dp_degree
         assert int(global_dp_degree) == global_dp_degree
         if global_dp_degree > 1:
-            insert_scale_loss_grad_ops(main_block, scale=1.0 / global_dp_degree)
+            insert_scale_loss_grad_ops(main_block, scale=global_dp_degree)
 
         main_block._sync_with_cpp()
 
