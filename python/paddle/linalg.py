@@ -19,6 +19,7 @@ from .tensor import inverse as inv  # noqa: F401
 from .tensor.linalg import multi_dot  # noqa: F401
 from .tensor.linalg import matrix_rank
 from .tensor.linalg import svd
+from .tensor.linalg import eigh  # noqa: F401
 
 __all__ = [
     'cholesky',  #noqa
@@ -27,5 +28,6 @@ __all__ = [
     'multi_dot',
     'matrix_rank',
     'svd',
-    'matrix_power'
+    'matrix_power',
+    'eigh'
 ]
