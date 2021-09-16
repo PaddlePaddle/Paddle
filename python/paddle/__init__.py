@@ -14,7 +14,7 @@
 try:
     from paddle.version import full_version as __version__
     from paddle.version import commit as __git_commit__
-
+    from paddle.cuda_env import *
 except ImportError:
     import sys
     sys.stderr.write('''Warning with import paddle: you should not
@@ -99,6 +99,7 @@ from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import bmm  # noqa: F401
 from .tensor.linalg import histogram  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
+from .tensor.linalg import multi_dot  # noqa: F401
 from .tensor.linalg import matrix_power  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
@@ -162,6 +163,7 @@ from .tensor.math import cos  # noqa: F401
 from .tensor.math import tan  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
+from .tensor.math import cumprod  # noqa: F401
 from .tensor.math import exp  # noqa: F401
 from .tensor.math import expm1  # noqa: F401
 from .tensor.math import floor  # noqa: F401
@@ -231,6 +233,7 @@ from .tensor.random import randperm  # noqa: F401
 from .tensor.search import argmax  # noqa: F401
 from .tensor.search import argmin  # noqa: F401
 from .tensor.search import argsort  # noqa: F401
+from .tensor.search import searchsorted  # noqa: F401
 from .tensor.search import masked_select  # noqa: F401
 from .tensor.search import topk  # noqa: F401
 from .tensor.search import where  # noqa: F401
@@ -274,6 +277,8 @@ from .device import get_device  # noqa: F401
 from .fluid.framework import is_compiled_with_cuda  # noqa: F401
 from .fluid.framework import is_compiled_with_rocm  # noqa: F401
 from .fluid.framework import disable_signal_handler  # noqa: F401
+from .fluid.framework import get_flags  # noqa: F401
+from .fluid.framework import set_flags  # noqa: F401
 from .device import is_compiled_with_xpu  # noqa: F401
 from .device import is_compiled_with_npu  # noqa: F401
 from .device import XPUPlace  # noqa: F401
@@ -329,6 +334,7 @@ __all__ = [  # noqa
            'empty_like',
            'eye',
            'cumsum',
+           'cumprod',
            'sign',
            'is_empty',
            'equal',
@@ -355,6 +361,7 @@ __all__ = [  # noqa
            'summary',
            'flops',
            'sort',
+           'searchsorted',
            'split',
            'logical_and',
            'full_like',
@@ -517,5 +524,7 @@ __all__ = [  # noqa
            'standard_normal',
            'diagonal',
            'broadcast_tensors',
-           'einsum'
+           'einsum',
+           'set_flags',
+           'get_flags'
 ]

@@ -353,6 +353,14 @@ void OpDesc::CopyFrom(const OpDesc &op_desc) {
   outputs_ = op_desc.outputs_;
   attrs_ = op_desc.attrs_;
   need_update_ = true;
+  // When creating graph from program, the creation of op node will create a new
+  // OpDesc instead of
+  // referring to the original one. To find the original OpDesc of the op node,
+  // the id have to be
+  // copied to the new OpDesc. The var node has the same situation, but the
+  // default copy constructor
+  // can copy the id automatically.
+  id_ = op_desc.id_;
 }
 
 OpDesc::OpDesc(const proto::OpDesc &desc, BlockDesc *block)
@@ -449,6 +457,11 @@ void OpDesc::SetOutput(const std::string &param_name,
 
 void OpDesc::RemoveOutput(const std::string &name) {
   outputs_.erase(name);
+  need_update_ = true;
+}
+
+void OpDesc::RemoveInput(const std::string &name) {
+  inputs_.erase(name);
   need_update_ = true;
 }
 

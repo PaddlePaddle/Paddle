@@ -223,6 +223,7 @@ if(WITH_PYTHON)
   py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
   py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
   py_proto_compile(distributed_strategy_py_proto SRCS distributed_strategy.proto)
+  py_proto_compile(pass_desc_py_proto SRCS pass_desc.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
   add_custom_target(fleet_proto_init ALL  
@@ -354,10 +355,10 @@ cc_library(executor_cache SRCS executor_cache.cc DEPS parallel_executor)
 if(WITH_PSCORE)
     get_property(RPC_DEPS GLOBAL PROPERTY RPC_DEPS)
     cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
-        conditional_block_op executor ${RPC_DEPS})
+        conditional_block_op executor gloo_wrapper ${RPC_DEPS})
 else()
     cc_test(dist_multi_trainer_test SRCS dist_multi_trainer_test.cc DEPS
-        conditional_block_op executor)
+        conditional_block_op executor gloo_wrapper)
 endif()
 cc_library(prune SRCS prune.cc DEPS framework_proto boost)
 cc_test(prune_test SRCS prune_test.cc DEPS op_info prune recurrent_op device_context)
@@ -447,3 +448,5 @@ cc_library(paddle_framework DEPS ${FLUID_FRAMEWORK_MODULES})
 if(WITH_TESTING AND TEST selected_rows_test)
   set_tests_properties(selected_rows_test PROPERTIES TIMEOUT 120)
 endif()
+
+cc_test(scope_guard_test SRCS scope_guard_test.cc)

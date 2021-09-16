@@ -138,7 +138,8 @@ class AffineGridOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>(
         "use_cudnn",
         "(bool, default false) Only used in cudnn kernel, need install cudnn")
-        .SetDefault(true);
+        .SetDefault(true)
+        .AsExtra();
     AddAttr<bool>("align_corners",
                   "(bool, default false) Whether to align the corners of input"
                   "and ouput.")

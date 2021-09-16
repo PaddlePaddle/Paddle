@@ -40,7 +40,7 @@ def _squared_l2_norm(x):
     This OP returns the squared L2 norm of a tensor.
     """
 
-    if core.is_compiled_with_xpu():
+    if core.is_compiled_with_xpu() or x.dtype == core.VarDesc.VarType.FP16:
         square = layers.square(x)
         sum_square = layers.reduce_sum(square)
         return sum_square
@@ -49,7 +49,7 @@ def _squared_l2_norm(x):
         return core.ops.squared_l2_norm(x)
 
     op_type = 'squared_l2_norm'
-    check_variable_and_dtype(x, 'x', ['float32'], op_type)
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], op_type)
     helper = LayerHelper(op_type, **locals())
     out = helper.create_variable_for_type_inference(x.dtype)
 
@@ -476,6 +476,8 @@ class ClipGradByGlobalNorm(ClipGradBase):
     def _static_clip(self, params_grads):
         params_and_grads = []
         sum_square_list = []
+        sum_square_list_fp16 = []
+        sum_square_list_fp32 = []
         with framework.name_scope('gradient_clip'):
             for p, g in params_grads:
                 if g is None:
@@ -488,16 +490,41 @@ class ClipGradByGlobalNorm(ClipGradBase):
                         merge_grad = layers.merge_selected_rows(g)
                         merge_grad = layers.get_tensor_from_selected_rows(
                             merge_grad)
-
                     sum_square = _squared_l2_norm(merge_grad)
-                    sum_square_list.append(sum_square)
+                    if sum_square.dtype == core.VarDesc.VarType.FP16:
+                        sum_square_list_fp16.append(sum_square)
+                    elif sum_square.dtype == core.VarDesc.VarType.FP32:
+                        sum_square_list_fp32.append(sum_square)
+                    else:
+                        sum_square_list.append(sum_square)
 
             # all parameters have been filterd out
-            if len(sum_square_list) == 0:
+            if len(sum_square_list) + len(sum_square_list_fp16) + len(
+                    sum_square_list_fp32) == 0:
                 return params_grads
 
             with p.block.program._optimized_guard([p, g]):
-                global_norm_var = layers.sums(sum_square_list)
+                sum_dtype = 'float64' if len(sum_square_list) > 0 else "float32"
+
+                global_norm_var = []
+                if len(sum_square_list_fp16) > 0:
+                    global_norm_var_fp16 = layers.sums(sum_square_list_fp16)
+                    global_norm_var.append(
+                        global_norm_var_fp16.astype(sum_dtype))
+                if len(sum_square_list_fp32) > 0:
+                    global_norm_var_fp32 = layers.sums(sum_square_list_fp32)
+                    if sum_dtype == 'float32':
+                        global_norm_var.append(global_norm_var_fp32)
+                    else:
+                        global_norm_var.append(
+                            global_norm_var_fp32.astype(sum_dtype))
+                if len(sum_square_list) > 0:
+                    # fp64
+                    global_norm_var_other_dtype = layers.sums(sum_square_list)
+                    global_norm_var.append(global_norm_var_other_dtype)
+
+                global_norm_var = layers.sums(global_norm_var) if len(
+                    global_norm_var) > 1 else global_norm_var[0]
                 global_norm_var = layers.sqrt(x=global_norm_var)
                 max_global_norm = layers.fill_constant(
                     shape=[1],
@@ -507,7 +534,6 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     x=max_global_norm,
                     y=layers.elementwise_max(
                         x=max_global_norm, y=global_norm_var))
-
             param_new_grad_name_dict = dict()
             for p, g in params_grads:
                 if g is None:
@@ -518,11 +544,15 @@ class ClipGradByGlobalNorm(ClipGradBase):
 
                 with p.block.program._optimized_guard([p, g]):
                     # inplace
+                    scale_input = (scale_var.astype('float16')
+                                   if g.dtype == core.VarDesc.VarType.FP16 else
+                                   scale_var)
                     p.block.append_op(
                         type='elementwise_mul',
                         inputs={'X': g,
-                                'Y': scale_var},
+                                'Y': scale_input},
                         outputs={'Out': g})
+
                 param_new_grad_name_dict[p.name] = g.name
                 params_and_grads.append((p, g))
 

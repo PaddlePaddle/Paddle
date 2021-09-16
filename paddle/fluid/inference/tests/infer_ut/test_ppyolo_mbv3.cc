@@ -55,7 +55,7 @@ std::map<std::string, paddle::test::Record> PrepareInput(int batch_size) {
   return input_data_map;
 }
 
-TEST(test_ppyolo_mbv3, multi_thread4_trt_fp32_bz2) {
+TEST(tensorrt_tester_ppyolo_mbv3, multi_thread4_trt_fp32_bz2) {
   int thread_num = 4;
   // init input data
   auto input_data_map = PrepareInput(2);
@@ -101,7 +101,7 @@ TEST(test_ppyolo_mbv3, multi_thread4_trt_fp32_bz2) {
   std::cout << "finish multi-thread test" << std::endl;
 }
 
-TEST(DISABLED_test_ppyolo_mbv3, multi_thread4_mkl_bz2) {
+TEST(DISABLED_mkldnn_tester_ppyolo_mbv3, multi_thread4_mkl_bz2) {
   // TODO(OliverLPH): mkldnn multi thread will fail
   int thread_num = 4;
   // init input data

@@ -122,4 +122,6 @@ create_test_int8_class(TestConcatOp)
 create_test_int8_class(TestConcatOp2)
 
 if __name__ == '__main__':
+    from paddle import enable_static
+    enable_static()
     unittest.main()

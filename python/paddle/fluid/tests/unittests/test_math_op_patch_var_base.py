@@ -527,6 +527,12 @@ class TestMathOpPatchesVarBase(unittest.TestCase):
             np.array_equal(
                 x.where(a, b).numpy(), paddle.where(x, a, b).numpy()))
 
+        x_np = np.random.randn(3, 6, 9, 7)
+        x = paddle.to_tensor(x_np)
+        x_T = x.T
+        self.assertTrue(x_T.shape, [7, 9, 6, 3])
+        self.assertTrue(np.array_equal(x_T.numpy(), x_np.T))
+
         self.assertTrue(inspect.ismethod(a.dot))
         self.assertTrue(inspect.ismethod(a.logsumexp))
         self.assertTrue(inspect.ismethod(a.multiplex))

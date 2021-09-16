@@ -106,8 +106,7 @@ def yolo_loss(x,
     Final loss will be represented as follows.
 
     $$
-    loss = (loss_{xy} + loss_{wh}) * weight_{box}
-         + loss_{conf} + loss_{class}
+    loss = (loss_{xy} + loss_{wh}) * weight_{box} + loss_{conf} + loss_{class}
     $$
 
     While :attr:`use_label_smooth` is set to be :attr:`True`, the classification
@@ -661,8 +660,8 @@ class DeformConv2D(Layer):
 
         .. math::
 
-            H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
-            W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
+            H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\
+            W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
 
 
     Parameters:
@@ -689,7 +688,7 @@ class DeformConv2D(Layer):
             of conv2d. If it is set to None or one attribute of ParamAttr, conv2d
             will create ParamAttr as param_attr. If it is set to None, the parameter
             is initialized with :math:`Normal(0.0, std)`, and the :math:`std` is
-            :math:`(\\frac{2.0 }{filter\_elem\_num})^{0.5}`. The default value is None.
+            :math:`(\frac{2.0 }{filter\_elem\_num})^{0.5}`. The default value is None.
         bias_attr(ParamAttr|bool, optional): The parameter attribute for the bias of conv2d.
             If it is set to False, no bias will be added to the output units.
             If it is set to None or one attribute of ParamAttr, conv2d
@@ -703,10 +702,14 @@ class DeformConv2D(Layer):
         - offset: :math:`(N, 2 * H_f * W_f, H_{out}, W_{out})`
         - mask: :math:`(N, H_f * W_f, H_{out}, W_{out})`
         - output: :math:`(N, C_{out}, H_{out}, W_{out})`
+        
         Where
+        
         ..  math::
-           H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1
-           W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
+
+            H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1 \\
+            W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
+
     Examples:
         .. code-block:: python
 
@@ -906,32 +909,31 @@ def roi_pool(input, boxes, boxes_num, output_size, spatial_scale=1.0,
     """
     This operator implements the roi_pooling layer.
     Region of interest pooling (also known as RoI pooling) is to perform max pooling on inputs of nonuniform sizes to obtain fixed-size feature maps (e.g. 7*7).
-    The operator has three steps:
-        1. Dividing each region proposal into equal-sized sections with output_size(h, w);
-        2. Finding the largest value in each section;
-        3. Copying these max values to the output buffer.
+    The operator has three steps: 1. Dividing each region proposal into equal-sized sections with output_size(h, w) 2. Finding the largest value in each section 3. Copying these max values to the output buffer  
     For more information, please refer to https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
+
     Args:
-        input (Tensor): Input feature, 4D-Tensor with the shape of [N,C,H,W], 
+        input (Tensor): input feature, 4D-Tensor with the shape of [N,C,H,W], 
             where N is the batch size, C is the input channel, H is Height, W is weight. 
             The data type is float32 or float64.
         boxes (Tensor): boxes (Regions of Interest) to pool over. 
             2D-Tensor or 2D-LoDTensor with the shape of [num_boxes,4], the lod level is 1. 
             Given as [[x1, y1, x2, y2], ...], (x1, y1) is the top left coordinates, 
             and (x2, y2) is the bottom right coordinates.
-        boxes_num (Tensor): The number of RoIs in each image, data type is int32. Default: None
-        output_size (int or tuple[int, int]): The pooled output size(h, w), data type is int32. If int, h and w are both equal to output_size.
-        spatial_scale (float, optional): Multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
-        name(str, optional): For detailed information, please refer
-            to :ref:`api_guide_Name`. Usually name is no need to set and
-            None by default.
+        boxes_num (Tensor): the number of RoIs in each image, data type is int32. Default: None
+        output_size (int or tuple[int, int]): the pooled output size(h, w), data type is int32. If int, h and w are both equal to output_size.
+        spatial_scale (float, optional): multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
+        name(str, optional): for detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
+
     Returns:
-        Tensor: The pooled feature, 4D-Tensor with the shape of [num_boxes, C, output_size[0], output_size[1]].
-    
+        pool_out (Tensor): the pooled feature, 4D-Tensor with the shape of [num_boxes, C, output_size[0], output_size[1]].  
+
     Examples:
-        ..  code-block:: python
+        .. code-block:: python
+        
             import paddle
             from paddle.vision.ops import roi_pool
+
             data = paddle.rand([1, 256, 32, 32])
             boxes = paddle.rand([3, 4])
             boxes[:, 2] += boxes[:, 0] + 3
@@ -940,6 +942,7 @@ def roi_pool(input, boxes, boxes_num, output_size, spatial_scale=1.0,
             pool_out = roi_pool(data, boxes, boxes_num=boxes_num, output_size=3)
             assert pool_out.shape == [3, 256, 3, 3], ''
     """
+
     check_type(output_size, 'output_size', (int, tuple), 'roi_pool')
     if isinstance(output_size, int):
         output_size = (output_size, output_size)
@@ -981,23 +984,22 @@ def roi_pool(input, boxes, boxes_num, output_size, spatial_scale=1.0,
 
 class RoIPool(Layer):
     """
-    This operator implements the roi_pooling layer.
-    Region of interest pooling (also known as RoI pooling) is to perform max pooling on inputs of nonuniform sizes to obtain fixed-size feature maps (e.g. 7*7).
-    The operator has three steps:
-        1. Dividing each region proposal into equal-sized sections with output_size(h, w);
-        2. Finding the largest value in each section;
-        3. Copying these max values to the output buffer.
-    For more information, please refer to https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
+    This interface is used to construct a callable object of the `RoIPool` class. Please
+    refer to :ref:`api_paddle_vision_ops_roi_pool`.  
+
     Args:
-        output_size (int or tuple[int, int]): The pooled output size(h, w), data type is int32. If int, h and w are both equal to output_size.
-        spatial_scale (float, optional): Multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0
+        output_size (int or tuple[int, int]): the pooled output size(h, w), data type is int32. If int, h and w are both equal to output_size.
+        spatial_scale (float, optional): multiplicative spatial scale factor to translate ROI coords from their input scale to the scale used when pooling. Default: 1.0  .
+
     Returns:
-        Tensor: The pooled feature, 4D-Tensor with the shape of [num_boxes, C, output_size[0], output_size[1]].
-    
+        pool_out (Tensor): the pooled feature, 4D-Tensor with the shape of [num_boxes, C, output_size[0], output_size[1]].  
+
     Examples:
-        ..  code-block:: python
+        .. code-block:: python
+
             import paddle
             from paddle.vision.ops import RoIPool
+
             data = paddle.rand([1, 256, 32, 32])
             boxes = paddle.rand([3, 4])
             boxes[:, 2] += boxes[:, 0] + 3

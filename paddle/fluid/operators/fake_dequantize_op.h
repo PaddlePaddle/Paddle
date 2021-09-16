@@ -33,7 +33,8 @@ template <typename DeviceContext, typename T>
 struct ChannelDequantizeFunctor {
   void operator()(const DeviceContext& dev_ctx, const framework::Tensor* in,
                   const framework::Tensor** scales, const int scale_num,
-                  T max_range, const int quant_axis, framework::Tensor* out);
+                  T max_range, const int quant_axis, const int x_num_col_dims,
+                  framework::Tensor* out);
 };
 
 template <typename DeviceContext, typename T>
@@ -64,6 +65,7 @@ class FakeChannelWiseDequantizeMaxAbsKernel : public framework::OpKernel<T> {
 
     auto quant_bits = ctx.Attr<std::vector<int>>("quant_bits");
     auto quant_axis = ctx.Attr<int>("quant_axis");
+    auto x_num_col_dims = ctx.Attr<int>("x_num_col_dims");
     int max_range = 1;
 
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
@@ -80,11 +82,11 @@ class FakeChannelWiseDequantizeMaxAbsKernel : public framework::OpKernel<T> {
       max_range *= (std::pow(2, quant_bits[0] - 1) - 1);
     } else if (scale_num == 2) {
       PADDLE_ENFORCE_EQ(
-          scales[0]->numel(), in->dims()[1],
+          scales[0]->numel(), in->dims()[x_num_col_dims],
           platform::errors::PreconditionNotMet(
               "The number of first scale values must be the same with "
-              "second dimension value of Input(X) when the `Scales` has two "
-              "elements, but %ld != %ld here.",
+              "corresponding dimension value of Input(X) when the `Scales` "
+              "has two elements, but %ld != %ld here.",
               scales[0]->numel(), in->dims()[1]));
       PADDLE_ENFORCE_EQ(scales[1]->numel(), 1,
                         platform::errors::PreconditionNotMet(
@@ -96,7 +98,7 @@ class FakeChannelWiseDequantizeMaxAbsKernel : public framework::OpKernel<T> {
     }
     ChannelDequantizeFunctor<DeviceContext, T>()(
         dev_ctx, in, scales.data(), scale_num, static_cast<T>(max_range),
-        quant_axis, out);
+        quant_axis, x_num_col_dims, out);
   }
 };
 

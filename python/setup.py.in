@@ -106,6 +106,20 @@ def mkl():
 
 write_version_py(filename='@PADDLE_BINARY_DIR@/python/paddle/version.py')
 
+def write_cuda_env_config_py(filename='paddle/cuda_env.py'):
+    cnt = ""
+    if '${JIT_RELEASE_WHL}' == 'ON':
+        cnt = '''# THIS FILE IS GENERATED FROM PADDLEPADDLE SETUP.PY
+#
+import os
+os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
+'''
+
+    with open(filename, 'w') as f:
+        f.write(cnt)
+
+write_cuda_env_config_py(filename='@PADDLE_BINARY_DIR@/python/paddle/cuda_env.py')
+
 def write_distributed_training_mode_py(filename='paddle/fluid/incubate/fleet/parameter_server/version.py'):
     cnt = '''from __future__ import print_function
 
@@ -165,10 +179,13 @@ packages=['paddle',
           'paddle.distributed.fleet.meta_parallel.pp_utils',
           'paddle.distributed.fleet.meta_parallel.parallel_layers',
           'paddle.distributed.auto_parallel',
+          'paddle.distributed.auto_parallel.operators',
           'paddle.framework',
           'paddle.jit',
           'paddle.jit.dy2static',
           'paddle.inference',
+          'paddle.inference.contrib',
+          'paddle.inference.contrib.utils',
           'paddle.fluid',
           'paddle.fluid.inference',
           'paddle.fluid.dygraph',
@@ -413,10 +430,9 @@ class InstallCommand(InstallCommandBase):
     def finalize_options(self):
         ret = InstallCommandBase.finalize_options(self)
         self.install_lib = self.install_platlib
-        self.install_headers = os.path.join(self.install_platlib, 'paddle',
-                                            'include')
+        self.install_headers = os.path.join(self.install_platlib, 'paddle', 'include')
+        
         return ret
-
 
 class InstallHeaders(Command):
     """Override how headers are copied.
