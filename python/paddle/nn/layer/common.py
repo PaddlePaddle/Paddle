@@ -1390,7 +1390,8 @@ class Embedding(Layer):
             is_bias=False)
 
         if in_dygraph_mode() and padding_idx != -1:
-            self.weight[padding_idx] = 0.0
+            with paddle.no_grad():
+                self.weight[padding_idx] = 0.0
 
     def forward(self, x):
         return F.embedding(

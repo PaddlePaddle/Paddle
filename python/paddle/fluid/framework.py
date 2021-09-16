@@ -502,17 +502,17 @@ def xpu_places(device_ids=None):
     """
     **Note**:
         For multi-card tasks, please use `FLAGS_selected_xpus` environment variable to set the visible XPU device.
-    This function creates a list of :code:`paddle.XPUPlace` objects.
-    If :code:`device_ids` is None, environment variable of
-    :code:`FLAGS_selected_xpus` would be checked first. For example, if
-    :code:`FLAGS_selected_xpus=0,1,2`, the returned list would
-    be [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
-    If :code:`FLAGS_selected_xpus` is not set, all visible
-    xpu places would be returned.
-    If :code:`device_ids` is not None, it should be the device
-    ids of XPUs. For example, if :code:`device_ids=[0,1,2]`,
-    the returned list would be 
-    [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
+        This function creates a list of :code:`paddle.XPUPlace` objects.
+        If :code:`device_ids` is None, environment variable of
+        :code:`FLAGS_selected_xpus` would be checked first. For example, if
+        :code:`FLAGS_selected_xpus=0,1,2`, the returned list would
+        be [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
+        If :code:`FLAGS_selected_xpus` is not set, all visible
+        xpu places would be returned.
+        If :code:`device_ids` is not None, it should be the device
+        ids of XPUs. For example, if :code:`device_ids=[0,1,2]`,
+        the returned list would be 
+        [paddle.XPUPlace(0), paddle.XPUPlace(1), paddle.XPUPlace(2)].
     
     Parameters:
         device_ids (list or tuple of int, optional): list of XPU device ids.
@@ -520,6 +520,7 @@ def xpu_places(device_ids=None):
         list of paddle.XPUPlace: Created XPU place list.
     Examples:
         .. code-block:: python
+
             # required: xpu
 
             import paddle
@@ -864,6 +865,7 @@ class Variable(object):
             new_variable = cur_block.create_var(name="X",
                                                 shape=[-1, 23, 48],
                                                 dtype='float32')
+
         In `Dygraph <../../user_guides/howto/dygraph/DyGraph.html>`_  Mode:
 
         .. code-block:: python
@@ -1395,8 +1397,8 @@ class Variable(object):
         Indicating name of the gradient Variable of current Variable.
 
         **Notes: This is a read-only property. It simply returns name of
-          gradient Variable from a naming convention but doesn't guarantee
-          the gradient exists.**
+        gradient Variable from a naming convention but doesn't guarantee
+        the gradient exists.**
 
         Examples:
           .. code-block:: python
@@ -4379,6 +4381,8 @@ class Program(object):
 
         # compiled program, i.e. Graph
         self._graph = None
+        # to tag whether is startup_program
+        self._is_start_up_program_ = False
 
     def _find_var_class_kwargs(self, new_desc):
         # NOTE: not all variables support shape/dtype/lod_level methods.
@@ -5131,7 +5135,7 @@ class Program(object):
         res._sync_with_cpp()
         return res
 
-    def _remove_training_info(self):
+    def _remove_training_info(self, clip_extra=True):
         """
         This method will create a new program and do following adjustments on it:
         1. Remove all variable's `is_parameter` attribute if exist.
@@ -5156,6 +5160,71 @@ class Program(object):
             for var in block.all_vars():
                 var.clear_is_parameter()
                 var.clear_stop_gradient()
+            if not clip_extra:
+                continue
+            for op_idx in range(0, block.op_size()):
+                op = block.op(op_idx)
+                if op.type() not in OpProtoHolder.instance().op_proto_map:
+                    continue
+                proto = OpProtoHolder.instance().get_op_proto(op.type())
+                remove_input_list = []
+                for name in op.input_names():
+                    find = False
+                    for input_proto in proto.inputs:
+                        if input_proto.name != name:
+                            continue
+                        if input_proto.extra:
+                            remove_input_list.append(name)
+                        find = True
+                        break
+                    if not find:
+                        remove_input_list.append(name)
+                for name in remove_input_list:
+                    op.remove_input(name)
+
+                remove_output_list = []
+                for name in op.output_names():
+                    find = False
+                    for output_proto in proto.outputs:
+                        if output_proto.name != name:
+                            continue
+                        if output_proto.extra:
+                            remove_output_list.append(name)
+                        find = True
+                        break
+                    if not find:
+                        remove_output_list.append(name)
+                for name in remove_output_list:
+                    op.remove_output(name)
+
+                remove_attr_list = []
+                op_quant_name = core.op_proto_and_checker_maker.kOpWithQuantAttrName(
+                )
+                quant = bool(op.attr(op_quant_name)
+                             ) if op_quant_name in op.attr_names() else False
+                quant_attrs = [
+                    op_quant_name, "quantization_type", "skip_quant",
+                    "activation_bits", "bit_length", "quantize_weight_bits",
+                    "weight_quant_scale"
+                ]
+                for name in op.attr_names():
+                    if quant:
+                        if name in quant_attrs:
+                            continue
+                        if name.endswith("_threshold"):
+                            continue
+                    find = False
+                    for attr_proto in proto.attrs:
+                        if attr_proto.name != name:
+                            continue
+                        if attr_proto.extra:
+                            remove_attr_list.append(name)
+                        find = True
+                        break
+                    if not find:
+                        remove_attr_list.append(name)
+                for name in remove_attr_list:
+                    op.remove_attr(name)
         return res
 
     @staticmethod
@@ -5992,6 +6061,7 @@ class ParamBase(core.VarBase):
 # program is a global instance.
 _main_program_ = Program()
 _startup_program_ = Program()
+_startup_program_._is_start_up_program_ = True
 
 
 def default_startup_program():
@@ -6140,6 +6210,8 @@ def program_guard(main_program, startup_program=None):
     if startup_program is not None:
         check_type(startup_program, 'startup_program', Program,
                    'paddle.static.program_guard')
+        # Tag the program __is_start_up as True
+        startup_program._is_start_up_program_ = True
         startup_program = switch_startup_program(startup_program)
     try:
         yield
@@ -6271,6 +6343,7 @@ def device_guard(device=None):
 def set_flags(flags):
     """
     This function sets the GFlags value in Paddle.
+    For FLAGS please refer to :ref:`en_guides_flags_flags`
 
     Args:
         flags (dict): A dict contains flags and its value.
@@ -6278,8 +6351,8 @@ def set_flags(flags):
     Examples:
             .. code-block:: python
 
-                import paddle.fluid as fluid
-                fluid.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
+                import paddle
+                paddle.set_flags({'FLAGS_eager_delete_tensor_gb': 1.0})
     """
     if not isinstance(flags, dict):
         raise TypeError('flags in set_flags should be a dict')
@@ -6294,6 +6367,7 @@ def set_flags(flags):
 def get_flags(flags):
     """
     This function gets the GFlags value in Paddle.
+    For FLAGS please refer to :ref:`en_guides_flags_flags`
 
     Args:
         flags(list|tuple|str): A list/tuple of string or a string which is the flag's name.
@@ -6304,10 +6378,10 @@ def get_flags(flags):
     Examples:
         .. code-block:: python
 
-            import paddle.fluid as fluid
+            import paddle
 
             flags = ['FLAGS_eager_delete_tensor_gb', 'FLAGS_check_nan_inf']
-            res = fluid.get_flags(flags)
+            res = paddle.get_flags(flags)
             print(res)
             # {'FLAGS_eager_delete_tensor_gb': 0.0, 'FLAGS_check_nan_inf': False}
     """
