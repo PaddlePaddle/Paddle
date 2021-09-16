@@ -234,7 +234,10 @@ __global__ void apply_scale(T *data, T scale, int n) {
 }
 
 inline int round_up(int seq_len, int multiple = 32) {
-  assert(multiple);
+  PADDLE_ENFORCE_GT(
+      multiple, 0,
+      platform::errors::InvalidArgument(
+          "multiple should be a positive number，but it's (%d)", multiple));
   return ((seq_len + multiple - 1) / multiple) * multiple;
 }
 
