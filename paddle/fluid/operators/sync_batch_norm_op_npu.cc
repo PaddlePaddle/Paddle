@@ -793,7 +793,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
           {
             // In-place operation
             void *sendbuff = reinterpret_cast<void *>(
-                const_cast<float *>(x_square.data<float>()));
+                const_cast<float *>(x_sum.data<float>()));
             void *recvbuff = sendbuff;
             LOG(WARNING) << "sendbuff: " << sendbuff;
             LOG(WARNING) << "recvbuff: " << recvbuff;
