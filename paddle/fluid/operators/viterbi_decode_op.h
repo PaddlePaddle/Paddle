@@ -109,11 +109,6 @@ class ViterbiDecodeCPUKernel : public framework::OpKernel<T> {
     auto seq_len = static_cast<int>(input->dims()[1]);
     auto n_labels = static_cast<int>(input->dims()[2]);
 
-    auto* scores = ctx.Output<Tensor>("Scores");
-    auto* path = ctx.Output<Tensor>("Path");
-    scores->mutable_data<T>(curr_place);
-    path->mutable_data<int64_t>(curr_place);
-
     // Create a large int data buffer
     int buffer_size = batch_size * seq_len +
                       batch_size * n_labels * (seq_len - 1) + 7 * batch_size +
@@ -128,7 +123,23 @@ class ViterbiDecodeCPUKernel : public framework::OpKernel<T> {
     CREATE_TENSOR(float_buffer, T, buffer_size);
     TensorBuffer float_tensor_buffer(float_buffer);
 
-    Tensor temp_path = int_tensor_buffer.GetBufferBlock({seq_len, batch_size});
+    auto* length = ctx.Input<Tensor>("Length");
+    Tensor left_length = int_tensor_buffer.GetBufferBlock({batch_size, 1});
+    framework::TensorCopy(*length, curr_place, dev_ctx, &left_length);
+
+    int64_t max_seq_len =
+        *std::max_element(left_length.data<int64_t>(),
+                          left_length.data<int64_t>() + left_length.numel());
+
+    auto* scores = ctx.Output<Tensor>("Scores");
+    scores->mutable_data<T>(curr_place);
+
+    auto* path = ctx.Output<Tensor>("Path");
+    path->Resize({batch_size, max_seq_len});
+    path->mutable_data<int64_t>(curr_place);
+
+    Tensor temp_path =
+        int_tensor_buffer.GetBufferBlock({max_seq_len, batch_size});
     auto batch_path = Unbind(temp_path);
     for (auto it = batch_path.begin(); it != batch_path.end(); ++it) {
       it->Resize({batch_size});
@@ -144,14 +155,6 @@ class ViterbiDecodeCPUKernel : public framework::OpKernel<T> {
     Tensor trans_exp =
         float_tensor_buffer.GetBufferBlock({1, n_labels, n_labels});
     framework::TensorCopy(*transition, curr_place, dev_ctx, &trans_exp);
-
-    auto* length = ctx.Input<Tensor>("Length");
-    Tensor left_length = int_tensor_buffer.GetBufferBlock({batch_size, 1});
-    framework::TensorCopy(*length, curr_place, dev_ctx, &left_length);
-
-    int64_t max_seq_len =
-        *std::max_element(left_length.data<int64_t>(),
-                          left_length.data<int64_t>() + left_length.numel());
 
     Tensor alpha = float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
     math::SetConstant<platform::CPUDeviceContext, T> float_functor;
@@ -278,7 +281,9 @@ class ViterbiDecodeCPUKernel : public framework::OpKernel<T> {
 
     // last_ids_update = last_ids * tag_mask
     int last_ids_index = 1;
-    MUL(last_ids, int_mask, batch_path[seq_len - last_ids_index], int64_t);
+    int actual_len = std::min(seq_len, static_cast<int>(max_seq_len));
+
+    MUL(last_ids, int_mask, batch_path[actual_len - last_ids_index], int64_t);
     int64_t* batch_offset_ptr = batch_offset.data<int64_t>();
     for (int64_t i = 0; i < batch_size; ++i) {
       batch_offset_ptr[i] = i * n_labels;
@@ -290,7 +295,7 @@ class ViterbiDecodeCPUKernel : public framework::OpKernel<T> {
       ADD(batch_offset, last_ids, gather_idx, int64_t);
       // tag_mask = paddle.cast((left_length >= 0), 'int64')
       // last_ids_update = paddle.gather(hist.flatten(), gather_idx) * tag_mask
-      Tensor& last_ids_update = batch_path[seq_len - last_ids_index];
+      Tensor& last_ids_update = batch_path[actual_len - last_ids_index];
       hist->Resize({batch_size * n_labels});
       CPUGather<int64_t, int64_t>(dev_ctx, *hist, gather_idx, &last_ids_update);
       GET_CAST_MASK(left_length, zero, tag_mask, int_mask, GreaterEqualFunctor,

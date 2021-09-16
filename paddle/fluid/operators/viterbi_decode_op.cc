@@ -68,7 +68,6 @@ class ViterbiDecodeOp : public framework::OperatorWithKernel {
             "The number of tags of Input and Transition should be equal."));
 
     ctx->SetOutputDim("Scores", length_dims);
-    ctx->SetOutputDim("Path", framework::make_ddim({in_dims[0], in_dims[1]}));
   }
 
  protected:
