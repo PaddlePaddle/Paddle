@@ -380,7 +380,6 @@ void DotDsd(const platform::CUDADeviceContext& ctx, const Tensor* A_offset,
   platform::dynload::cusparseDestroy(handle);
   cudaFree(dBuffer);
 }
-#endif
 
 std::vector<Tensor> GetSplitTensor(Tensor* input) {
   auto dims = input->dims();
@@ -394,6 +393,7 @@ std::vector<Tensor> GetSplitTensor(Tensor* input) {
   input->Resize(framework::make_ddim(NewDims));
   return input->Split(1, 0);
 }
+#endif
 
 template <typename DeviceContext, typename T>
 class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
