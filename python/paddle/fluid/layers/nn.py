@@ -1547,6 +1547,13 @@ def conv2d(input,
             core.is_compiled_with_rocm()):
         l_type = 'depthwise_conv2d'
 
+    # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
+    if core.is_compiled_with_npu():
+        if (num_channels == groups and num_channels == num_filters):
+            l_type = 'depthwise_conv2d'
+        else:
+            l_type = 'conv2d'
+
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
 
@@ -7185,7 +7192,8 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
     assert input.numel() > 0 and label.numel() > 0, \
         "Any dimension of input and label cannot be equal to 0."
 
-    label = one_hot(label, depth=input.shape[-1])
+    label = squeeze(label, [-1])
+    label = paddle.nn.functional.one_hot(label, input.shape[-1])
     reduce_dim = list(range(1, len(input.shape)))
     inse = reduce_sum(input * label, dim=reduce_dim)
     dice_denominator = reduce_sum(

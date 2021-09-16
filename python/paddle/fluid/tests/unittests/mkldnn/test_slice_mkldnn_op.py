@@ -150,6 +150,46 @@ class TestSlice3DOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
         self.out = self.input[:, :, -1]
 
 
+class TestSliceOneDNNOp_decs_dim_starts_ListTensor(
+        TestSliceDecrease1AxisOneDNNOp):
+    def set_inputs(self):
+        starts_tensor = []
+        for index, ele in enumerate(self.starts):
+            starts_tensor.append(("x1", np.ones((1)).astype('int32') * 2))
+        self.inputs = {'Input': self.input, 'StartsTensorList': starts_tensor}
+
+    def config(self):
+        self.input = np.random.random([5, 4, 5]).astype("float32")
+        self.starts = [1]
+        self.ends = [3]
+        self.axes = [2]
+        self.decrease_axis = []
+        self.infer_flags = [1, 1, 1]
+        self.out = self.input[:, :, 2:3]
+
+
+class TestSlice4DInferDimsOneDNNOp(TestSliceDecrease1AxisOneDNNOp):
+    def config(self):
+        self.input = np.random.random([1, 1, 10, 10]).astype("float32")
+        self.starts = [1, 2]
+        self.ends = [9, 9]
+        self.axes = [2, 3]
+        self.decrease_axis = [1]
+        self.infer_flags = [-1, -1]
+        self.out = self.input[:, :, 1:9, 2:9]
+
+
+class TestSlice4DInferDimsOneDNNOp2(TestSliceDecrease1AxisOneDNNOp):
+    def config(self):
+        self.input = np.random.random([1, 1, 10, 10]).astype("float32")
+        self.starts = [4, 2]
+        self.ends = [7, 8]
+        self.axes = [2, 3]
+        self.decrease_axis = [0, 1]
+        self.infer_flags = [-1, -1]
+        self.out = self.input[:, :, 4:7, 2:8]
+
+
 #   BF16 TESTS
 def create_bf16_test_class(parent):
     @OpTestTool.skip_if_not_cpu_bf16()
