@@ -21,39 +21,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/generator.h"
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/platform/aligned_vector.h"
-#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
-
-#if defined(__NVCC__) || defined(__HIPCC__)
-template <typename T, typename MaskType, int VecSize>
-__global__ void DropoutGradCUDAKernel(const T* dout, const MaskType* mask,
-                                      const T factor, const int64_t size,
-                                      T* dx) {
-  using LoadT = platform::AlignedVector<T, VecSize>;
-  using MaskLoadT = platform::AlignedVector<MaskType, VecSize>;
-
-  int64_t idx = blockDim.x * blockIdx.x + threadIdx.x;
-  for (int i = idx * VecSize; i < size; i += blockDim.x * gridDim.x * VecSize) {
-    LoadT dout_val;
-    platform::Load<T, VecSize>(&dout[i], &dout_val);
-
-    MaskLoadT mask_val;
-    platform::Load<MaskType, VecSize>(&mask[i], &mask_val);
-
-    LoadT dx_val;
-
-#pragma unroll
-    for (int j = 0; j < VecSize; j++) {
-      dx_val[j] = dout_val[j] * static_cast<T>(mask_val[j]) * factor;
-    }
-
-    platform::Store<T, VecSize>(dx_val, &dx[i]);
-  }
-}
-#endif
 
 using Tensor = framework::Tensor;
 template <typename T, int MajorType = Eigen::RowMajor,
@@ -137,7 +107,6 @@ class CPUDropoutKernel : public framework::OpKernel<T> {
     }
   }
 };
-
 template <typename DeviceContext, typename T>
 class DropoutGradKernel : public framework::OpKernel<T> {
  public:
@@ -146,7 +115,6 @@ class DropoutGradKernel : public framework::OpKernel<T> {
     auto* grad_y = context.Input<Tensor>(framework::GradVarName("Out"));
     auto* mask = context.Input<Tensor>("Mask");
     grad_x->mutable_data<T>(context.GetPlace());
-    auto size = grad_x->numel();
 
     auto dX = EigenVector<T>::Flatten(*grad_x);
     auto dY = EigenVector<T>::Flatten(*grad_y);
@@ -169,23 +137,8 @@ class DropoutGradKernel : public framework::OpKernel<T> {
         if (dropout_prob == 1.0f) {
           dX.device(place) = static_cast<T>(0) * dY;
         } else {
-          int vec_size = platform::GetVectorizedSize<T>(grad_y->data<T>());
-          if (platform::is_gpu_place(context.GetPlace()) && vec_size == 4 &&
-              size % 4 == 0) {
-#if defined(__NVCC__) || defined(__HIPCC__)
-            auto factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
-            auto stream = context.cuda_device_context().stream();
-            platform::GpuLaunchConfig config = platform::GetGpuLaunchConfig1D(
-                context.cuda_device_context(), size);
-            DropoutGradCUDAKernel<T, uint8_t, 4><<<
-                config.block_per_grid, config.thread_per_block, 0, stream>>>(
-                grad_y->data<T>(), mask->data<uint8_t>(), factor, size,
-                grad_x->data<T>());
-#endif
-          } else {
-            dX.device(place) =
-                dY * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
-          }
+          dX.device(place) =
+              dY * M.cast<T>() / static_cast<T>(1.0f - dropout_prob);
         }
       } else {
         dX.device(place) = dY * M.cast<T>();
