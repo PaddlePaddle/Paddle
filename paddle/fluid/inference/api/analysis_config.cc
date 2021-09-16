@@ -114,6 +114,14 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
   Update();
 }
 
+void AnalysisConfig::SetXpuDeviceId(int device_id) {
+  PADDLE_ENFORCE_EQ(use_xpu_, true,
+                    platform::errors::PreconditionNotMet(
+                        "Should call EnableXpu before SetXpuDeviceId."));
+  xpu_device_id_ = device_id;
+  Update();
+}
+
 void AnalysisConfig::EnableNpu(int device_id) {
 #ifdef PADDLE_WITH_ASCEND_CL
   use_npu_ = true;
@@ -158,6 +166,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
   CP_MEMBER(trt_use_oss_);
+  CP_MEMBER(trt_tuned_dynamic_shape_);
+  CP_MEMBER(trt_allow_build_at_runtime_);
+  CP_MEMBER(collect_shape_range_info_);
+  CP_MEMBER(shape_range_info_path_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -653,8 +665,8 @@ float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
 #endif
 }
 
-void AnalysisConfig::EnableMemoryOptim() {
-  enable_memory_optim_ = true;
+void AnalysisConfig::EnableMemoryOptim(bool x) {
+  enable_memory_optim_ = x;
   Update();
 }
 
@@ -783,6 +795,9 @@ std::string AnalysisConfig::Summary() {
       // dynamic_shape
       os.InsertRow({"tensorrt_enable_dynamic_shape",
                     min_input_shape_.empty() ? "false" : "true"});
+      os.InsertRow({"tensorrt_tuned_dynamic_shape", trt_tuned_dynamic_shape_
+                                                        ? shape_range_info_path_
+                                                        : "false"});
 
       os.InsertRow({"tensorrt_use_oss", trt_use_oss_ ? "true" : "false"});
       os.InsertRow({"tensorrt_use_dla", trt_use_dla_ ? "true" : "false"});
@@ -812,8 +827,46 @@ std::string AnalysisConfig::Summary() {
   os.InsertRow({"memory_optim", enable_memory_optim_ ? "true" : "false"});
   os.InsertRow({"enable_profile", with_profile_ ? "true" : "false"});
   os.InsertRow({"enable_log", with_glog_info_ ? "true" : "false"});
+  os.InsertRow({"collect_shape_range_info",
+                collect_shape_range_info_ ? shape_range_info_path_ : "false"});
 
   return os.PrintTable();
 }
 
+void AnalysisConfig::CollectShapeRangeInfo(
+    const std::string &shape_range_info_path) {
+  LOG(INFO) << "In CollectShapeInfo mode, we will disable optimizations and "
+               "collect the shape information of "
+            << "all intermediate tensors in the compute graph and calculate "
+               "the min_shape, max_shape and opt_shape.";
+  collect_shape_range_info_ = true;
+  PADDLE_ENFORCE_EQ(shape_range_info_path.empty(), false,
+                    platform::errors::InvalidArgument(
+                        "The shape_range_info_path should not be empty, please "
+                        "re-check the argument."));
+  shape_range_info_path_ = shape_range_info_path;
+}
+
+const std::string &AnalysisConfig::shape_range_info_path() {
+  return shape_range_info_path_;
+}
+
+bool AnalysisConfig::shape_range_info_collected() {
+  return collect_shape_range_info_;
+}
+
+void AnalysisConfig::EnableTunedTensorRtDynamicShape(
+    const std::string &shape_range_info_path, bool allow_build_at_runtime) {
+  shape_range_info_path_ = shape_range_info_path;
+  trt_allow_build_at_runtime_ = allow_build_at_runtime;
+  trt_tuned_dynamic_shape_ = true;
+}
+
+bool AnalysisConfig::tuned_tensorrt_dynamic_shape() {
+  return trt_tuned_dynamic_shape_;
+}
+
+bool AnalysisConfig::trt_allow_build_at_runtime() {
+  return trt_allow_build_at_runtime_;
+}
 }  // namespace paddle

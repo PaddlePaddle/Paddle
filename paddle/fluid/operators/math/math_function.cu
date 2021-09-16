@@ -35,6 +35,7 @@ template struct SetConstant<platform::CUDADeviceContext, float>;
 template struct SetConstant<platform::CUDADeviceContext, double>;
 template struct SetConstant<platform::CUDADeviceContext, uint8_t>;
 template struct SetConstant<platform::CUDADeviceContext, int>;
+template struct SetConstant<platform::CUDADeviceContext, int16_t>;
 template struct SetConstant<platform::CUDADeviceContext, int64_t>;
 template struct SetConstant<platform::CUDADeviceContext, bool>;
 template struct SetConstant<platform::CUDADeviceContext,

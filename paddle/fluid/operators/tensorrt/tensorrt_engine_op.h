@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/framework/scope.h"
 #ifdef PADDLE_WITH_CUDA
 
 #include <memory>
@@ -30,6 +31,7 @@
 #include "paddle/fluid/inference/tensorrt/convert/op_converter.h"
 #include "paddle/fluid/inference/tensorrt/engine.h"
 #include "paddle/fluid/inference/tensorrt/helper.h"
+#include "paddle/fluid/inference/utils/io_utils.h"
 
 namespace paddle {
 namespace inference {
@@ -77,18 +79,19 @@ static void RuntimeStaticShapeCheck(std::vector<int64_t> runtime_input_shape,
 }
 
 static void RuntimeDynamicShapeCheck(
-    const std::string &x, const std::vector<int64_t> &runtime_input_shape,
-    const std::vector<int> &min_input_shape,
-    const std::vector<int> &max_input_shape) {
-  PADDLE_ENFORCE_EQ(runtime_input_shape.size(), min_input_shape.size(),
-                    platform::errors::InvalidArgument(
-                        "TRT engine runtime input dims size(%d) inconsistent "
-                        "with the dynamic shape size(%d)",
-                        runtime_input_shape.size(), min_input_shape.size()));
+    const std::string &x, const std::vector<int32_t> &runtime_input_shape,
+    const std::vector<int32_t> &min_input_shape,
+    const std::vector<int32_t> &max_input_shape) {
+  // PADDLE_ENFORCE_EQ(
+  //     runtime_input_shape.size(), min_input_shape.size(),
+  //     platform::errors::InvalidArgument(
+  //         "TRT engine runtime input %s dims size(%d) inconsistent "
+  //         "with the dynamic shape size(%d)",
+  //         x, runtime_input_shape.size(), min_input_shape.size()));
   auto is_input_shape_valid = [&](
-      const std::vector<int64_t> &runtime_input_shape,
-      const std::vector<int> &min_input_shape,
-      const std::vector<int> &max_input_shape) -> bool {
+      const std::vector<int32_t> &runtime_input_shape,
+      const std::vector<int32_t> &min_input_shape,
+      const std::vector<int32_t> &max_input_shape) -> bool {
     for (size_t i = 0; i < runtime_input_shape.size(); i++) {
       if (runtime_input_shape[i] <= max_input_shape[i] &&
           runtime_input_shape[i] >= min_input_shape[i]) {
@@ -128,6 +131,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
  private:
   std::vector<std::string> input_names_;
   std::unordered_set<std::string> param_names_;
+  std::vector<std::string> runtime_input_names_;
   mutable TensorRTEngine *trt_engine_{nullptr};
   int max_batch_size_;
   int workspace_size_;
@@ -141,7 +145,14 @@ class TensorRTEngineOp : public framework::OperatorBase {
   bool calibration_mode_;
   int predictor_id_;
   int device_id_;
+  bool allow_build_at_runtime_{false};
+  std::string shape_range_info_path_;
+  std::string model_opt_cache_dir_;
+  bool use_static_engine_;
   AnalysisConfig::Precision precision_mode_;
+  std::map<std::string, std::vector<int>> min_input_shape_{};
+  std::map<std::string, std::vector<int>> max_input_shape_{};
+  std::map<std::string, std::vector<int>> opt_input_shape_{};
 
  public:
   TensorRTEngineOp(const std::string &type,
@@ -160,10 +171,56 @@ class TensorRTEngineOp : public framework::OperatorBase {
     engine_key_ = Attr<std::string>("engine_key");
     calibration_engine_key_ = Attr<std::string>("calibration_engine_key");
     predictor_id_ = Attr<int>("predictor_id");
+    shape_range_info_path_ = Attr<std::string>("shape_range_info_path");
+    allow_build_at_runtime_ = Attr<bool>("allow_build_at_runtime");
+    use_static_engine_ = Attr<bool>("use_static_engine");
+    if (use_static_engine_) {
+      model_opt_cache_dir_ = Attr<std::string>("model_opt_cache_dir");
+    }
+
+    if (HasAttr("dynamic_shape_names") && HasAttr("min_input_shape") &&
+        HasAttr("max_input_shape") && HasAttr("opt_input_shape")) {
+      std::vector<std::string> dynamic_shape_names;
+      std::vector<std::vector<int>> min_input_shapes;
+      std::vector<std::vector<int>> max_input_shapes;
+      std::vector<std::vector<int>> opt_input_shapes;
+      std::vector<int> dynamic_shape_lens;
+      dynamic_shape_names =
+          Attr<std::vector<std::string>>("dynamic_shape_names");
+      std::vector<int> min_shapes = Attr<std::vector<int>>("min_input_shape");
+      std::vector<int> max_shapes = Attr<std::vector<int>>("max_input_shape");
+      std::vector<int> opt_shapes = Attr<std::vector<int>>("opt_input_shape");
+      dynamic_shape_lens = Attr<std::vector<int>>("dynamic_shape_lens");
+      int idx = 0;
+      for (size_t i = 0; i < dynamic_shape_lens.size(); ++i) {
+        std::vector<int> tmp1, tmp2, tmp3;
+        for (int j = 0; j < dynamic_shape_lens[i]; ++j) {
+          tmp1.push_back(min_shapes[idx]);
+          tmp2.push_back(max_shapes[idx]);
+          tmp3.push_back(opt_shapes[idx++]);
+        }
+        min_input_shapes.emplace_back(tmp1);
+        max_input_shapes.emplace_back(tmp2);
+        opt_input_shapes.emplace_back(tmp3);
+      }
+
+      for (size_t i = 0; i < dynamic_shape_names.size(); ++i) {
+        min_input_shape_.insert(
+            std::make_pair(dynamic_shape_names[i], min_input_shapes[i]));
+        max_input_shape_.insert(
+            std::make_pair(dynamic_shape_names[i], max_input_shapes[i]));
+        opt_input_shape_.insert(
+            std::make_pair(dynamic_shape_names[i], opt_input_shapes[i]));
+      }
+    }
 
     auto params = Attr<std::vector<std::string>>("parameters");
     for (const auto &param : params) {
       param_names_.insert(param);
+    }
+    for (auto &x : input_names_) {
+      if (param_names_.count(x)) continue;
+      runtime_input_names_.emplace_back(x);
     }
     // calibration_mode is ture represents we need to
     // generate the calibration table data.
@@ -210,6 +267,78 @@ class TensorRTEngineOp : public framework::OperatorBase {
       return;
     }
     auto *trt_engine = GetEngine(scope, dev_place);
+    if (trt_engine->with_dynamic_shape()) {
+      // get runtime input shapes.
+      std::map<std::string, std::vector<int32_t>> runtime_input_shape;
+      for (auto name : runtime_input_names_) {
+        auto &t = inference::analysis::GetFromScope<framework::LoDTensor>(scope,
+                                                                          name);
+        VLOG(4) << "trt engine runtime input name(" << name << "), dims("
+                << t.dims() << ")";
+        auto t_shape = framework::vectorize<int32_t>(t.dims());
+        runtime_input_shape.insert(std::make_pair(name, t_shape));
+      }
+
+      if (!allow_build_at_runtime_) {
+        std::map<std::string, std::vector<int>> min_input_shape =
+            trt_engine->min_input_shape();
+        std::map<std::string, std::vector<int>> max_input_shape =
+            trt_engine->max_input_shape();
+        for (auto &x : runtime_input_names_) {
+          PADDLE_ENFORCE_EQ(
+              min_input_shape.count(x), true,
+              platform::errors::InvalidArgument(
+                  "Input %s not found in TRT engine min_input_shape.", x));
+          PADDLE_ENFORCE_EQ(
+              max_input_shape.count(x), true,
+              platform::errors::InvalidArgument(
+                  "Input %s not found in TRT engine max_input_shape.", x));
+          RuntimeDynamicShapeCheck(x, runtime_input_shape[x],
+                                   min_input_shape[x], max_input_shape[x]);
+        }
+      } else {
+        // compare runtime_input_shape and trt_engine dynamic shapes.
+        std::vector<std::string> shape_changed_name;
+        bool is_adjusted = trt_engine->AdjustDynamicShapeRange(
+            runtime_input_shape, &shape_changed_name);
+        if (is_adjusted) {
+          LOG(INFO) << "Adjust dynamic shape range, rebuild trt engine!";
+          trt_engine->ResetContext();
+          trt_engine->ClearTensorMap();
+          auto *anc = scope.parent();
+          while (anc && anc->parent()) {
+            anc = anc->parent();
+          }
+          if (anc == nullptr) {
+            anc = &scope;
+          }
+          PrepareTRTEngine(*anc, trt_engine);
+
+          // update shape_range_info_pbtxt
+          if (!shape_range_info_path_.empty()) {
+            inference::UpdateShapeRangeInfo(
+                shape_range_info_path_, trt_engine->min_input_shape(),
+                trt_engine->max_input_shape(), trt_engine->optim_input_shape(),
+                shape_changed_name);
+          }
+
+          if (use_static_engine_) {
+            nvinfer1::IHostMemory *serialized_engine_data =
+                trt_engine->Serialize();
+            std::string trt_engine_serialized_data =
+                std::string((const char *)serialized_engine_data->data(),
+                            serialized_engine_data->size());
+            inference::analysis::SaveTrtEngineSerializedDataToFile(
+                inference::analysis::GetTrtEngineSerializedPath(
+                    model_opt_cache_dir_, engine_key_),
+                trt_engine_serialized_data);
+            LOG(INFO) << "Save TRT Optimized Info to "
+                      << inference::analysis::GetTrtEngineSerializedPath(
+                             model_opt_cache_dir_, engine_key_);
+          }
+        }
+      }
+    }
     RunTrt(scope, dev_place, trt_engine);
   }
 
@@ -273,7 +402,7 @@ class TensorRTEngineOp : public framework::OperatorBase {
         reinterpret_cast<const platform::CUDADeviceContext &>(dev_ctx).stream();
 
     PADDLE_ENFORCE_EQ(
-        input_names_.empty(), false,
+        runtime_input_names_.empty(), false,
         platform::errors::PreconditionNotMet(
             "TensorRT engine needs at least one input, but no input is found. "
             "Please check if you set the input correctly."));
@@ -283,16 +412,12 @@ class TensorRTEngineOp : public framework::OperatorBase {
 
     int num_inputs = 0;
 
-    for (const auto &x : Inputs("Xs")) {
-      if (param_names_.count(x)) continue;
-      num_inputs += 1;
-    }
+    num_inputs += runtime_input_names_.size();
     const int num_bindings = num_inputs + Outputs("Ys").size();
     std::vector<void *> buffers(num_bindings);
 
     // Bind input tensor to TRT.
-    for (const auto &x : Inputs("Xs")) {
-      if (param_names_.count(x)) continue;
+    for (const auto &x : runtime_input_names_) {
       // convert input and copy to TRT engine's buffer
       auto &t =
           inference::analysis::GetFromScope<framework::LoDTensor>(scope, x);
@@ -341,22 +466,6 @@ class TensorRTEngineOp : public framework::OperatorBase {
         }
       } else {
 #if IS_TRT_VERSION_GE(6000)
-        std::map<std::string, std::vector<int>> min_input_shape =
-            engine->min_input_shape();
-        std::map<std::string, std::vector<int>> max_input_shape =
-            engine->max_input_shape();
-        PADDLE_ENFORCE_EQ(
-            min_input_shape.count(x), true,
-            platform::errors::InvalidArgument(
-                "Input %s not found in TRT engine min_input_shape.", x));
-        PADDLE_ENFORCE_EQ(
-            max_input_shape.count(x), true,
-            platform::errors::InvalidArgument(
-                "Input %s not found in TRT engine max_input_shape.", x));
-        auto x_min_input_shape = min_input_shape[x];
-        auto x_max_input_shape = max_input_shape[x];
-        RuntimeDynamicShapeCheck(x, t_shape, x_min_input_shape,
-                                 x_max_input_shape);
         auto *trt_context = engine->context();
         trt_context->setBindingDimensions(
             bind_index, inference::tensorrt::Vec2TRT_Dims(t_shape, x, true));
@@ -460,7 +569,8 @@ class TensorRTEngineOp : public framework::OperatorBase {
           inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
               .Create(engine_key_ + std::to_string(predictor_id_),
                       max_batch_size_, workspace_size_, precision_mode_,
-                      calibrator_.get(), device_id_);
+                      calibrator_.get(), device_id_, min_input_shape_,
+                      max_input_shape_, opt_input_shape_);
       PrepareTRTEngine(scope, trt_engine_);
     }
     return trt_engine_;
