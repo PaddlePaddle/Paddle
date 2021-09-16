@@ -100,7 +100,7 @@ class TestSlogDeterminantOp(OpTest):
         self.check_grad(['Input'], ['Out'], max_relative_error=0.1)
 
     def init_data(self):
-        self.case = np.random.rand(3, 3, 5, 5).astype('float64')
+        self.case = np.random.rand(4, 5, 5).astype('float64')
         self.inputs = {'Input': self.case}
         self.target = np.array(np.linalg.slogdet(self.case))
 
@@ -114,7 +114,7 @@ class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
 
 class TestSlogDeterminantAPI(unittest.TestCase):
     def setUp(self):
-        self.shape = [4, 5, 5]
+        self.shape = [3, 3, 5, 5]
         self.x = np.random.random(self.shape).astype(np.float32)
         self.place = paddle.CPUPlace()
 
