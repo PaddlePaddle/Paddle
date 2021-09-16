@@ -1838,7 +1838,7 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             helper = LayerHelper('pinv', **locals())
             dtype = x.dtype
             check_variable_and_dtype(
-                x, 'x', ['float32', 'float64', 'complex64', 'complex128'],
+                x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'],
                 'pinv')
 
             if dtype == paddle.complex128:
@@ -1856,7 +1856,6 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
                 outputs={'Eigenvalues': s,
                          'Eigenvectors': u},
                 attrs={'UPLO': 'L'})
-
             s_abs = helper.create_variable_for_type_inference(s_type)
             helper.append_op(
                 type='abs', inputs={'X': s}, outputs={'Out': s_abs})

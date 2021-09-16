@@ -34,11 +34,6 @@ class LinalgPinvTestCase(unittest.TestCase):
         if core.is_compiled_with_cuda():
             self.places.append(paddle.CUDAPlace(0))
 
-    # for compare time cost with Pytorch
-    # def generate_input(self):
-    #     self._input_shape = (3, 5)
-    #     self._input_data = np.arange(15).reshape(self._input_shape).astype(self.dtype)
-
     def generate_input(self):
         self._input_shape = (5, 5)
         self._input_data = np.random.random(self._input_shape).astype(
@@ -52,18 +47,6 @@ class LinalgPinvTestCase(unittest.TestCase):
         self.dtype = 'float64'
         self.rcond = 1e-15
         self.hermitian = False
-
-    # for compare time cost with Pytorch
-    # def test_time(self):
-    #     from time import time
-    #     for place in self.places:
-    #         paddle.disable_static(place)
-    #         x = paddle.to_tensor(self._input_data, place=place)
-    #         print(x)
-    #         start = time()
-    #         out = paddle.linalg.pinv(x, hermitian=self.hermitian)
-    #         print(place, ' time: ', time() - start)
-    #         print(out)
 
     def test_dygraph(self):
         for place in self.places:
@@ -86,7 +69,9 @@ class LinalgPinvTestCase(unittest.TestCase):
         for place in places:
             with fluid.program_guard(fluid.Program(), fluid.Program()):
                 x = paddle.fluid.data(
-                    name="input", shape=self._input_shape, dtype=self.dtype)
+                    name="input",
+                    shape=self._input_shape,
+                    dtype=self._input_data.dtype)
                 out = paddle.linalg.pinv(
                     x, rcond=self.rcond, hermitian=self.hermitian)
                 exe = fluid.Executor(place)
@@ -250,7 +235,7 @@ class LinalgPinvTestCaseHermitian5(LinalgPinvTestCase):
         self.hermitian = True
 
 
-class LinalgPinvTestCaseHermitian6(LinalgPinvTestCase):
+class LinalgPinvTestCaseHermitianFP32(LinalgPinvTestCase):
     def generate_input(self):
         self._input_shape = (3, 5, 5)
         x = np.random.random(self._input_shape).astype(self.dtype)
@@ -263,5 +248,4 @@ class LinalgPinvTestCaseHermitian6(LinalgPinvTestCase):
 
 
 if __name__ == '__main__':
-    # paddle.enable_static()
     unittest.main()
