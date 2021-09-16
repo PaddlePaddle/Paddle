@@ -5041,64 +5041,42 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     slice along dimension `axis`.
 
     Args:
-        x(Variable|list): The input tensor could be N-D tensor, and the input data type could be float32 or float64.
+        x(Variable|list): The input tensor could be N-D tensor, and the input data type could be float16, float32 or float64.
         axis(int): The axis on which to apply normalization. If `axis < 0`, \
             the dimension to normalization is rank(X) + axis. -1 is the
             last dimension.
         epsilon(float): The epsilon value is used to avoid division by zero, \
             the default value is 1e-12.
-	name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
         Variable: The output has the same shape and data type with `x`.
 
     Examples:
 
-        .. code-block:: python
-
-	    # declarative mode
-	    import paddle.fluid as fluid
-	    import numpy as np
+    .. code-block:: python
+        :name: code-example1
+        
         import paddle
-        paddle.enable_static()
-	    input = fluid.data(name="input", shape=[2,3])
-	    output = fluid.layers.l2_normalize(x=input,axis=0)
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
+        
+        X = paddle.randn(shape=[3, 5], dtype='float64')
+        out = paddle.fluid.layers.l2_normalize(X, axis=-1)
+        print(out.numpy())
 
-	    input_data = np.random.rand(2,3).astype("float32")
-	    print(input_data)
-
-	    # [[0.5171216  0.12704141 0.56018186]
-	    # [0.93251234 0.5382788  0.81709313]]
-
-	    output_data = exe.run(fluid.default_main_program(),
-                feed={"input":input_data},
-                fetch_list=[output],
-                return_numpy=True)
-
-	    print(output_data)
-
-	    # [array([[0.48496857, 0.22970329, 0.56545246],
-	    # [0.8745316 , 0.9732607 , 0.82478094]], dtype=float32)]
-
-	    # imperative mode
-	    import paddle.fluid.dygraph as dg
-
-	    with dg.guard(place) as g:
-    		input = dg.to_variable(input_data)
-    		output = fluid.layers.l2_normalize(x=input, axis=-1)
-    		print(output.numpy())
-
-		# [[0.66907585 0.16437206 0.7247892 ]
-		# [0.6899054  0.3982376  0.6045142 ]]
+        # [[ 0.21558504  0.56360189  0.47466096  0.46269539 -0.44326736]
+        #  [-0.70602414 -0.52745777  0.37771788 -0.2804768  -0.04449922]
+        #  [-0.33972208 -0.43014923  0.31772556  0.76617881 -0.10761525]]
 
     """
 
     if len(x.shape) == 1:
         axis = 0
-    check_variable_and_dtype(x, "X", ("float32", "float64"), "norm")
+    if in_dygraph_mode():
+        _, out = _C_ops.norm(x, 'axis', 1
+                             if axis is None else axis, 'epsilon', epsilon)
+        return out
+
+    check_variable_and_dtype(x, "X", ("float16", "float32", "float64"), "norm")
 
     helper = LayerHelper("l2_normalize", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
