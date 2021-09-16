@@ -18,7 +18,7 @@ namespace paddle {
 namespace framework {
 namespace ir {
 
-void InitGeneratePattern(PDPattern* pattern, const proto::PassDesc& pass_desc) {
+void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
   const proto::BlockDesc& block = pass_desc.pattern().blocks(0);
   // Traverse all operators to create subgraph.
   for (int index = 0; index < block.ops_size(); ++index) {
@@ -173,7 +173,7 @@ GeneratePass::GeneratePass(const proto::MultiPassDesc& multi_pass_desc)
 void GeneratePass::ApplyImpl(Graph* graph) const {
   for (const proto::PassDesc& pass_desc : multi_pass_desc_.pass_descs()) {
     GraphPatternDetector detector;
-    InitGeneratePattern(detector.mutable_pattern(), pass_desc);
+    InitGeneratePattern(pass_desc, detector.mutable_pattern());
     detector(graph, GetGenerateRewrite(detector.pattern(), pass_desc));
     // The rewrited graph needs to be verified. Current Pass should be skipped
     // if validation failed. Rewrite based on the original graph cannot
