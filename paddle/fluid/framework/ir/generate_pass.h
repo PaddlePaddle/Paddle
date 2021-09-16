@@ -28,7 +28,6 @@ class GeneratePass : public Pass {
   explicit GeneratePass(const std::string& binary_str);
   // from PassDesc/MultiPassDesc
   explicit GeneratePass(const proto::MultiPassDesc& multi_pass_desc);
-  virtual ~GeneratePass() {}
 
  protected:
   void ApplyImpl(Graph* graph) const override;

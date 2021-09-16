@@ -34,6 +34,8 @@ proto::MultiPassDesc generate_fc_fuse() {
   for (bool with_relu : {true, false}) {
     proto::PassDesc* pass_desc = multi_pass_desc.add_pass_descs();
     proto::BlockDesc* pattern = pass_desc->mutable_pattern()->add_blocks();
+    pattern->set_idx(0);
+    pattern->set_parent_idx(0);
     proto::OpDesc* mul = pattern->add_ops();
     mul->set_type("mul");
     proto::OpDesc::Var* mul_x = mul->add_inputs();
@@ -58,6 +60,8 @@ proto::MultiPassDesc generate_fc_fuse() {
     ewadd_out->add_arguments()->assign("ewadd_out");
     proto::OpDesc* relu = nullptr;
     proto::BlockDesc* replace = pass_desc->mutable_replace()->add_blocks();
+    replace->set_idx(0);
+    replace->set_parent_idx(0);
     proto::OpDesc* fc = replace->add_ops();
     fc->set_type("fc");
     proto::OpDesc::Var* fc_x = fc->add_inputs();
@@ -236,6 +240,12 @@ REGISTER_GENERATE_PASS(generate_combine_matmul,
 namespace paddle {
 namespace framework {
 namespace ir {
+
+TEST(GeneratePass, construct_with_string) {
+  std::string binary_str;
+  generate_fc_fuse().SerializeToString(&binary_str);
+  GeneratePass generate_pass(binary_str);
+}
 
 TEST(GeneratePass, generate_fc_fuse) {
   // inputs                     operator            output
