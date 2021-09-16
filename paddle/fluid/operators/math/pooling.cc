@@ -307,9 +307,8 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
             for (int h = hstart; h < hend; ++h) {
               for (int w = wstart; w < wend; ++w) {
                 pool_grad_process.compute(
-                    input_data[h * input_width + w],
-                    output_data[ph * output_width + pw],
-                    output_grad_data[ph * output_width + pw],
+                    input_data[h * input_width + w], output_data,
+                    output_grad_data, ph * output_width + pw,
                     static_cast<T>(scale),
                     input_grad_data + h * input_width + w);
               }
@@ -397,9 +396,8 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
               for (int h = hstart; h < hend; ++h) {
                 for (int w = wstart; w < wend; ++w) {
                   pool_grad_process.compute(
-                      input_data[h * input_width + w],
-                      output_data[ph * output_width + pw],
-                      output_grad_data[ph * output_width + pw],
+                      input_data[h * input_width + w], output_data,
+                      output_grad_data, ph * output_width + pw,
                       static_cast<T>(scale),
                       input_grad_data + h * input_width + w);
                 }
@@ -451,10 +449,10 @@ class Pool2dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                       h * input_width * input_channels + w * input_channels + c;
                   auto output_idx = ph * output_width * output_channels +
                                     pw * output_channels + c;
-                  pool_grad_process.compute(
-                      input_data[input_idx], output_data[output_idx],
-                      output_grad_data[output_idx], static_cast<T>(scale),
-                      input_grad_data + input_idx);
+                  pool_grad_process.compute(input_data[input_idx], output_data,
+                                            output_grad_data, output_idx,
+                                            static_cast<T>(scale),
+                                            input_grad_data + input_idx);
                 }
               }
             }
@@ -1051,10 +1049,10 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                     int input_idx = (d * input_height + h) * input_width + w;
                     int output_idx =
                         (pd * output_height + ph) * output_width + pw;
-                    pool_grad_process.compute(
-                        input_data[input_idx], output_data[output_idx],
-                        output_grad_data[output_idx], static_cast<T>(scale),
-                        input_grad_data + input_idx);
+                    pool_grad_process.compute(input_data[input_idx],
+                                              output_data, output_grad_data,
+                                              output_idx, static_cast<T>(scale),
+                                              input_grad_data + input_idx);
                   }
                 }
               }
@@ -1165,8 +1163,8 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                       int output_idx =
                           (pd * output_height + ph) * output_width + pw;
                       pool_grad_process.compute(
-                          input_data[input_idx], output_data[output_idx],
-                          output_grad_data[output_idx], static_cast<T>(scale),
+                          input_data[input_idx], output_data, output_grad_data,
+                          output_idx, static_cast<T>(scale),
                           input_grad_data + input_idx);
                     }
                   }
@@ -1242,8 +1240,8 @@ class Pool3dGradFunctor<platform::CPUDeviceContext, PoolProcess, T> {
                               output_channels +
                           c;
                       pool_grad_process.compute(
-                          input_data[input_idx], output_data[output_idx],
-                          output_grad_data[output_idx], static_cast<T>(scale),
+                          input_data[input_idx], output_data, output_grad_data,
+                          output_idx, static_cast<T>(scale),
                           input_grad_data + input_idx);
                     }
                   }
