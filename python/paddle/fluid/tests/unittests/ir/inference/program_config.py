@@ -102,6 +102,8 @@ class ProgramConfig:
         log_str += ' -- '
         for t, v in self.inputs.items():
             log_str += '[' + t + ': ' + str(v) + ']'
+        for t, v in self.weights.items():
+            log_str += '[' + t + ': ' + str(v) + ']'
 
         return log_str
 
