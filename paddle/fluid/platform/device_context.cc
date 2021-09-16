@@ -411,10 +411,11 @@ void CUDAContext::InitEigenContext() {
 }
 
 CUDAContext::CUDAContext(const CUDAPlace& place,
-                         const stream::Priority& priority) {
+                         const stream::Priority& priority,
+                         const stream::StreamFlag& flag) {
   place_ = place;
   CUDADeviceGuard guard(place_.device);
-  stream_.reset(new stream::CUDAStream(place, priority));
+  stream_.reset(new stream::CUDAStream(place, priority, flag));
   InitEigenContext();
   InitCuBlasContext();
   InitCuDNNContext();
