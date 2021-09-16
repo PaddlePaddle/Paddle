@@ -16,6 +16,7 @@ from paddle.device import cuda
 import paddle
 
 import unittest
+import numpy as np
 
 
 class TestCurrentStream(unittest.TestCase):
@@ -102,6 +103,57 @@ class TestCUDAEvent(unittest.TestCase):
 
             self.assertTrue(event_query_1)
             self.assertTrue(event_query_2)
+
+
+class TestStreamGuard(unittest.TestCase):
+    '''
+    Note: 
+        The asynchronous execution property of CUDA Stream can only be tested offline. 
+    '''
+
+    def test_stream_guard_normal(self):
+        if paddle.is_compiled_with_cuda():
+            s = paddle.device.cuda.Stream()
+            a = paddle.to_tensor(np.array([0, 2, 4], dtype="int32"))
+            b = paddle.to_tensor(np.array([1, 3, 5], dtype="int32"))
+            c = a + b
+            with paddle.device.cuda.stream_guard(s):
+                d = a + b
+
+            self.assertTrue(np.array_equal(np.array(c), np.array(d)))
+
+    def test_stream_guard_default_stream(self):
+        if paddle.is_compiled_with_cuda():
+            s1 = paddle.device.cuda.current_stream()
+            with paddle.device.cuda.stream_guard(s1):
+                pass
+            s2 = paddle.device.cuda.current_stream()
+
+            self.assertTrue(id(s1) == id(s2))
+
+    def test_set_current_stream_default_stream(self):
+        if paddle.is_compiled_with_cuda():
+            cur_stream = paddle.device.cuda.current_stream()
+            new_stream = paddle.device.cuda._set_current_stream(cur_stream)
+
+            self.assertTrue(id(cur_stream) == id(new_stream))
+
+    def test_stream_guard_raise_error(self):
+        if paddle.is_compiled_with_cuda():
+
+            def test_not_correct_stream_guard_input():
+                tmp = np.zeros(5)
+                with paddle.device.cuda.stream_guard(tmp):
+                    pass
+
+            self.assertRaises(TypeError, test_not_correct_stream_guard_input)
+
+    def test_set_current_stream_raise_error(self):
+        if paddle.is_compiled_with_cuda():
+            self.assertRaises(TypeError, paddle.device.cuda._set_current_stream,
+                              np.zeros(5))
+            self.assertRaises(TypeError, paddle.device.cuda._set_current_stream,
+                              None)
 
 
 if __name__ == "__main__":
