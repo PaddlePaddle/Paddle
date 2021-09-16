@@ -606,5 +606,9 @@ class ScopedCTCLossDescriptor {
 };
 #endif
 
+// int getMultiHeadAttnWeightSize() {
+
+// }
+
 }  // namespace platform
 }  // namespace paddle
