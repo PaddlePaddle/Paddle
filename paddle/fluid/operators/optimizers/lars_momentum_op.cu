@@ -413,28 +413,29 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
           reinterpret_cast<void*>(MomentumLarsKernel<T, MT>), grid_real,
           LARS_BLOCK_SIZE, cuda_param, 0, cuda_ctx.stream());
     } else {
-      auto param = ctx.Input<framework::LoDTensor>("Param");
-      auto grad = ctx.Input<framework::LoDTensor>("Grad");
-      auto velocity = ctx.Input<framework::LoDTensor>("Velocity");
-      auto learning_rate = ctx.Input<framework::LoDTensor>("LearningRate");
-      auto param_out = ctx.Output<framework::LoDTensor>("ParamOut");
-      auto velocity_out = ctx.Output<framework::LoDTensor>("VelocityOut");
+      auto param = ctx.MultiInput<framework::LoDTensor>("Param");
+      auto grad = ctx.MultiInput<framework::LoDTensor>("Grad");
+      auto velocity = ctx.MultiInput<framework::LoDTensor>("Velocity");
+      auto learning_rate = ctx.MultiInput<framework::LoDTensor>("LearningRate");
+      auto param_out = ctx.MultiOutput<framework::LoDTensor>("ParamOut");
+      auto velocity_out = ctx.MultiOutput<framework::LoDTensor>("VelocityOut");
 
-      auto* p = param->data<T>();
-      auto* g = grad->data<T>();
-      auto* v = velocity->data<MT>();
-      auto* lr = learning_rate->data<MT>();
-      auto* p_out = param_out->mutable_data<T>(ctx.GetPlace());
-      auto* v_out = velocity_out->mutable_data<MT>(ctx.GetPlace());
+      auto* p = param[0]->data<T>();
+      auto* g = grad[0]->data<T>();
+      auto* v = velocity[0]->data<MT>();
+      auto* lr = learning_rate[0]->data<MT>();
+      auto* p_out = param_out[0]->mutable_data<T>(ctx.GetPlace());
+      auto* v_out = velocity_out[0]->mutable_data<MT>(ctx.GetPlace());
       const MT* master_p = nullptr;
       MT* master_p_out = nullptr;
       if (multi_precision) {
-        auto master_param = ctx.Input<framework::Tensor>("MasterParam");
-        auto master_param_out = ctx.Output<framework::Tensor>("MasterParamOut");
-        master_p = master_param->data<MT>();
-        master_p_out = master_param_out->mutable_data<MT>(ctx.GetPlace());
+        auto master_param = ctx.MultiInput<framework::Tensor>("MasterParam");
+        auto master_param_out =
+            ctx.MultiOutput<framework::Tensor>("MasterParamOut");
+        master_p = master_param[0]->data<MT>();
+        master_p_out = master_param_out[0]->mutable_data<MT>(ctx.GetPlace());
       }
-      int64_t numel = param->numel();
+      int64_t numel = param[0]->numel();
       cudaOccupancyMaxActiveBlocksPerMultiprocessor(
           &num_blocks_per_sm, MomentumLarsKernel<T, MT>, LARS_BLOCK_SIZE,
           sizeof(MT) << 1);
