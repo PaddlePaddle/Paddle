@@ -189,10 +189,10 @@ def __bootstrap__():
 
     sysstr = platform.system()
     if 'Darwin' in sysstr:
-        remove_flags_if_exists('use_pinned_memory')
+        remove_flag_if_exists('use_pinned_memory')
 
     if os.name == 'nt':
-        remove_flags_if_exists('cpu_deterministic')
+        remove_flag_if_exists('cpu_deterministic')
 
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
     # Note(zhouwei25): sys may not have argv in some cases, 
