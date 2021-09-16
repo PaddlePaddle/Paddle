@@ -460,6 +460,79 @@ def istft(
     return y
 
 
+def frame_for_api_test(x, frame_length, hop_length, axis=-1):
+    if axis == -1 and not x.flags["C_CONTIGUOUS"]:
+        x = np.ascontiguousarray(x)
+    elif axis == 0 and not x.flags["F_CONTIGUOUS"]:
+        x = np.asfortranarray(x)
+
+    n_frames = 1 + (x.shape[axis] - frame_length) // hop_length
+    strides = np.asarray(x.strides)
+
+    if axis == -1:
+        shape = list(x.shape)[:-1] + [frame_length, n_frames]
+        strides = list(strides) + [hop_length * x.itemsize]
+
+    elif axis == 0:
+        shape = [n_frames, frame_length] + list(x.shape)[1:]
+        strides = [hop_length * x.itemsize] + list(strides)
+
+    else:
+        raise ValueError("Frame axis={} must be either 0 or -1".format(axis))
+
+    return as_strided(x, shape=shape, strides=strides)
+
+
+def overlap_add_for_api_test(x, hop_length, axis=-1):
+    assert axis in [0, -1], 'axis should be 0/-1.'
+    assert len(x.shape) >= 2, 'Input dims shoulb be >= 2.'
+
+    squeeze_output = False
+    if len(x.shape) == 2:
+        squeeze_output = True
+        dim = 0 if axis == -1 else -1
+        x = np.expand_dims(x, dim)  # batch
+
+    n_frames = x.shape[axis]
+    frame_length = x.shape[1] if axis == 0 else x.shape[-2]
+
+    # Assure no gaps between frames.
+    assert 0 < hop_length <= frame_length, \
+        f'hop_length should be in (0, frame_length({frame_length})], but got {hop_length}.'
+
+    seq_length = (n_frames - 1) * hop_length + frame_length
+
+    reshape_output = False
+    if len(x.shape) > 3:
+        reshape_output = True
+        if axis == 0:
+            target_shape = [seq_length] + list(x.shape[2:])
+            x = x.reshape(n_frames, frame_length, np.product(x.shape[2:]))
+        else:
+            target_shape = list(x.shape[:-2]) + [seq_length]
+            x = x.reshape(np.product(x.shape[:-2]), frame_length, n_frames)
+
+    if axis == 0:
+        x = x.transpose((2, 1, 0))
+
+    y = np.zeros(shape=[np.product(x.shape[:-2]), seq_length], dtype=x.dtype)
+    for i in range(x.shape[0]):
+        for frame in range(x.shape[-1]):
+            sample = frame * hop_length
+            y[i, sample:sample + frame_length] += x[i, :, frame]
+
+    if axis == 0:
+        y = y.transpose((1, 0))
+
+    if reshape_output:
+        y = y.reshape(target_shape)
+
+    if squeeze_output:
+        y = y.squeeze(-1) if axis == 0 else y.squeeze(0)
+
+    return y
+
+
 def setUpModule():
     global rtol
     global atol
@@ -540,6 +613,85 @@ def to_safe_name(s):
 
 
 # yapf: disable
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'frame_length', 'hop_length', 'axis'),
+    [
+        ('test_1d_input1', rand_x(1, np.float64, shape=[150]), 50, 15, 0),
+        ('test_1d_input2', rand_x(1, np.float64, shape=[150]), 50, 15, -1),
+        ('test_2d_input1', rand_x(2, np.float64, shape=[150, 8]), 50, 15, 0),
+        ('test_2d_input2', rand_x(2, np.float64, shape=[8, 150]), 50, 15, -1),
+        ('test_3d_input1', rand_x(3, np.float64, shape=[150, 4, 2]), 50, 15, 0),
+        ('test_3d_input2', rand_x(3, np.float64, shape=[4, 2, 150]), 50, 15, -1),
+    ])
+class TestFrame(unittest.TestCase):
+    def test_frame(self):
+        self.assertTrue(
+            np.allclose(
+                frame_for_api_test(self.x, self.frame_length, self.hop_length, self.axis),
+                paddle.tensor.signal.frame(
+                    paddle.to_tensor(self.x),
+                    self.frame_length,
+                    self.hop_length,
+                    self.axis),
+                rtol=rtol.get(str(self.x.dtype)),
+                atol=atol.get(str(self.x.dtype))))
+
+
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'frame_length', 'hop_length', 'axis', 'expect_exception'),
+    [
+        ('test_axis', rand_x(1, np.float64, shape=[150]), 50, 15, 2, ValueError),
+        ('test_hop_length', rand_x(1, np.float64, shape=[150]), 50, 0, -1, ValueError),
+        ('test_frame_length1', rand_x(2, np.float64, shape=[150, 8]), 0, 15, 0, ValueError),
+        ('test_frame_length2', rand_x(2, np.float64, shape=[150, 8]), 151, 15, 0, ValueError),
+    ])
+class TestFrameException(unittest.TestCase):
+    def test_frame(self):
+        with self.assertRaises(self.expect_exception):
+            paddle.tensor.signal.frame(
+                paddle.to_tensor(self.x),
+                self.frame_length,
+                self.hop_length,
+                self.axis)
+
+
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'hop_length', 'axis'),
+    [
+        ('test_2d_input1', rand_x(2, np.float64, shape=[3, 50]), 4, 0),
+        ('test_2d_input2', rand_x(2, np.float64, shape=[50, 3]), 4, -1),
+        ('test_3d_input1', rand_x(3, np.float64, shape=[5, 40, 2]), 10, 0),
+        ('test_3d_input2', rand_x(3, np.float64, shape=[2, 40, 5]), 10, -1),
+        ('test_4d_input1', rand_x(4, np.float64, shape=[8, 12, 5, 3]), 5, 0),
+        ('test_4d_input2', rand_x(4, np.float64, shape=[3, 5, 12, 8]), 5, -1),
+    ])
+class TestOverlapAdd(unittest.TestCase):
+    def test_overlap_add(self):
+        self.assertTrue(
+            np.allclose(
+                overlap_add_for_api_test(self.x, self.hop_length, self.axis),
+                paddle.tensor.signal.overlap_add(
+                    paddle.to_tensor(self.x),
+                    self.hop_length,
+                    self.axis),
+                rtol=rtol.get(str(self.x.dtype)),
+                atol=atol.get(str(self.x.dtype))))
+
+
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'hop_length', 'axis', 'expect_exception'),
+    [
+        ('test_axis', rand_x(2, np.float64, shape=[3, 50]), 4, 2, ValueError),
+        ('test_hop_length', rand_x(2, np.float64, shape=[50, 3]), -1, -1, ValueError),
+    ])
+class TestOverlapAddException(unittest.TestCase):
+    def test_overlap_add(self):
+        with self.assertRaises(self.expect_exception):
+            paddle.tensor.signal.overlap_add(
+                paddle.to_tensor(self.x),
+                self.hop_length,
+                self.axis)
+
 
 # ================= STFT
 # common args

@@ -108,17 +108,14 @@ class OverlapAddOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "(Tensor), The input tensor of overlap_add op.");
     AddOutput("Out", "(Tensor), The output tensor of overlap_add op.");
     AddAttr<int>("hop_length",
-                 "Hop Length"
-                 "Other doc of hop length arg...");
+                 "Number of steps to advance between adjacent frames and "
+                 "`0 < hop_length <= frame_length`.");
     AddAttr<int>("axis",
-                 "Axis"
-                 "Other doc of axis arg...")
+                 "Specify the axis to operate on the input Tensors. Its value "
+                 "should be 0(the first dimension) or -1(the last dimension).")
         .SetDefault(-1);
     AddComment(R"DOC(
-    OverlapAdd Operator.
-
-    OverlapAdd op convert frames into time sequences.
-
+      Reconstructs a tensor consisted of overlap added sequences from input frames.
     )DOC");
   }
 };
