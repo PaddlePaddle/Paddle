@@ -789,25 +789,25 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
     r"""
     Computes the rank of a matrix.
 
-    The rank of a matrix is the number of singular values that are greater than the specified tol threshold when hermitian=False, 
+    The rank of a matrix is the number of singular values that are greater than the specified tol threshold when hermitian=False,
     or the number of eigenvalues in absolute value that are greater than the specified tol threshold when hermitian=True.
 
     Args:
-        x (Tensor): The input tensor. 
-            Its shape should be [..., m, n], where ... is zero or more batch dimensions. If x is a batch of matrices then the output 
-            has the same batch dimensions. The data type of x should be float32 or float64. 
-        tol (float,Tensor,optional): the tolerance value. Default: None. 
-            If tol is not specified, and sigma is the largest singular value (or eigenvalue in absolute value), and eps is the 
-            epsilon value for the dtype of x, then tol is computed with formula tol=sigma * max(m,n) * eps. Note that if x is 
+        x (Tensor): The input tensor.
+            Its shape should be [..., m, n], where ... is zero or more batch dimensions. If x is a batch of matrices then the output
+            has the same batch dimensions. The data type of x should be float32 or float64.
+        tol (float,Tensor,optional): the tolerance value. Default: None.
+            If tol is not specified, and sigma is the largest singular value (or eigenvalue in absolute value), and eps is the
+            epsilon value for the dtype of x, then tol is computed with formula tol=sigma * max(m,n) * eps. Note that if x is
             a batch of matrices, tol is computed this way for every batch.
         hermitian (bool,optional): indicates whether x is Hermitian. Default: False.
-            When hermitian=True, x is assumed to be Hermitian, but x is not checked inside the function. Instead, We just use the 
+            When hermitian=True, x is assumed to be Hermitian, but x is not checked inside the function. Instead, We just use the
             lower triangular of the matrix to compute.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: Rank of tensor x.
-    
+
     Examples:
         .. code-block:: python
 
@@ -824,7 +824,7 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
             # d = [[1, 1, 1, 1],
             #      [1, 1, 1, 1],
             #      [1, 1, 1, 1]]
-    
+
     """
 
     if in_dygraph_mode():
@@ -891,21 +891,24 @@ def bmm(x, y, name=None):
         Tensor: The product Tensor.
 
     Examples:
-        import paddle
+        .. code-block:: python
 
-        # In imperative mode:
-        # size x: (2, 2, 3) and y: (2, 3, 2)
-        x = paddle.to_tensor([[[1.0, 1.0, 1.0],
-                               [2.0, 2.0, 2.0]],
-                              [[3.0, 3.0, 3.0],
-                               [4.0, 4.0, 4.0]]])
-        y = paddle.to_tensor([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],
-                              [[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
-        out = paddle.bmm(x, y)
-        #output size: (2, 2, 2)
-        #output value:
-        #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
-        out_np = out.numpy()
+            import paddle
+
+            # In imperative mode:
+            # size x: (2, 2, 3) and y: (2, 3, 2)
+            x = paddle.to_tensor([[[1.0, 1.0, 1.0],
+                                [2.0, 2.0, 2.0]],
+                                [[3.0, 3.0, 3.0],
+                                [4.0, 4.0, 4.0]]])
+            y = paddle.to_tensor([[[1.0, 1.0],[2.0, 2.0],[3.0, 3.0]],
+                                [[4.0, 4.0],[5.0, 5.0],[6.0, 6.0]]])
+            out = paddle.bmm(x, y)
+            #output size: (2, 2, 2)
+            #output value:
+            #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
+            out_np = out.numpy()
+            
     """
     x_shape = x.shape
     y_shape = y.shape
@@ -1033,46 +1036,51 @@ def mv(x, vec, name=None):
 
 def svd(x, full_matrices=False, name=None):
     r"""
-    Computes the singular value decomposition of one 
-    matrix or batches of regular matrice.
+    Computes the singular value decomposition of one matrix or a batch of regular matrices.
+
+    Let :math:`X` be the input matrix or a batch of input matrices, the output should satisfies:
+
+    .. math::
+        X = U * diag(S) * VT 
+ 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
-            where ... is zero or more batch dimensions. N and M can be arbitraty
+            where `...` is zero or more batch dimensions. N and M can be arbitraty
             positive number. Note that if x is sigular matrices, the grad is numerical 
-            instability. The data type of x should be float32 or float64. 
-
-        full_matrices(bool): A flag to control the behavor of svd. 
+            instable. The data type of x should be float32 or float64. 
+        full_matrices (bool): A flag to control the behavor of svd. 
             If full_matrices = True, svd op will compute full U and V matrics, 
-            which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`.
+            which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`. K = min(M, N).
             If full_matrices = False, svd op will use a economic method to store U and V. 
-            which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`
+            which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`. K = min(M, N).
+        name (str, optional): Name for the operation (optional, default is None). 
+            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: Tensor U, the shape of U is controlled by full_matrices flag.
-        Tensor: Tensor S, the singular value of X. the shape of S is [..., K]
-        Tensor: Tensor VH, the conjugate transpose of V. the shape of V is controlled by full_matrices flag. 
+        Tuple of 3 tensors: (U, S, VH). VH is the conjugate transpose of V. S is the singlar value vectors of matrics with shape `[..., K]`
 
-            import numpy as np
+    Examples:
+        .. code-block:: python
+
+            import paddle
 
             x = paddle.to_tensor([[1.0, 2.0], [1.0, 3.0], [4.0, 6.0]]).astype('float64')
             x = x.reshape([3, 2])
-            u, s, vt = paddle.linalg.svd(x)
+            u, s, vh = paddle.linalg.svd(x)
             print (u)
-            print (s)
-            print (vt)
-
             #U = [[ 0.27364809, -0.21695147  ],
             #      [ 0.37892198, -0.87112408 ],
             #      [ 0.8840446 ,  0.44053933 ]]
 
+            print (s)
             #S = [8.14753743, 0.78589688]
-
+            print (vh)
             #VT= [[ 0.51411221,  0.85772294],
             #     [ 0.85772294, -0.51411221]]
             
-            # one can verify : U * S * VT = X ;     
-            #                  U * UH = I ; 
-            #                  V * VH = I
+            # one can verify : U * S * VT == X
+            #                  U * UH == I 
+            #                  V * VH == I
     """
 
     if in_dygraph_mode():
@@ -1104,12 +1112,12 @@ def matrix_power(x, n, name=None):
 
     .. math::
         Out = X ^ {n}
-    
+
     Specifically,
 
     - If `n > 0`, it returns the matrix or a batch of matrices raised to the power
     of `n`.
-    
+
     - If `n = 0`, it returns the identity matrix or a batch of identity matrices.
 
     - If `n < 0`, it returns the inverse of each matrix (if invertible) raised to
@@ -1120,7 +1128,7 @@ def matrix_power(x, n, name=None):
             to power `n`. Its shape should be `[*, M, M]`, where `*` is zero or
             more batch dimensions. Its data type should be float32 or float64.
         n (int): The exponent. It can be any positive, negative integer or zero.
-        name (str, optional): Name for the operation (optional, default is None). 
+        name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1162,4 +1170,84 @@ def matrix_power(x, n, name=None):
         inputs={'X': x},
         outputs={'Out': out},
         attrs={'n': n})
+    return out
+
+
+def multi_dot(x, name=None):
+    """
+    Multi_dot is an operator that calculates multiple matrix multiplications.
+
+    Supports inputs of float, double and float16 dtypes. This function does not
+    support batched inputs.
+
+    The input tensor in [x] must be 2-D except for the first and last can be 1-D.
+    If the first tensor is a 1-D vector of shape(n, ) it is treated as row vector
+    of shape(1, n), similarly if the last tensor is a 1D vector of shape(n, ), it
+    is treated as a column vector of shape(n, 1).
+
+    If the first and last tensor are 2-D matrix, then the output is also 2-D matrix,
+    otherwise the output is a 1-D vector.
+
+    Multi_dot will select the lowest cost multiplication order for calculation. The
+    cost of multiplying two matrices with shapes (a, b) and (b, c) is a * b * c.
+    Given matrices A, B, C with shapes (20, 5), (5, 100), (100, 10) respectively,
+    we can calculate the cost of different multiplication orders as follows:
+    - Cost((AB)C) = 20x5x100 + 20x100x10 = 30000
+    - Cost(A(BC)) = 5x100x10 + 20x5x10 = 6000
+
+    In this case, multiplying B and C first, then multiply A, which is 5 times faster
+    than sequential calculation.
+
+    Args:
+        x ([Tensor]): The input tensors which is a list Tensor.
+        name(str|None): A name for this layer(optional). If set None, the layer
+            will be named automatically.
+
+    Returns:
+        Tensor: The output Tensor.
+
+
+    Examples:
+
+    .. code-block:: python
+
+        import paddle
+        import numpy as np
+
+        # A * B
+        A_data = np.random.random([3, 4]).astype(np.float32)
+        B_data = np.random.random([4, 5]).astype(np.float32)
+        A = paddle.to_tensor(A_data)
+        B = paddle.to_tensor(B_data)
+        out = paddle.multi_dot([A, B])
+        print(out.numpy().shape)
+        # [3, 5]
+
+        # A * B * C
+        A_data = np.random.random([10, 5]).astype(np.float32)
+        B_data = np.random.random([5, 8]).astype(np.float32)
+        C_data = np.random.random([8, 7]).astype(np.float32)
+        A = paddle.to_tensor(A_data)
+        B = paddle.to_tensor(B_data)
+        C = paddle.to_tensor(C_data)
+        out = paddle.multi_dot([A, B, C])
+        print(out.numpy().shape)
+        # [10, 7]
+
+    """
+    if in_dygraph_mode():
+        return _C_ops.multi_dot(x)
+
+    check_type(x, 'x', (list, tuple), 'multi_dot')
+    for id, item in enumerate(x):
+        check_variable_and_dtype(item, 'x[' + str(id) + ']',
+                                 ['float16', 'float32', 'float64'], 'multi_dot')
+        if item.dtype != x[0].dtype:
+            raise TypeError(
+                "All the Tensors in the input must have the same data type.")
+
+    helper = LayerHelper('multi_dot', **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    out = helper.create_variable_for_type_inference(dtype)
+    helper.append_op(type='multi_dot', inputs={"X": x}, outputs={"Out": out})
     return out
