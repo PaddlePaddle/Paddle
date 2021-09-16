@@ -127,24 +127,33 @@ class TestConv2DOp(OpTest):
         self.check_output_with_place(fluid.NPUPlace(0), atol=1e-2)
 
     def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
         self.check_grad_with_place(
             fluid.NPUPlace(0), {'Input', 'Filter'},
             'Output',
-            max_relative_error=0.03)
+            max_relative_error=0.03,
+            numeric_place=paddle.CPUPlace())
 
     def test_check_grad_no_filter(self):
+        if self.dtype == np.float16:
+            return
         self.check_grad_with_place(
             fluid.NPUPlace(0), ['Input'],
             'Output',
             max_relative_error=0.03,
-            no_grad_set=set(['Filter']))
+            no_grad_set=set(['Filter']),
+            numeric_place=paddle.CPUPlace())
 
     def test_check_grad_no_input(self):
+        if self.dtype == np.float16:
+            return
         self.check_grad_with_place(
             fluid.NPUPlace(0), ['Filter'],
             'Output',
             max_relative_error=0.03,
-            no_grad_set=set(['Input']))
+            no_grad_set=set(['Input']),
+            numeric_place=paddle.CPUPlace())
 
     def init_test_case(self):
         self.pad = [0, 0]
@@ -310,23 +319,32 @@ class TestConv2DOp_v2(OpTest):
         self.check_output_with_place(paddle.NPUPlace(0), atol=1e-2)
 
     def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
         self.check_grad_with_place(
             paddle.NPUPlace(0), {'Input', 'Filter'},
             'Output',
-            max_relative_error=0.02)
+            max_relative_error=0.02,
+            numeric_place=paddle.CPUPlace())
 
     def test_check_grad_no_filter(self):
+        if self.dtype == np.float16:
+            return
         self.check_grad_with_place(
             paddle.NPUPlace(0), ['Input'],
             'Output',
             max_relative_error=0.02,
-            no_grad_set=set(['Filter']))
+            no_grad_set=set(['Filter']),
+            numeric_place=paddle.CPUPlace())
 
     def test_check_grad_no_input(self):
+        if self.dtype == np.float16:
+            return
         self.check_grad_with_place(
             paddle.NPUPlace(0), ['Filter'],
             'Output',
-            no_grad_set=set(['Input']))
+            no_grad_set=set(['Input']),
+            numeric_place=paddle.CPUPlace())
 
     def init_test_case(self):
         self.pad = [0, 0]
