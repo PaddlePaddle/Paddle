@@ -308,7 +308,7 @@ class StateDictHook(object):
 
 
 @dygraph_only
-def amp_decorator(models=None,
+def amp_decorator(models,
                   optimizers=None,
                   level='O1',
                   master_weight=True,

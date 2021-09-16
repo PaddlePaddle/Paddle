@@ -76,7 +76,7 @@ def auto_cast(enable=True,
     return amp_guard(enable, custom_white_list, custom_black_list, level)
 
 
-def decorator(models=None,
+def decorator(models,
               optimizers=None,
               level='O1',
               master_weight=None,
