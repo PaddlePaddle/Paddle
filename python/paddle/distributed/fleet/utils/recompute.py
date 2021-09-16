@@ -98,8 +98,11 @@ class RecomputeFunction(PyLayer):
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
-        ctx.is_fw_autocast = tracer._enable_amp_l1 or tracer._enable_amp_l2
-        ctx.amp_mode = 'L1'
+        if tracer._amp_level == 0:
+            ctx.is_fw_autocast = False
+        else:
+            ctx.is_fw_autocast = True
+        ctx.amp_mode = 'O1'
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
         with paddle.no_grad():
@@ -130,7 +133,7 @@ class RecomputeFunction(PyLayer):
                             enable=ctx.is_fw_autocast,
                             custom_white_list=ctx.amp_white_list,
                             custom_black_list=ctx.amp_black_list,
-                            mode=ctx.amp_mode):
+                            level=ctx.amp_mode):
                         detached_inputs = detach_variable(tuple(inputs))
                         outputs = ctx.run_function(*detached_inputs)
             else:
@@ -138,7 +141,7 @@ class RecomputeFunction(PyLayer):
                         enable=ctx.is_fw_autocast,
                         custom_white_list=ctx.amp_white_list,
                         custom_black_list=ctx.amp_black_list,
-                        mode=ctx.amp_mode):
+                        level=ctx.amp_mode):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs)
 

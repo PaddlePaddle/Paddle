@@ -117,7 +117,7 @@ static inline std::shared_ptr<imperative::VarBase> CastToType(
   imperative::NameVarBaseMap outs = {{"Out", {out}}};
 
   {
-    AutoCastGuard guard(tracer, false);
+    AutoCastGuard guard(tracer, 0);
     tracer->TraceOp("cast", ins, outs, std::move(attrs));
   }
 

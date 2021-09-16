@@ -96,7 +96,7 @@ class TestAutoCast(unittest.TestCase):
             with fluid.dygraph.amp_guard(
                     custom_white_list=["log"],
                     custom_black_list=["conv2d"],
-                    mode='L2'):
+                    level='O2'):
                 white_list, black_list = tracer._get_amp_op_list()
                 self.assertTrue(
                     set(white_list) ==
@@ -137,7 +137,7 @@ class TestAutoCast(unittest.TestCase):
                     out_amp_fp16,
                     out_amp_fp16)  # expand_as_v2 has no fp16 kernel
 
-            with fluid.dygraph.amp_guard(True, mode='L2'):
+            with fluid.dygraph.amp_guard(True, level='O2'):
                 out_purefp16_fp16 = conv2d(data)
                 out_purefp16_fp32 = paddle.expand_as(
                     out_purefp16_fp16,
@@ -158,7 +158,7 @@ class TestAutoCast(unittest.TestCase):
                 conv2d = fluid.dygraph.Conv2D(
                     3, 2, 3, bias_attr=False, act=None)
                 data = fluid.dygraph.to_variable(data)
-                with fluid.dygraph.amp_guard(mode='L3'):
+                with fluid.dygraph.amp_guard(level='O'):
                     out = conv2d(data)
 
         self.assertRaises(ValueError, func)
@@ -433,7 +433,7 @@ class TestAmpDecorator(unittest.TestCase):
                 model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
                 opt = paddle.optimizer.SGD(parameters=model.parameters())
                 model, opt = paddle.amp.decorator(
-                    models=model, optimizers=opt, mode='L3')
+                    models=model, optimizers=opt, level='O')
 
         self.assertRaises(ValueError, func)
 
@@ -442,14 +442,14 @@ class TestAmpDecorator(unittest.TestCase):
             with fluid.dygraph.guard():
                 model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
                 opt = paddle.optimizer.SGD(parameters=model.parameters())
-                paddle.amp.decorator(models=None, optimizers=opt, mode='L2')
+                paddle.amp.decorator(models=None, optimizers=opt, level='O2')
 
         self.assertRaises(TypeError, test_model_error)
 
         def test_optimizer_error():
             with fluid.dygraph.guard():
                 model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
-                paddle.amp.decorator(models=model, optimizers=None, mode='L2')
+                paddle.amp.decorator(models=model, optimizers=None, level='O2')
 
         self.assertRaises(TypeError, test_optimizer_error)
 
@@ -466,9 +466,42 @@ class TestAmpDecorator(unittest.TestCase):
             model = MyModel()
             opt = MyOptimizer()
             with fluid.dygraph.guard():
-                paddle.amp.decorator(models=model, optimizers=opt, mode='L2')
+                paddle.amp.decorator(models=model, optimizers=opt, level='O2')
 
         self.assertRaises(TypeError, test_error_model_optimizer)
+
+    def test_set_master_weight(self):
+        model1 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+        opt1 = paddle.optimizer.Adam(
+            learning_rate=0.0001,
+            parameters=model1.parameters(),
+            multi_precision=True)
+        model1, opt1 = paddle.amp.decorator(
+            models=model1, optimizers=opt1, level='O2', master_weight=None)
+        self.assertEqual(opt1._multi_precision, True)
+
+        model2 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+        opt2 = paddle.optimizer.Adam(
+            learning_rate=0.0001,
+            parameters=model2.parameters(),
+            multi_precision=False)
+        model2, opt2 = paddle.amp.decorator(
+            models=model2, optimizers=opt2, level='O2', master_weight=None)
+        self.assertEqual(opt2._multi_precision, False)
+
+        model3 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+        opt3 = paddle.optimizer.Adam(
+            learning_rate=0.0001, parameters=model3.parameters())
+        model3, opt3 = paddle.amp.decorator(
+            models=model3, optimizers=opt3, level='O2', master_weight=True)
+        self.assertEqual(opt3._multi_precision, True)
+
+        model4 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
+        opt4 = paddle.optimizer.Adam(
+            learning_rate=0.0001, parameters=model4.parameters())
+        model4, opt4 = paddle.amp.decorator(
+            models=model4, optimizers=opt4, level='O2', master_weight=False)
+        self.assertEqual(opt4._multi_precision, False)
 
 
 class TestPureFp16SaveLoad(unittest.TestCase):
@@ -478,7 +511,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
             model = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
             opt = paddle.optimizer.SGD(parameters=model.parameters())
             paddle.amp.decorator(
-                models=model, optimizers=opt, mode='L2', save_dtype='int')
+                models=model, optimizers=opt, level='O2', save_dtype='int')
 
         self.assertRaises(ValueError, func)
 
@@ -526,7 +559,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
             resnet, optimizer = paddle.amp.decorator(
                 models=resnet,
                 optimizers=optimizer,
-                mode='L2',
+                level='O2',
                 save_dtype='float32')
 
         for batch_id, data in enumerate(train_reader()):
@@ -547,7 +580,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                 label = paddle.to_tensor(y_data)
             label.stop_gradient = True
 
-            with paddle.amp.auto_cast(enable=enable_amp, mode='L2'):
+            with paddle.amp.auto_cast(enable=enable_amp, level='O2'):
                 out = resnet(img)
 
             loss = paddle.nn.functional.cross_entropy(input=out, label=label)
@@ -594,7 +627,7 @@ class TestPureFp16SaveLoad(unittest.TestCase):
                 resnet, optimizer = paddle.amp.decorator(
                     models=resnet,
                     optimizers=optimizer,
-                    mode='L2',
+                    level='O2',
                     save_dtype='float32')
 
         if use_data_loader:
@@ -648,7 +681,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
                             enable=True,
                             custom_white_list=None,
                             custom_black_list=None,
-                            mode='L2'):
+                            level='O2'):
                         out = layer(image)
                         loss = loss_fn(out, label)
                     loss.backward()
@@ -709,7 +742,7 @@ class TestResnet2(unittest.TestCase):
 
     def train_resnet(self,
                      enable_amp=True,
-                     mode='L1',
+                     level='O1',
                      use_data_loader=False,
                      use_param_group=False):
         seed = 90
@@ -772,9 +805,9 @@ class TestResnet2(unittest.TestCase):
             train_loader.set_sample_list_generator(train_reader)
             train_reader = train_loader
 
-        if enable_amp and (mode == 'L2'):
+        if enable_amp and (level == 'O2'):
             resnet, optimizer = paddle.amp.decorator(
-                models=resnet, optimizers=optimizer, mode='L2')
+                models=resnet, optimizers=optimizer, level='O2')
 
         for batch_id, data in enumerate(train_reader()):
             if batch_id >= batch_num:
@@ -794,7 +827,7 @@ class TestResnet2(unittest.TestCase):
                 label = paddle.to_tensor(y_data)
             label.stop_gradient = True
 
-            with paddle.amp.auto_cast(enable=enable_amp, mode=mode):
+            with paddle.amp.auto_cast(enable=enable_amp, level=level):
                 out = resnet(img)
 
             loss = paddle.nn.functional.cross_entropy(input=out, label=label)
@@ -828,7 +861,7 @@ class TestResnet2(unittest.TestCase):
         with fluid.dygraph.guard():
             out_fp32 = self.train_resnet(enable_amp=False)
             out_amp = self.train_resnet(enable_amp=True)
-            out_pure_fp16 = self.train_resnet(enable_amp=True, mode='L2')
+            out_pure_fp16 = self.train_resnet(enable_amp=True, level='O2')
         print(out_fp32[0], out_amp[0], out_pure_fp16[0])
         self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
         self.assertTrue(np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-2))
@@ -838,7 +871,7 @@ class TestResnet2(unittest.TestCase):
             out_fp32 = self.train_resnet(enable_amp=False, use_data_loader=True)
             out_amp = self.train_resnet(enable_amp=True, use_data_loader=True)
             out_pure_fp16 = self.train_resnet(
-                enable_amp=True, use_data_loader=True, mode='L2')
+                enable_amp=True, use_data_loader=True, level='O2')
         print(out_fp32[0], out_amp[0], out_pure_fp16[0])
         self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
         self.assertTrue(np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-2))
@@ -853,7 +886,7 @@ class TestResnet2(unittest.TestCase):
                 enable_amp=True,
                 use_data_loader=True,
                 use_param_group=True,
-                mode='L2')
+                level='O2')
         print(out_fp32[0], out_amp[0], out_pure_fp16[0])
         self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-5))
         self.assertTrue(np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-2))
@@ -864,7 +897,7 @@ class TestResnet(unittest.TestCase):
     Use paddle-1.x API
     """
 
-    def train_resnet(self, enable_amp=True, mode='L1'):
+    def train_resnet(self, enable_amp=True, level='O1'):
         seed = 90
 
         batch_size = train_parameters["batch_size"]
@@ -892,9 +925,9 @@ class TestResnet(unittest.TestCase):
             scaler = paddle.fluid.dygraph.AmpScaler(
                 enable=enable_amp, init_loss_scaling=2.**10)
 
-            if enable_amp and (mode == 'L2'):
+            if enable_amp and (level == 'O2'):
                 resnet, optimizer = paddle.fluid.dygraph.amp_decorator(
-                    models=resnet, optimizers=optimizer, mode='L2')
+                    models=resnet, optimizers=optimizer, level='O2')
 
             for batch_id, data in enumerate(train_reader()):
                 if batch_id >= batch_num:
@@ -910,7 +943,7 @@ class TestResnet(unittest.TestCase):
                 label = fluid.dygraph.to_variable(y_data)
                 label.stop_gradient = True
                 with paddle.fluid.dygraph.amp_guard(
-                        enable=enable_amp, mode=mode):
+                        enable=enable_amp, level=level):
                     out = resnet(img)
 
                 loss = fluid.layers.cross_entropy(input=out, label=label)
@@ -942,7 +975,7 @@ class TestResnet(unittest.TestCase):
     def test_resnet(self):
         out_fp32 = self.train_resnet(enable_amp=False)
         out_amp = self.train_resnet(enable_amp=True)
-        out_pure_fp16 = self.train_resnet(enable_amp=True, mode='L2')
+        out_pure_fp16 = self.train_resnet(enable_amp=True, level='O2')
         print(out_fp32[0], out_amp[0], out_pure_fp16[0])
         self.assertTrue(np.allclose(out_fp32[0], out_amp[0], atol=1.e-2))
         self.assertTrue(np.allclose(out_fp32[0], out_pure_fp16[0], atol=1.e-1))

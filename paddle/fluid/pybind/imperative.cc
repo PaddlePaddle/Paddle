@@ -1815,10 +1815,8 @@ void BindImperative(py::module *m_ptr) {
       .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
-      .def_property("_enable_amp_l1", &imperative::Tracer::IsAMPEnabled,
-                    &imperative::Tracer::SetEnableAMP)
-      .def_property("_enable_amp_l2", &imperative::Tracer::IsPureFp16Enabled,
-                    &imperative::Tracer::SetEnablePureFp16)
+      .def_property("_amp_level", &imperative::Tracer::AMPLevel,
+                    &imperative::Tracer::SetAMPLevel)
       .def_property("_has_grad", &imperative::Tracer::HasGrad,
                     &imperative::Tracer::SetHasGrad)
       .def_property(

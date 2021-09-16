@@ -75,11 +75,11 @@ PURE_FP16_WHITE_LIST = {'lookup_table', 'lookup_table_v2'}
 
 #NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
 # The reason why not use AutoMixedPrecisionLists is that custom_black_varnames is not suitable for imperative mode.
-def _update_list(custom_white_list, custom_black_list, mode='L1'):
+def _update_list(custom_white_list, custom_black_list, level='O1'):
     """
     Update black and white list according to users' custom list.
     """
-    if mode == 'L1':
+    if level == 'O1':
         _white_list = copy.copy(WHITE_LIST)
         _black_list = copy.copy(BLACK_LIST)
     else:
@@ -109,7 +109,10 @@ def _in_amp_guard():
     """
     tracer = _dygraph_tracer()
     if tracer:
-        return tracer._enable_amp_l1
+        if tracer._amp_level == 1:
+            return True
+        else:
+            return False
     else:
         return False
 
@@ -164,7 +167,6 @@ def pure_fp16_initialize(enable_pure_fp16, models, optimizers):
                                 optimizers[idx_opt]._param_groups[
                                     i] = layer._parameters_transform_map[id(
                                         param)][0]
-
     return models, optimizers
 
 
@@ -190,7 +192,7 @@ def check_optimizers(optimizers):
 def amp_guard(enable=True,
               custom_white_list=None,
               custom_black_list=None,
-              mode='L1'):
+              level='O1'):
     """
     :api_attr: imperative
 
@@ -209,8 +211,8 @@ def amp_guard(enable=True,
         custom_black_list(set|list|tuple, optional): The custom black_list. The set of ops that support fp16
              calculation and are considered numerically-dangerous and whose effects may also be 
              observed in downstream ops. These ops will not be converted to fp16.
-        mode(str, optional): Auto mixed precision level. Accepted values are "L1" and "L2": L1 represent mixed precision, the input data type of each operator will be casted by white_list and black_list; 
-             L2 represent Pure fp16, all operators parameters and input data will be casted to fp16, except operators in black_list, don't support fp16 kernel and batchnorm. Default is L1(amp)
+        level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the input data type of each operator will be casted by white_list and black_list; 
+             O2 represent Pure fp16, all operators parameters and input data will be casted to fp16, except operators in black_list, don't support fp16 kernel and batchnorm. Default is O1(amp)
 
         
     Examples:
@@ -232,9 +234,9 @@ def amp_guard(enable=True,
                 print(conv.dtype) # FP32
 
     """
-    if not (mode in ['L1', 'L2']):
+    if not (level in ['O1', 'O2']):
         raise ValueError(
-            "mode should be L1 or L2, L1 represent AMP train mode, L2 represent Pure fp16 train mode."
+            "level should be O1 or O2, O1 represent AMP train mode, O2 represent Pure fp16 train mode."
         )
 
     tracer = _dygraph_tracer()
@@ -249,31 +251,26 @@ def amp_guard(enable=True,
             % tracer._expected_place)
         enable = False
 
-    if mode == 'L1':
-        enable_amp_l1 = True
-        enable_amp_l2 = False
+    if level == 'O1':
+        amp_level = 1
         _white_list = WHITE_LIST
         _black_list = BLACK_LIST
     else:
-        enable_amp_l1 = False
-        enable_amp_l2 = True
+        amp_level = 2
         _white_list = PURE_FP16_WHITE_LIST
         _black_list = PURE_FP16_BLACK_LIST
 
     if custom_white_list or custom_black_list:
         _white_list, _black_list = _update_list(custom_white_list,
-                                                custom_black_list, mode)
+                                                custom_black_list, level)
 
     if not enable:
-        enable_amp_l1 = False
-        enable_amp_l2 = False
+        amp_level = 0
 
     if tracer:
         # enable auto_cast
-        original_enable_amp_l1 = tracer._enable_amp_l1
-        tracer._enable_amp_l1 = enable_amp_l1
-        original_enable_amp_l2 = tracer._enable_amp_l2
-        tracer._enable_amp_l2 = enable_amp_l2
+        original_amp_level = tracer._amp_level
+        tracer._amp_level = amp_level
 
         # set amp op list
         original_white_list, original_black_list = tracer._get_amp_op_list()
@@ -292,8 +289,7 @@ def amp_guard(enable=True,
         yield
     finally:
         if tracer:
-            tracer._enable_amp_l1 = original_enable_amp_l1
-            tracer._enable_amp_l2 = original_enable_amp_l2
+            tracer._amp_level = original_amp_level
             tracer._set_amp_op_list(original_white_list, original_black_list)
             # set_flags(original_flags)
 
@@ -312,18 +308,23 @@ class StateDictHook(object):
 
 
 @dygraph_only
-def amp_decorator(models=None, optimizers=None, mode='L2', save_dtype=None):
+def amp_decorator(models=None,
+                  optimizers=None,
+                  level='O1',
+                  master_weight=True,
+                  save_dtype=None):
     """
-    Decorator models and optimizers for auto-mixed-precision. When mode is L1(amp), the decorator will do nothing. 
-    When mode is L2(pure fp16), the decorator will cast all parameters of models to FP16, except BatchNorm and LayerNorm.
+    Decorator models and optimizers for auto-mixed-precision. When level is O1(amp), the decorator will do nothing. 
+    When level is O2(pure fp16), the decorator will cast all parameters of models to FP16, except BatchNorm and LayerNorm.
     
     Commonly, it is used together with `amp_guard` to achieve Pure fp16 in imperative mode.
 
     Args:
         models(Layer|list of Layer, optional): The defined models by user, models must be either a single model or a list of models. Default is None.
         optimizers(Optimizer|list of Optimizer, optional): The defined optimizers by user, optimizers must be either a single optimizer or a list of optimizers. Default is None.
-        mode(str, optional): Auto mixed precision level. Accepted values are "L1" and "L2": L1 represent mixed precision, the decorator will do nothing; 
-             L2 represent Pure fp16, the decorator will cast all parameters of models to FP16, except BatchNorm and LayerNorm. Default is L2(pure fp16)
+        level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the decorator will do nothing; 
+             O2 represent Pure fp16, the decorator will cast all parameters of models to FP16, except BatchNorm and LayerNorm. Default is O1(amp)
+        master_weight(None|bool, optinal): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, it will keep origin Optimizer multi-precision strategy. Default is None.
         save_dtype(float, optional): The save model parameter dtype when use `paddle.save` or `paddle.jit.save`,it should be float16, float32, float64 or None.
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
 
@@ -339,11 +340,11 @@ def amp_decorator(models=None, optimizers=None, mode='L2', save_dtype=None):
         model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimzier = paddle.optimizer.SGD(parameters=model.parameters())
 
-        model, optimizer = fluid.dygraph.amp_decorator(models=model, optimizers=optimzier, mode='L2')
+        model, optimizer = fluid.dygraph.amp_decorator(models=model, optimizers=optimzier, level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
-        with fluid.dygraph.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, mode='L2'):
+        with fluid.dygraph.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
             output = model(data)
             print(output.dtype) # FP16
 
@@ -352,22 +353,22 @@ def amp_decorator(models=None, optimizers=None, mode='L2', save_dtype=None):
         model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
 
-        models, optimizers = fluid.dygraph.amp_decorator(models=[model, model2], optimizers=[optimzier, optimizer2], mode='L2')
+        models, optimizers = fluid.dygraph.amp_decorator(models=[model, model2], optimizers=[optimzier, optimizer2], level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
-        with fluid.dygraph.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, mode='L2'):
+        with fluid.dygraph.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
             output = models[0](data)
             output2 = models[1](data)
             print(output.dtype) # FP16
             print(output2.dtype) # FP16
     """
-    if not (mode in ['L1', 'L2']):
+    if not (level in ['O1', 'O2']):
         raise ValueError(
-            "mode should be L1 or L2, L1 represent AMP train mode, L2 represent Pure fp16 train mode."
+            "level should be O1 or O2, O1 represent AMP train mode, O2 represent Pure fp16 train mode."
         )
 
-    if mode == 'L1':
+    if level == 'O1':
         return models, optimizers
 
     models_is_list = False
@@ -398,6 +399,15 @@ def amp_decorator(models=None, optimizers=None, mode='L2', save_dtype=None):
 
     models, optimizers = pure_fp16_initialize(
         enable_pure_fp16=True, models=models, optimizers=optimizers)
+
+    # supprot master_weight    
+    if master_weight is not None:
+        for idx_opt in range(len(optimizers)):
+            if hasattr(optimizers[idx_opt], '_multi_precision'):
+                if master_weight is False:
+                    optimizers[idx_opt]._multi_precision = False
+                else:
+                    optimizers[idx_opt]._multi_precision = True
 
     if save_dtype is not None:
         if not (save_dtype in ['float16', 'float32', 'float64']):

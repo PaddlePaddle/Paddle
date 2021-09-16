@@ -21,7 +21,7 @@ __all__ = []
 def auto_cast(enable=True,
               custom_white_list=None,
               custom_black_list=None,
-              mode='L1'):
+              level='O1'):
     """
     Create a context which enables auto-mixed-precision(AMP) of operators executed in dynamic graph mode.
     If enabled, the input data type (float32 or float16) of each operator is decided 
@@ -38,8 +38,8 @@ def auto_cast(enable=True,
         custom_black_list(set|list|tuple, optional): The custom black_list. The set of ops that support fp16
              calculation and are considered numerically-dangerous and whose effects may also be 
              observed in downstream ops. These ops will not be converted to fp16.
-        mode(str, optional): Auto mixed precision level. Accepted values are "L1" and "L2": L1 represent mixed precision, the input data type of each operator will be casted by white_list and black_list; 
-             L2 represent Pure fp16, all operators parameters and input data will be casted to fp16, except operators in black_list, don't support fp16 kernel and batchnorm. Default is L1(amp)
+        level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the input data type of each operator will be casted by white_list and black_list; 
+             O2 represent Pure fp16, all operators parameters and input data will be casted to fp16, except operators in black_list, don't support fp16 kernel and batchnorm. Default is O1(amp)
         
     Examples:
 
@@ -68,26 +68,31 @@ def auto_cast(enable=True,
             c = a + b
             print(c.dtype) # FP16
         
-        with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}, mode='L2'):
+        with paddle.amp.auto_cast(custom_white_list={'elementwise_add'}, level='O2'):
             d = a + b
             print(d.dtype) # FP16
 
     """
-    return amp_guard(enable, custom_white_list, custom_black_list, mode)
+    return amp_guard(enable, custom_white_list, custom_black_list, level)
 
 
-def decorator(models=None, optimizers=None, mode='L2', save_dtype=None):
+def decorator(models=None,
+              optimizers=None,
+              level='O1',
+              master_weight=None,
+              save_dtype=None):
     """
-    Decorator models and optimizers for auto-mixed-precision. When mode is L1(amp), the decorator will do nothing. 
-    When mode is L2(pure fp16), the decorator will cast all parameters of models to FP16, except BatchNorm and LayerNorm.
+    Decorator models and optimizers for auto-mixed-precision. When level is O1(amp), the decorator will do nothing. 
+    When level is O2(pure fp16), the decorator will cast all parameters of models to FP16, except BatchNorm and LayerNorm.
     
     Commonly, it is used together with `auto_cast` to achieve Pure fp16 in imperative mode.
 
     Args:
         models(Layer|list of Layer, optional): The defined models by user, models must be either a single model or a list of models. Default is None.
         optimizers(Optimizer|list of Optimizer, optional): The defined optimizers by user, optimizers must be either a single optimizer or a list of optimizers. Default is None.
-        mode(str, optional): Auto mixed precision level. Accepted values are "L1" and "L2": L1 represent mixed precision, the decorator will do nothing; 
-             L2 represent Pure fp16, the decorator will cast all parameters of models to FP16, except BatchNorm and LayerNorm. Default is L2(pure fp16)
+        level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the decorator will do nothing; 
+             O2 represent Pure fp16, the decorator will cast all parameters of models to FP16, except BatchNorm and LayerNorm. Default is O1(amp)
+        master_weight(None|bool, optinal): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, it will keep origin Optimizer multi-precision strategy. Default is None.
         save_dtype(float, optional): The save model parameter dtype when use `paddle.save` or `paddle.jit.save`,it should be float16, float32, float64 or None.
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
 
@@ -102,11 +107,11 @@ def decorator(models=None, optimizers=None, mode='L2', save_dtype=None):
         model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimzier = paddle.optimizer.SGD(parameters=model.parameters())
 
-        model, optimizer = paddle.amp.decorator(models=model, optimizers=optimzier, mode='L2')
+        model, optimizer = paddle.amp.decorator(models=model, optimizers=optimzier, level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
-        with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, mode='L2'):
+        with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
             output = model(data)
             print(output.dtype) # FP16
             
@@ -115,14 +120,14 @@ def decorator(models=None, optimizers=None, mode='L2', save_dtype=None):
         model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
 
-        models, optimizers = paddle.amp.decorator(models=[model, model2], optimizers=[optimzier, optimizer2], mode='L2')
+        models, optimizers = paddle.amp.decorator(models=[model, model2], optimizers=[optimzier, optimizer2], level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
-        with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, mode='L2'):
+        with paddle.amp.auto_cast(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
             output = models[0](data)
             output2 = models[1](data)
             print(output.dtype) # FP16
             print(output2.dtype) # FP16
     """
-    return amp_decorator(models, optimizers, mode, save_dtype)
+    return amp_decorator(models, optimizers, level, master_weight, save_dtype)

@@ -63,22 +63,16 @@ std::ostream& operator<<(std::ostream& os, AmpOperators& ops);
 // NOTE(zhiqiu): AutoCastGuard is used for RAII.
 class AutoCastGuard {
  public:
-  AutoCastGuard(std::shared_ptr<Tracer> tracer, bool guard_mode)
+  AutoCastGuard(std::shared_ptr<Tracer> tracer, int guard_level)
       : tracer_(tracer) {
-    pre_amp_mode_ = tracer_->IsAMPEnabled();
-    pre_pure_fp16_mode_ = tracer_->IsPureFp16Enabled();
-    if (pre_amp_mode_ != guard_mode) {
-      tracer_->SetEnableAMP(guard_mode);
-    }
-    if (pre_pure_fp16_mode_ != guard_mode) {
-      tracer_->SetEnablePureFp16(guard_mode);
+    pre_amp_level_ = tracer_->AMPLevel();
+
+    if (pre_amp_level_ != guard_level) {
+      tracer_->SetAMPLevel(guard_level);
     }
   }
 
-  ~AutoCastGuard() {
-    tracer_->SetEnableAMP(pre_amp_mode_);
-    tracer_->SetEnablePureFp16(pre_pure_fp16_mode_);
-  }
+  ~AutoCastGuard() { tracer_->SetAMPLevel(pre_amp_level_); }
 
   // forbid copy and operator=
   AutoCastGuard(const AutoCastGuard& guard) = delete;
@@ -86,8 +80,7 @@ class AutoCastGuard {
 
  private:
   std::shared_ptr<Tracer> tracer_;
-  bool pre_amp_mode_;
-  bool pre_pure_fp16_mode_;
+  int pre_amp_level_;
 };
 
 NameVarBaseMap AutoCastInputs(const std::string& op_type,

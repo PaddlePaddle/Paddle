@@ -1271,11 +1271,20 @@ class Layer(core.Layer):
         self._state_dict_hooks[hook_remove_helper._hook_id] = hook
         return hook_remove_helper
 
-    def state_dict_helper(self,
-                          destination=None,
-                          include_sublayers=True,
-                          structured_name_prefix="",
-                          include_non_persistable_buffer=False):
+    def _state_dict_impl(self,
+                         destination=None,
+                         include_sublayers=True,
+                         structured_name_prefix="",
+                         include_non_persistable_buffer=False):
+        """
+        Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
+
+        Parameters:
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
+            include_non_persistable_buffer(bool, optional): If true, include non persistable buffers of current layer and its sub-layers, it is used in pure fp16 and jit.save. Default: False
+        """
+
         if destination is None:
             destination = collections.OrderedDict()
         for name, data in self._parameters.items():
@@ -1294,7 +1303,7 @@ class Layer(core.Layer):
                 if layer_item is not None:
                     destination_temp = destination.copy()
                     destination_temp.update(
-                        layer_item.state_dict(
+                        layer_item._state_dict_impl(
                             destination_temp, include_sublayers,
                             structured_name_prefix + layer_name + ".",
                             include_non_persistable_buffer))
@@ -1307,19 +1316,48 @@ class Layer(core.Layer):
 
         return destination
 
+    def to_static_state_dict(self,
+                             destination=None,
+                             include_sublayers=True,
+                             structured_name_prefix=""):
+        '''
+        Get all parameters and buffers of current layer and its sub-layers. And set them into a dict
+
+        Parameters:
+            destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
+            include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
+            
+        Retruns:
+            dict: a dict contains all the parameters and persistable buffers.
+
+        Examples:
+            .. code-block:: python
+
+                import paddle
+
+                emb = paddle.nn.Embedding(10, 10)
+
+                state_dict = emb.to_static_state_dict()
+                paddle.save( state_dict, "paddle_dy.pdparams")
+
+        '''
+        return self._state_dict_impl(
+            destination=destination,
+            include_sublayers=include_sublayers,
+            structured_name_prefix=structured_name_prefix,
+            include_non_persistable_buffer=True)
+
     def state_dict(self,
                    destination=None,
                    include_sublayers=True,
-                   structured_name_prefix="",
-                   include_non_persistable_buffer=False):
+                   structured_name_prefix=""):
         '''
         Get all parameters and persistable buffers of current layer and its sub-layers. And set them into a dict
 
         Parameters:
             destination(dict, optional) : If provide, all the parameters and persistable buffers will be set to this dict . Default: None
             include_sublayers(bool, optional) : If true, also include the parameters and persistable buffers from sublayers. Default: True
-            include_non_persistable_buffer(bool, optional): If true, include non persistable buffers of current layer and its sub-layers, it is used in pure fp16 and jit.save. Default: False
-
+            
         Retruns:
             dict: a dict contains all the parameters and persistable buffers.
 
@@ -1334,11 +1372,11 @@ class Layer(core.Layer):
                 paddle.save( state_dict, "paddle_dy.pdparams")
 
         '''
-        return self.state_dict_helper(
+        return self._state_dict_impl(
             destination=destination,
             include_sublayers=include_sublayers,
             structured_name_prefix=structured_name_prefix,
-            include_non_persistable_buffer=include_non_persistable_buffer)
+            include_non_persistable_buffer=False)
 
     @framework.deprecate_stat_dict
     def set_state_dict(self, state_dict, use_structured_name=True):

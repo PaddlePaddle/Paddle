@@ -596,12 +596,12 @@ class TestMomentumOpWithDecayAPI(unittest.TestCase):
             multi_precision=True)
         if paddle.is_compiled_with_cuda():
             model, opt = paddle.amp.decorator(
-                models=model, optimizers=opt, mode='L2')
+                models=model, optimizers=opt, level='O2')
             with paddle.amp.auto_cast(
                     enable=True,
                     custom_black_list=None,
                     custom_white_list=None,
-                    mode='L2'):
+                    level='O2'):
                 out = model(inp)
                 loss = paddle.mean(out)
             opt.minimize(loss)
