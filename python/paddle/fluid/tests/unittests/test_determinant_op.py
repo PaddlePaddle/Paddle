@@ -114,7 +114,7 @@ class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
 
 class TestSlogDeterminantAPI(unittest.TestCase):
     def setUp(self):
-        self.shape = [3, 3, 5, 5]
+        self.shape = [4, 5, 5]
         self.x = np.random.random(self.shape).astype(np.float32)
         self.place = paddle.CPUPlace()
 
