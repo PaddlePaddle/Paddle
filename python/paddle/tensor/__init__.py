@@ -46,6 +46,8 @@ from .linalg import histogram  # noqa: F401
 from .linalg import mv  # noqa: F401
 from .linalg import matrix_power  # noqa: F401
 from .linalg import qr  # noqa: F401
+from .linalg import multi_dot  # noqa: F401
+from .linalg import svd  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
