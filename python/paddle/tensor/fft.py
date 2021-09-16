@@ -717,7 +717,6 @@ def irfftn(x, s=None, axes=None, norm="backward", name=None):
             import paddle
 
             x = (np.array([2, 2, 3]) + 1j * np.array([2, 2, 3])).astype(np.complex128)
-            x[0, 0, 0] = 3 * 2 * 2
             xp = paddle.to_tensor(x)
             irfftn_xp = paddle.fft.irfftn(xp).numpy()
             print(irfftn_xp)
@@ -990,7 +989,7 @@ def rfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
         import numpy as np
 
         x = paddle.to_tensor(np.mgrid[:5, :5][0].astype(np.float32))
-        print(paddle.fft.rfft2(x)))
+        print(paddle.fft.rfft2(x))
         # Tensor(shape=[5, 3], dtype=complex64, place=CUDAPlace(0), stop_gradient=True,
         #        [[ (50+0j)                                        ,  (1.1920928955078125e-07+0j)                    ,  0j                                             ],
         #         [(-12.5+17.204774856567383j)                     , (-9.644234211236835e-08+7.006946134424652e-08j) ,  0j                                             ],
@@ -1277,7 +1276,7 @@ def fftshift(x, axes=None, name=None):
             scalar_temp = 0.3
             n = x.size
             fftfreq_xp = paddle.fft.fftfreq(n, d=scalar_temp)
-            res = paddle.fft.fftshift(temp).numpy()
+            res = paddle.fft.fftshift(fftfreq_xp).numpy()
             print(res)
             #  [-1.3333334 -0.6666667  0.         0.6666667  1.3333334]
 
@@ -1321,7 +1320,7 @@ def ifftshift(x, axes=None, name=None):
             scalar_temp = 0.3
             n = x.size
             fftfreq_xp = paddle.fft.fftfreq(n, d=scalar_temp)
-            res = paddle.fft.ifftshift(temp).numpy()
+            res = paddle.fft.ifftshift(fftfreq_xp).numpy()
             print(res)
             #  [ 1.3333334 -1.3333334 -0.6666667  0.         0.6666667]
 
