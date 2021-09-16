@@ -102,14 +102,13 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
         }
       } else {
         auto &tensor = inp_vars[i]->Get<framework::STRING_MAP>();
-        VLOG(0)
-            << "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&"
-            << tensor.size();
         framework::SerializeStringMap data;
+        VLOG(0) << "vocab tensor size" << tensor.size();
         for (auto it = tensor.begin(); it != tensor.end(); ++it) {
           std::string t = framework::ConvertWstrToStr(it->first);
           data.insert({t, it->second});
         }
+        VLOG(0) << "SerializeStringMap size " << data.size();
         data.MapTensorToStream(ss);
       }
     }

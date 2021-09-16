@@ -60,15 +60,14 @@ std::string NormalizeNfd(const std::string& s);
 
 class SerializeStringMap : public std::unordered_map<std::string, int32_t> {
  private:
-  void write(std::ostream& os, int32_t* num);
-  void write(std::ostream& os, std::string* str);
+  void write(std::ostream& os, int32_t num);
+  void write(std::ostream& os, const std::string& str);
   void read(std::istream& is, int32_t* token_id);
-  void read(std::istream& is, std::string* str);
+  std::string read(std::istream& is);
 
  public:
   void MapTensorToStream(std::ostream& os);
   void MapTensorFromStream(std::istream& is);
-  void show(void);
 };
 
 // NOTE(zcd): Because TensorCopy is an async operation, when the src_place

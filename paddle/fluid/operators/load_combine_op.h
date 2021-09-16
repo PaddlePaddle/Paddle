@@ -87,10 +87,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
         auto *tensor = out_vars[i]->GetMutable<framework::STRING_MAP>();
         framework::SerializeStringMap data;
         data.MapTensorFromStream(*buffer);
-        VLOG(0) << "****************************************************"
-                << data.size();
         for (auto it = data.begin(); it != data.end(); ++it) {
-          VLOG(4) << it->first << ":" << it->second << std::endl;
           std::wstring token =
               framework::ConvertStrToWstr(framework::NormalizeNfd(it->first));
           tensor->insert({token, it->second});

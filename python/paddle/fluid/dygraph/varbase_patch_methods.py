@@ -113,10 +113,7 @@ def monkey_patch_varbase():
             attr_kwargs['block'] = attr_kwargs['block'].program.global_block()
             static_var = Parameter(**attr_kwargs)
         else:
-            print("*" * 100)
-            print(attr_kwargs)
             static_var = Variable(**attr_kwargs)
-            print(static_var.dtype)
         return static_var
 
     # TODO(jiabin): move this to cplusplus end if we find some performance issue on it

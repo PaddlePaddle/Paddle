@@ -69,7 +69,7 @@ class WordPieceTokenizer {
 class BertTokenizer {
  public:
   explicit BertTokenizer(const framework::STRING_MAP vocab,
-                         bool do_lower_case = true,
+                         bool do_lower_case = false,
                          const wstring& unk_token = L"[UNK]",
                          const wstring& pad_token = L"[PAD]",
                          const wstring& cls_token = L"[CLS]",
@@ -142,8 +142,8 @@ template <typename T>
 class TokenizerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* text = ctx.Input<paddle::framework::STRINGS>("Text");
-    auto* vocab = ctx.Input<paddle::framework::STRING_MAP>("Vocab");
+    auto* text = ctx.Input<framework::STRINGS>("Text");
+    auto* vocab = ctx.Input<framework::STRING_MAP>("Vocab");
 
     auto* input_ids = ctx.Output<framework::Tensor>("InputIds");
     auto* seg_ids = ctx.Output<framework::Tensor>("SegmentIds");
@@ -154,9 +154,9 @@ class TokenizerKernel : public framework::OpKernel<T> {
     auto pad_to_max_seq_len =
         static_cast<bool>(ctx.Attr<bool>("pad_to_max_seq_len"));
 
-    auto* text_pair = ctx.Input<std::vector<std::string>>("TextPair");
+    auto* text_pair = ctx.Input<framework::STRINGS>("TextPair");
     if (text_pair && text->size() != text_pair->size()) {
-      VLOG(3) << "The input text(list(str)) and text pair (list(str)) must"
+      VLOG(3) << "The input text(list[str]) and text pair (list[str]) must"
               << "be the same number of text sequence. Please check the input!";
       return;
     }

@@ -32,14 +32,14 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
+std::wstring_convert<std::codecvt_utf8<wchar_t>> Converter;
+
 std::wstring ConvertStrToWstr(const std::string& src) {
-  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-  return converter.from_bytes(src);
+  return Converter.from_bytes(src);
 }
 
 std::string ConvertWstrToStr(const std::wstring& src) {
-  std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-  return converter.to_bytes(src);
+  return Converter.to_bytes(src);
 }
 
 std::string NormalizeNfd(const std::string& s) {
@@ -51,64 +51,55 @@ std::string NormalizeNfd(const std::string& s) {
     free(result);
     result = nullptr;
   }
-
   return ret;
 }
 
-void SerializeStringMap::write(std::ostream& os, int32_t* t) {
-  os.write(reinterpret_cast<const char*>(t), sizeof(*t));
+void SerializeStringMap::write(std::ostream& os, int32_t t) {
+  os.write(reinterpret_cast<const char*>(&t), sizeof(t));
 }
 
-void SerializeStringMap::write(std::ostream& os, std::string* str) {
-  size_t length = str->size();
+void SerializeStringMap::write(std::ostream& os, const std::string& str) {
+  size_t length = str.size();
   os.write(reinterpret_cast<const char*>(&length), sizeof(length));
-  os.write(reinterpret_cast<const char*>(str->data()), length);
+  os.write(str.data(), length);
 }
 
 void SerializeStringMap::read(std::istream& is, int32_t* token_id) {
   is.read(reinterpret_cast<char*>(token_id), sizeof(*token_id));
 }
 
-void SerializeStringMap::read(std::istream& is, std::string* str) {
+std::string SerializeStringMap::read(std::istream& is) {
   size_t length;
   is.read(reinterpret_cast<char*>(&length), sizeof(length));
-  char* tmp = new char[length + 1];
+  char* tmp = new char[length];
   is.read(tmp, length);
-  *str = tmp;
+  std::string s(tmp, tmp + length);
+  return s;
 }
 
 void SerializeStringMap::MapTensorToStream(std::ostream& ss) {
   size_t t = this->size();
+  int count = 0;
   ss.write(reinterpret_cast<const char*>(&t), sizeof(t));
   for (auto it = this->begin(); it != this->end(); ++it) {
     std::string str = it->first;
     int32_t value = it->second;
-    VLOG(0) << "SerializeStringMap::MapTensorToStream " << str << " : "
-            << value;
     write(ss, str);
     write(ss, value);
+    count += 1;
   }
+  VLOG(0) << "MapTensorToStream count " << count;
 }
 
 void SerializeStringMap::MapTensorFromStream(std::istream& is) {
   size_t map_size;
   is.read(reinterpret_cast<char*>(&map_size), sizeof(map_size));
   for (size_t i = 0; i < map_size; ++i) {
-    std::string key;
-    int32_t value;
-    read(is, key);
-    read(is, value);
-    VLOG(0) << "SerializeStringMap::MapTensorFromStream " << key << " : "
-            << value;
-    (*this)[key] = value;
+    std::string token = read(is);
+    int32_t token_id;
+    read(is, &token_id);
+    (*this)[token] = token_id;
   }
-}
-
-void SerializeStringMap::show() {
-  for (auto& i : (*this)) {
-    std::cout << i.first << ":" << i.second << std::endl;
-  }
-  std::cout << std::endl;
 }
 
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
