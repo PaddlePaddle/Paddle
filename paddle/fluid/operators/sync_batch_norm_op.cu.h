@@ -45,6 +45,39 @@ using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
+template <typename T>
+std::string outputVector(const std::vector<T> vec) {
+  std::ostringstream oss;
+  // for (auto ele : vec) oss << ele << ' ';
+  for (size_t i = 0; i < vec.size() && i < 10; ++i) {
+    oss << vec[i] << ' ';
+  }
+  return oss.str();
+}
+template <typename T>
+void PrintTensor(const framework::Tensor &src,
+                 const framework::ExecutionContext &ctx) {
+  std::vector<T> vec(src.numel());
+  TensorToVector(src, ctx.device_context(), &vec);
+  LOG(WARNING) << "vec: " << outputVector<T>(vec);
+}
+
+template <typename T>
+std::string outputArray(const T *array, const int n) {
+  // LOG(WARNING) << "here";
+  std::ostringstream oss;
+  for (size_t i = 0; i < n && i < 10; ++i) {
+    // LOG(WARNING) << ", i: " << i;
+    oss << *(array + i) << ' ';
+  }
+  return oss.str();
+}
+template <typename T>
+void PrintArray(const T *array, const int n) {
+  // LOG(WARNING) << "here";
+  LOG(WARNING) << "array: " << outputArray<T>(array, n);
+}
+
 template <typename T, int BlockDim, framework::DataLayout layout>
 __global__ void KeLocalStats(const T *x, int N, int M, int C,
                              BatchNormParamType<T> *mean_var) {
@@ -190,11 +223,28 @@ void SyncBatchNormFunctor(const framework::ExecutionContext &ctx,
 #if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
     auto *comm = dev_ctx.nccl_comm();
     if (comm) {
+      auto stream =
+          ctx.template device_context<paddle::platform::CUDADeviceContext>()
+              .stream();
+      auto dst_gpu_place = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
+
+      BatchNormParamType<T> tmp[2 * C + 1];
+
       int dtype = platform::ToNCCLDataType(mean_out->type());
       // In-place operation
+      LOG(WARNING) << "before nccl | stats:";
+      // PrintArray<BatchNormParamType<T>>(stats, 2 * C + 1);
+      paddle::memory::Copy(platform::CPUPlace(), tmp, dst_gpu_place, stats,
+                           2 * C + 1, stream);
+      PrintArray<BatchNormParamType<T>>(tmp, 2 * C + 1);
       PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
           stats, stats, 2 * C + 1, static_cast<ncclDataType_t>(dtype), ncclSum,
           comm, stream));
+      LOG(WARNING) << "after nccl | stats:";
+      // PrintArray<BatchNormParamType<T>>(stats, 2 * C + 1);
+      paddle::memory::Copy(platform::CPUPlace(), tmp, dst_gpu_place, stats,
+                           2 * C + 1, stream);
+      PrintArray<BatchNormParamType<T>>(tmp, 2 * C + 1);
     }
 #endif
 

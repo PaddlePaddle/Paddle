@@ -48,6 +48,20 @@ class SyncBatchNormKernel<platform::CUDADeviceContext, T>
     auto *saved_mean = ctx.Output<Tensor>("SavedMean");
     auto *saved_inv_variance = ctx.Output<Tensor>("SavedVariance");
 
+    const auto *scale = ctx.Input<Tensor>("Scale");
+    const auto *bias = ctx.Input<Tensor>("Bias");
+
+    LOG(WARNING) << "Input Tensor | x: ";
+    PrintTensor<float>(*x, ctx);
+    LOG(WARNING) << "Input Tensor | scale: ";
+    PrintTensor<float>(*scale, ctx);
+    LOG(WARNING) << "Input Tensor | bias: ";
+    PrintTensor<float>(*bias, ctx);
+    LOG(WARNING) << "Input Tensor | mean: ";
+    PrintTensor<float>(*est_mean, ctx);
+    LOG(WARNING) << "Input Tensor | variance: ";
+    PrintTensor<float>(*est_var, ctx);
+
     bool test_mode = is_test && (!trainable_stats);
     SyncBatchNormFunctor<platform::CUDADeviceContext, T>(
         ctx, layout, x, y, est_mean, est_var, mean_out, variance_out,
