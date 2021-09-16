@@ -45,7 +45,7 @@ class EigenMatrix<double> {
   using MatrixType = Eigen::MatrixXd;
 };
 
-inline int64_t GetBatchCount(framework::DDim dims) {
+inline int64_t GetBatchCount(const framework::DDim dims) {
   int64_t batch_count = 1;
   auto dim_size = dims.size();
   PADDLE_ENFORCE_GT(dim_size, 2,
@@ -58,7 +58,7 @@ inline int64_t GetBatchCount(framework::DDim dims) {
   // count,
   // for example a tensor with shape [3,3,3,3], the batch count of matrices is
   // 9.
-  for (int i = 0; i < dims.size() - 2; i++) {
+  for (int64_t i = 0; i < dims.size() - 2; i++) {
     batch_count *= dims[i];
   }
 
@@ -68,18 +68,18 @@ inline int64_t GetBatchCount(framework::DDim dims) {
 template <typename T>
 struct DeterminantFunctor {
   void operator()(const Tensor& input, const framework::ExecutionContext ctx,
-                  int rank, int64_t batch_count, Tensor* output) {
+                  int64_t rank, int64_t batch_count, Tensor* output) {
     std::vector<T> input_vec;
     std::vector<T> output_vec;
     framework::TensorToVector(input, ctx.device_context(), &input_vec);
-    for (int i = 0; i < batch_count; ++i) {  // maybe can be parallel
+    for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
       std::vector<T> sub_vec(begin_iter,
                              end_iter);  // get every square matrix data
       Eigen::MatrixXf matrix(rank, rank);
-      for (int i = 0; i < rank; ++i) {
-        for (int j = 0; j < rank; ++j) {
+      for (int64_t i = 0; i < rank; ++i) {
+        for (int64_t j = 0; j < rank; ++j) {
           matrix(i, j) = sub_vec[rank * i + j];
         }
       }
