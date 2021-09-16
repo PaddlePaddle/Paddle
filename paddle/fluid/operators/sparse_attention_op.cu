@@ -26,6 +26,7 @@ namespace plf = paddle::platform;
 namespace paddle {
 namespace operators {
 
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
 template <typename T>
 __forceinline__ __device__ T CudaShuffleXorSync(unsigned mask, T val,
                                                 int width = warpSize) {
@@ -229,7 +230,6 @@ void SparseSoftmaxBackward(const platform::CUDADeviceContext& ctx,
       num_rows);
 }
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
 int GetGpuType(std::string data_type) {
   int gpu_type = -1;
   if (data_type == "float") {
