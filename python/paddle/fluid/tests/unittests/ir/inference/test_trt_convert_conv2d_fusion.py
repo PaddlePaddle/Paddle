@@ -43,12 +43,12 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
 
         def generate_input1(batch, attrs: List[Dict[str, Any]]):
             if attrs[0]['groups'] == 2:
-                return np.ones([batch, 2, 64, 64]).astype(np.float32)
+                return np.ones([batch, 6, 64, 64]).astype(np.float32)
             else:
-                return np.ones([batch, 3, 64, 64]).astype(np.float32)
+                return np.ones([batch, 9, 64, 64]).astype(np.float32)
 
         def generate_weight1(attrs: List[Dict[str, Any]]):
-            return np.random.random([24, 1, 3, 3]).astype(np.float32)
+            return np.random.random([24, 3, 3, 3]).astype(np.float32)
 
         def generate_weight2(attrs: List[Dict[str, Any]]):
             return np.random.random([24, 1, 1]).astype(np.float32)
@@ -119,18 +119,32 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {
-                "input_data": [1, 3, 32, 32],
-                "output_data": [1, 24, 32, 32]
-            }
-            self.dynamic_shape.max_input_shape = {
-                "input_data": [4, 3, 64, 64],
-                "output_data": [4, 24, 64, 64]
-            }
-            self.dynamic_shape.opt_input_shape = {
-                "input_data": [1, 3, 64, 64],
-                "output_data": [1, 24, 64, 64]
-            }
+            if attrs[0]['groups'] == 2:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 6, 32, 32],
+                    "output_data": [1, 24, 32, 32]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [4, 6, 64, 64],
+                    "output_data": [4, 24, 64, 64]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [1, 6, 64, 64],
+                    "output_data": [1, 24, 64, 64]
+                }
+            else:
+                self.dynamic_shape.min_input_shape = {
+                    "input_data": [1, 9, 32, 32],
+                    "output_data": [1, 24, 32, 32]
+                }
+                self.dynamic_shape.max_input_shape = {
+                    "input_data": [4, 9, 64, 64],
+                    "output_data": [4, 24, 64, 64]
+                }
+                self.dynamic_shape.opt_input_shape = {
+                    "input_data": [1, 9, 64, 64],
+                    "output_data": [1, 24, 64, 64]
+                }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -152,10 +166,10 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-2
+            attrs, False), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-1
+            attrs, False), (1e-5, 1e-5)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
@@ -163,11 +177,11 @@ class TrtConvertConv2dFusionTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(attrs,
                                                                      True), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-2
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
-        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-                                                                     True), 1e-1
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), (1e-5, 1e-5)
 
     def add_skip_trt_case(self):
         def teller1(program_config, predictor_config):
