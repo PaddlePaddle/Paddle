@@ -1712,3 +1712,4 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 
 }  // namespace framework
 }  // namespace paddle
+//done
