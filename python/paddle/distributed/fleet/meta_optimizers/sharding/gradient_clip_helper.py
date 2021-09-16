@@ -217,6 +217,7 @@ class GradientClipHelper(object):
                             OP_ROLE_KEY: OpRole.Optimize
                         })
                     fill_constant_op._set_attr('op_namescope', namescope)
+                    # insert redundant allreduce to prevent hang
                     self._insert_allreduce(block, ring_ids, idx, sum_rst_var)
                     return
                 break
