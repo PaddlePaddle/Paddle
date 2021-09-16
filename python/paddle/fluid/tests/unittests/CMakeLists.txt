@@ -451,6 +451,10 @@ list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
 
+# disable iterable dataset unittest temporarily, fix in progress
+list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_iterable_dataset_static)
+list(REMOVE_ITEM TEST_OPS test_multiprocess_dataloader_iterable_dataset_dynamic)
+
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)
