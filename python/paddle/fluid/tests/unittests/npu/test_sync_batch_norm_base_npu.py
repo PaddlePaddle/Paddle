@@ -170,16 +170,81 @@ class TestSyncBatchNormRunnerBase(object):
             if sync_bn_val.shape != bn_val.shape:
                 sync_bn_val = sync_bn_val[:bn_val.shape[0]]
 
-            # if fetch_names[i] == 'bn_moving_variance':
-            #     print('skip bn_moving_variance (VarianceOut)')
+            # # i = 2
+            # if fetch_names[i] == 'batch_norm_0.tmp_3':
+            #     print('skip batch_norm_0.tmp_3 (Y)')
 
             #     print('bn_val: ', str(bn_val))
             #     print('sync_bn_val: ', str(sync_bn_val))
 
             #     continue
 
-            # if fetch_names[i] == 'batch_norm_0.tmp_1':
-            #     print('skip batch_norm_0.tmp_1 (SavedVariance)')
+            # # i = 3
+            # if fetch_names[i] == 'bn_moving_mean':
+            #     print('skip bn_moving_mean (MeanOut)')
+
+            #     print('bn_val: ', str(bn_val))
+            #     print('sync_bn_val: ', str(sync_bn_val))
+
+            #     continue
+
+            # i = 4
+            if fetch_names[i] == 'bn_moving_variance':
+                print('skip bn_moving_variance (VarianceOut)')
+
+                print('bn_val: ', str(bn_val))
+                print('sync_bn_val: ', str(sync_bn_val))
+
+                continue
+
+            # i = 7
+            # if fetch_names[i] == 'batch_norm_0.tmp_0':
+            #     print('skip batch_norm_0.tmp_0 (SavedMean)')
+
+            #     print('bn_val: ', str(bn_val))
+            #     print('sync_bn_val: ', str(sync_bn_val))
+
+            #     continue
+
+            # i = 8
+            if fetch_names[i] == 'batch_norm_0.tmp_1':
+                print('skip batch_norm_0.tmp_1 (SavedVariance)')
+
+                print('bn_val: ', str(bn_val))
+                print('sync_bn_val: ', str(sync_bn_val))
+
+                continue
+
+            # # i = 9
+            # if fetch_names[i] == 'bn_scale@GRAD':
+            #     print('skip bn_scale@GRAD (Scale@GRAD)')
+
+            #     print('bn_val: ', str(bn_val))
+            #     print('sync_bn_val: ', str(sync_bn_val))
+
+            #     continue
+
+            # # i = 10
+            # if fetch_names[i] == 'bn_bias@GRAD':
+            #     print('skip bn_bias@GRAD (Bias@GRAD)')
+
+            #     print('bn_val: ', str(bn_val))
+            #     print('sync_bn_val: ', str(sync_bn_val))
+
+            #     continue
+
+            # # i = 11
+            # if fetch_names[i] == 'batch_norm_0.tmp_3@GRAD':
+            #     print('skip batch_norm_0.tmp_3@GRAD (Y@GRAD)')
+
+            #     print('bn_val: ', str(bn_val))
+            #     print('sync_bn_val: ', str(sync_bn_val))
+
+            #     continue
+
+            # # i = 12
+            # if fetch_names[i] == 'conv2d_0.tmp_0@GRAD':
+            #     print('skip conv2d_0.tmp_0@GRAD (X@GRAD)')
 
             #     print('bn_val: ', str(bn_val))
             #     print('sync_bn_val: ', str(sync_bn_val))
@@ -195,11 +260,15 @@ class TestSyncBatchNormRunnerBase(object):
         # Single-NPU, N = 32 per NPU
         train_prog = fluid.Program()
         startup_prog = fluid.Program()
+        train_prog.random_seed = SEED
+        startup_prog.random_seed = SEED
+        paddle.seed(SEED)
         # sys.stderr.write("train_prog: " + train_prog.to_string(True) + "\n")
         # sys.stderr.write("startup_prog: " + startup_prog.to_string(True) + "\n")
         # sys.stderr.flush()
 
-        outs = self.get_model(train_prog, startup_prog, place, "NCHW", SEED)
+        outs = self.get_model(train_prog, startup_prog, place, "NCHW", SEED,
+                              False, False)
         # sys.stderr.write("after get_model, train_prog: " + train_prog.to_string(
         #     True) + "\n")
         # sys.stderr.write("after get_model, startup_prog: " +
@@ -227,6 +296,9 @@ class TestSyncBatchNormRunnerBase(object):
         # Single-NPU, N = 32 per NPU
         train_prog = fluid.Program()
         startup_prog = fluid.Program()
+        train_prog.random_seed = SEED
+        startup_prog.random_seed = SEED
+        paddle.seed(SEED)
         # sys.stderr.write("train_prog: " + train_prog.to_string(True) + "\n")
         # sys.stderr.write("startup_prog: " + startup_prog.to_string(True) + "\n")
         # sys.stderr.flush()
@@ -240,9 +312,13 @@ class TestSyncBatchNormRunnerBase(object):
                               current_endpoint, endpoints)
         sys.stderr.write("after init, startup_prog: " + startup_prog.to_string(
             True) + "\n")
+        train_prog.random_seed = SEED
+        startup_prog.random_seed = SEED
+        paddle.seed(SEED)
 
         self.rank = rank
-        outs = self.get_model(train_prog, startup_prog, place, "NCHW", SEED)
+        outs = self.get_model(train_prog, startup_prog, place, "NCHW", SEED,
+                              True, False)
         # sys.stderr.write("after get_model, train_prog: " + train_prog.to_string(
         #     True) + "\n")
         # sys.stderr.write("after get_model, startup_prog: " +
@@ -260,8 +336,8 @@ class TestSyncBatchNormRunnerBase(object):
                 op.desc.set_type('sync_batch_norm_grad')
 
         # print('after train_prog: ', train_prog)
-        # sys.stderr.write("after update sync_batch_norm, train_prog: " +
-        #                  train_prog.to_string(True) + "\n")
+        sys.stderr.write("after update sync_batch_norm, train_prog: " +
+                         train_prog.to_string(True) + "\n")
 
         exe = fluid.Executor(place)
         exe.run(startup_prog)
@@ -353,8 +429,8 @@ class TestDistBase(unittest.TestCase):
         tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
-        tr0_pipe = open("/tmp/tr0_err.log", "a+")
-        tr1_pipe = open("/tmp/tr1_err.log", "a+")
+        tr0_pipe = open("/tmp/tr0_err.log", "wb")
+        tr1_pipe = open("/tmp/tr1_err.log", "wb")
         # print(tr0_cmd)
         # print(tr1_cmd) 
         tr0_proc = subprocess.Popen(

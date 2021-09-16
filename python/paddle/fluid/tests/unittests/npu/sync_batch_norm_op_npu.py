@@ -47,10 +47,10 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
         self.global_ring_id = 0
 
         self.dtype = np.float32
-        self.N = 2
-        self.C = 2
-        self.H = 2
-        self.W = 2
+        self.N = 8
+        self.C = 16
+        self.H = 32
+        self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
         self.atol = 1e-2
 
@@ -66,10 +66,6 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
                   sync_bn=False,
                   only_forward=False):
         """Build program."""
-        # main = fluid.Program()
-        # startup = fluid.Program()
-        main.random_seed = seed
-        startup.random_seed = seed
         use_cudnn = False
         with fluid.unique_name.guard():
             with fluid.program_guard(main, startup):
