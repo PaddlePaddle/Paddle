@@ -170,12 +170,6 @@ DLPackTensor::DLPackTensor(const Tensor &tensor, LaneType lanes) {
   // init strides, nullptr means the tensor is compact
   // refer to cupy and cudf, the compact tensor first dim's strides need to be 1
   // and second dim's strides need to be length of rows of cudf
-  // cudf now only support dim=2
-  PADDLE_ENFORCE_LE(t_.ndim, 2, platform::errors::InvalidArgument(
-                                    "cudf now only supports dimension is 2, "
-                                    "but received dimension is %d.",
-                                    t_.ndim));
-
   if (t_.ndim > 1)
     t_.strides = new int64_t[2]{1, t_.shape[1]};
   else
