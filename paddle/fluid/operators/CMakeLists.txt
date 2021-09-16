@@ -98,7 +98,12 @@ else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
 
-op_library(spectral_op SRCS spectral_op.cc spectral_op.cu DEPS dynload_cuda ${OP_HEADER_DEPS})
+if (WITH_GPU AND (NOT WITH_ROCM))
+    op_library(spectral_op SRCS spectral_op.cc spectral_op.cu DEPS dynload_cuda ${OP_HEADER_DEPS})
+else()
+    op_library(spectral_op SRCS spectral_op.cc DEPS ${OP_HEADER_DEPS})
+endif()
+
 # op_library(spectral_op SRCS spectral_op.cc spectral_op.cu DEPS ${OP_HEADER_DEPS})
 # if (WITH_GPU)
 #     find_library(CUFFT_LIB libcufft.so
