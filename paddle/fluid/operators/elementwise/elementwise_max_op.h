@@ -14,16 +14,12 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct MaxFunctor {
-  inline HOSTDEVICE T operator()(T a, T b) const { return a > b ? a : b; }
-};
 
 template <typename DeviceContext, typename T>
 class ElementwiseMaxKernel : public framework::OpKernel<T> {

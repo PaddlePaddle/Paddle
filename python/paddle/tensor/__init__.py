@@ -44,6 +44,9 @@ from .linalg import cholesky  # noqa: F401
 from .linalg import bmm  # noqa: F401
 from .linalg import histogram  # noqa: F401
 from .linalg import mv  # noqa: F401
+from .linalg import matrix_power  # noqa: F401
+from .linalg import multi_dot  # noqa: F401
+from .linalg import svd  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
@@ -106,6 +109,7 @@ from .math import cos  # noqa: F401
 from .math import tan  # noqa: F401
 from .math import cosh  # noqa: F401
 from .math import cumsum  # noqa: F401
+from .math import cumprod  # noqa: F401
 from .math import exp  # noqa: F401
 from .math import exp_  # noqa: F401
 from .math import expm1  # noqa: F401
@@ -179,6 +183,7 @@ from .random import multinomial  # noqa: F401
 from .random import standard_normal  # noqa: F401
 from .random import normal  # noqa: F401
 from .random import uniform  # noqa: F401
+from .random import uniform_  # noqa: F401
 from .random import randn  # noqa: F401
 from .random import rand  # noqa: F401
 from .random import randint  # noqa: F401
@@ -186,6 +191,7 @@ from .random import randperm  # noqa: F401
 from .search import argmax  # noqa: F401
 from .search import argmin  # noqa: F401
 from .search import argsort  # noqa: F401
+from .search import searchsorted  # noqa: F401
 from .search import topk  # noqa: F401
 from .search import where  # noqa: F401
 from .search import index_select  # noqa: F401
@@ -220,6 +226,7 @@ tensor_method_func  = [ #noqa
            'bmm',
            'histogram',
            'mv',
+           'matrix_power',
            'abs',
            'acos',
            'all',
@@ -231,6 +238,7 @@ tensor_method_func  = [ #noqa
            'cos',
            'cosh',
            'cumsum',
+           'cumprod',
            'exp',
            'exp_',
            'floor',
@@ -362,13 +370,14 @@ tensor_method_func  = [ #noqa
            'real',
            'imag',
            'digamma',
-           'diagonal'
-           'trunc'
+           'diagonal',
+           'trunc',
            'bitwise_and',
            'bitwise_or',
            'bitwise_xor',
            'bitwise_not',
            'broadcast_tensors',
+           'uniform_',
 ]
 
 #this list used in math_op_patch.py for magic_method bind
