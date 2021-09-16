@@ -40,14 +40,16 @@ class TestDeterminantOp(OpTest):
         pass
 
     def init_data(self):
-        self.case = np.random.randn(3, 3, 3, 3, 3).astype('float64')
+        np.random.seed(0)
+        self.case = np.random.rand(3, 3, 3, 3, 3).astype('float64')
         self.inputs = {'Input': self.case}
         self.target = np.linalg.det(self.case)
 
 
 class TestDeterminantOpCase1(TestDeterminantOp):
     def init_data(self):
-        self.case = np.random.randn(3, 3, 3, 3).astype('float32')
+        np.random.seed(0)
+        self.case = np.random.rand(3, 3, 3, 3).astype(np.float32)
         self.inputs = {'Input': self.case}
         self.target = np.linalg.det(self.case)
 
@@ -57,7 +59,8 @@ class TestDeterminantOpCase1(TestDeterminantOp):
 
 class TestDeterminantOpCase2(TestDeterminantOp):
     def init_data(self):
-        self.case = np.random.randint(0, 2, (4, 2, 4, 4)).astype('float64')
+        np.random.seed(0)
+        self.case = np.random.rand(4, 2, 4, 4).astype('float64')
         self.inputs = {'Input': self.case}
         self.target = np.linalg.det(self.case)
 
@@ -68,7 +71,8 @@ class TestDeterminantOpCase2(TestDeterminantOp):
 class TestDeterminantAPI(unittest.TestCase):
     def setUp(self):
         self.shape = [3, 3, 3, 3]
-        self.x = np.random.random((3, 3, 3, 3)).astype(np.float32)
+        np.random.seed(0)
+        self.x = np.random.rand(3, 3, 3, 3).astype(np.float32)
         self.place = paddle.CPUPlace()
 
     def test_api_static(self):
@@ -106,14 +110,16 @@ class TestSlogDeterminantOp(OpTest):
         pass
 
     def init_data(self):
-        self.case = np.random.randn(3, 3, 3, 3).astype('float64')
+        np.random.seed(0)
+        self.case = np.random.rand(3, 3, 3, 3).astype('float64')
         self.inputs = {'Input': self.case}
         self.target = np.array(np.linalg.slogdet(self.case))
 
 
 class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
     def init_data(self):
-        self.case = np.random.randn(3, 3, 3, 3).astype('float32')
+        np.random.seed(0)
+        self.case = np.random.rand(2, 2, 5, 5).astype(np.float32)
         self.inputs = {'Input': self.case}
         self.target = np.array(np.linalg.slogdet(self.case))
 
@@ -121,7 +127,8 @@ class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
 class TestSlogDeterminantAPI(unittest.TestCase):
     def setUp(self):
         self.shape = [3, 3, 3, 3]
-        self.x = np.random.random((3, 3, 3, 3)).astype(np.float32)
+        np.random.seed(0)
+        self.x = np.random.rand(3, 3, 3, 3).astype(np.float32)
         self.place = paddle.CPUPlace()
 
     def test_api_static(self):

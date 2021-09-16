@@ -1378,21 +1378,19 @@ def det(x):
     if in_dygraph_mode():
         return core.ops.determinant(x)
 
-    def _check_input(input):
-        check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
+    check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
 
-        input_shape = list(x.shape)
-        assert len(input_shape) >= 2,                     \
-                "The x must be at least 2-dimensional, "   \
-                "but received Input x's dimensional: %s.\n" %  \
-                len(input_shape)
+    input_shape = list(x.shape)
+    assert len(input_shape) >= 2,                     \
+            "The x must be at least 2-dimensional, "   \
+            "but received Input x's dimensional: %s.\n" %  \
+            len(input_shape)
 
-        assert (input_shape[-1] == input_shape[-2]),    \
-                "Expect squared input," \
-                "but received %s by %s matrix.\n" \
-                %(input_shape[-2], input_shape[-1]) \
+    assert (input_shape[-1] == input_shape[-2]),    \
+            "Expect squared input," \
+            "but received %s by %s matrix.\n" \
+            %(input_shape[-2], input_shape[-1]) \
 
-    _check_input(input)
     helper = LayerHelper('determinant', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
@@ -1435,21 +1433,19 @@ def slogdet(x):
     if in_dygraph_mode():
         return core.ops.slogdeterminant(x)
 
-    def _check_input(x):
-        check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
+    check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
 
-        input_shape = list(x.shape)
-        assert len(input_shape) >= 2,                     \
-                "The x must be at least 2-dimensional, "   \
-                "but received Input x's dimensional: %s.\n" %  \
-                len(input_shape)
+    input_shape = list(x.shape)
+    assert len(input_shape) >= 2,                     \
+            "The x must be at least 2-dimensional, "   \
+            "but received Input x's dimensional: %s.\n" %  \
+            len(input_shape)
 
-        assert (input_shape[-1] == input_shape[-2]),    \
-                "Expect squared input," \
-                "but received %s by %s matrix.\n" \
-                %(input_shape[-2], input_shape[-1]) \
+    assert (input_shape[-1] == input_shape[-2]),    \
+            "Expect squared input," \
+            "but received %s by %s matrix.\n" \
+            %(input_shape[-2], input_shape[-1]) \
 
-    _check_input(x)
     helper = LayerHelper('slogdeterminant', **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
 
