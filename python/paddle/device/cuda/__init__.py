@@ -13,7 +13,8 @@
 # limitations under the License.
 
 from paddle.fluid import core
-
+from paddle.fluid import framework
+from paddle.device import is_compiled_with_cuda
 from .streams import Stream  # noqa: F401
 from .streams import Event  # noqa: F401
 
@@ -24,7 +25,7 @@ __all__ = [
     'synchronize',
     'device_count',
     'empty_cache',
-    'get_device_properties'
+    'get_device_properties',
 ]
 
 
@@ -159,19 +160,28 @@ def get_device_properties(device):
         .. code-block:: python
 
             # required: gpu
-            import paddle
 
+            import paddle
+            paddle.set_device("gpu")
             paddle.device.cuda.get_device_properties(0)
             paddle.device.cuda.get_device_properties(paddle.CUDAPlace(0))
 
     '''
+
+    place = framework._current_expected_place()
+    if not isinstance(place, core.CUDAPlace) or not is_compiled_with_cuda():  
+        raise ValueError("Current device: {} is not expected. Because get_device_properties only support cuda device." 
+                         "Please change device and input device again!".format(place))
+
     device_id = -1
+    
     if device is not None:
         if isinstance(device, int):
             device_id = device
         elif isinstance(device, core.CUDAPlace):
             device_id = device.get_device_id()
         else:
-            raise ValueError("device type must be int or paddle.CUDAPlace")
+            raise ValueError("Input device type: {} is illegal. Because get_device_properties only support device type." 
+                             "must be int or paddle.CUDAPlace. Please input appropriate device again!".format(device))
 
     return core.get_device_properties(device_id)

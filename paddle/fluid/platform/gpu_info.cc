@@ -44,17 +44,9 @@ DECLARE_uint64(gpu_memory_limit_mb);
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
 
-static std::once_flag init_flag;
-static std::deque<std::once_flag> device_flags;
-static int gpu_num = -1;
-
-#ifdef PADDLE_WITH_CUDA
-static std::vector<cudaDeviceProp> device_props;
-#endif
-
-#ifdef PADDLE_WITH_HIP
-static std::vector<hipDeviceProp_t> device_props;
-#endif
+static std::once_flag g_init_flag;
+static std::vector<std::unique_ptr<std::once_flag>> g_device_flags;
+static std::vector<paddle::gpuDeviceProp> g_device_props;
 
 USE_GPU_MEM_STAT;
 namespace paddle {
@@ -314,63 +306,37 @@ std::vector<int> GetSelectedDevices() {
   return devices;
 }
 
+const gpuDeviceProp *GetDeviceProperties(int id) {
+  
+  int gpu_num = 0;
+  std::call_once(g_init_flag, [&] {
+    gpu_num = platform::GetCUDADeviceCount();
+    g_device_flags.resize(gpu_num);
+    g_device_props.resize(gpu_num);
+    for (int i = 0; i < gpu_num; ++i) {
+      g_device_flags[i] = std::unique_ptr<std::once_flag>(new std::once_flag());
+    }
+  });
+
+  if (id == -1) id = platform::GetCurrentDeviceId();
+  if (id < 0 || id >= int(g_device_props.size())) {
+    PADDLE_THROW(platform::errors::OutOfRange(
+        "The device id: %d exceeds out of range [0, the number of "
+        "devices: %d on this machine), Because the device id should be "
+        "smaller than the number of gpus. Please input appropriate "
+        "device id again!",
+        id, int(g_device_props.size())));
+  }
+  std::call_once(*(g_device_flags[id]), [&] {
 #ifdef PADDLE_WITH_CUDA
-cudaDeviceProp *GetDeviceProperties(int id) {
-  std::call_once(init_flag, [&] {
-    gpu_num = platform::GetCUDADeviceCount();
-    device_flags.resize(gpu_num);
-    device_props.resize(gpu_num);
-  });
-
-  if (id == -1) id = platform::GetCurrentDeviceId();
-
-  PADDLE_ENFORCE_EQ(
-      id >= 0 && id < gpu_num, true,
-      platform::errors::OutOfRange(
-          "The device id %d exceeds out of range [0, the number of "
-          "devices %d on this machine), Because the gpu id should be "
-          "smaller than the number of gpus. Please input appropriate "
-          "device id again!",
-          id, gpu_num));
-
-  std::call_once(device_flags[id], [&] {
-    cudaDeviceProp device_prop;
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetDeviceProperties(&device_prop, id));
-    device_props[id] = device_prop;
-  });
-
-  return &device_props[id];
-}
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetDeviceProperties(&g_device_props[id], id));
+#else
+  PADDLE_ENFORCE_CUDA_SUCCESS(hipGetDeviceProperties(&g_device_props[id], id));
 #endif
-
-#ifdef PADDLE_WITH_HIP
-hipDeviceProp_t *GetDeviceProperties(int id) {
-  std::call_once(init_flag, [&] {
-    gpu_num = platform::GetCUDADeviceCount();
-    device_flags.resize(gpu_num);
-    device_props.resize(gpu_num);
   });
 
-  if (id == -1) id = platform::GetCurrentDeviceId();
-
-  PADDLE_ENFORCE_EQ(
-      id >= 0 && id < gpu_num, true,
-      platform::errors::OutOfRange(
-          "The device id %d exceeds out of range [0, the number of "
-          "devices %d on this machine), Because the gpu id should be "
-          "smaller than the number of gpus. Please input appropriate "
-          "device id again!",
-          id, gpu_num));
-
-  std::call_once(device_flags[id], [&] {
-    hipDeviceProp_t device_prop;
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipGetDeviceProperties(&device_prop, id));
-    device_props[id] = device_prop;
-  });
-
-  return &device_props[id];
+  return &g_device_props[id];
 }
-#endif
 
 void SetDeviceId(int id) {
   // TODO(qijun): find a better way to cache the cuda device count
@@ -423,8 +389,9 @@ static size_t GpuAllocSize(bool realloc) {
   size_t flag_mb = realloc ? FLAGS_reallocate_gpu_memory_in_mb
                            : FLAGS_initial_gpu_memory_in_mb;
   size_t alloc_bytes =
-      (flag_mb > 0ul ? flag_mb << 20 : available_to_alloc *
-                                           FLAGS_fraction_of_gpu_memory_to_use);
+      (flag_mb > 0ul
+           ? flag_mb << 20
+           : available_to_alloc * FLAGS_fraction_of_gpu_memory_to_use);
   PADDLE_ENFORCE_GE(
       available_to_alloc, alloc_bytes,
       platform::errors::ResourceExhausted("Not enough available GPU memory."));

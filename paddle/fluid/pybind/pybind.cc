@@ -1882,8 +1882,8 @@ All parameter, weight, gradient are variables in Paddle.
       .def("outputs",
            [](const OperatorBase &op)
                -> std::map<std::string, std::vector<std::string>> {
-                 return op.Outputs();
-               })
+             return op.Outputs();
+           })
       .def("output_vars",
            [](const OperatorBase &op) { return op.OutputVars(true); })
       .def("inputs", [](const OperatorBase &op) { return op.Inputs(); })
@@ -2255,6 +2255,31 @@ All parameter, weight, gradient are variables in Paddle.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
   m.def("cuda_empty_cache", platform::EmptyCache);
+  m.def("get_device_properties",
+        [](int id) -> const gpuDeviceProp * {
+          return platform::GetDeviceProperties(id);
+        },
+        py::return_value_policy::copy);
+
+  py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties")
+      .def_readonly("name", &gpuDeviceProp::name)
+      .def_readonly("major", &gpuDeviceProp::major)
+      .def_readonly("minor", &gpuDeviceProp::minor)
+      .def_readonly("is_multi_gpu_board", &gpuDeviceProp::isMultiGpuBoard)
+      .def_readonly("is_integrated", &gpuDeviceProp::integrated)
+      .def_readonly("multi_processor_count",
+                    &gpuDeviceProp::multiProcessorCount)
+      .def_readonly("total_memory", &gpuDeviceProp::totalGlobalMem)
+      .def("__repr__", [](const gpuDeviceProp &gpu_device_prop) {
+        std::ostringstream stream;
+        stream << "_CudaDeviceProperties(name='" << gpu_device_prop.name
+               << "', major=" << gpu_device_prop.major
+               << ", minor=" << gpu_device_prop.minor << ", total_memory="
+               << gpu_device_prop.totalGlobalMem / (1024 * 1024)
+               << "MB, multi_processor_count="
+               << gpu_device_prop.multiProcessorCount << ")";
+        return stream.str();
+      });
 
 #if !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   m.def("nvprof_init", platform::CudaProfilerInit);
@@ -2265,71 +2290,6 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("nvprof_enable_record_event", platform::NvprofEnableRecordEvent);
   m.def("nvprof_disable_record_event", platform::NvprofDisableRecordEvent);
 #endif
-#endif
-
-#ifdef PADDLE_WITH_CUDA
-  m.def("get_device_properties",
-        [](int id) -> cudaDeviceProp * {
-          return platform::GetDeviceProperties(id);
-        },
-        py::return_value_policy::copy);
-#endif
-
-#ifdef PADDLE_WITH_HIP
-  m.def("get_device_properties",
-        [](int id) -> hipDeviceProp_t * {
-          return platform::GetDeviceProperties(id);
-        },
-        py::return_value_policy::copy);
-#endif
-
-#ifdef PADDLE_WITH_CUDA
-  py::class_<cudaDeviceProp>(m, "_CudaDeviceProperties", R"DOC(
-_CudaDeviceProperties is struct of device properties information.  
-)DOC")
-      .def_readonly("name", &cudaDeviceProp::name)
-      .def_readonly("major", &cudaDeviceProp::major)
-      .def_readonly("minor", &cudaDeviceProp::minor)
-      .def_readonly("is_multi_gpu_board", &cudaDeviceProp::isMultiGpuBoard)
-      .def_readonly("is_integrated", &cudaDeviceProp::integrated)
-      .def_readonly("multi_processor_count",
-                    &cudaDeviceProp::multiProcessorCount)
-      .def_readonly("total_memory", &cudaDeviceProp::totalGlobalMem)
-      .def("__repr__", [](const cudaDeviceProp &cuda_device_prop) {
-        std::ostringstream stream;
-        stream << "_CudaDeviceProperties(name='" << cuda_device_prop.name
-               << "', major=" << cuda_device_prop.major
-               << ", minor=" << cuda_device_prop.minor << ", total_memory="
-               << cuda_device_prop.totalGlobalMem / (1024 * 1024)
-               << "MB, multi_processor_count="
-               << cuda_device_prop.multiProcessorCount << ")";
-        return stream.str();
-      });
-#endif
-
-#ifdef PADDLE_WITH_HIP
-  // This is copy the pytorch, only few changes, TO DO modify
-  py::class_<hipDeviceProp_t>(m, "_hipDeviceProperties", R"DOC(
-_hipDeviceProperties is struct of device properties information.  
-)DOC")
-      .def_readonly("name", &hipDeviceProp_t::name)
-      .def_readonly("major", &hipDeviceProp_t::major)
-      .def_readonly("minor", &hipDeviceProp_t::minor)
-      .def_readonly("is_multi_gpu_board", &hipDeviceProp_t::isMultiGpuBoard)
-      .def_readonly("is_integrated", &hipDeviceProp_t::integrated)
-      .def_readonly("multi_processor_count",
-                    &hipDeviceProp_t::multiProcessorCount)
-      .def_readonly("total_memory", &hipDeviceProp_t::totalGlobalMem)
-      .def("__repr__", [](const hipDeviceProp_t &hip_device_prop) {
-        std::ostringstream stream;
-        stream << "_hipDeviceProperties(name='" << hip_device_prop.name
-               << "', major=" << hip_device_prop.major
-               << ", minor=" << hip_device_prop.minor << ", total_memory="
-               << hip_device_prop.totalGlobalMem / (1024 * 1024)
-               << "MB, multi_processor_count="
-               << hip_device_prop.multiProcessorCount << ")";
-        return stream.str();
-      });
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
