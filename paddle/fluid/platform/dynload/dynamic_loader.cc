@@ -109,6 +109,9 @@ static constexpr char* win_cusolver_lib =
 static constexpr char* win_cusparse_lib =
     "cusparse64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusparse64_" CUDA_VERSION_MAJOR ".dll;cusparse64_10.dll";
+static constexpr char* win_cufft_lib =
+    "cufft64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;cufft64_" CUDA_VERSION_MAJOR ".dll;cufft64_10.dll";
 #else
 static constexpr char* win_curand_lib =
     "curand64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
@@ -122,7 +125,9 @@ static constexpr char* win_cusolver_lib =
 static constexpr char* win_cusparse_lib =
     "cusparse64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
     ".dll;cusparse64_" CUDA_VERSION_MAJOR ".dll";
-static constexpr char* win_cufft_lib = "cufft64_" CUDA_MAJOR_VERSION ".dll";
+static constexpr char* win_cufft_lib =
+    "cufft64_" CUDA_VERSION_MAJOR CUDA_VERSION_MINOR
+    ".dll;cufft64_" CUDA_VERSION_MAJOR ".dll";
 #endif  // CUDA_VERSION
 #endif
 

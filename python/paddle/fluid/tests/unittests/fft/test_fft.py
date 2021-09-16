@@ -534,8 +534,8 @@ class TestHfft2Exception(unittest.TestCase):
     [('test_n_nagative',
       np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (-1, -2),
       (-2, -1), 'backward', ValueError), \
-     ('test_n_equal_input_length',
-     np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4), (2, 1), (-2, -1),
+     ('test_zero_point',
+     np.random.randn(4, 4, 1) + 1j * np.random.randn(4, 4, 1), None, (-2, -1),
      "backward", ValueError), \
      ('test_n_zero', np.random.randn(4, 4, 4) + 1j * np.random.randn(4, 4, 4),
       (0, 0), (-2, -1), 'backward', ValueError), \
