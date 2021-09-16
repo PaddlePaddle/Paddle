@@ -42,7 +42,7 @@ class TestEigvalshOp(OpTest):
         self.x_np = np.random.random(self.x_shape).astype(self.x_type)
 
     def test_check_output(self):
-        self.check_output(no_check_set=['Eigenvectors'])
+        self.check_output()
 
     def test_grad(self):
         self.check_grad(["X"], ["Eigenvalues"])
