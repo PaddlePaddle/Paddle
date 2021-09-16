@@ -41,6 +41,23 @@ using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
+template <typename T>
+std::string outputVector(const std::vector<T> vec) {
+  std::ostringstream oss;
+  // for (auto ele : vec) oss << ele << ' ';
+  for (size_t i = 0; i < vec.size() && i < 10; ++i) {
+    oss << vec[i] << ' ';
+  }
+  return oss.str();
+}
+template <typename T>
+void PrintTensor(const framework::Tensor &src,
+                 const framework::ExecutionContext &ctx) {
+  std::vector<T> vec(src.numel());
+  TensorToVector(src, ctx.device_context(), &vec);
+  LOG(WARNING) << "vec: " << outputVector<T>(vec);
+}
+
 template <typename T, framework::DataLayout layout>
 static __global__ void BNForwardInference(
     const T *x, const BatchNormParamType<T> *mean,
@@ -140,6 +157,9 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
     const auto *x = ctx.Input<Tensor>("X");
+    LOG(WARNING) << "Input Tensor | x: ";
+    PrintTensor<T>(*x, ctx);
+
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE_EQ(
         x_dims.size() >= 2 && x_dims.size() <= 5, true,
@@ -272,6 +292,10 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
+    LOG(WARNING) << "Input Tensor | scale: ";
+    PrintTensor<BatchNormParamType<T>>(*scale, ctx);
+    LOG(WARNING) << "Input Tensor | bias: ";
+    PrintTensor<BatchNormParamType<T>>(*bias, ctx);
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
@@ -395,6 +419,11 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       auto *variance_out = ctx.Output<Tensor>("VarianceOut");
       mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
       variance_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
+
+      LOG(WARNING) << "Input Tensor | mean: ";
+      PrintTensor<BatchNormParamType<T>>(*mean_out, ctx);
+      LOG(WARNING) << "Input Tensor | variance: ";
+      PrintTensor<BatchNormParamType<T>>(*variance_out, ctx);
 
       auto *saved_mean = ctx.Output<Tensor>("SavedMean");
       auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
