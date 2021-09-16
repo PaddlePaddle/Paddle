@@ -103,21 +103,18 @@ class FrameOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput("X", "(Tensor), The input tensor of frame op.");
     AddOutput("Out", "(Tensor), The output tensor of frame op.");
-    AddAttr<int>("frame_length",
-                 "Frame Length"
-                 "Other doc of frame length arg...");
+    AddAttr<int>(
+        "frame_length",
+        "Length of the frame and `0 < frame_length <= x.shape[axis]`.");
     AddAttr<int>("hop_length",
-                 "Hop Length"
-                 "Other doc of hop length arg...");
+                 "Number of steps to advance between adjacent frames and "
+                 "`0 < hop_length`.");
     AddAttr<int>("axis",
-                 "Axis"
-                 "Other doc of axis arg...")
+                 "Specify the axis to operate on the input Tensors. Its value "
+                 "should be 0(the first dimension) or -1(the last dimension).")
         .SetDefault(-1);
     AddComment(R"DOC(
-    Frame Operator.
-
-    Frame op convert time sequences into frames.
-
+      Slice the N-dimensional (where N >= 1) input into (overlapping) frames.
     )DOC");
   }
 };

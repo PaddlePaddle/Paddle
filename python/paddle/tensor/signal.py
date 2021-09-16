@@ -38,7 +38,7 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
     Args:
         x (Tensor): The input data which is a N-dimensional (where N >= 1) Tensor
             with shape `[..., seq_length]` or `[seq_length, ...]`.
-        frame_length (int): Length of the frame and `0 < frame_length < x.shape[axis]`.
+        frame_length (int): Length of the frame and `0 < frame_length <= x.shape[axis]`.
         hop_length (int): Number of steps to advance between adjacent frames
             and `0 < hop_length`. 
         axis (int, optional): Specify the axis to operate on the input Tensors. Its
@@ -111,12 +111,12 @@ def frame(x, frame_length, hop_length, axis=-1, name=None):
     if axis not in [0, -1]:
         raise ValueError(f'Unexpected axis: {axis}. It should be 0 or -1.')
 
-    if not isinstance(frame_length, int) or frame_length < 0:
+    if not isinstance(frame_length, int) or frame_length <= 0:
         raise ValueError(
             f'Unexpected frame_length: {frame_length}. It should be an positive integer.'
         )
 
-    if not isinstance(hop_length, int) or hop_length < 0:
+    if not isinstance(hop_length, int) or hop_length <= 0:
         raise ValueError(
             f'Unexpected hop_length: {hop_length}. It should be an positive integer.'
         )
@@ -208,7 +208,7 @@ def overlap_add(x, hop_length, axis=-1, name=None):
     if axis not in [0, -1]:
         raise ValueError(f'Unexpected axis: {axis}. It should be 0 or -1.')
 
-    if not isinstance(hop_length, int) or hop_length < 0:
+    if not isinstance(hop_length, int) or hop_length <= 0:
         raise ValueError(
             f'Unexpected hop_length: {hop_length}. It should be an positive integer.'
         )
