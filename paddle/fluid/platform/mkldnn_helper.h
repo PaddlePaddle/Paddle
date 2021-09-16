@@ -358,6 +358,8 @@ inline MKLDNNMemoryFormat MKLDNNFormatForSize(size_t dims_size,
     } else if (data_format == MKLDNNMemoryFormat::nhwc) {
       return MKLDNNMemoryFormat::ndhwc;
     }
+  } else if (dims_size == 6) {
+    return MKLDNNMemoryFormat::abcdef;
   }
   return data_format;
 }
