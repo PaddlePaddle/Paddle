@@ -77,6 +77,25 @@ using LoDTensor = framework::LoDTensor;
                                                      dev_ctx);            \
   cast_functor.template apply<dtype>()
 
+class TensorBuffer {
+ public:
+  explicit TensorBuffer(const LoDTensor& in) : buffer_(in), offset_(0) {
+    buffer_.Resize({buffer_.numel()});
+  }
+  Tensor GetBufferBlock(std::initializer_list<int64_t> shape) {
+    int64_t size = std::accumulate(shape.begin(), shape.end(), 1,
+                                   std::multiplies<int64_t>());
+    Tensor block = buffer_.Slice(offset_, offset_ + size);
+    offset_ += size;
+    block.Resize(shape);
+    return block;
+  }
+
+ private:
+  LoDTensor buffer_;  // need to resize 1-D Tensor
+  int offset_;
+};
+
 template <typename DeviceContext, typename T>
 class ViterbiDecodeCPUKernel : public framework::OpKernel<T> {
  public:
@@ -95,37 +114,54 @@ class ViterbiDecodeCPUKernel : public framework::OpKernel<T> {
     scores->mutable_data<T>(curr_place);
     path->mutable_data<int64_t>(curr_place);
 
-    CREATE_TENSOR(temp_path, int64_t, seq_len, batch_size);
+    // Create a large int data buffer
+    int buffer_size = batch_size * seq_len +
+                      batch_size * n_labels * (seq_len - 1) + 7 * batch_size +
+                      2;
+    CREATE_TENSOR(int_buffer, int64_t, buffer_size);
+    TensorBuffer int_tensor_buffer(int_buffer);
+
+    // Create a large float data buffer
+    buffer_size = seq_len * batch_size * n_labels + 5 * batch_size * n_labels +
+                  2 * n_labels * n_labels + batch_size * n_labels * n_labels +
+                  2 * batch_size + 1;
+    CREATE_TENSOR(float_buffer, T, buffer_size);
+    TensorBuffer float_tensor_buffer(float_buffer);
+
+    Tensor temp_path = int_tensor_buffer.GetBufferBlock({seq_len, batch_size});
     auto batch_path = Unbind(temp_path);
     for (auto it = batch_path.begin(); it != batch_path.end(); ++it) {
       it->Resize({batch_size});
     }
 
-    CREATE_TENSOR(inputs_t_exp, T, seq_len, batch_size, n_labels);
+    Tensor inputs_t_exp =
+        float_tensor_buffer.GetBufferBlock({seq_len, batch_size, n_labels});
     std::vector<int> axis{1, 0, 2};
     TransCompute<DeviceContext, T>(axis.size(), dev_ctx, *input, &inputs_t_exp,
                                    axis);
 
     auto* transition = ctx.Input<Tensor>("Transition");
-    CREATE_TENSOR(trans_exp, T, 1, n_labels, n_labels);
+    Tensor trans_exp =
+        float_tensor_buffer.GetBufferBlock({1, n_labels, n_labels});
     framework::TensorCopy(*transition, curr_place, dev_ctx, &trans_exp);
 
     auto* length = ctx.Input<Tensor>("Length");
-    CREATE_TENSOR(left_length, int64_t, batch_size, 1);
+    Tensor left_length = int_tensor_buffer.GetBufferBlock({batch_size, 1});
     framework::TensorCopy(*length, curr_place, dev_ctx, &left_length);
 
     int64_t max_seq_len =
         *std::max_element(left_length.data<int64_t>(),
                           left_length.data<int64_t>() + left_length.numel());
 
-    CREATE_TENSOR(alpha, T, batch_size, n_labels);
+    Tensor alpha = float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
     math::SetConstant<platform::CPUDeviceContext, T> float_functor;
     math::SetConstant<platform::CPUDeviceContext, int64_t> int_functor;
 
     if (with_start_stop_tag) {
-      CREATE_TENSOR(initial_alpha, T, batch_size, n_labels - 1);
+      Tensor initial_alpha =
+          float_tensor_buffer.GetBufferBlock({batch_size, n_labels - 1});
       float_functor(dev_ctx, &initial_alpha, static_cast<T>(-10000.0));
-      CREATE_TENSOR(alpha_start, T, batch_size, 1);
+      Tensor alpha_start = float_tensor_buffer.GetBufferBlock({batch_size, 1});
       float_functor(dev_ctx, &alpha_start, static_cast<T>(0.0));
 
       math::ConcatFunctor<platform::CPUDeviceContext, T> concat_functor;
@@ -135,29 +171,37 @@ class ViterbiDecodeCPUKernel : public framework::OpKernel<T> {
     }
 
     std::vector<Tensor> historys;
-    CREATE_TENSOR(zero, int64_t, 1);
+    Tensor zero = int_tensor_buffer.GetBufferBlock({1});
     int_functor(dev_ctx, &zero, 0);
-    CREATE_TENSOR(one, int64_t, 1);
+    Tensor one = int_tensor_buffer.GetBufferBlock({1});
     int_functor(dev_ctx, &one, 1);
-    CREATE_TENSOR(float_one, T, 1);
+    Tensor float_one = float_tensor_buffer.GetBufferBlock({1});
     float_functor(dev_ctx, &float_one, static_cast<T>(1.0));
-    CREATE_TENSOR(alpha_trn_sum, T, batch_size, n_labels, n_labels);
-    CREATE_TENSOR(alpha_max, T, batch_size, n_labels);
-    CREATE_TENSOR(alpha_argmax, int64_t, seq_len - 1, batch_size, n_labels);
+    Tensor alpha_trn_sum =
+        float_tensor_buffer.GetBufferBlock({batch_size, n_labels, n_labels});
+    Tensor alpha_max =
+        float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
+    Tensor alpha_argmax =
+        int_tensor_buffer.GetBufferBlock({seq_len - 1, batch_size, n_labels});
     auto alpha_argmax_unbind = Unbind(alpha_argmax);
-    CREATE_TENSOR(alpha_nxt, T, batch_size, n_labels);
-    CREATE_TENSOR(mask, int64_t, batch_size, 1);
-    CREATE_TENSOR(tag_mask, int64_t, batch_size);
-    CREATE_TENSOR(int_mask, int64_t, batch_size);
-    CREATE_TENSOR(inv_mask, T, batch_size, 1);
-    CREATE_TENSOR(float_mask, T, batch_size, 1);
-    CREATE_TENSOR(alpha_temp, T, batch_size, n_labels);
-    CREATE_TENSOR(stop_trans_exp, T, 1, 1, n_labels);
-    CREATE_TENSOR(start_trans_exp, T, 1, 1, n_labels);
-    CREATE_TENSOR(rest_trans_exp, T, 1, n_labels - 2, n_labels);
-    CREATE_TENSOR(last_ids, int64_t, batch_size);
-    CREATE_TENSOR(batch_offset, int64_t, batch_size);
-    CREATE_TENSOR(gather_idx, int64_t, batch_size);
+    Tensor alpha_nxt =
+        float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
+    Tensor mask = int_tensor_buffer.GetBufferBlock({batch_size, 1});
+    Tensor tag_mask = int_tensor_buffer.GetBufferBlock({batch_size});
+    Tensor int_mask = int_tensor_buffer.GetBufferBlock({batch_size});
+    Tensor inv_mask = float_tensor_buffer.GetBufferBlock({batch_size, 1});
+    Tensor float_mask = float_tensor_buffer.GetBufferBlock({batch_size, 1});
+    Tensor alpha_temp =
+        float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
+    Tensor stop_trans_exp =
+        float_tensor_buffer.GetBufferBlock({1, 1, n_labels});
+    Tensor start_trans_exp =
+        float_tensor_buffer.GetBufferBlock({1, 1, n_labels});
+    Tensor rest_trans_exp =
+        float_tensor_buffer.GetBufferBlock({1, n_labels - 2, n_labels});
+    Tensor last_ids = int_tensor_buffer.GetBufferBlock({batch_size});
+    Tensor batch_offset = int_tensor_buffer.GetBufferBlock({batch_size});
+    Tensor gather_idx = int_tensor_buffer.GetBufferBlock({batch_size});
     ArgMinMaxFunctor<DeviceContext, T, int64_t, 3, ArgMinMaxType::kArgMax>
         argmax3;
     for (int64_t i = 0; i < max_seq_len; ++i) {
@@ -177,7 +221,7 @@ class ViterbiDecodeCPUKernel : public framework::OpKernel<T> {
       if (i >= 1) {
         auto alpha_argmax_temp = alpha_argmax_unbind[i - 1];
         alpha_argmax_temp.Resize({batch_size, n_labels});
-        argmax3(dev_ctx, alpha_trn_sum,
+        argmax3(dev_ctx, static_cast<LoDTensor&>(alpha_trn_sum),
                 reinterpret_cast<LoDTensor*>(&alpha_argmax_temp),
                 alpha_trn_sum.dims(), 1, false);
         historys.push_back(alpha_argmax_temp);
@@ -223,7 +267,9 @@ class ViterbiDecodeCPUKernel : public framework::OpKernel<T> {
     ELE_MAX(alpha, (*scores), {1});
     ArgMinMaxFunctor<DeviceContext, T, int64_t, 2, ArgMinMaxType::kArgMax>
         argmax2;
-    argmax2(dev_ctx, alpha, &last_ids, alpha.dims(), 1, false);
+
+    argmax2(dev_ctx, static_cast<LoDTensor&>(alpha),
+            reinterpret_cast<LoDTensor*>(&last_ids), alpha.dims(), 1, false);
 
     // tag_mask = paddle.cast((left_length >= 0), 'int64')
     left_length.Resize({batch_size});
