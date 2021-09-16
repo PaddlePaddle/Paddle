@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -72,22 +73,27 @@ void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
 
   const size_t slice_bytes = slice_size * sizeof(T);
 
-  for (int64_t i = 0; i < index_size; ++i) {
-    IndexT index_ = p_index[i];
-    PADDLE_ENFORCE_LT(p_index[i], input_size,
-                      platform::errors::OutOfRange(
-                          "The element of Index must be less than the size of "
-                          "input dim size of axis which is %d, but received "
-                          "index element which is %d in the %d index.",
-                          input_size, p_index[i], i));
-    PADDLE_ENFORCE_GE(p_index[i], 0,
-                      platform::errors::OutOfRange(
-                          "The element of Index must be greater than or equal "
-                          "to 0, but received index element which is %d in the "
-                          "%d index.",
-                          p_index[i], i));
-    memcpy(p_output + i * slice_size, p_src + index_ * slice_size, slice_bytes);
-  }
+  auto parallel_compute = [&](int64_t loop_begin, int64_t loop_end) {
+    for (int64_t i = 0; i < index_size; ++i) {
+      IndexT index_ = p_index[i];
+      PADDLE_ENFORCE_LT(
+          p_index[i], input_size,
+          platform::errors::OutOfRange(
+              "The element of Index must be less than the size of "
+              "input dim size of axis which is %d, but received "
+              "index element which is %d in the %d index.",
+              input_size, p_index[i], i));
+      PADDLE_ENFORCE_GE(
+          p_index[i], 0,
+          platform::errors::OutOfRange(
+              "The element of Index must be greater than or equal "
+              "to 0, but received index element which is %d in the "
+              "%d index.",
+              p_index[i], i));
+      memcpy(p_output + i * slice_size, p_src + index_ * slice_size,
+             slice_bytes);
+    }
+  } platform::RunParallelFor(0, index_size, parallel_compute);
 }
 
 template <typename T, typename IndexT = int>

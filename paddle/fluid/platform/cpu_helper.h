@@ -22,5 +22,45 @@ namespace platform {
 //! Set the number of threads in use.
 void SetNumThreads(int num_threads);
 
+//! Get the number of threads outsize the parallel region.
+static inline int64_t GetMaxThreads() {
+  int64_t num_threads = 1;
+#ifdef PADDLE_WITH_MKLML
+  // Do not support nested omp parallem.
+  num_threads = omp_in_parallel() ? 1 : omp_get_max_threads();
+#endif
+  return num_threads > 1 ? num_threads : 1;
+}
+
+using ThreadHandler =
+    std::function<void(const int64_t begin, const int64_t end)>;
+
+//! Run f in parallel.
+static inline void RunParallelFor(const int64_t begin, const int64_t end,
+                                  const ThreadHandler& f) {
+  if (begin >= end) {
+    return;
+  }
+
+#ifdef PADDLE_WITH_MKLML
+  int64_t max_threads = GetMaxThreads();
+  int64_t num_threads = max_threads > end - begin ? end - begin : max_threads;
+  if (num_threads > 1) {
+#pragma omp parallel num_threads(num_threads)
+    {
+      int64_t tid = omp_get_thread_num();
+      int64_t chunk_size = (end - begin + num_threads - 1) / num_threads;
+      int64_t begin_tid = begin + tid * chunk_size;
+      int64_t end_tid =
+          chunk_size + begin_tid > end ? end : chunk_size + begin_tid;
+      f(begin_tid, end_tid);
+    }
+    return;
+  }
+#endif
+
+  f(begin, end);
+}
+
 }  // namespace platform
 }  // namespace paddle
