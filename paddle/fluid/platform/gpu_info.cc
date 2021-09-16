@@ -307,7 +307,6 @@ std::vector<int> GetSelectedDevices() {
 }
 
 const gpuDeviceProp *GetDeviceProperties(int id) {
-  
   int gpu_num = 0;
   std::call_once(g_init_flag, [&] {
     gpu_num = platform::GetCUDADeviceCount();
@@ -318,20 +317,26 @@ const gpuDeviceProp *GetDeviceProperties(int id) {
     }
   });
 
-  if (id == -1) id = platform::GetCurrentDeviceId();
-  if (id < 0 || id >= int(g_device_props.size())) {
-    PADDLE_THROW(platform::errors::OutOfRange(
-        "The device id: %d exceeds out of range [0, the number of "
-        "devices: %d on this machine), Because the device id should be "
-        "smaller than the number of gpus. Please input appropriate "
-        "device id again!",
-        id, int(g_device_props.size())));
+  if (id == -1) {
+    id = platform::GetCurrentDeviceId();
   }
+
+  if (id < 0 || id >= static_cast<int>(g_device_props.size())) {
+    PADDLE_THROW(platform::errors::OutOfRange(
+        "The device id: %d exceeds out of range [0, the number of devices: %d "
+        "on this machine). Because the device id should be greater than or "
+        "equal to zero and smaller than the number of gpus. Please input "
+        "appropriate device again!",
+        id, static_cast<int>(g_device_props.size())));
+  }
+
   std::call_once(*(g_device_flags[id]), [&] {
 #ifdef PADDLE_WITH_CUDA
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetDeviceProperties(&g_device_props[id], id));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaGetDeviceProperties(&g_device_props[id], id));
 #else
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipGetDeviceProperties(&g_device_props[id], id));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+      hipGetDeviceProperties(&g_device_props[id], id));
 #endif
   });
 
