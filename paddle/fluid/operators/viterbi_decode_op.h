@@ -32,7 +32,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_op_function.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/unique_op.h"
 #include "paddle/fluid/operators/utils.h"
@@ -61,12 +60,15 @@ using LoDTensor = framework::LoDTensor;
 #define ADD(lhs, rhs, output, dtype) \
   ELEMENT_BINARY_OP(lhs, rhs, output, AddFunctor, dtype)
 
+// output = lhs - rhs
 #define SUB(lhs, rhs, output, dtype) \
   ELEMENT_BINARY_OP(lhs, rhs, output, SubFunctor, dtype)
 
+// output = lhs - rhs
 #define INVERSE_SUB(lhs, rhs, output, dtype) \
   ELEMENT_BINARY_OP(lhs, rhs, output, InverseSubFunctor, dtype)
 
+// output = lhs * rhs
 #define MUL(lhs, rhs, output, dtype) \
   ELEMENT_BINARY_OP(lhs, rhs, output, MulFunctor, dtype)
 
@@ -97,7 +99,7 @@ class TensorBuffer {
 };
 
 template <typename DeviceContext, typename T>
-class ViterbiDecodeCPUKernel : public framework::OpKernel<T> {
+class ViterbiDecodeKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     bool with_start_stop_tag = ctx.Attr<bool>("with_start_stop_tag");
@@ -156,8 +158,8 @@ class ViterbiDecodeCPUKernel : public framework::OpKernel<T> {
     framework::TensorCopy(*transition, curr_place, dev_ctx, &trans_exp);
 
     Tensor alpha = float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
-    math::SetConstant<platform::CPUDeviceContext, T> float_functor;
-    math::SetConstant<platform::CPUDeviceContext, int64_t> int_functor;
+    math::SetConstant<DeviceContext, T> float_functor;
+    math::SetConstant<DeviceContext, int64_t> int_functor;
 
     if (with_start_stop_tag) {
       Tensor initial_alpha =
@@ -166,7 +168,7 @@ class ViterbiDecodeCPUKernel : public framework::OpKernel<T> {
       Tensor alpha_start = float_tensor_buffer.GetBufferBlock({batch_size, 1});
       float_functor(dev_ctx, &alpha_start, static_cast<T>(0.0));
 
-      math::ConcatFunctor<platform::CPUDeviceContext, T> concat_functor;
+      math::ConcatFunctor<DeviceContext, T> concat_functor;
       concat_functor(dev_ctx, {initial_alpha, alpha_start}, 1, &alpha);
     } else {
       float_functor(dev_ctx, &alpha, static_cast<T>(0.0));

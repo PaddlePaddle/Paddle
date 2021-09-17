@@ -107,12 +107,13 @@ class ViterbiDecodeOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace platform = paddle::platform;
+
 REGISTER_OPERATOR(
     viterbi_decode, ops::ViterbiDecodeOp, ops::ViterbiDecodeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
     paddle::framework::EmptyGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
-    viterbi_decode,
-    ops::ViterbiDecodeCPUKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ViterbiDecodeCPUKernel<paddle::platform::CPUDeviceContext, double>);
+    viterbi_decode, ops::ViterbiDecodeKernel<platform::CPUDeviceContext, float>,
+    ops::ViterbiDecodeKernel<platform::CPUDeviceContext, double>);
