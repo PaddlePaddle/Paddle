@@ -78,6 +78,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
+#include "paddle/fluid/pybind/bind_cost_model.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -2104,6 +2105,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindBlockDesc(&m);
   BindVarDsec(&m);
   BindOpDesc(&m);
+  BindCostModel(&m);
   BindConstValue(&m);
   BindGlobalValueGetterSetter(&m);
   BindProcessMeshDesc(&m);
@@ -2396,9 +2398,6 @@ All parameter, weight, gradient are variables in Paddle.
       .def("remove_pass",
            [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
 
-  py::class_<CostModel> cost_model(m, "CostModel");
-  cost_model.def(py::init()).def("ProfileMeasure", &CostModel::ProfileMeasure);
-  py::class_<CostData> cost_data(m, "CostData");
   // -- python binds for parallel executor.
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
   py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(

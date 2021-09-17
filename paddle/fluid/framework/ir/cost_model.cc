@@ -30,7 +30,7 @@ CostData::~CostData() {
     delete graph_;
   }
   if (program_ != nullptr) {
-    delete program_;
+    // delete program_;
   }
 }
 

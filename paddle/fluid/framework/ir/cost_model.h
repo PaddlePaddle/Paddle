@@ -31,9 +31,6 @@
 namespace paddle {
 namespace framework {
 
-using ir::Graph;
-using platform::Event;
-
 class CostData {
  public:
   CostData() {}
@@ -47,17 +44,18 @@ class CostData {
   double GetWholeTimeMs() const;
   double GetWholeMemoryBytes() const;
 
-  const Graph* GetGraph() const;
+  const ir::Graph* GetGraph() const;
   const ProgramDesc* GetProgram() const;
 
   // Support Time Event only
   // TODO(zhhsplendid): add memory
-  bool SetCostData(const ProgramDesc& program,
-                   const std::vector<std::vector<Event>>& time_events);
+  bool SetCostData(
+      const ProgramDesc& program,
+      const std::vector<std::vector<platform::Event>>& time_events);
 
  private:
   constexpr static double NOT_MEASURED = -1;
-  Graph* graph_{nullptr};
+  ir::Graph* graph_{nullptr};
   ProgramDesc* program_{nullptr};
   std::map<int, double> op_time_ms_;  // from Op Node id to time
   std::map<int, double>

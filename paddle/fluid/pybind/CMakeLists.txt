@@ -56,6 +56,7 @@ set(PYBIND_SRCS
   data_set_py.cc
   imperative.cc
   ir.cc
+  bind_cost_model.cc
   inference_api.cc
   compatible.cc
   io.cc
