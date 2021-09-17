@@ -95,18 +95,33 @@ class TestCollectiveRunnerBase(object):
     def run_trainer(self, args):
         train_prog = fluid.Program()
         startup_prog = fluid.Program()
+        sys.stderr.write("train_prog: " + train_prog.to_string(True) + "\n")
+        sys.stderr.write("startup_prog: " + startup_prog.to_string(True) + "\n")
+        sys.stderr.flush()
+
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
         current_endpoint = args["currentendpoint"]
         nranks = 2
+
         self.initCommunicator(startup_prog, rank, nranks, True,
                               current_endpoint, endpoints)
+        sys.stderr.write("after init, startup_prog: " + startup_prog.to_string(
+            True) + "\n")
+
         self.rank = rank
         result = self.get_model(train_prog, startup_prog)
+        sys.stderr.write("after get_model, train_prog: " + train_prog.to_string(
+            True) + "\n")
+        sys.stderr.write("after get_model, startup_prog: " +
+                         startup_prog.to_string(True) + "\n")
+
         device_id = int(os.getenv("FLAGS_selected_npus", "0"))
         place = fluid.NPUPlace(device_id)
+
         exe = fluid.Executor(place)
         exe.run(startup_prog)
+
         np.random.seed(os.getpid())
         indata = np.random.random((10, 1000))
         out = exe.run(train_prog,
@@ -116,7 +131,7 @@ class TestCollectiveRunnerBase(object):
 
 
 def runtime_main(test_class, col_type, sub_type):
-    print('test_collective_base_npu.py 119')
+    # print('test_collective_base_npu.py 119')
     args = {}
     model = test_class()
     args["deviceid"] = os.getenv("FLAGS_selected_npus")
@@ -157,7 +172,7 @@ class TestDistBase(unittest.TestCase):
     def _run_cluster(self, model_file, envs):
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
-        print("w0_ep:", w0_ep, " w1_ep:", w1_ep)
+        # print("w0_ep:", w0_ep, " w1_ep:", w1_ep)
         env0 = {
             "FLAGS_selected_npus": "0",
             "PADDLE_TRAINER_ID": "0",
@@ -179,9 +194,9 @@ class TestDistBase(unittest.TestCase):
         tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
-        tr0_pipe = open("/tmp/tr0_err.log", "wb")
-        tr1_pipe = open("/tmp/tr1_err.log", "wb")
-        print(tr0_cmd)
+        tr0_pipe = open("/tmp/tr0_err.log", "a+")
+        tr1_pipe = open("/tmp/tr1_err.log", "a+")
+        # print(tr0_cmd)
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(),
             stdout=subprocess.PIPE,
@@ -197,10 +212,10 @@ class TestDistBase(unittest.TestCase):
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
 
-        print('tr0_out: ', tr0_out)
-        print('tr1_out: ', tr1_out)
-        print('tr0_err: ', tr0_err)
-        print('tr1_err: ', tr1_err)
+        # print('tr0_out: ', tr0_out)
+        # print('tr1_out: ', tr1_out)
+        # print('tr0_err: ', tr0_err)
+        # print('tr1_err: ', tr1_err)
 
         sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
         sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)

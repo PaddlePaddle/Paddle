@@ -63,5 +63,5 @@ class TestCollectiveIdentity(TestCollectiveRunnerBase):
 
 
 if __name__ == "__main__":
-    print('collective_identity_op_npu.py 66')
+    # print('collective_identity_op_npu.py __main__')
     runtime_main(TestCollectiveIdentity, "identity", 0)
