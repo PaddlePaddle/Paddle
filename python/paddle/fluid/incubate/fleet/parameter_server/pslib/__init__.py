@@ -326,6 +326,21 @@ class PSLib(Fleet):
             self._fleet_ptr.print_table_stat(table_id)
         self._role_maker._barrier_worker()
 
+    def set_file_num_one_shard(self, table_id, file_num):
+        """
+        set file_num in one shard
+        Args:
+            table_id(int): the id of table
+            file_num(int): file num in one shard
+        Example:
+            .. code-block:: python
+              fleet.set_file_num_one_shard(0, 5)
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.set_file_num_one_shard(table_id, file_num)
+        self._role_maker._barrier_worker()
+
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
         """
         save presistable parameters,
