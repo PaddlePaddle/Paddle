@@ -103,9 +103,8 @@ class PSLib(Fleet):
             # prepare for client to client communication
             if self._role_maker.is_worker():
                 info = self._fleet_ptr.get_clients_info()
-                print("IIIIFO: {}".format(info))
                 all_info = self._role_maker._worker_gather(info[0])
-                print("ALL info: {}".format(all_info))
+                print("worker info: {}".format(all_info))
                 self._fleet_ptr.gather_clients(all_info)
                 self._fleet_ptr.set_client2client_config(
                     self._client2client_request_timeout_ms,
