@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid.dygraph.amp import amp_guard
-from paddle.fluid.dygraph.amp import amp_decorator
+from paddle.fluid.dygraph.amp import amp_decorate
 
 __all__ = []
 
@@ -76,14 +76,14 @@ def auto_cast(enable=True,
     return amp_guard(enable, custom_white_list, custom_black_list, level)
 
 
-def decorator(models,
-              optimizers=None,
-              level='O1',
-              master_weight=None,
-              save_dtype=None):
+def decorate(models,
+             optimizers=None,
+             level='O1',
+             master_weight=True,
+             save_dtype=None):
     """
-    Decorator models and optimizers for auto-mixed-precision. When level is O1(amp), the decorator will do nothing. 
-    When level is O2(pure fp16), the decorator will cast all parameters of models to FP16, except BatchNorm and LayerNorm.
+    Decorate models and optimizers for auto-mixed-precision. When level is O1(amp), the decorate will do nothing. 
+    When level is O2(pure fp16), the decorate will cast all parameters of models to FP16, except BatchNorm and LayerNorm.
     
     Commonly, it is used together with `auto_cast` to achieve Pure fp16 in imperative mode.
 
@@ -92,7 +92,7 @@ def decorator(models,
         optimizers(Optimizer|list of Optimizer, optional): The defined optimizers by user, optimizers must be either a single optimizer or a list of optimizers. Default is None.
         level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the decorator will do nothing; 
              O2 represent Pure fp16, the decorator will cast all parameters of models to FP16, except BatchNorm and LayerNorm. Default is O1(amp)
-        master_weight(None|bool, optinal): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, it will keep origin Optimizer multi-precision strategy. Default is None.
+        master_weight(bool, optinal): For level='O2', whether to use multi-precision during weight updating. Default is True.
         save_dtype(float, optional): The save model parameter dtype when use `paddle.save` or `paddle.jit.save`,it should be float16, float32, float64 or None.
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
 
@@ -107,7 +107,7 @@ def decorator(models,
         model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimzier = paddle.optimizer.SGD(parameters=model.parameters())
 
-        model, optimizer = paddle.amp.decorator(models=model, optimizers=optimzier, level='O2')
+        model, optimizer = paddle.amp.decorate(models=model, optimizers=optimzier, level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
@@ -120,7 +120,7 @@ def decorator(models,
         model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
 
-        models, optimizers = paddle.amp.decorator(models=[model, model2], optimizers=[optimzier, optimizer2], level='O2')
+        models, optimizers = paddle.amp.decorate(models=[model, model2], optimizers=[optimzier, optimizer2], level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
@@ -130,4 +130,4 @@ def decorator(models,
             print(output.dtype) # FP16
             print(output2.dtype) # FP16
     """
-    return amp_decorator(models, optimizers, level, master_weight, save_dtype)
+    return amp_decorate(models, optimizers, level, master_weight, save_dtype)
