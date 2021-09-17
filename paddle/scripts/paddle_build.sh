@@ -371,6 +371,12 @@ function build_base() {
     if [ "$build_error" != 0 ];then
         exit 7;
     fi
+    ldd --version
+    strings /lib/x86_64-linux-gnu/libm.so.6 |grep GLIBC_ 
+    strings /usr/lib/libm.so.6 |grep GLIBC_
+    strings /usr/lib64/libm.so.6 |grep GLIBC_
+    strings /usr/local/lib/libm.so.6 |grep GLIBC_
+    strings /usr/local/lib64/libm.so.6 |grep GLIBC_
 }
 
 function build_size() {
@@ -1153,6 +1159,12 @@ function card_test() {
 }
 
 function parallel_test_base_gpu() {
+    #ls /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/paddle/libs
+    #ldd /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/paddle/libs/libquadmath.so.0
+    #ldd /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/paddle/libs/libgcc_s.so.1
+    #ldd /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/paddle/libs/libgfortran.so.3
+    #ldd /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/paddle/libs/libblas.so.3
+    #ldd /opt/_internal/cpython-3.7.0/lib/python3.7/site-packages/paddle/libs/liblapack.so.3
     GLOG_v=3 python3.7 -c "import paddle;paddle.to_tensor([[2, 0], [0, 2]], dtype='float32').inverse()"
     if [ ${WITH_TESTING:-ON} == "ON" ] ; then
     cat <<EOF
