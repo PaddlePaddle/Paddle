@@ -112,14 +112,16 @@ TEST(CostModelTest, TestProfileMeasure_EmptyProgram) {
   CostModel cost_model;
   ProgramDesc empty_program;
   CostData cost_data =
-      cost_model.ProfileMeasure(empty_program, "cpu", {"time"});
+      cost_model.ProfileMeasure(empty_program, empty_program, "cpu", {"time"});
   EXPECT_EQ(cost_data.GetWholeTimeMs(), 0);
 }
 
 TEST(CostModelTest, TestProfileMeasure_Program) {
   CostModel cost_model;
   ProgramDesc program = CreateTestProgram();
-  CostData cost_data = cost_model.ProfileMeasure(program, "cpu", {"time"});
+  ProgramDesc empty_program;
+  CostData cost_data =
+      cost_model.ProfileMeasure(program, empty_program, "cpu", {"time"});
   double op0_time_ms = cost_data.GetOpTimeMs(0);
   double op1_time_ms = cost_data.GetOpTimeMs(1);
   EXPECT_GT(op0_time_ms, 0);

@@ -200,7 +200,8 @@ std::string ToLowerCopy(const std::string& in) {
 }
 
 CostData CostModel::ProfileMeasure(
-    const ProgramDesc& program, const std::string& device,
+    const ProgramDesc& main_program, const ProgramDesc& startup_program,
+    const std::string& device,
     const std::vector<std::string>& fetch_cost_list) const {
   // Currently fetch_cost_list is useless
   // TODO(zhhsplendid): support different fetch data
@@ -222,11 +223,12 @@ CostData CostModel::ProfileMeasure(
 
   Executor executor(place);
   Scope scope;
+  executor.Run(startup_program, &scope, /*block_id = */ 0);
 
   // TODO(zhhsplendid): handle the case that Profiler is already enabled
   SetTracerOption(platform::TracerOption::kAllOpDetail);
   EnableProfiler(profiler_state);
-  executor.Run(program, &scope, /*block_id = */ 0);
+  executor.Run(main_program, &scope, /*block_id = */ 0);
 
   std::vector<std::vector<Event>>* time_events =
       new std::vector<std::vector<Event>>();
@@ -240,7 +242,7 @@ CostData CostModel::ProfileMeasure(
 
   // Convert events to cost data
   CostData cost_data;
-  cost_data.SetCostData(program, *time_events);
+  cost_data.SetCostData(main_program, *time_events);
 
   delete time_events;
   delete mem_events;
