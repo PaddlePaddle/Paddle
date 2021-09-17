@@ -340,7 +340,8 @@ struct DeviceIndependenceTensorOperations {
     NameInTensorMap inputs({{"X", {&x}}});
     return CreateOpRunAndReturnTensor("reduce_max", inputs, attrs, out_dim);
   }
-  template <typename T1 = T>
+  // Support float and complex type subtraction，the default is T type
+  template <typename InT = T>
   framework::Tensor Sub(const framework::Tensor& x,
                         const framework::Tensor& y) {
     framework::Tensor ret;
@@ -350,18 +351,18 @@ struct DeviceIndependenceTensorOperations {
 #if defined(__NVCC__) || defined(__HIPCC__)
       // For GPU, there is no need to define XxxInverseFunctor and call
       // ElementwiseComputeEx in two branches.
-      ElementwiseComputeEx<SubFunctor<T1>, DeviceContext, T1>(
-          context, &x, &y, -1, SubFunctor<T1>(), &ret);
+      ElementwiseComputeEx<SubFunctor<InT>, DeviceContext, InT>(
+          context, &x, &y, -1, SubFunctor<InT>(), &ret);
 #endif
     } else {
       if (x.dims().size() >= y.dims().size()) {
-        ElementwiseComputeEx<SubFunctor<T1>, DeviceContext, T1>(
-            context, &x, &y, -1, SubFunctor<T1>(), &ret);
+        ElementwiseComputeEx<SubFunctor<InT>, DeviceContext, InT>(
+            context, &x, &y, -1, SubFunctor<InT>(), &ret);
       } else {
-        ElementwiseComputeEx<InverseSubFunctor<T1>, DeviceContext, T1>(
-            // This is copyed from elementwise_sub, which means we
-            // need reverse will xrank < yrank
-            context, &x, &y, -1, InverseSubFunctor<T1>(), &ret);
+        // This is copyed from elementwise_sub, which means we
+        // need reverse will xrank < yrank
+        ElementwiseComputeEx<InverseSubFunctor<InT>, DeviceContext, InT>(
+            context, &x, &y, -1, InverseSubFunctor<InT>(), &ret);
       }
     }
     return ret;
@@ -470,24 +471,6 @@ struct DeviceIndependenceTensorOperations {
     for_range(diag_and_copy_functor);
     return out;
   }
-
-  // framework::Tensor Sub_(const framework::Tensor& x,
-  //                        const framework::Tensor& y) {
-  //   framework::Tensor ret;
-  //   std::vector<int> out_shape = GetBroadcastShape({&x, &y});
-  //   ret.Resize(framework::make_ddim(out_shape));
-  //   if (x.dims().size() >= y.dims().size()) {
-  //     ElementwiseComputeEx<SubFunctor<ValueType>, DeviceContext, ValueType>(
-  //         context, &x, &y, -1, SubFunctor<ValueType>(), &ret);
-  //   } else {
-  //     ElementwiseComputeEx<InverseSubFunctor<ValueType>, DeviceContext,
-  //                          ValueType>(
-  //         // This is copyed from elementwise_sub, which means we
-  //         // need reverse will xrank < yrank
-  //         context, &x, &y, -1, InverseSubFunctor<ValueType>(), &ret);
-  //   }
-  //   return ret;
-  // }
 
  private:
   const framework::ExecutionContext& context;
