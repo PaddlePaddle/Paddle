@@ -93,6 +93,11 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
                                            int rows, bool has_vectors) const;
 };
 
+#define EIGEN_WITH_TYPES(m)                                           \
+  m(float, float, float) m(double, double, double)                    \
+      m(float, paddle::platform::complex<float>, std::complex<float>) \
+          m(double, paddle::platform::complex<double>, std::complex<double>)
+
 #define EIGEN_INSTANCE(ValueType, T, CastType)                                \
   template <>                                                                 \
   inline void MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T>::   \
@@ -101,8 +106,8 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
                                    bool has_vectors) const {                  \
     int stride = rows * rows;                                                 \
     for (int i = 0; i < batches; i++) {                                       \
-      auto x_data_ = reinterpret_cast<CastType *>(x_data);                    \
-      auto vector_data_ = reinterpret_cast<CastType *>(vector_data);          \
+      CastType *x_data_ = reinterpret_cast<CastType *>(x_data);               \
+      CastType *vector_data_ = reinterpret_cast<CastType *>(vector_data);     \
       auto eigenvalues =                                                      \
           OutputMatrixMap<ValueType>(value_data + i * rows, 1, rows);         \
       auto m = InputMatrixMap<CastType>(x_data_ + i * stride, rows, rows);    \
@@ -125,10 +130,7 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
     }                                                                         \
   }
 
-EIGEN_INSTANCE(float, float, float);
-EIGEN_INSTANCE(double, double, double);
-EIGEN_INSTANCE(double, paddle::platform::complex<double>, std::complex<double>);
-EIGEN_INSTANCE(float, paddle::platform::complex<float>, std::complex<float>);
+EIGEN_WITH_TYPES(EIGEN_INSTANCE);
 
 #ifdef PADDLE_WITH_CUDA
 
