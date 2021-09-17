@@ -24,6 +24,9 @@ import scipy.signal
 
 paddle.set_default_dtype('float64')
 
+DEVICES = [paddle.CPUPlace()]
+if paddle.is_compiled_with_cuda():
+    DEVICES.append(paddle.CUDAPlace(0))
 TEST_CASE_NAME = 'test_case'
 
 # Constrain STFT block sizes to 256 KB
@@ -533,6 +536,26 @@ def overlap_add_for_api_test(x, hop_length, axis=-1):
     return y
 
 
+def place(devices, key='place'):
+    def decorate(cls):
+        module = sys.modules[cls.__module__].__dict__
+        raw_classes = {
+            k: v
+            for k, v in module.items() if k.startswith(cls.__name__)
+        }
+
+        for raw_name, raw_cls in raw_classes.items():
+            for d in devices:
+                test_cls = dict(raw_cls.__dict__)
+                test_cls.update({key: d})
+                new_name = raw_name + '.' + d.__class__.__name__
+                module[new_name] = type(new_name, (raw_cls, ), test_cls)
+            del module[raw_name]
+        return cls
+
+    return decorate
+
+
 def setUpModule():
     global rtol
     global atol
@@ -613,6 +636,7 @@ def to_safe_name(s):
 
 
 # yapf: disable
+@place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'frame_length', 'hop_length', 'axis'),
     [
@@ -637,6 +661,42 @@ class TestFrame(unittest.TestCase):
                 atol=atol.get(str(self.x.dtype))))
 
 
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'frame_length', 'hop_length', 'axis'),
+    [
+        ('test_1d_input1', rand_x(1, np.float64, shape=[150]), 50, 15, 0),
+        ('test_1d_input2', rand_x(1, np.float64, shape=[150]), 50, 15, -1),
+        ('test_2d_input1', rand_x(2, np.float64, shape=[150, 8]), 50, 15, 0),
+        ('test_2d_input2', rand_x(2, np.float64, shape=[8, 150]), 50, 15, -1),
+        ('test_3d_input1', rand_x(3, np.float64, shape=[150, 4, 2]), 50, 15, 0),
+        ('test_3d_input2', rand_x(3, np.float64, shape=[4, 2, 150]), 50, 15, -1),
+    ])
+class TestFrameStatic(unittest.TestCase):
+    def test_frame_static(self):
+        paddle.enable_static()
+        mp, sp = paddle.static.Program(), paddle.static.Program()
+        with paddle.static.program_guard(mp, sp):
+            input = paddle.static.data('input', self.x.shape, dtype=self.x.dtype)
+            output = paddle.tensor.signal.frame(
+                     input,
+                     self.frame_length,
+                     self.hop_length,
+                     self.axis),
+        exe = paddle.static.Executor(self.place)
+        exe.run(sp)
+        [output] = exe.run(mp, feed={'input': self.x}, fetch_list=[output])
+        paddle.disable_static()
+
+        self.assertTrue(
+            np.allclose(
+                frame_for_api_test(self.x, self.frame_length, self.hop_length, self.axis),
+                output,
+                rtol=rtol.get(str(self.x.dtype)),
+                atol=atol.get(str(self.x.dtype))))
+
+
+@place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'frame_length', 'hop_length', 'axis', 'expect_exception'),
     [
@@ -655,6 +715,7 @@ class TestFrameException(unittest.TestCase):
                 self.axis)
 
 
+@place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'hop_length', 'axis'),
     [
@@ -678,6 +739,41 @@ class TestOverlapAdd(unittest.TestCase):
                 atol=atol.get(str(self.x.dtype))))
 
 
+@place(DEVICES)
+@parameterize(
+    (TEST_CASE_NAME, 'x', 'hop_length', 'axis'),
+    [
+        ('test_2d_input1', rand_x(2, np.float64, shape=[3, 50]), 4, 0),
+        ('test_2d_input2', rand_x(2, np.float64, shape=[50, 3]), 4, -1),
+        ('test_3d_input1', rand_x(3, np.float64, shape=[5, 40, 2]), 10, 0),
+        ('test_3d_input2', rand_x(3, np.float64, shape=[2, 40, 5]), 10, -1),
+        ('test_4d_input1', rand_x(4, np.float64, shape=[8, 12, 5, 3]), 5, 0),
+        ('test_4d_input2', rand_x(4, np.float64, shape=[3, 5, 12, 8]), 5, -1),
+    ])
+class TestOverlapAddStatic(unittest.TestCase):
+    def test_overlap_add_static(self):
+        paddle.enable_static()
+        mp, sp = paddle.static.Program(), paddle.static.Program()
+        with paddle.static.program_guard(mp, sp):
+            input = paddle.static.data('input', self.x.shape, dtype=self.x.dtype)
+            output = paddle.tensor.signal.overlap_add(
+                     input,
+                     self.hop_length,
+                     self.axis),
+        exe = paddle.static.Executor(self.place)
+        exe.run(sp)
+        [output] = exe.run(mp, feed={'input': self.x}, fetch_list=[output])
+        paddle.disable_static()
+
+        self.assertTrue(
+            np.allclose(
+                overlap_add_for_api_test(self.x, self.hop_length, self.axis),
+                output,
+                rtol=rtol.get(str(self.x.dtype)),
+                atol=atol.get(str(self.x.dtype))))
+
+
+@place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'hop_length', 'axis', 'expect_exception'),
     [
@@ -723,6 +819,7 @@ class TestOverlapAddException(unittest.TestCase):
 #    return_complex=False,
 
 
+@place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n_fft', 'hop_length', 'win_length', 'window', 'center', 'pad_mode', 'normalized', 'onesided'),
     [
@@ -765,6 +862,7 @@ class TestStft(unittest.TestCase):
                 atol=atol.get(str(self.x.dtype))))
 
 
+@place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n_fft', 'hop_length', 'win_length', 'window', 'center', 'pad_mode', 'normalized', 'onesided', 'expect_exception'),
     [
@@ -805,6 +903,7 @@ class TestStftException(unittest.TestCase):
                 self.onesided),
 
 
+@place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n_fft', 'hop_length', 'win_length', 'window', 'center', 'normalized', 'onesided', 'length', 'return_complex'),
     [
@@ -850,6 +949,7 @@ class TestIstft(unittest.TestCase):
                 atol=atol.get(str(self.x.dtype))))
 
 
+@place(DEVICES)
 @parameterize(
     (TEST_CASE_NAME, 'x', 'n_fft', 'hop_length', 'win_length', 'window', 'center', 'normalized', 'onesided', 'length', 'return_complex', 'expect_exception'),
     [
