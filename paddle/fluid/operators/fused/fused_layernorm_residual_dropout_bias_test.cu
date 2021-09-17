@@ -20,6 +20,9 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/fused_dropout_test.h"
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 
+/**
+ * @brief The unit test of fused_layernorm_residual_dropout_bias
+ */
 template <typename T>
 struct TestFusedLayernormResidualDropoutBias {
   uint32_t rows;
@@ -258,36 +261,12 @@ struct TestFusedLayernormResidualDropoutBias {
       EXPECT_LT(std::abs(_vars[i] - correct_vars[i]), static_cast<U>(diff));
     }
   }
-
-  void CheckGrad(const T diff) {
-    using U = LayerNormParamType<T>;
-    if (is_test) return;
-
-    const int n = rows * cols;
-
-    std::vector<T> _dsrc(n);
-    framework::TensorToVector(dsrc, *ctx, &_dsrc);
-
-    for (int i = 0; i < n; i++) {
-      EXPECT_LT(std::abs(_dsrc[i] - correct_dsrc[i]), diff);
-    }
-
-    if (has_bias) {
-      std::vector<T> _dbias(cols);
-      framework::TensorToVector(dbias, *ctx, &_dbias);
-      ctx->Wait();
-      for (int i = 0; i < cols; i++) {
-        EXPECT_LT(std::abs(_dbias[i] - correct_dbias[i]), diff);
-      }
-    }
-  }
 };
 
 template <typename T>
 static void BaseTest(const bool is_fp16 = false) {
   const int rows = 16;
-  T default_diff = !is_fp16 ? static_cast<T>(1e-5) : default_diff =
-                                                         static_cast<T>(1e-2);
+  T default_diff = !is_fp16 ? static_cast<T>(1e-4) : static_cast<T>(1e-2);
   for (auto cols : {16, 17}) {
     for (auto has_bias : {true, false}) {
       for (auto has_scale : {true, false}) {
@@ -321,7 +300,7 @@ TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasIsUpscaleInTrain) {
     TestFusedLayernormResidualDropoutBias<float> test(
         rows, cols, 0, 1.0, 0.00001f, is_upscale_in_train, false);
     test.Run();
-    test.CheckOut(static_cast<float>(1e-5));
+    test.CheckOut(static_cast<float>(1e-4));
   }
 }
 
@@ -331,7 +310,7 @@ TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasIsTest) {
   TestFusedLayernormResidualDropoutBias<float> test(rows, cols, 0, 0.35,
                                                     0.00001f, true, true);
   test.Run();
-  test.CheckOut(static_cast<float>(1e-5));
+  test.CheckOut(static_cast<float>(1e-4));
 }
 
 TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasSeed) {
@@ -340,7 +319,7 @@ TEST(FusedDropout, GPUFusedLayernormResidualDropoutBiasSeed) {
   TestFusedLayernormResidualDropoutBias<float> test(rows, cols, 125, 0.0,
                                                     0.00001f, false, false);
   test.Run();
-  test.CheckOut(static_cast<float>(1e-5));
+  test.CheckOut(static_cast<float>(1e-4));
 }
 
 TEST(FusedDropout, GPUFusedLayernormResidualDropoutLargeShape) {
@@ -348,5 +327,5 @@ TEST(FusedDropout, GPUFusedLayernormResidualDropoutLargeShape) {
   const int cols = 512;
   TestFusedLayernormResidualDropoutBias<float> test(rows, cols);
   test.Run();
-  test.CheckOut(static_cast<float>(1e-5));
+  test.CheckOut(static_cast<float>(1e-4));
 }

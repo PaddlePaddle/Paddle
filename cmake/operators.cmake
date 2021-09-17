@@ -185,6 +185,7 @@ function(op_library TARGET)
         list(REMOVE_ITEM hip_srcs "cholesky_op.cu")
         list(REMOVE_ITEM hip_srcs "matrix_rank_op.cu")
         list(REMOVE_ITEM hip_srcs "svd_op.cu")
+        list(REMOVE_ITEM hip_srcs "eigh_op.cu")
         list(REMOVE_ITEM hip_srcs "multinomial_op.cu")
         list(REMOVE_ITEM hip_srcs "decode_jpeg_op.cu")
         hip_library(${TARGET} SRCS ${cc_srcs} ${hip_cc_srcs} ${miopen_cu_cc_srcs} ${miopen_cu_srcs} ${mkldnn_cc_srcs} ${hip_srcs} DEPS ${op_library_DEPS}
