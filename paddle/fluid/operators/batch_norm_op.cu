@@ -856,6 +856,8 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    LOG(WARNING) << "BatchNormGradKernel";
+
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
@@ -869,6 +871,13 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
 
+    LOG(WARNING) << "Input Tensor | dy: ";
+    PrintTensor<T>(*d_y, ctx);
+    LOG(WARNING) << "Input Tensor | scale: ";
+    PrintTensor<T>(*scale, ctx);
+    LOG(WARNING) << "Input Tensor | bias: ";
+    PrintTensor<T>(*bias, ctx);
+
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
     auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
@@ -881,6 +890,8 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     bool is_inplace;
     if (ctx.HasInput("Y")) {
       x = ctx.Input<Tensor>("Y");
+      LOG(WARNING) << "Input Tensor | x: ";
+      PrintTensor<T>(*x, ctx);
       is_inplace = true;
       if (d_x) {
         PADDLE_ENFORCE_EQ(d_x, d_y,
@@ -889,6 +900,8 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
       }
     } else {
       x = ctx.Input<Tensor>("X");
+      LOG(WARNING) << "Input Tensor | x: ";
+      PrintTensor<T>(*x, ctx);
       is_inplace = false;
       if (d_x) {
         PADDLE_ENFORCE_NE(
@@ -1086,6 +1099,11 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
           saved_mean->template data<BatchNormParamType<T>>();
       const auto *saved_var_data =
           saved_var->template data<BatchNormParamType<T>>();
+
+      LOG(WARNING) << "Input Tensor | saved_mean: ";
+      PrintTensor<T>(*saved_mean, ctx);
+      LOG(WARNING) << "Input Tensor | saved_variance: ";
+      PrintTensor<T>(*saved_var, ctx);
 
       if (is_inplace) {
         inplace_functor(compute_format, transformed_x.data<T>(),
@@ -1334,6 +1352,13 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         }
       }
     }
+
+    LOG(WARNING) << "Output Tensor | d_x: ";
+    PrintTensor<float>(*d_x, ctx);
+    LOG(WARNING) << "Output Tensor | d_scale: ";
+    PrintTensor<float>(*d_scale, ctx);
+    LOG(WARNING) << "Output Tensor | d_bias: ";
+    PrintTensor<float>(*d_bias, ctx);
   }
 };
 

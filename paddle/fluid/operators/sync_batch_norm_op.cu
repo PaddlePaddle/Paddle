@@ -22,6 +22,8 @@ class SyncBatchNormKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    LOG(WARNING) << "SyncBatchNormKernel";
+
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -86,6 +88,8 @@ class SyncBatchNormGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    LOG(WARNING) << "SyncBatchNormGradKernel";
+
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
@@ -97,6 +101,13 @@ class SyncBatchNormGradKernel<platform::CUDADeviceContext, T>
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
 
+    LOG(WARNING) << "Input Tensor | dy: ";
+    PrintTensor<T>(*d_y, ctx);
+    LOG(WARNING) << "Input Tensor | scale: ";
+    PrintTensor<T>(*scale, ctx);
+    LOG(WARNING) << "Input Tensor | bias: ";
+    PrintTensor<T>(*bias, ctx);
+
     // init output
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
@@ -104,10 +115,21 @@ class SyncBatchNormGradKernel<platform::CUDADeviceContext, T>
 
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     const auto *saved_inv_var = ctx.Input<Tensor>("SavedVariance");
+    LOG(WARNING) << "Input Tensor | saved_mean: ";
+    PrintTensor<T>(*saved_mean, ctx);
+    LOG(WARNING) << "Input Tensor | saved_variance: ";
+    PrintTensor<T>(*saved_inv_var, ctx);
 
     SyncBatchNormGradFunctor<platform::CUDADeviceContext, T>(
         ctx, layout, scale, bias, d_x, d_y, d_scale, d_bias, saved_mean,
         saved_inv_var, epsilon);
+
+    LOG(WARNING) << "Output Tensor | d_x: ";
+    PrintTensor<float>(*d_x, ctx);
+    LOG(WARNING) << "Output Tensor | d_scale: ";
+    PrintTensor<float>(*d_scale, ctx);
+    LOG(WARNING) << "Output Tensor | d_bias: ";
+    PrintTensor<float>(*d_bias, ctx);
   }
 };
 
