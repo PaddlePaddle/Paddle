@@ -23,29 +23,22 @@ import unittest
 
 class TrtConvertMultiNMSTest(TrtLayerAutoScanTest):
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
-        inputs = program_config.inputs
-        weights = program_config.weights
-        attrs = [
-            program_config.ops[i].attrs
-            for i in range(len(program_config.ops))
-        ]
-
         return True
 
     def sample_program_configs(self):
         def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.random.random([160, 16, 4]).astype(np.float32)
+            return np.random.random([1, 160, 4]).astype(np.float32)
 
         def generate_input2(attrs: List[Dict[str, Any]]):
-            return np.random.random([1, 160, 16]).astype(np.float32)
+            return np.random.random([1, 100, 16]).astype(np.float32)
 
         ## TODO try more params when TRT layer is implemented
-        for background_label in [0]:
-            for score_threshold in [0.0]:
-                for nms_top_k in [0]:
-                    for keep_top_k in [10]:
+        for background_label in [-1]:
+            for score_threshold in [0.5, 0]:
+                for nms_top_k in [80, 100]:
+                    for keep_top_k in [10, 5]:
                         for nms_threshold in [0.3]:
-                            for normalized in [True]:
+                            for normalized in [False]:
                                 dics = [{
                                     "background_label": background_label,
                                     "score_threshold": score_threshold,
@@ -55,40 +48,42 @@ class TrtConvertMultiNMSTest(TrtLayerAutoScanTest):
                                     "normalized": normalized
                                 }]
 
-                                ops_config = [{
-                                    "op_type": "multiclass_nms",
-                                    "op_inputs": {
-                                        "BBoxes": ["bboxes_data"],
-                                        "Scores": ["scores_data"]
-                                    },
-                                    "op_outputs": {
-                                        "Out": ["multiclass_output_data"]
-                                    },
-                                    "op_attrs": dics[0]
-                                }]
-                                ops = self.generate_op_config(ops_config)
+                            ops_config = [{
+                                "op_type": "multiclass_nms",
+                                "op_inputs": {
+                                    "BBoxes": ["bboxes_data"],
+                                    "Scores": ["scores_data"]
+                                },
+                                "op_outputs": {
+                                    "Out": ["multiclass_output_data"]
+                                },
+                                "op_attrs": dics[0]
+                            }]
+                            ops = self.generate_op_config(ops_config)
 
-                                program_config = ProgramConfig(
-                                    ops=ops,
-                                    weights={},
-                                    inputs={
-                                        "bboxes_data": TensorConfig(
-                                            data_gen=partial(generate_input1,
-                                                             dics)),
-                                        "scores_data": TensorConfig(
-                                            data_gen=partial(generate_input2,
-                                                             dics))
-                                    },
-                                    outputs=["multiclass_output_data"])
+                            program_config = ProgramConfig(
+                                ops=ops,
+                                weights={},
+                                inputs={
+                                    "bboxes_data": TensorConfig(
+                                        data_gen=partial(generate_input1,
+                                                         dics)),
+                                    "scores_data": TensorConfig(
+                                        data_gen=partial(generate_input2, dics))
+                                },
+                                outputs=["multiclass_output_data"])
 
-                                yield program_config
+                            yield program_config
 
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
-            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
-            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
+            self.dynamic_shape.min_input_shape = {"bboxes_data": [1, 160, 4]}
+            self.dynamic_shape.max_input_shape = {"bboxes_data": [4, 160, 4]}
+            self.dynamic_shape.opt_input_shape = {"bboxes_data": [1, 160, 4]}
+            self.dynamic_shape.min_input_shape = {"scores_data": [1, 100, 160]}
+            self.dynamic_shape.max_input_shape = {"scores_data": [4, 100, 160]}
+            self.dynamic_shape.opt_input_shape = {"scores_data": [1, 100, 160]}
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
@@ -112,14 +107,14 @@ class TrtConvertMultiNMSTest(TrtLayerAutoScanTest):
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False), 1e-2
 
-    # # for dynamic_shape
-    # generate_dynamic_shape(attrs)
-    # self.trt_param.precision = paddle_infer.PrecisionType.Float32
-    # yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-    #                                                              True), 1e-5
-    # self.trt_param.precision = paddle_infer.PrecisionType.Half
-    # yield self.create_inference_config(), generate_trt_nodes_num(attrs,
-    #                                                              True), 1e-2
+        # for dynamic_shape
+        generate_dynamic_shape(attrs)
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
+                                                                     True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(attrs,
+                                                                     True), 1e-2
 
     def test(self):
         self.run_test()
