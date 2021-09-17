@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/clip_by_norm_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 
 namespace paddle {
