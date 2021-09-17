@@ -5021,13 +5021,17 @@ class Program(object):
 
         # find out all variables that can be generated or updated with given feed
         generatable_vars = set()
+
         for idx, op in enumerate(self.global_block().ops):
             runnable_op = True
             for name in op.input_arg_names:
-                if self.global_block().has_var(name) and not self.global_block().var(name).persistable:
-                    if name not in generatable_vars.union(feeded_var_names):
-                        runnable_op = False
-                        break
+                if not self.global_block().has_var(name):
+                    continue
+                if self.global_block().var(name).persistable:
+                    continue
+                if name not in generatable_vars.union(feeded_var_names):
+                    runnable_op = False
+                    break
             if runnable_op:
                 generatable_vars = generatable_vars.union(op.output_arg_names)
 
