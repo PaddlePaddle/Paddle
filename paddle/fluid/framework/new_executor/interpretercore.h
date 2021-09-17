@@ -69,7 +69,7 @@ class InterpreterCore {
   void RunInstructionAsync(size_t instr_id,
                            AtomicVectorSizeT* working_dependecy_count,
                            AtomicVectorSizeT* working_var_ref,
-                           std::atomic<size_t>* op_run_number, bool is_dry_run);
+                           std::atomic<size_t>* op_run_number);
   void AddFetch(const std::vector<std::string>& fetch_names);
 
   void BuildSkipShareLoDInfo();
