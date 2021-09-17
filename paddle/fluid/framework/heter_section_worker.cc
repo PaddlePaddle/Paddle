@@ -77,7 +77,6 @@ void HeterSectionWorker::RunForward(int micro_id) {
       return;
     }
   }
-
   for (auto &op : ops_) {
     int op_role = op->Attr<int>(std::string("op_role"));
     auto op_type = op->Type();
@@ -207,25 +206,31 @@ void HeterSectionWorker::CopyParameters(int microbatch_id,
 
 void HeterSectionWorker::Run() {
   bool is_first_stage = (pipeline_stage_ == 0);
-  if (listen_ptr == nullptr) {
-    listen_ptr.reset(
-        new std::thread(std::bind(&HeterSectionWorker::RunListen, this)));
-  }
+  //if (listen_ptr == nullptr) {
+  //  listen_ptr.reset(
+  //      new std::thread(std::bind(&HeterSectionWorker::RunListen, this)));
+  //}
   if (is_first_stage) {
-    int barrier_id = -1;
-    for (int i = trainer_id_; i < thread_num_ * num_microbatches_; i+= trainers_) {
+    std::vector<int> micro_ids;
+    for (int i = trainer_id_; i < thread_num_ * num_microbatches_; i += trainers_) {
       if (i >= thread_id_ * num_microbatches_ && i < (thread_id_ + 1) * num_microbatches_) {
         VLOG(5) << "Run " << i << " stage" << std::endl;
-        if (barrier_id == -1) barrier_id = i - thread_id_ * num_microbatches_;
+        //if (barrier_id == -1) barrier_id = i - thread_id_ * num_microbatches_;
         RunForward(i - thread_id_ * num_microbatches_);
+        //micro_ids.push_back(i - thread_id_ * num_microbatches_);
         // TODO
-        if (epoch_finish_ == true) return;
+        if (epoch_finish_ == true) { break;}
+        micro_ids.push_back(i - thread_id_ * num_microbatches_);
       }
     }
-    BatchBarrier(barrier_id);
-  } else {
-    (listen_ptr.get())->join();
+    for (auto i : micro_ids) {
+      BatchBarrier(i);
+    }  
+
   }
+  //else {
+  //  (listen_ptr.get())->join();
+  //}
 }
 
 void HeterSectionWorker::TrainFiles() {

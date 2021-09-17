@@ -361,6 +361,7 @@ class HeterPipelineTrainer : public TrainerBase {
   std::vector<Scope*> microbatch_scopes_;
   platform::DeviceContext* dev_ctx_ = nullptr;
 
+  std::shared_ptr<std::thread> listen_ptr_ = nullptr;
   void CopyParameters(int microbatch_id, const ProgramDesc& program,
                       const platform::Place& place);
 };

@@ -886,9 +886,9 @@ class TheOnePSRuntime(RuntimeBase):
             self._server.load_sparse(path, meta, table_id)
 
     def _run_server(self):
-        if self.role_maker._is_heter_worker():
-            self._run_heter_worker()
-            return
+        #if self.role_maker._is_heter_worker():
+        #    self._run_heter_worker()
+        #    return
 
         ep = self.compiled_strategy.get_ps_endpoint()
         host, port = ep.split(":")
@@ -901,10 +901,13 @@ class TheOnePSRuntime(RuntimeBase):
         executor.run(real_startup_program)
         self._init_worker()
 
-    def _run_heter_worker(self):
+    def _run_heter_worker(self, dataset):
         executor = self._get_executor()
-        executor.run(fluid.default_main_program())
-
+        executor.train_from_dataset(program=fluid.default_main_program(),
+                                    dataset=dataset,
+                                    debug=False,
+                                    use_program_cache=True)
+    
     def _stop_worker(self):
         self._communicator.stop()
         if self.role_maker._is_heter_parameter_server_mode and self.role_maker._is_worker(

@@ -664,7 +664,7 @@ class HeterSectionWorker : public DeviceWorker {
   std::shared_ptr<framework::ProgramDesc> program_;
 
   static uint64_t batch_id_;
-  std::shared_ptr<std::thread> listen_ptr = nullptr;
+  //std::shared_ptr<std::thread> listen_ptr = nullptr;
   platform::DeviceContext* dev_ctx_ = nullptr;
 };
 

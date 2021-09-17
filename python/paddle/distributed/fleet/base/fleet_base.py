@@ -563,6 +563,24 @@ class Fleet(object):
         return self._role_maker._is_server(
         ) or self._role_maker._is_heter_worker()
 
+    def is_heter_worker(self):
+        """
+        Check whether the node is an instance of heter worker.
+
+        Returns:
+            bool: True if this is a node of server,
+                  False if not.
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+                fleet.is_server()
+        """ 
+        return self._role_maker._is_heter_worker()
+
     def barrier_worker(self):
         """
         barrier all workers
@@ -646,6 +664,11 @@ class Fleet(object):
         """
         self._runtime_handle.load_model(path, mode)
 
+    @is_non_distributed_check
+    @inited_runtime_handler
+    def run_heter_worker(self, dataset):
+        self._runtime_handle._run_heter_worker(dataset)
+    
     @is_non_distributed_check
     @inited_runtime_handler
     def run_server(self):
