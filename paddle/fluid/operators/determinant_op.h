@@ -152,9 +152,9 @@ struct SlogDeterminantFunctor {
       auto det_val = matrix.determinant();
       sign_vec.push_back(sign(det_val));
       det_val >= 0
-          ? log_vec.push_back(log(det_val))
-          : log_vec.push_back(log(
-                abs(det_val)));  // for computing log value of a negative value.
+          ? log_vec.push_back(std::log(det_val))
+          : log_vec.push_back(std::log(std::abs(
+                det_val)));  // for computing log value of a negative value.
     }
     // merge sign_vec and log_vec as final output_vec
     output_vec.insert(output_vec.end(), sign_vec.begin(), sign_vec.end());
