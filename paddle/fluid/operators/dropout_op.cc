@@ -46,8 +46,9 @@ class DropoutOp : public framework::OperatorWithKernel {
   framework::OpKernelType GetKernelTypeForVar(
       const std::string& var_name, const Tensor& tensor,
       const framework::OpKernelType& expected_kernel_type) const override {
-    if (var_name == "Seed" && platform::is_cpu_place(tensor.place())) {
-      VLOG(10) << "var_name:" << var_name << " need not to transform";
+    if (var_name == "Seed") {
+      VLOG(10) << "var_name:" << var_name
+               << " does not need to transform in dropout op";
       return expected_kernel_type;
     }
 
