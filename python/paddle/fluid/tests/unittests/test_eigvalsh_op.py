@@ -30,7 +30,7 @@ class TestEigvalshOp(OpTest):
         np.random.seed(123)
         out_w = np.linalg.eigvalsh(self.x_np, self.UPLO)
         self.inputs = {"X": self.x_np}
-        self.attrs = {"UPLO": self.UPLO}
+        self.attrs = {"UPLO": self.UPLO, "is_test": False}
         self.outputs = {'Eigenvalues': out_w}
 
     def init_config(self):
@@ -45,15 +45,16 @@ class TestEigvalshOp(OpTest):
         self.check_output()
 
     def test_grad(self):
+        self.outputs['Eigenvectors'] = np.ones(self.x_shape).astype(self.x_type)
         self.check_grad(["X"], ["Eigenvalues"])
 
 
-class TestEighUPLOCase(TestEighOp):
+class TestEigvalshUPLOCase(TestEigvalshOp):
     def init_config(self):
         self.UPLO = 'U'
 
 
-class TestEighGPUCase(unittest.TestCase):
+class TestEigvalshGPUCase(unittest.TestCase):
     def setUp(self):
         self.x_shape = [32, 32]
         self.dtype = "float32"
@@ -109,7 +110,7 @@ class TestEigvalshAPI(unittest.TestCase):
                                  fetch_list=[output_w])
 
             actual_w = np.linalg.eigvalsh(self.real_data)
-            self.compare_result(actual_w, expected_w)
+            self.compare_result(actual_w, expected_w[0])
 
     def check_static_complex_result(self):
         main_prog = paddle.static.Program()
@@ -124,7 +125,7 @@ class TestEigvalshAPI(unittest.TestCase):
                                  feed={"input_x": self.complex_data},
                                  fetch_list=[output_w])
             actual_w = np.linalg.eigvalsh(self.complex_data)
-            self.compare_result(actual_w, expected_w)
+            self.compare_result(actual_w, expected_w[0])
 
     def test_in_static_mode(self):
         paddle.enable_static()
@@ -143,7 +144,7 @@ class TestEigvalshAPI(unittest.TestCase):
         actual_w = paddle.linalg.eigvalsh(input_complex_data)
         self.compare_result(actual_w, expected_w)
 
-    def test_eigh_grad(self):
+    def test_eigvalsh_grad(self):
         paddle.disable_static(self.place)
         x = paddle.to_tensor(self.complex_data, stop_gradient=False)
         w = paddle.linalg.eigvalsh(x)
@@ -155,12 +156,12 @@ class TestEigvalshAPI(unittest.TestCase):
             atol=self.atol)
 
 
-class TestEighBatchAPI(TestEigvalshAPI):
+class TestEigvalshBatchAPI(TestEigvalshAPI):
     def init_input_shape(self):
         self.x_shape = [2, 5, 5]
 
 
-class TestEighAPIError(unittest.TestCase):
+class TestEigvalshAPIError(unittest.TestCase):
     def test_error(self):
         main_prog = paddle.static.Program()
         startup_prog = paddle.static.Program()
