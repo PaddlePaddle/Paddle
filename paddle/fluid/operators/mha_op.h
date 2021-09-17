@@ -290,15 +290,39 @@ class MHAGradKernel : public framework::OpKernel<T> {
     const T* v_data = v->data<T>();
     const T* w_data = w->data<T>();
 
-    dq->mutable_data<T>(context.GetPlace());
-    dk->mutable_data<T>(context.GetPlace());
-    dv->mutable_data<T>(context.GetPlace());
-    dw->mutable_data<T>(context.GetPlace());
+    // Note(Ming Huang): Due to cuDNN MHA need to call BwdData before
+    // BwdWeight for correctly gradient computing, we need tempoary
+    // memory buffers for DQ, DK and DV for calling BwdData when they.
+    // are nullptrs.
+    T* dq_data;
+    if (dq) {
+      dq->mutable_data<T>(context.GetPlace());
+      dq_data = dq->data<T>();
+    } else {
+      auto dq_buf =
+          memory::Alloc(dev_ctx, framework::product(q->dims()) * sizeof(T));
+      dq_data = static_cast<T*>(dq_buf->ptr());
+    }
 
-    T* dq_data = dq->data<T>();
-    T* dk_data = dk->data<T>();
-    T* dv_data = dv->data<T>();
-    T* dw_data = dw->data<T>();
+    T* dk_data;
+    if (dk) {
+      dk->mutable_data<T>(context.GetPlace());
+      dk_data = dk->data<T>();
+    } else {
+      auto dk_buf =
+          memory::Alloc(dev_ctx, framework::product(k->dims()) * sizeof(T));
+      dk_data = static_cast<T*>(dk_buf->ptr());
+    }
+
+    T* dv_data;
+    if (dv) {
+      dv->mutable_data<T>(context.GetPlace());
+      dv_data = dv->data<T>();
+    } else {
+      auto dv_buf =
+          memory::Alloc(dev_ctx, framework::product(v->dims()) * sizeof(T));
+      dv_data = static_cast<T*>(dv_buf->ptr());
+    }
 
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnMultiHeadAttnBackwardData(
@@ -314,18 +338,24 @@ class MHAGradKernel : public framework::OpKernel<T> {
             MHASingleton::Instance().Data(key).workspace->ptr(),
             MHASingleton::Instance().Data(key).reserve_size,
             MHASingleton::Instance().Data(key).reserve_space->ptr()));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnMultiHeadAttnBackwardWeights(
-            cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
-            CUDNN_WGRAD_MODE_SET, MHASingleton::Instance().Data(key).q_desc,
-            q_data, MHASingleton::Instance().Data(key).k_desc, k_data,
-            MHASingleton::Instance().Data(key).v_desc, v_data,
-            MHASingleton::Instance().Data(key).o_desc, dout_data,
-            MHASingleton::Instance().Data(key).weights_size, w_data, dw_data,
-            MHASingleton::Instance().Data(key).workspace_size,
-            MHASingleton::Instance().Data(key).workspace->ptr(),
-            MHASingleton::Instance().Data(key).reserve_size,
-            MHASingleton::Instance().Data(key).reserve_space->ptr()));
+
+    if (dw) {
+      dw->mutable_data<T>(context.GetPlace());
+      T* dw_data = dw->data<T>();
+
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          platform::dynload::cudnnMultiHeadAttnBackwardWeights(
+              cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
+              CUDNN_WGRAD_MODE_SET, MHASingleton::Instance().Data(key).q_desc,
+              q_data, MHASingleton::Instance().Data(key).k_desc, k_data,
+              MHASingleton::Instance().Data(key).v_desc, v_data,
+              MHASingleton::Instance().Data(key).o_desc, dout_data,
+              MHASingleton::Instance().Data(key).weights_size, w_data, dw_data,
+              MHASingleton::Instance().Data(key).workspace_size,
+              MHASingleton::Instance().Data(key).workspace->ptr(),
+              MHASingleton::Instance().Data(key).reserve_size,
+              MHASingleton::Instance().Data(key).reserve_space->ptr()));
+    }
   }
 };
 
