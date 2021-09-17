@@ -238,8 +238,8 @@ class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
         main_program = Program()
         with program_guard(main_program):
             seed_input_name = "tensor@SeedInput"
-            seed_out_name = "tensor@SeedOut"
             x_var_name = "tensor@X"
+            x_out_var = "tensor@XOut"
             mask_var_name = "tensor@Mask"
             seed_input_var = main_program.global_block().create_var(
                 name=seed_input_name,
@@ -247,8 +247,8 @@ class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
                 dtype='int32',
                 persistable=False,
                 stop_gradient=True)
-            seed_out_var = main_program.global_block().create_var(
-                name=seed_out_name,
+            x_out_var = main_program.global_block().create_var(
+                name=x_out_var,
                 shape=[1],
                 dtype='int32',
                 persistable=False,
@@ -286,14 +286,13 @@ class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
             inputs={'X': x_var,
                     'Seed': seed_input_var},
             attrs={'dropout_prob': 1.0},
-            outputs={'Out': seed_out_var,
+            outputs={'Out': x_out_var,
                      'Mask': mask_var})
         place = fluid.CUDAPlace(0)
         exe = fluid.Executor(place)
-        x_out, mask_out = exe.run(
-            main_program,
-            feed={},
-            fetch_list=[seed_out_var.name, mask_var.name])
+        x_out, mask_out = exe.run(main_program,
+                                  feed={},
+                                  fetch_list=[x_out_var.name, mask_var.name])
         expect_value = np.array([0.0]).astype('float32')
         self.assertTrue(np.array_equal(x_out, expect_value))
 
