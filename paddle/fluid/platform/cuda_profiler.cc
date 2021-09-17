@@ -17,8 +17,8 @@
 namespace paddle {
 namespace platform {
 
-inline void CudaProfilerInit(std::string output_file, std::string output_mode,
-                             std::string config_file) {
+void CudaProfilerInit(std::string output_file, std::string output_mode,
+                      std::string config_file) {
   PADDLE_ENFORCE(output_mode == "kvp" || output_mode == "csv",
                  platform::errors::InvalidArgument(
                      "Unsupported cuda profiler output mode, expect `kvp` or "
@@ -29,20 +29,16 @@ inline void CudaProfilerInit(std::string output_file, std::string output_mode,
       cudaProfilerInitialize(config_file.c_str(), output_file.c_str(), mode));
 }
 
-inline void CudaProfilerStart() {
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaProfilerStart());
-}
+void CudaProfilerStart() { PADDLE_ENFORCE_CUDA_SUCCESS(cudaProfilerStart()); }
 
-inline void CudaProfilerStop() {
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaProfilerStop());
-}
+void CudaProfilerStop() { PADDLE_ENFORCE_CUDA_SUCCESS(cudaProfilerStop()); }
 
 #ifndef _WIN32
-inline void CudaNvtxRangePush(std::string name) {
+void CudaNvtxRangePush(std::string name) {
   dynload::nvtxRangePushA(name.c_str());
 }
 
-inline void CudaNvtxRangePop() { dynload::nvtxRangePop(); }
+void CudaNvtxRangePop() { dynload::nvtxRangePop(); }
 #endif
 
 }  // namespace platform
