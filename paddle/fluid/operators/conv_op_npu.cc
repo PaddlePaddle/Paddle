@@ -21,7 +21,11 @@ namespace operators {
 using Tensor = framework::Tensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
+<<<<<<< HEAD
 template <typename T>
+=======
+template <typename DeviceContext, typename T>
+>>>>>>> notest, delete logs and reset conv_op_npu.cc
 class DepthwiseConvNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
@@ -241,9 +245,12 @@ class NPUConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     // LOG(WARNING) << "NPUConvOpKernel";
 
+=======
+>>>>>>> notest, delete logs and reset conv_op_npu.cc
     auto& dev_ctx = ctx.template device_context<platform::NPUDeviceContext>();
 >>>>>>> notest, at last, we get a success baseline for sync_batch_norm, and sync_batch_norm_grad
     const Tensor* input = ctx.Input<Tensor>("Input");
@@ -259,13 +266,6 @@ class NPUConvOpKernel : public framework::OpKernel<T> {
     const std::string data_format = ctx.Attr<std::string>("data_format");
 
     const bool channel_last = data_format == "NHWC";
-
-    // if (input->type() == framework::proto::VarType::FP32) {
-    //   LOG(WARNING) << "Input Tensor | input: ";
-    //   PrintTensor<float>(*input, ctx);
-    //   LOG(WARNING) << "Input Tensor | filter: ";
-    //   PrintTensor<float>(*filter, ctx);
-    // }
 
     // update padding and dilation
     auto in_dims = input->dims();
@@ -316,12 +316,15 @@ class NPUConvOpKernel : public framework::OpKernel<T> {
     runner.Run(stream);
 =======
     runner.Run(dev_ctx.stream());
+<<<<<<< HEAD
 
     // if (input->type() == framework::proto::VarType::FP32) {
     //   LOG(WARNING) << "Output Tensor | output: ";
     //   PrintTensor<float>(*output, ctx);
     // }
 >>>>>>> notest, at last, we get a success baseline for sync_batch_norm, and sync_batch_norm_grad
+=======
+>>>>>>> notest, delete logs and reset conv_op_npu.cc
   }
 };
 
