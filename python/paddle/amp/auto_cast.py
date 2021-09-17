@@ -79,7 +79,7 @@ def auto_cast(enable=True,
 def decorate(models,
              optimizers=None,
              level='O1',
-             master_weight=True,
+             master_weight=None,
              save_dtype=None):
     """
     Decorate models and optimizers for auto-mixed-precision. When level is O1(amp), the decorate will do nothing. 
@@ -92,7 +92,7 @@ def decorate(models,
         optimizers(Optimizer|list of Optimizer, optional): The defined optimizers by user, optimizers must be either a single optimizer or a list of optimizers. Default is None.
         level(str, optional): Auto mixed precision level. Accepted values are "O1" and "O2": O1 represent mixed precision, the decorator will do nothing; 
              O2 represent Pure fp16, the decorator will cast all parameters of models to FP16, except BatchNorm and LayerNorm. Default is O1(amp)
-        master_weight(bool, optinal): For level='O2', whether to use multi-precision during weight updating. Default is True.
+        master_weight(bool, optinal): For level='O2', whether to use multi-precision during weight updating. If master_weight is None, in O2 level optimizer will use multi-precision. Default is None.
         save_dtype(float, optional): The save model parameter dtype when use `paddle.save` or `paddle.jit.save`,it should be float16, float32, float64 or None.
              The save_dtype will not change model parameters dtype, it just change the state_dict dtype. When save_dtype is None, the save dtype is same as model dtype. Default is None.
 

@@ -487,7 +487,7 @@ class TestAmpDecorator(unittest.TestCase):
             multi_precision=False)
         model2, opt2 = paddle.amp.decorate(
             models=model2, optimizers=opt2, level='O2', master_weight=None)
-        self.assertEqual(opt2._multi_precision, False)
+        self.assertEqual(opt2._multi_precision, True)
 
         model3 = fluid.dygraph.Conv2D(3, 2, 3, bias_attr=False, act=None)
         opt3 = paddle.optimizer.Adam(
