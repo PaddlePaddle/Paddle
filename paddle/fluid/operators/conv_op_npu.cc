@@ -20,23 +20,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-// template <typename T>
-// std::string outputVector(const std::vector<T> vec) {
-//   std::ostringstream oss;
-//   // for (auto ele : vec) oss << ele << ' ';
-//   for (size_t i = 0; i < vec.size() && i < 10; ++i) {
-//     oss << vec[i] << ' ';
-//   }
-//   return oss.str();
-// }
-// template <typename T>
-// void PrintTensor(const framework::Tensor& src,
-//                  const framework::ExecutionContext& ctx) {
-//   std::vector<T> vec(src.numel());
-//   TensorToVector(src, ctx.device_context(), &vec);
-//   LOG(WARNING) << "vec: " << outputVector<T>(vec);
-// }
-
 template <typename DeviceContext, typename T>
 class DepthwiseConvNPUKernel : public framework::OpKernel<T> {
  public:
@@ -258,8 +241,6 @@ template <typename T>
 class NPUConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    // LOG(WARNING) << "NPUConvOpKernel";
-
     auto& dev_ctx = ctx.template device_context<platform::NPUDeviceContext>();
     const Tensor* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
@@ -274,13 +255,6 @@ class NPUConvOpKernel : public framework::OpKernel<T> {
     const std::string data_format = ctx.Attr<std::string>("data_format");
 
     const bool channel_last = data_format == "NHWC";
-
-    // if (input->type() == framework::proto::VarType::FP32) {
-    //   LOG(WARNING) << "Input Tensor | input: ";
-    //   PrintTensor<float>(*input, ctx);
-    //   LOG(WARNING) << "Input Tensor | filter: ";
-    //   PrintTensor<float>(*filter, ctx);
-    // }
 
     // update padding and dilation
     auto in_dims = input->dims();
@@ -327,11 +301,6 @@ class NPUConvOpKernel : public framework::OpKernel<T> {
                      {"groups", groups},
                      {"data_format", data_format}});
     runner.Run(dev_ctx.stream());
-
-    // if (input->type() == framework::proto::VarType::FP32) {
-    //   LOG(WARNING) << "Output Tensor | output: ";
-    //   PrintTensor<float>(*output, ctx);
-    // }
   }
 };
 
