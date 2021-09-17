@@ -93,42 +93,45 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
                                            int rows, bool has_vectors) const;
 };
 
-#define EIGEN_INSTANCE(ValueType, T, CastType)                                \
-  template <>                                                                 \
-  inline void MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T>::   \
-      ComputeEigenvaluesAndVectors(T *x_data, ValueType *value_data,          \
-                                   T *vector_data, int batches, int rows,     \
-                                   bool has_vectors) const {                  \
-    int stride = rows * rows;                                                 \
-    for (int i = 0; i < batches; i++) {                                       \
-      auto x_data_ = reinterpret_cast<CastType *>(x_data);                    \
-      auto vector_data_ = reinterpret_cast<CastType *>(vector_data);          \
-      auto eigenvalues =                                                      \
-          OutputMatrixMap<ValueType>(value_data + i * rows, 1, rows);         \
-      auto m = InputMatrixMap<CastType>(x_data_ + i * stride, rows, rows);    \
-      auto eigenvectors =                                                     \
-          OutputMatrixMap<CastType>(vector_data_ + i * stride, rows, rows);   \
-      Eigen::SelfAdjointEigenSolver<EigenMatrix<CastType>> eigen_solver(      \
-          m,                                                                  \
-          has_vectors ? Eigen::ComputeEigenvectors : Eigen::EigenvaluesOnly); \
-      PADDLE_ENFORCE_EQ(                                                      \
-          eigen_solver.info(), Eigen::Success,                                \
-          platform::errors::InvalidArgument(                                  \
-              "Self Adjoint Eigen decomposition is not successful. "          \
-              "The %d-th input matrice might not be not be positive "         \
-              "definite.",                                                    \
-              i));                                                            \
-      eigenvalues = eigen_solver.eigenvalues().transpose();                   \
-      if (has_vectors) {                                                      \
-        eigenvectors = eigen_solver.eigenvectors();                           \
-      }                                                                       \
-    }                                                                         \
+#define EIGEN_WITH_TYPES(m)                                           \
+  m(float, float, float) m(double, double, double)                    \
+      m(float, paddle::platform::complex<float>, std::complex<float>) \
+          m(double, paddle::platform::complex<double>, std::complex<double>)
+
+#define EIGEN_INSTANCE(ValueType, T, CastType)                              \
+  template <>                                                               \
+  inline void MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T>:: \
+      ComputeEigenvaluesAndVectors(T *x_data, ValueType *value_data,        \
+                                   T *vector_data, int batches, int rows,   \
+                                   bool has_vectors) const {                \
+    int stride = rows * rows;                                               \
+    for (int i = 0; i < batches; i++) {                                     \
+      auto x_data_ = reinterpret_cast<CastType *>(x_data);                  \
+      auto vector_data_ = reinterpret_cast<CastType *>(vector_data);        \
+      auto eigenvalues =                                                    \
+          OutputMatrixMap<ValueType>(value_data + i * rows, 1, rows);       \
+      auto m = InputMatrixMap<CastType>(x_data_ + i * stride, rows, rows);  \
+      auto eigenvectors =                                                   \
+          OutputMatrixMap<CastType>(vector_data_ + i * stride, rows, rows); \
+      Eigen::SelfAdjointEigenSolver<Eigen::Matrix<                          \
+          CastType, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>       \
+          eigen_solver(m, has_vectors ? Eigen::ComputeEigenvectors          \
+                                      : Eigen::EigenvaluesOnly);            \
+      PADDLE_ENFORCE_EQ(                                                    \
+          eigen_solver.info(), Eigen::Success,                              \
+          platform::errors::InvalidArgument(                                \
+              "Self Adjoint Eigen decomposition is not successful. "        \
+              "The %d-th input matrice might not be not be positive "       \
+              "definite.",                                                  \
+              i));                                                          \
+      eigenvalues = eigen_solver.eigenvalues().transpose();                 \
+      if (has_vectors) {                                                    \
+        eigenvectors = eigen_solver.eigenvectors();                         \
+      }                                                                     \
+    }                                                                       \
   }
 
-EIGEN_INSTANCE(float, float, float);
-EIGEN_INSTANCE(double, double, double);
-EIGEN_INSTANCE(double, paddle::platform::complex<double>, std::complex<double>);
-EIGEN_INSTANCE(float, paddle::platform::complex<float>, std::complex<float>);
+EIGEN_WITH_TYPES(EIGEN_INSTANCE);
 
 #ifdef PADDLE_WITH_CUDA
 
