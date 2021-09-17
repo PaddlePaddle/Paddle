@@ -240,6 +240,12 @@ template <typename T>
 class NPUConvOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+<<<<<<< HEAD
+=======
+    // LOG(WARNING) << "NPUConvOpKernel";
+
+    auto& dev_ctx = ctx.template device_context<platform::NPUDeviceContext>();
+>>>>>>> notest, at last, we get a success baseline for sync_batch_norm, and sync_batch_norm_grad
     const Tensor* input = ctx.Input<Tensor>("Input");
     auto* filter = ctx.Input<Tensor>("Filter");
     auto* output = ctx.Output<Tensor>("Output");
@@ -254,12 +260,12 @@ class NPUConvOpKernel : public framework::OpKernel<T> {
 
     const bool channel_last = data_format == "NHWC";
 
-    if (input->type() == framework::proto::VarType::FP32) {
-      LOG(WARNING) << "Input Tensor | input: ";
-      PrintTensor<float>(*input, ctx);
-      LOG(WARNING) << "Input Tensor | filter: ";
-      PrintTensor<float>(*filter, ctx);
-    }
+    // if (input->type() == framework::proto::VarType::FP32) {
+    //   LOG(WARNING) << "Input Tensor | input: ";
+    //   PrintTensor<float>(*input, ctx);
+    //   LOG(WARNING) << "Input Tensor | filter: ";
+    //   PrintTensor<float>(*filter, ctx);
+    // }
 
     // update padding and dilation
     auto in_dims = input->dims();
@@ -306,7 +312,16 @@ class NPUConvOpKernel : public framework::OpKernel<T> {
                      {"dilations", dilations_vec},
                      {"groups", groups},
                      {"data_format", data_format}});
+<<<<<<< HEAD
     runner.Run(stream);
+=======
+    runner.Run(dev_ctx.stream());
+
+    // if (input->type() == framework::proto::VarType::FP32) {
+    //   LOG(WARNING) << "Output Tensor | output: ";
+    //   PrintTensor<float>(*output, ctx);
+    // }
+>>>>>>> notest, at last, we get a success baseline for sync_batch_norm, and sync_batch_norm_grad
   }
 };
 

@@ -43,6 +43,8 @@ template <typename T>
 class NPUBatchNormOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    LOG(WARNING) << "NPUBatchNormOpKernel";
+
     const float epsilon = ctx.Attr<float>("epsilon");
     float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -149,6 +151,8 @@ template <typename T>
 class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    LOG(WARNING) << "NPUBatchNormGradOpKernel";
+
     const auto *x = ctx.Input<Tensor>("X");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
@@ -161,6 +165,19 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
     const bool is_test = ctx.Attr<bool>("is_test");
     const float epsilon = ctx.Attr<float>("epsilon");
     DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+
+    LOG(WARNING) << "Input Tensor | x: ";
+    PrintTensor<T>(*x, ctx);
+    LOG(WARNING) << "Input Tensor | dy: ";
+    PrintTensor<T>(*d_y, ctx);
+    LOG(WARNING) << "Input Tensor | scale: ";
+    PrintTensor<T>(*scale, ctx);
+    LOG(WARNING) << "Input Tensor | bias: ";
+    PrintTensor<T>(*bias, ctx);
+    LOG(WARNING) << "Input Tensor | saved_mean: ";
+    PrintTensor<T>(*saved_mean, ctx);
+    LOG(WARNING) << "Input Tensor | saved_variance: ";
+    PrintTensor<T>(*saved_inv_variance, ctx);
 
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
@@ -226,6 +243,13 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
         runner_reduce.Run(stream);
       }
     }
+
+    LOG(WARNING) << "Output Tensor | d_x: ";
+    PrintTensor<float>(*d_x, ctx);
+    LOG(WARNING) << "Output Tensor | d_scale: ";
+    PrintTensor<float>(*d_scale, ctx);
+    LOG(WARNING) << "Output Tensor | d_bias: ";
+    PrintTensor<float>(*d_bias, ctx);
   }
 };
 }  // namespace operators
