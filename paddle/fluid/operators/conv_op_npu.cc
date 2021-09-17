@@ -20,22 +20,22 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T>
-std::string outputVector(const std::vector<T> vec) {
-  std::ostringstream oss;
-  // for (auto ele : vec) oss << ele << ' ';
-  for (size_t i = 0; i < vec.size() && i < 10; ++i) {
-    oss << vec[i] << ' ';
-  }
-  return oss.str();
-}
-template <typename T>
-void PrintTensor(const framework::Tensor& src,
-                 const framework::ExecutionContext& ctx) {
-  std::vector<T> vec(src.numel());
-  TensorToVector(src, ctx.device_context(), &vec);
-  LOG(WARNING) << "vec: " << outputVector<T>(vec);
-}
+// template <typename T>
+// std::string outputVector(const std::vector<T> vec) {
+//   std::ostringstream oss;
+//   // for (auto ele : vec) oss << ele << ' ';
+//   for (size_t i = 0; i < vec.size() && i < 10; ++i) {
+//     oss << vec[i] << ' ';
+//   }
+//   return oss.str();
+// }
+// template <typename T>
+// void PrintTensor(const framework::Tensor& src,
+//                  const framework::ExecutionContext& ctx) {
+//   std::vector<T> vec(src.numel());
+//   TensorToVector(src, ctx.device_context(), &vec);
+//   LOG(WARNING) << "vec: " << outputVector<T>(vec);
+// }
 
 template <typename DeviceContext, typename T>
 class DepthwiseConvNPUKernel : public framework::OpKernel<T> {
