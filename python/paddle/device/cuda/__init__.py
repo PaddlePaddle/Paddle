@@ -238,7 +238,7 @@ def get_device_properties(device=None):
     place = framework._current_expected_place()
     if not isinstance(place, core.CUDAPlace) or not is_compiled_with_cuda():
         raise ValueError(
-            "The current device: {} is not expected. Because paddle.device.cuda.get_device_properties only support cuda device"
+            "The current device: {} is not expected. Because paddle.device.cuda.get_device_properties only support cuda device" \
             "Please change device and input device again!".format(place))
 
     device_id = -1
@@ -249,16 +249,15 @@ def get_device_properties(device=None):
         elif isinstance(device, core.CUDAPlace):
             device_id = device.get_device_id()
         elif isinstance(device, str):
-            if device[:4] == 'gpu:':
+            if device.startswith('gpu:'):
                 device_id = int(device[4:])
             else:
                 raise ValueError(
-                    "The current string: {} is not expected. Because paddle.device.cuda.get_device_properties only support string"
-                    "which is like 'gpu:x'. Please input appropriat string again!".
-                    format(device))
+                    "The current string: {} is not expected. Because paddle.device.cuda.get_device_properties only support string" \
+                    "which is like 'gpu:x'. Please input appropriat string again!".format(device))
         else:
             raise ValueError(
-                "The device type: {} is not expected. Because paddle.device.cuda.get_device_properties only support int, str or paddle.CUDAPlace."
+                "The device type: {} is not expected. Because paddle.device.cuda.get_device_properties only support int, str or paddle.CUDAPlace." \
                 "Please input appropriate device again!".format(device))
 
     return core.get_device_properties(device_id)
