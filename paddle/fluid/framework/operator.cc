@@ -50,6 +50,8 @@ DECLARE_bool(enable_unused_var_check);
 PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
                              "number of threads for inner op");
 
+PADDLE_DEFINE_EXPORTED_bool(for_test_paddle_ci, false, "Test Paddle CI");
+
 namespace paddle {
 namespace framework {
 
