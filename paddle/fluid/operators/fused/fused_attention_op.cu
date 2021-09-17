@@ -31,7 +31,6 @@ namespace cub = hipcub;
 #include "paddle/fluid/platform/miopen_helper.h"
 #endif
 
-#include <cuda.h>
 #include <cuda_fp16.h>
 #include "paddle/fluid/operators/elementwise/elementwise_add_op.h"
 #include "paddle/fluid/operators/math/math_function.h"
