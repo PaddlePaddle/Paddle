@@ -88,17 +88,17 @@ def monkey_patch_varbase():
         """
 
         # Note: getattr(self, attr, None) will call x.grad=x.gradient(), but gradient() only available in dygraph.
-        # It will fail. So, for propery in dygraph only, should not let it getattr(self, attr, None).
-        attr_not_need_keys = ['grad']
+        # It will fail. So, for propery that different between dynamic and static graph, should not getattr(self, attr, None).
+        attr_not_need_keys = ['grad', 'T']
         if isinstance(self, ParamBase):
             attr_kwargs = self.__dict__.copy()
         else:
             attr_names = []
             for name in dir(self):
-                if name not in attr_not_need_keys and not (
-                        inspect.ismethod(getattr(self, name)) or
-                        name.startswith('_')):
-                    attr_names.append(name)
+                if name not in attr_not_need_keys:
+                    if not inspect.ismethod(getattr(
+                            self, name)) and not name.startswith('_'):
+                        attr_names.append(name)
             attr_kwargs = {name: getattr(self, name) for name in attr_names}
 
         attr_keys = ['block', 'shape', 'dtype', 'type', 'name', 'persistable']
@@ -553,8 +553,9 @@ def monkey_patch_varbase():
                         or isinstance(slice_item.step, Variable):
                     return True
             else:
-                if isinstance(slice_item,
-                              Variable) and Variable.dtype != paddle.bool:
+                if isinstance(
+                        slice_item,
+                    (Variable, np.ndarray)) and Variable.dtype != paddle.bool:
                     return True
         return False
 

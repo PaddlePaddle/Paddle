@@ -33,22 +33,26 @@ class TestNormOp(OpTest):
     def setUp(self):
         self.op_type = "norm"
         self.init_test_case()
-        x = np.random.random(self.shape).astype("float64")
+        self.init_dtype()
+        x = np.random.random(self.shape).astype(self.dtype)
         y, norm = l2_norm(x, self.axis, self.epsilon)
         self.inputs = {'X': x}
         self.attrs = {'epsilon': self.epsilon, 'axis': self.axis}
         self.outputs = {'Out': y, 'Norm': norm}
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output(atol=1e-5)
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out')
+        self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
         self.axis = 1
         self.epsilon = 1e-8
+
+    def init_dtype(self):
+        self.dtype = "float64"
 
 
 class TestNormOp2(TestNormOp):
@@ -87,6 +91,25 @@ class TestNormOp5(TestNormOp):
 
     def test_check_grad(self):
         pass
+
+
+class TestNormOp6(TestNormOp):
+    def init_dtype(self):
+        self.dtype = "float32"
+
+
+@unittest.skipIf(not fluid.core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
+class TestNormOp7(TestNormOp):
+    def init_dtype(self):
+        self.dtype = "float16"
+
+    def test_check_output(self):
+        self.check_output_with_place(fluid.core.CUDAPlace(0), atol=5e-2)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(
+            fluid.core.CUDAPlace(0), ['X'], 'Out', max_relative_error=0.05)
 
 
 @skip_check_grad_ci(reason="skip check grad for test mode.")

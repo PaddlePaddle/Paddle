@@ -664,7 +664,7 @@ class TestFusedMomentumWithDecayAPI(unittest.TestCase):
         self.assertEqual(ops[-3].type, 'sum')
         self.assertEqual(ops[-4].type, 'scale')
         self.assertEqual(ops[-5].type, 'sign')
-        self.assertEqual(ops[-6].type, 'matmul_grad')
+        self.assertEqual(ops[-6].type, 'matmul_v2_grad')
         if 'weight' in ops[-1].input('Param'):
             self.assertEqual(ops[-1].attr('regularization_method'), '')
             self.assertEqual(ops[-1].attr('regularization_coeff'), 0)

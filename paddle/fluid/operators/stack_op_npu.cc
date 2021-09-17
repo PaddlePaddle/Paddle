@@ -90,9 +90,9 @@ REGISTER_OP_NPU_KERNEL(
     paddle::operators::StackNPUKernel<paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
-    stack_grad, paddle::operators::StackNPUKernel<int>,
+    stack_grad, paddle::operators::StackGradNPUKernel<int>,
 #ifdef PADDLE_WITH_ASCEND_INT64
-    paddle::operators::StackNPUKernel<int64_t>,
+    paddle::operators::StackGradNPUKernel<int64_t>,
 #endif
     paddle::operators::StackGradNPUKernel<float>,
     paddle::operators::StackGradNPUKernel<paddle::platform::float16>);
