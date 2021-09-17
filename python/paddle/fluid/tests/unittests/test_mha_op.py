@@ -176,6 +176,7 @@ class TestMHAOpFP16(OpTest):
     def init_dtype_type(self):
         self.dtype = np.float16
         self.atol = 1e-2
+        self.grad_rtol = 1.0
 
     def test_check_output(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
@@ -189,7 +190,9 @@ class TestMHAOpFP16(OpTest):
                 self.place):
             return
         self.check_grad_with_place(
-            self.place, ['Q', 'K', 'V', 'W'], 'O', max_relative_error=1.)
+            self.place, ['Q', 'K', 'V', 'W'],
+            'O',
+            max_relative_error=self.grad_rtol)
         print(f'MHA {self.dtype} bwd passed.')
 
 
@@ -200,6 +203,7 @@ class TestMHAOpFP32(TestMHAOpFP16):
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-3
+        self.grad_rtol = 0.5
 
 
 @skip_check_grad_ci(reason="Developing")
@@ -209,6 +213,7 @@ class TestMHAOpFP64(TestMHAOpFP16):
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
+        self.grad_rtol = 1e-7
 
 
 @skip_check_grad_ci(reason="Developing")
@@ -281,6 +286,7 @@ class TestMHAOpPadVarLenFP16(OpTest):
     def init_dtype_type(self):
         self.dtype = np.float16
         self.atol = 1e-2
+        self.grad_rtol = 1.0
 
     def test_check_output(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
@@ -294,7 +300,9 @@ class TestMHAOpPadVarLenFP16(OpTest):
                 self.place):
             return
         self.check_grad_with_place(
-            self.place, ['Q', 'K', 'V', 'W'], 'O', max_relative_error=1.)
+            self.place, ['Q', 'K', 'V', 'W'],
+            'O',
+            max_relative_error=self.grad_rtol)
         print(f'MHA padded varlen {self.dtype} bwd passed.')
 
 
@@ -305,6 +313,7 @@ class TestMHAOpPadVarLenFP32(TestMHAOpPadVarLenFP16):
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-3
+        self.grad_rtol = 0.5
 
 
 @skip_check_grad_ci(reason="Developing")
@@ -314,6 +323,7 @@ class TestMHAOpPadVarLenFP64(TestMHAOpPadVarLenFP16):
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
+        self.grad_rtol = 1e-7
 
 
 @skip_check_grad_ci(reason="Developing")
@@ -387,6 +397,7 @@ class TestMHAOpVarLenFP16(OpTest):
     def init_dtype_type(self):
         self.dtype = np.float16
         self.atol = 1e-2
+        self.grad_rtol = 1.0
 
     def test_check_output(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
@@ -400,7 +411,9 @@ class TestMHAOpVarLenFP16(OpTest):
                 self.place):
             return
         self.check_grad_with_place(
-            self.place, ['Q', 'K', 'V', 'W'], 'O', max_relative_error=1.)
+            self.place, ['Q', 'K', 'V', 'W'],
+            'O',
+            max_relative_error=self.grad_rtol)
         print(f'MHA varlen {self.dtype} bwd passed.')
 
 
@@ -408,12 +421,14 @@ class TestMHAOpVarLenFP32(TestMHAOpVarLenFP16):
     def init_dtype_type(self):
         self.dtype = np.single
         self.atol = 1e-3
+        self.grad_rtol = 0.5
 
 
 class TestMHAOpVarLenFP64(TestMHAOpVarLenFP16):
     def init_dtype_type(self):
         self.dtype = np.double
         self.atol = 1e-6
+        self.grad_rtol = 1e-7
 
 
 if __name__ == "__main__":
