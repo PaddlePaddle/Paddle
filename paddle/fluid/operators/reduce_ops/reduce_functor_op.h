@@ -108,5 +108,16 @@ struct CustomLogicalAnd {
   }
 };
 
+template <typename Tx, typename Ty = Tx>
+struct SquareSum {
+  using Transformer = kpds::SquareTransformer<Tx, Ty>;
+
+  inline Ty initial() { return static_cast<Ty>(0.0f); }
+
+  __device__ __forceinline__ Ty operator()(const Ty &a, const Ty &b) const {
+    return b + a;
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
