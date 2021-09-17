@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #endif
 
-#include <deque>
 #include <mutex>
 #include <vector>
 
@@ -44,8 +43,8 @@ DECLARE_uint64(gpu_memory_limit_mb);
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
 
-static std::once_flag g_init_flag;
-static std::vector<std::unique_ptr<std::once_flag>> g_device_flags;
+static std::once_flag g_device_props_size_init_flag;
+static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
 static std::vector<paddle::gpuDeviceProp> g_device_props;
 
 USE_GPU_MEM_STAT;
@@ -306,14 +305,14 @@ std::vector<int> GetSelectedDevices() {
   return devices;
 }
 
-const gpuDeviceProp *GetDeviceProperties(int id) {
-  int gpu_num = 0;
-  std::call_once(g_init_flag, [&] {
+const gpuDeviceProp &GetDeviceProperties(int id) {
+  std::call_once(g_device_props_size_init_flag, [&] {
+    int gpu_num = 0;
     gpu_num = platform::GetCUDADeviceCount();
-    g_device_flags.resize(gpu_num);
+    g_device_props_init_flags.resize(gpu_num);
     g_device_props.resize(gpu_num);
     for (int i = 0; i < gpu_num; ++i) {
-      g_device_flags[i] = std::unique_ptr<std::once_flag>(new std::once_flag());
+      g_device_props_init_flags[i] = std::make_unique<std::once_flag>();
     }
   });
 
@@ -323,14 +322,15 @@ const gpuDeviceProp *GetDeviceProperties(int id) {
 
   if (id < 0 || id >= static_cast<int>(g_device_props.size())) {
     PADDLE_THROW(platform::errors::OutOfRange(
-        "The device id: %d exceeds out of range [0, the number of devices: %d "
-        "on this machine). Because the device id should be greater than or "
-        "equal to zero and smaller than the number of gpus. Please input "
+        "The device id %d is out of range [0, %d), where %d is the number of "
+        "devices on this machine. Because the device id should be greater than "
+        "or equal to zero and smaller than the number of gpus. Please input "
         "appropriate device again!",
-        id, static_cast<int>(g_device_props.size())));
+        id, static_cast<int>(g_device_props.size()),
+        static_cast<int>(g_device_props.size())));
   }
 
-  std::call_once(*(g_device_flags[id]), [&] {
+  std::call_once(*(g_device_props_init_flags[id]), [&] {
 #ifdef PADDLE_WITH_CUDA
     PADDLE_ENFORCE_CUDA_SUCCESS(
         cudaGetDeviceProperties(&g_device_props[id], id));
@@ -340,7 +340,7 @@ const gpuDeviceProp *GetDeviceProperties(int id) {
 #endif
   });
 
-  return &g_device_props[id];
+  return g_device_props[id];
 }
 
 void SetDeviceId(int id) {

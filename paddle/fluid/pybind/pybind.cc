@@ -2276,7 +2276,7 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
   m.def("cuda_empty_cache", platform::EmptyCache);
   m.def("get_device_properties",
-        [](int id) -> const gpuDeviceProp * {
+        [](int id) -> const gpuDeviceProp & {
           return platform::GetDeviceProperties(id);
         },
         py::return_value_policy::copy);

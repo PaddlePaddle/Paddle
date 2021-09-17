@@ -15,30 +15,29 @@
 import paddle
 import unittest
 from paddle.fluid import core
-from paddle.device import is_compiled_with_cuda
 from paddle.device.cuda import device_count, get_device_properties
 
 
 class TestGetDeviceProperties(unittest.TestCase):
     def test_get_device_properties_default(self):
-        if is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
             props = get_device_properties()
             self.assertIsNotNone(props)
 
     def test_get_device_properties_str(self):
-        if is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
             props = get_device_properties('gpu:0')
             self.assertIsNotNone(props)
 
     def test_get_device_properties_int(self):
-        if is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
             gpu_num = device_count()
             for i in range(gpu_num):
                 props = get_device_properties(i)
                 self.assertIsNotNone(props)
 
     def test_get_device_properties_CUDAPlace(self):
-        if is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
             device = core.CUDAPlace(0)
             props = get_device_properties(device)
             self.assertIsNotNone(props)
@@ -46,7 +45,7 @@ class TestGetDeviceProperties(unittest.TestCase):
 
 class TestGetDevicePropertiesError(unittest.TestCase):
     def test_error_api(self):
-        if is_compiled_with_cuda():
+        if core.is_compiled_with_cuda():
 
             def test_device_indexError_error():
                 device_error = device_count() + 1

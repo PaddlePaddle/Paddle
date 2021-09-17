@@ -68,7 +68,7 @@ dim3 GetGpuMaxGridDimSize(int);
 std::vector<int> GetSelectedDevices();
 
 //! Get the properties of the ith GPU device.
-const gpuDeviceProp *GetDeviceProperties(int id);
+const gpuDeviceProp &GetDeviceProperties(int id);
 
 //! Set the GPU device id for next execution.
 void SetDeviceId(int device_id);
