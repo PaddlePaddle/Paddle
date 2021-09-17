@@ -56,19 +56,12 @@ using LoDTensor = framework::LoDTensor;
   ElementwiseComputeEx<Functor<dtype>, DeviceContext, dtype>( \
       ctx, &lhs, &rhs, -1, Functor<dtype>(), &output)
 
-// output = lhs + rhs
 #define ADD(lhs, rhs, output, dtype) \
   ELEMENT_BINARY_OP(lhs, rhs, output, AddFunctor, dtype)
 
-// output = lhs - rhs
 #define SUB(lhs, rhs, output, dtype) \
   ELEMENT_BINARY_OP(lhs, rhs, output, SubFunctor, dtype)
 
-// output = lhs - rhs
-#define INVERSE_SUB(lhs, rhs, output, dtype) \
-  ELEMENT_BINARY_OP(lhs, rhs, output, InverseSubFunctor, dtype)
-
-// output = lhs * rhs
 #define MUL(lhs, rhs, output, dtype) \
   ELEMENT_BINARY_OP(lhs, rhs, output, MulFunctor, dtype)
 
@@ -120,7 +113,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     // Create a large float data buffer
     buffer_size = seq_len * batch_size * n_labels + 5 * batch_size * n_labels +
                   2 * n_labels * n_labels + batch_size * n_labels * n_labels +
-                  2 * batch_size + 1;
+                  3 * batch_size;
     CREATE_TENSOR(float_buffer, T, buffer_size);
     TensorBuffer float_tensor_buffer(float_buffer);
 
@@ -179,7 +172,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     int_functor(dev_ctx, &zero, 0);
     Tensor one = int_tensor_buffer.GetBufferBlock({1});
     int_functor(dev_ctx, &one, 1);
-    Tensor float_one = float_tensor_buffer.GetBufferBlock({1});
+    Tensor float_one = float_tensor_buffer.GetBufferBlock({batch_size, 1});
     float_functor(dev_ctx, &float_one, static_cast<T>(1.0));
     Tensor alpha_trn_sum =
         float_tensor_buffer.GetBufferBlock({batch_size, n_labels, n_labels});
@@ -215,6 +208,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
                                  &start_trans_exp};
     math::SplitFunctor<DeviceContext, T> functor;
     functor(dev_ctx, trans_exp, shape_refer, 1, &outputs);
+    stop_trans_exp.Resize({1, n_labels});
 
     for (int64_t i = 0; i < max_seq_len; ++i) {
       Tensor logit = inputs_t_exp.Slice(i, i + 1);
@@ -248,7 +242,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       GET_CAST_MASK(left_length, zero, mask, float_mask, GreaterThanFunctor, T);
 
       // inv_mask = 1 - mask
-      INVERSE_SUB(float_one, float_mask, inv_mask, T);
+      SUB(float_one, float_mask, inv_mask, T);
       // alpha = (1 - mask) * alpha
       MUL(alpha, inv_mask, alpha, T);
       // alpha_temp = mask * alpha_nxt
@@ -260,9 +254,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
         GET_CAST_MASK(left_length, one, mask, float_mask, EqualFunctor, T);
         // trans_exp: [1, n, n]
         // alpha += mask * trans_exp[:, self.stop_idx]
-        stop_trans_exp.Resize({1, n_labels});
         MUL(stop_trans_exp, float_mask, alpha_temp, T);
-        stop_trans_exp.Resize({1, n_labels, 1});
         ADD(alpha, alpha_temp, alpha, T);
       }
       SUB(left_length, one, left_length, int64_t);
