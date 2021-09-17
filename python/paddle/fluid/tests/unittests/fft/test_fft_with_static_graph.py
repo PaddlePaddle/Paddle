@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import re
 import sys
 import unittest
 
-from scipy.fft import hfftn, hfft2
 import numpy as np
 import paddle
 import scipy.fft
-import contextlib
 
-from test_fft import rand_x, place, parameterize, DEVICES, RTOL, ATOL, TEST_CASE_NAME
+from test_fft import (ATOL, DEVICES, RTOL, TEST_CASE_NAME, parameterize, place,
+                      rand_x)
 
 
 @contextlib.contextmanager
@@ -59,7 +59,7 @@ class TestFft(unittest.TestCase):
         with stgraph(paddle.fft.fft, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
             np.testing.assert_allclose(
-                np.fft.fft(self.x, self.n, self.axis, self.norm),
+                scipy.fft.fft(self.x, self.n, self.axis, self.norm),
                 y,
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)))
@@ -102,7 +102,7 @@ class TestFft2(unittest.TestCase):
         with stgraph(paddle.fft.fft2, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
             np.testing.assert_allclose(
-                np.fft.fft2(self.x, self.n, self.axis, self.norm),
+                scipy.fft.fft2(self.x, self.n, self.axis, self.norm),
                 y,
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)))
@@ -150,7 +150,7 @@ class TestFftn(unittest.TestCase):
         with stgraph(paddle.fft.fftn, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
             np.testing.assert_allclose(
-                np.fft.fftn(self.x, self.n, self.axis, self.norm),
+                scipy.fft.fftn(self.x, self.n, self.axis, self.norm),
                 y,
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)))
@@ -205,7 +205,7 @@ class TestHfft(unittest.TestCase):
         with stgraph(paddle.fft.hfft, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
             np.testing.assert_allclose(
-                np.fft.hfft(self.x, self.n, self.axis, self.norm),
+                scipy.fft.hfft(self.x, self.n, self.axis, self.norm),
                 y,
                 rtol=1e-5,
                 atol=0)
@@ -240,7 +240,7 @@ class TestIrfft(unittest.TestCase):
         with stgraph(paddle.fft.irfft, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
             np.testing.assert_allclose(
-                np.fft.irfft(self.x, self.n, self.axis, self.norm),
+                scipy.fft.irfft(self.x, self.n, self.axis, self.norm),
                 y,
                 rtol=1e-5,
                 atol=0)
@@ -275,7 +275,7 @@ class Testirfftn(unittest.TestCase):
         with stgraph(paddle.fft.irfftn, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
             np.testing.assert_allclose(
-                np.fft.irfftn(self.x, self.n, self.axis, self.norm),
+                scipy.fft.irfftn(self.x, self.n, self.axis, self.norm),
                 y,
                 rtol=1e-5,
                 atol=0)
@@ -345,7 +345,7 @@ class Testhfft2(unittest.TestCase):
         with stgraph(paddle.fft.hfft2, self.place, self.x, self.s, self.axis,
                      self.norm) as y:
             np.testing.assert_allclose(
-                hfft2(self.x, self.s, self.axis, self.norm),
+                scipy.fft.hfft2(self.x, self.s, self.axis, self.norm),
                 y,
                 rtol=1e-5,
                 atol=0)
@@ -377,7 +377,7 @@ class TestIrfft2(unittest.TestCase):
         with stgraph(paddle.fft.irfft2, self.place, self.x, self.s, self.axis,
                      self.norm) as y:
             np.testing.assert_allclose(
-                np.fft.irfft2(self.x, self.s, self.axis, self.norm),
+                scipy.fft.irfft2(self.x, self.s, self.axis, self.norm),
                 y,
                 rtol=1e-5,
                 atol=0)
@@ -643,7 +643,7 @@ class TestRfft(unittest.TestCase):
         with stgraph(paddle.fft.rfft, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
             np.testing.assert_allclose(
-                np.fft.rfft(self.x, self.n, self.axis, self.norm),
+                scipy.fft.rfft(self.x, self.n, self.axis, self.norm),
                 y,
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)))
@@ -684,7 +684,7 @@ class TestRfft2(unittest.TestCase):
         with stgraph(paddle.fft.rfft2, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
             np.testing.assert_allclose(
-                np.fft.rfft2(self.x, self.n, self.axis, self.norm),
+                scipy.fft.rfft2(self.x, self.n, self.axis, self.norm),
                 y,
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)))
@@ -732,7 +732,7 @@ class TestRfftn(unittest.TestCase):
         with stgraph(paddle.fft.rfftn, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
             np.testing.assert_allclose(
-                np.fft.rfftn(self.x, self.n, self.axis, self.norm),
+                scipy.fft.rfftn(self.x, self.n, self.axis, self.norm),
                 y,
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)))
@@ -774,7 +774,7 @@ class TestIhfft(unittest.TestCase):
         with stgraph(paddle.fft.ihfft, self.place, self.x, self.n, self.axis,
                      self.norm) as y:
             np.testing.assert_allclose(
-                np.fft.ihfft(self.x, self.n, self.axis, self.norm),
+                scipy.fft.ihfft(self.x, self.n, self.axis, self.norm),
                 y,
                 rtol=RTOL.get(str(self.x.dtype)),
                 atol=ATOL.get(str(self.x.dtype)))

@@ -13,22 +13,36 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
+#include "paddle/fluid/framework/ir/pass.h"
+#include "paddle/fluid/framework/pass_desc.pb.h"
 
 namespace paddle {
 namespace framework {
+namespace ir {
 
-class EventManager {
+// Generate a substitute pass from protobuf.
+class GeneratePass : public Pass {
  public:
-  void RecordEvent(const Instruction& instruction,
-                   const platform::Place& place);
+  // from binary_str
+  explicit GeneratePass(const std::string& binary_str);
+  // from PassDesc/MultiPassDesc
+  explicit GeneratePass(const proto::MultiPassDesc& multi_pass_desc);
 
-  void WaitEvent(const Instruction& instruction, const platform::Place& place);
+ protected:
+  void ApplyImpl(Graph* graph) const override;
 
  private:
-  void WaitOrSync(const std::vector<EventInter>& events,
-                  const platform::DeviceContext* dev_ctx);
+  GeneratePass() = delete;
+  DISABLE_COPY_AND_ASSIGN(GeneratePass);
+  // Verify desc
+  void VerifyDesc() const;
+  // Verify graph
+  static bool VerifyGraph(const Graph& graph);
+
+  proto::MultiPassDesc multi_pass_desc_;
 };
 
+}  // namespace ir
 }  // namespace framework
 }  // namespace paddle

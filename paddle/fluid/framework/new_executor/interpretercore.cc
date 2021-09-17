@@ -23,6 +23,8 @@ DEFINE_bool(new_executor_use_inplace, true, "Use inplace in new executor");
 
 namespace paddle {
 namespace framework {
+// NOTE(Aurelius84): Need a better strategy to determine it.
+static constexpr size_t kHostNumThreads = 4;
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const ProgramDesc& main_prog,
@@ -32,7 +34,8 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     : place_(place),
       main_program_(main_prog),
       global_scope_(global_scope),
-      stream_analyzer_(place) {
+      stream_analyzer_(place),
+      async_work_queue_(kHostNumThreads) {
   is_build_ = false;
 
   feed_names_ = feed_names;
@@ -89,7 +92,7 @@ paddle::framework::FetchList InterpreterCore::Run(
     Convert();
   } else {
     FeedInput();
-    ExecuteInstructionList(vec_instruction_, *global_scope_, place_);
+    ExecuteInstructionList(vec_instruction_);
   }
 
   // return Fetch Tensors
@@ -112,6 +115,7 @@ void InterpreterCore::Convert() {
     temp_inst.kernel_func_.operator_base_ = op_base;
     temp_inst.input_index_ = vec_func_list_[i].input_index;
     temp_inst.output_index_ = vec_func_list_[i].output_index;
+    temp_inst.type_ = vec_func_list_[i].type_;
 
     OpInOutInfo info;
 
@@ -168,8 +172,8 @@ void InterpreterCore::Convert() {
       }
     }
 
-    // In Program, op order is a very import information.
-    // Op can noly add op after it as next as next ops.
+    // In Program, op order is a very important information.
+    // Op can only add op after it as next as next ops.
     std::vector<size_t> filter_next;
     filter_next.reserve(vec_temp.size());
     for (auto item : vec_temp) {
@@ -319,62 +323,73 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 }
 
 void InterpreterCore::ExecuteInstructionList(
-    const std::vector<Instruction>& vec_instr, const VariableScope& var_scope,
-    const platform::Place& place, bool is_dry_run) {
-  std::queue<size_t> working_queue;
-  auto working_dependecy_count = dependecy_count_;
+    const std::vector<Instruction>& vec_instr, bool is_dry_run) {
+  auto atomic_deps = async_work_queue_.PrepareAtomicDeps(dependecy_count_);
+  auto atomic_var_ref = async_work_queue_.PrepareAtomicVarRef(vec_meta_info_);
+  std::atomic<size_t> op_run_number{0};
+
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
-      working_queue.push(i);
+      async_work_queue_.AddTask(vec_instr[i].type_, [&, i, is_dry_run]() {
+        RunInstructionAsync(i, &atomic_deps, &atomic_var_ref, &op_run_number,
+                            is_dry_run);
+      });
     }
   }
 
-  auto working_var_ref = vec_meta_info_;
+  async_work_queue_.WaitEmpty();
 
-  size_t run_op_number = 0;
-  while (!working_queue.empty()) {
-    auto instr_id = working_queue.front();
-    working_queue.pop();
-    auto& instr_node = vec_instr[instr_id];
-    // step1 : stream_wait (non-block host) or sync (block host)
-    event_manager_.WaitEvent(instr_node, place_);
-    // step2: run instruction
-    RunInstruction(instr_node);
-    ++run_op_number;
+  PADDLE_ENFORCE_EQ(
+      op_run_number.load(), vec_instr.size(),
+      platform::errors::Fatal(
+          "Required op_run_number == %d, but received op_run_number = %d.",
+          vec_instr.size(), op_run_number.load()));
+}
 
-    if (is_dry_run) {
-      dry_run_profiler_.ParseMemoryInfo(var_scope.var_list);
-    }
+void InterpreterCore::RunInstructionAsync(size_t instr_id,
+                                          AtomicVectorSizeT* atomic_deps,
+                                          AtomicVectorSizeT* atomic_var_ref,
+                                          std::atomic<size_t>* op_run_number,
+                                          bool is_dry_run) {
+  auto& instr_node = vec_instruction_[instr_id];
+  event_manager_.WaitEvent(instr_node, place_);
 
-    // step3: insert event for out_vars if needed
-    event_manager_.RecordEvent(instr_node, vec_func_list_[instr_id], place_);
+  RunInstruction(instr_node);
 
-    // step4: update working_queue
-    auto& next_instr = instr_node.next_instruction_.all_next_ops_;
+  event_manager_.RecordEvent(instr_node, place_);
+  op_run_number->fetch_add(1, std::memory_order_relaxed);
 
-    for (auto next_i : next_instr) {
-      --working_dependecy_count[next_i];
-      if (working_dependecy_count[next_i] == 0) {
-        working_queue.push(next_i);
-      }
-    }
-
-    // GC infomation
-    CheckGC(instr_id, instr_node.gc_check_var_list, var_scope, place,
-            working_var_ref);
+  if (is_dry_run) {
+    dry_run_profiler_.ParseMemoryInfo(global_scope_->var_list);
   }
+
+  auto& next_instr = instr_node.next_instruction_.all_next_ops_;
+
+  for (auto next_i : next_instr) {
+    // fetch_sub return value before applying sub
+    bool is_ready =
+        atomic_deps->at(next_i)->fetch_sub(1, std::memory_order_relaxed) == 1;
+    if (is_ready) {
+      async_work_queue_.AddTask(vec_instruction_[next_i].type_, [=]() {
+        RunInstructionAsync(next_i, atomic_deps, atomic_var_ref, op_run_number,
+                            is_dry_run);
+      });
+    }
+  }
+  // GC infomation
+  CheckGC(instr_id, instr_node.gc_check_var_list, atomic_var_ref);
 }
 
 void InterpreterCore::CheckGC(size_t instr_id,
                               const std::vector<size_t>& gc_check_list,
-                              const VariableScope& var_scope,
-                              const platform::Place& place,
-                              std::vector<VariableMetaInfo>& working_var_ref) {
+                              AtomicVectorSizeT* atomic_var_ref) {
+  auto& var_scope = *global_scope_;
+
   for (auto var_id : gc_check_list) {
-    --working_var_ref[var_id].var_ref_count_;
-    if (var_scope.vec_meta_info_[var_id].vardesc_ &&
-        !var_scope.vec_meta_info_[var_id].vardesc_->Persistable() &&
-        working_var_ref[var_id].var_ref_count_ == 0) {
+    bool is_ready = atomic_var_ref->at(var_id)->fetch_sub(
+                        1, std::memory_order_relaxed) == 1;
+    if (is_ready && var_scope.vec_meta_info_[var_id].vardesc_ &&
+        !var_scope.vec_meta_info_[var_id].vardesc_->Persistable()) {
       gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
               vec_instruction_[instr_id].dev_ctx_);
     }
@@ -417,8 +432,7 @@ const CostInfo& InterpreterCore::DryRun(
   // DryRun may be called many times.
   dry_run_profiler_.Reset();
   dry_run_profiler_.Start();
-  ExecuteInstructionList(vec_instruction_, *global_scope_, place_,
-                         /*is_dry_run=*/true);
+  ExecuteInstructionList(vec_instruction_, /*is_dry_run=*/true);
   platform::DeviceContextPool::Instance().Get(place_)->Wait();
 
   dry_run_profiler_.Pause();

@@ -64,6 +64,13 @@ class FFTC2COp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fft_c2c");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "fft_c2c");
+    const auto axes = ctx->Attrs().Get<std::vector<int64_t>>("axes");
+    const auto x_dim = ctx->GetInputDim("X");
+    for (size_t i = 0; i < axes.size(); i++) {
+      PADDLE_ENFORCE_GT(x_dim[axes[i]], 0,
+                        platform::errors::InvalidArgument(
+                            "Invalid fft n-point (%d).", x_dim[axes[i]]));
+    }
     ctx->ShareDim("X", /*->*/ "Out");  // only for c2c
   }
 
@@ -140,8 +147,14 @@ class FFTR2COp : public framework::OperatorWithKernel {
   void InferShape(framework::InferShapeContext* ctx) const override {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "fft_r2c");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "fft_r2c");
-
     const auto axes = ctx->Attrs().Get<std::vector<int64_t>>("axes");
+    const auto x_dim = ctx->GetInputDim("X");
+    for (size_t i = 0; i < axes.size() - 1L; i++) {
+      PADDLE_ENFORCE_GT(x_dim[axes[i]], 0,
+                        platform::errors::InvalidArgument(
+                            "Invalid fft n-point (%d).", x_dim[axes[i]]));
+    }
+
     const bool onesided = ctx->Attrs().Get<bool>("onesided");
     if (!onesided) {
       ctx->ShareDim("X", /*->*/ "Out");

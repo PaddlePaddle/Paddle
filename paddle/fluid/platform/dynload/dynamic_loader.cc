@@ -496,12 +496,13 @@ void* GetNvtxDsoHandle() {
 }
 
 void* GetCUFFTDsoHandle() {
-#if defined(_WIN32) && defined(PADDLE_WITH_CUDA)
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.dylib");
+#elif defined(_WIN32) && defined(PADDLE_WITH_CUDA)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, win_cufft_lib, true,
                                     {cuda_lib_path});
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so", false,
-                                    {cuda_lib_path});
+  return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so");
 #endif
 }
 

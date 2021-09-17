@@ -9,7 +9,6 @@
    See the License for the specific language governing permissions and
    limitations under the License. */
 
-#ifdef PADDLE_WITH_CUDA
 #include <cufft.h>
 #include <cufftXt.h>
 
@@ -37,25 +36,6 @@ namespace {
 using ScalarType = framework::proto::VarType::Type;
 const int64_t kMaxCUFFTNdim = 3;
 const int64_t kMaxDataNdim = kMaxCUFFTNdim + 1;
-
-std::ostream& operator<<(std::ostream& os, FFTTransformType fft_type) {
-  std::string repr;
-  switch (fft_type) {
-    case FFTTransformType::C2C:
-      repr = "C2C";
-      break;
-    case FFTTransformType::C2R:
-      repr = "C2R";
-      break;
-    case FFTTransformType::R2C:
-      repr = "R2C";
-      break;
-    default:
-      repr = "UNK";
-  }
-  os << repr;
-  return os;
-}
 
 static inline std::string get_cufft_error_info(cufftResult error) {
   switch (error) {
@@ -164,11 +144,7 @@ using plan_size_type = long long int;  // NOLINT
 
 // This class contains all the information needed to execute a cuFFT plan:
 //   1. the plan
-//   //2. whether to clone input before executing the plan
 //   2. the workspace size needed
-//
-// This class will be the **value** in the plan cache.
-// It **owns** the raw plan via a unique_ptr.
 class CuFFTConfig {
  public:
   // Only move semantics is enought for this class. Although we already use
@@ -177,14 +153,14 @@ class CuFFTConfig {
   CuFFTConfig(const CuFFTConfig&) = delete;
   CuFFTConfig& operator=(CuFFTConfig const&) = delete;
 
-  explicit CuFFTConfig(const PlanKey& params)
-      : CuFFTConfig(std::vector<int64_t>(
-                        params.sizes_, params.sizes_ + params.signal_ndim_ + 1),
-                    params.signal_ndim_, params.fft_type_, params.value_type_) {
-  }
+  explicit CuFFTConfig(const PlanKey& plan_key)
+      : CuFFTConfig(
+            std::vector<int64_t>(plan_key.sizes_,
+                                 plan_key.sizes_ + plan_key.signal_ndim_ + 1),
+            plan_key.signal_ndim_, plan_key.fft_type_, plan_key.value_type_) {}
 
   // sizes are full signal, including batch size and always two-sided
-  CuFFTConfig(std::vector<int64_t> sizes, const int64_t signal_ndim,
+  CuFFTConfig(const std::vector<int64_t>& sizes, const int64_t signal_ndim,
               FFTTransformType fft_type, ScalarType dtype)
       : fft_type_(fft_type), value_type_(dtype) {
     // signal sizes (excluding batch dim)
@@ -246,7 +222,7 @@ class CuFFTConfig {
     }
 #endif
 
-    // disable auto allocation of workspace to use THC allocator
+    // disable auto allocation of workspace to use allocator from the framework
     CUFFT_CHECK(platform::dynload::cufftSetAutoAllocation(
         plan(), /* autoAllocate */ 0));
 
@@ -282,175 +258,6 @@ class CuFFTConfig {
   size_t ws_size;
   FFTTransformType fft_type_;
   ScalarType value_type_;
-};
-
-// Hashing machinery for Key
-// Fowler–Noll–Vo hash function
-// see
-// https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
-template <typename Key>
-struct KeyHash {
-  // Key must be a POD because we read out its memory
-  // contenst as char* when hashing
-  static_assert(std::is_pod<Key>::value, "Key must be plain old data type");
-
-  size_t operator()(const Key& params) const {
-    auto ptr = reinterpret_cast<const uint8_t*>(&params);
-    uint32_t value = 0x811C9DC5;
-    for (int i = 0; i < static_cast<int>(sizeof(Key)); ++i) {
-      value ^= ptr[i];
-      value *= 0x01000193;
-    }
-    return static_cast<size_t>(value);
-  }
-};
-
-template <typename Key>
-struct KeyEqual {
-  // Key must be a POD because we read out its memory
-  // contenst as char* when comparing
-  static_assert(std::is_pod<Key>::value, "Key must be plain old data type");
-
-  bool operator()(const Key& a, const Key& b) const {
-    auto ptr1 = reinterpret_cast<const uint8_t*>(&a);
-    auto ptr2 = reinterpret_cast<const uint8_t*>(&b);
-    return memcmp(ptr1, ptr2, sizeof(Key)) == 0;
-  }
-};
-
-#if CUDA_VERSION < 10000
-// Note that the max plan number for CUDA version < 10 has to be 1023
-// due to a bug that fails on the 1024th plan
-constexpr size_t CUFFT_MAX_PLAN_NUM = 1023;
-constexpr size_t CUFFT_DEFAULT_CACHE_SIZE = CUFFT_MAX_PLAN_NUM;
-#else
-constexpr size_t CUFFT_MAX_PLAN_NUM = std::numeric_limits<size_t>::max();
-// The default max cache size chosen for CUDA version > 10 is arbitrary.
-// This number puts a limit on how big of a plan cache should we maintain by
-// default. Users can always configure it via cufft_set_plan_cache_max_size.
-constexpr size_t CUFFT_DEFAULT_CACHE_SIZE = 4096;
-#endif
-static_assert(CUFFT_MAX_PLAN_NUM >= 0 &&
-                  CUFFT_MAX_PLAN_NUM <= std::numeric_limits<size_t>::max(),
-              "CUFFT_MAX_PLAN_NUM not in size_t range");
-static_assert(CUFFT_DEFAULT_CACHE_SIZE >= 0 &&
-                  CUFFT_DEFAULT_CACHE_SIZE <= CUFFT_MAX_PLAN_NUM,
-              "CUFFT_DEFAULT_CACHE_SIZE not in [0, CUFFT_MAX_PLAN_NUM] range");
-
-// This cache assumes that the mapping from key to value never changes.
-// This is **NOT** thread-safe. Please use a mutex when using it **AND** the
-// value returned from try_emplace_value.
-// The contract of using this cache is that try_emplace_value should only be
-// used when the max_size is positive.
-class PlanLRUCache {
- public:
-  using kv_t = typename std::pair<PlanKey, CuFFTConfig>;
-  using map_t =
-      typename std::unordered_map<std::reference_wrapper<PlanKey>,
-                                  typename std::list<kv_t>::iterator,
-                                  KeyHash<PlanKey>, KeyEqual<PlanKey>>;
-  using map_kkv_iter_t = typename map_t::iterator;
-
-  PlanLRUCache() : PlanLRUCache(CUFFT_DEFAULT_CACHE_SIZE) {}
-
-  explicit PlanLRUCache(int64_t max_size) { _set_max_size(max_size); }
-
-  PlanLRUCache(PlanLRUCache&& other) noexcept
-      : _usage_list(std::move(other._usage_list)),
-        _cache_map(std::move(other._cache_map)),
-        _max_size(other._max_size) {}
-
-  PlanLRUCache& operator=(PlanLRUCache&& other) noexcept {
-    _usage_list = std::move(other._usage_list);
-    _cache_map = std::move(other._cache_map);
-    _max_size = other._max_size;
-    return *this;
-  }
-
-  ~PlanLRUCache() { clear(); }
-
-  // If key is in this cache, return the cached config. Otherwise, emplace the
-  // config in this cache and return it.
-  CuFFTConfig& lookup(PlanKey params) {
-    PADDLE_ENFORCE_GT(_max_size, 0,
-                      platform::errors::InvalidArgument(
-                          "The max size of PlanLRUCache must be great than 0,"
-                          "But received is [%d]",
-                          _max_size));
-
-    map_kkv_iter_t map_it = _cache_map.find(params);
-    // Hit, put to list front
-    if (map_it != _cache_map.end()) {
-      _usage_list.splice(_usage_list.begin(), _usage_list, map_it->second);
-      return map_it->second->second;
-    }
-
-    // Miss
-    // remove if needed
-    if (_usage_list.size() >= _max_size) {
-      auto last = _usage_list.end();
-      last--;
-      _cache_map.erase(last->first);
-      _usage_list.pop_back();
-    }
-
-    // construct new plan at list front, then insert into _cache_map
-    _usage_list.emplace_front(std::piecewise_construct,
-                              std::forward_as_tuple(params),
-                              std::forward_as_tuple(params));
-    auto kv_it = _usage_list.begin();
-    _cache_map.emplace(std::piecewise_construct,
-                       std::forward_as_tuple(kv_it->first),
-                       std::forward_as_tuple(kv_it));
-    return kv_it->second;
-  }
-
-  void clear() {
-    _cache_map.clear();
-    _usage_list.clear();
-  }
-
-  void resize(int64_t new_size) {
-    _set_max_size(new_size);
-    auto cur_size = _usage_list.size();
-    if (cur_size > _max_size) {
-      auto delete_it = _usage_list.end();
-      for (size_t i = 0; i < cur_size - _max_size; i++) {
-        delete_it--;
-        _cache_map.erase(delete_it->first);
-      }
-      _usage_list.erase(delete_it, _usage_list.end());
-    }
-  }
-
-  size_t size() const { return _cache_map.size(); }
-
-  size_t max_size() const noexcept { return _max_size; }
-
-  std::mutex mutex;
-
- private:
-  // Only sets size and does value check. Does not resize the data structures.
-  void _set_max_size(int64_t new_size) {
-    // We check that 0 <= new_size <= CUFFT_MAX_PLAN_NUM here. Since
-    // CUFFT_MAX_PLAN_NUM is of type size_t, we need to do non-negativity check
-    // first.
-    PADDLE_ENFORCE_GE(
-        new_size, 0,
-        platform::errors::InvalidArgument(
-            "cuFFT plan cache size must be non-negative, But received is [%d]",
-            new_size));
-    PADDLE_ENFORCE_LE(new_size, CUFFT_MAX_PLAN_NUM,
-                      platform::errors::InvalidArgument(
-                          "cuFFT plan cache size can not be larger than [%d], "
-                          "But received is [%d]",
-                          CUFFT_MAX_PLAN_NUM, new_size));
-    _max_size = static_cast<size_t>(new_size);
-  }
-
-  std::list<kv_t> _usage_list;
-  map_t _cache_map;
-  size_t _max_size;
 };
 
 // Execute a pre-planned transform
@@ -506,23 +313,6 @@ static void exec_cufft_plan(const CuFFTConfig& config, void* in_data,
   CUFFT_CHECK(platform::dynload::cufftXtExec(
       plan, in_data, out_data, forward ? CUFFT_FORWARD : CUFFT_INVERSE));
 #endif
-}
-
-static std::vector<std::unique_ptr<PlanLRUCache>> plan_caches;
-static std::mutex plan_caches_mutex;
-
-static inline PlanLRUCache& cufft_get_plan_cache(int64_t device_index) {
-  std::lock_guard<std::mutex> guard(plan_caches_mutex);
-
-  if (device_index >= plan_caches.size()) {
-    plan_caches.resize(device_index + 1);
-  }
-
-  if (!plan_caches[device_index]) {
-    plan_caches[device_index] = std::make_unique<PlanLRUCache>();
-  }
-
-  return *plan_caches[device_index];
 }
 
 // Execute a general unnormalized fft operation (can be c2c, onesided r2c or
@@ -626,23 +416,8 @@ void exec_fft(const DeviceContext& ctx, const Tensor* X, Tensor* out,
   PlanKey Key(framework::vectorize(input.dims()),
               framework::vectorize(output.dims()), signal_size, fft_type,
               value_type);
-  PlanLRUCache& plan_cache = cufft_get_plan_cache(static_cast<int64_t>(
-      (reinterpret_cast<platform::CUDAPlace*>(&tensor_place))->GetDeviceId()));
-  std::unique_lock<std::mutex> guard(plan_cache.mutex, std::defer_lock);
-  CuFFTConfig* config = nullptr;
-
-  if (plan_cache.max_size() > 0) {
-    guard.lock();
-    if (plan_cache.max_size() > 0) {  // check again after acquiring the lock
-      config = &plan_cache.lookup(Key);
-    }
-  }
-
-  if (config == nullptr) {
-    CuFFTConfig uncached_plan(Key);
-    config = &uncached_plan;
-  }
-
+  CuFFTConfig uncached_plan(Key);
+  CuFFTConfig* config = &uncached_plan;
   auto& plan = config->plan();
 
   // prepare cufft for execution
@@ -866,4 +641,3 @@ REGISTER_OP_CUDA_KERNEL(
     fft_r2c_grad,
     ops::FFTR2CGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::FFTR2CGradKernel<paddle::platform::CUDADeviceContext, double>);
-#endif
