@@ -501,13 +501,17 @@ static std::vector<int> getNewAxis(const int b_rank) {
 static std::vector<int64_t> getNewDimsVec(const DDim& b_dims) {
   std::vector<int64_t> b_dims_vec = paddle::framework::vectorize(b_dims);
   int size = b_dims_vec.size();
-  if (b_dims_vec.size() >= 2) {
+  if (size >= 2) {
     // swap the last 2 elements in b_dims_vec
     int64_t temp = b_dims_vec[size - 1];
     b_dims_vec[size - 1] = b_dims_vec[size - 2];
     b_dims_vec[size - 2] = temp;
     return b_dims_vec;
   }
+  PADDLE_ENFORCE_NE(
+      b_dims_vec.empty(), true,
+      platform::errors::PreconditionNotMet(
+          "The size of tensor b must not be %d after getting new dims", 0));
   // if b_dims_vec.size() == 1, just retun original vec
   return b_dims_vec;
 }

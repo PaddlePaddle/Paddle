@@ -11,11 +11,12 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/matmul_v2_op.h"
+#include "paddle/fluid/operators/solve_op.h"
 #include "paddle/fluid/platform/device_context.h"
 
 namespace paddle {
@@ -31,62 +32,6 @@ namespace math {
 template <typename DeviceContext, typename T>
 class MatrixSolveFunctor;
 
-// for TransposeNormal, transpose the last two dimmentions
-std::vector<int> getNewAxis(const int b_rank) {
-  std::vector<int> axis_1 = {0};
-  std::vector<int> axis_2 = {1, 0};
-  std::vector<int> axis_3 = {0, 2, 1};
-  std::vector<int> axis_4 = {0, 1, 3, 2};
-  std::vector<int> axis_5 = {0, 1, 2, 4, 3};
-  std::vector<int> axis_6 = {0, 1, 2, 3, 5, 4};
-  std::vector<int> axis_7 = {0, 1, 2, 3, 4, 6, 5};
-  std::vector<int> axis_8 = {0, 1, 2, 3, 4, 5, 7, 6};
-  std::vector<int> axis_9 = {0, 1, 2, 3, 4, 5, 6, 8, 7};
-  switch (b_rank) {
-    case 1:
-      return axis_1;
-      break;
-    case 2:
-      return axis_2;
-      break;
-    case 3:
-      return axis_3;
-      break;
-    case 4:
-      return axis_4;
-      break;
-    case 5:
-      return axis_5;
-      break;
-    case 6:
-      return axis_6;
-      break;
-    case 7:
-      return axis_7;
-      break;
-    case 8:
-      return axis_8;
-      break;
-    default:
-      return axis_9;
-  }
-}
-
-// for Resize
-std::vector<int64_t> getNewDimsVec(const DDim& b_dims) {
-  std::vector<int64_t> b_dims_vec = paddle::framework::vectorize(b_dims);
-  int size = b_dims_vec.size();
-  if (b_dims_vec.size() >= 2) {
-    // swap the last 2 elements in b_dims_vec
-    int64_t temp = b_dims_vec[size - 1];
-    b_dims_vec[size - 1] = b_dims_vec[size - 2];
-    b_dims_vec[size - 2] = temp;
-    return b_dims_vec;
-  }
-  // if b_dims_vec.size() == 1, just retun original vec
-  return b_dims_vec;
-}
-
 template <typename T>
 class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
  public:
@@ -95,6 +40,13 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
                   framework::Tensor* out) {
 #ifndef PADDLE_WITH_HIP
 
+    // solve the equation: Ax = B,
+    // use cuBlas cublas<S/D>getrfBatched funcion to performs the LU
+    // factorization of each matrix A,
+    // and then use cuBlas cublas<S/D>getriBatched function to solve the
+    // equation after LU factorization.
+    // ref:
+    // https://docs.nvidia.com/cuda/cublas/index.html#cublas-lt-t-gt-getrfbatched
     const auto& a_dims = a.dims();
     const int a_rank = a_dims.size();
     int n = a_dims[a_rank - 1];
@@ -128,13 +80,13 @@ class MatrixSolveFunctor<platform::CUDADeviceContext, T> {
     std::vector<int> new_axis = getNewAxis(b_rank);
     trans(context, b, &tmp_b, new_axis);
 
-    memory::allocation::AllocationPtr tmp_a_data_in_gpu;
     const T* a_data_in_gpu = tmp_a.data<T>();
+    const T* b_data_in_gpu = tmp_b.data<T>();
 
     std::vector<const T*> cpu_ptrs(batch_size * 2);
     for (int i = 0; i < batch_size; ++i) {
       cpu_ptrs[i] = a_data_in_gpu + i * n * n;
-      cpu_ptrs[i + batch_size] = tmp_b.data<T>() + i * n * nrhs;
+      cpu_ptrs[i + batch_size] = b_data_in_gpu + i * n * nrhs;
     }
 
     // Copy the addresses of A and tmp_b from host to device.
