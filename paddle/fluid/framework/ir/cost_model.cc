@@ -21,6 +21,7 @@
 namespace paddle {
 namespace framework {
 
+using ir::Graph;
 using platform::Event;
 using platform::MemEvent;
 
@@ -40,10 +41,12 @@ double CostData::GetOpMemoryBytes(int op_id) const {
 double CostData::GetWholeTimeMs() const { return whole_time_ms_; }
 double CostData::GetWholeMemoryBytes() const { return whole_memory_bytes_; }
 
+const Graph* CostData::GetGraph() const { return graph_; }
+const ProgramDesc* CostData::GetProgram() const { return program_; }
+
 bool CostData::SetCostData(const ProgramDesc& program,
                            const std::vector<std::vector<Event>>& time_events) {
-  // Make a copy because we would like CostData be available even if SWE changes
-  // Program
+  // Make a copy so that CostData can be available even if SWE changes Program
   program_ = new ProgramDesc(program);
   if (program_->Size() == 0) {
     whole_time_ms_ = 0;
@@ -189,14 +192,23 @@ void PrintEvents(std::vector<std::vector<Event>>* time_events,
   }
 }
 
-CostData CostModel::ProfileMeasure(const ProgramDesc& program,
-                                   const std::string& device) {
+std::string ToLowerCopy(const std::string& in) {
+  std::string out(in);
+  std::transform(out.begin(), out.end(), out.begin(),
+                 [](unsigned char c) { return std::tolower(c); });
+  return out;
+}
+
+CostData CostModel::ProfileMeasure(
+    const ProgramDesc& program, const std::string& device,
+    const std::vector<std::string>& fetch_cost_list) const {
+  // Currently fetch_cost_list is useless
   // TODO(zhhsplendid): support different fetch data
 
   platform::ProfilerState profiler_state;
   platform::Place place;
-  // TODO(zhhsplendid): add code to transform string to lower case
-  std::string device_lower_case = device;
+
+  std::string device_lower_case = ToLowerCopy(device);
   if (device_lower_case == "cpu") {
     profiler_state = platform::ProfilerState::kCPU;
     place = platform::CPUPlace();
@@ -221,7 +233,7 @@ CostData CostModel::ProfileMeasure(const ProgramDesc& program,
   std::vector<std::vector<MemEvent>>* mem_events =
       new std::vector<std::vector<MemEvent>>();
 
-  CompleteProfilerEvents(nullptr, time_events, mem_events);
+  CompleteProfilerEvents(/*tracer_profile= */ nullptr, time_events, mem_events);
 
   // TODO(zhhsplendid): remove debug vlog after this series of work
   PrintEvents(time_events, mem_events);

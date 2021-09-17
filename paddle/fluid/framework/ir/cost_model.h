@@ -47,6 +47,9 @@ class CostData {
   double GetWholeTimeMs() const;
   double GetWholeMemoryBytes() const;
 
+  const Graph* GetGraph() const;
+  const ProgramDesc* GetProgram() const;
+
   // Support Time Event only
   // TODO(zhhsplendid): add memory
   bool SetCostData(const ProgramDesc& program,
@@ -73,8 +76,9 @@ class CostModel {
   CostModel() {}
   ~CostModel() {}
 
-  CostData ProfileMeasure(const ProgramDesc& program,
-                          const std::string& device);
+  CostData ProfileMeasure(
+      const ProgramDesc& program, const std::string& device,
+      const std::vector<std::string>& fetch_cost_list) const;
 };
 
 }  // namespace framework

@@ -82,14 +82,14 @@ ProgramDesc CreateTestProgram() {
   y->SetDataType(proto::VarType::FP32);
   y->SetShape({784, 100});
 
-  auto *op = global_block->AppendOp();
-  op->SetType("fake_test_op");
-  op->SetInput("X", {x->Name()});
-  op->SetInput("Y", {y->Name()});
+  auto *op0 = global_block->AppendOp();
+  op0->SetType("fake_test_op");
+  op0->SetInput("X", {x->Name()});
+  op0->SetInput("Y", {y->Name()});
 
   auto *z = global_block->Var("Z");
   z->SetType(proto::VarType::LOD_TENSOR);
-  op->SetOutput("Out", {z->Name()});
+  op0->SetOutput("Out", {z->Name()});
 
   auto *w = global_block->Var("W");
   w->SetType(proto::VarType::LOD_TENSOR);
@@ -97,21 +97,34 @@ ProgramDesc CreateTestProgram() {
   w->SetDataType(proto::VarType::FP32);
   w->SetShape({100, 10});
 
-  auto *op2 = global_block->AppendOp();
-  op2->SetType("fake_test_op");
-  op2->SetInput("X", {z->Name()});
-  op2->SetInput("Y", {w->Name()});
+  auto *op1 = global_block->AppendOp();
+  op1->SetType("fake_test_op");
+  op1->SetInput("X", {z->Name()});
+  op1->SetInput("Y", {w->Name()});
 
   auto *out = global_block->Var("Out");
   out->SetType(proto::VarType::LOD_TENSOR);
-  op2->SetOutput("Out", {out->Name()});
+  op1->SetOutput("Out", {out->Name()});
   return program;
+}
+
+TEST(CostModelTest, TestProfileMeasure_EmptyProgram) {
+  CostModel cost_model;
+  ProgramDesc empty_program;
+  CostData cost_data =
+      cost_model.ProfileMeasure(empty_program, "cpu", {"time"});
+  EXPECT_EQ(cost_data.GetWholeTimeMs(), 0);
 }
 
 TEST(CostModelTest, TestProfileMeasure_Program) {
   CostModel cost_model;
   ProgramDesc program = CreateTestProgram();
-  CostData cost_data = cost_model.ProfileMeasure(program, "cpu");
+  CostData cost_data = cost_model.ProfileMeasure(program, "cpu", {"time"});
+  double op0_time_ms = cost_data.GetOpTimeMs(0);
+  double op1_time_ms = cost_data.GetOpTimeMs(1);
+  EXPECT_GT(op0_time_ms, 0);
+  EXPECT_GT(op1_time_ms, 0);
+  EXPECT_GT(cost_data.GetWholeTimeMs(), op0_time_ms + op1_time_ms);
 }
 
 }  // namespace framework
