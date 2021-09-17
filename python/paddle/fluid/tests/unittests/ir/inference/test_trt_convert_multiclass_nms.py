@@ -30,7 +30,7 @@ class TrtConvertMultiNMSTest(TrtLayerAutoScanTest):
             return np.random.random([1, 160, 4]).astype(np.float32)
 
         def generate_input2(attrs: List[Dict[str, Any]]):
-            return np.random.random([1, 100, 16]).astype(np.float32)
+            return np.random.random([1, 100, 160]).astype(np.float32)
 
         ## TODO try more params when TRT layer is implemented
         for background_label in [-1]:
