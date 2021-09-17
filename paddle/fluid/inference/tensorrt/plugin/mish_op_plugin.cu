@@ -102,14 +102,15 @@ __global__ void mish_kernel<half>(float threshold, int n, const half* input,
 }
 
 #if IS_TRT_VERSION_LT(8000)
-int MishPlugin::enqueue(int batch_size, const void* const* inputs,
-                        void** outputs, void* workspace,
+int MishPlugin::enqueue(int batchSize, const void* const* inputs,
+                        void** outputs,
 #else
-                        void* const* outputs, void* workspace,
+int MishPlugin::enqueue(int batchSize, const void* const* inputs,
+                        void* const* outputs,
 #endif
-                        cudaStream_t stream) TRT_NOEXCEPT {
+                        void* workspace, cudaStream_t stream) TRT_NOEXCEPT {
   const auto& input_dims = this->getInputDims(0);
-  int num = batch_size;
+  int num = batchSize;
   for (int i = 0; i < input_dims.nbDims; i++) {
     num *= input_dims.d[i];
   }
@@ -139,7 +140,7 @@ int MishPlugin::enqueue(int batch_size, const void* const* inputs,
 }
 
 // Dynamic Plugin below.
-int MishPluginDynamic::initialize() {
+int MishPluginDynamic::initialize() TRT_NOEXCEPT {
   getPluginNamespace();
   return 0;
 }
