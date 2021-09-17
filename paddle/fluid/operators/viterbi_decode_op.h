@@ -208,6 +208,14 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     Tensor gather_idx = int_tensor_buffer.GetBufferBlock({batch_size});
     ArgMinMaxFunctor<DeviceContext, T, int64_t, 3, ArgMinMaxType::kArgMax>
         argmax3;
+
+    std::vector<const Tensor*> shape_refer{&rest_trans_exp, &stop_trans_exp,
+                                           &start_trans_exp};
+    std::vector<Tensor*> outputs{&rest_trans_exp, &stop_trans_exp,
+                                 &start_trans_exp};
+    math::SplitFunctor<DeviceContext, T> functor;
+    functor(dev_ctx, trans_exp, shape_refer, 1, &outputs);
+
     for (int64_t i = 0; i < max_seq_len; ++i) {
       Tensor logit = inputs_t_exp.Slice(i, i + 1);
       logit.Resize({batch_size, n_labels});
@@ -252,13 +260,6 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
         GET_CAST_MASK(left_length, one, mask, float_mask, EqualFunctor, T);
         // trans_exp: [1, n, n]
         // alpha += mask * trans_exp[:, self.stop_idx]
-        std::vector<const Tensor*> shape_refer{&rest_trans_exp, &stop_trans_exp,
-                                               &start_trans_exp};
-        std::vector<Tensor*> outputs{&rest_trans_exp, &stop_trans_exp,
-                                     &start_trans_exp};
-        math::SplitFunctor<DeviceContext, T> functor;
-        functor(dev_ctx, trans_exp, shape_refer, 1, &outputs);
-
         stop_trans_exp.Resize({1, n_labels});
         MUL(stop_trans_exp, float_mask, alpha_temp, T);
         stop_trans_exp.Resize({1, n_labels, 1});
