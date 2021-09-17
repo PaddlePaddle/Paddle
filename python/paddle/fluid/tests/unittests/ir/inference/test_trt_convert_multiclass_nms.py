@@ -27,16 +27,16 @@ class TrtConvertMultiNMSTest(TrtLayerAutoScanTest):
 
     def sample_program_configs(self):
         def generate_input1(attrs: List[Dict[str, Any]]):
-            return np.random.random([1, 160, 4]).astype(np.float32)
+            return np.random.random([1, 16128, 4]).astype(np.float32)
 
         def generate_input2(attrs: List[Dict[str, Any]]):
-            return np.random.random([1, 100, 160]).astype(np.float32)
+            return np.random.random([1, 12, 16128]).astype(np.float32)
 
         ## TODO try more params when TRT layer is implemented
         for background_label in [-1]:
-            for score_threshold in [0.5, 0]:
-                for nms_top_k in [80, 100]:
-                    for keep_top_k in [10, 1]:
+            for score_threshold in [0.05]:
+                for nms_top_k in [1000]:
+                    for keep_top_k in [100, 200, 10]:
                         for nms_threshold in [0.3]:
                             for normalized in [False]:
                                 dics = [{
@@ -78,12 +78,18 @@ class TrtConvertMultiNMSTest(TrtLayerAutoScanTest):
     def sample_predictor_configs(
             self, program_config) -> (paddle_infer.Config, List[int], float):
         def generate_dynamic_shape(attrs):
-            self.dynamic_shape.min_input_shape = {"bboxes_data": [1, 160, 4]}
-            self.dynamic_shape.max_input_shape = {"bboxes_data": [4, 160, 4]}
-            self.dynamic_shape.opt_input_shape = {"bboxes_data": [1, 160, 4]}
-            self.dynamic_shape.min_input_shape = {"scores_data": [1, 100, 160]}
-            self.dynamic_shape.max_input_shape = {"scores_data": [4, 100, 160]}
-            self.dynamic_shape.opt_input_shape = {"scores_data": [1, 100, 160]}
+            self.dynamic_shape.min_input_shape = {"bboxes_data": [1, 16128, 4]}
+            self.dynamic_shape.max_input_shape = {"bboxes_data": [4, 16128, 4]}
+            self.dynamic_shape.opt_input_shape = {"bboxes_data": [1, 16128, 4]}
+            self.dynamic_shape.min_input_shape = {
+                "scores_data": [1, 100, 16128]
+            }
+            self.dynamic_shape.max_input_shape = {
+                "scores_data": [4, 100, 16128]
+            }
+            self.dynamic_shape.opt_input_shape = {
+                "scores_data": [1, 100, 16128]
+            }
 
         def clear_dynamic_shape():
             self.dynamic_shape.min_input_shape = {}
