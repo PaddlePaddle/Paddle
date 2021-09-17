@@ -171,5 +171,26 @@ class TestBeamSearchNPUOp5(TestBeamSearchNPUOp):
         self.parent_idx = np.array([0, 1, 2, 3])
 
 
+class TestBeamSearchNPUOp6(TestBeamSearchNPUOp):
+    def init_data(self):
+        self.beam_size = 4
+        self.is_accumulated = True
+        self.pre_ids = np.array([[1], [2]], dtype='int64')
+        self.ids = np.array([[4, 2, 3, 5], [7, 3, 8, 6]], dtype='int64')
+        self.lod = [[1, 1], [1, 1]]
+        self.out_lod = [[1, 1], [4, 4]]
+        self.offset_lod = [[0, 1, 2], [0, 4, 8]]
+        self.score = np.array(
+            [
+                [0.6, 0.9, 0.5, 0.3],
+                [0.9, 0.5, 0.1, 0.7],
+            ], dtype='float32')
+        self.pre_score = np.array([[0.1], [0.2]], dtype='float32')
+        self.selected_ids = np.array([4, 2, 3, 5, 7, 3, 8, 6])[:, np.newaxis]
+        self.selected_scores = np.array(
+            [0.6, 0.9, 0.5, 0.3, 0.9, 0.5, 0.1, 0.7])[:, np.newaxis]
+        self.parent_idx = np.array([0, 0, 0, 0, 1, 1, 1, 1])
+
+
 if __name__ == '__main__':
     unittest.main()

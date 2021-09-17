@@ -284,6 +284,40 @@ class BeamSearchOpTester6(BeamSearchOpTester):
         self.output_parent_idx = np.array([0, 1, 2, 3])
 
 
+class BeamSearchOpTester7(BeamSearchOpTester):
+    def _create_pre_ids(self):
+        np_data = np.array([[1], [2]], dtype='int64')
+        tensor = create_tensor(self.scope, 'pre_ids', np_data)
+
+    def _create_pre_scores(self):
+        np_data = np.array([[0.1, 0.2]], dtype='float32')
+        tensor = create_tensor(self.scope, 'pre_scores', np_data)
+
+    def _create_ids(self):
+        self.lod = [[0, 1, 2], [0, 1, 2]]
+        np_data = np.array([[4, 2, 3, 5], [7, 3, 8, 6]], dtype='int64')
+        tensor = create_tensor(self.scope, "ids", np_data)
+        tensor.set_lod(self.lod)
+
+    def _create_scores(self):
+        np_data = np.array(
+            [
+                [0.6, 0.9, 0.5, 0.3],
+                [0.9, 0.5, 0.1, 0.7],
+            ], dtype='float32')
+        tensor = create_tensor(self.scope, "scores", np_data)
+        tensor.set_lod(self.lod)
+
+    def set_outputs(self):
+        self.beam_size = 4
+        self.is_accumulated = True
+        self.output_ids = np.array([2, 4, 3, 5, 7, 6, 3, 8])[:, np.newaxis]
+        self.output_scores = np.array(
+            [0.9, 0.6, 0.5, 0.3, 0.9, 0.7, 0.5, 0.1])[:, np.newaxis]
+        self.output_lod = [[0, 1, 2], [0, 4, 8]]
+        self.output_parent_idx = np.array([0, 0, 0, 0, 1, 1, 1, 1])
+
+
 class TestBeamSearchOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):

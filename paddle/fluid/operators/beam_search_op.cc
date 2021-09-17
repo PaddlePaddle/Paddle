@@ -109,7 +109,7 @@ class BeamSearchOp : public framework::OperatorWithKernel {
     size_t batch_size = scores->lod()[level].size() - 1;
     // The current CUDA kernel only support cases with batch_size < 4.
     // Compute on CPU for cases with batch_size > 4.
-    if (batch_size <= 4) {
+    if (batch_size <= 4 || platform::is_npu_place(ctx.GetPlace())) {
       return framework::OpKernelType(
           OperatorWithKernel::IndicateVarDataType(ctx, "pre_ids"),
           ctx.GetPlace());

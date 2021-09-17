@@ -46,7 +46,8 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
 
     int64_t num_seqs = scores->NumElements(level);
     // size of the first beam is 1, others are equal to beam_size
-    int64_t real_beam_size = static_cast<int64_t>(scores->dims()[0] / num_seqs);
+    int64_t input_beam_size =
+        static_cast<int64_t>(scores->dims()[0] / num_seqs);
     // K
     int64_t seq_width = 1;
     for (int i = 1; i < scores->dims().size(); i++) {
@@ -268,9 +269,9 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     runner_select_inf_score.Run(stream);
 
     // resize scores from [num_seqs * beam_size, K] to [num_seqs, beam_size * K]
-    // real_beam_size = 1 or beam_size
+    // input_beam_size = 1 or beam_size
     cal_scores.Resize(
-        framework::make_ddim({num_seqs, real_beam_size * seq_width}));
+        framework::make_ddim({num_seqs, input_beam_size * seq_width}));
 
     Tensor topk_scores(scores->type());
     topk_scores.Resize(
@@ -337,11 +338,11 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         "Select", {equal_end_ids, expand_pre_ids, ids_int32}, {cal_ids}, {});
     runner_select_equal_end_id.Run(stream);
 
-    // resize ids from [num_seqs * real_beam_size, K] to [num_seqs,
-    // real_beam_size * K]
-    // real_beam_size = 1 or beam_size
+    // resize ids from [num_seqs * input_beam_size, K] to [num_seqs,
+    // input_beam_size * K]
+    // input_beam_size = 1 or beam_size
     cal_ids.Resize(
-        framework::make_ddim({num_seqs, real_beam_size * seq_width}));
+        framework::make_ddim({num_seqs, input_beam_size * seq_width}));
 
     // construct batch_ids like [[0, 0, 0], [1, 1, 1], ..., [bs-1, bs-1, bs-1]]
     // construct arange(num_seqs*beam_size).reshape((num_seqs, beam_size)) //
@@ -462,7 +463,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     const auto& runner_power =
         NpuOpRunner("Power", {cast_batch_ids}, {scale_batch_ids},
                     {{"power", static_cast<float>(1.0)},
-                     {"scale", static_cast<float>(beam_size)},
+                     {"scale", static_cast<float>(input_beam_size)},
                      {"shift", static_cast<float>(0.0)}});
     runner_power.Run(stream);
 
@@ -498,7 +499,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     std::vector<int> low_level;
     std::vector<int> num_parent_ids(num_seqs * beam_size,
                                     static_cast<int64_t>(0));
-    size_t low_level_size = high_level[num_seqs];
+    size_t low_level_size = high_level[high_level.size() - 1];
     size_t sum_parent_id = 0;
 
     // calculate number of every parent_id
