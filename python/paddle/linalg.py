@@ -22,6 +22,7 @@ from .tensor.linalg import multi_dot  # noqa: F401
 from .tensor.linalg import matrix_rank
 from .tensor.linalg import svd
 from .tensor.linalg import eigh  # noqa: F401
+from .tensor.linalg import pinv
 
 __all__ = [
     'cholesky',  #noqa
@@ -33,5 +34,6 @@ __all__ = [
     'svd',
     'matrix_power',
     'eigh',
+    'pinv',
     'solve'
 ]
