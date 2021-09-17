@@ -265,7 +265,7 @@ class GradScaler(AmpScaler):
                 scaled = scaler.scale(loss)  # scale the loss 
                 scaled.backward()            # do backward
                 scaler.unscale_(optimizer)    # unscale the parameter
-                scaler.step(optimizer, scaled)
+                scaler.step(optimizer)
                 scaler.update()  
                 optimizer.clear_grad() 
         """
