@@ -197,7 +197,8 @@ class ProgramStats(object):
             if op.desc.has_attr(op_device_attr_name):
                 op_device = op.desc.attr(op_device_attr_name)
 
-            # Setting the force_cpu of seed to true will make the output of seed in CPU MEM, reduce the synchronous copy from GPU to CPU in dropout, and reduce the communication hang
+            # Setting the force_cpu of seed to true will make the output of seed in cpu memory, 
+            # reduce the synchronous copy from GPU to CPU in dropout, and reduce the communication hang
             added_op = self.block._insert_op(
                 index=op.idx,
                 type='seed',
