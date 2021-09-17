@@ -362,9 +362,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     }
 
     if (op_type == "gather") {
-      if (!with_dynamic_shape) return false;
-
-      if (with_dynamic_shape) {
+      auto gather_inputs = desc.Inputs();
+      if (gather_inputs.find("Axis") != gather_inputs.end()) {
+        if (desc.Input("Axis").size() >= 1) {
+          return false;
+        }
+      }
+      if (!with_dynamic_shape) {
+        return false;
+      } else {
         auto* block = desc.Block();
         auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
         const auto x_shape = x_var_desc->GetShape();
@@ -373,13 +379,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           return false;
         }
       }
-
-      auto inputs = desc.InputArgumentNames();
-      for (auto& input : inputs) {
-        if (input == "Axis" && desc.Input("Axis").size() > 0) return false;
-      }
-      // current not support axis from input, use default 0
-      if (desc.GetAttrIfExists<int>("axis")) return false;
     }
 
     if (op_type == "gather_nd") {
@@ -1080,18 +1079,31 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         for (auto x : dim) {
           if (!x) return false;
         }
+      } else {
+        if (BOOST_GET_CONST(bool, desc.GetAttr("reduce_all")) &&
+            !BOOST_GET_CONST(bool, desc.GetAttr("keep_dim")))
+          return false;
+      }
+      if (desc.HasAttr("reduce_all")) {
+        int out_dtype = BOOST_GET_CONST(int32_t, desc.GetAttr("out_dtype"));
+        if (out_dtype != -1) {
+          return false;
+        }
       }
     }
 #if IS_TRT_VERSION_GE(7000)
     if (op_type == "tile") {
       // Paddle-TRT does not support the input tensors.
-      auto inputs = desc.InputArgumentNames();
-      for (auto& input : inputs) {
-        if (input == "repeat_times_tensor" &&
-            desc.Input("repeat_times_tensor").size() > 0)
+      auto tile_inputs = desc.Inputs();
+      if (tile_inputs.find("repeat_times_tensor") != tile_inputs.end()) {
+        if (desc.Input("repeat_times_tensor").size() >= 1) {
           return false;
-        if (input == "RepeatTimes" && desc.Input("RepeatTimes").size() > 0)
+        }
+      }
+      if (tile_inputs.find("RepeatTimes") != tile_inputs.end()) {
+        if (desc.Input("RepeatTimes").size() >= 1) {
           return false;
+        }
       }
       if (with_dynamic_shape) return false;
       if (!with_dynamic_shape && !desc.HasAttr("repeat_times")) return false;

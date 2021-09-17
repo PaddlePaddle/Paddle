@@ -3959,62 +3959,59 @@ class ExponentialMovingAverage(object):
 
 
     Args:
-	decay (float, optional): The exponential decay rate, usually close to 1, such as 
-            0.999, 0.9999, ... . Default 0.999.
-        thres_steps (Variable|None): If not `None`, schedule the decay rate. 
-            Default None.
-        name (str|None): For detailed information, please refer to 
-            :ref:`api_guide_Name`. Usually name is no need to set and None by 
-            default.
+        decay (float, optional): The exponential decay rate, usually close to 1, such as 0.999, 0.9999, ... . Default 0.999.
+        thres_steps (Variable|None, optional): If not `None`, schedule the decay rate. Default None.
+        name (str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
 
 
     Examples:
 
-	.. code-block:: python
+        .. code-block:: python
 
-	    import numpy
-	    import paddle
-	    import paddle.fluid as fluid
+            import numpy
+            import paddle
+            import paddle.static as static
+            from paddle.static import ExponentialMovingAverage
 
-	    data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
-	    hidden = fluid.layers.fc(input=data, size=10)
-	    cost = fluid.layers.mean(hidden)
+            paddle.enable_static()
 
-	    test_program = fluid.default_main_program().clone(for_test=True)
+            data = static.data(name='x', shape=[-1, 5], dtype='float32')
+            hidden = static.nn.fc(x=data, size=10)
+            cost = paddle.mean(hidden)
 
-	    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-	    optimizer.minimize(cost)
+            test_program = static.default_main_program().clone(for_test=True)
+            optimizer = paddle.optimizer.Adam(learning_rate=0.001)
+            optimizer.minimize(cost)
 
-	    global_steps = fluid.layers.autoincreased_step_counter()
-	    ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
-	    ema.update()
+            ema = ExponentialMovingAverage(0.999)
+            ema.update()
 
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
+            place = paddle.CPUPlace()
+            exe = static.Executor(place)
+            exe.run(static.default_startup_program())
 
-	    for pass_id in range(3):
-		for batch_id in range(6):
-		    data = numpy.random.random(size=(10, 5)).astype('float32')
-		    exe.run(program=fluid.default_main_program(),
-			feed={'x': data}, 
-			fetch_list=[cost.name])
+            for pass_id in range(3):
+                for batch_id in range(6):
+                    data = numpy.random.random(size=(10, 5)).astype('float32')
+                    exe.run(program=static.default_main_program(),
+                    feed={'x': data}, 
+                    fetch_list=[cost.name])
 
-		# usage 1
-		with ema.apply(exe):
-		    data = numpy.random.random(size=(10, 5)).astype('float32')
-		    exe.run(program=test_program,
-			    feed={'x': data}, 
-			    fetch_list=[hidden.name])
-			    
+                # usage 1
+                with ema.apply(exe):
+                    data = numpy.random.random(size=(10, 5)).astype('float32')
+                    exe.run(program=test_program,
+                        feed={'x': data}, 
+                        fetch_list=[hidden.name])
 
-		 # usage 2
-		with ema.apply(exe, need_restore=False):
-		    data = numpy.random.random(size=(10, 5)).astype('float32')
-		    exe.run(program=test_program,
-			    feed={'x': data}, 
-			    fetch_list=[hidden.name])
-		ema.restore(exe)
+                # usage 2
+                with ema.apply(exe, need_restore=False):
+                    data = numpy.random.random(size=(10, 5)).astype('float32')
+                    exe.run(program=test_program,
+                        feed={'x': data}, 
+                        fetch_list=[hidden.name])
+                ema.restore(exe)
+
     """
 
     def __init__(self, decay=0.999, thres_steps=None, name=None):
@@ -4381,7 +4378,7 @@ class PipelineOptimizer(object):
                         persistable=source_var.persistable)
                 else:
                     dest_var = block._clone_variable(source_var, False)
-                dest_var.stop_gradient = source_var.stop_gradient
+                self._clone_var_attr(dest_var, source_var)
             # When use with sharding, allreduce_sum and allreduce_max
             # used for global gradient clip and amp will be added by sharding.
             op_idx += 1
@@ -4547,8 +4544,13 @@ class PipelineOptimizer(object):
             persistable=ref_var.persistable,
             is_data=ref_var.is_data,
             need_check_feed=ref_var.desc.need_check_feed())
-        new_var.stop_gradient = ref_var.stop_gradient
+        self._clone_var_attr(new_var, ref_var)
         return new_var
+
+    def _clone_var_attr(self, dest, src):
+        dest.stop_gradient = src.stop_gradient
+        if hasattr(src, 'is_distributed'):
+            dest.is_distributed = src.is_distributed
 
     def _strip_grad_suffix(self, name):
         """
@@ -5209,6 +5211,8 @@ class PipelineOptimizer(object):
                 persistable=True,
                 stop_gradient=False)
             real_param = main_block.var(param)
+            if hasattr(real_param, 'is_distributed'):
+                merged_grad_var.is_distributed = real_param.is_distributed
             tmp_size = self._get_var_size(real_grad)
             # two strategies for splitting the grad
             # 1. the current segment's size reach the user defined grad_size_in_MB
