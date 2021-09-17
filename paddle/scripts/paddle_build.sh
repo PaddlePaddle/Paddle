@@ -1306,6 +1306,7 @@ set +x
         ut_actual_total_startTime_s=`date +%s`
 
         single_ut_startTime_s=`date +%s`
+        
         card_test "$single_card_tests_high_parallel" 1 64               # run cases 24 job each time with single GPU
         echo "single_card_tests_high_parallel finished!!!"
         card_test "$single_card_tests_secondary_high_parallel" 1 48     # run cases 15 job each time with single GPU
