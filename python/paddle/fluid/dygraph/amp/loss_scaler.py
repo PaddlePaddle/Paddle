@@ -43,13 +43,11 @@ class AmpScaler(object):
 
     AmpScaler is used for Auto-Mixed-Precision training/inferring in imperative
     mode. It controls the scaling of loss, helps avoiding numerical overflow.
-    The object of this class has nineteen methods `scale()`, `unscale_()`, `minimize()`, `step()`, `update()` and `get`/`set` api of parameters.
+    The object of this class has seventeen methods `scale()`, `unscale_()`, `minimize()` and `get`/`set` api of parameters.
 
     `scale()` is used to multiply the loss by a scale ratio.
     `unscale_()` is used to unscale the gradients of parameters, multiplies the gradients of parameters by 1/(scale ratio)
-    `minimize()` is similar as `optimizer.minimize()`, performs parameters updating, and it will update the loss_scaling, it equal to `step()` + `update()`.
-    `step()` is similar as `optimizer.step()`, which performs parameters updating.
-    `update` is used to update the loss_scaling.
+    `minimize()` is similar as `optimizer.minimize()`, performs parameters updating, and it will update the loss_scaling.
 
     Commonly, it is used together with `amp_guard` to achieve Auto-Mixed-Precision in 
     imperative mode.
