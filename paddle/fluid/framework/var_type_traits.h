@@ -179,7 +179,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #if defined(PADDLE_WITH_XPU_BKCL)
     BKCLUniqueId, platform::BKCLCommunicator,
 #endif
-    int, float, STRING_MAP>;
+    int, float, WSTRING_MAP>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");
@@ -213,7 +213,7 @@ REG_PROTO_VAR_TYPE_TRAIT(FeedList, proto::VarType::FEED_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(FetchList, proto::VarType::FETCH_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(int, proto::VarType::INT32);
 REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
-REG_PROTO_VAR_TYPE_TRAIT(STRING_MAP, proto::VarType::STRING_MAP);
+REG_PROTO_VAR_TYPE_TRAIT(WSTRING_MAP, proto::VarType::WSTRING_MAP);
 REG_PROTO_VAR_TYPE_TRAIT(STRINGS, proto::VarType::STRINGS);
 
 /** End of variable type registration */

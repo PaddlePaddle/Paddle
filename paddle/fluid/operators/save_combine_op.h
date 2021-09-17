@@ -25,6 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -69,10 +70,10 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
                                             inp_var_names[i]));
       PADDLE_ENFORCE_EQ(
           inp_vars[i]->IsType<framework::LoDTensor>() ||
-              inp_vars[i]->IsType<framework::STRING_MAP>(),
+              inp_vars[i]->IsType<framework::WSTRING_MAP>(),
           true, platform::errors::InvalidArgument(
                     "SaveCombine operator only supports saving "
-                    "LoDTensor or STRING_MAP variable, %s has wrong type.",
+                    "LoDTensor or WSTRING_MAP variable, %s has wrong type.",
                     inp_var_names[i]));
 
       if (inp_vars[i]->IsType<framework::LoDTensor>()) {
@@ -101,15 +102,15 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
           framework::SerializeToStream(ss, tensor, dev_ctx);
         }
       } else {
-        auto &tensor = inp_vars[i]->Get<framework::STRING_MAP>();
-        framework::SerializeStringMap data;
-        VLOG(0) << "vocab tensor size" << tensor.size();
+        auto &tensor = inp_vars[i]->Get<framework::WSTRING_MAP>();
+        VLOG(0) << "before WstringMapToStream, size " << tensor.size();
+        std::unordered_map<std::string, int32_t> data;
         for (auto it = tensor.begin(); it != tensor.end(); ++it) {
           std::string t = framework::ConvertWstrToStr(it->first);
-          data.insert({t, it->second});
+          data.emplace(t, it->second);
         }
-        VLOG(0) << "SerializeStringMap size " << data.size();
-        data.MapTensorToStream(ss);
+        framework::WstringMapToStream(ss, data);
+        VLOG(0) << "after WstringMapToStream, size " << data.size();
       }
     }
     if (save_to_memory) {

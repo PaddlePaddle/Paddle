@@ -192,7 +192,7 @@ void BindVarDsec(pybind11::module *m) {
       .def("clear_is_parameter", &pd::VarDesc::ClearIsParameter)
       .def("has_is_parameter", &pd::VarDesc::HasIsParameter)
       .def("stop_gradient", &pd::VarDesc::StopGradient)
-      .def("set_stop_gradient", &pd::VarDesc::SetStopGradient)
+      .def("set:_stop_gradient", &pd::VarDesc::SetStopGradient)
       .def("clear_stop_gradient", &pd::VarDesc::ClearStopGradient)
       .def("has_stop_gradient", &pd::VarDesc::HasStopGradient)
       .def("need_check_feed", &pd::VarDesc::NeedCheckFeed)
@@ -229,7 +229,7 @@ void BindVarDsec(pybind11::module *m) {
       .value("READER", pd::proto::VarType::READER)
       .value("RAW", pd::proto::VarType::RAW)
       .value("STRINGS", pd::proto::VarType::STRINGS)
-      .value("STRING_MAP", pd::proto::VarType::STRING_MAP);
+      .value("WSTRING_MAP", pd::proto::VarType::WSTRING_MAP);
 }
 
 void BindOpDesc(pybind11::module *m) {

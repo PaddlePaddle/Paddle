@@ -92,7 +92,7 @@ void LoadPersistables(framework::Executor* executor, framework::Scope* scope,
 
       if ((var_type !=
            framework::proto::VarType::Type::VarType_Type_SELECTED_ROWS) &&
-          (var_type != framework::proto::VarType::STRING_MAP)) {
+          (var_type != framework::proto::VarType::WSTRING_MAP)) {
         new_var->SetLoDLevel(var->GetLoDLevel());
       }
 

@@ -469,6 +469,19 @@ static void AssertStaticGraphAndDygraphGradMakerNoDiff() {
                         string::join_strings(ops, ',')));
 }
 
+#ifdef PADDLE_WITH_NCCL
+static int GetNCCLVersion() {
+#if NCCL_VERSION_CODE >= 2304
+  int ver;
+  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclGetVersion(&ver));
+  return ver;
+#else
+  PADDLE_THROW(platform::errors::External(
+      "Cannot get NCCL version successfully when nccl version < 2.3.4"));
+#endif
+}
+#endif
+
 #ifdef PADDLE_WITH_AVX
 PYBIND11_MODULE(core_avx, m) {
 #else
@@ -499,6 +512,14 @@ PYBIND11_MODULE(core_noavx, m) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("cudnn_version", &platform::CudnnVersion);
 #endif
+
+#ifdef PADDLE_WITH_NCCL
+  m.def("nccl_version", &GetNCCLVersion);
+#endif
+
+  m.def("wait_device", [](const platform::Place &place) {
+    platform::DeviceContextPool::Instance().Get(place)->Wait();
+  });
 
   m.def("from_dlpack", [](py::capsule *dltensor) {
     DLManagedTensor *dmt = reinterpret_cast<DLManagedTensor *>(
@@ -1195,14 +1216,14 @@ All parameter, weight, gradient are variables in Paddle.
              *self.GetMutable<STRINGS>() = str_list;
            })
       .def("set_string_map",
-           [](Variable &self, STRING_MAP map) {
-             *self.GetMutable<STRING_MAP>() = map;
+           [](Variable &self, WSTRING_MAP map) {
+             *self.GetMutable<WSTRING_MAP>() = map;
            })
       .def("get_string_tensor",
            [](Variable &self) { return self.GetMutable<STRINGS>(); },
            py::return_value_policy::reference)
       .def("get_map_tensor",
-           [](Variable &self) { return self.GetMutable<STRING_MAP>(); },
+           [](Variable &self) { return self.GetMutable<WSTRING_MAP>(); },
            py::return_value_policy::reference)
       .def("get_lod_rank_table",
            [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
@@ -3030,8 +3051,8 @@ All parameter, weight, gradient are variables in Paddle.
               self.memory_optimize_ = (py_obj == Py_True);
             } else {
               PADDLE_THROW(platform::errors::InvalidArgument(
-                  "BuildStrategy.memory_optimize must be set to None, False or "
-                  "True"));
+                  "BuildStrategy.memory_optimize must be set to None, False "
+                  "or True"));
             }
           },
           R"DOC((bool, optional): memory opitimize aims to save total memory

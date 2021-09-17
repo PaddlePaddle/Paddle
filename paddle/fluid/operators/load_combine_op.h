@@ -83,16 +83,23 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
           platform::errors::Unavailable(
               "An error occurred while loading model parameters. "
               "Please check whether the model file is complete or damaged."));
-      if (out_vars[i]->IsType<framework::STRING_MAP>()) {
-        auto *tensor = out_vars[i]->GetMutable<framework::STRING_MAP>();
-        framework::SerializeStringMap data;
-        data.MapTensorFromStream(*buffer);
-        for (auto it = data.begin(); it != data.end(); ++it) {
-          std::wstring token =
-              framework::ConvertStrToWstr(framework::NormalizeNfd(it->first));
-          tensor->insert({token, it->second});
+      if (out_vars[i]->IsType<framework::WSTRING_MAP>()) {
+        auto *tensor = out_vars[i]->GetMutable<framework::WSTRING_MAP>();
+        tensor->clear();
+        std::unordered_map<std::string, int32_t> *data;
+        framework::WstringMapFromStream(*buffer, data);
+        VLOG(0) << "after WstringMapFromStream, size " << data->size();
+        for (auto it = data->begin(); it != data->end(); ++it) {
+          std::string tmp = framework::NormalizeNfd(it->first);
+          if (tmp.empty()) {
+            VLOG(0) << "The string %s was converted to unicode failly! "
+                    << "Then dropped to load it.";
+            continue;
+          }
+          std::wstring token = framework::ConvertStrToWstr(tmp);
+          tensor->emplace(token, it->second);
         }
-
+        VLOG(0) << "after ConvertStrToWstr, size " << data->size();
       } else {
         auto *tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
 

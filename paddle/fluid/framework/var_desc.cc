@@ -211,7 +211,7 @@ const proto::VarType::TensorDesc &VarDesc::tensor_desc() const {
       return desc_.type().tensor_array().tensor();
     case proto::VarType::STRINGS:
       return desc_.type().strings();
-    case proto::VarType::STRING_MAP:
+    case proto::VarType::WSTRING_MAP:
       return desc_.type().string_map();
     default:
       PADDLE_THROW(platform::errors::Unavailable(
@@ -255,7 +255,7 @@ proto::VarType::TensorDesc *VarDesc::mutable_tensor_desc() {
       return desc_.mutable_type()->mutable_tensor_array()->mutable_tensor();
     case proto::VarType::STRINGS:
       return desc_.mutable_type()->mutable_strings();
-    case proto::VarType::STRING_MAP:
+    case proto::VarType::WSTRING_MAP:
       return desc_.mutable_type()->mutable_string_map();
     default:
       PADDLE_THROW(

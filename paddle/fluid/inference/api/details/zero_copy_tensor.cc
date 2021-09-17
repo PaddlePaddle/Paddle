@@ -23,29 +23,6 @@
 
 namespace paddle_infer {
 
-// class VariableVisitor : public boost::static_visitor<void> {
-//  public:
-//   explicit VariableVisitor(paddle::framework::Variable *out_var)
-//       : out_var_(out_var) {}
-
-//   void operator()(const paddle::framework::LoDTensor &in_tensor,
-//     const std::vector<int> &shape) const {
-//       paddle::framework::LoDTensor *out_tensor =
-//         out_var_->GetMutable<paddle::framework::LoDTensor>();
-//       out_tensor->Resize(paddle::framework::make_ddim(shape));
-//   }
-
-//   void operator()(const paddle::framework::STRINGS &in_str) const {
-//     paddle::framework::STRINGS *out_str =
-//     out_var_->GetMutable<framework::STRINGS>();
-//     out_str->resize(in_str.size());
-//     *out_str = in_str;
-//   }
-
-//  private:
-//   paddle::framework::Variable *out_var_;
-// };
-
 using float16 = paddle::platform::float16;
 
 void Tensor::Reshape(const std::vector<int> &shape) {

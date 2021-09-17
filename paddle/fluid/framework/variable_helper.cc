@@ -44,8 +44,8 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
     var->GetMutable<LoDTensorArray>();
   } else if (var_type == proto::VarType::STRINGS) {
     var->GetMutable<STRINGS>();
-  } else if (var_type == proto::VarType::STRING_MAP) {
-    var->GetMutable<STRING_MAP>();
+  } else if (var_type == proto::VarType::WSTRING_MAP) {
+    var->GetMutable<WSTRING_MAP>();
   } else if (var_type == proto::VarType::PLACE_LIST) {
     var->GetMutable<platform::PlaceList>();
   } else if (var_type == proto::VarType::READER) {
@@ -56,7 +56,7 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Variable type %d is not in "
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "STRINGS, STRING_MAP, LOD_RANK_TABLE, PLACE_LIST, READER, RAW].",
+        "STRINGS, WSTRING_MAP, LOD_RANK_TABLE, PLACE_LIST, READER, RAW].",
         var_type));
   }
 }

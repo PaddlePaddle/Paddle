@@ -126,7 +126,6 @@ void DeleteUnusedTensors(const Scope &scope,
         garbages.emplace_back(t.MoveMemoryHolder());
       }
     } else if (var->IsType<STRINGS>()) {
-      var->GetMutable<STRINGS>();
     } else {
       PADDLE_THROW(platform::errors::Unimplemented(
           "Type %s of variable %s is not supported eager deletion.",

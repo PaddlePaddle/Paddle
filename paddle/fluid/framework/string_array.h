@@ -1,4 +1,4 @@
-/* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+
+#include <codecvt>
+#include <iostream>
+#include <locale>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -22,7 +26,14 @@ namespace framework {
 
 using STRING = std::string;
 using STRINGS = std::vector<STRING>;
-using STRING_MAP = std::unordered_map<std::wstring, std::int32_t>;
+using WSTRING_MAP = std::unordered_map<std::wstring, std::int32_t>;
 
+std::wstring ConvertStrToWstr(const std::string& src);
+std::string ConvertWstrToStr(const std::wstring& src);
+std::string NormalizeNfd(const std::string& s);
+void WstringMapToStream(std::ostream& os,
+                        const std::unordered_map<std::string, int32_t>& data);
+void WstringMapFromStream(std::istream& is,
+                          std::unordered_map<std::string, int32_t>* data);
 }  // namespace framework
 }  // namespace paddle

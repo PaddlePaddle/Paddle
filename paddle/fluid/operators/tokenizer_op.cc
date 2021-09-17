@@ -12,7 +12,6 @@ limitations under the License. */
 #include <utf8proc.h>
 
 #include <algorithm>
-#include <chrono>
 #include <codecvt>
 #include <fstream>
 #include <iostream>
@@ -24,7 +23,7 @@ limitations under the License. */
 
 #include <boost/algorithm/string.hpp>
 
-#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/operators/tokenizer_op.h"
 
 namespace paddle {
@@ -78,19 +77,6 @@ bool IsPunctuation(const wchar_t& ch) {
     return true;
   return false;
 }
-
-// string NormalizeNfd(const string& s) {
-//   string ret;
-//   char* result = reinterpret_cast<char*>(
-//       utf8proc_NFD(reinterpret_cast<const unsigned char*>(s.c_str())));
-//   if (result) {
-//     ret = string(result);
-//     free(result);
-//     result = nullptr;
-//   }
-
-//   return ret;
-// }
 
 bool IsStripChar(const wchar_t& ch) {
   return kStripChars.find(ch) != wstring::npos;
@@ -280,7 +266,8 @@ vector<wstring> BasicTokenizer::Tokenize(const string& text) const {
 }
 
 WordPieceTokenizer::WordPieceTokenizer(
-    const framework::STRING_MAP vocab, const wstring& unk_token /* = L"[UNK]"*/,
+    const framework::WSTRING_MAP vocab,
+    const wstring& unk_token /* = L"[UNK]"*/,
     const size_t max_input_chars_per_word /* = 100 */)
     : vocab_(vocab),
       unk_token_(unk_token),
@@ -349,7 +336,7 @@ vector<wstring> WordPieceTokenizer::Tokenize(const wstring& text) const {
 //   return ret;
 // }
 
-BertTokenizer::BertTokenizer(const framework::STRING_MAP vocab,
+BertTokenizer::BertTokenizer(const framework::WSTRING_MAP vocab,
                              bool do_lower_case /* = false */,
                              const wstring& unk_token /* = L"[UNK]" */,
                              const wstring& pad_token /* = L"[PAD]" */,
@@ -382,7 +369,9 @@ BertTokenizer::BertTokenizer(const framework::STRING_MAP vocab,
                               mask_token_id_, sep_token_id_});
 
   // inv_vocab_: the map token_id to token_str
-  for (auto& v : vocab_) inv_vocab_[v.second] = v.first;
+  for (auto& v : vocab_) {
+    inv_vocab_[v.second] = v.first;
+  }
 }
 
 vector<int64_t> BertTokenizer::ConvertTokensToIds(

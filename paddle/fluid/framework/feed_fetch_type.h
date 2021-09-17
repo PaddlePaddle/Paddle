@@ -26,7 +26,7 @@ namespace framework {
 using FeedType = boost::variant<LoDTensor, STRINGS>;
 using FeedList = std::vector<FeedType>;
 
-using FetchType = boost::variant<LoDTensor, LoDTensorArray, STRING_MAP>;
+using FetchType = boost::variant<LoDTensor, LoDTensorArray, WSTRING_MAP>;
 using FetchList = std::vector<FetchType>;
 
 using FetchUnmergedList = std::vector<std::vector<FetchType>>;
@@ -47,7 +47,7 @@ inline bool data_is_lod_tensor_array(const FetchType &data) {
 }
 
 inline bool data_is_string_map(const FetchType &data) {
-  if (data.type() == typeid(STRING_MAP)) {
+  if (data.type() == typeid(WSTRING_MAP)) {
     return true;
   }
   return false;

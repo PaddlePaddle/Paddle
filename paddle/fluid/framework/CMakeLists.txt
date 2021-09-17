@@ -49,6 +49,8 @@ proto_library(data_feed_proto SRCS data_feed.proto)
 proto_library(trainer_desc_proto SRCS trainer_desc.proto DEPS framework_proto
   data_feed_proto)
 
+cc_library(string_array SRCS string_array.cc DEPS utf8proc)
+
 cc_library(ddim SRCS ddim.cc DEPS eigen3 boost enforce)
 cc_test(ddim_test SRCS ddim_test.cc DEPS ddim)
 if(WITH_GPU)

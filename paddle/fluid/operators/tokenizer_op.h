@@ -19,6 +19,7 @@ limitations under the License. */
 #include <vector>
 
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/string_array.h"
 
 namespace paddle {
 namespace operators {
@@ -55,20 +56,20 @@ class BasicTokenizer {
 
 class WordPieceTokenizer {
  public:
-  explicit WordPieceTokenizer(const framework::STRING_MAP vocab,
+  explicit WordPieceTokenizer(const framework::WSTRING_MAP vocab,
                               const wstring& unk_token = L"[UNK]",
                               const size_t max_input_chars_per_word = 100);
   vector<wstring> Tokenize(const wstring& text) const;
 
  private:
-  framework::STRING_MAP vocab_;
+  framework::WSTRING_MAP vocab_;
   wstring unk_token_{L"[UNK]"};
   size_t max_input_chars_per_word_;
 };
 
 class BertTokenizer {
  public:
-  explicit BertTokenizer(const framework::STRING_MAP vocab,
+  explicit BertTokenizer(const framework::WSTRING_MAP vocab,
                          bool do_lower_case = false,
                          const wstring& unk_token = L"[UNK]",
                          const wstring& pad_token = L"[PAD]",
@@ -126,7 +127,7 @@ class BertTokenizer {
   bool do_lower_case_;
   wstring unk_token_, pad_token_, cls_token_, mask_token_, sep_token_;
   string padding_site_;
-  framework::STRING_MAP vocab_;
+  framework::WSTRING_MAP vocab_;
   BasicTokenizer basic_tokenizer_;
   WordPieceTokenizer word_piece_tokenizer_;
   int64_t unk_token_id_, cls_token_id_, mask_token_id_, pad_token_id_,
@@ -143,7 +144,7 @@ class TokenizerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* text = ctx.Input<framework::STRINGS>("Text");
-    auto* vocab = ctx.Input<framework::STRING_MAP>("Vocab");
+    auto* vocab = ctx.Input<framework::WSTRING_MAP>("Vocab");
 
     auto* input_ids = ctx.Output<framework::Tensor>("InputIds");
     auto* seg_ids = ctx.Output<framework::Tensor>("SegmentIds");
