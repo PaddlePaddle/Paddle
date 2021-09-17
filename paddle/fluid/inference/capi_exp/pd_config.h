@@ -324,6 +324,69 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigSetTrtDynamicShapeInfo(
     size_t* shapes_num, int32_t** min_shape, int32_t** max_shape,
     int32_t** optim_shape, PD_Bool disable_trt_plugin_fp16);
 ///
+/// \brief A boolean state telling whether the trt dynamic_shape is used.
+///
+/// \param[in] pd_onfig config
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigTensorRtDynamicShapeEnabled(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief Enable tuned tensorrt dynamic shape.
+///
+/// \param[in] pd_onfig config
+/// \param[in] shape_range_info_path the path to shape_info file got in
+/// CollectShapeInfo mode.
+/// \param[in] allow_build_at_runtime allow build trt engine at runtime.
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableTunedTensorRtDynamicShape(
+    __pd_keep PD_Config* pd_config, const char* shape_range_info_path,
+    PD_Bool allow_build_at_runtime);
+
+///
+/// \brief A boolean state telling whether to use tuned tensorrt dynamic
+/// shape.
+///
+/// \param[in] pd_onfig config
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigTunedTensorRtDynamicShape(
+    __pd_keep PD_Config* pd_config);
+
+///
+/// \brief A boolean state telling whether to allow building trt engine at
+/// runtime.
+///
+/// \param[in] pd_onfig config
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigTrtAllowBuildAtRuntime(
+    __pd_keep PD_Config* pd_config);
+
+///
+/// \brief Collect shape info of all tensors in compute graph.
+///
+/// \param[in] pd_onfig config
+/// \param[in] shape_range_info_path the path to save shape info.
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigCollectShapeRangeInfo(
+    __pd_keep PD_Config* pd_config, const char* shape_range_info_path);
+
+///
+/// \brief the shape info path in CollectShapeInfo mode.
+/// Attention, Please release the string manually.
+///
+/// \param[in] pd_onfig config
+///
+PADDLE_CAPI_EXPORT extern const char* PD_ConfigShapeRangeInfoPath(
+    __pd_keep PD_Config* pd_config);
+
+///
+/// \brief A boolean state telling whether to collect shape info.
+///
+/// \param[in] pd_onfig config
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigShapeRangeInfoCollected(
+    __pd_keep PD_Config* pd_config);
+
+///
 /// \brief Prevent ops running in Paddle-TRT
 /// NOTE: just experimental, not an official stable API, easy to be broken.
 ///
@@ -542,7 +605,7 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigModelFromMemory(
 /// \param[in] pd_onfig config
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMemoryOptim(
-    __pd_keep PD_Config* pd_config);
+    __pd_keep PD_Config* pd_config, PD_Bool x);
 ///
 /// \brief A boolean state telling whether the memory optimization is
 /// activated.

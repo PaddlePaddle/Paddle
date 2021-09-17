@@ -24,7 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/nvtx.h"
 #endif
 
-DEFINE_bool(enable_rpc_profiler, false, "Enable rpc profiler or not.");
+PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler, false,
+                            "Enable rpc profiler or not.");
 
 namespace paddle {
 namespace platform {
