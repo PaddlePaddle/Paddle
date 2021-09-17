@@ -36,7 +36,7 @@ class TrtConvertMultiNMSTest(TrtLayerAutoScanTest):
         for background_label in [-1]:
             for score_threshold in [0.5, 0]:
                 for nms_top_k in [80, 100]:
-                    for keep_top_k in [10, 5]:
+                    for keep_top_k in [10, 1]:
                         for nms_threshold in [0.3]:
                             for normalized in [False]:
                                 dics = [{
