@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 from functools import partial, reduce
+import paddle
 from paddle.utils import deprecated
 from . import nn
 from .layer_function_generator import templatedoc
