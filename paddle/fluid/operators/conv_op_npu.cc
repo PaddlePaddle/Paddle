@@ -254,6 +254,13 @@ class NPUConvOpKernel : public framework::OpKernel<T> {
 
     const bool channel_last = data_format == "NHWC";
 
+    if (input->type() == framework::proto::VarType::FP32) {
+      LOG(WARNING) << "Input Tensor | input: ";
+      PrintTensor<float>(*input, ctx);
+      LOG(WARNING) << "Input Tensor | filter: ";
+      PrintTensor<float>(*filter, ctx);
+    }
+
     // update padding and dilation
     auto in_dims = input->dims();
     auto filter_dims = filter->dims();
