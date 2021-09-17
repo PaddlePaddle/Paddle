@@ -26,9 +26,8 @@ TEST(WorkQueue, TestSingleThreadedWorkQueue) {
   std::atomic<unsigned> counter{0};
   constexpr unsigned kLoopNum = 1000000;
   // CreateSingleThreadedWorkQueue
-  WorkQueueOptions options;
-  options.num_threads = 1;
-  options.track_task = true;
+  WorkQueueOptions options(/*num_threads*/ 1, /*allow_spinning*/ true,
+                           /*track_task*/ true);
   auto work_queue = CreateSingleThreadedWorkQueue(options);
   // NumThreads
   EXPECT_EQ(work_queue->NumThreads(), 1u);
@@ -58,9 +57,8 @@ TEST(WorkQueue, TestMultiThreadedWorkQueue) {
   constexpr unsigned kExternalLoopNum = 100;
   constexpr unsigned kLoopNum = 1000000;
   // CreateMultiThreadedWorkQueue
-  WorkQueueOptions options;
-  options.num_threads = 10;
-  options.track_task = true;
+  WorkQueueOptions options(/*num_threads*/ 10, /*allow_spinning*/ true,
+                           /*track_task*/ true);
   auto work_queue = CreateMultiThreadedWorkQueue(options);
   // NumThreads
   EXPECT_EQ(work_queue->NumThreads(), 10u);
@@ -91,12 +89,10 @@ TEST(WorkQueue, TestWorkQueueGroup) {
   constexpr unsigned kExternalLoopNum = 100;
   constexpr unsigned kLoopNum = 1000000;
   // CreateMultiThreadedWorkQueue
-  WorkQueueOptions sq_options;
-  sq_options.num_threads = 1;
-  sq_options.track_task = true;
-  WorkQueueOptions mq_options;
-  mq_options.num_threads = 10;
-  mq_options.track_task = true;
+  WorkQueueOptions sq_options(/*num_threads*/ 1, /*allow_spinning*/ true,
+                              /*track_task*/ true);
+  WorkQueueOptions mq_options(/*num_threads*/ 10, /*allow_spinning*/ true,
+                              /*track_task*/ true);
   auto queue_group = CreateWorkQueueGroup({sq_options, mq_options});
   // NumThreads
   EXPECT_EQ(queue_group->QueueNumThreads(0), 1u);
