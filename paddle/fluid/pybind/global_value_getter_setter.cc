@@ -227,7 +227,7 @@ struct RegisterGetterSetterVisitor : public boost::static_visitor<void> {
     auto &value = *static_cast<T *>(value_ptr_);
     auto *instance = GlobalVarGetterSetterRegistry::MutableInstance();
     bool is_public = is_writable_;  // currently, all writable vars are public
-    if (is_public) {
+    if (is_writable_) {
       instance->Register(name_, is_public,
                          GlobalVarGetterSetterRegistry::CreateGetter(value),
                          GlobalVarGetterSetterRegistry::CreateSetter(&value));
