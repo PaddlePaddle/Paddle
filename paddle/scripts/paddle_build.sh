@@ -1079,7 +1079,7 @@ function card_test() {
     echo "$2 bengingggggg!!!!!"
     case_count $1 $2
     ut_startTime_s=`date +%s` 
-
+    CTEST_PARALLEL_LEVEL=1
     testcases=$1
     cardnumber=$2
     parallel_level_base=${CTEST_PARALLEL_LEVEL:-1}
@@ -1306,35 +1306,35 @@ set +x
         ut_actual_total_startTime_s=`date +%s`
 
         single_ut_startTime_s=`date +%s`
-        card_test "$single_card_tests_high_parallel" 1 24               # run cases 24 job each time with single GPU
+        card_test "$single_card_tests_high_parallel" 1 64               # run cases 24 job each time with single GPU
         echo "single_card_tests_high_parallel finished!!!"
-        card_test "$single_card_tests_secondary_high_parallel" 1 15     # run cases 15 job each time with single GPU
+        card_test "$single_card_tests_secondary_high_parallel" 1 48     # run cases 15 job each time with single GPU
         echo "single_card_tests_secondary_high_parallel finished!!!"
-        card_test "$single_card_tests_third_high_parallel" 1 12         # run cases 12 job each time with single GPU
+        card_test "$single_card_tests_third_high_parallel" 1 30         # run cases 12 job each time with single GPU
         echo "single_card_tests_third_high_parallel finished!!!"
-        card_test "$single_card_tests_medium_parallel" 1 7              # run cases 7 job each time with single GPU
+        card_test "$single_card_tests_medium_parallel" 1 15              # run cases 7 job each time with single GPU
         echo "single_card_tests_medium_parallel finished!!!"
-        card_test "$single_card_tests_non_parallel" 1 2                 # run cases 2 job each time with single GPU
+        card_test "$single_card_tests_non_parallel" 1 6                 # run cases 2 job each time with single GPU
         echo "single_card_tests_non_parallel finished!!!"
         single_ut_endTime_s=`date +%s`
         echo "single_card_tests finished!!!"
         
         multi_ut_startTime_s=`date +%s`
         echo "multiple_card_tests begined!!!!!"
-        card_test "$multiple_card_tests_medium_parallel" 2 4            # run cases 2 job each time with two GPUs
+        #card_test "$multiple_card_tests_medium_parallel" 2 4            # run cases 2 job each time with two GPUs
         echo "multiple_card_tests_medium_parallel finished!!!"
-        card_test "$multiple_card_tests_non_parallel" 2 2               # run cases 1 job each time with two GPUs
+        #card_test "$multiple_card_tests_non_parallel" 2 2               # run cases 1 job each time with two GPUs
         echo "multiple_card_tests_non_parallel finished!!!"
         multi_ut_endTime_s=`date +%s`
         echo "multiple_card_tests finished!!!"
         
         exclu_ut_startTime_s=`date +%s`
         echo "exclu_card_tests begined!!!!!"
-        card_test "$exclusive_tests_high_parallel" -1 5                 # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        #card_test "$exclusive_tests_high_parallel" -1 5                 # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         echo "exclusive_tests_high_parallel finished!!!"
-        card_test "$exclusive_tests_medium_parallel" -1 3                  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        #card_test "$exclusive_tests_medium_parallel" -1 3                  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         echo "exclusive_tests_medium_parallel finished!!!"
-        card_test "$exclusive_tests_non_parallel" -1 2                  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
+        #card_test "$exclusive_tests_non_parallel" -1 2                  # run cases exclusively, in this cases would be run with 2/4/8 GPUs
         echo "exclusive_tests_non_parallel finished!!!"
         exclu_ut_endTime_s=`date +%s`
         echo "exclusive_tests finished!!!"
