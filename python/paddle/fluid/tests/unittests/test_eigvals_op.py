@@ -32,26 +32,6 @@ def np_eigvals(a):
     return res
 
 
-''' Keep it for testing gradient kernel in the future.
-def np_eigvals_grad(a, out_grad):
-    l, v = np.linalg.eig(a)
-    print("l:")
-    print(l)
-    print("v:")
-    print(v)
-    vh = v.conj().T
-    print("vh:")
-    print(vh)
-    print("out_grad:")
-    print(out_grad)
-    a_grad = np.linalg.solve(vh, np.diagflat(out_grad, 0) * vh)
-    print("a_grad")
-    print(a_grad)
-
-    return a_grad.astype(a.dtype)
-'''
-
-
 class TestEigvalsOp(OpTest):
     def setUp(self):
         np.random.seed(0)
@@ -85,26 +65,6 @@ class TestEigvalsOp(OpTest):
         self.__class__.no_need_check_grad = True
         self.check_output_with_place_customized(
             checker=self.verify_output, place=core.CPUPlace())
-
-    ''' The gradient kernel of this operator does not yet develop.
-    def test_check_grad_normal(self):
-        self.grad_dtype = self.dtype
-        if self.dtype == np.float32:
-            self.grad_dtype = np.complex64
-        elif self.dtype == np.float64:
-            self.grad_dtype = np.complex128
-
-        self.out_grad = (np.random.random(self.input_dims[-1:]) + 
-            np.random.random(self.input_dims[-1:]) * 1j).astype(self.grad_dtype)
-        self.x_grad = np_eigvals_grad(self.input_data, self.out_grad)
-
-        print("np_eigvals_grad:\n")
-        print(self.x_grad)
-
-        self.check_grad(['X'], 'Out', 
-            user_defined_grads=[self.x_grad],
-            user_defined_grad_outputs=[self.out_grad])
-    '''
 
     def verify_output(self, outs):
         actual_outs = np.sort(np.array(outs[0]))

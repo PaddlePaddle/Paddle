@@ -73,50 +73,13 @@ class EigvalsOpVarTypeInference : public framework::VarTypeInference {
     ctx->SetOutputDataType("Out", output_dtype);
   }
 };
-
-class EigvalsGradOp : public framework::OperatorWithKernel {
- public:
-  using framework::OperatorWithKernel::OperatorWithKernel;
-  void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "EigvalsGrad");
-    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
-                   "Out@Grad", "EigvalsGrad");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
-                   "X@Grad", "EigvalsGrad");
-    ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
-  }
-
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
-  }
-};
-
-template <typename T>
-class EigvalsGradOpMaker : public framework::SingleGradOpMaker<T> {
- public:
-  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
-
- protected:
-  void Apply(GradOpPtr<T> retv) const override {
-    retv->SetType("eigvals_grad");
-    retv->SetInput("X", this->Input("X"));
-    retv->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
-    retv->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
-  }
-};
 }  // namespace operators
 }  // namespace paddle
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
 REGISTER_OPERATOR(eigvals, ops::EigvalsOp, ops::EigvalsOpMaker,
-                  ops::EigvalsOpVarTypeInference,
-                  ops::EigvalsGradOpMaker<paddle::framework::OpDesc>,
-                  ops::EigvalsGradOpMaker<paddle::imperative::OpBase>);
-REGISTER_OPERATOR(eigvals_grad, ops::EigvalsGradOp);
+                  ops::EigvalsOpVarTypeInference);
 REGISTER_OP_CPU_KERNEL(eigvals,
                        ops::EigvalsKernel<plat::CPUDeviceContext, float>,
                        ops::EigvalsKernel<plat::CPUDeviceContext, double>,
@@ -124,12 +87,3 @@ REGISTER_OP_CPU_KERNEL(eigvals,
                                           paddle::platform::complex<float>>,
                        ops::EigvalsKernel<plat::CPUDeviceContext,
                                           paddle::platform::complex<double>>);
-
-// TODO(Ruibiao): Support gradient kernel for Eigvals OP
-// REGISTER_OP_CPU_KERNEL(eigvals_grad,
-// ops::EigvalsGradKernel<plat::CPUDeviceContext, float>,
-// ops::EigvalsGradKernel<plat::CPUDeviceContext, double>,
-// ops::EigvalsGradKernel<plat::CPUDeviceContext,
-// paddle::platform::complex<float>>,
-// ops::EigvalsGradKernel<plat::CPUDeviceContext,
-// paddle::platform::complex<double>>);
