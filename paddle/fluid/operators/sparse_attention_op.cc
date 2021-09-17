@@ -69,12 +69,17 @@ class SparseAttentionOp : public framework::OperatorWithKernel {
     std::vector<int64_t> dims_columns =
         paddle::framework::vectorize(ctx->GetInputDim("columns"));
 
-    PADDLE_ENFORCE_EQ(dims_q.size(), 4,
-                      "ShapeError: Dimension in query' shapes must be 4. ");
-    PADDLE_ENFORCE_EQ(dims_k.size(), 4,
-                      "ShapeError: Dimension in key' shapes must be 4. ");
-    PADDLE_ENFORCE_EQ(dims_v.size(), 4,
-                      "ShapeError: Dimension in value' shapes must be 4. ");
+    PADDLE_ENFORCE_EQ(
+        dims_q.size(), static_cast<size_t>(4),
+        platform::errors::InvalidArgument(
+            "ShapeError: Dimension in query' shapes should be 4."));
+    PADDLE_ENFORCE_EQ(dims_k.size(), static_cast<size_t>(4),
+                      platform::errors::InvalidArgument(
+                          "ShapeError: Dimension in key' shapes should be 4."));
+    PADDLE_ENFORCE_EQ(
+        dims_v.size(), static_cast<size_t>(4),
+        platform::errors::InvalidArgument(
+            "ShapeError: Dimension in value' shapes should be 4."));
 
     std::vector<int64_t> new_dims;
     new_dims.assign(dims_q.begin(), dims_q.end());
