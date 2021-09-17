@@ -65,99 +65,99 @@ void training_or_inference(
   else if (layout == framework::DataLayout::kNHWC)
     multiples = {N, H, W, 1};
 
-  Tensor mean_tile_1;
+  Tensor common_mean_tile_1;
   {
-    mean_tile_1.Resize({C});
-    mean_tile_1.mutable_data<float>(place);
+    common_mean_tile_1.Resize({C});
+    common_mean_tile_1.mutable_data<float>(place);
 
-    TensorCopySync(*common_mean, place, &mean_tile_1);
-    LOG(WARNING) << "mean_tile_1: ";
-    PrintTensor<float>(mean_tile_1, ctx);
+    TensorCopySync(*common_mean, place, &common_mean_tile_1);
+    LOG(WARNING) << "common_mean_tile_1: ";
+    PrintTensor<float>(common_mean_tile_1, ctx);
 
     if (layout == framework::DataLayout::kNCHW)
-      mean_tile_1.Resize({1, C, 1, 1});
+      common_mean_tile_1.Resize({1, C, 1, 1});
     else if (layout == framework::DataLayout::kNHWC)
-      mean_tile_1.Resize({1, 1, 1, C});
-    LOG(WARNING) << "mean_tile_1: ";
-    PrintTensor<float>(mean_tile_1, ctx);
+      common_mean_tile_1.Resize({1, 1, 1, C});
+    LOG(WARNING) << "common_mean_tile_1: ";
+    PrintTensor<float>(common_mean_tile_1, ctx);
   }
 
-  Tensor mean_tile;
+  Tensor common_mean_tile;
   {
     framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
 
-    mean_tile.Resize(x->dims());
-    mean_tile.mutable_data<float>(place);
+    common_mean_tile.Resize(x->dims());
+    common_mean_tile.mutable_data<float>(place);
 
-    const auto &runner =
-        NpuOpRunner("TileD", {mean_tile_1}, {mean_tile}, attr_input);
+    const auto &runner = NpuOpRunner("TileD", {common_mean_tile_1},
+                                     {common_mean_tile}, attr_input);
     runner.Run(stream);
 
-    LOG(WARNING) << "mean_tile: ";
-    PrintTensor<float>(mean_tile, ctx);
+    LOG(WARNING) << "common_mean_tile: ";
+    PrintTensor<float>(common_mean_tile, ctx);
   }
 
-  Tensor var_tile_1;
+  Tensor common_var_tile_1;
   {
-    var_tile_1.Resize({C});
-    var_tile_1.mutable_data<float>(place);
+    common_var_tile_1.Resize({C});
+    common_var_tile_1.mutable_data<float>(place);
 
-    TensorCopySync(*common_var, place, &var_tile_1);
-    LOG(WARNING) << "var_tile_1: ";
-    PrintTensor<float>(var_tile_1, ctx);
+    TensorCopySync(*common_var, place, &common_var_tile_1);
+    LOG(WARNING) << "common_var_tile_1: ";
+    PrintTensor<float>(common_var_tile_1, ctx);
 
     if (layout == framework::DataLayout::kNCHW)
-      var_tile_1.Resize({1, C, 1, 1});
+      common_var_tile_1.Resize({1, C, 1, 1});
     else if (layout == framework::DataLayout::kNHWC)
-      var_tile_1.Resize({1, 1, 1, C});
-    LOG(WARNING) << "var_tile_1: ";
-    PrintTensor<float>(var_tile_1, ctx);
+      common_var_tile_1.Resize({1, 1, 1, C});
+    LOG(WARNING) << "common_var_tile_1: ";
+    PrintTensor<float>(common_var_tile_1, ctx);
   }
 
-  Tensor var_tile;
+  Tensor common_var_tile;
   {
     framework::NPUAttributeMap attr_input = {{"multiples", multiples}};
 
-    var_tile.Resize(x->dims());
-    var_tile.mutable_data<float>(place);
+    common_var_tile.Resize(x->dims());
+    common_var_tile.mutable_data<float>(place);
 
-    const auto &runner =
-        NpuOpRunner("TileD", {var_tile_1}, {var_tile}, attr_input);
+    const auto &runner = NpuOpRunner("TileD", {common_var_tile_1},
+                                     {common_var_tile}, attr_input);
     runner.Run(stream);
 
-    LOG(WARNING) << "var_tile: ";
-    PrintTensor<float>(var_tile, ctx);
+    LOG(WARNING) << "common_var_tile: ";
+    PrintTensor<float>(common_var_tile, ctx);
   }
 
-  Tensor var_tile_add_epsilon;
+  Tensor common_var_tile_add_epsilon;
   {
     framework::NPUAttributeMap attr_input = {{"value", epsilon}};
 
-    var_tile_add_epsilon.Resize(x->dims());
-    var_tile_add_epsilon.mutable_data<float>(place);
+    common_var_tile_add_epsilon.Resize(x->dims());
+    common_var_tile_add_epsilon.mutable_data<float>(place);
 
-    const auto &runner =
-        NpuOpRunner("Adds", {var_tile}, {var_tile_add_epsilon}, attr_input);
+    const auto &runner = NpuOpRunner("Adds", {common_var_tile},
+                                     {common_var_tile_add_epsilon}, attr_input);
     runner.Run(stream);
 
-    LOG(WARNING) << "var_tile_add_epsilon: ";
-    PrintTensor<float>(var_tile_add_epsilon, ctx);
+    LOG(WARNING) << "common_var_tile_add_epsilon: ";
+    PrintTensor<float>(common_var_tile_add_epsilon, ctx);
   }
 
-  Tensor var_tile_add_epsilon_sqrt;
+  Tensor common_var_tile_add_epsilon_sqrt;
   {
-    var_tile_add_epsilon_sqrt.Resize(x->dims());
-    var_tile_add_epsilon_sqrt.mutable_data<float>(place);
+    common_var_tile_add_epsilon_sqrt.Resize(x->dims());
+    common_var_tile_add_epsilon_sqrt.mutable_data<float>(place);
 
-    const auto &runner = NpuOpRunner("Sqrt", {var_tile_add_epsilon},
-                                     {var_tile_add_epsilon_sqrt}, {});
+    const auto &runner = NpuOpRunner("Sqrt", {common_var_tile_add_epsilon},
+                                     {common_var_tile_add_epsilon_sqrt}, {});
     runner.Run(stream);
 
-    LOG(WARNING) << "var_tile_add_epsilon_sqrt: ";
-    PrintTensor<float>(var_tile_add_epsilon_sqrt, ctx);
+    LOG(WARNING) << "common_var_tile_add_epsilon_sqrt: ";
+    PrintTensor<float>(common_var_tile_add_epsilon_sqrt, ctx);
   }
 
-  Tensor x_sub_mean;
+  Tensor x_sub_common_mean;
   {
     LOG(WARNING) << "x: ";
     PrintTensor<T>(*x, ctx);
@@ -180,26 +180,26 @@ void training_or_inference(
       }
 
       {
-        x_sub_mean.Resize(x->dims());
-        x_sub_mean.mutable_data<float>(place);
+        x_sub_common_mean.Resize(x->dims());
+        x_sub_common_mean.mutable_data<float>(place);
 
-        const auto &runner =
-            NpuOpRunner("Sub", {x_tmp, mean_tile}, {x_sub_mean}, {});
+        const auto &runner = NpuOpRunner("Sub", {x_tmp, common_mean_tile},
+                                         {x_sub_common_mean}, {});
         runner.Run(stream);
 
-        LOG(WARNING) << "x_sub_mean: ";
-        PrintTensor<float>(x_sub_mean, ctx);
+        LOG(WARNING) << "x_sub_common_mean: ";
+        PrintTensor<float>(x_sub_common_mean, ctx);
       }
     } else {
-      x_sub_mean.Resize(x->dims());
-      x_sub_mean.mutable_data<float>(place);
+      x_sub_common_mean.Resize(x->dims());
+      x_sub_common_mean.mutable_data<float>(place);
 
       const auto &runner =
-          NpuOpRunner("Sub", {*x, mean_tile}, {x_sub_mean}, {});
+          NpuOpRunner("Sub", {*x, common_mean_tile}, {x_sub_common_mean}, {});
       runner.Run(stream);
 
-      LOG(WARNING) << "x_sub_mean: ";
-      PrintTensor<float>(x_sub_mean, ctx);
+      LOG(WARNING) << "x_sub_common_mean: ";
+      PrintTensor<float>(x_sub_common_mean, ctx);
     }
   }
 
@@ -209,7 +209,8 @@ void training_or_inference(
     normalized.mutable_data<float>(place);
 
     const auto &runner = NpuOpRunner(
-        "Div", {x_sub_mean, var_tile_add_epsilon_sqrt}, {normalized}, {});
+        "Div", {x_sub_common_mean, common_var_tile_add_epsilon_sqrt},
+        {normalized}, {});
     runner.Run(stream);
 
     LOG(WARNING) << "normalized: ";
@@ -406,7 +407,7 @@ void training_or_inference(
         momentum_mul_var.mutable_data<float>(place);
 
         const auto &runner =
-            NpuOpRunner("Muls", {*common_var}, {momentum_mul_var}, attr_input);
+            NpuOpRunner("Muls", {*variance}, {momentum_mul_var}, attr_input);
         runner.Run(stream);
 
         LOG(WARNING) << "momentum_mul_var: ";
