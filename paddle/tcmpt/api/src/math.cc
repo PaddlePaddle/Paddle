@@ -48,7 +48,7 @@ Tensor mean(const Tensor& x) {
 
   // 4. InferShape
   // TODO(chenweihang): how to auto selected infershape?
-  auto out_dims = UnchangedInferShape(dense_x->dims());
+  auto out_dims = MeanInferShape(dense_x->dims());
 
   // 5. Prepare outputs
   pt::Tensor out;

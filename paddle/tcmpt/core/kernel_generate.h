@@ -75,6 +75,8 @@ struct KernelNameAndKeyParser : ArgsIterator<KernelNameAndKeyParser> {
     } else {
       throw std::runtime_error("Unsupported backend when parser args.");
     }
+    layout = x.layout();
+    dtype = x.type();
   }
 
   // skip other type args

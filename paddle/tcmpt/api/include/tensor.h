@@ -173,7 +173,7 @@ class Tensor final {
    */
   void set_impl(const std::shared_ptr<TensorInterface>& impl) { impl_ = impl; }
 
-  // Whether API Tensor need `data` and `mutable_data`?
+  // TODO(chenweihang): Whether API Tensor need `data` and `mutable_data`?
 
   // TODO(chenweihang): slice and split methods use kernels?
 
@@ -210,18 +210,8 @@ class Tensor final {
     autograd_meta_ = std::move(x.autograd_meta_);
     return *this;
   }
-  // TODO(chenweihang): impl later
-  // Tensor& operator=(const Tensor&) &&;
-  // Tensor& operator=(Tensor&&) &&;
 
   /* Part 7: Autograd methods */
-  // TODO(yangjiabin): Design autograd methods
-  void SetAutoGradMeta(
-      const std::shared_ptr<AutogradMetaInterface>& auto_grad_meta) {
-    // Copy this shared_ptr
-    autograd_meta_ = auto_grad_meta;
-  }
-
   AutogradMetaInterface* get_autograd_meta() const {
     return autograd_meta_.get();
   }

@@ -454,4 +454,35 @@ struct KernelRegistrar {
       PT_KERNEL(kernel_fn));                                               \
   void PT_CONCATENATE(__PT_KERNEL_args_def_FN_, func_id)(::pt::Kernel*)
 
+// only used in cpp tests
+
+#define PT_REGISTER_KERNEL_FOR_TEST(                              \
+    kernel_name, backend, layout, meta_kernel_fn, cpp_dtype, ...) \
+  _PT_REGISTER_KERNEL_FOR_TEST(kernel_name,                       \
+                               PT_ID,                             \
+                               backend,                           \
+                               layout,                            \
+                               meta_kernel_fn,                    \
+                               cpp_dtype,                         \
+                               __VA_ARGS__)
+
+#define _PT_REGISTER_KERNEL_FOR_TEST(                                      \
+    kernel_name, func_id, backend, layout, meta_kernel_fn, cpp_dtype, ...) \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                       \
+      PT_CONCATENATE(pt_op_kernel_for_test_ns_check_, func_id),            \
+      "PT_REGISTER_KERNEL must be called in global namespace.");           \
+  static void PT_CONCATENATE(__PT_KERNEL_for_test_args_def_FN_,            \
+                             func_id)(::pt::Kernel*);                      \
+  PT_KERNEL_REGISTRAR_INIT(                                                \
+      kernel_name,                                                         \
+      func_id,                                                             \
+      backend,                                                             \
+      layout,                                                              \
+      &PT_CONCATENATE(__PT_KERNEL_for_test_args_def_FN_, func_id),         \
+      meta_kernel_fn,                                                      \
+      cpp_dtype,                                                           \
+      __VA_ARGS__);                                                        \
+  void PT_CONCATENATE(__PT_KERNEL_for_test_args_def_FN_,                   \
+                      func_id)(::pt::Kernel * kernel)
+
 }  // namespace pt

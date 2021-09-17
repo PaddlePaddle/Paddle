@@ -30,4 +30,6 @@ using DDim = paddle::framework::DDim;
 
 DDim UnchangedInferShape(const DDim& x_dim) { return x_dim; }
 
+DDim MeanInferShape(const DDim& x_dim) { return {1}; }
+
 }  // namespace pt
