@@ -206,19 +206,12 @@ void HeterSectionWorker::CopyParameters(int microbatch_id,
 
 void HeterSectionWorker::Run() {
   bool is_first_stage = (pipeline_stage_ == 0);
-  //if (listen_ptr == nullptr) {
-  //  listen_ptr.reset(
-  //      new std::thread(std::bind(&HeterSectionWorker::RunListen, this)));
-  //}
   if (is_first_stage) {
     std::vector<int> micro_ids;
     for (int i = trainer_id_; i < thread_num_ * num_microbatches_; i += trainers_) {
       if (i >= thread_id_ * num_microbatches_ && i < (thread_id_ + 1) * num_microbatches_) {
         VLOG(5) << "Run " << i << " stage" << std::endl;
-        //if (barrier_id == -1) barrier_id = i - thread_id_ * num_microbatches_;
         RunForward(i - thread_id_ * num_microbatches_);
-        //micro_ids.push_back(i - thread_id_ * num_microbatches_);
-        // TODO
         if (epoch_finish_ == true) { break;}
         micro_ids.push_back(i - thread_id_ * num_microbatches_);
       }
@@ -226,16 +219,11 @@ void HeterSectionWorker::Run() {
     for (auto i : micro_ids) {
       BatchBarrier(i);
     }  
-
   }
-  //else {
-  //  (listen_ptr.get())->join();
-  //}
 }
 
 void HeterSectionWorker::TrainFiles() {
   VLOG(5) << "begin section_worker TrainFiles";
-  // VLOG(2) << "mini batch steps:" << batch_id_;
 
   int64_t max_memory_size = GetEagerDeletionThreshold();
   std::unique_ptr<GarbageCollector> gc;

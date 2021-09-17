@@ -647,7 +647,6 @@ class HeterSectionWorker : public DeviceWorker {
   void Run();
 
  protected:
-  // use trainer_id_ & thread_id_ & num_microbatches to ensure micro_id
   int trainer_id_;
   int trainers_;
   int thread_num_;
@@ -664,7 +663,6 @@ class HeterSectionWorker : public DeviceWorker {
   std::shared_ptr<framework::ProgramDesc> program_;
 
   static uint64_t batch_id_;
-  //std::shared_ptr<std::thread> listen_ptr = nullptr;
   platform::DeviceContext* dev_ctx_ = nullptr;
 };
 

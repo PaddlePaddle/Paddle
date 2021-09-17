@@ -568,7 +568,7 @@ class Fleet(object):
         Check whether the node is an instance of heter worker.
 
         Returns:
-            bool: True if this is a node of server,
+            bool: True if this is a node of heter worker,
                   False if not.
 
         Examples:
@@ -577,7 +577,7 @@ class Fleet(object):
 
                 import paddle.distributed.fleet as fleet
                 fleet.init()
-                fleet.is_server()
+                fleet.is_heter_worker()
         """ 
         return self._role_maker._is_heter_worker()
 
@@ -667,6 +667,26 @@ class Fleet(object):
     @is_non_distributed_check
     @inited_runtime_handler
     def run_heter_worker(self, dataset):
+        """
+        run_heter_worker will run heter worker main program with executor.
+
+        Returns:
+            None
+
+        Examples:
+
+            .. code-block:: python
+
+                import paddle.distributed.fleet as fleet
+                fleet.init()
+
+                # build net
+                # fleet.distributed_optimizer(...)
+                dataset = "" 
+                if fleet.is_heter_worker():
+                    fleet.run_heter_worker(dataset)
+
+        """
         self._runtime_handle._run_heter_worker(dataset)
     
     @is_non_distributed_check

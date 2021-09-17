@@ -280,15 +280,6 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
   }
 
   void Start() {
-    //real_microbatch_.resize(num_minibatch_);
-    //for (int i = trainer_id_; i < num_microbatch_ * num_minibatch_; i += trainers_) {     
-    //   int mini_idx = i / num_microbatch_;
-    //   //int micro_idx = i % num_microbatch_;
-    //   real_microbatch_[mini_idx]++;
-    //}
-    //done_.resize(num_minibatch_, 0);
-    //batch_finished_.resize(num_minibatch_, false);
-
     task_queue_.resize(this->num_minibatch_);
     for (int i = 0; i < this->num_minibatch_; i++) {
       task_queue_[i].reset(
@@ -318,24 +309,12 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
     std::unique_lock<std::mutex> lk(this->batch_finished_mutex);
     this->batch_finished_cond_var.wait(
         lk, [&]() { return micro_cnt_[minibatch_idx][microbatch_idx] == 1; });
-    //this->batch_finished_[minibatch_idx] = false;
     micro_cnt_[minibatch_idx][microbatch_idx] = 0;
-    //done_[minibatch_idx] = 0;
-    //if (ext_flag_ == true)
-    //ext_flag_ = false;
   }
 
   void Process(int minibatch_idx) {
-    //int target_val = 2;
-    //if (is_first_stage_ || is_last_stage_) target_val = 1;
     while (true) {
       if (task_queue_[minibatch_idx]->Size() > 0) {
-        //if (batch_finished_[minibatch_idx] == true) {
-        //  std::unique_lock<std::mutex> lk(this->batch_finished_mutex);
-          //batch_finished_[minibatch_idx] = false;
-          //done_[minibatch_index] = 0;
-          //micro_cnt_[minibatch_indx].clear();
-        //} 
         auto task = task_queue_[minibatch_idx]->Pop();
         auto message_name = task.first;
         auto micro_id = task.second;
@@ -353,15 +332,6 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
             {
             std::unique_lock<std::mutex> lk(this->batch_finished_mutex);
             this->batch_finished_cond_var.notify_all();
-            //done_[minibatch_index]++;
-            //if (is_first_stage_) {
-            //  if (done_[minibatch_index] == real_microbatch_[minibatch_index]) {
-            //    micro_cnt_[minibatch_index].clear();
-            //    //done_[minibatch_index] = 0;
-            //    //batch_finished_[minibatch_index] = true;
-            //    this->batch_finished_cond_var.notify_all();
-            //  }
-            //}
             }
           }
         }

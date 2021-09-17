@@ -31,10 +31,8 @@ void HeterPipelineTrainer::ResetDataset(Dataset* dataset) {
   for (int i = 0; i < thread_num_; ++i) {
     auto this_worker =
       std::dynamic_pointer_cast<paddle::framework::HeterSectionWorker>(workers_[i]);
-    //if (pipeline_stage_ == 0) {
       this_worker->SetDataFeed(readers[i]);
       this_worker->SetReaderPlace(place_);
-    //}
   }
 }
 
@@ -134,7 +132,6 @@ void HeterPipelineTrainer::InitDumpEnv() {
 
 void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
                                           const platform::Place& place) {
-
   place_ = place;
   PADDLE_ENFORCE_NOT_NULL(root_scope_, platform::errors::InvalidArgument(
                                            "root_scope_ can not be nullptr"));
@@ -194,7 +191,6 @@ void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
 
 void HeterPipelineTrainer::Run() {
   VLOG(3) << "Going to run PipelineTrainer::Run()";
-  
   if (listen_ptr_ == nullptr) {
     auto worker_0 =
       std::dynamic_pointer_cast<paddle::framework::HeterSectionWorker>(workers_[0]);
@@ -204,13 +200,8 @@ void HeterPipelineTrainer::Run() {
   VLOG(3) << "for debug " << threads_.size();
   if (pipeline_stage_ == 0) { // for cpu trainer
     for (int thidx = 0; thidx < thread_num_; ++thidx) {
-      //if (!debug_) {
         threads_.push_back(
           std::thread(&DeviceWorker::TrainFiles, workers_[thidx].get()));
-      //} else {
-      //  threads_.push_back(std::thread(&DeviceWorker::TrainFilesWithProfiler,
-      //                               workers_[thidx].get()));
-      //}
     }
   } else { // for heter worker
     threads_.push_back(
