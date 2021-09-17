@@ -69,66 +69,67 @@ __global__ void BlockSparseSoftmaxForward(T* softmax, const T* src, T scale,
   // current thread related info
   const int WarpSize = 32;
   const int cur = blockIdx.x * blockDim.y + threadIdx.y;
-  const int cur_seqb = cur / BlockSize;
-  // number of nnz block in cur_seqb
-  const int cur_nnzb = layout_rowptr[cur_seqb + 1] - layout_rowptr[cur_seqb];
+  if (cur < seq_len) {
+    const int cur_seqb = cur / BlockSize;
+    const int cur_nnzb = layout_rowptr[cur_seqb + 1] - layout_rowptr[cur_seqb];
 
-  T srcdata[(BlockSize * NnzBlockMax + WarpSize - 1) / WarpSize];
-  T attndata[(BlockSize * NnzBlockMax + WarpSize - 1) / WarpSize];
+    T srcdata[(BlockSize * NnzBlockMax + WarpSize - 1) / WarpSize];
+    T attndata[(BlockSize * NnzBlockMax + WarpSize - 1) / WarpSize];
 
-  // read kp mask
-  T datakp_mask = (KpMode == true) ? kp_mask[cur] : 0;
+    // read kp mask
+    T datakp_mask = (KpMode == true) ? kp_mask[cur] : 0;
 
-  // read tensor data, attn mask
-  const int Iter = (cur_nnzb + WarpSize - 1) / WarpSize;
-  const T* srcptr = src + layout_rowptr[cur_seqb];
-  const T* attnptr = attn_mask + cur_seqb * seq_len;
-  const int* colindex = layout_colindex + layout_rowptr[cur_seqb];
-  for (int j = 0; j < Iter; j++) {
-    int xidx = j * WarpSize + threadIdx.x;
-    int didx = j;
-    if (xidx < cur_nnzb) {
-      if (AttnMode == true) {
-        if (std::abs(attnptr[colindex[xidx]]) <
-            std::numeric_limits<T>::epsilon()) {
-          srcdata[didx] =
-              -std::numeric_limits<T>::infinity() * scale + datakp_mask;
+    // read tensor data, attn mask
+    const int Iter = (cur_nnzb + WarpSize - 1) / WarpSize;
+    const T* srcptr = src + layout_rowptr[cur_seqb];
+    const T* attnptr = attn_mask + cur_seqb * seq_len;
+    const int* colindex = layout_colindex + layout_rowptr[cur_seqb];
+    for (int j = 0; j < Iter; j++) {
+      int xidx = j * WarpSize + threadIdx.x;
+      int didx = j;
+      if (xidx < cur_nnzb) {
+        if (AttnMode == true) {
+          if (std::abs(attnptr[colindex[xidx]]) <
+              std::numeric_limits<T>::epsilon()) {
+            srcdata[didx] =
+                -std::numeric_limits<T>::infinity() * scale + datakp_mask;
+          } else {
+            srcdata[didx] = scale * srcptr[xidx] + datakp_mask;
+          }
         } else {
           srcdata[didx] = scale * srcptr[xidx] + datakp_mask;
         }
       } else {
-        srcdata[didx] = scale * srcptr[xidx] + datakp_mask;
+        srcdata[didx] = -std::numeric_limits<T>::infinity();
       }
-    } else {
-      srcdata[didx] = -std::numeric_limits<T>::infinity();
     }
-  }
 
-  // max value
-  T max_value = srcdata[0];
-  const int kIteration = (cur_nnzb * BlockSize + WarpSize - 1) / WarpSize;
+    // max value
+    T max_value = srcdata[0];
+    const int kIteration = (cur_nnzb * BlockSize + WarpSize - 1) / WarpSize;
 #pragma unroll
-  for (int it = 1; it < kIteration; ++it) {
-    max_value = (max_value > srcdata[it]) ? max_value : srcdata[it];
-  }
-  WarpReduceMax<T, 1, WarpSize>(&max_value);
+    for (int it = 1; it < kIteration; ++it) {
+      max_value = (max_value > srcdata[it]) ? max_value : srcdata[it];
+    }
+    WarpReduceMax<T, 1, WarpSize>(&max_value);
 
-  // exp sum
-  T sum = 0;
+    // exp sum
+    T sum = 0;
 #pragma unroll
-  for (int it = 0; it < kIteration; ++it) {
-    srcdata[it] = std::exp(srcdata[it] - max_value);
-    sum += srcdata[it];
-  }
-  WarpReduceSum<T, 1, WarpSize>(&sum);
+    for (int it = 0; it < kIteration; ++it) {
+      srcdata[it] = std::exp(srcdata[it] - max_value);
+      sum += srcdata[it];
+    }
+    WarpReduceSum<T, 1, WarpSize>(&sum);
 
-  // compute softmax and write out
-  T* softmaxptr = softmax + layout_rowptr[cur_seqb];
-  for (int j = 0; j < Iter; j++) {
-    int xidx = j * WarpSize + threadIdx.x;
-    int didx = j;
-    if (xidx < cur_nnzb) {
-      softmaxptr[xidx] = srcdata[didx] / sum;
+    // compute softmax and write out
+    T* softmaxptr = softmax + layout_rowptr[cur_seqb];
+    for (int j = 0; j < Iter; j++) {
+      int xidx = j * WarpSize + threadIdx.x;
+      int didx = j;
+      if (xidx < cur_nnzb) {
+        softmaxptr[xidx] = srcdata[didx] / sum;
+      }
     }
   }
 }
@@ -141,44 +142,45 @@ __global__ void BlockSparseSoftmaxBackward(T* dst, const T* grad, const T* src,
   // current thread related info
   const int WarpSize = 32;
   const int cur = blockIdx.x * blockDim.y + threadIdx.y;
-  const int cur_seqb = cur / BlockSize;
-  // number of nnz block in cur_seqb
-  const int cur_nnzb = layout_rowptr[cur_seqb + 1] - layout_rowptr[cur_seqb];
+  if (cur < seq_len) {
+    const int cur_seqb = cur / BlockSize;
+    const int cur_nnzb = layout_rowptr[cur_seqb + 1] - layout_rowptr[cur_seqb];
 
-  T srcdata[(BlockSize * NnzBlockMax + WarpSize - 1) / WarpSize];
-  T graddata[(BlockSize * NnzBlockMax + WarpSize - 1) / WarpSize];
+    T srcdata[(BlockSize * NnzBlockMax + WarpSize - 1) / WarpSize];
+    T graddata[(BlockSize * NnzBlockMax + WarpSize - 1) / WarpSize];
 
-  // read tensor data, attn mask
-  const int Iter = (cur_nnzb + WarpSize - 1) / WarpSize;
-  const T* srcptr = src + layout_rowptr[cur_seqb];
-  const T* gradptr = grad + layout_rowptr[cur_seqb];
-  for (int j = 0; j < Iter; j++) {
-    int xidx = j * WarpSize + threadIdx.x;
-    int didx = j;
-    if (xidx < cur_nnzb) {
-      srcdata[didx] = srcptr[xidx];
-      graddata[didx] = gradptr[xidx];
-    } else {
-      srcdata[didx] = 0;
-      graddata[didx] = 0;
+    // read tensor data, attn mask
+    const int Iter = (cur_nnzb + WarpSize - 1) / WarpSize;
+    const T* srcptr = src + layout_rowptr[cur_seqb];
+    const T* gradptr = grad + layout_rowptr[cur_seqb];
+    for (int j = 0; j < Iter; j++) {
+      int xidx = j * WarpSize + threadIdx.x;
+      int didx = j;
+      if (xidx < cur_nnzb) {
+        srcdata[didx] = srcptr[xidx];
+        graddata[didx] = gradptr[xidx];
+      } else {
+        srcdata[didx] = 0;
+        graddata[didx] = 0;
+      }
     }
-  }
 
-  T sum = 0;
-  const int kIteration = (cur_nnzb * BlockSize + WarpSize - 1) / WarpSize;
+    T sum = 0;
+    const int kIteration = (cur_nnzb * BlockSize + WarpSize - 1) / WarpSize;
 #pragma unroll
-  for (int it = 0; it < kIteration; ++it) {
-    sum += srcdata[it] * graddata[it];
-  }
-  WarpReduceSum<T, 1, WarpSize>(&sum);
+    for (int it = 0; it < kIteration; ++it) {
+      sum += srcdata[it] * graddata[it];
+    }
+    WarpReduceSum<T, 1, WarpSize>(&sum);
 
-  // compute softmax and write out
-  T* dstptr = dst + layout_rowptr[cur_seqb];
-  for (int j = 0; j < Iter; j++) {
-    int xidx = j * WarpSize + threadIdx.x;
-    int didx = j;
-    if (xidx < cur_nnzb) {
-      dstptr[xidx] = scale * srcdata[didx] * (graddata[didx] - sum);
+    // compute softmax and write out
+    T* dstptr = dst + layout_rowptr[cur_seqb];
+    for (int j = 0; j < Iter; j++) {
+      int xidx = j * WarpSize + threadIdx.x;
+      int didx = j;
+      if (xidx < cur_nnzb) {
+        dstptr[xidx] = scale * srcdata[didx] * (graddata[didx] - sum);
+      }
     }
   }
 }
@@ -200,8 +202,8 @@ void SparseSoftmaxForward(const platform::CUDADeviceContext& ctx,
 
   const int BlockSize = 1;
   dim3 blocks(32, 4, 1);
-  int grid = num_rows * BlockSize / 4;
-  T scaling = pow(static_cast<double>(num_cols), -0.5);
+  int grid = (num_rows * BlockSize + 3) / 4;
+  T scaling = static_cast<T>(1.0) / sqrt(static_cast<double>(num_cols));
 
   const int NnzBlockMax = 256;
   BlockSparseSoftmaxForward<T, BlockSize, NnzBlockMax><<<grid, blocks>>>(
@@ -223,8 +225,8 @@ void SparseSoftmaxBackward(const platform::CUDADeviceContext& ctx,
 
   const int BlockSize = 1;
   dim3 blocks(32, 4, 1);
-  int grid = num_rows * BlockSize / 4;
-  T scaling = pow(static_cast<double>(num_cols), -0.5);
+  int grid = (num_rows * BlockSize + 3) / 4;
+  T scaling = static_cast<T>(1.0) / sqrt(static_cast<double>(num_cols));
 
   const int NnzBlockMax = 256;
   BlockSparseSoftmaxBackward<T, BlockSize, NnzBlockMax><<<grid, blocks>>>(
