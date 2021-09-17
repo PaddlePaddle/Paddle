@@ -219,6 +219,7 @@ function cmake_base() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_PSCORE=${distibuted_flag}
+        -DWITH_PSLIB=${WITH_PSLIB:-OFF}
         -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
         -DWITH_XPU=${WITH_XPU:-OFF}
@@ -231,6 +232,8 @@ function cmake_base() {
         -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
         -DWITH_STRIP=${WITH_STRIP:-ON}
         -DON_INFER=${ON_INFER:-OFF}
+        -DWITH_HETERPS=${WITH_HETERPS:-OFF}
+        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} 
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -261,6 +264,7 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_PSCORE=${distibuted_flag} \
+        -DWITH_PSLIB=${WITH_PSLIB:-OFF} \
         -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=release/v2.8 \
         -DWITH_XPU=${WITH_XPU:-OFF} \
@@ -273,6 +277,8 @@ EOF
         -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF} \
         -DWITH_STRIP=${WITH_STRIP:-ON} \
         -DON_INFER=${ON_INFER:-OFF} \
+        -DWITH_HETERPS=${WITH_HETERPS:-OFF} \
+        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -1156,6 +1162,8 @@ function parallel_test_base_gpu() {
 EOF
 
 set -x
+        # set trt_convert ut to run 30% cases.
+        export TEST_NUM_PERCENT_CASES=0.3
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then
@@ -1181,13 +1189,14 @@ set -x
         fi
         if [ -a "$PADDLE_ROOT/added_ut" ];then
             added_uts=^$(awk BEGIN{RS=EOF}'{gsub(/\n/,"$|^");print}' $PADDLE_ROOT/added_ut)$
-            #ctest -R "(${added_uts})" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
-            #if [ "$added_ut_error" != 0 ];then
-            #    echo "========================================"
-            #    echo "Added UT should not exceed 15 seconds"
-            #    echo "========================================"
-            #    exit 8;
-            #fi
+            env CUDA_VISIBLE_DEVICES=0 ctest -R "(${added_uts})" -LE "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error=$?
+            ctest -R "(${added_uts})" -L "RUN_TYPE=DIST|RUN_TYPE=EXCLUSIVE" --output-on-failure --repeat-until-fail 3 --timeout 15;added_ut_error_1=$?
+            if [ "$added_ut_error" != 0 ] && [ "$added_ut_error_1" != 0 ];then
+                echo "========================================"
+                echo "Added UT should not exceed 15 seconds"
+                echo "========================================"
+                exit 8;
+            fi
         fi
 set +x
         EXIT_CODE=0;
@@ -1754,7 +1763,7 @@ function parallel_test_base_npu() {
         npu_cc_changes=$(git diff --name-only remotes/upstream/$BRANCH | grep "op_npu.cc" || true)
         npu_py_changes=$(git diff --name-only remotes/upstream/$BRANCH | grep "op_npu.py" || true)
         # get PR name
-        npu_pr_tile=$(curl https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} 2>/dev/null | grep "<title>" | grep "[NPU]" || true)
+        npu_pr_tile=$(curl https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} 2>/dev/null | grep "<title>" | grep "NPU" || true)
         if [ -z "${npu_cc_changes}" ] && [ -z "${npu_py_changes}" ] && [ -z "${npu_pr_tile}" ]; then
             echo "NO NPU operators files changed and no '[NPU]' found in PR title, skip NPU unit tests!"
             exit 0
@@ -2574,6 +2583,9 @@ function main() {
         ;;
       gpu_cicheck_py35)
         parallel_test
+        ;;
+      build_gpubox)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       check_xpu)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}

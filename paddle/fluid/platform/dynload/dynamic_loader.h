@@ -31,6 +31,7 @@ void* GetCUPTIDsoHandle();
 void* GetCurandDsoHandle();
 void* GetNvjpegDsoHandle();
 void* GetCusolverDsoHandle();
+void* GetCusparseDsoHandle();
 void* GetNVRTCDsoHandle();
 void* GetCUDADsoHandle();
 void* GetWarpCTCDsoHandle();
