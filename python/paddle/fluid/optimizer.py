@@ -4381,7 +4381,7 @@ class PipelineOptimizer(object):
                         persistable=source_var.persistable)
                 else:
                     dest_var = block._clone_variable(source_var, False)
-                dest_var.stop_gradient = source_var.stop_gradient
+                self._clone_var_attr(dest_var, source_var)
             # When use with sharding, allreduce_sum and allreduce_max
             # used for global gradient clip and amp will be added by sharding.
             op_idx += 1
@@ -4547,8 +4547,13 @@ class PipelineOptimizer(object):
             persistable=ref_var.persistable,
             is_data=ref_var.is_data,
             need_check_feed=ref_var.desc.need_check_feed())
-        new_var.stop_gradient = ref_var.stop_gradient
+        self._clone_var_attr(new_var, ref_var)
         return new_var
+
+    def _clone_var_attr(self, dest, src):
+        dest.stop_gradient = src.stop_gradient
+        if hasattr(src, 'is_distributed'):
+            dest.is_distributed = src.is_distributed
 
     def _strip_grad_suffix(self, name):
         """
@@ -5019,16 +5024,13 @@ class PipelineOptimizer(object):
         if self._num_microbatches == 1: return
         for index, op in reversed(tuple(enumerate(list(block.ops)))):
             if self._is_loss_grad_op(op):
-                loss_grad_var = block.vars[op.output_arg_names[0]]
-                block._insert_op(
-                    index=index + 1,
-                    type='scale',
-                    inputs={'X': loss_grad_var},
-                    outputs={'Out': loss_grad_var},
-                    attrs={
-                        'scale': 1.0 / self._num_microbatches,
-                        self._op_role_key: self._op_role.Backward
-                    })
+                assert op.type == 'fill_constant', \
+                    "loss_grad_op must be fill_constant op, " \
+                    "but this op is {}".format(op.type)
+                assert op.has_attr('value')
+                loss_scale = float(op.attr('value'))
+                loss_scale = loss_scale / self._num_microbatches
+                op._set_attr('value', loss_scale)
                 break
 
     def _rename_gradient_var_name(self, block):
@@ -5212,6 +5214,8 @@ class PipelineOptimizer(object):
                 persistable=True,
                 stop_gradient=False)
             real_param = main_block.var(param)
+            if hasattr(real_param, 'is_distributed'):
+                merged_grad_var.is_distributed = real_param.is_distributed
             tmp_size = self._get_var_size(real_grad)
             # two strategies for splitting the grad
             # 1. the current segment's size reach the user defined grad_size_in_MB

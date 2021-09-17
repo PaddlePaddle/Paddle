@@ -17,6 +17,10 @@
 
 #include <unordered_set>
 
+#include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
+
+DEFINE_bool(new_executor_use_inplace, true, "Use inplace in new executor");
+
 namespace paddle {
 namespace framework {
 
@@ -194,6 +198,41 @@ void InterpreterCore::Convert() {
     gc_event_.emplace_back(vec_instruction_[i].execution_ctx_.get()->GetPlace(),
                            platform::GenerateDeviceEventFlag());
   }
+
+  if (FLAGS_new_executor_use_inplace) {
+    BuildInplace();
+  }
+}
+
+void InterpreterCore::BuildInplace() {
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    if (!vec_instruction_[i]
+             .kernel_func_.operator_base_->Info()
+             .infer_inplace_) {
+      continue;
+    }
+
+    auto in_to_outs =
+        vec_instruction_[i].kernel_func_.operator_base_->Info().infer_inplace_(
+            platform::is_gpu_place(vec_instruction_[i].dev_ctx_->GetPlace()));
+
+    for (auto& pair : in_to_outs) {
+      auto iter = vec_instruction_[i].input_index_.find(pair.first);
+      if (iter != vec_instruction_[i].input_index_.end()) {
+        if (input_var2op_info_[iter->second[0]].size() == 1) {
+          auto iterout = vec_instruction_[i].output_index_.find(pair.second);
+          if (iterout != vec_instruction_[i].output_index_.end()) {
+            auto invar = global_scope_->var_list[iter->second[0]];
+            auto outvar = global_scope_->var_list[iterout->second[0]];
+            if (invar && outvar) {
+              vec_instruction_[i].vec_inplace_in_to_out_.emplace_back(invar,
+                                                                      outvar);
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 void InterpreterCore::BuildAndCacheInstructionCtx(
@@ -264,6 +303,17 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   static_cast<const framework::OperatorWithKernel*>(
       instr_node.kernel_func_.operator_base_)
       ->InferShape(instr_node.infershape_ctx_.get());
+
+  if (FLAGS_new_executor_use_inplace) {
+    for (auto& pair : instr_node.vec_inplace_in_to_out_) {
+      const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
+      auto* out =
+          paddle::framework::details::GetMutableTensorFromVar(pair.second);
+      if (in.dims() == out->dims()) {
+        out->ShareBufferWith(in);
+      }
+    }
+  }
 
   instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
 }
