@@ -109,6 +109,9 @@ from .vision import grid_sample  # noqa: F401
 from .vision import pixel_shuffle  # noqa: F401
 from .input import one_hot  # noqa: F401
 from .input import embedding  # noqa: F401
+
+from .fused_ffn import fused_ffn
+
 from ...fluid.layers import gather_tree  # noqa: F401
 from ...fluid.layers import temporal_shift  # noqa: F401
 
@@ -207,4 +210,5 @@ __all__ = [     #noqa
            'layer_norm',
            'instance_norm',
            'class_center_sample',
+            'fused_ffn',
 ]
