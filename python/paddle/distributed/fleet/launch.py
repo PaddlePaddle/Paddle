@@ -400,33 +400,33 @@ def launch():
 
 
     Base Parameters:
-        - ``--log_dir``: The path for each process's log. e.g ``--log_dir=output_dir``. Default ``--log_dir=log``.
+        - ``--log_dir``: The path for each process's log. e.g., ``--log_dir=output_dir``. Default ``--log_dir=log``.
 
-        - ``--nproc_per_node``: The number of processes to launch on a node. In gpu training, it should be less or equal to the gpus number of you system(or you set by --gpus). And so each process can bound to one or average number of gpus. e.g ``--nproc_per_node=8``
+        - ``--nproc_per_node``: The number of processes to launch on a node. In gpu training, it should be less or equal to the gpus number of you system(or you set by --gpus).  e.g., ``--nproc_per_node=8``
 
-        - ``--run_mode``: run mode of job, can be:collective/ps/ps-heter. e.g ``--run_mode=ps``. Default ``--run_mode=collective``.
+        - ``--run_mode``: run mode of job, can be:collective/ps/ps-heter. e.g., ``--run_mode=ps``. Default ``--run_mode=collective``.
 
-        - ``--gpus``: It's for gpu training. e.g ``--gpus=0,1,2,3`` will launch four training processes each bound to one gpu.
+        - ``--gpus``: It's for gpu training. e.g., ``--gpus=0,1,2,3`` will launch four training processes each bound to one gpu.
 
         - ``--selected_gpus``: gpus aliases, recommend to use ``--gpus``.
         
-        - ``--xpus``: It's for xpu training if xpu is available. e.g ``--xpus=0,1,2,3``.
+        - ``--xpus``: It's for xpu training if xpu is available. e.g., ``--xpus=0,1,2,3``.
         
         - ``--selected_xpus``: xpus aliases, recommend to use ``--xpus``.
 
-        - ``training_script``: The full path to the single GPU training program/script to be launched in parallel, followed by all the arguments for the training script. e.g ``traing.py``
+        - ``training_script``: The full path to the single GPU training program/script to be launched in parallel, followed by all the arguments for the training script. e.g., ``traing.py``
 
-        - ``training_script_args``: The args of training_script. e.g ``--lr=0.1``
+        - ``training_script_args``: The args of training_script. e.g., ``--lr=0.1``
 
     Collective Parameters:
-        - ``--ips``: Paddle cluster nodes ips, e.g ``--ips=192.168.0.16,192.168.0.17``. Default ``--ips=127.0.0.1``.
+        - ``--ips``: Paddle cluster nodes ips, e.g., ``--ips=192.168.0.16,192.168.0.17``. Default ``--ips=127.0.0.1``.
 
     Parameter-Server Parameters:
-        - ``--servers``: User defined servers ip:port, e.g ``--servers="192.168.0.16:6170,192.168.0.17:6170"``
+        - ``--servers``: User defined servers ip:port, e.g., ``--servers="192.168.0.16:6170,192.168.0.17:6170"``
 
-        - ``--workers``: User defined workers ip:port, e.g ``--workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172"``
+        - ``--workers``: User defined workers ip:port, e.g., ``--workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172"``
 
-        - ``--heter_workers``: User defined heter workers ip:port, e.g ``--heter_workers="192.168.0.16:6172,192.168.0.17:6172"``
+        - ``--heter_workers``: User defined heter workers ip:port, e.g., ``--heter_workers="192.168.0.16:6172,192.168.0.17:6172"``
 
         - ``--worker_num``: Number of workers (It recommend to set when in the emulated distributed environment using single node)
 
@@ -437,17 +437,14 @@ def launch():
         - ``--http_port``: Gloo http Port
 
     Elastic Parameters:
-        - ``--elastic_server``: etcd server host:port, e.g ``--elastic_server=127.0.0.1:2379``
+        - ``--elastic_server``: etcd server host:port, e.g., ``--elastic_server=127.0.0.1:2379``
 
-        - ``--job_id``: job unique id, e.g ``--job_id=job1``
+        - ``--job_id``: job unique id, e.g., ``--job_id=job1``
 
-        - ``--np``: job pod/node number, e.g ``--np=2``
-
-        - ``--scale``: scale np, not be used now!
+        - ``--np``: job pod/node number, e.g., ``--np=2``
 
         - ``--host``: bind host, default to POD_IP env.
 
-        - ``--force``: update np force, not be used now!
 
     Returns:
         ``None``
@@ -456,7 +453,7 @@ def launch():
         .. code-block:: bash
             :name: code-block-example-bash1
             
-            # For single node training using 4 gpus
+            # For training on single node using 4 gpus.
 
             python -m paddle.distributed.launch --gpus=0,1,2,3 train.py --lr=0.01
         
@@ -464,7 +461,9 @@ def launch():
         .. code-block:: bash
             :name: code-block-example-bash2
 
-            # For multiple node training such as two node:192.168.0.16, 192.168.0.17
+            # The parameters of --gpus and --ips must be consistent in each node.
+
+            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17 
 
             # On 192.168.0.16:
 
@@ -477,7 +476,7 @@ def launch():
         .. code-block:: bash
             :name: code-block-example-bash3
 
-            # The emulated distributed environment using single node, 2 server and 4 worker
+            # To simulate distributed environment using single node, e.g., 2 servers and 4 workers.
             
             python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
         
@@ -485,7 +484,7 @@ def launch():
         .. code-block:: bash
             :name: code-block-example-bash4
 
-            # For multiple node training such as two node:192.168.0.16, 192.168.0.17 with 2 servers and total 4 workers
+            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17 where each node with 1 server and 2 workers.
 
             # On 192.168.0.16:
 
@@ -499,7 +498,7 @@ def launch():
         .. code-block:: bash
             :name: code-block-example-bash5
 
-            # The emulated distributed environment using single node, 2 server and 4 worker, each worker use single gpu
+           # To simulate distributed environment using single node, e.g., 2 servers and 4 workers, each worker use single gpu.
             
             export CUDA_VISIBLE_DEVICES=0,1,2,3
             python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
@@ -508,7 +507,7 @@ def launch():
         .. code-block:: bash
             :name: code-block-example-bash6
 
-            # For multiple node training such as two node:192.168.0.16, 192.168.0.17 with 2 servers and total 4 workers
+            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17 where each node with 1 server and 2 workers.
 
             # On 192.168.0.16:
 
@@ -524,7 +523,7 @@ def launch():
         .. code-block:: bash
             :name: code-block-example-bash7
 
-            # The emulated distributed environment using single node, 2 server and 4 worker, two worker use gpu, two worker use cpu
+            # To simulate distributed environment using single node, e.g., 2 servers and 4 workers, two workers use gpu, two workers use cpu.
             
             export CUDA_VISIBLE_DEVICES=0,1
             python -m paddle.distributed.launch --server_num=2 --worker_num=2 --heter_worker_num=2 train.py --lr=0.01
@@ -533,7 +532,7 @@ def launch():
         .. code-block:: bash
             :name: code-block-example-bash8
 
-            # For multiple node training such as two node:192.168.0.16, 192.168.0.17 with 2 servers and total 4 workers
+            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17 where each node with 1 server, 1 gpu worker, 1 cpu worker.
 
             # On 192.168.0.16:
 
