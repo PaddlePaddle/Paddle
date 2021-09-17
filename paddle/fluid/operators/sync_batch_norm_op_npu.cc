@@ -47,11 +47,11 @@ void training_or_inference(
     const framework::ExecutionContext &ctx, const aclrtStream &stream,
     const platform::Place &place, const DataLayout &layout,
     const bool &test_mode, const int &N, const int &C, const int &H,
-    const int &W, const float epsilon, const float &momentum, const Tensor *x,
-    const Tensor *common_mean, const Tensor *common_var, const Tensor *scale,
-    const Tensor *bias, const Tensor *mean, const Tensor *variance,
-    Tensor *mean_out, Tensor *variance_out, Tensor *saved_mean,
-    Tensor *saved_variance, Tensor *y) {
+    const int &W, const float epsilon, const float &momentum,
+    const Tensor *common_mean, const Tensor *common_var, const Tensor *x,
+    const Tensor *scale, const Tensor *bias, const Tensor *mean,
+    const Tensor *variance, Tensor *mean_out, Tensor *variance_out,
+    Tensor *saved_mean, Tensor *saved_variance, Tensor *y) {
   std::vector<int> axes;
   if (layout == framework::DataLayout::kNCHW) {
     axes = {0, 2, 3};
@@ -355,42 +355,42 @@ void training_or_inference(
 
     // cacl mean_out
     {
-      Tensor momentum_mul_mean;
-      {
-        framework::NPUAttributeMap attr_input = {{"value", momentum}};
-
-        momentum_mul_mean.Resize({C});
-        momentum_mul_mean.mutable_data<float>(place);
-
-        const auto &runner = NpuOpRunner("Muls", {*common_mean},
-                                         {momentum_mul_mean}, attr_input);
-        runner.Run(stream);
-
-        LOG(WARNING) << "momentum_mul_mean: ";
-        PrintTensor<float>(momentum_mul_mean, ctx);
-      }
-
-      Tensor saved_mean_mul_1_sub_momentum;
+      Tensor common_mean_mul_1_sub_momentum;
       {
         framework::NPUAttributeMap attr_input = {{"value", 1 - momentum}};
 
-        saved_mean_mul_1_sub_momentum.Resize({C});
-        saved_mean_mul_1_sub_momentum.mutable_data<float>(place);
+        common_mean_mul_1_sub_momentum.Resize({C});
+        common_mean_mul_1_sub_momentum.mutable_data<float>(place);
 
         const auto &runner =
-            NpuOpRunner("Muls", {*common_mean}, {saved_mean_mul_1_sub_momentum},
-                        attr_input);
+            NpuOpRunner("Muls", {*common_mean},
+                        {common_mean_mul_1_sub_momentum}, attr_input);
         runner.Run(stream);
 
-        LOG(WARNING) << "saved_mean_mul_1_sub_momentum: ";
-        PrintTensor<float>(saved_mean_mul_1_sub_momentum, ctx);
+        LOG(WARNING) << "common_mean_mul_1_sub_momentum: ";
+        PrintTensor<float>(common_mean_mul_1_sub_momentum, ctx);
+      }
+
+      Tensor mean_mul_momentum;
+      {
+        framework::NPUAttributeMap attr_input = {{"value", momentum}};
+
+        mean_mul_momentum.Resize({C});
+        mean_mul_momentum.mutable_data<float>(place);
+
+        const auto &runner =
+            NpuOpRunner("Muls", {*mean}, {mean_mul_momentum}, attr_input);
+        runner.Run(stream);
+
+        LOG(WARNING) << "mean_mul_momentum: ";
+        PrintTensor<float>(mean_mul_momentum, ctx);
       }
 
       mean_out->mutable_data<float>(place);
 
-      const auto &runner =
-          NpuOpRunner("Add", {saved_mean_mul_1_sub_momentum, momentum_mul_mean},
-                      {*mean_out}, {});
+      const auto &runner = NpuOpRunner(
+          "Add", {common_mean_mul_1_sub_momentum, mean_mul_momentum},
+          {*mean_out}, {});
       runner.Run(stream);
 
       LOG(WARNING) << "mean_out: ";
@@ -626,7 +626,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
 
       // cacl y
       training_or_inference<T>(ctx, stream, place, layout, test_mode, N, C, H,
-                               W, epsilon, momentum, x, mean, variance, scale,
+                               W, epsilon, momentum, mean, variance, x, scale,
                                bias, mean, variance, NULL, NULL, NULL, NULL, y);
 
     } else {  // training
@@ -887,7 +887,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
       }
 
       training_or_inference<T>(ctx, stream, place, layout, test_mode, N, C, H,
-                               W, epsilon, momentum, x, saved_mean, &var_ref,
+                               W, epsilon, momentum, saved_mean, &var_ref, x,
                                scale, bias, mean, variance, mean_out,
                                variance_out, saved_mean, saved_variance, y);
     }
