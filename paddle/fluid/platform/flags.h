@@ -18,9 +18,9 @@
 #include <map>
 #include <string>
 #include <type_traits>
-#include "boost/variant.hpp"
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/macros.h"
+#include "paddle/fluid/platform/variant.h"
 
 namespace paddle {
 namespace platform {
@@ -39,29 +39,38 @@ using ExportedFlagInfoMap = std::map<std::string, FlagInfo>;
 const ExportedFlagInfoMap &GetExportedFlagInfoMap();
 ExportedFlagInfoMap *GetMutableExportedFlagInfoMap();
 
-#define __PADDLE_DEFINE_EXPORTED_FLAG(__name, __is_writable, __cpp_type,    \
-                                      __gflag_type, __default_value, __doc) \
-  DEFINE_##__gflag_type(__name, __default_value, __doc);                    \
-  struct __PaddleRegisterFlag_##__name {                                    \
-    __PaddleRegisterFlag_##__name() {                                       \
-      using FlagDeclaredType =                                              \
-          typename std::remove_reference<decltype(FLAGS_##__name)>::type;   \
-      static_assert(std::is_same<FlagDeclaredType, ::std::string>::value || \
-                        std::is_arithmetic<FlagDeclaredType>::value,        \
-                    "FLAGS should be std::string or arithmetic type");      \
-      auto *instance = ::paddle::platform::GetMutableExportedFlagInfoMap(); \
-      auto &info = (*instance)[#__name];                                    \
-      info.name = #__name;                                                  \
-      info.value_ptr = &(FLAGS_##__name);                                   \
-      info.default_value = static_cast<__cpp_type>(__default_value);        \
-      info.doc = __doc;                                                     \
-      info.is_writable = __is_writable;                                     \
-    }                                                                       \
-  };                                                                        \
-  static_assert(std::is_same<__PaddleRegisterFlag_##__name,                 \
-                             ::__PaddleRegisterFlag_##__name>::value,       \
-                "FLAGS should define in global namespace");                 \
-  static __PaddleRegisterFlag_##__name __PaddleRegisterFlag_instance##__name
+#define __PADDLE_DEFINE_EXPORTED_FLAG(__name, __is_writable, __cpp_type,      \
+                                      __gflag_type, __default_value, __doc)   \
+  DEFINE_##__gflag_type(__name, __default_value, __doc);                      \
+  struct __PaddleRegisterFlag_##__name {                                      \
+    __PaddleRegisterFlag_##__name() {                                         \
+      using FlagDeclaredType =                                                \
+          typename std::remove_reference<decltype(FLAGS_##__name)>::type;     \
+      static_assert(std::is_same<FlagDeclaredType, ::std::string>::value ||   \
+                        std::is_arithmetic<FlagDeclaredType>::value,          \
+                    "FLAGS should be std::string or arithmetic type");        \
+      auto *instance = ::paddle::platform::GetMutableExportedFlagInfoMap();   \
+      auto &info = (*instance)[#__name];                                      \
+      info.name = #__name;                                                    \
+      info.value_ptr = &(FLAGS_##__name);                                     \
+      info.default_value = static_cast<__cpp_type>(__default_value);          \
+      info.doc = __doc;                                                       \
+      info.is_writable = __is_writable;                                       \
+    }                                                                         \
+    int Touch() const { return 0; }                                           \
+  };                                                                          \
+  static __PaddleRegisterFlag_##__name __PaddleRegisterFlag_instance##__name; \
+  int TouchPaddleFlagRegister_##__name() {                                    \
+    return __PaddleRegisterFlag_instance##__name.Touch();                     \
+  }                                                                           \
+  static_assert(std::is_same<__PaddleRegisterFlag_##__name,                   \
+                             ::__PaddleRegisterFlag_##__name>::value,         \
+                "FLAGS should define in global namespace")
+
+#define PADDLE_FORCE_LINK_FLAG(__name)           \
+  extern int TouchPaddleFlagRegister_##__name(); \
+  UNUSED static int __paddle_use_flag_##__name = \
+      TouchPaddleFlagRegister_##__name()
 
 #define PADDLE_DEFINE_EXPORTED_bool(name, default_value, doc) \
   __PADDLE_DEFINE_EXPORTED_FLAG(name, true, bool, bool, default_value, doc)

@@ -29,6 +29,15 @@
 #include "paddle/fluid/platform/macros.h"
 #include "pybind11/stl.h"
 
+// FIXME(zengjinle): these 2 flags may be removed by the linker when compiling
+// CPU-only Paddle. It is because they are only used in
+// AutoGrowthBestFitAllocator, but AutoGrowthBestFitAllocator is not used
+// (in the translation unit level) when compiling CPU-only Paddle. I do not
+// want to add PADDLE_FORCE_LINK_FLAG, but I have not found any other methods
+// to solve this problem.
+PADDLE_FORCE_LINK_FLAG(free_idle_chunk);
+PADDLE_FORCE_LINK_FLAG(free_when_no_cache_hit);
+
 // debug
 DECLARE_bool(cpu_deterministic);
 
