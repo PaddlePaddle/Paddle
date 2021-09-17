@@ -209,6 +209,7 @@ def __bootstrap__():
         'sort_sum_gradient',
         'max_inplace_grad_add',
         'apply_pass_to_program',
+        'new_executor_use_inplace',
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')

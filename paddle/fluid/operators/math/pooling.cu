@@ -125,22 +125,22 @@ __global__ void KernelPool2D(
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int hstart, hend, wstart, wend;
-    int pw, ph, c, input_stride;
+    int w_offset, h_offset, c_offset, input_offset;
     OffsetPreparationFor4Dimension<FastDivModForPooling>(
-        index, channel_last, divmods, 0, 0, input_width, input_height, &pw, &ph,
-        &c, &input_stride);
-    input_data += input_stride;
+        index, channel_last, divmods, 0, 0, input_width, input_height,
+        &w_offset, &h_offset, &c_offset, &input_offset);
+    input_data += input_offset;
 
     if (adaptive) {
-      hstart = AdaptStartIndex(ph, input_height, output_height);
-      hend = AdaptEndIndex(ph, input_height, output_height);
-      wstart = AdaptStartIndex(pw, input_width, output_width);
-      wend = AdaptEndIndex(pw, input_width, output_width);
+      hstart = AdaptStartIndex(h_offset, input_height, output_height);
+      hend = AdaptEndIndex(h_offset, input_height, output_height);
+      wstart = AdaptStartIndex(w_offset, input_width, output_width);
+      wend = AdaptEndIndex(w_offset, input_width, output_width);
     } else {
-      hstart = ph * stride_height - padding_height;
+      hstart = h_offset * stride_height - padding_height;
       hend = min(hstart + ksize_height, input_height);
       hstart = max(hstart, 0);
-      wstart = pw * stride_width - padding_width;
+      wstart = w_offset * stride_width - padding_width;
       wend = min(wstart + ksize_width, input_width);
       wstart = max(wstart, 0);
     }
@@ -148,8 +148,9 @@ __global__ void KernelPool2D(
     T ele = pool_process.initial();
     for (int h = hstart; h < hend; ++h) {
       for (int w = wstart; w < wend; ++w) {
-        auto input_idx = channel_last ? (h * input_width + w) * channels + c
-                                      : h * input_width + w;
+        auto input_idx = channel_last
+                             ? (h * input_width + w) * channels + c_offset
+                             : h * input_width + w;
         pool_process.compute(input_data[input_idx], &ele);
       }
     }
@@ -175,16 +176,16 @@ __global__ void KernelPool2DGrad(
     T input = static_cast<T>(0);
     T input_grad_data = static_cast<T>(0);
     int phstart, phend, pwstart, pwend;
-    int w_offset, h_offset, c_offset, output_stride;
+    int w_offset, h_offset, c_offset, output_offset;
     OffsetPreparationFor4Dimension<>(index, channel_last, divmods,
                                      padding_width, padding_height,
                                      output_width, output_height, &w_offset,
-                                     &h_offset, &c_offset, &output_stride);
+                                     &h_offset, &c_offset, &output_offset);
     if (pool_process.use_x) {
       input = input_data[index];
-      output_data += output_stride;
+      output_data += output_offset;
     }
-    output_grad += output_stride;
+    output_grad += output_offset;
 
     if (adaptive) {
       auto tmp_phend = divmods.height.Divmod((h_offset + 1) * output_height);
@@ -269,18 +270,18 @@ __global__ void KernelMaxPool2DGrad(
     T* input_grad, FastDivModForPooling divmods, bool channel_last = false) {
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
-    int pw, ph, c, input_offset;
+    int w_offset, h_offset, c_offset, input_offset;
     OffsetPreparationFor4Dimension<FastDivModForPooling>(
-        index, channel_last, divmods, 0, 0, input_width, input_height, &pw, &ph,
-        &c, &input_offset);
+        index, channel_last, divmods, 0, 0, input_width, input_height,
+        &w_offset, &h_offset, &c_offset, &input_offset);
     input_data += input_offset;
     input_grad += input_offset;
 
-    int hstart = ph * stride_height - padding_height;
+    int hstart = h_offset * stride_height - padding_height;
     int hend = min(hstart + ksize_height, input_height);
     hstart = max(hstart, 0);
 
-    int wstart = pw * stride_width - padding_width;
+    int wstart = w_offset * stride_width - padding_width;
     int wend = min(wstart + ksize_width, input_width);
     wstart = max(wstart, 0);
 
@@ -289,8 +290,9 @@ __global__ void KernelMaxPool2DGrad(
     bool stop = false;
     for (int h = hstart; h < hend && !stop; ++h) {
       for (int w = wstart; w < wend && !stop; ++w) {
-        int input_data_idx = channel_last ? (h * input_width + w) * channels + c
-                                          : h * input_width + w;
+        int input_data_idx = channel_last
+                                 ? (h * input_width + w) * channels + c_offset
+                                 : h * input_width + w;
         if (ele == input_data[input_data_idx]) {
           maxIndex = input_data_idx;
           stop = true;
@@ -1359,24 +1361,24 @@ __global__ void KernelMaxPool2dWithIdx(
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int hstart, hend, wstart, wend;
-    int pw, ph, c, input_stride;
+    int w_offset, h_offset, c_offset, input_offset;
     OffsetPreparationFor4Dimension<FastDivModForPooling>(
-        index, false, divmods, 0, 0, input_width, input_height, &pw, &ph, &c,
-        &input_stride);
-    input_data += input_stride;
+        index, false, divmods, 0, 0, input_width, input_height, &w_offset,
+        &h_offset, &c_offset, &input_offset);
+    input_data += input_offset;
 
     if (adaptive) {
-      hstart = AdaptStartIndex(ph, input_height, output_height);
-      hend = AdaptEndIndex(ph, input_height, output_height);
+      hstart = AdaptStartIndex(h_offset, input_height, output_height);
+      hend = AdaptEndIndex(h_offset, input_height, output_height);
 
-      wstart = AdaptStartIndex(pw, input_width, output_width);
-      wend = AdaptEndIndex(pw, input_width, output_width);
+      wstart = AdaptStartIndex(w_offset, input_width, output_width);
+      wend = AdaptEndIndex(w_offset, input_width, output_width);
     } else {
-      hstart = ph * stride_height - padding_height;
+      hstart = h_offset * stride_height - padding_height;
       hend = min(hstart + ksize_height, input_height);
       hstart = max(hstart, 0);
 
-      wstart = pw * stride_width - padding_width;
+      wstart = w_offset * stride_width - padding_width;
       wend = min(wstart + ksize_width, input_width);
       wstart = max(wstart, 0);
     }
@@ -1408,12 +1410,12 @@ __global__ void KernelMaxPool2DWithIdxGrad(
   for (int index = blockIdx.x * blockDim.x + threadIdx.x; index < nthreads;
        index += blockDim.x * gridDim.x) {
     int phstart, phend, pwstart, pwend;
-    int w_offset, h_offset, c_offset, output_stride;
+    int w_offset, h_offset, c_offset, output_offset;
     OffsetPreparationFor4Dimension<FastDivModForPooling>(
         index, false, divmods, 0, 0, output_width, output_height, &w_offset,
-        &h_offset, &c_offset, &output_stride);
-    mask_data += output_stride;
-    output_grad += output_stride;
+        &h_offset, &c_offset, &output_offset);
+    mask_data += output_offset;
+    output_grad += output_offset;
 
     if (adaptive) {
       phstart = h_offset * output_height / input_height;

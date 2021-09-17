@@ -69,8 +69,8 @@ template <class T>
 class MaxPoolGrad {
  public:
   static constexpr bool use_x = true;
-  DEVICE inline void compute(const T& x, const T* y, const T* dy, int out_idx,
-                             T scale, T* dx) {
+  HOSTDEVICE inline void compute(const T& x, const T* y, const T* dy,
+                                 int out_idx, T scale, T* dx) {
     *dx += dy[out_idx] * static_cast<T>(x == y[out_idx]);
   }
 };
@@ -79,8 +79,8 @@ template <class T>
 class AvgPoolGrad {
  public:
   static constexpr bool use_x = false;
-  DEVICE inline void compute(const T& x, const T* y, const T* dy, int out_idx,
-                             T scale, T* dx) {
+  HOSTDEVICE inline void compute(const T& x, const T* y, const T* dy,
+                                 int out_idx, T scale, T* dx) {
     *dx += (scale * dy[out_idx]);
   }
 };
