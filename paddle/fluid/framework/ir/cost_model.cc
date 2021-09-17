@@ -26,12 +26,8 @@ using platform::Event;
 using platform::MemEvent;
 
 CostData::~CostData() {
-  if (graph_ != nullptr) {
-    delete graph_;
-  }
-  if (program_ != nullptr) {
-    // delete program_;
-  }
+  // TODO(zhhsplendid): when we save a copy of program/graph, we should delete
+  // here.
 }
 
 double CostData::GetOpTimeMs(int op_id) const { return op_time_ms_.at(op_id); }
@@ -46,9 +42,9 @@ const ProgramDesc* CostData::GetProgram() const { return program_; }
 
 bool CostData::SetCostData(const ProgramDesc& program,
                            const std::vector<std::vector<Event>>& time_events) {
-  // Make a copy so that CostData can be available even if SWE changes Program
-  program_ = new ProgramDesc(program);
-  if (program_->Size() == 0) {
+  // TODO(zhhsplendid): Make a copy so that CostData can be available even if
+  // SWE changes Program, the copy can be saved into pointer program_
+  if (program.Size() == 0) {
     whole_time_ms_ = 0;
     whole_memory_bytes_ = 0;
     return true;
@@ -62,7 +58,7 @@ bool CostData::SetCostData(const ProgramDesc& program,
   std::vector<Event> main_thread_events = time_events[0];
   // Support global block only
   // TODO(zhhsplendid): support sub blocks
-  const BlockDesc& global_block = program_->Block(0);
+  const BlockDesc& global_block = program.Block(0);
   size_t op_size = global_block.OpSize();
   if (op_size == 0) {
     whole_time_ms_ = 0;
