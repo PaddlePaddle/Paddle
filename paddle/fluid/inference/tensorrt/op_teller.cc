@@ -1079,6 +1079,16 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         for (auto x : dim) {
           if (!x) return false;
         }
+      } else {
+        if (BOOST_GET_CONST(bool, desc.GetAttr("reduce_all")) &&
+            !BOOST_GET_CONST(bool, desc.GetAttr("keep_dim")))
+          return false;
+      }
+      if (desc.HasAttr("reduce_all")) {
+        int out_dtype = BOOST_GET_CONST(int32_t, desc.GetAttr("out_dtype"));
+        if (out_dtype != -1) {
+          return false;
+        }
       }
     }
 #if IS_TRT_VERSION_GE(7000)

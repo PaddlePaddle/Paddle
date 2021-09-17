@@ -18,6 +18,27 @@ namespace paddle {
 namespace framework {
 namespace interpretercore {
 
+AtomicVectorSizeT AsyncWorkQueue::PrepareAtomicDeps(
+    const std::vector<size_t>& dependecy_count) {
+  AtomicVectorSizeT working_dependecy_count(dependecy_count.size());
+  for (size_t i = 0; i < dependecy_count.size(); ++i) {
+    working_dependecy_count[i] =
+        std::make_unique<std::atomic<size_t>>(dependecy_count[i]);
+  }
+  return std::move(working_dependecy_count);
+}
+
+AtomicVectorSizeT AsyncWorkQueue::PrepareAtomicVarRef(
+    const std::vector<VariableMetaInfo>& vec_meta_info) {
+  AtomicVectorSizeT working_var_ref(vec_meta_info.size());
+
+  for (size_t i = 0; i < vec_meta_info.size(); ++i) {
+    working_var_ref[i] =
+        std::make_unique<std::atomic<size_t>>(vec_meta_info[i].var_ref_count_);
+  }
+  return std::move(working_var_ref);
+}
+
 bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
   auto* var_desc = block.FindVar(name);
   if (var_desc == nullptr || var_desc->Persistable()) {
