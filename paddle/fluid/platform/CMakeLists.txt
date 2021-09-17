@@ -60,6 +60,7 @@ cc_test(cpu_info_test SRCS cpu_info_test.cc DEPS cpu_info)
 
 IF(WITH_GPU)
     nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce monitor dynload_cuda)
+    nv_library(cuda_profiler SRCS cuda_profiler.cc DEPS enforce)
 ENDIF()
 IF(WITH_ROCM)
     hip_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce monitor dynload_cuda)
