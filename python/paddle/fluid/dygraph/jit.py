@@ -1062,6 +1062,7 @@ def load(path, **configs):
                 batch_size=BATCH_SIZE,
                 shuffle=True,
                 drop_last=True,
+                return_list=False,
                 num_workers=2)
 
             # 1. train and save inference model
