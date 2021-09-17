@@ -232,9 +232,6 @@ class TestFP16DropoutOp2(TestFP16DropoutOp):
         self.fix_seed = False
 
 
-@unittest.skipIf(
-    not core.is_compiled_with_cuda() or not core.op_support_gpu("dropout"),
-    "core is not compiled with CUDA or core is not support dropout")
 class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
     def test_seed_cpu_place(self):
         paddle.enable_static()
