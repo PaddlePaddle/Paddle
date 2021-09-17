@@ -148,7 +148,10 @@ class TestSyncBatchNormRunnerBase(object):
 
     def _compare(self, args, place, layout, only_forward):
         scope = core.Scope()
+
+        np.random.seed(SEED)
         data = np.random.random(size=self.dshape).astype(self.dtype) * 4. - 2
+        sys.stderr.write("data: " + str(data) + "\n")
         data = create_or_get_tensor(scope, "input",
                                     OpTest.np_dtype_to_fluid_dtype(data), place)
 
@@ -188,7 +191,7 @@ class TestSyncBatchNormRunnerBase(object):
 
             #     continue
 
-            # i = 4
+            i = 4
             if fetch_names[i] == 'bn_moving_variance':
                 print('skip bn_moving_variance (VarianceOut)')
 
@@ -260,8 +263,8 @@ class TestSyncBatchNormRunnerBase(object):
         # Single-NPU, N = 32 per NPU
         train_prog = fluid.Program()
         startup_prog = fluid.Program()
-        train_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
+        train_prog.global_seed(SEED)
+        startup_prog.global_seed(SEED)
         paddle.seed(SEED)
         # sys.stderr.write("train_prog: " + train_prog.to_string(True) + "\n")
         # sys.stderr.write("startup_prog: " + startup_prog.to_string(True) + "\n")
@@ -296,12 +299,12 @@ class TestSyncBatchNormRunnerBase(object):
         # Single-NPU, N = 32 per NPU
         train_prog = fluid.Program()
         startup_prog = fluid.Program()
-        train_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
+        train_prog.global_seed(SEED)
+        startup_prog.global_seed(SEED)
         paddle.seed(SEED)
-        # sys.stderr.write("train_prog: " + train_prog.to_string(True) + "\n")
-        # sys.stderr.write("startup_prog: " + startup_prog.to_string(True) + "\n")
-        # sys.stderr.flush()
+        sys.stderr.write("train_prog: " + train_prog.to_string(True) + "\n")
+        sys.stderr.write("startup_prog: " + startup_prog.to_string(True) + "\n")
+        sys.stderr.flush()
 
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
@@ -312,17 +315,24 @@ class TestSyncBatchNormRunnerBase(object):
                               current_endpoint, endpoints)
         sys.stderr.write("after init, startup_prog: " + startup_prog.to_string(
             True) + "\n")
-        train_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
+        train_prog.global_seed(SEED)
+        train_prog._sync_with_cpp()
+        startup_prog.global_seed(SEED)
+        startup_prog._sync_with_cpp()
         paddle.seed(SEED)
+
+        # train_prog.random_seed = SEED
+        # train_prog.global_seed(SEED)
+        # train_prog.random_seed(SEED)
+        # train_prog._sync_with_cpp()
 
         self.rank = rank
         outs = self.get_model(train_prog, startup_prog, place, "NCHW", SEED,
                               True, False)
-        # sys.stderr.write("after get_model, train_prog: " + train_prog.to_string(
-        #     True) + "\n")
-        # sys.stderr.write("after get_model, startup_prog: " +
-        #                  startup_prog.to_string(True) + "\n")
+        sys.stderr.write("after get_model, train_prog: " + train_prog.to_string(
+            True) + "\n")
+        sys.stderr.write("after get_model, startup_prog: " +
+                         startup_prog.to_string(True) + "\n")
 
         ops = train_prog.blocks[0].ops
         for i, op in enumerate(ops):
