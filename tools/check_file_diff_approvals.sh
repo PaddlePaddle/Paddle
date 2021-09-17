@@ -88,6 +88,16 @@ function run_tools_test() {
     cd ${CUR_PWD}
 }
 
+function check_env_var_diff_approval() {
+    echo_line="You must have one RD (lanxianghit (Recommend), phlrain or luotao1) approval for changing the FLAGS or python/paddle/fluid/__init__.py, which manage the environment variables.\n"
+    check_approval 1 6836917 47554610 43953930
+}
+
+changed_env_var_count=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/paddle | grep -E 'DEFINE_EXPORTED|DEFINE_bool|DEFINE_int32|DEFINE_int64|DEFINE_uint64|DEFINE_double|DEFINE_string' | wc -l`
+if [[ $changed_env_var_count -gt 0 ]]; then
+    check_env_var_diff_approval 
+fi
+
 if [[ $git_files -gt 19 || $git_count -gt 999 ]];then
     echo_line="You must have Dianhai approval for change 20+ files or add than 1000+ lines of content.\n"
     check_approval 1 38231817
@@ -103,8 +113,7 @@ for API_FILE in ${API_FILES[*]}; do
           echo_line="You must have one RD (wanghuancoder, luotao1 or XiaoguangHu01) approval for CMakeLists.txt, which manages the compilation parameter.\n"
           check_approval 1 6836917 46782768 26922892
       elif [ "${API_FILE}" == "python/paddle/fluid/__init__.py" ];then
-          echo_line="You must have one RD (lanxianghit (Recommend), phlrain or luotao1) approval for the python/paddle/fluid/init.py, which manages the environment variables.\n"
-          check_approval 1 6836917 47554610 43953930
+          check_env_var_diff_approval
       elif [ "${API_FILE}" == "python/requirements.txt" ];then
           echo_line="You must have one RD (phlrain) and one TPM (dingjiaweiww) and one QA (kolinwei) approval for python/requirements.txt, which manages the third-party python package.\n"
           check_approval 3 43953930 23093488 22165420
