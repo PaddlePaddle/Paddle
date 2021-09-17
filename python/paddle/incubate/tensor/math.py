@@ -12,22 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-__all__ = [
-    'segment_sum',
-    'segment_mean',
-    'segment_max',
-    'segment_min',
-]
-
-import paddle
-
 from paddle.fluid.layer_helper import LayerHelper, in_dygraph_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
 from paddle import _C_ops
 
+__all__ = []
+
 
 def segment_sum(data, segment_ids, name=None):
-    """
+    r"""
     Segment Sum Operator.
 
     This operator sums the elements of input `data` which with
@@ -40,6 +33,9 @@ def segment_sum(data, segment_ids, name=None):
         segment_ids (Tensor): A 1-D tensor, which have the same size
                             with the first dimension of input data. 
                             Available data type is int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). 
+                            For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
        output (Tensor): the reduced result.
 
@@ -76,7 +72,7 @@ def segment_sum(data, segment_ids, name=None):
 
 
 def segment_mean(data, segment_ids, name=None):
-    """
+    r"""
     Segment mean Operator.
 
     Ihis operator calculate the mean value of input `data` which
@@ -90,6 +86,8 @@ def segment_mean(data, segment_ids, name=None):
         segment_ids (tensor): a 1-d tensor, which have the same size 
                             with the first dimension of input data. 
                             available data type is int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). 
+                            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
        output (Tensor): the reduced result.
@@ -127,7 +125,7 @@ def segment_mean(data, segment_ids, name=None):
 
 
 def segment_min(data, segment_ids, name=None):
-    """
+    r"""
     Segment min operator.
 
     This operator calculate the minimum elements of input `data` which with
@@ -140,6 +138,9 @@ def segment_min(data, segment_ids, name=None):
         segment_ids (tensor): a 1-d tensor, which have the same size
                             with the first dimension of input data. 
                             available data type is int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). 
+                            For more information, please refer to :ref:`api_guide_Name`.
+
     Returns:
        output (Tensor): the reduced result.
 
@@ -176,12 +177,12 @@ def segment_min(data, segment_ids, name=None):
 
 
 def segment_max(data, segment_ids, name=None):
-    """
+    r"""
     Segment max operator.
 
     This operator calculate the maximum elements of input `data` which with
     the same index in `segment_ids`.
-    It computes a tensor such that $out_i = \\min_{j} data_{j}$
+    It computes a tensor such that $out_i = \\max_{j} data_{j}$
     where max is over j such that `segment_ids[j] == i`.
 
     Args:
@@ -189,6 +190,8 @@ def segment_max(data, segment_ids, name=None):
         segment_ids (tensor): a 1-d tensor, which have the same size
                             with the first dimension of input data. 
                             available data type is int32, int64.
+        name (str, optional): Name for the operation (optional, default is None). 
+                            For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
        output (Tensor): the reduced result.
