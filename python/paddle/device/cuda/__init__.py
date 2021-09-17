@@ -211,8 +211,9 @@ def get_device_properties(device=None):
     '''
     Return the properties of given CUDA device.
 
-    Parameters:
-        device(paddle.CUDAPlace() or int or str): The device, the ID of the device of the 
+    Args:
+        device(paddle.CUDAPlace() or int or str): The device, the ID of the device 
+        or the string name of device like 'gpu:x' which to get the properties of the
         device from. If device is None, the device is the current device. Default: None.
 
     Returns:
