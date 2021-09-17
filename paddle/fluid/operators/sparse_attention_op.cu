@@ -88,14 +88,11 @@ __global__ void BlockSparseSoftmaxForward(T* softmax, const T* src, T scale,
       int xidx = j * WarpSize + threadIdx.x;
       int didx = j;
       if (xidx < cur_nnzb) {
-        if (AttnMode == true) {
-          if (std::abs(attnptr[colindex[xidx]]) <
-              std::numeric_limits<T>::epsilon()) {
-            srcdata[didx] =
-                -std::numeric_limits<T>::infinity() * scale + datakp_mask;
-          } else {
-            srcdata[didx] = scale * srcptr[xidx] + datakp_mask;
-          }
+        if (std::abs(attnptr[colindex[xidx]]) <
+                std::numeric_limits<T>::epsilon() &&
+            AttnMode) {
+          srcdata[didx] =
+              -std::numeric_limits<T>::infinity() * scale + datakp_mask;
         } else {
           srcdata[didx] = scale * srcptr[xidx] + datakp_mask;
         }
@@ -234,17 +231,23 @@ void SparseSoftmaxBackward(const platform::CUDADeviceContext& ctx,
       num_rows);
 }
 
-int GetGpuType(std::string data_type) {
-  int gpu_type = -1;
+inline cudaDataType_t GetGpuType(std::string data_type) {
   if (data_type == "float") {
-    gpu_type = 0;
+    return CUDA_R_32F;
   } else if (data_type == "double") {
-    gpu_type = 1;
+    return CUDA_R_64F;
   } else {
     PADDLE_THROW(platform::errors::InvalidArgument(
         "Not support tensor type in sparse_attention OP: %s", data_type));
   }
-  return gpu_type;
+}
+
+inline cusparseOperation_t GetGpuOperation(const bool transpose) {
+  if (transpose) {
+    return CUSPARSE_OPERATION_TRANSPOSE;
+  } else {
+    return CUSPARSE_OPERATION_NON_TRANSPOSE;
+  }
 }
 
 /*
@@ -263,7 +266,7 @@ void DotSdd(const platform::CUDADeviceContext& ctx, const Tensor* A,
   T* C_value_data = C_value->data<T>();
 
   std::string data_type = framework::DataTypeToString(C_value->type());
-  int gpu_type = GetGpuType(data_type);
+  cudaDataType_t gpu_type = GetGpuType(data_type);
 
   cusparseHandle_t handle = NULL;
   cusparseDnMatDescr_t matA, matB;
@@ -271,20 +274,19 @@ void DotSdd(const platform::CUDADeviceContext& ctx, const Tensor* A,
   platform::dynload::cusparseCreate(&handle);
 
   // Create dense matrix A
-  platform::dynload::cusparseCreateDnMat(
-      &matA, num_rows, num_cols, num_cols, const_cast<T*>(A_data),
-      gpu_type == 0 ? CUDA_R_32F : CUDA_R_64F, CUSPARSE_ORDER_ROW);
+  platform::dynload::cusparseCreateDnMat(&matA, num_rows, num_cols, num_cols,
+                                         const_cast<T*>(A_data), gpu_type,
+                                         CUSPARSE_ORDER_ROW);
   // Create dense matrix B
-  platform::dynload::cusparseCreateDnMat(
-      &matB, num_rows, num_cols, num_cols, const_cast<T*>(B_data),
-      gpu_type == 0 ? CUDA_R_32F : CUDA_R_64F, CUSPARSE_ORDER_ROW);
+  platform::dynload::cusparseCreateDnMat(&matB, num_rows, num_cols, num_cols,
+                                         const_cast<T*>(B_data), gpu_type,
+                                         CUSPARSE_ORDER_ROW);
   // Create sparse matrix C in CSR format
   int C_nnz = C_columns->dims()[1];
   platform::dynload::cusparseCreateCsr(
       &matC, num_rows, num_rows, C_nnz, const_cast<int*>(C_offset_data),
       const_cast<int*>(C_columns_data), C_value_data, CUSPARSE_INDEX_32I,
-      CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO,
-      gpu_type == 0 ? CUDA_R_32F : CUDA_R_64F);
+      CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, gpu_type);
 
   T alpha = 1;
   T beta = 0;
@@ -292,21 +294,15 @@ void DotSdd(const platform::CUDADeviceContext& ctx, const Tensor* A,
   void* dBuffer = NULL;
   size_t bufferSize = 0;
   platform::dynload::cusparseSDDMM_bufferSize(
-      handle, A_transpose ? CUSPARSE_OPERATION_TRANSPOSE
-                          : CUSPARSE_OPERATION_NON_TRANSPOSE,
-      B_transpose ? CUSPARSE_OPERATION_TRANSPOSE
-                  : CUSPARSE_OPERATION_NON_TRANSPOSE,
-      &alpha, matA, matB, &beta, matC, gpu_type == 0 ? CUDA_R_32F : CUDA_R_64F,
-      CUSPARSE_SDDMM_ALG_DEFAULT, &bufferSize);
+      handle, GetGpuOperation(A_transpose), GetGpuOperation(B_transpose),
+      &alpha, matA, matB, &beta, matC, gpu_type, CUSPARSE_SDDMM_ALG_DEFAULT,
+      &bufferSize);
   cudaMalloc(&dBuffer, bufferSize);
 
-  platform::dynload::cusparseSDDMM(
-      handle, A_transpose ? CUSPARSE_OPERATION_TRANSPOSE
-                          : CUSPARSE_OPERATION_NON_TRANSPOSE,
-      B_transpose ? CUSPARSE_OPERATION_TRANSPOSE
-                  : CUSPARSE_OPERATION_NON_TRANSPOSE,
-      &alpha, matA, matB, &beta, matC, gpu_type == 0 ? CUDA_R_32F : CUDA_R_64F,
-      CUSPARSE_SDDMM_ALG_DEFAULT, dBuffer);
+  platform::dynload::cusparseSDDMM(handle, GetGpuOperation(A_transpose),
+                                   GetGpuOperation(B_transpose), &alpha, matA,
+                                   matB, &beta, matC, gpu_type,
+                                   CUSPARSE_SDDMM_ALG_DEFAULT, dBuffer);
 
   platform::dynload::cusparseDestroyDnMat(matA);
   platform::dynload::cusparseDestroyDnMat(matB);
@@ -331,7 +327,7 @@ void DotDsd(const platform::CUDADeviceContext& ctx, const Tensor* A_offset,
   T* C_data = C->data<T>();
 
   std::string data_type = framework::DataTypeToString(C->type());
-  int gpu_type = GetGpuType(data_type);
+  cudaDataType_t gpu_type = GetGpuType(data_type);
 
   cusparseHandle_t handle = NULL;
   cusparseSpMatDescr_t matA;
@@ -344,16 +340,15 @@ void DotDsd(const platform::CUDADeviceContext& ctx, const Tensor* A_offset,
       &matA, num_rows, num_rows, A_nnz, const_cast<int*>(A_offset_data),
       const_cast<int*>(A_columns_data), const_cast<T*>(A_value_data),
       CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO,
-      gpu_type == 0 ? CUDA_R_32F : CUDA_R_64F);
+      gpu_type);
 
   // Create dense matrix B
-  platform::dynload::cusparseCreateDnMat(
-      &matB, num_rows, num_cols, num_cols, const_cast<T*>(B_data),
-      gpu_type == 0 ? CUDA_R_32F : CUDA_R_64F, CUSPARSE_ORDER_ROW);
+  platform::dynload::cusparseCreateDnMat(&matB, num_rows, num_cols, num_cols,
+                                         const_cast<T*>(B_data), gpu_type,
+                                         CUSPARSE_ORDER_ROW);
   // Create dense matrix C
-  platform::dynload::cusparseCreateDnMat(
-      &matC, num_rows, num_cols, num_cols, C_data,
-      gpu_type == 0 ? CUDA_R_32F : CUDA_R_64F, CUSPARSE_ORDER_ROW);
+  platform::dynload::cusparseCreateDnMat(&matC, num_rows, num_cols, num_cols,
+                                         C_data, gpu_type, CUSPARSE_ORDER_ROW);
 
   T alpha = 1;
   T beta = 0;
@@ -362,21 +357,15 @@ void DotDsd(const platform::CUDADeviceContext& ctx, const Tensor* A_offset,
   size_t bufferSize = 0;
   // allocate an external buffer if needed
   platform::dynload::cusparseSpMM_bufferSize(
-      handle, A_transpose ? CUSPARSE_OPERATION_TRANSPOSE
-                          : CUSPARSE_OPERATION_NON_TRANSPOSE,
-      B_transpose ? CUSPARSE_OPERATION_TRANSPOSE
-                  : CUSPARSE_OPERATION_NON_TRANSPOSE,
-      &alpha, matA, matB, &beta, matC, gpu_type == 0 ? CUDA_R_32F : CUDA_R_64F,
-      CUSPARSE_SPMM_ALG_DEFAULT, &bufferSize);
+      handle, GetGpuOperation(A_transpose), GetGpuOperation(B_transpose),
+      &alpha, matA, matB, &beta, matC, gpu_type, CUSPARSE_SPMM_ALG_DEFAULT,
+      &bufferSize);
   cudaMalloc(&dBuffer, bufferSize);
 
-  platform::dynload::cusparseSpMM(
-      handle, A_transpose ? CUSPARSE_OPERATION_TRANSPOSE
-                          : CUSPARSE_OPERATION_NON_TRANSPOSE,
-      B_transpose ? CUSPARSE_OPERATION_TRANSPOSE
-                  : CUSPARSE_OPERATION_NON_TRANSPOSE,
-      &alpha, matA, matB, &beta, matC, gpu_type == 0 ? CUDA_R_32F : CUDA_R_64F,
-      CUSPARSE_SPMM_ALG_DEFAULT, dBuffer);
+  platform::dynload::cusparseSpMM(handle, GetGpuOperation(A_transpose),
+                                  GetGpuOperation(B_transpose), &alpha, matA,
+                                  matB, &beta, matC, gpu_type,
+                                  CUSPARSE_SPMM_ALG_DEFAULT, dBuffer);
 
   platform::dynload::cusparseDestroySpMat(matA);
   platform::dynload::cusparseDestroyDnMat(matB);
