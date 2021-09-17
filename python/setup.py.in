@@ -302,19 +302,22 @@ package_dir={
 # put all thirdparty libraries in paddle.libs
 libs_path='${PADDLE_BINARY_DIR}/python/paddle/libs'
 
+package_data['paddle.libs']= []
 package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name]
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 
-package_data['paddle.libs']+=[os.path.basename('${LAPACK_LIB}'), 
+package_data['paddle.libs']+=[
+    os.path.basename('${LAPACK_LIB}'), 
     os.path.basename('${BLAS_LIB}'),
-    os.path.basename('${GNU_RT_LIB_1}'), 
-    os.path.basename('${GNU_RT_LIB_2}'), 
-    os.path.basename('${GFORTRAN_LIB}')]
+    os.path.basename('${GFORTRAN_LIB}'),
+    os.path.basename('${GNU_RT_LIB_1}')]
 shutil.copy('${BLAS_LIB}', libs_path)
 shutil.copy('${LAPACK_LIB}', libs_path)
-shutil.copy('${GNU_RT_LIB_1}', libs_path)
-shutil.copy('${GNU_RT_LIB_2}', libs_path)
 shutil.copy('${GFORTRAN_LIB}', libs_path)
+shutil.copy('${GNU_RT_LIB_1}', libs_path)
+if not sys.platform.startswith("linux"):
+    package_data['paddle.libs']+=[os.path.basename('${GNU_RT_LIB_2}')]
+    shutil.copy('${GNU_RT_LIB_2}', libs_path)
 
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)

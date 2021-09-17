@@ -18,25 +18,9 @@ namespace paddle {
 namespace operators {
 namespace math {
 
+// LU (for example)
 template <typename T>
 void lapackLu(int m, int n, T *a, int lda, int *ipiv, int *info);
-
-template <typename T>
-void lapackLuSolve(char trans, int n, int nrhs, T *a, int lda, int *ipiv, T *b,
-                   int ldb, int *info);
-
-template <typename T>
-void lapackCholesky(char uplo, int n, T *a, int lda, int *info);
-
-template <typename T1, typename T2 = T1>
-void lapackEig(char jobvl, char jobvr, int n, T1 *a, int lda, T1 *w, T1 *vl,
-               int ldvl, T1 *vr, int ldvr, T1 *work, int lwork, T2 *rwork,
-               int *info);
-
-template <typename T1, typename T2 = T1>
-void lapackSyevd(char jobz, char uplo, int n, T1 *a, int lda, T2 *w, T1 *work,
-                 int lwork, T2 *rwork, int lrwork, int *iwork, int liwork,
-                 int *info);
 
 }  // namespace math
 }  // namespace operators

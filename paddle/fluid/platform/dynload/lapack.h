@@ -18,39 +18,14 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
-// Note(zhouwei): because lapack doesn't provide appropriate header file
-// getrf
+// Note(zhouwei): because lapack doesn't provide appropriate header file.
+// should expose API statement yourself.
+
+// getrf_(For example)
 extern "C" void dgetrf_(int *m, int *n, double *a, int *lda, int *ipiv,
                         int *info);
 extern "C" void sgetrf_(int *m, int *n, float *a, int *lda, int *ipiv,
                         int *info);
-
-// getrs
-extern "C" void dgetrs_(char *trans, int *n, int *nrhs, double *a, int *lda,
-                        int *ipiv, double *b, int *ldb, int *info);
-extern "C" void sgetrs_(char *trans, int *n, int *nrhs, float *a, int *lda,
-                        int *ipiv, float *b, int *ldb, int *info);
-
-// potrf
-extern "C" void dpotrf_(char *uplo, int *n, double *a, int *lda, int *info);
-extern "C" void spotrf_(char *uplo, int *n, float *a, int *lda, int *info);
-
-// geev
-extern "C" void dgeev_(char *jobvl, char *jobvr, int *n, double *a, int *lda,
-                       double *wr, double *wi, double *vl, int *ldvl,
-                       double *vr, int *ldvr, double *work, int *lwork,
-                       int *info);
-extern "C" void sgeev_(char *jobvl, char *jobvr, int *n, float *a, int *lda,
-                       float *wr, float *wi, float *vl, int *ldvl, float *vr,
-                       int *ldvr, float *work, int *lwork, int *info);
-
-// syevd
-extern "C" void dsyevd_(char *jobz, char *uplo, int *n, double *a, int *lda,
-                        double *w, double *work, int *lwork, int *iwork,
-                        int *liwork, int *info);
-extern "C" void ssyevd_(char *jobz, char *uplo, int *n, float *a, int *lda,
-                        float *w, float *work, int *lwork, int *iwork,
-                        int *liwork, int *info);
 
 namespace paddle {
 namespace platform {
@@ -83,15 +58,7 @@ extern void *lapack_dso_handle;
 
 #define LAPACK_ROUTINE_EACH(__macro) \
   __macro(dgetrf_);                  \
-  __macro(sgetrf_);                  \
-  __macro(dgetrs_);                  \
-  __macro(sgetrs_);                  \
-  __macro(dpotrf_);                  \
-  __macro(spotrf_);                  \
-  __macro(dgeev_);                   \
-  __macro(sgeev_);                   \
-  __macro(dsyevd_);                  \
-  __macro(ssyevd_);
+  __macro(sgetrf_);
 
 LAPACK_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_LAPACK_WRAP);
 
