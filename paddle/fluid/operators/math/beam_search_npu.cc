@@ -32,6 +32,19 @@ namespace math {
 template <typename T>
 class BeamSearchFunctor<platform::NPUDeviceContext, T> {
  public:
+  template <typename U>
+  void PrintTensor(const framework::Tensor& src, const platform::NPUDeviceContext& ctx){
+      std::vector<U> vec(src.numel());
+      TensorToVector(src, ctx, &vec);
+      int len = 20;
+      if (len > static_cast<int>(vec.size())) {
+          len = static_cast<int>(vec.size());
+      }
+      for(int i=0; i< len; ++i){
+          VLOG(3) << "vec[" << i<< "] : "<< vec[i];
+      }
+  }
+
   void operator()(const platform::NPUDeviceContext& ctx,
                   const framework::LoDTensor* pre_ids,
                   const framework::LoDTensor* pre_scores,
@@ -93,6 +106,12 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     } else {
       pre_ids_int32.ShareDataWith(*pre_ids);
     }
+
+    VLOG(3) << "yoki: ids";
+    PrintTensor<int64_t>(*ids, ctx);
+
+    VLOG(3) << "yoki: scores";
+    PrintTensor<float>(*scores, ctx);
 
     Tensor expand_pre_ids(pre_ids_int32.type());
     expand_pre_ids.Resize(framework::make_ddim({batch_size, seq_width}));
@@ -294,6 +313,12 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         .AddAttr("largest", true);
     runner_topk.Run(stream);
 
+    VLOG(3) << "yoki: topk_scores";
+    PrintTensor<float>(topk_scores, ctx);
+
+    VLOG(3) << "yoki: tmp_indices";
+    PrintTensor<int>(tmp_indices, ctx);
+
     // cast tmp_indices from int to float32 for Sort op
     Tensor cast_tmp_indices(framework::proto::VarType::FP32);
     cast_tmp_indices.Resize(tmp_indices.dims());
@@ -316,6 +341,12 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
         "Sort", {cast_tmp_indices}, {sorted_tmp_indices, sorted_score_indices},
         {{"axis", 1}, {"descending", false}});
     runner_sort_tmp_indices.Run(stream);
+
+    VLOG(3) << "yoki: sorted_tmp_indices";
+    PrintTensor<float>(sorted_tmp_indices, ctx);
+
+    VLOG(3) << "yoki: sorted_score_indices";
+    PrintTensor<int>(sorted_score_indices, ctx);
 
     // cast sorted_tmp_indices from float32 to int
     Tensor cast_sort_tmp_indices(framework::proto::VarType::INT32);
@@ -418,6 +449,9 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
                     {{"dst_type", static_cast<int>(dst_dtype_selected_ids)}});
     runner_cast_selected_ids.Run(stream);
 
+    VLOG(3) << "yoki: topk_ids";
+    PrintTensor<int>(topk_ids, ctx);
+
     // TODO(pangyoki): PruneEndBeams
 
     // Step 4: set lod of output Tensor
@@ -462,7 +496,7 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     const auto& runner_power =
         NpuOpRunner("Power", {cast_batch_ids}, {scale_batch_ids},
                     {{"power", static_cast<float>(1.0)},
-                     {"scale", static_cast<float>(beam_size)},
+                     {"scale", static_cast<float>(real_beam_size)},
                      {"shift", static_cast<float>(0.0)}});
     runner_power.Run(stream);
 
@@ -483,6 +517,9 @@ class BeamSearchFunctor<platform::NPUDeviceContext, T> {
     const auto& runner_add_beam_id = NpuOpRunner(
         "Add", {beam_ids, cast_scale_batch_ids}, {tmp_parent_idx}, {});
     runner_add_beam_id.Run(stream);
+
+    VLOG(3) << "yoki: tmp_parent_idx";
+    PrintTensor<int>(tmp_parent_idx, ctx);
 
     // cast tmp_parent_idx from int to int64 to get parent_idx
     auto dst_dtype_parent_idx = ConvertToNpuDtype(parent_idx->type());

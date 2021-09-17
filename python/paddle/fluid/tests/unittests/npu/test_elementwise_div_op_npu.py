@@ -20,6 +20,7 @@ import sys
 sys.path.append("..")
 from op_test import OpTest
 import paddle
+from paddle.fluid.core import ops
 import paddle.fluid as fluid
 
 paddle.enable_static()
@@ -172,6 +173,29 @@ class TestElementwiseDivNet(unittest.TestCase):
         self.assertTrue(np.allclose(npu_pred, cpu_pred))
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
 
+class TestFloatStatus(unittest.TestCase):
+    def test_overflow(self):
+        paddle.disable_static()
+        paddle.set_device('npu')
+
+        flag = paddle.zeros([8])
+        ops.clear_float_status(flag, flag)
+        self.assertEqual(flag.numpy().sum(), 0.0)
+
+        x = paddle.to_tensor([12.564], stop_gradient=False)
+        y = paddle.to_tensor([2.], stop_gradient=False)
+        z = x / y
+        out = 32768. * z
+
+        ops.get_float_status(flag, flag)
+        self.assertEqual(flag.numpy().sum(), 0.0)
+
+        out.sum().backward()
+
+        ops.get_float_status(flag, flag)
+        self.assertEqual(flag.numpy().sum(), 0.0)
+
+        paddle.enable_static()
 
 if __name__ == '__main__':
     unittest.main()

@@ -24,20 +24,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T>
-void PrintTensor(const framework::Tensor& src, const framework::ExecutionContext& ctx){
-    std::vector<T> vec(src.numel());
-    TensorToVector(src, ctx.device_context(), &vec);
-    // for(int i=0; i< static_cast<int>(vec.size()); ++i){
-    int len = 10;
-    if (len > static_cast<int>(vec.size())) {
-      len = static_cast<int>(vec.size());  
-    }
-    for(int i=0; i< static_cast<int>(10); ++i){
-        VLOG(3) << "vec[" << i<< "] : "<< vec[i];
-    }
-}
-
 template <typename DeviceContext, typename T>
 class ElementwiseMulNPUKernel : public framework::OpKernel<T> {
  public:
@@ -57,13 +43,6 @@ class ElementwiseMulNPUKernel : public framework::OpKernel<T> {
 
     const auto& runner = NpuOpRunner("Mul", {*x, *y}, {*out}, {});
     runner.Run(stream);
-
-    VLOG(3) << "yoki: x: ";
-    PrintTensor<T>(*x, ctx);
-    VLOG(3) << "yoki: y: ";
-    PrintTensor<T>(*y, ctx);
-    VLOG(3) << "yoki: out: ";
-    PrintTensor<T>(*out, ctx);
   }
 };
 
@@ -83,28 +62,17 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
-    
-    VLOG(3) << "yoki: x: ";
-    PrintTensor<T>(*x, ctx);
-    VLOG(3) << "yoki: y: ";
-    PrintTensor<T>(*y, ctx);
-    VLOG(3) << "yoki: dout: ";
-    PrintTensor<T>(*dout, ctx);
 
     if (dx) {
       dx->mutable_data<T>(place);
       const auto& runner_dx = NpuOpRunner("Mul", {*dout, *y}, {*dx}, {});
       runner_dx.Run(stream);
-      VLOG(3) << "yoki: dx: ";
-      PrintTensor<T>(*dx, ctx);
     }
 
     if (dy) {
       dy->mutable_data<T>(place);
       const auto& runner_dy = NpuOpRunner("Mul", {*x, *dout}, {*dy}, {});
       runner_dy.Run(stream);
-      VLOG(3) << "yoki: dy: ";
-      PrintTensor<T>(*dy, ctx);
     }
   }
 };
@@ -117,12 +85,17 @@ namespace ops = paddle::operators;
 REGISTER_OP_NPU_KERNEL(
     elementwise_mul,
     ops::ElementwiseMulNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ElementwiseMulNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::ElementwiseMulNPUKernel<paddle::platform::NPUDeviceContext, int64_t>,
     ops::ElementwiseMulNPUKernel<paddle::platform::NPUDeviceContext,
                                  paddle::platform::float16>);
 
 REGISTER_OP_NPU_KERNEL(
     elementwise_mul_grad,
     ops::ElementwiseMulGradNPUKernel<paddle::platform::NPUDeviceContext, float>,
+    ops::ElementwiseMulGradNPUKernel<paddle::platform::NPUDeviceContext, int>,
+    ops::ElementwiseMulGradNPUKernel<paddle::platform::NPUDeviceContext,
+                                     int64_t>,
     ops::ElementwiseMulGradNPUKernel<paddle::platform::NPUDeviceContext,
                                      paddle::platform::float16>);
 #endif

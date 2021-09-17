@@ -492,6 +492,7 @@ void PrintNpuVarInfo(const std::string& op_type, const std::string& var_name,
   framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
 
   LOG(WARNING) << "print [" << var_name << "] tensor info:";
+  VLOG(0) << "yoki: print [" << var_name << "] tensor info:";
   // use env strategy control in future, -1=print_all.
   int print_num = 3;
   if (tensor->type() == proto::VarType::FP32) {
@@ -508,6 +509,8 @@ void PrintNPUOpValueInfo(const framework::OperatorBase& op,
                          const framework::Scope& scope,
                          const platform::Place& place) {
   LOG(WARNING) << "There are `nan` or `inf` in operator (" << op.Type()
+               << "), here we print some tensor value info of this op.";
+  VLOG(0) << "There are `nan` or `inf` in operator (" << op.Type()
                << "), here we print some tensor value info of this op.";
   for (auto& vname : op.InputVars()) {
     auto* var = scope.FindVar(vname);
