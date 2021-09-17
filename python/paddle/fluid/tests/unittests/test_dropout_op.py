@@ -232,6 +232,75 @@ class TestFP16DropoutOp2(TestFP16DropoutOp):
         self.fix_seed = False
 
 
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or not core.op_support_gpu("dropout"),
+    "core is not compiled with CUDA or core is not support dropout")
+class TestDropoutOpWithSeedOnCPUPlace(unittest.TestCase):
+    def test_seed_cpu_place(self):
+        paddle.enable_static()
+        main_program = Program()
+        with program_guard(main_program):
+            seed_input_name = "tensor@SeedInput"
+            seed_out_name = "tensor@SeedOut"
+            x_var_name = "tensor@X"
+            mask_var_name = "tensor@Mask"
+            seed_input_var = main_program.global_block().create_var(
+                name=seed_input_name,
+                shape=[1],
+                dtype='int32',
+                persistable=False,
+                stop_gradient=True)
+            seed_out_var = main_program.global_block().create_var(
+                name=seed_out_name,
+                shape=[1],
+                dtype='int32',
+                persistable=False,
+                stop_gradient=True)
+            x_var = main_program.global_block().create_var(
+                name=x_var_name,
+                shape=[1],
+                dtype='float32',
+                persistable=False,
+                stop_gradient=True)
+            mask_var = main_program.global_block().create_var(
+                name=mask_var_name,
+                shape=[1],
+                dtype='int',
+                persistable=False,
+                stop_gradient=True)
+
+            main_program.global_block().append_op(
+                type="fill_constant",
+                outputs={"Out": x_var_name},
+                attrs={
+                    "shape": [1],
+                    "dtype": x_var.dtype,
+                    "value": 1.0,
+                    "place_type": 0
+                })
+        main_program.global_block().append_op(
+            type='seed',
+            inputs={},
+            outputs={'Out': seed_input_var},
+            attrs={'seed': 1,
+                   'force_cpu': True})
+        main_program.global_block().append_op(
+            type='dropout',
+            inputs={'X': x_var,
+                    'Seed': seed_input_var},
+            attrs={'dropout_prob': 1.0},
+            outputs={'Out': seed_out_var,
+                     'Mask': mask_var})
+        place = fluid.CUDAPlace(0)
+        exe = fluid.Executor(place)
+        x_out, mask_out = exe.run(
+            main_program,
+            feed={},
+            fetch_list=[seed_out_var.name, mask_var.name])
+        expect_value = np.array([0.0]).astype('float32')
+        self.assertTrue(np.array_equal(x_out, expect_value))
+
+
 class TestDropoutOpError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):

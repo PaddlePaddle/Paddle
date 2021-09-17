@@ -39,6 +39,11 @@ class SeedOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddOutput("Out", "The output of seed op.");
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
+    AddAttr<bool>("force_cpu",
+                  "(bool, default false) Force fill output variable to cpu "
+                  "memory. Otherwise, fill output variable to the running "
+                  "device")
+        .SetDefault(false);
     AddComment(R"DOC(
 Seed Operator.
 )DOC");

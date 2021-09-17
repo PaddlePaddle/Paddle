@@ -202,8 +202,11 @@ class ProgramStats(object):
                 type='seed',
                 inputs={},
                 outputs={'Out': [added_var]},
-                attrs={'seed': seed,
-                       'op_device': op_device})
+                attrs={
+                    'seed': seed,
+                    'op_device': op_device,
+                    'force_cpu': True
+                })
             self.ops.insert(op_idx, added_op)
             # modify dropout op desc so that it accept a seed var as input
             op.desc.set_input("Seed", [var_unique_name])
