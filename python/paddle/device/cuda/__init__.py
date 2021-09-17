@@ -213,13 +213,13 @@ def get_device_properties(device=None):
 
     Parameters:
         device(paddle.CUDAPlace() or int or str): The device, the ID of the device 
-        of the device from. If device is None, the device is the current device. 
-        Default: None.
+            of the device from. If device is None, the device is the current device. 
+            Default: None.
 
     Returns:
         _CudaDeviceProperties: the properties of the device which include ASCII string 
-        identifying device, major compute capability, minor compute capability, global 
-        memory available on device in bytes and the number of multiprocessors on the device.
+            identifying device, major compute capability, minor compute capability, global 
+            memory available on device in bytes and the number of multiprocessors on the device.
 
     Examples:
     
