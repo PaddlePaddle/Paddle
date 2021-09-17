@@ -28,7 +28,6 @@ __all__ = [
     'norm',
     'cond',
     'inv',
-    'matrix_power',
     'multi_dot',
     'matrix_rank',
     'svd',
