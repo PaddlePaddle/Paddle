@@ -23,6 +23,7 @@ from .tensor.linalg import svd
 from .tensor.linalg import eigh  # noqa: F401
 from .tensor.linalg import det
 from .tensor.linalg import slogdet
+from .tensor.linalg import pinv
 
 __all__ = [
     'cholesky',  #noqa
@@ -35,5 +36,6 @@ __all__ = [
     'matrix_power',
     'det',
     'slogdet',
-    'eigh'
+    'eigh',
+    'pinv'
 ]

@@ -18,6 +18,8 @@ from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtyp
 from ..fluid.framework import in_dygraph_mode, _varbase_creator, Variable
 
 from ..fluid.layers import transpose, cast  # noqa: F401
+from ..fluid import layers
+import paddle
 from paddle.common_ops_import import core
 from paddle.common_ops_import import VarDesc
 from paddle import _C_ops
@@ -1106,20 +1108,18 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
     r"""
     Computes the rank of a matrix.
 
-    The rank of a matrix is the number of singular values that are greater than the specified tol threshold when hermitian=False,
-    or the number of eigenvalues in absolute value that are greater than the specified tol threshold when hermitian=True.
+    The rank of a matrix is the number of singular values that are greater than the specified `tol` threshold when hermitian=False, 
+    or the number of eigenvalues in absolute value that are greater than the specified `tol` threshold when hermitian=True.
 
     Args:
-        x (Tensor): The input tensor.
-            Its shape should be [..., m, n], where ... is zero or more batch dimensions. If x is a batch of matrices then the output
-            has the same batch dimensions. The data type of x should be float32 or float64.
-        tol (float,Tensor,optional): the tolerance value. Default: None.
-            If tol is not specified, and sigma is the largest singular value (or eigenvalue in absolute value), and eps is the
-            epsilon value for the dtype of x, then tol is computed with formula tol=sigma * max(m,n) * eps. Note that if x is
-            a batch of matrices, tol is computed this way for every batch.
-        hermitian (bool,optional): indicates whether x is Hermitian. Default: False.
-            When hermitian=True, x is assumed to be Hermitian, but x is not checked inside the function. Instead, We just use the
-            lower triangular of the matrix to compute.
+        x (Tensor): The input tensor. Its shape should be `[..., m, n]`, where `...` is zero or more batch dimensions. If `x` is a batch 
+            of matrices then the output has the same batch dimensions. The data type of `x` should be float32 or float64. 
+        tol (float,Tensor,optional): the tolerance value. Default: None. If `tol` is not specified, and `sigma` is the largest 
+            singular value (or eigenvalues in absolute value), and `eps` is the epsilon value for the dtype of `x`, then `tol` is computed 
+            with formula `tol=sigma * max(m,n) * eps`. Note that if `x` is a batch of matrices, `tol` is computed this way for every batch.
+        hermitian (bool,optional): indicates whether `x` is Hermitian. Default: False. When hermitian=True, `x` is assumed to be Hermitian, 
+            enabling a more efficient method for finding eigenvalues, but `x` is not checked inside the function. Instead, We just use 
+            the lower triangular of the matrix to compute.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1744,3 +1744,275 @@ def eigh(x, UPLO='L', name=None):
                  'Eigenvectors': out_vector},
         attrs={'UPLO': UPLO})
     return out_value, out_vector
+
+
+def pinv(x, rcond=1e-15, hermitian=False, name=None):
+    r"""
+    Calculate pseudo inverse via SVD(singular value decomposition) 
+    of one matrix or batches of regular matrix.
+
+    .. math::
+
+        if hermitian == False:
+            x = u * s * vt  (SVD)
+            out = v * 1/s * ut
+        else:
+            x = u * s * ut  (eigh)
+            out = u * 1/s * u.conj().transpose(-2,-1)
+    
+    If x is hermitian or symmetric matrix, svd will be replaced with eigh.
+
+    Args:
+        x(Tensor): The input tensor. Its shape should be (*, m, n) 
+            where * is zero or more batch dimensions. m and n can be 
+            arbitraty positive number. The data type of x should be 
+            float32 or float64 or complex64 or complex128. When data
+            type is complex64 or cpmplex128, hermitian should be set
+            True.
+
+        rcond(Tensor, optional): the tolerance value to determine 
+            when is a singular value zero. Defalut:1e-15. 
+        
+        hermitian(bool, optional): indicates whether x is Hermitian 
+            if complex or symmetric if real. Default: False.
+        
+        name(str|None): A name for this layer(optional). If set None, 
+            the layer will be named automatically.
+    
+    Returns:
+        Tensor: The tensor with same data type with x. it represents 
+        pseudo inverse of x. Its shape should be (*, n, m).
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.arange(15).reshape((3, 5)).astype('float64')
+            input = paddle.to_tensor(x)
+            out = paddle.linalg.pinv(input)
+            print(input)
+            print(out)
+
+            # input:
+            # [[0. , 1. , 2. , 3. , 4. ],
+            # [5. , 6. , 7. , 8. , 9. ],
+            # [10., 11., 12., 13., 14.]]
+
+            # out:
+            # [[-0.22666667, -0.06666667,  0.09333333],
+            # [-0.12333333, -0.03333333,  0.05666667],
+            # [-0.02000000,  0.00000000,  0.02000000],
+            # [ 0.08333333,  0.03333333, -0.01666667],
+            # [ 0.18666667,  0.06666667, -0.05333333]]
+
+            # one can verify : x * out * x = x ;
+            # or              out * x * out = x ;
+    """
+
+    if in_dygraph_mode():
+        if not hermitian:
+            # combine svd and matmul op
+            u, s, vt = _C_ops.svd(x, 'full_matrices', False)
+            max_singular_val = _C_ops.reduce_max(s, 'dim', [-1], 'keep_dim', True, \
+                'reduce_all', False)
+            rcond = paddle.to_tensor(rcond, dtype=x.dtype)
+            cutoff = rcond * max_singular_val
+            y = float('inf')
+            y = paddle.to_tensor(y, dtype=x.dtype)
+
+            condition = s > cutoff
+            cond_int = layers.cast(condition, s.dtype)
+            cond_not_int = layers.cast(layers.logical_not(condition), s.dtype)
+            out1 = layers.elementwise_mul(1 / s, cond_int)
+            out2 = layers.elementwise_mul(1 / y, cond_not_int)
+            singular = layers.elementwise_add(out1, out2)
+            st, _ = _C_ops.unsqueeze2(singular, 'axes', [-2])
+
+            dims = list(range(len(vt.shape)))
+            perm = dims[:-2] + [dims[-1]] + [dims[-2]]
+            v, _ = _C_ops.transpose2(vt, 'axis', perm)
+
+            out_1 = v * st
+            out_2 = _C_ops.matmul_v2(out_1, u, 'trans_x', False, 'trans_y',
+                                     True)
+            return out_2
+        else:
+            # combine eigh and matmul op
+            s, u = _C_ops.eigh(x, 'UPLO', 'L')
+            s_abs = paddle.abs(s)
+            max_singular_val = _C_ops.reduce_max(s_abs, 'dim', [-1], 'keep_dim', True, \
+                'reduce_all', False)
+            rcond = paddle.to_tensor(rcond, dtype=s.dtype)
+            cutoff = rcond * max_singular_val
+            y = float('inf')
+            y = paddle.to_tensor(y, dtype=s.dtype)
+
+            condition = s_abs > cutoff
+            cond_int = layers.cast(condition, s.dtype)
+            cond_not_int = layers.cast(layers.logical_not(condition), s.dtype)
+            out1 = layers.elementwise_mul(1 / s, cond_int)
+            out2 = layers.elementwise_mul(1 / y, cond_not_int)
+            singular = layers.elementwise_add(out1, out2)
+            st, _ = _C_ops.unsqueeze2(singular, 'axes', [-2])
+
+            out_1 = u * st
+            u_conj = _C_ops.conj(u)
+            out_2 = _C_ops.matmul_v2(out_1, u_conj, 'trans_x', False, 'trans_y',
+                                     True)
+            return out_2
+    else:
+        if not hermitian:
+            helper = LayerHelper('pinv', **locals())
+            dtype = x.dtype
+            check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'pinv')
+
+            u = helper.create_variable_for_type_inference(dtype)
+            s = helper.create_variable_for_type_inference(dtype)
+            vt = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='svd',
+                inputs={'X': [x]},
+                outputs={'U': u,
+                         'VH': vt,
+                         'S': s},
+                attrs={'full_matrices': False}, )
+
+            max_singular_val = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='reduce_max',
+                inputs={'X': s},
+                outputs={'Out': max_singular_val},
+                attrs={'dim': [-1],
+                       'keep_dim': True,
+                       'reduce_all': False})
+
+            rcond = layers.fill_constant(shape=[1], value=rcond, dtype=dtype)
+            cutoff = rcond * max_singular_val
+            y = float('inf')
+            y = layers.fill_constant(shape=[1], value=y, dtype=dtype)
+
+            condition = s > cutoff
+            cond_int = layers.cast(condition, dtype)
+            cond_not_int = layers.cast(layers.logical_not(condition), dtype)
+            out1 = layers.elementwise_mul(1 / s, cond_int)
+            out2 = layers.elementwise_mul(1 / y, cond_not_int)
+            singular = layers.elementwise_add(out1, out2)
+
+            st = helper.create_variable_for_type_inference(dtype=dtype)
+            st_shape = helper.create_variable_for_type_inference(dtype=dtype)
+            helper.append_op(
+                type='unsqueeze2',
+                inputs={'X': singular},
+                attrs={'axes': [-2]},
+                outputs={'Out': st,
+                         'XShape': st_shape})
+
+            dims = list(range(len(vt.shape)))
+            perm = dims[:-2] + [dims[-1]] + [dims[-2]]
+            v = helper.create_variable_for_type_inference(dtype)
+            v_shape = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='transpose2',
+                inputs={'X': [vt]},
+                outputs={'Out': [v],
+                         'XShape': [v_shape]},
+                attrs={'axis': perm})
+
+            out_1 = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='elementwise_mul',
+                inputs={'X': v,
+                        'Y': st},
+                outputs={'Out': out_1},
+                attrs={'axis': -1,
+                       'use_mkldnn': False})
+            out_1 = helper.append_activation(out_1)
+
+            out_2 = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='matmul_v2',
+                inputs={'X': out_1,
+                        'Y': u},
+                outputs={'Out': out_2},
+                attrs={'trans_x': False,
+                       'trans_y': True}, )
+            return out_2
+        else:
+            helper = LayerHelper('pinv', **locals())
+            dtype = x.dtype
+            check_variable_and_dtype(
+                x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'],
+                'pinv')
+
+            if dtype == paddle.complex128:
+                s_type = 'float64'
+            elif dtype == paddle.complex64:
+                s_type = 'float32'
+            else:
+                s_type = dtype
+
+            u = helper.create_variable_for_type_inference(dtype)
+            s = helper.create_variable_for_type_inference(s_type)
+            helper.append_op(
+                type='eigh',
+                inputs={'X': x},
+                outputs={'Eigenvalues': s,
+                         'Eigenvectors': u},
+                attrs={'UPLO': 'L'})
+            s_abs = helper.create_variable_for_type_inference(s_type)
+            helper.append_op(
+                type='abs', inputs={'X': s}, outputs={'Out': s_abs})
+            max_singular_val = helper.create_variable_for_type_inference(s_type)
+            helper.append_op(
+                type='reduce_max',
+                inputs={'X': s_abs},
+                outputs={'Out': max_singular_val},
+                attrs={'dim': [-1],
+                       'keep_dim': True,
+                       'reduce_all': False})
+
+            rcond = layers.fill_constant(shape=[1], value=rcond, dtype=s_type)
+            cutoff = rcond * max_singular_val
+            y = float('inf')
+            y = layers.fill_constant(shape=[1], value=y, dtype=s_type)
+
+            condition = s_abs > cutoff
+            cond_int = layers.cast(condition, s_type)
+            cond_not_int = layers.cast(layers.logical_not(condition), s_type)
+            out1 = layers.elementwise_mul(1 / s, cond_int)
+            out2 = layers.elementwise_mul(1 / y, cond_not_int)
+            singular = layers.elementwise_add(out1, out2)
+
+            st = helper.create_variable_for_type_inference(dtype=s_type)
+            st_shape = helper.create_variable_for_type_inference(dtype=s_type)
+            helper.append_op(
+                type='unsqueeze2',
+                inputs={'X': singular},
+                attrs={'axes': [-2]},
+                outputs={'Out': st,
+                         'XShape': st_shape})
+
+            out_1 = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='elementwise_mul',
+                inputs={'X': u,
+                        'Y': st},
+                outputs={'Out': out_1},
+                attrs={'axis': -1,
+                       'use_mkldnn': False})
+            out_1 = helper.append_activation(out_1)
+
+            u_conj = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='conj', inputs={'X': u}, outputs={'Out': [u_conj]})
+
+            out_2 = helper.create_variable_for_type_inference(dtype)
+            helper.append_op(
+                type='matmul_v2',
+                inputs={'X': out_1,
+                        'Y': u_conj},
+                outputs={'Out': out_2},
+                attrs={'trans_x': False,
+                       'trans_y': True}, )
+            return out_2
