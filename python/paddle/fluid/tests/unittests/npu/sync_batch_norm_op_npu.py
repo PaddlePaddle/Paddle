@@ -52,10 +52,7 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
         self.H = 32
         self.W = 32
         self.dshape = [self.N, self.C, self.H, self.W]
-        self.atol = 1e-2
-
-    def get_model_1(self, main_prog, startup_program):
-        pass
+        self.atol = 1e-3
 
     def get_model(self,
                   main,
@@ -93,8 +90,8 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
                     bn = fluid.layers.cast(bn, 'float32')
                 sigmoid = fluid.layers.sigmoid(bn)
                 out = fluid.layers.reduce_sum(sigmoid)
-                if not sync_bn:
-                    out = out / core.get_npu_device_count()
+                # if not sync_bn:
+                #     out = out / core.get_npu_device_count()
                 if not only_forward:
                     sgd_opt = fluid.optimizer.SGD(learning_rate=0.0)
                     sgd_opt.backward(out)
