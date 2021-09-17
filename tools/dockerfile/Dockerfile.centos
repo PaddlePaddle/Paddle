@@ -13,7 +13,7 @@ ENV PATH /opt/rh/devtoolset-2/root/usr/bin:$PATH
 ENV LD_LIBRARY_PATH /usr/local/ssl/lib:/opt/rh/devtoolset-2/root/usr/lib64:/opt/rh/devtoolset-2/root/usr/lib:/usr/local/lib64:/usr/local/lib:${LD_LIBRARY_PATH}
 ENV PKG_CONFIG_PATH=/usr/local/lib/pkgconfig
 
-RUN yum install -y bzip2 gettext-devel sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool xz graphviz wget curl-devel
+RUN yum install -y bzip2 gettext-devel sqlite-devel zlib-devel openssl-devel pcre-devel vim tk-devel tkinter libtool gfortran xz graphviz wget curl-devel
 COPY build_scripts /build_scripts
 RUN bash build_scripts/build.sh
 RUN bash build_scripts/install_nccl2.sh 

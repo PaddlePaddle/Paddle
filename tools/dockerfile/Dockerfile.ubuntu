@@ -28,7 +28,7 @@ RUN apt-get update && \
     curl sed grep graphviz libjpeg-dev zlib1g-dev  \
     python-matplotlib \
     automake locales clang-format swig  \
-    liblapack-dev liblapacke-dev \
+    gfortran liblapack-dev liblapacke-dev \
     net-tools libtool module-init-tools && \
     apt-get clean -y
 

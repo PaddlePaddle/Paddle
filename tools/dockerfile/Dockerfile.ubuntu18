@@ -20,7 +20,7 @@ COPY paddle/scripts/docker/root/ /root/
 RUN apt-get update && \
   apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa && \
   apt-get update && \
-  apt-get install -y curl wget vim git unzip unrar tar xz-utils libssl-dev bzip2 gzip \ 
+  apt-get install -y curl wget vim git unzip unrar tar xz-utils libssl-dev bzip2 gzip gfortran \ 
     coreutils ntp language-pack-zh-hans python-qt4 libsm6 libxext6 libxrender-dev libgl1-mesa-glx \
     bison graphviz libjpeg-dev zlib1g-dev automake locales swig net-tools libtool module-init-tools
 
