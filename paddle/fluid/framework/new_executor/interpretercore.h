@@ -59,8 +59,7 @@ class InterpreterCore {
 
   void RunInstruction(const Instruction& instr_node);
 
-  void ExecuteInstructionList(const std::vector<Instruction>& vec_instr,
-                              bool is_dry_run = false);
+  void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
 
   void DryRunPrepare(const std::vector<framework::Tensor>& feed_tensors);
 
