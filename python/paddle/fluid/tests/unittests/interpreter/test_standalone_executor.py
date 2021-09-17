@@ -250,9 +250,6 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
         feed = [{'a': np.ones([2, 2], dtype="float32")}]
 
         with self.assertRaises(TypeError):
-            res = self.run_new_executor(feed)
-
-        with self.assertRaises(TypeError):
             os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'
             self._run(feed[0], add_wrong_fetch=True)
             del os.environ['FLAGS_USE_STANDALONE_EXECUTOR']
