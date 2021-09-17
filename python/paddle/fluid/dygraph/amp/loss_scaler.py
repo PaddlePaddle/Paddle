@@ -311,6 +311,7 @@ class AmpScaler(object):
         if self._use_dynamic_loss_scaling:
             # uopdate the scale
             self._update()
+            self._optimizer_states = defaultdict(_refresh_optimizer_state)
 
         return optimize_ops, params_grads
 
