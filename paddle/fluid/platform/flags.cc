@@ -21,8 +21,12 @@ namespace paddle {
 namespace platform {
 
 const ExportedFlagInfoMap &GetExportedFlagInfoMap() {
+  return *GetMutableExportedFlagInfoMap();
+}
+
+ExportedFlagInfoMap *GetMutableExportedFlagInfoMap() {
   static ExportedFlagInfoMap g_exported_flag_info_map;
-  return g_exported_flag_info_map;
+  return &g_exported_flag_info_map;
 }
 
 }  // namespace platform

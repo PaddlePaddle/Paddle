@@ -19,8 +19,7 @@
 
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 
-PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
-                            "Use inplace in new executor");
+DEFINE_bool(new_executor_use_inplace, true, "Use inplace in new executor");
 
 namespace paddle {
 namespace framework {

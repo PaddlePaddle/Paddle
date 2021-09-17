@@ -18,7 +18,6 @@
 #include <map>
 #include <string>
 #include <type_traits>
-#include <typeindex>
 #include "boost/variant.hpp"
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/macros.h"
@@ -30,7 +29,7 @@ struct FlagInfo {
   using ValueType =
       boost::variant<bool, int32_t, int64_t, uint64_t, double, std::string>;
   std::string name;
-  void *value_ptr;
+  mutable void *value_ptr;
   ValueType default_value;
   std::string doc;
   bool is_writable;
@@ -38,15 +37,20 @@ struct FlagInfo {
 
 using ExportedFlagInfoMap = std::map<std::string, FlagInfo>;
 const ExportedFlagInfoMap &GetExportedFlagInfoMap();
+ExportedFlagInfoMap *GetMutableExportedFlagInfoMap();
 
 #define __PADDLE_DEFINE_EXPORTED_FLAG(__name, __is_writable, __cpp_type,    \
                                       __gflag_type, __default_value, __doc) \
   DEFINE_##__gflag_type(__name, __default_value, __doc);                    \
   struct __PaddleRegisterFlag_##__name {                                    \
     __PaddleRegisterFlag_##__name() {                                       \
-      const auto &instance = ::paddle::platform::GetExportedFlagInfoMap();  \
-      using Type = ::paddle::platform::ExportedFlagInfoMap;                 \
-      auto &info = const_cast<Type &>(instance)[#__name];                   \
+      using FlagDeclaredType =                                              \
+          typename std::remove_reference<decltype(FLAGS_##__name)>::type;   \
+      static_assert(std::is_same<FlagDeclaredType, ::std::string>::value || \
+                        std::is_arithmetic<FlagDeclaredType>::value,        \
+                    "FLAGS should be std::string or arithmetic type");      \
+      auto *instance = ::paddle::platform::GetMutableExportedFlagInfoMap(); \
+      auto &info = (*instance)[#__name];                                    \
       info.name = #__name;                                                  \
       info.value_ptr = &(FLAGS_##__name);                                   \
       info.default_value = static_cast<__cpp_type>(__default_value);        \
