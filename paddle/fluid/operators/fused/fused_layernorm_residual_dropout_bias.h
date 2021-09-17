@@ -19,8 +19,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-namespace cg = cooperative_groups;
-
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
@@ -28,10 +26,9 @@ using LayerNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
 /**
  * @brief fused add_bias, dropout, add residual and leyer_norm into one
- * operators, only support forward
+ * operators. Currently only support forward
  */
 
-/********Forward**************/
 template <typename T, int VecSize>
 __device__ void CalcLayernormY(const LayerNormParamType<T> *scale,
                                const LayerNormParamType<T> *bias, const T *x,
@@ -103,12 +100,7 @@ __global__ void FusedLayernormResidualDropoutBias(
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, increment, &state);
 
-  T factor = is_upscale_in_train ? static_cast<T>(1.0f / (1.0f - dropout_prob))
-                                 : factor = static_cast<T>(1.0f);
-  if (is_test) {
-    factor = is_upscale_in_train ? static_cast<T>(1.0f)
-                                 : static_cast<T>(1.0f - dropout_prob);
-  }
+  T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
   using U = LayerNormParamType<T>;
 
   __shared__ U mean_share;
