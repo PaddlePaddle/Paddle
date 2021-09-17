@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/gpu_info.h"
 #include <cstdlib>
+#include <mutex>
+#include <vector>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -22,10 +24,6 @@ limitations under the License. */
 #else
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #endif
-
-#include <mutex>
-#include <vector>
-
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/lock_guard_ptr.h"
