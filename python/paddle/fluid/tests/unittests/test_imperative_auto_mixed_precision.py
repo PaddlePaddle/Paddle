@@ -481,7 +481,7 @@ class TestResnet2(unittest.TestCase):
 
             scaled_loss = scaler.scale(avg_loss)
             scaled_loss.backward()
-            scaler.unscale(optimizer)
+            scaler.unscale_(optimizer)
             scaler.step(optimizer)
             scaler.update()
 

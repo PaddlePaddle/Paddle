@@ -24,7 +24,7 @@ from paddle import _C_ops
 from collections import defaultdict
 from enum import Enum
 
-__all__ = ['AmpScaler']
+__all__ = ['AmpScaler', 'OptimizerState']
 
 
 class OptimizerState(Enum):
@@ -43,10 +43,10 @@ class AmpScaler(object):
 
     AmpScaler is used for Auto-Mixed-Precision training/inferring in imperative
     mode. It controls the scaling of loss, helps avoiding numerical overflow.
-    The object of this class has nineteen methods `scale()`, `unscale()`, `minimize()`, `step()`, `update()` and `get`/`set` api of parameters.
+    The object of this class has nineteen methods `scale()`, `unscale_()`, `minimize()`, `step()`, `update()` and `get`/`set` api of parameters.
 
     `scale()` is used to multiply the loss by a scale ratio.
-    `unscale()` is used to unscale the gradients of parameters, multiplies the gradients of parameters by 1/(scale ratio)
+    `unscale_()` is used to unscale the gradients of parameters, multiplies the gradients of parameters by 1/(scale ratio)
     `minimize()` is similar as `optimizer.minimize()`, performs parameters updating, and it will update the loss_scaling, it equal to `step()` + `update()`.
     `step()` is similar as `optimizer.step()`, which performs parameters updating.
     `update` is used to update the loss_scaling.
@@ -171,95 +171,12 @@ class AmpScaler(object):
 
         return var * self._scale
 
-    def step(self, optimizer):
-        """
-        This function is similar as `Optimizer.step()`, which performs parameters updating.
-        
-        If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
-        Otherwise, if `unscale()` has not been called, it first unscales the scaled gradients of parameters, then updates the parameters.
-        
-        Args:
-            optimizer(Optimizer):  The optimizer used to update parameters.
-        
-        Examples:
-
-            .. code-block:: python
-
-                import numpy as np
-                import paddle.fluid as fluid
-                data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-                with fluid.dygraph.guard():
-                    model = fluid.dygraph.Conv2D(3, 2, 3)
-                    optimizer = fluid.optimizer.SGDOptimizer(
-                            learning_rate=0.01, parameter_list=model.parameters())
-                    scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
-                    data = fluid.dygraph.to_variable(data)
-                    with fluid.dygraph.amp_guard():
-                        conv = model(data)
-                        loss = fluid.layers.reduce_mean(conv)
-                        scaled = scaler.scale(loss)
-                        scaled.backward()
-                        scaler.step(optimizer)
-                        scaler.update() 
-        """
-        if not self._enable:
-            return optimizer.step()
-
-        optimizer_state = self._optimizer_states[id(optimizer)]
-        if optimizer_state["state"] is OptimizerState.STEPPED:
-            raise RuntimeError(
-                "step() has already been called since the last update().")
-
-        #  unscale the grad
-        if optimizer_state["state"] is OptimizerState.INIT:
-            self._unscale(optimizer)
-
-        if self._found_inf:
-            self._cache_founf_inf = True
-        else:
-            optimizer.step()
-            self._cache_founf_inf = False
-
-        optimizer_state["state"] = OptimizerState.STEPPED
-
-    def update(self):
-        """
-        This function is used to update loss scaling ratio.
-
-        Examples:
-
-            .. code-block:: python
-
-                import numpy as np
-                import paddle.fluid as fluid
-                data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-                with fluid.dygraph.guard():
-                    model = fluid.dygraph.Conv2D(3, 2, 3)
-                    optimizer = fluid.optimizer.SGDOptimizer(
-                            learning_rate=0.01, parameter_list=model.parameters())
-                    scaler = fluid.dygraph.AmpScaler(init_loss_scaling=1024)
-                    data = fluid.dygraph.to_variable(data)
-                    with fluid.dygraph.amp_guard():
-                        conv = model(data)
-                        loss = fluid.layers.reduce_mean(conv)
-                        scaled = scaler.scale(loss)
-                        scaled.backward()
-                        scaler.step(optimizer)
-                        scaler.update() 
-        """
-        if not self._enable:
-            return
-        if self._use_dynamic_loss_scaling:
-            self._update()
-            self._optimizer_states = defaultdict(_refresh_optimizer_state)
-        return
-
     def minimize(self, optimizer, *args, **kwargs):
         """
         This function is similar as `Optimizer.minimize()`, which performs parameters updating.
         
         If the scaled gradients of parameters contains NAN or INF, the parameters updating is skipped.
-        Otherwise, if `unscale()` has not been called, it first unscales the scaled gradients of parameters, then updates the parameters.
+        Otherwise, if `unscale_()` has not been called, it first unscales the scaled gradients of parameters, then updates the parameters.
 
         Finally, the loss scaling ratio is updated.
 
