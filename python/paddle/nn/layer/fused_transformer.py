@@ -213,7 +213,7 @@ class FusedMultiHeadAttention(Layer):
 
         self.name = name
 
-    def forward(self, query, attn_mask=None, cache=None):
+    def forward(self, query, key=None, value=None, attn_mask=None, cache=None):
         """
         Applies multi-head attention to map queries and a set of key-value pairs
         to outputs.

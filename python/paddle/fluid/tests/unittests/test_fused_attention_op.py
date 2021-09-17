@@ -103,8 +103,8 @@ class TestFusedAttentionOp(unittest.TestCase):
         self.num_heads = 16
         self.embed_dim = self.head_dim * self.num_heads
 
-        self.dropout_prob = 1.0
-        self.attn_dropout_prob = 1.0
+        self.dropout_prob = 0.0
+        self.attn_dropout_prob = 0.0
         self.weight_attr = None
         self.bias_attr = None
 
@@ -277,8 +277,8 @@ class TestFusedAttentionOpFp16(TestFusedAttentionOp):
         self.num_heads = 16
         self.embed_dim = self.head_dim * self.num_heads
 
-        self.dropout_prob = 1.0
-        self.attn_dropout_prob = 1.0
+        self.dropout_prob = 0.0
+        self.attn_dropout_prob = 0.0
 
         self.weight_attr = None
         self.bias_attr = None

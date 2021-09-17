@@ -195,6 +195,8 @@ class TestFusedAttentionAPI(unittest.TestCase):
             self.attn_dropout_prob, self.kdim, self.vdim, self.pre_layer_norm,
             self.need_weight, self.weight_attr, self.bias_attr)
         out = fused_attn(
+            paddle.to_tensor(self.query),
+            paddle.to_tensor(self.query),
             paddle.to_tensor(self.query), paddle.to_tensor(self.attn_mask))
         ref_out = compute_reference(self.pre_layer_norm, self.query,
                                     self.attn_mask,
@@ -225,7 +227,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
                 self.key_length
             ],
             dtype=self.attn_mask_type)
-        final_out = fused_attn(x, attn_mask)
+        final_out = fused_attn(x, x, x, attn_mask)
 
         place = paddle.CUDAPlace(0)
         exe = paddle.static.Executor(place)
