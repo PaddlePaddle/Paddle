@@ -37,13 +37,13 @@ if (WITH_PYTHON)
   endif(NOT WIN32)
 endif()
 
-cc_library(flags SRCS flags.cc DEPS gflags)
+cc_library(flags SRCS flags.cc DEPS gflags boost)
 cc_library(denormal SRCS denormal.cc DEPS)
 
 cc_library(errors SRCS errors.cc DEPS error_codes_proto)
 cc_test(errors_test SRCS errors_test.cc DEPS errors enforce)
 
-set(enforce_deps flags errors boost)
+set(enforce_deps flags errors boost flags)
 if(WITH_GPU)
   set(enforce_deps ${enforce_deps} external_error_proto)
 endif()
