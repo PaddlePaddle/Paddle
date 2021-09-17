@@ -13,34 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/operators/clip_by_norm_op.h"
+#include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.cu.h"
 
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
-template <typename Tx, typename Ty = Tx>
-struct SquareTransformer {
-  HOSTDEVICE explicit inline SquareTransformer(int n) {}
-
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(x) * static_cast<Ty>(x);
-  }
-
-  HOSTDEVICE inline Ty operator()(const Tx* x) const {
-    return static_cast<Ty>(x[0]) * static_cast<Ty>(x[0]);
-  }
-};
-
-template <typename Tx, typename Ty = Tx>
-struct SquareSum {
-  using Transformer = SquareTransformer<Tx, Ty>;
-
-  inline Ty initial() { return static_cast<Ty>(0.0f); }
-
-  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
-    return b + a;
-  }
-};
 
 template <>
 class ClipByNormKernel<platform::CUDADeviceContext, platform::float16>

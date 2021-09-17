@@ -11,8 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import warnings
 
 from paddle.distributed.fleet.meta_optimizers.common import OP_ROLE_KEY, OpRole
+import paddle.fluid.core as core
+import paddle
 
 __all__ = []
 
@@ -155,8 +158,9 @@ class GradientClipHelper(object):
             if op.type == 'sum':
                 is_clip_grad_by_global_norm = True
                 break
-        if not is_clip_grad_by_global_norm:
-            # TODO(Yuang Liu): need some extra handles when clip_grad_norm for mp
+        if not (is_clip_grad_by_global_norm or core.is_compiled_with_npu()):
+            # TODO (npu dev): suit the c_clip_by_norm op with npu
+            self._allgather_for_grad_clip_with_mp(block, mp_rank)
             return
 
         removed_op_idx = set()
@@ -242,3 +246,77 @@ class GradientClipHelper(object):
                     'use_calc_stream': True,
                     OP_ROLE_KEY: OpRole.Optimize,
                 })
+
+    def _allgather_for_grad_clip_with_mp(self, block, mp_rank):
+        if mp_rank == -1:
+            # no mp, no need extra handles
+            return
+        # When mp_degree >= 1 with gradient clip by norm. The distributed vars
+        # should be gather at first then calc the norm. Otherwise, it only
+        # calc (1 / mp_degree)'s portion of norm.
+        removed_idx = set()
+        # If all vars are distributed, then all clip_by_norm op should be
+        # replaced with c_clip_by_norm op. Therefore, we can only get the
+        # the insert idx by calculating.
+        last_gradient_clip_op_idx = None
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if not self._is_gradient_clip_op(op):
+                continue
+            assert op.type == 'clip_by_norm', 'The gradient clip method is ' \
+                                              'not ClipGradByNorm.'
+            if not last_gradient_clip_op_idx:
+                last_gradient_clip_op_idx = idx
+            input_var = block.var(op.input_arg_names[0])
+            if not (hasattr(input_var, 'is_distributed') and
+                    input_var.is_distributed):
+                # No extra handle is needed for vars which have not been split
+                continue
+            removed_idx.add(idx)
+
+        if not last_gradient_clip_op_idx:
+            warnings.warn("No gradient clip op has found.")
+
+        input_vars_fp16 = []
+        output_vars_fp16 = []
+        input_vars_fp32 = []
+        output_vars_fp32 = []
+        max_norm = None
+        for idx, op in reversed(list(enumerate(block.ops))):
+            if idx in removed_idx:
+                if block.var(op.input_arg_names[0]).dtype == paddle.float16:
+                    input_vars_fp16.append(op.input_arg_names[0])
+                    output_vars_fp16.append(op.output_arg_names[0])
+                else:
+                    input_vars_fp32.append(op.input_arg_names[0])
+                    output_vars_fp32.append(op.output_arg_names[0])
+                if not max_norm:
+                    max_norm = op.attr('max_norm')
+                block._remove_op(idx, sync=False)
+
+        assert max_norm is not None
+
+        inputs = [input_vars_fp16, input_vars_fp32]
+        outputs = [output_vars_fp16, output_vars_fp32]
+        # In case all gradient clip ops are removed
+        # Don't use travers method to get the insert idx
+        # but use this kind of calculation
+        insert_idx = last_gradient_clip_op_idx - len(removed_idx) + 1
+        for i in range(len(inputs)):
+            input_vars = inputs[i]
+            output_vars = outputs[i]
+            assert len(input_vars) == len(output_vars)
+            if len(input_vars) == 0:
+                continue
+            block._insert_op_without_sync(
+                insert_idx,
+                type='c_clip_by_norm',
+                inputs={'X': input_vars},
+                outputs={'Out': output_vars},
+                attrs={
+                    'op_namescope': "/gradient_clip_model_parallelism",
+                    'max_norm': max_norm,
+                    'ring_id': 0,  # only need comm among mp group
+                    'use_calc_stream': True,
+                    OP_ROLE_KEY: OpRole.Optimize,
+                })
+        return

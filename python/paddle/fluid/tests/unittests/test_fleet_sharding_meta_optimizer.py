@@ -1467,6 +1467,76 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'momentum', 'momentum', 'momentum'
         ])
 
+    def test_hybrid_with_mp_pp_amp_clip_by_norm(self):
+        train_prog, startup_prog = paddle.fluid.Program(), paddle.fluid.Program(
+        )
+        avg_cost, strategy = self.pp_net(train_prog, startup_prog)
+        block = avg_cost.block
+        for i in range(3, 7):
+            var = block.var('fc_{}.w_0'.format(i))
+            var.is_distributed = True
+        self.set_strategy(strategy, 'amp')
+        strategy.sharding = True
+        strategy.sharding_configs = {
+            "sharding_degree": 1,
+            "mp_degree": 2,
+            "pp_degree": 2,
+            "dp_degree": 1,
+        }
+        strategy.pipeline = True
+        strategy.pipeline_configs = {
+            "schedule_mode": "1F1B",
+            "micro_batch_size": 2,
+            "accumulate_steps": 4,
+        }
+        clip = paddle.fluid.clip.ClipGradByNorm(clip_norm=1.0)
+        self.optimizer(
+            avg_cost, strategy, train_prog, startup_prog, grad_clip=clip)
+        train_prog = train_prog._pipeline_opt['section_program']
+        startup_prog = startup_prog._pipeline_opt['startup_program']
+
+        startup_prog_ops = startup_prog.global_block().ops
+        main_prog_ops = train_prog.global_block().ops
+
+        # check program
+        startup_prog_op_types = [op.type for op in startup_prog_ops]
+        main_prog_op_types = [op.type for op in main_prog_ops]
+
+        self.assertEqual(startup_prog_op_types, [
+            'uniform_random', 'fill_constant', 'uniform_random',
+            'fill_constant', 'uniform_random', 'fill_constant',
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
+            'c_gen_nccl_id', 'c_comm_init'
+        ])
+        self.assertEqual(main_prog_op_types, [
+            'partial_recv', 'partial_allgather', 'cast', 'cast', 'mul', 'cast',
+            'elementwise_add', 'cast', 'tanh', 'cast', 'cast', 'mul', 'cast',
+            'elementwise_add', 'cast', 'tanh', 'cast', 'cast', 'mul', 'cast',
+            'elementwise_add', 'cast', 'tanh', 'cast', 'cast', 'mul', 'cast',
+            'elementwise_add', 'softmax', 'cast', 'cross_entropy2', 'mean',
+            'elementwise_mul', 'fill_constant', 'elementwise_mul_grad',
+            'mean_grad', 'cross_entropy_grad2', 'cast', 'softmax_grad',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'c_sync_calc_stream',
+            'partial_send', 'fill_constant', 'cast', 'sum', 'fill_constant',
+            'cast', 'sum', 'fill_constant', 'cast', 'sum', 'fill_constant',
+            'cast', 'sum', 'fill_constant', 'cast', 'sum', 'fill_constant',
+            'cast', 'sum', 'fill_constant', 'cast', 'sum', 'fill_constant',
+            'cast', 'sum', 'c_sync_comm_stream', 'check_finite_and_unscale',
+            'cast', 'c_allreduce_max', 'c_allreduce_max', 'cast',
+            'update_loss_scaling', 'clip_by_norm', 'clip_by_norm',
+            'clip_by_norm', 'clip_by_norm', 'c_clip_by_norm', 'momentum',
+            'momentum', 'momentum', 'momentum', 'momentum', 'momentum',
+            'momentum', 'momentum'
+        ])
+
+
 
 if __name__ == "__main__":
     unittest.main()

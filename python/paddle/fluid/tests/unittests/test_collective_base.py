@@ -309,5 +309,7 @@ class TestDistBase(unittest.TestCase):
             self.assertTrue(
                 np.allclose(
                     tr1_out[0][1], need_result2, rtol=1e-05, atol=1e-05))
+        elif col_type == 'c_clip_by_norm':
+            self.assertTrue(np.allclose(tr0_out[0][1], tr1_out[0][1]))
         else:
             pass

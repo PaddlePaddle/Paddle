@@ -74,6 +74,19 @@ struct DivideFunctor {
   T n_inv;
 };
 
+template <typename Tx, typename Ty = Tx>
+struct SquareTransformer {
+  HOSTDEVICE explicit inline SquareTransformer(int n) {}
+
+  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+    return static_cast<Ty>(x) * static_cast<Ty>(x);
+  }
+
+  HOSTDEVICE inline Ty operator()(const Tx* x) const {
+    return static_cast<Ty>(x[0]) * static_cast<Ty>(x[0]);
+  }
+};
+
 }  // namespace details
 }  // namespace kernel_primitives
 }  // namespace operators
