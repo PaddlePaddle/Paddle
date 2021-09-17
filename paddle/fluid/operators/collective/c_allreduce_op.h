@@ -169,6 +169,8 @@ template <ReduceType red_type, typename T>
 class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    LOG(WARNING) << "CAllReduceOpASCENDKernel";
+
 #if defined(PADDLE_WITH_ASCEND_CL)
     auto in = ctx.Input<framework::Tensor>("X");
     auto out = ctx.Output<framework::Tensor>("Out");
@@ -176,23 +178,34 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
     HcclDataType dtype = platform::ToHCCLDataType(in->type());
     int64_t numel = in->numel();
 
+    LOG(WARNING) << "place: " << place;
+    LOG(WARNING) << "dtype: " << dtype;
+    LOG(WARNING) << "numel: " << numel;
+
     void* sendbuff = reinterpret_cast<void*>(const_cast<T*>(in->data<T>()));
     out->mutable_data<T>(in->dims(), ctx.GetPlace());
     void* recvbuff = reinterpret_cast<void*>(out->data<T>());
 
+    LOG(WARNING) << "sendbuff: " << sendbuff;
+    LOG(WARNING) << "recvbuff: " << recvbuff;
+
     int ring_id = ctx.Attr<int>("ring_id");
+    LOG(WARNING) << "ring_id: " << ring_id;
     std::string group =
         std::string(HCOM_GROUP_PREFIX) + std::to_string(ring_id);
     auto comm =
         paddle::platform::HCCLCommContext::Instance().Get(ring_id, place);
+    LOG(WARNING) << "comm: " << comm;
 
     aclrtStream stream = nullptr;
     auto dev_ctx = static_cast<platform::NPUDeviceContext*>(
         platform::DeviceContextPool::Instance().Get(place));
     if (ctx.Attr<bool>("use_calc_stream")) {
       stream = dev_ctx->stream();
+      LOG(WARNING) << "stream: " << stream;
     } else {
       stream = comm->stream();
+      LOG(WARNING) << "stream: " << stream;
     }
 
     HcclReduceOp hccl_red_type = HCCL_REDUCE_SUM;
@@ -218,13 +231,14 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
             "Invalid reduce type: %d", red_type));
     }
 
-    VLOG(3) << "hccl allreduce, parameter is: "
-            << "input num: " << in->dims() << "dtype: " << dtype
-            << "hccl_red_type: " << hccl_red_type << ", group is: " << group
-            << ", sendbuff:" << sendbuff << ", recvbuff:" << recvbuff
-            << ", out_size:" << out->memory_size()
-            << ", use_calc_stream:" << ctx.Attr<bool>("use_calc_stream")
-            << ", stream:" << stream;
+    LOG(WARNING) << "hccl allreduce, parameter is: "
+                 << "input num: " << in->dims() << "dtype: " << dtype
+                 << "hccl_red_type: " << hccl_red_type
+                 << ", group is: " << group << ", sendbuff:" << sendbuff
+                 << ", recvbuff:" << recvbuff
+                 << ", out_size:" << out->memory_size()
+                 << ", use_calc_stream:" << ctx.Attr<bool>("use_calc_stream")
+                 << ", stream:" << stream;
 
     framework::Tensor tmp;
     tmp.mutable_data<float>({8}, ctx.GetPlace());
@@ -257,11 +271,12 @@ class CAllReduceOpASCENDKernel : public framework::OpKernel<T> {
       mutable_in->Resize(dims);
     }
 
-    VLOG(3) << "hccl allreduce, parameter is: "
-            << "input num: " << numel << "dtype: " << dtype
-            << "hccl_red_type: " << hccl_red_type << ", group is: " << group
-            << ", sendbuff:" << sendbuff << ", recvbuff:" << recvbuff
-            << ", out_size:" << out->memory_size();
+    LOG(WARNING) << "hccl allreduce, parameter is: "
+                 << "input num: " << numel << "dtype: " << dtype
+                 << "hccl_red_type: " << hccl_red_type
+                 << ", group is: " << group << ", sendbuff:" << sendbuff
+                 << ", recvbuff:" << recvbuff
+                 << ", out_size:" << out->memory_size();
 
     PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
         sendbuff, recvbuff, numel, dtype, hccl_red_type, comm->comm(),
