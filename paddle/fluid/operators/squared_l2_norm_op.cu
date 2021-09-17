@@ -14,10 +14,36 @@ limitations under the License. */
 #include "paddle/fluid/operators/squared_l2_norm_op.h"
 
 namespace ops = paddle::operators;
+
+namespace paddle {
+namespace operators {
+
+template <typename DeviceContext, typename T>
+class SquaredL2NormCudaKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* x = context.Input<framework::Tensor>("X");
+    auto* out = context.Output<framework::Tensor>("Out");
+    out->mutable_data<T>(context.GetPlace());
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+
+    std::vector<int> reduce_dims;
+    reduce_dims.resize(x->dims().size());
+    for (int i = 0; i < reduce_dims.size(); ++i) {
+      reduce_dims[i] = i;
+    }
+
+    TensorReduceFunctorImpl<T, T, SquareSum>(*x, out, reduce_dims,
+                                             dev_ctx.stream());
+  }
+};
+}  // namespace operators
+}  // namespace paddle
+
 REGISTER_OP_CUDA_KERNEL(
     squared_l2_norm,
-    ops::SquaredL2NormKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::SquaredL2NormKernel<paddle::platform::CUDADeviceContext, double>);
+    ops::SquaredL2NormCudaKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::SquaredL2NormCudaKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     squared_l2_norm_grad,
     ops::SquaredL2NormGradKernel<paddle::platform::CUDADeviceContext, float>,
