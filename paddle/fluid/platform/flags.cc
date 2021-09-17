@@ -640,3 +640,5 @@ DEFINE_bool(
 
 DEFINE_bool(enable_cache_op_run, false, "");
 DEFINE_bool(enable_cache_tensor_address, false, "");
+DEFINE_int64(cuda_graph_op_num, 0, "");
+DEFINE_int64(cuda_graph_warmup_iteration, 3, "");

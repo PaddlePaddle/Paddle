@@ -14,19 +14,35 @@ limitations under the License. */
 
 #include "paddle/fluid/memory/malloc.h"
 
+#include <thread>
 #include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
 namespace memory {
 
+static void LogAllocation(Allocation *alloc, const platform::Place &place) {
+  if (alloc == nullptr) {
+    VLOG(10) << "Allocate 0 "
+             << " on " << place << " addr " << static_cast<void *>(nullptr)
+             << " " << std::this_thread::get_id();
+  } else {
+    VLOG(10) << "Allocate " << alloc->size() << " on " << alloc->place()
+             << " addr " << alloc->ptr() << " " << std::this_thread::get_id();
+  }
+}
+
 std::shared_ptr<Allocation> AllocShared(const platform::Place &place,
                                         size_t size) {
-  return allocation::AllocatorFacade::Instance().AllocShared(place, size);
+  auto alloc = allocation::AllocatorFacade::Instance().AllocShared(place, size);
+  LogAllocation(alloc.get(), place);
+  return alloc;
 }
 
 AllocationPtr Alloc(const platform::Place &place, size_t size) {
-  return allocation::AllocatorFacade::Instance().Alloc(place, size);
+  auto alloc = allocation::AllocatorFacade::Instance().Alloc(place, size);
+  LogAllocation(alloc.get(), place);
+  return alloc;
 }
 
 uint64_t Release(const platform::Place &place) {

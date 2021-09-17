@@ -101,6 +101,9 @@ class ParallelExecutor {
   void SkipMemoryReuse(size_t scope_idx,
                        const std::vector<std::string> &skip_vars);
 
+  void FeedLRTensor(const std::string &name,
+                    const framework::LoDTensor &tensor);
+
  private:
   // broadcast the parameters from the 0th device.
   // trainer_id the trainer index in nccl distributed training.

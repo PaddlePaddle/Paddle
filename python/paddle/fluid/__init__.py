@@ -211,6 +211,7 @@ def __bootstrap__():
         'apply_pass_to_program',
         'enable_cache_op_run',
         'enable_cache_tensor_address',
+        'cuda_graph_op_num',
     ]
     if 'Darwin' not in sysstr:
         read_env_flags.append('use_pinned_memory')

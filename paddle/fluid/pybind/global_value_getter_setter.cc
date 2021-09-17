@@ -111,6 +111,8 @@ DECLARE_int32(rpc_prefetch_thread_num);
 
 DECLARE_bool(enable_cache_op_run);
 DECLARE_bool(enable_cache_tensor_address);
+DECLARE_int64(cuda_graph_op_num);
+DECLARE_int64(cuda_graph_warmup_iteration);
 
 namespace paddle {
 namespace pybind {
@@ -373,7 +375,7 @@ static void RegisterGlobalVarGetterSetter() {
       FLAGS_paddle_num_threads, FLAGS_use_mkldnn, FLAGS_max_inplace_grad_add,
       FLAGS_tracer_mkldnn_ops_on, FLAGS_tracer_mkldnn_ops_off,
       FLAGS_apply_pass_to_program, FLAGS_enable_cache_op_run,
-      FLAGS_enable_cache_tensor_address);
+      FLAGS_enable_cache_tensor_address, FLAGS_cuda_graph_op_num);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   REGISTER_PUBLIC_GLOBAL_VAR(

@@ -24,6 +24,8 @@ class Tensor;
 }  // namespace framework
 }  // namespace paddle
 
+DECLARE_bool(enable_cache_tensor_address);
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -87,6 +89,8 @@ struct ScaleLossGradFunctor {
 };
 
 void ScaleLossGradOpHandle::RunImpl() {
+  SetSkipRunning(true);
+  /*
   platform::RecordEvent record_event(Name());
   // Doesn't wait any event
   std::string var_name = static_cast<VarHandle *>(this->outputs_[0])->name();
@@ -103,6 +107,7 @@ void ScaleLossGradOpHandle::RunImpl() {
   ScaleLossGradFunctor func(coeff_, tensor, place_, out_dtype_, nullptr);
   framework::VisitDataType(out_dtype_, func);
 #endif
+  */
 }
 
 std::string ScaleLossGradOpHandle::Name() const { return "Scale LossGrad"; }

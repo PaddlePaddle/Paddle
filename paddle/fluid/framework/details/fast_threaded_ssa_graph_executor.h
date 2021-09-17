@@ -18,6 +18,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include "cuda.h"          // NOLINT
+#include "cuda_runtime.h"  // NOLINT
 #include "paddle/fluid/framework/blocking_queue.h"
 #include "paddle/fluid/framework/details/exception_holder.h"
 #include "paddle/fluid/framework/details/execution_strategy.h"
@@ -64,6 +66,10 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   ::ThreadPool prepare_pool_;
 
   std::vector<OpHandleBase *> traced_ops_;
+  int64_t iteration_num_{-1};
+  cudaGraph_t cuda_graph_{nullptr};
+  cudaGraphExec_t cuda_graph_exec_{nullptr};
+  size_t first_backward_idx_{0};
 
   bool RunOp(OpHandleBase *op,
              const std::shared_ptr<BlockingQueue<size_t>> &complete_q,

@@ -221,6 +221,9 @@ class GraphExecutionOptimizer(MetaOptimizerBase):
         )
         local_build_strategy.enable_backward_optimizer_op_deps = True
 
+        loss_grad = loss.name + '@GRAD'
+        loss_grad_var = main_program.global_block().var(loss_grad)
+        loss_grad_var.persistable = True
         self._compiled_program = compiler.CompiledProgram(main_program)
 
         self._compiled_program.with_data_parallel(

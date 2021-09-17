@@ -986,6 +986,19 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
 void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
     const std::unordered_map<std::string, LoDTensor> &tensors) {
   size_t num_places = member_->places_.size();
+  if (num_places == 1 && tensors.size() == 1) {
+    auto begin = tensors.begin();
+    const auto &name = begin->first;
+    const auto &tensor = begin->second;
+    bool is_persistable = member_->IsPersistable(name);
+    auto *feed_scope = is_persistable ? member_->local_scopes_[0]
+                                      : member_->local_exec_scopes_[0];
+    auto *dst_t = feed_scope->Var(name)->GetMutable<LoDTensor>();
+    TensorCopy(tensor, member_->places_[0], dst_t);
+    dst_t->set_lod(tensor.lod());
+    return;
+  }
+
   bool allow_partial_feed = member_->AllowPartialFeed();
 
   size_t persistable_feed_len = -1UL;

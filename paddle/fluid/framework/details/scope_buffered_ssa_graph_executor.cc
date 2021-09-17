@@ -141,6 +141,7 @@ void ScopeBufferedSSAGraphExecutor::InitVariables() {
         for (auto &op_desc : program_desc.Block(0).AllOps()) {
           for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
             auto op = OpRegistry::CreateOp(*op_desc);
+            VLOG(2) << "Run op " << op->Type() << " on startup";
             op->Run(*local_exec_scopes_[i], places_[i]);
           }
         }
@@ -157,6 +158,7 @@ void ScopeBufferedSSAGraphExecutor::InitVariables() {
       for (auto &op_desc : program_desc.Block(0).AllOps()) {
         for (size_t i = 0; i < local_exec_scopes_.size(); ++i) {
           auto op = OpRegistry::CreateOp(*op_desc);
+          VLOG(2) << "Run op " << op->Type() << " on main";
           op->Run(*local_exec_scopes_[i], places_[i]);
         }
       }
@@ -201,6 +203,7 @@ void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
           continue;
         }
         InitializeVariable(scope->Var(info.name_), info.type_);
+        VLOG(2) << info.name_ << " initialized here (persistable)";
       } else {
         Variable *tmp_var = local_scope->Var(info.name_);
         preserve_vars_[idx].emplace(tmp_var);
@@ -208,6 +211,7 @@ void ScopeBufferedSSAGraphExecutor::PrepareLocalExeScopes() {
         if (info.type_ == proto::VarType::LOD_TENSOR_ARRAY) {
           tensor_array_vars_.emplace_back(tmp_var);
         }
+        VLOG(2) << info.name_ << " initialized here (non-persistable)";
       }
     }
   }

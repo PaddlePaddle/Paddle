@@ -774,6 +774,12 @@ PYBIND11_MODULE(core_noavx, m) {
            [](framework::Tensor &self, const framework::Tensor &other) {
              framework::TensorCopy(other, other.place(), &self);
            })
+      .def("_addr",
+           [](framework::Tensor &self) {
+             std::stringstream ss;
+             ss << self.data<void>();
+             return ss.str();
+           })
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::XPUPlace>,

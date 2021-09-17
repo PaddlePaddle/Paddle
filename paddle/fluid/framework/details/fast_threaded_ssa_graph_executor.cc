@@ -25,6 +25,10 @@
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/platform/profiler.h"
+#include "paddle/fluid/string/string_helper.h"
+
+DECLARE_int64(cuda_graph_op_num);
+DECLARE_int64(cuda_graph_warmup_iteration);
 
 namespace paddle {
 namespace framework {
@@ -47,8 +51,21 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
         << "Change thread number to 1 because the toposort order is unique";
     strategy_.num_threads_ = 1;
   }
-  if (strategy.num_threads_ > 1) {
+  if (strategy_.num_threads_ > 1) {
     pool_.reset(new ::ThreadPool(strategy.num_threads_));
+  } else {
+    auto nodes = ir::TopologySortOperations(*graph_);
+    traced_ops_.clear();
+    traced_ops_.reserve(nodes.size());
+    for (auto *node : nodes) {
+      traced_ops_.push_back(&node->Wrapper<OpHandleBase>());
+    }
+    for (size_t i = 0; i < traced_ops_.size(); ++i) {
+      if (traced_ops_[i]->Name().find("grad") != std::string::npos) {
+        first_backward_idx_ = i;
+        break;
+      }
+    }
   }
   for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
     int dep = static_cast<int>(op->NotReadyInputSize());
@@ -63,8 +80,19 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
   PrepareAtomicOpDeps();
 }
 
+static std::string GetOpHandleDebugString(
+    const std::vector<OpHandleBase *> ops) {
+  std::vector<std::string> names;
+  names.reserve(ops.size());
+  for (auto *op : ops) {
+    names.push_back(op->Name());
+  }
+  return string::join_strings(names, ',');
+}
+
 FetchResultType FastThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
+  ++iteration_num_;
   VLOG(3) << "enter FastThreadedSSAGraphExecutor Run";
   std::unique_ptr<platform::RecordEvent> event(
       new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare"));
@@ -92,10 +120,65 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     // run the recorded operators directly. This strategy could make the
     // execution faster.
     VLOG(3) << "Run the traced ops.";
-    bool is_exception_free =
-        RunTracedOps(traced_ops_) && RunTracedOps(fetch_ops);
+    std::vector<OpHandleBase *> traced_ops;
+    std::vector<OpHandleBase *> left_ops;
+    auto tmp_traced_ops = traced_ops_;
+    // tmp_traced_ops.resize(first_backward_idx_);
+    if (iteration_num_ > FLAGS_cuda_graph_warmup_iteration &&
+        (FLAGS_cuda_graph_op_num >= 1 ||
+         FLAGS_cuda_graph_op_num <=
+             static_cast<int64_t>(tmp_traced_ops.size()))) {
+      traced_ops.assign(tmp_traced_ops.begin(),
+                        tmp_traced_ops.begin() + FLAGS_cuda_graph_op_num);
+      left_ops.assign(tmp_traced_ops.begin() + FLAGS_cuda_graph_op_num,
+                      tmp_traced_ops.end());
+      LOG_FIRST_N(WARNING, 1) << "traced ops: "
+                              << GetOpHandleDebugString(traced_ops);
+      LOG_FIRST_N(WARNING, 1) << "left ops: "
+                              << GetOpHandleDebugString(left_ops);
+    } else {
+      left_ops = tmp_traced_ops;
+      LOG_FIRST_N(WARNING, 1) << "traced ops: "
+                              << GetOpHandleDebugString(traced_ops);
+      LOG_FIRST_N(WARNING, 1) << "left ops: "
+                              << GetOpHandleDebugString(left_ops);
+    }
+
+    PADDLE_ENFORCE_EQ(places_.size(), 1);
+    auto gpu_place = BOOST_GET_CONST(platform::CUDAPlace, places_[0]);
+    auto stream =
+        platform::DeviceContextPool::Instance().GetByPlace(gpu_place)->stream();
+    if (!cuda_graph_exec_ && !traced_ops.empty()) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal));
+      PADDLE_ENFORCE_EQ(RunTracedOps(traced_ops), true);
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamEndCapture(stream, &cuda_graph_));
+      constexpr size_t kBufferSize = 65536;
+      std::unique_ptr<char[]> log_buffer(new char[kBufferSize + 1]);
+      auto err = cudaGraphInstantiate(&cuda_graph_exec_, cuda_graph_, nullptr,
+                                      log_buffer.get(), kBufferSize);
+      if (err != cudaSuccess) {
+        LOG(ERROR) << log_buffer.get();
+      }
+      PADDLE_ENFORCE_CUDA_SUCCESS(err);
+      LOG_FIRST_N(INFO, 1) << "CUDA graph initialized";
+    }
+
+    if (cuda_graph_exec_) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphLaunch(cuda_graph_exec_, stream));
+    }
+
+    bool is_exception_free = RunTracedOps(left_ops) && RunTracedOps(fetch_ops);
     if (!is_exception_free) {
       ExecutionFinal(&fetch_ops);
+    }
+    if (cuda_graph_) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphDestroy(cuda_graph_));
+      cuda_graph_ = nullptr;
+    }
+    if (cuda_graph_exec_) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphExecDestroy(cuda_graph_exec_));
+      cuda_graph_exec_ = nullptr;
     }
   } else {
     traced_ops_.clear();
