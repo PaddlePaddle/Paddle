@@ -91,7 +91,8 @@ class Hogwild(DeviceWorker):
         trainer_desc.device_worker_name = "HogwildWorker"
         if self._infer:
             # just ignore feed op for inference model
-            trainer_desc.hogwild_param.skip_ops.extend(["feed"])
+            trainer_desc.hogwild_param.skip_ops.extend(["feed", "push_sparse", "push_sparse_v2", "push_dense", "distributed_push_sparse", "send"])
+            #trainer_desc.hogwild_param.skip_ops.extend(["feed"])
 
         dense_table_set = set()
         program_id = str(id(self._program))
@@ -176,7 +177,7 @@ class Hogwild(DeviceWorker):
         hogwild.skip_ops.extend(worker.get_desc().skip_op)
         if self._infer:
             hogwild.skip_ops.extend(
-                ["push_sparse", "push_sparse_v2", "push_dense"])
+                ["push_sparse", "push_sparse_v2", "push_dense", "distributed_push_sparse", "send"])
 
 
 class DownpourSGD(DeviceWorker):

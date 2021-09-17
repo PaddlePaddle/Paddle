@@ -31,7 +31,7 @@ class DistributedPushSparseKernel : public framework::OpKernel<T> {
     auto padding_idx = context.Attr<int64_t>("padding_idx");
     auto table_id = context.Attr<int>("table_id");
     auto emb_dim= context.Attr<int>("size");
-    VLOG(0) << "yxf::push_sparse.h::emb_dim: " << emb_dim;
+    VLOG(1) << "yxf::push_sparse.h::emb_dim: " << emb_dim;
     bool is_test = context.Attr<bool>("is_test");
 
 

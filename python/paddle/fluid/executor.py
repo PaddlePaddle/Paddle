@@ -1344,7 +1344,8 @@ class Executor(object):
         return exe.run(feed)
 
     def _dump_debug_info(self, program=None, trainer=None):
-        with open(str(id(program)) + "_train_desc.prototxt", "w") as fout:
+        import random
+        with open(str(int(random.random()*1000000)) + str(id(program)) + "_train_desc.prototxt", "w") as fout:
             fout.write(str(trainer))
         if program._fleet_opt and "fleet_desc" in program._fleet_opt:
             with open("fleet_desc.prototxt", "w") as fout:
@@ -1509,8 +1510,8 @@ class Executor(object):
         trainer._set_infer(is_infer)
         trainer._gen_trainer_desc()
 
-        if program._pipeline_opt is None:
-            self._dump_debug_info(program=program, trainer=trainer)
+        #if program._pipeline_opt is None:
+        self._dump_debug_info(program=program, trainer=trainer)
         # in case of calling _set_use_ps_gpu explicitly
         if dataset.use_ps_gpu is False:
             dataset._set_use_ps_gpu(trainer.proto_desc.use_ps_gpu)

@@ -161,7 +161,7 @@ void BrpcPsService::service(google::protobuf::RpcController *cntl_base,
     return;
   }
 
-  // std::cout << "zcb debug service cmd_id: " << request->cmd_id() << "\n";
+  VLOG(1) << "zcb debug service cmd_id: " << request->cmd_id() << "\n";
   response->set_err_code(0);
   response->set_err_msg("");
   auto *table = _server->table(request->table_id());

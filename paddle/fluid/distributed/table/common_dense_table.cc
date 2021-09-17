@@ -123,6 +123,7 @@ int32_t CommonDenseTable::pour() {
   pull_reservoir_.avg();
   _push_dense(pull_reservoir_.values.data(), pull_reservoir_.values.size());
   pull_reservoir_.reset();
+  std::cout << "zcb debug CommonDenseTable::pour() done\n";
   return 0;
 }
 
@@ -162,6 +163,7 @@ int32_t CommonDenseTable::_push_dense(const float* values, size_t num) {
   for (size_t shard_id = 0; shard_id < tasks.size(); ++shard_id) {
     tasks[shard_id].wait();
   }
+  std::cout << "zcb debug CommonDenseTable::_push_dense done\n";
   return 0;
 }
 

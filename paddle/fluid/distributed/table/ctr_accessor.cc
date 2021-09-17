@@ -845,7 +845,7 @@ int32_t CtrCommonAccessor::create(float** values, size_t num) {
             value + common_feature_value.embed_g2sum_index());
         _embedx_sgd_rule->init_value(
             value + common_feature_value.embedx_w_index(),
-            value + common_feature_value.embedx_g2sum_index());
+            value + common_feature_value.embedx_g2sum_index(), false);
     }
     return 0;
 }

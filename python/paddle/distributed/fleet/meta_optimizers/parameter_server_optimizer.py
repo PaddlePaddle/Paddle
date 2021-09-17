@@ -95,8 +95,10 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 self.user_defined_strategy.a_sync_configs["lr_decay_steps"])
 
             # for main program
+            print("before build_distributed_ops_pass, _main = ", _main)
             _main = worker.distributed_ops_pass(_main, compiled_config,
                                                 use_ps_gpu)
+            print("after build_distributed_ops_pass, _main = ", _main)
             if not use_ps_gpu:
                 _main = worker.delete_optimizer_pass(_main, compiled_config)
                 _main = worker.append_send_ops_pass(_main, compiled_config)
@@ -346,15 +348,18 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         print("yxf::merged_sparse_pairs: end")
         print("yxf::merged_variable_map: {}")
         for k in compiled_config.merged_variable_map.keys():
-            print('{} => {}'.format(str(k), str(compiled_config.merged_variable_map[k])))
+            print('{} => {}'.format(
+                str(k), str(compiled_config.merged_variable_map[k])))
         print("yxf::merged_variable_map: end")
         print("yxf::param_name_to_grad_name: {}")
         for k in compiled_config.param_name_to_grad_name.keys():
-            print('{} => {}'.format(str(k), str(compiled_config.param_name_to_grad_name[k])))
+            print('{} => {}'.format(
+                str(k), str(compiled_config.param_name_to_grad_name[k])))
         print("yxf::param_name_to_grad_name: end")
         print("yxf::grad_name_to_param_name: {}")
         for k in compiled_config.grad_name_to_param_name.keys():
-            print('{} => {}'.format(str(k), str(compiled_config.grad_name_to_param_name[k])))
+            print('{} => {}'.format(
+                str(k), str(compiled_config.grad_name_to_param_name[k])))
         print("yxf::grad_name_to_param_name: end")
         print("yxf::param_grad_ep_mapping: {}")
         for k in compiled_config.param_grad_ep_mapping.keys():
@@ -366,9 +371,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         print("yxf::param_grad_ep_mapping: end")
         print("yxf::grad_param_mapping: {}")
         for k in compiled_config.grad_param_mapping.keys():
-            print('{} => {}'.format(str(k), str(compiled_config.grad_param_mapping[k])))
+            print('{} => {}'.format(
+                str(k), str(compiled_config.grad_param_mapping[k])))
         print("yxf::grad_param_mapping: end")
-
 
         compiled_config.strategy = strategy
 

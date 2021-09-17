@@ -211,6 +211,11 @@ class Communicator {
 
   virtual void InitBrpcClient(const std::string &dist_desc,
                               const std::vector<std::string> &host_sign_list);
+  
+  virtual std::vector<uint64_t> GetClientInfo();
+
+  virtual int SetClients(const std::vector<uint64_t>& host_sign_list);
+
   // 1. recv dense param
   virtual void RpcRecvDense(const std::vector<std::string> &varnames,
                             int table_id, Scope *scope);
@@ -237,6 +242,9 @@ class Communicator {
 
   virtual void InitParams(const RecvCtxMap &recv_varname_to_ctx);
 
+  //note: only for pull dense param first before training
+  virtual void PullDense(const RecvCtxMap &recv_varname_to_ctx);
+
   virtual void Start() = 0;
 
   virtual void Stop() = 0;
@@ -258,6 +266,10 @@ class Communicator {
   virtual void BarrierWithTable(uint32_t barrier_type) {
     auto rets = _worker_ptr->barrier(barrier_table_id_, barrier_type);
     rets.wait();
+  }
+
+  virtual void CreateC2CConnection(int pserver_timeout_ms, int pserver_connect_timeout_ms, int max_retry) {
+    _worker_ptr->create_client2client_connection(pserver_timeout_ms, pserver_connect_timeout_ms, max_retry);
   }
 
   virtual void BarrierTriggerDecrement() {}

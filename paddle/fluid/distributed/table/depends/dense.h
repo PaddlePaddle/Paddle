@@ -99,9 +99,9 @@ class DSGD : public DenseOptimizer {
 };
 
 // adam optimizer for dense tensor
-class DAdam : public DenseOptimizer {
+class DAdam_std : public DenseOptimizer {
  public:
-  explicit DAdam(const CommonAccessorParameter& accessor,
+  explicit DAdam_std(const CommonAccessorParameter& accessor,
                  std::vector<std::vector<float>>* values) {
     auto& names = accessor.params();
     for (int x = 0; x < static_cast<int>(names.size()); ++x) {
@@ -181,6 +181,134 @@ class DAdam : public DenseOptimizer {
   float beta1;
   float beta2;
   float epsilon;
+};
+
+// adam optimizer for dense tensor
+class DAdam : public DenseOptimizer {
+ public:
+  explicit DAdam(const CommonAccessorParameter& accessor,
+                 std::vector<std::vector<float>>* values) {
+    lr_hardcode = 5e-6;
+    //lr_hardcode = 1.0;
+    auto& names = accessor.params();
+    for (int x = 0; x < static_cast<int>(names.size()); ++x) {
+      if (names[x] == "LearningRate") {
+        learning_rate = (*values)[x].data();
+      }
+      if (names[x] == "Param") {
+        param = (*values)[x].data();
+      }
+      if (names[x] == "Moment1") {
+        mom_velocity = (*values)[x].data();
+      }
+      if (names[x] == "Moment2") {
+        ada_g2sum = (*values)[x].data();
+      }
+      if (names[x] == "Beta1Pow") {
+        ada_d2sum = (*values)[x].data();
+      }
+    }
+
+    // add attr later
+    mom_decay_rate = 0.99; //mom_decay
+    ada_decay_rate = 0.9999; //ada_decay
+    ada_epsilon = 1.0e-8;
+  }
+
+  void update(const float* update_values, size_t num, int begin,
+              int end) override {
+    auto update_numel = end - begin;
+
+//    std::cout << "before update:\n";
+//    for (int i = 0; i < 3; ++ i) {
+//      std::cout << "param: " << i << " " << *(param+begin+i) <<
+//                   "grad: " << *(update_values+begin+i) << "\n";
+//    }
+
+    std::vector<float> grad, grad2, scale;
+    grad.resize(update_numel);
+    grad2.resize(update_numel);
+    scale.resize(update_numel);
+
+    auto blas = GetBlas<float>();
+    //copy grad
+    blas.VCOPY(update_numel, update_values + begin, grad.data());
+    blas.VCOPY(update_numel, update_values + begin, grad2.data());
+    /*
+    for (int i = 0; i < end-begin; ++ i) {
+      std::cout << "copy grad: " << i << " " << *(grad.data()+begin+i) <<
+                   "copy grad2: " << *(grad2.data()+begin+i) << "\n";
+    }*/
+    //d2sum
+//    for (int i = 0; i < 3; ++ i) {
+//      std::cout << "d2sum before: " << i << " " << *(ada_d2sum+begin+i) << "\n";
+//    }
+    blas.SCAL(update_numel, ada_decay_rate, ada_d2sum + begin);
+    ADD<float>(update_numel, ada_d2sum + begin, 1, ada_d2sum + begin);
+    /*
+    for (int i = 0; i < end-begin; ++ i) {
+      std::cout << "d2sum update: " << i << " " << *(ada_d2sum+begin+i) << "\n";
+    }*/
+    //g2sum
+//    for (int i = 0; i < 3; ++ i) {
+//      std::cout << "g2sum before: " << i << " " << *(ada_g2sum+begin+i) << "\n";
+//    }
+    blas.SCAL(update_numel, ada_decay_rate, ada_g2sum + begin);
+    blas.VSQUARE(update_numel, grad2.data(), grad2.data());
+    blas.VADD(update_numel, ada_g2sum + begin, grad2.data(), ada_g2sum + begin);
+    /*
+    for (int i = 0; i < end-begin; ++ i) {
+      std::cout << "g2sum update: " << i << " " << *(ada_g2sum+begin+i) << "\n";
+    }*/
+    //mom
+//    for (int i = 0; i < 3; ++ i) {
+//      std::cout << "mom before: " << i << " " << *(mom_velocity+begin+i) << "\n";
+//    }
+    blas.SCAL(update_numel, mom_decay_rate, mom_velocity + begin);
+    blas.SCAL(update_numel, 1 - mom_decay_rate, grad.data());
+    blas.VADD(update_numel, mom_velocity + begin, grad.data(), mom_velocity + begin);
+    /*
+    for (int i = 0; i < end-begin; ++ i) {
+      std::cout << "mom update: " << i << " " << *(mom_velocity+begin+i) << "\n";
+    }*/
+    //scale
+//    for (int i = 0; i < 3; ++ i) {
+//      std::cout << "scale before: " << i << " " << *(scale.data()+begin+i) << "\n";
+//    }
+    float* scale_ = scale.data();
+    blas.VDIV(update_numel, ada_g2sum + begin, ada_d2sum + begin, scale_);
+    ADD<float>(update_numel, scale_, ada_epsilon, scale_);
+    DIV<float>(update_numel, 1 + ada_epsilon, scale_, scale_);
+    SQRT<float>(update_numel, scale_, scale_);
+//    for (int i = 0; i < 3; ++ i) {
+//      std::cout << "scale update: " << i << " " << *(scale.data()+begin+i) << "\n";
+//    }
+    
+    blas.SCAL(update_numel, lr_hardcode, scale_);
+    //TODO: check if there exists elementwise_multiply in blas
+    //TODO: blas.VMUL
+    ELE_MUL<float>(update_numel, scale_, mom_velocity + begin, scale_);
+//    for (int i = 0; i < 3; ++ i) {
+//      std::cout << "scale update2: " << i << " " << *(scale.data()+begin+i) << "\n";
+//    }
+    blas.VSUB(update_numel, param + begin, scale_, param + begin);
+    /*
+    for (int i = 0; i < end-begin; ++ i) {
+      std::cout << "param update " << i << " " << *(param+begin+i) << "\n";
+    }*/
+  }
+
+  float* learning_rate;
+  float lr_hardcode;
+
+  float* param;
+  float* mom_velocity;
+  float* ada_g2sum;
+  float* ada_d2sum;
+
+  float mom_decay_rate;
+  float ada_decay_rate;
+  float ada_epsilon;
 };
 
 }  // namespace distributed

@@ -127,6 +127,10 @@ int32_t BrpcPsClient::create_client2client_connection(
   options.max_retry = max_retry;
 
   std::vector<PSHost> client_list = _env->get_ps_clients();
+  VLOG(1) << "BrpcPsClient::create_c2c_connection client_list size: " << client_list.size();
+  for (auto cc: client_list) {
+    VLOG(1) << "BrpcPsClient::create_c2c_connection client_list: " << cc.to_string();
+  }
   _client_channels.resize(client_list.size());
   std::ostringstream os;
   std::string server_ip_port;
@@ -194,6 +198,12 @@ int32_t BrpcPsClient::initialize() {
   // 启动client探听接口, 并相互建立连接
   start_client_service();
 
+  //for global shuffle
+  //TODO: check zcb
+  //TODO: param configure
+  //cannot get all clients, only self
+  //create_client2client_connection(500000, 10000, 3);
+
   // 异步push 请求队列初始化
   const auto &worker_param = _config.worker_param().downpour_worker_param();
   for (size_t i = 0; i < worker_param.downpour_table_param_size(); ++i) {
@@ -213,9 +223,11 @@ int32_t BrpcPsClient::initialize() {
   _running = true;
   _flushing = false;
   //启动异步push线程
+  //no use in async
   _async_push_sparse_thread =
       std::thread(std::bind(&BrpcPsClient::push_sparse_task_consume, this));
   //_async_push_sparse_thread.detach();
+  //no use in async
   _async_push_dense_thread =
       std::thread(std::bind(&BrpcPsClient::push_dense_task_consume, this));
   return 0;
@@ -306,7 +318,7 @@ std::future<int32_t> BrpcPsClient::print_table_stat(uint32_t table_id) {
 std::future<int32_t> BrpcPsClient::send_cmd(
     uint32_t table_id, int cmd_id, const std::vector<std::string> &params) {
   size_t request_call_num = _server_channels.size();
-  std::cout << "begin to send cmd_id = " << cmd_id << std::endl;
+  VLOG(3) << "begin to send cmd_id = ";
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       request_call_num, [request_call_num, cmd_id](void *done) {
         int ret = 0;
@@ -375,7 +387,7 @@ std::future<int32_t> BrpcPsClient::send_save_cmd(
     rpc_stub.service(closure->cntl(i), closure->request(i),
                      closure->response(i), closure);
   }
-  std::cout << "cmd_id = " << cmd_id << "is sent" << std::endl;
+  VLOG(3) << "cmd_id = " << cmd_id << "is sent";
   return fut;
 }
 

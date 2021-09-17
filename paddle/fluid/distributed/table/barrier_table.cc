@@ -55,8 +55,10 @@ int32_t BarrierTable::barrier(const uint32_t trainer_id,
   } else {
     VLOG(1) << "barrier table optimize begin";
     for (auto& x : *table_map_) {
+      std::cout << "table " << x.first << "pour begin\n";
       auto table = x.second;
       table->pour();
+      std::cout << "table " << x.first << "pour done\n";
     }
     VLOG(1) << "barrier table optimize done";
 

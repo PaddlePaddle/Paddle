@@ -88,12 +88,26 @@ void Communicator::InitBrpcClient(
     servers_ = host_sign_list.size();
     _ps_env = paddle::distributed::PaddlePSEnvironment();
     _ps_env.set_ps_servers(&host_sign_list, servers_);
+    //_ps_env.set_ps_clients(&trainer_host_sign_list, trainer_host_sign_list.size());
     _worker_ptr = std::unique_ptr<paddle::distributed::PSClient>(
         paddle::distributed::PSClientFactory::create(_ps_param));
     _worker_ptr->configure(_ps_param, _dense_pull_regions, _ps_env,
                            trainer_id_);
   }
   return;
+}
+
+std::vector<uint64_t> Communicator::GetClientInfo() {
+  std::vector<uint64_t> res = _ps_env.get_client_info();
+  for (auto rr: res) {
+    std::cout << "zcb Communicator::GetClientInfo " << rr << "\n";
+  }
+  return res;
+}
+
+int Communicator::SetClients(const std::vector<uint64_t>& host_sign_list) {
+  int node = host_sign_list.size();
+  return _ps_env.set_ps_clients(const_cast<uint64_t*>(host_sign_list.data()), node);
 }
 
 void Communicator::RpcRecvDense(const std::vector<std::string> &varnames,
@@ -344,18 +358,18 @@ void Communicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
       VLOG(1) << "push dense param to table " << table_id
               << " from 0' trainer done";
     }
-    BarrierWithTable(1);
-  } else {
-    BarrierWithTable(1);
-    for (auto &iter : recv_varname_to_ctx) {
-      auto &table_id = iter.first;
-      auto &varnames = iter.second;
-      RpcRecvDense(varnames, table_id, recv_scope_);
-      VLOG(1) << "pull dense param to table " << table_id
-              << " from 0' trainer done";
-    }
+  } 
+  return;
+}
+
+void Communicator::PullDense(const RecvCtxMap &recv_varname_to_ctx) {
+  for (auto &iter : recv_varname_to_ctx) {
+    auto &table_id = iter.first;
+    auto &varnames = iter.second;
+    RpcRecvDense(varnames, table_id, recv_scope_);
+    VLOG(1) << "pull dense param to table " << table_id
+            << " from 0' trainer done";
   }
-  BarrierWithTable(1);
   return;
 }
 

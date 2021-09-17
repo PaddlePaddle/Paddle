@@ -24,6 +24,7 @@ from paddle.fluid.parallel_executor import ParallelExecutor
 from paddle.fluid.framework import Variable, Parameter
 from .runtime_base import RuntimeBase
 from ..base.private_helper_function import wait_server_ready
+import paddle.distributed.fleet as fleet
 
 __all__ = []
 
@@ -93,7 +94,7 @@ class CommonAccessor:
         opt_input_map = {}
         opt_input_map["sgd"] = [("Param", None), ("LearningRate", 1)]
         opt_input_map["adam"] = [("Param", None), ("Moment1", None),
-                                 ("Moment2", None), ("Beta1Pow", 1),
+                                 ("Moment2", None), ("Beta1Pow", None),
                                  ("Beta2Pow", 1), ("LearningRate", 1)]
         opt_input_map["sum"] = [("Param", None)]
         opt_input_map["naive_adagrad"] = [("Param", None), ("G2Sum", 1),
@@ -220,8 +221,10 @@ class CommonAccessor:
                         shape = self.get_shard(total_dims, pserver_num,
                                                pserver_id)
                 dims.append(shape)
-
-                initializer = self.get_initializer_attr(param.name,
+                if formal_name == 'Beta1Pow':
+                    initializer = "fill_constant&0"
+                else:
+                    initializer = self.get_initializer_attr(param.name,
                                                         startup_program)
                 initializers.append(initializer)
 
@@ -437,6 +440,18 @@ class Worker:
         return worker_str.format(workers_str)
 
 
+class fsClient:
+    def __init__(self, uri, user, passwd, hadoop_bin):
+        self.uri = uri
+        self.user = user
+        self.passwd = passwd
+        self.hadoop_bin = hadoop_bin
+
+    def to_string(self):
+        return "fs_client_param {\n\t" + "uri:\"{}\"\n\tuser:\"{}\"\n\tpasswd:\"{}\"\n\thadoop_bin:\"{}\"\n".format(
+            self.uri, self.user, self.passwd, self.hadoop_bin) + "}\n"
+
+
 class TheOnePSRuntime(RuntimeBase):
     def __init__(self):
         super(TheOnePSRuntime, self).__init__()
@@ -519,6 +534,9 @@ class TheOnePSRuntime(RuntimeBase):
         #with open('./sparse_table.prototxt') as f:
         #    proto_txt = f.read()
 
+        with open('proto_txt', 'w') as f:
+            f.write(proto_txt)
+
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
 
         if debug:
@@ -572,6 +590,18 @@ class TheOnePSRuntime(RuntimeBase):
         self._communicator.init_with_ctx(send_ctx, dense_map, proto_txt,
                                          string_hosts, fluid.global_scope())
 
+        fleet.util.barrier()
+        print('ZCB begin create c2c connection')
+        info = self._communicator.get_client_info()
+        all_info = self.role_maker._all_gather(info[0])
+        self._communicator.set_clients(all_info)
+        #create_c2c_connection default param: 
+        #  pserver_timeout_ms=500000
+        #  pserver_connect_timeout_ms=10000
+        #  max_retry=3
+        self._communicator.create_client_to_client_connection()
+        print('ZCB create c2c connection done')
+
         dist_strategy = self.context["valid_strategy"]
 
         is_test = bool(int(os.getenv("TEST_MODE", "0")))
@@ -586,6 +616,9 @@ class TheOnePSRuntime(RuntimeBase):
 
         if not is_test:
             self._communicator.init_params(init_params)
+            fleet.util.barrier()
+        self._communicator.pull_dense(init_params)
+        fleet.util.barrier()
 
         if not self._communicator.is_running():
             self._communicator.start()
@@ -633,7 +666,7 @@ class TheOnePSRuntime(RuntimeBase):
                             int(os.getenv("FLAGS_selected_xpus", "0"))))
         return executor
 
-    def _get_fleet_proto(self, is_server, is_sync):
+    def _get_fleet_proto(self, is_server, is_sync, **kwargs):
         def _build_merge_accessor(ctx):
             accessor = Accessor()
             accessor.accessor_class = "CommMergeAccessor"
@@ -737,6 +770,7 @@ class TheOnePSRuntime(RuntimeBase):
 
             tables = []
             for idx, (name, ctx) in enumerate(send_ctx.items()):
+                print(" wxm python test send_ctx.items-->", idx, (name, ctx))
                 if ctx.is_tensor_table() or len(ctx.origin_varnames()) < 1:
                     continue
 
@@ -833,9 +867,17 @@ class TheOnePSRuntime(RuntimeBase):
 
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
+        fs_client = kwargs.get("fs_client") if "fs_client" in kwargs else {}
+        if "uri" in fs_client and "user" in fs_client and "passwd" in fs_client and "hadoop_bin" in fs_client:
+            fs = fsClient(
+                fs_client.get("uri"),
+                fs_client.get("user"),
+                fs_client.get("passwd"), fs_client.get("hadoop_bin"))
+            proto_txt = proto_txt + "\n" + fs.to_string()
         #with open('./sparse_table.prototxt') as f:
         #    proto_txt = f.read()
 
+        print("sever_proto =", proto_txt)
         debug = bool(int(os.getenv("PSERVER_DEBUG", "0")))
         if debug:
             print("server: \n{}".format(proto_txt))
@@ -974,6 +1016,7 @@ class TheOnePSRuntime(RuntimeBase):
         recv_dense_varnames = []
         for id, names in denses.items():
             recv_dense_varnames.extend(names)
+        self._communicator.pull_dense(denses)
 
         saved_varnames = sparse_varnames
 

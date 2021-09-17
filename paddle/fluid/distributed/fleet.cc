@@ -135,13 +135,17 @@ uint64_t FleetWrapper::RunServer(const std::string& ip, uint32_t port) {
 
 std::vector<uint64_t> FleetWrapper::GetClientsInfo() {
   VLOG(3) << "Going to get client info";
-  return pserver_ptr_->get_client_info();
-  return std::vector<uint64_t>();
+  //return pserver_ptr_->get_client_info();
+  auto* communicator = Communicator::GetInstance();
+  std::vector<uint64_t> res = communicator->GetClientInfo();
+  return res;
 }
 
 void FleetWrapper::CreateClient2ClientConnection() {
-  VLOG(3) << "Going to create client2client connection";
-  pserver_ptr_->create_client2client_connection(
+  VLOG(1) << "Going to create client2client connection";
+  //pserver_ptr_->create_client2client_connection(
+  auto* communicator = Communicator::GetInstance();
+  communicator->_worker_ptr->create_client2client_connection(
       client2client_request_timeout_ms_, client2client_connect_timeout_ms_,
       client2client_max_retry_);
 }
@@ -252,6 +256,7 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
                                           bool is_training,
                                           std::vector<const LoDTensor*>* inputs,
                                           std::vector<LoDTensor*>* outputs) {
+  //std::cout << "zcb pull sparse padding_id: " << padding_id << "\n";
   std::vector<uint64_t> fea_keys;
   std::vector<float*> pull_result_ptr;
   fea_keys.reserve(MAX_FEASIGN_NUM / 100);
@@ -277,6 +282,7 @@ void FleetWrapper::PullSparseToTensorSync(const uint64_t table_id, int fea_dim,
         CHECK(output_data != nullptr);          // NOLINT
       }
       uint64_t real_id = static_cast<uint64_t>(ids[i]);
+      //std::cout << "zcb pull sparse id: " << ids[i] << " real_id: " << real_id << "\n";
       if (real_id == padding_id) {
         memcpy(output_data + output_len, init_value.data(),
                sizeof(float) * fea_dim);
@@ -452,6 +458,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
     platform::Place place, std::vector<const LoDTensor*>* inputs,
     const LoDTensor* shows, const LoDTensor* clks,
     std::vector<LoDTensor*>* outputs) {
+  //std::cout << "zcb push sparse padding_id: " << padding_id << "\n";
   int batch_size = -1;
   for (auto* input : *inputs) {
     int cur_batch_size =
@@ -473,10 +480,20 @@ void FleetWrapper::PushSparseFromTensorAsync(
   CHECK(clk_size == batch_size || clk_size == 1);
 
   std::vector<float> g;
-  for (const framework::LoDTensor* g_tensor : *outputs) {
+  for (framework::LoDTensor* g_tensor : *outputs) {
+    float* g_ori = g_tensor->data<float>();
+    //no cvm
+    if (true) { //TODO: scale_sparse_gradient_with_batch_size_
+      Eigen::Map<
+          Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
+          g_mat(g_ori, g_tensor->numel() / fea_dim, fea_dim);
+      g_mat.rightCols(fea_dim) *= batch_size;
+    }
+
     size_t origin = g.size();
     size_t add = g_tensor->numel();
     g.resize(origin + add);
+
     memcpy(g.data() + origin, g_tensor->data<float>(), add * sizeof(float));
   }
 
@@ -487,7 +504,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
   size_t output_len = 0;
   size_t input_idx = 0;
 
-  VLOG(0) << "yxf::fleet.cc::emb_dim: " << fea_dim;
+  VLOG(2) << "yxf::fleet.cc::emb_dim: " << fea_dim;
 
   // TODO: type of show/clk is int? float? uint64?
   const long int* show_tensor = shows->data<int64_t>();
@@ -502,10 +519,12 @@ void FleetWrapper::PushSparseFromTensorAsync(
       for (size_t i = 0; i < tensor->lod()[0].size() - 1; ++i) {
         for (int j = tensor->lod()[0][i]; j < tensor->lod()[0][i + 1];
              ++j, output_len += fea_dim) {
-          if (static_cast<uint64_t>(ids[j]) == padding_id) {
+          uint64_t real_id = static_cast<uint64_t>(ids[j]);
+          //std::cout << "zcb push sparse id: " << ids[j] << " real_id: " << real_id << "\n";
+          if (real_id == padding_id) {
             continue;
           }
-          push_keys.emplace_back(ids[j]);
+          push_keys.emplace_back(real_id);
           /// fake by zcb
           push_values.emplace_back(fea_dim + 3);
           push_values.back()[0] = 2;  // TODO: slot
@@ -521,10 +540,11 @@ void FleetWrapper::PushSparseFromTensorAsync(
       }
     } else {
       for (size_t i = 0; i < len; ++i, output_len += fea_dim) {
-        if (static_cast<uint64_t>(ids[i]) == padding_id) {
+        uint64_t real_id = static_cast<uint64_t>(ids[i]);
+        if (real_id == padding_id) {
           continue;
         }
-        push_keys.emplace_back(ids[i]);
+        push_keys.emplace_back(real_id);
         /// fake by zcb
         push_values.emplace_back(fea_dim + 3);
         push_values.back()[0] = 2;  // TODO: slot
@@ -555,6 +575,7 @@ void FleetWrapper::PushSparseFromTensorAsync(
     std::cout << "\n";
     */
   }
+
   auto* communicator = Communicator::GetInstance();
   PADDLE_ENFORCE_EQ(
       communicator->Check(table_id), true,
@@ -710,17 +731,21 @@ void FleetWrapper::ClientFlush() {
 
 int FleetWrapper::RegisterClientToClientMsgHandler(int msg_type,
                                                    MsgHandlerFunc handler) {
-  VLOG(3) << "calling FleetWrapper::RegisterClientToClientMsgHandler";
-  VLOG(3) << "pserver_ptr_=" << pserver_ptr_;
-  VLOG(3) << "_worker_ptr=" << pserver_ptr_->_worker_ptr;
-  return pserver_ptr_->_worker_ptr->registe_client2client_msg_handler(msg_type,
-                                                                      handler);
+  VLOG(1) << "calling FleetWrapper::RegisterClientToClientMsgHandler";
+  //VLOG(1) << "pserver_ptr_=" << pserver_ptr_; //NULL if InitWorker is not called
+  //VLOG(1) << "_worker_ptr=" << pserver_ptr_->_worker_ptr;
+  auto* communicator = Communicator::GetInstance();
+  return communicator->_worker_ptr->registe_client2client_msg_handler(msg_type, handler);
+  //return pserver_ptr_->_worker_ptr->registe_client2client_msg_handler(msg_type,
+  //                                                                    handler);
 }
 
 std::future<int32_t> FleetWrapper::SendClientToClientMsg(
     int msg_type, int to_client_id, const std::string& msg) {
-  return pserver_ptr_->_worker_ptr->send_client2client_msg(msg_type,
-                                                           to_client_id, msg);
+  auto* communicator = Communicator::GetInstance();
+  return communicator->_worker_ptr->send_client2client_msg(msg_type, to_client_id, msg);
+  //return pserver_ptr_->_worker_ptr->send_client2client_msg(msg_type,
+  //                                                         to_client_id, msg);
 }
 
 std::default_random_engine& FleetWrapper::LocalRandomEngine() {

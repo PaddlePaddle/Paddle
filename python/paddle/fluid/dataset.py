@@ -809,7 +809,7 @@ class InMemoryDataset(DatasetBase):
     @deprecated(
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.global_shuffle")
-    def global_shuffle(self, fleet=None, thread_num=12):
+    def global_shuffle(self, fleet=None, thread_num=12, pscore=True):
         """
         Global shuffle.
         Global shuffle can be used only in distributed mode. i.e. multiple
@@ -833,7 +833,10 @@ class InMemoryDataset(DatasetBase):
 
         """
         if fleet is not None:
-            fleet._role_maker.barrier_worker()
+            if pscore:
+                fleet.barrier_worker()
+            else:
+                fleet._role_maker.barrier_worker()
             if self.trainer_num == -1:
                 self.trainer_num = fleet.worker_num()
         if self.fleet_send_batch_size is None:
@@ -845,14 +848,23 @@ class InMemoryDataset(DatasetBase):
         self.dataset.set_fleet_send_batch_size(self.fleet_send_batch_size)
         self.dataset.set_fleet_send_sleep_seconds(self.fleet_send_sleep_seconds)
         if fleet is not None:
-            fleet._role_maker.barrier_worker()
+            if pscore:
+                fleet.barrier_worker()
+            else:
+                fleet._role_maker.barrier_worker()
         self.dataset.global_shuffle(thread_num)
         if fleet is not None:
-            fleet._role_maker.barrier_worker()
+            if pscore:
+                fleet.barrier_worker()
+            else:
+                fleet._role_maker.barrier_worker()
         if self.merge_by_lineid:
             self.dataset.merge_by_lineid()
         if fleet is not None:
-            fleet._role_maker.barrier_worker()
+            if pscore:
+                fleet.barrier_worker()
+            else:
+                fleet._role_maker.barrier_worker()
 
     @deprecated(
         since="2.0.0",
@@ -947,7 +959,7 @@ class InMemoryDataset(DatasetBase):
     @deprecated(
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.get_shuffle_data_size")
-    def get_shuffle_data_size(self, fleet=None):
+    def get_shuffle_data_size(self, fleet=None, pscore=True):
         """
         Get shuffle data size, user can call this function to know the num
         of ins in all workers after local/global shuffle.
@@ -978,9 +990,13 @@ class InMemoryDataset(DatasetBase):
         import numpy as np
         local_data_size = self.dataset.get_shuffle_data_size()
         local_data_size = np.array([local_data_size])
+        print('global shuffle local_data_size: ', local_data_size)
         if fleet is not None:
             global_data_size = local_data_size * 0
-            fleet._role_maker.all_reduce_worker(local_data_size,
+            if pscore:
+                global_data_size = fleet.util.all_reduce(local_data_size)
+            else:
+                fleet._role_maker.all_reduce_worker(local_data_size,
                                                 global_data_size)
             return global_data_size[0]
         return local_data_size[0]
