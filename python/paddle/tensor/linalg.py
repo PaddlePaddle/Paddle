@@ -543,6 +543,323 @@ def dist(x, y, p=2):
     return out
 
 
+def cond(x, p=None, name=None):
+    """
+
+    Computes the condition number of a matrix or batches of matrices with respect to a matrix norm ``p``.
+
+    Args:
+        x (Tensor): The input tensor could be tensor of shape ``(*, m, n)`` where ``*`` is zero or more batch dimensions 
+            for ``p`` in ``(2, -2)``, or of shape ``(*, n, n)`` where every matrix is invertible for any supported ``p``. 
+            And the input data type could be ``float32`` or ``float64``.
+        p (float|string, optional): Order of the norm. Supported values are `fro`, `nuc`, `1`, `-1`, `2`, `-2`,
+            `inf`, `-inf`. Default value is `None`, meaning that the order of the norm is `2`.
+        name (str, optional): The default value is `None`. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: computing results of condition number, its data type is the same as input Tensor ``x``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import numpy as np
+
+            x = paddle.to_tensor([[1., 0, -1], [0, 1, 0], [1, 0, 1]])
+
+            # compute conditional number when p is None
+            out = paddle.linalg.cond(x)
+            # out.numpy() [1.4142135]
+
+            # compute conditional number when order of the norm is 'fro'
+            out_fro = paddle.linalg.cond(x, p='fro')
+            # out_fro.numpy() [3.1622777]
+
+            # compute conditional number when order of the norm is 'nuc'
+            out_nuc = paddle.linalg.cond(x, p='nuc')
+            # out_nuc.numpy() [9.2426405]
+
+            # compute conditional number when order of the norm is 1
+            out_1 = paddle.linalg.cond(x, p=1)
+            # out_1.numpy() [2.]
+
+            # compute conditional number when order of the norm is -1
+            out_minus_1 = paddle.linalg.cond(x, p=-1)
+            # out_minus_1.numpy() [1.]
+
+            # compute conditional number when order of the norm is 2
+            out_2 = paddle.linalg.cond(x, p=2)
+            # out_2.numpy() [1.4142135]
+
+            # compute conditional number when order of the norm is -1
+            out_minus_2 = paddle.linalg.cond(x, p=-2)
+            # out_minus_2.numpy() [0.70710677]
+
+            # compute conditional number when order of the norm is inf
+            out_inf = paddle.linalg.cond(x, p=np.inf)
+            # out_inf.numpy() [2.]
+
+            # compute conditional number when order of the norm is -inf
+            out_minus_inf = paddle.linalg.cond(x, p=-np.inf)
+            # out_minus_inf.numpy() [1.]
+
+            a = paddle.to_tensor(np.random.randn(2, 4, 4).astype('float32'))
+            # a.numpy() 
+            # [[[ 0.14063153 -0.996288    0.7996131  -0.02571543]
+            #   [-0.16303636  1.5534962  -0.49919784 -0.04402903]
+            #   [-1.1341571  -0.6022629   0.5445269   0.29154757]
+            #   [-0.16816919 -0.30972657  1.7521842  -0.5402487 ]]
+            #  [[-0.58081484  0.12402827  0.7229862  -0.55046535]
+            #   [-0.15178485 -1.1604939   0.75810957  0.30971205]
+            #   [-0.9669573   1.0940945  -0.27363303 -0.35416734]
+            #   [-1.216529    2.0018666  -0.7773689  -0.17556527]]]
+            a_cond_fro = paddle.linalg.cond(a, p='fro')
+            # a_cond_fro.numpy()  [31.572273 28.120834]
+
+            b = paddle.to_tensor(np.random.randn(2, 3, 4).astype('float64'))
+            # b.numpy()
+            # [[[ 1.61707487  0.46829144  0.38130416  0.82546736]
+            #   [-1.72710298  0.08866375 -0.62518804  0.16128892]
+            #   [-0.02822879 -1.67764516  0.11141444  0.3220113 ]]
+            #  [[ 0.22524372  0.62474921 -0.85503233 -1.03960523]
+            #   [-0.76620689  0.56673047  0.85064753 -0.45158196]
+            #   [ 1.47595418  2.23646462  1.5701758   0.10497519]]]
+            b_cond_2 = paddle.linalg.cond(b, p=2)
+            # b_cond_2.numpy()  [3.30064451 2.51976252]
+
+    """
+
+    def mat_norm(input, porder=1., axis=None):
+        """
+        NOTE:
+            Calculate the matrix norm of a square matrix or batches of square matrices,
+            when porder is in (1, -1, inf, -inf)
+        """
+        reduce_all = True if axis is None or axis == [] else False
+        axis = axis if axis != None and axis != [] else [0]
+        keepdim = False
+
+        if in_dygraph_mode():
+            abs_out = _C_ops.abs(input)
+            sum_out = _C_ops.reduce_sum(abs_out, 'dim', axis, 'keepdim',
+                                        keepdim, 'reduce_all', reduce_all)
+            if porder == 1 or porder == np.inf:
+                return _C_ops.reduce_max(sum_out, 'dim', [-1], 'keepdim',
+                                         keepdim, 'reduce_all', reduce_all)
+            if porder == -1 or porder == -np.inf:
+                return _C_ops.reduce_min(sum_out, 'dim', [-1], 'keepdim',
+                                         keepdim, 'reduce_all', reduce_all)
+
+        block = LayerHelper('norm', **locals())
+        abs_out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype())
+        sum_out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype())
+        out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype())
+        block.append_op(
+            type='abs', inputs={'X': input}, outputs={'Out': abs_out})
+        block.append_op(
+            type='reduce_sum',
+            inputs={'X': abs_out},
+            outputs={'Out': sum_out},
+            attrs={'dim': axis,
+                   'keep_dim': keepdim,
+                   'reduce_all': reduce_all})
+        if porder == 1 or porder == np.inf:
+            block.append_op(
+                type='reduce_max',
+                inputs={'X': sum_out},
+                outputs={'Out': out},
+                attrs={
+                    'dim': [-1],
+                    'keep_dim': keepdim,
+                    'reduce_all': reduce_all
+                })
+        if porder == -1 or porder == -np.inf:
+            block.append_op(
+                type='reduce_min',
+                inputs={'X': sum_out},
+                outputs={'Out': out},
+                attrs={
+                    'dim': [-1],
+                    'keep_dim': keepdim,
+                    'reduce_all': reduce_all
+                })
+        return out
+
+    def fro_norm(input, porder=2, axis=[-1]):
+        """
+        NOTE:
+            Calculate the frobenius norm of a square matrix or batches of square matrices.
+        """
+        reduce_all = True if axis is None or axis == [] else False
+        keepdim = False
+
+        if in_dygraph_mode():
+            pow_out = _C_ops.pow(input, 'factor', porder)
+            sum_out_1 = _C_ops.reduce_sum(pow_out, 'dim', axis, 'keepdim',
+                                          keepdim, 'reduce_all', reduce_all)
+            sum_out_2 = _C_ops.reduce_sum(sum_out_1, 'dim', axis, 'keepdim',
+                                          keepdim, 'reduce_all', reduce_all)
+            return _C_ops.pow(sum_out_2, 'factor', float(1. / porder))
+
+        block = LayerHelper('norm', **locals())
+        pow_out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype())
+        sum_out_1 = block.create_variable_for_type_inference(
+            dtype=block.input_dtype())
+        sum_out_2 = block.create_variable_for_type_inference(
+            dtype=block.input_dtype())
+        out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype())
+        block.append_op(
+            type='pow',
+            inputs={'X': input},
+            outputs={'Out': pow_out},
+            attrs={'factor': porder})
+        block.append_op(
+            type='reduce_sum',
+            inputs={'X': pow_out},
+            outputs={'Out': sum_out_1},
+            attrs={'dim': axis,
+                   'keep_dim': keepdim,
+                   'reduce_all': reduce_all})
+        block.append_op(
+            type='reduce_sum',
+            inputs={'X': sum_out_1},
+            outputs={'Out': sum_out_2},
+            attrs={'dim': axis,
+                   'keep_dim': keepdim,
+                   'reduce_all': reduce_all})
+        block.append_op(
+            type='pow',
+            inputs={'X': sum_out_2},
+            outputs={'Out': out},
+            attrs={'factor': float(1. / porder)})
+        return out
+
+    def svd_norm(input, porder, axis=[-1]):
+        """
+        NOTE:
+            Calculate the matrix norm, which is related to singular values, of a matrix
+            or batches of matrices, including nuclear norm, 2-norm and (-2)-norm.
+        """
+        reduce_all = True if axis is None or axis == [] else False
+        keepdim = False
+
+        u, s, vh = svd(input, full_matrices=False)
+
+        if in_dygraph_mode():
+            if porder == "nuc":
+                return _C_ops.reduce_sum(s, 'dim', axis, 'keepdim', keepdim,
+                                         'reduce_all', reduce_all)
+            max_out = _C_ops.reduce_max(s, 'dim', axis, 'keepdim', keepdim,
+                                        'reduce_all', reduce_all)
+            min_out = _C_ops.reduce_min(s, 'dim', axis, 'keepdim', keepdim,
+                                        'reduce_all', reduce_all)
+            if porder == 2:
+                return _C_ops.elementwise_div(max_out, min_out, 'aixs', axis,
+                                              'use_mkldnn', False)
+            if porder == -2:
+                return _C_ops.elementwise_div(min_out, max_out, 'aixs', axis,
+                                              'use_mkldnn', False)
+
+        block = LayerHelper('norm', **locals())
+        out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype())
+        if porder == "nuc":
+            block.append_op(
+                type='reduce_sum',
+                inputs={'X': s},
+                outputs={'Out': out},
+                attrs={
+                    'dim': axis,
+                    'keep_dim': keepdim,
+                    'reduce_all': reduce_all
+                })
+            return out
+        max_out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype())
+        min_out = block.create_variable_for_type_inference(
+            dtype=block.input_dtype())
+        block.append_op(
+            type='reduce_max',
+            inputs={'X': s},
+            outputs={'Out': max_out},
+            attrs={'dim': axis,
+                   'keep_dim': keepdim,
+                   'reduce_all': reduce_all})
+        block.append_op(
+            type='reduce_min',
+            inputs={'X': s},
+            outputs={'Out': min_out},
+            attrs={'dim': axis,
+                   'keep_dim': keepdim,
+                   'reduce_all': reduce_all})
+        if porder == 2:
+            block.append_op(
+                type='elementwise_div',
+                inputs={'X': max_out,
+                        'Y': min_out},
+                outputs={'Out': out},
+                attrs={'aixs': axis,
+                       'use_mkldnn': False})
+            return out
+        if porder == -2:
+            block.append_op(
+                type='elementwise_div',
+                inputs={'X': min_out,
+                        'Y': max_out},
+                outputs={'Out': out},
+                attrs={'aixs': axis,
+                       'use_mkldnn': False})
+            return out
+
+    def empty_tensor(input, shape):
+        if in_dygraph_mode():
+            return input.reshape(shape)
+        raise ValueError("only support x is nonempty tensor in static mode")
+
+    x_shape = list(x.shape)
+    if not len(x_shape) >= 2:
+        raise ValueError("input should be a matrix or batches of matrices, " +
+                         "but the dimention of received input is {}".format(
+                             len(x_shape)))
+    if p == None:
+        p = 2
+    x_size = 0 if (0 in x_shape) else 1
+    if p in ("fro", "nuc", 1, -1, np.inf, -np.inf):
+        if x_shape[len(x_shape) - 1] == x_shape[len(x_shape) - 2]:
+            if x_size == 0:
+                return empty_tensor(x, x_shape[:-2])
+            x_inv = x.inverse()
+            if p == "fro":
+                return fro_norm(x) * fro_norm(x_inv)
+            if p == "nuc":
+                return svd_norm(x, p) * svd_norm(x_inv, p)
+            if p in (1, -1):
+                return mat_norm(
+                    x, porder=p, axis=[-2]) * mat_norm(
+                        x_inv, porder=p, axis=[-2])
+            if p in (np.inf, -np.inf):
+                return mat_norm(
+                    x, porder=p, axis=[-1]) * mat_norm(
+                        x_inv, porder=p, axis=[-1])
+        else:
+            raise ValueError("only support p is {} when input is a ".format(p) +
+                             "square matrix or batches of square matrices")
+    elif p in (2, -2):
+        if x_size == 0:
+            return empty_tensor(x, x_shape[:-2])
+        return svd_norm(x, porder=p)
+    else:
+        raise ValueError(
+            "unsupported {} for p, only supporting ('fro', 'nuc', ".format(
+                p) + "1, -1, 2, -2, inf, -inf) or none")
+
+
 def dot(x, y, name=None):
     """
     This operator calculates inner product for vectors.
@@ -789,20 +1106,18 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
     r"""
     Computes the rank of a matrix.
 
-    The rank of a matrix is the number of singular values that are greater than the specified tol threshold when hermitian=False,
-    or the number of eigenvalues in absolute value that are greater than the specified tol threshold when hermitian=True.
+    The rank of a matrix is the number of singular values that are greater than the specified `tol` threshold when hermitian=False, 
+    or the number of eigenvalues in absolute value that are greater than the specified `tol` threshold when hermitian=True.
 
     Args:
-        x (Tensor): The input tensor.
-            Its shape should be [..., m, n], where ... is zero or more batch dimensions. If x is a batch of matrices then the output
-            has the same batch dimensions. The data type of x should be float32 or float64.
-        tol (float,Tensor,optional): the tolerance value. Default: None.
-            If tol is not specified, and sigma is the largest singular value (or eigenvalue in absolute value), and eps is the
-            epsilon value for the dtype of x, then tol is computed with formula tol=sigma * max(m,n) * eps. Note that if x is
-            a batch of matrices, tol is computed this way for every batch.
-        hermitian (bool,optional): indicates whether x is Hermitian. Default: False.
-            When hermitian=True, x is assumed to be Hermitian, but x is not checked inside the function. Instead, We just use the
-            lower triangular of the matrix to compute.
+        x (Tensor): The input tensor. Its shape should be `[..., m, n]`, where `...` is zero or more batch dimensions. If `x` is a batch 
+            of matrices then the output has the same batch dimensions. The data type of `x` should be float32 or float64. 
+        tol (float,Tensor,optional): the tolerance value. Default: None. If `tol` is not specified, and `sigma` is the largest 
+            singular value (or eigenvalues in absolute value), and `eps` is the epsilon value for the dtype of `x`, then `tol` is computed 
+            with formula `tol=sigma * max(m,n) * eps`. Note that if `x` is a batch of matrices, `tol` is computed this way for every batch.
+        hermitian (bool,optional): indicates whether `x` is Hermitian. Default: False. When hermitian=True, `x` is assumed to be Hermitian, 
+            enabling a more efficient method for finding eigenvalues, but `x` is not checked inside the function. Instead, We just use 
+            the lower triangular of the matrix to compute.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1106,7 +1421,7 @@ def svd(x, full_matrices=False, name=None):
 def matrix_power(x, n, name=None):
     r"""
     Computes the n-th power of a square matrix or a batch of square matrices.
-
+    
     Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`n` be
     an exponent, the equation should be:
 
@@ -1251,3 +1566,72 @@ def multi_dot(x, name=None):
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(type='multi_dot', inputs={"X": x}, outputs={"Out": out})
     return out
+
+
+def eigh(x, UPLO='L', name=None):
+    """
+    Compute the eigenvalues and eigenvectors of a 
+    complex Hermitian (conjugate symmetric) or a real symmetric matrix.
+
+    Args:
+        x (Tensor): A tensor with shape :math:`[*, N, N]` , The data type of the input Tensor x
+            should be one of float32, float64, complex64, complex128.
+        UPLO(str, optional): (string, default 'L'), 'L' represents the lower triangular matrix,
+                        "'U' represents the upper triangular matrix.".
+        name(str, optional): The default value is None.  Normally there is no need for user to set this
+            property.  For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+
+        out_value(Tensor):  A Tensor with shape [*, N] and data type of float32 and float64. The eigenvalues of eigh op.
+        out_vector(Tensor): A Tensor with shape [*, N, N] and data type of float32,float64,complex64 and complex128. The eigenvectors of eigh op.
+
+    Examples:
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x_data = np.array([[1, -2j], [2j, 5]])
+            x = paddle.to_tensor(x_data)
+            out_value, out_vector = paddle.eigh(x, UPLO='L')
+            print(out_value)
+            #[0.17157288, 5.82842712]
+            print(out_vector)
+            #[(-0.9238795325112867+0j), (-0.3826834323650898+0j)],
+            #[ 0.3826834323650898j    , -0.9238795325112867j    ]]
+
+    """
+    if in_dygraph_mode():
+        return _C_ops.eigh(x, 'UPLO', UPLO)
+
+    def __check_input(x, UPLO):
+        x_shape = list(x.shape)
+        if len(x.shape) < 2:
+            raise ValueError(
+                "Input(input) only support >=2 tensor, but received "
+                "length of Input(input) is %s." % len(x.shape))
+        if x_shape[-1] != x_shape[-2]:
+            raise ValueError(
+                "The input matrix must be batches of square matrices. But received x's dimention: {}".
+                format(x_shape))
+        if UPLO is not 'L' and UPLO is not 'U':
+            raise ValueError(
+                "UPLO must be L or U. But received UPLO is: {}".format(UPLO))
+
+    __check_input(x, UPLO)
+
+    helper = LayerHelper('eigh', **locals())
+    check_variable_and_dtype(
+        x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'], 'eigh')
+
+    out_value = helper.create_variable_for_type_inference(dtype=x.dtype)
+    out_vector = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='eigh',
+        inputs={'X': x},
+        outputs={'Eigenvalues': out_value,
+                 'Eigenvectors': out_vector},
+        attrs={'UPLO': UPLO})
+    return out_value, out_vector

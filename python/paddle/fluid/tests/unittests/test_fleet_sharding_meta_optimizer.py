@@ -658,6 +658,33 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'c_gen_nccl_id', 'c_comm_init'
         ])
 
+        self.assertEqual(main_prog_op_types, [
+            'partial_recv', 'partial_allgather', 'cast', 'cast', 'mul', 'cast',
+            'elementwise_add', 'cast', 'tanh', 'cast', 'cast', 'mul', 'cast',
+            'elementwise_add', 'cast', 'tanh', 'cast', 'cast', 'mul', 'cast',
+            'elementwise_add', 'cast', 'tanh', 'cast', 'cast', 'mul', 'cast',
+            'elementwise_add', 'softmax', 'cast', 'cross_entropy2', 'mean',
+            'elementwise_mul', 'fill_constant', 'elementwise_mul_grad',
+            'mean_grad', 'cross_entropy_grad2', 'cast', 'softmax_grad',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'elementwise_add_grad', 'mul_grad', 'cast', 'c_sync_calc_stream',
+            'partial_send', 'fill_constant', 'cast', 'sum', 'fill_constant',
+            'cast', 'sum', 'fill_constant', 'cast', 'sum', 'fill_constant',
+            'cast', 'sum', 'fill_constant', 'cast', 'sum', 'fill_constant',
+            'cast', 'sum', 'fill_constant', 'cast', 'sum', 'fill_constant',
+            'cast', 'sum', 'c_sync_comm_stream', 'check_finite_and_unscale',
+            'cast', 'c_allreduce_max', 'c_allreduce_max', 'cast',
+            'update_loss_scaling', 'fill_constant', 'c_allreduce_sum',
+            'c_allreduce_sum', 'sqrt', 'fill_constant', 'elementwise_max',
+            'elementwise_div', 'elementwise_mul', 'elementwise_mul',
+            'elementwise_mul', 'elementwise_mul', 'elementwise_mul',
+            'elementwise_mul', 'elementwise_mul', 'elementwise_mul', 'momentum',
+            'momentum', 'momentum', 'momentum', 'momentum', 'momentum',
+            'momentum', 'momentum'
+        ])
+
         # pp + mp, partial send recv
         self.assertIn('partial_recv', main_prog_op_types)
         self.assertIn('partial_allgather', main_prog_op_types)
