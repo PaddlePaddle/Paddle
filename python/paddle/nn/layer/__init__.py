@@ -1,4 +1,5 @@
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -83,5 +84,7 @@ from .norm import LocalResponseNorm  # noqa: F401
 from .vision import PixelShuffle  # noqa: F401
 from .distance import PairwiseDistance  # noqa: F401
 from .container import LayerDict  # noqa: F401
+
+from .transformer import CUDNNSeqDataInfo  # noqa: F401
 
 __all__ = []

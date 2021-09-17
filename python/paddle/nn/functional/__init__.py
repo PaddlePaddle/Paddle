@@ -1,4 +1,5 @@
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -111,6 +112,8 @@ from .input import embedding  # noqa: F401
 from ...fluid.layers import gather_tree  # noqa: F401
 from ...fluid.layers import temporal_shift  # noqa: F401
 
+from .transformer import multi_head_attn  # noqa: F401
+
 __all__ = [     #noqa
            'conv1d',
            'conv1d_transpose',
@@ -205,4 +208,5 @@ __all__ = [     #noqa
            'layer_norm',
            'instance_norm',
            'class_center_sample',
+           'multi_head_attn'
 ]

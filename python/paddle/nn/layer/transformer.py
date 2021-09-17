@@ -1,4 +1,5 @@
 #   Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 NVIDIA Corporation. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -104,6 +105,61 @@ def _convert_attention_mask(attn_mask, dtype):
         else:
             attn_mask = paddle.cast(attn_mask, dtype)
     return attn_mask
+
+
+class CUDNNMHAMetaData:
+    def __init__(self, nheads, hidden_size, dropout_rate=0.0, sm_scaler=1.0):
+        self.nheads = nheads
+        self.hidden_size = hidden_size
+        self.proj_size = hidden_size // nheads
+        self.dropout_rate = dropout_rate
+        self.sm_scaler = sm_scaler
+
+
+class CUDNNSeqDataInfo:
+    def __init__(self, attention_mask):
+        self.max_seq_len = attention_mask.shape[1]
+        self.low_win_idx = np.zeros((self.max_seq_len, ), dtype=np.int32)
+        self.hi_win_idx = np.full(
+            (self.max_seq_len, ), self.max_seq_len, dtype=np.int32)
+        self.qo_seqlen = np.sum(attention_mask == 1, axis=1)
+        self.kv_seqlen = self.qo_seqlen
+        self.qo_seqlen_tensor = paddle.to_tensor(
+            self.qo_seqlen, dtype=np.int32, place=paddle.CUDAPlace(0))
+        self.kv_seqlen_tensor = self.qo_seqlen_tensor
+
+
+class CUDNNMultiHeadAttention(Layer):
+    def __init__(self,
+                 embed_dim,
+                 num_heads,
+                 dropout=0.,
+                 weight_attr=None,
+                 name=None):
+        super(CUDNNMultiHeadAttention, self).__init__()
+
+        self._dtype = self._helper.get_default_dtype()
+        self._weight_attr = weight_attr
+
+        self.meta_data = CUDNNMHAMetaData(num_heads, embed_dim, dropout)
+        self.meta_data.sm_scaler = self.meta_data.proj_size**-0.5
+
+        self.weight = self.create_parameter(
+            shape=(embed_dim * embed_dim * 4, ),
+            attr=self._weight_attr,
+            dtype=self._dtype,
+            is_bias=False)
+        self.name = name
+
+    def forward(self, query, key, value, seq_data_info):
+        return F.multi_head_attn(query, key, value, self.weight, self.meta_data,
+                                 seq_data_info)
+
+    def extra_repr(self):
+        name_str = ', name={}'.format(self.name) if self.name else ''
+        return 'total weights={}, W[Q/k/V/O]={}x{}, dtype={}{}'.format(
+            self.weight.shape[0], self.meta_data.hidden_size,
+            self.meta_data.hidden_size, self._dtype, name_str)
 
 
 class MultiHeadAttention(Layer):
