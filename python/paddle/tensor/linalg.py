@@ -1682,9 +1682,8 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
         .. code-block:: python
 
             import paddle
-            import numpy as np
 
-            x = np.arange(15).reshape((3, 5)).astype('float64')
+            x = paddle.arange(15).reshape((3, 5)).astype('float64')
             input = paddle.to_tensor(x)
             out = paddle.linalg.pinv(input)
             print(input)
