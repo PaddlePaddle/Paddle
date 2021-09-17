@@ -24,13 +24,24 @@ from paddle.nn import MultiHeadAttention, CUDNNMultiHeadAttention
 from paddle.nn.layer import CUDNNSeqDataInfo
 
 
-def is_equal(a, b, atol):
+def is_equal_atol(a, b, atol):
     a = a.flatten()
     b = b.flatten()
 
     a_b_diff = np.abs(a - b)
     is_error = np.sum(a_b_diff > atol)
     if is_error:
+        return False
+    return True
+
+
+def is_equal_rtol(a, b, rtol):
+    a = a.flatten()
+    b = b.flatten()
+
+    a_abs = np.abs(a)
+    rel_err = max(np.abs(a - b) / a_abs)
+    if rel_err > rtol:
         return False
     return True
 
@@ -110,6 +121,7 @@ class TestMHALayer(unittest.TestCase):
     def init_dtype_type(self):
         self.dtype = np.float32
         self.atol = 1e-3
+        self.rtol = 1e-2
 
     def test_fwd_output(self):
         if self.dtype == np.float16 and not core.is_float16_supported(
@@ -121,7 +133,8 @@ class TestMHALayer(unittest.TestCase):
         cudnn_output = self.cudnn_mha(self.q_tensor, self.k_tensor,
                                       self.v_tensor, self.seq_data)
         self.assertEqual(
-            is_equal(ref_output.numpy(), cudnn_output.numpy(), self.atol), True)
+            is_equal_atol(ref_output.numpy(), cudnn_output.numpy(), self.atol),
+            True)
 
     def test_full_grads(self):
         self.q_tensor.stop_gradient = False
@@ -157,18 +170,18 @@ class TestMHALayer(unittest.TestCase):
         ref_weight_grad = self._get_grads_from_ref()
         cudnn_weight_grad = self.cudnn_mha.weight.grad.numpy()
         self.assertEqual(
-            is_equal(ref_weight_grad, cudnn_weight_grad, self.atol), True)
+            is_equal_rtol(ref_weight_grad, cudnn_weight_grad, self.rtol), True)
 
         if check_data_grads:
             self.assertEqual(
-                is_equal(self.q_3dim_tensor.grad.numpy(),
-                         self.q_tensor.grad.numpy(), self.atol), True)
+                is_equal_rtol(self.q_3dim_tensor.grad.numpy(),
+                              self.q_tensor.grad.numpy(), self.rtol), True)
             self.assertEqual(
-                is_equal(self.k_3dim_tensor.grad.numpy(),
-                         self.k_tensor.grad.numpy(), self.atol), True)
+                is_equal_rtol(self.k_3dim_tensor.grad.numpy(),
+                              self.k_tensor.grad.numpy(), self.rtol), True)
             self.assertEqual(
-                is_equal(self.v_3dim_tensor.grad.numpy(),
-                         self.v_tensor.grad.numpy(), self.atol), True)
+                is_equal_rtol(self.v_3dim_tensor.grad.numpy(),
+                              self.v_tensor.grad.numpy(), self.rtol), True)
 
     def _get_grads_from_ref(self):
         return np.concatenate(
