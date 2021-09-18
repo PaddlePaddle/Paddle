@@ -203,9 +203,10 @@ struct KernelRegistrar {
                             cpp_dtype,                        \
                             __VA_ARGS__)
 
-// The =pre-commit always treats this macro into the wrong format,
-// and multi-line macros cannot be skipped with NOLINT.
-// If there are only errors here, you can use -n to skip check
+// clang-format off
+
+/* The =pre-commit always treats this macro into the wrong format,
+  and multi-line macros cannot be skipped with NOLINT.*/
 #define _PT_KERNEL_REGISTRAR_INIT(N,              \
                                   kernel_name,    \
                                   func_id,        \
@@ -215,16 +216,18 @@ struct KernelRegistrar {
                                   meta_kernel_fn, \
                                   cpp_dtype,      \
                                   ...)            \
-  PT_CONCATENATE(_PT_KERNEL_REGISTRAR_INIT_, N)   \
-  (kernel_name,                                   \
-   func_id,                                       \
-   PT_ID,                                         \
-   backend,                                       \
-   layout,                                        \
-   args_def_fn,                                   \
-   meta_kernel_fn,                                \
-   cpp_dtype,                                     \
-   __VA_ARGS__)
+  PT_CONCATENATE(_PT_KERNEL_REGISTRAR_INIT_, N) ( \
+    kernel_name,                                  \
+    func_id,                                      \
+    PT_ID,                                        \
+    backend,                                      \
+    layout,                                       \
+    args_def_fn,                                  \
+    meta_kernel_fn,                               \
+    cpp_dtype,                                    \
+    __VA_ARGS__)
+
+// clang-format on
 
 #define _PT_KERNEL_REGISTRAR_INIT_1(kernel_name,      \
                                     func_id,          \
