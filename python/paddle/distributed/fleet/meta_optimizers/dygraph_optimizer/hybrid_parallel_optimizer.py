@@ -29,6 +29,19 @@ from paddle.fluid import layers
 __all__ = []
 
 
+def _obtain_optimizer_parameters_list(optimizer):
+    if getattr(optimizer, '_param_groups', None) and isinstance(
+            optimizer._param_groups[0], dict):
+        parameters_list = []
+        for group in optimizer._param_groups:
+            for param in group['params']:
+                parameters_list.append(param)
+    else:
+        parameters_list = [param for param in optimizer._parameter_list]
+
+    return parameters_list
+
+
 class HybridParallelClipGrad:
     def __init__(self, clip, hcg):
         self._clip = clip
@@ -98,6 +111,10 @@ class HybridParallelOptimizer:
 
         self._need_dp = (self._hcg.get_data_parallel_world_size() > 1)
 
+        # NOTE(shenliang03): Because of the pure DataParallel mode, the gradient synchronization 
+        # is achieved through reducer, so there is no need to call fuse_allreduce in oprimizer. 
+        self._dp_enable = not self._use_dp_mode and self._need_dp
+
         self._sharding_enable = (
             self._hcg.get_sharding_parallel_world_size() > 1)
 
@@ -105,20 +122,20 @@ class HybridParallelOptimizer:
                       ClipGradByGlobalNorm) and not self._use_dp_mode:
             logger.warning("using ClipGradByGlobalNorm in TensorParallel, the origin " \
                   "optmizer'grad clip will be changed.")
+
             self._inner_opt._grad_clip = HybridParallelClipGrad(
                 self._inner_opt._grad_clip, hcg)
 
     @imperative_base.no_grad
     @framework.dygraph_only
     def step(self):
-        # Here should use global parameter list 
+        parameters_list = _obtain_optimizer_parameters_list(self._inner_opt)
         if self._sharding_enable:
-            sharding_reduce_gradients(
-                list(self._inner_opt._parameter_list), self._hcg)
+            sharding_reduce_gradients(list(parameters_list), self._hcg)
 
-        if not self._use_dp_mode and self._need_dp:
-            fused_allreduce_gradients(
-                list(self._inner_opt._parameter_list), self._hcg)
+        if self._dp_enable:
+            fused_allreduce_gradients(list(parameters_list), self._hcg)
+
         self._inner_opt.step()
 
     @imperative_base.no_grad
@@ -128,15 +145,16 @@ class HybridParallelOptimizer:
                  parameters=None,
                  no_grad_set=None):
 
+        # minimize does not support parameters in the form of param_group, 
+        # so no need use _obtain_optimizer_parameters_list
         parameter_list = parameters if parameters \
             else self._inner_opt._parameter_list
 
-        # Here should use global parameter list 
+        # Here sharding should use global parameter list
         if self._sharding_enable:
-            sharding_reduce_gradients(
-                list(self._inner_opt._parameter_list), self._hcg)
+            sharding_reduce_gradients(list(parameter_list), self._hcg)
 
-        if not self._use_dp_mode and self._need_dp:
+        if self._dp_enable:
             fused_allreduce_gradients(list(parameter_list), self._hcg)
 
         return self._inner_opt.minimize(loss, startup_program, parameter_list,

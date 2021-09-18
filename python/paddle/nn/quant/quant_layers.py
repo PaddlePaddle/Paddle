@@ -148,7 +148,7 @@ class FakeQuantMovingAverageAbsMax(layers.Layer):
             name) if name else 'quant_dequant.scale'
         scale_attr = ParamAttr(
             name=unique_name.generate(scale_prefix),
-            initializer=Constant(0.),
+            initializer=Constant(0.001),
             trainable=False)
         self._scale = self.create_parameter(
             shape=[1], attr=scale_attr, dtype=dtype)
@@ -158,7 +158,7 @@ class FakeQuantMovingAverageAbsMax(layers.Layer):
             name) if name else 'quant_dequant.state'
         state_attr = ParamAttr(
             name=unique_name.generate(state_prefix),
-            initializer=Constant(0),
+            initializer=Constant(1),
             trainable=False)
         self._state = self.create_parameter(
             shape=[1], attr=state_attr, dtype=dtype)
@@ -168,7 +168,7 @@ class FakeQuantMovingAverageAbsMax(layers.Layer):
             name) if name else 'quant_dequant.accum'
         accum_attr = ParamAttr(
             name=unique_name.generate(accum_prefix),
-            initializer=Constant(0),
+            initializer=Constant(1),
             trainable=False)
         self._accum = self.create_parameter(
             shape=[1], attr=accum_attr, dtype=dtype)
