@@ -1979,12 +1979,8 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::CostInfo>(m, "CostInfo")
       .def(py::init<>())
       .def("total_time", [](CostInfo &self) { return self.total_time; })
-      .def("host_memory_bytes",
-           [](CostInfo &self) { return self.host_memory_bytes; })
       .def("device_memory_bytes",
-           [](CostInfo &self) { return self.device_memory_bytes; })
-      .def("device_total_memory_bytes",
-           [](CostInfo &self) { return self.device_total_memory_bytes; });
+           [](CostInfo &self) { return self.device_memory_bytes; });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
       .def(py::init<const platform::Place &, const ProgramDesc &,
