@@ -6,6 +6,7 @@ gym
 opencv-python<=4.2.0.32
 visualdl
 paddle2onnx>=0.8.2
-scipy
+scipy>=1.6
 prettytable
 distro
+numpy>=1.20

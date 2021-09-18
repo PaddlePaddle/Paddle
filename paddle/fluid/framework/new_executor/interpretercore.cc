@@ -19,7 +19,8 @@
 
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
 
-DEFINE_bool(new_executor_use_inplace, true, "Use inplace in new executor");
+PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
+                            "Use inplace in new executor");
 
 namespace paddle {
 namespace framework {
@@ -323,16 +324,15 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 }
 
 void InterpreterCore::ExecuteInstructionList(
-    const std::vector<Instruction>& vec_instr, bool is_dry_run) {
+    const std::vector<Instruction>& vec_instr) {
   auto atomic_deps = async_work_queue_.PrepareAtomicDeps(dependecy_count_);
   auto atomic_var_ref = async_work_queue_.PrepareAtomicVarRef(vec_meta_info_);
   std::atomic<size_t> op_run_number{0};
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
-      async_work_queue_.AddTask(vec_instr[i].type_, [&, i, is_dry_run]() {
-        RunInstructionAsync(i, &atomic_deps, &atomic_var_ref, &op_run_number,
-                            is_dry_run);
+      async_work_queue_.AddTask(vec_instr[i].type_, [&, i]() {
+        RunInstructionAsync(i, &atomic_deps, &atomic_var_ref, &op_run_number);
       });
     }
   }
@@ -349,8 +349,7 @@ void InterpreterCore::ExecuteInstructionList(
 void InterpreterCore::RunInstructionAsync(size_t instr_id,
                                           AtomicVectorSizeT* atomic_deps,
                                           AtomicVectorSizeT* atomic_var_ref,
-                                          std::atomic<size_t>* op_run_number,
-                                          bool is_dry_run) {
+                                          std::atomic<size_t>* op_run_number) {
   auto& instr_node = vec_instruction_[instr_id];
   event_manager_.WaitEvent(instr_node, place_);
 
@@ -358,10 +357,6 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id,
 
   event_manager_.RecordEvent(instr_node, place_);
   op_run_number->fetch_add(1, std::memory_order_relaxed);
-
-  if (is_dry_run) {
-    dry_run_profiler_.ParseMemoryInfo(global_scope_->var_list);
-  }
 
   auto& next_instr = instr_node.next_instruction_.all_next_ops_;
 
@@ -371,8 +366,7 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id,
         atomic_deps->at(next_i)->fetch_sub(1, std::memory_order_relaxed) == 1;
     if (is_ready) {
       async_work_queue_.AddTask(vec_instruction_[next_i].type_, [=]() {
-        RunInstructionAsync(next_i, atomic_deps, atomic_var_ref, op_run_number,
-                            is_dry_run);
+        RunInstructionAsync(next_i, atomic_deps, atomic_var_ref, op_run_number);
       });
     }
   }
@@ -432,7 +426,7 @@ const CostInfo& InterpreterCore::DryRun(
   // DryRun may be called many times.
   dry_run_profiler_.Reset();
   dry_run_profiler_.Start();
-  ExecuteInstructionList(vec_instruction_, /*is_dry_run=*/true);
+  ExecuteInstructionList(vec_instruction_);
   platform::DeviceContextPool::Instance().Get(place_)->Wait();
 
   dry_run_profiler_.Pause();

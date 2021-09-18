@@ -125,6 +125,9 @@ if(((NOT WITH_ROCM) AND (NOT WITH_GPU)) OR WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_disable_signal_handler)
 endif()
 
+# Temporally disable test_deprecated_decorator
+LIST(REMOVE_ITEM TEST_OPS test_deprecated_decorator)
+
 if(WIN32)
     LIST(REMOVE_ITEM TEST_OPS test_multiprocess_reader_exception)
     LIST(REMOVE_ITEM TEST_OPS test_trainer_desc)
@@ -699,6 +702,7 @@ endif()
 add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
+add_subdirectory(fft)
 
 if (WITH_XPU)
     add_subdirectory(xpu)
@@ -1030,3 +1034,4 @@ if(WITH_GPU OR WITH_ROCM)
     set_tests_properties(test_rank_attention_op PROPERTIES TIMEOUT 120)
 endif()
 set_tests_properties(test_inplace_addto_strategy PROPERTIES TIMEOUT 120)
+set_tests_properties(test_eigvals_op PROPERTIES TIMEOUT 400)

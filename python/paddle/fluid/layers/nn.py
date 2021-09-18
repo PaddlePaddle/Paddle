@@ -5061,7 +5061,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
         
         X = paddle.randn(shape=[3, 5], dtype='float64')
         out = paddle.fluid.layers.l2_normalize(X, axis=-1)
-        print(out.numpy())
+        print(out)
 
         # [[ 0.21558504  0.56360189  0.47466096  0.46269539 -0.44326736]
         #  [-0.70602414 -0.52745777  0.37771788 -0.2804768  -0.04449922]
@@ -6727,8 +6727,10 @@ def pad(x, paddings, pad_value=0., name=None):
             x = fluid.data(name='data', shape=[300, 300], dtype='float32')
             out = fluid.layers.pad(x=x, paddings=[0, 1, 1, 2], pad_value=0.)
     """
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], "pad")
+    check_variable_and_dtype(x, 'x', [
+        'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
+        'complex128'
+    ], "pad")
 
     helper = LayerHelper('pad', **locals())
     dtype = helper.input_dtype(input_param_name='x')
