@@ -62,14 +62,14 @@ PyObject* eager_tensor_properties_get_shape(EagerTensorObject* self,
 
 PyObject* eager_tensor_properties_get_stop_gradient(EagerTensorObject* self,
                                                     void* closure) {
-  auto meta = egr::EagerUtils::autograd_meta(self->eagertensor);
+  auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eagertensor);
   return ToPyObject(meta->StopGradient());
 }
 
 int eager_tensor_properties_set_stop_gradient(EagerTensorObject* self,
                                               PyObject* value, void* closure) {
-  auto meta = egr::EagerUtils::autograd_meta(self->eagertensor);
-  meta->SetNumericStopGradient(CastPyArg2AttrBoolean(value, 0));
+  auto meta = egr::EagerUtils::unsafe_autograd_meta(self->eagertensor);
+  meta->SetStopGradient(CastPyArg2AttrBoolean(value, 0));
   return 0;
 }
 
