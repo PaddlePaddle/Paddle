@@ -329,6 +329,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.pp_degree == 1: return
 
         strategy = self.user_defined_strategy
+        sharding_configs = strategy.sharding_configs
 
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
@@ -399,18 +400,21 @@ class ShardingOptimizer(MetaOptimizerBase):
             first_optimize_op_index += (len(main_block.ops) - len_of_ops)
             len_of_ops = len(main_block.ops)
 
+            optimize_cast = sharding_configs['optimize_cast']
             optimizer_param = utils.insert_broadcast_param_ops(
                 main_block,
                 len_of_ops,
-                self.dp_ring_id, [x[0].name for x in params_grads],
+                self.dp_ring_id,
+                [x[0].name for x in params_grads],
                 self._shard,
                 OpRole.Optimize,
                 use_calc_stream=True,
                 rank=self.dp_rank,
-                strategy=strategy)
+                # should close fuse when optimize_cast
+                strategy=None if optimize_cast else strategy)
             logger.info("Optimizer param in this rank {}".format(
                 optimizer_param))
-            if not strategy.fuse_grad_merge:
+            if not strategy.fuse_grad_merge and not optimize_cast:
                 assert len(accumulated_grad_names) == len(optimizer_param)
         elif self.hybrid_dp and self.hybrid_dp_mode == "pp_hybrid_dp":
             insert_allreduce_ops(
@@ -458,18 +462,20 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         main_block._sync_with_cpp()
 
-    def _apply_optimize_offload_pass(self):
+    def _apply_optimize_offload_pass(self, params_grads):
         strategy = self.user_defined_strategy
         sharding_configs = strategy.sharding_configs
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
+
+        dp_ring_id = self.dp_ring_id if self.dp_degree > 1 else None
 
         # optimize offload should be enable while gradient merge is enable and
         # acc_step is quite large (e.g. >> 100). Since its memcpy could not be
         # overlap with calc, otherwise it will slower down training severely.
         if sharding_configs["optimize_offload"]:
             logger.info("Sharding with optimize offload !")
-            offload_helper = OffloadHelper()
+            offload_helper = OffloadHelper(ring_id=dp_ring_id)
             offload_helper.offload(main_block, startup_block)
             # The optimize_cast is already included in offload_fp32param
             offload_helper.offload_fp32param(main_block, startup_block)
@@ -477,8 +483,14 @@ class ShardingOptimizer(MetaOptimizerBase):
             logger.info("Sharding with optimize cast !")
             # NOTE(wangxi): optimize_cast will persist fp16 param, it
             # will take more memory, but will be faster. Trade space for time.
-            offload_helper = OffloadHelper()
-            offload_helper.cast_fp32param_in_optimize(main_block, startup_block)
+            offload_helper = OffloadHelper(ring_id=dp_ring_id)
+            if self._optimizer_sharding:
+                offload_helper.opt_sharding_cast_fp32param(
+                    main_block, startup_block,
+                    [x[0].name for x in params_grads])
+            else:
+                offload_helper.cast_fp32param_in_optimize(main_block,
+                                                          startup_block)
 
     def _dump_program_for_debug(self):
         main_block = self._main_program.global_block()
@@ -1382,16 +1394,14 @@ class ShardingOptimizer(MetaOptimizerBase):
         startup_block = self._startup_program.global_block()
         params = startup_block.all_parameters()
 
-        broadcast_params = []
-        for param in params:
-            broadcast_params.append(param)
-            # optimize_cast need broadcast fp16 param
-            fp16_param_name = param.name + '.cast_fp16'
-            if startup_block.has_var(fp16_param_name):
-                fp16_param = startup_block.var(fp16_param_name)
-                broadcast_params.append(fp16_param)
+        # offload and optimize_cast will insert broadcast op
+        broadcast_params = set()
+        for op in startup_block.ops:
+            if op.type == 'c_broadcast':
+                broadcast_params.add(op.desc.output_arg_names[0])
 
-        for param in broadcast_params:
+        for param in params:
+            if param.name in broadcast_params: continue
             startup_block.append_op(
                 type='c_broadcast',
                 inputs={'X': param},
@@ -1399,8 +1409,10 @@ class ShardingOptimizer(MetaOptimizerBase):
                 attrs={
                     'ring_id': self.dp_ring_id,
                     'root': 0,
+                    'use_calc_stream': True,
                     OP_ROLE_KEY: OpRole.Forward
                 })
+
         startup_block.append_op(
             type='c_sync_comm_stream',
             inputs={'X': broadcast_params},
