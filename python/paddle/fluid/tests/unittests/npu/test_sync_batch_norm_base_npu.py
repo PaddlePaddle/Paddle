@@ -144,7 +144,8 @@ class TestSyncBatchNormRunnerBase(object):
 
         for place in places:
             # for layout in ["NCHW", "NHWC"]:
-            for layout in ["NCHW"]:
+            # for layout in ["NCHW"]:
+            for layout in ["NHWC"]:
                 self._compare(args, place, layout, False)
 
     def _compare(self, args, place, layout, only_forward):

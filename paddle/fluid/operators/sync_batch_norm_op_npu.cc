@@ -790,6 +790,17 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
             PrintTensor<float>(device_count_tensor, ctx);
           }
 
+          if (false) {
+            std::vector<float> device_count_vec(1);
+            TensorToVector(device_count_tensor, ctx.device_context(),
+                           &device_count_vec);
+            device_counts = device_count_vec[0];
+            LOG(WARNING) << "device_counts: " << device_counts;
+            PADDLE_ENFORCE_GE(device_counts, 2,
+                              platform::errors::PreconditionNotMet(
+                                  "device_counts should >= 2."));
+          }
+
           // HcclAllReduce x_sum
           {
             // In-place operation
@@ -1060,6 +1071,17 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
             reinterpret_cast<void *>(stream)));
         LOG(WARNING) << "after hccl | device_count_tensor";
         PrintTensor<float>(device_count_tensor, ctx);
+      }
+
+      if (false) {
+        std::vector<float> device_count_vec(1);
+        TensorToVector(device_count_tensor, ctx.device_context(),
+                       &device_count_vec);
+        device_counts = device_count_vec[0];
+        LOG(WARNING) << "device_counts: " << device_counts;
+        PADDLE_ENFORCE_GE(
+            device_counts, 2,
+            platform::errors::PreconditionNotMet("device_counts should >= 2."));
       }
     }
 
