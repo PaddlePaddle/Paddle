@@ -735,7 +735,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'c_gen_nccl_id', 'c_comm_init',
             'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
-            'c_gen_nccl_id', 'c_comm_init', 'c_sync_comm_stream'
+            'c_gen_nccl_id', 'c_comm_init', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_sync_comm_stream'
         ])
 
         self.assertEqual(main_prog_op_types, [
@@ -901,7 +903,10 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
             'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
-            'c_sync_comm_stream'
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream'
         ])
 
         self.assertEqual(main_prog_op_types, [
@@ -996,7 +1001,11 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'c_gen_nccl_id', 'c_comm_init',
             'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
-            'c_gen_nccl_id', 'c_comm_init', 'c_sync_comm_stream'
+            'c_gen_nccl_id', 'c_comm_init', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_sync_comm_stream'
         ])
 
         self.assertEqual(main_prog_op_types, [
@@ -1094,7 +1103,10 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
             'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
-            'c_sync_comm_stream'
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream'
         ])
 
         self.assertEqual(main_prog_op_types, [
@@ -1184,7 +1196,9 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'c_gen_nccl_id', 'c_comm_init',
             'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
-            'c_gen_nccl_id', 'c_comm_init', 'c_sync_comm_stream'
+            'c_gen_nccl_id', 'c_comm_init', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_sync_comm_stream'
         ])
 
         self.assertEqual(main_prog_op_types, [

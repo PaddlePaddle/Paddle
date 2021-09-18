@@ -4379,6 +4379,18 @@ class PipelineOptimizer(object):
                         name=var,
                         type=core.VarDesc.VarType.READER,
                         persistable=source_var.persistable)
+                elif isinstance(source_var, Parameter):
+                    dest_var = block.create_parameter(
+                        name=source_var.name,
+                        shape=source_var.shape,
+                        dtype=source_var.dtype,
+                        type=source_var.type,
+                        lod_level=source_var.lod_level,
+                        stop_gradient=source_var.stop_gradient,
+                        trainable=source_var.trainable,
+                        optimize_attr=source_var.optimize_attr,
+                        regularizer=source_var.regularizer,
+                        error_clip=source_var.error_clip)
                 else:
                     dest_var = block._clone_variable(source_var, False)
                 dest_var.stop_gradient = source_var.stop_gradient
