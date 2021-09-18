@@ -53,6 +53,9 @@ class SyncBatchNormKernel<platform::CUDADeviceContext, T>
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
 
+    LOG(WARNING) << "layout_str: " << layout_str;
+    LOG(WARNING) << "layout: " << layout;
+
     LOG(WARNING) << "Input Tensor | x: ";
     PrintTensor<float>(*x, ctx);
     LOG(WARNING) << "Input Tensor | scale: ";
@@ -100,6 +103,9 @@ class SyncBatchNormGradKernel<platform::CUDADeviceContext, T>
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
+
+    LOG(WARNING) << "layout_str: " << layout_str;
+    LOG(WARNING) << "layout: " << layout;
 
     LOG(WARNING) << "Input Tensor | dy: ";
     PrintTensor<T>(*d_y, ctx);

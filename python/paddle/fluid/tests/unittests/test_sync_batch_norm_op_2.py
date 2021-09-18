@@ -96,10 +96,10 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
                     moving_variance_name='bn_moving_variance',
                     data_layout=layout,
                     is_test=only_forward)
-                if core.is_compiled_with_rocm():
-                    bn = fluid.layers.cast(bn, 'float32')
-                else:
-                    bn = fluid.layers.cast(bn, 'float64')
+                # if core.is_compiled_with_rocm():
+                #     bn = fluid.layers.cast(bn, 'float32')
+                # else:
+                #     bn = fluid.layers.cast(bn, 'float64')
                 sigmoid = fluid.layers.sigmoid(bn)
                 out = fluid.layers.reduce_sum(sigmoid)
                 if not sync_bn:
@@ -123,7 +123,7 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         # Single-GPU, N = 32 per GPU
         main, startup, outs = self._build_program(place, layout, seed, False,
                                                   only_forward)
-        # print('main: ', main)
+        print('main: ', main)
         exe = fluid.Executor(place)
         exe.run(startup)
         fetch_names = [v.name for v in outs] + [
@@ -165,16 +165,110 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         comp_prog = compiler.CompiledProgram(main).with_data_parallel(
             outs[0].name if not only_forward else None,
             build_strategy=build_strategy)
-        print('comp_prog: ', comp_prog)
+        print('comp_prog: ', comp_prog._program)
         sync_bn_fetches = exe.run(program=comp_prog,
                                   feed={'input': data},
                                   fetch_list=fetch_names)
 
         for i in six.moves.xrange(1, len(sync_bn_fetches)):
+            print('i: ', i)
+            print('fetch_names[i]: ', fetch_names[i])
+
             bn_val = bn_fetches[i]
             sync_bn_val = sync_bn_fetches[i]
             if sync_bn_val.shape != bn_val.shape:
                 sync_bn_val = sync_bn_val[:bn_val.shape[0]]
+
+            # i = 1
+            if fetch_names[i] == 'conv2d_0.tmp_0':
+                # print('skip conv2d_0.tmp_0 (X)')
+                print('conv2d_0.tmp_0 (X)')
+                print('bn_val: ', str(bn_val))
+                print('sync_bn_val: ', str(sync_bn_val))
+
+                # continue
+
+            # i = 2
+            if fetch_names[i] == 'batch_norm_0.tmp_3':
+                # print('skip batch_norm_0.tmp_3 (Y)')
+                print('batch_norm_0.tmp_3 (Y)')
+                print('bn_val: ', str(bn_val))
+                print('sync_bn_val: ', str(sync_bn_val))
+
+                # continue
+
+            # i = 3
+            if fetch_names[i] == 'bn_moving_mean':
+                # print('skip bn_moving_mean (MeanOut)')
+                print('bn_moving_mean (MeanOut)')
+                print('bn_val: ', str(bn_val))
+                print('sync_bn_val: ', str(sync_bn_val))
+
+                # continue
+
+            # i = 4
+            if fetch_names[i] == 'bn_moving_variance':
+                # print('skip bn_moving_variance (VarianceOut)')
+                print('bn_moving_variance (VarianceOut)')
+                print('bn_val: ', str(bn_val))
+                print('sync_bn_val: ', str(sync_bn_val))
+
+                # continue
+
+            # i = 7
+            if fetch_names[i] == 'batch_norm_0.tmp_0':
+                # print('skip batch_norm_0.tmp_0 (SavedMean)')
+                print('batch_norm_0.tmp_0 (SavedMean)')
+                print('bn_val: ', str(bn_val))
+                print('sync_bn_val: ', str(sync_bn_val))
+
+                # continue
+
+            # i = 8
+            if fetch_names[i] == 'batch_norm_0.tmp_1':
+                # print('skip batch_norm_0.tmp_1 (SavedVariance)')
+                print('batch_norm_0.tmp_1 (SavedVariance)')
+                print('bn_val: ', str(bn_val))
+                print('sync_bn_val: ', str(sync_bn_val))
+
+                # continue
+
+            # i = 9
+            if fetch_names[i] == 'bn_scale@GRAD':
+                # print('skip bn_scale@GRAD (Scale@GRAD)')
+                print('bn_scale@GRAD (Scale@GRAD)')
+                print('bn_val: ', str(bn_val))
+                print('sync_bn_val: ', str(sync_bn_val))
+
+                # continue
+
+            # i = 10
+            if fetch_names[i] == 'bn_bias@GRAD':
+                # print('skip bn_bias@GRAD (Bias@GRAD)')
+                print('bn_bias@GRAD (Bias@GRAD)')
+                print('bn_val: ', str(bn_val))
+                print('sync_bn_val: ', str(sync_bn_val))
+
+                # continue
+
+            # i = 11
+            if fetch_names[i] == 'batch_norm_0.tmp_3@GRAD':
+                # print('skip batch_norm_0.tmp_3@GRAD (Y@GRAD)')
+                print('batch_norm_0.tmp_3@GRAD (Y@GRAD)')
+                print('bn_val: ', str(bn_val))
+                print('sync_bn_val: ', str(sync_bn_val))
+
+                # continue
+
+            # i = 12
+            if fetch_names[i] == 'conv2d_0.tmp_0@GRAD':
+                # print('skip conv2d_0.tmp_0@GRAD (X@GRAD)')
+                print('conv2d_0.tmp_0@GRAD (X@GRAD)')
+                print('bn_val: ', str(bn_val))
+                print('sync_bn_val: ', str(sync_bn_val))
+
+                # continue
+
             self.assertTrue(
                 np.allclose(
                     bn_val, sync_bn_val, atol=self.atol),
@@ -189,7 +283,8 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         places = [core.CUDAPlace(0)]
         for place in places:
             # for layout in ["NCHW", "NHWC"]:
-            for layout in ["NCHW"]:
+            # for layout in ["NCHW"]:
+            for layout in ["NHWC"]:
                 self._compare(place, layout, False)
 
     def test_infer(self):

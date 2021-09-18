@@ -154,6 +154,9 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
 
+    LOG(WARNING) << "data_layout_str: " << data_layout_str;
+    LOG(WARNING) << "data_layout: " << data_layout;
+
     bool test_mode = is_test && (!trainable_stats);
 
     // Get the size for each dimension.
