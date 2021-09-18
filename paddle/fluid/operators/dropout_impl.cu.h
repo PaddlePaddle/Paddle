@@ -76,8 +76,7 @@ template <typename T, typename MaskType, int VecSize>
 __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
                                           const float dropout_prob,
                                           const T* src, MaskType* mask, T* dst,
-                                          bool is_upscale_in_train,
-                                          uint64_t increment) {
+                                          T factor, uint64_t increment) {
   using LoadT = platform::AlignedVector<T, VecSize>;
   using MaskLoadT = platform::AlignedVector<MaskType, VecSize>;
 
@@ -91,7 +90,6 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
   curand_init(seed, idx, increment, &state);
 #endif
 
-  T factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
   for (int i = idx * VecSize; i < n; i += blockDim.x * gridDim.x * VecSize) {
     LoadT src_val;
     platform::Load<T, VecSize>(&src[i], &src_val);
@@ -105,15 +103,15 @@ __global__ void VectorizedRandomGenerator(const size_t n, uint64_t seed,
     LoadT dst_val;
     MaskLoadT mask_val;
 
+    rand.x = rand.x >= dropout_prob;
+    rand.y = rand.y >= dropout_prob;
+    rand.z = rand.z >= dropout_prob;
+    rand.w = rand.w >= dropout_prob;
+
 #pragma unroll
     for (int j = 0; j < VecSize; j++) {
-      if ((&rand.x)[j] < dropout_prob) {
-        dst_val[j] = 0;
-        mask_val[j] = 0;
-      } else {
-        dst_val[j] = is_upscale_in_train ? src_val[j] * factor : src_val[j];
-        mask_val[j] = 1;
-      }
+      dst_val[j] = src_val[j] * factor * static_cast<T>((&rand.x)[j]);
+      mask_val[j] = static_cast<MaskType>((&rand.x)[j]);
     }
 
     platform::Store<T, VecSize>(dst_val, &dst[i]);
@@ -218,13 +216,15 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
       }
       increment = offset;
     }
-
+    T factor = upscale_in_train ? static_cast<T>(1.0f / (1.0f - dropout_prob))
+                                : static_cast<T>(1);
+    VLOG(4) << "factor:" << factor;
 #ifdef __HIPCC__
     if (vec_size == 4 && size % 4 == 0) {
       hipLaunchKernelGGL(
           HIP_KERNEL_NAME(VectorizedRandomGenerator<T, uint8_t, 4>),
           config.block_per_grid, config.thread_per_block, 0, stream, size,
-          seed_data, dropout_prob, x_data, mask_data, y_data, upscale_in_train,
+          seed_data, dropout_prob, x_data, mask_data, y_data, factor,
           increment);
     } else {
       hipLaunchKernelGGL(HIP_KERNEL_NAME(RandomGenerator<T, uint8_t>),
@@ -237,8 +237,9 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
       VectorizedRandomGenerator<
           T, uint8_t,
           4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
-          size, seed_data, dropout_prob, x_data, mask_data, y_data,
-          upscale_in_train, increment);
+          size, seed_data, dropout_prob, x_data, mask_data, y_data, factor,
+          increment);
+
     } else {
       RandomGenerator<T, uint8_t><<<config.block_per_grid,
                                     config.thread_per_block, 0, stream>>>(
