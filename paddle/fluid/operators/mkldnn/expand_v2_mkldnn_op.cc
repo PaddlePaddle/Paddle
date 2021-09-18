@@ -53,8 +53,8 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
     out->Resize(paddle::framework::make_ddim(out_new_dims));
     out->set_format(x_format_tag);
     paddle::platform::BroadcastDataMKLDNNHandler<T> handler(
-        dnnl::algorithm::binary_add, dev_ctx, onednn_engine, ctx.GetPlace(),
-        out, x, 0.0f, 1.0f, ctx.InputName("X"), x_vec_dims);
+        dnnl::algorithm::binary_add, onednn_engine, ctx.GetPlace(), out, x,
+        0.0f, 1.0f, x_vec_dims);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
     auto dst_memory_p = handler.AcquireDstMemory(out);
@@ -114,10 +114,8 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
     if (dout_vec_dims == dx_vec_dims) {
       mkldnn::memory::data_type dout_type =
           paddle::framework::ToMKLDNNDataType(dout->type());
-      std::string key = paddle::platform::CreateKey(
-          dev_ctx, dout_vec_dims, dout->format(), dout->format(), dout_type);
       paddle::platform::ReorderMKLDNNHandler reorder_handler(
-          dout_vec_dims, dout->type(), dout_type, dev_ctx, onednn_engine, key);
+          dout_vec_dims, dout->type(), dout_type, onednn_engine);
 
       auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
           dout->format(), paddle::platform::to_void_cast(dout->data<T>()));
@@ -136,8 +134,8 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
           paddle::platform::GetMKLDNNFormat(reorder_dst_memory_p->get_desc()));
     } else {
       paddle::platform::ReductionMKLDNNHandler<T> handler(
-          dnnl::algorithm::reduction_sum, 0.0f, 0.0f, dev_ctx, onednn_engine,
-          ctx.GetPlace(), dout, dx, ctx.InputName("X"), dx_vec_dims);
+          dnnl::algorithm::reduction_sum, 0.0f, 0.0f, onednn_engine,
+          ctx.GetPlace(), dout, dx, dx_vec_dims);
 
       auto src_memory_p = handler.AcquireSrcMemory(dout);
       auto dst_memory_p = handler.AcquireDstMemory(dx);

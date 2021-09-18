@@ -77,7 +77,7 @@ void PrepareDynamicShape(paddle_infer::Config* config, int max_batch_size = 4) {
                                  opt_input_shape);
 }
 
-TEST(test_det_mv3_db, analysis_gpu_bz4) {
+TEST(gpu_tester_det_mv3_db, analysis_gpu_bz4) {
   // init input data
   std::map<std::string, paddle::test::Record> my_input_data_map;
   my_input_data_map["x"] = PrepareInput(4, 640);
@@ -105,7 +105,7 @@ TEST(test_det_mv3_db, analysis_gpu_bz4) {
   std::cout << "finish test" << std::endl;
 }
 
-TEST(test_det_mv3_db, multi_thread2_trt_fp32_dynamic_shape_bz2) {
+TEST(tensorrt_tester_det_mv3_db, multi_thread2_trt_fp32_dynamic_shape_bz2) {
   int thread_num = 2;  // thread > 2 may OOM
   // init input data
   std::map<std::string, paddle::test::Record> my_input_data_map;
@@ -149,7 +149,7 @@ TEST(test_det_mv3_db, multi_thread2_trt_fp32_dynamic_shape_bz2) {
   std::cout << "finish multi-thread test" << std::endl;
 }
 
-TEST(test_det_mv3_db, multi_thread2_mkl_fp32_bz2) {
+TEST(mkldnn_tester_det_mv3_db, multi_thread2_mkl_fp32_bz2) {
   int thread_num = 2;  // thread > 2 may OOM
   // init input data
   std::map<std::string, paddle::test::Record> my_input_data_map;

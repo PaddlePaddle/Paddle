@@ -11,10 +11,21 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
+#include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+
+#include <unordered_set>
+
+#include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
+
+PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
+                            "Use inplace in new executor");
 
 namespace paddle {
 namespace framework {
+// NOTE(Aurelius84): Need a better strategy to determine it.
+static constexpr size_t kHostNumThreads = 4;
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const ProgramDesc& main_prog,
@@ -24,11 +35,23 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     : place_(place),
       main_program_(main_prog),
       global_scope_(global_scope),
-      fetch_context_pool_({place}) {
+      stream_analyzer_(place),
+      async_work_queue_(kHostNumThreads) {
   is_build_ = false;
+
   feed_names_ = feed_names;
 
   // Step1: add feedop and fetchop to main_program
+  AddFetch(fetch_names);
+
+  // prune
+
+  // optmize graph pass
+
+  // convert to run graph
+}
+
+void InterpreterCore::AddFetch(const std::vector<std::string>& fetch_names) {
   auto* fetch_holder = main_program_.MutableBlock(0)->Var("fetch_vars");
   fetch_holder->SetType(proto::VarType::FETCH_LIST);
   fetch_holder->SetPersistable(true);
@@ -44,38 +67,36 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     op->CheckAttrs();
     i++;
   }
-
-  // prune
-
-  // optmize graph pass
-
-  // convert to run graph
 }
 
 paddle::framework::FetchList InterpreterCore::Run(
     const std::vector<framework::Tensor>& feed_tensors) {
-  if (is_build_ == false) {
-    BuildVariableScope(main_program_, global_scope_);
-  }
-  for (size_t i = 0; i < feed_names_.size(); ++i) {
-    auto it = global_scope_->name2id.find(feed_names_[i]);
-    assert(it != global_scope_->name2id.end());
+  auto FeedInput = [&] {
+    for (size_t i = 0; i < feed_names_.size(); ++i) {
+      auto it = global_scope_->name2id.find(feed_names_[i]);
+      assert(it != global_scope_->name2id.end());
 
-    auto feed_tensor =
-        global_scope_->var_list[it->second]->GetMutable<framework::LoDTensor>();
-    feed_tensor->ShareDataWith(feed_tensors[i]);
-  }
+      auto feed_tensor = global_scope_->var_list[it->second]
+                             ->GetMutable<framework::LoDTensor>();
+      feed_tensor->ShareDataWith(feed_tensors[i]);
+    }
+  };
 
   if (is_build_ == false) {
-    BuildOpFuncList(place_, main_program_, &op_list_, &vec_func_list_,
-                    global_scope_);
+    paddle::framework::interpretercore::build_variable_scope(main_program_,
+                                                             global_scope_);
+    FeedInput();
+    paddle::framework::interpretercore::build_op_func_list(
+        place_, main_program_, &op_list_, &vec_func_list_, global_scope_);
     is_build_ = true;
     // convert vec func_list to graph
     Convert();
   } else {
-    ExecuteInstructionList(vec_instruction_, *global_scope_, place_);
+    FeedInput();
+    ExecuteInstructionList(vec_instruction_);
   }
 
+  // return Fetch Tensors
   return *(global_scope_->var_list[global_scope_->name2id["fetch_vars"]]
                ->GetMutable<framework::FetchList>());
 }
@@ -88,16 +109,33 @@ void InterpreterCore::Convert() {
   vec_meta_info_.resize(global_scope_->var_list.size());
   for (size_t i = 0; i < vec_func_list_.size(); ++i) {
     Instruction temp_inst;
+    auto* op_base = op_list_[i];
+    temp_inst.dev_ctx_ =
+        stream_analyzer_.ParseDeviceContext(vec_func_list_[i], *op_base);
     temp_inst.kernel_func_.compute_func_ = vec_func_list_[i].kernel_func_;
-    temp_inst.kernel_func_.operator_base_ = op_list_[i];
+    temp_inst.kernel_func_.operator_base_ = op_base;
     temp_inst.input_index_ = vec_func_list_[i].input_index;
     temp_inst.output_index_ = vec_func_list_[i].output_index;
+    temp_inst.type_ = vec_func_list_[i].type_;
+
+    OpInOutInfo info;
 
     std::vector<size_t> gc_check_input_list;
     for (auto& item : vec_func_list_[i].input_index) {
       for (auto id : item.second) {
         input_var2op_info_[id].push_back(i);
-        gc_check_input_list.push_back(id);
+        // var can be gc-ed
+        if (!info.IsBuilt()) {
+          info.Build(op_list_[i]);
+        }
+        if (global_scope_->vec_meta_info_[id].vardesc_) {
+          if (info.IsInArgBufferNeeded(
+                  global_scope_->vec_meta_info_[id].vardesc_->Name())) {
+            gc_check_input_list.push_back(id);
+          }
+        } else {
+          gc_check_input_list.push_back(id);
+        }
       }
     }
     std::sort(gc_check_input_list.begin(), gc_check_input_list.end());
@@ -114,24 +152,6 @@ void InterpreterCore::Convert() {
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    std::vector<size_t> vec_temp;
-    for (auto& item : vec_instruction_[i].output_index_) {
-      for (auto id : item.second) {
-        vec_temp = MergeVector(vec_temp, input_var2op_info_[id]);
-      }
-    }
-
-    // In Program, op order is a very import information.
-    // Op can noly add op after it as next as next ops.
-    std::vector<size_t> filter_next;
-    filter_next.reserve(vec_temp.size());
-    for (auto item : vec_temp) {
-      if (item > i) {
-        filter_next.push_back(item);
-      }
-    }
-    vec_instruction_[i].next_instruction_.direct_run_ = filter_next;
-
     // checkout ouput
     for (auto& item : vec_instruction_[i].output_index_) {
       for (auto id : item.second) {
@@ -142,20 +162,87 @@ void InterpreterCore::Convert() {
         }
       }
     }
+  }
+
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    std::vector<size_t> vec_temp;
+    for (auto& item : vec_instruction_[i].output_index_) {
+      for (auto id : item.second) {
+        vec_temp =
+            interpretercore::merge_vector(vec_temp, input_var2op_info_[id]);
+      }
+    }
+
+    // In Program, op order is a very important information.
+    // Op can only add op after it as next as next ops.
+    std::vector<size_t> filter_next;
+    filter_next.reserve(vec_temp.size());
+    for (auto item : vec_temp) {
+      if (item > i) {
+        filter_next.push_back(item);
+      }
+    }
+
+    stream_analyzer_.Schedule(vec_func_list_, filter_next, i,
+                              &vec_instruction_);
 
     for (auto inst_id : filter_next) {
       dependecy_count_[inst_id]++;
     }
+    vec_instruction_[i].next_instruction_.all_next_ops_ =
+        std::move(filter_next);
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    BuildInstructionCtx(&vec_instruction_[i], *global_scope_, place_);
+    BuildAndCacheInstructionCtx(&vec_instruction_[i], *global_scope_, place_);
+  }
+
+  BuildSkipShareLoDInfo();
+
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    gc_event_.emplace_back(vec_instruction_[i].execution_ctx_.get()->GetPlace(),
+                           platform::GenerateDeviceEventFlag());
+  }
+
+  if (FLAGS_new_executor_use_inplace) {
+    BuildInplace();
   }
 }
 
-void InterpreterCore::BuildInstructionCtx(Instruction* instr_node,
-                                          const VariableScope& var_scope,
-                                          const platform::Place& place) {
+void InterpreterCore::BuildInplace() {
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    if (!vec_instruction_[i]
+             .kernel_func_.operator_base_->Info()
+             .infer_inplace_) {
+      continue;
+    }
+
+    auto in_to_outs =
+        vec_instruction_[i].kernel_func_.operator_base_->Info().infer_inplace_(
+            platform::is_gpu_place(vec_instruction_[i].dev_ctx_->GetPlace()));
+
+    for (auto& pair : in_to_outs) {
+      auto iter = vec_instruction_[i].input_index_.find(pair.first);
+      if (iter != vec_instruction_[i].input_index_.end()) {
+        if (input_var2op_info_[iter->second[0]].size() == 1) {
+          auto iterout = vec_instruction_[i].output_index_.find(pair.second);
+          if (iterout != vec_instruction_[i].output_index_.end()) {
+            auto invar = global_scope_->var_list[iter->second[0]];
+            auto outvar = global_scope_->var_list[iterout->second[0]];
+            if (invar && outvar) {
+              vec_instruction_[i].vec_inplace_in_to_out_.emplace_back(invar,
+                                                                      outvar);
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+void InterpreterCore::BuildAndCacheInstructionCtx(
+    Instruction* instr_node, const VariableScope& var_scope,
+    const platform::Place& place) {
   auto op_base = instr_node->kernel_func_.operator_base_;
 
   VariableValueMap ins_map;
@@ -184,300 +271,167 @@ void InterpreterCore::BuildInstructionCtx(Instruction* instr_node,
   instr_node->runtime_ctx_->inputs.swap(ins_map);
   instr_node->runtime_ctx_->outputs.swap(outs_map);
 
-  instr_node->infershape_ctx_.reset(
-      new RuntimeInferShapeContext(*op_base, *instr_node->runtime_ctx_.get()));
+  instr_node->infershape_ctx_.reset(new InterpretercoreInferShapeContext(
+      *op_base, *instr_node->runtime_ctx_.get()));
 
-  platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-  auto* dev_ctx = pool.Get(place);
-  if (instr_node->kernel_func_.operator_base_->Type() == "fetch_v2") {
-    dev_ctx = fetch_context_pool_.Get(place);
-  }
+  auto* dev_ctx = instr_node->dev_ctx_;
   Scope scope;
 
   instr_node->execution_ctx_.reset(new ExecutionContext(
       *op_base, scope, *dev_ctx, *instr_node->runtime_ctx_.get()));
 }
 
+void InterpreterCore::BuildSkipShareLoDInfo() {
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    bool can_skip_lod = true;
+    for (auto& input : vec_instruction_[i].runtime_ctx_.get()->inputs) {
+      for (auto& var : input.second) {
+        if (var->IsType<LoDTensor>()) {
+          if (var->Get<LoDTensor>().lod().size() != 0) {
+            can_skip_lod = false;
+            break;
+          }
+        } else {
+          can_skip_lod = false;
+          break;
+        }
+      }
+    }
+    vec_instruction_[i].infershape_ctx_.get()->SetSkipLoD(can_skip_lod);
+  }
+}
+
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
+  VLOG(3) << "RunInstruction:  "
+          << instr_node.kernel_func_.operator_base_->Type();
+
   static_cast<const framework::OperatorWithKernel*>(
       instr_node.kernel_func_.operator_base_)
       ->InferShape(instr_node.infershape_ctx_.get());
 
-  if (instr_node.kernel_func_.operator_base_->Type() == "fetch_v2") {
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto* dev_ctx = pool.Get(place_);
-    dev_ctx->Wait();  // TODO(wanghuancoder)
+  if (FLAGS_new_executor_use_inplace) {
+    for (auto& pair : instr_node.vec_inplace_in_to_out_) {
+      const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
+      auto* out =
+          paddle::framework::details::GetMutableTensorFromVar(pair.second);
+      if (in.dims() == out->dims()) {
+        out->ShareBufferWith(in);
+      }
+    }
   }
 
   instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
 }
 
 void InterpreterCore::ExecuteInstructionList(
-    const std::vector<Instruction>& vec_instr, const VariableScope& var_scope,
-    const platform::Place& place) {
-  std::queue<size_t> working_queue;
-  auto working_dependecy_count = dependecy_count_;
+    const std::vector<Instruction>& vec_instr) {
+  auto atomic_deps = async_work_queue_.PrepareAtomicDeps(dependecy_count_);
+  auto atomic_var_ref = async_work_queue_.PrepareAtomicVarRef(vec_meta_info_);
+  std::atomic<size_t> op_run_number{0};
+
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
-      working_queue.push(i);
+      async_work_queue_.AddTask(vec_instr[i].type_, [&, i]() {
+        RunInstructionAsync(i, &atomic_deps, &atomic_var_ref, &op_run_number);
+      });
     }
   }
 
-  auto working_var_ref = vec_meta_info_;
+  async_work_queue_.WaitEmpty();
 
-  size_t run_op_number = 0;
-  while (!working_queue.empty()) {
-    auto instr_id = working_queue.front();
-    working_queue.pop();
-    auto& instr_node = vec_instr[instr_id];
-    RunInstruction(instr_node);
+  PADDLE_ENFORCE_EQ(
+      op_run_number.load(), vec_instr.size(),
+      platform::errors::Fatal(
+          "Required op_run_number == %d, but received op_run_number = %d.",
+          vec_instr.size(), op_run_number.load()));
+}
 
-    auto& next_instr = instr_node.next_instruction_.direct_run_;
-    ++run_op_number;
+void InterpreterCore::RunInstructionAsync(size_t instr_id,
+                                          AtomicVectorSizeT* atomic_deps,
+                                          AtomicVectorSizeT* atomic_var_ref,
+                                          std::atomic<size_t>* op_run_number) {
+  auto& instr_node = vec_instruction_[instr_id];
+  event_manager_.WaitEvent(instr_node, place_);
 
-    for (auto next_i : next_instr) {
-      --working_dependecy_count[next_i];
-      if (working_dependecy_count[next_i] == 0) {
-        working_queue.push(next_i);
-      }
-    }
+  RunInstruction(instr_node);
 
-    // GC infomation
+  event_manager_.RecordEvent(instr_node, place_);
+  op_run_number->fetch_add(1, std::memory_order_relaxed);
 
-    auto& gc_check_list = instr_node.gc_check_var_list;
-    for (auto var_id : gc_check_list) {
-      --working_var_ref[var_id].var_ref_count_;
+  auto& next_instr = instr_node.next_instruction_.all_next_ops_;
+
+  for (auto next_i : next_instr) {
+    // fetch_sub return value before applying sub
+    bool is_ready =
+        atomic_deps->at(next_i)->fetch_sub(1, std::memory_order_relaxed) == 1;
+    if (is_ready) {
+      async_work_queue_.AddTask(vec_instruction_[next_i].type_, [=]() {
+        RunInstructionAsync(next_i, atomic_deps, atomic_var_ref, op_run_number);
+      });
     }
   }
+  // GC infomation
+  CheckGC(instr_id, instr_node.gc_check_var_list, atomic_var_ref);
+}
 
-  fetch_context_pool_.Get(place)->Wait();
+void InterpreterCore::CheckGC(size_t instr_id,
+                              const std::vector<size_t>& gc_check_list,
+                              AtomicVectorSizeT* atomic_var_ref) {
+  auto& var_scope = *global_scope_;
 
-  for (size_t i = 0; i < working_var_ref.size(); ++i) {
-    if (working_var_ref[i].var_ref_count_ != 0) {
-      std::cerr << " var ref is not zero " << i << std::endl;
+  for (auto var_id : gc_check_list) {
+    bool is_ready = atomic_var_ref->at(var_id)->fetch_sub(
+                        1, std::memory_order_relaxed) == 1;
+    if (is_ready && var_scope.vec_meta_info_[var_id].vardesc_ &&
+        !var_scope.vec_meta_info_[var_id].vardesc_->Persistable()) {
+      gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
+              vec_instruction_[instr_id].dev_ctx_);
     }
   }
 }
 
-std::vector<size_t> InterpreterCore::MergeVector(
-    const std::vector<size_t>& first, const std::vector<size_t>& second) {
-  std::vector<size_t> out(first.size() + second.size());
-  std::merge(first.begin(), first.end(), second.begin(), second.end(),
-             out.begin());
+void InterpreterCore::DryRunPrepare(
+    const std::vector<framework::Tensor>& feed_tensors) {
+  auto FeedInput = [&] {
+    for (size_t i = 0; i < feed_names_.size(); ++i) {
+      auto it = global_scope_->name2id.find(feed_names_[i]);
+      assert(it != global_scope_->name2id.end());
 
-  std::vector<size_t>::iterator it;
-  it = std::unique(out.begin(), out.end());
+      auto feed_tensor = global_scope_->var_list[it->second]
+                             ->GetMutable<framework::LoDTensor>();
+      feed_tensor->ShareDataWith(feed_tensors[i]);
+    }
+  };
 
-  out.resize(std::distance(out.begin(), it));
-
-  return out;
+  if (is_build_ == false) {
+    paddle::framework::interpretercore::build_variable_scope(main_program_,
+                                                             global_scope_);
+    FeedInput();
+    paddle::framework::interpretercore::build_op_func_list(
+        place_, main_program_, &op_list_, &vec_func_list_, global_scope_);
+    is_build_ = true;
+    // convert vec func_list to graph
+    Convert();
+  }
+  // NOTE: Because feed_tensor will be GC after
+  // paddle::framework::build_op_func_list, so we should
+  // call
+  // FeedInput again.
+  FeedInput();
 }
 
-void InterpreterCore::BuildVariableScope(const framework::ProgramDesc& pdesc,
-                                         VariableScope* var_scope) {
-  auto& global_block = pdesc.Block(0);
+const CostInfo& InterpreterCore::DryRun(
+    const std::vector<framework::Tensor>& feed_tensors) {
+  DryRunPrepare(feed_tensors);
+  // DryRun may be called many times.
+  dry_run_profiler_.Reset();
+  dry_run_profiler_.Start();
+  ExecuteInstructionList(vec_instruction_);
+  platform::DeviceContextPool::Instance().Get(place_)->Wait();
 
-  for (auto& var : global_block.AllVars()) {
-    if (var->Name() == framework::kEmptyVarName) {
-      continue;
-    }
-
-    if (var_scope->name2id.find(var->Name()) == var_scope->name2id.end()) {
-      var_scope->name2id[var->Name()] = var_scope->var_list.size();
-      auto v = new Variable();
-      InitializeVariable(v, var->GetType());
-      var_scope->var_list.push_back(v);
-    }
-  }
-}
-
-void InterpreterCore::BuildOpFuncList(const platform::Place& place,
-                                      const framework::ProgramDesc& pdesc,
-                                      std::vector<OperatorBase*>* op_list,
-                                      std::vector<OpFuncNode>* vec_func_list,
-                                      VariableScope* var_scope) {
-  auto& global_block = pdesc.Block(0);
-
-  for (auto& op : global_block.AllOps()) {
-    VLOG(3) << op->Type();
-    // << op->Type() << endl;
-
-    auto& info = OpInfoMap::Instance().Get(op->Type());
-
-    const VariableNameMap& inputs_names = op->Inputs();
-    const VariableNameMap& outputs_names = op->Outputs();
-    AttributeMap op_attr_map = op->GetAttrMap();
-
-    if (info.Checker() != nullptr) {
-      info.Checker()->Check(&op_attr_map);
-    }
-    auto op_base =
-        info.Creator()(op->Type(), inputs_names, outputs_names, op_attr_map);
-
-    OpFuncNode op_func_node;
-
-    VariableValueMap ins_map;
-    std::map<std::string, std::vector<int>> ins_name2id;
-    for (auto& var_name_item : inputs_names) {
-      std::vector<Variable*> input_vars;
-      std::vector<int> vec_ids;
-      input_vars.reserve(var_name_item.second.size());
-      for (auto& var_name : var_name_item.second) {
-        auto it = var_scope->name2id.find(var_name);
-        assert(it != var_scope->name2id.end());
-        input_vars.push_back(var_scope->var_list[it->second]);
-        vec_ids.push_back(it->second);
-      }
-      ins_map[var_name_item.first] = input_vars;
-      ins_name2id[var_name_item.first] = vec_ids;
-    }
-
-    VariableValueMap outs_map;
-    std::map<std::string, std::vector<int>> outs_name2id;
-    for (auto& var_name_item : outputs_names) {
-      std::vector<Variable*> output_vars;
-      std::vector<int> vec_ids;
-      output_vars.reserve(var_name_item.second.size());
-      for (auto& var_name : var_name_item.second) {
-        auto it = var_scope->name2id.find(var_name);
-        assert(it != var_scope->name2id.end());
-        output_vars.push_back(var_scope->var_list[it->second]);
-        vec_ids.push_back(it->second);
-      }
-      outs_map[var_name_item.first] = output_vars;
-      outs_name2id[var_name_item.first] = vec_ids;
-    }
-
-    op_func_node.input_index = ins_name2id;
-    op_func_node.output_index = outs_name2id;
-    RuntimeContext runtime_context({}, {});
-    runtime_context.inputs.swap(ins_map);
-    runtime_context.outputs.swap(outs_map);
-    RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
-    static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
-        &infer_shape_ctx);
-    auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
-    auto kernels_iter = all_op_kernels.find(op->Type());
-    PADDLE_ENFORCE_NE(
-        kernels_iter, all_op_kernels.end(),
-        platform::errors::Unavailable(
-            "There are no kernels which are registered in the %s operator.",
-            op->Type()));
-
-    OpKernelMap& kernels = kernels_iter->second;
-    // auto place = platform::CPUPlace();
-    // auto place = platform::CUDAPlace(0);
-    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
-    auto* dev_ctx = pool.Get(place);
-    Scope scope;
-    auto exec_ctx =
-        ExecutionContext(*op_base, scope, *dev_ctx, runtime_context);
-    auto expected_kernel_key =
-        dynamic_cast<const framework::OperatorWithKernel*>(op_base)
-            ->GetExpectedKernelType(exec_ctx);
-
-    VariableValueMap& ins_map_temp = runtime_context.inputs;
-
-    for (auto& var_name_item : ins_map_temp) {
-      for (size_t i = 0; i < var_name_item.second.size(); ++i) {
-        auto var = var_name_item.second[i];
-        auto tensor_in = static_cast<const Tensor*>(&(var->Get<LoDTensor>()));
-        if (!tensor_in->IsInitialized()) {
-          continue;
-        }
-        auto kernel_type_for_var =
-            static_cast<const framework::OperatorWithKernel*>(op_base)
-                ->GetKernelTypeForVar(var_name_item.first, *tensor_in,
-                                      expected_kernel_key);
-        if (!platform::is_same_place(kernel_type_for_var.place_,
-                                     expected_kernel_key.place_)) {
-          // need trans place
-          // 1. add var in scope
-          // 2. add copy op
-          std::string new_var_name =
-              "temp_1" + std::to_string(var_scope->var_list.size() + 1);
-          auto v = new Variable();
-          v->GetMutable<LoDTensor>();
-          var_scope->name2id[new_var_name] = var_scope->var_list.size();
-          var_scope->var_list.push_back(v);
-
-          VariableNameMap copy_in_map;
-          auto x_iter = inputs_names.find(var_name_item.first);
-          copy_in_map["X"] = {x_iter->second[i]};
-          VariableNameMap copy_out_map;
-          copy_out_map["Out"] = {new_var_name};
-          AttributeMap attr_map;
-          attr_map["dst_place_type"] =
-              is_cpu_place(place) ? 0 : is_gpu_place(place) ? 1 : -1;
-
-          std::map<std::string, std::vector<int>> copy_ins_name2id;
-          copy_ins_name2id["X"] = ins_name2id[var_name_item.first];
-          std::map<std::string, std::vector<int>> copy_out_name2id;
-          copy_out_name2id["Out"] = {var_scope->name2id[new_var_name]};
-
-          op_func_node.input_index[var_name_item.first][i] =
-              var_scope->name2id[new_var_name];
-
-          VariableValueMap copy_ins_value_map;
-          copy_ins_value_map["X"] = {var};
-          VariableValueMap copy_outs_value_map;
-          copy_outs_value_map["Out"] = {v};
-
-          auto& copy_info = OpInfoMap::Instance().Get("memcpy");
-          auto copy_op = copy_info.Creator()("memcpy", copy_in_map,
-                                             copy_out_map, attr_map);
-          OpFuncNode copy_op_func_node;
-          copy_op_func_node.input_index = copy_ins_name2id;
-          copy_op_func_node.output_index = copy_out_name2id;
-
-          RuntimeContext copy_runtime_context({}, {});
-          copy_runtime_context.inputs.swap(copy_ins_value_map);
-          copy_runtime_context.outputs.swap(copy_outs_value_map);
-          RuntimeInferShapeContext copy_infer_shape_ctx(*copy_op,
-                                                        copy_runtime_context);
-          static_cast<const framework::OperatorWithKernel*>(copy_op)
-              ->InferShape(&copy_infer_shape_ctx);
-          auto& all_op_kernels = OperatorWithKernel::AllOpKernels();
-          auto kernels_iter = all_op_kernels.find("memcpy");
-          PADDLE_ENFORCE_NE(kernels_iter, all_op_kernels.end(),
-                            platform::errors::Unavailable(
-                                "There are no kernels which are registered in "
-                                "the memcpy operator."));
-
-          OpKernelMap& kernels = kernels_iter->second;
-          platform::DeviceContextPool& pool =
-              platform::DeviceContextPool::Instance();
-          auto* dev_ctx = pool.Get(place);
-          Scope scope;
-          auto copy_exec_ctx =
-              ExecutionContext(*copy_op, scope, *dev_ctx, copy_runtime_context);
-          auto expected_kernel_key =
-              dynamic_cast<const framework::OperatorWithKernel*>(copy_op)
-                  ->GetExpectedKernelType(copy_exec_ctx);
-          auto kernel_iter = kernels.find(expected_kernel_key);
-          copy_op_func_node.kernel_func_ =
-              OpKernelComputeFunc(kernel_iter->second);
-          copy_op_func_node.kernel_func_(copy_exec_ctx);
-          op_list->push_back(copy_op);
-          vec_func_list->push_back(copy_op_func_node);
-
-          var_name_item.second[i] = v;
-        }
-      }
-    }
-
-    op_list->push_back(op_base);
-
-    auto kernel_iter = kernels.find(expected_kernel_key);
-    PADDLE_ENFORCE_NE(kernel_iter, kernels.end(),
-                      platform::errors::NotFound(
-                          "Operator (%s) does not have kernel for %s.",
-                          op->Type(), KernelTypeToString(expected_kernel_key)));
-
-    op_func_node.kernel_func_ = OpKernelComputeFunc(kernel_iter->second);
-    op_func_node.kernel_func_(exec_ctx);
-    vec_func_list->push_back(op_func_node);
-  }
+  dry_run_profiler_.Pause();
+  dry_run_profiler_.TotalCUDAAllocatedMemorySize(place_);
+  return dry_run_profiler_.GetCostInfo();
 }
 
 }  // namespace framework

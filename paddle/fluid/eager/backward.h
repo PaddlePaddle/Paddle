@@ -18,13 +18,13 @@
 
 namespace egr {
 
-// run_backward(): 
+// run_backward():
 // tensors corresponds to those lived in the backward graph
 // each grad_tensors[i] keeps the value for its corresponding tensors[i]
-void RunBackward(std::vector<pt::Tensor> &tensors,
+void RunBackward(const std::vector<pt::Tensor> &tensors,
                  const std::vector<pt::Tensor> &grad_tensors,
                  bool retain_graph = false);
 
 // Reserved for gradient()
 
-} // namespace egr
+}  // namespace egr

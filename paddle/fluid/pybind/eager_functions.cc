@@ -120,14 +120,13 @@ static PyObject* eager_api_set_expected_place(PyObject* self, PyObject* args,
 
 static PyObject* eager_api_scale(PyObject* self, PyObject* args,
                                  PyObject* kwargs) {
-  std::vector<pt::Tensor> ret =
+  pt::Tensor ret =
       egr::scale(reinterpret_cast<EagerTensorObject*>(PyTuple_GET_ITEM(args, 0))
                      ->eagertensor,
                  CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 1), 1),
                  CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 2), 2),
                  CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 3), 3),
                  CastPyArg2AttrBoolean(PyTuple_GET_ITEM(args, 4), 4));
-
   return ToPyObject(ret);
 }
 

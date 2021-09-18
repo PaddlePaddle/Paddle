@@ -126,7 +126,6 @@ void* DenseTensor::mutable_data() {
     allocation_.reset();
     allocation_ = paddle::memory::AllocShared(place, size);
   } else {
-    LOG(WARNING) << "When call mutable_data, DenseTensor has been initialized.";
     if (!(allocation_->place() == place) ||
         allocation_->size() < size + meta_->offset) {
       allocation_.reset();

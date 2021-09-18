@@ -25,35 +25,44 @@
 #include "glog/logging.h"
 
 namespace egr {
-  
-void GradNodeScale::SetTensorWrappers(const std::vector<pt::Tensor>& tensors) {
-    // Does nothing
+
+void GradNodeScale::SetTensorWrappers_X(
+    const std::vector<pt::Tensor>& tensors) {
+  // Does nothing for scale
 }
 
-void GradNodeScale::SetAttributes(float scale) {
-    scale_ = scale;
+void GradNodeScale::SetAttributes_scale(float scale) { scale_ = scale; }
+
+std::vector<std::vector<pt::Tensor>> GradNodeScale::operator()(
+    const std::vector<std::vector<pt::Tensor>>& grads) {
+  // 1. Check Output Size
+  PADDLE_ENFORCE(((grads.size() == 1) && (grads[0].size() == 1)),
+                 paddle::platform::errors::Fatal(
+                     "ScaleGradNode should take exactly 1 grad tensor"
+                     "However received: %d",
+                     grads.size()));
+  std::vector<std::vector<pt::Tensor>> outs;
+  // 2. Create needed out parttern
+  pt::Tensor out;
+  // Apply Gradient Hooks
+  if (GradientHooksRegistered()) {
+    // TODO(jiabin): Shall we apply hook slot by slot here or accept
+    // vector<vector<pt::tensor>> to apply all hooks?
+    std::vector<std::vector<pt::Tensor>> hooked_grads =
+        ApplyGradientHooks(grads);
+    ScaleAPI(/* slot by slot set */ hooked_grads[0][0], scale_, 0.0 /* bias */,
+             true /* bias_after_scale */, &out);
+  } else {
+    ScaleAPI(grads[0][0], scale_, 0.0 /* bias */, true /* bias_after_scale */,
+             &out);
+  }
+
+  // Apply Reduce Hooks
+  if (ReduceHooksRegistered()) {
+    ApplyReduceHooks();
+  }
+
+  return {{out}};
 }
 
-std::vector<pt::Tensor> GradNodeScale::operator()(const std::vector<pt::Tensor>& grads) {
-    PADDLE_ENFORCE(grads.size() == 1,
-                paddle::platform::errors::Fatal("ScaleGradNode should take exactly 1 grad tensor"
-                                                "However received: %d", grads.size()));
-    std::vector<pt::Tensor> outs(1);
-
-    // Apply Gradient Hooks
-    if(GradientHooksRegistered()) {
-        std::vector<pt::Tensor> hooked_grads = ApplyGradientHooks(grads);
-        ScaleAPI(hooked_grads[0], scale_, 0.0/* bias */, true/* bias_after_scale */, outs);
-    } else {
-        ScaleAPI(grads[0], scale_, 0.0/* bias */, true/* bias_after_scale */, outs);
-    }
-    
-    // Apply Reduce Hooks
-    if(ReduceHooksRegistered()) {
-        ApplyReduceHooks();
-    }
-        
-    return outs;
-}
-
-} // namespace egr
+}  // namespace egr

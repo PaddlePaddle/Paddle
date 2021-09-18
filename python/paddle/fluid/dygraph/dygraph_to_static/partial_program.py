@@ -290,9 +290,14 @@ class PartialProgramLayer:
             self._valid_vars(self._params),
             self._valid_vars(out_vars), self._tmp_scope_vec, self._double_grads,
             *attrs)
-
+        self.drop_scope_if_no_grad()
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
+
+    def drop_scope_if_no_grad(self):
+        tracer = framework._dygraph_tracer()
+        if self.training and not tracer._has_grad:
+            self._tmp_scope_vec.value().get_scope().drop_kids()
 
     @property
     def program(self):
@@ -474,11 +479,12 @@ class PartialProgramLayer:
                 if isinstance(var, framework.Parameter):
                     if name not in param_and_buffer_names_set:
                         raise ValueError(
-                            "\n\tWe don't support to define layer with parameters in the function "
-                            "decorated by `@declarative`.\n\tBecause that will re-defined parameters "
-                            "every time when you run the function.\n\t"
-                            "But we found parameter(%s) was created in the decorated function.\n\t"
-                            "Please define the layer with parameters in `__init__` function."
+                            "\n\tWe don't support to define layer with parameters in the function decorated by `@to_static`."
+                            "\n\tBut we found parameter(%s) was created in the decorated function."
+                            "\n"
+                            "\n\tRevise suggestion: "
+                            "\n\t\t1. Please ensure all your sublayers are inheritted from nn.Layer."
+                            "\n\t\t2. Please use nn.ParameterList and nn.LayerList as container instead of using a native Python container such as List"
                             % name)
 
     def _valid_vars(self, vars):

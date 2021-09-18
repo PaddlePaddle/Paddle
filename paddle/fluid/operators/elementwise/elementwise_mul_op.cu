@@ -14,7 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/elementwise/elementwise_mul_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/float16.h"
 
@@ -23,13 +22,6 @@ namespace plat = paddle::platform;
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct CudaMulFunctor {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    return args[0] * args[1];
-  }
-};
 
 template <typename T>
 class ElementwiseMulKernel<platform::CUDADeviceContext, T>
@@ -44,7 +36,7 @@ class ElementwiseMulKernel<platform::CUDADeviceContext, T>
 
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs, &x_for_selectedrows);
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, CudaMulFunctor<T>());
+        cuda_ctx, ins, &outs, axis, MulFunctor<T>());
   }
 };
 
@@ -102,10 +94,10 @@ elementwise_mul_grad(const framework::ExecutionContext& ctx,
                      const framework::Tensor* out,
                      const framework::Tensor* dout, framework::Tensor* dx,
                      framework::Tensor* dy) {
-  dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
+  dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
   auto size = x->numel();
   dim3 grid_size =
-      dim3((size + PADDLE_CUDA_THREAD_SIZE - 1) / PADDLE_CUDA_THREAD_SIZE, 1);
+      dim3((size + ELEMENTWISE_BLOCK_SIZE - 1) / ELEMENTWISE_BLOCK_SIZE, 1);
   SimpleElemwiseMulGradCUDAKernel<
       T><<<grid_size, block_size, 0,
            ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
@@ -121,6 +113,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseMulKernel<plat::CUDADeviceContext, bool>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::float16>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::complex<float>>,
     ops::ElementwiseMulKernel<plat::CUDADeviceContext, plat::complex<double>>);
@@ -130,6 +123,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, bool>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext, plat::float16>,
     ops::ElementwiseMulGradKernel<plat::CUDADeviceContext,
                                   plat::complex<float>>,
@@ -141,6 +135,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, double>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, int64_t>,
+    ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, bool>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext, plat::float16>,
     ops::ElementwiseMulDoubleGradKernel<plat::CUDADeviceContext,
                                         plat::complex<float>>,

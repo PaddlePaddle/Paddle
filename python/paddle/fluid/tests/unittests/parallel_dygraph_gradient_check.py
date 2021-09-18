@@ -16,6 +16,7 @@ from __future__ import division
 from __future__ import print_function
 
 import unittest
+import os
 
 import paddle
 import numpy as np
@@ -65,7 +66,8 @@ class SimpleNet(fluid.Layer):
 
 class TestDistTraning(unittest.TestCase):
     def test_multiple_gpus(self):
-        dist.init_parallel_env()
+        backend = os.environ.get('PADDLE_DISTRI_BACKEND', 'auto')
+        dist.init_parallel_env(backend)
         self.trainer_id = dist.get_rank()
 
         model_a = SimpleNet(self.trainer_id)

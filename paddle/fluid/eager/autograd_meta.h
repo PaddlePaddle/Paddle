@@ -68,7 +68,8 @@ using AbstractAutogradMeta = pt::AbstractAutogradMeta;
 class AutogradMeta : public AbstractAutogradMeta {
  public:
   explicit AutogradMeta(const Edge& edge = Edge()) {
-    output_rank_ = -1;
+    out_rank_ = 0;
+    out_slot_id_ = 0;
     grad_node_ = edge.GetMutableGradNode();
   }
 
@@ -76,7 +77,7 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   const pt::Tensor& Grad() const { return grad_; }
 
-  pt::Tensor& MutableGrad() { return grad_; }
+  pt::Tensor* MutableGrad() { return &grad_; }
 
   void SetGradNode(const std::shared_ptr<GradNodeBase>& grad_node) {
     PADDLE_ENFORCE_NOT_NULL(grad_node.get(),
@@ -90,9 +91,15 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   GradNodeBase* GradNode() const { return grad_node_.get(); }
 
-  void SetOutRank(size_t rank) { output_rank_ = rank; }
+  void SetSingleOutRankWithSlot(size_t slot_id, size_t rank) {
+    out_slot_id_ = slot_id;
+    out_rank_ = rank;
+  }
 
-  size_t OutRank() const { return output_rank_; }
+  std::pair</* slot id */ size_t, /* rank in slot */ size_t> OutRankInfo()
+      const {
+    return std::make_pair(out_slot_id_, out_rank_);
+  }
 
   bool IsInitialized() { return !grad_node_.get(); }
 
@@ -100,7 +107,7 @@ class AutogradMeta : public AbstractAutogradMeta {
 
   int NumericStopGradient() const { return stop_gradient_; }
 
-  void SetNumericStopGradient(bool stop_gradient) {
+  void SetStopGradient(bool stop_gradient) {
     if (stop_gradient_ == -1) {
       stop_gradient_ = static_cast<int>(stop_gradient);
     } else {
@@ -118,11 +125,18 @@ class AutogradMeta : public AbstractAutogradMeta {
   // to be traced.
   std::shared_ptr<GradNodeBase> grad_node_;
 
+  /**
+   * Why we need slot id here?
+   * Because in paddle most of our operators inputs and outputs
+   * are assemble in form of {"slot name", vector<tensor>}.
+   * So its better for us to set a slot id to fit this format. **/
+  size_t out_slot_id_;
+
   // output rank of forward op, this is a vital num, since
   // we are now trying to make our forward output is as same
   // sequence as backward input. In case of tracing backward
-  // sequence we need to record output rank here.
-  size_t output_rank_;
+  // sequence we need to record output rank in slot here.
+  size_t out_rank_;
 
   // TODO(jiabin) :Support hooks here and store it in AutogradMeta
 
@@ -142,14 +156,20 @@ class AutogradMeta : public AbstractAutogradMeta {
  * **/
 class EagerUtils {
  public:
-  static AutogradMeta* autograd_meta(pt::Tensor& target);
+  /**
+   * We have to use autograd_meta and multi_autograd_meta to initialize
+   * autograd_meta for tensor, since we can't init it in pt::Tensor's
+   * constructor (it's abstract class there)
+   *
+   * **/
+  static AutogradMeta* autograd_meta(pt::Tensor* target);
 
   static std::vector<AutogradMeta*> multi_autograd_meta(
-      const std::vector<pt::Tensor>& targets);
+      std::vector<pt::Tensor>* targets);
 
-  static size_t output_rank(pt::Tensor& target);
+  static std::pair<size_t, size_t> OutRankInfo(const pt::Tensor& target);
 
-  static std::shared_ptr<GradNodeBase> grad_node(pt::Tensor& target);
+  static std::shared_ptr<GradNodeBase> grad_node(const pt::Tensor& target);
 
   static bool ComputeRequireGrad(AutogradMeta** ins, size_t ins_num,
                                  AutogradMeta** outs, size_t outs_num,
@@ -160,16 +180,24 @@ class EagerUtils {
 
   // If and only if the tensor holds an AccumulationNode
   // Then it's treated as a leaf tensor
-  static bool IsLeafTensor(pt::Tensor& target);
+  static bool IsLeafTensor(const pt::Tensor& target);
 
-  static void SetHistoryForTensor(
-      pt::Tensor& target, const std::shared_ptr<GradNodeBase>& grad_node);
+  // Set history is used to set backward info during forward process, it will
+  // set forward var's autograd meta's grad node as current backward node.
+  static void SetHistory(const std::vector<AutogradMeta*>& autograd_metas,
+                         const std::shared_ptr<GradNodeBase>& grad_node);
 
   static pt::Tensor CreateTensorWithValue(const pt::DDim& ddim,
                                           const pt::Backend& backend,
                                           const pt::DataType& dtype,
                                           const pt::DataLayout& layout,
                                           double value, bool is_leaf = true);
+  // This is used for Set vector of tensors' rank
+  static void SetMultiOutRankWithSlot(std::vector<AutogradMeta*>* targets,
+                                      size_t slot_id);
+
+  // This method will return an AutogradMeta pointer unsafely.
+  static AutogradMeta* unsafe_autograd_meta(const pt::Tensor& target);
 };
 
 }  // namespace egr
