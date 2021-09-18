@@ -969,6 +969,8 @@ class TheOnePSRuntime(RuntimeBase):
 
         import paddle
         for var in remaining_vars:
+            if var.name not in recv_dense_varnames:
+                continue
             tensor = var.get_value()
             paddle.save(
                 tensor, os.path.join(dirname, var.name), use_binary_format=True)
@@ -1063,8 +1065,64 @@ class TheOnePSRuntime(RuntimeBase):
     def _save_persistables(self, *args, **kwargs):
         self._ps_inference_save_persistables(*args, **kwargs)
 
+    def _load_sparse_params(self, dirname, context, main_program, mode):
+        from paddle.fluid.incubate.fleet.parameter_server.ir.public import get_sparse_tablenames
+        distributed_varnames = get_sparse_tablenames(
+            self.compiled_strategy.origin_main_program, True)
+        values = []
+        for id, names in context.items():
+            if names[0] not in distributed_varnames:
+                # TODO: only load sparse param from local
+                warnings.warn("varname is not in distributed_varnames, pass")
+            # load sparse & distributed param on server
+            self._worker.load_one_table(id, dirname, mode)
+            values.extend(names)
+        return values
+
+    def _load_distributed_persistables(self, dirname, main_program=None,
+                                       mode=0):
+        if main_program is None:
+            main_program = self.compiled_strategy.get_origin_ps_main_program()
+
+        if isinstance(main_program, CompiledProgram):
+            raise TypeError(
+                "in fleet.save() function, main_program must be as Program type, CompiledProgram is not allowed"
+            )
+
+        denses = self.compiled_strategy.get_the_one_recv_context(
+            is_dense=True,
+            split_dense_table=self.role_maker._is_heter_parameter_server_mode,
+            use_origin_program=True)
+        sparses = self.compiled_strategy.get_the_one_recv_context(
+            is_dense=False,
+            split_dense_table=self.role_maker._is_heter_parameter_server_mode,
+            use_origin_program=True)
+
+        sparse_varnames = self._load_sparse_params(dirname, sparses,
+                                                   main_program, mode)
+
+        recv_dense_varnames = []
+        for id, names in denses.items():
+            recv_dense_varnames.extend(names)
+
+        loaded_varnames = sparse_varnames
+
+        remaining_vars = list(
+            filter(
+                TheOnePSRuntime.__exclude_vars(loaded_varnames),
+                main_program.list_vars()))
+
+        import paddle
+        for var in remaining_vars:
+            if var.name not in recv_dense_varnames:
+                continue
+            tensor = paddle.load(os.path.join(dirname, var.name))
+            var.set_value(tensor)
+
+        self._communicator.init_params(denses)
+
     def load_model(self, path, mode):
-        self._worker.load_model(path, mode)
+        self._load_distributed_persistables(path, mode=mode)
 
     def _shrink(self, threshold):
         import paddle.distributed.fleet as fleet
