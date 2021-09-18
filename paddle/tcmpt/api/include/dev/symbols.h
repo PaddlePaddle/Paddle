@@ -19,3 +19,6 @@ limitations under the License. */
 // symbol declare
 PT_DECLARE_MODULE(MathCPU);
 PT_DECLARE_MODULE(MathCUDA);
+
+PT_DECLARE_MODULE(LinalgCPU);
+PT_DECLARE_MODULE(LinalgCUDA);

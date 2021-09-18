@@ -32,4 +32,10 @@ DDim UnchangedInferShape(const DDim& x_dim) { return x_dim; }
 
 DDim MeanInferShape(const DDim& x_dim) { return {1}; }
 
+DDim DotInferShape(const DDim& x_dim) {
+  auto dims = paddle::framework::vectorize(x_dim);
+  dims[dims.size() - 1] = 1;
+  return paddle::framework::make_ddim(dims);
+}
+
 }  // namespace pt
