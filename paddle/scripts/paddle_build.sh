@@ -1161,8 +1161,8 @@ function parallel_test_base_gpu() {
 EOF
 
 set -x
-        # set trt_convert ut to run 30% cases.
-        export TEST_NUM_PERCENT_CASES=0.3
+        # set trt_convert ut to run 15% cases.
+        export TEST_NUM_PERCENT_CASES=0.15
         precison_cases=""
         bash $PADDLE_ROOT/tools/check_added_ut.sh
         if [ ${PRECISION_TEST:-OFF} == "ON" ]; then

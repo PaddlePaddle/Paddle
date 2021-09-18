@@ -645,7 +645,17 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   VLOG(5) << "to prepare executor";
   ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);
   inference_program_.reset(
-      new framework::ProgramDesc(argument_.ir_analyzed_program()));
+      new framework::ProgramDesc(argument_.ir_analyzed_program()),
+      [](framework::ProgramDesc *prog) {
+// Note, please do NOT use any member variables, because member variables may
+// have been destructed in multiple threads.
+#if PADDLE_WITH_TENSORRT
+        paddle::inference::Singleton<
+            inference::tensorrt::TRTEngineManager>::Global()
+            .DeleteAll();
+#endif
+        delete prog;
+      });
   // The config and argument take a lot of storage,
   // when the predictor settings are complete, we release these stores.
   argument_.PartiallyRelease();
