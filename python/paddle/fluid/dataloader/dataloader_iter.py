@@ -321,6 +321,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
     def __init__(self, loader):
         super(_DataLoaderIterMultiProcess, self).__init__(loader)
 
+        if sys.platform in ['win32', 'darwin']:
+            self._use_shared_memory = False
         self._persistent_workers = loader._persistent_workers
         self._resume_worker_cnt = 0
 
