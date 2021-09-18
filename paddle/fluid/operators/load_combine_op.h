@@ -86,10 +86,10 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
       if (out_vars[i]->IsType<framework::WSTRING_MAP>()) {
         auto *tensor = out_vars[i]->GetMutable<framework::WSTRING_MAP>();
         tensor->clear();
-        std::unordered_map<std::string, int32_t> *data;
-        framework::WstringMapFromStream(*buffer, data);
-        VLOG(0) << "after WstringMapFromStream, size " << data->size();
-        for (auto it = data->begin(); it != data->end(); ++it) {
+        framework::SerializableStringMap data;
+        data.MapTensorFromStream(*buffer);
+        VLOG(0) << "after WstringMapFromStream, size " << data.size();
+        for (auto it = data.begin(); it != data.end(); ++it) {
           std::string tmp = framework::NormalizeNfd(it->first);
           if (tmp.empty()) {
             VLOG(0) << "The string %s was converted to unicode failly! "
@@ -99,7 +99,7 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
           std::wstring token = framework::ConvertStrToWstr(tmp);
           tensor->emplace(token, it->second);
         }
-        VLOG(0) << "after ConvertStrToWstr, size " << data->size();
+        VLOG(0) << "after ConvertStrToWstr, size " << data.size();
       } else {
         auto *tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
 

@@ -234,10 +234,10 @@ vector<wstring> BasicTokenizer::run_split_on_punc(const wstring& text) const {
   while (i < text.size()) {
     wchar_t ch = text[i];
     if (IsPunctuation(ch)) {
-      output.push_back(wstring(&ch, 1));
+      output.emplace_back(wstring(&ch, 1));
       start_new_word = true;
     } else {
-      if (start_new_word) output.push_back(wstring());
+      if (start_new_word) output.emplace_back(wstring());
       start_new_word = false;
       output[output.size() - 1] += ch;
     }
@@ -277,7 +277,7 @@ vector<wstring> WordPieceTokenizer::Tokenize(const wstring& text) const {
   vector<wstring> output_tokens;
   for (auto& token : WhiteSpaceTokenize(text)) {
     if (token.size() > max_input_chars_per_word_) {
-      output_tokens.push_back(unk_token_);
+      output_tokens.emplace_back(unk_token_);
     }
     bool is_bad = false;
     size_t start = 0;
@@ -300,41 +300,17 @@ vector<wstring> WordPieceTokenizer::Tokenize(const wstring& text) const {
         is_bad = true;
         break;
       }
-      sub_tokens.push_back(cur_sub_str);
+      sub_tokens.emplace_back(cur_sub_str);
       start = end;
     }
     if (is_bad)
-      output_tokens.push_back(unk_token_);
+      output_tokens.emplace_back(unk_token_);
     else
       output_tokens.insert(output_tokens.end(), sub_tokens.begin(),
                            sub_tokens.end());
   }
   return output_tokens;
 }
-
-// FullTokenizer::FullTokenizer(const string& vocab_file, bool do_lower_case):
-//   vocab_(LoadVocab(vocab_file)),
-//   basic_tokenizer_(BasicTokenizer(do_lower_case)),
-//   word_piece_tokenizer_(WordPieceTokenizer(vocab_)) {
-//     for (auto& v : vocab_) inv_vocab_[v.second] = v.first;
-// }
-
-// vector<wstring> FullTokenizer::Tokenize(const string& text) const {
-//   vector<wstring> split_tokens;
-//   for (auto& token : basic_tokenizer_.Tokenize(text))
-//     for (auto& sub_token : word_piece_tokenizer_.Tokenize(token))
-//       split_tokens.push_back(sub_token);
-//   return split_tokens;
-// }
-
-// vector<int64_t> FullTokenizer::ConvertTokensToIds(
-//     const vector<wstring>& text) const {
-//   vector<int64_t> ret(text.size());
-//   for (size_t i = 0; i < text.size(); i++) {
-//     ret[i] = (vocab_)[text[i]];
-//   }
-//   return ret;
-// }
 
 BertTokenizer::BertTokenizer(const framework::WSTRING_MAP vocab,
                              bool do_lower_case /* = false */,
@@ -408,7 +384,7 @@ vector<wstring> BertTokenizer::Tokenize(const string& text) const {
   vector<wstring> split_tokens;
   for (auto& token : basic_tokenizer_.Tokenize(text))
     for (auto& sub_token : word_piece_tokenizer_.Tokenize(token))
-      split_tokens.push_back(sub_token);
+      split_tokens.emplace_back(sub_token);
   return split_tokens;
 }
 
@@ -417,23 +393,23 @@ vector<int64_t> BertTokenizer::BuildInputsWithSpecialTokens(
     const vector<int64_t>& token_ids_1) const {
   if (token_ids_1.size() == 0) {
     vector<int64_t> inputs;
-    inputs.push_back(cls_token_id_);
+    inputs.emplace_back(cls_token_id_);
     for (auto& token_id : token_ids_0) {
-      inputs.push_back(token_id);
+      inputs.emplace_back(token_id);
     }
-    inputs.push_back(sep_token_id_);
+    inputs.emplace_back(sep_token_id_);
     return inputs;
   } else {
     vector<int64_t> inputs;
-    inputs.push_back(cls_token_id_);
+    inputs.emplace_back(cls_token_id_);
     for (auto& token_id : token_ids_0) {
-      inputs.push_back(token_id);
+      inputs.emplace_back(token_id);
     }
-    inputs.push_back(sep_token_id_);
+    inputs.emplace_back(sep_token_id_);
     for (auto& token_id : token_ids_1) {
-      inputs.push_back(token_id);
+      inputs.emplace_back(token_id);
     }
-    inputs.push_back(sep_token_id_);
+    inputs.emplace_back(sep_token_id_);
     return inputs;
   }
 }
@@ -482,7 +458,7 @@ unordered_map<string, vector<int64_t>> BertTokenizer::TruncateSequence(
 
         for (size_t j = ids->size() - 1; j > ids->size() - window_len - 1;
              j--) {
-          overflowing_token_ids.push_back((*ids)[j]);
+          overflowing_token_ids.emplace_back((*ids)[j]);
         }
         ids->pop_back();
       } else {
@@ -493,7 +469,7 @@ unordered_map<string, vector<int64_t>> BertTokenizer::TruncateSequence(
         }
         for (size_t j = pair_ids->size() - 1;
              j > pair_ids->size() - window_len - 1; j--) {
-          overflowing_token_ids.push_back((*pair_ids)[j]);
+          overflowing_token_ids.emplace_back((*pair_ids)[j]);
         }
         pair_ids->pop_back();
       }
@@ -503,7 +479,7 @@ unordered_map<string, vector<int64_t>> BertTokenizer::TruncateSequence(
     if (ids->size() > num_tokens_to_remove) {
       window_len = min(ids->size(), stride + num_tokens_to_remove);
       for (size_t i = ids->size() - 1; i > ids->size() - window_len - 1; i--) {
-        overflowing_token_ids.push_back((*ids)[i]);
+        overflowing_token_ids.emplace_back((*ids)[i]);
       }
       for (size_t i = 0; i < num_tokens_to_remove; i++) {
         ids->pop_back();
@@ -521,7 +497,7 @@ unordered_map<string, vector<int64_t>> BertTokenizer::TruncateSequence(
       window_len = min(pair_ids->size(), stride + num_tokens_to_remove);
       for (size_t i = pair_ids->size() - 1;
            i > pair_ids->size() - window_len - 1; i--) {
-        overflowing_token_ids.push_back((*pair_ids)[i]);
+        overflowing_token_ids.emplace_back((*pair_ids)[i]);
       }
       for (size_t i = 0; i < num_tokens_to_remove; i++) {
         pair_ids->pop_back();
@@ -774,13 +750,13 @@ vector<unordered_map<string, vector<int64_t>>> BertTokenizer::BatchEncode(
       }
       break;
     } else if (has_text_pair) {
-      batch_encode_inputs.push_back(Encode(
+      batch_encode_inputs.emplace_back(Encode(
           batch_text[i], batch_text_pair[i], max_seq_len, pad_to_max_seq_len,
           return_length, return_token_type_ids, return_position_ids,
           return_attention_mask, truncation_strategy, return_overflowing_tokens,
           return_special_tokens_mask));
     } else {
-      batch_encode_inputs.push_back(
+      batch_encode_inputs.emplace_back(
           Encode(batch_text[i], {}, max_seq_len, pad_to_max_seq_len,
                  return_length, return_token_type_ids, return_position_ids,
                  return_attention_mask, truncation_strategy,

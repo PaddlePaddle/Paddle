@@ -1180,7 +1180,7 @@ void BindImperative(py::module *m_ptr) {
                  platform::errors::InvalidArgument(
                      "Tensor of %s is Empty, please check if it has no data.",
                      self.Name()));
-             return TensorToPyArray(tensor, true);
+             return TensorToPyArray(tensor, false);
            },
            R"DOC(
         Returns a numpy array shows the value of current Tensor.

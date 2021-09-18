@@ -42,7 +42,7 @@ def _build_saved_state_dict(state_dict):
     save_dict = {}
     name_table = {}
     for key, value in state_dict.items():
-        if value.type == core.VarDesc.VarType.STRING_MAP:
+        if value.type == core.VarDesc.VarType.WSTRING_MAP:
             save_dict[key] = value.value().get_map_tensor()
         elif value.type == core.VarDesc.VarType.STRINGS:
             save_dict[key] = value.value().get_string_tensor()

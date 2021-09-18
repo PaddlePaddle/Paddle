@@ -212,6 +212,7 @@ class TokenizerKernel : public framework::OpKernel<T> {
         }
       }
     }
+    delete tokenizer_ptr;
   }
 };
 

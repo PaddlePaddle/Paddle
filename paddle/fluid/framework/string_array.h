@@ -31,9 +31,16 @@ using WSTRING_MAP = std::unordered_map<std::wstring, std::int32_t>;
 std::wstring ConvertStrToWstr(const std::string& src);
 std::string ConvertWstrToStr(const std::wstring& src);
 std::string NormalizeNfd(const std::string& s);
-void WstringMapToStream(std::ostream& os,
-                        const std::unordered_map<std::string, int32_t>& data);
-void WstringMapFromStream(std::istream& is,
-                          std::unordered_map<std::string, int32_t>* data);
+class SerializableStringMap : public std::unordered_map<std::string, int32_t> {
+ private:
+  void write(std::ostream& os, int32_t t);
+  void write(std::ostream& os, const std::string& str);
+  void read(std::istream& is, int32_t* token_id);
+  std::string read(std::istream& is);
+
+ public:
+  void MapTensorToStream(std::ostream& ss);
+  void MapTensorFromStream(std::istream& is);
+};
 }  // namespace framework
 }  // namespace paddle

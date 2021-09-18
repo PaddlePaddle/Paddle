@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include <utf8proc.h>
 
+#include "glog/logging.h"
 #include "paddle/fluid/framework/string_array.h"
 
 namespace paddle {
@@ -45,47 +46,48 @@ std::string NormalizeNfd(const std::string& s) {
   return ret;
 }
 
-void WstringMapToStream(std::ostream& os,
-                        const std::unordered_map<std::string, int32_t>& data) {
-  {
-    // firstly write the data size.
-    size_t t = data.size();
-    os.write(reinterpret_cast<const char*>(&t), sizeof(t));
-  }
-  {
-    // then write the data
-    for (auto it = data.begin(); it != data.end(); ++it) {
-      std::string token = it->first;
-      int32_t token_id = it->second;
-      // write the token
-      size_t length = token.size();
-      os.write(reinterpret_cast<const char*>(&length), sizeof(length));
-      os.write(token.c_str(), length);
-      // write the token_id
-      os.write(reinterpret_cast<const char*>(&token_id), sizeof(token_id));
-    }
+void SerializableStringMap::write(std::ostream& os, int32_t t) {
+  os.write(reinterpret_cast<const char*>(&t), sizeof(t));
+}
+
+void SerializableStringMap::write(std::ostream& os, const std::string& str) {
+  size_t length = str.size();
+  os.write(reinterpret_cast<const char*>(&length), sizeof(length));
+  os.write(str.c_str(), length);
+}
+
+void SerializableStringMap::read(std::istream& is, int32_t* token_id) {
+  is.read(reinterpret_cast<char*>(token_id), sizeof(*token_id));
+}
+
+std::string SerializableStringMap::read(std::istream& is) {
+  size_t length;
+  is.read(reinterpret_cast<char*>(&length), sizeof(length));
+  char* tmp = new char[length];
+  is.read(tmp, length);
+  std::string s(tmp, tmp + length);
+  return s;
+}
+
+void SerializableStringMap::MapTensorToStream(std::ostream& ss) {
+  size_t t = this->size();
+  ss.write(reinterpret_cast<const char*>(&t), sizeof(t));
+  for (auto it = this->begin(); it != this->end(); ++it) {
+    std::string str = it->first;
+    int32_t value = it->second;
+    write(ss, str);
+    write(ss, value);
   }
 }
 
-void WstringMapFromStream(std::istream& is,
-                          std::unordered_map<std::string, int32_t>* data) {
-  // first read the map size
+void SerializableStringMap::MapTensorFromStream(std::istream& is) {
   size_t map_size;
   is.read(reinterpret_cast<char*>(&map_size), sizeof(map_size));
-  data->reserve(map_size);
-  // then read the data
   for (size_t i = 0; i < map_size; ++i) {
-    // read the token
-    size_t token_length;
-    is.read(reinterpret_cast<char*>(&token_length), sizeof(token_length));
-    char* tmp = new char[token_length];
-    is.read(tmp, token_length);
-    std::string token(tmp, tmp + token_length);
-    // read the token_id
-    int32_t token_id;
-    is.read(reinterpret_cast<char*>(&token_id), sizeof(token_id));
-
-    data->emplace(token, token_id);
+    std::string key = read(is);
+    int32_t value;
+    read(is, &value);
+    (*this)[key] = value;
   }
 }
 

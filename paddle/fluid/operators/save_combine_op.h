@@ -103,14 +103,24 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
         }
       } else {
         auto &tensor = inp_vars[i]->Get<framework::WSTRING_MAP>();
+        framework::SerializableStringMap data;
         VLOG(0) << "before WstringMapToStream, size " << tensor.size();
-        std::unordered_map<std::string, int32_t> data;
         for (auto it = tensor.begin(); it != tensor.end(); ++it) {
           std::string t = framework::ConvertWstrToStr(it->first);
-          data.emplace(t, it->second);
+          data.insert({t, it->second});
         }
-        framework::WstringMapToStream(ss, data);
         VLOG(0) << "after WstringMapToStream, size " << data.size();
+        data.MapTensorToStream(ss);
+
+        // auto &tensor = inp_vars[i]->Get<framework::WSTRING_MAP>();
+        // VLOG(0) << "before WstringMapToStream, size " << tensor.size();
+        // std::unordered_map<std::string, int32_t> data;
+        // for (auto it = tensor.begin(); it != tensor.end(); ++it) {
+        //   std::string t = framework::ConvertWstrToStr(it->first);
+        //   data.emplace(t, it->second);
+        // }
+        // framework::WstringMapToStream(ss, data);
+        // VLOG(0) << "after WstringMapToStream, size " << data.size();
       }
     }
     if (save_to_memory) {
