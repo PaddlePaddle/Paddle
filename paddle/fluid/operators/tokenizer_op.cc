@@ -266,7 +266,7 @@ vector<wstring> BasicTokenizer::Tokenize(const string& text) const {
 }
 
 WordPieceTokenizer::WordPieceTokenizer(
-    const framework::WSTRING_MAP vocab,
+    const framework::WSTRING_MAP& vocab,
     const wstring& unk_token /* = L"[UNK]"*/,
     const size_t max_input_chars_per_word /* = 100 */)
     : vocab_(vocab),
@@ -312,7 +312,7 @@ vector<wstring> WordPieceTokenizer::Tokenize(const wstring& text) const {
   return output_tokens;
 }
 
-BertTokenizer::BertTokenizer(const framework::WSTRING_MAP vocab,
+BertTokenizer::BertTokenizer(const framework::WSTRING_MAP& vocab,
                              bool do_lower_case /* = false */,
                              const wstring& unk_token /* = L"[UNK]" */,
                              const wstring& pad_token /* = L"[PAD]" */,
@@ -345,9 +345,9 @@ BertTokenizer::BertTokenizer(const framework::WSTRING_MAP vocab,
                               mask_token_id_, sep_token_id_});
 
   // inv_vocab_: the map token_id to token_str
-  for (auto& v : vocab_) {
-    inv_vocab_[v.second] = v.first;
-  }
+  //for (auto& v : vocab_) {
+  //  inv_vocab_[v.second] = v.first;
+  //}
 }
 
 vector<int64_t> BertTokenizer::ConvertTokensToIds(

@@ -20,6 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/string_array.h"
+#include <chrono>
 
 namespace paddle {
 namespace operators {
@@ -56,7 +57,7 @@ class BasicTokenizer {
 
 class WordPieceTokenizer {
  public:
-  explicit WordPieceTokenizer(const framework::WSTRING_MAP vocab,
+  explicit WordPieceTokenizer(const framework::WSTRING_MAP& vocab,
                               const wstring& unk_token = L"[UNK]",
                               const size_t max_input_chars_per_word = 100);
   vector<wstring> Tokenize(const wstring& text) const;
@@ -69,7 +70,7 @@ class WordPieceTokenizer {
 
 class BertTokenizer {
  public:
-  explicit BertTokenizer(const framework::WSTRING_MAP vocab,
+  explicit BertTokenizer(const framework::WSTRING_MAP& vocab,
                          bool do_lower_case = false,
                          const wstring& unk_token = L"[UNK]",
                          const wstring& pad_token = L"[PAD]",
@@ -143,17 +144,21 @@ template <typename T>
 class TokenizerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
     auto* text = ctx.Input<framework::STRINGS>("Text");
     auto* vocab = ctx.Input<framework::WSTRING_MAP>("Vocab");
+    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
     auto* input_ids = ctx.Output<framework::Tensor>("InputIds");
     auto* seg_ids = ctx.Output<framework::Tensor>("SegmentIds");
+    end = std::chrono::steady_clock::now();
 
     auto is_split_into_words =
         static_cast<bool>(ctx.Attr<bool>("is_split_into_words"));
     auto max_seq_len = static_cast<size_t>(ctx.Attr<int>("max_seq_len"));
     auto pad_to_max_seq_len =
         static_cast<bool>(ctx.Attr<bool>("pad_to_max_seq_len"));
+    end = std::chrono::steady_clock::now();
 
     auto* text_pair = ctx.Input<framework::STRINGS>("TextPair");
     if (text_pair && text->size() != text_pair->size()) {
@@ -161,9 +166,10 @@ class TokenizerKernel : public framework::OpKernel<T> {
               << "be the same number of text sequence. Please check the input!";
       return;
     }
+    end = std::chrono::steady_clock::now();
 
     BertTokenizer* tokenizer_ptr = new BertTokenizer(*vocab);
-
+    end = std::chrono::steady_clock::now();
     // only support cpu now
     size_t batch_max_seq_len = 0;
     size_t batch_size = text->size();
@@ -200,6 +206,7 @@ class TokenizerKernel : public framework::OpKernel<T> {
     auto* seg_ids_data = seg_ids->mutable_data<T>(ctx.GetPlace());
 
     auto pad_token_id = tokenizer_ptr->GetPadTokenID();
+    end = std::chrono::steady_clock::now();
     for (size_t i = 0; i < batch_size; i++) {
       size_t seq_len = batch_input_ids[i].size();
       for (size_t j = 0; j < batch_max_seq_len; j++) {
@@ -212,7 +219,9 @@ class TokenizerKernel : public framework::OpKernel<T> {
         }
       }
     }
+    end = std::chrono::steady_clock::now();
     delete tokenizer_ptr;
+    end = std::chrono::steady_clock::now();
   }
 };
 
