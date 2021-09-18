@@ -491,7 +491,8 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
                         q.cancel_join_thread()
                         q.close()
             finally:
-                core._erase_process_pids(id(self))
+                if sys.platform not in ['win32', 'darwin']:
+                    core._erase_process_pids(id(self))
                 self._shutdown = True
 
     def _thread_loop(self, legacy_expected_place):
