@@ -91,7 +91,10 @@ class Hogwild(DeviceWorker):
         trainer_desc.device_worker_name = "HogwildWorker"
         if self._infer:
             # just ignore feed op for inference model
-            trainer_desc.hogwild_param.skip_ops.extend(["feed"])
+            trainer_desc.hogwild_param.skip_ops.extend([
+                "feed", "push_sparse", "push_sparse_v2", "push_dense",
+                "distributed_push_sparse", "send"
+            ])
 
         dense_table_set = set()
         program_id = str(id(self._program))

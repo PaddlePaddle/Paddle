@@ -38,6 +38,8 @@ project(paddle CXX C)
 # enable language CUDA
 # TODO(Shibo Tao): remove find_package(CUDA) completely.
 find_package(CUDA QUIET)
+find_package(MKL CONFIG QUIET)
+option(WITH_ONEMKL      "Compile PaddlePaddle with oneMKL"              OFF)
 option(WITH_GPU         "Compile PaddlePaddle with NVIDIA GPU"          ${CUDA_FOUND})
 option(WITH_TENSORRT    "Compile PaddlePaddle with NVIDIA TensorRT"     OFF)
 option(WITH_XPU         "Compile PaddlePaddle with BAIDU KUNLUN XPU"    OFF)
@@ -225,6 +227,7 @@ option(WITH_STRIP       "Strip so files of Whl packages"         OFF)
 option(NEW_RELEASE_CUBIN   "PaddlePaddle next-level release strategy for pypi cubin package"             OFF)
 option(NEW_RELEASE_JIT   "PaddlePaddle next-level release strategy for backup jit package"             OFF)
 option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
+option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -371,6 +374,10 @@ endif()
 if (WITH_MIPS)
     set(WITH_XBYAK OFF CACHE STRING "Disable XBYAK when compiling WITH_MIPS=ON" FORCE)
     add_definitions(-DPADDLE_WITH_MIPS)
+endif()
+
+if (WITH_ONEMKL)
+    add_definitions(-DPADDLE_WITH_ONEMKL)
 endif()
 
 if (WITH_HETERPS)

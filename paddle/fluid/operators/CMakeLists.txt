@@ -59,6 +59,10 @@ if (WITH_GPU)
     endif()
 endif()
 
+if (WITH_POCKETFFT)
+    SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} pocketfft)
+endif()
+
 
 SET(OP_MKL_DEPS "")
 if (NOT WITH_MKL OR NOT WITH_AVX)
@@ -77,7 +81,7 @@ endif()
 set(OP_HEADER_DEPS ${OP_HEADER_DEPS} tcmpt)
 set(OP_HEADER_DEPS ${OP_HEADER_DEPS} tcmpt_utils)
 register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op lstm_op run_program_op eye_op recurrent_op
-        sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
+        sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
 op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS})
 
@@ -94,6 +98,12 @@ if (WITH_GPU OR WITH_ROCM)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(sync_batch_norm);\n")
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
+endif()
+
+if (WITH_GPU AND (NOT WITH_ROCM))
+    op_library(spectral_op SRCS spectral_op.cc spectral_op.cu DEPS dynload_cuda ${OP_HEADER_DEPS})
+else()
+    op_library(spectral_op SRCS spectral_op.cc DEPS ${OP_HEADER_DEPS})
 endif()
 
 op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)

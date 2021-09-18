@@ -523,6 +523,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("locked") = false, py::arg("autotune") = true,
            py::arg("autotune_file") = "", py::arg("precision") = "int16",
            py::arg("adaptive_seqlen") = false)
+      .def("set_xpu_device_id", &AnalysisConfig::SetXpuDeviceId,
+           py::arg("device_id") = 0)
       .def("enable_npu", &AnalysisConfig::EnableNpu, py::arg("device_id") = 0)
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
       .def("use_gpu", &AnalysisConfig::use_gpu)
@@ -538,7 +540,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("switch_ir_optim", &AnalysisConfig::SwitchIrOptim,
            py::arg("x") = true)
       .def("ir_optim", &AnalysisConfig::ir_optim)
-      .def("enable_memory_optim", &AnalysisConfig::EnableMemoryOptim)
+      .def("enable_memory_optim", &AnalysisConfig::EnableMemoryOptim,
+           py::arg("x") = true)
       .def("enable_profile", &AnalysisConfig::EnableProfile)
       .def("disable_glog_info", &AnalysisConfig::DisableGlogInfo)
       .def("glog_info_disabled", &AnalysisConfig::glog_info_disabled)
@@ -569,6 +572,16 @@ void BindAnalysisConfig(py::module *m) {
            &AnalysisConfig::tensorrt_dynamic_shape_enabled)
       .def("enable_tensorrt_oss", &AnalysisConfig::EnableTensorRtOSS)
       .def("tensorrt_oss_enabled", &AnalysisConfig::tensorrt_oss_enabled)
+      .def("collect_shape_range_info", &AnalysisConfig::CollectShapeRangeInfo)
+      .def("shape_range_info_path", &AnalysisConfig::shape_range_info_path)
+      .def("shape_range_info_collected",
+           &AnalysisConfig::shape_range_info_collected)
+      .def("enable_tuned_tensorrt_dynamic_shape",
+           &AnalysisConfig::EnableTunedTensorRtDynamicShape)
+      .def("tuned_tensorrt_dynamic_shape",
+           &AnalysisConfig::tuned_tensorrt_dynamic_shape)
+      .def("trt_allow_build_at_runtime",
+           &AnalysisConfig::trt_allow_build_at_runtime)
       .def("exp_disable_tensorrt_ops", &AnalysisConfig::Exp_DisableTensorRtOPs)
       .def("enable_tensorrt_dla", &AnalysisConfig::EnableTensorRtDLA,
            py::arg("dla_core") = 0)

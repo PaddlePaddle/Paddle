@@ -28,6 +28,7 @@ add_subdirectory(io)
 add_subdirectory(new_executor)
 #ddim lib
 proto_library(framework_proto SRCS framework.proto)
+proto_library(pass_desc_proto SRCS pass_desc.proto DEPS framework_proto)
 
 proto_library(op_def_proto SRCS op_def.proto DEPS framework_proto)
 cc_library(op_def_api SRCS op_def_api.cc DEPS op_def_proto boost)
@@ -223,6 +224,7 @@ if(WITH_PYTHON)
   py_proto_compile(framework_py_proto SRCS framework.proto data_feed.proto)
   py_proto_compile(trainer_py_proto SRCS trainer_desc.proto data_feed.proto)
   py_proto_compile(distributed_strategy_py_proto SRCS distributed_strategy.proto)
+  py_proto_compile(pass_desc_py_proto SRCS pass_desc.proto)
 #Generate an empty \
     #__init__.py to make framework_py_proto as a valid python module.
   add_custom_target(fleet_proto_init ALL  

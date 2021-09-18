@@ -77,7 +77,8 @@ class TestNCE(OpTest):
             'custom_neg_classes': list(range(num_neg_samples)),
             'seed': 0,
             'sampler': 0,
-            'is_sparse': is_sparse
+            'is_sparse': is_sparse,
+            'is_test': self.is_test
         }
         self.inputs = {
             'Input': input,
@@ -87,6 +88,9 @@ class TestNCE(OpTest):
             'SampleWeight': sample_weight
         }
 
+    def set_is_test(self):
+        self.is_test = False
+
     def set_data(self):
         self.generate_data(5, 25, 100, 1, 2, False)
 
@@ -95,14 +99,18 @@ class TestNCE(OpTest):
                   self.inputs['Bias'], self.inputs['SampleWeight'],
                   self.inputs['Label'], self.attrs['num_total_classes'],
                   self.attrs['num_neg_samples'])
-        self.outputs = {
-            'Cost': out[0],
-            'SampleLogits': out[1],
-            'SampleLabels': out[2]
-        }
+        if self.is_test:
+            self.outputs = {'Cost': out[0]}
+        else:
+            self.outputs = {
+                'Cost': out[0],
+                'SampleLogits': out[1],
+                'SampleLabels': out[2]
+            }
 
     def setUp(self):
         self.op_type = 'nce'
+        self.set_is_test()
         self.set_data()
         self.compute()
 
@@ -117,6 +125,15 @@ class TestNCE(OpTest):
 class TestNCECase1Tensor(TestNCE):
     def set_data(self):
         self.generate_data(10, 20, 100, 2, 5, False)
+
+
+class TestNCETensorIsTest(TestNCE):
+    # if is_test = True, there's no need to calculate grad
+    def set_is_test(self):
+        self.is_test = True
+
+    def test_check_grad(self):
+        pass
 
 
 class TestNCECase1SelectedRows(unittest.TestCase):
