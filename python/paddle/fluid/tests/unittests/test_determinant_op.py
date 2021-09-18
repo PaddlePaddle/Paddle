@@ -39,6 +39,7 @@ class TestDeterminantOp(OpTest):
         self.check_grad(['Input'], ['Out'])
 
     def init_data(self):
+        np.random.seed(0)
         self.case = np.random.rand(3, 3, 3, 5, 5).astype('float64')
         self.inputs = {'Input': self.case}
         self.target = np.linalg.det(self.case)
@@ -46,6 +47,7 @@ class TestDeterminantOp(OpTest):
 
 class TestDeterminantOpCase1(TestDeterminantOp):
     def init_data(self):
+        np.random.seed(0)
         self.case = np.random.randn(10, 10).astype('float32')
         self.inputs = {'Input': self.case}
         self.target = np.linalg.det(self.case)
@@ -53,6 +55,7 @@ class TestDeterminantOpCase1(TestDeterminantOp):
 
 class TestDeterminantOpCase2(TestDeterminantOp):
     def init_data(self):
+        np.random.seed(0)
         # not invertible matrix
         self.case = np.ones([4, 2, 5, 5]).astype('float32')
         self.inputs = {'Input': self.case}
@@ -61,6 +64,7 @@ class TestDeterminantOpCase2(TestDeterminantOp):
 
 class TestDeterminantAPI(unittest.TestCase):
     def setUp(self):
+        np.random.seed(0)
         self.shape = [3, 3, 5, 5]
         self.x = np.random.random(self.shape).astype(np.float32)
         self.place = paddle.CPUPlace()
@@ -100,6 +104,7 @@ class TestSlogDeterminantOp(OpTest):
         self.check_grad(['Input'], ['Out'], max_relative_error=0.1)
 
     def init_data(self):
+        np.random.seed(0)
         self.case = np.random.rand(4, 5, 5).astype('float64')
         self.inputs = {'Input': self.case}
         self.target = np.array(np.linalg.slogdet(self.case))
@@ -107,6 +112,7 @@ class TestSlogDeterminantOp(OpTest):
 
 class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
     def init_data(self):
+        np.random.seed(0)
         self.case = np.random.randn(2, 10, 10).astype('float32')
         self.inputs = {'Input': self.case}
         self.target = np.array(np.linalg.slogdet(self.case))
@@ -114,6 +120,7 @@ class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
 
 class TestSlogDeterminantAPI(unittest.TestCase):
     def setUp(self):
+        np.random.seed(0)
         self.shape = [3, 3, 5, 5]
         self.x = np.random.random(self.shape).astype(np.float32)
         self.place = paddle.CPUPlace()

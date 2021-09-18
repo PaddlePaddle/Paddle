@@ -49,7 +49,7 @@ class EigenMatrix<double> {
   using MatrixType = Eigen::MatrixXd;
 };
 
-inline int64_t GetBatchCount(framework::DDim dims) {
+inline int64_t GetBatchCount(const framework::DDim dims) {
   int64_t batch_count = 1;
   auto dim_size = dims.size();
   PADDLE_ENFORCE_GE(dim_size, 2,
@@ -62,7 +62,7 @@ inline int64_t GetBatchCount(framework::DDim dims) {
   // count,
   // for example a tensor with shape [3,3,3,3], the batch count of matrices is
   // 9.
-  for (int i = 0; i < dims.size() - 2; i++) {
+  for (int64_t i = 0; i < dims.size() - 2; i++) {
     batch_count *= dims[i];
   }
 
@@ -72,18 +72,18 @@ inline int64_t GetBatchCount(framework::DDim dims) {
 template <typename T>
 struct DeterminantFunctor {
   void operator()(const Tensor& input, const framework::ExecutionContext ctx,
-                  int rank, int64_t batch_count, Tensor* output) {
+                  int64_t rank, int64_t batch_count, Tensor* output) {
     std::vector<T> input_vec;
     std::vector<T> output_vec;
     framework::TensorToVector(input, ctx.device_context(), &input_vec);
-    for (int i = 0; i < batch_count; ++i) {  // maybe can be parallel
+    for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
       std::vector<T> sub_vec(begin_iter,
                              end_iter);  // get every square matrix data
       typename EigenMatrix<T>::MatrixType matrix(rank, rank);
-      for (int i = 0; i < rank; ++i) {
-        for (int j = 0; j < rank; ++j) {
+      for (int64_t i = 0; i < rank; ++i) {
+        for (int64_t j = 0; j < rank; ++j) {
           matrix(i, j) = sub_vec[rank * i + j];
         }
       }
@@ -262,20 +262,20 @@ class DeterminantGradKernel : public framework::OpKernel<T> {
 template <typename T>
 struct SlogDeterminantFunctor {
   void operator()(const Tensor& input, const framework::ExecutionContext ctx,
-                  int rank, int batch_count, Tensor* output) {
+                  int64_t rank, int64_t batch_count, Tensor* output) {
     std::vector<T> input_vec;
     std::vector<T> sign_vec;
     std::vector<T> log_vec;
     std::vector<T> output_vec;
     framework::TensorToVector(input, ctx.device_context(), &input_vec);
-    for (int i = 0; i < batch_count; ++i) {  // maybe can be parallel
+    for (int64_t i = 0; i < batch_count; ++i) {  // maybe can be parallel
       auto begin_iter = input_vec.begin() + i * rank * rank;
       auto end_iter = input_vec.begin() + (i + 1) * rank * rank;
       std::vector<T> sub_vec(begin_iter,
                              end_iter);  // get every square matrix data
       typename EigenMatrix<T>::MatrixType matrix(rank, rank);
-      for (int i = 0; i < rank; ++i) {
-        for (int j = 0; j < rank; ++j) {
+      for (int64_t i = 0; i < rank; ++i) {
+        for (int64_t j = 0; j < rank; ++j) {
           matrix(i, j) = sub_vec[rank * i + j];
         }
       }
@@ -284,9 +284,9 @@ struct SlogDeterminantFunctor {
       auto det_val = matrix.determinant();
       sign_vec.push_back(sign(det_val));
       det_val >= 0
-          ? log_vec.push_back(log(det_val))
-          : log_vec.push_back(log(
-                abs(det_val)));  // for computing log value of a negative value.
+          ? log_vec.push_back(std::log(det_val))
+          : log_vec.push_back(std::log(std::abs(
+                det_val)));  // for computing log value of a negative value.
     }
     // merge sign_vec and log_vec as final output_vec
     output_vec.insert(output_vec.end(), sign_vec.begin(), sign_vec.end());
@@ -353,9 +353,6 @@ class SlogDeterminantGradKernel : public framework::OpKernel<T> {
               "The grad tensor of slogdet dims size should 1 less than"
               " input tensor's, but here differ %d",
               input->dims().size() - grad->dims().size()));
-    } else {
-      // input dims size 2 and grad dims size 2 is possible
-      // pass
     }
 
     // Check Whether the matrix is invertible
