@@ -182,8 +182,8 @@ static inline PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
   if (obj) {
     auto v = (EagerTensorObject*)obj;  // NOLINT
     v->eagertensor.SetImpl(densetensor);
-    auto meta = egr::EagerUtils::autograd_meta(v->eagertensor);
-    meta->SetNumericStopGradient(stop_gradient);
+    auto meta = egr::EagerUtils::autograd_meta(&(v->eagertensor));
+    meta->SetStopGradient(stop_gradient);
   }
 
   return obj;
