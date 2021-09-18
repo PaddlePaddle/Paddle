@@ -36,5 +36,6 @@ __all__ = [
     'svd',
     'qr',
     'matrix_power',
+    'eigh',    
     'pinv'
 ]
