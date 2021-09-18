@@ -97,14 +97,14 @@ PyObject* eager_tensor_properties_get_shape(EagerTensorObject* self,
 
 PyObject* eager_tensor_properties_get_stop_gradient(EagerTensorObject* self,
                                                     void* closure) {
-  auto meta = egr::EagerUtils::autograd_meta(self->eagertensor);
+  auto meta = egr::EagerUtils::autograd_meta(&(self->eagertensor));
   return ToPyObject(meta->StopGradient());
 }
 
 int eager_tensor_properties_set_stop_gradient(EagerTensorObject* self,
                                               PyObject* value, void* closure) {
-  auto meta = egr::EagerUtils::autograd_meta(self->eagertensor);
-  meta->SetNumericStopGradient(CastPyArg2AttrBoolean(value, 0));
+  auto meta = egr::EagerUtils::autograd_meta(&(self->eagertensor));
+  meta->SetStopGradient(CastPyArg2AttrBoolean(value, 0));
   return 0;
 }
 
@@ -172,7 +172,7 @@ static PyObject* eager_tensor_method_is_initialized(EagerTensorObject* self,
 
 static PyObject* eager_api_scale(PyObject* self, PyObject* args,
                                  PyObject* kwargs) {
-  std::vector<pt::Tensor> ret =
+  pt::Tensor ret =
       egr::scale(reinterpret_cast<EagerTensorObject*>(PyTuple_GET_ITEM(args, 0))
                      ->eagertensor,
                  CastPyArg2AttrFloat(PyTuple_GET_ITEM(args, 1), 1),
@@ -235,8 +235,8 @@ static inline PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
   if (obj) {
     auto v = (EagerTensorObject*)obj;  // NOLINT
     v->eagertensor.SetImpl(densetensor);
-    auto meta = egr::EagerUtils::autograd_meta(v->eagertensor);
-    meta->SetNumericStopGradient(stop_gradient);
+    auto meta = egr::EagerUtils::autograd_meta(&(v->eagertensor));
+    meta->SetStopGradient(stop_gradient);
   }
 
   return obj;

@@ -14,21 +14,27 @@
 
 #pragma once
 
-#include "paddle/top/api/all.h"
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/top/api/all.h"
 
 namespace egr {
 
-void benchmark_eager_accuracy_check(pt::Tensor& tensor);
-void benchmark_eager(pt::Tensor& tensor);
+void benchmark_eager_accuracy_check(const pt::Tensor& tensor);
+void benchmark_eager(const pt::Tensor& tensor);
 
-} // namespace egr
+}  // namespace egr
 
 namespace paddle {
 namespace imperative {
+// TODO(jiabin): Change this and remove nolint
+void benchmark_fluid_accuracy_check(
+    std::shared_ptr<imperative::VarBase>& X,    // NOLINT
+    std::shared_ptr<imperative::VarBase>& Out,  // NOLINT
+    const paddle::platform::Place& place);
+// TODO(jiabin): Change this and remove nolint
+void benchmark_fluid(std::shared_ptr<imperative::VarBase>& X,    // NOLINT
+                     std::shared_ptr<imperative::VarBase>& Out,  // NOLINT
+                     const paddle::platform::Place& place);
 
-void benchmark_fluid_accuracy_check(std::shared_ptr<imperative::VarBase>& X, std::shared_ptr<imperative::VarBase>& Out, const paddle::platform::Place& place);
-void benchmark_fluid(std::shared_ptr<imperative::VarBase>& X, std::shared_ptr<imperative::VarBase>& Out, const paddle::platform::Place& place);
-
-} // namespace imperative
-} // namespace paddle
+}  // namespace imperative
+}  // namespace paddle

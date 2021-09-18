@@ -25,22 +25,22 @@
  * with no grad **/
 
 #pragma once
+#include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/grad_node_info.h"
 
 namespace egr {
 class TensorWrapper {
  public:
-  explicit TensorWrapper(
-      const pt::Tensor& tensor， bool full_reserved = false) {
+  explicit TensorWrapper(const pt::Tensor& tensor, bool full_reserved = false) {
     /**
      * Normally, we should fully reserved all non-output or non-leaf fwd tensor
      * here. And for fwd output tensor, we should not reserve its autogradmeta,
-     * to
-     * avoid recursive depends on GradNodeBase
+     * to avoid recursive depends on GradNodeBase
      * **/
 
     if (full_reserved_) {
-      VLOG(0) << "Fully reserved " intermidiate_tensor_ = tensor;
+      VLOG(0) << "Fully reserved ";
+      intermidiate_tensor_ = tensor;
       return;
     }
 
@@ -48,27 +48,30 @@ class TensorWrapper {
     intermidiate_tensor_.set_impl(tensor.impl());
 
     PADDLE_ENFORCE_NOT_NULL(
-        tensor.autograd_meta(),
+        EagerUtils::unsafe_autograd_meta(tensor),
         "Full reserved Tensor should not have null autograd meta");
     // copy output_rank
-    output_rank_ = EagerUtils::output_rank(tensor);
+    out_rank_info_ = EagerUtils::OutRankInfo(tensor);
   }
 
   pt::Tensor recover(const std::shared_ptr<GradNodeBase>& grad_node) {
+    VLOG(6) << "Recover tensor for wrapper";
     if (!intermidiate_tensor_.defined()) {
-      VLOG(1) << "Return NULL tensor Here. ";
-      return Tensor();
+      VLOG(6) << "Return NULL tensor Here. ";
+      return pt::Tensor();
     }
 
-    auto grad_node = full_reserved_
-                         ? EagerUtils::grad_node(intermidiate_tensor_)
-                         : grad_node;
+    std::shared_ptr<GradNodeBase> new_grad_node =
+        full_reserved_ ? std::static_pointer_cast<GradNodeBase>(
+                             EagerUtils::grad_node(intermidiate_tensor_))
+                       : grad_node;
 
     // if it's full_reserved just return the full copy of tensor
     if (full_reserved_) {
       return intermidiate_tensor_;
     } else {
-      auto p_ab_autograd_meta = std::make_shared(Edge(grad_node, output_rank_));
+      auto p_ab_autograd_meta =
+          std::make_shared<AutogradMeta>(Edge(new_grad_node, out_rank_info_));
       intermidiate_tensor_.set_autograd_meta(
           std::static_pointer_cast<pt::AbstractAutogradMeta>(
               p_ab_autograd_meta));
@@ -78,7 +81,7 @@ class TensorWrapper {
 
  private:
   bool full_reserved_;
-  int64_t output_rank_;
+  std::pair<size_t, size_t> out_rank_info_;
   pt::Tensor intermidiate_tensor_;
-}
+};
 }  // namespace egr

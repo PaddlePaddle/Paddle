@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #include "paddle/fluid/eager/grad_node_info.h"
 
 namespace egr {
@@ -19,20 +21,20 @@ namespace egr {
 class GradNodeAccumulation : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
-  GradNodeAccumulation() : GradNodeBase(1) {}
+  GradNodeAccumulation() : GradNodeBase(1, 1) { SetDefaultGradInOutMeta(); }
+
   ~GradNodeAccumulation() override = default;
 
   // Functor: perform backward computations
-  virtual std::vector<pt::Tensor> operator()(
-      const std::vector<pt::Tensor>& grads) override;
-  
-  virtual void SetTensorWrappers(const std::vector<pt::Tensor>& tensors) override;
-  void RetainGrad(std::function<pt::Tensor(const pt::Tensor&)>& hook);
+  virtual std::vector<std::vector<pt::Tensor>> operator()(
+      const std::vector<std::vector<pt::Tensor>>& grads) override;
+
+  void RetainGrad(const std::function<pt::Tensor(const pt::Tensor&)>& hook);
 
  private:
   pt::Tensor accumulated_grad;
 
-  std::function<pt::Tensor(const pt::Tensor&)> retain_grad_hook;
+  std::function<pt::Tensor(const pt::Tensor&)> retain_grad_hook_;
 };
 
-} // namespace egr
+}  // namespace egr

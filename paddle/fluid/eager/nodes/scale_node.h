@@ -12,9 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/eager/grad_node_info.h"
+#pragma once
 
-/* 
+#include "paddle/fluid/eager/grad_node_info.h"
+#include "paddle/fluid/eager/tensor_wrapper.h"
+
+/*
     Each Operation has a specific GradNode inheritted from GradNodeBase
     A specific GradNode defines
     1. Input Tensors
@@ -27,21 +30,22 @@ namespace egr {
 class GradNodeScale : public GradNodeBase {
  public:
   // Constructor: configure fwd input tensors to grad node
-  GradNodeScale() : GradNodeBase(1) {}
+  GradNodeScale(size_t bwd_in_slot_num, size_t bwd_out_slot_num)
+      : GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}
   ~GradNodeScale() override = default;
 
   // Functor: perform backward computations
-  virtual std::vector<pt::Tensor> operator()(
-      const std::vector<pt::Tensor>& grads) override;
-  
-  virtual void SetTensorWrappers(const std::vector<pt::Tensor>& tensors) override;
-  
-  void SetAttributes(float scale);
+  virtual std::vector<std::vector<pt::Tensor>> operator()(
+      const std::vector<std::vector<pt::Tensor>>& grads) override;
+
+  void SetTensorWrappers_X(const std::vector<pt::Tensor>& tensors);
+
+  void SetAttributes_scale(float scale);
 
   // Members: define fwd input tensors
-  // For Scale there is no fwd input tensor needed   
+  // For Scale there is no fwd input tensor needed
  private:
-  float scale_ = 1.0;
+  float scale_{1.0};
 };
 
-} // namespace egr
+}  // namespace egr

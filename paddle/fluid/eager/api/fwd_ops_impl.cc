@@ -28,40 +28,67 @@
 
 #include "paddle/fluid/eager/nodes/scale_node.h"
 
-#include "paddle/top/api/all.h"
 #include "paddle/fluid/eager/function_api.h"
+#include "paddle/top/api/all.h"
 
 namespace egr {
 
-std::vector<pt::Tensor> scale(pt::Tensor& x, float scale, float bias,
-                              bool bias_after_scale, bool trace_backward) {
-    // Run Forward
-    std::vector<pt::Tensor> outs(1);
-    ScaleAPI(x, scale, bias, bias_after_scale, outs);
-    
-    AutogradMeta* p_autograd_in = EagerUtils::autograd_meta(x);
-    AutogradMeta* p_autograd_out = EagerUtils::autograd_meta(outs[0]);
-    // Add GradNode
-    if (EagerUtils::ComputeRequireGrad(&p_autograd_in, 1, &p_autograd_out, 1,
-                                      trace_backward)) {
-        // Set OutRank
-        p_autograd_out->SetOutRank(0);
+pt::Tensor scale(const pt::Tensor& x, float scale, float bias,
+                 bool bias_after_scale, bool trace_backward) {
+  // 1. Run Forward
+  // 1.1 Create outputs
+  pt::Tensor out;
+  // 1.2 Need by original op, we assemble ins, outs, attrs here
 
-        // Init GradNode
-        auto scale_node = std::make_shared<GradNodeScale>();
-        scale_node->SetAttributes(scale);
+  // 1.3 Call forward C++ api
+  ScaleAPI(x, scale, bias, bias_after_scale, &out);
 
-        // Set Next Edges
-        scale_node->AddEdges({ p_autograd_in });
-        
-        // Set TensorWrappers
-        scale_node->SetTensorWrappers({ x });
+  // 2. Build Backward Depends
+  // 2.1 Get AutogradMetas for all ins and outs
+  auto p_autograd_in = EagerUtils::unsafe_autograd_meta(x);
+  // NOTE: Call EagerUtils::multi_autograd_meta  when we have vector of outputs
+  auto p_autograd_out = EagerUtils::autograd_meta(&out);
 
-        // Set History
-        EagerUtils::SetHistoryForTensor(outs[0], scale_node);
-    }
+  // 2.2 Add GradNode
+  // 2.2.1 ComputeRequireGrad
+  // TODO(jiabin) :make this function accept different kinds of input
+  if (EagerUtils::ComputeRequireGrad(&p_autograd_in, 1, &p_autograd_out, 1,
+                                     trace_backward)) {
+    // 2.2.2 Set OutRankInfo for outputs this needs to be as same as Edges's
+    // input_rank_
+    /** Note:
+    // 1. We provide EagerUtils::SetMultiOutRank(vector<AutogradMeta*>),
+    // since we have some of Operator has servel slot name with duplicate
+    outputs.
+    // 2. We call AutogradMeta's SetOutput Rank only when we have single output
+    with
+    // single slot name.
+    **/
+    p_autograd_out->SetSingleOutRankWithSlot(0, 0);
 
-    return outs;
+    // Init GradNode
+    auto scale_node = std::make_shared<GradNodeScale>(/* fwd_in_slot_num */ 1,
+                                                      /* bwd_in_slot_num */ 1);
+
+    // Pass Attributes to GradNode
+    scale_node->SetAttributes_scale(scale);
+
+    // Set Next Edges
+    scale_node->AddEdges({p_autograd_in}, /*slot id*/ 0);
+
+    // Set TensorWrappers
+    scale_node->SetTensorWrappers_X({x});
+
+    // Set Grad out rank as same as fwd input and set stop gradient to bwd
+    scale_node->SetGradOutMeta(*p_autograd_in, /*slot id*/ 0);
+    // Set Grad out rank as same as fwd input and set stop gradient to bwd
+    scale_node->SetGradInMeta(*p_autograd_out, /*slot id*/ 0);
+
+    // Set History for output set current Grad Node for
+    EagerUtils::SetHistory({p_autograd_out}, scale_node);
+  }
+
+  return out;
 }
 
 }  // namespace egr
