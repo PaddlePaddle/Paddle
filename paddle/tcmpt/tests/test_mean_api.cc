@@ -15,10 +15,10 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
+#include "paddle/tcmpt/api/include/dev/symbols.h"
 #include "paddle/tcmpt/api/include/math.h"
-#include "paddle/tcmpt/core/dense_tensor.h"
 
-#include "paddle/tcmpt/cpu/math.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
@@ -58,7 +58,3 @@ TEST(API, mean) {
   auto actual_result = dense_out->data<float>()[0];
   ASSERT_NEAR(expect_result, actual_result, 1e-6f);
 }
-
-// TODO(chenweihang): register kernel in test, all kernels in cpu/math.h are
-// registered
-PT_REGISTER_KERNEL_FOR_TEST("mean", CPU, NCHW, pt::Mean, float, double) {}

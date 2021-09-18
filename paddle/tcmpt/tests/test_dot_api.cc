@@ -15,10 +15,10 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/tcmpt/api/include/dot.h"
-#include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/api/include/dev/symbols.h"
+#include "paddle/tcmpt/api/include/linalg.h"
 
-#include "paddle/tcmpt/cpu/dot.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
@@ -74,18 +74,3 @@ TEST(API, dot) {
   ASSERT_NEAR(expect_result[1], actual_result1, 1e-6f);
   ASSERT_NEAR(expect_result[2], actual_result2, 1e-6f);
 }
-
-// TODO(chenweihang): register kernel in test, all kernels in cpu/math.h are
-// registered
-using complex64 = ::paddle::platform::complex<float>;
-using complex128 = ::paddle::platform::complex<double>;
-PT_REGISTER_KERNEL_FOR_TEST("dot",
-                            CPU,
-                            NCHW,
-                            pt::Dot,
-                            float,
-                            double,
-                            int,
-                            int64_t,
-                            complex64,
-                            complex128) {}

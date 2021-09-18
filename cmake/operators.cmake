@@ -344,7 +344,7 @@ function(op_library TARGET)
     # only the grad kernel is left, if the USE_OP still be declared in the original way,
     # the symbol will can not be found, so special treatment is needed here, and it will
     # need to be deleted after the complete migration of the kernel in the future.
-    foreach(forward_moved_op "mean")
+    foreach(forward_moved_op "mean" "dot")
         if ("${TARGET}" STREQUAL "${forward_moved_op}")
             file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
             file(APPEND ${pybind_file} "USE_OP_KERNEL(${TARGET}_grad);\n")

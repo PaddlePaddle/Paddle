@@ -21,6 +21,8 @@
 
 namespace pt {
 
+using CPUContext = paddle::platform::CPUDeviceContext;
+
 template <typename T>
 void Dot(const CPUContext& dev_ctx,
          const DenseTensor& x,
