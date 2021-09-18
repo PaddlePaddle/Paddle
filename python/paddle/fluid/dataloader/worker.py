@@ -256,14 +256,15 @@ def _worker_loop(dataset, dataset_kind, indices_queue, out_queue, done_event,
                  auto_collate_batch, collate_fn, drop_last, init_fn, worker_id,
                  num_workers, use_shared_memory):
     try:
-        # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
-        # some shared memory objects may have been applied for but have not yet
-        # been put into the inter-process Queue. This part of the object needs
-        # to be cleaned up when the process ends.
-        CleanupFuncRegistrar.register(_cleanup_mmap)
+        if sys.platform not in ['win32', 'darwin']:
+            # NOTE: [ mmap files clear ] When the child process exits unexpectedly,
+            # some shared memory objects may have been applied for but have not yet
+            # been put into the inter-process Queue. This part of the object needs
+            # to be cleaned up when the process ends.
+            CleanupFuncRegistrar.register(_cleanup_mmap)
 
-        # set signal handler
-        core._set_process_signal_handler()
+            # set signal handler
+            core._set_process_signal_handler()
 
         # set different numpy seed for each worker
         try:

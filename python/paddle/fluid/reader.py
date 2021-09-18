@@ -350,15 +350,15 @@ class DataLoader(object):
         self.places = _convert_places(places)
 
         assert num_workers >= 0, "num_workers should be a non-negative value"
-        if num_workers > 0 and (sys.platform == 'darwin' or
-                                sys.platform == 'win32'):
-            warnings.warn(
-                "DataLoader with multi-process mode is not supported on MacOs and Windows currently." \
-                " Please use signle-process mode with num_workers = 0 instead")
-            num_workers = 0
         self.num_workers = num_workers
 
         self.use_shared_memory = use_shared_memory
+        if use_shared_memory and (sys.platform == 'darwin' or
+                                sys.platform == 'win32'):
+            warnings.warn(
+                "DataLoader with multi-process mode is not fully supported on MacOs and Windows currently." \
+                " Please use multi-process mode with use_shared_memory = False instead")
+            use_shared_memory = False
         if use_shared_memory and num_workers == 0:
             self.use_shared_memory = False
 

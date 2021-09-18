@@ -389,8 +389,9 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             self._workers.append(worker)
             self._worker_status.append(True)
 
-        core._set_process_pids(id(self), tuple(w.pid for w in self._workers))
-        _set_SIGCHLD_handler()
+        if sys.platform not in ['win32', 'darwin']:
+            core._set_process_pids(id(self), tuple(w.pid for w in self._workers))
+            _set_SIGCHLD_handler()
 
     def _clear_and_remove_data_queue(self):
         if self._data_queue is not None:
