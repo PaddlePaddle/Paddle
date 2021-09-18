@@ -16,8 +16,10 @@ limitations under the License. */
 
 // develop apis
 #include "paddle/tcmpt/api/include/dev/core.h"
+#include "paddle/tcmpt/api/include/dev/dot.h"
 #include "paddle/tcmpt/api/include/dev/math.h"
 
 // user apis
+#include "paddle/tcmpt/api/include/dot.h"
 #include "paddle/tcmpt/api/include/math.h"
 #include "paddle/tcmpt/api/include/tensor.h"
