@@ -5021,6 +5021,22 @@ class Program(object):
                     "All feeded_var_names of Program._prune_with_input() can only be "
                     "str, but received %s." % type(var))
 
+        # find out all variables that can be generated or updated with given feed
+        generatable_vars = set()
+
+        for idx, op in enumerate(self.global_block().ops):
+            runnable_op = True
+            for name in op.input_arg_names:
+                if not self.global_block().has_var(name):
+                    continue
+                if self.global_block().var(name).persistable:
+                    continue
+                if name not in generatable_vars.union(feeded_var_names):
+                    runnable_op = False
+                    break
+            if runnable_op:
+                generatable_vars = generatable_vars.union(op.output_arg_names)
+
         targets_idx = []
         for t in targets:
             if not isinstance(t, Operator):
@@ -5038,7 +5054,9 @@ class Program(object):
                 # (2) the variable is not leaf, and we need to prune the op that generates it.
                 # In both cases, wo can just skip target_op of that it.
                 if name in feeded_var_names:
-                    continue
+                    # however if the var is also updated by a runnable op, will shall keep it
+                    if name not in generatable_vars:
+                        continue
 
                 # After transpiler processing, the op that output this
                 # variable maybe has been changed, so t.op is not reliable
@@ -5055,7 +5073,7 @@ class Program(object):
                             continue
                         else:
                             target_op = op
-                            break
+
                 if target_op is None:
                     raise ValueError(
                         "The target variable used for pruning should have an "

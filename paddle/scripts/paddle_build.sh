@@ -219,6 +219,7 @@ function cmake_base() {
         -DPY_VERSION=${PY_VERSION:-2.7}
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build}
         -DWITH_PSCORE=${distibuted_flag}
+        -DWITH_PSLIB=${WITH_PSLIB:-OFF}
         -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
         -DWITH_XPU=${WITH_XPU:-OFF}
@@ -231,6 +232,8 @@ function cmake_base() {
         -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF}
         -DWITH_STRIP=${WITH_STRIP:-ON}
         -DON_INFER=${ON_INFER:-OFF}
+        -DWITH_HETERPS=${WITH_HETERPS:-OFF}
+        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} 
     ========================================
 EOF
     # Disable UNITTEST_USE_VIRTUALENV in docker because
@@ -261,6 +264,7 @@ EOF
         -DPY_VERSION=${PY_VERSION:-2.7} \
         -DCMAKE_INSTALL_PREFIX=${INSTALL_PREFIX:-/paddle/build} \
         -DWITH_PSCORE=${distibuted_flag} \
+        -DWITH_PSLIB=${WITH_PSLIB:-OFF} \
         -DWITH_GLOO=${gloo_flag} \
         -DLITE_GIT_TAG=release/v2.8 \
         -DWITH_XPU=${WITH_XPU:-OFF} \
@@ -273,6 +277,8 @@ EOF
         -DWITH_ASCEND_INT64=${WITH_ASCEND_INT64:-OFF} \
         -DWITH_STRIP=${WITH_STRIP:-ON} \
         -DON_INFER=${ON_INFER:-OFF} \
+        -DWITH_HETERPS=${WITH_HETERPS:-OFF} \
+        -DWITH_FLUID_ONLY=${WITH_FLUID_ONLY:-OFF} \
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF};build_error=$?
     if [ "$build_error" != 0 ];then
         exit 7;
@@ -2576,6 +2582,9 @@ function main() {
         ;;
       gpu_cicheck_py35)
         parallel_test
+        ;;
+      build_gpubox)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         ;;
       check_xpu)
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}

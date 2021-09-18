@@ -41,6 +41,7 @@ void* GetTensorRtDsoHandle();
 void* GetMKLMLDsoHandle();
 void* GetOpDsoHandle(const std::string& dso_name);
 void* GetNvtxDsoHandle();
+void* GetCUFFTDsoHandle();
 
 void SetPaddleLibPath(const std::string&);
 }  // namespace dynload

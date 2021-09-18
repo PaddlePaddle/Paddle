@@ -30,7 +30,6 @@ void EventManager::WaitEvent(const Instruction& instruction,
 }
 
 void EventManager::RecordEvent(const Instruction& instruction,
-                               const OpFuncNode& op_func_node,
                                const platform::Place& place) {
   // If InterpreterCore in on CPUPlace, do nothing.
   if (platform::is_cpu_place(place)) return;
