@@ -435,7 +435,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
 
-        # FIXME(wangxi): mp should prune duplicated param_grads when calc
         # amp inf_var & clip global_norm_var
 
         rings = [self.mp_ring_id, self.pp_ring_id]
@@ -446,7 +445,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         gradientclip_helper = GradientClipHelper(None)
         gradientclip_helper.sync_global_norm(
-            main_block, [self.mp_ring_id, self.pp_ring_id])
+            main_block, [self.mp_ring_id, self.pp_ring_id], self.mp_rank)
 
     def _insert_loss_grad_scale_op(self):
         main_block = self._main_program.global_block()
@@ -455,7 +454,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         global_dp_degree = self.sharding_degree * self.dp_degree
         assert int(global_dp_degree) == global_dp_degree
         if global_dp_degree > 1:
-            insert_scale_loss_grad_ops(main_block, scale=1.0 / global_dp_degree)
+            insert_scale_loss_grad_ops(main_block, scale=global_dp_degree)
 
         main_block._sync_with_cpp()
 

@@ -202,6 +202,28 @@ void BindCudaStream(py::module *m_ptr) {
 
            )DOC",
            py::arg("event") = nullptr)
+      .def_property_readonly(
+          "cuda_stream",
+          [](paddle::platform::stream::CUDAStream &self) {
+            VLOG(10) << self.raw_stream();
+            return reinterpret_cast<std::uintptr_t>(self.raw_stream());
+          },
+          R"DOC(
+      retrun the raw cuda stream of type cudaStream_t as type int.
+
+      Examples:
+        .. code-block:: python
+
+            # required: gpu
+            import paddle
+            import ctypes
+            cuda_stream = paddle.device.cuda.current_stream().cuda_stream
+            print(cuda_stream)
+            
+            ptr = ctypes.c_void_p(cuda_stream)  # convert back to void*
+            print(ptr)
+
+           )DOC")
 #endif
       .def("__init__",
            [](paddle::platform::stream::CUDAStream &self,

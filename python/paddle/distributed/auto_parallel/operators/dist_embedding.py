@@ -16,6 +16,8 @@ from .common import DistributedOperator
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator
 from .common import register_distributed_operator_impl
+from .common import copy_distributed_attr_for_var
+from .common import copy_distributed_attr_for_dist_op
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -173,13 +175,16 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
                 stop_gradient=Out_var.stop_gradient)
+            # copy Out_var's dist_attr to intermediate_var_0's dist_attr
+            copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
+                                          Out_var)
 
             check_variable_and_dtype(
                 Out_var, 'tensor',
                 ['float16', 'float32', 'float64', 'int32', 'int64'],
                 'c_allreduce_sum')
 
-            dst_block.append_op(
+            c_embedding_op = dst_block.append_op(
                 type='c_embedding',
                 inputs={'Ids': [Ids_var],
                         'W': [Weight_var]},
@@ -187,7 +192,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                 attrs={"start_index": relative_idx})
 
             # use_model_parallel
-            dst_block.append_op(
+            c_allreduce_sum_op = dst_block.append_op(
                 type='c_allreduce_sum',
                 inputs={'X': [intermediate_var_0]},
                 outputs={'Out': [Out_var]},
@@ -196,6 +201,12 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                     'use_calc_stream': True,
                     'use_model_parallel': True,
                 })
+
+            # copy serial op's dist_attr to dist op's dist_attr
+            copy_distributed_attr_for_dist_op(c_embedding_op, dst_block,
+                                              op_dist_attr)
+            copy_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
+                                              op_dist_attr)
 
         if in_dygraph_mode():
             raise NotImplementedError(

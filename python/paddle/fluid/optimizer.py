@@ -1433,12 +1433,12 @@ class MomentumOptimizer(Optimizer):
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
         lr = self._create_param_lr(param_and_grad)
-
+        master_weight = None
         if framework.in_dygraph_mode():
-            _, _ = _C_ops.momentum(param_and_grad[0], param_and_grad[1],
-                                   velocity_acc, lr, param_and_grad[0],
-                                   velocity_acc, 'mu', self._momentum,
-                                   'use_nesterov', self._use_nesterov)
+            _, _, _ = _C_ops.momentum(
+                param_and_grad[0], param_and_grad[1], velocity_acc, lr,
+                master_weight, param_and_grad[0], velocity_acc, master_weight,
+                'mu', self._momentum, 'use_nesterov', self._use_nesterov)
             return None
 
         attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
@@ -1982,26 +1982,29 @@ class LarsMomentumOptimizer(Optimizer):
         self._master_weights = {}
 
     def _create_master_weight(self, param):
-        assert isinstance(self.helper, LayerHelper)
+        if param.name in self._master_weights:
+            var = self._master_weights[param.name]
+        else:
+            assert isinstance(self.helper, LayerHelper)
 
-        var_name = param.name + '_fp32_master'
-        var_name = unique_name.generate(var_name)
-        var = layers.create_global_var(
-            name=var_name,
-            shape=param.shape,
-            value=0,
-            dtype='float32',
-            persistable=True)
-        block = self.helper.startup_program.global_block()
-        block.append_op(
-            type="cast",
-            inputs={"X": [param]},
-            outputs={"Out": [var]},
-            attrs={
-                "in_dtype": param.dtype,
-                "out_dtype": core.VarDesc.VarType.FP32
-            })
-        self._master_weights[param.name] = var
+            var_name = param.name + '_fp32_master'
+            var_name = unique_name.generate(var_name)
+            var = layers.create_global_var(
+                name=var_name,
+                shape=param.shape,
+                value=0,
+                dtype='float32',
+                persistable=True)
+            block = self.helper.startup_program.global_block()
+            block.append_op(
+                type="cast",
+                inputs={"X": [param]},
+                outputs={"Out": [var]},
+                attrs={
+                    "in_dtype": param.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32
+                })
+            self._master_weights[param.name] = var
         return var
 
     def _get_accumulator(self, name, param):
@@ -2462,12 +2465,14 @@ class AdamOptimizer(Optimizer):
                 self._beta1, Variable) else self._beta1.numpy().item(0)
             _beta2 = self._beta2 if not isinstance(
                 self._beta2, Variable) else self._beta2.numpy().item(0)
-            _, _, _, _, _ = _C_ops.adam(
+            master_weight = None
+            _, _, _, _, _, _ = _C_ops.adam(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
-                beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
-                moment2, beta1_pow_acc, beta2_pow_acc, 'epsilon', self._epsilon,
-                'lazy_mode', self._lazy_mode, 'min_row_size_to_use_multithread',
-                1000, 'beta1', _beta1, 'beta2', _beta2, 'use_global_beta_pow',
+                beta1_pow_acc, beta2_pow_acc, master_weight, param_and_grad[0],
+                moment1, moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
+                'epsilon', self._epsilon, 'lazy_mode', self._lazy_mode,
+                'min_row_size_to_use_multithread', 1000, 'beta1', _beta1,
+                'beta2', _beta2, 'use_global_beta_pow',
                 self._use_global_beta_pow)
 
             return None
@@ -3959,62 +3964,59 @@ class ExponentialMovingAverage(object):
 
 
     Args:
-	decay (float, optional): The exponential decay rate, usually close to 1, such as 
-            0.999, 0.9999, ... . Default 0.999.
-        thres_steps (Variable|None): If not `None`, schedule the decay rate. 
-            Default None.
-        name (str|None): For detailed information, please refer to 
-            :ref:`api_guide_Name`. Usually name is no need to set and None by 
-            default.
+        decay (float, optional): The exponential decay rate, usually close to 1, such as 0.999, 0.9999, ... . Default 0.999.
+        thres_steps (Variable|None, optional): If not `None`, schedule the decay rate. Default None.
+        name (str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
 
 
     Examples:
 
-	.. code-block:: python
+        .. code-block:: python
 
-	    import numpy
-	    import paddle
-	    import paddle.fluid as fluid
+            import numpy
+            import paddle
+            import paddle.static as static
+            from paddle.static import ExponentialMovingAverage
 
-	    data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
-	    hidden = fluid.layers.fc(input=data, size=10)
-	    cost = fluid.layers.mean(hidden)
+            paddle.enable_static()
 
-	    test_program = fluid.default_main_program().clone(for_test=True)
+            data = static.data(name='x', shape=[-1, 5], dtype='float32')
+            hidden = static.nn.fc(x=data, size=10)
+            cost = paddle.mean(hidden)
 
-	    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-	    optimizer.minimize(cost)
+            test_program = static.default_main_program().clone(for_test=True)
+            optimizer = paddle.optimizer.Adam(learning_rate=0.001)
+            optimizer.minimize(cost)
 
-	    global_steps = fluid.layers.autoincreased_step_counter()
-	    ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
-	    ema.update()
+            ema = ExponentialMovingAverage(0.999)
+            ema.update()
 
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
+            place = paddle.CPUPlace()
+            exe = static.Executor(place)
+            exe.run(static.default_startup_program())
 
-	    for pass_id in range(3):
-		for batch_id in range(6):
-		    data = numpy.random.random(size=(10, 5)).astype('float32')
-		    exe.run(program=fluid.default_main_program(),
-			feed={'x': data}, 
-			fetch_list=[cost.name])
+            for pass_id in range(3):
+                for batch_id in range(6):
+                    data = numpy.random.random(size=(10, 5)).astype('float32')
+                    exe.run(program=static.default_main_program(),
+                    feed={'x': data}, 
+                    fetch_list=[cost.name])
 
-		# usage 1
-		with ema.apply(exe):
-		    data = numpy.random.random(size=(10, 5)).astype('float32')
-		    exe.run(program=test_program,
-			    feed={'x': data}, 
-			    fetch_list=[hidden.name])
-			    
+                # usage 1
+                with ema.apply(exe):
+                    data = numpy.random.random(size=(10, 5)).astype('float32')
+                    exe.run(program=test_program,
+                        feed={'x': data}, 
+                        fetch_list=[hidden.name])
 
-		 # usage 2
-		with ema.apply(exe, need_restore=False):
-		    data = numpy.random.random(size=(10, 5)).astype('float32')
-		    exe.run(program=test_program,
-			    feed={'x': data}, 
-			    fetch_list=[hidden.name])
-		ema.restore(exe)
+                # usage 2
+                with ema.apply(exe, need_restore=False):
+                    data = numpy.random.random(size=(10, 5)).astype('float32')
+                    exe.run(program=test_program,
+                        feed={'x': data}, 
+                        fetch_list=[hidden.name])
+                ema.restore(exe)
+
     """
 
     def __init__(self, decay=0.999, thres_steps=None, name=None):
@@ -4381,7 +4383,7 @@ class PipelineOptimizer(object):
                         persistable=source_var.persistable)
                 else:
                     dest_var = block._clone_variable(source_var, False)
-                dest_var.stop_gradient = source_var.stop_gradient
+                self._clone_var_attr(dest_var, source_var)
             # When use with sharding, allreduce_sum and allreduce_max
             # used for global gradient clip and amp will be added by sharding.
             op_idx += 1
@@ -4547,8 +4549,13 @@ class PipelineOptimizer(object):
             persistable=ref_var.persistable,
             is_data=ref_var.is_data,
             need_check_feed=ref_var.desc.need_check_feed())
-        new_var.stop_gradient = ref_var.stop_gradient
+        self._clone_var_attr(new_var, ref_var)
         return new_var
+
+    def _clone_var_attr(self, dest, src):
+        dest.stop_gradient = src.stop_gradient
+        if hasattr(src, 'is_distributed'):
+            dest.is_distributed = src.is_distributed
 
     def _strip_grad_suffix(self, name):
         """
@@ -5019,16 +5026,13 @@ class PipelineOptimizer(object):
         if self._num_microbatches == 1: return
         for index, op in reversed(tuple(enumerate(list(block.ops)))):
             if self._is_loss_grad_op(op):
-                loss_grad_var = block.vars[op.output_arg_names[0]]
-                block._insert_op(
-                    index=index + 1,
-                    type='scale',
-                    inputs={'X': loss_grad_var},
-                    outputs={'Out': loss_grad_var},
-                    attrs={
-                        'scale': 1.0 / self._num_microbatches,
-                        self._op_role_key: self._op_role.Backward
-                    })
+                assert op.type == 'fill_constant', \
+                    "loss_grad_op must be fill_constant op, " \
+                    "but this op is {}".format(op.type)
+                assert op.has_attr('value')
+                loss_scale = float(op.attr('value'))
+                loss_scale = loss_scale / self._num_microbatches
+                op._set_attr('value', loss_scale)
                 break
 
     def _rename_gradient_var_name(self, block):
@@ -5212,6 +5216,8 @@ class PipelineOptimizer(object):
                 persistable=True,
                 stop_gradient=False)
             real_param = main_block.var(param)
+            if hasattr(real_param, 'is_distributed'):
+                merged_grad_var.is_distributed = real_param.is_distributed
             tmp_size = self._get_var_size(real_grad)
             # two strategies for splitting the grad
             # 1. the current segment's size reach the user defined grad_size_in_MB
