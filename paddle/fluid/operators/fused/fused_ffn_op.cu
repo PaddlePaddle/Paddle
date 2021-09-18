@@ -28,6 +28,11 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
+inline bool IsActivationSupported(const std::string& act_method) {
+  std::set<std::string> activations = {"relu", "gelu"};
+  return activations.count(act_method) > 0;
+}
+
 template <typename DeviceContext, typename T>
 class FusedFfnKernel : public framework::OpKernel<T> {
  public:
@@ -134,6 +139,8 @@ class FusedFfnKernel : public framework::OpKernel<T> {
     auto dropout2_out = context.Output<framework::Tensor>("Dropout2Out");
 
     const std::string act_method = context.Attr<std::string>("act_method");
+    IsActivationSupported(act_method);
+
     const bool normalize_pre_or_post =
         context.Attr<bool>("normalize_pre_or_post");
     const float epsilon1 = context.Attr<float>("epsilon1");

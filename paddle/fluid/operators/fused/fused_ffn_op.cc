@@ -60,6 +60,11 @@ class FusedFfnOp : public framework::OperatorWithKernel {
     auto dim_x = context->GetInputDim("X");
     auto mat_dim_x =
         math::CreateMatrixDescriptor(RowMatrixFromVector(dim_x), 0, false);
+    // verify for the pre layer_norm, the feature size must be larger than 1
+    PADDLE_ENFORCE_GT(
+        mat_dim_x.width_, static_cast<size_t>(1),
+        platform::errors::InvalidArgument("Product from the X shape[1] to "
+                                          "shape[n-1] must be larger than 1!"));
     auto dim_Linear1Weight = context->GetInputDim("Linear1Weight");
     auto tmp_dim_x = dim_x;
     tmp_dim_x[dim_x.size() - 1] =
@@ -140,7 +145,6 @@ class FusedFfnOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("epsilon1", "epsilon of layer_norm1").SetDefault(1e-5f);
     AddAttr<float>("epsilon2", "epsilon of layer_norm2").SetDefault(1e-5f);
     AddAttr<std::string>("act_method", "act_method").SetDefault("gelu");
-
     AddAttr<float>("dropout_prob1", "the dropout_prob of dropout1")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
@@ -167,7 +171,6 @@ class FusedFfnOpMaker : public framework::OpProtoAndCheckerMaker {
                   "dropout_implementation1 can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
-
     AddAttr<std::string>("dropout_implementation2",
                          "the dropout implementation of dropout2")
         .SetDefault("downgrade_in_infer")
@@ -178,27 +181,25 @@ class FusedFfnOpMaker : public framework::OpProtoAndCheckerMaker {
                   "dropout_implementation2 can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
-
     AddAttr<bool>("is_test1", "the is_test of dropout1").SetDefault(false);
     AddAttr<bool>("is_test2", "the is_test of dropout2").SetDefault(false);
     AddAttr<bool>("fix_seed1", "the is_test of dropout1").SetDefault(false);
     AddAttr<bool>("fix_seed2", "the is_test of dropout2").SetDefault(false);
     AddAttr<int>("seed1", "Dropout1 random seed.").SetDefault(0);
     AddAttr<int>("seed2", "Dropout2 random seed.").SetDefault(0);
-
     AddComment(R"DOC(
         The fused feedforward Operator. the function of this operator is the same 
-        as the following pseudo code:
-            residual = src;
-            ln1_out = src;
-            if(normalize_pre_or_post){
-                ln1_out = layer_norm(src);
-            }
-            out = linear(dropout(activation(dropout(linear(ln1_out)))));
-            if(!normalize_pre_or_post) {
-                out = layer_norm(out);
-            }
-)DOC");
+    as the following pseudo code:
+        residual = src;
+        ln1_out = src;
+        if(normalize_pre_or_post){
+            ln1_out = layer_norm(src);
+        }
+        out = linear(dropout(activation(dropout(linear(ln1_out)))));
+        if(!normalize_pre_or_post) {
+            out = layer_norm(out);
+        }
+        )DOC");
   }
 };
 

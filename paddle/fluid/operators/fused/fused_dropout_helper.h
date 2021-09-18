@@ -151,8 +151,7 @@ class FusedDropoutHelper {
           dropout_param_.dropout_prob, dropout_param_.is_upscale_in_train,
           dropout_param_.is_test, src, bias, out, mask, ctx);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "the activation only support gelu or relu!"));
+      // no supported, verify on the caller
     }
   }
 
@@ -170,8 +169,7 @@ class FusedDropoutHelper {
           relu_grad, dout, mask, src, bias, dropout_param_.dropout_prob,
           dropout_param_.is_upscale_in_train, rows_, cols_, d_src, d_bias, ctx);
     } else {
-      PADDLE_THROW(platform::errors::InvalidArgument(
-          "the activation only support gelu or relu!"));
+      // no supported, verify on the caller
     }
   }
 
@@ -213,10 +211,6 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
           LayerNormForward<
               T, U, kBlockDim><<<this->rows_, kBlockDim, 0, ctx.stream()>>>(
               src, gamma, beta, out, mean, variance, epsilon_, this->cols_));
-      default:
-        PADDLE_THROW(platform::errors::InvalidArgument(
-            "the cols_ must be larger than 1"));
-        break;
     }
   }
 
@@ -243,10 +237,8 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
       vec_size = 1;
     }
     int threads = GetDesiredBlockDim(this->cols_ / vec_size);
-
     int increment = ((this->cols_ - 1) / (threads * vec_size) + 1) * vec_size;
     increment = this->dropout_param_.UpdateSeedAndIncrement(ctx, increment);
-
     LaunchLayernormResidualDropoutBias<T, MaskType>(
         this->rows_, this->cols_, increment, this->dropout_param_.seed,
         this->dropout_param_.dropout_prob, epsilon_,
