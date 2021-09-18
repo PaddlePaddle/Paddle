@@ -17,6 +17,8 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/platform/errors.h"
+#include "paddle/fluid/platform/event.h"
 
 namespace paddle {
 namespace framework {
@@ -127,6 +129,80 @@ TEST(CostModelTest, TestProfileMeasure_Program) {
   EXPECT_GT(op0_time_ms, 0);
   EXPECT_GT(op1_time_ms, 0);
   EXPECT_GT(cost_data.GetWholeTimeMs(), op0_time_ms + op1_time_ms);
+}
+
+TEST(CostModelTest, TestProfileMeasure_UnsupportedDevice) {
+  CostModel cost_model;
+  ProgramDesc program = CreateTestProgram();
+  ProgramDesc empty_program;
+
+  EXPECT_THROW(cost_model.ProfileMeasure(program, empty_program, "wrong_device",
+                                         {"time"}),
+               paddle::platform::EnforceNotMet);
+}
+
+TEST(CostDataTest, TestGetGraphProgram) {
+  CostData cost_data;
+  EXPECT_EQ(cost_data.GetGraph(), nullptr);
+  EXPECT_EQ(cost_data.GetProgram(), nullptr);
+}
+
+TEST(CostDataTest, TestUninitailzed) {
+  CostData cost_data;
+  EXPECT_EQ(cost_data.GetWholeMemoryBytes(), CostData::NOT_MEASURED);
+  EXPECT_EQ(cost_data.GetWholeTimeMs(), CostData::NOT_MEASURED);
+}
+
+TEST(CostDataTest, TestEmptyProgram) {
+  CostData cost_data;
+  ProgramDesc empty_program("");
+  EXPECT_EQ(cost_data.SetCostData(empty_program, {}), true);
+  EXPECT_EQ(cost_data.GetWholeMemoryBytes(), 0);
+  EXPECT_EQ(cost_data.GetWholeTimeMs(), 0);
+}
+
+TEST(CostDataTest, TestEmptyTimeEvent) {
+  CostData cost_data;
+  ProgramDesc program = CreateTestProgram();
+  EXPECT_EQ(cost_data.SetCostData(program, {}), false);
+  EXPECT_EQ(cost_data.GetWholeMemoryBytes(), CostData::NOT_MEASURED);
+  EXPECT_EQ(cost_data.GetWholeTimeMs(), CostData::NOT_MEASURED);
+}
+
+TEST(CostDataTest, TestNoOpEvent) {
+  CostData cost_data;
+  ProgramDesc program = CreateTestProgram();
+  std::vector<platform::Event> thread_events;
+  thread_events.push_back(
+      platform::Event(platform::EventType::kPushRange, "not exist name", 0));
+  std::vector<std::vector<platform::Event>> time_events{thread_events};
+  EXPECT_EQ(cost_data.SetCostData(program, time_events), false);
+}
+
+TEST(CostDataTest, TestNoOpPopEvent) {
+  CostData cost_data;
+  ProgramDesc program = CreateTestProgram();
+  std::vector<platform::Event> thread_events;
+  thread_events.push_back(
+      platform::Event(platform::EventType::kPushRange, "fake_test_op", 0));
+  std::vector<std::vector<platform::Event>> time_events{thread_events};
+  EXPECT_EQ(cost_data.SetCostData(program, time_events), false);
+}
+
+TEST(CostDataTest, TestNoWholeEvent) {
+  CostData cost_data;
+  ProgramDesc program = CreateTestProgram();
+  std::vector<platform::Event> thread_events;
+  thread_events.push_back(
+      platform::Event(platform::EventType::kPushRange, "fake_test_op", 0));
+  thread_events.push_back(
+      platform::Event(platform::EventType::kPopRange, "fake_test_op", 0));
+  thread_events.push_back(
+      platform::Event(platform::EventType::kPushRange, "fake_test_op", 0));
+  thread_events.push_back(
+      platform::Event(platform::EventType::kPopRange, "fake_test_op", 0));
+  std::vector<std::vector<platform::Event>> time_events{thread_events};
+  EXPECT_EQ(cost_data.SetCostData(program, time_events), false);
 }
 
 }  // namespace framework

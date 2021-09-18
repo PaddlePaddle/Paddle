@@ -16,6 +16,7 @@
 
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -24,6 +25,8 @@ namespace framework {
 using ir::Graph;
 using platform::Event;
 using platform::MemEvent;
+
+const double CostData::NOT_MEASURED = -1;
 
 CostData::~CostData() {
   // TODO(zhhsplendid): when we save a copy of program/graph, we should delete

@@ -53,8 +53,9 @@ class CostData {
       const ProgramDesc& program,
       const std::vector<std::vector<platform::Event>>& time_events);
 
+  static const double NOT_MEASURED;
+
  private:
-  constexpr static double NOT_MEASURED = -1;
   ir::Graph* graph_{nullptr};
   ProgramDesc* program_{nullptr};
   std::map<int, double> op_time_ms_;  // from Op Node id to time
