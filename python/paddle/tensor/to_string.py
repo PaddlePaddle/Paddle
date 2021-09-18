@@ -278,7 +278,7 @@ def eager_tensor_to_string(tensor, prefix='Tensor'):
     if size > DEFAULT_PRINT_OPTIONS.threshold:
         sumary = True
 
-    max_width, signed = _get_max_width(_to_sumary(np_tensor))
+    max_width, signed = _get_max_width(_to_summary(np_tensor))
 
     data = _format_tensor(
         np_tensor, sumary, indent=indent, max_width=max_width, signed=signed)
