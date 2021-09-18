@@ -35,7 +35,6 @@ _set_use_system_allocator(True)
 
 
 def create_or_get_tensor(scope, var_name, var, place):
-    print(create_or_get_tensor)
     """Get tensor, if not found, create a new one."""
     tensor = scope.var(var_name).get_tensor()
     if var is not None:
@@ -118,7 +117,6 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         # Single-GPU, N = 32 per GPU
         main, startup, outs = self._build_program(place, layout, seed, False,
                                                   only_forward)
-        print('main: ', main)
         exe = fluid.Executor(place)
         exe.run(startup)
         fetch_names = [v.name for v in outs] + [
@@ -160,7 +158,6 @@ class TestSyncBatchNormOpTraining(unittest.TestCase):
         comp_prog = compiler.CompiledProgram(main).with_data_parallel(
             outs[0].name if not only_forward else None,
             build_strategy=build_strategy)
-        print('comp_prog: ', comp_prog)
         sync_bn_fetches = exe.run(program=comp_prog,
                                   feed={'input': data},
                                   fetch_list=fetch_names)
