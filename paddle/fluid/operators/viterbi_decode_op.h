@@ -154,19 +154,6 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     math::SetConstant<DeviceContext, T> float_functor;
     math::SetConstant<DeviceContext, int64_t> int_functor;
 
-    if (with_start_stop_tag) {
-      Tensor initial_alpha =
-          float_tensor_buffer.GetBufferBlock({batch_size, n_labels - 1});
-      float_functor(dev_ctx, &initial_alpha, static_cast<T>(-10000.0));
-      Tensor alpha_start = float_tensor_buffer.GetBufferBlock({batch_size, 1});
-      float_functor(dev_ctx, &alpha_start, static_cast<T>(0.0));
-
-      math::ConcatFunctor<DeviceContext, T> concat_functor;
-      concat_functor(dev_ctx, {initial_alpha, alpha_start}, 1, &alpha);
-    } else {
-      float_functor(dev_ctx, &alpha, static_cast<T>(0.0));
-    }
-
     std::vector<Tensor> historys;
     Tensor zero = int_tensor_buffer.GetBufferBlock({1});
     int_functor(dev_ctx, &zero, 0);
@@ -185,10 +172,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
         float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
     Tensor mask = int_tensor_buffer.GetBufferBlock({batch_size, 1});
     Tensor int_mask = int_tensor_buffer.GetBufferBlock({batch_size});
-    Tensor inv_mask = float_tensor_buffer.GetBufferBlock({batch_size, 1});
     Tensor float_mask = float_tensor_buffer.GetBufferBlock({batch_size, 1});
-    Tensor alpha_temp =
-        float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
     Tensor stop_trans_exp =
         float_tensor_buffer.GetBufferBlock({1, 1, n_labels});
     Tensor start_trans_exp =
@@ -205,32 +189,36 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
                                            &start_trans_exp};
     std::vector<Tensor*> outputs{&rest_trans_exp, &stop_trans_exp,
                                  &start_trans_exp};
-    math::SplitFunctor<DeviceContext, T> functor;
-    functor(dev_ctx, trans_exp, shape_refer, 1, &outputs);
+    math::SplitFunctor<DeviceContext, T> split_functor;
+    split_functor(dev_ctx, trans_exp, shape_refer, 1, &outputs);
     stop_trans_exp.Resize({1, n_labels});
-
-    for (int64_t i = 0; i < max_seq_len; ++i) {
+    start_trans_exp.Resize({1, n_labels});
+    auto logit0 = inputs_t_exp.Slice(0, 1);
+    logit0.Resize({batch_size, n_labels});
+    if (with_start_stop_tag) {
+      ADD(logit0, start_trans_exp, alpha, T);
+      GET_CAST_MASK(left_length, one, mask, float_mask, EqualFunctor, T);
+      MUL(stop_trans_exp, float_mask, alpha_nxt, T);
+      ADD(alpha, alpha_nxt, alpha, T);
+    } else {
+      alpha = logit0;
+    }
+    SUB(left_length, one, left_length, int64_t);
+    for (int64_t i = 1; i < max_seq_len; ++i) {
       Tensor logit = inputs_t_exp.Slice(i, i + 1);
       logit.Resize({batch_size, n_labels});
-      if (i == 0 && !with_start_stop_tag) {
-        framework::TensorCopy(logit, curr_place, dev_ctx, &alpha);
-        SUB(left_length, one, left_length, int64_t);
-        continue;
-      }
       Tensor& alpha_exp = alpha.Resize({batch_size, n_labels, 1});
 
       ADD(alpha_exp, trans_exp, alpha_trn_sum, T);
 
       ELE_MAX(alpha_trn_sum, alpha_max, {1});
 
-      if (i >= 1) {
-        auto alpha_argmax_temp = alpha_argmax_unbind[i - 1];
-        alpha_argmax_temp.Resize({batch_size, n_labels});
-        argmax3(dev_ctx, static_cast<LoDTensor&>(alpha_trn_sum),
-                reinterpret_cast<LoDTensor*>(&alpha_argmax_temp),
-                alpha_trn_sum.dims(), 1, false);
-        historys.push_back(alpha_argmax_temp);
-      }
+      auto alpha_argmax_temp = alpha_argmax_unbind[i - 1];
+      alpha_argmax_temp.Resize({batch_size, n_labels});
+      argmax3(dev_ctx, static_cast<LoDTensor&>(alpha_trn_sum),
+              reinterpret_cast<LoDTensor*>(&alpha_argmax_temp),
+              alpha_trn_sum.dims(), 1, false);
+      historys.push_back(alpha_argmax_temp);
 
       ADD(alpha_max, logit, alpha_nxt, T);
 
@@ -240,21 +228,21 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       // alpha = mask * alpha_nxt + (1 - mask) * alpha
       GET_CAST_MASK(left_length, zero, mask, float_mask, GreaterThanFunctor, T);
 
+      // alpha_nxt = mask * alpha_nxt
+      MUL(alpha_nxt, float_mask, alpha_nxt, T);
       // inv_mask = 1 - mask
-      SUB(float_one, float_mask, inv_mask, T);
+      SUB(float_one, float_mask, float_mask, T);
       // alpha = (1 - mask) * alpha
-      MUL(alpha, inv_mask, alpha, T);
-      // alpha_temp = mask * alpha_nxt
-      MUL(alpha_nxt, float_mask, alpha_temp, T);
-      // alpha += alpha_temp
-      ADD(alpha, alpha_temp, alpha, T);
+      MUL(alpha, float_mask, alpha, T);
+      // alpha += alpha_nxt
+      ADD(alpha, alpha_nxt, alpha, T);
 
-      if (with_start_stop_tag) {
+      if (with_start_stop_tag) {  // cost 10% time
         GET_CAST_MASK(left_length, one, mask, float_mask, EqualFunctor, T);
         // trans_exp: [1, n, n]
         // alpha += mask * trans_exp[:, self.stop_idx]
-        MUL(stop_trans_exp, float_mask, alpha_temp, T);
-        ADD(alpha, alpha_temp, alpha, T);
+        MUL(stop_trans_exp, float_mask, alpha_nxt, T);
+        ADD(alpha, alpha_nxt, alpha, T);
       }
       SUB(left_length, one, left_length, int64_t);
     }
