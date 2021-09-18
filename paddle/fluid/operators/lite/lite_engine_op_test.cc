@@ -30,6 +30,8 @@ using paddle::inference::lite::CreateTensor;
 using paddle::inference::lite::serialize_params;
 namespace paddle {
 namespace operators {
+
+#if defined(PADDLE_WITH_CUDA)
 TEST(LiteEngineOp, engine_op) {
   framework::ProgramDesc program;
   auto* block_ = program.Proto()->mutable_blocks(0);
@@ -75,8 +77,8 @@ TEST(LiteEngineOp, engine_op) {
   platform::CPUDeviceContext ctx(place);
 #endif
   // Prepare variables.
-  CreateTensor(&scope, "x", std::vector<int64_t>({2, 4}), false);
-  CreateTensor(&scope, "y", std::vector<int64_t>({2, 4}), false);
+  CreateTensor(&scope, "x", std::vector<int64_t>({2, 4}), true);
+  CreateTensor(&scope, "y", std::vector<int64_t>({2, 4}), true);
   CreateTensor(&scope, "out", std::vector<int64_t>({2, 4}), false);
 
   ASSERT_EQ(block_->ops_size(), 4);
@@ -113,5 +115,7 @@ TEST(LiteEngineOp, engine_op) {
   engine_op->Run(scope, place);
   LOG(INFO) << "done";
 }
+#endif
+
 }  // namespace operators
 }  // namespace paddle
