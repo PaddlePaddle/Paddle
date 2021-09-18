@@ -70,9 +70,9 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"sparse_momentum", {"Param", "Grad", "Velocity", "Index", "LearningRate"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
     {"run_program", {"X", "Params"}},
-    {"fused_ffn",
-     {"Seed1", "Seed2", "Linear1Bias", "Linear2Bias", "Ln1Scale", "Ln1Bias",
-      "Ln2Scale", "Ln2Bias"}},
+    // {"fused_ffn",
+    // {"Seed1", "Seed2", "Linear1Bias", "Linear2Bias", "Ln1Scale", "Ln1Bias",
+    //  "Ln2Scale", "Ln2Bias"}},
     {"matrix_rank", {"X", "TolTensor"}}};
 
 // NOTE(zhiqiu): Like op_ins_map.
