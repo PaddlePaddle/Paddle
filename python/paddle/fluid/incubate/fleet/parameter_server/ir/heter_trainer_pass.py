@@ -52,7 +52,7 @@ def split_heter_worker_ops_pass(program, config, stage_id, device):
     return heter_program
 
 
-def split_trainer_ops_pass(program, config):
+def split_trainer_ops_pass(program, config, default_device = "cpu"):
     """
     split cpu-trainer program from origin-program
     1. find heter op (located on different device)
@@ -60,9 +60,9 @@ def split_trainer_ops_pass(program, config):
     3. create cpu-trainer program, add send&recv op 
     """
     # Todo: support user define default_device (MrChengmo)
-    default_deveice = "cpu"
+    default_device_ = default_device
     program, heter_ops, default_ops, program_block_ops = find_heter_ops(
-        program, default_deveice)
+        program, default_device_)
     program_block_ops = union_forward_gradient_op(program_block_ops)
 
     block_vars_detail = find_block_joints(program, program_block_ops, heter_ops)

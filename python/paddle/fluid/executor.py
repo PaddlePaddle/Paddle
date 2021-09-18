@@ -1445,8 +1445,8 @@ class Executor(object):
 
         trainer._set_debug(debug)
         trainer._set_fetch_var_and_info(fetch_list, fetch_info, print_period)
-        ctx = [scope, trainer]
         if use_program_cache == True:
+            ctx = [scope, trainer]
             self._add_ctx_cache(cache_key, ctx)
         return scope, trainer
 

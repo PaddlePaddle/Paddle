@@ -146,3 +146,6 @@ REGISTER_OPERATOR(distributed_lookup_table, ops::DistributedLookupTableOp,
 REGISTER_OP_CPU_KERNEL(distributed_lookup_table,
                        ops::DistributedLookupTableKernel<
                            paddle::platform::CPUDeviceContext, float>);
+REGISTER_OP_CUDA_KERNEL(distributed_lookup_table,
+                       ops::DistributedLookupTableKernel<
+                           paddle::platform::CUDADeviceContext, float>);
