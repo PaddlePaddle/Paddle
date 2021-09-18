@@ -184,7 +184,6 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     Tensor alpha_nxt =
         float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
     Tensor mask = int_tensor_buffer.GetBufferBlock({batch_size, 1});
-    Tensor tag_mask = int_tensor_buffer.GetBufferBlock({batch_size});
     Tensor int_mask = int_tensor_buffer.GetBufferBlock({batch_size});
     Tensor inv_mask = float_tensor_buffer.GetBufferBlock({batch_size, 1});
     Tensor float_mask = float_tensor_buffer.GetBufferBlock({batch_size, 1});
@@ -270,8 +269,9 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
 
     // tag_mask = paddle.cast((left_length >= 0), 'int64')
     left_length.Resize({batch_size});
-    GET_CAST_MASK(left_length, zero, tag_mask, int_mask, GreaterEqualFunctor,
-                  int64_t);
+    ElementwiseComputeEx<GreaterEqualFunctor<int64_t>, DeviceContext, int64_t>(
+        ctx, &left_length, &zero, -1, GreaterEqualFunctor<int64_t>(),
+        &int_mask);
 
     // last_ids_update = last_ids * tag_mask
     int last_ids_index = 1;
@@ -292,8 +292,9 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       Tensor& last_ids_update = batch_path[actual_len - last_ids_index];
       hist->Resize({batch_size * n_labels});
       CPUGather<int64_t, int64_t>(dev_ctx, *hist, gather_idx, &last_ids_update);
-      GET_CAST_MASK(left_length, zero, tag_mask, int_mask, GreaterEqualFunctor,
-                    int64_t);
+      ElementwiseComputeEx<GreaterEqualFunctor<int64_t>, DeviceContext,
+                           int64_t>(ctx, &left_length, &zero, -1,
+                                    GreaterEqualFunctor<int64_t>(), &int_mask);
       MUL(last_ids_update, int_mask, last_ids_update, int64_t);
       // tag_mask = 1 - tag_mask
       SUB(one, int_mask, int_mask, int64_t);
