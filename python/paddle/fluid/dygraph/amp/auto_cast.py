@@ -69,8 +69,8 @@ AMP_RELATED_FLAGS_SETTING = {
     'FLAGS_cudnn_batchnorm_spatial_persistent': 1,
 }
 
-PURE_FP16_BLACK_LIST = {' '}
-PURE_FP16_WHITE_LIST = {'lookup_table', 'lookup_table_v2'}
+PURE_FP16_WHITE_LIST = {' '}
+PURE_FP16_BLACK_LIST = {'lookup_table', 'lookup_table_v2'}
 
 
 #NOTE(zhiqiu): similar as paddle.fluid.contrib.mixed_precision.fp16_lists.AutoMixedPrecisionLists._update_list
