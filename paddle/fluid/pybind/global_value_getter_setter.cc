@@ -38,27 +38,6 @@
 PADDLE_FORCE_LINK_FLAG(free_idle_chunk);
 PADDLE_FORCE_LINK_FLAG(free_when_no_cache_hit);
 
-// debug
-DECLARE_bool(cpu_deterministic);
-
-// IR
-DECLARE_bool(convert_all_blocks);
-
-// executor
-DECLARE_bool(enable_parallel_graph);
-DECLARE_string(pe_profile_fname);
-DECLARE_string(print_sub_graph_dir);
-DECLARE_bool(new_executor_use_inplace);
-
-// memory management
-DECLARE_bool(eager_delete_scope);
-DECLARE_int32(fuse_parameter_groups_size);
-DECLARE_double(fuse_parameter_memory_size);
-
-// others
-DECLARE_int32(inner_op_parallelism);
-DECLARE_bool(enable_unused_var_check);
-
 // NOTE: where are these 2 flags from?
 #ifdef PADDLE_WITH_DISTRIBUTE
 DECLARE_int32(rpc_get_thread_num);
@@ -253,18 +232,6 @@ struct RegisterGetterSetterVisitor : public boost::static_visitor<void> {
 };
 
 static void RegisterGlobalVarGetterSetter() {
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_cpu_deterministic);
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_convert_all_blocks);
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_enable_parallel_graph);
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_pe_profile_fname);
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_print_sub_graph_dir);
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_new_executor_use_inplace);
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_eager_delete_scope);
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_fuse_parameter_groups_size);
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_fuse_parameter_memory_size);
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_inner_op_parallelism);
-  REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_enable_unused_var_check);
-
 #ifdef PADDLE_WITH_DITRIBUTE
   REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_get_thread_num);
   REGISTER_PUBLIC_GLOBAL_VAR(FLAGS_rpc_prefetch_thread_num);

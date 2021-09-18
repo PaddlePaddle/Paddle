@@ -1497,7 +1497,6 @@ def qr(x, mode="reduced", name=None):
         x (Tensor): The input tensor. Its shape should be `[..., M, N]`,
             where ... is zero or more batch dimensions. M and N can be arbitrary
             positive number. The data type of x should be float32 or float64. 
-
         mode (str, optional): A flag to control the behavior of qr, the default is "reduced". 
             Suppose x's shape is `[..., M, N]` and denoting :math:`K = min(M, N)`:
             If mode = "reduced", qr op will return reduced Q and R matrices, 
@@ -1506,14 +1505,12 @@ def qr(x, mode="reduced", name=None):
             which means Q's shape is `[..., M, M]` and R's shape is `[..., M, N]`.
             If mode = "r", qr op will only return reduced R matrix, which means
             R's shape is `[..., K, N]`.
-
-        name (str, optional): Name for the operation (optional, default is None). 
-            For more information, please refer to :ref:`api_guide_Name`.
-
+            
     Returns:
         If mode = "reduced" or mode = "complete", qr will return a two tensor-tuple, which represents Q and R 
         If mode = "r", qr will return a tensor which represents R.
-
+        
+    Examples:            
             import paddle 
 
             x = paddle.to_tensor([[1.0, 2.0], [1.0, 3.0], [4.0, 6.0]]).astype('float64')
@@ -1552,6 +1549,66 @@ def qr(x, mode="reduced", name=None):
         return q, r
 
       
+def eigvals(x, name=None):
+    """
+    Compute the eigenvalues of one or more general matrices.
+    
+    Warning: 
+        The gradient kernel of this operator does not yet developed. 
+        If you need back propagation through this operator, please replace it with paddle.linalg.eig.
+
+    Args:
+        x (Tensor): A square matrix or a batch of square matrices whose eigenvalues will be computed.
+            Its shape should be `[*, M, M]`, where `*` is zero or more batch dimensions. 
+            Its data type should be float32, float64, complex64, or complex128.
+        name (str, optional): Name for the operation (optional, default is None). 
+            For more information, please refer to :ref:`api_guide_Name`.
+            
+    Returns:
+        Tensor: A tensor containing the unsorted eigenvalues which has the same batch dimensions with `x`. 
+            The eigenvalues are complex-valued even when `x` is real.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            paddle.set_device("cpu")
+            paddle.seed(1234)
+
+            x = paddle.rand(shape=[3, 3], dtype='float64')
+            # [[0.02773777, 0.93004224, 0.06911496],
+            #  [0.24831591, 0.45733623, 0.07717843],
+            #  [0.48016702, 0.14235102, 0.42620817]])
+
+            print(paddle.linalg.eigvals(x))
+            # [(-0.27078833542132674+0j), (0.29962280156230725+0j), (0.8824477020120244+0j)] #complex128
+    """
+
+    check_variable_and_dtype(x, 'dtype',
+                             ['float32', 'float64', 'complex64', 'complex128'],
+                             'eigvals')
+
+    x_shape = list(x.shape)
+    if len(x_shape) < 2:
+        raise ValueError(
+            "The dimension of Input(x) should be at least 2, but received x's dimention = {}, x's shape = {}".
+            format(len(x_shape), x_shape))
+
+    if x_shape[-1] != x_shape[-2]:
+        raise ValueError(
+            "The last two dimensions of Input(x) should be equal, but received x's shape = {}".
+            format(x_shape))
+
+    if in_dygraph_mode():
+        return _C_ops.eigvals(x)
+
+    helper = LayerHelper('eigvals', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='eigvals', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+
 def multi_dot(x, name=None):
     """
     Multi_dot is an operator that calculates multiple matrix multiplications.

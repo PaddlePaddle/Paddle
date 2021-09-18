@@ -1433,12 +1433,12 @@ class MomentumOptimizer(Optimizer):
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
         lr = self._create_param_lr(param_and_grad)
-
+        master_weight = None
         if framework.in_dygraph_mode():
-            _, _ = _C_ops.momentum(param_and_grad[0], param_and_grad[1],
-                                   velocity_acc, lr, param_and_grad[0],
-                                   velocity_acc, 'mu', self._momentum,
-                                   'use_nesterov', self._use_nesterov)
+            _, _, _ = _C_ops.momentum(
+                param_and_grad[0], param_and_grad[1], velocity_acc, lr,
+                master_weight, param_and_grad[0], velocity_acc, master_weight,
+                'mu', self._momentum, 'use_nesterov', self._use_nesterov)
             return None
 
         attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
@@ -1982,26 +1982,29 @@ class LarsMomentumOptimizer(Optimizer):
         self._master_weights = {}
 
     def _create_master_weight(self, param):
-        assert isinstance(self.helper, LayerHelper)
+        if param.name in self._master_weights:
+            var = self._master_weights[param.name]
+        else:
+            assert isinstance(self.helper, LayerHelper)
 
-        var_name = param.name + '_fp32_master'
-        var_name = unique_name.generate(var_name)
-        var = layers.create_global_var(
-            name=var_name,
-            shape=param.shape,
-            value=0,
-            dtype='float32',
-            persistable=True)
-        block = self.helper.startup_program.global_block()
-        block.append_op(
-            type="cast",
-            inputs={"X": [param]},
-            outputs={"Out": [var]},
-            attrs={
-                "in_dtype": param.dtype,
-                "out_dtype": core.VarDesc.VarType.FP32
-            })
-        self._master_weights[param.name] = var
+            var_name = param.name + '_fp32_master'
+            var_name = unique_name.generate(var_name)
+            var = layers.create_global_var(
+                name=var_name,
+                shape=param.shape,
+                value=0,
+                dtype='float32',
+                persistable=True)
+            block = self.helper.startup_program.global_block()
+            block.append_op(
+                type="cast",
+                inputs={"X": [param]},
+                outputs={"Out": [var]},
+                attrs={
+                    "in_dtype": param.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32
+                })
+            self._master_weights[param.name] = var
         return var
 
     def _get_accumulator(self, name, param):
@@ -2462,12 +2465,14 @@ class AdamOptimizer(Optimizer):
                 self._beta1, Variable) else self._beta1.numpy().item(0)
             _beta2 = self._beta2 if not isinstance(
                 self._beta2, Variable) else self._beta2.numpy().item(0)
-            _, _, _, _, _ = _C_ops.adam(
+            master_weight = None
+            _, _, _, _, _, _ = _C_ops.adam(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
-                beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
-                moment2, beta1_pow_acc, beta2_pow_acc, 'epsilon', self._epsilon,
-                'lazy_mode', self._lazy_mode, 'min_row_size_to_use_multithread',
-                1000, 'beta1', _beta1, 'beta2', _beta2, 'use_global_beta_pow',
+                beta1_pow_acc, beta2_pow_acc, master_weight, param_and_grad[0],
+                moment1, moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
+                'epsilon', self._epsilon, 'lazy_mode', self._lazy_mode,
+                'min_row_size_to_use_multithread', 1000, 'beta1', _beta1,
+                'beta2', _beta2, 'use_global_beta_pow',
                 self._use_global_beta_pow)
 
             return None
