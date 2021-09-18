@@ -209,6 +209,7 @@ def __bootstrap__():
         'sort_sum_gradient',
         'max_inplace_grad_add',
         'apply_pass_to_program',
+        'new_executor_use_inplace',
         'enable_cache_op_run',
         'enable_cache_tensor_address',
         'cuda_graph_op_num',

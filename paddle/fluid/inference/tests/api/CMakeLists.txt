@@ -708,6 +708,8 @@ if(WITH_GPU)
     set_tests_properties(paddle_infer_api_copy_tensor_tester PROPERTIES TIMEOUT 30)
 endif()
 
+cc_test(paddle_infer_api_errors_test SRCS paddle_infer_api_errors_tester.cc DEPS paddle_inference_api)
+
 if("$ENV{CI_SKIP_CPP_TEST}" STREQUAL "ON")
     return()
 endif()
