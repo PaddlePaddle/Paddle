@@ -29,6 +29,7 @@
 
 DECLARE_int64(cuda_graph_op_num);
 DECLARE_int64(cuda_graph_warmup_iteration);
+DECLARE_bool(build_cuda_graph_once);
 
 namespace paddle {
 namespace framework {
@@ -125,13 +126,11 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     auto tmp_traced_ops = traced_ops_;
     // tmp_traced_ops.resize(first_backward_idx_);
     if (iteration_num_ > FLAGS_cuda_graph_warmup_iteration &&
-        (FLAGS_cuda_graph_op_num >= 1 ||
-         FLAGS_cuda_graph_op_num <=
-             static_cast<int64_t>(tmp_traced_ops.size()))) {
-      traced_ops.assign(tmp_traced_ops.begin(),
-                        tmp_traced_ops.begin() + FLAGS_cuda_graph_op_num);
-      left_ops.assign(tmp_traced_ops.begin() + FLAGS_cuda_graph_op_num,
-                      tmp_traced_ops.end());
+        FLAGS_cuda_graph_op_num >= 1) {
+      size_t num =
+          std::min<size_t>(tmp_traced_ops.size(), FLAGS_cuda_graph_op_num);
+      traced_ops.assign(tmp_traced_ops.begin(), tmp_traced_ops.begin() + num);
+      left_ops.assign(tmp_traced_ops.begin() + num, tmp_traced_ops.end());
       LOG_FIRST_N(WARNING, 1) << "traced ops: "
                               << GetOpHandleDebugString(traced_ops);
       LOG_FIRST_N(WARNING, 1) << "left ops: "
@@ -172,13 +171,15 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     if (!is_exception_free) {
       ExecutionFinal(&fetch_ops);
     }
-    if (cuda_graph_) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphDestroy(cuda_graph_));
-      cuda_graph_ = nullptr;
-    }
-    if (cuda_graph_exec_) {
-      PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphExecDestroy(cuda_graph_exec_));
-      cuda_graph_exec_ = nullptr;
+    if (!FLAGS_build_cuda_graph_once) {
+      if (cuda_graph_) {
+        PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphDestroy(cuda_graph_));
+        cuda_graph_ = nullptr;
+      }
+      if (cuda_graph_exec_) {
+        PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphExecDestroy(cuda_graph_exec_));
+        cuda_graph_exec_ = nullptr;
+      }
     }
   } else {
     traced_ops_.clear();
