@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/ir/cost_model.h"
 
+#include <memory>
 #include "paddle/fluid/framework/executor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/errors.h"
@@ -122,8 +123,8 @@ bool CostData::SetCostData(const ProgramDesc& program,
   }
 
   event_index = 0;
-  size_t start_profiler_idx = 0;
-  size_t stop_profiler_idx = 0;
+  int start_profiler_idx = -1;
+  int stop_profiler_idx = -1;
   while (event_index < main_thread_events.size()) {
     if (main_thread_events[event_index].name() == "_start_profiler_") {
       start_profiler_idx = event_index;
@@ -133,7 +134,7 @@ bool CostData::SetCostData(const ProgramDesc& program,
     }
     ++event_index;
   }
-  if (start_profiler_idx != 0 && stop_profiler_idx != 0) {
+  if (start_profiler_idx != -1 && stop_profiler_idx != -1) {
     double cpu_time_ms = main_thread_events[start_profiler_idx].CpuElapsedMs(
         main_thread_events[stop_profiler_idx]);
     double gpu_time_ms = 0;
@@ -150,43 +151,47 @@ bool CostData::SetCostData(const ProgramDesc& program,
   return event_to_cost_success;
 }
 
-void PrintEvents(std::vector<std::vector<Event>>* time_events,
-                 std::vector<std::vector<MemEvent>>* mem_events) {
-  for (size_t i = 0; i < time_events->size(); ++i) {
-    for (size_t j = 0; j < (*time_events)[i].size(); ++j) {
-      VLOG(4) << "Print time event (" << i << ", " << j << ")" << std::endl;
-      VLOG(4) << (*time_events)[i][j].name() << " "
-              << (*time_events)[i][j].attr() << std::endl;
-      VLOG(4) << "This: " << &(*time_events)[i][j]
-              << ", Parent: " << (*time_events)[i][j].parent() << std::endl;
-      if ((*time_events)[i][j].role() == platform::EventRole::kInnerOp) {
-        VLOG(4) << "role kInnerOp" << std::endl;
-      } else if ((*time_events)[i][j].role() ==
-                 platform::EventRole::kUniqueOp) {
-        VLOG(4) << "role kUniqueOp" << std::endl;
-      } else if ((*time_events)[i][j].role() ==
-                 platform::EventRole::kOrdinary) {
-        VLOG(4) << "role kOrdinary" << std::endl;
-      } else if ((*time_events)[i][j].role() == platform::EventRole::kSpecial) {
-        VLOG(4) << "role kSpecial" << std::endl;
-      }
+void PrintEvents(const std::vector<std::vector<Event>>* time_events,
+                 const std::vector<std::vector<MemEvent>>* mem_events) {
+  if (time_events != nullptr) {
+    for (size_t i = 0; i < time_events->size(); ++i) {
+      for (size_t j = 0; j < (*time_events)[i].size(); ++j) {
+        VLOG(4) << "Print time event (" << i << ", " << j << ")" << std::endl;
+        VLOG(4) << (*time_events)[i][j].name() << " "
+                << (*time_events)[i][j].attr() << std::endl;
+        VLOG(4) << "This: " << &(*time_events)[i][j]
+                << ", Parent: " << (*time_events)[i][j].parent() << std::endl;
+        if ((*time_events)[i][j].role() == platform::EventRole::kInnerOp) {
+          VLOG(4) << "role kInnerOp" << std::endl;
+        } else if ((*time_events)[i][j].role() ==
+                   platform::EventRole::kUniqueOp) {
+          VLOG(4) << "role kUniqueOp" << std::endl;
+        } else if ((*time_events)[i][j].role() ==
+                   platform::EventRole::kOrdinary) {
+          VLOG(4) << "role kOrdinary" << std::endl;
+        } else if ((*time_events)[i][j].role() ==
+                   platform::EventRole::kSpecial) {
+          VLOG(4) << "role kSpecial" << std::endl;
+        }
 
-      if ((*time_events)[i][j].type() == platform::EventType::kPopRange) {
-        VLOG(4) << "type kPopRange" << std::endl;
-      } else if ((*time_events)[i][j].type() ==
-                 platform::EventType::kPushRange) {
-        VLOG(4) << "type kPushRange" << std::endl;
-      } else if ((*time_events)[i][j].type() == platform::EventType::kMark) {
-        VLOG(4) << "type kMark" << std::endl;
+        if ((*time_events)[i][j].type() == platform::EventType::kPopRange) {
+          VLOG(4) << "type kPopRange" << std::endl;
+        } else if ((*time_events)[i][j].type() ==
+                   platform::EventType::kPushRange) {
+          VLOG(4) << "type kPushRange" << std::endl;
+        } else if ((*time_events)[i][j].type() == platform::EventType::kMark) {
+          VLOG(4) << "type kMark" << std::endl;
+        }
+        VLOG(4) << std::endl;
       }
-      VLOG(4) << std::endl;
     }
   }
-
-  for (size_t i = 0; i < mem_events->size(); ++i) {
-    for (size_t j = 0; j < (*mem_events)[i].size(); ++j) {
-      VLOG(4) << "Print mem event (" << i << ", " << j << ")" << std::endl;
-      VLOG(4) << (*mem_events)[i][j].annotation() << std::endl;
+  if (mem_events != nullptr) {
+    for (size_t i = 0; i < mem_events->size(); ++i) {
+      for (size_t j = 0; j < (*mem_events)[i].size(); ++j) {
+        VLOG(4) << "Print mem event (" << i << ", " << j << ")" << std::endl;
+        VLOG(4) << (*mem_events)[i][j].annotation() << std::endl;
+      }
     }
   }
 }
@@ -229,22 +234,20 @@ CostData CostModel::ProfileMeasure(
   EnableProfiler(profiler_state);
   executor.Run(main_program, &scope, /*block_id = */ 0);
 
-  std::vector<std::vector<Event>>* time_events =
-      new std::vector<std::vector<Event>>();
-  std::vector<std::vector<MemEvent>>* mem_events =
-      new std::vector<std::vector<MemEvent>>();
+  std::unique_ptr<std::vector<std::vector<Event>>> time_events(
+      new std::vector<std::vector<Event>>());
+  std::unique_ptr<std::vector<std::vector<MemEvent>>> mem_events(
+      new std::vector<std::vector<MemEvent>>());
 
-  CompleteProfilerEvents(/*tracer_profile= */ nullptr, time_events, mem_events);
+  CompleteProfilerEvents(/*tracer_profile= */ nullptr, time_events.get(),
+                         mem_events.get());
 
   // TODO(zhhsplendid): remove debug vlog after this series of work
-  PrintEvents(time_events, mem_events);
+  PrintEvents(time_events.get(), mem_events.get());
 
   // Convert events to cost data
   CostData cost_data;
   cost_data.SetCostData(main_program, *time_events);
-
-  delete time_events;
-  delete mem_events;
 
   return cost_data;
 }
