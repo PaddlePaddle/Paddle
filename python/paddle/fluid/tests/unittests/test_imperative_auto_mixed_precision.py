@@ -199,10 +199,6 @@ class TestAmpScaler(unittest.TestCase):
                     scaled_loss.backward()
                     optimize_ops, params_grads = scaler.minimize(optimizer,
                                                                  scaled_loss)
-                    '''
-                    optimize_ops, params_grads = scaler.minimize(optimizer,
-                                                                 scaled_loss)
-                    '''
                 else:
                     print('use no scaler')
                     loss.backward()
@@ -255,6 +251,52 @@ class TestAmpScaler(unittest.TestCase):
                 # param not update when tensor contains nan or inf
                 self.assertTrue(
                     np.array_equal(param.numpy(), params_init[param.name]))
+
+    def test_step_update_exception(self):
+        def func1():
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                             parameters=model.parameters())
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            data = paddle.rand([10, 3, 32, 32])
+            conv = model(data)
+            loss = paddle.mean(conv)
+            scaled = scaler.scale(loss)
+            scaled.backward()
+            scaler.unscale_(optimizer)
+            scaler.unscale_(optimizer)
+
+        self.assertRaises(RuntimeError, func1)
+
+        def func2():
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                             parameters=model.parameters())
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            data = paddle.rand([10, 3, 32, 32])
+            conv = model(data)
+            loss = paddle.mean(conv)
+            scaled = scaler.scale(loss)
+            scaled.backward()
+            scaler.step(optimizer)
+            scaler.unscale_(optimizer)
+
+        self.assertRaises(RuntimeError, func2)
+
+        def func3():
+            model = paddle.nn.Conv2D(3, 2, 3, bias_attr=True)
+            optimizer = paddle.optimizer.SGD(learning_rate=0.01,
+                                             parameters=model.parameters())
+            scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            data = paddle.rand([10, 3, 32, 32])
+            conv = model(data)
+            loss = paddle.mean(conv)
+            scaled = scaler.scale(loss)
+            scaled.backward()
+            scaler.step(optimizer)
+            scaler.step(optimizer)
+
+        self.assertRaises(RuntimeError, func3)
 
     def test_get_and_set(self):
         with fluid.dygraph.guard():
