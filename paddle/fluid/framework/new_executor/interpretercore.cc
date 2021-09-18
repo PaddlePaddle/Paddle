@@ -183,8 +183,7 @@ void InterpreterCore::Convert() {
       }
     }
 
-    stream_analyzer_.Schedule(vec_func_list_, filter_next, i,
-                              &vec_instruction_);
+    stream_analyzer_.Schedule(filter_next, &vec_instruction_, i);
 
     for (auto inst_id : filter_next) {
       dependecy_count_[inst_id]++;
