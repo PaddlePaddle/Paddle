@@ -42,6 +42,17 @@ def _check_instance(x, x_name, types=(int, float)):
                          format(types, x_name, type(x)))
 
 
+def _check_value_limitation(x, x_name, min_limit=1e-3):
+    def _check_value(x, x_name, min_limit=1e-3):
+        if isinstance(x, int) and min_limit is not None and x < min_limit:
+            raise ValueError(
+                "Excepted the input {} to be greater than {} but received x: {}. ".
+                format(x_name, min_limit, x))
+
+    for ele in x:
+        _check_value(ele, x_name)
+
+
 def _zero_padding_in_batch_and_channel(padding, channel_last):
     if channel_last:
         return list(padding[0]) == [0, 0] and list(padding[-1]) == [0, 0]
@@ -211,6 +222,9 @@ def avg_pool1d(x,
         stride = utils.convert_to_list(stride, 1, 'pool_stride')
         stride = [1] + stride
 
+    _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
+    _check_value_limitation(stride, "stride", min_limit=1e-3)
+
     channel_last = _channel_last("NCL", 1)
     padding, padding_algorithm = _update_padding_nd(
         padding, 1, channel_last=channel_last, ceil_mode=ceil_mode)
@@ -324,6 +338,9 @@ def avg_pool2d(x,
         stride = kernel_size
     else:
         stride = utils.convert_to_list(stride, 2, 'pool_stride')
+
+    _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
+    _check_value_limitation(stride, "stride", min_limit=1e-3)
 
     channel_last = _channel_last(data_format, 2)
     padding, padding_algorithm = _update_padding_nd(
@@ -447,6 +464,9 @@ def avg_pool3d(x,
     channel_last = _channel_last(data_format, 3)
     padding, padding_algorithm = _update_padding_nd(
         padding, 3, channel_last=channel_last, ceil_mode=ceil_mode)
+
+    _check_value_limitation(kernel_size, "kernel_size", min_limit=1e-3)
+    _check_value_limitation(stride, "stride", min_limit=1e-3)
 
     if in_dygraph_mode():
         output = _C_ops.pool3d(
@@ -654,17 +674,8 @@ def max_unpool2d(x,
                  name=None):
     """
     This API implements max unpooling 2d opereation.
+    See more details in :ref:`api_nn_pooling_MaxUnPool2D` .
 
-    `max_unpool2d` is not fully invertible, since the non-maximal values are lost.
-
-    `max_unpool2d` takes in as input the output of `max_unpool2d`
-    including the indices of the maximal values and computes a partial inverse
-    in which all non-maximal values are set to zero.
-    
-    `max_unpool2d` can map several input sizes to the same output
-    sizes. Hence, the inversion process can get ambiguous.
-    To accommodate this, you can provide the needed output size
-    as an additional argument `output_size` in the forward call.
 
     Args:
         x (Tensor): The input tensor of unpooling operator which is a 4-D tensor with
@@ -715,9 +726,8 @@ def max_unpool2d(x,
           
             import paddle
             import paddle.nn.functional as F
-            import numpy as np
 
-            data = paddle.to_tensor(np.random.uniform(-1, 1, [1, 1, 6, 6]).astype(np.float32))
+            data = paddle.rand(shape=[1,1,6,6])
             pool_out, indices = F.max_pool2d(data, kernel_size=2, stride=2, padding=0, return_mask=True)
             # pool_out shape: [1, 1, 3, 3],  indices shape: [1, 1, 3, 3]
             unpool_out = F.max_unpool2d(pool_out, indices, kernel_size=2, padding=0)

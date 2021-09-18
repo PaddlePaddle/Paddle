@@ -705,7 +705,7 @@ __global__ void LayerNormBackwardWhenBatchSizeIsOne(
   int64_t idx = threadIdx.x + blockIdx.x * blockDim.x;
   if (idx < feature_size) {
     auto var_val =
-        static_cast<U>(real_sqrt(static_cast<float>(var[idx]) + epsilon));
+        static_cast<U>(real_sqrt(static_cast<float>(var[0]) + epsilon));
     if (d_x != nullptr) {
       if (d_scale == nullptr) {
         d_x[idx] = static_cast<T>(static_cast<U>(d_y[idx]) / var_val);
@@ -717,7 +717,7 @@ __global__ void LayerNormBackwardWhenBatchSizeIsOne(
 
     if (d_scale != nullptr) {
       d_scale[idx] = static_cast<U>(d_y[idx]) *
-                     (static_cast<U>(x[idx]) - mean[idx]) / var_val;
+                     (static_cast<U>(x[idx]) - mean[0]) / var_val;
     }
 
     if (d_bias != nullptr) d_bias[idx] = static_cast<U>(d_y[idx]);
