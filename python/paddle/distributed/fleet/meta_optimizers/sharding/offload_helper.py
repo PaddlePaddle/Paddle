@@ -346,9 +346,9 @@ class OffloadHelper(object):
         recompute_to_fp16 = dict()
 
         def remove_param(input_name):
-            global_params.pop(input_name)
+            global_params.remove(input_name)
             if input_name in local_params:
-                local_params.pop(input_name)
+                local_params.remove(input_name)
             if input_name in param_to_fp16:
                 fp16_param = param_to_fp16.pop(input_name)
                 if fp16_param in fp16_param_to_recompute:
