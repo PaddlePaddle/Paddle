@@ -43,6 +43,80 @@ class GeneratePass : public Pass {
   proto::MultiPassDesc multi_pass_desc_;
 };
 
+namespace generate_pass {
+
+struct VarHelper;
+struct OpHelper;
+struct FunctionHelper;
+
+struct VarHelper {
+  VarHelper() = default;
+  explicit VarHelper(const char*);
+  // VarHelper(std::initializer_list<VarHelper>);
+};
+
+struct OpHelper {
+  explicit OpHelper(const char*);
+
+  VarHelper& operator()(std::pair<std::string, VarHelper>);
+  VarHelper& operator()(std::pair<std::string, std::vector<VarHelper>>);
+  VarHelper& operator()(
+      std::initializer_list<std::pair<std::string, VarHelper>>);
+  VarHelper& operator()(
+      std::initializer_list<std::pair<std::string, std::vector<VarHelper>>>);
+};
+
+struct FunctionHelper {
+  template <typename T>
+  explicit FunctionHelper(const T&& f) {
+    // using Var = GeneratePassRegister::VarHelper;
+    // static_assert(std::is_convertible<T, std::function<Var(Var, Var,
+    // Var)>>::value);
+    // 获取可执行的函数
+    // 执行
+    // 获取desc
+  }
+
+  proto::ProgramDesc program_desc_;
+};
+
+}  // namespace generate_pass
+
+struct PassPairs {
+  PassPairs() = default;
+
+  template <typename PT, typename RT>
+  explicit PassPairs(std::pair<PT, RT> t) {
+    // using Var = GeneratePassRegister::VarHelper;
+    // static_assert(std::is_convertible<PT, std::function<Var(Var, Var,
+    // Var)>>::value);
+  }
+
+  template <typename T1, typename T2>
+  void push_back(std::pair<T1, T2> t) {}
+
+  proto::MultiPassDesc ToMultiPassDesc();
+};
+
+// Use function to register in CC.
+template <PassPairs (*Functor)(void)>
+class CXXGeneratePass : public GeneratePass {
+ public:
+  CXXGeneratePass() : GeneratePass(Functor().ToMultiPassDesc()) {}
+};
+
+#define VAR_(name) ::paddle::framework::ir::generate_pass::VarHelper name
+#define OP_(type) ::paddle::framework::ir::generate_pass::OpHelper(#type)
+#define SUBGRAPH_(name) \
+  ::paddle::framework::ir::generate_pass::FunctionHelper name
+
+#define REGISTER_GENERATE_PASS(pass_type)                               \
+  paddle::framework::ir::PassPairs register_##pass_type();              \
+  REGISTER_PASS(                                                        \
+      pass_type,                                                        \
+      ::paddle::framework::ir::CXXGeneratePass<&register_##pass_type>); \
+  paddle::framework::ir::PassPairs register_##pass_type()
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle
