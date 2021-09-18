@@ -507,6 +507,12 @@ struct InstructionInfo {
   std::vector<size_t> dependecy_count_;
 };
 
+enum class OpFuncType {
+  kQueueSync = 0,   // CPU kernel, block host
+  kQueueAsync = 1,  // GPU Kernel or d2h, h2d, send, recv, broadcast
+};
+class RuntimeInferShapeContext;
+
 struct Instruction {
   OpKernelFunc kernel_func_;
   std::shared_ptr<RuntimeContext> runtime_ctx_;
@@ -522,13 +528,9 @@ struct Instruction {
   std::vector<EventInter> output_events_;
 
   platform::DeviceContext* dev_ctx_;  // not owned
+  OpFuncType type_;
 
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
-};
-
-enum class OpFuncType {
-  kQueueAsync,  // GPU Kernel or d2h, h2d, send, recv, broadcast
-  kQueueSync,   // CPU kernel, block host
 };
 
 struct OpFuncNode {

@@ -21,7 +21,6 @@ namespace framework {
 class EventManager {
  public:
   void RecordEvent(const Instruction& instruction,
-                   const OpFuncNode& op_func_node,
                    const platform::Place& place);
 
   void WaitEvent(const Instruction& instruction, const platform::Place& place);
