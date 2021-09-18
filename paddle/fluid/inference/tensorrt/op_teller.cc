@@ -1265,6 +1265,24 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+    if (op_type == "hard_sigmoid") {
+      if (!with_dynamic_shape) {
+        auto* block = desc.Block();
+        if (block == nullptr) {
+          VLOG(3) << "The block is null.";
+          return false;
+        }
+        auto x_var_name = desc.Input("X")[0];
+        auto* x_var_desc = block->FindVar(x_var_name);
+        const auto x_shape = x_var_desc->GetShape();
+        if (x_shape.size() <= 2) {
+          VLOG(3) << "hard_sigmoid op does not support input's dim less than 3 "
+                     "in tensorrt.";
+          return false;
+        }
+      }
+    }
+
     if ((*teller)(op_type, desc, use_no_calib_int8)) return true;
   }
 
