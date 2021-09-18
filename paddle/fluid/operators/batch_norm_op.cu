@@ -41,23 +41,6 @@ using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
 using BatchNormParamType = typename CudnnDataType<T>::BatchNormParamType;
 
-template <typename T>
-std::string outputVector(const std::vector<T> vec) {
-  std::ostringstream oss;
-  // for (auto ele : vec) oss << ele << ' ';
-  for (size_t i = 0; i < vec.size() && i < 10; ++i) {
-    oss << vec[i] << ' ';
-  }
-  return oss.str();
-}
-template <typename T>
-void PrintTensor(const framework::Tensor &src,
-                 const framework::ExecutionContext &ctx) {
-  std::vector<T> vec(src.numel());
-  TensorToVector(src, ctx.device_context(), &vec);
-  LOG(WARNING) << "vec: " << outputVector<T>(vec);
-}
-
 template <typename T, framework::DataLayout layout>
 static __global__ void BNForwardInference(
     const T *x, const BatchNormParamType<T> *mean,
@@ -140,8 +123,6 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    LOG(WARNING) << "BatchNormKernel";
-
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
@@ -154,17 +135,11 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
 
-    LOG(WARNING) << "data_layout_str: " << data_layout_str;
-    LOG(WARNING) << "data_layout: " << data_layout;
-
     bool test_mode = is_test && (!trainable_stats);
 
     // Get the size for each dimension.
     // NCHW [batch_size, in_channels, in_height, in_width]
     const auto *x = ctx.Input<Tensor>("X");
-    LOG(WARNING) << "Input Tensor | x: ";
-    PrintTensor<T>(*x, ctx);
-
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE_EQ(
         x_dims.size() >= 2 && x_dims.size() <= 5, true,
@@ -297,10 +272,6 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
-    LOG(WARNING) << "Input Tensor | scale: ";
-    PrintTensor<BatchNormParamType<T>>(*scale, ctx);
-    LOG(WARNING) << "Input Tensor | bias: ";
-    PrintTensor<BatchNormParamType<T>>(*bias, ctx);
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
@@ -424,11 +395,6 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
       auto *variance_out = ctx.Output<Tensor>("VarianceOut");
       mean_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
       variance_out->mutable_data<BatchNormParamType<T>>(ctx.GetPlace());
-
-      LOG(WARNING) << "Input Tensor | mean: ";
-      PrintTensor<BatchNormParamType<T>>(*mean_out, ctx);
-      LOG(WARNING) << "Input Tensor | variance: ";
-      PrintTensor<BatchNormParamType<T>>(*variance_out, ctx);
 
       auto *saved_mean = ctx.Output<Tensor>("SavedMean");
       auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
@@ -590,17 +556,6 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
                       ctx.GetPlace())));
 #endif
         }
-
-        LOG(WARNING) << "Output Tensor | y: ";
-        PrintTensor<float>(*y, ctx);
-        LOG(WARNING) << "Output Tensor | mean_out: ";
-        PrintTensor<float>(*mean_out, ctx);
-        LOG(WARNING) << "Output Tensor | variance_out: ";
-        PrintTensor<float>(*variance_out, ctx);
-        LOG(WARNING) << "Output Tensor | saved_mean: ";
-        PrintTensor<float>(*saved_mean, ctx);
-        LOG(WARNING) << "Output Tensor | saved_variance: ";
-        PrintTensor<float>(*saved_variance, ctx);
       }
     }
 
@@ -859,8 +814,6 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    LOG(WARNING) << "BatchNormGradKernel";
-
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
@@ -874,13 +827,6 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
 
-    LOG(WARNING) << "Input Tensor | dy: ";
-    PrintTensor<T>(*d_y, ctx);
-    LOG(WARNING) << "Input Tensor | scale: ";
-    PrintTensor<T>(*scale, ctx);
-    LOG(WARNING) << "Input Tensor | bias: ";
-    PrintTensor<T>(*bias, ctx);
-
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
     auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
@@ -893,8 +839,6 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
     bool is_inplace;
     if (ctx.HasInput("Y")) {
       x = ctx.Input<Tensor>("Y");
-      LOG(WARNING) << "Input Tensor | x: ";
-      PrintTensor<T>(*x, ctx);
       is_inplace = true;
       if (d_x) {
         PADDLE_ENFORCE_EQ(d_x, d_y,
@@ -903,8 +847,6 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
       }
     } else {
       x = ctx.Input<Tensor>("X");
-      LOG(WARNING) << "Input Tensor | x: ";
-      PrintTensor<T>(*x, ctx);
       is_inplace = false;
       if (d_x) {
         PADDLE_ENFORCE_NE(
@@ -1102,11 +1044,6 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
           saved_mean->template data<BatchNormParamType<T>>();
       const auto *saved_var_data =
           saved_var->template data<BatchNormParamType<T>>();
-
-      LOG(WARNING) << "Input Tensor | saved_mean: ";
-      PrintTensor<T>(*saved_mean, ctx);
-      LOG(WARNING) << "Input Tensor | saved_variance: ";
-      PrintTensor<T>(*saved_var, ctx);
 
       if (is_inplace) {
         inplace_functor(compute_format, transformed_x.data<T>(),
@@ -1355,13 +1292,6 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
         }
       }
     }
-
-    LOG(WARNING) << "Output Tensor | d_x: ";
-    PrintTensor<float>(*d_x, ctx);
-    LOG(WARNING) << "Output Tensor | d_scale: ";
-    PrintTensor<float>(*d_scale, ctx);
-    LOG(WARNING) << "Output Tensor | d_bias: ";
-    PrintTensor<float>(*d_bias, ctx);
   }
 };
 

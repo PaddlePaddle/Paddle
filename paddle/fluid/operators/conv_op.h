@@ -34,23 +34,6 @@ constexpr int kConvMKLDNNFP32 = 1;
 constexpr int kConvMKLDNNINT8 = 2;
 constexpr int MaxKeyLength = 256;
 
-template <typename T>
-std::string outputVector(const std::vector<T> vec) {
-  std::ostringstream oss;
-  // for (auto ele : vec) oss << ele << ' ';
-  for (size_t i = 0; i < vec.size() && i < 10; ++i) {
-    oss << vec[i] << ' ';
-  }
-  return oss.str();
-}
-template <typename T>
-void PrintTensor(const framework::Tensor& src,
-                 const framework::ExecutionContext& ctx) {
-  std::vector<T> vec(src.numel());
-  TensorToVector(src, ctx.device_context(), &vec);
-  LOG(WARNING) << "vec: " << outputVector<T>(vec);
-}
-
 // Base convolution operator definations for other conv
 // like operators to reuse the implementation.
 inline int ConvOutputSize(int input_size, int filter_size, int dilation,
@@ -235,8 +218,6 @@ template <typename DeviceContext, typename T>
 class GemmConvKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    // LOG(WARNING) << "GemmConvKernel";
-
     const Tensor* input = context.Input<Tensor>("Input");
     // The filter will be reshaped in the calculations,
     // so here use an assignment operation,
@@ -244,11 +225,6 @@ class GemmConvKernel : public framework::OpKernel<T> {
     Tensor filter = *context.Input<Tensor>("Filter");
     Tensor* output = context.Output<Tensor>("Output");
     output->mutable_data<T>(context.GetPlace());
-
-    // LOG(WARNING) << "Input Tensor | input: ";
-    // PrintTensor<float>(*input, context);
-    // LOG(WARNING) << "Input Tensor | filter: ";
-    // PrintTensor<float>(filter, context);
 
     const int groups = context.Attr<int>("groups");
     const std::vector<int> strides = context.Attr<std::vector<int>>("strides");
@@ -391,9 +367,6 @@ class GemmConvKernel : public framework::OpKernel<T> {
       TransToChannelLast<DeviceContext, T>(context, &transformed_output,
                                            output);
     }
-
-    // LOG(WARNING) << "Output Tensor | output: ";
-    // PrintTensor<float>(*output, context);
   }
 };
 

@@ -22,8 +22,6 @@ class SyncBatchNormKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    LOG(WARNING) << "SyncBatchNormKernel";
-
     double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -50,39 +48,11 @@ class SyncBatchNormKernel<platform::CUDADeviceContext, T>
     auto *saved_mean = ctx.Output<Tensor>("SavedMean");
     auto *saved_inv_variance = ctx.Output<Tensor>("SavedVariance");
 
-    const auto *scale = ctx.Input<Tensor>("Scale");
-    const auto *bias = ctx.Input<Tensor>("Bias");
-
-    LOG(WARNING) << "layout_str: " << layout_str;
-    LOG(WARNING) << "layout: " << layout;
-
-    LOG(WARNING) << "Input Tensor | x: ";
-    PrintTensor<float>(*x, ctx);
-    LOG(WARNING) << "Input Tensor | scale: ";
-    PrintTensor<float>(*scale, ctx);
-    LOG(WARNING) << "Input Tensor | bias: ";
-    PrintTensor<float>(*bias, ctx);
-    LOG(WARNING) << "Input Tensor | mean: ";
-    PrintTensor<float>(*est_mean, ctx);
-    LOG(WARNING) << "Input Tensor | variance: ";
-    PrintTensor<float>(*est_var, ctx);
-
     bool test_mode = is_test && (!trainable_stats);
     SyncBatchNormFunctor<platform::CUDADeviceContext, T>(
         ctx, layout, x, y, est_mean, est_var, mean_out, variance_out,
         saved_mean, saved_inv_variance, epsilon, momentum, test_mode,
         use_global_stats);
-
-    LOG(WARNING) << "Output Tensor | y: ";
-    PrintTensor<float>(*y, ctx);
-    LOG(WARNING) << "Output Tensor | mean_out: ";
-    PrintTensor<float>(*mean_out, ctx);
-    LOG(WARNING) << "Output Tensor | variance_out: ";
-    PrintTensor<float>(*variance_out, ctx);
-    LOG(WARNING) << "Output Tensor | saved_mean: ";
-    PrintTensor<float>(*saved_mean, ctx);
-    LOG(WARNING) << "Output Tensor | saved_variance: ";
-    PrintTensor<float>(*saved_inv_variance, ctx);
   }
 };
 
@@ -91,8 +61,6 @@ class SyncBatchNormGradKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    LOG(WARNING) << "SyncBatchNormGradKernel";
-
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::InvalidArgument("It must use CUDAPlace."));
@@ -104,16 +72,6 @@ class SyncBatchNormGradKernel<platform::CUDADeviceContext, T>
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
 
-    LOG(WARNING) << "layout_str: " << layout_str;
-    LOG(WARNING) << "layout: " << layout;
-
-    LOG(WARNING) << "Input Tensor | dy: ";
-    PrintTensor<T>(*d_y, ctx);
-    LOG(WARNING) << "Input Tensor | scale: ";
-    PrintTensor<T>(*scale, ctx);
-    LOG(WARNING) << "Input Tensor | bias: ";
-    PrintTensor<T>(*bias, ctx);
-
     // init output
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
@@ -121,21 +79,10 @@ class SyncBatchNormGradKernel<platform::CUDADeviceContext, T>
 
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
     const auto *saved_inv_var = ctx.Input<Tensor>("SavedVariance");
-    LOG(WARNING) << "Input Tensor | saved_mean: ";
-    PrintTensor<T>(*saved_mean, ctx);
-    LOG(WARNING) << "Input Tensor | saved_variance: ";
-    PrintTensor<T>(*saved_inv_var, ctx);
 
     SyncBatchNormGradFunctor<platform::CUDADeviceContext, T>(
         ctx, layout, scale, bias, d_x, d_y, d_scale, d_bias, saved_mean,
         saved_inv_var, epsilon);
-
-    LOG(WARNING) << "Output Tensor | d_x: ";
-    PrintTensor<float>(*d_x, ctx);
-    LOG(WARNING) << "Output Tensor | d_scale: ";
-    PrintTensor<float>(*d_scale, ctx);
-    LOG(WARNING) << "Output Tensor | d_bias: ";
-    PrintTensor<float>(*d_bias, ctx);
   }
 };
 

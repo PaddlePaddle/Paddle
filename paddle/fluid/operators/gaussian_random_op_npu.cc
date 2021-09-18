@@ -45,8 +45,7 @@ class NPUGaussianRandomKernel : public framework::OpKernel<T> {
     unsigned int seed = static_cast<unsigned int>(context.Attr<int>("seed"));
     auto engine = framework::GetCPURandomEngine(seed);
     for (int64_t i = 0; i < size; ++i) {
-      // cpu_data[i] = dist(*engine);
-      cpu_data[i] = 0.33f;
+      cpu_data[i] = dist(*engine);
     }
     framework::TensorCopy(
         cpu_tensor, context.GetPlace(),

@@ -20,31 +20,10 @@ namespace operators {
 
 using NPUDeviceContext = platform::NPUDeviceContext;
 
-using Tensor = framework::Tensor;
-
-template <typename T>
-std::string outputVector(const std::vector<T> vec) {
-  std::ostringstream oss;
-  // for (auto ele : vec) oss << ele << ' ';
-  for (size_t i = 0; i < vec.size() && i < 10; ++i) {
-    oss << vec[i] << ' ';
-  }
-  return oss.str();
-}
-template <typename T>
-void PrintTensor(const framework::Tensor &src,
-                 const framework::ExecutionContext &ctx) {
-  std::vector<T> vec(src.numel());
-  TensorToVector(src, ctx.device_context(), &vec);
-  LOG(WARNING) << "vec: " << outputVector<T>(vec);
-}
-
 template <typename T>
 class NPUBatchNormOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    LOG(WARNING) << "NPUBatchNormOpKernel";
-
     const float epsilon = ctx.Attr<float>("epsilon");
     float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -68,17 +47,6 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
     const auto *running_var = ctx.Input<Tensor>("Variance");
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
-
-    LOG(WARNING) << "Input Tensor | x: ";
-    PrintTensor<float>(*x, ctx);
-    LOG(WARNING) << "Input Tensor | scale: ";
-    PrintTensor<float>(*scale, ctx);
-    LOG(WARNING) << "Input Tensor | bias: ";
-    PrintTensor<float>(*bias, ctx);
-    LOG(WARNING) << "Input Tensor | mean: ";
-    PrintTensor<float>(*running_mean, ctx);
-    LOG(WARNING) << "Input Tensor | variance: ";
-    PrintTensor<float>(*running_var, ctx);
 
     auto *y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
@@ -132,17 +100,6 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
           {y_tesnor, *mean_out, *variance_out, *saved_mean, *saved_variance},
           {{"factor", momentum}, {"epsilon", epsilon}});
       runner_update.Run(stream);
-
-      LOG(WARNING) << "Output Tensor | y: ";
-      PrintTensor<float>(*y, ctx);
-      LOG(WARNING) << "Output Tensor | mean_out: ";
-      PrintTensor<float>(*mean_out, ctx);
-      LOG(WARNING) << "Output Tensor | variance_out: ";
-      PrintTensor<float>(*variance_out, ctx);
-      LOG(WARNING) << "Output Tensor | saved_mean: ";
-      PrintTensor<float>(*saved_mean, ctx);
-      LOG(WARNING) << "Output Tensor | saved_variance: ";
-      PrintTensor<float>(*saved_variance, ctx);
     }
   }
 };
@@ -151,8 +108,6 @@ template <typename T>
 class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    LOG(WARNING) << "NPUBatchNormGradOpKernel";
-
     const auto *x = ctx.Input<Tensor>("X");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
@@ -165,19 +120,6 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
     const bool is_test = ctx.Attr<bool>("is_test");
     const float epsilon = ctx.Attr<float>("epsilon");
     DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
-
-    LOG(WARNING) << "Input Tensor | x: ";
-    PrintTensor<T>(*x, ctx);
-    LOG(WARNING) << "Input Tensor | dy: ";
-    PrintTensor<T>(*d_y, ctx);
-    LOG(WARNING) << "Input Tensor | scale: ";
-    PrintTensor<T>(*scale, ctx);
-    LOG(WARNING) << "Input Tensor | bias: ";
-    PrintTensor<T>(*bias, ctx);
-    LOG(WARNING) << "Input Tensor | saved_mean: ";
-    PrintTensor<T>(*saved_mean, ctx);
-    LOG(WARNING) << "Input Tensor | saved_variance: ";
-    PrintTensor<T>(*saved_inv_variance, ctx);
 
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
@@ -243,13 +185,6 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
         runner_reduce.Run(stream);
       }
     }
-
-    LOG(WARNING) << "Output Tensor | d_x: ";
-    PrintTensor<float>(*d_x, ctx);
-    LOG(WARNING) << "Output Tensor | d_scale: ";
-    PrintTensor<float>(*d_scale, ctx);
-    LOG(WARNING) << "Output Tensor | d_bias: ";
-    PrintTensor<float>(*d_bias, ctx);
   }
 };
 }  // namespace operators
