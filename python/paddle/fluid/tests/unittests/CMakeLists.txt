@@ -702,7 +702,10 @@ endif()
 add_subdirectory(sequence)
 add_subdirectory(dygraph_to_static)
 add_subdirectory(rnn)
-add_subdirectory(fft)
+
+if (NOT WIN32 OR NOT WITH_GPU)
+    add_subdirectory(fft)
+endif()
 
 if (WITH_XPU)
     add_subdirectory(xpu)
