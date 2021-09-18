@@ -44,8 +44,13 @@ struct KernelArgsParseFunctor<Return_ (*)(Args_...)> {
   static void Parse(const KernelKey& default_key, KernelArgsDef* args_def) {
     auto args_type = ParseArgType(Indices{});
     for (auto arg_type : args_type) {
-      if (arg_type == std::type_index(typeid(const CPUContext&)) ||
+      if (arg_type == std::type_index(typeid(const CPUContext&))
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+          ||
           arg_type == std::type_index(typeid(const CUDAContext&))) {
+#else
+              ) {
+#endif
         // do nothing, skip context arg now
       } else if (arg_type == std::type_index(typeid(const DenseTensor&)) ||
                  arg_type ==
