@@ -335,6 +335,7 @@ __all__ = [  # noqa
            'save',
            'multinomial',
            'get_cuda_rng_state',
+           'get_device_properties',
            'rank',
            'empty_like',
            'eye',
