@@ -642,6 +642,7 @@ class MaxPool2dGradFunctor<platform::CUDADeviceContext, T> {
 
     auto pool_divmods =
         FastDivModForPooling(input_channels, output_width, output_height);
+
     KernelMaxPool2DGrad<T><<<grid, threads, 0, context.stream()>>>(
         nthreads, input_data, output_data, output_grad_data, input_channels,
         input_height, input_width, output_height, output_width, ksize_height,
