@@ -209,7 +209,9 @@ __global__ void KernelPool2DGrad(
           int output_sub_idx =
               channel_last ? tmp_idx * divmods.channel.divisor + c_offset
                            : tmp_idx;
-          pool_process.compute(input, output_data, output_grad, output_sub_idx,
+          T ouput_value = pool_process.use_x ? output_data[output_sub_idx]
+                                             : static_cast<T>(0);
+          pool_process.compute(input, ouput_value, output_grad[output_sub_idx],
                                static_cast<T>(1.0 / pool_size),
                                &input_grad_data);
         }
@@ -236,8 +238,10 @@ __global__ void KernelPool2DGrad(
             int output_sub_idx =
                 channel_last ? tmp_idx * divmods.channel.divisor + c_offset
                              : tmp_idx;
+            T ouput_value = pool_process.use_x ? output_data[output_sub_idx]
+                                               : static_cast<T>(0);
             pool_process.compute(
-                input, output_data, output_grad, output_sub_idx,
+                input, ouput_value, output_grad[output_sub_idx],
                 static_cast<T>(1.0 / pool_size), &input_grad_data);
           }
         }
@@ -249,8 +253,10 @@ __global__ void KernelPool2DGrad(
             int output_sub_idx =
                 channel_last ? tmp_idx * divmods.channel.divisor + c_offset
                              : tmp_idx;
+            T ouput_value = pool_process.use_x ? output_data[output_sub_idx]
+                                               : static_cast<T>(0);
             pool_process.compute(
-                input, output_data, output_grad, output_sub_idx,
+                input, ouput_value, output_grad[output_sub_idx],
                 static_cast<T>(1.0 / pool_size), &input_grad_data);
           }
         }
@@ -884,8 +890,9 @@ __global__ void KernelPool3DGrad(
                   ? ((pd * output_height + ph) * output_width + pw) * channels +
                         c_offset
                   : (pd * output_height + ph) * output_width + pw;
-
-          pool_process.compute(input, output_data, output_grad, output_sub_idx,
+          T ouput_value = pool_process.use_x ? output_data[output_sub_idx]
+                                             : static_cast<T>(0);
+          pool_process.compute(input, ouput_value, output_grad[output_sub_idx],
                                static_cast<T>(1.0 / pool_size),
                                &input_grad_data);
         }
