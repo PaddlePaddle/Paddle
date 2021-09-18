@@ -410,12 +410,12 @@ TEST(FwdBwdJoint, BranchedNodesCUDA) {
   CompareTensorWithValue<float>(out2, 150.0);
 
   // TODO(jiabin): fix this with add functor
-  // // 4. Run Backward
-  // std::vector<pt::Tensor> outs = {out1, out2};
-  // RunBackward(outs, {});
+  // 4. Run Backward
+  std::vector<pt::Tensor> outs = {out1, out2};
+  RunBackward(outs, {});
 
-  // // Examine Backward Grad
-  // PADDLE_ENFORCE(
-  //     CompareGradTensorWithValue<float>(tensor, 30.0) == true,
-  //     paddle::platform::errors::Fatal("Numerical Error, Expected %f", 30.0));
+  // Examine Backward Grad
+  PADDLE_ENFORCE(
+      CompareGradTensorWithValue<float>(tensor, 30.0) == true,
+      paddle::platform::errors::Fatal("Numerical Error, Expected %f", 30.0));
 }

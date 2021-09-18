@@ -34,6 +34,9 @@ namespace pt {
 Backend TransToPtenBackend(const paddle::platform::Place& place);
 DataType TransToPtenDataType(
     const paddle::framework::proto::VarType::Type& dtype);
+paddle::platform::Place TransToFluidPlace(const Backend& backend);
+paddle::framework::proto::VarType::Type TransToProtoVarType(
+    const pt::DataType& dtype);
 DataLayout TransToPtenLayout(const paddle::framework::DataLayout& layout);
 paddle::framework::proto::VarType::Type TransToProtoVarType(
     const DataType& dtype);

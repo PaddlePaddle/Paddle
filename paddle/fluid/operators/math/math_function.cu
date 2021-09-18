@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function_impl.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
+#include "paddle/top/api/all.h"
 
 namespace paddle {
 namespace operators {
@@ -277,6 +278,13 @@ template <typename T>
 struct ElementwiseAddTo<platform::CUDADeviceContext, T> {
   void operator()(platform::CUDADeviceContext* ctx,
                   const framework::Tensor& src, framework::Tensor* dst) {
+    auto in = framework::EigenVector<T>::Flatten(src);
+    auto out = framework::EigenVector<T>::Flatten(*dst);
+    auto& place = *(ctx->eigen_device());
+    out.device(place) = out + in;
+  }
+  void operator()(platform::CUDADeviceContext* ctx, const pt::DenseTensor& src,
+                  pt::DenseTensor* dst) {
     auto in = framework::EigenVector<T>::Flatten(src);
     auto out = framework::EigenVector<T>::Flatten(*dst);
     auto& place = *(ctx->eigen_device());

@@ -13,20 +13,10 @@
 // limitations under the License.
 
 #pragma once
-
 #include "paddle/top/api/include/tensor.h"
 
 namespace egr {
-
-// Public
-void ScaleAPI(const pt::Tensor& x, float scale, float bias,
-              bool bias_after_scale, pt::Tensor* out);
-void FillConstAPI(double value, const pt::DDim& ddim,
-                  const pt::Backend& backend, const pt::DataType& dtype,
-                  const pt::DataLayout& layout, pt::Tensor* target);
-
-// Global
-const paddle::platform::Place& GetExpectedPlace();
-void SetExpectedPlace(const paddle::platform::Place& place);
+// Accumulation API
+void TensorAdd(const pt::Tensor& src, pt::Tensor* dst);
 
 }  // namespace egr

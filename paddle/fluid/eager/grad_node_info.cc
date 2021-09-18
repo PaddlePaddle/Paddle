@@ -15,7 +15,7 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/function_api.h"
-
+#include "paddle/fluid/eager/gradient_accumulation.h"
 #include "paddle/top/core/dense_tensor.h"
 #include "paddle/top/core/dtype.h"
 
@@ -216,7 +216,7 @@ void InputBuffer::add(size_t slot_id, size_t rank, const pt::Tensor& t,
 
     } else {
       // Accumulation
-      AccumulateTensorsAPI(&buffer_tensor, t);
+      TensorAdd(t, &buffer_tensor);
     }
   } else {
     // Create new tensor->impl and fill it with 1.0

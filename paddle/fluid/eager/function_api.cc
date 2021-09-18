@@ -20,19 +20,6 @@
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
 
-// TODO(jiabin): This may have serious performance issue move code from
-// gradient_accumulator.cc
-template <typename T>
-static void add_kernel(const pt::DenseTensor& t0, const pt::DenseTensor& t1,
-                       pt::DenseTensor* out) {
-  const T* t0_ptr = t0.data<T>();
-  const T* t1_ptr = t1.data<T>();
-  T* out_ptr = out->mutable_data<T>();
-  for (int i = 0; i < t0.numel(); i++) {
-    out_ptr[i] = t0_ptr[i] + t1_ptr[i];
-  }
-}
-
 namespace egr {
 
 static std::shared_ptr<paddle::platform::Place> _expected_place(nullptr);
@@ -268,71 +255,6 @@ void FillConstAPI(double value, const pt::DDim& ddim,
     default: {
       PADDLE_THROW(paddle::platform::errors::Fatal(
           "Only CPU and CUDA Backend are supported for now"));
-    }
-  }
-}
-
-void AccumulateTensorsAPI(pt::Tensor* t0, const pt::Tensor& t1) {
-  // Accumulate to t0
-  std::shared_ptr<pt::DenseTensor> t0_dense =
-      std::dynamic_pointer_cast<pt::DenseTensor>(t0->impl());
-  std::shared_ptr<pt::DenseTensor> t1_dense =
-      std::dynamic_pointer_cast<pt::DenseTensor>(t1.impl());
-
-  // TODO(jiabin): It looks like performance issue will caused by here?
-  if (!t0_dense)
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "AccumulateTensorsAPI Only supports InputBuffer with DenseTensor for "
-        "now."));
-  if (t0_dense->backend() != pt::Backend::kCPU)
-    PADDLE_THROW(
-        paddle::platform::errors::Fatal("AccumulateTensorsAPI Only supports "
-                                        "tensors with CPU backend for now."));
-  if (!t0->initialized())
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Tensors to accumulate has not been initialized"));
-  if (!t1_dense)
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "AccumulateTensorsAPI Only supports InputBuffer with DenseTensor for "
-        "now."));
-  if (t1_dense->backend() != pt::Backend::kCPU)
-    PADDLE_THROW(
-        paddle::platform::errors::Fatal("AccumulateTensorsAPI Only supports "
-                                        "tensors with CPU backend for now."));
-  if (!t1.initialized())
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Tensors to accumulate has not been initialized"));
-
-  if (t1.type() != t0->type())
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Unable to accumulate tensors with different dtype"));
-  if (t1.numel() != t0->numel())
-    PADDLE_THROW(paddle::platform::errors::Fatal(
-        "Unable to accumulate tensors with different sizes"));
-
-  // TODO(jiabin): Replace this with call to add_kernel_api
-  switch (t0->type()) {
-    case pt::DataType::kINT64: {
-      add_kernel<int64_t>(*t0_dense.get(), *t1_dense.get(), t0_dense.get());
-      break;
-    }
-    case pt::DataType::kINT32: {
-      add_kernel<int32_t>(*t0_dense.get(), *t1_dense.get(), t0_dense.get());
-      break;
-    }
-    case pt::DataType::kFLOAT64: {
-      add_kernel<double>(*t0_dense.get(), *t1_dense.get(), t0_dense.get());
-      break;
-    }
-    case pt::DataType::kFLOAT32: {
-      add_kernel<float>(*t0_dense.get(), *t1_dense.get(), t0_dense.get());
-      break;
-    }
-    default: {
-      PADDLE_THROW(paddle::platform::errors::Fatal(
-          "Only supports tensor with fp32, fp64, int32, int64 datatypes for "
-          "now"));
-      break;
     }
   }
 }

@@ -14,7 +14,7 @@
 
 #include "paddle/fluid/eager/nodes/accumulation_node.h"
 #include "paddle/fluid/eager/function_api.h"
-
+#include "paddle/fluid/eager/gradient_accumulation.h"
 #include "paddle/top/api/all.h"
 #include "paddle/top/core/dense_tensor.h"
 
@@ -31,7 +31,7 @@ static void CopyOrAddTensor(pt::Tensor* tensor, const pt::Tensor& t) {
     *tensor = t;
   } else {
     // Accumulation
-    egr::AccumulateTensorsAPI(tensor, t);
+    egr::TensorAdd(t, tensor);
   }
 }
 

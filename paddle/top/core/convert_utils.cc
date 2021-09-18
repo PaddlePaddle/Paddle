@@ -21,6 +21,27 @@ limitations under the License. */
 
 namespace pt {
 
+paddle::platform::Place TransToFluidPlace(const Backend& backend) {
+  // TODO(chenweihang): add other trans cases
+  switch (backend) {
+    case pt::Backend::kCPU:
+      return paddle::platform::CPUPlace();
+    case pt::Backend::kCUDA:
+      return paddle::platform::CUDAPlace();
+    case pt::Backend::kXPU:
+      return paddle::platform::XPUPlace();
+    case pt::Backend::kNPU:
+      return paddle::platform::NPUPlace();
+    case pt::Backend::kMKLDNN:
+      return paddle::platform::CPUPlace();
+    case pt::Backend::kCUDNN:
+      return paddle::platform::CUDAPlace();
+    default:
+      PADDLE_THROW(paddle::platform::errors::Unimplemented(
+          "Unsupported backend when casting it to paddle place type."));
+  }
+}
+
 // TODO(chenweihang): Add other place branchs
 Backend TransToPtenBackend(const paddle::platform::Place& place) {
   if (paddle::platform::is_cpu_place(place)) {
