@@ -206,6 +206,9 @@ class GradScaler(AmpScaler):
 
         optimizer_state["state"] = OptimizerState.STEPPED
 
+        if not self._use_dynamic_loss_scaling:
+            self._optimizer_states = defaultdict(_refresh_optimizer_state)
+
     def update(self):
         """
         Updates the loss_scaling.
