@@ -1,4 +1,4 @@
-# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+#   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import copy
 import collections
 import numpy as np
@@ -59,7 +58,6 @@ class TestFusedFFNOp(unittest.TestCase):
         self.getDiff()
         self.getActivation()
         self.getNormalizeBefore()
-
         paddle.set_default_dtype(self.dtype)
         self.weight_attr = None
         self.bias_attr = None
@@ -68,7 +66,6 @@ class TestFusedFFNOp(unittest.TestCase):
             self.weight_attr, 2)
         self.bias_attrs = transformer._convert_param_attr_to_list(
             self.bias_attr, 2)
-
         self.linear1 = Linear(
             self.d_model,
             self.dim_feedforward,
@@ -97,7 +94,6 @@ class TestFusedFFNOp(unittest.TestCase):
         residual = paddle.to_tensor(self.src)
         if self.normalize_before:
             ln1_out = self.norm1(tensor_src)
-
             linear2_out = self.linear2(
                 self.dropout(self.activation(self.linear1(ln1_out))))
             dropout2_out = residual + self.dropout2(linear2_out)
@@ -143,7 +139,6 @@ class TestFusedFFNOp(unittest.TestCase):
     def test_fused_ffn(self):
         base_out = self.Base()
         fused_out = self.FusedFFN()
-
         np.testing.assert_allclose(
             base_out.numpy(), fused_out.numpy(), rtol=self.rtol, atol=self.atol)
 

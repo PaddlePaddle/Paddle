@@ -89,7 +89,7 @@ class FusedFfnOp : public framework::OperatorWithKernel {
         "Ln2Variance",
         framework::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_}));
 
-    context->ShareLoD("X", /*->*/ "Out");
+    context->ShareLoD("X", "Out");
   }
 
   framework::OpKernelType GetExpectedKernelType(
@@ -97,19 +97,6 @@ class FusedFfnOp : public framework::OperatorWithKernel {
     auto input = ctx.Input<Tensor>("X");
     auto input_data_type = input->type();
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
-  }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const framework::Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const {
-    if (framework::IsComplexType(expected_kernel_type.data_type_)) {
-      // only promote inputs’s types when contains complex input
-      return framework::OpKernelType(tensor.type(), tensor.place(),
-                                     tensor.layout());
-    } else {
-      return framework::OpKernelType(expected_kernel_type.data_type_,
-                                     tensor.place(), tensor.layout());
-    }
   }
 };
 
@@ -200,7 +187,17 @@ class FusedFfnOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("seed2", "Dropout2 random seed.").SetDefault(0);
 
     AddComment(R"DOC(
-FusedFfn Operator.
+        The fused feedforward Operator. the function of this operator is the same 
+        as the following pseudo code:
+            residual = src;
+            ln1_out = src;
+            if(normalize_pre_or_post){
+                ln1_out = layer_norm(src);
+            }
+            out = linear(dropout(activation(dropout(linear(ln1_out)))));
+            if(!normalize_pre_or_post) {
+                out = layer_norm(out);
+            }
 )DOC");
   }
 };

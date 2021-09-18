@@ -15,16 +15,21 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/framework/tensor_util.h"
+#include "paddle/fluid/operators/dropout_util.h"
 #include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
 #include "paddle/fluid/operators/math/functors.h"
-#include "paddle/fluid/operators/math/math_function.h"
 
 namespace paddle {
 namespace operators {
 
+/**
+ * Dropout will be called twice in FFN. So there will be two dropout parameters.
+ * The DropoutParam will be used in the fused_dropout_act_bias,
+ * fused_residual_dropout_bias(pre_layer_norm=ture) or
+ * fused_layernorm_residual_dropout_bias(pre_layer_norm=false).
+ */
 struct DropoutParam {
   uint64_t seed;
   float dropout_prob;
@@ -32,21 +37,23 @@ struct DropoutParam {
   bool is_test;
   bool fix_seed;
   int increment;
-  bool has_increment;
+  const framework::Tensor* tensor_seed;
+  int seed_val;
 
   DropoutParam() {
     fix_seed = false;
     seed = 0;
     is_test = false;
     is_upscale_in_train = false;
-    has_increment = false;
     dropout_prob = 0.5;
+    tensor_seed = nullptr;
+    seed_val = 0;
   }
 
   /**
-   * dropout_index: the index of dropout, such as FFN has two dropout,
-   * so the dropout_index will 1 or 2.
-   * the dropout param will defined as param1 or param2
+   * dropout_index: can be 0, 1, 2. 0 means there is only one dropout,
+   * 1 and 2 represent two dropout in FFN, the parameter name of dropout
+   * will be suffixed with dropout_index, such as seed1, seed2
    */
   DropoutParam(const framework::ExecutionContext& context,
                const int dropout_index) {
@@ -60,37 +67,19 @@ struct DropoutParam {
     is_upscale_in_train = (dropout_implementation == "upscale_in_train");
     is_test = context.Attr<bool>("is_test" + str_index);
     fix_seed = context.Attr<bool>("fix_seed" + str_index);
-    has_increment = false;
 
     std::string str_seed = "Seed" + str_index;
-    auto* tensor_seed =
+    tensor_seed =
         context.HasInput(str_seed) ? context.Input<Tensor>(str_seed) : nullptr;
-    int device_id =
-        BOOST_GET_CONST(platform::CUDAPlace, context.GetPlace()).GetDeviceId();
-    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
-    if (tensor_seed && platform::is_gpu_place(tensor_seed->place())) {
-      framework::Tensor seed_cpu_tensor;
-      TensorCopySync(*tensor_seed, platform::CPUPlace(), &seed_cpu_tensor);
-      seed = static_cast<uint64_t>(seed_cpu_tensor.data<int>()[0]);
-    } else if (gen_cuda->GetIsInitPy() && !fix_seed) {
-      has_increment = true;
-    } else {
-      if (tensor_seed) {
-        seed = *(tensor_seed->data<int>());
-      } else {
-        std::random_device rnd;
-        seed = fix_seed ? context.Attr<int>("seed" + str_index) : rnd();
-      }
-    }
+    seed_val = context.Attr<int>("seed" + str_index);
   }
+
   int UpdateSeedAndIncrement(const platform::CUDADeviceContext& ctx,
                              const int offset) {
-    int device_id =
-        BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace()).GetDeviceId();
-    auto gen_cuda = framework::GetDefaultCUDAGenerator(device_id);
-    auto seed_offset = gen_cuda->IncrementOffset(offset);
-    seed = seed_offset.first;
-    increment = static_cast<int>(seed_offset.second);
+    uint64_t tmp_increment;
+    GetSeedDataAndIncrement(ctx, tensor_seed, fix_seed, seed_val, offset, &seed,
+                            &tmp_increment);
+    increment = static_cast<int>(tmp_increment);
     return increment;
   }
 };
@@ -108,9 +97,7 @@ class FusedDropoutHelper {
                                     config.block_per_grid.x * real_vec_size) +
                      1) *
                     real_vec_size;
-    if (dropout_param_.has_increment) {
-      increment = dropout_param_.UpdateSeedAndIncrement(ctx, increment);
-    }
+    increment = dropout_param_.UpdateSeedAndIncrement(ctx, increment);
     return increment;
   }
 
@@ -228,7 +215,7 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
               src, gamma, beta, out, mean, variance, epsilon_, this->cols_));
       default:
         PADDLE_THROW(platform::errors::InvalidArgument(
-            "Product from begin_norm_axis to end must be larger than 1"));
+            "the cols_ must be larger than 1"));
         break;
     }
   }
@@ -258,9 +245,7 @@ class FusedDropoutLayerNormHelper : public FusedDropoutHelper<T, MaskType> {
     int threads = GetDesiredBlockDim(this->cols_ / vec_size);
 
     int increment = ((this->cols_ - 1) / (threads * vec_size) + 1) * vec_size;
-    if (this->dropout_param_.has_increment) {
-      increment = this->dropout_param_.UpdateSeedAndIncrement(ctx, increment);
-    }
+    increment = this->dropout_param_.UpdateSeedAndIncrement(ctx, increment);
 
     LaunchLayernormResidualDropoutBias<T, MaskType>(
         this->rows_, this->cols_, increment, this->dropout_param_.seed,
