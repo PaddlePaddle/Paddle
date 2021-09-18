@@ -154,6 +154,11 @@ void MultiTrainer::InitOtherEnv(const ProgramDesc& main_program) {
   if (need_dump_field_ || need_dump_param_) {
     InitDumpEnv();
   }
+  //pull dense param first
+
+  auto communicator = paddle::distributed::Communicator::GetInstance();
+  auto& recv_ctx = communicator->GetRecvCtxMap();
+  communicator->PullDense(recv_ctx);
   VLOG(3) << "init other env done.";
 }
 
