@@ -18,11 +18,10 @@ limitations under the License. */
 
 #include "glog/logging.h"
 
-#include "paddle/tcmpt/core/convert_utils.h"
-#include "paddle/tcmpt/core/dense_tensor.h"
-#include "paddle/tcmpt/core/kernel_context.h"
+#include "paddle/tcmpt/api/include/dev/core.h"
+#include "paddle/tcmpt/api/include/dev/infershape.h"
+#include "paddle/tcmpt/api/include/dev/math.h"
 #include "paddle/tcmpt/core/kernel_generate.h"
-#include "paddle/tcmpt/infershape/unary.h"
 
 namespace pt {
 
@@ -61,6 +60,7 @@ Tensor mean(const Tensor& x) {
   out.set_impl(dense_out);
 
   // 6. Call kernel
+  // TODO(chenweihang): finally, we may call the function directly,
   kernel(&kernel_context);
 
   return out;

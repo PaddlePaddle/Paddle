@@ -351,6 +351,12 @@ function(op_library TARGET)
             set(pybind_flag 1)
         endif()
     endforeach()
+    foreach(moved_op "scale")
+        if ("${TARGET}" STREQUAL "${forward_moved_op}")
+            file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
+            set(pybind_flag 1)
+        endif()
+    endforeach()
 
     # pybind USE_OP
     if (${pybind_flag} EQUAL 0)

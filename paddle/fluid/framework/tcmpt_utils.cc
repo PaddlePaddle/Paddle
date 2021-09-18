@@ -16,6 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows.h"
 
+#include "paddle/tcmpt/api/include/dev/symbols.h"
+
 namespace paddle {
 namespace framework {
 

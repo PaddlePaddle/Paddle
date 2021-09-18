@@ -14,11 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-// develop apis
-#include "paddle/tcmpt/api/include/dev/core.h"
-#include "paddle/tcmpt/api/include/dev/infershape.h"
-#include "paddle/tcmpt/api/include/dev/math.h"
+#include "paddle/tcmpt/core/kernel_registry.h"
 
-// user apis
-#include "paddle/tcmpt/api/include/math.h"
-#include "paddle/tcmpt/api/include/tensor.h"
+// symbol declare
+PT_DECLARE_MODULE(MathCPU);
+PT_DECLARE_MODULE(MathCUDA);

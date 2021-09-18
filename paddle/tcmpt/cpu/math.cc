@@ -104,6 +104,9 @@ void ScaleSelectedRowsHost(const CPUContext& dev_ctx,
 
 }  // namespace pt
 
+// TODO(chenweihang): replace by better impl
+PT_REGISTER_MODULE(MathCPU);
+
 using bfloat16 = ::paddle::platform::bfloat16;
 PT_REGISTER_KERNEL("sign", CPU, NCHW, pt::Sign, float, double) {}
 PT_REGISTER_KERNEL("mean", CPU, NCHW, pt::Mean, float, double) {}

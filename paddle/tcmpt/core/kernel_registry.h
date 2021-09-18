@@ -112,6 +112,13 @@ struct KernelRegistrar {
 #define PT_ID __LINE__
 #endif
 
+#if defined(_WIN32)
+#define UNUSED
+#define __builtin_expect(EXP, C) (EXP)
+#else
+#define UNUSED __attribute__((unused))
+#endif
+
 #define PT_CONCATENATE(arg1, arg2) PT_CONCATENATE1(arg1, arg2)
 #define PT_CONCATENATE1(arg1, arg2) PT_CONCATENATE2(arg1, arg2)
 #define PT_CONCATENATE2(arg1, arg2) arg1##arg2
@@ -461,6 +468,14 @@ struct KernelRegistrar {
       args_def_fn,                                                         \
       PT_KERNEL(kernel_fn));                                               \
   void PT_CONCATENATE(__PT_KERNEL_args_def_FN_, func_id)(::pt::Kernel*)
+
+// use to declare symbol
+#define PT_REGISTER_MODULE(name) \
+  int RegisterSymbolsFor##name() { return 0; }
+
+#define PT_DECLARE_MODULE(name)          \
+  extern int RegisterSymbolsFor##name(); \
+  UNUSED static int use_kernel_module_##name = RegisterSymbolsFor##name()
 
 // only used in cpp tests
 

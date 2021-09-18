@@ -1148,10 +1148,11 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
 
   // TODO(chenweihang): Now we are still reusing a lot of the original fluid
   // implementation, this is a gradual replacement process
-
   // TODO(chenweihang): in the first phase of project, we only support CPU, CUDA
   // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
   // phase
+
+  VLOG(1) << "Pt KernelFactory: " << pt::KernelFactory::Instance();
   if (pt::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
     if (pt_kernel_key_.get() == nullptr || pt_kernel_.get() == nullptr) {
       ChoosePtKernel(*runtime_ctx, *dev_ctx);
@@ -1325,7 +1326,6 @@ void OperatorWithKernel::ChoosePtKernel(
       kernel_name, *pt_kernel_key_)));
 
   // for debug
-  // VLOG(1) << pt::KernelFactory::Instance();
   VLOG(1) << "ChoosePtKernel - kernel name: " << kernel_name
           << " | kernel key: " << *pt_kernel_key_
           << " | kernel: " << *pt_kernel_;

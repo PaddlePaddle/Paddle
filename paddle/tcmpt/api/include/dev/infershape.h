@@ -14,11 +14,5 @@ limitations under the License. */
 
 #pragma once
 
-// develop apis
-#include "paddle/tcmpt/api/include/dev/core.h"
-#include "paddle/tcmpt/api/include/dev/infershape.h"
-#include "paddle/tcmpt/api/include/dev/math.h"
-
-// user apis
-#include "paddle/tcmpt/api/include/math.h"
-#include "paddle/tcmpt/api/include/tensor.h"
+// See Note: [ How do we organize the kernel directory ]
+#include "paddle/tcmpt/infershape/unary.h"

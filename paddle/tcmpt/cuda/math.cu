@@ -144,6 +144,9 @@ void ScaleSelectedRowsHost(const CUDAContext& dev_ctx,
 
 }  // namespace pt
 
+// TODO(chenweihang): replace by better impl
+PT_REGISTER_MODULE(MathCUDA);
+
 using float16 = paddle::platform::float16;
 PT_REGISTER_KERNEL("sign", CUDA, NCHW, pt::Sign, float, double, float16) {}
 PT_REGISTER_KERNEL("mean", CUDA, NCHW, pt::Mean, float, double, float16) {}
