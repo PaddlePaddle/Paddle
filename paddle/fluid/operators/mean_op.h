@@ -33,27 +33,6 @@ template <typename T, int MajorType = Eigen::RowMajor,
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename DeviceContext, typename T>
-class MeanKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<Tensor>("X");
-    auto* out = context.Output<Tensor>("Out");
-    auto& dev_ctx = context.device_context<DeviceContext>();
-
-    auto pt_x =
-        framework::MakeTensorImpl<pt::DenseTensor>(*x, x->place(), x->type());
-    auto pt_out =
-        framework::MakeTensorImpl<pt::DenseTensor>(*out, x->place(), x->type());
-
-    // call new kernel
-    pt::Mean<T>(dev_ctx, *pt_x.get(), pt_out.get());
-
-    // share pt_out data to out
-    framework::ShareTensorImpl(pt_out.get(), out);
-  }
-};
-
-template <typename DeviceContext, typename T>
 class MeanGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
