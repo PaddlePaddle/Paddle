@@ -30,7 +30,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/operators/math/functors.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/reduce_ops/reduce_min_max_op.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_op.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/unique_op.h"
@@ -66,6 +65,14 @@ using LoDTensor = framework::LoDTensor;
                                                      dev_ctx);            \
   cast_functor.template apply<dtype>()
 
+template <typename T>
+struct MaxFunctor {
+  template <typename DeviceContext, typename X, typename Y, typename Dim>
+  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
+    y->device(place) = x->maximum(dim);
+  }
+};
+
 template <typename DeviceContext, typename T>
 inline void MAX_FUNC(const framework::ExecutionContext& ctx,
                      const Tensor* input, Tensor* output,
@@ -73,7 +80,7 @@ inline void MAX_FUNC(const framework::ExecutionContext& ctx,
   auto cast_out_dtype =
       static_cast<framework::proto::VarType::Type>(output->type());
   framework::VisitDataType(cast_out_dtype,
-                           ReduceKernelFunctor<DeviceContext, T, MaxFunctor>(
+                           ReduceKernelFunctor<DeviceContext, T, MaxFunctor<T>>(
                                input, output, dims, false, false, ctx));
 }
 
