@@ -57,21 +57,21 @@ class BasicTokenizer {
 
 class WordPieceTokenizer {
  public:
-  explicit WordPieceTokenizer(const framework::WSTRING_MAP& vocab,
+  explicit WordPieceTokenizer(framework::WSTRING_MAP* vocab,
                               const wstring& unk_token = L"[UNK]",
                               const size_t max_input_chars_per_word = 100);
   vector<wstring> Tokenize(const wstring& text) const;
 
  private:
-  framework::WSTRING_MAP vocab_;
+  framework::WSTRING_MAP* vocab_;
   wstring unk_token_{L"[UNK]"};
   size_t max_input_chars_per_word_;
 };
 
 class BertTokenizer {
  public:
-  explicit BertTokenizer(const framework::WSTRING_MAP& vocab,
-                         bool do_lower_case = false,
+  explicit BertTokenizer(framework::WSTRING_MAP* vocab,
+                         const bool& do_lower_case = false,
                          const wstring& unk_token = L"[UNK]",
                          const wstring& pad_token = L"[PAD]",
                          const wstring& cls_token = L"[CLS]",
@@ -128,7 +128,7 @@ class BertTokenizer {
   bool do_lower_case_;
   wstring unk_token_, pad_token_, cls_token_, mask_token_, sep_token_;
   string padding_site_;
-  framework::WSTRING_MAP vocab_;
+  framework::WSTRING_MAP* vocab_;
   BasicTokenizer basic_tokenizer_;
   WordPieceTokenizer word_piece_tokenizer_;
   int64_t unk_token_id_, cls_token_id_, mask_token_id_, pad_token_id_,
@@ -148,10 +148,12 @@ class TokenizerKernel : public framework::OpKernel<T> {
     auto* text = ctx.Input<framework::STRINGS>("Text");
     auto* vocab = ctx.Input<framework::WSTRING_MAP>("Vocab");
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+    VLOG(0) << "Time difference stage_0_0 = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
 
     auto* input_ids = ctx.Output<framework::Tensor>("InputIds");
     auto* seg_ids = ctx.Output<framework::Tensor>("SegmentIds");
     end = std::chrono::steady_clock::now();
+    VLOG(0) << "Time difference stage_0_1 = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
 
     auto is_split_into_words =
         static_cast<bool>(ctx.Attr<bool>("is_split_into_words"));
@@ -159,6 +161,7 @@ class TokenizerKernel : public framework::OpKernel<T> {
     auto pad_to_max_seq_len =
         static_cast<bool>(ctx.Attr<bool>("pad_to_max_seq_len"));
     end = std::chrono::steady_clock::now();
+    VLOG(0) << "Time difference stage_0_2 = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
 
     auto* text_pair = ctx.Input<framework::STRINGS>("TextPair");
     if (text_pair && text->size() != text_pair->size()) {
@@ -167,9 +170,11 @@ class TokenizerKernel : public framework::OpKernel<T> {
       return;
     }
     end = std::chrono::steady_clock::now();
+    VLOG(0) << "Time difference stage_0_3 = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
 
-    BertTokenizer* tokenizer_ptr = new BertTokenizer(*vocab);
+    BertTokenizer* tokenizer_ptr = new BertTokenizer(const_cast<framework::WSTRING_MAP*>(vocab));
     end = std::chrono::steady_clock::now();
+    VLOG(0) << "Time difference stage_1 = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
     // only support cpu now
     size_t batch_max_seq_len = 0;
     size_t batch_size = text->size();
@@ -207,6 +212,7 @@ class TokenizerKernel : public framework::OpKernel<T> {
 
     auto pad_token_id = tokenizer_ptr->GetPadTokenID();
     end = std::chrono::steady_clock::now();
+    VLOG(0) << "Time difference stage_2 = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
     for (size_t i = 0; i < batch_size; i++) {
       size_t seq_len = batch_input_ids[i].size();
       for (size_t j = 0; j < batch_max_seq_len; j++) {
@@ -220,8 +226,10 @@ class TokenizerKernel : public framework::OpKernel<T> {
       }
     }
     end = std::chrono::steady_clock::now();
+    VLOG(0) << "Time difference stage_3 = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
     delete tokenizer_ptr;
     end = std::chrono::steady_clock::now();
+    VLOG(0) << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[us]" << std::endl;
   }
 };
 
