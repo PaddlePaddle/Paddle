@@ -38,19 +38,13 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
 using LoDTensor = framework::LoDTensor;
 
 #define CREATE_TENSOR(tensor, dtype, ...)             \
   LoDTensor tensor;                                   \
   tensor.Resize(framework::make_ddim({__VA_ARGS__})); \
   tensor.mutable_data<dtype>(ctx.GetPlace())
-
-#define ELE_MAX(input, output, dims)                                          \
-  auto cast_out_dtype =                                                       \
-      static_cast<framework::proto::VarType::Type>(output.type());            \
-  framework::VisitDataType(cast_out_dtype,                                    \
-                           ReduceKernelFunctor<DeviceContext, T, MaxFunctor>( \
-                               &input, &output, dims, false, false, ctx));
 
 #define ELEMENT_BINARY_OP(lhs, rhs, output, functor_type, dtype)            \
   ElementwiseComputeEx<functor_type##Functor<dtype>, DeviceContext, dtype>( \
@@ -71,6 +65,17 @@ using LoDTensor = framework::LoDTensor;
   CastOpFunctor<DeviceContext, int64_t> cast_functor(&mask, &float_mask,  \
                                                      dev_ctx);            \
   cast_functor.template apply<dtype>()
+
+template <typename DeviceContext, typename T>
+inline void MAX_FUNC(const framework::ExecutionContext& ctx,
+                     const Tensor* input, Tensor* output,
+                     const std::vector<int>& dims) {
+  auto cast_out_dtype =
+      static_cast<framework::proto::VarType::Type>(output->type());
+  framework::VisitDataType(cast_out_dtype,
+                           ReduceKernelFunctor<DeviceContext, T, MaxFunctor>(
+                               input, output, dims, false, false, ctx));
+}
 
 class TensorBuffer {
  public:
@@ -211,7 +216,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
 
       ADD(alpha_exp, trans_exp, alpha_trn_sum, T);
 
-      ELE_MAX(alpha_trn_sum, alpha_max, {1});
+      MAX_FUNC<DeviceContext, T>(ctx, &alpha_trn_sum, &alpha_max,
+                                 std::vector<int>({1}));
 
       auto alpha_argmax_temp = alpha_argmax_unbind[i - 1];
       alpha_argmax_temp.Resize({batch_size, n_labels});
@@ -248,7 +254,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     }
 
     // scores, last_ids = alpha.max(1), alpha.argmax(1)
-    ELE_MAX(alpha, (*scores), {1});
+    MAX_FUNC<DeviceContext, T>(ctx, &alpha, scores, std::vector<int>({1}));
     ArgMinMaxFunctor<DeviceContext, T, int64_t, 2, ArgMinMaxType::kArgMax>
         argmax2;
 
