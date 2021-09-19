@@ -179,8 +179,8 @@ class TokenizerKernel : public framework::OpKernel<T> {
     size_t batch_max_seq_len = 0;
     size_t batch_size = text->size();
 
-    unordered_map<size_t, vector<T>> batch_input_ids;
-    unordered_map<size_t, vector<T>> batch_seg_ids;
+    //unordered_map<size_t, vector<T>> batch_input_ids;
+    //unordered_map<size_t, vector<T>> batch_seg_ids;
     vector<unordered_map<string, vector<int64_t>>> batch_encode_inputs;
     if (text_pair) {
       batch_encode_inputs =
@@ -192,10 +192,9 @@ class TokenizerKernel : public framework::OpKernel<T> {
           pad_to_max_seq_len);
     }
     for (size_t i = 0; i < batch_size; ++i) {
-      auto encoded_inputs = batch_encode_inputs[i];
-      size_t seq_len = encoded_inputs["input_ids"].size();
-      batch_input_ids[i] = encoded_inputs["input_ids"];
-      batch_seg_ids[i] = encoded_inputs["token_type_ids"];
+      size_t seq_len = batch_encode_inputs[i]["input_ids"].size();
+      //batch_input_ids[i] = encoded_inputs["input_ids"];
+      //batch_seg_ids[i] = encoded_inputs["token_type_ids"];
       if (seq_len > batch_max_seq_len) {
         batch_max_seq_len = seq_len;
       }
@@ -214,7 +213,15 @@ class TokenizerKernel : public framework::OpKernel<T> {
     end = std::chrono::steady_clock::now();
     VLOG(0) << "Time difference stage_2 = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
     for (size_t i = 0; i < batch_size; i++) {
-      size_t seq_len = batch_input_ids[i].size();
+      auto& encoder_input_ids = batch_encode_inputs[i]["input_ids"];
+      auto& encoder_seg_ids = batch_encode_inputs[i]["token_type_ids"];
+      const size_t& seq_len = encoder_input_ids.size();
+      // Copy the memory  
+      std::memcpy(input_ids_data + i * batch_max_seq_len, encoder_input_ids.data(), seq_len * sizeof(T));
+      std::memcpy(seg_ids_data + i * batch_max_seq_len, encoder_seg_ids.data(), seq_len * sizeof(T));
+      std::memset(input_ids_data + i * batch_max_seq_len + seq_len, pad_token_id, (batch_max_seq_len - seq_len) * sizeof(T));
+      std::memset(seg_ids_data + i * batch_max_seq_len + seq_len, pad_token_id, (batch_max_seq_len - seq_len) * sizeof(T));
+      /*
       for (size_t j = 0; j < batch_max_seq_len; j++) {
         if (j < seq_len) {
           input_ids_data[i * batch_max_seq_len + j] = batch_input_ids[i][j];
@@ -223,10 +230,8 @@ class TokenizerKernel : public framework::OpKernel<T> {
           input_ids_data[i * batch_max_seq_len + j] = pad_token_id;
           seg_ids_data[i * batch_max_seq_len + j] = pad_token_id;
         }
-      }
+      }*/
     }
-    end = std::chrono::steady_clock::now();
-    VLOG(0) << "Time difference stage_3 = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
     delete tokenizer_ptr;
     end = std::chrono::steady_clock::now();
     VLOG(0) << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[us]" << std::endl;
