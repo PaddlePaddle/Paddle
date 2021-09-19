@@ -56,17 +56,17 @@ class ViterbiDecodeOp : public framework::OperatorWithKernel {
             "The rank of Transition in ViterbiDecode must be 2. But "
             "received Transition's rank is %d.",
             transition_dims.size()));
+    if (ctx->IsRuntime()) {
+      PADDLE_ENFORCE_EQ(
+          in_dims[0], length_dims[0],
+          platform::errors::InvalidArgument(
+              "The batch size of Input and Length should be equal."));
 
-    PADDLE_ENFORCE_EQ(
-        in_dims[0], length_dims[0],
-        platform::errors::InvalidArgument(
-            "The batch size of Input and Length should be equal."));
-
-    PADDLE_ENFORCE_EQ(
-        in_dims[2], transition_dims[0],
-        platform::errors::InvalidArgument(
-            "The number of tags of Input and Transition should be equal."));
-
+      PADDLE_ENFORCE_EQ(
+          in_dims[2], transition_dims[0],
+          platform::errors::InvalidArgument(
+              "The number of tags of Input and Transition should be equal."));
+    }
     ctx->SetOutputDim("Scores", length_dims);
   }
 
