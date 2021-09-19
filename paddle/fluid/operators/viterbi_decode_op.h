@@ -52,18 +52,18 @@ using LoDTensor = framework::LoDTensor;
                            ReduceKernelFunctor<DeviceContext, T, MaxFunctor>( \
                                &input, &output, dims, false, false, ctx));
 
-#define ELEMENT_BINARY_OP(lhs, rhs, output, Functor, dtype)   \
-  ElementwiseComputeEx<Functor<dtype>, DeviceContext, dtype>( \
-      ctx, &lhs, &rhs, -1, Functor<dtype>(), &output)
+#define ELEMENT_BINARY_OP(lhs, rhs, output, functor_type, dtype)            \
+  ElementwiseComputeEx<functor_type##Functor<dtype>, DeviceContext, dtype>( \
+      ctx, &lhs, &rhs, -1, functor_type##Functor<dtype>(), &output)
 
 #define ADD(lhs, rhs, output, dtype) \
-  ELEMENT_BINARY_OP(lhs, rhs, output, AddFunctor, dtype)
+  ELEMENT_BINARY_OP(lhs, rhs, output, Add, dtype)
 
 #define SUB(lhs, rhs, output, dtype) \
-  ELEMENT_BINARY_OP(lhs, rhs, output, SubFunctor, dtype)
+  ELEMENT_BINARY_OP(lhs, rhs, output, Sub, dtype)
 
 #define MUL(lhs, rhs, output, dtype) \
-  ELEMENT_BINARY_OP(lhs, rhs, output, MulFunctor, dtype)
+  ELEMENT_BINARY_OP(lhs, rhs, output, Mul, dtype)
 
 #define GET_CAST_MASK(lhs, rhs, mask, float_mask, compare_functor, dtype) \
   ElementwiseComputeEx<compare_functor<int64_t>, DeviceContext, int64_t>( \
