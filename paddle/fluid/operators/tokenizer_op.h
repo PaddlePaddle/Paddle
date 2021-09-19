@@ -20,7 +20,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/string_array.h"
-#include <chrono>
+// #include <chrono>
 
 namespace paddle {
 namespace operators {
@@ -43,14 +43,14 @@ using InvVocab = unordered_map<int, wstring>;
 class BasicTokenizer {
  public:
   explicit BasicTokenizer(bool do_lower_case = true);
-  vector<wstring> Tokenize(const string& text) const;
+  void Tokenize(const string& text, vector<wstring>* res) const;
 
  private:
-  wstring clean_text(const wstring& text) const;
+  void clean_text(const wstring& text, wstring* output) const;
   bool is_chinese_char(const wchar_t& ch) const;
-  wstring tokenize_chinese_chars(const wstring& text) const;
-  wstring run_strip_accents(const wstring& text) const;
-  vector<wstring> run_split_on_punc(const wstring& text) const;
+  void tokenize_chinese_chars(const wstring& text, wstring* output) const;
+  void run_strip_accents(const wstring& text, wstring* output) const;
+  void run_split_on_punc(const wstring& text, vector<wstring>* res) const;
 
   bool do_lower_case_{true};
 };
@@ -60,7 +60,7 @@ class WordPieceTokenizer {
   explicit WordPieceTokenizer(framework::WSTRING_MAP* vocab,
                               const wstring& unk_token = L"[UNK]",
                               const size_t max_input_chars_per_word = 100);
-  vector<wstring> Tokenize(const wstring& text) const;
+  void Tokenize(const wstring& text, vector<wstring>* output) const;
 
  private:
   framework::WSTRING_MAP* vocab_;
@@ -79,17 +79,18 @@ class BertTokenizer {
                          const wstring& sep_token = L"[SEP]",
                          const string& padding_site = "right");
 
-  vector<wstring> Tokenize(const string& text) const;
-  vector<int64_t> BuildInputsWithSpecialTokens(
-      const vector<int64_t>& token_ids_0,
+  void Tokenize(const string& text, vector<wstring>* split_tokens) const;
+  void BuildInputsWithSpecialTokens(
+      vector<int64_t>* res, const vector<int64_t>& token_ids_0,
       const vector<int64_t>& token_ids_1 = vector<int64_t>()) const;
-  vector<int64_t> CreateTokenTypeIdsFromSequences(
-      const vector<int64_t>& token_ids_0,
+  void CreateTokenTypeIdsFromSequences(
+      vector<int64_t>* token_type_ids, const vector<int64_t>& token_ids_0,
       const vector<int64_t>& token_ids_1 = vector<int64_t>()) const;
-  vector<int64_t> ConvertTokensToIds(const vector<wstring>& tokens) const;
+  void ConvertTokensToIds(const vector<wstring>& tokens,
+                          vector<int64_t>* token_ids) const;
   string ConvertTokensToString(const vector<wstring>& tokens) const;
-  vector<wstring> ConvertIdsToTokens(const vector<int64_t>& token_ids);
-  unordered_map<string, vector<int64_t>> TruncateSequence(
+  int TruncateSequence(
+      // unordered_map<string, vector<int64_t>>* res,
       vector<int64_t>* ids, vector<int64_t>* pair_ids,
       const size_t num_tokens_to_remove = 0,
       const string& truncation_strategy = "longest_first",
@@ -99,15 +100,17 @@ class BertTokenizer {
       const vector<int64_t>& token_ids_1 = vector<int64_t>(),
       const bool already_has_special_tokens = false) const;
   int64_t GetNumSpecialTokensToAdd(const bool pair = false) const;
-  unordered_map<string, vector<int64_t>> Encode(
-      const string& text, const string& text_pair = "",
-      const size_t max_seq_len = 0, bool pad_to_max_seq_len = false,
-      bool return_length = false, bool return_token_type_ids = true,
-      bool return_position_ids = false, bool return_attention_mask = false,
-      const string& truncation_strategy = "longest_first",
-      bool return_overflowing_tokens = false,
-      bool return_special_tokens_mask = false) const;
-  vector<unordered_map<string, vector<int64_t>>> BatchEncode(
+  int Encode(unordered_map<string, vector<int64_t>>* encoded_inputs,
+             const string& text, const string& text_pair = "",
+             const size_t max_seq_len = 0, bool pad_to_max_seq_len = false,
+             bool return_length = false, bool return_token_type_ids = true,
+             bool return_position_ids = false,
+             bool return_attention_mask = false,
+             const string& truncation_strategy = "longest_first",
+             bool return_overflowing_tokens = false,
+             bool return_special_tokens_mask = false) const;
+  int BatchEncode(
+      vector<unordered_map<string, vector<int64_t>>>* batch_encode_inputs,
       const vector<string>& batch_text,
       const vector<string>& batch_text_pair = vector<string>(),
       bool is_split_into_words = false, const size_t max_seq_len = 0,
@@ -137,23 +140,33 @@ class BertTokenizer {
   unordered_set<int64_t> all_special_token_ids_;
   InvVocab inv_vocab_;
 
-  vector<int64_t> get_input_ids(const string& text) const;
+  void get_input_ids(const string& text, vector<int64_t>* token_ids) const;
 };
 
 template <typename T>
 class TokenizerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::time_point begin =
+        std::chrono::steady_clock::now();
     auto* text = ctx.Input<framework::STRINGS>("Text");
     auto* vocab = ctx.Input<framework::WSTRING_MAP>("Vocab");
-    std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-    VLOG(0) << "Time difference stage_0_0 = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
+    std::chrono::steady_clock::time_point end =
+        std::chrono::steady_clock::now();
+    VLOG(0) << "Time difference stage_0_0 = "
+            << std::chrono::duration_cast<std::chrono::microseconds>(end -
+                                                                     begin)
+                   .count()
+            << "[µs]" << std::endl;
 
     auto* input_ids = ctx.Output<framework::Tensor>("InputIds");
     auto* seg_ids = ctx.Output<framework::Tensor>("SegmentIds");
     end = std::chrono::steady_clock::now();
-    VLOG(0) << "Time difference stage_0_1 = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
+    VLOG(0) << "Time difference stage_0_1 = "
+            << std::chrono::duration_cast<std::chrono::microseconds>(end -
+                                                                     begin)
+                   .count()
+            << "[µs]" << std::endl;
 
     auto is_split_into_words =
         static_cast<bool>(ctx.Attr<bool>("is_split_into_words"));
@@ -161,7 +174,11 @@ class TokenizerKernel : public framework::OpKernel<T> {
     auto pad_to_max_seq_len =
         static_cast<bool>(ctx.Attr<bool>("pad_to_max_seq_len"));
     end = std::chrono::steady_clock::now();
-    VLOG(0) << "Time difference stage_0_2 = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
+    VLOG(0) << "Time difference stage_0_2 = "
+            << std::chrono::duration_cast<std::chrono::microseconds>(end -
+                                                                     begin)
+                   .count()
+            << "[µs]" << std::endl;
 
     auto* text_pair = ctx.Input<framework::STRINGS>("TextPair");
     if (text_pair && text->size() != text_pair->size()) {
@@ -170,31 +187,47 @@ class TokenizerKernel : public framework::OpKernel<T> {
       return;
     }
     end = std::chrono::steady_clock::now();
-    VLOG(0) << "Time difference stage_0_3 = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
+    VLOG(0) << "Time difference stage_0_3 = "
+            << std::chrono::duration_cast<std::chrono::microseconds>(end -
+                                                                     begin)
+                   .count()
+            << "[µs]" << std::endl;
 
-    BertTokenizer* tokenizer_ptr = new BertTokenizer(const_cast<framework::WSTRING_MAP*>(vocab));
+    BertTokenizer* tokenizer_ptr =
+        new BertTokenizer(const_cast<framework::WSTRING_MAP*>(vocab));
     end = std::chrono::steady_clock::now();
-    VLOG(0) << "Time difference stage_1 = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
+    VLOG(0) << "Time difference stage_1 = "
+            << std::chrono::duration_cast<std::chrono::microseconds>(end -
+                                                                     begin)
+                   .count()
+            << "[µs]" << std::endl;
     // only support cpu now
     size_t batch_max_seq_len = 0;
     size_t batch_size = text->size();
 
-    //unordered_map<size_t, vector<T>> batch_input_ids;
-    //unordered_map<size_t, vector<T>> batch_seg_ids;
+    // unordered_map<size_t, vector<T>> batch_input_ids;
+    // unordered_map<size_t, vector<T>> batch_seg_ids;
     vector<unordered_map<string, vector<int64_t>>> batch_encode_inputs;
+    int status;
     if (text_pair) {
-      batch_encode_inputs =
-          tokenizer_ptr->BatchEncode(*text, *text_pair, is_split_into_words,
-                                     max_seq_len, pad_to_max_seq_len);
+      status = tokenizer_ptr->BatchEncode(&batch_encode_inputs, *text,
+                                          *text_pair, is_split_into_words,
+                                          max_seq_len, pad_to_max_seq_len);
     } else {
-      batch_encode_inputs = tokenizer_ptr->BatchEncode(
-          *text, vector<string>(), is_split_into_words, max_seq_len,
-          pad_to_max_seq_len);
+      status = tokenizer_ptr->BatchEncode(&batch_encode_inputs, *text,
+                                          vector<string>(), is_split_into_words,
+                                          max_seq_len, pad_to_max_seq_len);
     }
+
+    PADDLE_ENFORCE_EQ(
+        status, 1,
+        platform::errors::InvalidArgument(
+            "Tokenizer op computes failly.  Please check the input."));
+
     for (size_t i = 0; i < batch_size; ++i) {
       size_t seq_len = batch_encode_inputs[i]["input_ids"].size();
-      //batch_input_ids[i] = encoded_inputs["input_ids"];
-      //batch_seg_ids[i] = encoded_inputs["token_type_ids"];
+      // batch_input_ids[i] = encoded_inputs["input_ids"];
+      // batch_seg_ids[i] = encoded_inputs["token_type_ids"];
       if (seq_len > batch_max_seq_len) {
         batch_max_seq_len = seq_len;
       }
@@ -211,16 +244,24 @@ class TokenizerKernel : public framework::OpKernel<T> {
 
     auto pad_token_id = tokenizer_ptr->GetPadTokenID();
     end = std::chrono::steady_clock::now();
-    VLOG(0) << "Time difference stage_2 = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
+    VLOG(0) << "Time difference stage_2 = "
+            << std::chrono::duration_cast<std::chrono::microseconds>(end -
+                                                                     begin)
+                   .count()
+            << "[µs]" << std::endl;
     for (size_t i = 0; i < batch_size; i++) {
       auto& encoder_input_ids = batch_encode_inputs[i]["input_ids"];
       auto& encoder_seg_ids = batch_encode_inputs[i]["token_type_ids"];
       const size_t& seq_len = encoder_input_ids.size();
-      // Copy the memory  
-      std::memcpy(input_ids_data + i * batch_max_seq_len, encoder_input_ids.data(), seq_len * sizeof(T));
-      std::memcpy(seg_ids_data + i * batch_max_seq_len, encoder_seg_ids.data(), seq_len * sizeof(T));
-      std::memset(input_ids_data + i * batch_max_seq_len + seq_len, pad_token_id, (batch_max_seq_len - seq_len) * sizeof(T));
-      std::memset(seg_ids_data + i * batch_max_seq_len + seq_len, pad_token_id, (batch_max_seq_len - seq_len) * sizeof(T));
+      // Copy the memory
+      std::memcpy(input_ids_data + i * batch_max_seq_len,
+                  encoder_input_ids.data(), seq_len * sizeof(T));
+      std::memcpy(seg_ids_data + i * batch_max_seq_len, encoder_seg_ids.data(),
+                  seq_len * sizeof(T));
+      std::memset(input_ids_data + i * batch_max_seq_len + seq_len,
+                  pad_token_id, (batch_max_seq_len - seq_len) * sizeof(T));
+      std::memset(seg_ids_data + i * batch_max_seq_len + seq_len, pad_token_id,
+                  (batch_max_seq_len - seq_len) * sizeof(T));
       /*
       for (size_t j = 0; j < batch_max_seq_len; j++) {
         if (j < seq_len) {
@@ -234,7 +275,11 @@ class TokenizerKernel : public framework::OpKernel<T> {
     }
     delete tokenizer_ptr;
     end = std::chrono::steady_clock::now();
-    VLOG(0) << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[us]" << std::endl;
+    VLOG(0) << "Time difference = "
+            << std::chrono::duration_cast<std::chrono::microseconds>(end -
+                                                                     begin)
+                   .count()
+            << "[us]" << std::endl;
   }
 };
 

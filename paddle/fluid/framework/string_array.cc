@@ -30,8 +30,20 @@ std::wstring ConvertStrToWstr(const std::string& src) {
   return kConverter.from_bytes(src);
 }
 
+void ConvertStrToWstr(const std::string& src, std::wstring* res) {
+  *res = kConverter.from_bytes(src);
+}
+
+// void ConvertStrToWstr(const std::string& src, std::wstring* tgt) {
+//   *tgt = kConverter.from_bytes(src);
+// }
+
 std::string ConvertWstrToStr(const std::wstring& src) {
   return kConverter.to_bytes(src);
+}
+
+void ConvertWstrToStr(const std::wstring& src, std::string* res) {
+  *res = kConverter.to_bytes(src);
 }
 
 std::string NormalizeNfd(const std::string& s) {
@@ -41,9 +53,18 @@ std::string NormalizeNfd(const std::string& s) {
   if (result) {
     ret = std::string(result);
     free(result);
-    result = nullptr;
   }
   return ret;
+}
+
+void NormalizeNfd(const std::string& s, std::string* ret) {
+  *ret = "";
+  char* result = reinterpret_cast<char*>(
+      utf8proc_NFD(reinterpret_cast<const unsigned char*>(s.c_str())));
+  if (result) {
+    *ret = std::string(result);
+    free(result);
+  }
 }
 
 void SerializableStringMap::write(std::ostream& os, int32_t t) {

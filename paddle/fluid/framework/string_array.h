@@ -29,8 +29,11 @@ using STRINGS = std::vector<STRING>;
 using WSTRING_MAP = std::unordered_map<std::wstring, std::int32_t>;
 
 std::wstring ConvertStrToWstr(const std::string& src);
+void ConvertStrToWstr(const std::string& src, std::wstring* res);
 std::string ConvertWstrToStr(const std::wstring& src);
+void ConvertWstrToStr(const std::wstring& src, std::string* res);
 std::string NormalizeNfd(const std::string& s);
+void NormalizeNfd(const std::string& s, std::string* ret);
 class SerializableStringMap : public std::unordered_map<std::string, int32_t> {
  private:
   void write(std::ostream& os, int32_t t);
