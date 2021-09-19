@@ -75,13 +75,6 @@ using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
                                                      dev_ctx);            \
   cast_functor.template apply<dtype>()
 
-struct MaxFunctor {
-  template <typename DeviceContext, typename X, typename Y, typename Dim>
-  void operator()(const DeviceContext& place, X* x, Y* y, const Dim& dim) {
-    y->device(place) = x->maximum(dim);
-  }
-};
-
 template <typename DeviceContext, typename T, size_t D, size_t R_D>
 inline void MAX_FUNC(const framework::ExecutionContext& ctx,
                      const Tensor* input, Tensor* output,
@@ -97,13 +90,12 @@ inline void MAX_FUNC(const framework::ExecutionContext& ctx,
   }
   DDim out_dims = output->dims();
   auto& place = *dev_ctx.eigen_device();
-  MaxFunctor functor;
   if (D == 1) {
     auto out = EigenScalar<T>::From(*output);
-    functor(place, &x, &out, reduce_dim);
+    out.device(place) = x.maximum(reduce_dim);
   } else {
     auto out = EigenTensor<T, (D - R_D)>::From(*output, out_dims);
-    functor(place, &x, &out, reduce_dim);
+    out.device(place) = x.maximum(reduce_dim);
   }
 }
 
