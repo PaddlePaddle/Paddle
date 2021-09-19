@@ -233,30 +233,34 @@ WordPieceTokenizer::WordPieceTokenizer(
     const size_t max_input_chars_per_word /* = 100 */)
     : vocab_(vocab),
       unk_token_(unk_token),
-      max_input_chars_per_word_(max_input_chars_per_word) {}
+      max_input_chars_per_word_(max_input_chars_per_word) {
+  unk_token_id_ = (*vocab_)[unk_token_];
+}
 
 void WordPieceTokenizer::Tokenize(const wstring& text,
-                                  vector<wstring>* output_tokens) const {
-  // vector<wstring> output_tokens;
+                                  vector<int64_t>* output_token_ids) const {
   vector<wstring> tokens;
   WhiteSpaceTokenize(text, &tokens);
+  std::vector<int64_t> sub_token_ids;
+  int64_t cur_token_id;
+  wstring substr;
   for (auto& token : tokens) {
     if (token.size() > max_input_chars_per_word_) {
-      output_tokens->push_back(unk_token_);
+      output_token_ids->emplace_back(unk_token_id_);
     }
     bool is_bad = false;
     size_t start = 0;
-    vector<wstring> sub_tokens;
+    sub_token_ids.clear();
     while (start < token.size()) {
       size_t end = token.size();
-      wstring cur_sub_str;
       bool has_cur_sub_str = false;
       while (start < end) {
-        wstring substr = token.substr(start, end - start);
+        substr = token.substr(start, end - start);
         if (start > 0) substr = L"##" + substr;
-        if (vocab_->find(substr) != vocab_->end()) {
-          cur_sub_str = substr;
+        auto it = vocab_->find(substr);
+        if (it != vocab_->end()) {
           has_cur_sub_str = true;
+          cur_token_id = it->second;
           break;
         }
         end--;
@@ -265,14 +269,16 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
         is_bad = true;
         break;
       }
-      sub_tokens.push_back(cur_sub_str);
+      sub_token_ids.emplace_back(cur_token_id);
       start = end;
     }
     if (is_bad) {
-      output_tokens->push_back(unk_token_);
+      output_token_ids->emplace_back(unk_token_id_);
     } else {
-      for (size_t i = 0; i < sub_tokens.size(); ++i)
-        output_tokens->push_back(sub_tokens[i]);
+      // output_token_ids->insert(output_token_ids->end(),
+      // sub_token_ids.begin(), sub_token_ids.end());
+      for (size_t i = 0; i < sub_token_ids.size(); ++i)
+        output_token_ids->emplace_back(sub_token_ids[i]);
     }
   }
 }
@@ -312,14 +318,13 @@ BertTokenizer::BertTokenizer(framework::WSTRING_MAP* vocab,
 
 void BertTokenizer::ConvertTokensToIds(const vector<wstring>& tokens,
                                        vector<int64_t>* token_ids) const {
-  token_ids->clear();
-  token_ids->resize(tokens.size());
+  token_ids->reserve(tokens.size());
   for (size_t i = 0; i < token_ids->size(); ++i) {
     auto iter = vocab_->find(tokens[i]);
     if (iter != vocab_->end()) {
-      token_ids->at(i) = iter->second;
+      token_ids->emplace_back(iter->second);
     } else {
-      token_ids->at(i) = unk_token_id_;
+      token_ids->emplace_back(unk_token_id_);
     }
   }
 }
@@ -331,15 +336,16 @@ string BertTokenizer::ConvertTokensToString(
 }
 
 void BertTokenizer::Tokenize(const string& text,
-                             vector<wstring>* split_tokens) const {
+                             vector<int64_t>* split_token_ids) const {
   vector<wstring> tokens;
   basic_tokenizer_.Tokenize(text, &tokens);
+  split_token_ids->reserve(tokens.size());
   for (auto& token : tokens) {
-    vector<wstring> sub_tokens;
-    word_piece_tokenizer_.Tokenize(token, &sub_tokens);
-    for (size_t i = 0; i < sub_tokens.size(); ++i) {
-      split_tokens->push_back(sub_tokens[i]);
-    }
+    // vector<wstring> sub_tokens;
+    word_piece_tokenizer_.Tokenize(token, split_token_ids);
+    // for (size_t i = 0; i < sub_tokens.size(); ++i) {
+    //  split_tokens->emplace_back(sub_tokens[i]);
+    //}
   }
 }
 
@@ -516,9 +522,7 @@ int BertTokenizer::TruncateSequence(
 
 void BertTokenizer::get_input_ids(const string& text,
                                   vector<int64_t>* token_ids) const {
-  vector<wstring> tokens;
-  Tokenize(text, &tokens);
-  ConvertTokensToIds(tokens, token_ids);
+  Tokenize(text, token_ids);
 }
 
 int64_t BertTokenizer::GetClsTokenID() const { return cls_token_id_; }
@@ -541,8 +545,15 @@ int BertTokenizer::Encode(
     const string& truncation_strategy /* = "longest_first" */,
     bool return_overflowing_tokens /* = false */,
     bool return_special_tokens_mask /* = false */) const {
+  std::chrono::steady_clock::time_point begin =
+      std::chrono::steady_clock::now();
   vector<int64_t> ids;
   get_input_ids(text, &ids);
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+  VLOG(0) << "Time inner difference = "
+          << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
+                 .count()
+          << "[µs]" << std::endl;
   vector<int64_t> pair_ids;
   if (text_pair != "") {
     get_input_ids(text_pair, &pair_ids);
@@ -689,6 +700,11 @@ int BertTokenizer::Encode(
     }
     encoded_inputs->emplace("position_ids", position_ids);
   }
+  end = std::chrono::steady_clock::now();
+  VLOG(0) << "Time inner difference = "
+          << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
+                 .count()
+          << "[µs]" << std::endl;
   return 1;
 }
 

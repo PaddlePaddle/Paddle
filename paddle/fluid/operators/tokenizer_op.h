@@ -60,11 +60,12 @@ class WordPieceTokenizer {
   explicit WordPieceTokenizer(framework::WSTRING_MAP* vocab,
                               const wstring& unk_token = L"[UNK]",
                               const size_t max_input_chars_per_word = 100);
-  void Tokenize(const wstring& text, vector<wstring>* output) const;
+  void Tokenize(const wstring& text, vector<int64_t>* output) const;
 
  private:
   framework::WSTRING_MAP* vocab_;
-  wstring unk_token_{L"[UNK]"};
+  wstring unk_token_;
+  int64_t unk_token_id_;
   size_t max_input_chars_per_word_;
 };
 
@@ -79,7 +80,7 @@ class BertTokenizer {
                          const wstring& sep_token = L"[SEP]",
                          const string& padding_site = "right");
 
-  void Tokenize(const string& text, vector<wstring>* split_tokens) const;
+  void Tokenize(const string& text, vector<int64_t>* split_token_ids) const;
   void BuildInputsWithSpecialTokens(
       vector<int64_t>* res, const vector<int64_t>& token_ids_0,
       const vector<int64_t>& token_ids_1 = vector<int64_t>()) const;
