@@ -278,15 +278,8 @@ bool AnalysisPredictor::CreateExecutor() {
 #endif
   } else if (config_.NNAdapter().use_nnadapter) {
     if (config_.lite_engine_enabled()) {
-#ifdef LITE_SUBGRAPH_WITH_NNADAPTER
-      // Currently, Paddle-Lite's NNAdapter user interface only supports the
-      // transfer
-      // of Host data pointers. If it is currently used as a subgraph, execution
-      // efficiency will be sacrificed, so it is temporarily set to cpu place.
-      // And, the current lite engine of xpu must execute all parts of the
-      // model.
       place_ = paddle::platform::CPUPlace();
-#else
+#ifndef LITE_SUBGRAPH_WITH_NNADAPTER
       PADDLE_THROW(
           platform::errors::Unavailable("You tried to use an NNAdapter lite "
                                         "engine, but Paddle was not compiled "
