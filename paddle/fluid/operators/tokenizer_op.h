@@ -43,11 +43,11 @@ using InvVocab = unordered_map<int, wstring>;
 class BasicTokenizer {
  public:
   explicit BasicTokenizer(bool do_lower_case = true);
+  bool is_chinese_char(const wchar_t& ch) const;
   void Tokenize(const string& text, vector<wstring>* res) const;
 
  private:
   void clean_text(const wstring& text, wstring* output) const;
-  bool is_chinese_char(const wchar_t& ch) const;
   void tokenize_chinese_chars(const wstring& text, wstring* output) const;
   void run_strip_accents(const wstring& text, wstring* output) const;
   void run_split_on_punc(const wstring& text, vector<wstring>* res) const;

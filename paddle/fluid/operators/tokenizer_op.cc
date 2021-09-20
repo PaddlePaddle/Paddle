@@ -331,29 +331,28 @@ string BertTokenizer::ConvertTokensToString(
 
 void BertTokenizer::Tokenize(const string& text,
                              vector<int64_t>* split_token_ids) const {
-  // std::chrono::steady_clock::time_point begin =
-  // std::chrono::steady_clock::now();
   std::vector<std::wstring> tmp_tokens;
   basic_tokenizer_.Tokenize(text, &tmp_tokens);
   // split_token_ids->reserve(tmp_tokens.size());
-  // std::chrono::steady_clock::time_point end =
-  // std::chrono::steady_clock::now();
-  // VLOG(0) << "basic_tokenizer_ Tokenize Time difference = "
-  // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
-  // .count()
-  // << "[µs]" << std::endl;
   for (auto& w_token : tmp_tokens) {
-    if (w_token.empty()) {
+    const auto& vec_size = w_token.size();
+    if (vec_size == 1) {
+      if (basic_tokenizer_.is_chinese_char(w_token[0])) {
+        auto vocab_it = vocab_->find(w_token);
+        if (vocab_it != vocab_->end()) {
+          split_token_ids->emplace_back(vocab_it->second);
+        } else {
+          split_token_ids->emplace_back(unk_token_id_);
+        }
+      } else {
+        word_piece_tokenizer_.Tokenize(w_token, split_token_ids);
+      }
+    } else if (vec_size > 1) {
+      word_piece_tokenizer_.Tokenize(w_token, split_token_ids);
+    } else {
       continue;
     }
-    word_piece_tokenizer_.Tokenize(w_token, split_token_ids);
   }
-
-  // end = std::chrono::steady_clock::now();
-  // VLOG(0) << "word_piece_tokenizer_ Tokenize Time difference = "
-  // << std::chrono::duration_cast<std::chrono::microseconds>(end -
-  // begin).count()
-  // << "[µs]" << std::endl;
 }
 
 void BertTokenizer::BuildInputsWithSpecialTokens(
