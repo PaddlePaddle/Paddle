@@ -11,29 +11,14 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #pragma once
 
 #include <algorithm>
 #include <utility>
 #include "paddle/fluid/operators/elementwise/elementwise_op.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/math_function.h"
-
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-#ifdef __NVCC__
-#include <cuda.h>
-#include <cuda_fp16.h>
-#include "cub/cub.cuh"
-
-#endif
-#ifdef __HIPCC__
-#include <hip/hip_fp16.h>
-#include <hip/hip_runtime.h>
-#include <hipcub/hipcub.hpp>
-namespace cub = hipcub;
-#endif
-#endif
 
 namespace paddle {
 namespace operators {

@@ -55,7 +55,7 @@ std::map<std::string, paddle::test::Record> PrepareInput(int batch_size) {
   return input_data_map;
 }
 
-TEST(test_ppyolov2_r50vd, multi_thread2_trt_fp32_bz1) {
+TEST(tensorrt_tester_ppyolov2_r50vd, multi_thread2_trt_fp32_bz1) {
   int thread_num = 2;  // thread > 2 may OOM
   // init input data
   auto input_data_map = PrepareInput(1);
@@ -100,7 +100,7 @@ TEST(test_ppyolov2_r50vd, multi_thread2_trt_fp32_bz1) {
   std::cout << "finish multi-thread test" << std::endl;
 }
 
-TEST(test_ppyolov2_r50vd, multi_thread2_mkl_bz2) {
+TEST(mkldnn_tester_ppyolov2_r50vd, multi_thread2_mkl_bz2) {
   int thread_num = 2;
   // init input data
   auto input_data_map = PrepareInput(2);

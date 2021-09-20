@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
@@ -63,7 +64,7 @@ fi
 api_src_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5` 
 if [ "$api_src_spec_diff" != "" ]; then
     echo_line="APIs without core.ops: \n${api_src_spec_diff}\n"
-    echo_line="${echo_line}You must have one RD (zhiqiu (Recommend) or phlrain) approval for the api change for the opreator-related api without 'core.ops'.\n"
+    echo_line="${echo_line}You must have one RD (zhiqiu (Recommend) or phlrain) approval for the api change for the opreator-related api without '_C_ops'.\n"
     echo_line="${echo_line}For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/paddle_api_development_manual.md]\n"
     check_approval 1 6888866 43953930
 fi
@@ -91,6 +92,7 @@ fi
 
 if [ -n "${echo_list}" ];then
   echo "****************"
+  echo "Please find RD for approval first, and then find TPM for approval."
   echo -e "${echo_list[@]}"
   echo "There are ${failed_num} approved errors."
   echo "****************"

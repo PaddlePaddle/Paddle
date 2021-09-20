@@ -141,9 +141,11 @@ class TestQuantizeProgramPass(unittest.TestCase):
         qt.convert(test_program, scope)
         if not for_ci:
             with fluid.scope_guard(scope):
-                fluid.io.save_inference_model('./infer_model',
-                                              ['image', 'label'], [loss], exe,
-                                              test_program)
+                fluid.io.save_inference_model(
+                    './infer_model', ['image', 'label'], [loss],
+                    exe,
+                    test_program,
+                    clip_extra=True)
 
     def test_gpu_1(self):
         if fluid.core.is_compiled_with_cuda():

@@ -76,6 +76,7 @@ if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
 if not defined retry_times set retry_times=3
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 if not defined BUILD_DIR set BUILD_DIR=build
+set task_name=%1
 
 rem ------initialize the python environment------
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
@@ -271,6 +272,7 @@ if %errorlevel% NEQ 0 exit /b 1
 call :cmake || goto cmake_error
 call :build || goto build_error
 call :test_inference || goto test_inference_error
+call :test_inference_ut || goto test_inference_ut_error
 call :zip_cc_file || goto zip_cc_file_error
 call :zip_c_file || goto zip_c_file_error
 goto:success
@@ -339,15 +341,12 @@ if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
     if %day_now% EQU 21 (
-        rmdir %cache_dir%\third_party_GPU /s/q
         rmdir %cache_dir%\third_party /s/q
     )
     if %day_now% EQU 11 (
-        rmdir %cache_dir%\third_party_GPU /s/q
         rmdir %cache_dir%\third_party /s/q
     )
     if %day_now% EQU 01 (
-        rmdir %cache_dir%\third_party_GPU /s/q
         rmdir %cache_dir%\third_party /s/q
     )
 )
@@ -365,12 +364,50 @@ echo echo ${md5_content}^>md5.txt >> cache.sh
 %cache_dir%\tools\busybox64.exe bash cache.sh
 
 set /p md5=< md5.txt
-if "%WITH_GPU%"=="ON" (
-    set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party_GPU
-) else (
+echo %task_name%|findstr build >nul && (
     set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party
+    set THIRD_PARTY_PATH=!THIRD_PARTY_HOME!/%md5%
+    echo %task_name% is a whl-build task, will only reuse local third_party cache.
+    goto :cmake_impl
+) || ( 
+    echo %task_name% is a PR-CI-Windows task, will try to reuse bos and local third_party cache both. 
 )
+
+if "%WITH_GPU%"=="ON" (
+    for /F %%# in ('dir /b /d "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\"') do set cuda_version=%%#
+    set cuda_version=!cuda_version:~-4!
+    set sub_dir=cuda!cuda_version:.=!
+) else (
+    set sub_dir=cpu
+)
+set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party/%sub_dir%
 set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
+set UPLOAD_TP_FILE=OFF
+
+if not exist %THIRD_PARTY_PATH% (
+    echo There is no usable third_party cache in %THIRD_PARTY_PATH%, will download from bos.
+    pip install wget
+    if not exist %THIRD_PARTY_HOME% mkdir "%THIRD_PARTY_HOME%"
+    cd %THIRD_PARTY_HOME%
+    echo Getting third party: downloading ...
+    %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/third_party/%sub_dir%/%md5%.tar.gz')" 2>nul
+    if !ERRORLEVEL! EQU 0 (
+        echo Getting third party: extracting ...
+        tar -xf %md5%.tar.gz
+        if !ERRORLEVEL! EQU 0 ( 
+            echo Get third party from bos successfully
+        ) else (
+            echo Get third party failed, reason: extract failed, will build locally
+        )
+        del %md5%.tar.gz
+    ) else (
+        echo Get third party failed, reason: download failed, will build locally
+    )
+    if not exist %THIRD_PARTY_PATH% ( set UPLOAD_TP_FILE=ON ) 
+    cd %work_dir%\%BUILD_DIR%
+) else (
+    echo Found reusable third_party cache in %THIRD_PARTY_PATH%, will reuse it.
+)
 
 :cmake_impl
 echo cmake .. -G %GENERATOR% -DCMAKE_BUILD_TYPE=Release -DWITH_AVX=%WITH_AVX% -DWITH_GPU=%WITH_GPU% -DWITH_MKL=%WITH_MKL% ^
@@ -398,7 +435,7 @@ rem ----------------------------------------------------------------------------
 :build
 @ECHO OFF
 echo    ========================================
-echo    Step 2. Buile Paddle ...
+echo    Step 2. Build Paddle ...
 echo    ========================================
 
 for /F %%# in ('wmic cpu get NumberOfLogicalProcessors^|findstr [0-9]') do set /a PARALLEL_PROJECT_COUNT=%%#*4/5
@@ -432,6 +469,7 @@ if %ERRORLEVEL% NEQ 0 (
 echo Build third_party successfully!
 
 set build_times=1
+
 :build_paddle
 :: reset clcache zero stats for collect PR's actual hit rate
 rem clcache.exe -z
@@ -481,6 +519,41 @@ if %ERRORLEVEL% NEQ 0 (
         echo Build Paddle failed, will retry!
         goto :build_paddle
     )
+)
+
+set BCE_FILE=%cache_dir%\bce-python-sdk-0.8.33\BosClient.py
+if %UPLOAD_TP_FILE%==ON (
+    echo Uploading third_party: checking bce ...
+    if not exist %cache_dir%\bce-python-sdk-0.8.33 (
+        echo There is no bce in this PC, will install bce.
+        cd %cache_dir%
+        echo Download package from https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz
+        %PYTHON_ROOT%\python.exe -c "import wget;wget.download('https://paddle-windows.bj.bcebos.com/bce-python-sdk-0.8.33.tar.gz')"
+        %PYTHON_ROOT%\python.exe -c "import shutil;shutil.unpack_archive('bce-python-sdk-0.8.33.tar.gz', extract_dir='./',format='gztar')"
+        cd %cache_dir%\bce-python-sdk-0.8.33
+        %PYTHON_ROOT%\python.exe setup.py install 1>nul
+        del %cache_dir%\bce-python-sdk-0.8.33.tar.gz
+    )
+    if !errorlevel! EQU 0 (
+        cd %THIRD_PARTY_HOME%
+        echo Uploading third_party: compressing ...
+        tar -zcf %md5%.tar.gz %md5%
+        if !errorlevel! EQU 0 (
+            echo Uploading third_party: uploading ...
+            %PYTHON_ROOT%\python.exe %BCE_FILE% %md5%.tar.gz paddle-windows/third_party/%sub_dir% 1>nul
+            if !errorlevel! EQU 0 (
+                echo Upload third party to bos paddle-windows/third_party/%sub_dir% successfully 
+            ) else (
+                echo Failed upload third party to bos, reason: upload failed
+            )
+        ) else (
+            echo Failed upload third party to bos, reason: compress failed
+        )
+        del %md5%.tar.gz
+    ) else (
+        echo Failed upload third party to bos, reason: install bce failed
+    )
+    cd %work_dir%\%BUILD_DIR%
 )
 
 echo Build Paddle successfully!
@@ -736,6 +809,23 @@ echo git checkout -f origin_pr >>  check_change_of_unittest.sh
 goto:eof
 
 :check_change_of_unittest_error
+exit /b 1
+
+rem ---------------------------------------------------------------------------------------------
+:test_inference_ut
+@ECHO OFF
+echo    ========================================
+echo    Step 7. Testing fluid library with infer_ut for inference ...
+echo    ========================================
+
+cd %work_dir%\paddle\fluid\inference\tests\infer_ut
+%cache_dir%\tools\busybox64.exe bash run.sh %work_dir:\=/% %WITH_MKL% %WITH_GPU% %cache_dir:\=/%/inference_demo %TENSORRT_ROOT% %MSVC_STATIC_CRT%
+goto:eof
+
+:test_inference_ut_error
+::echo 1 > %cache_dir%\error_code.txt
+::type %cache_dir%\error_code.txt
+echo Testing fluid library with infer_ut for inference failed!
 exit /b 1
 
 rem ---------------------------------------------------------------------------------------------
