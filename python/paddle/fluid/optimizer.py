@@ -1305,6 +1305,7 @@ class SGDOptimizer(Optimizer):
             grad_clip=grad_clip,
             name=name)
         self.type = "sgd"
+        self._use_mkldnn = False
 
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):
@@ -1323,6 +1324,7 @@ class SGDOptimizer(Optimizer):
                 "Grad": param_and_grad[1],
                 "LearningRate": lr
             },
+            attrs={"use_mkldnn": self._use_mkldnn},
             outputs={"ParamOut": param_and_grad[0]},
             stop_gradient=True)
 
