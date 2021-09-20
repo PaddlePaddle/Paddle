@@ -23,6 +23,7 @@ limitations under the License. */
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
+#include <boost/spirit/home/support/char_encoding/unicode/query.hpp>
 
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/operators/tokenizer_op.h"
@@ -52,21 +53,30 @@ using std::wstring_convert;
 
 const wstring kStripChars = L" \t\n\r\v\f";
 
-bool IsControl(const wchar_t& ch) {
+inline bool IsControl(const wchar_t& ch) {
   if (ch == L'\t' || ch == L'\n' || ch == L'\r') return false;
   auto cat = utf8proc_category(ch);
   if (cat == UTF8PROC_CATEGORY_CC || cat == UTF8PROC_CATEGORY_CF) return true;
   return false;
 }
 
-bool IsWhiteSpace(const wchar_t& ch) {
+inline bool IsChineseChar(const wchar_t& ch) {
+  if ((ch >= 0x4E00 && ch <= 0x9FFF) || (ch >= 0x3400 && ch <= 0x4DBF) ||
+      (ch >= 0x20000 && ch <= 0x2A6DF) || (ch >= 0x2A700 && ch <= 0x2B73F) ||
+      (ch >= 0x2B740 && ch <= 0x2B81F) || (ch >= 0x2B820 && ch <= 0x2CEAF) ||
+      (ch >= 0xF900 && ch <= 0xFAFF) || (ch >= 0x2F800 && ch <= 0x2FA1F))
+    return true;
+  return false;
+}
+
+inline bool IsWhiteSpace(const wchar_t& ch) {
   if (ch == L' ' || ch == L'\t' || ch == L'\n' || ch == L'\r') return true;
   auto cat = utf8proc_category(ch);
   if (cat == UTF8PROC_CATEGORY_ZS) return true;
   return false;
 }
 
-bool IsPunctuation(const wchar_t& ch) {
+inline bool IsPunctuation(const wchar_t& ch) {
   if ((ch >= 33 && ch <= 47) || (ch >= 58 && ch <= 64) ||
       (ch >= 91 && ch <= 96) || (ch >= 123 && ch <= 126))
     return true;
@@ -79,11 +89,11 @@ bool IsPunctuation(const wchar_t& ch) {
   return false;
 }
 
-bool IsStripChar(const wchar_t& ch) {
+inline bool IsStripChar(const wchar_t& ch) {
   return kStripChars.find(ch) != wstring::npos;
 }
 
-void Strip(const wstring& text, wstring* ret) {
+inline void Strip(const wstring& text, wstring* ret) {
   *ret = text;
   if (ret->empty()) return;
   size_t pos = 0;
@@ -94,13 +104,13 @@ void Strip(const wstring& text, wstring* ret) {
   ret->substr(0, pos + 1);
 }
 
-void Split(const wstring& text, vector<wstring>* result) {
+inline void Split(const wstring& text, vector<wstring>* result) {
   // vector<wstring> result;
   boost::split(*result, text, boost::is_any_of(kStripChars));
   // return result;
 }
 
-void WhiteSpaceTokenize(const wstring& text, vector<wstring>* res) {
+inline void WhiteSpaceTokenize(const wstring& text, vector<wstring>* res) {
   wstring stext;
   Strip(text, &stext);
   if (stext.empty()) {
@@ -110,7 +120,7 @@ void WhiteSpaceTokenize(const wstring& text, vector<wstring>* res) {
   }
 }
 
-void ToLower(const wstring& s, wstring* res) {
+inline void ToLower(const wstring& s, wstring* res) {
   res->clear();
   res->resize(s.size());
   for (size_t i = 0; i < s.size(); i++) {
@@ -118,8 +128,30 @@ void ToLower(const wstring& s, wstring* res) {
   }
 }
 
+// BasicTokenizer::BasicTokenizer(bool do_lower_case /* = true */)
+//     : do_lower_case_(do_lower_case) {}
+
 BasicTokenizer::BasicTokenizer(bool do_lower_case /* = true */)
-    : do_lower_case_(do_lower_case) {}
+    : do_lower_case_(do_lower_case) {
+  accent_map_ = {
+      {L'à', L'a'}, {L'â', L'a'}, {L'ã', L'a'}, {L'ä', L'a'}, {L'å', L'a'},
+      {L'ạ', L'a'}, {L'ấ', L'a'}, {L'ả', L'a'}, {L'ą', L'a'}, {L'ằ', L'a'},
+      {L'ǎ', L'a'}, {L'ā', L'a'}, {L'á', L'a'}, {L'ǎ', L'a'}, {L'à', L'a'},
+      {L'ầ', L'a'}, {L'ă', L'a'}, {L'è', L'e'}, {L'é', L'e'}, {L'ê', L'e'},
+      {L'ë', L'e'}, {L'ễ', L'e'}, {L'ẽ', L'e'}, {L'ē', L'e'}, {L'ę', L'e'},
+      {L'ě', L'e'}, {L'ế', L'e'}, {L'ệ', L'e'}, {L'í', L'i'}, {L'ì', L'i'},
+      {L'î', L'i'}, {L'ï', L'i'}, {L'ǐ', L'i'}, {L'ī', L'i'}, {L'ị', L'i'},
+      {L'ù', L'u'}, {L'ú', L'u'}, {L'û', L'u'}, {L'ü', L'u'}, {L'ư', L'u'},
+      {L'ũ', L'u'}, {L'ǔ', L'u'}, {L'ū', L'u'}, {L'ứ', L'u'}, {L'ǚ', L'u'},
+      {L'ự', L'u'}, {L'ử', L'u'}, {L'ò', L'o'}, {L'ó', L'o'}, {L'ō', L'o'},
+      {L'ǒ', L'o'}, {L'ô', L'o'}, {L'õ', L'o'}, {L'ö', L'o'}, {L'ớ', L'o'},
+      {L'ợ', L'o'}, {L'ơ', L'o'}, {L'ổ', L'o'}, {L'ỡ', L'o'}, {L'ő', L'o'},
+      {L'ộ', L'o'}, {L'ĉ', L'c'}, {L'ć', L'c'}, {L'č', L'c'}, {L'ċ', L'c'},
+      {L'ƈ', L'c'}, {L'ç', L'c'}, {L'ĝ', L'g'}, {L'ĥ', L'h'}, {L'ĵ', L'j'},
+      {L'ñ', L'n'}, {L'ņ', L'n'}, {L'ř', L'r'}, {L'ś', L's'}, {L'ŝ', L's'},
+      {L'š', L's'}, {L'ş', L's'}, {L'ț', L't'}, {L'ŭ', L'u'}, {L'ý', L'y'},
+      {L'ÿ', L'y'}, {L'ž', L'z'}, {L'ż', L'z'}};
+}
 
 void BasicTokenizer::clean_text(const wstring& text, wstring* output) const {
   output->clear();
@@ -133,20 +165,29 @@ void BasicTokenizer::clean_text(const wstring& text, wstring* output) const {
   }
 }
 
-bool BasicTokenizer::is_chinese_char(const wchar_t& ch) const {
-  if ((ch >= 0x4E00 && ch <= 0x9FFF) || (ch >= 0x3400 && ch <= 0x4DBF) ||
-      (ch >= 0x20000 && ch <= 0x2A6DF) || (ch >= 0x2A700 && ch <= 0x2B73F) ||
-      (ch >= 0x2B740 && ch <= 0x2B81F) || (ch >= 0x2B820 && ch <= 0x2CEAF) ||
-      (ch >= 0xF900 && ch <= 0xFAFF) || (ch >= 0x2F800 && ch <= 0x2FA1F))
-    return true;
-  return false;
+wchar_t BasicTokenizer::do_lower_case(wchar_t ch) const {
+  wchar_t new_ch = boost::spirit::ucd::to_lowercase(ch);
+  auto it = accent_map_.find(new_ch);
+  if (it != accent_map_.end()) {
+    new_ch = it->second;
+  }
+  return new_ch;
 }
+
+// bool BasicTokenizer::is_chinese_char(const wchar_t& ch) const {
+//   if ((ch >= 0x4E00 && ch <= 0x9FFF) || (ch >= 0x3400 && ch <= 0x4DBF) ||
+//       (ch >= 0x20000 && ch <= 0x2A6DF) || (ch >= 0x2A700 && ch <= 0x2B73F) ||
+//       (ch >= 0x2B740 && ch <= 0x2B81F) || (ch >= 0x2B820 && ch <= 0x2CEAF) ||
+//       (ch >= 0xF900 && ch <= 0xFAFF) || (ch >= 0x2F800 && ch <= 0x2FA1F))
+//     return true;
+//   return false;
+// }
 
 void BasicTokenizer::tokenize_chinese_chars(const wstring& text,
                                             wstring* output) const {
   wchar_t space_char = L' ';
   for (auto& ch : text) {
-    if (is_chinese_char(ch)) {
+    if (IsChineseChar(ch)) {
       output->push_back(std::move(space_char));
       output->push_back(std::move(ch));
       output->push_back(std::move(space_char));
@@ -196,28 +237,27 @@ void BasicTokenizer::run_split_on_punc(const wstring& text,
 }
 
 void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
-  wstring tmp;
-  clean_text(framework::ConvertStrToWstr(text), &tmp);
-  wstring unicode_text;
-  tokenize_chinese_chars(tmp, &unicode_text);
-
-  vector<wstring> original_tokens;
-  WhiteSpaceTokenize(unicode_text, &original_tokens);
-
-  vector<wstring> split_tokens;
-  for (wstring& token : original_tokens) {
-    if (do_lower_case_) {
-      tmp.clear();
-      ToLower(token, &tmp);
-      run_strip_accents(tmp, &token);
+  std::wstring unicode_text;
+  framework::ConvertStrToWstr(text, &unicode_text);
+  std::wstring dest_text;
+  for (auto ch : unicode_text) {
+    if (ch == 0 || ch == 0xfffd || IsControl(ch)) {
+      continue;
     }
-    vector<wstring> tokens;
-    run_split_on_punc(token, &tokens);
-    for (size_t i = 0; i < tokens.size(); ++i) {
-      split_tokens.emplace_back(tokens[i]);
+    if (do_lower_case_) {
+      ch = do_lower_case(ch);
+    }
+    if (IsChineseChar(ch) || IsPunctuation(ch)) {
+      dest_text += ' ';
+      dest_text += ch;
+      dest_text += ' ';
+    } else if (IsWhiteSpace(ch)) {
+      dest_text += ' ';
+    } else {
+      dest_text += ch;
     }
   }
-  WhiteSpaceTokenize(boost::join(split_tokens, L" "), res);
+  boost::split(*res, dest_text, boost::is_any_of(kStripChars));
 }
 
 WordPieceTokenizer::WordPieceTokenizer(
@@ -331,17 +371,16 @@ string BertTokenizer::ConvertTokensToString(
 
 void BertTokenizer::Tokenize(const string& text,
                              vector<int64_t>* split_token_ids) const {
-  // std::chrono::steady_clock::time_point begin =
-  // std::chrono::steady_clock::now();
+  std::chrono::steady_clock::time_point begin =
+      std::chrono::steady_clock::now();
   std::vector<std::wstring> tmp_tokens;
   basic_tokenizer_.Tokenize(text, &tmp_tokens);
-  // split_token_ids->reserve(tmp_tokens.size());
-  // std::chrono::steady_clock::time_point end =
-  // std::chrono::steady_clock::now();
-  // VLOG(0) << "basic_tokenizer_ Tokenize Time difference = "
-  // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
-  // .count()
-  // << "[µs]" << std::endl;
+  split_token_ids->reserve(tmp_tokens.size());
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+  VLOG(0) << "basic_tokenizer_ Tokenize Time difference = "
+          << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
+                 .count()
+          << "[µs]" << std::endl;
   for (auto& w_token : tmp_tokens) {
     if (w_token.empty()) {
       continue;
@@ -349,11 +388,11 @@ void BertTokenizer::Tokenize(const string& text,
     word_piece_tokenizer_.Tokenize(w_token, split_token_ids);
   }
 
-  // end = std::chrono::steady_clock::now();
-  // VLOG(0) << "word_piece_tokenizer_ Tokenize Time difference = "
-  // << std::chrono::duration_cast<std::chrono::microseconds>(end -
-  // begin).count()
-  // << "[µs]" << std::endl;
+  end = std::chrono::steady_clock::now();
+  VLOG(0) << "word_piece_tokenizer_ Tokenize Time difference = "
+          << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
+                 .count()
+          << "[µs]" << std::endl;
 }
 
 void BertTokenizer::BuildInputsWithSpecialTokens(

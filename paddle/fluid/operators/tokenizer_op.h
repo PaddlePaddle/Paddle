@@ -47,12 +47,14 @@ class BasicTokenizer {
 
  private:
   void clean_text(const wstring& text, wstring* output) const;
-  bool is_chinese_char(const wchar_t& ch) const;
+  // bool is_chinese_char(const wchar_t& ch) const;
   void tokenize_chinese_chars(const wstring& text, wstring* output) const;
   void run_strip_accents(const wstring& text, wstring* output) const;
   void run_split_on_punc(const wstring& text, vector<wstring>* res) const;
+  wchar_t do_lower_case(wchar_t ch) const;
 
-  bool do_lower_case_{true};
+  bool do_lower_case_;
+  std::unordered_map<wchar_t, wchar_t> accent_map_;
 };
 
 class WordPieceTokenizer {
