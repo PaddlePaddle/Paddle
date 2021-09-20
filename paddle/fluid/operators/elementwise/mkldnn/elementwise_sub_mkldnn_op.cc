@@ -59,6 +59,7 @@ class EltwiseSubMKLDNNGradKernel : public ElemwiseGradKernel<T> {
           handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
       platform::RecordEvent record_reorder("int_reorder",
                                            platform::EventRole::kUniqueOp);
+
       reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
       astream.wait();
 
@@ -71,10 +72,19 @@ class EltwiseSubMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       if (dout->dims() == dy->dims()) {
         auto reorder_dst_memory_p =
             handler.AcquireDstMemory(dy, dout->format(), ctx.GetPlace());
-        auto reorder_p =
-            handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
+
+        dnnl::primitive_attr reorder_attr;
+
+        std::vector<float> scales = {-1};
+
+        reorder_attr.set_output_scales(0, scales);
+
+        auto reorder_p = std::make_shared<dnnl::reorder>(
+            *(reorder_src_memory_p), *(reorder_dst_memory_p), reorder_attr);
+
         platform::RecordEvent record_reorder("int_reorder",
                                              platform::EventRole::kUniqueOp);
+
         reorder_p->execute(astream, *reorder_src_memory_p,
                            *reorder_dst_memory_p);
         astream.wait();
@@ -83,13 +93,18 @@ class EltwiseSubMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         dy->set_format(platform::GetMKLDNNFormat(*reorder_dst_memory_p));
       } else {
         // Broadcasting
+
         platform::ReductionMKLDNNHandler<T> handler_sum(
             dnnl::algorithm::reduction_sum, 0.0f, 0.0f, onednn_engine,
             ctx.GetPlace(), dout, dy, CalculateBroadcastedDims(dout, dy));
+
         auto dy_memory_p = handler_sum.AcquireDstMemory(dy);
         auto reduction_p = handler_sum.AcquireForwardPrimitive();
-        reduction_p->execute(astream, {{DNNL_ARG_SRC, *reorder_src_memory_p},
-                                       {DNNL_ARG_DST, *dy_memory_p}});
+
+        reduction_p->execute(astream, {
+                                          {DNNL_ARG_SRC, *reorder_src_memory_p},
+                                          {DNNL_ARG_DST, *dy_memory_p},
+                                      });
         astream.wait();
 
         dy->set_layout(DataLayout::kMKLDNN);

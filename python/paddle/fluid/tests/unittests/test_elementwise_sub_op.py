@@ -77,6 +77,7 @@ class TestElementwiseSubOp(OpTest):
         self.axis = -1
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 @OpTestTool.skip_if(not core.is_compiled_with_cuda(),
                     "core is not compiled with CUDA")
 class TestFP16ElementwiseSubOp(TestElementwiseSubOp):
@@ -99,6 +100,7 @@ class TestElementwiseSubOp_scalar(TestElementwiseSubOp):
         self.out = self.x - self.y
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 @skip_check_grad_ci(
     reason="[skip shape check] Use y_shape(1) to test broadcast.")
 class TestFP16ElementwiseSubOp_scalar(TestFP16ElementwiseSubOp):
@@ -116,6 +118,7 @@ class TestElementwiseSubOp_scalar2(TestElementwiseSubOp):
         self.out = self.x - self.y
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestFP16ElementwiseSubOp_scalar2(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 4).astype(self.dtype)
@@ -130,6 +133,7 @@ class TestElementwiseSubOp_Vector(TestElementwiseSubOp):
         self.out = np.subtract(self.x, self.y)
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestFP16ElementwiseSubOp_Vector(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.random((100, )).astype(self.dtype)
@@ -147,6 +151,7 @@ class TestElementwiseSubOp_broadcast_0(TestElementwiseSubOp):
         self.axis = 0
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestFP16ElementwiseSubOp_broadcast_0(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
@@ -167,6 +172,7 @@ class TestElementwiseSubOp_broadcast_1(TestElementwiseSubOp):
         self.axis = 1
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestFP16ElementwiseSubOp_broadcast_1(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 100, 3).astype(self.dtype)
@@ -184,6 +190,7 @@ class TestElementwiseSubOp_broadcast_2(TestElementwiseSubOp):
         self.out = self.x - self.y.reshape(1, 1, 100)
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestFP16ElementwiseSubOp_broadcast_2(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 100).astype(self.dtype)
@@ -201,6 +208,7 @@ class TestElementwiseSubOp_broadcast_3(TestElementwiseSubOp):
         self.axis = 1
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestFP16ElementwiseSubOp_broadcast_3(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
@@ -221,6 +229,7 @@ class TestElementwiseSubOp_broadcast_4(TestElementwiseSubOp):
         self.axis = 0
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestFP16ElementwiseSubOp_broadcast_4(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 1, 2).astype(self.dtype)
@@ -238,6 +247,7 @@ class TestElementwiseSubOp_broadcast_5(TestElementwiseSubOp):
         self.out = self.x - self.y
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestFP16ElementwiseSubOp_broadcast_5(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(10, 3, 12).astype(self.dtype)
@@ -276,6 +286,7 @@ class TestElementwiseSubOp_rowwise_sub_0(TestElementwiseSubOp):
         self.axis = 1
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestFP16ElementwiseSubOp_rowwise_sub_0(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12).astype(self.dtype)
@@ -297,6 +308,7 @@ class TestElementwiseSubOp_rowwise_sub_1(TestElementwiseSubOp):
         self.axis = 1
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 @OpTestTool.skip_if(True, "Grad not yet implemented")
 class TestFP16ElementwiseSubOp_rowwise_sub_1(TestFP16ElementwiseSubOp):
     def init_input_output(self):
@@ -318,6 +330,7 @@ class TestElementwiseSubOp_channelwise_sub(TestElementwiseSubOp):
         self.axis = -1
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestFP16ElementwiseSubOp_channelwise_sub(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
@@ -338,6 +351,7 @@ class TestElementwiseSubOp_commonuse_sub1(TestElementwiseSubOp):
         self.axis = -1
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestElementwiseFP16SubOp_commonuse_sub1(TestFP16ElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 3, 100).astype(self.dtype)
