@@ -46,11 +46,6 @@ class BasicTokenizer {
   void Tokenize(const string& text, vector<wstring>* res) const;
 
  private:
-  void clean_text(const wstring& text, wstring* output) const;
-  // bool is_chinese_char(const wchar_t& ch) const;
-  void tokenize_chinese_chars(const wstring& text, wstring* output) const;
-  void run_strip_accents(const wstring& text, wstring* output) const;
-  void run_split_on_punc(const wstring& text, vector<wstring>* res) const;
   wchar_t do_lower_case(wchar_t ch) const;
 
   bool do_lower_case_;
@@ -92,16 +87,10 @@ class BertTokenizer {
   void ConvertTokensToIds(const vector<wstring>& tokens,
                           vector<int64_t>* token_ids) const;
   string ConvertTokensToString(const vector<wstring>& tokens) const;
-  int TruncateSequence(
-      // unordered_map<string, vector<int64_t>>* res,
-      vector<int64_t>* ids, vector<int64_t>* pair_ids,
-      const size_t num_tokens_to_remove = 0,
-      const string& truncation_strategy = "longest_first",
-      const size_t stride = 0) const;
-  // vector<int64_t> GetSpecialTokensMask(
-  //     const vector<int64_t>& token_ids_0,
-  //     const vector<int64_t>& token_ids_1 = vector<int64_t>(),
-  //     const bool already_has_special_tokens = false) const;
+  int TruncateSequence(vector<int64_t>* ids, vector<int64_t>* pair_ids,
+                       const size_t num_tokens_to_remove = 0,
+                       const string& truncation_strategy = "longest_first",
+                       const size_t stride = 0) const;
   int64_t GetNumSpecialTokensToAdd(const bool pair = false) const;
   int Encode(unordered_map<string, vector<int64_t>>* encoded_inputs,
              const string& text, const string& text_pair = "",
@@ -142,8 +131,6 @@ class BertTokenizer {
   vector<wstring> all_special_tokens_;
   unordered_set<int64_t> all_special_token_ids_;
   InvVocab inv_vocab_;
-
-  void get_input_ids(const string& text, vector<int64_t>* token_ids) const;
 };
 
 template <typename T>
@@ -208,8 +195,6 @@ class TokenizerKernel : public framework::OpKernel<T> {
     size_t batch_max_seq_len = 0;
     size_t batch_size = text->size();
 
-    // unordered_map<size_t, vector<T>> batch_input_ids;
-    // unordered_map<size_t, vector<T>> batch_seg_ids;
     vector<unordered_map<string, vector<int64_t>>> batch_encode_inputs;
     int status;
     if (text_pair) {
@@ -229,8 +214,6 @@ class TokenizerKernel : public framework::OpKernel<T> {
 
     for (size_t i = 0; i < batch_size; ++i) {
       size_t seq_len = batch_encode_inputs[i]["input_ids"].size();
-      // batch_input_ids[i] = encoded_inputs["input_ids"];
-      // batch_seg_ids[i] = encoded_inputs["token_type_ids"];
       if (seq_len > batch_max_seq_len) {
         batch_max_seq_len = seq_len;
       }
@@ -265,16 +248,6 @@ class TokenizerKernel : public framework::OpKernel<T> {
                   pad_token_id, (batch_max_seq_len - seq_len) * sizeof(T));
       std::memset(seg_ids_data + i * batch_max_seq_len + seq_len, pad_token_id,
                   (batch_max_seq_len - seq_len) * sizeof(T));
-      /*
-      for (size_t j = 0; j < batch_max_seq_len; j++) {
-        if (j < seq_len) {
-          input_ids_data[i * batch_max_seq_len + j] = batch_input_ids[i][j];
-          seg_ids_data[i * batch_max_seq_len + j] = batch_seg_ids[i][j];
-        } else {
-          input_ids_data[i * batch_max_seq_len + j] = pad_token_id;
-          seg_ids_data[i * batch_max_seq_len + j] = pad_token_id;
-        }
-      }*/
     }
     delete tokenizer_ptr;
     // end = std::chrono::steady_clock::now();
