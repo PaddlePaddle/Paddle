@@ -706,7 +706,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         platform::CreateKey(dev_ctx, src_tz, src_dt,
                             ctx.InputName("Input") + ctx.InputName("Filter"));
 
-    const std::string key_conv_pd = key + "@conv_pd";
     bool need_s8_to_u8 = false;
     std::shared_ptr<mkldnn::convolution_forward> conv_p;
     std::shared_ptr<mkldnn::memory> src_memory_p;
@@ -721,6 +720,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // are merged/unified, this will disappear
     auto key_tid = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
+    const std::string key_conv_pd = key_tid + "@conv_pd";
     auto prim_key = key_tid + "@conv_p";
     auto dst_key = key_tid + "@dst_mem_p";
     auto src_key = key_tid + "@src_mem_p";
