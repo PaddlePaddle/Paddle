@@ -23,8 +23,6 @@ from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
 from paddle import enable_static
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
 class TestConcatAxis0OneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "concat"
@@ -117,7 +115,7 @@ class TestConcatAxis3OneDNNOp(TestConcatAxis0OneDNNOp):
 
 #   BF16 TESTS
 def create_bf16_test_class(parent):
-    #@OpTestTool.skip_if_not_cpu_bf16()
+    @OpTestTool.skip_if_not_cpu_bf16()
     class TestConcatBF16OneDNNOp(parent):
         def configure_datatype(self):
             self.mkldnn_data_type = "bfloat16"
