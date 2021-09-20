@@ -51,17 +51,18 @@ class TestMKLDNNElementwiseSubOp3(TestMKLDNNElementwiseSubOp):
         self.out = np.subtract(self.x, self.y)
 
 
-# class TestMKLDNNElementwiseSubOp4(TestMKLDNNElementwiseSubOp):
-#     def init_input_output(self):
-#         self.x = np.random.uniform(1, 2, [2, 3, 4, 32]).astype(self.dtype)
-#         self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
-#         self.out = np.subtract(self.x, self.y)
+class TestMKLDNNElementwiseSubOp4(TestMKLDNNElementwiseSubOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(1, 2, [2, 3, 4, 32]).astype(self.dtype)
+        self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
 
-# class TestMKLDNNElementwiseSubOp5(TestMKLDNNElementwiseSubOp):
-#     def init_input_output(self):
-#         self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
-#         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
-#         self.out = np.subtract(self.x, self.y)
+
+class TestMKLDNNElementwiseSubOp5(TestMKLDNNElementwiseSubOp):
+    def init_input_output(self):
+        self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
+        self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
 
 
 class TestMKLDNNElementwiseSubOp_broadcast_3(TestMKLDNNElementwiseSubOp):

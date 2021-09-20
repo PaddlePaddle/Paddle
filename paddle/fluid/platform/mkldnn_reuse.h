@@ -19,6 +19,7 @@ limitations under the License. */
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "boost/optional.hpp"
 #include "paddle/fluid/framework/data_layout_transform.h"
 #include "paddle/fluid/framework/operator.h"
@@ -929,7 +930,7 @@ class BroadcastDataMKLDNNHandler
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(framework::Tensor* output) {
     T_out* ptr = output->mutable_data<T_out>(
         this->place_, this->fwd_pd_->dst_desc().get_size());
-    ;
+
     memset(ptr, 0, this->fwd_pd_->dst_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
@@ -960,6 +961,30 @@ class ReductionMKLDNNHandler
         memory::desc(y_tz, platform::MKLDNNGetDataType<T>(), x->format());
 
     this->AcquireForwardPrimitiveDescriptor(algo, x_md, y_md, p, eps);
+  }
+
+  ReductionMKLDNNHandler(const dnnl::algorithm algo, const float p,
+                         const float eps, const mkldnn::engine engine,
+                         platform::Place cpu_place, const Tensor* x,
+                         const Tensor* y, std::vector<int64_t> y_tz,
+                         const dnnl::primitive_attr& attr)
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::reduction>(engine,
+                                                              cpu_place) {
+    PADDLE_ENFORCE_EQ(
+        x->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument("Wrong layout set for X tensor."));
+    PADDLE_ENFORCE_NE(
+        x->format(), MKLDNNMemoryFormat::undef,
+        platform::errors::InvalidArgument("Wrong format set for X tensor."));
+
+    const auto x_tz = framework::vectorize(x->dims());
+
+    const auto x_md =
+        dnnl::memory::desc(x_tz, platform::MKLDNNGetDataType<T>(), x->format());
+    const auto y_md =
+        memory::desc(y_tz, platform::MKLDNNGetDataType<T>(), x->format());
+
+    this->AcquireForwardPrimitiveDescriptor(attr, algo, x_md, y_md, p, eps);
   }
 };
 
