@@ -12,6 +12,7 @@ limitations under the License. */
 #include <utf8proc.h>
 
 #include <algorithm>
+#include <chrono>
 #include <codecvt>
 #include <fstream>
 #include <iostream>
@@ -93,12 +94,6 @@ void Strip(const wstring& text, wstring* ret) {
   ret->substr(0, pos + 1);
 }
 
-vector<wstring> Split(const wstring& text) {
-  vector<wstring> result;
-  boost::split(result, text, boost::is_any_of(kStripChars));
-  return result;
-}
-
 void Split(const wstring& text, vector<wstring>* result) {
   // vector<wstring> result;
   boost::split(*result, text, boost::is_any_of(kStripChars));
@@ -119,7 +114,7 @@ void ToLower(const wstring& s, wstring* res) {
   res->clear();
   res->resize(s.size());
   for (size_t i = 0; i < s.size(); i++) {
-    res->at(i) = utf8proc_tolower(s[i]);
+    res->at(i) = std::move(utf8proc_tolower(s[i]));
   }
 }
 
@@ -186,20 +181,30 @@ void BasicTokenizer::run_strip_accents(const wstring& text,
 void BasicTokenizer::run_split_on_punc(const wstring& text,
                                        vector<wstring>* output) const {
   output->clear();
-  size_t i = 0;
   bool start_new_word = true;
-  while (i < text.size()) {
-    wchar_t ch = text[i];
+  for (auto& ch : text) {
     if (IsPunctuation(ch)) {
-      output->push_back(wstring(&ch, 1));
+      output->emplace_back(wstring(&ch, 1));
       start_new_word = true;
     } else {
-      if (start_new_word) output->push_back(wstring());
+      if (start_new_word) output->emplace_back(wstring());
       start_new_word = false;
-      output->at(output->size() - 1) += ch;
+      output->at(output->size() - 1) =
+          std::move(output->at(output->size() - 1) + ch);
     }
-    i++;
   }
+  // while (i < text.size()) {
+  //   wchar_t ch = text[i];
+  //   if (IsPunctuation(ch)) {
+  //     output->emplace_back(wstring(&ch, 1));
+  //     start_new_word = true;
+  //   } else {
+  //     if (start_new_word) output->emplace_back(wstring());
+  //     start_new_word = false;
+  //     output->at(output->size() - 1) += ch;
+  //   }
+  //   i++;
+  // }
 }
 
 void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
@@ -216,13 +221,12 @@ void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
     if (do_lower_case_) {
       tmp.clear();
       ToLower(token, &tmp);
-      wstring stoken;
-      run_strip_accents(tmp, &stoken);
+      run_strip_accents(tmp, &token);
     }
     vector<wstring> tokens;
     run_split_on_punc(token, &tokens);
     for (size_t i = 0; i < tokens.size(); ++i) {
-      split_tokens.push_back(tokens[i]);
+      split_tokens.emplace_back(tokens[i]);
     }
   }
   WhiteSpaceTokenize(boost::join(split_tokens, L" "), res);
@@ -236,45 +240,42 @@ WordPieceTokenizer::WordPieceTokenizer(
       max_input_chars_per_word_(max_input_chars_per_word) {}
 
 void WordPieceTokenizer::Tokenize(const wstring& text,
-                                  vector<wstring>* output_tokens) const {
-  // vector<wstring> output_tokens;
-  vector<wstring> tokens;
-  WhiteSpaceTokenize(text, &tokens);
-  for (auto& token : tokens) {
-    if (token.size() > max_input_chars_per_word_) {
-      output_tokens->push_back(unk_token_);
-    }
-    bool is_bad = false;
-    size_t start = 0;
-    vector<wstring> sub_tokens;
-    while (start < token.size()) {
-      size_t end = token.size();
-      wstring cur_sub_str;
-      bool has_cur_sub_str = false;
-      while (start < end) {
-        wstring substr = token.substr(start, end - start);
-        if (start > 0) substr = L"##" + substr;
-        if (vocab_->find(substr) != vocab_->end()) {
-          cur_sub_str = substr;
-          has_cur_sub_str = true;
-          break;
-        }
-        end--;
+                                  vector<wstring>* tokens) const {
+  size_t len = text.size();
+  if (len > max_input_chars_per_word_) {
+    tokens->emplace_back(unk_token_);
+    return;
+  }
+  if (vocab_->find(text) != vocab_->end()) {
+    tokens->emplace_back(text);
+    return;
+  }
+  std::vector<std::wstring> wordpiece_result;
+  size_t start = 0;
+  while (start < len) {
+    size_t end = len;
+    std::wstring cur_substr;
+    while (start < end) {
+      std::wstring sub = text.substr(start, end - start);
+      if (start > 0) {
+        sub = L"##" + sub;
       }
-      if (!has_cur_sub_str) {
-        is_bad = true;
+      if (vocab_->find(sub) != vocab_->end()) {
+        cur_substr = sub;
         break;
       }
-      sub_tokens.push_back(cur_sub_str);
-      start = end;
+      end -= 1;
     }
-    if (is_bad) {
-      output_tokens->push_back(unk_token_);
+    if (cur_substr.empty()) {
+      tokens->emplace_back(unk_token_);
+      return;
     } else {
-      for (size_t i = 0; i < sub_tokens.size(); ++i)
-        output_tokens->push_back(sub_tokens[i]);
+      start = end;
+      wordpiece_result.emplace_back(cur_substr);
     }
   }
+  for (size_t i = 0; i < wordpiece_result.size(); ++i)
+    tokens->emplace_back(wordpiece_result[i]);
 }
 
 BertTokenizer::BertTokenizer(framework::WSTRING_MAP* vocab,
@@ -332,15 +333,31 @@ string BertTokenizer::ConvertTokensToString(
 
 void BertTokenizer::Tokenize(const string& text,
                              vector<wstring>* split_tokens) const {
-  vector<wstring> tokens;
-  basic_tokenizer_.Tokenize(text, &tokens);
-  for (auto& token : tokens) {
-    vector<wstring> sub_tokens;
-    word_piece_tokenizer_.Tokenize(token, &sub_tokens);
+  // std::chrono::steady_clock::time_point begin =
+  // std::chrono::steady_clock::now();
+  std::vector<std::wstring> tmp_tokens;
+  basic_tokenizer_.Tokenize(text, &tmp_tokens);
+  // std::chrono::steady_clock::time_point end =
+  // std::chrono::steady_clock::now();
+  // VLOG(0) << "basic_tokenizer_ Tokenize Time difference stage_3 = "
+  // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
+  // .count()
+  // << "[µs]" << std::endl;
+  for (auto& w_token : tmp_tokens) {
+    if (w_token.empty()) {
+      continue;
+    }
+    std::vector<std::wstring> sub_tokens;
+    word_piece_tokenizer_.Tokenize(w_token, &sub_tokens);
     for (size_t i = 0; i < sub_tokens.size(); ++i) {
-      split_tokens->push_back(sub_tokens[i]);
+      split_tokens->emplace_back(sub_tokens[i]);
     }
   }
+  // end = std::chrono::steady_clock::now();
+  // VLOG(0) << "word_piece_tokenizer_ Tokenize Time difference stage_3 = "
+  // << std::chrono::duration_cast<std::chrono::microseconds>(end -
+  // begin).count()
+  // << "[µs]" << std::endl;
 }
 
 void BertTokenizer::BuildInputsWithSpecialTokens(
@@ -348,21 +365,31 @@ void BertTokenizer::BuildInputsWithSpecialTokens(
     const vector<int64_t>& token_ids_1 /* = vector<int64_t>() */) const {
   if (token_ids_1.size() == 0) {
     inputs->clear();
-    inputs->push_back(cls_token_id_);
+    inputs->resize(token_ids_0.size() + 2);
+    inputs->at(0) = std::move(cls_token_id_);
+    size_t i = 1;
     for (auto& token_id : token_ids_0) {
-      inputs->push_back(token_id);
+      inputs->at(i) = std::move(token_id);
+      ++i;
     }
-    inputs->push_back(sep_token_id_);
+    inputs->at(i) = std::move(sep_token_id_);
+    // inputs->emplace_back(sep_token_id_);
   } else {
     inputs->clear();
-    inputs->push_back(cls_token_id_);
+    inputs->resize(token_ids_0.size() + token_ids_1.size() + 3);
+    inputs->at(0) = std::move(cls_token_id_);
+    size_t i = 1;
     for (auto& token_id : token_ids_0) {
-      inputs->push_back(token_id);
+      inputs->at(i) = std::move(token_id);
+      ++i;
     }
-    inputs->push_back(sep_token_id_);
+    inputs->at(i) = std::move(sep_token_id_);
+    ++i;
     for (auto& token_id : token_ids_1) {
-      inputs->push_back(token_id);
+      inputs->at(i) = std::move(token_id);
+      ++i;
     }
+    inputs->at(i) = std::move(sep_token_id_);
   }
 }
 
@@ -409,7 +436,7 @@ int BertTokenizer::TruncateSequence(
 
         // for (size_t j = ids->size() - 1; j > ids->size() - window_len - 1;
         //      j--) {
-        //   overflowing_token_ids.push_back((*ids)[j]);
+        //   overflowing_token_ids.emplace_back((*ids)[j]);
         // }
         ids->pop_back();
       } else {
@@ -420,7 +447,7 @@ int BertTokenizer::TruncateSequence(
         // }
         // for (size_t j = pair_ids->size() - 1;
         //      j > pair_ids->size() - window_len - 1; j--) {
-        //   overflowing_token_ids.push_back((*pair_ids)[j]);
+        //   overflowing_token_ids.emplace_back((*pair_ids)[j]);
         // }
         pair_ids->pop_back();
       }
@@ -431,7 +458,7 @@ int BertTokenizer::TruncateSequence(
       // window_len = min(ids->size(), stride + num_tokens_to_remove);
       // for (size_t i = ids->size() - 1; i > ids->size() - window_len - 1; i--)
       // {
-      //   overflowing_token_ids.push_back((*ids)[i]);
+      //   overflowing_token_ids.emplace_back((*ids)[i]);
       // }
       for (size_t i = 0; i < num_tokens_to_remove; i++) {
         ids->pop_back();
@@ -451,7 +478,7 @@ int BertTokenizer::TruncateSequence(
     //   window_len = min(pair_ids->size(), stride + num_tokens_to_remove);
     //   for (size_t i = pair_ids->size() - 1;
     //        i > pair_ids->size() - window_len - 1; i--) {
-    //     overflowing_token_ids.push_back((*pair_ids)[i]);
+    //     overflowing_token_ids.emplace_back((*pair_ids)[i]);
     //   }
     if (pair_ids->size() > num_tokens_to_remove) {
       for (size_t i = 0; i < num_tokens_to_remove; i++) {
@@ -517,8 +544,21 @@ int BertTokenizer::TruncateSequence(
 void BertTokenizer::get_input_ids(const string& text,
                                   vector<int64_t>* token_ids) const {
   vector<wstring> tokens;
+  // std::chrono::steady_clock::time_point begin =
+  // std::chrono::steady_clock::now();
   Tokenize(text, &tokens);
+  // std::chrono::steady_clock::time_point end =
+  // std::chrono::steady_clock::now();
+  // VLOG(0) << "Tokenize Time difference stage_3 = "
+  // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
+  // .count()
+  // << "[µs]" << std::endl;
   ConvertTokensToIds(tokens, token_ids);
+  // end = std::chrono::steady_clock::now();
+  // VLOG(0) << "ConvertTokensToIds Time difference stage_3 = "
+  // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
+  // .count()
+  // << "[µs]" << std::endl;
 }
 
 int64_t BertTokenizer::GetClsTokenID() const { return cls_token_id_; }
@@ -541,12 +581,25 @@ int BertTokenizer::Encode(
     const string& truncation_strategy /* = "longest_first" */,
     bool return_overflowing_tokens /* = false */,
     bool return_special_tokens_mask /* = false */) const {
+  // std::chrono::steady_clock::time_point begin =
+  // std::chrono::steady_clock::now();
   vector<int64_t> ids;
   get_input_ids(text, &ids);
+  // std::chrono::steady_clock::time_point end =
+  // std::chrono::steady_clock::now();
+  // VLOG(0) << "BuildInputsWithSpecialTokens Time difference stage_3 = "
+  // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
+  // .count()
+  // << "[µs]" << std::endl;
   vector<int64_t> pair_ids;
   if (text_pair != "") {
     get_input_ids(text_pair, &pair_ids);
   }
+  // end = std::chrono::steady_clock::now();
+  // VLOG(0) << "get_input_ids Time difference stage_1 = "
+  // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
+  // .count()
+  // << "[µs]" << std::endl;
 
   bool pair = false;
   if (pair_ids.size() != 0) {
@@ -578,14 +631,29 @@ int BertTokenizer::Encode(
     //   encoded_inputs->emplace("num_truncated_tokens", num_truncated_tokens);
     // }
   }
+  // end = std::chrono::steady_clock::now();
+  // VLOG(0) << "TruncateSequence Time difference stage_2 = "
+  // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
+  // .count()
+  // << "[µs]" << std::endl;
 
   // Add special tokens
   vector<int64_t> sequence;
   BuildInputsWithSpecialTokens(&sequence, ids, pair_ids);
+  // end = std::chrono::steady_clock::now();
+  // VLOG(0) << "BuildInputsWithSpecialTokens Time difference stage_3 = "
+  // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
+  // .count()
+  // << "[µs]" << std::endl;
   size_t seq_len = sequence.size();
   // vector<int64_t> seq_len(1, seq_len);
   vector<int64_t> token_type_ids;
   CreateTokenTypeIdsFromSequences(&token_type_ids, ids, pair_ids);
+  // end = std::chrono::steady_clock::now();
+  // VLOG(0) << "CreateTokenTypeIdsFromSequences Time difference stage_4 = "
+  // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
+  // .count()
+  // << "[µs]" << std::endl;
 
   // Build output dictionnary
   encoded_inputs->emplace("input_ids", sequence);
@@ -675,6 +743,13 @@ int BertTokenizer::Encode(
       }
       encoded_inputs->at("input_ids").swap(tmp);
     }
+
+    // end = std::chrono::steady_clock::now();
+    // VLOG(0) << "ToBePadded Time difference stage_5 = "
+    // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
+    // .count()
+    // << "[µs]" << std::endl;
+
   } else {
     if (return_attention_mask) {
       vector<int64_t> tmp(encoded_inputs->at("input_ids").size(), 1);
@@ -723,7 +798,7 @@ int BertTokenizer::BatchEncode(
           return_position_ids, return_attention_mask, truncation_strategy,
           return_overflowing_tokens, return_special_tokens_mask);
       if (status) {
-        batch_encode_inputs->push_back(res);
+        batch_encode_inputs->emplace_back(res);
       } else {
         return 0;
       }
@@ -743,7 +818,7 @@ int BertTokenizer::BatchEncode(
                  return_attention_mask, truncation_strategy,
                  return_overflowing_tokens, return_special_tokens_mask);
       if (status) {
-        batch_encode_inputs->push_back(res);
+        batch_encode_inputs->emplace_back(res);
       } else {
         return 0;
       }
