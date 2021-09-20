@@ -32,6 +32,7 @@ class TestSGDOpBF16(OpTest):
     def setUp(self):
         self.op_type = 'sgd'
         self.dtype = np.uint16
+        self.use_mkldnn = True
         self.conf()
         w = np.random.random((self.h, self.w)).astype('float32')
         w_bf16 = convert_float_to_uint16(w)
@@ -42,6 +43,7 @@ class TestSGDOpBF16(OpTest):
 
         self.inputs = {'Param': w_bf16, 'Grad': g_bf16, 'LearningRate': lr_bf16}
         self.outputs = {'ParamOut': w - lr * g}
+        self.attrs = {'use_mkldnn': self.use_mkldnn}
 
     def conf(self):
         self.h = 102
@@ -53,7 +55,7 @@ class TestSGDOpBF16(OpTest):
 
 @unittest.skipIf(not core.supports_bfloat16(),
                  'place does not support BF16 evaluation')
-class TestSGDOpCase8XBF16(TestSGDOpBF16):
+class TestSGDOpBF16Case2(TestSGDOpBF16):
     def conf(self):
         self.h = 10
         self.w = 64
@@ -142,7 +144,8 @@ class TestSparseGradSGDOpBF16(TestSparseSGDOpBF16):
             Param='Param',
             Grad='Grad',
             ParamOut='Param',
-            LearningRate='LearningRate')
+            LearningRate='LearningRate',
+            use_mkldnn=True)
         sgd_op.run(scope, place)
 
         reference = self.ref_optimize(param_array, self.grad_rows, grad_array,
@@ -194,7 +197,8 @@ class TestSparseGradParamSGDOpBF16(TestSparseSGDOpBF16):
             Param='Param',
             Grad='Grad',
             ParamOut='Param',
-            LearningRate='LearningRate')
+            LearningRate='LearningRate',
+            use_mkldnn=True)
         sgd_op.run(scope, place)
 
         reference = self.ref_optimize(param_array, self.grad_rows, grad_array,
@@ -213,6 +217,11 @@ class TestSparseGradParamSGDOpBF16Case2(TestSparseGradParamSGDOpBF16):
 
 @OpTestTool.skip_if_not_cpu_bf16()
 class TestSGDOpBF16API(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        np.random.seed(12345)
+        fluid.set_flags({'FLAGS_use_mkldnn': True})
+
     def setUp(self):
         self.sample_count = 20
         self.value = np.random.random()
@@ -222,9 +231,7 @@ class TestSGDOpBF16API(unittest.TestCase):
         self.y_shape = (32, 16)
         self.learning_rate = 0.1
 
-        np.random.seed(12345)
         self._set_initializer()
-        fluid.set_flags({'FLAGS_use_mkldnn': True})
 
     def _fp322bf16(self, val: np.float32):
         return np.uint16(struct.unpack('<I', struct.pack('<f', val))[0] >> 16)
