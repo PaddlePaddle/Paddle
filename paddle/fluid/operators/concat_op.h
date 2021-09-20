@@ -71,7 +71,7 @@ static inline framework::DDim ComputeAndCheckShape(
   return out_dims;
 }
 
-static inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
+inline int64_t ComputeAxis(int64_t axis, int64_t rank) {
   PADDLE_ENFORCE_EQ(
       axis >= -rank && axis < rank, true,
       platform::errors::InvalidArgument(

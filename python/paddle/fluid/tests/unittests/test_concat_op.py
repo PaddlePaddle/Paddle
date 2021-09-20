@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
 import paddle.fluid as fluid
 from paddle.fluid import compiler, Program, program_guard, core
 import paddle
