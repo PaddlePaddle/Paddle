@@ -313,14 +313,13 @@ BertTokenizer::BertTokenizer(framework::WSTRING_MAP* vocab,
 
 void BertTokenizer::ConvertTokensToIds(const vector<wstring>& tokens,
                                        vector<int64_t>* token_ids) const {
-  token_ids->clear();
-  token_ids->resize(tokens.size());
+  token_ids->reserve(tokens.size());
   for (size_t i = 0; i < token_ids->size(); ++i) {
     auto iter = vocab_->find(tokens[i]);
     if (iter != vocab_->end()) {
-      token_ids->at(i) = iter->second;
+      token_ids->emplace_back(iter->second);
     } else {
-      token_ids->at(i) = unk_token_id_;
+      token_ids->emplace_back(unk_token_id_);
     }
   }
 }
@@ -764,6 +763,11 @@ int BertTokenizer::Encode(
     }
     encoded_inputs->emplace("position_ids", position_ids);
   }
+  end = std::chrono::steady_clock::now();
+  VLOG(0) << "Time inner difference = "
+          << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
+                 .count()
+          << "[µs]" << std::endl;
   return 1;
 }
 
