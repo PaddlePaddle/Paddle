@@ -23,7 +23,6 @@ limitations under the License. */
 #include <vector>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/spirit/home/support/char_encoding/unicode/query.hpp>
 
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/operators/tokenizer_op.h"
@@ -154,7 +153,7 @@ BasicTokenizer::BasicTokenizer(bool do_lower_case /* = true */)
 }
 
 wchar_t BasicTokenizer::do_lower_case(wchar_t ch) const {
-  wchar_t new_ch = boost::spirit::ucd::to_lowercase(ch);
+  wchar_t new_ch = utf8proc_tolower(ch);
   auto it = accent_map_.find(new_ch);
   if (it != accent_map_.end()) {
     new_ch = it->second;
@@ -297,7 +296,7 @@ void BertTokenizer::Tokenize(const string& text,
   for (auto& w_token : tmp_tokens) {
     const auto& vec_size = w_token.size();
     if (vec_size == 1) {
-      if (basic_tokenizer_.is_chinese_char(w_token[0])) {
+      if (IsChineseChar(w_token[0])) {
         auto vocab_it = vocab_->find(w_token);
         if (vocab_it != vocab_->end()) {
           split_token_ids->emplace_back(vocab_it->second);
