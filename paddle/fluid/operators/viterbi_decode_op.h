@@ -68,13 +68,6 @@ using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 #define MUL(lhs, rhs, output, dtype) \
   ELEMENT_BINARY_OP(lhs, rhs, output, Mul, dtype)
 
-#define GET_CAST_MASK(lhs, rhs, mask, float_mask, compare_functor, dtype) \
-  ElementwiseComputeEx<compare_functor<int64_t>, DeviceContext, int64_t>( \
-      ctx, &lhs, &rhs, -1, compare_functor<int64_t>(), &mask);            \
-  CastOpFunctor<DeviceContext, int64_t> cast_functor(&mask, &float_mask,  \
-                                                     dev_ctx);            \
-  cast_functor.template apply<dtype>()
-
 template <typename DeviceContext, typename T, size_t D, size_t R_D>
 inline void MAX_FUNC(const framework::ExecutionContext& ctx,
                      const Tensor* input, Tensor* output,
@@ -197,7 +190,6 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     auto alpha_argmax_unbind = Unbind(alpha_argmax);
     Tensor alpha_nxt =
         float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
-    Tensor mask = int_tensor_buffer.GetBufferBlock({batch_size, 1});
     Tensor int_mask = int_tensor_buffer.GetBufferBlock({batch_size});
     Tensor float_mask = float_tensor_buffer.GetBufferBlock({batch_size, 1});
     Tensor stop_trans_exp =
@@ -224,7 +216,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     logit0.Resize({batch_size, n_labels});
     if (with_start_stop_tag) {
       ADD(logit0, start_trans_exp, alpha, T);
-      GET_CAST_MASK(left_length, one, mask, float_mask, EqualFunctor, T);
+      ElementwiseComputeEx<EqualFunctor<T>, DeviceContext, int64_t, T>(
+          ctx, &left_length, &one, -1, EqualFunctor<T>(), &float_mask);
       MUL(stop_trans_exp, float_mask, alpha_nxt, T);
       ADD(alpha, alpha_nxt, alpha, T);
     } else {
@@ -254,8 +247,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
 
       // mask = paddle.cast((left_length > 0), dtype='float32')
       // alpha = mask * alpha_nxt + (1 - mask) * alpha
-      GET_CAST_MASK(left_length, zero, mask, float_mask, GreaterThanFunctor, T);
-
+      ElementwiseComputeEx<GreaterThanFunctor<T>, DeviceContext, int64_t, T>(
+          ctx, &left_length, &zero, -1, GreaterThanFunctor<T>(), &float_mask);
       // alpha_nxt = mask * alpha_nxt
       MUL(alpha_nxt, float_mask, alpha_nxt, T);
       // inv_mask = 1 - mask
@@ -266,7 +259,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       ADD(alpha, alpha_nxt, alpha, T);
 
       if (with_start_stop_tag) {  // cost 10% time
-        GET_CAST_MASK(left_length, one, mask, float_mask, EqualFunctor, T);
+        ElementwiseComputeEx<EqualFunctor<T>, DeviceContext, int64_t, T>(
+            ctx, &left_length, &one, -1, EqualFunctor<T>(), &float_mask);
         // trans_exp: [1, n, n]
         // alpha += mask * trans_exp[:, self.stop_idx]
         MUL(stop_trans_exp, float_mask, alpha_nxt, T);
