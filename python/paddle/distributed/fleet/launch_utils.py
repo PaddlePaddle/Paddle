@@ -1040,8 +1040,17 @@ class ParameterServerLauncher(object):
         self.worker_endpoints_port = [
             x.strip().split(":")[1] for x in self.worker_endpoints.split(",")
         ]
-        self.node_ips = list(
-            set(self.server_endpoints_ips + self.worker_endpoints_ips))
+        self.node_ips = []    
+        for ip in self.server_endpoints_ips:
+            if ip not in self.node_ips:
+                self.node_ips.append(ip)
+        for ip in self.worker_endpoints_ips:
+            if ip not in self.node_ips:
+                self.node_ips.append(ip)
+       
+        #self.node_ips = list(
+        #    set(self.server_endpoints_ips + self.worker_endpoints_ips))
+        
         if self.distribute_mode == DistributeMode.PS_HETER:
             self.heter_worker_endpoints_ips = [
                 x.strip().split(":")[0]
@@ -1051,8 +1060,11 @@ class ParameterServerLauncher(object):
                 x.strip().split(":")[1]
                 for x in self.heter_worker_endpoints.split(",")
             ]
-            self.node_ips = list(
-                set(self.node_ips + self.heter_worker_endpoints_ips))
+            for ip in self.heter_worker_endpoints_ips:
+                if ip not in self.node_ips:
+                    self.node_ips.append(ip)
+            #self.node_ips = list(
+            #    set(self.node_ips + self.heter_worker_endpoints_ips))
 
         if len(set(self.node_ips)) == 1:
             self.is_local = True
@@ -1066,6 +1078,7 @@ class ParameterServerLauncher(object):
                 self.current_node_ip = pod_ip
             assert self.current_node_ip in self.node_ips, "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}" \
                 % (self.current_node_ip, self.node_ips)
+        #self.node_ips.sort()
         self.node_rank = self.node_ips.index(self.current_node_ip)
 
         logger.debug(
@@ -1077,7 +1090,7 @@ class ParameterServerLauncher(object):
         server_rank = 0
         worker_rank = 0
         heter_worker_rank = 0
-
+ 
         for node_rank, ip in enumerate(self.node_ips):
             pod = Pod()
             pod.rank = node_rank
@@ -1245,6 +1258,8 @@ class ParameterServerLauncher(object):
                 if self.distribute_mode == DistributeMode.PS_HETER else
                 self.heter_worker_endpoints,
                 "TRAINING_ROLE": "TRAINER",
+                "POD_IP": cur_worker.endpoint.split(":")[0],
+                "PADDLE_PORT": cur_worker.endpoint.split(":")[1],
                 "PADDLE_TRAINER_ID": str(cur_worker.rank),
                 "PADDLE_WITH_GLOO": str(os.getenv("PADDLE_WITH_GLOO", "0")),
                 "PADDLE_GLOO_RENDEZVOUS": "3",

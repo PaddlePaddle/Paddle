@@ -301,17 +301,17 @@ def launch_collective(args):
 
 
 def launch_ps(args, distribute_mode):
-    cloud_flag = cloud_utils.use_paddlecloud()
+    #cloud_flag = cloud_utils.use_paddlecloud()
 
     # for ps-cpu on paddlecloud
-    if cloud_flag and distribute_mode == DistributeMode.PS:
-        direct_start(args)
-        return
-    elif cloud_flag and distribute_mode == DistributeMode.PS_HETER:
-        cloud_ps_heter_env_set(args)
-        args.workers = os.getenv("PADDLE_TRAINER_ENDPOINTS")
-        args.servers = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST")
-        args.heter_workers = os.getenv("PADDLE_HETER_TRAINER_IP_PORT_LIST")
+    #if cloud_flag and distribute_mode == DistributeMode.PS:
+    #    direct_start(args)
+    #    return
+    #elif cloud_flag and distribute_mode == DistributeMode.PS_HETER:
+    #    cloud_ps_heter_env_set(args)
+    #    args.workers = os.getenv("PADDLE_TRAINER_ENDPOINTS")
+    #    args.servers = os.getenv("PADDLE_PSERVERS_IP_PORT_LIST")
+    #    args.heter_workers = os.getenv("PADDLE_HETER_TRAINER_IP_PORT_LIST")
 
     ps_launcher = ParameterServerLauncher(args, distribute_mode)
     ps_launcher.start_ps()

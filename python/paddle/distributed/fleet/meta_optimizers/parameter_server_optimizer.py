@@ -340,12 +340,12 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     "startup_program": startup_program,
                 }
 
-                if core.is_compiled_with_cuda():
-                    place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
-                    place = core.CUDAPlace(0)
-                elif core.is_compiled_with_npu():
-                    place_id = int(os.getenv("FLAGS_selected_npus", "0"))
-                    place = core.NPUPlace(0)
+                #if core.is_compiled_with_cuda():
+                #    place_id = int(os.getenv("FLAGS_selected_gpus", "0"))
+                #    place = core.CUDAPlace(0)
+                #elif core.is_compiled_with_npu():
+                #    place_id = int(os.getenv("FLAGS_selected_npus", "0"))
+                #    place = core.NPUPlace(0)
 
                 loss.block.program._pipeline_opt = {
                     "trainer": "HeterPipelineTrainer",
@@ -358,9 +358,9 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                     "num_pipeline_stages":
                     int(self.role_maker._get_num_stage()),
                     "section_program": main_program,
-                    "place": place,
-                    "place_id": place_id,
-                    "sync_steps": -1,
+                    #"place": place,
+                    #"place_id": place_id,
+                    #"sync_steps": -1,
                     "num_microbatches": self.num_microbatches,
                 }
             else:

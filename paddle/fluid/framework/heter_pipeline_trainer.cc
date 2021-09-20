@@ -48,14 +48,6 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
         trainer_desc.downpour_param().stat_var_names(i));
   }
 
-#ifdef PADDLE_WITH_HETERPS
-  for (int i = 0; i < thread_num_; ++i) {
-    int num = trainer_desc.worker_places(i);
-    platform::CUDAPlace place = platform::CUDAPlace(num);
-    places_.push_back(place);
-  }
-#endif
-
   // get filelist from trainer_desc here
   const std::vector<paddle::framework::DataFeed*> readers =
       dataset->GetReaders();
@@ -64,14 +56,6 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
   thread_num_ = readers.size();
   VLOG(3) << "worker thread num: " << thread_num_;
   workers_.resize(thread_num_);
-/*
-#if defined PADDLE_WITH_PSCORE
-  if (trainer_desc.thread_barrier()) {
-    paddle::distributed::Communicator::GetInstance()->BarrierTriggerReset(
-        thread_num_);
-  }
-#endif
-*/
 
   const auto& section_params = trainer_desc.section_param();
   num_pipeline_stages_ = section_params.num_pipeline_stages();
@@ -93,8 +77,9 @@ void HeterPipelineTrainer::Initialize(const TrainerDesc& trainer_desc,
     this_worker->SetDumpFieldVector(dump_fields_);
     this_worker->SetDumpParamVector(dump_param_);
     this_worker->InitRandomDumpConfig(trainer_desc);
+
     
-    this_worker->Initialize(trainer_desc);
+    //this_worker->Initialize(trainer_desc);
     this_worker->SetThreadIndex(i);
     if (pipeline_stage_ == 0) {
       this_worker->SetDataFeed(readers[i]);
@@ -138,19 +123,11 @@ void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
   for (int i = 0; i < thread_num_; ++i) {
     auto this_worker =
       std::dynamic_pointer_cast<paddle::framework::HeterSectionWorker>(workers_[i]);
-#ifdef PADDLE_WITH_HETERPS
-    this_worker->SetPlace(places_[i]);
-    if (pipeline_stage_ == 0) {
-      this_worker->SetReaderPlace(places_[i]);
-    }
-    this_worker->SetDeviceContext(
-        platform::DeviceContextPool::Instance().Get(places_[i]));
-#else
     this_worker->SetPlace(place);
+    this_worker->Initialize(trainer_desc_);
     if (pipeline_stage_ == 0) {
       this_worker->SetReaderPlace(place);
     }
-#endif
     this_worker->SetRootScope(root_scope_);
     this_worker->CacheProgram(main_program);
 
@@ -160,33 +137,6 @@ void HeterPipelineTrainer::InitTrainerEnv(const ProgramDesc& main_program,
     // after set micro num & mini batch scope 
     this_worker->CreateMicrobatchScopes();
   }
-// if define with_heterps
-// every thread scope hold the persistable tensor
-#ifdef PADDLE_WITH_HETERPS
-  for (int num = 0; num < thread_num_; ++num) {
-    auto place = places_[num];
-    Scope* scope = workers_[num]->GetThreadScope();
-    auto& block = main_program.Block(0);
-    for (auto& var : block.AllVars()) {
-      if (var->Persistable()) {
-        auto name = var->Name();
-        Variable* root_var = root_scope_->FindVar(name);
-        if (!root_var) {
-          continue;
-        }
-        if (root_var->IsType<SelectedRows>()) {
-          continue;
-        }
-        LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
-        auto* ptr = scope->Var(name);
-        InitializeVariable(ptr, proto::VarType::LOD_TENSOR);
-        LoDTensor* thread_tensor = ptr->GetMutable<LoDTensor>();
-        TensorCopy(*root_tensor, place, thread_tensor);
-      }
-    }
-  }
-#endif
-
 }
 
 void HeterPipelineTrainer::Run() {

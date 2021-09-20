@@ -469,14 +469,14 @@ class HeterSection(DeviceWorker):
                                          .serialize_to_string())
         # TODO: why does not work
         # cfg.program_desc.CopyFrom(program.program._get_desc())
-        place = pipeline_opt["place"]
-        place_id = pipeline_opt["place_id"]
-        if core.is_compiled_with_cuda():
-            assert isinstance(place, core.CUDAPlace)
-        elif core.is_compiled_with_npu():
-            assert isinstance(place, core.NPUPlace)
-        cfg.place = cfg.CUDAPlace
-        cfg.place_id = place_id
+        #place = pipeline_opt["place"]
+        #place_id = pipeline_opt["place_id"]
+        #if core.is_compiled_with_cuda():
+        #    assert isinstance(place, core.CUDAPlace)
+        #elif core.is_compiled_with_npu():
+        #    assert isinstance(place, core.NPUPlace)
+        #cfg.place = cfg.CUDAPlace
+        #cfg.place_id = place_id
 
 
 class DeviceWorkerFactory(object):

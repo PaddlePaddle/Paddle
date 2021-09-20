@@ -839,8 +839,18 @@ class PaddleCloudRoleMaker(RoleMakerBase):
                 raise ValueError(
                     "Can not find STAGE_NUM, please check your environment.")
             current_id = int(current_id)
-            if len(self._worker_endpoints) > 0:
-                self._cur_endpoint = self._worker_endpoints[current_id]
+            cur_port = os.getenv("PADDLE_PORT", None)
+            if cur_port == None:
+                raise ValueError(
+                    "Can not find PADDLE_PORT, please check your environment.")
+            cur_ip = os.getenv("POD_IP", None)
+            if cur_ip == None:
+                raise ValueError(
+                    "Can not find POD_IP, please check your environment.")
+            curr_endpoint = ":".join([cur_ip, cur_port])
+            self._cur_endpoint = curr_endpoint
+            #if len(self._worker_endpoints) > 0:
+            #    self._cur_endpoint = self._worker_endpoints[current_id]
         elif training_role == "PSERVER":
             role = Role.SERVER
             port = os.getenv("PADDLE_PORT", None)
