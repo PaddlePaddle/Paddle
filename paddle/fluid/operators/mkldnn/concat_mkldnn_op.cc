@@ -159,6 +159,8 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+
     auto out_var_names = ctx.OutputNames(framework::GradVarName("X"));
 
     const auto x = ctx.MultiInput<LoDTensor>("X");
@@ -176,20 +178,23 @@ class ConcatGradMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       auto* axis_tensor = ctx.Input<Tensor>("AxisTensor");
       axis = GetDataFromTensor<int>(axis_tensor)[0];
     }
-    axis = ComputeAxis(axis, x.size());
 
     auto dout_vec_dims = framework::vectorize(dout->dims());
 
+    axis = ComputeAxis(axis, dout_vec_dims.size());
+
     std::vector<int64_t> offset(dout_vec_dims.size(), 0);
 
-    mkldnn::memory::data_type dout_type = framework::ToMKLDNNDataType(dout->type());
-    platform::ReorderMKLDNNHandler reorder_handler(
-        dout_vec_dims, dout->type(), dout_type, dev_ctx, onednn_engine);
+    mkldnn::memory::data_type dout_type =
+        framework::ToMKLDNNDataType(dout->type());
+    platform::ReorderMKLDNNHandler reorder_handler(dout_vec_dims, dout->type(),
+                                                   dout_type, onednn_engine);
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         dout->format(), platform::to_void_cast(dout->data<T>()));
 
-    for(size_t i = 0; i < dx.size(); ++i) {
-      if (out_var_names[i] != framework::kEmptyVarName && dx[i]->numel() != 0UL) {
+    for (size_t i = 0; i < dx.size(); ++i) {
+      if (out_var_names[i] != framework::kEmptyVarName &&
+          dx[i]->numel() != 0UL) {
         auto dx_vec_dims = framework::vectorize(dx[i]->dims());
         auto slice_mem_p = reorder_handler.AcquireSubmemory(
             dx_vec_dims, offset, reorder_src_memory_p);
