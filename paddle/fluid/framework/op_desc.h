@@ -178,7 +178,7 @@ class OpDesc {
   }
 
   proto::OpDesc desc_;
-  BlockDesc *block_;  // not_own
+  BlockDesc *block_{nullptr};  // not_own
   // input arg name => input variable names
   VariableNameMap inputs_;
   // output arg name => output variable names
