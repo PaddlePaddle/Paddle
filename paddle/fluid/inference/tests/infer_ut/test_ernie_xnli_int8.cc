@@ -15,10 +15,6 @@
 #include "test_helper.h"  // NOLINT
 #include "test_suite.h"   // NOLINT
 
-using paddle_infer::Config;
-using paddle_infer::Predictor;
-using paddle_infer::CreatePredictor;
-
 DEFINE_string(modeldir, "", "Directory of the inference model.");
 DEFINE_string(datadir, "", "dataset.");
 DEFINE_string(truth_data, "", "Directory of the inference data truth result");
