@@ -61,6 +61,7 @@ TEST(AnalysisPredictor, analysis_off) {
   ASSERT_TRUE(predictor->Run(inputs, &outputs));
 }
 
+#ifndef WIN32
 TEST(AnalysisPredictor, lite_nn_adapter_npu) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
@@ -78,6 +79,7 @@ TEST(AnalysisPredictor, lite_nn_adapter_npu) {
                paddle::platform::EnforceNotMet);
 #endif
 }
+#endif
 
 TEST(AnalysisPredictor, analysis_on) {
   AnalysisConfig config;
