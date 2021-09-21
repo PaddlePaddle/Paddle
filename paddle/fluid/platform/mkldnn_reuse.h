@@ -930,7 +930,6 @@ class BroadcastDataMKLDNNHandler
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(framework::Tensor* output) {
     T_out* ptr = output->mutable_data<T_out>(
         this->place_, this->fwd_pd_->dst_desc().get_size());
-
     memset(ptr, 0, this->fwd_pd_->dst_desc().get_size());
     return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
@@ -1006,8 +1005,9 @@ class ActivationMKLDNNHandler
     if (ctx.Type() == "scale") {
       bool bias_after_scale = ctx.Attr<bool>("bias_after_scale");
       auto* scale_tensor = ctx.Input<Tensor>("ScaleTensor");
-      alpha = (scale_tensor == nullptr) ? ctx.Attr<float>("scale")
-                                        : (float)*(scale_tensor->data<T>());
+      alpha = (scale_tensor == nullptr)
+                  ? ctx.Attr<float>("scale")
+                  : static_cast<float>(*(scale_tensor->data<T>()));
       beta = ctx.Attr<float>("bias");
       // if bias_after_scale == true
       //   out = scale*X + bias
@@ -1539,16 +1539,18 @@ static void SetDstMemoryQuantized(
   T* output_data = output->mutable_data<T>(ctx.GetPlace());
   const size_t dst_dims = dst_tz.size();
   MKLDNNMemoryFormat dst_fmt;
-  PADDLE_ENFORCE_LE(dst_dims, 5, platform::errors::InvalidArgument(
-                                     "Dst memory for quantization can not have "
-                                     "dims > 5. But received dst_dims is %d.",
-                                     dst_dims));
+  PADDLE_ENFORCE_LE(dst_dims, 5,
+                    platform::errors::InvalidArgument(
+                        "Dst memory for quantization can not have "
+                        "dims > 5. But received dst_dims is %d.",
+                        dst_dims));
   dst_fmt = platform::MKLDNNFormatForSize(dst_dims, output_format);
 
-  auto tmp_dst_md = platform::MKLDNNMemDesc(
-      {dst_tz}, paddle::framework::ToMKLDNNDataType(
-                    framework::DataTypeTrait<T>::DataType()),
-      dst_fmt);
+  auto tmp_dst_md =
+      platform::MKLDNNMemDesc({dst_tz},
+                              paddle::framework::ToMKLDNNDataType(
+                                  framework::DataTypeTrait<T>::DataType()),
+                              dst_fmt);
   dst_md.reset(new mkldnn::memory::desc(tmp_dst_md));
   dst_memory.reset(
       new mkldnn::memory(*dst_md, engine, to_void_cast<T>(output_data)));
