@@ -40,15 +40,6 @@ namespace operators {
 
 using LoDTensor = framework::LoDTensor;
 using DDim = framework::DDim;
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenScalar = framework::EigenScalar<T, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 #define CREATE_TENSOR(tensor, dtype, ...)             \
   LoDTensor tensor;                                   \
@@ -72,7 +63,9 @@ template <typename DeviceContext, typename T, size_t D, size_t R_D>
 inline void MAX_FUNC(const framework::ExecutionContext& ctx,
                      const Tensor* input, Tensor* output,
                      const std::vector<int>& dims) {
-  auto x = EigenTensor<T, D>::From(*input);
+  auto x =
+      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
+          *input);
   auto x_rank = static_cast<int>(x.dimensions().size());
   auto reduce_dim = Eigen::array<int, R_D>();
   auto& dev_ctx = ctx.template device_context<DeviceContext>();
@@ -84,10 +77,14 @@ inline void MAX_FUNC(const framework::ExecutionContext& ctx,
   DDim out_dims = output->dims();
   auto& place = *dev_ctx.eigen_device();
   if (D == 1) {
-    auto out = EigenScalar<T>::From(*output);
+    auto out =
+        framework::EigenScalar<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
+            *output);
     out.device(place) = x.maximum(reduce_dim);
   } else {
-    auto out = EigenTensor<T, (D - R_D)>::From(*output, out_dims);
+    auto out =
+        framework::EigenTensor<T, (D - R_D), Eigen::RowMajor,
+                               Eigen::DenseIndex>::From(*output, out_dims);
     out.device(place) = x.maximum(reduce_dim);
   }
 }
