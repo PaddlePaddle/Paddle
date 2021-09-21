@@ -1539,17 +1539,17 @@ static void SetDstMemoryQuantized(
   T* output_data = output->mutable_data<T>(ctx.GetPlace());
   const size_t dst_dims = dst_tz.size();
   MKLDNNMemoryFormat dst_fmt;
+
   PADDLE_ENFORCE_LE(dst_dims, 5, platform::errors::InvalidArgument(
-                                    "Dst memory for quantization can not have "
-                                    "dims > 5. But received dst_dims is %d.",
-                                    dst_dims));
+                                     "Dst memory for quantization can not have "
+                                     "dims > 5. But received dst_dims is %d.",
+                                     dst_dims));
   dst_fmt = platform::MKLDNNFormatForSize(dst_dims, output_format);
 
-  auto tmp_dst_md =
-      platform::MKLDNNMemDesc({dst_tz},
-                              paddle::framework::ToMKLDNNDataType(
-                                  framework::DataTypeTrait<T>::DataType()),
-                              dst_fmt);
+  auto tmp_dst_md = platform::MKLDNNMemDesc(
+      {dst_tz}, paddle::framework::ToMKLDNNDataType(
+                    framework::DataTypeTrait<T>::DataType()),
+      dst_fmt);
   dst_md.reset(new mkldnn::memory::desc(tmp_dst_md));
   dst_memory.reset(
       new mkldnn::memory(*dst_md, engine, to_void_cast<T>(output_data)));
