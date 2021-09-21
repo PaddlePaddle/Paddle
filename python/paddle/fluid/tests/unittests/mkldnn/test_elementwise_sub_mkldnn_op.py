@@ -17,24 +17,19 @@ import unittest
 import numpy as np
 from paddle.fluid.tests.unittests.test_elementwise_sub_op import TestElementwiseSubOp
 from paddle import enable_static
+from paddle.fluid.tests.unittests.op_test import OpTestTool
+from paddle.fluid.framework import _current_expected_place
+import paddle.fluid.core as core
 
 
+@OpTestTool.skip_if(not (isinstance(_current_expected_place(), core.CPUPlace)),
+                    "GPU is not supported")
 class TestMKLDNNElementwiseSubOp(TestElementwiseSubOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
 
     def init_dtype(self):
         self.dtype = np.float32
-
-    # # TODO(piotrekobiIntel): Enable when grad is ready
-    # def test_check_grad_normal(self):
-    #     pass
-
-    # def test_check_grad_ingore_x(self):
-    #     pass
-
-    # def test_check_grad_ingore_y(self):
-    #     pass
 
 
 class TestMKLDNNElementwiseSubOp2(TestMKLDNNElementwiseSubOp):
