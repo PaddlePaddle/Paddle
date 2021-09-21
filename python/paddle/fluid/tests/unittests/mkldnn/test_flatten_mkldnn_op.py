@@ -22,6 +22,7 @@ import paddle.fluid.core as core
 from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestFlattenOneDNNOp(OpTest):
     def setUp(self):
         self.set_op_type()
@@ -80,7 +81,6 @@ class TestFlatten2OneDNNOpSixDims(TestFlattenOneDNNOpSixDims):
 
 #   BF16 TESTS
 def create_flatten_bf16_test_classes(parent):
-    @OpTestTool.skip_if_not_cpu_bf16()
     class TestFlatten2BF16OneDNNOp(parent):
         def set_inputs(self):
             self.dtype = np.uint16
