@@ -58,8 +58,6 @@ class TestConcatAxis0OneDNNOp(OpTest):
         self.check_grad(['x1'], 'Out')
         self.check_grad(['x2'], 'Out')
 
-# --------------------test concat bf16 in with axis 0--------------------
-
     def init_test_data(self):
         self.x0 = np.random.random(self.x0_shape).astype(np.float32)
         self.x1 = np.random.random(self.x1_shape).astype(np.float32)
@@ -74,9 +72,6 @@ class TestConcatAxis0OneDNNOp(OpTest):
         self.x2_shape = [3, 2, 1, 50]
 
 
-# --------------------test concat bf16 in with axis 1--------------------
-
-
 class TestConcatAxis1OneDNNOp(TestConcatAxis0OneDNNOp):
     def init_axis(self):
         self.axis = 1
@@ -87,9 +82,6 @@ class TestConcatAxis1OneDNNOp(TestConcatAxis0OneDNNOp):
         self.x2_shape = [1, 3, 5, 50]
 
 
-# --------------------test concat bf16 in with axis 2--------------------
-
-
 class TestConcatAxis2OneDNNOp(TestConcatAxis0OneDNNOp):
     def init_axis(self):
         self.axis = 2
@@ -98,9 +90,6 @@ class TestConcatAxis2OneDNNOp(TestConcatAxis0OneDNNOp):
         self.x0_shape = [2, 3, 4, 50]
         self.x1_shape = [2, 3, 5, 50]
         self.x2_shape = [2, 3, 6, 50]
-
-
-# --------------------test concat bf16 in with axis 3--------------------
 
 
 class TestConcatAxis3OneDNNOp(TestConcatAxis0OneDNNOp):
