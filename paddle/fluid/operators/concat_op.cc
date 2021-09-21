@@ -173,11 +173,11 @@ class ConcatOpGrad : public framework::OperatorWithKernel {
         ctx, framework::GradVarName("Out"));
 
 #ifdef PADDLE_WITH_MKLDNN
-    if (ctx.HasAttr("use_mkldnn")) // fix for weird reverse op behavior
+    if (ctx.HasAttr("use_mkldnn"))  // fix for weird reverse op behavior
       if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
         return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                      framework::DataLayout::kMKLDNN,
-                                      framework::LibraryType::kMKLDNN);
+                                       framework::DataLayout::kMKLDNN,
+                                       framework::LibraryType::kMKLDNN);
       }
 #endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
