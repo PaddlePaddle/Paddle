@@ -222,6 +222,8 @@ void ParallelConnectContext::connectFullMesh(
   // Create pairs
   auto transportContext = dev->createContext(rank, size);
   transportContext->setTimeout(getTimeout());
+  VLOG(0) << "transportContext timeout: " << getTimeout().count();
+  VLOG(0) << "curr rank: " << rank;
   for (int i = 0; i < size; i++) {
     if (i == rank) {
       continue;
@@ -238,6 +240,7 @@ void ParallelConnectContext::connectFullMesh(
 
   std::vector<std::shared_ptr<std::thread>> connect_threads(thread_num_);
   // Connect every pair
+  VLOG(0) << "connect_thread_num: " << thread_num_ << ", size: " << size;
   for (uint32_t i = 0; i < connect_threads.size(); ++i) {
     connect_threads[i].reset(new std::thread(
         [&store, &transportContext, total_add_size, this](
@@ -269,6 +272,13 @@ void ParallelConnectContext::connectFullMesh(
             if (addr.empty()) {
               VLOG(0) << "peer address is null";
             }
+            Impl impl_;
+            memcpy(&impl_, addr.data(), sizeof(impl_));
+            struct sockaddr_in* sa = (struct sockaddr_in*)&(impl_.ss);
+            std::string ip = getCharIpAddr(sa->sin_addr.s_addr);
+            VLOG(0) << "peer " << i << " ip addr: " << ip
+                    << ", port: " << sa->sin_port;
+
             auto start = std::chrono::steady_clock::now();
             std::chrono::seconds connect_wait_timeout_ =
                 std::chrono::seconds(600);
@@ -287,6 +297,7 @@ void ParallelConnectContext::connectFullMesh(
             }
             transportContext->getPair(i)->connect(addr);
           }
+          VLOG(0) << "peer " << i << " connected success";
         },
         i, connect_threads.size()));
   }
@@ -295,6 +306,7 @@ void ParallelConnectContext::connectFullMesh(
   }
   device_ = dev;
   transportContext_ = std::move(transportContext);
+  VLOG(0) << "ParallelConnectContext::connectFullMesh() is over";
 }
 #endif
 }  // namespace rendezvous
