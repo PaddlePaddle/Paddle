@@ -1,36 +1,33 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
 #include "paddle/fluid/operators/fused/cudnn_fusion_helper.h"
-#include "paddle/fluid/operators/fused/resnet_unit_op.h"
 
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
 namespace dynload = platform::dynload;
-template <typename T>
-class CuDNNNormConvolutionOp {
-#if CUDNN_VERSION < 8000
-  LOG(ERROR) << "cuDNN version 8.0 or later is required.";
-#else
 
+#if CUDNN_VERSION >= 8000
+template <typename T>
+class CudnnNormConvolutionOp {
  public:
-  CuDNNNormConvolutionOp()
+  CudnnNormConvolutionOp()
       : fwd_op_(CUDNN_FUSED_SCALE_BIAS_ACTIVATION_CONV_BNSTATS) {}
-  ~CuDNNNormConvolutionOp() {}
+  ~CudnnNormConvolutionOp() {}
 
   void Init(const platform::CUDADeviceContext &ctx,
             const std::vector<int> &input_shape,
@@ -89,14 +86,14 @@ class CuDNNNormConvolutionOp {
         {CUDNN_PARAM_YSUM_PLACEHOLDER, CUDNN_PARAM_YSQSUM_PLACEHOLDER},
         CUDNN_PTR_16B_ALIGNED);
 
-    std::vector<int> p_vec = {pad, pad};
-    std::vector<int> s_vec = {stride, stride};
-    std::vector<int> d_vec = {dilate, dilate};
+    std::vector<int> pad_vec = {pad, pad};
+    std::vector<int> stride_vec = {stride, stride};
+    std::vector<int> dilate_vec = {dilate, dilate};
     int output_channel = filter_shape[0];
     std::vector<int> stats_shape = {1, 1, 1, output_channel};
 
     // set conv desc
-    conv_desc_.set(dtype_, p_vec, s_vec, d_vec, false, group);
+    conv_desc_.set(dtype_, pad_vec, stride_vec, dilate_vec, false, group);
     fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_CONV_DESC, conv_desc_.desc());
 
     // set input desc
@@ -135,8 +132,8 @@ class CuDNNNormConvolutionOp {
   platform::ConvolutionDescriptor conv_desc_;
   cudnnTensorFormat_t format_;
 
-  CuDNNFusionOp fwd_op_;
-#endif
+  CudnnFusionOp fwd_op_;
 };
+#endif
 }  // namespace operators
 }  // namespace paddle
