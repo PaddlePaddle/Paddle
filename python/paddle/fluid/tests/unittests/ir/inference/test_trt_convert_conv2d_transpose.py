@@ -39,9 +39,6 @@ class TrtConvertConv2dTransposeTest(TrtLayerAutoScanTest):
         return True
 
     def sample_program_configs(self):
-        return True
-
-    def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
 
         def generate_input1(batch, num_channels, attrs: List[Dict[str, Any]]):
