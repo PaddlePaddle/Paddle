@@ -135,7 +135,7 @@ int FCFusePass::ApplyFCPattern(Graph* graph, bool with_relu) const {
     }
 
     // Create an FC Node.
-    OpDesc desc;
+    OpDesc desc(mul->Op()->Block());
     desc.SetType("fc");
 
     // Set inputs of fc

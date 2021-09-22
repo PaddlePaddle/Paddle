@@ -362,7 +362,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex<float>>,
+    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     unsqueeze_grad,
     ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -371,7 +375,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::complex<float>>,
+    ops::UnsqueezeGradKernel<paddle::platform::CPUDeviceContext,
+                             paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     unsqueeze2, ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, float>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, double>,
@@ -379,7 +387,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex<float>>,
+    ops::UnsqueezeKernel<paddle::platform::CPUDeviceContext,
+                         paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     unsqueeze2_grad,
     ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -388,4 +400,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::complex<float>>,
+    ops::Unsqueeze2GradKernel<paddle::platform::CPUDeviceContext,
+                              paddle::platform::complex<double>>);
