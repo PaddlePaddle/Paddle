@@ -102,12 +102,23 @@ void MKLBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
     out_ptr[i] = functor(lhs_ptr[i], rhs_ptr[i]);
   }
 }
+// Need to gurantee that lhs, rhs have same dims
 #define EXECUTE_MKL_ELEMENT_BINARY_OP(lhs, rhs, output, functor_type, dtype) \
   MKLBinaryOP<dtype, functor_type##Functor<dtype>>(lhs, rhs, &output)
 #else
 #define EXECUTE_MKL_ELEMENT_BINARY_OP(lhs, rhs, output, functor_type, dtype) \
   ELEMENT_BINARY_OP(lhs, rhs, output, functor_type, dtype)
 #endif
+
+template <typename T>
+void ARange(T* in, int64_t num, const T& scale) {
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  for (int64_t i = 0; i < num; ++i) {
+    in[i] = i * scale;
+  }
+}
 
 class TensorBuffer {
  public:
@@ -305,10 +316,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     int actual_len = std::min(seq_len, static_cast<int>(max_seq_len));
 
     MUL(last_ids, int_mask, batch_path[actual_len - last_ids_index], int64_t);
-    int64_t* batch_offset_ptr = batch_offset.data<int64_t>();
-    for (int64_t i = 0; i < batch_size; ++i) {
-      batch_offset_ptr[i] = i * n_labels;
-    }
+    ARange(batch_offset.data<int64_t>(), static_cast<int64_t>(batch_size),
+           static_cast<int64_t>(n_labels));
 
     for (auto hist = historys.rbegin(); hist != historys.rend(); ++hist) {
       ++last_ids_index;
