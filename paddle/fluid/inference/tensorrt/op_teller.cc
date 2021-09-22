@@ -179,6 +179,26 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       if (paddings.size() > 2) return false;
+      if (desc.HasAttr("exclusive")) {
+        if (BOOST_GET_CONST(bool, desc.GetAttr("exclusive"))) {
+          std::vector<int> ksize =
+              BOOST_GET_CONST(std::vector<int>, desc.GetAttr("ksize"));
+          for (size_t i = 0; i < ksize.size(); i++) {
+            if (ksize[i] <= paddings[i]) {
+              VLOG(3) << "the padding size should be less than the filter size "
+                         "for exclusive-counting pooling.";
+              return false;
+            }
+          }
+        }
+      }
+      if (desc.HasAttr("global_pooling")) {
+        if (BOOST_GET_CONST(bool, desc.GetAttr("global_pooling"))) return false;
+      }
+      if (desc.HasAttr("ceil_mode")) {
+        std::cout << "jzzzzzz" << std::endl;
+        if (BOOST_GET_CONST(bool, desc.GetAttr("ceil_mode"))) return false;
+      }
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "TRT Pool2d expect 1 input, but got "
                 << desc.Input("X").size();
