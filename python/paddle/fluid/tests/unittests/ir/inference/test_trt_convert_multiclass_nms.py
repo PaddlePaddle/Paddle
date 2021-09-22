@@ -35,6 +35,7 @@ class TrtConvertMultiNMSTest(TrtLayerAutoScanTest):
         ## TODO try more params when TRT layer is implemented
         for background_label in [-1]:
             for score_threshold in [0.05]:
+                ## Segement fault or other error when more params, such as 500, 400
                 for nms_top_k in [1000]:
                     for keep_top_k in [100]:
                         for nms_threshold in [0.3]:
