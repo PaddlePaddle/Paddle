@@ -56,6 +56,13 @@ USE_TENSORRT=OFF
 if [ -d "$TENSORRT_ROOT_DIR" ] && [ ! -z "$TENSORRT_COMPILED" ]  ; then
   USE_TENSORRT=ON
   test_suite_list="${test_suite_list}:tensorrt_tester*"
+  TENSORRT_VERSION_FILE_CONTENTS=${TENSORRT_ROOT_DIR}/include/NvInferVersion.h;
+  TENSORRT_MAJOR_VERSION=`cat ${TENSORRT_VERSION_FILE_CONTENTS} | grep  NV_TENSORRT_MAJOR | awk '{print $3}'`
+  TENSORRT_MINOR_VERSION=`cat ${TENSORRT_VERSION_FILE_CONTENTS} | grep  NV_TENSORRT_MINOR | awk '{print $3}'`
+  TENSORRT_PATCH_VERSION=`cat ${TENSORRT_VERSION_FILE_CONTENTS} | grep  NV_TENSORRT_PATCH | awk '{print $3}'`
+  TENSORRT_BUILD_VERSION=`cat ${TENSORRT_VERSION_FILE_CONTENTS} | grep  NV_TENSORRT_BUILD | awk '{print $3}'`
+  printf "Current TensorRT version is v${TENSORRT_MAJOR_VERSION}.${TENSORRT_MINOR_VERSION}.${TENSORRT_PATCH_VERSION}.${TENSORRT_BUILD_VERSION} \n";
+  TENSORRT_VERSION=`expr $TENSORRT_MAJOR_VERSION \* 1000 + $TENSORRT_MINOR_VERSION \* 100 + $TENSORRT_PATCH_VERSION \* 10 + $TENSORRT_BUILD_VERSION`;
 fi
 
 function download() {
@@ -269,19 +276,24 @@ if [ $? -ne 0 ]; then
     EXIT_CODE=8
 fi
 
-printf "${YELLOW} start test_ernie_xnli_int8 ${NC} \n";
-compile_test "test_ernie_xnli_int8"
-ernie_qat_model="quant_post_model_xnli_predict_matmul"
-${exe_dir}/test_ernie_xnli_int8 \
-    --modeldir=$DATA_DIR/$ernie_qat_model/$ernie_qat_model \
-    --datadir=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/xnli_var_len \
-    --truth_data=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/truth_data
-    --gtest_filter=${test_suite_list} \
-    --gtest_output=xml:${log_dir}/test_ernie_xnli_int8.xml
-if [ $? -ne 0 ]; then
-    echo "${RED} test_ernie_xnli_int8 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
-    EXIT_CODE=8
-fi
+if [ $TENSORRT_VERSION -gt 7200 ]; then
+    # ernie int8 need trt version > 7.2.x.x
+    printf "${YELLOW} start test_ernie_xnli_int8 ${NC} \n";
+    compile_test "test_ernie_xnli_int8"
+    ernie_qat_model="quant_post_model_xnli_predict_matmul"
+    ${exe_dir}/test_ernie_xnli_int8 \
+        --modeldir=$DATA_DIR/$ernie_qat_model/$ernie_qat_model \
+        --datadir=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/xnli_var_len \
+        --truth_data=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/truth_data
+        --gtest_filter=${test_suite_list} \
+        --gtest_output=xml:${log_dir}/test_ernie_xnli_int8.xml
+    if [ $? -ne 0 ]; then
+        echo "${RED} test_ernie_xnli_int8 runs failed ${NC}" >> ${exe_dir}/test_summary.txt
+        EXIT_CODE=8
+    fi
+else
+    echo "  skip test_ernie_xnli_int8 since TensorRT version is ${TENSORRT_VERSION}  "
+fi;
 
 printf "${YELLOW} start test_mobilnetv1 ${NC} \n";
 compile_test "test_mobilnetv1"

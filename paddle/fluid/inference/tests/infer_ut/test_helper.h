@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #pragma once
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -72,19 +73,6 @@ void Split(const std::string &line, char sep, std::vector<T> *v) {
     ss.str({});
     ss.clear();
   }
-}
-
-template <typename T>
-constexpr paddle::PaddleDType GetPaddleDType();
-
-template <>
-constexpr paddle::PaddleDType GetPaddleDType<int64_t>() {
-  return paddle::PaddleDType::INT64;
-}
-
-template <>
-constexpr paddle::PaddleDType GetPaddleDType<float>() {
-  return paddle::PaddleDType::FLOAT32;
 }
 
 }  // namespace test
