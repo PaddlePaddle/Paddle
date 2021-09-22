@@ -92,8 +92,8 @@ class CuDNNBNStatsFinalizeOp {
                float *saved_mean_ptr, float *saved_invstd_ptr,
                float *running_mean_ptr, float *running_var_ptr,
                T *equiv_scale_ptr, T *equiv_bias_ptr, double eps,
-               float momentum, int64_t ele_count) {
-    auto &op = true ? train_op_ : inference_op_;
+               float momentum, int64_t ele_count, bool is_train) {
+    auto &op = is_train ? train_op_ : inference_op_;
 
     // Set variant_param for both inference_op_ and train_op_
     op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SCALE, scale_ptr);
@@ -105,7 +105,7 @@ class CuDNNBNStatsFinalizeOp {
     op.SetOpVariantParamAttrPtr<double>(CUDNN_SCALAR_DOUBLE_BN_EPSILON, &eps);
 
     // Set extra variant_param only for train_op_:
-    if (true) {
+    if (is_train) {
       op.SetOpVariantParamAttrPtr(CUDNN_PTR_YSUM, sum_ptr);
       op.SetOpVariantParamAttrPtr(CUDNN_PTR_YSQSUM, sum_of_squares_ptr);
       op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SAVED_MEAN, saved_mean_ptr);

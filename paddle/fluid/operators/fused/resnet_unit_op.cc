@@ -23,6 +23,8 @@ void ResNetUnitOp::InferShape(framework::InferShapeContext *ctx) const {
   OP_INOUT_CHECK(ctx->HasInput("FilterX"), "Input", "FilterX", "ResNetUnitOp");
   OP_INOUT_CHECK(ctx->HasInput("ScaleX"), "Input", "ScaleX", "ResNetUnitOp");
   OP_INOUT_CHECK(ctx->HasInput("BiasX"), "Input", "BiasX", "ResNetUnitOp");
+  OP_INOUT_CHECK(ctx->HasInput("MeanX"), "Input", "MeanX", "ResNetUnitOp");
+  OP_INOUT_CHECK(ctx->HasInput("VarX"), "Input", "VarX", "ResNetUnitOp");
   if (ctx->Attrs().Get<bool>("fused_add")) {
     OP_INOUT_CHECK(ctx->HasInput("Z"), "Input", "Z", "ResNetUnitOp");
   }
@@ -31,14 +33,33 @@ void ResNetUnitOp::InferShape(framework::InferShapeContext *ctx) const {
                    "ResNetUnitOp");
     OP_INOUT_CHECK(ctx->HasInput("ScaleZ"), "Input", "ScaleZ", "ResNetUnitOp");
     OP_INOUT_CHECK(ctx->HasInput("BiasZ"), "Input", "BiasZ", "ResNetUnitOp");
+    OP_INOUT_CHECK(ctx->HasInput("MeanZ"), "Input", "MeanZ", "ResNetUnitOp");
+    OP_INOUT_CHECK(ctx->HasInput("VarZ"), "Input", "VarZ", "ResNetUnitOp");
   }
 
   // check output
   OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "ResNetUnitOp");
 
+  // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
+  PADDLE_ENFORCE_EQ(ctx->Inputs("MeanX")[0], ctx->Outputs("RunningMeanX")[0],
+                    platform::errors::InvalidArgument(
+                        "Mean and MeanOut should share the same memory"));
+  PADDLE_ENFORCE_EQ(
+      ctx->Inputs("VarX")[0], ctx->Outputs("RunningVarX")[0],
+      platform::errors::InvalidArgument(
+          "Variance and VarianceOut should share the same memory"));
+  if (ctx->Attrs().Get<bool>("has_shortcut")) {
+    PADDLE_ENFORCE_EQ(ctx->Inputs("MeanZ")[0], ctx->Outputs("RunningMeanZ")[0],
+                      platform::errors::InvalidArgument(
+                          "Mean and MeanOut should share the same memory"));
+    PADDLE_ENFORCE_EQ(
+        ctx->Inputs("VarZ")[0], ctx->Outputs("RunningVarZ")[0],
+        platform::errors::InvalidArgument(
+            "Variance and VarianceOut should share the same memory"));
+  }
+
   // TODO(zhangzheng): check dims for input and output
   const auto x_dims = ctx->GetInputDim("X");
-  // TODO(zhangzheng): infer shape of output
   const auto w_dims = ctx->GetInputDim("FilterX");
   int batch = x_dims[0];
   int output_channel = w_dims[0];
@@ -98,10 +119,14 @@ void ResNetUnitOpMaker::Make() {
   AddInput("FilterX", "The filter tensor of input 1");
   AddInput("ScaleX", "The bn scale tensor of input 1");
   AddInput("BiasX", "The bn bias tensor of input 1");
+  AddInput("MeanX", "The bn mean tensor of input 1");
+  AddInput("VarX", "The bn var tensor of input 1");
   AddInput("Z", "The input 2 tensor");
   AddInput("FilterZ", "The filter tensor of input 2");
   AddInput("ScaleZ", "The bn scale tensor of input 2");
   AddInput("BiasZ", "The bn bias tensor of input 2");
+  AddInput("MeanZ", "The bn mean tensor of input 2");
+  AddInput("VarZ", "The bn var tensor of input 2");
   AddOutput("Y", "The result of the resnet unit");
   AddOutput("BitMask", "The bitmask");
   AddOutput("ConvX", "The output of x after conv");
@@ -122,7 +147,6 @@ void ResNetUnitOpMaker::Make() {
   AddOutput("RunningVarZ", "The output of running var of z");
   AddOutput("EqScaleZ", "The output of equiv scale of z");
   AddOutput("EqBiasZ", "The output of equiv bias of z");
-  AddAttr<int>("ele_count", "");
   AddAttr<int>("stride", "").SetDefault(1);
   AddAttr<int>("pad", "").SetDefault(0);
   AddAttr<int>("dilate", "").SetDefault(1);
@@ -133,6 +157,7 @@ void ResNetUnitOpMaker::Make() {
   AddAttr<std::string>("bn_format", "").SetDefault("NHWC");
   AddAttr<bool>("fused_add", "").SetDefault(false);
   AddAttr<bool>("has_shortcut", "").SetDefault(false);
+  AddAttr<bool>("use_global_stats", "").SetDefault(false);
   AddAttr<std::string>("act_type", "The activation type to be fused.")
       .SetDefault("relu");
   AddComment(R"DOC(

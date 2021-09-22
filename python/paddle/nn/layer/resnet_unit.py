@@ -32,6 +32,7 @@ from paddle.nn import Layer, LayerList
 from paddle.fluid.layers import utils
 from paddle.fluid.layers.utils import map_structure, flatten, pack_sequence_as
 from paddle.fluid.data_feeder import convert_dtype
+from paddle.fluid.param_attr import ParamAttr
 from paddle import _C_ops
 __all__ = []
 
@@ -47,7 +48,6 @@ class ResNetUnit(Layer):
                  num_filters,
                  filter_size,
                  stride=1,
-                 ele_count=1,
                  momentum=0.9,
                  eps=1e-5,
                  conv_format='NHWC',
@@ -55,12 +55,17 @@ class ResNetUnit(Layer):
                  act='relu',
                  fused_add=False,
                  has_shortcut=False,
+                 use_global_stats=False,
                  filter_x_attr=None,
                  scale_x_attr=None,
                  bias_x_attr=None,
+                 moving_mean_x_name=None,
+                 moving_var_x_name=None,
                  filter_z_attr=None,
                  scale_z_attr=None,
                  bias_z_attr=None,
+                 moving_mean_z_name=None,
+                 moving_var_z_name=None,
                  name=None):
         super(ResNetUnit, self).__init__()
         self._in_channels = num_channels
@@ -70,7 +75,6 @@ class ResNetUnit(Layer):
         self._kernel_size = utils.convert_to_list(filter_size, 2, 'kernel_size')
         self._padding = (filter_size - 1) // 2
         self._groups = 1
-        self._ele_count = ele_count
         self._momentum = momentum
         self._eps = eps
         self._conv_format = conv_format
@@ -78,12 +82,7 @@ class ResNetUnit(Layer):
         self._act = act
         self._fused_add = fused_add
         self._has_shortcut = has_shortcut
-        self._filter_x_attr = filter_x_attr
-        self._scale_x_attr = scale_x_attr
-        self._bias_x_attr = bias_x_attr
-        self._filter_z_attr = filter_z_attr
-        self._scale_z_attr = scale_z_attr
-        self._bias_z_attr = bias_z_attr
+        self._use_global_stats = use_global_stats
 
         # check format
         valid_format = {'NHWC'}
@@ -107,39 +106,73 @@ class ResNetUnit(Layer):
         filter_shape = [num_filters, filter_size, filter_size, num_channels]
         self.filter_x = self.create_parameter(
             shape=filter_shape,
-            attr=self._filter_x_attr,
+            attr=filter_x_attr,
             default_initializer=_get_default_param_initializer()).astype(
                 np.float16)
         self.scale_x = self.create_parameter(
             shape=bn_param_shape,
-            attr=self._scale_x_attr,
+            attr=scale_x_attr,
             dtype=bn_param_dtype,
             default_initializer=I.Constant(1.0))
         self.bias_x = self.create_parameter(
             shape=bn_param_shape,
-            attr=self._bias_x_attr,
+            attr=bias_x_attr,
             dtype=bn_param_dtype,
             is_bias=True)
+        self.mean_x = self.create_parameter(
+            attr=ParamAttr(
+                name=moving_mean_x_name,
+                initializer=I.Constant(0.0),
+                trainable=False),
+            shape=bn_param_shape,
+            dtype=bn_param_dtype)
+        self.mean_x.stop_gradient = True
+        self.var_x = self.create_parameter(
+            attr=ParamAttr(
+                name=moving_var_x_name,
+                initializer=I.Constant(1.0),
+                trainable=False),
+            shape=bn_param_shape,
+            dtype=bn_param_dtype)
+        self.var_x.stop_gradient = True
         if has_shortcut:
             self.filter_z = self.create_parameter(
                 shape=filter_shape,
-                attr=self._filter_z_attr,
+                attr=filter_z_attr,
                 default_initializer=_get_default_param_initializer()).astype(
                     np.float16)
             self.scale_z = self.create_parameter(
                 shape=bn_param_shape,
-                attr=self._scale_z_attr,
+                attr=scale_z_attr,
                 dtype=bn_param_dtype,
                 default_initializer=I.Constant(1.0))
             self.bias_z = self.create_parameter(
                 shape=bn_param_shape,
-                attr=self._bias_z_attr,
+                attr=bias_z_attr,
                 dtype=bn_param_dtype,
                 is_bias=True)
+            self.mean_z = self.create_parameter(
+                attr=ParamAttr(
+                    name=moving_mean_z_name,
+                    initializer=I.Constant(0.0),
+                    trainable=False),
+                shape=bn_param_shape,
+                dtype=bn_param_dtype)
+            self.mean_z.stop_gradient = True
+            self.var_z = self.create_parameter(
+                attr=ParamAttr(
+                    name=moving_var_z_name,
+                    initializer=I.Constant(1.0),
+                    trainable=False),
+                shape=bn_param_shape,
+                dtype=bn_param_dtype)
+            self.var_z.stop_gradient = True
         else:
             self.filter_z = self.filter_x
             self.scale_z = self.scale_x
             self.bias_z = self.bias_x
+            self.mean_z = self.mean_x
+            self.var_z = self.var_x
 
     def forward(self, x, z=None):
         if self._fused_add and z is None:
@@ -147,10 +180,11 @@ class ResNetUnit(Layer):
         if self._fused_add is False:
             z = x
 
-        out = F.resnet_unit(x, self.filter_x, self.scale_x, self.bias_x, z,
-                            self.filter_z, self.scale_z, self.bias_z,
-                            self._ele_count, self._stride, self._padding,
-                            self._dilation, self._groups, self._momentum,
-                            self._eps, self._conv_format, self._bn_format,
-                            self._fused_add, self._has_shortcut, self._act)
+        out = F.resnet_unit(
+            x, self.filter_x, self.scale_x, self.bias_x, self.mean_x,
+            self.var_x, z, self.filter_z, self.scale_z, self.bias_z,
+            self.mean_z, self.var_z, self._stride, self._padding,
+            self._dilation, self._groups, self._momentum, self._eps,
+            self._conv_format, self._bn_format, self._fused_add,
+            self._has_shortcut, self._use_global_stats, self._act)
         return out

@@ -58,9 +58,9 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
     int group = ctx.Attr<int>("group");
     double eps = static_cast<double>(ctx.Attr<float>("epsilon"));
     double momentum = static_cast<double>(ctx.Attr<float>("momentum"));
-    int64_t ele_count = static_cast<int64_t>(ctx.Attr<int>("ele_count"));
     bool has_shortcut = ctx.Attr<bool>("has_shortcut");
     bool fused_add = ctx.Attr<bool>("fused_add");
+    bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     std::string act_type = ctx.Attr<std::string>("act_type");
 
     // tensor shape
@@ -70,6 +70,11 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
     auto output_shape = framework::vectorize<int>(output->dims());
     auto bitmask_shape = framework::vectorize<int>(bitmask->dims());
     auto place = input_x->place();
+    int output_channel = filter_x_shape[0];
+    int64_t ele_count =
+        std::accumulate(output_shape.begin(), output_shape.end(), 1,
+                        std::multiplies<int>()) /
+        output_channel;
 
 #define MALLOC_AND_GET_PTR(TR, Dtype, Place) \
   Dtype *TR##_ptr = TR->mutable_data<Dtype>(Place);
@@ -103,7 +108,8 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
     bn_x_op->Forward(dev_ctx, sum_x_ptr, sum_of_squares_x_ptr, scale_x_ptr,
                      bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
                      running_mean_x_ptr, running_var_x_ptr, equiv_scale_x_ptr,
-                     equiv_bias_x_ptr, eps, momentum, ele_count);
+                     equiv_bias_x_ptr, eps, momentum, ele_count,
+                     use_global_stats);
 
     // 3. scale + bias + add + relu
     CuDNNScaleBiasAddReluOp<T> *sbar_op =
@@ -152,7 +158,8 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
       bn_z_op->Forward(dev_ctx, sum_z_ptr, sum_of_squares_z_ptr, scale_z_ptr,
                        bias_z_ptr, saved_mean_z_ptr, saved_invstd_z_ptr,
                        running_mean_z_ptr, running_var_z_ptr, equiv_scale_z_ptr,
-                       equiv_bias_z_ptr, eps, momentum, ele_count);
+                       equiv_bias_z_ptr, eps, momentum, ele_count,
+                       use_global_stats);
       // 3.3 sbar
       sbar_op->Init(dev_ctx, act_type, output_shape, bitmask_shape,
                     output_shape, param_shape, output_shape);

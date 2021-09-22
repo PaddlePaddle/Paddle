@@ -272,8 +272,8 @@ class TestCuDNNBNScaleBiasAddReluForward {
     bn_op->Init(*ctx_, param_shape);
     bn_op->Forward(*ctx_, sum_ptr, sum_of_squares_ptr, scale_ptr, bias_ptr,
                    saved_mean_ptr, saved_var_ptr, mean_ptr, var_ptr,
-                   equiv_scale_ptr, equiv_bias_ptr, eps_, momentum_,
-                   ele_count_);
+                   equiv_scale_ptr, equiv_bias_ptr, eps_, momentum_, ele_count_,
+                   true);
     // 2. Scale Bias + Relu (not fused add)
     std::string act_type = "";
     op::CuDNNScaleBiasAddReluOp<T> *sbar_op =
