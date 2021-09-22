@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/platform/complex.h"
 
 namespace paddle {
 namespace operators {
@@ -148,12 +149,20 @@ REGISTER_OP_CPU_KERNEL(
     roll, ops::RollKernel<paddle::platform::CPUDeviceContext, float>,
     ops::RollKernel<paddle::platform::CPUDeviceContext, double>,
     ops::RollKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::RollKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::RollKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::RollKernel<paddle::platform::CPUDeviceContext,
+                    paddle::platform::complex<float>>,
+    ops::RollKernel<paddle::platform::CPUDeviceContext,
+                    paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     roll_grad, ops::RollGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::RollGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::RollGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::RollGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::RollGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::RollGradKernel<paddle::platform::CPUDeviceContext,
+                        paddle::platform::complex<float>>,
+    ops::RollGradKernel<paddle::platform::CPUDeviceContext,
+                        paddle::platform::complex<double>>);
 
 REGISTER_OP_VERSION(roll)
     .AddCheckpoint(

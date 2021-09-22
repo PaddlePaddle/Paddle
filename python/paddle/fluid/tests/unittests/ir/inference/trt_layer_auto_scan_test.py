@@ -25,6 +25,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 import paddle.inference as paddle_infer
+import shutil
 
 from paddle import compat as cpt
 from typing import Optional, List, Callable, Dict, Any, Set
@@ -74,12 +75,15 @@ class TrtLayerAutoScanTest(AutoScanTest):
         self.num_percent_cases = float(
             os.getenv(
                 'TEST_NUM_PERCENT_CASES', default='1.0'))
+        abs_dir = os.path.abspath(os.path.dirname(__file__))
+        cache_dir = str(self.__module__) + '_trt_cache_dir'
+        self.trt_cache_dir = os.path.join(abs_dir, cache_dir)
 
     def create_inference_config(self, use_trt=True) -> paddle_infer.Config:
         config = paddle_infer.Config()
-        config.disable_glog_info()
+        # config.disable_glog_info()
         config.enable_use_gpu(100, 0)
-        config.set_optim_cache_dir('trt_convert_cache_dir')
+        config.set_optim_cache_dir(self.trt_cache_dir)
         if use_trt:
             config.switch_ir_debug()
             config.enable_tensorrt_engine(
@@ -109,7 +113,9 @@ class TrtLayerAutoScanTest(AutoScanTest):
         for key, arr in tensor.items():
             self.assertTrue(
                 baseline[key].shape == arr.shape,
-                "The output shape of GPU and TensorRT are not equal.")
+                "The output shape of GPU and TensorRT are not equal, the baseline shape is "
+                + str(baseline[key].shape) + ', but the trt shape is ' +
+                str(arr.shape))
             self.assertTrue(
                 np.allclose(
                     baseline[key], arr, atol=atol, rtol=rtol),
@@ -215,6 +221,9 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
             for pred_config, nodes_num, threshold in self.sample_predictor_configs(
                     prog_config):
+
+                if os.path.exists(self.trt_cache_dir):
+                    shutil.rmtree(self.trt_cache_dir)
 
                 if isinstance(threshold, float):
                     atol = threshold

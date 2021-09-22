@@ -61,6 +61,26 @@ TEST(AnalysisPredictor, analysis_off) {
   ASSERT_TRUE(predictor->Run(inputs, &outputs));
 }
 
+#ifndef WIN32
+TEST(AnalysisPredictor, lite_nn_adapter_npu) {
+  AnalysisConfig config;
+  config.SetModel(FLAGS_dirname);
+  config.EnableLiteEngine();
+  config.NNAdapter()
+      .Disable()
+      .Enable()
+      .SetDeviceNames({"huawei_ascend_npu"})
+      .SetContextProperties("HUAWEI_ASCEND_NPU_SELECTED_DEVICE_IDS=0")
+      .SetModelCacheDir("cache_dirr")
+      .SetSubgraphPartitionConfigPath("")
+      .SetModelCacheBuffers("c1", {'c'});
+#ifndef LITE_SUBGRAPH_WITH_NNADAPTER
+  EXPECT_THROW(CreatePaddlePredictor<AnalysisConfig>(config),
+               paddle::platform::EnforceNotMet);
+#endif
+}
+#endif
+
 TEST(AnalysisPredictor, analysis_on) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
@@ -322,6 +342,17 @@ TEST(AnalysisPredictor, bf16_pass_strategy) {
   PassStrategy passStrategy(passes);
   passStrategy.EnableMkldnnBfloat16();
 }
+
+#ifdef PADDLE_WITH_XPU
+TEST(AnalysisPredictor, set_xpu_device_id) {
+  AnalysisConfig config;
+  config.EnableXpu();
+  config.SetXpuDeviceId(0);
+  ASSERT_EQ(config.xpu_device_id(), 0);
+  config.SetXpuDeviceId(1);
+  ASSERT_EQ(config.xpu_device_id(), 1);
+}
+#endif
 
 }  // namespace paddle
 
