@@ -69,6 +69,7 @@ class FastThreadedSSAGraphExecutor : public SSAGraphExecutor {
   int64_t iteration_num_{-1};
   cudaGraph_t cuda_graph_{nullptr};
   cudaGraphExec_t cuda_graph_exec_{nullptr};
+  cudaStream_t stream_{nullptr};
   size_t first_backward_idx_{0};
 
   bool RunOp(OpHandleBase *op,

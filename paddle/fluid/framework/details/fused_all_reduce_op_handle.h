@@ -72,6 +72,10 @@ struct FusedAllReduceOpHandle : public AllReduceOpHandle {
 
  private:
   size_t num_of_all_reduce_;
+  cudaStream_t nccl_stream_{nullptr};
+  cudaStream_t compute_stream_{nullptr};
+  cudaEvent_t start_event_{nullptr};
+  cudaEvent_t end_event_{nullptr};
 
   // Check the dtype of the input
   void GetDTypeAndNumel(

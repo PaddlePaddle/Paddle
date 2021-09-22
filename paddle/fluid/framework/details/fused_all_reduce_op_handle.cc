@@ -18,7 +18,9 @@
 #include "paddle/fluid/platform/device_memory_aligment.h"
 #include "paddle/fluid/platform/profiler.h"
 
+DECLARE_bool(record_one_event);
 DEFINE_bool(skip_fused_all_reduce_check, false, "");
+
 namespace paddle {
 namespace framework {
 namespace details {
@@ -52,7 +54,28 @@ void FusedAllReduceOpHandle::RunImpl() {
   platform::RecordEvent record_event(Name());
   VLOG(4) << this->DebugString();
 
-  WaitInputVarGenerated();
+  auto place = BOOST_GET_CONST(platform::CUDAPlace, places_[0]);
+
+  if (!nccl_stream_) {
+    auto flat_nccl_ctxs = nccl_ctxs_->GetFlatCtx(run_order_);
+    auto &nccl_ctx = flat_nccl_ctxs->at(place.device);
+    nccl_stream_ = nccl_ctx.stream();
+    LOG(INFO) << "Record NCCL stream";
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaEventCreateWithFlags(&start_event_, cudaEventDisableTiming));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaEventCreateWithFlags(&end_event_, cudaEventDisableTiming));
+    compute_stream_ =
+        platform::DeviceContextPool::Instance().GetByPlace(place)->stream();
+  }
+
+  if (FLAGS_record_one_event) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(start_event_, compute_stream_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaStreamWaitEvent(nccl_stream_, start_event_, 0));
+  } else {
+    WaitInputVarGenerated();
+  }
   // The input: grad0(dev0), grad0(dev1), grad1(dev0), grad1(dev1)...
   // The output: grad0(dev0), grad0(dev1), grad1(dev0), grad1(dev1)...
   auto in_var_handles = DynamicCast<VarHandle>(this->Inputs());
@@ -93,6 +116,12 @@ void FusedAllReduceOpHandle::RunImpl() {
     }
   } else {
     FusedAllReduceFunc(in_var_handles, out_var_handles);
+  }
+
+  if (FLAGS_record_one_event) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaEventRecord(end_event_, nccl_stream_));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaStreamWaitEvent(compute_stream_, end_event_, 0));
   }
 }
 

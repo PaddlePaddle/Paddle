@@ -94,6 +94,10 @@ static std::string GetOpHandleDebugString(
 FetchResultType FastThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
   ++iteration_num_;
+  if (cuda_graph_exec_ && fetch_tensors.empty()) {
+    PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphLaunch(cuda_graph_exec_, stream_));
+    return FetchResultType{};
+  }
   VLOG(3) << "enter FastThreadedSSAGraphExecutor Run";
   std::unique_ptr<platform::RecordEvent> event(
       new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare"));
@@ -126,7 +130,7 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     auto tmp_traced_ops = traced_ops_;
     // tmp_traced_ops.resize(first_backward_idx_);
     if (iteration_num_ > FLAGS_cuda_graph_warmup_iteration &&
-        FLAGS_cuda_graph_op_num >= 1) {
+        FLAGS_cuda_graph_op_num >= 1 && fetch_tensors.empty()) {
       size_t num =
           std::min<size_t>(tmp_traced_ops.size(), FLAGS_cuda_graph_op_num);
       traced_ops.assign(tmp_traced_ops.begin(), tmp_traced_ops.begin() + num);
@@ -161,6 +165,7 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
       }
       PADDLE_ENFORCE_CUDA_SUCCESS(err);
       LOG_FIRST_N(INFO, 1) << "CUDA graph initialized";
+      stream_ = stream;
     }
 
     if (cuda_graph_exec_) {
@@ -180,7 +185,9 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
         PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphExecDestroy(cuda_graph_exec_));
         cuda_graph_exec_ = nullptr;
       }
+      LOG(INFO) << "CUDA graph destroyed";
     }
+    stream_ = nullptr;
   } else {
     traced_ops_.clear();
     remaining_ = 0;
@@ -433,6 +440,10 @@ bool FastThreadedSSAGraphExecutor::RunOpSync(OpHandleBase *op) {
     }
     VLOG(10) << op << " " << op->Name() << " Done ";
     return true;
+  } catch (std::exception &ex) {
+    exception_.Catch(std::current_exception());
+    LOG(ERROR) << op->Name() << " raises exception: " << ex.what();
+    return false;
   } catch (...) {
     exception_.Catch(std::current_exception());
     return false;

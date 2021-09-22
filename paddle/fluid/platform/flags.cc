@@ -679,3 +679,5 @@ PADDLE_DEFINE_EXPORTED_bool(enable_cache_tensor_address, false, "");
 PADDLE_DEFINE_EXPORTED_int64(cuda_graph_op_num, 0, "");
 PADDLE_DEFINE_EXPORTED_int64(cuda_graph_warmup_iteration, 3, "");
 PADDLE_DEFINE_EXPORTED_bool(build_cuda_graph_once, false, "");
+PADDLE_DEFINE_EXPORTED_bool(record_one_event, false, "");
+PADDLE_DEFINE_EXPORTED_bool(use_executor_private_allocator, false, "");
