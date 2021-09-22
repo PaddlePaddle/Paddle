@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import unittest
-import numpy as np
-
 import paddle
+import numpy as np
+import unittest
+
 from paddle.vision.ops import roi_align, RoIAlign
 
 
@@ -29,7 +29,6 @@ class TestRoIAlign(unittest.TestCase):
         self.boxes_num = np.array([3], dtype=np.int32)
 
     def roi_align_functional(self, output_size):
-
         if isinstance(output_size, int):
             output_shape = (3, 256, output_size, output_size)
         else:
