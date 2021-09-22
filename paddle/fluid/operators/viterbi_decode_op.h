@@ -23,7 +23,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/compare_op.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
-#include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
@@ -104,7 +103,7 @@ void MKLBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
   const T* lhs_ptr = lhs.data<T>();
   const T* rhs_ptr = rhs.data<T>();
   T* out_ptr = out->data<T>();
-  int64_t nums = lhs.numel();
+  int64_t nums = out->numel();
   Functor functor;
 #pragma omp parallel for
   for (int64_t i = 0; i < nums; ++i) {
@@ -118,6 +117,28 @@ void MKLBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
 #define EXECUTE_MKL_ELEMENT_BINARY_OP(lhs, rhs, output, functor_type, dtype) \
   ELEMENT_BINARY_OP(lhs, rhs, output, functor_type, dtype)
 #endif
+
+template <typename T, typename IndexT = int>
+void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
+               const Tensor& index, Tensor* output) {
+  int64_t index_size = index.dims()[0];
+  auto src_dims = src.dims();
+  const T* p_src = src.data<T>();
+  const IndexT* p_index = index.data<IndexT>();
+  T* p_output = output->data<T>();
+  // slice size
+  int64_t slice_size = 1;
+  for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
+  // input size
+  const size_t slice_bytes = slice_size * sizeof(T);
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  for (int64_t i = 0; i < index_size; ++i) {
+    IndexT index_ = p_index[i];
+    memcpy(p_output + i * slice_size, p_src + index_ * slice_size, slice_bytes);
+  }
+}
 
 template <typename T>
 void ARange(T* in, int64_t num, const T& scale) {
