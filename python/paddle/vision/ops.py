@@ -904,12 +904,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
     return out
 
 
-def psroi_pool(input,
-               boxes,
-               boxes_num,
-               output_size,
-               spatial_scale=1.0,
-               name=None):
+def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     """
     Position sensitive region of interest pooling (also known as PSROIPooling) is to perform
     position-sensitive average pooling on regions of interest specified by input. It performs 
@@ -918,7 +913,7 @@ def psroi_pool(input,
     PSROIPooling is proposed by R-FCN. Please refer to https://arxiv.org/abs/1605.06409 for more details.
 
     Parameters:
-        input (Tensor): Input features with shape (N, C, H, W).
+        x (Tensor): Input features with shape (N, C, H, W). The data type can be float32 or float64.
         boxes (Tensor): Box coordinates of ROIs (Regions of Interest) to pool over. It should be
                          a 2-D Tensor with shape (num_rois, 4). Given as [[x1, y1, x2, y2], ...], 
                          (x1, y1) is the top left coordinates, and (x2, y2) is the bottom
@@ -953,11 +948,11 @@ def psroi_pool(input,
     if isinstance(output_size, int):
         output_size = (output_size, output_size)
     pooled_height, pooled_width = output_size
-    assert (len(input.shape) == 4,
+    assert (len(x.shape) == 4,
             "Input features with shape should be (N, C, H, W)")
-    output_channels = int(input.shape[1] / (pooled_height * pooled_width))
+    output_channels = int(x.shape[1] / (pooled_height * pooled_width))
     if in_dygraph_mode():
-        return core.ops.psroi_pool(input, boxes, boxes_num, "output_channels",
+        return core.ops.psroi_pool(x, boxes, boxes_num, "output_channels",
                                    output_channels, "spatial_scale",
                                    spatial_scale, "pooled_height",
                                    pooled_height, "pooled_width", pooled_width)
@@ -967,7 +962,7 @@ def psroi_pool(input,
     out = helper.create_variable_for_type_inference(dtype)
     helper.append_op(
         type='psroi_pool',
-        inputs={'X': input,
+        inputs={'X': x,
                 'ROIs': boxes},
         outputs={'Out': out},
         attrs={
@@ -991,7 +986,7 @@ class PSRoIPool(Layer):
                                input scale to the scale used when pooling. Default: 1.0.
 
     Shape:
-        - input: 4-D Tensor with shape (N, C, H, W).
+        - x: 4-D Tensor with shape (N, C, H, W).
         - boxes: 2-D Tensor with shape (num_rois, 4).
         - boxes_num: 1-D Tensor.
         - output: 4-D tensor with shape (num_rois, output_channels, pooled_h, pooled_w).
@@ -1018,6 +1013,6 @@ class PSRoIPool(Layer):
         self.output_size = output_size
         self.spatial_scale = spatial_scale
 
-    def forward(self, input, boxes, boxes_num):
-        return psroi_pool(input, boxes, boxes_num, self.output_size,
+    def forward(self, x, boxes, boxes_num):
+        return psroi_pool(x, boxes, boxes_num, self.output_size,
                           self.spatial_scale)
