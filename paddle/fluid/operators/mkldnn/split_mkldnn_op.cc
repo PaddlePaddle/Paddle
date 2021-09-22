@@ -91,27 +91,25 @@ class SplitMKLDNNKernel : public framework::OpKernel<T> {
     auto x_vec_dims = framework::vectorize(x_dims);
 
     mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
-    auto key = platform::CreateKey(dev_ctx, x_vec_dims, axis, num, sections,
-                                   x->format(), x_type);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
     std::vector<int64_t> offset(x_vec_dims.size(), 0);
 
-    platform::ReorderMKLDNNHandler reorder_handler(
-        x_vec_dims, x->type(), x_type, dev_ctx, onednn_engine, key);
+    platform::ReorderMKLDNNHandler reorder_handler(x_vec_dims, x->type(),
+                                                   x_type, onednn_engine);
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->format(), platform::to_void_cast(x->data<T>()));
 
     for (size_t i = 0; i < outs_number; ++i) {
       auto out_vec_dims = framework::vectorize(outs[i]->dims());
-      auto slice_mem_p = reorder_handler.AcquireSubmemory(
-          out_vec_dims, offset, reorder_src_memory_p, i);
+      auto slice_mem_p = reorder_handler.AcquireSubmemory(out_vec_dims, offset,
+                                                          reorder_src_memory_p);
 
       auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-          outs[i], out_vec_dims, i, x->format(), ctx.GetPlace());
+          outs[i], out_vec_dims, x->format(), ctx.GetPlace());
       auto reorder_p =
-          reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p, i);
+          reorder_handler.AcquireReorder(reorder_dst_memory_p, slice_mem_p);
 
       reorder_p->execute(astream, *slice_mem_p, *reorder_dst_memory_p);
 
