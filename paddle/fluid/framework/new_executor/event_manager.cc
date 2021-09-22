@@ -24,9 +24,12 @@ void EventManager::WaitEvent(const Instruction& instruction,
 
   VLOG(3) << "Deal StreamWaitEventOrSync for "
           << instruction.kernel_func_.operator_base_->Type();
-  auto* dev_ctx = instruction.dev_ctx_;
 
-  WaitOrSync(instruction.intput_events_, dev_ctx);
+  for (auto& event_iter : instruction.intput_events_) {
+    VLOG(3) << "wait var_id: " << event_iter.var_id_
+            << " 's event with waiter_type: " << event_iter.waiter_type_;
+    event_iter.event_->Wait(event_iter.waiter_type_, instruction.dev_ctx_);
+  }
 }
 
 void EventManager::RecordEvent(const Instruction& instruction,
@@ -37,19 +40,6 @@ void EventManager::RecordEvent(const Instruction& instruction,
   for (auto& event : instruction.output_events_) {
     VLOG(3) << "Record event in out_var_id: " << event.var_id_;
     event.event_->Record(instruction.dev_ctx_);
-  }
-}
-
-void EventManager::WaitOrSync(const std::vector<EventInter>& events,
-                              const platform::DeviceContext* dev_ctx) {
-  for (auto& event_iter : events) {
-    if (event_iter.is_sync_) {
-      VLOG(3) << "host sync wait in_var_id " << event_iter.var_id_;
-      event_iter.event_->Wait(platform::kCPU, dev_ctx);
-    } else {
-      VLOG(3) << "stream async wait in_var_id " << event_iter.var_id_;
-      event_iter.event_->Wait(platform::kCUDA, dev_ctx);
-    }
   }
 }
 
