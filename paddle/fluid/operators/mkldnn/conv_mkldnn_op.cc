@@ -730,7 +730,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto user_residual_key = key_tid + "@user_residual_data_mem_p";
     auto src_reorder_key = key_tid + "@src_mem_preorder_p";
     auto residual_reorder_key = key_tid + "@residual_data_mem_preorder_p";
-    auto scale_bias_key = key_tid + "@scale_bias";
 
     conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(
         dev_ctx.GetBlob(prim_key));
