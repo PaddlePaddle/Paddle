@@ -191,6 +191,7 @@ CPUDeviceContext::CPUDeviceContext() {
 #ifdef PADDLE_WITH_MKLML
   omp_num_threads = omp_get_max_threads();
 #endif
+
   pool_.reset(new Eigen::ThreadPool(omp_num_threads));
   pool_device_.reset(new Eigen::ThreadPoolDevice(pool_.get(), omp_num_threads));
 }
@@ -201,6 +202,7 @@ CPUDeviceContext::CPUDeviceContext(CPUPlace place) : place_(place) {
 #ifdef PADDLE_WITH_MKLML
   omp_num_threads = omp_get_max_threads();
 #endif
+
   pool_.reset(new Eigen::ThreadPool(omp_num_threads));
   pool_device_.reset(new Eigen::ThreadPoolDevice(pool_.get(), omp_num_threads));
 }
@@ -431,10 +433,11 @@ void CUDAContext::InitEigenContext() {
 }
 
 CUDAContext::CUDAContext(const CUDAPlace& place,
-                         const stream::Priority& priority) {
+                         const stream::Priority& priority,
+                         const stream::StreamFlag& flag) {
   place_ = place;
   CUDADeviceGuard guard(place_.device);
-  stream_.reset(new stream::CUDAStream(place, priority));
+  stream_.reset(new stream::CUDAStream(place, priority, flag));
   InitEigenContext();
   InitCuBlasContext();
   InitCuDNNContext();

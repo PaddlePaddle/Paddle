@@ -19,7 +19,7 @@ limitations under the License. */
 
 DECLARE_bool(benchmark);
 
-DEFINE_bool(
+PADDLE_DEFINE_EXPORTED_bool(
     eager_delete_scope, true,
     "Delete local scope eagerly. It will reduce GPU memory usage but "
     "slow down the destruction of variables.(around 1% performance harm)");

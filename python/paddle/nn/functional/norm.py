@@ -86,7 +86,8 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
     check_type(p, 'p', (float, int), 'normalize')
     check_type(axis, 'axis', (int), 'normalize')
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'normalize')
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'normalize')
     if len(x.shape) == 1 and axis != 0 and axis != -1:
         raise ValueError(
             "Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {}".

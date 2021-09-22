@@ -682,7 +682,7 @@ def roll(x, shifts, axis=None, name=None):
         axis = [axis]
 
     len_origin_shape = len(origin_shape)
-    if axis:
+    if axis is not None:
         for i in range(len(axis)):
             if axis[i] >= len_origin_shape or axis[i] < -len_origin_shape:
                 raise ValueError(

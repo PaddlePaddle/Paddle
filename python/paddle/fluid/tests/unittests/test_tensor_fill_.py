@@ -40,12 +40,11 @@ class TensorFill_Test(unittest.TestCase):
             for dtype in typelist:
                 var = 1.
                 tensor = paddle.to_tensor(np_arr, place=p, dtype=dtype)
-                newtensor = tensor.clone()
-                newtensor[...] = var
+                target = tensor.numpy()
+                target[...] = var
 
                 tensor.fill_(var)  #var type is basic type in typelist
-                self.assertEqual((tensor.numpy() == newtensor.numpy()).all(),
-                                 True)
+                self.assertEqual((tensor.numpy() == target).all(), True)
 
     def test_tensor_fill_backward(self):
         typelist = ['float32']
