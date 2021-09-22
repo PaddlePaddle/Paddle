@@ -73,7 +73,6 @@ class ThreadPoolTempl {
         allow_spinning_(allow_spinning),
         global_steal_partition_(EncodePartition(0, num_threads_)),
         blocked_(0),
-        num_tasks_(0),
         spinning_(0),
         done_(false),
         cancelled_(false),
@@ -144,7 +143,6 @@ class ThreadPoolTempl {
   void AddTaskWithHint(std::function<void()> fn, int start, int limit) {
     Task t = env_.CreateTask(std::move(fn));
     PerThread* pt = GetPerThread();
-    uint64_t num_tasks = num_tasks_.fetch_add(1, std::memory_order_relaxed) + 1;
     if (pt->pool == this) {
       // Worker thread of this pool, push onto the thread's queue.
       Queue& q = thread_data_[pt->thread_id].queue;
@@ -168,11 +166,8 @@ class ThreadPoolTempl {
     // this. We expect that such scenario is prevented by program, that is,
     // this is kept alive while any threads can potentially be in Schedule.
     if (!t.f) {
-      if (num_tasks > num_threads_ - blocked_.load(std::memory_order_relaxed)) {
-        ec_.Notify(false);
-      }
+      ec_.Notify(false);
     } else {
-      num_tasks_.fetch_sub(1, std::memory_order_relaxed);
       env_.ExecuteTask(t);  // Push failed, execute directly.
     }
   }
@@ -268,7 +263,6 @@ class ThreadPoolTempl {
   std::vector<std::vector<unsigned>> all_coprimes_;
   unsigned global_steal_partition_;
   std::atomic<unsigned> blocked_;
-  std::atomic<uint64_t> num_tasks_;
   std::atomic<bool> spinning_;
   std::atomic<bool> done_;
   std::atomic<bool> cancelled_;
@@ -311,7 +305,6 @@ class ThreadPoolTempl {
         }
         if (t.f) {
           env_.ExecuteTask(t);
-          num_tasks_.fetch_sub(1, std::memory_order_relaxed);
         }
       }
     } else {
@@ -322,7 +315,8 @@ class ThreadPoolTempl {
           if (!t.f) {
             t = GlobalSteal();
             if (!t.f) {
-              if (allow_spinning_) {
+              // Leave one thread spinning. This reduces latency.
+              if (allow_spinning_ && !spinning_ && !spinning_.exchange(true)) {
                 for (int i = 0; i < spin_count && !t.f; i++) {
                   if (!cancelled_.load(std::memory_order_relaxed)) {
                     t = GlobalSteal();
@@ -330,6 +324,7 @@ class ThreadPoolTempl {
                     return;
                   }
                 }
+                spinning_ = false;
               }
               if (!t.f) {
                 if (!WaitForWork(waiter, &t)) {
@@ -341,7 +336,6 @@ class ThreadPoolTempl {
         }
         if (t.f) {
           env_.ExecuteTask(t);
-          num_tasks_.fetch_sub(1, std::memory_order_relaxed);
         }
       }
     }
