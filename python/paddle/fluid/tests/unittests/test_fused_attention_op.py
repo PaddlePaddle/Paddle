@@ -105,7 +105,6 @@ class TestFusedAttentionOp(unittest.TestCase):
         self.attn_dropout_prob = 0.0
         self.weight_attr = None
         self.bias_attr = None
-
         self.kdim, self.vdim = self.embed_dim, self.embed_dim
         self.key_length, self.value_length = self.query_length, self.query_length
 
@@ -122,7 +121,6 @@ class TestFusedAttentionOp(unittest.TestCase):
             self.attn_mask = (np.tril(self.attn_mask) - 1.0) * 1e9
         else:
             raise ValueError("'attn_mask_type' should be 'int64' or 'float64'.")
-
         self.key, self.value = self.query, self.query
 
         self.dout = np.random.random((self.batch_size, self.query_length,
@@ -131,7 +129,6 @@ class TestFusedAttentionOp(unittest.TestCase):
     def GetBaselineOut(self):
         tensor_query = paddle.to_tensor(self.query, stop_gradient=False)
         attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=False)
-        #residual = paddle.to_tensor(self.query)
         residual = tensor_query
 
         for i in range(1):
@@ -186,10 +183,7 @@ class TestFusedAttentionOp(unittest.TestCase):
                 final_out = self.norm1(residual_out)
             if self.pre_layer_norm:
                 final_out = self.norm2(residual_out)
-
-            paddle.autograd.backward(
-                [final_out], [paddle.to_tensor(self.dout)], retain_graph=True)
-        return final_out, tensor_query.grad
+        return final_out
 
     def GetFusedAttentionOut(self):
         q_proj_weight = paddle.to_tensor(
@@ -231,33 +225,21 @@ class TestFusedAttentionOp(unittest.TestCase):
         ln2_epsilon = 1e-05
 
         if attn_mask is not None:
-            # Support bool or int mask
             attn_mask = _convert_attention_mask(attn_mask, x.dtype)
 
-        for i in range(1):
-            final_out = F.fused_multihead_attention(
-                x, qkv_weight_tensor, out_linear_weight, self.pre_layer_norm,
-                ln1_scale, ln1_bias, ln2_scale, ln2_bias, epsilon,
-                qkv_bias_tensor, out_linear_bias, attn_mask, self.dropout_prob,
-                self.attn_dropout_prob, ln2_epsilon)
-            paddle.autograd.backward(
-                [final_out], [paddle.to_tensor(self.dout)], retain_graph=True)
-
-        return final_out, x.grad
+        final_out = F.fused_multihead_attention(
+            x, qkv_weight_tensor, out_linear_weight, self.pre_layer_norm,
+            ln1_scale, ln1_bias, ln2_scale, ln2_bias, epsilon, qkv_bias_tensor,
+            out_linear_bias, attn_mask, self.dropout_prob,
+            self.attn_dropout_prob, ln2_epsilon)
+        return final_out
 
     def test_fused_attention_op(self):
-        print(
-            "self.batch_size, self.query_length, self.embed_dim, self.num_heads, self.head_dim = "
-        )
-        print(self.batch_size, self.query_length, self.embed_dim,
-              self.num_heads, self.head_dim)
-        final_out_ref, x_grad_ref = self.GetBaselineOut()
-        final_out, x_grad = self.GetFusedAttentionOut()
+        final_out_ref = self.GetBaselineOut()
+        final_out = self.GetFusedAttentionOut()
 
         np.testing.assert_allclose(
             final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-5)
-        np.testing.assert_allclose(
-            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-4)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
@@ -277,26 +259,17 @@ class TestFusedAttentionOpFp16(TestFusedAttentionOp):
 
         self.dropout_prob = 0.0
         self.attn_dropout_prob = 0.0
-
         self.weight_attr = None
         self.bias_attr = None
-
         self.kdim, self.vdim = self.embed_dim, self.embed_dim
         self.key_length, self.value_length = self.query_length, self.query_length
 
     def test_fused_attention_op(self):
-        print(
-            "self.batch_size, self.query_length, self.embed_dim, self.num_heads, self.head_dim = "
-        )
-        print(self.batch_size, self.query_length, self.embed_dim,
-              self.num_heads, self.head_dim)
-        final_out_ref, x_grad_ref = self.GetBaselineOut()
-        final_out, x_grad = self.GetFusedAttentionOut()
+        final_out_ref = self.GetBaselineOut()
+        final_out = self.GetFusedAttentionOut()
 
         np.testing.assert_allclose(
             final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-1)
-        np.testing.assert_allclose(
-            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-1)
 
 
 if __name__ == "__main__":
