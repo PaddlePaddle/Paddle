@@ -1844,35 +1844,20 @@ void ElemwiseExplicitGradCompute(const framework::ExecutionContext &ctx,
   }
 }
 
-// It is a common implementation to compute binary calculation with the support
-// of broadcast, supporting both CPU and GPU.
-// - CPU implementation cannot support the case when x needs broadcast, thus
-//   this function need to be called with XxxFunctor and XxxInverseFunctor,
+// It is a CPU implementation for the common interface to compute binary
+// calculation with the support of broadcast.
+// Note: CPU implementation cannot support the case when x needs broadcast,
+//   thus this function need to be called with XxxFunctor and XxxInverseFunctor,
 //   like paddle/fluid/operators/elementwise/elementwise_add_op.h#L49 - L55.
-// - GPU implementation supports all the broadcast cases, thus there is no need
-//   to define and call with XxxInverseFunctor.
 // TODO(liuyiqun): optimize the CPU implementation to support all broadcast
 // cases and avoid the need of XxxInverseFunctor.
 template <typename Functor, typename DeviceContext, typename T,
           typename OutType = T>
-void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
-                          const framework::Tensor *x,
-                          const framework::Tensor *y, int axis, Functor func,
-                          framework::Tensor *z) {
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-#if defined(__NVCC__) || defined(__HIPCC__)
-    std::vector<const framework::Tensor *> ins = {x, y};
-    std::vector<framework::Tensor *> outs = {z};
-    z->mutable_data<OutType>(ctx.GetPlace());
-
-    const auto &dev_ctx =
-        ctx.template device_context<platform::CUDADeviceContext>();
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, OutType>(
-        dev_ctx, ins, &outs, axis, func);
-#endif
-    return;
-  }
-
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CPUDeviceContext>::value>::type
+ElementwiseComputeEx(const framework::ExecutionContext &ctx,
+                     const framework::Tensor *x, const framework::Tensor *y,
+                     int axis, Functor func, framework::Tensor *z) {
   auto x_dims = x->dims();
   auto y_dims = y->dims();
   bool is_xsize_larger = true;
@@ -1929,6 +1914,27 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
     return;
   }
 }
+
+#if defined(__NVCC__) || defined(__HIPCC__)
+// It is the GPU implementation for the common interface to compute binary
+// calculation with the support of all the broadcast cases.
+template <typename Functor, typename DeviceContext, typename T,
+          typename OutType = T>
+typename std::enable_if<
+    std::is_same<DeviceContext, platform::CUDADeviceContext>::value>::type
+ElementwiseComputeEx(const framework::ExecutionContext &ctx,
+                     const framework::Tensor *x, const framework::Tensor *y,
+                     int axis, Functor func, framework::Tensor *z) {
+  std::vector<const framework::Tensor *> ins = {x, y};
+  std::vector<framework::Tensor *> outs = {z};
+  z->mutable_data<OutType>(ctx.GetPlace());
+
+  const auto &dev_ctx =
+      ctx.template device_context<platform::CUDADeviceContext>();
+  LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, OutType>(
+      dev_ctx, ins, &outs, axis, func);
+}
+#endif
 
 // FusedElemwiseAndAct
 // --- forward
