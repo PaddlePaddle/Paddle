@@ -29,15 +29,17 @@ from decorator_helper import prog_scope
 class TestSigmoidTribleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        shape = [2, 3, 7, 9]
+        shape = [1, 1]
         eps = 0.0005
-        dtype = np.float64
+        dtype = np.float32
         x = layers.data('x', shape, False, dtype=dtype)
         x.persistable = True
         y = layers.sigmoid(x)
-        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
-        x_arr[np.abs(x_arr) < 0.005] = 0.002
-        gradient_checker.trible_test([x], y, x_init=x_arr, place=place, eps=eps)
+        np.random.seed(2021)
+        x_arr = np.random.random(shape).astype(dtype)
+        # x_arr[np.abs(x_arr) < 0.005] = 0.002
+        gradient_checker.trible_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
