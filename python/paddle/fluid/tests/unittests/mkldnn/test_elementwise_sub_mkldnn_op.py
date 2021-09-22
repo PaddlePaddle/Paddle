@@ -15,21 +15,53 @@
 from __future__ import print_function
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.test_elementwise_sub_op import TestElementwiseSubOp
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import OpTestTool
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
 from paddle.fluid.framework import _current_expected_place
 import paddle.fluid.core as core
 
 
 @OpTestTool.skip_if(not (isinstance(_current_expected_place(), core.CPUPlace)),
                     "GPU is not supported")
-class TestMKLDNNElementwiseSubOp(TestElementwiseSubOp):
+class TestMKLDNNElementwiseSubOp(OpTest):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.init_dtype()
+        self.init_input_output()
+        self.init_kernel_type()
+        self.init_axis()
+        self.inputs = {
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
+        }
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.outputs = {'Out': self.out}
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [13, 17]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+    def test_check_grad_normal(self):
+        self.check_grad(['X', 'Y'], 'Out')
+
+    def test_check_grad_ingore_x(self):
+        self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ingore_y(self):
+        self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
+
+    def init_axis(self):
+        self.axis = -1
+
     def init_kernel_type(self):
         self.use_mkldnn = True
 
     def init_dtype(self):
         self.dtype = np.float32
+
+    def test_check_output(self):
+        self.check_output()
 
 
 class TestMKLDNNElementwiseSubOp2(TestMKLDNNElementwiseSubOp):
@@ -60,7 +92,7 @@ class TestMKLDNNElementwiseSubOp5(TestMKLDNNElementwiseSubOp):
         self.out = np.subtract(self.x, self.y)
 
 
-class TestMKLDNNElementwiseSubOp_broadcast_3(TestMKLDNNElementwiseSubOp):
+class TestMKLDNNElementwiseSubOp_broadcast(TestMKLDNNElementwiseSubOp):
     def init_input_output(self):
         self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
         self.y = np.random.rand(10, 12).astype(self.dtype)
@@ -79,7 +111,6 @@ class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestMKLDNNElementwiseSubOp):
     def init_axis(self):
         self.axis = 2
 
-    # TODO(piotrekobiIntel): Enable when grad is ready
     def test_check_grad_normal(self):
         pass
 
@@ -90,7 +121,7 @@ class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestMKLDNNElementwiseSubOp):
         pass
 
 
-class TestInt8(TestElementwiseSubOp):
+class TestInt8(TestMKLDNNElementwiseSubOp):
     def init_kernel_type(self):
         self.use_mkldnn = True
         self._cpu_only = True
@@ -109,7 +140,6 @@ class TestInt8(TestElementwiseSubOp):
         self.attrs['Scale_out'] = 1.0
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
         self.init_scales()
         self.check_output()
 
