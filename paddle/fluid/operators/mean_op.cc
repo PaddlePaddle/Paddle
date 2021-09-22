@@ -94,22 +94,7 @@ REGISTER_OPERATOR(mean, ops::MeanOp, ops::MeanOpMaker, ops::MeanOpInferVarType,
                   ops::MeanGradMaker<paddle::imperative::OpBase>);
 REGISTER_OPERATOR(mean_grad, ops::MeanGradOp,
                   ops::MeanGradNoNeedBufferVarsInferer);
-REGISTER_OP_CPU_KERNEL(
-    mean, ops::MeanKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::MeanKernel<paddle::platform::CPUDeviceContext, double>);
+
 REGISTER_OP_CPU_KERNEL(
     mean_grad, ops::MeanGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::MeanGradKernel<paddle::platform::CPUDeviceContext, double>);
-
-#ifdef PADDLE_WITH_XPU
-REGISTER_OP_XPU_KERNEL(
-    mean, ops::MeanKernel<paddle::platform::XPUDeviceContext, float>);
-#endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-REGISTER_OP_NPU_KERNEL(
-    mean, ops::MeanKernel<paddle::platform::NPUDeviceContext, int>,
-    ops::MeanKernel<paddle::platform::NPUDeviceContext, float>,
-    ops::MeanKernel<paddle::platform::NPUDeviceContext, double>,
-    ops::MeanKernel<paddle::platform::NPUDeviceContext, plat::float16>)
-#endif

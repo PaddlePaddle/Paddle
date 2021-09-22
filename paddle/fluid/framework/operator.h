@@ -39,6 +39,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/flat_hash_map.h"
 
+#include "paddle/tcmpt/api/include/dev/core.h"
+
 namespace paddle {
 namespace framework {
 class InferShapeContext;
@@ -113,6 +115,8 @@ inline std::string GradOriginalVarName(const std::string& grad_var_name) {
 
 const Tensor* GetLoDTensorOrSelectedRowsValueFromVar(const Variable& var);
 Tensor* GetMutableLoDTensorOrSelectedRowsValueFromVar(Variable* var);
+
+OpKernelType TransPtKernelKeyToOpKernelType(const pt::KernelKey& kernel_key);
 
 class ExecutionContext;
 class OperatorBase;
@@ -529,6 +533,14 @@ class OperatorWithKernel : public OperatorBase {
     return kernel_type_->place_;
   }
 
+  /* member functions for adapting to tcmpt lib */
+  // TODO(chenweihang): Temporarily as a class method
+  virtual pt::KernelKey ConstructPtKernelKey(
+      const VariableValueMap& inputs, const platform::Place& ctx_place) const;
+
+  virtual pt::KernelContext ConstructPtKernelContext(
+      const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const;
+
  private:
   void RunImpl(const Scope& scope, const platform::Place& place) const final;
   void RunImpl(const Scope& scope, const platform::Place& place,
@@ -561,11 +573,16 @@ class OperatorWithKernel : public OperatorBase {
   // By default all input data must be same.
   proto::VarType::Type IndicateDataType(const ExecutionContext& ctx) const;
   // used for IndicateDataType
-  void ParseInputDataType(const ExecutionContext& ctx, const std::string& name,
-                          proto::VarType::Type* type) const;
+  void ParseInputDataType(const std::vector<Variable*>& vars,
+                          const std::string& name,
+                          proto::VarType::Type* data_type) const;
   // used for IndicateOrPromoteVarDataTypes
   Tensor* GetTensorFormInputSafely(const ExecutionContext& ctx,
                                    const std::string& name) const;
+
+  /* member functions for adapting to tcmpt lib */
+  void ChoosePtKernel(const RuntimeContext& ctx,
+                      const platform::DeviceContext& dev_ctx) const;
 
  protected:
   mutable std::unique_ptr<OpKernelType> kernel_type_;
@@ -577,6 +594,11 @@ class OperatorWithKernel : public OperatorBase {
   mutable bool all_kernels_must_compute_runtime_shape_ = false;
   mutable std::mutex cache_update_mutex_;
   mutable bool enable_cache_transfer_scope_ = false;
+  // TODO(chenweihang): Similar duplicate members are used for new tcmpt lib,
+  // maybe we have better impl methods
+  mutable bool run_pt_kernel_ = false;
+  mutable std::unique_ptr<pt::KernelKey> pt_kernel_key_;
+  mutable std::unique_ptr<pt::Kernel> pt_kernel_;
 };
 
 extern bool OpSupportGPU(const std::string& op_type);

@@ -12,8 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/scale_op.h"
 #include <string>
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
@@ -146,50 +146,3 @@ REGISTER_OPERATOR(scale, ops::ScaleOp, ops::ScaleOpMaker,
                   ops::ScaleGradMaker<paddle::framework::OpDesc>,
                   ops::ScaleGradMaker<paddle::imperative::OpBase>,
                   ops::ScaleOpVarTypeInference, ops::ScaleOpInplaceInferer);
-REGISTER_OP_CPU_KERNEL(
-    scale, ops::ScaleKernel<paddle::platform::CPUDeviceContext, float>,
-    ops::ScaleKernel<paddle::platform::CPUDeviceContext, double>,
-    ops::ScaleKernel<paddle::platform::CPUDeviceContext,
-                     paddle::platform::bfloat16>,
-    ops::ScaleKernel<paddle::platform::CPUDeviceContext, uint8_t>,
-    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int16_t>,
-    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ScaleKernel<paddle::platform::CPUDeviceContext, int64_t>);
-
-REGISTER_OP_CUDA_KERNEL(
-    scale,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, float>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, double>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
-                                   uint8_t>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, int8_t>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
-                                   int16_t>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext, int>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
-                                   int64_t>,
-    paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
-                                   paddle::platform::float16>);
-
-#ifdef PADDLE_WITH_XPU
-REGISTER_OP_XPU_KERNEL(
-    scale,
-    paddle::operators::ScaleKernel<paddle::platform::XPUDeviceContext, float>);
-#endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-REGISTER_OP_NPU_KERNEL(
-    scale,
-    paddle::operators::ScaleKernel<paddle::platform::NPUDeviceContext, float>,
-    paddle::operators::ScaleKernel<paddle::platform::NPUDeviceContext,
-                                   paddle::platform::float16>);
-#endif
-
-#ifdef PADDLE_WITH_MKLDNN
-REGISTER_OP_KERNEL(
-    scale, MKLDNN, paddle::platform::CPUPlace,
-    ops::ScaleKernel<paddle::platform::MKLDNNDeviceContext, float>,
-    ops::ScaleKernel<paddle::platform::MKLDNNDeviceContext,
-                     paddle::platform::bfloat16>);
-#endif

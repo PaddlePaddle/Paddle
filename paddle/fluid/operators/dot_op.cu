@@ -17,13 +17,6 @@
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(
-    dot, ops::DotKernel<plat::CUDADeviceContext, float>,
-    ops::DotKernel<plat::CUDADeviceContext, double>,
-    ops::DotKernel<plat::CUDADeviceContext, int>,
-    ops::DotKernel<plat::CUDADeviceContext, int64_t>,
-    ops::DotKernel<plat::CUDADeviceContext, paddle::platform::complex<float>>,
-    ops::DotKernel<plat::CUDADeviceContext, paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(dot_grad,
                         ops::DotGradKernel<plat::CUDADeviceContext, float>,
                         ops::DotGradKernel<plat::CUDADeviceContext, double>,

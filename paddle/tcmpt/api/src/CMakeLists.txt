@@ -1,0 +1,7 @@
+set(API_DEPS convert_utils dense_tensor selected_rows_tensor kernel_factory kernel_context)
+set(API_DEPS ${API_DEPS} math_cpu linalg_cpu)
+if(WITH_GPU OR WITH_ROCM)
+  set(API_DEPS ${API_DEPS} math_cuda linalg_cuda)
+endif()
+cc_library(math_api SRCS math.cc DEPS ${API_DEPS})
+cc_library(linalg_api SRCS linalg.cc DEPS ${API_DEPS})

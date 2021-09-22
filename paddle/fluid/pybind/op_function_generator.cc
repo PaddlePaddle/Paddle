@@ -546,7 +546,9 @@ GenerateOpFunctions() {
     auto& op_type = op_proto->type();
     // Skip ooerator which is not inherit form OperatorWithKernel, like while,
     // since only OperatorWithKernel can run in dygraph mode.
-    if (!all_kernels.count(op_type)) {
+    // if the tcmpt lib contains op kernel, we still generate ops method
+    if (!all_kernels.count(op_type) &&
+        !pt::KernelFactory::Instance().ContainsKernel(op_type.c_str())) {
       continue;
     }
 

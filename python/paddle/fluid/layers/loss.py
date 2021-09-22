@@ -16,6 +16,7 @@ from __future__ import print_function
 
 import numpy as np
 from functools import partial, reduce
+import paddle
 from paddle.utils import deprecated
 from . import nn
 from .layer_function_generator import templatedoc
@@ -1717,7 +1718,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
     batch_size = labels.shape[0]
 
     labels = nn.reshape(labels, shape=[batch_size, 1])
-    labels = nn.expand(labels, expand_times=[1, batch_size])
+    labels = paddle.tile(labels, repeat_times=[1, batch_size])
 
     labels = equal(labels, nn.transpose(labels, perm=[1, 0])).astype('float32')
     labels = labels / nn.reduce_sum(labels, dim=1, keep_dim=True)
@@ -1726,7 +1727,7 @@ def npair_loss(anchor, positive, labels, l2_reg=0.002):
              + nn.reduce_mean(nn.reduce_sum(square(positive), 1))
     l2loss = l2loss * Beta * l2_reg
 
-    similarity_matrix = nn.matmul(
+    similarity_matrix = paddle.matmul(
         anchor, positive, transpose_x=False, transpose_y=True)
     softmax_ce = softmax_with_cross_entropy(
         logits=similarity_matrix, label=labels, soft_label=True)

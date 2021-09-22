@@ -250,6 +250,24 @@ function(op_library TARGET)
         set(pybind_flag 1)
     endif()
 
+    # TODO(chenweihang): Because the Tensor compute library will migrate the forward Kernel,
+    # only the grad kernel is left, if the USE_OP still be declared in the original way,
+    # the symbol will can not be found, so special treatment is needed here, and it will
+    # need to be deleted after the complete migration of the kernel in the future.
+    foreach(forward_moved_op "mean" "dot")
+        if ("${TARGET}" STREQUAL "${forward_moved_op}")
+            file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
+            file(APPEND ${pybind_file} "USE_OP_KERNEL(${TARGET}_grad);\n")
+            set(pybind_flag 1)
+        endif()
+    endforeach()
+    foreach(moved_op "scale")
+        if ("${TARGET}" STREQUAL "${forward_moved_op}")
+            file(APPEND ${pybind_file} "USE_NO_KERNEL_OP(${TARGET});\n")
+            set(pybind_flag 1)
+        endif()
+    endforeach()
+
     # pybind USE_CPU_ONLY_OP
     list(LENGTH cu_srcs cu_srcs_len)
     list(LENGTH hip_srcs hip_srcs_len)

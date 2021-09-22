@@ -14,12 +14,25 @@ limitations under the License. */
 
 #ifdef PADDLE_WITH_XPU
 
-#include "paddle/fluid/operators/scale_op.h"
 #include <string>
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/platform/xpu/xpu_header.h"
 
 namespace paddle {
 namespace operators {
+
+template <typename T>
+static inline T GetAttrFromTensor(const framework::Tensor* tensor) {
+  const auto* tensor_data = tensor->data<T>();
+  framework::Tensor cpu_tensor;
+  if (platform::is_gpu_place(tensor->place()) ||
+      platform::is_npu_place(tensor->place())) {
+    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    tensor_data = cpu_tensor.data<T>();
+  }
+  return tensor_data[0];
+}
+
 template <typename DeviceContext, typename T>
 class ScaleXPUKernel : public framework::OpKernel<T> {
  public:

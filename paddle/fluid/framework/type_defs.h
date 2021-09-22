@@ -33,8 +33,9 @@ class BlockDesc;
 class Variable;
 class InferNoNeedBufferVarsFN;
 
-using VariableNameMap = std::map<std::string, std::vector<std::string>>;
+// TODO(chenweihang): AttirbuteMap also need to be ordered
 // TODO(panyx0718): Replace vector with something like gtl::Vector.
+using VariableNameMap = std::map<std::string, std::vector<std::string>>;
 using VariableValueMap = std::map<std::string, std::vector<Variable*>>;
 
 // The order should be as same as framework.proto
@@ -43,6 +44,7 @@ using Attribute = boost::variant<
     std::vector<std::string>, bool, std::vector<bool>, BlockDesc*, int64_t,
     std::vector<BlockDesc*>, std::vector<int64_t>, std::vector<double>>;
 
+// TODO(chenweihang): AttirbuteMap also need to be ordered
 using AttributeMap = std::unordered_map<std::string, Attribute>;
 
 #ifdef PADDLE_WITH_ASCEND_CL

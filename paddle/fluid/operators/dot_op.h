@@ -229,51 +229,6 @@ struct DotGradFunction<DeviceContext, T, math::DisableComplex<T>> {
 };
 
 template <typename DeviceContext, typename T>
-class DotKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* tensor_x = ctx.Input<Tensor>("X");
-    auto* tensor_y = ctx.Input<Tensor>("Y");
-    auto* tensor_out = ctx.Output<Tensor>("Out");
-    tensor_out->mutable_data<T>(ctx.GetPlace());
-
-#if defined(__NVCC__) || defined(__HIPCC__)
-    if (1 == tensor_out->dims().size()) {
-      auto out = framework::EigenScalar<T>::From(*tensor_out);
-      auto x = framework::EigenVector<T>::Flatten(*tensor_x);
-      auto y = framework::EigenVector<T>::Flatten(*tensor_y);
-
-      auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-      out.device(dev) = (x * y).sum();
-    } else {
-      auto out = framework::EigenMatrix<T>::From(*tensor_out);
-      auto x = framework::EigenMatrix<T>::From(*tensor_x);
-      auto y = framework::EigenMatrix<T>::From(*tensor_y);
-
-      auto& dev = *ctx.template device_context<DeviceContext>().eigen_device();
-      out.device(dev) = (x * y).sum(Eigen::DSizes<int, 1>(1));
-    }
-#else
-    auto const *x = tensor_x->data<T>(), *x_ = &x[0];
-    auto const *y = tensor_y->data<T>(), *y_ = &y[0];
-    auto* z = tensor_out->data<T>();
-
-    // Loop over the total N elements of both operands while sum-reducing every
-    // B pairs along the way where B is the dimension of the least ordered axis
-    auto&& d = tensor_x->dims();
-    auto const N = tensor_x->numel();
-    auto const B = d[d.size() - 1];
-
-    for (int j = 0; j < N / B; j++) {
-      T ss = 0;
-      for (int i = 0; i < B; i++) ss += (*x_++) * (*y_++);
-      z[j] = ss;
-    }
-#endif
-  }
-};
-
-template <typename DeviceContext, typename T>
 class DotGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {

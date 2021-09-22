@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/framework/op_call_stack.h"
 #include "paddle/fluid/framework/shape_inference.h"
+#include "paddle/fluid/framework/tcmpt_utils.h"
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
@@ -1074,6 +1075,36 @@ void OperatorWithKernel::RuntimeInferShape(const Scope& scope,
   this->InferShape(&infer_shape_ctx);
 }
 
+OpKernelType TransPtKernelKeyToOpKernelType(const pt::KernelKey& kernel_key) {
+  proto::VarType::Type data_type = pt::TransToProtoVarType(kernel_key.dtype());
+  platform::Place place = pt::TransToFluidPlace(kernel_key.backend());
+  DataLayout data_layout = pt::TransToFluidDataLayout(kernel_key.layout());
+  LibraryType library_type = LibraryType::kPlain;
+  if (kernel_key.backend() == pt::Backend::kMKLDNN) {
+    library_type = LibraryType::kMKLDNN;
+  } else if (kernel_key.backend() == pt::Backend::kCUDNN) {
+    library_type = LibraryType::kCUDNN;
+  } else {
+    // do nothing
+  }
+  // TODO(chenweihang): the customized_type_value is lost
+  return OpKernelType(data_type, place, data_layout, library_type);
+}
+
+static std::string RuntimeContextDebugString(const RuntimeContext& ctx) {
+  std::stringstream ss;
+  ss << "RuntimeContext(Inputs: ";
+  for (auto& var_pair : ctx.inputs) {
+    ss << var_pair.first << ", ";
+  }
+  ss << "Outputs: ";
+  for (auto& var_pair : ctx.outputs) {
+    ss << var_pair.first << ", ";
+  }
+  ss << ")";
+  return ss.str();
+}
+
 void OperatorWithKernel::RunImpl(const Scope& scope,
                                  const platform::Place& place) const {
   // To reduce the elapsed time of HasAttr, we use bool variable to record the
@@ -1116,8 +1147,23 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   }
 #endif
 
-  if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
-    ChooseKernel(*runtime_ctx, scope, place);
+  // TODO(chenweihang): Now we are still reusing a lot of the original fluid
+  // implementation, this is a gradual replacement process
+  // TODO(chenweihang): in the first phase of project, we only support CPU, CUDA
+  // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
+  // phase
+
+  VLOG(1) << "Pt KernelFactory: " << pt::KernelFactory::Instance();
+  if (pt::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
+    if (pt_kernel_key_.get() == nullptr || pt_kernel_.get() == nullptr) {
+      ChoosePtKernel(*runtime_ctx, *dev_ctx);
+    }
+    run_pt_kernel_ = pt_kernel_->IsValid();
+  }
+  if (!run_pt_kernel_) {
+    if (kernel_type_.get() == nullptr || kernel_func_.get() == nullptr) {
+      ChooseKernel(*runtime_ctx, scope, place);
+    }
   }
 
   // do data transformScope &transfer_scope;
@@ -1127,6 +1173,10 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
     platform::RecordEvent record_event("prepare_data",
                                        platform::EventRole::kInnerOp);
     if (need_prepare_data_) {
+      if (run_pt_kernel_) {
+        kernel_type_.reset(
+            new OpKernelType(TransPtKernelKeyToOpKernelType(*pt_kernel_key_)));
+      }
       transfer_scope = PrepareData(scope, *kernel_type_,
                                    &transfered_inplace_vars, runtime_ctx);
     }
@@ -1155,8 +1205,14 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   {
     platform::RecordEvent record_event("compute",
                                        platform::EventRole::kInnerOp);
-    (*kernel_func_)(
-        ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
+    if (run_pt_kernel_) {
+      // TODO(chenweihang): here will intrduce copy
+      auto op_kernel_ctx = ConstructPtKernelContext(*runtime_ctx, *dev_ctx);
+      (*pt_kernel_)(&op_kernel_ctx);
+    } else {
+      (*kernel_func_)(
+          ExecutionContext(*this, exec_scope, *dev_ctx, *runtime_ctx));
+    }
   }
 
   if (!transfered_inplace_vars.empty()) {
@@ -1202,6 +1258,78 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   if (transfer_scope && !run_by_executor_ && !enable_cache_transfer_scope_) {
     scope.DeleteScope(transfer_scope);
   }
+}
+
+static bool ContainSelectedRows(const VariableValueMap& inputs) {
+  for (auto& var_pair : inputs) {
+    for (auto* var : var_pair.second) {
+      if (var->IsType<SelectedRows>()) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// TODO(chenweihang): now only check single var input
+static bool IsValidVar(const std::string& name,
+                       const VariableValueMap& inputs) {
+  auto it = inputs.find(name);
+  if (it == inputs.end()) {
+    return false;
+  }
+  auto* var = it->second.empty() ? nullptr : it->second[0];
+  return var != nullptr;
+}
+
+// TODO(chenweihang): enhance rules, not all dispensable inputs
+// are host tensor, now only for scale kernel verify
+static bool ContainHostTensor(const proto::OpProto& op_proto,
+                              const VariableValueMap& inputs) {
+  for (int i = 0; i < op_proto.inputs_size(); ++i) {
+    auto in = op_proto.inputs()[i];
+    if (in.has_dispensable() && in.dispensable()) {
+      return IsValidVar(in.name(), inputs);
+    }
+  }
+  return false;
+}
+
+static pt::KernelName ConstructPtKernelName(const std::string& op_type,
+                                            const proto::OpProto& op_proto,
+                                            const VariableValueMap& inputs) {
+  std::string overload_name;
+  if (ContainSelectedRows(inputs)) {
+    overload_name = pt::kContainSelectedRowsSuffix;
+  }
+  if (ContainHostTensor(op_proto, inputs)) {
+    if (overload_name != "") {
+      overload_name += ".";
+    }
+    overload_name += pt::kContainHostTensorSuffix;
+  }
+  return pt::KernelName(op_type, overload_name);
+}
+
+void OperatorWithKernel::ChoosePtKernel(
+    const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
+  // 1. construct operation name
+  // TODO(chenweihang): add rules for construct op name
+  auto kernel_name =
+      ConstructPtKernelName(Type(), *(Info().proto_), ctx.inputs);
+
+  // 2. construct op kernel key
+  pt_kernel_key_.reset(
+      new pt::KernelKey(ConstructPtKernelKey(ctx.inputs, dev_ctx.GetPlace())));
+
+  // 3. selecte op kernel
+  pt_kernel_.reset(new pt::Kernel(pt::KernelFactory::Instance().SelectKernel(
+      kernel_name, *pt_kernel_key_)));
+
+  // for debug
+  VLOG(1) << "ChoosePtKernel - kernel name: " << kernel_name
+          << " | kernel key: " << *pt_kernel_key_
+          << " | kernel: " << *pt_kernel_;
 }
 
 void OperatorWithKernel::ChooseKernel(const RuntimeContext& ctx,
@@ -1558,11 +1686,10 @@ Scope* OperatorWithKernel::PrepareData(
 }
 
 void OperatorWithKernel::ParseInputDataType(
-    const ExecutionContext& ctx, const std::string& name,
+    const std::vector<Variable*>& vars, const std::string& name,
     proto::VarType::Type* data_type) const {
   proto::VarType::Type default_data_type =
       static_cast<proto::VarType::Type>(-1);
-  const std::vector<Variable*> vars = ctx.MultiInputVar(name);
   for (size_t i = 0; i < vars.size(); ++i) {
     const Variable* var = vars[i];
     if (var != nullptr) {
@@ -1587,7 +1714,7 @@ void OperatorWithKernel::ParseInputDataType(
             platform::errors::InvalidArgument(
                 "The Tensor in the %s Op's Input Variable %s(%s) is "
                 "not initialized.",
-                Type(), name, ctx.InputNames(name).at(i)));
+                Type(), name, Inputs().at(name).at(i)));
         proto::VarType::Type tmp = t->type();
         PADDLE_ENFORCE(
             tmp == *data_type || *data_type == default_data_type,
@@ -1609,7 +1736,8 @@ proto::VarType::Type OperatorWithKernel::IndicateDataType(
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
   for (auto& input : ctx.InNameList()) {
-    ParseInputDataType(ctx, input, &data_type);
+    const std::vector<Variable*> vars = ctx.MultiInputVar(input);
+    ParseInputDataType(vars, input, &data_type);
   }
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
@@ -1623,7 +1751,7 @@ proto::VarType::Type OperatorWithKernel::IndicateVarDataType(
   proto::VarType::Type dafault_data_type =
       static_cast<proto::VarType::Type>(-1);
   proto::VarType::Type data_type = dafault_data_type;
-  ParseInputDataType(ctx, name, &data_type);
+  ParseInputDataType(ctx.MultiInputVar(name), name, &data_type);
   PADDLE_ENFORCE_NE(
       data_type, dafault_data_type,
       platform::errors::InvalidArgument(
@@ -1704,6 +1832,218 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
     const OpKernelType& expected_kernel_type) const {
   return OpKernelType(expected_kernel_type.data_type_, tensor.place(),
                       tensor.layout());
+}
+
+pt::KernelKey OperatorWithKernel::ConstructPtKernelKey(
+    const VariableValueMap& inputs, const platform::Place& ctx_place) const {
+  // 1. get backend based place and attrs
+  pt::Backend backend = pt::TransToPtBackend(ctx_place);
+  if (HasAttr("use_mkldnn") && Attr<bool>("use_mkldnn") == true) {
+    backend = pt::Backend::kMKLDNN;
+  } else if (HasAttr("use_cudnn") && Attr<bool>("use_cudnn") == true) {
+    backend = pt::Backend::kCUDNN;
+  } else {
+    // do nothing
+  }
+  // TODO(chenweihang): add more rules
+  // if (HasAttr("op_device"))
+
+  // 2. get layout
+  // default layout same as tensor default layout, need futher check
+  pt::DataLayout layout = pt::DataLayout::kNCHW;
+  if (backend == pt::Backend::kMKLDNN) {
+    layout = pt::DataLayout::kMKLDNN;
+  }
+
+  // 3. parse data_type form inputs
+  proto::VarType::Type dafault_data_type =
+      static_cast<proto::VarType::Type>(-1);
+  proto::VarType::Type data_type = dafault_data_type;
+  for (auto& var_pair : inputs) {
+    ParseInputDataType(var_pair.second, var_pair.first, &data_type);
+  }
+  PADDLE_ENFORCE_NE(
+      data_type, dafault_data_type,
+      platform::errors::NotFound(
+          "DataType should be indicated by input Variable at %s.", Type()));
+  pt::DataType dtype = pt::TransToPtDataType(data_type);
+
+  // 4. build pt KernelKey
+  return pt::KernelKey(backend, layout, dtype);
+}
+
+// TODO(chenweihang): This function is too complicated and needs to be split
+pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
+    const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
+  VLOG(1) << RuntimeContextDebugString(ctx);
+
+  // TODO(chenweihang): now only work for very simple case (sign op),
+  // many cases need to be deal with later:
+  // 1. the input and output are not tensor
+  // 2. the dispensbale, duplicable input and output
+  // 3. needless attributes remove
+  // 4. use pt Tensor directly
+  // 5. kernel input is not DenseTensor
+  pt::KernelContext op_kernel_ctx(dev_ctx);
+  auto input_defs = pt_kernel_->args_def().input_defs();
+  auto output_defs = pt_kernel_->args_def().output_defs();
+
+  // TODO(chenweihang): use ordered_map for VariableNameMap and VariableValueMap
+  // If we the VariableValueMap are ordered, we can get tensor by iter the map,
+  // and its order is same as OpProto
+
+  // TODO(chenweihang): For scale op, when the input has a `ScaleTensor`,
+  // the following scale attribute should be skipped, and there are many
+  // such ops, which require certain rules to process, now only for verify
+  // scale op
+  std::unordered_map<std::string, bool> contain_host_tensor_flags{
+      {"ScaleTensor", false}};
+  std::unordered_map<std::string, std::string> attr_to_host_tensor{
+      {"scale", "ScaleTensor"}};
+
+  auto* op_proto = Info().proto_;
+  for (int i = 0; i < op_proto->inputs_size(); ++i) {
+    auto in = op_proto->inputs()[i];
+    // TODO(chenweihang): skip special cases temporarily
+    // TODO(chenweihang): deal with diff param in vector
+    if ((in.has_extra() && in.extra()) || (in.has_quant() && in.quant())) {
+      VLOG(1) << "Static graph PtKernel input: skip extra & quant input - "
+              << in.name();
+      continue;
+    }
+    auto in_name = in.name();
+    if (in.has_dispensable() && in.dispensable()) {
+      if (contain_host_tensor_flags.count(in_name) > 0 &&
+          IsValidVar(in_name, ctx.inputs)) {
+        VLOG(1) << "Static graph PtKernel input: contain host input - "
+                << in_name;
+        contain_host_tensor_flags[in_name] = true;
+      } else {
+        VLOG(1) << "Static graph PtKernel input: skip dispensable input - "
+                << in_name;
+        continue;
+      }
+    }
+    VLOG(1) << "Static graph PtKernel input: " << in_name;
+    auto in_def = input_defs.at(i);
+    VLOG(1) << "in_def: " << in_def.backend << ", " << in_def.dtype << ", "
+            << in_def.layout;
+    // TODO(chenweihang): input need to be transformed by in all define
+    auto expected_place = pt::TransToFluidPlace(in_def.backend);
+    VLOG(1) << "expected_place: " << expected_place;
+    for (auto* var : ctx.inputs.at(in_name)) {
+      if (var->IsType<LoDTensor>()) {
+        VLOG(1) << "var is LoDTensor";
+        const auto& tensor = var->Get<LoDTensor>();
+        if (!platform::is_same_place(tensor.place(), expected_place)) {
+          VLOG(1) << "var place is mismatch.";
+          LoDTensor tmp_tensor;
+          TensorCopySync(tensor, expected_place, &tmp_tensor);
+          auto pt_in = MakeTensorImpl<pt::DenseTensor, LoDTensor>(
+              tmp_tensor, in_def.backend, in_def.dtype, in_def.layout);
+          op_kernel_ctx.EmplaceBackInput(pt_in);
+        } else {
+          auto pt_in = MakeTensorImpl<pt::DenseTensor, LoDTensor>(
+              tensor, in_def.backend, in_def.dtype, in_def.layout);
+          op_kernel_ctx.EmplaceBackInput(pt_in);
+        }
+      } else if (var->IsType<SelectedRows>()) {
+        const auto& tensor = var->Get<SelectedRows>();
+        if (!platform::is_same_place(tensor.value().place(), expected_place)) {
+          SelectedRows tmp_tensor;
+          tmp_tensor.set_rows(tensor.rows());
+          tmp_tensor.set_height(tensor.height());
+          TensorCopySync(tensor.value(), expected_place,
+                         tmp_tensor.mutable_value());
+          auto pt_in = MakeTensorImpl<pt::SelectedRowsTensor, SelectedRows>(
+              tmp_tensor, in_def.backend, in_def.dtype, in_def.layout);
+          op_kernel_ctx.EmplaceBackInput(pt_in);
+        } else {
+          auto pt_in = MakeTensorImpl<pt::SelectedRowsTensor, SelectedRows>(
+              tensor, in_def.backend, in_def.dtype, in_def.layout);
+          op_kernel_ctx.EmplaceBackInput(pt_in);
+        }
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported shared input `%s` type now when call pt kernel.",
+            ToTypeName(var->Type())));
+      }
+    }
+  }
+  for (int i = 0; i < op_proto->outputs_size(); ++i) {
+    auto out_name = op_proto->outputs()[i].name();
+    VLOG(1) << "Static graph PtKernel output: " << out_name;
+    // TODO(chenweihang): outputs also need skip some cases
+    auto out_def = output_defs.at(i);
+    for (auto* var : ctx.outputs.at(out_name)) {
+      // mutable_data before run kernel, to avoid share output form
+      // KernelContext to original tensor
+      if (var->IsType<LoDTensor>()) {
+        auto* tensor = var->GetMutable<LoDTensor>();
+        tensor->mutable_data(pt::TransToFluidPlace(out_def.backend),
+                             pt::TransToProtoVarType(out_def.dtype));
+        auto pt_out = MakeTensorImpl<pt::DenseTensor, LoDTensor>(
+            *tensor, out_def.backend, out_def.dtype, out_def.layout);
+        op_kernel_ctx.EmplaceBackOutput(pt_out);
+      } else if (var->IsType<SelectedRows>()) {
+        auto* tensor = var->GetMutable<SelectedRows>();
+        tensor->mutable_value()->mutable_data(
+            pt::TransToFluidPlace(out_def.backend),
+            pt::TransToProtoVarType(out_def.dtype));
+        auto pt_out = MakeTensorImpl<pt::SelectedRowsTensor, SelectedRows>(
+            *tensor, out_def.backend, out_def.dtype, out_def.layout);
+        op_kernel_ctx.EmplaceBackOutput(pt_out);
+      } else {
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "Unsupported shared output `%s` type now when call pt kernel.",
+            ToTypeName(var->Type())));
+      }
+    }
+  }
+  for (int i = 0; i < op_proto->attrs_size(); ++i) {
+    auto attr = op_proto->attrs()[i];
+    if (attr.name() == "use_mkldnn" || attr.name() == "op_role" ||
+        attr.name() == "op_role_var" || attr.name() == "op_namescope" ||
+        attr.name() == "op_callstack" || attr.name() == "op_device") {
+      VLOG(1) << "Static graph PtKernel attribute: skip needless attr - "
+              << attr.name();
+      continue;
+    }
+    if ((attr.has_extra() && attr.extra()) ||
+        (attr.has_quant() && attr.quant())) {
+      VLOG(1) << "Static graph PtKernel attribute: skip extra or quant attr - "
+              << attr.name();
+      continue;
+    }
+    if (attr_to_host_tensor.count(attr.name()) > 0 &&
+        contain_host_tensor_flags.at(attr_to_host_tensor.at(attr.name())) ==
+            true) {
+      VLOG(1) << "Static graph PtKernel attribute: skip dynaimc attr - "
+              << attr.name() << ", because "
+              << attr_to_host_tensor.at(attr.name()) << " exists.";
+      continue;
+    }
+    VLOG(1) << "Static graph PtKernel attribute: " << attr.name();
+    // TODO(chenweihang): support other attrs
+    switch (attr.type()) {
+      case proto::AttrType::INT:
+        op_kernel_ctx.EmplaceBackAttr(Attr<int>(attr.name()));
+        break;
+      case proto::AttrType::FLOAT:
+        op_kernel_ctx.EmplaceBackAttr(Attr<float>(attr.name()));
+        break;
+      case proto::AttrType::BOOLEAN:
+        op_kernel_ctx.EmplaceBackAttr(Attr<bool>(attr.name()));
+        break;
+      default:
+        // TODO(chenweihang): support other attrs type
+        PADDLE_THROW(platform::errors::Unimplemented(
+            "unsupported cast op `%s`'s attribute `%s` when construct "
+            "KernelContext.",
+            Type(), attr.name()));
+    }
+  }
+  return op_kernel_ctx;
 }
 
 }  // namespace framework

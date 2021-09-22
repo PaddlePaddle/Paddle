@@ -63,10 +63,6 @@ class MeanCUDAGradKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
-    mean, ops::MeanKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::MeanKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::MeanKernel<paddle::platform::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
     mean_grad,
     ops::MeanCUDAGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::MeanCUDAGradKernel<paddle::platform::CUDADeviceContext, double>,

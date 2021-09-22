@@ -109,7 +109,6 @@ register_unity_group(cc
     gaussian_random_batch_size_like_op.cc
     gaussian_random_op.cc
     mkldnn/gaussian_random_mkldnn_op.cc
-    grid_sampler_op.cc
     group_norm_op.cc gru_op.cc)
 register_unity_group(cc
     hash_op.cc
