@@ -55,6 +55,19 @@ class MHAMetaData {
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateSeqDataDescriptor(&o_desc));
   }
+
+  ~MHAMetaData() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyAttnDescriptor(attn_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroySeqDataDescriptor(q_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroySeqDataDescriptor(k_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroySeqDataDescriptor(v_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroySeqDataDescriptor(o_desc));
+  }
 };
 
 class MHASingleton {
