@@ -49,9 +49,22 @@ template <typename T>
 struct MulFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a * b; }
 };
+template <>
+struct MulFunctor<bool> {
+  inline HOSTDEVICE bool operator()(const bool& a, const bool& b) const {
+    return a && b;
+  }
+};
+
 template <typename T>
 struct InverseMulFunctor {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return b * a; }
+};
+template <>
+struct InverseMulFunctor<bool> {
+  inline HOSTDEVICE bool operator()(const bool& a, const bool& b) const {
+    return b && a;
+  }
 };
 
 // Divide
