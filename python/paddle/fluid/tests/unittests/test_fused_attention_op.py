@@ -23,7 +23,6 @@ from paddle.nn.layer.common import Linear, Dropout
 from paddle.fluid.data_feeder import convert_dtype
 from paddle import tensor
 from paddle.fluid import layers
-
 import unittest
 
 place = paddle.CUDAPlace(0)
@@ -136,7 +135,6 @@ class TestFusedAttentionOp(unittest.TestCase):
             if self.pre_layer_norm:
                 ln1_out = self.norm1(tensor_query)
 
-            # get q, k, v
             q = self.q_proj(ln1_out)
             q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
             q_out = tensor.transpose(x=q, perm=[0, 2, 1, 3])
@@ -147,12 +145,10 @@ class TestFusedAttentionOp(unittest.TestCase):
             v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
             v_out = tensor.transpose(x=v, perm=[0, 2, 1, 3])
 
-            # q_out * k^t
             qk_out = layers.matmul(
                 x=q_out, y=k_out, transpose_y=True, alpha=self.head_dim**-0.5)
 
             if attn_mask is not None:
-                # Support bool or int mask
                 attn_mask = _convert_attention_mask(attn_mask, qk_out.dtype)
                 attn_mask_out = qk_out + attn_mask
                 softmax_out = F.softmax(attn_mask_out)
@@ -169,13 +165,10 @@ class TestFusedAttentionOp(unittest.TestCase):
             else:
                 qktv_out = tensor.matmul(softmax_out, v_out)
 
-            # combine heads
             fmha_out = tensor.transpose(qktv_out, perm=[0, 2, 1, 3])
-
             out_linear_in = tensor.reshape(
                 x=fmha_out,
                 shape=[0, 0, fmha_out.shape[2] * fmha_out.shape[3]])
-            # project to output
             out = self.out_proj(out_linear_in)
 
             residual_out = residual + self.dropout(out)
@@ -208,13 +201,13 @@ class TestFusedAttentionOp(unittest.TestCase):
         q_proj_weight = q_proj_weight.numpy().transpose((1, 0))
         k_proj_weight = k_proj_weight.numpy().transpose((1, 0))
         v_proj_weight = v_proj_weight.numpy().transpose((1, 0))
-        qkv_weight = np.concatenate((q_proj_weight, k_proj_weight))
-        qkv_weight = np.concatenate((qkv_weight, v_proj_weight))
+        qkv_weight = np.concatenate(
+            (q_proj_weight, k_proj_weight, v_proj_weight))
         qkv_weight = qkv_weight.reshape(
             (3, self.num_heads, self.head_dim, self.embed_dim))
 
-        qkv_bias = np.concatenate((q_proj_bias.numpy(), k_proj_bias.numpy()))
-        qkv_bias = np.concatenate((qkv_bias, v_proj_bias.numpy()))
+        qkv_bias = np.concatenate(
+            (q_proj_bias.numpy(), k_proj_bias.numpy(), v_proj_bias.numpy()))
         qkv_bias = qkv_bias.reshape((3, self.num_heads, self.head_dim))
 
         x = paddle.to_tensor(self.query, stop_gradient=False)
@@ -226,7 +219,6 @@ class TestFusedAttentionOp(unittest.TestCase):
 
         if attn_mask is not None:
             attn_mask = _convert_attention_mask(attn_mask, x.dtype)
-
         final_out = F.fused_multihead_attention(
             x, qkv_weight_tensor, out_linear_weight, self.pre_layer_norm,
             ln1_scale, ln1_bias, ln2_scale, ln2_bias, epsilon, qkv_bias_tensor,
@@ -237,7 +229,6 @@ class TestFusedAttentionOp(unittest.TestCase):
     def test_fused_attention_op(self):
         final_out_ref = self.GetBaselineOut()
         final_out = self.GetFusedAttentionOut()
-
         np.testing.assert_allclose(
             final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-5)
 
@@ -267,7 +258,6 @@ class TestFusedAttentionOpFp16(TestFusedAttentionOp):
     def test_fused_attention_op(self):
         final_out_ref = self.GetBaselineOut()
         final_out = self.GetFusedAttentionOut()
-
         np.testing.assert_allclose(
             final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-1)
 
