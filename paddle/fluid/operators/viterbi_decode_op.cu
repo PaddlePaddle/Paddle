@@ -9,11 +9,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <algorithm>
-#include <memory>
-#include <string>
-#include <type_traits>
-#include <vector>
 #include "paddle/fluid/operators/viterbi_decode_op.h"
 
 #include "paddle/fluid/operators/arg_min_max_op_base.cu.h"
@@ -73,6 +68,14 @@ DEFINE_CUDA_FUNTOR(Mul, *);
   case (block_dim):                  \
     CUDA_ARGMAX((block_dim));        \
     break
+
+#define GET_MASK(lhs, rhs, mask, functor_template, dtype)                  \
+  do {                                                                     \
+    std::vector<const Tensor*> ins = {&lhs, &rhs};                         \
+    std::vector<Tensor*> outs = {&mask};                                   \
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, int64_t, dtype>( \
+        dev_ctx, ins, &outs, -1, functor_template<int64_t>());             \
+  } while (0)
 
 DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaEqualFunctor, ==);
 DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaGreaterThanFunctor, >);
@@ -135,8 +138,8 @@ template <typename T, typename IndType>
 struct ComputeArgmax {
   void operator()(const framework::ExecutionContext& ctx, const Tensor& input,
                   Tensor* out_idx, Tensor* out, int axis) {
+    // axis should be larger than or equals to 0
     framework::DDim input_dims = input.dims();
-    if (axis < 0) axis += input.dims().size();
     int64_t numel = input.numel();
     int64_t groups = numel / input_dims[axis];
     int64_t pre = 1;
@@ -281,14 +284,9 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
     start_trans_exp.Resize({1, n_labels});
     auto logit0 = inputs_t_exp.Slice(0, 1);
     logit0.Resize({batch_size, n_labels});
-    std::vector<const Tensor*> ins;
-    std::vector<Tensor*> outs;
     if (with_start_stop_tag) {
       CUDA_ADD(logit0, start_trans_exp, alpha, T);
-      ins = {&left_length, &one};
-      outs = {&float_mask};
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, int64_t, T>(
-          dev_ctx, ins, &outs, -1, CudaEqualFunctor<int64_t>());
+      GET_MASK(left_length, one, float_mask, CudaEqualFunctor, T);
       CUDA_MUL(stop_trans_exp, float_mask, alpha_nxt, T);
       CUDA_ADD(alpha, alpha_nxt, alpha, T);
     } else {
@@ -306,19 +304,13 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
       historys.push_back(alpha_argmax_temp);
       CUDA_ADD(alpha_max, logit, alpha_nxt, T);
       alpha.Resize({batch_size, n_labels});
-      ins = {&left_length, &zero};
-      outs = {&float_mask};
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, int64_t, T>(
-          dev_ctx, ins, &outs, -1, CudaGreaterThanFunctor<int64_t>());
+      GET_MASK(left_length, zero, float_mask, CudaGreaterThanFunctor, T);
       CUDA_MUL(alpha_nxt, float_mask, alpha_nxt, T);
       CUDA_SUB(float_one, float_mask, float_mask, T);
       CUDA_MUL(alpha, float_mask, alpha, T);
       CUDA_ADD(alpha, alpha_nxt, alpha, T);
       if (with_start_stop_tag) {
-        ins = {&left_length, &one};
-        outs = {&float_mask};
-        LaunchElementwiseCudaKernel<ElementwiseType::kBinary, int64_t, T>(
-            dev_ctx, ins, &outs, -1, CudaEqualFunctor<int64_t>());
+        GET_MASK(left_length, one, float_mask, CudaEqualFunctor, T);
         CUDA_MUL(stop_trans_exp, float_mask, alpha_nxt, T);
         CUDA_ADD(alpha, alpha_nxt, alpha, T);
       }
@@ -326,17 +318,14 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
     }
     cuda_argmax(ctx, alpha, &last_ids, scores, 1);
     left_length.Resize({batch_size});
-    ins = {&left_length, &zero};
-    outs = {&int_mask};
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, int64_t, int64_t>(
-        dev_ctx, ins, &outs, -1, CudaGreaterEqualFunctor<int64_t>());
-
+    GET_MASK(left_length, zero, int_mask, CudaGreaterEqualFunctor, int64_t);
     int last_ids_index = 1;
     int actual_len = std::min(seq_len, static_cast<int>(max_seq_len));
     CUDA_MUL(last_ids, int_mask, batch_path[actual_len - last_ids_index],
              int64_t);
-    ARange<int64_t><<<1, 32, 0, dev_ctx.stream()>>>(
-        batch_offset.data<int64_t>(), batch_offset.numel(), n_labels);
+    auto block_size = ComputeBlockSize(batch_size);
+    ARange<int64_t><<<1, block_size, 0, dev_ctx.stream()>>>(
+        batch_offset.data<int64_t>(), batch_size, n_labels);
 
     for (auto hist = historys.rbegin(); hist != historys.rend(); ++hist) {
       ++last_ids_index;
@@ -345,10 +334,7 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
       Tensor& last_ids_update = batch_path[actual_len - last_ids_index];
       hist->Resize({batch_size * n_labels});
       GPUGather<int64_t, int64_t>(dev_ctx, *hist, gather_idx, &last_ids_update);
-      ins = {&left_length, &zero};
-      outs = {&int_mask};
-      LaunchElementwiseCudaKernel<ElementwiseType::kBinary, int64_t, int64_t>(
-          dev_ctx, ins, &outs, -1, CudaGreaterEqualFunctor<int64_t>());
+      GET_MASK(left_length, zero, int_mask, CudaGreaterEqualFunctor, int64_t);
       CUDA_MUL(last_ids_update, int_mask, last_ids_update, int64_t);
       CUDA_SUB(one, int_mask, int_mask, int64_t);
       CUDA_MUL(last_ids, int_mask, last_ids, int64_t);
