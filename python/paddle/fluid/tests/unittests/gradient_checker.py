@@ -156,6 +156,7 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
     return jacobian
 
 
+# y 对 x 求导
 def _compute_analytical_jacobian(program, x, y, place, scope):
     """Computes the analytical Jacobian for dy/dx.
 
@@ -531,6 +532,12 @@ def trible_grad_check_2(x,
     target_grads = fluid.gradients(y, x, y_grads)
     print("============ in trible_grad_check_2  == target_grads:", target_grads)
 
+    # y_grads are the input of first-order backward,
+    # so, they are also the input of second-order backward.
+    x += y_grads
+    x_init = _as_list(x_init)
+    x_init += y_grads_init
+
     y_grads_grads = None
     if y_grads_grads is None:
         scope = fluid.executor.global_scope()
@@ -549,13 +556,8 @@ def trible_grad_check_2(x,
             y_grads_grads_init.append(v)
 
     target_grads_grads = fluid.gradients(target_grads, x, y_grads_grads)
-    print("============ in trible_grad_check_2  == target_grads:",
+    print("============ in trible_grad_check_2  == target_grads_grads:",
           target_grads_grads)
-    # y_grads are the input of first-order backward,
-    # so, they are also the input of second-order backward.
-    x += y_grads
-    x_init = _as_list(x_init)
-    x_init += y_grads_init
 
     x += y_grads_grads
     x_init += y_grads_grads_init
