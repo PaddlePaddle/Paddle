@@ -1,16 +1,16 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
@@ -95,7 +95,8 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
     // 1. Conv
     T *input_x_ptr = const_cast<T *>(input_x->data<T>());
     T *filter_x_ptr = const_cast<T *>(filter_x->data<T>());
-    CuDNNNormConvolutionOp<T> *conv_x_op = new CuDNNNormConvolutionOp<T>();
+    std::shared_ptr<CudnnNormConvolutionOp<T>> conv_x_op(
+        new CudnnNormConvolutionOp<T>());
     conv_x_op->Init(dev_ctx, input_x_shape, filter_x_shape, output_shape, pad,
                     stride, dilate, group);
     conv_x_op->Forward(dev_ctx, input_x_ptr, filter_x_ptr, conv_out_x_ptr,
@@ -103,7 +104,8 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
     // 2. BN
     float *scale_x_ptr = const_cast<float *>(scale_x->data<float>());
     float *bias_x_ptr = const_cast<float *>(bias_x->data<float>());
-    CuDNNBNStatsFinalizeOp<T> *bn_x_op = new CuDNNBNStatsFinalizeOp<T>();
+    std::shared_ptr<CudnnBNStatsFinalizeOp<T>> bn_x_op(
+        new CudnnBNStatsFinalizeOp<T>());
     bn_x_op->Init(dev_ctx, param_shape);
     bn_x_op->Forward(dev_ctx, sum_x_ptr, sum_of_squares_x_ptr, scale_x_ptr,
                      bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
@@ -112,8 +114,8 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
                      use_global_stats);
 
     // 3. scale + bias + add + relu
-    CuDNNScaleBiasAddReluOp<T> *sbar_op =
-        new CuDNNScaleBiasAddReluOp<T>(fused_add, has_shortcut);
+    std::shared_ptr<CudnnScaleBiasAddReluOp<T>> sbar_op(
+        new CudnnScaleBiasAddReluOp<T>(fused_add, has_shortcut));
     if (has_shortcut) {
       // input z
       const Tensor *input_z = ctx.Input<Tensor>("Z");
@@ -145,7 +147,8 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
       // 3.1 Conv for second input
       T *input_z_ptr = const_cast<T *>(input_z->data<T>());
       T *filter_z_ptr = const_cast<T *>(filter_z->data<T>());
-      CuDNNNormConvolutionOp<T> *conv_z_op = new CuDNNNormConvolutionOp<T>();
+      std::shared_ptr<CudnnNormConvolutionOp<T>> conv_z_op(
+          new CudnnNormConvolutionOp<T>());
       conv_z_op->Init(dev_ctx, input_z_shape, filter_z_shape, output_shape, pad,
                       stride, dilate, group);
       conv_z_op->Forward(dev_ctx, input_z_ptr, filter_z_ptr, conv_out_z_ptr,
@@ -153,7 +156,8 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
       // 3.2 BN for second input
       float *scale_z_ptr = const_cast<float *>(scale_z->data<float>());
       float *bias_z_ptr = const_cast<float *>(bias_z->data<float>());
-      CuDNNBNStatsFinalizeOp<T> *bn_z_op = new CuDNNBNStatsFinalizeOp<T>();
+      std::shared_ptr<CudnnBNStatsFinalizeOp<T>> bn_z_op(
+          new CudnnBNStatsFinalizeOp<T>());
       bn_z_op->Init(dev_ctx, param_shape);
       bn_z_op->Forward(dev_ctx, sum_z_ptr, sum_of_squares_z_ptr, scale_z_ptr,
                        bias_z_ptr, saved_mean_z_ptr, saved_invstd_z_ptr,

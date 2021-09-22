@@ -1,16 +1,16 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
@@ -23,19 +23,17 @@ namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
 namespace dynload = platform::dynload;
-template <typename T>
-class CuDNNScaleBiasAddReluOp {
-#if CUDNN_VERSION < 8000
-  LOG(ERROR) << "cuDNN version 8.0 or later is required.";
-#else
 
+#if CUDNN_VERSION >= 8000
+template <typename T>
+class CudnnScaleBiasAddReluOp {
  public:
-  CuDNNScaleBiasAddReluOp(bool fused_add, bool has_shortcut)
+  CudnnScaleBiasAddReluOp(bool fused_add, bool has_shortcut)
       : fused_add_(fused_add),
         has_shortcut_(has_shortcut),
         fwd_op_(CUDNN_FUSED_SCALE_BIAS_ADD_ACTIVATION_GEN_BITMASK) {}
 
-  ~CuDNNScaleBiasAddReluOp() {}
+  ~CudnnScaleBiasAddReluOp() {}
 
   void Init(const platform::CUDADeviceContext &ctx, const std::string &act_type,
             const std::vector<int> &out_shape,
@@ -193,8 +191,8 @@ class CuDNNScaleBiasAddReluOp {
   platform::TensorDescriptor equiv_z_scale_bias_desc_;
   platform::ActivationDescriptor activation_desc_;
 
-  CuDNNFusionOp fwd_op_;
-#endif
+  CudnnFusionOp fwd_op_;
 };
+#endif
 }  // namespace operators
 }  // namespace paddle

@@ -27,6 +27,7 @@ limitations under the License. */
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace op = paddle::operators;
+using Tensor = paddle::framework::Tensor;
 
 USE_OP(batch_norm);
 
@@ -90,10 +91,8 @@ void GetBatchNormOp(const std::vector<T> &x, const std::vector<float> &scale,
              cudaMemcpyHostToDevice);
 
   framework::AttributeMap attrs;
-  bool fuse_with_relu = true;
   std::string data_layout = "NHWC";
   attrs.insert({"data_layout", data_layout});
-  attrs.insert({"fuse_with_relu", fuse_with_relu});
 
   auto op = framework::OpRegistry::CreateOp(
       "batch_norm", {{"X", {"X"}},
@@ -123,9 +122,9 @@ void GetBatchNormOp(const std::vector<T> &x, const std::vector<float> &scale,
 }
 
 template <typename T>
-class TestCuDNNBNScaleBiasAddReluForward {
+class TestCudnnBNAddReluForward {
  public:
-  TestCuDNNBNScaleBiasAddReluForward() {
+  TestCudnnBNAddReluForward() {
     batch_size_ = 2;
     height_ = 8;
     width_ = 8;
@@ -134,8 +133,8 @@ class TestCuDNNBNScaleBiasAddReluForward {
     ctx_ = new platform::CUDADeviceContext(place_);
   }
 
-  TestCuDNNBNScaleBiasAddReluForward(int batch_size, int height, int width,
-                                     int channels) {
+  TestCudnnBNAddReluForward(int batch_size, int height, int width,
+                            int channels) {
     batch_size_ = batch_size;
     height_ = height;
     width_ = width;
@@ -144,7 +143,7 @@ class TestCuDNNBNScaleBiasAddReluForward {
     ctx_ = new platform::CUDADeviceContext(place_);
   }
 
-  ~TestCuDNNBNScaleBiasAddReluForward() { delete ctx_; }
+  ~TestCudnnBNAddReluForward() { delete ctx_; }
 
   void SetUp() {
     data_size_ = batch_size_ * height_ * width_ * channels_;
@@ -268,7 +267,8 @@ class TestCuDNNBNScaleBiasAddReluForward {
     int32_t *bitmask_ptr = bitmask_.mutable_data<int32_t>(place_);
 
     // 1. BN Stats Finalize
-    op::CuDNNBNStatsFinalizeOp<T> *bn_op = new op::CuDNNBNStatsFinalizeOp<T>();
+    std::shared_ptr<op::CudnnBNStatsFinalizeOp<T>> bn_op(
+        new op::CudnnBNStatsFinalizeOp<T>());
     bn_op->Init(*ctx_, param_shape);
     bn_op->Forward(*ctx_, sum_ptr, sum_of_squares_ptr, scale_ptr, bias_ptr,
                    saved_mean_ptr, saved_var_ptr, mean_ptr, var_ptr,
@@ -276,8 +276,8 @@ class TestCuDNNBNScaleBiasAddReluForward {
                    true);
     // 2. Scale Bias + Relu (not fused add)
     std::string act_type = "";
-    op::CuDNNScaleBiasAddReluOp<T> *sbar_op =
-        new op::CuDNNScaleBiasAddReluOp<T>(false, false);
+    std::shared_ptr<op::CudnnScaleBiasAddReluOp<T>> sbar_op(
+        new op::CudnnScaleBiasAddReluOp<T>(false, false));
     sbar_op->Init(*ctx_, act_type, data_shape, bitmask_shape, data_shape,
                   param_shape);
     sbar_op->Forward(*ctx_, x_ptr, equiv_scale_ptr, equiv_bias_ptr, y_ptr,
@@ -301,7 +301,6 @@ class TestCuDNNBNScaleBiasAddReluForward {
     TensorToVector(saved_var_, *ctx_, &saved_var_vec_);
     ctx_->Wait();
 
-    int count = 0;
     for (int i = 0; i < data_size_; ++i) {
       if (is_relative_atol) {
         EXPECT_LT(std::abs((y_vec_[i] - base_y_vec_[i]) / base_y_vec_[i]),
@@ -355,13 +354,13 @@ class TestCuDNNBNScaleBiasAddReluForward {
   platform::CUDADeviceContext *ctx_;
 };
 
-TEST(CuDNNBNScaleBiasAddReluForward, GPUCuDNNBNScaleBiasAddReluForwardFp16) {
+TEST(CudnnBNAddReluForward, GPUCudnnBNAddReluForwardFp16) {
   int batch_size = 4;
   int height = 8;
   int width = 8;
   int channels = 64;
-  TestCuDNNBNScaleBiasAddReluForward<paddle::platform::float16> test(
-      batch_size, height, width, channels);
+  TestCudnnBNAddReluForward<paddle::platform::float16> test(batch_size, height,
+                                                            width, channels);
   test.Run();
   test.CheckOut(2e-3);
 }

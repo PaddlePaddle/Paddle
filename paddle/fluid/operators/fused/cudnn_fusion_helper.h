@@ -16,6 +16,8 @@ limitations under the License. */
 
 #include <string>
 #include <vector>
+#include "paddle/fluid/platform/cudnn_desc.h"
+#include "paddle/fluid/platform/cudnn_helper.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
 
@@ -27,9 +29,9 @@ namespace dynload = platform::dynload;
 #if CUDNN_VERSION >= 8000
 
 // A wrapper for cuDNN fused_op API.
-class CuDNNFusionOp {
+class CudnnFusionOp {
  public:
-  explicit CuDNNFusionOp(cudnnFusedOps_t op_id) : plan_created_(false) {
+  explicit CudnnFusionOp(cudnnFusedOps_t op_id) : plan_created_(false) {
     // New 'fused op' descriptor creation
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnCreateFusedOpsPlan(&op_, op_id));
     PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -38,7 +40,7 @@ class CuDNNFusionOp {
         &op_variant_params_, op_id));
   }
 
-  ~CuDNNFusionOp() {
+  ~CudnnFusionOp() {
     // New 'fused op' descriptor destruction
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnDestroyFusedOpsVariantParamPack(op_variant_params_));
@@ -52,7 +54,7 @@ class CuDNNFusionOp {
     PADDLE_ENFORCE_EQ(
         plan_created_, true,
         platform::errors::Fatal(
-            "CuDNNFusionOp exec requested without a valid 'plan', need: "
+            "CudnnFusionOp exec requested without a valid 'plan', need: "
             "<set const params>, GetWorkspaceSizeBytes(), Execute()."));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         dynload::cudnnFusedOpsExecute(cudnn_handle, op_, op_variant_params_));
@@ -73,8 +75,9 @@ class CuDNNFusionOp {
   void SetOpConstParamDesc(
       const std::vector<cudnnFusedOpsConstParamLabel_t> &param_labels,
       T *param_ptr) {
-    for (auto param_label : param_labels)
+    for (auto param_label : param_labels) {
       SetOpConstParamDesc(param_label, param_ptr);
+    }
   }
 
   // Set const param pack attribute given a value of param.
@@ -92,8 +95,9 @@ class CuDNNFusionOp {
   void SetOpConstParamAttr(
       const std::vector<cudnnFusedOpsConstParamLabel_t> &param_labels,
       T param) {
-    for (auto param_label : param_labels)
+    for (auto param_label : param_labels) {
       SetOpConstParamAttr(param_label, param);
+    }
   }
 
   // Set a variant param pack attribute given a reference to a param.
@@ -110,8 +114,9 @@ class CuDNNFusionOp {
   void SetOpVariantParamAttrPtr(
       const std::vector<cudnnFusedOpsVariantParamLabel_t> &param_labels,
       const T *param_ptr) {
-    for (auto param_label : param_labels)
+    for (auto param_label : param_labels) {
       SetOpVariantParamAttrPtr(param_label, param_ptr);
+    }
   }
 
   // Get the workspace, which is required before Execute().

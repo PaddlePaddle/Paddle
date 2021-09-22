@@ -1,41 +1,38 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+/* Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License. */
 
 #pragma once
 
 #include "paddle/fluid/operators/fused/cudnn_fusion_helper.h"
-#include "paddle/fluid/operators/fused/resnet_unit_op.h"
 
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
 namespace dynload = platform::dynload;
-template <typename T>
-class CuDNNBNStatsFinalizeOp {
-#if CUDNN_VERSION < 8000
-  LOG(ERROR) << "cuDNN version 8.0 or later is required.";
-#else
 
+#if CUDNN_VERSION >= 8000
+template <typename T>
+class CudnnBNStatsFinalizeOp {
  public:
-  CuDNNBNStatsFinalizeOp()
+  CudnnBNStatsFinalizeOp()
       : train_op_(CUDNN_FUSED_BN_FINALIZE_STATISTICS_TRAINING),
         inference_op_(CUDNN_FUSED_BN_FINALIZE_STATISTICS_INFERENCE) {
     dtype_ = platform::CudnnDataType<T>::type;
     dtype_param_ = (dtype_ == CUDNN_DATA_HALF) ? CUDNN_DATA_FLOAT : dtype_;
   }
 
-  ~CuDNNBNStatsFinalizeOp() {}
+  ~CudnnBNStatsFinalizeOp() {}
 
   void Init(const platform::CUDADeviceContext &ctx,
             const std::vector<int> &param_shape) {
@@ -80,7 +77,7 @@ class CuDNNBNStatsFinalizeOp {
       PADDLE_ENFORCE_EQ(workspace_size_bytes, 0U,
                         platform::errors::InvalidArgument(
                             "Unexpected non-zero workspace size for "
-                            "CuDNNBNStatsFinalize op."));
+                            "CudnnBNStatsFinalize op."));
       op->SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE,
                                    static_cast<void *>(nullptr));
       op->SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE, &workspace_size_bytes);
@@ -137,9 +134,9 @@ class CuDNNBNStatsFinalizeOp {
   platform::TensorDescriptor in_desc_;
   platform::TensorDescriptor out_desc_;
 
-  CuDNNFusionOp train_op_;
-  CuDNNFusionOp inference_op_;
-#endif
+  CudnnFusionOp train_op_;
+  CudnnFusionOp inference_op_;
 };
+#endif
 }  // namespace operators
 }  // namespace paddle
