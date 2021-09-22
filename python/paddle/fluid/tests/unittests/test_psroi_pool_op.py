@@ -21,8 +21,8 @@ import unittest
 from op_test import OpTest
 
 
-def calc_psroi_pool_numpy(x, rois, rois_num_per_img, output_channels,
-                          spatial_scale, pooled_height, pooled_width):
+def calc_psroi_pool(x, rois, rois_num_per_img, output_channels, spatial_scale,
+                    pooled_height, pooled_width):
     """
     Psroi_pool implemented by Numpy.
     x: 4-D as (N, C, H, W),
@@ -86,9 +86,13 @@ def calc_psroi_pool_numpy(x, rois, rois_num_per_img, output_channels,
 
 class TestPSROIPoolOp(OpTest):
     def set_data(self):
+        paddle.enable_static()
         self.init_test_case()
         self.make_rois()
-        self.calc_psroi_pool()
+        self.outs = calc_psroi_pool(self.x, self.boxes, self.boxes_num,
+                                    self.output_channels, self.spatial_scale,
+                                    self.pooled_height,
+                                    self.pooled_width).astype('float64')
         self.inputs = {
             'X': self.x,
             'ROIs': (self.rois_with_batch_id[:, 1:5], self.rois_lod)
@@ -135,60 +139,9 @@ class TestPSROIPoolOp(OpTest):
                 rois.append(roi)
         self.rois_num = len(rois)
         self.rois_with_batch_id = np.array(rois).astype('float64')
-
-    def calc_psroi_pool(self):
-        """
-        self.rois_with_batch_id should be given as 2-D as [[batch_id, x1, y1, x2, y2], ...].
-        self.rois_num is the sum of rois, equals to len(self.rois_with_batch_id).
-        """
-        output_shape = (self.rois_num, self.output_channels, self.pooled_height,
-                        self.pooled_width)
-        out_data = np.zeros(output_shape)
-        for i in range(self.rois_num):
-            roi = self.rois_with_batch_id[i]
-            roi_batch_id = int(roi[0])
-            roi_start_w = round(roi[1]) * self.spatial_scale
-            roi_start_h = round(roi[2]) * self.spatial_scale
-            roi_end_w = (round(roi[3]) + 1.) * self.spatial_scale
-            roi_end_h = (round(roi[4]) + 1.) * self.spatial_scale
-
-            roi_height = max(roi_end_h - roi_start_h, 0.1)
-            roi_width = max(roi_end_w - roi_start_w, 0.1)
-
-            bin_size_h = roi_height / float(self.pooled_height)
-            bin_size_w = roi_width / float(self.pooled_width)
-
-            x_i = self.x[roi_batch_id]
-
-            for c in range(self.output_channels):
-                for ph in range(self.pooled_height):
-                    for pw in range(self.pooled_width):
-                        hstart = int(
-                            math.floor(float(ph) * bin_size_h + roi_start_h))
-                        wstart = int(
-                            math.floor(float(pw) * bin_size_w + roi_start_w))
-                        hend = int(
-                            math.ceil(
-                                float(ph + 1) * bin_size_h + roi_start_h))
-                        wend = int(
-                            math.ceil(
-                                float(pw + 1) * bin_size_w + roi_start_w))
-                        hstart = min(max(hstart, 0), self.height)
-                        hend = min(max(hend, 0), self.height)
-                        wstart = min(max(wstart, 0), self.width)
-                        wend = min(max(wend, 0), self.width)
-
-                        c_in = (c * self.pooled_height + ph
-                                ) * self.pooled_width + pw
-                        is_empty = (hend <= hstart) or (wend <= wstart)
-                        out_sum = 0.
-                        for ih in range(hstart, hend):
-                            for iw in range(wstart, wend):
-                                out_sum += x_i[c_in, ih, iw]
-                        bin_area = (hend - hstart) * (wend - wstart)
-                        out_data[i, c, ph, pw] = 0. if is_empty else (
-                            out_sum / float(bin_area))
-        self.outs = out_data.astype('float64')
+        self.boxes = self.rois_with_batch_id[:, 1:]
+        self.boxes_num = np.array(
+            [bno + 1 for bno in range(self.batch_size)]).astype('int32')
 
     def setUp(self):
         self.op_type = 'psroi_pool'
@@ -201,7 +154,7 @@ class TestPSROIPoolOp(OpTest):
         self.check_grad(['X'], 'Out')
 
 
-class TestPSROIPool_Function_API_in_Dynamic(unittest.TestCase):
+class TestPSROIPoolDynamicFunctionAPI(unittest.TestCase):
     def setUp(self):
         self.x = np.random.random([2, 490, 28, 28]).astype(np.float32)
         self.boxes = np.array(
@@ -215,8 +168,8 @@ class TestPSROIPool_Function_API_in_Dynamic(unittest.TestCase):
                 paddle.to_tensor(self.x),
                 paddle.to_tensor(self.boxes),
                 paddle.to_tensor(self.boxes_num), output_size).numpy()
-            expect_out = calc_psroi_pool_numpy(self.x, self.boxes,
-                                               self.boxes_num, 10, 1.0, 7, 7)
+            expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 10,
+                                         1.0, 7, 7)
             self.assertTrue(np.allclose(out, expect_out))
 
         def test_output_size_is_tuple():
@@ -225,8 +178,8 @@ class TestPSROIPool_Function_API_in_Dynamic(unittest.TestCase):
                 paddle.to_tensor(self.x),
                 paddle.to_tensor(self.boxes),
                 paddle.to_tensor(self.boxes_num), output_size).numpy()
-            expect_out = calc_psroi_pool_numpy(self.x, self.boxes,
-                                               self.boxes_num, 10, 1.0, 7, 7)
+            expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 10,
+                                         1.0, 7, 7)
             self.assertTrue(np.allclose(out, expect_out))
 
         def test_dytype_is_float64():
@@ -235,8 +188,8 @@ class TestPSROIPool_Function_API_in_Dynamic(unittest.TestCase):
                 paddle.to_tensor(self.x, 'float64'),
                 paddle.to_tensor(self.boxes, 'float64'),
                 paddle.to_tensor(self.boxes_num, 'int32'), output_size).numpy()
-            expect_out = calc_psroi_pool_numpy(self.x, self.boxes,
-                                               self.boxes_num, 10, 1.0, 7, 7)
+            expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 10,
+                                         1.0, 7, 7)
             self.assertTrue(np.allclose(out, expect_out))
 
         places = ['cpu']
@@ -249,7 +202,7 @@ class TestPSROIPool_Function_API_in_Dynamic(unittest.TestCase):
             test_dytype_is_float64()
 
 
-class TestPSROIPool_Class_API_in_Dynamic(unittest.TestCase):
+class TestPSROIPoolDynamicClassAPI(unittest.TestCase):
     def setUp(self):
         self.x = np.random.random([2, 128, 32, 32]).astype(np.float32)
         self.boxes = np.array([[3, 5, 6, 13], [7, 4, 22, 18], [4, 5, 7, 10],
@@ -263,8 +216,8 @@ class TestPSROIPool_Class_API_in_Dynamic(unittest.TestCase):
                 paddle.to_tensor(self.x),
                 paddle.to_tensor(self.boxes),
                 paddle.to_tensor(self.boxes_num)).numpy()
-            expect_out = calc_psroi_pool_numpy(self.x, self.boxes,
-                                               self.boxes_num, 2, 1.1, 8, 8)
+            expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 2,
+                                         1.1, 8, 8)
             self.assertTrue(np.allclose(out, expect_out))
 
         def test_output_size_is_tuple():
@@ -273,8 +226,8 @@ class TestPSROIPool_Class_API_in_Dynamic(unittest.TestCase):
                 paddle.to_tensor(self.x),
                 paddle.to_tensor(self.boxes),
                 paddle.to_tensor(self.boxes_num)).numpy()
-            expect_out = calc_psroi_pool_numpy(self.x, self.boxes,
-                                               self.boxes_num, 2, 1.1, 8, 8)
+            expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 2,
+                                         1.1, 8, 8)
             self.assertTrue(np.allclose(out, expect_out))
 
         def test_dytype_is_float64():
@@ -283,8 +236,8 @@ class TestPSROIPool_Class_API_in_Dynamic(unittest.TestCase):
                 paddle.to_tensor(self.x, 'float64'),
                 paddle.to_tensor(self.boxes, 'float64'),
                 paddle.to_tensor(self.boxes_num, 'int32')).numpy()
-            expect_out = calc_psroi_pool_numpy(self.x, self.boxes,
-                                               self.boxes_num, 2, 1.1, 8, 8)
+            expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 2,
+                                         1.1, 8, 8)
             self.assertTrue(np.allclose(out, expect_out))
 
         paddle.disable_static()
@@ -298,7 +251,7 @@ class TestPSROIPool_Class_API_in_Dynamic(unittest.TestCase):
             test_dytype_is_float64()
 
 
-class TestPSROIPool_API_Boxes_Num_Error(unittest.TestCase):
+class TestPSROIPoolBoxesNumError(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.x = paddle.uniform([2, 490, 28, 28], dtype='float32')
@@ -321,7 +274,7 @@ class TestPSROIPool_API_Boxes_Num_Error(unittest.TestCase):
         self.assertRaises(ValueError, test_boxes_num_length_error)
 
 
-class TestPSROIPool_API_Channel_Error(unittest.TestCase):
+class TestPSROIPoolChannelError(unittest.TestCase):
     def setUp(self):
         paddle.disable_static()
         self.x = paddle.uniform([2, 490, 28, 28], dtype='float32')
@@ -338,7 +291,7 @@ class TestPSROIPool_API_Channel_Error(unittest.TestCase):
         self.assertRaises(ValueError, test_channel_error)
 
 
-class TestPSROIPool_API_in_Static(unittest.TestCase):
+class TestPSROIPoolStaticAPI(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
         self.x_placeholder = paddle.static.data(
@@ -355,8 +308,8 @@ class TestPSROIPool_API_in_Static(unittest.TestCase):
         out = paddle.vision.ops.psroi_pool(self.x_placeholder,
                                            self.boxes_placeholder,
                                            self.boxes_num, output_size)
-        expect_out = calc_psroi_pool_numpy(self.x, self.boxes, self.boxes_num,
-                                           10, 1.0, 7, 7)
+        expect_out = calc_psroi_pool(self.x, self.boxes, self.boxes_num, 10,
+                                     1.0, 7, 7)
         places = [paddle.CPUPlace()]
         if paddle.fluid.core.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
