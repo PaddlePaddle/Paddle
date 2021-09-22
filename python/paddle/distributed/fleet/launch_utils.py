@@ -995,8 +995,6 @@ class ParameterServerLauncher(object):
 
             # get heter worker envs
             if self.distribute_mode == DistributeMode.PS_HETER:
-                assert False, "[*DEPRECATED*]launch heterps using heter_worker_num or heter_workers is deprecated"
-                '''
                 if args.heter_worker_num:
                     self.heter_worker_num = args.heter_worker_num
                     if args.heter_workers:
@@ -1016,7 +1014,7 @@ class ParameterServerLauncher(object):
                     self.heter_worker_endpoints = args.heter_workers
                     self.heter_worker_num = len(
                         self.heter_worker_endpoints.split(","))
-                '''
+                
 
         # get http_port
         if args.http_port:
@@ -1078,7 +1076,6 @@ class ParameterServerLauncher(object):
                 self.current_node_ip = pod_ip
             assert self.current_node_ip in self.node_ips, "Can't find your local ip {%s} in args.servers and args.workers ips: {%s}" \
                 % (self.current_node_ip, self.node_ips)
-        #self.node_ips.sort()
         self.node_rank = self.node_ips.index(self.current_node_ip)
 
         logger.debug(

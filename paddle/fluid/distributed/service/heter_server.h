@@ -331,13 +331,17 @@ class RequestSendAndRecvHandler final : public HeterRequestHandler {
           if (micro_cnt_[minibatch_index][microbatch_index] == 1) {
             {
             std::unique_lock<std::mutex> lk(this->batch_finished_mutex);
+            (*executor_)[minibatch_idx].RunPreparedContext(
+                (*message_to_prepared_ctx_)[message_name].get(), &micro_scope,
+                false);
             this->batch_finished_cond_var.notify_all();
             }
           }
-        }
+        } else {
         (*executor_)[minibatch_idx].RunPreparedContext(
             (*message_to_prepared_ctx_)[message_name].get(), &micro_scope,
             false);
+        }
       }
     }
   }
