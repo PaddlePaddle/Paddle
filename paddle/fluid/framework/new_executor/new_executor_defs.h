@@ -477,15 +477,10 @@ struct VariableScope {
   std::vector<VariableMetaInfo> vec_meta_info_;
 };
 
-struct EventRun {
-  explicit EventRun(size_t op_id) : op_id_(op_id) {}
-  size_t op_id_;
-};
 struct NextInstruction {
   std::vector<size_t> direct_run_;
-  std::vector<EventRun> event_wait_run_;
-  std::vector<EventRun> synchronize_run_;
-  std::vector<size_t> all_next_ops_;
+  std::vector<size_t> event_wait_run_;
+  std::vector<size_t> synchronize_run_;
 };
 
 struct EventInter {
