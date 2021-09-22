@@ -275,7 +275,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       ElementwiseComputeEx<EqualFunctor<T>, DeviceContext, int64_t, T>(
           ctx, &left_length, &one, -1, EqualFunctor<T>(), &float_mask);
       MUL(stop_trans_exp, float_mask, alpha_nxt, T);
-      ADD(alpha, alpha_nxt, alpha, T);
+      EXECUTE_MKL_ELEMENT_BINARY_OP(alpha, alpha_nxt, alpha, Add, T);
     } else {
       alpha = logit0;
     }
@@ -285,7 +285,6 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       Tensor logit = inputs_t_exp.Slice(i, i + 1);
       logit.Resize({batch_size, n_labels});
       Tensor& alpha_exp = alpha.Resize({batch_size, n_labels, 1});
-
       ADD(alpha_exp, trans_exp, alpha_trn_sum, T);
 
       auto alpha_argmax_temp = alpha_argmax_unbind[i - 1];
@@ -305,7 +304,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       // alpha_nxt = mask * alpha_nxt
       MUL(alpha_nxt, float_mask, alpha_nxt, T);
       // inv_mask = 1 - mask
-      SUB(float_one, float_mask, float_mask, T);
+      EXECUTE_MKL_ELEMENT_BINARY_OP(float_one, float_mask, float_mask, Sub, T);
       // alpha = (1 - mask) * alpha
       MUL(alpha, float_mask, alpha, T);
       // alpha += alpha_nxt
@@ -334,7 +333,9 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     int last_ids_index = 1;
     int actual_len = std::min(seq_len, static_cast<int>(max_seq_len));
 
-    MUL(last_ids, int_mask, batch_path[actual_len - last_ids_index], int64_t);
+    EXECUTE_MKL_ELEMENT_BINARY_OP(last_ids, int_mask,
+                                  batch_path[actual_len - last_ids_index], Mul,
+                                  int64_t);
     ARange(batch_offset.data<int64_t>(), static_cast<int64_t>(batch_size),
            static_cast<int64_t>(n_labels));
 
@@ -352,7 +353,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       ElementwiseComputeEx<GreaterEqualFunctor<int64_t>, DeviceContext,
                            int64_t>(ctx, &left_length, &zero, -1,
                                     GreaterEqualFunctor<int64_t>(), &int_mask);
-      MUL(last_ids_update, int_mask, last_ids_update, int64_t);
+      EXECUTE_MKL_ELEMENT_BINARY_OP(last_ids_update, int_mask, last_ids_update,
+                                    Mul, int64_t);
       // tag_mask = 1 - tag_mask
       SUB(one, int_mask, int_mask, int64_t);
       // last_ids = last_ids_update + last_ids * (1 - tag_mask)
