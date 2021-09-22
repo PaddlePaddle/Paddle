@@ -201,7 +201,8 @@ def train(net_type, use_cuda, save_dirname, is_local):
                         fluid.io.save_inference_model(
                             save_dirname, ["pixel"], [predict],
                             exe,
-                            main_program=train_program)
+                            main_program=train_program,
+                            clip_extra=True)
                         return
 
     if is_local:
@@ -258,8 +259,13 @@ def infer(use_cuda, save_dirname=None):
 
         print("infer results: ", results[0])
 
-        fluid.io.save_inference_model(save_dirname, feed_target_names,
-                                      fetch_targets, exe, inference_program)
+        fluid.io.save_inference_model(
+            save_dirname,
+            feed_target_names,
+            fetch_targets,
+            exe,
+            inference_program,
+            clip_extra=True)
 
 
 def main(net_type, use_cuda, is_local=True):

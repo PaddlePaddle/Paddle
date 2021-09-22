@@ -63,11 +63,15 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"moving_average_abs_max_scale", {"X", "InAccum", "InState"}},
     {"multiclass_nms3", {"BBoxes", "Scores", "RoisNum"}},
     {"box_coder", {"PriorBox", "PriorBoxVar", "TargetBox"}},
-    {"momentum", {"Param", "Grad", "Velocity", "LearningRate"}},
+    {"momentum", {"Param", "Grad", "Velocity", "LearningRate", "MasterParam"}},
     {"sparse_momentum", {"Param", "Grad", "Velocity", "Index", "LearningRate"}},
     {"rnn", {"Input", "PreState", "WeightList", "SequenceLength"}},
     {"run_program", {"X", "Params"}},
-    {"matrix_rank", {"X", "TolTensor"}}};
+    {"matrix_rank", {"X", "TolTensor"}},
+    {"adam",
+     {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
+      "Beta2Pow", "MasterParam"}},
+};
 
 // NOTE(zhiqiu): Like op_ins_map.
 // Commonly, the outputs in auto-generated OP function are determined by the
@@ -97,12 +101,15 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
      {"Out", "OutScale", "OutAccum", "OutState"}},
     {"multiclass_nms3", {"Out", "NmsRoisNum"}},
     {"generate_proposals_v2", {"RpnRois", "RpnRoiProbs", "RpnRoisNum"}},
-    {"momentum", {"ParamOut", "VelocityOut"}},
+    {"momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"sparse_momentum", {"ParamOut", "VelocityOut"}},
     {"rnn", {"DropoutState", "Reserve", "Out", "State"}},
     {"lamb",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"run_program", {"DOut"}},
+    {"adam",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
+      "MasterParamOut"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
@@ -119,13 +126,14 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
 std::map<std::string, std::set<std::string>> op_passing_outs_map = {
     {"sgd", {"ParamOut"}},
     {"adam",
-     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
+      "MasterParamOut"}},
     {"adamw",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
     {"average_accumulates",
      {"out_sum_1", "out_sum_2", "out_sum_3", "out_num_accumulates",
       "out_old_num_accumulates", "out_num_updates"}},
-    {"momentum", {"ParamOut", "VelocityOut"}},
+    {"momentum", {"ParamOut", "VelocityOut", "MasterParamOut"}},
     {"sparse_momentum", {"ParamOut", "VelocityOut"}},
     {"batch_norm", {"MeanOut", "VarianceOut"}},
     {"sync_batch_norm", {"MeanOut", "VarianceOut"}},

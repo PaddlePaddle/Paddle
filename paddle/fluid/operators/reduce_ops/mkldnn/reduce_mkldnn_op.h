@@ -71,10 +71,8 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
     if (input_dims == output_dims) {
       mkldnn::memory::data_type input_type =
           framework::ToMKLDNNDataType(input->type());
-      std::string key = platform::CreateKey(
-          dev_ctx, input_dims, input->format(), input->format(), input_type);
-      platform::ReorderMKLDNNHandler reorder_handler(
-          input_dims, input->type(), input_type, dev_ctx, onednn_engine, key);
+      platform::ReorderMKLDNNHandler reorder_handler(input_dims, input->type(),
+                                                     input_type, onednn_engine);
 
       auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
           input->format(), platform::to_void_cast(input->data<T>()));
