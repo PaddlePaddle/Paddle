@@ -116,6 +116,49 @@ void SameDimsBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
 #define SAME_DIMS_ELEMENT_BINARY_OP(lhs, rhs, output, functor_type, dtype) \
   SameDimsBinaryOP<dtype, functor_type##Functor<dtype>>(lhs, rhs, &output)
 
+template <typename T>
+std::vector<T> GetStrides(const DDim& dims) {
+  std::vector<int64_t> strides(dims.size(), 1);
+  for (int64_t i = dims.size() - 2; i >= 0; --i) {
+    strides[i] = strides[i + 1] * dims[i + 1];
+  }
+  return strides;
+}
+
+// Need to gurantee that lhs, rhs have same dim size.
+template <typename T, typename Functor>
+void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
+                             Tensor* out) {
+  const T* lhs_ptr = lhs.data<T>();
+  const T* rhs_ptr = rhs.data<T>();
+  T* out_ptr = out->data<T>();
+  int64_t nums = out->numel();
+  auto output_dims = out->dims();
+  std::vector<int64_t> output_strides = GetStrides<int64_t>(output_dims);
+  std::vector<int64_t> lhs_strides = GetStrides<int64_t>(lhs.dims());
+  std::vector<int64_t> rhs_strides = GetStrides<int64_t>(rhs.dims());
+  Functor functor;
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+  for (int64_t i = 0; i < nums; ++i) {
+    int64_t output_idx = i;
+    int64_t lhs_idx = 0;
+    int64_t rhs_idx = 0;
+    for (std::size_t j = 0; j < output_strides.size(); ++j) {
+      int64_t curr_idx = output_idx / output_strides[j];
+      output_idx %= output_strides[j];
+      if (lhs.dims()[j] > 1) {
+        lhs_idx += curr_idx * lhs_strides[j];
+      }
+      if (rhs.dims()[j] > 1) {
+        rhs_idx += curr_idx * rhs_strides[j];
+      }
+    }
+    out_ptr[i] = functor(lhs_ptr[lhs_idx], rhs_ptr[rhs_idx]);
+  }
+}
+
 template <typename T, typename IndexT = int>
 void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
                const Tensor& index, Tensor* output) {
@@ -222,9 +265,9 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
                                    axis);
 
     auto* transition = ctx.Input<Tensor>("Transition");
-    Tensor trans_exp =
-        float_tensor_buffer.GetBufferBlock({1, n_labels, n_labels});
+    Tensor trans_exp = float_tensor_buffer.GetBufferBlock({n_labels, n_labels});
     framework::TensorCopy(*transition, curr_place, dev_ctx, &trans_exp);
+    trans_exp.Resize({1, n_labels, n_labels});
 
     Tensor alpha = float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
     math::SetConstant<DeviceContext, T> float_functor;
@@ -284,7 +327,6 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       logit.Resize({batch_size, n_labels});
       Tensor& alpha_exp = alpha.Resize({batch_size, n_labels, 1});
       ADD(alpha_exp, trans_exp, alpha_trn_sum, T);
-
       auto alpha_argmax_temp = alpha_argmax_unbind[i - 1];
       alpha_argmax_temp.Resize({batch_size, n_labels});
 
