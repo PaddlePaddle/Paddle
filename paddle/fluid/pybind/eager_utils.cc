@@ -158,6 +158,9 @@ PyObject* ToPyObject(const pt::Tensor& value) {
   if (obj) {
     auto v = reinterpret_cast<EagerTensorObject*>(obj);
     v->eagertensor = value;
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "tp_alloc return null, can not new a PyObject."));
   }
   return obj;
 }
@@ -220,6 +223,9 @@ PyObject* ToPyObject(const std::vector<pt::Tensor>& value) {
     if (obj) {
       auto v = reinterpret_cast<EagerTensorObject*>(obj);
       v->eagertensor = value[i];
+    } else {
+      PADDLE_THROW(platform::errors::Fatal(
+          "tp_alloc return null, can not new a PyObject."));
     }
     PyList_SET_ITEM(result, static_cast<Py_ssize_t>(i), obj);
   }

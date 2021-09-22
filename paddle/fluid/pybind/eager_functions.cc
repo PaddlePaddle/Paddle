@@ -184,6 +184,9 @@ static inline PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
     v->eagertensor.SetImpl(densetensor);
     auto meta = egr::EagerUtils::autograd_meta(&(v->eagertensor));
     meta->SetStopGradient(stop_gradient);
+  } else {
+    PADDLE_THROW(platform::errors::Fatal(
+        "tp_alloc return null, can not new a PyObject."));
   }
 
   return obj;

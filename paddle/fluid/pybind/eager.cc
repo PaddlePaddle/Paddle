@@ -37,6 +37,10 @@ PyTypeObject* pEagerTensorType;
 PyObject* eagertensor_new(PyTypeObject* type, PyObject* args,
                           PyObject* kwargs) {
   PyObject* obj = type->tp_alloc(type, 0);
+  if (obj == nullptr) {
+    PADDLE_THROW(platform::errors::Fatal(
+        "tp_alloc return null, can not new a PyObject."));
+  }
   return obj;
 }
 
