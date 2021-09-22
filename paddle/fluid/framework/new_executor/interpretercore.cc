@@ -12,117 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#define GLOG_NO_ABBREVIATED_SEVERITIES  // msvc conflict logging with windows.h
-
-#if !defined(_WIN32)
-#include <sched.h>
-#else
-#define NOMINMAX
-#include <windows.h>
-#endif  // !_WIN32
-
 #include "paddle/fluid/framework/new_executor/interpretercore.h"
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
 
 #include <unordered_set>
 
+#include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
+#include "paddle/fluid/platform/profiler.h"
+
+PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
+                            "Use inplace in new executor");
+
 namespace paddle {
 namespace framework {
-
-namespace {
-
-/*
- * Parse the var_ids that need to be associated with an event.
- * The caller should guarantee front_op and back_op satisfy the
- * following conditions:
- *   1. kQueueAsync -> kQueueAsync
- *   2. kQueueAsync -> kQueueSync
- *
- * For example: matmul(gpu) -> out_var -> memcpy_d2h
- * out_var should be associated with an event.
- */
-std::vector<size_t> ParseEventVarIds(const Instruction& cur_instr,
-                                     const Instruction& next_instr) {
-  std::unordered_set<size_t> unique_var_ids;
-  for (auto& item : cur_instr.output_index_) {
-    unique_var_ids.insert(item.second.begin(), item.second.end());
-  }
-
-  std::vector<size_t> new_event_var_ids;
-  for (auto& item : next_instr.input_index_) {
-    for (auto var_id : item.second) {
-      if (unique_var_ids.count(var_id) > 0) {
-        new_event_var_ids.push_back(var_id);
-      }
-    }
-  }
-  return new_event_var_ids;
-}
-
-void AssociateInputWithEvents(
-    const platform::Place& place, const std::vector<size_t>& new_event_var_id,
-    Instruction* next_instr,
-    std::map<size_t, std::shared_ptr<platform::DeviceEvent>>* var_id2event,
-    bool is_sync) {
-  for (auto var_id : new_event_var_id) {
-    if (var_id2event->count(var_id) == 0) {
-      auto device_event = std::make_shared<platform::DeviceEvent>(
-          place, platform::GenerateDeviceEventFlag());
-      var_id2event->emplace(var_id, std::move(device_event));
-    }
-    // Add events for next_instr.inputs
-    next_instr->intput_events_.emplace_back(var_id, var_id2event->at(var_id),
-                                            is_sync);
-  }
-}
-
-void ParseDirectAndEventRunOps(
-    const platform::Place& place, const std::vector<OpFuncNode>& op_func_nodes,
-    const std::vector<size_t>& downstream_ops, size_t op_index,
-    std::map<size_t, std::shared_ptr<platform::DeviceEvent>>* var_id2event,
-    std::vector<Instruction>* instructions) {
-  auto& op_func_type = op_func_nodes[op_index].type_;
-  auto& cur_instr = instructions->at(op_index);
-  auto& next_instruction = cur_instr.next_instruction_;
-
-  if (op_func_type == OpFuncType::kQueueSync) {
-    // all downstream ops of kQueueSync can directly run, such as CPU -> Any
-    next_instruction.direct_run_ = downstream_ops;
-  } else {  // kQueueAsync
-    std::vector<size_t> event_var_ids;
-    for (auto next_op_id : downstream_ops) {
-      auto& next_instr = instructions->at(next_op_id);
-      // case 1: GPU -> GPU(same stream)
-      if (cur_instr.dev_ctx_ == next_instr.dev_ctx_) {
-        next_instruction.direct_run_.emplace_back(next_op_id);
-        continue;
-      }
-      // Always insert events between different stream
-      auto new_event_var_ids = ParseEventVarIds(cur_instr, next_instr);
-      event_var_ids.insert(event_var_ids.end(), new_event_var_ids.begin(),
-                           new_event_var_ids.end());
-
-      bool is_sync =
-          (op_func_nodes[next_op_id].type_ == OpFuncType::kQueueSync);
-      AssociateInputWithEvents(place, new_event_var_ids, &next_instr,
-                               var_id2event, is_sync);
-
-      if (is_sync) {  // GPU -> CPU
-        next_instruction.synchronize_run_.emplace_back(next_op_id);
-      } else {  // GPU -> GPU(different stream)
-        next_instruction.event_wait_run_.emplace_back(next_op_id);
-      }
-    }
-    // Create events for these cross-stream vars
-    VLOG(3) << cur_instr.kernel_func_.operator_base_->Type()
-            << " event_var_ids.size: " << event_var_ids.size();
-    for (auto var_id : event_var_ids) {
-      cur_instr.output_events_.emplace_back(var_id, var_id2event->at(var_id),
-                                            false /*not used*/);
-    }
-  }
-}
-}  // namespace
+// NOTE(Aurelius84): Need a better strategy to determine it.
+static constexpr size_t kHostNumThreads = 4;
 
 InterpreterCore::InterpreterCore(const platform::Place& place,
                                  const ProgramDesc& main_prog,
@@ -132,16 +36,9 @@ InterpreterCore::InterpreterCore(const platform::Place& place,
     : place_(place),
       main_program_(main_prog),
       global_scope_(global_scope),
-      d2h_ctx_pool_({place}),
-      h2d_ctx_pool_({place}) {
+      stream_analyzer_(place),
+      async_work_queue_(kHostNumThreads) {
   is_build_ = false;
-
-  garbages_.reset(new GarbageQueue());
-  max_memory_size_ = static_cast<size_t>(GetEagerDeletionThreshold());
-  cur_memory_size_ = 0;
-  WorkQueueOptions options;
-  options.num_threads = 1;
-  gc_queue_ = CreateSingleThreadedWorkQueue(options);
 
   feed_names_ = feed_names;
 
@@ -197,7 +94,7 @@ paddle::framework::FetchList InterpreterCore::Run(
     Convert();
   } else {
     FeedInput();
-    ExecuteInstructionList(vec_instruction_, *global_scope_, place_);
+    ExecuteInstructionList(vec_instruction_);
   }
 
   // return Fetch Tensors
@@ -215,11 +112,12 @@ void InterpreterCore::Convert() {
     Instruction temp_inst;
     auto* op_base = op_list_[i];
     temp_inst.dev_ctx_ =
-        ParseDeviceContextForInstruction(vec_func_list_[i], *op_base);
+        stream_analyzer_.ParseDeviceContext(vec_func_list_[i], *op_base);
     temp_inst.kernel_func_.compute_func_ = vec_func_list_[i].kernel_func_;
     temp_inst.kernel_func_.operator_base_ = op_base;
     temp_inst.input_index_ = vec_func_list_[i].input_index;
     temp_inst.output_index_ = vec_func_list_[i].output_index;
+    temp_inst.type_ = vec_func_list_[i].type_;
 
     OpInOutInfo info;
 
@@ -268,8 +166,6 @@ void InterpreterCore::Convert() {
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
-    gc_event_.emplace_back(place_, platform::GenerateDeviceEventFlag());
-
     std::vector<size_t> vec_temp;
     for (auto& item : vec_instruction_[i].output_index_) {
       for (auto id : item.second) {
@@ -278,8 +174,8 @@ void InterpreterCore::Convert() {
       }
     }
 
-    // In Program, op order is a very import information.
-    // Op can noly add op after it as next as next ops.
+    // In Program, op order is a very important information.
+    // Op can only add op after it as next as next ops.
     std::vector<size_t> filter_next;
     filter_next.reserve(vec_temp.size());
     for (auto item : vec_temp) {
@@ -288,8 +184,7 @@ void InterpreterCore::Convert() {
       }
     }
 
-    ParseDirectAndEventRunOps(place_, vec_func_list_, filter_next, i,
-                              &var_id2event_, &vec_instruction_);
+    stream_analyzer_.Schedule(filter_next, &vec_instruction_, i);
 
     for (auto inst_id : filter_next) {
       dependecy_count_[inst_id]++;
@@ -300,6 +195,48 @@ void InterpreterCore::Convert() {
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
     BuildAndCacheInstructionCtx(&vec_instruction_[i], *global_scope_, place_);
+  }
+
+  BuildSkipShareLoDInfo();
+
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    gc_event_.emplace_back(vec_instruction_[i].execution_ctx_.get()->GetPlace(),
+                           platform::GenerateDeviceEventFlag());
+  }
+
+  if (FLAGS_new_executor_use_inplace) {
+    BuildInplace();
+  }
+}
+
+void InterpreterCore::BuildInplace() {
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    if (!vec_instruction_[i]
+             .kernel_func_.operator_base_->Info()
+             .infer_inplace_) {
+      continue;
+    }
+
+    auto in_to_outs =
+        vec_instruction_[i].kernel_func_.operator_base_->Info().infer_inplace_(
+            platform::is_gpu_place(vec_instruction_[i].dev_ctx_->GetPlace()));
+
+    for (auto& pair : in_to_outs) {
+      auto iter = vec_instruction_[i].input_index_.find(pair.first);
+      if (iter != vec_instruction_[i].input_index_.end()) {
+        if (input_var2op_info_[iter->second[0]].size() == 1) {
+          auto iterout = vec_instruction_[i].output_index_.find(pair.second);
+          if (iterout != vec_instruction_[i].output_index_.end()) {
+            auto invar = global_scope_->var_list[iter->second[0]];
+            auto outvar = global_scope_->var_list[iterout->second[0]];
+            if (invar && outvar) {
+              vec_instruction_[i].vec_inplace_in_to_out_.emplace_back(invar,
+                                                                      outvar);
+            }
+          }
+        }
+      }
+    }
   }
 }
 
@@ -334,8 +271,8 @@ void InterpreterCore::BuildAndCacheInstructionCtx(
   instr_node->runtime_ctx_->inputs.swap(ins_map);
   instr_node->runtime_ctx_->outputs.swap(outs_map);
 
-  instr_node->infershape_ctx_.reset(
-      new RuntimeInferShapeContext(*op_base, *instr_node->runtime_ctx_.get()));
+  instr_node->infershape_ctx_.reset(new InterpretercoreInferShapeContext(
+      *op_base, *instr_node->runtime_ctx_.get()));
 
   auto* dev_ctx = instr_node->dev_ctx_;
   Scope scope;
@@ -344,140 +281,122 @@ void InterpreterCore::BuildAndCacheInstructionCtx(
       *op_base, scope, *dev_ctx, *instr_node->runtime_ctx_.get()));
 }
 
+void InterpreterCore::BuildSkipShareLoDInfo() {
+  for (size_t i = 0; i < vec_instruction_.size(); ++i) {
+    bool can_skip_lod = true;
+    for (auto& input : vec_instruction_[i].runtime_ctx_.get()->inputs) {
+      for (auto& var : input.second) {
+        if (var->IsType<LoDTensor>()) {
+          if (var->Get<LoDTensor>().lod().size() != 0) {
+            can_skip_lod = false;
+            break;
+          }
+        } else {
+          can_skip_lod = false;
+          break;
+        }
+      }
+    }
+    vec_instruction_[i].infershape_ctx_.get()->SetSkipLoD(can_skip_lod);
+  }
+}
+
 void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   VLOG(3) << "RunInstruction:  "
           << instr_node.kernel_func_.operator_base_->Type();
 
-  static_cast<const framework::OperatorWithKernel*>(
-      instr_node.kernel_func_.operator_base_)
-      ->InferShape(instr_node.infershape_ctx_.get());
+  {
+    platform::RecordEvent infershape_event("InferShape");
+    static_cast<const framework::OperatorWithKernel*>(
+        instr_node.kernel_func_.operator_base_)
+        ->InferShape(instr_node.infershape_ctx_.get());
+  }
 
-  instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
+  if (FLAGS_new_executor_use_inplace) {
+    for (auto& pair : instr_node.vec_inplace_in_to_out_) {
+      const auto& in = paddle::framework::details::GetTensorFromVar(pair.first);
+      auto* out =
+          paddle::framework::details::GetMutableTensorFromVar(pair.second);
+      if (in.dims() == out->dims()) {
+        out->ShareBufferWith(in);
+      }
+    }
+  }
+  {
+    platform::RecordEvent compute_event("Compute");
+    instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
+  }
 }
 
 void InterpreterCore::ExecuteInstructionList(
-    const std::vector<Instruction>& vec_instr, const VariableScope& var_scope,
-    const platform::Place& place, bool is_dry_run) {
-  std::queue<size_t> working_queue;
-  auto working_dependecy_count = dependecy_count_;
+    const std::vector<Instruction>& vec_instr) {
+  auto atomic_deps = async_work_queue_.PrepareAtomicDeps(dependecy_count_);
+  auto atomic_var_ref = async_work_queue_.PrepareAtomicVarRef(vec_meta_info_);
+  std::atomic<size_t> op_run_number{0};
+
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
-      working_queue.push(i);
+      async_work_queue_.AddTask(vec_instr[i].type_, [&, i]() {
+        RunInstructionAsync(i, &atomic_deps, &atomic_var_ref, &op_run_number);
+      });
     }
   }
 
-  auto working_var_ref = vec_meta_info_;
+  async_work_queue_.WaitEmpty();
 
-  size_t run_op_number = 0;
-  while (!working_queue.empty()) {
-    auto instr_id = working_queue.front();
-    working_queue.pop();
-    auto& instr_node = vec_instr[instr_id];
-    // step1 : stream_wait (non-block host) or sync (block host)
-    StreamWaitEventOrSync(instr_node);
-    // step2: run instruction
-    RunInstruction(instr_node);
-    ++run_op_number;
+  PADDLE_ENFORCE_EQ(
+      op_run_number.load(), vec_instr.size(),
+      platform::errors::Fatal(
+          "Required op_run_number == %d, but received op_run_number = %d.",
+          vec_instr.size(), op_run_number.load()));
+}
 
-    if (is_dry_run) {
-      dry_run_profiler_.ParseMemoryInfo(var_scope.var_list);
+void InterpreterCore::RunInstructionAsync(size_t instr_id,
+                                          AtomicVectorSizeT* atomic_deps,
+                                          AtomicVectorSizeT* atomic_var_ref,
+                                          std::atomic<size_t>* op_run_number) {
+  auto& instr_node = vec_instruction_[instr_id];
+  platform::RecordEvent instruction_event(
+      instr_node.kernel_func_.operator_base_->Type());
+  event_manager_.WaitEvent(instr_node, place_);
+
+  RunInstruction(instr_node);
+
+  event_manager_.RecordEvent(instr_node, place_);
+  op_run_number->fetch_add(1, std::memory_order_relaxed);
+
+  auto& next_instr = instr_node.next_instruction_.all_next_ops_;
+
+  for (auto next_i : next_instr) {
+    // fetch_sub return value before applying sub
+    bool is_ready =
+        atomic_deps->at(next_i)->fetch_sub(1, std::memory_order_relaxed) == 1;
+    if (is_ready) {
+      async_work_queue_.AddTask(vec_instruction_[next_i].type_, [=]() {
+        RunInstructionAsync(next_i, atomic_deps, atomic_var_ref, op_run_number);
+      });
     }
-
-    // step3: insert event for out_vars if needed
-    RecordEventInstruction(instr_node, vec_func_list_[instr_id]);
-
-    // step4: update working_queue
-    auto& next_instr = instr_node.next_instruction_.all_next_ops_;
-
-    for (auto next_i : next_instr) {
-      --working_dependecy_count[next_i];
-      if (working_dependecy_count[next_i] == 0) {
-        working_queue.push(next_i);
-      }
-    }
-
-    // GC infomation
-    CheckGC(instr_id, instr_node.gc_check_var_list, var_scope, place,
-            working_var_ref);
   }
+  // GC infomation
+  CheckGC(instr_id, instr_node.gc_check_var_list, atomic_var_ref);
 }
 
 void InterpreterCore::CheckGC(size_t instr_id,
                               const std::vector<size_t>& gc_check_list,
-                              const VariableScope& var_scope,
-                              const platform::Place& place,
-                              std::vector<VariableMetaInfo>& working_var_ref) {
-  for (auto var_id : gc_check_list) {
-    --working_var_ref[var_id].var_ref_count_;
-    if (var_scope.vec_meta_info_[var_id].vardesc_ &&
-        !var_scope.vec_meta_info_[var_id].vardesc_->Persistable() &&
-        working_var_ref[var_id].var_ref_count_ == 0) {
-      Variable* var = var_scope.var_list[var_id];
-      if (var->IsType<LoDTensor>()) {
-        garbages_->emplace_back(
-            var->GetMutable<LoDTensor>()->MoveMemoryHolder());
-        if (garbages_->back()) {
-          cur_memory_size_ += garbages_->back()->size();
-        }
-      } else if (var->IsType<SelectedRows>()) {
-        garbages_->emplace_back(var->GetMutable<SelectedRows>()
-                                    ->mutable_value()
-                                    ->MoveMemoryHolder());
-        if (garbages_->back()) {
-          cur_memory_size_ += garbages_->back()->size();
-        }
-      } else if (var->IsType<LoDTensorArray>()) {
-        auto* tensor_arr = var->GetMutable<LoDTensorArray>();
-        for (auto& t : *tensor_arr) {
-          garbages_->emplace_back(t.MoveMemoryHolder());
-          if (garbages_->back()) {
-            cur_memory_size_ += garbages_->back()->size();
-          }
-        }
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "The variable(%s) is not supported in eager deletion.",
-            framework::ToTypeName(var->Type())));
-      }
-    }
-  }
+                              AtomicVectorSizeT* atomic_var_ref) {
+  auto& var_scope = *global_scope_;
 
-  if (!garbages_->empty()) {
-    if (max_memory_size_ <= 1) {
-      gc_event_[instr_id].Record(
-          platform::DeviceContextPool::Instance().Get(place));
-      gc_event_[instr_id].SetFininshed();  // Only for CPU Event
-      gc_queue_->AddTask(
-          [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
-            while (!event->Query()) {
-#if defined(_WIN32)
-              SleepEx(50, FALSE);
-#else
-              sched_yield();
-#endif
-              continue;
-            }
-            delete container;
-          });
-      garbages_.reset(new GarbageQueue());
-    } else if (cur_memory_size_ >= max_memory_size_) {
-      gc_event_[instr_id].Record(
-          platform::DeviceContextPool::Instance().Get(place));
-      gc_event_[instr_id].SetFininshed();  // Only for CPU Event
-      gc_queue_->AddTask(
-          [ container = garbages_.release(), event = &gc_event_[instr_id] ]() {
-            while (!event->Query()) {
-#if defined(_WIN32)
-              SleepEx(50, FALSE);
-#else
-              sched_yield();
-#endif
-              continue;
-            }
-            delete container;
-          });
-      garbages_.reset(new GarbageQueue());
-      cur_memory_size_ = 0;
+  for (auto var_id : gc_check_list) {
+    bool is_ready = atomic_var_ref->at(var_id)->fetch_sub(
+                        1, std::memory_order_relaxed) == 1;
+    if (is_ready && var_scope.vec_meta_info_[var_id].vardesc_ &&
+        !var_scope.vec_meta_info_[var_id].vardesc_->Persistable()) {
+      gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
+              vec_instruction_[instr_id].dev_ctx_);
+    } else if (is_ready &&
+               var_scope.vec_meta_info_[var_id].vardesc_ == nullptr) {
+      gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
+              vec_instruction_[instr_id].dev_ctx_);
     }
   }
 }
@@ -518,8 +437,7 @@ const CostInfo& InterpreterCore::DryRun(
   // DryRun may be called many times.
   dry_run_profiler_.Reset();
   dry_run_profiler_.Start();
-  ExecuteInstructionList(vec_instruction_, *global_scope_, place_,
-                         /*is_dry_run=*/true);
+  ExecuteInstructionList(vec_instruction_);
   platform::DeviceContextPool::Instance().Get(place_)->Wait();
 
   dry_run_profiler_.Pause();
@@ -527,54 +445,5 @@ const CostInfo& InterpreterCore::DryRun(
   return dry_run_profiler_.GetCostInfo();
 }
 
-platform::DeviceContext* InterpreterCore::ParseDeviceContextForInstruction(
-    const OpFuncNode& op_func_node, const OperatorBase& op_base) {
-  auto& op_type = op_base.Type();
-  auto* dev_ctx = op_func_node.dev_ctx_;
-  if (op_type == interpretercore::kMemcpyH2D) {
-    VLOG(3) << "Get dev_ctx from d2h_context_pool_";
-    dev_ctx = d2h_ctx_pool_.Get(place_);
-  } else if (op_type == interpretercore::kMemcpyD2H) {
-    VLOG(3) << "Get dev_ctx from h2d_context_pool_";
-    dev_ctx = h2d_ctx_pool_.Get(place_);
-  }
-
-  return dev_ctx;
-}
-
-void InterpreterCore::RecordEventInstruction(const Instruction& instruction,
-                                             const OpFuncNode& op_func_node) {
-  // If InterpreterCore in on CPUPlace, do nothing.
-  if (platform::is_cpu_place(place_)) return;
-
-  for (auto& event : instruction.output_events_) {
-    VLOG(3) << "Record event in out_var_id: " << event.var_id_;
-    event.event_->Record(instruction.dev_ctx_);
-  }
-}
-
-void InterpreterCore::WaitOrSync(const std::vector<EventInter>& events,
-                                 const platform::DeviceContext* dev_ctx) {
-  for (auto& event_iter : events) {
-    if (event_iter.is_sync_) {
-      VLOG(3) << "host sync wait in_var_id " << event_iter.var_id_;
-      event_iter.event_->Wait(platform::kCPU, dev_ctx);
-    } else {
-      VLOG(3) << "stream async wait in_var_id " << event_iter.var_id_;
-      event_iter.event_->Wait(platform::kCUDA, dev_ctx);
-    }
-  }
-}
-
-void InterpreterCore::StreamWaitEventOrSync(const Instruction& instruction) {
-  // If InterpreterCore in on CPUPlace, do nothing.
-  if (platform::is_cpu_place(place_)) return;
-
-  VLOG(3) << "Deal StreamWaitEventOrSync for "
-          << instruction.kernel_func_.operator_base_->Type();
-  auto* dev_ctx = instruction.dev_ctx_;
-
-  WaitOrSync(instruction.intput_events_, dev_ctx);
-}
 }  // namespace framework
 }  // namespace paddle

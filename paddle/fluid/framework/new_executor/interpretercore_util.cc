@@ -18,6 +18,27 @@ namespace paddle {
 namespace framework {
 namespace interpretercore {
 
+AtomicVectorSizeT AsyncWorkQueue::PrepareAtomicDeps(
+    const std::vector<size_t>& dependecy_count) {
+  AtomicVectorSizeT working_dependecy_count(dependecy_count.size());
+  for (size_t i = 0; i < dependecy_count.size(); ++i) {
+    working_dependecy_count[i] =
+        std::make_unique<std::atomic<size_t>>(dependecy_count[i]);
+  }
+  return std::move(working_dependecy_count);
+}
+
+AtomicVectorSizeT AsyncWorkQueue::PrepareAtomicVarRef(
+    const std::vector<VariableMetaInfo>& vec_meta_info) {
+  AtomicVectorSizeT working_var_ref(vec_meta_info.size());
+
+  for (size_t i = 0; i < vec_meta_info.size(); ++i) {
+    working_var_ref[i] =
+        std::make_unique<std::atomic<size_t>>(vec_meta_info[i].var_ref_count_);
+  }
+  return std::move(working_var_ref);
+}
+
 bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
   auto* var_desc = block.FindVar(name);
   if (var_desc == nullptr || var_desc->Persistable()) {
@@ -117,6 +138,13 @@ void build_variable_scope(const framework::ProgramDesc& pdesc,
       info.var_ref_count_ = 0;
       info.vardesc_ = var;
       var_scope->vec_meta_info_.push_back(info);
+    } else {
+      auto var_id = var_scope->name2id[var->Name()];
+      if (nullptr == var_scope->vec_meta_info_[var_id].vardesc_) {
+        VLOG(3) << "update var:" << var->Name() << " desc from nullptr into "
+                << var;
+        var_scope->vec_meta_info_[var_id].vardesc_ = var;
+      }
     }
   }
 }
@@ -199,7 +227,7 @@ void build_op_func_list(const platform::Place& place,
     RuntimeContext runtime_context({}, {});
     runtime_context.inputs.swap(ins_map);
     runtime_context.outputs.swap(outs_map);
-    RuntimeInferShapeContext infer_shape_ctx(*op_base, runtime_context);
+    InterpretercoreInferShapeContext infer_shape_ctx(*op_base, runtime_context);
     static_cast<const framework::OperatorWithKernel*>(op_base)->InferShape(
         &infer_shape_ctx);
     auto kernels_iter = all_op_kernels.find(op->Type());
@@ -313,8 +341,8 @@ void build_op_func_list(const platform::Place& place,
           RuntimeContext copy_runtime_context({}, {});
           copy_runtime_context.inputs.swap(copy_ins_value_map);
           copy_runtime_context.outputs.swap(copy_outs_value_map);
-          RuntimeInferShapeContext copy_infer_shape_ctx(*copy_op,
-                                                        copy_runtime_context);
+          InterpretercoreInferShapeContext copy_infer_shape_ctx(
+              *copy_op, copy_runtime_context);
           static_cast<const framework::OperatorWithKernel*>(copy_op)
               ->InferShape(&copy_infer_shape_ctx);
 
@@ -337,7 +365,9 @@ void build_op_func_list(const platform::Place& place,
               OpKernelComputeFunc(kernel_iter->second);
           copy_op_func_node.kernel_func_(copy_exec_ctx);
           VLOG(3) << "Run " << memcpy_op_type << " done.";
-          copy_op_func_node.type_ = OpFuncType::kQueueAsync;
+          // NOTE(Aurelius84): memcpy_op is expensive operation, so we tag them
+          // as kQueueSync and execute them in thread pool.
+          copy_op_func_node.type_ = OpFuncType::kQueueSync;
           copy_op_func_node.dev_ctx_ = dev_ctx;
           op_list->push_back(copy_op);
           vec_func_list->push_back(copy_op_func_node);
