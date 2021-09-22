@@ -275,7 +275,7 @@ ernie_qat_model="quant_post_model_xnli_predict_matmul"
 ${exe_dir}/test_ernie_xnli_int8 \
     --modeldir=$DATA_DIR/$ernie_qat_model/$ernie_qat_model \
     --datadir=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/xnli_var_len \
-    --truth_data=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/truth_data
+    --truth_data=$DATA_DIR/$ernie_qat_model/$ernie_qat_model/truth_data \
     --gtest_filter=${test_suite_list} \
     --gtest_output=xml:${log_dir}/test_ernie_xnli_int8.xml
 if [ $? -ne 0 ]; then
