@@ -97,26 +97,25 @@ struct CPUArgmax {
   }
 };
 
-#ifdef PADDLE_WITH_MKLML
 template <typename T, typename Functor>
-void MKLBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
+void SameDimsBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
   const T* lhs_ptr = lhs.data<T>();
   const T* rhs_ptr = rhs.data<T>();
   T* out_ptr = out->data<T>();
   int64_t nums = out->numel();
   Functor functor;
+#ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
+#endif
   for (int64_t i = 0; i < nums; ++i) {
     out_ptr[i] = functor(lhs_ptr[i], rhs_ptr[i]);
   }
 }
+
 // Need to gurantee that lhs, rhs have same dims
-#define EXECUTE_MKL_ELEMENT_BINARY_OP(lhs, rhs, output, functor_type, dtype) \
-  MKLBinaryOP<dtype, functor_type##Functor<dtype>>(lhs, rhs, &output)
-#else
-#define EXECUTE_MKL_ELEMENT_BINARY_OP(lhs, rhs, output, functor_type, dtype) \
-  ELEMENT_BINARY_OP(lhs, rhs, output, functor_type, dtype)
-#endif
+#define EXECUTE_SAME_DIMS_ELEMENT_BINARY_OP(lhs, rhs, output, functor_type, \
+                                            dtype)                          \
+  SameDimsBinaryOP<dtype, functor_type##Functor<dtype>>(lhs, rhs, &output)
 
 template <typename T, typename IndexT = int>
 void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
@@ -275,7 +274,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       ElementwiseComputeEx<EqualFunctor<T>, DeviceContext, int64_t, T>(
           ctx, &left_length, &one, -1, EqualFunctor<T>(), &float_mask);
       MUL(stop_trans_exp, float_mask, alpha_nxt, T);
-      EXECUTE_MKL_ELEMENT_BINARY_OP(alpha, alpha_nxt, alpha, Add, T);
+      EXECUTE_SAME_DIMS_ELEMENT_BINARY_OP(alpha, alpha_nxt, alpha, Add, T);
     } else {
       alpha = logit0;
     }
@@ -293,7 +292,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       argmax(alpha_trn_sum, &alpha_argmax_temp, &alpha_max, 1);
       historys.push_back(alpha_argmax_temp);
 
-      EXECUTE_MKL_ELEMENT_BINARY_OP(alpha_max, logit, alpha_nxt, Add, T);
+      EXECUTE_SAME_DIMS_ELEMENT_BINARY_OP(alpha_max, logit, alpha_nxt, Add, T);
 
       alpha.Resize({batch_size, n_labels});
 
@@ -304,18 +303,19 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       // alpha_nxt = mask * alpha_nxt
       MUL(alpha_nxt, float_mask, alpha_nxt, T);
       // inv_mask = 1 - mask
-      EXECUTE_MKL_ELEMENT_BINARY_OP(float_one, float_mask, float_mask, Sub, T);
+      EXECUTE_SAME_DIMS_ELEMENT_BINARY_OP(float_one, float_mask, float_mask,
+                                          Sub, T);
       // alpha = (1 - mask) * alpha
       MUL(alpha, float_mask, alpha, T);
       // alpha += alpha_nxt
-      EXECUTE_MKL_ELEMENT_BINARY_OP(alpha, alpha_nxt, alpha, Add, T);
+      EXECUTE_SAME_DIMS_ELEMENT_BINARY_OP(alpha, alpha_nxt, alpha, Add, T);
       if (with_start_stop_tag) {  // cost 10% time
         ElementwiseComputeEx<EqualFunctor<T>, DeviceContext, int64_t, T>(
             ctx, &left_length, &one, -1, EqualFunctor<T>(), &float_mask);
         // trans_exp: [1, n, n]
         // alpha += mask * trans_exp[:, self.stop_idx]
         MUL(stop_trans_exp, float_mask, alpha_nxt, T);
-        EXECUTE_MKL_ELEMENT_BINARY_OP(alpha, alpha_nxt, alpha, Add, T);
+        EXECUTE_SAME_DIMS_ELEMENT_BINARY_OP(alpha, alpha_nxt, alpha, Add, T);
       }
       SUB(left_length, one, left_length, int64_t);
     }
@@ -333,17 +333,17 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     int last_ids_index = 1;
     int actual_len = std::min(seq_len, static_cast<int>(max_seq_len));
 
-    EXECUTE_MKL_ELEMENT_BINARY_OP(last_ids, int_mask,
-                                  batch_path[actual_len - last_ids_index], Mul,
-                                  int64_t);
+    EXECUTE_SAME_DIMS_ELEMENT_BINARY_OP(last_ids, int_mask,
+                                        batch_path[actual_len - last_ids_index],
+                                        Mul, int64_t);
     ARange(batch_offset.data<int64_t>(), static_cast<int64_t>(batch_size),
            static_cast<int64_t>(n_labels));
 
     for (auto hist = historys.rbegin(); hist != historys.rend(); ++hist) {
       ++last_ids_index;
       ADD(left_length, one, left_length, int64_t);
-      EXECUTE_MKL_ELEMENT_BINARY_OP(batch_offset, last_ids, gather_idx, Add,
-                                    int64_t);
+      EXECUTE_SAME_DIMS_ELEMENT_BINARY_OP(batch_offset, last_ids, gather_idx,
+                                          Add, int64_t);
 
       // tag_mask = paddle.cast((left_length >= 0), 'int64')
       // last_ids_update = paddle.gather(hist.flatten(), gather_idx) * tag_mask
@@ -353,14 +353,15 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       ElementwiseComputeEx<GreaterEqualFunctor<int64_t>, DeviceContext,
                            int64_t>(ctx, &left_length, &zero, -1,
                                     GreaterEqualFunctor<int64_t>(), &int_mask);
-      EXECUTE_MKL_ELEMENT_BINARY_OP(last_ids_update, int_mask, last_ids_update,
-                                    Mul, int64_t);
+      EXECUTE_SAME_DIMS_ELEMENT_BINARY_OP(last_ids_update, int_mask,
+                                          last_ids_update, Mul, int64_t);
       // tag_mask = 1 - tag_mask
       SUB(one, int_mask, int_mask, int64_t);
       // last_ids = last_ids_update + last_ids * (1 - tag_mask)
-      EXECUTE_MKL_ELEMENT_BINARY_OP(last_ids, int_mask, last_ids, Mul, int64_t);
-      EXECUTE_MKL_ELEMENT_BINARY_OP(last_ids_update, last_ids, last_ids, Add,
-                                    int64_t);
+      EXECUTE_SAME_DIMS_ELEMENT_BINARY_OP(last_ids, int_mask, last_ids, Mul,
+                                          int64_t);
+      EXECUTE_SAME_DIMS_ELEMENT_BINARY_OP(last_ids_update, last_ids, last_ids,
+                                          Add, int64_t);
     }
     // transpose batch_path
     axis = {1, 0};
