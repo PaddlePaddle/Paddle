@@ -99,7 +99,6 @@ class InterpreterCore {
 
   InterpreterCoreGarbageCollector gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;
-  std::unique_ptr<WorkQueueGroup> group_thread_pool_;
 };
 }  // namespace framework
 }  // namespace paddle
