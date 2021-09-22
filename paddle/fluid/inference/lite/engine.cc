@@ -69,6 +69,25 @@ paddle::lite_api::PaddlePredictor* EngineManager::Create(
                                                cfg.adaptive_seqlen);
 #endif
 
+#ifdef LITE_SUBGRAPH_WITH_NPU
+  lite_cxx_config.set_nnadapter_device_names(cfg.nnadapter_device_names);
+  lite_cxx_config.set_nnadapter_context_properties(
+      cfg.nnadapter_context_properties);
+  lite_cxx_config.set_nnadapter_model_cache_dir(cfg.nnadapter_model_cache_dir);
+  if (!cfg.nnadapter_subgraph_partition_config_path.empty()) {
+    lite_cxx_config.set_nnadapter_subgraph_partition_config_path(
+        cfg.nnadapter_subgraph_partition_config_path);
+  }
+  if (!cfg.nnadapter_subgraph_partition_config_buffer.empty()) {
+    lite_cxx_config.set_nnadapter_subgraph_partition_config_buffer(
+        cfg.nnadapter_subgraph_partition_config_buffer);
+  }
+  for (size_t i = 0; i < cfg.nnadapter_model_cache_token.size(); ++i) {
+    lite_cxx_config.set_nnadapter_model_cache_buffers(
+        cfg.nnadapter_model_cache_token[i],
+        cfg.nnadapter_model_cache_buffer[i]);
+  }
+#endif
   // create predictor
   std::shared_ptr<paddle::lite_api::PaddlePredictor> p =
       paddle::lite_api::CreatePaddlePredictor(lite_cxx_config);

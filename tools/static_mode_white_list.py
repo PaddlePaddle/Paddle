@@ -173,6 +173,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_elementwise_nn_grad',
     'test_elementwise_pow_op',
     'test_ema',
+    'test_ema_fleet',
     'test_embedding_id_stop_gradient',
     'test_empty_like_op',
     'test_entry_attr',
