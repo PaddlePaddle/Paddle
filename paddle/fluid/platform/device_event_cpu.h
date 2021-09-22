@@ -23,7 +23,8 @@ namespace platform {
 
 struct CPUDeviceEventWrapper {
   explicit CPUDeviceEventWrapper(const platform::Place& place,
-                                 unsigned int flag = 0) {
+                                 unsigned int flag = 0)
+      : status_(EventStatus::INITIALIZED) {
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(place), true,
         platform::errors::PreconditionNotMet(

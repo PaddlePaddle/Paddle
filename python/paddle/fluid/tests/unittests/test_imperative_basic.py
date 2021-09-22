@@ -841,6 +841,14 @@ class TestDygraphGuardWithError(unittest.TestCase):
             y = fluid.layers.matmul(x, x)
 
 
+class TestMetaclass(unittest.TestCase):
+    def test_metaclass(self):
+        self.assertEqual(type(MyLayer).__name__, 'type')
+        self.assertNotEqual(type(MyLayer).__name__, 'pybind11_type')
+        self.assertEqual(
+            type(paddle.fluid.core.VarBase).__name__, 'pybind11_type')
+
+
 if __name__ == '__main__':
     paddle.enable_static()
     unittest.main()

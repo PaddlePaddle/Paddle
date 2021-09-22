@@ -779,10 +779,11 @@ def save(layer, path, input_spec=None, **configs):
 
         dygraph_state_dict = None
         if isinstance(inner_layer, Layer):
-            dygraph_state_dict = inner_layer.state_dict()
+            dygraph_state_dict = inner_layer.to_static_state_dict()
         elif isinstance(attr_func, StaticFunction):
             if attr_func._class_instance:
-                dygraph_state_dict = attr_func._class_instance.state_dict()
+                dygraph_state_dict = attr_func._class_instance.to_static_state_dict(
+                )
 
         if dygraph_state_dict:
             # NOTE(chenweihang): we maintain the mapping of variable name to
@@ -790,8 +791,10 @@ def save(layer, path, input_spec=None, **configs):
             # saved to inference program may not need by dygraph Layer,
             # we only record the state_dict variable's structured name
             state_names_dict = dict()
+            state_var_dict = dict()
             for structured_name, var in six.iteritems(dygraph_state_dict):
                 state_names_dict[var.name] = structured_name
+                state_var_dict[var.name] = var
 
             # 3. share parameters from Layer to scope & record var info
             for param_or_buffer in concrete_program.parameters:
@@ -803,7 +806,9 @@ def save(layer, path, input_spec=None, **configs):
                 else:
                     param_or_buffer_tensor = scope.var(
                         param_or_buffer.name).get_tensor()
-                    src_tensor = param_or_buffer.value().get_tensor()
+                    #src_tensor = param_or_buffer.value().get_tensor()
+                    src_tensor = state_var_dict[param_or_buffer.name].value(
+                    ).get_tensor()
                     param_or_buffer_tensor._share_data_with(src_tensor)
                 # record var info
                 if param_or_buffer.name not in extra_var_info:
@@ -860,7 +865,8 @@ def save(layer, path, input_spec=None, **configs):
                 model_filename=model_filename,
                 params_filename=params_filename,
                 export_for_deployment=configs._export_for_deployment,
-                program_only=configs._program_only)
+                program_only=configs._program_only,
+                clip_extra=False)
 
     # NOTE(chenweihang): [ Save extra variable info ]
     # save_inference_model will lose some important variable information, including:
@@ -1066,6 +1072,7 @@ def load(path, **configs):
                 batch_size=BATCH_SIZE,
                 shuffle=True,
                 drop_last=True,
+                return_list=False,
                 num_workers=2)
 
             # 1. train and save inference model
@@ -1347,7 +1354,7 @@ class TracedLayer(object):
             return self._run(self._build_feed(inputs))
 
     @switch_to_static_graph
-    def save_inference_model(self, path, feed=None, fetch=None):
+    def save_inference_model(self, path, feed=None, fetch=None, **kwargs):
         """
         Save the TracedLayer to a model for inference. The saved
         inference model can be loaded by C++ inference APIs.
@@ -1365,6 +1372,7 @@ class TracedLayer(object):
                 saved inference model. If None, all output variables of the
                 TracedLayer object would be the outputs of the saved inference
                 model. Default None.
+            kwargs: Supported keys including 'clip_extra'.set to True if you want to clip extra information for every operator.
 
         Returns:
             None
@@ -1414,7 +1422,7 @@ class TracedLayer(object):
             for f in fetch:
                 check_type(f, "each element of fetch", int,
                            "fluid.dygraph.jit.TracedLayer.save_inference_model")
-
+        clip_extra = kwargs.get('clip_extra', False)
         # path check
         file_prefix = os.path.basename(path)
         if file_prefix == "":
@@ -1454,4 +1462,5 @@ class TracedLayer(object):
                 executor=self._exe,
                 main_program=self._program.clone(),
                 model_filename=model_filename,
-                params_filename=params_filename)
+                params_filename=params_filename,
+                clip_extra=clip_extra)

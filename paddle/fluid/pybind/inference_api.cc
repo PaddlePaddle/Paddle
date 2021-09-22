@@ -87,6 +87,7 @@ void BindPaddlePlace(py::module *m);
 void BindPaddlePredictor(py::module *m);
 void BindNativeConfig(py::module *m);
 void BindNativePredictor(py::module *m);
+void BindLiteNNAdapterConfig(py::module *m);
 void BindAnalysisConfig(py::module *m);
 void BindAnalysisPredictor(py::module *m);
 void BindZeroCopyTensor(py::module *m);
@@ -319,6 +320,7 @@ void BindInferenceApi(py::module *m) {
   BindPaddlePredictor(m);
   BindNativeConfig(m);
   BindNativePredictor(m);
+  BindLiteNNAdapterConfig(m);
   BindAnalysisConfig(m);
   BindAnalysisPredictor(m);
   BindPaddleInferPredictor(m);
@@ -539,6 +541,8 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("locked") = false, py::arg("autotune") = true,
            py::arg("autotune_file") = "", py::arg("precision") = "int16",
            py::arg("adaptive_seqlen") = false)
+      .def("set_xpu_device_id", &AnalysisConfig::SetXpuDeviceId,
+           py::arg("device_id") = 0)
       .def("enable_npu", &AnalysisConfig::EnableNpu, py::arg("device_id") = 0)
       .def("disable_gpu", &AnalysisConfig::DisableGpu)
       .def("use_gpu", &AnalysisConfig::use_gpu)
@@ -554,7 +558,8 @@ void BindAnalysisConfig(py::module *m) {
       .def("switch_ir_optim", &AnalysisConfig::SwitchIrOptim,
            py::arg("x") = true)
       .def("ir_optim", &AnalysisConfig::ir_optim)
-      .def("enable_memory_optim", &AnalysisConfig::EnableMemoryOptim)
+      .def("enable_memory_optim", &AnalysisConfig::EnableMemoryOptim,
+           py::arg("x") = true)
       .def("enable_profile", &AnalysisConfig::EnableProfile)
       .def("disable_glog_info", &AnalysisConfig::DisableGlogInfo)
       .def("glog_info_disabled", &AnalysisConfig::glog_info_disabled)
@@ -571,6 +576,7 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("min_subgraph_size") = 3,
            py::arg("precision_mode") = AnalysisConfig::Precision::kFloat32,
            py::arg("use_static") = false, py::arg("use_calib_mode") = true)
+      .def("tensorrt_precision_mode", &AnalysisConfig::tensorrt_precision_mode)
       .def("set_trt_dynamic_shape_info",
            &AnalysisConfig::SetTRTDynamicShapeInfo,
            py::arg("min_input_shape") =
@@ -580,8 +586,20 @@ void BindAnalysisConfig(py::module *m) {
            py::arg("optim_input_shape") =
                std::map<std::string, std::vector<int>>({}),
            py::arg("disable_trt_plugin_fp16") = false)
+      .def("tensorrt_dynamic_shape_enabled",
+           &AnalysisConfig::tensorrt_dynamic_shape_enabled)
       .def("enable_tensorrt_oss", &AnalysisConfig::EnableTensorRtOSS)
       .def("tensorrt_oss_enabled", &AnalysisConfig::tensorrt_oss_enabled)
+      .def("collect_shape_range_info", &AnalysisConfig::CollectShapeRangeInfo)
+      .def("shape_range_info_path", &AnalysisConfig::shape_range_info_path)
+      .def("shape_range_info_collected",
+           &AnalysisConfig::shape_range_info_collected)
+      .def("enable_tuned_tensorrt_dynamic_shape",
+           &AnalysisConfig::EnableTunedTensorRtDynamicShape)
+      .def("tuned_tensorrt_dynamic_shape",
+           &AnalysisConfig::tuned_tensorrt_dynamic_shape)
+      .def("trt_allow_build_at_runtime",
+           &AnalysisConfig::trt_allow_build_at_runtime)
       .def("exp_disable_tensorrt_ops", &AnalysisConfig::Exp_DisableTensorRtOPs)
       .def("enable_tensorrt_dla", &AnalysisConfig::EnableTensorRtDLA,
            py::arg("dla_core") = 0)
@@ -624,7 +642,26 @@ void BindAnalysisConfig(py::module *m) {
            [](AnalysisConfig &self) {
              return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
            },
-           py::return_value_policy::reference);
+           py::return_value_policy::reference)
+      .def("nnadapter", &AnalysisConfig::NNAdapter);
+}
+
+void BindLiteNNAdapterConfig(py::module *m) {
+  py::class_<LiteNNAdapterConfig> lite_nnadapter_config(*m,
+                                                        "LiteNNAdapterConfig");
+
+  lite_nnadapter_config
+      .def("set_device_names", &LiteNNAdapterConfig::SetDeviceNames)
+      .def("set_context_properties", &LiteNNAdapterConfig::SetContextProperties)
+      .def("set_model_cache_dir", &LiteNNAdapterConfig::SetModelCacheDir)
+      .def("set_model_cache_buffers",
+           &LiteNNAdapterConfig::SetModelCacheBuffers)
+      .def("set_subgraph_partition_config_path",
+           &LiteNNAdapterConfig::SetSubgraphPartitionConfigPath)
+      .def("set_subgraph_partition_config_buffer",
+           &LiteNNAdapterConfig::SetSubgraphPartitionConfigBuffer)
+      .def("enable", &LiteNNAdapterConfig::Enable)
+      .def("disable", &LiteNNAdapterConfig::Disable);
 }
 
 #ifdef PADDLE_WITH_MKLDNN
