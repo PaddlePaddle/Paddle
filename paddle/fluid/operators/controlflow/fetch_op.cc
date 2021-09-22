@@ -131,13 +131,13 @@ class FetchOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(LoDTensor|unorder_map<string, int32_t>) The resulted LoDTensor"
-             " or unorder_map<string, int32_t> which is expected to return "
+             "(LoDTensor The resulted LoDTensor which is expected to return "
              "to users.");
-    AddOutput("Out",
-              "(vector<LoDTensor>|unorder_map<string, int32_t>) A fetching list"
-              " of LoDTensor|unorder_map<string, int32_t> which may have "
-              "different dimension, shape and data type.");
+    AddOutput(
+        "Out",
+        "(vector<LoDTensor>|unordered_map<string, int32_t>) A fetching list"
+        " of LoDTensor|unordered_map<string, int32_t> which may have "
+        "different dimension, shape and data type.");
     AddAttr<int>("col", "(int) The column index of fetching object.");
     AddComment(R"DOC(
 Fetch Operator.

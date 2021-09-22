@@ -12,8 +12,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <utf8proc.h>
-
 #include <algorithm>
 #include <limits>
 #include <memory>
@@ -31,54 +29,6 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-
-// void SerializeStringMap::write(std::ostream& os, int32_t t) {
-//   os.write(reinterpret_cast<const char*>(&t), sizeof(t));
-// }
-
-// void SerializeStringMap::write(std::ostream& os, const std::string& str) {
-//   size_t length = str.size();
-//   os.write(reinterpret_cast<const char*>(&length), sizeof(length));
-//   os.write(str.data(), length);
-// }
-
-// void SerializeStringMap::read(std::istream& is, int32_t* token_id) {
-//   is.read(reinterpret_cast<char*>(token_id), sizeof(*token_id));
-// }
-
-// std::string SerializeStringMap::read(std::istream& is) {
-//   size_t length;
-//   is.read(reinterpret_cast<char*>(&length), sizeof(length));
-//   char* tmp = new char[length];
-//   is.read(tmp, length);
-//   std::string s(tmp, tmp + length);
-//   return s;
-// }
-
-// void SerializeStringMap::MapTensorToStream(std::ostream& ss) {
-//   size_t t = this->size();
-//   int count = 0;
-//   ss.write(reinterpret_cast<const char*>(&t), sizeof(t));
-//   for (auto it = this->begin(); it != this->end(); ++it) {
-//     std::string str = it->first;
-//     int32_t value = it->second;
-//     write(ss, str);
-//     write(ss, value);
-//     count += 1;
-//   }
-//   VLOG(0) << "MapTensorToStream count " << count;
-// }
-
-// void SerializeStringMap::MapTensorFromStream(std::istream& is) {
-//   size_t map_size;
-//   is.read(reinterpret_cast<char*>(&map_size), sizeof(map_size));
-//   for (size_t i = 0; i < map_size; ++i) {
-//     std::string token = read(is);
-//     int32_t token_id;
-//     read(is, &token_id);
-//     (*this)[token] = token_id;
-//   }
-// }
 
 void TensorCopy(const Tensor& src, const platform::Place& dst_place,
                 const platform::DeviceContext& ctx, Tensor* dst) {

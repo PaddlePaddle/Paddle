@@ -32,7 +32,6 @@ namespace operators {
 
 using std::bad_cast;
 using std::codecvt_utf8;
-using std::cout;
 using std::endl;
 using std::exception;
 using std::ifstream;
@@ -46,9 +45,7 @@ using std::size_t;
 using std::int64_t;
 using std::string;
 using std::vector;
-using std::wcout;
 using std::wstring;
-using std::wstring_convert;
 
 const wstring kStripChars = L" \t\n\r\v\f";
 
@@ -87,48 +84,6 @@ inline bool IsPunctuation(const wchar_t& ch) {
     return true;
   return false;
 }
-
-inline bool IsStripChar(const wchar_t& ch) {
-  return kStripChars.find(ch) != wstring::npos;
-}
-
-inline void Strip(const wstring& text, wstring* ret) {
-  *ret = text;
-  if (ret->empty()) return;
-  size_t pos = 0;
-  while (pos < ret->size() && IsStripChar(ret->at(pos))) pos++;
-  if (pos != 0) *ret = ret->substr(pos, ret->size() - pos);
-  pos = ret->size() - 1;
-  while (IsStripChar(ret->at(pos))) pos--;
-  ret->substr(0, pos + 1);
-}
-
-inline void Split(const wstring& text, vector<wstring>* result) {
-  // vector<wstring> result;
-  boost::split(*result, text, boost::is_any_of(kStripChars));
-  // return result;
-}
-
-inline void WhiteSpaceTokenize(const wstring& text, vector<wstring>* res) {
-  wstring stext;
-  Strip(text, &stext);
-  if (stext.empty()) {
-    return;
-  } else {
-    Split(text, res);
-  }
-}
-
-inline void ToLower(const wstring& s, wstring* res) {
-  res->clear();
-  res->resize(s.size());
-  for (size_t i = 0; i < s.size(); i++) {
-    res->at(i) = std::move(utf8proc_tolower(s[i]));
-  }
-}
-
-// BasicTokenizer::BasicTokenizer(bool do_lower_case /* = true */)
-//     : do_lower_case_(do_lower_case) {}
 
 BasicTokenizer::BasicTokenizer(bool do_lower_case /* = true */)
     : do_lower_case_(do_lower_case) {
@@ -238,7 +193,7 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
 }
 
 BertTokenizer::BertTokenizer(framework::WSTRING_MAP* vocab,
-                             const bool& do_lower_case /* = false */,
+                             bool do_lower_case /* = false */,
                              const wstring& unk_token /* = L"[UNK]" */,
                              const wstring& pad_token /* = L"[PAD]" */,
                              const wstring& cls_token /* = L"[CLS]" */,
@@ -646,14 +601,6 @@ int BertTokenizer::BatchEncode(
       } else {
         return 0;
       }
-
-      // batch_encode_inputs.emplace_back(Encode(
-      //     res, batch_text[i], batch_text_pair[i], max_seq_len,
-      //     pad_to_max_seq_len,
-      //     return_length, return_token_type_ids, return_position_ids,
-      //     return_attention_mask, truncation_strategy,
-      //     return_overflowing_tokens,
-      //     return_special_tokens_mask));
     } else {
       unordered_map<string, vector<int64_t>> res;
       auto status =

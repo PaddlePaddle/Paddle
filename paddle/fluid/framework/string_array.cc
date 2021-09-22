@@ -26,89 +26,73 @@ using WSTRING_MAP = std::unordered_map<std::wstring, std::int32_t>;
 
 std::wstring_convert<std::codecvt_utf8<wchar_t>> kConverter;
 
-std::wstring ConvertStrToWstr(const std::string& src) {
-  return kConverter.from_bytes(src);
-}
-
+// Convert the std::string type to the std::string type.
 void ConvertStrToWstr(const std::string& src, std::wstring* res) {
   *res = kConverter.from_bytes(src);
 }
 
-// void ConvertStrToWstr(const std::string& src, std::wstring* tgt) {
-//   *tgt = kConverter.from_bytes(src);
-// }
-
-std::string ConvertWstrToStr(const std::wstring& src) {
-  return kConverter.to_bytes(src);
-}
-
+// Convert the std::wstring type to the std::string type.
 void ConvertWstrToStr(const std::wstring& src, std::string* res) {
   *res = kConverter.to_bytes(src);
 }
 
-std::string NormalizeNfd(const std::string& s) {
-  std::string ret;
-  char* result = reinterpret_cast<char*>(
-      utf8proc_NFD(reinterpret_cast<const unsigned char*>(s.c_str())));
-  if (result) {
-    ret = std::string(result);
-    free(result);
-  }
-  return ret;
-}
-
-void NormalizeNfd(const std::string& s, std::string* ret) {
+// Normalization Form Canonical Decomposition.
+void NFD(const std::string& s, std::string* ret) {
   *ret = "";
   char* result = reinterpret_cast<char*>(
       utf8proc_NFD(reinterpret_cast<const unsigned char*>(s.c_str())));
   if (result) {
-    *ret = std::string(result);
+    *ret = std::move(std::string(result));
     free(result);
   }
 }
 
-void SerializableStringMap::write(std::ostream& os, int32_t t) {
-  os.write(reinterpret_cast<const char*>(&t), sizeof(t));
-}
-
-void SerializableStringMap::write(std::ostream& os, const std::string& str) {
-  size_t length = str.size();
-  os.write(reinterpret_cast<const char*>(&length), sizeof(length));
-  os.write(str.c_str(), length);
-}
-
-void SerializableStringMap::read(std::istream& is, int32_t* token_id) {
-  is.read(reinterpret_cast<char*>(token_id), sizeof(*token_id));
-}
-
-std::string SerializableStringMap::read(std::istream& is) {
-  size_t length;
-  is.read(reinterpret_cast<char*>(&length), sizeof(length));
-  char* tmp = new char[length];
-  is.read(tmp, length);
-  std::string s(tmp, tmp + length);
-  return s;
-}
-
-void SerializableStringMap::MapTensorToStream(std::ostream& ss) {
-  size_t t = this->size();
-  ss.write(reinterpret_cast<const char*>(&t), sizeof(t));
-  for (auto it = this->begin(); it != this->end(); ++it) {
-    std::string str = it->first;
-    int32_t value = it->second;
-    write(ss, str);
-    write(ss, value);
+// Write the data which is type of
+// std::unordered_map<td::string, int32_t> to ostream.
+void StringMapToStream(std::ostream& os,
+                       const std::unordered_map<std::string, int32_t>& data) {
+  {
+    // firstly write the data size.
+    size_t t = data.size();
+    os.write(reinterpret_cast<const char*>(&t), sizeof(t));
+  }
+  {
+    // then write the data
+    for (auto it = data.begin(); it != data.end(); ++it) {
+      std::string token = it->first;
+      int32_t token_id = it->second;
+      // write the token
+      size_t length = token.size();
+      os.write(reinterpret_cast<const char*>(&length), sizeof(length));
+      os.write(token.c_str(), length);
+      // write the token_id
+      os.write(reinterpret_cast<const char*>(&token_id), sizeof(token_id));
+    }
   }
 }
 
-void SerializableStringMap::MapTensorFromStream(std::istream& is) {
+// Read the data which is type of
+// std::unordered_map<td::string, int32_t> from istream.
+void StringMapFromStream(std::istream& is,
+                         std::unordered_map<std::string, int32_t>* data) {
+  // first read the map size
   size_t map_size;
   is.read(reinterpret_cast<char*>(&map_size), sizeof(map_size));
+  data->reserve(map_size);
+  // then read the data
   for (size_t i = 0; i < map_size; ++i) {
-    std::string key = read(is);
-    int32_t value;
-    read(is, &value);
-    (*this)[key] = value;
+    // read the token
+    size_t token_length;
+    is.read(reinterpret_cast<char*>(&token_length), sizeof(token_length));
+    char* tmp = new char[token_length];
+    is.read(tmp, token_length);
+    std::string token(tmp, tmp + token_length);
+    free(tmp);
+    // read the token_id
+    int32_t token_id;
+    is.read(reinterpret_cast<char*>(&token_id), sizeof(token_id));
+
+    data->emplace(token, token_id);
   }
 }
 

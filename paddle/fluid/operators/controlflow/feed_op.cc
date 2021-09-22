@@ -27,6 +27,8 @@ class OpBase;
 namespace paddle {
 namespace operators {
 
+// FeedVariableVisitor is to feed the variable data
+// according to data type (LoDTensor or  STRINGS).
 class FeedVariableVisitor : public boost::static_visitor<void> {
  public:
   explicit FeedVariableVisitor(framework::Variable *out_var,
@@ -117,11 +119,11 @@ class FeedOpInfoMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X",
-             "(vector<LoDTensor>|vector<vector<std::string>>) "
-             "A feeding list of LoDTensor or wstring, which may have "
+             "(vector<LoDTensor>) "
+             "A feeding list of LoDTensor, which may have "
              "different dimension and data type.");
     AddOutput("Out",
-              "(LoDTensor|vector<std::string>) The LoDTensor which is a copy "
+              "(LoDTensor) The LoDTensor which is a copy "
               "of the col-th feeding "
               "object.");
     AddAttr<int>("col", "(int) The column index of current feeding object.");

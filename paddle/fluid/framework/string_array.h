@@ -28,22 +28,21 @@ using STRING = std::string;
 using STRINGS = std::vector<STRING>;
 using WSTRING_MAP = std::unordered_map<std::wstring, std::int32_t>;
 
-std::wstring ConvertStrToWstr(const std::string& src);
+// Convert the std::string type to the std::string type.
 void ConvertStrToWstr(const std::string& src, std::wstring* res);
-std::string ConvertWstrToStr(const std::wstring& src);
+// Convert the std::wstring type to the std::string type.
 void ConvertWstrToStr(const std::wstring& src, std::string* res);
-std::string NormalizeNfd(const std::string& s);
-void NormalizeNfd(const std::string& s, std::string* ret);
-class SerializableStringMap : public std::unordered_map<std::string, int32_t> {
- private:
-  void write(std::ostream& os, int32_t t);
-  void write(std::ostream& os, const std::string& str);
-  void read(std::istream& is, int32_t* token_id);
-  std::string read(std::istream& is);
+// Normalization Form Canonical Decomposition.
+void NFD(const std::string& s, std::string* ret);
 
- public:
-  void MapTensorToStream(std::ostream& ss);
-  void MapTensorFromStream(std::istream& is);
-};
+// Write the data which is type of
+// std::unordered_map<td::string, int32_t> to ostream.
+void StringMapToStream(std::ostream& os,
+                       const std::unordered_map<std::string, int32_t>& data);
+
+// Read the data which is type of
+// std::unordered_map<td::string, int32_t> from istream.
+void StringMapFromStream(std::istream& is,
+                         std::unordered_map<std::string, int32_t>* data);
 }  // namespace framework
 }  // namespace paddle
