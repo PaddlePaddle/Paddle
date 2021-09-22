@@ -56,9 +56,9 @@ class TaskTracker {
   }
 
  private:
-  std::atomic<uint64_t> num_tasks_{0};
-  EventCount wait_empty_cv_;
-  std::atomic<bool> wait_empty_{false};
+  alignas(64) std::atomic<uint64_t> num_tasks_{0};
+  alignas(64) EventCount wait_empty_cv_;
+  alignas(64) std::atomic<bool> wait_empty_{false};
 };
 
 template <typename Environment>
@@ -70,15 +70,15 @@ class ThreadPoolTempl {
   ThreadPoolTempl(int num_threads, bool allow_spinning,
                   Environment env = Environment())
       : env_(env),
-        num_threads_(num_threads),
         allow_spinning_(allow_spinning),
-        thread_data_(num_threads),
         global_steal_partition_(EncodePartition(0, num_threads_)),
         blocked_(0),
         spinning_(0),
         done_(false),
         cancelled_(false),
-        ec_(num_threads_) {
+        ec_(num_threads),
+        num_threads_(num_threads),
+        thread_data_(num_threads) {
     // Calculate coprimes of all numbers [1, num_threads].
     // Coprimes are used for random walks over all threads in Steal
     // and NonEmptyQueueIndex. Iteration is based on the fact that if we take
@@ -259,9 +259,7 @@ class ThreadPoolTempl {
   };
 
   Environment env_;
-  const int num_threads_;
   const bool allow_spinning_;
-  std::vector<ThreadData> thread_data_;
   std::vector<std::vector<unsigned>> all_coprimes_;
   unsigned global_steal_partition_;
   std::atomic<unsigned> blocked_;
@@ -269,6 +267,8 @@ class ThreadPoolTempl {
   std::atomic<bool> done_;
   std::atomic<bool> cancelled_;
   EventCount ec_;
+  const int num_threads_;
+  std::vector<ThreadData> thread_data_;
 
   // Main worker thread loop.
   void WorkerLoop(int thread_id) {
