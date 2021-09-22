@@ -156,7 +156,6 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
     return jacobian
 
 
-# y 对 x 求导
 def _compute_analytical_jacobian(program, x, y, place, scope):
     """Computes the analytical Jacobian for dy/dx.
 
@@ -532,12 +531,6 @@ def trible_grad_check_2(x,
     target_grads = fluid.gradients(y, x, y_grads)
     print("============ in trible_grad_check_2  == target_grads:", target_grads)
 
-    # y_grads are the input of first-order backward,
-    # so, they are also the input of second-order backward.
-    x += y_grads
-    x_init = _as_list(x_init)
-    x_init += y_grads_init
-
     y_grads_grads = None
     if y_grads_grads is None:
         scope = fluid.executor.global_scope()
@@ -556,8 +549,13 @@ def trible_grad_check_2(x,
             y_grads_grads_init.append(v)
 
     target_grads_grads = fluid.gradients(target_grads, x, y_grads_grads)
-    print("============ in trible_grad_check_2  == target_grads_grads:",
+    print("============ in trible_grad_check_2  == target_grads:",
           target_grads_grads)
+    # y_grads are the input of first-order backward,
+    # so, they are also the input of second-order backward.
+    x += y_grads
+    x_init = _as_list(x_init)
+    x_init += y_grads_init
 
     x += y_grads_grads
     x_init += y_grads_grads_init
@@ -592,14 +590,8 @@ def trible_test(x,
     # print("y:", y)
     # print("x:", x)
     target_grads = fluid.gradients(y, x, y_grads)
-    print(target_grads)
-    print("============================")
     target_grads_grads = fluid.gradients(target_grads, x, y_grads)
-    print(target_grads_grads)
-    print("============================")
     target_grads_grads_grads = fluid.gradients(target_grads_grads, x, y_grads)
-    print(target_grads_grads_grads)
-    print("============================")
 
     if place is None:
         place = fluid.CPUPlace()
@@ -621,29 +613,45 @@ def trible_test(x,
         for var, arr in zip(x, x_init):
             assert var.shape == arr.shape
         feeds = {k.name: v for k, v in zip(x, x_init)}
-        exe.run(program, feed=feeds, scope=scope)
+        grad0, = exe.run(program,
+                         feed=feeds,
+                         scope=scope,
+                         fetch_list=[zi.name for zi in target_grads])
+        grad1, = exe.run(program,
+                         feed=feeds,
+                         scope=scope,
+                         fetch_list=[zi.name for zi in target_grads_grads])
+        grad2, = exe.run(
+            program,
+            feed=feeds,
+            scope=scope,
+            fetch_list=[zi.name for zi in target_grads_grads_grads])
+    print("============================== ", grad0)
+    print("============================== ", grad1)
+    print("============================== ", grad2)
+    # grad_check(x = x, y = target_grads_grads, x_init = x_init, place = place, 
+    #                   program = program, eps = eps, atol = atol, rtol = rtol)
+    # numerical = [
+    #     _compute_numerical_jacobian(program, xi, target_grads_grads, place, scope, eps)
+    #     for xi in x
+    # ]
 
-    numerical = [
-        _compute_numerical_jacobian(program, xi, target_grads_grads, place,
-                                    scope, eps) for xi in x
-    ]
+    # # [y_idx, x_idx]
+    # analytical = []
+    # for yi in target_grads_grads:
+    #     prog = program.clone()
 
-    # [y_idx, x_idx]
-    analytical = []
-    for yi in target_grads_grads:
-        prog = program.clone()
+    #     clone_x = []
+    #     clone_y = None
+    #     for b in prog.blocks:
+    #         if b.has_var(yi.name):
+    #             clone_y = b.var(yi.name)
+    #             break
+    #     for xi in x:
+    #         for b in prog.blocks:
+    #             if b.has_var(xi.name):
+    #                 clone_x.append(b.var(xi.name))
+    #                 break
 
-        clone_x = []
-        clone_y = None
-        for b in prog.blocks:
-            if b.has_var(yi.name):
-                clone_y = b.var(yi.name)
-                break
-        for xi in x:
-            for b in prog.blocks:
-                if b.has_var(xi.name):
-                    clone_x.append(b.var(xi.name))
-                    break
-
-        analytical.append(
-            _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
+    #     analytical.append(
+    #         _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
