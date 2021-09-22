@@ -96,11 +96,16 @@ bool EagerUtils::ComputeRequireGrad(AutogradMeta** ins, size_t ins_num,
   return false;
 }
 
-void EagerUtils::SetHistory(const std::vector<AutogradMeta*>& autograd_metas,
+void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
-  for (const auto& autograd_meta : autograd_metas) {
+  for (const auto& autograd_meta : *autograd_metas) {
     autograd_meta->SetGradNode(grad_node);
   }
+}
+
+void EagerUtils::SetHistory(AutogradMeta* autograd_meta,
+                            const std::shared_ptr<GradNodeBase>& grad_node) {
+    autograd_meta->SetGradNode(grad_node);
 }
 
 pt::Tensor EagerUtils::CreateTensorWithValue(const pt::DDim& ddim,
@@ -129,4 +134,13 @@ void EagerUtils::SetMultiOutRankWithSlot(std::vector<AutogradMeta*>* targets,
     (*targets)[i]->SetSingleOutRankWithSlot(slot_id, i);
   }
 }
+void EagerUtils::SetOutRankWithSlot(std::vector<AutogradMeta*>* targets,
+                                         size_t slot_id) {
+    SetMultiOutRankWithSlot(targets, slot_id);
+}
+void EagerUtils::SetOutRankWithSlot(AutogradMeta* target,
+                                         size_t slot_id) {
+    target->SetSingleOutRankWithSlot(slot_id, 0);
+}
+
 }  // namespace egr
