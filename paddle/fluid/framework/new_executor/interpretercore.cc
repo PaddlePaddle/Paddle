@@ -350,37 +350,51 @@ void InterpreterCore::ExecuteInstructionList(
 
 void InterpreterCore::RunNextInstruction(const Instruction& instr) {
   auto& next_instr = instr.next_instruction_;
+  auto& atomic_deps = async_work_queue_.AtomicDeps();
 
   if (instr.type_ == OpFuncType::kQueueAsync) {
     // keep all async_ops running in current thread
     for (auto next_id : next_instr.direct_run_) {
-      RunInstructionAsync(next_id);
+      if (atomic_deps[next_id]->fetch_sub(1, std::memory_order_relaxed) == 1) {
+        RunInstructionAsync(next_id);
+      }
     }
     for (auto next_id : next_instr.event_wait_run_) {
-      RunInstructionAsync(next_id);
+      if (atomic_deps[next_id]->fetch_sub(1, std::memory_order_relaxed) == 1) {
+        RunInstructionAsync(next_id);
+      }
     }
     // move all sync_ops into other threads
     for (auto next_id : next_instr.synchronize_run_) {
-      async_work_queue_.AddTask(vec_instruction_[next_id].type_,
-                                [&, next_id] { RunInstructionAsync(next_id); });
+      if (atomic_deps[next_id]->fetch_sub(1, std::memory_order_relaxed) == 1) {
+        async_work_queue_.AddTask(
+            vec_instruction_[next_id].type_,
+            [&, next_id] { RunInstructionAsync(next_id); });
+      }
     }
   } else {
     // move async_ops into async_thread
     for (auto next_id : next_instr.event_wait_run_) {
-      async_work_queue_.AddTask(vec_instruction_[next_id].type_,
-                                [&, next_id] { RunInstructionAsync(next_id); });
+      if (atomic_deps[next_id]->fetch_sub(1, std::memory_order_relaxed) == 1) {
+        async_work_queue_.AddTask(
+            vec_instruction_[next_id].type_,
+            [&, next_id] { RunInstructionAsync(next_id); });
+      }
     }
 
     for (size_t i = 0; i < next_instr.direct_run_.size(); ++i) {
       auto next_id = next_instr.direct_run_[i];
-      // only keep one op running in current thread
-      if (i == 0) {
-        RunInstructionAsync(next_id);
-        continue;
+      if (atomic_deps[next_id]->fetch_sub(1, std::memory_order_relaxed) == 1) {
+        // only keep one op running in current thread
+        if (i == 0) {
+          RunInstructionAsync(next_id);
+          continue;
+        }
+        // move rest ops into other threads
+        async_work_queue_.AddTask(
+            vec_instruction_[next_id].type_,
+            [&, next_id] { RunInstructionAsync(next_id); });
       }
-      // move rest ops into other threads
-      async_work_queue_.AddTask(vec_instruction_[next_id].type_,
-                                [&, next_id] { RunInstructionAsync(next_id); });
     }
   }
 }
