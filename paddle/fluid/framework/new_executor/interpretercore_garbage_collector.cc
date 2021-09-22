@@ -23,8 +23,8 @@ InterpreterCoreGarbageCollector::InterpreterCoreGarbageCollector() {
   max_memory_size_ = static_cast<size_t>(GetEagerDeletionThreshold());
   cur_memory_size_ = 0;
 
-  WorkQueueOptions options;
-  options.num_threads = 1;
+  WorkQueueOptions options(/*num_threads*/ 1, /*allow_spinning*/ true,
+                           /*track_task*/ false);
   queue_ = CreateSingleThreadedWorkQueue(options);
 }
 
