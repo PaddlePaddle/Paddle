@@ -113,6 +113,99 @@ class TestCase9(TestTransposeOp):
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
 
 
+class TestTransposeOpBool(TestTransposeOp):
+    def test_check_grad(self):
+        pass
+
+
+class TestTransposeOpBool1D(TestTransposeOpBool):
+    def initTestCase(self):
+        self.shape = (100, )
+        self.axis = (0, )
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+
+class TestTransposeOpBool2D(TestTransposeOpBool):
+    def initTestCase(self):
+        self.shape = (3, 40)
+        self.axis = (1, 0)
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+
+class TestTransposeOpBool3D(TestTransposeOpBool):
+    def initTestCase(self):
+        self.shape = (3, 4, 10)
+        self.axis = (0, 2, 1)
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+
+class TestTransposeOpBool4D(TestTransposeOpBool):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 5)
+        self.axis = (0, 2, 3, 1)
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+
+class TestTransposeOpBool5D(TestTransposeOpBool):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 5, 6)
+        self.axis = (4, 2, 3, 1, 0)
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+
+class TestTransposeOpBool6D(TestTransposeOpBool):
+    def initTestCase(self):
+        self.shape = (2, 3, 4, 5, 6, 1)
+        self.axis = (4, 2, 3, 1, 0, 5)
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+
+class TestTransposeOpBool7D(TestTransposeOpBool):
+    def initTestCase(self):
+        self.shape = (2, 3, 2, 3, 2, 4, 3)
+        self.axis = (0, 1, 3, 2, 4, 5, 6)
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+
+class TestTransposeOpBool8D(TestTransposeOpBool):
+    def initTestCase(self):
+        self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
+        self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
+        self.inputs = {'X': np.random.random(self.shape).astype("bool")}
+        self.outputs = {
+            'XShape': np.random.random(self.shape).astype("bool"),
+            'Out': self.inputs['X'].transpose(self.axis)
+        }
+
+
 class TestTransposeOpError(unittest.TestCase):
     def test_errors(self):
         paddle.enable_static()
@@ -126,9 +219,9 @@ class TestTransposeOpError(unittest.TestCase):
             self.assertRaises(TypeError, test_x_Variable_check)
 
             def test_x_dtype_check():
-                # the Input(x)'s dtype must be one of [float16, float32, float64, int32, int64]
+                # the Input(x)'s dtype must be one of [bool, float16, float32, float64, int32, int64]
                 x1 = fluid.layers.data(
-                    name='x1', shape=[10, 5, 3], dtype='bool')
+                    name='x1', shape=[10, 5, 3], dtype='int8')
                 fluid.layers.transpose(x1, perm=[1, 0, 2])
 
             self.assertRaises(TypeError, test_x_dtype_check)

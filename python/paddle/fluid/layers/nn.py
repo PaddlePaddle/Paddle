@@ -5499,12 +5499,12 @@ def transpose(x, perm, name=None):
     perm[i]-th dimension of `input`.
 
     Args:
-        x (Tensor): The input Tensor. It is a N-D Tensor of data types float32, float64, int32.
+        x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float32, float64, int32.
         perm (list|tuple): Permute the input according to the data of perm.
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Tensor: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
+        Tensor: A transposed n-D Tensor, with data type being bool, float32, float64, int32, int64.
 
     For Example:
 
@@ -5546,7 +5546,7 @@ def transpose(x, perm, name=None):
         return out
 
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
         'transpose')
     check_type(perm, 'perm', (list, tuple), 'transpose')
     if isinstance(perm, tuple):
