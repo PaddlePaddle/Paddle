@@ -78,6 +78,7 @@ else()
     math_library(beam_search DEPS math_function)
 endif()
 math_library(fc DEPS blas)
+math_library(lapack_function DEPS dynload_lapack)
 
 math_library(matrix_bit_code)
 
