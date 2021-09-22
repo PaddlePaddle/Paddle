@@ -112,9 +112,11 @@ class TestCase9(TestTransposeOp):
         self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
         self.axis = (6, 1, 3, 5, 0, 2, 4, 7)
 
+
 class TestTransposeOpBool(TestTransposeOp):
     def test_check_grad(self):
         pass
+
 
 class TestTransposeOpBool1D(TestTransposeOpBool):
     def initTestCase(self):
@@ -126,6 +128,7 @@ class TestTransposeOpBool1D(TestTransposeOpBool):
             'Out': self.inputs['X'].transpose(self.axis)
         }
 
+
 class TestTransposeOpBool2D(TestTransposeOpBool):
     def initTestCase(self):
         self.shape = (3, 40)
@@ -135,6 +138,7 @@ class TestTransposeOpBool2D(TestTransposeOpBool):
             'XShape': np.random.random(self.shape).astype("bool"),
             'Out': self.inputs['X'].transpose(self.axis)
         }
+
 
 class TestTransposeOpBool3D(TestTransposeOpBool):
     def initTestCase(self):
@@ -146,6 +150,7 @@ class TestTransposeOpBool3D(TestTransposeOpBool):
             'Out': self.inputs['X'].transpose(self.axis)
         }
 
+
 class TestTransposeOpBool4D(TestTransposeOpBool):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5)
@@ -155,6 +160,7 @@ class TestTransposeOpBool4D(TestTransposeOpBool):
             'XShape': np.random.random(self.shape).astype("bool"),
             'Out': self.inputs['X'].transpose(self.axis)
         }
+
 
 class TestTransposeOpBool5D(TestTransposeOpBool):
     def initTestCase(self):
@@ -166,6 +172,7 @@ class TestTransposeOpBool5D(TestTransposeOpBool):
             'Out': self.inputs['X'].transpose(self.axis)
         }
 
+
 class TestTransposeOpBool6D(TestTransposeOpBool):
     def initTestCase(self):
         self.shape = (2, 3, 4, 5, 6, 1)
@@ -175,6 +182,7 @@ class TestTransposeOpBool6D(TestTransposeOpBool):
             'XShape': np.random.random(self.shape).astype("bool"),
             'Out': self.inputs['X'].transpose(self.axis)
         }
+
 
 class TestTransposeOpBool7D(TestTransposeOpBool):
     def initTestCase(self):
@@ -186,6 +194,7 @@ class TestTransposeOpBool7D(TestTransposeOpBool):
             'Out': self.inputs['X'].transpose(self.axis)
         }
 
+
 class TestTransposeOpBool8D(TestTransposeOpBool):
     def initTestCase(self):
         self.shape = (2, 3, 2, 3, 2, 4, 3, 3)
@@ -195,6 +204,7 @@ class TestTransposeOpBool8D(TestTransposeOpBool):
             'XShape': np.random.random(self.shape).astype("bool"),
             'Out': self.inputs['X'].transpose(self.axis)
         }
+
 
 class TestTransposeOpError(unittest.TestCase):
     def test_errors(self):
