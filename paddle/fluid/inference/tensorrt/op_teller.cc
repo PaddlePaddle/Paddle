@@ -459,6 +459,10 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+    if (op_type == "anchor_generator") {
+      if (!with_dynamic_shape) return false;
+    }
+
     if (op_type == "yolo_box") {
       if (with_dynamic_shape) return false;
       bool has_attrs =
