@@ -16,7 +16,6 @@ limitations under the License. */
 #include <type_traits>
 #include <vector>
 
-#include "paddle/fluid/framework/eigen.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/activation_op.h"
 #include "paddle/fluid/operators/arg_min_max_op_base.h"
@@ -59,35 +58,45 @@ using DDim = framework::DDim;
 #define MUL(lhs, rhs, output, dtype) \
   ELEMENT_BINARY_OP(lhs, rhs, output, Mul, dtype)
 
-template <typename DeviceContext, typename T, size_t D, size_t R_D>
-inline void ReduceMAX(const framework::ExecutionContext& ctx,
-                      const Tensor* input, Tensor* output,
-                      const std::vector<int>& dims) {
-  auto x =
-      framework::EigenTensor<T, D, Eigen::RowMajor, Eigen::DenseIndex>::From(
-          *input);
-  auto x_rank = static_cast<int>(x.dimensions().size());
-  auto reduce_dim = Eigen::array<int, R_D>();
-  auto& dev_ctx = ctx.template device_context<DeviceContext>();
-  std::vector<int> dims_ref = dims;
-  for (size_t i = 0; i < dims_ref.size(); ++i) {
-    if (dims_ref[i] < 0) dims_ref[i] = x_rank + dims_ref[i];
-    reduce_dim[i] = dims_ref[i];
+template <typename T, typename IndType>
+struct CPUArgmax {
+  void operator()(const Tensor& input, Tensor* out_idx, Tensor* out, int axis) {
+    framework::DDim input_dims = input.dims();
+    int64_t pre = 1;
+    int64_t post = 1;
+    int64_t n = input_dims[axis];
+    for (int i = 0; i < axis; i++) {
+      pre *= input_dims[i];
+    }
+
+    for (int i = axis + 1; i < input_dims.size(); i++) {
+      post *= input_dims[i];
+    }
+    int64_t height = pre * post;
+    int64_t width = n;
+    const T* in_data = input.data<T>();
+    IndType* out_idx_data = out_idx->data<IndType>();
+    T* out_data = out->data<T>();
+// Reduce
+#ifdef PADDLE_WITH_MKLML
+#pragma omp parallel for
+#endif
+    for (int64_t i = 0; i < height; ++i) {
+      int64_t h = i / post;
+      int64_t w = i % post;
+      IndType max_idx = -1;
+      T max_value = std::numeric_limits<T>::lowest();
+      for (int64_t j = 0; j < width; ++j) {
+        if (in_data[h * width * post + j * post + w] > max_value) {
+          max_value = in_data[h * width * post + j * post + w];
+          max_idx = j;
+        }
+      }
+      out_data[i] = max_value;
+      out_idx_data[i] = max_idx;
+    }
   }
-  DDim out_dims = output->dims();
-  auto& place = *dev_ctx.eigen_device();
-  if (D == 1) {
-    auto out =
-        framework::EigenScalar<T, Eigen::RowMajor, Eigen::DenseIndex>::From(
-            *output);
-    out.device(place) = x.maximum(reduce_dim);
-  } else {
-    auto out =
-        framework::EigenTensor<T, (D - R_D), Eigen::RowMajor,
-                               Eigen::DenseIndex>::From(*output, out_dims);
-    out.device(place) = x.maximum(reduce_dim);
-  }
-}
+};
 
 #ifdef PADDLE_WITH_MKLML
 template <typename T, typename Functor>
@@ -229,8 +238,6 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     Tensor last_ids = int_tensor_buffer.GetBufferBlock({batch_size});
     Tensor batch_offset = int_tensor_buffer.GetBufferBlock({batch_size});
     Tensor gather_idx = int_tensor_buffer.GetBufferBlock({batch_size});
-    ArgMinMaxFunctor<DeviceContext, T, int64_t, 3, ArgMinMaxType::kArgMax>
-        argmax3;
 
     std::vector<const Tensor*> shape_refer{&rest_trans_exp, &stop_trans_exp,
                                            &start_trans_exp};
@@ -252,6 +259,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       alpha = logit0;
     }
     SUB(left_length, one, left_length, int64_t);
+    CPUArgmax<T, int64_t> argmax;
     for (int64_t i = 1; i < max_seq_len; ++i) {
       Tensor logit = inputs_t_exp.Slice(i, i + 1);
       logit.Resize({batch_size, n_labels});
@@ -259,14 +267,10 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
 
       ADD(alpha_exp, trans_exp, alpha_trn_sum, T);
 
-      ReduceMAX<DeviceContext, T, 3, 1>(ctx, &alpha_trn_sum, &alpha_max,
-                                        std::vector<int>({1}));
-
       auto alpha_argmax_temp = alpha_argmax_unbind[i - 1];
       alpha_argmax_temp.Resize({batch_size, n_labels});
-      argmax3(dev_ctx, static_cast<LoDTensor&>(alpha_trn_sum),
-              reinterpret_cast<LoDTensor*>(&alpha_argmax_temp),
-              alpha_trn_sum.dims(), 1, false);
+
+      argmax(alpha_trn_sum, &alpha_argmax_temp, &alpha_max, 1);
       historys.push_back(alpha_argmax_temp);
 
       EXECUTE_MKL_ELEMENT_BINARY_OP(alpha_max, logit, alpha_nxt, Add, T);
@@ -297,13 +301,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     }
 
     // scores, last_ids = alpha.max(1), alpha.argmax(1)
-    ReduceMAX<DeviceContext, T, 2, 1>(ctx, &alpha, scores,
-                                      std::vector<int>({1}));
-    ArgMinMaxFunctor<DeviceContext, T, int64_t, 2, ArgMinMaxType::kArgMax>
-        argmax2;
-
-    argmax2(dev_ctx, static_cast<LoDTensor&>(alpha),
-            reinterpret_cast<LoDTensor*>(&last_ids), alpha.dims(), 1, false);
+    argmax(alpha, &last_ids, scores, 1);
 
     // tag_mask = paddle.cast((left_length >= 0), 'int64')
     left_length.Resize({batch_size});

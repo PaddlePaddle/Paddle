@@ -135,7 +135,7 @@ int64_t ComputeBlockSize(int64_t col) {
 }
 
 template <typename T, typename IndType>
-struct ComputeArgmax {
+struct CUDAArgmax {
   void operator()(const framework::ExecutionContext& ctx, const Tensor& input,
                   Tensor* out_idx, Tensor* out, int axis) {
     // axis should be larger than or equals to 0
@@ -273,7 +273,7 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
     Tensor batch_offset = int_tensor_buffer.GetBufferBlock({batch_size});
     Tensor gather_idx = int_tensor_buffer.GetBufferBlock({batch_size});
 
-    ComputeArgmax<T, int64_t> cuda_argmax;
+    CUDAArgmax<T, int64_t> cuda_argmax;
     std::vector<const Tensor*> shape_refer{&rest_trans_exp, &stop_trans_exp,
                                            &start_trans_exp};
     std::vector<Tensor*> outputs{&rest_trans_exp, &stop_trans_exp,
