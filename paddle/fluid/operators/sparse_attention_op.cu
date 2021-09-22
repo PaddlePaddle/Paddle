@@ -291,13 +291,14 @@ void DotSdd(const platform::CUDADeviceContext& ctx, const Tensor* A,
   T alpha = 1;
   T beta = 0;
 
-  void* dBuffer = NULL;
   size_t bufferSize = 0;
   platform::dynload::cusparseSDDMM_bufferSize(
       handle, GetGpuOperation(A_transpose), GetGpuOperation(B_transpose),
       &alpha, matA, matB, &beta, matC, gpu_type, CUSPARSE_SDDMM_ALG_DEFAULT,
       &bufferSize);
-  cudaMalloc(&dBuffer, bufferSize);
+  paddle::platform::CUDAPlace cuda_place;
+  auto dBufferPtr = paddle::memory::Alloc(cuda_place, bufferSize);
+  void* dBuffer = static_cast<void*>(dBufferPtr->ptr());
 
   platform::dynload::cusparseSDDMM(handle, GetGpuOperation(A_transpose),
                                    GetGpuOperation(B_transpose), &alpha, matA,
@@ -308,7 +309,7 @@ void DotSdd(const platform::CUDADeviceContext& ctx, const Tensor* A,
   platform::dynload::cusparseDestroyDnMat(matB);
   platform::dynload::cusparseDestroySpMat(matC);
   platform::dynload::cusparseDestroy(handle);
-  cudaFree(dBuffer);
+  paddle::memory::Release(cuda_place);
 }
 
 /*
@@ -353,14 +354,15 @@ void DotDsd(const platform::CUDADeviceContext& ctx, const Tensor* A_offset,
   T alpha = 1;
   T beta = 0;
 
-  void* dBuffer = NULL;
   size_t bufferSize = 0;
   // allocate an external buffer if needed
   platform::dynload::cusparseSpMM_bufferSize(
       handle, GetGpuOperation(A_transpose), GetGpuOperation(B_transpose),
       &alpha, matA, matB, &beta, matC, gpu_type, CUSPARSE_SPMM_ALG_DEFAULT,
       &bufferSize);
-  cudaMalloc(&dBuffer, bufferSize);
+  paddle::platform::CUDAPlace cuda_place;
+  auto dBufferPtr = paddle::memory::Alloc(cuda_place, bufferSize);
+  void* dBuffer = static_cast<void*>(dBufferPtr->ptr());
 
   platform::dynload::cusparseSpMM(handle, GetGpuOperation(A_transpose),
                                   GetGpuOperation(B_transpose), &alpha, matA,
@@ -371,7 +373,7 @@ void DotDsd(const platform::CUDADeviceContext& ctx, const Tensor* A_offset,
   platform::dynload::cusparseDestroyDnMat(matB);
   platform::dynload::cusparseDestroyDnMat(matC);
   platform::dynload::cusparseDestroy(handle);
-  cudaFree(dBuffer);
+  paddle::memory::Release(cuda_place);
 }
 
 std::vector<Tensor> GetSplitTensor(Tensor* input) {
