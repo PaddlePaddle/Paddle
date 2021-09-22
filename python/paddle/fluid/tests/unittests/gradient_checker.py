@@ -219,15 +219,17 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
     return jacobian
 
 
-def grad_check(x,
-               y,
-               x_init=None,
-               place=None,
-               program=None,
-               eps=1e-6,
-               atol=1e-5,
-               rtol=1e-3,
-               raise_exception=True):
+def grad_check(
+        x,  # in 
+        y,  # out
+        x_init=None,
+        place=None,
+        program=None,
+        eps=1e-6,
+        atol=1e-5,
+        rtol=1e-3,
+        raise_exception=True):
+    print("============== in grad_check beginning ===============")
     """
     Check numerical and analytical gradients for dy/dx.
     Each Jacobian gradients is a 2-D array with shape [xi_size, yi_size].
@@ -318,6 +320,7 @@ def grad_check(x,
                   'numerical:%s\nanalytical:%s\n' \
                   % (y[y_idx].name, x[x_idx].name, str(place), n, a)
             return fail_test(msg)
+    print("============== in grad_check end ===============")
     return True
 
 
@@ -327,10 +330,15 @@ def double_grad_check(x,
                       y_grads=None,
                       place=None,
                       program=None,
-                      eps=1e-6,
-                      atol=1e-5,
+                      eps=1e-3,
+                      atol=1e-3,
                       rtol=1e-3,
                       raise_exception=True):
+    print("============== in double_grad_check beginning ===============")
+    print("== in double_grad_check begging : x.len:", len(_as_list(x)))
+    print("== in double_grad_check begging : y.len:", len(_as_list(y)))
+    print("== in double_grad_check begging : x_init.len:",
+          len(_as_list(x_init)))
     """
     Check gradients of gradients. This function will append backward to the
     program before second order gradient check.
@@ -383,6 +391,73 @@ def double_grad_check(x,
 
     # append first order grads
     target_grads = fluid.gradients(y, x, y_grads)
+    print("==========  target_grads  =========== ", target_grads)
+    # 将 y 的梯度反向传播到输入 Tensor x, y_grads 如果设置为 None，则以 1 初始化所有梯度 Tensor。
+
+    target_grads_grads = fluid.gradients(target_grads, x)
+    print("==========  target_grads_grads  =========== ", target_grads_grads)
+    # target_grads_grads_grads = fluid.gradients(target_grads_grads, x)
+    # print("==========  target_grads_grads_grads  =========== ", target_grads_grads_grads)
+    # y_grads are the input of first-order backward,
+    # so, they are also the input of second-order backward.
+    x += y_grads
+    x_init = _as_list(x_init)
+    x_init += y_grads_init
+    print("== in double_grad_check: x.len:", len(_as_list(x)))
+    print("== in double_grad_check: target.len:", len(_as_list(target_grads)))
+    print("== in double_grad_check: x_init.len :", len(_as_list(x_init)))
+    grad_check(x, target_grads_grads, x_init, place, program, eps, atol, rtol)
+    print("============== in double_grad_check end ===============")
+
+
+# grad_check(x, y,...)  y 对 x 求导
+# grad_check(x, grads, ...)  grads 对 x 求导
+# grad_check(x, grad_grads, ...) grad_grads 对 x 求导 
+def trible_grad_check(x,
+                      y,
+                      x_init=None,
+                      y_grads=None,
+                      place=None,
+                      program=None,
+                      eps=1e-6,
+                      atol=1e-5,
+                      rtol=1e-3,
+                      raise_exception=True):
+
+    print("============== in trible_grad_check begging ===============")
+    # check input arguments
+    x = _as_list(x)
+    for v in x:
+        v.stop_gradient = False
+        v.persistable = True
+    y = _as_list(y)
+
+    if program is None:
+        program = fluid.default_main_program()
+
+    if y_grads is None:
+        scope = fluid.executor.global_scope()
+        y_grads = []
+        y_grads_init = []
+        for yi in y:
+            dyi_name = _append_grad_suffix_(yi.name)
+            np_type = dtype_to_np_dtype(yi.dtype)
+            dy = program.global_block().create_var(
+                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
+            dy.stop_gradient = False
+            v = np.random.random(size=yi.shape).astype(np_type)
+            set_var_in_scope(scope, place, dyi_name, v)
+            y_grads.append(dy)
+            y_grads_init.append(v)
+    else:
+        y_grads = _as_list(y_grads)
+        y_grads_init = [
+            var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
+        ]
+
+    # append first order grads
+    target_grads = fluid.gradients(y, x, y_grads)
+    # target_grads_grads = fluid.gradients(target_grads_grads, x, y_grads)
 
     # y_grads are the input of first-order backward,
     # so, they are also the input of second-order backward.
@@ -390,4 +465,119 @@ def double_grad_check(x,
     x_init = _as_list(x_init)
     x_init += y_grads_init
 
-    grad_check(x, target_grads, x_init, place, program, eps, atol, rtol)
+    y_grads_grads = None
+    if y_grads_grads is None:
+        scope = fluid.executor.global_scope()
+        y_grads_grads = []
+        y_grads_grads_init = []
+        for yi in y:
+            ddyi_name = _append_grad_suffix_(_append_grad_suffix_(yi.name))
+            np_type = dtype_to_np_dtype(yi.dtype)
+            ddy = program.global_block().create_var(
+                name=ddyi_name, shape=yi.shape, dtype=np_type, persistable=True)
+            ddy.stop_gradient = False
+            v = np.random.random(size=yi.shape).astype(np_type)
+            set_var_in_scope(scope, place, ddyi_name, v)
+            y_grads_grads.append(ddy)
+            y_grads_grads_init.append(v)
+
+    # append first order grads
+    target_grads_grads = fluid.gradients(y_grads, x, y_grads_grads)
+    # target_grads_grads = fluid.gradients(target_grads_grads, x, y_grads)
+
+    # y_grads are the input of first-order backward,
+    # so, they are also the input of second-order backward.
+    x += y_grads_grads
+    # x_init = _as_list(x_init)
+    x_init += y_grads_grads_init
+
+    # if y_grads_grads is None:
+    #     scope = fluid.executor.global_scope()
+    #     y_grads_grads = []
+    #     y_grads_grads_init = []
+    #     for yi in y:
+    #         dyi_name = _append_grad_suffix_(yi.name)
+    #         np_type = dtype_to_np_dtype(yi.dtype)
+    #         dy = program.global_block().create_var(
+    #             name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
+    #         dy.stop_gradient = False
+    #         v = np.random.random(size=yi.shape).astype(np_type)
+    #         set_var_in_scope(scope, place, dyi_name, v)
+    #         y_grads.append(dy)
+    #         y_grads_init.append(v)
+
+    grad_check(x, target_grads_grads, x_init, place, program, eps, atol, rtol)
+    print("============== in trible_grad_check end ===============")
+
+
+def trible_test(x,
+                y,
+                x_init=None,
+                y_grads=None,
+                place=None,
+                program=None,
+                eps=1e-6,
+                atol=1e-5,
+                rtol=1e-3,
+                raise_exception=True):
+    x = _as_list(x)
+    for v in x:
+        v.stop_gradient = False
+        v.persistable = True
+    y = _as_list(y)
+    target_grads = fluid.gradients(y, x, y_grads)
+    print(target_grads)
+    print("============================")
+    target_grads_grads = fluid.gradients(target_grads, x, y_grads)
+    print(target_grads_grads)
+    print("============================")
+    target_grads_grads_grads = fluid.gradients(target_grads_grads, x, y_grads)
+    print(target_grads_grads_grads)
+    print("============================")
+
+    if place is None:
+        place = fluid.CPUPlace()
+    if program is None:
+        program = fluid.default_main_program()
+
+    # init variable in strtup program
+    scope = fluid.executor.global_scope()
+    exe = fluid.Executor(place)
+    exe.run(fluid.default_startup_program())
+
+    x_init = _as_list(x_init)
+    # init inputs if x_init is not None
+    if x_init:
+        if len(x_init) != len(x):
+            raise ValueError('len(x_init) (=%d) is not the same'
+                             ' as len(x) (= %d)' % (len(x_init), len(x)))
+        # init variable in main program
+        for var, arr in zip(x, x_init):
+            assert var.shape == arr.shape
+        feeds = {k.name: v for k, v in zip(x, x_init)}
+        exe.run(program, feed=feeds, scope=scope)
+
+    numerical = [
+        _compute_numerical_jacobian(program, xi, y, place, scope, eps)
+        for xi in x
+    ]
+
+    # [y_idx, x_idx]
+    analytical = []
+    for yi in y:
+        prog = program.clone()
+
+        clone_x = []
+        clone_y = None
+        for b in prog.blocks:
+            if b.has_var(yi.name):
+                clone_y = b.var(yi.name)
+                break
+        for xi in x:
+            for b in prog.blocks:
+                if b.has_var(xi.name):
+                    clone_x.append(b.var(xi.name))
+                    break
+
+        analytical.append(
+            _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
