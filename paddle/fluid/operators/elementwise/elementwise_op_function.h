@@ -1307,49 +1307,6 @@ class MidWiseTransformIterator<T, platform::CPUDeviceContext>
   int64_t post_;
 };
 
-#if defined(__NVCC__) || defined(__HIPCC__)
-template <typename T>
-class RowwiseTransformIterator<T, platform::CUDADeviceContext>
-    : public thrust::iterator_adaptor<
-          RowwiseTransformIterator<T, platform::CUDADeviceContext>, const T *> {
- public:
-  typedef thrust::iterator_adaptor<
-      RowwiseTransformIterator<T, platform::CUDADeviceContext>, const T *>
-      super_t;
-  HOSTDEVICE RowwiseTransformIterator(const T *x, int n)
-      : super_t(x), begin_(x), n_(n) {}
-  friend class thrust::iterator_core_access;
-
- private:
-  unsigned int n_;
-  const T *begin_;
-  HOSTDEVICE typename super_t::reference dereference() const {
-    return *(begin_ + (this->base() - begin_) % n_);
-  }
-};
-
-template <typename T>
-class MidWiseTransformIterator<T, platform::CUDADeviceContext>
-    : public thrust::iterator_adaptor<
-          MidWiseTransformIterator<T, platform::CUDADeviceContext>, const T *> {
- public:
-  typedef thrust::iterator_adaptor<
-      MidWiseTransformIterator<T, platform::CUDADeviceContext>, const T *>
-      super_t;
-  HOSTDEVICE MidWiseTransformIterator(const T *x, int n, int post)
-      : super_t(x), begin_(x), n_(n), post_(post) {}
-  friend class thrust::iterator_core_access;
-
- private:
-  unsigned int post_;
-  unsigned int n_;
-  const T *begin_;
-  HOSTDEVICE typename super_t::reference dereference() const {
-    return *(begin_ + (((this->base() - begin_) / post_) % n_));
-  }
-};
-#endif
-
 template <typename Functor, typename T, typename DeviceContext,
           typename OutType = T>
 class TransformFunctor {
