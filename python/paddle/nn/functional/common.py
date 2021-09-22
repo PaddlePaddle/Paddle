@@ -1519,49 +1519,6 @@ def fused_multihead_attention(x,
                               ln2_epsilon=1e-05,
                               name=None):
     r"""
-    Fused multihead_attention operator. For each input :math:`X` ,
-    the equation is:
-    .. math::
-        if (pre_layer_norm)
-            ln_out = layer_norm(X)
-            qkv_out = get_qkv(ln_out, qkv_weight, qkv_bias)
-        else 
-            qkv_out = get_qkv(X, qkv_weight, qkv_bias)
-        fmha_out = fmha(qkv_out, xxx)
-        out_linear_out = out_linear(fmha_out, out_linear_weight)
-        out = bias_dropout_residual_layer_norm(out_linear_out, out_linear_bias)
-    # where :math:`W` is the weight and :math:`b` is the bias.
-    # If the weight is a 2-D tensor of shape :math:`[in\_features, out\_features]` ,
-    # input should be a multi-dimensional tensor of shape
-    # :math:`[batch\_size, *, in\_features]` , where :math:`*` means any number of
-    # additional dimensions. The linear operator multiplies input tensor with
-    # weight and produces an output tensor of shape :math:`[batch\_size, *, out\_features]` , 
-    # If :math:`bias` is not None, the bias should be a 1-D tensor of shape
-    # :math:`[out\_features]` and will be added to the output.
-    Parameters:
-        x (Tensor): Input tensor with shape [batch\_size, seq\_len, dim_embed]. 
-                    The data type should be float16, float32 or float64.
-        qkv_weight (Tensor): QKV Weight tensor with shape [3 * num_head * dim_head, dim_embed]. 
-                    The data type should be float16, float32 or float64.
-        ## tood: check shape!
-        out_linear_weight (Tensor): Out_linear Weight tensor with shape [xx, dim_embed]. 
-                                    The data type should be float16, float32 or float64.
-        qkv_bias (Tensor, optional): QKV Bias tensor with shape [3 * num_head * dim_head]. 
-                                 The data type should be float16, float32 or float64.
-                                 If it is set to None, no bias will be added to the output units.
-        ## tood: check shape!
-        out_linear_bias (Tensor, optional): Out_linear Bias tensor with shape []. 
-                                 The data type should be float16, float32 or float64.
-                                 If it is set to None, no bias will be added to the output units.
-        name (str, optional): Normally there is no need for user to set this parameter.
-                              For detailed information, please refer to :ref:`api_guide_Name` .
-    Returns:
-        Tensor, the shape is :math:`[batch\_size, seq\_len, dim_embed]` and the
-        data type is the same with input :math:`x` .
-    Examples:
-        .. code-block:: python
-          
-          import paddle
     """
     if in_dygraph_mode():
         ln_mean, ln_variance, ln_out, qkv_out, qkv_bias_out, transpose_out_2, qk_out, qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, src_mask_out, fmha_out, out_linear_out, dropout_mask_out, ln2_mean_out, ln2_var_out, bias_dropout_residual_out, final_out = _C_ops.fused_attention(
