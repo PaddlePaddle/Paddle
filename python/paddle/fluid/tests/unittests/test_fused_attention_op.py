@@ -20,6 +20,7 @@ import paddle.fluid.core as core
 import paddle.nn.functional as F
 from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.common import Linear, Dropout
+import paddle.fluid as fluid
 from paddle.fluid.data_feeder import convert_dtype
 from paddle import tensor
 from paddle.fluid import layers
@@ -126,6 +127,7 @@ class TestFusedAttentionOp(unittest.TestCase):
                                       self.embed_dim)).astype(self.x_type)
 
     def GetBaselineOut(self):
+        paddle.disable_static()
         tensor_query = paddle.to_tensor(self.query, stop_gradient=False)
         attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=False)
         residual = tensor_query
@@ -179,52 +181,58 @@ class TestFusedAttentionOp(unittest.TestCase):
         return final_out
 
     def GetFusedAttentionOut(self):
-        q_proj_weight = paddle.to_tensor(
-            self.q_proj.weight, stop_gradient=False)
-        q_proj_bias = paddle.to_tensor(self.q_proj.bias, stop_gradient=False)
-        k_proj_weight = paddle.to_tensor(
-            self.k_proj.weight, stop_gradient=False)
-        k_proj_bias = paddle.to_tensor(self.k_proj.bias, stop_gradient=False)
-        v_proj_weight = paddle.to_tensor(
-            self.v_proj.weight, stop_gradient=False)
-        v_proj_bias = paddle.to_tensor(self.v_proj.bias, stop_gradient=False)
-        out_linear_weight = paddle.to_tensor(
-            self.out_proj.weight, stop_gradient=False)
-        out_linear_bias = paddle.to_tensor(
-            self.out_proj.bias, stop_gradient=False)
+        paddle.disable_static()
+        with fluid.dygraph.guard(fluid.CUDAPlace(0)):
+            q_proj_weight = paddle.to_tensor(
+                self.q_proj.weight, stop_gradient=False)
+            q_proj_bias = paddle.to_tensor(
+                self.q_proj.bias, stop_gradient=False)
+            k_proj_weight = paddle.to_tensor(
+                self.k_proj.weight, stop_gradient=False)
+            k_proj_bias = paddle.to_tensor(
+                self.k_proj.bias, stop_gradient=False)
+            v_proj_weight = paddle.to_tensor(
+                self.v_proj.weight, stop_gradient=False)
+            v_proj_bias = paddle.to_tensor(
+                self.v_proj.bias, stop_gradient=False)
+            out_linear_weight = paddle.to_tensor(
+                self.out_proj.weight, stop_gradient=False)
+            out_linear_bias = paddle.to_tensor(
+                self.out_proj.bias, stop_gradient=False)
 
-        ln1_scale = paddle.to_tensor(self.norm1.weight, stop_gradient=False)
-        ln1_bias = paddle.to_tensor(self.norm1.bias, stop_gradient=False)
-        ln2_scale = paddle.to_tensor(self.norm2.weight, stop_gradient=False)
-        ln2_bias = paddle.to_tensor(self.norm2.bias, stop_gradient=False)
+            ln1_scale = paddle.to_tensor(self.norm1.weight, stop_gradient=False)
+            ln1_bias = paddle.to_tensor(self.norm1.bias, stop_gradient=False)
+            ln2_scale = paddle.to_tensor(self.norm2.weight, stop_gradient=False)
+            ln2_bias = paddle.to_tensor(self.norm2.bias, stop_gradient=False)
 
-        q_proj_weight = q_proj_weight.numpy().transpose((1, 0))
-        k_proj_weight = k_proj_weight.numpy().transpose((1, 0))
-        v_proj_weight = v_proj_weight.numpy().transpose((1, 0))
-        qkv_weight = np.concatenate(
-            (q_proj_weight, k_proj_weight, v_proj_weight))
-        qkv_weight = qkv_weight.reshape(
-            (3, self.num_heads, self.head_dim, self.embed_dim))
+            q_proj_weight = q_proj_weight.numpy().transpose((1, 0))
+            k_proj_weight = k_proj_weight.numpy().transpose((1, 0))
+            v_proj_weight = v_proj_weight.numpy().transpose((1, 0))
+            qkv_weight = np.concatenate(
+                (q_proj_weight, k_proj_weight, v_proj_weight))
+            qkv_weight = qkv_weight.reshape(
+                (3, self.num_heads, self.head_dim, self.embed_dim))
 
-        qkv_bias = np.concatenate(
-            (q_proj_bias.numpy(), k_proj_bias.numpy(), v_proj_bias.numpy()))
-        qkv_bias = qkv_bias.reshape((3, self.num_heads, self.head_dim))
+            qkv_bias = np.concatenate(
+                (q_proj_bias.numpy(), k_proj_bias.numpy(), v_proj_bias.numpy()))
+            qkv_bias = qkv_bias.reshape((3, self.num_heads, self.head_dim))
 
-        x = paddle.to_tensor(self.query, stop_gradient=False)
-        attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=False)
-        qkv_weight_tensor = paddle.to_tensor(qkv_weight, stop_gradient=False)
-        qkv_bias_tensor = paddle.to_tensor(qkv_bias, stop_gradient=False)
-        epsilon = 1e-05
-        ln2_epsilon = 1e-05
+            x = paddle.to_tensor(self.query, stop_gradient=False)
+            attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=False)
+            qkv_weight_tensor = paddle.to_tensor(
+                qkv_weight, stop_gradient=False)
+            qkv_bias_tensor = paddle.to_tensor(qkv_bias, stop_gradient=False)
+            epsilon = 1e-05
+            ln2_epsilon = 1e-05
 
-        if attn_mask is not None:
-            attn_mask = _convert_attention_mask(attn_mask, x.dtype)
-        final_out = F.fused_multihead_attention(
-            x, qkv_weight_tensor, out_linear_weight, self.pre_layer_norm,
-            ln1_scale, ln1_bias, ln2_scale, ln2_bias, epsilon, qkv_bias_tensor,
-            out_linear_bias, attn_mask, self.dropout_prob,
-            self.attn_dropout_prob, ln2_epsilon)
-        return final_out
+            if attn_mask is not None:
+                attn_mask = _convert_attention_mask(attn_mask, x.dtype)
+            final_out = F.fused_multihead_attention(
+                x, qkv_weight_tensor, out_linear_weight, self.pre_layer_norm,
+                ln1_scale, ln1_bias, ln2_scale, ln2_bias, epsilon,
+                qkv_bias_tensor, out_linear_bias, attn_mask, self.dropout_prob,
+                self.attn_dropout_prob, ln2_epsilon)
+            return final_out
 
     def test_fused_attention_op(self):
         final_out_ref = self.GetBaselineOut()
