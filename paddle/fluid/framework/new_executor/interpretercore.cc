@@ -351,22 +351,25 @@ void InterpreterCore::ExecuteInstructionList(
 void InterpreterCore::RunNextInstruction(const Instruction& instr) {
   auto& next_instr = instr.next_instruction_;
   auto& atomic_deps = async_work_queue_.AtomicDeps();
+  auto IsReady = [&](size_t next_id) {
+    return atomic_deps[next_id]->fetch_sub(1, std::memory_order_relaxed) == 1;
+  };
 
   if (instr.type_ == OpFuncType::kQueueAsync) {
     // keep all async_ops running in current thread
     for (auto next_id : next_instr.direct_run_) {
-      if (atomic_deps[next_id]->fetch_sub(1, std::memory_order_relaxed) == 1) {
+      if (IsReady(next_id)) {
         RunInstructionAsync(next_id);
       }
     }
     for (auto next_id : next_instr.event_wait_run_) {
-      if (atomic_deps[next_id]->fetch_sub(1, std::memory_order_relaxed) == 1) {
+      if (IsReady(next_id)) {
         RunInstructionAsync(next_id);
       }
     }
     // move all sync_ops into other threads
     for (auto next_id : next_instr.synchronize_run_) {
-      if (atomic_deps[next_id]->fetch_sub(1, std::memory_order_relaxed) == 1) {
+      if (IsReady(next_id)) {
         async_work_queue_.AddTask(
             vec_instruction_[next_id].type_,
             [&, next_id] { RunInstructionAsync(next_id); });
@@ -375,7 +378,7 @@ void InterpreterCore::RunNextInstruction(const Instruction& instr) {
   } else {
     // move async_ops into async_thread
     for (auto next_id : next_instr.event_wait_run_) {
-      if (atomic_deps[next_id]->fetch_sub(1, std::memory_order_relaxed) == 1) {
+      if (IsReady(next_id)) {
         async_work_queue_.AddTask(
             vec_instruction_[next_id].type_,
             [&, next_id] { RunInstructionAsync(next_id); });
@@ -384,7 +387,7 @@ void InterpreterCore::RunNextInstruction(const Instruction& instr) {
 
     for (size_t i = 0; i < next_instr.direct_run_.size(); ++i) {
       auto next_id = next_instr.direct_run_[i];
-      if (atomic_deps[next_id]->fetch_sub(1, std::memory_order_relaxed) == 1) {
+      if (IsReady(next_id)) {
         // only keep one op running in current thread
         if (i == 0) {
           RunInstructionAsync(next_id);
