@@ -37,14 +37,15 @@
 #endif
 #include "paddle/fluid/platform/npu_info.h"
 
-DEFINE_int64(
+PADDLE_DEFINE_EXPORTED_int64(
     gpu_allocator_retry_time, 10000,
     "The retry time (milliseconds) when allocator fails "
     "to allocate memory. No retry if this value is not greater than 0");
 
-DEFINE_bool(use_system_allocator, false,
-            "Whether to use system allocator to allocate CPU and GPU memory. "
-            "Only used for unittests.");
+PADDLE_DEFINE_EXPORTED_bool(
+    use_system_allocator, false,
+    "Whether to use system allocator to allocate CPU and GPU memory. "
+    "Only used for unittests.");
 
 namespace paddle {
 namespace memory {

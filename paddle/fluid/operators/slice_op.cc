@@ -434,7 +434,8 @@ REGISTER_OPERATOR(slice_grad, ops::SliceOpGrad,
                   ops::SliceOpGradVarTypeInference);
 
 REGISTER_OP_CPU_KERNEL(
-    slice, ops::SliceKernel<paddle::platform::CPUDeviceContext, int>,
+    slice, ops::SliceKernel<paddle::platform::CPUDeviceContext, bool>,
+    ops::SliceKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SliceKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::SliceKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SliceKernel<paddle::platform::CPUDeviceContext, double>,
@@ -444,7 +445,8 @@ REGISTER_OP_CPU_KERNEL(
                      paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
-    slice_grad, ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int>,
+    slice_grad, ops::SliceGradKernel<paddle::platform::CPUDeviceContext, bool>,
+    ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::SliceGradKernel<paddle::platform::CPUDeviceContext, double>,
@@ -454,7 +456,8 @@ REGISTER_OP_CPU_KERNEL(
                          paddle::platform::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
-    slice, ops::SliceKernel<paddle::platform::CUDADeviceContext, float>,
+    slice, ops::SliceKernel<paddle::platform::CUDADeviceContext, bool>,
+    ops::SliceKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SliceKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SliceKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SliceKernel<paddle::platform::CUDADeviceContext, int64_t>,
@@ -466,7 +469,7 @@ REGISTER_OP_CUDA_KERNEL(
                      paddle::platform::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
-    slice_grad,
+    slice_grad, ops::SliceGradKernel<paddle::platform::CUDADeviceContext, bool>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::SliceGradKernel<paddle::platform::CUDADeviceContext, int>,

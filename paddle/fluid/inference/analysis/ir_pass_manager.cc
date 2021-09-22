@@ -146,6 +146,14 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("gpu_device_id", new int(argument->gpu_device_id()));
       pass->Set("use_static_engine", new bool(use_static_engine));
       pass->Set("model_from_memory", new bool(argument->model_from_memory()));
+
+      // tuned trt dynamic_shape
+      pass->Set("trt_shape_range_info_path",
+                new std::string(argument->tensorrt_shape_range_info_path()));
+      pass->Set("trt_tuned_dynamic_shape",
+                new bool(argument->tensorrt_tuned_dynamic_shape()));
+      pass->Set("trt_allow_build_at_runtime",
+                new bool(argument->tensorrt_allow_build_at_runtime()));
       pass->Set("max_input_shape", new std::map<std::string, std::vector<int>>(
                                        argument->max_input_shape()));
       pass->Set("min_input_shape", new std::map<std::string, std::vector<int>>(
@@ -153,17 +161,17 @@ void IRPassManager::CreatePasses(Argument *argument,
       pass->Set("optim_input_shape",
                 new std::map<std::string, std::vector<int>>(
                     argument->optim_input_shape()));
-      bool with_dynamic_shape = argument->max_input_shape().size() > 0 &&
-                                argument->min_input_shape().size() > 0 &&
-                                argument->optim_input_shape().size() > 0;
+      bool with_dynamic_shape = (argument->max_input_shape().size() > 0 &&
+                                 argument->min_input_shape().size() > 0 &&
+                                 argument->optim_input_shape().size() > 0) ||
+                                argument->tensorrt_tuned_dynamic_shape();
       pass->Set("with_dynamic_shape", new bool(with_dynamic_shape));
       pass->Set("trt_disabled_ops", new std::vector<std::string>(
                                         argument->tensorrt_disabled_ops()));
       pass->Set("trt_use_dla", new bool(argument->tensorrt_use_dla()));
       pass->Set("trt_dla_core", new int(argument->tensorrt_dla_core()));
       // Setting the disable_trt_plugin_fp16 to true means that TRT plugin will
-      // not
-      // run fp16.
+      // not run fp16.
       pass->Set("disable_trt_plugin_fp16",
                 new bool(argument->disable_trt_plugin_fp16()));
     } else if (pass_name == "dlnne_subgraph_pass") {
@@ -194,6 +202,27 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new std::string(argument->xpu_autotune_file()));
       pass->Set("precision", new std::string(argument->xpu_precision()));
       pass->Set("adaptive_seqlen", new bool(argument->xpu_adaptive_seqlen()));
+      // NNAdapter Related
+      pass->Set("use_nnadapter", new bool(argument->use_nnadapter()));
+      pass->Set("nnadapter_model_cache_dir",
+                new std::string(argument->nnadapter_model_cache_dir()));
+      pass->Set(
+          "nnadapter_device_names",
+          new std::vector<std::string>(argument->nnadapter_device_names()));
+      pass->Set("nnadapter_context_properties",
+                new std::string(argument->nnadapter_context_properties()));
+      pass->Set("nnadapter_subgraph_partition_config_buffer",
+                new std::string(
+                    argument->nnadapter_subgraph_partition_config_buffer()));
+      pass->Set("nnadapter_subgraph_partition_config_path",
+                new std::string(
+                    argument->nnadapter_subgraph_partition_config_path()));
+      pass->Set("nnadapter_model_cache_buffer",
+                new std::vector<std::vector<char>>(
+                    argument->nnadapter_model_cache_buffer()));
+      pass->Set("nnadapter_model_cache_token",
+                new std::vector<std::string>(
+                    argument->nnadapter_model_cache_token()));
     }
     disable_logs_ = argument->disable_logs();
     if (pass_name == "fc_fuse_pass") {
