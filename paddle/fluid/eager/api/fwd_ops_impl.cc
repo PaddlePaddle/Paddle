@@ -51,7 +51,10 @@ pt::Tensor scale(const pt::Tensor& x, float scale, float bias,
 
   // 2.2 Add GradNode
   // 2.2.1 ComputeRequireGrad
-  // TODO(jiabin) :make this function accept different kinds of input
+  // TODO(jiabin) : make this function accept different kinds of input
+  // TODO(zhanlve): which one is more efficient: 
+  //                1. construct a vector of pointers 
+  //                2. call "ComputeRequireGrad" multiple times
   if (EagerUtils::ComputeRequireGrad(&p_autograd_in, 1, &p_autograd_out, 1,
                                      trace_backward)) {
     // 2.2.2 Set OutRankInfo for outputs this needs to be as same as Edges's
@@ -74,7 +77,7 @@ pt::Tensor scale(const pt::Tensor& x, float scale, float bias,
     scale_node->SetAttributes_scale(scale);
 
     // Set Next Edges
-    scale_node->AddEdges({p_autograd_in}, /*slot id*/ 0);
+    scale_node->AddEdges(*p_autograd_in, /*slot id*/ 0);
 
     // Set TensorWrappers
     scale_node->SetTensorWrappers_X({x});
@@ -85,7 +88,7 @@ pt::Tensor scale(const pt::Tensor& x, float scale, float bias,
     scale_node->SetGradInMeta(*p_autograd_out, /*slot id*/ 0);
 
     // Set History for output set current Grad Node for
-    EagerUtils::SetHistory({p_autograd_out}, scale_node);
+    EagerUtils::SetHistory(p_autograd_out, scale_node);
   }
 
   return out;

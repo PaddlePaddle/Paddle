@@ -184,7 +184,9 @@ class EagerUtils {
 
   // Set history is used to set backward info during forward process, it will
   // set forward var's autograd meta's grad node as current backward node.
-  static void SetHistory(const std::vector<AutogradMeta*>& autograd_metas,
+  static void SetHistory(std::vector<AutogradMeta*>* autograd_metas,
+                         const std::shared_ptr<GradNodeBase>& grad_node);
+  static void SetHistory(AutogradMeta* autograd_meta,
                          const std::shared_ptr<GradNodeBase>& grad_node);
 
   static pt::Tensor CreateTensorWithValue(const pt::DDim& ddim,
@@ -194,6 +196,10 @@ class EagerUtils {
                                           double value, bool is_leaf = true);
   // This is used for Set vector of tensors' rank
   static void SetMultiOutRankWithSlot(std::vector<AutogradMeta*>* targets,
+                                      size_t slot_id);
+  static void SetOutRankWithSlot(std::vector<AutogradMeta*>* targets,
+                                      size_t slot_id);
+  static void SetOutRankWithSlot(AutogradMeta* target,
                                       size_t slot_id);
 
   // This method will return an AutogradMeta pointer unsafely.
