@@ -22,6 +22,18 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
+static inline T GetAttrFromTensor(const framework::Tensor* tensor) {
+  const auto* tensor_data = tensor->data<T>();
+  framework::Tensor cpu_tensor;
+  if (platform::is_gpu_place(tensor->place()) ||
+      platform::is_npu_place(tensor->place())) {
+    TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
+    tensor_data = cpu_tensor.data<T>();
+  }
+  return tensor_data[0];
+}
+
+template <typename T>
 class ScaleNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
