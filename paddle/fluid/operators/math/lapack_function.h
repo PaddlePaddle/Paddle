@@ -20,7 +20,12 @@ namespace math {
 
 // LU (for example)
 template <typename T>
-void lapackLu(int m, int n, T *a, int lda, int *ipiv, int *info);
+void lapackLu(int m, int n, T* a, int lda, int* ipiv, int* info);
+
+template <typename T, typename ValueType>
+void lapackEvd(char jobz, char uplo, int n, T* a, int lda, ValueType* w,
+               T* work, int lwork, ValueType* rwork, int lrwork, int* iwork,
+               int liwork, int* info);
 
 }  // namespace math
 }  // namespace operators
