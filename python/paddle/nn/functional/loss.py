@@ -1120,13 +1120,13 @@ def margin_cross_entropy(logits,
         The API supports model parallel and single GPU. And logits.shape[-1] can be different at each rank.
 
     Args:
-    	logits (Tensor): shape[N, local_num_classes], the output of the normalized X multiply the normalized W.
+        logits (Tensor): shape[N, local_num_classes], the output of the normalized X multiply the normalized W.
                 The logits is shard_logits when using model parallel.
-    	label (Tensor): shape[N] or shape[N, 1], the groud truth label.
-    	margin1 (float, optional): m1 of margin loss, default value is `1.0`.
-    	margin2 (float, optional): m2 of margin loss, default value is `0.5`.
-    	margin3 (float, optional): m3 of margin loss, default value is `0.0`.
-    	scale (float, optional): s of margin loss, default value is `64.0`.
+        label (Tensor): shape[N] or shape[N, 1], the groud truth label.
+        margin1 (float, optional): m1 of margin loss, default value is `1.0`.
+        margin2 (float, optional): m2 of margin loss, default value is `0.5`.
+        margin3 (float, optional): m3 of margin loss, default value is `0.0`.
+        scale (float, optional): s of margin loss, default value is `64.0`.
         group (Group, optional): The abstract representation of group, see paddle.distributed.collective.Group.
             Default `None`.
         return_softmax (bool, optional): Whether return softmax probability. Default value is `False`.
@@ -1644,6 +1644,9 @@ def cross_entropy(input,
             ignore_index)
 
     input_dims = len(list(input.shape))
+    if input_dims == 0:
+        raise ValueError('The dimention of input should be larger than zero!')
+
     label_dims = len(list(label.shape))
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(
