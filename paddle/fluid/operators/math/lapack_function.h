@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,18 +13,15 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
 
 namespace paddle {
-namespace framework {
+namespace operators {
+namespace math {
 
-class EventManager {
- public:
-  void RecordEvent(const Instruction& instruction,
-                   const platform::Place& place);
+// LU (for example)
+template <typename T>
+void lapackLu(int m, int n, T *a, int lda, int *ipiv, int *info);
 
-  void WaitEvent(const Instruction& instruction, const platform::Place& place);
-};
-
-}  // namespace framework
+}  // namespace math
+}  // namespace operators
 }  // namespace paddle

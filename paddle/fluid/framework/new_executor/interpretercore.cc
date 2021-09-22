@@ -18,6 +18,7 @@
 #include <unordered_set>
 
 #include "paddle/fluid/framework/details/share_tensor_buffer_functor.h"
+#include "paddle/fluid/platform/profiler.h"
 
 PADDLE_DEFINE_EXPORTED_bool(new_executor_use_inplace, true,
                             "Use inplace in new executor");
@@ -183,8 +184,7 @@ void InterpreterCore::Convert() {
       }
     }
 
-    stream_analyzer_.Schedule(vec_func_list_, filter_next, i,
-                              &vec_instruction_);
+    stream_analyzer_.Schedule(filter_next, &vec_instruction_, i);
 
     for (auto inst_id : filter_next) {
       dependecy_count_[inst_id]++;
@@ -305,9 +305,12 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
   VLOG(3) << "RunInstruction:  "
           << instr_node.kernel_func_.operator_base_->Type();
 
-  static_cast<const framework::OperatorWithKernel*>(
-      instr_node.kernel_func_.operator_base_)
-      ->InferShape(instr_node.infershape_ctx_.get());
+  {
+    platform::RecordEvent infershape_event("InferShape");
+    static_cast<const framework::OperatorWithKernel*>(
+        instr_node.kernel_func_.operator_base_)
+        ->InferShape(instr_node.infershape_ctx_.get());
+  }
 
   if (FLAGS_new_executor_use_inplace) {
     for (auto& pair : instr_node.vec_inplace_in_to_out_) {
@@ -319,8 +322,10 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
       }
     }
   }
-
-  instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
+  {
+    platform::RecordEvent compute_event("Compute");
+    instr_node.kernel_func_.compute_func_(*instr_node.execution_ctx_.get());
+  }
 }
 
 void InterpreterCore::ExecuteInstructionList(
@@ -351,6 +356,8 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id,
                                           AtomicVectorSizeT* atomic_var_ref,
                                           std::atomic<size_t>* op_run_number) {
   auto& instr_node = vec_instruction_[instr_id];
+  platform::RecordEvent instruction_event(
+      instr_node.kernel_func_.operator_base_->Type());
   event_manager_.WaitEvent(instr_node, place_);
 
   RunInstruction(instr_node);
@@ -384,6 +391,10 @@ void InterpreterCore::CheckGC(size_t instr_id,
                         1, std::memory_order_relaxed) == 1;
     if (is_ready && var_scope.vec_meta_info_[var_id].vardesc_ &&
         !var_scope.vec_meta_info_[var_id].vardesc_->Persistable()) {
+      gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
+              vec_instruction_[instr_id].dev_ctx_);
+    } else if (is_ready &&
+               var_scope.vec_meta_info_[var_id].vardesc_ == nullptr) {
       gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],
               vec_instruction_[instr_id].dev_ctx_);
     }

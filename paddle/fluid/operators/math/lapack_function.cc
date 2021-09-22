@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+//   Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,19 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#pragma once
-#include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/operators/math/lapack_function.h"
+#include "paddle/fluid/platform/dynload/lapack.h"
 
 namespace paddle {
-namespace framework {
+namespace operators {
+namespace math {
 
-class EventManager {
- public:
-  void RecordEvent(const Instruction& instruction,
-                   const platform::Place& place);
+// LU (for example)
+template <>
+void lapackLu<double>(int m, int n, double *a, int lda, int *ipiv, int *info) {
+  platform::dynload::dgetrf_(&m, &n, a, &lda, ipiv, info);
+}
 
-  void WaitEvent(const Instruction& instruction, const platform::Place& place);
-};
+template <>
+void lapackLu<float>(int m, int n, float *a, int lda, int *ipiv, int *info) {
+  platform::dynload::sgetrf_(&m, &n, a, &lda, ipiv, info);
+}
 
-}  // namespace framework
+}  // namespace math
+}  // namespace operators
 }  // namespace paddle
