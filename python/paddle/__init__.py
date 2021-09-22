@@ -530,8 +530,6 @@ __all__ = [  # noqa
            'standard_normal',
            'diagonal',
            'broadcast_tensors',
-           'det',
-           'slogdet',
            'einsum',
            'set_flags',
            'get_flags'
