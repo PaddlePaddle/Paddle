@@ -248,13 +248,13 @@ class ReshapeOp : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
+    //#ifdef PADDLE_WITH_MKLDNN
+    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+    //                                     framework::DataLayout::kMKLDNN,
+    //                                     framework::LibraryType::kMKLDNN);
+    //    }
+    //#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
@@ -366,13 +366,13 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
+    //#ifdef PADDLE_WITH_MKLDNN
+    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+    //                                     framework::DataLayout::kMKLDNN,
+    //                                     framework::LibraryType::kMKLDNN);
+    //    }
+    //#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -557,70 +557,70 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
 
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
+    //#ifdef PADDLE_WITH_MKLDNN
+    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+    //                                     framework::DataLayout::kMKLDNN,
+    //                                     framework::LibraryType::kMKLDNN);
+    //    }
+    //#endif
+    //    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    //  }
+
+    framework::OpKernelType GetKernelTypeForVar(
+        const std::string &var_name, const Tensor &tensor,
+        const framework::OpKernelType &expected_kernel_type) const override {
+      if (var_name == "ShapeTensor") {
+        return expected_kernel_type;
+      }
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
     }
-#endif
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
-  }
+  };
 
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    if (var_name == "ShapeTensor") {
-      return expected_kernel_type;
+  class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
+   public:
+    Reshape2DoubleGradOp(const std::string &type,
+                         const framework::VariableNameMap &inputs,
+                         const framework::VariableNameMap &outputs,
+                         const framework::AttributeMap &attrs)
+        : OperatorWithKernel(type, inputs, outputs, attrs) {}
+
+    void InferShape(framework::InferShapeContext *ctx) const override {
+      PADDLE_ENFORCE_EQ(ctx->HasInput("DDX"), true,
+                        platform::errors::InvalidArgument(
+                            "Input(X@GRAD_GRAD) shouldn't be null."));
+      if (ctx->HasOutput("DDOut") && ctx->HasInput("DDX")) {
+        ctx->ShareDim("DOut", "DDOut");
+      }
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
-  }
-};
 
-class Reshape2DoubleGradOp : public framework::OperatorWithKernel {
- public:
-  Reshape2DoubleGradOp(const std::string &type,
-                       const framework::VariableNameMap &inputs,
-                       const framework::VariableNameMap &outputs,
-                       const framework::AttributeMap &attrs)
-      : OperatorWithKernel(type, inputs, outputs, attrs) {}
-
-  void InferShape(framework::InferShapeContext *ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInput("DDX"), true,
-                      platform::errors::InvalidArgument(
-                          "Input(X@GRAD_GRAD) shouldn't be null."));
-    if (ctx->HasOutput("DDOut") && ctx->HasInput("DDX")) {
-      ctx->ShareDim("DOut", "DDOut");
+   protected:
+    framework::OpKernelType GetExpectedKernelType(
+        const framework::ExecutionContext &ctx) const override {
+      return framework::OpKernelType(
+          OperatorWithKernel::IndicateVarDataType(ctx, "DDX"),
+          ctx.device_context());
     }
-  }
 
- protected:
-  framework::OpKernelType GetExpectedKernelType(
-      const framework::ExecutionContext &ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "DDX"),
-        ctx.device_context());
-  }
-
-  framework::OpKernelType GetKernelTypeForVar(
-      const std::string &var_name, const Tensor &tensor,
-      const framework::OpKernelType &expected_kernel_type) const override {
-    if (var_name == "ShapeTensor") {
-      return expected_kernel_type;
+    framework::OpKernelType GetKernelTypeForVar(
+        const std::string &var_name, const Tensor &tensor,
+        const framework::OpKernelType &expected_kernel_type) const override {
+      if (var_name == "ShapeTensor") {
+        return expected_kernel_type;
+      }
+      return framework::OpKernelType(expected_kernel_type.data_type_,
+                                     tensor.place(), tensor.layout());
     }
-    return framework::OpKernelType(expected_kernel_type.data_type_,
-                                   tensor.place(), tensor.layout());
-  }
-};
+  };
 
-DECLARE_INPLACE_OP_INFERER(ReshapeOpInplaceInferer, {"X", "Out"});
-DECLARE_INPLACE_OP_INFERER(ReshapeGradInplaceInferer,
-                           {framework::GradVarName("Out"),
-                            framework::GradVarName("X")});
-DECLARE_INPLACE_OP_INFERER(ReshapeDoubleGradInplaceInferer, {"DDX", "DDOut"});
-DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReshapeDoubleGradOpNoNeedBufferVarInferer,
-                                    "DOut");
+  DECLARE_INPLACE_OP_INFERER(ReshapeOpInplaceInferer, {"X", "Out"});
+  DECLARE_INPLACE_OP_INFERER(ReshapeGradInplaceInferer,
+                             {framework::GradVarName("Out"),
+                              framework::GradVarName("X")});
+  DECLARE_INPLACE_OP_INFERER(ReshapeDoubleGradInplaceInferer, {"DDX", "DDOut"});
+  DECLARE_NO_NEED_BUFFER_VARS_INFERER(ReshapeDoubleGradOpNoNeedBufferVarInferer,
+                                      "DOut");
 
 }  // namespace operators
 }  // namespace paddle
