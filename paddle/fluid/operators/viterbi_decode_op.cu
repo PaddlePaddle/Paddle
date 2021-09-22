@@ -69,6 +69,11 @@ DEFINE_CUDA_FUNTOR(Mul, *);
     }                                                         \
   }
 
+#define FIX_BLOCKDIM_CASE(block_dim) \
+  case (block_dim):                  \
+    CUDA_ARGMAX((block_dim));        \
+    break
+
 DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaEqualFunctor, ==);
 DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaGreaterThanFunctor, >);
 DEFINE_CMP_BINARY_FUNCTOR_WITH_PONTER_INPUT(CudaGreaterEqualFunctor, >=);
@@ -157,30 +162,14 @@ struct ComputeArgmax {
     IndType* out_idx_data = out_idx->data<IndType>();
     T* out_data = out->data<T>();
     switch (ComputeBlockSize(width)) {
-      case 8:
-        CUDA_ARGMAX(8);
-        break;
-      case 16:
-        CUDA_ARGMAX(16);
-        break;
-      case 32:
-        CUDA_ARGMAX(32);
-        break;
-      case 64:
-        CUDA_ARGMAX(64);
-        break;
-      case 128:
-        CUDA_ARGMAX(128);
-        break;
-      case 256:
-        CUDA_ARGMAX(256);
-        break;
-      case 512:
-        CUDA_ARGMAX(512);
-        break;
-      case 1024:
-        CUDA_ARGMAX(1024);
-        break;
+      FIX_BLOCKDIM_CASE(8);
+      FIX_BLOCKDIM_CASE(16);
+      FIX_BLOCKDIM_CASE(32);
+      FIX_BLOCKDIM_CASE(64);
+      FIX_BLOCKDIM_CASE(128);
+      FIX_BLOCKDIM_CASE(256);
+      FIX_BLOCKDIM_CASE(512);
+      FIX_BLOCKDIM_CASE(1024);
     }
   }
 };
