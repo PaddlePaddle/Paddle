@@ -24,10 +24,6 @@ class EventManager {
                    const platform::Place& place);
 
   void WaitEvent(const Instruction& instruction, const platform::Place& place);
-
- private:
-  void WaitOrSync(const std::vector<EventInter>& events,
-                  const platform::DeviceContext* dev_ctx);
 };
 
 }  // namespace framework
