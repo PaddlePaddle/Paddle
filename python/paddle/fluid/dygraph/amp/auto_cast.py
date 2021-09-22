@@ -23,6 +23,7 @@ import functools
 import paddle
 import operator
 import types
+import paddle.fluid as fluid
 
 __all__ = ['amp_guard', 'amp_decorate']
 
@@ -219,16 +220,16 @@ def amp_guard(enable=True,
      .. code-block:: python
 
         import numpy as np
-        import paddle
+        import paddle.fluid as fluid
 
         data = np.random.uniform(-1, 1, [10, 3, 32, 32]).astype('float32')
-        with paddle.fluid.dygraph.guard():
-            conv2d = paddle.fluid.dygraph.Conv2D(3, 2, 3)
-            data = paddle.fluid.dygraph.to_variable(data)
-            with paddle.fluid.dygraph.amp_guard():
+        with fluid.dygraph.guard():
+            conv2d = fluid.dygraph.Conv2D(3, 2, 3)
+            data = fluid.dygraph.to_variable(data)
+            with fluid.dygraph.amp_guard():
                 conv = conv2d(data)
                 print(conv.dtype) # FP16
-            with paddle.fluid.dygraph.amp_guard(enable=False):
+            with fluid.dygraph.amp_guard(enable=False):
                 conv = conv2d(data)
                 print(conv.dtype) # FP32
 
@@ -300,7 +301,7 @@ class StateDictHook(object):
     def __call__(self, state_dict):
         for key in state_dict:
             param = state_dict[key]
-            with paddle.fluid.dygraph.guard():
+            with fluid.dygraph.guard():
                 param_applied = paddle.cast(param, self._save_dtype)
                 param_applied.name = param.name
                 state_dict[key] = param_applied
@@ -334,15 +335,16 @@ def amp_decorate(models,
         # required: gpu
         # Demo1: single model and optimizer:
         import paddle
+        import paddle.fluid as fluid
 
         model = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimzier = paddle.optimizer.SGD(parameters=model.parameters())
 
-        model, optimizer = paddle.fluid.dygraph.amp_decorate(models=model, optimizers=optimzier, level='O2')
+        model, optimizer = fluid.dygraph.amp_decorate(models=model, optimizers=optimzier, level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
-        with paddle.fluid.dygraph.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
+        with fluid.dygraph.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
             output = model(data)
             print(output.dtype) # FP16
 
@@ -351,11 +353,11 @@ def amp_decorate(models,
         model2 = paddle.nn.Conv2D(3, 2, 3, bias_attr=False)
         optimizer2 = paddle.optimizer.Adam(parameters=model2.parameters())
 
-        models, optimizers = paddle.fluid.dygraph.amp_decorate(models=[model, model2], optimizers=[optimzier, optimizer2], level='O2')
+        models, optimizers = fluid.dygraph.amp_decorate(models=[model, model2], optimizers=[optimzier, optimizer2], level='O2')
 
         data = paddle.rand([10, 3, 32, 32])
 
-        with paddle.fluid.dygraph.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
+        with fluid.dygraph.amp_guard(enable=True, custom_white_list=None, custom_black_list=None, level='O2'):
             output = models[0](data)
             output2 = models[1](data)
             print(output.dtype) # FP16
