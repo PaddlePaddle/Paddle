@@ -531,6 +531,5 @@ __all__ = [  # noqa
            'broadcast_tensors',
            'einsum',
            'set_flags',
-           'get_flags',
-           'solve'
+           'get_flags'
 ]

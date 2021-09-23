@@ -1921,6 +1921,7 @@ def solve(x, y, name=None):
         Out = X^-1 * Y
     Specifically,
     - This system of linear equations has one solution if and only if input 'X' is invertible.
+    
     Args:
         x (Tensor): A square matrix or a batch of square matrices. Its shape should be `[*, M, M]`, where `*` is zero or
             more batch dimensions. Its data type should be float32 or float64.
@@ -1928,11 +1929,14 @@ def solve(x, y, name=None):
             more batch dimensions. Its data type should be float32 or float64.
         name(str, optional): Name for the operation (optional, default is None). 
             For more information, please refer to :ref:`api_guide_Name`.
+    
     Returns:
         Tensor: The solution of a square system of linear equations with a unique solution for input 'x' and 'y'. 
         Its data type should be the same as that of `x`.
+    
     Examples:
     .. code-block:: python
+        
         # a square system of linear equations:
         # 2*X0 + X1 = 9
         # X0 + 2*X1 = 8
