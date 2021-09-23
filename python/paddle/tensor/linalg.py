@@ -1360,7 +1360,7 @@ def det(x):
     Returns:
         y (Tensor):the determinant value of a square matrix or batches of square matrices.
 
-    Example: 
+    Example:
         .. code-block:: python
 
         import paddle
@@ -1370,10 +1370,10 @@ def det(x):
         A = paddle.det(x)
 
         print(A)
-    
+
         # [ 0.02547996,  2.52317095, -6.15900707])
 
-    
+
     """
     if in_dygraph_mode():
         return core.ops.determinant(x)
@@ -1403,7 +1403,7 @@ def slogdet(x):
     """
     Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
     The determinant can be computed with ``sign * exp(logabsdet)
-    
+
     Supports input of float, double
 
     Note that for matrices that have zero determinant, this returns ``(0, -inf)``
@@ -1425,7 +1425,7 @@ def slogdet(x):
         A = paddle.slogdet(x)
 
         print(A)
-    
+
         # [[ 1.        ,  1.        , -1.        ],
         # [-0.98610914, -0.43010661, -0.10872950]])
 
@@ -1596,27 +1596,27 @@ def matrix_power(x, n, name=None):
 def eigvals(x, name=None):
     """
     Compute the eigenvalues of one or more general matrices.
-    
-    Warning: 
-        The gradient kernel of this operator does not yet developed. 
+
+    Warning:
+        The gradient kernel of this operator does not yet developed.
         If you need back propagation through this operator, please replace it with paddle.linalg.eig.
 
     Args:
         x (Tensor): A square matrix or a batch of square matrices whose eigenvalues will be computed.
-            Its shape should be `[*, M, M]`, where `*` is zero or more batch dimensions. 
+            Its shape should be `[*, M, M]`, where `*` is zero or more batch dimensions.
             Its data type should be float32, float64, complex64, or complex128.
-        name (str, optional): Name for the operation (optional, default is None). 
+        name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A tensor containing the unsorted eigenvalues which has the same batch dimensions with `x`. 
+        Tensor: A tensor containing the unsorted eigenvalues which has the same batch dimensions with `x`.
             The eigenvalues are complex-valued even when `x` is real.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            
+
             paddle.set_device("cpu")
             paddle.seed(1234)
 
@@ -1657,7 +1657,7 @@ def multi_dot(x, name=None):
     """
     Multi_dot is an operator that calculates multiple matrix multiplications.
 
-    Supports inputs of float, double and float16 dtypes. This function does not
+    Supports inputs of float16, float32 and float64 dtypes. This function does not
     support batched inputs.
 
     The input tensor in [x] must be 2-D except for the first and last can be 1-D.
@@ -1804,7 +1804,7 @@ def eigh(x, UPLO='L', name=None):
 
 def pinv(x, rcond=1e-15, hermitian=False, name=None):
     r"""
-    Calculate pseudo inverse via SVD(singular value decomposition) 
+    Calculate pseudo inverse via SVD(singular value decomposition)
     of one matrix or batches of regular matrix.
 
     .. math::
@@ -1815,30 +1815,30 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
         else:
             x = u * s * ut  (eigh)
             out = u * 1/s * u.conj().transpose(-2,-1)
-    
+
     If x is hermitian or symmetric matrix, svd will be replaced with eigh.
 
     Args:
-        x(Tensor): The input tensor. Its shape should be (*, m, n) 
-            where * is zero or more batch dimensions. m and n can be 
-            arbitraty positive number. The data type of x should be 
+        x(Tensor): The input tensor. Its shape should be (*, m, n)
+            where * is zero or more batch dimensions. m and n can be
+            arbitraty positive number. The data type of x should be
             float32 or float64 or complex64 or complex128. When data
             type is complex64 or cpmplex128, hermitian should be set
             True.
 
-        rcond(Tensor, optional): the tolerance value to determine 
-            when is a singular value zero. Defalut:1e-15. 
-        
-        hermitian(bool, optional): indicates whether x is Hermitian 
+        rcond(Tensor, optional): the tolerance value to determine
+            when is a singular value zero. Defalut:1e-15.
+
+        hermitian(bool, optional): indicates whether x is Hermitian
             if complex or symmetric if real. Default: False.
-        
-        name(str|None): A name for this layer(optional). If set None, 
+
+        name(str|None): A name for this layer(optional). If set None,
             the layer will be named automatically.
-    
+
     Returns:
-        Tensor: The tensor with same data type with x. it represents 
+        Tensor: The tensor with same data type with x. it represents
         pseudo inverse of x. Its shape should be (*, n, m).
-    
+
     Examples:
         .. code-block:: python
 
