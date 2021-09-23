@@ -88,7 +88,7 @@ if "%WITH_PYTHON%" == "ON" (
     pip install -r %work_dir%\python\requirements.txt --user
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
-        exit /b 7
+        exit /b 5
     )
 )
 
@@ -308,7 +308,7 @@ if %GENERATOR% == "Ninja" (
     pip install ninja
     if %errorlevel% NEQ 0 (
         echo pip install ninja failed!
-        exit /b 7
+        exit /b 5
     )
 )
 
@@ -627,7 +627,7 @@ git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 pip install -r %work_dir%\python\unittest_py\requirements.txt --user
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
-    exit /b 7
+    exit /b 5
 )
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#
