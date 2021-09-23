@@ -107,7 +107,6 @@ from .tensor.linalg import multi_dot  # noqa: F401
 from .tensor.linalg import matrix_power  # noqa: F401
 from .tensor.linalg import svd  # noqa: F401
 from .tensor.linalg import eigh  # noqa: F401
-from .tensor.linalg import pinv  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
 from .tensor.logic import greater_than  # noqa: F401
