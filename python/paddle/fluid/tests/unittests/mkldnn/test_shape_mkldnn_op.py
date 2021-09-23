@@ -16,7 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
+from paddle.fluid.tests.unittests.op_test import OpTest
 import paddle
 from paddle.fluid import core
 from paddle.fluid.op import Operator
