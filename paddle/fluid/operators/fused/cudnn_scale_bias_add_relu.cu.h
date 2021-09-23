@@ -17,7 +17,6 @@ limitations under the License. */
 #include <numeric>
 
 #include "paddle/fluid/operators/fused/cudnn_fusion_helper.h"
-#include "paddle/fluid/operators/fused/resnet_unit_op.h"
 
 namespace paddle {
 namespace operators {
