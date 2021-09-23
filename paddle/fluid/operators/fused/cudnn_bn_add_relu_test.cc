@@ -32,12 +32,13 @@ using Tensor = paddle::framework::Tensor;
 USE_OP(batch_norm);
 
 // get paddle batchnorm op results as baseline
-void GetBatchNormOp(const Tensor &x, const Tensor &scale, const Tensor &bias,
-                    Tensor *mean, Tensor *var, Tensor *y, Tensor *saved_mean,
-                    Tensor *saved_var, Tensor *reserve_space,
-                    const framework::DDim &data_dim,
-                    const framework::DDim &param_dim,
-                    const platform::CUDADeviceContext &ctx) {
+void BatchNormForwardCompute(const Tensor &x, const Tensor &scale,
+                             const Tensor &bias, Tensor *mean, Tensor *var,
+                             Tensor *y, Tensor *saved_mean, Tensor *saved_var,
+                             Tensor *reserve_space,
+                             const framework::DDim &data_dim,
+                             const framework::DDim &param_dim,
+                             const platform::CUDADeviceContext &ctx) {
   framework::Scope scope;
   auto var_x = scope.Var("X");
   auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
@@ -195,10 +196,14 @@ class TestCudnnBNAddReluForward {
     framework::TensorFromVector<float>(var_vec_, *ctx_, &var_);
     var_.Resize({1, 1, 1, channels_});
     // baseline
+    framework::TensorFromVector<float>(scale_vec_, *ctx_, &base_scale_);
+    base_scale_.Resize({channels_});
+    framework::TensorFromVector<float>(bias_vec_, *ctx_, &base_bias_);
+    base_bias_.Resize({channels_});
     framework::TensorFromVector<float>(base_mean_vec_, *ctx_, &base_mean_);
-    base_mean_.Resize({1, 1, 1, channels_});
+    base_mean_.Resize({channels_});
     framework::TensorFromVector<float>(base_var_vec_, *ctx_, &base_var_);
-    base_var_.Resize({1, 1, 1, channels_});
+    base_var_.Resize({channels_});
     // output
     y_.Resize({batch_size_, height_, width_, channels_});
     equiv_scale_.Resize({1, 1, 1, channels_});
@@ -207,8 +212,8 @@ class TestCudnnBNAddReluForward {
     saved_var_.Resize({1, 1, 1, channels_});
     // baseline
     base_y_.Resize({batch_size_, height_, width_, channels_});
-    base_saved_mean_.Resize({1, 1, 1, channels_});
-    base_saved_var_.Resize({1, 1, 1, channels_});
+    base_saved_mean_.Resize({channels_});
+    base_saved_var_.Resize({channels_});
     // bitmask
     int C = channels_;
     int64_t NHW = ele_count_;
@@ -220,9 +225,10 @@ class TestCudnnBNAddReluForward {
   }
 
   void BaselineForward() {
-    GetBatchNormOp(x_, scale_, bias_, &base_mean_, &base_var_, &base_y_,
-                   &base_saved_mean_, &base_saved_var_, &reserve_space_,
-                   x_.dims(), framework::make_ddim({channels_}), *ctx_);
+    BatchNormForwardCompute(x_, base_scale_, base_bias_, &base_mean_,
+                            &base_var_, &base_y_, &base_saved_mean_,
+                            &base_saved_var_, &reserve_space_, x_.dims(),
+                            framework::make_ddim({channels_}), *ctx_);
 
     ctx_->Wait();
   }
@@ -328,8 +334,8 @@ class TestCudnnBNAddReluForward {
   std::vector<float> sum_vec_, sum_of_squares_vec_, scale_vec_, bias_vec_;
   std::vector<float> mean_vec_, var_vec_, saved_mean_vec_, saved_var_vec_;
   // baseline
-  framework::Tensor base_y_, base_mean_, base_var_, base_saved_mean_,
-      base_saved_var_, reserve_space_;
+  framework::Tensor base_y_, base_scale_, base_bias_, base_mean_, base_var_,
+      base_saved_mean_, base_saved_var_, reserve_space_;
   std::vector<T> base_y_vec_;
   std::vector<float> base_mean_vec_, base_var_vec_, base_saved_mean_vec_,
       base_saved_var_vec_;
@@ -337,8 +343,10 @@ class TestCudnnBNAddReluForward {
   double eps_ = 1e-5;
   float momentum_ = 0.9;
   int ele_count_;
-  platform::CUDAPlace place_;
-  platform::CUDADeviceContext *ctx_;
+  platform::CUDAPlace place_ = platform::CUDAPlace(0);
+  platform::CUDADeviceContext *ctx_ =
+      static_cast<platform::CUDADeviceContext *>(
+          platform::DeviceContextPool::Instance().Get(place_));
 };
 
 TEST(CudnnBNAddReluForward, GPUCudnnBNAddReluForwardFp16) {
