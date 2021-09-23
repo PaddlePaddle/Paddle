@@ -82,17 +82,13 @@ class ViterbiDecodeOp : public framework::OperatorWithKernel {
 class ViterbiDecodeOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Input",
-             "(Tensor) ViterbiDecode input tensor, which support variable-time "
-             "length input "
-             "sequence."
-             "The shape of the Tensor MUST be ( batch_size, sequence_length, "
-             "num_tags)"
-             "sequence_length is the total time step in this mini-batch (CAN "
-             "be change in "
-             "different batch)"
-             "batch_size is the instance number of this batch"
-             "num_tags is the number of tags.");
+    AddInput(
+        "Input",
+        "(Tensor) ViterbiDecode input tensor, which support variable-time "
+        "length input sequence. The shape of the Tensor MUST be ( batch_size,"
+        "sequence_length, num_tags). sequence_length is the total time step "
+        "in this mini-batch (CAN be change in different batch) batch_size "
+        "is the instance number of this batch num_tags is the number of tags.");
     AddInput("Transition", "");
     AddInput("Length", "");
     AddOutput("Scores", "");

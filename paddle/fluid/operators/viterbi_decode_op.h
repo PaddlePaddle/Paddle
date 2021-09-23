@@ -23,6 +23,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/controlflow/compare_op.h"
 #include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
+#include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
 #include "paddle/fluid/operators/math/detail/activation_functions.h"
@@ -125,7 +126,7 @@ void SameDimsBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
 }
 
 // Need to gurantee that lhs, rhs have same dims.
-#define SAME_DIMS_ELEMENT_BINARY_OP(lhs, rhs, output, functor_type, dtype) \
+#define SAME_DIMS_OP(lhs, rhs, output, functor_type, dtype) \
   SameDimsBinaryOP<dtype, functor_type##Functor<dtype>>(lhs, rhs, &output)
 
 template <typename T>
@@ -135,42 +136,18 @@ void GetStrides(const std::vector<T>& dims, std::vector<T>* strides) {
   }
 }
 
-inline uint32_t GetOutputIndex(const uint32_t* x_dims_array, const int max_dim,
-                               const uint32_t* index_array) {
-  int index_ = 0;
-  for (int i = 0; i < max_dim; i++) {
-    if (x_dims_array[i] > 1) {
-      index_ = index_ * x_dims_array[i] + index_array[i];
-    }
-  }
-  return index_;
-}
-
-inline void UpdateOutputIndexArray(const uint32_t* out_dims_array,
-                                   const int max_dim, uint32_t* index_array) {
-  for (int i = max_dim - 1; i >= 0; --i) {
-    ++index_array[i];
-    if (index_array[i] >= out_dims_array[i]) {
-      index_array[i] -= out_dims_array[i];
-    } else {
-      break;
-    }
-  }
-}
-
 template <bool is_multi_threads>
 struct GetInputIndex {
-  void operator()(const std::vector<uint32_t>& lhs_dims,
-                  const std::vector<uint32_t>& rhs_dims,
-                  const std::vector<uint32_t>& output_dims,
-                  const std::vector<uint32_t>& lhs_strides,
-                  const std::vector<uint32_t>& rhs_strides,
-                  const std::vector<uint32_t>& output_strides,
-                  uint32_t output_idx, uint32_t* index_array, uint32_t* lhs_idx,
-                  uint32_t* rhs_idx) {
-    uint32_t out_dims_size = output_strides.size();
-    for (uint32_t j = 0; j < out_dims_size; ++j) {
-      uint32_t curr_idx = output_idx / output_strides[j];
+  void operator()(const std::vector<int>& lhs_dims,
+                  const std::vector<int>& rhs_dims,
+                  const std::vector<int>& output_dims,
+                  const std::vector<int>& lhs_strides,
+                  const std::vector<int>& rhs_strides,
+                  const std::vector<int>& output_strides, int output_idx,
+                  int* index_array, int* lhs_idx, int* rhs_idx) {
+    int out_dims_size = output_strides.size();
+    for (int j = 0; j < out_dims_size; ++j) {
+      int curr_idx = output_idx / output_strides[j];
       output_idx %= output_strides[j];
       *lhs_idx += (lhs_dims[j] > 1) ? curr_idx * lhs_strides[j] : 0;
       *rhs_idx += (rhs_dims[j] > 1) ? curr_idx * rhs_strides[j] : 0;
@@ -180,18 +157,17 @@ struct GetInputIndex {
 
 template <>
 struct GetInputIndex<false> {
-  void operator()(const std::vector<uint32_t>& lhs_dims,
-                  const std::vector<uint32_t>& rhs_dims,
-                  const std::vector<uint32_t>& output_dims,
-                  const std::vector<uint32_t>& lhs_strides,
-                  const std::vector<uint32_t>& rhs_strides,
-                  const std::vector<uint32_t>& output_strides,
-                  uint32_t output_idx, uint32_t* index_array, uint32_t* lhs_idx,
-                  uint32_t* rhs_idx) {
-    uint32_t out_dims_size = output_strides.size();
-    *lhs_idx = GetOutputIndex(lhs_dims.data(), out_dims_size, index_array);
-    *rhs_idx = GetOutputIndex(rhs_dims.data(), out_dims_size, index_array);
-    UpdateOutputIndexArray(output_dims.data(), out_dims_size, index_array);
+  void operator()(const std::vector<int>& lhs_dims,
+                  const std::vector<int>& rhs_dims,
+                  const std::vector<int>& output_dims,
+                  const std::vector<int>& lhs_strides,
+                  const std::vector<int>& rhs_strides,
+                  const std::vector<int>& output_strides, int output_idx,
+                  int* index_array, int* lhs_idx, int* rhs_idx) {
+    int out_dims_size = output_strides.size();
+    *lhs_idx = GetElementwiseIndex(lhs_dims.data(), out_dims_size, index_array);
+    *rhs_idx = GetElementwiseIndex(rhs_dims.data(), out_dims_size, index_array);
+    UpdateElementwiseIndexArray(output_dims.data(), out_dims_size, index_array);
   }
 };
 
@@ -201,11 +177,11 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
   const T* lhs_ptr = lhs.data<T>();
   const T* rhs_ptr = rhs.data<T>();
   T* out_ptr = out->data<T>();
-  uint32_t nums = static_cast<uint32_t>(out->numel());
-  uint32_t out_dims_size = static_cast<uint32_t>(out->dims().size());
-  std::vector<uint32_t> output_dims(out_dims_size);
-  std::vector<uint32_t> lhs_dims(out_dims_size);
-  std::vector<uint32_t> rhs_dims(out_dims_size);
+  int nums = static_cast<int>(out->numel());
+  int out_dims_size = static_cast<int>(out->dims().size());
+  std::vector<int> output_dims(out_dims_size);
+  std::vector<int> lhs_dims(out_dims_size);
+  std::vector<int> rhs_dims(out_dims_size);
   std::copy(lhs.dims().Get(), lhs.dims().Get() + out_dims_size,
             lhs_dims.data());
   std::copy(rhs.dims().Get(), rhs.dims().Get() + out_dims_size,
@@ -213,10 +189,10 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
   std::copy(out->dims().Get(), out->dims().Get() + out_dims_size,
             output_dims.data());
 
-  std::vector<uint32_t> output_strides(out_dims_size, 1);
-  std::vector<uint32_t> lhs_strides(out_dims_size, 1);
-  std::vector<uint32_t> rhs_strides(out_dims_size, 1);
-  std::vector<uint32_t> index_array(out_dims_size, 0);
+  std::vector<int> output_strides(out_dims_size, 1);
+  std::vector<int> lhs_strides(out_dims_size, 1);
+  std::vector<int> rhs_strides(out_dims_size, 1);
+  std::vector<int> index_array(out_dims_size, 0);
   GetStrides(output_dims, &output_strides);
   GetStrides(lhs_dims, &lhs_strides);
   GetStrides(rhs_dims, &rhs_strides);
@@ -226,34 +202,12 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-  for (uint32_t i = 0; i < nums; ++i) {
-    uint32_t lhs_idx = 0;
-    uint32_t rhs_idx = 0;
+  for (int i = 0; i < nums; ++i) {
+    int lhs_idx = 0;
+    int rhs_idx = 0;
     get_input_index(lhs_dims, rhs_dims, output_dims, lhs_strides, rhs_strides,
                     output_strides, i, index_array.data(), &lhs_idx, &rhs_idx);
     out_ptr[i] = functor(lhs_ptr[lhs_idx], rhs_ptr[rhs_idx]);
-  }
-}
-
-template <typename T, typename IndexT = int>
-void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
-               const Tensor& index, Tensor* output) {
-  int64_t index_size = index.dims()[0];
-  auto src_dims = src.dims();
-  const T* p_src = src.data<T>();
-  const IndexT* p_index = index.data<IndexT>();
-  T* p_output = output->data<T>();
-  // slice size
-  int64_t slice_size = 1;
-  for (int i = 1; i < src_dims.size(); ++i) slice_size *= src_dims[i];
-  // input size
-  const size_t slice_bytes = slice_size * sizeof(T);
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for
-#endif
-  for (int64_t i = 0; i < index_size; ++i) {
-    IndexT index_ = p_index[i];
-    memcpy(p_output + i * slice_size, p_src + index_ * slice_size, slice_bytes);
   }
 }
 
@@ -304,14 +258,12 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
                       7 * batch_size + 2;
     CREATE_TENSOR(int_buffer, int64_t, buffer_size);
     TensorBuffer int_tensor_buffer(int_buffer);
-
     // Create a large float data buffer
     buffer_size = seq_len * batch_size * n_labels + 5 * batch_size * n_labels +
                   2 * n_labels * n_labels + batch_size * n_labels * n_labels +
                   3 * batch_size;
     CREATE_TENSOR(float_buffer, T, buffer_size);
     TensorBuffer float_tensor_buffer(float_buffer);
-
     auto* length = ctx.Input<Tensor>("Length");
     Tensor left_length = int_tensor_buffer.GetBufferBlock({batch_size, 1});
     framework::TensorCopy(*length, curr_place, dev_ctx, &left_length);
@@ -322,24 +274,20 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
 
     auto* scores = ctx.Output<Tensor>("Scores");
     scores->mutable_data<T>(curr_place);
-
     auto* path = ctx.Output<Tensor>("Path");
     path->Resize({batch_size, max_seq_len});
     path->mutable_data<int64_t>(curr_place);
-
     Tensor temp_path =
         int_tensor_buffer.GetBufferBlock({max_seq_len, batch_size});
     auto batch_path = Unbind(temp_path);
     for (auto it = batch_path.begin(); it != batch_path.end(); ++it) {
       it->Resize({batch_size});
     }
-
     Tensor inputs_t_exp =
         float_tensor_buffer.GetBufferBlock({seq_len, batch_size, n_labels});
     std::vector<int> axis{1, 0, 2};
     TransCompute<DeviceContext, T>(axis.size(), dev_ctx, *input, &inputs_t_exp,
                                    axis);
-
     auto* transition = ctx.Input<Tensor>("Transition");
     Tensor trans_exp = float_tensor_buffer.GetBufferBlock({n_labels, n_labels});
     framework::TensorCopy(*transition, curr_place, dev_ctx, &trans_exp);
@@ -398,7 +346,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       ElementwiseComputeEx<EqualFunctor<T>, DeviceContext, int64_t, T>(
           ctx, &left_length, &one, -1, EqualFunctor<T>(), &float_mask);
       MUL(stop_trans_exp, float_mask, alpha_nxt, is_multi_threads, T);
-      SAME_DIMS_ELEMENT_BINARY_OP(alpha, alpha_nxt, alpha, Add, T);
+      SAME_DIMS_OP(alpha, alpha_nxt, alpha, Add, T);
     } else {
       alpha = logit0;
     }
@@ -409,17 +357,12 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       logit.Resize({batch_size, n_labels});
       Tensor& alpha_exp = alpha.Resize({batch_size, n_labels, 1});
       ADD(alpha_exp, trans_exp, alpha_trn_sum, is_multi_threads, T);
-
       auto alpha_argmax_temp = alpha_argmax_unbind[i - 1];
       alpha_argmax_temp.Resize({batch_size, n_labels});
-
       argmax(alpha_trn_sum, &alpha_argmax_temp, &alpha_max, 1);
       historys.push_back(alpha_argmax_temp);
-
-      SAME_DIMS_ELEMENT_BINARY_OP(alpha_max, logit, alpha_nxt, Add, T);
-
+      SAME_DIMS_OP(alpha_max, logit, alpha_nxt, Add, T);
       alpha.Resize({batch_size, n_labels});
-
       // mask = paddle.cast((left_length > 0), dtype='float32')
       // alpha = mask * alpha_nxt + (1 - mask) * alpha
       ElementwiseComputeEx<GreaterThanFunctor<T>, DeviceContext, int64_t, T>(
@@ -427,46 +370,41 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       // alpha_nxt = mask * alpha_nxt
       MUL(alpha_nxt, float_mask, alpha_nxt, is_multi_threads, T);
       // inv_mask = 1 - mask
-      SAME_DIMS_ELEMENT_BINARY_OP(float_one, float_mask, float_mask, Sub, T);
+      SAME_DIMS_OP(float_one, float_mask, float_mask, Sub, T);
       // alpha = (1 - mask) * alpha
       MUL(alpha, float_mask, alpha, is_multi_threads, T);
       // alpha += alpha_nxt
-      SAME_DIMS_ELEMENT_BINARY_OP(alpha, alpha_nxt, alpha, Add, T);
+      SAME_DIMS_OP(alpha, alpha_nxt, alpha, Add, T);
       if (with_start_stop_tag) {  // cost 10% time
         ElementwiseComputeEx<EqualFunctor<T>, DeviceContext, int64_t, T>(
             ctx, &left_length, &one, -1, EqualFunctor<T>(), &float_mask);
         // trans_exp: [1, n, n]
         // alpha += mask * trans_exp[:, self.stop_idx]
         MUL(stop_trans_exp, float_mask, alpha_nxt, is_multi_threads, T);
-        SAME_DIMS_ELEMENT_BINARY_OP(alpha, alpha_nxt, alpha, Add, T);
+        SAME_DIMS_OP(alpha, alpha_nxt, alpha, Add, T);
       }
       SUB(left_length, one, left_length, is_multi_threads, int64_t);
     }
-
     // scores, last_ids = alpha.max(1), alpha.argmax(1)
     argmax(alpha, &last_ids, scores, 1);
-
     // tag_mask = paddle.cast((left_length >= 0), 'int64')
     left_length.Resize({batch_size});
     ElementwiseComputeEx<GreaterEqualFunctor<int64_t>, DeviceContext, int64_t>(
         ctx, &left_length, &zero, -1, GreaterEqualFunctor<int64_t>(),
         &int_mask);
-
     // last_ids_update = last_ids * tag_mask
     int last_ids_index = 1;
     int actual_len = std::min(seq_len, static_cast<int>(max_seq_len));
 
-    SAME_DIMS_ELEMENT_BINARY_OP(last_ids, int_mask,
-                                batch_path[actual_len - last_ids_index], Mul,
-                                int64_t);
+    SAME_DIMS_OP(last_ids, int_mask, batch_path[actual_len - last_ids_index],
+                 Mul, int64_t);
     ARange(batch_offset.data<int64_t>(), static_cast<int64_t>(batch_size),
            static_cast<int64_t>(n_labels));
 
     for (auto hist = historys.rbegin(); hist != historys.rend(); ++hist) {
       ++last_ids_index;
       ADD(left_length, one, left_length, is_multi_threads, int64_t);
-      SAME_DIMS_ELEMENT_BINARY_OP(batch_offset, last_ids, gather_idx, Add,
-                                  int64_t);
+      SAME_DIMS_OP(batch_offset, last_ids, gather_idx, Add, int64_t);
       // tag_mask = paddle.cast((left_length >= 0), 'int64')
       // last_ids_update = paddle.gather(hist.flatten(), gather_idx) * tag_mask
       Tensor& last_ids_update = batch_path[actual_len - last_ids_index];
@@ -475,16 +413,13 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       ElementwiseComputeEx<GreaterEqualFunctor<int64_t>, DeviceContext,
                            int64_t>(ctx, &left_length, &zero, -1,
                                     GreaterEqualFunctor<int64_t>(), &int_mask);
-      SAME_DIMS_ELEMENT_BINARY_OP(last_ids_update, int_mask, last_ids_update,
-                                  Mul, int64_t);
+      SAME_DIMS_OP(last_ids_update, int_mask, last_ids_update, Mul, int64_t);
       // tag_mask = 1 - tag_mask
       SUB(one, int_mask, int_mask, is_multi_threads, int64_t);
       // last_ids = last_ids_update + last_ids * (1 - tag_mask)
-      SAME_DIMS_ELEMENT_BINARY_OP(last_ids, int_mask, last_ids, Mul, int64_t);
-      SAME_DIMS_ELEMENT_BINARY_OP(last_ids_update, last_ids, last_ids, Add,
-                                  int64_t);
+      SAME_DIMS_OP(last_ids, int_mask, last_ids, Mul, int64_t);
+      SAME_DIMS_OP(last_ids_update, last_ids, last_ids, Add, int64_t);
     }
-    // transpose batch_path
     axis = {1, 0};
     TransCompute<DeviceContext, int64_t>(axis.size(), dev_ctx, temp_path, path,
                                          axis);
