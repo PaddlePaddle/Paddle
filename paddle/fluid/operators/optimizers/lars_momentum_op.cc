@@ -167,6 +167,10 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) "
                   "Whether to use multi-precision during weight updating.")
         .SetDefault(false);
+    AddAttr<bool>("merge_operation",
+                  "(bool, default false) "
+                  "Whether to merge all lars optimizer into one kernel.")
+        .SetDefault(false);
     AddAttr<float>(
         "rescale_grad",
         "(float, default 1.0) Multiply the gradient with `rescale_grad`"
