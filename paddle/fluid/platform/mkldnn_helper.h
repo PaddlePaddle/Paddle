@@ -328,6 +328,23 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
   return mkldnn::memory::format_tag::undef;
 }
 
+inline mkldnn::memory::format_tag GetPlainMKLDNNFormat(int tensor_rank) {
+  switch (tensor_rank) {
+    case 1:
+      return mkldnn::memory::format_tag::a;
+    case 2:
+      return mkldnn::memory::format_tag::ab;
+    case 3:
+      return mkldnn::memory::format_tag::abc;
+    case 4:
+      return mkldnn::memory::format_tag::abcd;
+    case 5:
+      return mkldnn::memory::format_tag::abcde;
+  }
+
+  return mkldnn::memory::format_tag::abcdef;
+}
+
 inline mkldnn::memory::format_tag GetMKLDNNFormat(const mkldnn::memory memory) {
   auto mem_desc = memory.get_desc();
   return GetMKLDNNFormat(mem_desc);
