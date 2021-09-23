@@ -270,7 +270,6 @@ class DistributedInfer:
                         outputs)
 
                     for idx, op in enumerate(program.global_block().ops):
-                        print(idx, op)
                         for i in range(0, len(op.output_names)):
                             outs = op.output(op.output_names[i])
                             for in_id, in_var in enumerate(inputs):

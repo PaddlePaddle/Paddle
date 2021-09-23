@@ -245,7 +245,6 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
             outputs_idxs = [len(program.global_block().ops) + 1] * len(outputs)
 
             for idx, op in enumerate(program.global_block().ops):
-                print(idx, op)
                 for i in range(0, len(op.output_names)):
                     outs = op.output(op.output_names[i])
                     for in_id, in_var in enumerate(inputs):
