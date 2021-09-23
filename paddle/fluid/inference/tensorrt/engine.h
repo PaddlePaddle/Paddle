@@ -631,6 +631,14 @@ class TRTEngineManager {
     }
   }
 
+  void DeleteKey(const std::string& key) {
+    auto iter = engines_.find(key);
+    if (iter != engines_.end()) {
+      iter->second.reset(nullptr);
+      engines_.erase(iter);
+    }
+  }
+
  private:
   std::unordered_map<std::string, std::unique_ptr<TensorRTEngine>> engines_;
 };
