@@ -2547,39 +2547,28 @@ void patterns::ShuffleChannelPattern::operator()(PDNode *reshape1_in) {
   reshape2_out->LinksFrom({reshape2_op});
 }
 
-void patterns::DeleteQuantDequantOpPattern::operator()() {
-  auto any_op_out =
-      pattern->NewNode(any_op_out_repr())
-          ->assert_is_op_input(
-              "fake_quantize_dequantize_moving_average_abs_max", "X")
-          ->AsInput();
-
+void patterns::DeleteQuantDequantOpPattern::operator()(
+    PDNode *input_node, const std::string &quantdequant_types) {
   auto quant_dequant_op_inscale =
       pattern->NewNode(quant_dequant_op_inscale_repr())
-          ->assert_is_op_input(
-              "fake_quantize_dequantize_moving_average_abs_max", "InScale")
+          ->assert_is_op_input(quantdequant_types, "InScale")
           ->AsInput();
-  auto quant_dequant_op =
-      pattern->NewNode(quant_dequant_op_repr())
-          ->assert_is_op("fake_quantize_dequantize_moving_average_abs_max");
+  auto quant_dequant_op = pattern->NewNode(quant_dequant_op_repr())
+                              ->assert_is_op(quantdequant_types);
 
-  auto quant_dequant_out =
+  auto quant_dequant_op_out =
       pattern->NewNode(quant_dequant_op_out_repr())
-          ->assert_is_op_output(
-              "fake_quantize_dequantize_moving_average_abs_max", "Out")
-          ->AsIntermediate();
+          ->assert_is_op_output(quantdequant_types, "Out")
+          ->AsOutput();
 
   auto quant_dequant_op_outscale =
       pattern->NewNode(quant_dequant_op_outscale_repr())
-          ->assert_is_op_output(
-              "fake_quantize_dequantize_moving_average_abs_max", "OutScale")
+          ->assert_is_op_output(quantdequant_types, "OutScale")
           ->AsOutput();
-  auto any_op2 = pattern->NewNode(any_op2_repr())->assert_is_op()->AsOutput();
 
-  quant_dequant_op->LinksFrom({any_op_out, quant_dequant_op_inscale});
+  quant_dequant_op->LinksFrom({quant_dequant_op_inscale, input_node});
   quant_dequant_op_outscale->LinksFrom({quant_dequant_op});
-  quant_dequant_out->LinksFrom({quant_dequant_op});
-  any_op2->LinksFrom({quant_dequant_out});
+  quant_dequant_op_out->LinksFrom({quant_dequant_op});
 }
 
 void patterns::DeleteQuantDequantFilterOpPattern::operator()() {

@@ -35,7 +35,7 @@ T sign(T val) {
 }
 
 template <typename T>
-class EigenMatrix;
+class EigenMatrix {};
 
 template <>
 class EigenMatrix<float> {
@@ -115,7 +115,7 @@ class DeterminantKernel : public framework::OpKernel<T> {
     DeterminantFunctor<T>()(*input, context, rank, batch_count, output);
     auto output_dims =
         framework::slice_ddim(input->dims(), 0, input_dim_size - 2);
-    if (input_dim_size != 2) {
+    if (input_dim_size > 2) {
       output->Resize(output_dims);
     } else {
       // when input is a two-dimension matrix, The det value is a number.

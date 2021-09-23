@@ -75,13 +75,13 @@ int GetVectorizedSizeForTensors(
 template <typename InT, typename OutT, int VecSize, typename Functor, int Arity,
           bool CallElementwiseAny = false>
 struct ElementwisePrimitiveCaller {
-  __device__ inline OutT operator()(Functor func, InT (*args)[VecSize],
+  __device__ inline void operator()(Functor func, InT (*args)[VecSize],
                                     OutT *result);
 };
 
 template <typename InT, typename OutT, int VecSize, typename Functor, int Arity>
 struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, Arity, true> {
-  __device__ inline OutT operator()(Functor func, InT (*args)[VecSize],
+  __device__ inline void operator()(Functor func, InT (*args)[VecSize],
                                     OutT *result) {
     kps::ElementwiseAny<InT, OutT, VecSize, 1, 1, Arity, Functor>(result, args,
                                                                   func);
@@ -90,7 +90,7 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, Arity, true> {
 
 template <typename InT, typename OutT, int VecSize, typename Functor>
 struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 1, false> {
-  __device__ inline OutT operator()(Functor func, InT (*args)[VecSize],
+  __device__ inline void operator()(Functor func, InT (*args)[VecSize],
                                     OutT *result) {
     kps::ElementwiseUnary<InT, OutT, VecSize, 1, 1, Functor>(result, args[0],
                                                              func);
@@ -99,7 +99,7 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 1, false> {
 
 template <typename InT, typename OutT, int VecSize, typename Functor>
 struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 2, false> {
-  __device__ inline OutT operator()(Functor func, InT (*args)[VecSize],
+  __device__ inline void operator()(Functor func, InT (*args)[VecSize],
                                     OutT *result) {
     kps::ElementwiseBinary<InT, OutT, VecSize, 1, 1, Functor>(result, args[0],
                                                               args[1], func);
@@ -108,7 +108,8 @@ struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 2, false> {
 
 template <typename InT, typename OutT, int VecSize, typename Functor>
 struct ElementwisePrimitiveCaller<InT, OutT, VecSize, Functor, 3, false> {
-  __device__ inline OutT operator()(Functor func, InT **args, OutT *result) {
+  __device__ inline void operator()(Functor func, InT (*args)[VecSize],
+                                    OutT *result) {
     kps::ElementwiseTernary<InT, OutT, VecSize, 1, 1, Functor>(
         result, args[0], args[1], args[2], func);
   }

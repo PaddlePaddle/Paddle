@@ -57,7 +57,7 @@ class TestDeterminantOpCase2(TestDeterminantOp):
     def init_data(self):
         np.random.seed(0)
         # not invertible matrix
-        self.case = np.ones([4, 2, 5, 5]).astype('float32')
+        self.case = np.ones([4, 2, 4, 4]).astype('float64')
         self.inputs = {'Input': self.case}
         self.target = np.linalg.det(self.case)
 
@@ -113,7 +113,7 @@ class TestSlogDeterminantOp(OpTest):
 class TestSlogDeterminantOpCase1(TestSlogDeterminantOp):
     def init_data(self):
         np.random.seed(0)
-        self.case = np.random.randn(2, 10, 10).astype('float32')
+        self.case = np.random.rand(2, 2, 5, 5).astype(np.float32)
         self.inputs = {'Input': self.case}
         self.target = np.array(np.linalg.slogdet(self.case))
 
@@ -122,7 +122,7 @@ class TestSlogDeterminantAPI(unittest.TestCase):
     def setUp(self):
         np.random.seed(0)
         self.shape = [3, 3, 5, 5]
-        self.x = np.random.random(self.shape).astype(np.float32)
+        self.x = np.random.rand(self.shape).astype(np.float32)
         self.place = paddle.CPUPlace()
 
     def test_api_static(self):

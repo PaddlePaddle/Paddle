@@ -1593,6 +1593,66 @@ def matrix_power(x, n, name=None):
     return out
 
 
+def eigvals(x, name=None):
+    """
+    Compute the eigenvalues of one or more general matrices.
+    
+    Warning: 
+        The gradient kernel of this operator does not yet developed. 
+        If you need back propagation through this operator, please replace it with paddle.linalg.eig.
+
+    Args:
+        x (Tensor): A square matrix or a batch of square matrices whose eigenvalues will be computed.
+            Its shape should be `[*, M, M]`, where `*` is zero or more batch dimensions. 
+            Its data type should be float32, float64, complex64, or complex128.
+        name (str, optional): Name for the operation (optional, default is None). 
+            For more information, please refer to :ref:`api_guide_Name`.
+
+    Returns:
+        Tensor: A tensor containing the unsorted eigenvalues which has the same batch dimensions with `x`. 
+            The eigenvalues are complex-valued even when `x` is real.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            
+            paddle.set_device("cpu")
+            paddle.seed(1234)
+
+            x = paddle.rand(shape=[3, 3], dtype='float64')
+            # [[0.02773777, 0.93004224, 0.06911496],
+            #  [0.24831591, 0.45733623, 0.07717843],
+            #  [0.48016702, 0.14235102, 0.42620817]])
+
+            print(paddle.linalg.eigvals(x))
+            # [(-0.27078833542132674+0j), (0.29962280156230725+0j), (0.8824477020120244+0j)] #complex128
+    """
+
+    check_variable_and_dtype(x, 'dtype',
+                             ['float32', 'float64', 'complex64', 'complex128'],
+                             'eigvals')
+
+    x_shape = list(x.shape)
+    if len(x_shape) < 2:
+        raise ValueError(
+            "The dimension of Input(x) should be at least 2, but received x's dimention = {}, x's shape = {}".
+            format(len(x_shape), x_shape))
+
+    if x_shape[-1] != x_shape[-2]:
+        raise ValueError(
+            "The last two dimensions of Input(x) should be equal, but received x's shape = {}".
+            format(x_shape))
+
+    if in_dygraph_mode():
+        return _C_ops.eigvals(x)
+
+    helper = LayerHelper('eigvals', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(type='eigvals', inputs={'X': x}, outputs={'Out': out})
+    return out
+
+
 def multi_dot(x, name=None):
     """
     Multi_dot is an operator that calculates multiple matrix multiplications.

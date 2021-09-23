@@ -1,6 +1,6 @@
 cc_library(dynamic_loader SRCS dynamic_loader.cc DEPS glog gflags enforce)
 
-list(APPEND CUDA_SRCS cublas.cc cudnn.cc curand.cc cusolver.cc cusparse.cc  nvtx.cc)
+list(APPEND CUDA_SRCS cublas.cc cudnn.cc curand.cc cusolver.cc cusparse.cc  nvtx.cc cufft.cc)
 
 if (NOT WITH_NV_JETSON)
     list(APPEND CUDA_SRCS nvjpeg.cc)
@@ -45,4 +45,7 @@ endif()
 if (WITH_MKLML)
     cc_library(dynload_mklml SRCS mklml.cc DEPS dynamic_loader mklml)
 endif()
+
+cc_library(dynload_lapack SRCS lapack.cc DEPS dynamic_loader)
+add_dependencies(dynload_lapack extern_lapack)
 # TODO(TJ): add iomp, mkldnn?
