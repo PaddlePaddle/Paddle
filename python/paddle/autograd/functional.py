@@ -58,6 +58,10 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
             of the computing process. When it is True, higher order derivatives
             are supported to compute; when it is False, the gradient graphs of
             the computing process would be discarded. Defaults to ``False``.
+        allow_unused (bool, optional): whether to raise error or return None if
+            some Tensors of `inputs` are unreachable in the graph. Error would
+            be raised if allow_unused=False, and None would be returned as
+            their gradients if allow_unused=True. Default False.
     Returns:
         Jacobian (Tensor or nested tuple of Tensors): if function ``func``
         takes a Tensor as inputs and returns a Tensor as outputs, Jacobian
@@ -67,7 +71,7 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
         be a tuple of Tensors. If both of inputs and outputs are Tensor
         list/tuple, then the Jacobian will be a tuple of tuple of Tensors
         where ``Jacobian[i][j]`` will contain the Jacobian matrix of the
-        ``i``\th output and ``j``\th input and will have as size the
+        ``i``th output and ``j``th input and will have as size the
         concatenation of the sizes of the corresponding output and the
         corresponding input and will have same dtype and device as the
         corresponding input.
