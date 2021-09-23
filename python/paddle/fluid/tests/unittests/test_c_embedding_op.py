@@ -20,40 +20,13 @@ from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
 from paddle.framework import core
+from paddle.fluid.tests.unittests.c_embedding_op_base import TestCEmbeddingCPU, TestCEmbeddingOpBase, TestCEmbeddingOpFP32
 
+TestCEmbeddingCPU()
 
-def get_c_embedding(start, end, table, ids):
-    index = ids.flatten()
-    input_mask = (index < start) | (index >= end)
-    masked_input = index - start
-    masked_input[input_mask] = 0
-    output = table[masked_input]
-    output[input_mask] = 0.0
-    return output
+TestCEmbeddingOpBase()
 
-
-class TestCEmbeddingOp(OpTest):
-    def setUp(self):
-        self.op_type = "c_embedding"
-        table = np.random.random((17, 31)).astype("float64")
-        ids = np.random.randint(
-            low=0, high=17 * 2, size=(2, 4, 5)).astype("int32")
-        self.start_index = 10
-        self.end_index = self.start_index + 17
-
-        self.inputs = {'W': table, 'Ids': ids}
-        np_out = get_c_embedding(self.start_index, self.end_index, table, ids)
-        self.outputs = {'Out': np_out.reshape((2, 4, 5, 31))}
-        self.attrs = {'start_index': self.start_index}
-
-    def test_check_output_gpu(self):
-        if core.is_compiled_with_cuda():
-            self.check_output_with_place(core.CUDAPlace(0))
-
-    def test_check_grad_gpu(self):
-        if core.is_compiled_with_cuda():
-            self.check_grad_with_place(core.CUDAPlace(0), ['W'], 'Out')
-
+TestCEmbeddingOpFP32()
 
 if __name__ == "__main__":
     unittest.main()

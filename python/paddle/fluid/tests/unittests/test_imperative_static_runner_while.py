@@ -104,7 +104,8 @@ class TestImperativeStaticModelRunnerWhile(unittest.TestCase):
             self.save_dirname, ["img"], [pred],
             exe,
             model_filename=self.model_filename,
-            params_filename=self.params_filename)
+            params_filename=self.params_filename,
+            clip_extra=False)
 
     def load_and_train_dygraph(self):
         place = fluid.CUDAPlace(0) if core.is_compiled_with_cuda(

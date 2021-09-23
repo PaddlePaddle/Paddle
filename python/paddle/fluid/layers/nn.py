@@ -1547,6 +1547,13 @@ def conv2d(input,
             core.is_compiled_with_rocm()):
         l_type = 'depthwise_conv2d'
 
+    # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
+    if core.is_compiled_with_npu():
+        if (num_channels == groups and num_channels == num_filters):
+            l_type = 'depthwise_conv2d'
+        else:
+            l_type = 'conv2d'
+
     helper = LayerHelper(l_type, **locals())
     dtype = helper.input_dtype()
 
@@ -1816,6 +1823,10 @@ def conv3d(input,
             "Attr(data_format): %s." % str(data_format))
 
     channel_last = (data_format == "NDHWC")
+    if len(input.shape) != 5:
+        raise ValueError(
+            "Input should be 5D tensor, but received input with the shape of {}".
+            format(input.shape))
     num_channels = input.shape[4] if channel_last else input.shape[1]
     if num_channels < 0:
         raise ValueError(
@@ -1824,6 +1835,10 @@ def conv3d(input,
 
     if groups is None:
         num_filter_channels = num_channels
+    elif groups <= 0:
+        raise ValueError(
+            "the groups of conv3d should be greater than 0. Received groups: {}".
+            format(groups))
     else:
         if num_channels % groups != 0:
             raise ValueError(
@@ -3190,6 +3205,10 @@ def instance_norm(input,
         dtype = core.VarDesc.VarType.FP32
 
     input_shape = input.shape
+    if len(input.shape) < 2 or len(input.shape) > 5:
+        raise ValueError(
+            'expected 2D or 3D or 4D or 5D input (got {}D input, input shape is: {})'.
+            format(len(input.shape), input_shape))
     channel_num = input_shape[1]
 
     param_shape = [channel_num]
@@ -3398,6 +3417,7 @@ def data_norm(input,
     }
     attrs = {
         "epsilon": epsilon,
+        "data_layout": data_layout,
         "sync_stats": sync_stats,
         "summary_decay_rate": summary_decay_rate,
     }
@@ -3565,7 +3585,7 @@ def group_norm(input,
     Refer to `Group Normalization <https://arxiv.org/abs/1803.08494>`_ .
 
     Parameters:
-        input(Tensor): 4-D Tensor, the data type is float32 or float64.
+        input(Tensor): Tensor with dimension greater than 1, the data type is float32 or float64.
         groups(int): The number of groups that divided from channels, the data type
             is int32.
         epsilon(float, optional): The small value added to the variance to prevent
@@ -3582,12 +3602,12 @@ def group_norm(input,
         data_layout(str, optional): Specify the data format of the input, and the data format of the output
             will be consistent with that of the input. An optional string from: `"NCHW"`, `"NHWC"`.
             The default is `"NCHW"`. When it is `"NCHW"`, the data is stored in the order of:
-            `[batch_size, input_channels, input_height, input_width]`.
+            `[batch_size, input_channels, *]`.
         name (str, optional): The default value is None. Normally there is no need for user to set this
             property. For more information, please refer to :ref:`api_guide_Name` .
 
     Returns:
-        Tensor: A 4-D Tensor has same data type and data format with `input`.
+        Tensor: A Tensor has same data type and data format with `input`.
 
     Examples:
        .. code-block:: python
@@ -3606,6 +3626,10 @@ def group_norm(input,
     # create intput and parameters
     inputs = {'X': input}
     input_shape = input.shape
+    if len(input_shape) < 2:
+        raise ValueError(
+            f"The dimensions of Op(fluid.layers.group_norm)'s input should be more than 1. But received {len(input_shape)}"
+        )
     if data_layout != 'NCHW' and data_layout != 'NHWC':
         raise ValueError(
             "Param(data_layout) of Op(fluid.layers.group_norm) got wrong value: received "
@@ -3720,6 +3744,10 @@ def spectral_norm(weight, dim=0, power_iters=1, eps=1e-12, name=None):
     # create intput and parameters
     inputs = {'Weight': weight}
     input_shape = weight.shape
+    assert weight.numel() > 0, "Any dimension of input cannot be equal to 0."
+    assert dim < len(input_shape), ("The input `dim` should be less than the "
+                                    "rank of `weight`, but received dim="
+                                    "{}".format(dim))
     h = input_shape[dim]
     w = np.prod(input_shape) // h
 
@@ -4090,15 +4118,15 @@ def conv3d_transpose(input,
 
     .. math::
 
-        Out = \sigma (W \\ast X + b)
+        Out = \sigma (W \ast X + b)
 
     In the above equation:
 
     * :math:`X`: Input value, a Tensor with NCDHW or NDHWC format.
     * :math:`W`: Filter value, a Tensor with MCDHW format.
-    * :math:`\\ast`: Convolution operation.
+    * :math:`\ast`: Convolution operation.
     * :math:`b`: Bias value, a 2-D Tensor with shape [M, 1].
-    * :math:`\\sigma`: Activation function.
+    * :math:`\sigma`: Activation function.
     * :math:`Out`: Output value, the shape of :math:`Out` and :math:`X` may be different.
 
     Example:
@@ -4153,9 +4181,9 @@ def conv3d_transpose(input,
             calculate filter_size. Default: None. filter_size and output_size should not be
             None at the same time.
         padding(int|list|str|tuple, optional): The padding size. The padding argument effectively
-             adds `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a string,
-             either 'VALID' or 'SAME' supported, which is the padding algorithm. If `padding`
-             is a tuple or list, it could be in three forms: `[pad_depth, pad_height, pad_width]` or
+            adds `dilation * (kernel - 1)` amount of zero-padding on both sides of input. If `padding` is a string,
+            either 'VALID' or 'SAME' supported, which is the padding algorithm. If `padding`
+            is a tuple or list, it could be in three forms: `[pad_depth, pad_height, pad_width]` or
             `[pad_depth_front, pad_depth_back, pad_height_top, pad_height_bottom, pad_width_left, pad_width_right]`,
             and when `data_format` is `'NCDHW'`, `padding` can be in the form
             `[[0,0], [0,0], [pad_depth_front, pad_depth_back], [pad_height_top, pad_height_bottom], [pad_width_left, pad_width_right]]`.
@@ -4239,10 +4267,15 @@ def conv3d_transpose(input,
         raise ValueError(
             "Param(data_format) of Op(fluid.layers.conv3d_transpose) got wrong value: received "
             + data_format + " but only NCDHW or NDHWC supported.")
+
     l_type = "conv3d_transpose"
     helper = LayerHelper(l_type, **locals())
     if not isinstance(input, Variable):
         raise TypeError("Input of conv3d_transpose must be Variable")
+    if len(input.shape) != 5:
+        raise ValueError(
+            "Input should be 5D tensor, but received input with the shape of {}".
+            format(input.shape))
     input_channel = input.shape[1] if data_format == 'NCDHW' else input.shape[
         -1]
 
@@ -4334,6 +4367,15 @@ def conv3d_transpose(input,
         raise ValueError("output_size should be int, list[int] or tuple[int]")
 
     groups = 1 if groups is None else groups
+    if groups <= 0:
+        raise ValueError(
+            "the groups of conv3d_transpose should be greater than 0. Received groups: {}".
+            format(groups))
+    if num_filters % groups != 0:
+        raise ValueError("Attr(num_filters) must be divisible by groups,"
+                         "Received: Attr(num_filters) is {}, the groups is {}".
+                         format(num_filters, groups))
+
     filter_shape = [input_channel, num_filters // groups] + filter_size
     img_filter = helper.create_parameter(
         dtype=input.dtype, shape=filter_shape, attr=helper.param_attr)
@@ -4999,64 +5041,42 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
     slice along dimension `axis`.
 
     Args:
-        x(Variable|list): The input tensor could be N-D tensor, and the input data type could be float32 or float64.
+        x(Variable|list): The input tensor could be N-D tensor, and the input data type could be float16, float32 or float64.
         axis(int): The axis on which to apply normalization. If `axis < 0`, \
             the dimension to normalization is rank(X) + axis. -1 is the
             last dimension.
         epsilon(float): The epsilon value is used to avoid division by zero, \
             the default value is 1e-12.
-	name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
+    name(str, optional): The default value is None.  Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
         Variable: The output has the same shape and data type with `x`.
 
     Examples:
 
-        .. code-block:: python
-
-	    # declarative mode
-	    import paddle.fluid as fluid
-	    import numpy as np
+    .. code-block:: python
+        :name: code-example1
+        
         import paddle
-        paddle.enable_static()
-	    input = fluid.data(name="input", shape=[2,3])
-	    output = fluid.layers.l2_normalize(x=input,axis=0)
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
+        
+        X = paddle.randn(shape=[3, 5], dtype='float64')
+        out = paddle.fluid.layers.l2_normalize(X, axis=-1)
+        print(out)
 
-	    input_data = np.random.rand(2,3).astype("float32")
-	    print(input_data)
-
-	    # [[0.5171216  0.12704141 0.56018186]
-	    # [0.93251234 0.5382788  0.81709313]]
-
-	    output_data = exe.run(fluid.default_main_program(),
-                feed={"input":input_data},
-                fetch_list=[output],
-                return_numpy=True)
-
-	    print(output_data)
-
-	    # [array([[0.48496857, 0.22970329, 0.56545246],
-	    # [0.8745316 , 0.9732607 , 0.82478094]], dtype=float32)]
-
-	    # imperative mode
-	    import paddle.fluid.dygraph as dg
-
-	    with dg.guard(place) as g:
-    		input = dg.to_variable(input_data)
-    		output = fluid.layers.l2_normalize(x=input, axis=-1)
-    		print(output.numpy())
-
-		# [[0.66907585 0.16437206 0.7247892 ]
-		# [0.6899054  0.3982376  0.6045142 ]]
+        # [[ 0.21558504  0.56360189  0.47466096  0.46269539 -0.44326736]
+        #  [-0.70602414 -0.52745777  0.37771788 -0.2804768  -0.04449922]
+        #  [-0.33972208 -0.43014923  0.31772556  0.76617881 -0.10761525]]
 
     """
 
     if len(x.shape) == 1:
         axis = 0
-    check_variable_and_dtype(x, "X", ("float32", "float64"), "norm")
+    if in_dygraph_mode():
+        _, out = _C_ops.norm(x, 'axis', 1
+                             if axis is None else axis, 'epsilon', epsilon)
+        return out
+
+    check_variable_and_dtype(x, "X", ("float16", "float32", "float64"), "norm")
 
     helper = LayerHelper("l2_normalize", **locals())
     out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -5479,12 +5499,12 @@ def transpose(x, perm, name=None):
     perm[i]-th dimension of `input`.
 
     Args:
-        x (Tensor): The input Tensor. It is a N-D Tensor of data types float32, float64, int32.
+        x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float32, float64, int32.
         perm (list|tuple): Permute the input according to the data of perm.
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Tensor: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
+        Tensor: A transposed n-D Tensor, with data type being bool, float32, float64, int32, int64.
 
     For Example:
 
@@ -5526,7 +5546,7 @@ def transpose(x, perm, name=None):
         return out
 
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
         'transpose')
     check_type(perm, 'perm', (list, tuple), 'transpose')
     if isinstance(perm, tuple):
@@ -6176,6 +6196,10 @@ def reshape(x, shape, actual_shape=None, act=None, inplace=False, name=None):
         elif isinstance(shape, Variable):
             shape.stop_gradient = True
             out, _ = _C_ops.reshape2(x, shape)
+        else:
+            raise ValueError(
+                "shape must be an instance of `list`, `tuple` or `Variable`,"
+                " got '{}.'".format(type(shape)))
 
         return dygraph_utils._append_activation_in_dygraph(out, act)
 
@@ -6703,8 +6727,10 @@ def pad(x, paddings, pad_value=0., name=None):
             x = fluid.data(name='data', shape=[300, 300], dtype='float32')
             out = fluid.layers.pad(x=x, paddings=[0, 1, 1, 2], pad_value=0.)
     """
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], "pad")
+    check_variable_and_dtype(x, 'x', [
+        'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
+        'complex128'
+    ], "pad")
 
     helper = LayerHelper('pad', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -7146,7 +7172,8 @@ def dice_loss(input, label, epsilon=0.00001, name=None):
     assert input.numel() > 0 and label.numel() > 0, \
         "Any dimension of input and label cannot be equal to 0."
 
-    label = one_hot(label, depth=input.shape[-1])
+    label = squeeze(label, [-1])
+    label = paddle.nn.functional.one_hot(label, input.shape[-1])
     reduce_dim = list(range(1, len(input.shape)))
     inse = reduce_sum(input * label, dim=reduce_dim)
     dice_denominator = reduce_sum(
@@ -8581,7 +8608,7 @@ def scatter_nd_add(ref, index, updates, name=None):
             output = [[67, 19], [-16, -27]]
 
     Args:
-        ref (Variable): The ref input. Its dtype should be float32, float64.
+        ref (Variable): The ref input. Its dtype should be int32, int64, float32, float64.
         index (Variable): The index input with rank > 1 and index.shape[-1] <= ref.rank.
                           Its dtype should be int32 or int64 as it is used as indexes.
         updates (Variable): The updated value of scatter_nd_add op, and it must have the same dtype
@@ -9749,7 +9776,7 @@ def prelu(x, mode, param_attr=None, name=None):
     prelu activation.
 
     .. math::
-        prelu(x) = max(0, x) + \\alpha * min(0, x)
+        prelu(x) = max(0, x) + \alpha * min(0, x)
 
     There are three modes for the activation:
 
@@ -9760,13 +9787,17 @@ def prelu(x, mode, param_attr=None, name=None):
         element: All elements do not share alpha. Each element has its own alpha.
 
     Parameters:
+    
         x (Tensor): The input Tensor or LoDTensor with data type float32.
+
         mode (str): The mode for weight sharing.
-        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable
-            weight (alpha), it can be create by ParamAttr. None by default.
-            For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
-        name (str, optional): Name for the operation (optional, default is None).
-            For more information, please refer to :ref:`api_guide_Name`.
+
+        param_attr (ParamAttr|None, optional): The parameter attribute for the learnable \
+        weight (alpha), it can be create by ParamAttr. None by default. \
+        For detailed information, please refer to :ref:`api_fluid_ParamAttr`.
+
+        name (str, optional): Name for the operation (optional, default is None). \
+        For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Tensor: A tensor with the same shape and data type as x.
@@ -9783,7 +9814,7 @@ def prelu(x, mode, param_attr=None, name=None):
             # [-0.2, 2., 3.]
 
     """
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'prelu')
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], 'prelu')
 
     helper = LayerHelper('prelu', **locals())
     if mode not in ['all', 'channel', 'element']:
@@ -9808,7 +9839,7 @@ def prelu(x, mode, param_attr=None, name=None):
     alpha = helper.create_parameter(
         attr=helper.param_attr,
         shape=alpha_shape,
-        dtype='float32',
+        dtype=dtype,
         is_bias=False,
         default_initializer=Constant(0.25))
     out = helper.create_variable_for_type_inference(dtype)
@@ -10967,6 +10998,23 @@ def slice(input, axes, starts, ends):
         attrs = ()
         starts_tensor = None
         ends_tensor = None
+
+        if isinstance(axes, (list, tuple)):
+            axes = list(axes)
+            if len(axes) == 0:
+                raise ValueError(
+                    "Input axes should not be an empty list/tuple.")
+            for i in range(len(axes)):
+                if axes[i] < 0:
+                    axes[i] = max(0, axes[i] + len(input.shape))
+                else:
+                    axes[i] = min(len(input.shape) - 1, axes[i])
+
+        else:
+            raise ValueError(
+                "Input axes must be a python list or tuple, but reveived {}".
+                format(type(axes)))
+
         infer_flags = list(1 for i in range(len(axes)))
 
         if isinstance(starts, (list, tuple)):
@@ -11506,13 +11554,13 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
-
+        import paddle
         def gen_data():
             return {
                 "x": np.array([2, 3, 4]).astype('float32'),
                 "y": np.array([1, 5, 2]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_add(x, y)
@@ -11530,13 +11578,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.ones((2, 3, 4, 5)).astype('float32'),
                 "y": np.zeros((3, 4)).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_add(x, y, axis=1)
@@ -11555,13 +11604,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
                 "y": np.random.randint(1, 5, size=[5]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_add(x, y, axis=3)
@@ -11597,13 +11647,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.array([2, 3, 4]).astype('float32'),
                 "y": np.array([1, 5, 2]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_div(x, y)
@@ -11621,13 +11672,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.ones((2, 3, 4, 5)).astype('float32'),
                 "y": np.zeros((3, 4)).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_div(x, y, axis=1)
@@ -11646,13 +11698,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
                 "y": np.random.randint(1, 5, size=[5]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_div(x, y, axis=3)
@@ -11682,13 +11735,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.array([2, 3, 4]).astype('float32'),
                 "y": np.array([1, 5, 2]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_sub(x, y)
@@ -11706,13 +11760,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.ones((2, 3, 4, 5)).astype('float32'),
                 "y": np.zeros((3, 4)).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_sub(x, y, axis=1)
@@ -11731,13 +11786,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
                 "y": np.random.randint(1, 5, size=[5]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_sub(x, y, axis=3)
@@ -11768,13 +11824,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.array([2, 3, 4]).astype('float32'),
                 "y": np.array([1, 5, 2]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_mul(x, y)
@@ -11792,13 +11849,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.ones((2, 3, 4, 5)).astype('float32'),
                 "y": np.zeros((3, 4)).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_mul(x, y, axis=1)
@@ -11817,13 +11875,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.random.randint(1, 5, size=[2, 3, 4, 5]).astype('float32'),
                 "y": np.random.randint(1, 5, size=[5]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[5], dtype='float32')
         z = fluid.layers.elementwise_mul(x, y, axis=3)
@@ -11856,13 +11915,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.array([2, 3, 4]).astype('float32'),
                 "y": np.array([1, 5, 2]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_max(x, y)
@@ -11879,13 +11939,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.ones((2, 3, 4, 5)).astype('float32'),
                 "y": np.zeros((3, 4)).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_max(x, y, axis=1)
@@ -11918,13 +11979,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.array([2, 3, 4]).astype('float32'),
                 "y": np.array([1, 5, 2]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_min(x, y)
@@ -11940,13 +12002,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.ones((2, 3, 4, 5)).astype('float32'),
                 "y": np.zeros((3, 4)).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[2,3,4,5], dtype='float32')
         y = fluid.data(name="y", shape=[3,4], dtype='float32')
         z = fluid.layers.elementwise_min(x, y, axis=1)
@@ -11975,13 +12038,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.array([2, 3, 4]).astype('float32'),
                 "y": np.array([1, 5, 2]).astype('float32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='float32')
         y = fluid.data(name="y", shape=[3], dtype='float32')
         z = fluid.layers.elementwise_pow(x, y)
@@ -12009,13 +12073,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.array([10, 15, 8]).astype('int32'),
                 "y": np.array([3, 6, 5]).astype('int32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='int32')
         y = fluid.data(name="y", shape=[3], dtype='int32')
         z = fluid.layers.elementwise_mod(x, y)
@@ -12044,13 +12109,14 @@ Examples:
 
         import paddle.fluid as fluid
         import numpy as np
+        import paddle
 
         def gen_data():
             return {
                 "x": np.array([10, 15, 8]).astype('int32'),
                 "y": np.array([3, 7, 5]).astype('int32')
             }
-
+        paddle.enable_static()
         x = fluid.data(name="x", shape=[3], dtype='int32')
         y = fluid.data(name="y", shape=[3], dtype='int32')
         z = fluid.layers.elementwise_floordiv(x, y)
@@ -13342,7 +13408,7 @@ def shuffle_channel(x, group, name=None):
                           [[0.7, 0.8],
                            [0.8, 0.9]]]]
             Given group: 2
-            then we get a 4-D tensor out whth the same shape of input:
+            then we get a 4-D tensor out with the same shape of input:
             out.shape = (1, 4, 2, 2)
             out.data = [[[[0.1, 0.2],
                           [0.2, 0.3]],
@@ -13370,7 +13436,9 @@ def shuffle_channel(x, group, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
             input = fluid.data(name='input', shape=[None,4,2,2], dtype='float32')
             out = fluid.layers.shuffle_channel(x=input, group=2)
     """
