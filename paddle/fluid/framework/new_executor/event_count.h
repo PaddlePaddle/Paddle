@@ -50,6 +50,7 @@
 #include <cstdlib>
 #include <mutex>
 #include <vector>
+#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -60,7 +61,7 @@ class EventCount {
 
   explicit EventCount(size_t waiter_num) : state_(kStackMask) {
     assert(waiter_num < (1 << kWaiterBits) - 1);
-    void* buffer = malloc(sizeof(Waiter) * waiter_num);
+    void* buffer = AlignedMalloc(sizeof(Waiter) * waiter_num, alignof(Waiter));
     if (buffer == nullptr) {
       return;
     }
@@ -78,7 +79,7 @@ class EventCount {
   ~EventCount() {
     // Ensure there are no waiters.
     assert(state_.load() == kStackMask);
-    free(waiters_);
+    AlignedFree(waiters_);
   }
 
   Waiter* GetWaiter(size_t waiter_index) {
