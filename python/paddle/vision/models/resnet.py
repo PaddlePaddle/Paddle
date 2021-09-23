@@ -396,5 +396,5 @@ def wide_resnet101_2(pretrained: bool = False, progress: bool = True, **kwargs: 
         progress (bool): If True, displays a progress bar of the download to stderr
     """
     kwargs['width_per_group'] = 64 * 2
-    return _resnet('wide_resnet101_2', BottleneckBlock, [3, 4, 23, 3],
+    return _resnet('wide_resnet101_2', BottleneckBlock, "101_2",
                    pretrained, progress, **kwargs)
