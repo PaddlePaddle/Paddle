@@ -222,8 +222,8 @@ void ParallelConnectContext::connectFullMesh(
   // Create pairs
   auto transportContext = dev->createContext(rank, size);
   transportContext->setTimeout(getTimeout());
-  VLOG(0) << "transportContext timeout: " << getTimeout().count();
-  VLOG(0) << "curr rank: " << rank;
+  VLOG(0) << "transportContext timeout: " << getTimeout().count()
+          << ", curr rank: " << rank;
   for (int i = 0; i < size; i++) {
     if (i == rank) {
       continue;
@@ -239,8 +239,7 @@ void ParallelConnectContext::connectFullMesh(
   auto total_add_size = kNodeSize * (size - 1);
 
   std::vector<std::shared_ptr<std::thread>> connect_threads(thread_num_);
-  // Connect every pair
-  VLOG(0) << "connect_thread_num: " << thread_num_ << ", size: " << size;
+
   for (uint32_t i = 0; i < connect_threads.size(); ++i) {
     connect_threads[i].reset(new std::thread(
         [&store, &transportContext, total_add_size, this](
