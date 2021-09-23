@@ -223,11 +223,9 @@ int32_t BrpcPsClient::initialize() {
   _running = true;
   _flushing = false;
   //启动异步push线程
-  //no use in async
   _async_push_sparse_thread =
       std::thread(std::bind(&BrpcPsClient::push_sparse_task_consume, this));
   //_async_push_sparse_thread.detach();
-  //no use in async
   _async_push_dense_thread =
       std::thread(std::bind(&BrpcPsClient::push_dense_task_consume, this));
   return 0;
@@ -434,7 +432,7 @@ std::future<int32_t> BrpcPsClient::flush() {
   } while (_async_call_num > 0);
   std::cout << "flush _async_call_num = 0\n";
   promise.set_value(0);
-  //_flushing = false;
+  _flushing = false;
   std::cout << "flush done\n";
   return fut;
 }
