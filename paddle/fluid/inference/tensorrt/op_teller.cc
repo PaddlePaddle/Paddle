@@ -185,9 +185,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
           }
         }
       }
-      if (desc.HasAttr("global_pooling")) {
-        if (BOOST_GET_CONST(bool, desc.GetAttr("global_pooling"))) return false;
-      }
       if (desc.HasAttr("ceil_mode")) {
         if (BOOST_GET_CONST(bool, desc.GetAttr("ceil_mode"))) return false;
       }
