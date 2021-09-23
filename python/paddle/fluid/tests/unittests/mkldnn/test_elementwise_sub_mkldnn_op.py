@@ -16,7 +16,7 @@ from __future__ import print_function
 import unittest
 import numpy as np
 from paddle import enable_static
-from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool, convert_float_to_uint16
 from paddle.fluid.framework import _current_expected_place
 import paddle.fluid.core as core
 
@@ -45,10 +45,10 @@ class TestMKLDNNElementwiseSubOp(OpTest):
     def test_check_grad_normal(self):
         self.check_grad(['X', 'Y'], 'Out')
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         self.check_grad(['Y'], 'Out', no_grad_set=set("X"))
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         self.check_grad(['X'], 'Out', no_grad_set=set('Y'))
 
     def init_axis(self):
@@ -114,11 +114,90 @@ class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestMKLDNNElementwiseSubOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
+
+
+@unittest.skipIf(not core.supports_bfloat16(),
+                 "place does not support BF16 evaluation")
+class TestBf16(TestMKLDNNElementwiseSubOp):
+    def setUp(self):
+        self.op_type = "elementwise_sub"
+        self.init_dtype()
+        self.init_input_output()
+        self.init_kernel_type()
+        self.init_axis()
+
+        self.x_bf16 = convert_float_to_uint16(self.x)
+        self.y_bf16 = convert_float_to_uint16(self.y)
+        self.inputs = {'X': self.x_bf16, 'Y': self.y_bf16}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+        self.mkldnn_data_type = "bfloat16"
+
+    def init_input_output(self):
+        self.x = np.random.random(100, ).astype(self.dtype)
+        self.y = np.random.random(100, ).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace())
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(
+            core.CPUPlace(), ["X", "Y"],
+            "Out",
+            user_defined_grads=[self.x, -self.x],
+            user_defined_grad_outputs=[self.x_bf16])
+
+    def test_check_grad_ignore_x(self):
+        self.check_grad_with_place(
+            core.CPUPlace(), ["Y"],
+            "Out",
+            user_defined_grads=[-self.y],
+            user_defined_grad_outputs=[self.y_bf16])
+
+    def test_check_grad_ignore_y(self):
+        self.check_grad_with_place(
+            core.CPUPlace(), ["X"],
+            "Out",
+            user_defined_grads=[self.x],
+            user_defined_grad_outputs=[self.x_bf16])
+
+
+class TestBf16Broadcasting(TestBf16):
+    def init_input_output(self):
+        self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
+        self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+    def compute_reduced_gradients(self, out_grads):
+        part_sum = np.add.reduceat(out_grads, [0], axis=0)
+        part_sum = np.add.reduceat(part_sum, [0], axis=1)
+        part_sum = np.add.reduceat(part_sum, [0], axis=2)
+        return -part_sum.flatten()
+
+    def test_check_grad_normal(self):
+        self.check_grad_with_place(
+            core.CPUPlace(), ["X", "Y"],
+            "Out",
+            user_defined_grads=[
+                self.x, self.compute_reduced_gradients(self.x)
+            ],
+            user_defined_grad_outputs=[self.x_bf16])
+
+    def test_check_grad_ignore_x(self):
+        self.check_grad_with_place(
+            core.CPUPlace(), ["Y"],
+            "Out",
+            user_defined_grads=[self.compute_reduced_gradients(self.x)],
+            user_defined_grad_outputs=[self.x_bf16])
 
 
 class TestInt8(TestMKLDNNElementwiseSubOp):
@@ -146,10 +225,10 @@ class TestInt8(TestMKLDNNElementwiseSubOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+    def test_check_grad_ignore_x(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_y(self):
         pass
 
 

@@ -942,31 +942,8 @@ class ReductionMKLDNNHandler
   ReductionMKLDNNHandler(const dnnl::algorithm algo, const float p,
                          const float eps, const mkldnn::engine engine,
                          platform::Place cpu_place, const Tensor* x,
-                         const Tensor* y, std::vector<int64_t> y_tz)
-      : platform::MKLDNNHandlerNoCachingT<T, dnnl::reduction>(engine,
-                                                              cpu_place) {
-    PADDLE_ENFORCE_EQ(
-        x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument("Wrong layout set for X tensor."));
-    PADDLE_ENFORCE_NE(
-        x->format(), MKLDNNMemoryFormat::undef,
-        platform::errors::InvalidArgument("Wrong format set for X tensor."));
-
-    const auto x_tz = framework::vectorize(x->dims());
-
-    const auto x_md =
-        dnnl::memory::desc(x_tz, platform::MKLDNNGetDataType<T>(), x->format());
-    const auto y_md =
-        memory::desc(y_tz, platform::MKLDNNGetDataType<T>(), x->format());
-
-    this->AcquireForwardPrimitiveDescriptor(algo, x_md, y_md, p, eps);
-  }
-
-  ReductionMKLDNNHandler(const dnnl::algorithm algo, const float p,
-                         const float eps, const mkldnn::engine engine,
-                         platform::Place cpu_place, const Tensor* x,
                          const Tensor* y, std::vector<int64_t> y_tz,
-                         const dnnl::primitive_attr& attr)
+                         const dnnl::primitive_attr& attr = NULL)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::reduction>(engine,
                                                               cpu_place) {
     PADDLE_ENFORCE_EQ(
@@ -983,7 +960,10 @@ class ReductionMKLDNNHandler
     const auto y_md =
         memory::desc(y_tz, platform::MKLDNNGetDataType<T>(), x->format());
 
-    this->AcquireForwardPrimitiveDescriptor(attr, algo, x_md, y_md, p, eps);
+    if (attr)
+      this->AcquireForwardPrimitiveDescriptor(attr, algo, x_md, y_md, p, eps);
+    else
+      this->AcquireForwardPrimitiveDescriptor(algo, x_md, y_md, p, eps);
   }
 };
 
