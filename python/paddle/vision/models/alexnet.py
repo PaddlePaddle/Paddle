@@ -15,7 +15,7 @@
 import paddle
 import paddle.nn as nn
 
-__all__ = ['AlexNet', 'alexnet']
+__all__ = []
 
 
 class AlexNet(nn.Module):
