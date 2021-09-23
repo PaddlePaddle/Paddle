@@ -444,6 +444,9 @@ class DistOpContext:
         self._rank_id = None
         self._cur_src_op = None
         self._cur_dist_attr = None
+        # TODO remove
+        self.gradname2varname = {}
+        self.gradopidx2opidx = {}
 
     def set_dst_main_program(self, prog):
         self._dst_main_program = prog
@@ -481,7 +484,7 @@ class DistOpContext:
     def get_cur_dist_attr(self):
         return self._cur_dist_attr
 
-    def prepare_cur_context(self, src_op, dist_attr):
+    def prepare_forward_context(self, src_op, dist_attr):
 
         self.set_cur_src_op(src_op)
         self.set_cur_dist_attr(dist_attr)
@@ -500,6 +503,29 @@ class DistOpContext:
             varnames = []
             for varname in src_op.desc.output(output_name):
                 varnames.append(self._varname_mapping[varname])
+            koutputs[output_name] = varnames
+
+        return kinputs, koutputs
+
+    def prepare_forward_context(self, backward_op, dist_attr):
+
+        self.set_cur_src_op(backward_op)
+        self.set_cur_dist_attr(dist_attr)
+
+        # build input varname mapping
+        kinputs = {}
+        for input_name in backward_op.desc.input_names():
+            varnames = []
+            for varname in backward_op.desc.input(input_name):
+                varnames.append(varname)
+            kinputs[input_name] = varnames
+
+        # build output varname mapping
+        koutputs = {}
+        for output_name in backward_op.desc.output_names():
+            varnames = []
+            for varname in backward_op.desc.output(output_name):
+                varnames.append(varname)
             koutputs[output_name] = varnames
 
         return kinputs, koutputs
