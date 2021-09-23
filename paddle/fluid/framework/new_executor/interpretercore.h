@@ -57,6 +57,8 @@ class InterpreterCore {
 
   void BuildInplace();
 
+  bool BuildInplaceCheckVarIsOnlyInput(size_t var_index);
+
   void RunInstruction(const Instruction& instr_node);
 
   void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
