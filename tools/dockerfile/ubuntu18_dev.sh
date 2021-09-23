@@ -107,6 +107,16 @@ function set_cuda_env(){
 }
 
 
+function install_package_for_cpu(){
+  if [[ ${WITH_GPU} != "ON" ]]; then
+    sed -i 's#<install_cpu_package>#RUN apt-get update \
+      RUN apt install -y make gcc g++ #g' Dockerfile.tmp
+  else
+    sed -i 's#<install_cpu_package>##g' Dockerfile.tmp
+  fi
+}
+
+
 function install_gcc(){
   if [ "${gcc_version}" == "8.2.0" ];then
     sed -i 's#<install_gcc>#WORKDIR /usr/bin \
@@ -140,6 +150,7 @@ function make_dockerfile(){
 function main(){
   make_dockerfile
   set_cuda_env
+  install_package_for_cpu
   install_gcc
   ref_whl
   install_whl
