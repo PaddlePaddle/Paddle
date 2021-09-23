@@ -540,19 +540,24 @@ class _StandaloneExecutor(object):
         Returns:
             feed:(list|dict)  updated feed.
         """
-        global_block = self._main_program.global_block()
         if feed is None:
             feed = {}
-        elif isinstance(feed, dict):
-            for feed_name in list(feed.keys()):
-                if not global_block.has_var(feed_name):
-                    feed.pop(feed_name)
-                    warnings.warn(
-                        "The variable %s is not found in program. It is not declared or is pruned."
-                        % feed_name)
-        else:
-            raise TypeError("Only support feed with `dict`, but received {}".
-                            format(type(feed).__name__))
+        elif isinstance(feed, (list, tuple)):
+            assert len(feed) == 1, "Not compiled with data parallel"
+            feed = feed[0]
+
+        if not isinstance(feed, dict):
+            raise TypeError(
+                "feed requires dict as its Parameter. But you passed in %s" %
+                (type(feed)))
+
+        global_block = self._main_program.global_block()
+        for feed_name in list(feed.keys()):
+            if not global_block.has_var(feed_name):
+                feed.pop(feed_name)
+                warnings.warn(
+                    "The variable %s is not found in program. It is not declared or is pruned."
+                    % feed_name)
 
         return feed
 

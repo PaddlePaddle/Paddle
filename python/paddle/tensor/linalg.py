@@ -14,8 +14,8 @@
 
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype, check_type
 from ..fluid.framework import in_dygraph_mode, _varbase_creator, Variable, _dygraph_tracer
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 
 from ..fluid.layers import transpose, cast  # noqa: F401
 from ..fluid import layers
@@ -1348,6 +1348,109 @@ def mv(x, vec, name=None):
     helper.append_op(
         type='mv', inputs={'X': x,
                            'Vec': vec}, outputs={'Out': out})
+    return out
+
+
+def det(x):
+    """
+    Calculates determinant value of a square matrix or batches of square matrices.
+    Args:
+        x (Tensor): input (Tensor): the input matrix of size `(n, n)` or the batch of matrices of size
+                    `(*, n, n)` where `*` is one or more batch dimensions.
+    Returns:
+        y (Tensor):the determinant value of a square matrix or batches of square matrices.
+
+    Example: 
+        .. code-block:: python
+
+        import paddle
+
+        x =  paddle.randn([3,3,3])
+
+        A = paddle.det(x)
+
+        print(A)
+    
+        # [ 0.02547996,  2.52317095, -6.15900707])
+
+    
+    """
+    if in_dygraph_mode():
+        return core.ops.determinant(x)
+
+    check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
+
+    input_shape = list(x.shape)
+    assert len(input_shape) >= 2,                     \
+            "The x must be at least 2-dimensional, "   \
+            "but received Input x's dimensional: %s.\n" %  \
+            len(input_shape)
+
+    assert (input_shape[-1] == input_shape[-2]),    \
+            "Expect squared input," \
+            "but received %s by %s matrix.\n" \
+            %(input_shape[-2], input_shape[-1]) \
+
+    helper = LayerHelper('determinant', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='determinant', inputs={'Input': [x]}, outputs={'Out': [out]})
+    return out
+
+
+def slogdet(x):
+    """
+    Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
+    The determinant can be computed with ``sign * exp(logabsdet)
+    
+    Supports input of float, double
+
+    Note that for matrices that have zero determinant, this returns ``(0, -inf)``
+    Args:
+        x (Tensor): the batch of matrices of size :math:`(*, n, n)`
+            where math:`*` is one or more batch dimensions.
+
+    Returns:
+        y (Tensor): A tensor containing the sign of the determinant and the natural logarithm
+        of the absolute value of determinant, respectively.
+
+    Example:
+    .. code-block:: python
+
+        import paddle
+
+        x =  paddle.randn([3,3,3])
+
+        A = paddle.slogdet(x)
+
+        print(A)
+    
+        # [[ 1.        ,  1.        , -1.        ],
+        # [-0.98610914, -0.43010661, -0.10872950]])
+
+    """
+    if in_dygraph_mode():
+        return core.ops.slogdeterminant(x)
+
+    check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
+
+    input_shape = list(x.shape)
+    assert len(input_shape) >= 2,                     \
+            "The x must be at least 2-dimensional, "   \
+            "but received Input x's dimensional: %s.\n" %  \
+            len(input_shape)
+
+    assert (input_shape[-1] == input_shape[-2]),    \
+            "Expect squared input," \
+            "but received %s by %s matrix.\n" \
+            %(input_shape[-2], input_shape[-1]) \
+
+    helper = LayerHelper('slogdeterminant', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='slogdeterminant', inputs={'Input': [x]}, outputs={'Out': [out]})
     return out
 
 
