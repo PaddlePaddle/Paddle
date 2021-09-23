@@ -14,7 +14,6 @@
 
 #pragma once
 
-#include "Eigen/Core"
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/math/lapack_function.h"
 #include "paddle/fluid/operators/svd_helper.h"

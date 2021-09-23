@@ -29,7 +29,7 @@ extern "C" void dgetrf_(int *m, int *n, double *a, int *lda, int *ipiv,
 extern "C" void sgetrf_(int *m, int *n, float *a, int *lda, int *ipiv,
                         int *info);
 
-// evd                        
+// evd
 extern "C" void zheevd_(char *jobz, char *uplo, int *n, std::complex<double> *a,
                         int *lda, double *w, std::complex<double> *work,
                         int *lwork, double *rwork, int *lrwork, int *iwork,
