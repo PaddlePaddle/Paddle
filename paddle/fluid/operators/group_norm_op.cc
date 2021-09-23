@@ -214,7 +214,10 @@ class GroupNormGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
     op->SetInput("Y", this->Output("Y"));
     op->SetInput("Variance", this->Output("Variance"));
-
+#ifdef PADDLE_WITH_ASCEND_CL
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("Mean", this->Output("Mean"));
+#endif
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
     op->SetOutput(framework::GradVarName("Scale"), this->InputGrad("Scale"));
