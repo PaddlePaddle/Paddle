@@ -45,6 +45,8 @@ from .resnext import resnext152_32x4d  # noqa: F401
 from .resnext import resnext152_64x4d  # noqa: F401
 from .inceptionv3 import InceptionV3  # noqa: F401
 from .inceptionv3 import inception_v3  # noqa: F401
+from .googlenet import GoogLeNet  # noqa: F401
+from .googlenet import googlenet  # noqa: F401
 
 __all__ = [ #noqa
     'ResNet',
@@ -79,5 +81,7 @@ __all__ = [ #noqa
     'resnext152_32x4d',
     'resnext152_64x4d',
     'InceptionV3',
-    'inception_v3'
+    'inception_v3',
+    'GoogLeNet',
+    'googlenet',
 ]
