@@ -45,7 +45,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         super(DistributedDefaultImpl0, self).__init__()
         self._name = name
         self._forward_implemented = True
-        self._backward_implemented = False
+        self._backward_implemented = True
 
     def is_process_mesh_compatible(self, op_dist_attr):
         raise NotImplementedError("Please Implement this method.")
@@ -90,6 +90,81 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             dist_op_desc.set_output(output_name, kwargs[output_name])
 
         dst_block._sync_with_cpp()
+
+    @staticmethod
+    def backward(ctx, *args, **kwargs):
+
+        # by now the backward function only insert the gradient allreduce for dist op itself
+
+        dst_block = ctx.get_dst_main_program().global_block()
+        backward_op = ctx.get_cur_src_op()
+        dist_attr = ctx.get_cur_dist_attr()
+        rank_id = ctx.get_rank_id()
+        # check if need gradient allreduce
+        # if there is a non-gradient & non-parameter input and its batch dimension is splited, 
+        # we need insert gradient allreduce for the gradient of parameter in its output
+        need_gradient_allreduce = False
+        for input_name in backward_op.desc.input_names():
+            for varname in backward_op.desc.input(input_name):
+                if "@GRAD" not in varname and not dst_block.var(
+                        varname).is_parameter():
+
+                    # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
+                    process_mesh = dist_attr.get_process_mesh()
+                    var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
+                    mesh_shape = process_mesh.topology
+                    batch_size_axis = var_dim_mapping[0]
+                    if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
+                        need_gradient_allreduce = True
+                        group_ranks = _get_comm_group(
+                            process_mesh.process_group, process_mesh.topology,
+                            batch_size_axis, rank_id)
+                        dp_degree = len(group_ranks)
+                        dp_group = new_process_group(group_ranks)
+                        break
+
+        if need_gradient_allreduce:
+            allreduce_vars = []
+            for input_name in backward_op.desc.input_names():
+                for varname in backward_op.desc.input(input_name):
+                    if "@GRAD" not in varname and dst_block.vars(
+                            varname).is_parameter():
+                        assert len(
+                            backward_op.desc.input(input_name)
+                        ) == 1, "parameter input to grad op should be length 1, but got [{}]".format(
+                            backward_op.desc.input(input_name))
+                        assert varname + "@GRAD" in backward_op.desc.output_names(
+                        ), "parameter's grad [{}] not found in the grad op's output".format(
+                            varname + "@GRAD")
+                        assert len(
+                            backward_op.desc.output_names(varname + "@GRAD")
+                        ) == 1, "parameter grad of grad op should be length 1, but got [{}]".format(
+                            backward_op.desc.output_names(varname + "@GRAD"))
+                        allreduce_vars.append(
+                            backward_op.desc.output_names(varname + "@GRAD")[0])
+
+            if len(allreduce_vars) > 0:
+                for varname in allreduce_vars:
+
+                    grad_var = dst_block.vars(varname)
+                    dst_block.append_op(
+                        type='c_allreduce_sum',
+                        inputs={'X': [grad_var]},
+                        outputs={'Out': [grad_var]},
+                        attrs={
+                            'ring_id': dp_group.id,
+                            'use_calc_stream': True,
+                            OP_ROLE_KEY: OpRole.Backward
+                        })
+                    dst_block.append_op(
+                        type='scale',
+                        inputs={'X': grad_var},
+                        outputs={'Out': grad_var},
+                        attrs={
+                            'scale': 1.0 / dp_degree,
+                            OP_ROLE_KEY: OpRole.Backward
+                        })
+                dst_block._sync_with_cpp()
 
 
 register_distributed_operator_impl(

@@ -42,7 +42,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         super(DistributedReshapeImpl0, self).__init__()
         self._name = name
         self._forward_implemented = True
-        self._backward_implemented = False
+        self._backward_implemented = True
 
     def is_process_mesh_compatible(self, op_dist_attr):
         """ No restriction for now. """
@@ -173,6 +173,10 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
                     "matmul", 0))
         else:
             return static_handle
+
+    @staticmethod
+    def backward(ctx, *args, **kwargs):
+        pass
 
 
 class DistributedReshapeImpl1(DistributedOperatorImpl):
