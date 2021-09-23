@@ -551,8 +551,8 @@ def cond(x, p=None, name=None):
     Computes the condition number of a matrix or batches of matrices with respect to a matrix norm ``p``.
 
     Args:
-        x (Tensor): The input tensor could be tensor of shape ``(*, m, n)`` where ``*`` is zero or more batch dimensions 
-            for ``p`` in ``(2, -2)``, or of shape ``(*, n, n)`` where every matrix is invertible for any supported ``p``. 
+        x (Tensor): The input tensor could be tensor of shape ``(*, m, n)`` where ``*`` is zero or more batch dimensions
+            for ``p`` in ``(2, -2)``, or of shape ``(*, n, n)`` where every matrix is invertible for any supported ``p``.
             And the input data type could be ``float32`` or ``float64``.
         p (float|string, optional): Order of the norm. Supported values are `fro`, `nuc`, `1`, `-1`, `2`, `-2`,
             `inf`, `-inf`. Default value is `None`, meaning that the order of the norm is `2`.
@@ -607,7 +607,7 @@ def cond(x, p=None, name=None):
             # out_minus_inf.numpy() [1.]
 
             a = paddle.to_tensor(np.random.randn(2, 4, 4).astype('float32'))
-            # a.numpy() 
+            # a.numpy()
             # [[[ 0.14063153 -0.996288    0.7996131  -0.02571543]
             #   [-0.16303636  1.5534962  -0.49919784 -0.04402903]
             #   [-1.1341571  -0.6022629   0.5445269   0.29154757]
@@ -1108,17 +1108,17 @@ def matrix_rank(x, tol=None, hermitian=False, name=None):
     r"""
     Computes the rank of a matrix.
 
-    The rank of a matrix is the number of singular values that are greater than the specified `tol` threshold when hermitian=False, 
+    The rank of a matrix is the number of singular values that are greater than the specified `tol` threshold when hermitian=False,
     or the number of eigenvalues in absolute value that are greater than the specified `tol` threshold when hermitian=True.
 
     Args:
-        x (Tensor): The input tensor. Its shape should be `[..., m, n]`, where `...` is zero or more batch dimensions. If `x` is a batch 
-            of matrices then the output has the same batch dimensions. The data type of `x` should be float32 or float64. 
-        tol (float,Tensor,optional): the tolerance value. Default: None. If `tol` is not specified, and `sigma` is the largest 
-            singular value (or eigenvalues in absolute value), and `eps` is the epsilon value for the dtype of `x`, then `tol` is computed 
+        x (Tensor): The input tensor. Its shape should be `[..., m, n]`, where `...` is zero or more batch dimensions. If `x` is a batch
+            of matrices then the output has the same batch dimensions. The data type of `x` should be float32 or float64.
+        tol (float,Tensor,optional): the tolerance value. Default: None. If `tol` is not specified, and `sigma` is the largest
+            singular value (or eigenvalues in absolute value), and `eps` is the epsilon value for the dtype of `x`, then `tol` is computed
             with formula `tol=sigma * max(m,n) * eps`. Note that if `x` is a batch of matrices, `tol` is computed this way for every batch.
-        hermitian (bool,optional): indicates whether `x` is Hermitian. Default: False. When hermitian=True, `x` is assumed to be Hermitian, 
-            enabling a more efficient method for finding eigenvalues, but `x` is not checked inside the function. Instead, We just use 
+        hermitian (bool,optional): indicates whether `x` is Hermitian. Default: False. When hermitian=True, `x` is assumed to be Hermitian,
+            enabling a more efficient method for finding eigenvalues, but `x` is not checked inside the function. Instead, We just use
             the lower triangular of the matrix to compute.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
@@ -1225,7 +1225,7 @@ def bmm(x, y, name=None):
             #output value:
             #[[[6.0, 6.0],[12.0, 12.0]],[[45.0, 45.0],[60.0, 60.0]]]
             out_np = out.numpy()
-            
+
     """
     x_shape = x.shape
     y_shape = y.shape
@@ -1360,7 +1360,7 @@ def det(x):
     Returns:
         y (Tensor):the determinant value of a square matrix or batches of square matrices.
 
-    Example: 
+    Example:
         .. code-block:: python
 
         import paddle
@@ -1370,10 +1370,10 @@ def det(x):
         A = paddle.det(x)
 
         print(A)
-    
+
         # [ 0.02547996,  2.52317095, -6.15900707])
 
-    
+
     """
     if in_dygraph_mode():
         return core.ops.determinant(x)
@@ -1403,7 +1403,7 @@ def slogdet(x):
     """
     Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
     The determinant can be computed with ``sign * exp(logabsdet)
-    
+
     Supports input of float, double
 
     Note that for matrices that have zero determinant, this returns ``(0, -inf)``
@@ -1425,7 +1425,7 @@ def slogdet(x):
         A = paddle.slogdet(x)
 
         print(A)
-    
+
         # [[ 1.        ,  1.        , -1.        ],
         # [-0.98610914, -0.43010661, -0.10872950]])
 
@@ -1461,19 +1461,19 @@ def svd(x, full_matrices=False, name=None):
     Let :math:`X` be the input matrix or a batch of input matrices, the output should satisfies:
 
     .. math::
-        X = U * diag(S) * VT 
- 
+        X = U * diag(S) * VT
+
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., N, M]`,
             where `...` is zero or more batch dimensions. N and M can be arbitraty
-            positive number. Note that if x is sigular matrices, the grad is numerical 
-            instable. The data type of x should be float32 or float64. 
-        full_matrices (bool): A flag to control the behavor of svd. 
-            If full_matrices = True, svd op will compute full U and V matrics, 
+            positive number. Note that if x is sigular matrices, the grad is numerical
+            instable. The data type of x should be float32 or float64.
+        full_matrices (bool): A flag to control the behavor of svd.
+            If full_matrices = True, svd op will compute full U and V matrics,
             which means shape of U is `[..., N, N]`, shape of V is `[..., M, M]`. K = min(M, N).
-            If full_matrices = False, svd op will use a economic method to store U and V. 
+            If full_matrices = False, svd op will use a economic method to store U and V.
             which means shape of U is `[..., N, K]`, shape of V is `[..., M, K]`. K = min(M, N).
-        name (str, optional): Name for the operation (optional, default is None). 
+        name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -1497,9 +1497,9 @@ def svd(x, full_matrices=False, name=None):
             print (vh)
             #VT= [[ 0.51411221,  0.85772294],
             #     [ 0.85772294, -0.51411221]]
-            
+
             # one can verify : U * S * VT == X
-            #                  U * UH == I 
+            #                  U * UH == I
             #                  V * VH == I
     """
 
@@ -1526,7 +1526,7 @@ def svd(x, full_matrices=False, name=None):
 def matrix_power(x, n, name=None):
     r"""
     Computes the n-th power of a square matrix or a batch of square matrices.
-    
+
     Let :math:`X` be a sqaure matrix or a batch of square matrices, :math:`n` be
     an exponent, the equation should be:
 
@@ -1596,27 +1596,27 @@ def matrix_power(x, n, name=None):
 def eigvals(x, name=None):
     """
     Compute the eigenvalues of one or more general matrices.
-    
-    Warning: 
-        The gradient kernel of this operator does not yet developed. 
+
+    Warning:
+        The gradient kernel of this operator does not yet developed.
         If you need back propagation through this operator, please replace it with paddle.linalg.eig.
 
     Args:
         x (Tensor): A square matrix or a batch of square matrices whose eigenvalues will be computed.
-            Its shape should be `[*, M, M]`, where `*` is zero or more batch dimensions. 
+            Its shape should be `[*, M, M]`, where `*` is zero or more batch dimensions.
             Its data type should be float32, float64, complex64, or complex128.
-        name (str, optional): Name for the operation (optional, default is None). 
+        name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A tensor containing the unsorted eigenvalues which has the same batch dimensions with `x`. 
+        Tensor: A tensor containing the unsorted eigenvalues which has the same batch dimensions with `x`.
             The eigenvalues are complex-valued even when `x` is real.
 
     Examples:
         .. code-block:: python
 
             import paddle
-            
+
             paddle.set_device("cpu")
             paddle.seed(1234)
 
@@ -1657,7 +1657,7 @@ def multi_dot(x, name=None):
     """
     Multi_dot is an operator that calculates multiple matrix multiplications.
 
-    Supports inputs of float, double and float16 dtypes. This function does not
+    Supports inputs of float16(only GPU support), float32 and float64 dtypes. This function does not
     support batched inputs.
 
     The input tensor in [x] must be 2-D except for the first and last can be 1-D.
@@ -1699,7 +1699,7 @@ def multi_dot(x, name=None):
         B_data = np.random.random([4, 5]).astype(np.float32)
         A = paddle.to_tensor(A_data)
         B = paddle.to_tensor(B_data)
-        out = paddle.multi_dot([A, B])
+        out = paddle.linalg.multi_dot([A, B])
         print(out.numpy().shape)
         # [3, 5]
 
@@ -1710,7 +1710,7 @@ def multi_dot(x, name=None):
         A = paddle.to_tensor(A_data)
         B = paddle.to_tensor(B_data)
         C = paddle.to_tensor(C_data)
-        out = paddle.multi_dot([A, B, C])
+        out = paddle.linalg.multi_dot([A, B, C])
         print(out.numpy().shape)
         # [10, 7]
 
@@ -1735,7 +1735,7 @@ def multi_dot(x, name=None):
 
 def eigh(x, UPLO='L', name=None):
     """
-    Compute the eigenvalues and eigenvectors of a 
+    Compute the eigenvalues and eigenvectors of a
     complex Hermitian (conjugate symmetric) or a real symmetric matrix.
 
     Args:
@@ -1804,7 +1804,7 @@ def eigh(x, UPLO='L', name=None):
 
 def pinv(x, rcond=1e-15, hermitian=False, name=None):
     r"""
-    Calculate pseudo inverse via SVD(singular value decomposition) 
+    Calculate pseudo inverse via SVD(singular value decomposition)
     of one matrix or batches of regular matrix.
 
     .. math::
@@ -1815,30 +1815,30 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
         else:
             x = u * s * ut  (eigh)
             out = u * 1/s * u.conj().transpose(-2,-1)
-    
+
     If x is hermitian or symmetric matrix, svd will be replaced with eigh.
 
     Args:
-        x(Tensor): The input tensor. Its shape should be (*, m, n) 
-            where * is zero or more batch dimensions. m and n can be 
-            arbitraty positive number. The data type of x should be 
+        x(Tensor): The input tensor. Its shape should be (*, m, n)
+            where * is zero or more batch dimensions. m and n can be
+            arbitraty positive number. The data type of x should be
             float32 or float64 or complex64 or complex128. When data
             type is complex64 or cpmplex128, hermitian should be set
             True.
 
-        rcond(Tensor, optional): the tolerance value to determine 
-            when is a singular value zero. Defalut:1e-15. 
-        
-        hermitian(bool, optional): indicates whether x is Hermitian 
+        rcond(Tensor, optional): the tolerance value to determine
+            when is a singular value zero. Defalut:1e-15.
+
+        hermitian(bool, optional): indicates whether x is Hermitian
             if complex or symmetric if real. Default: False.
-        
-        name(str|None): A name for this layer(optional). If set None, 
+
+        name(str|None): A name for this layer(optional). If set None,
             the layer will be named automatically.
-    
+
     Returns:
-        Tensor: The tensor with same data type with x. it represents 
+        Tensor: The tensor with same data type with x. it represents
         pseudo inverse of x. Its shape should be (*, n, m).
-    
+
     Examples:
         .. code-block:: python
 
