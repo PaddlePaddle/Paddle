@@ -107,7 +107,9 @@ XPUOpMap& get_kl2_ops() {
       {"transpose2_grad",
        XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace()),
                      pOpKernelType(vartype::FP16, XPUPlace())})},
-
+      {"iou_similarity",
+       XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})},
+      {"arg_max", XPUKernelSet({pOpKernelType(vartype::FP32, XPUPlace())})}
       // AddMore
   };
 
