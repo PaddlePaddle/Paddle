@@ -121,8 +121,7 @@ class TestElementwiseSubOp_xsize_lessthan_ysize_sub(TestMKLDNNElementwiseSubOp):
         pass
 
 
-@unittest.skipIf(not core.supports_bfloat16(),
-                 "place does not support BF16 evaluation")
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestBf16(TestMKLDNNElementwiseSubOp):
     def setUp(self):
         self.op_type = "elementwise_sub"
@@ -148,6 +147,7 @@ class TestBf16(TestMKLDNNElementwiseSubOp):
 
     def test_check_output(self):
         self.check_output_with_place(core.CPUPlace())
+        self.check_output(check_dygraph=False)
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
