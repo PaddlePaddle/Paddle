@@ -15,7 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/eager/grad_node_info.h"
-#include "paddle/top/api/include/tensor.h"
+#include "paddle/tcmpt/api/include/tensor.h"
 
 namespace egr {
 

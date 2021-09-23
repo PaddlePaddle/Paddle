@@ -16,8 +16,8 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/function_api.h"
 #include "paddle/fluid/eager/gradient_accumulation.h"
-#include "paddle/top/core/dense_tensor.h"
-#include "paddle/top/core/dtype.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/core/dtype.h"
 
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
@@ -48,12 +48,11 @@ void GradNodeBase::AddEdges(const std::vector<AutogradMeta*>& metas,
   }
 }
 
-void GradNodeBase::AddEdges(const AutogradMeta& meta,
-                            size_t slot_id) {
+void GradNodeBase::AddEdges(const AutogradMeta& meta, size_t slot_id) {
   PADDLE_ENFORCE_LT(slot_id, adj_edges_.size(),
                     "Given slot id is out of range of adj_edges outter size");
-    adj_edges_[slot_id].emplace_back(meta.GetMutableGradNode(),
-                                     meta.OutRankInfo());
+  adj_edges_[slot_id].emplace_back(meta.GetMutableGradNode(),
+                                   meta.OutRankInfo());
 }
 
 const std::vector<GradSlotMeta>& GradNodeBase::InputMeta() const {
@@ -65,7 +64,7 @@ const std::vector<GradSlotMeta>& GradNodeBase::OutputMeta() const {
 }
 
 void GradNodeBase::SetGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
-                                      size_t slot_rank) {
+                                 size_t slot_rank) {
   size_t slot_size = fwd_out.size();
   PADDLE_ENFORCE_LE(slot_rank, (bwd_in_meta_.size() - 1),
                     "Slot Rank should less equal than bwd_in_meta_ size.");
@@ -84,7 +83,7 @@ void GradNodeBase::SetGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
 
 void GradNodeBase::SetMultiGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
                                       size_t slot_rank) {
-    SetGradInMeta(fwd_out, slot_rank);
+  SetGradInMeta(fwd_out, slot_rank);
 }
 
 void GradNodeBase::SetGradInMeta(const AutogradMeta& fwd_out,
@@ -101,7 +100,7 @@ void GradNodeBase::SetGradInMeta(const AutogradMeta& fwd_out,
 }
 
 void GradNodeBase::SetGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
-                                       size_t slot_rank) {
+                                  size_t slot_rank) {
   size_t slot_size = fwd_in.size();
   PADDLE_ENFORCE_LE(slot_rank, (bwd_out_meta_.size() - 1),
                     "Slot Rank should less equal than bwd_out_meta_ size.");
@@ -120,7 +119,7 @@ void GradNodeBase::SetGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
 
 void GradNodeBase::SetMultiGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
                                        size_t slot_rank) {
-    SetGradOutMeta(fwd_in, slot_rank);
+  SetGradOutMeta(fwd_in, slot_rank);
 }
 
 void GradNodeBase::SetGradOutMeta(const AutogradMeta& fwd_in,

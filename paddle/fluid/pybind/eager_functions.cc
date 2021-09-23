@@ -29,10 +29,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/pybind/eager.h"
 #include "paddle/fluid/pybind/eager_utils.h"
-#include "paddle/top/api/include/tensor.h"
-#include "paddle/top/core/convert_utils.h"
-#include "paddle/top/core/dense_tensor.h"
-#include "paddle/top/core/dtype.h"
+#include "paddle/tcmpt/api/include/tensor.h"
+#include "paddle/tcmpt/core/convert_utils.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/core/dtype.h"
 #pragma GCC diagnostic ignored "-Wunused-variable"
 #pragma GCC diagnostic ignored "-Wconversion-null"
 
@@ -169,11 +169,10 @@ static inline PyObject* eager_api_numpy_to_tensor(PyObject* numpy_data,
   }
   paddle::framework::DDim dims = paddle::framework::make_ddim(vec_dims);
 
-  std::unique_ptr<pt::TensorMeta> meta(
-      new pt::TensorMeta(dims, static_cast<pt::Backend>(place_id), dtype));
+  auto meta = pt::TensorMeta(dims, static_cast<pt::Backend>(place_id), dtype);
 
   std::shared_ptr<pt::DenseTensor> densetensor(
-      new pt::DenseTensor(std::move(meta)));
+      new pt::DenseTensor(std::move(meta), pt::TensorStatus()));
 
   auto holder = std::make_shared<EagerNumpyAllocation>(numpy_data, dtype);
   densetensor->ShareAllocation(holder);

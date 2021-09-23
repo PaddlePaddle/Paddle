@@ -1,4 +1,4 @@
-set(eager_deps eager_api function_api backward autograd_meta grad_node_info top)
+set(eager_deps eager_api function_api backward autograd_meta grad_node_info tcmpt)
 set(fluid_deps tracer layer proto_desc operator op_registry variable_helper scale_op memcpy)
 
 add_subdirectory(benchmark)

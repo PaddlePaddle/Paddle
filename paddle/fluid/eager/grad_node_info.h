@@ -14,7 +14,7 @@
 
 #pragma once
 
-#include "paddle/top/api/include/tensor.h"
+#include "paddle/tcmpt/api/include/tensor.h"
 
 namespace egr {
 /**
@@ -123,13 +123,13 @@ class GradNodeBase {
   void SetMultiGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
                           size_t slot_rank);
   void SetGradInMeta(const std::vector<AutogradMeta*>& fwd_out,
-                          size_t slot_rank);
+                     size_t slot_rank);
   void SetGradInMeta(const AutogradMeta& fwd_out, size_t slot_rank);
 
   void SetMultiGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
                            size_t slot_rank);
   void SetGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
-                           size_t slot_rank);
+                      size_t slot_rank);
   void SetGradOutMeta(const AutogradMeta& fwd_in, size_t slot_rank);
 
   /**

@@ -24,8 +24,8 @@
 #include "paddle/fluid/eager/nodes/accumulation_node.h"
 #include "paddle/fluid/eager/nodes/scale_node.h"
 
-#include "paddle/top/core/dense_tensor.h"
-#include "paddle/top/core/tensor_meta.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/core/tensor_meta.h"
 
 #include "paddle/fluid/eager/tests/test_utils.h"
 
@@ -35,9 +35,10 @@ using namespace egr;  // NOLINT
 pt::Tensor hook_function(const pt::Tensor& t) {
   auto t_dense = std::dynamic_pointer_cast<pt::DenseTensor>(t.impl());
 
-  auto ret_meta = std::make_unique<pt::TensorMeta>(
-      t_dense->dims(), t_dense->backend(), t_dense->type(), t_dense->layout());
-  auto ret_dense = std::make_shared<pt::DenseTensor>(std::move(ret_meta));
+  auto ret_meta = pt::TensorMeta(t_dense->dims(), t_dense->backend(),
+                                 t_dense->type(), t_dense->layout());
+  auto ret_dense = std::make_shared<pt::DenseTensor>(std::move(ret_meta),
+                                                     pt::TensorStatus());
 
   float* t_ptr = t_dense->mutable_data<float>();
   float* ret_ptr = ret_dense->mutable_data<float>();

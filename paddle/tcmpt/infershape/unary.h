@@ -28,11 +28,11 @@ using DDim = paddle::framework::DDim;
 //   3. std::tuple<DDim, DDim, DDim> [OpName]InferShape(const DDim& x_dim, ...)
 //   {}
 
-DDim UnchangedInferShape(const DDim& x_dim) { return x_dim; }
+inline DDim UnchangedInferShape(const DDim& x_dim) { return x_dim; }
 
-DDim MeanInferShape(const DDim& x_dim) { return {1}; }
+inline DDim MeanInferShape(const DDim& x_dim) { return {1}; }
 
-DDim DotInferShape(const DDim& x_dim) {
+inline DDim DotInferShape(const DDim& x_dim) {
   auto dims = paddle::framework::vectorize(x_dim);
   dims[dims.size() - 1] = 1;
   return paddle::framework::make_ddim(dims);

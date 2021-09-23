@@ -48,8 +48,8 @@ class Tensor;
 
 class AbstractAutogradMeta {
  public:
-  // No AutogradMetaInterface should be created
-  virtual ~AutogradMetaInterface() {}
+  // No AbstractAutogradMeta should be created
+  virtual ~AbstractAutogradMeta() {}
 };
 
 /**
@@ -166,8 +166,8 @@ class Tensor final {
    * @return {std::shared_ptr<TensorInterface>}
    */
   std::shared_ptr<TensorInterface> impl() const { return impl_; }
-  void SetImpl(const std::shared_ptr<TensorInterface>& tensor_impl) { 
-      impl_ = tensor_impl;
+  void SetImpl(const std::shared_ptr<TensorInterface>& tensor_impl) {
+    impl_ = tensor_impl;
   }
 
   /**
@@ -217,11 +217,11 @@ class Tensor final {
   }
 
   /* Part 7: Autograd methods */
-  AutogradMetaInterface* get_autograd_meta() const {
+  AbstractAutogradMeta* get_autograd_meta() const {
     return autograd_meta_.get();
   }
 
-  void set_autograd_meta(std::shared_ptr<AutogradMetaInterface> autograd_meta) {
+  void set_autograd_meta(std::shared_ptr<AbstractAutogradMeta> autograd_meta) {
     autograd_meta_ = std::move(autograd_meta);
   }
 
@@ -260,7 +260,7 @@ class Tensor final {
    *    information, not Tensor data description-related information.
    * 2. Kernel calculation does not require AutogradMeta.
    */
-  std::shared_ptr<AutogradMetaInterface> autograd_meta_ = nullptr;
+  std::shared_ptr<AbstractAutogradMeta> autograd_meta_ = nullptr;
 };
 
 }  // namespace pt

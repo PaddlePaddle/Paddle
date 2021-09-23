@@ -23,8 +23,8 @@
 #include "paddle/fluid/eager/grad_node_info.h"
 #include "paddle/fluid/eager/nodes/scale_node.h"
 
-#include "paddle/top/core/dense_tensor.h"
-#include "paddle/top/core/tensor_meta.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/core/tensor_meta.h"
 
 #include "paddle/fluid/eager/tests/test_utils.h"
 

@@ -29,7 +29,7 @@
 #include "paddle/fluid/eager/nodes/scale_node.h"
 
 #include "paddle/fluid/eager/function_api.h"
-#include "paddle/top/api/all.h"
+#include "paddle/tcmpt/api/all.h"
 
 namespace egr {
 
@@ -52,8 +52,8 @@ pt::Tensor scale(const pt::Tensor& x, float scale, float bias,
   // 2.2 Add GradNode
   // 2.2.1 ComputeRequireGrad
   // TODO(jiabin) : make this function accept different kinds of input
-  // TODO(zhanlve): which one is more efficient: 
-  //                1. construct a vector of pointers 
+  // TODO(zhanlve): which one is more efficient:
+  //                1. construct a vector of pointers
   //                2. call "ComputeRequireGrad" multiple times
   if (EagerUtils::ComputeRequireGrad(&p_autograd_in, 1, &p_autograd_out, 1,
                                      trace_backward)) {

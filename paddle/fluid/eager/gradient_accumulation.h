@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/top/api/include/tensor.h"
+#include "paddle/tcmpt/api/include/tensor.h"
 
 namespace egr {
 // Accumulation API

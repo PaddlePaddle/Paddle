@@ -21,7 +21,7 @@
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/errors.h"
 
-#include "paddle/top/core/dense_tensor.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
 
 #include "glog/logging.h"
 

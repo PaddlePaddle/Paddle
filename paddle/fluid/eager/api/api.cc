@@ -15,7 +15,7 @@
 #include "paddle/fluid/eager/api/api.h"
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/nodes/accumulation_node.h"
-#include "paddle/top/core/dense_tensor.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
 
 namespace egr {
 
