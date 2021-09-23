@@ -1,7 +1,7 @@
 # A image for building paddle binaries
 # Use cuda devel base image for both cpu and gpu environment
 # When you modify it, please be aware of cudnn-runtime version
-FROM nvidia/cuda:<baseimg>
+FROM <baseimg>
 MAINTAINER PaddlePaddle Authors <paddle-dev@baidu.com>
 
 # ENV variables
@@ -11,7 +11,7 @@ ARG WITH_AVX
 ENV WITH_GPU=${WITH_GPU:-ON}
 ENV WITH_AVX=${WITH_AVX:-ON}
 ENV DEBIAN_FRONTEND=noninteractive
-ENV LD_LIBRARY_PATH=/usr/local/cuda-11.2/targets/x86_64-linux/lib:$LD_LIBRARY_PATH
+<setcuda>
 
 ENV HOME /root
 # Add bash enhancements
