@@ -202,6 +202,27 @@ void IRPassManager::CreatePasses(Argument *argument,
                 new std::string(argument->xpu_autotune_file()));
       pass->Set("precision", new std::string(argument->xpu_precision()));
       pass->Set("adaptive_seqlen", new bool(argument->xpu_adaptive_seqlen()));
+      // NNAdapter Related
+      pass->Set("use_nnadapter", new bool(argument->use_nnadapter()));
+      pass->Set("nnadapter_model_cache_dir",
+                new std::string(argument->nnadapter_model_cache_dir()));
+      pass->Set(
+          "nnadapter_device_names",
+          new std::vector<std::string>(argument->nnadapter_device_names()));
+      pass->Set("nnadapter_context_properties",
+                new std::string(argument->nnadapter_context_properties()));
+      pass->Set("nnadapter_subgraph_partition_config_buffer",
+                new std::string(
+                    argument->nnadapter_subgraph_partition_config_buffer()));
+      pass->Set("nnadapter_subgraph_partition_config_path",
+                new std::string(
+                    argument->nnadapter_subgraph_partition_config_path()));
+      pass->Set("nnadapter_model_cache_buffer",
+                new std::vector<std::vector<char>>(
+                    argument->nnadapter_model_cache_buffer()));
+      pass->Set("nnadapter_model_cache_token",
+                new std::vector<std::string>(
+                    argument->nnadapter_model_cache_token()));
     }
     disable_logs_ = argument->disable_logs();
     if (pass_name == "fc_fuse_pass") {

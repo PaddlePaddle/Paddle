@@ -64,6 +64,7 @@ import paddle.reader  # noqa: F401
 import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
 
+from .tensor import fft
 from .tensor.random import bernoulli  # noqa: F401
 
 from .tensor.attribute import rank  # noqa: F401
@@ -100,9 +101,12 @@ from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import bmm  # noqa: F401
 from .tensor.linalg import histogram  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
+from .tensor.linalg import det  # noqa: F401
+from .tensor.linalg import slogdet  # noqa: F401
 from .tensor.linalg import matrix_power  # noqa: F401
 from .tensor.linalg import svd  # noqa: F401
 from .tensor.linalg import eigh  # noqa: F401
+from .tensor.linalg import pinv  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
 from .tensor.logic import greater_than  # noqa: F401
