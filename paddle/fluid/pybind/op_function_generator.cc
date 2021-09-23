@@ -71,6 +71,9 @@ std::map<std::string, std::set<std::string>> op_ins_map = {
     {"adam",
      {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
       "Beta2Pow", "MasterParam"}},
+    {"adamw",
+     {"Param", "Grad", "LearningRate", "Moment1", "Moment2", "Beta1Pow",
+      "Beta2Pow", "MasterParam"}},
 };
 
 // NOTE(zhiqiu): Like op_ins_map.
@@ -110,6 +113,9 @@ std::map<std::string, std::set<std::string>> op_outs_map = {
     {"adam",
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
       "MasterParamOut"}},
+    {"adamw",
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
+      "MasterParamOut"}},
 };
 
 // NOTE(zhiqiu): Commonly, the outputs in auto-generated OP function are
@@ -129,7 +135,8 @@ std::map<std::string, std::set<std::string>> op_passing_outs_map = {
      {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
       "MasterParamOut"}},
     {"adamw",
-     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut"}},
+     {"ParamOut", "Moment1Out", "Moment2Out", "Beta1PowOut", "Beta2PowOut",
+      "MasterParamOut"}},
     {"average_accumulates",
      {"out_sum_1", "out_sum_2", "out_sum_3", "out_num_accumulates",
       "out_old_num_accumulates", "out_num_updates"}},

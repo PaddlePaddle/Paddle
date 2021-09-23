@@ -298,7 +298,7 @@ class AdamW(Adam):
             _beta2 = self._beta2 if not isinstance(
                 self._beta2, Variable) else self._beta2.numpy().item(0)
 
-            _, _, _, _, _, _ = _C_ops.adam(
+            _, _, _, _, _, _ = _C_ops.adamw(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
                 beta1_pow_acc, beta2_pow_acc, master_weight, param_and_grad[0],
                 moment1, moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
