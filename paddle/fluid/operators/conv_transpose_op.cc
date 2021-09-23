@@ -145,7 +145,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                 "output_size of Op(ConvTransposeOp) should not be "
                 "less than the infered output size. But received output_size = "
                 "[%s], whose dim %d is less than the infered output size [%s]",
-                framework::make_ddim(output_size), i, infer_shape));
+                framework::make_ddim(output_size).to_str(), i, infer_shape));
         PADDLE_ENFORCE_LT(
             output_size[i], infer_shape + strides[i],
             platform::errors::InvalidArgument(
@@ -153,8 +153,8 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                 "than infered size + stride. But received output_size = [%s], "
                 "whose dim %d is not less than the infered output size (%d) + "
                 "stride (%d) = %d",
-                framework::make_ddim(output_size), i, infer_shape, strides[i],
-                infer_shape + strides[i]));
+                framework::make_ddim(output_size).to_str(), i, infer_shape,
+                strides[i], infer_shape + strides[i]));
       }
       output_shape.push_back(output_size[i]);
     } else if (output_padding.size()) {
@@ -165,7 +165,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                 "output_padding of Op(ConvTransposeOp) should not be "
                 "less than the 0. But received output_padding = "
                 "[%s], whose dim %d is less than 0",
-                framework::make_ddim(output_padding), i));
+                framework::make_ddim(output_padding).to_str(), i));
         PADDLE_ENFORCE_LT(
             output_padding[i], std::max(strides[i], dilations[i]),
             platform::errors::InvalidArgument(
@@ -174,7 +174,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                 "[%s], "
                 "whose dim %d is not less than either stride (%d)  or "
                 "dilation (%d)",
-                framework::make_ddim(output_size), i, strides[i],
+                framework::make_ddim(output_size).to_str(), i, strides[i],
                 dilations[i]));
       }
       output_shape.push_back((infer_shape + output_padding[i]));
@@ -192,7 +192,8 @@ framework::OpKernelType ConvTransposeOp::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
   framework::LibraryType library_{framework::LibraryType::kPlain};
   framework::DataLayout layout_ = framework::DataLayout::kAnyLayout;
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  bool use_cudnn =
+      ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
   auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "Input");
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -245,7 +246,8 @@ void Conv2DTransposeOpMaker::Make() {
   AddAttr<bool>("is_test",
                 "(bool, default false) Set to true for inference only, false "
                 "for training. Some layers may run faster when this is true.")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddInput("Input",
            "(Tensor) The input tensor of convolution transpose operator. "
            "The format of input tensor is NCHW or NHWC. Where N is batch size, "
@@ -263,7 +265,8 @@ void Conv2DTransposeOpMaker::Make() {
            "(Tensor) Bias to be added to each output of filter application."
            "The format of output tensor is X (one-dimensional) of size equal"
            "to the number of output channels. Only used with MKL-DNN.")
-      .AsDispensable();
+      .AsDispensable()
+      .AsExtra();
   AddOutput("Output",
             "(Tensor) The output tensor of convolution transpose operator. "
             "The format of output tensor is the same as input tensor.");
@@ -298,29 +301,37 @@ void Conv2DTransposeOpMaker::Make() {
   AddAttr<bool>(
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("force_fp32_output",
                 "(bool, default false) Force BF16 kernel output FP32, only "
                 "used in MKL-DNN BF16")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>(
       "mkldnn_data_type",
       "(string, default \"float32\"). Data type of mkldnn kernel")
       .SetDefault("float32")
-      .InEnum({"float32", "bfloat16"});
+      .InEnum({"float32", "bfloat16"})
+      .AsExtra();
   AddAttr<bool>("fuse_relu", "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>("fuse_activation",
                        "(string, default \"\") Only used in mkldnn kernel")
-      .SetDefault("");
+      .SetDefault("")
+      .AsExtra();
   AddAttr<float>("fuse_alpha",
                  "(float, default 0.0) Only used in mkldnn kernel")
-      .SetDefault(0.0f);
+      .SetDefault(0.0f)
+      .AsExtra();
   AddAttr<float>("fuse_beta", "(float, default 0.0) Only used in mkldnn kernel")
-      .SetDefault(0.0f);
+      .SetDefault(0.0f)
+      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -340,7 +351,8 @@ void Conv2DTransposeOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardward. This size should be carefully set.")
-      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
+      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB())
+      .AsExtra();
   AddComment(R"DOC(
 Convolution2D Transpose Operator.
 
@@ -423,10 +435,12 @@ void Conv3DTransposeOpMaker::Make() {
   AddAttr<bool>(
       "use_cudnn",
       "(bool, default false) Only used in cudnn kernel, need install cudnn")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -446,7 +460,8 @@ void Conv3DTransposeOpMaker::Make() {
                "allocated/freed each time the operator runs, larger "
                "workspace size can increase performance but also requires "
                "better hardward. This size should be carefully set.")
-      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB());
+      .SetDefault(platform::GetDefaultConvWorkspaceSizeLimitMB())
+      .AsExtra();
   AddComment(R"DOC(
 Convolution3D Transpose Operator.
 
@@ -491,7 +506,8 @@ void ConvTransposeOpGrad::InferShape(framework::InferShapeContext* ctx) const {
 
 framework::OpKernelType ConvTransposeOpGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  bool use_cudnn =
+      ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {
@@ -591,7 +607,8 @@ void ConvTransposeOpDoubleGrad::InferShape(
 
 framework::OpKernelType ConvTransposeOpDoubleGrad::GetExpectedKernelType(
     const framework::ExecutionContext& ctx) const {
-  bool use_cudnn = ctx.Attr<bool>("use_cudnn");
+  bool use_cudnn =
+      ctx.HasAttr("use_cudnn") ? ctx.Attr<bool>("use_cudnn") : false;
   use_cudnn &= platform::is_gpu_place(ctx.GetPlace());
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   if (platform::is_gpu_place(ctx.GetPlace())) {

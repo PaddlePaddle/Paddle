@@ -212,6 +212,12 @@ struct Argument {
                       bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_calib_mode, TensorRtUseCalibMode, bool);
   DECL_ARGUMENT_FIELD(tensorrt_use_oss, TensorRtUseOSS, bool);
+  DECL_ARGUMENT_FIELD(tensorrt_shape_range_info_path,
+                      TensorRtShapeRangeInfoPath, std::string);
+  DECL_ARGUMENT_FIELD(tensorrt_tuned_dynamic_shape, TensorRtTunedDynamicShape,
+                      bool);
+  DECL_ARGUMENT_FIELD(tensorrt_allow_build_at_runtime,
+                      TensorRtAllowBuildAtRuntime, bool);
 
   DECL_ARGUMENT_FIELD(use_dlnne, UseDlnne, bool);
   DECL_ARGUMENT_FIELD(dlnne_min_subgraph_size, DlnneMinSubgraphSize, int);
@@ -232,6 +238,22 @@ struct Argument {
   DECL_ARGUMENT_FIELD(xpu_autotune_file, XpuAutotuneFile, std::string);
   DECL_ARGUMENT_FIELD(xpu_precision, XpuPrecision, std::string);
   DECL_ARGUMENT_FIELD(xpu_adaptive_seqlen, XpuAdaptiveSeqlen, bool);
+
+  DECL_ARGUMENT_FIELD(use_nnadapter, UseNNAdapter, bool);
+  DECL_ARGUMENT_FIELD(nnadapter_model_cache_dir, NNAdapterModelCacheDir,
+                      std::string);
+  DECL_ARGUMENT_FIELD(nnadapter_device_names, NNAdapterDeviceNames,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(nnadapter_context_properties, NNAdapterContextProperties,
+                      std::string);
+  DECL_ARGUMENT_FIELD(nnadapter_subgraph_partition_config_buffer,
+                      NNAdapterSubgraphPartitionConfigBuffer, std::string);
+  DECL_ARGUMENT_FIELD(nnadapter_subgraph_partition_config_path,
+                      NNAdapterSubgraphPartitionConfigPath, std::string);
+  DECL_ARGUMENT_FIELD(nnadapter_model_cache_token, NNAdapterModelCacheToken,
+                      std::vector<std::string>);
+  DECL_ARGUMENT_FIELD(nnadapter_model_cache_buffer, NNAdapterModelCacheBuffer,
+                      std::vector<std::vector<char>>);
 
   // Memory optimized related.
   DECL_ARGUMENT_FIELD(enable_memory_optim, EnableMemoryOptim, bool);

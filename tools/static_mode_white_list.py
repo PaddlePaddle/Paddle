@@ -173,6 +173,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_elementwise_nn_grad',
     'test_elementwise_pow_op',
     'test_ema',
+    'test_ema_fleet',
     'test_embedding_id_stop_gradient',
     'test_empty_like_op',
     'test_entry_attr',
@@ -721,5 +722,7 @@ STATIC_MODE_TESTING_LIST = [
     'test_marker_op',
     'test_c_embedding_op',
     'test_class_center_sample_op',
+    'test_fill_diagonal_tensor_op',
+    'test_fill_any_op',
     'test_margin_cross_entropy_op',
 ]

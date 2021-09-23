@@ -50,6 +50,15 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
       ctx->Attrs().Get<std::string>("padding_algorithm");
   int groups = ctx->Attrs().Get<int>("groups");
   std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
+  int dilation_size = dilations.size();
+  for (int i = 0; i < dilation_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        dilations[i], 0,
+        platform::errors::InvalidArgument(
+            "The dilation of Op(Conv) should be larget than 0, but received "
+            "dilation is %d.",
+            dilations[i]));
+  }
   const std::string data_format = ctx->Attrs().Get<std::string>("data_format");
 
   // MKL-DNN Kernels are using NCHW order of dims description
@@ -116,6 +125,13 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
           "the output channels is %d, the filter's shape is [%s], "
           "the groups is %d.",
           filter_dims[0], filter_dims, groups));
+
+  if (ctx->IsRuntime()) {
+    PADDLE_ENFORCE_GT(
+        filter_dims[0], 0,
+        platform::errors::InvalidArgument(
+            "the size of filter at axis 0 should be greater than 0"));
+  }
 
   framework::DDim in_data_dims;
   if (channel_last) {
@@ -682,12 +698,15 @@ class Conv2DGradMaker : public framework::SingleGradOpMaker<T> {
     op->SetType(this->ForwardOpType() + "_grad");
     op->SetInput("Input", this->Input("Input"));
     op->SetInput("Filter", this->Input("Filter"));
-    op->SetInput("Bias", this->Input("Bias"));
     op->SetInput(framework::GradVarName("Output"), this->OutputGrad("Output"));
 
     op->SetOutput(framework::GradVarName("Input"), this->InputGrad("Input"));
     op->SetOutput(framework::GradVarName("Filter"), this->InputGrad("Filter"));
-    op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+
+    if (this->HasInput("Bias")) {
+      op->SetInput("Bias", this->Input("Bias"));
+      op->SetOutput(framework::GradVarName("Bias"), this->InputGrad("Bias"));
+    }
     op->SetAttrMap(this->Attrs());
   }
 };
