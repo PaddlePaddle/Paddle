@@ -12,7 +12,5 @@ limitations under the License. */
 #pragma once
 
 namespace paddle {
-namespace operators {
-// todo:
-}  // namespace operators
+namespace operators {}  // namespace operators
 }  // namespace paddle

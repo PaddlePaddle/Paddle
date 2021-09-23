@@ -325,10 +325,10 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         });
 
     AddComment(R"DOC(
-Fused attention: 
+Fused attention op: 
 if (pre_layernorm)
     layer_norm;
-qkv+bias_add;
+compute_qkv + bias_add;
 fmha;
 out_linear;
 bias_add + dropout + residual + layer_norm;
