@@ -149,7 +149,7 @@ class UnStackKernel : public framework::OpKernel<T> {
       dx_datas[i] = dx[i]->mutable_data<T>(ctx.GetPlace());
     }
     auto dy_data = dy->data<T>();
-
+    if (dy->numel() == 0) return;
     int pre = 1;
     for (int i = 0; i < axis; ++i) pre *= dy->dims()[i];
     int total_num = dy->numel();
