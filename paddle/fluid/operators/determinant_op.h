@@ -52,10 +52,10 @@ class EigenMatrix<double> {
 inline int64_t GetBatchCount(const framework::DDim dims) {
   int64_t batch_count = 1;
   auto dim_size = dims.size();
-  PADDLE_ENFORCE_GE(dim_size, 2,
-                    platform::errors::InvalidArgument(
-                        "To get the number of batch square matrices, "
-                        "the size of dimension should greater than 2."));
+  PADDLE_ENFORCE_GE(
+      dim_size, 2,
+      platform::errors::InvalidArgument(
+          "the input matrix dimension size should greater than 2."));
 
   // Cumulative multiplying each dimension until the last 2 to get the batch
   // count,
