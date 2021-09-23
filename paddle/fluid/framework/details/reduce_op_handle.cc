@@ -19,7 +19,7 @@
 #include "paddle/fluid/framework/details/variable_visitor.h"
 #include "paddle/fluid/platform/profiler.h"
 
-DEFINE_bool(
+PADDLE_DEFINE_EXPORTED_bool(
     cpu_deterministic, false,
     "Whether to make the result of computation deterministic in CPU side.");
 

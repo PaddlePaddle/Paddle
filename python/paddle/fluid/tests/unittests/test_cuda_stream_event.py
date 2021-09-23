@@ -14,6 +14,7 @@
 
 from paddle.device import cuda
 import paddle
+import ctypes
 
 import unittest
 import numpy as np
@@ -154,6 +155,15 @@ class TestStreamGuard(unittest.TestCase):
                               np.zeros(5))
             self.assertRaises(TypeError, paddle.device.cuda._set_current_stream,
                               None)
+
+
+class TestRawStream(unittest.TestCase):
+    def test_cuda_stream(self):
+        if paddle.is_compiled_with_cuda():
+            cuda_stream = paddle.device.cuda.current_stream().cuda_stream
+            print(cuda_stream)
+            self.assertTrue(type(cuda_stream) is int)
+            ptr = ctypes.c_void_p(cuda_stream)
 
 
 if __name__ == "__main__":

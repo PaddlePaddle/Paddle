@@ -105,9 +105,9 @@ class Tracer {
 
   void SetHasGrad(bool has_grad) { has_grad_ = has_grad; }
 
-  void SetEnableAutoCast(bool enabled) { enable_autocast_ = enabled; }
+  void SetAMPLevel(int level) { amp_level_ = level; }
 
-  bool IsAutoCastEnabled() const { return enable_autocast_; }
+  int AMPLevel() const { return amp_level_; }
 
   paddle::framework::GarbageCollector* MutableGarbageCollectorIfNotExists(
       const platform::Place& place);
@@ -118,9 +118,9 @@ class Tracer {
   bool enable_program_desc_tracing_{false};
   std::unique_ptr<UniqueNameGenerator> generator_;
   platform::Place expected_place_;
-  bool enable_autocast_{false};
   GarbageCollectorMap gcs_;
   static thread_local bool has_grad_;
+  int amp_level_{0};
 };
 
 // To access static variable current_tracer
