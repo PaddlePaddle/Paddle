@@ -19,6 +19,7 @@
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/framework/eigen.h"
+#include "paddle/fluid/platform/bfloat16.h"
 
 namespace pt {
 

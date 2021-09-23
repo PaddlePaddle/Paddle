@@ -63,7 +63,7 @@ class ScaleKernel : public framework::OpKernel<T> {
 
     auto* out =
         framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
-    out->mutable_data<T>(in->place(), in->type());
+    out->mutable_data<T>(in->place());
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
     auto pt_x = framework::MakeTensorImpl<pt::DenseTensor>(*in, in->place(),

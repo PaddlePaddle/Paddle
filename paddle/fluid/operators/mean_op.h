@@ -59,7 +59,7 @@ class MeanKernel : public framework::OpKernel<T> {
     auto* x = context.Input<Tensor>("X");
     auto* out = context.Output<Tensor>("Out");
     auto& dev_ctx = context.device_context<DeviceContext>();
-    out->mutable_data<T>(x->place(), x->type());
+    out->mutable_data<T>(x->place());
 
     auto pt_x =
         framework::MakeTensorImpl<pt::DenseTensor>(*x, x->place(), x->type());

@@ -242,7 +242,7 @@ class DotKernel : public framework::OpKernel<T> {
     auto* y = ctx.Input<Tensor>("Y");
     auto* out = ctx.Output<Tensor>("Out");
     auto& dev_ctx = ctx.device_context<DeviceContext>();
-    out->mutable_data<T>(x->place(), x->type());
+    out->mutable_data<T>(x->place());
 
     auto pt_x =
         framework::MakeTensorImpl<pt::DenseTensor>(*x, x->place(), x->type());
