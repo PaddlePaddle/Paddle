@@ -16,8 +16,13 @@
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
+#include "paddle/fluid/framework/tcmpt_utils.h"
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/platform/for_range.h"
+
+// only can include the headers in paddle/tcmpt/api dirs
+#include "paddle/tcmpt/api/include/dev/core.h"
+#include "paddle/tcmpt/api/include/dev/linalg.h"
 
 namespace paddle {
 namespace operators {
@@ -225,6 +230,28 @@ struct DotGradFunction<DeviceContext, T, math::DisableComplex<T>> {
       }
     }
 #endif
+  }
+};
+
+template <typename DeviceContext, typename T>
+class DotKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& ctx) const override {
+    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
+    auto* out = ctx.Output<Tensor>("Out");
+    auto& dev_ctx = ctx.device_context<DeviceContext>();
+    out->mutable_data<T>(x->place(), x->type());
+
+    auto pt_x =
+        framework::MakeTensorImpl<pt::DenseTensor>(*x, x->place(), x->type());
+    auto pt_y =
+        framework::MakeTensorImpl<pt::DenseTensor>(*y, y->place(), y->type());
+    auto pt_out =
+        framework::MakeTensorImpl<pt::DenseTensor>(*out, x->place(), x->type());
+
+    // call new kernel
+    pt::Dot<T>(dev_ctx, *pt_x.get(), *pt_y.get(), pt_out.get());
   }
 };
 
