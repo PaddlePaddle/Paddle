@@ -295,13 +295,16 @@ def interpolate(x,
             "align_corners option can only be set with the interpolating modes: linear | bilinear | bicubic | trilinear"
         )
 
-    if resample == 'AREA' and len(x.shape) == 3:
-        return paddle.nn.functional.adaptive_avg_pool1d(x, size)
-
-    if resample == 'AREA' and len(x.shape) == 4:
-        return paddle.nn.functional.adaptive_avg_pool2d(x, size)
-    if resample == 'AREA' and len(x.shape) == 5:
-        return paddle.nn.functional.adaptive_avg_pool3d(x, size)
+    if resample == 'AREA':
+        if isinstance(size, list) or isinstance(size, tuple):
+            if len(size) == 0:
+                raise ValueError("output size can not be empty")
+        if len(x.shape) == 3:
+            return paddle.nn.functional.adaptive_avg_pool1d(x, size)
+        elif len(x.shape) == 4:
+            return paddle.nn.functional.adaptive_avg_pool2d(x, size)
+        elif len(x.shape) == 5:
+            return paddle.nn.functional.adaptive_avg_pool3d(x, size)
 
     helper = LayerHelper('{}_interp_v2'.format(resample_type), **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -342,14 +345,13 @@ def interpolate(x,
 
     out_shape = size
     scale = scale_factor
+
     if out_shape is not None and scale is not None:
         raise ValueError("Only one of size or scale_factor should be defined.")
     if out_shape is not None:
-
         if isinstance(out_shape, Variable) and not in_dygraph_mode():
             out_shape.stop_gradient = True
             inputs['OutSize'] = out_shape
-
         else:
             if in_dygraph_mode():
                 if isinstance(out_shape, Variable):
@@ -1160,12 +1162,13 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     Parameters:
         x (Tensor): The input tensor with data type float32/double/int32/int64_t.
-        pad (Tensor | List[int32]): The padding size with data type int32. [len(padding)/2] dimensions
-            of input will be padded. 1. If input dimension is 3, then the pad has the form (pad_left,
+        pad (Tensor | List[int] | Tuple[int]): The padding size with data type int.
+            If mode is 'constant' and length of pad is twice as length of x dimension, then x will 
+            be padded from the first  dimension to the last dimension.
+            Else: 1. If input dimension is 3, then the pad has the form (pad_left,
             pad_right). 2. If the input dimension is 4, then the pad has the form (pad_left, pad_right, 
             pad_top, pad_bottom). 3. If the input dimension is 5, then the pad has the form 
             (pad_left, pad_right, pad_top, pad_bottom, pad_front, pad_back).
-            
         mode (str): Four modes: 'constant' (default), 'reflect', 'replicate', 'circular'.
             When in 'constant' mode, this op uses a constant value to pad the input tensor.
             When in 'reflect' mode, uses reflection of the input boundaries to pad the input tensor.
@@ -1189,6 +1192,15 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                     [4., 5., 6.]]]]]
 
             Case 0:
+                pad = [0, 0, 0, 0, 0, 0, 1, 1, 0, 0],
+                mode = 'constant'
+                value = 0
+                Out = [[[[[0., 0., 0.],
+                          [1., 2., 3.],
+                          [4., 5., 6.],
+                          [0., 0., 0.]]]]]
+
+            Case 1:
                 pad = [2, 2, 1, 1, 0, 0],
                 mode = 'constant'
                 value = 0
@@ -1197,7 +1209,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                           [0. 0. 4. 5. 6. 0. 0.]
                           [0. 0. 0. 0. 0. 0. 0.]]]]]
 
-            Case 1:
+            Case 2:
                 pad = [2, 2, 1, 1, 0, 0],
                 mode = 'reflect'
                 Out = [[[[[6. 5. 4. 5. 6. 5. 4.]
@@ -1205,7 +1217,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                           [6. 5. 4. 5. 6. 5. 4.]
                           [3. 2. 1. 2. 3. 2. 1.]]]]]
 
-            Case 2:
+            Case 3:
                 pad = [2, 2, 1, 1, 0, 0],
                 mode = 'replicate'
                 Out = [[[[[1. 1. 1. 2. 3. 3. 3.]
@@ -1213,7 +1225,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                           [4. 4. 4. 5. 6. 6. 6.]
                           [4. 4. 4. 5. 6. 6. 6.]]]]]
 
-            Case 3:
+            Case 4:
                 pad = [2, 2, 1, 1, 0, 0],
                 mode = 'circular'
                 Out = [[[[[5. 6. 4. 5. 6. 4. 5.]
@@ -1231,11 +1243,18 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
             # example 1
             x_shape = (1, 1, 3)
             x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
-            y = F.pad(x, [2, 3], value=1, mode='constant', data_format="NCL")
+            y = F.pad(x, [0, 0, 0, 0, 2, 3], value=1, mode='constant', data_format="NCL")
             print(y)
             # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
             
             # example 2
+            x_shape = (1, 1, 3)
+            x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
+            y = F.pad(x, [2, 3], value=1, mode='constant', data_format="NCL")
+            print(y)
+            # [[[1. 1. 1. 2. 3. 1. 1. 1.]]]
+            
+            # example 3
             x_shape = (1, 1, 2, 3)
             x = paddle.arange(np.prod(x_shape), dtype="float32").reshape(x_shape) + 1
             y = F.pad(x, [1, 2, 1, 1], value=1, mode='circular')
@@ -1295,6 +1314,7 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
                 unsqueezed_dim = [1]
                 x = unsqueeze(x, axis=unsqueezed_dim)
     else:
+        pad = list(pad)
         if data_format in ["NCL", "NCHW", "NCDHW"]:
             data_format = "NCDHW"
             if x_dim == 3:
@@ -1449,9 +1469,8 @@ def linear(x, weight, bias=None, name=None):
           #     [2.1077576  2.1077576  2.1077576  2.1077576 ]]
     """
     if in_dygraph_mode():
-        pre_bias = _varbase_creator(dtype=x.dtype)
-        _C_ops.matmul(x, weight, pre_bias, 'transpose_X', False, 'transpose_Y',
-                      False, "alpha", 1)
+        pre_bias = _C_ops.matmul_v2(x, weight, 'trans_x', False, 'trans_y',
+                                    False)
 
         if bias is None:
             return pre_bias
@@ -1466,14 +1485,10 @@ def linear(x, weight, bias=None, name=None):
         check_dtype(dtype, 'dtype', ['float16', 'float32', 'float64'], 'linear')
 
         inputs = {'X': [x], 'Y': [weight]}
-        attrs = {
-            'transpose_X': False,
-            'transpose_Y': False,
-            'alpha': 1,
-        }
+        attrs = {'trans_x': False, 'trans_y': False}
         tmp = helper.create_variable_for_type_inference(dtype)
         helper.append_op(
-            type='matmul', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
+            type='matmul_v2', inputs=inputs, outputs={'Out': tmp}, attrs=attrs)
         if bias is not None:
             res = helper.create_variable_for_type_inference(dtype)
             helper.append_op(
@@ -1566,7 +1581,7 @@ def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     return smooth_label
 
 
-def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
+def class_center_sample(label, num_classes, num_samples, group=None):
     """
     Class center sample method is proposed from the paper PartialFC that only sample a subset of the class centers.
     The process of sampling subset class centers is straightforward: 
@@ -1587,13 +1602,12 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
         The API supports CPU, single GPU and multi GPU.
 
     Args:
-    	label (Tensor): 1-D tensor with shape [N], each label in [0, num_classes)
-    	num_classes (int): A positive integer to specify the number of classes at local rank.
+        label (Tensor): 1-D tensor with shape [N], each label in [0, num_classes)
+        num_classes (int): A positive integer to specify the number of classes at local rank.
             Note that num_classes of each GPU can be different.
-    	num_samples (int): A positive integer to specify the number of class center to sample.
+        num_samples (int): A positive integer to specify the number of class center to sample.
         group (Group, optional): The abstract representation of group.
             See paddle.distributed.collective.Group. Default is ``None``.
-        seed (int, optional): Random seed. Default is ``None``.
 
     Returns:
         Tuple of two ``Tensor`` : (remapped_label, sampled_class_center), remapped label using sampled class center,
@@ -1602,6 +1616,7 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
     Examples:
 
     .. code-block:: python
+        :name: code-example1
 
         # CPU or single GPU
         import paddle
@@ -1624,6 +1639,7 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
         #       [1 , 2 , 3 , 5 , 11, 12, 15, 18, 19])
 
     .. code-block:: python
+        :name: code-example2
 
         # required: distributed
         # Multi GPU, test_class_center_sample.py
@@ -1682,6 +1698,19 @@ def class_center_sample(label, num_classes, num_samples, group=None, seed=None):
             'Expected num_samples less than or equal to {}, got num_samples {}'.
             format(num_classes, num_samples))
 
+    label_size = 1
+    for dim in list(label.shape):
+        label_size *= dim
+    if label_size != -1 and label_size < 1:
+        raise ValueError('Expected label_size > 0 \
+             (got label_size: {})'.format(label_size))
+
+    label_dims = len(list(label.shape))
+    if label_dims != 1:
+        raise ValueError('Expected label_dims == 1 \
+             (got label_dims: {})'.format(label_dims))
+
+    seed = None
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:
         seed = default_main_program().random_seed
 

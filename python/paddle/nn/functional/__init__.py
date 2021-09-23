@@ -44,6 +44,7 @@ from .activation import tanhshrink  # noqa: F401
 from .activation import thresholded_relu  # noqa: F401
 from .activation import log_softmax  # noqa: F401
 from .activation import glu  # noqa: F401
+from .activation import gumbel_softmax  # noqa: F401
 from .common import dropout  # noqa: F401
 from .common import dropout2d  # noqa: F401
 from .common import dropout3d  # noqa: F401
@@ -101,6 +102,7 @@ from .pooling import adaptive_max_pool3d  # noqa: F401
 from .pooling import adaptive_avg_pool1d  # noqa: F401
 from .pooling import adaptive_avg_pool2d  # noqa: F401
 from .pooling import adaptive_avg_pool3d  # noqa: F401
+from .pooling import max_unpool2d  # noqa: F401
 
 from .vision import affine_grid  # noqa: F401
 from .vision import grid_sample  # noqa: F401
@@ -146,6 +148,7 @@ __all__ = [     #noqa
            'thresholded_relu',
            'log_softmax',
            'glu',
+           'gumbel_softmax',
            'diag_embed',
            'sequence_mask',
            'dropout',
@@ -166,6 +169,7 @@ __all__ = [     #noqa
            'max_pool1d',
            'max_pool2d',
            'max_pool3d',
+           'max_unpool2d',
            'adaptive_avg_pool1d',
            'adaptive_avg_pool2d',
            'adaptive_avg_pool3d',

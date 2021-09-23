@@ -203,6 +203,14 @@ class Conv2D(layers.Layer):
         else:
             self._l_type = 'conv2d'
 
+        # NPU only supports depthwise_conv2d when  "input_channel = output_channel = groups"
+        if core.is_compiled_with_npu():
+            if (self._num_channels == self._groups and
+                    self._num_channels == self._num_filters):
+                l_type = 'depthwise_conv2d'
+            else:
+                l_type = 'conv2d'
+
         self._num_channels = num_channels
         if self._groups is None:
             num_filter_channels = self._num_channels
@@ -3062,6 +3070,12 @@ class SpectralNorm(layers.Layer):
         self._dtype = dtype
 
         self._weight_shape = list(weight_shape)
+        assert np.prod(self._weight_shape) > 0,\
+            "Any dimension of `weight_shape` cannot be equal to 0."
+        assert dim < len(self._weight_shape), \
+            ("The input `dim` should be less than the "
+            "length of `weight_shape`, but received dim="
+            "{}".format(dim))
         h = self._weight_shape[self._dim]
         w = np.prod(self._weight_shape) // h
 

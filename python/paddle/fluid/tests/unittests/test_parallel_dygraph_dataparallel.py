@@ -130,5 +130,10 @@ class TestDataParallelGradientCheck(TestMultipleGpus):
         self.run_mnist_2gpu('parallel_dygraph_gradient_check.py')
 
 
+class TestDataParallelWithPyLayer(TestMultipleGpus):
+    def test_parallel_dygraph_dataparallel_with_pylayer(self):
+        self.run_mnist_2gpu('parallel_dygraph_dataparallel_with_pylayer.py')
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -122,6 +122,9 @@ class OffloadHelper(object):
         for idx, op in enumerate(block.ops):
             if is_optimizer_op(op):
                 break
+            # TODO (Yuang Liu): tmp solution for fuse_grad_merge + optimize_cast
+            if not offload and op.type == 'coalesce_tensor':
+                continue
             for input_name in op.desc.input_arg_names():
                 if input_name not in param_to_idx:
                     continue
@@ -210,6 +213,7 @@ class OffloadHelper(object):
 
                 if out_name in param_name_to_offload_name:
                     var_name = out_name
+                    # FIXME(wangxi): offload should insert after broadcast param
                     if offload:
                         offload_var_name = param_name_to_offload_name[var_name]
                         self._insert_offload_op(startup_block, idx + 1,

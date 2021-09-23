@@ -48,6 +48,12 @@ class TransposeOp : public framework::OperatorWithKernel {
 
     std::vector<int> count(axis_size, 0);
     for (size_t i = 0; i < axis_size; i++) {
+      PADDLE_ENFORCE_GE(axis[i], 0,
+                        platform::errors::InvalidArgument(
+                            "The axis should be greater than or equal to 0."
+                            "But received %d of axis[%d]",
+                            axis[i], i));
+
       PADDLE_ENFORCE_EQ(
           axis[i] < static_cast<int>(axis_size) && ++count[axis[i]] == 1, true,
           platform::errors::InvalidArgument(
@@ -113,24 +119,28 @@ class TransposeOpMaker : public framework::OpProtoAndCheckerMaker {
         "tensor's axes according to the values given.");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "data_format",
         "(string, default NCHW) Only used in "
         "An optional string from: \"NHWC\", \"NCHW\". "
         "Defaults to \"NHWC\". Specify the data format of the output data, "
         "the input will be transformed automatically. ")
-        .SetDefault("AnyLayout");
+        .SetDefault("AnyLayout")
+        .AsExtra();
     AddAttr<bool>(
         "use_quantizer",
         "(bool, default false) "
         "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"});
+        .InEnum({"float32", "int8", "bfloat16"})
+        .AsExtra();
     /* int8 parameters */
     AddComment(R"DOC(
 Transpose Operator.
@@ -213,7 +223,7 @@ class Transpose2Op : public TransposeOp {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
     TransposeOp::InferShape(ctx);
-    OP_INOUT_CHECK(ctx->HasOutput("XShape"), "Output", "XShape", "Transpose2");
+    if (!ctx->HasOutput("XShape")) return;
     const auto &in_dims = ctx->GetInputDim("X");
     std::vector<int64_t> x_shape_dim(in_dims.size() + 1);
     x_shape_dim[0] = 0;
@@ -256,7 +266,9 @@ class Transpose2OpMaker : public TransposeOpMaker {
  public:
   void Make() override {
     TransposeOpMaker::Make();
-    AddOutput("XShape", "(Tensor)The output tensor.").AsIntermediate();
+    AddOutput("XShape", "(Tensor)The output tensor.")
+        .AsIntermediate()
+        .AsExtra();
   }
 };
 
@@ -338,7 +350,8 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(transpose_grad, ops::TransposeOpGrad);
 
 REGISTER_OP_CPU_KERNEL(
-    transpose, ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>,
+    transpose, ops::TransposeKernel<paddle::platform::CPUDeviceContext, bool>,
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext,
                          paddle::platform::complex<float>>,
@@ -346,6 +359,7 @@ REGISTER_OP_CPU_KERNEL(
                          paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     transpose_grad,
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, bool>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, double>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext,
@@ -361,7 +375,8 @@ REGISTER_OPERATOR(transpose2_grad, ops::Transpose2OpGrad,
                   ops::Transpose2DoubleGradMaker<paddle::imperative::OpBase>);
 
 REGISTER_OP_CPU_KERNEL(
-    transpose2, ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>,
+    transpose2, ops::TransposeKernel<paddle::platform::CPUDeviceContext, bool>,
+    ops::TransposeKernel<paddle::platform::CPUDeviceContext, float>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext, int32_t>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::TransposeKernel<paddle::platform::CPUDeviceContext, double>,
@@ -371,6 +386,7 @@ REGISTER_OP_CPU_KERNEL(
                          paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     transpose2_grad,
+    ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, bool>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, int32_t>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
     ops::TransposeGradKernel<paddle::platform::CPUDeviceContext, float>,

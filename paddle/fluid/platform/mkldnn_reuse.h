@@ -895,41 +895,34 @@ class BinaryMKLDNNHandler
 
 template <typename T>
 class BroadcastDataMKLDNNHandler
-    : public platform::MKLDNNHandlerT<T, dnnl::binary> {
+    : public platform::MKLDNNHandlerNoCachingT<T, dnnl::binary> {
  public:
   BroadcastDataMKLDNNHandler(const dnnl::algorithm algo,
-                             const MKLDNNDeviceContext& dev_ctx,
                              const mkldnn::engine engine,
                              platform::Place cpu_place, const Tensor* out,
                              const Tensor* x, float scale_x, float scale_y,
-                             const std::string& uniq_name,
                              const std::vector<int64_t>& input_dims)
-      : platform::MKLDNNHandlerT<T, dnnl::binary>(
-            dev_ctx, engine, cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
-                                uniq_name)) {
-    if (!this->isCached()) {
-      PADDLE_ENFORCE_EQ(
-          x->layout(), DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument("Wrong layout set for X tensor."));
-      PADDLE_ENFORCE_NE(
-          x->format(), MKLDNNMemoryFormat::undef,
-          platform::errors::InvalidArgument("Wrong format set for X tensor."));
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::binary>(engine, cpu_place) {
+    PADDLE_ENFORCE_EQ(
+        x->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument("Wrong layout set for X tensor."));
+    PADDLE_ENFORCE_NE(
+        x->format(), MKLDNNMemoryFormat::undef,
+        platform::errors::InvalidArgument("Wrong format set for X tensor."));
 
-      const auto src0_tz = framework::vectorize(out->dims());
+    const auto src0_tz = framework::vectorize(out->dims());
 
-      const auto src0_md = dnnl::memory::desc(
-          src0_tz, platform::MKLDNNGetDataType<T>(), out->format());
-      const auto src1_md = dnnl::memory::desc(
-          input_dims, platform::MKLDNNGetDataType<T>(), out->format());
+    const auto src0_md = dnnl::memory::desc(
+        src0_tz, platform::MKLDNNGetDataType<T>(), out->format());
+    const auto src1_md = dnnl::memory::desc(
+        input_dims, platform::MKLDNNGetDataType<T>(), out->format());
 
-      dnnl::primitive_attr attributes;
-      attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
-      attributes.set_scales(DNNL_ARG_SRC_1, 0, {scale_y});
+    dnnl::primitive_attr attributes;
+    attributes.set_scales(DNNL_ARG_SRC_0, 0, {scale_x});
+    attributes.set_scales(DNNL_ARG_SRC_1, 0, {scale_y});
 
-      this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md,
-                                              src1_md, src0_md);
-    }
+    this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md, src1_md,
+                                            src0_md);
   }
 
   template <typename T_out = T>
@@ -938,43 +931,35 @@ class BroadcastDataMKLDNNHandler
         this->place_, this->fwd_pd_->dst_desc().get_size());
     ;
     memset(ptr, 0, this->fwd_pd_->dst_desc().get_size());
-    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr,
-                                            "@dst_mem_p");
+    return this->AcquireMemoryFromPrimitive(this->fwd_pd_->dst_desc(), ptr);
   }
 };
 
 template <typename T>
 class ReductionMKLDNNHandler
-    : public platform::MKLDNNHandlerT<T, dnnl::reduction> {
+    : public platform::MKLDNNHandlerNoCachingT<T, dnnl::reduction> {
  public:
   ReductionMKLDNNHandler(const dnnl::algorithm algo, const float p,
-                         const float eps, const MKLDNNDeviceContext& dev_ctx,
-                         const mkldnn::engine engine, platform::Place cpu_place,
-                         const Tensor* x, const Tensor* y,
-                         const std::string& uniq_name,
-                         std::vector<int64_t> y_tz)
-      : platform::MKLDNNHandlerT<T, dnnl::reduction>(
-            dev_ctx, engine, cpu_place,
-            platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
-                                uniq_name,
-                                (std::to_string(static_cast<int>(algo))))) {
-    if (!this->isCached()) {
-      PADDLE_ENFORCE_EQ(
-          x->layout(), DataLayout::kMKLDNN,
-          platform::errors::InvalidArgument("Wrong layout set for X tensor."));
-      PADDLE_ENFORCE_NE(
-          x->format(), MKLDNNMemoryFormat::undef,
-          platform::errors::InvalidArgument("Wrong format set for X tensor."));
+                         const float eps, const mkldnn::engine engine,
+                         platform::Place cpu_place, const Tensor* x,
+                         const Tensor* y, std::vector<int64_t> y_tz)
+      : platform::MKLDNNHandlerNoCachingT<T, dnnl::reduction>(engine,
+                                                              cpu_place) {
+    PADDLE_ENFORCE_EQ(
+        x->layout(), DataLayout::kMKLDNN,
+        platform::errors::InvalidArgument("Wrong layout set for X tensor."));
+    PADDLE_ENFORCE_NE(
+        x->format(), MKLDNNMemoryFormat::undef,
+        platform::errors::InvalidArgument("Wrong format set for X tensor."));
 
-      const auto x_tz = framework::vectorize(x->dims());
+    const auto x_tz = framework::vectorize(x->dims());
 
-      const auto x_md = dnnl::memory::desc(
-          x_tz, platform::MKLDNNGetDataType<T>(), x->format());
-      const auto y_md =
-          memory::desc(y_tz, platform::MKLDNNGetDataType<T>(), x->format());
+    const auto x_md =
+        dnnl::memory::desc(x_tz, platform::MKLDNNGetDataType<T>(), x->format());
+    const auto y_md =
+        memory::desc(y_tz, platform::MKLDNNGetDataType<T>(), x->format());
 
-      this->AcquireForwardPrimitiveDescriptor(algo, x_md, y_md, p, eps);
-    }
+    this->AcquireForwardPrimitiveDescriptor(algo, x_md, y_md, p, eps);
   }
 };
 
@@ -992,8 +977,8 @@ class ActivationMKLDNNHandler
                                                                     cpu_place) {
     float alpha = ctx.HasAttr("alpha") ? ctx.Attr<float>("alpha") : 0;
     float beta = ctx.HasAttr("beta") ? ctx.Attr<float>("beta") : 0;
-    // eltwise_linear means we are in scale op
-    if (algorithm == mkldnn::algorithm::eltwise_linear) {
+
+    if (ctx.Type() == "scale") {
       bool bias_after_scale = ctx.Attr<bool>("bias_after_scale");
       auto* scale_tensor = ctx.Input<Tensor>("ScaleTensor");
       alpha = (scale_tensor == nullptr) ? ctx.Attr<float>("scale")
@@ -1003,7 +988,14 @@ class ActivationMKLDNNHandler
       //   out = scale*X + bias
       // else
       //   out = scale*(X + bias) = scale*X + scale*bias
-      if (!bias_after_scale) beta *= alpha;
+      if (!bias_after_scale) {
+        beta *= alpha;
+      }
+    } else if (ctx.Type() == "clip") {
+      alpha = ctx.HasInput("Min") ? ctx.Input<Tensor>("Min")->data<float>()[0]
+                                  : ctx.Attr<float>("min");
+      beta = ctx.HasInput("Max") ? ctx.Input<Tensor>("Max")->data<float>()[0]
+                                 : ctx.Attr<float>("max");
     } else {
       // paddle uses beta but mkldnn uses alpha for swish
       if (algorithm == mkldnn::algorithm::eltwise_swish) {
@@ -1045,6 +1037,13 @@ class ActivationMKLDNNHandler
       alpha = ctx.Attr<float>("threshold");
     }
 
+    if (ctx.Type() == "clip_grad") {
+      alpha = ctx.HasInput("Min") ? ctx.Input<Tensor>("Min")->data<float>()[0]
+                                  : ctx.Attr<float>("min");
+      beta = ctx.HasInput("Max") ? ctx.Input<Tensor>("Max")->data<float>()[0]
+                                 : ctx.Attr<float>("max");
+    }
+
     auto diff_dst_tz = framework::vectorize<int64_t>(out_grad->dims());
 
     auto src_fmt =
@@ -1072,138 +1071,73 @@ class ActivationMKLDNNHandler
   }
 };
 
-class ReorderMKLDNNHandler : public MKLDNNHandler {
+class ReorderMKLDNNHandler {
  public:
   ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
                        framework::proto::VarType::Type vtype,
-                       mkldnn::memory::data_type dtype,
-                       const platform::MKLDNNDeviceContext& dev_ctx,
-                       mkldnn::engine engine, const std::string& base_key)
-      : platform::MKLDNNHandler(dev_ctx, engine, base_key),
-        dims_(dims),
+                       mkldnn::memory::data_type dtype, mkldnn::engine engine)
+      : dims_(dims),
         vtype_(vtype),
         vtype_dst_(vtype),
         dtype_(dtype),
-        dtype_dst_(dtype) {}
+        dtype_dst_(dtype),
+        engine_(engine) {}
 
   ReorderMKLDNNHandler(std::vector<int64_t>& dims,  // NOLINT
                        framework::proto::VarType::Type vtype,
                        mkldnn::memory::data_type dtype,
                        framework::proto::VarType::Type vtype_dst,
                        mkldnn::memory::data_type dtype_dst,
-                       const platform::MKLDNNDeviceContext& dev_ctx,
-                       mkldnn::engine engine, const std::string& base_key)
-      : platform::MKLDNNHandler(dev_ctx, engine, base_key),
-        dims_(dims),
+                       mkldnn::engine engine)
+      : dims_(dims),
         vtype_(vtype),
         vtype_dst_(vtype_dst),
         dtype_(dtype),
-        dtype_dst_(dtype_dst) {}
+        dtype_dst_(dtype_dst),
+        engine_(engine) {}
 
   std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
       const MKLDNNMemoryFormat& fmt, void* ptr) {
-    return this->AcquireMemory(dims_, dtype_, fmt, ptr, "@user_src_mem_p");
+    auto md = mkldnn::memory::desc(dims_, dtype_, fmt);
+    return std::make_shared<mkldnn::memory>(md, engine_, ptr);
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireSrcSubmemory(
+  std::shared_ptr<mkldnn::memory> AcquireSubmemory(
       const std::vector<int64_t>& dims, const std::vector<int64_t>& offset,
-      const std::shared_ptr<mkldnn::memory>& mem_p, int submemory_number) {
-    std::string local_key = key_;
-    local_key.append("@submem")
-        .append(std::to_string(submemory_number))
-        .append("_p");
-
-    auto sub_mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    if (sub_mem_p == nullptr) {
-      auto sub_md = mem_p->get_desc().submemory_desc(dims, {offset});
-      sub_mem_p = std::make_shared<mkldnn::memory>(sub_md, engine_,
-                                                   mem_p->get_data_handle());
-      dev_ctx_.SetBlob(local_key, sub_mem_p);
-    } else {
-      sub_mem_p->set_data_handle(mem_p->get_data_handle());
-    }
+      const std::shared_ptr<mkldnn::memory>& mem_p) {
+    auto sub_md = mem_p->get_desc().submemory_desc(dims, {offset});
+    auto sub_mem_p = std::make_shared<mkldnn::memory>(sub_md, engine_,
+                                                      mem_p->get_data_handle());
     return sub_mem_p;
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
       framework::Tensor* output, const MKLDNNMemoryFormat& fmt,
       platform::Place place) {
-    auto local_key = key_ + "@user_dst_mem_p";
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    if (mem_p == nullptr) {
-      auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_dst_, fmt);
-      auto dst_data =
-          output->mutable_data(place, vtype_dst_, dst_md.get_size());
-
-      mem_p = std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      // Even if memory object exists , we may be using it for diffrent tensor
-      auto dst_data =
-          output->mutable_data(place, vtype_dst_, mem_p->get_desc().get_size());
-      mem_p->set_data_handle(dst_data);
-    }
-    return mem_p;
+    auto dst_md = platform::MKLDNNMemDesc(dims_, dtype_dst_, fmt);
+    auto dst_data = output->mutable_data(place, vtype_dst_, dst_md.get_size());
+    return std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
       framework::Tensor* output, const std::vector<int64_t>& dims,
-      const int memory_number, const MKLDNNMemoryFormat& fmt,
-      platform::Place place) {
-    auto local_key =
-        key_ + "@user_dst_mem" + std::to_string(memory_number) + "_p";
-    auto mem_p =
-        std::static_pointer_cast<mkldnn::memory>(dev_ctx_.GetBlob(local_key));
-    if (mem_p == nullptr) {
-      auto dst_md = platform::MKLDNNMemDesc(dims, dtype_dst_, fmt);
-      auto dst_data =
-          output->mutable_data(place, vtype_dst_, dst_md.get_size());
-
-      mem_p = std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
-      dev_ctx_.SetBlob(local_key, mem_p);
-    } else {
-      // Even if memory object exists , we may be using it for diffrent tensor
-      auto dst_data =
-          output->mutable_data(place, vtype_dst_, mem_p->get_desc().get_size());
-      mem_p->set_data_handle(dst_data);
-    }
-    return mem_p;
-  }
-
-  std::shared_ptr<mkldnn::reorder> AcquireReorder(
-      std::shared_ptr<mkldnn::memory> dst_memory_p,
-      std::shared_ptr<mkldnn::memory> src_memory_p, int reorder_number) {
-    auto prim_key = key_ + "@reorder" + std::to_string(reorder_number) + "_p";
-    auto reorder_p =
-        std::static_pointer_cast<mkldnn::reorder>(dev_ctx_.GetBlob(prim_key));
-    if (reorder_p == nullptr) {
-      reorder_p =
-          std::make_shared<mkldnn::reorder>(*(src_memory_p), *(dst_memory_p));
-      dev_ctx_.SetBlob(prim_key, reorder_p);
-    }
-    return reorder_p;
+      const MKLDNNMemoryFormat& fmt, platform::Place place) {
+    auto dst_md = platform::MKLDNNMemDesc(dims, dtype_dst_, fmt);
+    auto dst_data = output->mutable_data(place, vtype_dst_, dst_md.get_size());
+    return std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
   }
 
   std::shared_ptr<mkldnn::reorder> AcquireReorder(
       std::shared_ptr<mkldnn::memory> dst_memory_p,
       std::shared_ptr<mkldnn::memory> src_memory_p) {
-    auto prim_key = key_ + "@reorder_p";
-    auto reorder_p =
-        std::static_pointer_cast<mkldnn::reorder>(dev_ctx_.GetBlob(prim_key));
-    if (reorder_p == nullptr) {
-      reorder_p =
-          std::make_shared<mkldnn::reorder>(*(src_memory_p), *(dst_memory_p));
-      dev_ctx_.SetBlob(prim_key, reorder_p);
-    }
-    return reorder_p;
+    return std::make_shared<mkldnn::reorder>(*(src_memory_p), *(dst_memory_p));
   }
 
  private:
   std::vector<int64_t> dims_;
   framework::proto::VarType::Type vtype_, vtype_dst_;
   mkldnn::memory::data_type dtype_, dtype_dst_;
+  mkldnn::engine engine_;
 };
 
 template <typename T>

@@ -27,6 +27,21 @@ void GlooParallelContext::Init() {
                          strategy_.scope);
   gloo_ptr->Init();
 }
+
+void GlooParallelContext::Barrier() {
+  auto gloo_ptr = paddle::framework::GlooWrapper::GetInstance();
+  PADDLE_ENFORCE_EQ(gloo_ptr->IsInitialized(), true,
+                    paddle::platform::errors::Unavailable(
+                        "Gloo context is not initialized."));
+  gloo_ptr->Barrier();
+}
+
+void GlooParallelContext::ReleaseContext() {
+  auto gloo_ptr = paddle::framework::GlooWrapper::GetInstance();
+  if (gloo_ptr->IsInitialized() == true) {
+    gloo_ptr.reset();
+  }
+}
 #endif
 
 }  //  namespace platform
