@@ -48,18 +48,26 @@ using DDim = framework::DDim;
   tensor.Resize(framework::make_ddim({__VA_ARGS__})); \
   tensor.mutable_data<dtype>(ctx.GetPlace())
 
-#define ELEMENT_BINARY_OP(lhs, rhs, output, functor_type, dtype)            \
-  ElementwiseComputeEx<functor_type##Functor<dtype>, DeviceContext, dtype>( \
-      ctx, &lhs, &rhs, -1, functor_type##Functor<dtype>(), &output)
+#define BROADCAST_BINARY_OP(lhs, rhs, output, functor_type, is_multi_threads, \
+                            dtype)                                            \
+  do {                                                                        \
+    if (is_multi_threads) {                                                   \
+      SimpleBroadcastBinaryOP<dtype, functor_type##Functor<dtype>, true>(     \
+          lhs, rhs, &output);                                                 \
+    } else {                                                                  \
+      SimpleBroadcastBinaryOP<dtype, functor_type##Functor<dtype>, false>(    \
+          lhs, rhs, &output);                                                 \
+    }                                                                         \
+  } while (0)
 
-#define ADD(lhs, rhs, output, dtype) \
-  ELEMENT_BINARY_OP(lhs, rhs, output, Add, dtype)
+#define ADD(lhs, rhs, output, is_multi_threads, dtype) \
+  BROADCAST_BINARY_OP(lhs, rhs, output, Add, is_multi_threads, dtype)
 
-#define SUB(lhs, rhs, output, dtype) \
-  ELEMENT_BINARY_OP(lhs, rhs, output, Sub, dtype)
+#define SUB(lhs, rhs, output, is_multi_threads, dtype) \
+  BROADCAST_BINARY_OP(lhs, rhs, output, Sub, is_multi_threads, dtype)
 
-#define MUL(lhs, rhs, output, dtype) \
-  ELEMENT_BINARY_OP(lhs, rhs, output, Mul, dtype)
+#define MUL(lhs, rhs, output, is_multi_threads, dtype) \
+  BROADCAST_BINARY_OP(lhs, rhs, output, Mul, is_multi_threads, dtype)
 
 template <typename T, typename IndType>
 struct CPUArgmax {
@@ -149,8 +157,45 @@ inline void UpdateOutputIndexArray(const uint32_t* out_dims_array,
     }
   }
 }
-// Need to gurantee that lhs, rhs have same dim size.
-template <typename T, typename Functor>
+
+template <bool is_multi_threads>
+struct GetInputIndex {
+  void operator()(const std::vector<uint32_t>& lhs_dims,
+                  const std::vector<uint32_t>& rhs_dims,
+                  const std::vector<uint32_t>& output_dims,
+                  const std::vector<uint32_t>& lhs_strides,
+                  const std::vector<uint32_t>& rhs_strides,
+                  const std::vector<uint32_t>& output_strides,
+                  uint32_t output_idx, uint32_t* index_array, uint32_t* lhs_idx,
+                  uint32_t* rhs_idx) {
+    uint32_t out_dims_size = output_strides.size();
+    for (uint32_t j = 0; j < out_dims_size; ++j) {
+      uint32_t curr_idx = output_idx / output_strides[j];
+      output_idx %= output_strides[j];
+      *lhs_idx += (lhs_dims[j] > 1) ? curr_idx * lhs_strides[j] : 0;
+      *rhs_idx += (rhs_dims[j] > 1) ? curr_idx * rhs_strides[j] : 0;
+    }
+  }
+};
+
+template <>
+struct GetInputIndex<false> {
+  void operator()(const std::vector<uint32_t>& lhs_dims,
+                  const std::vector<uint32_t>& rhs_dims,
+                  const std::vector<uint32_t>& output_dims,
+                  const std::vector<uint32_t>& lhs_strides,
+                  const std::vector<uint32_t>& rhs_strides,
+                  const std::vector<uint32_t>& output_strides,
+                  uint32_t output_idx, uint32_t* index_array, uint32_t* lhs_idx,
+                  uint32_t* rhs_idx) {
+    uint32_t out_dims_size = output_strides.size();
+    *lhs_idx = GetOutputIndex(lhs_dims.data(), out_dims_size, index_array);
+    *rhs_idx = GetOutputIndex(rhs_dims.data(), out_dims_size, index_array);
+    UpdateOutputIndexArray(output_dims.data(), out_dims_size, index_array);
+  }
+};
+
+template <typename T, typename Functor, bool is_multi_threads = false>
 void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
                              Tensor* out) {
   const T* lhs_ptr = lhs.data<T>();
@@ -177,25 +222,15 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
   GetStrides(rhs_dims, &rhs_strides);
 
   Functor functor;
+  GetInputIndex<is_multi_threads> get_input_index;
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
   for (uint32_t i = 0; i < nums; ++i) {
-    uint32_t output_idx = i;
     uint32_t lhs_idx = 0;
     uint32_t rhs_idx = 0;
-    for (uint32_t j = 0; j < out_dims_size; ++j) {
-      uint32_t curr_idx = output_idx / output_strides[j];
-      output_idx %= output_strides[j];
-      lhs_idx += (lhs_dims[j] > 1) ? curr_idx * lhs_strides[j] : 0;
-      rhs_idx += (rhs_dims[j] > 1) ? curr_idx * rhs_strides[j] : 0;
-    }
-    // uint32_t lhs_idx = GetOutputIndex(lhs_dims.data(), out_dims_size,
-    // index_array.data());
-    // uint32_t rhs_idx = GetOutputIndex(rhs_dims.data(), out_dims_size,
-    // index_array.data());
-    // UpdateOutputIndexArray(output_dims.data(), out_dims_size,
-    // index_array.data());
+    get_input_index(lhs_dims, rhs_dims, output_dims, lhs_strides, rhs_strides,
+                    output_strides, i, index_array.data(), &lhs_idx, &rhs_idx);
     out_ptr[i] = functor(lhs_ptr[lhs_idx], rhs_ptr[rhs_idx]);
   }
 }
@@ -350,26 +385,31 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     split_functor(dev_ctx, trans_exp, shape_refer, 1, &outputs);
     stop_trans_exp.Resize({1, n_labels});
     start_trans_exp.Resize({1, n_labels});
+    bool is_multi_threads = false;
+#ifdef PADDLE_WITH_MKLML
+    if (omp_get_max_threads() > 1) {
+      is_multi_threads = true;
+    }
+#endif
     auto logit0 = inputs_t_exp.Slice(0, 1);
     logit0.Resize({batch_size, n_labels});
     if (with_start_stop_tag) {
-      ADD(logit0, start_trans_exp, alpha, T);
+      ADD(logit0, start_trans_exp, alpha, is_multi_threads, T);
       ElementwiseComputeEx<EqualFunctor<T>, DeviceContext, int64_t, T>(
           ctx, &left_length, &one, -1, EqualFunctor<T>(), &float_mask);
-      MUL(stop_trans_exp, float_mask, alpha_nxt, T);
+      MUL(stop_trans_exp, float_mask, alpha_nxt, is_multi_threads, T);
       SAME_DIMS_ELEMENT_BINARY_OP(alpha, alpha_nxt, alpha, Add, T);
     } else {
       alpha = logit0;
     }
-    SUB(left_length, one, left_length, int64_t);
+    SUB(left_length, one, left_length, is_multi_threads, int64_t);
     CPUArgmax<T, int64_t> argmax;
     for (int64_t i = 1; i < max_seq_len; ++i) {
       Tensor logit = inputs_t_exp.Slice(i, i + 1);
       logit.Resize({batch_size, n_labels});
       Tensor& alpha_exp = alpha.Resize({batch_size, n_labels, 1});
-      // ADD(alpha_exp, trans_exp, alpha_trn_sum, T);
-      SimpleBroadcastBinaryOP<T, AddFunctor<T>>(alpha_exp, trans_exp,
-                                                &alpha_trn_sum);
+      ADD(alpha_exp, trans_exp, alpha_trn_sum, is_multi_threads, T);
+
       auto alpha_argmax_temp = alpha_argmax_unbind[i - 1];
       alpha_argmax_temp.Resize({batch_size, n_labels});
 
@@ -385,14 +425,11 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       ElementwiseComputeEx<GreaterThanFunctor<T>, DeviceContext, int64_t, T>(
           ctx, &left_length, &zero, -1, GreaterThanFunctor<T>(), &float_mask);
       // alpha_nxt = mask * alpha_nxt
-      // MUL(alpha_nxt, float_mask, alpha_nxt, T);
-      SimpleBroadcastBinaryOP<T, MulFunctor<T>>(alpha_nxt, float_mask,
-                                                &alpha_nxt);
+      MUL(alpha_nxt, float_mask, alpha_nxt, is_multi_threads, T);
       // inv_mask = 1 - mask
       SAME_DIMS_ELEMENT_BINARY_OP(float_one, float_mask, float_mask, Sub, T);
       // alpha = (1 - mask) * alpha
-      // MUL(alpha, float_mask, alpha, T);
-      SimpleBroadcastBinaryOP<T, MulFunctor<T>>(alpha, float_mask, &alpha);
+      MUL(alpha, float_mask, alpha, is_multi_threads, T);
       // alpha += alpha_nxt
       SAME_DIMS_ELEMENT_BINARY_OP(alpha, alpha_nxt, alpha, Add, T);
       if (with_start_stop_tag) {  // cost 10% time
@@ -400,14 +437,10 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
             ctx, &left_length, &one, -1, EqualFunctor<T>(), &float_mask);
         // trans_exp: [1, n, n]
         // alpha += mask * trans_exp[:, self.stop_idx]
-        MUL(stop_trans_exp, float_mask, alpha_nxt, T);
-        SimpleBroadcastBinaryOP<T, MulFunctor<T>>(stop_trans_exp, float_mask,
-                                                  &alpha_nxt);
+        MUL(stop_trans_exp, float_mask, alpha_nxt, is_multi_threads, T);
         SAME_DIMS_ELEMENT_BINARY_OP(alpha, alpha_nxt, alpha, Add, T);
       }
-      // SUB(left_length, one, left_length, int64_t);
-      SimpleBroadcastBinaryOP<int64_t, SubFunctor<int64_t>>(left_length, one,
-                                                            &left_length);
+      SUB(left_length, one, left_length, is_multi_threads, int64_t);
     }
 
     // scores, last_ids = alpha.max(1), alpha.argmax(1)
@@ -431,9 +464,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
 
     for (auto hist = historys.rbegin(); hist != historys.rend(); ++hist) {
       ++last_ids_index;
-      // ADD(left_length, one, left_length, int64_t);
-      SimpleBroadcastBinaryOP<int64_t, AddFunctor<int64_t>>(left_length, one,
-                                                            &left_length);
+      ADD(left_length, one, left_length, is_multi_threads, int64_t);
       SAME_DIMS_ELEMENT_BINARY_OP(batch_offset, last_ids, gather_idx, Add,
                                   int64_t);
       // tag_mask = paddle.cast((left_length >= 0), 'int64')
@@ -447,9 +478,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       SAME_DIMS_ELEMENT_BINARY_OP(last_ids_update, int_mask, last_ids_update,
                                   Mul, int64_t);
       // tag_mask = 1 - tag_mask
-      // SUB(one, int_mask, int_mask, int64_t);
-      SimpleBroadcastBinaryOP<int64_t, SubFunctor<int64_t>>(one, int_mask,
-                                                            &int_mask);
+      SUB(one, int_mask, int_mask, is_multi_threads, int64_t);
       // last_ids = last_ids_update + last_ids * (1 - tag_mask)
       SAME_DIMS_ELEMENT_BINARY_OP(last_ids, int_mask, last_ids, Mul, int64_t);
       SAME_DIMS_ELEMENT_BINARY_OP(last_ids_update, last_ids, last_ids, Add,
