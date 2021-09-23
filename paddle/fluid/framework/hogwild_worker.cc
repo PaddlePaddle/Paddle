@@ -118,7 +118,7 @@ void HogwildWorker::CreateDeviceResource(const ProgramDesc &main_prog) {
   CreateThreadScope(main_prog);
   CreateThreadOperators(main_prog);
 #ifdef PADDLE_WITH_MKLDNN
-  auto EnableMKLDNN = [&](void) {
+  if (FLAGS_use_mkldnn) {
     VLOG(3) << "use_mkldnn=True";
     for (size_t bid = 0; bid < main_prog.Size(); ++bid) {
       auto *block = const_cast<ProgramDesc &>(main_prog).MutableBlock(bid);
@@ -128,8 +128,7 @@ void HogwildWorker::CreateDeviceResource(const ProgramDesc &main_prog) {
         }
       }
     }
-  };
-  if (FLAGS_use_mkldnn) EnableMKLDNN();
+  }
 #endif
 }
 

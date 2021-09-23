@@ -28,9 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor_gc_helper.h"
 
 DECLARE_bool(benchmark);
-#ifdef PADDLE_WITH_MKLDNN
 DECLARE_bool(use_mkldnn);
-#endif
 
 namespace paddle {
 namespace framework {
@@ -170,8 +168,8 @@ void Executor::Run(const ProgramDesc& pdesc, Scope* scope, int block_id,
                    const std::vector<std::string>& skip_ref_cnt_vars,
                    bool force_disable_gc, bool keep_kid_scopes) {
   platform::RecordBlock b(block_id);
-#ifdef PADDLE_WITH_MKLDNN
   if (FLAGS_use_mkldnn) EnableMKLDNN(pdesc);
+#ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
   auto ctx = Prepare(pdesc, block_id, skip_ref_cnt_vars, force_disable_gc);
@@ -298,8 +296,8 @@ void Executor::Run(const ProgramDesc& program, Scope* scope,
                    const std::string& feed_holder_name,
                    const std::string& fetch_holder_name) {
   platform::RecordBlock b(kProgramId);
-#ifdef PADDLE_WITH_MKLDNN
   if (FLAGS_use_mkldnn) EnableMKLDNN(program);
+#ifdef PADDLE_WITH_MKLDNN
   platform::AttachPointerHashToMKLDNNKey(this, place_);
 #endif
   bool has_feed_ops =
