@@ -904,20 +904,19 @@ def decode_jpeg(x, mode='unchanged', name=None):
     return out
 
 
-def roi_pool(input, boxes, boxes_num, output_size, spatial_scale=1.0,
-             name=None):
+def roi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     """
     This operator implements the roi_pooling layer.
     Region of interest pooling (also known as RoI pooling) is to perform max pooling on inputs of nonuniform sizes to obtain fixed-size feature maps (e.g. 7*7).
     The operator has three steps: 1. Dividing each region proposal into equal-sized sections with output_size(h, w) 2. Finding the largest value in each section 3. Copying these max values to the output buffer  
-    For more information, please refer to https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn
+    For more information, please refer to https://stackoverflow.com/questions/43430056/what-is-roi-layer-in-fast-rcnn.
 
     Args:
-        input (Tensor): input feature, 4D-Tensor with the shape of [N,C,H,W], 
+        x (Tensor): input feature, 4D-Tensor with the shape of [N,C,H,W], 
             where N is the batch size, C is the input channel, H is Height, W is weight. 
             The data type is float32 or float64.
         boxes (Tensor): boxes (Regions of Interest) to pool over. 
-            2D-Tensor or 2D-LoDTensor with the shape of [num_boxes,4], the lod level is 1. 
+            2D-Tensor with the shape of [num_boxes,4]. 
             Given as [[x1, y1, x2, y2], ...], (x1, y1) is the top left coordinates, 
             and (x2, y2) is the bottom right coordinates.
         boxes_num (Tensor): the number of RoIs in each image, data type is int32. Default: None
@@ -930,7 +929,7 @@ def roi_pool(input, boxes, boxes_num, output_size, spatial_scale=1.0,
 
     Examples:
         .. code-block:: python
-        
+
             import paddle
             from paddle.vision.ops import roi_pool
 
@@ -951,12 +950,12 @@ def roi_pool(input, boxes, boxes_num, output_size, spatial_scale=1.0,
     if in_dygraph_mode():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
         pool_out, argmaxes = core.ops.roi_pool(
-            input, boxes, boxes_num, "pooled_height", pooled_height,
-            "pooled_width", pooled_width, "spatial_scale", spatial_scale)
+            x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",
+            pooled_width, "spatial_scale", spatial_scale)
         return pool_out
 
     else:
-        check_variable_and_dtype(input, 'input', ['float32'], 'roi_pool')
+        check_variable_and_dtype(x, 'x', ['float32'], 'roi_pool')
         check_variable_and_dtype(boxes, 'boxes', ['float32'], 'roi_pool')
         helper = LayerHelper('roi_pool', **locals())
         dtype = helper.input_dtype()
@@ -964,7 +963,7 @@ def roi_pool(input, boxes, boxes_num, output_size, spatial_scale=1.0,
         argmaxes = helper.create_variable_for_type_inference(dtype='int32')
 
         inputs = {
-            "X": input,
+            "X": x,
             "ROIs": boxes,
         }
         if boxes_num is not None:
@@ -1015,9 +1014,9 @@ class RoIPool(Layer):
         self._output_size = output_size
         self._spatial_scale = spatial_scale
 
-    def forward(self, input, boxes, boxes_num):
+    def forward(self, x, boxes, boxes_num):
         return roi_pool(
-            input=input,
+            x=x,
             boxes=boxes,
             boxes_num=boxes_num,
             output_size=self._output_size,
