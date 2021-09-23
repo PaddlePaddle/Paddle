@@ -84,6 +84,11 @@ function make_cuda112cudnn8() {
   sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
 }
 
+function make_cuda112cudnn821trt8034() {
+  sed 's/<baseimg>/11.2.2-cudnn8-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc82 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-8.2/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-8.2/bin:\$PATH \nRUN yum remove -y libcudnn8-devel.x86_64 libcudnn8.x86_64 \nRun bash build_scripts/install_cudnn.sh cudnn821 \nENV CUDNN_VERSION=8.2.1 \nRUN bash build_scripts/install_trt.sh trt8034 \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
+}
+
 function main() {
   local CMD=$1 
   case $CMD in
@@ -123,6 +128,9 @@ function main() {
     cuda112cudnn8)
       make_cuda112cudnn8
      ;;
+    make_cuda112cudnn821trt8034)
+      make_cuda112cudnn821trt8034
+     ;; 
     *)
       echo "Make dockerfile error, Without this paramet."
       exit 1
