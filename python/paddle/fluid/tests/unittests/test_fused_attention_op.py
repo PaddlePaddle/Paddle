@@ -26,7 +26,7 @@ from paddle import tensor
 from paddle.fluid import layers
 import unittest
 
-place = paddle.CUDAPlace(0)
+# place = paddle.CUDAPlace(0)
 
 
 def _convert_attention_mask(attn_mask, dtype):
