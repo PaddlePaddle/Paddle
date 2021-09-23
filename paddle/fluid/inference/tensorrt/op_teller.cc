@@ -1085,6 +1085,42 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "the multihead_matmul does not support static shape yet";
         return false;
       }
+
+      if (desc.HasAttr("enable_int8") && !desc.HasAttr("Input_scale")) {
+        VLOG(3) << "Multihead layers must have input scale in int8 mode.";
+        return false;
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* input_desc = block->FindVar(desc.Input("Input").front());
+      const auto input_shape = input_desc->GetShape();
+      const auto head_number =
+          BOOST_GET_CONST(int, desc.GetAttr("head_number"));
+
+      auto* biasqk_desc = block->FindVar(desc.Input("BiasQK").front());
+      const auto biasqk_shape = biasqk_desc->GetShape();
+      // The BiasQK's shape requires to be
+      // [batch, 1, 1, length] or [batch, head, length, length].
+      bool has_same_shape = head_number == biasqk_shape[1] &&
+                            input_shape[1] == biasqk_shape[2] &&
+                            input_shape[1] == biasqk_shape[3];
+      bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
+                              input_shape[1] == biasqk_shape[3];
+      if (!(has_same_shape || is_broadcastable)) {
+        VLOG(3) << "The BiasQK's shape is invalid, expect [" << input_shape[0]
+                << ", 1, 1, " << input_shape[1] << "] or [" << input_shape[0]
+                << ", " << head_number << ", " << input_shape[1] << ", "
+                << input_shape[1] << "] but [" << biasqk_shape[0] << ", "
+                << biasqk_shape[1] << ", " << biasqk_shape[2] << ", "
+                << biasqk_shape[3] << "].";
+        return false;
+      }
     }
 
     if (op_type == "fc") {
