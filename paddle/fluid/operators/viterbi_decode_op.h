@@ -117,12 +117,10 @@ void SameDimsBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
   SameDimsBinaryOP<dtype, functor_type##Functor<dtype>>(lhs, rhs, &output)
 
 template <typename T>
-std::vector<T> GetStrides(const DDim& dims) {
-  std::vector<int64_t> strides(dims.size(), 1);
-  for (int64_t i = dims.size() - 2; i >= 0; --i) {
-    strides[i] = strides[i + 1] * dims[i + 1];
+void GetStrides(const DDim& dims, std::vector<T>* strides) {
+  for (T i = static_cast<T>(dims.size()) - 2; i >= 0; --i) {
+    (*strides)[i] = (*strides)[i + 1] * dims[i + 1];
   }
-  return strides;
 }
 
 // Need to gurantee that lhs, rhs have same dim size.
@@ -132,21 +130,25 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
   const T* lhs_ptr = lhs.data<T>();
   const T* rhs_ptr = rhs.data<T>();
   T* out_ptr = out->data<T>();
-  int64_t nums = out->numel();
+  int nums = static_cast<int>(out->numel());
   auto output_dims = out->dims();
-  std::vector<int64_t> output_strides = GetStrides<int64_t>(output_dims);
-  std::vector<int64_t> lhs_strides = GetStrides<int64_t>(lhs.dims());
-  std::vector<int64_t> rhs_strides = GetStrides<int64_t>(rhs.dims());
+  int out_dims_size = static_cast<int>(output_dims.size());
+  std::vector<int> output_strides(out_dims_size, 1);
+  GetStrides<int>(output_dims, &output_strides);
+  std::vector<int> lhs_strides(out_dims_size, 1);
+  GetStrides<int>(lhs.dims(), &lhs_strides);
+  std::vector<int> rhs_strides(out_dims_size, 1);
+  GetStrides<int>(rhs.dims(), &rhs_strides);
   Functor functor;
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-  for (int64_t i = 0; i < nums; ++i) {
-    int64_t output_idx = i;
-    int64_t lhs_idx = 0;
-    int64_t rhs_idx = 0;
-    for (std::size_t j = 0; j < output_strides.size(); ++j) {
-      int64_t curr_idx = output_idx / output_strides[j];
+  for (int i = 0; i < nums; ++i) {
+    int output_idx = i;
+    int lhs_idx = 0;
+    int rhs_idx = 0;
+    for (int j = 0; j < out_dims_size; ++j) {
+      int curr_idx = output_idx / output_strides[j];
       output_idx %= output_strides[j];
       if (lhs.dims()[j] > 1) {
         lhs_idx += curr_idx * lhs_strides[j];
