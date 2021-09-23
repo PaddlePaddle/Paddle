@@ -16,12 +16,13 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from paddle.fluid.tests.unittests.op_test import OpTest
+from paddle.fluid.tests.unittests.op_test import OpTest, OpTestTool
 import paddle
 from paddle.fluid import core
 from paddle.fluid.op import Operator
 
 
+@OpTestTool.skip_if_not_cpu_bf16()
 class TestShapeOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "shape"
@@ -35,7 +36,7 @@ class TestShapeOneDNNOp(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output_with_place(core.CPUPlace())
 
 
 class TestShape1DOneDNNOp(TestShapeOneDNNOp):
