@@ -129,8 +129,7 @@ class ExpandV2OpMaker : public framework::OpProtoAndCheckerMaker {
              "It has a higher priority than shape attribute, but a lower "
              "priority than the input Shape")
         .AsDuplicable()
-        .AsDispensable()
-        .AsExtra();
+        .AsDispensable();
     AddOutput("Out",
               "(Tensor, default Tensor<float>). A tensor with rank in [1, 6]."
               "The rank of Output(Out) have the same with Input(X). "
