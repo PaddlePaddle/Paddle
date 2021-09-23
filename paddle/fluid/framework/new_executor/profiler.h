@@ -64,10 +64,8 @@ static std::pair<size_t, size_t> GetTensorMemorySize(
 }
 
 struct CostInfo {
-  double total_time{0.};                // ms
-  size_t host_memory_bytes{0};          // bytes
-  size_t device_memory_bytes{0};        // bytes
-  size_t device_total_memory_bytes{0};  // total allocated memory size
+  double total_time{0.};          // ms
+  size_t device_memory_bytes{0};  // total allocated memory size
 };
 
 class InterpreterProfiler {
@@ -82,30 +80,14 @@ class InterpreterProfiler {
   void Reset() {
     timer_.Reset();
     cost_info_.total_time = 0.;
-    cost_info_.host_memory_bytes = 0;
     cost_info_.device_memory_bytes = 0;
-    cost_info_.device_total_memory_bytes = 0;
-  }
-
-  void ParseMemoryInfo(const std::vector<Variable*>& vars) {
-    timer_.Start();
-    auto memory_info = GetTensorMemorySize(vars);
-    VLOG(3) << "host memory size: " << memory_info.first;
-    cost_info_.host_memory_bytes =
-        std::max(cost_info_.host_memory_bytes, memory_info.first);
-
-    VLOG(3) << "device memory size: " << memory_info.second;
-    cost_info_.device_memory_bytes =
-        std::max(cost_info_.device_memory_bytes, memory_info.second);
-    timer_.Pause();
-    cost_info_.total_time -= timer_.ElapsedMS();
   }
 
   void TotalCUDAAllocatedMemorySize(const platform::Place& place) {
     if (platform::is_gpu_place(place)) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
       auto cuda_place = BOOST_GET_CONST(platform::CUDAPlace, place);
-      cost_info_.device_total_memory_bytes =
+      cost_info_.device_memory_bytes =
           platform::RecordedCudaMallocSize(cuda_place.device);
 #endif
     }
