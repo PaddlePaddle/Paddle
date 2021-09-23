@@ -102,12 +102,12 @@ void SameDimsBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
   const T* lhs_ptr = lhs.data<T>();
   const T* rhs_ptr = rhs.data<T>();
   T* out_ptr = out->data<T>();
-  int64_t nums = out->numel();
+  auto nums = out->numel();
   Functor functor;
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-  for (int64_t i = 0; i < nums; ++i) {
+  for (int i = 0; i < nums; ++i) {
     out_ptr[i] = functor(lhs_ptr[i], rhs_ptr[i]);
   }
 }
@@ -117,7 +117,7 @@ void SameDimsBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
   SameDimsBinaryOP<dtype, functor_type##Functor<dtype>>(lhs, rhs, &output)
 
 template <typename T>
-void GetStrides(const DDim& dims, std::vector<T>* strides) {
+void GetStrides(const std::vector<T>& dims, std::vector<T>* strides) {
   for (T i = static_cast<T>(dims.size()) - 2; i >= 0; --i) {
     (*strides)[i] = (*strides)[i + 1] * dims[i + 1];
   }
@@ -131,14 +131,24 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
   const T* rhs_ptr = rhs.data<T>();
   T* out_ptr = out->data<T>();
   int nums = static_cast<int>(out->numel());
-  auto output_dims = out->dims();
-  int out_dims_size = static_cast<int>(output_dims.size());
+  int out_dims_size = static_cast<int>(out->dims().size());
+  std::vector<int> output_dims(out_dims_size);
+  std::vector<int> lhs_dims(out_dims_size);
+  std::vector<int> rhs_dims(out_dims_size);
+  std::copy(lhs.dims().Get(), lhs.dims().Get() + out_dims_size,
+            lhs_dims.data());
+  std::copy(rhs.dims().Get(), rhs.dims().Get() + out_dims_size,
+            rhs_dims.data());
+  std::copy(out->dims().Get(), out->dims().Get() + out_dims_size,
+            output_dims.data());
+
   std::vector<int> output_strides(out_dims_size, 1);
-  GetStrides<int>(output_dims, &output_strides);
   std::vector<int> lhs_strides(out_dims_size, 1);
-  GetStrides<int>(lhs.dims(), &lhs_strides);
   std::vector<int> rhs_strides(out_dims_size, 1);
-  GetStrides<int>(rhs.dims(), &rhs_strides);
+  GetStrides(output_dims, &output_strides);
+  GetStrides(lhs_dims, &lhs_strides);
+  GetStrides(rhs_dims, &rhs_strides);
+
   Functor functor;
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
@@ -150,10 +160,10 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
     for (int j = 0; j < out_dims_size; ++j) {
       int curr_idx = output_idx / output_strides[j];
       output_idx %= output_strides[j];
-      if (lhs.dims()[j] > 1) {
+      if (lhs_dims[j] > 1) {
         lhs_idx += curr_idx * lhs_strides[j];
       }
-      if (rhs.dims()[j] > 1) {
+      if (rhs_dims[j] > 1) {
         rhs_idx += curr_idx * rhs_strides[j];
       }
     }
