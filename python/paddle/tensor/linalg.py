@@ -1596,6 +1596,7 @@ def matrix_power(x, n, name=None):
 def qr(x, mode="reduced", name=None):
     r"""
     Computes the QR decomposition of one matrix or batches of matrice.
+
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., M, N]`,
             where ... is zero or more batch dimensions. M and N can be arbitrary
@@ -1614,6 +1615,8 @@ def qr(x, mode="reduced", name=None):
         If mode = "r", qr will return a tensor which represents R.
         
     Examples:            
+        .. code-block:: python
+
             import paddle 
 
             x = paddle.to_tensor([[1.0, 2.0], [1.0, 3.0], [4.0, 6.0]]).astype('float64')
@@ -1651,7 +1654,7 @@ def qr(x, mode="reduced", name=None):
     else:
         return q, r
 
-      
+
 def eigvals(x, name=None):
     """
     Compute the eigenvalues of one or more general matrices.

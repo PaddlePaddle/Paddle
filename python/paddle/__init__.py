@@ -508,7 +508,6 @@ __all__ = [  # noqa
            'sqrt',
            'cholesky',
            'matrix_power',
-           'qr',
            'randperm',
            'linspace',
            'reshape',
