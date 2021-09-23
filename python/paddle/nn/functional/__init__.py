@@ -61,6 +61,7 @@ from .conv import conv1d  # noqa: F401
 from .conv import conv1d_transpose  # noqa: F401
 from .common import linear  # noqa: F401
 from .common import fused_multihead_attention  # noqa: F401
+from .common import fused_multihead_attention_cudnn_impl  # noqa: F401
 from .conv import conv2d  # noqa: F401
 from .conv import conv2d_transpose  # noqa: F401
 from .conv import conv3d  # noqa: F401

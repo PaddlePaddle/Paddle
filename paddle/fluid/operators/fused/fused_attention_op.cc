@@ -451,6 +451,8 @@ class FusedAttentionGradOp : public framework::OperatorWithKernel {
       ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     }
 
+    ctx->SetOutputDim(framework::GradVarName("W"), ctx->GetInputDim("W"));
+
     ctx->SetOutputDim(framework::GradVarName("OutLinearBias"),
                       ctx->GetInputDim("OutLinearBias"));
     ctx->SetOutputDim(framework::GradVarName("OutLinearW"),
