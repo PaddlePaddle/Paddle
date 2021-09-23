@@ -92,17 +92,14 @@ function(inference_quant2_int8_nlp_test target quant_model_dir fp32_model_dir da
 		 --ops_to_quantize ${ops_to_quantize})
 endfunction()
 
-function(inference_quant2_int8_lstm_model_test target fp32_model dataset_path)
+function(inference_quant2_int8_lstm_model_test target fp32_model quant_model dataset_path)
     py_test(${target} SRCS "${CMAKE_CURRENT_SOURCE_DIR}/quant2_int8_lstm_model.py"
-            ENVS FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-                 OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-                 FLAGS_use_mkldnn=true
             ARGS --fp32_model ${fp32_model}
+                 --quant_model ${quant_model}
                  --infer_data ${dataset_path}
-                 --num_threads 4
+                 --num_threads 1
                  --mkldnn_cache_capacity 100
                  --warmup_iter 100
-                 --warmup_batch_size 1
                  --acc_diff_threshold 0.11)
 endfunction()
 
@@ -293,11 +290,10 @@ if(LINUX AND WITH_MKLDNN)
 
 	# PTQ int8 lstm model
 	set(LSTM_DATA_ARCHIVE "unittest_model_data/quant_lstm_input_data.tar.gz")
-	set(QUANT2_INT8_LSTM_SAVE_PATH "${QUANT_INSTALL_DIR}/lstm_quant2")
 	download_quant_data(${QUANT2_INT8_LSTM_SAVE_PATH} ${LSTM_DATA_ARCHIVE} add84c754e9b792fea1fbd728d134ab7)
 	set(QUANT2_FP32_LSTM_MODEL_ARCHIVE "lstm_fp32_model.tar.gz")
 	download_lstm_model(${QUANT2_INT8_LSTM_SAVE_PATH} ${QUANT2_FP32_LSTM_MODEL_ARCHIVE} eecd9f44d69a84acc1cf2235c4b8b743)
-	inference_quant2_int8_lstm_model_test(test_quant2_int8_lstm_mkldnn ${QUANT2_INT8_LSTM_SAVE_PATH}/lstm_fp32_model ${QUANT2_INT8_LSTM_SAVE_PATH}/quant_lstm_input_data)
+	inference_quant2_int8_lstm_model_test(test_quant2_int8_lstm_mkldnn ${QUANT2_INT8_LSTM_SAVE_PATH}/lstm_fp32_model ${QUANT2_LSTM_MODEL_DIR}/lstm_quant ${QUANT2_INT8_LSTM_SAVE_PATH}/quant_lstm_input_data)
 
 endif()
 

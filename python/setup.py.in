@@ -306,6 +306,19 @@ package_data['paddle.libs']= []
 package_data['paddle.libs']=[('libwarpctc' if os.name != 'nt' else 'warpctc') + ext_name]
 shutil.copy('${WARPCTC_LIBRARIES}', libs_path)
 
+package_data['paddle.libs']+=[
+    os.path.basename('${LAPACK_LIB}'), 
+    os.path.basename('${BLAS_LIB}'),
+    os.path.basename('${GFORTRAN_LIB}'),
+    os.path.basename('${GNU_RT_LIB_1}')]
+shutil.copy('${BLAS_LIB}', libs_path)
+shutil.copy('${LAPACK_LIB}', libs_path)
+shutil.copy('${GFORTRAN_LIB}', libs_path)
+shutil.copy('${GNU_RT_LIB_1}', libs_path)
+if not sys.platform.startswith("linux"):
+    package_data['paddle.libs']+=[os.path.basename('${GNU_RT_LIB_2}')]
+    shutil.copy('${GNU_RT_LIB_2}', libs_path)
+
 if '${WITH_MKL}' == 'ON':
     shutil.copy('${MKLML_SHARED_LIB}', libs_path)
     shutil.copy('${MKLML_SHARED_IOMP_LIB}', libs_path)
@@ -325,6 +338,12 @@ else:
 if '${WITH_LITE}' == 'ON':
     shutil.copy('${LITE_SHARED_LIB}', libs_path)
     package_data['paddle.libs']+=['libpaddle_full_api_shared' + ext_name]
+    if '${LITE_WITH_NNADAPTER}' == 'ON':
+        shutil.copy('${LITE_NNADAPTER_LIB}', libs_path)
+        package_data['paddle.libs']+=['libnnadapter' + ext_name]
+        if '${NNADAPTER_WITH_HUAWEI_ASCEND_NPU}' == 'ON':
+            shutil.copy('${LITE_NNADAPTER_NPU_LIB}', libs_path)
+            package_data['paddle.libs']+=['libnnadapter_driver_huawei_ascend_npu' + ext_name]
 
 if '${WITH_PSLIB}' == 'ON':
     shutil.copy('${PSLIB_LIB}', libs_path)
@@ -385,13 +404,15 @@ if '${CMAKE_BUILD_TYPE}' == 'Release':
     if os.name != 'nt':
         # only change rpath in Release mode, since in Debug mode, ${FLUID_CORE_NAME}.xx is too large to be changed.
         if "@APPLE@" == "1":
-            command = "install_name_tool -id \"@loader_path/../libs/\" ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so'
+            commands = ["install_name_tool -id '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
+            commands.append("install_name_tool -add_rpath '@loader_path/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so')
         else:
-            command = "patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so'
+            commands = ["patchelf --set-rpath '$ORIGIN/../libs/' ${PADDLE_BINARY_DIR}/python/paddle/fluid/${FLUID_CORE_NAME}" + '.so']
         # The sw_64 not suppot patchelf, so we just disable that.
         if platform.machine() != 'sw_64' and platform.machine() != 'mips64':
-          if os.system(command) != 0:
-              raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
+            for command in commands:
+                if os.system(command) != 0:
+                    raise Exception("patch ${FLUID_CORE_NAME}.%s failed, command: %s" % (ext_name, command))
 
 ext_modules = [Extension('_foo', ['stub.cc'])]
 if os.name == 'nt':
