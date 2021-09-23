@@ -78,16 +78,15 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     // y: qkv's weight: [3, num_head, dim_head, dim_embed]
     auto x_dim = ctx->GetInputDim("X");
     auto y_dim = ctx->GetInputDim("QKVW");
-    PADDLE_ENFORCE_EQ(x_dim.size(), 3,
-                      platform::errors::InvalidArgument(
-                          "The dimensions of QKV_input must be 3"
-                          "(batch_size, seq_len, dim_embed),"
-                          "but received dimensions of"
-                          "Input is [%d]",
-                          x_dim.size()));
+    PADDLE_ENFORCE_EQ(x_dim.size(), 3, platform::errors::InvalidArgument(
+                                           "The dimensions of x must be 3"
+                                           "(batch_size, seq_len, dim_embed),"
+                                           "but received dimensions of"
+                                           "Input is [%d]",
+                                           x_dim.size()));
     PADDLE_ENFORCE_EQ(y_dim.size(), 4,
                       platform::errors::InvalidArgument(
-                          "The dimensions of QKV_weight must be 4"
+                          "The dimensions of qkv_weight must be 4"
                           "(3, num_head, dim_head, dim_embed),"
                           "but received dimensions of"
                           "Input is [%d]",
@@ -96,8 +95,8 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                       platform::errors::InvalidArgument(
                           "ShapeError: the dimension of x_dim[2] and y_dim[3]"
                           "must be equal. But received: the shape "
-                          "of input X = [%s], and the shape of "
-                          "input Y = [%s]",
+                          "of input x = [%s], and the shape of "
+                          "input qkv_weight = [%s]",
                           x_dim, y_dim));
 
     ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
@@ -152,13 +151,11 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("X", "The input tensor.");
     AddInput("LnScale",
              "(optional) Scale is a 1-dimensional tensor of size "
-             "H(`begin_norm_axis` splits the tensor(`X`) to a matrix [N,H])."
-             "It is applied to the output.")
+             "H. Here, H represents the last dimension of its input tensor.")
         .AsDispensable();
     AddInput("LnBias",
              "(optional) Bias is a 1-dimensional tensor of size "
-             "H(`begin_norm_axis` splits the tensor(`X`) to a matrix [N,H])."
-             "It is applied to the output.")
+             "H. Here, H represents the last dimension of its input tensor.")
         .AsDispensable();
     AddInput("QKVW", "The qkv weight tensor.");
     AddInput("QKVBias", "The qkv bias tensor.");
@@ -168,19 +165,12 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("OutLinearBias", "The out_linear bias tensor.");
     AddInput("Ln2Scale",
              "(optional) Scale is a 1-dimensional tensor of size "
-             "H(`begin_norm_axis` splits the tensor(`X`) to a matrix [N,H])."
-             "It is applied to the output.")
+             "H. Here, H represents the last dimension of its input tensor.")
         .AsDispensable();
     AddInput("Ln2Bias",
              "(optional) Bias is a 1-dimensional tensor of size "
-             "H(`begin_norm_axis` splits the tensor(`X`) to a matrix [N,H])."
-             "It is applied to the output.")
+             "H. Here, H represents the last dimension of its input tensor.")
         .AsDispensable();
-    // AddInput("Seed",
-    //             "The seed of dropout op, it has higher priority than the attr
-    //             "
-    //             "fix_seed and seed")
-    //         .AsDispensable();
     AddOutput("LnMean", "Mean of the current mini batch.").AsIntermediate();
     AddOutput("LnVariance", "Variance of the current mini batch.")
         .AsIntermediate();
@@ -325,14 +315,26 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
         });
 
     AddComment(R"DOC(
-Fused attention op: 
-if (pre_layernorm)
-    layer_norm;
-compute_qkv + bias_add;
-fmha;
-out_linear;
-bias_add + dropout + residual + layer_norm;
-)DOC");
+    	Add fused attention op whose logic is as follows:
+        // @input: [batch_size, seq_len, 3, num_head, head_dim] 
+        // @final_out: [batch_size, seq_len, num_heads, head_dim] 
+   	if (pre_layernorm)
+    	    out = layer_norm(input);
+	out = compute_qkv(out) + bias;
+	// fmha module
+	{
+            out = transpose(out, perm=[2, 0, 3, 1, 4]);
+            out = q * k^t;
+            out = attn_mark + out;
+            out = softmax(out);
+            out = dropout(out);
+            out = out * v;
+            out = transpose(out, perm=[0, 2, 1, 3]);
+                
+        }
+	out = out_linear(out);
+	final_out = layer_norm(residual + dropout(bias + out));
+    )DOC");
   }
 };
 
