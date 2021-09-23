@@ -46,9 +46,11 @@ class HybridParallelClipGrad:
     def __init__(self, clip, hcg):
         self._clip = clip
         self._hcg = hcg
+        print("init")
 
     @imperative_base.no_grad
     def _dygraph_clip(self, params_grads):
+        print("_dygraph_clip")
         params_and_grads = []
         sum_square_list = []
         for p, g in params_grads:
@@ -93,9 +95,11 @@ class HybridParallelClipGrad:
         return params_and_grads
 
     def __getattr__(self, item):
+        print("__getattr__")
         return getattr(self._clip, item)
 
     def __call__(self, params_grads):
+        print("__call__")
         return self._clip(params_grads)
 
 
@@ -123,8 +127,12 @@ class HybridParallelOptimizer:
             logger.warning("using ClipGradByGlobalNorm in TensorParallel, the origin " \
                   "optmizer'grad clip will be changed.")
 
-            self._inner_opt._grad_clip = HybridParallelClipGrad(
-                self._inner_opt._grad_clip, hcg)
+            if self._sharding_enable:
+                self._inner_opt._inner_optimizer_class._grad_clip = HybridParallelClipGrad(
+                    self._inner_opt._grad_clip, hcg)
+            else:
+                self._inner_opt._grad_clip = HybridParallelClipGrad(
+                    self._inner_opt._grad_clip, hcg)
 
     @imperative_base.no_grad
     @framework.dygraph_only
