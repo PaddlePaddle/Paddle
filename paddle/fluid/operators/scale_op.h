@@ -36,6 +36,7 @@ static inline T GetAttrFromTensor(const framework::Tensor* tensor) {
   return tensor_data[0];
 }
 
+// See Note [ Why still keep the original kernel implementation? ]
 template <typename DeviceContext, typename T>
 class ScaleKernel : public framework::OpKernel<T> {
  public:

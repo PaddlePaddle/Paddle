@@ -25,6 +25,8 @@ limitations under the License. */
 
 namespace paddle {
 namespace operators {
+
+// See Note [ Why still keep the original kernel implementation? ]
 template <typename DeviceContext, typename T>
 class SignKernel : public framework::OpKernel<T> {
  public:

@@ -233,6 +233,7 @@ struct DotGradFunction<DeviceContext, T, math::DisableComplex<T>> {
   }
 };
 
+// See Note [ Why still keep the original kernel implementation? ]
 template <typename DeviceContext, typename T>
 class DotKernel : public framework::OpKernel<T> {
  public:
