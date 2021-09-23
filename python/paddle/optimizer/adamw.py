@@ -305,7 +305,7 @@ class AdamW(Adam):
                 'epsilon', self._epsilon, 'lazy_mode', self._lazy_mode,
                 'min_row_size_to_use_multithread', 1000, 'beta1', _beta1,
                 'beta2', _beta2, 'coeff', self._coeff, 'multi_precision',
-                find_master)
+                find_master, "lr_ratio", lr_ratio_)
 
             return None
 
