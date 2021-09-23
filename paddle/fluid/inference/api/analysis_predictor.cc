@@ -686,9 +686,24 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
 // Note, please do NOT use any member variables, because member variables may
 // have been destructed in multiple threads.
 #if PADDLE_WITH_TENSORRT
-        paddle::inference::Singleton<
-            inference::tensorrt::TRTEngineManager>::Global()
-            .DeleteAll();
+        auto &block = prog->Block(0);
+        for (auto &op_desc : block.AllOps()) {
+          if (op_desc->Type() == "tensorrt_engine") {
+            std::string engine_key =
+                BOOST_GET_CONST(std::string, op_desc->GetAttr("engine_key"));
+            int engine_predictor_id =
+                BOOST_GET_CONST(int, op_desc->GetAttr("predictor_id"));
+            std::string engine_name =
+                engine_key + std::to_string(engine_predictor_id);
+            if (paddle::inference::Singleton<
+                    inference::tensorrt::TRTEngineManager>::Global()
+                    .Has(engine_name)) {
+              paddle::inference::Singleton<
+                  inference::tensorrt::TRTEngineManager>::Global()
+                  .DeleteKey(engine_name);
+            }
+          }
+        }
 #endif
         delete prog;
       });
