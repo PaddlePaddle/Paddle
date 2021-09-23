@@ -66,7 +66,6 @@ __global__ void BlockSparseSoftmaxForward(T* softmax, const T* src, T scale,
                                           const int* layout_rowptr,
                                           const int* layout_colindex,
                                           int seq_len) {
-  // current thread related info
   const int WarpSize = 32;
   const int cur = blockIdx.x * blockDim.y + threadIdx.y;
   if (cur < seq_len) {
@@ -136,7 +135,6 @@ __global__ void BlockSparseSoftmaxBackward(T* dst, const T* grad, const T* src,
                                            T scale, const int* layout_rowptr,
                                            const int* layout_colindex,
                                            int seq_len) {
-  // current thread related info
   const int WarpSize = 32;
   const int cur = blockIdx.x * blockDim.y + threadIdx.y;
   if (cur < seq_len) {
