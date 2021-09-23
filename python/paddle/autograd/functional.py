@@ -77,8 +77,7 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
         corresponding input.
     '''
     inputs = _check_tensors(inputs, "inputs")
-    outputs = func(*inputs)
-    outputs = _check_tensors(outputs, "outputs")
+    outputs = _check_tensors(func(*inputs), "outputs")
     fin_size = len(inputs)
     fout_size = len(outputs)
     flat_outputs = tuple(

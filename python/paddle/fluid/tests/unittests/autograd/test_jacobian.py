@@ -80,17 +80,14 @@ def _compute_numerical_jacobian(func, xs, delta, np_dtype):
 class TestJacobian(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        self.shape = (2, 2)
+        self.shape = (4, 4)
         self.dtype = 'float32'
         self.np_dtype = np.float32
         self.numerical_delta = 1e-5
         self.rtol = 1e-3
-        self.atol = 1e-3
-        self.x = paddle.ones(shape=self.shape, dtype=self.dtype)
-        self.y = paddle.ones(shape=self.shape, dtype=self.dtype)
-
-    def func_8(x, y):
-        return paddle.matmul(x, y), x * x
+        self.atol = 1e-2
+        self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
+        self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
 
     def test_single_input_and_single_output(self):
         def func(x):
@@ -182,7 +179,6 @@ class TestJacobian(unittest.TestCase):
             assert jacobian[j].stop_gradient == True
             assert np.allclose(jacobian[j].numpy(), numerical_jacobian[0][j],
                                self.rtol, self.atol)
-        jacobian[0].backward()
         try:
             paddle.grad(jacobian[0], [self.x, self.y])
         except RuntimeError as e:
@@ -204,7 +200,24 @@ class TestJacobian(unittest.TestCase):
             assert np.allclose(jacobian[j].numpy(), numerical_jacobian[0][j],
                                self.rtol, self.atol)
         double_grad = paddle.grad(jacobian[0], [self.x, self.y])
-        print("double_grad: ", double_grad)
+        assert double_grad is not None
+
+
+class TestJacobianFloat64(TestJacobian):
+    @classmethod
+    def setUpClass(self):
+        self.shape = (4, 4)
+        self.dtype = 'float64'
+        self.np_dtype = np.float64
+        self.numerical_delta = 1e-7
+        self.rtol = 1e-7
+        self.atol = 1e-6
+        self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
+        self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
+
+    # NOTE(levi): skip this test case temporaryly.
+    def test_create_graph_true(self):
+        pass
 
 
 if __name__ == "__main__":
