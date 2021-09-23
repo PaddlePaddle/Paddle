@@ -33,6 +33,10 @@ limitations under the License. */
 #include "paddle/fluid/operators/unique_op.h"
 #include "paddle/fluid/operators/utils.h"
 
+#ifdef PADDLE_WITH_MKLML
+#include <omp.h>
+#endif
+
 namespace paddle {
 namespace operators {
 
@@ -118,11 +122,33 @@ void SameDimsBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
 
 template <typename T>
 void GetStrides(const std::vector<T>& dims, std::vector<T>* strides) {
-  for (T i = static_cast<T>(dims.size()) - 2; i >= 0; --i) {
+  for (int i = static_cast<int>(dims.size()) - 2; i >= 0; --i) {
     (*strides)[i] = (*strides)[i + 1] * dims[i + 1];
   }
 }
 
+inline uint32_t GetOutputIndex(const uint32_t* x_dims_array, const int max_dim,
+                               const uint32_t* index_array) {
+  int index_ = 0;
+  for (int i = 0; i < max_dim; i++) {
+    if (x_dims_array[i] > 1) {
+      index_ = index_ * x_dims_array[i] + index_array[i];
+    }
+  }
+  return index_;
+}
+
+inline void UpdateOutputIndexArray(const uint32_t* out_dims_array,
+                                   const int max_dim, uint32_t* index_array) {
+  for (int i = max_dim - 1; i >= 0; --i) {
+    ++index_array[i];
+    if (index_array[i] >= out_dims_array[i]) {
+      index_array[i] -= out_dims_array[i];
+    } else {
+      break;
+    }
+  }
+}
 // Need to gurantee that lhs, rhs have same dim size.
 template <typename T, typename Functor>
 void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
@@ -130,11 +156,11 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
   const T* lhs_ptr = lhs.data<T>();
   const T* rhs_ptr = rhs.data<T>();
   T* out_ptr = out->data<T>();
-  int nums = static_cast<int>(out->numel());
-  int out_dims_size = static_cast<int>(out->dims().size());
-  std::vector<int> output_dims(out_dims_size);
-  std::vector<int> lhs_dims(out_dims_size);
-  std::vector<int> rhs_dims(out_dims_size);
+  uint32_t nums = static_cast<uint32_t>(out->numel());
+  uint32_t out_dims_size = static_cast<uint32_t>(out->dims().size());
+  std::vector<uint32_t> output_dims(out_dims_size);
+  std::vector<uint32_t> lhs_dims(out_dims_size);
+  std::vector<uint32_t> rhs_dims(out_dims_size);
   std::copy(lhs.dims().Get(), lhs.dims().Get() + out_dims_size,
             lhs_dims.data());
   std::copy(rhs.dims().Get(), rhs.dims().Get() + out_dims_size,
@@ -142,9 +168,10 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
   std::copy(out->dims().Get(), out->dims().Get() + out_dims_size,
             output_dims.data());
 
-  std::vector<int> output_strides(out_dims_size, 1);
-  std::vector<int> lhs_strides(out_dims_size, 1);
-  std::vector<int> rhs_strides(out_dims_size, 1);
+  std::vector<uint32_t> output_strides(out_dims_size, 1);
+  std::vector<uint32_t> lhs_strides(out_dims_size, 1);
+  std::vector<uint32_t> rhs_strides(out_dims_size, 1);
+  std::vector<uint32_t> index_array(out_dims_size, 0);
   GetStrides(output_dims, &output_strides);
   GetStrides(lhs_dims, &lhs_strides);
   GetStrides(rhs_dims, &rhs_strides);
@@ -153,20 +180,22 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-  for (int i = 0; i < nums; ++i) {
-    int output_idx = i;
-    int lhs_idx = 0;
-    int rhs_idx = 0;
-    for (int j = 0; j < out_dims_size; ++j) {
-      int curr_idx = output_idx / output_strides[j];
+  for (uint32_t i = 0; i < nums; ++i) {
+    uint32_t output_idx = i;
+    uint32_t lhs_idx = 0;
+    uint32_t rhs_idx = 0;
+    for (uint32_t j = 0; j < out_dims_size; ++j) {
+      uint32_t curr_idx = output_idx / output_strides[j];
       output_idx %= output_strides[j];
-      if (lhs_dims[j] > 1) {
-        lhs_idx += curr_idx * lhs_strides[j];
-      }
-      if (rhs_dims[j] > 1) {
-        rhs_idx += curr_idx * rhs_strides[j];
-      }
+      lhs_idx += (lhs_dims[j] > 1) ? curr_idx * lhs_strides[j] : 0;
+      rhs_idx += (rhs_dims[j] > 1) ? curr_idx * rhs_strides[j] : 0;
     }
+    // uint32_t lhs_idx = GetOutputIndex(lhs_dims.data(), out_dims_size,
+    // index_array.data());
+    // uint32_t rhs_idx = GetOutputIndex(rhs_dims.data(), out_dims_size,
+    // index_array.data());
+    // UpdateOutputIndexArray(output_dims.data(), out_dims_size,
+    // index_array.data());
     out_ptr[i] = functor(lhs_ptr[lhs_idx], rhs_ptr[rhs_idx]);
   }
 }
@@ -338,7 +367,9 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       Tensor logit = inputs_t_exp.Slice(i, i + 1);
       logit.Resize({batch_size, n_labels});
       Tensor& alpha_exp = alpha.Resize({batch_size, n_labels, 1});
-      ADD(alpha_exp, trans_exp, alpha_trn_sum, T);
+      // ADD(alpha_exp, trans_exp, alpha_trn_sum, T);
+      SimpleBroadcastBinaryOP<T, AddFunctor<T>>(alpha_exp, trans_exp,
+                                                &alpha_trn_sum);
       auto alpha_argmax_temp = alpha_argmax_unbind[i - 1];
       alpha_argmax_temp.Resize({batch_size, n_labels});
 
@@ -354,11 +385,14 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       ElementwiseComputeEx<GreaterThanFunctor<T>, DeviceContext, int64_t, T>(
           ctx, &left_length, &zero, -1, GreaterThanFunctor<T>(), &float_mask);
       // alpha_nxt = mask * alpha_nxt
-      MUL(alpha_nxt, float_mask, alpha_nxt, T);
+      // MUL(alpha_nxt, float_mask, alpha_nxt, T);
+      SimpleBroadcastBinaryOP<T, MulFunctor<T>>(alpha_nxt, float_mask,
+                                                &alpha_nxt);
       // inv_mask = 1 - mask
       SAME_DIMS_ELEMENT_BINARY_OP(float_one, float_mask, float_mask, Sub, T);
       // alpha = (1 - mask) * alpha
-      MUL(alpha, float_mask, alpha, T);
+      // MUL(alpha, float_mask, alpha, T);
+      SimpleBroadcastBinaryOP<T, MulFunctor<T>>(alpha, float_mask, &alpha);
       // alpha += alpha_nxt
       SAME_DIMS_ELEMENT_BINARY_OP(alpha, alpha_nxt, alpha, Add, T);
       if (with_start_stop_tag) {  // cost 10% time
@@ -367,9 +401,13 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
         // trans_exp: [1, n, n]
         // alpha += mask * trans_exp[:, self.stop_idx]
         MUL(stop_trans_exp, float_mask, alpha_nxt, T);
+        SimpleBroadcastBinaryOP<T, MulFunctor<T>>(stop_trans_exp, float_mask,
+                                                  &alpha_nxt);
         SAME_DIMS_ELEMENT_BINARY_OP(alpha, alpha_nxt, alpha, Add, T);
       }
-      SUB(left_length, one, left_length, int64_t);
+      // SUB(left_length, one, left_length, int64_t);
+      SimpleBroadcastBinaryOP<int64_t, SubFunctor<int64_t>>(left_length, one,
+                                                            &left_length);
     }
 
     // scores, last_ids = alpha.max(1), alpha.argmax(1)
@@ -393,10 +431,11 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
 
     for (auto hist = historys.rbegin(); hist != historys.rend(); ++hist) {
       ++last_ids_index;
-      ADD(left_length, one, left_length, int64_t);
+      // ADD(left_length, one, left_length, int64_t);
+      SimpleBroadcastBinaryOP<int64_t, AddFunctor<int64_t>>(left_length, one,
+                                                            &left_length);
       SAME_DIMS_ELEMENT_BINARY_OP(batch_offset, last_ids, gather_idx, Add,
                                   int64_t);
-
       // tag_mask = paddle.cast((left_length >= 0), 'int64')
       // last_ids_update = paddle.gather(hist.flatten(), gather_idx) * tag_mask
       Tensor& last_ids_update = batch_path[actual_len - last_ids_index];
@@ -408,7 +447,9 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       SAME_DIMS_ELEMENT_BINARY_OP(last_ids_update, int_mask, last_ids_update,
                                   Mul, int64_t);
       // tag_mask = 1 - tag_mask
-      SUB(one, int_mask, int_mask, int64_t);
+      // SUB(one, int_mask, int_mask, int64_t);
+      SimpleBroadcastBinaryOP<int64_t, SubFunctor<int64_t>>(one, int_mask,
+                                                            &int_mask);
       // last_ids = last_ids_update + last_ids * (1 - tag_mask)
       SAME_DIMS_ELEMENT_BINARY_OP(last_ids, int_mask, last_ids, Mul, int64_t);
       SAME_DIMS_ELEMENT_BINARY_OP(last_ids_update, last_ids, last_ids, Add,
