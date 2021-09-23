@@ -31,6 +31,8 @@ from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY,
 from .process import new_process_group
 from .interface import _g_process_mesh_map
 from .utils import _get_comm_group
+from .context import DistOpContext
+from paddle.distributed.auto_parallel.completion import complete_backward_annotation, complete_update_annotation
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue_0"]
 
@@ -273,7 +275,6 @@ class Partitioner(object):
         if self._enable_data_parallel:
             self._gradient_sync_transpile(dist_main_program,
                                           dist_startup_program)
-
         return params_grads
 
     def apply_optimize_impl(self, user_define_optimizer, params_grads,
@@ -319,7 +320,6 @@ class Partitioner(object):
         else:
             partitioned_startup_prog = fluid.Program()
 
-        from .context import DistOpContext
         ctx = DistOpContext()
         ctx.set_dst_main_program(partitioned_main_prog)
         ctx.set_dst_startup_program(partitioned_startup_prog)
@@ -358,7 +358,7 @@ class Partitioner(object):
             # partition op
             dist_attr = self._auto_parallel_context.get_op_distributed_attr_for_program(
                 op)
-            kinputs, koutputs = ctx.prepare_cur_context(op, dist_attr)
+            kinputs, koutputs = ctx.prepare_forward_context(op, dist_attr)
 
             if _found_match_dist_op(self._auto_parallel_context, op):
                 dist_ops = get_distributed_operator(op.type)
@@ -519,12 +519,67 @@ class Partitioner(object):
                     for param in no_grad_set
                 ]
 
-            return _auto_backward(
+            ctx = DistOpContext()
+            params_and_grads = _auto_backward(
                 dist_loss,
                 dist_startup_program,
                 parameter_list=parameter_list,
                 no_grad_set=no_grad_set,
-                callbacks=callbacks)
+                callbacks=callbacks,
+                distop_context=ctx)
+
+            # backward completion 
+            complete_backward_annotation(
+                dist_main_program,
+                ctx,
+                dist_context=self._auto_parallel_context)
+
+            # transpiler backward for dist op
+            ctx.set_dst_main_program(dist_main_program)
+            ctx.set_dst_startup_program(dist_startup_program)
+            ctx.set_varname_mapping(self._serial2dist_varname_mapping)
+            ctx.set_rank_id(self._rank_id)
+
+            # get backward ops
+            ops = dist_main_program.global_block().ops
+            first_backward_op_idx = -1
+            forward_op_id2forward_op = {}
+            for idx in range(len(ops)):
+                if int(ops[idx].attr('op_role')) == int(OpRole.Forward):
+                    forward_op_id2forward_op[ops[idx].id()] = ops[idx]
+
+                if int(ops[idx].attr('op_role')) == int(OpRole.Backward):
+                    first_backward_op_idx = idx
+                    break
+            assert first_backward_op_idx >= 0, "not found backward ops in program"
+            assert len(forward_op_id2forward_op
+                       ) > 0, "not found forward ops in program"
+
+            backward_ops = ops[first_backward_op_idx:]
+            for backward_op in backward_ops:
+                # if the backward op has a corresponding forward op
+
+                if backward_op.id() in ctx.gradopidx2opidx:
+                    forward_op_id = ctx.gradopidx2opidx[backward_op.id()]
+                    forward_op = forward_op_id2forward_op[forward_op_id]
+                    # TODO use the backward op itself to find the dist op
+                    dist_ops = get_distributed_operator(forward_op.type)
+                    dist_attr = self._auto_parallel_context.get_op_distributed_attr_for_program(
+                        backward_op)
+                    kinputs, koutputs = ctx.prepare_backward_context(
+                        backward_op, dist_attr)
+
+                    if dist_ops:
+                        dist_op_impl = dist_ops.get_impl(dist_attr.get_impl_idx(
+                        ))
+                        dist_op_impl.backward(ctx, **kinputs, **koutputs)
+                    else:
+                        # replicate op
+                        dist_ops = get_distributed_operator("default")
+                        dist_op_impl = dist_ops.get_impl(0)
+                        dist_op_impl.backward(ctx, **kinputs, **koutputs)
+
+            return params_and_grads
         # replace dist grad ops
         else:
             raise RuntimeError("transpile NOT implemented !")
@@ -534,6 +589,10 @@ class Partitioner(object):
 
         with program_guard(main_program, startup_program):
             optimize_ops = user_define_optimizer.apply_gradients(params_grads)
+
+        # update completion 
+        complete_update_annotation(
+            main_program, dist_context=self._auto_parallel_context)
 
         return optimize_ops
 
@@ -709,12 +768,12 @@ class Partitioner(object):
                     'use_calc_stream': True,
                     OP_ROLE_KEY: OpRole.Backward
                 })
-        main_global_block.append_op(
-            type='c_sync_comm_stream',
-            inputs={'X': grad_to_sync},
-            outputs={'Out': grad_to_sync},
-            attrs={'ring_id': self._dp_group.id,
-                   OP_ROLE_KEY: OpRole.Backward})
+        # main_global_block.append_op(
+        #     type='c_sync_comm_stream',
+        #     inputs={'X': grad_to_sync},
+        #     outputs={'Out': grad_to_sync},
+        #     attrs={'ring_id': self._dp_group.id,
+        #            OP_ROLE_KEY: OpRole.Backward})
         main_global_block._sync_with_cpp()
 
 
@@ -761,7 +820,8 @@ def _auto_backward(loss,
                    startup_program=None,
                    parameter_list=None,
                    no_grad_set=None,
-                   callbacks=None):
+                   callbacks=None,
+                   distop_context=None):
     """
     modification is inplaced
     """
@@ -780,8 +840,12 @@ def _auto_backward(loss,
 
     program = loss.block.program
     with program_guard(program, startup_program):
-        params_grads = append_backward(loss, parameter_list, act_no_grad_set,
-                                       callbacks)
+        params_grads = append_backward(
+            loss,
+            parameter_list,
+            act_no_grad_set,
+            callbacks,
+            distop_context=distop_context)
 
     return params_grads
 
