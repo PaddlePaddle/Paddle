@@ -127,7 +127,7 @@ class TestFusedAttentionOp(unittest.TestCase):
                                       self.embed_dim)).astype(self.x_type)
 
     def GetBaselineOut(self):
-        paddle.disable_static()
+        paddle.disable_static(place=paddle.CUDAPlace(0))
         tensor_query = paddle.to_tensor(self.query, stop_gradient=False)
         attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=False)
         residual = tensor_query
@@ -181,7 +181,7 @@ class TestFusedAttentionOp(unittest.TestCase):
         return final_out
 
     def GetFusedAttentionOut(self):
-        paddle.disable_static()
+        paddle.disable_static(place=paddle.CUDAPlace(0))
         with fluid.dygraph.guard(fluid.CUDAPlace(0)):
             q_proj_weight = paddle.to_tensor(
                 self.q_proj.weight, stop_gradient=False)
