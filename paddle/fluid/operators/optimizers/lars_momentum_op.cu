@@ -44,6 +44,15 @@ namespace operators {
 template <typename T>
 using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
 
+__device__ __forceinline__ float Sqrt(float x) { return sqrtf(x); }
+__device__ __forceinline__ double Sqrt(double x) { return sqrt(x); }
+__device__ __forceinline__ float Fma(float x, float y, float z) {
+  return fmaf(x, y, z);
+}
+__device__ __forceinline__ double Fma(double x, double y, double z) {
+  return fma(x, y, z);
+}
+
 template <typename T, typename MT, int VecSize, bool IsAmp = false>
 __device__ inline void VectorizeLarsUpdate(
     const T* __restrict__ grad, const MT* __restrict__ param,
@@ -81,8 +90,8 @@ __device__ inline void VectorizeLarsUpdate(
     for (int j = 0; j < VecSize; ++j) {
       MT grad_val = static_cast<MT>(grad_data[j]) * rescale_grad;
       velocity_tmp[j] =
-          fma(velocity_data[j], mu,
-              local_lr * fma(lars_weight_decay, param_data[j], grad_val));
+          Fma(velocity_data[j], mu,
+              local_lr * Fma(lars_weight_decay, param_data[j], grad_val));
       param_tmp[j] = param_data[j] - velocity_tmp[j];
       param_out_tmp[j] = static_cast<T>(param_tmp[j]);
     }
@@ -96,7 +105,7 @@ __device__ inline void VectorizeLarsUpdate(
   for (int i = tid + tail_offset; i < numel; i += grid_stride) {
     MT grad_val = static_cast<MT>(grad[i]) * rescale_grad;
     MT param_val = param[i];
-    MT velocity_tmp = fma(velocity[i], mu, local_lr * fma(lars_weight_decay,
+    MT velocity_tmp = Fma(velocity[i], mu, local_lr * Fma(lars_weight_decay,
                                                           param_val, grad_val));
     MT param_tmp = param_val - velocity_tmp;
     param_out[i] = static_cast<T>(param_tmp);
@@ -166,8 +175,8 @@ LARS_FUNCTION_FLAG void L2NormKernel(
   cg.sync();
   MT p_partial_sum = threadIdx.x < gridDim.x ? p_buffer[threadIdx.x] : 0;
   MT g_partial_sum = threadIdx.x < gridDim.x ? g_buffer[threadIdx.x] : 0;
-  *p_n = sqrt(math::blockReduceSum<MT>(p_partial_sum, FINAL_MASK));
-  *g_n = sqrt(math::blockReduceSum<MT>(g_partial_sum, FINAL_MASK));
+  *p_n = Sqrt(math::blockReduceSum<MT>(p_partial_sum, FINAL_MASK));
+  *g_n = Sqrt(math::blockReduceSum<MT>(g_partial_sum, FINAL_MASK));
 #endif
 }
 
@@ -192,15 +201,15 @@ __global__ void MomentumLarsKernel(
   MT grad_parital_norm = threadIdx.x < thresh ? g_buffer[threadIdx.x] : 0;
   __syncthreads();
   MT param_norm =
-      sqrt(math::blockReduceSum<MT>(param_parital_norm, FINAL_MASK));
-  MT grad_norm = sqrt(math::blockReduceSum<MT>(grad_parital_norm, FINAL_MASK));
+      Sqrt(math::blockReduceSum<MT>(param_parital_norm, FINAL_MASK));
+  MT grad_norm = Sqrt(math::blockReduceSum<MT>(grad_parital_norm, FINAL_MASK));
 #endif
 
   const MT lr = learning_rate[0];
   MT local_lr = lr;
   if (lars_weight_decay > static_cast<MT>(0)) {
     local_lr = lr * lars_coeff * param_norm /
-               (fma(lars_weight_decay, param_norm, grad_norm) + epsilon);
+               (Fma(lars_weight_decay, param_norm, grad_norm) + epsilon);
   }
 
   if (master_param_out) {
