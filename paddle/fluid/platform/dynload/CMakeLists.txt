@@ -45,4 +45,7 @@ endif()
 if (WITH_MKLML)
     cc_library(dynload_mklml SRCS mklml.cc DEPS dynamic_loader mklml)
 endif()
+
+cc_library(dynload_lapack SRCS lapack.cc DEPS dynamic_loader)
+add_dependencies(dynload_lapack extern_lapack)
 # TODO(TJ): add iomp, mkldnn?

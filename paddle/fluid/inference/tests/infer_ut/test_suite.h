@@ -14,6 +14,7 @@
 #pragma once
 #include <math.h>
 #include <algorithm>
+#include <deque>
 #include <fstream>
 #include <future>
 #include <iostream>
@@ -30,6 +31,18 @@
 
 namespace paddle {
 namespace test {
+
+#define IS_TRT_VERSION_GE(version)                       \
+  ((NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
+    NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD) >= version)
+
+#define IS_TRT_VERSION_LT(version)                       \
+  ((NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
+    NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD) < version)
+
+#define TRT_VERSION                                    \
+  NV_TENSORRT_MAJOR * 1000 + NV_TENSORRT_MINOR * 100 + \
+      NV_TENSORRT_PATCH * 10 + NV_TENSORRT_BUILD
 
 class Record {
  public:
@@ -96,7 +109,7 @@ void SingleThreadPrediction(paddle_infer::Predictor *predictor,
 
     switch (output_tensor->type()) {
       case paddle::PaddleDType::INT64: {
-        std::cout << "int64" << std::endl;
+        VLOG(1) << "output_tensor dtype: int64";
         std::vector<int64_t> out_data;
         output_Record.type = paddle::PaddleDType::INT64;
         out_data.resize(out_num);
@@ -108,7 +121,7 @@ void SingleThreadPrediction(paddle_infer::Predictor *predictor,
         break;
       }
       case paddle::PaddleDType::FLOAT32: {
-        std::cout << "float32" << std::endl;
+        VLOG(1) << "output_tensor dtype: float32";
         std::vector<float> out_data;
         output_Record.type = paddle::PaddleDType::FLOAT32;
         out_data.resize(out_num);
@@ -119,7 +132,7 @@ void SingleThreadPrediction(paddle_infer::Predictor *predictor,
         break;
       }
       case paddle::PaddleDType::INT32: {
-        std::cout << "int32" << std::endl;
+        VLOG(1) << "output_tensor dtype: int32";
         std::vector<int32_t> out_data;
         output_Record.type = paddle::PaddleDType::INT32;
         out_data.resize(out_num);
@@ -139,10 +152,12 @@ void CompareRecord(std::map<std::string, Record> *truth_output_data,
                    float epislon = 1e-5) {
   for (const auto & [ key, value ] : *infer_output_data) {
     auto truth_record = (*truth_output_data)[key];
-    LOG(INFO) << "output name: " << key;
+    VLOG(1) << "output name: " << key;
     size_t numel = value.data.size() / sizeof(float);
     EXPECT_EQ(value.data.size(), truth_record.data.size());
     for (size_t i = 0; i < numel; ++i) {
+      VLOG(1) << "compare: " << value.data.data()[i] << ",\t"
+              << truth_record.data.data()[i];
       ASSERT_LT(fabs(value.data.data()[i] - truth_record.data.data()[i]),
                 epislon);
     }
