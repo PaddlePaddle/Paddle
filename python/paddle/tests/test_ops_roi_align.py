@@ -12,10 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import paddle
-import numpy as np
 import unittest
+import numpy as np
 
+import paddle
 from paddle.vision.ops import roi_align, RoIAlign
 
 
@@ -86,6 +86,22 @@ class TestRoIAlign(unittest.TestCase):
 
         align_out = roi_align_c(data, boxes, boxes_num)
         np.testing.assert_equal(align_out.shape, (3, 256, 4, 3))
+
+    def test_value(self, ):
+        data = np.array([i for i in range(1, 17)]).reshape(1, 1, 4,
+                                                           4).astype(np.float32)
+        boxes = np.array(
+            [[1., 1., 2., 2.], [1.5, 1.5, 3., 3.]]).astype(np.float32)
+        boxes_num = np.array([2]).astype(np.int32)
+        output = np.array([[[[11.]]], [[[16.]]]], dtype=np.float32)
+
+        data = paddle.to_tensor(data)
+        boxes = paddle.to_tensor(boxes)
+        boxes_num = paddle.to_tensor(boxes_num)
+
+        roi_align_c = RoIAlign(output_size=1)
+        align_out = roi_align_c(data, boxes, boxes_num)
+        np.testing.assert_almost_equal(align_out.numpy(), output)
 
 
 if __name__ == '__main__':

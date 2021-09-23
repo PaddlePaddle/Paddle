@@ -905,7 +905,7 @@ def decode_jpeg(x, mode='unchanged', name=None):
     return out
 
 
-def roi_align(input,
+def roi_align(x,
               boxes,
               boxes_num,
               output_size,
@@ -914,65 +914,68 @@ def roi_align(input,
               aligned=True,
               name=None):
     """
-
-    Region of Interest (RoI) Align operator (also known as RoI Align) is to 
-    perform bilinear interpolation on inputs of nonuniform sizes to obtain 
+    This operator implements the roi_align layer.
+    Region of Interest (RoI) Align operator (also known as RoI Align) is to
+    perform bilinear interpolation on inputs of nonuniform sizes to obtain
     fixed-size feature maps (e.g. 7*7), as described in Mask R-CNN.
 
-    Dividing each region proposal into equal-sized sections with
-    the pooled_width and pooled_height. Location remains the origin
-    result.
+    Dividing each region proposal into equal-sized sections with the pooled_width
+    and pooled_height. Location remains the origin result.
 
-    In each ROI bin, the value of the four regularly sampled locations 
-    are computed directly through bilinear interpolation. The output is
-    the mean of four locations.
-    Thus avoid the misaligned problem. 
+    In each ROI bin, the value of the four regularly sampled locations are
+    computed directly through bilinear interpolation. The output is the mean of
+    four locations. Thus avoid the misaligned problem. 
 
     Args:
-        input (Tensor): Input feature, 4D-Tensor with the shape of [N,C,H,W], 
-            where N is the batch size, C is the input channel, H is Height, W is weight. 
-            The data type is float32 or float64.
-        boxes (Tensor): boxes (RoIs, Regions of Interest) to pool over.It should be
-            a 2-D Tensor or 2-D LoDTensor of shape (num_boxes, 4), the lod level is 1. 
-            The data type is float32 or float64. Given as [[x1, y1, x2, y2], ...],
-            (x1, y1) is the top left coordinates, and (x2, y2) is the bottom right coordinates.
-        boxes_num (Tensor): The number of boxes contained in each picture in the batch.
-        output_size (int or Tuple[int, int]): The pooled output size(h, w), data type is int32. If int, h and w are both equal to output_size.
-        spatial_scale (float32): Multiplicative spatial scale factor to translate ROI coords 
-            from their input scale to the scale used when pooling. Default: 1.0
-        sampling_ratio (int32): number of sampling points in the interpolation grid
-            used to compute the output value of each pooled output bin. If > 0,
-            then exactly ``sampling_ratio x sampling_ratio`` sampling points per bin are used. If
-            <= 0, then an adaptive number of grid points are used (computed as
-            ``ceil(roi_width / output_width)``, and likewise for height). Default: -1
-        aligned (bool): If False, use the legacy implementation.
-            If True, pixel shift the box coordinates it by -0.5 for a better alignment with the two
-            neighboring pixel indices. This version is used in Detectron2.
-        name(str, optional): For detailed information, please refer
-            to :ref:`api_guide_Name`. Usually name is no need to set and
-            None by default.
+        x (Tensor): Input feature, 4D-Tensor with the shape of [N,C,H,W], 
+            where N is the batch size, C is the input channel, H is Height,
+            W is weight. The data type is float32 or float64.
+        boxes (Tensor): Boxes (RoIs, Regions of Interest) to pool over. It 
+            should be a 2-D Tensor or 2-D LoDTensor of shape (num_boxes, 4),
+            the lod level is 1. The data type is float32 or float64. Given as
+            [[x1, y1, x2, y2], ...], (x1, y1) is the top left coordinates, and
+            (x2, y2) is the bottom right coordinates.
+        boxes_num (Tensor): The number of boxes contained in each picture in
+            the batch.
+        output_size (int or Tuple[int, int]): The pooled output size(h, w), data
+            type is int32. If int, h and w are both equal to output_size.
+        spatial_scale (float32): Multiplicative spatial scale factor to translate
+            ROI coords from their input scale to the scale used when pooling.
+            Default: 1.0
+        sampling_ratio (int32): number of sampling points in the interpolation
+            grid used to compute the output value of each pooled output bin.
+            If > 0, then exactly ``sampling_ratio x sampling_ratio`` sampling
+            points per bin are used.
+            If <= 0, then an adaptive number of grid points are used (computed
+            as ``ceil(roi_width / output_width)``, and likewise for height).
+            Default: -1
+        aligned (bool): If False, use the legacy implementation. If True, pixel
+            shift the box coordinates it by -0.5 for a better alignment with the
+            two neighboring pixel indices. This version is used in Detectron2.
+            Default: True
+        name(str, optional): For detailed information, please refer to :
+            ref:`api_guide_Name`. Usually name is no need to set and None by
+            default.
 
     Returns:
-        Tensor: The output of ROIAlignOp is a 4-D tensor with shape (num_boxes, channels, pooled_h, pooled_w).
-        The data type is float32 or float64.
+        Tensor: The output of ROIAlignOp is a 4-D tensor with shape (num_boxes,
+            channels, pooled_h, pooled_w). The data type is float32 or float64.
 
     Examples:
         .. code-block:: python
+
             import paddle
+            from paddle.vision.ops import roi_align
+
             data = paddle.rand([1, 256, 32, 32])
             boxes = paddle.rand([3, 4])
             boxes[:, 2] += boxes[:, 0] + 3
             boxes[:, 3] += boxes[:, 1] + 4
             boxes_num = paddle.to_tensor([3]).astype('int32')
-            align_out = paddle.vision.ops.roi_align(input=data,
-                                                    boxes=boxes,
-                                                    boxes_num=boxes_num,
-                                                    ouput_size=(7, 7),
-                                                    spatial_scale=0.5,
-                                                    sampling_ratio=-1,
-                                                    aligned=True)
+            align_out = roi_align(data, boxes, boxes_num, ouput_size=3)
             assert align_out.shape == [3, 256, 3, 3], ''
     """
+
     check_type(output_size, 'output_size', (int, tuple), 'roi_align')
     if isinstance(output_size, int):
         output_size = (output_size, output_size)
@@ -981,21 +984,19 @@ def roi_align(input,
     if in_dygraph_mode():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
         align_out = core.ops.roi_align(
-            input, boxes, boxes_num, "pooled_height", pooled_height,
+            x, boxes, boxes_num, "pooled_height", pooled_height,
             "pooled_width", pooled_width, "spatial_scale", spatial_scale,
             "sampling_ratio", sampling_ratio, "aligned", aligned)
         return align_out
 
     else:
-        check_variable_and_dtype(input, 'input', ['float32', 'float64'],
-                                 'roi_align')
-        check_variable_and_dtype(boxes, 'boxes', ['float32', 'float64'],
-                                 'roi_align')
+        check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'roi_align')
+        check_variable_and_dtype(boxes, 'boxes', ['float32', 'float64'], 'roi_align')
         helper = LayerHelper('roi_align', **locals())
         dtype = helper.input_dtype()
         align_out = helper.create_variable_for_type_inference(dtype)
         inputs = {
-            "X": input,
+            "X": x,
             "ROIs": boxes,
         }
         if boxes_num is not None:
@@ -1016,28 +1017,34 @@ def roi_align(input,
 
 class RoIAlign(Layer):
     """
-    Region of Interest (RoI) Align is to perform bilinear interpolation on inputs of nonuniform sizes to obtain fixed-size feature maps (e.g. 7*7)
-    Dividing each region proposal into equal-sized sections with the pooled_width and pooled_height. Location remains the origin result.
-    In each ROI bin, the value of the four regularly sampled locations are computed directly through bilinear interpolation. The output is the mean of four locations. 
-    Thus avoid the misaligned problem. 
+    This interface is used to construct a callable object of the `RoIAlign` class.
+    Please refer to :ref:`api_paddle_vision_ops_roi_align`.
+
     Args:
-        output_size (int or tuple[int, int]): The pooled output size(h, w), data type is int32. If int, h and w are both equal to output_size.
-        spatial_scale (float32, optional): Multiplicative spatial scale factor to translate ROI coords 
-            from their input scale to the scale used when pooling. Default: 1.0
+        output_size (int or tuple[int, int]): The pooled output size(h, w),
+            data type is int32. If int, h and w are both equal to output_size.
+        spatial_scale (float32, optional): Multiplicative spatial scale factor
+            to translate ROI coords from their input scale to the scale used
+            when pooling. Default: 1.0
+
     Returns:
-        Tensor: The output of ROIAlign operator is a 4-D tensor with shape (num_boxes, channels, pooled_h, pooled_w). The data type is float32 or float64.
+        align_out (Tensor): The output of ROIAlign operator is a 4-D tensor with
+            shape (num_boxes, channels, pooled_h, pooled_w).
 
     Examples:
         ..  code-block:: python
+
             import paddle
-            roi_align_module = paddle.vision.ops.RoIAlign(output_size=(7,7), 1.0)
+            from paddle.vision.ops import RoIAlign
+
             data = paddle.rand([1, 256, 32, 32])
             boxes = paddle.rand([3, 4])
             boxes[:, 2] += boxes[:, 0] + 3
             boxes[:, 3] += boxes[:, 1] + 4
             boxes_num = paddle.to_tensor([3]).astype('int32')
-            align_out = roi_align_module(data, boxes, boxes_num)
-            assert align_out.shape == [3, 256, 7, 7], ''
+            roi_align = RoIAlign(output_size=(4, 3))
+            align_out = roi_align(data, boxes, boxes_num)
+            assert align_out.shape == [3, 256, 4, 3], ''
     """
 
     def __init__(self, output_size, spatial_scale=1.0):
@@ -1045,11 +1052,15 @@ class RoIAlign(Layer):
         self._output_size = output_size
         self._spatial_scale = spatial_scale
 
-    def forward(self, input, boxes, boxes_num, aligned=True):
+    def forward(self, x, boxes, boxes_num, aligned=True):
         return roi_align(
-            input=input,
+            x=x,
             boxes=boxes,
             boxes_num=boxes_num,
             output_size=self._output_size,
             spatial_scale=self._spatial_scale,
             aligned=aligned)
+
+    def extra_repr(self):
+        main_str = 'output_size={_output_size}, spatial_scale={_spatial_scale}'
+        return main_str.format(**self.__dict__)
