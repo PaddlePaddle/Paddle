@@ -731,12 +731,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto src_reorder_key = key_tid + "@src_mem_preorder_p";
     auto residual_reorder_key = key_tid + "@residual_data_mem_preorder_p";
 
-    conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(
-        dev_ctx.GetBlob(prim_key));
+    conv_pd =
+        std::static_pointer_cast<mkldnn::convolution_forward::primitive_desc>(
+            dev_ctx.GetBlob(key_conv_pd));
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
-    if (conv_p == nullptr || !is_test) {
+    if (conv_pd == nullptr || !is_test) {
       float fuse_alpha = ctx.Attr<float>("fuse_alpha");
       float fuse_beta = ctx.Attr<float>("fuse_beta");
       bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
@@ -999,13 +1000,10 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           dev_ctx.GetBlob(weights_key));
       dst_memory_p =
           std::static_pointer_cast<mkldnn::memory>(dev_ctx.GetBlob(dst_key));
-      conv_pd =
-          std::static_pointer_cast<mkldnn::convolution_forward::primitive_desc>(
-              dev_ctx.GetBlob(key_conv_pd));
-      if (conv_pd) {
-        handler.reset(new platform::ConvMKLDNNHandler(conv_pd, dev_ctx,
-                                                      mkldnn_engine, key));
-      }
+      conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(
+          dev_ctx.GetBlob(prim_key));
+      handler.reset(new platform::ConvMKLDNNHandler(conv_pd, dev_ctx,
+                                                    mkldnn_engine, key));
 
       if (fuse_residual_conn) {
         auto residual_param = ctx.Input<Tensor>("ResidualData");
