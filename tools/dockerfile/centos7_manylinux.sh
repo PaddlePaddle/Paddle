@@ -133,10 +133,10 @@ function main() {
     cuda112cudnn8)
       make_cuda112cudnn8
      ;;
-    make_cuda112cudnn821trt8034gcc82)
+    cuda112cudnn821trt8034gcc82)
       make_cuda112cudnn821trt8034gcc82
      ;; 
-    make_cuda112cudnn821trt8034gcc54)
+    cuda112cudnn821trt8034gcc54)
       make_cuda112cudnn821trt8034gcc54
      ;; 
     *)
