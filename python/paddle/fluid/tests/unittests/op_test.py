@@ -1368,6 +1368,12 @@ class OpTest(unittest.TestCase):
             outs.sort(key=len)
             checker(outs)
 
+    def check_output_with_place_customized(self, checker, place):
+        outs = self.calc_output(place)
+        outs = [np.array(out) for out in outs]
+        outs.sort(key=len)
+        checker(outs)
+
     def _assert_is_close(self, numeric_grads, analytic_grads, names,
                          max_relative_error, msg_prefix):
         for a, b, name in six.moves.zip(numeric_grads, analytic_grads, names):
@@ -1435,7 +1441,8 @@ class OpTest(unittest.TestCase):
                               max_relative_error=0.005,
                               user_defined_grads=None,
                               user_defined_grad_outputs=None,
-                              check_dygraph=True):
+                              check_dygraph=True,
+                              numeric_place=None):
         self.scope = core.Scope()
         op_inputs = self.inputs if hasattr(self, "inputs") else dict()
         op_outputs = self.outputs if hasattr(self, "outputs") else dict()
@@ -1492,9 +1499,12 @@ class OpTest(unittest.TestCase):
         if not type(output_names) is list:
             output_names = [output_names]
 
+        if numeric_place is None:
+            numeric_place = place
+
         numeric_grads = user_defined_grads or [
             get_numeric_gradient(
-                place,
+                numeric_place,
                 self.scope,
                 self.op,
                 self.inputs,

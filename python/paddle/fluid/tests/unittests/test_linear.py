@@ -74,7 +74,7 @@ class LinearTestCase(unittest.TestCase):
         np.testing.assert_array_almost_equal(res_nn, res_np)
 
     def test_error_dummy_input(self, place=paddle.CPUPlace()):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(RuntimeError):
             x_arr = np.array([], dtype=np.float32)
             x = paddle.to_tensor(
                 np.reshape(x_arr, (0, 4, 4, 4)), dtype='float32')

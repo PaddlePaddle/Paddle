@@ -31,6 +31,7 @@ void* GetCUPTIDsoHandle();
 void* GetCurandDsoHandle();
 void* GetNvjpegDsoHandle();
 void* GetCusolverDsoHandle();
+void* GetCusparseDsoHandle();
 void* GetNVRTCDsoHandle();
 void* GetCUDADsoHandle();
 void* GetWarpCTCDsoHandle();
@@ -38,8 +39,10 @@ void* GetNCCLDsoHandle();
 void* GetHCCLDsoHandle();
 void* GetTensorRtDsoHandle();
 void* GetMKLMLDsoHandle();
+void* GetLAPACKDsoHandle();
 void* GetOpDsoHandle(const std::string& dso_name);
 void* GetNvtxDsoHandle();
+void* GetCUFFTDsoHandle();
 
 void SetPaddleLibPath(const std::string&);
 }  // namespace dynload

@@ -13,7 +13,9 @@
 // limitations under the License.
 
 #include "paddle/fluid/inference/api/analysis_predictor.h"
+
 #include <glog/logging.h>
+
 #include <algorithm>
 #include <fstream>
 #include <memory>
@@ -21,6 +23,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 #include "paddle/fluid/extension/include/ext_op_meta_info.h"
 #include "paddle/fluid/framework/feed_fetch_method.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
@@ -34,6 +37,7 @@
 #include "paddle/fluid/inference/analysis/passes/memory_optimize_pass.h"
 #include "paddle/fluid/inference/api/helper.h"
 #include "paddle/fluid/inference/api/paddle_inference_pass.h"
+#include "paddle/fluid/inference/utils/io_utils.h"
 #include "paddle/fluid/inference/utils/singleton.h"
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/cpu_helper.h"
@@ -272,6 +276,22 @@ bool AnalysisPredictor::CreateExecutor() {
         "You tried to use NPU forward propagation, but Paddle was not compiled "
         "with WITH_ASCEND_CL."));
 #endif
+  } else if (config_.NNAdapter().use_nnadapter) {
+    if (config_.lite_engine_enabled()) {
+      place_ = paddle::platform::CPUPlace();
+#ifndef LITE_SUBGRAPH_WITH_NNADAPTER
+      PADDLE_THROW(
+          platform::errors::Unavailable("You tried to use an NNAdapter lite "
+                                        "engine, but Paddle was not compiled "
+                                        "with it."));
+#endif  // LITE_SUBGRAPH_WITH_NNADAPTER
+    } else {
+      PADDLE_THROW(
+          platform::errors::Unavailable("You tried to use NNadapter forward "
+                                        "propagation (inference without lite "
+                                        "engine), but Paddle was not compiled "
+                                        "with LITE_WITH_NNADAPTER."));
+    }
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -570,6 +590,11 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetMaxInputShape(config_.max_input_shape_);
     argument_.SetOptimInputShape(config_.optim_input_shape_);
     argument_.SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
+    argument_.SetTensorRtShapeRangeInfoPath(config_.shape_range_info_path());
+    argument_.SetTensorRtTunedDynamicShape(
+        config_.tuned_tensorrt_dynamic_shape());
+    argument_.SetTensorRtAllowBuildAtRuntime(
+        config_.trt_allow_build_at_runtime());
   }
 
   if (config_.dlnne_enabled()) {
@@ -592,6 +617,26 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetXpuAutotuneFile(config_.xpu_autotune_file_);
     argument_.SetXpuPrecision(config_.xpu_precision_);
     argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
+    // NNAdapter related
+    argument_.SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
+    argument_.SetNNAdapterDeviceNames(
+        config_.NNAdapter().nnadapter_device_names);
+    argument_.SetNNAdapterContextProperties(
+        config_.NNAdapter().nnadapter_context_properties);
+    argument_.SetNNAdapterModelCacheDir(
+        config_.NNAdapter().nnadapter_model_cache_dir);
+    argument_.SetNNAdapterSubgraphPartitionConfigBuffer(
+        config_.NNAdapter().nnadapter_subgraph_partition_config_buffer);
+    argument_.SetNNAdapterSubgraphPartitionConfigPath(
+        config_.NNAdapter().nnadapter_subgraph_partition_config_path);
+    std::vector<std::string> buffer_keys;
+    std::vector<std::vector<char>> buffer_vals;
+    for (auto it : config_.NNAdapter().nnadapter_model_cache_buffers) {
+      buffer_keys.emplace_back(it.first);
+      buffer_vals.emplace_back(it.second);
+    }
+    argument_.SetNNAdapterModelCacheToken(buffer_keys);
+    argument_.SetNNAdapterModelCacheBuffer(buffer_vals);
     LOG(INFO) << "Lite subgraph engine is enabled";
   }
 
@@ -636,7 +681,17 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   VLOG(5) << "to prepare executor";
   ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);
   inference_program_.reset(
-      new framework::ProgramDesc(argument_.ir_analyzed_program()));
+      new framework::ProgramDesc(argument_.ir_analyzed_program()),
+      [](framework::ProgramDesc *prog) {
+// Note, please do NOT use any member variables, because member variables may
+// have been destructed in multiple threads.
+#if PADDLE_WITH_TENSORRT
+        paddle::inference::Singleton<
+            inference::tensorrt::TRTEngineManager>::Global()
+            .DeleteAll();
+#endif
+        delete prog;
+      });
   // The config and argument take a lot of storage,
   // when the predictor settings are complete, we release these stores.
   argument_.PartiallyRelease();
@@ -915,6 +970,11 @@ bool AnalysisPredictor::ZeroCopyRun() {
 #endif
 
   executor_->Run();
+
+  if (config_.shape_range_info_collected()) {
+    CollectShapeRangeInfo();
+  }
+
   // Fix TensorArray reuse not cleaned bug.
   tensor_array_batch_cleaner_.CollectTensorArrays(sub_scope_);
   tensor_array_batch_cleaner_.ResetTensorArray();
@@ -932,6 +992,78 @@ bool AnalysisPredictor::ZeroCopyRun() {
   platform::dynload::MKL_Free_Buffers();
 #endif
   return true;
+}
+
+void AnalysisPredictor::CollectShapeRangeInfo() {
+  // if use gpu, sync first.
+  if (config_.use_gpu()) {
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+    paddle::platform::DeviceContextPool &pool =
+        paddle::platform::DeviceContextPool::Instance();
+    auto gpu_place = BOOST_GET_CONST(paddle::platform::CUDAPlace, place_);
+    auto *dev_ctx = static_cast<const paddle::platform::CUDADeviceContext *>(
+        pool.Get(gpu_place));
+#ifdef PADDLE_WITH_HIP
+    hipStreamSynchronize(dev_ctx->stream());
+#else
+    cudaStreamSynchronize(dev_ctx->stream());
+#endif
+#endif
+  }
+
+  std::vector<std::string> var_names = sub_scope_->LocalVarNames();
+  for (const auto &name : var_names) {
+    auto *var = sub_scope_->GetVar(name);
+    if (!var->IsType<framework::LoDTensor>()) {
+      continue;
+    }
+    framework::DDim dim = var->Get<framework::LoDTensor>().dims();
+    std::vector<int32_t> shape(dim.size());
+    for (size_t i = 0; i < shape.size(); ++i) shape[i] = dim[i];
+    shape_info_[name].emplace_back(shape);
+  }
+}
+
+void AnalysisPredictor::StatisticShapeRangeInfo() {
+  std::map<std::string, std::vector<int32_t>> min_shapes;
+  std::map<std::string, std::vector<int32_t>> max_shapes;
+  std::map<std::string, std::vector<int32_t>> opt_shapes;
+  for (auto it : shape_info_) {
+    auto name = it.first;
+    auto shapes = it.second;
+
+    std::vector<int32_t> min_shape(shapes[0].begin(), shapes[0].end());
+    std::vector<int32_t> max_shape(shapes[0].begin(), shapes[0].end());
+    std::vector<int32_t> opt_shape(shapes[0].begin(), shapes[0].end());
+
+    auto ShapeMaxFreq = [](const std::map<int32_t, int32_t> &m) -> int32_t {
+      std::vector<std::pair<int32_t, int32_t>> counter;
+      for (auto &it : m) counter.push_back(it);
+      std::sort(
+          counter.begin(), counter.end(),
+          [](std::pair<int32_t, int32_t> &a, std::pair<int32_t, int32_t> &b) {
+            return a.second > b.second;
+          });
+      return counter[0].first;
+    };
+
+    for (size_t d = 0; d < shapes[0].size(); ++d) {
+      std::map<int32_t, int32_t> counter;
+      for (size_t i = 0; i < shapes.size(); ++i) {
+        counter[shapes[i][d]] += 1;
+        if (shapes[i][d] < min_shape[d]) min_shape[d] = shapes[i][d];
+        if (shapes[i][d] > max_shape[d]) max_shape[d] = shapes[i][d];
+      }
+      opt_shape[d] = ShapeMaxFreq(counter);
+    }
+
+    min_shapes[name] = min_shape;
+    max_shapes[name] = max_shape;
+    opt_shapes[name] = opt_shape;
+  }
+
+  inference::SerializeShapeRangeInfo(config_.shape_range_info_path(),
+                                     min_shapes, max_shapes, opt_shapes);
 }
 
 bool AnalysisPredictor::LoadProgramDesc() {
@@ -1140,6 +1272,10 @@ AnalysisPredictor::~AnalysisPredictor() {
   }
 #endif
 
+  if (config_.shape_range_info_collected()) {
+    StatisticShapeRangeInfo();
+  }
+
   memory::Release(place_);
 }
 
@@ -1257,6 +1393,8 @@ USE_TRT_CONVERTER(reduce_sum);
 USE_TRT_CONVERTER(gather_nd);
 USE_TRT_CONVERTER(reduce_mean);
 USE_TRT_CONVERTER(tile);
+USE_TRT_CONVERTER(conv3d);
+USE_TRT_CONVERTER(conv3d_transpose);
 #endif
 
 namespace paddle_infer {

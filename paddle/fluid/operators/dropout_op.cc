@@ -51,9 +51,12 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Seed",
              "The seed of dropout op, it has higher priority than the attr "
              "fix_seed and seed")
-        .AsDispensable();
+        .AsDispensable()
+        .AsExtra();
     AddOutput("Out", "The output of dropout op.");
-    AddOutput("Mask", "The random sampled dropout mask.").AsIntermediate();
+    AddOutput("Mask", "The random sampled dropout mask.")
+        .AsIntermediate()
+        .AsExtra();
 
     AddAttr<float>("dropout_prob", "Probability of setting units to zero.")
         .SetDefault(.5f)
@@ -72,8 +75,9 @@ class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {
                   "training. Setting this flag to true is only useful in "
                   "unittest or for debug that always the same output units "
                   "will be dropped.")
-        .SetDefault(false);
-    AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
+        .SetDefault(false)
+        .AsExtra();
+    AddAttr<int>("seed", "Dropout random seed.").SetDefault(0).AsExtra();
     AddAttr<std::string>(
         "dropout_implementation",
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
