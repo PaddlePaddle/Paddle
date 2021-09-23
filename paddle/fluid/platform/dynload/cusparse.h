@@ -41,6 +41,7 @@ extern void *cusparse_dso_handle;
   };                                                                 \
   extern DynLoad__##__name __name
 
+#ifndef(_WIN32)
 #if CUDA_VERSION >= 11020
 #define CUSPARSE_ROUTINE_EACH(__macro) \
   __macro(cusparseCreate);             \
@@ -56,6 +57,7 @@ extern void *cusparse_dso_handle;
   __macro(cusparseSDDMM);
 
 CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP);
+#endif
 #endif
 
 #undef DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP
