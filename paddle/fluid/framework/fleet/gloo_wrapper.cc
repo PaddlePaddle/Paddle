@@ -297,7 +297,7 @@ void ParallelConnectContext::connectFullMesh(
             }
             transportContext->getPair(i)->connect(addr);
           }
-          VLOG(0) << "peer " << i << " connected success";
+          VLOG(0) << "peer connected success";
         },
         i, connect_threads.size()));
   }
