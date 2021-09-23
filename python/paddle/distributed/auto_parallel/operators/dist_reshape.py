@@ -97,82 +97,65 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
 
         return changed
 
-    def forward(self, serial_op):
-        def static_handle(dst_block,
-                          src_op,
-                          op_dist_attr,
-                          input_name_mapping,
-                          output_name_mapping,
-                          rank_id=0):
-            assert len(
-                input_name_mapping
-            ) == 3, "Dist op of Reshape take 3 inputs variable but got {}".format(
-                input_name_mapping)
-            assert len(
-                output_name_mapping
-            ) == 2, "Dist op of Reshape take 2 inputs variable but got {}".format(
-                output_name_mapping)
-            assert len(
-                input_name_mapping['X']
-            ) == 1, "Dist op of Reshape input X take 1 variable but got {}".format(
-                input_name_mapping['X'])
-            assert len(
-                input_name_mapping['ShapeTensor']
-            ) <= 1, "Dist op of Reshape input ShapeTensor take 0 or 1 variable but got {}".format(
-                input_name_mapping['ShapeTensor'])
-            assert len(
-                input_name_mapping['Shape']
-            ) <= 1, "Dist op of Reshape input Shape take 0 or 1 variable but got {}".format(
-                input_name_mapping['Shape'])
-            assert len(
-                output_name_mapping['Out']
-            ) == 1, "Dist op of Reshape input Out take 1 variable but got {}".format(
-                input_name_mapping['Out'])
-            assert len(
-                output_name_mapping['XShape']
-            ) == 1, "Dist op of Reshape input XShape take 1 variable but got {}".format(
-                input_name_mapping['XShape'])
+    @staticmethod
+    def forward(ctx, *args, **kwargs):
+        """
+        kwargs: inputname_mapping & outputname_mapping
+        """
 
-            X_var = dst_block.var(input_name_mapping['X'][0])
-            Out_var = dst_block.var(output_name_mapping['Out'][0])
-            XShape_var = dst_block.var(output_name_mapping['XShape'][0])
-            shape_list = src_op.desc.attr("shape")
-            ShapeTensor_var_list = []
-            for name in input_name_mapping['ShapeTensor']:
-                ShapeTensor_var_list.append(name)
-            Shape_var_list = []
-            for name in input_name_mapping['Shape']:
-                Shape_var_list.append(name)
+        dst_block = ctx.get_dst_main_program().global_block()
+        src_op = ctx.get_cur_src_op()
+        rank_id = ctx.get_rank_id()
+        op_dist_attr = ctx.get_cur_dist_attr()
 
-            # got dist attribute info
-            dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
-            process_mesh_shape = op_dist_attr.get_process_mesh().topology
+        # check validation of inputs / outputs 
+        for input_name in src_op.desc.input_names():
+            assert input_name in kwargs, "input [{}] is not given".format(
+                input_name)
+            assert len(kwargs[input_name]) == len(
+                src_op.desc.input(input_name)
+            ), "number of tensor for input [{}] is not match".format(input_name)
+        for output_name in src_op.desc.output_names():
+            assert output_name in kwargs, "input [{}] is not given".format(
+                output_name)
+            assert len(kwargs[output_name]) == len(
+                src_op.desc.output(output_name)
+            ), "number of tensor for input [{}] is not match".format(
+                output_name)
 
-            # modify target shape
-            for idx, axis in enumerate(dim_mapping):
-                if axis >= 0:
-                    if len(shape_list) > idx:
-                        shape_list[idx] = shape_list[idx] // process_mesh_shape[
-                            axis]
+        X_var = dst_block.var(kwargs['X'][0])
+        Out_var = dst_block.var(kwargs['Out'][0])
+        XShape_var = dst_block.var(kwargs['XShape'][0])
+        shape_list = src_op.desc.attr("shape")
+        ShapeTensor_var_list = []
+        for name in kwargs['ShapeTensor']:
+            ShapeTensor_var_list.append(name)
+        Shape_var_list = []
+        for name in kwargs['Shape']:
+            Shape_var_list.append(name)
 
-            # create op
-            new_op_desc = dst_block.desc.append_op()
-            new_op_desc.copy_from(src_op.desc)
-            new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
-            new_op_desc.set_input('Shape', Shape_var_list)
-            new_op_desc.set_input('X', [X_var.name])
-            new_op_desc.set_output('XShape', [XShape_var.name])
-            new_op_desc.set_output('Out', [Out_var.name])
-            new_op_desc._set_attr('shape', shape_list)
+        # got dist attribute info
+        dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
+        process_mesh_shape = op_dist_attr.get_process_mesh().topology
 
-            dst_block._sync_with_cpp()
+        # modify target shape
+        for idx, axis in enumerate(dim_mapping):
+            if axis >= 0:
+                if len(shape_list) > idx:
+                    shape_list[idx] = shape_list[idx] // process_mesh_shape[
+                        axis]
 
-        if in_dygraph_mode():
-            raise NotImplementedError(
-                "Dist op for [{}] with idx [{}] is NOT implemented yet.".format(
-                    "matmul", 0))
-        else:
-            return static_handle
+        # create op
+        new_op_desc = dst_block.desc.append_op()
+        new_op_desc.copy_from(src_op.desc)
+        new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
+        new_op_desc.set_input('Shape', Shape_var_list)
+        new_op_desc.set_input('X', [X_var.name])
+        new_op_desc.set_output('XShape', [XShape_var.name])
+        new_op_desc.set_output('Out', [Out_var.name])
+        new_op_desc._set_attr('shape', shape_list)
+
+        dst_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -239,82 +222,64 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
 
         return changed
 
-    def forward(self, serial_op):
-        def static_handle(dst_block,
-                          src_op,
-                          op_dist_attr,
-                          input_name_mapping,
-                          output_name_mapping,
-                          rank_id=0):
-            assert len(
-                input_name_mapping
-            ) == 3, "Dist op of Reshape take 3 inputs variable but got {}".format(
-                input_name_mapping)
-            assert len(
-                output_name_mapping
-            ) == 2, "Dist op of Reshape take 2 inputs variable but got {}".format(
-                output_name_mapping)
-            assert len(
-                input_name_mapping['X']
-            ) == 1, "Dist op of Reshape input X take 1 variable but got {}".format(
-                input_name_mapping['X'])
-            assert len(
-                input_name_mapping['ShapeTensor']
-            ) <= 1, "Dist op of Reshape input ShapeTensor take 0 or 1 variable but got {}".format(
-                input_name_mapping['ShapeTensor'])
-            assert len(
-                input_name_mapping['Shape']
-            ) <= 1, "Dist op of Reshape input Shape take 0 or 1 variable but got {}".format(
-                input_name_mapping['Shape'])
-            assert len(
-                output_name_mapping['Out']
-            ) == 1, "Dist op of Reshape input Out take 1 variable but got {}".format(
-                input_name_mapping['Out'])
-            assert len(
-                output_name_mapping['XShape']
-            ) == 1, "Dist op of Reshape input XShape take 1 variable but got {}".format(
-                input_name_mapping['XShape'])
+    @staticmethod
+    def forward(ctx, *args, **kwargs):
+        """
+        kwargs: inputname_mapping & outputname_mapping
+        """
+        dst_block = ctx.get_dst_main_program().global_block()
+        src_op = ctx.get_cur_src_op()
+        rank_id = ctx.get_rank_id()
+        op_dist_attr = ctx.get_cur_dist_attr()
 
-            X_var = dst_block.var(input_name_mapping['X'][0])
-            Out_var = dst_block.var(output_name_mapping['Out'][0])
-            XShape_var = dst_block.var(output_name_mapping['XShape'][0])
-            shape_list = src_op.desc.attr("shape")
-            ShapeTensor_var_list = []
-            for name in input_name_mapping['ShapeTensor']:
-                ShapeTensor_var_list.append(name)
-            Shape_var_list = []
-            for name in input_name_mapping['Shape']:
-                Shape_var_list.append(name)
+        # check validation of inputs / outputs 
+        for input_name in src_op.desc.input_names():
+            assert input_name in kwargs, "input [{}] is not given".format(
+                input_name)
+            assert len(kwargs[input_name]) == len(
+                src_op.desc.input(input_name)
+            ), "number of tensor for input [{}] is not match".format(input_name)
+        for output_name in src_op.desc.output_names():
+            assert output_name in kwargs, "input [{}] is not given".format(
+                output_name)
+            assert len(kwargs[output_name]) == len(
+                src_op.desc.output(output_name)
+            ), "number of tensor for input [{}] is not match".format(
+                output_name)
 
-            # got dist attribute info
-            dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
-            process_mesh_shape = op_dist_attr.get_process_mesh().topology
+        X_var = dst_block.var(kwargs['X'][0])
+        Out_var = dst_block.var(kwargs['Out'][0])
+        XShape_var = dst_block.var(kwargs['XShape'][0])
+        shape_list = src_op.desc.attr("shape")
+        ShapeTensor_var_list = []
+        for name in kwargs['ShapeTensor']:
+            ShapeTensor_var_list.append(name)
+        Shape_var_list = []
+        for name in kwargs['Shape']:
+            Shape_var_list.append(name)
 
-            # modify target shape
-            for idx, axis in enumerate(dim_mapping):
-                if axis >= 0:
-                    if len(shape_list) > idx:
-                        shape_list[idx] = shape_list[idx] // process_mesh_shape[
-                            axis]
+        # got dist attribute info
+        dim_mapping = op_dist_attr.get_output_dims_mapping(Out_var.name)
+        process_mesh_shape = op_dist_attr.get_process_mesh().topology
 
-            # create op
-            new_op_desc = dst_block.desc.append_op()
-            new_op_desc.copy_from(src_op.desc)
-            new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
-            new_op_desc.set_input('Shape', Shape_var_list)
-            new_op_desc.set_input('X', [X_var.name])
-            new_op_desc.set_output('XShape', [XShape_var.name])
-            new_op_desc.set_output('Out', [Out_var.name])
-            new_op_desc._set_attr('shape', shape_list)
+        # modify target shape
+        for idx, axis in enumerate(dim_mapping):
+            if axis >= 0:
+                if len(shape_list) > idx:
+                    shape_list[idx] = shape_list[idx] // process_mesh_shape[
+                        axis]
 
-            dst_block._sync_with_cpp()
+        # create op
+        new_op_desc = dst_block.desc.append_op()
+        new_op_desc.copy_from(src_op.desc)
+        new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
+        new_op_desc.set_input('Shape', Shape_var_list)
+        new_op_desc.set_input('X', [X_var.name])
+        new_op_desc.set_output('XShape', [XShape_var.name])
+        new_op_desc.set_output('Out', [Out_var.name])
+        new_op_desc._set_attr('shape', shape_list)
 
-        if in_dygraph_mode():
-            raise NotImplementedError(
-                "Dist op for [{}] with idx [{}] is NOT implemented yet.".format(
-                    "matmul", 0))
-        else:
-            return static_handle
+        dst_block._sync_with_cpp()
 
 
 register_distributed_operator_impl("reshape2",

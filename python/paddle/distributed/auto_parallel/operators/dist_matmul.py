@@ -178,101 +178,85 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             changed = True
         return changed
 
-    def forward(self, serial_op):
-        def static_handle(dst_block,
-                          src_op,
-                          op_dist_attr,
-                          input_name_mapping,
-                          output_name_mapping,
-                          rank_id=0):
-            assert len(
-                input_name_mapping
-            ) == 2, "col_parallel_linear take 2 inputs variable but got {}".format(
-                input_name_mapping)
-            assert len(
-                output_name_mapping
-            ) == 1, "col_parallel_linear take 2 inputs variable but got {}".format(
-                output_name_mapping)
-            assert len(
-                input_name_mapping['X']
-            ) == 1, "col_parallel_linear input X take 1 variable but got {}".format(
-                input_name_mapping['X'])
-            assert len(
-                input_name_mapping['Y']
-            ) == 1, "col_parallel_linear input Y take 1 variable but got {}".format(
-                input_name_mapping['Y'])
-            assert len(
-                output_name_mapping['Out']
-            ) == 1, "col_parallel_linear input Out take 1 variable but got {}".format(
-                input_name_mapping['Out'])
-            X_var = dst_block.var(input_name_mapping['X'][0])
-            Weight_var = dst_block.var(input_name_mapping['Y'][0])
-            Out_var = dst_block.var(output_name_mapping['Out'][0])
+    @staticmethod
+    def forward(ctx, *args, **kwargs):
+        """
+        kwargs: inputname_mapping & outputname_mapping
+        """
+        dst_block = ctx.get_dst_main_program().global_block()
+        src_op = ctx.get_cur_src_op()
+        rank_id = ctx.get_rank_id()
+        op_dist_attr = ctx.get_cur_dist_attr()
 
-            # TODO infer logic comm presentation
-            model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
-            )._get_model_parallel_info()
-            group_ranks = _get_comm_group(process_mesh.process_group,
-                                          process_mesh.topology,
-                                          model_parallel_axis, rank_id)
-            group = new_process_group(group_ranks)
+        # check validation of inputs / outputs 
+        for input_name in src_op.desc.input_names():
+            assert input_name in kwargs, "input [{}] is not given".format(
+                input_name)
+            assert len(kwargs[input_name]) == len(
+                src_op.desc.input(input_name)
+            ), "number of tensor for input [{}] is not match".format(input_name)
+        for output_name in src_op.desc.output_names():
+            assert output_name in kwargs, "input [{}] is not given".format(
+                output_name)
+            assert len(kwargs[output_name]) == len(
+                src_op.desc.output(output_name)
+            ), "number of tensor for input [{}] is not match".format(
+                output_name)
 
-            intermediate_var_0 = dst_block.create_var(
-                name=unique_name.generate_with_ignorable_key(".".join(
-                    ["c_identity", 'tmp'])),
-                dtype=X_var.dtype,
-                shape=X_var.shape,
-                type=core.VarDesc.VarType.LOD_TENSOR,
-                persistable=False,
-                stop_gradient=X_var.stop_gradient)
-            # copy X_var's dist_attr to intermediate_var_0's dist_attr
-            copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
-                                          X_var)
+        X_var = dst_block.var(kwargs['X'][0])
+        Weight_var = dst_block.var(kwargs['Y'][0])
+        Out_var = dst_block.var(kwargs['Out'][0])
 
-            check_variable_and_dtype(
-                X_var, 'tensor',
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
-                '_c_identity')
+        # TODO infer logic comm presentation
+        model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
+        )._get_model_parallel_info()
+        group_ranks = _get_comm_group(process_mesh.process_group,
+                                      process_mesh.topology,
+                                      model_parallel_axis, rank_id)
+        group = new_process_group(group_ranks)
 
-            c_identity_op = dst_block.append_op(
-                type='c_identity',
-                inputs={'X': [X_var]},
-                outputs={'Out': intermediate_var_0},
-                attrs={
-                    'ring_id': group.id,
-                    'use_calc_stream': True,
-                    'use_model_parallel': True,
-                })
+        intermediate_var_0 = dst_block.create_var(
+            name=unique_name.generate_with_ignorable_key(".".join(
+                ["c_identity", 'tmp'])),
+            dtype=X_var.dtype,
+            shape=X_var.shape,
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            persistable=False,
+            stop_gradient=X_var.stop_gradient)
+        # copy X_var's dist_attr to intermediate_var_0's dist_attr
+        copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0, X_var)
 
-            check_variable_and_dtype(intermediate_var_0, 'x',
-                                     ['float16', 'float32', 'float64'],
-                                     'linear')
-            check_dtype(intermediate_var_0.dtype, 'dtype',
-                        ['float16', 'float32', 'float64'], 'linear')
-            attrs = {
-                'transpose_X': False,
-                'transpose_Y': False,
-                'alpha': 1,
-            }
-            inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
-            matmul_op = dst_block.append_op(
-                type='matmul',
-                inputs=inputs,
-                outputs={'Out': Out_var},
-                attrs=attrs)
+        check_variable_and_dtype(
+            X_var, 'tensor',
+            ['float16', 'float32', 'float64', 'int32', 'int64'], '_c_identity')
 
-            # copy serial op's dist_attr to dist op's dist_attr
-            copy_distributed_attr_for_dist_op(c_identity_op, dst_block,
-                                              op_dist_attr)
-            copy_distributed_attr_for_dist_op(matmul_op, dst_block,
-                                              op_dist_attr)
+        c_identity_op = dst_block.append_op(
+            type='c_identity',
+            inputs={'X': [X_var]},
+            outputs={'Out': intermediate_var_0},
+            attrs={
+                'ring_id': group.id,
+                'use_calc_stream': True,
+                'use_model_parallel': True,
+            })
 
-        if in_dygraph_mode():
-            raise NotImplementedError(
-                "Dist op for [{}] with idx [{}] is NOT implemented yet.".format(
-                    "matmul", 0))
-        else:
-            return static_handle
+        check_variable_and_dtype(intermediate_var_0, 'x',
+                                 ['float16', 'float32', 'float64'], 'linear')
+        check_dtype(intermediate_var_0.dtype, 'dtype',
+                    ['float16', 'float32', 'float64'], 'linear')
+        attrs = {
+            'transpose_X': False,
+            'transpose_Y': False,
+            'alpha': 1,
+        }
+        inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
+        matmul_op = dst_block.append_op(
+            type='matmul', inputs=inputs, outputs={'Out': Out_var}, attrs=attrs)
+
+        # copy serial op's dist_attr to dist op's dist_attr
+        copy_distributed_attr_for_dist_op(c_identity_op, dst_block,
+                                          op_dist_attr)
+        copy_distributed_attr_for_dist_op(matmul_op, dst_block, op_dist_attr)
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -421,95 +405,84 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             changed = True
         return changed
 
-    def forward(self, serial_op):
-        def static_handle(dst_block,
-                          src_op,
-                          op_dist_attr,
-                          input_name_mapping,
-                          output_name_mapping,
-                          rank_id=0):
-            assert len(
-                input_name_mapping
-            ) == 2, "col_parallel_linear take 2 inputs variable but got {}".format(
-                input_name_mapping)
-            assert len(
-                output_name_mapping
-            ) == 1, "col_parallel_linear take 2 inputs variable but got {}".format(
-                output_name_mapping)
-            assert len(
-                input_name_mapping['X']
-            ) == 1, "col_parallel_linear input X take 1 variable but got {}".format(
-                input_name_mapping['X'])
-            assert len(
-                input_name_mapping['Y']
-            ) == 1, "col_parallel_linear input Y take 1 variable but got {}".format(
-                input_name_mapping['Y'])
-            assert len(
-                output_name_mapping['Out']
-            ) == 1, "col_parallel_linear input Out take 1 variable but got {}".format(
-                input_name_mapping['Out'])
-            X_var = dst_block.var(input_name_mapping['X'][0])
-            Weight_var = dst_block.var(input_name_mapping['Y'][0])
-            Out_var = dst_block.var(output_name_mapping['Out'][0])
+    @staticmethod
+    def forward(ctx, *args, **kwargs):
+        """
+        kwargs: inputname_mapping & outputname_mapping
+        """
+        dst_block = ctx.get_dst_main_program().global_block()
+        src_op = ctx.get_cur_src_op()
+        rank_id = ctx.get_rank_id()
+        op_dist_attr = ctx.get_cur_dist_attr()
 
-            # TODO infer logic comm presentation
-            model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
-            )._get_model_parallel_info()
-            group_ranks = _get_comm_group(process_mesh.process_group,
-                                          process_mesh.topology,
-                                          model_parallel_axis, rank_id)
-            group = new_process_group(group_ranks)
+        # check validation of inputs / outputs 
+        for input_name in src_op.desc.input_names():
+            assert input_name in kwargs, "input [{}] is not given".format(
+                input_name)
+            assert len(kwargs[input_name]) == len(
+                src_op.desc.input(input_name)
+            ), "number of tensor for input [{}] is not match".format(input_name)
+        for output_name in src_op.desc.output_names():
+            assert output_name in kwargs, "input [{}] is not given".format(
+                output_name)
+            assert len(kwargs[output_name]) == len(
+                src_op.desc.output(output_name)
+            ), "number of tensor for input [{}] is not match".format(
+                output_name)
 
-            check_variable_and_dtype(
-                X_var, 'x', ['float16', 'float32', 'float64'], 'linear')
-            check_dtype(X_var.dtype, 'dtype',
-                        ['float16', 'float32', 'float64'], 'linear')
-            attrs = {
-                'transpose_X': False,
-                'transpose_Y': False,
-                'alpha': 1,
-            }
-            inputs = {'X': X_var, 'Y': Weight_var}
-            intermediate_var_0 = dst_block.create_var(
-                shape=Out_var.shape,
-                dtype=Out_var.dtype,
-                type=Out_var.type,
-                lod_level=Out_var.lod_level,
-                persistable=False,
-                is_data=False,
-                need_check_feed=Out_var.desc.need_check_feed())
-            # copy Out_var's dist_attr to intermediate_var_0's dist_attr
-            copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
-                                          Out_var)
+        X_var = dst_block.var(kwargs['X'][0])
+        Weight_var = dst_block.var(kwargs['Y'][0])
+        Out_var = dst_block.var(kwargs['Out'][0])
 
-            matmul_op = dst_block.append_op(
-                type='matmul',
-                inputs=inputs,
-                outputs={'Out': intermediate_var_0},
-                attrs=attrs)
+        # TODO infer logic comm presentation
+        model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
+        )._get_model_parallel_info()
+        group_ranks = _get_comm_group(process_mesh.process_group,
+                                      process_mesh.topology,
+                                      model_parallel_axis, rank_id)
+        group = new_process_group(group_ranks)
 
-            c_allreduce_sum_op = dst_block.append_op(
-                type='c_allreduce_sum',
-                inputs={'X': intermediate_var_0},
-                outputs={'Out': Out_var},
-                attrs={
-                    'ring_id': group.id,
-                    'use_calc_stream': True,
-                    'use_model_parallel': True
-                })
+        check_variable_and_dtype(X_var, 'x', ['float16', 'float32', 'float64'],
+                                 'linear')
+        check_dtype(X_var.dtype, 'dtype', ['float16', 'float32', 'float64'],
+                    'linear')
+        attrs = {
+            'transpose_X': False,
+            'transpose_Y': False,
+            'alpha': 1,
+        }
+        inputs = {'X': X_var, 'Y': Weight_var}
+        intermediate_var_0 = dst_block.create_var(
+            shape=Out_var.shape,
+            dtype=Out_var.dtype,
+            type=Out_var.type,
+            lod_level=Out_var.lod_level,
+            persistable=False,
+            is_data=False,
+            need_check_feed=Out_var.desc.need_check_feed())
+        # copy Out_var's dist_attr to intermediate_var_0's dist_attr
+        copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0, Out_var)
 
-            # copy serial op's dist_attr to dist op's dist_attr
-            copy_distributed_attr_for_dist_op(matmul_op, dst_block,
-                                              op_dist_attr)
-            copy_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
-                                              op_dist_attr)
+        matmul_op = dst_block.append_op(
+            type='matmul',
+            inputs=inputs,
+            outputs={'Out': intermediate_var_0},
+            attrs=attrs)
 
-        if in_dygraph_mode():
-            raise NotImplementedError(
-                "Dist op for [{}] with idx [{}] is NOT implemented yet.".format(
-                    "matmul", 0))
-        else:
-            return static_handle
+        c_allreduce_sum_op = dst_block.append_op(
+            type='c_allreduce_sum',
+            inputs={'X': intermediate_var_0},
+            outputs={'Out': Out_var},
+            attrs={
+                'ring_id': group.id,
+                'use_calc_stream': True,
+                'use_model_parallel': True
+            })
+
+        # copy serial op's dist_attr to dist op's dist_attr
+        copy_distributed_attr_for_dist_op(matmul_op, dst_block, op_dist_attr)
+        copy_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
+                                          op_dist_attr)
 
 
 # ReplicateParallel 
@@ -627,97 +600,85 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             changed = True
         return changed
 
-    def forward(self, serial_op):
-        def static_handle(dst_block,
-                          src_op,
-                          op_dist_attr,
-                          input_name_mapping,
-                          output_name_mapping,
-                          rank_id=0):
-            assert len(
-                input_name_mapping
-            ) == 2, "col_parallel_linear take 2 inputs variable but got {}".format(
-                input_name_mapping)
-            assert len(
-                output_name_mapping
-            ) == 1, "col_parallel_linear take 2 inputs variable but got {}".format(
-                output_name_mapping)
-            assert len(
-                input_name_mapping['X']
-            ) == 1, "col_parallel_linear input X take 1 variable but got {}".format(
-                input_name_mapping['X'])
-            assert len(
-                input_name_mapping['Y']
-            ) == 1, "col_parallel_linear input Y take 1 variable but got {}".format(
-                input_name_mapping['Y'])
-            assert len(
-                output_name_mapping['Out']
-            ) == 1, "col_parallel_linear input Out take 1 variable but got {}".format(
-                input_name_mapping['Out'])
-            X_var = dst_block.var(input_name_mapping['X'][0])
-            Weight_var = dst_block.var(input_name_mapping['Y'][0])
-            Out_var = dst_block.var(output_name_mapping['Out'][0])
+    @staticmethod
+    def forward(ctx, *args, **kwargs):
+        """
+        kwargs: inputname_mapping & outputname_mapping
+        """
 
-            # TODO infer logic comm presentation
-            model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
-            )._get_model_parallel_info()
-            group_ranks = _get_comm_group(process_mesh.process_group,
-                                          process_mesh.topology,
-                                          model_parallel_axis, rank_id)
-            group = new_process_group(group_ranks)
+        dst_block = ctx.get_dst_main_program().global_block()
+        src_op = ctx.get_cur_src_op()
+        rank_id = ctx.get_rank_id()
+        op_dist_attr = ctx.get_cur_dist_attr()
 
-            intermediate_var_0 = dst_block.create_var(
-                name=unique_name.generate_with_ignorable_key(".".join(
-                    ["c_identity", 'tmp'])),
-                dtype=X_var.dtype,
-                shape=X_var.shape,
-                type=core.VarDesc.VarType.LOD_TENSOR,
-                persistable=False,
-                stop_gradient=X_var.stop_gradient)
-            # copy X_var's dist_attr to intermediate_var_0's dist_attr
-            copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
-                                          X_var)
+        # check validation of inputs / outputs 
+        for input_name in src_op.desc.input_names():
+            assert input_name in kwargs, "input [{}] is not given".format(
+                input_name)
+            assert len(kwargs[input_name]) == len(
+                src_op.desc.input(input_name)
+            ), "number of tensor for input [{}] is not match".format(input_name)
+        for output_name in src_op.desc.output_names():
+            assert output_name in kwargs, "input [{}] is not given".format(
+                output_name)
+            assert len(kwargs[output_name]) == len(
+                src_op.desc.output(output_name)
+            ), "number of tensor for input [{}] is not match".format(
+                output_name)
 
-            check_variable_and_dtype(
-                X_var, 'tensor',
-                ['float16', 'float32', 'float64', 'int32', 'int64'],
-                '_c_identity')
+        X_var = dst_block.var(kwargs['X'][0])
+        Weight_var = dst_block.var(kwargs['Y'][0])
+        Out_var = dst_block.var(kwargs['Out'][0])
 
-            c_identity_op = dst_block.append_op(
-                type='c_identity',
-                inputs={'X': [X_var]},
-                outputs={'Out': intermediate_var_0},
-                attrs={
-                    'ring_id': group.id,
-                    'use_calc_stream': True,
-                    'use_model_parallel': True,
-                })
+        # TODO infer logic comm presentation
+        model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
+        )._get_model_parallel_info()
+        group_ranks = _get_comm_group(process_mesh.process_group,
+                                      process_mesh.topology,
+                                      model_parallel_axis, rank_id)
+        group = new_process_group(group_ranks)
 
-            check_variable_and_dtype(intermediate_var_0, 'x',
-                                     ['float16', 'float32', 'float64'],
-                                     'linear')
-            check_dtype(intermediate_var_0.dtype, 'dtype',
-                        ['float16', 'float32', 'float64'], 'linear')
-            attrs = {'trans_x': False, 'trans_y': False}
-            inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
-            matmul_v2_op = dst_block.append_op(
-                type='matmul_v2',
-                inputs=inputs,
-                outputs={'Out': Out_var},
-                attrs=attrs)
+        intermediate_var_0 = dst_block.create_var(
+            name=unique_name.generate_with_ignorable_key(".".join(
+                ["c_identity", 'tmp'])),
+            dtype=X_var.dtype,
+            shape=X_var.shape,
+            type=core.VarDesc.VarType.LOD_TENSOR,
+            persistable=False,
+            stop_gradient=X_var.stop_gradient)
+        # copy X_var's dist_attr to intermediate_var_0's dist_attr
+        copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0, X_var)
 
-            # copy serial op's dist_attr to dist op's dist_attr
-            copy_distributed_attr_for_dist_op(c_identity_op, dst_block,
-                                              op_dist_attr)
-            copy_distributed_attr_for_dist_op(matmul_v2_op, dst_block,
-                                              op_dist_attr)
+        check_variable_and_dtype(
+            X_var, 'tensor',
+            ['float16', 'float32', 'float64', 'int32', 'int64'], '_c_identity')
 
-        if in_dygraph_mode():
-            raise NotImplementedError(
-                "Dist op for [{}] with idx [{}] is NOT implemented yet.".format(
-                    "matmul", 0))
-        else:
-            return static_handle
+        c_identity_op = dst_block.append_op(
+            type='c_identity',
+            inputs={'X': [X_var]},
+            outputs={'Out': intermediate_var_0},
+            attrs={
+                'ring_id': group.id,
+                'use_calc_stream': True,
+                'use_model_parallel': True,
+            })
+
+        check_variable_and_dtype(intermediate_var_0, 'x',
+                                 ['float16', 'float32', 'float64'], 'linear')
+        check_dtype(intermediate_var_0.dtype, 'dtype',
+                    ['float16', 'float32', 'float64'], 'linear')
+        attrs = {'trans_x': False, 'trans_y': False}
+        inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
+        matmul_v2_op = dst_block.append_op(
+            type='matmul_v2',
+            inputs=inputs,
+            outputs={'Out': Out_var},
+            attrs=attrs)
+
+        # copy serial op's dist_attr to dist op's dist_attr
+        copy_distributed_attr_for_dist_op(c_identity_op, dst_block,
+                                          op_dist_attr)
+        copy_distributed_attr_for_dist_op(matmul_v2_op, dst_block, op_dist_attr)
 
 
 # RowParallel
@@ -768,91 +729,80 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             changed = True
         return changed
 
-    def forward(self, serial_op):
-        def static_handle(dst_block,
-                          src_op,
-                          op_dist_attr,
-                          input_name_mapping,
-                          output_name_mapping,
-                          rank_id=0):
-            assert len(
-                input_name_mapping
-            ) == 2, "col_parallel_linear take 2 inputs variable but got {}".format(
-                input_name_mapping)
-            assert len(
-                output_name_mapping
-            ) == 1, "col_parallel_linear take 2 inputs variable but got {}".format(
-                output_name_mapping)
-            assert len(
-                input_name_mapping['X']
-            ) == 1, "col_parallel_linear input X take 1 variable but got {}".format(
-                input_name_mapping['X'])
-            assert len(
-                input_name_mapping['Y']
-            ) == 1, "col_parallel_linear input Y take 1 variable but got {}".format(
-                input_name_mapping['Y'])
-            assert len(
-                output_name_mapping['Out']
-            ) == 1, "col_parallel_linear input Out take 1 variable but got {}".format(
-                input_name_mapping['Out'])
-            X_var = dst_block.var(input_name_mapping['X'][0])
-            Weight_var = dst_block.var(input_name_mapping['Y'][0])
-            Out_var = dst_block.var(output_name_mapping['Out'][0])
+    @staticmethod
+    def forward(ctx, *args, **kwargs):
+        """
+        kwargs: inputname_mapping & outputname_mapping
+        """
+        dst_block = ctx.get_dst_main_program().global_block()
+        src_op = ctx.get_cur_src_op()
+        rank_id = ctx.get_rank_id()
+        op_dist_attr = ctx.get_cur_dist_attr()
 
-            # TODO infer logic comm presentation
-            model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
-            )._get_model_parallel_info()
-            group_ranks = _get_comm_group(process_mesh.process_group,
-                                          process_mesh.topology,
-                                          model_parallel_axis, rank_id)
-            group = new_process_group(group_ranks)
+        # check validation of inputs / outputs 
+        for input_name in src_op.desc.input_names():
+            assert input_name in kwargs, "input [{}] is not given".format(
+                input_name)
+            assert len(kwargs[input_name]) == len(
+                src_op.desc.input(input_name)
+            ), "number of tensor for input [{}] is not match".format(input_name)
+        for output_name in src_op.desc.output_names():
+            assert output_name in kwargs, "input [{}] is not given".format(
+                output_name)
+            assert len(kwargs[output_name]) == len(
+                src_op.desc.output(output_name)
+            ), "number of tensor for input [{}] is not match".format(
+                output_name)
 
-            check_variable_and_dtype(
-                X_var, 'x', ['float16', 'float32', 'float64'], 'linear')
-            check_dtype(X_var.dtype, 'dtype',
-                        ['float16', 'float32', 'float64'], 'linear')
-            attrs = {'trans_x': False, 'trans_y': False}
-            inputs = {'X': X_var, 'Y': Weight_var}
-            intermediate_var_0 = dst_block.create_var(
-                shape=Out_var.shape,
-                dtype=Out_var.dtype,
-                type=Out_var.type,
-                lod_level=Out_var.lod_level,
-                persistable=False,
-                is_data=False,
-                need_check_feed=Out_var.desc.need_check_feed())
-            # copy Out_var's dist_attr to intermediate_var_0's dist_attr
-            copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
-                                          Out_var)
+        X_var = dst_block.var(kwargs['X'][0])
+        Weight_var = dst_block.var(kwargs['Y'][0])
+        Out_var = dst_block.var(kwargs['Out'][0])
 
-            matmul_v2_op = dst_block.append_op(
-                type='matmul_v2',
-                inputs=inputs,
-                outputs={'Out': intermediate_var_0},
-                attrs=attrs)
+        # TODO infer logic comm presentation
+        model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
+        )._get_model_parallel_info()
+        group_ranks = _get_comm_group(process_mesh.process_group,
+                                      process_mesh.topology,
+                                      model_parallel_axis, rank_id)
+        group = new_process_group(group_ranks)
 
-            c_allreduce_sum_op = dst_block.append_op(
-                type='c_allreduce_sum',
-                inputs={'X': intermediate_var_0},
-                outputs={'Out': Out_var},
-                attrs={
-                    'ring_id': group.id,
-                    'use_calc_stream': True,
-                    'use_model_parallel': True
-                })
+        check_variable_and_dtype(X_var, 'x', ['float16', 'float32', 'float64'],
+                                 'linear')
+        check_dtype(X_var.dtype, 'dtype', ['float16', 'float32', 'float64'],
+                    'linear')
+        attrs = {'trans_x': False, 'trans_y': False}
+        inputs = {'X': X_var, 'Y': Weight_var}
+        intermediate_var_0 = dst_block.create_var(
+            shape=Out_var.shape,
+            dtype=Out_var.dtype,
+            type=Out_var.type,
+            lod_level=Out_var.lod_level,
+            persistable=False,
+            is_data=False,
+            need_check_feed=Out_var.desc.need_check_feed())
+        # copy Out_var's dist_attr to intermediate_var_0's dist_attr
+        copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0, Out_var)
 
-            # copy serial op's dist_attr to dist op's dist_attr
-            copy_distributed_attr_for_dist_op(matmul_v2_op, dst_block,
-                                              op_dist_attr)
-            copy_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
-                                              op_dist_attr)
+        matmul_v2_op = dst_block.append_op(
+            type='matmul_v2',
+            inputs=inputs,
+            outputs={'Out': intermediate_var_0},
+            attrs=attrs)
 
-        if in_dygraph_mode():
-            raise NotImplementedError(
-                "Dist op for [{}] with idx [{}] is NOT implemented yet.".format(
-                    "matmul", 0))
-        else:
-            return static_handle
+        c_allreduce_sum_op = dst_block.append_op(
+            type='c_allreduce_sum',
+            inputs={'X': intermediate_var_0},
+            outputs={'Out': Out_var},
+            attrs={
+                'ring_id': group.id,
+                'use_calc_stream': True,
+                'use_model_parallel': True
+            })
+
+        # copy serial op's dist_attr to dist op's dist_attr
+        copy_distributed_attr_for_dist_op(matmul_v2_op, dst_block, op_dist_attr)
+        copy_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
+                                          op_dist_attr)
 
 
 # ReplicateParallel 
