@@ -28,7 +28,7 @@ namespace plf = paddle::platform;
 namespace paddle {
 namespace operators {
 
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020 && !defined(_WIN32)
 template <typename T>
 __forceinline__ __device__ T CudaShuffleXorSync(unsigned mask, T val,
                                                 int width = warpSize) {
@@ -394,7 +394,7 @@ template <typename DeviceContext, typename T>
 class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020 && !defined(_WIN32)
     auto query = *ctx.Input<Tensor>("Q");
     auto key = *ctx.Input<Tensor>("K");
     auto value = *ctx.Input<Tensor>("V");
@@ -443,8 +443,8 @@ class SparseAttentionCUDAKernel : public framework::OpKernel<T> {
     }
 #else
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "The sparse_attention OP needs to use Nvidia GPU, and the CUDA version "
-        "cannot be less than 11.2"));
+        "The sparse_attention OP needs to use Nvidia GPU in Linux, and"
+        "the CUDA version cannot be less than 11.2"));
 #endif
   }
 };
@@ -453,7 +453,7 @@ template <typename DeviceContext, typename T>
 class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020
+#if defined(PADDLE_WITH_CUDA) && CUDA_VERSION >= 11020 && !defined(_WIN32)
     auto query = *ctx.Input<Tensor>("Q");
     auto key = *ctx.Input<Tensor>("K");
     auto value = *ctx.Input<Tensor>("V");
@@ -527,8 +527,8 @@ class SparseAttentionGradCUDAKernel : public framework::OpKernel<T> {
     }
 #else
     PADDLE_THROW(platform::errors::InvalidArgument(
-        "The sparse_attention OP needs to use Nvidia GPU, and the CUDA version "
-        "cannot be less than 11.2"));
+        "The sparse_attention OP needs to use Nvidia GPU in Linux, and"
+        "the CUDA version cannot be less than 11.2"));
 #endif
   }
 };

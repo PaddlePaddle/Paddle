@@ -19,6 +19,7 @@ import paddle.fluid.core as core
 import paddle
 import os
 import re
+import platform
 
 
 def get_cuda_version():
@@ -31,6 +32,22 @@ def get_cuda_version():
         return int(integer) * 1000 + int(float(decimal) * 10)
     else:
         return -1
+
+
+def get_linux_platform():
+    if platform.system().lower() == 'windows':
+        return 0
+    elif platform.system().lower() == 'linux':
+        return 1
+    else:
+        return -1
+
+
+def get_suitable_env():
+    if get_cuda_version() >= 11020 and get_linux_platform() == 1:
+        return True
+    else:
+        return False
 
 
 def softmax(x):
@@ -129,8 +146,9 @@ def init_csr_format(batch_size, num_heads, rows, blocksize):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "core is not compiled with CUDA and cuda version need larger than 11.2")
+    not core.is_compiled_with_cuda() or get_suitable_env() == False,
+    "core is not compiled with CUDA and cuda version need larger than 11.2 in windows"
+)
 class TestSparseAttentionOp(OpTest):
     def config(self):
         self.shape = (1, 1, 8, 8)
