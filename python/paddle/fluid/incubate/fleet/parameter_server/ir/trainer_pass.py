@@ -140,14 +140,14 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
             for i in range(len(global_block.ops)):
                 if input_indexes[i] == 1 and output_indexes[i] == 1:
                     warnings.warn(
-                        "unable to re-arrange dags order to combine distributed embedding ops because a op both needs embedding table's output as input and produces ids as embedding tables's input"
+                        "unable to re-arrange dags order to combine distributed embedding ops because a op both needs embedding table's output as input and produces ids as the same embedding table's input"
                     )
                     return
 
             if min_output_index < max_input_index:
                 move_ops = []
-                for i in range(len(input_indexes)):
-                    if input_indexes[i] == 1 and i > min_output_index:
+                for i in range(min_output_index + 1, len(input_indexes)):
+                    if input_indexes[i] == 1:
                         move_ops.append((global_block.ops[i], i))
                 for i, op in enumerate(move_ops):
                     queue = list()
