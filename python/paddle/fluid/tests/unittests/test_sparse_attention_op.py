@@ -73,27 +73,22 @@ def get_csr_value(mat, layout, nnz):
 def ref_sparse_attention(q, k, v, offset, columns):
     row, col, nnz = q.shape[0], q.shape[1], columns.shape[0]
     mat = np.zeros((row, row))
-    # init mat from CSR format
     for cur_row in range(row):
         start_ptr = int(offset[cur_row])
         end_ptr = int(offset[cur_row + 1])
         for ptr in range(start_ptr, end_ptr):
             cur_col = int(columns[ptr])
             mat[cur_row][cur_col] = 1
-    # sdd
     a = np.dot(q, k.T) * mat
     a_value = get_csr_value(a, mat, nnz)
-    # scale
     scaling = float(col)**-0.5
     a = scaling * a
     for i in range(row):
         for j in range(row):
             if mat[i][j] == 0:
                 a[i][j] = float('-inf')
-    # softmax
     b = softmax(a)
     b_value = get_csr_value(b, mat, nnz)
-    # dsd
     result = np.dot(b, v)
     return result, a_value, b_value
 
@@ -147,8 +142,7 @@ def init_csr_format(batch_size, num_heads, rows, blocksize):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or get_suitable_env() == False,
-    "core is not compiled with CUDA and cuda version need larger than 11.2 in windows"
-)
+    "core is not compiled with CUDA and cuda version need >= 11.2 in windows")
 class TestSparseAttentionOp(OpTest):
     def config(self):
         self.shape = (1, 1, 8, 8)
