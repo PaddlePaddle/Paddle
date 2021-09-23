@@ -14,9 +14,16 @@
 
 #pragma once
 
+#include <atomic>
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>
+#if defined(_M_X64) || defined(__x86_64__) || defined(_M_IX86) || \
+    defined(__i386__)
+#define __WQ_x86__
+#include <immintrin.h>
+#endif
+#include <thread>
 #include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
@@ -62,6 +69,39 @@ class CounterGuard {
 void* AlignedMalloc(size_t size, size_t alignment);
 
 void AlignedFree(void* memory_ptr);
+
+static inline void CpuRelax() {
+#if defined(__WQ_x86__)
+  _mm_pause();
+#endif
+}
+
+class SpinLock {
+ public:
+  void lock() {
+    for (;;) {
+      if (!lock_.exchange(true, std::memory_order_acquire)) {
+        break;
+      }
+      constexpr int kMaxLoop = 32;
+      for (int loop = 1; lock_.load(std::memory_order_relaxed);) {
+        if (loop <= kMaxLoop) {
+          for (int i = 1; i <= loop; ++i) {
+            CpuRelax();
+          }
+          loop *= 2;
+        } else {
+          std::this_thread::yield();
+        }
+      }
+    }
+  }
+
+  void unlock() { lock_.store(false, std::memory_order_release); }
+
+ private:
+  std::atomic<bool> lock_{false};
+};
 
 }  // namespace framework
 }  // namespace paddle

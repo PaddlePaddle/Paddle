@@ -166,7 +166,7 @@ std::unique_ptr<WorkQueue> CreateMultiThreadedWorkQueue(
                                         "WorkQueueOptions.num_threads must be "
                                         "greater than 1."));
   std::unique_ptr<WorkQueue> ptr(new WorkQueueImpl(options));
-  return ptr;
+  return std::move(ptr);
 }
 
 std::unique_ptr<WorkQueueGroup> CreateWorkQueueGroup(
@@ -176,7 +176,7 @@ std::unique_ptr<WorkQueueGroup> CreateWorkQueueGroup(
                         "For a WorkQueueGroup, the number of WorkQueueOptions "
                         "must be greater than 1."));
   std::unique_ptr<WorkQueueGroup> ptr(new WorkQueueGroupImpl(queues_options));
-  return ptr;
+  return std::move(ptr);
 }
 
 }  // namespace framework

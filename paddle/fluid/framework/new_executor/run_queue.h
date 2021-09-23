@@ -37,6 +37,7 @@
 #include <cstdint>
 #include <mutex>
 #include <vector>
+#include "paddle/fluid/framework/new_executor/workqueue_utils.h"
 
 namespace paddle {
 namespace framework {
@@ -101,7 +102,7 @@ class RunQueue {
   // PushBack adds w at the end of the queue.
   // If queue is full returns w, otherwise returns default-constructed Work.
   Work PushBack(Work w) {
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::unique_lock<SpinLock> lock(mutex_);
     unsigned back = back_.load(std::memory_order_relaxed);
     Elem* e = &array_[(back - 1) & kMask];
     uint8_t s = e->state.load(std::memory_order_relaxed);
@@ -123,7 +124,7 @@ class RunQueue {
       return Work();
     }
 
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::unique_lock<SpinLock> lock(mutex_);
     unsigned back = back_.load(std::memory_order_relaxed);
     Elem* e = &array_[back & kMask];
     uint8_t s = e->state.load(std::memory_order_relaxed);
@@ -145,7 +146,7 @@ class RunQueue {
       return 0;
     }
 
-    std::unique_lock<std::mutex> lock(mutex_);
+    std::unique_lock<SpinLock> lock(mutex_);
     unsigned back = back_.load(std::memory_order_relaxed);
     unsigned size = Size();
     unsigned mid = back;
@@ -213,7 +214,7 @@ class RunQueue {
   // modification counters.
   alignas(64) std::atomic<unsigned> front_;
   alignas(64) std::atomic<unsigned> back_;
-  std::mutex mutex_;
+  SpinLock mutex_;
   Elem array_[kSize];
 
   // SizeOrNotEmpty returns current queue size; if NeedSizeEstimate is false,
