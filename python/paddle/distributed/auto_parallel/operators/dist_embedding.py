@@ -113,19 +113,22 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         op_dist_attr = ctx.get_cur_dist_attr()
 
         # check validation of inputs / outputs 
-        for input_name in src_op.desc.input_names():
-            assert input_name in kwargs, "input [{}] is not given".format(
-                input_name)
-            assert len(kwargs[input_name]) == len(
-                src_op.desc.input(input_name)
-            ), "number of tensor for input [{}] is not match".format(input_name)
-        for output_name in src_op.desc.output_names():
-            assert output_name in kwargs, "input [{}] is not given".format(
-                output_name)
-            assert len(kwargs[output_name]) == len(
-                src_op.desc.output(output_name)
-            ), "number of tensor for input [{}] is not match".format(
-                output_name)
+        assert 'Ids' in kwargs, "input [{}] is not given".format('Ids')
+        assert 'W' in kwargs, "input [{}] is not given".format('W')
+        assert 'Out' in kwargs, "output [{}] is not given".format('Out')
+
+        assert len(
+            kwargs['Ids']
+        ) == 1, "row_parallel_embedding input Ids take 1 variable but got {}".format(
+            kwargs['Ids'])
+        assert len(
+            kwargs['W']
+        ) == 1, "row_parallel_embedding input W take 1 variable but got {}".format(
+            kwargs['W'])
+        assert len(
+            kwargs['Out']
+        ) == 1, "row_parallel_embedding output Out take 1 variable but got {}".format(
+            kwargs['Out'])
 
         Ids_var = dst_block.var(kwargs['Ids'][0])
         Weight_var = dst_block.var(kwargs['W'][0])
@@ -203,6 +206,73 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                                           op_dist_attr)
         copy_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
                                           op_dist_attr)
+
+    @staticmethod
+    def backward(ctx, *args, **kwargs):
+
+        # by now the backward function only insert the gradient allreduce for dist op itself
+
+        dst_block = ctx.get_dst_main_program().global_block()
+        backward_op = ctx.get_cur_src_op()
+        dist_attr = ctx.get_cur_dist_attr()
+        rank_id = ctx.get_rank_id()
+
+        # check if need gradient allreduce
+        need_gradient_allreduce = False
+
+        assert 'Ids' in kwargs, "input [{}] is not given".format('Ids')
+        assert 'W' in kwargs, "input [{}] is not given".format('W')
+        assert 'Out@GRAD' in kwargs, "input [{}] is not given".format('Out')
+        assert 'W@GRAD' in kwargs, "output [{}] is not given".format('W@GRAD')
+
+        assert len(
+            kwargs['Ids']
+        ) == 1, "row_parallel_embedding input Ids take 1 variable but got {}".format(
+            kwargs['Ids'])
+        assert len(
+            kwargs['W']
+        ) == 1, "row_parallel_embedding input Ids take 1 variable but got {}".format(
+            kwargs['W'])
+        assert len(
+            kwargs['Out@GRAD']
+        ) == 1, "row_parallel_embedding input Ids take 1 variable but got {}".format(
+            kwargs['Out'])
+        assert len(
+            kwargs['W@GRAD']
+        ) == 1, "row_parallel_embedding output Ids take 1 variable but got {}".format(
+            kwargs['Out'])
+
+        Ids_var = dst_block.var(kwargs['Ids'][0])
+        process_mesh = dist_attr.get_process_mesh()
+        var_dim_mapping = dist_attr.get_input_dims_mapping(Ids_var.name)
+        mesh_shape = process_mesh.topology
+        batch_size_axis = var_dim_mapping[0]
+        if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
+            need_gradient_allreduce = True
+            group_ranks = _get_comm_group(process_mesh.process_group,
+                                          process_mesh.topology,
+                                          batch_size_axis, rank_id)
+            dp_degree = len(group_ranks)
+            dp_group = new_process_group(group_ranks)
+
+        if need_gradient_allreduce:
+            W_Grad_var = dst_block.vars(kwargs['W@GRAD'][0])
+            dst_block.append_op(
+                type='c_allreduce_sum',
+                inputs={'X': [W_Grad_var]},
+                outputs={'Out': [W_Grad_var]},
+                attrs={
+                    'ring_id': dp_group.id,
+                    'use_calc_stream': True,
+                    OP_ROLE_KEY: OpRole.Backward
+                })
+            dst_block.append_op(
+                type='scale',
+                inputs={'X': W_Grad_var},
+                outputs={'Out': W_Grad_var},
+                attrs={'scale': 1.0 / dp_degree,
+                       OP_ROLE_KEY: OpRole.Backward})
+            dst_block._sync_with_cpp()
 
 
 register_distributed_operator_impl("lookup_table_v2",
