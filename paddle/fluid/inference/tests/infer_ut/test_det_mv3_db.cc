@@ -46,6 +46,9 @@ void PrepareDynamicShape(paddle_infer::Config* config, int max_batch_size = 4) {
       {"nearest_interp_v2_4.tmp_0", {1, 64, 20, 20}},
       {"nearest_interp_v2_5.tmp_0", {1, 64, 20, 20}},
       {"elementwise_add_7", {1, 56, 2, 2}},
+      {"batch_norm_33.tmp_3", {1, 56, 2, 2}},
+      {"hardswish_12.tmp_0", {1, 336, 2, 2}},
+      {"pool2d_4.tmp_0", {1, 336, 1, 1}},
       {"nearest_interp_v2_0.tmp_0", {1, 256, 2, 2}}};
   std::map<std::string, std::vector<int>> max_input_shape = {
       {"x", {max_batch_size, 3, 2000, 2000}},
@@ -59,6 +62,9 @@ void PrepareDynamicShape(paddle_infer::Config* config, int max_batch_size = 4) {
       {"nearest_interp_v2_4.tmp_0", {max_batch_size, 64, 400, 400}},
       {"nearest_interp_v2_5.tmp_0", {max_batch_size, 64, 400, 400}},
       {"elementwise_add_7", {max_batch_size, 56, 400, 400}},
+      {"batch_norm_33.tmp_3", {max_batch_size, 56, 2, 2}},
+      {"hardswish_12.tmp_0", {max_batch_size, 336, 400, 400}},
+      {"pool2d_4.tmp_0", {max_batch_size, 336, 1, 1}},
       {"nearest_interp_v2_0.tmp_0", {max_batch_size, 256, 400, 400}}};
   std::map<std::string, std::vector<int>> opt_input_shape = {
       {"x", {1, 3, 640, 640}},
@@ -72,6 +78,9 @@ void PrepareDynamicShape(paddle_infer::Config* config, int max_batch_size = 4) {
       {"nearest_interp_v2_4.tmp_0", {1, 64, 160, 160}},
       {"nearest_interp_v2_5.tmp_0", {1, 64, 160, 160}},
       {"elementwise_add_7", {1, 56, 40, 40}},
+      {"batch_norm_33.tmp_3", {1, 56, 40, 40}},
+      {"hardswish_12.tmp_0", {1, 336, 40, 40}},
+      {"pool2d_4.tmp_0", {1, 336, 1, 1}},
       {"nearest_interp_v2_0.tmp_0", {1, 256, 40, 40}}};
   config->SetTRTDynamicShapeInfo(min_input_shape, max_input_shape,
                                  opt_input_shape);
