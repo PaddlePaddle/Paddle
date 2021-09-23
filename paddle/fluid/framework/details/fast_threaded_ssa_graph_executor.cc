@@ -184,8 +184,8 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
       if (cuda_graph_exec_) {
         PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphExecDestroy(cuda_graph_exec_));
         cuda_graph_exec_ = nullptr;
+        LOG(INFO) << "CUDA graph destroyed";
       }
-      LOG(INFO) << "CUDA graph destroyed";
     }
     stream_ = nullptr;
   } else {
