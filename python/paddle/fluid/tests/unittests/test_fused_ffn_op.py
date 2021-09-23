@@ -11,20 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import copy
-import collections
 import numpy as np
 
-from paddle.framework import ParamAttr
 import paddle
 import paddle.fluid as fluid
-import paddle.nn as nn
 import paddle.fluid.core as core
 from paddle.nn.layer import transformer
 import paddle.nn.functional as F
 from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.common import Linear, Dropout
-
 import unittest
 
 
@@ -42,8 +37,8 @@ class TestFusedFFNOp(unittest.TestCase):
         self.dim_feedforward = np.random.randint(32, 4096)
 
     def getDiff(self):
-        self.rtol = 1e-4
-        self.atol = 1e-5
+        self.rtol = 1e-3
+        self.atol = 1e-4
 
     def getActivation(self):
         self.act_method = "gelu"
@@ -149,8 +144,8 @@ class TestFusedFFNOpFp16(TestFusedFFNOp):
         self.layer_norm_dtype = "float32"
 
     def getDiff(self):
-        self.rtol = 1e-2
-        self.atol = 1e-3
+        self.rtol = 1e-1
+        self.atol = 1e-2
 
     def getShape(self):
         self.batch_size = 1

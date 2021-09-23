@@ -23,16 +23,6 @@ from paddle import _C_ops
 __all__ = []
 
 
-def _verify_dropout_param(p, mode):
-    if not isinstance(p, (float, int)):
-        raise TypeError("p argument should be a number")
-    if p < 0 or p > 1:
-        raise ValueError("p argument should between 0 and 1")
-    if mode not in ('downscale_in_infer', 'upscale_in_train'):
-        raise ValueError(
-            "mode argument should be 'downscale_in_infer' or 'upscale_in_train'")
-
-
 def fused_ffn(x,
               linear1_weight,
               linear2_weight,
@@ -51,9 +41,6 @@ def fused_ffn(x,
               dropout_implementation2='upscale_in_train',
               normalize_pre_or_post=False,
               name=None):
-    _verify_dropout_param(dropout_prob1, dropout_implementation1)
-    _verify_dropout_param(dropout_prob2, dropout_implementation2)
-
     if in_dygraph_mode():
         out, _, _, _, _, _, _, _, _, _, _ = _C_ops.fused_ffn(
             x, None, None, linear1_weight, linear1_bias, linear2_weight,
