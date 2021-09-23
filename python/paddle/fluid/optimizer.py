@@ -1305,6 +1305,7 @@ class SGDOptimizer(Optimizer):
             grad_clip=grad_clip,
             name=name)
         self.type = "sgd"
+        self._use_mkldnn = False
 
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):
@@ -1323,6 +1324,7 @@ class SGDOptimizer(Optimizer):
                 "Grad": param_and_grad[1],
                 "LearningRate": lr
             },
+            attrs={"use_mkldnn": self._use_mkldnn},
             outputs={"ParamOut": param_and_grad[0]},
             stop_gradient=True)
 
@@ -4381,6 +4383,18 @@ class PipelineOptimizer(object):
                         name=var,
                         type=core.VarDesc.VarType.READER,
                         persistable=source_var.persistable)
+                elif isinstance(source_var, Parameter):
+                    dest_var = block.create_parameter(
+                        name=source_var.name,
+                        shape=source_var.shape,
+                        dtype=source_var.dtype,
+                        type=source_var.type,
+                        lod_level=source_var.lod_level,
+                        stop_gradient=source_var.stop_gradient,
+                        trainable=source_var.trainable,
+                        optimize_attr=source_var.optimize_attr,
+                        regularizer=source_var.regularizer,
+                        error_clip=source_var.error_clip)
                 else:
                     dest_var = block._clone_variable(source_var, False)
                 self._clone_var_attr(dest_var, source_var)

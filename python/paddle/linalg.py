@@ -23,6 +23,8 @@ from .tensor.linalg import matrix_rank
 from .tensor.linalg import svd
 from .tensor.linalg import qr
 from .tensor.linalg import eigh  # noqa: F401
+from .tensor.linalg import det
+from .tensor.linalg import slogdet
 from .tensor.linalg import pinv
 
 __all__ = [
@@ -36,6 +38,8 @@ __all__ = [
     'svd',
     'qr',
     'matrix_power',
+    'det',
+    'slogdet',
     'eigh',
     'pinv'
 ]

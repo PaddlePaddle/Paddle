@@ -1380,10 +1380,18 @@ class ShardingOptimizer(MetaOptimizerBase):
             return
 
         startup_block = self._startup_program.global_block()
+        params = startup_block.all_parameters()
 
-        params = []
-        for param in startup_block.iter_parameters():
-            params.append(param)
+        broadcast_params = []
+        for param in params:
+            broadcast_params.append(param)
+            # optimize_cast need broadcast fp16 param
+            fp16_param_name = param.name + '.cast_fp16'
+            if startup_block.has_var(fp16_param_name):
+                fp16_param = startup_block.var(fp16_param_name)
+                broadcast_params.append(fp16_param)
+
+        for param in broadcast_params:
             startup_block.append_op(
                 type='c_broadcast',
                 inputs={'X': param},
@@ -1395,8 +1403,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                 })
         startup_block.append_op(
             type='c_sync_comm_stream',
-            inputs={'X': params},
-            outputs={'Out': params},
+            inputs={'X': broadcast_params},
+            outputs={'Out': broadcast_params},
             attrs={'ring_id': self.dp_ring_id,
                    OP_ROLE_KEY: OpRole.Forward})
 
