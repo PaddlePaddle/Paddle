@@ -139,8 +139,12 @@ class HybridParallelOptimizer:
             logger.warning("using ClipGradByGlobalNorm in TensorParallel, the origin " \
                   "optmizer'grad clip will be changed.")
 
-            self._inner_opt._grad_clip = HybridParallelClipGrad(
-                self._inner_opt._grad_clip, hcg)
+            if self._sharding_enable:
+                self._inner_opt._inner_optimizer_class._grad_clip = HybridParallelClipGrad(
+                    self._inner_opt._grad_clip, hcg)
+            else:
+                self._inner_opt._grad_clip = HybridParallelClipGrad(
+                    self._inner_opt._grad_clip, hcg)
 
     @imperative_base.no_grad
     @framework.dygraph_only
