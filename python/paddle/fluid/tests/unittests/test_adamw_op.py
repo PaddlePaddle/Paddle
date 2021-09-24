@@ -16,6 +16,7 @@ import unittest
 import paddle
 import numpy as np
 import paddle.fluid as fluid
+from functools import partial
 
 
 class TestAdamWOp(unittest.TestCase):
@@ -146,6 +147,92 @@ class TestAdamWOpGroupWithLR(TestAdamWOp):
             out.backward()
             adam.step()
             adam.clear_gradients()
+
+
+def simple_lr_setting(param, decay_rate, n_layers):
+    if "fc_0" in param.name or "linear_1" in param.name:
+        depth = int(param.name.split("_")[2]) + 1
+    elif "fc_1" in param.name or "linear_2" in param.name:
+        depth = int(param.name.split("_")[2]) + 2
+    else:
+        depth = 0
+
+    return decay_rate**(n_layers + 2 - depth)
+
+
+class TestAdamWOpLayerwiseLR(TestAdamWOp):
+    def test_adamw_op_dygraph(self):
+        paddle.disable_static()
+        value = np.arange(26).reshape(2, 13).astype("float32")
+        a = paddle.to_tensor(value)
+        linear1 = paddle.nn.Linear(13, 8)
+        linear2 = paddle.nn.Linear(8, 5)
+
+        simple_lr_fun = partial(simple_lr_setting, decay_rate=0.8, n_layers=2)
+
+        adam = paddle.optimizer.AdamW(
+            learning_rate=0.01,
+            parameters=[{
+                'params': linear1.parameters()
+            }, {
+                'params': linear2.parameters(),
+            }],
+            apply_decay_param_fun=lambda name: True,
+            weight_decay=0.01,
+            lr_ratio=simple_lr_fun)
+
+        for _ in range(2):
+            a1 = linear1(a)
+            out = linear2(a1)
+            out.backward()
+            adam.step()
+            adam.clear_gradients()
+
+    def test_adamw_op(self):
+        paddle.enable_static()
+        place = fluid.CUDAPlace(0) if fluid.is_compiled_with_cuda() \
+            else fluid.CPUPlace()
+        train_prog = fluid.Program()
+        startup = fluid.Program()
+        with fluid.program_guard(train_prog, startup):
+            with fluid.unique_name.guard():
+                x = fluid.data(name='x', shape=[None, 10], dtype='float32')
+                y = fluid.data(name='y', shape=[None, 1], dtype='float32')
+
+                fc1 = fluid.layers.fc(input=x, size=32, act=None)
+                prediction = fluid.layers.fc(input=fc1, size=1, act=None)
+                cost = fluid.layers.square_error_cost(input=prediction, label=y)
+                avg_cost = fluid.layers.mean(cost)
+
+                simple_lr_fun = partial(
+                    simple_lr_setting, decay_rate=0.8, n_layers=2)
+
+                beta1 = fluid.layers.create_global_var(
+                    shape=[1], value=0.85, dtype='float32', persistable=True)
+                beta2 = fluid.layers.create_global_var(
+                    shape=[1], value=0.95, dtype='float32', persistable=True)
+                betas = [beta1, beta2]
+                opt = paddle.optimizer.AdamW(
+                    learning_rate=1e-5,
+                    beta1=beta1,
+                    beta2=beta2,
+                    weight_decay=0.01,
+                    epsilon=1e-8,
+                    lr_ratio=simple_lr_fun)
+                opt.minimize(avg_cost)
+
+        exe = fluid.Executor(place)
+        exe.run(startup)
+        for _ in range(2):
+            inputs = np.random.random(size=[8, 10]).astype('float32')
+            outputs = np.random.random(size=[8, 1]).astype('float32')
+            rets = exe.run(train_prog,
+                           feed={"x": inputs,
+                                 "y": outputs},
+                           fetch_list=[avg_cost])
+            assert rets[0] is not None
+
+        paddle.disable_static()
 
 
 if __name__ == "__main__":

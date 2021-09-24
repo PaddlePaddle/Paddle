@@ -79,11 +79,10 @@ def compute_compatible_process_mesh(process_mesh_list):
         return compatible_process_mesh
     for process_mesh in process_mesh_list:
         if process_mesh is not None:
-            if compatible_process_mesh is None:
+            if compatible_process_mesh is None or compatible_process_mesh == process_mesh:
                 compatible_process_mesh = process_mesh
             else:
-                assert process_mesh == compatible_process_mesh, \
-                    "There is no compatible process mesh."
+                return None
     return compatible_process_mesh
 
 

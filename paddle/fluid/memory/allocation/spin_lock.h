@@ -21,6 +21,8 @@
 #include <windows.h>
 #endif  // !_WIN32
 
+#include "paddle/fluid/platform/macros.h"
+
 namespace paddle {
 namespace memory {
 
