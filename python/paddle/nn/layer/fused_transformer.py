@@ -17,7 +17,7 @@ from .. import functional as F
 from paddle.nn import Layer
 from ...framework import ParamAttr
 import paddle
-from ...fluid.data_feeder import convert_dtype
+from paddle.nn.layer.transformer import _convert_attention_mask
 from ..initializer import Constant
 
 import collections
@@ -65,33 +65,6 @@ def _convert_param_attr_to_list(param_attr, n):
                 attr_i.name = attr_i.name + "_" + str(i)
             param_attrs.append(attr_i)
     return param_attrs
-
-
-def _convert_attention_mask(attn_mask, dtype):
-    """
-    Convert the attention mask to the target dtype we expect.
-    Parameters:
-        attn_mask (Tensor, optional): A tensor used in multi-head attention
-                to prevents attention to some unwanted positions, usually the
-                paddings or the subsequent positions. It is a tensor with shape
-                broadcasted to `[batch_size, n_head, sequence_length, sequence_length]`.
-                When the data type is bool, the unwanted positions have `False`
-                values and the others have `True` values. When the data type is
-                int, the unwanted positions have 0 values and the others have 1
-                values. When the data type is float, the unwanted positions have
-                `-INF` values and the others have 0 values. It can be None when
-                nothing wanted or needed to be prevented attention to. Default None.
-        dtype (VarType): The target type of `attn_mask` we expect.
-    Returns:
-        Tensor: A Tensor with shape same as input `attn_mask`, with data type `dtype`.
-    """
-    if attn_mask is not None and attn_mask.dtype != dtype:
-        attn_mask_dtype = convert_dtype(attn_mask.dtype)
-        if attn_mask_dtype == 'bool' or 'int' in attn_mask_dtype:
-            attn_mask = (paddle.cast(attn_mask, dtype) - 1.0) * 1e9
-        else:
-            attn_mask = paddle.cast(attn_mask, dtype)
-    return attn_mask
 
 
 class FusedMultiHeadAttention(Layer):
