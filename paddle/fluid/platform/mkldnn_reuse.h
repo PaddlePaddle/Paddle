@@ -26,8 +26,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #include "paddle/fluid/platform/place.h"
 
-#include "paddle/top/api/dev/core.h"
-
 namespace paddle {
 namespace platform {
 
@@ -302,24 +300,10 @@ class MKLDNNHandlerT {
         fwd_pd_->src_desc(), to_void_cast<T>(input_data), "@src_mem_p");
   }
 
-  std::shared_ptr<mkldnn::memory> AcquireSrcMemory(
-      const pt::DenseTensor* input) {
-    const T* input_data = const_cast<T*>(input->data<T>());
-    return this->AcquireMemoryFromPrimitive(
-        fwd_pd_->src_desc(), to_void_cast<T>(input_data), "@src_mem_p");
-  }
-
   template <typename T_out = T>
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(framework::Tensor* output) {
     T_out* ptr =
         output->mutable_data<T_out>(place_, fwd_pd_->dst_desc().get_size());
-    return this->AcquireMemoryFromPrimitive(fwd_pd_->dst_desc(), ptr,
-                                            "@dst_mem_p");
-  }
-
-  template <typename T_out = T>
-  std::shared_ptr<mkldnn::memory> AcquireDstMemory(pt::DenseTensor* output) {
-    T_out* ptr = output->mutable_data<T_out>();
     return this->AcquireMemoryFromPrimitive(fwd_pd_->dst_desc(), ptr,
                                             "@dst_mem_p");
   }

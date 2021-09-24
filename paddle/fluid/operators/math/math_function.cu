@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function_impl.h"
 #include "paddle/fluid/platform/bfloat16.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/top/api/all.h"
+#include "paddle/tcmpt/api/all.h"
 
 namespace paddle {
 namespace operators {

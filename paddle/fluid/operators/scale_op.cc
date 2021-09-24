@@ -171,25 +171,3 @@ REGISTER_OP_CUDA_KERNEL(
                                    int64_t>,
     paddle::operators::ScaleKernel<paddle::platform::CUDADeviceContext,
                                    paddle::platform::float16>);
-
-#ifdef PADDLE_WITH_XPU
-REGISTER_OP_XPU_KERNEL(
-    scale,
-    paddle::operators::ScaleKernel<paddle::platform::XPUDeviceContext, float>);
-#endif
-
-#ifdef PADDLE_WITH_ASCEND_CL
-REGISTER_OP_NPU_KERNEL(
-    scale,
-    paddle::operators::ScaleKernel<paddle::platform::NPUDeviceContext, float>,
-    paddle::operators::ScaleKernel<paddle::platform::NPUDeviceContext,
-                                   paddle::platform::float16>);
-#endif
-
-#ifdef PADDLE_WITH_MKLDNN
-REGISTER_OP_KERNEL(
-    scale, MKLDNN, paddle::platform::CPUPlace,
-    ops::ScaleKernel<paddle::platform::MKLDNNDeviceContext, float>,
-    ops::ScaleKernel<paddle::platform::MKLDNNDeviceContext,
-                     paddle::platform::bfloat16>);
-#endif

@@ -25,8 +25,8 @@
 
 #include "paddle/fluid/eager/api/api.h"
 
-#include "paddle/top/core/dense_tensor.h"
-#include "paddle/top/core/tensor_meta.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/core/tensor_meta.h"
 
 #include "paddle/fluid/eager/tests/test_utils.h"
 

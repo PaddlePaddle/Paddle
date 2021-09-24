@@ -14,10 +14,13 @@
 
 #pragma once
 
-#include "paddle/top/api/include/tensor.h"
 #include "paddle/fluid/imperative/layer.h"
-std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(const pt::Tensor& tensor);
-std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(const std::vector<pt::Tensor>& tensors);
-std::vector<pt::Tensor> VarBasesToTensors(const std::shared_ptr<paddle::imperative::VarBase>& var_base);
-std::vector<pt::Tensor> VarBasesToTensors(const std::vector<std::shared_ptr<paddle::imperative::VarBase>>& var_bases);
-
+#include "paddle/tcmpt/api/include/tensor.h"
+std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(
+    const pt::Tensor& tensor);
+std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(
+    const std::vector<pt::Tensor>& tensors);
+std::vector<pt::Tensor> VarBasesToTensors(
+    const std::shared_ptr<paddle::imperative::VarBase>& var_base);
+std::vector<pt::Tensor> VarBasesToTensors(
+    const std::vector<std::shared_ptr<paddle::imperative::VarBase>>& var_bases);

@@ -16,7 +16,6 @@
 
 #include "Eigen/Core"
 #include "paddle/fluid/memory/memory.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cusolver.h"
@@ -25,10 +24,6 @@
 namespace paddle {
 namespace operators {
 namespace math {
-
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
@@ -67,7 +62,7 @@ inline void ComputeFloatEigenvaluesAndVectors(ValueType *x_data,
 
     eigenvalues = eigen_solver.eigenvalues().transpose();
     if (has_vectors) {
-      eigenvectors = eigen_solver.eigenvectors().transpose();
+      eigenvectors = eigen_solver.eigenvectors();
     }
   }
 }
@@ -103,7 +98,7 @@ inline void ComputeComplexEigenvaluesAndVectors(T *x_data,
 
     eigenvalues = eigen_solver.eigenvalues().transpose();
     if (has_vectors) {
-      eigenvectors = eigen_solver.eigenvectors().transpose();
+      eigenvectors = eigen_solver.eigenvectors();
     }
   }
 }
@@ -117,11 +112,18 @@ inline int64_t GetBatchSize(framework::DDim dims) {
   return batch_size;
 }
 
+template <typename DeviceContext, typename ValueType, typename T>
+struct MatrixEighFunctor {
+  void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
+                  Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
+                  bool has_vectors);
+};
+
 // Calculates the eigenvalues ​​and eigenvectors of Hermitian or real
 // symmetric matrices, and uses the variable has_vectors to
 // control whether to return the eigenvectors.
-template <typename DeviceContext, typename ValueType, typename T>
-struct MatrixEighFunctorCPU {
+template <typename ValueType, typename T>
+struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
  public:
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
@@ -134,7 +136,8 @@ struct MatrixEighFunctorCPU {
     for (int64_t i = 0; i < dim_size - 2; i++) {
       batch_size *= dims[i];
     }
-    auto dito = DeviceIndependenceTensorOperations<DeviceContext, T>(ctx);
+    auto dito =
+        DeviceIndependenceTensorOperations<platform::CPUDeviceContext, T>(ctx);
     Tensor input_tensor;
     TensorCopy(input, ctx.GetPlace(), &input_tensor);
     if (!is_lower) {
@@ -157,9 +160,6 @@ struct MatrixEighFunctorCPU {
       ComputeFloatEigenvaluesAndVectors<ValueType>(
           x_data, value_data, vector_data, batch_size, rows, rows, has_vectors);
     }
-    if (has_vectors) {
-      *eigen_vectors = dito.Transpose(*eigen_vectors);
-    }
   }
 };
 
@@ -169,7 +169,7 @@ struct MatrixEighFunctorCPU {
 // symmetric matrices on GPU, and uses the variable has_vectors
 // to control whether to return the eigenvectors.
 template <typename ValueType, typename T>
-struct MatrixEighFunctor {
+struct MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T> {
  public:
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
@@ -278,7 +278,8 @@ struct MatrixEighFunctor {
 
 #define EVDBUFFER_INSTANCE(ValueType, T, C, CastType)                          \
   template <>                                                                  \
-  inline void MatrixEighFunctor<ValueType, T>::EvdBuffer(                      \
+  inline void                                                                  \
+  MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T>::EvdBuffer(     \
       cusolverDnHandle_t handle, cusolverEigMode_t jobz,                       \
       cublasFillMode_t uplo, int n, const T *A, int lda, const ValueType *W,   \
       int *lwork) const {                                                      \
@@ -292,7 +293,8 @@ FUNC_WITH_TYPES(EVDBUFFER_INSTANCE);
 
 #define EVD_INSTANCE(ValueType, T, C, CastType)                           \
   template <>                                                             \
-  inline void MatrixEighFunctor<ValueType, T>::Evd(                       \
+  inline void                                                             \
+  MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T>::Evd(      \
       cusolverDnHandle_t handle, cusolverEigMode_t jobz,                  \
       cublasFillMode_t uplo, int n, T *A, int lda, ValueType *W, T *work, \
       int lwork, int *devInfo) const {                                    \

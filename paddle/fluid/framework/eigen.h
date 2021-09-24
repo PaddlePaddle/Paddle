@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor.h"
 #include "unsupported/Eigen/CXX11/Tensor"
 
-#include "paddle/top/core/dense_tensor.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
 
 namespace paddle {
 namespace framework {

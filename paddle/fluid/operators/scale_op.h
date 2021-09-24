@@ -15,11 +15,11 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/framework/top_utils.h"
+#include "paddle/fluid/framework/tcmpt_utils.h"
 
 // only can include the headers in paddle/top/api dirs
-#include "paddle/top/api/dev/core.h"
-#include "paddle/top/api/dev/math.h"
+#include "paddle/tcmpt/api/include/dev/core.h"
+#include "paddle/tcmpt/api/include/dev/math.h"
 
 namespace paddle {
 namespace operators {
@@ -62,6 +62,7 @@ class ScaleKernel : public framework::OpKernel<T> {
 
     auto* out =
         framework::GetMutableLoDTensorOrSelectedRowsValueFromVar(out_var);
+    out->mutable_data<T>(in->place(), in->type());
     auto& dev_ctx = ctx.device_context<DeviceContext>();
 
     auto pt_x = framework::MakeTensorImpl<pt::DenseTensor>(*in, in->place(),
@@ -72,9 +73,6 @@ class ScaleKernel : public framework::OpKernel<T> {
     // call new kernel
     pt::Scale<T>(dev_ctx, *pt_x.get(), scale, bias, bias_after_scale,
                  pt_out.get());
-
-    // share pt_out data to out
-    framework::ShareTensorImpl(pt_out.get(), out);
   }
 };
 

@@ -25,8 +25,8 @@
 
 #include "paddle/fluid/eager/api/api.h"
 
-#include "paddle/top/core/dense_tensor.h"
-#include "paddle/top/core/tensor_meta.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/core/tensor_meta.h"
 
 #include "paddle/fluid/eager/tests/test_utils.h"
 
@@ -36,9 +36,10 @@ using namespace egr;  // NOLINT
 pt::Tensor hook_function(const pt::Tensor& t) {
   auto t_dense = std::dynamic_pointer_cast<pt::DenseTensor>(t.impl());
 
-  auto ret_meta = std::make_unique<pt::TensorMeta>(
-      t_dense->dims(), t_dense->backend(), t_dense->type(), t_dense->layout());
-  auto ret_dense = std::make_shared<pt::DenseTensor>(std::move(ret_meta));
+  auto ret_meta = pt::TensorMeta(t_dense->dims(), t_dense->backend(),
+                                 t_dense->type(), t_dense->layout());
+  auto ret_dense = std::make_shared<pt::DenseTensor>(std::move(ret_meta),
+                                                     pt::TensorStatus());
 
   float* t_ptr = t_dense->mutable_data<float>();
   float* ret_ptr = ret_dense->mutable_data<float>();
@@ -100,7 +101,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(scale_node_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
-    target_tensor.SetAutoGradMeta(
+    target_tensor.set_autograd_meta(
         std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
 
     RegisterGradientHookForTensor(target_tensor, hook);
@@ -125,7 +126,7 @@ TEST(RetainGrad, HookBeforeRetainGrad) {
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
-    leaf_tensor.SetAutoGradMeta(
+    leaf_tensor.set_autograd_meta(
         std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
 
     RegisterGradientHookForTensor(leaf_tensor, hook);
@@ -191,7 +192,7 @@ TEST(RetainGrad, HookAfterRetainGrad) {
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(scale_node_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
-    target_tensor.SetAutoGradMeta(
+    target_tensor.set_autograd_meta(
         std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
 
     RetainGradForTensor(target_tensor);  // result: 1.0
@@ -216,7 +217,7 @@ TEST(RetainGrad, HookAfterRetainGrad) {
     auto_grad_meta->SetGradNode(
         std::dynamic_pointer_cast<GradNodeBase>(acc_node_ptr));
     auto_grad_meta->SetSingleOutRankWithSlot(0, 0);
-    leaf_tensor.SetAutoGradMeta(
+    leaf_tensor.set_autograd_meta(
         std::dynamic_pointer_cast<pt::AbstractAutogradMeta>(auto_grad_meta));
 
     RetainGradForTensor(leaf_tensor);  // RetainGrad for leaf tensor gets

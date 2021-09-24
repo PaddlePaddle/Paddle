@@ -15,7 +15,7 @@
 #include "paddle/fluid/eager/nodes/scale_node.h"
 #include "paddle/fluid/eager/function_api.h"
 
-#include "paddle/top/api/all.h"
+#include "paddle/tcmpt/api/all.h"
 
 #include "paddle/fluid/platform/device_context.h"
 

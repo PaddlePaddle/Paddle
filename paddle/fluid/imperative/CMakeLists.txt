@@ -1,4 +1,4 @@
-cc_library(imperative_flag SRCS flags.cc DEPS gflags)
+cc_library(imperative_flag SRCS flags.cc DEPS gflags flags)
 
 IF(WITH_XPU)
 cc_library(prepared_operator SRCS prepared_operator.cc DEPS xpu_op_list proto_desc operator device_context lod_tensor selected_rows var_type_traits op_kernel_type data_transform nan_inf_utils)

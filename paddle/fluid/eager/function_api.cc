@@ -14,8 +14,8 @@
 
 #include "paddle/fluid/eager/function_api.h"
 
-#include "paddle/top/api/all.h"
-#include "paddle/top/core/dense_tensor.h"
+#include "paddle/tcmpt/api/all.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
 
 #include "paddle/fluid/memory/memcpy.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -181,10 +181,11 @@ void ScaleAPI(const pt::Tensor& x, float scale, float bias,
   auto dense_tensor = std::dynamic_pointer_cast<pt::DenseTensor>(x.impl());
 
   // Init output tensor
-  auto tensor_meta = std::make_unique<pt::TensorMeta>(
-      dense_tensor->dims(), dense_tensor->backend(), dense_tensor->type(),
-      dense_tensor->layout());
-  auto dense_out = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
+  auto tensor_meta =
+      pt::TensorMeta(dense_tensor->dims(), dense_tensor->backend(),
+                     dense_tensor->type(), dense_tensor->layout());
+  auto dense_out = std::make_shared<pt::DenseTensor>(std::move(tensor_meta),
+                                                     pt::TensorStatus());
 
   // Handle Device Context
   const paddle::platform::Place& expected_kernel_place = GetExpectedPlace();
@@ -227,9 +228,9 @@ void FillConstAPI(double value, const pt::DDim& ddim,
   std::shared_ptr<pt::DenseTensor> tensor_dense = nullptr;
   if (!target->defined() || !target->initialized()) {
     VLOG(6) << "Init undefined or uninitialized tensor in FillConstAPI";
-    std::unique_ptr<pt::TensorMeta> tensor_meta =
-        std::make_unique<pt::TensorMeta>(ddim, backend, dtype, layout);
-    tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta));
+    auto tensor_meta = pt::TensorMeta(ddim, backend, dtype, layout);
+    tensor_dense = std::make_shared<pt::DenseTensor>(std::move(tensor_meta),
+                                                     pt::TensorStatus());
     target->SetImpl(tensor_dense);
 
   } else {
