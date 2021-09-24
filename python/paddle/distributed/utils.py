@@ -51,6 +51,7 @@ __all__ = [     #noqa
            'pull_worker_log',
            'global_scatter',
            'global_gather',
+           'expert_count',
 ]
 
 
@@ -809,3 +810,45 @@ def watch_local_trainers(procs, nranks):
         raise
 
     return alive
+
+
+def expert_count(gate_idx, n_expert):
+    """
+    calculate the expert count according to the gate index.
+
+    Args:
+        gate_idx (Tensor): Tensor. The input gate index whose data type should be int32 or int64.
+        n_expert (int): The number of the experts.
+
+    Returns:
+        out (Tensor): The output expert count.
+
+    Examples:
+        .. code-block:: python
+
+            # required: distributed
+            import paddle
+
+            gate_idx = [
+                [0, 2],
+                [0, 2]
+            ]
+            n_expert = 5
+            gate_idx = paddle.to_tensor(gate_idx, dtype="int32")
+            expert_count = paddle.distributed.utils.expert_count(gate_idx, n_expert)
+            print(expert_count) # the result: (2, 0, 3, 1)
+    """
+    if in_dygraph_mode():
+        return core.ops.expert_count(gate_idx, 'n_expert', n_expert)
+    else:
+        op_type = 'expert_count'
+
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(dtype=gate_idx.dtype)
+
+        helper.append_op(
+            type=op_type,
+            inputs={'gate_idx': gate_idx},
+            outputs={'Out': out},
+            attrs={'n_expert': n_expert})
+        return out
