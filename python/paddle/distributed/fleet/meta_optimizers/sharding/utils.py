@@ -702,6 +702,8 @@ def fuse_opt_broadcast_param_ops(block,
                     OP_ROLE_KEY: op_role
                 })
 
+    block._sync_with_cpp()
+
 
 def get_grad_device(grad_name, shard):
     assert "@GRAD" in grad_name, "[{}] should be a grad variable.".format(
