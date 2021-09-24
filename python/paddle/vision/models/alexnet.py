@@ -23,13 +23,14 @@ import math
 
 from paddle.utils.download import get_weights_path_from_url
 
-__all__ = []
-
 model_urls = {
     "AlexNet": (
         "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/AlexNet_pretrained.pdparams",
         "7f0f9f737132e02732d75a1459d98a43", )
 }
+
+__all__ = []
+
 
 class ConvPoolLayer(nn.Layer):
     def __init__(self,
@@ -147,13 +148,50 @@ class AlexNetDY(nn.Layer):
         x = self._fc8(x)
         return x
 
+def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
+    model = VGG(make_layers(cfgs[cfg], batch_norm=batch_norm), **kwargs)
 
-def AlexNet(pretrained=False, **kwargs):
-    model = AlexNetDY(**kwargs)
     if pretrained:
-        weight_path = get_weights_path_from_url(model_urls['AlexNet'][0],
-                                                model_urls['AlexNet'][1])
+        assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
+            arch)
+        weight_path = get_weights_path_from_url(model_urls[arch][0],
+                                                model_urls[arch][1])
+
         param = paddle.load(weight_path)
         model.load_dict(param)
 
     return model
+
+def _alexnet(arch, pretrained, **kwargs):
+    model = AlexNetDY(**kwargs)
+
+    if pretrained:
+        assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
+            arch)
+        weight_path = get_weights_path_from_url(model_urls[arch][0],
+                                                model_urls[arch][1])
+
+        param = paddle.load(weight_path)
+        model.load_dict(param)
+
+    return model
+
+
+def AlexNet(pretrained=False, **kwargs):
+    """AlexNet model
+
+    Args:
+        pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
+
+    Examples:
+        .. code-block:: python
+
+            from paddle.vision.models import AlexNet
+
+            # build model
+            model = AlexNet()
+
+            # build model and load imagenet pretrained weight
+            model = AlexNet(pretrained=True)
+    """
+    return _alexnet('AlexNet', pretrained, **kwargs)
