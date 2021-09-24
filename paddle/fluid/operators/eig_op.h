@@ -17,28 +17,20 @@
 #include <math.h>
 #include <algorithm>
 #include <complex>
-#ifdef PADDLE_WITH_MKLML
-#define MKL_Complex8 std::complex<float>
-#define MKL_Complex16 std::complex<double>
-#else
-#define lapack_complex_float std::complex<float>
-#define lapack_complex_double std::complex<double>
-#endif
 #define EPSILON 1e-6
 
-#include "Eigen/Core"
+//#include "Eigen/Core"
 #include "Eigen/Eigenvalues"
-#include "paddle/fluid/operators/svd_helper.h"  // must before lapack.h temorary
-#include "Eigen/src/misc/lapacke.h"  // LAPACK_dgeev
 #include "paddle/fluid/operators/math/complex_functors.h"
+#include "paddle/fluid/operators/math/lapack_function.h"
 #include "paddle/fluid/operators/math/math_function.h"
-#include "paddle/fluid/operators/transpose_op.h"  // TransCompute()
+#include "paddle/fluid/operators/svd_helper.h"
+#include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/for_range.h"
 
 namespace paddle {
 namespace operators {
 
-// complex_util
 template <typename T>
 struct TemplateInTemplate {
   using type = T;
@@ -49,7 +41,6 @@ struct TemplateInTemplate<platform::complex<T>> {
   using type = T;
 };
 
-// math complex_util
 template <typename T, typename Tin = T>
 constexpr Tin GetReal(T z) {
   return z;
@@ -95,59 +86,6 @@ std::vector<int> ExtendDims(const framework::DDim& in_dims, int batch_size) {
     }
   }
   return res;
-}
-
-template <class T, class Tin = T>
-void LapackEig(char jobvl, char jobvr, int n, T* a, int lda, T* w, T* vl,
-               int ldvl, T* vr, int ldvr, T* work, int lwork, Tin* rwork,
-               int* info);
-
-template <>
-void LapackEig<double>(char jobvl, char jobvr, int n, double* a, int lda,
-                       double* w, double* vl, int ldvl, double* vr, int ldvr,
-                       double* work, int lwork, double* rwork, int* info) {
-  double* wr = w;
-  double* wi = w + n;
-  (void)rwork;
-  dgeev_(&jobvl, &jobvr, &n, a, &lda, wr, wi, vl, &ldvl, vr, &ldvr, work,
-         &lwork, info);
-}
-
-template <>
-void LapackEig<float>(char jobvl, char jobvr, int n, float* a, int lda,
-                      float* w, float* vl, int ldvl, float* vr, int ldvr,
-                      float* work, int lwork, float* rwork, int* info) {
-  float* wr = w;
-  float* wi = w + n;
-  (void)rwork;
-  sgeev_(&jobvl, &jobvr, &n, a, &lda, wr, wi, vl, &ldvl, vr, &ldvr, work,
-         &lwork, info);
-}
-
-template <>
-void LapackEig<platform::complex<double>, double>(
-    char jobvl, char jobvr, int n, platform::complex<double>* a, int lda,
-    platform::complex<double>* w, platform::complex<double>* vl, int ldvl,
-    platform::complex<double>* vr, int ldvr, platform::complex<double>* work,
-    int lwork, double* rwork, int* info) {
-  zgeev_(&jobvl, &jobvr, &n, reinterpret_cast<std::complex<double>*>(a), &lda,
-         reinterpret_cast<std::complex<double>*>(w),
-         reinterpret_cast<std::complex<double>*>(vl), &ldvl,
-         reinterpret_cast<std::complex<double>*>(vr), &ldvr,
-         reinterpret_cast<std::complex<double>*>(work), &lwork, rwork, info);
-}
-
-template <>
-void LapackEig<platform::complex<float>, float>(
-    char jobvl, char jobvr, int n, platform::complex<float>* a, int lda,
-    platform::complex<float>* w, platform::complex<float>* vl, int ldvl,
-    platform::complex<float>* vr, int ldvr, platform::complex<float>* work,
-    int lwork, float* rwork, int* info) {
-  cgeev_(&jobvl, &jobvr, &n, reinterpret_cast<std::complex<float>*>(a), &lda,
-         reinterpret_cast<std::complex<float>*>(w),
-         reinterpret_cast<std::complex<float>*>(vl), &ldvl,
-         reinterpret_cast<std::complex<float>*>(vr), &ldvr,
-         reinterpret_cast<std::complex<float>*>(work), &lwork, rwork, info);
 }
 
 // Transpose two axis of a Tensor
@@ -200,11 +138,11 @@ void ApplyEig(Tensor& input, Tensor& values, Tensor& vectors, Tensor& infos,
   rwork.Resize(framework::make_ddim({lda * 2}));
   rwork_data = rwork.mutable_data<Tin>(context.GetPlace());
 
-  // call LapackEig once to compute the size of work;
+  // call lapackEig once to compute the size of work;
   T computed_work_size;
-  LapackEig<T, Tin>(jobvl, jobvr, order, input_data, lda, values_data,
-                    lvector_data, ldvl, rvector_data, ldvr, &computed_work_size,
-                    lwork, rwork_data, &info[0]);
+  math::lapackEig<T, Tin>(jobvl, jobvr, order, input_data, lda, values_data,
+                          lvector_data, ldvl, rvector_data, ldvr,
+                          &computed_work_size, lwork, rwork_data, &info[0]);
 
   lwork =
       std::max<int>(1, static_cast<int>(GetReal<T, Tin>(computed_work_size)));
@@ -217,9 +155,10 @@ void ApplyEig(Tensor& input, Tensor& values, Tensor& vectors, Tensor& infos,
     T* current_values = &values_data[i * values_stride];
     T* current_rvectors = &rvector_data[i * matrix_stride];
     int* current_info = &info[i];
-    LapackEig<T, Tin>(jobvl, jobvr, order, current_matrix, lda, current_values,
-                      lvector_data, ldvl, current_rvectors, ldvr, work_data,
-                      lwork, rwork_data, current_info);
+    math::lapackEig<T, Tin>(jobvl, jobvr, order, current_matrix, lda,
+                            current_values, lvector_data, ldvl,
+                            current_rvectors, ldvr, work_data, lwork,
+                            rwork_data, current_info);
     PADDLE_ENFORCE_EQ(
         *current_info, 0,
         platform::errors::PreconditionNotMet(
