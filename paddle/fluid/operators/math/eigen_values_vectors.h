@@ -34,6 +34,19 @@ inline int64_t GetBatchSize(framework::DDim dims) {
   return batch_size;
 }
 
+static void CheckEighResult(const int batch, const int info) {
+  PADDLE_ENFORCE_LE(
+      info, 0,
+      platform::errors::PreconditionNotMet(
+          "For batch [%d]: the [%d] off-diagonal elements of an intermediate"
+          "tridiagonal form did not converge to zero",
+          batch, info));
+  PADDLE_ENFORCE_GE(
+      info, 0, platform::errors::PreconditionNotMet(
+                   "For batch [%d]: the [%d] argument had an illegal value",
+                   batch, info));
+}
+
 template <typename DeviceContext, typename ValueType, typename T>
 struct MatrixEighFunctor {
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
@@ -55,7 +68,11 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
     auto dito =
         math::DeviceIndependenceTensorOperations<platform::CPUDeviceContext, T>(
             ctx);
-    *eigen_vectors = dito.Transpose(input);
+    if (has_vectors) {
+      // lapack is a column-first storage, transpose make the eigen_vectors to
+      // have a continuous memory layout
+      *eigen_vectors = dito.Transpose(input);
+    }
     auto *out_vector = eigen_vectors->mutable_data<T>(ctx.GetPlace());
 
     auto dims = input.dims();
@@ -68,21 +85,21 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
     char jobz = has_vectors ? 'V' : 'N';
     auto n = dims[dim_size - 1];
     auto lda = std::max<int64_t>(1, n);
+    // if work = -1, it means that you need to use the lapack function to query
+    // the optimal value
+    int lwork = -1;      // The length of the array work
+    int lrwork = -1;     // The dimension of the array rwork,rwork is REAL array
+    int liwork = -1;     // The dimension of the array iwork
+    int iwork_opt = -1;  // The optimal length of the array liwork
+    T lwork_opt = static_cast<T>(-1);  // The optimal length of the array work
+    ValueType rwork_opt =
+        static_cast<ValueType>(-1);  // The optimal length of the array rwork
 
-    int lwork = -1;
-    int lrwork = -1;
-    int liwork = -1;
-    int iwork_opt = -1;
-    T lwork_opt = static_cast<T>(-1);
-    ValueType rwork_opt = static_cast<ValueType>(-1);
-
-    Tensor info_tensor;
-    auto *infos_data = info_tensor.mutable_data<int>(
-        framework::make_ddim({batch_size}), ctx.GetPlace());
-
-    math::lapackEvd<T, ValueType>(jobz, uplo, n, out_vector, lda, out_value,
-                                  &lwork_opt, lwork, &rwork_opt, lrwork,
-                                  &iwork_opt, liwork, infos_data);
+    int info = 0;
+    // Call lapackEigh to get the optimal size of work data
+    math::lapackEigh<T, math::Real<T>>(jobz, uplo, n, out_vector, lda,
+                                       out_value, &lwork_opt, lwork, &rwork_opt,
+                                       lrwork, &iwork_opt, liwork, &info);
 
     lwork = std::max<int>(1, static_cast<int>(lwork_opt));
     liwork = std::max<int>(1, iwork_opt);
@@ -106,15 +123,10 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
     for (auto i = 0; i < batch_size; i++) {
       auto *value_data = out_value + i * values_stride;
       auto *vector_data = out_vector + i * vector_stride;
-      int *info_ptr = &infos_data[i];
-      math::lapackEvd<T, ValueType>(jobz, uplo, n, vector_data, lda, value_data,
-                                    work_data, lwork, rwork_data, lrwork,
-                                    iwork_data, liwork, info_ptr);
-      PADDLE_ENFORCE_EQ(
-          *info_ptr, 0,
-          platform::errors::PreconditionNotMet(
-              "For batch [%d]: the [%d] argument had an illegal value", i,
-              *info_ptr));
+      math::lapackEigh<T, Real<T>>(jobz, uplo, n, vector_data, lda, value_data,
+                                   work_data, lwork, rwork_data, lrwork,
+                                   iwork_data, liwork, &info);
+      CheckEighResult(i, info);
     }
     if (has_vectors) {
       *eigen_vectors = dito.Transpose(*eigen_vectors);
@@ -139,7 +151,9 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T> {
     auto dito =
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
                                                  T>(ctx);
-    *eigen_vectors = dito.Transpose(input);
+    if (has_vectors) {
+      *eigen_vectors = dito.Transpose(input);
+    }
     auto *out_vector = eigen_vectors->mutable_data<T>(ctx.GetPlace());
 
     auto &dims = input.dims();
@@ -199,15 +213,11 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T> {
         Evd(handle, jobz, uplo, n, vector_data, lda, value_data, work_ptr,
             lwork, info_ptr);
       }
-      int error_info;
+      int error_info = 0;
       memory::Copy(platform::CPUPlace(), &error_info,
                    BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
                    info_ptr, sizeof(int), dev_ctx.stream());
-      PADDLE_ENFORCE_EQ(
-          error_info, 0,
-          platform::errors::PreconditionNotMet(
-              "For batch [%d]: the [%d] argument had an illegal value", i,
-              error_info));
+      CheckEighResult(i, error_info);
     }
 
     if (use_syevj) {
