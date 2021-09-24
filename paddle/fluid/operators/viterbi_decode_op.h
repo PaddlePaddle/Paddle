@@ -340,7 +340,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
         &int_mask);
     // last_ids_update = last_ids * tag_mask
     int last_ids_index = 1;
-    int actual_len = std::min(seq_len, static_cast<int>(max_seq_len));
+    int actual_len = (std::min)(seq_len, static_cast<int>(max_seq_len));
 
     SAME_DIMS_OP(last_ids, int_mask, batch_path[actual_len - last_ids_index],
                  Mul, int64_t);
