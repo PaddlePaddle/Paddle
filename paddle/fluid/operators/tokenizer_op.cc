@@ -165,6 +165,7 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
 
   size_t start = 0;
   int64_t cur_substr_id;
+  vector<int64_t> wordpiece_ids;
   while (start < len) {
     size_t end = len;
     std::wstring cur_substr;
@@ -187,9 +188,10 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
       return;
     } else {
       start = end;
-      token_ids->emplace_back(cur_substr_id);
+      wordpiece_ids.emplace_back(cur_substr_id);
     }
   }
+  token_ids->insert(token_ids->end(), wordpiece_ids.begin(), wordpiece_ids.end());
 }
 
 BertTokenizer::BertTokenizer(framework::WSTRING_MAP* vocab,
@@ -235,12 +237,6 @@ void BertTokenizer::ConvertTokensToIds(const vector<wstring>& tokens,
       token_ids->at(i) = unk_token_id_;
     }
   }
-}
-
-string BertTokenizer::ConvertTokensToString(
-    const vector<wstring>& tokens) const {
-  string text = framework::ConvertWstrToStr(boost::join(tokens, L" "));
-  return text;
 }
 
 void BertTokenizer::Tokenize(const string& text,
@@ -345,8 +341,8 @@ int BertTokenizer::TruncateSequence(
         ids->pop_back();
       }
     } else {
-      VLOG(2) << "We need to remove {num_tokens_to_remove} "
-                 "to truncate the input but the first sequence has a length "
+      VLOG(2) << "We need to remove " << num_tokens_to_remove << " tokens "
+              << "to truncate the input but the first sequence has a length "
               << ids->size()
               << ". Please select another truncation strategy than "
               << truncation_strategy
@@ -394,25 +390,12 @@ int BertTokenizer::Encode(
     const string& truncation_strategy /* = "longest_first" */,
     bool return_overflowing_tokens /* = false */,
     bool return_special_tokens_mask /* = false */) const {
-  // std::chrono::steady_clock::time_point begin =
-  // std::chrono::steady_clock::now();
   vector<int64_t> ids;
   Tokenize(text, &ids);
-  // std::chrono::steady_clock::time_point end =
-  // std::chrono::steady_clock::now();
-  // VLOG(0) << "Tokenize Time difference = "
-  // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
-  // .count()
-  // << "[µs]" << std::endl;
   vector<int64_t> pair_ids;
   if (text_pair != "") {
     Tokenize(text_pair, &pair_ids);
   }
-  // end = std::chrono::steady_clock::now();
-  // VLOG(0) << "Tokenize Time difference stage_1 = "
-  // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
-  // .count()
-  // << "[µs]" << std::endl;
 
   bool pair = false;
   if (pair_ids.size() != 0) {
@@ -435,29 +418,13 @@ int BertTokenizer::Encode(
       return 0;
     }
   }
-  // end = std::chrono::steady_clock::now();
-  // VLOG(0) << "TruncateSequence Time difference stage_2 = "
-  // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
-  // .count()
-  // << "[µs]" << std::endl;
 
   // Add special tokens
   vector<int64_t> sequence;
   BuildInputsWithSpecialTokens(&sequence, ids, pair_ids);
-  // end = std::chrono::steady_clock::now();
-  // VLOG(0) << "BuildInputsWithSpecialTokens Time difference stage_3 = "
-  // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
-  // .count()
-  // << "[µs]" << std::endl;
   size_t seq_len = sequence.size();
-  // vector<int64_t> seq_len(1, seq_len);
   vector<int64_t> token_type_ids;
   CreateTokenTypeIdsFromSequences(&token_type_ids, ids, pair_ids);
-  // end = std::chrono::steady_clock::now();
-  // VLOG(0) << "CreateTokenTypeIdsFromSequences Time difference stage_4 = "
-  // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
-  // .count()
-  // << "[µs]" << std::endl;
 
   // Build output dictionnary
   encoded_inputs->emplace("input_ids", sequence);
@@ -536,13 +503,6 @@ int BertTokenizer::Encode(
       }
       encoded_inputs->at("input_ids").swap(tmp);
     }
-
-    // end = std::chrono::steady_clock::now();
-    // VLOG(0) << "ToBePadded Time difference stage_5 = "
-    // << std::chrono::duration_cast<std::chrono::microseconds>(end - begin)
-    // .count()
-    // << "[µs]" << std::endl;
-
   } else {
     if (return_attention_mask) {
       vector<int64_t> tmp(encoded_inputs->at("input_ids").size(), 1);
@@ -557,12 +517,6 @@ int BertTokenizer::Encode(
     }
     encoded_inputs->emplace("position_ids", position_ids);
   }
-  // end = std::chrono::steady_clock::now();
-  // VLOG(0) << "Time inner difference = "
-  //         << std::chrono::duration_cast<std::chrono::microseconds>(end -
-  //         begin)
-  //                .count()
-  //         << "[µs]" << std::endl;
   return 1;
 }
 

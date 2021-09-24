@@ -88,7 +88,6 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
         tensor->clear();
         std::unordered_map<std::string, std::int32_t> data;
         framework::StringMapFromStream(*buffer, &data);
-        VLOG(0) << "after WstringMapFromStream, size " << data.size();
         for (auto it = data.begin(); it != data.end(); ++it) {
           std::string tmp;
           framework::NFD(it->first, &tmp);
@@ -102,7 +101,6 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
           framework::ConvertStrToWstr(tmp, &token);
           tensor->emplace(token, it->second);
         }
-        VLOG(0) << "after ConvertStrToWstr, size " << tensor->size();
       } else {
         auto *tensor = out_vars[i]->GetMutable<framework::LoDTensor>();
 

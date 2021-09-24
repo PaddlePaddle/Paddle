@@ -90,7 +90,6 @@ class BertTokenizer {
       const vector<int64_t>& token_ids_1 = vector<int64_t>()) const;
   void ConvertTokensToIds(const vector<wstring>& tokens,
                           vector<int64_t>* token_ids) const;
-  void ConvertTokensToString(const vector<wstring>& tokens, string* text) const;
   int TruncateSequence(vector<int64_t>* ids, vector<int64_t>* pair_ids,
                        const size_t num_tokens_to_remove = 0,
                        const string& truncation_strategy = "longest_first",
