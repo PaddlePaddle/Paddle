@@ -382,6 +382,14 @@ void InterpreterCore::RunNextInstruction(const Instruction& instr) {
   };
 
   if (instr.type_ == OpFuncType::kQueueAsync) {
+    // move all sync_ops into other threads
+    for (auto next_id : next_instr.synchronize_run_) {
+      if (IsReady(next_id)) {
+        async_work_queue_.AddTask(
+            vec_instruction_[next_id].type_,
+            [&, next_id] { RunInstructionAsync(next_id); });
+      }
+    }
     // keep all async_ops running in current thread
     for (auto next_id : next_instr.direct_run_) {
       if (IsReady(next_id)) {
@@ -391,14 +399,6 @@ void InterpreterCore::RunNextInstruction(const Instruction& instr) {
     for (auto next_id : next_instr.event_wait_run_) {
       if (IsReady(next_id)) {
         RunInstructionAsync(next_id);
-      }
-    }
-    // move all sync_ops into other threads
-    for (auto next_id : next_instr.synchronize_run_) {
-      if (IsReady(next_id)) {
-        async_work_queue_.AddTask(
-            vec_instruction_[next_id].type_,
-            [&, next_id] { RunInstructionAsync(next_id); });
       }
     }
   } else {
