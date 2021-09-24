@@ -150,7 +150,7 @@ struct CPUArgmax {
       int64_t h = i / post;
       int64_t w = i % post;
       IndType max_idx = -1;
-      T max_value = std::numeric_limits<T>::lowest();
+      T max_value = (std::numeric_limits<T>::lowest)();  // for windows compile
       for (int64_t j = 0; j < width; ++j) {
         if (in_data[h * width * post + j * post + w] > max_value) {
           max_value = in_data[h * width * post + j * post + w];
@@ -255,16 +255,6 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
     get_input_index(lhs_dims, rhs_dims, out_dims, lhs_strides, rhs_strides,
                     output_strides, i, index_array.data(), &lhs_idx, &rhs_idx);
     out_ptr[i] = functor(lhs_ptr[lhs_idx], rhs_ptr[rhs_idx]);
-  }
-}
-
-template <typename T>
-void ARange(T* in, int64_t num, const T& scale) {
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for
-#endif
-  for (int64_t i = 0; i < num; ++i) {
-    in[i] = i * scale;
   }
 }
 
@@ -384,8 +374,9 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
 
     SAME_DIMS_OP(last_ids, int_mask, batch_path[actual_len - last_ids_index],
                  Mul, int64_t);
-    ARange(batch_offset.data<int64_t>(), static_cast<int64_t>(batch_size),
-           static_cast<int64_t>(n_labels));
+    for (int i = 0; i < batch_size; ++i) {
+      batch_offset.data<int64_t>()[i] = i * n_labels;
+    }
     for (auto hist = historys.rbegin(); hist != historys.rend(); ++hist) {
       ++last_ids_index;
       ADD(left_length, one, left_length, is_multi_threads, int64_t);

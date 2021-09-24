@@ -89,7 +89,7 @@ __global__ void ArgmaxCUDAKernel(const int64_t height,     // n * h
   typedef cub::BlockReduce<cub::KeyValuePair<int, T>, BlockDim> BlockReduce;
   __shared__ typename BlockReduce::TempStorage temp_storage;
   cub::ArgMax reducer;
-  T init = std::numeric_limits<T>::lowest();
+  T init = (std::numeric_limits<T>::lowest)();  // for windows compile
   for (int idx = blockIdx.x; idx < height; idx += gridDim.x) {
     cub::KeyValuePair<int, T> kv_pair = {-1, init};
     int h = idx / post_size;
@@ -117,11 +117,7 @@ __global__ void ARange(T* data, int end, T scale) {
 }
 
 int64_t ComputeBlockSize(int64_t col) {
-  if (col > 512)
-    return 1024;
-  else if (col > 256)
-    return 512;
-  else if (col > 128)
+  if (col > 128)
     return 256;
   else if (col > 64)
     return 128;
@@ -177,8 +173,6 @@ struct CUDAArgmax {
       FIX_BLOCKDIM_CASE(64);
       FIX_BLOCKDIM_CASE(128);
       FIX_BLOCKDIM_CASE(256);
-      FIX_BLOCKDIM_CASE(512);
-      FIX_BLOCKDIM_CASE(1024);
     }
   }
 };
