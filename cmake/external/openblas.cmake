@@ -20,7 +20,7 @@ SET(CBLAS_INSTALL_DIR ${THIRD_PARTY_PATH}/install/openblas)
 SET(CBLAS_REPOSITORY  ${GIT_URL}/xianyi/OpenBLAS.git)
 SET(CBLAS_TAG         v0.3.7)
 if(APPLE AND WITH_ARM)
-  SET(CBLAS_TAG         v0.3.13)
+  SET(CBLAS_TAG         v0.3.17)
 endif()
 
 if(WITH_MIPS)
