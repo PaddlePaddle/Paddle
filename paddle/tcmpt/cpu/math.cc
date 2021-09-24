@@ -108,7 +108,9 @@ void ScaleSelectedRowsHost(const CPUContext& dev_ctx,
 // TODO(chenweihang): replace by better impl
 PT_REGISTER_MODULE(MathCPU);
 
-using bfloat16 = ::paddle::platform::bfloat16;
+// NOTE(chenweihang): using bfloat16 will cause redefine with xpu bfloat16
+// using bfloat16 = ::paddle::platform::bfloat16;
+
 PT_REGISTER_KERNEL("sign", CPU, NCHW, pt::Sign, float, double) {}
 PT_REGISTER_KERNEL("mean", CPU, NCHW, pt::Mean, float, double) {}
 PT_REGISTER_KERNEL("scale",
@@ -117,7 +119,7 @@ PT_REGISTER_KERNEL("scale",
                    pt::Scale,
                    float,
                    double,
-                   bfloat16,
+                   paddle::platform::bfloat16,
                    uint8_t,
                    int8_t,
                    int16_t,
@@ -129,7 +131,7 @@ PT_REGISTER_KERNEL("scale.sr",
                    pt::ScaleSelectedRows,
                    float,
                    double,
-                   bfloat16,
+                   paddle::platform::bfloat16,
                    uint8_t,
                    int8_t,
                    int16_t,
@@ -141,7 +143,7 @@ PT_REGISTER_KERNEL("scale.host",
                    pt::ScaleHost,
                    float,
                    double,
-                   bfloat16,
+                   paddle::platform::bfloat16,
                    uint8_t,
                    int8_t,
                    int16_t,
@@ -155,7 +157,7 @@ PT_REGISTER_KERNEL("scale.sr.host",
                    pt::ScaleSelectedRowsHost,
                    float,
                    double,
-                   bfloat16,
+                   paddle::platform::bfloat16,
                    uint8_t,
                    int8_t,
                    int16_t,
