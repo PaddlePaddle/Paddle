@@ -28,9 +28,9 @@ from paddle.utils.download import get_weights_path_from_url
 __all__ = []
 
 model_urls = {
-    'SqueezeNet1_0': ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/SqueezeNet1_0_pretrained.pdparams',
+    'squeezenet1_0': ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/SqueezeNet1_0_pretrained.pdparams',
                       '30b95af60a2178f03cf9b66cd77e1db1'),
-    'SqueezeNet1_1': ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/SqueezeNet1_1_pretrained.pdparams',
+    'squeezenet1_1': ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/SqueezeNet1_1_pretrained.pdparams',
                       'a11250d3a1f91d7131fd095ebbf09eee'),
 }
 
@@ -202,7 +202,7 @@ def squeezenet1_0(pretrained=False, **kwargs):
             # build model and load imagenet pretrained weight
             # model = squeezenet1_0(pretrained=True)
     """
-    return _squeezenet('SqueezeNet1_0', '1.0', pretrained, **kwargs)
+    return _squeezenet('squeezenet1_0', '1.0', pretrained, **kwargs)
 
 
 def squeezenet1_1(pretrained=False, **kwargs):
@@ -222,4 +222,4 @@ def squeezenet1_1(pretrained=False, **kwargs):
             # build model and load imagenet pretrained weight
             # model = squeezenet1_1(pretrained=True)
     """
-    return _squeezenet('SqueezeNet1_1', '1.1', pretrained, **kwargs)
+    return _squeezenet('squeezenet1_1', '1.1', pretrained, **kwargs)
