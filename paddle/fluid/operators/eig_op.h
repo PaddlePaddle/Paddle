@@ -383,8 +383,7 @@ void ComputeBackwardForComplexInput(
   Tensor trans_v = dito.Transpose(V);
   Tensor Vh = dito.Conj(trans_v);
   Tensor Lconj = dito.Conj(L);
-  Tensor Econj = dito.template Sub<Tout>(dito.Unsqueeze(Lconj, -2),
-                                         dito.Unsqueeze(Lconj, -1));
+  Tensor Econj = dito.Sub(dito.Unsqueeze(Lconj, -2), dito.Unsqueeze(Lconj, -1));
   Tensor VhgV = dito.Matmul(Vh, gV);
   Tensor diag_real = dito.Real(VhgV);
   Tensor diag_res = dito.BatchDiag(diag_real, batch_count);

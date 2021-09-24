@@ -43,9 +43,6 @@ using OpName = std::string;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
 
 template <typename T>
 void SolveLinearSystem(T* matrix_data, T* rhs_data, T* out_data, int order,
@@ -564,42 +561,6 @@ struct DeviceIndependenceTensorOperations {
         m, n, num_lower_diags, num_upper_diags, scale.data<ValueType>(),
         input.data<T>(), out.mutable_data<T>(input.dims(), input.place()));
     for_range(diag_and_copy_functor);
-    return out;
-  }
-
-  // deprecated
-  Tensor SubBroadcast(const Tensor& x, const Tensor& y, int batch_size, int m) {
-    Tensor out;
-    auto& dims = x.dims();
-    std::vector<int> vec_dim;
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
-    if (batch_size > 1) {
-      vec_dim.push_back(batch_size);
-      vec_dim.push_back(dims[dims.size() - 1]);
-      vec_dim.push_back(dims[dims.size() - 1]);
-      out.mutable_data<ValueType>(framework::make_ddim(vec_dim),
-                                  context.GetPlace());
-      auto x_tensor = EigenTensor<ValueType, 3>::From(x);
-      auto y_tensor = EigenTensor<ValueType, 3>::From(y);
-      auto out_tensor = EigenTensor<ValueType, 3>::From(out);
-      Eigen::DSizes<int, 3> a_bcast_dims(1, m, 1);
-      Eigen::DSizes<int, 3> b_bcast_dims(1, 1, m);
-      out_tensor.device(place) =
-          x_tensor.broadcast(a_bcast_dims) - y_tensor.broadcast(b_bcast_dims);
-    } else {
-      vec_dim.push_back(dims[dims.size() - 1]);
-      vec_dim.push_back(dims[dims.size() - 1]);
-      out.mutable_data<ValueType>(framework::make_ddim(vec_dim),
-                                  context.GetPlace());
-      auto x_tensor = EigenTensor<ValueType, 2>::From(x);
-      auto y_tensor = EigenTensor<ValueType, 2>::From(y);
-      auto out_tensor = EigenTensor<ValueType, 2>::From(out);
-      Eigen::DSizes<int, 2> a_bcast_dims(m, 1);
-      Eigen::DSizes<int, 2> b_bcast_dims(1, m);
-      out_tensor.device(place) =
-          x_tensor.broadcast(a_bcast_dims) - y_tensor.broadcast(b_bcast_dims);
-    }
     return out;
   }
 
