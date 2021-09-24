@@ -148,19 +148,6 @@ class AlexNetDY(nn.Layer):
         x = self._fc8(x)
         return x
 
-def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
-    model = VGG(make_layers(cfgs[cfg], batch_norm=batch_norm), **kwargs)
-
-    if pretrained:
-        assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
-            arch)
-        weight_path = get_weights_path_from_url(model_urls[arch][0],
-                                                model_urls[arch][1])
-
-        param = paddle.load(weight_path)
-        model.load_dict(param)
-
-    return model
 
 def _alexnet(arch, pretrained, **kwargs):
     model = AlexNetDY(**kwargs)
