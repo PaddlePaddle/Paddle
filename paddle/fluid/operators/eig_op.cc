@@ -63,7 +63,6 @@ class EigOp : public framework::OperatorWithKernel {
   }
 
  protected:
-  // 输出的dtype是空，所以这里需要设定输出的dtype
   // The output of eig is always complex-valued even for real-valued inputs
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -82,7 +81,6 @@ class EigOp : public framework::OperatorWithKernel {
 class EigOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    // 链接Python和c++的输入输出对象名
     AddInput("X", "The input matrix as a Tensor of Eig op.");
     AddOutput("OutValues", "The eigen-values calculated by this op");
     AddOutput("OutVectors", "The eigen-vectors calculated by this op");
