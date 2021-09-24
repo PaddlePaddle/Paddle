@@ -186,5 +186,44 @@ void TensorUtils::CopyTensorAsync(Tensor* p_dst, const Tensor& src,
   CopyTensorImpl(p_dst, src, nullptr, cb, cb_params);
 }
 
+struct Status::Impl {
+  int ec{0};
+  std::string msg;
+};
+
+Status::Status() noexcept : impl_(new Impl) {}
+Status::Status(const Status& status) noexcept : impl_(new Impl) {
+  *impl_ = *status.impl_;
+}
+
+Status& Status::operator=(const Status& status) noexcept {
+  *impl_ = *status.impl_;
+  return *this;
+}
+Status::Status(std::exception_ptr e) noexcept : impl_(new Impl) {
+  constexpr int kDefaultError{-1};
+  impl_->ec = kDefaultError;
+  try {
+    std::rethrow_exception(e);
+  } catch (paddle::platform::EnforceNotMet& e) {
+    // Add one to the error code to make the number zero a non-error
+    // status code.
+    impl_->ec = e.code() + 1;
+    impl_->msg = e.what();
+  } catch (const std::exception& e) {
+    impl_->msg = e.what();
+  }
+}
+Status Status::OK() noexcept { return Status(); }
+bool Status::ok() const noexcept { return impl_->ec == 0; }
+Status::Code Status::code() const noexcept { return impl_->ec; }
+const std::string& Status::error_message() const noexcept { return impl_->msg; }
+bool Status::operator==(const Status& x) const noexcept {
+  return code() == x.code() && error_message() == x.error_message();
+}
+bool Status::operator!=(const Status& x) const noexcept {
+  return !(*this == x);
+}
+
 }  // namespace contrib
 }  // namespace paddle_infer

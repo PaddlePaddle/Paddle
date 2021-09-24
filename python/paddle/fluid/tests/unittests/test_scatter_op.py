@@ -16,10 +16,12 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
+import os
 import paddle
 import paddle.fluid as fluid
 from op_test import OpTest
 import paddle.fluid.core as core
+from paddle.fluid.dygraph.base import switch_to_static_graph
 
 
 class TestScatterOp(OpTest):
@@ -227,6 +229,44 @@ class TestScatterAPI(unittest.TestCase):
                 output1 = self.scatter(x, index, updates, overwrite=False)
                 self.assertEqual((output1.numpy() == \
                                   np.array([[3., 3.],[6., 6.],[1., 1.]])).all(), True)
+
+    def test_large_data(self):
+        if os.name == "nt" or not paddle.is_compiled_with_cuda():
+            return
+
+        x = np.random.rand(183826, 256).astype("float32")
+        index = np.ones(10759233, dtype="int64")
+        updates = np.ones(shape=[10759233, 256], dtype="float32")
+
+        def test_dygraph():
+            with fluid.dygraph.guard():
+                gpu_out = paddle.scatter(
+                    paddle.to_tensor(x),
+                    paddle.to_tensor(index), paddle.to_tensor(updates))
+                return gpu_out.numpy()
+
+        @switch_to_static_graph
+        def test_static_graph():
+            with paddle.static.program_guard(paddle.static.Program(),
+                                             paddle.static.Program()):
+                x_t = paddle.static.data(name="x", dtype=x.dtype, shape=x.shape)
+                index_t = paddle.static.data(
+                    name="index", dtype=index.dtype, shape=index.shape)
+                updates_t = paddle.static.data(
+                    name="updates", dtype=updates.dtype, shape=updates.shape)
+                out_t = paddle.scatter(x_t, index_t, updates_t)
+                feed = {
+                    x_t.name: x,
+                    index_t.name: index,
+                    updates_t.name: updates
+                }
+                fetch = [out_t]
+
+                gpu_exe = paddle.static.Executor(paddle.CUDAPlace(0))
+                gpu_value = gpu_exe.run(feed=feed, fetch_list=fetch)[0]
+                return gpu_value
+
+        self.assertTrue(np.array_equal(test_dygraph(), test_static_graph()))
 
 
 class TestScatterInplaceAPI(TestScatterAPI):

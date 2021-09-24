@@ -257,13 +257,16 @@ void BatchNormOpMaker::Make() {
   AddOutput("ReserveSpace",
             "Reserve GPU space for triggering the new semi-persistent "
             "NHWC kernel")
-      .AsDispensable();
+      .AsDispensable()
+      .AsExtra();
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("fuse_with_relu",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("use_global_stats",
                 "(bool, default false) Whether to use global mean and "
                 "variance. In inference or test mode, set use_global_stats "

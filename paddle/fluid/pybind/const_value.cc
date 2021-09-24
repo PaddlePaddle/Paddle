@@ -63,6 +63,9 @@ void BindConstValue(pybind11::module* m) {
       framework::OpProtoAndCheckerMaker::OpCreationCallstackAttrName);
   op_proto_and_checker_maker.def(
       "kOpDeviceAttrName", framework::OpProtoAndCheckerMaker::OpDeviceAttrName);
+  op_proto_and_checker_maker.def(
+      "kOpWithQuantAttrName",
+      framework::OpProtoAndCheckerMaker::OpWithQuantAttrName);
 #if defined(PADDLE_WITH_DGC)
   auto dgc = m->def_submodule("dgc");
   dgc.def("kDGCKName", [] { return framework::details::g_dgc_k; });

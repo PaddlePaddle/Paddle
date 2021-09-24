@@ -36,7 +36,7 @@ __global__ void GatherCUDAKernel(const T* params, const IndexT* indices,
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
     IndexT gather_i = indices[indices_i];
-    IndexT params_i = gather_i * slice_size + slice_i;
+    int64_t params_i = gather_i * slice_size + slice_i;
     *(output + i) = *(params + params_i);
   }
 }
@@ -49,7 +49,7 @@ __global__ void GatherNdCUDAKernel(const T* input, const int64_t* input_dims,
   CUDA_KERNEL_LOOP_TYPE(i, remain_size * slice_size, int64_t) {
     int64_t indices_i = i / slice_size;
     int64_t slice_i = i - indices_i * slice_size;  // offset inside the slice
-    IndexT gather_i = 0;
+    int64_t gather_i = 0;
     int64_t temp = slice_size;
     for (int64_t j = end_size - 1; j >= 0; --j) {
       auto index_value = indices[indices_i * end_size + j];
@@ -63,7 +63,7 @@ __global__ void GatherNdCUDAKernel(const T* input, const int64_t* input_dims,
       gather_i += (index_value * temp);
       temp *= input_dims[j];
     }
-    IndexT input_i = gather_i + slice_i;
+    int64_t input_i = gather_i + slice_i;
     *(output + i) = *(input + input_i);
   }
 }
@@ -78,13 +78,7 @@ __global__ void GatherNdCUDAKernel(const T* input, const int64_t* input_dims,
 template <typename T, typename IndexT = int>
 void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
                const Tensor& index, Tensor* output) {
-  // check index of shape 1-D
-  if (index.dims().size() == 1) {
-    PADDLE_ENFORCE_GT(index.dims()[0], 0,
-                      platform::errors::InvalidArgument(
-                          "The index of gather_op should not be empty"
-                          "when the index's rank is 1."));
-  } else if (index.dims().size() == 2) {
+  if (index.dims().size() == 2) {
     PADDLE_ENFORCE_EQ(index.dims()[1], 1,
                       platform::errors::InvalidArgument(
                           "If the index's rank of gather_op is 2,"
@@ -93,6 +87,7 @@ void GPUGather(const platform::DeviceContext& ctx, const Tensor& src,
 
   // index size
   int64_t index_size = index.dims()[0];
+  if (index_size == 0) return;
 
   auto src_dims = src.dims();
   framework::DDim output_dims(src_dims);
@@ -248,6 +243,7 @@ void GatherV2CUDAFunction(const Tensor* input, const Tensor* index,
   out->Resize(out_dim);
   auto* out_data = out->mutable_data<T>(place);
   int64_t out_size = out->numel();
+  if (out_size == 0) return;
 
   platform::GpuLaunchConfig config =
       platform::GetGpuLaunchConfig1D(ctx.cuda_device_context(), out_size);

@@ -460,6 +460,11 @@ void OpDesc::RemoveOutput(const std::string &name) {
   need_update_ = true;
 }
 
+void OpDesc::RemoveInput(const std::string &name) {
+  inputs_.erase(name);
+  need_update_ = true;
+}
+
 bool OpDesc::HasProtoAttr(const std::string &name) const {
   auto &op_info = OpInfoMap::Instance();
   if (op_info.Has(desc_.type())) {

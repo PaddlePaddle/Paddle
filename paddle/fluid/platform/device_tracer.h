@@ -126,6 +126,9 @@ class DeviceTracer {
                                 int64_t device_id, int64_t stream_id,
                                 uint32_t correlation_id) = 0;
 
+  // Get a proto after done
+  virtual proto::Profile GetProfile() = 0;
+
   // Generate a proto after done (Disabled).
   virtual proto::Profile GenProfile(const std::string& profile_path) = 0;
 

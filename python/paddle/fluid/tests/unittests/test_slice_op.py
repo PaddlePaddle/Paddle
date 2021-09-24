@@ -553,6 +553,22 @@ class TestSliceApiWithTensor(unittest.TestCase):
 
             self.assertTrue(np.array_equal(a_1.numpy(), a_2.numpy()))
 
+    def test_bool_tensor(self):
+        with paddle.fluid.dygraph.guard():
+            array = (np.arange(60).reshape([3, 4, 5]) % 3).astype('bool')
+            tt = paddle.to_tensor(array)
+            tt.stop_gradient = False
+
+            starts = [0, 1, 2]
+            ends = [3, 5, 4]
+            axes = [0, 1, 2]
+
+            y_paddle = paddle.slice(tt, axes, starts, ends)
+            y_np = tt[0:3, 1:5, 2:4]
+
+            self.assertTrue(paddle.bool == y_paddle.dtype)
+            self.assertTrue(np.array_equal(y_paddle.numpy(), y_np))
+
 
 class TestSliceApiWithLoDTensorArray(unittest.TestCase):
     def setUp(self):
