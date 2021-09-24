@@ -539,14 +539,15 @@ class Partitioner(object):
             ctx.set_dst_startup_program(dist_startup_program)
             ctx.set_varname_mapping(self._serial2dist_varname_mapping)
             ctx.set_rank_id(self._rank_id)
+            ctx.set_dist_context(self._auto_parallel_context)
 
             # get backward ops
             ops = dist_main_program.global_block().ops
             first_backward_op_idx = -1
             forward_op_id2forward_op = {}
             for idx in range(len(ops)):
-                if int(ops[idx].attr('op_role')) == int(OpRole.Forward):
-                    forward_op_id2forward_op[ops[idx].id()] = ops[idx]
+                if is_forward_op(ops[idx]):
+                    forward_op_id2forward_op[ops[idx].desc.id()] = ops[idx]
 
                 if int(ops[idx].attr('op_role')) == int(OpRole.Backward):
                     first_backward_op_idx = idx
@@ -558,20 +559,25 @@ class Partitioner(object):
             backward_ops = ops[first_backward_op_idx:]
             for backward_op in backward_ops:
                 # if the backward op has a corresponding forward op
-
-                if backward_op.id() in ctx.gradopidx2opidx:
-                    forward_op_id = ctx.gradopidx2opidx[backward_op.id()]
+                if backward_op.desc.id() in ctx.gradopidx2opidx:
+                    forward_op_id = ctx.gradopidx2opidx[backward_op.desc.id()]
                     forward_op = forward_op_id2forward_op[forward_op_id]
+                    # TODO backward attr should has _impl_idx
+                    forward_op_dist_attr = self._auto_parallel_context.get_op_distributed_attr_for_program(
+                        forward_op)
                     # TODO use the backward op itself to find the dist op
                     dist_ops = get_distributed_operator(forward_op.type)
                     dist_attr = self._auto_parallel_context.get_op_distributed_attr_for_program(
                         backward_op)
+
                     kinputs, koutputs = ctx.prepare_backward_context(
                         backward_op, dist_attr)
 
-                    if dist_ops:
-                        dist_op_impl = dist_ops.get_impl(dist_attr.get_impl_idx(
-                        ))
+                    if dist_ops and forward_op_dist_attr.get_impl_idx() >= 0:
+                        print(backward_op.type,
+                              forward_op_dist_attr.get_impl_idx())
+                        dist_op_impl = dist_ops.get_impl(
+                            forward_op_dist_attr.get_impl_idx())
                         dist_op_impl.backward(ctx, **kinputs, **koutputs)
                     else:
                         # replicate op
@@ -723,16 +729,16 @@ class Partitioner(object):
         main_global_block = main_program.global_block()
         for idx, op in reversed(list(enumerate(main_global_block.ops))):
             if is_loss_grad_op(op):
-                loss_grad_var = main_global_block.vars[op.output_arg_names[0]]
-                main_global_block._insert_op_without_sync(
-                    idx + 1,
-                    type='scale',
-                    inputs={'X': loss_grad_var},
-                    outputs={'Out': loss_grad_var},
-                    attrs={
-                        'scale': 1.0 / self._dp_degree,
-                        OP_ROLE_KEY: OpRole.Backward
-                    })
+                # loss_grad_var = main_global_block.vars[op.output_arg_names[0]]
+                # main_global_block._insert_op_without_sync(
+                #     idx + 1,
+                #     type='scale',
+                #     inputs={'X': loss_grad_var},
+                #     outputs={'Out': loss_grad_var},
+                #     attrs={
+                #         'scale': 1.0 / self._dp_degree,
+                #         OP_ROLE_KEY: OpRole.Backward
+                #     })
                 break
         main_global_block._sync_with_cpp()
 
@@ -755,19 +761,20 @@ class Partitioner(object):
                 first_optimize_op_idx = idx
 
         # insert allreduce
-        for grad in grad_to_sync:
-            # FIXME the ring id should be set by autoparallel.mapping module
-            # it should be determined by dp groups butfixed it here for hacking
-            main_global_block.append_op(
-                type='c_allreduce_sum',
-                inputs={'X': grad},
-                outputs={'Out': grad},
-                attrs={
-                    'ring_id': self._dp_group.id,
-                    'root': 0,
-                    'use_calc_stream': True,
-                    OP_ROLE_KEY: OpRole.Backward
-                })
+        print("remvoe allreduce pass")
+        # for grad in grad_to_sync:
+        #     # FIXME the ring id should be set by autoparallel.mapping module
+        #     # it should be determined by dp groups butfixed it here for hacking
+        #     main_global_block.append_op(
+        #         type='c_allreduce_sum',
+        #         inputs={'X': grad},
+        #         outputs={'Out': grad},
+        #         attrs={
+        #             'ring_id': self._dp_group.id,
+        #             'root': 0,
+        #             'use_calc_stream': True,
+        #             OP_ROLE_KEY: OpRole.Backward
+        #         })
         # main_global_block.append_op(
         #     type='c_sync_comm_stream',
         #     inputs={'X': grad_to_sync},
@@ -839,6 +846,7 @@ def _auto_backward(loss,
             loss.shape)
 
     program = loss.block.program
+
     with program_guard(program, startup_program):
         params_grads = append_backward(
             loss,
@@ -1013,3 +1021,11 @@ def _insert_dist_op(src_op, dst_block, varname_mapping, auto_paralle_context,
         input_mapping,
         output_mapping,
         rank_id=rank_id)
+
+
+def is_forward_op(op):
+    role1 = int(core.op_proto_and_checker_maker.OpRole.Forward) | int(
+        core.op_proto_and_checker_maker.OpRole.Loss)
+    role2 = int(core.op_proto_and_checker_maker.OpRole.Forward)
+    op_role = int(op.attr('op_role'))
+    return op_role == role2 or op_role == role1

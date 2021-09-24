@@ -167,7 +167,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         super(DistributedReshapeImpl1, self).__init__()
         self._name = name
         self._forward_implemented = True
-        self._backward_implemented = False
+        self._backward_implemented = True
 
     def is_process_mesh_compatible(self, op_dist_attr):
         """ No restriction for now. """
@@ -280,6 +280,10 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         new_op_desc._set_attr('shape', shape_list)
 
         dst_block._sync_with_cpp()
+
+    @staticmethod
+    def backward(ctx, *args, **kwargs):
+        pass
 
 
 register_distributed_operator_impl("reshape2",
