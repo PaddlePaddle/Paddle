@@ -14,20 +14,13 @@
 
 import numpy as np
 import paddle
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from op_test import OpTest, skip_check_grad_ci
+from op_test import OpTest
 import unittest
-from paddle.fluid.op import Operator
-from paddle.fluid import compiler, Program, program_guard
 
-
-@skip_check_grad_ci(reason="temp")
 class TestEigOp(OpTest):
     def setUp(self):
         self.op_type = "eig"
         self.__class__.op_type = self.op_type
-
         ipt = np.random.random((3, 3)) + np.random.random((3, 3)) * 1j
         #ipt = np.random.random((3,3)).astype('float32') #float64
         self.inputs = {'X': ipt}
@@ -36,25 +29,16 @@ class TestEigOp(OpTest):
 
     def test_check_output(self):
         # numpy 输出实数，eig输出复数
-        self.check_output_with_place(place=core.CPUPlace(), check_dygraph=True)
+        self.check_output_with_place(place=paddle.CPUPlace())
 
     def test_grad(self):
-        pass
-        #self.check_grad(["X"], "OutValues", check_dygraph=True)
+        # pass
+        self.check_grad(["X"], "OutValues")
 
-    # if __name__ == "__main__":
-    #     paddle.enable_static()
-    #     unittest.main()
-
-
-'''
-@skip_check_grad_ci(reason="temp") # no grad test
-class TestEigOp(OpTest):
+class TestEigOp(unittest.TestCase):
     def setUp(self):
-        self.op_type = "eig"
-        self.__class__.op_type = self.op_type
         self.init_input()
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+        self.inputs = {'X': self.x}
         self.outputs = {
             'OutValues': self.out[0],
             'OutVectors': self.out[1]
@@ -81,18 +65,12 @@ class TestEigOp(OpTest):
 
     def test_check_output_with_place(self):
         paddle.disable_static()
-        place = fluid.CPUPlace()
+        place = paddle.CPUPlace()
         x = paddle.to_tensor(self.x)
         actual = paddle.linalg.eig(paddle.to_tensor(self.x))
         self.compare_results(self.out, actual, 1e-6, 1e-6, place)
         paddle.enable_static()
 
-    def test_grad(self):
-        paddle.disable_static()
-        #self.check_grad(["X"], "OutValues")
-        paddle.enable_static()
-'''
-'''
 class TestEigBatchMarices(TestEigOp):
     def init_input(self):
         self.shape = (3, 3, 3)
@@ -104,15 +82,17 @@ class TestEigBatchMarices(TestEigOp):
 class TestEigStatic(TestEigOp):
     def test_check_output_with_place(self):
         paddle.enable_static()
-        place = core.CPUPlace()
+        place = paddle.CPUPlace()
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
         input_np = np.random.random([3,3]).astype('float32')
         expect_val, expect_vec = np.linalg.eig(input_np)
-        with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[3,3], dtype='float32')
+        with paddle.static.program_guard(main_prog, startup_prog):
+            input = paddle.static.data(name="input", shape=[3,3], dtype='float32')
             act_val, act_vec = paddle.linalg.eig(input)
 
-            exe = fluid.Executor(place)
-            fetch_val, fetch_vec = exe.run(fluid.default_main_program(),
+            exe = paddle.static.Executor(place)
+            fetch_val, fetch_vec = exe.run(main_prog,
                                             feed={"input": input_np},
                                             fetch_list=[act_val, act_vec])
 
@@ -122,35 +102,21 @@ class TestEigStatic(TestEigOp):
                         "The eigen vectors have diff ")
 
         paddle.disable_static()
-'''
 
 
-class TestEigWrongDimsError(unittest.TestCase):
-    def test_error(self):
-        paddle.disable_static()
-        a = np.random.random((3)).astype('float32')
-        x = paddle.to_tensor(a)
-        self.assertRaises(IndexError, paddle.linalg.eig, x)
-        paddle.enable_static()
+class TestAPIError(unittest.TestCase):
+    def TestEigWrongDimsError(self):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        with paddle.static.program_guard(main_prog, startup_prog):
+            x = paddle.static.data(name='x_1', shape=[3], dtype='float32')
+            self.assertRaises(IndexError, paddle.linalg.eig, x)
 
+            x = paddle.static.data(name='x_2', shape=(1, 2, 3), dtype='float32')
+            self.assertRaises(ValueError, paddle.linalg.eig, x)
 
-class TestEigNotSquareError(unittest.TestCase):
-    def test_error(self):
-        paddle.disable_static()
-        a = np.random.random((1, 2, 3)).astype('float32')
-        x = paddle.to_tensor(a)
-        self.assertRaises(ValueError, paddle.linalg.eig, x)
-        paddle.enable_static()
-
-
-class TestEigUnsupportedDtypeError(unittest.TestCase):
-    def test_error(self):
-        paddle.disable_static()
-        a = (np.random.random((3, 3)) * 10).astype('int64')
-        x = paddle.to_tensor(a)
-        self.assertRaises(ValueError, paddle.linalg.eig, x)
-        paddle.enable_static()
-
+            x = paddle.static.data(name='x_3', shape=(2, 2), dtype='int64')
+            self.assertRaises(ValueError, paddle.linalg.eig, x)
 
 if __name__ == "__main__":
     paddle.enable_static()
