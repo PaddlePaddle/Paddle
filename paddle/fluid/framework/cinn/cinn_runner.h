@@ -28,7 +28,12 @@ namespace paddle {
 namespace framework {
 namespace cinn {
 
-// Entrance to run CINN
+// Entrance to run CINN.
+//
+// CINN cannot handle changable shape now, so CinnRunner keeps a cache mapping
+// from CinnCacheKey to CinnCompiledObject. If cache hits, we will re-use cache
+// stored CinnCompiledObject, otherwise we will compile again and put into
+// cache.
 class CinnRunner {
  public:
   CinnRunner() {}

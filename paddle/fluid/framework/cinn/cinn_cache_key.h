@@ -29,7 +29,8 @@ namespace cinn {
 // CINN cannot handle changable shape now, so CinnRunner keeps a cache mapping
 // from CinnCacheKey to CinnCompiledObject.
 //
-// The CinnCacheKey contains a graph and the feeded tensor shapes.
+// The CinnCacheKey contains a graph serialized string and the feeded tensor
+// shapes.
 class CinnCacheKey {
  public:
   CinnCacheKey(const ir::Graph& graph,
