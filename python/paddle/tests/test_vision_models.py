@@ -71,6 +71,9 @@ class TestVisonModels(unittest.TestCase):
     def test_resnet152(self):
         self.models_infer('resnet152')
 
+    def test_resnext152_32x4d(self):
+        self.models_infer('ResNeXt152_32x4d')
+
     def test_vgg16_num_classes(self):
         vgg16 = models.__dict__['vgg16'](pretrained=False, num_classes=10)
 
