@@ -23,7 +23,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
  public:
   void operator()(const framework::proto::OpDesc& op,
                   const framework::Scope& scope, bool test_mode) override {
-#if IS_TRT_VERSION_GE(6000)
     VLOG(3) << "convert a fluid multihead_mamul op to a corresponding tensorrt "
                "network structure";
     framework::OpDesc op_desc(op, nullptr);
@@ -46,10 +45,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
     float in_scale = 0.;
 
     if (enable_int8) {
-      PADDLE_ENFORCE_EQ(
-          op_desc.HasAttr("Input_scale"), true,
-          platform::errors::InvalidArgument(
-              "must have input scale in multihead layers in int8 mode"));
       in_scale = BOOST_GET_CONST(float, op_desc.GetAttr("Input_scale")) * 127;
       auto weight_scale =
           BOOST_GET_CONST(std::vector<float>, op_desc.GetAttr("weight_scale"));
@@ -181,10 +176,7 @@ class MultiheadMatMulOpConverter : public OpConverter {
             {"hidden_size", &hidden_out, nvinfer1::PluginFieldType::kINT32, 1},
             {"num_heads", &head_number, nvinfer1::PluginFieldType::kINT32, 1},
             {"has_mask", &has_mask, nvinfer1::PluginFieldType::kINT32, 1},
-            { "var_seqlen",
-              &var_seqlen,
-              nvinfer1::PluginFieldType::kINT32,
-              1 }};
+            {"var_seqlen", &var_seqlen, nvinfer1::PluginFieldType::kINT32, 1}};
         if (qkv2context_plugin_int8) {
           fields.push_back(
               {"dq_probs", &dp_probs, nvinfer1::PluginFieldType::kFLOAT32, 1});
@@ -296,11 +288,6 @@ class MultiheadMatMulOpConverter : public OpConverter {
     }
     RreplenishLayerAndOutput(layer, "multihead_matmul", {output_name},
                              test_mode);
-#else
-    PADDLE_THROW(platform::errors::Fatal(
-        "You are running the TRT Dynamic Shape mode, need to confirm that "
-        "your TRT version is no less than 6.0"));
-#endif
   }
 };
 
