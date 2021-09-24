@@ -28,7 +28,7 @@
 
 #include "Eigen/Core"
 #include "Eigen/Eigenvalues"
-#include "paddle/fluid/operators/svd_helper.h"    // must before lapack.h temorary
+#include "paddle/fluid/operators/svd_helper.h"  // must before lapack.h temorary
 #include "Eigen/src/misc/lapacke.h"  // LAPACK_dgeev
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -383,8 +383,8 @@ void ComputeBackwardForComplexInput(
   Tensor trans_v = dito.Transpose(V);
   Tensor Vh = dito.Conj(trans_v);
   Tensor Lconj = dito.Conj(L);
-  Tensor Econj = dito.SubBroadcast(
-      dito.Unsqueeze(Lconj, -2), dito.Unsqueeze(Lconj, -1), batch_count, order);
+  Tensor Econj = dito.template Sub<Tout>(dito.Unsqueeze(Lconj, -2),
+                                         dito.Unsqueeze(Lconj, -1));
   Tensor VhgV = dito.Matmul(Vh, gV);
   Tensor diag_real = dito.Real(VhgV);
   Tensor diag_res = dito.BatchDiag(diag_real, batch_count);
@@ -445,24 +445,8 @@ class EigGradKernel : public framework::OpKernel<T> {
     int batch_count = BatchCount(V);
     const int order = dim_origin[num_dims - 1];
 
-    if (num_dims > 3) {
-      L.Resize(framework::make_ddim({batch_count, order}));
-      V.Resize(framework::make_ddim({batch_count, order, order}));
-      gL.Resize(framework::make_ddim({batch_count, order}));
-      gV.Resize(framework::make_ddim({batch_count, order, order}));
-      x_grad.Resize(framework::make_ddim({batch_count, order, order}));
-    }
-
     ComputeBackwardForComplexInput<DeviceContext, Tout>(
         V, L, gL, gV, x_grad_data, batch_count, order, context);
-
-    // extend Batch_size to the original dims
-    if (num_dims > 3) {
-      std::vector<int> dim_origin_vec = ExtendDims(dim_origin, batch_count);
-      dim_origin_vec.push_back(order);
-      dim_origin_vec.push_back(order);
-      x_grad.Resize(framework::make_ddim(dim_origin_vec));
-    }
   }
 };
 
