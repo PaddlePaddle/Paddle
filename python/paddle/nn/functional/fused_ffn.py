@@ -32,22 +32,22 @@ def fused_ffn(x,
               ln1_bias=None,
               ln2_scale=None,
               ln2_bias=None,
-              dropout_prob1=0.5,
-              dropout_prob2=0.5,
+              dropout1_prob=0.5,
+              dropout2_prob=0.5,
               act_method="relu",
-              epsilon1=1e-5,
-              epsilon2=1e-5,
-              dropout_implementation1='upscale_in_train',
-              dropout_implementation2='upscale_in_train',
+              ln1_epsilon=1e-5,
+              ln2_epsilon=1e-5,
+              dropout1_implementation='upscale_in_train',
+              dropout2_implementation='upscale_in_train',
               normalize_pre_or_post=False,
               name=None):
     if in_dygraph_mode():
         out, _, _, _, _, _, _, _, _, _, _ = _C_ops.fused_ffn(
             x, None, None, linear1_weight, linear1_bias, linear2_weight,
             linear2_bias, ln1_scale, ln1_bias, ln2_scale, ln2_bias,
-            'normalize_pre_or_post', normalize_pre_or_post, 'epsilon1',
-            epsilon1, 'epsilon2', epsilon2, 'act_method', act_method,
-            'dropout_prob1', dropout_prob1, 'dropout_prob2', dropout_prob2,
-            'dropout_implementation1', dropout_implementation1,
-            'dropout_implementation2', dropout_implementation2)
+            'normalize_pre_or_post', normalize_pre_or_post, 'ln1_epsilon',
+            ln1_epsilon, 'ln2_epsilon', ln2_epsilon, 'act_method', act_method,
+            'dropout1_prob', dropout1_prob, 'dropout2_prob', dropout2_prob,
+            'dropout1_implementation', dropout1_implementation,
+            'dropout2_implementation', dropout2_implementation)
         return out

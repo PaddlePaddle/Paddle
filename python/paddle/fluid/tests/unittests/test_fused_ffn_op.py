@@ -21,11 +21,12 @@ import paddle.nn.functional as F
 from paddle.nn.layer.norm import LayerNorm
 from paddle.nn.layer.common import Linear, Dropout
 import unittest
+from op_test import OpTest
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "Paddle core is not compiled with CUDA")
-class TestFusedFFNOp(unittest.TestCase):
+class TestFusedFFNOp(OpTest):
     def getDtype(self):
         self.dtype = "float32"
         self.layer_norm_dtype = "float32"
@@ -48,6 +49,7 @@ class TestFusedFFNOp(unittest.TestCase):
 
     def setUp(self):
         paddle.disable_static()
+        self.__class__.op_type = "fused_ffn"
         self.getDtype()
         self.getShape()
         self.getDiff()

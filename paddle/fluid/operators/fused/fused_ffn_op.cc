@@ -70,7 +70,7 @@ class FusedFfnOp : public framework::OperatorWithKernel {
     tmp_dim_x[dim_x.size() - 1] =
         dim_Linear1Weight[dim_Linear1Weight.size() - 1];
     context->SetOutputDim("Out", dim_x);
-    if (context->Attrs().Get<bool>("is_test1") == false) {
+    if (context->Attrs().Get<bool>("dropout1_is_test") == false) {
       context->SetOutputDim("Dropout1Mask", tmp_dim_x);
     }
     context->SetOutputDim("Dropout1Out", tmp_dim_x);
@@ -78,7 +78,7 @@ class FusedFfnOp : public framework::OperatorWithKernel {
     context->SetOutputDim("Ln1Out", dim_x);
     context->SetOutputDim("Dropout2Out", dim_x);
 
-    if (context->Attrs().Get<bool>("is_test2") == false) {
+    if (context->Attrs().Get<bool>("dropout2_is_test") == false) {
       context->SetOutputDim("Dropout2Mask", dim_x);
     }
     context->SetOutputDim(
@@ -109,13 +109,15 @@ class FusedFfnOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "The input of FusedFfn op");
-    AddInput("Seed1",
-             "The seed of dropout1 op, it has higher priority than the attr "
-             "fix_seed and seed")
+    AddInput(
+        "Dropout1Seed",
+        "The seed of first dropout op, it has higher priority than the attr "
+        "fix_seed and seed")
         .AsDispensable();
-    AddInput("Seed2",
-             "The seed of dropout2 op, it has higher priority than the attr "
-             "fix_seed and seed")
+    AddInput(
+        "Dropout2Seed",
+        "The seed of second dropout op, it has higher priority than the attr "
+        "fix_seed and seed")
         .AsDispensable();
 
     AddInput("Linear1Weight", "The linear1 weight of FusedFfn op");
@@ -141,55 +143,62 @@ class FusedFfnOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Dropout1Out", "The output of dropout1").AsIntermediate();
     AddOutput("Dropout2Out", "The output of dropout2").AsIntermediate();
 
-    AddAttr<bool>("normalize_pre_or_post", "true is pre layernorm");
-    AddAttr<float>("epsilon1", "epsilon of layer_norm1").SetDefault(1e-5f);
-    AddAttr<float>("epsilon2", "epsilon of layer_norm2").SetDefault(1e-5f);
+    AddAttr<bool>("normalize_pre_or_post", "true is pre layernorm")
+        .SetDefault(false);
+    AddAttr<float>("ln1_epsilon", "epsilon of pre layer_norm")
+        .SetDefault(1e-5f);
+    AddAttr<float>("ln2_epsilon", "epsilon of post layer_norm")
+        .SetDefault(1e-5f);
     AddAttr<std::string>("act_method", "act_method").SetDefault("gelu");
-    AddAttr<float>("dropout_prob1", "the dropout_prob of dropout1")
+    AddAttr<float>("dropout1_prob", "the dropout_prob of first dropout")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
           PADDLE_ENFORCE_EQ(
               drop_p >= 0.0f && drop_p <= 1.0f, true,
               platform::errors::InvalidArgument(
-                  "'dropout_prob1' must be between 0.0 and 1.0."));
+                  "'dropout1_prob' must be between 0.0 and 1.0."));
         });
-    AddAttr<float>("dropout_prob2", "the dropout_prob of dropout2")
+    AddAttr<float>("dropout2_prob", "the dropout_prob of second dropout")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
           PADDLE_ENFORCE_EQ(
               drop_p >= 0.0f && drop_p <= 1.0f, true,
               platform::errors::InvalidArgument(
-                  "'dropout_prob2' must be between 0.0 and 1.0."));
+                  "'dropout2_prob' must be between 0.0 and 1.0."));
         });
-    AddAttr<std::string>("dropout_implementation1",
-                         "the dropout implementation of dropout1")
+    AddAttr<std::string>("dropout1_implementation",
+                         "the dropout implementation of first dropout")
         .SetDefault("downgrade_in_infer")
         .AddCustomChecker([](const std::string &type) {
           PADDLE_ENFORCE_EQ(
               type == "downgrade_in_infer" || type == "upscale_in_train", true,
               platform::errors::InvalidArgument(
-                  "dropout_implementation1 can only be downgrade_in_infer or "
+                  "dropout1_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
-    AddAttr<std::string>("dropout_implementation2",
-                         "the dropout implementation of dropout2")
+    AddAttr<std::string>("dropout2_implementation",
+                         "the dropout implementation of second dropout")
         .SetDefault("downgrade_in_infer")
         .AddCustomChecker([](const std::string &type) {
           PADDLE_ENFORCE_EQ(
               type == "downgrade_in_infer" || type == "upscale_in_train", true,
               platform::errors::InvalidArgument(
-                  "dropout_implementation2 can only be downgrade_in_infer or "
+                  "dropout2_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
-    AddAttr<bool>("is_test1", "the is_test of dropout1").SetDefault(false);
-    AddAttr<bool>("is_test2", "the is_test of dropout2").SetDefault(false);
-    AddAttr<bool>("fix_seed1", "the is_test of dropout1").SetDefault(false);
-    AddAttr<bool>("fix_seed2", "the is_test of dropout2").SetDefault(false);
-    AddAttr<int>("seed1", "Dropout1 random seed.").SetDefault(0);
-    AddAttr<int>("seed2", "Dropout2 random seed.").SetDefault(0);
+    AddAttr<bool>("dropout1_is_test", "the is_test of first dropout")
+        .SetDefault(false);
+    AddAttr<bool>("dropout2_is_test", "the is_test of second dropout")
+        .SetDefault(false);
+    AddAttr<bool>("dropout1_fix_seed", "the is_test of first dropout")
+        .SetDefault(false);
+    AddAttr<bool>("dropout2_fix_seed", "the is_test of second dropout")
+        .SetDefault(false);
+    AddAttr<int>("dropout1_seed", "Dropout1 random seed.").SetDefault(0);
+    AddAttr<int>("dropout2_seed", "Dropout2 random seed.").SetDefault(0);
     AddComment(R"DOC(
-        The fused feedforward Operator. the function of this operator is the same 
-    as the following pseudo code:
+        The fused_ffn(fused feedforward network) Operator. 
+        the function of this operator is the same as the following pseudo code:
         residual = src;
         ln1_out = src;
         if(normalize_pre_or_post){

@@ -15,7 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/framework/generator.h"
-#include "paddle/fluid/operators/dropout_util.h"
+#include "paddle/fluid/operators/dropout_impl_util.h"
 #include "paddle/fluid/operators/fused/fused_dropout_act_bias.h"
 #include "paddle/fluid/operators/fused/fused_layernorm_residual_dropout_bias.h"
 #include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
@@ -57,21 +57,22 @@ struct DropoutParam {
    */
   DropoutParam(const framework::ExecutionContext& context,
                const int dropout_index) {
+    std::string pre_fix = "dropout";
     std::string str_index = std::to_string(dropout_index);
-    if (dropout_index == 0) {
-      str_index = "";
+    if (dropout_index > 0) {
+      pre_fix = pre_fix + str_index + "_";
     }
-    dropout_prob = context.Attr<float>("dropout_prob" + str_index);
+    dropout_prob = context.Attr<float>(pre_fix + "prob");
     auto& dropout_implementation =
-        context.Attr<std::string>("dropout_implementation" + str_index);
+        context.Attr<std::string>(pre_fix + "implementation");
     is_upscale_in_train = (dropout_implementation == "upscale_in_train");
-    is_test = context.Attr<bool>("is_test" + str_index);
-    fix_seed = context.Attr<bool>("fix_seed" + str_index);
+    is_test = context.Attr<bool>(pre_fix + "is_test");
+    fix_seed = context.Attr<bool>(pre_fix + "fix_seed");
 
-    std::string str_seed = "Seed" + str_index;
+    std::string str_seed = "Dropout" + str_index + "Seed";
     tensor_seed =
         context.HasInput(str_seed) ? context.Input<Tensor>(str_seed) : nullptr;
-    seed_val = context.Attr<int>("seed" + str_index);
+    seed_val = context.Attr<int>(pre_fix + "seed");
   }
 
   int UpdateSeedAndIncrement(const platform::CUDADeviceContext& ctx,
@@ -151,7 +152,8 @@ class FusedDropoutHelper {
           dropout_param_.dropout_prob, dropout_param_.is_upscale_in_train,
           dropout_param_.is_test, src, bias, out, mask, ctx);
     } else {
-      // no supported, verify on the caller
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Currently only supports gelu or relu activation functions!"));
     }
   }
 
@@ -169,7 +171,8 @@ class FusedDropoutHelper {
           relu_grad, dout, mask, src, bias, dropout_param_.dropout_prob,
           dropout_param_.is_upscale_in_train, rows_, cols_, d_src, d_bias, ctx);
     } else {
-      // no supported, verify on the caller
+      PADDLE_THROW(platform::errors::InvalidArgument(
+          "Currently only supports gelu or relu activation functions!"));
     }
   }
 

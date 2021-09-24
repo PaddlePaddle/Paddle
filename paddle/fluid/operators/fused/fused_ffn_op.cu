@@ -28,11 +28,6 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-inline bool IsActivationSupported(const std::string& act_method) {
-  std::set<std::string> activations = {"relu", "gelu"};
-  return activations.count(act_method) > 0;
-}
-
 template <typename DeviceContext, typename T>
 class FusedFfnKernel : public framework::OpKernel<T> {
  public:
@@ -116,35 +111,34 @@ class FusedFfnKernel : public framework::OpKernel<T> {
   }
 
   void Compute(const framework::ExecutionContext& context) const override {
-    auto x = context.Input<framework::Tensor>("X");
-    auto linear1_weight = context.Input<framework::Tensor>("Linear1Weight");
-    auto linear1_bias = context.Input<framework::Tensor>("Linear1Bias");
-    auto linear2_weight = context.Input<framework::Tensor>("Linear2Weight");
-    auto linear2_bias = context.Input<framework::Tensor>("Linear2Bias");
-    auto ln1_scale = context.Input<framework::Tensor>("Ln1Scale");
-    auto ln1_bias = context.Input<framework::Tensor>("Ln1Bias");
-    auto ln2_scale = context.Input<framework::Tensor>("Ln2Scale");
-    auto ln2_bias = context.Input<framework::Tensor>("Ln2Bias");
+    auto* x = context.Input<framework::Tensor>("X");
+    auto* linear1_weight = context.Input<framework::Tensor>("Linear1Weight");
+    auto* linear1_bias = context.Input<framework::Tensor>("Linear1Bias");
+    auto* linear2_weight = context.Input<framework::Tensor>("Linear2Weight");
+    auto* linear2_bias = context.Input<framework::Tensor>("Linear2Bias");
+    auto* ln1_scale = context.Input<framework::Tensor>("Ln1Scale");
+    auto* ln1_bias = context.Input<framework::Tensor>("Ln1Bias");
+    auto* ln2_scale = context.Input<framework::Tensor>("Ln2Scale");
+    auto* ln2_bias = context.Input<framework::Tensor>("Ln2Bias");
 
-    auto ln1_mean = context.Output<framework::Tensor>("Ln1Mean");
-    auto ln1_variance = context.Output<framework::Tensor>("Ln1Variance");
-    auto ln2_mean = context.Output<framework::Tensor>("Ln2Mean");
-    auto ln2_variance = context.Output<framework::Tensor>("Ln2Variance");
-    auto out = context.Output<framework::Tensor>("Out");
-    auto dropout1_mask = context.Output<framework::Tensor>("Dropout1Mask");
-    auto dropout2_mask = context.Output<framework::Tensor>("Dropout2Mask");
-    auto linear1_out = context.Output<framework::Tensor>("Linear1Out");
-    auto ln1_out = context.Output<framework::Tensor>("Ln1Out");
-    auto dropout1_out = context.Output<framework::Tensor>("Dropout1Out");
-    auto dropout2_out = context.Output<framework::Tensor>("Dropout2Out");
+    auto* ln1_mean = context.Output<framework::Tensor>("Ln1Mean");
+    auto* ln1_variance = context.Output<framework::Tensor>("Ln1Variance");
+    auto* ln2_mean = context.Output<framework::Tensor>("Ln2Mean");
+    auto* ln2_variance = context.Output<framework::Tensor>("Ln2Variance");
+    auto* out = context.Output<framework::Tensor>("Out");
+    auto* dropout1_mask = context.Output<framework::Tensor>("Dropout1Mask");
+    auto* dropout2_mask = context.Output<framework::Tensor>("Dropout2Mask");
+    auto* linear1_out = context.Output<framework::Tensor>("Linear1Out");
+    auto* ln1_out = context.Output<framework::Tensor>("Ln1Out");
+    auto* dropout1_out = context.Output<framework::Tensor>("Dropout1Out");
+    auto* dropout2_out = context.Output<framework::Tensor>("Dropout2Out");
 
     const std::string act_method = context.Attr<std::string>("act_method");
-    IsActivationSupported(act_method);
 
     const bool normalize_pre_or_post =
         context.Attr<bool>("normalize_pre_or_post");
-    const float epsilon1 = context.Attr<float>("epsilon1");
-    const float epsilon2 = context.Attr<float>("epsilon2");
+    const float epsilon1 = context.Attr<float>("ln1_epsilon");
+    const float epsilon2 = context.Attr<float>("ln2_epsilon");
 
     DropoutParam dropout_param1(context, 1);
     DropoutParam dropout_param2(context, 2);
