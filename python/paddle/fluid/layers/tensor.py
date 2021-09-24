@@ -322,6 +322,8 @@ def concat(input, axis=0, name=None):
         if isinstance(axis, Variable):
             axis = axis.numpy()
             axis = axis.item(0)
+        if not isinstance(input, Variable):
+            input = [t for t in input if t.shape.count(0) == 0]
         return _C_ops.concat(input, 'axis', axis)
 
     check_type(input, 'input', (list, tuple, Variable), 'concat')
