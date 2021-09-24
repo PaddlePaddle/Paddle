@@ -24,25 +24,21 @@ class ViterbiDecodeOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Transition"), "Input", "Transition",
                    "ViterbiDecode");
     OP_INOUT_CHECK(ctx->HasInput("Length"), "Input", "Length", "ViterbiDecode");
-
     OP_INOUT_CHECK(ctx->HasOutput("Scores"), "Output", "Scores",
                    "ViterbiDecode");
     OP_INOUT_CHECK(ctx->HasOutput("Path"), "Output", "Path", "ViterbiDecode");
-
     auto in_dims = ctx->GetInputDim("Input");
     PADDLE_ENFORCE_EQ(in_dims.size(), 3,
                       platform::errors::InvalidArgument(
                           "The rank of Input in ViterbiDecode  must be 3. But "
                           "received Input's rank is %d.",
                           in_dims.size()));
-
     auto length_dims = ctx->GetInputDim("Length");
     PADDLE_ENFORCE_EQ(length_dims.size(), 1,
                       platform::errors::InvalidArgument(
                           "The rank of Length in ViterbiDecode must be 1. But "
                           "received Length's rank is %d.",
                           length_dims.size()));
-
     auto transition_dims = ctx->GetInputDim("Transition");
     PADDLE_ENFORCE_EQ(
         transition_dims.size(), 2,
@@ -55,7 +51,6 @@ class ViterbiDecodeOp : public framework::OperatorWithKernel {
           in_dims[0], length_dims[0],
           platform::errors::InvalidArgument(
               "The batch size of Input and Length should be equal."));
-
       PADDLE_ENFORCE_EQ(
           in_dims[2], transition_dims[0],
           platform::errors::InvalidArgument(
@@ -98,10 +93,8 @@ class ViterbiDecodeOpMaker : public framework::OpProtoAndCheckerMaker {
 
 namespace ops = paddle::operators;
 namespace platform = paddle::platform;
-
 REGISTER_OP_WITHOUT_GRADIENT(viterbi_decode, ops::ViterbiDecodeOp,
                              ops::ViterbiDecodeOpMaker);
-
 REGISTER_OP_CPU_KERNEL(
     viterbi_decode, ops::ViterbiDecodeKernel<platform::CPUDeviceContext, float>,
     ops::ViterbiDecodeKernel<platform::CPUDeviceContext, double>);

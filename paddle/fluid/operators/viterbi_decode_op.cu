@@ -145,15 +145,12 @@ struct CUDAArgmax {
     int64_t pre = 1;
     int64_t post = 1;
     int64_t n = input_dims[axis];
-
     for (int i = 0; i < axis; i++) {
       pre *= input_dims[i];
     }
-
     for (int i = axis + 1; i < input_dims.size(); i++) {
       post *= input_dims[i];
     }
-
     const auto& dev_ctx = ctx.cuda_device_context();
     auto cu_stream = dev_ctx.stream();
     int64_t max_grid_dimx = dev_ctx.GetCUDAMaxGridDimSize().x;
@@ -194,18 +191,7 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
     math::SetConstant<DeviceContext, int64_t> int_functor;
     std::vector<Tensor> historys;
     CUDAArgmax<T, int64_t> cuda_argmax;
-    // Create a large int data buffer
-    int buffer_size = batch_size * seq_len + batch_size * n_labels * seq_len +
-                      7 * batch_size + 10;
-    CREATE_TENSOR(int_buffer, int64_t, buffer_size);
-    TensorBuffer int_tensor_buffer(int_buffer);
-    // Create a large float data buffer
-    buffer_size = seq_len * batch_size * n_labels + 5 * batch_size * n_labels +
-                  2 * n_labels * n_labels + batch_size * n_labels * n_labels +
-                  2 * batch_size + 1;
-    CREATE_TENSOR(float_buffer, T, buffer_size);
-    TensorBuffer float_tensor_buffer(float_buffer);
-
+    CREATE_TENSOR_BUFFER(int_tensor_buffer, float_tensor_buffer);
     Tensor left_length = int_tensor_buffer.GetBufferBlock({batch_size, 1});
     framework::TensorCopy(*length, curr_place, dev_ctx, &left_length);
 
@@ -262,7 +248,6 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
     Tensor last_ids = int_tensor_buffer.GetBufferBlock({batch_size});
     Tensor batch_offset = int_tensor_buffer.GetBufferBlock({batch_size});
     Tensor gather_idx = int_tensor_buffer.GetBufferBlock({batch_size});
-
     std::vector<const Tensor*> shape_refer{&rest_trans_exp, &stop_trans_exp,
                                            &start_trans_exp};
     std::vector<Tensor*> outputs{&rest_trans_exp, &stop_trans_exp,
@@ -308,19 +293,17 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
     cuda_argmax(ctx, alpha, &last_ids, scores, 1);
     left_length.Resize({batch_size});
     GET_MASK(left_length, zero, int_mask, CudaGreaterEqualFunctor, int64_t);
-    int last_ids_index = 1;
-    int actual_len = std::min(seq_len, static_cast<int>(max_seq_len));
-    CUDA_MUL(last_ids, int_mask, batch_path[actual_len - last_ids_index],
-             int64_t);
+    int last_id_index = 1;
+    int act_len = std::min(seq_len, static_cast<int>(max_seq_len));
+    CUDA_MUL(last_ids, int_mask, batch_path[act_len - last_id_index], int64_t);
     auto block_size = ComputeBlockSize(batch_size);
     ARange<int64_t><<<1, block_size, 0, dev_ctx.stream()>>>(
         batch_offset.data<int64_t>(), batch_size, n_labels);
-
     for (auto hist = historys.rbegin(); hist != historys.rend(); ++hist) {
-      ++last_ids_index;
+      ++last_id_index;
       CUDA_ADD(left_length, one, left_length, int64_t);
       CUDA_ADD(batch_offset, last_ids, gather_idx, int64_t);
-      Tensor& last_ids_update = batch_path[actual_len - last_ids_index];
+      Tensor& last_ids_update = batch_path[act_len - last_id_index];
       hist->Resize({batch_size * n_labels});
       GPUGather<int64_t, int64_t>(dev_ctx, *hist, gather_idx, &last_ids_update);
       GET_MASK(left_length, zero, int_mask, CudaGreaterEqualFunctor, int64_t);
@@ -337,7 +320,6 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 namespace platform = paddle::platform;
-
 REGISTER_OP_CUDA_KERNEL(
     viterbi_decode,
     ops::ViterbiDecodeGPUKernel<platform::CUDADeviceContext, float>,

@@ -25,7 +25,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/unique_op.h"
-
 #ifdef PADDLE_WITH_MKLML
 #include <omp.h>
 #endif
@@ -39,6 +38,17 @@ using LoDTensor = framework::LoDTensor;
   LoDTensor tensor;                                   \
   tensor.Resize(framework::make_ddim({__VA_ARGS__})); \
   tensor.mutable_data<dtype>(ctx.GetPlace())
+
+#define CREATE_TENSOR_BUFFER(int_tensor_buffer, float_tensor_buffer)          \
+  int buffer_size = batch_size * seq_len + batch_size * n_labels * seq_len +  \
+                    7 * batch_size + 10;                                      \
+  CREATE_TENSOR(int_buffer, int64_t, buffer_size);                            \
+  TensorBuffer int_tensor_buffer(int_buffer);                                 \
+  buffer_size = seq_len * batch_size * n_labels + 5 * batch_size * n_labels + \
+                2 * n_labels * n_labels + batch_size * n_labels * n_labels +  \
+                3 * batch_size + 1;                                           \
+  CREATE_TENSOR(float_buffer, T, buffer_size);                                \
+  TensorBuffer float_tensor_buffer(float_buffer)
 
 #define BROADCAST_BINARY_OP(lhs, rhs, out, func_type, is_multi_threads, dtype) \
   do {                                                                         \
@@ -238,17 +248,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     math::SetConstant<DeviceContext, T> float_functor;
     math::SetConstant<DeviceContext, int64_t> int_functor;
     std::vector<Tensor> historys;
-    // Create a large int data buffer
-    int buffer_size = batch_size * seq_len + batch_size * n_labels * seq_len +
-                      7 * batch_size + 2;
-    CREATE_TENSOR(int_buffer, int64_t, buffer_size);
-    TensorBuffer int_tensor_buffer(int_buffer);
-    // Create a large float data buffer
-    buffer_size = seq_len * batch_size * n_labels + 5 * batch_size * n_labels +
-                  2 * n_labels * n_labels + batch_size * n_labels * n_labels +
-                  3 * batch_size;
-    CREATE_TENSOR(float_buffer, T, buffer_size);
-    TensorBuffer float_tensor_buffer(float_buffer);
+    CREATE_TENSOR_BUFFER(int_tensor_buffer, float_tensor_buffer);
     auto* length = ctx.Input<Tensor>("Length");
     Tensor left_length = int_tensor_buffer.GetBufferBlock({batch_size, 1});
     framework::TensorCopy(*length, curr_place, dev_ctx, &left_length);
@@ -299,7 +299,6 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     Tensor last_ids = int_tensor_buffer.GetBufferBlock({batch_size});
     Tensor batch_offset = int_tensor_buffer.GetBufferBlock({batch_size});
     Tensor gather_idx = int_tensor_buffer.GetBufferBlock({batch_size});
-
     std::vector<const Tensor*> shape_refer{&rest_trans_exp, &stop_trans_exp,
                                            &start_trans_exp};
     std::vector<Tensor*> outputs{&rest_trans_exp, &stop_trans_exp,
