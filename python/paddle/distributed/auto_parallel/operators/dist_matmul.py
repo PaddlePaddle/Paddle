@@ -28,6 +28,7 @@ from paddle.fluid import core, unique_name
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
+from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process import new_process_group
 from ..utils import _get_comm_group
 
@@ -121,6 +122,81 @@ def _update_dims_mapping_for_matmul(op_dist_attr):
     assert len(out_dims_mapping) == out_dims_mapping_len
 
     return changed
+
+
+def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
+
+    # by now the backward function only insert the gradient allreduce for dist op itself
+
+    dst_block = ctx.get_dst_main_program().global_block()
+    backward_op = ctx.get_cur_src_op()
+    dist_attr = ctx.get_cur_dist_attr()
+    rank_id = ctx.get_rank_id()
+
+    # check if need gradient allreduce
+    need_gradient_allreduce = False
+
+    assert 'Y' in kwargs, "input [{}] is not given".format('Y')
+    assert 'X' in kwargs, "input [{}] is not given".format('X')
+    assert 'Out@GRAD' in kwargs, "input [{}] is not given".format('Out@GRAD')
+    assert 'Y@GRAD' in kwargs, "output [{}] is not given".format('Y@GRAD')
+    assert 'X@GRAD' in kwargs, "output [{}] is not given".format('X@GRAD')
+
+    assert len(
+        kwargs['Y']
+    ) == 1, "row_parallel_embedding input Ids take 1 variable but got {}".format(
+        kwargs['Y'])
+    assert len(
+        kwargs['X']
+    ) == 1, "row_parallel_embedding input Ids take 1 variable but got {}".format(
+        kwargs['X'])
+    assert len(
+        kwargs['Out@GRAD']
+    ) == 1, "row_parallel_embedding input Ids take 1 variable but got {}".format(
+        kwargs['Out'])
+    assert len(
+        kwargs['Y@GRAD']
+    ) == 1, "row_parallel_embedding output Ids take 1 variable but got {}".format(
+        kwargs['Y@GRAD'])
+    assert len(
+        kwargs['X@GRAD']
+    ) == 1, "row_parallel_embedding output Ids take 1 variable but got {}".format(
+        kwargs['X@GRAD'])
+
+    X_var = dst_block.var(kwargs['X'][0])
+    assert not X_var.is_parameter, "left operand(X) [{}] of dist matmul should not be parameter".format(
+        X_var.name)
+    process_mesh = dist_attr.get_process_mesh()
+    var_dim_mapping = dist_attr.get_input_dims_mapping(X_var.name)
+    mesh_shape = process_mesh.topology
+    batch_size_axis = var_dim_mapping[0]
+    if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
+        need_gradient_allreduce = True
+        group_ranks = _get_comm_group(process_mesh.process_group,
+                                      process_mesh.topology, batch_size_axis,
+                                      rank_id)
+        dp_degree = len(group_ranks)
+        dp_group = new_process_group(group_ranks)
+
+    Y_var = dst_block.var(kwargs['Y'][0])
+    if need_gradient_allreduce and Y_var.is_parameter:
+        Y_Grad_var = dst_block.var(kwargs['Y@GRAD'][0])
+        dst_block.append_op(
+            type='c_allreduce_sum',
+            inputs={'X': [Y_Grad_var]},
+            outputs={'Out': [Y_Grad_var]},
+            attrs={
+                'ring_id': dp_group.id,
+                'use_calc_stream': True,
+                OP_ROLE_KEY: OpRole.Backward
+            })
+        dst_block.append_op(
+            type='scale',
+            inputs={'X': Y_Grad_var},
+            outputs={'Out': Y_Grad_var},
+            attrs={'scale': 1.0 / dp_degree,
+                   OP_ROLE_KEY: OpRole.Backward})
+        dst_block._sync_with_cpp()
 
 
 class DistributedMatmul(DistributedOperator):
@@ -260,101 +336,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
-
-        # by now the backward function only insert the gradient allreduce for dist op itself
-
-        dst_block = ctx.get_dst_main_program().global_block()
-        backward_op = ctx.get_cur_src_op()
-        dist_attr = ctx.get_cur_dist_attr()
-        rank_id = ctx.get_rank_id()
-
-        # check if need gradient allreduce
-        assert len(
-            input_name_mapping
-        ) == 2, "col_parallel_linear take 2 inputs variable but got {}".format(
-            input_name_mapping)
-        assert len(
-            output_name_mapping
-        ) == 1, "col_parallel_linear take 2 inputs variable but got {}".format(
-            output_name_mapping)
-        assert len(
-            input_name_mapping['X']
-        ) == 1, "col_parallel_linear input X take 1 variable but got {}".format(
-            input_name_mapping['X'])
-        assert len(
-            input_name_mapping['Y']
-        ) == 1, "col_parallel_linear input Y take 1 variable but got {}".format(
-            input_name_mapping['Y'])
-        assert len(
-            output_name_mapping['Out']
-        ) == 1, "col_parallel_linear input Out take 1 variable but got {}".format(
-            input_name_mapping['Out'])
-        X_var = dst_block.var(input_name_mapping['X'][0])
-        Weight_var = dst_block.var(input_name_mapping['Y'][0])
-        Out_var = dst_block.var(output_name_mapping['Out'][0])
-
-        need_gradient_allreduce = False
-        for input_name in backward_op.desc.input_names():
-            for varname in backward_op.desc.input(input_name):
-                if "@GRAD" not in varname and not dst_block.var(
-                        varname).is_parameter():
-
-                    # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
-                    process_mesh = dist_attr.get_process_mesh()
-                    var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
-                    mesh_shape = process_mesh.topology
-                    batch_size_axis = var_dim_mapping[0]
-                    if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
-                        need_gradient_allreduce = True
-                        group_ranks = _get_comm_group(
-                            process_mesh.process_group, process_mesh.topology,
-                            batch_size_axis, rank_id)
-                        dp_degree = len(group_ranks)
-                        dp_group = new_process_group(group_ranks)
-                        break
-
-        if need_gradient_allreduce:
-            allreduce_vars = []
-            for input_name in backward_op.desc.input_names():
-                for varname in backward_op.desc.input(input_name):
-                    if "@GRAD" not in varname and dst_block.vars(
-                            varname).is_parameter():
-                        assert len(
-                            backward_op.desc.input(input_name)
-                        ) == 1, "parameter input to grad op should be length 1, but got [{}]".format(
-                            backward_op.desc.input(input_name))
-                        assert varname + "@GRAD" in backward_op.desc.output_names(
-                        ), "parameter's grad [{}] not found in the grad op's output".format(
-                            varname + "@GRAD")
-                        assert len(
-                            backward_op.desc.output_names(varname + "@GRAD")
-                        ) == 1, "parameter grad of grad op should be length 1, but got [{}]".format(
-                            backward_op.desc.output_names(varname + "@GRAD"))
-                        allreduce_vars.append(
-                            backward_op.desc.output_names(varname + "@GRAD")[0])
-
-            if len(allreduce_vars) > 0:
-                for varname in allreduce_vars:
-
-                    grad_var = dst_block.vars(varname)
-                    dst_block.append_op(
-                        type='c_allreduce_sum',
-                        inputs={'X': [grad_var]},
-                        outputs={'Out': [grad_var]},
-                        attrs={
-                            'ring_id': dp_group.id,
-                            'use_calc_stream': True,
-                            OP_ROLE_KEY: OpRole.Backward
-                        })
-                    dst_block.append_op(
-                        type='scale',
-                        inputs={'X': grad_var},
-                        outputs={'Out': grad_var},
-                        attrs={
-                            'scale': 1.0 / dp_degree,
-                            OP_ROLE_KEY: OpRole.Backward
-                        })
-                dst_block._sync_with_cpp()
+        _right_operand_parameter_matmul_backward(ctx, *args, **kwargs)
 
 
 # RowParallel
@@ -363,7 +345,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         super(DistributedMatmulImpl1, self).__init__()
         self._name = name
         self._forward_implemented = True
-        self._backward_implemented = False
+        self._backward_implemented = True
 
     def is_process_mesh_compatible(self, op_dist_attr):
         """ No restriction for now. """
@@ -484,6 +466,10 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         copy_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
                                           op_dist_attr)
 
+    @staticmethod
+    def backward(ctx, *args, **kwargs):
+        _right_operand_parameter_matmul_backward(ctx, *args, **kwargs)
+
 
 # ReplicateParallel 
 class DistributedMatmulImpl2(DistributedOperatorImpl):
@@ -535,6 +521,10 @@ class DistributedMatmulImpl2(DistributedOperatorImpl):
         if dim_changed:
             changed = True
         return changed
+
+    @staticmethod
+    def backward(ctx, *args, **kwargs):
+        _right_operand_parameter_matmul_backward(ctx, *args, **kwargs)
 
 
 register_distributed_operator_impl("matmul",
@@ -680,6 +670,10 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                                           op_dist_attr)
         copy_distributed_attr_for_dist_op(matmul_v2_op, dst_block, op_dist_attr)
 
+    @staticmethod
+    def backward(ctx, *args, **kwargs):
+        _right_operand_parameter_matmul_backward(ctx, *args, **kwargs)
+
 
 # RowParallel
 class DistributedMatmulV2Impl1(DistributedOperatorImpl):
@@ -804,6 +798,10 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         copy_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
                                           op_dist_attr)
 
+    @staticmethod
+    def backward(ctx, *args, **kwargs):
+        _right_operand_parameter_matmul_backward(ctx, *args, **kwargs)
+
 
 # ReplicateParallel 
 class DistributedMatmulV2Impl2(DistributedOperatorImpl):
@@ -855,6 +853,10 @@ class DistributedMatmulV2Impl2(DistributedOperatorImpl):
         if dim_changed:
             changed = True
         return changed
+
+    @staticmethod
+    def backward(ctx, *args, **kwargs):
+        _right_operand_parameter_matmul_backward(ctx, *args, **kwargs)
 
 
 register_distributed_operator_impl("matmul_v2",

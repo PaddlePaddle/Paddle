@@ -28,6 +28,7 @@ from paddle.fluid import core, unique_name
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
+from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process import new_process_group
 from ..utils import _get_comm_group
 
@@ -240,7 +241,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         assert len(
             kwargs['W@GRAD']
         ) == 1, "row_parallel_embedding output Ids take 1 variable but got {}".format(
-            kwargs['Out'])
+            kwargs['W@GRAD'])
 
         Ids_var = dst_block.var(kwargs['Ids'][0])
         process_mesh = dist_attr.get_process_mesh()
@@ -256,7 +257,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             dp_group = new_process_group(group_ranks)
 
         if need_gradient_allreduce:
-            W_Grad_var = dst_block.vars(kwargs['W@GRAD'][0])
+            W_Grad_var = dst_block.var(kwargs['W@GRAD'][0])
             dst_block.append_op(
                 type='c_allreduce_sum',
                 inputs={'X': [W_Grad_var]},
