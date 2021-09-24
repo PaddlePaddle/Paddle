@@ -41,6 +41,11 @@ def _stack_tensor_or_return_none(origin_list):
                                            paddle.Tensor) else None
 
 
+def _replace_none_with_zero_tensor(t, spec_t):
+    return paddle.zeros(
+        shape=spec_t.shape, dtype=spec_t.dtype) if t is None else t
+
+
 @framework.dygraph_only
 def jacobian(func, inputs, create_graph=False, allow_unused=False):
     ''' 
@@ -108,3 +113,55 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
         return jacobian[0]
     else:
         return jacobian
+
+
+@framework.dygraph_only
+def hessian(func, inputs, create_graph=False, allow_unused=False):
+    ''' 
+    .. note::
+        **This API is ONLY available in Dygraph mode.**
+
+    This API computes the Hessian matrix of `func` with respect to `inputs`.
+
+    Parameters:
+        func (function): a Python function that takes a Tensor or a Tensor
+            list/tuple as inputs and returns a Tensor with a single element.
+        inputs (Tensor|list(Tensor)|tuple(Tensor)): the input Tensor or 
+            Tensor list/tuple of the function ``func``.
+        create_graph (bool, optional): whether to create the gradient graphs
+            of the computing process. When it is True, higher order derivatives
+            are supported to compute; when it is False, the gradient graphs of
+            the computing process would be discarded. Defaults to ``False``.
+        allow_unused (bool, optional): whether to raise error or return None if
+            some Tensors of `inputs` are unreachable in the graph. Error would
+            be raised if allow_unused=False, and None would be returned as
+            their gradients if allow_unused=True. Default False.
+    Returns:
+        Hessian (Tensor or a tuple of tuple of Tensors): if function ``func``
+        takes a Tensor as ``inputs``, Hessian will be a single Tensor containing
+        the Hessian matrix for the linearized ``inputs`` Tensor. If function
+        ``func`` takes a Tensor list/tuple as ``inputs``, then the Hessian will
+        be a tuple of tuple of Tensors where ``Hessian[i][j]`` will contain the
+        Hessian matrix of the ``i``th input and ``j``th input with size ``m * n``.
+        Here ``m`` and ``n`` denote the number of elements of the ``i`` th input
+        and the ``j`` th input respectively.
+    '''
+    inputs = _check_tensors(inputs, "inputs")
+    outputs = _check_tensors(func(*inputs), "outputs")
+    assert len(outputs) == 1 and outputs[0].shape == [
+        1
+    ], "The function to compute Hessian matrix should return a Tensor with a single element"
+
+    def jac_func(ins):
+        grad_inputs = paddle.grad(
+            outputs,
+            ins,
+            create_graph=True,
+            retain_graph=True,
+            allow_unused=allow_unused)
+        return tuple(
+            _replace_none_with_zero_tensor(grad_inputs[i], inputs[i])
+            for i in range(len(inputs)))
+
+    return jacobian(
+        jac_func, inputs, create_graph=create_graph, allow_unused=allow_unused)
