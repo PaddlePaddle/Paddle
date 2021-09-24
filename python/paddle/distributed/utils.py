@@ -809,3 +809,91 @@ def watch_local_trainers(procs, nranks):
         raise
 
     return alive
+
+
+def limit_by_capacity(expert_count, capacity, n_worker):
+    """
+    limit the expert count by capacity.
+    Args:
+        expert_count (Tensor): Tensor. The input expert count whose data type should be int32 or int64.
+        capacity (Tensor): Tensor. The input capacity whose data type should be int32 or int64 and the elements of capacity should be the same with expert_count.numel()/n_work.
+        n_work (int): The number of the works.
+    Returns:
+        out (Tensor): The output expert count limit by capacity.
+    Examples:
+        .. code-block:: python
+            # required: distributed
+            import paddle
+
+            gate_idx = [
+                [0, 2],
+                [0, 2]
+            ]
+            n_expert = 6
+            gate_idx = paddle.to_tensor(gate_idx, dtype="int32")
+            expert_count = paddle.distributed.utils.expert_count(gate_idx, n_expert)
+            print(expert_count) # the result: [2, 0, 2, 0, 0, 0]
+    """
+    if in_dygraph_mode():
+        return core.ops.expert_count(gate_idx, 'n_expert', n_expert)
+    else:
+        op_type = 'expert_count'
+
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(dtype=gate_idx.dtype)
+
+        helper.append_op(
+            type=op_type,
+            inputs={'gate_idx': gate_idx},
+            outputs={'Out': out},
+            attrs={'n_expert': n_expert})
+        return out
+
+
+def prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
+    """
+    prune gate by capacity(only support CUDA)
+
+    Args:
+        gate_idx (Tensor): Represents the gate_id sequence corresponding to the input data with type int32, int64.
+        expert_count (Tensor): The quantity value counted on the gate_id sequence of the input data with type int32, int64.
+        n_expert(int，optional): The number of Experts on each worker with type int64.
+        n_worker(int，optional): The number of workers on the trainer with type int64.
+  
+    Returns:
+        new_gate_idx (Tensor): The gate_id sequence corresponding to the new input data after passing through prune.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            gate_idx = paddle.to_tensor([1, 3, 3, 3, 3, 2, 1, 1], dtype='int32')
+            expert_count = paddle.to_tensor([0, 3, 1, 3, 0, 0, 0, 0], dtype='int32')
+            n_expert = 8
+            n_worker = 1
+            new_gate_id = paddle.distributed.utils.prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker)
+            print(new_gate_id)
+            # Tensor(shape=[8], dtype=int32, place=CUDAPlace(0), stop_gradient=True,
+              [1, 3, 3, 3, -1, 2, 1, 1])
+    """
+
+    if in_dygraph_mode():
+        return core.ops.prune_gate_by_capacity(
+            gate_idx, expert_count, "n_expert", n_expert, "n_worker", n_worker)
+    check_variable_and_dtype(gate_idx, 'GateIdx', ['int32', 'int64'],
+                             'paddle.distributed.utils.prune_gate_by_capacity')
+    check_variable_and_dtype(expert_count, 'ExpertCount', ['int32', 'int64'],
+                             'paddle.distributed.utils.prune_gate_by_capacity')
+
+    helper = LayerHelper('prune_gate_by_capacity', **locals())
+    new_gate_idx = helper.create_variable_for_type_inference(
+        dtype=gate_idx.dtype)
+    helper.append_op(
+        type='prune_gate_by_capacity',
+        inputs={'GateIdx': gate_idx,
+                "ExpertCount": expert_count},
+        outputs={'NewGateIdx': new_gate_idx},
+        attrs={"n_expert": n_expert,
+               "n_worker": n_worker})
+
+    return new_gate_idx
