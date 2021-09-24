@@ -135,6 +135,127 @@ def initialization_check(mode, dist_context, dist_startup_prog,
     return True
 
 
+def get_input_var_dist_attr(op, main_program, dist_context):
+    varname = op.desc.input_arg_names()
+    var = main_program.global_block().var(varname[0])
+    dist_attr = dist_context.get_tensor_distributed_attr_for_program(var)
+    return dist_attr
+
+
+def get_output_var_dist_attr(op, main_program, dist_context):
+    varname = op.desc.output_arg_names()
+    var = main_program.global_block().var(varname[0])
+    dist_attr = dist_context.get_tensor_distributed_attr_for_program(var)
+    return dist_attr
+
+
+def check_equal_var_dist_attr(serial_dist_attr, dist_attr):
+    equal = True
+    if serial_dist_attr.get_process_mesh() != dist_attr.get_process_mesh() or \
+        serial_dist_attr.is_parameter() != dist_attr.is_parameter() or \
+        serial_dist_attr.get_dims_mapping() != dist_attr.get_dims_mapping():
+        equal = False
+    return equal
+
+
+def check_equal_dist_op_attr(dist_context, dist_main_prog, serial_op, dist_ops,
+                             dist_op_idx):
+    equal = True
+    # get serial op's process_mesh and impl_idx
+    serial_op_dist_attr = dist_context.get_op_distributed_attr_for_program(
+        serial_op)
+    serial_process_mesh = serial_op_dist_attr.get_process_mesh()
+    serial_impl_idx = serial_op_dist_attr.get_impl_idx()
+
+    # check dist_attr between serial op and dist op
+    for i in dist_op_idx:
+        op_dist_attr = dist_context.get_op_distributed_attr_for_program(
+            dist_ops[i])
+        for in_varname in dist_ops[i].desc.input_arg_names():
+            in_var = dist_main_prog.global_block().var(in_varname)
+            tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+                in_var)
+            tensor_dims_mapping = tensor_dist_attr.get_dims_mapping()
+            in_var_dims_mapping = op_dist_attr.get_input_dims_mapping(
+                in_varname)
+            if tensor_dims_mapping != in_var_dims_mapping:
+                equal = False
+        for out_varname in dist_ops[i].desc.output_arg_names():
+            out_var = dist_main_prog.global_block().var(out_varname)
+            tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+                out_var)
+            tensor_dims_mapping = tensor_dist_attr.get_dims_mapping()
+            out_var_dims_mapping = op_dist_attr.get_output_dims_mapping(
+                out_varname)
+            if tensor_dims_mapping != out_var_dims_mapping:
+                equal = False
+
+        dist_op_process_mesh = op_dist_attr.get_process_mesh()
+        dist_op_impl_idx = op_dist_attr.get_impl_idx()
+        if serial_op.desc.id() == dist_ops[i].desc.id() or \
+            serial_process_mesh != dist_op_process_mesh or \
+            serial_impl_idx != dist_op_impl_idx:
+            equal = False
+
+    return equal
+
+
+def distributed_attr_check_for_dist_op(serial_main_prog, dist_main_prog,
+                                       dist_context, serial_op_idx,
+                                       dist_op_idx):
+
+    equal = True
+    serial_ops = serial_main_prog.global_block().ops
+    dist_ops = dist_main_prog.global_block().ops
+
+    for i in range(len(serial_op_idx)):
+        serial_op = serial_ops[serial_op_idx[i]]
+        dist_op_0 = dist_ops[dist_op_idx[i][0]]
+        if dist_op_0.type == "c_identity":
+            # serial op input's dist_attr
+            serial_in_dist_attr = get_input_var_dist_attr(
+                serial_op, serial_main_prog, dist_context)
+            # c_identity output's(new var) dist_attr
+            identity_out_dist_attr = get_output_var_dist_attr(
+                dist_op_0, dist_main_prog, dist_context)
+            # check var dist_attr
+            equal = check_equal_var_dist_attr(serial_in_dist_attr,
+                                              identity_out_dist_attr)
+        else:
+            # serial op output's dist_attr
+            serial_out_dist_attr = get_output_var_dist_attr(
+                serial_op, serial_main_prog, dist_context)
+            # dist op output's(new var) dist_attr
+            out_dist_attr = get_output_var_dist_attr(dist_op_0, dist_main_prog,
+                                                     dist_context)
+            # check var dist_attr
+            equal = check_equal_var_dist_attr(serial_out_dist_attr,
+                                              out_dist_attr)
+
+        # check op's dist_attr 
+        equal = check_equal_dist_op_attr(dist_context, dist_main_prog,
+                                         serial_op, dist_ops, dist_op_idx[i])
+
+    return equal
+
+
+def distributed_attr_check_for_program(dist_main_prog, dist_context):
+    have_dist_attr = True
+    for block in dist_main_prog.blocks:
+        for tensor in block.vars.values():
+            var_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+                tensor)
+            if var_dist_attr is None:
+                have_dist_attr = False
+
+        for op in block.ops:
+            op_dist_attr = dist_context.get_op_distributed_attr_for_program(op)
+            if op_dist_attr is None:
+                have_dist_attr = False
+
+    return have_dist_attr
+
+
 class MLPLayer(nn.Layer):
     def __init__(self,
                  hidden_size=1024,
@@ -276,8 +397,8 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         dist_ops = dist_main_prog.global_block().ops
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
-            'layer_norm', 'c_identity', 'matmul', 'elementwise_add', 'gelu',
-            'matmul', 'c_allreduce_sum', 'elementwise_add', 'dropout'
+            'layer_norm', 'c_identity', 'matmul_v2', 'elementwise_add', 'gelu',
+            'matmul_v2', 'c_allreduce_sum', 'elementwise_add', 'dropout'
         ]
         self.assertTrue(dist_ops == ref_ops)
 
@@ -288,6 +409,17 @@ class TestMLPAutoPartitioner(unittest.TestCase):
             initialization_check(_global_parallel_strategy, dist_context,
                                  dist_startup_prog, serial_startup_prog,
                                  var_need_broadcast))
+
+        # check var and op all have dist_attr in dist_main_program
+        self.assertTrue(
+            distributed_attr_check_for_program(dist_main_prog, dist_context))
+        # check distribured attr for dist op
+        serial_op_idx = [1, 4]
+        dist_op_idx = [[1, 2], [5, 6]]
+        self.assertTrue(
+            distributed_attr_check_for_dist_op(serial_main_prog, dist_main_prog,
+                                               dist_context, serial_op_idx,
+                                               dist_op_idx))
 
     def test_mlp_dp_mp(self):
         global _global_parallel_strategy
@@ -323,8 +455,8 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         dist_ops = dist_main_prog.global_block().ops
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
-            'layer_norm', 'c_identity', 'matmul', 'elementwise_add', 'gelu',
-            'matmul', 'c_allreduce_sum', 'elementwise_add', 'dropout'
+            'layer_norm', 'c_identity', 'matmul_v2', 'elementwise_add', 'gelu',
+            'matmul_v2', 'c_allreduce_sum', 'elementwise_add', 'dropout'
         ]
         self.assertTrue(dist_ops == ref_ops)
 
@@ -335,6 +467,17 @@ class TestMLPAutoPartitioner(unittest.TestCase):
             initialization_check(_global_parallel_strategy, dist_context,
                                  dist_startup_prog, serial_startup_prog,
                                  var_need_broadcast))
+
+        # check var and op all have dist_attr in dist_main_program
+        self.assertTrue(
+            distributed_attr_check_for_program(dist_main_prog, dist_context))
+        # check distribured attr for dist op
+        serial_op_idx = [1, 4]
+        dist_op_idx = [[1, 2], [5, 6]]
+        self.assertTrue(
+            distributed_attr_check_for_dist_op(serial_main_prog, dist_main_prog,
+                                               dist_context, serial_op_idx,
+                                               dist_op_idx))
 
 
 class AttentionLayer(nn.Layer):
@@ -531,12 +674,12 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         dist_ops = dist_main_prog.global_block().ops
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
-            'c_identity', 'matmul', 'elementwise_add', 'reshape2', 'transpose2',
-            'c_identity', 'matmul', 'elementwise_add', 'c_identity', 'matmul',
-            'elementwise_add', 'reshape2', 'transpose2', 'reshape2',
-            'transpose2', 'matmul', 'softmax', 'dropout', 'matmul_v2',
-            'transpose2', 'reshape2', 'matmul', 'c_allreduce_sum',
-            'elementwise_add'
+            'c_identity', 'matmul_v2', 'elementwise_add', 'reshape2',
+            'transpose2', 'c_identity', 'matmul_v2', 'elementwise_add',
+            'c_identity', 'matmul_v2', 'elementwise_add', 'reshape2',
+            'transpose2', 'reshape2', 'transpose2', 'matmul', 'softmax',
+            'dropout', 'matmul_v2', 'transpose2', 'reshape2', 'matmul_v2',
+            'c_allreduce_sum', 'elementwise_add'
         ]
         self.assertTrue(dist_ops == ref_ops)
 
@@ -546,6 +689,17 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
             initialization_check(_global_parallel_strategy, dist_context,
                                  dist_startup_prog, serial_startup_prog,
                                  var_need_broadcast))
+
+        # check var and op all have dist_attr in dist_main_program
+        self.assertTrue(
+            distributed_attr_check_for_program(dist_main_prog, dist_context))
+        # check distribured attr for dist op
+        serial_op_idx = [0, 4, 6, 18]
+        dist_op_idx = [[0, 1], [5, 6], [8, 9], [21, 22]]
+        self.assertTrue(
+            distributed_attr_check_for_dist_op(serial_main_prog, dist_main_prog,
+                                               dist_context, serial_op_idx,
+                                               dist_op_idx))
 
     def test_attn_dp_mp(self):
         global _global_parallel_strategy
@@ -582,12 +736,12 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         dist_ops = dist_main_prog.global_block().ops
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
-            'c_identity', 'matmul', 'elementwise_add', 'reshape2', 'transpose2',
-            'c_identity', 'matmul', 'elementwise_add', 'c_identity', 'matmul',
-            'elementwise_add', 'reshape2', 'transpose2', 'reshape2',
-            'transpose2', 'matmul', 'softmax', 'dropout', 'matmul_v2',
-            'transpose2', 'reshape2', 'matmul', 'c_allreduce_sum',
-            'elementwise_add'
+            'c_identity', 'matmul_v2', 'elementwise_add', 'reshape2',
+            'transpose2', 'c_identity', 'matmul_v2', 'elementwise_add',
+            'c_identity', 'matmul_v2', 'elementwise_add', 'reshape2',
+            'transpose2', 'reshape2', 'transpose2', 'matmul', 'softmax',
+            'dropout', 'matmul_v2', 'transpose2', 'reshape2', 'matmul_v2',
+            'c_allreduce_sum', 'elementwise_add'
         ]
         self.assertTrue(dist_ops == ref_ops)
 
@@ -597,6 +751,17 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
             initialization_check(_global_parallel_strategy, dist_context,
                                  dist_startup_prog, serial_startup_prog,
                                  var_need_broadcast))
+
+        # check var and op all have dist_attr in dist_main_program
+        self.assertTrue(
+            distributed_attr_check_for_program(dist_main_prog, dist_context))
+        # check distribured attr for dist op
+        serial_op_idx = [0, 4, 6, 18]
+        dist_op_idx = [[0, 1], [5, 6], [8, 9], [21, 22]]
+        self.assertTrue(
+            distributed_attr_check_for_dist_op(serial_main_prog, dist_main_prog,
+                                               dist_context, serial_op_idx,
+                                               dist_op_idx))
 
 
 class DecoderLayer(nn.Layer):
@@ -859,15 +1024,16 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
             'c_embedding', 'c_allreduce_sum', 'lookup_table_v2',
-            'elementwise_add', 'dropout', 'layer_norm', 'c_identity', 'matmul',
-            'elementwise_add', 'reshape2', 'transpose2', 'c_identity', 'matmul',
-            'elementwise_add', 'c_identity', 'matmul', 'elementwise_add',
-            'reshape2', 'transpose2', 'reshape2', 'transpose2', 'matmul',
-            'softmax', 'dropout', 'matmul_v2', 'transpose2', 'reshape2',
-            'matmul', 'c_allreduce_sum', 'elementwise_add', 'dropout',
-            'elementwise_add', 'layer_norm', 'c_identity', 'matmul',
-            'elementwise_add', 'gelu', 'matmul', 'c_allreduce_sum',
-            'elementwise_add', 'dropout', 'elementwise_add'
+            'elementwise_add', 'dropout', 'layer_norm', 'c_identity',
+            'matmul_v2', 'elementwise_add', 'reshape2', 'transpose2',
+            'c_identity', 'matmul_v2', 'elementwise_add', 'c_identity',
+            'matmul_v2', 'elementwise_add', 'reshape2', 'transpose2',
+            'reshape2', 'transpose2', 'matmul', 'softmax', 'dropout',
+            'matmul_v2', 'transpose2', 'reshape2', 'matmul_v2',
+            'c_allreduce_sum', 'elementwise_add', 'dropout', 'elementwise_add',
+            'layer_norm', 'c_identity', 'matmul_v2', 'elementwise_add', 'gelu',
+            'matmul_v2', 'c_allreduce_sum', 'elementwise_add', 'dropout',
+            'elementwise_add'
         ]
         self.assertTrue(dist_ops == ref_ops)
 
@@ -880,6 +1046,18 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
             initialization_check(_global_parallel_strategy, dist_context,
                                  dist_startup_prog, serial_startup_prog,
                                  var_need_broadcast))
+
+        # check var and op all have dist_attr in dist_main_program
+        self.assertTrue(
+            distributed_attr_check_for_program(dist_main_prog, dist_context))
+        # check distribured attr
+        serial_op_idx = [0, 5, 9, 11, 23, 28, 31]
+        dist_op_idx = [[0, 1], [6, 7], [11, 12], [14, 15], [27, 28], [33, 34],
+                       [37, 38]]
+        self.assertTrue(
+            distributed_attr_check_for_dist_op(serial_main_prog, dist_main_prog,
+                                               dist_context, serial_op_idx,
+                                               dist_op_idx))
 
     def test_decoder_noparallel(self):
         global _global_parallel_strategy
@@ -923,13 +1101,13 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
         dist_ops = [op.type for op in dist_ops]
         ref_ops = [
             'lookup_table_v2', 'lookup_table_v2', 'elementwise_add', 'dropout',
-            'layer_norm', 'matmul', 'elementwise_add', 'reshape2', 'transpose2',
-            'matmul', 'elementwise_add', 'matmul', 'elementwise_add',
-            'reshape2', 'transpose2', 'reshape2', 'transpose2', 'matmul',
-            'softmax', 'dropout', 'matmul_v2', 'transpose2', 'reshape2',
-            'matmul', 'elementwise_add', 'dropout', 'elementwise_add',
-            'layer_norm', 'matmul', 'elementwise_add', 'gelu', 'matmul',
-            'elementwise_add', 'dropout', 'elementwise_add'
+            'layer_norm', 'matmul_v2', 'elementwise_add', 'reshape2',
+            'transpose2', 'matmul_v2', 'elementwise_add', 'matmul_v2',
+            'elementwise_add', 'reshape2', 'transpose2', 'reshape2',
+            'transpose2', 'matmul', 'softmax', 'dropout', 'matmul_v2',
+            'transpose2', 'reshape2', 'matmul_v2', 'elementwise_add', 'dropout',
+            'elementwise_add', 'layer_norm', 'matmul_v2', 'elementwise_add',
+            'gelu', 'matmul_v2', 'elementwise_add', 'dropout', 'elementwise_add'
         ]
         self.assertTrue(dist_ops == ref_ops)
         dist_ops = dist_startup_prog.global_block().ops

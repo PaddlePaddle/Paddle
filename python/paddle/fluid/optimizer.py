@@ -1305,6 +1305,7 @@ class SGDOptimizer(Optimizer):
             grad_clip=grad_clip,
             name=name)
         self.type = "sgd"
+        self._use_mkldnn = False
 
     @no_grad
     def _append_optimize_op(self, block, param_and_grad):
@@ -1323,6 +1324,7 @@ class SGDOptimizer(Optimizer):
                 "Grad": param_and_grad[1],
                 "LearningRate": lr
             },
+            attrs={"use_mkldnn": self._use_mkldnn},
             outputs={"ParamOut": param_and_grad[0]},
             stop_gradient=True)
 
@@ -1433,12 +1435,12 @@ class MomentumOptimizer(Optimizer):
         velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                              param_and_grad[0])
         lr = self._create_param_lr(param_and_grad)
-
+        master_weight = None
         if framework.in_dygraph_mode():
-            _, _ = _C_ops.momentum(param_and_grad[0], param_and_grad[1],
-                                   velocity_acc, lr, param_and_grad[0],
-                                   velocity_acc, 'mu', self._momentum,
-                                   'use_nesterov', self._use_nesterov)
+            _, _, _ = _C_ops.momentum(
+                param_and_grad[0], param_and_grad[1], velocity_acc, lr,
+                master_weight, param_and_grad[0], velocity_acc, master_weight,
+                'mu', self._momentum, 'use_nesterov', self._use_nesterov)
             return None
 
         attrs = {"mu": self._momentum, "use_nesterov": self._use_nesterov}
@@ -1982,26 +1984,29 @@ class LarsMomentumOptimizer(Optimizer):
         self._master_weights = {}
 
     def _create_master_weight(self, param):
-        assert isinstance(self.helper, LayerHelper)
+        if param.name in self._master_weights:
+            var = self._master_weights[param.name]
+        else:
+            assert isinstance(self.helper, LayerHelper)
 
-        var_name = param.name + '_fp32_master'
-        var_name = unique_name.generate(var_name)
-        var = layers.create_global_var(
-            name=var_name,
-            shape=param.shape,
-            value=0,
-            dtype='float32',
-            persistable=True)
-        block = self.helper.startup_program.global_block()
-        block.append_op(
-            type="cast",
-            inputs={"X": [param]},
-            outputs={"Out": [var]},
-            attrs={
-                "in_dtype": param.dtype,
-                "out_dtype": core.VarDesc.VarType.FP32
-            })
-        self._master_weights[param.name] = var
+            var_name = param.name + '_fp32_master'
+            var_name = unique_name.generate(var_name)
+            var = layers.create_global_var(
+                name=var_name,
+                shape=param.shape,
+                value=0,
+                dtype='float32',
+                persistable=True)
+            block = self.helper.startup_program.global_block()
+            block.append_op(
+                type="cast",
+                inputs={"X": [param]},
+                outputs={"Out": [var]},
+                attrs={
+                    "in_dtype": param.dtype,
+                    "out_dtype": core.VarDesc.VarType.FP32
+                })
+            self._master_weights[param.name] = var
         return var
 
     def _get_accumulator(self, name, param):
@@ -2462,12 +2467,14 @@ class AdamOptimizer(Optimizer):
                 self._beta1, Variable) else self._beta1.numpy().item(0)
             _beta2 = self._beta2 if not isinstance(
                 self._beta2, Variable) else self._beta2.numpy().item(0)
-            _, _, _, _, _ = _C_ops.adam(
+            master_weight = None
+            _, _, _, _, _, _ = _C_ops.adam(
                 param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
-                beta1_pow_acc, beta2_pow_acc, param_and_grad[0], moment1,
-                moment2, beta1_pow_acc, beta2_pow_acc, 'epsilon', self._epsilon,
-                'lazy_mode', self._lazy_mode, 'min_row_size_to_use_multithread',
-                1000, 'beta1', _beta1, 'beta2', _beta2, 'use_global_beta_pow',
+                beta1_pow_acc, beta2_pow_acc, master_weight, param_and_grad[0],
+                moment1, moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
+                'epsilon', self._epsilon, 'lazy_mode', self._lazy_mode,
+                'min_row_size_to_use_multithread', 1000, 'beta1', _beta1,
+                'beta2', _beta2, 'use_global_beta_pow',
                 self._use_global_beta_pow)
 
             return None
@@ -3959,62 +3966,59 @@ class ExponentialMovingAverage(object):
 
 
     Args:
-	decay (float, optional): The exponential decay rate, usually close to 1, such as 
-            0.999, 0.9999, ... . Default 0.999.
-        thres_steps (Variable|None): If not `None`, schedule the decay rate. 
-            Default None.
-        name (str|None): For detailed information, please refer to 
-            :ref:`api_guide_Name`. Usually name is no need to set and None by 
-            default.
+        decay (float, optional): The exponential decay rate, usually close to 1, such as 0.999, 0.9999, ... . Default 0.999.
+        thres_steps (Variable|None, optional): If not `None`, schedule the decay rate. Default None.
+        name (str|None, optional): For detailed information, please refer to :ref:`api_guide_Name`. Usually name is no need to set and None by default.
 
 
     Examples:
 
-	.. code-block:: python
+        .. code-block:: python
 
-	    import numpy
-	    import paddle
-	    import paddle.fluid as fluid
+            import numpy
+            import paddle
+            import paddle.static as static
+            from paddle.static import ExponentialMovingAverage
 
-	    data = fluid.data(name='x', shape=[-1, 5], dtype='float32')
-	    hidden = fluid.layers.fc(input=data, size=10)
-	    cost = fluid.layers.mean(hidden)
+            paddle.enable_static()
 
-	    test_program = fluid.default_main_program().clone(for_test=True)
+            data = static.data(name='x', shape=[-1, 5], dtype='float32')
+            hidden = static.nn.fc(x=data, size=10)
+            cost = paddle.mean(hidden)
 
-	    optimizer = fluid.optimizer.Adam(learning_rate=0.001)
-	    optimizer.minimize(cost)
+            test_program = static.default_main_program().clone(for_test=True)
+            optimizer = paddle.optimizer.Adam(learning_rate=0.001)
+            optimizer.minimize(cost)
 
-	    global_steps = fluid.layers.autoincreased_step_counter()
-	    ema = fluid.optimizer.ExponentialMovingAverage(0.999, thres_steps=global_steps)
-	    ema.update()
+            ema = ExponentialMovingAverage(0.999)
+            ema.update()
 
-	    place = fluid.CPUPlace()
-	    exe = fluid.Executor(place)
-	    exe.run(fluid.default_startup_program())
+            place = paddle.CPUPlace()
+            exe = static.Executor(place)
+            exe.run(static.default_startup_program())
 
-	    for pass_id in range(3):
-		for batch_id in range(6):
-		    data = numpy.random.random(size=(10, 5)).astype('float32')
-		    exe.run(program=fluid.default_main_program(),
-			feed={'x': data}, 
-			fetch_list=[cost.name])
+            for pass_id in range(3):
+                for batch_id in range(6):
+                    data = numpy.random.random(size=(10, 5)).astype('float32')
+                    exe.run(program=static.default_main_program(),
+                    feed={'x': data}, 
+                    fetch_list=[cost.name])
 
-		# usage 1
-		with ema.apply(exe):
-		    data = numpy.random.random(size=(10, 5)).astype('float32')
-		    exe.run(program=test_program,
-			    feed={'x': data}, 
-			    fetch_list=[hidden.name])
-			    
+                # usage 1
+                with ema.apply(exe):
+                    data = numpy.random.random(size=(10, 5)).astype('float32')
+                    exe.run(program=test_program,
+                        feed={'x': data}, 
+                        fetch_list=[hidden.name])
 
-		 # usage 2
-		with ema.apply(exe, need_restore=False):
-		    data = numpy.random.random(size=(10, 5)).astype('float32')
-		    exe.run(program=test_program,
-			    feed={'x': data}, 
-			    fetch_list=[hidden.name])
-		ema.restore(exe)
+                # usage 2
+                with ema.apply(exe, need_restore=False):
+                    data = numpy.random.random(size=(10, 5)).astype('float32')
+                    exe.run(program=test_program,
+                        feed={'x': data}, 
+                        fetch_list=[hidden.name])
+                ema.restore(exe)
+
     """
 
     def __init__(self, decay=0.999, thres_steps=None, name=None):
@@ -4379,9 +4383,21 @@ class PipelineOptimizer(object):
                         name=var,
                         type=core.VarDesc.VarType.READER,
                         persistable=source_var.persistable)
+                elif isinstance(source_var, Parameter):
+                    dest_var = block.create_parameter(
+                        name=source_var.name,
+                        shape=source_var.shape,
+                        dtype=source_var.dtype,
+                        type=source_var.type,
+                        lod_level=source_var.lod_level,
+                        stop_gradient=source_var.stop_gradient,
+                        trainable=source_var.trainable,
+                        optimize_attr=source_var.optimize_attr,
+                        regularizer=source_var.regularizer,
+                        error_clip=source_var.error_clip)
                 else:
                     dest_var = block._clone_variable(source_var, False)
-                dest_var.stop_gradient = source_var.stop_gradient
+                self._clone_var_attr(dest_var, source_var)
             # When use with sharding, allreduce_sum and allreduce_max
             # used for global gradient clip and amp will be added by sharding.
             op_idx += 1
@@ -4547,8 +4563,13 @@ class PipelineOptimizer(object):
             persistable=ref_var.persistable,
             is_data=ref_var.is_data,
             need_check_feed=ref_var.desc.need_check_feed())
-        new_var.stop_gradient = ref_var.stop_gradient
+        self._clone_var_attr(new_var, ref_var)
         return new_var
+
+    def _clone_var_attr(self, dest, src):
+        dest.stop_gradient = src.stop_gradient
+        if hasattr(src, 'is_distributed'):
+            dest.is_distributed = src.is_distributed
 
     def _strip_grad_suffix(self, name):
         """
@@ -5019,16 +5040,13 @@ class PipelineOptimizer(object):
         if self._num_microbatches == 1: return
         for index, op in reversed(tuple(enumerate(list(block.ops)))):
             if self._is_loss_grad_op(op):
-                loss_grad_var = block.vars[op.output_arg_names[0]]
-                block._insert_op(
-                    index=index + 1,
-                    type='scale',
-                    inputs={'X': loss_grad_var},
-                    outputs={'Out': loss_grad_var},
-                    attrs={
-                        'scale': 1.0 / self._num_microbatches,
-                        self._op_role_key: self._op_role.Backward
-                    })
+                assert op.type == 'fill_constant', \
+                    "loss_grad_op must be fill_constant op, " \
+                    "but this op is {}".format(op.type)
+                assert op.has_attr('value')
+                loss_scale = float(op.attr('value'))
+                loss_scale = loss_scale / self._num_microbatches
+                op._set_attr('value', loss_scale)
                 break
 
     def _rename_gradient_var_name(self, block):
@@ -5049,16 +5067,16 @@ class PipelineOptimizer(object):
     def _accumulate_gradients(self,
                               block,
                               pp_allreduce_in_optimize=False,
-                              fp16_allreduce=False,
-                              user_defined_strategy=None):
+                              strategy=None,
+                              shard=None):
         """
         Create a new merged gradient for each parameter and accumulate the
         corresponding gradient to it.
         """
-        if user_defined_strategy and user_defined_strategy.fuse_grad_merge:
+        fp16_allreduce = strategy.fp16_allreduce if strategy else False
+        if strategy and strategy.fuse_grad_merge:
             fused_gradient_names = self._accumulate_gradients_with_fuse(
-                block, fp16_allreduce,
-                user_defined_strategy.fuse_grad_size_in_MB)
+                block, fp16_allreduce, strategy.fuse_grad_size_in_MB, shard)
             return fused_gradient_names
 
         merged_gradient_names = []
@@ -5079,8 +5097,8 @@ class PipelineOptimizer(object):
 
             if self._is_backward_op(op) and first_opt_op_idx is None:
                 first_opt_op_idx = index + 1
-                # no optimize phase
-                if first_opt_op_idx == len(block.ops): return
+                # maybe have no optimize
+                # if first_opt_op_idx == len(block.ops): return
 
             if self._is_backward_op(op) and (
                     self._op_role_var_key in op.attr_names):
@@ -5190,44 +5208,9 @@ class PipelineOptimizer(object):
 
         return merged_gradient_names
 
-    def _accumulate_gradients_with_fuse(self, main_block, fp16, fused_size):
-        first_opt_op_idx = None
-        grad_param_pairs = []
-        # obtain all param/grad pairs that needed to be fused
-        for index, op in reversed(tuple(enumerate(list(main_block.ops)))):
-            # remove the cast op of fp16 grad to fp32 grad
-            if self._is_optimize_op(op) and op.type == 'cast':
-                in_name = op.input_arg_names[0]
-                out_name = op.output_arg_names[0]
-                if out_name.strip('@GRAD') in self._param_device_map:
-                    assert in_name.replace('.cast_fp16', '') == out_name
-                    main_block._remove_op(index)
-                    continue
-
-            if self._is_backward_op(op) and first_opt_op_idx is None:
-                first_opt_op_idx = index + 1
-                # no optimize phase
-                if first_opt_op_idx == len(main_block.ops):
-                    return
-
-            if self._is_backward_op(op) and (
-                    self._op_role_var_key in op.attr_names):
-                op_role_var = op.attr(self._op_role_var_key)
-                if len(op_role_var) == 0:
-                    continue
-                assert len(op_role_var) % 2 == 0
-                for i in range(0, len(op_role_var), 2):
-                    param_name = op_role_var[i]
-                    if not main_block.has_var(param_name):
-                        continue
-                    if '@BroadCast' in param_name:
-                        continue
-                    grad_param_pairs.append(
-                        (op_role_var[i + 1], op_role_var[i]))
-
-        if len(grad_param_pairs) == 0:
-            return
-
+    def _insert_accumulate_gradients_with_fuse(self, main_block, fp16,
+                                               fused_size, grad_param_pairs,
+                                               first_opt_op_idx):
         grad_param_pairs = self._sort_grad_param_by_dtype(main_block,
                                                           grad_param_pairs)
 
@@ -5247,6 +5230,8 @@ class PipelineOptimizer(object):
                 persistable=True,
                 stop_gradient=False)
             real_param = main_block.var(param)
+            if hasattr(real_param, 'is_distributed'):
+                merged_grad_var.is_distributed = real_param.is_distributed
             tmp_size = self._get_var_size(real_grad)
             # two strategies for splitting the grad
             # 1. the current segment's size reach the user defined grad_size_in_MB
@@ -5426,9 +5411,66 @@ class PipelineOptimizer(object):
         for i in range(len(fused_merged_gradients)):
             fused_merged_gradients[i] = fused_merged_gradients[i].name
 
-        main_block._sync_with_cpp()
+        return fused_merged_gradients, first_opt_op_idx
 
-        return fused_merged_gradients
+    def _accumulate_gradients_with_fuse(self,
+                                        main_block,
+                                        fp16,
+                                        fused_size,
+                                        shard=None):
+        first_opt_op_idx = None
+        grad_param_pairs = []
+        # obtain all param/grad pairs that needed to be fused
+        for index, op in reversed(tuple(enumerate(list(main_block.ops)))):
+            # remove the cast op of fp16 grad to fp32 grad
+            if self._is_optimize_op(op) and op.type == 'cast':
+                in_name = op.input_arg_names[0]
+                out_name = op.output_arg_names[0]
+                if out_name.strip('@GRAD') in self._param_device_map:
+                    assert in_name.replace('.cast_fp16', '') == out_name
+                    main_block._remove_op(index)
+                    continue
+
+            if self._is_backward_op(op) and first_opt_op_idx is None:
+                first_opt_op_idx = index + 1
+                # no optimize phase
+                if first_opt_op_idx == len(main_block.ops):
+                    return
+
+            if self._is_backward_op(op) and (
+                    self._op_role_var_key in op.attr_names):
+                op_role_var = op.attr(self._op_role_var_key)
+                if len(op_role_var) == 0:
+                    continue
+                assert len(op_role_var) % 2 == 0
+                for i in range(0, len(op_role_var), 2):
+                    param_name = op_role_var[i]
+                    if not main_block.has_var(param_name):
+                        continue
+                    if '@BroadCast' in param_name:
+                        continue
+                    grad_param_pairs.append(
+                        (op_role_var[i + 1], op_role_var[i]))
+
+        if len(grad_param_pairs) == 0:
+            return
+
+        nranks = shard.worker_num if shard else 1
+        device_to_pairs = [[] for _ in range(nranks)]
+        for pair in grad_param_pairs:
+            root_id = shard.device(pair[1]) if shard else 0
+            assert 0 <= root_id < nranks
+            device_to_pairs[root_id].append(pair)
+
+        all_fused_merged_gradients = []
+        for pairs in device_to_pairs:
+            fused_merged_gradients, first_opt_op_idx = \
+                self._insert_accumulate_gradients_with_fuse(
+                    main_block, fp16, fused_size, pairs, first_opt_op_idx)
+            all_fused_merged_gradients += fused_merged_gradients
+
+        main_block._sync_with_cpp()
+        return all_fused_merged_gradients
 
     def _sort_grad_param_by_dtype(self, main_block, grad_param_pairs):
         # sort the grad param paris by the dtype

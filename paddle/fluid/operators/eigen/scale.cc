@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/platform/bfloat16.h"
+#include "paddle/fluid/platform/complex.h"
 
 namespace paddle {
 namespace operators {
@@ -42,6 +43,8 @@ template struct EigenScale<Eigen::DefaultDevice, int8_t>;
 template struct EigenScale<Eigen::DefaultDevice, int16_t>;
 template struct EigenScale<Eigen::DefaultDevice, int>;
 template struct EigenScale<Eigen::DefaultDevice, int64_t>;
+template struct EigenScale<Eigen::DefaultDevice, platform::complex<float>>;
+template struct EigenScale<Eigen::DefaultDevice, platform::complex<double>>;
 
 }  // namespace operators
 }  // namespace paddle

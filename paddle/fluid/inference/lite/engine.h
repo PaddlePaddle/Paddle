@@ -53,6 +53,15 @@ struct EngineConfig {
 
   // for cuda
   bool use_multi_stream{false};
+
+  // for nnadapter or npu.
+  std::string nnadapter_model_cache_dir;
+  std::vector<std::string> nnadapter_device_names;
+  std::string nnadapter_context_properties;
+  std::string nnadapter_subgraph_partition_config_buffer;
+  std::string nnadapter_subgraph_partition_config_path;
+  std::vector<std::string> nnadapter_model_cache_token;
+  std::vector<std::vector<char>> nnadapter_model_cache_buffer;
 };
 
 class EngineManager {

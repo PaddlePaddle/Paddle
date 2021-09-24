@@ -101,6 +101,7 @@ limitations under the License. */
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/type_defs.h"
 #endif
+#include "paddle/fluid/platform/flags.h"
 
 namespace paddle {
 namespace platform {

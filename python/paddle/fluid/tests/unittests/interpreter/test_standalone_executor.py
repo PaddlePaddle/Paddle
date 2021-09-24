@@ -79,18 +79,11 @@ class LinearTestCase(unittest.TestCase):
         IS_WINDOWS = sys.platform.startswith('win')
 
         if core.is_compiled_with_cuda():
-            # input `a` is on CPU, 16 bytes
-            self.assertEqual(cost_info.host_memory_bytes(), 16)
             # # w,bias,b, out, memory block is at least 256 bytes on Linux
             gt = 16 * 4 if IS_WINDOWS else 256 * 4
             self.assertGreater(cost_info.device_memory_bytes(), gt)
-            self.assertGreaterEqual(cost_info.device_total_memory_bytes(),
-                                    cost_info.device_memory_bytes())
         else:
-            # x(16 bytes), w(16 bytes), bias(8 bytes), b(16 bytes), out(16 bytes)
-            self.assertGreaterEqual(cost_info.host_memory_bytes(), 72)
             self.assertEqual(cost_info.device_memory_bytes(), 0)
-            self.assertGreaterEqual(cost_info.device_total_memory_bytes(), 0)
 
 
 def build_program():
@@ -248,9 +241,6 @@ class SwitchExecutorInterfaceWithFeed(unittest.TestCase):
 
     def test_with_error(self):
         feed = [{'a': np.ones([2, 2], dtype="float32")}]
-
-        with self.assertRaises(TypeError):
-            res = self.run_new_executor(feed)
 
         with self.assertRaises(TypeError):
             os.environ['FLAGS_USE_STANDALONE_EXECUTOR'] = '1'

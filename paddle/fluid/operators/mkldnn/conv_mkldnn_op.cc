@@ -706,7 +706,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         platform::CreateKey(dev_ctx, src_tz, src_dt,
                             ctx.InputName("Input") + ctx.InputName("Filter"));
 
-    const std::string key_conv_pd = key + "@conv_pd";
     bool need_s8_to_u8 = false;
     std::shared_ptr<mkldnn::convolution_forward> conv_p;
     std::shared_ptr<mkldnn::memory> src_memory_p;
@@ -721,6 +720,7 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     // are merged/unified, this will disappear
     auto key_tid = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
 
+    const std::string key_conv_pd = key_tid + "@conv_pd";
     auto prim_key = key_tid + "@conv_p";
     auto dst_key = key_tid + "@dst_mem_p";
     auto src_key = key_tid + "@src_mem_p";
@@ -731,12 +731,13 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto src_reorder_key = key_tid + "@src_mem_preorder_p";
     auto residual_reorder_key = key_tid + "@residual_data_mem_preorder_p";
 
-    conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(
-        dev_ctx.GetBlob(prim_key));
+    conv_pd =
+        std::static_pointer_cast<mkldnn::convolution_forward::primitive_desc>(
+            dev_ctx.GetBlob(key_conv_pd));
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
-    if (conv_p == nullptr || !is_test) {
+    if (conv_pd == nullptr || !is_test) {
       float fuse_alpha = ctx.Attr<float>("fuse_alpha");
       float fuse_beta = ctx.Attr<float>("fuse_beta");
       bool force_fp32_output = ctx.Attr<bool>("force_fp32_output");
@@ -946,7 +947,6 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       }
 
       // create convolution op primitive
-      auto scale_bias_key = key + "@scale_bias";
       conv_p = handler->AcquireConvolution();
       if (bias) {
         const K* bias_data = bias->data<K>();
@@ -1000,13 +1000,10 @@ class ConvMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           dev_ctx.GetBlob(weights_key));
       dst_memory_p =
           std::static_pointer_cast<mkldnn::memory>(dev_ctx.GetBlob(dst_key));
-      conv_pd =
-          std::static_pointer_cast<mkldnn::convolution_forward::primitive_desc>(
-              dev_ctx.GetBlob(key_conv_pd));
-      if (conv_pd) {
-        handler.reset(new platform::ConvMKLDNNHandler(conv_pd, dev_ctx,
-                                                      mkldnn_engine, key));
-      }
+      conv_p = std::static_pointer_cast<mkldnn::convolution_forward>(
+          dev_ctx.GetBlob(prim_key));
+      handler.reset(new platform::ConvMKLDNNHandler(conv_pd, dev_ctx,
+                                                    mkldnn_engine, key));
 
       if (fuse_residual_conn) {
         auto residual_param = ctx.Input<Tensor>("ResidualData");
@@ -1125,12 +1122,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         mkldnn::memory::format_tag out_format =
             weights_tz.size() == 6 ? mkldnn::memory::format_tag::goidhw
                                    : mkldnn::memory::format_tag::goihw;
-        std::string key = platform::CreateKey(dev_ctx, weights_tz, filter_fmt,
-                                              out_format, in_type);
-        key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
-
-        platform::ReorderMKLDNNHandler handler(
-            weights_tz, filter->type(), in_type, dev_ctx, mkldnn_engine, key);
+        platform::ReorderMKLDNNHandler handler(weights_tz, filter->type(),
+                                               in_type, mkldnn_engine);
         auto reorder_dst_memory_p =
             handler.AcquireDstMemory(filter_grad, out_format, ctx.GetPlace());
 
