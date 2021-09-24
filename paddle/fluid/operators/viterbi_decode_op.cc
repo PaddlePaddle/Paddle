@@ -73,16 +73,24 @@ class ViterbiDecodeOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddInput(
         "Input",
-        "(Tensor) ViterbiDecode input tensor, which support variable-time "
-        "length input sequence. The shape of the Tensor MUST be ( batch_size,"
-        "sequence_length, num_tags). sequence_length is the total time step "
-        "in this mini-batch (CAN be change in different batch) batch_size "
-        "is the instance number of this batch num_tags is the number of tags.");
-    AddInput("Transition", "");
-    AddInput("Length", "");
-    AddOutput("Scores", "");
-    AddOutput("Path", "");
-    AddAttr<bool>("with_start_stop_tag", "").SetDefault(true);
+        "The unary emission tensor. The shape of Input MUST be ( batch_size,"
+        "sequence_length, num_tags). ");
+    AddInput("Transition",
+             "The transition matrix. The shape of Transition MUST be ( "
+             "num_tags, num_tags). ");
+    AddInput("Length",
+             "The input length tensor storing real length of each sequence for "
+             "correctness. The shape of Length MUST be (batch_size).");
+    AddOutput("Scores",
+              "The scores tensor containing the score for the Viterbi "
+              "sequence. The shape of Scores MUST be (batch_size).");
+    AddOutput("Path",
+              "The paths tensor containing the highest scoring tag indices. "
+              "The shape of Scores MUST be (batch_size, sequence_length).");
+    AddAttr<bool>("with_start_stop_tag",
+                  "If set to True, the last row and the last column of "
+                  "transitions will be considered as start tag.")
+        .SetDefault(true);
     AddComment(R"DOC(
       )DOC");
   }

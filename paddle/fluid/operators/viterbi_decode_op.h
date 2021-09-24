@@ -319,6 +319,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     for (auto it = batch_path.begin(); it != batch_path.end(); ++it) {
       it->Resize({batch_size});
     }
+    // create and init required tensor
     INIT_REQUIRED_TENSOR();
     bool is_multi_threads = false;
 #ifdef PADDLE_WITH_MKLML
@@ -385,7 +386,6 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
                  Mul, int64_t);
     ARange(batch_offset.data<int64_t>(), static_cast<int64_t>(batch_size),
            static_cast<int64_t>(n_labels));
-
     for (auto hist = historys.rbegin(); hist != historys.rend(); ++hist) {
       ++last_ids_index;
       ADD(left_length, one, left_length, is_multi_threads, int64_t);

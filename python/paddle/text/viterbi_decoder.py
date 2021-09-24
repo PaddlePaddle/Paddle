@@ -25,11 +25,15 @@ def viterbi_decode(inputs, transitions, lengths, with_start_stop_tag=True):
     Decode the highest scoring sequence of tags.
     Args:
         inputs (`Tensor` | `Varaiable`):  
-            The unary emission tensor. Its dtype is float32 and has a shape of `[batch_size, sequence_length, num_tags]`.
+            The unary emission tensor. Its dtype is float32 or float64 and has a shape of `[batch_size, sequence_length, num_tags]`.
         transitions (`Tensor`| `Varaiable`): 
-            The transition matrix.  Its dtype is float32 and has a shape of `[num_tags, num_tags]`.
+            The transition matrix.  Its dtype is float32 or float64 and has a shape of `[num_tags, num_tags]`.
         length (`Tensor`| `Varaiable`):  
             The input length tensor storing real length of each sequence for correctness. Its dtype is int64 and has a shape of `[batch_size]`.
+        with_start_stop_tag (`bool`, optional): 
+                    If set to True, the last row and the last column of transitions will be considered as start tag,
+                    the the penultimate row and the penultimate column of transitions will be considered as stop tag.
+                    Else, all the rows and columns will be considered as the real tag. Defaults to ``True``.
     Returns:
         scores(`Tensor`| `Varaiable`): 
             The scores tensor containing the score for the Viterbi sequence. Its dtype is float32 and has a shape of `[batch_size]`.
@@ -72,7 +76,7 @@ class ViterbiDecoder(Layer):
         with_start_stop_tag (`bool`, optional): 
             If set to True, the last row and the last column of transitions will be considered as start tag,
             the the penultimate row and the penultimate column of transitions will be considered as stop tag.
-            Else, all the rows and columns will be considered as the real tag. Defaults to ``None``.
+            Else, all the rows and columns will be considered as the real tag. Defaults to ``True``.
     """
 
     def __init__(self, transitions, with_start_stop_tag=True):
