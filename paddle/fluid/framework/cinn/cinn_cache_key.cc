@@ -29,28 +29,32 @@ namespace framework {
 namespace cinn {
 
 CinnCacheKey::CinnCacheKey(
-    const ir::Graph* graph,
+    const ir::Graph& graph,
     const std::map<std::string, const LoDTensor*>& feed_tensors) {
   this->SetKey(graph, feed_tensors);
 }
 
-CinnCacheKey::CinnCacheKey(const ir::Graph* graph,
+CinnCacheKey::CinnCacheKey(const ir::Graph& graph,
                            const std::map<std::string, DDim>& feed_shapes) {
   this->SetKey(graph, feed_shapes);
 }
 
 void CinnCacheKey::SetKey(
-    const ir::Graph* graph,
+    const ir::Graph& graph,
     const std::map<std::string, const LoDTensor*>& feed_tensors) {
-  graph_ = graph;
+  ProgramDesc program;
+  GraphToProgram(graph, &program);
+  program.Proto()->SerializeToString(&graph_serialize_str_);
   for (const auto& name_tensor : feed_tensors) {
     feed_shapes_[name_tensor.first] = name_tensor.second->dims();
   }
 }
 
-void CinnCacheKey::SetKey(const ir::Graph* graph,
+void CinnCacheKey::SetKey(const ir::Graph& graph,
                           const std::map<std::string, DDim>& feed_shapes) {
-  graph_ = graph;
+  ProgramDesc program;
+  GraphToProgram(graph, &program);
+  program.Proto()->SerializeToString(&graph_serialize_str_);
   feed_shapes_ = feed_shapes;
 }
 
@@ -59,24 +63,8 @@ bool CinnCacheKey::operator!=(const CinnCacheKey& other) const {
 }
 
 bool CinnCacheKey::operator==(const CinnCacheKey& other) const {
-  if (feed_shapes_ != other.feed_shapes_) {
-    return false;
-  }
-  if ((graph_ == nullptr && other.graph_ != nullptr) ||
-      (graph_ != nullptr && other.graph_ == nullptr)) {
-    return false;
-  }
-  if (graph_ == nullptr && other.graph_ == nullptr) {
-    return true;
-  }
-
-  // graph_ and other.graph_ are not NULL and shapes are equal
-  ProgramDesc program;
-  ProgramDesc other_program;
-  GraphToProgram(*graph_, &program);
-  GraphToProgram(*(other.graph_), &other_program);
-  return program.Proto()->SerializeAsString() ==
-         other_program.Proto()->SerializeAsString();
+  return graph_serialize_str_ == other.graph_serialize_str_ &&
+         feed_shapes_ == other.feed_shapes_;
 }
 
 size_t CinnCacheKey::Hash::operator()(const CinnCacheKey& key) const {
@@ -88,13 +76,7 @@ size_t CinnCacheKey::Hash::operator()(const CinnCacheKey& key) const {
     boost::hash_combine(ret, string_hasher(name_shape.second.to_str()));
   }
 
-  if (key.graph_ != nullptr) {
-    ProgramDesc program;
-    GraphToProgram(*key.graph_, &program);
-    std::string prog_serialize_str = program.Proto()->SerializeAsString();
-    boost::hash_combine(ret, string_hasher(prog_serialize_str));
-  }
-
+  boost::hash_combine(ret, string_hasher(key.graph_serialize_str_));
   return ret;
 }
 

@@ -29,7 +29,16 @@ using ir::Graph;
 std::map<std::string, FetchType*> CinnRunner::Run(
     const Graph& graph, Scope* scope,
     std::map<std::string, const LoDTensor*>* feed_targets) {
-  return std::map<std::string, FetchType*>();
+  CinnCacheKey cur_key(graph, *feed_targets);
+  std::shared_ptr<CinnCompiledObject> obj_to_run;
+  if (cache_.find(cur_key) != cache_.end()) {
+    obj_to_run = cache_[cur_key];
+  } else {
+    obj_to_run = std::make_shared<CinnCompiledObject>();
+    obj_to_run->Compile(graph, feed_targets);
+    cache_[cur_key] = obj_to_run;
+  }
+  return obj_to_run->Run(scope, feed_targets);
 }
 
 }  // namespace cinn

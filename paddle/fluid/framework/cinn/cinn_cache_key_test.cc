@@ -32,26 +32,32 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKey) {
   ProgramDesc empty_program;
   ir::Graph empty_graph(empty_program);
 
+  ProgramDesc program;
+  auto *global_block = program.MutableBlock(0);
+  auto *x = global_block->Var("X");
+  x->SetType(proto::VarType::LOD_TENSOR);
+  ir::Graph graph(program);
+
   LoDTensor tensor;
   tensor.Resize({1, 2, 3});
-  const LoDTensor* tensor_pointer = &tensor;
-  std::map<std::string, const LoDTensor*> feed_tensors = {
+  const LoDTensor *tensor_pointer = &tensor;
+  std::map<std::string, const LoDTensor *> feed_tensors = {
       {"X", tensor_pointer}};
 
   DDim ddim = paddle::framework::make_ddim({1, 2, 3});
   std::map<std::string, DDim> feed_shapes = {{"X", ddim}};
 
-  CinnCacheKey cache_key1(&empty_graph, feed_tensors);
-  CinnCacheKey cache_key2(&empty_graph, feed_shapes);
+  CinnCacheKey cache_key1(empty_graph, feed_tensors);
+  CinnCacheKey cache_key2(empty_graph, feed_shapes);
   EXPECT_EQ(cache_key1, cache_key2);
 
-  CinnCacheKey cache_key3(nullptr, feed_shapes);
-  CinnCacheKey cache_key4(nullptr, feed_tensors);
+  CinnCacheKey cache_key3(graph, feed_shapes);
+  CinnCacheKey cache_key4(graph, feed_tensors);
   EXPECT_EQ(cache_key3, cache_key4);
 
-  CinnCacheKey cache_key5(&empty_graph,
-                          std::map<std::string, const LoDTensor*>());
-  CinnCacheKey cache_key6(&empty_graph, std::map<std::string, DDim>());
+  CinnCacheKey cache_key5(empty_graph,
+                          std::map<std::string, const LoDTensor *>());
+  CinnCacheKey cache_key6(empty_graph, std::map<std::string, DDim>());
   EXPECT_EQ(cache_key5, cache_key6);
 
   EXPECT_NE(cache_key1, cache_key3);

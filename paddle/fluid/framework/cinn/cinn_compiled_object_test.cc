@@ -12,28 +12,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <map>
+
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/framework/cinn/cinn_runner.h"
+#include "paddle/fluid/framework/cinn/cinn_compiled_object.h"
+#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/graph.h"
-#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/program_desc.h"
-#include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
 namespace cinn {
 
-using ir::Graph;
-
-TEST(CinnRunnerTest, TodoTest) {
+TEST(CinnCompiledObjecctTest, TodoTest) {
   ProgramDesc empty_program;
-  Graph empty_graph(empty_program);
-  Scope empty_scope;
+  ir::Graph empty_graph(empty_program);
   std::map<std::string, const LoDTensor*> empty_feed;
+  Scope empty_scope;
 
-  CinnRunner cinn_runner;
-  cinn_runner.Run(empty_graph, &empty_scope, &empty_feed);
+  CinnCompiledObject compiled_obj;
+  compiled_obj.Compile(empty_graph, &empty_feed);
+  auto fetch = compiled_obj.Run(&empty_scope, &empty_feed);
 }
 
 }  // namespace cinn

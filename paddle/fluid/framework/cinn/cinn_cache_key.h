@@ -32,16 +32,16 @@ namespace cinn {
 // The CinnCacheKey contains a graph and the feeded tensor shapes.
 class CinnCacheKey {
  public:
-  CinnCacheKey(const ir::Graph* graph,
+  CinnCacheKey(const ir::Graph& graph,
                const std::map<std::string, const LoDTensor*>& feed_tensors);
-  CinnCacheKey(const ir::Graph* graph,
+  CinnCacheKey(const ir::Graph& graph,
                const std::map<std::string, DDim>& feed_shapes);
 
   ~CinnCacheKey() {}
 
-  void SetKey(const ir::Graph* graph,
+  void SetKey(const ir::Graph& graph,
               const std::map<std::string, const LoDTensor*>& feed_tensors);
-  void SetKey(const ir::Graph* graph,
+  void SetKey(const ir::Graph& graph,
               const std::map<std::string, DDim>& feed_shapes);
 
   bool operator==(const CinnCacheKey& other) const;
@@ -52,7 +52,7 @@ class CinnCacheKey {
   };
 
  private:
-  const ir::Graph* graph_{nullptr};  // Not owned
+  std::string graph_serialize_str_;
   std::map<std::string, DDim> feed_shapes_;
 };
 

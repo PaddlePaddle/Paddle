@@ -15,10 +15,14 @@
 #pragma once
 
 #include <map>
+#include <memory>
+#include <unordered_map>
 
+#include "paddle/fluid/framework/cinn/cinn_cache_key.h"
+#include "paddle/fluid/framework/cinn/cinn_compiled_object.h"
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/scope.h"
-#include "paddle/fluid/framework/tensor.h"
 
 namespace paddle {
 namespace framework {
@@ -33,6 +37,11 @@ class CinnRunner {
   std::map<std::string, FetchType*> Run(
       const ir::Graph& graph, Scope* scope,
       std::map<std::string, const LoDTensor*>* feed_targets);
+
+ private:
+  std::unordered_map<CinnCacheKey, std::shared_ptr<CinnCompiledObject>,
+                     CinnCacheKey::Hash>
+      cache_;
 };
 
 }  // namespace cinn
