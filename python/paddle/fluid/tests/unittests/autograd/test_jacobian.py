@@ -211,7 +211,7 @@ class TestJacobianFloat64(TestJacobian):
         self.np_dtype = np.float64
         self.numerical_delta = 1e-7
         self.rtol = 1e-7
-        self.atol = 1e-6
+        self.atol = 1e-5
         self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
         self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
 
