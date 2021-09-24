@@ -50,6 +50,52 @@ using LoDTensor = framework::LoDTensor;
   CREATE_TENSOR(float_buffer, T, buffer_size);                                \
   TensorBuffer float_tensor_buffer(float_buffer)
 
+#define INIT_REQUIRED_TENSOR()                                                 \
+  Tensor input_exp =                                                           \
+      float_tensor_buffer.GetBufferBlock({seq_len, batch_size, n_labels});     \
+  transpose(3, dev_ctx, *input, &input_exp, {1, 0, 2});                        \
+  auto* transition = ctx.Input<Tensor>("Transition");                          \
+  Tensor trans_exp = float_tensor_buffer.GetBufferBlock({n_labels, n_labels}); \
+  framework::TensorCopy(*transition, curr_place, dev_ctx, &trans_exp);         \
+  trans_exp.Resize({1, n_labels, n_labels});                                   \
+  Tensor alpha = float_tensor_buffer.GetBufferBlock({batch_size, n_labels});   \
+  Tensor zero = int_tensor_buffer.GetBufferBlock({1});                         \
+  int_functor(dev_ctx, &zero, 0);                                              \
+  Tensor one = int_tensor_buffer.GetBufferBlock({1});                          \
+  int_functor(dev_ctx, &one, 1);                                               \
+  Tensor float_one = float_tensor_buffer.GetBufferBlock({batch_size, 1});      \
+  float_functor(dev_ctx, &float_one, static_cast<T>(1.0));                     \
+  Tensor alpha_trn_sum =                                                       \
+      float_tensor_buffer.GetBufferBlock({batch_size, n_labels, n_labels});    \
+  Tensor alpha_max =                                                           \
+      float_tensor_buffer.GetBufferBlock({batch_size, n_labels});              \
+  Tensor alpha_argmax =                                                        \
+      int_tensor_buffer.GetBufferBlock({seq_len, batch_size, n_labels});       \
+  auto alpha_argmax_unbind = Unbind(alpha_argmax);                             \
+  Tensor alpha_nxt =                                                           \
+      float_tensor_buffer.GetBufferBlock({batch_size, n_labels});              \
+  Tensor int_mask = int_tensor_buffer.GetBufferBlock({batch_size});            \
+  Tensor float_mask = float_tensor_buffer.GetBufferBlock({batch_size, 1});     \
+  Tensor stop_trans_exp =                                                      \
+      float_tensor_buffer.GetBufferBlock({1, 1, n_labels});                    \
+  Tensor start_trans_exp =                                                     \
+      float_tensor_buffer.GetBufferBlock({1, 1, n_labels});                    \
+  Tensor rest_trans_exp =                                                      \
+      float_tensor_buffer.GetBufferBlock({1, n_labels - 2, n_labels});         \
+  Tensor last_ids = int_tensor_buffer.GetBufferBlock({batch_size});            \
+  Tensor batch_offset = int_tensor_buffer.GetBufferBlock({batch_size});        \
+  Tensor gather_idx = int_tensor_buffer.GetBufferBlock({batch_size});          \
+  std::vector<const Tensor*> shape_refer{&rest_trans_exp, &stop_trans_exp,     \
+                                         &start_trans_exp};                    \
+  std::vector<Tensor*> outputs{&rest_trans_exp, &stop_trans_exp,               \
+                               &start_trans_exp};                              \
+  math::SplitFunctor<DeviceContext, T> split_functor;                          \
+  split_functor(dev_ctx, trans_exp, shape_refer, 1, &outputs);                 \
+  stop_trans_exp.Resize({1, n_labels});                                        \
+  start_trans_exp.Resize({1, n_labels});                                       \
+  auto logit0 = input_exp.Slice(0, 1);                                         \
+  logit0.Resize({batch_size, n_labels})
+
 #define BROADCAST_BINARY_OP(lhs, rhs, out, func_type, is_multi_threads, dtype) \
   do {                                                                         \
     if (is_multi_threads) {                                                    \
@@ -69,6 +115,14 @@ using LoDTensor = framework::LoDTensor;
 
 #define MUL(lhs, rhs, output, is_multi_threads, dtype) \
   BROADCAST_BINARY_OP(lhs, rhs, output, Mul, is_multi_threads, dtype)
+
+template <typename DeviceContext, typename T>
+struct Transpose {
+  void operator()(int ndims, const DeviceContext& dev_ctx, const Tensor& input,
+                  Tensor* output, const std::vector<int>& axis) {
+    TransCompute<DeviceContext, T>(ndims, dev_ctx, input, output, axis);
+  }
+};
 
 template <typename T, typename IndType>
 struct CPUArgmax {
@@ -114,12 +168,11 @@ void SameDimsBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
   const T* lhs_ptr = lhs.data<T>();
   const T* rhs_ptr = rhs.data<T>();
   T* out_ptr = out->data<T>();
-  auto nums = out->numel();
   Functor functor;
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-  for (int i = 0; i < nums; ++i) {
+  for (int i = 0; i < out->numel(); ++i) {
     out_ptr[i] = functor(lhs_ptr[i], rhs_ptr[i]);
   }
 }
@@ -247,6 +300,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     auto n_labels = static_cast<int>(input->dims()[2]);
     math::SetConstant<DeviceContext, T> float_functor;
     math::SetConstant<DeviceContext, int64_t> int_functor;
+    Transpose<DeviceContext, T> transpose;
     std::vector<Tensor> historys;
     CREATE_TENSOR_BUFFER(int_tensor_buffer, float_tensor_buffer);
     auto* length = ctx.Input<Tensor>("Length");
@@ -265,56 +319,13 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     for (auto it = batch_path.begin(); it != batch_path.end(); ++it) {
       it->Resize({batch_size});
     }
-    Tensor input_exp =
-        float_tensor_buffer.GetBufferBlock({seq_len, batch_size, n_labels});
-    TransCompute<DeviceContext, T>(3, dev_ctx, *input, &input_exp, {1, 0, 2});
-    auto* transition = ctx.Input<Tensor>("Transition");
-    Tensor trans_exp = float_tensor_buffer.GetBufferBlock({n_labels, n_labels});
-    framework::TensorCopy(*transition, curr_place, dev_ctx, &trans_exp);
-    trans_exp.Resize({1, n_labels, n_labels});
-    Tensor alpha = float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
-    Tensor zero = int_tensor_buffer.GetBufferBlock({1});
-    int_functor(dev_ctx, &zero, 0);
-    Tensor one = int_tensor_buffer.GetBufferBlock({1});
-    int_functor(dev_ctx, &one, 1);
-    Tensor float_one = float_tensor_buffer.GetBufferBlock({batch_size, 1});
-    float_functor(dev_ctx, &float_one, static_cast<T>(1.0));
-    Tensor alpha_trn_sum =
-        float_tensor_buffer.GetBufferBlock({batch_size, n_labels, n_labels});
-    Tensor alpha_max =
-        float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
-    Tensor alpha_argmax =
-        int_tensor_buffer.GetBufferBlock({seq_len, batch_size, n_labels});
-    auto alpha_argmax_unbind = Unbind(alpha_argmax);
-    Tensor alpha_nxt =
-        float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
-    Tensor int_mask = int_tensor_buffer.GetBufferBlock({batch_size});
-    Tensor float_mask = float_tensor_buffer.GetBufferBlock({batch_size, 1});
-    Tensor stop_trans_exp =
-        float_tensor_buffer.GetBufferBlock({1, 1, n_labels});
-    Tensor start_trans_exp =
-        float_tensor_buffer.GetBufferBlock({1, 1, n_labels});
-    Tensor rest_trans_exp =
-        float_tensor_buffer.GetBufferBlock({1, n_labels - 2, n_labels});
-    Tensor last_ids = int_tensor_buffer.GetBufferBlock({batch_size});
-    Tensor batch_offset = int_tensor_buffer.GetBufferBlock({batch_size});
-    Tensor gather_idx = int_tensor_buffer.GetBufferBlock({batch_size});
-    std::vector<const Tensor*> shape_refer{&rest_trans_exp, &stop_trans_exp,
-                                           &start_trans_exp};
-    std::vector<Tensor*> outputs{&rest_trans_exp, &stop_trans_exp,
-                                 &start_trans_exp};
-    math::SplitFunctor<DeviceContext, T> split_functor;
-    split_functor(dev_ctx, trans_exp, shape_refer, 1, &outputs);
-    stop_trans_exp.Resize({1, n_labels});
-    start_trans_exp.Resize({1, n_labels});
+    INIT_REQUIRED_TENSOR();
     bool is_multi_threads = false;
 #ifdef PADDLE_WITH_MKLML
     if (omp_get_max_threads() > 1) {
       is_multi_threads = true;
     }
 #endif
-    auto logit0 = input_exp.Slice(0, 1);
-    logit0.Resize({batch_size, n_labels});
     if (with_start_stop_tag) {
       ADD(logit0, start_trans_exp, alpha, is_multi_threads, T);
       ElementwiseComputeEx<EqualFunctor<T>, DeviceContext, int64_t, T>(
