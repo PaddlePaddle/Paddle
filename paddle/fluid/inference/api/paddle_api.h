@@ -174,9 +174,6 @@ class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
   void copy_from_cpu(const T* data) {
     return CopyFromCpu(data);
   }
-  void copy_from_cpu(const paddle::framework::STRINGS* data) {
-    return CopyFromCpu(data);
-  }
 
   /// \brief Copy the tensor data to the host memory.
   /// It's usually used to get the output tensor data.

@@ -88,7 +88,7 @@ bool SetPlaceAndCheck(PlaceType place, size_t length) {
   const std::vector<std::vector<size_t>> lod{{0, length}};
   scope.Var(name);
   auto tensor = CreateTensor(place, &scope, name);
-  tensor->Reshape({static_cast<int>(length)});
+  tensor->Reshape(length);
   tensor->mutable_data<T>(place);
   tensor->SetLoD(lod);
 

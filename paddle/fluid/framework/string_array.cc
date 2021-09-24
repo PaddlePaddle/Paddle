@@ -20,10 +20,6 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using STRING = std::string;
-using STRINGS = std::vector<STRING>;
-using WSTRING_MAP = std::unordered_map<std::wstring, std::int32_t>;
-
 std::wstring_convert<std::codecvt_utf8<wchar_t>> kConverter;
 
 // Convert the std::string type to the std::string type.

@@ -148,7 +148,9 @@ DataType Tensor::type() const {
 PlaceType Tensor::place() const { return place_; }
 
 template <typename T>
-void Tensor::CopyFromCpu(const T *data) {
+typename std::enable_if<
+    !std::is_same<T, paddle::framework::STRINGS>::value>::type
+Tensor::CopyFromCpu(const T *data) {
   EAGER_GET_TENSOR(paddle::framework::LoDTensor);
   PADDLE_ENFORCE_GE(tensor->numel(), 0,
                     paddle::platform::errors::PreconditionNotMet(
@@ -210,8 +212,11 @@ void Tensor::CopyFromCpu(const T *data) {
   }
 }
 
-void Tensor::CopyFromCpu(const paddle::framework::STRINGS *data) {
-  EAGER_GET_TENSOR(paddle::framework::STRINGS);
+template <typename T>
+typename std::enable_if<
+    std::is_same<T, paddle::framework::STRINGS>::value>::type
+Tensor::CopyFromCpu(const T *data) {
+  EAGER_GET_TENSOR(T);
   PADDLE_ENFORCE_GE(tensor->size(), 0,
                     paddle::platform::errors::PreconditionNotMet(
                         "You should call Tensor::Reshape(const "
