@@ -400,17 +400,16 @@ class ShardingOptimizer(MetaOptimizerBase):
             first_optimize_op_index += (len(main_block.ops) - len_of_ops)
             len_of_ops = len(main_block.ops)
 
+            # NOTE(wangxi): we fused after optimize_cast
             optimize_cast = sharding_configs['optimize_cast']
             optimizer_param = utils.insert_broadcast_param_ops(
                 main_block,
                 len_of_ops,
-                self.dp_ring_id,
-                [x[0].name for x in params_grads],
+                self.dp_ring_id, [x[0].name for x in params_grads],
                 self._shard,
                 OpRole.Optimize,
                 use_calc_stream=True,
                 rank=self.dp_rank,
-                # should close fuse when optimize_cast
                 strategy=None if optimize_cast else strategy)
             logger.info("Optimizer param in this rank {}".format(
                 optimizer_param))
@@ -488,6 +487,9 @@ class ShardingOptimizer(MetaOptimizerBase):
                 offload_helper.opt_sharding_cast_fp32param(
                     main_block, startup_block,
                     [x[0].name for x in params_grads])
+                # NOTE(wangxi): fused after optimize_cast
+                utils.fuse_opt_broadcast_param_ops(
+                    main_block, dp_ring_id, self._shard, strategy=strategy)
             else:
                 offload_helper.cast_fp32param_in_optimize(main_block,
                                                           startup_block)
