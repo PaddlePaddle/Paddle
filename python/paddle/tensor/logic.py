@@ -28,6 +28,7 @@ from ..fluid.layers import logical_xor  # noqa: F401
 
 from paddle.common_ops_import import core
 from paddle import _C_ops
+from paddle.tensor.creation import full
 
 __all__ = []
 
@@ -174,6 +175,13 @@ def equal(x, y, name=None):
           result1 = paddle.equal(x, y)
           print(result1)  # result1 = [True False False]
     """
+    if not isinstance(y, (int, bool, float, Variable)):
+        raise TypeError(
+            "Type of input args must be float, bool, int or Tensor, but received type {}".
+            format(type(y)))
+    if not isinstance(y, Variable):
+        y = full(shape=[1], dtype=x.dtype, fill_value=y)
+
     if in_dygraph_mode():
         return _C_ops.equal(x, y)
 

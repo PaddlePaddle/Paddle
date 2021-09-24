@@ -553,8 +553,9 @@ def monkey_patch_varbase():
                         or isinstance(slice_item.step, Variable):
                     return True
             else:
-                if isinstance(slice_item,
-                              Variable) and Variable.dtype != paddle.bool:
+                if isinstance(
+                        slice_item,
+                    (Variable, np.ndarray)) and Variable.dtype != paddle.bool:
                     return True
         return False
 

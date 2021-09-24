@@ -267,6 +267,7 @@ void BindOpDesc(pybind11::module *m) {
              self.SetOutput(name, vec_var_name);
            })
       .def("remove_output", &pd::OpDesc::RemoveOutput)
+      .def("remove_input", &pd::OpDesc::RemoveInput)
       .def("input_arg_names", &pd::OpDesc::InputArgumentNames)
       .def("output_arg_names", &pd::OpDesc::OutputArgumentNames)
       .def("_rename_input", &pd::OpDesc::RenameInput)

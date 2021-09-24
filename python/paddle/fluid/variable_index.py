@@ -67,6 +67,7 @@ class SliceInfo:
     def __init__(self):
         self.pre_shape = None
         self.indexes = []
+        self.dtype = None
 
     def update(self, index):
         if is_list_tuple(index, int) or isinstance(index, (
@@ -74,6 +75,14 @@ class SliceInfo:
             # convert index to Tensor
             if not isinstance(index, paddle.fluid.Variable):
                 index = paddle.assign(index)
+
+            if self.dtype is None:
+                self.dtype = index.dtype
+            else:
+                if index.dtype != self.dtype:
+                    raise IndexError(
+                        "Data type of Tensor/List index should be same. The current data type is {}, but the previous data type is {}.".
+                        format(index.dtype, self.dtype))
 
             self.indexes.append(index)
 
@@ -214,6 +223,16 @@ def replace_ellipsis(var, item):
     return item
 
 
+def replace_ndarray(item):
+    new_item = []
+    for slice_item in item:
+        if isinstance(slice_item, np.ndarray):
+            new_item.append(paddle.assign(slice_item))
+        else:
+            new_item.append(slice_item)
+    return new_item
+
+
 def replace_none(item):
     new_item = []
     none_axes = []
@@ -278,6 +297,7 @@ def _getitem_impl_(var, item):
     reverse_axes = []
 
     use_strided_slice = False
+    item = replace_ndarray(item)
     item, none_axes = replace_none(item)
     item = replace_ellipsis(var, item)
     slice_info = SliceInfo()
@@ -361,9 +381,6 @@ def _getitem_impl_(var, item):
             idx = assign(np.array(slice_item).astype("int32"))
             return index_select(var, index=idx, axis=0)
 
-        elif isinstance(slice_item, np.ndarray):
-            slice_info.update(slice_item)
-            continue
         elif isinstance(slice_item, (Variable)):
             if len(item) == 1:
 
@@ -499,6 +516,7 @@ def _setitem_impl_(var, item, value):
     ends = []
     steps = []
 
+    item = replace_ndarray(item)
     item, none_axes = replace_none(item)
     item = replace_ellipsis(var, item)
     slice_info = SliceInfo()
@@ -555,10 +573,6 @@ def _setitem_impl_(var, item, value):
             from .layers import assign
             idx_tensor = assign(slice_item)
             return set_value_for_bool_tensor(var, idx_tensor, value)
-
-        elif isinstance(slice_item, np.ndarray):
-            slice_info.update(slice_item)
-            continue
 
         elif isinstance(slice_item, Variable):
             if slice_item.dtype == core.VarDesc.VarType.BOOL:

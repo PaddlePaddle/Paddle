@@ -23,6 +23,7 @@ TENSORRT_INCLUDE_DIR=$5 # TensorRT header file dir, default to /usr/local/Tensor
 TENSORRT_LIB_DIR=$6 # TensorRT lib file dir, default to /usr/local/TensorRT/lib
 MSVC_STATIC_CRT=$7
 inference_install_dir=${PADDLE_ROOT}/build/paddle_inference_install_dir
+WIN_DETECT=$(echo `uname` | grep "Win") # detect current platform
 
 cd `dirname $0`
 current_dir=`pwd`
@@ -53,7 +54,11 @@ function download() {
   if [[ -e "${PREFIX}${dir_name}.tar.gz" ]]; then
     echo "${PREFIX}${dir_name}.tar.gz has been downloaded."
   else
-      wget -q ${URL_ROOT}$dir_name.tar.gz
+      if [ $WIN_DETECT != "" ]; then
+        wget -q -Y off ${URL_ROOT}$dir_name.tar.gz
+      else
+        wget -q --no-proxy ${URL_ROOT}$dir_name.tar.gz
+      fi
       tar xzf *.tar.gz
   fi
   cd ..

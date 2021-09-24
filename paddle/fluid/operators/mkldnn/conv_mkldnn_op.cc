@@ -1125,12 +1125,8 @@ class ConvMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
         mkldnn::memory::format_tag out_format =
             weights_tz.size() == 6 ? mkldnn::memory::format_tag::goidhw
                                    : mkldnn::memory::format_tag::goihw;
-        std::string key = platform::CreateKey(dev_ctx, weights_tz, filter_fmt,
-                                              out_format, in_type);
-        key = platform::ExtendKeyWithThreadInfoIfNeeded(dev_ctx, key);
-
-        platform::ReorderMKLDNNHandler handler(
-            weights_tz, filter->type(), in_type, dev_ctx, mkldnn_engine, key);
+        platform::ReorderMKLDNNHandler handler(weights_tz, filter->type(),
+                                               in_type, mkldnn_engine);
         auto reorder_dst_memory_p =
             handler.AcquireDstMemory(filter_grad, out_format, ctx.GetPlace());
 
