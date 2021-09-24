@@ -289,8 +289,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
 #endif
     if (with_start_stop_tag) {
       ADD(logit0, start_trans_exp, alpha, is_multi_threads, T);
-      ElementwiseComputeEx<EqualFunctor<T>, DeviceContext, int64_t, T>(
-          ctx, &left_length, &one, -1, EqualFunctor<T>(), &float_mask);
+      ElementwiseComputeEx<EqualFunctor<int64_t>, DeviceContext, int64_t, T>(
+          ctx, &left_length, &one, -1, EqualFunctor<int64_t>(), &float_mask);
       MUL(stop_trans_exp, float_mask, alpha_nxt, is_multi_threads, T);
       SAME_DIMS_OP(alpha, alpha_nxt, alpha, Add, T);
     } else {
@@ -311,8 +311,9 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       alpha.Resize({batch_size, n_labels});
       // mask = paddle.cast((left_length > 0), dtype='float32')
       // alpha = mask * alpha_nxt + (1 - mask) * alpha
-      ElementwiseComputeEx<GreaterThanFunctor<T>, DeviceContext, int64_t, T>(
-          ctx, &left_length, &zero, -1, GreaterThanFunctor<T>(), &float_mask);
+      ElementwiseComputeEx<GreaterThanFunctor<int64_t>, DeviceContext, int64_t,
+                           T>(ctx, &left_length, &zero, -1,
+                              GreaterThanFunctor<int64_t>(), &float_mask);
       // alpha_nxt = mask * alpha_nxt
       MUL(alpha_nxt, float_mask, alpha_nxt, is_multi_threads, T);
       // inv_mask = 1 - mask
@@ -322,8 +323,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       // alpha += alpha_nxt
       SAME_DIMS_OP(alpha, alpha_nxt, alpha, Add, T);
       if (with_start_stop_tag) {  // cost 10% time
-        ElementwiseComputeEx<EqualFunctor<T>, DeviceContext, int64_t, T>(
-            ctx, &left_length, &one, -1, EqualFunctor<T>(), &float_mask);
+        ElementwiseComputeEx<EqualFunctor<int64_t>, DeviceContext, int64_t, T>(
+            ctx, &left_length, &one, -1, EqualFunctor<int64_t>(), &float_mask);
         // trans_exp: [1, n, n]
         // alpha += mask * trans_exp[:, self.stop_idx]
         MUL(stop_trans_exp, float_mask, alpha_nxt, is_multi_threads, T);
