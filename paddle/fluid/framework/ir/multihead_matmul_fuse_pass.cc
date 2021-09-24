@@ -62,7 +62,7 @@ static int BuildFusion(Graph* graph, const std::string& name_scope) {
     //    BOOST_GET_CONST(bool, scale->Op()->GetAttr("bias_after_scale"));
 
     // create multihead
-    OpDesc multihead_op_desc;
+    OpDesc multihead_op_desc(mul0->Op()->Block());
 
     // create tmp tensor
     VarDesc k_var_desc(*mul1_out->Var());
@@ -847,7 +847,7 @@ int MultiHeadMatmulV2FusePass::BuildFusionV2(Graph* graph,
     int head_number =
         BOOST_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
 
-    OpDesc multihead_op_desc;
+    OpDesc multihead_op_desc(mul0->Op()->Block());
     multihead_op_desc.SetType("multihead_matmul");
 
     multihead_op_desc.SetInput("Input", {input0->Name()});
@@ -1287,7 +1287,7 @@ int MultiHeadMatmulV3FusePass::BuildFusionV3(Graph* graph,
     int head_number =
         BOOST_GET_CONST(std::vector<int>, reshape_desc->GetAttr("shape")).at(2);
 
-    OpDesc multihead_op_desc;
+    OpDesc multihead_op_desc(mul0->Op()->Block());
     multihead_op_desc.SetType("multihead_matmul");
 
     multihead_op_desc.SetInput("Input", {input0->Name()});
