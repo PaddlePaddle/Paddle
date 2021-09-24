@@ -12,9 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import division
-from __future__ import print_function
-
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
@@ -29,10 +26,10 @@ from paddle.utils.download import get_weights_path_from_url
 __all__ = []
 
 model_urls = {
-    "AlexNet":
-    "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/AlexNet_pretrained.pdparams"
+    "AlexNet": (
+        "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/AlexNet_pretrained.pdparams",
+        "7f0f9f737132e02732d75a1459d98a43", )
 }
-
 
 class ConvPoolLayer(nn.Layer):
     def __init__(self,
@@ -154,7 +151,8 @@ class AlexNetDY(nn.Layer):
 def AlexNet(pretrained=False, **kwargs):
     model = AlexNetDY(**kwargs)
     if pretrained:
-        weight_path = get_weights_path_from_url(model_urls['AlexNet'])
+        weight_path = get_weights_path_from_url(model_urls['AlexNet'][0],
+                                                model_urls['AlexNet'][1])
         param = paddle.load(weight_path)
         model.load_dict(param)
 
