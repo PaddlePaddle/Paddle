@@ -84,7 +84,8 @@ class TestViterbiOp(OpTest):
         bz, ntags = self.bz, self.ntags
         self.input = np.random.randn(bz, self.len, ntags).astype(self.dtype)
         self.transitions = np.random.randn(ntags, ntags).astype(self.dtype)
-        self.length = np.random.randint(1, self.len + 1, [self.bz])
+        self.length = np.random.randint(1, self.len + 1,
+                                        [self.bz]).astype('int64')
         decoder = Decoder(self.transitions, self.with_start_stop_tag)
         scores, path = decoder(self.input, self.length)
         self.inputs = {
