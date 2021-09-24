@@ -9,12 +9,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/viterbi_decode_op.h"
-
 #include "paddle/fluid/operators/arg_min_max_op_base.cu.h"
+#include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/transpose_op.cu.h"
+#include "paddle/fluid/operators/viterbi_decode_op.h"
 
 namespace paddle {
 namespace operators {
@@ -26,24 +26,12 @@ namespace operators {
         height, width, post, in_data, out_idx_data, out_data);           \
   } while (0)
 
-#define DEFINE_CUDA_FUNTOR(functor_type, expr)            \
-  template <typename T>                                   \
-  struct Cuda##functor_type##Functor {                    \
-    inline HOSTDEVICE T operator()(const T* args) const { \
-      return args[0] expr args[1];                        \
-    }                                                     \
-  }
-
-DEFINE_CUDA_FUNTOR(Add, +);
-DEFINE_CUDA_FUNTOR(Sub, -);
-DEFINE_CUDA_FUNTOR(Mul, *);
-
 #define CUDA_ELEMENT_BINARY_OP(lhs, rhs, output, functor_type, dtype)    \
   do {                                                                   \
     std::vector<const Tensor*> ins{&lhs, &rhs};                          \
     std::vector<Tensor*> outs{&output};                                  \
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, dtype, dtype>( \
-        dev_ctx, ins, &outs, -1, Cuda##functor_type##Functor<dtype>());  \
+        dev_ctx, ins, &outs, -1, functor_type##Functor<dtype>());        \
   } while (0)
 
 #define CUDA_ADD(lhs, rhs, output, dtype) \
@@ -143,7 +131,6 @@ template <typename T, typename IndType>
 struct CUDAArgmax {
   void operator()(const framework::ExecutionContext& ctx, const Tensor& input,
                   Tensor* out_idx, Tensor* out, int axis) {
-    // axis should be larger than or equals to 0
     framework::DDim input_dims = input.dims();
     int64_t numel = input.numel();
     int64_t groups = numel / input_dims[axis];

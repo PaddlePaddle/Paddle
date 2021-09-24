@@ -14,7 +14,6 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-
 #include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/controlflow/compare_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
