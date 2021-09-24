@@ -83,41 +83,9 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
     flat_outputs = tuple(
         paddle.reshape(
             output, shape=[-1]) for output in outputs)
-    if fin_size == 1 and fout_size == 1:
-        flat_output = flat_outputs[0]
-        jac = []
-        for k in range(len(flat_output)):
-            row_k = paddle.grad(
-                flat_output[k],
-                inputs[0],
-                create_graph=create_graph,
-                retain_graph=True,
-                allow_unused=allow_unused)
-            jac.append(
-                paddle.reshape(
-                    row_k[0], shape=[-1])
-                if isinstance(row_k[0], paddle.Tensor) else None)
-        return _stack_tensor_or_return_none(jac)
-    elif fin_size == 1 and fout_size != 1:
-        jacobian = tuple()
-        for i, flat_output in enumerate(flat_outputs):
-            jac = []
-            for k in range(len(flat_output)):
-                row_k = paddle.grad(
-                    flat_output[k],
-                    inputs[0],
-                    create_graph=create_graph,
-                    retain_graph=True,
-                    allow_unused=allow_unused)
-                jac.append(
-                    paddle.reshape(
-                        row_k[0], shape=[-1])
-                    if isinstance(row_k[0], paddle.Tensor) else None)
-            jacobian += (_stack_tensor_or_return_none(jac), )
-        return jacobian
-    elif fin_size != 1 and fout_size == 1:
-        flat_output = flat_outputs[0]
-        jac = list([] for _ in range(fin_size))
+    jacobian = tuple()
+    for i, flat_output in enumerate(flat_outputs):
+        jac_i = list([] for _ in range(fin_size))
         for k in range(len(flat_output)):
             row_k = paddle.grad(
                 flat_output[k],
@@ -126,29 +94,17 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
                 retain_graph=True,
                 allow_unused=allow_unused)
             for j in range(fin_size):
-                jac[j].append(
+                jac_i[j].append(
                     paddle.reshape(
                         row_k[j], shape=[-1])
                     if isinstance(row_k[j], paddle.Tensor) else None)
-        return tuple(
-            _stack_tensor_or_return_none(jac[j]) for j in range(fin_size))
+        jacobian += (tuple(
+            _stack_tensor_or_return_none(jac_i[j]) for j in range(fin_size)), )
+    if fin_size == 1 and fout_size == 1:
+        return jacobian[0][0]
+    elif fin_size == 1 and fout_size != 1:
+        return tuple(jacobian[i][0] for i in range(fout_size))
+    elif fin_size != 1 and fout_size == 1:
+        return jacobian[0]
     else:
-        jacobian = tuple()
-        for i, flat_output in enumerate(flat_outputs):
-            jac_i = list([] for _ in range(fin_size))
-            for k in range(len(flat_output)):
-                row_k = paddle.grad(
-                    flat_output[k],
-                    inputs,
-                    create_graph=create_graph,
-                    retain_graph=True,
-                    allow_unused=allow_unused)
-                for j in range(fin_size):
-                    jac_i[j].append(
-                        paddle.reshape(
-                            row_k[j], shape=[-1])
-                        if isinstance(row_k[j], paddle.Tensor) else None)
-            jacobian += (tuple(
-                _stack_tensor_or_return_none(jac_i[j])
-                for j in range(fin_size)), )
         return jacobian
