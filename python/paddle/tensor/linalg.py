@@ -975,8 +975,8 @@ def t(input, name=None):
         return out
 
     check_variable_and_dtype(
-        input, 'input', ['float16', 'float32', 'float64', 'int32', 'int64'],
-        'transpose')
+        input, 'input', ['float16', 'float32', 'float64', 'int32',
+                         'int64'], 'transpose')
 
     helper = LayerHelper('t', **locals())
     out = helper.create_variable_for_type_inference(input.dtype)
@@ -1360,7 +1360,7 @@ def det(x):
     Returns:
         y (Tensor):the determinant value of a square matrix or batches of square matrices.
 
-    Example:
+    Examples:
         .. code-block:: python
 
         import paddle
@@ -1415,7 +1415,7 @@ def slogdet(x):
         y (Tensor): A tensor containing the sign of the determinant and the natural logarithm
         of the absolute value of determinant, respectively.
 
-    Example:
+    Examples:
     .. code-block:: python
 
         import paddle
@@ -1630,8 +1630,8 @@ def eigvals(x, name=None):
     """
 
     check_variable_and_dtype(x, 'dtype',
-                             ['float32', 'float64', 'complex64', 'complex128'],
-                             'eigvals')
+                             ['float32', 'float64', 'complex64',
+                              'complex128'], 'eigvals')
 
     x_shape = list(x.shape)
     if len(x_shape) < 2:
@@ -1998,8 +1998,8 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
             helper = LayerHelper('pinv', **locals())
             dtype = x.dtype
             check_variable_and_dtype(
-                x, 'dtype', ['float32', 'float64', 'complex64', 'complex128'],
-                'pinv')
+                x, 'dtype', ['float32', 'float64', 'complex64',
+                             'complex128'], 'pinv')
 
             if dtype == paddle.complex128:
                 s_type = 'float64'
@@ -2079,40 +2079,40 @@ def solve(x, y, name=None):
     Computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
     Let :math: `X` be a sqaure matrix or a batch of square matrices, :math:`Y` be
     a vector/matrix or a batch of vectors/matrices, the equation should be:
-    
+
     .. math::
         Out = X^-1 * Y
     Specifically,
     - This system of linear equations has one solution if and only if input 'X' is invertible.
-    
+
     Args:
         x (Tensor): A square matrix or a batch of square matrices. Its shape should be `[*, M, M]`, where `*` is zero or
             more batch dimensions. Its data type should be float32 or float64.
         y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be `[*, M, K]`, where `*` is zero or
             more batch dimensions. Its data type should be float32 or float64.
-        name(str, optional): Name for the operation (optional, default is None). 
+        name(str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
-        Tensor: The solution of a square system of linear equations with a unique solution for input 'x' and 'y'. 
+        Tensor: The solution of a square system of linear equations with a unique solution for input 'x' and 'y'.
         Its data type should be the same as that of `x`.
-    
+
     Examples:
     .. code-block:: python
-        
+
         # a square system of linear equations:
         # 2*X0 + X1 = 9
         # X0 + 2*X1 = 8
-        
+
         import paddle
         import numpy as np
-       
+
         np_x = np.array([[3, 1],[1, 2]])
         np_y = np.array([9, 8])
         x = paddle.to_tensor(np_x, dtype="float64")
         y = paddle.to_tensor(np_y, dtype="float64")
         out = paddle.linalg.solve(x, y)
-        
+
         print(out)
         # [2., 3.])
     """
