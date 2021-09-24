@@ -28,8 +28,8 @@
 
 #include "Eigen/Core"
 #include "Eigen/Eigenvalues"
-#include "paddle/fluid/operators/eig_op_helper.h"  // must before lapack.h
-#include "Eigen/src/misc/lapacke.h"                // LAPACK_dgeev
+#include "paddle/fluid/operators/svd_helper.h"    // must before lapack.h temorary
+#include "Eigen/src/misc/lapacke.h"  // LAPACK_dgeev
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/transpose_op.h"  // TransCompute()
@@ -313,8 +313,8 @@ class EigKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
     auto* x = context.Input<Tensor>("X");
-    auto* out_values = context.Output<Tensor>("OutValues");
-    auto* out_vectors = context.Output<Tensor>("OutVectors");
+    auto* out_values = context.Output<Tensor>("Eigenvalues");
+    auto* out_vectors = context.Output<Tensor>("Eigenvectors");
 
     if (!framework::IsComplexType(x->type())) {
       out_values->mutable_data<Tout>(context.GetPlace());
@@ -387,7 +387,7 @@ void ComputeBackwardForComplexInput(
       dito.Unsqueeze(Lconj, -2), dito.Unsqueeze(Lconj, -1), batch_count, order);
   Tensor VhgV = dito.Matmul(Vh, gV);
   Tensor diag_real = dito.Real(VhgV);
-  Tensor diag_res = dito.Diag(diag_real, batch_count);
+  Tensor diag_res = dito.BatchDiag(diag_real, batch_count);
   Tensor diag_unsqueezed = dito.Unsqueeze(diag_res, -2);
 
   // turn diag_unsqueezed into complex
@@ -421,20 +421,20 @@ void ComputeBackwardForComplexInput(
   int k = rhs.dims()[rhs.dims().size() - 1];
   auto* matrix_data = Vh.data<Tout>();
   auto* rhs_data = rhs.data<Tout>();
-  math::SolveLinearSystem<DeviceContext, Tout>(matrix_data, rhs_data,
-                                               x_grad_data, m, k, batch_count);
+  math::SolveLinearSystem<Tout>(matrix_data, rhs_data, x_grad_data, m, k,
+                                batch_count);
 }
 
 template <typename DeviceContext, typename T, typename Tout>
 class EigGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto& L = const_cast<Tensor&>(*context.Input<Tensor>("OutValues"));
-    auto& V = const_cast<Tensor&>(*context.Input<Tensor>("OutVectors"));
+    auto& L = const_cast<Tensor&>(*context.Input<Tensor>("Eigenvalues"));
+    auto& V = const_cast<Tensor&>(*context.Input<Tensor>("Eigenvectors"));
     auto& gL = const_cast<Tensor&>(
-        *context.Input<Tensor>(framework::GradVarName("OutValues")));
+        *context.Input<Tensor>(framework::GradVarName("Eigenvalues")));
     auto& gV = const_cast<Tensor&>(
-        *context.Input<Tensor>(framework::GradVarName("OutVectors")));
+        *context.Input<Tensor>(framework::GradVarName("Eigenvectors")));
 
     auto& x_grad = *context.Output<Tensor>(framework::GradVarName("X"));
     auto* x_grad_data = x_grad.mutable_data<Tout>(context.GetPlace());

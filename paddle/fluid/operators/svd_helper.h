@@ -18,6 +18,8 @@
 #include <Eigen/Dense>
 #include <Eigen/SVD>
 #include <iostream>
+#include "Eigen/Core"
+#include "Eigen/LU"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -41,6 +43,47 @@ using OpName = std::string;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
+template <typename T, size_t D, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
+
+template <typename T>
+void SolveLinearSystem(T* matrix_data, T* rhs_data, T* out_data, int order,
+                       int rhs_cols, int batch) {
+  using Treal = typename Eigen::NumTraits<T>::Real;
+
+  std::complex<Treal>* matrix_data_ =
+      reinterpret_cast<std::complex<Treal>*>(matrix_data);
+  std::complex<Treal>* rhs_data_ =
+      reinterpret_cast<std::complex<Treal>*>(rhs_data);
+  std::complex<Treal>* out_data_ =
+      reinterpret_cast<std::complex<Treal>*>(out_data);
+
+  using Matrix = Eigen::Matrix<std::complex<Treal>, Eigen::Dynamic,
+                               Eigen::Dynamic, Eigen::RowMajor>;
+  using InputMatrixMap = Eigen::Map<Matrix>;
+  using OutputMatrixMap = Eigen::Map<Matrix>;
+
+  for (int i = 0; i < batch; ++i) {
+    auto input_matrix =
+        InputMatrixMap(matrix_data_ + i * order * order, order, order);
+    auto input_rhs =
+        InputMatrixMap(rhs_data_ + i * order * rhs_cols, order, rhs_cols);
+    auto output =
+        OutputMatrixMap(out_data_ + i * order * rhs_cols, order, rhs_cols);
+
+    Eigen::PartialPivLU<Matrix> lu_decomposition(order);
+    lu_decomposition.compute(input_matrix);
+
+    const Treal min_abs_piv =
+        lu_decomposition.matrixLU().diagonal().cwiseAbs().minCoeff();
+    PADDLE_ENFORCE_GT(min_abs_piv, Treal(0),
+                      platform::errors::InvalidArgument(
+                          "Something's wrong with SolveLinearSystem. "));
+
+    output = lu_decomposition.solve(input_rhs);
+  }
+}
 
 template <typename T>
 void EigenSvd(const T* X, T* U, T* VH, T* S, int rows, int cols,
@@ -286,6 +329,45 @@ struct DeviceIndependenceTensorOperations {
     for_range(DiagFunctor<T>(x.data<T>(), x.numel(), output));
     return ret;
   }
+
+  // batch_diag
+  Tensor BatchDiag(const Tensor& x, int batch) {
+    Tensor out;
+    auto* x_data = x.data<math::Real<T>>();
+    auto numel = x.numel();
+    auto* out_data = out.mutable_data<math::Real<T>>(
+        x.dims(), context.GetPlace(),
+        static_cast<size_t>(numel * sizeof(math::Real<T>)));
+
+    auto x_dims = x.dims();
+    int num_dims = x_dims.size();
+    std::vector<int> out_shape;
+
+    for (int i = 0; i < num_dims - 1; ++i) {
+      out_shape.push_back(x.dims()[i]);
+    }
+    out.Resize(framework::make_ddim(out_shape));
+    int order = x.dims()[num_dims - 1];
+    int stride_out = order * order;
+    int stride_in = order + 1;
+    for (int i = 0; i < batch; ++i) {
+      for (int j = 0; j < order; ++j) {
+        out_data[i * order + j] = x_data[stride_out * i + stride_in * j];
+      }
+    }
+    return out;
+  }
+
+  // a complex number x times a real number y, which is represented as (a+0j)
+  Tensor RealMulComplex(const Tensor& x, const Tensor& y) {
+    framework::Tensor ret;
+    std::vector<int> out_shape = GetBroadcastShape({&x, &y});
+    ret.Resize(framework::make_ddim(out_shape));
+    ElementwiseComputeEx<RealMulComplexFunctor<T>, DeviceContext, T>(
+        context, &x, &y, -1, RealMulComplexFunctor<T>(), &ret);
+    return ret;
+  }
+
   framework::Tensor Div(const framework::Tensor& x,
                         const framework::Tensor& y) {
     framework::Tensor ret;
@@ -459,6 +541,19 @@ struct DeviceIndependenceTensorOperations {
     return out;
   }
 
+  Tensor Real(const Tensor& x) {
+    Tensor out;
+    auto numel = x.numel();
+    auto* out_data = out.mutable_data<math::Real<T>>(
+        x.dims(), context.GetPlace(),
+        static_cast<size_t>(numel * sizeof(math::Real<T>)));
+    auto* x_data = x.data<T>();
+    auto for_range = GetForRange(numel);
+    math::RealFunctor<T> functor(x_data, out_data, numel);
+    for_range(functor);
+    return out;
+  }
+
   Tensor DiagFill(const int m, const int n, const int num_lower_diags,
                   const int num_upper_diags, const Tensor& scale,
                   const Tensor& input) {
@@ -469,6 +564,42 @@ struct DeviceIndependenceTensorOperations {
         m, n, num_lower_diags, num_upper_diags, scale.data<ValueType>(),
         input.data<T>(), out.mutable_data<T>(input.dims(), input.place()));
     for_range(diag_and_copy_functor);
+    return out;
+  }
+
+  // deprecated
+  Tensor SubBroadcast(const Tensor& x, const Tensor& y, int batch_size, int m) {
+    Tensor out;
+    auto& dims = x.dims();
+    std::vector<int> vec_dim;
+    auto& place =
+        *context.template device_context<DeviceContext>().eigen_device();
+    if (batch_size > 1) {
+      vec_dim.push_back(batch_size);
+      vec_dim.push_back(dims[dims.size() - 1]);
+      vec_dim.push_back(dims[dims.size() - 1]);
+      out.mutable_data<ValueType>(framework::make_ddim(vec_dim),
+                                  context.GetPlace());
+      auto x_tensor = EigenTensor<ValueType, 3>::From(x);
+      auto y_tensor = EigenTensor<ValueType, 3>::From(y);
+      auto out_tensor = EigenTensor<ValueType, 3>::From(out);
+      Eigen::DSizes<int, 3> a_bcast_dims(1, m, 1);
+      Eigen::DSizes<int, 3> b_bcast_dims(1, 1, m);
+      out_tensor.device(place) =
+          x_tensor.broadcast(a_bcast_dims) - y_tensor.broadcast(b_bcast_dims);
+    } else {
+      vec_dim.push_back(dims[dims.size() - 1]);
+      vec_dim.push_back(dims[dims.size() - 1]);
+      out.mutable_data<ValueType>(framework::make_ddim(vec_dim),
+                                  context.GetPlace());
+      auto x_tensor = EigenTensor<ValueType, 2>::From(x);
+      auto y_tensor = EigenTensor<ValueType, 2>::From(y);
+      auto out_tensor = EigenTensor<ValueType, 2>::From(out);
+      Eigen::DSizes<int, 2> a_bcast_dims(m, 1);
+      Eigen::DSizes<int, 2> b_bcast_dims(1, m);
+      out_tensor.device(place) =
+          x_tensor.broadcast(a_bcast_dims) - y_tensor.broadcast(b_bcast_dims);
+    }
     return out;
   }
 

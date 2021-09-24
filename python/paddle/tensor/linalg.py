@@ -1603,7 +1603,8 @@ def eig(x):
             shoulf be one of float32, float64, compplex64 and complex128.
 
     Returns:
-        Tensors: One is the eigenvalues and the other is eigenvectors.
+        Eigenvalues(Tensors): A tensor with shape math:`[..., N]` refers to the eigen values.
+        Eigenvectors(Tensors): A tensor with shape math:`[..., N, N]` refers to the eigen vectors.
 
     Examples:
         .. code-block:: python
@@ -1627,7 +1628,7 @@ def eig(x):
     v = helper.create_variable_for_type_inference(x.dtype)
 
     inputs = {'X': x}
-    outputs = {'OutValues': w, 'OutVectors': v}
+    outputs = {'Eigenvalues': w, 'Eigenvectors': v}
     outs = [w, v]
     helper.append_op(type='eig', inputs=inputs, outputs=outputs)
 

@@ -26,16 +26,18 @@ class EigOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(true, ctx->HasInput("X"),
                       platform::errors::PreconditionNotMet(
                           "Input(X) of EigOp should not be null."));
-    PADDLE_ENFORCE_EQ(true, ctx->HasOutput("OutValues"),
+    PADDLE_ENFORCE_EQ(true, ctx->HasOutput("Eigenvalues"),
                       platform::errors::PreconditionNotMet(
-                          "Output(OutValues) of EigOp should not be null."));
-    PADDLE_ENFORCE_EQ(true, ctx->HasOutput("OutVectors"),
+                          "Output(Eigenvalues) of EigOp should not be null."));
+    PADDLE_ENFORCE_EQ(true, ctx->HasOutput("Eigenvectors"),
                       platform::errors::PreconditionNotMet(
-                          "Output(OutVectors) of EigOp should not be null."));
+                          "Output(Eigenvectors) of EigOp should not be null."));
 
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Eig");
-    OP_INOUT_CHECK(ctx->HasOutput("OutValues"), "Output", "OutValues", "Eig");
-    OP_INOUT_CHECK(ctx->HasOutput("OutVectors"), "Output", "OutVectors", "Eig");
+    OP_INOUT_CHECK(ctx->HasOutput("Eigenvalues"), "Output", "Eigenvalues",
+                   "Eig");
+    OP_INOUT_CHECK(ctx->HasOutput("Eigenvectors"), "Output", "Eigenvectors",
+                   "Eig");
 
     auto x_dims = ctx->GetInputDim("X");
     int num_dims = x_dims.size();
@@ -56,8 +58,8 @@ class EigOp : public framework::OperatorWithKernel {
             "but receive a matrix with %d rows and %d colums",
             x_dims[num_dims - 2], x_dims[num_dims - 1]));
 
-    ctx->SetOutputDim("OutVectors", x_dims);
-    ctx->SetOutputDim("OutValues", framework::make_ddim(batch_dims_vec));
+    ctx->SetOutputDim("Eigenvectors", x_dims);
+    ctx->SetOutputDim("Eigenvalues", framework::make_ddim(batch_dims_vec));
   }
 
  protected:
@@ -80,16 +82,15 @@ class EigOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "The input matrix as a Tensor of Eig op.");
-    AddOutput("OutValues", "The eigen-values calculated by this op");
-    AddOutput("OutVectors", "The eigen-vectors calculated by this op");
+    AddOutput("Eigenvalues", "The eigen values calculated by this op");
+    AddOutput("Eigenvectors", "The eigen vectors calculated by this op");
 
     AddComment(R"DOC(
         Eig Operator.
 
-        Eig refers to eigenvalues Decomposition. ...
-        ...
-        ...
-        )DOC");
+This API processes eigen decomposition for general square matrices.
+
+)DOC");
   }
 };
 
@@ -97,15 +98,16 @@ class EigGradOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("OutValues"), "Input", "OutValues", "EigGrad");
-    OP_INOUT_CHECK(ctx->HasInput("OutVectors"), "Input", "OutVectors",
+    OP_INOUT_CHECK(ctx->HasInput("Eigenvalues"), "Input", "Eigenvalues",
                    "EigGrad");
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("OutValues")), "Input",
-                   "OutValues@GRAD", "EigGrad");
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("OutVectors")),
-                   "Input", "OutVectors@GRAD", "EigGrad");
+    OP_INOUT_CHECK(ctx->HasInput("Eigenvectors"), "Input", "Eigenvectors",
+                   "EigGrad");
+    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Eigenvalues")),
+                   "Input", "Eigenvalues@GRAD", "EigGrad");
+    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Eigenvectors")),
+                   "Input", "Eigenvectors@GRAD", "EigGrad");
 
-    auto dims = ctx->GetInputDim("OutVectors");
+    auto dims = ctx->GetInputDim("Eigenvectors");
     auto x_grad_name = framework::GradVarName("X");
     if (ctx->HasOutput(x_grad_name)) {
       ctx->SetOutputDim(x_grad_name, dims);
@@ -117,7 +119,7 @@ class EigGradOp : public framework::OperatorWithKernel {
       const framework::ExecutionContext& ctx) const override {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(
-            ctx, framework::GradVarName("OutVectors")),
+            ctx, framework::GradVarName("Eigenvectors")),
         ctx.device_context());
   }
 };
@@ -130,12 +132,12 @@ class EigGradOpMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
-    op->SetInput("OutValues", this->Output("OutValues"));
-    op->SetInput("OutVectors", this->Output("OutVectors"));
-    op->SetInput(framework::GradVarName("OutValues"),
-                 this->OutputGrad("OutValues"));
-    op->SetInput(framework::GradVarName("OutVectors"),
-                 this->OutputGrad("OutVectors"));
+    op->SetInput("Eigenvalues", this->Output("Eigenvalues"));
+    op->SetInput("Eigenvectors", this->Output("Eigenvectors"));
+    op->SetInput(framework::GradVarName("Eigenvalues"),
+                 this->OutputGrad("Eigenvalues"));
+    op->SetInput(framework::GradVarName("Eigenvectors"),
+                 this->OutputGrad("Eigenvectors"));
     op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
   }
 };
