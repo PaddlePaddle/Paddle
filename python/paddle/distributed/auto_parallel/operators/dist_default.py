@@ -26,6 +26,7 @@ from paddle.fluid import core, unique_name
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
+from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process import new_process_group
 from ..utils import _get_comm_group
 
@@ -100,6 +101,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         backward_op = ctx.get_cur_src_op()
         dist_attr = ctx.get_cur_dist_attr()
         rank_id = ctx.get_rank_id()
+        dist_context = ctx.get_dist_context()
         # check if need gradient allreduce
         # if there is a non-gradient & non-parameter input and its batch dimension is splited, 
         # we need insert gradient allreduce for the gradient of parameter in its output
@@ -107,11 +109,12 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
                 if "@GRAD" not in varname and not dst_block.var(
-                        varname).is_parameter():
+                        varname).is_parameter:
 
                     # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
                     process_mesh = dist_attr.get_process_mesh()
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
+
                     mesh_shape = process_mesh.topology
                     batch_size_axis = var_dim_mapping[0]
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
@@ -127,27 +130,29 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             allreduce_vars = []
             for input_name in backward_op.desc.input_names():
                 for varname in backward_op.desc.input(input_name):
-                    if "@GRAD" not in varname and dst_block.vars(
-                            varname).is_parameter():
+                    if "@GRAD" not in varname and dst_block.var(
+                            varname).is_parameter:
                         assert len(
                             backward_op.desc.input(input_name)
                         ) == 1, "parameter input to grad op should be length 1, but got [{}]".format(
                             backward_op.desc.input(input_name))
-                        assert varname + "@GRAD" in backward_op.desc.output_names(
+
+                        assert varname + "@GRAD" in backward_op.desc.output_arg_names(
                         ), "parameter's grad [{}] not found in the grad op's output".format(
                             varname + "@GRAD")
                         assert len(
-                            backward_op.desc.output_names(varname + "@GRAD")
+                            backward_op.desc.output(input_name + "@GRAD")
                         ) == 1, "parameter grad of grad op should be length 1, but got [{}]".format(
-                            backward_op.desc.output_names(varname + "@GRAD"))
+                            backward_op.desc.output(input_name + "@GRAD"))
                         allreduce_vars.append(
-                            backward_op.desc.output_names(varname + "@GRAD")[0])
+                            backward_op.desc.output(input_name + "@GRAD")[0])
 
             if len(allreduce_vars) > 0:
+
                 for varname in allreduce_vars:
 
-                    grad_var = dst_block.vars(varname)
-                    dst_block.append_op(
+                    grad_var = dst_block.var(varname)
+                    allreduce_op = dst_block.append_op(
                         type='c_allreduce_sum',
                         inputs={'X': [grad_var]},
                         outputs={'Out': [grad_var]},
@@ -156,7 +161,8 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                             'use_calc_stream': True,
                             OP_ROLE_KEY: OpRole.Backward
                         })
-                    dst_block.append_op(
+
+                    scale_op = dst_block.append_op(
                         type='scale',
                         inputs={'X': grad_var},
                         outputs={'Out': grad_var},
@@ -164,6 +170,20 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                             'scale': 1.0 / dp_degree,
                             OP_ROLE_KEY: OpRole.Backward
                         })
+
+                    dims_mapping = dist_context.get_tensor_distributed_attr_for_program(
+                        grad_var).get_dims_mapping()
+                    process_mesh = dist_attr.get_process_mesh()
+                    for op in [allreduce_op, scale_op]:
+                        op_attr = OperatorDistributedAttribute(op, dist_context)
+                        op_attr.set_process_mesh(process_mesh)
+                        op_attr.set_output_dims_mapping(grad_var.name,
+                                                        dims_mapping)
+                        op_attr.set_input_dims_mapping(grad_var.name,
+                                                       dims_mapping)
+                        dist_context.set_op_distributed_attr_for_program(
+                            op, op_attr)
+
                 dst_block._sync_with_cpp()
 
 

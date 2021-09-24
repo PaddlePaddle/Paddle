@@ -912,6 +912,12 @@ def complete_backward_annotation(auto_parallel_main_prog,
                 else:
                     dims_mapping = forward_op_attr.get_input_dims_mapping(
                         var_name)
+                    # TODO fixed here
+                    if dims_mapping == None:
+                        dims_mapping = forward_op_attr.get_output_dims_mapping(
+                            var_name)
+                    assert dims_mapping is not None, "[{}]'s dims_mapping is None".format(
+                        var_name)
                     grad_op_attr.set_input_dims_mapping(var_name, dims_mapping)
             dist_context.set_op_distributed_attr_for_program(grad_op,
                                                              grad_op_attr)

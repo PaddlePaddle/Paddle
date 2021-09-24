@@ -445,8 +445,14 @@ class DistOpContext:
         self._cur_src_op = None
         self._cur_dist_attr = None
         # TODO remove
-        self.gradname2varname = {}
+        self._dist_context = None
         self.gradopidx2opidx = {}
+
+    def set_dist_context(self, dist_context):
+        self._dist_context = dist_context
+
+    def get_dist_context(self):
+        return self._dist_context
 
     def set_dst_main_program(self, prog):
         self._dst_main_program = prog
@@ -507,7 +513,7 @@ class DistOpContext:
 
         return kinputs, koutputs
 
-    def prepare_forward_context(self, backward_op, dist_attr):
+    def prepare_backward_context(self, backward_op, dist_attr):
 
         self.set_cur_src_op(backward_op)
         self.set_cur_dist_attr(dist_attr)
