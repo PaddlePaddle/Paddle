@@ -45,9 +45,10 @@ class AdamWFunctor<T, CPUAdamW> {
         param_, static_cast<Eigen::Index>(numel)};
 
     T lr = *lr_;
-
     // Calculation
     param -= lr * lr_ratio_ * coeff_ * param;
+    T* lr_new = const_cast<T*>(lr_);
+    *lr_new *= lr_ratio_;
   }
 };
 
