@@ -279,7 +279,7 @@ def _linear_idx2coordinate(mesh_shape, linear_idx):
     return coordinate
 
 
-def _get_inverse_dist_shape(var, dist_attr):
+def _get_unshard_dist_shape(var, dist_attr):
     var_shape = var.shape
     mapping = dist_attr.get_dims_mapping()
     mesh = dist_attr.get_process_mesh().topology
@@ -297,16 +297,15 @@ def _get_inverse_dist_shape(var, dist_attr):
     return new_shape
 
 
-def inverse_deal_with_data(dist_main_prog, dist_startup_prog):
+def make_data_unshard(dist_main_prog, dist_startup_prog):
     from .context import get_default_distributed_context
     dist_context = get_default_distributed_context()
 
     for var in dist_main_prog.list_vars():
         if var.is_data:
-            dist_context = get_default_distributed_context()
             tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
                 var)
-            inverse_shape = _get_inverse_dist_shape(var, tensor_dist_attr)
+            inverse_shape = _get_unshard_dist_shape(var, tensor_dist_attr)
             var.desc.set_shape(inverse_shape)
             dim_mapping = tensor_dist_attr.get_dims_mapping()
             dim_mapping = [-1] * len(dim_mapping)

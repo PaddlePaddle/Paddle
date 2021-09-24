@@ -20,6 +20,7 @@ from .context import get_default_distributed_context
 from .completion import complete_annotation
 from .partitioner import Partitioner
 from .process import get_all_process_groups
+from .utils import make_data_unshard
 
 
 class AutoParallelizer:
@@ -90,5 +91,8 @@ class AutoParallelizer:
         # The last step: remove all distributed attributes to be compatiable
         # with inference.
         self._remove_distributed_attrs(partitioned_main_prog)
+
+        # TODO(GuoxiaWang): wait ``reshard`` merge and then uncomment
+        # make_data_unshard(dist_main_prog, dist_startup_prog)
 
         return dist_optimize_ops, dist_params_grads, partitioned_startup_prog, partitioned_main_prog

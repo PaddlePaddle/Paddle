@@ -1424,10 +1424,6 @@ class Fleet(object):
             optimize_ops, params_grads, dist_startup_prog, dist_main_prog = auto_parallelizer.parallelize(
                 loss, startup_program, parameter_list, no_grad_set)
 
-            from ...auto_parallel.utils import inverse_deal_with_data
-            # TODO(GuoxiaWang): wait ``reshard`` merge
-            # inverse_deal_with_data(dist_main_prog, dist_startup_prog)
-            # reshard(dist_main_prog, dist_startup_prog)
             return optimize_ops, params_grads, dist_startup_prog, dist_main_prog
 
         # compile time
