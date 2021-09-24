@@ -136,27 +136,6 @@ class CudnnFusionOp {
   cudnnFusedOpsVariantParamPack_t op_variant_params_;
 };
 
-static inline std::vector<int> GetStrides(const std::vector<int> &shape) {
-  if (shape.size() < 1) {
-    return {};
-  }
-  int dim = static_cast<int>(shape.size());
-  std::vector<int> pro_shape(shape);
-  std::vector<int> strides(dim);
-  int temp = pro_shape[1];
-  pro_shape.erase(pro_shape.begin() + 1);
-  pro_shape.push_back(temp);
-  strides.back() = 1;
-  for (int i = dim - 2; i >= 0; --i) {
-    strides[i] = strides[i + 1] * pro_shape[i + 1];
-  }
-  strides.pop_back();
-  strides.insert(strides.begin() + 1, 1);
-  return strides;
-}
-
-static inline int64_t AlignUp(int64_t a, int64_t b) { return (a + b - 1) / b; }
-
 #endif  // CUDNN_VERSION >= 8000
 }  // namespace operators
 }  // namespace paddle

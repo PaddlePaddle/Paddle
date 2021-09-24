@@ -71,7 +71,8 @@ class CudnnBNStatsFinalizeOp {
     // Get workspace
     auto handle = ctx.cudnn_handle();
     for (auto op : {&train_op_, &inference_op_}) {
-      op->SetOpConstParamAttr(CUDNN_PARAM_BN_MODE, CUDNN_BATCHNORM_SPATIAL);
+      op->SetOpConstParamAttr(CUDNN_PARAM_BN_MODE,
+                              CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
       // Check workspace size, also creates plan.
       size_t workspace_size_bytes = op->GetWorkspaceSizeInBytes(handle);
       PADDLE_ENFORCE_EQ(workspace_size_bytes, 0U,
