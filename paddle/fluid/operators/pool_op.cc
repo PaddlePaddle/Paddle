@@ -121,7 +121,16 @@ void PoolOp::InferShape(framework::InferShapeContext* ctx) const {
 
   std::vector<int64_t> output_shape;
   if (adaptive) {
-    output_shape.insert(output_shape.end(), ksize.begin(), ksize.end());
+    auto out_size = ksize;
+    for (int c = 0; c < static_cast<int>(ksize.size()); c++) {
+      auto item = static_cast<int>(data_dims[c] / ksize[c]);
+      if (static_cast<int>(data_dims[c] % ksize[c]) > 0 + 1e-3) {
+        out_size[c] = item + 1;
+      } else {
+        out_size[c] = item;
+      }
+    }
+    output_shape.insert(output_shape.end(), out_size.begin(), out_size.end());
   } else {
     for (int i = 0; i < data_dims.size(); ++i) {
       if ((!ctx->IsRuntime()) && (data_dims[i] < 0)) {
@@ -332,7 +341,6 @@ void Pool2dOpMaker::Make() {
       "pooling in each grid area to get output pooling value. "
       "Default False.")
       .SetDefault(false);
-
   AddAttr<bool>(
       "use_cudnn",
       "(bool) Only used in cudnn kernel, need install cudnn. Default False")

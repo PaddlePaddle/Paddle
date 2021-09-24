@@ -154,6 +154,17 @@ def _expand_low_nd_padding(padding):
     return padding
 
 
+def _update_adaptive_kernel_size(input_size, output_size):
+    ksize = [0] * len(output_size)
+    for idx, v in enumerate(output_size):
+        item = input_size[idx] // v
+        if in_h % v > 0:
+            ksize[idx] = item + 1
+        else:
+            ksize[idx] = item
+    return ksize
+
+
 def avg_pool1d(x,
                kernel_size,
                stride=None,
@@ -1045,11 +1056,12 @@ def adaptive_avg_pool1d(x, output_size, name=None):
         check_type(output_size, 'pool_size', (int), 'adaptive_pool1d')
     _check_input(x, 3)
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
-
     x = unsqueeze(x, [2])
+
+    ksize = _update_adaptive_kernel_size(list(x.shape[2:]), pool_size)
     if in_dygraph_mode():
-        pool_out = _C_ops.pool2d(x, 'pooling_type', pool_type, 'ksize',
-                                 pool_size, 'adaptive', True)
+        pool_out = _C_ops.pool2d(x, 'pooling_type', pool_type, 'ksize', ksize,
+                                 'adaptive', True)
         return squeeze(pool_out, [2])
 
     l_type = "pool2d"
@@ -1065,7 +1077,7 @@ def adaptive_avg_pool1d(x, output_size, name=None):
         outputs=outputs,
         attrs={
             "pooling_type": pool_type,
-            "ksize": pool_size,
+            "ksize": ksize,
             "adaptive": True,
         })
 
@@ -1146,8 +1158,10 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         if output_size[1] == None:
             output_size[1] = in_w
 
+    ksize = _update_adaptive_kernel_size([in_h, in_w], output_size)
+
     if in_dygraph_mode():
-        output = _C_ops.pool2d(x, 'pooling_type', 'avg', 'ksize', output_size,
+        output = _C_ops.pool2d(x, 'pooling_type', 'avg', 'ksize', ksize,
                                'global_pooling', False, 'adaptive', True,
                                'data_format', data_format)
         return output
@@ -1166,7 +1180,7 @@ def adaptive_avg_pool2d(x, output_size, data_format='NCHW', name=None):
         outputs=outputs,
         attrs={
             "pooling_type": "avg",
-            "ksize": output_size,
+            "ksize": ksize,
             "adaptive": True,
             "data_format": data_format,
         })
@@ -1252,8 +1266,9 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
         if output_size[2] == None:
             output_size[2] = in_w
 
+    ksize = _update_adaptive_kernel_size([in_l, in_h, in_w], output_size)
     if in_dygraph_mode():
-        output = _C_ops.pool3d(x, 'pooling_type', 'avg', 'ksize', output_size,
+        output = _C_ops.pool3d(x, 'pooling_type', 'avg', 'ksize', ksize,
                                'global_pooling', False, 'adaptive', True,
                                'data_format', data_format)
         return output
@@ -1271,7 +1286,7 @@ def adaptive_avg_pool3d(x, output_size, data_format='NCDHW', name=None):
         outputs=outputs,
         attrs={
             "pooling_type": "avg",
-            "ksize": output_size,
+            "ksize": ksize,
             "adaptive": True,
             "data_format": data_format,
         })
@@ -1334,11 +1349,12 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
     _check_input(x, 3)
 
     pool_size = [1] + utils.convert_to_list(output_size, 1, 'pool_size')
-
     x = unsqueeze(x, [2])
+
+    ksize = _update_adaptive_kernel_size(list(x.shape[2:]), pool_size)
     if in_dygraph_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, 'pooling_type', pool_type, 'ksize', pool_size, 'adaptive', True)
+            x, 'pooling_type', pool_type, 'ksize', ksize, 'adaptive', True)
         return (squeeze(pool_out[0], [2]), squeeze(
             pool_out[1], [2])) if return_mask else squeeze(pool_out[0], [2])
 
@@ -1357,7 +1373,7 @@ def adaptive_max_pool1d(x, output_size, return_mask=False, name=None):
         outputs=outputs,
         attrs={
             "pooling_type": pool_type,
-            "ksize": pool_size,
+            "ksize": ksize,
             "adaptive": True,
         })
 
@@ -1425,9 +1441,10 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
         if output_size[1] == None:
             output_size[1] = in_w
 
+    ksize = _update_adaptive_kernel_size([in_h, in_w], output_size)
     if in_dygraph_mode():
         pool_out = _C_ops.max_pool2d_with_index(
-            x, 'pooling_type', 'max', 'ksize', output_size, 'adaptive', True)
+            x, 'pooling_type', 'max', 'ksize', ksize, 'adaptive', True)
         return pool_out if return_mask else pool_out[0]
 
     l_type = 'max_pool2d_with_index'
@@ -1445,7 +1462,7 @@ def adaptive_max_pool2d(x, output_size, return_mask=False, name=None):
         outputs=outputs,
         attrs={
             "pooling_type": 'max',
-            "ksize": output_size,
+            "ksize": ksize,
             "adaptive": True,
         })
     #return (pool_out, mask) if return_mask else pool_out
@@ -1518,9 +1535,10 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
         if output_size[2] == None:
             output_size[2] = in_w
 
+    ksize = _update_adaptive_kernel_size([in_l, in_h, in_w], output_size)
     if in_dygraph_mode():
         pool_out = _C_ops.max_pool3d_with_index(
-            x, 'pooling_type', 'max', 'ksize', output_size, 'adaptive', True)
+            x, 'pooling_type', 'max', 'ksize', ksize, 'adaptive', True)
         return pool_out if return_mask else pool_out[0]
 
     l_type = 'max_pool3d_with_index'
@@ -1538,7 +1556,7 @@ def adaptive_max_pool3d(x, output_size, return_mask=False, name=None):
         outputs=outputs,
         attrs={
             "pooling_type": 'max',
-            "ksize": output_size,
+            "ksize": ksize,
             "adaptive": True,
         })
 
