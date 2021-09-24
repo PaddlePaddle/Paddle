@@ -68,12 +68,11 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
     auto dito =
         math::DeviceIndependenceTensorOperations<platform::CPUDeviceContext, T>(
             ctx);
-    if (has_vectors) {
-      // lapack is a column-first storage, transpose make the eigen_vectors to
-      // have a continuous memory layout
-      *eigen_vectors = dito.Transpose(input);
-    }
-    auto *out_vector = eigen_vectors->mutable_data<T>(ctx.GetPlace());
+
+    // lapack is a column-major storge, transpose make the eigen_vectors to
+    // have a continuous memory layout
+    *eigen_vectors = dito.Transpose(input);
+    auto *out_vector = eigen_vectors->data<T>();
 
     auto dims = input.dims();
     int dim_size = dims.size();
@@ -151,9 +150,7 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T> {
     auto dito =
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
                                                  T>(ctx);
-    if (has_vectors) {
-      *eigen_vectors = dito.Transpose(input);
-    }
+    *eigen_vectors = dito.Transpose(input);
     auto *out_vector = eigen_vectors->mutable_data<T>(ctx.GetPlace());
 
     auto &dims = input.dims();
