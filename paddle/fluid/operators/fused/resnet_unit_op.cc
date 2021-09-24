@@ -39,6 +39,41 @@ void ResNetUnitOp::InferShape(framework::InferShapeContext *ctx) const {
 
   // check output
   OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "ResNetUnitOp");
+  OP_INOUT_CHECK(ctx->HasOutput("BitMask"), "Output", "BitMask",
+                 "ResNetUnitOp");
+  OP_INOUT_CHECK(ctx->HasOutput("ConvX"), "Output", "ConvX", "ResNetUnitOp");
+  OP_INOUT_CHECK(ctx->HasOutput("SumX"), "Output", "SumX", "ResNetUnitOp");
+  OP_INOUT_CHECK(ctx->HasOutput("SqSumX"), "Output", "SqSumX", "ResNetUnitOp");
+  OP_INOUT_CHECK(ctx->HasOutput("SavedMeanX"), "Output", "SavedMeanX",
+                 "ResNetUnitOp");
+  OP_INOUT_CHECK(ctx->HasOutput("SavedInvstdX"), "Output", "SavedInvstdX",
+                 "ResNetUnitOp");
+  OP_INOUT_CHECK(ctx->HasOutput("RunningMeanX"), "Output", "RunningMeanX",
+                 "ResNetUnitOp");
+  OP_INOUT_CHECK(ctx->HasOutput("RunningVarX"), "Output", "RunningVarX",
+                 "ResNetUnitOp");
+  OP_INOUT_CHECK(ctx->HasOutput("EqScaleX"), "Output", "EqScaleX",
+                 "ResNetUnitOp");
+  OP_INOUT_CHECK(ctx->HasOutput("EqBiasX"), "Output", "EqBiasX",
+                 "ResNetUnitOp");
+  if (ctx->Attrs().Get<bool>("has_shortcut")) {
+    OP_INOUT_CHECK(ctx->HasOutput("ConvZ"), "Output", "ConvZ", "ResNetUnitOp");
+    OP_INOUT_CHECK(ctx->HasOutput("SumZ"), "Output", "SumZ", "ResNetUnitOp");
+    OP_INOUT_CHECK(ctx->HasOutput("SqSumZ"), "Output", "SqSumZ",
+                   "ResNetUnitOp");
+    OP_INOUT_CHECK(ctx->HasOutput("SavedMeanZ"), "Output", "SavedMeanZ",
+                   "ResNetUnitOp");
+    OP_INOUT_CHECK(ctx->HasOutput("SavedInvstdZ"), "Output", "SavedInvstdZ",
+                   "ResNetUnitOp");
+    OP_INOUT_CHECK(ctx->HasOutput("RunningMeanZ"), "Output", "RunningMeanZ",
+                   "ResNetUnitOp");
+    OP_INOUT_CHECK(ctx->HasOutput("RunningVarZ"), "Output", "RunningVarZ",
+                   "ResNetUnitOp");
+    OP_INOUT_CHECK(ctx->HasOutput("EqScaleZ"), "Output", "EqScaleZ",
+                   "ResNetUnitOp");
+    OP_INOUT_CHECK(ctx->HasOutput("EqBiasZ"), "Output", "EqBiasZ",
+                   "ResNetUnitOp");
+  }
 
   // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
   PADDLE_ENFORCE_EQ(ctx->Inputs("MeanX")[0], ctx->Outputs("RunningMeanX")[0],
@@ -167,8 +202,83 @@ void ResNetUnitOpMaker::Make() {
 
 void ResNetUnitGradOp::InferShape(framework::InferShapeContext *ctx) const {
   // check input
+  OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ResNetUnitGradOp");
+  OP_INOUT_CHECK(ctx->HasInput("FilterX"), "Input", "FilterX",
+                 "ResNetUnitGradOp");
+  OP_INOUT_CHECK(ctx->HasInput("ConvX"), "Input", "ConvX", "ResNetUnitGradOp");
+  OP_INOUT_CHECK(ctx->HasInput("ScaleX"), "Input", "ScaleX",
+                 "ResNetUnitGradOp");
+  OP_INOUT_CHECK(ctx->HasInput("BiasX"), "Input", "BiasX", "ResNetUnitGradOp");
+  OP_INOUT_CHECK(ctx->HasInput("SavedMeanX"), "Input", "SavedMeanX",
+                 "ResNetUnitGradOp");
+  OP_INOUT_CHECK(ctx->HasInput("SavedInvstdX"), "Input", "SavedInvstdX",
+                 "ResNetUnitGradOp");
+  if (ctx->Attrs().Get<bool>("fused_add")) {
+    OP_INOUT_CHECK(ctx->HasInput("Z"), "Input", "Z", "ResNetUnitGradOp");
+  }
+  if (ctx->Attrs().Get<bool>("has_shortcut")) {
+    OP_INOUT_CHECK(ctx->HasInput("FilterZ"), "Input", "FilterZ",
+                   "ResNetUnitGradOp");
+    OP_INOUT_CHECK(ctx->HasInput("ConvZ"), "Input", "ConvZ",
+                   "ResNetUnitGradOp");
+    OP_INOUT_CHECK(ctx->HasInput("ScaleZ"), "Input", "ScaleZ",
+                   "ResNetUnitGradOp");
+    OP_INOUT_CHECK(ctx->HasInput("BiasZ"), "Input", "BiasZ",
+                   "ResNetUnitGradOp");
+    OP_INOUT_CHECK(ctx->HasInput("SavedMeanZ"), "Input", "SavedMeanZ",
+                   "ResNetUnitGradOp");
+    OP_INOUT_CHECK(ctx->HasInput("SavedInvstdZ"), "Input", "SavedInvstdZ",
+                   "ResNetUnitGradOp");
+  }
+  OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ResNetUnitGradOp");
+  OP_INOUT_CHECK(ctx->HasInput("BitMask"), "Input", "BitMask",
+                 "ResNetUnitGradOp");
+  OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
+                 framework::GradVarName("Y"), "ResNetUnitGradOp");
 
   // check output
+  OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("X")), "Output",
+                 framework::GradVarName("X"), "ResNetUnitGradOp");
+  OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("FilterX")), "Output",
+                 framework::GradVarName("FilterX"), "ResNetUnitGradOp");
+  OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("ScaleX")), "Output",
+                 framework::GradVarName("ScaleX"), "ResNetUnitGradOp");
+  OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BiasX")), "Output",
+                 framework::GradVarName("BiasX"), "ResNetUnitGradOp");
+  OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("ConvX")), "Output",
+                 framework::GradVarName("ConvX"), "ResNetUnitGradOp");
+  if (ctx->Attrs().Get<bool>("fused_add")) {
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Z")), "Output",
+                   framework::GradVarName("Z"), "ResNetUnitGradOp");
+  }
+  if (ctx->Attrs().Get<bool>("has_shortcut")) {
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("FilterZ")), "Output",
+                   framework::GradVarName("FilterZ"), "ResNetUnitGradOp");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("ScaleZ")), "Output",
+                   framework::GradVarName("ScaleZ"), "ResNetUnitGradOp");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BiasZ")), "Output",
+                   framework::GradVarName("BiasZ"), "ResNetUnitGradOp");
+    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("ConvZ")), "Output",
+                   framework::GradVarName("ConvZ"), "ResNetUnitGradOp");
+  }
+  const auto x_dims = ctx->GetInputDim("X");
+  const auto w_dims = ctx->GetInputDim("FilterX");
+  const auto y_dims = ctx->GetInputDim("Y");
+  const auto param_dims = ctx->GetInputDim("ScaleX");
+  ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
+  ctx->SetOutputDim(framework::GradVarName("FilterX"), w_dims);
+  ctx->SetOutputDim(framework::GradVarName("ScaleX"), param_dims);
+  ctx->SetOutputDim(framework::GradVarName("BiasX"), param_dims);
+  ctx->SetOutputDim(framework::GradVarName("ConvX"), y_dims);
+  if (ctx->Attrs().Get<bool>("fused_add")) {
+    ctx->SetOutputDim(framework::GradVarName("Z"), x_dims);
+  }
+  if (ctx->Attrs().Get<bool>("has_shortcut")) {
+    ctx->SetOutputDim(framework::GradVarName("FilterZ"), w_dims);
+    ctx->SetOutputDim(framework::GradVarName("ScaleZ"), param_dims);
+    ctx->SetOutputDim(framework::GradVarName("BiasZ"), param_dims);
+    ctx->SetOutputDim(framework::GradVarName("ConvZ"), y_dims);
+  }
 }
 
 framework::OpKernelType ResNetUnitGradOp::GetExpectedKernelType(

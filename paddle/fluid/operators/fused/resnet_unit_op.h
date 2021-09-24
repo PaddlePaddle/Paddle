@@ -66,6 +66,38 @@ class ResNetUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("resnet_unit_grad");
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("FilterX", this->Input("FilterX"));
+    op->SetInput("ConvX", this->Input("ConvX"));
+    op->SetInput("ScaleX", this->Input("ScaleX"));
+    op->SetInput("BiasX", this->Input("BiasX"));
+    op->SetInput("SavedMeanX", this->Output("SavedMeanX"));
+    op->SetInput("SavedInvstdX", this->Output("SavedInvstdX"));
+    op->SetInput("Z", this->Input("Z"));
+    op->SetInput("FilterZ", this->Input("FilterZ"));
+    op->SetInput("ConvZ", this->Input("ConvZ"));
+    op->SetInput("ScaleZ", this->Input("ScaleZ"));
+    op->SetInput("BiasZ", this->Input("BiasZ"));
+    op->SetInput("SavedMeanZ", this->Output("SavedMeanZ"));
+    op->SetInput("SavedInvstdZ", this->Output("SavedInvstdZ"));
+    op->SetInput("Y", this->Output("Y"));
+    op->SetInput("BitMask", this->Output("BitMask"));
+    op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
+
+    op->SetAttrMap(this->Attrs());
+
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
+    op->SetOutput(framework::GradVarName("FilterX"),
+                  this->InputGrad("FilterX"));
+    op->SetOutput(framework::GradVarName("ScaleX"), this->InputGrad("ScaleX"));
+    op->SetOutput(framework::GradVarName("BiasX"), this->InputGrad("BiasX"));
+    op->SetOutput(framework::GradVarName("ConvX"), this->OutputGrad("ConvX"));
+    op->SetOutput(framework::GradVarName("Z"), this->InputGrad("Z"));
+    op->SetOutput(framework::GradVarName("ScaleZ"), this->InputGrad("ScaleZ"));
+    op->SetOutput(framework::GradVarName("BiasZ"), this->InputGrad("BiasZ"));
+    op->SetOutput(framework::GradVarName("ConvZ"), this->OutputGrad("ConvZ"));
+    op->SetOutput(framework::GradVarName("FilterZ"),
+                  this->InputGrad("FilterZ"));
   }
 };
 
