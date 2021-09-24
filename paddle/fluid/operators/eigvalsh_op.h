@@ -22,27 +22,19 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
 template <typename DeviceContext, typename ValueType, typename T>
 class EigvalshKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto input_var = ctx.Input<Tensor>("X");
-    auto output_w_var = ctx.Output<Tensor>("Eigenvalues");
-    auto output_v_var = ctx.Output<Tensor>("Eigenvectors");
+    auto input = ctx.Input<Tensor>("X");
+    auto output_w = ctx.Output<Tensor>("Eigenvalues");
+    auto output_v = ctx.Output<Tensor>("Eigenvectors");
     std::string lower = ctx.Attr<std::string>("UPLO");
+    bool is_lower = (lower == "L");
     bool is_test = ctx.Attr<bool>("is_test");
     bool compute_vector = !is_test;
-    bool is_lower = (lower == "L");
-    math::MatrixEighFunctorCPU<DeviceContext, ValueType, T> functor;
-    functor(ctx, *input_var, output_w_var, output_v_var, is_lower,
-            compute_vector);
+    math::MatrixEighFunctor<DeviceContext, ValueType, T> functor;
+    functor(ctx, *input, output_w, output_v, is_lower, compute_vector);
   }
 };
 

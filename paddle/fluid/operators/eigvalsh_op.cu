@@ -14,38 +14,16 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/eigvalsh_op.h"
 
-namespace paddle {
-namespace operators {
-
-using Tensor = framework::Tensor;
-
-template <typename ValueType, typename T>
-class EigvalshGPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext &ctx) const override {
-    auto input_var = ctx.Input<Tensor>("X");
-    auto output_w_var = ctx.Output<Tensor>("Eigenvalues");
-    auto output_v_var = ctx.Output<Tensor>("Eigenvectors");
-    std::string lower = ctx.Attr<std::string>("UPLO");
-    bool is_test = ctx.Attr<bool>("is_test");
-    bool compute_vector = !is_test;
-    bool is_lower = (lower == "L");
-    math::MatrixEighFunctor<ValueType, T> functor;
-    functor(ctx, *input_var, output_w_var, output_v_var, is_lower,
-            compute_vector);
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
-
 namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
-    eigvalsh, ops::EigvalshGPUKernel<float, float>,
-    ops::EigvalshGPUKernel<double, double>,
-    ops::EigvalshGPUKernel<float, paddle::platform::complex<float>>,
-    ops::EigvalshGPUKernel<double, paddle::platform::complex<double>>);
+    eigvalsh,
+    ops::EigvalshKernel<paddle::platform::CUDADeviceContext, float, float>,
+    ops::EigvalshKernel<paddle::platform::CUDADeviceContext, double, double>,
+    ops::EigvalshKernel<paddle::platform::CUDADeviceContext, float,
+                        paddle::platform::complex<float>>,
+    ops::EigvalshKernel<paddle::platform::CUDADeviceContext, double,
+                        paddle::platform::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
     eigvalsh_grad,

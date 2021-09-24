@@ -47,12 +47,9 @@ class EigvalshOp : public framework::OperatorWithKernel {
             input_dim[rank - 2], input_dim[rank - 1]));
 
     std::vector<int64_t> values_dim;
-    if (rank > 2) {
-      for (auto i = 0; i < rank - 1; i++) {
-        values_dim.emplace_back(input_dim[i]);
-      }
-    } else {
-      values_dim = {input_dim[1]};
+
+    for (auto i = 0; i < rank - 1; i++) {
+      values_dim.emplace_back(input_dim[i]);
     }
 
     ctx->SetOutputDim("Eigenvalues", framework::make_ddim(values_dim));
