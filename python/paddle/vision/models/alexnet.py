@@ -12,15 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import math
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
+
 from paddle.nn import Conv2D, BatchNorm, Linear, Dropout, ReLU
 from paddle.nn import AdaptiveAvgPool2D, MaxPool2D, AvgPool2D
 from paddle.nn.initializer import Uniform
 from paddle.fluid.param_attr import ParamAttr
-import math
-
 from paddle.utils.download import get_weights_path_from_url
 
 model_urls = {
