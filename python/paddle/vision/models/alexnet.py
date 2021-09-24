@@ -18,7 +18,7 @@ import paddle.nn as nn
 __all__ = []
 
 
-class AlexNet(nn.Module):
+class AlexNet(nn.Layer):
   def __init__(self, num_classes=10):
     """AlexNet model architecture from the
     `"One weird trick..." <https://arxiv.org/abs/1404.5997>`_ paper.
