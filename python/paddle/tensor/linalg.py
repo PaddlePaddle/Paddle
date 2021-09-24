@@ -1652,10 +1652,11 @@ def eigvals(x, name=None):
     Returns:
         Tensor: A tensor containing the unsorted eigenvalues which has the same batch dimensions with `x`. 
             The eigenvalues are complex-valued even when `x` is real.
-  
+
     Examples:
         .. code-block:: python
 
+            import paddle
 
             paddle.set_device("cpu")
             paddle.seed(1234)
@@ -2112,4 +2113,3 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
                 attrs={'trans_x': False,
                        'trans_y': True}, )
             return out_2
->>>>>>> 0bbaf9bdedfdda0b1ace017e3e5293bebb90e2bd
