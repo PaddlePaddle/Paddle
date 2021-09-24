@@ -123,6 +123,7 @@ from .layer.rnn import LSTM  # noqa: F401
 from .layer.rnn import GRU  # noqa: F401
 
 from .layer.transformer import MultiHeadAttention  # noqa: F401
+from .layer.fused_transformer import FusedMultiHeadAttention  # noqa: F401
 from .layer.transformer import TransformerEncoderLayer  # noqa: F401
 from .layer.transformer import TransformerEncoder  # noqa: F401
 from .layer.transformer import TransformerDecoderLayer  # noqa: F401
