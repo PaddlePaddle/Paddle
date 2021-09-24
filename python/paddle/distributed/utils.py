@@ -836,7 +836,7 @@ def expert_count(gate_idx, n_expert):
             n_expert = 5
             gate_idx = paddle.to_tensor(gate_idx, dtype="int32")
             expert_count = paddle.distributed.utils.expert_count(gate_idx, n_expert)
-            print(expert_count) # the result: (2, 0, 3, 1)
+            print(expert_count) # the result: [2, 0, 2, 0, 0]
     """
     if in_dygraph_mode():
         return core.ops.expert_count(gate_idx, 'n_expert', n_expert)
