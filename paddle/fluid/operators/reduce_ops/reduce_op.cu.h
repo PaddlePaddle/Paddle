@@ -42,10 +42,10 @@ namespace cub = hipcub;
 #define REDUCE_SPLIT_BOUNDARY 512
 #define REDUCE_VEC_SIZE 4
 
+namespace kps = paddle::operators::kernel_primitives;
+
 namespace paddle {
 namespace operators {
-
-namespace kps = paddle::operators::kernel_primitives;
 
 namespace details {
 
@@ -493,7 +493,7 @@ struct ReduceConfig {
 template <typename Tx, typename Ty, typename MPType, typename ReduceOp,
           typename TransformOp, bool IsBoundary = false>
 __device__ void HigherDimDealSegment(const Tx* x, Ty* y, ReduceOp reducer,
-                                     TransformOp transformer, MPType init,
+                                     TransformOp transform, MPType init,
                                      int reduce_num, int left_num,
                                      int block_size) {
   const int NY = 1;
@@ -518,7 +518,7 @@ __device__ void HigherDimDealSegment(const Tx* x, Ty* y, ReduceOp reducer,
     kps::ReadData<Tx, Tx, 1, NY, 1, IsBoundary>(
         &reduce_input[0], input + loop_index * left_num, size, NY, 1, left_num);
     kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
-        &reduce_compute[0], &reduce_input[0], transformer);
+        &reduce_compute[0], &reduce_input[0], transform);
     kps::Reduce<MPType, NY, 1, 1, ReduceOp,
                 kps::details::ReduceMode::kLocalMode>(
         &result, &reduce_compute[0], reducer, false);
@@ -534,7 +534,7 @@ __device__ void HigherDimDealSegment(const Tx* x, Ty* y, ReduceOp reducer,
 template <typename Tx, typename Ty, typename MPType, typename ReduceOp,
           typename TransformOp, typename Calculator>
 __global__ void ReduceAnyKernel(const Tx* x, Ty* y, ReduceOp reducer,
-                                TransformOp transformer, MPType init,
+                                TransformOp transform, MPType init,
                                 int reduce_num, int left_num,
                                 bool reduce_last_dim,
                                 const Calculator reduce_index_calculator,
@@ -578,7 +578,7 @@ __global__ void ReduceAnyKernel(const Tx* x, Ty* y, ReduceOp reducer,
           &input_reg[0], input, input_idx, reduce_index_calculator, 1,
           reduce_num, 1, stride, reduce_last_dim);
       kps::ElementwiseUnary<Tx, MPType, REDUCE_VEC_SIZE, 1, 1, TransformOp>(
-          &input_compute[0], &input_reg[0], transformer);
+          &input_compute[0], &input_reg[0], transform);
       kps::Reduce<MPType, REDUCE_VEC_SIZE, 1, 1, ReduceOp,
                   kps::details::ReduceMode::kLocalMode>(
           &reduce_var, &input_compute[0], reducer, reduce_last_dim);
@@ -594,7 +594,7 @@ __global__ void ReduceAnyKernel(const Tx* x, Ty* y, ReduceOp reducer,
       if (input_idx >= reduce_num) {
         break;
       }
-      input_compute[i] = static_cast<MPType>(transformer(input_reg[i]));
+      input_compute[i] = static_cast<MPType>(transform(input_reg[i]));
       input_idx += stride;
     }
     kps::Reduce<MPType, REDUCE_VEC_SIZE, 1, 1, ReduceOp,
@@ -612,7 +612,7 @@ __global__ void ReduceAnyKernel(const Tx* x, Ty* y, ReduceOp reducer,
 template <typename Tx, typename Ty, typename MPType, typename ReduceOp,
           typename TransformOp>
 __global__ void ReduceHigherDimKernel(const Tx* x, Ty* y, ReduceOp reducer,
-                                      TransformOp transformer, MPType init,
+                                      TransformOp transform, MPType init,
                                       int reduce_num, int left_num,
                                       int blocking_size) {
   // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
@@ -625,19 +625,18 @@ __global__ void ReduceHigherDimKernel(const Tx* x, Ty* y, ReduceOp reducer,
   int size = left_num - idx;
   if (size >= blockDim.x) {  // complete segment
     HigherDimDealSegment<Tx, Ty, MPType, ReduceOp, TransformOp>(
-        x, y, reducer, transformer, init, reduce_num, left_num, blocking_size);
+        x, y, reducer, transform, init, reduce_num, left_num, blocking_size);
   } else {
     HigherDimDealSegment<Tx, Ty, MPType, ReduceOp, TransformOp, true>(
-        x, y, reducer, transformer, init, reduce_num, left_num, blocking_size);
+        x, y, reducer, transform, init, reduce_num, left_num, blocking_size);
   }
 }
 
-template <typename Tx, typename Ty, typename MPType, typename ReduceOp>
+template <typename Tx, typename Ty, typename MPType, typename ReduceOp,
+          typename TransformOp>
 static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
                                const ReduceOp& reducer, MPType init,
                                gpuStream_t stream, ReduceConfig<Ty> config) {
-  using TransformOp = typename ReduceOp::Transformer;
-
   if (config.reduce_type == kReduceLastDim) {
     int stride_reduce = 1;
     int stride_left = config.reduce_num;
@@ -679,15 +678,16 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
 
     ReduceHigherDimKernel<
         Ty, Ty, MPType, ReduceOp,
-        kps::details::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
+        kps::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
         config.output_data, y_data, reducer,
-        kps::details::IdentityFunctor<Ty, MPType>(config.grid.y), init,
-        config.grid.y, config.left_num, config.grid.y);
+        kps::IdentityFunctor<Ty, MPType>(config.grid.y), init, config.grid.y,
+        config.left_num, config.grid.y);
   }
 }
 
 template <typename Tx, typename Ty,
-          template <typename, typename> class ReduceOp>
+          template <typename, typename> class ReduceOp,
+          template <typename, typename> class TransformOp>
 void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
                              std::vector<int> origin_reduce_dims,
                              gpuStream_t stream) {
@@ -715,10 +715,9 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
                         (!std::is_same<Tx, paddle::platform::float16>::value);
   if (use_cub_reduce) {
     // launch CUB::Reduce
-    using TransformOp = typename ReduceOp<Tx, Ty>::Transformer;
     auto reducer = ReduceOp<Tx, Ty>();
-    cub::TransformInputIterator<Ty, TransformOp, const Tx*> trans_x(
-        x_data, TransformOp(config.reduce_num));
+    cub::TransformInputIterator<Ty, TransformOp<Tx, Ty>, const Tx*> trans_x(
+        x_data, TransformOp<Tx, Ty>(config.reduce_num));
     size_t temp_storage_bytes = 0;
     cub::DeviceReduce::Reduce(nullptr, temp_storage_bytes, trans_x, y_data,
                               config.reduce_num, reducer, reducer.initial(),
@@ -744,24 +743,22 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   //     32
   //     else grid.z = 1, grid.y = ny / block_size, grid.x = nx /32
   if (config.reduce_type == ReduceType::kReduceHigherDim) {
-    using TransformOp = typename ReduceOp<Tx, MPType>::Transformer;
-
     ReduceHigherDimKernel<
         Tx, Ty, MPType, ReduceOp<Tx, MPType>,
-        TransformOp><<<config.grid, config.block, 0, stream>>>(
-        x_data, config.output_data, reducer, TransformOp(config.reduce_num),
-        reducer.initial(), config.reduce_num, config.left_num,
-        config.blocking_size);
+        TransformOp<Tx, Ty>><<<config.grid, config.block, 0, stream>>>(
+        x_data, config.output_data, reducer,
+        TransformOp<Tx, Ty>(config.reduce_num), reducer.initial(),
+        config.reduce_num, config.left_num, config.blocking_size);
 
     if (config.should_reduce_again) {
       dim3 block = dim3(config.block.x, 1, 1);
       dim3 grid = dim3(config.grid.x, 1, config.grid.z);
-      ReduceHigherDimKernel<Ty, Ty, MPType, ReduceOp<Tx, MPType>,
-                            kps::details::IdentityFunctor<
-                                Ty, MPType>><<<grid, block, 0, stream>>>(
+      ReduceHigherDimKernel<
+          Ty, Ty, MPType, ReduceOp<Tx, MPType>,
+          kps::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
           config.output_data, y_data, reducer,
-          kps::details::IdentityFunctor<Ty, MPType>(config.grid.y),
-          reducer.initial(), config.grid.y, config.left_num, config.grid.y);
+          kps::IdentityFunctor<Ty, MPType>(config.grid.y), reducer.initial(),
+          config.grid.y, config.left_num, config.grid.y);
     }
     return;
   }
@@ -769,11 +766,12 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   // when reduce_dim.size() == 1 and reduce_dim[0] == x_dim.size() - 1, or
   // when reduce_dim.size() != 1 and reduce_dim.size() != x_dim.size(), this
   // function will be used
-  LaunchReduceKernel<Tx, Ty, MPType, ReduceOp<Tx, MPType>>(
+  LaunchReduceKernel<Tx, Ty, MPType, ReduceOp<Tx, MPType>, TransformOp<Tx, Ty>>(
       x_data, y_data, reducer, reducer.initial(), stream, config);
 }
 
-template <typename Tx, template <typename, typename> class ReduceOp>
+template <typename Tx, template <typename, typename> class ReduceOp,
+          template <typename, typename> class TransformOp>
 struct TensorReduceFunc {
   const framework::Tensor& x;
   framework::Tensor* y;
@@ -785,7 +783,8 @@ struct TensorReduceFunc {
 
   template <typename Ty>
   void apply() const {
-    TensorReduceFunctorImpl<Tx, Ty, ReduceOp>(x, y, origin_reduce_dims, stream);
+    TensorReduceFunctorImpl<Tx, Ty, ReduceOp, TransformOp>(
+        x, y, origin_reduce_dims, stream);
   }
 };
 

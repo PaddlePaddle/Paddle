@@ -664,7 +664,9 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
 };
 
 #if defined(__HIPCC__) || defined(__NVCC__)
-template <typename T, template <typename, typename> class ReduceOp>
+template <typename T, template <typename, typename> class ReduceOp,
+          template <typename, typename> class TransformOp =
+              kps::IdentityFunctor>
 class ReduceCudaKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -681,10 +683,11 @@ class ReduceCudaKernel : public framework::OpKernel<T> {
     if (out_dtype >= 0) {
       framework::VisitDataTypeSmall(
           static_cast<framework::proto::VarType::Type>(out_dtype),
-          TensorReduceFunc<T, ReduceOp>(*input, output, reduce_dims, stream));
+          TensorReduceFunc<T, ReduceOp, TransformOp>(*input, output,
+                                                     reduce_dims, stream));
     } else {
-      TensorReduceFunctorImpl<T, T, ReduceOp>(*input, output, reduce_dims,
-                                              stream);
+      TensorReduceFunctorImpl<T, T, ReduceOp, TransformOp>(*input, output,
+                                                           reduce_dims, stream);
     }
   }
 };

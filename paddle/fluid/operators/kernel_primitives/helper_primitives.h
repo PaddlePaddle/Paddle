@@ -19,31 +19,32 @@ namespace operators {
 namespace kernel_primitives {
 namespace details {
 
-static __device__ __forceinline__ platform::float16 ExpFunctor(
-    platform::float16 x) {
+static __device__ __forceinline__ platform::float16 Exp(platform::float16 x) {
   return ::Eigen::numext::exp(x);
 }
-static __device__ __forceinline__ float ExpFunctor(float x) { return expf(x); }
-static __device__ __forceinline__ double ExpFunctor(double x) { return exp(x); }
-static __device__ __forceinline__ platform::float16 LogFunctor(
-    platform::float16 x) {
+
+static __device__ __forceinline__ float Exp(float x) { return expf(x); }
+
+static __device__ __forceinline__ double Exp(double x) { return exp(x); }
+
+static __device__ __forceinline__ platform::float16 Log(platform::float16 x) {
   return ::Eigen::numext::log(x);
 }
-static __device__ __forceinline__ float LogFunctor(float x) { return logf(x); }
-static __device__ __forceinline__ double LogFunctor(double x) { return log(x); }
 
-/*************************** Compute Functor****************************/
-// for margin_cross_entropy
+static __device__ __forceinline__ float Log(float x) { return logf(x); }
+
+static __device__ __forceinline__ double Log(double x) { return log(x); }
+
+}  // namespace details
+
+/******************************** Unary Functor *******************************/
+// Post processing function for margin_cross_entropy
 template <typename Tx, typename Ty = Tx>
-struct ExpLogitTransformer {
-  HOSTDEVICE explicit inline ExpLogitTransformer(int n) {}
+struct ExpFunctor {
+  HOSTDEVICE explicit inline ExpFunctor(int n) {}
 
-  HOSTDEVICE inline Ty operator()(const Tx* x) const {
-    return static_cast<Ty>(details::ExpFunctor(x[0]));
-  }
-
-  HOSTDEVICE inline Ty operator()(const Tx& x) const {
-    return static_cast<Ty>(details::ExpFunctor(x));
+  HOSTDEVICE inline Ty operator()(const Ty& x) const {
+    return static_cast<Ty>(details::Exp(x));
   }
 };
 
@@ -52,29 +53,138 @@ template <typename Tx, typename Ty = Tx>
 struct IdentityFunctor {
   HOSTDEVICE explicit inline IdentityFunctor(int n) {}
 
-  HOSTDEVICE inline Ty operator()(const Tx* x) const {
-    return static_cast<Ty>(x[0]);
-  }
-
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
     return static_cast<Ty>(x);
   }
 };
 
 // Post processing function for mean
-template <typename T>
+template <typename Tx, typename Ty = Tx>
 struct DivideFunctor {
-  HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((T)(1.0 / n)) {}
+  HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((Tx)(1.0 / n)) {}
 
-  HOSTDEVICE inline T operator()(const T* x) const { return x[0] * n_inv; }
-
-  HOSTDEVICE inline T operator()(const T& x) const { return x * n_inv; }
+  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+    return static_cast<Ty>(x * n_inv);
+  }
 
  private:
-  T n_inv;
+  Tx n_inv;
 };
 
-}  // namespace details
+template <typename Tx, typename Ty = Tx>
+struct SquareFunctor {
+  HOSTDEVICE explicit inline SquareFunctor(int n) {}
+
+  HOSTDEVICE inline Ty operator()(const Tx& x) const {
+    return static_cast<Ty>(x) * static_cast<Ty>(x);
+  }
+};
+
+/******************************** Binary Functor
+ * *******************************/
+template <typename Tx, typename Ty = Tx>
+struct MinFunctor {
+  inline Ty initial() {
+    return static_cast<Ty>(std::numeric_limits<Ty>::max());
+  }
+
+  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+    return (b < a) ? b : a;
+  }
+};
+
+template <typename Tx, typename Ty = Tx>
+struct MaxFunctor {
+  inline Ty initial() {
+    return static_cast<Ty>(std::numeric_limits<Ty>::lowest());
+  }
+
+  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+    return (b > a) ? b : a;
+  }
+};
+
+template <typename Tx, typename Ty = Tx>
+struct AddFunctor {
+  inline Ty initial() { return static_cast<Ty>(0.0f); }
+
+  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+    return b + a;
+  }
+};
+
+template <typename Tx, typename Ty = Tx>
+struct MulFunctor {
+  inline Ty initial() { return static_cast<Ty>(1.0f); }
+
+  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+    return b * a;
+  }
+};
+
+template <typename Tx, typename Ty = Tx>
+struct LogicalOrFunctor {
+  inline Ty initial() { return static_cast<Ty>(false); }
+
+  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+    return b || a;
+  }
+};
+
+template <typename Tx, typename Ty = Tx>
+struct LogicalAndFunctor {
+  inline Ty initial() { return static_cast<Ty>(true); }
+
+  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+    return b && a;
+  }
+};
+
+// Subtract
+template <typename Tx, typename Ty = Tx>
+struct SubFunctor {
+  inline Ty initial() { return static_cast<Ty>(1.0f); }
+
+  inline HOSTDEVICE Ty operator()(const Ty& a, const Ty& b) const {
+    return a - b;
+  }
+};
+
+// Divide
+#define DIV_ERROR_INFO                                             \
+  "InvalidArgumentError: Integer division by zero encountered in " \
+  "(floor) divide. Please check the input value."
+
+template <typename T, typename Enable = void>
+struct DivFunctor {
+  inline T initial() { return static_cast<T>(1.0f); }
+
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a / b; }
+};
+
+template <typename T>
+struct DivFunctor<T,
+                  typename std::enable_if<std::is_integral<T>::value>::type> {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
+    // For int32/int64, need to check whether the divison is zero.
+    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+    return a / b;
+  }
+};
+
+// Floor Divide
+template <typename Tx, typename Ty = Tx>
+struct FloorDivFunctor {
+  inline Ty initial() { return static_cast<Ty>(1.0f); }
+
+  inline HOSTDEVICE Ty operator()(const Ty& a, const Ty& b) const {
+    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+    return static_cast<Ty>(std::trunc(a / b));
+  }
+};
+
+#undef DIV_ERROR_INFO
+
 }  // namespace kernel_primitives
 }  // namespace operators
 }  // namespace paddle
