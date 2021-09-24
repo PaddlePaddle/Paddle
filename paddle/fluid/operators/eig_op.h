@@ -24,6 +24,7 @@
 #define lapack_complex_float std::complex<float>
 #define lapack_complex_double std::complex<double>
 #endif
+#define EPSILON 1e-6
 
 #include "Eigen/Core"
 #include "Eigen/Eigenvalues"
@@ -88,7 +89,6 @@ std::vector<int> ExtendDims(const framework::DDim& in_dims, int batch_size) {
   std::vector<int> res;
   for (int i = 0; i < in_dims.size(); ++i) {
     cum *= in_dims[i];
-    LOG(INFO) << "vec push: " << in_dims[i];
     res.push_back(in_dims[i]);
     if (cum == batch_size) {
       break;
@@ -106,8 +106,6 @@ template <>
 void LapackEig<double>(char jobvl, char jobvr, int n, double* a, int lda,
                        double* w, double* vl, int ldvl, double* vr, int ldvr,
                        double* work, int lwork, double* rwork, int* info) {
-  // lapack [sd]geev wants to separate output arrays: wr and wi for the real
-  // and imaginary parts
   double* wr = w;
   double* wi = w + n;
   (void)rwork;
@@ -179,9 +177,9 @@ void ApplyEig(Tensor& input, Tensor& values, Tensor& vectors, Tensor& infos,
   char jobvl = 'N';
   char jobvr = 'V';  // only right eigenvectors are computed
   int num_dims = input.dims().size();
-  int order = input.dims()[num_dims - 1];  // the order"阶" of matrix input
+  int order = input.dims()[num_dims - 1];
 
-  T* input_data = input.data<T>();  // input.data_ptr;
+  T* input_data = input.data<T>();
   int lda = std::max<int>(1, order);
   T* values_data = values.mutable_data<T>(context.GetPlace());
   T* lvector_data = nullptr;
@@ -192,36 +190,15 @@ void ApplyEig(Tensor& input, Tensor& values, Tensor& vectors, Tensor& infos,
 
   int batch_count = BatchCount(input);
   int matrix_stride = MatrixStride(input);
-  LOG(INFO) << "matrix_stride: " << MatrixStride;
-  int values_stride = order;  // value stride is equal to the order of matrix
-  LOG(INFO) << "values_stride" << values_stride;
+  int values_stride = values.dims()[values.dims().size() - 1];
   infos.Resize(framework::make_ddim({batch_count}));
   int* info = infos.mutable_data<int>(context.GetPlace());
-  LOG(INFO) << "infos.type: " << infos.type();
 
-  // if input is complex 会使用到 Tin
   Tensor rwork;
   Tin* rwork_data = nullptr;
-  // if (framework::IsComplexType(input.type())) {  //
-  // 说明input没有给转为complex，！！
-  //   // 下面一句需要指定类型吗
-  //   rwork.Resize(framework::make_ddim({lda*2}));
-  //   rwork_data = rwork.mutable_data<Tin>(context.GetPlace());
-  // }
-  if (framework::IsComplexType(input.type())) {
-    LOG(INFO) << "IsComplexType(input.type())";
-  }
 
   rwork.Resize(framework::make_ddim({lda * 2}));
   rwork_data = rwork.mutable_data<Tin>(context.GetPlace());
-
-  LOG(INFO) << "input dtype: " << input.type();
-  LOG(INFO) << "order: " << order;
-  LOG(INFO) << "input_data: " << input_data;
-  LOG(INFO) << "values_data: " << values_data;
-  LOG(INFO) << "rvector_data: " << rvector_data;
-  LOG(INFO) << "rwork_data: " << rwork_data;
-  LOG(INFO) << "info: " << info;
 
   // call LapackEig once to compute the size of work;
   T computed_work_size;
@@ -254,7 +231,6 @@ void ApplyEig(Tensor& input, Tensor& values, Tensor& vectors, Tensor& infos,
             "elements i+1:N of WR and WI contain eigenvalues which "
             "have converged."));
   }
-  LOG(INFO) << "👍 ApplyEig Done";
 }
 
 template <typename DeviceContext, typename T, typename Tout>
@@ -264,9 +240,6 @@ void ApplyEigKernel(const Tensor& input, Tensor& values, Tensor& vectors,
   Tensor vectors_fortran_mem_layout;
   int num_dims = input.dims().size();
 
-  LOG(INFO) << "input dims(): " << input.dims();
-
-  LOG(INFO) << "💕  begin";
   // transfer to Fortran memory layout i.e. make_ddim from tranposed_input:
   // [batch,row,col]->[batch,col,row]
   TransposeTwoAxis<DeviceContext, T>(input, input_fortran_mem_layout,
@@ -282,77 +255,180 @@ void ApplyEigKernel(const Tensor& input, Tensor& values, Tensor& vectors,
   // vector: original layout
   TransposeTwoAxis<DeviceContext, T>(vectors_fortran_mem_layout, vectors,
                                      num_dims - 1, num_dims - 2, context);
-  LOG(INFO) << "💕  end";
 }
 
-// template <typename DeviceContext, typename Tin, typename Tout, typename
-// Tbase>
+template <typename T, typename Tout>
+void ConstructComplexValues(Tensor& c_values, Tensor& real_part,
+                            Tensor& imag_part,
+                            const framework::ExecutionContext& ctx,
+                            int batch_count, int order) {
+  auto* c_values_data = c_values.mutable_data<Tout>(ctx.GetPlace());
+  auto* real_data = real_part.data<T>();
+  auto* imag_data = imag_part.data<T>();
+
+  for (int b = 0; b < batch_count; b++) {
+    for (int j = 0; j < order; j++) {
+      c_values_data[b * order + j] = platform::complex<T>(
+          real_data[b * order + j], imag_data[b * order + j]);
+    }
+  }
+}
+
+template <typename T, typename Tout>
+void ConstructComplexVectors(Tensor& c_vectors, Tensor& c_values,
+                             Tensor& r_vectors,
+                             const framework::ExecutionContext& ctx,
+                             int batch_count, int order) {
+  int matrix_stride = MatrixStride(r_vectors);
+
+  auto* c_vectors_data = c_vectors.mutable_data<Tout>(ctx.GetPlace());
+  auto* c_values_data = c_values.mutable_data<Tout>(ctx.GetPlace());
+  auto* r_v_data = r_vectors.data<T>();
+
+  for (auto b = decltype(batch_count){0}; b < batch_count; b++) {
+    auto* vecs = &r_v_data[b * matrix_stride];
+    auto* res = &c_vectors_data[b * matrix_stride];
+    auto* vals = &c_values_data[b * order];
+
+    for (auto j = decltype(order){0}; j < order; j++) {
+      if (vals[j].imag < EPSILON) {
+        for (auto i = decltype(order){0}; i < order; i++) {
+          res[j * order + i] = platform::complex<T>(vecs[j * order + i], 0);
+        }
+      } else {
+        for (auto i = decltype(order){0}; i < order; i++) {
+          res[j * order + i] = platform::complex<T>(vecs[j * order + i],
+                                                    vecs[(j + 1) * order + i]);
+          res[(j + 1) * order + i] = platform::complex<T>(
+              vecs[j * order + i], -vecs[(j + 1) * order + i]);
+        }
+        j++;
+      }
+    }
+  }
+}
+
 template <typename DeviceContext, typename T, typename Tout, typename Tbase>
-class EigKernel : public framework::OpKernel<T> {  // T 为注册的输入精度
+class EigKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* x = context.Input<Tensor>("X");  // T
-    // convert input from real to complex
+    auto* x = context.Input<Tensor>("X");
     auto* out_values = context.Output<Tensor>("OutValues");
     auto* out_vectors = context.Output<Tensor>("OutVectors");
 
-    LOG(INFO) << "👀  Compute started";
-    if (!framework::IsComplexType(
-            x->type())) {  // 如果输入x是实数，则将x转为复数
-      LOG(INFO) << "RealToComnplex";
-      auto numel = x->numel();
-      framework::Tensor x_c;
-      auto* x_data = x->data<Tbase>();  // 保证编译时 Tbase 只为实数
-      auto* x_c_data =
-          x_c.mutable_data<Tout>(x->dims(),  // 未设置dims
-                                 context.GetPlace(),
-                                 static_cast<size_t>(numel * sizeof(Tout)));  //
-
-      auto& dev_ctx = context.template device_context<DeviceContext>();
-      platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-      math::RealToComplexFunctor<Tout> functor(x_data, x_c_data, numel);
-      for_range(functor);
-
-      LOG(INFO) << "x_c_data: " << x_c_data;  // 不应该为 nullptr
-
+    if (!framework::IsComplexType(x->type())) {
       out_values->mutable_data<Tout>(context.GetPlace());
       out_vectors->mutable_data<Tout>(context.GetPlace());
 
-      LOG(INFO) << "Forward x type: " << x->type();
-      LOG(INFO) << "Forward out_values type: " << out_values->type();
-      LOG(INFO) << "Forward out_vectors type: " << out_vectors->type();
-      LOG(INFO) << "input x: " << x->type();
+      int batch_count = BatchCount(*x);
+      int order = x->dims()[x->dims().size() - 1];
+
+      Tensor real_values;
+      Tensor real_vectors;
+      // double the size of real_values, the first half stores the real part,
+      // the next half stores the imag part
+      std::vector<int> origin_dim =
+          framework::vectorize<int>(out_values->dims());
+      int last_item = origin_dim.back();
+      origin_dim.pop_back();
+      origin_dim.push_back(last_item * 2);
+      framework::DDim big_dim = framework::make_ddim(origin_dim);
+
+      real_values.mutable_data<Tbase>(big_dim, context.GetPlace());
+      real_vectors.mutable_data<Tbase>(x->dims(), context.GetPlace());
       Tensor infos;
-      ApplyEigKernel<DeviceContext, Tout, Tout>(x_c, *out_values, *out_vectors,
-                                                infos, context);
+      ApplyEigKernel<DeviceContext, Tbase, Tout>(*x, real_values, real_vectors,
+                                                 infos, context);
+      auto dito =
+          math::DeviceIndependenceTensorOperations<DeviceContext, Tbase, Tout>(
+              context);
+
+      // 1. extract real part & imag part from real_values
+      Tensor real_part = dito.Slice(real_values, {-1}, {0}, {order});
+      Tensor imag_part = dito.Slice(real_values, {-1}, {order}, {order * 2});
+
+      // 2. construct complex values
+      ConstructComplexValues<Tbase, Tout>(*out_values, real_part, imag_part,
+                                          context, batch_count, order);
+
+      // 3. construct complex vectors
+      Tensor real_vector_trans = dito.Transpose(real_vectors);
+      Tensor out_vectors_trans;
+      out_vectors_trans.mutable_data<Tout>(x->dims(), context.GetPlace());
+      ConstructComplexVectors<Tbase, Tout>(out_vectors_trans, *out_values,
+                                           real_vector_trans, context,
+                                           batch_count, order);
+      TransposeTwoAxis<DeviceContext, Tout>(out_vectors_trans, *out_vectors,
+                                            x->dims().size() - 1,
+                                            x->dims().size() - 2, context);
     } else {
-      LOG(INFO) << "Comnplex Original";
       out_values->mutable_data<T>(context.GetPlace());
       out_vectors->mutable_data<T>(context.GetPlace());
-
-      LOG(INFO) << "Forward x type: " << x->type();
-      LOG(INFO) << "Forward out_values type: " << out_values->type();
-      LOG(INFO) << "Forward out_vectors type: " << out_vectors->type();
-      LOG(INFO) << "input x: " << x->type();
 
       Tensor infos;
       ApplyEigKernel<DeviceContext, T, Tout>(*x, *out_values, *out_vectors,
                                              infos, context);
     }
-    LOG(INFO) << "👀  Compute done";
   }
 };
 
+template <typename DeviceContext, typename Tout>
+void ComputeBackwardForComplexInput(
+    Tensor& V, Tensor& L, Tensor& gL, Tensor& gV, Tout* x_grad_data,
+    int batch_count, int order, const framework::ExecutionContext& context) {
+  auto dito =
+      math::DeviceIndependenceTensorOperations<DeviceContext, Tout, Tout>(
+          context);
+
+  Tensor trans_v = dito.Transpose(V);
+  Tensor Vh = dito.Conj(trans_v);
+  Tensor Lconj = dito.Conj(L);
+  Tensor Econj = dito.SubBroadcast(
+      dito.Unsqueeze(Lconj, -2), dito.Unsqueeze(Lconj, -1), batch_count, order);
+  Tensor VhgV = dito.Matmul(Vh, gV);
+  Tensor diag_real = dito.Real(VhgV);
+  Tensor diag_res = dito.Diag(diag_real, batch_count);
+  Tensor diag_unsqueezed = dito.Unsqueeze(diag_res, -2);
+
+  // turn diag_unsqueezed into complex
+  auto numel = diag_unsqueezed.numel();
+  Tensor diag_unsqueezed_complex;
+  auto* data_diag_un = diag_unsqueezed.data<math::Real<Tout>>();
+  auto* data_diag_un_com = diag_unsqueezed_complex.mutable_data<Tout>(
+      diag_unsqueezed.dims(), context.GetPlace(),
+      static_cast<size_t>(numel * sizeof(Tout)));
+  auto& dev_ctx = context.template device_context<DeviceContext>();
+  platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
+  math::RealToComplexFunctor<Tout> functor(data_diag_un, data_diag_un_com,
+                                           numel);
+  for_range(functor);
+  // real tensor multiply complex tensor in broadcast manner
+  Tensor res1 = dito.RealMulComplex(V, diag_unsqueezed_complex);
+  Tensor res2 = dito.Matmul(Vh, res1);
+  Tensor result = dito.Sub(VhgV, res2);
+
+  result.mutable_data<Tout>(V.dims(), context.GetPlace());
+  result = dito.Div(result, Econj);
+  result = dito.DiagFill(order, order, order, 0, gL, result);
+  Tensor rhs = dito.Matmul(result, Vh);
+
+  // solve linear system
+  // solve(Vh, rhs, out, m, k)
+  // Vh: matrix with shape [m,m]
+  // rhs: rhs with shape [m,k]
+  // x_grad: out
+  int m = Vh.dims()[Vh.dims().size() - 1];
+  int k = rhs.dims()[rhs.dims().size() - 1];
+  auto* matrix_data = Vh.data<Tout>();
+  auto* rhs_data = rhs.data<Tout>();
+  math::SolveLinearSystem<DeviceContext, Tout>(matrix_data, rhs_data,
+                                               x_grad_data, m, k, batch_count);
+}
+
 template <typename DeviceContext, typename T, typename Tout>
-class EigGradKernel : public framework::OpKernel<T> {  //
+class EigGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    // T: 正向输入的类型
-    // Tout: 正向输出的类型
-
-    LOG(INFO) << "👉 backward starts";
-    // using Tin = typename TemplateInTemplate<T>::type;
-
     auto& L = const_cast<Tensor&>(*context.Input<Tensor>("OutValues"));
     auto& V = const_cast<Tensor&>(*context.Input<Tensor>("OutVectors"));
     auto& gL = const_cast<Tensor&>(
@@ -361,24 +437,13 @@ class EigGradKernel : public framework::OpKernel<T> {  //
         *context.Input<Tensor>(framework::GradVarName("OutVectors")));
 
     auto& x_grad = *context.Output<Tensor>(framework::GradVarName("X"));
-    auto* x_grad_data =
-        x_grad.mutable_data<Tout>(context.GetPlace());  // 应是复数类型
-
-    LOG(INFO) << "backward input L (values): " << L.dims();
-    LOG(INFO) << "backward input V (vectors): " << V.dims();
-    LOG(INFO) << "backward input gL (grad_val): " << gL.dims();
-    LOG(INFO) << "backward input gV (grad_vec): " << gV.dims();
-    LOG(INFO) << "backward output x_grad: " << x_grad.dims()
-              << "x_grad type: " << x_grad.type();
-
-    // LOG(INFO) << "preparation DONE";
+    auto* x_grad_data = x_grad.mutable_data<Tout>(context.GetPlace());
 
     auto& dims = V.dims();
     framework::DDim dim_origin = dims;
     int num_dims = dim_origin.size();
     int batch_count = BatchCount(V);
-    const int order =
-        dim_origin[num_dims - 1];  // the order"阶" of matrix input
+    const int order = dim_origin[num_dims - 1];
 
     if (num_dims > 3) {
       L.Resize(framework::make_ddim({batch_count, order}));
@@ -388,126 +453,16 @@ class EigGradKernel : public framework::OpKernel<T> {  //
       x_grad.Resize(framework::make_ddim({batch_count, order, order}));
     }
 
-    LOG(INFO) << "backward input L (values): " << L.dims();
-    LOG(INFO) << "backward input V (vectors): " << V.dims();
-    LOG(INFO) << "backward input gL (grad_val): " << gL.dims();
-    LOG(INFO) << "backward input gV (grad_vec): " << gV.dims();
-    LOG(INFO) << "backward output x_grad: " << x_grad.dims();
+    ComputeBackwardForComplexInput<DeviceContext, Tout>(
+        V, L, gL, gV, x_grad_data, batch_count, order, context);
 
-    LOG(INFO) << "HERE 0";
-
-    // outvalues: ValueType
-    // outVectors: T
-    auto dito = math::DeviceIndependenceTensorOperations<DeviceContext,
-                                                         /*Tin*/ Tout, Tout>(
-        context);  //谁是Tin，谁是Tout
-    LOG(INFO) << "HERE 1";
-
-    //(1.1) Vh = V.transpose(-2, -1).conj();
-    Tensor trans_v = dito.Transpose(V);  // 每个方阵转置
-    LOG(INFO) << "HERE 2";
-    Tensor Vh = dito.Conj(trans_v);  // 每个元素Conj
-
-    LOG(INFO) << "HERE 3";
-
-    //(1.2) Lconj = L.conj();
-    Tensor Lconj = dito.Conj(L);
-    LOG(INFO) << "HERE 4";
-
-    //(1.3) Econj = Lconj.unsqueeze(-2) - Lconj.unsqueeze(-1);
-    Tensor Econj =
-        dito.SubBroadcast(dito.Unsqueeze(Lconj, -2), dito.Unsqueeze(Lconj, -1),
-                          batch_count, order);
-    LOG(INFO) << "HERE 5";
-    //(1.4) Econj.diagonal(0, -2, -1).fill_(1.);  //
-    //(2.1) const auto VhgV = at::matmul(Vh, gV);
-    Tensor VhgV = dito.Matmul(Vh, gV);  // matmul会批处理吗√
-    LOG(INFO) << "HERE 6";
-    LOG(INFO) << "HERE 7";
-    //(2.2) const auto diag_re_VhgV = at::real(VhgV).diagonal(0, -2, -1);
-    Tensor diag_real_VhgV;
-    Tensor diag_VhgV;
-    LOG(INFO) << "🐽 VhgV dims: " << VhgV.dims();
-    //(2.3) auto result = VhgV - at::matmul(Vh, V * diag_re_VhgV.unsqueeze(-2));
-    Tensor diag_tmp /*实*/ = dito.Real(VhgV);
-    math::ShowTensor<Tout>(VhgV, "VhgV");
-    math::ShowTensor<math::Real<Tout>>(diag_tmp, "Real(VhgV)");
-    LOG(INFO) << "🐽 0 diag_tmp.type " << diag_tmp.type();
-    Tensor diag_res /*实*/ = dito.Diag(diag_tmp /*实*/, batch_count);
-    LOG(INFO) << "🐽 1";
-    Tensor diag_un /*实*/ = dito.Unsqueeze(diag_res /*实*/, -2);
-    math::ShowTensor<math::Real<Tout>>(diag_un, "Unsqueeze(Diag)");
-    LOG(INFO) << "🐽 2";
-    // 1) diag_un -> 变复数，+0j
-    auto numel = diag_un.numel();
-    Tensor diag_un_com;
-    auto* data_diag_un = diag_un.data<math::Real<Tout>>();
-    auto* data_diag_un_com = diag_un_com.mutable_data<Tout>(
-        diag_un.dims(), context.GetPlace(),
-        static_cast<size_t>(numel * sizeof(Tout)));
-    auto& dev_ctx = context.template device_context<DeviceContext>();
-    platform::ForRange<DeviceContext> for_range(dev_ctx, numel);
-    math::RealToComplexFunctor<Tout> functor(data_diag_un, data_diag_un_com,
-                                             numel);
-    for_range(functor);
-    math::ShowTensor<Tout>(diag_un_com, "实数变复数");
-    // 2) 重新定义此处的 两复数相乘
-
-    Tensor res1 = dito.ElementwiseMul(diag_un_com /*复*/, V /*复*/);
-    LOG(INFO) << "🐽 3";
-
-    math::ShowTensor<Tout>(res1, "ElementwiseMul res1");
-
-    Tensor res2 = dito.Matmul(Vh, res1);
-    Tensor result = dito.Sub(VhgV, res2);
-
-    result.mutable_data<Tout>(/*dims*/ V.dims(), context.GetPlace());  // T
-    LOG(INFO) << "HERE 8";
-
-    //(3.1) result.div_(Econj);
-    result = dito.Div(result, Econj);
-    LOG(INFO) << "HERE 9";
-
-    //(3.2) result.diagonal(0, -2, -1).copy_(gL);
-    result = dito.DiagFill(order, order, order, 0, gL, result);
-    LOG(INFO) << "HERE 10";
-
-    //(4) result = at::linalg_solve(Vh, at::matmul(result, Vh));
-    Tensor tmp = dito.Matmul(result, Vh);
-    LOG(INFO) << "HERE 11";
-
-    // solve linear system
-    // solve(Vh, tmp, out, m, k)
-    // Vh: matrix with shape [m,m]
-    // tmp: rhs with shape [m,k]
-    // x_grad: out
-    int m = Vh.dims()[Vh.dims().size() - 1];
-    int k = tmp.dims()[tmp.dims().size() - 1];
-    auto* matrix_data = Vh.data<Tout>();
-    auto* rhs_data = tmp.data<Tout>();
-    LOG(INFO) << "HERE 12";
-    math::SolveLinearSystem<DeviceContext, Tout>(
-        matrix_data, rhs_data, x_grad_data, m, k,
-        batch_count);  // 需要循环batch处理
-
-    // x_grad.mutable_data<Tout>(context.GetPlace());
-
-    //(5) return self.is_complex() ? result : at::real(result);
-    // x_grad.ShareDataWith(result);
-
-    //(-1) extend Batch_size to the original dims
+    // extend Batch_size to the original dims
     if (num_dims > 3) {
       std::vector<int> dim_origin_vec = ExtendDims(dim_origin, batch_count);
-      LOG(INFO) << "dims: " << dim_origin;
       dim_origin_vec.push_back(order);
       dim_origin_vec.push_back(order);
       x_grad.Resize(framework::make_ddim(dim_origin_vec));
     }
-    LOG(INFO) << "x_grad dims: " << x_grad.dims()
-              << "x_grad type: " << x_grad.type();
-
-    LOG(INFO) << "👍 backward DONE";
-    math::ShowTensor<Tout>(x_grad, "x_grad");
   }
 };
 

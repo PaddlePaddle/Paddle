@@ -39,7 +39,6 @@ class EigOp : public framework::OperatorWithKernel {
 
     auto x_dims = ctx->GetInputDim("X");
     int num_dims = x_dims.size();
-    // int order = x_dims[num_dims - 1];
 
     std::vector<int> batch_dims_vec{};
     for (int i = 0; i < num_dims - 1; ++i) {
@@ -57,13 +56,11 @@ class EigOp : public framework::OperatorWithKernel {
             "but receive a matrix with %d rows and %d colums",
             x_dims[num_dims - 2], x_dims[num_dims - 1]));
 
-    // 指定输出需要占用的空间个数
     ctx->SetOutputDim("OutVectors", x_dims);
     ctx->SetOutputDim("OutValues", framework::make_ddim(batch_dims_vec));
   }
 
  protected:
-  // 输出的dtype是空，所以这里需要设定输出的dtype
   // The output of eig is always complex-valued even for real-valued inputs
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
@@ -82,7 +79,6 @@ class EigOp : public framework::OperatorWithKernel {
 class EigOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    // 链接Python和c++的输入输出对象名
     AddInput("X", "The input matrix as a Tensor of Eig op.");
     AddOutput("OutValues", "The eigen-values calculated by this op");
     AddOutput("OutVectors", "The eigen-vectors calculated by this op");
@@ -119,10 +115,10 @@ class EigGradOp : public framework::OperatorWithKernel {
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    auto input_data_type = OperatorWithKernel::IndicateOrPromoteVarDataTypes(
-        ctx, framework::GradVarName("OutValues"),
-        framework::GradVarName("OutVectors"));
-    return framework::OpKernelType(input_data_type, ctx.device_context());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(
+            ctx, framework::GradVarName("OutVectors")),
+        ctx.device_context());
   }
 };
 

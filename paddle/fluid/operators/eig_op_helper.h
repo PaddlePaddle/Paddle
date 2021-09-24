@@ -24,6 +24,7 @@
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
+#include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/functors.h"
@@ -33,7 +34,6 @@
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/device_context.h"
 #include "paddle/fluid/platform/for_range.h"
-//#include "paddle/fluid/operators/svd_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -45,78 +45,16 @@ using OutTensors = std::vector<Tensor*>;
 using Shape = std::vector<int>;
 using OpName = std::string;
 
-template <typename T>
-void ShowTensor(Tensor& x, std::string name) {
-  LOG(INFO) << name << ": ";
-  T* x_data = x.data<T>();
-  std::vector<int> in_dims = framework::vectorize<int>(x.dims());
-  // LOG(INFO) << "in_dims: "<< in_dims;
-  for (int i = 0; i < x.numel(); ++i) {
-    std::cout << x_data[i] << " ";
-    if ((i + 1) % in_dims.back() == 0) {
-      std::cout << std::endl;
-    }
+#define DITO_SLICE_RANK_CASE(N)                      \
+  case N: {                                          \
+    EigenSliceWrapper<N>(&x, offset, extends, &ret); \
+    break;                                           \
   }
-  std::cout << std::endl;
-}
 
-// // batch_diag
-// template <typename Tin, typename T>
-// Tensor Diag(const Tensor& x, int batch) {
-//   Tensor out;
-//   // if (framework::IsComplexType(x.type())) {
-//   //   auto* out_data = out.mutable_data<T>(x.dims(), context.GetPlace());
-//   //   auto* x_data = x.data<T>();
-//   // } else {
-//   //   auto* out_data = out.mutable_data<math::Real<T>>(x.dims(),
-//   context.GetPlace());
-//   //   auto* x_data = x.data<math::Real<T>>();
-//   // }
-
-//   auto x_dims = x.dims();
-//   LOG(INFO) << "🌸 x_dims: " << x_dims;
-//   int num_dims = x_dims.size();  //
-//   LOG(INFO) << "🌸 num_dims: " << num_dims;
-//   std::vector<int> out_shape;
-
-//   for (int i = 0; i < num_dims - 1; ++i) {
-//     out_shape.push_back(x.dims()[i]);
-//   }
-//   out.Resize(framework::make_ddim(out_shape));
-//   auto out_dims = out.dims();
-
-//   int order = x.dims()[num_dims - 1];
-//   // int batch = BatchCount(x);
-//   auto out_length = batch * order;
-//   LOG(INFO) << "out_dims[0]: " << out_length;
-
-//   int stride_out = order * order;
-//   int stride_in = order + 1;
-//   for (int i = 0; i < batch; ++i) {
-//     for (int j = 0; j < order; ++j) {
-//       out_data[i * order + j] = x_data[stride_out * i + stride_in * j];
-//     }
-//   }
-//   LOG(INFO) << "🌸 out_dims: " << out_dims;
-//   return out;
-// }
-
-// T : paddle::complex
 template <typename DeviceContext, typename T>
 void SolveLinearSystem(T* matrix_data, T* rhs_data, T* out_data, int order,
                        int rhs_cols, int batch) {
   using Treal = typename Eigen::NumTraits<T>::Real;
-  // std::complex<>
-
-  // auto mat_dims = matrix->dims();
-  // auto mat_num_dims = mat_dims.size();
-  // int order = mat_dims[mat_num_dims - 1];
-  // int rhs_cols = rhs->dims()[rhs->dims().size() - 1];
-
-  // auto* matrix_data = matrix->data<T>();
-  // auto* rhs_data = rhs->data<T>();
-  // Tensor out;
-  // auto* out_data = out.mutable_data<T>(rhs->dims(), ctx.GetPlace());
 
   std::complex<Treal>* matrix_data_ =
       reinterpret_cast<std::complex<Treal>*>(matrix_data);
@@ -151,99 +89,8 @@ void SolveLinearSystem(T* matrix_data, T* rhs_data, T* out_data, int order,
   }
 }
 
-template <typename Tout, typename Tbase>
-void SolveComplexInput(Tout* x_data, Tout* eigenvalues_data,
-                       Tout* eigenvectors_data, int batch, int order) {
-  // LOG(INFO) << "⭕️ Complex Input 0";
-  //// 输入没错
-  // LOG(INFO) << "x_data[0]: " << x_data[0] << ", "<<x_data[1]<< ",
-  // "<<x_data[2]<< ", "<<x_data[3]<< ", "<<x_data[4]<< ", "<<x_data[5];
-  // cast paddle::complex<> to std::complex<>
-  std::complex<Tbase>* x_data_ = reinterpret_cast<std::complex<Tbase>*>(x_data);
-  std::complex<Tbase>* eigenvalues_data_ =
-      reinterpret_cast<std::complex<Tbase>*>(eigenvalues_data);
-  std::complex<Tbase>* eigenvectors_data_ =
-      reinterpret_cast<std::complex<Tbase>*>(eigenvectors_data);
-
-  using InputMatrix = Eigen::Matrix<std::complex<Tbase>, Eigen::Dynamic,
-                                    Eigen::Dynamic, Eigen::RowMajor>;
-  using InputMatrixMap = Eigen::Map<const InputMatrix>;
-  using OutputMatrix = Eigen::Matrix<std::complex<Tbase>, Eigen::Dynamic,
-                                     Eigen::Dynamic, Eigen::RowMajor>;
-  using OutputMatrixMap = Eigen::Map<OutputMatrix>;
-
-  for (int i = 0; i < batch; ++i) {
-    auto input = InputMatrixMap(x_data_ + i * order * order, order, order);
-    auto output_values =
-        OutputMatrixMap(eigenvalues_data_ + i * order, 1, order);
-    auto output_vectors =
-        OutputMatrixMap(eigenvectors_data_ + i * order * order, order, order);
-
-    // LOG(INFO) << "循环中的输入[]: " << (x_data + i * order * order)[0]<<",
-    // "<< (x_data + i * order * order)[1]<<", "<< (x_data + i * order *
-    // order)[2]<<", "<< (x_data + i * order * order)[3]<<", "<< (x_data + i *
-    // order * order)[4];
-    Eigen::ComplexEigenSolver<OutputMatrix> eig_solver(
-        input, Eigen::ComputeEigenvectors);
-    PADDLE_ENFORCE_EQ(eig_solver.info(), Eigen::Success,
-                      platform::errors::InvalidArgument(
-                          "Eigen decomposition was not "
-                          "successful. The input might not be valid."));
-    output_values = eig_solver.eigenvalues().transpose();
-    output_vectors = eig_solver.eigenvectors();
-  }
-  // LOG(INFO) << "⭕️ Complex Input 1";
-}
-
-// Tin=float          Tout=complexfloat   Tbase=float
-// Tin=complexfloat   Tout=complexfloat   Tbase=float
-template <typename Tout, typename Tbase>
-void SolveNonComplexInput(Tbase* x_data, Tout* eigenvalues_data,
-                          Tout* eigenvectors_data, int batch, int order) {
-  // LOG(INFO) << "🛑 NonComplex Input 0";
-  //// 输入没错
-  // LOG(INFO) << "x_data[0]: " << x_data[0] << ", "<<x_data[1]<< ",
-  // "<<x_data[2]<< ", "<<x_data[3]<< ", "<<x_data[4]<< ", "<<x_data[5];
-  // cast paddle::complex to std::complex
-  std::complex<Tbase>* eigenvalues_data_ =
-      reinterpret_cast<std::complex<Tbase>*>(eigenvalues_data);
-  std::complex<Tbase>* eigenvectors_data_ =
-      reinterpret_cast<std::complex<Tbase>*>(eigenvectors_data);
-
-  using InputMatrix =
-      Eigen::Matrix<Tbase, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-  using InputMatrixMap = Eigen::Map<const InputMatrix>;
-  using OutputMatrix = Eigen::Matrix<std::complex<Tbase>, Eigen::Dynamic,
-                                     Eigen::Dynamic, Eigen::RowMajor>;
-  using OutputMatrixMap = Eigen::Map<OutputMatrix>;
-
-  for (int i = 0; i < batch; ++i) {
-    auto input = InputMatrixMap(x_data + i * order * order, order, order);
-    auto output_values =
-        OutputMatrixMap(eigenvalues_data_ + i * order, 1, order);
-    auto output_vectors =
-        OutputMatrixMap(eigenvectors_data_ + i * order * order, order, order);
-
-    /// 输入没错
-    // LOG(INFO) << "循环中的输入[]: " << (x_data + i * order * order)[0]<<",
-    // "<< (x_data + i * order * order)[1]<<", "<< (x_data + i * order *
-    // order)[2]<<", "<< (x_data + i * order * order)[3]<<", "<< (x_data + i *
-    // order * order)[4];
-    Eigen::ComplexEigenSolver<OutputMatrix> eig_solver(
-        input, Eigen::ComputeEigenvectors);
-    PADDLE_ENFORCE_EQ(eig_solver.info(), Eigen::Success,
-                      platform::errors::InvalidArgument(
-                          "Eigen decomposition was not "
-                          "successful. The input might not be valid."));
-    output_values = eig_solver.eigenvalues().transpose();
-    output_vectors = eig_solver.eigenvectors();
-  }
-  // LOG(INFO) << "🛑 NonComplex Input 1";
-}
-
 using InTensors = std::vector<const Tensor*>;
 static std::vector<int> GetBroadcastShape(InTensors ins) {
-  // TODO(xiongkun03) check the operators and output
   PADDLE_ENFORCE_EQ(ins.size(), 2, platform::errors::InvalidArgument(
                                        "GetBroadcastShape Receive 2 tensors"
                                        "but got [%d]",
@@ -385,27 +232,13 @@ struct DeviceIndependenceTensorOperations {
     return out;
   }
 
-  Tensor Mul(const Tensor& x, float a) {
-    Tensor out;
-    out.mutable_data<T>(x.dims(), context.GetPlace());
-    auto x_vector = EigenVector<T>::Flatten(x);
-    auto out_vector = EigenVector<T>::Flatten(out);
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
-    out_vector.device(place) = x_vector * static_cast<T>(a);
-    return out;
-  }
-
   Tensor Div(const Tensor& x, const Tensor& y) {
-    Tensor out;
-    out.mutable_data<T>(x.dims(), context.GetPlace());
-    auto x_vector = EigenVector<T>::Flatten(x);
-    auto y_vector = EigenVector<ValueType>::Flatten(y);
-    auto out_vector = EigenVector<T>::Flatten(out);
-    auto& place =
-        *context.template device_context<DeviceContext>().eigen_device();
-    out_vector.device(place) = x_vector / y_vector;
-    return out;
+    Tensor ret;
+    std::vector<int> out_shape = GetBroadcastShape({&x, &y});
+    ret.Resize(framework::make_ddim(out_shape));
+    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
+        context, &x, &y, -1, DivFunctor<T>(), &ret);
+    return ret;
   }
 
   Tensor Sub(const Tensor& x, const Tensor& y) {
@@ -452,7 +285,6 @@ struct DeviceIndependenceTensorOperations {
       out_tensor.device(place) =
           x_tensor.broadcast(a_bcast_dims) - y_tensor.broadcast(b_bcast_dims);
     }
-    LOG(INFO) << "⭕️ SubBroadcast out_dims: " << out.dims();
     return out;
   }
 
@@ -468,7 +300,6 @@ struct DeviceIndependenceTensorOperations {
       out_shape.insert(index, 1);
     }
     out.Resize(framework::make_ddim(out_shape));
-    LOG(INFO) << "⭕️ Unsqueeze out_dims: " << out.dims();
     return out;
   }
 
@@ -482,22 +313,14 @@ struct DeviceIndependenceTensorOperations {
         static_cast<size_t>(numel * sizeof(math::Real<T>)));
 
     auto x_dims = x.dims();
-    LOG(INFO) << "🌸 x_dims: " << x_dims;
-    int num_dims = x_dims.size();  //
-    LOG(INFO) << "🌸 num_dims: " << num_dims;
+    int num_dims = x_dims.size();
     std::vector<int> out_shape;
 
     for (int i = 0; i < num_dims - 1; ++i) {
       out_shape.push_back(x.dims()[i]);
     }
     out.Resize(framework::make_ddim(out_shape));
-    auto out_dims = out.dims();
-
     int order = x.dims()[num_dims - 1];
-    // int batch = BatchCount(x);
-    auto out_length = batch * order;
-    LOG(INFO) << "out_dims[0]: " << out_length;
-
     int stride_out = order * order;
     int stride_in = order + 1;
     for (int i = 0; i < batch; ++i) {
@@ -505,17 +328,67 @@ struct DeviceIndependenceTensorOperations {
         out_data[i * order + j] = x_data[stride_out * i + stride_in * j];
       }
     }
-    LOG(INFO) << "🌸 out_dims: " << out_dims;
     return out;
   }
 
-  framework::Tensor ElementwiseMul(const framework::Tensor& x,
-                                   const framework::Tensor& y) {
+  // a complex number x times a real number y, which is represented as (a+0j)
+  Tensor RealMulComplex(const framework::Tensor& x,
+                        const framework::Tensor& y) {
     framework::Tensor ret;
     std::vector<int> out_shape = GetBroadcastShape({&x, &y});
     ret.Resize(framework::make_ddim(out_shape));
     ElementwiseComputeEx<RealMulComplexFunctor<T>, DeviceContext, T>(
         context, &x, &y, -1, RealMulComplexFunctor<T>(), &ret);
+    return ret;
+  }
+
+  framework::Tensor Slice(const framework::Tensor& x, std::vector<int> axes,
+                          std::vector<int> starts, std::vector<int> ends) {
+    framework::Tensor ret;
+    std::vector<int> new_axes = axes;
+    std::vector<int> out_shape = framework::vectorize<int>(x.dims());
+    size_t rank = out_shape.size();
+    PADDLE_ENFORCE_EQ(
+        axes.size(), starts.size(),
+        platform::errors::InvalidArgument("Slice Operator Argument Invalided"));
+    PADDLE_ENFORCE_EQ(
+        ends.size(), starts.size(),
+        platform::errors::InvalidArgument("Slice Operator Argument Invalided"));
+    for (unsigned int i = 0; i < axes.size(); ++i) {
+      int axis = axes[i];
+      if (axis < 0) axis = rank + axis;
+      new_axes[i] = axis;  // change negative to positive
+      int st = starts[i];
+      int ed = ends[i];
+      PADDLE_ENFORCE_GT(ed, st,
+                        platform::errors::InvalidArgument(
+                            "C++ Slice Operation Not Support End < Start"));
+      out_shape[axis] = ed - st;
+    }
+    std::vector<int> offset(rank), extends(rank);
+    for (size_t i = 0; i < rank; ++i) {
+      offset[i] = 0;
+      extends[i] = x.dims()[i];
+    }
+    for (size_t i = 0; i < new_axes.size(); ++i) {
+      offset[new_axes[i]] = starts[i];
+      extends[new_axes[i]] = ends[i] - starts[i];
+    }
+    ret.Resize(framework::make_ddim(out_shape));
+    ret.mutable_data<T>(context.GetPlace());
+    switch (rank) {
+      DITO_SLICE_RANK_CASE(1);
+      DITO_SLICE_RANK_CASE(2);
+      DITO_SLICE_RANK_CASE(3);
+      DITO_SLICE_RANK_CASE(4);
+      DITO_SLICE_RANK_CASE(5);
+      DITO_SLICE_RANK_CASE(6);
+      default: {
+        PADDLE_THROW(platform::errors::InvalidArgument(
+            "Invalid Rank number, "
+            "currently only support rank between 2~6"));
+      }
+    }
     return ret;
   }
 
@@ -525,6 +398,35 @@ struct DeviceIndependenceTensorOperations {
   platform::ForRange<DeviceContext> GetForRange(int numel) {
     auto& dev_ctx = context.template device_context<DeviceContext>();
     return platform::ForRange<DeviceContext>(dev_ctx, numel);
+  }
+
+  template <size_t D>
+  void EigenSliceWrapper(const framework::Tensor* in,
+                         const std::vector<int>& start,
+                         const std::vector<int>& end, framework::Tensor* out) {
+    // Slice by call Eigen Tensor Function `.slice()`
+    size_t rank = in->dims().size();
+    PADDLE_ENFORCE_EQ(start.size(), rank,
+                      platform::errors::InvalidArgument(
+                          "EigenSliceWrapper function start "
+                          "argument must have the same length as input rank."));
+    PADDLE_ENFORCE_EQ(end.size(), rank,
+                      platform::errors::InvalidArgument(
+                          "EigenSliceWrapper function end "
+                          "argument must have the same length as input rank."));
+    auto eigen_place_ptr =
+        context.template device_context<DeviceContext>().eigen_device();
+    auto eigen_place = *eigen_place_ptr;
+    auto out_t = framework::EigenTensor<T, D>::From(*out, out->dims());
+    auto in_t = framework::EigenTensor<T, D>::From(*in, in->dims());
+    Eigen::DSizes<int, D> offsets_32bit, extents_32bit;
+    for (size_t i = 0; i < D; i++) {
+      offsets_32bit[i] = start[i];
+      extents_32bit[i] = end[i];
+    }
+    EigenSlice<std::decay_t<decltype(eigen_place)>, T, D>::Eval(
+        eigen_place, framework::To32BitIndex(out_t),
+        framework::To32BitIndex(in_t), offsets_32bit, extents_32bit);
   }
 };
 

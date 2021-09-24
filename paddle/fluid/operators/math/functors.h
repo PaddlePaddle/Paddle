@@ -37,11 +37,11 @@ struct MulGradFunctor {
 
 template <typename T>
 struct RealMulComplexFunctor {
-  // x: complex number (d+0j) as a real number
-  // y: complex number (a+bj)
-  // out: complex number (ad+bdj)
+  // x: complex number (a+bj)
+  // y: complex number (c+0j) pretend to be a real number
+  // out: complex number (ac+bcj)
   inline HOSTDEVICE T operator()(T x, T y) {
-    return platform::complex<Real<T>>(y.real * x.real, y.imag * x.real);
+    return platform::complex<Real<T>>(x.real * y.real, x.imag * y.real);
   }
 };
 
