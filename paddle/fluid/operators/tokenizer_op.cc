@@ -153,22 +153,22 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
                                   vector<int64_t>* token_ids) const {
   size_t len = text.size();
   if (len > max_input_chars_per_word_) {
-    token_ids->emplace_back(unk_token_id_);
+    token_ids->emplace_back(std::move(unk_token_id_));
     return;
   }
 
   auto it = vocab_->find(text);
   if (it != vocab_->end()) {
-    token_ids->emplace_back(it->second);
+    token_ids->emplace_back(std::move(it->second));
     return;
   }
 
   size_t start = 0;
-  int64_t cur_substr_id;
   vector<int64_t> wordpiece_ids;
   while (start < len) {
     size_t end = len;
     std::wstring cur_substr;
+    int64_t cur_substr_id;
     while (start < end) {
       std::wstring sub = text.substr(start, end - start);
       if (start > 0) {
@@ -184,14 +184,16 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
     }
 
     if (cur_substr.empty()) {
-      token_ids->emplace_back(unk_token_id_);
+      token_ids->emplace_back(std::move(unk_token_id_));
       return;
     } else {
       start = end;
-      wordpiece_ids.emplace_back(cur_substr_id);
+      wordpiece_ids.emplace_back(std::move(cur_substr_id));
     }
   }
-  token_ids->insert(token_ids->end(), wordpiece_ids.begin(), wordpiece_ids.end());
+  for (auto& token_id : wordpiece_ids) {
+    token_ids->emplace_back(std::move(token_id));
+  }
 }
 
 BertTokenizer::BertTokenizer(framework::WSTRING_MAP* vocab,
@@ -250,9 +252,9 @@ void BertTokenizer::Tokenize(const string& text,
       if (IsChineseChar(w_token[0])) {
         auto vocab_it = vocab_->find(w_token);
         if (vocab_it != vocab_->end()) {
-          split_token_ids->emplace_back(vocab_it->second);
+          split_token_ids->emplace_back(std::move(vocab_it->second));
         } else {
-          split_token_ids->emplace_back(unk_token_id_);
+          split_token_ids->emplace_back(std::move(unk_token_id_));
         }
       } else {
         word_piece_tokenizer_.Tokenize(w_token, split_token_ids);
@@ -433,7 +435,7 @@ int BertTokenizer::Encode(
   }
   if (return_length) {
     vector<int64_t> len(1, seq_len);
-    encoded_inputs->emplace("seq_len", len);
+    encoded_inputs->emplace("seq_len", std::move(len));
   }
 
   // Check lengths
@@ -458,7 +460,7 @@ int BertTokenizer::Encode(
         for (size_t i = 0; i < seq_len; i++) {
           attention_mask[i] = 1;
         }
-        encoded_inputs->emplace("attention_mask", attention_mask);
+        encoded_inputs->emplace("attention_mask", std::move(attention_mask));
       }
 
       size_t pad_start = max_seq_len - 1 - difference;
@@ -494,7 +496,7 @@ int BertTokenizer::Encode(
         for (size_t i = difference; i < max_seq_len; i++) {
           tmp[i] = encoded_inputs->at("special_tokens_mask")[i - difference];
         }
-        encoded_inputs->emplace("special_tokens_mask", tmp);
+        encoded_inputs->emplace("special_tokens_mask", std::move(tmp));
       }
 
       vector<int64_t> tmp(max_seq_len, pad_token_id_);
@@ -506,7 +508,7 @@ int BertTokenizer::Encode(
   } else {
     if (return_attention_mask) {
       vector<int64_t> tmp(encoded_inputs->at("input_ids").size(), 1);
-      encoded_inputs->emplace("attention_mask", tmp);
+      encoded_inputs->emplace("attention_mask", std::move(tmp));
     }
   }
 
@@ -515,7 +517,7 @@ int BertTokenizer::Encode(
     for (size_t i = 0; i < encoded_inputs->at("input_ids").size(); i++) {
       position_ids[i] = i;
     }
-    encoded_inputs->emplace("position_ids", position_ids);
+    encoded_inputs->emplace("position_ids", std::move(position_ids));
   }
   return 1;
 }
@@ -551,7 +553,7 @@ int BertTokenizer::BatchEncode(
           return_position_ids, return_attention_mask, truncation_strategy,
           return_overflowing_tokens, return_special_tokens_mask);
       if (status) {
-        batch_encode_inputs->emplace_back(res);
+        batch_encode_inputs->emplace_back(std::move(res));
       } else {
         return 0;
       }
@@ -563,7 +565,7 @@ int BertTokenizer::BatchEncode(
                  return_attention_mask, truncation_strategy,
                  return_overflowing_tokens, return_special_tokens_mask);
       if (status) {
-        batch_encode_inputs->emplace_back(res);
+        batch_encode_inputs->emplace_back(std::move(res));
       } else {
         return 0;
       }
