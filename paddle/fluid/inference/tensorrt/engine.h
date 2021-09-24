@@ -322,9 +322,6 @@ class TensorRTEngine {
   nvinfer1::IPluginV2Layer* AddPluginV2Ext(nvinfer1::ITensor* const* inputs,
                                            int num_inputs,
                                            plugin::PluginTensorRTV2Ext* plugin);
-  nvinfer1::IPluginV2Layer* AddPluginV2IOExt(nvinfer1::ITensor* const* inputs,
-                                             int num_inputs,
-                                             nvinfer1::IPluginV2IOExt* plugin);
 
   void SetTensorDynamicRange(nvinfer1::ITensor* tensor, float range) {
     quant_dynamic_range_[tensor] = range;
@@ -432,7 +429,6 @@ class TensorRTEngine {
   bool with_ernie() { return with_ernie_; }
   bool disable_trt_plugin_fp16() { return disable_trt_plugin_fp16_; }
   bool with_dynamic_shape() { return with_dynamic_shape_; }
-  AnalysisConfig::Precision precision() { return precision_; }
 
 #if IS_TRT_VERSION_GE(6000)
   nvinfer1::IPluginV2Layer* AddDynamicPlugin(
@@ -554,7 +550,6 @@ class TensorRTEngine {
 
   std::vector<std::unique_ptr<plugin::PluginTensorRT>> owned_plugin_;
   std::vector<std::unique_ptr<plugin::PluginTensorRTV2Ext>> owned_plugin_v2ext_;
-  std::vector<std::unique_ptr<nvinfer1::IPluginV2IOExt>> owned_plugin_v2ioext_;
 
   // TensorRT related internal members
   template <typename T>
