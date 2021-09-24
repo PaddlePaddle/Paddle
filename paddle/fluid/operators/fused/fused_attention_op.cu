@@ -204,11 +204,11 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
                                     attn_dropout_mask_out, attn_dropout_out,
                                     qktv_out, fmha_out);
     // fmha_out: [batch_size, seq_len, num_head, head_dim]
-    // weight: [1024, 1024], [embed_dim, embed_dim]
+    // weight:   [embed_dim, embed_dim]
     // out_linear_out: [batch_size, seq_len, embed_dim]
     out_linear_compute.ComputeForward(out_linear_weight_data, fmha_out_data,
                                       nullptr, out_linear_out_data, nullptr);
-    // out = layernorm(residual + dropout(src + bias))
+    // output = layernorm(residual + dropout(input + bias))
     fused_dropout_layernorm_helper.LayernormResidualDropoutBias(
         ctx.cuda_device_context(), out_linear_out_data, x_data,
         out_linear_bias_data, ln_scale_2_data, ln_bias_2_data,
