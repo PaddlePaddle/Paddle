@@ -176,7 +176,6 @@ template <DeviceType device_type>
 struct EventCreateFunctionRegisterer : public framework::Registrar {
   explicit EventCreateFunctionRegisterer(EventCreateFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
-    VLOG(3) << "register event_creator with type_id :" << type_idx;
     DeviceEvent::event_creator_[type_idx] = func;
   }
 };
@@ -197,7 +196,6 @@ template <DeviceType device_type>
 struct EventRecordFunctionRegisterer : public framework::Registrar {
   explicit EventRecordFunctionRegisterer(EventRecordFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
-    VLOG(3) << "register event_recorder with type_id :" << type_idx;
     DeviceEvent::event_recorder_[type_idx] = func;
   }
 };
@@ -218,7 +216,6 @@ template <DeviceType device_type>
 struct EventQueryFunctionRegisterer : public framework::Registrar {
   explicit EventQueryFunctionRegisterer(EventQueryFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
-    VLOG(3) << "register event_querier with type_id :" << type_idx;
     DeviceEvent::event_querier_[type_idx] = func;
   }
 };
@@ -239,7 +236,6 @@ template <DeviceType device_type>
 struct EventFinishFunctionRegisterer : public framework::Registrar {
   explicit EventFinishFunctionRegisterer(EventFinishFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
-    VLOG(3) << "register event_finisher with type_id :" << type_idx;
     DeviceEvent::event_finisher_[type_idx] = func;
   }
 };
@@ -260,7 +256,6 @@ template <DeviceType device_type>
 struct EventSetFinishedFunctionRegisterer : public framework::Registrar {
   explicit EventSetFinishedFunctionRegisterer(EventSetFinishedFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
-    VLOG(3) << "register event_finished_setter with type_id :" << type_idx;
     DeviceEvent::event_finished_setter_[type_idx] = func;
   }
 };
@@ -282,8 +277,6 @@ struct EventWaitFunctionRegisterer : public framework::Registrar {
   explicit EventWaitFunctionRegisterer(EventWaitFunction func) {
     auto waiter_idx = DeviceTypeToId(waiter_type);
     auto event_idx = DeviceTypeToId(event_type);
-    VLOG(3) << "register event_finisher with waiter_idx : " << waiter_idx
-            << ", event_idx : " << event_idx;
     DeviceEvent::event_waiter_[waiter_idx][event_idx] = func;
   }
 };
@@ -305,7 +298,6 @@ template <DeviceType device_type>
 struct EventResetFunctionRegisterer : public framework::Registrar {
   explicit EventResetFunctionRegisterer(EventResetFunction func) {
     auto type_idx = DeviceTypeToId(device_type);
-    VLOG(3) << "register event_resetter with type_id :" << type_idx;
     DeviceEvent::event_resetter_[type_idx] = func;
   }
 };

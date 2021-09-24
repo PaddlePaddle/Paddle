@@ -164,13 +164,13 @@ class RawProgramOptimizer(MetaOptimizerBase):
     def _insert_allreduce_ops_for_gm(self, gm_block):
         block = self.main_program.global_block()
 
-        last_backward_op_idx = None
-        for i, op in enumerate(reversed(gm_block.ops)):
-            if is_backward_op(op) and last_backward_op_idx is None:
-                last_backward_idx = i
+        first_optimize_op_idx = None
+        for i, op in reversed(list(enumerate(gm_block.ops))):
+            if is_backward_op(op) and first_optimize_op_idx is None:
+                first_optimize_op_idx = i + 1
                 break
-        if last_backward_op_idx is None:
-            last_backward_op_idx = 0
+        if first_optimize_op_idx is None:
+            first_optimize_op_idx = 0
 
         param_vars = []
         grad_vars = []
@@ -191,7 +191,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
             return
 
         gm_block._insert_op(
-            last_backward_op_idx,
+            first_optimize_op_idx,
             type="c_sync_calc_stream",
             inputs={'X': grad_vars[0]},
             outputs={'Out': grad_vars[0]},
@@ -203,7 +203,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
         # NOTE: can perform fuse allreduce inside the loop in the future
         for i, (p, g) in enumerate(zip(param_vars, grad_vars)):
             gm_block._insert_op(
-                last_backward_op_idx + insert_op_num,
+                first_optimize_op_idx + insert_op_num,
                 type="c_allreduce_sum",
                 inputs={'X': g},
                 outputs={'Out': g},
@@ -214,7 +214,7 @@ class RawProgramOptimizer(MetaOptimizerBase):
             insert_op_num += 1
 
         gm_block._insert_op(
-            last_backward_op_idx + insert_op_num,
+            first_optimize_op_idx + insert_op_num,
             type="c_sync_comm_stream",
             inputs={'X': grad_vars[-1]},
             outputs={'Out': grad_vars[-1]},

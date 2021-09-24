@@ -59,5 +59,9 @@ class CounterGuard {
   Holder* counter_holder_{nullptr};
 };
 
+void* AlignedMalloc(size_t size, size_t alignment);
+
+void AlignedFree(void* memory_ptr);
+
 }  // namespace framework
 }  // namespace paddle
