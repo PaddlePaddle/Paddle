@@ -215,7 +215,7 @@ class GlooWrapper {
 #else
     LOG(WARNING) << "AllGather does nothing when WITH_GLOO=OFF";
 #endif
-    return std::move(ret);
+    return ret;
   }
 
  protected:
