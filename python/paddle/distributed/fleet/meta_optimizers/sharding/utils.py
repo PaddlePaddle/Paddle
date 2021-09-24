@@ -676,8 +676,8 @@ def fuse_opt_broadcast_param_ops(block,
     for idx, op in reversed(list(enumerate(block.ops))):
         if not is_optimizer_op(op) or op.type != 'c_broadcast':
             break
-        var = op.input_arg_names()[0]
-        root_id = op.attr['root']
+        var = op.input_arg_names[0]
+        root_id = op.attr('root')
         device_to_vars[root_id].insert(0, var)
         block._remove_op(idx, sync=False)
 
