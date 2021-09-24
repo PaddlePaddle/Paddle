@@ -99,7 +99,7 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
                         row_k[j], shape=[-1])
                     if isinstance(row_k[j], paddle.Tensor) else None)
         jacobian += (tuple(
-            _stack_tensor_or_return_none(jac_i[j]) for j in range(fin_size)), )
+            _stack_tensor_or_return_none(jac_i_j) for jac_i_j in jac_i), )
     if fin_size == 1 and fout_size == 1:
         return jacobian[0][0]
     elif fin_size == 1 and fout_size != 1:

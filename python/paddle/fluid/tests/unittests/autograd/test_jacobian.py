@@ -83,9 +83,9 @@ class TestJacobian(unittest.TestCase):
         self.shape = (4, 4)
         self.dtype = 'float32'
         self.np_dtype = np.float32
-        self.numerical_delta = 1e-5
+        self.numerical_delta = 1e-4
         self.rtol = 1e-3
-        self.atol = 1e-2
+        self.atol = 1e-3
         self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
         self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
 
@@ -211,7 +211,7 @@ class TestJacobianFloat64(TestJacobian):
         self.np_dtype = np.float64
         self.numerical_delta = 1e-7
         self.rtol = 1e-7
-        self.atol = 1e-5
+        self.atol = 1e-7
         self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
         self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
 
