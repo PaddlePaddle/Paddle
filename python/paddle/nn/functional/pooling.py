@@ -158,7 +158,7 @@ def _update_adaptive_kernel_size(input_size, output_size):
     ksize = [0] * len(output_size)
     for idx, v in enumerate(output_size):
         item = input_size[idx] // v
-        if in_h % v > 0:
+        if input_size[idx] % v > 0:
             ksize[idx] = item + 1
         else:
             ksize[idx] = item
