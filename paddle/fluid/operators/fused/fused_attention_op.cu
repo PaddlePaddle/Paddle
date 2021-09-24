@@ -293,7 +293,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     auto *dropout_mask_out_data = dropout_mask_out->data<uint8_t>();
     auto *bias_dropout_residual_out_data = bias_dropout_residual_out->data<T>();
 
-    // bw output's grad
+    // output's grad
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_ln_out = ctx.Output<Tensor>(framework::GradVarName("LnOut"));
     auto *d_qkv_out = ctx.Output<Tensor>(framework::GradVarName("QKVOut"));
@@ -332,7 +332,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
     auto *d_bias_dropout_residual_out_data =
         d_bias_dropout_residual_out->mutable_data<T>(ctx.GetPlace());
 
-    // bw parameter's grad
+    // parameter grad
     auto *d_ln_scale = ctx.Output<Tensor>(framework::GradVarName("LnScale"));
     auto *d_ln_bias = ctx.Output<Tensor>(framework::GradVarName("LnBias"));
     auto *d_qkv_weight = ctx.Output<Tensor>(framework::GradVarName("QKVW"));
@@ -435,7 +435,7 @@ class FusedAttentionGradKernel : public framework::OpKernel<T> {
       qkv_compute.ComputeBackward(x_data, qkv_weight_data, d_qkv_bias_out_data,
                                   d_x_data, d_qkv_weight_data, d_qkv_bias_data);
     }
-    // gradient accumulation:
+    // gradient accumulation
     std::vector<const Tensor *> ins;
     std::vector<Tensor *> outs;
     ins.emplace_back(&d_residual);

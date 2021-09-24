@@ -481,7 +481,7 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("OutLinearW"),
                   this->InputGrad("OutLinearW"));
 
-    // use forward's output as bw's input.
+    // use forward outputs as backward inputs.
     op->SetInput("LnOut", this->Output("LnOut"));
     op->SetInput("LnMean", this->Output("LnMean"));
     op->SetInput("LnVariance", this->Output("LnVariance"));
@@ -504,7 +504,7 @@ class FusedAttentionGradOpMaker : public framework::SingleGradOpMaker<T> {
                  this->Output("BiasDropoutResidualOut"));
     op->SetInput("QKVOut", this->Output("QKVOut"));
 
-    // bw's output: dinput
+    // backward outputs: dinput
     op->SetOutput(framework::GradVarName("LnOut"), this->OutputGrad("LnOut"));
     op->SetOutput(framework::GradVarName("QKVOut"), this->OutputGrad("QKVOut"));
     op->SetOutput(framework::GradVarName("QKVBiasOut"),
