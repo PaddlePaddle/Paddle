@@ -521,7 +521,7 @@ class GPTModel(nn.Layer):
     def __init__(self,
                  vocab_size,
                  hidden_size=768,
-                 num_hidden_layers=12,
+                 num_hidden_layers=4,
                  num_attention_heads=12,
                  intermediate_size=3072,
                  hidden_act="gelu",
@@ -739,7 +739,7 @@ def gpt_pretrain_forward(train_program, start_program):
         gpt = GPTModel(
             vocab_size=32768,
             hidden_size=768,
-            num_hidden_layers=2,
+            num_hidden_layers=6,
             num_attention_heads=12,
             intermediate_size=4096,
             hidden_act="gelu",
@@ -787,6 +787,14 @@ class TestGPTPartitioner(unittest.TestCase):
         dist_params_grads = partitioner.apply_backward(
             loss, complete_train_program, start_program,
             auto_parallel_main_prog, auto_parallel_startup_prog)
+
+        with open("./test_auto_parallel_partitioner_serial_main_new.txt",
+                  "w") as fw:
+            fw.write(str(train_program))
+        with open("./test_auto_parallel_partitioner_serial_startup_new.txt",
+                  "w") as fw:
+            fw.write(str(start_program))
+
         optimizer = paddle.fluid.optimizer.AdamOptimizer(
             learning_rate=0.00001,
             beta1=0.9,
@@ -796,7 +804,17 @@ class TestGPTPartitioner(unittest.TestCase):
         opt_ops = partitioner.apply_optimize(optimizer, dist_params_grads,
                                              auto_parallel_main_prog,
                                              auto_parallel_startup_prog)
-
+        from paddle.distributed.auto_parallel.context import set_default_distributed_context
+        set_default_distributed_context(dist_context)
+        with open("./test_auto_parallel_partitioner_main_new.txt", "w") as fw:
+            fw.write(str(auto_parallel_main_prog))
+        with open("./test_auto_parallel_partitioner_startup_new.txt",
+                  "w") as fw:
+            fw.write(str(auto_parallel_startup_prog))
+        # with open("./test_auto_parallel_partitioner_main_completed.txt", "w") as fw:
+        #     from paddle.distributed.auto_parallel.completion import complete_backward_annotation
+        #     complete_backward_annotation(auto_parallel_main_prog)
+        #     fw.write(str(auto_parallel_main_prog))       
         nrank = 4
         # col parallel
         weights = [
