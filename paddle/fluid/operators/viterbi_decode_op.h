@@ -96,15 +96,8 @@ using LoDTensor = framework::LoDTensor;
   logit0.Resize({batch_size, n_labels})
 
 #define BROADCAST_BINARY_OP(lhs, rhs, out, func_type, is_multi_threads, dtype) \
-  do {                                                                         \
-    if (is_multi_threads) {                                                    \
-      SimpleBroadcastBinaryOP<dtype, func_type##Functor<dtype>, true>(         \
-          lhs, rhs, &out);                                                     \
-    } else {                                                                   \
-      SimpleBroadcastBinaryOP<dtype, func_type##Functor<dtype>, false>(        \
-          lhs, rhs, &out);                                                     \
-    }                                                                          \
-  } while (0)
+  SimpleBroadcastBinaryOP<dtype, func_type##Functor<dtype>>(lhs, rhs, &out,    \
+                                                            is_multi_threads)
 
 #define ADD(lhs, rhs, output, is_multi_threads, dtype) \
   BROADCAST_BINARY_OP(lhs, rhs, output, Add, is_multi_threads, dtype)
@@ -187,44 +180,9 @@ void GetStrides(const std::vector<T>& dims, std::vector<T>* strides) {
   }
 }
 
-template <bool is_multi_threads>
-struct GetInputIndex {
-  void operator()(const std::vector<int>& lhs_dims,
-                  const std::vector<int>& rhs_dims,
-                  const std::vector<int>& output_dims,
-                  const std::vector<int>& lhs_strides,
-                  const std::vector<int>& rhs_strides,
-                  const std::vector<int>& output_strides, int output_idx,
-                  int* index_array, int* lhs_idx, int* rhs_idx) {
-    int out_dims_size = output_strides.size();
-    for (int j = 0; j < out_dims_size; ++j) {
-      int curr_idx = output_idx / output_strides[j];
-      output_idx %= output_strides[j];
-      *lhs_idx += (lhs_dims[j] > 1) ? curr_idx * lhs_strides[j] : 0;
-      *rhs_idx += (rhs_dims[j] > 1) ? curr_idx * rhs_strides[j] : 0;
-    }
-  }
-};
-
-template <>
-struct GetInputIndex<false> {
-  void operator()(const std::vector<int>& lhs_dims,
-                  const std::vector<int>& rhs_dims,
-                  const std::vector<int>& output_dims,
-                  const std::vector<int>& lhs_strides,
-                  const std::vector<int>& rhs_strides,
-                  const std::vector<int>& output_strides, int output_idx,
-                  int* index_array, int* lhs_idx, int* rhs_idx) {
-    int out_dims_size = output_strides.size();
-    *lhs_idx = GetElementwiseIndex(lhs_dims.data(), out_dims_size, index_array);
-    *rhs_idx = GetElementwiseIndex(rhs_dims.data(), out_dims_size, index_array);
-    UpdateElementwiseIndexArray(output_dims.data(), out_dims_size, index_array);
-  }
-};
-
-template <typename T, typename Functor, bool is_multi_threads = false>
-void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
-                             Tensor* out) {
+template <typename T, typename Functor>
+void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out,
+                             bool is_multi_threads = false) {
   const T* lhs_ptr = lhs.data<T>();
   const T* rhs_ptr = rhs.data<T>();
   T* out_ptr = out->data<T>();
@@ -238,22 +196,35 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
   std::vector<int> output_strides(out_size, 1);
   std::vector<int> lhs_strides(out_size, 1);
   std::vector<int> rhs_strides(out_size, 1);
-  std::vector<int> index_array(out_size, 0);
   GetStrides(out_dims, &output_strides);
   GetStrides(lhs_dims, &lhs_strides);
   GetStrides(rhs_dims, &rhs_strides);
-
   Functor functor;
-  GetInputIndex<is_multi_threads> get_input_index;
+  if (is_multi_threads) {
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-  for (int i = 0; i < out->numel(); ++i) {
-    int lhs_idx = 0;
-    int rhs_idx = 0;
-    get_input_index(lhs_dims, rhs_dims, out_dims, lhs_strides, rhs_strides,
-                    output_strides, i, index_array.data(), &lhs_idx, &rhs_idx);
-    out_ptr[i] = functor(lhs_ptr[lhs_idx], rhs_ptr[rhs_idx]);
+    for (int i = 0; i < out->numel(); ++i) {
+      int lhs_idx = 0;
+      int rhs_idx = 0;
+      int output_idx = i;
+      for (int j = 0; j < out_size; ++j) {
+        int curr_idx = output_idx / output_strides[j];
+        output_idx %= output_strides[j];
+        lhs_idx += (lhs_dims[j] > 1) ? curr_idx * lhs_strides[j] : 0;
+        rhs_idx += (rhs_dims[j] > 1) ? curr_idx * rhs_strides[j] : 0;
+      }
+      out_ptr[i] = functor(lhs_ptr[lhs_idx], rhs_ptr[rhs_idx]);
+    }
+  } else {
+    std::vector<int> index_array(out_size, 0);
+    int* index_ptr = index_array.data();
+    for (int i = 0; i < out->numel(); ++i) {
+      int lhs_idx = GetElementwiseIndex(lhs_dims.data(), out_size, index_ptr);
+      int rhs_idx = GetElementwiseIndex(rhs_dims.data(), out_size, index_ptr);
+      UpdateElementwiseIndexArray(out_dims.data(), out_size, index_ptr);
+      out_ptr[i] = functor(lhs_ptr[lhs_idx], rhs_ptr[rhs_idx]);
+    }
   }
 }
 
