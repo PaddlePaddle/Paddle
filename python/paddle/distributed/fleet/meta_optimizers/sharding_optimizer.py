@@ -1395,10 +1395,12 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         startup_block = self._startup_program.global_block()
         params = startup_block.all_parameters()
+        params_name = []
 
         # NOTE(wangxi): if param is not persistable, program.clone will
         #  failed, so we remove no persistable param, re add param as a var
         for param in params:
+            params_name.append(param.name)
             if not param.persistable:
                 name = param.name
                 shape = param.shape
@@ -1435,8 +1437,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             if op.type == 'c_broadcast':
                 broadcast_params.add(op.desc.output_arg_names()[0])
 
-        for param in params:
-            if param.name in broadcast_params: continue
+        for param in params_name:
+            if param in broadcast_params: continue
             startup_block.append_op(
                 type='c_broadcast',
                 inputs={'X': param},
@@ -1450,10 +1452,12 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         startup_block.append_op(
             type='c_sync_comm_stream',
-            inputs={'X': params},
-            outputs={'Out': params},
+            inputs={'X': params_name},
+            outputs={'Out': params_name},
             attrs={'ring_id': self.dp_ring_id,
                    OP_ROLE_KEY: OpRole.Forward})
+
+        startup_block._sync_with_cpp()
 
     # sharding gradient merge
     def create_persistable_gradients_and_insert_merge_ops(
