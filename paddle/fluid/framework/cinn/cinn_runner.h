@@ -28,6 +28,7 @@ namespace paddle {
 namespace framework {
 namespace cinn {
 
+// Entrance to run CINN
 class CinnRunner {
  public:
   CinnRunner() {}
