@@ -27,11 +27,12 @@ import socket
 from paddle.fluid import core
 from paddle.distributed.fleet.launch_utils import get_backend_by_compile_flag
 from distutils.util import strtobool
+from paddle import _C_ops
 
 from paddle.fluid.layer_helper import LayerHelper
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.data_feeder import check_variable_and_dtype
-from paddle import _C_ops
+
 
 __all__ = [     #noqa
            'get_host_name_ip',
@@ -50,8 +51,64 @@ __all__ = [     #noqa
            'get_logger',
            'pull_worker_log',
            'global_scatter',
-           'global_gather',
+           'global_gather'
 ]
+
+
+def assign_pos(x, cum_count):
+    """
+    Assign pos decides which tokens should be fetched belong to 
+    specially expert orderingly.
+    
+    Args:
+        x (Tensor): Tensor. Every element in the list must be a Tensor whose data type
+            should be float16, float32, float64, int32 or int64.
+        cum_count (Tensor): The cumulative sum tokens of experts. Every element in the list must be a Tensor whose 
+            data type should be int64.
+  
+    Returns:
+        out (Tensor): Assemble tokens in the order of experts. 
+    
+    Examples:
+        .. code-block:: python
+
+            # required: distributed
+            import paddle
+            local_expert_count = [2, 0, 2, 0]
+            gate_idx = [
+                [0, 2],
+                [0, 2]
+            ]
+            local_expert_count = paddle.to_tensor(local_expert_count)
+            gate_idx = paddle.to_tensor(gate_idx, dtype="int32")
+            lec_cum = paddle.cumsum(local_expert_count)
+            pos = paddle.distributed.utils.assign_pos(x=gate_idx, cum_count=lec_cum)
+            print(pos) # the result: (2, 0, 3, 1)
+    """
+    if in_dygraph_mode():
+        return core.ops.assign_pos(x, cum_count, cum_count[-1])
+    else:
+        op_type = 'assign_pos'
+        # check_variable_and_dtype(
+        #     x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        #     'global_scatter')
+        # check_variable_and_dtype(local_count, 'local_count', ['int64'],
+        #                          'global_scatter')
+        # check_variable_and_dtype(global_count, 'global_count', ['int64'],
+        #                          'global_scatter')
+
+        helper = LayerHelper(op_type, **locals())
+        out = helper.create_variable_for_type_inference(dtype=cum_count.dtype)
+
+        helper.append_op(
+            type=op_type,
+            inputs={
+                'X': [x],
+                'cum_count': [cum_count],
+                "eff_gates_len": [cum_count[-1]]
+            },
+            outputs={'Out': [out]})
+        return out
 
 
 def global_scatter(x,
@@ -146,7 +203,7 @@ def global_scatter(x,
 
     ring_id = 0 if group is None else group.id
     if in_dygraph_mode():
-        return _C_ops.global_scatter(x, local_count, \
+        return core.ops.global_scatter(x, local_count, \
                                     global_count,  \
                                     'use_calc_stream', use_calc_stream, \
                                     'ring_id', ring_id)
@@ -258,7 +315,7 @@ def global_gather(x,
 
     ring_id = 0 if group is None else group.id
     if in_dygraph_mode():
-        return _C_ops.global_gather(x, local_count, \
+        return core.ops.global_gather(x, local_count, \
                                     global_count, \
                                     'use_calc_stream', use_calc_stream, \
                                     'ring_id', ring_id)
