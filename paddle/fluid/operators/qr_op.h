@@ -40,7 +40,7 @@ static inline std::tuple<bool, bool> _parse_qr_mode(std::string mode) {
     reduced = true;
   } else {
     PADDLE_ENFORCE(
-        false, "qr received unrecognized mode '", mode,
+        false, "QR received unrecognized mode '", mode,
         "' but expected one of 'reduced' (default), 'r', or 'complete'");
   }
   return std::make_tuple(compute_q, reduced);
@@ -72,8 +72,8 @@ class QrCPUKernel : public framework::OpKernel<T> {
     int q_stride = m * k;
     int r_stride = k * n;
 
-    auto* x_data = x.data<T>();
-    T* q_data;
+    auto* x_data = x.data<math::Real<T>>();
+    T* q_data = nullptr;
     if (compute_q) {
       q_data = q.mutable_data<math::Real<T>>(
           context.GetPlace(),
@@ -84,11 +84,11 @@ class QrCPUKernel : public framework::OpKernel<T> {
 
     // Implement QR by calling Eigen
     for (int i = 0; i < batch_size; ++i) {
-      T* x_matrix_ptr = const_cast<T*>(x_data + i * x_stride);
-      T* r_matrix_ptr = const_cast<T*>(r_data + i * r_stride);
+      const T* x_matrix_ptr = x_data + i * x_stride;
+      T* r_matrix_ptr = r_data + i * r_stride;
       using EigenDynamicMatrix =
           Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
-      auto x_matrix = Eigen::Map<EigenDynamicMatrix>(x_matrix_ptr, m, n);
+      auto x_matrix = Eigen::Map<const EigenDynamicMatrix>(x_matrix_ptr, m, n);
       Eigen::HouseholderQR<EigenDynamicMatrix> qr(x_matrix);
       if (reduced_mode) {
         auto qr_top_matrix = qr.matrixQR().block(0, 0, min_mn, n);
@@ -104,7 +104,7 @@ class QrCPUKernel : public framework::OpKernel<T> {
       }
 
       if (compute_q) {
-        T* q_matrix_ptr = const_cast<T*>(q_data + i * q_stride);
+        T* q_matrix_ptr = q_data + i * q_stride;
         if (reduced_mode) {
           auto q_matrix =
               qr.householderQ() * EigenDynamicMatrix::Identity(m, min_mn);
@@ -125,17 +125,9 @@ template <typename DeviceContext, typename T>
 class QrGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    // const framework::Tensor& Q_const = *ctx.Input<framework::Tensor>("Q");
-    // const framework::Tensor& R_const = *ctx.Input<framework::Tensor>("R");
-    // framework::Tensor& dX =
-    //     *ctx.Output<framework::Tensor>(framework::GradVarName("X"));
-    // const framework::Tensor& dQ_const =
-    //     *ctx.Input<framework::Tensor>(framework::GradVarName("Q"));
-    // const framework::Tensor& dR_const =
-    //     *ctx.Input<framework::Tensor>(framework::GradVarName("R"));
     PADDLE_ENFORCE(
         false,
-        "Qr doesn't have the backward kernel now and will be supported soon.");
+        "QR doesn't have the backward kernel now and will be supported soon.");
   }
 };
 

@@ -1619,7 +1619,7 @@ def qr(x, mode="reduced", name=None):
 
             import paddle 
 
-            x = paddle.to_tensor([[1.0, 2.0], [1.0, 3.0], [4.0, 6.0]]).astype('float64')
+            x = paddle.to_tensor([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]]).astype('float64')
             q, r = paddle.linalg.qr(x)
             print (q)
             print (r)
@@ -1629,7 +1629,7 @@ def qr(x, mode="reduced", name=None):
             #      [-0.94280904,  0.29448407]]
 
             # R = [[-4.24264069, -6.83536555],
-                   [ 0.        , -1.50923086]]
+            #       [ 0.        , -1.50923086]]
             
             # one can verify : X = Q * R ;     
     """
