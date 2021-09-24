@@ -36,14 +36,14 @@ def count(x, upper_range):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestExpertCountOpInt64(op_test.OpTest):
+class TestNumberCountOpInt64(op_test.OpTest):
     def setUp(self):
-        expert_num = 16
+        upper_num = 16
         self.op_type = "number_count"
-        x = np.random.randint(-1, expert_num, size=(1000, 2)).astype('int64')
-        self.inputs = {'gate_idx': x}
-        self.outputs = {'Out': count(x, expert_num)}
-        self.attrs = {"upper_range": expert_num}
+        x = np.random.randint(-1, upper_num, size=(1000, 2)).astype('int64')
+        self.inputs = {'numbers': x}
+        self.outputs = {'Out': count(x, upper_num)}
+        self.attrs = {"upper_range": upper_num}
 
     def test_forward(self):
         self.check_output_with_place(paddle.CUDAPlace(0))
@@ -51,7 +51,7 @@ class TestExpertCountOpInt64(op_test.OpTest):
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
-class TestExpertCountAPI(unittest.TestCase):
+class TestNumberCountAPI(unittest.TestCase):
     def setUp(self):
         self.upper_range = 320
         self.x = np.random.randint(
