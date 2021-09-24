@@ -13,26 +13,18 @@ limitations under the License. */
 #include <algorithm>
 #include <memory>
 #include <string>
-#include <type_traits>
 #include <vector>
 
-#include "paddle/fluid/framework/op_registry.h"
-#include "paddle/fluid/operators/activation_op.h"
-#include "paddle/fluid/operators/arg_min_max_op_base.h"
 #include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/controlflow/compare_op.h"
-#include "paddle/fluid/operators/dropout_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/gather.h"
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/operators/math/detail/activation_functions.h"
-#include "paddle/fluid/operators/math/fc.h"
 #include "paddle/fluid/operators/math/functors.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/unique_op.h"
-#include "paddle/fluid/operators/utils.h"
 
 #ifdef PADDLE_WITH_MKLML
 #include <omp.h>
@@ -42,23 +34,21 @@ namespace paddle {
 namespace operators {
 
 using LoDTensor = framework::LoDTensor;
-using DDim = framework::DDim;
 
 #define CREATE_TENSOR(tensor, dtype, ...)             \
   LoDTensor tensor;                                   \
   tensor.Resize(framework::make_ddim({__VA_ARGS__})); \
   tensor.mutable_data<dtype>(ctx.GetPlace())
 
-#define BROADCAST_BINARY_OP(lhs, rhs, output, functor_type, is_multi_threads, \
-                            dtype)                                            \
-  do {                                                                        \
-    if (is_multi_threads) {                                                   \
-      SimpleBroadcastBinaryOP<dtype, functor_type##Functor<dtype>, true>(     \
-          lhs, rhs, &output);                                                 \
-    } else {                                                                  \
-      SimpleBroadcastBinaryOP<dtype, functor_type##Functor<dtype>, false>(    \
-          lhs, rhs, &output);                                                 \
-    }                                                                         \
+#define BROADCAST_BINARY_OP(lhs, rhs, out, func_type, is_multi_threads, dtype) \
+  do {                                                                         \
+    if (is_multi_threads) {                                                    \
+      SimpleBroadcastBinaryOP<dtype, func_type##Functor<dtype>, true>(         \
+          lhs, rhs, &out);                                                     \
+    } else {                                                                   \
+      SimpleBroadcastBinaryOP<dtype, func_type##Functor<dtype>, false>(        \
+          lhs, rhs, &out);                                                     \
+    }                                                                          \
   } while (0)
 
 #define ADD(lhs, rhs, output, is_multi_threads, dtype) \
@@ -80,7 +70,6 @@ struct CPUArgmax {
     for (int i = 0; i < axis; i++) {
       pre *= input_dims[i];
     }
-
     for (int i = axis + 1; i < input_dims.size(); i++) {
       post *= input_dims[i];
     }
@@ -177,23 +166,18 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
   const T* lhs_ptr = lhs.data<T>();
   const T* rhs_ptr = rhs.data<T>();
   T* out_ptr = out->data<T>();
-  int nums = static_cast<int>(out->numel());
-  int out_dims_size = static_cast<int>(out->dims().size());
-  std::vector<int> output_dims(out_dims_size);
-  std::vector<int> lhs_dims(out_dims_size);
-  std::vector<int> rhs_dims(out_dims_size);
-  std::copy(lhs.dims().Get(), lhs.dims().Get() + out_dims_size,
-            lhs_dims.data());
-  std::copy(rhs.dims().Get(), rhs.dims().Get() + out_dims_size,
-            rhs_dims.data());
-  std::copy(out->dims().Get(), out->dims().Get() + out_dims_size,
-            output_dims.data());
-
-  std::vector<int> output_strides(out_dims_size, 1);
-  std::vector<int> lhs_strides(out_dims_size, 1);
-  std::vector<int> rhs_strides(out_dims_size, 1);
-  std::vector<int> index_array(out_dims_size, 0);
-  GetStrides(output_dims, &output_strides);
+  int out_size = static_cast<int>(out->dims().size());
+  std::vector<int> out_dims(out_size);
+  std::vector<int> lhs_dims(out_size);
+  std::vector<int> rhs_dims(out_size);
+  std::copy(lhs.dims().Get(), lhs.dims().Get() + out_size, lhs_dims.data());
+  std::copy(rhs.dims().Get(), rhs.dims().Get() + out_size, rhs_dims.data());
+  std::copy(out->dims().Get(), out->dims().Get() + out_size, out_dims.data());
+  std::vector<int> output_strides(out_size, 1);
+  std::vector<int> lhs_strides(out_size, 1);
+  std::vector<int> rhs_strides(out_size, 1);
+  std::vector<int> index_array(out_size, 0);
+  GetStrides(out_dims, &output_strides);
   GetStrides(lhs_dims, &lhs_strides);
   GetStrides(rhs_dims, &rhs_strides);
 
@@ -202,10 +186,10 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
 #ifdef PADDLE_WITH_MKLML
 #pragma omp parallel for
 #endif
-  for (int i = 0; i < nums; ++i) {
+  for (int i = 0; i < out->numel(); ++i) {
     int lhs_idx = 0;
     int rhs_idx = 0;
-    get_input_index(lhs_dims, rhs_dims, output_dims, lhs_strides, rhs_strides,
+    get_input_index(lhs_dims, rhs_dims, out_dims, lhs_strides, rhs_strides,
                     output_strides, i, index_array.data(), &lhs_idx, &rhs_idx);
     out_ptr[i] = functor(lhs_ptr[lhs_idx], rhs_ptr[rhs_idx]);
   }
@@ -247,12 +231,13 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     bool with_start_stop_tag = ctx.Attr<bool>("with_start_stop_tag");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto curr_place = ctx.GetPlace();
-
     auto* input = ctx.Input<Tensor>("Input");
     auto batch_size = static_cast<int>(input->dims()[0]);
     auto seq_len = static_cast<int>(input->dims()[1]);
     auto n_labels = static_cast<int>(input->dims()[2]);
-
+    math::SetConstant<DeviceContext, T> float_functor;
+    math::SetConstant<DeviceContext, int64_t> int_functor;
+    std::vector<Tensor> historys;
     // Create a large int data buffer
     int buffer_size = batch_size * seq_len + batch_size * n_labels * seq_len +
                       7 * batch_size + 2;
@@ -267,37 +252,27 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     auto* length = ctx.Input<Tensor>("Length");
     Tensor left_length = int_tensor_buffer.GetBufferBlock({batch_size, 1});
     framework::TensorCopy(*length, curr_place, dev_ctx, &left_length);
-
-    int64_t max_seq_len =
-        *std::max_element(left_length.data<int64_t>(),
-                          left_length.data<int64_t>() + left_length.numel());
+    auto len_ptr = left_length.data<int64_t>();
+    int64_t max_seq_len = *std::max_element(len_ptr, len_ptr + batch_size);
 
     auto* scores = ctx.Output<Tensor>("Scores");
     scores->mutable_data<T>(curr_place);
     auto* path = ctx.Output<Tensor>("Path");
     path->Resize({batch_size, max_seq_len});
     path->mutable_data<int64_t>(curr_place);
-    Tensor temp_path =
-        int_tensor_buffer.GetBufferBlock({max_seq_len, batch_size});
-    auto batch_path = Unbind(temp_path);
+    Tensor tpath = int_tensor_buffer.GetBufferBlock({max_seq_len, batch_size});
+    auto batch_path = Unbind(tpath);
     for (auto it = batch_path.begin(); it != batch_path.end(); ++it) {
       it->Resize({batch_size});
     }
-    Tensor inputs_t_exp =
+    Tensor input_exp =
         float_tensor_buffer.GetBufferBlock({seq_len, batch_size, n_labels});
-    std::vector<int> axis{1, 0, 2};
-    TransCompute<DeviceContext, T>(axis.size(), dev_ctx, *input, &inputs_t_exp,
-                                   axis);
+    TransCompute<DeviceContext, T>(3, dev_ctx, *input, &input_exp, {1, 0, 2});
     auto* transition = ctx.Input<Tensor>("Transition");
     Tensor trans_exp = float_tensor_buffer.GetBufferBlock({n_labels, n_labels});
     framework::TensorCopy(*transition, curr_place, dev_ctx, &trans_exp);
     trans_exp.Resize({1, n_labels, n_labels});
-
     Tensor alpha = float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
-    math::SetConstant<DeviceContext, T> float_functor;
-    math::SetConstant<DeviceContext, int64_t> int_functor;
-
-    std::vector<Tensor> historys;
     Tensor zero = int_tensor_buffer.GetBufferBlock({1});
     int_functor(dev_ctx, &zero, 0);
     Tensor one = int_tensor_buffer.GetBufferBlock({1});
@@ -339,7 +314,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       is_multi_threads = true;
     }
 #endif
-    auto logit0 = inputs_t_exp.Slice(0, 1);
+    auto logit0 = input_exp.Slice(0, 1);
     logit0.Resize({batch_size, n_labels});
     if (with_start_stop_tag) {
       ADD(logit0, start_trans_exp, alpha, is_multi_threads, T);
@@ -353,7 +328,7 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     SUB(left_length, one, left_length, is_multi_threads, int64_t);
     CPUArgmax<T, int64_t> argmax;
     for (int64_t i = 1; i < max_seq_len; ++i) {
-      Tensor logit = inputs_t_exp.Slice(i, i + 1);
+      Tensor logit = input_exp.Slice(i, i + 1);
       logit.Resize({batch_size, n_labels});
       Tensor& alpha_exp = alpha.Resize({batch_size, n_labels, 1});
       ADD(alpha_exp, trans_exp, alpha_trn_sum, is_multi_threads, T);
@@ -420,11 +395,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       SAME_DIMS_OP(last_ids, int_mask, last_ids, Mul, int64_t);
       SAME_DIMS_OP(last_ids_update, last_ids, last_ids, Add, int64_t);
     }
-    axis = {1, 0};
-    TransCompute<DeviceContext, int64_t>(axis.size(), dev_ctx, temp_path, path,
-                                         axis);
+    TransCompute<DeviceContext, int64_t>(2, dev_ctx, tpath, path, {1, 0});
   }
 };
-
 }  // namespace operators
 }  // namespace paddle

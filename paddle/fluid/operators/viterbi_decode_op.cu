@@ -184,21 +184,21 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
     auto* input = ctx.Input<Tensor>("Input");
     auto* length = ctx.Input<Tensor>("Length");
     auto* transition = ctx.Input<Tensor>("Transition");
-
     bool with_start_stop_tag = ctx.Attr<bool>("with_start_stop_tag");
     auto& dev_ctx = ctx.template device_context<DeviceContext>();
     auto curr_place = ctx.GetPlace();
-
     auto batch_size = static_cast<int>(input->dims()[0]);
     auto seq_len = static_cast<int>(input->dims()[1]);
     auto n_labels = static_cast<int>(input->dims()[2]);
-
+    math::SetConstant<DeviceContext, T> float_functor;
+    math::SetConstant<DeviceContext, int64_t> int_functor;
+    std::vector<Tensor> historys;
+    CUDAArgmax<T, int64_t> cuda_argmax;
     // Create a large int data buffer
     int buffer_size = batch_size * seq_len + batch_size * n_labels * seq_len +
                       7 * batch_size + 10;
     CREATE_TENSOR(int_buffer, int64_t, buffer_size);
     TensorBuffer int_tensor_buffer(int_buffer);
-
     // Create a large float data buffer
     buffer_size = seq_len * batch_size * n_labels + 5 * batch_size * n_labels +
                   2 * n_labels * n_labels + batch_size * n_labels * n_labels +
@@ -224,28 +224,18 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
     path->Resize({batch_size, max_seq_len});
     path->mutable_data<int64_t>(curr_place);
 
-    Tensor temp_path =
-        int_tensor_buffer.GetBufferBlock({max_seq_len, batch_size});
-    auto batch_path = Unbind(temp_path);
+    Tensor tpath = int_tensor_buffer.GetBufferBlock({max_seq_len, batch_size});
+    auto batch_path = Unbind(tpath);
     for (auto it = batch_path.begin(); it != batch_path.end(); ++it) {
       it->Resize({batch_size});
     }
-
     Tensor inputs_t_exp =
         float_tensor_buffer.GetBufferBlock({seq_len, batch_size, n_labels});
-    std::vector<int> axis{1, 0, 2};
-    TransposeGPUKernelDriver<T>(dev_ctx, axis.size(), *input, axis,
-                                &inputs_t_exp);
-
+    TransposeGPUKernelDriver<T>(dev_ctx, 3, *input, {1, 0, 2}, &inputs_t_exp);
     Tensor trans_exp =
         float_tensor_buffer.GetBufferBlock({1, n_labels, n_labels});
     framework::TensorCopy(*transition, curr_place, dev_ctx, &trans_exp);
-
     Tensor alpha = float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
-    math::SetConstant<DeviceContext, T> float_functor;
-    math::SetConstant<DeviceContext, int64_t> int_functor;
-
-    std::vector<Tensor> historys;
     Tensor zero = int_tensor_buffer.GetBufferBlock({1});
     int_functor(dev_ctx, &zero, 0);
     Tensor one = int_tensor_buffer.GetBufferBlock({1});
@@ -273,7 +263,6 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
     Tensor batch_offset = int_tensor_buffer.GetBufferBlock({batch_size});
     Tensor gather_idx = int_tensor_buffer.GetBufferBlock({batch_size});
 
-    CUDAArgmax<T, int64_t> cuda_argmax;
     std::vector<const Tensor*> shape_refer{&rest_trans_exp, &stop_trans_exp,
                                            &start_trans_exp};
     std::vector<Tensor*> outputs{&rest_trans_exp, &stop_trans_exp,
@@ -340,12 +329,9 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
       CUDA_MUL(last_ids, int_mask, last_ids, int64_t);
       CUDA_ADD(last_ids_update, last_ids, last_ids, int64_t);
     }
-    axis = {1, 0};
-    TransposeGPUKernelDriver<int64_t>(dev_ctx, axis.size(), temp_path, axis,
-                                      path);
+    TransposeGPUKernelDriver<int64_t>(dev_ctx, 2, tpath, {1, 0}, path);
   }
 };
-
 }  // namespace operators
 }  // namespace paddle
 
