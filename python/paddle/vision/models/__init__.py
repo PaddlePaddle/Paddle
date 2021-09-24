@@ -28,6 +28,7 @@ from .vgg import vgg13  # noqa: F401
 from .vgg import vgg16  # noqa: F401
 from .vgg import vgg19  # noqa: F401
 from .lenet import LeNet  # noqa: F401
+from .alexnet import AlexNet
 
 __all__ = [ #noqa
     'ResNet',
@@ -45,5 +46,6 @@ __all__ = [ #noqa
     'mobilenet_v1',
     'MobileNetV2',
     'mobilenet_v2',
-    'LeNet'
+    'LeNet',
+    'AlexNet'
 ]
