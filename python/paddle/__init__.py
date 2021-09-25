@@ -101,7 +101,6 @@ from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import bmm  # noqa: F401
 from .tensor.linalg import histogram  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
-from .tensor.linalg import eig  #noqa: F401
 from .tensor.linalg import det  # noqa: F401
 from .tensor.linalg import slogdet  # noqa: F401
 from .tensor.linalg import multi_dot  # noqa: F401
@@ -534,7 +533,6 @@ __all__ = [  # noqa
            'diagonal',
            'broadcast_tensors',
            'einsum',
-           'eig',
            'set_flags',
            'get_flags'
 ]
