@@ -50,11 +50,6 @@ namespace operators {
 #define CUDA_MUL(lhs, rhs, output, dtype) \
   CUDA_ELEMENT_BINARY_OP(lhs, rhs, output, Mul, dtype)
 
-#define FIX_BLOCKDIM_CASE(block_dim) \
-  case (block_dim):                  \
-    CUDA_ARGMAX((block_dim));        \
-    break
-
 #define GET_MASK(lhs, rhs, mask, functor_template, dtype)                  \
   do {                                                                     \
     std::vector<const Tensor*> ins = {&lhs, &rhs};                         \
@@ -90,24 +85,11 @@ __global__ void ArgmaxCUDAKernel(const int64_t height,     // n * h
   }
 }
 
-template <typename T>
-__global__ void ARange(T* data, int end, T scale) {
+__global__ void ARange(int64_t* data, int end, int64_t scale) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   for (int start = idx; idx < end; idx += gridDim.x) {
     data[idx] = idx * scale;
   }
-}
-
-int64_t ComputeBlockSize(int64_t col) {
-  if (col > 64)
-    return 128;
-  else if (col > 32)
-    return 64;
-  else if (col > 16)
-    return 32;
-  else if (col > 8)
-    return 16;
-  return 8;
 }
 
 template <typename T>
@@ -145,13 +127,7 @@ struct CUDAArgmax {
     const T* in_data = input.data<T>();
     IndType* out_idx_data = out_idx->data<IndType>();
     T* out_data = out->data<T>();
-    switch (ComputeBlockSize(width)) {
-      FIX_BLOCKDIM_CASE(8);
-      FIX_BLOCKDIM_CASE(16);
-      FIX_BLOCKDIM_CASE(32);
-      FIX_BLOCKDIM_CASE(64);
-      FIX_BLOCKDIM_CASE(128);
-    }
+    CUDA_ARGMAX(128);
   }
 };
 
@@ -235,9 +211,8 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
     int last_id_index = 1;
     int act_len = std::min(seq_len, static_cast<int>(max_seq_len));
     CUDA_MUL(last_ids, int_mask, batch_path[act_len - last_id_index], int64_t);
-    auto block_size = ComputeBlockSize(batch_size);
-    ARange<int64_t><<<1, block_size, 0, dev_ctx.stream()>>>(
-        batch_offset.data<int64_t>(), batch_size, n_labels);
+    ARange<<<1, 128, 0, dev_ctx.stream()>>>(batch_offset.data<int64_t>(),
+                                            batch_size, n_labels);
     for (auto hist = historys.rbegin(); hist != historys.rend(); ++hist) {
       ++last_id_index;
       CUDA_ADD(left_length, one, left_length, int64_t);
