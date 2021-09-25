@@ -27,6 +27,7 @@ class CudnnNormConvolutionOp {
  public:
   CudnnNormConvolutionOp()
       : fwd_op_(CUDNN_FUSED_SCALE_BIAS_ACTIVATION_CONV_BNSTATS) {}
+      : bwd_wgrad_op_(CUDNN_FUSED_SCALE_BIAS_ACTIVATION_WGRAD) {}
   ~CudnnNormConvolutionOp() {}
 
   void Init(const platform::CUDADeviceContext &ctx,
@@ -69,7 +70,31 @@ class CudnnNormConvolutionOp {
   }
 
   // TBD
-  void Backward(const platform::CUDADeviceContext &ctx) {}
+  void Backward(const platform::CUDADeviceContext &ctx, T* input_ptr,
+                T *output_ptr, T *filter_grad_ptr) {
+    auto handle = ctx.cudnn_handle();
+    auto workspace_handle = ctx.cudnn_workspace_handle();
+    auto bwd_workspace_byte_ = std::max(bwd_wgrad_workspace_byte_, 
+                                        bwd_dgrad_conv_workspace_byte_);
+
+    bwd_wgrad_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, input_ptr);
+    bwd_wgrad_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_DYDATA, output_ptr);
+    bwd_wgrad_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_DWDATA, filter_grad_ptr);
+    bwd_wgrad_op_.SetOpVariantParamAttrPtr(CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, 
+                                           &bwd_workspace_byte_);
+    // bwd_wgrad_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQSCALE, equiv_scale_ptr);
+    // bwd_wgrad_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQBIAS, equiv_bias_ptr);
+    workspace_handle.RunFunc(
+        [&](void *workspace_ptr) {
+          // workspace ptr
+          bwd_wgrad_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE, workspace_ptr);
+          // fused op execute
+          bwd_wgrad_op_.Execute(handle);
+        }, 
+        bwd_workspace_byte_);
+
+    // DGRAD - Convolution dgrad followed optionally by batchnorm dgrad
+  }
 
  private:
   void InitDescriptors(const platform::CUDADeviceContext &ctx,
@@ -85,6 +110,10 @@ class CudnnNormConvolutionOp {
     fwd_op_.SetOpConstParamAttr(
         {CUDNN_PARAM_YSUM_PLACEHOLDER, CUDNN_PARAM_YSQSUM_PLACEHOLDER},
         CUDNN_PTR_16B_ALIGNED);
+    
+    bwd_wgrad_op_.SetOpConstParamAttr(
+        {CUDNN_PARAM_DYDATA_PLACEHOLDER, CUDNN_PARAM_XDATA_PLACEHOLDER,
+         CUDNN_PARAM_DWDATA_PLACEHOLDER}, CUDNN_PTR_16B_ALIGNED);
 
     std::vector<int> pad_vec = {pad, pad};
     std::vector<int> stride_vec = {stride, stride};
@@ -95,33 +124,48 @@ class CudnnNormConvolutionOp {
     // set conv desc
     conv_desc_.set(dtype_, pad_vec, stride_vec, dilate_vec, false, group);
     fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_CONV_DESC, conv_desc_.desc());
+    bwd_wgrad_op_.SetOpConstParamDesc(CUDNN_PARAM_CONV_DESC, conv_desc_.desc());
 
     // set input desc
     in_desc_.set(input_shape, format_, dtype_);
     fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_XDESC, in_desc_.desc());
+    bwd_wgrad_op_.SetOpConstParamDesc(CUDNN_PARAM_XDESC, in_desc_.desc());
 
     // set filter desc
     filter_desc_.set(filter_shape, format_, dtype_, group);
     fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_WDESC, filter_desc_.desc());
+    bwd_wgrad_op_.SetOpConstParamDesc(CUDNN_PARAM_DWDESC, filter_desc_.desc());
 
     // set output desc
     out_desc_.set(output_shape, format_, dtype_);
     fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_YDESC, out_desc_.desc());
+    bwd_wgrad_op_.SetOpConstParamDesc(CUDNN_PARAM_DYDESC, out_desc_.desc());
 
     // set output_stats desc
     out_stats_desc_.set(stats_shape, format_, cudnn_fwd_compute_type_);
-    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_YSTATS_DESC,
-                                out_stats_desc_.desc());
+    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_YSTATS_DESC, out_stats_desc_.desc());
 
     fwd_op_.SetOpConstParamAttr(CUDNN_PARAM_BN_MODE, CUDNN_BATCHNORM_SPATIAL);
+    bwd_wgrad_op_.SetOpConstParamAttr(CUDNN_PARAM_BN_MODE, CUDNN_BATCHNORM_SPATIAL);
+
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnGetConvolutionBackwardDataWorkspaceSize(handle,
+                  filter_desc_, out_desc_, conv_desc_, in_desc_, 
+                  back_conv_dgrad_algo_, &bwd_dgrad_conv_workspace_byte_));
+    const size_t dptr_alignment = 512;
+    bwd_wgrad_workspace_byte_ = RoundUp(bwd_wgrad_workspace_byte_, dptr_alignment);
   }
 
   void GetWorkspaceSize(const platform::CUDADeviceContext &ctx) {
     auto handle = ctx.cudnn_handle();
     fwd_workspace_byte_ = fwd_op_.GetWorkspaceSizeInBytes(handle);
+    bwd_wgrad_workspace_byte_ = bwd_wgrad_op_.GetWorkspaceSizeInBytes(handle);
   }
 
   size_t fwd_workspace_byte_ = 0;
+  size_t bwd_wgrad_workspace_byte_ = 0;
+  size_t bwd_dgrad_conv_workspace_byte_ = 0;
+  cudnnConvolutionBwdDataAlgo_t back_conv_dgrad_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
 
   cudnnDataType_t dtype_;
   cudnnDataType_t cudnn_fwd_compute_type_;
@@ -131,7 +175,7 @@ class CudnnNormConvolutionOp {
   platform::TensorDescriptor out_stats_desc_;
   platform::ConvolutionDescriptor conv_desc_;
   cudnnTensorFormat_t format_;
-
+  CudnnFusionOp bwd_wgrad_op_;
   CudnnFusionOp fwd_op_;
 };
 #endif
