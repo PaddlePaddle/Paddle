@@ -204,7 +204,7 @@ def squeezenet1_0(pretrained=False, **kwargs):
             # build model and load imagenet pretrained weight
             # model = squeezenet1_0(pretrained=True)
     """
-    return _squeezenet('SqueezeNet1_0', '1.0', pretrained, **kwargs)
+    return _squeezenet('squeezenet1_0', '1.0', pretrained, **kwargs)
 
 
 def squeezenet1_1(pretrained=False, **kwargs):
@@ -224,4 +224,4 @@ def squeezenet1_1(pretrained=False, **kwargs):
             # build model and load imagenet pretrained weight
             # model = squeezenet1_1(pretrained=True)
     """
-    return _squeezenet('SqueezeNet1_1', '1.1', pretrained, **kwargs)
+    return _squeezenet('squeezenet1_1', '1.1', pretrained, **kwargs)
