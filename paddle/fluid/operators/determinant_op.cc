@@ -48,6 +48,8 @@ class DeterminantGradOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("Input"), "Input", "Input",
                    "DeterminantGradOp");
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out", "DeterminantGradOp");
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "DeterminantGradOp");
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Input")), "Output",
                    framework::GradVarName("Input"), "DeterminantGradOp");
 
@@ -117,7 +119,8 @@ class SlogDeterminantGradOp : public framework::OperatorWithKernel {
                    "SlogDeterminantGradOp");
     OP_INOUT_CHECK(ctx->HasInput("Out"), "Input", "Out",
                    "SlogDeterminantGradOp");
-
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Out")), "Input",
+                   framework::GradVarName("Out"), "SlogDeterminantGradOp");
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Input")), "Output",
                    framework::GradVarName("Input"), "SlogDeterminantGradOp");
 
@@ -179,7 +182,7 @@ REGISTER_OPERATOR(slogdeterminant, ops::SlogDeterminantOp,
                   ops::SlogDeterminantGradOpMaker<paddle::imperative::OpBase>);
 
 REGISTER_OPERATOR(slogdeterminant_grad,
-                  ops::DeterminantGradOp)  // reuse det grad op
+                  ops::SlogDeterminantGradOp)  // reuse det grad op
 
 REGISTER_OP_CPU_KERNEL(
     slogdeterminant, ops::SlogDeterminantKernel<plat::CPUDeviceContext, float>,
@@ -187,5 +190,5 @@ REGISTER_OP_CPU_KERNEL(
 
 REGISTER_OP_CPU_KERNEL(
     slogdeterminant_grad,
-    ops::DeterminantGradKernel<plat::CPUDeviceContext, float>,
-    ops::DeterminantGradKernel<plat::CPUDeviceContext, double>);
+    ops::SlogDeterminantGradKernel<plat::CPUDeviceContext, float>,
+    ops::SlogDeterminantGradKernel<plat::CPUDeviceContext, double>);
