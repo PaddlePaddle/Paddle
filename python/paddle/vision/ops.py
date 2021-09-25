@@ -19,7 +19,6 @@ from ..fluid import core, layers
 from ..fluid.layers import nn, utils
 from ..nn import Layer
 from ..fluid.initializer import Normal
-from ..fluid.framework import in_dygraph_mode
 
 from paddle.common_ops_import import *
 from paddle import _C_ops
@@ -931,12 +930,11 @@ def roi_align(x,
             where N is the batch size, C is the input channel, H is Height,
             W is weight. The data type is float32 or float64.
         boxes (Tensor): Boxes (RoIs, Regions of Interest) to pool over. It 
-            should be a 2-D Tensor or 2-D LoDTensor of shape (num_boxes, 4),
-            the lod level is 1. The data type is float32 or float64. Given as
-            [[x1, y1, x2, y2], ...], (x1, y1) is the top left coordinates, and
-            (x2, y2) is the bottom right coordinates.
+            should be a 2-D Tensor of shape (num_boxes, 4). The data type is
+            float32 or float64. Given as [[x1, y1, x2, y2], ...], (x1, y1) is
+            the top left coordinates, and (x2, y2) is the bottom right coordinates.
         boxes_num (Tensor): The number of boxes contained in each picture in
-            the batch.
+            the batch, the data type is int32.
         output_size (int or Tuple[int, int]): The pooled output size(h, w), data
             type is int32. If int, h and w are both equal to output_size.
         spatial_scale (float32): Multiplicative spatial scale factor to translate
