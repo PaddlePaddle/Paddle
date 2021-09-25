@@ -13,8 +13,9 @@
 # limitations under the License.
 
 from ...fluid.layers import sigmoid  # noqa: F401
-from ...tensor.math import clip, exp, tanh  # noqa: F401
+from ...tensor.math import exp, tanh  # noqa: F401
 from ...tensor.math import tanh_  # noqa: F401
+from ...search import where
 
 from ...fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 from ...tensor.manipulation import chunk
@@ -63,9 +64,14 @@ def celu(x, alpha=1.0, name=None):
     check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], "celu")
     if alpha == 0:
         raise ZeroDivisionError("alpha cannot be 0 for celu")
+    mid_data = alpha * (exp(x / alpha, name=name) - 1)
     out = relu(
-        x, name=name) + clip(
-            alpha * (exp(x / alpha, name=name) - 1), max=0, name=name)
+        x, name=name) + where(
+            mid_data >= 0,
+            paddle.to_tensor(
+                0, dtype=mid_data.dtype),
+            mid_data,
+            name=name)
     return out
 
 
