@@ -29,14 +29,13 @@ class TestEigOp(OpTest):
         self.__class__.op_type = self.op_type
 
         ipt = np.random.random((3, 3)) + np.random.random((3, 3)) * 1j
-        #ipt = np.random.random((3,3)).astype('float32') #float64
         self.inputs = {'X': ipt}
         w, v = np.linalg.eig(ipt)
         self.outputs = {'Eigenvalues': w, 'Eigenvectors': v}
 
     def test_check_output(self):
         # numpy outputs real-values, paddle outputs complex-values
-        self.check_output_with_place(place=core.CPUPlace(), check_dygraph=True)
+        self.check_output_with_place(place=core.CPUPlace())
 
     def test_grad(self):
         pass
@@ -127,15 +126,17 @@ class TestEigStatic(TestEigOp):
 
 class TestEigWrongDimsError(unittest.TestCase):
     def test_error(self):
+        paddle.device.set_device("cpu")
         paddle.disable_static()
         a = np.random.random((3)).astype('float32')
         x = paddle.to_tensor(a)
-        self.assertRaises(IndexError, paddle.linalg.eig, x)
+        self.assertRaises(ValueError, paddle.linalg.eig, x)
         paddle.enable_static()
 
 
 class TestEigNotSquareError(unittest.TestCase):
     def test_error(self):
+        paddle.device.set_device("cpu")
         paddle.disable_static()
         a = np.random.random((1, 2, 3)).astype('float32')
         x = paddle.to_tensor(a)
@@ -145,6 +146,7 @@ class TestEigNotSquareError(unittest.TestCase):
 
 class TestEigUnsupportedDtypeError(unittest.TestCase):
     def test_error(self):
+        paddle.device.set_device("cpu")
         paddle.disable_static()
         a = (np.random.random((3, 3)) * 10).astype('int64')
         x = paddle.to_tensor(a)
