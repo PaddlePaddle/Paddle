@@ -28,10 +28,12 @@ from paddle.utils.download import get_weights_path_from_url
 __all__ = []
 
 model_urls = {
-    'SqueezeNet1_0': ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/SqueezeNet1_0_pretrained.pdparams',
-                      '30b95af60a2178f03cf9b66cd77e1db1'),
-    'SqueezeNet1_1': ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/SqueezeNet1_1_pretrained.pdparams',
-                      'a11250d3a1f91d7131fd095ebbf09eee'),
+    'SqueezeNet1_0': (
+        'https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/SqueezeNet1_0_pretrained.pdparams',
+        '30b95af60a2178f03cf9b66cd77e1db1'),
+    'SqueezeNet1_1': (
+        'https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/SqueezeNet1_1_pretrained.pdparams',
+        'a11250d3a1f91d7131fd095ebbf09eee'),
 }
 
 
