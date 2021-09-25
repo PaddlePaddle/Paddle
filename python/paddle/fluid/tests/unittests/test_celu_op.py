@@ -65,7 +65,7 @@ class TestCeluAPI(unittest.TestCase):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
             # The input type must be Variable.
-            self.assertRaises(AttributeError, F.celu, 1)
+            self.assertRaises(TypeError, F.celu, 1)
             # The input dtype must be float16, float32, float64.
             x_int32 = paddle.fluid.data(
                 name='x_int32', shape=[12, 10], dtype='int32')
