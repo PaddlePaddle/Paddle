@@ -68,7 +68,7 @@ class Transition(nn.Layer):
 
 class DenseNet(nn.Layer):
     
-    def __init__(self,num_classes,growth_rate=32,block=(6,12,24,16),bn_size=4,out_c=64):
+    def __init__(self,num_classes=1000,growth_rate=32,block=(6,12,24,16),bn_size=4,out_c=64):
         super().__init__()
         self.conv_pool=nn.Sequential(nn.Conv2D(3,out_c,7,stride=2,padding=3),nn.MaxPool2D(3,2))
         self.blocks=nn.LayerList()
