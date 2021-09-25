@@ -16,7 +16,6 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 
 namespace paddle {
 namespace operators {
@@ -33,16 +32,6 @@ template <typename T>
 struct MulGradFunctor {
   inline HOSTDEVICE T Dx(T x, T y) { return y; }
   inline HOSTDEVICE T Dy(T x, T y) { return x; }
-};
-
-template <typename T>
-struct RealMulComplexFunctor {
-  // x: complex number (a+bj)
-  // y: complex number (c+0j) pretend to be a real number
-  // out: complex number (ac+bcj)
-  inline HOSTDEVICE T operator()(T x, T y) {
-    return platform::complex<Real<T>>(x.real * y.real, x.imag * y.real);
-  }
 };
 
 // AddFunctor

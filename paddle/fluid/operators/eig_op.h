@@ -17,16 +17,15 @@
 #include <math.h>
 #include <algorithm>
 #include <complex>
-#define EPSILON 1e-6
-
-//#include "Eigen/Core"
 #include "Eigen/Eigenvalues"
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/lapack_function.h"
 #include "paddle/fluid/operators/math/math_function.h"
+#include "paddle/fluid/operators/math/matrix_solve.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/platform/for_range.h"
+#define EPSILON 1e-6
 
 namespace paddle {
 namespace operators {
@@ -60,37 +59,24 @@ constexpr double GetReal<platform::complex<double>, double>(
 
 using paddle::framework::Tensor;
 
-inline int BatchCount(const Tensor& matrices) {
+inline int BatchCount(const Tensor& matrix) {
   int count = 1;
-  int num_dims = matrices.dims().size();
+  int num_dims = matrix.dims().size();
   for (int i = 0; i < num_dims - 2; ++i) {
-    count *= matrices.dims()[i];
+    count *= matrix.dims()[i];
   }
   return count;
 }
 
-inline int MatrixStride(const Tensor& matrices) {
-  framework::DDim dims_list = matrices.dims();
+inline int MatrixStride(const Tensor& matrix) {
+  framework::DDim dims_list = matrix.dims();
   int num_dims = dims_list.size();
   return dims_list[num_dims - 1] * dims_list[num_dims - 2];
 }
 
-std::vector<int> ExtendDims(const framework::DDim& in_dims, int batch_size) {
-  int cum = 1;
-  std::vector<int> res;
-  for (int i = 0; i < in_dims.size(); ++i) {
-    cum *= in_dims[i];
-    res.push_back(in_dims[i]);
-    if (cum == batch_size) {
-      break;
-    }
-  }
-  return res;
-}
-
 // Transpose two axis of a Tensor
 template <typename DeviceContext, typename T>
-void TransposeTwoAxis(const Tensor& input, Tensor& transposed_input,
+void TransposeTwoAxis(const Tensor& input, Tensor* transposed_input,
                       const int axis1, const int axis2,
                       const framework::ExecutionContext& context) {
   std::vector<int> permute(input.dims().size());
@@ -98,20 +84,18 @@ void TransposeTwoAxis(const Tensor& input, Tensor& transposed_input,
   permute[axis1] = axis2;
   permute[axis2] = axis1;
 
-  transposed_input.mutable_data<T>(input.dims(), context.GetPlace());
+  transposed_input->mutable_data<T>(input.dims(), context.GetPlace());
   auto& dev_ctx = context.template device_context<platform::CPUDeviceContext>();
 
   TransCompute<DeviceContext, T>(input.dims().size(), dev_ctx, input,
-                                 &transposed_input, permute);
+                                 transposed_input, permute);
 }
 
 // Apply eig to a batch of matrices, values, vectors and (intermidiate
-// tensor)infos are overritten by
-template <typename T, typename Tout>
-void ApplyEig(Tensor& input, Tensor& values, Tensor& vectors, Tensor& infos,
-              const framework::ExecutionContext& context) {
-  using Tin = typename TemplateInTemplate<T>::type;
-
+// tensor) info are overritten
+template <typename T, typename Tout, typename Tbase>
+void LapackEig(Tensor& input, Tensor* values, Tensor* vectors, int info,
+               const framework::ExecutionContext& context) {
   char jobvl = 'N';
   char jobvr = 'V';  // only right eigenvectors are computed
   int num_dims = input.dims().size();
@@ -119,33 +103,31 @@ void ApplyEig(Tensor& input, Tensor& values, Tensor& vectors, Tensor& infos,
 
   T* input_data = input.data<T>();
   int lda = std::max<int>(1, order);
-  T* values_data = values.mutable_data<T>(context.GetPlace());
+  T* values_data = values->mutable_data<T>(context.GetPlace());
   T* lvector_data = nullptr;
   int ldvl = 1;
-  T* rvector_data = vectors.mutable_data<T>(context.GetPlace());
+  T* rvector_data = vectors->mutable_data<T>(context.GetPlace());
   int ldvr = lda;
   int lwork = -1;
 
   int batch_count = BatchCount(input);
   int matrix_stride = MatrixStride(input);
-  int values_stride = values.dims()[values.dims().size() - 1];
-  infos.Resize(framework::make_ddim({batch_count}));
-  int* info = infos.mutable_data<int>(context.GetPlace());
+  int values_stride = values->dims()[values->dims().size() - 1];
 
   Tensor rwork;
-  Tin* rwork_data = nullptr;
+  Tbase* rwork_data = nullptr;
 
   rwork.Resize(framework::make_ddim({lda * 2}));
-  rwork_data = rwork.mutable_data<Tin>(context.GetPlace());
+  rwork_data = rwork.mutable_data<Tbase>(context.GetPlace());
 
   // call lapackEig once to compute the size of work;
   T computed_work_size;
-  math::lapackEig<T, Tin>(jobvl, jobvr, order, input_data, lda, values_data,
-                          lvector_data, ldvl, rvector_data, ldvr,
-                          &computed_work_size, lwork, rwork_data, &info[0]);
+  math::lapackEig<T, Tbase>(jobvl, jobvr, order, input_data, lda, values_data,
+                            lvector_data, ldvl, rvector_data, ldvr,
+                            &computed_work_size, lwork, rwork_data, &info);
 
   lwork =
-      std::max<int>(1, static_cast<int>(GetReal<T, Tin>(computed_work_size)));
+      std::max<int>(1, static_cast<int>(GetReal<T, Tbase>(computed_work_size)));
   Tensor work;
   work.Resize(framework::make_ddim({lwork}));
   T* work_data = work.mutable_data<T>(context.GetPlace());
@@ -154,15 +136,14 @@ void ApplyEig(Tensor& input, Tensor& values, Tensor& vectors, Tensor& infos,
     T* current_matrix = &input_data[i * matrix_stride];
     T* current_values = &values_data[i * values_stride];
     T* current_rvectors = &rvector_data[i * matrix_stride];
-    int* current_info = &info[i];
-    math::lapackEig<T, Tin>(jobvl, jobvr, order, current_matrix, lda,
-                            current_values, lvector_data, ldvl,
-                            current_rvectors, ldvr, work_data, lwork,
-                            rwork_data, current_info);
+
+    math::lapackEig<T, Tbase>(
+        jobvl, jobvr, order, current_matrix, lda, current_values, lvector_data,
+        ldvl, current_rvectors, ldvr, work_data, lwork, rwork_data, &info);
     PADDLE_ENFORCE_EQ(
-        *current_info, 0,
+        info, 0,
         platform::errors::PreconditionNotMet(
-            "current_info is not 0, computation failed. "
+            "current info is not 0, computation failed. "
             "= 0:  successful exit."
             "< 0:  if INFO = -i, the i-th argument had an illegal value."
             "> 0:  if INFO = i, the QR algorithm failed to compute all the "
@@ -172,36 +153,36 @@ void ApplyEig(Tensor& input, Tensor& values, Tensor& vectors, Tensor& infos,
   }
 }
 
-template <typename DeviceContext, typename T, typename Tout>
-void ApplyEigKernel(const Tensor& input, Tensor& values, Tensor& vectors,
-                    Tensor& infos, const framework::ExecutionContext& context) {
-  Tensor input_fortran_mem_layout;
-  Tensor vectors_fortran_mem_layout;
+template <typename DeviceContext, typename T, typename Tout, typename Tbase>
+void ApplyEigKernel(const Tensor& input, Tensor* values, Tensor* vectors,
+                    int info, const framework::ExecutionContext& context) {
+  Tensor input_column_major;
+  Tensor vectors_row_major;
   int num_dims = input.dims().size();
 
-  // transfer to Fortran memory layout i.e. make_ddim from tranposed_input:
+  // transfer to column-major memory layout i.e. make_ddim from tranposed_input:
   // [batch,row,col]->[batch,col,row]
-  TransposeTwoAxis<DeviceContext, T>(input, input_fortran_mem_layout,
-                                     num_dims - 1, num_dims - 2, context);
-  // make sure 'vectors_fortran_mem_layout' holds memory before passed to
-  // ApplyEig()
-  vectors_fortran_mem_layout.Resize(input.dims());
-  ApplyEig<T, Tout>(input_fortran_mem_layout, values,
-                    vectors_fortran_mem_layout, infos, context);
+  TransposeTwoAxis<DeviceContext, T>(input, &input_column_major, num_dims - 1,
+                                     num_dims - 2, context);
+  // make sure 'vectors_row_major' holds memory before passed to
+  // LapackEig()
+  vectors_row_major.Resize(input.dims());
+  LapackEig<T, Tout, Tbase>(input_column_major, values, &vectors_row_major,
+                            info, context);
 
-  // transfer output memory layout back
-  // vectors_fortran_mem_layout: fortran layout
+  // transfer column-major layout back
+  // vectors_row_major: column-major layout
   // vector: original layout
-  TransposeTwoAxis<DeviceContext, T>(vectors_fortran_mem_layout, vectors,
-                                     num_dims - 1, num_dims - 2, context);
+  TransposeTwoAxis<DeviceContext, T>(vectors_row_major, vectors, num_dims - 1,
+                                     num_dims - 2, context);
 }
 
 template <typename T, typename Tout>
-void ConstructComplexValues(Tensor& c_values, Tensor& real_part,
+void ConstructComplexValues(Tensor* c_values, Tensor& real_part,
                             Tensor& imag_part,
                             const framework::ExecutionContext& ctx,
                             int batch_count, int order) {
-  auto* c_values_data = c_values.mutable_data<Tout>(ctx.GetPlace());
+  auto* c_values_data = c_values->mutable_data<Tout>(ctx.GetPlace());
   auto* real_data = real_part.data<T>();
   auto* imag_data = imag_part.data<T>();
 
@@ -214,28 +195,28 @@ void ConstructComplexValues(Tensor& c_values, Tensor& real_part,
 }
 
 template <typename T, typename Tout>
-void ConstructComplexVectors(Tensor& c_vectors, Tensor& c_values,
+void ConstructComplexVectors(Tensor* c_vectors, Tensor& c_values,
                              Tensor& r_vectors,
                              const framework::ExecutionContext& ctx,
                              int batch_count, int order) {
   int matrix_stride = MatrixStride(r_vectors);
 
-  auto* c_vectors_data = c_vectors.mutable_data<Tout>(ctx.GetPlace());
+  auto* c_vectors_data = c_vectors->mutable_data<Tout>(ctx.GetPlace());
   auto* c_values_data = c_values.mutable_data<Tout>(ctx.GetPlace());
   auto* r_v_data = r_vectors.data<T>();
 
-  for (auto b = decltype(batch_count){0}; b < batch_count; b++) {
+  for (int b = 0; b < batch_count; b++) {
     auto* vecs = &r_v_data[b * matrix_stride];
     auto* res = &c_vectors_data[b * matrix_stride];
     auto* vals = &c_values_data[b * order];
 
-    for (auto j = decltype(order){0}; j < order; j++) {
+    for (int j = 0; j < order; j++) {
       if (vals[j].imag < EPSILON) {
-        for (auto i = decltype(order){0}; i < order; i++) {
+        for (int i = 0; i < order; i++) {
           res[j * order + i] = platform::complex<T>(vecs[j * order + i], 0);
         }
       } else {
-        for (auto i = decltype(order){0}; i < order; i++) {
+        for (int i = 0; i < order; i++) {
           res[j * order + i] = platform::complex<T>(vecs[j * order + i],
                                                     vecs[(j + 1) * order + i]);
           res[(j + 1) * order + i] = platform::complex<T>(
@@ -275,9 +256,9 @@ class EigKernel : public framework::OpKernel<T> {
 
       real_values.mutable_data<Tbase>(big_dim, context.GetPlace());
       real_vectors.mutable_data<Tbase>(x->dims(), context.GetPlace());
-      Tensor infos;
-      ApplyEigKernel<DeviceContext, Tbase, Tout>(*x, real_values, real_vectors,
-                                                 infos, context);
+      int info;
+      ApplyEigKernel<DeviceContext, Tbase, Tout, Tbase>(
+          *x, &real_values, &real_vectors, info, context);
       auto dito =
           math::DeviceIndependenceTensorOperations<DeviceContext, Tbase, Tout>(
               context);
@@ -287,26 +268,26 @@ class EigKernel : public framework::OpKernel<T> {
       Tensor imag_part = dito.Slice(real_values, {-1}, {order}, {order * 2});
 
       // 2. construct complex values
-      ConstructComplexValues<Tbase, Tout>(*out_values, real_part, imag_part,
+      ConstructComplexValues<Tbase, Tout>(out_values, real_part, imag_part,
                                           context, batch_count, order);
 
       // 3. construct complex vectors
       Tensor real_vector_trans = dito.Transpose(real_vectors);
       Tensor out_vectors_trans;
       out_vectors_trans.mutable_data<Tout>(x->dims(), context.GetPlace());
-      ConstructComplexVectors<Tbase, Tout>(out_vectors_trans, *out_values,
+      ConstructComplexVectors<Tbase, Tout>(&out_vectors_trans, *out_values,
                                            real_vector_trans, context,
                                            batch_count, order);
-      TransposeTwoAxis<DeviceContext, Tout>(out_vectors_trans, *out_vectors,
+      TransposeTwoAxis<DeviceContext, Tout>(out_vectors_trans, out_vectors,
                                             x->dims().size() - 1,
                                             x->dims().size() - 2, context);
     } else {
       out_values->mutable_data<T>(context.GetPlace());
       out_vectors->mutable_data<T>(context.GetPlace());
 
-      Tensor infos;
-      ApplyEigKernel<DeviceContext, T, Tout>(*x, *out_values, *out_vectors,
-                                             infos, context);
+      int info;
+      ApplyEigKernel<DeviceContext, T, Tout, Tbase>(*x, out_values, out_vectors,
+                                                    info, context);
     }
   }
 };

@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 #include "paddle/fluid/framework/op_registry.h"
+
 namespace paddle {
 namespace operators {
 
@@ -23,16 +24,6 @@ class EigOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(true, ctx->HasInput("X"),
-                      platform::errors::PreconditionNotMet(
-                          "Input(X) of EigOp should not be null."));
-    PADDLE_ENFORCE_EQ(true, ctx->HasOutput("Eigenvalues"),
-                      platform::errors::PreconditionNotMet(
-                          "Output(Eigenvalues) of EigOp should not be null."));
-    PADDLE_ENFORCE_EQ(true, ctx->HasOutput("Eigenvectors"),
-                      platform::errors::PreconditionNotMet(
-                          "Output(Eigenvectors) of EigOp should not be null."));
-
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Eig");
     OP_INOUT_CHECK(ctx->HasOutput("Eigenvalues"), "Output", "Eigenvalues",
                    "Eig");
@@ -40,23 +31,22 @@ class EigOp : public framework::OperatorWithKernel {
                    "Eig");
 
     auto x_dims = ctx->GetInputDim("X");
-    int num_dims = x_dims.size();
-
-    std::vector<int> batch_dims_vec{};
-    for (int i = 0; i < num_dims - 1; ++i) {
-      batch_dims_vec.emplace_back(x_dims[i]);
-    }
-
-    PADDLE_ENFORCE_GE(num_dims, 2, platform::errors::OutOfRange(
-                                       "expects the Tensor to be not less than "
-                                       "2 dimentions, but got dimention is %d",
-                                       num_dims));
+    int rank = x_dims.size();
+    PADDLE_ENFORCE_GE(rank, 2, platform::errors::InvalidArgument(
+                                   "expects the Tensor to be not less than "
+                                   "2 dimentions, but got dimention is %d",
+                                   rank));
     PADDLE_ENFORCE_EQ(
-        x_dims[num_dims - 2], x_dims[num_dims - 1],
+        x_dims[rank - 2], x_dims[rank - 1],
         platform::errors::InvalidArgument(
             "ShapeError: The input matrix must be a square matrix, "
             "but receive a matrix with %d rows and %d colums",
-            x_dims[num_dims - 2], x_dims[num_dims - 1]));
+            x_dims[rank - 2], x_dims[rank - 1]));
+
+    std::vector<int> batch_dims_vec{};
+    for (int i = 0; i < rank - 1; ++i) {
+      batch_dims_vec.emplace_back(x_dims[i]);
+    }
 
     ctx->SetOutputDim("Eigenvectors", x_dims);
     ctx->SetOutputDim("Eigenvalues", framework::make_ddim(batch_dims_vec));
@@ -81,9 +71,13 @@ class EigOp : public framework::OperatorWithKernel {
 class EigOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The input matrix as a Tensor of Eig op.");
-    AddOutput("Eigenvalues", "The eigen values calculated by this op");
-    AddOutput("Eigenvectors", "The eigen vectors calculated by this op");
+    AddInput("X",
+             "(Tensor), A complex-valued or real-valued tensor with shape (*, "
+             "n, n)");
+    AddOutput("Eigenvalues",
+              "(Tensor), The output eigenvalues tensor with shape (*, n)");
+    AddOutput("Eigenvectors",
+              "(Tensor), The output eigenvectors tensor with shape (*, n, n)");
 
     AddComment(R"DOC(
         Eig Operator.

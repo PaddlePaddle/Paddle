@@ -32,15 +32,15 @@ class TestEigOp(OpTest):
         #ipt = np.random.random((3,3)).astype('float32') #float64
         self.inputs = {'X': ipt}
         w, v = np.linalg.eig(ipt)
-        self.outputs = {'OutValues': w, 'OutVectors': v}
+        self.outputs = {'Eigenvalues': w, 'Eigenvectors': v}
 
     def test_check_output(self):
-        # numpy 输出实数，eig输出复数
+        # numpy outputs real-values, paddle outputs complex-values
         self.check_output_with_place(place=core.CPUPlace(), check_dygraph=True)
 
     def test_grad(self):
         pass
-        #self.check_grad(["X"], "OutValues", check_dygraph=True)
+        #self.check_grad(["X"], "Eigenvalues", check_dygraph=True)
 
     # if __name__ == "__main__":
     #     paddle.enable_static()
@@ -56,8 +56,8 @@ class TestEigOp(OpTest):
         self.init_input()
         self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
         self.outputs = {
-            'OutValues': self.out[0],
-            'OutVectors': self.out[1]
+            'Eigenvalues': self.out[0],
+            'Eigenvectors': self.out[1]
         }
 
     def init_input(self):
@@ -89,7 +89,7 @@ class TestEigOp(OpTest):
 
     def test_grad(self):
         paddle.disable_static()
-        #self.check_grad(["X"], "OutValues")
+        #self.check_grad(["X"], "Eigenvalues")
         paddle.enable_static()
 '''
 '''

@@ -18,8 +18,6 @@
 #include <Eigen/Dense>
 #include <Eigen/SVD>
 #include <iostream>
-#include "Eigen/Core"
-#include "Eigen/LU"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/framework/tensor.h"
@@ -43,44 +41,6 @@ using OpName = std::string;
 template <typename T, int MajorType = Eigen::RowMajor,
           typename IndexType = Eigen::DenseIndex>
 using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
-template <typename T>
-void SolveLinearSystem(T* matrix_data, T* rhs_data, T* out_data, int order,
-                       int rhs_cols, int batch) {
-  using Treal = typename Eigen::NumTraits<T>::Real;
-
-  std::complex<Treal>* matrix_data_ =
-      reinterpret_cast<std::complex<Treal>*>(matrix_data);
-  std::complex<Treal>* rhs_data_ =
-      reinterpret_cast<std::complex<Treal>*>(rhs_data);
-  std::complex<Treal>* out_data_ =
-      reinterpret_cast<std::complex<Treal>*>(out_data);
-
-  using Matrix = Eigen::Matrix<std::complex<Treal>, Eigen::Dynamic,
-                               Eigen::Dynamic, Eigen::RowMajor>;
-  using InputMatrixMap = Eigen::Map<Matrix>;
-  using OutputMatrixMap = Eigen::Map<Matrix>;
-
-  for (int i = 0; i < batch; ++i) {
-    auto input_matrix =
-        InputMatrixMap(matrix_data_ + i * order * order, order, order);
-    auto input_rhs =
-        InputMatrixMap(rhs_data_ + i * order * rhs_cols, order, rhs_cols);
-    auto output =
-        OutputMatrixMap(out_data_ + i * order * rhs_cols, order, rhs_cols);
-
-    Eigen::PartialPivLU<Matrix> lu_decomposition(order);
-    lu_decomposition.compute(input_matrix);
-
-    const Treal min_abs_piv =
-        lu_decomposition.matrixLU().diagonal().cwiseAbs().minCoeff();
-    PADDLE_ENFORCE_GT(min_abs_piv, Treal(0),
-                      platform::errors::InvalidArgument(
-                          "Something's wrong with SolveLinearSystem. "));
-
-    output = lu_decomposition.solve(input_rhs);
-  }
-}
 
 template <typename T>
 void EigenSvd(const T* X, T* U, T* VH, T* S, int rows, int cols,
@@ -134,6 +94,20 @@ struct PowFunctor {
   T* output_;
   int64_t numel_;
   float exp_;
+};
+
+template <typename T>
+struct RealMulComplexFunctor {
+  // x: complex number (a+bj)
+  // y: complex number (c+0j) pretend to be a real number
+  // out: complex number (ac+bcj)
+  inline HOSTDEVICE T operator()(T x, T y) {
+    PADDLE_ENFORCE_LT(y.imag, 1e-6, platform::errors::InvalidArgument(
+                                        "The image part of y must to be 0"
+                                        "but got [%d]",
+                                        y.imag));
+    return platform::complex<Real<T>>(x.real * y.real, x.imag * y.real);
+  }
 };
 
 static std::vector<int> GetBroadcastShape(InTensors ins) {

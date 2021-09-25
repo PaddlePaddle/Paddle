@@ -14,10 +14,6 @@
 
 #include "paddle/fluid/operators/eig_op.h"
 
-namespace paddle {
-namespace operators {}  // namespace operators
-}  // namespace paddle
-
 using complex64 = paddle::platform::complex<float>;
 using complex128 = paddle::platform::complex<double>;
 namespace ops = paddle::operators;
