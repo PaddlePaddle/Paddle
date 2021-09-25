@@ -40,23 +40,6 @@ struct TemplateInTemplate<platform::complex<T>> {
   using type = T;
 };
 
-template <typename T, typename Tin = T>
-constexpr Tin GetReal(T z) {
-  return z;
-}
-
-template <>
-constexpr float GetReal<platform::complex<float>, float>(
-    platform::complex<float> z) {
-  return z.real;
-}
-
-template <>
-constexpr double GetReal<platform::complex<double>, double>(
-    platform::complex<double> z) {
-  return z.real;
-}
-
 using paddle::framework::Tensor;
 
 inline int BatchCount(const Tensor& matrix) {
@@ -126,8 +109,7 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
                             lvector_data, ldvl, rvector_data, ldvr,
                             &computed_work_size, lwork, rwork_data, &info);
 
-  lwork =
-      std::max<int>(1, static_cast<int>(GetReal<T, Tbase>(computed_work_size)));
+  lwork = std::max<int>(1, static_cast<int>(math::Real<T>(computed_work_size)));
   Tensor work;
   work.Resize(framework::make_ddim({lwork}));
   T* work_data = work.mutable_data<T>(context.GetPlace());
