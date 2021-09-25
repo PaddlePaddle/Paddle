@@ -83,16 +83,16 @@ class TestVisonModels(unittest.TestCase):
         lenet.predict_batch(x)
 
     def test_densenet121(self):
-        self.model_infer("densenet121")
+        self.models_infer("densenet121")
 
     def test_densenet161(self):
-        self.model_infer("densenet161")
+        self.models_infer("densenet161")
 
     def test_densenet169(self):
-        self.model_infer("densenet169")
+        self.models_infer("densenet169")
 
     def test_densenet201(self):
-        self.model_infer("densenet201")                        
+        self.models_infer("densenet201")                        
 
 
 if __name__ == '__main__':
