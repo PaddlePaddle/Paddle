@@ -30,16 +30,21 @@ from paddle.utils.download import get_weights_path_from_url
 __all__ = []
 
 model_urls = {
-    'densenet121': ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet121_pretrained.pdparams',
-                    'db1b239ed80a905290fd8b01d3af08e4'),
-    'densenet161': ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet161_pretrained.pdparams',
-                    '62158869cb315098bd25ddbfd308a853'),
-    'densenet169': ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet169_pretrained.pdparams',
-                    '82cc7c635c3f19098c748850efb2d796'),
-    'densenet201': ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet201_pretrained.pdparams',
-                    '16ca29565a7712329cf9e36e02caaf58'),
-    'densenet264': ('https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet264_pretrained.pdparams',
-                    '3270ce516b85370bba88cfdd9f60bff4'),
+    'densenet121': (
+        'https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet121_pretrained.pdparams',
+        'db1b239ed80a905290fd8b01d3af08e4'),
+    'densenet161': (
+        'https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet161_pretrained.pdparams',
+        '62158869cb315098bd25ddbfd308a853'),
+    'densenet169': (
+        'https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet169_pretrained.pdparams',
+        '82cc7c635c3f19098c748850efb2d796'),
+    'densenet201': (
+        'https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet201_pretrained.pdparams',
+        '16ca29565a7712329cf9e36e02caaf58'),
+    'densenet264': (
+        'https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/DenseNet264_pretrained.pdparams',
+        '3270ce516b85370bba88cfdd9f60bff4'),
 }
 
 
