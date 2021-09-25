@@ -21,8 +21,8 @@ import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
 
-from paddle.nn import Conv2D, BatchNorm, Linear, Dropout, ReLU
-from paddle.nn import AdaptiveAvgPool2D, MaxPool2D, AvgPool2D
+from paddle.nn import Linear, Dropout, ReLU
+from paddle.nn import Conv2D, MaxPool2D
 from paddle.nn.initializer import Uniform
 from paddle.fluid.param_attr import ParamAttr
 from paddle.utils.download import get_weights_path_from_url
