@@ -1594,13 +1594,15 @@ def matrix_power(x, n, name=None):
     return out
 
 
-def eig(x):
+def eig(x, name=None):
     """
     This API performs the eigenvalue decomposition.
 
     Args:
         x (Tensor): A tensor with shape math:`[..., N, N]`, The data type of the input tensor x
             shoulf be one of float32, float64, compplex64 and complex128.
+        name (str, optional): The default value is `None`. Normally there is no need for
+            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
         Eigenvalues(Tensors): A tensor with shape math:`[..., N]` refers to the eigen values.
