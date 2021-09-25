@@ -82,6 +82,18 @@ class TestVisonModels(unittest.TestCase):
         x = np.array(np.random.random((2, 1, 28, 28)), dtype=np.float32)
         lenet.predict_batch(x)
 
+    def test_densenet121(self):
+        self.model_infer("densenet121")
+
+    def test_densenet161(self):
+        self.model_infer("densenet161")
+
+    def test_densenet169(self):
+        self.model_infer("densenet169")
+
+    def test_densenet201(self):
+        self.model_infer("densenet201")                        
+
 
 if __name__ == '__main__':
     unittest.main()
