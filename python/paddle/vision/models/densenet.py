@@ -26,6 +26,7 @@ model_urls = {
     'DenseNet201': ('')
 }
 
+
 class DenseLayer(nn.Layer):
     
     def __init__(self, in_c, growth_rate, bn_size):
@@ -38,7 +39,7 @@ class DenseLayer(nn.Layer):
             nn.BatchNorm2D(out_c),
             nn.ReLU(),
             nn.Conv2D(
-                out_c, growth_rate, 3,padding=1))
+                out_c, growth_rate, 3, padding=1))
 
     def forward(self, x):
         y = self.layers(x)
@@ -80,7 +81,7 @@ class DenseNet(nn.Layer):
     def __init__(self,
                  num_classes=1000,
                  growth_rate=32,
-                 block=(6,12,24,16),
+                 block=(6, 12, 24, 16),
                  bn_size=4,
                  out_c=64):
         super().__init__()
@@ -127,7 +128,7 @@ def densenet121(pretrained=False, batch_norm=False, **kwargs):
     model_name = 'DenseNet121'
     if batch_norm:
         model_name += ('_bn')
-    return _DenseNet(model_name, (6,12,24,16), batch_norm, pretrained, 
+    return _DenseNet(model_name, (6, 12, 24, 16), batch_norm, pretrained, 
                      **kwargs)
 
 
@@ -135,7 +136,7 @@ def densenet161(pretrained=False, batch_norm=False, **kwargs):
     model_name = 'DenseNet161'
     if batch_norm:
         model_name += ('_bn')
-    return _DenseNet(model_name, (6,12,32,32), batch_norm, pretrained, 
+    return _DenseNet(model_name, (6, 12, 32, 32), batch_norm, pretrained, 
                      **kwargs)
 
 
@@ -143,7 +144,7 @@ def densenet169(pretrained=False, batch_norm=False, **kwargs):
     model_name = 'DenseNet169'
     if batch_norm:
         model_name += ('_bn')
-    return _DenseNet(model_name, (6,12,48,32), batch_norm, pretrained, 
+    return _DenseNet(model_name, (6, 12, 48, 32), batch_norm, pretrained, 
                      **kwargs)
 
 
@@ -151,5 +152,5 @@ def densenet201(pretrained=False, batch_norm=False, **kwargs):
     model_name = 'DenseNet201'
     if batch_norm:
         model_name += ('_bn')
-    return _DenseNet(model_name, (6,12,64,48), batch_norm, pretrained, 
+    return _DenseNet(model_name, (6, 12, 64, 48), batch_norm, pretrained, 
                      **kwargs)
