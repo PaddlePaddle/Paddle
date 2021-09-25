@@ -26,6 +26,7 @@ template <typename DeviceContext, typename ValueType, typename T>
 class EigvalshKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    std::cout << ">>>>> start forward\n";
     auto input = ctx.Input<Tensor>("X");
     auto output_w = ctx.Output<Tensor>("Eigenvalues");
     auto output_v = ctx.Output<Tensor>("Eigenvectors");
@@ -35,6 +36,7 @@ class EigvalshKernel : public framework::OpKernel<T> {
     bool compute_vector = !is_test;
     math::MatrixEighFunctor<DeviceContext, ValueType, T> functor;
     functor(ctx, *input, output_w, output_v, is_lower, compute_vector);
+    std::cout << ">>>>> end forward\n";
   }
 };
 
@@ -42,6 +44,7 @@ template <typename DeviceContext, typename ValueType, typename T>
 class EigvalshGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    std::cout << ">>>>> start backward\n";
     auto& x_grad = *ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     x_grad.mutable_data<T>(ctx.GetPlace());
     auto& output_v_var = *ctx.Input<Tensor>("Eigenvectors");
@@ -54,6 +57,7 @@ class EigvalshGradKernel : public framework::OpKernel<T> {
     auto tV = dito.Transpose(dito.Conj(output_v_var));
     x_grad = dito.Matmul(
         dito.Mul_(output_v_var, dito.Unsqueeze(output_w_grad, -2)), tV);
+    std::cout << ">>>>> end backward\n";
   }
 };
 

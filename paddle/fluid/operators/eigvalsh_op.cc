@@ -27,8 +27,8 @@ class EigvalshOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "Eigvalsh");
     OP_INOUT_CHECK(ctx->HasOutput("Eigenvalues"), "Output", "Eigenvalues",
                    "Eigvalsh");
-    OP_INOUT_CHECK(ctx->HasOutput("Eigenvectors"), "Output", "Eigenvectors",
-                   "Eigvalsh");
+    // OP_INOUT_CHECK(ctx->HasOutput("Eigenvectors"), "Output", "Eigenvectors",
+    //                "Eigvalsh");
 
     auto input_dim = ctx->GetInputDim("X");
     auto rank = input_dim.size();
@@ -53,7 +53,10 @@ class EigvalshOp : public framework::OperatorWithKernel {
     }
 
     ctx->SetOutputDim("Eigenvalues", framework::make_ddim(values_dim));
-    ctx->SetOutputDim("Eigenvectors", input_dim);
+
+    if (ctx->HasOutput("Eigenvectors")) {
+      ctx->SetOutputDim("Eigenvectors", input_dim);
+    }
   }
 };
 

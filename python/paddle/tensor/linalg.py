@@ -1830,7 +1830,8 @@ def eigvalsh(x, UPLO='L', name=None):
             #[0.17157288, 5.82842712]
     """
     if in_dygraph_mode():
-        is_test = not _dygraph_tracer()._train_mode
+        #is_test = not _dygraph_tracer()._train_mode
+        is_test = x.stop_gradient
         values, _ = _C_ops.eigvalsh(x, 'UPLO', UPLO, 'is_test', is_test)
         return values
 
@@ -1858,12 +1859,14 @@ def eigvalsh(x, UPLO='L', name=None):
     out_value = helper.create_variable_for_type_inference(dtype=x.dtype)
     out_vector = helper.create_variable_for_type_inference(dtype=x.dtype)
 
+    is_test = x.stop_gradient
     helper.append_op(
         type='eigvalsh',
         inputs={'X': x},
         outputs={'Eigenvalues': out_value,
                  'Eigenvectors': out_vector},
-        attrs={'UPLO': UPLO})
+        attrs={'UPLO': UPLO,
+               'is_test': is_test})
     return out_value
 
 

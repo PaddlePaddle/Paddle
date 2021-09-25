@@ -14,8 +14,8 @@
 
 #pragma once
 
-#include "Eigen/Core"
 #include "paddle/fluid/memory/memory.h"
+#include "paddle/fluid/operators/math/lapack_function.h"
 #include "paddle/fluid/operators/svd_helper.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/dynload/cusolver.h"
@@ -25,84 +25,6 @@ namespace paddle {
 namespace operators {
 namespace math {
 
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using InputMatrixMap = Eigen::Map<
-    const Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>;
-
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using OutputMatrixMap = Eigen::Map<
-    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>;
-
-template <typename ValueType>
-inline void ComputeFloatEigenvaluesAndVectors(ValueType *x_data,
-                                              ValueType *eigenvalues_data,
-                                              ValueType *eigenvectors_data,
-                                              int batches, int rows, int cols,
-                                              bool has_vectors) {
-  int stride = rows * cols;
-  for (int i = 0; i < batches; i++) {
-    auto m = InputMatrixMap<ValueType>(x_data + i * stride, rows, cols);
-    auto eigenvalues =
-        OutputMatrixMap<ValueType>(eigenvalues_data + i * rows, 1, rows);
-    auto eigenvectors =
-        OutputMatrixMap<ValueType>(eigenvectors_data + i * stride, rows, cols);
-
-    Eigen::SelfAdjointEigenSolver<Eigen::Matrix<
-        ValueType, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-        eigen_solver(m, has_vectors ? Eigen::ComputeEigenvectors
-                                    : Eigen::EigenvaluesOnly);
-    PADDLE_ENFORCE_EQ(
-        eigen_solver.info(), Eigen::Success,
-        platform::errors::InvalidArgument(
-            "Self Adjoint Eigen decomposition is not successful. "
-            "The %d-th input matrice might not be not be positive definite.",
-            i));
-
-    eigenvalues = eigen_solver.eigenvalues().transpose();
-    if (has_vectors) {
-      eigenvectors = eigen_solver.eigenvectors();
-    }
-  }
-}
-
-template <typename T, typename ValueType>
-inline void ComputeComplexEigenvaluesAndVectors(T *x_data,
-                                                ValueType *eigenvalues_data,
-                                                T *eigenvectors_data,
-                                                int batches, int rows, int cols,
-                                                bool has_vectors) {
-  using Complex = std::complex<ValueType>;
-  Complex *input = reinterpret_cast<Complex *>(x_data);
-  Complex *eigenvectors_data_ = reinterpret_cast<Complex *>(eigenvectors_data);
-
-  int stride = rows * cols;
-  for (int i = 0; i < batches; i++) {
-    auto m = InputMatrixMap<Complex>(input + i * stride, rows, cols);
-    auto eigenvalues =
-        OutputMatrixMap<ValueType>(eigenvalues_data + i * rows, 1, rows);
-    auto eigenvectors =
-        OutputMatrixMap<Complex>(eigenvectors_data_ + i * stride, rows, cols);
-
-    Eigen::SelfAdjointEigenSolver<
-        Eigen::Matrix<Complex, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>>
-        eigen_solver(m, has_vectors ? Eigen::ComputeEigenvectors
-                                    : Eigen::EigenvaluesOnly);
-    PADDLE_ENFORCE_EQ(
-        eigen_solver.info(), Eigen::Success,
-        platform::errors::InvalidArgument(
-            "Self Adjoint Eigen decomposition is not successful. "
-            "The %d-th input matrice might not be not be positive definite.",
-            i));
-
-    eigenvalues = eigen_solver.eigenvalues().transpose();
-    if (has_vectors) {
-      eigenvectors = eigen_solver.eigenvectors();
-    }
-  }
-}
-
 inline int64_t GetBatchSize(framework::DDim dims) {
   int64_t batch_size = 1;
   auto dim_size = dims.size();
@@ -110,6 +32,19 @@ inline int64_t GetBatchSize(framework::DDim dims) {
     batch_size *= dims[i];
   }
   return batch_size;
+}
+
+static void CheckEighResult(const int batch, const int info) {
+  PADDLE_ENFORCE_LE(
+      info, 0,
+      platform::errors::PreconditionNotMet(
+          "For batch [%d]: the [%d] off-diagonal elements of an intermediate"
+          "tridiagonal form did not converge to zero",
+          batch, info));
+  PADDLE_ENFORCE_GE(
+      info, 0, platform::errors::PreconditionNotMet(
+                   "For batch [%d]: the [%d] argument had an illegal value",
+                   batch, info));
 }
 
 template <typename DeviceContext, typename ValueType, typename T>
@@ -128,37 +63,71 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
                   bool has_vectors) {
-    auto dims = input.dims();
-    auto output_value_dim = eigen_values->dims();
+    auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
-    int64_t batch_size = 1;
-    int dim_size = dims.size();
-    for (int64_t i = 0; i < dim_size - 2; i++) {
-      batch_size *= dims[i];
-    }
     auto dito =
-        DeviceIndependenceTensorOperations<platform::CPUDeviceContext, T>(ctx);
-    Tensor input_tensor;
-    TensorCopy(input, ctx.GetPlace(), &input_tensor);
-    if (!is_lower) {
-      input_tensor = dito.Transpose(input);
+        math::DeviceIndependenceTensorOperations<platform::CPUDeviceContext, T>(
+            ctx);
+    // lapack is a column-first storage, transpose make the eigen_vectors to
+    // have a continuous memory layout
+    *eigen_vectors = dito.Transpose(input);
+    auto *out_vector = eigen_vectors->mutable_data<T>(ctx.GetPlace());
+
+    auto dims = input.dims();
+    int dim_size = dims.size();
+    int64_t batch_size = GetBatchSize(dims);
+
+    int vector_stride = dims[dim_size - 1] * dims[dim_size - 2];
+    int values_stride = dims[dim_size - 1];
+    char uplo = is_lower ? 'L' : 'U';
+    char jobz = has_vectors ? 'V' : 'N';
+    auto n = dims[dim_size - 1];
+    auto lda = std::max<int64_t>(1, n);
+    // if work = -1, it means that you need to use the lapack function to query
+    // the optimal value
+    int lwork = -1;      // The length of the array work
+    int lrwork = -1;     // The dimension of the array rwork,rwork is REAL array
+    int liwork = -1;     // The dimension of the array iwork
+    int iwork_opt = -1;  // The optimal length of the array liwork
+    T lwork_opt = static_cast<T>(-1);  // The optimal length of the array work
+    ValueType rwork_opt =
+        static_cast<ValueType>(-1);  // The optimal length of the array rwork
+
+    int info = 0;
+    // Call lapackEigh to get the optimal size of work data
+    math::lapackEigh<T, math::Real<T>>(jobz, uplo, n, out_vector, lda,
+                                       out_value, &lwork_opt, lwork, &rwork_opt,
+                                       lrwork, &iwork_opt, liwork, &info);
+
+    lwork = std::max<int>(1, static_cast<int>(lwork_opt));
+    liwork = std::max<int>(1, iwork_opt);
+
+    Tensor rwork_tensor;
+    ValueType *rwork_data = nullptr;
+
+    // complex type
+    if (framework::IsComplexType(eigen_vectors->type())) {
+      lrwork = std::max<int>(1, static_cast<int>(rwork_opt));
+      rwork_data = rwork_tensor.mutable_data<ValueType>(
+          framework::make_ddim({lrwork}), ctx.GetPlace());
     }
-    int rows = dims[dims.size() - 2];
 
-    auto *value_data =
-        eigen_values->mutable_data<ValueType>(output_value_dim, ctx.GetPlace());
+    Tensor iwork_tensor, work_tensor;
+    auto *iwork_data = iwork_tensor.mutable_data<int>(
+        framework::make_ddim({liwork}), ctx.GetPlace());
+    auto *work_data = work_tensor.mutable_data<T>(framework::make_ddim({lwork}),
+                                                  ctx.GetPlace());
 
-    if (framework::IsComplexType(input_tensor.type())) {
-      auto *x_data = input_tensor.data<T>();
-      auto *vector_data = eigen_vectors->mutable_data<T>(dims, ctx.GetPlace());
-      ComputeComplexEigenvaluesAndVectors<T, ValueType>(
-          x_data, value_data, vector_data, batch_size, rows, rows, has_vectors);
-    } else {
-      auto *x_data = input_tensor.data<ValueType>();
-      auto *vector_data =
-          eigen_vectors->mutable_data<ValueType>(dims, ctx.GetPlace());
-      ComputeFloatEigenvaluesAndVectors<ValueType>(
-          x_data, value_data, vector_data, batch_size, rows, rows, has_vectors);
+    for (auto i = 0; i < batch_size; i++) {
+      auto *value_data = out_value + i * values_stride;
+      auto *vector_data = out_vector + i * vector_stride;
+      math::lapackEigh<T, Real<T>>(jobz, uplo, n, vector_data, lda, value_data,
+                                   work_data, lwork, rwork_data, lrwork,
+                                   iwork_data, liwork, &info);
+      CheckEighResult(i, info);
+    }
+    if (has_vectors) {
+      *eigen_vectors = dito.Transpose(*eigen_vectors);
     }
   }
 };
@@ -175,6 +144,12 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T> {
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
                   bool has_vectors) {
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
+
+    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    auto dito =
+        math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
+                                                 T>(ctx);
+    *eigen_vectors = dito.Transpose(input);
     auto *out_vector = eigen_vectors->mutable_data<T>(ctx.GetPlace());
 
     auto &dims = input.dims();
@@ -190,13 +165,6 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T> {
     int lda = std::max<int>(1, n);
     auto vector_stride = dims[dim_size - 1] * dims[dim_size - 2];
     auto values_stride = dims[dim_size - 1];
-
-    auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
-    auto dito =
-        math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
-                                                 T>(ctx);
-    Tensor output_v_var_trans = dito.Transpose(input);
-    TensorCopy(output_v_var_trans, ctx.GetPlace(), eigen_vectors);
 
     int lwork = 0;
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batch_size);
@@ -241,15 +209,11 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T> {
         Evd(handle, jobz, uplo, n, vector_data, lda, value_data, work_ptr,
             lwork, info_ptr);
       }
-      int error_info;
+      int error_info = 0;
       memory::Copy(platform::CPUPlace(), &error_info,
                    BOOST_GET_CONST(platform::CUDAPlace, dev_ctx.GetPlace()),
                    info_ptr, sizeof(int), dev_ctx.stream());
-      PADDLE_ENFORCE_EQ(
-          error_info, 0,
-          platform::errors::PreconditionNotMet(
-              "For batch [%d]: the [%d] argument had an illegal value", i,
-              error_info));
+      CheckEighResult(i, error_info);
     }
 
     if (use_syevj) {
