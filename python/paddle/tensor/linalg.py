@@ -1634,7 +1634,7 @@ def eig(x):
 
     """
     if in_dygraph_mode():
-        w, v = core.ops.eig(x)
+        w, v = _C_ops.eig(x)
         return w, v
 
     check_variable_and_dtype(

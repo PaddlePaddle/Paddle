@@ -76,7 +76,7 @@ void TransposeTwoAxis(const Tensor& input, Tensor* transposed_input,
 
 // Apply eig to a batch of matrices, values, vectors and (intermidiate
 // tensor) info are overritten
-template <typename T, typename Tout, typename Tbase>
+template <typename T, typename Tout>
 void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
                const framework::ExecutionContext& context) {
   char jobvl = 'N';
@@ -98,16 +98,16 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
   int values_stride = values->dims()[values->dims().size() - 1];
 
   Tensor rwork;
-  Tbase* rwork_data = nullptr;
+  math::Real<T>* rwork_data = nullptr;
 
   rwork.Resize(framework::make_ddim({lda * 2}));
-  rwork_data = rwork.mutable_data<Tbase>(context.GetPlace());
+  rwork_data = rwork.mutable_data<math::Real<T>>(context.GetPlace());
 
   // call lapackEig once to compute the size of work;
   T computed_work_size;
-  math::lapackEig<T, Tbase>(jobvl, jobvr, order, input_data, lda, values_data,
-                            lvector_data, ldvl, rvector_data, ldvr,
-                            &computed_work_size, lwork, rwork_data, &info);
+  math::lapackEig<T, math::Real<T>>(
+      jobvl, jobvr, order, input_data, lda, values_data, lvector_data, ldvl,
+      rvector_data, ldvr, &computed_work_size, lwork, rwork_data, &info);
 
   lwork = std::max<int>(1, static_cast<int>(math::Real<T>(computed_work_size)));
   Tensor work;
@@ -119,7 +119,7 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
     T* current_values = &values_data[i * values_stride];
     T* current_rvectors = &rvector_data[i * matrix_stride];
 
-    math::lapackEig<T, Tbase>(
+    math::lapackEig<T, math::Real<T>>(
         jobvl, jobvr, order, current_matrix, lda, current_values, lvector_data,
         ldvl, current_rvectors, ldvr, work_data, lwork, rwork_data, &info);
     PADDLE_ENFORCE_EQ(
@@ -135,7 +135,7 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
   }
 }
 
-template <typename DeviceContext, typename T, typename Tout, typename Tbase>
+template <typename DeviceContext, typename T, typename Tout>
 void ApplyEigKernel(const Tensor& input, Tensor* values, Tensor* vectors,
                     int info, const framework::ExecutionContext& context) {
   Tensor input_column_major;
@@ -146,11 +146,10 @@ void ApplyEigKernel(const Tensor& input, Tensor* values, Tensor* vectors,
   // [batch,row,col]->[batch,col,row]
   TransposeTwoAxis<DeviceContext, T>(input, &input_column_major, num_dims - 1,
                                      num_dims - 2, context);
-  // make sure 'vectors_row_major' holds memory before passed to
-  // LapackEig()
+  // make sure 'vectors_row_major' holds memory before passed to LapackEig()
   vectors_row_major.Resize(input.dims());
-  LapackEig<T, Tout, Tbase>(&input_column_major, values, &vectors_row_major,
-                            info, context);
+  LapackEig<T, Tout>(&input_column_major, values, &vectors_row_major, info,
+                     context);
 
   // transfer column-major layout back
   // vectors_row_major: column-major layout
@@ -210,7 +209,7 @@ void ConstructComplexVectors(Tensor* c_vectors, const Tensor& c_values,
   }
 }
 
-template <typename DeviceContext, typename T, typename Tout, typename Tbase>
+template <typename DeviceContext, typename T, typename Tout>
 class EigKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -236,30 +235,30 @@ class EigKernel : public framework::OpKernel<T> {
       origin_dim.push_back(last_item * 2);
       framework::DDim big_dim = framework::make_ddim(origin_dim);
 
-      real_values.mutable_data<Tbase>(big_dim, context.GetPlace());
-      real_vectors.mutable_data<Tbase>(x->dims(), context.GetPlace());
+      real_values.mutable_data<math::Real<T>>(big_dim, context.GetPlace());
+      real_vectors.mutable_data<math::Real<T>>(x->dims(), context.GetPlace());
       int info = 0;
-      ApplyEigKernel<DeviceContext, Tbase, Tout, Tbase>(
+      ApplyEigKernel<DeviceContext, math::Real<T>, Tout>(
           *x, &real_values, &real_vectors, info, context);
       auto dito =
-          math::DeviceIndependenceTensorOperations<DeviceContext, Tbase, Tout>(
-              context);
+          math::DeviceIndependenceTensorOperations<DeviceContext, math::Real<T>,
+                                                   Tout>(context);
 
       // 1. extract real part & imag part from real_values
       Tensor real_part = dito.Slice(real_values, {-1}, {0}, {order});
       Tensor imag_part = dito.Slice(real_values, {-1}, {order}, {order * 2});
 
       // 2. construct complex values
-      ConstructComplexValues<Tbase, Tout>(out_values, real_part, imag_part,
-                                          context, batch_count, order);
+      ConstructComplexValues<math::Real<T>, Tout>(
+          out_values, real_part, imag_part, context, batch_count, order);
 
       // 3. construct complex vectors
       Tensor real_vector_trans = dito.Transpose(real_vectors);
       Tensor out_vectors_trans;
       out_vectors_trans.mutable_data<Tout>(x->dims(), context.GetPlace());
-      ConstructComplexVectors<Tbase, Tout>(&out_vectors_trans, *out_values,
-                                           real_vector_trans, context,
-                                           batch_count, order);
+      ConstructComplexVectors<math::Real<T>, Tout>(
+          &out_vectors_trans, *out_values, real_vector_trans, context,
+          batch_count, order);
       TransposeTwoAxis<DeviceContext, Tout>(out_vectors_trans, out_vectors,
                                             x->dims().size() - 1,
                                             x->dims().size() - 2, context);
@@ -268,8 +267,8 @@ class EigKernel : public framework::OpKernel<T> {
       out_vectors->mutable_data<T>(context.GetPlace());
 
       int info = 0;
-      ApplyEigKernel<DeviceContext, T, Tout, Tbase>(*x, out_values, out_vectors,
-                                                    info, context);
+      ApplyEigKernel<DeviceContext, T, Tout>(*x, out_values, out_vectors, info,
+                                             context);
     }
   }
 };

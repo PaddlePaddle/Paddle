@@ -150,14 +150,10 @@ REGISTER_OPERATOR(eig, ops::EigOp, ops::EigOpMaker,
 REGISTER_OPERATOR(eig_grad, ops::EigGradOp);
 
 REGISTER_OP_CPU_KERNEL(
-    eig,
-    ops::EigKernel<paddle::platform::CPUDeviceContext, float, complex64, float>,
-    ops::EigKernel<paddle::platform::CPUDeviceContext, double, complex128,
-                   double>,
-    ops::EigKernel<paddle::platform::CPUDeviceContext, complex64, complex64,
-                   float>,
-    ops::EigKernel<paddle::platform::CPUDeviceContext, complex128, complex128,
-                   double>);
+    eig, ops::EigKernel<paddle::platform::CPUDeviceContext, float, complex64>,
+    ops::EigKernel<paddle::platform::CPUDeviceContext, double, complex128>,
+    ops::EigKernel<paddle::platform::CPUDeviceContext, complex64, complex64>,
+    ops::EigKernel<paddle::platform::CPUDeviceContext, complex128, complex128>);
 
 REGISTER_OP_CPU_KERNEL(
     eig_grad,
