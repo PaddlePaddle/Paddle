@@ -72,9 +72,9 @@ class TestReshape2OneDNNOpDimInfer1(TestReshape2OneDNNOp):
 
 class TestReshape2OneDNNOpDimInfer2(TestReshape2OneDNNOp):
     def init_data(self):
-        self.ori_shape = (10, 2, 6)
-        self.new_shape = (10, 0, 3, -1)
-        self.infered_shape = (10, 2, 3, -1)
+        self.ori_shape = (6, 20)
+        self.new_shape = (0, -1, 20)
+        self.actual_shape = (2, 3, 20)
 
     def set_additional_inputs(self):
         self.inputs["Shape"] = np.array(self.actual_shape, dtype="int32")
@@ -84,11 +84,6 @@ class TestReshape2OneDNNOpDimInfer2(TestReshape2OneDNNOp):
             "Out": self.inputs["X"].reshape(self.actual_shape),
             'XShape': np.random.random(self.ori_shape).astype("float32")
         }
-
-    def init_data1(self):
-        self.ori_shape = (6, 20)
-        self.new_shape = (0, -1, 20)
-        self.actual_shape = (2, 3, 20)
 
 
 class TestReshape2OneDNNOp_attr_OnlyShape(TestReshape2OneDNNOp):
@@ -117,6 +112,34 @@ class TestReshape2OneDNNOpDimInfer1_attr_OnlyShape(
         self.new_shape = (5, -1, 10)
         self.infered_shape = (5, -1, 10)
         self.shape = (5, -1, -1)
+
+
+class TestReshape2OneDNNOpDimInfer1_attr_ShapeTensor(TestReshape2OneDNNOp):
+    def set_additional_inputs(self):
+        shape_tensor = []
+        for index, ele in enumerate(self.new_shape):
+            shape_tensor.append(("x" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+
+        self.inputs["ShapeTensor"] = shape_tensor
+
+    def init_data(self):
+        self.ori_shape = (5, 20)
+        self.new_shape = (5, -1, 10)
+        self.infered_shape = (5, -1, 10)
+        self.shape = (5, -1, -1)
+
+
+class TestReshape2OneDNNOpDimInfer1_attr_ShapeTensorAndShape(
+        TestReshape2OneDNNOpDimInfer1_attr_ShapeTensor):
+    def set_additional_inputs(self):
+        shape_tensor = []
+        for index, ele in enumerate(self.new_shape):
+            shape_tensor.append(("x" + str(index), np.ones(
+                (1)).astype('int32') * ele))
+
+        self.inputs["Shape"] = np.array((1, 2, 3, 4), dtype="int32")
+        self.inputs["ShapeTensor"] = shape_tensor
 
 
 class TestReshapeOneDNNOp(TestReshape2OneDNNOp):

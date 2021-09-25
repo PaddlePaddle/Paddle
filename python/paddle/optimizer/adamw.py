@@ -1,4 +1,4 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,8 +16,12 @@ from .optimizer import Optimizer
 from .adam import Adam
 from ..fluid import core
 from ..fluid import framework
+from ..fluid.framework import Variable
 from ..fluid.dygraph import base as imperative_base
+from collections.abc import Callable
 import paddle
+
+_C_ops = core.ops
 
 __all__ = []
 
@@ -45,8 +49,8 @@ class AdamW(Adam):
     Args:
         learning_rate (float|LRScheduler, optional): The learning rate used to update ``Parameter``.
             It can be a float value or a LRScheduler. The default value is 0.001.
-	parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``. \
-	    This parameter is required in dygraph mode. And you can specify different options for \
+        parameters (list|tuple, optional): List/Tuple of ``Tensor`` names to update to minimize ``loss``. \
+            This parameter is required in dygraph mode. And you can specify different options for \
             different parameter groups such as the learning rate, weight decay, etc, \
             then the parameters are list of dict. Note that the learning_rate in paramter groups \
             represents the scale of base learning_rate. \
@@ -60,6 +64,10 @@ class AdamW(Adam):
         epsilon (float, optional): A small float value for numerical stability.
             The default value is 1e-08.
         weight_decay (float|Tensor, optional): The weight decay coefficient, it can be float or Tensor. The default value is 0.01.
+        lr_ratio (function|None, optional): If it is not None, 
+            the learning rate will be updated with layerwise learning rate ratio.
+            Otherwise, the learning rate is the original.
+            Default: None.
         apply_decay_param_fun (function|None, optional): If it is not None,
             only tensors that makes apply_decay_param_fun(Tensor.name)==True
             will be updated with weight decay. It only works when we want to specify tensors.
@@ -137,6 +145,7 @@ class AdamW(Adam):
                  epsilon=1e-8,
                  parameters=None,
                  weight_decay=0.01,
+                 lr_ratio=None,
                  apply_decay_param_fun=None,
                  grad_clip=None,
                  lazy_mode=False,
@@ -160,6 +169,12 @@ class AdamW(Adam):
         self._apply_decay_param_fun = apply_decay_param_fun
         self._coeff = coeff
         self._lr_to_coeff = dict()
+        if lr_ratio is not None:
+            assert isinstance(lr_ratio, Callable)
+            if core.is_compiled_with_xpu() or core.is_compiled_with_npu():
+                raise NotImplementedError(
+                    "'lr_ratio' is unimplemented in XPU and NPU")
+        self._lr_ratio = lr_ratio
 
         super(AdamW, self).__init__(
             learning_rate=learning_rate,
@@ -173,11 +188,27 @@ class AdamW(Adam):
             multi_precision=multi_precision)
         self._default_dict = {'coeff': coeff}
 
+        self.type = "adamw"
+
+        if core.is_compiled_with_xpu():
+            self.type = "adam"
+
+        # Use _auxiliary_vars together with _set_auxiliary_var/_get_auxiliary_var to achieve that.
+        self._auxiliary_vars = dict()
+
+    def _set_auxiliary_var(self, key, val):
+        self._auxiliary_vars[key] = val
+
+    def _get_auxiliary_var(self, key):
+        if key in self._auxiliary_vars:
+            return self._auxiliary_vars[key]
+        else:
+            return None
+
     def _append_decoupled_weight_decay(self, block, param_and_grad):
         """
         Add decoupled weight decay op.
             parameter = parameter - parameter * coeff * lr
-
         Args:
             block: block in which variable is to be created
             param_and_grad: (parameters, gradients) pairs,
@@ -228,8 +259,114 @@ class AdamW(Adam):
                 paddle.fluid.layers.assign(input=scaled_param, output=param)
 
     def _append_optimize_op(self, block, param_and_grad):
-        self._append_decoupled_weight_decay(block, param_and_grad)
-        return super(AdamW, self)._append_optimize_op(block, param_and_grad)
+        if paddle.is_compiled_with_xpu():
+            self._append_decoupled_weight_decay(block, param_and_grad)
+            return super(AdamW, self)._append_optimize_op(block, param_and_grad)
+
+        assert isinstance(block, framework.Block)
+        if isinstance(param_and_grad, dict):
+            param_and_grad = self._update_param_group(param_and_grad)
+        param, grad = param_and_grad
+
+        # Whether we should do weight decay for the parameter.
+        with_decay = True
+        if self._apply_decay_param_fun is not None \
+                and not self._apply_decay_param_fun(param.name):
+            with_decay = False
+
+        moment1 = self._get_accumulator(self._moment1_acc_str,
+                                        param_and_grad[0])
+        moment2 = self._get_accumulator(self._moment2_acc_str,
+                                        param_and_grad[0])
+        beta1_pow_acc = self._get_accumulator(self._beta1_pow_acc_str,
+                                              param_and_grad[0])
+        beta2_pow_acc = self._get_accumulator(self._beta2_pow_acc_str,
+                                              param_and_grad[0])
+        find_master = self._multi_precision and param_and_grad[
+            0].dtype == core.VarDesc.VarType.FP16
+        master_weight = (self._master_weights[param_and_grad[0].name]
+                         if find_master else None)
+        lr = self._create_param_lr(param_and_grad)
+
+        # create the adamw optimize op
+        if framework.in_dygraph_mode():
+            lr_ratio_ = 1. if self._lr_ratio is None else self._lr_ratio(
+                param_and_grad[0])
+
+            _beta1 = self._beta1 if not isinstance(
+                self._beta1, Variable) else self._beta1.numpy().item(0)
+            _beta2 = self._beta2 if not isinstance(
+                self._beta2, Variable) else self._beta2.numpy().item(0)
+
+            _, _, _, _, _, _ = _C_ops.adam(
+                param_and_grad[0], param_and_grad[1], lr, moment1, moment2,
+                beta1_pow_acc, beta2_pow_acc, master_weight, param_and_grad[0],
+                moment1, moment2, beta1_pow_acc, beta2_pow_acc, master_weight,
+                'epsilon', self._epsilon, 'lazy_mode', self._lazy_mode,
+                'min_row_size_to_use_multithread', 1000, 'beta1', _beta1,
+                'beta2', _beta2, 'coeff', self._coeff, 'multi_precision',
+                find_master)
+
+            return None
+
+        inputs = {
+            "Param": [param_and_grad[0]],
+            "Grad": [param_and_grad[1]],
+            "LearningRate": [lr],
+            "Moment1": [moment1],
+            "Moment2": [moment2],
+            "Beta1Pow": [beta1_pow_acc],
+            "Beta2Pow": [beta2_pow_acc],
+        }
+
+        # Pass found_inf to adamw, to skip update for not only param, but also momentum and beta_pow
+        found_inf = self._get_auxiliary_var('found_inf')
+
+        if found_inf:
+            inputs['SkipUpdate'] = found_inf
+
+        outputs = {
+            "ParamOut": [param_and_grad[0]],
+            "Moment1Out": [moment1],
+            "Moment2Out": [moment2],
+            "Beta1PowOut": [beta1_pow_acc],
+            "Beta2PowOut": [beta2_pow_acc],
+        }
+        attrs = {
+            "lazy_mode": self._lazy_mode,
+            "min_row_size_to_use_multithread": 1000,
+            "multi_precision": find_master,
+            "with_decay": with_decay,
+            "coeff": self._coeff,
+            "lr_ratio": 1.
+            if self._lr_ratio is None else self._lr_ratio(param_and_grad[0])
+        }
+
+        if isinstance(self._beta1, Variable):
+            inputs['Beta1Tensor'] = self._beta1
+        else:
+            attrs['beta1'] = self._beta1
+        if isinstance(self._beta2, Variable):
+            inputs['Beta2Tensor'] = self._beta2
+        else:
+            attrs['beta2'] = self._beta2
+        if isinstance(self._epsilon, Variable):
+            inputs['EpsilonTensor'] = self._epsilon
+        else:
+            attrs['epsilon'] = self._epsilon
+
+        if find_master:
+            inputs["MasterParam"] = master_weight
+            outputs["MasterParamOut"] = master_weight
+
+        adamw_op = block.append_op(
+            type=self.type,
+            inputs=inputs,
+            outputs=outputs,
+            attrs=attrs,
+            stop_gradient=True)
+
+        return adamw_op
 
     def _create_optimization_pass(self, parameters_and_grads):
         optimize_ops = super(

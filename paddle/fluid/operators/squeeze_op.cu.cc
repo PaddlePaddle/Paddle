@@ -25,7 +25,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SqueezeKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SqueezeKernel<paddle::platform::CUDADeviceContext, uint8_t>,
     ops::SqueezeKernel<paddle::platform::CUDADeviceContext, int8_t>,
-    ops::SqueezeKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::SqueezeKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::SqueezeKernel<paddle::platform::CUDADeviceContext,
+                       paddle::platform::complex<float>>,
+    ops::SqueezeKernel<paddle::platform::CUDADeviceContext,
+                       paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     squeeze_grad,
     ops::SqueezeGradKernel<paddle::platform::CUDADeviceContext, float>,
@@ -35,7 +39,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::SqueezeGradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::SqueezeGradKernel<paddle::platform::CUDADeviceContext, uint8_t>,
     ops::SqueezeGradKernel<paddle::platform::CUDADeviceContext, int8_t>,
-    ops::SqueezeGradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::SqueezeGradKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::SqueezeGradKernel<paddle::platform::CUDADeviceContext,
+                           paddle::platform::complex<float>>,
+    ops::SqueezeGradKernel<paddle::platform::CUDADeviceContext,
+                           paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     squeeze2, ops::Squeeze2Kernel<paddle::platform::CUDADeviceContext, float>,
     ops::Squeeze2Kernel<paddle::platform::CUDADeviceContext, double>,
@@ -44,7 +52,11 @@ REGISTER_OP_CUDA_KERNEL(
     ops::Squeeze2Kernel<paddle::platform::CUDADeviceContext, int>,
     ops::Squeeze2Kernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::Squeeze2Kernel<paddle::platform::CUDADeviceContext, uint8_t>,
-    ops::Squeeze2Kernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::Squeeze2Kernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::Squeeze2Kernel<paddle::platform::CUDADeviceContext,
+                        paddle::platform::complex<float>>,
+    ops::Squeeze2Kernel<paddle::platform::CUDADeviceContext,
+                        paddle::platform::complex<double>>);
 REGISTER_OP_CUDA_KERNEL(
     squeeze2_grad,
     ops::Squeeze2GradKernel<paddle::platform::CUDADeviceContext, float>,
@@ -54,4 +66,8 @@ REGISTER_OP_CUDA_KERNEL(
     ops::Squeeze2GradKernel<paddle::platform::CUDADeviceContext, int>,
     ops::Squeeze2GradKernel<paddle::platform::CUDADeviceContext, int8_t>,
     ops::Squeeze2GradKernel<paddle::platform::CUDADeviceContext, uint8_t>,
-    ops::Squeeze2GradKernel<paddle::platform::CUDADeviceContext, int64_t>);
+    ops::Squeeze2GradKernel<paddle::platform::CUDADeviceContext, int64_t>,
+    ops::Squeeze2GradKernel<paddle::platform::CUDADeviceContext,
+                            paddle::platform::complex<float>>,
+    ops::Squeeze2GradKernel<paddle::platform::CUDADeviceContext,
+                            paddle::platform::complex<double>>);

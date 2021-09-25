@@ -25,48 +25,27 @@ __global__ void KernelUnpool2dMax(const int nthreads, const T* input_data,
                                   const int channels, T* output_data,
                                   const int output_height,
                                   const int output_width) {
-  int in_n_stride = input_height * input_width * channels;
-  int in_c_stride = input_height * input_width;
-  int out_n_stride = output_height * output_width * channels;
-  int out_c_stride = output_height * output_width;
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  int offset = blockDim.x * gridDim.x;
-  for (int i = index; i < nthreads; i += offset) {
-    int bidx = i / in_n_stride;
-    int boffset = i % in_n_stride;
-    int cidx = boffset / in_c_stride;
-    int out_offset = bidx * out_n_stride + cidx * out_c_stride;
-    int out_index = indices_data[i];
-    PADDLE_ENFORCE(out_index < out_c_stride,
-                   "out_index < out_c_stride. Expected %ld < %ld, but got "
-                   "%ld >= %ld. Please check input value.",
-                   out_index, out_c_stride, out_index, out_c_stride);
-    output_data[out_offset + out_index] = input_data[i];
+  CUDA_KERNEL_LOOP(linearIndex, nthreads) {
+    int c = (linearIndex / input_width / input_height) % channels;
+    int n = linearIndex / input_width / input_height / channels;
+    output_data += (n * channels + c) * output_height * output_width;
+    int maxind = indices_data[linearIndex];
+    output_data[maxind] = input_data[linearIndex];
   }
 }
+
 template <typename T>
 __global__ void KernelUnpool2dMaxGrad(
     const int nthreads, const T* input_data, const int* indices_data,
     const int input_height, const int input_width, const int channels,
     const T* output_data, const T* output_grad, const int output_height,
     const int output_width, T* input_grad) {
-  int in_n_stride = input_height * input_width * channels;
-  int in_c_stride = input_height * input_width;
-  int out_n_stride = output_height * output_width * channels;
-  int out_c_stride = output_height * output_width;
-  int index = blockIdx.x * blockDim.x + threadIdx.x;
-  int offset = blockDim.x * gridDim.x;
-  for (int i = index; i < nthreads; i += offset) {
-    int bidx = i / in_n_stride;
-    int boffset = i % in_n_stride;
-    int cidx = boffset / in_c_stride;
-    int out_offset = bidx * out_n_stride + cidx * out_c_stride;
-    int out_index = indices_data[i];
-    PADDLE_ENFORCE(out_index < out_c_stride,
-                   "out_index < out_c_stride. Expected %ld < %ld, but got "
-                   "%ld >= %ld. Please check input value.",
-                   out_index, out_c_stride, out_index, out_c_stride);
-    input_grad[i] = output_grad[out_offset + out_index];
+  CUDA_KERNEL_LOOP(linearIndex, nthreads) {
+    int c = (linearIndex / input_width / input_height) % channels;
+    int n = linearIndex / input_width / input_height / channels;
+    output_grad += (n * channels + c) * output_height * output_width;
+    int maxind = indices_data[linearIndex];
+    input_grad[linearIndex] = output_grad[maxind];
   }
 }
 /*

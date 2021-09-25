@@ -133,6 +133,8 @@ _op_real_in_out_name = {
     "pad2d": [["X"], ["Out"]],
     "flatten": [["X"], ["Out"]],
     "flatten2": [["X"], ["Out"]],
+    "unsqueeze2": [["X"], ["Out"]],
+    "flatten_contiguous_range": [['X'], ["Out", "XShape"]],
 }
 
 _conv_ops = ['conv2d', 'depthwise_conv2d', 'conv2d_transpose']
@@ -440,9 +442,11 @@ class QuantizationTransformPass(object):
 
             if user_skipped:
                 op_node.op()._set_attr("skip_quant", True)
+                op_node.op()._set_attr("with_quant_attr", True)
 
         def _transform_forward(graph, op):
             op.op()._set_attr("quantization_type", "qat_with_weight")
+            op.op()._set_attr("with_quant_attr", True)
             inputs = op.inputs
             for var_node in inputs:
                 if var_node.name() not in op.input_arg_names():
@@ -1273,12 +1277,17 @@ class QuantizationFreezePass(object):
             var_type=output_var_node.type(),
             shape=output_var_node.shape(),
             var_dtype=output_var_node.dtype())
+        if op_node.op().has_attr("x_num_col_dims"):
+            x_num_col_dims = op_node.op().attr("x_num_col_dims")
+        else:
+            x_num_col_dims = 1
         dequant_op_node = graph.create_op_node(
             op_type='fake_channel_wise_dequantize_max_abs',
             attrs={
                 'quant_bits': [self._weight_bits, self._activation_bits],
                 'quant_axis': quant_axis,
-                'op_role': core.op_proto_and_checker_maker.OpRole.Forward
+                'op_role': core.op_proto_and_checker_maker.OpRole.Forward,
+                'x_num_col_dims': x_num_col_dims
             },
             inputs={
                 'X': output_var_node,
@@ -1753,6 +1762,7 @@ class OutScaleForInferencePass(object):
                         var_name + " is not the output of the op"
                     op_node.op()._set_attr(argname_index[0] + str(argname_index[1]) \
                         + "_threshold", float(scale_value))
+                    op_node.op()._set_attr("with_quant_attr", True)
         graph.resolve_hazard()
         return graph
 
@@ -1868,6 +1878,7 @@ class AddQuantDequantPass(object):
                 op_node.op()._set_attr("quantization_type",
                                        "qat_without_weight")
                 op_node.op()._set_attr("activation_bits", self._quant_bits)
+                op_node.op()._set_attr("with_quant_attr", True)
                 arg_names = _get_op_input_var_names(op_node)
                 for arg_name in arg_names:
                     in_node = graph._find_node_by_name(op_node.inputs, arg_name)

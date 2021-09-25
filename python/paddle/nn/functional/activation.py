@@ -1329,3 +1329,78 @@ def glu(x, axis=-1, name=None):
     gate = sigmoid(b, name=name)
     out = paddle.multiply(a, gate, name=name)
     return out
+
+
+def gumbel_softmax(x, temperature=1.0, hard=False, axis=-1, name=None):
+    r"""
+    Samples from the Gumbel-Softmax distribution and optionally discretizes.
+    temperature is denoted by t. The calculation process is as follows:
+
+    First, generate gumbel noise:
+
+    .. math::
+
+        G_i = -log(-log(U_i)), U_i \sim U(0,1)
+
+    Second, add noise to ``x``:
+
+    .. math::
+
+        v = [x_1 + G_1,...,x_n + G_n]
+
+    Finally, calculate gumbel_softmax and generate samples:
+
+    .. math::
+        gumbel\_softmax(v_i)=\frac{e^{v_i/t}}{\sum_{j=1}^n{e^{v_j/t}}},i=1,2,3...n
+
+    Parameters:
+        x (Tensor): An N-D Tensor, the first N - 1 dimensions index into a batch 
+            of independent distributions and the last dimension represents 
+            a vector of probabilities with datatype float32, float64.
+        temperature (float, optional): non-negative scalar temperature.
+            Default is 1.0.
+        hard (bool, optional): if True, the returned samples will be discretized as 
+            one-hot vectors, but will be differentiated as if it is the soft sample 
+            in autograd. Default is False.
+        axis (int, optional): The axis along will be calculated softmax value. 
+            Default is -1.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Sampled tensor of same shape as ``x`` from the Gumbel-Softmax distribution. 
+        If ``hard = True``, the returned samples will be one-hot, otherwise they will be 
+        probability distributions that sum to 1 across ``axis``.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.nn.functional as F
+
+            logits = paddle.randn([4, 6])
+            temperature = 0.01
+            gumbel_softmax = F.gumbel_softmax(logits, temperature)
+            print(gumbel_softmax)
+            # out's value is as follows:
+            # [[0.00000001, 1.        , 0.00000000, 0.00000000, 0.00000006, 0.00000000],
+            # [0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 1.        ],
+            # [0.00000062, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.99999940],
+            # [0.00000000, 0.00000000, 0.00000000, 0.00001258, 0.99998736, 0.00000000]]
+        
+    """
+    if in_dygraph_mode():
+        return _C_ops.gumbel_softmax(x, 'temperature', temperature, 'hard',
+                                     hard, 'axis', axis)
+
+    helper = LayerHelper("gumbel_softmax", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'gumbel_softmax')
+    out = helper.create_variable_for_type_inference(x.dtype)
+    helper.append_op(
+        type='gumbel_softmax',
+        inputs={'X': x},
+        outputs={'Out': out},
+        attrs={'temperature': temperature,
+               'hard': hard,
+               'axis': axis})
+    return out

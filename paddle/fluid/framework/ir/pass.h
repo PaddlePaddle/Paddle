@@ -65,8 +65,6 @@ class Pass {
 
   Graph *Apply(Graph *graph) const;
 
-  void Apply(ProgramDesc *main_program, ProgramDesc *startup_program) const;
-
   // Get a reference to the attributed previously set.
   template <typename AttrType>
   AttrType &Get(const std::string &attr_name) const {
@@ -142,6 +140,12 @@ class Pass {
     attrs_[attr_name] = attr;
   }
 
+  static void ApplyPassesToProgram(const std::vector<const Pass *> &passes,
+                                   ProgramDesc *main_program,
+                                   ProgramDesc *startup_program);
+
+  virtual bool SupportApplyProgramViaGraph() const { return true; }
+
  protected:
   virtual void ApplyImpl(Graph *graph) const {
     PADDLE_THROW(platform::errors::Unimplemented(
@@ -151,8 +155,8 @@ class Pass {
   virtual void ApplyImpl(ProgramDesc *main_program,
                          ProgramDesc *startup_program) const;
 
-  static void MergePrograms(ProgramDesc *dst, const details::ProgramDescs &srcs,
-                            bool append);
+  static void ConvertToPrograms(ir::Graph *graph, ProgramDesc *main_program,
+                                ProgramDesc *startup_program);
 
   // Some Pass must be placed before this Pass, and some
   // Pass must be placed after this Pass.

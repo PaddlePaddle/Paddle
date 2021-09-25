@@ -119,6 +119,7 @@ REGISTER_OPERATOR(cast, ops::CastOp,
 REGISTER_OP_CPU_KERNEL(
     cast, ops::CastOpKernel<CPU, float>, ops::CastOpKernel<CPU, double>,
     ops::CastOpKernel<CPU, int>, ops::CastOpKernel<CPU, int64_t>,
+    ops::CastOpKernel<CPU, int>, ops::CastOpKernel<CPU, int16_t>,
     ops::CastOpKernel<CPU, bool>, ops::CastOpKernel<CPU, uint8_t>,
     ops::CastOpKernel<CPU, paddle::platform::float16>,
     ops::CastOpKernel<CPU, paddle::platform::bfloat16>,
