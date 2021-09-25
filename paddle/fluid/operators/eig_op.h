@@ -94,14 +94,14 @@ void TransposeTwoAxis(const Tensor& input, Tensor* transposed_input,
 // Apply eig to a batch of matrices, values, vectors and (intermidiate
 // tensor) info are overritten
 template <typename T, typename Tout, typename Tbase>
-void LapackEig(Tensor& input, Tensor* values, Tensor* vectors, int info,
+void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
                const framework::ExecutionContext& context) {
   char jobvl = 'N';
   char jobvr = 'V';  // only right eigenvectors are computed
-  int num_dims = input.dims().size();
-  int order = input.dims()[num_dims - 1];
+  int num_dims = input->dims().size();
+  int order = input->dims()[num_dims - 1];
 
-  T* input_data = input.data<T>();
+  T* input_data = input->data<T>();
   int lda = std::max<int>(1, order);
   T* values_data = values->mutable_data<T>(context.GetPlace());
   T* lvector_data = nullptr;
@@ -110,8 +110,8 @@ void LapackEig(Tensor& input, Tensor* values, Tensor* vectors, int info,
   int ldvr = lda;
   int lwork = -1;
 
-  int batch_count = BatchCount(input);
-  int matrix_stride = MatrixStride(input);
+  int batch_count = BatchCount(*input);
+  int matrix_stride = MatrixStride(*input);
   int values_stride = values->dims()[values->dims().size() - 1];
 
   Tensor rwork;
@@ -167,7 +167,7 @@ void ApplyEigKernel(const Tensor& input, Tensor* values, Tensor* vectors,
   // make sure 'vectors_row_major' holds memory before passed to
   // LapackEig()
   vectors_row_major.Resize(input.dims());
-  LapackEig<T, Tout, Tbase>(input_column_major, values, &vectors_row_major,
+  LapackEig<T, Tout, Tbase>(&input_column_major, values, &vectors_row_major,
                             info, context);
 
   // transfer column-major layout back
@@ -178,8 +178,8 @@ void ApplyEigKernel(const Tensor& input, Tensor* values, Tensor* vectors,
 }
 
 template <typename T, typename Tout>
-void ConstructComplexValues(Tensor* c_values, Tensor& real_part,
-                            Tensor& imag_part,
+void ConstructComplexValues(Tensor* c_values, const Tensor& real_part,
+                            const Tensor& imag_part,
                             const framework::ExecutionContext& ctx,
                             int batch_count, int order) {
   auto* c_values_data = c_values->mutable_data<Tout>(ctx.GetPlace());
@@ -195,14 +195,14 @@ void ConstructComplexValues(Tensor* c_values, Tensor& real_part,
 }
 
 template <typename T, typename Tout>
-void ConstructComplexVectors(Tensor* c_vectors, Tensor& c_values,
-                             Tensor& r_vectors,
+void ConstructComplexVectors(Tensor* c_vectors, const Tensor& c_values,
+                             const Tensor& r_vectors,
                              const framework::ExecutionContext& ctx,
                              int batch_count, int order) {
   int matrix_stride = MatrixStride(r_vectors);
 
   auto* c_vectors_data = c_vectors->mutable_data<Tout>(ctx.GetPlace());
-  auto* c_values_data = c_values.mutable_data<Tout>(ctx.GetPlace());
+  auto* c_values_data = c_values.data<Tout>();
   auto* r_v_data = r_vectors.data<T>();
 
   for (int b = 0; b < batch_count; b++) {
@@ -294,8 +294,9 @@ class EigKernel : public framework::OpKernel<T> {
 
 template <typename DeviceContext, typename Tout>
 void ComputeBackwardForComplexInput(
-    Tensor& V, Tensor& L, Tensor& gL, Tensor& gV, Tout* x_grad_data,
-    int batch_count, int order, const framework::ExecutionContext& context) {
+    const Tensor& V, const Tensor& L, const Tensor& gL, const Tensor& gV,
+    Tout* x_grad_data, int batch_count, int order,
+    const framework::ExecutionContext& context) {
   auto dito =
       math::DeviceIndependenceTensorOperations<DeviceContext, Tout, Tout>(
           context);
@@ -348,12 +349,10 @@ template <typename DeviceContext, typename T, typename Tout>
 class EigGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto& L = const_cast<Tensor&>(*context.Input<Tensor>("Eigenvalues"));
-    auto& V = const_cast<Tensor&>(*context.Input<Tensor>("Eigenvectors"));
-    auto& gL = const_cast<Tensor&>(
-        *context.Input<Tensor>(framework::GradVarName("Eigenvalues")));
-    auto& gV = const_cast<Tensor&>(
-        *context.Input<Tensor>(framework::GradVarName("Eigenvectors")));
+    auto& L = *context.Input<Tensor>("Eigenvalues");
+    auto& V = *context.Input<Tensor>("Eigenvectors");
+    auto& gL = *context.Input<Tensor>(framework::GradVarName("Eigenvalues"));
+    auto& gV = *context.Input<Tensor>(framework::GradVarName("Eigenvectors"));
 
     auto& x_grad = *context.Output<Tensor>(framework::GradVarName("X"));
     auto* x_grad_data = x_grad.mutable_data<Tout>(context.GetPlace());
