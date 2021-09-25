@@ -9,12 +9,19 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/arg_min_max_op_base.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/gather.cu.h"
 #include "paddle/fluid/operators/transpose_op.cu.h"
 #include "paddle/fluid/operators/viterbi_decode_op.h"
+
+#ifdef __NVCC__
+#include "cub/cub.cuh"
+#endif
+#ifdef __HIPCC__
+#include <hipcub/hipcub.hpp>
+namespace cub = hipcub;
+#endif
 
 namespace paddle {
 namespace operators {
@@ -92,9 +99,7 @@ __global__ void ARange(T* data, int end, T scale) {
 }
 
 int64_t ComputeBlockSize(int64_t col) {
-  if (col > 128)
-    return 256;
-  else if (col > 64)
+  if (col > 64)
     return 128;
   else if (col > 32)
     return 64;
@@ -146,7 +151,6 @@ struct CUDAArgmax {
       FIX_BLOCKDIM_CASE(32);
       FIX_BLOCKDIM_CASE(64);
       FIX_BLOCKDIM_CASE(128);
-      FIX_BLOCKDIM_CASE(256);
     }
   }
 };

@@ -14,14 +14,11 @@ limitations under the License. */
 #include <memory>
 #include <string>
 #include <vector>
-#include "paddle/fluid/operators/cast_op.h"
 #include "paddle/fluid/operators/controlflow/compare_op.h"
+#include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/gather.h"
-#include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/operators/math/concat_and_split.h"
-#include "paddle/fluid/operators/math/functors.h"
-#include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/operators/transpose_op.h"
 #include "paddle/fluid/operators/unique_op.h"
 #ifdef PADDLE_WITH_MKLML
@@ -173,13 +170,6 @@ void SameDimsBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
 #define SAME_DIMS_OP(lhs, rhs, output, functor_type, dtype) \
   SameDimsBinaryOP<dtype, functor_type##Functor<dtype>>(lhs, rhs, &output)
 
-template <typename T>
-void GetStrides(const std::vector<T>& dims, std::vector<T>* strides) {
-  for (int i = static_cast<int>(dims.size()) - 2; i >= 0; --i) {
-    (*strides)[i] = (*strides)[i + 1] * dims[i + 1];
-  }
-}
-
 template <typename T, typename Functor>
 void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out,
                              bool is_multi_threads = false) {
@@ -196,9 +186,12 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out,
   std::vector<int> output_strides(out_size, 1);
   std::vector<int> lhs_strides(out_size, 1);
   std::vector<int> rhs_strides(out_size, 1);
-  GetStrides(out_dims, &output_strides);
-  GetStrides(lhs_dims, &lhs_strides);
-  GetStrides(rhs_dims, &rhs_strides);
+  // calculate strides
+  for (int i = out_size - 2; i >= 0; --i) {
+    output_strides[i] = output_strides[i + 1] * out_dims[i + 1];
+    lhs_strides[i] = lhs_strides[i + 1] * lhs_dims[i + 1];
+    rhs_strides[i] = rhs_strides[i + 1] * rhs_dims[i + 1];
+  }
   Functor functor;
   if (is_multi_threads) {
 #ifdef PADDLE_WITH_MKLML
