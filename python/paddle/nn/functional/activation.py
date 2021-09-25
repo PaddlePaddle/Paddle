@@ -60,8 +60,7 @@ def celu(x, alpha=1.0, name=None):
             #  [ 1.        , 15.60000038]]
     """
 
-    check_variable_and_dtype(x, 'input', ['float16', 'float32', 'float64'],
-                             "celu")
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'], "celu")
     if alpha == 0:
         raise ZeroDivisionError("alpha cannot be 0 for celu")
     out = relu(
