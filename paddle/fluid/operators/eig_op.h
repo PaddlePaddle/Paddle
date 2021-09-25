@@ -256,7 +256,7 @@ class EigKernel : public framework::OpKernel<T> {
 
       real_values.mutable_data<Tbase>(big_dim, context.GetPlace());
       real_vectors.mutable_data<Tbase>(x->dims(), context.GetPlace());
-      int info;
+      int info = 0;
       ApplyEigKernel<DeviceContext, Tbase, Tout, Tbase>(
           *x, &real_values, &real_vectors, info, context);
       auto dito =
@@ -285,7 +285,7 @@ class EigKernel : public framework::OpKernel<T> {
       out_values->mutable_data<T>(context.GetPlace());
       out_vectors->mutable_data<T>(context.GetPlace());
 
-      int info;
+      int info = 0;
       ApplyEigKernel<DeviceContext, T, Tout, Tbase>(*x, out_values, out_vectors,
                                                     info, context);
     }
