@@ -71,6 +71,18 @@ class TestVisonModels(unittest.TestCase):
     def test_resnet152(self):
         self.models_infer('resnet152')
 
+    def test_densenet121(self):
+        self.models_infer("densenet121")
+
+    def test_densenet161(self):
+        self.models_infer("densenet161")
+
+    def test_densenet169(self):
+        self.models_infer("densenet169")
+
+    def test_densenet201(self):
+        self.models_infer("densenet201")
+
     def test_vgg16_num_classes(self):
         vgg16 = models.__dict__['vgg16'](pretrained=False, num_classes=10)
 

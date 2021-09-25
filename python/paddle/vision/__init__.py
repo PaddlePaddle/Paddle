@@ -43,6 +43,11 @@ from .models import vgg11  # noqa: F401
 from .models import vgg13  # noqa: F401
 from .models import vgg16  # noqa: F401
 from .models import vgg19  # noqa: F401
+from .models import DenseNet  # noqa: F401
+from .models import densenet121  # noqa: F401
+from .models import densenet161  # noqa: F401
+from .models import densenet169  # noqa: F401
+from .models import densenet201  # noqa: F401
 from .models import LeNet  # noqa: F401
 from .transforms import BaseTransform  # noqa: F401
 from .transforms import Compose  # noqa: F401
