@@ -15,7 +15,7 @@
 from ...fluid.layers import sigmoid  # noqa: F401
 from ...tensor.math import exp, tanh  # noqa: F401
 from ...tensor.math import tanh_  # noqa: F401
-from ...tensor.search import where
+from ...tensor.search import where  # noqa: F401
 
 from ...fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 from ...tensor.manipulation import chunk
@@ -68,8 +68,8 @@ def celu(x, alpha=1.0, name=None):
     out = relu(
         x, name=name) + where(
             mid_data >= 0,
-            paddle.to_tensor(
-                0, dtype=mid_data.dtype),
+            paddle.zeros(
+                (1, ), dtype=mid_data.dtype),
             mid_data,
             name=name)
     return out
