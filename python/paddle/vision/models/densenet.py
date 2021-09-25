@@ -17,7 +17,7 @@ import paddle.nn as nn
 
 from paddle.utils.download import get_weights_path_from_url
 
-__all__ = ['DenseNet121','DenseNet161','DenseNet169','DenseNet201']
+__all__ = ['densenet121','densenet161','densenet169','densenet201']
 
 model_urls = {
   'DenseNet121':(''),
@@ -104,28 +104,28 @@ def _DenseNet(arch, block_cfg, batch_norm, pretrained, **kwargs):
     return model
 
 
-def DenseNet121(pretrained=False, batch_norm=False, **kwargs):
+def densenet121(pretrained=False, batch_norm=False, **kwargs):
     model_name = 'DenseNet121'
     if batch_norm:
         model_name += ('_bn')
     return _DenseNet(model_name, (6,12,24,16), batch_norm, pretrained, **kwargs)
 
 
-def DenseNet161(pretrained=False, batch_norm=False, **kwargs):
+def densenet161(pretrained=False, batch_norm=False, **kwargs):
     model_name = 'DenseNet161'
     if batch_norm:
         model_name += ('_bn')
     return _DenseNet(model_name, (6,12,32,32), batch_norm, pretrained, **kwargs)
 
 
-def DenseNet169(pretrained=False, batch_norm=False, **kwargs):
+def densenet169(pretrained=False, batch_norm=False, **kwargs):
     model_name = 'DenseNet169'
     if batch_norm:
         model_name += ('_bn')
     return _DenseNet(model_name, (6,12,48,32), batch_norm, pretrained, **kwargs)
 
 
-def DenseNet201(pretrained=False, batch_norm=False, **kwargs):
+def densenet201(pretrained=False, batch_norm=False, **kwargs):
     model_name = 'DenseNet201'
     if batch_norm:
         model_name += ('_bn')
