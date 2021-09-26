@@ -45,7 +45,7 @@ def _stack_tensor_or_return_none(origin_list):
 def jacobian(func, inputs, create_graph=False, allow_unused=False):
     ''' 
     .. note::
-        **This API is ONLY available in Dygraph mode.**
+        **This API is ONLY available in imperative mode.**
 
     This API computes the Jacobian matrix of `func` with respect to `inputs`.
 
@@ -71,10 +71,10 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
         be a tuple of Tensors. If both of inputs and outputs are Tensor
         list/tuple, then the Jacobian will be a tuple of tuple of Tensors
         where ``Jacobian[i][j]`` will contain the Jacobian matrix of the
-        ``i``th output and ``j``th input and will have as size the
-        concatenation of the sizes of the corresponding output and the
-        corresponding input and will have same dtype and device as the
-        corresponding input.
+        linearized ``i``th output and ``j``th input and will have same
+        dtype and device as the corresponding input. ``Jacobian[i][j]`` will
+        have as size ``m * n``, where ``m`` and ``n`` denote the numbers of
+        elements of ``i``th output and ``j``th input respectively.
     '''
     inputs = _check_tensors(inputs, "inputs")
     outputs = _check_tensors(func(*inputs), "outputs")
