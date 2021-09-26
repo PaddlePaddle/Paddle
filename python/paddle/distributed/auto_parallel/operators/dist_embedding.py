@@ -24,6 +24,7 @@ from ..utils import is_valid_list_index
 from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
+from ..attribute import OperatorDistributedAttribute
 from paddle.fluid import core, unique_name
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
@@ -49,7 +50,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         super(DistributedEmbeddingImpl, self).__init__()
         self._name = name
         self._forward_implemented = True
-        self._backward_implemented = False
+        self._backward_implemented = True
 
     def is_process_mesh_compatible(self, op_dist_attr):
         """ No restriction for now. """
@@ -108,10 +109,14 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         """
         kwargs: inputname_mapping & outputname_mapping
         """
-        dst_block = ctx.get_dst_main_program().global_block()
-        src_op = ctx.get_cur_src_op()
-        rank_id = ctx.get_rank_id()
-        op_dist_attr = ctx.get_cur_dist_attr()
+
+        dist_op_helper = ctx.get_dist_op_helper()
+        dst_block = dist_op_helper.get_dst_main_program().global_block()
+        src_op = dist_op_helper.get_cur_src_op()
+        rank_id = dist_op_helper.get_rank_id()
+        op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
+        assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
+            str(src_op))
 
         # check validation of inputs / outputs 
         assert 'Ids' in kwargs, "input [{}] is not given".format('Ids')
@@ -212,11 +217,13 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
     def backward(ctx, *args, **kwargs):
 
         # by now the backward function only insert the gradient allreduce for dist op itself
-
-        dst_block = ctx.get_dst_main_program().global_block()
-        backward_op = ctx.get_cur_src_op()
-        dist_attr = ctx.get_cur_dist_attr()
-        rank_id = ctx.get_rank_id()
+        dist_op_helper = ctx.get_dist_op_helper()
+        dst_block = dist_op_helper.get_dst_main_program().global_block()
+        backward_op = dist_op_helper.get_cur_src_op()
+        rank_id = dist_op_helper.get_rank_id()
+        dist_attr = ctx.get_op_distributed_attr_for_program(backward_op)
+        assert dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
+            str(backward_op))
 
         # check if need gradient allreduce
         need_gradient_allreduce = False
@@ -258,7 +265,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
 
         if need_gradient_allreduce:
             W_Grad_var = dst_block.var(kwargs['W@GRAD'][0])
-            dst_block.append_op(
+            allreduce_op = dst_block.append_op(
                 type='c_allreduce_sum',
                 inputs={'X': [W_Grad_var]},
                 outputs={'Out': [W_Grad_var]},
@@ -267,13 +274,23 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                     'use_calc_stream': True,
                     OP_ROLE_KEY: OpRole.Backward
                 })
-            dst_block.append_op(
+            scale_op = dst_block.append_op(
                 type='scale',
                 inputs={'X': W_Grad_var},
                 outputs={'Out': W_Grad_var},
                 attrs={'scale': 1.0 / dp_degree,
                        OP_ROLE_KEY: OpRole.Backward})
             dst_block._sync_with_cpp()
+
+            dims_mapping = ctx.get_tensor_distributed_attr_for_program(
+                W_Grad_var).get_dims_mapping()
+            process_mesh = dist_attr.get_process_mesh()
+            for op in [allreduce_op, scale_op]:
+                op_attr = OperatorDistributedAttribute(op, ctx)
+                op_attr.set_process_mesh(process_mesh)
+                op_attr.set_output_dims_mapping(W_Grad_var.name, dims_mapping)
+                op_attr.set_input_dims_mapping(W_Grad_var.name, dims_mapping)
+                ctx.set_op_distributed_attr_for_program(op, op_attr)
 
 
 register_distributed_operator_impl("lookup_table_v2",

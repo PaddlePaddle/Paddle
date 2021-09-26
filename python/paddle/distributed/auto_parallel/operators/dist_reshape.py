@@ -103,10 +103,13 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         kwargs: inputname_mapping & outputname_mapping
         """
 
-        dst_block = ctx.get_dst_main_program().global_block()
-        src_op = ctx.get_cur_src_op()
-        rank_id = ctx.get_rank_id()
-        op_dist_attr = ctx.get_cur_dist_attr()
+        dist_op_helper = ctx.get_dist_op_helper()
+        dst_block = dist_op_helper.get_dst_main_program().global_block()
+        src_op = dist_op_helper.get_cur_src_op()
+        rank_id = dist_op_helper.get_rank_id()
+        op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
+        assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
+            str(src_op))
 
         # check validation of inputs / outputs 
         for input_name in src_op.desc.input_names():
@@ -227,10 +230,14 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         """
         kwargs: inputname_mapping & outputname_mapping
         """
-        dst_block = ctx.get_dst_main_program().global_block()
-        src_op = ctx.get_cur_src_op()
-        rank_id = ctx.get_rank_id()
-        op_dist_attr = ctx.get_cur_dist_attr()
+
+        dist_op_helper = ctx.get_dist_op_helper()
+        dst_block = dist_op_helper.get_dst_main_program().global_block()
+        src_op = dist_op_helper.get_cur_src_op()
+        rank_id = dist_op_helper.get_rank_id()
+        op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
+        assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
+            str(src_op))
 
         # check validation of inputs / outputs 
         for input_name in src_op.desc.input_names():

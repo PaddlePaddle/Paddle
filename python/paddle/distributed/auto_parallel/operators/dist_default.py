@@ -22,6 +22,7 @@ from ..utils import is_valid_list_index
 from ..utils import compute_compatible_dim_mapping
 from ..utils import compute_compatible_dims_mapping
 from ..utils import compute_compatible_and_update_dim_mapping
+from ..attribute import OperatorDistributedAttribute
 from paddle.fluid import core, unique_name
 from paddle.fluid.framework import in_dygraph_mode
 from paddle.fluid.framework import Program, Parameter, Variable, program_guard
@@ -63,9 +64,10 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
     @staticmethod
     def forward(ctx, *args, **kwargs):
 
-        dst_block = ctx.get_dst_main_program().global_block()
-        src_op = ctx.get_cur_src_op()
-        varname_mapping = ctx.get_varname_mapping()
+        dist_op_helper = ctx.get_dist_op_helper()
+        dst_block = dist_op_helper.get_dst_main_program().global_block()
+        src_op = dist_op_helper.get_cur_src_op()
+        varname_mapping = dist_op_helper.get_varname_mapping()
 
         # check validation of inputs / outputs 
         for input_name in src_op.desc.input_names():
@@ -96,12 +98,14 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
     def backward(ctx, *args, **kwargs):
 
         # by now the backward function only insert the gradient allreduce for dist op itself
+        dist_op_helper = ctx.get_dist_op_helper()
+        dst_block = dist_op_helper.get_dst_main_program().global_block()
+        backward_op = dist_op_helper.get_cur_src_op()
+        dist_attr = ctx.get_op_distributed_attr_for_program(backward_op)
+        assert dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
+            str(backward_op))
+        rank_id = dist_op_helper.get_rank_id()
 
-        dst_block = ctx.get_dst_main_program().global_block()
-        backward_op = ctx.get_cur_src_op()
-        dist_attr = ctx.get_cur_dist_attr()
-        rank_id = ctx.get_rank_id()
-        dist_context = ctx.get_dist_context()
         # check if need gradient allreduce
         # if there is a non-gradient & non-parameter input and its batch dimension is splited, 
         # we need insert gradient allreduce for the gradient of parameter in its output
@@ -171,18 +175,17 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                             OP_ROLE_KEY: OpRole.Backward
                         })
 
-                    dims_mapping = dist_context.get_tensor_distributed_attr_for_program(
+                    dims_mapping = ctx.get_tensor_distributed_attr_for_program(
                         grad_var).get_dims_mapping()
                     process_mesh = dist_attr.get_process_mesh()
                     for op in [allreduce_op, scale_op]:
-                        op_attr = OperatorDistributedAttribute(op, dist_context)
+                        op_attr = OperatorDistributedAttribute(op, ctx)
                         op_attr.set_process_mesh(process_mesh)
                         op_attr.set_output_dims_mapping(grad_var.name,
                                                         dims_mapping)
                         op_attr.set_input_dims_mapping(grad_var.name,
                                                        dims_mapping)
-                        dist_context.set_op_distributed_attr_for_program(
-                            op, op_attr)
+                        ctx.set_op_distributed_attr_for_program(op, op_attr)
 
                 dst_block._sync_with_cpp()
 
