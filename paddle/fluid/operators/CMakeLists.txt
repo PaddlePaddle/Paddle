@@ -17,6 +17,7 @@ add_subdirectory(metrics)
 add_subdirectory(optimizers)
 add_subdirectory(reduce_ops)
 add_subdirectory(sequence_ops)
+add_subdirectory(string)
 add_subdirectory(jit)
 if(WITH_MKLDNN)
     add_subdirectory(mkldnn)
@@ -79,10 +80,9 @@ if(WITH_UNITY_BUILD)
 endif()
 
 register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op load_combine_op lstm_op run_program_op eye_op 
-        recurrent_op tokenizer_op save_combine_op sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
+        recurrent_op save_combine_op sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
 op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS})
-op_library(tokenizer_op SRCS tokenizer_op.cc DEPS ${OP_HEADER_DEPS} utf8proc string_array)
 op_library(save_combine_op DEPS string_array)
 op_library(load_combine_op DEPS string_array)
 
