@@ -225,7 +225,6 @@ tensor_method_func  = [ #noqa
            'matmul',
            'dot',
            'norm',
-           'cond',
            'transpose',
            'dist',
            't',
