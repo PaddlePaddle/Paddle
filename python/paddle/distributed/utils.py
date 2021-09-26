@@ -815,11 +815,11 @@ def watch_local_trainers(procs, nranks):
 
 def prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
     """
-    prune gate by capacity(CUDA)
+    prune gate by capacity(only support CUDA)
 
     Args:
         gate_idx (Tensor): Represents the gate_id sequence corresponding to the input data with type int32, int64.
-        expert_count (Tensor): The quantity value counted on the gate_id sequence of the input data with type int32.
+        expert_count (Tensor): The quantity value counted on the gate_id sequence of the input data with type int32, int64.
         n_expert(int，optional): The number of Experts on each worker with type int64.
         n_worker(int，optional): The number of workers on the trainer with type int64.
   
@@ -837,7 +837,7 @@ def prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
             new_gate_id = paddle.distributed.utils.prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker)
             print(new_gate_id)
             # Tensor(shape=[8], dtype=int32, place=CUDAPlace(0), stop_gradient=True,
-                [1, 3, 3, 3, -1, 2, 1, 1])
+              [1, 3, 3, 3, -1, 2, 1, 1])
     """
 
     from paddle.common_ops_import import in_dygraph_mode, check_variable_and_dtype, LayerHelper
@@ -845,10 +845,10 @@ def prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
 
     if in_dygraph_mode():
         return _C_ops.prune_gate_by_capacity(gate_idx, expert_count, "n_expert",
-                                             n_expert, "n_worker", n_worker)
+                                             n_expert, "n_worker", n_worker)[0]
     check_variable_and_dtype(gate_idx, 'GateIdx', ['int32', 'int64'],
                              'paddle.distributed.utils.prune_gate_by_capacity')
-    check_variable_and_dtype(expert_count, 'ExpertCount', ['int32'],
+    check_variable_and_dtype(expert_count, 'ExpertCount', ['int32', 'int64'],
                              'paddle.distributed.utils.prune_gate_by_capacity')
 
     helper = LayerHelper('prune_gate_by_capacity', **locals())
