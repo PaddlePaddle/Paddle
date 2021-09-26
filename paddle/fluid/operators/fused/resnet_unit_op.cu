@@ -319,6 +319,15 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
                           saved_invstd_z_ptr, dconv_out_z_ptr, nullptr,
                           dscale_z_ptr, dbias_z_ptr, eps);
       // 1.3 conv backward for z, get dinput_z and dfilter_z
+      std::shared_ptr<CudnnNormConvolutionOp<T>> conv_z_op(
+          new CudnnNormConvolutionOp<T>());
+
+      auto input_z_shape = framework::vectorize<int>(input_z->dims());
+      auto filter_z_shape = framework::vectorize<int>(filter_z->dims());
+      conv_z_op->Init(dev_ctx, input_z_shape, filter_z_shape, output_shape, pad,
+                      stride, dilate, group);
+      conv_z_op->Backward(dev_ctx, input_z_ptr, dconv_out_z_ptr, filter_z_ptr,
+                          dinput_z_ptr, dfilter_z_ptr);
     } else {
       if (fused_add) {
         // 1.1 bn add relu backward for x, get dconv_out_x, dscale_x, dbias_x
@@ -342,6 +351,12 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
       }
     }
     // 2. conv backward for x, get dinput_x and dfilter_x
+    std::shared_ptr<CudnnNormConvolutionOp<T>> conv_x_op(
+        new CudnnNormConvolutionOp<T>());
+    conv_x_op->Init(dev_ctx, input_x_shape, filter_x_shape, output_shape, pad,
+                    stride, dilate, group);
+    conv_x_op->Backward(dev_ctx, input_x_ptr, dconv_out_x_ptr, filter_x_ptr,
+                        dinput_x_ptr, dfilter_x_ptr);
   }
 };
 

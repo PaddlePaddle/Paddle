@@ -65,8 +65,7 @@ class ResNetUnit(Layer):
                  scale_z_attr=None,
                  bias_z_attr=None,
                  moving_mean_z_name=None,
-                 moving_var_z_name=None,
-                 name=None):
+                 moving_var_z_name=None):
         super(ResNetUnit, self).__init__()
         self._in_channels = num_channels
         self._out_channels = num_filters
