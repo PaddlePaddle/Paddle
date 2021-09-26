@@ -982,14 +982,15 @@ def roi_align(x,
     if in_dygraph_mode():
         assert boxes_num is not None, "boxes_num should not be None in dygraph mode."
         align_out = core.ops.roi_align(
-            x, boxes, boxes_num, "pooled_height", pooled_height,
-            "pooled_width", pooled_width, "spatial_scale", spatial_scale,
-            "sampling_ratio", sampling_ratio, "aligned", aligned)
+            x, boxes, boxes_num, "pooled_height", pooled_height, "pooled_width",
+            pooled_width, "spatial_scale", spatial_scale, "sampling_ratio",
+            sampling_ratio, "aligned", aligned)
         return align_out
 
     else:
         check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'roi_align')
-        check_variable_and_dtype(boxes, 'boxes', ['float32', 'float64'], 'roi_align')
+        check_variable_and_dtype(boxes, 'boxes', ['float32', 'float64'],
+                                 'roi_align')
         helper = LayerHelper('roi_align', **locals())
         dtype = helper.input_dtype()
         align_out = helper.create_variable_for_type_inference(dtype)

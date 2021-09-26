@@ -60,12 +60,12 @@ class TestRoIAlign(unittest.TestCase):
             exe = paddle.static.Executor(place)
 
             align_out = exe.run(paddle.static.default_main_program(),
-                               feed={
-                                   'data': self.data,
-                                   'boxes': self.boxes,
-                                   'boxes_num': self.boxes_num
-                               },
-                               fetch_list=[align_out])
+                                feed={
+                                    'data': self.data,
+                                    'boxes': self.boxes,
+                                    'boxes_num': self.boxes_num
+                                },
+                                fetch_list=[align_out])
 
             np.testing.assert_equal(align_out[0].shape, output_shape)
 
@@ -93,7 +93,7 @@ class TestRoIAlign(unittest.TestCase):
         boxes = np.array(
             [[1., 1., 2., 2.], [1.5, 1.5, 3., 3.]]).astype(np.float32)
         boxes_num = np.array([2]).astype(np.int32)
-        output = np.array([[[[11.]]], [[[16.]]]], dtype=np.float32)
+        output = np.array([[[[6.]]], [[[9.75]]]], dtype=np.float32)
 
         data = paddle.to_tensor(data)
         boxes = paddle.to_tensor(boxes)
