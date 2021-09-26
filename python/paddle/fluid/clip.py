@@ -522,7 +522,9 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     # fp64
                     global_norm_var_other_dtype = layers.sums(sum_square_list)
                     global_norm_var.append(global_norm_var_other_dtype)
-                global_norm_var = layers.sums(global_norm_var)
+
+                global_norm_var = layers.sums(global_norm_var) if len(
+                    global_norm_var) > 1 else global_norm_var[0]
                 global_norm_var = layers.sqrt(x=global_norm_var)
                 max_global_norm = layers.fill_constant(
                     shape=[1],

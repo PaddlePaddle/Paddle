@@ -11,20 +11,12 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include "paddle/fluid/operators/elementwise/elementwise_min_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 
-namespace ops = paddle::operators;
-
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct CudaMinFunctor {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    return (args[0] > args[1] ? args[1] : args[0]);
-  }
-};
 
 template <typename T>
 class ElementwiseMinKernel<platform::CUDADeviceContext, T>
@@ -38,12 +30,14 @@ class ElementwiseMinKernel<platform::CUDADeviceContext, T>
 
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, CudaMinFunctor<T>());
+        cuda_ctx, ins, &outs, axis, MinFunctor<T>());
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
+
+namespace ops = paddle::operators;
 
 REGISTER_OP_CUDA_KERNEL(
     elementwise_min,

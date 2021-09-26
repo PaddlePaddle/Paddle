@@ -47,7 +47,8 @@ class LoDTensor;
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
-DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
+PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
+                             "number of threads for inner op");
 
 namespace paddle {
 namespace framework {

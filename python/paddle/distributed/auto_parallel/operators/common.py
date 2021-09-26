@@ -114,3 +114,50 @@ def find_best_compatible_distributed_operator_impl(name, op_dist_attr,
         best_compatible_impl, idx = None, -1
 
     return best_compatible_impl, idx
+
+
+def copy_distributed_attr_for_var(src_op_dist_attr, var, src_var):
+    """
+    copy src var's dist_attr to dst var
+    """
+    import copy
+
+    auto_paralle_context = src_op_dist_attr.get_owner_context()
+    dist_attr = copy.deepcopy(
+        auto_paralle_context.get_tensor_distributed_attr_for_program(src_var))
+    dist_attr._owner_tensor = var
+    dist_attr._owner_context = auto_paralle_context.get_tensor_distributed_attr_for_program(
+        src_var)._owner_context
+    auto_paralle_context.set_tensor_distributed_attr_for_program(var, dist_attr)
+
+
+def copy_distributed_attr_for_dist_op(dist_op, dst_block, src_op_dist_attr):
+    """
+    copy src op's dist_attr to dst dist op
+    """
+    from ..attribute import OperatorDistributedAttribute
+
+    auto_paralle_context = src_op_dist_attr.get_owner_context()
+    op_dist_attr = OperatorDistributedAttribute(dist_op, auto_paralle_context)
+    auto_paralle_context._copy_distributed_attr_from_op_desc(dist_op.desc,
+                                                             op_dist_attr)
+    auto_paralle_context.set_op_distributed_attr_for_program(dist_op,
+                                                             op_dist_attr)
+
+    op_dist_attr.set_process_mesh(src_op_dist_attr.get_process_mesh())
+    op_dist_attr.set_impl_idx(src_op_dist_attr.get_impl_idx())
+
+    for input_varname in dist_op.desc.input_arg_names():
+        input_var = dst_block.var(input_varname)
+        tensor_dist_attr = auto_paralle_context.get_tensor_distributed_attr_for_program(
+            input_var)
+        tensor_dims_mapping = tensor_dist_attr.get_dims_mapping()
+        op_dist_attr.set_input_dims_mapping(input_varname, tensor_dims_mapping)
+
+    for output_varname in dist_op.desc.output_arg_names():
+        output_var = dst_block.var(output_varname)
+        tensor_dist_attr = auto_paralle_context.get_tensor_distributed_attr_for_program(
+            output_var)
+        tensor_dims_mapping = tensor_dist_attr.get_dims_mapping()
+        op_dist_attr.set_output_dims_mapping(output_varname,
+                                             tensor_dims_mapping)

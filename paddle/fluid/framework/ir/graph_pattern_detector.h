@@ -1481,14 +1481,12 @@ struct DeleteQuantDequantOpPattern : public PatternBase {
   DeleteQuantDequantOpPattern(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "delete_quantdequant_op_pattern") {}
 
-  void operator()();
+  void operator()(PDNode* input_node, const std::string& quantdequant_types);
 
-  PATTERN_DECL_NODE(any_op_out);
   PATTERN_DECL_NODE(quant_dequant_op_inscale);
   PATTERN_DECL_NODE(quant_dequant_op);
   PATTERN_DECL_NODE(quant_dequant_op_outscale);
   PATTERN_DECL_NODE(quant_dequant_op_out);
-  PATTERN_DECL_NODE(any_op2);
 };
 
 struct DeleteQuantDequantFilterOpPattern : public PatternBase {
