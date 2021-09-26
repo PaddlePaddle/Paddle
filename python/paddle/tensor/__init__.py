@@ -389,6 +389,7 @@ tensor_method_func  = [ #noqa
            'broadcast_tensors',
            'eig',
            'uniform_',
+           'multi_dot',
            'solve',
 ]
 
