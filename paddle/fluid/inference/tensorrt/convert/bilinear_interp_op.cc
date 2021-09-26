@@ -158,6 +158,10 @@ class BilinearInterpolateOpConverter : public OpConverter {
       auto* out_size_d = out_size_tensor->data<int>();
       out_h = out_size_d[0];
       out_w = out_size_d[1];
+      if ((out_h > 0 && out_w > 0) && (in_h > 0 && in_w > 0)) {
+        scale_h = static_cast<float>(out_h) / static_cast<float>(in_h);
+        scale_w = static_cast<float>(out_w) / static_cast<float>(in_w);
+      }
     }
 
     if ((scale_h <= 0 || scale_w <= 0) && (!with_dynamic)) {

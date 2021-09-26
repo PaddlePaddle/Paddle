@@ -571,7 +571,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
       auto align_corners = BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
       if (align_corners != false) {
-        VLOG(3) << "The TRT only supports align_corners with false.";
+        VLOG(3)
+            << "The bilinear_interp only supports align_corners with false.";
         return false;
       }
 
@@ -583,17 +584,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       bool has_scale_input_size =
           (resize_inputs.find("Scale") != resize_inputs.end());
 
-      if ((has_scale_input_size && desc.Input("Scale").size() != 1) ||
-          (has_out_size && desc.Input("OutSize").size() != 1)) {
-        if (has_scale_input_size && desc.Input("Scale").size() != 1) {
-          VLOG(3) << "The Scale of bilinear_interp is "
-                  << desc.Input("Scale").size();
-        }
+      if (has_out_size) {
+        VLOG(3)
+            << "The bilinear_interp TRT doesn't support input with OutSize.";
+        return false;
+      }
 
-        if (has_out_size && desc.Input("OutSize").size() != 1) {
-          VLOG(3) << "The OutSize of bilinear_interp is "
-                  << desc.Input("OutSize").size();
-        }
+      if (has_scale_input_size && desc.Input("Scale").size() != 1) {
+        VLOG(3) << "The Scale of bilinear_interp is "
+                << desc.Input("Scale").size();
 
         if (!desc.HasAttr("scale") || !desc.HasAttr("out_h") ||
             !desc.HasAttr("out_w")) {
@@ -662,7 +661,8 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
       auto align_corners = BOOST_GET_CONST(bool, desc.GetAttr("align_corners"));
       if (align_corners != false) {
-        VLOG(3) << "The TRT only supports align_corners with false.";
+        VLOG(3)
+            << "The bilinear_interp_v2 only supports align_corners with false.";
         return false;
       }
 
@@ -671,17 +671,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       bool has_scale_input_size =
           (resize_inputs.find("Scale") != resize_inputs.end());
 
-      if ((has_scale_input_size && desc.Input("Scale").size() != 1) ||
-          (has_out_size && desc.Input("OutSize").size() != 1)) {
-        if (has_scale_input_size && desc.Input("Scale").size() != 1) {
-          VLOG(3) << "The Scale of bilinear_interp_v2 is "
-                  << desc.Input("Scale").size();
-        }
+      if (has_out_size) {
+        VLOG(3)
+            << "The bilinear_interp_v2 TRT doesn't support input with OutSize.";
+        return false;
+      }
 
-        if (has_out_size && desc.Input("OutSize").size() != 1) {
-          VLOG(3) << "The OutSize of bilinear_interp_v2 is "
-                  << desc.Input("OutSize").size();
-        }
+      if (has_scale_input_size && desc.Input("Scale").size() != 1) {
+        VLOG(3) << "The Scale of bilinear_interp_v2 is "
+                << desc.Input("Scale").size();
 
         const std::vector<float> scale =
             BOOST_GET_CONST(std::vector<float>, desc.GetAttr("scale"));

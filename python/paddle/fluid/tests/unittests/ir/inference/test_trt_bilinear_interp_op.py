@@ -29,6 +29,8 @@ class TrtConvertBilinearInterpTest(TrtLayerAutoScanTest):
             program_config.ops[i].attrs
             for i in range(len(program_config.ops))
         ]
+        if attrs[0]['align_corners'] == True:
+            return False
 
         return True
 
@@ -120,7 +122,19 @@ class TrtConvertBilinearInterpTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), (1, 2), 1e-5
 
+    def add_skip_trt_case(self):
+        def teller1(program_config, predictor_config):
+            if program_config.ops[0].attrs['align_corners'] == True:
+                return True
+            return False
+
+        self.add_skip_case(
+            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
+            "NOT Implemented: we need to add support align_corners == True in the future"
+        )
+
     def test(self):
+        self.add_skip_trt_case()
         self.run_test()
 
 
