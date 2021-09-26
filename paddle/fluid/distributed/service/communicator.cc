@@ -275,12 +275,21 @@ void Communicator::RpcSendSparse(const std::string &var_name, int table_id,
   auto *send_var = scope.FindVar(var_name);
   auto *tensor = send_var->GetMutable<SelectedRows>();
   auto dim = tensor->value().dims()[1];
+  /*
   std::transform(tensor->rows().begin(), tensor->rows().end(),
                  std::back_inserter(sparse_push_keys),
                  [&](int64_t id) { return static_cast<uint64_t>(id); });
 
   for (auto i = 0; i < static_cast<int>(sparse_push_keys.size()); ++i) {
     push_g_vec.push_back(tensor->mutable_value()->data<float>() + i * dim);
+  }*/
+
+  for (size_t i = 0; i < tensor->rows().size(); ++i) {
+    uint64_t real_id = static_cast<uint64_t>(tensor->rows()[i]);
+    if (real_id != 0) {
+      sparse_push_keys.push_back(real_id);
+      push_g_vec.push_back(tensor->mutable_value()->data<float>() + i * dim);
+    }
   }
 
   ++_async_call_num;
@@ -350,6 +359,17 @@ void Communicator::InitParams(const RecvCtxMap &recv_varname_to_ctx) {
     }
   }
   BarrierWithTable(1);
+  return;
+}
+
+void Communicator::PullDense(const RecvCtxMap &recv_varname_to_ctx) {
+  for (auto &iter : recv_varname_to_ctx) {
+    auto &table_id = iter.first;
+    auto &varnames = iter.second;
+    RpcRecvDense(varnames, table_id, recv_scope_);
+    VLOG(1) << "pull dense param to table " << table_id
+            << " from 0' trainer done";
+  }
   return;
 }
 

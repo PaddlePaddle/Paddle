@@ -967,6 +967,8 @@ class TheOnePSRuntime(RuntimeBase):
                 TheOnePSRuntime.__exclude_vars(saved_varnames),
                 main_program.list_vars()))
 
+        self._communicator.pull_dense(denses)
+
         import paddle
         for var in remaining_vars:
             if var.name not in recv_dense_varnames:
