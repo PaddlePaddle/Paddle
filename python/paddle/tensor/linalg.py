@@ -1759,7 +1759,7 @@ def eigh(x, UPLO='L', name=None):
 
             x_data = np.array([[1, -2j], [2j, 5]])
             x = paddle.to_tensor(x_data)
-            out_value, out_vector = paddle.eigh(x, UPLO='L')
+            out_value, out_vector = paddle.linalg.eigh(x, UPLO='L')
             print(out_value)
             #[0.17157288, 5.82842712]
             print(out_vector)
@@ -1780,7 +1780,7 @@ def eigh(x, UPLO='L', name=None):
             raise ValueError(
                 "The input matrix must be batches of square matrices. But received x's dimention: {}".
                 format(x_shape))
-        if UPLO is not 'L' and UPLO is not 'U':
+        if UPLO != 'L' and UPLO != 'U':
             raise ValueError(
                 "UPLO must be L or U. But received UPLO is: {}".format(UPLO))
 
@@ -2072,3 +2072,60 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
                 attrs={'trans_x': False,
                        'trans_y': True}, )
             return out_2
+
+
+def solve(x, y, name=None):
+    r"""
+    Computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
+    Let :math: `X` be a sqaure matrix or a batch of square matrices, :math:`Y` be
+    a vector/matrix or a batch of vectors/matrices, the equation should be:
+    
+    .. math::
+        Out = X^-1 * Y
+    Specifically,
+    - This system of linear equations has one solution if and only if input 'X' is invertible.
+    
+    Args:
+        x (Tensor): A square matrix or a batch of square matrices. Its shape should be `[*, M, M]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
+        y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be `[*, M, K]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
+        name(str, optional): Name for the operation (optional, default is None). 
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Tensor: The solution of a square system of linear equations with a unique solution for input 'x' and 'y'. 
+        Its data type should be the same as that of `x`.
+    
+    Examples:
+    .. code-block:: python
+        
+        # a square system of linear equations:
+        # 2*X0 + X1 = 9
+        # X0 + 2*X1 = 8
+        
+        import paddle
+        import numpy as np
+       
+        np_x = np.array([[3, 1],[1, 2]])
+        np_y = np.array([9, 8])
+        x = paddle.to_tensor(np_x, dtype="float64")
+        y = paddle.to_tensor(np_y, dtype="float64")
+        out = paddle.linalg.solve(x, y)
+        
+        print(out)
+        # [2., 3.])
+    """
+    if in_dygraph_mode():
+        return _C_ops.solve(x, y)
+
+    inputs = {"X": [x], "Y": [y]}
+    helper = LayerHelper("solve", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'solve')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'solve')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type="solve", inputs={"X": x,
+                              "Y": y}, outputs={"Out": out})
+    return out
