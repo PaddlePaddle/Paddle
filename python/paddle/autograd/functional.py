@@ -75,6 +75,81 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
         dtype and device as the corresponding input. ``Jacobian[i][j]`` will
         have as size ``m * n``, where ``m`` and ``n`` denote the numbers of
         elements of ``i``th output and ``j``th input respectively.
+
+
+    Examples 1:
+        .. code-block:: python
+
+            import paddle
+
+            def func(x):
+                return paddle.matmul(x, x)
+            
+            x = paddle.ones(shape=[2, 2], dtype='float32')
+            x.stop_gradient = False
+            jacobian = paddle.autograd.jacobian(func, x)
+            print(jacobian)
+            # Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[2., 1., 1., 0.],
+            #         [1., 2., 0., 1.],
+            #         [1., 0., 2., 1.],
+            #         [0., 1., 1., 2.]])
+
+    Examples 2:
+        .. code-block:: python
+
+            import paddle
+
+            def func(x, y):
+                return paddle.matmul(x, y)
+            
+            x = paddle.ones(shape=[2, 2], dtype='float32')
+            y = paddle.ones(shape=[2, 2], dtype='float32') * 2
+            x.stop_gradient = False
+            y.stop_gradient = False
+            jacobian = paddle.autograd.jacobian(func, [x, y], create_graph=True)
+            print(jacobian)
+            # (Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+            #        [[2., 2., 0., 0.],
+            #         [2., 2., 0., 0.],
+            #         [0., 0., 2., 2.],
+            #         [0., 0., 2., 2.]]), 
+            #  Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+            #        [[1., 0., 1., 0.],
+            #         [0., 1., 0., 1.],
+            #         [1., 0., 1., 0.],
+            #         [0., 1., 0., 1.]]))
+
+    Examples 3:
+        .. code-block:: python
+
+            import paddle
+
+            def func(x, y):
+                return paddle.matmul(x, y), x * x
+
+            x = paddle.ones(shape=[2, 2], dtype='float32')
+            y = paddle.ones(shape=[2, 2], dtype='float32') * 2
+            x.stop_gradient = False
+            y.stop_gradient = False
+            jacobian = paddle.autograd.jacobian(func, [x, y], allow_unused=True)
+            print(jacobian)
+            # ((Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[2., 2., 0., 0.],
+            #         [2., 2., 0., 0.],
+            #         [0., 0., 2., 2.],
+            #         [0., 0., 2., 2.]]),
+            #   Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[1., 0., 1., 0.],
+            #         [0., 1., 0., 1.],
+            #         [1., 0., 1., 0.],
+            #         [0., 1., 0., 1.]])),
+            #  (Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[2., 0., 0., 0.],
+            #         [0., 2., 0., 0.],
+            #         [0., 0., 2., 0.],
+            #         [0., 0., 0., 2.]]), None))
+
     '''
     inputs = _check_tensors(inputs, "inputs")
     outputs = _check_tensors(func(*inputs), "outputs")
