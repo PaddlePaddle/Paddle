@@ -17,8 +17,6 @@
 #include <map>
 #include <string>
 
-#include <boost/functional/hash.hpp>
-
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -67,16 +65,20 @@ bool CinnCacheKey::operator==(const CinnCacheKey& other) const {
          feed_shapes_ == other.feed_shapes_;
 }
 
+size_t CinnCacheKey::Hash::hash_combine(size_t seed, size_t value) {
+  return seed ^ (value + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+}
+
 size_t CinnCacheKey::Hash::operator()(const CinnCacheKey& key) const {
   std::size_t ret = 0;
 
   std::hash<std::string> string_hasher;
   for (const auto& name_shape : key.feed_shapes_) {
-    boost::hash_combine(ret, string_hasher(name_shape.first));
-    boost::hash_combine(ret, string_hasher(name_shape.second.to_str()));
+    ret = hash_combine(ret, string_hasher(name_shape.first));
+    ret = hash_combine(ret, string_hasher(name_shape.second.to_str()));
   }
 
-  boost::hash_combine(ret, string_hasher(key.graph_serialize_str_));
+  ret = hash_combine(ret, string_hasher(key.graph_serialize_str_));
   return ret;
 }
 
