@@ -31,9 +31,33 @@ def cast_to_complex(input, output):
     return output
 
 
-@skip_check_grad_ci(
-    reason="Run backward without check grad for new as backward logic is not implemented yet"
-)
+# define eig backward function for a single square matrix
+def eig_backward(w, v, grad_w, grad_v):
+    v_tran = np.transpose(v)
+    v_tran = np.conjugate(v_tran)
+    w_conj = np.conjugate(w)
+    w_conj_l = w_conj.reshape(1, w.size)
+    w_conj_r = w_conj.reshape(w.size, 1)
+    w_conj_2d = w_conj_l - w_conj_r
+
+    vhgv = np.matmul(v_tran, grad_v)
+    real_vhgv = np.real(vhgv)
+    diag_real = real_vhgv.diagonal()
+
+    diag_2d = diag_real.reshape(1, w.size)
+    rhs = v * diag_2d
+    mid = np.matmul(v_tran, rhs)
+    result = vhgv - mid
+
+    res = np.divide(result, w_conj_2d)
+    row, col = np.diag_indices_from(res)
+    res[row, col] = 1.0
+
+    tmp = np.matmul(res, v_tran)
+    dx = np.linalg.solve(v_tran, tmp)
+    return dx
+
+
 class TestEigOp(OpTest):
     def setUp(self):
         paddle.enable_static()
@@ -54,27 +78,30 @@ class TestEigOp(OpTest):
 
     # for the real input, a customized checker is needed
     def checker(self, outs):
-        actual_out_w = np.sort(outs[0].flatten())
-        expect_out_w = np.sort(self.out[0].flatten())
+        actual_out_w = outs[0].flatten()
+        expect_out_w = self.out[0].flatten()
         actual_out_v = outs[1].flatten()
         expect_out_v = self.out[1].flatten()
 
         length_w = len(expect_out_w)
+        act_w_real = np.sort(
+            np.array([np.abs(actual_out_w[i].real) for i in range(length_w)]))
+        act_w_imag = np.sort(
+            np.array([np.abs(actual_out_w[i].imag) for i in range(length_w)]))
+        exp_w_real = np.sort(
+            np.array([np.abs(expect_out_w[i].real) for i in range(length_w)]))
+        exp_w_imag = np.sort(
+            np.array([np.abs(expect_out_w[i].imag) for i in range(length_w)]))
 
         for i in range(length_w):
-            # print(actual_out_w[i].real, "  ", expect_out_w[i].real)
             self.assertTrue(
-                np.allclose(actual_out_w[i].real, expect_out_w[i].real, 1e-6,
-                            1e-5),
+                np.allclose(act_w_real[i], exp_w_real[i], 1e-6, 1e-5),
                 "The eigenvalues real part have diff: \nExpected " +
-                str(actual_out_w[i].real) + "\n" + "But got: " +
-                str(expect_out_w[i].real))
+                str(act_w_real[i]) + "\n" + "But got: " + str(exp_w_real[i]))
             self.assertTrue(
-                np.allclose(actual_out_w[i].imag, expect_out_w[i].imag, 1e-6,
-                            1e-5),
+                np.allclose(act_w_imag[i], exp_w_imag[i], 1e-6, 1e-5),
                 "The eigenvalues image part have diff: \nExpected " +
-                str(actual_out_w[i].imag) + "\n" + "But got: " +
-                str(expect_out_w[i].imag))
+                str(act_w_imag[i]) + "\n" + "But got: " + str(exp_w_imag[i]))
 
         length_v = len(expect_out_v)
         act_v_real = np.sort(
@@ -87,7 +114,6 @@ class TestEigOp(OpTest):
             np.array([np.abs(expect_out_v[i].imag) for i in range(length_v)]))
 
         for i in range(length_v):
-            # print(act_v_real[i], "  ",  exp_v_real[i])
             self.assertTrue(
                 np.allclose(act_v_real[i], exp_v_real[i], 1e-6, 1e-5),
                 "The eigenvectors real part have diff: \nExpected " +
@@ -101,18 +127,30 @@ class TestEigOp(OpTest):
         self.dtype = np.complex64
 
     def set_dims(self):
-        self.shape = (3, 3)
+        self.shape = (10, 10)
+
+    def init_grad(self):
+        # grad_w, grad_v complex dtype
+        gtype = self.dtype
+        if self.dtype == np.float32:
+            gtype = np.complex64
+        elif self.dtype == np.float64:
+            gtype = np.complex128
+        self.grad_w = np.ones(self.out[0].shape, gtype)
+        self.grad_v = np.ones(self.out[1].shape, gtype)
+        self.grad_x = eig_backward(self.out[0], self.out[1], self.grad_w,
+                                   self.grad_v)
 
     def test_check_output(self):
-        self.check_output()
+        self.check_output_with_place_customized(
+            checker=self.checker, place=core.CPUPlace())
 
-    def test_grad(self):
-        pass
-
-
-class TestEigBatchMarices(TestEigOp):
-    def set_dims(self):
-        self.shape = (3, 3, 3)
+    def test_check_grad(self):
+        self.init_grad()
+        self.check_grad(
+            ['X'], ['Eigenvalues', 'Eigenvectors'],
+            user_defined_grads=[self.grad_x],
+            user_defined_grad_outputs=[self.grad_w, self.grad_v])
 
 
 class TestComplex128(TestEigOp):
@@ -120,35 +158,50 @@ class TestComplex128(TestEigOp):
         self.dtype = np.complex128
 
 
-class TestFloat(TestEigOp):
-    def set_dtype(self):
-        self.dtype = np.float32
-
-    def set_dims(self):
-        self.shape = (32, 32)
-
-    def test_check_output(self):
-        self.check_output_with_place_customized(
-            checker=self.checker, place=core.CPUPlace())
-
-
+@skip_check_grad_ci(
+    reason="For float dtype, numpy.linalg.eig forward outputs real or complex when input is real, therefore the grad computation may be not the same with paddle.linalg.eig"
+)
 class TestDouble(TestEigOp):
     def set_dtype(self):
         self.dtype = np.float64
 
-    def test_check_output(self):
-        self.check_output_with_place_customized(
-            checker=self.checker, place=core.CPUPlace())
+    def test_check_grad(self):
+        pass
+
+
+@skip_check_grad_ci(
+    reason="For float dtype, numpy.linalg.eig forward outputs real or complex when input is real, therefore the grad computation may be not the same with paddle.linalg.eig"
+)
+class TestEigBatchMarices(TestEigOp):
+    def set_dtype(self):
+        self.dtype = np.float64
+
+    def set_dims(self):
+        self.shape = (3, 10, 10)
+
+    def test_check_grad(self):
+        pass
+
+
+@skip_check_grad_ci(
+    reason="For float dtype, numpy.linalg.eig forward outputs real or complex when input is real, therefore the grad computation may be not the same with paddle.linalg.eig"
+)
+class TestFloat(TestEigOp):
+    def set_dtype(self):
+        self.dtype = np.float32
+
+    def test_check_grad(self):
+        pass
 
 
 class TestEigStatic(TestEigOp):
     def test_check_output_with_place(self):
         paddle.enable_static()
         place = core.CPUPlace()
-        input_np = np.random.random([3, 3]).astype('float32')
+        input_np = np.random.random([3, 3]).astype('complex')
         expect_val, expect_vec = np.linalg.eig(input_np)
         with fluid.program_guard(fluid.Program(), fluid.Program()):
-            input = fluid.data(name="input", shape=[3, 3], dtype='float32')
+            input = fluid.data(name="input", shape=[3, 3], dtype='complex')
             act_val, act_vec = paddle.linalg.eig(input)
 
             exe = fluid.Executor(place)
@@ -191,25 +244,6 @@ class TestEigUnsupportedDtypeError(unittest.TestCase):
         a = (np.random.random((3, 3)) * 10).astype('int64')
         x = paddle.to_tensor(a)
         self.assertRaises(ValueError, paddle.linalg.eig, x)
-
-
-class TestGrad(unittest.TestCase):
-    def test_run(self):
-        paddle.device.set_device("cpu")
-        paddle.disable_static()
-        dx_expectd = np.array([[0.9482, 0.0767, -0.0162],
-                               [-0.0459, 1.0393, -0.0342],
-                               [-0.0456, 0.0863, 1.0125]]).astype("float32")
-        a = np.array([[1.6707249, 7.2249975, 6.5045543],
-                      [9.956216, 8.749598, 6.066444],
-                      [4.4251957, 1.7983172, 0.370647]]).astype("float32")
-        a_pd = paddle.to_tensor(a)
-        a_pd.stop_gradient = False
-        w2, v2 = paddle.linalg.eig(a_pd)
-        dx_actual = paddle.grad([w2, v2], a_pd)
-        self.assertTrue(
-            np.allclose(
-                dx_actual, dx_expectd, rtol=1e-6, atol=1e-4))
 
 
 if __name__ == "__main__":
