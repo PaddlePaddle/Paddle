@@ -14,42 +14,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/determinant_op.h"
-#include "paddle/fluid/platform/cuda_primitives.h"
-
-namespace paddle {
-namespace operators {
-
-using platform::PADDLE_CUDA_NUM_THREADS;
-using Tensor = framework::Tensor;
-
-template <typename T>
-__global__ void DeterminantGrad(const size_t numel, T* out) {
-  int tid = threadIdx.x + blockIdx.x * blockDim.x;
-  if (tid < numel) {
-    out[tid] = static_cast<T>(1);
-  }
-}
-
-template <typename T>
-class DeterminantGradCUDAKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    const auto* dout = context.Input<Tensor>(framework::GradVarName("Out"));
-    const T* dout_data = dout->data<T>();
-    auto dout_dim = vectorize(dout->dims());
-
-    auto* dx = context.Output<Tensor>(framework::GradVarName("Input"));
-    T* dx_data = dx->mutable_data<T>(context.GetPlace());
-
-    int64_t numel = dx->numel();
-    for (int64_t idx = 0; idx < numel; idx++) {
-      dx_data[idx] = static_cast<T>(1);
-    }
-  }
-};
-
-}  // namespace operators
-}  // namespace paddle
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;

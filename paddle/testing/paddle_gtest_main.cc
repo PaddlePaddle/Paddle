@@ -15,6 +15,7 @@ limitations under the License. */
 #include "gflags/gflags.h"
 #include "gtest/gtest.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
+#include "paddle/fluid/platform/flags.h"
 #include "paddle/fluid/platform/init.h"
 #include "paddle/fluid/platform/npu_info.h"
 
@@ -22,13 +23,11 @@ int main(int argc, char** argv) {
   paddle::memory::allocation::UseAllocatorStrategyGFlag();
   testing::InitGoogleTest(&argc, argv);
   std::vector<char*> new_argv;
-  std::string gflags_env;
   for (int i = 0; i < argc; ++i) {
     new_argv.push_back(argv[i]);
   }
 
   std::vector<std::string> envs;
-  std::vector<std::string> undefok;
 #if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_PSLIB)
   std::string str_max_body_size;
   if (::GFLAGS_NAMESPACE::GetCommandLineOption("max_body_size",
@@ -38,35 +37,13 @@ int main(int argc, char** argv) {
   }
 #endif
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
-    defined(PADDLE_WITH_ASCEND_CL)
-  envs.push_back("fraction_of_gpu_memory_to_use");
-  envs.push_back("initial_gpu_memory_in_mb");
-  envs.push_back("reallocate_gpu_memory_in_mb");
-  envs.push_back("allocator_strategy");
-  envs.push_back("selected_gpus");
-#elif __clang__
-  envs.push_back("use_mkldnn");
-  envs.push_back("initial_cpu_memory_in_mb");
-  envs.push_back("allocator_strategy");
-
-  undefok.push_back("use_mkldnn");
-  undefok.push_back("initial_cpu_memory_in_mb");
-#else
-  envs.push_back("use_pinned_memory");
-  envs.push_back("use_mkldnn");
-  envs.push_back("initial_cpu_memory_in_mb");
-  envs.push_back("allocator_strategy");
-
-  undefok.push_back("use_pinned_memory");
-  undefok.push_back("use_mkldnn");
-  undefok.push_back("initial_cpu_memory_in_mb");
-#endif
-
-#if defined(PADDLE_WITH_ASCEND_CL)
-  envs.push_back("selected_npus");
-  envs.push_back("npu_config_path");
-#endif
+  const auto& flag_map = paddle::platform::GetExportedFlagInfoMap();
+  for (const auto& pair : flag_map) {
+    const std::string& name = pair.second.name;
+    if (pair.second.is_writable) {  // means public
+      envs.push_back(name);
+    }
+  }
 
   char* env_str = nullptr;
   if (envs.size() > 0) {
@@ -78,18 +55,6 @@ int main(int argc, char** argv) {
     env_str = strdup(env_string.c_str());
     new_argv.push_back(env_str);
     VLOG(1) << "gtest env_string:" << env_string;
-  }
-
-  char* undefok_str = nullptr;
-  if (undefok.size() > 0) {
-    std::string undefok_string = "--undefok=";
-    for (auto t : undefok) {
-      undefok_string += t + ",";
-    }
-    undefok_string = undefok_string.substr(0, undefok_string.length() - 1);
-    undefok_str = strdup(undefok_string.c_str());
-    new_argv.push_back(undefok_str);
-    VLOG(1) << "gtest undefok_string:" << undefok_string;
   }
 
   int new_argc = static_cast<int>(new_argv.size());
@@ -105,7 +70,5 @@ int main(int argc, char** argv) {
 #endif
 
   if (env_str) free(env_str);
-  if (undefok_str) free(undefok_str);
-
   return ret;
 }
