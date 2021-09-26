@@ -35,11 +35,12 @@ using DeviceContextPool = platform::DeviceContextPool;
 
 class NpuOpRunner {
  public:
-  explicit NpuOpRunner(std::string op_type);
-  explicit NpuOpRunner(std::string op_type,
-                       const std::vector<Tensor> &inputs = {},
-                       const std::vector<Tensor> &outputs = {},
-                       const NPUAttributeMap &attrs = {});
+  NpuOpRunner();
+  explicit NpuOpRunner(const std::string &op_type);
+  NpuOpRunner(const std::string &op_type,
+              const std::vector<Tensor> &inputs = {},
+              const std::vector<Tensor> &outputs = {},
+              const NPUAttributeMap &attrs = {});
 
   // NOTE(zhiqiu): why forbid copy and operator= ?
   // Since we will free the tensor_descs and data_buffers in the ~NpuOpRunner,
@@ -53,11 +54,26 @@ class NpuOpRunner {
 
   const std::string &Type();
 
+  NpuOpRunner &SetType(const std::string &name);
+
   NpuOpRunner &AddAttr(const std::string &name, const NPUAttribute &attr);
 
   NpuOpRunner &AddAttrs(const NPUAttributeMap &attrs);
 
   NpuOpRunner &AddInput(const Tensor &tensor);
+
+  // NOTE(zhiqiu): CANN-5.0.2 support input tensors on host.
+  // Specifically, the tensor of shape, tensor of dims, etc, which are are small
+  // vector/list.
+  NpuOpRunner &AddInput(const Tensor &tensor, aclMemType mem_type);
+
+  NpuOpRunner &AddInput(std::vector<int32_t> &&dims);
+
+  NpuOpRunner &AddInput(std::vector<int64_t> &&dims);
+
+  NpuOpRunner &AddInput(std::vector<float> &&values);
+
+  NpuOpRunner &AddInput(std::vector<double> &&values);
 
   NpuOpRunner &AddOutput(const Tensor &tensor);
 
@@ -82,7 +98,8 @@ class NpuOpRunner {
   void Run(aclrtStream stream = nullptr) const;
 
  private:
-  aclTensorDesc *CreateTensorDesc(Tensor tensor);
+  aclTensorDesc *CreateTensorDesc(Tensor tensor,
+                                  aclMemType mem_type = ACL_MEMTYPE_DEVICE);
   aclDataBuffer *CreateDataBuffer(Tensor tensor);
 
  private:
@@ -91,6 +108,7 @@ class NpuOpRunner {
   std::vector<aclDataBuffer *> output_buffers_;
   std::vector<aclTensorDesc *> input_descs_;
   std::vector<aclTensorDesc *> output_descs_;
+  std::vector<Tensor> host_tensors_;
   aclopAttr *attr_{nullptr};
 };
 

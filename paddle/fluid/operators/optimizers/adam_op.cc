@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/optimizers/adam_op.h"
 #include "paddle/fluid/framework/op_version_registry.h"
+#include "paddle/fluid/operators/optimizers/adamw_op.h"
 
 namespace paddle {
 namespace operators {
@@ -122,7 +123,8 @@ framework::OpKernelType AdamOp::GetExpectedKernelType(
 framework::OpKernelType AdamOp::GetKernelTypeForVar(
     const std::string &var_name, const framework::Tensor &tensor,
     const framework::OpKernelType &expected_kernel_type) const {
-  if (var_name == "Beta1Pow" || var_name == "Beta2Pow") {
+  if (var_name == "Beta1Pow" || var_name == "Beta2Pow" ||
+      var_name == "SkipUpdate") {
     return expected_kernel_type;
   } else {
     return framework::OpKernelType(expected_kernel_type.data_type_,
@@ -157,6 +159,8 @@ class AdamOpMaker : public framework::OpProtoAndCheckerMaker {
              "shape of this tensor MUST BE [1].")
         .AsDispensable();
     AddInput("MasterParam", "FP32 master weight for AMP.").AsDispensable();
+    AddInput("SkipUpdate", "(Tensor<bool>, optional), Skip the update or not.")
+        .AsDispensable();
 
     AddOutput("ParamOut", "(Tensor) Output parameter");
     AddOutput("Moment1Out", "(Tensor) Output first moment");
@@ -227,11 +231,34 @@ $$
 )DOC");
   }
 };
+
+class AdamWOpMaker : public AdamOpMaker {
+ public:
+  void Make() {
+    AdamOpMaker::Make();
+    AddAttr<float>("lr_ratio",
+                   "(float, default 1.0) "
+                   "layerwise learning rate decay")
+        .SetDefault(1.0f);
+    AddAttr<float>("coeff",
+                   "(float, default 0.01) "
+                   "coeff of the weight decay")
+        .SetDefault(0.01f);
+    AddAttr<bool>("with_decay",
+                  "(bool, default false) "
+                  "whether to do weight decay")
+        .SetDefault(false);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
 namespace ops = paddle::operators;
 REGISTER_OP_WITHOUT_GRADIENT(adam, ops::AdamOp, ops::AdamOpMaker);
+
+REGISTER_OP_WITHOUT_GRADIENT(adamw, ops::AdamWOp, ops::AdamWOpMaker);
+
 REGISTER_OP_CPU_KERNEL(
     adam, ops::AdamOpKernel<paddle::platform::CPUDeviceContext, float>,
     ops::AdamOpKernel<paddle::platform::CPUDeviceContext, double>);
@@ -265,4 +292,10 @@ REGISTER_OP_VERSION(adam)
             "In that case, the outputs(Beta1PowOut, Beta2PowOut) will not be "
             "used in adam op, "
             "and beta_pow will be updated after all adam op in the model.",
-            false));
+            false))
+    .AddCheckpoint(
+        R"ROC(
+      Upgrade adam, add 1 dispensable input [SkipUpdate].
+    )ROC",
+        paddle::framework::compatible::OpVersionDesc().NewInput(
+            "SkipUpdate", "If the value is true, Adam will skip the update."));

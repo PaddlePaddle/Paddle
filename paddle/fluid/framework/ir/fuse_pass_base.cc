@@ -53,6 +53,8 @@ void FusePassBase::AddStatis(int count_of_fused) const {
   auto& info =
       graph_->Get<std::unordered_map<std::string, int>>(kFuseStatisAttr);
   info[repr_] = count_of_fused;
+  if (count_of_fused > 0)
+    LOG(INFO) << "---  detected " << count_of_fused << " subgraphs";
 }
 
 FuseOptions FusePassBase::FindFuseOption(const Node& node1,

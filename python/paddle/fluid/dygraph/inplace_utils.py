@@ -16,9 +16,10 @@ from ..wrapped_decorator import wrap_decorator
 from ..framework import in_dygraph_mode
 import warnings
 import paddle
+from paddle import _C_ops
 
 
-# NOTE(pangyoki): The Inplace APIs with underline(`_`) is only valid for the method of calling `core.ops`
+# NOTE(pangyoki): The Inplace APIs with underline(`_`) is only valid for the method of calling `_C_ops`
 # in dygraph mode. If static mode is used, the inplace mechanism will not be used, and the static method
 # of the original API will be called.
 def _inplace_apis_in_dygraph_only_(func):

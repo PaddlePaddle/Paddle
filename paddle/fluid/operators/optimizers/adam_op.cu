@@ -172,6 +172,42 @@ class AdamOpCUDAKernel : public framework::OpKernel<T> {
     auto* beta1_pow_out = ctx.Output<LoDTensor>("Beta1PowOut");
     auto* beta2_pow_out = ctx.Output<LoDTensor>("Beta2PowOut");
 
+    bool skip_update = false;
+    if (ctx.HasInput("SkipUpdate")) {
+      auto* skip_update_tensor = ctx.Input<framework::Tensor>("SkipUpdate");
+      PADDLE_ENFORCE_EQ(skip_update_tensor->numel(), 1,
+                        platform::errors::InvalidArgument(
+                            "Input(SkipUpdate) size must be 1, but get %d",
+                            skip_update_tensor->numel()));
+      std::vector<bool> skip_update_vec;
+      TensorToVector(*skip_update_tensor, ctx.device_context(),
+                     &skip_update_vec);
+      skip_update = skip_update_vec[0];
+    }
+    // skip_update=true, just copy input to output, and TensorCopy will call
+    // mutable_data
+    if (skip_update) {
+      VLOG(4) << "Adam skip update";
+      framework::TensorCopy(
+          *param, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), param_out);
+      framework::TensorCopy(
+          *mom1, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), mom1_out);
+      framework::TensorCopy(
+          *mom2, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(), mom2_out);
+      framework::TensorCopy(
+          *beta1_pow, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          beta1_pow_out);
+      framework::TensorCopy(
+          *beta2_pow, ctx.GetPlace(),
+          ctx.template device_context<platform::DeviceContext>(),
+          beta2_pow_out);
+      return;
+    }
+
     MPDType beta1 = static_cast<MPDType>(ctx.Attr<float>("beta1"));
     if (ctx.HasInput("Beta1Tensor")) {
       auto* beta1_tensor = ctx.Input<framework::Tensor>("Beta1Tensor");

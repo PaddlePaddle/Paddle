@@ -190,7 +190,6 @@ class ResNet(fluid.dygraph.Layer):
             param_attr=fluid.param_attr.ParamAttr(
                 initializer=fluid.initializer.Uniform(-stdv, stdv)))
 
-    @declarative
     def forward(self, inputs):
         y = self.conv(inputs)
         y = self.pool2d_max(y)
@@ -213,7 +212,7 @@ def reader_decorator(reader):
     return __reader__
 
 
-def train(to_static):
+def train(to_static, build_strategy=None):
     """
     Tests model decorated by `dygraph_to_static_output` in static mode. For users, the model is defined in dygraph mode and trained in static mode.
     """
@@ -231,6 +230,8 @@ def train(to_static):
         data_loader.set_sample_list_generator(train_reader)
 
         resnet = ResNet()
+        if to_static:
+            resnet = paddle.jit.to_static(resnet, build_strategy=build_strategy)
         optimizer = optimizer_setting(parameter_list=resnet.parameters())
 
         for epoch in range(epoch_num):
@@ -358,7 +359,8 @@ class TestResnet(unittest.TestCase):
     def test_in_static_mode_mkldnn(self):
         fluid.set_flags({'FLAGS_use_mkldnn': True})
         try:
-            train(to_static=True)
+            if paddle.fluid.core.is_compiled_with_mkldnn():
+                train(to_static=True)
         finally:
             fluid.set_flags({'FLAGS_use_mkldnn': False})
 

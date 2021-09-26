@@ -74,11 +74,65 @@ bool IsReachable(ir::Graph* graph, Node* from, Node* to) {
 }
 
 template <typename T>
-boost::optional<T> HasAttribute(const Node& op, const std::string& attr) {
+paddle::optional<T> HasAttribute(const Node& op, const std::string& attr) {
   if (op.Op()->HasAttr(attr))
     return BOOST_GET_CONST(T, op.Op()->GetAttr(attr));
   else
-    return boost::none;
+    return paddle::none;
+}
+
+ResidualConnectionMKLDNNFusePass::ResidualConnectionMKLDNNFusePass() {
+  AddOpCompat(OpCompat("conv2d"))
+      .AddInput("Input")
+      .IsTensor()
+      .End()
+      .AddInput("Filter")
+      .IsTensor()
+      .End()
+      .AddInput("Bias")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddInput("ResidualData")
+      .IsTensor()
+      .IsOptional()
+      .End()
+      .AddOutput("Output")
+      .IsTensor()
+      .End()
+      .AddAttr("strides")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("paddings")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("padding_algorithm")
+      .IsOptional()
+      .IsStringIn({"EXPLICIT", "SAME", "VALID"})
+      .End()
+      .AddAttr("groups")
+      .IsNumGE(1)
+      .End()
+      .AddAttr("dilations")
+      .IsType<std::vector<int>>()
+      .End()
+      .AddAttr("data_format")
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
+      .End();
+
+  AddOpCompat(OpCompat("elementwise_add"))
+      .AddInput("X")
+      .IsTensor()
+      .End()
+      .AddInput("Y")
+      .IsTensor()
+      .End()
+      .AddOutput("Out")
+      .IsTensor()
+      .End()
+      .AddAttr("axis")
+      .IsIntIn({-1, 0})
+      .End();
 }
 
 ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::IdentityFuseHandle(
@@ -86,11 +140,13 @@ ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::IdentityFuseHandle(
     const ResidualConnectionMKLDNNFusePass::IdentityConvFunc&
         get_node_from_conv_op,
     const ResidualConnectionMKLDNNFusePass::IdentityElementwiseAddFunc&
-        get_node_from_elementwise_add_op)
+        get_node_from_elementwise_add_op,
+    const ResidualConnectionMKLDNNFusePass* pass)
     : fusion_stats{std::make_shared<int>(0)},
       can_fuse_func{can_fuse_func},
       get_node_from_conv_op{get_node_from_conv_op},
-      get_node_from_elementwise_add_op{get_node_from_elementwise_add_op} {}
+      get_node_from_elementwise_add_op{get_node_from_elementwise_add_op},
+      pass_{pass} {}
 
 void ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::operator()(
     const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
@@ -114,6 +170,12 @@ void ResidualConnectionMKLDNNFusePass::IdentityFuseHandle::operator()(
 
   if (HasFusedActivation(conv_op)) return;
 
+  if (!pass_->IsCompat(subgraph, graph)) {
+    LOG(WARNING)
+        << "conv_elementwise_add_mkldnn_fuse_pass in op compat failed.";
+    return;
+  }
+
   conv_op->Op()->SetInput("ResidualData", {elementwise_add_identity->Name()});
   conv_op->Op()->SetOutput("Output", {elementwise_add_out->Name()});
   conv_op->Op()->SetAttr("fuse_residual_connection", true);
@@ -133,12 +195,14 @@ ResidualConnectionMKLDNNFusePass::ProjectionFuseHandle::ProjectionFuseHandle(
     const ResidualConnectionMKLDNNFusePass::ProjectionConvFunc&
         get_node_from_conv_y_op,
     const ResidualConnectionMKLDNNFusePass::ProjectionElementwiseAddFunc&
-        get_node_from_elementwise_add_op)
+        get_node_from_elementwise_add_op,
+    const ResidualConnectionMKLDNNFusePass* pass)
     : fusion_stats{std::make_shared<int>(0)},
       can_fuse_func{can_fuse_func},
       get_node_from_conv_x_op{get_node_from_conv_x_op},
       get_node_from_conv_y_op{get_node_from_conv_y_op},
-      get_node_from_elementwise_add_op{get_node_from_elementwise_add_op} {}
+      get_node_from_elementwise_add_op{get_node_from_elementwise_add_op},
+      pass_{pass} {}
 
 void ResidualConnectionMKLDNNFusePass::ProjectionFuseHandle::operator()(
     const GraphPatternDetector::subgraph_t& subgraph, Graph* graph) {
@@ -154,6 +218,12 @@ void ResidualConnectionMKLDNNFusePass::ProjectionFuseHandle::operator()(
 
   Node* elementwise_add_op;
   Node* elementwise_add_out;
+
+  if (!pass_->IsCompat(subgraph, graph)) {
+    LOG(WARNING)
+        << "conv_elementwise_add_mkldnn_fuse_pass in op compat failed.";
+    return;
+  }
 
   std::tie(conv_x_op, conv_x_input, conv_x_filter, conv_x_output) =
       get_node_from_conv_x_op(subgraph);
@@ -247,7 +317,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConvAsX(
       [this, &conv_pattern](const GraphPatternDetector::subgraph_t& subgraph) {
         return GetNodesFromConv(conv_pattern, subgraph);
       },
-      get_node_from_elementwise_add);
+      get_node_from_elementwise_add, this);
 }
 
 GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConvAsY(
@@ -284,7 +354,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseConvAsY(
       [this, &conv_pattern](const GraphPatternDetector::subgraph_t& subgraph) {
         return GetNodesFromConv(conv_pattern, subgraph);
       },
-      get_node_from_elementwise_add);
+      get_node_from_elementwise_add, this);
 }
 
 GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
@@ -325,7 +395,7 @@ GraphWithStats ResidualConnectionMKLDNNFusePass::FuseProjectionConv(
        &conv_y_pattern](const GraphPatternDetector::subgraph_t& subgraph) {
         return GetNodesFromConv(conv_y_pattern, subgraph);
       },
-      get_node_from_elementwise_add);
+      get_node_from_elementwise_add, this);
 }
 
 void ResidualConnectionMKLDNNFusePass::ApplyImpl(graph_ptr graph) const {

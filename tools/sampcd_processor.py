@@ -440,6 +440,7 @@ def get_filenames(full_test=False):
     '''
     global whl_error
     import paddle
+    import paddle.fluid.contrib.slim.quantization
     whl_error = []
     if full_test:
         get_full_api_from_pr_spec()

@@ -17,6 +17,15 @@ echo "begin test elastic"
 unset GREP_OPTIONS
 rm -rf log
 
+pids=`ps -ef | grep "python -m paddle.distributed.launch elastic_demo.[py]" | awk '{print $2}'`
+if [ -n "$pids" ]; then
+    echo $pids | xargs kill -9 
+fi
+pids=`ps -ef | grep "/usr/bin/python -u elastic_demo.[py]" | awk '{print $2}'`
+if [ -n "$pids" ]; then
+    echo $pids | xargs kill -9 
+fi
+
 python -m pip install --no-cache-dir etcd3 -i https://mirror.baidu.com/pypi/simple
 
 # common env
@@ -115,6 +124,8 @@ do
     fi
 done
 
+> $lw0
+
 # rerun node 1
 export NVIDIA_VISIBLE_DEVICES=1
 export CUDA_VISIBLE_DEVICES=1
@@ -143,6 +154,55 @@ do
 done
 
 check_env
+
+> log_0.log
+
+for i in {1..10}
+do
+    ## kill with -9
+    kill -9 $p0
+    sleep 1
+    if [ `ps -p $p0 | wc -l` ==  "2" ]; then
+        echo "force stop node 0 error"
+        exit -1
+    else
+        echo "force stop node 0 ok"
+        break
+    fi
+done
+
+> $lw0
+
+# rerun node 0
+export NVIDIA_VISIBLE_DEVICES=0
+export CUDA_VISIBLE_DEVICES=0
+export DISTRIBUTED_TRAINER_ENDPOINTS=10.10.10.10:8001,10.10.10.3:8001
+export PADDLE_TRAINERS=10.10.10.10,10.10.10.3
+export TRAINER_PORTS_NUM=1
+export POD_IP=10.10.10.10
+export PADDLE_TRAINER_ID=0
+export PADDLE_TRAINERS_NUM=2
+
+python -m paddle.distributed.launch elastic_demo.py &> log_0.log &
+p0=$!
+
+for i in {1..10}
+do
+    if grep "INFO:ELASTIC:ready with hosts" log_1.log | grep -q '10.10.10.10'; then
+        echo "rerun node 0 ok"
+        break
+    else
+        sleep 1
+    fi
+    if [ $i -eq 10 ]; then
+        echo "rerun node 0 error"
+        exit -1
+    fi
+done
+
+check_env
+
+echo "All check done"
 
 sleep 3
 kill $p0 $p1

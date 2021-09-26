@@ -229,6 +229,7 @@ REGISTER_OPERATOR(lookup_table_grad, ops::LookupTableOpGrad,
 REGISTER_OP_CPU_KERNEL(lookup_table, ops::LookupTableKernel<float>,
                        ops::LookupTableKernel<double>,
                        ops::LookupTableKernel<int8_t>,
+                       ops::LookupTableKernel<int16_t>,
                        ops::LookupTableKernel<paddle::platform::bfloat16>);
 REGISTER_OP_CPU_KERNEL(lookup_table_grad, ops::LookupTableGradKernel<float>,
                        ops::LookupTableGradKernel<double>,

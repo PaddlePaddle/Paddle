@@ -23,6 +23,7 @@ from ..proto import framework_pb2
 from ..framework import OpProtoHolder, Variable, core, convert_np_dtype_to_dtype_, in_dygraph_mode
 from ..layer_helper import LayerHelper
 from ..data_feeder import check_variable_and_dtype
+from paddle import _C_ops
 
 __all__ = [
     'generate_layer_fn', 'generate_activation_fn', 'generate_inplace_fn',
@@ -257,7 +258,7 @@ def generate_activation_fn(op_type):
 
     def func(x, name=None):
         if in_dygraph_mode():
-            op = getattr(core.ops, op_type)
+            op = getattr(_C_ops, op_type)
             return op(x)
 
         if op_type not in ["abs", "exp", "square"]:
@@ -297,7 +298,7 @@ def generate_inplace_fn(inplace_op_type):
 
     def func(x, name=None):
         if in_dygraph_mode():
-            op = getattr(core.ops, inplace_op_type)
+            op = getattr(_C_ops, inplace_op_type)
             return op(x)
         warnings.warn(
             "In static mode, {}() is the same as {}() and does not perform inplace operation.".

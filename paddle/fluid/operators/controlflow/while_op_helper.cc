@@ -15,7 +15,6 @@
 #include "paddle/fluid/operators/controlflow/while_op_helper.h"
 
 #include <string>
-#include "paddle/fluid/operators/controlflow/op_variant.h"
 #include "paddle/fluid/string/string_helper.h"
 
 namespace paddle {
@@ -199,18 +198,10 @@ void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
 
 void PrepareSafeEagerDeletionOnWhileOpAndWhileGradOp(
     const framework::ProgramDesc &program,
-    const std::vector<framework::OperatorBase *> &while_ops,
-    const std::vector<framework::OperatorBase *> &while_grad_ops) {
-  std::vector<OpVariant> fwd_ops, bwd_ops;
-  fwd_ops.reserve(while_ops.size());
-  for (auto *op : while_ops) {
-    fwd_ops.emplace_back(op);
-  }
-
-  bwd_ops.reserve(while_grad_ops.size());
-  for (auto *op : while_grad_ops) {
-    bwd_ops.emplace_back(op);
-  }
+    const std::vector<OpVariant> &while_ops,
+    const std::vector<OpVariant> &while_grad_ops) {
+  std::vector<OpVariant> fwd_ops = while_ops;
+  std::vector<OpVariant> bwd_ops = while_grad_ops;
 
   PrepareSafeEagerDeletionOnWhileOpAndWhileGradOpImpl(program, &fwd_ops,
                                                       &bwd_ops);
@@ -221,14 +212,17 @@ bool GetCondData(const framework::LoDTensor &cond) {
   if (platform::is_cpu_place(cond.place())) {
     return cond.data<bool>()[0];
   }
-  // when platform::is_gpu_place(cond.place()) is true
+  // when platform::is_gpu_place(cond.place()) or
+  // platform::is_npu_place(cond.place()) is true
   std::unique_ptr<framework::LoDTensor> cpu_cond{new framework::LoDTensor()};
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP) || \
+    defined(PADDLE_WITH_ASCEND_CL)
   framework::TensorCopySync(cond, platform::CPUPlace(), cpu_cond.get());
 #else
   PADDLE_THROW(platform::errors::PreconditionNotMet(
-      "This version of PaddlePaddle does NOT support GPU but got GPU tensor "
-      "Cond in WhileOp. Please compile WITH_GPU option."));
+      "This version of PaddlePaddle does NOT support GPU/NPU but got GPU/NPU "
+      "tensor "
+      "Cond in WhileOp. Please compile WITH_GPU or WITH_ASCEND_CL option."));
 #endif
   return cpu_cond->data<bool>()[0];
 }

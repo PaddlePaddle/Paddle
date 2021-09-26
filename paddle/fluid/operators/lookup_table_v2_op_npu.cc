@@ -29,24 +29,19 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
     auto *output_t = ctx.Output<framework::LoDTensor>("Out");  // float tensor
     auto *table_t = ctx.Input<framework::LoDTensor>("W");
 
-    // It seems cann 20.1 accepts int64, but cann 20.2+ not.
-    PADDLE_ENFORCE_EQ(ids_t->type(), framework::proto::VarType::INT32,
-                      platform::errors::Unimplemented(
-                          "The index of LookupTableV2 should be int32."));
-
     auto *table_var = ctx.InputVar("W");
     PADDLE_ENFORCE_EQ(
         table_var->IsType<framework::LoDTensor>(), true,
         platform::errors::InvalidArgument("npu only accept LoDTensor"));
     output_t->mutable_data<T>(ctx.GetPlace());
-    framework::NPUAttributeMap attr_input = {{"validate_indices", false}};
 
-    const auto &runner =
-        NpuOpRunner("Gather", {*table_t, *ids_t}, {*output_t}, attr_input);
-    auto stream =
-        ctx.template device_context<paddle::platform::NPUDeviceContext>()
-            .stream();
-    runner.Run(stream);
+    NpuOpRunner runner;
+    runner.SetType("GatherV2")
+        .AddInput(*table_t)
+        .AddInput(*ids_t)
+        .AddInput(std::vector<int32_t>{0})
+        .AddOutput(*output_t);
+    runner.Run();
   }
 };
 
@@ -64,6 +59,23 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
+
+    /* EmbeddingDenseGrad has bug on large shape, temporarily disable it.
+
+    int embedding_dim = table_grad_t->dims()[1];
+    if (embedding_dim % 32 == 0) {
+      // NOTE(pangyoki): The embedding_dim of Tensor used in
+      // EmbeddingDenseGrad must be an integer multiple of 32.
+      int num_weights = table_grad_t->dims()[0];
+      const auto &runner =
+          NpuOpRunner("EmbeddingDenseGrad", {*output_grad_t, *ids_t},
+                      {*table_grad_t}, {{"num_weights", num_weights},
+                                        {"padding_idx", -1},
+                                        {"scale_grad_by_freq", false}});
+      runner.Run(stream);
+      return;
+    }
+    */
 
     const auto &runner_zeros =
         NpuOpRunner("ZerosLike", {*table_grad_t}, {*table_grad_t});

@@ -16,10 +16,15 @@ import math
 import numpy as np
 
 import paddle
+import paddle.nn.quant.quant_layers as quant_layers
 
-from . import quant_nn
+from ..quantization_pass import _get_op_input_var_names
+from ..quantization_pass import _get_op_output_var_names
+from ..quantization_pass import _get_output_name_index
+from ..quantization_pass import _get_input_name_index
 
 layer_name_map = {
+    'Conv2DTranspose': paddle.nn.Conv2DTranspose,
     'Conv2D': paddle.nn.Conv2D,
     'Linear': paddle.nn.Linear,
     'AdaptiveAvgPool2D': paddle.nn.AdaptiveAvgPool2D,
@@ -42,8 +47,9 @@ layer_name_map = {
 }
 
 # Apply fake quant for the inputs of these layers
-# TODO (jc): support paddle.nn.Conv2DTranspose
-fake_quant_input_layers = [paddle.nn.Conv2D, paddle.nn.Linear]
+fake_quant_input_layers = [
+    paddle.nn.Conv2D, paddle.nn.Linear, paddle.nn.Conv2DTranspose
+]
 
 # Apply fake quant for the output of these layers
 # TODO(jc): fix the problem of adding duplicate fake_quant ops
@@ -54,16 +60,19 @@ fake_quant_output_layers = [
 ]
 
 fake_quant_leaf_layers = [
-    quant_nn.FakeQuantAbsMax,
-    quant_nn.FakeQuantChannelWiseAbsMax,
-    quant_nn.FakeQuantMovingAverageAbsMax,
-    quant_nn.MovingAverageAbsMaxScale,
+    quant_layers.FakeQuantAbsMax,
+    quant_layers.FakeQuantChannelWiseAbsMax,
+    quant_layers.FakeQuantMovingAverageAbsMax,
+    quant_layers.MovingAverageAbsMaxScale,
 ]
 
-fake_quant_wrap_layers = [quant_nn.QuantizedConv2D, quant_nn.QuantizedLinear]
+fake_quant_wrap_layers = [
+    quant_layers.QuantizedConv2D, quant_layers.QuantizedLinear,
+    quant_layers.QuantizedConv2DTranspose
+]
 
 # The weight format of these layers is Cin * Cout * H * W 
-spec_channel_axis_layers = [paddle.nn.Conv2D, paddle.nn.Conv2DTranspose]
+spec_channel_axis_layers = [paddle.nn.Conv2DTranspose, paddle.nn.Linear]
 
 weight_op_types = [
     "conv2d", "depthwise_conv2d", "matmul", "conv2d_transpose",
@@ -78,9 +87,9 @@ fake_quantize_dequantize_op_types = [
 
 
 def load_variable_data(scope, var_name):
-    '''
+    """
     Load variable value from scope
-    '''
+    """
     var_node = scope.find_var(var_name)
     assert var_node is not None, \
         "Can not find " + var_name + " in the scope."
@@ -94,6 +103,7 @@ def find_previous_op(block, var_name):
     for op in block.ops:
         if var_name in op.output_arg_names:
             return op
+    return None
 
 
 def find_next_ops(block, var_name):
@@ -113,6 +123,12 @@ def find_parent_layer_and_sub_name(model, name):
     the sub_name of the layer.
     For example, if name is 'block_1/convbn_1/conv_1', the parent layer is
     'block_1/convbn_1' and the sub_name is `conv_1`.
+    Args:
+        model(paddle.nn.Layer): the model to be quantized.
+        name(string): the name of a layer
+
+    Returns:
+        parent_layer, subname
     """
     assert isinstance(model, paddle.nn.Layer), \
             "The model must be the instance of paddle.nn.Layer."
@@ -132,6 +148,17 @@ def find_parent_layer_and_sub_name(model, name):
     return parent_layer, sub_name
 
 
+def program_all_ops(program):
+    """
+    Return all ops for the input program.
+    """
+    all_ops = []
+    for block in program.blocks:
+        for op in block.ops:
+            all_ops.append(op)
+    return all_ops
+
+
 def is_leaf_layer(layer):
     """
     Whether the layer is leaf layer.
@@ -140,107 +167,11 @@ def is_leaf_layer(layer):
         and len(layer.sublayers()) == 0
 
 
-def expand_quantized_bins(quantized_bins, reference_bins):
+def fp_numpy_to_naive(x_np):
     """
+    Convert numpy to float or list.
     """
-    expanded_quantized_bins = [0] * len(reference_bins)
-    num_merged_bins = int(len(reference_bins) / len(quantized_bins))
-    j_start = 0
-    j_end = num_merged_bins
-    for idx in range(len(quantized_bins)):
-        zero_count = reference_bins[j_start:j_end].count(0)
-        num_merged_bins = j_end - j_start
-        if zero_count == num_merged_bins:
-            avg_bin_ele = 0
-        else:
-            avg_bin_ele = quantized_bins[idx] / (
-                num_merged_bins - zero_count + 0.0)
-        for idx1 in range(j_start, j_end):
-            expanded_quantized_bins[idx1] = (0 if reference_bins[idx1] == 0 else
-                                             avg_bin_ele)
-        j_start += num_merged_bins
-        j_end += num_merged_bins
-        if (idx + 1) == len(quantized_bins) - 1:
-            j_end = len(reference_bins)
-    return expanded_quantized_bins
-
-
-def safe_entropy(reference_distr_P, P_sum, candidate_distr_Q, Q_sum):
-    '''
-    Calculate the entropy.
-    '''
-    assert len(reference_distr_P) == len(candidate_distr_Q)
-    tmp_sum1 = 0
-    tmp_sum2 = 0
-    for idx in range(len(reference_distr_P)):
-        p_idx = reference_distr_P[idx]
-        q_idx = candidate_distr_Q[idx]
-        if p_idx == 0:
-            tmp_sum1 += 0
-            tmp_sum2 += 0
-        else:
-            if q_idx == 0:
-                _logger.error("Fatal error!, idx = " + str(idx) +
-                              " qindex = 0! p_idx = " + str(p_idx))
-            tmp_sum1 += p_idx * (math.log(Q_sum * p_idx))
-            tmp_sum2 += p_idx * (math.log(P_sum * q_idx))
-    return (tmp_sum1 - tmp_sum2) / P_sum
-
-
-def cal_kl_scaling_factor(hist, abs_max, bits):
-    '''
-    Using the KL-divergenc method to get the more precise scaling factor.
-    '''
-    assert hist.ndim == 1
-    hist_bins = hist.shape[0]
-    starting_iter = int((hist_bins - 1) * 0.5)
-    bin_width = abs_max / hist_bins
-    quant_range = 2**(bits - 1) - 1
-
-    P_sum = np.sum(np.array(hist).ravel())
-    min_kl_divergence = 0
-    min_kl_index = 0
-    kl_inited = False
-
-    for i in range(starting_iter, hist_bins):
-        reference_distr_P = hist[0:i].tolist()
-        outliers_count = sum(hist[i:])
-        if reference_distr_P[i - 1] == 0:
-            continue
-        reference_distr_P[i - 1] += outliers_count
-        reference_distr_bins = reference_distr_P[:]
-        candidate_distr_Q = hist[0:i].tolist()
-        num_merged_bins = int(i / quant_range)
-        candidate_distr_Q_quantized = [0] * quant_range
-        j_start = 0
-        j_end = num_merged_bins
-        for idx in range(quant_range):
-            candidate_distr_Q_quantized[idx] = sum(candidate_distr_Q[j_start:
-                                                                     j_end])
-            j_start += num_merged_bins
-            j_end += num_merged_bins
-            if (idx + 1) == quant_range - 1:
-                j_end = i
-        candidate_distr_Q = expand_quantized_bins(candidate_distr_Q_quantized,
-                                                  reference_distr_bins)
-        Q_sum = sum(candidate_distr_Q)
-        kl_divergence = safe_entropy(reference_distr_P, P_sum,
-                                     candidate_distr_Q, Q_sum)
-        if not kl_inited:
-            min_kl_divergence = kl_divergence
-            min_kl_index = i
-            kl_inited = True
-        elif kl_divergence < min_kl_divergence:
-            min_kl_divergence = kl_divergence
-            min_kl_index = i
-        else:
-            pass
-    if min_kl_index == 0:
-        while starting_iter > 0:
-            if hist[starting_iter] == 0:
-                starting_iter -= 1
-                continue
-            else:
-                break
-        min_kl_index = starting_iter
-    return (min_kl_index + 0.5) * bin_width
+    if x_np.size == 1:
+        return float(x_np)
+    else:
+        return x_np.tolist()

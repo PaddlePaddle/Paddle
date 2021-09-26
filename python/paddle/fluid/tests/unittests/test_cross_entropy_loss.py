@@ -23,12 +23,6 @@ from test_softmax_with_cross_entropy_op import cross_entropy
 from paddle.fluid import Program, program_guard
 
 
-def stable_softmax(x):
-    shiftx = (x - np.max(x)).clip(-64.)
-    exps = np.exp(shiftx)
-    return exps / np.sum(exps)
-
-
 def log_softmax(x, axis=-1):
     softmax_out = np.apply_along_axis(stable_softmax, axis, x)
     return np.log(softmax_out)
@@ -56,7 +50,7 @@ def cross_entropy_loss_1d(input,
         total_weight += cur_weight
         out[i] = -log_softmax_out[i][cur_target] * cur_weight
 
-    ###2. deal with reduction 
+    ###2. deal with reduction
     if reduction == 'sum':
         return np.sum(out), np.array([total_weight]).astype('float64')
     elif reduction == 'mean':
@@ -440,7 +434,7 @@ class CrossEntropyLoss(unittest.TestCase):
 
         paddle.set_device("cpu")
 
-        #2 dygraph 
+        #2 dygraph
         paddle.disable_static()
         paddle_loss_mean = paddle.nn.functional.cross_entropy(
             fluid.dygraph.to_variable(self.logits),
@@ -847,6 +841,27 @@ class CrossEntropyLoss(unittest.TestCase):
         self.assertTrue(np.allclose(static_ret, expected))
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
+    def test_cross_entropy_loss_1d_with_weight_mean_ignore_exceedlabel(self):
+        N = 100
+        C = 200
+        input_np = np.random.random([N, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N)).astype(np.int64)
+        label_np[0] = 255
+        weight_np = np.random.random([C]).astype(self.dtype)
+
+        with fluid.dygraph.guard():
+            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+                weight=fluid.dygraph.to_variable(weight_np), ignore_index=255)
+            dy_ret = cross_entropy_loss(
+                fluid.dygraph.to_variable(input_np),
+                fluid.dygraph.to_variable(label_np))
+            dy_ret_value = dy_ret.numpy()
+            self.assertIsNotNone(dy_ret_value)
+        expected = cross_entropy_loss_1d(
+            input_np, label_np, weight=weight_np, ignore_index=255)[0]
+
+        self.assertTrue(np.allclose(dy_ret_value, expected))
+
     def test_cross_entropy_loss_1d_with_weight_mean(self):
         input_np = np.random.random([2, 4]).astype(self.dtype)
         label_np = np.random.randint(0, 4, size=(2)).astype(np.int64)
@@ -1019,7 +1034,6 @@ class CrossEntropyLoss(unittest.TestCase):
     def test_cross_entropy_loss_1d_mean(self):
         input_np = np.random.random([100, 200]).astype(self.dtype)  #N,C
         label_np = np.random.randint(0, 100, size=(100)).astype(np.int64)  #N,1
-        weight_np = np.random.random([200]).astype(self.dtype)  #C
         paddle.enable_static()
         prog = fluid.Program()
         startup_prog = fluid.Program()
@@ -1028,7 +1042,6 @@ class CrossEntropyLoss(unittest.TestCase):
         with fluid.program_guard(prog, startup_prog):
             input = fluid.data(name='input', shape=[100, 200], dtype=self.dtype)
             label = fluid.data(name='label', shape=[100], dtype='int64')
-            weight = fluid.data(name='weight', shape=[100], dtype=self.dtype)
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss()
             ret = cross_entropy_loss(input, label)
             exe = fluid.Executor(place)
@@ -1160,6 +1173,27 @@ class CrossEntropyLoss(unittest.TestCase):
             input_np, label_np, weight=weight_np, reduction='none')
         self.assertTrue(np.allclose(static_ret, dy_ret_value))
         self.assertTrue(np.allclose(static_ret, expected))
+        self.assertTrue(np.allclose(dy_ret_value, expected))
+
+    def test_cross_entropy_loss_2d_with_weight_mean_ignore_exceedlabel(self):
+        N = 4
+        C = 3
+        H = 512
+        W = 512
+        input_np = np.random.random([N, H, W, C]).astype(self.dtype)
+        label_np = np.random.randint(0, C, size=(N, H, W)).astype(np.int64)
+        label_np[0, 0, 0] = 255
+        weight_np = np.random.random([C]).astype(self.dtype)
+        with fluid.dygraph.guard():
+            cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+                weight=fluid.dygraph.to_variable(weight_np), ignore_index=255)
+            dy_ret = cross_entropy_loss(
+                fluid.dygraph.to_variable(input_np),
+                fluid.dygraph.to_variable(label_np))
+            dy_ret_value = dy_ret.numpy()
+            self.assertIsNotNone(dy_ret_value)
+        expected = cross_entropy_loss_2d(
+            input_np, label_np, weight=weight_np, ignore_index=255)[0]
         self.assertTrue(np.allclose(dy_ret_value, expected))
 
     def test_cross_entropy_loss_2d_with_weight_mean(self):
@@ -1368,21 +1402,34 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
 
-            def test_LabelValue():
+            def test_WeightLength_NotEqual():
                 input_data = paddle.rand(shape=[20, 100])
                 label_data = paddle.randint(
                     0, 100, shape=[20, 1], dtype="int64")
-                label_data[0] = 255
+                weight_data = paddle.rand([100 + 1])
+                paddle.nn.functional.cross_entropy(
+                    input=input_data,
+                    label=label_data,
+                    weight=weight_data,
+                    ignore_index=-100)
+
+            self.assertRaises(ValueError, test_WeightLength_NotEqual)
+
+            def test_LabelValue_ExceedMax():
+                input_data = paddle.rand(shape=[20, 100])
+                label_data = paddle.randint(
+                    0, 100, shape=[20, 1], dtype="int64")
+                label_data[0] = 100
                 weight_data = paddle.rand([100])
                 paddle.nn.functional.cross_entropy(
                     input=input_data,
                     label=label_data,
                     weight=weight_data,
-                    ignore_index=255)
+                    ignore_index=-100)
 
-            self.assertRaises(ValueError, test_LabelValue)
+            self.assertRaises(ValueError, test_LabelValue_ExceedMax)
 
-            def test_LabelValueNeg():
+            def test_LabelValue_ExceedMin():
                 input_data = paddle.rand(shape=[20, 100])
                 label_data = paddle.randint(
                     0, 100, shape=[20, 1], dtype="int64")
@@ -1392,9 +1439,41 @@ class TestCrossEntropyFAPIError(unittest.TestCase):
                     input=input_data,
                     label=label_data,
                     weight=weight_data,
-                    ignore_index=-1)
+                    ignore_index=-100)
 
-            self.assertRaises(ValueError, test_LabelValueNeg)
+            self.assertRaises(ValueError, test_LabelValue_ExceedMin)
+
+            def static_test_WeightLength_NotEqual():
+                input_np = np.random.random([2, 4]).astype('float32')
+                label_np = np.random.randint(0, 4, size=(2)).astype(np.int64)
+                weight_np = np.random.random([3]).astype('float32')
+                paddle.enable_static()
+                prog = fluid.Program()
+                startup_prog = fluid.Program()
+                place = fluid.CUDAPlace(0) if fluid.core.is_compiled_with_cuda(
+                ) else fluid.CPUPlace()
+                with fluid.program_guard(prog, startup_prog):
+                    input = fluid.data(
+                        name='input', shape=[2, 4], dtype='float32')
+                    label = fluid.data(name='label', shape=[2], dtype='int64')
+                    weight = fluid.data(
+                        name='weight', shape=[3],
+                        dtype='float32')  #weight for each class
+                    cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
+                        weight=weight)
+                    ret = cross_entropy_loss(input, label)
+
+                    exe = fluid.Executor(place)
+                    static_ret = exe.run(prog,
+                                         feed={
+                                             'input': input_np,
+                                             'label': label_np,
+                                             "weight": weight_np
+                                         },
+                                         fetch_list=[ret])
+                    self.assertIsNotNone(static_ret)
+
+            self.assertRaises(ValueError, static_test_WeightLength_NotEqual)
 
 
 if __name__ == "__main__":

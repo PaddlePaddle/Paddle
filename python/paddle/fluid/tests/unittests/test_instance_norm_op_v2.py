@@ -45,12 +45,12 @@ class TestInstanceNorm(unittest.TestCase):
 
             def error3d():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
-                instance_norm3d = paddle.nn.BatchNorm3D(1)
+                instance_norm3d = paddle.nn.InstanceNorm3D(1)
                 instance_norm3d(fluid.dygraph.to_variable(x_data_4))
 
             def weight_bias_false():
                 x_data_4 = np.random.random(size=(2, 1, 3, 3)).astype('float32')
-                instance_norm3d = paddle.nn.BatchNorm3D(
+                instance_norm3d = paddle.nn.InstanceNorm3D(
                     1, weight_attr=False, bias_attr=False)
 
             with fluid.dygraph.guard(p):

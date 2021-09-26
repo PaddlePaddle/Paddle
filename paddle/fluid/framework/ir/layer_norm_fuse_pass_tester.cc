@@ -66,12 +66,16 @@ class LayerNormFuseTest {
     x_mean->SetAttr("keep_dim", true);
     x_mean->SetAttr("reduce_all", false);
 
-    test::CreateOp(&m_prog, "elementwise_sub",
-                   {{"X", "x"}, {"Y", "x_mean_out"}},
-                   {{"Out", "x_sub_mean_out"}}, false);
-    test::CreateOp(&m_prog, "elementwise_pow",
-                   {{"X", "x_sub_mean_out"}, {"Y", "sqr_pow"}},
-                   {{"Out", "x_sub_mean_sqr_out"}}, false);
+    auto* x_sub = test::CreateOp(&m_prog, "elementwise_sub",
+                                 {{"X", "x"}, {"Y", "x_mean_out"}},
+                                 {{"Out", "x_sub_mean_out"}}, false);
+    x_sub->SetAttr("axis", 1);
+
+    auto* x_pow = test::CreateOp(&m_prog, "elementwise_pow",
+                                 {{"X", "x_sub_mean_out"}, {"Y", "sqr_pow"}},
+                                 {{"Out", "x_sub_mean_sqr_out"}}, false);
+    x_pow->SetAttr("axis", 1);
+
     auto* std_dev =
         test::CreateOp(&m_prog, "reduce_mean", {{"X", "x_sub_mean_sqr_out"}},
                        {{"Out", "std_dev_out"}}, false);
@@ -79,20 +83,29 @@ class LayerNormFuseTest {
     std_dev->SetAttr("keep_dim", true);
     std_dev->SetAttr("reduce_all", false);
 
-    test::CreateOp(&m_prog, "elementwise_add",
-                   {{"X", "std_dev_out"}, {"Y", "eps"}},
-                   {{"Out", "std_dev_eps_out"}}, false);
+    auto* x_add = test::CreateOp(&m_prog, "elementwise_add",
+                                 {{"X", "std_dev_out"}, {"Y", "eps"}},
+                                 {{"Out", "std_dev_eps_out"}}, false);
+    x_add->SetAttr("axis", 1);
+
     test::CreateOp(&m_prog, "sqrt", {{"X", "std_dev_eps_out"}},
                    {{"Out", "std_dev_eps_sqrt_out"}}, false);
-    test::CreateOp(&m_prog, "elementwise_div",
-                   {{"X", "x_sub_mean_out"}, {"Y", "std_dev_eps_sqrt_out"}},
-                   {{"Out", "division_out"}}, false);
-    test::CreateOp(&m_prog, "elementwise_mul",
-                   {{"X", "division_out"}, {"Y", "gamma"}},
-                   {{"Out", "scale_out"}}, false);
-    test::CreateOp(&m_prog, "elementwise_add",
-                   {{"X", "scale_out"}, {"Y", "beta"}}, {{"Out", "shift_out"}},
-                   false);
+
+    auto* x_div =
+        test::CreateOp(&m_prog, "elementwise_div",
+                       {{"X", "x_sub_mean_out"}, {"Y", "std_dev_eps_sqrt_out"}},
+                       {{"Out", "division_out"}}, false);
+    x_div->SetAttr("axis", 1);
+
+    auto* x_mul = test::CreateOp(&m_prog, "elementwise_mul",
+                                 {{"X", "division_out"}, {"Y", "gamma"}},
+                                 {{"Out", "scale_out"}}, false);
+    x_mul->SetAttr("axis", 1);
+
+    auto* x_add_v1 = test::CreateOp(&m_prog, "elementwise_add",
+                                    {{"X", "scale_out"}, {"Y", "beta"}},
+                                    {{"Out", "shift_out"}}, false);
+    x_add_v1->SetAttr("axis", 1);
   }
 
   template <typename Func>

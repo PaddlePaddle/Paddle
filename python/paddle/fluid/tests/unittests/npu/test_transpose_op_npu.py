@@ -25,8 +25,6 @@ import paddle.fluid as fluid
 paddle.enable_static()
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestTransposeOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -58,11 +56,9 @@ class TestTransposeOp(OpTest):
         self.axis = -1
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False)
+        self.check_output_with_place(self.place)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestTransposeOpFP16(TestTransposeOp):
     no_need_check_grad = True
 

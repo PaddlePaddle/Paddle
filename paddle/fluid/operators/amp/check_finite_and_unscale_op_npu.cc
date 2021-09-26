@@ -97,10 +97,6 @@ class CheckFiniteAndUnscaleNPUKernel : public framework::OpKernel<T> {
           NpuOpRunner("Mul", {*x, *tmp_inverse_out}, {*out}, {});
       runner_mul.Run(stream);
     }
-
-    const auto& runner_clear_status =
-        NpuOpRunner("NPUClearFloatStatus", {*float_status}, {tmp});
-    runner_clear_status.Run(stream);
   }
 };
 

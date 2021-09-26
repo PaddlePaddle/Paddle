@@ -69,7 +69,7 @@ func TestNewConfig(t *testing.T) {
 
 	config.EnableMKLDNN()
 
-	config.EnableMemoryOptim()
+	config.EnableMemoryOptim(true)
 	t.Logf("MemoryOptimEnabled:%+v", config.MemoryOptimEnabled())
 
 	config.EnableProfile()
@@ -85,6 +85,8 @@ func TestNewConfig(t *testing.T) {
 
 	config.DeletePass("test_pass")
 	t.Logf("After DeletePass, AllPasses:%+v", config.AllPasses())
+
+	t.Log(config.Summary())
 }
 
 func TestLite(t *testing.T) {

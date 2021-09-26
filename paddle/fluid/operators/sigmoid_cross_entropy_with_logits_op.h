@@ -21,6 +21,7 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
+const int kIgnoreIndex = -100;
 
 // Out = max(X, 0) - X * Labels + log(1 + exp(-abs(X)))
 template <typename DeviceContext, typename T>

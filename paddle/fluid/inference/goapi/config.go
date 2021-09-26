@@ -182,6 +182,15 @@ func (config *Config) EnableXpu(l3WorkspaceSize int32, locked bool, autotune boo
 }
 
 ///
+/// \brief Turn on NPU.
+///
+/// \param deviceId the NPU card to use.
+///
+func (config *Config) EnableNpu(deviceId int32) {
+	C.PD_ConfigEnableNpu(config.c, C.int32_t(deviceId))
+}
+
+///
 /// \brief A boolean state telling whether the GPU is turned on.
 ///
 /// \return bool Whether the GPU is turned on.
@@ -200,6 +209,15 @@ func (config *Config) UseXpu() bool {
 }
 
 ///
+/// \brief A boolean state telling whether the NPU is turned on.
+///
+/// \return bool Whether the NPU is turned on.
+///
+func (config *Config) UseNpu() bool {
+	return cvtPDBoolToGo(C.PD_ConfigUseNpu(config.c))
+}
+
+///
 /// \brief Get the GPU device id.
 ///
 /// \return int32 The GPU device id.
@@ -215,6 +233,15 @@ func (config *Config) GpuDeviceId() int32 {
 ///
 func (config *Config) XpuDeviceId() int32 {
 	return int32(C.PD_ConfigXpuDeviceId(config.c))
+}
+
+///
+/// \brief Get the NPU device id.
+///
+/// \return int32 The NPU device id.
+///
+func (config *Config) NpuDeviceId() int32 {
+	return int32(C.PD_ConfigNpuDeviceId(config.c))
 }
 
 ///
@@ -354,6 +381,71 @@ func (config *Config) SetTRTDynamicShapeInfo(minInputShape map[string][]int32, m
 		(**C.int32_t)(unsafe.Pointer(&cMaxInputShape[0])),
 		(**C.int32_t)(unsafe.Pointer(&cOptInputShape[0])),
 		cvtGoBoolToPD(disableTrtPluginFp16))
+}
+
+///
+/// \brief A boolean state telling whether the trt dynamic_shape is used.
+///
+func (config *Config) TensorRtDynamicShapeEnabled() bool {
+	return cvtPDBoolToGo(C.PD_ConfigTensorRtDynamicShapeEnabled(config.c))
+}
+
+///
+/// \brief Enable tuned tensorrt dynamic shape.
+///
+/// \param shapeRangeInfoPath the path to shape_info file got in
+/// CollectShapeInfo mode.
+/// \param allowBuildAtRuntime allow build trt engine at runtime.
+///
+func (config *Config) EnableTunedTensorRtDynamicShape(shapeRangeInfoPath string, allowBuildAtRuntime bool) {
+	cstr := C.CString(shapeRangeInfoPath)
+	C.PD_ConfigEnableTunedTensorRtDynamicShape(config.c, cstr, cvtGoBoolToPD(allowBuildAtRuntime))
+	defer C.free(unsafe.Pointer(cstr))
+}
+
+///
+/// \brief A boolean state telling whether to use tuned tensorrt dynamic
+/// shape.
+///
+func (config *Config) TunedTensorRtDynamicShape() bool {
+	return cvtPDBoolToGo(C.PD_ConfigTunedTensorRtDynamicShape(config.c))
+}
+
+///
+/// \brief A boolean state telling whether to allow building trt engine at
+/// runtime.
+///
+func (config *Config) TrtAllowBuildAtRuntime() bool {
+	return cvtPDBoolToGo(C.PD_ConfigTrtAllowBuildAtRuntime(config.c))
+}
+
+///
+/// \brief Collect shape info of all tensors in compute graph.
+///
+/// \param shapeRangeInfoPath the path to save shape info.
+///
+func (config *Config) CollectShapeRangeInfo(shapeRangeInfoPath string) {
+	cstr := C.CString(shapeRangeInfoPath)
+	C.PD_ConfigCollectShapeRangeInfo(config.c, cstr)
+	defer C.free(unsafe.Pointer(cstr))
+}
+
+///
+/// \brief the shape info path in CollectShapeInfo mode.
+/// Attention, Please release the string manually.
+///
+func (config *Config) ShapeRangeInfoPath() string {
+	cstr := C.PD_ConfigShapeRangeInfoPath(config.c)
+	str := C.GoString(cstr)
+	C.free(unsafe.Pointer(cstr))
+	return str
+}
+
+///
+/// \brief A boolean state telling whether to collect shape info.
+///
+func (config *Config) ShapeRangeInfoCollected() bool {
+	return cvtPDBoolToGo(C.PD_ConfigShapeRangeInfoCollected(config.c))
 }
 
 ///
@@ -622,8 +714,8 @@ func (config *Config) ModelFromMemory() bool {
 /// \brief Turn on memory optimize
 /// NOTE still in development.
 ///
-func (config *Config) EnableMemoryOptim() {
-	C.PD_ConfigEnableMemoryOptim(config.c)
+func (config *Config) EnableMemoryOptim(x bool) {
+	C.PD_ConfigEnableMemoryOptim(config.c, cvtGoBoolToPD(x))
 }
 
 ///
@@ -732,4 +824,16 @@ func (config *Config) AllPasses() []string {
 	passes := cvtToGoSliceString(num, cPasses.data)
 	C.PD_OneDimArrayCstrDestroy(cPasses)
 	return passes
+}
+
+///
+/// \brief Get information of config.
+///
+/// \return Return config info.
+///
+func (config *Config) Summary() string {
+	cSummary := C.PD_ConfigSummary(config.c)
+	summary := C.GoString(cSummary)
+	C.free(unsafe.Pointer(cSummary))
+	return summary
 }

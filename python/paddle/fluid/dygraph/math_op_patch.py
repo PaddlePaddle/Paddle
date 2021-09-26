@@ -21,6 +21,7 @@ from . import no_grad
 
 import numpy as np
 import warnings
+from paddle import _C_ops
 
 _supported_int_dtype_ = [
     core.VarDesc.VarType.UINT8,
@@ -45,7 +46,9 @@ _supported_promote_complex_types_ = [
     '__rsub__',
     '__mul__',
     '__rmul__',
+    '__div__',
     '__truediv__',
+    '__rdiv__',
     '__rtruediv__',
     '__matmul__',
 ]
@@ -67,8 +70,8 @@ def monkey_patch_math_varbase():
     @no_grad
     def create_tensor(value, dtype, shape):
         out = _varbase_creator(dtype=dtype)
-        out = core.ops.fill_constant(out, 'dtype', dtype, 'shape', shape,
-                                     'value', value, 'force_cpu', False)
+        out = _C_ops.fill_constant(out, 'dtype', dtype, 'shape', shape, 'value',
+                                   value, 'force_cpu', False)
         out.stop_gradient = True
         return out
 
@@ -100,10 +103,10 @@ def monkey_patch_math_varbase():
         """
         if not isinstance(dtype, core.VarDesc.VarType):
             dtype = convert_np_dtype_to_dtype_(dtype)
-        return core.ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
+        return _C_ops.cast(self, 'in_dtype', self.dtype, 'out_dtype', dtype)
 
     def _scalar_elementwise_op_(var, scale, bias):
-        return core.ops.scale(var, 'scale', scale, 'bias', bias)
+        return _C_ops.scale(var, 'scale', scale, 'bias', bias)
 
     def _neg_(var):
         return _scalar_elementwise_op_(var, -1.0, 0.0)
@@ -147,6 +150,16 @@ def monkey_patch_math_varbase():
     def _size_(var):
         return np.prod(var.shape)
 
+    @property
+    def _T_(var):
+        if len(var.shape) == 1:
+            return var
+        perm = []
+        for i in range(len(var.shape)):
+            perm.insert(0, i)
+        out, _ = _C_ops.transpose2(var, 'axis', perm)
+        return out
+
     def _scalar_add_(var, value):
         return _scalar_elementwise_op_(var, 1.0, value)
 
@@ -158,6 +171,9 @@ def monkey_patch_math_varbase():
 
     def _scalar_mul_(var, value):
         return _scalar_elementwise_op_(var, value, 0.0)
+
+    def _scalar_div_(var, value):
+        return _scalar_elementwise_op_(var, 1.0 / value, 0.0)
 
     # for binary operator such as elementwise, compare
     def _binary_creator_(method_name,
@@ -189,10 +205,7 @@ def monkey_patch_math_varbase():
                 if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:
                     self = astype(self, 'float32')
                 # here use `scale` replace `elementwise` to get better performance
-                # but only +, -, * can use this method
-                # NOTE(chentianyu03): / can not use `scale` method，because the result of
-                # `scale` method (self*(1/other_var)) do not exactly equal with the result 
-                # of `elementwise_div` method.
+                # but only +, -, *, / can use this method
                 if scalar_method is not None:
                     return scalar_method(self, other_var)
             else:
@@ -242,7 +255,7 @@ def monkey_patch_math_varbase():
 
             # 4. calculation
             axis = -1
-            math_op = getattr(core.ops, op_type)
+            math_op = getattr(_C_ops, op_type)
             return math_op(self, other_var, 'axis', axis)
 
         comment = OpProtoHolder.instance().get_op_proto(op_type).comment
@@ -270,6 +283,7 @@ def monkey_patch_math_varbase():
         ('ndimension', lambda x: len(x.shape)),
         ('ndim', _ndim_),
         ('size', _size_),
+        ('T', _T_),
         ('__add__',
          _binary_creator_('__add__', 'elementwise_add', False, _scalar_add_)),
         ##  a+b == b+a. Do not need to reverse explicitly
@@ -284,8 +298,12 @@ def monkey_patch_math_varbase():
         ## a*b == b*a. Do not need to reverse explicitly
         ('__rmul__',
          _binary_creator_('__rmul__', 'elementwise_mul', False, _scalar_mul_)),
+        ('__div__', _binary_creator_('__div__', 'elementwise_div', False,
+                                     _scalar_div_)),
         ('__truediv__', _binary_creator_('__truediv__', 'elementwise_div',
-                                         False, None)),
+                                         False, _scalar_div_)),
+        ('__rdiv__', _binary_creator_('__rdiv__', 'elementwise_div', True,
+                                      None)),
         ('__rtruediv__', _binary_creator_('rtruediv__', 'elementwise_div', True,
                                           None)),
         ('__pow__', _binary_creator_('__pow__', 'elementwise_pow', False,

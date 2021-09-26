@@ -17,7 +17,7 @@ from __future__ import print_function
 import collections
 import inspect
 
-import gast
+from paddle.utils import gast
 from paddle.fluid import core
 from paddle.fluid.dygraph.dygraph_to_static.utils import unwrap
 from paddle.fluid.framework import Program

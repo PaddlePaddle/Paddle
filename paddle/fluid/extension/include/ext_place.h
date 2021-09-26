@@ -17,6 +17,6 @@ limitations under the License. */
 namespace paddle {
 
 // TODO(yangjiabin): Add other place support in next PR
-enum class PlaceType { kUNK = -1, kCPU, kGPU };
+enum class PlaceType { kUNK = -1, kCPU, kGPU, kHIP };
 
 }  // namespace paddle

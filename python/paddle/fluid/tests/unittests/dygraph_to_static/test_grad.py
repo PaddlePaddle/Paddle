@@ -48,6 +48,22 @@ class GradLinearLayer(paddle.nn.Layer):
         return dx
 
 
+class NoGradLinearLayer(paddle.nn.Layer):
+    def __init__(self):
+        super(NoGradLinearLayer, self).__init__()
+        self.linear = paddle.nn.Linear(5, 5, bias_attr=False)
+
+    @paddle.jit.to_static
+    def forward(self, x):
+        x.stop_gradient = False
+
+        with paddle.no_grad():
+            y = self.linear(x)
+
+        out = y + x
+        return out
+
+
 class TestGrad(unittest.TestCase):
     def setUp(self):
         self.func = GradLayer()
@@ -72,15 +88,16 @@ class TestGradLinear(TestGrad):
         self.func = GradLinearLayer()
         self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
         self.x.stop_gradient = False
+        self.infer_model_path = "double_grad_infer_model"
+        self.train_model_path = "double_grad_train_model"
 
     def test_save_infer_program(self):
-        path = "double_grad_infer_model"
         input_spec = [
             paddle.static.InputSpec(
                 shape=[10, 2, 5], dtype='float32')
         ]
-        paddle.jit.save(self.func, path, input_spec=input_spec)
-        load_func = paddle.jit.load(path)
+        paddle.jit.save(self.func, self.infer_model_path, input_spec=input_spec)
+        load_func = paddle.jit.load(self.infer_model_path)
 
         origin_res = self.func(self.x).numpy()
         load_res = load_func(self.x).numpy()
@@ -96,15 +113,24 @@ class TestGradLinear(TestGrad):
             avg_loss = paddle.mean(paddle.abs(out - 1))
             avg_loss.backward()
             optimizer.minimize(avg_loss)
+            print(self.x.grad.mean())
             self.func.clear_gradients()
 
-        path = "double_grad_train_model"
-        paddle.jit.save(self.func, path)
-        load_func = paddle.jit.load(path)
+        paddle.jit.save(self.func, self.train_model_path)
+        load_func = paddle.jit.load(self.train_model_path)
 
         origin_res = self.func(self.x).numpy()
         load_res = load_func(self.x).numpy()
         self.assertTrue(np.allclose(origin_res, load_res))
+
+
+class TestNoGradLinear(TestGradLinear):
+    def setUp(self):
+        self.func = NoGradLinearLayer()
+        self.x = paddle.ones(shape=[10, 2, 5], dtype='float32')
+        self.x.stop_gradient = False
+        self.infer_model_path = "no_grad_infer_model"
+        self.train_model_path = "no_grad_train_model"
 
 
 if __name__ == '__main__':

@@ -22,6 +22,7 @@ from paddle.fluid.framework import Variable
 import types
 from paddle.fluid import core
 import paddle
+from paddle import _C_ops
 
 __all__ = []
 
@@ -30,8 +31,8 @@ class HybridParallelGradScaler:
     def __init__(self, scaler, hcg):
         self._scaler = scaler
         self._hcg = hcg
-        self._is_mp = (
-            self._hcg.get_parallel_mode() == ParallelMode.TENSOR_PARALLEL)
+        self._use_dp_mode = (
+            self._hcg.get_parallel_mode() == ParallelMode.DATA_PARALLEL)
 
     def scale(self, var):
         return self._scaler.scale(var)
@@ -64,10 +65,10 @@ class HybridParallelGradScaler:
             param._grad_ivar() for param in optimizer._parameter_list
             if param._grad_ivar() is not None
         ]
-        core.ops.check_finite_and_unscale(param_grads, self._scale, param_grads,
-                                          self._found_inf)
+        _C_ops.check_finite_and_unscale(param_grads, self._scale, param_grads,
+                                        self._found_inf)
         # allreduce_max found_inf in check_group
-        if self._is_mp:
+        if not self._use_dp_mode:
             self._found_inf = paddle.cast(self._found_inf, dtype="int32")
             # TODO(shenliang03) Since the minimize call in the optimizer is 
             # after the gradscaler, check_finite needs to synchronize global 

@@ -27,6 +27,8 @@ import paddle.fluid.compiler as compiler
 import numpy
 import multiprocessing
 
+import paddle
+paddle.enable_static()
 fluid.core._set_eager_deletion_mode(0.0, 1.0, True)
 
 
@@ -124,6 +126,10 @@ class TestEagerDeletionWhileOpBase(unittest.TestCase):
 
         optim = fluid.optimizer.Adam(learning_rate=1e-3)
         optim.minimize(loss)
+
+        gc_vars = core._get_eager_deletion_vars(
+            fluid.default_main_program().desc, [loss.name])
+        self.assertEqual(len(gc_vars), 5)
 
         exe = Executor(self.place)
         exe.run(fluid.default_startup_program())

@@ -137,6 +137,9 @@ uint64_t RecordedCudaMallocSize(int dev_id);
 
 bool IsCudaMallocRecorded(int dev_id);
 
+//! Empty idle cached memory held by the allocator.
+void EmptyCache(void);
+
 }  // namespace platform
 }  // namespace paddle
 

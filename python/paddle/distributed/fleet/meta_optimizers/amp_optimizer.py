@@ -124,3 +124,6 @@ class AMPOptimizer(MetaOptimizerBase):
                  use_fp16_test=False):
         return self.wrapped_opt.amp_init(place, scope, test_program,
                                          use_fp16_test)
+
+    def get_loss_scaling(self):
+        return self.wrapped_opt.get_loss_scaling()

@@ -177,12 +177,28 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigEnableXpu(
     PD_Bool autotune, const char* autotune_file, const char* precision,
     PD_Bool adaptive_seqlen);
 ///
+/// \brief Turn on NPU.
+///
+/// \param[in] pd_onfig config
+/// \param[in] device_id device_id the NPU card to use.
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableNpu(
+    __pd_keep PD_Config* pd_config, int32_t device_id);
+///
 /// \brief A boolean state telling whether the XPU is turned on.
 ///
 /// \param[in] pd_onfig config
 /// \return Whether the XPU is turned on.
 ///
 PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigUseXpu(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief A boolean state telling whether the NPU is turned on.
+///
+/// \param[in] pd_onfig config
+/// \return Whether the NPU is turned on.
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigUseNpu(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief Get the GPU device id.
@@ -199,6 +215,14 @@ PADDLE_CAPI_EXPORT extern int32_t PD_ConfigGpuDeviceId(
 /// \return The XPU device id.
 ///
 PADDLE_CAPI_EXPORT extern int32_t PD_ConfigXpuDeviceId(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief Get the NPU device id.
+///
+/// \param[in] pd_onfig config
+/// \return The NPU device id.
+///
+PADDLE_CAPI_EXPORT extern int32_t PD_ConfigNpuDeviceId(
     __pd_keep PD_Config* pd_config);
 ///
 /// \brief Get the initial size in MB of the GPU memory pool.
@@ -299,6 +323,69 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigSetTrtDynamicShapeInfo(
     __pd_keep PD_Config* pd_config, size_t tensor_num, const char** tensor_name,
     size_t* shapes_num, int32_t** min_shape, int32_t** max_shape,
     int32_t** optim_shape, PD_Bool disable_trt_plugin_fp16);
+///
+/// \brief A boolean state telling whether the trt dynamic_shape is used.
+///
+/// \param[in] pd_onfig config
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigTensorRtDynamicShapeEnabled(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief Enable tuned tensorrt dynamic shape.
+///
+/// \param[in] pd_onfig config
+/// \param[in] shape_range_info_path the path to shape_info file got in
+/// CollectShapeInfo mode.
+/// \param[in] allow_build_at_runtime allow build trt engine at runtime.
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigEnableTunedTensorRtDynamicShape(
+    __pd_keep PD_Config* pd_config, const char* shape_range_info_path,
+    PD_Bool allow_build_at_runtime);
+
+///
+/// \brief A boolean state telling whether to use tuned tensorrt dynamic
+/// shape.
+///
+/// \param[in] pd_onfig config
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigTunedTensorRtDynamicShape(
+    __pd_keep PD_Config* pd_config);
+
+///
+/// \brief A boolean state telling whether to allow building trt engine at
+/// runtime.
+///
+/// \param[in] pd_onfig config
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigTrtAllowBuildAtRuntime(
+    __pd_keep PD_Config* pd_config);
+
+///
+/// \brief Collect shape info of all tensors in compute graph.
+///
+/// \param[in] pd_onfig config
+/// \param[in] shape_range_info_path the path to save shape info.
+///
+PADDLE_CAPI_EXPORT extern void PD_ConfigCollectShapeRangeInfo(
+    __pd_keep PD_Config* pd_config, const char* shape_range_info_path);
+
+///
+/// \brief the shape info path in CollectShapeInfo mode.
+/// Attention, Please release the string manually.
+///
+/// \param[in] pd_onfig config
+///
+PADDLE_CAPI_EXPORT extern const char* PD_ConfigShapeRangeInfoPath(
+    __pd_keep PD_Config* pd_config);
+
+///
+/// \brief A boolean state telling whether to collect shape info.
+///
+/// \param[in] pd_onfig config
+///
+PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigShapeRangeInfoCollected(
+    __pd_keep PD_Config* pd_config);
+
 ///
 /// \brief Prevent ops running in Paddle-TRT
 /// NOTE: just experimental, not an official stable API, easy to be broken.
@@ -518,7 +605,7 @@ PADDLE_CAPI_EXPORT extern PD_Bool PD_ConfigModelFromMemory(
 /// \param[in] pd_onfig config
 ///
 PADDLE_CAPI_EXPORT extern void PD_ConfigEnableMemoryOptim(
-    __pd_keep PD_Config* pd_config);
+    __pd_keep PD_Config* pd_config, PD_Bool x);
 ///
 /// \brief A boolean state telling whether the memory optimization is
 /// activated.
@@ -611,6 +698,14 @@ PADDLE_CAPI_EXPORT extern void PD_ConfigAppendPass(
 /// \return Return list of the passes.
 ///
 PADDLE_CAPI_EXPORT extern __pd_give PD_OneDimArrayCstr* PD_ConfigAllPasses(
+    __pd_keep PD_Config* pd_config);
+///
+/// \brief Get information of config.
+/// Attention, Please release the string manually.
+///
+/// \return Return config info.
+///
+PADDLE_CAPI_EXPORT extern const char* PD_ConfigSummary(
     __pd_keep PD_Config* pd_config);
 
 #ifdef __cplusplus

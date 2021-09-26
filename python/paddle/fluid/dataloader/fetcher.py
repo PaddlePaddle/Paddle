@@ -14,8 +14,9 @@
 
 import logging
 from ..log_helper import get_logger
+from collections.abc import Sequence, Mapping
 
-from collections.abc import Sequence
+_WARNING_TO_LOG = True
 
 
 class _DatasetFetcher(object):
@@ -24,13 +25,26 @@ class _DatasetFetcher(object):
         self.auto_collate_batch = auto_collate_batch
         self.collate_fn = collate_fn
         self.drop_last = drop_last
-        self._is_warning_logged = False
 
-    def fetch(self, batch_indices):
+    # NOTE: fetch function here perform the whole pipeline of dataset
+    #       reading and data trasforms of a batch in each calling, this
+    #       may take a long time inside, if DataLoader is exit outside,
+    #       fetch need to perceive exit situation, so we pass done_event
+    #       here for fetch to check exit status
+    # NOTE: if DataLoadet exit by `break`, performing GPU tensor operations,
+    #       e.g. to_tensor may cause SIGSEGV in thread, so we pass the
+    #       done_event argument to check DataLoader exit status between
+    #       ecah sample processing in the batch
+    def fetch(self, batch_indices, done_event=None):
         raise NotImplementedError("'fetch' not implement for class {}".format(
             self.__class__.__name__))
 
     def _log_warning(self):
+        # only log warning on GPU 0 when distributed launch
+        from ...distributed import get_world_size, get_rank
+        if get_world_size() >= 2 and get_rank() != 0:
+            return
+
         warn_str = "Detect dataset only contains single fileds, return format " \
                    "changed since Paddle 2.1. In Paddle <= 2.0, DataLoader add " \
                    "a list surround output data(e.g. return [data]), and in " \
@@ -64,23 +78,28 @@ class _IterableDatasetFetcher(_DatasetFetcher):
             dataset, auto_collate_batch, collate_fn, drop_last)
         self.dataset_iter = iter(dataset)
 
-    def fetch(self, batch_indices):
+    def fetch(self, batch_indices, done_event=None):
 
         if self.auto_collate_batch:
             data = []
             for _ in batch_indices:
-                try:
-                    data.append(next(self.dataset_iter))
-                except StopIteration:
-                    break
+                if done_event is None or not done_event.is_set():
+                    try:
+                        data.append(next(self.dataset_iter))
+                    except StopIteration:
+                        break
+                else:
+                    return None
 
             if len(data) == 0 or (self.drop_last and
                                   len(data) < len(batch_indices)):
                 raise StopIteration
-            if not isinstance(data[0],
-                              Sequence) and not self._is_warning_logged:
+
+            global _WARNING_TO_LOG
+            if not isinstance(data[0], (Sequence, Mapping)) \
+                    and _WARNING_TO_LOG:
                 self._log_warning()
-                self._is_warning_logged = True
+                _WARNING_TO_LOG = False
         else:
             data = next(self.dataset_iter)
 
@@ -94,14 +113,20 @@ class _MapDatasetFetcher(_DatasetFetcher):
         super(_MapDatasetFetcher, self).__init__(dataset, auto_collate_batch,
                                                  collate_fn, drop_last)
 
-    def fetch(self, batch_indices):
+    def fetch(self, batch_indices, done_event=None):
         if self.auto_collate_batch:
-            data = [self.dataset[idx] for idx in batch_indices]
+            data = []
+            for idx in batch_indices:
+                if done_event is None or not done_event.is_set():
+                    data.append(self.dataset[idx])
+                else:
+                    return None
 
-            if not isinstance(data[0],
-                              Sequence) and not self._is_warning_logged:
+            global _WARNING_TO_LOG
+            if not isinstance(data[0], (Sequence, Mapping)) \
+                    and _WARNING_TO_LOG:
                 self._log_warning()
-                self._is_warning_logged = True
+                _WARNING_TO_LOG = False
         else:
             data = self.dataset[batch_indices]
 

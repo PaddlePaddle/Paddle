@@ -14,24 +14,30 @@
 
 #include "paddle/fluid/distributed/table/graph/graph_weighted_sampler.h"
 #include <iostream>
+#include <memory>
 #include <unordered_map>
+#include "paddle/fluid/framework/generator.h"
 namespace paddle {
 namespace distributed {
 
 void RandomSampler::build(GraphEdgeBlob *edges) { this->edges = edges; }
 
-std::vector<int> RandomSampler::sample_k(int k) {
+std::vector<int> RandomSampler::sample_k(
+    int k, const std::shared_ptr<std::mt19937_64> rng) {
   int n = edges->size();
-  if (k > n) {
+  if (k >= n) {
     k = n;
+    std::vector<int> sample_result;
+    for (int i = 0; i < k; i++) {
+      sample_result.push_back(i);
+    }
+    return sample_result;
   }
-  struct timespec tn;
-  clock_gettime(CLOCK_REALTIME, &tn);
-  srand(tn.tv_nsec);
   std::vector<int> sample_result;
   std::unordered_map<int, int> replace_map;
   while (k--) {
-    int rand_int = rand() % n;
+    std::uniform_int_distribution<int> distrib(0, n - 1);
+    int rand_int = distrib(*rng);
     auto iter = replace_map.find(rand_int);
     if (iter == replace_map.end()) {
       sample_result.push_back(rand_int);
@@ -98,19 +104,23 @@ void WeightedSampler::build_one(WeightedGraphEdgeBlob *edges, int start,
     count = left->count + right->count;
   }
 }
-std::vector<int> WeightedSampler::sample_k(int k) {
-  if (k > count) {
+std::vector<int> WeightedSampler::sample_k(
+    int k, const std::shared_ptr<std::mt19937_64> rng) {
+  if (k >= count) {
     k = count;
+    std::vector<int> sample_result;
+    for (int i = 0; i < k; i++) {
+      sample_result.push_back(i);
+    }
+    return sample_result;
   }
   std::vector<int> sample_result;
   float subtract;
   std::unordered_map<WeightedSampler *, float> subtract_weight_map;
   std::unordered_map<WeightedSampler *, int> subtract_count_map;
-  struct timespec tn;
-  clock_gettime(CLOCK_REALTIME, &tn);
-  srand(tn.tv_nsec);
+  std::uniform_real_distribution<float> distrib(0, 1.0);
   while (k--) {
-    float query_weight = rand() % 100000 / 100000.0;
+    float query_weight = distrib(*rng);
     query_weight *= weight - subtract_weight_map[this];
     sample_result.push_back(sample(query_weight, subtract_weight_map,
                                    subtract_count_map, subtract));
@@ -146,5 +156,5 @@ int WeightedSampler::sample(
   subtract_count_map[this]++;
   return return_idx;
 }
-}
-}
+}  // namespace distributed
+}  // namespace paddle

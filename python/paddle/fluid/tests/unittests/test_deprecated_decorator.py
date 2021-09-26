@@ -23,7 +23,7 @@ import paddle.fluid.core as core
 import sys
 import warnings
 import paddle.utils.deprecated as deprecated
-
+from paddle import _C_ops
 LOWEST_WARNING_POSTION = 3
 ERROR_WARNING_POSTION = sys.maxsize
 

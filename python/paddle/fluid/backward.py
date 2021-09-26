@@ -16,6 +16,7 @@ from __future__ import print_function
 from .proto import framework_pb2
 
 from paddle.fluid import framework as framework
+from paddle.fluid import program_guard
 from . import core
 import collections
 import copy
@@ -189,12 +190,20 @@ class ProgramStats(object):
                 persistable=False,
                 stop_gradient=False)
             seed = 0 if op.attr("fix_seed") is False else int(op.attr("seed"))
+
+            op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
+            )
+            op_device = ""
+            if op.desc.has_attr(op_device_attr_name):
+                op_device = op.desc.attr(op_device_attr_name)
+
             added_op = self.block._insert_op(
                 index=op.idx,
                 type='seed',
                 inputs={},
                 outputs={'Out': [added_var]},
-                attrs={'seed': seed})
+                attrs={'seed': seed,
+                       'op_device': op_device})
             self.ops.insert(op_idx, added_op)
             # modify dropout op desc so that it accept a seed var as input
             op.desc.set_input("Seed", [var_unique_name])
@@ -462,6 +471,7 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
     var_rename_count = collections.defaultdict(int)
     renamed_vars = collections.defaultdict(list)
     renamed_var_start_idx = collections.defaultdict(list)
+    var_device = collections.defaultdict(str)
     for idx, op_desc in enumerate(op_descs):
         op_device_attr_name = core.op_proto_and_checker_maker.kOpDeviceAttrName(
         )
@@ -473,11 +483,13 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                 continue
             if len(renamed_vars[var_name]) > 1:
                 if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
-                    _accumulate_gradients_by_sum_op_(
-                        var_name, renamed_vars, pending_sum_ops, idx, op_device)
+                    _accumulate_gradients_by_sum_op_(var_name, renamed_vars,
+                                                     pending_sum_ops, idx,
+                                                     var_device[var_name])
                 else:
-                    _accumulate_gradients_by_add_ops_(
-                        var_name, renamed_vars, pending_sum_ops, idx, op_device)
+                    _accumulate_gradients_by_add_ops_(var_name, renamed_vars,
+                                                      pending_sum_ops, idx,
+                                                      var_device[var_name])
 
         for param_idx, param_name in enumerate(op_desc.output_names()):
             arg_names = op_desc.output(param_name)
@@ -528,16 +540,19 @@ def _addup_repetitive_outputs_(op_descs, block_idx):
                     arg_names[arg_idx] = new_name
                     op_desc.set_output(param_name, arg_names)
                     renamed_vars[var_name].append(new_name)
+                    # record the latest device
+                    var_device[var_name] = op_device
 
     for var_name, inputs in six.iteritems(renamed_vars):
         if len(renamed_vars[var_name]) > 1:
             if len(renamed_vars[var_name]) > _MAX_ADD_NUM_:
-                _accumulate_gradients_by_sum_op_(var_name, renamed_vars,
-                                                 pending_sum_ops, len(op_descs))
+                _accumulate_gradients_by_sum_op_(
+                    var_name, renamed_vars, pending_sum_ops,
+                    len(op_descs), var_device[var_name])
             else:
-                _accumulate_gradients_by_add_ops_(var_name, renamed_vars,
-                                                  pending_sum_ops,
-                                                  len(op_descs))
+                _accumulate_gradients_by_add_ops_(
+                    var_name, renamed_vars, pending_sum_ops,
+                    len(op_descs), var_device[var_name])
 
     # sum_op descs are sorted according to their insert position
     for key, value in collections.OrderedDict(
@@ -930,6 +945,13 @@ def _append_backward_ops_with_checkpoints_(
         for op_desc in reversed(added_descs):
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
+
+            # Set device for grad_op according to forward Op
+            if op_desc.has_attr(device_attr_name):
+                op_device = op_desc.attr(device_attr_name)
+                for g_op_desc in grad_op_desc:
+                    g_op_desc._set_attr(device_attr_name, op_device)
+
             for key in var_name_dict:
                 _rename_arg_(grad_op_desc, key, var_name_dict[key])
             grad_op_descs.extend(grad_op_desc)
@@ -2001,3 +2023,72 @@ def gradients(targets, inputs, target_gradients=None, no_grad_set=None):
 
     outs = calc_gradient(targets, inputs, target_gradients, no_grad_set)
     return _as_list(outs)
+
+
+@framework.static_only
+def gradients_with_optimizer(program, optimizer, inputs=None, outputs=None):
+    """
+    :api_attr: Static Graph
+
+    Backpropagate the gradients of the program and apply the gradients with the given optimizer.
+
+    Args:
+        program (Program): The input program.
+        optimizer (Optimizer): The optimizer to apply the gradients.
+        inputs (Tensor|list[Tensor]|tuple[Tensor], optional): The input Tensors.
+            If None, the inputs will be created from the input variables in the given program. Default:None.
+        outputs (Tensor|list[Tensor]|tuple[Tensor], optional): The output Tensors.
+            If None, the outputs will be created from the output variables in the given program. Default: None.
+
+    Return:
+        tuple: tuple (optimize_ops, params_grads), A list of operators appended
+            by gradients_with_optimizer and a list of (param, grad) variable pairs, param is
+            ``Parameter``, grad is the gradient value corresponding to the parameter.
+            The returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to
+            indicate program pruning. If so, the program will be pruned by ``feed`` and
+            ``fetch_list`` before run, see details in ``Executor``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            import paddle.static as static
+
+            paddle.enable_static()
+
+            img = static.data(name='image', shape=[None, 784])
+            pred = static.nn.fc(x=img, size=10, activation='relu')
+            loss = paddle.mean(pred)
+            opt_ops, pram_grads = paddle.fluid.backward.gradients_with_optimizer(static.default_main_program(), opt)
+            print(opt_ops)
+
+    """
+    check_type(program, 'program', paddle.fluid.Program,
+               'paddle.static.gradients_with_optimizer')
+    check_type(optimizer, 'optimizer', paddle.optimizer.Optimizer,
+               'paddle.static.gradients_with_optimizer')
+
+    if inputs is None or outputs is None:
+        in_set = set()
+        out_set = set()
+        for block in program.blocks:
+            for op in block.ops:
+                for name in op.input_arg_names:
+                    in_set.add(block.vars[name])
+                for name in op.output_arg_names:
+                    out_set.add(block.vars[name])
+        if inputs is None:
+            inputs = list(in_set.difference(out_set))
+        if outputs is None:
+            outputs = list(out_set.difference(in_set))
+
+    grads = gradients(outputs, inputs)
+
+    with program_guard(program, None):
+        pram_grads = [(pram, grad) for pram, grad in zip(inputs, grads)
+                      if isinstance(pram, paddle.fluid.framework.Parameter) and
+                      grad is not None]
+
+        optimize_ops = optimizer.apply_gradients(pram_grads)
+
+    return optimize_ops, pram_grads

@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
+#include "paddle/fluid/platform/dynload/cusparse.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
@@ -68,8 +69,8 @@ struct GpuDevice;
 }  // namespace Eigen
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu_header.h"
-#include "paddle/fluid/platform/xpu_info.h"
+#include "paddle/fluid/platform/xpu/xpu_header.h"
+#include "paddle/fluid/platform/xpu/xpu_info.h"
 #endif
 
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -97,7 +98,11 @@ enum DeviceType {
   CUDA = 1,
   XPU = 2,
   NPU = 3,
+
+  MAX_DEVICE_TYPES = 4,
 };
+
+DeviceType Place2DeviceType(const platform::Place& place);
 
 constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
@@ -135,12 +140,14 @@ struct DefaultDeviceContextType<platform::CPUPlace> {
 };
 
 #ifdef PADDLE_WITH_XPU
+namespace xpu = baidu::xpu::api;
 class XPUDeviceContext : public DeviceContext {
  public:
   XPUDeviceContext();
   explicit XPUDeviceContext(XPUPlace place);
   virtual ~XPUDeviceContext();
   Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+  XPUVersion xpu_version() const { return xpu_version_; }
   Place GetPlace() const override;
   xpu::Context* x_context() const;
 
@@ -157,6 +164,7 @@ class XPUDeviceContext : public DeviceContext {
 
  private:
   XPUPlace place_;
+  XPUVersion xpu_version_;
   xpu::Context* context_;
 #ifdef PADDLE_WITH_XPU_BKCL
   BKCLContext_t bkcl_context_;
@@ -265,7 +273,8 @@ class CUDAContext {
   CUDAContext() = default;
   explicit CUDAContext(
       const CUDAPlace& place,
-      const stream::Priority& priority = stream::Priority::kNormal);
+      const stream::Priority& priority = stream::Priority::kNormal,
+      const stream::StreamFlag& flag = stream::StreamFlag::kDefaultFlag);
 
   ~CUDAContext();
 
@@ -280,6 +289,12 @@ class CUDAContext {
   }
 
   const std::unique_ptr<stream::CUDAStream>& Stream() const { return stream_; }
+
+  stream::CUDAStream* SetStream(stream::CUDAStream* new_stream_ptr) {
+    auto* old_stream_ptr = stream_.release();
+    stream_.reset(new_stream_ptr);
+    return old_stream_ptr;
+  }
 
   const gpuStream_t& RawStream() { return stream_->raw_stream(); }
 
