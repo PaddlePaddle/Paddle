@@ -302,11 +302,16 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         Out_var = dst_block.var(kwargs['Out'][0])
 
         # TODO infer logic comm presentation
-        model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
-        )._get_model_parallel_info()
-        group_ranks = _get_comm_group(process_mesh.process_group,
-                                      process_mesh.topology,
-                                      model_parallel_axis, rank_id)
+        matmul_col_dim_mapping = op_dist_attr.get_input_dims_mapping(
+            Weight_var.name)[1]
+        assert matmul_col_dim_mapping >= 0, "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
+            matmul_col_dim_mapping)
+        process_mesh_shape = op_dist_attr.get_process_mesh().topology
+        process_mesh_group = op_dist_attr.get_process_mesh().process_group
+
+        parallel_axis = matmul_col_dim_mapping
+        group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
+                                      parallel_axis, rank_id)
         group = new_process_group(group_ranks)
 
         intermediate_var_0 = dst_block.create_var(
@@ -439,11 +444,16 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         Out_var = dst_block.var(kwargs['Out'][0])
 
         # TODO infer logic comm presentation
-        model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
-        )._get_model_parallel_info()
-        group_ranks = _get_comm_group(process_mesh.process_group,
-                                      process_mesh.topology,
-                                      model_parallel_axis, rank_id)
+        matmul_row_dim_mapping = op_dist_attr.get_input_dims_mapping(
+            Weight_var.name)[0]
+        assert matmul_row_dim_mapping >= 0, "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
+            matmul_row_dim_mapping)
+        process_mesh_shape = op_dist_attr.get_process_mesh().topology
+        process_mesh_group = op_dist_attr.get_process_mesh().process_group
+
+        parallel_axis = matmul_row_dim_mapping
+        group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
+                                      parallel_axis, rank_id)
         group = new_process_group(group_ranks)
 
         check_variable_and_dtype(X_var, 'x', ['float16', 'float32', 'float64'],
@@ -646,11 +656,16 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         Out_var = dst_block.var(kwargs['Out'][0])
 
         # TODO infer logic comm presentation
-        model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
-        )._get_model_parallel_info()
-        group_ranks = _get_comm_group(process_mesh.process_group,
-                                      process_mesh.topology,
-                                      model_parallel_axis, rank_id)
+        matmul_col_dim_mapping = op_dist_attr.get_input_dims_mapping(
+            Weight_var.name)[1]
+        assert matmul_col_dim_mapping >= 0, "col_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
+            matmul_col_dim_mapping)
+        process_mesh_shape = op_dist_attr.get_process_mesh().topology
+        process_mesh_group = op_dist_attr.get_process_mesh().process_group
+
+        parallel_axis = matmul_col_dim_mapping
+        group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
+                                      parallel_axis, rank_id)
         group = new_process_group(group_ranks)
 
         intermediate_var_0 = dst_block.create_var(
@@ -782,11 +797,16 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         Out_var = dst_block.var(kwargs['Out'][0])
 
         # TODO infer logic comm presentation
-        model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
-        )._get_model_parallel_info()
-        group_ranks = _get_comm_group(process_mesh.process_group,
-                                      process_mesh.topology,
-                                      model_parallel_axis, rank_id)
+        matmul_row_dim_mapping = op_dist_attr.get_input_dims_mapping(
+            Weight_var.name)[0]
+        assert matmul_row_dim_mapping >= 0, "row_parallel_matmul's row should be divided by a specific mesh axis, but got [{}]".format(
+            matmul_row_dim_mapping)
+        process_mesh_shape = op_dist_attr.get_process_mesh().topology
+        process_mesh_group = op_dist_attr.get_process_mesh().process_group
+
+        parallel_axis = matmul_row_dim_mapping
+        group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
+                                      parallel_axis, rank_id)
         group = new_process_group(group_ranks)
 
         check_variable_and_dtype(X_var, 'x', ['float16', 'float32', 'float64'],
