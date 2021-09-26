@@ -1,229 +1,127 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-#
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+# 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#
+# 
 #     http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from __future__ import print_function
-
-import unittest
+from trt_layer_auto_scan_test import TrtLayerAutoScanTest, SkipReasons
+from program_config import TensorConfig, ProgramConfig
 import numpy as np
-from inference_pass_test import InferencePassTest
-import paddle.fluid as fluid
-import paddle.fluid.core as core
-from paddle.fluid.core import PassVersionChecker
-from paddle.fluid.core import AnalysisConfig
+import paddle.inference as paddle_infer
+from functools import partial
+from typing import Optional, List, Callable, Dict, Any, Set
+import unittest
 
 
-class TRTBilinearInterpTest(InferencePassTest):
-    def setUp(self):
-        self.set_params()
+class TrtConvertBilinearInterpTest(TrtLayerAutoScanTest):
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        inputs = program_config.inputs
+        weights = program_config.weights
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
 
-        with fluid.program_guard(self.main_program, self.startup_program):
-            if self.data_layout == 'NCHW':
-                shape = [
-                    -1, self.channels, self.origin_shape[0],
-                    self.origin_shape[1]
-                ]
-            else:
-                shape = [
-                    -1, self.origin_shape[0], self.origin_shape[1],
-                    self.channels
-                ]
-            data = fluid.data(name='data', shape=shape, dtype='float32')
-            resize_out = self.append_bilinear_interp(data)
-            out = fluid.layers.batch_norm(resize_out, is_test=True)
+        return True
 
-        if self.data_layout == 'NCHW':
-            shape = [
-                self.bs, self.channels, self.origin_shape[0],
-                self.origin_shape[1]
-            ]
-        else:
-            shape = [
-                self.bs, self.origin_shape[0], self.origin_shape[1],
-                self.channels
-            ]
+    def sample_program_configs(self):
+        def generate_input1(attrs: List[Dict[str, Any]]):
+            return np.ones([1, 3, 64, 64]).astype(np.float32)
 
-        self.feeds = {'data': np.random.random(shape).astype('float32'), }
-        self.enable_trt = True
-        self.trt_parameters = TRTBilinearInterpTest.TensorRTParam(
-            1 << 30, self.bs, 1, AnalysisConfig.Precision.Float32, False, False)
-        self.fetch_list = [out]
+        def generate_input2(attrs: List[Dict[str, Any]]):
+            return np.random.uniform(
+                low=0.5, high=6.0, size=(2)).astype("float32")
 
-    def set_params(self):
-        self.bs = 4
-        self.scale = 1
-        self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (64, 64)  # HW
-        self.align_corners = True
-        self.data_layout = 'NCHW'
+        for data_layout in ["NCHW", "NHWC"]:
+            for interp_method in ["bilinear"]:
+                for align_corners in [True, False]:
+                    for align_model in [0, 1]:
+                        for scale in [2.0, -1.0, 0.0]:
+                            for out_h in [32, 64, 128 - 32]:
+                                for out_w in [32, -32]:
+                                    dics = [{
+                                        "data_layout": data_layout,
+                                        "interp_method": interp_method,
+                                        "align_corners": align_corners,
+                                        "align_mode": align_model,
+                                        "scale": scale,
+                                        "out_h": out_h,
+                                        "out_w": out_w
+                                    }]
 
-    def append_bilinear_interp(self, data):
-        if self.scale > 0.:
-            return fluid.layers.resize_bilinear(
-                data,
-                scale=self.scale,
-                align_corners=self.align_corners,
-                data_format=self.data_layout)
-        return fluid.layers.resize_bilinear(
-            data,
-            out_shape=self.resize_shape,
-            align_corners=self.align_corners,
-            data_format=self.data_layout)
+                                    ops_config = [{
+                                        "op_type": "bilinear_interp",
+                                        "op_inputs": {
+                                            "X": ["input_data"],
+                                            "Scale": ["input_scale"]
+                                        },
+                                        "op_outputs": {
+                                            "Out":
+                                            ["bilinear_interp_output_data"]
+                                        },
+                                        "op_attrs": dics[0]
+                                    }]
+                                    ops = self.generate_op_config(ops_config)
 
-    def test_check_output(self):
-        if core.is_compiled_with_cuda():
-            use_gpu = True
-            self.enable_mkldnn = True
-            self.check_output_with_option(use_gpu, flatten=True)
-            self.assertTrue(
-                PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
+                                    program_config = ProgramConfig(
+                                        ops=ops,
+                                        weights={
+                                            "input_scale":
+                                            TensorConfig(data_gen=partial(
+                                                generate_input2, dics))
+                                        },
+                                        inputs={
+                                            "input_data":
+                                            TensorConfig(data_gen=partial(
+                                                generate_input1, dics))
+                                        },
+                                        outputs=[
+                                            "bilinear_interp_output_data"
+                                        ])
 
+                                    yield program_config
 
-class TRTBilinearInterpTest1(TRTBilinearInterpTest):
-    def set_params(self):
-        self.bs = 1
-        self.scale = -1
-        self.channels = 2
-        self.origin_shape = (6, 4)  # HW
-        self.resize_shape = (13, 12)  # HW
-        self.align_corners = True
-        self.align_mode = 0
-        self.data_layout = 'NCHW'
+    def sample_predictor_configs(
+            self, program_config) -> (paddle_infer.Config, List[int], float):
+        def generate_dynamic_shape(attrs):
+            self.dynamic_shape.min_input_shape = {"input_data": [1, 3, 32, 32]}
+            self.dynamic_shape.max_input_shape = {"input_data": [4, 3, 64, 64]}
+            self.dynamic_shape.opt_input_shape = {"input_data": [1, 3, 64, 64]}
 
+        def clear_dynamic_shape():
+            self.dynamic_shape.min_input_shape = {}
+            self.dynamic_shape.max_input_shape = {}
+            self.dynamic_shape.opt_input_shape = {}
 
-class TRTBilinearInterpTest2(TRTBilinearInterpTest):
-    def set_params(self):
-        self.bs = 4
-        self.scale = 2.
-        self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (64, 64)  # HW
-        self.align_corners = False
-        self.data_layout = 'NCHW'
+        attrs = [
+            program_config.ops[i].attrs
+            for i in range(len(program_config.ops))
+        ]
 
+        # for static_shape
+        clear_dynamic_shape()
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), (1, 2), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), (1, 2), 1e-5
 
-class TRTBilinearInterpTest3(TRTBilinearInterpTest):
-    def set_params(self):
-        self.bs = 4
-        self.scale = -1
-        self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (64, 64)  # HW
-        self.align_corners = False
-        self.data_layout = 'NCHW'
+        # for dynamic_shape
+        generate_dynamic_shape(attrs)
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), (1, 2), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), (1, 2), 1e-5
 
-
-class TRTBilinearInterpTest4(TRTBilinearInterpTest):
-    def set_params(self):
-        self.bs = 4
-        self.scale = -1
-        self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (47, 48)  # HW
-        self.align_corners = False
-        self.data_layout = 'NCHW'
-
-
-class TRTBilinearInterpTest5(TRTBilinearInterpTest):
-    def set_params(self):
-        self.bs = 4
-        self.scale = -1
-        self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (64, 64)  # HW
-        self.align_corners = False
-        self.data_layout = 'NHWC'
-
-
-class TRTBilinearInterpTest6(TRTBilinearInterpTest):
-    def set_params(self):
-        self.bs = 4
-        self.scale = 2.
-        self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (64, 64)  # HW
-        self.align_corners = False
-        self.data_layout = 'NHWC'
-
-
-class TRTBilinearInterpTest7(TRTBilinearInterpTest):
-    def set_params(self):
-        self.bs = 4
-        self.scale = -1
-        self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (64, 64)  # HW
-        self.align_corners = False
-        self.data_layout = 'NHWC'
-
-
-class TRTBilinearInterpTest8(TRTBilinearInterpTest):
-    def set_params(self):
-        self.bs = 4
-        self.scale = -1
-        self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (47, 48)  # HW
-        self.align_corners = False
-        self.data_layout = 'NHWC'
-
-
-class TRTBilinearInterpTest9(TRTBilinearInterpTest):
-    def set_params(self):
-        self.bs = 4
-        self.scale = -1
-        self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (47, 48)  # HW
-        self.align_corners = False
-        self.data_layout = 'NHWC'
-
-
-class TRTBilinearInterpTest10(TRTBilinearInterpTest):
-    def set_params(self):
-        self.bs = 4
-        self.scale = -1
-        self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (64, 64)  # HW
-        self.align_corners = False
-        self.align_mode = 0
-        self.data_layout = 'NHWC'
-
-
-class TRTBilinearInterpTest11(TRTBilinearInterpTest):
-    def set_params(self):
-        self.bs = 4
-        self.scale = -3
-        self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (47, 48)  # HW
-        self.align_corners = False
-        self.align_mode = 0
-        self.data_layout = 'NHWC'
-
-
-class TRTBilinearInterpTest12(TRTBilinearInterpTest):
-    def set_params(self):
-        self.bs = 4
-        self.scale = 2
-        self.channels = 3
-        self.origin_shape = (32, 32)  # HW
-        self.resize_shape = (47, 48)  # HW
-        self.align_corners = False
-        self.align_mode = 0
-        self.data_layout = 'NHWC'
+    def test(self):
+        self.run_test()
 
 
 if __name__ == "__main__":

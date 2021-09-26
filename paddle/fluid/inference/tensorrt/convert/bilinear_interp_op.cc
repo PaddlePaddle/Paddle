@@ -90,13 +90,17 @@ class BilinearInterpolateOpConverter : public OpConverter {
       auto* scale_var = scope.FindVar(op_desc.Input("Scale")[0]);
       auto* scale_tensor = scale_var->GetMutable<framework::LoDTensor>();
       auto* scale_d = scale_tensor->data<float>();
-      if (scale_tensor->numel() > 1) {
+      if (scale_tensor->numel() == 1 || op_type_ == "bilinear_interp") {  // v1
+        scale_h = scale_d[0];
+        scale_w = scale_d[0];
+      } else if ((scale_tensor->numel() > 1) &&
+                 (op_type_ != "bilinear_interp")) {
         scale_h = scale_d[0];
         scale_w = scale_d[1];
       } else {
-        scale_h = scale_d[0];
-        scale_w = scale_d[0];
+        // no-op
       }
+
       PADDLE_ENFORCE_EQ(
           scale_w > 0, true,
           platform::errors::InvalidArgument(

@@ -37,7 +37,8 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
             return np.ones([1, 3, 64, 64]).astype(np.float32)
 
         def generate_input2(attrs: List[Dict[str, Any]]):
-            return np.random.uniform(low=0.5, high=6.0, size=(2)).astype("float32")
+            return np.random.uniform(
+                low=0.5, high=6.0, size=(2)).astype("float32")
 
         for data_layout in ["NCHW", "NHWC"]:
             for interp_method in ["bilinear"]:
@@ -46,8 +47,8 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
                         for scale_y in [2.0, -1.0, 0.0]:
                             for scale_x in [2.0, -1.0, 0.0]:
                                 scale = [scale_y, scale_x]
-                                for out_h in [32, 64, 128 - 32]:
-                                    for out_w in [32, -32]:
+                                for out_h in [32, 64, 128, 32]:
+                                    for out_w in [32, 32]:
                                         dics = [{
                                             "data_layout": data_layout,
                                             "interp_method": interp_method,
@@ -57,7 +58,7 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
                                             "out_h": out_h,
                                             "out_w": out_w
                                         }]
-        
+
                                         ops_config = [{
                                             "op_type": "bilinear_interp_v2",
                                             "op_inputs": {
@@ -65,25 +66,31 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
                                                 "Scale": ["input_scale"]
                                             },
                                             "op_outputs": {
-                                                "Out": ["bilinear_interp_v2_output_data"]
+                                                "Out": [
+                                                    "bilinear_interp_v2_output_data"
+                                                ]
                                             },
                                             "op_attrs": dics[0]
                                         }]
-                                        ops = self.generate_op_config(ops_config)
-        
+                                        ops = self.generate_op_config(
+                                            ops_config)
+
                                         program_config = ProgramConfig(
                                             ops=ops,
-                                            weights={},
-                                            inputs={
-                                                "input_data": TensorConfig(
-                                                    data_gen=partial(generate_input1,
-                                                                     dics)),
-                                                "input_scale": TensorConfig(
-                                                    data_gen=partial(generate_input2,
-                                                                     dics))
+                                            weights={
+                                                "input_scale":
+                                                TensorConfig(data_gen=partial(
+                                                    generate_input2, dics))
                                             },
-                                            outputs=["bilinear_interp_v2_output_data"])
-        
+                                            inputs={
+                                                "input_data":
+                                                TensorConfig(data_gen=partial(
+                                                    generate_input1, dics))
+                                            },
+                                            outputs=[
+                                                "bilinear_interp_v2_output_data"
+                                            ])
+
                                         yield program_config
 
     def sample_predictor_configs(
@@ -119,6 +126,7 @@ class TrtConvertBilinearInterpV2Test(TrtLayerAutoScanTest):
 
     def test(self):
         self.run_test()
+
 
 if __name__ == "__main__":
     unittest.main()
