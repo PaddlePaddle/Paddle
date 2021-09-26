@@ -80,8 +80,7 @@ struct SquareFunctor {
   }
 };
 
-/******************************** Binary Functor
- * *******************************/
+/****************************** Binary Functor ********************************/
 template <typename Tx, typename Ty = Tx>
 struct MinFunctor {
   inline Ty initial() {
