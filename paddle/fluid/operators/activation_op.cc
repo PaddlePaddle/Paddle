@@ -560,6 +560,28 @@ $$out = \max(0, x) + \min(0, \alpha * (e^x - 1))$$
   }
 };
 
+class CELUOpMaker : public framework::OpProtoAndCheckerMaker {
+ public:
+  void Make() override {
+    AddInput("X",
+             "The input is a multi-dimensional Tensor. The data type is "
+             "float32 or float64.");
+    AddOutput("Out",
+              "The output is a multi-dimensional Tensor which has same "
+              "dimension and data type as the ``x``.");
+    AddAttr<float>("alpha", "The alpha value of CELU").SetDefault(1.0f);
+    AddComment(R"DOC(
+CELU Activation Operator.
+
+Applies the following element-wise computation on the input according to
+https://arxiv.org/abs/1704.07483.
+
+$$out = \max(0, x) + \min(0, \alpha * (e^(x/\alpha) - 1))$$
+
+)DOC");
+  }
+};
+
 class Relu6OpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
@@ -896,6 +918,29 @@ class ELUDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType("elu_grad_grad");
+
+    op->SetInput("X", this->Input("X"));
+    op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
+    // X@GRAD@GRAD: ddx
+    op->SetInput("DDX", this->OutputGrad(framework::GradVarName("X")));
+    op->SetAttrMap(this->Attrs());
+
+    // Out@GRAD@GRAD: ddy
+    op->SetOutput("DX", this->InputGrad("X"));
+    op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+  }
+};
+
+// celu grad: dx=dy if y>0 else dy*(x/alpha).exp()
+// celu gradgrad: ddx=ddy if y>0 else ddy*(x/alpha).exp()/alpha
+template <typename T>
+class CELUDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("celu_grad_grad");
 
     op->SetInput("X", this->Input("X"));
     op->SetInput("DOut", this->Input(framework::GradVarName("Out")));
@@ -1257,6 +1302,35 @@ REGISTER_OP_CPU_KERNEL(
                              ops::ELUGradGradFunctor<double>>,
     ops::ELUDoubleGradKernel<plat::CPUDeviceContext,
                              ops::ELUGradGradFunctor<plat::float16>>);
+
+/* ========================================================================== */
+
+/* ========================    celu  register     ============================
+ */
+REGISTER_OPERATOR(
+    celu, ops::ActivationOp, ops::CELUOpMaker, ops::ActivationOpInferVarType,
+    ops::ActivationGradOpMaker<ops::CELUGradFunctor<float>::FwdDeps(),
+                               paddle::framework::OpDesc>,
+    ops::ActivationGradOpMaker<ops::CELUGradFunctor<float>::FwdDeps(),
+                               paddle::imperative::OpBase>,
+    ops::ActFwdInplaceInferer);
+REGISTER_OPERATOR(celu_grad, ops::ActivationOpGrad,
+                  ops::ActivationGradOpInplaceInferer,
+                  ops::CELUDoubleGradMaker<paddle::framework::OpDesc>,
+                  ops::CELUDoubleGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    celu_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::CELUGradFunctor<float>::FwdDeps()>,
+    ops::ActivationDoubleGradOpInplaceInferer);
+
+REGISTER_ACTIVATION_CPU_KERNEL(celu, CELU, CELUFunctor, CELUGradFunctor);
+REGISTER_OP_CPU_KERNEL(
+    celu_grad_grad, ops::CELUDoubleGradKernel<plat::CPUDeviceContext,
+                                              ops::CELUGradGradFunctor<float>>,
+    ops::CELUDoubleGradKernel<plat::CPUDeviceContext,
+                              ops::CELUGradGradFunctor<double>>,
+    ops::CELUDoubleGradKernel<plat::CPUDeviceContext,
+                              ops::CELUGradGradFunctor<plat::float16>>);
 
 /* ========================================================================== */
 
