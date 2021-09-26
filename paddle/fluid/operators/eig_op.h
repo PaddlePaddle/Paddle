@@ -30,16 +30,6 @@
 namespace paddle {
 namespace operators {
 
-template <typename T>
-struct TemplateInTemplate {
-  using type = T;
-};
-
-template <typename T>
-struct TemplateInTemplate<platform::complex<T>> {
-  using type = T;
-};
-
 using paddle::framework::Tensor;
 
 inline int BatchCount(const Tensor& matrix) {
