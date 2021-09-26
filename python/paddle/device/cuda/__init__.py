@@ -212,7 +212,7 @@ def get_device_properties(device=None):
     Return the properties of given CUDA device.
 
     Args:
-        device(paddle.CUDAPlace() or int or str): The device, the ID of the device 
+        device(paddle.CUDAPlace or int or str): The device, the ID of the device 
             or the string name of device like 'gpu:x' which to get the properties of 
             the device from. If device is None, the device is the current device. 
             Default: None.
@@ -245,11 +245,9 @@ def get_device_properties(device=None):
 
     if not core.is_compiled_with_cuda():
         raise ValueError(
-            "The current device {} is not expected. Because paddle.device.cuda."
-            "get_device_properties only support cuda device. Please change device"
-            "and input device again!".format(device))
-
-    device_id = -1
+            "The API paddle.device.cuda.get_device_properties is not supported in "
+            "CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support "
+            "to call this API.")
 
     if device is not None:
         if isinstance(device, int):
@@ -263,11 +261,13 @@ def get_device_properties(device=None):
                 raise ValueError(
                     "The current string {} is not expected. Because paddle.device."
                     "cuda.get_device_properties only support string which is like 'gpu:x'. "
-                    "Please input appropriat string again!".format(device))
+                    "Please input appropriate string again!".format(device))
         else:
             raise ValueError(
                 "The device type {} is not expected. Because paddle.device.cuda."
                 "get_device_properties only support int, str or paddle.CUDAPlace. "
                 "Please input appropriate device again!".format(device))
+    else:
+        device_id = -1
 
     return core.get_device_properties(device_id)
