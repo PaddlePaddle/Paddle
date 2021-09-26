@@ -90,13 +90,19 @@ def _compute_numerical_hessian(func, xs, delta, np_dtype):
 
     for i in range(fin_size):
         for p in range(_product(xs[i].shape)):
-            orig_i = _get_item(xs[i], p)
-            x_pos_i = orig_i + delta
-            x_neg_i = orig_i - delta
             for j in range(fin_size):
                 for q in range(_product(xs[j].shape)):
-                    orig_j = _get_item(xs[j], q)
-                    x_pos_j = orig_j + delta
-                    x_neg_j = orig_j - delta
-                    xs[i] = _set_item(xs[i], p, x_pos_i)
+                    orig = _get_item(xs[j], q)
+                    x_pos = orig + delta
+                    xs[j] = _set_item(xs[j], q, x_pos)
+                    jacobian_pos = _compute_numerical_jacobian(func, xs, delta,
+                                                               np_dtype)
+                    x_neg = orig - delta
+                    xs[j] = _set_item(xs[j], q, x_neg)
+                    jacobian_neg = _compute_numerical_jacobian(func, xs, delta,
+                                                               np_dtype)
+                    xs[j] = _set_item(xs[j], q, orig)
+                    hessian[i][j][p][q] = (
+                        jacobian_pos[0][i][0][p] - jacobian_neg[0][i][0][p]
+                    ) / delta / 2.
     return hessian

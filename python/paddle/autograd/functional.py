@@ -198,7 +198,7 @@ def hessian(func, inputs, create_graph=False, allow_unused=False):
         1
     ], "The function to compute Hessian matrix should return a Tensor with a single element"
 
-    def jac_func(ins):
+    def jac_func(*ins):
         grad_inputs = paddle.grad(
             outputs,
             ins,
