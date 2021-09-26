@@ -68,9 +68,8 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
  protected:
   void Apply(GradOpPtr<T> op) const override {
     op->SetType(this->ForwardOpType() + "_grad");
-    op->SetInput(framework::GradVarName("Out"),
-                 this->OutputGrad("Out"));                             // dout
-    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));  // dx
+    op->SetInput(framework::GradVarName("Out"), this->OutputGrad("Out"));
+    op->SetOutput(framework::GradVarName("X"), this->InputGrad("X"));
     op->SetAttrMap(this->Attrs());
 
     if ((static_cast<int>(kDepValue) &
@@ -120,7 +119,6 @@ class ActivationOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    VLOG(3) << "=========== in ActivationOp =========";
     ctx->ShareDim("X", /*->*/ "Out");
     ctx->ShareLoD("X", /*->*/ "Out");
   }
@@ -147,9 +145,8 @@ class ActivationOpGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    VLOG(3) << "=========== in ActivationOpGrad =========";
     auto out_grad_name = framework::GradVarName("Out");
-    ctx->ShareDim(out_grad_name, framework::GradVarName("X"));  // dout  -> dx
+    ctx->ShareDim(out_grad_name, framework::GradVarName("X"));
     ctx->ShareLoD(out_grad_name, framework::GradVarName("X"));
   }
 
@@ -751,7 +748,6 @@ class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    VLOG(3) << "=========== in ActivationOpDoubleGrad =========";
     if (static_cast<int>(kDepValue) & static_cast<int>(kDepX)) {
       if (ctx->HasOutput("DX")) {
         ctx->ShareDim("X", "DX");
@@ -818,7 +814,6 @@ class ActivationOpTripleGrad : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    VLOG(3) << "=========== in ActivationOpTripleGrad =========";
     if (static_cast<int>(kDepValue) & static_cast<int>(kDepX)) {
       if (ctx->HasOutput("DX")) {
         ctx->ShareDim("X", "DX");
@@ -842,9 +837,6 @@ class ActivationOpTripleGrad : public framework::OperatorWithKernel {
         ctx->ShareDim("DDX", "D_DDx");
         ctx->ShareLoD("DDX", "D_DDx");
       }
-      //   op->SetOutput("D_OutNew", this->InputGrad("Out"));
-      // op->SetOutput("D_DOut", this->InputGrad("DOut"));
-      // op->SetOutput("D_DDx", this->InputGrad("DDX"));
     }
   }
 
@@ -863,7 +855,6 @@ class SigmoidDoubleGradMaker
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    VLOG(3) << "=========== in SigmoidDoubleGradMaker =========";
     op->SetType("sigmoid_grad_grad");
     // input1: Out
     op->SetInput("Out", this->Input("Out"));
@@ -885,7 +876,6 @@ class SigmoidTripleGradMaker
 
  protected:
   void Apply(GradOpPtr<T> op) const override {
-    VLOG(3) << "=========== in SigmoidTripleGradMaker =========";
     op->SetType("sigmoid_triple_grad");
     // Out, DDX, DOut, D_DDOut, D_DOut_New   // input
     // D_OutNew, D_DOut, D_DDx               // output
@@ -1209,12 +1199,12 @@ REGISTER_OPERATOR(sigmoid_grad, ops::ActivationOpGrad,
                   ops::SigmoidDoubleGradMaker<paddle::imperative::OpBase>);
 
 // 3. Register Sigmoid DoubleGrad Operator
-REGISTER_OPERATOR(sigmoid_grad_grad,
-                  ops::ActivationOpDoubleGrad<ops::SigmoidGradGradFunctor<
-                      float>::FwdDeps()>,  // 应该是 SigmoidGradGradFunctor
-                  ops::ActivationDoubleGradOpInplaceInferer,
-                  ops::SigmoidTripleGradMaker<paddle::framework::OpDesc>,
-                  ops::SigmoidTripleGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(
+    sigmoid_grad_grad,
+    ops::ActivationOpDoubleGrad<ops::SigmoidGradGradFunctor<float>::FwdDeps()>,
+    ops::ActivationDoubleGradOpInplaceInferer,
+    ops::SigmoidTripleGradMaker<paddle::framework::OpDesc>,
+    ops::SigmoidTripleGradMaker<paddle::imperative::OpBase>);
 
 // 4. Register Sigmoid TripleGrad Operator
 REGISTER_OPERATOR(sigmoid_triple_grad,
