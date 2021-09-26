@@ -54,6 +54,12 @@ class AllocatorFacade {
   uint64_t Release(const platform::Place& place);
   const std::shared_ptr<Allocator>& GetAllocator(const platform::Place& place);
 
+  std::shared_ptr<Allocator> NewAllocator(const platform::Place& place);
+
+  std::shared_ptr<Allocator> SwitchAllocator(
+      const platform::Place& place,
+      const std::shared_ptr<Allocator>& allocator);
+
   // TODO(yy): Allocate a Copy-On-Write allocation?
  private:
   AllocatorFacade();

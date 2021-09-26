@@ -14,6 +14,7 @@
 
 #include "paddle/fluid/framework/details/computation_op_handle.h"
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
+#include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/op_graph_view.h"
 
@@ -27,10 +28,16 @@ static bool IsLockAndRecordEventFreeComputationOpHandle(
       !platform::is_xpu_place(op->GetPlace()))
     return false;
   for (auto &pending_op : graph_view.PendingOps(op)) {
-    auto *tmp = dynamic_cast<details::ComputationOpHandle *>(pending_op);
-    if (tmp == nullptr || !(tmp->GetPlace() == op->GetPlace())) {
-      return false;
+    auto *compute_op = dynamic_cast<details::ComputationOpHandle *>(pending_op);
+    if (compute_op != nullptr && compute_op->GetPlace() == op->GetPlace()) {
+      continue;
     }
+    auto *loss_grad_op =
+        dynamic_cast<details::ScaleLossGradOpHandle *>(pending_op);
+    if (loss_grad_op != nullptr && loss_grad_op->GetPlace() == op->GetPlace()) {
+      continue;
+    }
+    return false;
   }
   return true;
 }

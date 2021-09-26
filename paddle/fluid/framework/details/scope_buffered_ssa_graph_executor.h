@@ -27,6 +27,7 @@
 #include "paddle/fluid/framework/details/ssa_graph_executor.h"
 #include "paddle/fluid/framework/details/var_handle.h"
 #include "paddle/fluid/framework/scope.h"
+#include "paddle/fluid/memory/allocation/allocator_facade.h"
 #include "paddle/fluid/platform/place.h"
 namespace paddle {
 namespace framework {
@@ -64,6 +65,8 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
 
   bool DropScopeOrNot() const;
 
+  void PrepareForCache();
+
   bool is_initialized_{false};
   size_t drop_scope_counter_{0};
   ExecutionStrategy strategy_;
@@ -81,6 +84,8 @@ class ScopeBufferedSSAGraphExecutor : public SSAGraphExecutor {
   std::vector<platform::Place> places_;
 
   ScopeBufferedMonitor scope_monitor_;
+  bool enable_cache_{false};
+  std::shared_ptr<memory::Allocator> allocator_;
 };
 }  // namespace details
 }  // namespace framework

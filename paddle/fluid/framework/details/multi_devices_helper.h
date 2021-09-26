@@ -29,6 +29,7 @@
 #include "paddle/fluid/framework/op_desc.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
 #include "paddle/fluid/framework/program_desc.h"
+#include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
@@ -122,6 +123,9 @@ void CopyGraphAttrIfExists(const ir::Graph &src, ir::Graph *dst,
     dst->Set(name, new T(attr));
   }
 }
+
+void MoveVar(const std::string &name, Scope *src_scope, Scope *dst_scope);
+void MarkVarAsPersistable(const ir::Graph &graph, const std::string &name);
 
 }  // namespace details
 }  // namespace framework

@@ -297,6 +297,43 @@ bool HasKeepLastReadOp(const ir::Graph &graph) {
   return HasDropLastReadOpImpl(graph, false);
 }
 
+void MoveVar(const std::string &name, Scope *src_scope, Scope *dst_scope) {
+  PADDLE_ENFORCE_NOT_NULL(src_scope);
+  PADDLE_ENFORCE_NOT_NULL(dst_scope);
+
+  Variable *src_var = nullptr;
+  while (src_scope != nullptr && src_scope != dst_scope) {
+    src_var = src_scope->FindLocalVar(name);
+    if (src_var != nullptr) {
+      break;
+    }
+  }
+  PADDLE_ENFORCE_NOT_NULL(src_var);
+
+  auto *dst_var = dst_scope->Var(name);
+  *dst_var = std::move(*src_var);
+  src_scope->EraseVars({name});
+}
+
+void MarkVarAsPersistable(const ir::Graph &graph, const std::string &name) {
+  for (auto *node : graph.Nodes()) {
+    if (node->IsVar() && !node->IsCtrlVar() && node->Var() &&
+        node->Var()->Name() == name) {
+      node->Var()->SetPersistable(true);
+      LOG(INFO) << "Mark " << name << " as persistable";
+    }
+  }
+
+  if (graph.Has(kFusedVars)) {
+    auto &vars = graph.Get<FusedVars>(kFusedVars);
+    auto iter = vars.find(name);
+    if (iter != vars.end()) {
+      iter->second.persistable_ = true;
+      LOG(INFO) << "Mark " << name << " as persistable";
+    }
+  }
+}
+
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle

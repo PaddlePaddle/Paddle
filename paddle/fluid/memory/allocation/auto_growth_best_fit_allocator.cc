@@ -91,6 +91,7 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
     uint8_t *p = reinterpret_cast<uint8_t *>(chunk->allocation_->ptr());
     auto &blocks = chunk->blocks_;
 
+    size = realloc_size;
     size_t remaining_size = realloc_size - size;
     if (remaining_size > 0) {
       blocks.emplace_back(p, remaining_size, true, chunk);

@@ -22,10 +22,12 @@
 
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/framework/scope_guard.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/profiler.h"
 
 DECLARE_bool(enable_cache_tensor_address);
+DECLARE_bool(use_executor_private_allocator);
 
 namespace paddle {
 namespace framework {
@@ -50,15 +52,33 @@ ScopeBufferedSSAGraphExecutor::ScopeBufferedSSAGraphExecutor(
           "should be equal, but got number of local scopes is %d and "
           "number of local execution scopes is %d.",
           local_scopes_.size(), local_exec_scopes_.size()));
+  enable_cache_ = FLAGS_enable_cache_tensor_address && places_.size() == 1;
   PrepareLocalExeScopes();
-  if (FLAGS_enable_cache_tensor_address) {
-    strategy_.num_iteration_per_drop_scope_ =
-        std::numeric_limits<size_t>::max();
+
+  if (FLAGS_use_executor_private_allocator) {
+    allocator_ = memory::allocation::AllocatorFacade::Instance().NewAllocator(
+        places_[0]);
+    LOG(INFO) << "Use Executor Private Allocator";
   }
 }
 
+void ScopeBufferedSSAGraphExecutor::PrepareForCache() {}
+
 FetchResultType ScopeBufferedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
+  std::shared_ptr<memory::Allocator> old_allocator;
+  if (allocator_) {
+    old_allocator =
+        memory::allocation::AllocatorFacade::Instance().SwitchAllocator(
+            places_[0], allocator_);
+  }
+  DEFINE_PADDLE_SCOPE_GUARD([old_allocator, this] {
+    if (old_allocator) {
+      memory::allocation::AllocatorFacade::Instance().SwitchAllocator(
+          places_[0], old_allocator);
+    }
+  });
+
   if (drop_scope_counter_ == 0) {
     platform::RecordEvent e("InitLocalVars");
     InitVariables();
@@ -75,7 +95,7 @@ FetchResultType ScopeBufferedSSAGraphExecutor::Run(
     }
   };
 
-  if (strategy_.num_iteration_per_drop_scope_ == 1) {
+  if (enable_cache_ || strategy_.num_iteration_per_drop_scope_ == 1) {
     exe_run_func();
   } else {
     scope_monitor_.Apply(exe_run_func, fetch_tensors.size() > 0);
@@ -90,8 +110,9 @@ FetchResultType ScopeBufferedSSAGraphExecutor::Run(
   }
 
   ++drop_scope_counter_;
-  if (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_ ||
-      DropScopeOrNot()) {
+  if (!enable_cache_ &&
+      (drop_scope_counter_ == strategy_.num_iteration_per_drop_scope_ ||
+       DropScopeOrNot())) {
     DropLocalExeScopes();
   }
 

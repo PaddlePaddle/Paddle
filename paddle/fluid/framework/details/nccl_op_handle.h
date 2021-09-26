@@ -140,7 +140,8 @@ class NCCLOpHandleBase : public OpHandleBase {
 
     VLOG(10) << "before all reduce buffer:" << sendbuff << ", numel:" << count
              << ", dev_id:" << dev_id << ", dtype:" << datatype
-             << ", place:" << place;
+             << ", place:" << place << ", comm:" << comm
+             << ", stream:" << stream;
 
     PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::ncclAllReduce(
         sendbuff, recvbuff, count, datatype, op, comm, stream));

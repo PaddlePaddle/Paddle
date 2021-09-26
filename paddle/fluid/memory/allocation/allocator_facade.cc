@@ -316,6 +316,22 @@ const std::shared_ptr<Allocator>& AllocatorFacade::GetAllocator(
   return m_->GetAllocator(place, /* A non-zero num to choose allocator_ */ 1);
 }
 
+std::shared_ptr<Allocator> AllocatorFacade::NewAllocator(
+    const platform::Place& place) {
+  auto p = BOOST_GET_CONST(platform::CUDAPlace, place);
+  auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
+  return std::make_shared<AutoGrowthBestFitAllocator>(
+      cuda_allocator, platform::GpuMinChunkSize());
+}
+
+std::shared_ptr<Allocator> AllocatorFacade::SwitchAllocator(
+    const platform::Place& place, const std::shared_ptr<Allocator>& allocator) {
+  const auto& old_alloc = m_->GetAllocator(place, 1);
+  auto old_alloc_copy = old_alloc;
+  const_cast<std::shared_ptr<Allocator>&>(old_alloc) = allocator;
+  return old_alloc_copy;
+}
+
 }  // namespace allocation
 }  // namespace memory
 }  // namespace paddle

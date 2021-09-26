@@ -27,6 +27,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/parallel_ssa_graph_executor.h"
+#include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
@@ -42,6 +43,7 @@ limitations under the License. */
 #endif
 
 DECLARE_double(eager_delete_tensor_gb);
+DECLARE_bool(enable_cache_tensor_address);
 
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
@@ -65,6 +67,50 @@ static bool gProfileStarted = false;
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 std::once_flag p2p_init_flag;
 #endif
+
+static void CacheTensorAddress(const ir::Graph &graph, Scope *scope) {
+  PADDLE_ENFORCE_NOT_NULL(scope);
+  if (graph.Has(details::kFusedVars)) {
+    auto &fused_vars = graph.Get<details::FusedVars>(details::kFusedVars);
+    for (auto &pair : fused_vars) {
+      details::MarkVarAsPersistable(graph, pair.first);
+      scope->Var(pair.first);
+    }
+  }
+
+  auto mark_persistable = [&graph](const details::ProgramDescs &programs) {
+    for (const auto &prog : programs) {
+      for (const auto *op : prog.Block(0).AllOps()) {
+        for (const auto &name : op->OutputNames()) {
+          details::MarkVarAsPersistable(graph, name);
+        }
+      }
+    }
+  };
+
+  if (graph.Has(details::kStartupProgramDescs)) {
+    mark_persistable(
+        graph.Get<details::ProgramDescs>(details::kStartupProgramDescs));
+  }
+  if (graph.Has(details::kProgramDescs)) {
+    mark_persistable(graph.Get<details::ProgramDescs>(details::kProgramDescs));
+  }
+
+  for (auto *op : graph.Nodes()) {
+    if (!op->IsWrappedBy<details::OpHandleBase>()) {
+      continue;
+    }
+    auto *loss_grad_op = dynamic_cast<details::ScaleLossGradOpHandle *>(
+        &op->Wrapper<details::OpHandleBase>());
+    if (loss_grad_op == nullptr) {
+      continue;
+    }
+    auto loss_grad_name = loss_grad_op->LossGradName();
+    details::MarkVarAsPersistable(graph, loss_grad_name);
+    loss_grad_op->RunOnVar(scope->Var(loss_grad_name));
+    loss_grad_op->SetSkipRunning(true);
+  }
+}
 
 class ParallelExecutorPrivate {
  public:
@@ -669,6 +715,9 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // ncclOp
   std::vector<ir::Graph *> async_graphs =
       CompileGraphWithBuildStrategy(graph, &graphs, loss_var_name);
+  if (member_->places_.size() == 1 && FLAGS_enable_cache_tensor_address) {
+    CacheTensorAddress(*graph, member_->local_scopes_[0]);
+  }
   graph = member_->ApplyMemoryOptimizePass(graph);
   async_graphs[0] = graph;
 

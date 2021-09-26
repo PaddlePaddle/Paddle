@@ -774,9 +774,16 @@ PYBIND11_MODULE(core_noavx, m) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
       .def("_copy_from",
-           [](framework::Tensor &self, const framework::Tensor &other) {
-             framework::TensorCopy(other, other.place(), &self);
-           })
+           [](framework::Tensor &self, const framework::Tensor &other,
+              int64_t batch_size) {
+             if (batch_size < 0) {
+               framework::TensorCopy(other, other.place(), &self);
+             } else {
+               auto other_slice = other.Slice(0, batch_size);
+               framework::TensorCopy(other_slice, other_slice.place(), &self);
+             }
+           },
+           py::arg("tensor"), py::arg("batch_size") = -1)
       .def("_addr",
            [](framework::Tensor &self) {
              std::stringstream ss;
