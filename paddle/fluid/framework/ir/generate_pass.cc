@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/generate_pass.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
 namespace framework {
@@ -222,6 +223,133 @@ void GeneratePass::VerifyDesc() const {
 bool GeneratePass::VerifyGraph(const Graph& graph) {
   // Return true temporarily.
   return true;
+}
+
+namespace generate_pass {
+
+VarHelper::VarHelper(const char* name) : name_(name), type_(Type::kInput) {}
+VarHelper::VarHelper(const std::string& name, Type type)
+    : name_(name), type_(type) {}
+
+const std::string& VarHelper::Name() const { return name_; }
+
+bool VarHelper::CheckIntermediate() {
+  if (Type::kOutput == type_) {
+    type_ = Type::kIntermediate;
+  }
+  return Type::kIntermediate == type_;
+}
+
+OpHelper::OpHelper(const char* type, SubgraphHelper* subgraph_helper)
+    : type_(type), subgraph_helper_(subgraph_helper) {
+  op_desc_ = subgraph_helper_->ProgramDesc()->mutable_blocks(0)->add_ops();
+  op_desc_->set_type(type_);
+}
+
+OpHelper& OpHelper::operator()(std::pair<const char*, VarHelper> input) {
+  proto::OpDesc::Var* var = op_desc_->add_inputs();
+  var->set_parameter(input.first);
+  var->add_arguments()->assign(input.second.Name());
+  if (!input.second.CheckIntermediate()) {
+    subgraph_helper_->AddInputVar(input.second.Name());
+  }
+  return *this;
+}
+
+OpHelper& OpHelper::operator()(
+    std::pair<const char*, std::vector<VarHelper>> input) {
+  proto::OpDesc::Var* var = op_desc_->add_inputs();
+  var->set_parameter(input.first);
+  for (VarHelper& var_helper : input.second) {
+    var->add_arguments()->assign(var_helper.Name());
+    if (!var_helper.CheckIntermediate()) {
+      subgraph_helper_->AddInputVar(var_helper.Name());
+    }
+  }
+  return *this;
+}
+
+OpHelper& OpHelper::operator()(
+    std::vector<std::pair<const char*, VarHelper>> inputs) {
+  for (auto& input : inputs) {
+    operator()(input);
+  }
+  return *this;
+}
+
+OpHelper& OpHelper::operator()(
+    std::vector<std::pair<const char*, std::vector<VarHelper>>> inputs) {
+  for (auto& input : inputs) {
+    operator()(input);
+  }
+  return *this;
+}
+
+VarHelper OpHelper::Out(const char* name) {
+  std::string argument = patterns::UniqueKey(type_);
+  proto::OpDesc::Var* var = op_desc_->add_outputs();
+  var->set_parameter(name);
+  var->add_arguments()->assign(argument);
+  return VarHelper(argument, VarHelper::Type::kOutput);
+}
+
+proto::ProgramDesc* SubgraphHelper::ProgramDesc() { return &program_desc_; }
+
+const proto::ProgramDesc& SubgraphHelper::ProgramDesc() const {
+  return program_desc_;
+}
+
+const std::vector<std::string>& SubgraphHelper::InputVars() const {
+  return input_vars_;
+}
+
+const std::vector<std::string>& SubgraphHelper::OutputVars() const {
+  return output_vars_;
+}
+
+void SubgraphHelper::AddInputVar(const std::string& name) {
+  auto iter = std::find(input_vars_.begin(), input_vars_.end(), name);
+  if (input_vars_.end() == iter) {
+    input_vars_.push_back(name);
+  }
+}
+
+void SubgraphHelper::AddOutputVars(const VarHelper& var_helper) {
+  output_vars_.push_back(var_helper.Name());
+}
+
+}  // namespace generate_pass
+
+PassPairs::PassPairs(SubgraphType pattern, SubgraphType replace) {
+  pass_pairs_.push_back({pattern, replace});
+}
+
+void PassPairs::push_back(std::pair<SubgraphType, SubgraphType> pass_pair) {
+  pass_pairs_.push_back(pass_pair);
+}
+
+proto::MultiPassDesc PassPairs::ToMultiPassDesc() {
+  proto::MultiPassDesc multi_pass_desc;
+  for (const auto& pass_pair : pass_pairs_) {
+    proto::PassDesc* pass_desc = multi_pass_desc.add_pass_descs();
+    pass_desc->mutable_pattern()->CopyFrom(pass_pair.first.ProgramDesc());
+    pass_desc->mutable_replace()->CopyFrom(pass_pair.second.ProgramDesc());
+    PADDLE_ENFORCE_EQ(pass_pair.first.InputVars().size(),
+                      pass_pair.second.InputVars().size());
+    for (size_t i = 0; i < pass_pair.first.InputVars().size(); i++) {
+      proto::PassDesc::VarMap* var_map = pass_desc->add_var_maps();
+      var_map->set_pattern_var(pass_pair.first.InputVars()[i]);
+      var_map->set_replace_var(pass_pair.second.InputVars()[i]);
+    }
+    PADDLE_ENFORCE_EQ(pass_pair.first.OutputVars().size(),
+                      pass_pair.second.OutputVars().size());
+    for (size_t i = 0; i < pass_pair.first.OutputVars().size(); i++) {
+      proto::PassDesc::VarMap* var_map = pass_desc->add_var_maps();
+      var_map->set_pattern_var(pass_pair.first.OutputVars()[i]);
+      var_map->set_replace_var(pass_pair.second.OutputVars()[i]);
+    }
+  }
+  return multi_pass_desc;
 }
 
 }  // namespace ir

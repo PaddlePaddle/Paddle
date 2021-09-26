@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #pragma once
-#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/ir/pass.h"
 #include "paddle/fluid/framework/pass_desc.pb.h"
 
@@ -45,57 +44,103 @@ class GeneratePass : public Pass {
 
 namespace generate_pass {
 
-struct VarHelper;
-struct OpHelper;
-struct FunctionHelper;
+class VarHelper;
+class OpHelper;
+class SubgraphHelper;
 
-struct VarHelper {
-  VarHelper() = default;
-  explicit VarHelper(const char*);
-  // VarHelper(std::initializer_list<VarHelper>);
+class VarHelper {
+ public:
+  enum class Type { kInput, kOutput, kIntermediate };
+
+  explicit VarHelper(const char* name);
+  VarHelper(const std::string& name, Type type);
+
+  const std::string& Name() const;
+
+  bool CheckIntermediate();
+
+ private:
+  // VarHelper() = delete;
+  std::string name_;
+  Type type_;
 };
 
-struct OpHelper {
-  explicit OpHelper(const char*);
+class OpHelper {
+ public:
+  OpHelper(const char* type, SubgraphHelper* subgraph_helper);
 
-  VarHelper& operator()(std::pair<std::string, VarHelper>);
-  VarHelper& operator()(std::pair<std::string, std::vector<VarHelper>>);
-  VarHelper& operator()(
-      std::initializer_list<std::pair<std::string, VarHelper>>);
-  VarHelper& operator()(
-      std::initializer_list<std::pair<std::string, std::vector<VarHelper>>>);
+  OpHelper& operator()(std::pair<const char*, VarHelper> input);
+  OpHelper& operator()(std::pair<const char*, std::vector<VarHelper>> input);
+  OpHelper& operator()(std::vector<std::pair<const char*, VarHelper>> inputs);
+  OpHelper& operator()(
+      std::vector<std::pair<const char*, std::vector<VarHelper>>> inputs);
+
+  VarHelper Out(const char* name);
+
+ private:
+  const char* type_;
+  proto::OpDesc* op_desc_;
+  SubgraphHelper* subgraph_helper_;
 };
 
-struct FunctionHelper {
+class SubgraphHelper {
+ public:
   template <typename T>
-  explicit FunctionHelper(const T&& f) {
-    // using Var = GeneratePassRegister::VarHelper;
-    // static_assert(std::is_convertible<T, std::function<Var(Var, Var,
-    // Var)>>::value);
-    // 获取可执行的函数
-    // 执行
-    // 获取desc
+  explicit SubgraphHelper(const T&& f) {
+    proto::BlockDesc* block = program_desc_.add_blocks();
+    block->set_idx(0);
+    block->set_parent_idx(0);
+    AddOutputVars(f());
   }
 
+  proto::ProgramDesc* ProgramDesc();
+  const proto::ProgramDesc& ProgramDesc() const;
+  const std::vector<std::string>& InputVars() const;
+  const std::vector<std::string>& OutputVars() const;
+
+  void AddInputVar(const std::string& name);
+
+  void AddOutputVars(const VarHelper& var_helper);
+
+  template <size_t i, typename... Ts,
+            std::enable_if_t<i + 1 < sizeof...(Ts)>* = nullptr>
+  void AddOutputVars(const std::tuple<Ts...>& outputs) {
+    AddOutputVars(std::get<i>(outputs));
+    AddOutputVars<i + 1>(outputs);
+  }
+
+  template <size_t i, typename... Ts,
+            std::enable_if_t<i + 1 == sizeof...(Ts)>* = nullptr>
+  void AddOutputVars(const std::tuple<Ts...>& outputs) {
+    AddOutputVars(std::get<i>(outputs));
+  }
+
+  template <typename... Ts>
+  void AddOutputVars(const std::tuple<Ts...>& outputs) {
+    AddOutputVars<0>(outputs);
+  }
+
+ private:
+  std::vector<std::string> input_vars_;
+  std::vector<std::string> output_vars_;
   proto::ProgramDesc program_desc_;
 };
 
 }  // namespace generate_pass
 
-struct PassPairs {
+class PassPairs {
+ public:
+  using SubgraphType = generate_pass::SubgraphHelper;
   PassPairs() = default;
 
-  template <typename PT, typename RT>
-  explicit PassPairs(std::pair<PT, RT> t) {
-    // using Var = GeneratePassRegister::VarHelper;
-    // static_assert(std::is_convertible<PT, std::function<Var(Var, Var,
-    // Var)>>::value);
-  }
+  PassPairs(SubgraphType pattern, SubgraphType replace);
 
-  template <typename T1, typename T2>
-  void push_back(std::pair<T1, T2> t) {}
+  void push_back(std::pair<SubgraphType, SubgraphType> pass_pair);
 
   proto::MultiPassDesc ToMultiPassDesc();
+
+ private:
+  std::vector<std::pair<SubgraphType, SubgraphType>> pass_pairs_;
 };
 
 // Use function to register in CC.
@@ -105,10 +150,13 @@ class CXXGeneratePass : public GeneratePass {
   CXXGeneratePass() : GeneratePass(Functor().ToMultiPassDesc()) {}
 };
 
-#define VAR_(name) ::paddle::framework::ir::generate_pass::VarHelper name
-#define OP_(type) ::paddle::framework::ir::generate_pass::OpHelper(#type)
+#define VAR_(name)                                         \
+  ::paddle::framework::ir::generate_pass::VarHelper name = \
+      ::paddle::framework::ir::generate_pass::VarHelper(#name)
+#define OP_(type) \
+  ::paddle::framework::ir::generate_pass::OpHelper(#type, subgraph)
 #define SUBGRAPH_(name) \
-  ::paddle::framework::ir::generate_pass::FunctionHelper name
+  ::paddle::framework::ir::generate_pass::SubgraphHelper name
 
 #define REGISTER_GENERATE_PASS(pass_type)                               \
   paddle::framework::ir::PassPairs register_##pass_type();              \
