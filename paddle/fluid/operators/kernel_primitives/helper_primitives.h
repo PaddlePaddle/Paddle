@@ -166,7 +166,7 @@ struct DivFunctor<T,
                   typename std::enable_if<std::is_integral<T>::value>::type> {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
     // For int32/int64, need to check whether the divison is zero.
-    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+    PADDLE_ENFORCE_NE(b, 0, platform::errors::InvalidArgument(DIV_ERROR_INFO));
     return a / b;
   }
 };
@@ -177,7 +177,7 @@ struct FloorDivFunctor {
   inline Ty initial() { return static_cast<Ty>(1.0f); }
 
   inline HOSTDEVICE Ty operator()(const Ty& a, const Ty& b) const {
-    PADDLE_ENFORCE(b != 0, DIV_ERROR_INFO);
+    PADDLE_ENFORCE_NE(b, 0, platform::errors::InvalidArgument(DIV_ERROR_INFO));
     return static_cast<Ty>(std::trunc(a / b));
   }
 };
