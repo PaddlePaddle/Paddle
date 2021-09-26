@@ -16,6 +16,7 @@ register_operators(EXCLUDES
     fusion_gru_op
     fusion_lstm_op
     fused_bn_add_activation_op
+    fused_attention_op
     fused_transformer_op)
 
 # fusion_gru_op does not have CUDA kernel
@@ -77,6 +78,9 @@ if (WITH_GPU OR WITH_ROCM)
         nv_test(test_fused_residual_dropout_bias SRCS fused_residual_dropout_bias_test.cu DEPS tensor op_registry dropout_op layer_norm_op device_context generator memory)
         nv_test(test_fused_dropout_act_bias SRCS fused_dropout_act_bias_test.cu DEPS tensor op_registry dropout_op layer_norm_op device_context generator memory)
         nv_test(test_fused_layernorm_residual_dropout_bias SRCS fused_layernorm_residual_dropout_bias_test.cu DEPS tensor op_registry dropout_op layer_norm_op device_context generator memory)
+        # fused_attention_op
+        op_library(fused_attention_op)
+        file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(fused_attention);\n")
     endif()
     if ((NOT WITH_ROCM) AND (NOT ${CUDNN_VERSION} VERSION_LESS 8000))
         cc_test(test_cudnn_norm_conv SRCS cudnn_norm_conv_test.cc DEPS conv_op blas im2col vol2col depthwise_conv eigen_function tensor op_registry device_context generator memory)
