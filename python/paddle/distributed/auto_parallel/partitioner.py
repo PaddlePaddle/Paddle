@@ -25,13 +25,12 @@ from paddle.fluid.backward import append_backward, _some_in_set_, _append_grad_s
 from paddle.distributed.auto_parallel.operators.common import get_distributed_operator
 from paddle.fluid.clip import GradientClipBase, GradientClipByNorm, error_clip_callback, append_gradient_clip_ops, ClipGradByGlobalNorm
 from paddle.distributed.fleet.base.distributed_strategy import DistributedStrategy
-from paddle.distributed.auto_parallel.context import DistributedContext
+from paddle.distributed.auto_parallel.context import DistributedContext, DistOpHelper
 from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op, is_backward_op, is_optimizer_op
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from .process import new_process_group
 from .interface import _g_process_mesh_map
 from .utils import _get_comm_group
-from .context import DistOpContext
 from paddle.distributed.auto_parallel.completion import complete_backward_annotation, complete_update_annotation
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue_0"]
@@ -271,10 +270,6 @@ class Partitioner(object):
             self._sharding_backward_transpile(new_main_prog,
                                               new_startup_program)
 
-        # Data Parallel pass
-        if self._enable_data_parallel:
-            self._gradient_sync_transpile(dist_main_program,
-                                          dist_startup_program)
         return params_grads
 
     def apply_optimize_impl(self, user_define_optimizer, params_grads,
@@ -320,11 +315,12 @@ class Partitioner(object):
         else:
             partitioned_startup_prog = fluid.Program()
 
-        ctx = DistOpContext()
-        ctx.set_dst_main_program(partitioned_main_prog)
-        ctx.set_dst_startup_program(partitioned_startup_prog)
-        ctx.set_varname_mapping(self._serial2dist_varname_mapping)
-        ctx.set_rank_id(self._rank_id)
+        # TODO move helper init to a comm place
+        dist_op_helper = self._auto_parallel_context.get_dist_op_helper()
+        dist_op_helper.set_dst_main_program(partitioned_main_prog)
+        dist_op_helper.set_dst_startup_program(partitioned_startup_prog)
+        dist_op_helper.set_varname_mapping(self._serial2dist_varname_mapping)
+        dist_op_helper.set_rank_id(self._rank_id)
 
         # transpile main program
         for op in serial_ops:
@@ -356,29 +352,21 @@ class Partitioner(object):
                         serial_output_varname] = new_varname
 
             # partition op
+            kinputs, koutputs = dist_op_helper.prepare_forward_context(op)
             dist_attr = self._auto_parallel_context.get_op_distributed_attr_for_program(
                 op)
-            kinputs, koutputs = ctx.prepare_forward_context(op, dist_attr)
-
-            if _found_match_dist_op(self._auto_parallel_context, op):
+            if _is_dist_op_forward_implement(self._auto_parallel_context, op):
                 dist_ops = get_distributed_operator(op.type)
                 dist_op_impl = dist_ops.get_impl(dist_attr.get_impl_idx())
-                # TO REMOVE
-                # append_op_handle = dist_op_impl.forward(op)
-                # append_op_handle(
-                #     ctx.get_dst_main_program().global_block(),
-                #     op,
-                #     ctx.get_cur_dist_attr(),
-                #     kinputs,
-                #     koutputs,
-                #     rank_id=ctx.get_rank_id())
-                dist_op_impl.forward(ctx, **kinputs, **koutputs)
+                dist_op_impl.forward(self._auto_parallel_context, **kinputs,
+                                     **koutputs)
 
             else:
                 # replicate op
                 dist_ops = get_distributed_operator("default")
                 dist_op_impl = dist_ops.get_impl(0)
-                dist_op_impl.forward(ctx, **kinputs, **koutputs)
+                dist_op_impl.forward(self._auto_parallel_context, **kinputs,
+                                     **koutputs)
 
         # transpile startup program
         if serial_startup_program == None:
@@ -519,28 +507,20 @@ class Partitioner(object):
                     for param in no_grad_set
                 ]
 
-            ctx = DistOpContext()
+            dist_op_helper = self._auto_parallel_context.get_dist_op_helper()
             params_and_grads = _auto_backward(
                 dist_loss,
                 dist_startup_program,
                 parameter_list=parameter_list,
                 no_grad_set=no_grad_set,
                 callbacks=callbacks,
-                distop_context=ctx)
+                distop_context=dist_op_helper)
 
             # backward completion 
             complete_backward_annotation(
-                dist_main_program,
-                ctx,
-                dist_context=self._auto_parallel_context)
+                dist_main_program, dist_context=self._auto_parallel_context)
 
             # transpiler backward for dist op
-            ctx.set_dst_main_program(dist_main_program)
-            ctx.set_dst_startup_program(dist_startup_program)
-            ctx.set_varname_mapping(self._serial2dist_varname_mapping)
-            ctx.set_rank_id(self._rank_id)
-            ctx.set_dist_context(self._auto_parallel_context)
-
             # get backward ops
             ops = dist_main_program.global_block().ops
             first_backward_op_idx = -1
@@ -559,31 +539,31 @@ class Partitioner(object):
             backward_ops = ops[first_backward_op_idx:]
             for backward_op in backward_ops:
                 # if the backward op has a corresponding forward op
-                if backward_op.desc.id() in ctx.gradopidx2opidx:
-                    forward_op_id = ctx.gradopidx2opidx[backward_op.desc.id()]
+                if backward_op.desc.id() in dist_op_helper.gradopidx2opidx:
+                    forward_op_id = dist_op_helper.gradopidx2opidx[
+                        backward_op.desc.id()]
                     forward_op = forward_op_id2forward_op[forward_op_id]
                     # TODO backward attr should has _impl_idx
                     forward_op_dist_attr = self._auto_parallel_context.get_op_distributed_attr_for_program(
                         forward_op)
                     # TODO use the backward op itself to find the dist op
                     dist_ops = get_distributed_operator(forward_op.type)
-                    dist_attr = self._auto_parallel_context.get_op_distributed_attr_for_program(
+                    kinputs, koutputs = dist_op_helper.prepare_backward_context(
                         backward_op)
 
-                    kinputs, koutputs = ctx.prepare_backward_context(
-                        backward_op, dist_attr)
-
-                    if dist_ops and forward_op_dist_attr.get_impl_idx() >= 0:
-                        print(backward_op.type,
-                              forward_op_dist_attr.get_impl_idx())
+                    # TODO use backward op itself to determine impl idx
+                    if _is_dist_op_backward_implement(
+                            self._auto_parallel_context, forward_op):
                         dist_op_impl = dist_ops.get_impl(
                             forward_op_dist_attr.get_impl_idx())
-                        dist_op_impl.backward(ctx, **kinputs, **koutputs)
+                        dist_op_impl.backward(self._auto_parallel_context,
+                                              **kinputs, **koutputs)
                     else:
                         # replicate op
                         dist_ops = get_distributed_operator("default")
                         dist_op_impl = dist_ops.get_impl(0)
-                        dist_op_impl.backward(ctx, **kinputs, **koutputs)
+                        dist_op_impl.backward(self._auto_parallel_context,
+                                              **kinputs, **koutputs)
 
             return params_and_grads
         # replace dist grad ops
@@ -720,69 +700,6 @@ class Partitioner(object):
         """
         raise RuntimeError("sharding transpile is NOT implemented !")
 
-    def _gradient_sync_transpile(self, main_program, startup_program):
-        """
-        append the gradient allreduce ops for all parameters' grad in case of Data Parallel
-        """
-
-        # scale loss by dp degree
-        main_global_block = main_program.global_block()
-        for idx, op in reversed(list(enumerate(main_global_block.ops))):
-            if is_loss_grad_op(op):
-                # loss_grad_var = main_global_block.vars[op.output_arg_names[0]]
-                # main_global_block._insert_op_without_sync(
-                #     idx + 1,
-                #     type='scale',
-                #     inputs={'X': loss_grad_var},
-                #     outputs={'Out': loss_grad_var},
-                #     attrs={
-                #         'scale': 1.0 / self._dp_degree,
-                #         OP_ROLE_KEY: OpRole.Backward
-                #     })
-                break
-        main_global_block._sync_with_cpp()
-
-        # gradient synchronization
-        # NOTE naive gradient sync without overlapping
-        # so there is not need to sync between calc and comm
-        # collecting grad var
-        grad_to_sync = []
-        for idx, op in reversed(list(enumerate(main_global_block.ops))):
-            if is_backward_op(op) and \
-                    OP_ROLE_VAR_KEY in op.attr_names:
-                op_role_var = op.all_attrs()[OP_ROLE_VAR_KEY]
-                if len(op_role_var) != 0:
-                    assert len(op_role_var) % 2 == 0
-                    for i in range(0, len(op_role_var), 2):
-                        param, reduced_grad = op_role_var[i], op_role_var[i + 1]
-                        assert (reduced_grad not in grad_to_sync)
-                        grad_to_sync.append(reduced_grad)
-            if is_optimizer_op(op):
-                first_optimize_op_idx = idx
-
-        # insert allreduce
-        print("remvoe allreduce pass")
-        # for grad in grad_to_sync:
-        #     # FIXME the ring id should be set by autoparallel.mapping module
-        #     # it should be determined by dp groups butfixed it here for hacking
-        #     main_global_block.append_op(
-        #         type='c_allreduce_sum',
-        #         inputs={'X': grad},
-        #         outputs={'Out': grad},
-        #         attrs={
-        #             'ring_id': self._dp_group.id,
-        #             'root': 0,
-        #             'use_calc_stream': True,
-        #             OP_ROLE_KEY: OpRole.Backward
-        #         })
-        # main_global_block.append_op(
-        #     type='c_sync_comm_stream',
-        #     inputs={'X': grad_to_sync},
-        #     outputs={'Out': grad_to_sync},
-        #     attrs={'ring_id': self._dp_group.id,
-        #            OP_ROLE_KEY: OpRole.Backward})
-        main_global_block._sync_with_cpp()
-
 
 def _get_no_grad_set_name(no_grad_set):
     no_grad_set_name = set()
@@ -815,12 +732,20 @@ def _get_no_grad_set(loss, no_grad_set=None):
     return no_grad_set
 
 
-def _found_match_dist_op(auto_paralle_context, op):
+def _is_dist_op_forward_implement(auto_paralle_context, op):
     dist_attr = auto_paralle_context.get_op_distributed_attr_for_program(op)
     dist_ops = get_distributed_operator(op.type)
 
     return dist_ops and dist_attr.get_impl_idx() >= 0 and dist_ops.get_impl( \
         dist_attr.get_impl_idx())._forward_implemented
+
+
+def _is_dist_op_backward_implement(auto_paralle_context, op):
+    dist_attr = auto_paralle_context.get_op_distributed_attr_for_program(op)
+    dist_ops = get_distributed_operator(op.type)
+
+    return dist_ops and dist_attr.get_impl_idx() >= 0 and dist_ops.get_impl( \
+        dist_attr.get_impl_idx())._backward_implemented
 
 
 def _auto_backward(loss,

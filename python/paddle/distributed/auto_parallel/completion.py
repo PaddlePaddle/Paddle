@@ -771,9 +771,7 @@ def complete_backward_update_annotation(auto_parallel_main_prog):
                                                              grad_op_attr)
 
 
-def complete_backward_annotation(auto_parallel_main_prog,
-                                 distop_ctx,
-                                 dist_context=None):
+def complete_backward_annotation(auto_parallel_main_prog, dist_context=None):
     """Complete the annotation of vars and ops in the backward phase for parallel program."""
 
     def _is_grad_var_name(name):
@@ -891,11 +889,12 @@ def complete_backward_annotation(auto_parallel_main_prog,
         grad_op = ops[idx]
 
         # xxx_grad op will have a corresponding forward op in gradopidx2opidx
-        if grad_op.desc.id() in distop_ctx.gradopidx2opidx:
+        dist_op_helper = dist_context.get_dist_op_helper()
+        if grad_op.desc.id() in dist_op_helper.gradopidx2opidx:
             # TODO support the case where one forward op corresponding to multiple xxx_grad op
             forward_op = _get_op_by_id(
                 ops[:grad_start_idx],
-                distop_ctx.gradopidx2opidx[grad_op.desc.id()])
+                dist_op_helper.gradopidx2opidx[grad_op.desc.id()])
             assert forward_op is not None
 
             # op dist attr

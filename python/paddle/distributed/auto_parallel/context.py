@@ -54,6 +54,7 @@ class DistributedContext:
         # The following is a hard code and will be removed in the future
         self._data_parallel_axis = None
         self._model_parallel_axis = None
+        self._get_dist_op_helper = DistOpHelper()
         self._process_mesh = _g_process_mesh_map.get(0, None)
         if self._process_mesh is not None:
             if self._process_mesh.ndim == 1:
@@ -127,6 +128,9 @@ class DistributedContext:
         else:
             self._data_parallel_axis = -1
             self._model_parallel_axis = -1
+
+    def get_dist_op_helper(self):
+        return self._get_dist_op_helper
 
     def initialize_distributed_attr_for_program(self, program):
         if self._is_initialized_for_program:
@@ -431,9 +435,9 @@ class DistributedContext:
         return self._model_parallel_axis, self._process_mesh
 
 
-class DistOpContext:
+class DistOpHelper:
     """
-    DistOpContext is used to create a dist op desc in Program.
+    DistOpHelper is used to create a dist op desc in Program.
     Every time to create a new dist op, the context should be updated for it accordingly.
     """
 
@@ -444,15 +448,7 @@ class DistOpContext:
         self._rank_id = None
         self._cur_src_op = None
         self._cur_dist_attr = None
-        # TODO remove
-        self._dist_context = None
         self.gradopidx2opidx = {}
-
-    def set_dist_context(self, dist_context):
-        self._dist_context = dist_context
-
-    def get_dist_context(self):
-        return self._dist_context
 
     def set_dst_main_program(self, prog):
         self._dst_main_program = prog
@@ -484,16 +480,9 @@ class DistOpContext:
     def get_cur_src_op(self):
         return self._cur_src_op
 
-    def set_cur_dist_attr(self, cur_dist_attr):
-        self._cur_dist_attr = cur_dist_attr
-
-    def get_cur_dist_attr(self):
-        return self._cur_dist_attr
-
-    def prepare_forward_context(self, src_op, dist_attr):
+    def prepare_forward_context(self, src_op):
 
         self.set_cur_src_op(src_op)
-        self.set_cur_dist_attr(dist_attr)
 
         # build input varname mapping
         kinputs = {}
@@ -513,10 +502,9 @@ class DistOpContext:
 
         return kinputs, koutputs
 
-    def prepare_backward_context(self, backward_op, dist_attr):
+    def prepare_backward_context(self, backward_op):
 
         self.set_cur_src_op(backward_op)
-        self.set_cur_dist_attr(dist_attr)
 
         # build input varname mapping
         kinputs = {}
