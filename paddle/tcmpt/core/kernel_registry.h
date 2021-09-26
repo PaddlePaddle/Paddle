@@ -182,8 +182,8 @@ struct KernelRegistrar {
   (meta_kernel_fn, cpp_dtype, __VA_ARGS__)
 
 /**
- * need use template<> instead of template here
- * template can work on gcc and clang, but msvc will failed, error like:
+ * `template decltype(fn) fn` can work on gcc and clang,
+ * but msvc will failed, error like:
  *
  *   error C2206: typedef cannot be used for function definition
  *
