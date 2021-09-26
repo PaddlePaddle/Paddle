@@ -22,9 +22,22 @@ from paddle.fluid.op import Operator
 from paddle.fluid import compiler, Program, program_guard
 
 
-@skip_check_grad_ci(reason="Run backward without check grad for new")
+# cast output to complex for numpy.linalg.eig
+def cast_to_complex(input, output):
+    if (input.dtype == np.float32):
+        output = output.astype(np.complex64)
+    elif (input.dtype == np.float64):
+        output = output.astype(np.complex128)
+    return output
+
+
+@skip_check_grad_ci(
+    reason="Run backward without check grad for new as backward logic is not implemented yet"
+)
 class TestEigOp(OpTest):
     def setUp(self):
+        paddle.enable_static()
+        paddle.device.set_device("cpu")
         self.op_type = "eig"
         self.__class__.op_type = self.op_type
         self.init_input()
@@ -32,69 +45,100 @@ class TestEigOp(OpTest):
         self.outputs = {'Eigenvalues': self.out[0], 'Eigenvectors': self.out[1]}
 
     def init_input(self):
-        self.shape = (3, 3)
-        self.dtype = 'float32'
+        self.set_dtype()
+        self.set_dims()
         self.x = np.random.random(self.shape).astype(self.dtype)
         self.out = np.linalg.eig(self.x)
+        self.out = (cast_to_complex(self.x, self.out[0]),
+                    cast_to_complex(self.x, self.out[1]))
 
-    def compare_results(self, expect, actual, rtol, atol, place):
-        self.assertTrue(
-            np.allclose(
-                np.abs(expect[0]), paddle.abs(actual[0]), rtol, atol,
-                place), "Eigen values has diff at " + str(place) + "\nExpect " +
-            str(expect[0]) + "\n" + "But Got" + str(actual[0]) + " in class " +
-            self.__class__.__name__)
+    # for the real input, a customized checker is needed
+    def checker(self, outs):
+        actual_out_w = np.sort(outs[0].flatten())
+        expect_out_w = np.sort(self.out[0].flatten())
+        actual_out_v = outs[1].flatten()
+        expect_out_v = self.out[1].flatten()
 
-        self.assertTrue(
-            np.allclose(
-                np.abs(expect[1]), paddle.abs(actual[1]), rtol, atol,
-                place), "Eigen vectors has diff at " + str(place) + "\nExpect "
-            + str(expect[1]) + "\n" + "But Got" + str(actual[1]) + " in class "
-            + self.__class__.__name__)
+        length_w = len(expect_out_w)
 
-    def test_check_output_with_place(self):
-        paddle.disable_static()
-        place = fluid.CPUPlace()
-        paddle.device.set_device("cpu")
-        x = paddle.to_tensor(self.x)
-        actual = paddle.linalg.eig(x)
-        self.compare_results(self.out, actual, 1e-6, 1e-6, place)
-        paddle.enable_static()
+        for i in range(length_w):
+            # print(actual_out_w[i].real, "  ", expect_out_w[i].real)
+            self.assertTrue(
+                np.allclose(actual_out_w[i].real, expect_out_w[i].real, 1e-6,
+                            1e-5),
+                "The eigenvalues real part have diff: \nExpected " +
+                str(actual_out_w[i].real) + "\n" + "But got: " +
+                str(expect_out_w[i].real))
+            self.assertTrue(
+                np.allclose(actual_out_w[i].imag, expect_out_w[i].imag, 1e-6,
+                            1e-5),
+                "The eigenvalues image part have diff: \nExpected " +
+                str(actual_out_w[i].imag) + "\n" + "But got: " +
+                str(expect_out_w[i].imag))
+
+        length_v = len(expect_out_v)
+        act_v_real = np.sort(
+            np.array([np.abs(actual_out_v[i].real) for i in range(length_v)]))
+        act_v_imag = np.sort(
+            np.array([np.abs(actual_out_v[i].imag) for i in range(length_v)]))
+        exp_v_real = np.sort(
+            np.array([np.abs(expect_out_v[i].real) for i in range(length_v)]))
+        exp_v_imag = np.sort(
+            np.array([np.abs(expect_out_v[i].imag) for i in range(length_v)]))
+
+        for i in range(length_v):
+            # print(act_v_real[i], "  ",  exp_v_real[i])
+            self.assertTrue(
+                np.allclose(act_v_real[i], exp_v_real[i], 1e-6, 1e-5),
+                "The eigenvectors real part have diff: \nExpected " +
+                str(act_v_real[i]) + "\n" + "But got: " + str(exp_v_real[i]))
+            self.assertTrue(
+                np.allclose(act_v_imag[i], exp_v_imag[i], 1e-6, 1e-5),
+                "The eigenvectors image part have diff: \nExpected " +
+                str(act_v_imag[i]) + "\n" + "But got: " + str(exp_v_imag[i]))
+
+    def set_dtype(self):
+        self.dtype = np.complex64
+
+    def set_dims(self):
+        self.shape = (3, 3)
+
+    def test_check_output(self):
+        self.check_output()
 
     def test_grad(self):
         pass
 
 
 class TestEigBatchMarices(TestEigOp):
-    def init_input(self):
+    def set_dims(self):
         self.shape = (3, 3, 3)
-        self.dtype = np.float32
-        self.x = np.random.random(self.shape).astype(self.dtype)
-        self.out = np.linalg.eig(self.x)
-
-
-class TestDouble(TestEigOp):
-    def init_input(self):
-        self.shape = (3, 3)
-        self.dtype = np.float64
-        self.x = np.random.random(self.shape).astype(self.dtype)
-        self.out = np.linalg.eig(self.x)
 
 
 class TestComplex128(TestEigOp):
-    def init_input(self):
-        self.shape = (3, 3)
+    def set_dtype(self):
         self.dtype = np.complex128
-        self.x = np.random.random(self.shape).astype(self.dtype)
-        self.out = np.linalg.eig(self.x)
 
 
-class TestComplex64(TestEigOp):
-    def init_input(self):
-        self.shape = (3, 3)
-        self.dtype = np.complex64
-        self.x = np.random.random(self.shape).astype(self.dtype)
-        self.out = np.linalg.eig(self.x)
+class TestFloat(TestEigOp):
+    def set_dtype(self):
+        self.dtype = np.float32
+
+    def set_dims(self):
+        self.shape = (32, 32)
+
+    def test_check_output(self):
+        self.check_output_with_place_customized(
+            checker=self.checker, place=core.CPUPlace())
+
+
+class TestDouble(TestEigOp):
+    def set_dtype(self):
+        self.dtype = np.float64
+
+    def test_check_output(self):
+        self.check_output_with_place_customized(
+            checker=self.checker, place=core.CPUPlace())
 
 
 class TestEigStatic(TestEigOp):
@@ -111,15 +155,15 @@ class TestEigStatic(TestEigOp):
             fetch_val, fetch_vec = exe.run(fluid.default_main_program(),
                                            feed={"input": input_np},
                                            fetch_list=[act_val, act_vec])
-
         self.assertTrue(
             np.allclose(expect_val, fetch_val, 1e-6, 1e-6),
-            "The eigen values have diff ")
+            "The eigen values have diff: \nExpected " + str(expect_val) + "\n" +
+            "But got: " + str(fetch_val))
         self.assertTrue(
             np.allclose(np.abs(expect_vec), np.abs(fetch_vec), 1e-6, 1e-6),
-            "The eigen vectors have diff ")
-
-        paddle.disable_static()
+            "The eigen vectors have diff: \nExpected " +
+            str(np.abs(expect_vec)) + "\n" + "But got: " +
+            str(np.abs(fetch_vec)))
 
 
 class TestEigWrongDimsError(unittest.TestCase):
@@ -129,7 +173,6 @@ class TestEigWrongDimsError(unittest.TestCase):
         a = np.random.random((3)).astype('float32')
         x = paddle.to_tensor(a)
         self.assertRaises(ValueError, paddle.linalg.eig, x)
-        paddle.enable_static()
 
 
 class TestEigNotSquareError(unittest.TestCase):
@@ -139,7 +182,6 @@ class TestEigNotSquareError(unittest.TestCase):
         a = np.random.random((1, 2, 3)).astype('float32')
         x = paddle.to_tensor(a)
         self.assertRaises(ValueError, paddle.linalg.eig, x)
-        paddle.enable_static()
 
 
 class TestEigUnsupportedDtypeError(unittest.TestCase):
@@ -149,7 +191,6 @@ class TestEigUnsupportedDtypeError(unittest.TestCase):
         a = (np.random.random((3, 3)) * 10).astype('int64')
         x = paddle.to_tensor(a)
         self.assertRaises(ValueError, paddle.linalg.eig, x)
-        paddle.enable_static()
 
 
 class TestGrad(unittest.TestCase):
@@ -169,7 +210,6 @@ class TestGrad(unittest.TestCase):
         self.assertTrue(
             np.allclose(
                 dx_actual, dx_expectd, rtol=1e-6, atol=1e-4))
-        paddle.enable_static()
 
 
 if __name__ == "__main__":
