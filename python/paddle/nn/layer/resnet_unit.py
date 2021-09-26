@@ -44,7 +44,7 @@ class ResNetUnit(Layer):
     """
 
     def __init__(self,
-                 num_channels,
+                 num_channels_x,
                  num_filters,
                  filter_size,
                  stride=1,
@@ -61,14 +61,13 @@ class ResNetUnit(Layer):
                  bias_x_attr=None,
                  moving_mean_x_name=None,
                  moving_var_x_name=None,
+                 num_channels_z=1,
                  filter_z_attr=None,
                  scale_z_attr=None,
                  bias_z_attr=None,
                  moving_mean_z_name=None,
                  moving_var_z_name=None):
         super(ResNetUnit, self).__init__()
-        self._in_channels = num_channels
-        self._out_channels = num_filters
         self._stride = stride
         self._dilation = 1
         self._kernel_size = utils.convert_to_list(filter_size, 2, 'kernel_size')
@@ -94,20 +93,22 @@ class ResNetUnit(Layer):
                 "bn_format must be one of {}, but got bn_format='{}'".format(
                     valid_format, bn_format))
 
-        def _get_default_param_initializer():
-            filter_elem_num = np.prod(self._kernel_size) * self._in_channels
+        def _get_default_param_initializer(channels):
+            filter_elem_num = np.prod(self._kernel_size) * channels
             std = (2.0 / filter_elem_num)**0.5
             return I.Normal(0.0, std)
 
         # initial filter
         bn_param_dtype = fluid.core.VarDesc.VarType.FP32
         bn_param_shape = [1, 1, 1, num_filters]
-        filter_shape = [num_filters, filter_size, filter_size, num_channels]
+        filter_x_shape = [num_filters, filter_size, filter_size, num_channels_x]
+        filter_z_shape = [num_filters, filter_size, filter_size, num_channels_z]
+
         self.filter_x = self.create_parameter(
-            shape=filter_shape,
+            shape=filter_x_shape,
             attr=filter_x_attr,
-            default_initializer=_get_default_param_initializer()).astype(
-                np.float16)
+            default_initializer=_get_default_param_initializer(
+                num_channels_x)).astype(np.float16)
         self.scale_x = self.create_parameter(
             shape=bn_param_shape,
             attr=scale_x_attr,
@@ -134,50 +135,48 @@ class ResNetUnit(Layer):
             shape=bn_param_shape,
             dtype=bn_param_dtype)
         self.var_x.stop_gradient = True
-        # if has_shortcut:
-        self.filter_z = self.create_parameter(
-            shape=filter_shape,
-            attr=filter_z_attr,
-            default_initializer=_get_default_param_initializer()).astype(
-                np.float16)
-        self.scale_z = self.create_parameter(
-            shape=bn_param_shape,
-            attr=scale_z_attr,
-            dtype=bn_param_dtype,
-            default_initializer=I.Constant(1.0))
-        self.bias_z = self.create_parameter(
-            shape=bn_param_shape,
-            attr=bias_z_attr,
-            dtype=bn_param_dtype,
-            is_bias=True)
-        self.mean_z = self.create_parameter(
-            attr=ParamAttr(
-                name=moving_mean_z_name,
-                initializer=I.Constant(0.0),
-                trainable=False),
-            shape=bn_param_shape,
-            dtype=bn_param_dtype)
-        self.mean_z.stop_gradient = True
-        self.var_z = self.create_parameter(
-            attr=ParamAttr(
-                name=moving_var_z_name,
-                initializer=I.Constant(1.0),
-                trainable=False),
-            shape=bn_param_shape,
-            dtype=bn_param_dtype)
-        self.var_z.stop_gradient = True
-        # else:
-        #     self.filter_z = self.filter_x
-        #     self.scale_z = self.scale_x
-        #     self.bias_z = self.bias_x
-        #     self.mean_z = self.mean_x
-        #     self.var_z = self.var_x
+        if has_shortcut:
+            self.filter_z = self.create_parameter(
+                shape=filter_z_shape,
+                attr=filter_z_attr,
+                default_initializer=_get_default_param_initializer(
+                    num_channels_z)).astype(np.float16)
+            self.scale_z = self.create_parameter(
+                shape=bn_param_shape,
+                attr=scale_z_attr,
+                dtype=bn_param_dtype,
+                default_initializer=I.Constant(1.0))
+            self.bias_z = self.create_parameter(
+                shape=bn_param_shape,
+                attr=bias_z_attr,
+                dtype=bn_param_dtype,
+                is_bias=True)
+            self.mean_z = self.create_parameter(
+                attr=ParamAttr(
+                    name=moving_mean_z_name,
+                    initializer=I.Constant(0.0),
+                    trainable=False),
+                shape=bn_param_shape,
+                dtype=bn_param_dtype)
+            self.mean_z.stop_gradient = True
+            self.var_z = self.create_parameter(
+                attr=ParamAttr(
+                    name=moving_var_z_name,
+                    initializer=I.Constant(1.0),
+                    trainable=False),
+                shape=bn_param_shape,
+                dtype=bn_param_dtype)
+            self.var_z.stop_gradient = True
+        else:
+            self.filter_z = None
+            self.scale_z = None
+            self.bias_z = None
+            self.mean_z = None
+            self.var_z = None
 
     def forward(self, x, z=None):
         if self._fused_add and z is None:
             raise ValueError("z can not be None")
-        if self._fused_add is False:
-            z = x
 
         out = F.resnet_unit(
             x, self.filter_x, self.scale_x, self.bias_x, self.mean_x,

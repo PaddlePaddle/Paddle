@@ -98,7 +98,8 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
 
     for in_name in op.input_names:
         if src_dtype == core.VarDesc.VarType.FP32 and op.type in [
-                'batch_norm', 'fused_bn_add_activation', 'layer_norm'
+                'batch_norm', 'fused_bn_add_activation', 'layer_norm',
+                'resnet_unit'
         ]:
             if in_name not in {'X', 'Z'}:
                 continue
@@ -155,7 +156,8 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     if src_dtype == core.VarDesc.VarType.FP32 and dest_dtype == core.VarDesc.VarType.FP16:
         for out_name in op.output_names:
             if op.type in [
-                    'batch_norm', 'fused_bn_add_activation', 'layer_norm'
+                    'batch_norm', 'fused_bn_add_activation', 'layer_norm',
+                    'resnet_unit'
             ] and out_name != 'Y':
                 continue
             for out_var_name in op.output(out_name):
@@ -372,7 +374,8 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                 continue  # processed below
             for in_name in op.input_names:
                 if op.type in {
-                        'batch_norm', 'fused_bn_add_activation', 'layer_norm'
+                        'batch_norm', 'fused_bn_add_activation', 'layer_norm',
+                        'resnet_unit'
                 } and in_name not in {'X', 'Z'}:
                     continue
                 for in_var_name in op.input(in_name):
@@ -402,7 +405,8 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
 
             for out_name in op.output_names:
                 if op.type in {
-                        'batch_norm', 'fused_bn_add_activation', 'layer_norm'
+                        'batch_norm', 'fused_bn_add_activation', 'layer_norm',
+                        'resnet_unit'
                 } and out_name != 'Y':
                     continue
                 for out_var_name in op.output(out_name):
