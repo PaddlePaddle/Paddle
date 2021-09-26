@@ -252,8 +252,8 @@ class DatasetImpl : public Dataset {
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
                                 const std::string& msg) {
-                                  return -1;
-                                }
+    return -1;
+  }
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers_;
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> preload_readers_;
   paddle::framework::Channel<T> input_channel_;
@@ -331,17 +331,16 @@ class MultiSlotDataset : public DatasetImpl<Record> {
   virtual ~MultiSlotDataset() {}
   virtual void GlobalShuffle(int thread_num = -1);
   virtual void SetHeterPs(bool enable_heterps);
+
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
                                 const std::string& msg);
- //protected:
- //  paddle::framework::Channel<RecordPtr> input_ptr_channel_;
+  // protected:
+  //  paddle::framework::Channel<RecordPtr> input_ptr_channel_;
 };
 class SlotRecordDataset : public DatasetImpl<SlotRecord> {
  public:
-  SlotRecordDataset() {
-    SlotRecordPool();
-  }
+  SlotRecordDataset() { SlotRecordPool(); }
   virtual ~SlotRecordDataset() {}
   // create input channel
   virtual void CreateChannel();
@@ -351,13 +350,11 @@ class SlotRecordDataset : public DatasetImpl<SlotRecord> {
   virtual void ReleaseMemory();
   virtual void GlobalShuffle(int thread_num = -1);
   virtual void DynamicAdjustChannelNum(int channel_num,
-                                             bool discard_remaining_ins);
-  virtual void SetHeterPs(bool enable_heterps){
+                                       bool discard_remaining_ins);
+  virtual void SetHeterPs(bool enable_heterps) {
     // Wait for datafeed ready
     return;
   }
-
-
 };
 
 }  // end namespace framework

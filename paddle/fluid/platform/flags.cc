@@ -676,8 +676,7 @@ PADDLE_DEFINE_EXPORTED_bool(
 
 DEFINE_int32(record_pool_max_size, 2000000,
              "SlotRecordDataset slot record pool max size");
-DEFINE_int32(slotpool_thread_num, 1,
-             "SlotRecordDataset slot pool thread num");
+DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");
 DEFINE_bool(enable_slotpool_wait_release, false,
             "enable slotrecord obejct wait release, default false");
 DEFINE_bool(enable_slotrecord_reset_shrink, false,

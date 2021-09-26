@@ -40,6 +40,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/reader.h"
 #include "paddle/fluid/framework/variable.h"
 #include "paddle/fluid/string/string_helper.h"
+#include "paddle/fluid/platform/timer.h"
 
 DECLARE_int32(record_pool_max_size);
 DECLARE_int32(slotpool_thread_num);
@@ -187,13 +188,11 @@ struct Record {
   uint64_t search_id;
   uint32_t rank;
   uint32_t cmatch;
-  ~Record() { 
-    clear(true); }
-  void reset(void) { 
-    clear(FLAGS_enable_slotrecord_reset_shrink); }
+  ~Record() { clear(true); }
+  void reset(void) { clear(FLAGS_enable_slotrecord_reset_shrink); }
   void clear(bool shrink) {
-    //uint64_feasigns_.clear();
-    //float_feasigns_.clear();
+    // uint64_feasigns_.clear();
+    // float_feasigns_.clear();
     if (shrink) {
       uint64_feasigns_.shrink_to_fit();
       float_feasigns_.shrink_to_fit();
@@ -204,8 +203,7 @@ struct Record {
 using RecordPtr = Record*;
 
 inline SlotRecord make_slotrecord() {
-  static const size_t slot_record_byte_size =
-      sizeof(SlotRecordObject);
+  static const size_t slot_record_byte_size = sizeof(SlotRecordObject);
   void* p = malloc(slot_record_byte_size);
   new (p) SlotRecordObject;
   return reinterpret_cast<SlotRecordObject*>(p);
@@ -263,8 +261,7 @@ static const int OBJPOOL_BLOCK_SIZE = 10000;
 class SlotObjPool {
  public:
   SlotObjPool()
-      : max_capacity_(FLAGS_record_pool_max_size),
-        alloc_(free_slotrecord) {
+      : max_capacity_(FLAGS_record_pool_max_size), alloc_(free_slotrecord) {
     ins_chan_ = MakeChannel<SlotRecord>();
     ins_chan_->SetBlockSize(OBJPOOL_BLOCK_SIZE);
     for (int i = 0; i < FLAGS_slotpool_thread_num; ++i) {
@@ -355,7 +352,7 @@ class SlotObjPool {
     }
     timeline.Pause();
     VLOG(3) << "clear slot pool data size=" << count_.load()
-                 << ", span=" << timeline.ElapsedSec();
+            << ", span=" << timeline.ElapsedSec();
   }
   size_t capacity(void) {
     mutex_.lock();
@@ -1054,7 +1051,7 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   MultiSlotInMemoryDataFeed() {}
   virtual ~MultiSlotInMemoryDataFeed() {}
   virtual void Init(const DataFeedDesc& data_feed_desc);
-  //void SetRecord(Record* records) { records_ = records; }
+  // void SetRecord(Record* records) { records_ = records; }
   int GetDefaultBatchSize() { return default_batch_size_; }
   void AddBatchOffset(const std::pair<int, int>& offset) {
     batch_offsets_.push_back(offset);

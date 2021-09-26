@@ -351,7 +351,6 @@ static int compute_thread_batch_nccl(
   return thread_avg_batch_num;
 }
 
-
 void MultiSlotDataset::SetHeterPs(bool enable_heterps) {
 #ifdef PADDLE_WITH_GLOO
   enable_heterps_ = enable_heterps;
@@ -540,7 +539,6 @@ void DatasetImpl<T>::LocalShuffle() {
   VLOG(3) << "DatasetImpl<T>::LocalShuffle() end, cost time="
           << timeline.ElapsedSec() << " seconds";
 }
-
 
 void MultiSlotDataset::GlobalShuffle(int thread_num) {
 #ifdef PADDLE_WITH_PSLIB
@@ -924,7 +922,7 @@ int64_t DatasetImpl<T>::GetShuffleDataSize() {
 }
 
 int MultiSlotDataset::ReceiveFromClient(int msg_type, int client_id,
-                                      const std::string& msg) {
+                                        const std::string& msg) {
 #ifdef _LINUX
   VLOG(3) << "ReceiveFromClient msg_type=" << msg_type
           << ", client_id=" << client_id << ", msg length=" << msg.length();
@@ -1565,7 +1563,7 @@ void SlotRecordDataset::ReleaseMemory() {
     SlotRecordPool().put(&input_records_);
     input_records_.clear();
     input_records_.shrink_to_fit();
-    //std::vector<T*>().swap(input_records_);
+    // std::vector<T*>().swap(input_records_);
     VLOG(3) << "release heterps input records records size: "
             << input_records_.size();
   }
@@ -1578,8 +1576,7 @@ void SlotRecordDataset::ReleaseMemory() {
   VLOG(3) << "SlotRecordDataset::ReleaseMemory() end";
   VLOG(3) << "total_feasign_num_(" << STAT_GET(STAT_total_feasign_num_in_mem)
           << ") - current_fea_num_(" << total_fea_num_ << ") = ("
-          << STAT_GET(STAT_total_feasign_num_in_mem) - total_fea_num_
-          << ")"
+          << STAT_GET(STAT_total_feasign_num_in_mem) - total_fea_num_ << ")"
           << " object pool size=" << SlotRecordPool().capacity();  // For Debug
   STAT_SUB(STAT_total_feasign_num_in_mem, total_fea_num_);
 }
@@ -1589,7 +1586,7 @@ void SlotRecordDataset::GlobalShuffle(int thread_num) {
 }
 
 void SlotRecordDataset::DynamicAdjustChannelNum(int channel_num,
-                                             bool discard_remaining_ins) {
+                                                bool discard_remaining_ins) {
   if (channel_num_ == channel_num) {
     VLOG(3) << "DatasetImpl<T>::DynamicAdjustChannelNum channel_num_="
             << channel_num_ << ", channel_num_=channel_num, no need to adjust";
@@ -1598,12 +1595,12 @@ void SlotRecordDataset::DynamicAdjustChannelNum(int channel_num,
   VLOG(3) << "adjust channel num from " << channel_num_ << " to "
           << channel_num;
   channel_num_ = channel_num;
-  
+
   if (static_cast<int>(input_channel_->Size()) >= channel_num) {
     input_channel_->SetBlockSize(input_channel_->Size() / channel_num +
                                  (discard_remaining_ins ? 0 : 1));
   }
-  
+
   VLOG(3) << "adjust channel num done";
 }
 
