@@ -40,14 +40,10 @@ void AddSupportInt8Pass::ApplyImpl(ir::Graph* graph) const {
     if (prev_op->Op()->HasAttr("out_threshold") &&
         quant_op->Op()->HasAttr("out_threshold")) {
       quant_op->Op()->SetAttr("support_int8", true);
-      std::cout << "prev_op->Op(): " << prev_op->Op()->Type() << std::endl;
-      std::cout << "quant_op->Op(): " << quant_op->Op()->Type() << std::endl;
-      std::cout << "SetAttr(support_int8, true): " << std::endl;
     }
     found_count++;
   };
   gpd(graph, handler);
-  std::cout << "found_count: " << found_count << std::endl;
   AddStatis(found_count);
 }
 
