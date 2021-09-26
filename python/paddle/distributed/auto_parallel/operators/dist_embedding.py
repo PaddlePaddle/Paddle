@@ -143,6 +143,8 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         # got dist attribute info
         embedding_row_dim_mapping = op_dist_attr.get_input_dims_mapping(
             Weight_var.name)[0]
+        assert embedding_row_dim_mapping >= 0, "row_parallel_embedding's row should be divided by a specific mesh axis, but got [{}]".format(
+            embedding_row_dim_mapping)
         process_mesh_shape = op_dist_attr.get_process_mesh().topology
         process_mesh_group = op_dist_attr.get_process_mesh().process_group
 
@@ -162,10 +164,8 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         relative_idx = relative_idx * per_part_size
 
         # TODO caculate ring id 
-        model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
-        )._get_model_parallel_info()
-        group_ranks = _get_comm_group(process_mesh.process_group,
-                                      process_mesh.topology,
+        model_parallel_axis = embedding_row_dim_mapping
+        group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
                                       model_parallel_axis, rank_id)
         group = new_process_group(group_ranks)
 
@@ -181,6 +181,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             type=core.VarDesc.VarType.LOD_TENSOR,
             persistable=False,
             stop_gradient=Out_var.stop_gradient)
+
         # copy Out_var's dist_attr to intermediate_var_0's dist_attr
         copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0, Out_var)
 
