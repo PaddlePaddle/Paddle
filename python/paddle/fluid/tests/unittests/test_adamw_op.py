@@ -17,7 +17,6 @@ import paddle
 import numpy as np
 import paddle.fluid as fluid
 from functools import partial
-from op_test import OpTest
 
 
 class TestAdamWOp(unittest.TestCase):
