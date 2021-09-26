@@ -1759,7 +1759,7 @@ def eigh(x, UPLO='L', name=None):
 
             x_data = np.array([[1, -2j], [2j, 5]])
             x = paddle.to_tensor(x_data)
-            out_value, out_vector = paddle.eigh(x, UPLO='L')
+            out_value, out_vector = paddle.linalg.eigh(x, UPLO='L')
             print(out_value)
             #[0.17157288, 5.82842712]
             print(out_vector)
@@ -1780,7 +1780,7 @@ def eigh(x, UPLO='L', name=None):
             raise ValueError(
                 "The input matrix must be batches of square matrices. But received x's dimention: {}".
                 format(x_shape))
-        if UPLO is not 'L' and UPLO is not 'U':
+        if UPLO != 'L' and UPLO != 'U':
             raise ValueError(
                 "UPLO must be L or U. But received UPLO is: {}".format(UPLO))
 

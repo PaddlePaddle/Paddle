@@ -47,7 +47,7 @@ static void CheckEighResult(const int batch, const int info) {
                    batch, info));
 }
 
-template <typename DeviceContext, typename ValueType, typename T>
+template <typename DeviceContext, typename T>
 struct MatrixEighFunctor {
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
@@ -57,23 +57,24 @@ struct MatrixEighFunctor {
 // Calculates the eigenvalues ​​and eigenvectors of Hermitian or real
 // symmetric matrices, and uses the variable has_vectors to
 // control whether to return the eigenvectors.
-template <typename ValueType, typename T>
-struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
+template <typename T>
+struct MatrixEighFunctor<platform::CPUDeviceContext, T> {
  public:
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
                   bool has_vectors) {
+    using ValueType = math::Real<T>;
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
     auto dito =
         math::DeviceIndependenceTensorOperations<platform::CPUDeviceContext, T>(
             ctx);
-    // lapack is a column-first storage, transpose make the eigen_vectors to
+
+    Tensor input_trans;
+    // lapack is a column-major storge, transpose make the input to
     // have a continuous memory layout
-    *eigen_vectors = dito.Transpose(input);
-    std::cout << "++++eigen_vectors start \n";
-    auto *out_vector = eigen_vectors->mutable_data<T>(ctx.GetPlace());
-    std::cout << "++++eigen_vectors end \n";
+    input_trans = dito.Transpose(input);
+    auto *input_vector = input_trans.data<T>();
 
     auto dims = input.dims();
     int dim_size = dims.size();
@@ -97,10 +98,9 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
 
     int info = 0;
     // Call lapackEigh to get the optimal size of work data
-    math::lapackEigh<T, math::Real<T>>(jobz, uplo, n, out_vector, lda,
-                                       out_value, &lwork_opt, lwork, &rwork_opt,
-                                       lrwork, &iwork_opt, liwork, &info);
-
+    math::lapackEigh<T, ValueType>(jobz, uplo, n, input_vector, lda, out_value,
+                                   &lwork_opt, lwork, &rwork_opt, lrwork,
+                                   &iwork_opt, liwork, &info);
     lwork = std::max<int>(1, static_cast<int>(lwork_opt));
     liwork = std::max<int>(1, iwork_opt);
 
@@ -108,12 +108,11 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
     ValueType *rwork_data = nullptr;
 
     // complex type
-    if (framework::IsComplexType(eigen_vectors->type())) {
+    if (framework::IsComplexType(input.type())) {
       lrwork = std::max<int>(1, static_cast<int>(rwork_opt));
       rwork_data = rwork_tensor.mutable_data<ValueType>(
           framework::make_ddim({lrwork}), ctx.GetPlace());
     }
-
     Tensor iwork_tensor, work_tensor;
     auto *iwork_data = iwork_tensor.mutable_data<int>(
         framework::make_ddim({liwork}), ctx.GetPlace());
@@ -122,14 +121,20 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
 
     for (auto i = 0; i < batch_size; i++) {
       auto *value_data = out_value + i * values_stride;
-      auto *vector_data = out_vector + i * vector_stride;
-      math::lapackEigh<T, Real<T>>(jobz, uplo, n, vector_data, lda, value_data,
+      auto *input_data = input_vector + i * vector_stride;
+      math::lapackEigh<T, Real<T>>(jobz, uplo, n, input_data, lda, value_data,
                                    work_data, lwork, rwork_data, lrwork,
                                    iwork_data, liwork, &info);
       CheckEighResult(i, info);
     }
     if (has_vectors) {
-      *eigen_vectors = dito.Transpose(*eigen_vectors);
+      PADDLE_ENFORCE_NOT_NULL(eigen_vectors,
+                              platform::errors::InvalidArgument(
+                                  "When has_vectors is true,"
+                                  "the eigenvectors needs to be calculated, "
+                                  "so the eigenvectors must be provided."));
+      input_trans = dito.Transpose(input_trans);
+      eigen_vectors->ShareDataWith(input_trans);
     }
   }
 };
@@ -139,21 +144,22 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
 // Calculates the eigenvalues ​​and eigenvectors of Hermitian or real
 // symmetric matrices on GPU, and uses the variable has_vectors
 // to control whether to return the eigenvectors.
-template <typename ValueType, typename T>
-struct MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T> {
+template <typename T>
+struct MatrixEighFunctor<platform::CUDADeviceContext, T> {
  public:
   void operator()(const framework::ExecutionContext &ctx, const Tensor &input,
                   Tensor *eigen_values, Tensor *eigen_vectors, bool is_lower,
                   bool has_vectors) {
+    using ValueType = math::Real<T>;
     auto *out_value = eigen_values->mutable_data<ValueType>(ctx.GetPlace());
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     auto dito =
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
                                                  T>(ctx);
-    *eigen_vectors = dito.Transpose(input);
-    auto *out_vector = eigen_vectors->mutable_data<T>(ctx.GetPlace());
-
+    Tensor input_trans;
+    input_trans = dito.Transpose(input);
+    auto *input_vector = input_trans.data<T>();
     auto &dims = input.dims();
     int dim_size = dims.size();
     int64_t batch_size = GetBatchSize(dims);
@@ -167,7 +173,6 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T> {
     int lda = std::max<int>(1, n);
     auto vector_stride = dims[dim_size - 1] * dims[dim_size - 2];
     auto values_stride = dims[dim_size - 1];
-
     int lwork = 0;
     auto info = memory::Alloc(dev_ctx, sizeof(int) * batch_size);
     auto *info_ptr = reinterpret_cast<int *>(info->ptr());
@@ -175,10 +180,8 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T> {
     // When the input type is float32, and the feature value input dimension is
     // greater than or equal to [*,32,32]  and less than or equal to
     // [*,512,512], Syevj has better performance.
-    bool use_syevj =
-        (eigen_vectors->type() == framework::proto::VarType::FP32 &&
-         values_stride >= 32 && values_stride <= 512);
-
+    bool use_syevj = (input.type() == framework::proto::VarType::FP32 &&
+                      values_stride >= 32 && values_stride <= 512);
     syevjInfo_t syevj_params;
     if (use_syevj) {
       PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -186,30 +189,28 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T> {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cusolverDnSsyevj_bufferSize(
               dev_ctx.cusolver_dn_handle(), jobz, uplo, n,
-              reinterpret_cast<const float *>(out_vector), lda,
+              reinterpret_cast<const float *>(input_vector), lda,
               reinterpret_cast<const float *>(out_value), &lwork,
               syevj_params));
     } else {
-      EvdBuffer(dev_ctx.cusolver_dn_handle(), jobz, uplo, n, out_vector, lda,
+      EvdBuffer(dev_ctx.cusolver_dn_handle(), jobz, uplo, n, input_vector, lda,
                 out_value, &lwork);
     }
-
     auto work = memory::Alloc(dev_ctx, sizeof(T) * lwork);
     auto *work_ptr = reinterpret_cast<T *>(work->ptr());
-
     for (auto i = 0; i < batch_size; i++) {
-      auto vector_data = out_vector + i * vector_stride;
-      auto value_data = out_value + i * values_stride;
+      auto *input_data = input_vector + i * vector_stride;
+      auto *value_data = out_value + i * values_stride;
       auto handle = dev_ctx.cusolver_dn_handle();
       if (use_syevj) {
         PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cusolverDnSsyevj(
-            handle, jobz, uplo, n, reinterpret_cast<float *>(vector_data), lda,
+            handle, jobz, uplo, n, reinterpret_cast<float *>(input_data), lda,
             reinterpret_cast<float *>(value_data),
             reinterpret_cast<float *>(work_ptr), lwork, info_ptr,
             syevj_params));
       } else {
-        Evd(handle, jobz, uplo, n, vector_data, lda, value_data, work_ptr,
-            lwork, info_ptr);
+        Evd(handle, jobz, uplo, n, input_data, lda, value_data, work_ptr, lwork,
+            info_ptr);
       }
       int error_info = 0;
       memory::Copy(platform::CPUPlace(), &error_info,
@@ -222,12 +223,18 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T> {
       PADDLE_ENFORCE_CUDA_SUCCESS(
           platform::dynload::cusolverDnDestroySyevjInfo(syevj_params));
     }
-
     if (has_vectors) {
-      *eigen_vectors = dito.Transpose(*eigen_vectors);
+      PADDLE_ENFORCE_NOT_NULL(eigen_vectors,
+                              platform::errors::InvalidArgument(
+                                  "When has_vectors is true,"
+                                  "the eigenvectors needs to be calculated,"
+                                  "so the eigenvectors must be provided."));
+      input_trans = dito.Transpose(input_trans);
+      eigen_vectors->ShareDataWith(input_trans);
     }
   }
 
+  using ValueType = math::Real<T>;
   inline void EvdBuffer(cusolverDnHandle_t handle, cusolverEigMode_t jobz,
                         cublasFillMode_t uplo, int n, const T *A, int lda,
                         const ValueType *W, int *lwork) const;
@@ -237,15 +244,14 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T> {
                   T *work, int lwork, int *devInfo) const;
 };
 
-#define FUNC_WITH_TYPES(m)                                       \
-  m(float, float, Ssy, float) m(double, double, Dsy, double)     \
-      m(float, paddle::platform::complex<float>, Che, cuComplex) \
-          m(double, paddle::platform::complex<double>, Zhe, cuDoubleComplex)
+#define FUNC_WITH_TYPES(m)                                \
+  m(float, Ssy, float) m(double, Dsy, double)             \
+      m(paddle::platform::complex<float>, Che, cuComplex) \
+          m(paddle::platform::complex<double>, Zhe, cuDoubleComplex)
 
-#define EVDBUFFER_INSTANCE(ValueType, T, C, CastType)                          \
+#define EVDBUFFER_INSTANCE(T, C, CastType)                                     \
   template <>                                                                  \
-  inline void                                                                  \
-  MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T>::EvdBuffer(     \
+  inline void MatrixEighFunctor<platform::CUDADeviceContext, T>::EvdBuffer(    \
       cusolverDnHandle_t handle, cusolverEigMode_t jobz,                       \
       cublasFillMode_t uplo, int n, const T *A, int lda, const ValueType *W,   \
       int *lwork) const {                                                      \
@@ -257,10 +263,9 @@ struct MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T> {
 
 FUNC_WITH_TYPES(EVDBUFFER_INSTANCE);
 
-#define EVD_INSTANCE(ValueType, T, C, CastType)                           \
+#define EVD_INSTANCE(T, C, CastType)                                      \
   template <>                                                             \
-  inline void                                                             \
-  MatrixEighFunctor<platform::CUDADeviceContext, ValueType, T>::Evd(      \
+  inline void MatrixEighFunctor<platform::CUDADeviceContext, T>::Evd(     \
       cusolverDnHandle_t handle, cusolverEigMode_t jobz,                  \
       cublasFillMode_t uplo, int n, T *A, int lda, ValueType *W, T *work, \
       int lwork, int *devInfo) const {                                    \
