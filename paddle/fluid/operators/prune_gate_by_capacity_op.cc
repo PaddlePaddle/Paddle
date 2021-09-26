@@ -66,6 +66,14 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
 
     auto in_dims = ctx->GetInputDim("GateIdx");
     ctx->SetOutputDim("NewGateIdx", in_dims);
+    ctx->SetOutputDim("ExpertCountOut", in_dims);
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    auto data_type = OperatorWithKernel::IndicateVarDataType(ctx, "GateIdx");
+    return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
 
@@ -82,12 +90,13 @@ class PruneGateByCapacityOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int64_t>("n_worker", "The number of workers on the trainer")
         .SetDefault(0);
 
-    AddOutput("ExpertCountOut",
-              "(Tensor), The gate_id sequence corresponding to the new input "
-              "data after passing through prune.");
     AddOutput("NewGateIdx",
               "(Tensor), The gate_id sequence corresponding to the new input "
               "data after passing through prune.");
+    AddOutput(
+        "ExpertCountOut",
+        "(Tensor), The copy quantity value counted on the gate_id sequence of "
+        "the input data.");
 
     AddComment(R"DOC(
 prune_gate_by_capacity Operator.

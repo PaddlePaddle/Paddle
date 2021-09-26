@@ -14,7 +14,6 @@
 
 import unittest
 import paddle
-import random
 import numpy as np
 
 
@@ -22,6 +21,8 @@ class TestPruneGateByCapacityOp(unittest.TestCase):
     def init_test_case(self):
         self.n_expert = 8
         self.n_worker = 1
+        self.gate_idx = np.array([1, 3, 3, 3, 3, 2, 1, 1])
+        self.expert_count = np.array([0, 3, 1, 3, 0, 0, 0, 0])
 
     def setUp(self):
         self.init_test_case()
@@ -39,45 +40,50 @@ class TestPruneGateByCapacityOp(unittest.TestCase):
             expert_count[i] >>= 1
         return gate_idx, expert_count
 
-    # def test_static_api(self):
-    #     paddle.enable_static()
-    #     def run(place):
-    #         with paddle.static.program_guard(paddle.static.Program()):
-    #             gate_idx, expert_count = self.compute_case()
-    #             gate_idx_tensor = paddle.static.data(
-    #                 'gate_idx',
-    #                 shape=np.array(gate_idx).shape,
-    #                 dtype="int32")
-    #             expert_count_tensor = paddle.static.data(
-    #                 'expert_count', shape=np.array(expert_count).shape, dtype="int32")
-    #             out = paddle.distributed.utils.prune_gate_by_capacity(gate_idx_tensor, expert_count_tensor, self.n_expert, self.n_worker)
-    #             exe = paddle.static.Executor(place)
-    #             res = exe.run(feed={
-    #                 'gate_idx': np.array(gate_idx).astype("int32"),
-    #                 'expert_count': np.array(expert_count).astype("int32"),
-    #             },
-    #                           fetch_list=out)
+    def test_static_api(self):
+        paddle.enable_static()
 
-    #         for i in range(len(gate_idx)):
-    #             print(gate_idx[i],res[i],expert_count[gate_idx[i]])
+        def run(place):
+            with paddle.static.program_guard(paddle.static.Program()):
+                gate_idx_tensor = paddle.static.data(
+                    'GateIdx', shape=self.gate_idx.shape, dtype="int32")
+                expert_count_tensor = paddle.static.data(
+                    'ExpertCount', shape=self.expert_count.shape, dtype="int64")
+                out = paddle.distributed.utils.prune_gate_by_capacity(
+                    gate_idx_tensor, expert_count_tensor, self.n_expert,
+                    self.n_worker)
+                exe = paddle.static.Executor(place)
+                res = exe.run(feed={
+                    'GateIdx': self.gate_idx.astype("int32"),
+                    'ExpertCount': self.expert_count.astype("int64"),
+                },
+                              fetch_list=out)
 
-    #     run(self.place)
+            print("---------------------------------")
+            print("static_api:")
+            print("gate_idx:", self.gate_idx)
+            print("expert_count:", self.expert_count)
+            print("new_gate_idx:", res)
+            print("----------------------------------")
+
+        run(self.place)
 
     def test_dygraph_api(self):
         def run(place):
-            gate_idx, expert_count = self.compute_case()
             paddle.disable_static(place)
-            gate_idx_tensor = paddle.to_tensor(
-                np.array(gate_idx).astype('int32'))
+            gate_idx_tensor = paddle.to_tensor(self.gate_idx.astype('int32'))
             expert_count_tensor = paddle.to_tensor(
-                np.array(expert_count).astype('int32'))
+                self.expert_count.astype('int64'))
             out = paddle.distributed.utils.prune_gate_by_capacity(
                 gate_idx_tensor, expert_count_tensor, self.n_expert,
                 self.n_worker)
-            paddle.enable_static()
 
-            for i in range(len(gate_idx)):
-                print(gate_idx[i], out[i], expert_count[gate_idx[i]])
+            print("---------------------------------")
+            print("dygraph_api:")
+            print("gate_idx:", self.gate_idx)
+            print("expert_count:", self.expert_count)
+            print("new_gate_idx:", out)
+            print("----------------------------------")
 
         run(self.place)
 
