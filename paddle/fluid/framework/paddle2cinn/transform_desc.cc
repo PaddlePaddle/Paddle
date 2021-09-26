@@ -19,6 +19,7 @@
 #include <vector>
 
 #include "paddle/fluid/framework/paddle2cinn/vartype_utils.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -103,7 +104,8 @@ void OpAttrsToCinn(framework::OpDesc *pb_desc, cpp::OpDesc *cpp_desc) {
         break;
       }
       default:
-        LOG(FATAL) << "Unsupported attr type found " << static_cast<int>(type);
+        PADDLE_THROW(platform::errors::NotFound(
+            "Unsupported attr type %d found ", static_cast<int>(type)));
     }
   };
 #undef IMPL_ONE
@@ -133,7 +135,8 @@ void OpAttrsFromCinn(const cpp::OpDesc &cpp_desc, framework::OpDesc *pb_desc) {
       IMPL_ONE(LONG, int64_t);
       IMPL_ONE(LONGS, std::vector<int64_t>);
       default:
-        LOG(FATAL) << "Unsupported attr type found: " << static_cast<int>(type);
+        PADDLE_THROW(platform::errors::NotFound(
+            "Unsupported attr type %d found ", static_cast<int>(type)));
     }
   };
 #undef IMPL_ONE

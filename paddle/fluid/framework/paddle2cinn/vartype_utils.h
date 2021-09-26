@@ -17,6 +17,7 @@
 
 #include "cinn/frontend/paddle/cpp/desc_api.h"
 #include "paddle/fluid/framework/framework.pb.h"
+#include "paddle/fluid/platform/enforce.h"
 
 namespace paddle {
 namespace framework {
@@ -41,8 +42,7 @@ cpp::VarDescAPI::Type TransformVarTypeToCinn(
     SET_TYPE_CASE_ITEM(PLACE_LIST);
     SET_TYPE_CASE_ITEM(READER);
     default:
-      LOG(FATAL) << "Unknown var type";
-      return cpp::VarDescAPI::Type::RAW;
+      PADDLE_THROW(platform::errors::NotFound("Unknown var type"));
   }
 #undef SET_TYPE_CASE_ITEM
 }
@@ -65,8 +65,7 @@ cpp::VarDescAPI::Type TransformVarTypeToCinn(
     SET_TYPE_CASE_ITEM(PLACE_LIST);
     SET_TYPE_CASE_ITEM(READER);
     default:
-      LOG(FATAL) << "Unknown var type";
-      return ::paddle::framework::proto::VarType::RAW;
+      PADDLE_THROW(platform::errors::NotFound("Unknown var type"));
   }
 #undef SET_TYPE_CASE_ITEM
 }
@@ -90,8 +89,7 @@ cpp::VarDescAPI::Type TransformVarDataTypeToCinn(
     SET_DATA_TYPE_CASE_ITEM(FP32);
     SET_DATA_TYPE_CASE_ITEM(FP64);
     default:
-      LOG(FATAL) << "Unknown var data type";
-      return cpp::VarDescAPI::Type::RAW;
+      PADDLE_THROW(platform::errors::NotFound("Unknown var data type"));
   }
 #undef SET_DATA_TYPE_CASE_ITEM
 }
@@ -115,8 +113,7 @@ cpp::VarDescAPI::Type TransformVarDataTypeToCinn(
     SET_DATA_TYPE_CASE_ITEM(FP32);
     SET_DATA_TYPE_CASE_ITEM(FP64);
     default:
-      LOG(FATAL) << "Unknown var data type";
-      return ::paddle::framework::proto::VarType::RAW;
+      PADDLE_THROW(platform::errors::NotFound("Unknown var data type"));
   }
 #undef SET_DATA_TYPE_CASE_ITEM
 }
