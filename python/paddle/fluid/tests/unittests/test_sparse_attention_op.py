@@ -145,7 +145,7 @@ def init_csr_format(batch_size, num_heads, rows, blocksize):
     "core is not compiled with CUDA and cuda version need >= 11.2 in windows")
 class TestSparseAttentionOp(OpTest):
     def config(self):
-        self.shape = (1, 1, 8, 8)
+        self.shape = (1, 1, 16, 8)
         self.blocksize = 2
         self.dtype = "float64"
 
@@ -189,14 +189,14 @@ class TestSparseAttentionOp(OpTest):
 
 class TestSparseAttentionOpFp32Test(TestSparseAttentionOp):
     def config(self):
-        self.shape = (1, 1, 4, 4)
+        self.shape = (1, 1, 8, 16)
         self.blocksize = 2
         self.dtype = "float32"
 
 
 class TestSparseAttentionOpShapeTest(TestSparseAttentionOp):
     def config(self):
-        self.shape = (2, 2, 64, 32)
+        self.shape = (2, 2, 32, 8)
         self.blocksize = 8
         self.dtype = "float64"
 
