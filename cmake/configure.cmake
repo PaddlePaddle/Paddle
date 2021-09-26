@@ -94,6 +94,10 @@ if(WITH_ASCEND_INT64)
     add_definitions(-DPADDLE_WITH_ASCEND_INT64)
 endif()
 
+if(WITH_CANN_VERSION_503_ALPHA3)
+    add_definitions(-DPADDLE_WITH_ASCEND_VERSION_503_alpha3)
+endif()
+
 if(WITH_XPU)
     message(STATUS "Compile with XPU!")
     add_definitions(-DPADDLE_WITH_XPU)
