@@ -779,10 +779,11 @@ def save(layer, path, input_spec=None, **configs):
 
         dygraph_state_dict = None
         if isinstance(inner_layer, Layer):
-            dygraph_state_dict = inner_layer.state_dict()
+            dygraph_state_dict = inner_layer.to_static_state_dict()
         elif isinstance(attr_func, StaticFunction):
             if attr_func._class_instance:
-                dygraph_state_dict = attr_func._class_instance.state_dict()
+                dygraph_state_dict = attr_func._class_instance.to_static_state_dict(
+                )
 
         if dygraph_state_dict:
             # NOTE(chenweihang): we maintain the mapping of variable name to
@@ -790,15 +791,19 @@ def save(layer, path, input_spec=None, **configs):
             # saved to inference program may not need by dygraph Layer,
             # we only record the state_dict variable's structured name
             state_names_dict = dict()
+            state_var_dict = dict()
             for structured_name, var in six.iteritems(dygraph_state_dict):
                 state_names_dict[var.name] = structured_name
+                state_var_dict[var.name] = var
 
             # 3. share parameters from Layer to scope & record var info
             for param_or_buffer in concrete_program.parameters:
                 # share to scope
                 param_or_buffer_tensor = scope.var(
                     param_or_buffer.name).get_tensor()
-                src_tensor = param_or_buffer.value().get_tensor()
+                #src_tensor = param_or_buffer.value().get_tensor()
+                src_tensor = state_var_dict[param_or_buffer.name].value(
+                ).get_tensor()
                 param_or_buffer_tensor._share_data_with(src_tensor)
                 # record var info
                 if param_or_buffer.name not in extra_var_info:

@@ -59,6 +59,10 @@ if (WITH_GPU)
     endif()
 endif()
 
+if (WITH_POCKETFFT)
+    SET(OP_HEADER_DEPS ${OP_HEADER_DEPS} pocketfft)
+endif()
+
 
 SET(OP_MKL_DEPS "")
 if (NOT WITH_MKL OR NOT WITH_AVX)
@@ -75,7 +79,7 @@ if(WITH_UNITY_BUILD)
 endif()
 
 register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op lstm_op run_program_op eye_op recurrent_op
-        sync_batch_norm_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
+        sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
 op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS})
 
@@ -94,6 +98,12 @@ else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
 
+if (WITH_GPU AND (NOT WITH_ROCM))
+    op_library(spectral_op SRCS spectral_op.cc spectral_op.cu DEPS dynload_cuda ${OP_HEADER_DEPS})
+else()
+    op_library(spectral_op SRCS spectral_op.cc DEPS ${OP_HEADER_DEPS})
+endif()
+
 op_library(lstm_op DEPS ${OP_HEADER_DEPS}  lstm_compute)
 op_library(eye_op DEPS ${OP_HEADER_DEPS})
 op_library(recurrent_op DEPS ${OP_HEADER_DEPS})
@@ -108,12 +118,12 @@ endif()
 
 cc_library(common_infer_shape_functions SRCS common_infer_shape_functions.cc DEPS operator)
 
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} selected_rows_functor selected_rows lapack_function
 lod_tensor maxouting unpooling pooling lod_rank_table context_project
 sequence_pooling segment_pooling executor device_memory_aligment generator)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} dynload_warpctc)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence_padding sequence_scale cos_sim_functor memory jit_kernel_helper concat_and_split cross_entropy softmax vol2col im2col sampler sample_prob tree2col)
-set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions beam_search fc matrix_inverse)
+set(COMMON_OP_DEPS ${COMMON_OP_DEPS} sequence2batch lstm_compute matrix_bit_code gru_compute activation_functions beam_search fc matrix_inverse matrix_solve)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} box_wrapper boost ps_gpu_wrapper)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} common_infer_shape_functions)
 set(COMMON_OP_DEPS ${COMMON_OP_DEPS} eigen_function)

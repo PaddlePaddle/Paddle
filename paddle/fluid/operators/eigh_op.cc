@@ -47,12 +47,9 @@ class EighOp : public framework::OperatorWithKernel {
             input_dim[rank - 2], input_dim[rank - 1]));
 
     std::vector<int64_t> values_dim;
-    if (rank > 2) {
-      for (auto i = 0; i < rank - 1; i++) {
-        values_dim.emplace_back(input_dim[i]);
-      }
-    } else {
-      values_dim = {input_dim[1]};
+
+    for (auto i = 0; i < rank - 1; i++) {
+      values_dim.emplace_back(input_dim[i]);
     }
 
     ctx->SetOutputDim("Eigenvalues", framework::make_ddim(values_dim));
@@ -99,9 +96,9 @@ class EighGradOp : public framework::OperatorWithKernel {
                    "EighGrad");
     OP_INOUT_CHECK(ctx->HasInput("Eigenvectors"), "Input", "Eigenvectors",
                    "EighGrad");
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Eigenvalues")),
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Eigenvalues")),
                    "Input", "Eigenvalues@GRAD", "EighGrad");
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Eigenvectors")),
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Eigenvectors")),
                    "Input", "Eigenvectors@GRAD", "EighGrad");
     auto dims = ctx->GetInputDim("Eigenvectors");
     auto x_grad_name = framework::GradVarName("X");
@@ -150,18 +147,17 @@ REGISTER_OPERATOR(eigh, ops::EighOp, ops::EignOpMaker,
 REGISTER_OPERATOR(eigh_grad, ops::EighGradOp);
 
 REGISTER_OP_CPU_KERNEL(
-    eigh, ops::EighKernel<paddle::platform::CPUDeviceContext, float, float>,
-    ops::EighKernel<paddle::platform::CPUDeviceContext, double, double>,
-    ops::EighKernel<paddle::platform::CPUDeviceContext, float,
+    eigh, ops::EighKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::EighKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::EighKernel<paddle::platform::CPUDeviceContext,
                     paddle::platform::complex<float>>,
-    ops::EighKernel<paddle::platform::CPUDeviceContext, double,
+    ops::EighKernel<paddle::platform::CPUDeviceContext,
                     paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
-    eigh_grad,
-    ops::EighGradKernel<paddle::platform::CPUDeviceContext, float, float>,
-    ops::EighGradKernel<paddle::platform::CPUDeviceContext, double, double>,
-    ops::EighGradKernel<paddle::platform::CPUDeviceContext, float,
+    eigh_grad, ops::EighGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::EighGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::EighGradKernel<paddle::platform::CPUDeviceContext,
                         paddle::platform::complex<float>>,
-    ops::EighGradKernel<paddle::platform::CPUDeviceContext, double,
+    ops::EighGradKernel<paddle::platform::CPUDeviceContext,
                         paddle::platform::complex<double>>);

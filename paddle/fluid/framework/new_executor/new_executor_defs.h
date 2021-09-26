@@ -25,11 +25,6 @@
 namespace paddle {
 namespace framework {
 
-namespace interpretercore {
-static constexpr char kMemcpyH2D[] = "memcpy_h2d";
-static constexpr char kMemcpyD2H[] = "memcpy_d2h";
-}  // namespace interpretercore
-
 using OpKernelComputeFunc = std::function<void(const ExecutionContext&)>;
 using OpKernelMap =
     std::unordered_map<OpKernelType, OpKernelComputeFunc, OpKernelType::Hash>;
@@ -496,16 +491,22 @@ struct NextInstruction {
 struct EventInter {
   explicit EventInter(size_t var_id,
                       std::shared_ptr<platform::DeviceEvent> event,
-                      bool is_sync)
-      : var_id_(var_id), event_(event), is_sync_(is_sync) {}
+                      platform::DeviceType waiter_type)
+      : var_id_(var_id), event_(event), waiter_type_(waiter_type) {}
   size_t var_id_;
   std::shared_ptr<platform::DeviceEvent> event_;
-  bool is_sync_;
+  platform::DeviceType waiter_type_;
 };
 
 struct InstructionInfo {
   std::vector<size_t> dependecy_count_;
 };
+
+enum class OpFuncType {
+  kQueueSync = 0,   // CPU kernel, block host
+  kQueueAsync = 1,  // GPU Kernel or d2h, h2d, send, recv, broadcast
+};
+class RuntimeInferShapeContext;
 
 struct Instruction {
   OpKernelFunc kernel_func_;
@@ -522,13 +523,9 @@ struct Instruction {
   std::vector<EventInter> output_events_;
 
   platform::DeviceContext* dev_ctx_;  // not owned
+  OpFuncType type_;
 
   std::vector<std::pair<Variable*, Variable*>> vec_inplace_in_to_out_;
-};
-
-enum class OpFuncType {
-  kQueueAsync,  // GPU Kernel or d2h, h2d, send, recv, broadcast
-  kQueueSync,   // CPU kernel, block host
 };
 
 struct OpFuncNode {
@@ -540,6 +537,19 @@ struct OpFuncNode {
   platform::DeviceContext* dev_ctx_;  // not owned
   OpFuncType type_;
 };
+
+namespace interpretercore {
+static constexpr char kMemcpyH2D[] = "memcpy_h2d";
+static constexpr char kMemcpyD2H[] = "memcpy_d2h";
+
+static bool IsMemcpyH2D(const Instruction& instr) {
+  return instr.kernel_func_.operator_base_->Type() == kMemcpyH2D;
+}
+
+static bool IsMemcpyD2H(const Instruction& instr) {
+  return instr.kernel_func_.operator_base_->Type() == kMemcpyD2H;
+}
+}  // namespace interpretercore
 
 }  // namespace framework
 }  // namespace paddle

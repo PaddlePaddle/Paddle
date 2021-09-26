@@ -140,7 +140,7 @@ class TestEighAPI(unittest.TestCase):
         self.check_static_complex_result()
 
     def test_in_dynamic_mode(self):
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         input_real_data = paddle.to_tensor(self.real_data)
         expected_w, expected_v = np.linalg.eigh(self.real_data)
         actual_w, actual_v = paddle.linalg.eigh(input_real_data)
@@ -152,7 +152,7 @@ class TestEighAPI(unittest.TestCase):
         self.compare_result(actual_w, actual_v.numpy(), expected_w, expected_v)
 
     def test_eigh_grad(self):
-        paddle.disable_static(self.place)
+        paddle.disable_static()
         x = paddle.to_tensor(self.complex_data, stop_gradient=False)
         w, v = paddle.linalg.eigh(x)
         (w.sum() + paddle.abs(v).sum()).backward()

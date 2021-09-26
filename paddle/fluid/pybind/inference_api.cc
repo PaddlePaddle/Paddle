@@ -87,6 +87,7 @@ void BindPaddlePlace(py::module *m);
 void BindPaddlePredictor(py::module *m);
 void BindNativeConfig(py::module *m);
 void BindNativePredictor(py::module *m);
+void BindLiteNNAdapterConfig(py::module *m);
 void BindAnalysisConfig(py::module *m);
 void BindAnalysisPredictor(py::module *m);
 void BindZeroCopyTensor(py::module *m);
@@ -303,6 +304,7 @@ void BindInferenceApi(py::module *m) {
   BindPaddlePredictor(m);
   BindNativeConfig(m);
   BindNativePredictor(m);
+  BindLiteNNAdapterConfig(m);
   BindAnalysisConfig(m);
   BindAnalysisPredictor(m);
   BindPaddleInferPredictor(m);
@@ -322,7 +324,7 @@ void BindInferenceApi(py::module *m) {
                                    auto pred =
                                        std::unique_ptr<paddle_infer::Predictor>(
                                            new paddle_infer::Predictor(config));
-                                   return std::move(pred);
+                                   return pred;
                                  });
   m->def("copy_tensor", &CopyPaddleInferTensor);
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);
@@ -624,7 +626,26 @@ void BindAnalysisConfig(py::module *m) {
            [](AnalysisConfig &self) {
              return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
            },
-           py::return_value_policy::reference);
+           py::return_value_policy::reference)
+      .def("nnadapter", &AnalysisConfig::NNAdapter);
+}
+
+void BindLiteNNAdapterConfig(py::module *m) {
+  py::class_<LiteNNAdapterConfig> lite_nnadapter_config(*m,
+                                                        "LiteNNAdapterConfig");
+
+  lite_nnadapter_config
+      .def("set_device_names", &LiteNNAdapterConfig::SetDeviceNames)
+      .def("set_context_properties", &LiteNNAdapterConfig::SetContextProperties)
+      .def("set_model_cache_dir", &LiteNNAdapterConfig::SetModelCacheDir)
+      .def("set_model_cache_buffers",
+           &LiteNNAdapterConfig::SetModelCacheBuffers)
+      .def("set_subgraph_partition_config_path",
+           &LiteNNAdapterConfig::SetSubgraphPartitionConfigPath)
+      .def("set_subgraph_partition_config_buffer",
+           &LiteNNAdapterConfig::SetSubgraphPartitionConfigBuffer)
+      .def("enable", &LiteNNAdapterConfig::Enable)
+      .def("disable", &LiteNNAdapterConfig::Disable);
 }
 
 #ifdef PADDLE_WITH_MKLDNN
