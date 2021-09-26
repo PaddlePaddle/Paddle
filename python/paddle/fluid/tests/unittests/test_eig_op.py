@@ -20,33 +20,9 @@ from op_test import OpTest, skip_check_grad_ci
 import unittest
 from paddle.fluid.op import Operator
 from paddle.fluid import compiler, Program, program_guard
-'''
-@skip_check_grad_ci(reason="temp")
-class TestEigOp(OpTest):
-    def setUp(self):
-        self.op_type = "eig"
-        self.__class__.op_type = self.op_type
-
-        ipt = np.random.random((3, 3)) + np.random.random((3, 3)) * 1j
-        self.inputs = {'X': ipt}
-        w, v = np.linalg.eig(ipt)
-        self.outputs = {'Eigenvalues': w, 'Eigenvectors': v}
-
-    def test_check_output(self):
-        # numpy outputs real-values, paddle outputs complex-values
-        self.check_output_with_place(place=core.CPUPlace())
-
-    def test_grad(self):
-        pass
-        #self.check_grad(["X"], "Eigenvalues", check_dygraph=True)
-
-    # if __name__ == "__main__":
-    #     paddle.enable_static()
-    #     unittest.main()
-'''
 
 
-@skip_check_grad_ci(reason="temp")  # no grad test
+@skip_check_grad_ci(reason="Run backward without check grad for new")
 class TestEigOp(OpTest):
     def setUp(self):
         self.op_type = "eig"
@@ -79,23 +55,44 @@ class TestEigOp(OpTest):
     def test_check_output_with_place(self):
         paddle.disable_static()
         place = fluid.CPUPlace()
-        x = paddle.to_tensor(self.x)
         paddle.device.set_device("cpu")
-        actual = paddle.linalg.eig(paddle.to_tensor(self.x))
+        x = paddle.to_tensor(self.x)
+        actual = paddle.linalg.eig(x)
         self.compare_results(self.out, actual, 1e-6, 1e-6, place)
         paddle.enable_static()
 
     def test_grad(self):
         pass
-        # paddle.disable_static()
-        # self.check_grad(["X"], ["Eigenvalues","Eigenvectors"])
-        # paddle.enable_static()
 
 
 class TestEigBatchMarices(TestEigOp):
     def init_input(self):
         self.shape = (3, 3, 3)
         self.dtype = 'float32'
+        self.x = np.random.random(self.shape).astype(self.dtype)
+        self.out = np.linalg.eig(self.x)
+
+
+class TestDouble(TestEigOp):
+    def init_input(self):
+        self.shape = (3, 3)
+        self.dtype = 'float64'
+        self.x = np.random.random(self.shape).astype(self.dtype)
+        self.out = np.linalg.eig(self.x)
+
+
+class TestComplex128(TestEigOp):
+    def init_input(self):
+        self.shape = (3, 3)
+        self.dtype = np.complex128
+        self.x = np.random.random(self.shape).astype(self.dtype)
+        self.out = np.linalg.eig(self.x)
+
+
+class TestComplex64(TestEigOp):
+    def init_input(self):
+        self.shape = (3, 3)
+        self.dtype = np.complex64
         self.x = np.random.random(self.shape).astype(self.dtype)
         self.out = np.linalg.eig(self.x)
 
@@ -152,6 +149,18 @@ class TestEigUnsupportedDtypeError(unittest.TestCase):
         a = (np.random.random((3, 3)) * 10).astype('int64')
         x = paddle.to_tensor(a)
         self.assertRaises(ValueError, paddle.linalg.eig, x)
+        paddle.enable_static()
+
+
+class RunGrad(unittest.TestCase):
+    def test_run(self):
+        paddle.device.set_device("cpu")
+        paddle.disable_static()
+        a = np.random.random((2, 3, 3, 3)).astype('float32')
+        a_pd = paddle.to_tensor(a)
+        a_pd.stop_gradient = False
+        w2, v2 = paddle.linalg.eig(a_pd)
+        dx_pd = paddle.grad([w2, v2], a_pd)
         paddle.enable_static()
 
 
