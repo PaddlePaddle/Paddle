@@ -12,7 +12,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/gather.cu.h"
-#include "paddle/fluid/operators/transpose_op.cu.h"
 #include "paddle/fluid/operators/viterbi_decode_op.h"
 
 #ifdef __NVCC__
@@ -92,15 +91,6 @@ __global__ void ARange(int64_t* data, int end, int64_t scale) {
   }
 }
 
-template <typename T>
-struct Transpose<platform::CUDADeviceContext, T> {
-  void operator()(int ndims, const platform::CUDADeviceContext& dev_ctx,
-                  const Tensor& input, Tensor* output,
-                  const std::vector<int>& axis) {
-    TransposeGPUKernelDriver<T>(dev_ctx, ndims, input, axis, output);
-  }
-};
-
 template <typename T, typename IndType>
 struct CUDAArgmax {
   void operator()(const framework::ExecutionContext& ctx, const Tensor& input,
@@ -145,7 +135,6 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
     auto n_labels = static_cast<int>(input->dims()[2]);
     math::SetConstant<DeviceContext, T> float_functor;
     math::SetConstant<DeviceContext, int64_t> int_functor;
-    Transpose<DeviceContext, T> transpose;
     std::vector<Tensor> historys;
     CUDAArgmax<T, int64_t> cuda_argmax;
     CREATE_TENSOR_BUFFER(int_tensor_buffer, float_tensor_buffer);
@@ -226,7 +215,7 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
       CUDA_MUL(last_ids, int_mask, last_ids, int64_t);
       CUDA_ADD(last_ids_update, last_ids, last_ids, int64_t);
     }
-    TransposeGPUKernelDriver<int64_t>(dev_ctx, 2, tpath, {1, 0}, path);
+    TransCompute<DeviceContext, int64_t>(2, dev_ctx, tpath, path, {1, 0});
   }
 };
 }  // namespace operators

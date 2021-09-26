@@ -49,7 +49,7 @@ using LoDTensor = framework::LoDTensor;
 #define INIT_REQUIRED_TENSOR()                                                 \
   Tensor input_exp =                                                           \
       float_tensor_buffer.GetBufferBlock({seq_len, batch_size, n_labels});     \
-  transpose(3, dev_ctx, *input, &input_exp, {1, 0, 2});                        \
+  TransCompute<DeviceContext, T>(3, dev_ctx, *input, &input_exp, {1, 0, 2});   \
   auto* transition = ctx.Input<Tensor>("Transition");                          \
   Tensor trans_exp = float_tensor_buffer.GetBufferBlock({n_labels, n_labels}); \
   framework::TensorCopy(*transition, curr_place, dev_ctx, &trans_exp);         \
@@ -104,14 +104,6 @@ using LoDTensor = framework::LoDTensor;
 
 #define MUL(lhs, rhs, output, is_multi_threads, dtype) \
   BROADCAST_BINARY_OP(lhs, rhs, output, Mul, is_multi_threads, dtype)
-
-template <typename DeviceContext, typename T>
-struct Transpose {
-  void operator()(int ndims, const DeviceContext& dev_ctx, const Tensor& input,
-                  Tensor* output, const std::vector<int>& axis) {
-    TransCompute<DeviceContext, T>(ndims, dev_ctx, input, output, axis);
-  }
-};
 
 template <typename T, typename IndType>
 struct CPUArgmax {
@@ -253,7 +245,6 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     auto n_labels = static_cast<int>(input->dims()[2]);
     math::SetConstant<DeviceContext, T> float_functor;
     math::SetConstant<DeviceContext, int64_t> int_functor;
-    Transpose<DeviceContext, T> transpose;
     std::vector<Tensor> historys;
     CREATE_TENSOR_BUFFER(int_tensor_buffer, float_tensor_buffer);
     auto* length = ctx.Input<Tensor>("Length");
