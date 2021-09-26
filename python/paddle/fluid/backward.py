@@ -27,6 +27,7 @@ from . import unique_name
 from . import log_helper
 import paddle.fluid
 from .data_feeder import check_type
+import warnings
 __all__ = [
     'append_backward',
     'gradients',
