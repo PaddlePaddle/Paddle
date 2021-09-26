@@ -16,15 +16,15 @@
 #include <unordered_set>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/framework/cinn/cinn_cache_key.h"
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
 #include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
 namespace framework {
-namespace cinn {
+namespace paddle2cinn {
 
 TEST(CinnCacheKeyTest, TestAsUnorderedKey) {
   std::unordered_set<CinnCacheKey, CinnCacheKey::Hash> test_set;
@@ -96,6 +96,6 @@ TEST(CinnCacheKeyTest, TestAsUnorderedKey) {
   EXPECT_EQ(test_set.find(cache_key6), test_set.end());
 }
 
-}  // namespace cinn
+}  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle

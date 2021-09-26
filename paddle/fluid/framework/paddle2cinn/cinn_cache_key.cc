@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/cinn/cinn_cache_key.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
 
 #include <map>
 #include <string>
@@ -26,7 +26,7 @@
 
 namespace paddle {
 namespace framework {
-namespace cinn {
+namespace paddle2cinn {
 
 CinnCacheKey::CinnCacheKey(
     const ir::Graph& graph,
@@ -80,6 +80,6 @@ size_t CinnCacheKey::Hash::operator()(const CinnCacheKey& key) const {
   return ret;
 }
 
-}  // namespace cinn
+}  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle

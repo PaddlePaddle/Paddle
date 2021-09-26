@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/cinn/cinn_runner.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_runner.h"
 
 #include <map>
 
@@ -22,7 +22,7 @@
 
 namespace paddle {
 namespace framework {
-namespace cinn {
+namespace paddle2cinn {
 
 using ir::Graph;
 
@@ -41,6 +41,6 @@ std::map<std::string, FetchType*> CinnRunner::Run(
   return obj_to_run->Run(scope, feed_targets);
 }
 
-}  // namespace cinn
+}  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle

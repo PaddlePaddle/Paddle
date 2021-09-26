@@ -16,14 +16,14 @@
 
 #include "gtest/gtest.h"
 
-#include "paddle/fluid/framework/cinn/cinn_compiled_object.h"
 #include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/graph.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_compiled_object.h"
 #include "paddle/fluid/framework/program_desc.h"
 
 namespace paddle {
 namespace framework {
-namespace cinn {
+namespace paddle2cinn {
 
 TEST(CinnCompiledObjecctTest, TodoTest) {
   ProgramDesc empty_program;
@@ -36,6 +36,6 @@ TEST(CinnCompiledObjecctTest, TodoTest) {
   auto fetch = compiled_obj.Run(&empty_scope, &empty_feed);
 }
 
-}  // namespace cinn
+}  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle

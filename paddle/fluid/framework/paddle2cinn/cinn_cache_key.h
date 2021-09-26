@@ -22,7 +22,7 @@
 
 namespace paddle {
 namespace framework {
-namespace cinn {
+namespace paddle2cinn {
 
 // Class to store the keys for compiling CINN.
 //
@@ -57,6 +57,6 @@ class CinnCacheKey {
   std::map<std::string, DDim> feed_shapes_;
 };
 
-}  // namespace cinn
+}  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle

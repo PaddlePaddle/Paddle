@@ -12,39 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/cinn/cinn_compiled_object.h"
+#include "gtest/gtest.h"
 
-#include <map>
-
-#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_runner.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
-namespace cinn {
+namespace paddle2cinn {
 
-CinnCompiledObject::CinnCompiledObject() {
-  // TODO(zhhsplendid): complete this function after CINN interface is ready
-}
-CinnCompiledObject::~CinnCompiledObject() {
-  // TODO(zhhsplendid): complete this function after CINN interface is ready
-}
+using ir::Graph;
 
-void CinnCompiledObject::Compile(
-    const ir::Graph& graph,
-    std::map<std::string, const LoDTensor*>* feed_targets) {
-  // TODO(zhhsplendid): complete this function after CINN interface is ready
-}
+TEST(CinnRunnerTest, TodoTest) {
+  ProgramDesc empty_program;
+  Graph empty_graph(empty_program);
+  Scope empty_scope;
+  std::map<std::string, const LoDTensor*> empty_feed;
 
-std::map<std::string, FetchType*> CinnCompiledObject::Run(
-    Scope* scope, std::map<std::string, const LoDTensor*>* feed_targets) {
-  // TODO(zhhsplendid): complete this function after CINN interface is ready
-  return std::map<std::string, FetchType*>();
+  CinnRunner cinn_runner;
+  cinn_runner.Run(empty_graph, &empty_scope, &empty_feed);
 }
 
-}  // namespace cinn
+}  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle

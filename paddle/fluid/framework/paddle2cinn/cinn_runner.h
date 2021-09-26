@@ -15,36 +15,41 @@
 #pragma once
 
 #include <map>
+#include <memory>
+#include <unordered_map>
 
-#include "paddle/fluid/framework/feed_fetch_type.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_cache_key.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_compiled_object.h"
 #include "paddle/fluid/framework/scope.h"
 
 namespace paddle {
 namespace framework {
-namespace cinn {
+namespace paddle2cinn {
 
-// Class to store and call CINN complied object
-class CinnCompiledObject {
+// Entrance to run CINN.
+//
+// CINN cannot handle changable shape now, so CinnRunner keeps a cache mapping
+// from CinnCacheKey to CinnCompiledObject. If cache hits, we will re-use cache
+// stored CinnCompiledObject, otherwise we will compile again and put into
+// cache.
+class CinnRunner {
  public:
-  CinnCompiledObject();
-  ~CinnCompiledObject();
-
-  // Compiles use CINN. CINN compilation needs model graph, input names, and
-  // input_shapes
-  void Compile(const ir::Graph& graph,
-               std::map<std::string, const LoDTensor*>* feed_targets);
+  CinnRunner() {}
+  ~CinnRunner() {}
 
   // Feed LoDTensors to tun CINN compiled object and return fetched result
   std::map<std::string, FetchType*> Run(
-      Scope* scope, std::map<std::string, const LoDTensor*>* feed_targets);
+      const ir::Graph& graph, Scope* scope,
+      std::map<std::string, const LoDTensor*>* feed_targets);
 
-  // Converts compiled object to Paddle Graph
-  // To be discussed
-  // ir::Graph ToGraph();
+ private:
+  std::unordered_map<CinnCacheKey, std::shared_ptr<CinnCompiledObject>,
+                     CinnCacheKey::Hash>
+      cache_;
 };
 
-}  // namespace cinn
+}  // namespace paddle2cinn
 }  // namespace framework
 }  // namespace paddle
