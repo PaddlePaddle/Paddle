@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <complex>
 #include <mutex>
+#include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
 #include "paddle/fluid/platform/port.h"
 
@@ -27,6 +28,22 @@ extern "C" void dgetrf_(int *m, int *n, double *a, int *lda, int *ipiv,
                         int *info);
 extern "C" void sgetrf_(int *m, int *n, float *a, int *lda, int *ipiv,
                         int *info);
+
+// evd
+extern "C" void zheevd_(char *jobz, char *uplo, int *n, std::complex<double> *a,
+                        int *lda, double *w, std::complex<double> *work,
+                        int *lwork, double *rwork, int *lrwork, int *iwork,
+                        int *liwork, int *info);
+extern "C" void cheevd_(char *jobz, char *uplo, int *n, std::complex<float> *a,
+                        int *lda, float *w, std::complex<float> *work,
+                        int *lwork, float *rwork, int *lrwork, int *iwork,
+                        int *liwork, int *info);
+extern "C" void dsyevd_(char *jobz, char *uplo, int *n, double *a, int *lda,
+                        double *w, double *work, int *lwork, int *iwork,
+                        int *liwork, int *info);
+extern "C" void ssyevd_(char *jobz, char *uplo, int *n, float *a, int *lda,
+                        float *w, float *work, int *lwork, int *iwork,
+                        int *liwork, int *info);
 
 // geev
 extern "C" void dgeev_(char *jobvl, char *jobvr, int *n, double *a, int *lda,
@@ -81,6 +98,10 @@ extern void *lapack_dso_handle;
 #define LAPACK_ROUTINE_EACH(__macro) \
   __macro(dgetrf_);                  \
   __macro(sgetrf_);                  \
+  __macro(zheevd_);                  \
+  __macro(cheevd_);                  \
+  __macro(dsyevd_);                  \
+  __macro(ssyevd_);                  \
   __macro(dgeev_);                   \
   __macro(sgeev_);                   \
   __macro(zgeev_);                   \
