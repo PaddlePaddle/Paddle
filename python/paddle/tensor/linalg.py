@@ -1602,16 +1602,18 @@ def qr(x, mode="reduced", name=None):
             where ... is zero or more batch dimensions. M and N can be arbitrary
             positive number. The data type of x should be float32 or float64. 
         mode (str, optional): A flag to control the behavior of qr, the default is "reduced". 
-            Suppose x's shape is `[..., M, N]` and denoting :math:`K = min(M, N)`:
+            Suppose x's shape is `[..., M, N]` and denoting `K = min(M, N)`:
             If mode = "reduced", qr op will return reduced Q and R matrices, 
             which means Q's shape is `[..., M, K]` and R's shape is `[..., K, N]`.
             If mode = "complete", qr op will return complete Q and R matrices, 
             which means Q's shape is `[..., M, M]` and R's shape is `[..., M, N]`.
             If mode = "r", qr op will only return reduced R matrix, which means
             R's shape is `[..., K, N]`.
+        name (str, optional): Name for the operation (optional, default is None).
+            For more information, please refer to :ref:`api_guide_Name`.
             
     Returns:
-        If mode = "reduced" or mode = "complete", qr will return a two tensor-tuple, which represents Q and R 
+        If mode = "reduced" or mode = "complete", qr will return a two tensor-tuple, which represents Q and R. 
         If mode = "r", qr will return a tensor which represents R.
         
     Examples:            
@@ -1624,12 +1626,12 @@ def qr(x, mode="reduced", name=None):
             print (q)
             print (r)
 
-            # Q = [[-0.23570226, -0.25767356],
-            #      [-0.23570226, -0.92026272],
-            #      [-0.94280904,  0.29448407]]
+            # Q = [[-0.16903085,  0.89708523],
+            #      [-0.50709255,  0.27602622],
+            #      [-0.84515425, -0.34503278]])
 
-            # R = [[-4.24264069, -6.83536555],
-            #       [ 0.        , -1.50923086]]
+            # R = [[-5.91607978, -7.43735744],
+            #      [ 0.        ,  0.82807867]])
             
             # one can verify : X = Q * R ;     
     """
