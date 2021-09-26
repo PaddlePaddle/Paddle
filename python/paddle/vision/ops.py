@@ -906,7 +906,6 @@ def decode_jpeg(x, mode='unchanged', name=None):
     return out
 
 
-
 def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
     """
     Position sensitive region of interest pooling (also known as PSROIPooling) is to perform
