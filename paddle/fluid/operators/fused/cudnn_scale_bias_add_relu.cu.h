@@ -145,7 +145,7 @@ class CudnnScaleBiasAddReluOp {
             /*xData=*/x_ptr,
             /*yDesc=*/fused_act_ ? in_x_desc_.desc() : NULL,
             /*yData=*/fused_act_ ? y_ptr : nullptr,
-            /*dyDesc=*/fused_act_ ? in_x_desc_.desc() : in_z_desc_.desc(),
+            /*dyDesc=*/in_x_desc_.desc(),
             /*dyData=*/dy_ptr,
             /*dzDesc=*/fused_add_ ? in_z_desc_.desc() : NULL,
             /*dzData=*/fused_add_ ? dz_ptr : nullptr,

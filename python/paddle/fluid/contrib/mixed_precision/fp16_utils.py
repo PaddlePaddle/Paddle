@@ -101,7 +101,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                 'batch_norm', 'fused_bn_add_activation', 'layer_norm',
                 'resnet_unit'
         ]:
-            if in_name not in {'X', 'Z'}:
+            if in_name not in {'X', 'Z', 'FilterX', 'FilterZ'}:
                 continue
         for in_var_name in op.input(in_name):
             in_var = block._find_var_recursive(in_var_name)
@@ -158,7 +158,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
             if op.type in [
                     'batch_norm', 'fused_bn_add_activation', 'layer_norm',
                     'resnet_unit'
-            ] and out_name != 'Y':
+            ] and out_name not in {'Y', 'ConvX', 'ConvZ'}:
                 continue
             for out_var_name in op.output(out_name):
                 out_var = block.var(out_var_name)
@@ -376,7 +376,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                 if op.type in {
                         'batch_norm', 'fused_bn_add_activation', 'layer_norm',
                         'resnet_unit'
-                } and in_name not in {'X', 'Z'}:
+                } and in_name not in {'X', 'Z', 'FilterX', 'FilterZ'}:
                     continue
                 for in_var_name in op.input(in_name):
                     in_var = None
@@ -407,7 +407,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                 if op.type in {
                         'batch_norm', 'fused_bn_add_activation', 'layer_norm',
                         'resnet_unit'
-                } and out_name != 'Y':
+                } and out_name not in {'Y', 'ConvX', 'ConvZ'}:
                     continue
                 for out_var_name in op.output(out_name):
                     out_var = None

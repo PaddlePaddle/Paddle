@@ -272,19 +272,21 @@ void ResNetUnitGradOp::InferShape(framework::InferShapeContext *ctx) const {
                    framework::GradVarName("ConvZ"), "ResNetUnitGradOp");
   }
   const auto x_dims = ctx->GetInputDim("X");
-  const auto w_dims = ctx->GetInputDim("FilterX");
+  const auto filter_x_dims = ctx->GetInputDim("FilterX");
   const auto y_dims = ctx->GetInputDim("Y");
   const auto param_dims = ctx->GetInputDim("ScaleX");
   ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
-  ctx->SetOutputDim(framework::GradVarName("FilterX"), w_dims);
+  ctx->SetOutputDim(framework::GradVarName("FilterX"), filter_x_dims);
   ctx->SetOutputDim(framework::GradVarName("ScaleX"), param_dims);
   ctx->SetOutputDim(framework::GradVarName("BiasX"), param_dims);
   ctx->SetOutputDim(framework::GradVarName("ConvX"), y_dims);
   if (ctx->Attrs().Get<bool>("fused_add")) {
-    ctx->SetOutputDim(framework::GradVarName("Z"), x_dims);
+    const auto z_dims = ctx->GetInputDim("Z");
+    ctx->SetOutputDim(framework::GradVarName("Z"), z_dims);
   }
   if (ctx->Attrs().Get<bool>("has_shortcut")) {
-    ctx->SetOutputDim(framework::GradVarName("FilterZ"), w_dims);
+    const auto filter_z_dims = ctx->GetInputDim("FilterZ");
+    ctx->SetOutputDim(framework::GradVarName("FilterZ"), filter_z_dims);
     ctx->SetOutputDim(framework::GradVarName("ScaleZ"), param_dims);
     ctx->SetOutputDim(framework::GradVarName("BiasZ"), param_dims);
     ctx->SetOutputDim(framework::GradVarName("ConvZ"), y_dims);

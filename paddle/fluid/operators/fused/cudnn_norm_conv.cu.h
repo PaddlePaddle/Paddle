@@ -86,7 +86,8 @@ class CudnnNormConvolutionOp {
     bwd_wgrad_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_DYDATA, output_ptr);
     bwd_wgrad_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_DWDATA, filter_grad_ptr);
     bwd_wgrad_op_.SetOpVariantParamAttrPtr(
-        CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &bwd_workspace_byte_);
+        CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES,
+        &bwd_wgrad_workspace_byte_);
     // bwd_wgrad_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQSCALE,
     // equiv_scale_ptr);
     // bwd_wgrad_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQBIAS,
@@ -99,7 +100,7 @@ class CudnnNormConvolutionOp {
           // fused op execute
           bwd_wgrad_op_.Execute(handle);
         },
-        bwd_workspace_byte_);
+        bwd_wgrad_workspace_byte_);
 
     // DGRAD - Convolution dgrad followed optionally by batchnorm dgrad
     ScalingParamType<T> alpha = 1.0f;
@@ -113,11 +114,11 @@ class CudnnNormConvolutionOp {
                   back_conv_dgrad_algo_, cudnn_workspace_ptr,
                   bwd_workspace_byte_, &beta, in_desc_.desc(), input_grad_ptr));
         },
-        bwd_workspace_byte_);
+        bwd_dgrad_conv_workspace_byte_);
   }
 
  private:
-  size_t RoundUp(int64_t a, int64_t b) { return (a + b - 1) / b; }
+  size_t RoundUp(int64_t a, int64_t b) { return (a + b - 1) / b * b; }
 
   void InitDescriptors(const platform::CUDADeviceContext &ctx,
                        const std::vector<int> &input_shape,
@@ -169,9 +170,10 @@ class CudnnNormConvolutionOp {
     fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_YSTATS_DESC,
                                 out_stats_desc_.desc());
 
-    fwd_op_.SetOpConstParamAttr(CUDNN_PARAM_BN_MODE, CUDNN_BATCHNORM_SPATIAL);
+    fwd_op_.SetOpConstParamAttr(CUDNN_PARAM_BN_MODE,
+                                CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
     bwd_wgrad_op_.SetOpConstParamAttr(CUDNN_PARAM_BN_MODE,
-                                      CUDNN_BATCHNORM_SPATIAL);
+                                      CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
 
     auto handle = ctx.cudnn_handle();
     PADDLE_ENFORCE_CUDA_SUCCESS(

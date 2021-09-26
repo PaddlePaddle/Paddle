@@ -47,7 +47,7 @@ class CudnnBNStatsFinalizeOp {
          CUDNN_PARAM_BN_RUNNING_MEAN_PLACEHOLDER,
          CUDNN_PARAM_BN_RUNNING_VAR_PLACEHOLDER,
          CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER, CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER},
-        CUDNN_PTR_ELEM_ALIGNED);
+        CUDNN_PTR_16B_ALIGNED);
     // Set input and output desc for train op
     train_op_.SetOpConstParamDesc(
         {CUDNN_PARAM_YSTATS_DESC, CUDNN_PARAM_BN_SCALEBIAS_MEANVAR_DESC},
@@ -61,7 +61,7 @@ class CudnnBNStatsFinalizeOp {
          CUDNN_PARAM_BN_RUNNING_MEAN_PLACEHOLDER,
          CUDNN_PARAM_BN_RUNNING_VAR_PLACEHOLDER,
          CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER, CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER},
-        CUDNN_PTR_ELEM_ALIGNED);
+        CUDNN_PTR_16B_ALIGNED);
     // Set input and output desc for inference op
     inference_op_.SetOpConstParamDesc(CUDNN_PARAM_BN_SCALEBIAS_MEANVAR_DESC,
                                       in_desc_.desc());
