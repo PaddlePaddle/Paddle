@@ -68,6 +68,8 @@ class OpDesc {
                  const std::vector<std::string> &args);
   void RemoveOutput(const std::string &name);
 
+  void RemoveInput(const std::string &name);
+
   bool HasAttr(const std::string &name) const {
     return attrs_.find(name) != attrs_.end();
   }
@@ -176,7 +178,7 @@ class OpDesc {
   }
 
   proto::OpDesc desc_;
-  BlockDesc *block_;  // not_own
+  BlockDesc *block_{nullptr};  // not_own
   // input arg name => input variable names
   VariableNameMap inputs_;
   // output arg name => output variable names

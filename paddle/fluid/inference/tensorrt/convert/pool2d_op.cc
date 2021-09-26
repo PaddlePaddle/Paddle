@@ -87,6 +87,10 @@ class Pool2dOpConverter : public OpConverter {
     bool adaptive = false;
     if (op_desc.HasAttr("adaptive"))
       adaptive = BOOST_GET_CONST(bool, op_desc.GetAttr("adaptive"));
+    std::string padding_algorithm = "EXPLICIT";
+    if (op_desc.HasAttr("padding_algorithm"))
+      padding_algorithm =
+          BOOST_GET_CONST(std::string, op_desc.GetAttr("padding_algorithm"));
 
     nvinfer1::PoolingType nv_pool_type = nvinfer1::PoolingType::kMAX;
     nvinfer1::ReduceOperation reduce_operation =
@@ -124,6 +128,9 @@ class Pool2dOpConverter : public OpConverter {
         pool_layer->setStride(nv_strides);
         pool_layer->setPadding(nv_paddings);
         pool_layer->setAverageCountExcludesPadding(exclusive);
+        if (padding_algorithm == "SAME") {
+          pool_layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
+        }
         layer = pool_layer;
       } else if (global_pooling) {
         auto *reduce_layer = TRT_ENGINE_ADD_LAYER(engine_, Reduce, *input1,
@@ -159,6 +166,9 @@ class Pool2dOpConverter : public OpConverter {
       auto output_name = op_desc.Output("Out")[0];
       pool_layer->setStride(nv_strides);
       pool_layer->setPadding(nv_paddings);
+      if (padding_algorithm == "SAME") {
+        pool_layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
+      }
       pool_layer->setAverageCountExcludesPadding(exclusive);
       pool_layer->setName(("pool2d (Output: " + output_name + ")").c_str());
       pool_layer->getOutput(0)->setName(output_name.c_str());
@@ -198,6 +208,9 @@ class Pool2dOpConverter : public OpConverter {
                           "trt pool layer in converter could not be created."));
       pool_layer->setStride(nv_strides);
       pool_layer->setPadding(nv_paddings);
+      if (padding_algorithm == "SAME") {
+        pool_layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
+      }
       pool_layer->setAverageCountExcludesPadding(exclusive);
       layer = pool_layer;
     } else {

@@ -95,6 +95,8 @@ class LazyZeros<platform::CUDADeviceContext, T> {
                   const std::vector<const framework::Tensor*>& xs,
                   const std::vector<framework::Tensor*>& outs) const {
     size_t xs_size = xs.size();
+    if (xs_size == 0) return;
+
     const auto& cpu_place = platform::CPUPlace();
     // alloc each tensor's start index and copy to device
     auto h_in_starts_mem =

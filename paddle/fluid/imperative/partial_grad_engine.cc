@@ -137,10 +137,12 @@ static void GetGraphInfoBetweenTargets(
     }
 
     for (auto &pending_node : node->GradPendingNodes()) {
+      for (auto &pending_op : *pending_node) {
+        preceding_ops[&pending_op].insert(op);
+      }
       if (visited.count(pending_node.get()) == 0) {
         visited.insert(pending_node.get());
         for (auto &pending_op : *pending_node) {
-          preceding_ops[&pending_op].insert(op);
           q.emplace(&pending_op, pending_node.get());
         }
       }

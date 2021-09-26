@@ -220,7 +220,7 @@ void MapMatmul2MulPass::ApplyImpl(ir::Graph* graph) const {
         LOG(WARNING) << "Pass in op compat failed.";
         return;
       }
-      OpDesc desc;
+      OpDesc desc(matmul_op->Op()->Block());
       desc.SetType("mul");
       desc.SetInput("X", {matmul_in_x->Name()});
       desc.SetInput("Y", {matmul_in_y->Name()});
@@ -299,7 +299,7 @@ void Squeeze2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
         LOG(WARNING) << "Pass in op compat failed.";
         return;
       }
-      OpDesc desc;
+      OpDesc desc(matmul_op->Op()->Block());
       desc.SetType("mul");
       desc.SetInput("X", {squeeze2_in_x->Name()});
       desc.SetInput("Y", {matmul_in_y->Name()});
@@ -441,7 +441,7 @@ void Reshape2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
         LOG(WARNING) << "Pass in op compat failed.";
         return;
       }
-      OpDesc desc;
+      OpDesc desc(matmul_op->Op()->Block());
       desc.SetType("mul");
       desc.SetInput("X", {reshape2_in_x->Name()});
       desc.SetInput("Y", {matmul_in_y->Name()});
@@ -526,7 +526,7 @@ void Flatten2MatmulFusePass::ApplyImpl(ir::Graph* graph) const {
         LOG(WARNING) << "Pass in op compat failed.";
         return;
       }
-      OpDesc desc;
+      OpDesc desc(matmul_op->Op()->Block());
       desc.SetType("mul");
       desc.SetInput("X", {flatten2_in_x->Name()});
       desc.SetInput("Y", {matmul_in_y->Name()});
