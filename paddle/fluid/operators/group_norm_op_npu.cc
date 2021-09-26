@@ -37,14 +37,6 @@ struct GroupNormFunction {
                                      {{"axes", dim}, {"keep_dims", keep_dims}});
     runner.Run(stream);
   }
-  void ReduceStdWithMean(const Tensor* x, const Tensor* mean, Tensor* y,
-                         const std::vector<int>& dim, bool keep_dims = true) {
-    //  y should be init first
-    const auto& runner = NpuOpRunner(
-        "ReduceStdWithMean", {*x, *mean}, {*y},
-        {{"dim", dim}, {"unbiased", false}, {"keep_dims", keep_dims}});
-    runner.Run(stream);
-  }
   void ReduceSum(const Tensor* x, Tensor* y, const std::vector<int>& dim,
                  bool keep_dims = true) {
     //  y should be init first
@@ -72,15 +64,15 @@ struct GroupNormFunction {
     const auto& runner = NpuOpRunner("Div", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
+  void DivNoNan(const Tensor* x, const Tensor* y, Tensor* z) {
+    //  y should be init first
+    const auto& runner = NpuOpRunner("DivNoNan", {*x, *y}, {*z}, {});
+    runner.Run(stream);
+  }
   void Transpose(const Tensor* x, Tensor* y, const std::vector<int>& axis) {
     //  y should be init first
     const auto& runner =
         NpuOpRunner("TransposeD", {*x}, {*y}, {{"perm", axis}});
-    runner.Run(stream);
-  }
-  void SquaredDifference(const Tensor* x, const Tensor* y, Tensor* z) {
-    //  y should be init first
-    const auto& runner = NpuOpRunner("SquaredDifference", {*x, *y}, {*z}, {});
     runner.Run(stream);
   }
   void Sqrt(const Tensor* x, Tensor* y) {
@@ -98,13 +90,24 @@ struct GroupNormFunction {
     const auto& runner = NpuOpRunner("Muls", {*x}, {*y}, {{"value", scalar}});
     runner.Run(stream);
   }
-  void Pow(const Tensor* x, float factor, Tensor* y) {
-    //  y should be init first
-    const auto& runner =
-        NpuOpRunner("Power", {*x}, {*y}, {{"power", factor},
-                                          {"scale", static_cast<float>(1.0)},
-                                          {"shift", static_cast<float>(0.0)}});
-    runner.Run(stream);
+  Tensor ReduceMeanToNG(const Tensor* x, const DataLayout& data_layout,
+                        const int64_t N, const int64_t C, const int64_t H,
+                        const int64_t W, const int G) {
+    Tensor y(x->type());
+    // y.mutable_data<T>( {N,G,1}, place );
+    if (data_layout == DataLayout::kNCHW) {
+      y.mutable_data<T>({N, G, 1}, place);
+      //  shape of x is [N, G, C*H*W/G]
+      this->ReduceMean(x, &y, std::vector<int>{2});
+    } else {
+      y.mutable_data<T>({N, 1, G}, place);
+      //  shape of x is [N, C*H*W/G, G]
+      Tensor x_trans(x->type());
+      x_trans.mutable_data<T>({N, G, C * H * W / G}, place);
+      this->Transpose(x, &x_trans, std::vector<int>{0, 2, 1});
+      this->ReduceMean(&x_trans, &y, std::vector<int>{2});
+    }
+    return y;
   }
 
  private:
@@ -196,144 +199,104 @@ class GroupNormGradNPUKernel : public framework::OpKernel<T> {
     const DataLayout data_layout =
         framework::StringToDataLayout(data_layout_str);
     const float epsilon = ctx.Attr<float>("epsilon");
-    // auto* x = ctx.Input<Tensor>("Y");
-    auto* x = ctx.Input<Tensor>("X");
+    auto* y = ctx.Input<Tensor>("Y");
     auto* var = ctx.Input<Tensor>("Variance");
 
-    auto* meanx = ctx.Input<Tensor>("Mean");
-
     auto* scale = ctx.Input<Tensor>("Scale");
-    // auto* bias = ctx.Input<Tensor>("Bias");
+    auto* bias = ctx.Input<Tensor>("Bias");
     auto* d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
-    const auto groups = ctx.Attr<int>("groups");
+    const auto G = ctx.Attr<int>("groups");
 
     // init output
     auto* d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
     auto* d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
-    // LOG(INFO) << bias;
-
     GroupNormFunction<T> F(ctx);
     auto place = ctx.GetPlace();
-    Tensor dy_proc(d_y->type());
-    Tensor x_proc(x->type());
+    auto _type = y->type();
 
-    dy_proc.mutable_data<T>(d_y->dims(), place);
-    x_proc.mutable_data<T>(x->dims(), place);
-    if (data_layout != DataLayout::kNCHW) {
-      x_proc.Resize({x->dims()[0], x->dims()[3], x->dims()[1], x->dims()[2]});
-      dy_proc.Resize(x_proc.dims());
-      F.Transpose(x, &x_proc, std::vector<int>{0, 3, 1, 2});
-      F.Transpose(d_y, &dy_proc, std::vector<int>{0, 3, 1, 2});
-    } else {
-      TensorCopy(*x, platform::NPUPlace(), &x_proc);
-      TensorCopy(*d_y, platform::NPUPlace(), &dy_proc);
-    }
-    auto N = x_proc.dims()[0];
-    auto C = x_proc.dims()[1];
-    auto H = x_proc.dims()[2];
-    auto W = x_proc.dims()[3];
-
-    std::vector<int> axis = {1};
-
-    x_proc.Resize({N * groups, C * H * W / groups});
-
-    //  mean = Mean(X)
-    Tensor mean(x->type());
-
-    mean.ShareDataWith(*meanx);
-    mean.Resize({N * groups, 1});
-
-    //  x_mean = x_proc - mean
-    Tensor x_mean(x->type());
-    x_mean.mutable_data<T>(x_proc.dims(), place);
-    F.Sub(&x_proc, &mean, &x_mean);
-
-    //  std = Sqrt(var+epsilon)
-    Tensor std(x->type());
-    std.mutable_data<T>(mean.dims(), place);
-    Tensor var_share(x->type());
-    var_share.ShareDataWith(*var);
-    var_share.Resize(std.dims());
-    F.Adds(&var_share, epsilon, &std);
-    F.Sqrt(&std, &std);
-
-    //  xnorm = x_mean / std
-    Tensor xnorm(x->type());
-    xnorm.mutable_data<T>(x_proc.dims(), place);
-    F.Div(&x_mean, &std, &xnorm);
-
-    //  d_xnorm = dy_proc * scale
-    Tensor d_xnorm(x->type());
-    d_xnorm.mutable_data<T>(dy_proc.dims(), place);
-    Tensor scale_share(x->type());
+    Tensor xnorm(_type);
+    xnorm.mutable_data<T>(y->dims(), place);
+    Tensor scale_share(_type);
     scale_share.ShareDataWith(*scale);
-    scale_share.Resize({C, 1, 1});
-    F.Mul(&dy_proc, &scale_share, &d_xnorm);
-    d_xnorm.Resize(x_proc.dims());
-    dy_proc.Resize(x_proc.dims());
+    Tensor bias_share(_type);
+    bias_share.ShareDataWith(*bias);
 
-    //  d_var = -0.5 * paddle.sum ( d_xnorm * x_mean, axis=1, keepdim=True ) / (
-    //  std ** 3 )
-    Tensor d_var(x->type());
-    d_var.mutable_data<T>(mean.dims(), place);
-    Tensor t_gxnorm_xmean(x->type());
-    t_gxnorm_xmean.mutable_data<T>(x_proc.dims(), place);
-    F.Mul(&d_xnorm, &x_mean, &t_gxnorm_xmean);
-    F.ReduceSum(&t_gxnorm_xmean, &d_var, axis);
-    Tensor std3(x->type());
-    std3.mutable_data<T>(mean.dims(), place);
-    F.Pow(&std, static_cast<float>(3), &std3);
-    F.Div(&d_var, &std3, &d_var);
-    F.Muls(&d_var, static_cast<float>(-0.5), &d_var);
-
-    //  d_mean = -paddle.sum ( d_xnorm, axis=1, keepdim=True ) / std - 2 * dvar
-    //  / x_norm.shape[1] * paddle.sum( x_mean, axis=1, keepdim=True )
-    Tensor d_mean(x->type());
-    d_mean.mutable_data<T>(mean.dims(), place);
-    F.ReduceSum(&d_xnorm, &d_mean, axis);
-    F.Div(&d_mean, &std, &d_mean);
-    Tensor t_dvar_xmean(x->type());
-    t_dvar_xmean.mutable_data<T>(mean.dims(), place);
-    F.ReduceSum(&x_mean, &t_dvar_xmean, axis);
-    F.Mul(&t_dvar_xmean, &d_var, &t_dvar_xmean);
-    F.Muls(&t_dvar_xmean, static_cast<float>(2.0 / xnorm.dims()[1]),
-           &t_dvar_xmean);
-    F.Sub(&t_dvar_xmean, &d_mean, &d_mean);
-
-    //  d_x = d_xnorm / std + 2 * d_var * x_mean / xnorm.shape[1] + d_mean /
-    //  xnorm.shape[1]
-    d_x->mutable_data<T>(place);
-    d_x->Resize(x_proc.dims());
-    F.Div(&d_xnorm, &std, d_x);
-    F.Mul(&d_var, &x_mean, &x_mean);
-    F.Muls(&x_mean, static_cast<float>(2.0 / xnorm.dims()[1]), &x_mean);
-    F.Muls(&d_mean, static_cast<float>(1.0 / xnorm.dims()[1]), &d_mean);
-    F.Add(d_x, &x_mean, d_x);
-    F.Add(d_x, &d_mean, d_x);
-
-    // d_x->mutable_data<T>(place);
-    d_scale->mutable_data<T>(place);
-    d_bias->mutable_data<T>(place);
-
-    dy_proc.Resize({N, C, W * H});
-    if (d_scale) {
-      xnorm.Resize({N, C, W * H});
-      Tensor d_scale_pre(x->type());
-      d_scale_pre.mutable_data<T>({N, C, W * H}, place);
-      F.Mul(&dy_proc, &xnorm, &d_scale_pre);
-      F.ReduceSum(&d_scale_pre, d_scale, std::vector<int>{0, 2}, false);
+    int64_t N = y->dims()[0];
+    int64_t C, H, W;
+    framework::DDim scale_bias_dim;
+    if (data_layout == DataLayout::kNCHW) {
+      C = y->dims()[1];
+      H = y->dims()[2];
+      W = y->dims()[3];
+      scale_bias_dim = framework::make_ddim({C, 1, 1});
+    } else {
+      C = y->dims()[3];
+      H = y->dims()[1];
+      W = y->dims()[2];
+      scale_bias_dim = framework::make_ddim({1, 1, C});
     }
+    scale_share.Resize(scale_bias_dim);
+    bias_share.Resize(scale_bias_dim);
+    F.Sub(y, &bias_share, &xnorm);
+    F.DivNoNan(&xnorm, &scale_share, &xnorm);
 
     if (d_bias) {
-      F.ReduceSum(&dy_proc, d_bias, std::vector<int>{0, 2}, false);
+      d_bias->mutable_data<T>(place);
+      if (data_layout == DataLayout::kNCHW) {
+        F.ReduceSum(d_y, d_bias, std::vector<int>{0, 2, 3}, false);
+      } else {
+        F.ReduceSum(d_y, d_bias, std::vector<int>{0, 1, 2}, false);
+      }
     }
-    if (data_layout != DataLayout::kNCHW) {
-      d_x->Resize({N, C, H, W});
-      F.Transpose(d_x, d_x, std::vector<int>{0, 2, 3, 1});
+    if (d_scale) {
+      d_scale->mutable_data<T>(place);
+      Tensor dy_xnorm(_type);
+      dy_xnorm.mutable_data<T>(d_y->dims(), place);
+      F.Mul(d_y, &xnorm, &dy_xnorm);
+      if (data_layout == DataLayout::kNCHW) {
+        F.ReduceSum(&dy_xnorm, d_scale, std::vector<int>{0, 2, 3});
+      } else {
+        F.ReduceSum(&dy_xnorm, d_scale, std::vector<int>{0, 1, 2});
+      }
     }
-    d_x->Resize({x->dims()});
+
+    //  std = Sqrt(var+epsilon), init shape = [ N, G ]
+    Tensor std(_type);
+    std.mutable_data<T>(var->dims(), place);
+    F.Adds(var, epsilon, &std);
+    F.Sqrt(&std, &std);
+    //  d_xnorm_std = dy_proc * scale / std
+    Tensor d_xnorm_std(_type);
+    d_xnorm_std.mutable_data<T>(y->dims(), place);
+    F.Mul(d_y, &scale_share, &d_xnorm_std);
+    if (data_layout == DataLayout::kNCHW) {
+      xnorm.Resize({N, G, C * H * W / G});
+      d_xnorm_std.Resize({N, G, C * H * W / G});
+      std.Resize({N, G, 1});
+    } else {
+      xnorm.Resize({N, C * H * W / G, G});
+      d_xnorm_std.Resize({N, C * H * W / G, G});
+      std.Resize({N, 1, G});
+    }
+    F.Div(&d_xnorm_std, &std, &d_xnorm_std);
+
+    //  d_x = d_xnorm_std
+    //       - Mean ( d_xnorm_std * x_norm, axis=1, keepdim=True ) * x_norm
+    //       - Mean ( d_xnorm_std, axis=1, keepdim=True )
+    d_x->mutable_data<T>(place);
+    d_x->Resize(xnorm.dims());
+    F.Mul(&d_xnorm_std, &xnorm, d_x);
+    Tensor dx1 = F.ReduceMeanToNG(d_x, data_layout, N, C, H, W, G);
+    F.Mul(&dx1, &xnorm, d_x);
+
+    Tensor dx2 = F.ReduceMeanToNG(&d_xnorm_std, data_layout, N, C, H, W, G);
+
+    F.Sub(&d_xnorm_std, d_x, d_x);
+    F.Sub(d_x, &dx2, d_x);
+
+    d_x->Resize(y->dims());
   }
 };
 

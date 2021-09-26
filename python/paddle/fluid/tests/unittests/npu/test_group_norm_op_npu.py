@@ -110,7 +110,6 @@ class TestGroupNormOp2(TestGroupNormOp):
         self.attrs['groups'] = 4
 
 
-'''
 class TestGroupNormOpBigEps1(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['groups'] = 1
@@ -126,7 +125,8 @@ class TestGroupNormOpBigEps2(TestGroupNormOp):
 class TestGroupNormOpBigEps3(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['epsilon'] = 0.5
-'''
+
+
 '''
 class TestGroupNormOpLargeData(TestGroupNormOp):
     def init_test_case(self):
@@ -147,7 +147,6 @@ class TestGroupNormOp2_With_NHWC(TestGroupNormOp):
         self.data_format = "NHWC"
 
 
-'''
 class TestGroupNormOpBigEps1_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['groups'] = 1
@@ -166,7 +165,7 @@ class TestGroupNormOpBigEps3_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['epsilon'] = 0.5
         self.data_format = "NHWC"
-'''
+
 
 if __name__ == '__main__':
     unittest.main()
