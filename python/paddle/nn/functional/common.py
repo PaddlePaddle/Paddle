@@ -1502,33 +1502,6 @@ def linear(x, weight, bias=None, name=None):
         return res
 
 
-def fused_multihead_attention(x,
-                              qkv_weight,
-                              out_linear_weight,
-                              pre_layer_norm=False,
-                              ln_scale=None,
-                              ln_bias=None,
-                              ln_2_scale=None,
-                              ln_2_bias=None,
-                              epsilon=1e-05,
-                              qkv_bias=None,
-                              out_linear_bias=None,
-                              src_mask=None,
-                              dropout=0.,
-                              attn_dropout=0.,
-                              ln2_epsilon=1e-05,
-                              name=None):
-    r"""
-    """
-    if in_dygraph_mode():
-        ln_mean, ln_variance, ln_out, qkv_out, qkv_bias_out, transpose_out_2, qk_out, qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, src_mask_out, fmha_out, out_linear_out, dropout_mask_out, ln2_mean_out, ln2_var_out, bias_dropout_residual_out, final_out = _C_ops.fused_attention(
-            x, ln_scale, ln_bias, qkv_weight, qkv_bias, src_mask,
-            out_linear_weight, out_linear_bias, ln_2_scale, ln_2_bias,
-            'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
-            'dropout_prob', dropout, 'attn_dropout_prob', attn_dropout)
-        return final_out
-
-
 def label_smooth(label, prior_dist=None, epsilon=0.1, name=None):
     r"""
     Label smoothing is a mechanism to regularize the classifier layer and is called
