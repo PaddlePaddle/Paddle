@@ -46,10 +46,8 @@ class ExpertCountOpMaker : public framework::OpProtoAndCheckerMaker {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_WITHOUT_GRADIENT(ExpertCountOp, ops::ExpertCountOp,
+REGISTER_OP_WITHOUT_GRADIENT(expert_count, ops::ExpertCountOp,
                              ops::ExpertCountOpMaker);
-
-REGISTER_OPERATOR(expert_count, ops::ExpertCountOp, ops::ExpertCountOpMaker)
 
 REGISTER_OP_CPU_KERNEL(expert_count, ops::ExpertCountOpCPUKernel<int>,
                        ops::ExpertCountOpCPUKernel<int64_t>);
