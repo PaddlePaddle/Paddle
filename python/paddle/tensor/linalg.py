@@ -1655,10 +1655,9 @@ def eig(x, name=None):
 
     inputs = {'X': x}
     outputs = {'Eigenvalues': w, 'Eigenvectors': v}
-    outs = [w, v]
     helper.append_op(type='eig', inputs=inputs, outputs=outputs)
 
-    return tuple(outs)
+    return w, v
 
 
 def eigvals(x, name=None):

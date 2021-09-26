@@ -301,7 +301,7 @@ struct DeviceIndependenceTensorOperations {
     return ret;
   }
 
-  // batch_diag
+  // batch_diag for CPU only
   Tensor BatchDiag(const Tensor& x, int batch) {
     Tensor out;
     auto* x_data = x.data<math::Real<T>>();

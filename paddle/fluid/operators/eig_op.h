@@ -17,7 +17,6 @@
 #include <math.h>
 #include <algorithm>
 #include <complex>
-#include "Eigen/Eigenvalues"
 #include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/lapack_function.h"
 #include "paddle/fluid/operators/math/math_function.h"
@@ -66,7 +65,7 @@ void TransposeTwoAxis(const Tensor& input, Tensor* transposed_input,
 
 // Apply eig to a batch of matrices, values, vectors and (intermidiate
 // tensor) info are overritten
-template <typename T, typename Tout>
+template <typename T>
 void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
                const framework::ExecutionContext& context) {
   char jobvl = 'N';
@@ -125,9 +124,9 @@ void LapackEig(Tensor* input, Tensor* values, Tensor* vectors, int info,
   }
 }
 
-template <typename DeviceContext, typename T, typename Tout>
+template <typename DeviceContext, typename T>
 void ApplyEigKernel(const Tensor& input, Tensor* values, Tensor* vectors,
-                    int info, const framework::ExecutionContext& context) {
+                    const framework::ExecutionContext& context) {
   Tensor input_column_major;
   Tensor vectors_row_major;
   int num_dims = input.dims().size();
@@ -138,31 +137,14 @@ void ApplyEigKernel(const Tensor& input, Tensor* values, Tensor* vectors,
                                      num_dims - 2, context);
   // make sure 'vectors_row_major' holds memory before passed to LapackEig()
   vectors_row_major.Resize(input.dims());
-  LapackEig<T, Tout>(&input_column_major, values, &vectors_row_major, info,
-                     context);
+  int info = 0;
+  LapackEig<T>(&input_column_major, values, &vectors_row_major, info, context);
 
   // transfer column-major layout back
   // vectors_row_major: column-major layout
   // vector: original layout
   TransposeTwoAxis<DeviceContext, T>(vectors_row_major, vectors, num_dims - 1,
                                      num_dims - 2, context);
-}
-
-template <typename T, typename Tout>
-void ConstructComplexValues(Tensor* c_values, const Tensor& real_part,
-                            const Tensor& imag_part,
-                            const framework::ExecutionContext& ctx,
-                            int batch_count, int order) {
-  auto* c_values_data = c_values->mutable_data<Tout>(ctx.GetPlace());
-  auto* real_data = real_part.data<T>();
-  auto* imag_data = imag_part.data<T>();
-
-  for (int b = 0; b < batch_count; b++) {
-    for (int j = 0; j < order; j++) {
-      c_values_data[b * order + j] = platform::complex<T>(
-          real_data[b * order + j], imag_data[b * order + j]);
-    }
-  }
 }
 
 template <typename T, typename Tout>
@@ -227,9 +209,9 @@ class EigKernel : public framework::OpKernel<T> {
 
       real_values.mutable_data<math::Real<T>>(big_dim, context.GetPlace());
       real_vectors.mutable_data<math::Real<T>>(x->dims(), context.GetPlace());
-      int info = 0;
-      ApplyEigKernel<DeviceContext, math::Real<T>, Tout>(
-          *x, &real_values, &real_vectors, info, context);
+
+      ApplyEigKernel<DeviceContext, math::Real<T>>(*x, &real_values,
+                                                   &real_vectors, context);
       auto dito =
           math::DeviceIndependenceTensorOperations<DeviceContext, math::Real<T>,
                                                    Tout>(context);
@@ -239,8 +221,15 @@ class EigKernel : public framework::OpKernel<T> {
       Tensor imag_part = dito.Slice(real_values, {-1}, {order}, {order * 2});
 
       // 2. construct complex values
-      ConstructComplexValues<math::Real<T>, Tout>(
-          out_values, real_part, imag_part, context, batch_count, order);
+      auto* real_part_data = real_part.data<math::Real<T>>();
+      auto* imag_part_data = imag_part.data<math::Real<T>>();
+      int out_values_numel = out_values->numel();
+      platform::ForRange<DeviceContext> for_range(
+          context.template device_context<DeviceContext>(), out_values_numel);
+      math::RealImagToComplexFunctor<Tout> functor(
+          real_part_data, imag_part_data,
+          out_values->mutable_data<Tout>(context.GetPlace()), out_values_numel);
+      for_range(functor);
 
       // 3. construct complex vectors
       Tensor real_vector_trans = dito.Transpose(real_vectors);
@@ -256,9 +245,7 @@ class EigKernel : public framework::OpKernel<T> {
       out_values->mutable_data<T>(context.GetPlace());
       out_vectors->mutable_data<T>(context.GetPlace());
 
-      int info = 0;
-      ApplyEigKernel<DeviceContext, T, Tout>(*x, out_values, out_vectors, info,
-                                             context);
+      ApplyEigKernel<DeviceContext, T>(*x, out_values, out_vectors, context);
     }
   }
 };

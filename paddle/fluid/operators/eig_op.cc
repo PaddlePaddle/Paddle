@@ -33,15 +33,14 @@ class EigOp : public framework::OperatorWithKernel {
     auto x_dims = ctx->GetInputDim("X");
     int rank = x_dims.size();
     PADDLE_ENFORCE_GE(rank, 2, platform::errors::InvalidArgument(
-                                   "expects the Tensor to be not less than "
-                                   "2 dimentions, but got dimention is %d",
+                                   "Expects input tensor x to be not less than "
+                                   "2 dimentions, but got dimention %d",
                                    rank));
-    PADDLE_ENFORCE_EQ(
-        x_dims[rank - 2], x_dims[rank - 1],
-        platform::errors::InvalidArgument(
-            "ShapeError: The input matrix must be a square matrix, "
-            "but receive a matrix with %d rows and %d colums",
-            x_dims[rank - 2], x_dims[rank - 1]));
+    PADDLE_ENFORCE_EQ(x_dims[rank - 2], x_dims[rank - 1],
+                      platform::errors::InvalidArgument(
+                          "The input matrix must be a square matrix, "
+                          "but receive a matrix with %d rows and %d colums",
+                          x_dims[rank - 2], x_dims[rank - 1]));
 
     std::vector<int> batch_dims_vec{};
     for (int i = 0; i < rank - 1; ++i) {
@@ -71,13 +70,17 @@ class EigOp : public framework::OperatorWithKernel {
 class EigOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "(Tensor), A complex-valued or real-valued tensor with shape (*, "
-             "n, n)");
+    AddInput(
+        "X",
+        "(Tensor), A complex-valued or real-valued tensor with shape (*, "
+        "n, n). The accepted datatype is one of float32, float64, complex64 "
+        "or complex128");
     AddOutput("Eigenvalues",
-              "(Tensor), The output eigenvalues tensor with shape (*, n)");
+              "(Tensor), The output eigenvalues tensor with shape (*, n). The "
+              "datatype is complex64 or complex128");
     AddOutput("Eigenvectors",
-              "(Tensor), The output eigenvectors tensor with shape (*, n, n)");
+              "(Tensor), The output eigenvectors tensor with shape (*, n, n). "
+              "The datatype is complex64 or complex128");
 
     AddComment(R"DOC(
         Eig Operator.
@@ -96,9 +99,9 @@ class EigGradOp : public framework::OperatorWithKernel {
                    "EigGrad");
     OP_INOUT_CHECK(ctx->HasInput("Eigenvectors"), "Input", "Eigenvectors",
                    "EigGrad");
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Eigenvalues")),
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Eigenvalues")),
                    "Input", "Eigenvalues@GRAD", "EigGrad");
-    OP_INOUT_CHECK(ctx->HasInputs(framework::GradVarName("Eigenvectors")),
+    OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Eigenvectors")),
                    "Input", "Eigenvectors@GRAD", "EigGrad");
 
     auto dims = ctx->GetInputDim("Eigenvectors");
