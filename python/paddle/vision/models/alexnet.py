@@ -28,7 +28,7 @@ from paddle.fluid.param_attr import ParamAttr
 from paddle.utils.download import get_weights_path_from_url
 
 model_urls = {
-    "alexNet": (
+    "alexnet": (
         "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/AlexNet_pretrained.pdparams",
         "7f0f9f737132e02732d75a1459d98a43", )
 }
@@ -201,4 +201,4 @@ def alexnet(pretrained=False, **kwargs):
             # build model and load imagenet pretrained weight
             # model = alexnet(pretrained=True)
     """
-    return _alexnet('alexNet', pretrained, **kwargs)
+    return _alexnet('alexnet', pretrained, **kwargs)
