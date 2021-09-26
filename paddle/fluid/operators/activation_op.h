@@ -30,7 +30,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/blas.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/float16.h"
-#include "paddle/fluid/platform/timer.h"
+
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
@@ -172,10 +172,10 @@ class ActivationKernel
         GET_DATA_SAFELY(X, "Input", "X", "Activation"));
     auto out = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(Out, "Output", "Out", "Activation"));
-
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
+
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {
       *attr.second = context.Attr<float>(attr.first);
@@ -187,9 +187,13 @@ class ActivationKernel
     if (use_32bit_index && is_gpu_place) {
       functor(*place, To32BitIndex(x), To32BitIndex(out));
     } else if (is_cpu_place) {
+#if defined(PADDLE_WITH_MKLML) && !defined(_WIN32)
       auto* dev = context.template device_context<platform::CPUDeviceContext>()
                       .pool_device();
       functor(*dev, x, out);
+#else
+      functor(*place, x, out);
+#endif
     } else {
       functor(*place, x, out);
     }
@@ -216,10 +220,10 @@ class ActivationGradKernel
         GET_DATA_SAFELY(dX, "Input", "X@GRAD", "ActivationGrad"));
     auto x = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(X, "Input", "X", "ActivationGrad"));
-
     auto* place =
         context.template device_context<DeviceContext>().eigen_device();
     Functor functor;
+
     auto attrs = functor.GetAttrs();
     for (auto& attr : attrs) {
       *attr.second = context.Attr<float>(attr.first);
@@ -232,9 +236,13 @@ class ActivationGradKernel
       functor(*place, To32BitIndex(x), To32BitIndex(out), To32BitIndex(dout),
               To32BitIndex(dx));
     } else if (is_cpu_place) {
+#if defined(PADDLE_WITH_MKLML) && !defined(_WIN32)
       auto* dev = context.template device_context<platform::CPUDeviceContext>()
                       .pool_device();
       functor(*dev, x, out, dout, dx);
+#else
+      functor(*place, x, out, dout, dx);
+#endif
     } else {
       functor(*place, x, out, dout, dx);
     }
@@ -415,12 +423,6 @@ template <typename T>
 struct ReluCPUFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    // #ifdef PADDLE_WITH_MKLML
-    // #pragma omp parallel for
-    // #endif
-    //     for (auto i = 0; i < out.size(); i++) {
-    //       out(i) = x(i) > static_cast<T>(0) ? x(i) : 0;
-    //     }
     out.device(d) = x.cwiseMax(static_cast<T>(0));
   }
 };
@@ -438,16 +440,6 @@ struct ReluGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    // #ifdef PADDLE_WITH_MKLML
-    // #pragma omp parallel for
-    // #endif
-    //     for (auto i = 0; i < out.size(); i++) {
-    //       auto t =
-    //           out(i) > static_cast<T>(0) ? static_cast<T>(1) :
-    //           static_cast<T>(0);
-    //       dx(i) = dout(i) * t;
-    //       // out(i) = x(i) > static_cast<T>(0)? x(i): 0;
-    //     }
     dx.device(d) = dout * (out > static_cast<T>(0)).template cast<T>();
   }
 
