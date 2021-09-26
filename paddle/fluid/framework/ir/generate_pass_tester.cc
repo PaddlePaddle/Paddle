@@ -20,58 +20,65 @@ REGISTER_GENERATE_PASS(generate_fc_fuse) {
   paddle::framework::ir::PassPairs pass_pairs;
   for (bool with_relu : {true, false}) {
     // pattern
-    auto pattern = [with_relu](VAR_(x), VAR_(y), VAR_(z)) {
-      auto mul = OP_(mul)({{"X", x}, {"Y", y}});
-      auto ewadd = OP_(elementwise_add)({{"X", mul}, {"Y", z}});
+    SUBGRAPH_(pattern)
+    ([ subgraph = &pattern, with_relu ](VAR_(x), VAR_(y), VAR_(z)) {
+      VLOG(3) << "exec lambda func.";
+      auto mul = OP_(mul)({{"X", x}, {"Y", y}}).Out("Out");
+      auto ewadd = OP_(elementwise_add)({{"X", mul}, {"Y", z}}).Out("Out");
       if (with_relu) {
-        return OP_(relu)({{"X", ewadd}});
+        return OP_(relu)({{"X", ewadd}}).Out("Out");
       } else {
         return ewadd;
       }
-    };
+    });
     // replace
-    auto replace = [with_relu](VAR_(x), VAR_(y), VAR_(z)) {
+    SUBGRAPH_(replace)
+    ([ subgraph = &replace, with_relu ](VAR_(x), VAR_(y), VAR_(z)) {
       auto fc = OP_(fc)({{"Input", x}, {"W", y}, {"Bias", z}});
       if (with_relu) {
       } else {
       }
-      return fc;
-    };
-    pass_pairs.push_back(std::make_pair(pattern, replace));
+      return fc.Out("Out");
+    });
+    pass_pairs.push_back({pattern, replace});
   }
   return pass_pairs;
 }
 
 REGISTER_GENERATE_PASS(generate_multi_add_to_addn) {
   // pattern
-  SUBGRAPH_(pattern) = [](VAR_(x), VAR_(y), VAR_(z)) {
-    auto ewadd1 = OP_(elementwise_add)({{"X", x}, {"Y", y}});
-    auto ewadd2 = OP_(elementwise_add)({{"X", ewadd1}, {"Y", z}});
+  SUBGRAPH_(pattern)
+  ([subgraph = &pattern](VAR_(x), VAR_(y), VAR_(z)) {
+    auto ewadd1 = OP_(elementwise_add)({{"X", x}, {"Y", y}}).Out("Out");
+    auto ewadd2 = OP_(elementwise_add)({{"X", ewadd1}, {"Y", z}}).Out("Out");
     return ewadd2;
-  };
+  });
   // replace
-  auto replace = [](VAR_(x), VAR_(y), VAR_(z)) {
-    return OP_(sum)({"X", {x, y, z}});
-  };
-  return std::make_pair(pattern, replace);
+  SUBGRAPH_(replace)
+  ([subgraph = &replace](VAR_(x), VAR_(y), VAR_(z)) {
+    return OP_(sum)({"X", {x, y, z}}).Out("Out");
+  });
+  return {pattern, replace};
 }
 
 REGISTER_GENERATE_PASS(generate_combine_matmul) {
   // pattern
-  auto pattern = [](VAR_(x), VAR_(y), VAR_(z)) {
-    auto matmul1 = OP_(matmul)({{"X", x}, {"Y", y}});
-    auto matmul2 = OP_(matmul)({{"X", x}, {"Y", z}});
+  SUBGRAPH_(pattern)
+  ([subgraph = &pattern](VAR_(x), VAR_(y), VAR_(z)) {
+    auto matmul1 = OP_(matmul)({{"X", x}, {"Y", y}}).Out("Out");
+    auto matmul2 = OP_(matmul)({{"X", x}, {"Y", z}}).Out("Out");
     return std::make_tuple(matmul1, matmul2);
-  };
+  });
   // replace
-  auto replace = [](VAR_(x), VAR_(y), VAR_(z)) {
-    auto concat = OP_(concat)({"X", {y, z}});
-    auto matmul = OP_(matmul)({{"X", x}, {"Y", concat}});
-    auto slice1 = OP_(slice)({"X", matmul});
-    auto slice2 = OP_(slice)({"X", matmul});
+  SUBGRAPH_(replace)
+  ([subgraph = &replace](VAR_(x), VAR_(y), VAR_(z)) {
+    auto concat = OP_(concat)({"X", {y, z}}).Out("Out");
+    auto matmul = OP_(matmul)({{"X", x}, {"Y", concat}}).Out("Out");
+    auto slice1 = OP_(slice)({"X", matmul}).Out("Out");
+    auto slice2 = OP_(slice)({"X", matmul}).Out("Out");
     return std::make_tuple(slice1, slice2);
-  };
-  return std::make_pair(pattern, replace);
+  });
+  return {pattern, replace};
 }
 
 namespace paddle {
@@ -155,20 +162,20 @@ TEST(GeneratePass, generate_multi_add_to_addn) {
 
   graph.reset(pass->Apply(graph.release()));
   int num_nodes_after = graph->Nodes().size();
-  int num_addn_nodes_after = GetNumOpNodes(graph, "add_n");
+  int num_sum_nodes_after = GetNumOpNodes(graph, "sum");
   VLOG(3) << DebugString(graph);
 
   PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 2,
                     platform::errors::InvalidArgument(
                         "num_nodes_before=%d, num_nodes_after=%d.",
                         num_nodes_before, num_nodes_after));
-  PADDLE_ENFORCE_EQ(num_addn_nodes_after, 1,
+  PADDLE_ENFORCE_EQ(num_sum_nodes_after, 1,
+                    platform::errors::InvalidArgument("num_sum_nodes_after=%d.",
+                                                      num_sum_nodes_after));
+  PADDLE_ENFORCE_EQ(num_add_nodes_before, num_sum_nodes_after + 1,
                     platform::errors::InvalidArgument(
-                        "num_addn_nodes_after=%d.", num_addn_nodes_after));
-  PADDLE_ENFORCE_EQ(num_add_nodes_before, num_addn_nodes_after + 1,
-                    platform::errors::InvalidArgument(
-                        "num_add_nodes_before=%d, num_addn_nodes_after=%d.",
-                        num_add_nodes_before, num_addn_nodes_after));
+                        "num_add_nodes_before=%d, num_sum_nodes_after=%d.",
+                        num_add_nodes_before, num_sum_nodes_after));
 }
 
 TEST(GeneratePass, generate_combine_matmul) {
