@@ -68,7 +68,7 @@ class TestEigOp(OpTest):
 class TestEigBatchMarices(TestEigOp):
     def init_input(self):
         self.shape = (3, 3, 3)
-        self.dtype = 'float32'
+        self.dtype = np.float32
         self.x = np.random.random(self.shape).astype(self.dtype)
         self.out = np.linalg.eig(self.x)
 
@@ -76,7 +76,7 @@ class TestEigBatchMarices(TestEigOp):
 class TestDouble(TestEigOp):
     def init_input(self):
         self.shape = (3, 3)
-        self.dtype = 'float64'
+        self.dtype = np.float64
         self.x = np.random.random(self.shape).astype(self.dtype)
         self.out = np.linalg.eig(self.x)
 
@@ -152,18 +152,25 @@ class TestEigUnsupportedDtypeError(unittest.TestCase):
         paddle.enable_static()
 
 
-class RunGrad(unittest.TestCase):
+class TestGrad(unittest.TestCase):
     def test_run(self):
         paddle.device.set_device("cpu")
         paddle.disable_static()
-        a = np.random.random((2, 3, 3, 3)).astype('float32')
+        dx_expectd = np.array([[0.9482, 0.0767, -0.0162],
+                               [-0.0459, 1.0393, -0.0342],
+                               [-0.0456, 0.0863, 1.0125]]).astype("float32")
+        a = np.array([[1.6707249, 7.2249975, 6.5045543],
+                      [9.956216, 8.749598, 6.066444],
+                      [4.4251957, 1.7983172, 0.370647]]).astype("float32")
         a_pd = paddle.to_tensor(a)
         a_pd.stop_gradient = False
         w2, v2 = paddle.linalg.eig(a_pd)
-        dx_pd = paddle.grad([w2, v2], a_pd)
+        dx_actual = paddle.grad([w2, v2], a_pd)
+        self.assertTrue(
+            np.allclose(
+                dx_actual, dx_expectd, rtol=1e-6, atol=1e-4))
         paddle.enable_static()
 
 
 if __name__ == "__main__":
-    #paddle.enable_static()
     unittest.main()

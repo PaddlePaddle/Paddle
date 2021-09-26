@@ -1596,23 +1596,31 @@ def matrix_power(x, n, name=None):
 
 def eig(x, name=None):
     """
-    This API performs the eigenvalue decomposition.
+    This API performs the eigenvalue decomposition of a square matrix or a batch of square matrices.
+
+    .. note::
+        If the matrix is a Hermitian or a real symmetric matrix, please use :ref:`paddle.linalg.eigh` instead, which is much faster.
+        If only eigenvalues is needed, please use :ref:`paddle.linalg.eigvals` instead.
+        If the matrix is of any shape, please use :ref:`paddle.linalg.svd`.
+        This API is only supported on CPU device.
+        The output datatype is always complex for both real and complex input.
 
     Args:
-        x (Tensor): A tensor with shape math:`[..., N, N]`, The data type of the input tensor x
-            shoulf be one of float32, float64, compplex64 and complex128.
-        name (str, optional): The default value is `None`. Normally there is no need for
-            user to set this property. For more information, please refer to :ref:`api_guide_Name`.
+        x (Tensor): A tensor with shape math:`[*, N, N]`, The data type of the x should be one of ``float32``,
+            ``float64``, ``compplex64`` or ``complex128``.
+        name (str, optional): The default value is `None`. Normally there is no need for user to set 
+            this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Eigenvalues(Tensors): A tensor with shape math:`[..., N]` refers to the eigen values.
-        Eigenvectors(Tensors): A tensor with shape math:`[..., N, N]` refers to the eigen vectors.
+        Eigenvalues(Tensors): A tensor with shape math:`[*, N]` refers to the eigen values.
+        Eigenvectors(Tensors): A tensor with shape math:`[*, N, N]` refers to the eigen vectors.
 
     Examples:
         .. code-block:: python
 
             import paddle
             import numpy as np
+
             paddle.device.set_device("cpu")
 
             x_data = np.array([[1.6707249, 7.2249975, 6.5045543],
@@ -1633,7 +1641,6 @@ def eig(x, name=None):
             # Tensor(shape=[3], dtype=complex128, place=CPUPlace, stop_gradient=False,
             #       [ (16.50471283351188+0j)  , (-5.5034820550763515+0j) ,
             #         (-0.21026087843552282+0j)])
-
     """
     if in_dygraph_mode():
         w, v = _C_ops.eig(x)
