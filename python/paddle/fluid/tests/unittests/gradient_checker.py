@@ -87,6 +87,8 @@ def var_to_np_array_in_scope(scope, place, name):
 
 
 def make_jacobian(x, y_size, np_dtype):
+    print(" === in make_jacobian func ===, x:", x)
+    print(" === in make_jacobian func ===, y.size:", y_size)
     if isinstance(x, fluid.framework.Variable):
         return np.zeros((_product(x.shape), y_size), dtype=np_dtype)
     elif isinstance(x, collections.Sequence):
@@ -119,6 +121,8 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
         where "x_size" is the number of elements in x and
         "y_size" is the number of elements in each y_i.
     """
+    print("======== in _numerical_ begging, x:", _as_list(x))
+    print("======== in _numerical_ begging, y:", _as_list(y))
     if not isinstance(x, fluid.framework.Variable):
         raise TypeError('x is not Variable')
 
@@ -128,6 +132,8 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
 
     def run():
         y_res = exe.run(program, scope=scope, fetch_list=y)
+        print("===== y_res:", y_res)
+        print("===== y_res length:", len(y_res))
         return [yi.flatten() for yi in y_res]
 
     x_name = x.name
@@ -151,8 +157,16 @@ def _compute_numerical_jacobian(program, x, y, place, scope, delta):
         _set_item(x_t, i, orig, np_type)
 
         for j in six.moves.xrange(len(y)):
-            jacobian[j][i, :] = (y_pos[j] - y_neg[j]) / delta / 2.
+            # print("=========== set_item", y_pos[j])
+            # print("=========== set_item", y_neg[j])
+            # print("=========== set_item", y_pos[j] - y_neg[j])
+            # print("=========== set_item", (y_pos[j] - y_neg[j]) / delta)
+            # print("=========== set_item", (y_pos[j] - y_neg[j]) / delta / 2)
 
+            jacobian[j][i, :] = (y_pos[j] - y_neg[j]) / delta / 2.
+            print("====== six.move result:", jacobian[j][i, :])
+    print("======= _compute_numerical_jacobian   ---- return jacobian =====:",
+          jacobian)
     return jacobian
 
 
@@ -173,6 +187,10 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
         where "x_size" is the number of elements in x_i and
         "dy_size" is the number of elements in y.
     """
+    if program is None:
+        program = fluid.default_main_program()
+    # print("======== in _analytical_ begging, x:", _as_list(x))
+    # print("======== in _analytical_ begging, y:", _as_list(y))
     if not isinstance(y, fluid.framework.Variable):
         raise TypeError('y is not Variable')
 
@@ -186,28 +204,44 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
     print("======= in _compute_analytical_jacobian func: -> y:", y)
     print("======= in _compute_analytical_jacobian func: -> x:", x)
     print("======= in _compute_analytical_jacobian func: -> dy:", dy)
+    # print("======= in _compute_analytical_jacobian func: -> type(y):", type(y))
+    # print("======= in _compute_analytical_jacobian func: -> type(x):", type(x))
+    # print("======= in _compute_analytical_jacobian func: -> type(dy):", type(dy))
+    # print("========== in analytical_jacobian begging, y.shape:", y.shape)
+    # print(" in _compute_analytical_jacobian , len(program.global_block().ops) ==,", len(program.global_block().ops))
+    # print(" in _compute_analytical_jacobian , program.global_block().ops ======,", program.global_block().ops)
     dx = fluid.gradients(y, x, dy)
-
+    print("============= in _compute_analytical_jacobian : ==> dx", dx)
+    # print(" in _compute_analytical_jacobian , len(program.global_block().ops) ==,", len(program.global_block().ops))
+    # print(" in _compute_analytical_jacobian , program.global_block().ops ======,", program.global_block().ops)
     # init dy tensor in scope
     value = np.zeros(y.shape, dtype=np_type)
+    print("======= value,", value)
     dy_t = set_var_in_scope(scope, place, dy_name, value)
-
+    print("======= dy_t,", dy_t)
     exe = fluid.Executor(place)
-
+    print("========== in analytical_jacobian, y.shape:", y.shape)
     y_size = _product(y.shape)
-
+    print("========== in analytical_jacobian, y_size:", y_size)
     x = _as_list(x)
     jacobian = make_jacobian(x, y_size, np_type)
+    print(" == == == after make_jacobian func == == == ", jacobian)
+
+    check = [(i, dxi) for i, dxi in enumerate(dx) if dxi is not None]
+    print("=========== checking  ===", check)
 
     # filter None in dx for DX/DY may be None in kernel
     # only fetch not None dx in exe.run
     filted = [(i, dxi) for i, dxi in enumerate(dx) if dxi is not None]
     filted_idx, filted_dx = zip(*filted)
+    print("=== filted_idx: ", filted_idx)
+    print("=== filted_dx: ", filted_dx)
 
     for i in six.moves.xrange(y_size):
-        _set_item(dy_t, i, 1, np_type)
+        _set_item(dy_t, i, 1, np_type)  # set dy_i => 1
 
         dx_res = exe.run(program, scope=scope, fetch_list=filted_dx)
+        print("=========== dx_res,", dx_res)
 
         for j in six.moves.xrange(len(filted_dx)):
             dx_idx = filted_idx[j]
@@ -218,7 +252,8 @@ def _compute_analytical_jacobian(program, x, y, place, scope):
                     dx[dx_idx].shape, dtype=np_type).flatten()
 
         _set_item(dy_t, i, 0, np_type)
-
+    print("======= _compute_analytical_jacobian   ---- return jacobian =====:",
+          jacobian)
     return jacobian
 
 
@@ -261,6 +296,8 @@ def grad_check(
     # check input arguments
     x = _as_list(x)
     y = _as_list(y)
+    print("====== in grad_check, y counts", len(y))
+    print("====== in grad_check, y:", y)
 
     for v in x:
         v.stop_gradient = False
@@ -287,6 +324,12 @@ def grad_check(
         feeds = {k.name: v for k, v in zip(x, x_init)}
         exe.run(program, feed=feeds, scope=scope)
 
+    print(
+        "=========== in grad check, len(program.global_block().ops) ==========,",
+        len(program.global_block().ops))
+    print("=========== in grad check, program.global_block().ops ==========,",
+          program.global_block().ops)
+
     # [x_idx, y_idx]
     numerical = [
         _compute_numerical_jacobian(program, xi, y, place, scope, eps)
@@ -295,9 +338,14 @@ def grad_check(
 
     # [y_idx, x_idx]
     analytical = []
+    print("============== in grad check, y:", y)
     for yi in y:
+        print("============== in grad check, yi:", yi)
+        print("============== in grad check, yi.shape:", yi.shape)
+        print("============== in grad check, yi.shape' type:", type(yi.shape))
+        print("============== in grad check, _product(yi.shape):",
+              _product(yi.shape))
         prog = program.clone()
-
         clone_x = []
         clone_y = None
         for b in prog.blocks:
@@ -312,6 +360,26 @@ def grad_check(
 
         analytical.append(
             _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
+        print("============== analytical:", analytical)
+        # if _product(yi.shape) == 0:
+        #     print(" ==== === == ==  Invalid y  =========== == ")
+        # else:
+        #     prog = program.clone()
+        #     clone_x = []
+        #     clone_y = None
+        #     for b in prog.blocks:
+        #         if b.has_var(yi.name):
+        #             clone_y = b.var(yi.name)
+        #             break
+        #     for xi in x:
+    #     for b in prog.blocks:
+    #         if b.has_var(xi.name):
+    #             clone_x.append(b.var(xi.name))
+    #             break
+
+    # analytical.append(
+    #     _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
+    # print("============== analytical:", analytical)
 
     for i, (x_idx,
             y_idx) in enumerate(product(* [range(len(x)), range(len(y))])):
@@ -324,6 +392,11 @@ def grad_check(
                   % (y[y_idx].name, x[x_idx].name, str(place), n, a)
             return fail_test(msg)
     print("============== in grad_check end ===============")
+    print(
+        "=========== in grad check, len(program.global_block().ops) ==========,",
+        len(program.global_block().ops))
+    print("=========== in grad check, program.global_block().ops ==========,",
+          program.global_block().ops)
     return True
 
 
@@ -333,8 +406,8 @@ def double_grad_check(x,
                       y_grads=None,
                       place=None,
                       program=None,
-                      eps=1e-3,
-                      atol=1e-3,
+                      eps=1e-6,
+                      atol=1e-5,
                       rtol=1e-3,
                       raise_exception=True):
     print("============== in double_grad_check beginning ===============")
@@ -368,6 +441,8 @@ def double_grad_check(x,
         v.stop_gradient = False
         v.persistable = True
     y = _as_list(y)
+    print("====== in double grad_check, y counts", len(y))
+    print("====== in double grad_check, y:", y)
 
     if program is None:
         program = fluid.default_main_program()
@@ -383,7 +458,8 @@ def double_grad_check(x,
             dy = program.global_block().create_var(
                 name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
             dy.stop_gradient = False
-            v = np.random.random(size=yi.shape).astype(np_type)
+            v = np.ones(yi.shape).astype(np_type)
+            # v = np.random.random(size=yi.shape).astype(np_type)
             set_var_in_scope(scope, place, dyi_name, v)
             y_grads.append(dy)
             y_grads_init.append(v)
@@ -411,6 +487,14 @@ def double_grad_check(x,
     print("== in double_grad_check: x.len:", len(_as_list(x)))
     print("== in double_grad_check: target.len:", len(_as_list(target_grads)))
     print("== in double_grad_check: x_init.len :", len(_as_list(x_init)))
+
+    print(
+        "=========== in double grad check, len(program.global_block().ops) ==========,",
+        len(program.global_block().ops))
+    print(
+        "=========== in double grad check, program.global_block().ops ==========,",
+        program.global_block().ops)
+
     grad_check(x, target_grads, x_init, place, program, eps, atol, rtol)
     print("============== in double_grad_check end ===============")
 
@@ -430,6 +514,7 @@ def trible_grad_check(x,
                       raise_exception=True):
 
     print("============== in trible_grad_check begging ===============")
+
     # check input arguments
     x = _as_list(x)
     for v in x:
@@ -451,7 +536,8 @@ def trible_grad_check(x,
             dy = program.global_block().create_var(
                 name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
             dy.stop_gradient = False
-            v = np.random.random(size=yi.shape).astype(np_type)
+            v = np.ones(yi.shape).astype(np_type)
+            # v = np.random.random(size=yi.shape).astype(np_type)
             set_var_in_scope(scope, place, dyi_name, v)
             y_grads.append(dy)
             y_grads_init.append(v)
@@ -460,7 +546,7 @@ def trible_grad_check(x,
         y_grads_init = [
             var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
         ]
-
+    print("== == == == == y_grads: ", y_grads)
     # append first order grads
     target_grads = fluid.gradients(y, x, y_grads)
     print("============ in trible_grad_check  == target_grads:", target_grads)
@@ -471,7 +557,10 @@ def trible_grad_check(x,
     x += y_grads
     x_init = _as_list(x_init)
     x_init += y_grads_init
-
+    print("=========== len(program.global_block().ops) ==========,",
+          len(program.global_block().ops))
+    print("=========== program.global_block().ops ==========,",
+          program.global_block().ops)
     double_grad_check(
         x=x,
         y=target_grads,
@@ -506,59 +595,61 @@ def trible_grad_check_2(x,
     if program is None:
         program = fluid.default_main_program()
 
-    if y_grads is None:
-        scope = fluid.executor.global_scope()
-        y_grads = []
-        y_grads_init = []
-        for yi in y:
-            dyi_name = _append_grad_suffix_(yi.name)
-            print("========= trible_grad_check_2:=======", dyi_name)
-            np_type = dtype_to_np_dtype(yi.dtype)
-            dy = program.global_block().create_var(
-                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
-            dy.stop_gradient = False
-            v = np.random.random(size=yi.shape).astype(np_type)
-            set_var_in_scope(scope, place, dyi_name, v)
-            y_grads.append(dy)
-            y_grads_init.append(v)
-    else:
-        y_grads = _as_list(y_grads)
-        y_grads_init = [
-            var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
-        ]
+    # if y_grads is None:
+    #     scope = fluid.executor.global_scope()
+    #     y_grads = []
+    #     y_grads_init = []
+    #     for yi in y:
+    #         dyi_name = _append_grad_suffix_(yi.name)
+    #         print("========= trible_grad_check_2:=======", dyi_name)
+    #         np_type = dtype_to_np_dtype(yi.dtype)
+    #         dy = program.global_block().create_var(
+    #             name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
+    #         dy.stop_gradient = False
+    #         v = np.random.random(size=yi.shape).astype(np_type)
+    #         set_var_in_scope(scope, place, dyi_name, v)
+    #         y_grads.append(dy)
+    #         y_grads_init.append(v)
+    # else:
+    #     y_grads = _as_list(y_grads)
+    #     y_grads_init = [
+    #         var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
+    #     ]
 
     # append first order grads
     target_grads = fluid.gradients(y, x, y_grads)
     print("============ in trible_grad_check_2  == target_grads:", target_grads)
 
     y_grads_grads = None
-    if y_grads_grads is None:
-        scope = fluid.executor.global_scope()
-        y_grads_grads = []
-        y_grads_grads_init = []
-        for yi in target_grads:
-            dyi_name = _append_grad_suffix_(yi.name)
-            print("========= trible_grad_check_2:=======", dyi_name)
-            np_type = dtype_to_np_dtype(yi.dtype)
-            dy = program.global_block().create_var(
-                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
-            dy.stop_gradient = False
-            v = np.random.random(size=yi.shape).astype(np_type)
-            set_var_in_scope(scope, place, dyi_name, v)
-            y_grads_grads.append(dy)
-            y_grads_grads_init.append(v)
+    # if y_grads_grads is None:
+    #     scope = fluid.executor.global_scope()
+    #     y_grads_grads = []
+    #     y_grads_grads_init = []
+    #     for yi in target_grads:
+    #         dyi_name = _append_grad_suffix_(yi.name)
+    #         print("========= trible_grad_check_2:=======", dyi_name)
+    #         np_type = dtype_to_np_dtype(yi.dtype)
+    #         dy = program.global_block().create_var(
+    #             name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
+    #         dy.stop_gradient = False
+    #         v = np.random.random(size=yi.shape).astype(np_type)
+    #         set_var_in_scope(scope, place, dyi_name, v)
+    #         y_grads_grads.append(dy)
+    #         y_grads_grads_init.append(v)
+
+    # x += y_grads
 
     target_grads_grads = fluid.gradients(target_grads, x, y_grads_grads)
     print("============ in trible_grad_check_2  == target_grads:",
           target_grads_grads)
     # y_grads are the input of first-order backward,
     # so, they are also the input of second-order backward.
-    x += y_grads
-    x_init = _as_list(x_init)
-    x_init += y_grads_init
 
-    x += y_grads_grads
-    x_init += y_grads_grads_init
+    x_init = _as_list(x_init)
+    # x_init += y_grads_init
+
+    # x += y_grads_grads
+    # x_init += y_grads_grads_init
 
     grad_check(
         x=x,
@@ -590,14 +681,16 @@ def trible_test(x,
     # print("y:", y)
     # print("x:", x)
     target_grads = fluid.gradients(y, x, y_grads)
-    print(target_grads)
-    print("============================")
+    print("======= in grad_test func: target_grads length:", len(target_grads))
+    print("======= in grad_test func: target_grads:", target_grads)
     target_grads_grads = fluid.gradients(target_grads, x, y_grads)
-    print(target_grads_grads)
-    print("============================")
+    print("======= in grad_test func: -> target_grads_grads:",
+          target_grads_grads)
+    print("======= in grad_test func: -> x:", x)
+    print("======= in grad_test func: -> y_grads:", y_grads)
+    print("===== in grad_test func: -> type(target_grads_grads[0]):",
+          type(target_grads_grads[0]))
     target_grads_grads_grads = fluid.gradients(target_grads_grads, x, y_grads)
-    print(target_grads_grads_grads)
-    print("============================")
 
     if place is None:
         place = fluid.CPUPlace()
@@ -619,29 +712,41 @@ def trible_test(x,
         for var, arr in zip(x, x_init):
             assert var.shape == arr.shape
         feeds = {k.name: v for k, v in zip(x, x_init)}
-        exe.run(program, feed=feeds, scope=scope)
+        grad0, = exe.run(program,
+                         feed=feeds,
+                         scope=scope,
+                         fetch_list=[zi.name for zi in target_grads])
+        grad1, = exe.run(program,
+                         feed=feeds,
+                         scope=scope,
+                         fetch_list=[zi.name for zi in target_grads_grads])
+        grad2, = exe.run(
+            program,
+            feed=feeds,
+            scope=scope,
+            fetch_list=[zi.name for zi in target_grads_grads_grads])
+    print("============================== ", grad0)
+    print("============================== ", grad1)
+    print("============================== ", grad2)
+    # grad_check(x = x, y = target_grads_grads, x_init = x_init, place = place, 
+    #                   program = program, eps = eps, atol = atol, rtol = rtol)
+
+    print(" in trible_test , len(program.global_block().ops) ==,",
+          len(program.global_block().ops))
+    print(" in trible_test , program.global_block().ops ======,",
+          program.global_block().ops)
+    print("====  target_grads_grads:", target_grads_grads)
 
     numerical = [
         _compute_numerical_jacobian(program, xi, target_grads_grads, place,
                                     scope, eps) for xi in x
     ]
+    print("============ trible_test numerical", numerical)
 
-    # [y_idx, x_idx]
-    analytical = []
-    for yi in target_grads_grads:
-        prog = program.clone()
-
-        clone_x = []
-        clone_y = None
-        for b in prog.blocks:
-            if b.has_var(yi.name):
-                clone_y = b.var(yi.name)
-                break
-        for xi in x:
-            for b in prog.blocks:
-                if b.has_var(xi.name):
-                    clone_x.append(b.var(xi.name))
-                    break
-
-        analytical.append(
-            _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
+    # with open("main_prog.txt", "w") as fout:
+    #     try:
+    #         # compatible with paddle version <= 1.8
+    #         from paddle.fluid.transpiler.details import program_to_code
+    #         program_to_code(fluid.default_main_program(), fout=fout)
+    #     except ImportError:
+    #         fout.write(str(fluid.default_main_program()))

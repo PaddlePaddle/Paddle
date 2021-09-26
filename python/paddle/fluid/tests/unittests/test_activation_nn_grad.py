@@ -38,8 +38,8 @@ class TestSigmoidTribleGradCheck(unittest.TestCase):
         np.random.seed(2021)
         x_arr = np.random.random(shape).astype(dtype)
         # x_arr[np.abs(x_arr) < 0.005] = 0.002
-        gradient_checker.trible_grad_check(
-            [x], y, x_init=x_arr, place=place, eps=eps)
+        # trible_test \ trible_grad_check_2 \ double_grad_check
+        gradient_checker.trible_test([x], y, x_init=x_arr, place=place, eps=eps)
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
