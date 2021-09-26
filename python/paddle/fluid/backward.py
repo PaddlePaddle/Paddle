@@ -1625,11 +1625,6 @@ def append_backward(loss,
     _append_backward_vars_(target_grad_block, fwd_op_num, grad_to_var,
                            grad_info_map)
 
-    # if distop_context is not None:
-    #     for key, value in grad_to_var.items():
-    #         if isinstance(key, str) and isinstance(value, str):
-    #             distop_context.gradname2varname[key] = value
-
     program.current_block_idx = current_block_idx
     program._sync_with_cpp()
 
