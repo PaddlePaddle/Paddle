@@ -206,7 +206,25 @@ class ConvBNLayer(nn.Layer):
 
 
 class DenseNet(nn.Layer):
-    def __init__(self, layers=60, bn_size=4, dropout=0, class_num=1000):
+    """DenseNet model from
+    `"Densely Connected Convolutional Networks" <https://arxiv.org/pdf/1608.06993.pdf>`_
+
+    Args:
+        layers (int): layers of densenet. Default: 121.
+        bn_size (int): expansion of growth rate in the middle layer. Default: 4.
+        dropout (int): dropout rate. Default: 0..
+        num_classes (int): output dim of last fc layer. Default: 1000.
+
+    Examples:
+        .. code-block:: python
+
+            from paddle.vision.models import DenseNet
+
+            densent = DenseNet()
+
+    """
+
+    def __init__(self, layers=121, bn_size=4, dropout=0., num_classes=1000):
         super(DenseNet, self).__init__()
 
         supported_layers = [121, 161, 169, 201, 264]
@@ -279,7 +297,7 @@ class DenseNet(nn.Layer):
 
         self.out = Linear(
             num_features,
-            class_num,
+            num_classes,
             weight_attr=ParamAttr(
                 initializer=Uniform(-stdv, stdv), name="fc_weights"),
             bias_attr=ParamAttr(name="fc_offset"))
