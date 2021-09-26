@@ -166,7 +166,7 @@ LARS_FUNCTION_FLAG void L2NormKernel(
 
   if (threadIdx.x == 0) {
     p_buffer[blockIdx.x] = s_buffer[0];
-    g_buffer[blockIdx.x] = rescale_grad_pow * s_buffer[1];
+    g_buffer[blockIdx.x] = s_buffer[1];
   }
 
 #if CUDA_VERSION >= 11000
@@ -176,7 +176,8 @@ LARS_FUNCTION_FLAG void L2NormKernel(
   MT p_partial_sum = threadIdx.x < gridDim.x ? p_buffer[threadIdx.x] : 0;
   MT g_partial_sum = threadIdx.x < gridDim.x ? g_buffer[threadIdx.x] : 0;
   *p_n = Sqrt(math::blockReduceSum<MT>(p_partial_sum, FINAL_MASK));
-  *g_n = Sqrt(math::blockReduceSum<MT>(g_partial_sum, FINAL_MASK));
+  *g_n = Sqrt(rescale_grad_pow *
+              math::blockReduceSum<MT>(g_partial_sum, FINAL_MASK));
 #endif
 }
 
@@ -197,12 +198,14 @@ __global__ void MomentumLarsKernel(
   L2NormKernel<T, MT>(param, grad, p_buffer, g_buffer, repeat_times, numel,
                       rescale_grad, &param_norm, &grad_norm);
 #else
+  const MT rescale_grad_pow = rescale_grad * rescale_grad;
   MT param_parital_norm = threadIdx.x < thresh ? p_buffer[threadIdx.x] : 0;
   MT grad_parital_norm = threadIdx.x < thresh ? g_buffer[threadIdx.x] : 0;
   __syncthreads();
   MT param_norm =
       Sqrt(math::blockReduceSum<MT>(param_parital_norm, FINAL_MASK));
-  MT grad_norm = Sqrt(math::blockReduceSum<MT>(grad_parital_norm, FINAL_MASK));
+  MT grad_norm = Sqrt(rescale_grad_pow *
+                      math::blockReduceSum<MT>(grad_parital_norm, FINAL_MASK));
 #endif
 
   const MT lr = learning_rate[0];
