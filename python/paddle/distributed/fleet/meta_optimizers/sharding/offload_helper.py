@@ -50,7 +50,8 @@ class OffloadHelper(object):
             })
 
     def _insert_broadcast_op(self, block, idx, param):
-        if self.ring_id is None: return
+        if self.ring_id is None:
+            return
         block._insert_op_without_sync(
             idx,
             type="c_broadcast",
@@ -405,7 +406,8 @@ class OffloadHelper(object):
         for idx, op in reversed(list(enumerate(block.ops))):
             if is_update_op(op):
                 param = op.desc.input("Param")[0]
-                if param not in global_params: continue
+                if param not in global_params:
+                    continue
                 # step3.1: create offload_var
                 offload_var_name = self._get_offload_var_name(param)
                 param_name_to_offload_name[param] = offload_var_name
@@ -427,6 +429,7 @@ class OffloadHelper(object):
                 if offload:
                     # step3.3: insert fetch op
                     self._insert_fetch_op(block, idx, offload_var_name, param)
+
                 continue
 
             # step3.4: remove cast op
@@ -474,16 +477,14 @@ class OffloadHelper(object):
         insert_idx = len(startup_block.ops)
         for idx, op in reversed(list(enumerate(startup_block.ops))):
             for out_name in op.output_arg_names:
-                if out_name in visited_vars:
-                    continue
+                if out_name in visited_vars: continue
 
                 if out_name in param_to_fp16:
                     var_name = out_name
-                    # FIXME(wangxi): offload should insert after broadcast param
                     if offload:
-                        offload_var_name = param_name_to_offload_name[var_name]
-                        self._insert_offload_op(startup_block, idx + 1,
-                                                var_name, offload_var_name)
+                        self._insert_offload_op(
+                            startup_block, idx + 1, var_name,
+                            param_name_to_offload_name[var_name])
 
                     self._insert_cast_op(startup_block, insert_idx, var_name,
                                          param_to_fp16[var_name])

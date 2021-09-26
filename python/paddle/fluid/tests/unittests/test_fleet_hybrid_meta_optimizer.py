@@ -321,12 +321,18 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
             'c_broadcast'
         ])
 
-    def test_opt_sharding_with_pp_amp_gclip_fuse_gm_optcast(self):
+    def test_opt_sharding_with_pp_amp_ckp_fuse_gm_optcast(self):
         train_prog, startup_prog = static.Program(), static.Program()
         avg_cost, strategy = self.pp_net(train_prog, startup_prog)
 
-        self.set_strategy(strategy, 'amp')
         self.set_strategy(strategy, 'pipeline')
+        self.set_strategy(strategy, 'amp')
+        strategy.amp_configs = {'custom_black_varnames': ['fc_6.b_0'], }
+        strategy.recompute = True
+        strategy.recompute_configs = {
+            "checkpoints":
+            ["fc_0.tmp_2", "fc_1.tmp_2", "fc_2.tmp_2", "fc_3.tmp_2"]
+        }
 
         strategy.sharding = True
         strategy.sharding_configs = {
@@ -339,14 +345,12 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
         strategy.fuse_all_reduce_ops = True
         strategy.fuse_grad_size_in_MB = 32
         strategy.fuse_grad_merge = True
-        clip = paddle.fluid.clip.GradientClipByGlobalNorm(1.0)
 
-        self.optimizer(
-            avg_cost, strategy, train_prog, startup_prog, grad_clip=clip)
+        self.optimizer(avg_cost, strategy, train_prog, startup_prog)
         train_prog = train_prog._pipeline_opt['section_program']
         startup_prog = startup_prog._pipeline_opt['startup_program']
 
-        self._debug = True
+        # self._debug = True
         self.debug_program(train_prog, startup_prog)
 
         startup_prog_ops = startup_prog.global_block().ops
@@ -367,32 +371,30 @@ class TestFleetHybridOptimizer(TestFleetMetaOptimizer):
             'c_comm_init', 'c_gen_nccl_id', 'c_comm_init', 'c_broadcast',
             'cast', 'c_broadcast', 'cast', 'c_broadcast', 'cast', 'c_broadcast',
             'cast', 'c_broadcast', 'cast', 'c_broadcast', 'cast', 'c_broadcast',
-            'cast', 'c_broadcast', 'cast', 'c_sync_comm_stream'
+            'cast', 'c_broadcast', 'c_sync_comm_stream'
         ])
 
         self.assertEqual(main_prog_op_types, [
             'recv_v2', 'cast', 'mul', 'elementwise_add', 'cast', 'tanh', 'cast',
             'mul', 'elementwise_add', 'cast', 'tanh', 'cast', 'mul',
-            'elementwise_add', 'cast', 'tanh', 'cast', 'mul', 'elementwise_add',
-            'softmax', 'cast', 'cross_entropy2', 'mean', 'elementwise_mul',
+            'elementwise_add', 'cast', 'tanh', 'cast', 'mul', 'cast',
+            'elementwise_add', 'cast', 'softmax', 'cast', 'cross_entropy2',
+            'mean', 'elementwise_mul', 'coalesce_tensor', 'coalesce_tensor',
             'coalesce_tensor', 'coalesce_tensor', 'coalesce_tensor',
             'coalesce_tensor', 'fill_constant', 'elementwise_mul_grad',
-            'mean_grad', 'cross_entropy_grad2', 'cast', 'softmax_grad',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
-            'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad', 'cast',
+            'mean_grad', 'cross_entropy_grad2', 'cast', 'softmax_grad', 'cast',
+            'elementwise_add_grad', 'cast', 'mul_grad', 'cast', 'tanh_grad',
+            'cast', 'elementwise_add_grad', 'mul_grad', 'cast', 'tanh_grad',
+            'cast', 'elementwise_add_grad', 'mul_grad', 'cast', 'cast', 'mul',
+            'elementwise_add', 'cast', 'tanh_grad', 'cast',
             'elementwise_add_grad', 'mul_grad', 'cast', 'c_sync_calc_stream',
-            'send_v2', 'cast', 'sum', 'cast', 'sum', 'c_reduce_sum',
-            'c_reduce_sum', 'c_sync_comm_stream', 'check_finite_and_unscale',
-            'cast', 'c_allreduce_max', 'c_allreduce_max', 'cast',
-            'update_loss_scaling', 'squared_l2_norm', 'squared_l2_norm',
-            'squared_l2_norm', 'squared_l2_norm', 'squared_l2_norm', 'sum',
-            'c_allreduce_sum', 'c_allreduce_sum', 'sqrt', 'fill_constant',
-            'elementwise_max', 'elementwise_div', 'elementwise_mul',
-            'elementwise_mul', 'elementwise_mul', 'elementwise_mul',
-            'elementwise_mul', 'momentum', 'cast', 'momentum', 'cast',
-            'momentum', 'cast', 'momentum', 'cast', 'momentum', 'cast',
-            'coalesce_tensor', 'c_broadcast', 'coalesce_tensor', 'c_broadcast'
+            'send_v2', 'cast', 'sum', 'sum', 'cast', 'sum', 'c_reduce_sum',
+            'c_reduce_sum', 'c_reduce_sum', 'c_sync_comm_stream',
+            'check_finite_and_unscale', 'cast', 'c_allreduce_max',
+            'c_allreduce_max', 'cast', 'update_loss_scaling', 'momentum',
+            'cast', 'momentum', 'cast', 'momentum', 'cast', 'momentum',
+            'momentum', 'cast', 'coalesce_tensor', 'c_broadcast', 'c_broadcast',
+            'coalesce_tensor', 'c_broadcast'
         ])
 
 
