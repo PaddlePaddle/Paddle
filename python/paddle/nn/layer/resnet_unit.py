@@ -134,44 +134,44 @@ class ResNetUnit(Layer):
             shape=bn_param_shape,
             dtype=bn_param_dtype)
         self.var_x.stop_gradient = True
-        if has_shortcut:
-            self.filter_z = self.create_parameter(
-                shape=filter_shape,
-                attr=filter_z_attr,
-                default_initializer=_get_default_param_initializer()).astype(
-                    np.float16)
-            self.scale_z = self.create_parameter(
-                shape=bn_param_shape,
-                attr=scale_z_attr,
-                dtype=bn_param_dtype,
-                default_initializer=I.Constant(1.0))
-            self.bias_z = self.create_parameter(
-                shape=bn_param_shape,
-                attr=bias_z_attr,
-                dtype=bn_param_dtype,
-                is_bias=True)
-            self.mean_z = self.create_parameter(
-                attr=ParamAttr(
-                    name=moving_mean_z_name,
-                    initializer=I.Constant(0.0),
-                    trainable=False),
-                shape=bn_param_shape,
-                dtype=bn_param_dtype)
-            self.mean_z.stop_gradient = True
-            self.var_z = self.create_parameter(
-                attr=ParamAttr(
-                    name=moving_var_z_name,
-                    initializer=I.Constant(1.0),
-                    trainable=False),
-                shape=bn_param_shape,
-                dtype=bn_param_dtype)
-            self.var_z.stop_gradient = True
-        else:
-            self.filter_z = self.filter_x
-            self.scale_z = self.scale_x
-            self.bias_z = self.bias_x
-            self.mean_z = self.mean_x
-            self.var_z = self.var_x
+        # if has_shortcut:
+        self.filter_z = self.create_parameter(
+            shape=filter_shape,
+            attr=filter_z_attr,
+            default_initializer=_get_default_param_initializer()).astype(
+                np.float16)
+        self.scale_z = self.create_parameter(
+            shape=bn_param_shape,
+            attr=scale_z_attr,
+            dtype=bn_param_dtype,
+            default_initializer=I.Constant(1.0))
+        self.bias_z = self.create_parameter(
+            shape=bn_param_shape,
+            attr=bias_z_attr,
+            dtype=bn_param_dtype,
+            is_bias=True)
+        self.mean_z = self.create_parameter(
+            attr=ParamAttr(
+                name=moving_mean_z_name,
+                initializer=I.Constant(0.0),
+                trainable=False),
+            shape=bn_param_shape,
+            dtype=bn_param_dtype)
+        self.mean_z.stop_gradient = True
+        self.var_z = self.create_parameter(
+            attr=ParamAttr(
+                name=moving_var_z_name,
+                initializer=I.Constant(1.0),
+                trainable=False),
+            shape=bn_param_shape,
+            dtype=bn_param_dtype)
+        self.var_z.stop_gradient = True
+        # else:
+        #     self.filter_z = self.filter_x
+        #     self.scale_z = self.scale_x
+        #     self.bias_z = self.bias_x
+        #     self.mean_z = self.mean_x
+        #     self.var_z = self.var_x
 
     def forward(self, x, z=None):
         if self._fused_add and z is None:

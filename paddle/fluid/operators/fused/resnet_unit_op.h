@@ -68,14 +68,14 @@ class ResNetUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetType("resnet_unit_grad");
     op->SetInput("X", this->Input("X"));
     op->SetInput("FilterX", this->Input("FilterX"));
-    op->SetInput("ConvX", this->Input("ConvX"));
+    op->SetInput("ConvX", this->Output("ConvX"));
     op->SetInput("ScaleX", this->Input("ScaleX"));
     op->SetInput("BiasX", this->Input("BiasX"));
     op->SetInput("SavedMeanX", this->Output("SavedMeanX"));
     op->SetInput("SavedInvstdX", this->Output("SavedInvstdX"));
     op->SetInput("Z", this->Input("Z"));
     op->SetInput("FilterZ", this->Input("FilterZ"));
-    op->SetInput("ConvZ", this->Input("ConvZ"));
+    op->SetInput("ConvZ", this->Output("ConvZ"));
     op->SetInput("ScaleZ", this->Input("ScaleZ"));
     op->SetInput("BiasZ", this->Input("BiasZ"));
     op->SetInput("SavedMeanZ", this->Output("SavedMeanZ"));
@@ -93,11 +93,11 @@ class ResNetUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetOutput(framework::GradVarName("BiasX"), this->InputGrad("BiasX"));
     op->SetOutput(framework::GradVarName("ConvX"), this->OutputGrad("ConvX"));
     op->SetOutput(framework::GradVarName("Z"), this->InputGrad("Z"));
+    op->SetOutput(framework::GradVarName("FilterZ"),
+                  this->InputGrad("FilterZ"));
     op->SetOutput(framework::GradVarName("ScaleZ"), this->InputGrad("ScaleZ"));
     op->SetOutput(framework::GradVarName("BiasZ"), this->InputGrad("BiasZ"));
     op->SetOutput(framework::GradVarName("ConvZ"), this->OutputGrad("ConvZ"));
-    op->SetOutput(framework::GradVarName("FilterZ"),
-                  this->InputGrad("FilterZ"));
   }
 };
 
