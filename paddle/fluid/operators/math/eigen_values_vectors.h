@@ -71,7 +71,9 @@ struct MatrixEighFunctor<platform::CPUDeviceContext, ValueType, T> {
     // lapack is a column-first storage, transpose make the eigen_vectors to
     // have a continuous memory layout
     *eigen_vectors = dito.Transpose(input);
+    std::cout << "++++eigen_vectors start \n";
     auto *out_vector = eigen_vectors->mutable_data<T>(ctx.GetPlace());
+    std::cout << "++++eigen_vectors end \n";
 
     auto dims = input.dims();
     int dim_size = dims.size();

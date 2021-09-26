@@ -76,8 +76,7 @@ class EigvalshOpMaker : public framework::OpProtoAndCheckerMaker {
         "(Tensor), The column is the normalized eigenvector "
         "corresponding to the eigenvalue. The data type is the same as ``X``."
         "Eigenvectors are required to calculate gradient when backward.")
-        .AsIntermediate()
-        .AsExtra();
+        .AsDispensable();
     AddAttr<std::string>(
         "UPLO",
         "(string, default 'L'), 'L' represents the lower triangular matrix,"
