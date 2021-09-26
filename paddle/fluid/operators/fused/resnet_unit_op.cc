@@ -143,6 +143,16 @@ void ResNetUnitOp::InferShape(framework::InferShapeContext *ctx) const {
 framework::OpKernelType ResNetUnitOp::GetExpectedKernelType(
     const framework::ExecutionContext &ctx) const {
   auto input_data_type = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+  // By default, the type of the scale, bias, mean,
+  // and var tensors should be float when input tensor's dtype is float16.
+  auto bn_param_type = framework::proto::VarType::FP32;
+
+  PADDLE_ENFORCE_EQ(
+      bn_param_type, ctx.Input<Tensor>("ScaleX")->type(),
+      platform::errors::InvalidArgument("Scale input should be of float type"));
+  PADDLE_ENFORCE_EQ(
+      bn_param_type, ctx.Input<Tensor>("BiasX")->type(),
+      platform::errors::InvalidArgument("Bias input should be of float type"));
   framework::LibraryType library = framework::LibraryType::kPlain;
   framework::DataLayout layout = framework::DataLayout::kAnyLayout;
   return framework::OpKernelType(input_data_type, ctx.GetPlace(), layout,
