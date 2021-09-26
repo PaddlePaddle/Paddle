@@ -86,7 +86,24 @@ class MakeFire(nn.Layer):
 
 
 class SqueezeNet(nn.Layer):
-    def __init__(self, version, class_num=1000):
+    """SqueezeNet model from
+    `"SqueezeNet: AlexNet-level accuracy with 50x fewer parameters and <0.5MB model size"
+    <https://arxiv.org/pdf/1602.07360.pdf>`_
+
+    Args:
+        version (int): version of squeezenet.
+        num_classes (int): output dim of last fc layer. Default: 1000.
+
+    Examples:
+        .. code-block:: python
+
+            from paddle.vision.models import SqueezeNet
+
+            squeezenet = SqueezeNet(version='1.0')
+
+    """
+
+    def __init__(self, version, num_classes=1000):
         super(SqueezeNet, self).__init__()
         self.version = version
 
@@ -133,7 +150,7 @@ class SqueezeNet(nn.Layer):
         self._drop = Dropout(p=0.5, mode="downscale_in_infer")
         self._conv9 = Conv2D(
             512,
-            class_num,
+            num_classes,
             1,
             weight_attr=ParamAttr(name="conv10_weights"),
             bias_attr=ParamAttr(name="conv10_offset"))
