@@ -205,7 +205,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
                                     fused_attn.qkv_bias.numpy(),
                                     fused_attn.out_linear_weight.numpy(),
                                     fused_attn.out_linear_bias.numpy())
-        self.assertTrue(np.allclose(ref_out, out, rtol=1e-5, atol=1e-5))
+        self.assertTrue(np.allclose(ref_out, out, rtol=1e-5, atol=1e-3))
 
     def run_static(self):
         fused_attn = FusedMultiHeadAttention(
@@ -253,7 +253,7 @@ class TestFusedAttentionAPI(unittest.TestCase):
                                     out_linear_weight, out_linear_bias)
         self.assertTrue(
             np.allclose(
-                np.array(ref_out), np.array(out), rtol=1e-5, atol=1e-5))
+                np.array(ref_out), np.array(out), rtol=1e-5, atol=1e-3))
 
     def test_dynamic_api(self):
         paddle.disable_static(place=paddle.CUDAPlace(0))

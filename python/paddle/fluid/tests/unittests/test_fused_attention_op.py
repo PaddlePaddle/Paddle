@@ -207,9 +207,9 @@ class TestFusedAttentionOp(unittest.TestCase):
         final_out_ref, x_grad_ref = self.GetBaselineOut()
         final_out, x_grad = self.GetFusedAttentionOut()
         np.testing.assert_allclose(
-            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-5)
+            final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-2)
         np.testing.assert_allclose(
-            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-5)
+            x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-2)
 
 
 @unittest.skipIf(not core.is_compiled_with_cuda(),
