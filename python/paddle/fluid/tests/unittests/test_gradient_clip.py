@@ -216,7 +216,7 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
     def test_none_grad_fp32(self):
         ops = self._test_none_grad_helper("float32")
         self.assertListEqual(ops, [
-            'squared_l2_norm', 'squared_l2_norm', 'sum', 'sum', 'sqrt',
+            'squared_l2_norm', 'squared_l2_norm', 'sum', 'sqrt',
             'fill_constant', 'elementwise_max', 'elementwise_div',
             'elementwise_mul', 'elementwise_mul'
         ])
@@ -225,9 +225,8 @@ class TestGradientClipByGlobalNorm(TestGradientClip):
         ops = self._test_none_grad_helper("float16")
         self.assertListEqual(ops, [
             'square', 'reduce_sum', 'square', 'reduce_sum', 'sum', 'cast',
-            'sum', 'sqrt', 'fill_constant', 'elementwise_max',
-            'elementwise_div', 'cast', 'elementwise_mul', 'cast',
-            'elementwise_mul'
+            'sqrt', 'fill_constant', 'elementwise_max', 'elementwise_div',
+            'cast', 'elementwise_mul', 'cast', 'elementwise_mul'
         ])
 
     def _test_none_grad_helper(self, dtype):
