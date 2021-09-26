@@ -21,8 +21,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
-template <typename T>
-using CudnnDataType = platform::CudnnDataType<T>;
 namespace dynload = platform::dynload;
 
 #if CUDNN_VERSION >= 8000
@@ -42,7 +40,7 @@ class CudnnScaleBiasAddReluOp {
             const std::vector<int> &x_shape,
             const std::vector<int> &param_shape,
             std::vector<int> z_shape = {}) {
-    dtype_ = CudnnDataType<T>::type;
+    dtype_ = platform::CudnnDataType<T>::type;
     format_ = CUDNN_TENSOR_NHWC;
     InitDescriptors(ctx, act_type, out_shape, bitmask_shape, x_shape,
                     param_shape, z_shape);
@@ -87,84 +85,7 @@ class CudnnScaleBiasAddReluOp {
         fwd_workspace_byte_);
   }
 
-  void Backward(const platform::CUDADeviceContext &ctx, T *dy_ptr, T *x_ptr,
-                T *y_ptr, float *scale_ptr, float *bias_ptr,
-                float *saved_mean_ptr, float *saved_invstd_ptr, T *dx_ptr,
-                T *dz_ptr, float *dscale_ptr, float *dbias_ptr, double eps) {
-    auto handle = ctx.cudnn_handle();
-    cudnnBatchNormMode_t mode = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
-    cudnnBatchNormOps_t bnOps =
-        fused_add_ ? CUDNN_BATCHNORM_OPS_BN_ADD_ACTIVATION
-                   : (fused_act_ ? CUDNN_BATCHNORM_OPS_BN_ACTIVATION
-                                 : CUDNN_BATCHNORM_OPS_BN);
-    // bn_param_desc
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnDeriveBNTensorDescriptor(
-            bn_param_desc_.desc(), in_x_desc_.desc(), mode));
-    // intermediate space
-    Tensor workspace;
-    Tensor reserve_space;
-    void *workspace_ptr = nullptr;
-    void *reserve_space_ptr = nullptr;
-    size_t workspace_size = 0;
-    size_t reserve_space_size = 0;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnGetBatchNormalizationTrainingExReserveSpaceSize(
-            /*handle=*/handle,
-            /*mode=*/mode,
-            /*bnOps=*/bnOps,
-            /*activationDesc=*/fused_act_ ? activation_desc_.desc() : NULL,
-            /*xDesc=*/in_x_desc_.desc(),
-            /*sizeInBytes=*/&reserve_space_size));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnGetBatchNormalizationBackwardExWorkspaceSize(
-            /*handle=*/handle,
-            /*mode=*/mode,
-            /*bnOps=*/bnOps,
-            /*xDesc=*/in_x_desc_.desc(),
-            /*yDesc=*/fused_act_ ? in_x_desc_.desc() : NULL,
-            /*dyDesc=*/in_x_desc_.desc(),
-            /*dzDesc=*/fused_add_ ? in_z_desc_.desc() : NULL,
-            /*dxDesc=*/in_x_desc_.desc(),
-            /*bnScaleBiasMeanVarDesc=*/bn_param_desc_.desc(),
-            /*activationDesc=*/fused_act_ ? activation_desc_.desc() : NULL,
-            /*sizeInBytes=*/&workspace_size));
-    reserve_space_ptr =
-        reserve_space.mutable_data<T>(ctx.GetPlace(), reserve_space_size);
-    workspace_ptr = workspace.mutable_data<T>(ctx.GetPlace(), workspace_size);
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        platform::dynload::cudnnBatchNormalizationBackwardEx(
-            /*handle=*/handle,
-            /*mode=*/mode,
-            /*bnOps=*/bnOps,
-            /*alphaDataDiff=*/CudnnDataType<T>::kOne(),
-            /*betaDataDiff=*/CudnnDataType<T>::kZero(),
-            /*alphaParamDiff=*/CudnnDataType<T>::kOne(),
-            /*betaParamDiff=*/CudnnDataType<T>::kZero(),
-            /*xDesc=*/in_x_desc_.desc(),
-            /*xData=*/x_ptr,
-            /*yDesc=*/fused_act_ ? in_x_desc_.desc() : NULL,
-            /*yData=*/fused_act_ ? y_ptr : nullptr,
-            /*dyDesc=*/fused_act_ ? in_x_desc_.desc() : in_z_desc_.desc(),
-            /*dyData=*/dy_ptr,
-            /*dzDesc=*/fused_add_ ? in_z_desc_.desc() : NULL,
-            /*dzData=*/fused_add_ ? dz_ptr : nullptr,
-            /*dxDesc=*/in_x_desc_.desc(),
-            /*dxData=*/dx_ptr,
-            /*dBnScaleBiasDesc=*/bn_param_desc_.desc(),
-            /*bnScaleData=*/scale_ptr,
-            /*bnBiasData=*/bias_ptr,
-            /*dBnScaleData=*/dscale_ptr,
-            /*dBnBiasData=*/dbias_ptr,
-            /*epsilon=*/eps,
-            /*savedMean=*/saved_mean_ptr,
-            /*savedInvVariance=*/saved_invstd_ptr,
-            /*activationDesmc=*/fused_act_ ? activation_desc_.desc() : NULL,
-            /*workspace=*/workspace_ptr,
-            /*workSpaceSizeInBytes=*/workspace_size,
-            /*reserveSpace=*/reserve_space_ptr,
-            /*reserveSpaceSizeInBytes=*/reserve_space_size));
-  }
+  void Backward(const platform::CUDADeviceContext &ctx) {}
 
  private:
   void InitDescriptors(const platform::CUDADeviceContext &ctx,
@@ -235,7 +156,6 @@ class CudnnScaleBiasAddReluOp {
           platform::errors::InvalidArgument(
               "Only relu activation supported in normalized convolution."));
       mode = CUDNN_ACTIVATION_RELU;
-      fused_act_ = true;
     }
     double dummy_clip = 0.0;
     activation_desc_.set(mode, dummy_clip);
@@ -255,7 +175,6 @@ class CudnnScaleBiasAddReluOp {
     fwd_workspace_byte_ = fwd_op_.GetWorkspaceSizeInBytes(handle);
   }
 
-  bool fused_act_ = false;
   bool fused_add_ = false;
   bool has_shortcut_ = false;
   size_t fwd_workspace_byte_;
@@ -270,8 +189,6 @@ class CudnnScaleBiasAddReluOp {
   platform::TensorDescriptor equiv_x_scale_bias_desc_;
   platform::TensorDescriptor equiv_z_scale_bias_desc_;
   platform::ActivationDescriptor activation_desc_;
-  // needed for bwd
-  platform::TensorDescriptor bn_param_desc_;
 
   CudnnFusionOp fwd_op_;
 };
