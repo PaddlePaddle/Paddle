@@ -71,7 +71,7 @@ class TestVisonModels(unittest.TestCase):
         self.models_infer('resnet152')
 
     def test_alexnet(self):
-        self.models_infer('AlexNet')
+        self.models_infer('alexnet')
 
     def test_vgg16_num_classes(self):
         vgg16 = models.__dict__['vgg16'](pretrained=False, num_classes=10)

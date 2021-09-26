@@ -28,7 +28,7 @@ from paddle.fluid.param_attr import ParamAttr
 from paddle.utils.download import get_weights_path_from_url
 
 model_urls = {
-    "AlexNet": (
+    "alexNet": (
         "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/AlexNet_pretrained.pdparams",
         "7f0f9f737132e02732d75a1459d98a43", )
 }
@@ -72,9 +72,25 @@ class ConvPoolLayer(nn.Layer):
         return x
 
 
-class AlexNetDY(nn.Layer):
-    def __init__(self, class_num=1000):
-        super(AlexNetDY, self).__init__()
+class AlexNet(nn.Layer):
+    """AlexNet model from
+    `"ImageNet Classification with Deep Convolutional Neural Networks"
+    <https://proceedings.neurips.cc/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf>`_
+
+    Args:
+        num_classes (int): Output dim of last fc layer. Default: 1000.
+
+    Examples:
+        .. code-block:: python
+
+            from paddle.vision.models import AlexNet
+
+            alexnet = AlexNet()
+
+    """
+
+    def __init__(self, num_classes=1000):
+        super(AlexNet, self).__init__()
 
         stdv = 1.0 / math.sqrt(3 * 11 * 11)
         self._conv1 = ConvPoolLayer(
@@ -128,7 +144,7 @@ class AlexNetDY(nn.Layer):
                 name="fc7_offset", initializer=Uniform(-stdv, stdv)))
         self._fc8 = Linear(
             in_features=4096,
-            out_features=class_num,
+            out_features=num_classes,
             weight_attr=ParamAttr(
                 name="fc8_weights", initializer=Uniform(-stdv, stdv)),
             bias_attr=ParamAttr(
@@ -154,7 +170,7 @@ class AlexNetDY(nn.Layer):
 
 
 def _alexnet(arch, pretrained, **kwargs):
-    model = AlexNetDY(**kwargs)
+    model = AlexNet(**kwargs)
 
     if pretrained:
         assert arch in model_urls, "{} model do not have a pretrained model now, you should set pretrained=False".format(
@@ -168,7 +184,7 @@ def _alexnet(arch, pretrained, **kwargs):
     return model
 
 
-def AlexNet(pretrained=False, **kwargs):
+def alexnet(pretrained=False, **kwargs):
     """AlexNet model
 
     Args:
@@ -177,12 +193,12 @@ def AlexNet(pretrained=False, **kwargs):
     Examples:
         .. code-block:: python
 
-            from paddle.vision.models import AlexNet
+            from paddle.vision.models import alexnet
 
             # build model
-            model = AlexNet()
+            model = alexnet()
 
             # build model and load imagenet pretrained weight
-            model = AlexNet(pretrained=True)
+            # model = alexnet(pretrained=True)
     """
-    return _alexnet('AlexNet', pretrained, **kwargs)
+    return _alexnet('alexNet', pretrained, **kwargs)
