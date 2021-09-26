@@ -18,8 +18,8 @@ namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
     fill_constant, ops::FillConstantKernel<float>,
     ops::FillConstantKernel<double>, ops::FillConstantKernel<uint8_t>,
-    ops::FillConstantKernel<int64_t>, ops::FillConstantKernel<int>,
-    ops::FillConstantKernel<bool>,
+    ops::FillConstantKernel<int16_t>, ops::FillConstantKernel<int>,
+    ops::FillConstantKernel<int64_t>, ops::FillConstantKernel<bool>,
     ops::FillConstantKernel<paddle::platform::float16>,
     ops::FillConstantKernel<paddle::platform::complex<float>>,
     ops::FillConstantKernel<paddle::platform::complex<double>>);

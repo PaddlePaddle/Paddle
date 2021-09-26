@@ -34,6 +34,7 @@ namespace cub = hipcub;
 #define LAUNCH_BOUNDS(BlockDim)
 #endif
 
+#include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/kernel_primitives/kernel_primitives.h"
 #include "paddle/fluid/operators/reduce_ops/reduce_functor_op.h"
@@ -50,13 +51,6 @@ template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>
 using ReduceParamType = typename CudnnDataType<T>::BatchNormParamType;
-
-template <typename T>
-struct CudaAddFunctor {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    return args[0] + args[1];
-  }
-};
 
 template <typename InT, typename OutT, int ShapeSize, int VecSize,
           int DATA_PER_THREAD, typename Functor>
@@ -128,7 +122,7 @@ void LaunchBiasAddFwKernel(const platform::CUDADeviceContext& ctx, int m, int n,
   std::vector<int64_t> out_dims = {n, m};
   configlists[1] = kps::details::BroadcastConfig<2>(out_dims, input1_dims, 2);
 
-  auto func = CudaAddFunctor<T>();
+  auto func = AddFunctor<T>();
   auto stream = ctx.stream();
   switch (vec_size) {
     case 4: {

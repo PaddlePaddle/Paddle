@@ -224,26 +224,33 @@ class PipelineLayer(Layer):
                 self.get_stage_from_index(idx) for idx in shared_layers)
             self._dp_degree = self._topo.get_dim('data')
             self._mp_degree = self._topo.get_dim('model')
+            self._sharding_degree = self._topo.get_dim('sharding')
 
             shared_ranks = []
             for dp in range(self._dp_degree):
-                for mp in range(self._mp_degree):
-                    shared_ranks = []
-                    for s in sorted(shared_stages):
-                        shared_ranks.append(
-                            self._topo.get_rank_from_stage(
-                                self.global_rank, pipe=s, data=dp, model=mp))
+                for sharding in range(self._sharding_degree):
+                    for mp in range(self._mp_degree):
+                        shared_ranks = []
+                        for s in sorted(shared_stages):
+                            shared_ranks.append(
+                                self._topo.get_rank_from_stage(
+                                    self.global_rank,
+                                    pipe=s,
+                                    data=dp,
+                                    sharding=sharding,
+                                    model=mp))
 
-                    group = paddle.distributed.new_group(ranks=shared_ranks)
-                    if self.global_rank in shared_ranks:
-                        assert key in self.shared_layers
-                        if key in self.shared_layers:
-                            shared_comm[key] = {
-                                'ranks': shared_ranks,
-                                'group': group,
-                                'weight_attr': self.shared_weight_attrs[key],
-                                'layer': self.shared_layers[key],
-                            }
+                        group = paddle.distributed.new_group(ranks=shared_ranks)
+                        if self.global_rank in shared_ranks:
+                            assert key in self.shared_layers
+                            if key in self.shared_layers:
+                                shared_comm[key] = {
+                                    'ranks': shared_ranks,
+                                    'group': group,
+                                    'weight_attr':
+                                    self.shared_weight_attrs[key],
+                                    'layer': self.shared_layers[key],
+                                }
         return shared_comm
 
     def _synchronize_shared_weights(self):
