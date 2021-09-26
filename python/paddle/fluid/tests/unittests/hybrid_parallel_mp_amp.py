@@ -48,6 +48,7 @@ class TestMPClipGrad(TestDistMPTraning):
         scaled.backward()  # do backward
 
         scaler.step(optimizer)  # update parameters
+        scaler.update()
         optimizer.clear_grad()
         return scaled
 
