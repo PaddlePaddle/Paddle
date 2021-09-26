@@ -31,10 +31,10 @@ static inline int NumBlocks(const int N) {
                   kNumMaxinumNumBlocks);
 }
 
-template <typename T>
-__global__ void PruneGateByCapacity(const T* gate_idx_data,
-                                    T* new_gate_idx_data,
-                                    int* expert_count_data,
+template <typename T1, typename T2>
+__global__ void PruneGateByCapacity(const T1* gate_idx_data,
+                                    T1* new_gate_idx_data,
+                                    T2* expert_count_data,
                                     const int64_t batch_size) {
   CUDA_KERNEL_LOOP(i, batch_size) {
     auto orig_cap =
@@ -47,37 +47,76 @@ __global__ void PruneGateByCapacity(const T* gate_idx_data,
   }
 }
 
-template <typename DeviceContext, typename T>
-class PruneGateByCapacityCUDAKernel : public framework::OpKernel<T> {
+template <typename DeviceContext, typename T1>
+class PruneGateByCapacityFunctor {
  public:
-  void Compute(const framework::ExecutionContext& context) const override {
-    auto* gate_idx = context.Input<Tensor>("GateIdx");
-    auto* expert_count_out = context.Output<Tensor>("ExpertCountOut");
-    auto* new_gate_idx = context.Output<Tensor>("NewGateIdx");
+  PruneGateByCapacityFunctor(const framework::ExecutionContext& context,
+                             const framework::Tensor* gate_idx,
+                             framework::Tensor* expert_count_out,
+                             T1* new_gate_idx_data)
+      : context_(context),
+        gate_idx_(gate_idx),
+        expert_count_out_(expert_count_out),
+        new_gate_idx_data_(new_gate_idx_data) {}
 
-    auto* expert_count_out_data =
-        expert_count_out->mutable_data<int>(context.GetPlace());
+  template <typename T2>
+  void apply() {
+    auto batch_size = gate_idx_->numel();
+    auto* gate_idx_data = gate_idx_->data<T1>();
 
-    auto batch_size = gate_idx->numel();
-    auto* gate_idx_data = gate_idx->data<T>();
-
-    for (size_t i = 0; i < batch_size; i++) {
-      printf("%d", expert_count_out_data[i]);
-    }
-
-    auto* new_gate_idx_data = new_gate_idx->mutable_data<T>(context.GetPlace());
-    auto& dev_ctx = context.template device_context<DeviceContext>();
+    auto& dev_ctx = context_.template device_context<DeviceContext>();
+    auto* expert_count_out_data = expert_count_out_->data<T2>();
 
     int blocks = NumBlocks(batch_size);
     int threads = kNumCUDAThreads;
 
-    PruneGateByCapacity<T><<<blocks, threads, 0, dev_ctx.stream()>>>(
-        gate_idx_data, new_gate_idx_data, expert_count_out_data, batch_size);
+    PruneGateByCapacity<T1, T2><<<blocks, threads, 0, dev_ctx.stream()>>>(
+        gate_idx_data, new_gate_idx_data_, expert_count_out_data, batch_size);
+
 #ifdef PADDLE_WITH_HIP
     PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(dev_ctx.stream()));
 #else
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(dev_ctx.stream()));
 #endif
+  }
+
+ private:
+  const framework::ExecutionContext context_;
+  const framework::Tensor* gate_idx_;
+  framework::Tensor* expert_count_out_;
+  T1* new_gate_idx_data_;
+};
+
+template <typename Visitor>
+static void VisitDataType(framework::proto::VarType::Type type,
+                          Visitor visitor) {
+  if (type == framework::proto::VarType::INT32) {
+    visitor.template apply<int>();
+  } else if (type == framework::proto::VarType::INT64) {
+    visitor.template apply<int64_t>();
+  } else {
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "The recieved values gate_id type %s can not meet input requirements. "
+        "Because the given gate_id data type of operators must be int32 or "
+        "int64. Please input appropriate gate_id again! ",
+        framework::DataTypeToString(type)));
+  }
+}
+
+template <typename DeviceContext, typename T>
+class PruneGateByCapacityCUDAKernel : public framework::OpKernel<T> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* gate_idx = context.Input<Tensor>("GateIdx");
+    auto* expert_count = context.Input<Tensor>("ExpertCount");
+    auto* expert_count_out = context.Output<Tensor>("ExpertCountOut");
+    auto* new_gate_idx = context.Output<Tensor>("NewGateIdx");
+    auto* new_gate_idx_data = new_gate_idx->mutable_data<T>(context.GetPlace());
+
+    framework::TensorCopy(*expert_count, context.GetPlace(), expert_count_out);
+    PruneGateByCapacityFunctor<DeviceContext, T> functor(
+        context, gate_idx, expert_count_out, new_gate_idx_data);
+    VisitDataType(expert_count->type(), functor);
   }
 };
 
