@@ -173,7 +173,6 @@ class ActivationKernel
   using T = typename Functor::ELEMENT_TYPE;
 
   void Compute(const framework::ExecutionContext& context) const override {
-    VLOG(3) << "=========== in ActivationKernel =========";
     const framework::Tensor* X = nullptr;
     framework::Tensor* Out = nullptr;
     ExtractActivationTensor(context, &X, &Out);
@@ -208,7 +207,6 @@ class ActivationGradKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& context) const override {
-    VLOG(3) << "=========== in ActivationGradKernel =========";
     const framework::Tensor *X, *Out, *dOut;
     framework::Tensor* dX = nullptr;
     X = Out = dOut = nullptr;
@@ -256,7 +254,6 @@ template <typename T>
 struct SigmoidFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out>
   void operator()(Device d, X x, Out out) const {
-    VLOG(3) << "=========== in SigmoidFunctor =========";
     out.device(d) = static_cast<T>(1) / (static_cast<T>(1) + (-x).exp());
   }
 };
@@ -266,7 +263,6 @@ struct SigmoidGradFunctor : public BaseActivationFunctor<T> {
   template <typename Device, typename X, typename Out, typename dOut,
             typename dX>
   void operator()(Device d, X x, Out out, dOut dout, dX dx) const {
-    VLOG(3) << "=========== in SigmoidGradFunctor =========";
     dx.device(d) = dout * out * (static_cast<T>(1) - out);
   }
 
@@ -287,10 +283,6 @@ struct SigmoidGradGradFunctor : public BaseActivationFunctor<T> {
   void operator()(const Device& dev, const framework::Tensor* Out,
                   const framework::Tensor* ddX, const framework::Tensor* dOut,
                   framework::Tensor* dOutNew, framework::Tensor* ddOut) const {
-    VLOG(3) << "=========== in SigmoidGradGradFunctor =========";
-
-    VLOG(3) << " === is double " << std::is_same<T, double>::value;
-    VLOG(3) << " === is float " << std::is_same<T, float>::value;
     auto* d = dev.eigen_device();
     auto ddx = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(ddX, "Input", "DDX", "SigmoidGradGrad"));
@@ -322,14 +314,11 @@ struct SigmoidGradGradFunctor : public BaseActivationFunctor<T> {
     D_Dout_new
 
     D_Dout = (1-2*Out)*DDx*D_Dout_new
-    D_DDx = (1-Out)*Out*D_DDout + (1-2*Out)*DOut*D_DDout =
-    D_OutNew = (DDx-2*Out*DDx)*D_DDout - 2*DOut*DDx*D_Dout_new =
+    D_DDx = (1-Out)*Out*D_DDout + (1-2*Out)*DOut*D_DDout
+    D_OutNew = (DDx-2*Out*DDx)*D_DDout - 2*DOut*DDx*D_Dout_new
 
-    functor(place, Out, ddX, dOut, d_ddOut, d_dOutNew, // input
-                           d_dOut, d_OutNew, d_ddx);   // output
-
-    // Out, DDX, DOut, D_DDOut, D_DOut_New   // input
-    // D_OutNew, D_DOut, D_DDx              // output
+    Out, DDX, DOut, D_DDOut, D_DOut_New   // input
+    D_OutNew, D_DOut, D_DDx               // output
 */
 template <typename T>
 struct SigmoidTripleGradFunctor : public BaseActivationFunctor<T> {
@@ -340,7 +329,6 @@ struct SigmoidTripleGradFunctor : public BaseActivationFunctor<T> {
                   const framework::Tensor* d_dOut_New,
                   framework::Tensor* d_d_Out, framework::Tensor* d_Out_New,
                   framework::Tensor* d_DDx) const {
-    VLOG(3) << "=========== in SigmoidTripleGradFunctor =========";
     auto* d = dev.eigen_device();
     auto ddx = framework::EigenVector<T>::Flatten(
         GET_DATA_SAFELY(ddX, "Input", "DDX", "SigmoidTripleGrad"));
@@ -354,21 +342,18 @@ struct SigmoidTripleGradFunctor : public BaseActivationFunctor<T> {
         d_dOut_New, "Input", "D_DOut_New", "SigmoidTripleGrad"));
 
     if (d_Out_New) {
-      VLOG(3) << " ========== in  if (d_Out_New) {  ==========";
       auto d_OutNew = framework::EigenVector<T>::Flatten(GET_DATA_SAFELY(
           d_Out_New, "Output", "D_OutNew", "SigmoidTripleGrad"));
       d_OutNew.device(*d) = (ddx - static_cast<T>(2) * out * ddx) * d_ddOut -
                             static_cast<T>(2) * dout * ddx * d_dOutNew;
     }
     if (d_d_Out) {
-      VLOG(3) << " ========== in  if (d_d_Out) {  ==========";
       auto d_dOut = framework::EigenVector<T>::Flatten(
           GET_DATA_SAFELY(d_d_Out, "Output", "D_DOut", "SigmoidTripleGrad"));
       d_dOut.device(*d) =
           (static_cast<T>(1) - static_cast<T>(2) * out) * ddx * d_dOutNew;
     }
     if (d_DDx) {
-      VLOG(3) << " ========== in  if (d_DDx) {  ==========";
       auto d_ddx = framework::EigenVector<T>::Flatten(
           GET_DATA_SAFELY(d_DDx, "Output", "D_DDx", "SigmoidTripleGrad"));
       d_ddx.device(*d) =
@@ -1937,15 +1922,10 @@ class SigmoidDoubleGradKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& ctx) const override {
-    VLOG(3) << "=========== in SigmoidDoubleGradKernel =========";
     const framework::Tensor *Out, *ddX, *dOut;
     framework::Tensor *dOutNew, *ddOut;
     Out = ddX = dOut = nullptr;
     dOutNew = ddOut = nullptr;
-
-    VLOG(3) << " === is double " << std::is_same<T, double>::value;
-    VLOG(3) << " === is float " << std::is_same<T, float>::value;
-
     // extract ddx(input) and out(input)
     ddX = ctx.Input<framework::Tensor>("DDX");
     Out = ctx.Input<framework::Tensor>("Out");
@@ -1957,31 +1937,15 @@ class SigmoidDoubleGradKernel
         Out, platform::errors::NotFound(
                  "Cannot get input Variable Out, variable name = %s",
                  ctx.InputName("Out")));
-
     // set output ddout
     ddOut = ctx.Output<framework::Tensor>("DDOut");
-
     // extract dOut(intput)
     dOut = ctx.Input<framework::Tensor>("DOut");
     PADDLE_ENFORCE_NOT_NULL(
         dOut, platform::errors::NotFound(
                   "Cannot get input Variable dOut, variable name = %s",
                   ctx.InputName("DOut")));
-
-    // VLOG(3) << "================ dOut ===========";
-    // PrintTensor<T>(*dOut, ctx);
-    // VLOG(3) << "================ dOut ===========";
-
-    // VLOG(3) << "================ ddX ===========";
-    // PrintTensor<T>(*ddX, ctx);
-    // VLOG(3) << "================ ddX ===========";
-
-    // VLOG(3) << "================ Out ===========";
-    // PrintTensor<T>(*Out, ctx);
-    // VLOG(3) << "================ Out ===========";
-    // set output dout_new
     dOutNew = ctx.Output<framework::Tensor>("DOutNew");
-
     if (dOutNew) dOutNew->mutable_data<T>(Out->dims(), ctx.GetPlace());
     if (ddOut) ddOut->mutable_data<T>(Out->dims(), ctx.GetPlace());
     auto& place = ctx.template device_context<DeviceContext>();
@@ -1991,7 +1955,7 @@ class SigmoidDoubleGradKernel
 };
 
 // Out, DDX, DOut, D_DDOut, D_DOut_New   // input
-// D_OutNew, D_DOut, D_DDx              // output
+// D_OutNew, D_DOut, D_DDx               // output
 template <typename DeviceContext, typename Functor>
 class SigmoidTripleGradKernel
     : public framework::OpKernel<typename Functor::ELEMENT_TYPE> {
@@ -2011,26 +1975,6 @@ class SigmoidTripleGradKernel
     dOut = ctx.Input<framework::Tensor>("DOut");
     d_ddOut = ctx.Input<framework::Tensor>("D_DDOut");
     d_dOutNew = ctx.Input<framework::Tensor>("D_DOut_New");
-
-    // VLOG(3) << "================ ddx ===========";
-    // PrintTensor<T>(*ddX, ctx);
-    // VLOG(3) << "================ ddx ===========";
-
-    // VLOG(3) << "================ Out ===========";
-    // PrintTensor<T>(*Out, ctx);
-    // VLOG(3) << "================ Out ===========";
-
-    // VLOG(3) << "================ dOut ===========";
-    // PrintTensor<T>(*dOut, ctx);
-    // VLOG(3) << "================ dOut ===========";
-
-    // VLOG(3) << "================ d_ddOut ===========";
-    // PrintTensor<T>(*d_ddOut, ctx);
-    // VLOG(3) << "================ d_ddOut ===========";
-
-    // VLOG(3) << "================ d_dOutNew ===========";
-    // PrintTensor<T>(*d_dOutNew, ctx);
-    // VLOG(3) << "================ d_dOutNew ===========";
 
     PADDLE_ENFORCE_NOT_NULL(
         ddX, platform::errors::NotFound(
