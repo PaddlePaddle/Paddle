@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/collective/assign_pos_op.h"
+#include "paddle/fluid/operators/assign_pos_op.h"
 
 namespace paddle {
 namespace operators {
@@ -22,8 +22,10 @@ class AssignPosOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInput("cum_count"), "Input", "cum_count", "AssignPos");
-    OP_INOUT_CHECK(ctx->HasInput("eff_gates_len"), "Input", "eff_gates_len", "AssignPos");
+    OP_INOUT_CHECK(ctx->HasInput("cum_count"), "Input", "cum_count",
+                   "AssignPos");
+    OP_INOUT_CHECK(ctx->HasInput("eff_gates_len"), "Input", "eff_gates_len",
+                   "AssignPos");
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "AssignPos");
     OP_INOUT_CHECK(ctx->HasOutput("Out"), "Output", "Out", "AssignPos");
   }
@@ -39,12 +41,12 @@ class AssignPosOp : public framework::OperatorWithKernel {
 class AssignPosOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X",
-             "The tensor which indicates the tokens belong to which topk experts.");
-    AddInput("cum_count",
-             "The cumulative sum tokens of experts.");
+    AddInput(
+        "X",
+        "The tensor which indicates the tokens belong to which topk experts.");
+    AddInput("cum_count", "The cumulative sum tokens of experts.");
     AddInput("eff_gates_len",
-             "The effective numbers of tokens should be sent.");         
+             "The effective numbers of tokens should be sent.");
     AddOutput("Out", "Assemble tokens in the order of experts.");
 
     AddComment(R"DOC(
@@ -58,8 +60,6 @@ specially expert orderingly.
   }
 };
 
-
-
 }  // namespace operators
 }  // namespace paddle
 
@@ -69,10 +69,7 @@ namespace plat = paddle::platform;
 REGISTER_OP_WITHOUT_GRADIENT(assign_pos, ops::AssignPosOp,
                              ops::AssignPosOpMaker);
 
-
 // REGISTER_OPERATOR(assign_pos, ops::AssignPosOp, ops::AssignPosOpMaker)
 
-REGISTER_OP_CPU_KERNEL(assign_pos, 
-                       ops::AssignPosOpCPUKernel<int>,
+REGISTER_OP_CPU_KERNEL(assign_pos, ops::AssignPosOpCPUKernel<int>,
                        ops::AssignPosOpCPUKernel<int64_t>);
-
