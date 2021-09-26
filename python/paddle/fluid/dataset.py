@@ -727,6 +727,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
+              # required: skiptest
               import paddle.fluid as fluid
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
@@ -753,6 +754,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
+              # required: skiptest
               import paddle.fluid as fluid
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
@@ -777,6 +779,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
+              # required: skiptest
               import paddle.fluid as fluid
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
@@ -797,6 +800,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
+              # required: skiptest
               import paddle.fluid as fluid
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
               filelist = ["a.txt", "b.txt"]
@@ -819,6 +823,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
+              # required: skiptest
               import paddle.fluid as fluid
               from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
@@ -866,6 +871,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
+              # required: skiptest
               import paddle.fluid as fluid
               from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
@@ -925,6 +931,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
+              # required: skiptest
               import paddle.fluid as fluid
               from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
@@ -965,6 +972,7 @@ class InMemoryDataset(DatasetBase):
         Examples:
             .. code-block:: python
 
+              # required: skiptest
               import paddle.fluid as fluid
               from paddle.fluid.incubate.fleet.parameter_server.pslib import fleet
               dataset = fluid.DatasetFactory().create_dataset("InMemoryDataset")
