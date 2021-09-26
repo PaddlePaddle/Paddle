@@ -69,6 +69,7 @@ class CudnnNormConvolutionOp {
         fwd_workspace_byte_);
   }
 
+
   // TBD
   void Backward(const platform::CUDADeviceContext &ctx, T* input_ptr,
                 T *output_ptr, T *filter_ptr, T* input_grad_ptr, 
