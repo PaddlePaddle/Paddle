@@ -42,10 +42,6 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
                 groups, momentum, eps, conv_format, bn_format, fused_add,
                 has_shortcut, use_global_stats, act):
 
-    running_mean_x = mean_x
-    running_var_x = var_x
-    running_mean_z = mean_z
-    running_var_z = var_z
     # if fluid.framework.in_dygraph_mode():
     #     attrs = ('stride', stride, 'pad', padding, 'dilate', dilation, 'group',
     #              groups, 'momentum', momentum, 'epsilon', eps, 'conv_format',
@@ -75,22 +71,19 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
     running_var_x = var_x
     eq_scale_x = helper.create_variable_for_type_inference(x.dtype)
     eq_bias_x = helper.create_variable_for_type_inference(x.dtype)
-    conv_z = helper.create_variable_for_type_inference(
-        z.dtype) if has_shortcut else None
-    sum_z = helper.create_variable_for_type_inference(
-        bn_param_dtype) if has_shortcut else None
-    sqsum_z = helper.create_variable_for_type_inference(
-        bn_param_dtype) if has_shortcut else None
+    conv_z = helper.create_variable_for_type_inference(x.dtype)
+    sum_z = helper.create_variable_for_type_inference(bn_param_dtype)
+    sqsum_z = helper.create_variable_for_type_inference(bn_param_dtype)
     saved_mean_z = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True) if has_shortcut else None
+        dtype=bn_param_dtype, stop_gradient=True)
     saved_invstd_z = helper.create_variable_for_type_inference(
-        dtype=bn_param_dtype, stop_gradient=True) if has_shortcut else None
-    running_mean_z = mean_z
-    running_var_z = var_z
-    eq_scale_z = helper.create_variable_for_type_inference(
-        z.dtype) if has_shortcut else None
-    eq_bias_z = helper.create_variable_for_type_inference(
-        z.dtype) if has_shortcut else None
+        dtype=bn_param_dtype, stop_gradient=True)
+    running_mean_z = helper.create_variable_for_type_inference(
+        dtype=bn_param_dtype, stop_gradient=True) if mean_z is None else mean_z
+    running_var_z = helper.create_variable_for_type_inference(
+        dtype=bn_param_dtype, stop_gradient=True) if var_z is None else var_z
+    eq_scale_z = helper.create_variable_for_type_inference(x.dtype)
+    eq_bias_z = helper.create_variable_for_type_inference(x.dtype)
 
     inputs = {
         'X': x,
