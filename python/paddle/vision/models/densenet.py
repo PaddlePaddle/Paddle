@@ -17,7 +17,6 @@ from __future__ import division
 from __future__ import print_function
 
 import math
-import numpy as np
 
 import paddle
 import paddle.nn as nn
