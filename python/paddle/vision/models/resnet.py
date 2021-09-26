@@ -155,6 +155,7 @@ class ResNet(nn.Layer):
         depth (int): layers of resnet, default: 50.
         num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
                             will not be defined. Default: 1000.
+        width_per_group (int): 
         with_pool (bool): use pool before the last fc layer or not. Default: True.
 
     Examples:
@@ -169,7 +170,12 @@ class ResNet(nn.Layer):
 
     """
 
-    def __init__(self, block, depth, num_classes=1000, with_pool=True):
+    def __init__(self,
+                 block,
+                 depth,
+                 num_classes=1000,
+                 width_per_group=64,
+                 with_pool=True):
         super(ResNet, self).__init__()
         layer_cfg = {
             18: [2, 2, 2, 2],
@@ -180,6 +186,7 @@ class ResNet(nn.Layer):
         }
         layers = layer_cfg[depth]
         self.num_classes = num_classes
+        self.base_width = width_per_group
         self.with_pool = with_pool
         self._norm_layer = nn.BatchNorm2D
 
@@ -225,11 +232,16 @@ class ResNet(nn.Layer):
 
         layers = []
         layers.append(
-            block(self.inplanes, planes, stride, downsample, 1, 64,
+            block(self.inplanes, planes, stride, downsample, 1, self.base_width,
                   previous_dilation, norm_layer))
         self.inplanes = planes * block.expansion
         for _ in range(1, blocks):
-            layers.append(block(self.inplanes, planes, norm_layer=norm_layer))
+            layers.append(
+                block(
+                    self.inplanes,
+                    planes,
+                    base_width=self.base_width,
+                    norm_layer=norm_layer))
 
         return nn.Sequential(*layers)
 

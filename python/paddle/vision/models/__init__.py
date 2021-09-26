@@ -18,6 +18,9 @@ from .resnet import resnet34  # noqa: F401
 from .resnet import resnet50  # noqa: F401
 from .resnet import resnet101  # noqa: F401
 from .resnet import resnet152  # noqa: F401
+from .wideresnet import WideResNet  # noqa: F401
+from .wideresnet import wide_resnet50  # noqa: F401
+from .wideresnet import wide_resnet101  # noqa: F401
 from .mobilenetv1 import MobileNetV1  # noqa: F401
 from .mobilenetv1 import mobilenet_v1  # noqa: F401
 from .mobilenetv2 import MobileNetV2  # noqa: F401
