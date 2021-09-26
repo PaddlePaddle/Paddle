@@ -125,7 +125,11 @@ void BindGraph(py::module *m) {
            return_value_policy::reference)
       .def("resolve_hazard", &Graph::ResolveHazard)
       .def("origin_program_desc", &Graph::OriginProgram,
-           return_value_policy::reference);
+           return_value_policy::reference)
+      .def("sub_graph_size", &Graph::SubGraphsSize)
+      .def("get_sub_graph", [](Graph &self, int i) {
+        return std::shared_ptr<Graph>(self.GetSubGraph(i), [](Graph *) {});
+      });
 }
 
 void BindNode(py::module *m) {

@@ -3956,6 +3956,21 @@ class IrGraph(object):
         """
         return {IrOpNode(node) for node in self.graph.nodes() if node.is_op()}
 
+    def all_sub_graphs(self):
+        """
+        Return all sub_graphs included in the main graph as a set.
+        """
+        return {
+            IrGraph(self.graph.get_sub_graph(i))
+            for i in range(self.graph.sub_graph_size())
+        }
+
+    def get_sub_graph(self, i):
+        """
+        Return i-th sub_graph in the main graph.
+        """
+        return IrGraph(self.graph.get_sub_graph(i))
+
     def create_persistable_node(self, name, var_type, shape, var_dtype):
         """
         Create a persistable variable node in the graph. In IrGraph,
