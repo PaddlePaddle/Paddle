@@ -164,9 +164,9 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         relative_idx = relative_idx * per_part_size
 
         # TODO caculate ring id 
-        model_parallel_axis = embedding_row_dim_mapping
+        parallel_axis = embedding_row_dim_mapping
         group_ranks = _get_comm_group(process_mesh_group, process_mesh_shape,
-                                      model_parallel_axis, rank_id)
+                                      parallel_axis, rank_id)
         group = new_process_group(group_ranks)
 
         # append op
