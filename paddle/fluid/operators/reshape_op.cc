@@ -229,7 +229,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
     // by now we require that if the input tensor is zero shape, the target
     // shape of output must be zero
     if (in_size == 0) {
-      PADDLE_ENFORCE_EQ(
+      PADDLE_ENFORCE_LE(
           capacity, in_size,
           platform::errors::InvalidArgument(
               "The 'shape' in ReshapeOp is invalid. "
