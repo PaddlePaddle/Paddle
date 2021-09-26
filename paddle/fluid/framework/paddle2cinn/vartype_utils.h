@@ -42,7 +42,7 @@ cpp::VarDescAPI::Type TransformVarTypeToCinn(
     SET_TYPE_CASE_ITEM(PLACE_LIST);
     SET_TYPE_CASE_ITEM(READER);
     default:
-      PADDLE_THROW(platform::errors::NotFound("Unknown var type"));
+      PADDLE_THROW(platform::errors::NotFound("Cannot found var type"));
   }
 #undef SET_TYPE_CASE_ITEM
 }
@@ -65,7 +65,7 @@ cpp::VarDescAPI::Type TransformVarTypeToCinn(
     SET_TYPE_CASE_ITEM(PLACE_LIST);
     SET_TYPE_CASE_ITEM(READER);
     default:
-      PADDLE_THROW(platform::errors::NotFound("Unknown var type"));
+      PADDLE_THROW(platform::errors::NotFound("Cannot found var type"));
   }
 #undef SET_TYPE_CASE_ITEM
 }
@@ -89,7 +89,7 @@ cpp::VarDescAPI::Type TransformVarDataTypeToCinn(
     SET_DATA_TYPE_CASE_ITEM(FP32);
     SET_DATA_TYPE_CASE_ITEM(FP64);
     default:
-      PADDLE_THROW(platform::errors::NotFound("Unknown var data type"));
+      PADDLE_THROW(platform::errors::NotFound("Cannot found var data type"));
   }
 #undef SET_DATA_TYPE_CASE_ITEM
 }
@@ -113,7 +113,7 @@ cpp::VarDescAPI::Type TransformVarDataTypeToCinn(
     SET_DATA_TYPE_CASE_ITEM(FP32);
     SET_DATA_TYPE_CASE_ITEM(FP64);
     default:
-      PADDLE_THROW(platform::errors::NotFound("Unknown var data type"));
+      PADDLE_THROW(platform::errors::NotFound("Cannot found var data type"));
   }
 #undef SET_DATA_TYPE_CASE_ITEM
 }
