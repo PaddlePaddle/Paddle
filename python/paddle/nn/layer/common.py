@@ -1235,6 +1235,97 @@ class CosineSimilarity(Layer):
             result = cos_sim_func(x1, x2)
             print(result)
             # [0.99806249 0.9817672  0.94987036]
+    
+    Test cases:
+        Range of inputs:
+            x1, x2 (Tensor): the maxsize of x1/x2 is 10^9, the minsize of x1/x2 is 10^-5
+            
+            Code Examples:
+                .. code-block:: python
+                    
+                    import paddle
+                    import paddle.nn as nn
+                    import numpy as np
+                    np.random.seed(0)
+                    
+                    for i in range(-15,15):
+                        times=10**i;
+                        x1 = np.random.rand(5,1)*times
+                        x2 = np.random.rand(5,1)*times
+                        x1 = paddle.to_tensor(x1)
+                        x2 = paddle.to_tensor(x2)
+                        cos_sim_func = nn.CosineSimilarity(axis=0)
+                        result = cos_sim_func(x1, x2)
+                        print("%e"%times,end=" "); print("%e"%result.numpy().tolist()[0])
+                    
+                    # when times < 1e-4 or times > 1e9 result is incorrect
+        
+        Correctness of inputs:
+            
+            Code Examples:
+                .. code-block:: python
+                    
+                    import paddle
+                    import paddle.nn as nn
+                    import numpy as np
+                    np.random.seed(0)
+                    
+                    def CosSim(x1,x2):
+                        item1=0
+                        for i in range(len(x1)):
+                            item1=item1+x1[i]*x2[i]
+                        item2=((x1**2).sum())**(1/2)*((x2**2).sum())**(1/2)
+                        if item2==0: return 0
+                        else: return item1/item2
+                    
+                    eps = 10**(-8)
+                    x1 = np.random.rand(5)
+                    x2 = np.random.rand(5)
+                    result1=CosSim(x1,x2)
+
+                    x1 = paddle.to_tensor(x1)
+                    x2 = paddle.to_tensor(x2)
+                    cos_sim_func = nn.CosineSimilarity(axis=0)
+                    result2 = cos_sim_func(x1, x2).numpy().tolist()[0]
+                    
+                    print(result1+eps>result2 and result1-eps<result2)
+                    
+                    # True
+                    
+        Type of inputs:
+            x1, x2 (Tensor): the dtype of x1/x2 can be 'float64' or 'float32'
+            
+            Code Examples:
+                .. code-block:: python
+                    
+                    import paddle
+                    import paddle.nn as nn
+                    import numpy as np
+                    np.random.seed(0)
+                    
+                    for try_type in type_list:
+                        np.random.seed(2021)
+                        if try_type=='bool':
+                            x1 = np.random.rand(2,3).round()
+                            x2 = np.random.rand(2,3).round()
+                        else:
+                            x1 = np.random.rand(2,3)*2021
+                            x2 = np.random.rand(2,3)*2021
+                        x1 = paddle.to_tensor(x1).astype(try_type)
+                        x2 = paddle.to_tensor(x2).astype(try_type)
+                        cos_sim_func = nn.CosineSimilarity(axis=0)
+                        try:
+                            result = cos_sim_func(x1, x2)
+                            test_result.append([try_type,result.numpy()])
+                        except:
+                            test_result.append([try_type,False])
+                    for item in test_result: print(item)
+                    # [['bool', False], ['float16', False], ['float32', array([0.6447718, 0.690425 , 0.7919385], dtype=float32)], ['float64', array([0.64477189, 0.69042499, 0.79193855])], ['int8', False], ['int16', False], ['int32', False], ['int64', False], ['uint8', False]]
+                    
+        Exception of inputs:
+            case1: wrong dtypes of x1, x2 (see Type of inputs for more details)
+            case2: wrong values of x1, x2 (see Range of inputs for more details)
+                    
     """
 
     def __init__(self, axis=1, eps=1e-8):
