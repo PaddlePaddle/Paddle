@@ -50,6 +50,7 @@ __all__ = [     #noqa
            'pull_worker_log',
            'global_scatter',
            'global_gather',
+           'prune_gate_by_capacity',
 ]
 
 
@@ -753,3 +754,56 @@ def watch_local_trainers(procs, nranks):
         raise
 
     return alive
+
+
+def prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
+    """
+    prune gate by capacity(CUDA)
+
+    Args:
+        gate_idx (Tensor): Represents the gate_id sequence corresponding to the input data with type int32, int64.
+        expert_count (Tensor): The quantity value counted on the gate_id sequence of the input data with type int32.
+        n_expert(int，optional): The number of Experts on each worker with type int64.
+        n_worker(int，optional): The number of workers on the trainer with type int64.
+  
+    Returns:
+        new_gate_idx (Tensor): The gate_id sequence corresponding to the new input data after passing through prune.
+    
+    Examples:
+        .. code-block:: python
+
+            import paddle
+            gate_idx = paddle.to_tensor([1, 3, 3, 3, 3, 2, 1, 1], dtype='int32')
+            expert_count = paddle.to_tensor([0, 3, 1, 3, 0, 0, 0, 0], dtype='int32')
+            n_expert = 8
+            n_worker = 1
+            new_gate_id = paddle.distributed.utils.prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker)
+            print(new_gate_id)
+            # Tensor(shape=[8], dtype=int32, place=CUDAPlace(0), stop_gradient=True,
+                [1, 3, 3, 3, -1, 2, 1, 1])
+    """
+
+    from paddle.common_ops_import import in_dygraph_mode, check_variable_and_dtype, LayerHelper
+    from paddle import _C_ops
+
+    if in_dygraph_mode():
+        return _C_ops.prune_gate_by_capacity(gate_idx, expert_count, "n_expert",
+                                             n_expert, "n_worker", n_worker)
+    check_variable_and_dtype(gate_idx, 'GateIdx', ['int32', 'int64'],
+                             'paddle.distributed.utils.prune_gate_by_capacity')
+    check_variable_and_dtype(expert_count, 'ExpertCount', ['int32'],
+                             'paddle.distributed.utils.prune_gate_by_capacity')
+
+    helper = LayerHelper('prune_gate_by_capacity', **locals())
+    new_gate_idx = helper.create_variable_for_type_inference(
+        dtype=gate_idx.dtype)
+    helper.append_op(
+        type='prune_gate_by_capacity',
+        inputs={'GateIdx': gate_idx,
+                "ExpertCount": expert_count},
+        outputs={'NewGateIdx': new_gate_idx,
+                 'ExpertCountOut': expert_count},
+        attrs={"n_expert": n_expert,
+               "n_worker": n_worker})
+
+    return new_gate_idx
