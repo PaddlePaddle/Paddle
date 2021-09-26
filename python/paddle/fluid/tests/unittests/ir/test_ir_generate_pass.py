@@ -15,7 +15,7 @@
 import unittest
 import paddle
 from paddle.static import InputSpec
-from paddle.fluid import ir
+from paddle.fluid import core, ir
 import numpy as np
 
 
@@ -154,21 +154,29 @@ class TestGeneratePass(unittest.TestCase):
         _check_fc_fuse_pass(multi_pass_desc.pass_descs[1], False)
 
     def test_generate_add_n(self):
-        helper = ir.RegisterPassHelper([generate_add_n()])
-        s = helper.SerializeMultiPassDesc()
-        multi_pass_desc = get_multi_pass_desc_from_str(s)
-        self.assertEqual(len(multi_pass_desc.pass_descs), 1)
-        pass_desc = multi_pass_desc.pass_descs[0]
-        self.assertEqual(len(pass_desc.var_maps), 4)
-        self.assertEqual(len(pass_desc.attr_maps), 0)
-        self.assertEqual(len(pass_desc.pattern.blocks[0].ops), 2)
-        self.assertEqual(len(pass_desc.replace.blocks[0].ops), 1)
-        pattern_op_dicts = self.convert_ops_to_op_dicts(
-            pass_desc.pattern.blocks[0].ops)
-        replace_op_dicts = self.convert_ops_to_op_dicts(
-            pass_desc.replace.blocks[0].ops)
-        self.assertEqual(len(pattern_op_dicts.get("elementwise_add", [])), 2)
-        self.assertEqual(len(replace_op_dicts.get("sum", [])), 1)
+        paddle.enable_static()
+        program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(program, startup_program):
+            x = paddle.static.data("x", [10, 10, 10], "float32")
+            y = paddle.static.data("y", [10, 10, 10], "float32")
+            z = paddle.static.data("z", [10, 10, 10], "float32")
+            out = paddle.add(paddle.add(x, y), z)
+        graph = core.Graph(program.desc)
+        core.get_pass("generate_add_n").apply(graph)
+        after_program = paddle.fluid.framework.IrGraph(graph).to_program()
+        executor = paddle.static.Executor(paddle.CPUPlace())
+        executor.run(startup_program)
+        feed = {
+            "x": np.random.random([10, 10, 10]).astype("float32"),
+            "y": np.random.random([10, 10, 10]).astype("float32"),
+            "z": np.random.random([10, 10, 10]).astype("float32")
+        }
+        before_out = executor.run(program, feed=feed, fetch_list=[out.name])
+        after_out = executor.run(after_program,
+                                 feed=feed,
+                                 fetch_list=[out.name])
+        self.assertTrue(np.allclose(before_out, after_out))
 
     def test_generate_combine_mul_v1(self):
         input_specs = {
