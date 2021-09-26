@@ -324,7 +324,7 @@ void BindInferenceApi(py::module *m) {
                                    auto pred =
                                        std::unique_ptr<paddle_infer::Predictor>(
                                            new paddle_infer::Predictor(config));
-                                   return std::move(pred);
+                                   return pred;
                                  });
   m->def("copy_tensor", &CopyPaddleInferTensor);
   m->def("paddle_dtype_size", &paddle::PaddleDtypeSize);

@@ -14,7 +14,7 @@
 
 import numpy as np
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import check_variable_and_dtype, check_type
+from ..fluid.data_feeder import check_variable_and_dtype, check_type, check_dtype
 from ..fluid.framework import in_dygraph_mode, _varbase_creator, Variable
 
 from ..fluid.layers import transpose, cast  # noqa: F401
@@ -1351,6 +1351,109 @@ def mv(x, vec, name=None):
     return out
 
 
+def det(x):
+    """
+    Calculates determinant value of a square matrix or batches of square matrices.
+    Args:
+        x (Tensor): input (Tensor): the input matrix of size `(n, n)` or the batch of matrices of size
+                    `(*, n, n)` where `*` is one or more batch dimensions.
+    Returns:
+        y (Tensor):the determinant value of a square matrix or batches of square matrices.
+
+    Example: 
+        .. code-block:: python
+
+        import paddle
+
+        x =  paddle.randn([3,3,3])
+
+        A = paddle.det(x)
+
+        print(A)
+    
+        # [ 0.02547996,  2.52317095, -6.15900707])
+
+    
+    """
+    if in_dygraph_mode():
+        return core.ops.determinant(x)
+
+    check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'det')
+
+    input_shape = list(x.shape)
+    assert len(input_shape) >= 2,                     \
+            "The x must be at least 2-dimensional, "   \
+            "but received Input x's dimensional: %s.\n" %  \
+            len(input_shape)
+
+    assert (input_shape[-1] == input_shape[-2]),    \
+            "Expect squared input," \
+            "but received %s by %s matrix.\n" \
+            %(input_shape[-2], input_shape[-1]) \
+
+    helper = LayerHelper('determinant', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='determinant', inputs={'Input': [x]}, outputs={'Out': [out]})
+    return out
+
+
+def slogdet(x):
+    """
+    Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
+    The determinant can be computed with ``sign * exp(logabsdet)
+    
+    Supports input of float, double
+
+    Note that for matrices that have zero determinant, this returns ``(0, -inf)``
+    Args:
+        x (Tensor): the batch of matrices of size :math:`(*, n, n)`
+            where math:`*` is one or more batch dimensions.
+
+    Returns:
+        y (Tensor): A tensor containing the sign of the determinant and the natural logarithm
+        of the absolute value of determinant, respectively.
+
+    Example:
+    .. code-block:: python
+
+        import paddle
+
+        x =  paddle.randn([3,3,3])
+
+        A = paddle.slogdet(x)
+
+        print(A)
+    
+        # [[ 1.        ,  1.        , -1.        ],
+        # [-0.98610914, -0.43010661, -0.10872950]])
+
+    """
+    if in_dygraph_mode():
+        return core.ops.slogdeterminant(x)
+
+    check_dtype(x.dtype, 'Input', ['float32', 'float64'], 'slogdet')
+
+    input_shape = list(x.shape)
+    assert len(input_shape) >= 2,                     \
+            "The x must be at least 2-dimensional, "   \
+            "but received Input x's dimensional: %s.\n" %  \
+            len(input_shape)
+
+    assert (input_shape[-1] == input_shape[-2]),    \
+            "Expect squared input," \
+            "but received %s by %s matrix.\n" \
+            %(input_shape[-2], input_shape[-1]) \
+
+    helper = LayerHelper('slogdeterminant', **locals())
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type='slogdeterminant', inputs={'Input': [x]}, outputs={'Out': [out]})
+    return out
+
+
 def svd(x, full_matrices=False, name=None):
     r"""
     Computes the singular value decomposition of one matrix or a batch of regular matrices.
@@ -1969,3 +2072,60 @@ def pinv(x, rcond=1e-15, hermitian=False, name=None):
                 attrs={'trans_x': False,
                        'trans_y': True}, )
             return out_2
+
+
+def solve(x, y, name=None):
+    r"""
+    Computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
+    Let :math: `X` be a sqaure matrix or a batch of square matrices, :math:`Y` be
+    a vector/matrix or a batch of vectors/matrices, the equation should be:
+    
+    .. math::
+        Out = X^-1 * Y
+    Specifically,
+    - This system of linear equations has one solution if and only if input 'X' is invertible.
+    
+    Args:
+        x (Tensor): A square matrix or a batch of square matrices. Its shape should be `[*, M, M]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
+        y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be `[*, M, K]`, where `*` is zero or
+            more batch dimensions. Its data type should be float32 or float64.
+        name(str, optional): Name for the operation (optional, default is None). 
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Tensor: The solution of a square system of linear equations with a unique solution for input 'x' and 'y'. 
+        Its data type should be the same as that of `x`.
+    
+    Examples:
+    .. code-block:: python
+        
+        # a square system of linear equations:
+        # 2*X0 + X1 = 9
+        # X0 + 2*X1 = 8
+        
+        import paddle
+        import numpy as np
+       
+        np_x = np.array([[3, 1],[1, 2]])
+        np_y = np.array([9, 8])
+        x = paddle.to_tensor(np_x, dtype="float64")
+        y = paddle.to_tensor(np_y, dtype="float64")
+        out = paddle.linalg.solve(x, y)
+        
+        print(out)
+        # [2., 3.])
+    """
+    if in_dygraph_mode():
+        return _C_ops.solve(x, y)
+
+    inputs = {"X": [x], "Y": [y]}
+    helper = LayerHelper("solve", **locals())
+    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'solve')
+    check_variable_and_dtype(y, 'y', ['float32', 'float64'], 'solve')
+    out = helper.create_variable_for_type_inference(dtype=x.dtype)
+
+    helper.append_op(
+        type="solve", inputs={"X": x,
+                              "Y": y}, outputs={"Out": out})
+    return out
