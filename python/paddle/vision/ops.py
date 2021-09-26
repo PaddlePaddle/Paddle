@@ -912,7 +912,7 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
 
     PSROIPooling is proposed by R-FCN. Please refer to https://arxiv.org/abs/1605.06409 for more details.
 
-    Parameters:
+    Args:
         x (Tensor): Input features with shape (N, C, H, W). The data type can be float32 or float64.
         boxes (Tensor): Box coordinates of ROIs (Regions of Interest) to pool over. It should be
                          a 2-D Tensor with shape (num_rois, 4). Given as [[x1, y1, x2, y2], ...], 
@@ -928,11 +928,8 @@ def psroi_pool(x, boxes, boxes_num, output_size, spatial_scale=1.0, name=None):
                              For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
-        The pooled ROIs, which is a 4-D tensor with shape (num_rois, output_channels, pooled_h, pooled_w).
+        4-D Tensor. The pooled ROIs with shape (num_rois, output_channels, pooled_h, pooled_w).
         The output_channels equal to C / (pooled_h * pooled_w), where C is the channels of input.
-
-    Return Type:
-        Tensor
 
     Examples:
         .. code-block:: python
@@ -979,7 +976,7 @@ class PSRoIPool(Layer):
     This interface is used to construct a callable object of the ``PSRoIPool`` class. Please
     refer to :ref:`api_paddle_vision_ops_psroi_pool`.
 
-    Parameters:
+    Args:
         output_size (int|Tuple(int, int))  The pooled output size(H, W), data type 
                                is int32. If int, H and W are both equal to output_size.
         spatial_scale (float): Multiplicative spatial scale factor to translate ROI coords from their 
