@@ -371,6 +371,8 @@ class Graph {
     PADDLE_ENFORCE_LT(
         idx, sub_graphs_.size(),
         platform::errors::InvalidArgument("Invalid sub_graph index"));
+    VLOG(3) << "sub_graph nodes num:"
+            << sub_graphs_.at(idx).get()->Nodes().size();
     return sub_graphs_.at(idx).get();
   }
 
