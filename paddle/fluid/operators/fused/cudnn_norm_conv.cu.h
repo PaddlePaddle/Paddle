@@ -133,7 +133,7 @@ class CudnnNormConvolution {
  private:
   CudnnFusionOp *GetForwardOp(const platform::CUDADeviceContext &ctx) {
     framework::AlgorithmsCache<CudnnFusionOp *> &cache =
-        *(CudnnFusionOpCache::Instance().Get());
+        *(CudnnFusionOpCache::Instance().GetForward());
 
     CudnnFusionOp *fwd_op = cache.GetAlgorithm(
         args_.in_dims, args_.filter_dims, args_.strides, args_.paddings,
@@ -258,7 +258,7 @@ class CudnnNormConvolutionGrad {
 
   CudnnFusionOp *GetBackwardFilterOp(const platform::CUDADeviceContext &ctx) {
     framework::AlgorithmsCache<CudnnFusionOp *> &cache =
-        *(CudnnFusionOpCache::Instance().Get());
+        *(CudnnFusionOpCache::Instance().GetBackward());
 
     CudnnFusionOp *wgrad_op = cache.GetAlgorithm(
         args_.in_dims, args_.filter_dims, args_.strides, args_.paddings,
