@@ -43,10 +43,10 @@ struct NormConvolutionArgs {
            const std::vector<int> &output_shape, int padding, int stride,
            int dilation, int group) {
     for (size_t i = 0; i < input_shape.size(); ++i) {
-      in_dims[i] = input_shape[i];
+      in_dims.push_back(input_shape[i]);
     }
     for (size_t i = 0; i < filter_shape.size(); ++i) {
-      filter_dims[i] = filter_shape[i];
+      filter_dims.push_back(filter_shape[i]);
     }
     paddings = {padding, padding};
     strides = {stride, stride};
@@ -129,7 +129,7 @@ class CudnnNormConvolution {
  private:
   CudnnFusionOp *GetForwardOp(const platform::CUDADeviceContext &ctx) {
     framework::AlgorithmsCache<CudnnFusionOp *> &cache =
-        *(CudnnFusionOpCache::Instance().Get());
+        *(CudnnFusionOpCache::Instance().GetForward());
 
     CudnnFusionOp *fwd_op = cache.GetAlgorithm(
         args_.in_dims, args_.filter_dims, args_.strides, args_.paddings,
@@ -191,12 +191,13 @@ class CudnnNormConvolutionGrad {
 
   void Backward(const platform::CUDADeviceContext &ctx, T *input_ptr,
                 T *output_ptr, T *filter_ptr, T *input_grad_ptr,
-                T *filter_grad_ptr) {
+                T *filter_grad_ptr, bool use_addto) {
     if (filter_grad_ptr) {
       BackwardFilter(ctx, input_ptr, output_ptr, filter_ptr, filter_grad_ptr);
     }
     if (input_grad_ptr) {
-      BackwardData(ctx, input_ptr, output_ptr, filter_ptr, input_grad_ptr);
+      BackwardData(ctx, input_ptr, output_ptr, filter_ptr, input_grad_ptr,
+                   use_addto);
     }
   }
 
@@ -250,7 +251,7 @@ class CudnnNormConvolutionGrad {
 
   CudnnFusionOp *GetBackwardFilterOp(const platform::CUDADeviceContext &ctx) {
     framework::AlgorithmsCache<CudnnFusionOp *> &cache =
-        *(CudnnFusionOpCache::Instance().Get());
+        *(CudnnFusionOpCache::Instance().GetBackward());
 
     CudnnFusionOp *wgrad_op = cache.GetAlgorithm(
         args_.in_dims, args_.filter_dims, args_.strides, args_.paddings,

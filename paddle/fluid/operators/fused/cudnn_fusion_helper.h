@@ -141,7 +141,12 @@ class CudnnFusionOpCache {
     return instance;
   }
 
-  framework::AlgorithmsCache<CudnnFusionOp *> *Get() { return &cache_; }
+  framework::AlgorithmsCache<CudnnFusionOp *> *GetForward() {
+    return &forward_cache_;
+  }
+  framework::AlgorithmsCache<CudnnFusionOp *> *GetBackward() {
+    return &backward_cache_;
+  }
 
  private:
   CudnnFusionOpCache() {}
@@ -151,7 +156,8 @@ class CudnnFusionOpCache {
   CudnnFusionOpCache(const CudnnFusionOpCache &) {}
 
  private:
-  framework::AlgorithmsCache<CudnnFusionOp *> cache_;
+  framework::AlgorithmsCache<CudnnFusionOp *> forward_cache_;
+  framework::AlgorithmsCache<CudnnFusionOp *> backward_cache_;
 };
 
 #endif  // CUDNN_VERSION >= 8000
