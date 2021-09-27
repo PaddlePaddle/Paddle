@@ -1360,7 +1360,11 @@ def det(x):
     Returns:
         y (Tensor):the determinant value of a square matrix or batches of square matrices.
 
+<<<<<<< HEAD
     Examples:
+=======
+    Example: 
+>>>>>>> 81557da617222309c9628df687e61facb584a14c
         .. code-block:: python
 
         import paddle
@@ -1370,10 +1374,17 @@ def det(x):
         A = paddle.det(x)
 
         print(A)
+<<<<<<< HEAD
 
         # [ 0.02547996,  2.52317095, -6.15900707])
 
 
+=======
+    
+        # [ 0.02547996,  2.52317095, -6.15900707])
+
+    
+>>>>>>> 81557da617222309c9628df687e61facb584a14c
     """
     if in_dygraph_mode():
         return core.ops.determinant(x)
@@ -1403,7 +1414,11 @@ def slogdet(x):
     """
     Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
     The determinant can be computed with ``sign * exp(logabsdet)
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 81557da617222309c9628df687e61facb584a14c
     Supports input of float, double
 
     Note that for matrices that have zero determinant, this returns ``(0, -inf)``
@@ -1415,7 +1430,11 @@ def slogdet(x):
         y (Tensor): A tensor containing the sign of the determinant and the natural logarithm
         of the absolute value of determinant, respectively.
 
+<<<<<<< HEAD
     Examples:
+=======
+    Example:
+>>>>>>> 81557da617222309c9628df687e61facb584a14c
     .. code-block:: python
 
         import paddle
@@ -1425,7 +1444,11 @@ def slogdet(x):
         A = paddle.slogdet(x)
 
         print(A)
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 81557da617222309c9628df687e61facb584a14c
         # [[ 1.        ,  1.        , -1.        ],
         # [-0.98610914, -0.43010661, -0.10872950]])
 
@@ -2079,17 +2102,26 @@ def solve(x, y, name=None):
     Computes the solution of a square system of linear equations with a unique solution for input 'X' and 'Y'.
     Let :math: `X` be a sqaure matrix or a batch of square matrices, :math:`Y` be
     a vector/matrix or a batch of vectors/matrices, the equation should be:
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 81557da617222309c9628df687e61facb584a14c
     .. math::
         Out = X^-1 * Y
     Specifically,
     - This system of linear equations has one solution if and only if input 'X' is invertible.
+<<<<<<< HEAD
 
+=======
+    
+>>>>>>> 81557da617222309c9628df687e61facb584a14c
     Args:
         x (Tensor): A square matrix or a batch of square matrices. Its shape should be `[*, M, M]`, where `*` is zero or
             more batch dimensions. Its data type should be float32 or float64.
         y (Tensor): A vector/matrix or a batch of vectors/matrices. Its shape should be `[*, M, K]`, where `*` is zero or
             more batch dimensions. Its data type should be float32 or float64.
+<<<<<<< HEAD
         name(str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
 
@@ -2107,12 +2139,35 @@ def solve(x, y, name=None):
         import paddle
         import numpy as np
 
+=======
+        name(str, optional): Name for the operation (optional, default is None). 
+            For more information, please refer to :ref:`api_guide_Name`.
+    
+    Returns:
+        Tensor: The solution of a square system of linear equations with a unique solution for input 'x' and 'y'. 
+        Its data type should be the same as that of `x`.
+    
+    Examples:
+    .. code-block:: python
+        
+        # a square system of linear equations:
+        # 2*X0 + X1 = 9
+        # X0 + 2*X1 = 8
+        
+        import paddle
+        import numpy as np
+       
+>>>>>>> 81557da617222309c9628df687e61facb584a14c
         np_x = np.array([[3, 1],[1, 2]])
         np_y = np.array([9, 8])
         x = paddle.to_tensor(np_x, dtype="float64")
         y = paddle.to_tensor(np_y, dtype="float64")
         out = paddle.linalg.solve(x, y)
+<<<<<<< HEAD
 
+=======
+        
+>>>>>>> 81557da617222309c9628df687e61facb584a14c
         print(out)
         # [2., 3.])
     """

@@ -223,7 +223,11 @@ function cmake_base() {
         -DWITH_GLOO=${gloo_flag}
         -DWITH_LITE=${WITH_LITE:-OFF}
         -DWITH_XPU=${WITH_XPU:-OFF}
+<<<<<<< HEAD
         -DLITE_GIT_TAG=release/v2.10
+=======
+        -DLITE_GIT_TAG=_release/v2.10
+>>>>>>> 81557da617222309c9628df687e61facb584a14c
         -DWITH_UNITY_BUILD=${WITH_UNITY_BUILD:-OFF}
         -DWITH_XPU_BKCL=${WITH_XPU_BKCL:-OFF}
         -DWITH_ARM=${WITH_ARM:-OFF}
@@ -266,7 +270,11 @@ EOF
         -DWITH_PSCORE=${distibuted_flag} \
         -DWITH_PSLIB=${WITH_PSLIB:-OFF} \
         -DWITH_GLOO=${gloo_flag} \
+<<<<<<< HEAD
         -DLITE_GIT_TAG=release/v2.10 \
+=======
+        -DLITE_GIT_TAG=_release/v2.10 \
+>>>>>>> 81557da617222309c9628df687e61facb584a14c
         -DWITH_XPU=${WITH_XPU:-OFF} \
         -DXPU_SDK_ROOT=${XPU_SDK_ROOT:-""} \
         -DWITH_LITE=${WITH_LITE:-OFF} \
