@@ -66,6 +66,12 @@ class GroupNormOp : public framework::OperatorWithKernel {
             "The Attr(groups) of Op(group_norm) must be "
             "greater than or equal to 1. But received: groups is [%s].",
             groups));
+    PADDLE_ENFORCE_EQ(
+        channel_num % groups, 0,
+        platform::errors::InvalidArgument(
+            "Expected number of channels in input to be divisible by "
+            "num_groups, but got input channel is %d and num_groups is %d",
+            channel_num, groups));
 
     if (ctx->HasInput("Scale")) {
       PADDLE_ENFORCE_EQ(

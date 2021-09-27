@@ -16,10 +16,16 @@ limitations under the License. */
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/math/math_cuda_utils.h"
 #include "paddle/fluid/operators/optimizers/lars_momentum_op.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/fast_divmod.h"
 
 #if defined(__NVCC__) && CUDA_VERSION >= 11000
+/* Once CUDA_VERSION is beyond 11.0, cooperative_groups can be involved in
+   without adding --rdc=true compile flag, then L2_norm cuda kernel can be
+   set as a __device__ kernel rather than global kernel. On the contrary,
+   the compile flag shall be set in old version, which may affect the cuda
+   kernel performance in paddle, consequently, L2_norm kernel shall be set
+   as a __global__ kernel.
+*/
 #include <cooperative_groups.h>
 #define LARS_FUNCTION_FLAG __device__
 #else
@@ -55,6 +61,15 @@ struct MergedParameter {
   MT* __restrict__ v_out_arr[MAX_MERGED_OPS];
   MT* __restrict__ master_p_out_arr[MAX_MERGED_OPS];
 };
+
+__device__ __forceinline__ float Sqrt(float x) { return sqrtf(x); }
+__device__ __forceinline__ double Sqrt(double x) { return sqrt(x); }
+__device__ __forceinline__ float Fma(float x, float y, float z) {
+  return fmaf(x, y, z);
+}
+__device__ __forceinline__ double Fma(double x, double y, double z) {
+  return fma(x, y, z);
+}
 
 template <typename T, typename MT, int VecSize, bool IsAmp = false>
 __device__ inline void VectorizeLarsUpdate(
@@ -93,8 +108,8 @@ __device__ inline void VectorizeLarsUpdate(
     for (int j = 0; j < VecSize; ++j) {
       MT grad_val = static_cast<MT>(grad_data[j]) * rescale_grad;
       velocity_tmp[j] =
-          fma(velocity_data[j], mu,
-              local_lr * fma(lars_weight_decay, param_data[j], grad_val));
+          Fma(velocity_data[j], mu,
+              local_lr * Fma(lars_weight_decay, param_data[j], grad_val));
       param_tmp[j] = param_data[j] - velocity_tmp[j];
       param_out_tmp[j] = static_cast<T>(param_tmp[j]);
     }
@@ -108,7 +123,7 @@ __device__ inline void VectorizeLarsUpdate(
   for (int i = tid + tail_offset; i < numel; i += grid_stride) {
     MT grad_val = static_cast<MT>(grad[i]) * rescale_grad;
     MT param_val = param[i];
-    MT velocity_tmp = fma(velocity[i], mu, local_lr * fma(lars_weight_decay,
+    MT velocity_tmp = Fma(velocity[i], mu, local_lr * Fma(lars_weight_decay,
                                                           param_val, grad_val));
     MT param_tmp = param_val - velocity_tmp;
     param_out[i] = static_cast<T>(param_tmp);
@@ -120,12 +135,14 @@ __device__ inline void VectorizeLarsUpdate(
 }
 
 template <typename T, typename MT>
-LARS_FUNCTION_FLAG void L2NormKernel(
-    const T* __restrict__ p_data, const T* __restrict__ g_data,
-    MT* __restrict__ p_buffer, MT* __restrict__ g_buffer, MT s_buffer[],
-    const int64_t numel, const int repeat_times, const int thresh,
-    const MT rescale_grad, MT* __restrict__ p_n = nullptr,
-    MT* __restrict__ g_n = nullptr) {
+LARS_FUNCTION_FLAG void L2NormKernel(const T* __restrict__ p_data,
+                                     const T* __restrict__ g_data,
+                                     MT* __restrict__ p_buffer,
+                                     MT* __restrict__ g_buffer, MT s_buffer[],
+                                     int64_t numel, const int repeat_times,
+                                     const int thresh, const MT rescale_grad,
+                                     MT* __restrict__ p_n = nullptr,
+                                     MT* __restrict__ g_n = nullptr) {
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
   int grid_stride = LARS_BLOCK_SIZE * gridDim.x;
   const MT rescale_grad_pow = rescale_grad * rescale_grad;
@@ -167,7 +184,7 @@ LARS_FUNCTION_FLAG void L2NormKernel(
 
   if (threadIdx.x == 0) {
     p_buffer[blockIdx.x] = s_buffer[0];
-    g_buffer[blockIdx.x] = rescale_grad_pow * s_buffer[1];
+    g_buffer[blockIdx.x] = s_buffer[1];
   }
   // Grid sync for completely writring partial result back to gloabl memory
   const cooperative_groups::grid_group cg = cooperative_groups::this_grid();
@@ -175,7 +192,8 @@ LARS_FUNCTION_FLAG void L2NormKernel(
   MT p_partial_sum = threadIdx.x < thresh ? p_buffer[threadIdx.x] : 0;
   MT g_partial_sum = threadIdx.x < thresh ? g_buffer[threadIdx.x] : 0;
   *p_n = sqrt(math::blockReduceSum<MT>(p_partial_sum, FINAL_MASK));
-  *g_n = sqrt(math::blockReduceSum<MT>(g_partial_sum, FINAL_MASK));
+  *g_n = sqrt(rescale_grad_pow *
+              math::blockReduceSum<MT>(g_partial_sum, FINAL_MASK));
 }
 
 template <typename T, typename MT>
@@ -319,7 +337,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
           sizeof(MT) << 1);
 
       MergedParameter<T, MT> merged_params;
-      int max_numel = 0;
+      size_t total_numel = 0;
       size_t op_num = grad.size();
       PADDLE_ENFORCE_LT(
           op_num, MAX_MERGED_OPS,
@@ -330,7 +348,8 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
 
       for (int i = 0; i < op_num; ++i) {
         int temp_numel = param[i]->numel();
-        max_numel = max_numel < temp_numel ? temp_numel : max_numel;
+        // max_numel = max_numel < temp_numel ? temp_numel : max_numel;
+        total_numel += temp_numel;
         merged_params.numel_arr[i] = temp_numel;
         merged_params.p_arr[i] = param[i]->data<T>();
         merged_params.g_arr[i] = grad[i]->data<T>();
@@ -341,7 +360,8 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
         merged_params.v_out_arr[i] =
             velocity_out[i]->mutable_data<MT>(ctx.GetPlace());
       }
-      int grid_num = (max_numel + LARS_BLOCK_SIZE - 1) / LARS_BLOCK_SIZE;
+      int avg_numel = total_numel / op_num;
+      int grid_num = (avg_numel + LARS_BLOCK_SIZE - 1) / LARS_BLOCK_SIZE;
       int thread_num = std::min(sm_num * num_blocks_per_sm, LARS_BLOCK_SIZE);
       int grid_real = std::min(thread_num, grid_num);
       int grid_stride = LARS_BLOCK_SIZE * grid_real;

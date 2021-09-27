@@ -1644,6 +1644,9 @@ def cross_entropy(input,
             ignore_index)
 
     input_dims = len(list(input.shape))
+    if input_dims == 0:
+        raise ValueError('The dimention of input should be larger than zero!')
+
     label_dims = len(list(label.shape))
     if input_dims - 1 != label_dims and input_dims != label_dims:
         raise ValueError(

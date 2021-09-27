@@ -107,6 +107,34 @@ std::ostream& operator<<(std::ostream& os, const DDim& ddim) {
   return os;
 }
 
+DDim flatten_to_3d(const DDim& src, int num_row_dims, int num_col_dims) {
+  PADDLE_ENFORCE_GE(src.size(), 3,
+                    platform::errors::InvalidArgument(
+                        "The rank of src dim should be at least 3 "
+                        "in flatten_to_3d, but received %d.",
+                        src.size()));
+  PADDLE_ENFORCE_EQ((num_row_dims >= 1 && num_row_dims < src.size()), true,
+                    platform::errors::InvalidArgument(
+                        "The num_row_dims should be inside [1, %d] "
+                        "in flatten_to_3d, but received %d.",
+                        src.size() - 1, num_row_dims));
+  PADDLE_ENFORCE_EQ((num_col_dims >= 2 && num_col_dims <= src.size()), true,
+                    platform::errors::InvalidArgument(
+                        "The num_col_dims should be inside [2, %d] "
+                        "in flatten_to_3d, but received %d.",
+                        src.size(), num_col_dims));
+  PADDLE_ENFORCE_GE(
+      num_col_dims, num_row_dims,
+      platform::errors::InvalidArgument(
+          "The num_row_dims should be less than num_col_dims in flatten_to_3d,"
+          "but received num_row_dims = %d, num_col_dims = %d.",
+          num_row_dims, num_col_dims));
+
+  return DDim({product(slice_ddim(src, 0, num_row_dims)),
+               product(slice_ddim(src, num_row_dims, num_col_dims)),
+               product(slice_ddim(src, num_col_dims, src.size()))});
+}
+
 DDim flatten_to_2d(const DDim& src, int num_col_dims) {
   return DDim({product(slice_ddim(src, 0, num_col_dims)),
                product(slice_ddim(src, num_col_dims, src.size()))});

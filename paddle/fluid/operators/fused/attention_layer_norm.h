@@ -50,7 +50,7 @@ class AttnLayerNorm {
     }
   }
 
-  void ComputeBackward(const T* x_data， const T* y_data,
+  void ComputeBackward(const T* x_data, const T* d_y_data,
                        const LayerNormParamType<T>* scale_data,
                        const LayerNormParamType<T>* mean_data,
                        const LayerNormParamType<T>* var_data, T* d_x_data,

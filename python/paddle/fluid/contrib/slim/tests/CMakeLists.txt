@@ -71,7 +71,7 @@ function(inference_quant2_int8_image_classification_test target quant_model_dir 
             ARGS --quant_model ${quant_model_dir}
                  --fp32_model ${fp32_model_dir}
                  --infer_data ${dataset_path}
-                 --batch_size 10
+                 --batch_size 50
                  --batch_num 2
                  --acc_diff_threshold 0.1)
 endfunction()
@@ -92,17 +92,14 @@ function(inference_quant2_int8_nlp_test target quant_model_dir fp32_model_dir da
 		 --ops_to_quantize ${ops_to_quantize})
 endfunction()
 
-function(inference_quant2_int8_lstm_model_test target fp32_model dataset_path)
+function(inference_quant2_int8_lstm_model_test target fp32_model quant_model dataset_path)
     py_test(${target} SRCS "${CMAKE_CURRENT_SOURCE_DIR}/quant2_int8_lstm_model.py"
-            ENVS FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-                 OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
-                 FLAGS_use_mkldnn=true
             ARGS --fp32_model ${fp32_model}
+                 --quant_model ${quant_model}
                  --infer_data ${dataset_path}
-                 --num_threads 4
+                 --num_threads 1
                  --mkldnn_cache_capacity 100
                  --warmup_iter 100
-                 --warmup_batch_size 1
                  --acc_diff_threshold 0.11)
 endfunction()
 
@@ -265,6 +262,12 @@ if(LINUX AND WITH_MKLDNN)
 	download_quant_model(${QUANT2_GRU_MODEL_DIR} ${QUANT2_GRU_MODEL_ARCHIVE} cf207f8076dcfb8b74d8b6bdddf9090c)
 	set(QUANT2_GRU_OPS_TO_QUANTIZE "multi_gru")
 
+	# Quant2 LSTM
+	set(QUANT2_LSTM_MODEL_ARCHIVE "lstm_quant.tar.gz")
+	set(QUANT2_LSTM_MODEL_DIR "${QUANT_INSTALL_DIR}/lstm_quant_test")
+	download_quant_model(${QUANT2_LSTM_MODEL_DIR} ${QUANT2_LSTM_MODEL_ARCHIVE} 40a693803b12ee9e251258f32559abcb)
+	set(QUANT2_LSTM_OPS_TO_QUANTIZE "fusion_lstm")
+
 	### Save FP32 model or INT8 model from Quant model
         
 	set(QUANT2_INT8_RESNET50_SAVE_PATH "${QUANT_INSTALL_DIR}/ResNet50_quant2_int8")
@@ -276,6 +279,9 @@ if(LINUX AND WITH_MKLDNN)
 	set(QUANT2_INT8_GRU_SAVE_PATH "${QUANT_INSTALL_DIR}/GRU_quant2_int8")
 	save_quant_nlp_model_test(save_quant2_model_gru ${QUANT2_GRU_MODEL_DIR}/GRU_quant_acc ${QUANT2_INT8_GRU_SAVE_PATH} ${QUANT2_GRU_OPS_TO_QUANTIZE})
 
+	set(QUANT2_INT8_LSTM_SAVE_PATH "${QUANT_INSTALL_DIR}/lstm_quant2_int8")
+	save_quant_nlp_model_test(save_quant2_model_lstm ${QUANT2_LSTM_MODEL_DIR}/lstm_quant ${QUANT2_INT8_LSTM_SAVE_PATH} ${QUANT2_LSTM_OPS_TO_QUANTIZE})
+
 	# Convert Quant2 model to dot and pdf files 
 	set(QUANT2_INT8_ERNIE_DOT_SAVE_PATH "${QUANT_INSTALL_DIR}/Ernie_quant2_int8_dot_file")
 	convert_model2dot_test(convert_model2dot_ernie ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${QUANT2_INT8_ERNIE_DOT_SAVE_PATH} "Ernie_quant2_int8")
@@ -284,11 +290,10 @@ if(LINUX AND WITH_MKLDNN)
 
 	# PTQ int8 lstm model
 	set(LSTM_DATA_ARCHIVE "unittest_model_data/quant_lstm_input_data.tar.gz")
-	set(QUANT2_INT8_LSTM_SAVE_PATH "${QUANT_INSTALL_DIR}/lstm_quant2")
 	download_quant_data(${QUANT2_INT8_LSTM_SAVE_PATH} ${LSTM_DATA_ARCHIVE} add84c754e9b792fea1fbd728d134ab7)
 	set(QUANT2_FP32_LSTM_MODEL_ARCHIVE "lstm_fp32_model.tar.gz")
 	download_lstm_model(${QUANT2_INT8_LSTM_SAVE_PATH} ${QUANT2_FP32_LSTM_MODEL_ARCHIVE} eecd9f44d69a84acc1cf2235c4b8b743)
-	inference_quant2_int8_lstm_model_test(test_quant2_int8_lstm_mkldnn ${QUANT2_INT8_LSTM_SAVE_PATH}/lstm_fp32_model ${QUANT2_INT8_LSTM_SAVE_PATH}/quant_lstm_input_data)
+	inference_quant2_int8_lstm_model_test(test_quant2_int8_lstm_mkldnn ${QUANT2_INT8_LSTM_SAVE_PATH}/lstm_fp32_model ${QUANT2_LSTM_MODEL_DIR}/lstm_quant ${QUANT2_INT8_LSTM_SAVE_PATH}/quant_lstm_input_data)
 
 endif()
 
