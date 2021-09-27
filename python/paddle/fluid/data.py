@@ -73,8 +73,10 @@ def data(name, shape, dtype='float32', lod_level=0):
     Examples:
         .. code-block:: python
 
+          import paddle
           import paddle.fluid as fluid
           import numpy as np
+          paddle.enable_static()
 
           # Creates a variable with fixed size [3, 2, 1]
           # User can only feed data of the same shape to x

@@ -198,32 +198,34 @@ class TestMultiDotOpError(unittest.TestCase):
                                          paddle.static.Program()):
             # The inputs type of multi_dot must be list matrix.
             input1 = 12
-            self.assertRaises(TypeError, paddle.multi_dot, [input1, input1])
+            self.assertRaises(TypeError, paddle.linalg.multi_dot,
+                              [input1, input1])
 
             # The inputs dtype of multi_dot must be float64, float64 or float16.
             input2 = paddle.static.data(
                 name='input2', shape=[10, 10], dtype="int32")
-            self.assertRaises(TypeError, paddle.multi_dot, [input2, input2])
+            self.assertRaises(TypeError, paddle.linalg.multi_dot,
+                              [input2, input2])
 
             # the number of tensor must be larger than 1
             x0 = paddle.static.data(name='x0', shape=[3, 2], dtype="float64")
-            self.assertRaises(ValueError, paddle.multi_dot, [x0])
+            self.assertRaises(ValueError, paddle.linalg.multi_dot, [x0])
 
             #the first tensor must be 1D or 2D
             x1 = paddle.static.data(name='x1', shape=[3, 2, 3], dtype="float64")
             x2 = paddle.static.data(name='x2', shape=[3, 2], dtype="float64")
-            self.assertRaises(ValueError, paddle.multi_dot, [x1, x2])
+            self.assertRaises(ValueError, paddle.linalg.multi_dot, [x1, x2])
 
             #the last tensor must be 1D or 2D
             x3 = paddle.static.data(name='x3', shape=[3, 2], dtype="float64")
             x4 = paddle.static.data(name='x4', shape=[3, 2, 2], dtype="float64")
-            self.assertRaises(ValueError, paddle.multi_dot, [x3, x4])
+            self.assertRaises(ValueError, paddle.linalg.multi_dot, [x3, x4])
 
             #the tensor must be 2D, except first and last tensor
             x5 = paddle.static.data(name='x5', shape=[3, 2], dtype="float64")
             x6 = paddle.static.data(name='x6', shape=[2], dtype="float64")
             x7 = paddle.static.data(name='x7', shape=[2, 2], dtype="float64")
-            self.assertRaises(ValueError, paddle.multi_dot, [x5, x6, x7])
+            self.assertRaises(ValueError, paddle.linalg.multi_dot, [x5, x6, x7])
 
 
 class APITestMultiDot(unittest.TestCase):
@@ -232,7 +234,7 @@ class APITestMultiDot(unittest.TestCase):
         with paddle.static.program_guard(paddle.static.Program()):
             x0 = paddle.static.data(name='x0', shape=[3, 2], dtype="float64")
             x1 = paddle.static.data(name='x1', shape=[2, 3], dtype='float64')
-            result = paddle.multi_dot([x0, x1])
+            result = paddle.linalg.multi_dot([x0, x1])
             exe = paddle.static.Executor(paddle.CPUPlace())
             data1 = np.random.rand(3, 2).astype("float64")
             data2 = np.random.rand(2, 3).astype("float64")
@@ -254,7 +256,7 @@ class APITestMultiDot(unittest.TestCase):
         input_array2 = np.random.rand(4, 3).astype("float64")
         data1 = paddle.to_tensor(input_array1)
         data2 = paddle.to_tensor(input_array2)
-        out = paddle.multi_dot([data1, data2])
+        out = paddle.linalg.multi_dot([data1, data2])
         expected_result = np.linalg.multi_dot([input_array1, input_array2])
         self.assertTrue(np.allclose(expected_result, out.numpy()))
 
