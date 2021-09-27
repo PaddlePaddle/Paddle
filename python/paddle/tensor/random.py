@@ -661,6 +661,92 @@ def randint(low=0, high=None, shape=[1], dtype=None, name=None):
     return out
 
 
+def randint_like(x, low=0, high=None, dtype=None, name=None):
+    """
+    This OP returns a Tensor filled with random integers from a discrete uniform
+    distribution in the range [``low``, ``high``), with the same shape as ``x``.
+    (use ``dtype`` if ``dtype`` is not None) 
+    If ``high`` is None (the default), the range is [0, ``low``).
+
+    Args:
+        x (Tensor): The input tensor which specifies shape. The dtype of ``x`` 
+            can be bool, float16, float32, float64, int32, int64.
+        low (int): The lower bound on the range of random values to generate.
+            The ``low`` is included in the range. If ``high`` is None, the
+            range is [0, ``low``). Default is 0.
+        high (int, optional): The upper bound on the range of random values to
+            generate, the ``high`` is excluded in the range. Default is None
+            (see above for behavior if high = None). Default is None.
+        dtype (str|np.dtype, optional): The data type of the
+            output tensor. Supported data types: int32, int64. If ``dytpe``
+            is None, the data type is int64. Default is None.
+        name (str, optional): The default value is None.  Normally there is no
+            need for user to set this property.  For more information, please
+            refer to :ref:`api_guide_Name`.
+
+    Returns: 
+        Tensor: A Tensor filled with random integers from a discrete uniform
+        distribution in the range [``low``, ``high``), with ``shape`` and ``dtype``.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            # example 1:
+            # dtype is None and the dtype of x is float32
+            x = paddle.zeros((1,2))
+            out1 = paddle.randint_like(x, low=-5, high=5)
+            # [[0, -3]]  # random
+
+            # example 2:
+            # dtype is int32 and the dtype of x is float32
+            x = paddle.zeros((1,2))
+            out2 = paddle.randint(x, low=-5, high=5, dtype="int32")
+            # [[0, -1]]  # random
+
+            # example 3:
+            # low=0, high=10, x.shape=[1], dtype='int64'
+            x = paddle.zeros((1,))
+            out3 = paddle.randint(x, high=10)
+            # [7]  # random
+
+    """
+    if high is None:
+        if low <= 0:
+            raise ValueError(
+                "If high is None, low must be greater than 0, but received low = {0}.".
+                format(low))
+        high = low
+        low = 0
+    if dtype is None:
+        dtype = 'int64'
+    if not isinstance(dtype, core.VarDesc.VarType):
+        dtype = convert_np_dtype_to_dtype_(dtype)
+
+    if in_dygraph_mode():
+        return _C_ops.randint_like(x, 'low', low, 'high', high, 'seed', 0,
+                                   'dtype', dtype)
+
+    check_variable_and_dtype(
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+        'randint_like')
+    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint_like')
+    if low >= high:
+        raise ValueError(
+            "randint_like's low must less then high, but received low = {0}, "
+            "high = {1}".format(low, high))
+
+    attrs = {'low': low, 'high': high, 'seed': 0, 'dtype': dtype}
+
+    helper = LayerHelper("randint_like", **locals())
+    out = helper.create_variable_for_type_inference(dtype=dtype)
+    helper.append_op(
+        type='randint_like', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
+    out.stop_gradient = True
+    return out
+
+
 def randperm(n, dtype="int64", name=None):
     """
     This OP returns a 1-D Tensor filled with random permutation values from 0

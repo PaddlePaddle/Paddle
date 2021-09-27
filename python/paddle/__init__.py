@@ -234,6 +234,7 @@ from .tensor.random import uniform  # noqa: F401
 from .tensor.random import randn  # noqa: F401
 from .tensor.random import rand  # noqa: F401
 from .tensor.random import randint  # noqa: F401
+from .tensor.random import randint_like  # noqa: F401
 from .tensor.random import randperm  # noqa: F401
 from .tensor.search import argmax  # noqa: F401
 from .tensor.search import argmin  # noqa: F401
