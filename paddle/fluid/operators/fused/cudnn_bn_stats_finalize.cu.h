@@ -15,9 +15,12 @@ limitations under the License. */
 #pragma once
 
 #include "paddle/fluid/operators/fused/cudnn_fusion_helper.h"
+#include "paddle/fluid/platform/cudnn_desc.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
+
 using Tensor = framework::Tensor;
 namespace dynload = platform::dynload;
 
@@ -36,6 +39,7 @@ class CudnnBNStatsFinalizeOp {
 
   void Init(const platform::CUDADeviceContext &ctx,
             const std::vector<int> &param_shape) {
+    platform::RecordEvent event("bn_stats_finalize_init");
     InitDescriptors(ctx, param_shape);
 
     // Set constant_param for train op
@@ -91,6 +95,7 @@ class CudnnBNStatsFinalizeOp {
                float *running_mean_ptr, float *running_var_ptr,
                T *equiv_scale_ptr, T *equiv_bias_ptr, double eps,
                float momentum, int64_t ele_count, bool is_train) {
+    platform::RecordEvent event("bn_stats_finalize_forward");
     auto &op = is_train ? train_op_ : inference_op_;
 
     // Set variant_param for both inference_op_ and train_op_

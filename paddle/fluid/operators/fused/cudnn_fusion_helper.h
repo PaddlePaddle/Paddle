@@ -14,12 +14,11 @@ limitations under the License. */
 
 #pragma once
 
-#include <string>
 #include <vector>
-#include "paddle/fluid/platform/cudnn_desc.h"
-#include "paddle/fluid/platform/cudnn_helper.h"
+#include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -41,16 +40,14 @@ class CudnnFusionOp {
   }
 
   ~CudnnFusionOp() {
-    // New 'fused op' descriptor destruction
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::cudnnDestroyFusedOpsVariantParamPack(op_variant_params_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        dynload::cudnnDestroyFusedOpsConstParamPack(op_const_params_));
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnDestroyFusedOpsPlan(op_));
+    dynload::cudnnDestroyFusedOpsVariantParamPack(op_variant_params_);
+    dynload::cudnnDestroyFusedOpsConstParamPack(op_const_params_);
+    dynload::cudnnDestroyFusedOpsPlan(op_);
   }
 
   // Execute fused op
   void Execute(cudnnHandle_t cudnn_handle) {
+    platform::RecordEvent event("cudnn_fusion_execute");
     PADDLE_ENFORCE_EQ(
         plan_created_, true,
         platform::errors::Fatal(
@@ -121,19 +118,40 @@ class CudnnFusionOp {
 
   // Get the workspace, which is required before Execute().
   size_t GetWorkspaceSizeInBytes(cudnnHandle_t cudnn_handle) {
-    size_t workspace_bytes = 0U;
-    PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnMakeFusedOpsPlan(
-        cudnn_handle, op_, op_const_params_, &workspace_bytes));
-    plan_created_ = true;
-    return workspace_bytes;
+    if (!plan_created_) {
+      workspace_bytes_ = 0U;
+      PADDLE_ENFORCE_CUDA_SUCCESS(dynload::cudnnMakeFusedOpsPlan(
+          cudnn_handle, op_, op_const_params_, &workspace_bytes_));
+      plan_created_ = true;
+    }
+    return workspace_bytes_;
   }
 
  private:
   bool plan_created_;
+  size_t workspace_bytes_;
 
   cudnnFusedOpsPlan_t op_;
   cudnnFusedOpsConstParamPack_t op_const_params_;
   cudnnFusedOpsVariantParamPack_t op_variant_params_;
+};
+
+class CudnnFusionOpCache {
+ public:
+  static CudnnFusionOpCache &Instance() {
+    static CudnnFusionOpCache instance;
+    return instance;
+  }
+
+  framework::AlgorithmsCache<CudnnFusionOp *> *Get() { return &cache_; }
+
+ private:
+  CudnnFusionOpCache() {}
+  ~CudnnFusionOpCache() {}
+  CudnnFusionOpCache(const CudnnFusionOpCache &) {}
+
+ private:
+  framework::AlgorithmsCache<CudnnFusionOp *> cache_;
 };
 
 #endif  // CUDNN_VERSION >= 8000

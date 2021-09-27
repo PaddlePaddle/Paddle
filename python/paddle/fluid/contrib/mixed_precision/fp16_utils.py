@@ -80,6 +80,25 @@ def _dtype_to_str(dtype):
         return 'fp32'
 
 
+def _keep_fp32_input(op, in_name):
+    if op.type in ['batch_norm', 'layer_norm']:
+        # Scale, Bias, Mean, Variance should be float32.
+        return in_name != 'X'
+    if op.type == 'fused_bn_add_activation':
+        return in_name not in {'X', 'Z'}
+    if op.type == 'resnet_unit':
+        return in_name not in {'X', 'FilterX', 'Z', 'FilterZ'}
+
+
+def _keep_fp32_output(op, out_name):
+    if op.type in ['batch_norm', 'fused_bn_add_activation', 'layer_norm']:
+        return out_name != 'Y'
+    if op.type == 'resnet_unit':
+        return out_name not in {
+            'Y', 'ConvX', 'EqScaleX', 'EqBiasX', 'ConvZ', 'EqScaleZ', 'EqBiasZ'
+        }
+
+
 def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     """
     Insert cast op and rename args of input and output.
@@ -97,12 +116,9 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
     num_cast_ops = 0
 
     for in_name in op.input_names:
-        if src_dtype == core.VarDesc.VarType.FP32 and op.type in [
-                'batch_norm', 'fused_bn_add_activation', 'layer_norm',
-                'resnet_unit'
-        ]:
-            if in_name not in {'X', 'Z', 'FilterX', 'FilterZ'}:
-                continue
+        if src_dtype == core.VarDesc.VarType.FP32 and _keep_fp32_input(op,
+                                                                       in_name):
+            continue
         for in_var_name in op.input(in_name):
             in_var = block._find_var_recursive(in_var_name)
             if in_var.type not in _valid_types or in_var.dtype == dest_dtype:
@@ -155,10 +171,7 @@ def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
                     op._set_attr('in_dtype', dest_dtype)
     if src_dtype == core.VarDesc.VarType.FP32 and dest_dtype == core.VarDesc.VarType.FP16:
         for out_name in op.output_names:
-            if op.type in [
-                    'batch_norm', 'fused_bn_add_activation', 'layer_norm',
-                    'resnet_unit'
-            ] and out_name not in {'Y', 'ConvX', 'ConvZ'}:
+            if _keep_fp32_output(op, out_name):
                 continue
             for out_var_name in op.output(out_name):
                 out_var = block.var(out_var_name)
@@ -373,10 +386,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                 keep_fp32_ops.add(op)
                 continue  # processed below
             for in_name in op.input_names:
-                if op.type in {
-                        'batch_norm', 'fused_bn_add_activation', 'layer_norm',
-                        'resnet_unit'
-                } and in_name not in {'X', 'Z', 'FilterX', 'FilterZ'}:
+                if _keep_fp32_input(op, in_name):
                     continue
                 for in_var_name in op.input(in_name):
                     in_var = None
@@ -404,10 +414,7 @@ def cast_model_to_fp16(program, amp_lists=None, use_fp16_guard=True):
                         format(op.type, in_var_name, in_var.dtype))
 
             for out_name in op.output_names:
-                if op.type in {
-                        'batch_norm', 'fused_bn_add_activation', 'layer_norm',
-                        'resnet_unit'
-                } and out_name not in {'Y', 'ConvX', 'ConvZ'}:
+                if _keep_fp32_output(op, out_name):
                     continue
                 for out_var_name in op.output(out_name):
                     out_var = None

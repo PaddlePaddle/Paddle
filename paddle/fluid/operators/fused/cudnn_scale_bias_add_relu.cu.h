@@ -17,6 +17,7 @@ limitations under the License. */
 #include <numeric>
 
 #include "paddle/fluid/operators/fused/cudnn_fusion_helper.h"
+#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -42,6 +43,7 @@ class CudnnScaleBiasAddReluOp {
             const std::vector<int> &x_shape,
             const std::vector<int> &param_shape,
             std::vector<int> z_shape = {}) {
+    platform::RecordEvent event("scale_bias_add_relu_init");
     dtype_ = CudnnDataType<T>::type;
     format_ = CUDNN_TENSOR_NHWC;
     InitDescriptors(ctx, act_type, out_shape, bitmask_shape, x_shape,
@@ -53,6 +55,7 @@ class CudnnScaleBiasAddReluOp {
                T *x_bias_ptr, T *out_ptr, int32_t *bitmask_ptr,
                T *z_ptr = nullptr, T *z_scale_ptr = nullptr,
                T *z_bias_ptr = nullptr) {
+    platform::RecordEvent event("scale_bias_add_relu_forward");
     auto handle = ctx.cudnn_handle();
     auto workspace_handle = ctx.cudnn_workspace_handle();
     // Set variant_param
@@ -92,6 +95,7 @@ class CudnnScaleBiasAddReluOp {
                 T *y_ptr, float *scale_ptr, float *bias_ptr,
                 float *saved_mean_ptr, float *saved_invstd_ptr, T *dx_ptr,
                 T *dz_ptr, float *dscale_ptr, float *dbias_ptr, double eps) {
+    platform::RecordEvent event("scale_bias_add_relu_backward");
     auto handle = ctx.cudnn_handle();
     cudnnBatchNormMode_t mode = CUDNN_BATCHNORM_SPATIAL_PERSISTENT;
     cudnnBatchNormOps_t bnOps =
