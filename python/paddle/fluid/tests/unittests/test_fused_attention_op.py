@@ -13,7 +13,6 @@
 # limitations under the License.
 
 import numpy as np
-
 import paddle
 import paddle.nn as nn
 import paddle.fluid.core as core
@@ -105,15 +104,10 @@ def GetBaselineOut(pre_layer_norm, training, embed_dim, num_heads, head_dim,
 
         residual_out = residual + F.dropout(
             out, dropout_prob, training=training, mode="upscale_in_train")
-        #if not pre_layer_norm:
         final_out = F.layer_norm(residual_out, embed_dim, ln_2_scale, ln_2_bias)
-        #if pre_layer_norm:
-        #    final_out = F.layer_norm(residual_out, embed_dim, ln_2_scale, ln_2_bias)
     return final_out
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "Paddle core is not compiled with CUDA")
 class TestFusedAttentionOpFp32(OpTest):
     def setUp(self):
         self.config()
@@ -122,7 +116,6 @@ class TestFusedAttentionOpFp32(OpTest):
 
     def config(self):
         self.x_type = np.float32
-
         self.pre_layer_norm = True
         self.batch_size = 8
         self.query_length = 128
@@ -187,8 +180,6 @@ class TestFusedAttentionOpFp32(OpTest):
         self.assertTrue(np.allclose(ref_out, out, rtol=1e-5, atol=1e-5))
 
 
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "Paddle core is not compiled with CUDA")
 class TestFusedAttentionOpFp16(TestFusedAttentionOpFp32):
     def setUp(self):
         self.config()
@@ -206,97 +197,6 @@ class TestFusedAttentionOpFp16(TestFusedAttentionOpFp32):
     def test_fused_attention_op(self):
         ref_out, out = self.compute_result()
         self.assertTrue(np.allclose(ref_out, out, rtol=1e-5, atol=1e-2))
-
-
-@unittest.skipIf(not core.is_compiled_with_cuda(),
-                 "Paddle core is not compiled with CUDA")
-class TestFusedAttentionStaticAPI(OpTest):
-    def setUp(self):
-        self.config()
-        self.generate_input_data()
-
-    def config(self):
-        self.x_type = np.float32
-        self.__class__.op_type = "fused_attention"
-        self.attn_mask_type = np.float64
-        self.pre_layer_norm = True
-        self.training = True
-        self.need_weight = False
-        self.batch_size = 1
-        self.query_length = 2
-        self.head_dim = 2
-        self.num_heads = 2
-        self.embed_dim = self.head_dim * self.num_heads
-        self.dropout_prob = 0.0
-        self.attn_dropout_prob = 0.0
-        self.weight_attr = None
-        self.bias_attr = None
-        self.kdim, self.vdim = self.embed_dim, self.embed_dim
-        self.key_length, self.value_length = self.query_length, self.query_length
-
-    def generate_input_data(self):
-        self.query = np.random.rand(self.batch_size, self.query_length,
-                                    self.embed_dim).astype(self.x_type)
-        self.attn_mask = np.ones(
-            (self.batch_size, self.num_heads, self.query_length,
-             self.key_length),
-            dtype=self.attn_mask_type)
-        if self.attn_mask_type == np.int64:
-            self.attn_mask = np.tril(self.attn_mask)
-        elif self.attn_mask_type == np.float64:
-            self.attn_mask = (np.tril(self.attn_mask) - 1.0) * 1e9
-        else:
-            raise ValueError("'attn_mask_type' should be 'int64' or 'float64'.")
-        self.key, self.value = self.query, self.query
-
-    def run_static(self):
-        fused_attn = FusedMultiHeadAttention(
-            self.embed_dim, self.num_heads, self.dropout_prob,
-            self.attn_dropout_prob, self.kdim, self.vdim, self.pre_layer_norm,
-            self.need_weight, self.weight_attr, self.bias_attr)
-
-        x = paddle.static.data(
-            name='X',
-            shape=[self.batch_size, self.query_length, self.embed_dim],
-            dtype=self.x_type)
-        attn_mask = paddle.static.data(
-            name='SrcMask',
-            shape=[
-                self.batch_size, self.num_heads, self.query_length,
-                self.key_length
-            ],
-            dtype=self.attn_mask_type)
-        final_out = fused_attn(x, x, x, attn_mask)
-
-        place = paddle.CUDAPlace(0)
-        exe = paddle.static.Executor(place)
-        exe.run(paddle.static.default_startup_program())
-        out, qkv_weight, qkv_bias, out_linear_weight, out_linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = exe.run(
-            paddle.static.default_main_program(),
-            feed={"X": self.query,
-                  "SrcMask": self.attn_mask},
-            fetch_list=[
-                final_out, fused_attn.qkv_weight, fused_attn.qkv_bias,
-                fused_attn.out_linear_weight, fused_attn.out_linear_bias,
-                fused_attn.ln_scale, fused_attn.ln_bias, fused_attn.ln_2_scale,
-                fused_attn.ln_2_bias
-            ])
-        return out, qkv_weight, qkv_bias, out_linear_weight, out_linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias
-
-    def test_static_api(self):
-        paddle.enable_static()
-        with paddle.static.program_guard(Program()):
-            out, qkv_weight, qkv_bias, out_linear_weight, out_linear_bias, ln_scale, ln_bias, ln_2_scale, ln_2_bias = self.run_static(
-            )
-        ref_out = GetBaselineOut(
-            self.pre_layer_norm, self.training, self.embed_dim, self.num_heads,
-            self.head_dim, self.query, self.attn_mask, ln_scale, ln_bias,
-            ln_2_scale, ln_2_bias, qkv_weight, qkv_bias, out_linear_weight,
-            out_linear_bias, self.attn_dropout_prob, self.dropout_prob)
-
-        self.assertTrue(
-            np.allclose(
-                np.array(ref_out), np.array(out), rtol=1e-5, atol=1e-5))
 
 
 if __name__ == "__main__":
