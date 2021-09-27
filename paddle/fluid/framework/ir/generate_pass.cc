@@ -231,55 +231,36 @@ VarHelper::VarHelper(const char* name) : name_(name), type_(Type::kInput) {}
 VarHelper::VarHelper(const std::string& name, Type type)
     : name_(name), type_(type) {}
 
-const std::string& VarHelper::Name() const { return name_; }
-
-bool VarHelper::CheckIntermediate() {
-  if (Type::kOutput == type_) {
-    type_ = Type::kIntermediate;
-  }
-  return Type::kIntermediate == type_;
-}
-
 OpHelper::OpHelper(const char* type, SubgraphHelper* subgraph_helper)
     : type_(type), subgraph_helper_(subgraph_helper) {
   op_desc_ = subgraph_helper_->ProgramDesc()->mutable_blocks(0)->add_ops();
   op_desc_->set_type(type_);
 }
 
-OpHelper& OpHelper::operator()(std::pair<const char*, VarHelper> input) {
-  proto::OpDesc::Var* var = op_desc_->add_inputs();
-  var->set_parameter(input.first);
-  var->add_arguments()->assign(input.second.Name());
-  if (!input.second.CheckIntermediate()) {
-    subgraph_helper_->AddInputVar(input.second.Name());
-  }
-  return *this;
+OpHelper::Arguments::Arguments(const char* parameter,
+                               const VarHelper& var_helper)
+    : parameter_(parameter) {
+  var_helpers_.push_back(var_helper);
 }
 
-OpHelper& OpHelper::operator()(
-    std::pair<const char*, std::vector<VarHelper>> input) {
+OpHelper::Arguments::Arguments(const char* parameter,
+                               std::initializer_list<VarHelper> var_helpers)
+    : parameter_(parameter), var_helpers_(var_helpers) {}
+
+OpHelper& OpHelper::operator()(const Arguments& input) {
   proto::OpDesc::Var* var = op_desc_->add_inputs();
-  var->set_parameter(input.first);
-  for (VarHelper& var_helper : input.second) {
-    var->add_arguments()->assign(var_helper.Name());
-    if (!var_helper.CheckIntermediate()) {
-      subgraph_helper_->AddInputVar(var_helper.Name());
+  var->set_parameter(input.parameter_);
+  for (const VarHelper& var_helper : input.var_helpers_) {
+    var->add_arguments()->assign(var_helper.name_);
+    if (VarHelper::Type::kInput == var_helper.type_) {
+      subgraph_helper_->AddInputVar(var_helper.name_);
     }
   }
   return *this;
 }
 
-OpHelper& OpHelper::operator()(
-    std::vector<std::pair<const char*, VarHelper>> inputs) {
-  for (auto& input : inputs) {
-    operator()(input);
-  }
-  return *this;
-}
-
-OpHelper& OpHelper::operator()(
-    std::vector<std::pair<const char*, std::vector<VarHelper>>> inputs) {
-  for (auto& input : inputs) {
+OpHelper& OpHelper::operator()(std::initializer_list<Arguments> inputs) {
+  for (const auto& input : inputs) {
     operator()(input);
   }
   return *this;
@@ -315,41 +296,42 @@ void SubgraphHelper::AddInputVar(const std::string& name) {
 }
 
 void SubgraphHelper::AddOutputVars(const VarHelper& var_helper) {
-  output_vars_.push_back(var_helper.Name());
+  output_vars_.push_back(var_helper.name_);
 }
 
 }  // namespace generate_pass
 
-PassPairs::PassPairs(SubgraphType pattern, SubgraphType replace) {
-  pass_pairs_.push_back({pattern, replace});
+PassPairs::PassPairs(const SubgraphType& pattern, const SubgraphType& replace) {
+  AddPassDesc(pattern, replace);
 }
 
-void PassPairs::push_back(std::pair<SubgraphType, SubgraphType> pass_pair) {
-  pass_pairs_.push_back(pass_pair);
-}
-
-proto::MultiPassDesc PassPairs::ToMultiPassDesc() {
-  proto::MultiPassDesc multi_pass_desc;
-  for (const auto& pass_pair : pass_pairs_) {
-    proto::PassDesc* pass_desc = multi_pass_desc.add_pass_descs();
-    pass_desc->mutable_pattern()->CopyFrom(pass_pair.first.ProgramDesc());
-    pass_desc->mutable_replace()->CopyFrom(pass_pair.second.ProgramDesc());
-    PADDLE_ENFORCE_EQ(pass_pair.first.InputVars().size(),
-                      pass_pair.second.InputVars().size());
-    for (size_t i = 0; i < pass_pair.first.InputVars().size(); i++) {
-      proto::PassDesc::VarMap* var_map = pass_desc->add_var_maps();
-      var_map->set_pattern_var(pass_pair.first.InputVars()[i]);
-      var_map->set_replace_var(pass_pair.second.InputVars()[i]);
-    }
-    PADDLE_ENFORCE_EQ(pass_pair.first.OutputVars().size(),
-                      pass_pair.second.OutputVars().size());
-    for (size_t i = 0; i < pass_pair.first.OutputVars().size(); i++) {
-      proto::PassDesc::VarMap* var_map = pass_desc->add_var_maps();
-      var_map->set_pattern_var(pass_pair.first.OutputVars()[i]);
-      var_map->set_replace_var(pass_pair.second.OutputVars()[i]);
-    }
+void PassPairs::AddPassDesc(const SubgraphType& pattern,
+                            const SubgraphType& replace) {
+  proto::PassDesc* pass_desc = multi_pass_desc_.add_pass_descs();
+  pass_desc->mutable_pattern()->CopyFrom(pattern.ProgramDesc());
+  pass_desc->mutable_replace()->CopyFrom(replace.ProgramDesc());
+  PADDLE_ENFORCE_EQ(pattern.InputVars().size(), replace.InputVars().size(),
+                    platform::errors::InvalidArgument(
+                        "Size of lambda expression arguments is not equal "
+                        "between pattern/replace subgraph."));
+  for (size_t i = 0; i < pattern.InputVars().size(); i++) {
+    proto::PassDesc::VarMap* var_map = pass_desc->add_var_maps();
+    var_map->set_pattern_var(pattern.InputVars()[i]);
+    var_map->set_replace_var(replace.InputVars()[i]);
   }
-  return multi_pass_desc;
+  PADDLE_ENFORCE_EQ(pattern.OutputVars().size(), replace.OutputVars().size(),
+                    platform::errors::InvalidArgument(
+                        "Size of lambda expression returns is not equal "
+                        "between pattern/replace subgraph."));
+  for (size_t i = 0; i < pattern.OutputVars().size(); i++) {
+    proto::PassDesc::VarMap* var_map = pass_desc->add_var_maps();
+    var_map->set_pattern_var(pattern.OutputVars()[i]);
+    var_map->set_replace_var(replace.OutputVars()[i]);
+  }
+}
+
+const proto::MultiPassDesc& PassPairs::MultiPassDesc() const {
+  return multi_pass_desc_;
 }
 
 }  // namespace ir

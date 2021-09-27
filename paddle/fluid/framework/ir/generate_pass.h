@@ -48,49 +48,76 @@ class VarHelper;
 class OpHelper;
 class SubgraphHelper;
 
-class VarHelper {
- public:
-  enum class Type { kInput, kOutput, kIntermediate };
+// VarHelper is used to represent a variable node.
+struct VarHelper {
+  enum class Type { kInput, kOutput };
 
   explicit VarHelper(const char* name);
   VarHelper(const std::string& name, Type type);
 
-  const std::string& Name() const;
-
-  bool CheckIntermediate();
-
- private:
-  // VarHelper() = delete;
   std::string name_;
   Type type_;
 };
 
+// OpHelper is used to represent a operator node.
 class OpHelper {
  public:
+  // Convert multiple inputs.
+  struct Arguments {
+    Arguments(const char* parameter, const VarHelper& var_helper);
+    Arguments(const char* parameter,
+              std::initializer_list<VarHelper> var_helpers);
+
+    std::string parameter_;
+    std::vector<VarHelper> var_helpers_;
+  };
+
   OpHelper(const char* type, SubgraphHelper* subgraph_helper);
 
-  OpHelper& operator()(std::pair<const char*, VarHelper> input);
-  OpHelper& operator()(std::pair<const char*, std::vector<VarHelper>> input);
-  OpHelper& operator()(std::vector<std::pair<const char*, VarHelper>> inputs);
-  OpHelper& operator()(
-      std::vector<std::pair<const char*, std::vector<VarHelper>>> inputs);
+  OpHelper& operator()(const Arguments& input);
+  OpHelper& operator()(std::initializer_list<Arguments> inputs);
 
   VarHelper Out(const char* name);
 
  private:
+  OpHelper() = delete;
+  DISABLE_COPY_AND_ASSIGN(OpHelper);
+
   const char* type_;
   proto::OpDesc* op_desc_;
   SubgraphHelper* subgraph_helper_;
 };
 
+/*
+ * SubgraphHelper is used to define pattern/replace subgraphs.
+ *
+ * Use lambda expression to define subgraph like Python. SubgraphHelper
+ * converts lambda expression to ProgramDesc.
+ *
+ * In order to define a subgraph, user need to use VarHelper and OpHelper.
+ * Use the macros instead of class names, so user can develop better and
+ * don't need to know too much about underlying implementation.
+ *
+ * An example of defining a subgraph as follows:
+ *
+ *   SUBGRAPH_(subgraph)([subgraph=&subgraph](VAR_(x), VAR_(y), VAR_(z)) {
+ *     auto ewadd1 = OP_(elementwise_add)({{"X", x}, {"Y", y}}).Out("Out");
+ *     auto ewadd2 = OP_(elementwise_add)({{"X", ewadd1}, {"Y", z}}).Out("Out");
+ *     return ewadd2;
+ *   });
+ *
+ */
 class SubgraphHelper {
  public:
+  SubgraphHelper() = default;
+  // The lambda expression is a prvalue expression.
   template <typename T>
-  explicit SubgraphHelper(const T&& f) {
+  SubgraphHelper& operator=(const T&& f) {
     proto::BlockDesc* block = program_desc_.add_blocks();
     block->set_idx(0);
     block->set_parent_idx(0);
     AddOutputVars(f());
+    return *this;
   }
 
   proto::ProgramDesc* ProgramDesc();
@@ -121,6 +148,7 @@ class SubgraphHelper {
   }
 
  private:
+  DISABLE_COPY_AND_ASSIGN(SubgraphHelper);
   std::vector<std::string> input_vars_;
   std::vector<std::string> output_vars_;
   proto::ProgramDesc program_desc_;
@@ -131,23 +159,23 @@ class SubgraphHelper {
 class PassPairs {
  public:
   using SubgraphType = generate_pass::SubgraphHelper;
+
   PassPairs() = default;
+  PassPairs(const SubgraphType& pattern, const SubgraphType& replace);
 
-  PassPairs(SubgraphType pattern, SubgraphType replace);
+  void AddPassDesc(const SubgraphType& pattern, const SubgraphType& replace);
 
-  void push_back(std::pair<SubgraphType, SubgraphType> pass_pair);
-
-  proto::MultiPassDesc ToMultiPassDesc();
+  const proto::MultiPassDesc& MultiPassDesc() const;
 
  private:
-  std::vector<std::pair<SubgraphType, SubgraphType>> pass_pairs_;
+  proto::MultiPassDesc multi_pass_desc_;
 };
 
 // Use function to register in CC.
 template <PassPairs (*Functor)(void)>
 class CXXGeneratePass : public GeneratePass {
  public:
-  CXXGeneratePass() : GeneratePass(Functor().ToMultiPassDesc()) {}
+  CXXGeneratePass() : GeneratePass(Functor().MultiPassDesc()) {}
 };
 
 #define VAR_(name)                                         \
@@ -155,8 +183,9 @@ class CXXGeneratePass : public GeneratePass {
       ::paddle::framework::ir::generate_pass::VarHelper(#name)
 #define OP_(type) \
   ::paddle::framework::ir::generate_pass::OpHelper(#type, subgraph)
-#define SUBGRAPH_(name) \
-  ::paddle::framework::ir::generate_pass::SubgraphHelper name
+#define SUBGRAPH_(name)                                        \
+  ::paddle::framework::ir::generate_pass::SubgraphHelper name; \
+  name
 
 #define REGISTER_GENERATE_PASS(pass_type)                               \
   paddle::framework::ir::PassPairs register_##pass_type();              \
