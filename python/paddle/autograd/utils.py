@@ -47,3 +47,9 @@ def _replace_none_with_zero_tensor(t, spec_t):
         return zero_t
     else:
         return t
+
+
+def _construct_one_tensor(spec_t):
+    one_t = paddle.ones(shape=spec_t.shape, dtype=spec_t.dtype)
+    one_t.stop_gradient = spec_t.stop_gradient
+    return one_t

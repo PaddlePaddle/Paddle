@@ -307,6 +307,8 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             of the computing process. When it is True, higher order derivatives
             are supported to compute; when it is False, the gradient graphs of
             the computing process would be discarded. Defaults to ``False``.
+            ``create_graph`` only works on the ``vhp`` parameter in ``output``
+            and doesn't affect the ``func_output`` parameter.
         allow_unused (bool, optional): whether to raise error or return None if
             some Tensors of `inputs` are unreachable in the graph. Error would
             be raised if allow_unused=False, and None would be returned as
@@ -333,47 +335,23 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
         1
     ], "The function to compute vhp should return a Tensor with a single element"
     if v is None:
-        v = list()
+        v = list(_construct_one_tensor(input) for input in inputs)
+    else:
+        v = _check_tensors(v, "v")
 
-    with torch.enable_grad():
-        is_inputs_tuple, inputs = _as_tuple(inputs, "inputs", "vhp")
-        inputs = _grad_preprocess(
-            inputs, create_graph=create_graph, need_graph=True)
-
-        if v is not None:
-            _, v = _as_tuple(v, "v", "vhp")
-            v = _grad_preprocess(v, create_graph=create_graph, need_graph=False)
-            _validate_v(v, inputs, is_inputs_tuple)
-        else:
-            if len(inputs) != 1 or inputs[0].nelement() != 1:
-                raise RuntimeError(
-                    "The vector v can only be None if the input to the user-provided function "
-                    "is a single Tensor with a single element.")
-        outputs = func(*inputs)
-        is_outputs_tuple, outputs = _as_tuple(
-            outputs, "outputs of the user-provided function", "vhp")
-        _check_requires_grad(outputs, "outputs", strict=strict)
-
-        if is_outputs_tuple or not isinstance(outputs[0], torch.Tensor):
-            raise RuntimeError(
-                "The function given to vhp should return a single Tensor")
-
-        if outputs[0].nelement() != 1:
-            raise RuntimeError(
-                "The Tensor returned by the function given to vhp should contain a single element"
-            )
-
-        jac = _autograd_grad(outputs, inputs, create_graph=True)
-        _check_requires_grad(jac, "jacobian", strict=strict)
-
-    enable_grad = True if create_graph else torch.is_grad_enabled()
-    with torch.set_grad_enabled(enable_grad):
-        grad_res = _autograd_grad(jac, inputs, v, create_graph=create_graph)
-        vhp = _fill_in_zeros(grad_res, inputs, strict, create_graph,
-                             "double_back")
-
-    outputs = _grad_postprocess(outputs, create_graph)
-    vhp = _grad_postprocess(vhp, create_graph)
-
-    return _tuple_postprocess(outputs, is_outputs_tuple), _tuple_postprocess(
-        vhp, is_inputs_tuple)
+    jac = paddle.grad(
+        outputs,
+        inputs,
+        create_graph=True,
+        retain_graph=True,
+        allow_unused=allow_unused)
+    jac = tuple(
+        _replace_none_with_zero_tensor(jac[i], inputs[i])
+        for i in range(len(inputs)))
+    vhp = paddle.grad(
+        jac,
+        v,
+        create_graph=create_graph,
+        retain_graph=create_graph,
+        allow_unused=allow_unused)
+    return tuple(outputs, tuple(vhp))
