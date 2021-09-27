@@ -38,7 +38,10 @@ static __device__ __forceinline__ double Log(double x) { return log(x); }
 }  // namespace details
 
 /******************************** Unary Functor *******************************/
-// Post processing function for margin_cross_entropy
+
+/**
+ * @brief Default unary exp functor
+ */
 template <typename Tx, typename Ty = Tx>
 struct ExpFunctor {
   HOSTDEVICE explicit inline ExpFunctor(int n) {}
@@ -48,7 +51,9 @@ struct ExpFunctor {
   }
 };
 
-// Post processing function for sum, max, min, prod, any
+/**
+ * @brief Default unary identity functor
+ */
 template <typename Tx, typename Ty = Tx>
 struct IdentityFunctor {
   HOSTDEVICE explicit inline IdentityFunctor(int n) {}
@@ -58,7 +63,9 @@ struct IdentityFunctor {
   }
 };
 
-// Post processing function for mean
+/**
+ * @brief Default unary div functor. Divide by a constant
+ */
 template <typename Tx, typename Ty = Tx>
 struct DivideFunctor {
   HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((Tx)(1.0 / n)) {}
@@ -71,6 +78,9 @@ struct DivideFunctor {
   Tx n_inv;
 };
 
+/**
+ * @brief Default unary square functor
+ */
 template <typename Tx, typename Ty = Tx>
 struct SquareFunctor {
   HOSTDEVICE explicit inline SquareFunctor(int n) {}
@@ -81,6 +91,10 @@ struct SquareFunctor {
 };
 
 /****************************** Binary Functor ********************************/
+
+/**
+ * @brief Default binary min functor
+ */
 template <typename Tx, typename Ty = Tx>
 struct MinFunctor {
   inline Ty initial() {
@@ -92,6 +106,9 @@ struct MinFunctor {
   }
 };
 
+/**
+ * @brief Default binary max functor
+ */
 template <typename Tx, typename Ty = Tx>
 struct MaxFunctor {
   inline Ty initial() {
@@ -103,6 +120,9 @@ struct MaxFunctor {
   }
 };
 
+/**
+ * @brief Default binary add functor
+ */
 template <typename Tx, typename Ty = Tx>
 struct AddFunctor {
   inline Ty initial() { return static_cast<Ty>(0.0f); }
@@ -112,6 +132,9 @@ struct AddFunctor {
   }
 };
 
+/**
+ * @brief Default binary mul functor
+ */
 template <typename Tx, typename Ty = Tx>
 struct MulFunctor {
   inline Ty initial() { return static_cast<Ty>(1.0f); }
@@ -121,6 +144,9 @@ struct MulFunctor {
   }
 };
 
+/**
+ * @brief Default binary logic or functor
+ */
 template <typename Tx, typename Ty = Tx>
 struct LogicalOrFunctor {
   inline Ty initial() { return static_cast<Ty>(false); }
@@ -130,6 +156,9 @@ struct LogicalOrFunctor {
   }
 };
 
+/**
+ * @brief Default binary logic and functor
+ */
 template <typename Tx, typename Ty = Tx>
 struct LogicalAndFunctor {
   inline Ty initial() { return static_cast<Ty>(true); }
@@ -139,7 +168,9 @@ struct LogicalAndFunctor {
   }
 };
 
-// Subtract
+/**
+ * @brief Default binary sub functor
+ */
 template <typename Tx, typename Ty = Tx>
 struct SubFunctor {
   inline Ty initial() { return static_cast<Ty>(1.0f); }
@@ -149,11 +180,9 @@ struct SubFunctor {
   }
 };
 
-// Divide
-#define DIV_ERROR_INFO                                             \
-  "InvalidArgumentError: Integer division by zero encountered in " \
-  "(floor) divide. Please check the input value."
-
+/**
+ * @brief Default binary div functor
+ */
 template <typename T, typename Enable = void>
 struct DivFunctor {
   inline T initial() { return static_cast<T>(1.0f); }
@@ -166,23 +195,29 @@ struct DivFunctor<T,
                   typename std::enable_if<std::is_integral<T>::value>::type> {
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
     // For int32/int64, need to check whether the divison is zero.
-    PADDLE_ENFORCE_NE(b, 0, platform::errors::InvalidArgument(DIV_ERROR_INFO));
+    PADDLE_ENFORCE_NE(
+        b, 0, platform::errors::InvalidArgument(
+                  "InvalidArgumentError: Integer division by zero encountered "
+                  "in (floor) divide. Please check the input value."));
     return a / b;
   }
 };
 
-// Floor Divide
+/**
+ * @brief Default binary floor divide functor
+ */
 template <typename Tx, typename Ty = Tx>
 struct FloorDivFunctor {
   inline Ty initial() { return static_cast<Ty>(1.0f); }
 
   inline HOSTDEVICE Ty operator()(const Ty& a, const Ty& b) const {
-    PADDLE_ENFORCE_NE(b, 0, platform::errors::InvalidArgument(DIV_ERROR_INFO));
+    PADDLE_ENFORCE_NE(
+        b, 0, platform::errors::InvalidArgument(
+                  "InvalidArgumentError: Integer division by zero encountered "
+                  "in (floor) divide. Please check the input value."));
     return static_cast<Ty>(std::trunc(a / b));
   }
 };
-
-#undef DIV_ERROR_INFO
 
 }  // namespace kernel_primitives
 }  // namespace operators
