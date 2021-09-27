@@ -85,11 +85,6 @@ struct GroupNormFunction {
     const auto& runner = NpuOpRunner("Adds", {*x}, {*y}, {{"value", scalar}});
     runner.Run(stream);
   }
-  void Muls(const Tensor* x, float scalar, Tensor* y) {
-    //  y should be init first
-    const auto& runner = NpuOpRunner("Muls", {*x}, {*y}, {{"value", scalar}});
-    runner.Run(stream);
-  }
   Tensor ReduceMeanToNG(const Tensor* x, const DataLayout& data_layout,
                         const int64_t N, const int64_t C, const int64_t H,
                         const int64_t W, const int G) {
@@ -161,8 +156,7 @@ class GroupNormNPUKernel : public framework::OpKernel<T> {
     sqr.mutable_data<T>(xnorm.dims(), place);
 
     F.Mul(&xnorm, &xnorm, &sqr);
-    F.ReduceSum(&sqr, var, axis);
-    F.Muls(var, static_cast<float>(1.0 / xnorm.dims()[1]), var);
+    F.ReduceMean(&sqr, var, axis);
     Tensor std(x->type());
     std.mutable_data<T>(var->dims(), place);
     F.Adds(var, epsilon, &std);

@@ -54,7 +54,7 @@ class TestGroupNormOp(OpTest):
         self.init_dtype()
 
         self.data_format = "NCHW"
-        self.atol = 1e-5
+        self.atol = 1e-6
         self.shape = (2, 100, 3, 5)
         self.attrs = {'epsilon': 1e-5, 'groups': 2, 'data_layout': "NCHW"}
         self.compare_between_place = False
@@ -77,7 +77,7 @@ class TestGroupNormOp(OpTest):
         self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
         self.attrs['data_layout'] = self.data_format
 
-        self.max_relative_error = 0.05
+        self.max_relative_error = 0.01
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -127,14 +127,6 @@ class TestGroupNormOpBigEps3(TestGroupNormOp):
         self.attrs['epsilon'] = 0.5
 
 
-'''
-class TestGroupNormOpLargeData(TestGroupNormOp):
-    def init_test_case(self):
-        self.shape = (2, 32, 64, 64)
-        self.attrs['groups'] = 8
-'''
-
-
 class TestGroupNormOp1_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['groups'] = 1
@@ -164,6 +156,19 @@ class TestGroupNormOpBigEps2_With_NHWC(TestGroupNormOp):
 class TestGroupNormOpBigEps3_With_NHWC(TestGroupNormOp):
     def init_test_case(self):
         self.attrs['epsilon'] = 0.5
+        self.data_format = "NHWC"
+
+
+class TestGroupNormOpFP16(TestGroupNormOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+
+class TestGroupNormOpFP16_With_NHWC(TestGroupNormOp):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def init_test_case(self):
         self.data_format = "NHWC"
 
 
