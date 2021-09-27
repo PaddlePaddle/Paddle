@@ -121,6 +121,9 @@ PADDLE_DEFINE_EXPORTED_string(
     "If proveided, it will be passed to aclInit().");
 PADDLE_DEFINE_EXPORTED_int32(min_loss_scaling, 1,
                              "set minmum loss scaling value!");
+PADDLE_DEFINE_EXPORTED_string(
+    npu_precision_mod, "allow_fp32_to_fp16",
+    "NPU precision mode, defalut allow_fp32_to_fp16.");
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
