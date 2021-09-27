@@ -44,10 +44,10 @@ struct NormConvolutionArgs {
            const std::vector<int> &output_shape, int padding, int stride,
            int dilation, int group) {
     for (size_t i = 0; i < input_shape.size(); ++i) {
-      in_dims[i] = input_shape[i];
+      in_dims.push_back(input_shape[i]);
     }
     for (size_t i = 0; i < filter_shape.size(); ++i) {
-      filter_dims[i] = filter_shape[i];
+      filter_dims.push_back(filter_shape[i]);
     }
     paddings = {padding, padding};
     strides = {stride, stride};
