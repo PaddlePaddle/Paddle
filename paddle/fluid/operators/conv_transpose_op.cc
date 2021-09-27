@@ -145,7 +145,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                 "output_size of Op(ConvTransposeOp) should not be "
                 "less than the infered output size. But received output_size = "
                 "[%s], whose dim %d is less than the infered output size [%s]",
-                framework::make_ddim(output_size), i, infer_shape));
+                framework::make_ddim(output_size).to_str(), i, infer_shape));
         PADDLE_ENFORCE_LT(
             output_size[i], infer_shape + strides[i],
             platform::errors::InvalidArgument(
@@ -153,8 +153,8 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                 "than infered size + stride. But received output_size = [%s], "
                 "whose dim %d is not less than the infered output size (%d) + "
                 "stride (%d) = %d",
-                framework::make_ddim(output_size), i, infer_shape, strides[i],
-                infer_shape + strides[i]));
+                framework::make_ddim(output_size).to_str(), i, infer_shape,
+                strides[i], infer_shape + strides[i]));
       }
       output_shape.push_back(output_size[i]);
     } else if (output_padding.size()) {
@@ -165,7 +165,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                 "output_padding of Op(ConvTransposeOp) should not be "
                 "less than the 0. But received output_padding = "
                 "[%s], whose dim %d is less than 0",
-                framework::make_ddim(output_padding), i));
+                framework::make_ddim(output_padding).to_str(), i));
         PADDLE_ENFORCE_LT(
             output_padding[i], std::max(strides[i], dilations[i]),
             platform::errors::InvalidArgument(
@@ -174,7 +174,7 @@ void ConvTransposeOp::InferShape(framework::InferShapeContext* ctx) const {
                 "[%s], "
                 "whose dim %d is not less than either stride (%d)  or "
                 "dilation (%d)",
-                framework::make_ddim(output_size), i, strides[i],
+                framework::make_ddim(output_size).to_str(), i, strides[i],
                 dilations[i]));
       }
       output_shape.push_back((infer_shape + output_padding[i]));

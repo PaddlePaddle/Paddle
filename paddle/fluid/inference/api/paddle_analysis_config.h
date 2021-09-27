@@ -48,6 +48,34 @@ namespace paddle {
 class AnalysisPredictor;
 struct MkldnnQuantizerConfig;
 
+struct LiteNNAdapterConfig {
+  bool use_nnadapter{false};
+  std::string nnadapter_model_cache_dir;
+  std::map<std::string, std::vector<char>> nnadapter_model_cache_buffers;
+  std::vector<std::string> nnadapter_device_names;
+  std::string nnadapter_context_properties;
+  std::string nnadapter_subgraph_partition_config_path;
+  std::string nnadapter_subgraph_partition_config_buffer;
+
+  LiteNNAdapterConfig& SetDeviceNames(const std::vector<std::string>& names);
+
+  LiteNNAdapterConfig& SetContextProperties(const std::string& properties);
+
+  LiteNNAdapterConfig& SetModelCacheDir(const std::string& dir);
+
+  LiteNNAdapterConfig& SetModelCacheBuffers(
+      const std::string& model_cache_token,
+      const std::vector<char>& model_cache_buffer);
+
+  LiteNNAdapterConfig& SetSubgraphPartitionConfigPath(const std::string& path);
+
+  LiteNNAdapterConfig& SetSubgraphPartitionConfigBuffer(
+      const std::string& buffer);
+
+  LiteNNAdapterConfig& Enable();
+  LiteNNAdapterConfig& Disable();
+};
+
 ///
 /// \brief configuration manager for AnalysisPredictor.
 /// \since 1.7.0
@@ -202,6 +230,12 @@ struct PD_INFER_DECL AnalysisConfig {
                  bool autotune = true, const std::string& autotune_file = "",
                  const std::string& precision = "int16",
                  bool adaptive_seqlen = false);
+  ///
+  /// \brief Set XPU device id.
+  ///
+  /// \param device_id the XPU card to use (default is 0).
+  ///
+  void SetXpuDeviceId(int device_id = 0);
   ///
   /// \brief Turn on NPU.
   ///
@@ -380,6 +414,50 @@ struct PD_INFER_DECL AnalysisConfig {
   bool tensorrt_dynamic_shape_enabled() const {
     return !min_input_shape_.empty();
   }
+  ///
+  /// \brief Enable tuned tensorrt dynamic shape.
+  ///
+  /// \param shape_range_info_path the path to shape_info file got in
+  /// CollectShapeInfo
+  /// mode.
+  /// \param allow_build_at_runtime allow build trt engine at runtime.
+  ///
+  void EnableTunedTensorRtDynamicShape(const std::string& shape_range_info_path,
+                                       bool allow_build_at_runtime = true);
+
+  ///
+  /// \brief A boolean state telling whether to use tuned tensorrt dynamic
+  /// shape.
+  ///
+  bool tuned_tensorrt_dynamic_shape();
+
+  ///
+  /// \brief A boolean state telling whether to allow building trt engine at
+  /// runtime.
+  ///
+  bool trt_allow_build_at_runtime();
+
+  ///
+  /// \brief Collect shape info of all tensors in compute graph.
+  ///
+  /// \param shape_range_info_path the path to save shape info.
+  ///
+  void CollectShapeRangeInfo(const std::string& shape_range_info_path);
+
+  ///
+  /// \brief the shape info path in CollectShapeInfo mode.
+  ///
+  /// \return the shape info path.
+  ///
+  const std::string& shape_range_info_path();
+
+  ///
+  /// \brief A boolean state telling whether to collect shape info.
+  ///
+  /// \return bool Whether to collect shape info.
+  ///
+  bool shape_range_info_collected();
+
   ///
   /// \brief Prevent ops running in Paddle-TRT
   /// NOTE: just experimental, not an official stable API, easy to be broken.
@@ -573,7 +651,9 @@ struct PD_INFER_DECL AnalysisConfig {
   /// \brief Turn on memory optimize
   /// NOTE still in development.
   ///
-  void EnableMemoryOptim();
+  /// \param x Whether to enable memory optimize.
+  ///
+  void EnableMemoryOptim(bool x = true);
   ///
   /// \brief A boolean state telling whether the memory optimization is
   /// activated.
@@ -640,6 +720,8 @@ struct PD_INFER_DECL AnalysisConfig {
   ///
   std::string Summary();
 
+  LiteNNAdapterConfig& NNAdapter() { return nnadapter_config_; }
+
  protected:
   // Update the config.
   void Update();
@@ -693,6 +775,15 @@ struct PD_INFER_DECL AnalysisConfig {
   std::map<std::string, std::vector<int>> optim_input_shape_{};
   std::vector<std::string> trt_disabled_ops_{};
   bool disable_trt_plugin_fp16_{false};
+  bool trt_allow_build_at_runtime_{false};
+  // tune to get dynamic_shape info.
+  bool trt_tuned_dynamic_shape_{false};
+
+  // In CollectShapeInfo mode, we will collect the shape information of
+  // all intermediate tensors in the compute graph and calculate the
+  // min_shape, max_shape and opt_shape and save in shape_range_info_path_;
+  bool collect_shape_range_info_{false};
+  std::string shape_range_info_path_;
 
   // dlnne related.
   bool use_dlnne_{false};
@@ -738,6 +829,9 @@ struct PD_INFER_DECL AnalysisConfig {
   std::string xpu_autotune_file_;
   std::string xpu_precision_;
   bool xpu_adaptive_seqlen_;
+
+  // NNAdapter related
+  LiteNNAdapterConfig nnadapter_config_;
 
   // mkldnn related.
   int mkldnn_cache_capacity_{10};

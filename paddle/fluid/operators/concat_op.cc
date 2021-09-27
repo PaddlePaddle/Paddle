@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/concat_op.h"
 
+#include <paddle/fluid/platform/complex.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -237,7 +238,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::ConcatKernel<paddle::platform::CPUDeviceContext,
                       paddle::platform::float16>,
     ops::ConcatKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, uint8_t>);
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext, uint8_t>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
+                      paddle::platform::complex<float>>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
+                      paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     concat_grad,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>,
@@ -247,4 +252,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
                           paddle::platform::float16>,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, uint8_t>);
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
+                          paddle::platform::complex<float>>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
+                          paddle::platform::complex<double>>);

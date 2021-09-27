@@ -11,20 +11,12 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include "paddle/fluid/operators/elementwise/elementwise_max_op.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 
-namespace ops = paddle::operators;
-
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct CudaMaxFunctor {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    return (args[0] > args[1] ? args[0] : args[1]);
-  }
-};
 
 template <typename T>
 class ElementwiseMaxKernel<platform::CUDADeviceContext, T>
@@ -38,21 +30,27 @@ class ElementwiseMaxKernel<platform::CUDADeviceContext, T>
 
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, CudaMaxFunctor<T>());
+        cuda_ctx, ins, &outs, axis, MaxFunctor<T>());
   }
 };
 
 }  // namespace operators
 }  // namespace paddle
 
+namespace ops = paddle::operators;
+
 REGISTER_OP_CUDA_KERNEL(
     elementwise_max,
+    ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext,
+                              paddle::platform::float16>,
     ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, int>,
     ops::ElementwiseMaxKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CUDA_KERNEL(
     elementwise_max_grad,
+    ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext,
+                                  paddle::platform::float16>,
     ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext, float>,
     ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext, double>,
     ops::ElementwiseMaxGradKernel<paddle::platform::CUDADeviceContext, int>,

@@ -157,7 +157,7 @@ bool SimplifyWithBasicOpsPass::SimplifyDropout(
     float scale =
         1.0f - BOOST_GET_CONST(float, dropout_op_desc->GetAttr("dropout_prob"));
 
-    framework::OpDesc new_op_desc;
+    framework::OpDesc new_op_desc(dropout_op_desc->Block());
     new_op_desc.SetType("scale");
     new_op_desc.SetInput("X", {dropout_x->Name()});
     new_op_desc.SetOutput("Out", {dropout_out->Name()});

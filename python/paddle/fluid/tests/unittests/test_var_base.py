@@ -391,6 +391,11 @@ class TestVarBase(unittest.TestCase):
             self.assertTrue(cmp_float(x.grad.numpy(), [20.0]))
             self.assertTrue(cmp_float(detach_x.grad.numpy(), [60.0]))
 
+            with self.assertRaises(ValueError):
+                detach_x[:] = 5.0
+
+            detach_x.stop_gradient = True
+
             # Due to sharing of data with origin Tensor, There are some unsafe operations:
             with self.assertRaises(RuntimeError):
                 y = 2**x
@@ -438,9 +443,10 @@ class TestVarBase(unittest.TestCase):
             self.assertTrue(np.array_equal(y.numpy(), y_copy.numpy()))
 
             self.assertNotEqual(id(x), id(x_copy))
-            x_copy[:] = 5.
-            self.assertTrue(np.array_equal(x_copy.numpy(), [5.]))
             self.assertTrue(np.array_equal(x.numpy(), [2.]))
+
+            with self.assertRaises(ValueError):
+                x_copy[:] = 5.
 
             with self.assertRaises(RuntimeError):
                 copy.deepcopy(z)
@@ -805,13 +811,18 @@ class TestVarBase(unittest.TestCase):
         # case2:
         tensor_x = paddle.to_tensor(
             np.zeros(12).reshape(2, 6).astype(np.float32))
-        tensor_y1 = paddle.zeros([1]) + 2
-        tensor_y2 = paddle.zeros([1]) + 5
+        tensor_y1 = paddle.zeros([1], dtype='int32') + 2
+        tensor_y2 = paddle.zeros([1], dtype='int32') + 5
         tensor_x[:, tensor_y1:tensor_y2] = 42
         res = tensor_x.numpy()
         exp = np.array([[0., 0., 42., 42., 42., 0.],
                         [0., 0., 42., 42., 42., 0.]])
         self.assertTrue(np.array_equal(res, exp))
+
+        # case3:
+        row = np.array([0, 1, 2])
+        col = np.array([2, 1, 3])
+        self.assertTrue(np.array_equal(array[row, col], x[row, col].numpy()))
 
     def test_slice(self):
         with fluid.dygraph.guard():
@@ -833,6 +844,10 @@ class TestVarBase(unittest.TestCase):
 
             with self.assertRaises(IndexError):
                 y = var[0 - self.shape[0] - 1]
+
+            with self.assertRaises(IndexError):
+                mask = np.array([1, 0, 1, 0], dtype=bool)
+                var[paddle.to_tensor([0, 1]), mask]
 
     def test_var_base_to_np(self):
         with fluid.dygraph.guard():

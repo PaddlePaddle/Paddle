@@ -1274,7 +1274,8 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     x_dim = len(x.shape)
 
-    if mode == "constant" and isinstance(pad, list) and len(pad) == x_dim * 2:
+    if mode == "constant" and isinstance(pad, (
+            list, tuple)) and len(pad) == x_dim * 2:
         return layers.pad(x, pad, pad_value=value)
 
     assert x_dim in [
@@ -1701,14 +1702,14 @@ def class_center_sample(label, num_classes, num_samples, group=None):
     label_size = 1
     for dim in list(label.shape):
         label_size *= dim
-    if label_size < 1:
+    if label_size != -1 and label_size < 1:
         raise ValueError('Expected label_size > 0 \
-             (got label_size{})'.format(label_size))
+             (got label_size: {})'.format(label_size))
 
     label_dims = len(list(label.shape))
     if label_dims != 1:
         raise ValueError('Expected label_dims == 1 \
-             (got label_dims{})'.format(label_dims))
+             (got label_dims: {})'.format(label_dims))
 
     seed = None
     if (seed is None or seed == 0) and default_main_program().random_seed != 0:
