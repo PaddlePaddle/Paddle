@@ -811,6 +811,8 @@ def watch_local_trainers(procs, nranks):
         raise
 
     return alive
+
+
 def expert_count(gate_idx, n_expert):
     """
     calculate the expert count according to the gate index.
