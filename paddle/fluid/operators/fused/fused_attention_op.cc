@@ -9,7 +9,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/operators/fused/fused_attention_op.h"
 #include <memory>
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
