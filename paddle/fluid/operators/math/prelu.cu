@@ -33,7 +33,8 @@ __global__ void PReluChannelWiseKernel(const T *input, const T *alpha,
     size_t channel_index = temp % channel_num;
     T scale = alpha[channel_index];
     T x = input[index];
-    output[index] = (x > 0) ? x : scale * x;
+    T zero = static_cast<T>(0);
+    output[index] = (x > zero) ? x : scale * x;
   }
 }
 
@@ -45,7 +46,8 @@ __global__ void PReluElementWiseKernel(const T *input, const T *alpha,
     size_t element_index = index % spatial_size;
     T scale = alpha[element_index];
     T x = input[index];
-    output[index] = (x > 0) ? x : scale * x;
+    T zero = static_cast<T>(0);
+    output[index] = (x > zero) ? x : scale * x;
   }
 }
 
@@ -55,7 +57,8 @@ __global__ void PReluScalarKernel(const T *input, const T *alpha, T *output,
   T scale = alpha[0];
   CUDA_KERNEL_LOOP(index, numel) {
     T x = input[index];
-    output[index] = (x > 0) ? x : scale * x;
+    T zero = static_cast<T>(0);
+    output[index] = (x > zero) ? x : scale * x;
   }
 }
 
@@ -88,12 +91,15 @@ void PreluScalarDirectCUDAFunctor<T>::operator()(gpuStream_t stream,
 }
 
 template class PreluChannelWiseDirectCUDAFunctor<float>;
+template class PreluChannelWiseDirectCUDAFunctor<paddle::platform::float16>;
 template class PreluChannelWiseDirectCUDAFunctor<double>;
 
 template class PreluElementWiseDirectCUDAFunctor<float>;
+template class PreluElementWiseDirectCUDAFunctor<paddle::platform::float16>;
 template class PreluElementWiseDirectCUDAFunctor<double>;
 
 template class PreluScalarDirectCUDAFunctor<float>;
+template class PreluScalarDirectCUDAFunctor<paddle::platform::float16>;
 template class PreluScalarDirectCUDAFunctor<double>;
 
 }  // namespace math

@@ -22,6 +22,25 @@ using paddle::framework::LoDTensor;
 using platform::to_void_cast;
 using platform::GetMKLDNNFormat;
 
+static std::vector<int> extract_shape(
+    const std::vector<const Tensor*>& list_new_shape_tensor) {
+  std::vector<int> vec_new_shape;
+  vec_new_shape.reserve(list_new_shape_tensor.size());
+
+  for (const auto& tensor : list_new_shape_tensor) {
+    PADDLE_ENFORCE_EQ(
+        tensor->dims(), framework::make_ddim({1}),
+        platform::errors::InvalidArgument(
+            "If the element type of 'shape' in ReshapeOp is Tensor, "
+            "the element's shape must be [1]. But received the element's shape "
+            "is [%s]",
+            tensor->dims()));
+    vec_new_shape.emplace_back(*tensor->data<int32_t>());
+  }
+
+  return vec_new_shape;
+}
+
 template <typename T>
 class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
  public:
@@ -59,7 +78,11 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     }
 
     if (ctx.Type().find("reshape") != std::string::npos) {
-      if (ctx.HasInput("Shape")) {
+      auto list_new_shape_tensor = ctx.MultiInput<Tensor>("ShapeTensor");
+      if (list_new_shape_tensor.size() > 0) {
+        auto new_shape = extract_shape(list_new_shape_tensor);
+        out_dims = ValidateShape(new_shape, x_dims);
+      } else if (ctx.HasInput("Shape")) {
         auto* shape_tensor = ctx.Input<framework::LoDTensor>("Shape");
         auto* shape_data = shape_tensor->data<int>();
 
@@ -70,10 +93,8 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     }
 
     mkldnn::memory::data_type x_type = framework::ToMKLDNNDataType(x->type());
-    std::string key =
-        platform::CreateKey(dev_ctx, x_vec_dims, x->format(), x_type);
-    platform::ReorderMKLDNNHandler reorder_handler(
-        x_vec_dims, x->type(), x_type, dev_ctx, onednn_engine, key);
+    platform::ReorderMKLDNNHandler reorder_handler(x_vec_dims, x->type(),
+                                                   x_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->format(), platform::to_void_cast(x->data<T>()));
@@ -230,11 +251,8 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T> {
 
     mkldnn::memory::data_type dout_type =
         framework::ToMKLDNNDataType(dout->type());
-    std::string key =
-        platform::CreateKey(dev_ctx, dout_vec_dims, this->getPlainFormatTag(dx),
-                            dx->format(), dout_type);
-    platform::ReorderMKLDNNHandler reorder_handler(
-        dout_vec_dims, dout->type(), dout_type, dev_ctx, onednn_engine, key);
+    platform::ReorderMKLDNNHandler reorder_handler(dout_vec_dims, dout->type(),
+                                                   dout_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         dout->format(), platform::to_void_cast(dout->data<T>()));

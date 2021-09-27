@@ -57,8 +57,6 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
         trainer_desc.downpour_param().stat_var_names(i));
   }
   VLOG(3) << "going to initialize pull dense worker";
-  pull_dense_worker_ = PullDenseWorker::GetInstance();
-  pull_dense_worker_->Initialize(trainer_desc);
   SetDebug(trainer_desc.debug());
   trainer_desc_ = trainer_desc;
   workers_.resize(place_num);
@@ -112,15 +110,21 @@ void PSGPUTrainer::InitTrainerEnv(const ProgramDesc& main_program,
       }
     }
   }
+  for (auto& var : main_program.Block(0).AllVars()) {
+    if (var->Persistable()) {
+      auto it = std::find(need_merge_var_names_.begin(),
+                          need_merge_var_names_.end(), var->Name());
+      if (it == need_merge_var_names_.end()) {
+        VLOG(2) << "train param: " << var->Name();
+        trainable_param_.push_back(var->Name());
+      }
+    }
+  }
   place_ = place;
   return;
 }
 
 void PSGPUTrainer::InitOtherEnv(const ProgramDesc& main_program) {
-  pull_dense_worker_->SetRootScope(root_scope_);
-  for (size_t i = 0; i < places_.size(); ++i) {
-    pull_dense_worker_->AddThreadScope(workers_[i]->GetThreadScope());
-  }
   VLOG(3) << "init other env done.";
 }
 
@@ -141,15 +145,27 @@ Scope* PSGPUTrainer::GetWorkerScope(int thread_id) { return nullptr; }
 template <typename T>
 void PSGPUTrainer::MergeToRootScope(LoDTensor* root_tensor, LoDTensor* tensor) {
   LoDTensor tmp_root;
-  TensorCopy(*root_tensor, platform::CPUPlace(), &tmp_root);
+  TensorCopySync(*root_tensor, platform::CPUPlace(), &tmp_root);
   T* tmp_root_data = tmp_root.data<T>();
   LoDTensor tmp_tensor;
-  TensorCopy(*tensor, platform::CPUPlace(), &tmp_tensor);
+  TensorCopySync(*tensor, platform::CPUPlace(), &tmp_tensor);
   T* data = tmp_tensor.data<T>();
   for (int i = 0; i < tmp_tensor.numel(); i++) {
     tmp_root_data[i] += data[i];
   }
-  TensorCopy(tmp_root, platform::CPUPlace(), root_tensor);
+  TensorCopySync(tmp_root, platform::CPUPlace(), root_tensor);
+}
+
+void PSGPUTrainer::MergeDenseParam() {
+  auto thread_scope = workers_[0]->GetThreadScope();
+  for (auto& name : trainable_param_) {
+    VLOG(2) << "merge var " << name << " to root scope";
+    Variable* root_var = root_scope_->FindVar(name);
+    LoDTensor* root_tensor = root_var->GetMutable<LoDTensor>();
+    Variable* var = thread_scope->FindVar(name);
+    LoDTensor* tensor = var->GetMutable<LoDTensor>();
+    TensorCopySync((*tensor), root_tensor->place(), root_tensor);
+  }
 }
 
 void PSGPUTrainer::Finalize() {
@@ -187,7 +203,7 @@ void PSGPUTrainer::Finalize() {
       _ForEachDataType_(MergeCallback);
     }
   }
-  pull_dense_worker_->MergeDenseParam();
+  MergeDenseParam();
   root_scope_->DropKids();
 }
 }  // namespace framework

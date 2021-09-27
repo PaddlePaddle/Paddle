@@ -86,7 +86,8 @@ class TransformerNet(Layer):
         product = layers.matmul(x=q, y=k, transpose_y=True, alpha=d_model**-0.5)
 
         weights = F.softmax(product + mask)
-        weights = F.dropout(weights, 0.2)
+        # TODO(shenliang03) For save/load in PipeLineParallel, can’t support dropout temporarily.
+        # weights = F.dropout(weights, 0.2)
         tgt = layers.matmul(weights, v)
         residual = tgt
         tgt = self.norm1(tgt)
@@ -176,10 +177,13 @@ class TestDistPPTraning(unittest.TestCase):
             x_data = np.random.randint(0, vocab_size, size=[batch_size, length])
             x = paddle.to_tensor(x_data)
             x.stop_gradient = True
-            loss = model.train_batch([x, x], optimizer, scheduler)
-            # TODO(shenliang03) add utest for loss
 
-            print("loss: ", loss)
+            e_loss = model.eval_batch([x, x], True)
+            loss = model.train_batch([x, x], optimizer, scheduler)
+
+            # TODO(shenliang03) add utest for loss
+            if pp_id != 0:
+                np.testing.assert_allclose(loss.numpy(), e_loss.numpy())
 
 
 if __name__ == "__main__":

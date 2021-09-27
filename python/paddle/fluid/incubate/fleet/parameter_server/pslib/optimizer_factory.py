@@ -412,11 +412,13 @@ class DistributedAdam(DistributedOptimizerImplBase):
         sparse_table_index = 0
         for num in range(len(losses)):
             loss = losses[num]
+            parameters = None
+            if parameter_list != None:
+                parameters = parameter_list[num]
             prog_id = str(id(loss.block.program))
             # param_grads of program
             params_grads = sorted(
-                fluid.backward.append_backward(loss, parameter_list,
-                                               no_grad_set),
+                fluid.backward.append_backward(loss, parameters, no_grad_set),
                 key=lambda x: x[0].name)
 
             flag_use_ps_gpu = strategy.get("use_ps_gpu", False)
@@ -825,6 +827,8 @@ class DistributedAdam(DistributedOptimizerImplBase):
         opt_info["worker_skipped_ops"] = worker_skipped_ops
         opt_info["use_cvm"] = strategy.get("use_cvm", False)
         opt_info["no_cvm"] = strategy.get("no_cvm", False)
+        opt_info["scale_sparse_gradient_with_batch_size"] = strategy.get(
+            "scale_sparse_gradient_with_batch_size", True)
         opt_info["worker_class"] = strategy.get("worker_class",
                                                 "DownpourWorker")
         opt_info["stat_var_names"] = strategy.get("stat_var_names", [])

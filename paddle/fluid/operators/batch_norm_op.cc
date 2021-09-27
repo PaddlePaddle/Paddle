@@ -1,11 +1,8 @@
 /* Copyright (c) 2016 PaddlePaddle Authors. All Rights Reserved.
-
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
-
     http://www.apache.org/licenses/LICENSE-2.0
-
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -55,6 +52,16 @@ void BatchNormOp::InferShape(framework::InferShapeContext *ctx) const {
           "Variance and VarianceOut should share the same memory"));
 
   const auto x_dims = ctx->GetInputDim("X");
+
+  for (int i = 0; i < x_dims.size(); i++) {
+    PADDLE_ENFORCE_EQ(
+        (x_dims[i] == -1) || (x_dims[i] > 0), true,
+        platform::errors::InvalidArgument(
+            "Each dimension of input tensor is expected to be -1 or a "
+            "positive number, but recieved %d. Input's shape is [%s].",
+            x_dims[i], x_dims));
+  }
+
   const DataLayout data_layout = framework::StringToDataLayout(
       ctx->Attrs().Get<std::string>("data_layout"));
 
@@ -247,13 +254,16 @@ void BatchNormOpMaker::Make() {
   AddOutput("ReserveSpace",
             "Reserve GPU space for triggering the new semi-persistent "
             "NHWC kernel")
-      .AsDispensable();
+      .AsDispensable()
+      .AsExtra();
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("fuse_with_relu",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("use_global_stats",
                 "(bool, default false) Whether to use global mean and "
                 "variance. In inference or test mode, set use_global_stats "
@@ -269,14 +279,12 @@ void BatchNormOpMaker::Make() {
       .SetDefault(false);
   AddComment(R"DOC(
 Batch Normalization.
-
 Batch Norm has been implemented as discussed in the paper:
 https://arxiv.org/pdf/1502.03167.pdf
 Can be used as a normalizer function for conv2d and fully_connected operations.
 The required data format for this layer is one of the following:
 1. NHWC `[batch, in_height, in_width, in_channels]`
 2. NCHW `[batch, in_channels, in_height, in_width]`
-
 )DOC");
 }
 
@@ -361,35 +369,13 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
       switch (data_layout) {
         case DataLayout::kNCHW: {
           ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
-          // temporary variables for storing intermediate values
-          framework::Tensor tmp_tensor;
-          auto *tmp = tmp_tensor.mutable_data<T>(
-              framework::make_ddim({1, N * C}), ctx.GetPlace());
-          EigenVectorArrayMap<T> tmp_arr(tmp, 1, N * C);
-
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for
-#endif
           for (int nc = 0; nc < N * C; ++nc) {
-            tmp_arr.col(nc) = x_arr.col(nc).sum();
-          }
-
-          for (int nc = 0; nc < N * C; ++nc) {
-            saved_mean_e(nc % C) += tmp_arr.col(nc).sum();
+            saved_mean_e(nc % C) += x_arr.col(nc).sum();
           }
           saved_mean_e /= N * sample_size;
-          // set the temporary variable to zero, which can be shared later
-          tmp_arr.setZero();
-
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for
-#endif
           for (int nc = 0; nc < N * C; ++nc) {
-            tmp_arr(nc) =
+            saved_variance_e(nc % C) +=
                 (x_arr.col(nc) - saved_mean_e(nc % C)).matrix().squaredNorm();
-          }
-          for (int nc = 0; nc < N * C; ++nc) {
-            saved_variance_e(nc % C) += tmp_arr.col(nc).sum();
           }
           saved_variance_e /= N * sample_size;
           break;
@@ -399,7 +385,6 @@ class BatchNormKernel<platform::CPUDeviceContext, T>
           for (int i = 0; i < N * sample_size; ++i) {
             saved_mean_e += x_arr.col(i);
           }
-
           saved_mean_e /= N * sample_size;
           for (int i = 0; i < N * sample_size; ++i) {
             saved_variance_e +=
@@ -762,23 +747,12 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
         ConstEigenArrayMap<T> x_arr(x->data<T>(), sample_size, N * C);
         ConstEigenArrayMap<T> d_y_arr(d_y->data<T>(), sample_size, N * C);
 
-        framework::Tensor tmp_tensor;
-        auto *tmp = tmp_tensor.mutable_data<T>(framework::make_ddim({1, N * C}),
-                                               ctx.GetPlace());
-        EigenVectorArrayMap<T> tmp_arr(tmp, 1, N * C);
-
-#ifdef PADDLE_WITH_MKLML
-#pragma omp parallel for
-#endif
         for (int nc = 0; nc < N * C; ++nc) {
-          tmp_arr(nc) = ((x_arr.col(nc) - mean_arr(nc % C)) *
-                         inv_var_arr(nc % C) * d_y_arr.col(nc))
-                            .sum();
-        }
-
-        for (int nc = 0; nc < N * C; ++nc) {
-          dy_mul_x_sub_mean_mul_invstd_sum_arr(nc % C) += tmp_arr.col(nc).sum();
-          dy_sum_arr(nc % C) += d_y_arr.col(nc).sum();
+          int c = nc % C;
+          dy_sum_arr(c) += d_y_arr.col(nc).sum();
+          dy_mul_x_sub_mean_mul_invstd_sum_arr(c) +=
+              ((x_arr.col(nc) - mean_arr(c)) * inv_var_arr(c) * d_y_arr.col(nc))
+                  .sum();
         }
 
         if (d_scale && d_bias) {
@@ -880,7 +854,8 @@ void BatchNormGradMaker<T>::Apply(GradOpPtr<T> op) const {
   }
 
   // used when setting use_global_stats True during training
-  if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats"))) {
+  if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats")) ||
+      BOOST_GET_CONST(bool, this->GetAttr("is_test"))) {
     op->SetInput("Mean", this->Output("MeanOut"));
     op->SetInput("Variance", this->Output("VarianceOut"));
   }

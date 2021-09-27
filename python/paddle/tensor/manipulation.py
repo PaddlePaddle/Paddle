@@ -29,12 +29,236 @@ from ..fluid.layers import unstack  # noqa: F401
 
 from ..fluid.layers import scatter_nd  # noqa: F401
 from ..fluid.layers import shard_index  # noqa: F401
+from ..fluid.layers.nn import _elementwise_op_in_dygraph
 from ..fluid import layers
 from ..fluid.dygraph.inplace_utils import inplace_apis_in_dygraph_only
 import paddle
 from paddle import _C_ops
 
 __all__ = []
+
+
+@dygraph_only
+def fill_(x, value):
+    """
+    **Notes**:
+        **This API is ONLY available in Dygraph mode**
+
+    This function fill the Tensor with value inplace.
+
+    Args:
+        x(Tensor): ``x`` is the Tensor we want to filled data inplace
+        value(Scale): ``value`` is the value to be filled in x
+
+    Returns:
+        x(Tensor): Tensor x filled with value inplace
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            tensor = paddle.to_tensor([0, 1, 2, 3, 4])
+
+            tensor.fill_(0)
+            print(tensor.tolist())   #[0, 0, 0, 0, 0]
+
+    """
+    if not isinstance(value, (float, int)):
+        raise TypeError(
+            "The type of 'value'  must be int or float, but received %s." %
+            (type(value)))
+    return core.ops.fill_any_(x, "value_float",
+                              float(value), "value_int", int(value))
+
+
+setattr(core.VarBase, 'fill_', fill_)
+
+
+@dygraph_only
+def zero_(x):
+    """
+    **Notes**:
+        **This API is ONLY available in Dygraph mode**
+
+    This function fill the Tensor with zero inplace.
+
+    Args:
+        x(Tensor): ``x`` is the Tensor we want to filled with zero inplace
+
+    Returns:
+        x(Tensor): Tensor x filled with zero inplace
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            tensor = paddle.to_tensor([0, 1, 2, 3, 4])
+
+            tensor.zero_()
+            print(tensor.tolist())   #[0, 0, 0, 0, 0]
+
+    """
+    return core.ops.fill_any_(x, "value_float", 0., "value_int", int(0))
+
+
+setattr(core.VarBase, 'zero_', zero_)
+
+
+@dygraph_only
+def fill_diagonal_(x, value, offset=0, wrap=False, name=None):
+    """
+    **Notes**:
+        **This API is ONLY available in Dygraph mode**
+    This function fill the value into the x Tensor's diagonal inplace.
+    Args:
+        x(Tensor): ``x`` is the original Tensor
+        value(Scale): ``value`` is the value to filled in x
+        offset(int,optional): the offset to the main diagonal. Default: 0 (main diagonal).
+        wrap(bool,optional): the diagonal 'wrapped' after N columns for tall matrices.
+        name(str,optional): Name for the operation (optional, default is None)
+    Returns:
+        Tensor: Tensor with diagonal filled with value.
+    Returns type:
+        dtype is same as x Tensor
+    Examples:
+        .. code-block:: python
+            import paddle
+            x = paddle.ones((4, 3)) * 2
+            x.fill_diagonal_(1.0)
+            print(x.tolist())   #[[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
+    """
+    helper = LayerHelper("fill_diagonal_", **locals())
+    check_type(x, 'X', (Variable), 'fill_diagonal_')
+    dtype = helper.input_dtype('x')
+    check_dtype(dtype, 'X',
+                ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
+                'fill_diagonal_')
+    check_type(value, 'value', (bool, int, float), 'fill_diagonal_')
+    check_type(wrap, 'wrap', (bool), 'fill_diagonal_')
+
+    inshape = x.shape
+    inshapeset = set(inshape)
+    assert len(inshape) >= 2, ('Tensor dims should >= 2 in fill_diagonal_ API')
+    if len(inshape) > 2:
+        assert len(inshapeset) == 1, (
+            'Tensor dims should be equal while input dims > 2 in fill_diagonal_ API'
+        )
+    if len(inshape) == 2:
+        return core.ops.fill_diagonal_(x, 'value', value, 'offset', offset,
+                                       'wrap', wrap)
+    return core.ops.fill_diagonal_(x, 'value', value, 'offset', offset, 'wrap',
+                                   True)
+
+
+setattr(core.VarBase, 'fill_diagonal_', fill_diagonal_)
+
+
+def _fill_diagonal_tensor_impl(x, y, offset=0, dim1=0, dim2=1, inplace=False):
+    inshape = x.shape
+    assert dim1 < len(inshape) and dim1 >= -len(inshape), (
+        'dim1 should between [-rank,rank) in fill_diagonal_tensor_')
+    assert dim2 < len(inshape) and dim2 >= -len(inshape), (
+        'dim2 should between [-rank,rank) in fill_diagonal_tensor_')
+    assert len(inshape) >= 2, (
+        'Tensor dims should >= 2 in fill_diagonal_tensor_')
+    dim1 %= len(inshape)
+    dim2 %= len(inshape)
+
+    predshape = []
+    for i in range(len(inshape)):
+        if i != dim1 and i != dim2:
+            predshape.append(inshape[i])
+    diaglen = min(
+        min(inshape[dim1], inshape[dim1] + offset),
+        min(inshape[dim2], inshape[dim2] - offset))
+    predshape.append(diaglen)
+    assert tuple(predshape) == tuple(y.shape), (
+        "the y shape should be {}".format(predshape))
+    if len(y.shape) == 1:
+        y = y.reshape([1, -1])
+
+    if inplace:
+        return core.ops.fill_diagonal_tensor_(x, y, 'dim1', dim1, 'dim2', dim2,
+                                              'offset', offset)
+    return core.ops.fill_diagonal_tensor(x, y, 'dim1', dim1, 'dim2', dim2,
+                                         'offset', offset)
+
+
+def fill_diagonal_tensor_(x, y, offset=0, dim1=0, dim2=1, name=None):
+    """
+    **Notes**:
+        **This API is ONLY available in Dygraph mode**
+
+    This function fill the source Tensor y into the x Tensor's diagonal inplace.
+
+    Args:
+        x(Tensor): ``x`` is the original Tensor
+        y(Tensor): ``y`` is the Tensor to filled in x
+        dim1(int,optional): first dimension with respect to which to fill diagonal. Default: 0.
+        dim2(int,optional): second dimension with respect to which to fill diagonal. Default: 1.
+        offset(int,optional): the offset to the main diagonal. Default: 0 (main diagonal).
+        name(str,optional): Name for the operation (optional, default is None)
+
+    Returns:
+        Tensor: Tensor with diagonal filled with y.
+
+    Returns type:
+        list: dtype is same as x Tensor
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.ones((4, 3)) * 2
+            y = paddle.ones((3,))
+            x.fill_diagonal_tensor_(y)
+            print(x.tolist())   #[[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
+
+    """
+    return _fill_diagonal_tensor_impl(
+        x, y, offset=offset, dim1=dim1, dim2=dim2, inplace=True)
+
+
+setattr(core.VarBase, 'fill_diagonal_tensor_', fill_diagonal_tensor_)
+
+
+def fill_diagonal_tensor(x, y, offset=0, dim1=0, dim2=1, name=None):
+    """
+    This function fill the source Tensor y into the x Tensor's diagonal.
+
+    Args:
+        x(Tensor): ``x`` is the original Tensor
+        y(Tensor): ``y`` is the Tensor to filled in x
+        dim1(int,optional): first dimension with respect to which to fill diagonal. Default: 0.
+        dim2(int,optional): second dimension with respect to which to fill diagonal. Default: 1.
+        offset(int,optional): the offset to the main diagonal. Default: 0 (main diagonal).
+        name(str,optional): Name for the operation (optional, default is None)
+
+    Returns:
+        Tensor: Tensor with diagonal filled with y.
+
+    Returns type:
+        list: dtype is same as x Tensor
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.ones((4, 3)) * 2
+            y = paddle.ones((3,))
+            nx = x.fill_diagonal_tensor(y)
+            print(nx.tolist())   #[[1.0, 2.0, 2.0], [2.0, 1.0, 2.0], [2.0, 2.0, 1.0], [2.0, 2.0, 2.0]]
+
+    """
+    return _fill_diagonal_tensor_impl(
+        x, y, offset=offset, dim1=dim1, dim2=dim2, inplace=False)
+
+
+setattr(core.VarBase, 'fill_diagonal_tensor', fill_diagonal_tensor)
 
 
 @dygraph_only
@@ -458,7 +682,7 @@ def roll(x, shifts, axis=None, name=None):
         axis = [axis]
 
     len_origin_shape = len(origin_shape)
-    if axis:
+    if axis is not None:
         for i in range(len(axis)):
             if axis[i] >= len_origin_shape or axis[i] < -len_origin_shape:
                 raise ValueError(
@@ -715,6 +939,112 @@ def squeeze_(x, axis=None, name=None):
 
     out, _ = _C_ops.squeeze2_(x, 'axes', axis)
     return out
+
+
+def unique_consecutive(x,
+                       return_inverse=False,
+                       return_counts=False,
+                       axis=None,
+                       dtype="int64",
+                       name=None):
+    r"""
+    Eliminates all but the first element from every consecutive group of equivalent elements.
+
+    .. note:: This function is different from :func:`paddle.unique` in the sense that this function
+        only eliminates consecutive duplicate values. This semantics is similar to `std::unique` in C++.
+
+    Args:
+        x(Tensor): the input tensor, it's data type should be float32, float64, int32, int64.
+        return_inverse(bool, optional): If True, also return the indices for where elements in
+            the original input ended up in the returned unique consecutive tensor. Default is False.
+        return_counts(bool, optional): If True, also return the counts for each unique consecutive element.
+            Default is False.
+        axis(int, optional): The axis to apply unique consecutive. If None, the input will be flattened.
+            Default is None.
+        dtype(np.dtype|str, optional): The data type `inverse` tensor: int32 or int64.
+            Default: int64.
+        name(str, optional): Name for the operation. For more information, please refer to
+            :ref:`api_guide_Name`. Default is None.
+
+    Returns:
+        tuple: (out, inverse, counts). `out` is the unique consecutive tensor for `x`. `inverse` is provided only if `return_inverse` is True. `counts` is provided only if `return_counts` is True.
+
+    Example:
+        .. code-block:: python
+
+            import paddle 
+
+            x = paddle.to_tensor([1, 1, 2, 2, 3, 1, 1, 2])
+            output = paddle.unique_consecutive(x) # 
+            np_output = output.numpy() # [1 2 3 1 2]
+            _, inverse, counts = paddle.unique_consecutive(x, return_inverse=True, return_counts=True)
+            np_inverse = inverse.numpy() # [0 0 1 1 2 3 3 4]
+            np_counts = inverse.numpy() # [2 2 1 2 1]
+
+            x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
+            output = paddle.unique_consecutive(x, axis=0) # 
+            np_output = output.numpy() # [2 1 3 0 1 2 1 3 2 1 3]
+
+            x = paddle.to_tensor([[2, 1, 3], [3, 0, 1], [2, 1, 3], [2, 1, 3]])
+            output = paddle.unique_consecutive(x, axis=0) # 
+            np_output = output.numpy()
+            # [[2 1 3]
+            #  [3 0 1]
+            #  [2 1 3]]
+    """
+
+    if axis is None:
+        axis = []
+    else:
+        axis = [axis]
+    attr_dtype = convert_np_dtype_to_dtype_(dtype)
+    if in_dygraph_mode():
+        out, inverse, counts = core.ops.unique_consecutive(
+            x, 'dtype', attr_dtype, 'return_inverse', return_inverse,
+            'return_counts', return_counts, 'axis', axis)
+        outs = [out]
+        if return_inverse:
+            outs.append(inverse)
+        if return_counts:
+            outs.append(counts)
+        if len(outs) == 1:
+            return outs[0]
+        return tuple(outs)
+    check_variable_and_dtype(x, "input",
+                             ['float32', 'float64', 'int32', 'int64'],
+                             'unique_consecutive')
+    check_type(return_inverse, 'return_inverse', bool, 'unique_consecutive')
+    check_type(return_counts, 'return_counts', bool, 'unique_consecutive')
+    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'unique_consecutive')
+    if len(axis) != 0:
+        check_type(axis[0], 'axis', int, 'unique_consecutive')
+    helper = LayerHelper('unique_consecutive', **locals())
+    attrs = {
+        'dtype': attr_dtype,
+        "return_inverse": return_inverse,
+        "return_counts": return_counts,
+        "axis": axis,
+    }
+    out = helper.create_variable_for_type_inference(
+        dtype=x.dtype, stop_gradient=True)
+    inverse = helper.create_variable_for_type_inference(
+        dtype=attr_dtype, stop_gradient=True)
+    counts = helper.create_variable_for_type_inference(
+        dtype=attr_dtype, stop_gradient=True)
+    outputs = {"Out": out, "Index": inverse, "Counts": counts}
+    outs = [out]
+    if return_inverse:
+        outs.append(inverse)
+    if return_counts:
+        outs.append(counts)
+    helper.append_op(
+        type="unique_consecutive",
+        inputs={"X": x},
+        attrs=attrs,
+        outputs=outputs)
+    if len(outs) == 1:
+        return outs[0]
+    return tuple(outs)
 
 
 def unique(x,
@@ -1087,8 +1417,10 @@ def scatter(x, index, updates, overwrite=True, name=None):
         index (Tensor): The index 1-D Tensor. Data type can be int32, int64. The length of index cannot exceed updates's length, and the value in index cannot exceed input's length.
         updates (Tensor): update input with updates parameter based on index. shape should be the same as input, and dim value with dim > 1 should be the same as input.
         overwrite (bool): The mode that updating the output when there are same indices. 
-          If True, use the overwrite mode to update the output of the same index,
-	      if False, use the accumulate mode to update the output of the same index.Default value is True.
+            
+            If True, use the overwrite mode to update the output of the same index,
+	        if False, use the accumulate mode to update the output of the same index.Default value is True.
+        
         name(str, optional): The default value is None. Normally there is no need for user to set this property.  For more information, please refer to :ref:`api_guide_Name` .
  
     Returns:
@@ -1193,7 +1525,7 @@ def scatter_nd_add(x, index, updates, name=None):
             output = [[67, 19], [-16, -27]]
 
     Args:
-        x (Tensor): The x input. Its dtype should be float32, float64.
+        x (Tensor): The x input. Its dtype should be int32, int64, float32, float64.
         index (Tensor): The index input with ndim > 1 and index.shape[-1] <= x.ndim.
                           Its dtype should be int32 or int64 as it is used as indexes.
         updates (Tensor): The updated value of scatter_nd_add op, and it must have the same dtype

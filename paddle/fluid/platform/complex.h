@@ -60,6 +60,8 @@ struct PADDLE_ALIGN(sizeof(T) * 2) complex {
   T real;
   T imag;
 
+  using value_type = T;
+
   complex() = default;
   complex(const complex<T>& o) = default;
   complex& operator=(const complex<T>& o) = default;

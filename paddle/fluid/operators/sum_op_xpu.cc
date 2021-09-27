@@ -21,6 +21,8 @@ using framework::Tensor;
 
 template <typename DeviceContext, typename T>
 class SumXPUKernel : public framework::OpKernel<T> {
+  using XPUType = typename XPUTypeTrait<T>::Type;
+
  public:
   void Compute(const framework::ExecutionContext &context) const override {
     auto in_vars = context.MultiInputVar("X");
@@ -35,8 +37,7 @@ class SumXPUKernel : public framework::OpKernel<T> {
       out->mutable_data<T>(context.GetPlace());
     }
     auto &dev_ctx = context.template device_context<DeviceContext>();
-    std::vector<const float *> ptrs(N, nullptr);
-    int valid_count = 0;
+    std::vector<const XPUType *> ptrs;
     for (int i = 0; i < N; ++i) {
       PADDLE_ENFORCE_EQ(
           in_vars[i]->IsType<framework::LoDTensor>(), true,
@@ -45,30 +46,14 @@ class SumXPUKernel : public framework::OpKernel<T> {
       if (in_t.numel() == 0) {
         continue;
       }
-      ptrs[valid_count] = reinterpret_cast<const float *>(in_t.data<T>());
-      valid_count++;
+      ptrs.push_back(reinterpret_cast<const XPUType *>(in_t.data<T>()));
     }
-    int r = xpu::sum_batch(dev_ctx.x_context(), ptrs.data(), out->data<T>(),
-                           valid_count, out->numel());
-    if (r == xpu::Error_t::INVALID_PARAM) {
-      PADDLE_ENFORCE_EQ(
-          r, xpu::Error_t::SUCCESS,
-          platform::errors::InvalidArgument(
-              "XPU kernel error of SumOp, error message: INVALID_PARAM, "
-              "please check your input & output."));
-    } else if (r == xpu::Error_t::RUNTIME_ERROR) {
-      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                        platform::errors::Unavailable(
-                            "XPU kernel error of SumOp, error message: "
-                            "RUNTIME_ERROR, please check whether Baidu "
-                            "Kunlun Card is properly installed."));
-    } else if (r == xpu::Error_t::NO_ENOUGH_WORKSPACE) {
-      PADDLE_ENFORCE_EQ(r, xpu::Error_t::SUCCESS,
-                        platform::errors::ResourceExhausted(
-                            "XPU kernel error of SumOp, error "
-                            "message: NO_ENOUGH_WORKSPACE, XPU "
-                            "has no enough memory."));
-    }
+    int r = xpu::sum(dev_ctx.x_context(), ptrs,
+                     reinterpret_cast<XPUType *>(out->data<T>()), out->numel());
+    PADDLE_ENFORCE_EQ(
+        r, XPU_SUCCESS,
+        platform::errors::External("XPU sum kernel return wrong value[%d %s]",
+                                   r, XPUAPIErrorMsg[r]));
   }
 };
 
@@ -78,5 +63,7 @@ class SumXPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_XPU_KERNEL(
-    sum, ops::SumXPUKernel<paddle::platform::XPUDeviceContext, float>);
+    sum, ops::SumXPUKernel<paddle::platform::XPUDeviceContext, float>,
+    ops::SumXPUKernel<paddle::platform::XPUDeviceContext,
+                      paddle::platform::float16>);
 #endif

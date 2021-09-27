@@ -43,6 +43,9 @@ class TestFlatten2Op(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place, no_check_set=["XShape"])
 
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ["X"], "Out")
+
     def init_test_case(self):
         self.in_shape = (3, 2, 4, 5)
         self.axis = 1

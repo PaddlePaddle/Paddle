@@ -166,22 +166,26 @@ class MulOpMaker : public framework::OpProtoAndCheckerMaker {
         "scale_x to be used for int8 mul input data x. scale_x has the"
         "same purpose as scale_in in OPs that support quantization."
         "Only to be used with MKL-DNN INT8")
-        .SetDefault(1.0f);
+        .SetDefault(1.0f)
+        .AsExtra();
     AddAttr<std::vector<float>>(
         "scale_y",
         "scale_y to be used for int8 mul input data y. scale_y has the"
         "same purpose as scale_weights in OPs that support quantization."
         "Only to be used with MKL-DNN INT8")
-        .SetDefault({1.0f});
+        .SetDefault({1.0f})
+        .AsExtra();
     AddAttr<float>("scale_out",
                    "scale_out to be used for int8 output data."
                    "Only used with MKL-DNN INT8")
-        .SetDefault(1.0f);
+        .SetDefault(1.0f)
+        .AsExtra();
     AddAttr<bool>(
         "force_fp32_output",
         "(bool, default false) Force quantize kernel output FP32, only "
         "used in quantized MKL-DNN.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 Mul Operator.
 

@@ -18,9 +18,9 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_proto_maker.h"
 
 DECLARE_bool(convert_all_blocks);
-DEFINE_string(print_sub_graph_dir, "",
-              "FLAGS_print_sub_graph_dir is used "
-              "to print the nodes of sub_graphs.");
+PADDLE_DEFINE_EXPORTED_string(print_sub_graph_dir, "",
+                              "FLAGS_print_sub_graph_dir is used "
+                              "to print the nodes of sub_graphs.");
 
 namespace paddle {
 namespace framework {
@@ -535,6 +535,7 @@ void GraphToProgram(const Graph &graph, ProgramDesc *program,
 
       block = program_pb.add_blocks();
       block->set_idx(idx);
+      block->set_parent_idx(kRootBlockIndex);
       GraphToBlock(*graph.GetSubGraph(idx), block, sort_kind);
     }
   } else {

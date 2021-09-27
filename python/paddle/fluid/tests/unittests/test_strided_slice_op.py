@@ -745,173 +745,167 @@ class TestStridedSliceTensorArray(unittest.TestCase):
                 self.assertFalse(result.place.is_cuda_pinned_place())
 
     def test_strided_slice_tensor_array(self):
-        class Net(ArrayLayer):
+        class Net01(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[::-1]
 
-        self.create_case(Net(array_size=10))
+        self.create_case(Net01(array_size=10))
 
-        class Net(ArrayLayer):
+        class Net02(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[::-2]
 
-        self.create_case(Net(input_size=112, array_size=11))
+        self.create_case(Net02(input_size=112, array_size=11))
 
-        class Net(ArrayLayer):
+        class Net03(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[::-3]
 
-        self.create_case(Net(input_size=112, array_size=9))
+        self.create_case(Net03(input_size=112, array_size=9))
 
-        class Net(ArrayLayer):
+        class Net04(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[1::-4]
 
-        self.create_case(Net(input_size=112, array_size=9))
+        self.create_case(Net04(input_size=112, array_size=9))
 
-        class Net(ArrayLayer):
+        class Net05(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[:7:-4]
 
-        self.create_case(Net(input_size=112, array_size=9))
+        self.create_case(Net05(input_size=112, array_size=9))
 
-        class Net(ArrayLayer):
+        class Net06(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[8:0:-4]
 
-        self.create_case(Net(input_size=112, array_size=9))
+        self.create_case(Net06(input_size=112, array_size=9))
 
-        class Net(ArrayLayer):
+        class Net07(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[8:1:-4]
 
-        self.create_case(Net(input_size=112, array_size=9))
+        self.create_case(Net07(input_size=112, array_size=9))
 
-        class Net(ArrayLayer):
+        class Net08(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[::2]
 
-        self.create_case(Net(input_size=112, array_size=11))
+        self.create_case(Net08(input_size=112, array_size=11))
 
-        class Net(ArrayLayer):
+        class Net09(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[::3]
 
-        self.create_case(Net(input_size=112, array_size=9))
+        self.create_case(Net09(input_size=112, array_size=9))
 
-        class Net(ArrayLayer):
+        class Net10(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[1::4]
 
-        self.create_case(Net(input_size=112, array_size=9))
+        self.create_case(Net10(input_size=112, array_size=9))
 
-        class Net(ArrayLayer):
+        class Net11(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[:8:4]
 
-        self.create_case(Net(input_size=112, array_size=9))
+        self.create_case(Net11(input_size=112, array_size=9))
 
-        class Net(ArrayLayer):
+        class Net12(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[1:8:4]
 
-        self.create_case(Net(input_size=112, array_size=9))
+        self.create_case(Net12(input_size=112, array_size=9))
 
-        class Net(ArrayLayer):
+        class Net13(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[8:10:4]
 
-        self.create_case(Net(input_size=112, array_size=13))
+        self.create_case(Net13(input_size=112, array_size=13))
 
-        class Net(ArrayLayer):
+        class Net14(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[3:10:4]
 
-        self.create_case(Net(input_size=112, array_size=13))
+        self.create_case(Net14(input_size=112, array_size=13))
 
-        class Net(ArrayLayer):
+        class Net15(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[2:10:4]
 
-        self.create_case(Net(input_size=112, array_size=13))
+        self.create_case(Net15(input_size=112, array_size=13))
 
-        class Net(ArrayLayer):
+        class Net16(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[3:10:3]
 
-        self.create_case(Net(input_size=112, array_size=13))
+        self.create_case(Net16(input_size=112, array_size=13))
 
-        class Net(ArrayLayer):
+        class Net17(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[3:15:3]
 
-        self.create_case(Net(input_size=112, array_size=13))
+        self.create_case(Net17(input_size=112, array_size=13))
 
-        class Net(ArrayLayer):
+        class Net18(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[0:15:3]
 
-        self.create_case(Net(input_size=112, array_size=13))
+        self.create_case(Net18(input_size=112, array_size=13))
 
-        class Net(ArrayLayer):
+        class Net19(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[-1:-5:-3]
 
-        self.create_case(Net(input_size=112, array_size=13))
+        self.create_case(Net19(input_size=112, array_size=13))
 
-        class Net(ArrayLayer):
+        class Net20(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[-1:-6:-3]
 
-        self.create_case(Net(input_size=112, array_size=13))
+        self.create_case(Net20(input_size=112, array_size=13))
 
-        class Net(ArrayLayer):
+        class Net21(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[-3:-6:-3]
 
-        self.create_case(Net(input_size=112, array_size=13))
+        self.create_case(Net21(input_size=112, array_size=13))
 
-        self.create_case(Net(input_size=112, array_size=13))
-
-        class Net(ArrayLayer):
+        class Net22(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[-5:-1:3]
 
-        self.create_case(Net(input_size=112, array_size=13))
+        self.create_case(Net22(input_size=112, array_size=13))
 
-        class Net(ArrayLayer):
+        class Net23(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[-6:-1:3]
 
-        self.create_case(Net(input_size=112, array_size=13))
+        self.create_case(Net23(input_size=112, array_size=13))
 
-        class Net(ArrayLayer):
+        class Net24(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[-6:-3:3]
 
-        self.create_case(Net(input_size=112, array_size=13))
+        self.create_case(Net24(input_size=112, array_size=13))
 
-        class Net(ArrayLayer):
+        class Net25(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[0::3]
 
-        self.create_case(Net(input_size=112, array_size=13))
+        self.create_case(Net25(input_size=112, array_size=13))
 
-        class Net(ArrayLayer):
+        class Net26(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[-60:20:3]
 
-        self.create_case(Net(input_size=112, array_size=13))
+        self.create_case(Net26(input_size=112, array_size=13))
 
-        class Net(ArrayLayer):
+        class Net27(ArrayLayer):
             def array_slice(self, tensors):
                 return tensors[-3:-60:-3]
 
-        self.create_case(Net(input_size=112, array_size=13))
-
-        class Net(ArrayLayer):
-            def array_slice(self, tensors):
-                return tensors[-1:-60:-3]
+        self.create_case(Net27(input_size=112, array_size=13))
 
 
 if __name__ == "__main__":

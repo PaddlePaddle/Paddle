@@ -64,6 +64,10 @@ class BmmKernel : public framework::OpKernel<T> {
     Tensor *out = context.Output<Tensor>("Out");
     out->mutable_data<T>(context.GetPlace());
 
+    if (x.numel() == 0 || y.numel() == 0) {
+      return;
+    }
+
     auto blas = math::GetBlas<DeviceContext, T>(context);
 
     auto mat_dim_a = math::CreateMatrixDescriptor(x.dims(), 0, false);

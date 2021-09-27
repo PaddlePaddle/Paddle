@@ -13,8 +13,11 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "paddle/fluid/framework/ir/graph_viz_pass.h"
+#include <string>
+#include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/graph_printer.h"
 #include "paddle/fluid/framework/op_proto_maker.h"
+#include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/inference/analysis/dot.h"
 
 namespace paddle {
@@ -43,6 +46,31 @@ void GraphVizPass::ApplyImpl(ir::Graph* graph) const {
       platform::errors::Unavailable(
           "Can not open file %s for printing the graph.", graph_viz_path));
   std::ostream& sout = *fout;
+
+  // serialize only model file.
+  std::string program_path;
+  std::size_t found1 = graph_viz_path.find("_ir_");
+  std::size_t found2 = graph_viz_path.find(".dot");
+  if (found1 != std::string::npos && found2 != std::string::npos) {
+    ProgramDesc program_desc;
+    GraphToProgram(*graph, &program_desc);
+    // TODO(wilber): GraphToProgram seems have bugs.
+    for (size_t i = 0; i < program_desc.Size(); ++i) {
+      for (size_t j = 0; j < program_desc.Block(i).OpSize(); ++j) {
+        if (program_desc.Block(i).Op(j)->Type() == "tensorrt_engine") {
+          program_desc.Block(i).Op(j)->RemoveAttr("sub_block");
+        }
+      }
+    }
+    std::string program_bytes = program_desc.Proto()->SerializeAsString();
+    // rename from "17_ir_fc_fuse_pass.dot" to "fc_fuse_pass.pdmodel"
+    program_path =
+        graph_viz_path.substr(found1 + 4, found2 - found1 - 4) + ".pdmodel";
+    std::ofstream file(program_path.c_str(), std::ios::binary);
+    file.write(program_bytes.c_str(), program_bytes.size());
+    file.close();
+    VLOG(3) << "serialize program to " << program_path;
+  }
 
   std::unordered_map<const ir::Node*, std::string> node2dot;
 

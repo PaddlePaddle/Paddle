@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/operators/elementwise/elementwise_sub_op.h"
 #include "paddle/fluid/platform/complex.h"
@@ -21,13 +22,6 @@ namespace plat = paddle::platform;
 
 namespace paddle {
 namespace operators {
-
-template <typename T>
-struct CudaSubFunctor {
-  inline HOSTDEVICE T operator()(const T* args) const {
-    return args[0] - args[1];
-  }
-};
 
 template <typename T>
 class ElementwiseSubKernel<platform::CUDADeviceContext, T>
@@ -41,7 +35,7 @@ class ElementwiseSubKernel<platform::CUDADeviceContext, T>
 
     int axis = PackTensorsIntoVector<T>(ctx, &ins, &outs);
     LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
-        cuda_ctx, ins, &outs, axis, CudaSubFunctor<T>());
+        cuda_ctx, ins, &outs, axis, SubFunctor<T>());
   }
 };
 
@@ -66,10 +60,10 @@ elementwise_sub_grad(const framework::ExecutionContext& ctx,
                      const framework::Tensor* out,
                      const framework::Tensor* dout, framework::Tensor* dx,
                      framework::Tensor* dy) {
-  dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
+  dim3 block_size = dim3(ELEMENTWISE_BLOCK_SIZE, 1);
   auto size = x->numel();
   dim3 grid_size =
-      dim3((size + PADDLE_CUDA_THREAD_SIZE - 1) / PADDLE_CUDA_THREAD_SIZE, 1);
+      dim3((size + ELEMENTWISE_BLOCK_SIZE - 1) / ELEMENTWISE_BLOCK_SIZE, 1);
   SimpleElemwiseSubGradCUDAKernel<
       T><<<grid_size, block_size, 0,
            ctx.template device_context<plat::CUDADeviceContext>().stream()>>>(
