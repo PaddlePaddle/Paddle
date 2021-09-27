@@ -66,9 +66,9 @@ class AsyncWorkQueue {
     queue_group_ = CreateWorkQueueGroup(group_options);
   }
 
-  AtomicVectorSizeT PrepareAtomicDeps(
+  AtomicVectorSizeT& PrepareAtomicDeps(
       const std::vector<size_t>& dependecy_count);
-  AtomicVectorSizeT PrepareAtomicVarRef(
+  AtomicVectorSizeT& PrepareAtomicVarRef(
       const std::vector<VariableMetaInfo>& vec_meta_info);
 
   void WaitEmpty() { queue_group_->WaitQueueGroupEmpty(); }
@@ -77,9 +77,14 @@ class AsyncWorkQueue {
     queue_group_->AddTask(static_cast<size_t>(op_func_type), std::move(fn));
   }
 
+  AtomicVectorSizeT& AtomicDeps() { return atomic_deps_; }
+  AtomicVectorSizeT& AtomicVarRef() { return atomic_var_ref_; }
+
  private:
   size_t host_num_thread_;
   std::unique_ptr<WorkQueueGroup> queue_group_;
+  AtomicVectorSizeT atomic_deps_;
+  AtomicVectorSizeT atomic_var_ref_;
 };
 
 std::string get_memcpy_type(const platform::Place& src_place,
