@@ -207,26 +207,6 @@ int GetCUDADriverVersion(int id) {
 #endif
   return driver_version;
 }
-std::string GetCUDADeviceName(int id) {
-  PADDLE_ENFORCE_LT(id, GetCUDADeviceCount(),
-                    platform::errors::InvalidArgument(
-                        "Device id must be less than GPU count, "
-                        "but received id is: %d. GPU count is: %d.",
-                        id, GetCUDADeviceCount()));
-
-  PADDLE_ENFORCE_GE(id, 0, platform::errors::InvalidArgument(
-                               "Device id must be greater or equal to 0, "
-                               "but received id is: %d. ",
-                               id));
-#ifdef PADDLE_WITH_HIP
-  hipDeviceProp_t device_prop;
-  PADDLE_ENFORCE_CUDA_SUCCESS(hipGetDeviceProperties(&device_prop, id));
-#else
-  cudaDeviceProp device_prop;
-  PADDLE_ENFORCE_CUDA_SUCCESS(cudaGetDeviceProperties(&device_prop, id));
-#endif
-  return device_prop.name;
-}
 
 bool TensorCoreAvailable() {
 #if !defined(PADDLE_WITH_HIP) && CUDA_VERSION >= 9000

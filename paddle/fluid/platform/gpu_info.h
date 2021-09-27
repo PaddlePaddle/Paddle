@@ -46,9 +46,6 @@ int GetCUDARuntimeVersion(int id);
 //! Get the driver version of the ith GPU
 int GetCUDADriverVersion(int id);
 
-//! Get the device name of the ith GPU
-std::string GetCUDADeviceName(int id);
-
 //! Wheter the current device support TensorCore
 bool TensorCoreAvailable();
 

@@ -16,7 +16,7 @@ import paddle
 import unittest
 
 
-class TestDeviceCount(unittest.TestCase):
+class TestDeviceName(unittest.TestCase):
     def test_device_name_default(self):
         if paddle.is_compiled_with_cuda():
             name = paddle.device.cuda.get_device_name()
@@ -32,11 +32,23 @@ class TestDeviceCount(unittest.TestCase):
             name = paddle.device.cuda.get_device_name(paddle.CUDAPlace(0))
             self.assertIsNotNone(name)
 
-    def test_device_name_error(self):
-        def test_error():
-            if paddle.is_compiled_with_cuda():
-                name = paddle.device.cuda.get_device_name('gpu0')
-            self.assertRaises(ValueError, test_error)
+
+class TestDeviceCapability(unittest.TestCase):
+    def test_device_capability_default(self):
+        if paddle.is_compiled_with_cuda():
+            capability = paddle.device.cuda.get_device_capability()
+            self.assertIsNotNone(capability)
+
+    def test_device_capability_int(self):
+        if paddle.is_compiled_with_cuda():
+            capability = paddle.device.cuda.get_device_capability(0)
+            self.assertIsNotNone(capability)
+
+    def test_device_capability_CUDAPlace(self):
+        if paddle.is_compiled_with_cuda():
+            capability = paddle.device.cuda.get_device_capability(
+                paddle.CUDAPlace(0))
+            self.assertIsNotNone(capability)
 
 
 if __name__ == "__main__":
