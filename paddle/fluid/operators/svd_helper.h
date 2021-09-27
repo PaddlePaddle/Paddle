@@ -25,6 +25,7 @@
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 #include "paddle/fluid/operators/elementwise/elementwise_op_function.h"
 #include "paddle/fluid/operators/math/blas.h"
+#include "paddle/fluid/operators/math/complex_functors.h"
 #include "paddle/fluid/operators/math/functors.h"
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -37,6 +38,9 @@ using Tensor = framework::Tensor;
 using InTensors = std::vector<const Tensor*>;
 using OutTensors = std::vector<Tensor*>;
 using OpName = std::string;
+template <typename T, int MajorType = Eigen::RowMajor,
+          typename IndexType = Eigen::DenseIndex>
+using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
 
 template <typename T>
 void EigenSvd(const T* X, T* U, T* VH, T* S, int rows, int cols,
@@ -141,7 +145,42 @@ static std::vector<int> GetBroadcastShape(InTensors ins) {
     break;                                           \
   }
 
-template <typename DeviceContext, typename T>
+template <typename T, typename ValueType>
+struct DiagAndFillFunctor {
+  DiagAndFillFunctor(const int m, const int n, const int num_lower_diags,
+                     const int num_upper_diags, const ValueType* scale,
+                     const T* input, T* output)
+      : m_(m),
+        n_(n),
+        num_lower_diags_(num_lower_diags),
+        num_upper_diags_(num_upper_diags),
+        scale_(scale),
+        input_(input),
+        output_(output) {}
+
+  HOSTDEVICE void operator()(size_t index) const {
+    const int col = index % n_;
+    const int row = (index / n_) % m_;
+    const int band_start = (num_lower_diags_ < 0 ? 0 : row - num_lower_diags_);
+    const int band_end =
+        (num_upper_diags_ < 0 ? n_ : row + num_upper_diags_ + 1);
+    if (col < band_start || col >= band_end) {
+      output_[index] = input_[index];
+    } else if (col == band_end - 1) {
+      output_[index] = static_cast<T>(scale_[index % m_]);
+    } else {
+      output_[index] = input_[index];
+    }
+  }
+
+ private:
+  const int m_, n_, num_lower_diags_, num_upper_diags_;
+  const ValueType* scale_;
+  const T* input_;
+  T* output_;
+};
+
+template <typename DeviceContext, typename T, typename ValueType = T>
 struct DeviceIndependenceTensorOperations {
   // 1. Device indenpendence, for kernel reuse.
   // 2. Input and output is always tensor type.
@@ -250,10 +289,20 @@ struct DeviceIndependenceTensorOperations {
   framework::Tensor Div(const framework::Tensor& x,
                         const framework::Tensor& y) {
     framework::Tensor ret;
-    std::vector<int> out_shape = GetBroadcastShape({&x, &y});
-    ret.Resize(framework::make_ddim(out_shape));
-    ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
-        context, &x, &y, -1, DivFunctor<T>(), &ret);
+    if (x.type() != y.type()) {
+      ret.mutable_data<T>(x.dims(), context.GetPlace());
+      auto x_vector = EigenVector<T>::Flatten(x);
+      auto y_vector = EigenVector<ValueType>::Flatten(y);
+      auto out_vector = EigenVector<T>::Flatten(ret);
+      auto& place =
+          *context.template device_context<DeviceContext>().eigen_device();
+      out_vector.device(place) = x_vector / y_vector;
+    } else {
+      std::vector<int> out_shape = GetBroadcastShape({&x, &y});
+      ret.Resize(framework::make_ddim(out_shape));
+      ElementwiseComputeEx<DivFunctor<T>, DeviceContext, T>(
+          context, &x, &y, -1, DivFunctor<T>(), &ret);
+    }
     return ret;
   }
   framework::Tensor Add(const framework::Tensor& x,
@@ -291,7 +340,8 @@ struct DeviceIndependenceTensorOperations {
     NameInTensorMap inputs({{"X", {&x}}});
     return CreateOpRunAndReturnTensor("reduce_max", inputs, attrs, out_dim);
   }
-
+  // Support float and complex type subtraction，the default is T type
+  template <typename InT = T>
   framework::Tensor Sub(const framework::Tensor& x,
                         const framework::Tensor& y) {
     framework::Tensor ret;
@@ -301,18 +351,18 @@ struct DeviceIndependenceTensorOperations {
 #if defined(__NVCC__) || defined(__HIPCC__)
       // For GPU, there is no need to define XxxInverseFunctor and call
       // ElementwiseComputeEx in two branches.
-      ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-          context, &x, &y, -1, SubFunctor<T>(), &ret);
+      ElementwiseComputeEx<SubFunctor<InT>, DeviceContext, InT>(
+          context, &x, &y, -1, SubFunctor<InT>(), &ret);
 #endif
     } else {
       if (x.dims().size() >= y.dims().size()) {
-        ElementwiseComputeEx<SubFunctor<T>, DeviceContext, T>(
-            context, &x, &y, -1, SubFunctor<T>(), &ret);
+        ElementwiseComputeEx<SubFunctor<InT>, DeviceContext, InT>(
+            context, &x, &y, -1, SubFunctor<InT>(), &ret);
       } else {
-        ElementwiseComputeEx<InverseSubFunctor<T>, DeviceContext, T>(
-            // This is copyed from elementwise_sub, which means we
-            // need reverse will xrank < yrank
-            context, &x, &y, -1, InverseSubFunctor<T>(), &ret);
+        // This is copyed from elementwise_sub, which means we
+        // need reverse will xrank < yrank
+        ElementwiseComputeEx<InverseSubFunctor<InT>, DeviceContext, InT>(
+            context, &x, &y, -1, InverseSubFunctor<InT>(), &ret);
       }
     }
     return ret;
@@ -397,6 +447,29 @@ struct DeviceIndependenceTensorOperations {
       }
     }
     return ret;
+  }
+
+  Tensor Conj(const Tensor& x) {
+    Tensor out;
+    auto* out_data = out.mutable_data<T>(x.dims(), context.GetPlace());
+    auto* x_data = x.data<T>();
+    auto for_range = GetForRange(x.numel());
+    math::ConjFunctor<T> functor(x_data, x.numel(), out_data);
+    for_range(functor);
+    return out;
+  }
+
+  Tensor DiagFill(const int m, const int n, const int num_lower_diags,
+                  const int num_upper_diags, const Tensor& scale,
+                  const Tensor& input) {
+    Tensor out;
+    auto& dev_ctx = context.template device_context<DeviceContext>();
+    platform::ForRange<DeviceContext> for_range(dev_ctx, input.numel());
+    DiagAndFillFunctor<T, ValueType> diag_and_copy_functor(
+        m, n, num_lower_diags, num_upper_diags, scale.data<ValueType>(),
+        input.data<T>(), out.mutable_data<T>(input.dims(), input.place()));
+    for_range(diag_and_copy_functor);
+    return out;
   }
 
  private:

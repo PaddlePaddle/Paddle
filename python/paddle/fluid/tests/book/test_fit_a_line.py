@@ -86,8 +86,10 @@ def train(use_cuda, save_dirname, is_local, use_bf16, pure_bf16):
                                           fetch_list=[avg_cost])
                 if avg_loss_value[0] < 10.0:
                     if save_dirname is not None:
-                        paddle.static.save_inference_model(save_dirname, [x],
-                                                           [y_predict], exe)
+                        paddle.static.save_inference_model(
+                            save_dirname, [x], [y_predict],
+                            exe,
+                            clip_extra=False)
                     return
                 if math.isnan(float(avg_loss_value)):
                     sys.exit("got NaN loss, training failed.")

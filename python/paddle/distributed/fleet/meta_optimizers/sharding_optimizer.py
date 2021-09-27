@@ -435,7 +435,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
 
-        # FIXME(wangxi): mp should prune duplicated param_grads when calc
         # amp inf_var & clip global_norm_var
 
         rings = [self.mp_ring_id, self.pp_ring_id]
@@ -446,7 +445,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         gradientclip_helper = GradientClipHelper(None)
         gradientclip_helper.sync_global_norm(
-            main_block, [self.mp_ring_id, self.pp_ring_id])
+            main_block, [self.mp_ring_id, self.pp_ring_id], self.mp_rank)
 
     def _insert_loss_grad_scale_op(self):
         main_block = self._main_program.global_block()
@@ -455,7 +454,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         global_dp_degree = self.sharding_degree * self.dp_degree
         assert int(global_dp_degree) == global_dp_degree
         if global_dp_degree > 1:
-            insert_scale_loss_grad_ops(main_block, scale=1.0 / global_dp_degree)
+            insert_scale_loss_grad_ops(main_block, scale=global_dp_degree)
 
         main_block._sync_with_cpp()
 
@@ -1381,10 +1380,18 @@ class ShardingOptimizer(MetaOptimizerBase):
             return
 
         startup_block = self._startup_program.global_block()
+        params = startup_block.all_parameters()
 
-        params = []
-        for param in startup_block.iter_parameters():
-            params.append(param)
+        broadcast_params = []
+        for param in params:
+            broadcast_params.append(param)
+            # optimize_cast need broadcast fp16 param
+            fp16_param_name = param.name + '.cast_fp16'
+            if startup_block.has_var(fp16_param_name):
+                fp16_param = startup_block.var(fp16_param_name)
+                broadcast_params.append(fp16_param)
+
+        for param in broadcast_params:
             startup_block.append_op(
                 type='c_broadcast',
                 inputs={'X': param},
@@ -1396,8 +1403,8 @@ class ShardingOptimizer(MetaOptimizerBase):
                 })
         startup_block.append_op(
             type='c_sync_comm_stream',
-            inputs={'X': params},
-            outputs={'Out': params},
+            inputs={'X': broadcast_params},
+            outputs={'Out': broadcast_params},
             attrs={'ring_id': self.dp_ring_id,
                    OP_ROLE_KEY: OpRole.Forward})
 

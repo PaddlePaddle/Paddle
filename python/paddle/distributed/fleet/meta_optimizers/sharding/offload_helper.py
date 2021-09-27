@@ -213,6 +213,7 @@ class OffloadHelper(object):
 
                 if out_name in param_name_to_offload_name:
                     var_name = out_name
+                    # FIXME(wangxi): offload should insert after broadcast param
                     if offload:
                         offload_var_name = param_name_to_offload_name[var_name]
                         self._insert_offload_op(startup_block, idx + 1,

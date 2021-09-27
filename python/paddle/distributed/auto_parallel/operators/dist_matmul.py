@@ -16,6 +16,8 @@ from .common import DistributedOperator
 from .common import DistributedOperatorImpl
 from .common import register_distributed_operator
 from .common import register_distributed_operator_impl
+from .common import copy_distributed_attr_for_var
+from .common import copy_distributed_attr_for_dist_op
 from ..utils import is_dim_shard
 from ..utils import is_dim_replicate
 from ..utils import is_valid_list_index
@@ -223,13 +225,16 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
                 stop_gradient=X_var.stop_gradient)
+            # copy X_var's dist_attr to intermediate_var_0's dist_attr
+            copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
+                                          X_var)
 
             check_variable_and_dtype(
                 X_var, 'tensor',
                 ['float16', 'float32', 'float64', 'int32', 'int64'],
                 '_c_identity')
 
-            dst_block.append_op(
+            c_identity_op = dst_block.append_op(
                 type='c_identity',
                 inputs={'X': [X_var]},
                 outputs={'Out': intermediate_var_0},
@@ -250,11 +255,17 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
                 'alpha': 1,
             }
             inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
-            dst_block.append_op(
+            matmul_op = dst_block.append_op(
                 type='matmul',
                 inputs=inputs,
                 outputs={'Out': Out_var},
                 attrs=attrs)
+
+            # copy serial op's dist_attr to dist op's dist_attr
+            copy_distributed_attr_for_dist_op(c_identity_op, dst_block,
+                                              op_dist_attr)
+            copy_distributed_attr_for_dist_op(matmul_op, dst_block,
+                                              op_dist_attr)
 
         if in_dygraph_mode():
             raise NotImplementedError(
@@ -369,13 +380,17 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
                 persistable=False,
                 is_data=False,
                 need_check_feed=Out_var.desc.need_check_feed())
-            dst_block.append_op(
+            # copy Out_var's dist_attr to intermediate_var_0's dist_attr
+            copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
+                                          Out_var)
+
+            matmul_op = dst_block.append_op(
                 type='matmul',
                 inputs=inputs,
                 outputs={'Out': intermediate_var_0},
                 attrs=attrs)
 
-            dst_block.append_op(
+            c_allreduce_sum_op = dst_block.append_op(
                 type='c_allreduce_sum',
                 inputs={'X': intermediate_var_0},
                 outputs={'Out': Out_var},
@@ -384,6 +399,12 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
                     'use_calc_stream': True,
                     'use_model_parallel': True
                 })
+
+            # copy serial op's dist_attr to dist op's dist_attr
+            copy_distributed_attr_for_dist_op(matmul_op, dst_block,
+                                              op_dist_attr)
+            copy_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
+                                              op_dist_attr)
 
         if in_dygraph_mode():
             raise NotImplementedError(
@@ -540,15 +561,12 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             Out_var = dst_block.var(output_name_mapping['Out'][0])
 
             # TODO infer logic comm presentation
-            from ..process import new_process_group
-            from ..transpiler import _get_comm_group
             model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
             )._get_model_parallel_info()
-            group_ranks = _get_comm_group(process_mesh.topology,
-                                          model_parallel_axis,
-                                          process_mesh.process_group, rank_id)
+            group_ranks = _get_comm_group(process_mesh.process_group,
+                                          process_mesh.topology,
+                                          model_parallel_axis, rank_id)
             group = new_process_group(group_ranks)
-            # print("@@@@@@@@@@@@@@@@@@@@@ 5", group)
 
             intermediate_var_0 = dst_block.create_var(
                 name=unique_name.generate_with_ignorable_key(".".join(
@@ -558,13 +576,16 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                 type=core.VarDesc.VarType.LOD_TENSOR,
                 persistable=False,
                 stop_gradient=X_var.stop_gradient)
+            # copy X_var's dist_attr to intermediate_var_0's dist_attr
+            copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
+                                          X_var)
 
             check_variable_and_dtype(
                 X_var, 'tensor',
                 ['float16', 'float32', 'float64', 'int32', 'int64'],
                 '_c_identity')
 
-            dst_block.append_op(
+            c_identity_op = dst_block.append_op(
                 type='c_identity',
                 inputs={'X': [X_var]},
                 outputs={'Out': intermediate_var_0},
@@ -581,11 +602,17 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                         ['float16', 'float32', 'float64'], 'linear')
             attrs = {'trans_x': False, 'trans_y': False}
             inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
-            dst_block.append_op(
+            matmul_v2_op = dst_block.append_op(
                 type='matmul_v2',
                 inputs=inputs,
                 outputs={'Out': Out_var},
                 attrs=attrs)
+
+            # copy serial op's dist_attr to dist op's dist_attr
+            copy_distributed_attr_for_dist_op(c_identity_op, dst_block,
+                                              op_dist_attr)
+            copy_distributed_attr_for_dist_op(matmul_v2_op, dst_block,
+                                              op_dist_attr)
 
         if in_dygraph_mode():
             raise NotImplementedError(
@@ -675,15 +702,12 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             Out_var = dst_block.var(output_name_mapping['Out'][0])
 
             # TODO infer logic comm presentation
-            from ..process import new_process_group
-            from ..transpiler import _get_comm_group
             model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
             )._get_model_parallel_info()
-            group_ranks = _get_comm_group(process_mesh.topology,
-                                          model_parallel_axis,
-                                          process_mesh.process_group, rank_id)
+            group_ranks = _get_comm_group(process_mesh.process_group,
+                                          process_mesh.topology,
+                                          model_parallel_axis, rank_id)
             group = new_process_group(group_ranks)
-            # print("@@@@@@@@@@@@@@@@@@@@@ 4", group)
 
             check_variable_and_dtype(
                 X_var, 'x', ['float16', 'float32', 'float64'], 'linear')
@@ -699,13 +723,17 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                 persistable=False,
                 is_data=False,
                 need_check_feed=Out_var.desc.need_check_feed())
-            dst_block.append_op(
+            # copy Out_var's dist_attr to intermediate_var_0's dist_attr
+            copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0,
+                                          Out_var)
+
+            matmul_v2_op = dst_block.append_op(
                 type='matmul_v2',
                 inputs=inputs,
                 outputs={'Out': intermediate_var_0},
                 attrs=attrs)
 
-            dst_block.append_op(
+            c_allreduce_sum_op = dst_block.append_op(
                 type='c_allreduce_sum',
                 inputs={'X': intermediate_var_0},
                 outputs={'Out': Out_var},
@@ -714,6 +742,12 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                     'use_calc_stream': True,
                     'use_model_parallel': True
                 })
+
+            # copy serial op's dist_attr to dist op's dist_attr
+            copy_distributed_attr_for_dist_op(matmul_v2_op, dst_block,
+                                              op_dist_attr)
+            copy_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
+                                              op_dist_attr)
 
         if in_dygraph_mode():
             raise NotImplementedError(
