@@ -469,7 +469,7 @@ def triple_grad_check(x,
         dx = program.global_block().var(dxi_name)
         dx.stop_gradient = False
         ddx.append(dx)
-        v = np.ones(xi.shape).astype(np_type)
+        v = np.random.random(xi.shape).astype(np_type)
         ddx_init.append(v)
 
     x += y_grads
