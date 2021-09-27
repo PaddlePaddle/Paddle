@@ -812,6 +812,8 @@ def watch_local_trainers(procs, nranks):
         raise
 
     return alive
+
+
 def expert_count(gate_idx, n_expert):
     """
     calculate the expert count according to the gate index.
@@ -848,6 +850,7 @@ def expert_count(gate_idx, n_expert):
             outputs={'Out': out},
             attrs={'n_expert': n_expert})
         return out
+
 
 def limit_by_capacity(expert_count, capacity, n_worker):
     """
