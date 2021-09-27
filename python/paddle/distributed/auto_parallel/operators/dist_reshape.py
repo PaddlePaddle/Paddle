@@ -104,7 +104,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         """
 
         dist_op_helper = ctx.get_dist_op_helper()
-        dst_block = dist_op_helper.get_dst_main_program().global_block()
+        main_block = dist_op_helper.get_dst_main_program().global_block()
         src_op = dist_op_helper.get_cur_src_op()
         rank_id = dist_op_helper.get_rank_id()
         op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
@@ -126,9 +126,9 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
             ), "number of tensor for input [{}] is not match".format(
                 output_name)
 
-        X_var = dst_block.var(kwargs['X'][0])
-        Out_var = dst_block.var(kwargs['Out'][0])
-        XShape_var = dst_block.var(kwargs['XShape'][0])
+        X_var = main_block.var(kwargs['X'][0])
+        Out_var = main_block.var(kwargs['Out'][0])
+        XShape_var = main_block.var(kwargs['XShape'][0])
         shape_list = src_op.desc.attr("shape")
         ShapeTensor_var_list = []
         for name in kwargs['ShapeTensor']:
@@ -149,7 +149,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
                         axis]
 
         # create op
-        new_op_desc = dst_block.desc.append_op()
+        new_op_desc = main_block.desc.append_op()
         new_op_desc.copy_from(src_op.desc)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
         new_op_desc.set_input('Shape', Shape_var_list)
@@ -158,7 +158,7 @@ class DistributedReshapeImpl0(DistributedOperatorImpl):
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
 
-        dst_block._sync_with_cpp()
+        main_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -232,7 +232,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         """
 
         dist_op_helper = ctx.get_dist_op_helper()
-        dst_block = dist_op_helper.get_dst_main_program().global_block()
+        main_block = dist_op_helper.get_dst_main_program().global_block()
         src_op = dist_op_helper.get_cur_src_op()
         rank_id = dist_op_helper.get_rank_id()
         op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
@@ -254,9 +254,9 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
             ), "number of tensor for input [{}] is not match".format(
                 output_name)
 
-        X_var = dst_block.var(kwargs['X'][0])
-        Out_var = dst_block.var(kwargs['Out'][0])
-        XShape_var = dst_block.var(kwargs['XShape'][0])
+        X_var = main_block.var(kwargs['X'][0])
+        Out_var = main_block.var(kwargs['Out'][0])
+        XShape_var = main_block.var(kwargs['XShape'][0])
         shape_list = src_op.desc.attr("shape")
         ShapeTensor_var_list = []
         for name in kwargs['ShapeTensor']:
@@ -277,7 +277,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
                         axis]
 
         # create op
-        new_op_desc = dst_block.desc.append_op()
+        new_op_desc = main_block.desc.append_op()
         new_op_desc.copy_from(src_op.desc)
         new_op_desc.set_input('ShapeTensor', ShapeTensor_var_list)
         new_op_desc.set_input('Shape', Shape_var_list)
@@ -286,7 +286,7 @@ class DistributedReshapeImpl1(DistributedOperatorImpl):
         new_op_desc.set_output('Out', [Out_var.name])
         new_op_desc._set_attr('shape', shape_list)
 
-        dst_block._sync_with_cpp()
+        main_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):

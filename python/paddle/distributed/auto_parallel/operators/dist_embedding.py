@@ -111,7 +111,8 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         """
 
         dist_op_helper = ctx.get_dist_op_helper()
-        dst_block = dist_op_helper.get_dst_main_program().global_block()
+        main_block = dist_op_helper.get_dst_main_program().global_block()
+        startup_block = dist_op_helper.get_dst_startup_program().global_block()
         src_op = dist_op_helper.get_cur_src_op()
         rank_id = dist_op_helper.get_rank_id()
         op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
@@ -136,9 +137,9 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         ) == 1, "row_parallel_embedding output Out take 1 variable but got {}".format(
             kwargs['Out'])
 
-        Ids_var = dst_block.var(kwargs['Ids'][0])
-        Weight_var = dst_block.var(kwargs['W'][0])
-        Out_var = dst_block.var(kwargs['Out'][0])
+        Ids_var = main_block.var(kwargs['Ids'][0])
+        Weight_var = main_block.var(kwargs['W'][0])
+        Out_var = main_block.var(kwargs['Out'][0])
 
         # got dist attribute info
         embedding_row_dim_mapping = op_dist_attr.get_input_dims_mapping(
@@ -173,7 +174,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         check_variable_and_dtype(Ids_var, 'input', ['int32', 'int64'],
                                  'c_embedding')
 
-        intermediate_var_0 = dst_block.create_var(
+        intermediate_var_0 = main_block.create_var(
             name=unique_name.generate_with_ignorable_key(".".join(
                 ["c_embedding", 'tmp'])),
             dtype=Weight_var.dtype,
@@ -190,7 +191,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             ['float16', 'float32', 'float64', 'int32', 'int64'],
             'c_allreduce_sum')
 
-        c_embedding_op = dst_block.append_op(
+        c_embedding_op = main_block.append_op(
             type='c_embedding',
             inputs={'Ids': [Ids_var],
                     'W': [Weight_var]},
@@ -198,7 +199,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             attrs={"start_index": relative_idx})
 
         # use_model_parallel
-        c_allreduce_sum_op = dst_block.append_op(
+        c_allreduce_sum_op = main_block.append_op(
             type='c_allreduce_sum',
             inputs={'X': [intermediate_var_0]},
             outputs={'Out': [Out_var]},
@@ -209,17 +210,47 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             })
 
         # copy serial op's dist_attr to dist op's dist_attr
-        copy_distributed_attr_for_dist_op(c_embedding_op, dst_block,
+        copy_distributed_attr_for_dist_op(c_embedding_op, main_block,
                                           op_dist_attr)
-        copy_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
+        copy_distributed_attr_for_dist_op(c_allreduce_sum_op, main_block,
                                           op_dist_attr)
+
+        # param initialization sync
+        assert Weight_var.name not in dist_op_helper.already_init_sync_vars
+        dist_op_helper.already_init_sync_vars.add(Weight_var.name)
+        param = startup_block.var(Weight_var.name)
+        param_dist_attr = ctx.get_tensor_distributed_attr_for_program(param)
+        process_mesh = param_dist_attr.get_process_mesh()
+        dim_mapping = param_dist_attr.get_dims_mapping()
+
+        # NOTE all not splited axis should be presented in mesh 
+        for axis, size in enumerate(process_mesh.topology):
+            if size <= 1 or axis in dim_mapping:
+                pass
+            else:
+                group_ranks = _get_comm_group(process_mesh.process_group,
+                                              process_mesh.topology, axis,
+                                              rank_id)
+                sync_group = new_process_group(group_ranks)
+
+                startup_block.append_op(
+                    type='c_broadcast',
+                    inputs={'X': param},
+                    outputs={'Out': param},
+                    attrs={
+                        'ring_id': sync_group.id,
+                        'root': 0,
+                        'use_calc_stream': True,
+                        OP_ROLE_KEY: OpRole.Forward
+                    })
+        startup_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
 
         # by now the backward function only insert the gradient allreduce for dist op itself
         dist_op_helper = ctx.get_dist_op_helper()
-        dst_block = dist_op_helper.get_dst_main_program().global_block()
+        main_block = dist_op_helper.get_dst_main_program().global_block()
         backward_op = dist_op_helper.get_cur_src_op()
         rank_id = dist_op_helper.get_rank_id()
         dist_attr = ctx.get_op_distributed_attr_for_program(backward_op)
@@ -251,7 +282,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         ) == 1, "row_parallel_embedding output Ids take 1 variable but got {}".format(
             kwargs['W@GRAD'])
 
-        Ids_var = dst_block.var(kwargs['Ids'][0])
+        Ids_var = main_block.var(kwargs['Ids'][0])
         process_mesh = dist_attr.get_process_mesh()
         var_dim_mapping = dist_attr.get_input_dims_mapping(Ids_var.name)
         mesh_shape = process_mesh.topology
@@ -265,8 +296,8 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             dp_group = new_process_group(group_ranks)
 
         if need_gradient_allreduce:
-            W_Grad_var = dst_block.var(kwargs['W@GRAD'][0])
-            allreduce_op = dst_block.append_op(
+            W_Grad_var = main_block.var(kwargs['W@GRAD'][0])
+            allreduce_op = main_block.append_op(
                 type='c_allreduce_sum',
                 inputs={'X': [W_Grad_var]},
                 outputs={'Out': [W_Grad_var]},
@@ -275,13 +306,13 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
                     'use_calc_stream': True,
                     OP_ROLE_KEY: OpRole.Backward
                 })
-            scale_op = dst_block.append_op(
+            scale_op = main_block.append_op(
                 type='scale',
                 inputs={'X': W_Grad_var},
                 outputs={'Out': W_Grad_var},
                 attrs={'scale': 1.0 / dp_degree,
                        OP_ROLE_KEY: OpRole.Backward})
-            dst_block._sync_with_cpp()
+            main_block._sync_with_cpp()
 
             dims_mapping = ctx.get_tensor_distributed_attr_for_program(
                 W_Grad_var).get_dims_mapping()

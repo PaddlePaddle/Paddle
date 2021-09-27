@@ -130,7 +130,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     # by now the backward function only insert the gradient allreduce for dist op itself
 
     dist_op_helper = ctx.get_dist_op_helper()
-    dst_block = dist_op_helper.get_dst_main_program().global_block()
+    main_block = dist_op_helper.get_dst_main_program().global_block()
     backward_op = dist_op_helper.get_cur_src_op()
     rank_id = dist_op_helper.get_rank_id()
     dist_attr = ctx.get_op_distributed_attr_for_program(backward_op)
@@ -167,7 +167,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     ) == 1, "row_parallel_embedding output Ids take 1 variable but got {}".format(
         kwargs['X@GRAD'])
 
-    X_var = dst_block.var(kwargs['X'][0])
+    X_var = main_block.var(kwargs['X'][0])
     assert not X_var.is_parameter, "left operand(X) [{}] of dist matmul should not be parameter".format(
         X_var.name)
     process_mesh = dist_attr.get_process_mesh()
@@ -182,10 +182,10 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
         dp_degree = len(group_ranks)
         dp_group = new_process_group(group_ranks)
 
-    Y_var = dst_block.var(kwargs['Y'][0])
+    Y_var = main_block.var(kwargs['Y'][0])
     if need_gradient_allreduce and Y_var.is_parameter:
-        Y_Grad_var = dst_block.var(kwargs['Y@GRAD'][0])
-        allreduce_op = dst_block.append_op(
+        Y_Grad_var = main_block.var(kwargs['Y@GRAD'][0])
+        allreduce_op = main_block.append_op(
             type='c_allreduce_sum',
             inputs={'X': [Y_Grad_var]},
             outputs={'Out': [Y_Grad_var]},
@@ -194,13 +194,13 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
                 'use_calc_stream': True,
                 OP_ROLE_KEY: OpRole.Backward
             })
-        scale_op = dst_block.append_op(
+        scale_op = main_block.append_op(
             type='scale',
             inputs={'X': Y_Grad_var},
             outputs={'Out': Y_Grad_var},
             attrs={'scale': 1.0 / dp_degree,
                    OP_ROLE_KEY: OpRole.Backward})
-        dst_block._sync_with_cpp()
+        main_block._sync_with_cpp()
 
         dims_mapping = ctx.get_tensor_distributed_attr_for_program(
             Y_Grad_var).get_dims_mapping()
@@ -211,6 +211,37 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
             op_attr.set_output_dims_mapping(Y_Grad_var.name, dims_mapping)
             op_attr.set_input_dims_mapping(Y_Grad_var.name, dims_mapping)
             ctx.set_op_distributed_attr_for_program(op, op_attr)
+
+
+def _init_param_sync(Weight_var, dist_op_helper, startup_block, ctx, rank_id):
+
+    assert Weight_var.name not in dist_op_helper.already_init_sync_vars
+    assert startup_block.has_var(Weight_var.name)
+    dist_op_helper.already_init_sync_vars.add(Weight_var.name)
+    param = startup_block.var(Weight_var.name)
+    param_dist_attr = ctx.get_tensor_distributed_attr_for_program(param)
+    process_mesh = param_dist_attr.get_process_mesh()
+    dim_mapping = param_dist_attr.get_dims_mapping()
+
+    for axis, size in enumerate(process_mesh.topology):
+        if size <= 1 or axis in dim_mapping:
+            pass
+        else:
+            group_ranks = _get_comm_group(process_mesh.process_group,
+                                          process_mesh.topology, axis, rank_id)
+            sync_group = new_process_group(group_ranks)
+
+            startup_block.append_op(
+                type='c_broadcast',
+                inputs={'X': param},
+                outputs={'Out': param},
+                attrs={
+                    'ring_id': sync_group.id,
+                    'root': 0,
+                    'use_calc_stream': True,
+                    OP_ROLE_KEY: OpRole.Forward
+                })
+    startup_block._sync_with_cpp()
 
 
 class DistributedMatmul(DistributedOperator):
@@ -275,7 +306,8 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         """
 
         dist_op_helper = ctx.get_dist_op_helper()
-        dst_block = dist_op_helper.get_dst_main_program().global_block()
+        main_block = dist_op_helper.get_dst_main_program().global_block()
+        startup_block = dist_op_helper.get_dst_startup_program().global_block()
         src_op = dist_op_helper.get_cur_src_op()
         rank_id = dist_op_helper.get_rank_id()
         op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
@@ -297,9 +329,9 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             ), "number of tensor for input [{}] is not match".format(
                 output_name)
 
-        X_var = dst_block.var(kwargs['X'][0])
-        Weight_var = dst_block.var(kwargs['Y'][0])
-        Out_var = dst_block.var(kwargs['Out'][0])
+        X_var = main_block.var(kwargs['X'][0])
+        Weight_var = main_block.var(kwargs['Y'][0])
+        Out_var = main_block.var(kwargs['Out'][0])
 
         # TODO infer logic comm presentation
         matmul_col_dim_mapping = op_dist_attr.get_input_dims_mapping(
@@ -314,7 +346,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
                                       parallel_axis, rank_id)
         group = new_process_group(group_ranks)
 
-        intermediate_var_0 = dst_block.create_var(
+        intermediate_var_0 = main_block.create_var(
             name=unique_name.generate_with_ignorable_key(".".join(
                 ["c_identity", 'tmp'])),
             dtype=X_var.dtype,
@@ -329,7 +361,7 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             X_var, 'tensor',
             ['float16', 'float32', 'float64', 'int32', 'int64'], '_c_identity')
 
-        c_identity_op = dst_block.append_op(
+        c_identity_op = main_block.append_op(
             type='c_identity',
             inputs={'X': [X_var]},
             outputs={'Out': intermediate_var_0},
@@ -349,13 +381,18 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
             'alpha': 1,
         }
         inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
-        matmul_op = dst_block.append_op(
+        matmul_op = main_block.append_op(
             type='matmul', inputs=inputs, outputs={'Out': Out_var}, attrs=attrs)
 
         # copy serial op's dist_attr to dist op's dist_attr
-        copy_distributed_attr_for_dist_op(c_identity_op, dst_block,
+        copy_distributed_attr_for_dist_op(c_identity_op, main_block,
                                           op_dist_attr)
-        copy_distributed_attr_for_dist_op(matmul_op, dst_block, op_dist_attr)
+        copy_distributed_attr_for_dist_op(matmul_op, main_block, op_dist_attr)
+
+        # init param sync
+        if Weight_var.is_parameter:
+            _init_param_sync(Weight_var, dist_op_helper, startup_block, ctx,
+                             rank_id)
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -417,7 +454,8 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         """
 
         dist_op_helper = ctx.get_dist_op_helper()
-        dst_block = dist_op_helper.get_dst_main_program().global_block()
+        main_block = dist_op_helper.get_dst_main_program().global_block()
+        startup_block = dist_op_helper.get_dst_startup_program().global_block()
         src_op = dist_op_helper.get_cur_src_op()
         rank_id = dist_op_helper.get_rank_id()
         op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
@@ -439,9 +477,9 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             ), "number of tensor for input [{}] is not match".format(
                 output_name)
 
-        X_var = dst_block.var(kwargs['X'][0])
-        Weight_var = dst_block.var(kwargs['Y'][0])
-        Out_var = dst_block.var(kwargs['Out'][0])
+        X_var = main_block.var(kwargs['X'][0])
+        Weight_var = main_block.var(kwargs['Y'][0])
+        Out_var = main_block.var(kwargs['Out'][0])
 
         # TODO infer logic comm presentation
         matmul_row_dim_mapping = op_dist_attr.get_input_dims_mapping(
@@ -466,7 +504,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             'alpha': 1,
         }
         inputs = {'X': X_var, 'Y': Weight_var}
-        intermediate_var_0 = dst_block.create_var(
+        intermediate_var_0 = main_block.create_var(
             shape=Out_var.shape,
             dtype=Out_var.dtype,
             type=Out_var.type,
@@ -477,13 +515,13 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         # copy Out_var's dist_attr to intermediate_var_0's dist_attr
         copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0, Out_var)
 
-        matmul_op = dst_block.append_op(
+        matmul_op = main_block.append_op(
             type='matmul',
             inputs=inputs,
             outputs={'Out': intermediate_var_0},
             attrs=attrs)
 
-        c_allreduce_sum_op = dst_block.append_op(
+        c_allreduce_sum_op = main_block.append_op(
             type='c_allreduce_sum',
             inputs={'X': intermediate_var_0},
             outputs={'Out': Out_var},
@@ -494,9 +532,14 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             })
 
         # copy serial op's dist_attr to dist op's dist_attr
-        copy_distributed_attr_for_dist_op(matmul_op, dst_block, op_dist_attr)
-        copy_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
+        copy_distributed_attr_for_dist_op(matmul_op, main_block, op_dist_attr)
+        copy_distributed_attr_for_dist_op(c_allreduce_sum_op, main_block,
                                           op_dist_attr)
+
+        # init param sync
+        if Weight_var.is_parameter:
+            _init_param_sync(Weight_var, dist_op_helper, startup_block, ctx,
+                             rank_id)
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -629,7 +672,8 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         """
 
         dist_op_helper = ctx.get_dist_op_helper()
-        dst_block = dist_op_helper.get_dst_main_program().global_block()
+        main_block = dist_op_helper.get_dst_main_program().global_block()
+        startup_block = dist_op_helper.get_dst_startup_program().global_block()
         src_op = dist_op_helper.get_cur_src_op()
         rank_id = dist_op_helper.get_rank_id()
         op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
@@ -651,9 +695,9 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             ), "number of tensor for input [{}] is not match".format(
                 output_name)
 
-        X_var = dst_block.var(kwargs['X'][0])
-        Weight_var = dst_block.var(kwargs['Y'][0])
-        Out_var = dst_block.var(kwargs['Out'][0])
+        X_var = main_block.var(kwargs['X'][0])
+        Weight_var = main_block.var(kwargs['Y'][0])
+        Out_var = main_block.var(kwargs['Out'][0])
 
         # TODO infer logic comm presentation
         matmul_col_dim_mapping = op_dist_attr.get_input_dims_mapping(
@@ -668,7 +712,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                                       parallel_axis, rank_id)
         group = new_process_group(group_ranks)
 
-        intermediate_var_0 = dst_block.create_var(
+        intermediate_var_0 = main_block.create_var(
             name=unique_name.generate_with_ignorable_key(".".join(
                 ["c_identity", 'tmp'])),
             dtype=X_var.dtype,
@@ -683,7 +727,7 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
             X_var, 'tensor',
             ['float16', 'float32', 'float64', 'int32', 'int64'], '_c_identity')
 
-        c_identity_op = dst_block.append_op(
+        c_identity_op = main_block.append_op(
             type='c_identity',
             inputs={'X': [X_var]},
             outputs={'Out': intermediate_var_0},
@@ -699,16 +743,22 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
                     ['float16', 'float32', 'float64'], 'linear')
         attrs = {'trans_x': False, 'trans_y': False}
         inputs = {'X': [intermediate_var_0], 'Y': [Weight_var]}
-        matmul_v2_op = dst_block.append_op(
+        matmul_v2_op = main_block.append_op(
             type='matmul_v2',
             inputs=inputs,
             outputs={'Out': Out_var},
             attrs=attrs)
 
         # copy serial op's dist_attr to dist op's dist_attr
-        copy_distributed_attr_for_dist_op(c_identity_op, dst_block,
+        copy_distributed_attr_for_dist_op(c_identity_op, main_block,
                                           op_dist_attr)
-        copy_distributed_attr_for_dist_op(matmul_v2_op, dst_block, op_dist_attr)
+        copy_distributed_attr_for_dist_op(matmul_v2_op, main_block,
+                                          op_dist_attr)
+
+        # init param sync
+        if Weight_var.is_parameter:
+            _init_param_sync(Weight_var, dist_op_helper, startup_block, ctx,
+                             rank_id)
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
@@ -770,7 +820,8 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         """
 
         dist_op_helper = ctx.get_dist_op_helper()
-        dst_block = dist_op_helper.get_dst_main_program().global_block()
+        main_block = dist_op_helper.get_dst_main_program().global_block()
+        startup_block = dist_op_helper.get_dst_startup_program().global_block()
         src_op = dist_op_helper.get_cur_src_op()
         rank_id = dist_op_helper.get_rank_id()
         op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
@@ -792,9 +843,9 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             ), "number of tensor for input [{}] is not match".format(
                 output_name)
 
-        X_var = dst_block.var(kwargs['X'][0])
-        Weight_var = dst_block.var(kwargs['Y'][0])
-        Out_var = dst_block.var(kwargs['Out'][0])
+        X_var = main_block.var(kwargs['X'][0])
+        Weight_var = main_block.var(kwargs['Y'][0])
+        Out_var = main_block.var(kwargs['Out'][0])
 
         # TODO infer logic comm presentation
         matmul_row_dim_mapping = op_dist_attr.get_input_dims_mapping(
@@ -815,7 +866,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
                     'linear')
         attrs = {'trans_x': False, 'trans_y': False}
         inputs = {'X': X_var, 'Y': Weight_var}
-        intermediate_var_0 = dst_block.create_var(
+        intermediate_var_0 = main_block.create_var(
             shape=Out_var.shape,
             dtype=Out_var.dtype,
             type=Out_var.type,
@@ -826,13 +877,13 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         # copy Out_var's dist_attr to intermediate_var_0's dist_attr
         copy_distributed_attr_for_var(op_dist_attr, intermediate_var_0, Out_var)
 
-        matmul_v2_op = dst_block.append_op(
+        matmul_v2_op = main_block.append_op(
             type='matmul_v2',
             inputs=inputs,
             outputs={'Out': intermediate_var_0},
             attrs=attrs)
 
-        c_allreduce_sum_op = dst_block.append_op(
+        c_allreduce_sum_op = main_block.append_op(
             type='c_allreduce_sum',
             inputs={'X': intermediate_var_0},
             outputs={'Out': Out_var},
@@ -843,9 +894,15 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             })
 
         # copy serial op's dist_attr to dist op's dist_attr
-        copy_distributed_attr_for_dist_op(matmul_v2_op, dst_block, op_dist_attr)
-        copy_distributed_attr_for_dist_op(c_allreduce_sum_op, dst_block,
+        copy_distributed_attr_for_dist_op(matmul_v2_op, main_block,
                                           op_dist_attr)
+        copy_distributed_attr_for_dist_op(c_allreduce_sum_op, main_block,
+                                          op_dist_attr)
+
+        # init param sync
+        if Weight_var.is_parameter:
+            _init_param_sync(Weight_var, dist_op_helper, startup_block, ctx,
+                             rank_id)
 
     @staticmethod
     def backward(ctx, *args, **kwargs):

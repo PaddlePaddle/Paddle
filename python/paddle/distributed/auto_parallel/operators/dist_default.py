@@ -65,9 +65,11 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
     def forward(ctx, *args, **kwargs):
 
         dist_op_helper = ctx.get_dist_op_helper()
-        dst_block = dist_op_helper.get_dst_main_program().global_block()
+        main_block = dist_op_helper.get_dst_main_program().global_block()
+        startup_block = dist_op_helper.get_dst_startup_program().global_block()
         src_op = dist_op_helper.get_cur_src_op()
         varname_mapping = dist_op_helper.get_varname_mapping()
+        rank_id = dist_op_helper.get_rank_id()
 
         # check validation of inputs / outputs 
         for input_name in src_op.desc.input_names():
@@ -85,21 +87,55 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 output_name)
 
         # replicate op in dist program
-        dist_op_desc = dst_block.desc.append_op()
+        dist_op_desc = main_block.desc.append_op()
         dist_op_desc.copy_from(src_op.desc)
         for input_name in src_op.desc.input_names():
             dist_op_desc.set_input(input_name, kwargs[input_name])
         for output_name in src_op.desc.output_names():
             dist_op_desc.set_output(output_name, kwargs[output_name])
 
-        dst_block._sync_with_cpp()
+        main_block._sync_with_cpp()
+
+        # param initialization sync
+        for varname in dist_op_desc.input_arg_names():
+            if startup_block.has_var(varname) and startup_block.var(
+                    varname
+            ).is_parameter and varname not in dist_op_helper.already_init_sync_vars:
+                dist_op_helper.already_init_sync_vars.add(varname)
+                param = startup_block.var(varname)
+                param_dist_attr = ctx.get_tensor_distributed_attr_for_program(
+                    param)
+                process_mesh = param_dist_attr.get_process_mesh()
+                dim_mapping = param_dist_attr.get_dims_mapping()
+
+                # NOTE all not splited axis should be presented in mesh 
+                for axis, size in enumerate(process_mesh.topology):
+                    if size <= 1 or axis in dim_mapping:
+                        pass
+                    else:
+                        group_ranks = _get_comm_group(
+                            process_mesh.process_group, process_mesh.topology,
+                            axis, rank_id)
+                        sync_group = new_process_group(group_ranks)
+
+                        startup_block.append_op(
+                            type='c_broadcast',
+                            inputs={'X': param},
+                            outputs={'Out': param},
+                            attrs={
+                                'ring_id': sync_group.id,
+                                'root': 0,
+                                'use_calc_stream': True,
+                                OP_ROLE_KEY: OpRole.Forward
+                            })
+                startup_block._sync_with_cpp()
 
     @staticmethod
     def backward(ctx, *args, **kwargs):
 
         # by now the backward function only insert the gradient allreduce for dist op itself
         dist_op_helper = ctx.get_dist_op_helper()
-        dst_block = dist_op_helper.get_dst_main_program().global_block()
+        main_block = dist_op_helper.get_dst_main_program().global_block()
         backward_op = dist_op_helper.get_cur_src_op()
         dist_attr = ctx.get_op_distributed_attr_for_program(backward_op)
         assert dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
@@ -112,7 +148,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
         need_gradient_allreduce = False
         for input_name in backward_op.desc.input_names():
             for varname in backward_op.desc.input(input_name):
-                if "@GRAD" not in varname and not dst_block.var(
+                if "@GRAD" not in varname and not main_block.var(
                         varname).is_parameter:
 
                     # NOTE input var's dim_mapping of backward op should be the same with input var instead of corresponding varname of forward op
@@ -134,7 +170,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
             allreduce_vars = []
             for input_name in backward_op.desc.input_names():
                 for varname in backward_op.desc.input(input_name):
-                    if "@GRAD" not in varname and dst_block.var(
+                    if "@GRAD" not in varname and main_block.var(
                             varname).is_parameter:
                         assert len(
                             backward_op.desc.input(input_name)
@@ -155,8 +191,8 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
 
                 for varname in allreduce_vars:
 
-                    grad_var = dst_block.var(varname)
-                    allreduce_op = dst_block.append_op(
+                    grad_var = main_block.var(varname)
+                    allreduce_op = main_block.append_op(
                         type='c_allreduce_sum',
                         inputs={'X': [grad_var]},
                         outputs={'Out': [grad_var]},
@@ -166,7 +202,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                             OP_ROLE_KEY: OpRole.Backward
                         })
 
-                    scale_op = dst_block.append_op(
+                    scale_op = main_block.append_op(
                         type='scale',
                         inputs={'X': grad_var},
                         outputs={'Out': grad_var},
@@ -187,7 +223,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                                                        dims_mapping)
                         ctx.set_op_distributed_attr_for_program(op, op_attr)
 
-                dst_block._sync_with_cpp()
+                main_block._sync_with_cpp()
 
 
 register_distributed_operator_impl(
