@@ -2300,7 +2300,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def_readonly("total_memory", &gpuDeviceProp::totalGlobalMem)
       .def("__repr__", [](const gpuDeviceProp &gpu_device_prop) {
         std::ostringstream stream;
-        stream << "_CudaDeviceProperties(name='" << gpu_device_prop.name
+        stream << "_gpuDeviceProperties(name='" << gpu_device_prop.name
                << "', major=" << gpu_device_prop.major
                << ", minor=" << gpu_device_prop.minor << ", total_memory="
                << gpu_device_prop.totalGlobalMem / (1024 * 1024)
