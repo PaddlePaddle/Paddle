@@ -26,8 +26,8 @@ class TestHessian(unittest.TestCase):
         self.dtype = 'float32'
         self.np_dtype = np.float32
         self.numerical_delta = 1e-2
-        self.rtol = 1e-3
-        self.atol = 1e-3
+        self.rtol = 1e-2
+        self.atol = 1e-2
         self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
         self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
 
