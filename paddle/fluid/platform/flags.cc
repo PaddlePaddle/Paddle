@@ -682,4 +682,4 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Example: FLAGS_use_cinn=true would run PaddlePaddle using CINN
  */
 PADDLE_DEFINE_EXPORTED_bool(
-    use_cinn, false."It controls whether to run PaddlePaddle using CINN");
+    use_cinn, false, "It controls whether to run PaddlePaddle using CINN");
