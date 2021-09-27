@@ -52,7 +52,6 @@ def yolo_loss(x,
               name=None,
               scale_x_y=1.):
     r"""
-
     This operator generates YOLOv3 loss based on given predict result and ground
     truth boxes.
     
@@ -64,10 +63,8 @@ def yolo_loss(x,
     category number of source dataset(such as 80 in coco dataset), so in the 
     second(channel) dimension, apart from 4 box location coordinates x, y, w, h, 
     also includes confidence score of the box and class one-hot key of each anchor box.
-
     Assume the 4 location coordinates are :math:`t_x, t_y, t_w, t_h`, the box predictions
     should be as follows:
-
     $$
     b_x = \\sigma(t_x) + c_x
     $$
@@ -80,48 +77,37 @@ def yolo_loss(x,
     $$
     b_h = p_h e^{t_h}
     $$
-
     In the equation above, :math:`c_x, c_y` is the left top corner of current grid
     and :math:`p_w, p_h` is specified by anchors.
-
     As for confidence score, it is the logistic regression value of IoU between
     anchor boxes and ground truth boxes, the score of the anchor box which has 
     the max IoU should be 1, and if the anchor box has IoU bigger than ignore 
     thresh, the confidence score loss of this anchor box will be ignored.
-
     Therefore, the YOLOv3 loss consists of three major parts: box location loss,
     objectness loss and classification loss. The L1 loss is used for 
     box coordinates (w, h), sigmoid cross entropy loss is used for box 
     coordinates (x, y), objectness loss and classification loss.
-
     Each groud truth box finds a best matching anchor box in all anchors. 
     Prediction of this anchor box will incur all three parts of losses, and
     prediction of anchor boxes with no GT box matched will only incur objectness
     loss.
-
     In order to trade off box coordinate losses between big boxes and small 
     boxes, box coordinate losses will be mutiplied by scale weight, which is
     calculated as follows.
-
     $$
     weight_{box} = 2.0 - t_w * t_h
     $$
-
     Final loss will be represented as follows.
-
     $$
     loss = (loss_{xy} + loss_{wh}) * weight_{box} + loss_{conf} + loss_{class}
     $$
-
     While :attr:`use_label_smooth` is set to be :attr:`True`, the classification
     target will be smoothed when calculating classification loss, target of 
     positive samples will be smoothed to :math:`1.0 - 1.0 / class\_num` and target of
     negetive samples will be smoothed to :math:`1.0 / class\_num`.
-
     While :attr:`gt_score` is given, which means the mixup score of ground truth 
     boxes, all losses incured by a ground truth box will be multiplied by its 
     mixup score.
-
     Args:
         x (Tensor): The input tensor of YOLOv3 loss operator, This is a 4-D
                       tensor with shape of [N, C, H, W]. H and W should be same,
@@ -154,10 +140,8 @@ def yolo_loss(x,
         use_label_smooth (bool): Whether to use label smooth. Default True. 
         scale_x_y (float): Scale the center point of decoded bounding box.
                            Default 1.0
-
     Returns:
         Tensor: A 1-D tensor with shape [N], the value of yolov3 loss
-
     Raises:
         TypeError: Input x of yolov3_loss must be Tensor
         TypeError: Input gtbox of yolov3_loss must be Tensor 
@@ -167,21 +151,16 @@ def yolo_loss(x,
         TypeError: Attr class_num of yolov3_loss must be an integer
         TypeError: Attr ignore_thresh of yolov3_loss must be a float number
         TypeError: Attr use_label_smooth of yolov3_loss must be a bool value
-
     Examples:
       .. code-block:: python
-
           import paddle
           import numpy as np
-
           x = np.random.random([2, 14, 8, 8]).astype('float32')
           gt_box = np.random.random([2, 10, 4]).astype('float32')
           gt_label = np.random.random([2, 10]).astype('int32')
-
           x = paddle.to_tensor(x)
           gt_box = paddle.to_tensor(gt_box)
           gt_label = paddle.to_tensor(gt_label)
-
           loss = paddle.vision.ops.yolo_loss(x,
                                              gt_box=gt_box,
                                              gt_label=gt_label,
@@ -261,7 +240,6 @@ def yolo_box(x,
              iou_aware=False,
              iou_aware_factor=0.5):
     r"""
-
     This operator generates YOLO detection boxes from output of YOLOv3 network.
     
     The output of previous network is in shape [N, C, H, W], while H and W
@@ -274,10 +252,8 @@ def yolo_box(x,
     second(channel) dimension, apart from 4 box location coordinates x, y, w, h, 
     also includes confidence score of the box and class one-hot key of each anchor 
     box.
-
     Assume the 4 location coordinates are :math:`t_x, t_y, t_w, t_h`, the box 
     predictions should be as follows:
-
     $$
     b_x = \\sigma(t_x) + c_x
     $$
@@ -290,30 +266,23 @@ def yolo_box(x,
     $$
     b_h = p_h e^{t_h}
     $$
-
     in the equation above, :math:`c_x, c_y` is the left top corner of current grid
     and :math:`p_w, p_h` is specified by anchors.
-
     The logistic regression value of the 5th channel of each anchor prediction boxes
     represents the confidence score of each prediction box, and the logistic
     regression value of the last :attr:`class_num` channels of each anchor prediction 
     boxes represents the classifcation scores. Boxes with confidence scores less than
     :attr:`conf_thresh` should be ignored, and box final scores is the product of 
     confidence scores and classification scores.
-
     $$
     score_{pred} = score_{conf} * score_{class}
     $$
-
     where the confidence scores follow the formula bellow
-
     .. math::
-
         score_{conf} = \begin{case}
                          obj, \text{if } iou_aware == flase \\
                          obj^{1 - iou_aware_factor} * iou^{iou_aware_factor}, \text{otherwise}
                        \end{case}
-
     Args:
         x (Tensor): The input tensor of YoloBox operator is a 4-D tensor with
                       shape of [N, C, H, W]. The second dimension(C) stores box
@@ -343,31 +312,23 @@ def yolo_box(x,
                        please refer to :ref:`api_guide_Name`
         iou_aware (bool): Whether use iou aware. Default false
         iou_aware_factor (float): iou aware factor. Default 0.5
-
     Returns:
         Tensor: A 3-D tensor with shape [N, M, 4], the coordinates of boxes,
         and a 3-D tensor with shape [N, M, :attr:`class_num`], the classification 
         scores of boxes.
-
     Raises:
         TypeError: Input x of yolov_box must be Tensor
         TypeError: Attr anchors of yolo box must be list or tuple
         TypeError: Attr class_num of yolo box must be an integer
         TypeError: Attr conf_thresh of yolo box must be a float number
-
     Examples:
-
     .. code-block:: python
-
         import paddle
         import numpy as np
-
         x = np.random.random([2, 14, 8, 8]).astype('float32')
         img_size = np.ones((2, 2)).astype('int32')
-
         x = paddle.to_tensor(x)
         img_size = paddle.to_tensor(img_size)
-
         boxes, scores = paddle.vision.ops.yolo_box(x,
                                                    img_size=img_size,
                                                    anchors=[10, 13, 16, 30],
@@ -434,46 +395,27 @@ def deform_conv2d(x,
     r"""
     Compute 2-D deformable convolution on 4-D input.
     Given input image x, output feature map y, the deformable convolution operation can be expressed as follow:
-
-
     Deformable Convolution v2:
-
     .. math::
-
         y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k) * \Delta m_k}
-
     Deformable Convolution v1:
-
     .. math::
-
         y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k)}
-
     Where :math:`\Delta p_k` and :math:`\Delta m_k` are the learnable offset and modulation scalar for the k-th location,
     Which :math:`\Delta m_k` is one in deformable convolution v1. Please refer to `Deformable ConvNets v2: More Deformable, Better Results
     <https://arxiv.org/abs/1811.11168v2>`_ and `Deformable Convolutional Networks <https://arxiv.org/abs/1703.06211>`_.
-
     Example:
         - Input:
-
           x shape: :math:`(N, C_{in}, H_{in}, W_{in})`
-
           weight shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
-
           offset shape: :math:`(N, 2 * H_f * W_f, H_{out}, W_{out})`
-
           mask shape: :math:`(N, H_f * W_f, H_{out}, W_{out})`
-
         - Output:
-
           Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
-
         Where
-
         .. math::
-
             H_{out}&= \\frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\\\
             W_{out}&= \\frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
-
     Args:
         x (Tensor): The input image with [N, C, H, W] format. A Tensor with type
             float32, float64.
@@ -512,9 +454,7 @@ def deform_conv2d(x,
                     groups mismatch.
     Examples:
         .. code-block:: python
-
           #deformable conv v2:
-
           import paddle
           input = paddle.rand((8, 1, 28, 28))
           kh, kw = 3, 3
@@ -529,9 +469,7 @@ def deform_conv2d(x,
           print(out.shape)
           # returns
           [8, 16, 26, 26]
-
           #deformable conv v1:
-
           import paddle
           input = paddle.rand((8, 1, 28, 28))
           kh, kw = 3, 3
@@ -627,47 +565,27 @@ class DeformConv2D(Layer):
     r"""
     Compute 2-D deformable convolution on 4-D input.
     Given input image x, output feature map y, the deformable convolution operation can be expressed as follow:
-
-
     Deformable Convolution v2:
-
     .. math::
-
         y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k) * \Delta m_k}
-
     Deformable Convolution v1:
-
     .. math::
-
         y(p) = \sum_{k=1}^{K}{w_k * x(p + p_k + \Delta p_k)}
-
     Where :math:`\Delta p_k` and :math:`\Delta m_k` are the learnable offset and modulation scalar for the k-th location,
     Which :math:`\Delta m_k` is one in deformable convolution v1. Please refer to `Deformable ConvNets v2: More Deformable, Better Results
     <https://arxiv.org/abs/1811.11168v2>`_ and `Deformable Convolutional Networks <https://arxiv.org/abs/1703.06211>`_.
-
     Example:
         - Input:
-
           x shape: :math:`(N, C_{in}, H_{in}, W_{in})`
-
           weight shape: :math:`(C_{out}, C_{in}, H_f, W_f)`
-
           offset shape: :math:`(N, 2 * H_f * W_f, H_{out}, W_{out})`
-
           mask shape: :math:`(N, H_f * W_f, H_{out}, W_{out})`
-
         - Output:
-
           Output shape: :math:`(N, C_{out}, H_{out}, W_{out})`
-
         Where
-
         .. math::
-
             H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (H_f - 1) + 1))}{strides[0]} + 1 \\
             W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (W_f - 1) + 1))}{strides[1]} + 1
-
-
     Parameters:
         in_channels(int): The number of input channels in the input image.
         out_channels(int): The number of output channels produced by the convolution.
@@ -710,15 +628,11 @@ class DeformConv2D(Layer):
         Where
         
         ..  math::
-
             H_{out}&= \frac{(H_{in} + 2 * paddings[0] - (dilations[0] * (kernel\_size[0] - 1) + 1))}{strides[0]} + 1 \\
             W_{out}&= \frac{(W_{in} + 2 * paddings[1] - (dilations[1] * (kernel\_size[1] - 1) + 1))}{strides[1]} + 1
-
     Examples:
         .. code-block:: python
-
           #deformable conv v2:
-
           import paddle
           input = paddle.rand((8, 1, 28, 28))
           kh, kw = 3, 3
@@ -736,9 +650,7 @@ class DeformConv2D(Layer):
           print(out.shape)
           # returns
           [8, 16, 26, 26]
-
           #deformable conv v1:
-
           import paddle
           input = paddle.rand((8, 1, 28, 28))
           kh, kw = 3, 3
@@ -820,31 +732,23 @@ def read_file(filename, name=None):
     """
     Reads and outputs the bytes contents of a file as a uint8 Tensor
     with one dimension.
-
     Args:
         filename (str): Path of the file to be read.
         name (str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
-
     Returns:
         A uint8 tensor.
-
     Examples:
         .. code-block:: python
-
             import cv2
             import paddle
-
             fake_img = (np.random.random(
                         (400, 300, 3)) * 255).astype('uint8')
-
             cv2.imwrite('fake.jpg', fake_img)
-
             img_bytes = paddle.vision.ops.read_file('fake.jpg')
             
             print(img_bytes.shape)
-
     """
 
     if in_dygraph_mode():
@@ -866,7 +770,6 @@ def decode_jpeg(x, mode='unchanged', name=None):
     Decodes a JPEG image into a 3 dimensional RGB Tensor or 1 dimensional Gray Tensor. 
     Optionally converts the image to the desired format. 
     The values of the output tensor are uint8 between 0 and 255.
-
     Args:
         x (Tensor): A one dimensional uint8 tensor containing the raw bytes 
             of the JPEG image.
@@ -877,20 +780,15 @@ def decode_jpeg(x, mode='unchanged', name=None):
             refer to :ref:`api_guide_Name`.
     Returns:
         Tensor: A decoded image tensor with shape (imge_channels, image_height, image_width)
-
     Examples:
         .. code-block:: python
             import cv2
             import paddle
-
             fake_img = (np.random.random(
                         (400, 300, 3)) * 255).astype('uint8')
-
             cv2.imwrite('fake.jpg', fake_img)
-
             img_bytes = paddle.vision.ops.read_file('fake.jpg')
             img = paddle.vision.ops.decode_jpeg(img_bytes)
-
             print(img.shape)
     """
 
