@@ -17,25 +17,12 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/matmul_v2_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
-#include "paddle/fluid/operators/tensor_formatter.h"
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
-
-static void PrintTensor(const Tensor* tensor, const std::string name,
-                        const std::string msg) {
-  std::cout << "=================== Print Tensor <" << name << ">, Place <"
-            << tensor->place() << "> ===================" << std::endl;
-  framework::LoDTensor cpu_tensor;
-  cpu_tensor.Resize(tensor->dims());
-  framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
-
-  operators::TensorFormatter formatter;
-  formatter.Print(cpu_tensor, name, msg);
-}
 
 template <typename T>
 static void MatMul2D(const framework::ExecutionContext& ctx,
@@ -184,7 +171,6 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
       x_temp_brd.ShareDataWith(*X);
       x_temp_brd.Resize(framework::make_ddim(x_broadcast_dims));
     } else {
-      // x_temp.Resize(framework::make_ddim(x_new_dims));
       x_temp_brd.Resize(framework::make_ddim(x_broadcast_dims));
       x_temp_brd.mutable_data<T>(ctx.GetPlace());
       NpuOpRunner runner_brd;
@@ -200,7 +186,6 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
       y_temp_brd.ShareDataWith(*Y);
       y_temp_brd.Resize(framework::make_ddim(y_broadcast_dims));
     } else {
-      // y_temp.Resize(framework::make_ddim(y_new_dims));
       y_temp_brd.Resize(framework::make_ddim(y_broadcast_dims));
       y_temp_brd.mutable_data<T>(ctx.GetPlace());
       NpuOpRunner runner_brd;
@@ -331,7 +316,6 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
     }
 
     // Case 4: [B, M, K] x  [B, K, N] = [B, M, N]
-
     std::vector<std::int64_t> x_broadcast_dims(out_ndim, 1);
     std::vector<std::int64_t> y_broadcast_dims(out_ndim, 1);
     std::copy(out_dims.begin(), out_dims.end() - 2, x_broadcast_dims.begin());
