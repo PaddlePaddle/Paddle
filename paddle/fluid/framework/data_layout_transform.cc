@@ -170,22 +170,28 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
                         "Input tensor type (%s) is not supported.",
                         DataTypeToString(in.type())));
 
-  auto in_format = platform::MKLDNNFormatForSize(in_tz.size(), in.format());
+  //  auto in_format = platform::MKLDNNFormatForSize(in_tz.size(), in.format());
   auto out_format =
       platform::MKLDNNFormatForSize(in_tz.size(), ToMKLDNNFormat(out_layout));
+  mkldnn::memory::desc out_mem_desc(out_tz, in_type, out_format);
 
   // output tensor has the same dims as input. Reorder don't change dims
+  out->set_mem_desc(out_mem_desc);
   out->Resize(in.dims());
 
-  if ((in_format != out_format) || always_copy) {
+  if ((in.mem_desc() != out->mem_desc()) || always_copy) {
     void* in_data = GetDataFromTensor(in, in_type);
 
     platform::ReorderMKLDNNHandler handler(in_tz, in.type(), in_type,
                                            cpu_engine);
 
-    auto reorder_src_memory_p = handler.AcquireSrcMemory(in_format, in_data);
+    // we are dropping format_tag support, but until all changes are implemented
+    // we still need to support that, because some ops will temporary use that
+    // instead of md
+    auto reorder_src_memory_p =
+        handler.AcquireSrcMemory(in.mem_desc(), in_data);
     auto reorder_dst_memory_p =
-        handler.AcquireDstMemory(out, out_format, place);
+        handler.AcquireDstMemory(out, out->mem_desc(), place);
     auto reorder_p =
         handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
 

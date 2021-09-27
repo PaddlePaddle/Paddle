@@ -42,8 +42,13 @@ class GaussianMKLDNNKernel : public paddle::framework::OpKernel<T> {
       data[i] = dist(*engine);
     }
 
+    mkldnn::memory::desc out_mem_desc(
+        framework::vectorize(tensor->dims()),
+        framework::ToMKLDNNDataType(tensor->type()),
+        mkldnn::memory::format_tag::abcd);
+
     tensor->set_layout(DataLayout::kMKLDNN);
-    tensor->set_format(mkldnn::memory::format_tag::oihw);
+    tensor->set_mem_desc(out_mem_desc);
   }
 };
 }  // namespace operators

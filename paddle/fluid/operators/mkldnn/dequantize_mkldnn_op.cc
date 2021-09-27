@@ -66,7 +66,6 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     auto dst_tz = paddle::framework::vectorize<int64_t>(output->dims());
     mkldnn::memory::data_type src_dt =
         paddle::framework::ToMKLDNNDataType(input->type());
-    MKLDNNMemoryFormat src_fmt = input->format();
 
     std::string key =
         platform::CreateKey(dev_ctx, src_dt, src_tz, ctx.OutputName("Output"));
@@ -94,14 +93,14 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
         std::fill(output_data, output_data + output->numel(), reorder_shift);
       }
 
-      auto src_md = platform::MKLDNNMemDesc({src_tz}, src_dt, src_fmt);
       src_memory = std::make_shared<mkldnn::memory>(
-          src_md, engine, to_void_cast<T>(input_data));
+          input->mem_desc(), engine, to_void_cast<T>(input_data));
 
-      auto dst_md =
-          platform::MKLDNNMemDesc({dst_tz}, memory::data_type::f32,
-                                  platform::MKLDNNFormatForSize(
-                                      dst_tz.size(), MKLDNNMemoryFormat::nchw));
+      auto dst_md = platform::MKLDNNMemDesc(
+          {dst_tz}, memory::data_type::f32,
+          platform::MKLDNNFormatForSize(
+              dst_tz.size(),
+              MKLDNNMemoryFormat::nchw));  // MKLDNNFormatForSize??
 
       dst_memory = std::make_shared<mkldnn::memory>(
           dst_md, engine, to_void_cast<float>(output_data));

@@ -68,7 +68,9 @@ void TransformData(const OpKernelType &expected_kernel_type,
         paddle::platform::MKLDNNDeviceContext::tls().set_cur_paddle_data_layout(
             lin);
         out.set_layout(DataLayout::kMKLDNN);
-        out.set_format(out_format);
+        mkldnn::memory::desc out_mem_desc(
+            vectorize(out.dims()), ToMKLDNNDataType(in.type()), out_format);
+        out.set_mem_desc(out_mem_desc);
       } else {
         // Case2 - transfrom from MKLDNN OPKernel to Non-MKLDNN OPKernel
         // Do transform via MKLDNN lib

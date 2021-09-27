@@ -95,10 +95,8 @@ class QuantOpKernel : public framework::OpKernel<T> {
         std::memset(output_data, scale_shift, output->numel());
       }
 
-      auto src_md = platform::MKLDNNMemDesc({src_tz}, memory::data_type::f32,
-                                            input->format());
       src_memory = std::make_shared<mkldnn::memory>(
-          src_md, engine, to_void_cast<T>(input_data));
+          input->mem_desc(), engine, to_void_cast<T>(input_data));
 
       std::shared_ptr<mkldnn::memory::desc> dst_md;
       if (bfloat16) {
@@ -149,7 +147,7 @@ class QuantOpKernel : public framework::OpKernel<T> {
     }
 
     output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(GetMKLDNNFormat(*dst_memory));
+    output->set_mem_desc(dst_memory->get_desc());
   }
 };
 }  // namespace operators

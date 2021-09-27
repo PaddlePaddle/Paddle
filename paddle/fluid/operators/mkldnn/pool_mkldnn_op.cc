@@ -47,9 +47,6 @@ class PoolingMKLDNNHandler
       PADDLE_ENFORCE_EQ(input->layout(), DataLayout::kMKLDNN,
                         platform::errors::InvalidArgument(
                             "Wrong layout set for Input tensor."));
-      PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Wrong format set for Input tensor."));
 
       const std::string pooling_type = ctx.Attr<std::string>("pooling_type");
 
@@ -102,8 +99,6 @@ class PoolingMKLDNNHandler
       const auto dt = framework::ToMKLDNNDataType(input->type());
 
       const auto exclude_padding = ctx.Attr<bool>("exclusive");
-
-      const auto src_md = mkldnn::memory::desc(src_tz, dt, input->format());
       /* create memory descriptor for pooling without specified format
        * ('any') which lets a primitive (pooling in this case) choose
        * the memory format preferred for best performance
@@ -131,7 +126,7 @@ class PoolingMKLDNNHandler
               : (exclude_padding
                      ? mkldnn::algorithm::pooling_avg_exclude_padding
                      : mkldnn::algorithm::pooling_avg_include_padding),
-          src_md, dst_md, strides, ksize, mkldnn_paddings[0],
+          input->mem_desc(), dst_md, strides, ksize, mkldnn_paddings[0],
           mkldnn_paddings[1]);
     }
   }
@@ -151,16 +146,10 @@ class PoolingMKLDNNHandler
       PADDLE_ENFORCE_EQ(in_x->layout(), DataLayout::kMKLDNN,
                         platform::errors::InvalidArgument(
                             "Wrong layout set for Input tensor"));
-      PADDLE_ENFORCE_NE(in_x->format(), MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Wrong format set for Input tensor"));
 
       PADDLE_ENFORCE_EQ(out_grad->layout(), DataLayout::kMKLDNN,
                         platform::errors::InvalidArgument(
                             "Wrong layout set for Input output_grad tensor"));
-      PADDLE_ENFORCE_NE(out_grad->format(), MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Wrong format set for Input output_grad tensor"));
 
       PADDLE_ENFORCE_EQ(
           ctx.Attr<bool>("is_test"), false,
@@ -200,11 +189,8 @@ class PoolingMKLDNNHandler
           paddle::framework::vectorize<int64_t>(out_grad->dims());
 
       const auto dt = framework::ToMKLDNNDataType(in_x->type());
-      auto src_md = mkldnn::memory::desc(src_tz, dt, in_x->format());
       auto dst_md =
           mkldnn::memory::desc(diff_dst_tz, dt, MKLDNNMemoryFormat::any);
-      auto diff_dst_md = mkldnn::memory::desc(
-          diff_dst_tz, platform::MKLDNNGetDataType<T>(), out_grad->format());
       auto diff_src_md =
           mkldnn::memory::desc(diff_src_tz, platform::MKLDNNGetDataType<T>(),
                                MKLDNNMemoryFormat::any);
@@ -227,7 +213,7 @@ class PoolingMKLDNNHandler
               : (exclude_padding
                      ? mkldnn::algorithm::pooling_avg_exclude_padding
                      : mkldnn::algorithm::pooling_avg_include_padding),
-          src_md, dst_md, strides, ksize, mkldnn_paddings[0],
+          in_x->mem_desc(), dst_md, strides, ksize, mkldnn_paddings[0],
           mkldnn_paddings[1]);
 
       this->AcquireBackwardPrimitiveDescriptor(
@@ -236,7 +222,7 @@ class PoolingMKLDNNHandler
               : (exclude_padding
                      ? mkldnn::algorithm::pooling_avg_exclude_padding
                      : mkldnn::algorithm::pooling_avg_include_padding),
-          diff_src_md, diff_dst_md, strides, ksize, mkldnn_paddings[0],
+          diff_src_md, out_grad->mem_desc(), strides, ksize, mkldnn_paddings[0],
           mkldnn_paddings[1]);
     }
   }
@@ -343,7 +329,7 @@ class PoolMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     astream.wait();
 
     output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(platform::GetMKLDNNFormat(*dst_memory));
+    output->set_mem_desc(dst_memory->get_desc());
   }
 };
 
@@ -384,7 +370,7 @@ class PoolMKLDNNGradOpKernel : public paddle::framework::OpKernel<T> {
     astream.wait();
 
     in_x_grad->set_layout(DataLayout::kMKLDNN);
-    in_x_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory));
+    in_x_grad->set_mem_desc(diff_src_memory->get_desc());
   }  // Compute()
 };
 

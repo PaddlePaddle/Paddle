@@ -75,10 +75,10 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
                                                      input_type, onednn_engine);
 
       auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-          input->format(), platform::to_void_cast(input->data<T>()));
+          input->mem_desc(), platform::to_void_cast(input->data<T>()));
 
       auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-          output, input->format(), ctx.GetPlace());
+          output, input->mem_desc(), ctx.GetPlace());
 
       auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                       reorder_dst_memory_p);
@@ -90,9 +90,8 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
       astream.wait();
 
       output->set_layout(framework::DataLayout::kMKLDNN);
-      output->set_format(
-          platform::GetMKLDNNFormat(reorder_dst_memory_p->get_desc().reshape(
-              paddle::framework::vectorize<int64_t>(output->dims()))));
+      output->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(
+          framework::vectorize<int64_t>(output->dims())));
     } else {
       platform::ReductionMKLDNNHandler<T> handler(reduction_type, 0.0f, 0.0f,
                                                   onednn_engine, ctx.GetPlace(),
@@ -108,10 +107,10 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
 
       reduction_p->execute(astream, reduction_args);
       astream.wait();
+
       output->set_layout(framework::DataLayout::kMKLDNN);
-      output->set_format(
-          platform::GetMKLDNNFormat(dst_memory_p->get_desc().reshape(
-              paddle::framework::vectorize<int64_t>(output->dims()))));
+      output->set_mem_desc(dst_memory_p->get_desc().reshape(
+          framework::vectorize<int64_t>(output->dims())));
     }
   }
 };
@@ -129,37 +128,25 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     bool keep_dim = ctx.Attr<bool>("keep_dim");
     bool reduce_all = ctx.Attr<bool>("reduce_all");
     auto dims = ctx.Attr<std::vector<int>>("dim");
-    auto* input_dy = ctx.Input<Tensor>(framework::GradVarName("Out"));
-    auto* output_dx = ctx.Output<Tensor>(framework::GradVarName("X"));
+    const auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
+    auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
 
-    mkldnn::memory::format_tag x_format_tag;
     auto input_dims =
-        CalculateReducedDims(output_dx, input_dy, dims, reduce_all, keep_dim);
-    auto output_dims = framework::vectorize(output_dx->dims());
+        CalculateReducedDims(dx, dout, dims, reduce_all, keep_dim);
+    auto output_dims = framework::vectorize(dx->dims());
+
+    auto dout_mem_desc = dout->mem_desc();
 
     if (input_dims != output_dims) {
-      auto input_dy_md = dnnl::memory::desc(
-          framework::vectorize(input_dy->dims()),
-          platform::MKLDNNGetDataType<T>(), input_dy->format());
-      auto input_dy_ex_md = input_dy_md.reshape(input_dims);
-      // TODO(jczaja): once MD is stored in Tensor we no longer need to guess
-      // formats
-      x_format_tag = platform::GetMKLDNNFormat(input_dy_ex_md);
-
-    } else {
-      // There was no broadcasting then just simple copy is done
-      // same format used for input and output
-      x_format_tag = getPlainFormatTag(output_dx);
+      dout_mem_desc = dout_mem_desc.reshape(input_dims);
     }
 
-    output_dx->set_format(x_format_tag);
-
     platform::BroadcastDataMKLDNNHandler<T> handler(
-        binary_type, onednn_engine, ctx.GetPlace(), output_dx, input_dy,
-        scale_x, scale_y, input_dims);
+        binary_type, onednn_engine, ctx.GetPlace(), dx, dout, scale_x, scale_y,
+        dout_mem_desc);
 
-    const auto src_memory_p = handler.AcquireSrcMemory(input_dy);
-    const auto dst_memory_p = handler.AcquireDstMemory(output_dx);
+    const auto src_memory_p = handler.AcquireSrcMemory(dout);
+    const auto dst_memory_p = handler.AcquireDstMemory(dx);
     const auto binary_prim = handler.AcquireForwardPrimitive();
 
     const std::unordered_map<int, dnnl::memory> args = {
@@ -171,7 +158,8 @@ class ReduceGradMKLDNNKernel : public framework::OpKernel<T> {
     binary_prim->execute(astream, args);
     astream.wait();
 
-    output_dx->set_layout(framework::DataLayout::kMKLDNN);
+    dx->set_layout(framework::DataLayout::kMKLDNN);
+    dx->set_mem_desc(dst_memory_p->get_desc());
   }
 
  protected:

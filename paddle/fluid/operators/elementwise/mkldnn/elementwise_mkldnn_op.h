@@ -79,7 +79,7 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     astream.wait();
 
     z->set_layout(DataLayout::kMKLDNN);
-    z->set_format(platform::GetMKLDNNFormat(*dst_memory));
+    z->set_mem_desc(dst_memory->get_desc());
   }
 };
 

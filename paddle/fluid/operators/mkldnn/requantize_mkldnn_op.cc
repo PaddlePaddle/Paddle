@@ -84,10 +84,12 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
       auto src_dt = framework::ToMKLDNNDataType(input->type());
       auto dst_dt = with_shift ? framework::MKLDNNDataType::u8 : src_dt;
 
-      auto src_md = platform::MKLDNNMemDesc({src_tz}, src_dt, input->format());
-      src_memory = std::make_shared<dnnl::memory>(src_md, engine,
+      // ASK ASIA ABOUT THAT FORMATS
+      src_memory = std::make_shared<dnnl::memory>(input->mem_desc(), engine,
                                                   to_void_cast<T>(input_data));
-      auto dst_md = platform::MKLDNNMemDesc({dst_tz}, dst_dt, input->format());
+      auto strides = input->mem_desc().data.format_desc.blocking.strides;
+      auto dst_md = dnnl::memory::desc({dst_tz}, dst_dt,
+                                       {strides, strides + dst_tz.size()});
 
       dnnl::primitive_attr attri;
       int mask = 0;
@@ -144,7 +146,7 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
     }
 
     output->set_layout(framework::DataLayout::kMKLDNN);
-    output->set_format(platform::GetMKLDNNFormat(*dst_memory));
+    output->set_mem_desc(dst_memory->get_desc());
   }
 };
 

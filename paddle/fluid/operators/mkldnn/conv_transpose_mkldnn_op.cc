@@ -64,19 +64,12 @@ class ConvTransposeMKLDNNHandlerT
           input->layout(), DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
               "Got wrong layout = %d for Input tensor.", input->layout()));
-      PADDLE_ENFORCE_NE(input->format(), MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Got wrong format for Input tensor. The input "
-                            "format is undefined."));
 
       PADDLE_ENFORCE_EQ(
           filter->layout(), DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
               "The filter tensor's laytout should be %d, but got %d.",
               DataLayout::kMKLDNN, filter->layout()));
-      PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Got wrong formats for Filter tensor."));
 
       PADDLE_ENFORCE_EQ(
           input->dims().size(), 4,
@@ -95,9 +88,6 @@ class ConvTransposeMKLDNNHandlerT
             platform::errors::InvalidArgument(
                 "The bias tensor's laytout should be %d, but got %d.",
                 DataLayout::kMKLDNN, bias->layout()));
-        PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::undef,
-                          platform::errors::InvalidArgument(
-                              "Got wrong format for Bias tensor."));
 
         PADDLE_ENFORCE_EQ(bias->dims().size(), 1,
                           platform::errors::InvalidArgument(
@@ -220,11 +210,8 @@ class ConvTransposeMKLDNNHandlerT
     const std::string user_key_suffix{"@src_mem_p_user"};
     auto user_src_mem_p = this->AcquireMemory(user_key_suffix);
     if (!user_src_mem_p) {
-      auto user_src_md = platform::MKLDNNMemDesc(
-          framework::vectorize(input->dims()), platform::MKLDNNGetDataType<T>(),
-          input->format());
       return this->AcquireMemoryWithReorder(
-          user_src_md, this->fwd_pd_->src_desc(),
+          input->mem_desc(), this->fwd_pd_->src_desc(),
           platform::to_void_cast<T>(input_data), "@src_mem_p");
     } else {
       const std::string target_key_suffix{"@src_mem_p_target"};
@@ -359,7 +346,7 @@ class ConvTransposeMKLDNNOpKernel : public framework::OpKernel<T> {
     conv_p->execute(astream, args);
     astream.wait();
     output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(platform::GetMKLDNNFormat(*dst_memory_p));
+    output->set_mem_desc(dst_memory_p->get_desc());
   }
 };
 

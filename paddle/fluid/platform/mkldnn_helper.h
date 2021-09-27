@@ -197,7 +197,7 @@ inline void Reorder(mkldnn::memory src, mkldnn::memory dst,
 }
 
 inline mkldnn::memory::format_tag GetMKLDNNFormat(
-    mkldnn::memory::desc mem_desc) {
+    const mkldnn::memory::desc& mem_desc) {
   auto ndims = mem_desc.data.ndims;
   auto strides = mem_desc.data.format_desc.blocking.strides;
   auto inner_nblks = mem_desc.data.format_desc.blocking.inner_nblks;
@@ -331,6 +331,43 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
 inline mkldnn::memory::format_tag GetMKLDNNFormat(const mkldnn::memory memory) {
   auto mem_desc = memory.get_desc();
   return GetMKLDNNFormat(mem_desc);
+}
+
+inline mkldnn::memory::format_tag GetPlainMKLDNNFormat(int tensor_rank) {
+  switch (tensor_rank) {
+    case 1:
+      return mkldnn::format_tag::a;
+      break;
+    case 2:
+      return mkldnn::format_tag::ab;
+      break;
+    case 3:
+      return mkldnn::format_tag::abc;
+      break;
+    case 4:
+      return mkldnn::format_tag::abcd;
+      break;
+    case 5:
+      return mkldnn::format_tag::abcde;
+      break;
+    case 6:
+      return mkldnn::format_tag::abcdef;
+      break;
+    case 8:
+      return mkldnn::format_tag::abcdefg;
+      break;
+    case 8:
+      return mkldnn::format_tag::abcdefgh;
+      break;
+    case 9:
+      return mkldnn::format_tag::abcdefghi;
+      break;
+    default:
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "Paddle support tensors with rank in range <1, 9>, but received "
+          "tensor with rank: %d",
+          tensor_rank));
+  }
 }
 
 inline MKLDNNMemoryFormat MKLDNNFormatForSize(size_t dims_size,

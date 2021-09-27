@@ -37,14 +37,11 @@ class InterpolateMKLDNNHandler
                            const Tensor* x, Tensor* z)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::resampling_forward>(
             engine, cpu_place) {
-    const auto src_x_tz = framework::vectorize(x->dims());
     const auto dst_tz = framework::vectorize(z->dims());
-    const auto src_md = dnnl::memory::desc(
-        src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
     const auto dst_md = memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
                                      MKLDNNMemoryFormat::any);
     this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_inference,
-                                            algo, src_md, dst_md);
+                                            algo, x->mem_desc(), dst_md);
   }
 };
 
@@ -164,7 +161,7 @@ class InterpolateMKLDNNKernel : public framework::OpKernel<T> {
     astream.wait();
 
     z->set_layout(DataLayout::kMKLDNN);
-    z->set_format(platform::GetMKLDNNFormat(*dst_memory_p));
+    z->set_mem_desc(dst_memory_p->get_desc());
   }
 };
 

@@ -67,8 +67,7 @@ class ConcatMKLDNNHandler
 
     // Create memory descriptors for each of inputs
     for (size_t i = 0; i < inputs.size(); ++i) {
-      const auto dims = framework::vectorize<int64_t>(inputs[i]->dims());
-      srcs_md.emplace_back(memory::desc(dims, dt, inputs[i]->format()));
+      srcs_md.push_back(inputs[i]->mem_desc());
     }
 
     auto dst_dims = framework::vectorize<int64_t>(output->dims());
@@ -98,9 +97,6 @@ static void EnforceLayouts(const std::vector<const Tensor*> inputs) {
     PADDLE_ENFORCE_EQ(
         input->layout(), DataLayout::kMKLDNN,
         platform::errors::InvalidArgument("Wrong layout set for Input tensor"));
-    PADDLE_ENFORCE_NE(
-        input->format(), MKLDNNMemoryFormat::undef,
-        platform::errors::InvalidArgument("Wrong format set for Input tensor"));
   }
 }
 
@@ -147,7 +143,7 @@ class ConcatMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     astream.wait();
 
     output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(platform::GetMKLDNNFormat(*dst_mem));
+    output->set_mem_desc(dst_mem->get_desc());
   }
 };
 

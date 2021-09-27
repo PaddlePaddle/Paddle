@@ -30,6 +30,18 @@ limitations under the License. */
 #include "paddle/fluid/platform/place.h"
 
 namespace paddle {
+namespace platform {
+mkldnn::memory::format_tag GetMKLDNNFormat(const mkldnn::memory::desc&);
+}  // namespace platform
+}  // namespace paddle
+
+namespace paddle {
+namespace framework {
+mkldnn::memory::data_type ToMKLDNNDataType(proto::VarType::Type);
+}  // namespace framework
+}  // namespace paddle
+
+namespace paddle {
 namespace memory {
 namespace allocation {
 class Allocation;
@@ -90,7 +102,25 @@ class Tensor {
 #ifdef PADDLE_WITH_MKLDNN
 
  public:
-  inline mkldnn::memory::format_tag format() const { return format_; }
+  inline mkldnn::memory::desc mem_desc() const {
+    // for now some ops are using format and some are using mem_desc, so
+    // supporting both is needed
+    return mem_desc_ ? mem_desc_
+                     : mkldnn::memory::desc(framework::vectorize(dims_),
+                                            ToMKLDNNDataType(type_), format_);
+  }
+
+  inline void set_mem_desc(const mkldnn::memory::desc& mem_desc) {
+    mem_desc_ = mem_desc;
+  }
+
+  // TODO jakpiase format is deprecated and will be removed soon, supporting
+  // both md and format is only temporary and shouldn't be relied on
+  inline mkldnn::memory::format_tag format() const {
+    // for now some ops are using format and some are using mem_desc, so
+    // supporting both is needed
+    return mem_desc_ ? platform::GetMKLDNNFormat(mem_desc_) : format_;
+  }
 
   inline void set_format(const mkldnn::memory::format_tag format) {
     format_ = format;
@@ -106,6 +136,7 @@ class Tensor {
    *       this field.
    */
 
+  mkldnn::memory::desc mem_desc_;
   mkldnn::memory::format_tag format_ = mkldnn::memory::format_tag::undef;
 #endif
 

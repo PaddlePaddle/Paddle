@@ -132,8 +132,7 @@ class SliceMKLDNNKernel : public framework::OpKernel<T> {
     astream.wait();
     out->Resize(framework::make_ddim(new_out_dims));
     out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetMKLDNNFormat(
-        reorder_dst_memory_p->get_desc().reshape(new_out_dims)));
+    out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(new_out_dims));
   }
 };
 template <typename T>
