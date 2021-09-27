@@ -26,8 +26,8 @@ class TestHessian(unittest.TestCase):
         self.dtype = 'float32'
         self.np_dtype = np.float32
         self.numerical_delta = 1e-2
-        self.rtol = 1e-3
-        self.atol = 1e-3
+        self.rtol = 1e-2
+        self.atol = 1e-2
         self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
         self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
 
@@ -107,7 +107,7 @@ class TestHessian(unittest.TestCase):
             error_msg = cpt.get_exception_message(e)
             assert error_msg.find("has no gradient") > 0
 
-    # NOTO(levi): enable this test case when matmul_grad_grad_grad is ok
+    # TODO(levi): enable this test case when matmul_grad_grad_grad is ok
     def _test_create_graph_true(self):
         def func(x):
             return paddle.sum(paddle.matmul(x, x))
@@ -134,10 +134,6 @@ class TestHessianFloat64(TestHessian):
         self.atol = 1e-5
         self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
         self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
-
-    # NOTO(levi): skip this test case temporaryly
-    def test_multi_input(self):
-        pass
 
 
 if __name__ == "__main__":
