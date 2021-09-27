@@ -204,7 +204,6 @@ class RunQueue {
     kReady,
   };
 
-  std::mutex mutex_;
   // Low log(kSize) + 1 bits in front_ and back_ contain rolling index of
   // front/back, respectively. The remaining bits contain modification counters
   // that are incremented on Push operations. This allows us to (1) distinguish
@@ -214,6 +213,7 @@ class RunQueue {
   // modification counters.
   alignas(64) std::atomic<unsigned> front_;
   alignas(64) std::atomic<unsigned> back_;
+  std::mutex mutex_;
   Elem array_[kSize];
 
   // SizeOrNotEmpty returns current queue size; if NeedSizeEstimate is false,
