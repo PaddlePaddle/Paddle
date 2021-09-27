@@ -49,3 +49,9 @@ endif()
 cc_library(dynload_lapack SRCS lapack.cc DEPS dynamic_loader)
 add_dependencies(dynload_lapack extern_lapack)
 # TODO(TJ): add iomp, mkldnn?
+
+if (MKL_FOUND AND WITH_ONEMKL)
+  add_definitions(-DMKL_LIBRARY_PATH="${MKL_ROOT}/lib/${MKL_ARCH}")
+  cc_library(dynload_mkldfti SRCS mkldfti.cc DEPS dynamic_loader)
+  target_include_directories(dynload_mkldfti PRIVATE ${MKL_INCLUDE})
+endif()

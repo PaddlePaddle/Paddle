@@ -28,6 +28,7 @@
 
 #if defined(PADDLE_WITH_ONEMKL)
 #include <mkl_dfti.h>
+#include "paddle/fluid/platform/dynload/mkldfti.h"
 #elif defined(PADDLE_WITH_POCKETFFT)
 #include "extern_pocketfft/pocketfft_hdronly.h"
 #endif
@@ -359,15 +360,16 @@ FFTNormMode get_norm_from_string(const std::string& norm, bool forward) {
 
 namespace {
 static inline void MKL_DFTI_CHECK(MKL_INT status) {
-  if (status && !DftiErrorClass(status, DFTI_NO_ERROR)) {
-    PADDLE_THROW(platform::errors::External(DftiErrorMessage(status)));
+  if (status && !platform::dynload::DftiErrorClass(status, DFTI_NO_ERROR)) {
+    PADDLE_THROW(platform::errors::External(
+        platform::dynload::DftiErrorMessage(status)));
   }
 }
 
 struct DftiDescriptorDeleter {
   void operator()(DFTI_DESCRIPTOR_HANDLE handle) {
     if (handle != nullptr) {
-      MKL_DFTI_CHECK(DftiFreeDescriptor(&handle));
+      MKL_DFTI_CHECK(platform::dynload::DftiFreeDescriptor(&handle));
     }
   }
 };
@@ -446,19 +448,21 @@ DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
   descriptor.init(precision, domain, signal_ndim, fft_sizes.data() + 1);
 
   // placement inplace or not inplace
-  MKL_DFTI_CHECK(
-      DftiSetValue(descriptor.get(), DFTI_PLACEMENT, DFTI_NOT_INPLACE));
+  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(
+      descriptor.get(), DFTI_PLACEMENT, DFTI_NOT_INPLACE));
 
   // number of transformations
   const MKL_LONG batch_size = fft_sizes[0];
-  MKL_DFTI_CHECK(
-      DftiSetValue(descriptor.get(), DFTI_NUMBER_OF_TRANSFORMS, batch_size));
+  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(
+      descriptor.get(), DFTI_NUMBER_OF_TRANSFORMS, batch_size));
 
   // input & output distance
   const MKL_LONG idist = in_strides[0];
   const MKL_LONG odist = out_strides[0];
-  MKL_DFTI_CHECK(DftiSetValue(descriptor.get(), DFTI_INPUT_DISTANCE, idist));
-  MKL_DFTI_CHECK(DftiSetValue(descriptor.get(), DFTI_OUTPUT_DISTANCE, odist));
+  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(descriptor.get(),
+                                                 DFTI_INPUT_DISTANCE, idist));
+  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(descriptor.get(),
+                                                 DFTI_OUTPUT_DISTANCE, odist));
 
   // input & output stride
   std::vector<MKL_LONG> mkl_in_stride(1 + signal_ndim, 0);
@@ -467,15 +471,15 @@ DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
     mkl_in_stride[i] = in_strides[i];
     mkl_out_stride[i] = out_strides[i];
   }
-  MKL_DFTI_CHECK(
-      DftiSetValue(descriptor.get(), DFTI_INPUT_STRIDES, mkl_in_stride.data()));
-  MKL_DFTI_CHECK(DftiSetValue(descriptor.get(), DFTI_OUTPUT_STRIDES,
-                              mkl_out_stride.data()));
+  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(
+      descriptor.get(), DFTI_INPUT_STRIDES, mkl_in_stride.data()));
+  MKL_DFTI_CHECK(platform::dynload::DftiSetValue(
+      descriptor.get(), DFTI_OUTPUT_STRIDES, mkl_out_stride.data()));
 
   // conjugate even storage
   if (!(fft_type == FFTTransformType::C2C)) {
-    MKL_DFTI_CHECK(DftiSetValue(descriptor.get(), DFTI_CONJUGATE_EVEN_STORAGE,
-                                DFTI_COMPLEX_COMPLEX));
+    MKL_DFTI_CHECK(platform::dynload::DftiSetValue(
+        descriptor.get(), DFTI_CONJUGATE_EVEN_STORAGE, DFTI_COMPLEX_COMPLEX));
   }
 
   MKL_LONG signal_numel =
@@ -496,11 +500,12 @@ DftiDescriptor _plan_mkl_fft(const framework::proto::VarType::Type& in_dtype,
         return DFTI_BACKWARD_SCALE;
       }
     }();
-    MKL_DFTI_CHECK(DftiSetValue(descriptor.get(), scale_direction, scale));
+    MKL_DFTI_CHECK(platform::dynload::DftiSetValue(descriptor.get(),
+                                                   scale_direction, scale));
   }
 
   // commit the descriptor
-  MKL_DFTI_CHECK(DftiCommitDescriptor(descriptor.get()));
+  MKL_DFTI_CHECK(platform::dynload::DftiCommitDescriptor(descriptor.get()));
   return descriptor;
 }
 
@@ -592,15 +597,16 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
                                   collapsed_input.numel(),
                                   collapsed_input_conj.data<Ti>());
     for_range(functor);
-    MKL_DFTI_CHECK(DftiComputeBackward(desc.get(),
-                                       collapsed_input_conj.data<void>(),
-                                       collapsed_output.data<void>()));
+    MKL_DFTI_CHECK(platform::dynload::DftiComputeBackward(
+        desc.get(), collapsed_input_conj.data<void>(),
+        collapsed_output.data<void>()));
   } else if (fft_type == FFTTransformType::R2C && !forward) {
     framework::Tensor collapsed_output_conj(collapsed_output.type());
     collapsed_output_conj.mutable_data<To>(collapsed_output.dims(),
                                            ctx.GetPlace());
-    MKL_DFTI_CHECK(DftiComputeForward(desc.get(), collapsed_input.data<void>(),
-                                      collapsed_output_conj.data<void>()));
+    MKL_DFTI_CHECK(platform::dynload::DftiComputeForward(
+        desc.get(), collapsed_input.data<void>(),
+        collapsed_output_conj.data<void>()));
     // conjugate the output
     platform::ForRange<DeviceContext> for_range(ctx, collapsed_output.numel());
     math::ConjFunctor<To> functor(collapsed_output_conj.data<To>(),
@@ -609,13 +615,13 @@ void exec_fft(const DeviceContext& ctx, const Tensor* x, Tensor* out,
     for_range(functor);
   } else {
     if (forward) {
-      MKL_DFTI_CHECK(DftiComputeForward(desc.get(),
-                                        collapsed_input.data<void>(),
-                                        collapsed_output.data<void>()));
+      MKL_DFTI_CHECK(platform::dynload::DftiComputeForward(
+          desc.get(), collapsed_input.data<void>(),
+          collapsed_output.data<void>()));
     } else {
-      MKL_DFTI_CHECK(DftiComputeBackward(desc.get(),
-                                         collapsed_input.data<void>(),
-                                         collapsed_output.data<void>()));
+      MKL_DFTI_CHECK(platform::dynload::DftiComputeBackward(
+          desc.get(), collapsed_input.data<void>(),
+          collapsed_output.data<void>()));
     }
   }
 

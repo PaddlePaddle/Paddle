@@ -53,6 +53,9 @@ DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
 
 DEFINE_string(lapack_dir, "", "Specify path for loading liblapack.so.");
 
+DEFINE_string(mklcdft_dir, MKL_LIBRARY_PATH,
+              "Specify path for loading libmklcdft.so.");
+
 DEFINE_string(op_dir, "", "Specify path for loading user-defined op library.");
 
 #ifdef PADDLE_WITH_HIP
@@ -515,6 +518,17 @@ void* GetCUFFTDsoHandle() {
                                     {cuda_lib_path});
 #else
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libcufft.so");
+#endif
+}
+
+void* GetMKLDFTIDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_mklcdft_dir,
+                                    "libmkl_cdft_core.dylib");
+#elif defined(_WIN32)
+  return GetDsoHandleFromSearchPath(FLAGS_mklcdft_dir, "libmkl_cdft_core.dll");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_mklcdft_dir, "libmkl_cdft_core.so");
 #endif
 }
 
