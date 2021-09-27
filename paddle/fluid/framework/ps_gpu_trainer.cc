@@ -69,7 +69,6 @@ void PSGPUTrainer::Initialize(const TrainerDesc& trainer_desc,
     workers_[i] = DeviceWorkerFactory::CreateDeviceWorker(
         trainer_desc.device_worker_name());
     workers_[i]->SetDeviceIndex(i);
-    VLOG(0) << "wxx need_dump_field: " << need_dump_field_;
     workers_[i]->SetNeedDumpField(need_dump_field_);
     workers_[i]->SetNeedDumpParam(need_dump_param_);
     workers_[i]->SetDumpFieldVector(dump_fields_);
