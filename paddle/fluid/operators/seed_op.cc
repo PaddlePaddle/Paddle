@@ -43,7 +43,8 @@ class SeedOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool, default false) Force fill output variable to cpu "
                   "memory. Otherwise, fill output variable to the running "
                   "device")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddComment(R"DOC(
 Seed Operator.
 )DOC");
