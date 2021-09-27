@@ -211,7 +211,7 @@ class DenseNet(nn.Layer):
     Args:
         layers (int): layers of densenet. Default: 121.
         bn_size (int): expansion of growth rate in the middle layer. Default: 4.
-        dropout (int): dropout rate. Default: 0..
+        dropout (float): dropout rate. Default: 0..
         num_classes (int): output dim of last fc layer. Default: 1000.
 
     Examples:
