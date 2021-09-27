@@ -35,8 +35,7 @@ TEST(Utils, TensorsToVarBasesSingle) {
       TensorsToVarBases(tensor);
 
   paddle::framework::Variable* var = var_bases[0]->MutableVar();
-  const paddle::framework::Tensor& framework_tensor =
-      var->Get<paddle::framework::Tensor>();
+  const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
 
   const float* ptr = framework_tensor.data<float>();
   if (framework_tensor.numel() != tensor.numel())
@@ -67,8 +66,7 @@ TEST(Utils, TensorsToVarBasesMultiple) {
 
   {
     paddle::framework::Variable* var = var_bases[0]->MutableVar();
-    const paddle::framework::Tensor& framework_tensor =
-        var->Get<paddle::framework::Tensor>();
+    const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
 
     const float* ptr = framework_tensor.data<float>();
     if (framework_tensor.numel() != tensors[0].numel())
@@ -84,8 +82,7 @@ TEST(Utils, TensorsToVarBasesMultiple) {
 
   {
     paddle::framework::Variable* var = var_bases[1]->MutableVar();
-    const paddle::framework::Tensor& framework_tensor =
-        var->Get<paddle::framework::Tensor>();
+    const auto& framework_tensor = var->Get<paddle::framework::LoDTensor>();
 
     const float* ptr = framework_tensor.data<float>();
     if (framework_tensor.numel() != tensors[0].numel())

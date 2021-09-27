@@ -154,7 +154,6 @@ void RunBackward(const std::vector<pt::Tensor>& tensors,
     // Run Backward Node and get outputs
     std::vector<std::vector<pt::Tensor>> grad_output_tensors =
         (*node)(node_input_buffer->Buffers());
-
     // TODO(jiabin): Should we erase it or find a more efficient way.
     node_input_buffers_dict.erase(node);
 
@@ -175,8 +174,8 @@ void RunBackward(const std::vector<pt::Tensor>& tensors,
         // the same rank(i, j)
         VLOG(6) << "Get Edge with slot: " << i << ", rank: " << j;
         pt::Tensor& grad_output_tensor = grad_output_tensors[i][j];
-        if (!grad_output_tensor.initialized() ||
-            !grad_output_tensor.defined()) {
+        if (!grad_output_tensor.defined() ||
+            !grad_output_tensor.initialized()) {
           VLOG(6) << "We get grad_output_tensor with slot: " << i
                   << ", rank: " << j << "as uninitialized or undefined tensor";
         }

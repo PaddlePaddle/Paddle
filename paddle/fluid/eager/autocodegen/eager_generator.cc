@@ -910,12 +910,15 @@ void DygraphCodeGeneration(const std::string& output_dir) {
       generated_function_body += "\n";
 
       std::string grad_node_creation_str = "";
+
       // [GradOpNode] Generation
+      size_t bwd_in_slot_num = op_proto->outputs().size();
+      size_t bwd_out_slot_num = op_proto->inputs().size();
       const char* GRAD_OP_NODE_TEMPLATE =
-          "    auto grad_node = std::make_shared<GradNode%s>();\n";
+          "    auto grad_node = std::make_shared<GradNode%s>(%d, %d);\n";
       grad_node_creation_str += "    // Create GradOpNode\n";
-      grad_node_creation_str +=
-          paddle::string::Sprintf(GRAD_OP_NODE_TEMPLATE, op_type);
+      grad_node_creation_str += paddle::string::Sprintf(
+          GRAD_OP_NODE_TEMPLATE, op_type, bwd_in_slot_num, bwd_out_slot_num);
       grad_node_creation_str += "\n";
 
       // [GradOpNode] Set Attrs
@@ -984,9 +987,9 @@ void DygraphCodeGeneration(const std::string& output_dir) {
             SET_OUT_RANK_TEMPLATE, output_autograd_name, output_position);
 
         const char* SET_HISTORY_TEMPLATE =
-            "    egr::EagerUtils::SetHistory(&%s, %d);\n";
-        grad_node_creation_str += paddle::string::Sprintf(
-            SET_HISTORY_TEMPLATE, output_autograd_name, output_position);
+            "    egr::EagerUtils::SetHistory(&%s, grad_node);\n";
+        grad_node_creation_str +=
+            paddle::string::Sprintf(SET_HISTORY_TEMPLATE, output_autograd_name);
       }
 
       // [Generation] GradNode Creation
@@ -1040,10 +1043,14 @@ void DygraphCodeGeneration(const std::string& output_dir) {
 
       // Add trace_backward
       dygraph_function_args_str += ", bool trace_backward";
-      const char* FWD_FUNCTION_TEMPLATE = "%s %s(%s) {\n\n%s\n}";
+      const char* FWD_FUNCTION_TEMPLATE = "%s %s(%s) {\n\n%s\n}\n\n";
       fwd_function_str = paddle::string::Sprintf(
           FWD_FUNCTION_TEMPLATE, function_proto_return_type_str, function_name,
           dygraph_function_args_str, generated_function_body);
+
+      // [Generation] Append USE_OP
+      const char* USE_OP_TEMPLATE = "USE_OP(%s);\n";
+      fwd_function_str += paddle::string::Sprintf(USE_OP_TEMPLATE, op_type);
 
       VLOG(2) << fwd_function_str;
     }
@@ -1074,10 +1081,10 @@ void DygraphCodeGeneration(const std::string& output_dir) {
               std::map<std::string, std::vector<std::shared_ptr<VarBase>>> outs
          =
                       {"X@Grad" : ConstructDuplicableOutput(
-         this->InputMeta()["fwd_inputs_name_pos_map[grad_outs_slotname_map["X@Grad"]]"].Size()
+         this->OutputMeta()["fwd_inputs_name_pos_map[grad_outs_slotname_map["X@Grad"]]"].Size()
          ),
                        "Y@Grad" : ConstructDuplicableOutput(
-         this->InputMeta()["fwd_inputs_name_pos_map[grad_outs_slotname_map["Y@Grad"]]"].Size()
+         this->OutputMeta()["fwd_inputs_name_pos_map[grad_outs_slotname_map["Y@Grad"]]"].Size()
          ) };
 
               // GradNode's ins/outs/attrs are superclass to each OpBase's
@@ -1169,7 +1176,7 @@ void DygraphCodeGeneration(const std::string& output_dir) {
               fwd_inputs_name_pos_map[grad_outs_slotname_map[grad_output_name]];
           const char* GRAD_OUTS_CONTENT_TEMPLATE =
               "{ \"%s\", ConstructDuplicableOutput( "
-              "this->InputMeta()[%d].Size() ) },";
+              "this->OutputMeta()[%d].Size() ) },";
           outs_contents_str += paddle::string::Sprintf(
               GRAD_OUTS_CONTENT_TEMPLATE, grad_output_name, fwd_input_position);
         } else {
@@ -1265,6 +1272,8 @@ void DygraphCodeGeneration(const std::string& output_dir) {
           "class GradNode%s : public egr::GradNodeBase {\n"
           " public:\n"
           "  GradNode%s() : egr::GradNodeBase() {}\n"
+          "  GradNode%s(size_t bwd_in_slot_num, size_t bwd_out_slot_num) : "
+          "egr::GradNodeBase(bwd_in_slot_num, bwd_out_slot_num) {}\n"
           "  ~GradNode%s() override = default;\n"
           "\n"
           "  virtual std::vector<std::vector<pt::Tensor>> operator()(const "
@@ -1369,10 +1378,10 @@ void DygraphCodeGeneration(const std::string& output_dir) {
             tensor_wrapper_arg_str, tensor_wrapper_body_str);
       }
 
-      grad_node_str =
-          paddle::string::Sprintf(GRAD_NODE_TEMPLATE, op_type, op_type, op_type,
-                                  set_tensor_wrappers_str, set_attrs_str,
-                                  tensor_wrapper_members_str, attr_members_str);
+      grad_node_str = paddle::string::Sprintf(
+          GRAD_NODE_TEMPLATE, op_type, op_type, op_type, op_type,
+          set_tensor_wrappers_str, set_attrs_str, tensor_wrapper_members_str,
+          attr_members_str);
 
       VLOG(2) << grad_node_str;
     }
@@ -1393,6 +1402,7 @@ void DygraphCodeGeneration(const std::string& output_dir) {
         "#include \"paddle/tcmpt/api/all.h\"\n"
         "#include \"paddle/fluid/imperative/tracer.h\"\n"
         "#include \"paddle/fluid/eager/utils.h\"\n"
+        "#include \"paddle/fluid/framework/op_registry.h\"\n"
         "#include \"paddle/fluid/eager/tests/generated/nodes/%s\"\n\n";
 
     std::string forward_cxx_headers =
@@ -1407,6 +1417,7 @@ void DygraphCodeGeneration(const std::string& output_dir) {
         "#include \"paddle/tcmpt/api/all.h\"\n"
         "#include \"paddle/fluid/imperative/tracer.h\"\n"
         "#include \"paddle/fluid/eager/utils.h\"\n"
+        "#include \"paddle/fluid/framework/op_registry.h\"\n"
         "#include \"paddle/fluid/eager/tests/generated/nodes/%s\"\n\n";
     std::string node_cxx_header =
         paddle::string::Sprintf(NODE_CXX_TEMPLATE, node_header_name);

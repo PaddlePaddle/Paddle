@@ -26,7 +26,7 @@ static std::shared_ptr<paddle::imperative::VarBase> TensorToVarBase(
       false /*has_grad*/, "whatever" /*name*/);
   paddle::framework::Variable* var = var_base->MutableVar();
   paddle::framework::Tensor* framework_tensor =
-      var->GetMutable<paddle::framework::Tensor>();
+      var->GetMutable<paddle::framework::LoDTensor>();
 
   framework_tensor->Resize(tensor.shape());
   framework_tensor->set_layout(pt::TransToFluidDataLayout(tensor.layout()));
