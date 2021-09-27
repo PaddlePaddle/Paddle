@@ -17,7 +17,6 @@ limitations under the License. */
 #include "paddle/fluid/operators/fused/cudnn_fusion_helper.h"
 #include "paddle/fluid/platform/cudnn_desc.h"
 #include "paddle/fluid/platform/cudnn_helper.h"
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -90,7 +89,6 @@ class CudnnNormConvolution {
                        const std::vector<int> &output_shape, const int &padding,
                        const int &stride, const int &dilation,
                        const int &group) {
-    platform::RecordEvent event("norm_conv_init");
     args_.Set(input_shape, filter_shape, output_shape, padding, stride,
               dilation, group);
   }
@@ -99,8 +97,6 @@ class CudnnNormConvolution {
   void Forward(const platform::CUDADeviceContext &ctx, T *input_ptr,
                T *filter_ptr, T *output_ptr, float *sum_ptr,
                float *sum_of_squares_ptr) {
-    platform::RecordEvent event("norm_conv_forward");
-
     auto cudnn_handle = ctx.cudnn_handle();
 
     CudnnFusionOp *fwd_op = GetForwardOp(ctx);
@@ -187,7 +183,6 @@ class CudnnNormConvolutionGrad {
                            const std::vector<int> &output_shape,
                            const int &padding, const int &stride,
                            const int &dilation, const int &group) {
-    platform::RecordEvent event("norm_conv_grad_init");
     args_.Set(input_shape, filter_shape, output_shape, padding, stride,
               dilation, group);
     dgrad_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
@@ -208,8 +203,6 @@ class CudnnNormConvolutionGrad {
  private:
   void BackwardFilter(const platform::CUDADeviceContext &ctx, T *input_ptr,
                       T *output_ptr, T *filter_ptr, T *filter_grad_ptr) {
-    platform::RecordEvent event("norm_conv_backward_filter");
-
     auto cudnn_handle = ctx.cudnn_handle();
 
     CudnnFusionOp *wgrad_op = GetBackwardFilterOp(ctx);
@@ -235,15 +228,14 @@ class CudnnNormConvolutionGrad {
   }
 
   void BackwardData(const platform::CUDADeviceContext &ctx, T *input_ptr,
-                    T *output_ptr, T *filter_ptr, T *input_grad_ptr) {
-    platform::RecordEvent event("norm_conv_backward_data");
-
+                    T *output_ptr, T *filter_ptr, T *input_grad_ptr,
+                    bool use_addto = false) {
     auto cudnn_handle = ctx.cudnn_handle();
     size_t workspace_size = GetWorkspaceSizeBwdData(ctx);
 
     // Convolution dgrad followed optionally by batchnorm dgrad
     ScalingParamType<T> alpha = 1.0f;
-    ScalingParamType<T> beta = 0.0f;
+    ScalingParamType<T> beta = use_addto ? 1.0f : 0.0f;
     ctx.cudnn_workspace_handle().RunFunc(
         [&](void *cudnn_workspace_ptr) {
           PADDLE_ENFORCE_CUDA_SUCCESS(
@@ -294,7 +286,6 @@ class CudnnNormConvolutionGrad {
   }
 
   size_t GetWorkspaceSizeBwdData(const platform::CUDADeviceContext &ctx) {
-    platform::RecordEvent event("workspace_size_backward_data");
     size_t workspace_size = 0U;
     auto handle = ctx.cudnn_handle();
     PADDLE_ENFORCE_CUDA_SUCCESS(

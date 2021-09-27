@@ -145,7 +145,9 @@ class CudnnFusionOpCache {
 
  private:
   CudnnFusionOpCache() {}
-  ~CudnnFusionOpCache() {}
+  ~CudnnFusionOpCache() {
+    // Need to delete the memory of cache.
+  }
   CudnnFusionOpCache(const CudnnFusionOpCache &) {}
 
  private:
