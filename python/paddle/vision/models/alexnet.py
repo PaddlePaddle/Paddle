@@ -45,8 +45,7 @@ class ConvPoolLayer(nn.Layer):
                  padding,
                  stdv,
                  groups=1,
-                 act=None,
-                 name=None):
+                 act=None):
         super(ConvPoolLayer, self).__init__()
 
         self.relu = ReLU() if act == "relu" else None
@@ -58,10 +57,8 @@ class ConvPoolLayer(nn.Layer):
             stride=stride,
             padding=padding,
             groups=groups,
-            weight_attr=ParamAttr(
-                name=name + "_weights", initializer=Uniform(-stdv, stdv)),
-            bias_attr=ParamAttr(
-                name=name + "_offset", initializer=Uniform(-stdv, stdv)))
+            weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+            bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
         self._pool = MaxPool2D(kernel_size=3, stride=2, padding=0)
 
     def forward(self, inputs):
@@ -93,11 +90,9 @@ class AlexNet(nn.Layer):
         super(AlexNet, self).__init__()
 
         stdv = 1.0 / math.sqrt(3 * 11 * 11)
-        self._conv1 = ConvPoolLayer(
-            3, 64, 11, 4, 2, stdv, act="relu", name="conv1")
+        self._conv1 = ConvPoolLayer(3, 64, 11, 4, 2, stdv, act="relu")
         stdv = 1.0 / math.sqrt(64 * 5 * 5)
-        self._conv2 = ConvPoolLayer(
-            64, 192, 5, 1, 2, stdv, act="relu", name="conv2")
+        self._conv2 = ConvPoolLayer(64, 192, 5, 1, 2, stdv, act="relu")
         stdv = 1.0 / math.sqrt(192 * 3 * 3)
         self._conv3 = Conv2D(
             192,
@@ -105,10 +100,8 @@ class AlexNet(nn.Layer):
             3,
             stride=1,
             padding=1,
-            weight_attr=ParamAttr(
-                name="conv3_weights", initializer=Uniform(-stdv, stdv)),
-            bias_attr=ParamAttr(
-                name="conv3_offset", initializer=Uniform(-stdv, stdv)))
+            weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+            bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
         stdv = 1.0 / math.sqrt(384 * 3 * 3)
         self._conv4 = Conv2D(
             384,
@@ -116,39 +109,30 @@ class AlexNet(nn.Layer):
             3,
             stride=1,
             padding=1,
-            weight_attr=ParamAttr(
-                name="conv4_weights", initializer=Uniform(-stdv, stdv)),
-            bias_attr=ParamAttr(
-                name="conv4_offset", initializer=Uniform(-stdv, stdv)))
+            weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+            bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
         stdv = 1.0 / math.sqrt(256 * 3 * 3)
-        self._conv5 = ConvPoolLayer(
-            256, 256, 3, 1, 1, stdv, act="relu", name="conv5")
+        self._conv5 = ConvPoolLayer(256, 256, 3, 1, 1, stdv, act="relu")
         stdv = 1.0 / math.sqrt(256 * 6 * 6)
 
         self._drop1 = Dropout(p=0.5, mode="downscale_in_infer")
         self._fc6 = Linear(
             in_features=256 * 6 * 6,
             out_features=4096,
-            weight_attr=ParamAttr(
-                name="fc6_weights", initializer=Uniform(-stdv, stdv)),
-            bias_attr=ParamAttr(
-                name="fc6_offset", initializer=Uniform(-stdv, stdv)))
+            weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+            bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
 
         self._drop2 = Dropout(p=0.5, mode="downscale_in_infer")
         self._fc7 = Linear(
             in_features=4096,
             out_features=4096,
-            weight_attr=ParamAttr(
-                name="fc7_weights", initializer=Uniform(-stdv, stdv)),
-            bias_attr=ParamAttr(
-                name="fc7_offset", initializer=Uniform(-stdv, stdv)))
+            weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+            bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
         self._fc8 = Linear(
             in_features=4096,
             out_features=num_classes,
-            weight_attr=ParamAttr(
-                name="fc8_weights", initializer=Uniform(-stdv, stdv)),
-            bias_attr=ParamAttr(
-                name="fc8_offset", initializer=Uniform(-stdv, stdv)))
+            weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+            bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
 
     def forward(self, inputs):
         x = self._conv1(inputs)
