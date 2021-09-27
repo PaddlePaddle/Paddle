@@ -96,7 +96,7 @@ class HybridParallelClipGrad:
         return getattr(self._clip, item)
 
     def __call__(self, params_grads):
-        return self._clip(params_grads)
+        return self._dygraph_clip(params_grads)
 
 
 class HybridParallelOptimizer:
