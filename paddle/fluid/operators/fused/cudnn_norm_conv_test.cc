@@ -161,12 +161,11 @@ class TestCudnnNormConvOpForward {
     float *sum_ptr = sum_.mutable_data<float>(place_);
     float *sum_of_squares_ptr = sum_of_squares_.mutable_data<float>(place_);
 
-    std::shared_ptr<op::CudnnNormConvolutionOp<T>> conv_op(
-        new op::CudnnNormConvolutionOp<T>());
-    conv_op->Init(*ctx_, input_shape, filter_shape, output_shape, pad_, stride_,
-                  dilate_, group_);
-    conv_op->Forward(*ctx_, input_ptr, filter_ptr, output_ptr, sum_ptr,
-                     sum_of_squares_ptr);
+    op::CudnnNormConvolution<T> conv_op(*ctx_, input_shape, filter_shape,
+                                        output_shape, pad_, stride_, dilate_,
+                                        group_);
+    conv_op.Forward(*ctx_, input_ptr, filter_ptr, output_ptr, sum_ptr,
+                    sum_of_squares_ptr);
     ctx_->Wait();
   }
 
