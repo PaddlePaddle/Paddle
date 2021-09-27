@@ -212,10 +212,12 @@ def run_check():
 
     if paddle.is_compiled_with_cuda():
         use_cuda = _is_cuda_available()
+        use_npu = False
     elif paddle.is_compiled_with_npu():
         use_npu = _is_npu_available()
         use_cuda = False
     else:
+        use_npu = False
         use_cuda = False
 
     if use_cuda:
