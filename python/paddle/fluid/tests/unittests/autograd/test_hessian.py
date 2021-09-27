@@ -90,41 +90,37 @@ class TestHessian(unittest.TestCase):
                 else:
                     assert hessian[i][j] is None
 
-    def _test_create_graph_false(self):
-        def func(x, y):
-            return paddle.matmul(x, y)
+    def test_create_graph_false(self):
+        def func(x):
+            return paddle.sum(paddle.matmul(x, x))
 
-        numerical_jacobian = _compute_numerical_jacobian(
-            func, [self.x, self.y], self.numerical_delta, self.np_dtype)
+        numerical_hessian = _compute_numerical_hessian(
+            func, self.x, self.numerical_delta, self.np_dtype)
         self.x.stop_gradient = False
-        self.y.stop_gradient = False
-        jacobian = paddle.autograd.jacobian(func, [self.x, self.y])
-        for j in range(len(jacobian)):
-            assert jacobian[j].stop_gradient == True
-            assert np.allclose(jacobian[j].numpy(), numerical_jacobian[0][j],
-                               self.rtol, self.atol)
+        hessian = paddle.autograd.hessian(func, self.x)
+        assert hessian.stop_gradient == True
+        assert np.allclose(hessian.numpy(), numerical_hessian[0][0], self.rtol,
+                           self.atol)
         try:
-            paddle.grad(jacobian[0], [self.x, self.y])
+            paddle.grad(hessian, self.x)
         except RuntimeError as e:
             error_msg = cpt.get_exception_message(e)
             assert error_msg.find("has no gradient") > 0
 
+    # NOTO(levi): enable this test case when matmul_grad_grad_grad is ok
     def _test_create_graph_true(self):
-        def func(x, y):
-            return paddle.matmul(x, y)
+        def func(x):
+            return paddle.sum(paddle.matmul(x, x))
 
-        numerical_jacobian = _compute_numerical_jacobian(
-            func, [self.x, self.y], self.numerical_delta, self.np_dtype)
+        numerical_hessian = _compute_numerical_hessian(
+            func, self.x, self.numerical_delta, self.np_dtype)
         self.x.stop_gradient = False
-        self.y.stop_gradient = False
-        jacobian = paddle.autograd.jacobian(
-            func, [self.x, self.y], create_graph=True)
-        for j in range(len(jacobian)):
-            assert jacobian[j].stop_gradient == False
-            assert np.allclose(jacobian[j].numpy(), numerical_jacobian[0][j],
-                               self.rtol, self.atol)
-        double_grad = paddle.grad(jacobian[0], [self.x, self.y])
-        assert double_grad is not None
+        hessian = paddle.autograd.hessian(func, self.x, create_graph=True)
+        assert hessian.stop_gradient == False
+        assert np.allclose(hessian.numpy(), numerical_hessian[0][0], self.rtol,
+                           self.atol)
+        triple_grad = paddle.grad(hessian, self.x)
+        assert triple_grad is not None
 
 
 class TestHessianFloat64(TestHessian):
