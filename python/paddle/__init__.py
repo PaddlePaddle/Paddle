@@ -103,8 +103,15 @@ from .tensor.linalg import histogram  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
 from .tensor.linalg import det  # noqa: F401
 from .tensor.linalg import slogdet  # noqa: F401
+<<<<<<< HEAD
 from .tensor.linalg import matrix_power  # noqa: F401
 from .tensor.linalg import svd  # noqa: F401
+=======
+from .tensor.linalg import multi_dot  # noqa: F401
+from .tensor.linalg import matrix_power  # noqa: F401
+from .tensor.linalg import svd  # noqa: F401
+from .tensor.linalg import pinv  # noqa: F401
+>>>>>>> fe5cddf2b9db3e070e94e769d21ee7fbe91166af
 from .tensor.linalg import solve  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401

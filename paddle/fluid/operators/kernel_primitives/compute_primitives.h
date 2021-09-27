@@ -251,7 +251,11 @@ __device__ __forceinline__ void ElementwiseTernary(OutT* out, const InT* in1,
  * are the same.
  *
  * @template paraments
+<<<<<<< HEAD
  * InT: Data type of in1, in2 and in3.
+=======
+ * InT: Data type of in1 and in2.
+>>>>>>> fe5cddf2b9db3e070e94e769d21ee7fbe91166af
  * OutT: Data type of out.
  * NX: The number of data columns loaded by each thread.
  * NY: The number of data rows loaded by each thread.
@@ -344,7 +348,11 @@ __device__ __forceinline__ void CycleBinary(OutT* out, const InT* in1,
  * ReduceFunctor: Compute functor which has an operator() as following
  *     template <typename InT>
  *     struct ReduceFunctor {
+<<<<<<< HEAD
  *       HOSTDEVICE InT operator()(const InT& a, const InT& b) const {
+=======
+ *       HOSTDEVICE OutT operator()(const InT& a, const InT& b) const {
+>>>>>>> fe5cddf2b9db3e070e94e769d21ee7fbe91166af
  *         return ...;
  *       }
  *     };

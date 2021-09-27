@@ -67,3 +67,7 @@ ExternalProject_Add(
     BUILD_BYPRODUCTS        ${BLAS_LIB}
     BUILD_BYPRODUCTS        ${LAPACK_LIB}
 )
+<<<<<<< HEAD
+=======
+
+>>>>>>> fe5cddf2b9db3e070e94e769d21ee7fbe91166af

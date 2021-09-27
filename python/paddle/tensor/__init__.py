@@ -387,7 +387,10 @@ tensor_method_func  = [ #noqa
            'bitwise_not',
            'broadcast_tensors',
            'uniform_',
+<<<<<<< HEAD
            'multi_dot',
+=======
+>>>>>>> fe5cddf2b9db3e070e94e769d21ee7fbe91166af
            'solve',
 ]
 
