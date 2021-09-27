@@ -938,7 +938,9 @@ def parallel_linear(x, w, bias, expert_count):
 
             np_expert_count = np.array([2, 0, 1, 2, 3, 0, 0, 0, 2]).astype(np.int64) 
             batch_size = np.sum(np_expert_count)
-            np_w = np.random.random((batch_size, in_dim, out_dim)).astype("float32")
+            expert_num = len(np_expert_count)
+
+            np_w = np.random.random((expert_num, in_dim, out_dim)).astype("float32")
             np_b = np.random.random((batch_size, out_dim)).astype("float32")
             np_x = np.random.random((batch_size, in_dim)).astype("float32")
 
