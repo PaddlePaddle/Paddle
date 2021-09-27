@@ -60,7 +60,7 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
         platform::errors::Unavailable(
             "The number of elements for expert_count is ( %ld ) incorrect "
             "because the number of expert_count must equal the "
-            "product of n_worker ( %ld )and n_expert( %ld). "
+            "product of n_worker ( %ld )and n_expert( %ld ). "
             "Please input appropriate expert_count again!",
             expert_count_num_ele, n_worker, n_expert));
 
