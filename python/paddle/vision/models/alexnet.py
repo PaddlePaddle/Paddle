@@ -85,7 +85,7 @@ class AlexNet(nn.Layer):
 
             from paddle.vision.models import AlexNet
 
-            model = AlexNet()
+            alexnet = AlexNet()
 
     """
 
