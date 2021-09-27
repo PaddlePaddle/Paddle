@@ -28,18 +28,6 @@ class TestPruneGateByCapacityOp(unittest.TestCase):
         self.init_test_case()
         self.place = paddle.CUDAPlace(0)
 
-    def compute_case(self):
-        tot_expert = self.n_expert * self.n_worker
-        expert_count = [0] * tot_expert
-        gate_idx = [0] * tot_expert
-
-        for i in range(len(gate_idx)):
-            gate_idx[i] = random.randint(1, 5) % tot_expert
-            expert_count[gate_idx[i]] += 1
-        for i in range(tot_expert):
-            expert_count[i] >>= 1
-        return gate_idx, expert_count
-
     def test_static_api(self):
         paddle.enable_static()
 

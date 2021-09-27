@@ -840,12 +840,10 @@ def prune_gate_by_capacity(gate_idx, expert_count, n_expert, n_worker):
               [1, 3, 3, 3, -1, 2, 1, 1])
     """
 
-    from paddle.common_ops_import import in_dygraph_mode, check_variable_and_dtype, LayerHelper
-    from paddle import _C_ops
-
     if in_dygraph_mode():
-        return _C_ops.prune_gate_by_capacity(gate_idx, expert_count, "n_expert",
-                                             n_expert, "n_worker", n_worker)[0]
+        return core.ops.prune_gate_by_capacity(gate_idx, expert_count,
+                                               "n_expert", n_expert, "n_worker",
+                                               n_worker)[0]
     check_variable_and_dtype(gate_idx, 'GateIdx', ['int32', 'int64'],
                              'paddle.distributed.utils.prune_gate_by_capacity')
     check_variable_and_dtype(expert_count, 'ExpertCount', ['int32', 'int64'],
