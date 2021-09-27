@@ -165,7 +165,7 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
 def hessian(func, inputs, create_graph=False, allow_unused=False):
     ''' 
     .. note::
-        **This API is ONLY available in Dygraph mode.**
+        **This API is ONLY available in imperative mode.**
 
     This API computes the Hessian matrix of `func` with respect to `inputs`.
 
@@ -191,10 +191,84 @@ def hessian(func, inputs, create_graph=False, allow_unused=False):
         Hessian matrix of the ``i``th input and ``j``th input with size ``m * n``.
         Here ``m`` and ``n`` denote the number of elements of the ``i`` th input
         and the ``j`` th input respectively.
+
+    Examples 1:
+        .. code-block:: python
+
+            import paddle
+
+            def func(x):
+                return paddle.sum(paddle.matmul(x, x))
+            
+            x = paddle.ones(shape=[2, 2], dtype='float32')
+            x.stop_gradient = False
+            hessian = paddle.autograd.hessian(func, x)
+            print(hessian)
+            # Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[2., 1., 1., 0.],
+            #         [1., 0., 2., 1.],
+            #         [1., 2., 0., 1.],
+            #         [0., 1., 1., 2.]])
+
+    Examples 2:
+        .. code-block:: python
+
+            import paddle
+
+            def func(x, y):
+                return paddle.sum(paddle.matmul(x, y))
+            
+            x = paddle.ones(shape=[2, 2], dtype='float32')
+            y = paddle.ones(shape=[2, 2], dtype='float32')
+            x.stop_gradient = False
+            y.stop_gradient = False
+            hessian = paddle.autograd.hessian(func, [x, y])
+            print(hessian)
+            # ((Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[0., 0., 0., 0.],
+            #         [0., 0., 0., 0.],
+            #         [0., 0., 0., 0.],
+            #         [0., 0., 0., 0.]]),
+            #   Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[1., 1., 0., 0.],
+            #         [0., 0., 1., 1.],
+            #         [1., 1., 0., 0.],
+            #         [0., 0., 1., 1.]])),
+            #  (Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[1., 0., 1., 0.],
+            #         [1., 0., 1., 0.],
+            #         [0., 1., 0., 1.],
+            #         [0., 1., 0., 1.]]),
+            #   Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[0., 0., 0., 0.],
+            #         [0., 0., 0., 0.],
+            #         [0., 0., 0., 0.],
+            #         [0., 0., 0., 0.]])))
+
+    Examples 3:
+        .. code-block:: python
+
+            import paddle
+
+            def func(x, y):
+                return paddle.sum(paddle.matmul(x, x))
+            
+            x = paddle.ones(shape=[2, 2], dtype='float32')
+            y = paddle.ones(shape=[2, 2], dtype='float32')
+            x.stop_gradient = False
+            y.stop_gradient = False
+            hessian = paddle.autograd.hessian(func, [x, y], allow_unused=True)
+            print(hessian)
+            # ((Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[2., 1., 1., 0.],
+            #         [1., 0., 2., 1.],
+            #         [1., 2., 0., 1.],
+            #         [0., 1., 1., 2.]]), None), (None, None))
+
     '''
     inputs = _check_tensors(inputs, "inputs")
-    outputs = _check_tensors(func(*inputs), "outputs")
-    assert len(outputs) == 1 and outputs[0].shape == [
+    outputs = func(*inputs)
+    assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
         1
     ], "The function to compute Hessian matrix should return a Tensor with a single element"
 

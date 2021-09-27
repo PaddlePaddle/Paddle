@@ -75,7 +75,6 @@ def _compute_numerical_jacobian(func, xs, delta, np_dtype):
     return jacobian
 
 
-# TODO(levi): Need finish it.
 def _compute_numerical_hessian(func, xs, delta, np_dtype):
     xs = _check_tensors(xs, "xs")
     ys = _check_tensors(func(*xs), "ys")
