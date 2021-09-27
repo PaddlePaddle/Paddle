@@ -108,6 +108,8 @@ class TestAdamW(OpTest):
         self.check_output()
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestAdamW2(OpTest):
     def setUp(self):
         '''Test AdamW Op with supplied attributes
@@ -301,6 +303,8 @@ def simple_lr_setting(param, decay_rate, n_layers):
     return decay_rate**(n_layers + 2 - depth)
 
 
+@unittest.skipIf(not core.is_compiled_with_cuda(),
+                 "core is not compiled with CUDA")
 class TestAdamWOpLayerwiseLR(TestAdamWOp):
     def test_adamw_op_dygraph(self):
         paddle.disable_static()
