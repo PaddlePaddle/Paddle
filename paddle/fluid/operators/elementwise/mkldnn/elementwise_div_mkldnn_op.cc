@@ -147,13 +147,11 @@ class EltwiseDivMKLDNNGradKernel : public ElemwiseGradKernel<T> {
 
 namespace ops = paddle::operators;
 
-REGISTER_OP_KERNEL(
-    elementwise_div, MKLDNN, paddle::platform::CPUPlace,
-    ops::EltwiseMKLDNNKernel<float, dnnl::algorithm::binary_div>,
-    ops::EltwiseMKLDNNKernel<paddle::platform::bfloat16,
-                             dnnl::algorithm::binary_div>,
-    ops::EltwiseMKLDNNKernel<int8_t, dnnl::algorithm::binary_div>,
-    ops::EltwiseMKLDNNKernel<uint8_t, dnnl::algorithm::binary_div>)
+// TODO(piotrekobi) add int8, uint8 support
+REGISTER_OP_KERNEL(elementwise_div, MKLDNN, paddle::platform::CPUPlace,
+                   ops::EltwiseMKLDNNKernel<float, dnnl::algorithm::binary_div>,
+                   ops::EltwiseMKLDNNKernel<paddle::platform::bfloat16,
+                                            dnnl::algorithm::binary_div>)
 
 REGISTER_OP_KERNEL(elementwise_div_grad, MKLDNN, paddle::platform::CPUPlace,
                    ops::EltwiseDivMKLDNNGradKernel<paddle::platform::bfloat16>,

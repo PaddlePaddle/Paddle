@@ -134,13 +134,31 @@ class TestBf16(TestMKLDNNElementwiseDivOp):
         self.check_output_with_place(core.CPUPlace())
 
     def test_check_grad_normal(self):
-        pass
+        self.check_grad_with_place(
+            core.CPUPlace(), ["X", "Y"],
+            "Out",
+            user_defined_grads=[
+                np.divide(self.x, self.y), np.divide(
+                    (np.multiply(-self.x, self.x)), np.multiply(self.y, self.y))
+            ],
+            user_defined_grad_outputs=[self.x_bf16])
 
     def test_check_grad_ignore_x(self):
-        pass
+        self.check_grad_with_place(
+            core.CPUPlace(), ["Y"],
+            "Out",
+            user_defined_grads=[
+                np.divide((np.multiply(-self.x, self.y)),
+                          np.multiply(self.y, self.y))
+            ],
+            user_defined_grad_outputs=[self.y_bf16])
 
     def test_check_grad_ignore_y(self):
-        pass
+        self.check_grad_with_place(
+            core.CPUPlace(), ["X"],
+            "Out",
+            user_defined_grads=[np.divide(self.x, self.y)],
+            user_defined_grad_outputs=[self.x_bf16])
 
 
 class TestBf16Broadcasting(TestBf16):
@@ -149,92 +167,12 @@ class TestBf16Broadcasting(TestBf16):
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
         self.out = np.subtract(self.x, self.y)
 
-    def compute_reduced_gradients(self, out_grads):
-        part_sum = np.add.reduceat(out_grads, [0], axis=0)
-        part_sum = np.add.reduceat(part_sum, [0], axis=1)
-        part_sum = np.add.reduceat(part_sum, [0], axis=2)
-        return -part_sum.flatten()
-
     def test_check_grad_normal(self):
         pass
 
     def test_check_grad_ignore_x(self):
         pass
 
-
-# ''' INT8 Tests '''
-
-# class TestInt8(TestMKLDNNElementwiseDivOp):
-#     def init_kernel_type(self):
-#         self.use_mkldnn = True
-#         self._cpu_only = True
-
-#     def init_dtype(self):
-#         self.dtype = np.int8
-
-#     def init_input_output(self):
-#         self.x = np.random.randint(0, 3, (12, 9)).astype("int8")
-#         self.y = np.random.randint(0, 3, (12, 9)).astype("int8")
-#         self.out = np.divide(self.x, self.y)
-
-#     def init_scales(self):
-#         self.attrs['Scale_x'] = 1.0
-#         self.attrs['Scale_y'] = 1.0
-#         self.attrs['Scale_out'] = 1.0
-
-#     def test_check_output(self):
-#         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-#         self.init_scales()
-#         self.check_output()
-
-#     def test_check_grad_normal(self):
-#         pass
-
-#     def test_check_grad_ignore_x(self):
-#         pass
-
-#     def test_check_grad_ignore_y(self):
-#         pass
-
-# class TestInt8Scales(TestInt8):
-#     def quantize(self, tensor, dt="int8"):
-#         max_int = 127.0 if dt == "int8" else 255.0
-#         scale = max_int / np.abs(np.amax(tensor))
-#         quantized = np.round(scale * tensor).astype(dt)
-#         return scale, quantized
-
-#     def init_input_output(self):
-#         self.x_f = np.random.random((100, )).astype("float")
-#         self.y_f = np.random.random((100, )).astype("float")
-#         self.out_f = np.divide(self.x_f, self.y_f)
-
-#         self.scale_x, self.x = self.quantize(self.x_f)
-#         self.scale_y, self.y = self.quantize(self.y_f)
-#         self.scale_o, self.out = self.quantize(self.out_f)
-
-#     def init_scales(self):
-#         self.attrs['Scale_x'] = self.scale_x
-#         self.attrs['Scale_y'] = self.scale_y
-#         self.attrs['Scale_out'] = self.scale_o
-
-#     def test_check_output(self):
-#         # TODO(wangzhongpu): support mkldnn op in dygraph mode
-#         self.init_scales()
-#         int_atol = 1  # different quantization techniques
-#         self.check_output(atol=int_atol)
-
-# class TestUint8Scales(TestInt8Scales):
-#     def init_input_output(self):
-#         self.x_f = np.random.random((100, )).astype("float")
-#         self.y_f = np.random.random((100, )).astype("float")
-#         self.out_f = np.divide(self.x_f, self.y_f)
-
-#         self.scale_x, self.x = self.quantize(self.x_f, "uint8")
-#         self.scale_y, self.y = self.quantize(self.y_f, "uint8")
-#         self.scale_o, self.out = self.quantize(self.out_f, "uint8")
-
-#     def init_dtype(self):
-#         self.dtype = np.uint8
 
 if __name__ == '__main__':
     enable_static()
