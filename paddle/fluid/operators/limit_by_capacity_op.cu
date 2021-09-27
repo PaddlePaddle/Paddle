@@ -26,8 +26,8 @@ using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
 template <typename T>
-__global__ void LimitByCapacity(const T* expc, int* cap, T* out,
-                                const int n_expert, const int n_worker) {
+__global__ void limit_by_capacity_impl(const T* expc, int* cap, T* out,
+                                       const int n_expert, const int n_worker) {
   int eid = blockIdx.y;
   int wid = blockIdx.x * blockDim.x + threadIdx.x;
   if (wid < n_worker) {
@@ -67,7 +67,7 @@ class LimitByCapacityOpCUDAKernel : public framework::OpKernel<T> {
     framework::TensorCopy(*capacity, place, dev_ctx, &capacity_copy);
     int* cap_data = capacity_copy.mutable_data<int>(place);
 
-    LimitByCapacity<T><<<grid_dim, block_dim, 0, dev_ctx.stream()>>>(
+    limit_by_capacity_impl<T><<<grid_dim, block_dim, 0, dev_ctx.stream()>>>(
         ec_data, cap_data, out_data, n_expert, n_worker);
   }
 };
