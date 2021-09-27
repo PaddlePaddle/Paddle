@@ -75,26 +75,31 @@ class TestQuantizationSubGraph(unittest.TestCase):
             weight_quantize_type='range_abs_max')
         print("sub_graph_size:", len(all_sub_graphs))
         for sub_graph in all_sub_graphs:
-            print("sub_graph:", sub_graph)  # subgraph_
-            nodes = sub_graph.all_op_nodes()
+            print("sub_graph_dict:", sub_graph.__dict__)  # subgraph_
+            op_nodes = sub_graph.all_op_nodes()
+            var_nodes = sub_graph.all_var_nodes()
+            print("inside func:ir graph's core graph", sub_graph.graph)
             print("all nodes inside build graph func:",
-                  nodes)  #这里 all nodes 不为空，所以可以作量化Pass
+                  op_nodes)  #这里 all nodes 不为空，所以可以作量化Pass
+            print("all var_nodes inside build graph func:", var_nodes)
             transform_pass.apply(sub_graph)
+
             print("Done quant pass applied ")
         return all_sub_graphs
-
+        #return [graph]
     def test_quant_sub_graphs(self):
         sub_graphs = self.build_graph_with_sub_graph()
+        print("num of sub graphs:", len(sub_graphs))
         transform_pass = QuantizationTransformPass(
             scope=fluid.global_scope(),
             place=fluid.CUDAPlace(0),
             activation_quantize_type='abs_max',
             weight_quantize_type='range_abs_max')
-        print("sub_graph_size:", len(sub_graphs))
         for sub_graph in sub_graphs:
-            print("sub_graph:",
-                  sub_graph)  # 这里object地址都和返回前一样，但是拿到的all_op_nodes为空set()
-            nodes = sub_graph.all_op_nodes()
+            print("sub_graph_dict_outside:", sub_graph.
+                  __dict__)  # 这里object地址都和返回前一样，但是拿到的all_op_nodes为空set()
+            nodes = sub_graph.all_nodes()
+            print("ir graph's core graph", sub_graph.graph)
             print("all nodes outside build graph func:", nodes)
             transform_pass.apply(sub_graph)  #因为拿不到 all_op_nodes 所以pass会失败
             #program = sub_graph.to_program()
