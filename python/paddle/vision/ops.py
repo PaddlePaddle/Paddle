@@ -1297,7 +1297,3 @@ class RoIAlign(Layer):
             output_size=self._output_size,
             spatial_scale=self._spatial_scale,
             aligned=aligned)
-
-    def extra_repr(self):
-        main_str = 'output_size={_output_size}, spatial_scale={_spatial_scale}'
-        return main_str.format(**self.__dict__)
