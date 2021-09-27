@@ -20,8 +20,15 @@ from .streams import Stream  # noqa: F401
 from .streams import Event  # noqa: F401
 
 __all__ = [
-    'Stream', 'Event', 'current_stream', 'synchronize', 'device_count',
-    'empty_cache', 'stream_guard', 'get_device_name', 'get_device_capability'
+    'Stream',
+    'Event',
+    'current_stream',
+    'synchronize',
+    'device_count',
+    'empty_cache',
+    'stream_guard',
+    'get_device_name',
+    'get_device_capability',
 ]
 
 
@@ -203,7 +210,7 @@ def stream_guard(stream):
 
 def get_device_name(device=None):
     '''
-    Return the name of the device which is get from CUDA function `cudaDeviceProp<https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g1bf9d625a931d657e08db2b4391170f0>`_..
+    Return the name of the device which is got from CUDA function `cudaDeviceProp<https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g1bf9d625a931d657e08db2b4391170f0>`_..
 
     Parameters:
         device(paddle.CUDAPlace()|int, optional): The device or the ID of the device.
@@ -232,7 +239,7 @@ def get_device_name(device=None):
 
 def get_device_capability(device=None):
     '''
-    Return the major and minor revision numbers defining the device's compute capability which are get from CUDA function `cudaDeviceProp<https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g1bf9d625a931d657e08db2b4391170f0>`_..
+    Return the major and minor revision numbers defining the device's compute capability which are got from CUDA function `cudaDeviceProp<https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g1bf9d625a931d657e08db2b4391170f0>`_..
 
     Parameters:
         device(paddle.CUDAPlace()|int, optional): The device or the ID of the device.
@@ -256,6 +263,5 @@ def get_device_capability(device=None):
             paddle.device.cuda.get_device_capability(paddle.CUDAPlace(0))
 
     '''
-
-    return get_device_properties(device).major, get_device_properties(
-        device).minor
+    prop = get_device_properties(device)
+    return prop.major, prop.minor
