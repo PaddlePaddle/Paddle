@@ -25,7 +25,7 @@ AtomicVectorSizeT AsyncWorkQueue::PrepareAtomicDeps(
     working_dependecy_count[i] =
         std::make_unique<std::atomic<size_t>>(dependecy_count[i]);
   }
-  return std::move(working_dependecy_count);
+  return working_dependecy_count;
 }
 
 AtomicVectorSizeT AsyncWorkQueue::PrepareAtomicVarRef(
@@ -36,7 +36,7 @@ AtomicVectorSizeT AsyncWorkQueue::PrepareAtomicVarRef(
     working_var_ref[i] =
         std::make_unique<std::atomic<size_t>>(vec_meta_info[i].var_ref_count_);
   }
-  return std::move(working_var_ref);
+  return working_var_ref;
 }
 
 bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
