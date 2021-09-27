@@ -1021,30 +1021,6 @@ class ReductionMKLDNNHandler
     else
       this->AcquireForwardPrimitiveDescriptor(algo, x_md, y_md, p, eps);
   }
-
-  ReductionMKLDNNHandler(const dnnl::algorithm algo, const float p,
-                         const float eps, const mkldnn::engine engine,
-                         platform::Place cpu_place, const Tensor* x,
-                         const Tensor* y, std::vector<int64_t> y_tz,
-                         const dnnl::primitive_attr& attr)
-      : platform::MKLDNNHandlerNoCachingT<T, dnnl::reduction>(engine,
-                                                              cpu_place) {
-    PADDLE_ENFORCE_EQ(
-        x->layout(), DataLayout::kMKLDNN,
-        platform::errors::InvalidArgument("Wrong layout set for X tensor."));
-    PADDLE_ENFORCE_NE(
-        x->format(), MKLDNNMemoryFormat::undef,
-        platform::errors::InvalidArgument("Wrong format set for X tensor."));
-
-    const auto x_tz = framework::vectorize(x->dims());
-
-    const auto x_md =
-        dnnl::memory::desc(x_tz, platform::MKLDNNGetDataType<T>(), x->format());
-    const auto y_md =
-        memory::desc(y_tz, platform::MKLDNNGetDataType<T>(), x->format());
-
-    this->AcquireForwardPrimitiveDescriptor(attr, algo, x_md, y_md, p, eps);
-  }
 };
 
 template <typename T>
@@ -1414,15 +1390,18 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       int mask = output_shift_scale.size() > 1 ? 1 << 1 : 0;
       conv_attr.set_output_scales(mask, output_shift_scale);
     }
-    // Fusion with Elementwise layer relies on adding a sum post-operation with
-    // the scale parameter. It is assumed that when fuse_residual_connection is
+    // Fusion with Elementwise layer relies on adding a sum post-operation
+    // with
+    // the scale parameter. It is assumed that when fuse_residual_connection
+    // is
     // true, the output tensor contains the data coming from residual
     // connection. The result of this post_op is:
     // Output = scale * Output + Conv_Out.
     if (fuse_residual_conn) {
       post_operations.append_sum(sum_scale);
     }
-    // Fusion with ReLU layer is executed through the PostOps feature. Create a
+    // Fusion with ReLU layer is executed through the PostOps feature. Create
+    // a
     // PostOps object and configure it to execute an eltwise relu operation.
     if (fuse_activation == "relu" || fuse_activation == "leaky_relu") {
       constexpr float scale = 1.0f;

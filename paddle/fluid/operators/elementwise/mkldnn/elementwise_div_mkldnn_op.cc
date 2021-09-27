@@ -72,12 +72,26 @@ class EltwiseDivMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     if (dy) {
       // dy = (-dout * x) / y^2
 
-      const auto y_squared_md = dnnl::memory::desc::desc(
-          framework::vectorize(y->dims()), y->type(), y->format());
+      platform::BinaryMKLDNNHandler<T> y_squared_handler(
+          dnnl::algorithm::binary_mul, axis, mkldnn_engine, ctx.GetPlace(), y,
+          y, nullptr, 1.0f, 1.0f, 1.0f);
+
+      const auto src_y_memory_1 = y_squared_handler.AcquireSrcMemory(y);
+      const auto src_y_memory_2 = y_squared_handler.AcquireSecondSrcMemory(y);
+      const auto dst_y_memory = y_squared_handler.AcquireDstMemory();
+
+      const auto y_squared_binary_prim =
+          y_squared_handler.AcquireForwardPrimitive();
+
+      const std::unordered_map<int, dnnl::memory> y_squared_args = {
+          {DNNL_ARG_SRC_0, *src_y_memory_1},
+          {DNNL_ARG_SRC_1, *src_y_memory_2},
+          {DNNL_ARG_DST, *dst_y_memory}};
+
+      y_squared_binary_prim->execute(astream, y_squared_args);
 
       dnnl::post_ops po;
-      po.append_binary(dnnl::algorithm::binary_div, y_squared_md);
-      po.append_binary(dnnl::algorithm::binary_div, y_squared_md);
+      po.append_binary(dnnl::algorithm::binary_div, dst_y_memory->get_desc());
 
       platform::BinaryMKLDNNHandler<T> handler(
           dnnl::algorithm::binary_mul, axis, mkldnn_engine, ctx.GetPlace(),
@@ -94,19 +108,11 @@ class EltwiseDivMKLDNNGradKernel : public ElemwiseGradKernel<T> {
 
       const auto binary_prim = handler.AcquireForwardPrimitive();
 
-      auto y_squared_mem =
-          dnnl::memory(y_squared_md, mkldnn_engine, *y->data<T>());
-
-      //   auto y_squared_mem = handler.AcquireDiffSrcMemory(y);
-      //   handler.AcquireMemoryFromPrimitive(y_squared_md,
-      //                                      to_void_cast<T>(y->data<T>()));
-
       const std::unordered_map<int, dnnl::memory> args = {
           {DNNL_ARG_SRC_0, *src_dout_memory},
           {DNNL_ARG_SRC_1, *src_x_memory},
           {DNNL_ARG_DST, *dst_dy_memory},
-          {DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1, y_squared_mem},
-          {DNNL_ARG_ATTR_MULTIPLE_POST_OP(1) | DNNL_ARG_SRC_1, y_squared_mem}};
+          {DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1, *dst_y_memory}};
 
       binary_prim->execute(astream, args);
       astream.wait();

@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -68,8 +68,8 @@ class TestMKLDNNElementwiseDivOp(OpTest):
 
 class TestMKLDNNElementwiseDivOp2(TestMKLDNNElementwiseDivOp):
     def init_input_output(self):
-        self.x = np.random.random((100, )).astype(self.dtype)
-        self.y = np.random.random((100, )).astype(self.dtype)
+        self.x = np.random.uniform(0.1, 1, [100]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [100]).astype(self.dtype)
         self.out = np.divide(self.x, self.y)
 
 
@@ -89,7 +89,7 @@ class TestMKLDNNElementwiseDivOp4(TestMKLDNNElementwiseDivOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_x(self):
         pass
 
 
@@ -102,10 +102,63 @@ class TestMKLDNNElementwiseDivOp5(TestMKLDNNElementwiseDivOp):
     def test_check_grad_normal(self):
         pass
 
-    def test_check_grad_ingore_y(self):
+    def test_check_grad_ignore_x(self):
         pass
 
-    def test_check_grad_ingore_x(self):
+
+@OpTestTool.skip_if_not_cpu_bf16()
+class TestBf16(TestMKLDNNElementwiseDivOp):
+    def setUp(self):
+        self.op_type = "elementwise_div"
+        self.init_dtype()
+        self.init_input_output()
+        self.init_kernel_type()
+        self.init_axis()
+
+        self.x_bf16 = convert_float_to_uint16(self.x)
+        self.y_bf16 = convert_float_to_uint16(self.y)
+        self.inputs = {'X': self.x_bf16, 'Y': self.y_bf16}
+        self.attrs = {'axis': self.axis, 'use_mkldnn': self.use_mkldnn}
+        self.outputs = {'Out': convert_float_to_uint16(self.out)}
+
+    def init_dtype(self):
+        self.dtype = np.float32
+        self.mkldnn_data_type = "bfloat16"
+
+    def init_input_output(self):
+        self.x = np.random.uniform(0.1, 1, [100]).astype(self.dtype)
+        self.y = np.random.uniform(0.1, 1, [100]).astype(self.dtype)
+        self.out = np.divide(self.x, self.y)
+
+    def test_check_output(self):
+        self.check_output_with_place(core.CPUPlace())
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
+        pass
+
+    def test_check_grad_ignore_y(self):
+        pass
+
+
+class TestBf16Broadcasting(TestBf16):
+    def init_input_output(self):
+        self.x = np.random.uniform(1, 2, [2, 3, 4, 100]).astype(self.dtype)
+        self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
+        self.out = np.subtract(self.x, self.y)
+
+    def compute_reduced_gradients(self, out_grads):
+        part_sum = np.add.reduceat(out_grads, [0], axis=0)
+        part_sum = np.add.reduceat(part_sum, [0], axis=1)
+        part_sum = np.add.reduceat(part_sum, [0], axis=2)
+        return -part_sum.flatten()
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ignore_x(self):
         pass
 
 
@@ -137,10 +190,10 @@ class TestMKLDNNElementwiseDivOp5(TestMKLDNNElementwiseDivOp):
 #     def test_check_grad_normal(self):
 #         pass
 
-#     def test_check_grad_ingore_x(self):
+#     def test_check_grad_ignore_x(self):
 #         pass
 
-#     def test_check_grad_ingore_y(self):
+#     def test_check_grad_ignore_y(self):
 #         pass
 
 # class TestInt8Scales(TestInt8):
