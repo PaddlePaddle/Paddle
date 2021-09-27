@@ -107,7 +107,7 @@ class TestHessian(unittest.TestCase):
             error_msg = cpt.get_exception_message(e)
             assert error_msg.find("has no gradient") > 0
 
-    # NOTO(levi): enable this test case when matmul_grad_grad_grad is ok
+    # TODO(levi): enable this test case when matmul_grad_grad_grad is ok
     def _test_create_graph_true(self):
         def func(x):
             return paddle.sum(paddle.matmul(x, x))
