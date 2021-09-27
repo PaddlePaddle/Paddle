@@ -29,8 +29,7 @@ static inline int NumBlocks(const int N) {
 }
 
 template <typename T>
-__global__ void AssignPos(T* cum_count, const int* gate, int64_t* out,
-                          int64_t limit) {
+__global__ void AssignPos(T* cum_count, const T* gate, T* out, int64_t limit) {
   CUDA_KERNEL_LOOP(i, limit) {
     int gate_idx = gate[i];
     if (gate_idx > -1) {
@@ -63,19 +62,19 @@ class AssignPosCUDAKernel : public framework::OpKernel<T> {
     framework::Tensor cpu_eff_gates_len;
     int64_t cpu_eff_gates_len_data = 0;
     if (platform::is_cpu_place(eff_gates_len->place())) {
-      cpu_eff_gates_len_data = eff_gates_len->data<int64_t>()[0];
+      cpu_eff_gates_len_data = eff_gates_len->data<T>()[0];
     } else {
       framework::TensorCopySync(*eff_gates_len, platform::CPUPlace(),
                                 &cpu_eff_gates_len);
-      cpu_eff_gates_len_data = cpu_eff_gates_len.data<int64_t>()[0];
+      cpu_eff_gates_len_data = cpu_eff_gates_len.data<T>()[0];
     }
     const auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
 
     framework::DDim out_dims = framework::make_ddim({cpu_eff_gates_len_data});
-    auto out_data = out->mutable_data<int64_t>(out_dims, place);
+    auto out_data = out->mutable_data<T>(out_dims, place);
 
-    const int* gate_data = gate->data<int>();
+    const T* gate_data = gate->data<T>();
 
     int blocks = NumBlocks(numel);
     int threads = kNumCUDAThreads;
