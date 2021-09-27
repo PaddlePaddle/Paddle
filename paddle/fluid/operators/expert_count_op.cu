@@ -24,14 +24,17 @@ namespace operators {
 #define PERTHREAD_EXPERTS 256
 #define WARP_SIZE 32
 
+const int CUDA_NUM_THREADS = 512;
+static inline int GET_BLOCKS(const int N) {
+  return (N + CUDA_NUM_THREADS - 1) / CUDA_NUM_THREADS;
+}
+
 using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
 template <typename T>
-__global__ void clear(T* expert_count, int n_expert) {
-  for (int i = 0; i < n_expert; ++i) {
-    expert_count[i] = 0;
-  }
+__global__ void initialize_zero_kernel(T* data, const int length) {
+  CUDA_KERNEL_LOOP(idx, length) { data[idx] = static_cast<T>(0); }
 }
 
 template <typename T>
@@ -82,7 +85,9 @@ class ExpertCountOpCUDAKernel : public framework::OpKernel<T> {
     auto out_data = expert_count->mutable_data<T>(out_dims, place);
     const T* gate_data = gate_idx->data<T>();
 
-    clear<T><<<1, 1, 0, dev_ctx.stream()>>>(out_data, n_expert);
+    initialize_zero_kernel<
+        T><<<GET_BLOCKS(n_expert), CUDA_NUM_THREADS, 0, dev_ctx.stream()>>>(
+        out_data, n_expert);
     ExpertCount<
         T><<<CEIL(n_expert, PERTHREAD_EXPERTS), 256, 0, dev_ctx.stream()>>>(
         gate_data, out_data, batch_size, n_expert);
