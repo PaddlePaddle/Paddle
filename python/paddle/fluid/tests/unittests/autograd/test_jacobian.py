@@ -157,10 +157,6 @@ class TestJacobianFloat64(TestJacobian):
         self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
         self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
 
-    # NOTE(levi): skip this test case temporaryly.
-    def test_create_graph_true(self):
-        pass
-
 
 if __name__ == "__main__":
     unittest.main()
