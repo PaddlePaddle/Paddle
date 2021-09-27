@@ -482,7 +482,7 @@ register_unity_group(cu
     pull_box_extended_sparse_op.cu
     pull_box_sparse_op.cu)
 register_unity_group(cu
-    randint_like_op.cu
+    randint_op.cu
     random_crop_op.cu
     randperm_op.cu
     range_op.cu
