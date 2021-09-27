@@ -28,16 +28,23 @@ using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
 template <typename T>
-__global__ void ExpertCount(const T* gate_idx, int* expert_count,
+__global__ void clear(T* expert_count, int n_expert) {
+  for (int i = 0; i < n_expert; ++i) {
+    expert_count[i] = 0;
+  }
+}
+
+template <typename T>
+__global__ void ExpertCount(const T* gate_idx, T* expert_count,
                             int64_t batch_size, int n_expert) {
   int res_tmp[PERTHREAD_EXPERTS] = {0};
-  int64_t expert_min = blockIdx.x * PERTHREAD_EXPERTS;
-  int64_t expert_max = expert_min + PERTHREAD_EXPERTS;
+  int expert_min = blockIdx.x * PERTHREAD_EXPERTS;
+  int expert_max = expert_min + PERTHREAD_EXPERTS;
   if (expert_max > n_expert) {
     expert_max = n_expert;
   }
   for (int i = threadIdx.x; i < batch_size; i += blockDim.x) {
-    int64_t idx = gate_idx[i];
+    T idx = gate_idx[i];
     if (idx == -1) {
       continue;
     }
@@ -62,19 +69,20 @@ template <typename T>
 class ExpertCountOpCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto gate_idx = context.Input<Tensor>("gate_idx");
+    auto gate_idx = context.Input<LoDTensor>("gate_idx");
     auto n_expert = context.Attr<int>("n_expert");
-    auto expert_count = context.Output<Tensor>("Out");
+    auto expert_count = context.Output<LoDTensor>("Out");
 
-    auto batch_size = gate_idx->numel();
+    int64_t batch_size = gate_idx->numel();
     auto place = context.GetPlace();
     const auto& dev_ctx =
         context.template device_context<platform::CUDADeviceContext>();
 
     framework::DDim out_dims = framework::make_ddim({n_expert});
-    auto out_data = expert_count->mutable_data<int>(out_dims, place);
-    const T* gate_data = const_cast<T*>(gate_idx->data<T>());
+    auto out_data = expert_count->mutable_data<T>(out_dims, place);
+    const T* gate_data = gate_idx->data<T>();
 
+    clear<T><<<1, 1, 0, dev_ctx.stream()>>>(out_data, n_expert);
     ExpertCount<
         T><<<CEIL(n_expert, PERTHREAD_EXPERTS), 256, 0, dev_ctx.stream()>>>(
         gate_data, out_data, batch_size, n_expert);
@@ -87,5 +95,4 @@ class ExpertCountOpCUDAKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
 
-REGISTER_OP_CUDA_KERNEL(expert_count, ops::ExpertCountOpCUDAKernel<int>,
-                        ops::ExpertCountOpCUDAKernel<int64_t>);
+REGISTER_OP_CUDA_KERNEL(expert_count, ops::ExpertCountOpCUDAKernel<int>)
