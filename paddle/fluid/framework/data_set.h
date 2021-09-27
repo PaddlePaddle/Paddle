@@ -234,6 +234,11 @@ class DatasetImpl : public Dataset {
   virtual void DynamicAdjustReadersNum(int thread_num);
   virtual void SetFleetSendSleepSeconds(int seconds);
   virtual void SetHeterPs(bool enable_heterps) {}
+  /* for enable_heterps_
+  virtual void EnableHeterps(bool enable_heterps) {
+    enable_heterps_ = enable_heterps;
+  }
+  */
 
   std::vector<paddle::framework::Channel<T>>& GetMultiOutputChannel() {
     return multi_output_channel_;
@@ -252,6 +257,7 @@ class DatasetImpl : public Dataset {
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
                                 const std::string& msg) {
+    // TODO(yaoxuefeng) for SlotRecordDataset
     return -1;
   }
   std::vector<std::shared_ptr<paddle::framework::DataFeed>> readers_;
@@ -300,7 +306,7 @@ class DatasetImpl : public Dataset {
   int64_t global_index_ = 0;
   std::vector<std::shared_ptr<ThreadPool>> consume_task_pool_;
   std::vector<T> input_records_;  // only for paddleboxdatafeed
-  bool enable_heterps_ = false;
+  bool enable_heterps_ = true;
 };
 
 // use std::vector<MultiSlotType> or Record as data type
@@ -335,8 +341,6 @@ class MultiSlotDataset : public DatasetImpl<Record> {
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
                                 const std::string& msg);
-  // protected:
-  //  paddle::framework::Channel<RecordPtr> input_ptr_channel_;
 };
 class SlotRecordDataset : public DatasetImpl<SlotRecord> {
  public:
@@ -351,10 +355,10 @@ class SlotRecordDataset : public DatasetImpl<SlotRecord> {
   virtual void GlobalShuffle(int thread_num = -1);
   virtual void DynamicAdjustChannelNum(int channel_num,
                                        bool discard_remaining_ins);
-  virtual void SetHeterPs(bool enable_heterps) {
-    // Wait for datafeed ready
-    return;
-  }
+  virtual void SetHeterPs(bool enable_heterps);
+
+ protected:
+  bool enable_heterps_ = true;
 };
 
 }  // end namespace framework

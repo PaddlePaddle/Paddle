@@ -2300,17 +2300,6 @@ bool SlotRecordInMemoryDataFeed::ParseOneInstance(const std::string& line,
     rec->ins_id_ = std::string(str + pos, len);
     pos += len + 1;
   }
-  //  if (parse_content_) {
-  //    int num = strtol(&str[pos], &endptr, 10);
-  //    CHECK(num == 1);  // NOLINT
-  //    pos = endptr - str + 1;
-  //    size_t len = 0;
-  //    while (str[pos + len] != ' ') {
-  //      ++len;
-  //    }
-  //    rec->content_ = std::string(str + pos, len);
-  //    pos += len + 1;
-  //  }
   if (parse_logkey_) {
     int num = strtol(&str[pos], &endptr, 10);
     CHECK(num == 1);  // NOLINT
@@ -2526,6 +2515,54 @@ void SlotRecordInMemoryDataFeed::ExpandSlotRecord(SlotRecord* rec) {
   }
   slot_offsets[float_slot_num] = offset;
   CHECK(float_total_dims_size_ == static_cast<size_t>(offset));
+}
+
+bool SlotRecordInMemoryDataFeed::Start() {
+#ifdef _LINUX
+  this->CheckSetFileList();
+  if (input_channel_->Size() != 0) {
+    std::vector<SlotRecord> data;
+    input_channel_->Read(data);
+  }
+#endif
+  if (batch_offsets_.size() > 0) {
+    VLOG(3) << "batch_size offsets: " << batch_offsets_.size();
+    enable_heterps_ = true;
+    this->offset_index_ = 0;
+  }
+  this->finish_start_ = true;
+  return true;
+}
+
+int SlotRecordInMemoryDataFeed::Next() {
+#ifdef _LINUX
+  this->CheckStart();
+
+  VLOG(3) << "enable heter next: " << offset_index_
+          << " batch_offsets: " << batch_offsets_.size();
+  if (offset_index_ >= batch_offsets_.size()) {
+    VLOG(3) << "offset_index: " << offset_index_
+            << " batch_offsets: " << batch_offsets_.size();
+    return 0;
+  }
+  auto& batch = batch_offsets_[offset_index_++];
+  this->batch_size_ = batch.second;
+  VLOG(3) << "batch_size_=" << this->batch_size_
+          << ", thread_id=" << thread_id_;
+  if (this->batch_size_ != 0) {
+    PutToFeedVec(&records_[batch.first], this->batch_size_);
+  } else {
+    VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
+            << thread_id_;
+  }
+  VLOG(3) << "enable heter next: " << offset_index_
+          << " batch_offsets: " << batch_offsets_.size()
+          << " baych_size: " << this->batch_size_;
+
+  return this->batch_size_;
+#else
+  return 0;
+#endif
 }
 
 }  // namespace framework

@@ -1535,9 +1535,6 @@ void SlotRecordDataset::CreateReaders() {
     readers_[i]->SetParseContent(parse_content_);
     readers_[i]->SetParseLogKey(parse_logkey_);
     readers_[i]->SetEnablePvMerge(enable_pv_merge_);
-    // Notice: it is only valid for untest of test_paddlebox_datafeed.
-    // In fact, it does not affect the train process when paddle is
-    // complied with Box_Ps.
     readers_[i]->SetCurrentPhase(current_phase_);
     if (input_channel_ != nullptr) {
       readers_[i]->SetInputChannel(input_channel_.get());
@@ -1559,11 +1556,10 @@ void SlotRecordDataset::ReleaseMemory() {
     input_channel_ = nullptr;
   }
   if (enable_heterps_) {
-    VLOG(0) << "put pool records size: " << input_records_.size();
+    VLOG(3) << "put pool records size: " << input_records_.size();
     SlotRecordPool().put(&input_records_);
     input_records_.clear();
     input_records_.shrink_to_fit();
-    // std::vector<T*>().swap(input_records_);
     VLOG(3) << "release heterps input records records size: "
             << input_records_.size();
   }
@@ -1581,7 +1577,7 @@ void SlotRecordDataset::ReleaseMemory() {
   STAT_SUB(STAT_total_feasign_num_in_mem, total_fea_num_);
 }
 void SlotRecordDataset::GlobalShuffle(int thread_num) {
-  // tmp
+  // TODO(yaoxuefeng)
   return;
 }
 
@@ -1602,6 +1598,45 @@ void SlotRecordDataset::DynamicAdjustChannelNum(int channel_num,
   }
 
   VLOG(3) << "adjust channel num done";
+}
+
+void SlotRecordDataset::SetHeterPs(bool enable_heterps) {
+#ifdef PADDLE_WITH_GLOO
+  enable_heterps_ = enable_heterps;
+  if (enable_heterps_) {
+    if (input_records_.size() == 0 && input_channel_ != nullptr &&
+        input_channel_->Size() != 0) {
+      input_channel_->ReadAll(input_records_);
+      VLOG(3) << "read from channel to records with records size: "
+              << input_records_.size();
+    }
+    VLOG(3) << "input records size: " << input_records_.size();
+    int64_t total_ins_num = input_records_.size();
+    std::vector<std::pair<int, int>> offset;
+    int default_batch_size =
+        reinterpret_cast<SlotRecordInMemoryDataFeed*>(readers_[0].get())
+            ->GetDefaultBatchSize();
+    VLOG(3) << "thread_num: " << thread_num_
+            << " memory size: " << total_ins_num
+            << " default batch_size: " << default_batch_size;
+    compute_thread_batch_nccl(thread_num_, total_ins_num, default_batch_size,
+                              &offset);
+    VLOG(3) << "offset size: " << offset.size();
+    for (int i = 0; i < thread_num_; i++) {
+      reinterpret_cast<SlotRecordInMemoryDataFeed*>(readers_[i].get())
+          ->SetRecord(&input_records_[0]);
+    }
+    for (size_t i = 0; i < offset.size(); i++) {
+      reinterpret_cast<SlotRecordInMemoryDataFeed*>(
+          readers_[i % thread_num_].get())
+          ->AddBatchOffset(offset[i]);
+    }
+  }
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "dataset set heterps need compile with GLOO"));
+#endif
+  return;
 }
 
 }  // end namespace framework

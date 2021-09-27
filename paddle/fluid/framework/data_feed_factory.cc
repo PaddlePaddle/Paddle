@@ -58,8 +58,8 @@ std::shared_ptr<DataFeed> DataFeedFactory::CreateDataFeed(
     std::string data_feed_class) {
   if (g_data_feed_map.count(data_feed_class) < 1) {
     LOG(WARNING) << "Your DataFeed " << data_feed_class
-                 << "is not supported currently";
-    LOG(WARNING) << "Supported DataFeed: " << DataFeedTypeList();
+                 << " is not supported currently";
+    LOG(WARNING) << " Supported DataFeed: " << DataFeedTypeList();
     exit(-1);
   }
   return g_data_feed_map[data_feed_class]();

@@ -188,19 +188,7 @@ struct Record {
   uint64_t search_id;
   uint32_t rank;
   uint32_t cmatch;
-  ~Record() { clear(true); }
-  void reset(void) { clear(FLAGS_enable_slotrecord_reset_shrink); }
-  void clear(bool shrink) {
-    // uint64_feasigns_.clear();
-    // float_feasigns_.clear();
-    if (shrink) {
-      uint64_feasigns_.shrink_to_fit();
-      float_feasigns_.shrink_to_fit();
-    }
-  }
 };
-
-using RecordPtr = Record*;
 
 inline SlotRecord make_slotrecord() {
   static const size_t slot_record_byte_size = sizeof(SlotRecordObject);
@@ -1124,6 +1112,8 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   void ExpandSlotRecord(SlotRecord* ins);
 
  protected:
+  virtual bool Start();
+  virtual int Next();
   virtual bool ParseOneInstance(SlotRecord* instance) { return false; }
   virtual bool ParseOneInstanceFromPipe(SlotRecord* instance) { return false; }
   // virtual void ParseOneInstanceFromSo(const char* str, T* instance,
@@ -1137,10 +1127,8 @@ class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
   virtual void SetInputChannel(void* channel) {
     input_channel_ = static_cast<ChannelObject<SlotRecord>*>(channel);
   }
-  bool ParseOneInstance(const std::string& line, RecordPtr* rec);
   bool ParseOneInstance(const std::string& line, SlotRecord* rec);
   virtual void PutToFeedVec(const SlotRecord* ins_vec, int num);
-  // paddle::framework::ChannelObject<RecordPtr>* input_ptr_channel_;
   float sample_rate_ = 1.0f;
   int use_slot_size_ = 0;
   int float_use_slot_size_ = 0;
