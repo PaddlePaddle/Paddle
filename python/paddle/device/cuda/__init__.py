@@ -210,28 +210,37 @@ def stream_guard(stream):
 def get_device_properties(device=None):
     '''
     Return the properties of given CUDA device.
+
     Args:
         device(paddle.CUDAPlace or int or str): The device, the ID of the device 
             or the string name of device like 'gpu:x' which to get the properties of 
             the device from. If device is None, the device is the current device. 
             Default: None.
+
     Returns:
-        _CudaDeviceProperties: the properties of the device which include ASCII string 
+        _gpuDeviceProperties: the properties of the device which include ASCII string 
         identifying device, major compute capability, minor compute capability, global 
         memory available on device in bytes and the number of multiprocessors on the device.
+
     Examples:
     
         .. code-block:: python
+
             # required: gpu
+
             import paddle
             paddle.device.cuda.get_device_properties()
             # _CudaDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+
             paddle.device.cuda.get_device_properties(0)
             # _CudaDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+
             paddle.device.cuda.get_device_properties('gpu:0')
             # _CudaDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+
             paddle.device.cuda.get_device_properties(paddle.CUDAPlace(0))
             # _CudaDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+
     '''
 
     if not core.is_compiled_with_cuda():
