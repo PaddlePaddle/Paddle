@@ -69,6 +69,8 @@ class TestFleetBase(unittest.TestCase):
             dirname="/tmp", feed=[input_x, input_y], fetch=[avg_cost])
         fleet.fleet.save(dirname="/tmp")
 
+        fleet.load_model(path="/tmp", mode=0)
+
         self.assertRaises(
             Exception,
             fleet.save_inference_model,
