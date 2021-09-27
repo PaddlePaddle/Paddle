@@ -28,8 +28,8 @@ using LoDTensor = framework::LoDTensor;
 using Tensor = framework::Tensor;
 
 template <typename T>
-__global__ void ExpertCount(const T* gate_idx, int* expert_count,
-                            int64_t batch_size, int n_expert) {
+__global__ void expert_count_impl(const T* gate_idx, int* expert_count,
+                                  int64_t batch_size, int n_expert) {
   int res_tmp[PERTHREAD_EXPERTS] = {0};
   int64_t expert_min = blockIdx.x * PERTHREAD_EXPERTS;
   int64_t expert_max = expert_min + PERTHREAD_EXPERTS;
@@ -73,9 +73,9 @@ class ExpertCountOpCUDAKernel : public framework::OpKernel<T> {
 
     framework::DDim out_dims = framework::make_ddim({n_expert});
     auto out_data = expert_count->mutable_data<int>(out_dims, place);
-    const T* gate_data = const_cast<T*>(gate_idx->data<T>());
+    const T* gate_data = gate_idx->data<T>();
 
-    ExpertCount<
+    expert_count_impl<
         T><<<CEIL(n_expert, PERTHREAD_EXPERTS), 256, 0, dev_ctx.stream()>>>(
         gate_data, out_data, batch_size, n_expert);
   }
