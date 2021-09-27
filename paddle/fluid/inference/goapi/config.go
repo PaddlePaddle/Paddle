@@ -384,6 +384,71 @@ func (config *Config) SetTRTDynamicShapeInfo(minInputShape map[string][]int32, m
 }
 
 ///
+/// \brief A boolean state telling whether the trt dynamic_shape is used.
+///
+func (config *Config) TensorRtDynamicShapeEnabled() bool {
+	return cvtPDBoolToGo(C.PD_ConfigTensorRtDynamicShapeEnabled(config.c))
+}
+
+///
+/// \brief Enable tuned tensorrt dynamic shape.
+///
+/// \param shapeRangeInfoPath the path to shape_info file got in
+/// CollectShapeInfo mode.
+/// \param allowBuildAtRuntime allow build trt engine at runtime.
+///
+func (config *Config) EnableTunedTensorRtDynamicShape(shapeRangeInfoPath string, allowBuildAtRuntime bool) {
+	cstr := C.CString(shapeRangeInfoPath)
+	C.PD_ConfigEnableTunedTensorRtDynamicShape(config.c, cstr, cvtGoBoolToPD(allowBuildAtRuntime))
+	defer C.free(unsafe.Pointer(cstr))
+}
+
+///
+/// \brief A boolean state telling whether to use tuned tensorrt dynamic
+/// shape.
+///
+func (config *Config) TunedTensorRtDynamicShape() bool {
+	return cvtPDBoolToGo(C.PD_ConfigTunedTensorRtDynamicShape(config.c))
+}
+
+///
+/// \brief A boolean state telling whether to allow building trt engine at
+/// runtime.
+///
+func (config *Config) TrtAllowBuildAtRuntime() bool {
+	return cvtPDBoolToGo(C.PD_ConfigTrtAllowBuildAtRuntime(config.c))
+}
+
+///
+/// \brief Collect shape info of all tensors in compute graph.
+///
+/// \param shapeRangeInfoPath the path to save shape info.
+///
+func (config *Config) CollectShapeRangeInfo(shapeRangeInfoPath string) {
+	cstr := C.CString(shapeRangeInfoPath)
+	C.PD_ConfigCollectShapeRangeInfo(config.c, cstr)
+	defer C.free(unsafe.Pointer(cstr))
+}
+
+///
+/// \brief the shape info path in CollectShapeInfo mode.
+/// Attention, Please release the string manually.
+///
+func (config *Config) ShapeRangeInfoPath() string {
+	cstr := C.PD_ConfigShapeRangeInfoPath(config.c)
+	str := C.GoString(cstr)
+	C.free(unsafe.Pointer(cstr))
+	return str
+}
+
+///
+/// \brief A boolean state telling whether to collect shape info.
+///
+func (config *Config) ShapeRangeInfoCollected() bool {
+	return cvtPDBoolToGo(C.PD_ConfigShapeRangeInfoCollected(config.c))
+}
+
+///
 /// \brief Prevent ops running in Paddle-TRT
 /// NOTE: just experimental, not an official stable API, easy to be broken.
 ///
@@ -649,8 +714,8 @@ func (config *Config) ModelFromMemory() bool {
 /// \brief Turn on memory optimize
 /// NOTE still in development.
 ///
-func (config *Config) EnableMemoryOptim() {
-	C.PD_ConfigEnableMemoryOptim(config.c)
+func (config *Config) EnableMemoryOptim(x bool) {
+	C.PD_ConfigEnableMemoryOptim(config.c, cvtGoBoolToPD(x))
 }
 
 ///

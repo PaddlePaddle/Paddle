@@ -391,6 +391,11 @@ class TestVarBase(unittest.TestCase):
             self.assertTrue(cmp_float(x.grad.numpy(), [20.0]))
             self.assertTrue(cmp_float(detach_x.grad.numpy(), [60.0]))
 
+            with self.assertRaises(ValueError):
+                detach_x[:] = 5.0
+
+            detach_x.stop_gradient = True
+
             # Due to sharing of data with origin Tensor, There are some unsafe operations:
             with self.assertRaises(RuntimeError):
                 y = 2**x
@@ -438,9 +443,10 @@ class TestVarBase(unittest.TestCase):
             self.assertTrue(np.array_equal(y.numpy(), y_copy.numpy()))
 
             self.assertNotEqual(id(x), id(x_copy))
-            x_copy[:] = 5.
-            self.assertTrue(np.array_equal(x_copy.numpy(), [5.]))
             self.assertTrue(np.array_equal(x.numpy(), [2.]))
+
+            with self.assertRaises(ValueError):
+                x_copy[:] = 5.
 
             with self.assertRaises(RuntimeError):
                 copy.deepcopy(z)
@@ -805,8 +811,8 @@ class TestVarBase(unittest.TestCase):
         # case2:
         tensor_x = paddle.to_tensor(
             np.zeros(12).reshape(2, 6).astype(np.float32))
-        tensor_y1 = paddle.zeros([1]) + 2
-        tensor_y2 = paddle.zeros([1]) + 5
+        tensor_y1 = paddle.zeros([1], dtype='int32') + 2
+        tensor_y2 = paddle.zeros([1], dtype='int32') + 5
         tensor_x[:, tensor_y1:tensor_y2] = 42
         res = tensor_x.numpy()
         exp = np.array([[0., 0., 42., 42., 42., 0.],

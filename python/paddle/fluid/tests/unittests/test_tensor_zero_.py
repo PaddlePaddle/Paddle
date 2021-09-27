@@ -35,12 +35,11 @@ class TensorFill_Test(unittest.TestCase):
                 np.array(six.moves.range(np.prod(self.shape))), self.shape)
             for dtype in typelist:
                 tensor = paddle.to_tensor(np_arr, place=p, dtype=dtype)
-                newtensor = tensor.clone()
-                newtensor[...] = 0
+                target = tensor.numpy()
+                target[...] = 0
 
                 tensor.zero_()
-                self.assertEqual(
-                    (tensor.numpy() == newtensor.numpy()).all().item(), True)
+                self.assertEqual((tensor.numpy() == target).all().item(), True)
 
 
 if __name__ == '__main__':

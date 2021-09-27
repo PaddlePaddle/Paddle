@@ -32,6 +32,7 @@
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/new_executor/new_executor_defs.h"
+#include "paddle/fluid/framework/new_executor/workqueue.h"
 #include "paddle/fluid/framework/op_info.h"
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
@@ -47,6 +48,39 @@ namespace paddle {
 namespace framework {
 
 namespace interpretercore {
+
+using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
+
+class AsyncWorkQueue {
+ public:
+  explicit AsyncWorkQueue(size_t host_num_threads)
+      : host_num_thread_(host_num_threads) {
+    std::vector<WorkQueueOptions> group_options;
+    // for execute host Kernel
+    group_options.emplace_back(/*num_threads*/ host_num_threads,
+                               /*allow_spinning*/ true,
+                               /*track_task*/ true);
+    // for launch device Kernel
+    group_options.emplace_back(/*num_threads*/ 1,
+                               /*allow_spinning*/ true, /*track_task*/ true);
+    queue_group_ = CreateWorkQueueGroup(group_options);
+  }
+
+  AtomicVectorSizeT PrepareAtomicDeps(
+      const std::vector<size_t>& dependecy_count);
+  AtomicVectorSizeT PrepareAtomicVarRef(
+      const std::vector<VariableMetaInfo>& vec_meta_info);
+
+  void WaitEmpty() { queue_group_->WaitQueueGroupEmpty(); }
+
+  void AddTask(const OpFuncType& op_func_type, std::function<void()> fn) {
+    queue_group_->AddTask(static_cast<size_t>(op_func_type), std::move(fn));
+  }
+
+ private:
+  size_t host_num_thread_;
+  std::unique_ptr<WorkQueueGroup> queue_group_;
+};
 
 std::string get_memcpy_type(const platform::Place& src_place,
                             const platform::Place& dst_place);

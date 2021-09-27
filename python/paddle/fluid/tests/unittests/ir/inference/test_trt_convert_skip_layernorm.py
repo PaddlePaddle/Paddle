@@ -37,6 +37,9 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
                     'begin_norm_axis']:
                 return False
 
+        #2D input is not supported.
+        if self.dims == 2:
+            return False
         return True
 
     def sample_program_configs(self):
@@ -46,7 +49,7 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
             elif self.dims == 3:
                 return np.ones([batch, 128, 768]).astype(np.float32)
             elif self.dims == 2:
-                return np.ones([batch, 128, 768]).astype(np.float32)
+                return np.ones([batch, 768]).astype(np.float32)
 
         def generate_input2(attrs: List[Dict[str, Any]], batch):
             if self.dims == 4:
@@ -54,7 +57,7 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
             elif self.dims == 3:
                 return np.ones([batch, 128, 768]).astype(np.float32)
             elif self.dims == 2:
-                return np.ones([batch, 128, 768]).astype(np.float32)
+                return np.ones([batch, 768]).astype(np.float32)
 
         def generate_weight1(attrs: List[Dict[str, Any]]):
             return np.random.random([768]).astype(np.float32)
@@ -62,7 +65,7 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
         def generate_weight2(attrs: List[Dict[str, Any]]):
             return np.random.random([768]).astype(np.float32)
 
-        for dims in [3, 4]:
+        for dims in [2, 3, 4]:
             for batch in [1, 2, 4]:
                 for epsilon in [1e-5]:
                     for begin_norm_axis in [0, 1, 2, -1]:
@@ -124,8 +127,8 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
                     "Scale": [3072]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "skip_layernorm_inputX_data": [1, 6, 128, 768],
-                    "skip_layernorm_inputY_data": [1, 6, 128, 768],
+                    "skip_layernorm_inputX_data": [2, 6, 128, 768],
+                    "skip_layernorm_inputY_data": [2, 6, 128, 768],
                     "Bias": [768],
                     "Scale": [768]
                 }
@@ -143,8 +146,8 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
                     "Scale": [3072]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "skip_layernorm_inputX_data": [1, 128, 768],
-                    "skip_layernorm_inputY_data": [1, 128, 768],
+                    "skip_layernorm_inputX_data": [2, 128, 768],
+                    "skip_layernorm_inputY_data": [2, 128, 768],
                     "Bias": [768],
                     "Scale": [768]
                 }
@@ -162,8 +165,8 @@ class TrtConvertSkipLayernormTest(TrtLayerAutoScanTest):
                     "Scale": [3072]
                 }
                 self.dynamic_shape.opt_input_shape = {
-                    "skip_layernorm_inputX_data": [1, 768],
-                    "skip_layernorm_inputY_data": [1, 768],
+                    "skip_layernorm_inputX_data": [2, 768],
+                    "skip_layernorm_inputY_data": [2, 768],
                     "Bias": [768],
                     "Scale": [768]
                 }
