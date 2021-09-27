@@ -1089,6 +1089,7 @@ function card_test() {
         CUDA_DEVICE_COUNT=1
     elif [ "${WITH_ASCEND_CL}" == "ON" ];then
         CUDA_DEVICE_COUNT=1
+        [ $# -ge 3 ] && CUDA_DEVICE_COUNT=$3
     elif [ "${WITH_ROCM}" == "ON" ];then
         CUDA_DEVICE_COUNT=4
     else
@@ -1127,17 +1128,23 @@ function card_test() {
             fi
         done
         tmpfile=$tmp_dir/$tmpfile_rand"_"$i
+
+        cexeclude=""
+        [ ! -z $disable_ut_quickly ] && cexeclude="-E ($disable_ut_quickly)"
+        
         if [ ${TESTING_DEBUG_MODE:-OFF} == "ON" ] ; then
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" -V --timeout 120 -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" $cexeclude -V --timeout 120 -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             else  
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" $cexeclude --timeout 120 -V -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         else
             if [[ $cardnumber == $CUDA_DEVICE_COUNT ]]; then
-                (ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+            set -x
+                (ctest -I $i,,$NUM_PROC -R "($testcases)" $cexeclude --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+            set +x
             else
-                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" -E "($disable_ut_quickly)" --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
+                (env CUDA_VISIBLE_DEVICES=$cuda_list ctest -I $i,,$NUM_PROC -R "($testcases)" $cexeclude --timeout 120 --output-on-failure  -j $parallel_job | tee $tmpfile; test ${PIPESTATUS[0]} -eq 0) &
             fi
         fi
     done
@@ -1795,6 +1802,151 @@ set +x
         ut_actual_total_startTime_s=`date +%s`
 
         card_test "$single_card_tests" 1 # run cases 1 job each time with single GPU
+        collect_failed_tests
+
+        # add unit test retry for NPU
+        rm -f $tmp_dir/*
+        exec_times=0
+        retry_unittests_record=''
+        retry_time=4
+        exec_time_array=('first' 'second' 'third' 'fourth')
+        parallel_failed_tests_exec_retry_threshold=120
+        exec_retry_threshold=30
+        is_retry_execuate=0
+        rerun_ut_startTime_s=`date +%s`
+        if [ -n "$failed_test_lists" ];then
+            if [ ${TIMEOUT_DEBUG_HELP:-OFF} == "ON" ];then
+                bash $PADDLE_ROOT/tools/timeout_debug_help.sh "$failed_test_lists"    # cat logs for tiemout uts which killed by ctest
+            fi
+            need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            need_retry_ut_arr=(${need_retry_ut_str})
+            need_retry_ut_count=${#need_retry_ut_arr[@]}
+            retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+            while ( [ $exec_times -lt $retry_time ] )
+                do
+                    if [[ "${exec_times}" == "0" ]] ;then
+                        if [ $need_retry_ut_count -lt $parallel_failed_tests_exec_retry_threshold ];then
+                            is_retry_execuate=0
+                        else
+                            is_retry_execuate=1
+                        fi
+                    elif [[ "${exec_times}" == "1" ]] ;then
+                        need_retry_ut_str=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                        need_retry_ut_arr=(${need_retry_ut_str})
+                        need_retry_ut_count=${#need_retry_ut_arr[@]} 
+                        if [ $need_retry_ut_count -lt $exec_retry_threshold ];then
+                            is_retry_execuate=0
+                        else
+                            is_retry_execuate=1
+                        fi
+                    fi
+                    if [[ "$is_retry_execuate" == "0" ]];then
+                        set +e
+                        retry_unittests_record="$retry_unittests_record$failed_test_lists"
+                        failed_test_lists_ult=`echo "${failed_test_lists}" |grep -Po '[^ ].*$'`
+                        set -e
+                        if [[ "${exec_times}" == "1" ]] || [[ "${exec_times}" == "3" ]];then
+                            if [[ "${failed_test_lists}" == "" ]];then
+                                break
+                            else
+                                retry_unittests=$(echo "$failed_test_lists" | grep -oEi "\-.+\(.+\)" | sed 's/(.\+)//' | sed 's/- //' )
+                            fi
+                        fi
+                        echo "========================================="
+                        echo "This is the ${exec_time_array[$exec_times]} time to re-run"
+                        echo "========================================="
+                        echo "The following unittest will be re-run:"
+                        echo "${retry_unittests}"                    
+                        for line in ${retry_unittests[@]} ;
+                            do
+                                tmp_one_tmp="$( echo $single_card_tests | grep -oEi $line )"
+
+                                if [[ "$tmp_one_tmp" != ""  ]]; then
+                                    if [[ "$one_card_retry" == "" ]]; then
+                                        one_card_retry="^$line$"
+                                    else
+                                        one_card_retry="$one_card_retry|^$line$"
+                                    fi
+                                fi
+
+                            done
+
+                        if [[ "$one_card_retry" != "" ]]; then
+                            card_test "$one_card_retry" 1 # run cases 1 job each time with single GPU
+                        fi
+                        exec_times=$[$exec_times+1]
+                        failed_test_lists=''
+                        collect_failed_tests
+                        rm -f $tmp_dir/*
+                        one_card_retry=''
+                    else 
+                        break
+                    fi
+
+                done
+        fi
+
+        rerun_ut_endTime_s=`date +%s`
+        
+        echo "ipipe_log_param_Rerun_TestCases_Total_Time: $[ $rerun_ut_endTime_s - $rerun_ut_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        ut_actual_total_endTime_s=`date +%s`
+        echo "ipipe_log_param_actual_TestCases_Total_Time: $[ $ut_actual_total_endTime_s - $ut_actual_total_startTime_s ]s" >> ${PADDLE_ROOT}/build/build_summary.txt
+        if [[ "$EXIT_CODE" != "0" ]]; then
+            show_ut_retry_result
+        fi
+set -ex
+    fi   
+}
+
+
+function test_base_npu_dist() {
+
+    export HCCL_CONNECT_TIMEOUT=7200
+    export HCCL_WHITELIST_DISABLE=1
+    export HCCL_SECURITY_MODE=1
+    # skipping if no NPU related files changed
+    if [ ${SKIP_NPU_TEST:-ON} == "ON" ] ; then
+        fetch_upstream_develop_if_not_exist
+        # get npu py or npu cc file changes
+        git diff --name-only remotes/upstream/$BRANCH
+        npu_cc_changes=$(git diff --name-only remotes/upstream/$BRANCH | grep "op_npu.cc" |grep "/collective/" || true)
+        npu_py_changes=$(git diff --name-only remotes/upstream/$BRANCH | grep "op_npu.py" |grep "/collective/" || true)
+        # get PR name
+        npu_pr_tile=$(curl https://github.com/PaddlePaddle/Paddle/pull/${GIT_PR_ID} 2>/dev/null | grep "<title>" | grep "NPU" || true)
+        if [ -z "${npu_cc_changes}" ] && [ -z "${npu_py_changes}" ] && [ -z "${npu_pr_tile}" ]; then
+            echo "NO NPU operators files changed and no '[NPU]' found in PR title, skip NPU unit tests!"
+            exit 0
+        fi
+    fi
+    mkdir -p ${PADDLE_ROOT}/build
+    cd ${PADDLE_ROOT}/build/python/paddle/fluid/tests/unittests/npu
+    if [ ${WITH_TESTING:-ON} == "ON" ] ; then
+    cat <<EOF
+    ========================================
+    Running unit npu tests ...
+    ========================================
+EOF
+
+set +x
+        test_cases=$(ctest -N -V) # get all test cases
+        # get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
+        while read -r line; do
+            if [[ "$line" == "" ]]; then
+                continue
+            fi
+            [[ `python ${PADDLE_ROOT}/paddle/scripts/in_collective.py $line` == "False" ]] && continue
+
+            read testcase <<< $(echo "$line"|sed 's/"//g'|grep -oEi "\w+$")
+            if [[ "$single_card_tests" == "" ]]; then
+                single_card_tests="^$testcase$"
+            else
+                single_card_tests="$single_card_tests|^$testcase$"
+            fi
+        done <<< "$test_cases";
+
+        ut_actual_total_startTime_s=`date +%s`
+
+        card_test "$single_card_tests" 2 2 # run cases 1 job each time with 2 NPUs
         collect_failed_tests
 
         # add unit test retry for NPU
@@ -2604,6 +2756,10 @@ function main() {
         cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         parallel_test
         check_coverage
+        ;;
+      check_npu_dist)
+        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        test_base_npu_dist
         ;;
       reuse_so_cicheck_py35)
         reuse_so_cache
