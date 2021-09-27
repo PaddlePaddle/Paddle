@@ -34,14 +34,14 @@ class EltwiseSubMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     using Tensor = framework::Tensor;
 
     auto& dev_ctx =
-        ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
+        ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& onednn_engine = dev_ctx.GetEngine();
 
     auto* dout = ctx.Input<Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<Tensor>(framework::GradVarName("Y"));
 
-    auto tz = paddle::framework::vectorize<int64_t>(dout->dims());
+    auto tz = framework::vectorize<int64_t>(dout->dims());
     memory::data_type dout_type = framework::ToMKLDNNDataType(dout->type());
     platform::ReorderMKLDNNHandler handler(tz, dout->type(), dout_type,
                                            onednn_engine);
@@ -72,17 +72,12 @@ class EltwiseSubMKLDNNGradKernel : public ElemwiseGradKernel<T> {
             handler.AcquireDstMemory(dy, dout->format(), ctx.GetPlace());
 
         dnnl::primitive_attr reorder_attr;
-
         std::vector<float> scales = {-1};
-
         reorder_attr.set_output_scales(0, scales);
-
         auto reorder_p = std::make_shared<dnnl::reorder>(
             *(reorder_src_memory_p), *(reorder_dst_memory_p), reorder_attr);
-
         platform::RecordEvent record_reorder("int_reorder",
                                              platform::EventRole::kUniqueOp);
-
         reorder_p->execute(astream, *reorder_src_memory_p,
                            *reorder_dst_memory_p);
         astream.wait();
@@ -125,7 +120,7 @@ class EltwiseSubMKLDNNGradKernel : public ElemwiseGradKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_KERNEL(
-    elementwise_sub, MKLDNN, ::paddle::platform::CPUPlace,
+    elementwise_sub, MKLDNN, paddle::platform::CPUPlace,
     ops::EltwiseMKLDNNKernel<float, dnnl::algorithm::binary_sub>,
     ops::EltwiseMKLDNNKernel<paddle::platform::bfloat16,
                              dnnl::algorithm::binary_sub>,

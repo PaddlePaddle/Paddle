@@ -51,6 +51,7 @@ from .linalg import multi_dot  # noqa: F401
 from .linalg import svd  # noqa: F401
 from .linalg import eigh  # noqa: F401
 from .linalg import pinv  # noqa: F401
+from .linalg import solve  # noqa: F401
 from .logic import equal  # noqa: F401
 from .logic import greater_equal  # noqa: F401
 from .logic import greater_than  # noqa: F401
@@ -386,6 +387,8 @@ tensor_method_func  = [ #noqa
            'bitwise_not',
            'broadcast_tensors',
            'uniform_',
+           'multi_dot',
+           'solve',
 ]
 
 #this list used in math_op_patch.py for magic_method bind
