@@ -39,11 +39,12 @@ void ResNetUnitOp::InferShape(framework::InferShapeContext *ctx) const {
 
   // check output
   OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "ResNetUnitOp");
-  OP_INOUT_CHECK(ctx->HasOutput("BitMask"), "Output", "BitMask",
-                 "ResNetUnitOp");
+  // OP_INOUT_CHECK(ctx->HasOutput("BitMask"), "Output", "BitMask",
+  //                "ResNetUnitOp");
   OP_INOUT_CHECK(ctx->HasOutput("ConvX"), "Output", "ConvX", "ResNetUnitOp");
-  OP_INOUT_CHECK(ctx->HasOutput("SumX"), "Output", "SumX", "ResNetUnitOp");
-  OP_INOUT_CHECK(ctx->HasOutput("SqSumX"), "Output", "SqSumX", "ResNetUnitOp");
+  // OP_INOUT_CHECK(ctx->HasOutput("SumX"), "Output", "SumX", "ResNetUnitOp");
+  // OP_INOUT_CHECK(ctx->HasOutput("SqSumX"), "Output", "SqSumX",
+  // "ResNetUnitOp");
   OP_INOUT_CHECK(ctx->HasOutput("SavedMeanX"), "Output", "SavedMeanX",
                  "ResNetUnitOp");
   OP_INOUT_CHECK(ctx->HasOutput("SavedInvstdX"), "Output", "SavedInvstdX",
@@ -52,15 +53,15 @@ void ResNetUnitOp::InferShape(framework::InferShapeContext *ctx) const {
                  "ResNetUnitOp");
   OP_INOUT_CHECK(ctx->HasOutput("RunningVarX"), "Output", "RunningVarX",
                  "ResNetUnitOp");
-  OP_INOUT_CHECK(ctx->HasOutput("EqScaleX"), "Output", "EqScaleX",
-                 "ResNetUnitOp");
-  OP_INOUT_CHECK(ctx->HasOutput("EqBiasX"), "Output", "EqBiasX",
-                 "ResNetUnitOp");
+  // OP_INOUT_CHECK(ctx->HasOutput("EqScaleX"), "Output", "EqScaleX",
+  //                "ResNetUnitOp");
+  // OP_INOUT_CHECK(ctx->HasOutput("EqBiasX"), "Output", "EqBiasX",
+  //                "ResNetUnitOp");
   if (ctx->Attrs().Get<bool>("has_shortcut")) {
     OP_INOUT_CHECK(ctx->HasOutput("ConvZ"), "Output", "ConvZ", "ResNetUnitOp");
-    OP_INOUT_CHECK(ctx->HasOutput("SumZ"), "Output", "SumZ", "ResNetUnitOp");
-    OP_INOUT_CHECK(ctx->HasOutput("SqSumZ"), "Output", "SqSumZ",
-                   "ResNetUnitOp");
+    // OP_INOUT_CHECK(ctx->HasOutput("SumZ"), "Output", "SumZ", "ResNetUnitOp");
+    // OP_INOUT_CHECK(ctx->HasOutput("SqSumZ"), "Output", "SqSumZ",
+    //                "ResNetUnitOp");
     OP_INOUT_CHECK(ctx->HasOutput("SavedMeanZ"), "Output", "SavedMeanZ",
                    "ResNetUnitOp");
     OP_INOUT_CHECK(ctx->HasOutput("SavedInvstdZ"), "Output", "SavedInvstdZ",
@@ -69,10 +70,10 @@ void ResNetUnitOp::InferShape(framework::InferShapeContext *ctx) const {
                    "ResNetUnitOp");
     OP_INOUT_CHECK(ctx->HasOutput("RunningVarZ"), "Output", "RunningVarZ",
                    "ResNetUnitOp");
-    OP_INOUT_CHECK(ctx->HasOutput("EqScaleZ"), "Output", "EqScaleZ",
-                   "ResNetUnitOp");
-    OP_INOUT_CHECK(ctx->HasOutput("EqBiasZ"), "Output", "EqBiasZ",
-                   "ResNetUnitOp");
+    // OP_INOUT_CHECK(ctx->HasOutput("EqScaleZ"), "Output", "EqScaleZ",
+    //                "ResNetUnitOp");
+    // OP_INOUT_CHECK(ctx->HasOutput("EqBiasZ"), "Output", "EqBiasZ",
+    //                "ResNetUnitOp");
   }
 
   // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
@@ -105,38 +106,39 @@ void ResNetUnitOp::InferShape(framework::InferShapeContext *ctx) const {
   int out_w = (x_dims[2] + pad * 2 - filter_size) / stride + 1;
   std::vector<int> out_shape = {batch, out_h, out_w, output_channel};
   // shape of bitmask
-  int C = output_channel;
-  int64_t NHW = std::accumulate(out_shape.begin(), out_shape.end(), 1,
-                                std::multiplies<int>()) /
-                output_channel;
-  int32_t C_int32Elems = ((C + 63) & ~63) / 32;
-  int32_t NHW_int32Elems = (NHW + 31) & ~31;
-  std::vector<int> bitmask_shape = {NHW_int32Elems, C_int32Elems, 1};
+  // int C = output_channel;
+  // int64_t NHW = std::accumulate(out_shape.begin(), out_shape.end(), 1,
+  //                               std::multiplies<int>()) /
+  //               output_channel;
+  // int32_t C_int32Elems = ((C + 63) & ~63) / 32;
+  // int32_t NHW_int32Elems = (NHW + 31) & ~31;
+  // std::vector<int> bitmask_shape = {NHW_int32Elems, C_int32Elems, 1};
+  // printf("==============%d, %d\n", NHW_int32Elems, C_int32Elems);
 
   auto y_dims = framework::make_ddim(out_shape);
-  auto bitmask_dims = framework::make_ddim(bitmask_shape);
+  // auto bitmask_dims = framework::make_ddim(bitmask_shape);
   auto bn_param_dims = framework::make_ddim({1, 1, 1, output_channel});
   ctx->SetOutputDim("Y", y_dims);
-  ctx->SetOutputDim("BitMask", bitmask_dims);
+  // ctx->SetOutputDim("BitMask", bitmask_dims);
   ctx->SetOutputDim("ConvX", y_dims);
-  ctx->SetOutputDim("SumX", bn_param_dims);
-  ctx->SetOutputDim("SqSumX", bn_param_dims);
+  // ctx->SetOutputDim("SumX", bn_param_dims);
+  // ctx->SetOutputDim("SqSumX", bn_param_dims);
   ctx->SetOutputDim("SavedMeanX", bn_param_dims);
   ctx->SetOutputDim("SavedInvstdX", bn_param_dims);
   ctx->SetOutputDim("RunningMeanX", bn_param_dims);
   ctx->SetOutputDim("RunningVarX", bn_param_dims);
-  ctx->SetOutputDim("EqScaleX", bn_param_dims);
-  ctx->SetOutputDim("EqBiasX", bn_param_dims);
+  // ctx->SetOutputDim("EqScaleX", bn_param_dims);
+  // ctx->SetOutputDim("EqBiasX", bn_param_dims);
   if (ctx->Attrs().Get<bool>("has_shortcut")) {
     ctx->SetOutputDim("ConvZ", y_dims);
-    ctx->SetOutputDim("SumZ", bn_param_dims);
-    ctx->SetOutputDim("SqSumZ", bn_param_dims);
+    // ctx->SetOutputDim("SumZ", bn_param_dims);
+    // ctx->SetOutputDim("SqSumZ", bn_param_dims);
     ctx->SetOutputDim("SavedMeanZ", bn_param_dims);
     ctx->SetOutputDim("SavedInvstdZ", bn_param_dims);
     ctx->SetOutputDim("RunningMeanZ", bn_param_dims);
     ctx->SetOutputDim("RunningVarZ", bn_param_dims);
-    ctx->SetOutputDim("EqScaleZ", bn_param_dims);
-    ctx->SetOutputDim("EqBiasZ", bn_param_dims);
+    // ctx->SetOutputDim("EqScaleZ", bn_param_dims);
+    // ctx->SetOutputDim("EqBiasZ", bn_param_dims);
   }
 }
 
@@ -173,26 +175,27 @@ void ResNetUnitOpMaker::Make() {
   AddInput("MeanZ", "The bn mean tensor of input 2").AsDispensable();
   AddInput("VarZ", "The bn var tensor of input 2").AsDispensable();
   AddOutput("Y", "The result of the resnet unit");
-  AddOutput("BitMask", "The bitmask");
+  // AddOutput("BitMask", "The bitmask");
   AddOutput("ConvX", "The output of x after conv");
-  AddOutput("SumX", "The sum of conv_x");
-  AddOutput("SqSumX", "The square of sum of conv_x");
+  // AddOutput("SumX", "The sum of conv_x");
+  // AddOutput("SqSumX", "The square of sum of conv_x");
   AddOutput("SavedMeanX", "The output of saved mean of x");
   AddOutput("SavedInvstdX", "The output of saved invstd of x");
   AddOutput("RunningMeanX", "The output of running mean of x");
   AddOutput("RunningVarX", "The output of running var of x");
-  AddOutput("EqScaleX", "The output of equiv scale of x");
-  AddOutput("EqBiasX", "The output of equiv bias of x");
+  // AddOutput("EqScaleX", "The output of equiv scale of x");
+  // AddOutput("EqBiasX", "The output of equiv bias of x");
   AddOutput("ConvZ", "The output of z after conv").AsDispensable();
-  AddOutput("SumZ", "The sum of conv_z").AsDispensable();
-  AddOutput("SqSumZ", "The square of sum of conv_z").AsDispensable();
+  // AddOutput("SumZ", "The sum of conv_z").AsDispensable();
+  // AddOutput("SqSumZ", "The square of sum of conv_z").AsDispensable();
   AddOutput("SavedMeanZ", "The output of saved mean of z").AsDispensable();
   AddOutput("SavedInvstdZ", "The output of saved invstd of z").AsDispensable();
   AddOutput("RunningMeanZ", "The output of running mean of z").AsDispensable();
   AddOutput("RunningVarZ", "The output of running var of z").AsDispensable();
-  AddOutput("EqScaleZ", "The output of equiv scale of z").AsDispensable();
-  AddOutput("EqBiasZ", "The output of equiv bias of z").AsDispensable();
+  // AddOutput("EqScaleZ", "The output of equiv scale of z").AsDispensable();
+  // AddOutput("EqBiasZ", "The output of equiv bias of z").AsDispensable();
   AddAttr<int>("stride", "").SetDefault(1);
+  AddAttr<int>("stride_z", "").SetDefault(1);
   AddAttr<int>("pad", "").SetDefault(0);
   AddAttr<int>("dilate", "").SetDefault(1);
   AddAttr<int>("group", "").SetDefault(1);
@@ -241,8 +244,8 @@ void ResNetUnitGradOp::InferShape(framework::InferShapeContext *ctx) const {
                    "ResNetUnitGradOp");
   }
   OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ResNetUnitGradOp");
-  OP_INOUT_CHECK(ctx->HasInput("BitMask"), "Input", "BitMask",
-                 "ResNetUnitGradOp");
+  // OP_INOUT_CHECK(ctx->HasInput("BitMask"), "Input", "BitMask",
+  //                "ResNetUnitGradOp");
   OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
                  framework::GradVarName("Y"), "ResNetUnitGradOp");
 
@@ -255,8 +258,8 @@ void ResNetUnitGradOp::InferShape(framework::InferShapeContext *ctx) const {
                  framework::GradVarName("ScaleX"), "ResNetUnitGradOp");
   OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BiasX")), "Output",
                  framework::GradVarName("BiasX"), "ResNetUnitGradOp");
-  OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("ConvX")), "Output",
-                 framework::GradVarName("ConvX"), "ResNetUnitGradOp");
+  // OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("ConvX")), "Output",
+  //                framework::GradVarName("ConvX"), "ResNetUnitGradOp");
   if (ctx->Attrs().Get<bool>("fused_add")) {
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("Z")), "Output",
                    framework::GradVarName("Z"), "ResNetUnitGradOp");
@@ -268,18 +271,18 @@ void ResNetUnitGradOp::InferShape(framework::InferShapeContext *ctx) const {
                    framework::GradVarName("ScaleZ"), "ResNetUnitGradOp");
     OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("BiasZ")), "Output",
                    framework::GradVarName("BiasZ"), "ResNetUnitGradOp");
-    OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("ConvZ")), "Output",
-                   framework::GradVarName("ConvZ"), "ResNetUnitGradOp");
+    // OP_INOUT_CHECK(ctx->HasOutput(framework::GradVarName("ConvZ")), "Output",
+    //                framework::GradVarName("ConvZ"), "ResNetUnitGradOp");
   }
   const auto x_dims = ctx->GetInputDim("X");
   const auto filter_x_dims = ctx->GetInputDim("FilterX");
-  const auto y_dims = ctx->GetInputDim("Y");
+  // const auto y_dims = ctx->GetInputDim("Y");
   const auto param_dims = ctx->GetInputDim("ScaleX");
   ctx->SetOutputDim(framework::GradVarName("X"), x_dims);
   ctx->SetOutputDim(framework::GradVarName("FilterX"), filter_x_dims);
   ctx->SetOutputDim(framework::GradVarName("ScaleX"), param_dims);
   ctx->SetOutputDim(framework::GradVarName("BiasX"), param_dims);
-  ctx->SetOutputDim(framework::GradVarName("ConvX"), y_dims);
+  // ctx->SetOutputDim(framework::GradVarName("ConvX"), y_dims);
   if (ctx->Attrs().Get<bool>("fused_add")) {
     const auto z_dims = ctx->GetInputDim("Z");
     ctx->SetOutputDim(framework::GradVarName("Z"), z_dims);
@@ -289,7 +292,7 @@ void ResNetUnitGradOp::InferShape(framework::InferShapeContext *ctx) const {
     ctx->SetOutputDim(framework::GradVarName("FilterZ"), filter_z_dims);
     ctx->SetOutputDim(framework::GradVarName("ScaleZ"), param_dims);
     ctx->SetOutputDim(framework::GradVarName("BiasZ"), param_dims);
-    ctx->SetOutputDim(framework::GradVarName("ConvZ"), y_dims);
+    // ctx->SetOutputDim(framework::GradVarName("ConvZ"), y_dims);
   }
 }
 

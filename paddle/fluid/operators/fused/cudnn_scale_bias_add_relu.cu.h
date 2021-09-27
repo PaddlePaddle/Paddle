@@ -75,7 +75,8 @@ class CudnnScaleBiasAddReluOp {
 
     // output ptr
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_YDATA, out_ptr);
-    fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ACTIVATION_BITMASK, bitmask_ptr);
+    // fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ACTIVATION_BITMASK,
+    // bitmask_ptr);
 
     workspace_handle.RunFunc(
         [&](void *workspace_ptr) {
@@ -180,22 +181,26 @@ class CudnnScaleBiasAddReluOp {
           {CUDNN_PARAM_XDATA_PLACEHOLDER, CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
            CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER, CUDNN_PARAM_YDATA_PLACEHOLDER,
            CUDNN_PARAM_ZDATA_PLACEHOLDER, CUDNN_PARAM_BN_Z_EQSCALE_PLACEHOLDER,
-           CUDNN_PARAM_BN_Z_EQBIAS_PLACEHOLDER,
-           CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER},
+           CUDNN_PARAM_BN_Z_EQBIAS_PLACEHOLDER},
+          //  CUDNN_PARAM_BN_Z_EQBIAS_PLACEHOLDER,
+          //  CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER},
           CUDNN_PTR_16B_ALIGNED);
     } else {
       if (fused_add_) {
         fwd_op_.SetOpConstParamAttr(
             {CUDNN_PARAM_XDATA_PLACEHOLDER, CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
              CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER, CUDNN_PARAM_YDATA_PLACEHOLDER,
-             CUDNN_PARAM_ZDATA_PLACEHOLDER,
-             CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER},
+             CUDNN_PARAM_ZDATA_PLACEHOLDER},
+            //  CUDNN_PARAM_ZDATA_PLACEHOLDER,
+            //  CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER},
             CUDNN_PTR_16B_ALIGNED);
       } else {
         fwd_op_.SetOpConstParamAttr(
             {CUDNN_PARAM_XDATA_PLACEHOLDER, CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
-             CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER, CUDNN_PARAM_YDATA_PLACEHOLDER,
-             CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER},
+             CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER, CUDNN_PARAM_YDATA_PLACEHOLDER},
+            //  CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER,
+            //  CUDNN_PARAM_YDATA_PLACEHOLDER,
+            //  CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER},
             CUDNN_PTR_16B_ALIGNED);
       }
     }
@@ -223,9 +228,9 @@ class CudnnScaleBiasAddReluOp {
     fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_YDESC, out_desc_.desc());
 
     // set bitmask desc
-    bitmask_desc_.set(bitmask_shape, format_, CUDNN_DATA_INT32);
-    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_ACTIVATION_BITMASK_DESC,
-                                bitmask_desc_.desc());
+    // bitmask_desc_.set(bitmask_shape, format_, CUDNN_DATA_INT32);
+    // fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_ACTIVATION_BITMASK_DESC,
+    //                             bitmask_desc_.desc());
 
     // set activation desc
     cudnnActivationMode_t mode = CUDNN_ACTIVATION_IDENTITY;

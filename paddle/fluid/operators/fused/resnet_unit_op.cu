@@ -41,21 +41,22 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
     const Tensor *bias_x = ctx.Input<Tensor>("BiasX");
     // norm conv
     Tensor *conv_out_x = ctx.Output<Tensor>("ConvX");
-    Tensor *sum_x = ctx.Output<Tensor>("SumX");
-    Tensor *sum_of_squares_x = ctx.Output<Tensor>("SqSumX");
+    Tensor sum_x;             //= ctx.Output<Tensor>("SumX");
+    Tensor sum_of_squares_x;  //= ctx.Output<Tensor>("SqSumX");
     // bn finalize
     Tensor *saved_mean_x = ctx.Output<Tensor>("SavedMeanX");
     Tensor *saved_invstd_x = ctx.Output<Tensor>("SavedInvstdX");
     Tensor *running_mean_x = ctx.Output<Tensor>("RunningMeanX");
     Tensor *running_var_x = ctx.Output<Tensor>("RunningVarX");
-    Tensor *equiv_scale_x = ctx.Output<Tensor>("EqScaleX");
-    Tensor *equiv_bias_x = ctx.Output<Tensor>("EqBiasX");
+    Tensor equiv_scale_x;  // = ctx.Output<Tensor>("EqScaleX");
+    Tensor equiv_bias_x;   //= ctx.Output<Tensor>("EqBiasX");
     // sbar
     Tensor *output = ctx.Output<Tensor>("Y");
-    Tensor *bitmask = ctx.Output<Tensor>("BitMask");
+    // Tensor *bitmask = ctx.Output<Tensor>("BitMask");
     // attrs
     int pad = ctx.Attr<int>("pad");
     int stride = ctx.Attr<int>("stride");
+    int stride_z = ctx.Attr<int>("stride_z");
     int dilate = ctx.Attr<int>("dilate");
     int group = ctx.Attr<int>("group");
     double eps = static_cast<double>(ctx.Attr<float>("epsilon"));
@@ -68,9 +69,11 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
     // tensor shape
     auto input_x_shape = framework::vectorize<int>(input_x->dims());
     auto filter_x_shape = framework::vectorize<int>(filter_x->dims());
+    auto param_dims = scale_x->dims();
     auto param_shape = framework::vectorize<int>(scale_x->dims());
     auto output_shape = framework::vectorize<int>(output->dims());
-    auto bitmask_shape = framework::vectorize<int>(bitmask->dims());
+    // auto bitmask_shape = framework::vectorize<int>(bitmask->dims());
+    auto bitmask_shape = {1};
     auto place = input_x->place();
     int output_channel = filter_x_shape[0];
     int64_t ele_count =
@@ -78,17 +81,27 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
                         std::multiplies<int>()) /
         output_channel;
 
+    // sum_x->Resize(framework::make_ddim({param_shape}));
+    // sum_of_squares_x->Resize(framework::make_ddim({param_shape}));
+    // equiv_scale_x->Resize(framework::make_ddim({param_shape}));
+    // equiv_bias_x->Resize(framework::make_ddim({param_shape}));
+    float *sum_x_ptr = sum_x.mutable_data<float>(param_dims, place);
+    float *sum_of_squares_x_ptr =
+        sum_of_squares_x.mutable_data<float>(param_dims, place);
+    T *equiv_scale_x_ptr = equiv_scale_x.mutable_data<T>(param_dims, place);
+    T *equiv_bias_x_ptr = equiv_bias_x.mutable_data<T>(param_dims, place);
     MALLOC_AND_GET_PTR(conv_out_x, T, place)
-    MALLOC_AND_GET_PTR(sum_x, float, place)
-    MALLOC_AND_GET_PTR(sum_of_squares_x, float, place)
+    // MALLOC_AND_GET_PTR(sum_x, float, place)
+    // MALLOC_AND_GET_PTR(sum_of_squares_x, float, place)
     MALLOC_AND_GET_PTR(saved_mean_x, float, place)
     MALLOC_AND_GET_PTR(saved_invstd_x, float, place)
     MALLOC_AND_GET_PTR(running_mean_x, float, place)
     MALLOC_AND_GET_PTR(running_var_x, float, place)
-    MALLOC_AND_GET_PTR(equiv_scale_x, T, place)
-    MALLOC_AND_GET_PTR(equiv_bias_x, T, place)
+    // MALLOC_AND_GET_PTR(equiv_scale_x, T, place)
+    // MALLOC_AND_GET_PTR(equiv_bias_x, T, place)
     MALLOC_AND_GET_PTR(output, T, place)
-    MALLOC_AND_GET_PTR(bitmask, int32_t, place)
+    // MALLOC_AND_GET_PTR(bitmask, int32_t, place)
+    int32_t *bitmask_ptr = nullptr;
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     // 1. Conv
@@ -123,24 +136,38 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
       const Tensor *bias_z = ctx.Input<Tensor>("BiasZ");
       // norm conv
       Tensor *conv_out_z = ctx.Output<Tensor>("ConvZ");
-      Tensor *sum_z = ctx.Output<Tensor>("SumZ");
-      Tensor *sum_of_squares_z = ctx.Output<Tensor>("SqSumZ");
+      Tensor sum_z;             //= ctx.Output<Tensor>("SumZ");
+      Tensor sum_of_squares_z;  // = ctx.Output<Tensor>("SqSumZ");
       // bn finalize
       Tensor *saved_mean_z = ctx.Output<Tensor>("SavedMeanZ");
       Tensor *saved_invstd_z = ctx.Output<Tensor>("SavedInvstdZ");
       Tensor *running_mean_z = ctx.Output<Tensor>("RunningMeanZ");
       Tensor *running_var_z = ctx.Output<Tensor>("RunningVarZ");
-      Tensor *equiv_scale_z = ctx.Output<Tensor>("EqScaleZ");
-      Tensor *equiv_bias_z = ctx.Output<Tensor>("EqBiasZ");
+      Tensor equiv_scale_z;  // = ctx.Output<Tensor>("EqScaleZ");
+      Tensor equiv_bias_z;   // = ctx.Output<Tensor>("EqBiasZ");
+      // sum_z->Resize(framework::make_ddim({param_shape}));
+      // sum_of_squares_z->Resize(framework::make_ddim({param_shape}));
+      // equiv_scale_z->Resize(framework::make_ddim({param_shape}));
+      // equiv_bias_z->Resize(framework::make_ddim({param_shape}));
+      float *sum_z_ptr = sum_x.mutable_data<float>(param_dims, place);
+      float *sum_of_squares_z_ptr =
+          sum_of_squares_z.mutable_data<float>(param_dims, place);
+      T *equiv_scale_z_ptr = equiv_scale_z.mutable_data<T>(param_dims, place);
+      T *equiv_bias_z_ptr = equiv_bias_z.mutable_data<T>(param_dims, place);
+      // float *sum_z_ptr = sum_z.mutable_data<float>(place);
+      // float *sum_of_squares_z_ptr =
+      // sum_of_squares_z.mutable_data<float>(place);
+      // T *equiv_scale_z_ptr = equiv_scale_z.mutable_data<T>(place);
+      // T *equiv_bias_z_ptr = equiv_bias_z.mutable_data<T>(place);
       MALLOC_AND_GET_PTR(conv_out_z, T, place)
-      MALLOC_AND_GET_PTR(sum_z, float, place)
-      MALLOC_AND_GET_PTR(sum_of_squares_z, float, place)
+      // MALLOC_AND_GET_PTR(sum_z, float, place)
+      // MALLOC_AND_GET_PTR(sum_of_squares_z, float, place)
       MALLOC_AND_GET_PTR(saved_mean_z, float, place)
       MALLOC_AND_GET_PTR(saved_invstd_z, float, place)
       MALLOC_AND_GET_PTR(running_mean_z, float, place)
       MALLOC_AND_GET_PTR(running_var_z, float, place)
-      MALLOC_AND_GET_PTR(equiv_scale_z, T, place)
-      MALLOC_AND_GET_PTR(equiv_bias_z, T, place)
+      // MALLOC_AND_GET_PTR(equiv_scale_z, T, place)
+      // MALLOC_AND_GET_PTR(equiv_bias_z, T, place)
       auto input_z_shape = framework::vectorize<int>(input_z->dims());
       auto filter_z_shape = framework::vectorize<int>(filter_z->dims());
       // 3.1 Conv for second input
@@ -149,7 +176,7 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
       std::shared_ptr<CudnnNormConvolutionOp<T>> conv_z_op(
           new CudnnNormConvolutionOp<T>());
       conv_z_op->Init(dev_ctx, input_z_shape, filter_z_shape, output_shape, pad,
-                      stride, dilate, group);
+                      stride_z, dilate, group);
       conv_z_op->Forward(dev_ctx, input_z_ptr, filter_z_ptr, conv_out_z_ptr,
                          sum_z_ptr, sum_of_squares_z_ptr);
       // 3.2 BN for second input
@@ -211,18 +238,21 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
     // forward output (backward input)
     const Tensor *conv_out_x = ctx.Input<Tensor>("ConvX");
     const Tensor *output = ctx.Input<Tensor>("Y");
-    const Tensor *bitmask = ctx.Input<Tensor>("BitMask");
+    // const Tensor *bitmask = ctx.Input<Tensor>("BitMask");
 
     // backward output
     Tensor *dinput_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     Tensor *dfilter_x = ctx.Output<Tensor>(framework::GradVarName("FilterX"));
     Tensor *dscale_x = ctx.Output<Tensor>(framework::GradVarName("ScaleX"));
     Tensor *dbias_x = ctx.Output<Tensor>(framework::GradVarName("BiasX"));
-    Tensor *dconv_out_x = ctx.Output<Tensor>(framework::GradVarName("ConvX"));
+    // Tensor *dconv_out_x =
+    // ctx.Output<Tensor>(framework::GradVarName("ConvX"));
+    Tensor dconv_out_x;
 
     // attrs
     int pad = ctx.Attr<int>("pad");
     int stride = ctx.Attr<int>("stride");
+    int stride_z = ctx.Attr<int>("stride_z");
     int dilate = ctx.Attr<int>("dilate");
     int group = ctx.Attr<int>("group");
     double eps = static_cast<double>(ctx.Attr<float>("epsilon"));
@@ -237,7 +267,8 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
     auto filter_x_shape = framework::vectorize<int>(filter_x->dims());
     auto param_shape = framework::vectorize<int>(scale_x->dims());
     auto output_shape = framework::vectorize<int>(output->dims());
-    auto bitmask_shape = framework::vectorize<int>(bitmask->dims());
+    // auto bitmask_shape = framework::vectorize<int>(bitmask->dims());
+    auto bitmask_shape = {1};
 
     auto place = input_x->place();
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -259,7 +290,8 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
     MALLOC_AND_GET_PTR(dfilter_x, T, place)
     MALLOC_AND_GET_PTR(dscale_x, float, place)
     MALLOC_AND_GET_PTR(dbias_x, float, place)
-    MALLOC_AND_GET_PTR(dconv_out_x, T, place)
+    // MALLOC_AND_GET_PTR(dconv_out_x, T, place)
+    T *dconv_out_x_ptr = dconv_out_x.mutable_data<T>(conv_out_x->dims(), place);
 
     // 1. bn add relu backward, get dconv_out_x, dscale_x, dbias_x
     std::shared_ptr<CudnnScaleBiasAddReluOp<T>> sbar_x_op(
@@ -280,7 +312,9 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
       Tensor *dfilter_z = ctx.Output<Tensor>(framework::GradVarName("FilterZ"));
       Tensor *dscale_z = ctx.Output<Tensor>(framework::GradVarName("ScaleZ"));
       Tensor *dbias_z = ctx.Output<Tensor>(framework::GradVarName("BiasZ"));
-      Tensor *dconv_out_z = ctx.Output<Tensor>(framework::GradVarName("ConvZ"));
+      // Tensor *dconv_out_z =
+      // ctx.Output<Tensor>(framework::GradVarName("ConvZ"));
+      Tensor dconv_out_z;
 
       // get ptr
       // input ptr
@@ -298,7 +332,9 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
       MALLOC_AND_GET_PTR(dfilter_z, T, place)
       MALLOC_AND_GET_PTR(dscale_z, float, place)
       MALLOC_AND_GET_PTR(dbias_z, float, place)
-      MALLOC_AND_GET_PTR(dconv_out_z, T, place)
+      // MALLOC_AND_GET_PTR(dconv_out_z, T, place)
+      T *dconv_out_z_ptr =
+          dconv_out_z.mutable_data<T>(conv_out_z->dims(), place);
       // 1.1 bn add relu backward for x, get dconv_out_x, dscale_x, dbias_x and
       // temp grad for z
       Tensor dz_temp;
@@ -325,7 +361,7 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
       auto input_z_shape = framework::vectorize<int>(input_z->dims());
       auto filter_z_shape = framework::vectorize<int>(filter_z->dims());
       conv_z_op->Init(dev_ctx, input_z_shape, filter_z_shape, output_shape, pad,
-                      stride, dilate, group);
+                      stride_z, dilate, group);
       conv_z_op->Backward(dev_ctx, input_z_ptr, dconv_out_z_ptr, filter_z_ptr,
                           dinput_z_ptr, dfilter_z_ptr);
     } else {

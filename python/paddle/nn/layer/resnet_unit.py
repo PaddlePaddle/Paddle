@@ -62,6 +62,7 @@ class ResNetUnit(Layer):
                  moving_mean_x_name=None,
                  moving_var_x_name=None,
                  num_channels_z=1,
+                 stride_z=1,
                  filter_z_attr=None,
                  scale_z_attr=None,
                  bias_z_attr=None,
@@ -69,6 +70,7 @@ class ResNetUnit(Layer):
                  moving_var_z_name=None):
         super(ResNetUnit, self).__init__()
         self._stride = stride
+        self._stride_z = stride_z
         self._dilation = 1
         self._kernel_size = utils.convert_to_list(filter_size, 2, 'kernel_size')
         self._padding = (filter_size - 1) // 2
@@ -107,8 +109,7 @@ class ResNetUnit(Layer):
         self.filter_x = self.create_parameter(
             shape=filter_x_shape,
             attr=filter_x_attr,
-            default_initializer=_get_default_param_initializer(
-                num_channels_x)).astype(np.float16)
+            default_initializer=_get_default_param_initializer(num_channels_x))
         self.scale_x = self.create_parameter(
             shape=bn_param_shape,
             attr=scale_x_attr,
@@ -140,7 +141,7 @@ class ResNetUnit(Layer):
                 shape=filter_z_shape,
                 attr=filter_z_attr,
                 default_initializer=_get_default_param_initializer(
-                    num_channels_z)).astype(np.float16)
+                    num_channels_z))
             self.scale_z = self.create_parameter(
                 shape=bn_param_shape,
                 attr=scale_z_attr,
@@ -181,8 +182,8 @@ class ResNetUnit(Layer):
         out = F.resnet_unit(
             x, self.filter_x, self.scale_x, self.bias_x, self.mean_x,
             self.var_x, z, self.filter_z, self.scale_z, self.bias_z,
-            self.mean_z, self.var_z, self._stride, self._padding,
-            self._dilation, self._groups, self._momentum, self._eps,
-            self._conv_format, self._bn_format, self._fused_add,
+            self.mean_z, self.var_z, self._stride, self._stride_z,
+            self._padding, self._dilation, self._groups, self._momentum,
+            self._eps, self._conv_format, self._bn_format, self._fused_add,
             self._has_shortcut, self._use_global_stats, self._act)
         return out
