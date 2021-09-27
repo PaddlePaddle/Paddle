@@ -590,6 +590,7 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetMaxInputShape(config_.max_input_shape_);
     argument_.SetOptimInputShape(config_.optim_input_shape_);
     argument_.SetCloseTrtPluginFp16(config_.disable_trt_plugin_fp16_);
+    argument_.SetCloseTrtSparsity(config_.disable_trt_sparsity_);
     argument_.SetTensorRtShapeRangeInfoPath(config_.shape_range_info_path());
     argument_.SetTensorRtTunedDynamicShape(
         config_.tuned_tensorrt_dynamic_shape());

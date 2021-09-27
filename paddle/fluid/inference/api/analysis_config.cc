@@ -187,6 +187,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(max_input_shape_);
   CP_MEMBER(optim_input_shape_);
   CP_MEMBER(disable_trt_plugin_fp16_);
+  CP_MEMBER(disable_trt_sparsity_);
 
   CP_MEMBER(use_lite_);
   CP_MEMBER(lite_precision_mode_);
@@ -394,6 +395,8 @@ void AnalysisConfig::SetTRTDynamicShapeInfo(
   optim_input_shape_ = optim_input_shape;
   disable_trt_plugin_fp16_ = disable_trt_plugin_fp16;
 }
+
+void AnalysisConfig::DisableTensorRTSparsity() { disable_trt_sparsity_ = true; }
 
 void AnalysisConfig::EnableTensorRtDLA(int dla_core) {
   trt_use_dla_ = true;

@@ -362,12 +362,14 @@ void TensorRtSubgraphPass::CreateTensorRTOp(
   // When running fp16, the output accuracy of the model will be affected,
   // closing the plugin fp16 may bring some improvement on accuracy.
   bool disable_trt_plugin_fp16 = Get<bool>("disable_trt_plugin_fp16");
+  bool disable_trt_sparsity = Get<bool>("disable_trt_sparsity");
   tensorrt::TensorRTEngine *trt_engine =
       inference::Singleton<inference::tensorrt::TRTEngineManager>::Global()
           .Create(engine_key + std::to_string(predictor_id), max_batch_size,
                   Get<int>("workspace_size"), precision_mode, calibrator.get(),
                   Get<int>("gpu_device_id"), min_input_shape, max_input_shape,
-                  opt_input_shape, disable_trt_plugin_fp16);
+                  opt_input_shape, disable_trt_plugin_fp16,
+                  disable_trt_sparsity);
   trt_engine->SetUseOSS(Get<bool>("use_oss"));
   trt_engine->SetUseDLA(Get<bool>("trt_use_dla"));
   trt_engine->SetDLACore(Get<int>("trt_dla_core"));

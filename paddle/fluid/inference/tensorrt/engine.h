@@ -172,7 +172,8 @@ class TensorRTEngine {
       const ShapeMapType max_input_shape = {},
       const ShapeMapType optim_input_shape = {},
       bool disable_trt_plugin_fp16 = false,
-      nvinfer1::ILogger& logger = NaiveLogger::Global())
+      nvinfer1::ILogger& logger = NaiveLogger::Global(),
+      bool disable_trt_sparsity = false)
       : max_batch_(max_batch),
         max_workspace_(max_workspace),
         precision_(precision),
@@ -182,7 +183,8 @@ class TensorRTEngine {
         max_input_shape_(max_input_shape),
         optim_input_shape_(optim_input_shape),
         disable_trt_plugin_fp16_(disable_trt_plugin_fp16),
-        logger_(logger) {
+        logger_(logger),
+        disable_trt_sparsity_(disable_trt_sparsity) {
     if (min_input_shape_.size() != 0 && max_input_shape_.size() != 0 &&
         optim_input_shape_.size() != 0) {
       PADDLE_ENFORCE_EQ(
@@ -429,6 +431,7 @@ class TensorRTEngine {
   bool with_ernie() { return with_ernie_; }
   bool disable_trt_plugin_fp16() { return disable_trt_plugin_fp16_; }
   bool with_dynamic_shape() { return with_dynamic_shape_; }
+  bool disable_trt_sparsity() { return disable_trt_sparsity_; }
 
 #if IS_TRT_VERSION_GE(6000)
   nvinfer1::IPluginV2Layer* AddDynamicPlugin(
@@ -543,6 +546,7 @@ class TensorRTEngine {
   int dla_core_{0};
   bool with_ernie_{false};
   nvinfer1::ILogger& logger_;
+  bool disable_trt_sparsity_{false};
 
   // max data size for the buffers.
   std::unordered_map<std::string /*name*/, nvinfer1::ITensor* /*ITensor*/>
@@ -615,12 +619,12 @@ class TRTEngineManager {
       const std::map<std::string, std::vector<int>> min_input_shape = {},
       const std::map<std::string, std::vector<int>> max_input_shape = {},
       const std::map<std::string, std::vector<int>> optim_input_shape = {},
-      bool disable_trt_plugin_fp16 = false,
+      bool disable_trt_plugin_fp16 = false, bool disable_trt_sparsity = false,
       nvinfer1::ILogger& logger = NaiveLogger::Global()) {
-    auto* p =
-        new TensorRTEngine(max_batch, max_workspace, precision, calibrator,
-                           device_id, min_input_shape, max_input_shape,
-                           optim_input_shape, disable_trt_plugin_fp16, logger);
+    auto* p = new TensorRTEngine(
+        max_batch, max_workspace, precision, calibrator, device_id,
+        min_input_shape, max_input_shape, optim_input_shape,
+        disable_trt_plugin_fp16, logger, disable_trt_sparsity);
     engines_[name].reset(p);
     return p;
   }

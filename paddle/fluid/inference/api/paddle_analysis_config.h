@@ -415,6 +415,17 @@ struct PD_INFER_DECL AnalysisConfig {
     return !min_input_shape_.empty();
   }
   ///
+  /// \brief Turn off TensorRT sparsity.
+  ///
+  ///
+  void DisableTensorRTSparsity();
+  ///
+  /// \brief A boolean state telling whether the trt sparsity is used.
+  ///
+  /// \return bool Whether the trt sparsity is used.
+  ///
+  bool tensorrt_sparsity_enabled() const { return !disable_trt_sparsity_; }
+  ///
   /// \brief Enable tuned tensorrt dynamic shape.
   ///
   /// \param shape_range_info_path the path to shape_info file got in
@@ -775,6 +786,7 @@ struct PD_INFER_DECL AnalysisConfig {
   std::map<std::string, std::vector<int>> optim_input_shape_{};
   std::vector<std::string> trt_disabled_ops_{};
   bool disable_trt_plugin_fp16_{false};
+  bool disable_trt_sparsity_{false};
   bool trt_allow_build_at_runtime_{false};
   // tune to get dynamic_shape info.
   bool trt_tuned_dynamic_shape_{false};

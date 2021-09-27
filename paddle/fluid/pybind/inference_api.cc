@@ -627,7 +627,11 @@ void BindAnalysisConfig(py::module *m) {
              return dynamic_cast<PaddlePassBuilder *>(self.pass_builder());
            },
            py::return_value_policy::reference)
-      .def("nnadapter", &AnalysisConfig::NNAdapter);
+      .def("nnadapter", &AnalysisConfig::NNAdapter)
+      .def("disable_tensorrt_sparsity",
+           &AnalysisConfig::DisableTensorRTSparsity)
+      .def("tensorrt_sparsity_enabled",
+           &AnalysisConfig::tensorrt_sparsity_enabled);
 }
 
 void BindLiteNNAdapterConfig(py::module *m) {

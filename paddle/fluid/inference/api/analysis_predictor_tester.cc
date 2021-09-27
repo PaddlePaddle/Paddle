@@ -85,6 +85,7 @@ TEST(AnalysisPredictor, analysis_on) {
   AnalysisConfig config;
   config.SetModel(FLAGS_dirname);
   config.SwitchIrOptim(true);
+  config.DisableTensorRTSparsity();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   config.EnableUseGpu(100, 0);
 #else

@@ -174,6 +174,8 @@ void IRPassManager::CreatePasses(Argument *argument,
       // not run fp16.
       pass->Set("disable_trt_plugin_fp16",
                 new bool(argument->disable_trt_plugin_fp16()));
+      pass->Set("disable_trt_sparsity",
+                new bool(argument->disable_trt_sparsity()));
     } else if (pass_name == "dlnne_subgraph_pass") {
       pass->Set("min_subgraph_size",
                 new int(argument->dlnne_min_subgraph_size()));
