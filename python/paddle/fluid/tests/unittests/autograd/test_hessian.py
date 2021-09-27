@@ -135,10 +135,6 @@ class TestHessianFloat64(TestHessian):
         self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
         self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
 
-    # NOTO(levi): skip this test case temporaryly
-    def test_multi_input(self):
-        pass
-
 
 if __name__ == "__main__":
     unittest.main()
