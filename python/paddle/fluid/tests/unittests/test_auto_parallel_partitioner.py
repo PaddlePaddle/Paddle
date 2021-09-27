@@ -1112,12 +1112,22 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
         self.assertTrue(dist_ops == ref_ops)
         dist_ops = dist_startup_prog.global_block().ops
         dist_ops = [op.type for op in dist_ops]
+        print(dist_ops)
         ref_ops = [
             'gaussian_random', 'gaussian_random', 'gaussian_random',
             'fill_constant', 'gaussian_random', 'fill_constant',
             'gaussian_random', 'fill_constant', 'gaussian_random',
             'fill_constant', 'gaussian_random', 'fill_constant',
-            'gaussian_random', 'fill_constant', 'fill_constant', 'fill_constant'
+            'gaussian_random', 'fill_constant', 'fill_constant',
+            'fill_constant', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_broadcast'
         ]
         self.assertTrue(dist_ops == ref_ops)
 

@@ -739,7 +739,7 @@ def gpt_pretrain_forward(train_program, start_program):
         gpt = GPTModel(
             vocab_size=32768,
             hidden_size=768,
-            num_hidden_layers=6,
+            num_hidden_layers=2,
             num_attention_heads=12,
             intermediate_size=4096,
             hidden_act="gelu",
