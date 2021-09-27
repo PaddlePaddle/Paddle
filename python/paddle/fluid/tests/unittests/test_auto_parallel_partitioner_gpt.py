@@ -806,9 +806,9 @@ class TestGPTPartitioner(unittest.TestCase):
                                              auto_parallel_startup_prog)
         from paddle.distributed.auto_parallel.context import set_default_distributed_context
         set_default_distributed_context(dist_context)
-        with open("./test_auto_parallel_partitioner_main_new.txt", "w") as fw:
+        with open("./test_auto_parallel_partitioner_main_new.txt1", "w") as fw:
             fw.write(str(auto_parallel_main_prog))
-        with open("./test_auto_parallel_partitioner_startup_new.txt",
+        with open("./test_auto_parallel_partitioner_startup_new.txt1",
                   "w") as fw:
             fw.write(str(auto_parallel_startup_prog))
         # with open("./test_auto_parallel_partitioner_main_completed.txt", "w") as fw:

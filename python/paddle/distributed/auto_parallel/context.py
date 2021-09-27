@@ -449,6 +449,7 @@ class DistOpHelper:
         self._cur_src_op = None
         self._cur_dist_attr = None
         self.gradopidx2opidx = {}
+        self.already_init_sync_vars = set()
 
     def set_dst_main_program(self, prog):
         self._dst_main_program = prog

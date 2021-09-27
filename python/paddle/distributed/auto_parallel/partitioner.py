@@ -306,16 +306,101 @@ class Partitioner(object):
 
         partitioned_main_prog = fluid.Program()
         partitioned_global_block = partitioned_main_prog.global_block()
-        serial_global_block = serial_main_program.global_block()
+        serial_main_block = serial_main_program.global_block()
         serial_ops = serial_main_program.global_block().ops
 
-        # allow user only partition main program for inference
+        # transpile startup program
         if serial_startup_program == None:
             partitioned_startup_prog = None
         else:
             partitioned_startup_prog = fluid.Program()
+            # create parameter
+            partitioned_startup_global_block = partitioned_startup_prog.global_block(
+            )
+            param2shape = {}
+            temp_varname_map = {}
+            for var in serial_startup_program.list_vars():
+                if isinstance(var, Parameter):
+                    # TODO if var not belong to this rank, should be filtered
+                    serial_main_var = serial_main_block.var(var.name)
+                    dist_attr = self._auto_parallel_context.get_tensor_distributed_attr_for_program(
+                        serial_main_var)
+                    target_shape = _get_dist_shape(serial_main_var, dist_attr)
+                    new_name = var.name + self._dist_varname_suffix
+                    temp_varname_map[var.name] = new_name
+                    _partition_parameter(self._auto_parallel_context,
+                                         serial_main_var,
+                                         partitioned_startup_global_block,
+                                         new_name, target_shape)
+                    param2shape[new_name] = target_shape
 
-        # TODO move helper init to a comm place
+            # copy initializer
+            for op in serial_startup_program.global_block().ops:
+                # TODO if var not belong to this rank, should be filtered
+                output_vars = op.desc.output_arg_names()
+                assert len(
+                    output_vars
+                ) == 1, "initializer should output only ONE variable, but got [{}]".format(
+                    str(op.desc))
+                assert temp_varname_map[output_vars[
+                    0]] in param2shape, "try to initialize [{}] which is not a Parameter".format(
+                        output_vars[0])
+                new_op_desc = partitioned_startup_global_block.desc.append_op()
+                new_op_desc.copy_from(op.desc)
+                new_op_desc._rename_output(output_vars[0],
+                                           temp_varname_map[output_vars[0]])
+                new_op_desc._set_attr(
+                    "shape", param2shape[temp_varname_map[output_vars[0]]])
+                partitioned_startup_global_block._sync_with_cpp()
+
+            # # MP broadcast not split parameter
+            # # NOTE Theoretically, the MP param init broadcast should be handled by
+            # # each dist op itself. but if we insert the broadcast op at that moment, the broadcast
+            # # will before the initializer, which lead to a undertermined case.
+            # if self._enable_tensor_parallel:
+            #     param_to_sync = []
+            #     for param in partitioned_startup_prog.all_parameters():
+            #         if not self._is_var_distributed(param):
+            #             param_to_sync.append(param)
+            #             # FIXME the ring id should be set by autoparallel.mapping module
+            #             # it should be determined by dp groups butfixed it here for hacking
+            #             partitioned_startup_global_block.append_op(
+            #                 type='c_broadcast',
+            #                 inputs={'X': param},
+            #                 outputs={'Out': param},
+            #                 attrs={
+            #                     'ring_id': self._tp_group.id,
+            #                     'root': 0,
+            #                     'use_calc_stream': True,
+            #                     OP_ROLE_KEY: OpRole.Forward
+            #                 })
+            #     partitioned_startup_global_block._sync_with_cpp()
+
+            # # DP init param broadcast
+            # if self._enable_data_parallel:
+            #     # parameters initialization synchronization 
+            #     param_to_sync = []
+
+            #     for param in partitioned_startup_global_block.all_parameters():
+            #         param_to_sync.append(param)
+
+            #         # FIXME the ring id should be set by autoparallel.mapping module
+            #         # it should be determined by dp groups butfixed it here for hacking
+            #         partitioned_startup_global_block.append_op(
+            #             type='c_broadcast',
+            #             inputs={'X': param},
+            #             outputs={'Out': param},
+            #             attrs={
+            #                 'ring_id': self._dp_group.id,
+            #                 'root': 0,
+            #                 'use_calc_stream': True,
+            #                 OP_ROLE_KEY: OpRole.Forward
+            #             })
+            #     partitioned_startup_global_block._sync_with_cpp()
+
+            #################################################################
+
+            # TODO move helper init to a comm place
         dist_op_helper = self._auto_parallel_context.get_dist_op_helper()
         dist_op_helper.set_dst_main_program(partitioned_main_prog)
         dist_op_helper.set_dst_startup_program(partitioned_startup_prog)
@@ -329,9 +414,9 @@ class Partitioner(object):
             for serial_input_varname in op.desc.input_arg_names():
                 if serial_input_varname not in self._serial2dist_varname_mapping:
                     new_varname = serial_input_varname + self._dist_varname_suffix
-                    if serial_global_block.has_var(serial_input_varname):
+                    if serial_main_block.has_var(serial_input_varname):
                         _partition_var(self._auto_parallel_context,
-                                       serial_global_block,
+                                       serial_main_block,
                                        partitioned_global_block,
                                        serial_input_varname, new_varname)
                     else:
@@ -345,8 +430,7 @@ class Partitioner(object):
                 if serial_output_varname not in self._serial2dist_varname_mapping:
                     new_varname = serial_output_varname + self._dist_varname_suffix
                     _partition_var(self._auto_parallel_context,
-                                   serial_global_block,
-                                   partitioned_global_block,
+                                   serial_main_block, partitioned_global_block,
                                    serial_output_varname, new_varname)
                     self._serial2dist_varname_mapping[
                         serial_output_varname] = new_varname
@@ -367,102 +451,6 @@ class Partitioner(object):
                 dist_op_impl = dist_ops.get_impl(0)
                 dist_op_impl.forward(self._auto_parallel_context, **kinputs,
                                      **koutputs)
-
-        # transpile startup program
-        if serial_startup_program == None:
-            partitioned_startup_prog = None
-        else:
-            partitioned_startup_prog = fluid.Program()
-            # create parameter
-            partitioned_startup_global_block = partitioned_startup_prog.global_block(
-            )
-            param2shape = {}
-            for var in partitioned_main_prog.list_vars():
-                if isinstance(var, Parameter):
-                    _partition_parameter(self._auto_parallel_context, var,
-                                         partitioned_startup_global_block,
-                                         var.name, var.shape)
-                    param2shape[var.name] = var.shape
-
-            # copy initializer
-            for op in serial_startup_program.global_block().ops:
-                output_vars = op.desc.output_arg_names()
-                assert len(
-                    output_vars
-                ) == 1, "initializer should output only ONE variable, but got [{}]".format(
-                    str(op.desc))
-                assert self._serial2dist_varname_mapping[output_vars[
-                    0]] in param2shape, "try to initialize [{}] which is not a Parameter".format(
-                        output_vars[0])
-                new_op_desc = partitioned_startup_global_block.desc.append_op()
-                new_op_desc.copy_from(op.desc)
-                new_op_desc._rename_output(
-                    output_vars[0],
-                    self._serial2dist_varname_mapping[output_vars[0]])
-                new_op_desc._set_attr("shape", param2shape[
-                    self._serial2dist_varname_mapping[output_vars[0]]])
-                partitioned_startup_global_block._sync_with_cpp()
-
-            # MP broadcast not split parameter
-            # NOTE Theoretically, the MP param init broadcast should be handled by
-            # each dist op itself. but if we insert the broadcast op at that moment, the broadcast
-            # will before the initializer, which lead to a undertermined case.
-            if self._enable_tensor_parallel:
-                param_to_sync = []
-                for param in partitioned_startup_prog.all_parameters():
-                    if not self._is_var_distributed(param):
-                        param_to_sync.append(param)
-                        # FIXME the ring id should be set by autoparallel.mapping module
-                        # it should be determined by dp groups butfixed it here for hacking
-                        partitioned_startup_global_block.append_op(
-                            type='c_broadcast',
-                            inputs={'X': param},
-                            outputs={'Out': param},
-                            attrs={
-                                'ring_id': self._tp_group.id,
-                                'root': 0,
-                                'use_calc_stream': True,
-                                OP_ROLE_KEY: OpRole.Forward
-                            })
-                partitioned_startup_global_block.append_op(
-                    type='c_sync_comm_stream',
-                    inputs={'X': param_to_sync},
-                    outputs={'Out': param_to_sync},
-                    attrs={
-                        'ring_id': self._tp_group.id,
-                        OP_ROLE_KEY: OpRole.Forward
-                    })
-                partitioned_startup_global_block._sync_with_cpp()
-
-            # DP init param broadcast
-            if self._enable_data_parallel:
-                # parameters initialization synchronization 
-                param_to_sync = []
-
-                for param in partitioned_startup_global_block.all_parameters():
-                    param_to_sync.append(param)
-
-                    # FIXME the ring id should be set by autoparallel.mapping module
-                    # it should be determined by dp groups butfixed it here for hacking
-                    partitioned_startup_global_block.append_op(
-                        type='c_broadcast',
-                        inputs={'X': param},
-                        outputs={'Out': param},
-                        attrs={
-                            'ring_id': self._dp_group.id,
-                            'root': 0,
-                            'use_calc_stream': True,
-                            OP_ROLE_KEY: OpRole.Forward
-                        })
-                partitioned_startup_global_block.append_op(
-                    type='c_sync_comm_stream',
-                    inputs={'X': param_to_sync},
-                    outputs={'Out': param_to_sync},
-                    attrs={
-                        'ring_id': self._dp_group.id,
-                        OP_ROLE_KEY: OpRole.Forward
-                    })
-                partitioned_startup_global_block._sync_with_cpp()
 
         return partitioned_main_prog, partitioned_startup_prog
 
@@ -845,6 +833,7 @@ def _partition_parameter(auto_paralle_context, src_var, dst_block, dst_varname,
     # param.desc.set_distributed_attr_uid(distributed_attr_uid)
     dist_attr = copy.deepcopy(
         auto_paralle_context.get_tensor_distributed_attr_for_program(src_var))
+    assert dist_attr is not None
     dist_attr._owner_tensor = param
     dist_attr._owner_context = auto_paralle_context.get_tensor_distributed_attr_for_program(
         src_var)._owner_context
@@ -871,6 +860,7 @@ def _partition_intermediate_var(auto_paralle_context, src_var, dst_block,
     # var.desc.set_distributed_attr_uid(distributed_attr_uid)
     dist_attr = copy.deepcopy(
         auto_paralle_context.get_tensor_distributed_attr_for_program(src_var))
+    assert dist_attr is not None
     dist_attr._owner_tensor = var
     dist_attr._owner_context = auto_paralle_context.get_tensor_distributed_attr_for_program(
         src_var)._owner_context
