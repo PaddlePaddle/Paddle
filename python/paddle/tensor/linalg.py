@@ -448,7 +448,7 @@ def norm(x, p='fro', axis=None, keepdim=False, name=None):
             format(axis))
 
 
-def dist(x, y, p=2):
+def dist(x, y, p=2, name=None):
     r"""
 
     This OP returns the p-norm of (x - y). It is not a norm in a strict sense, only as a measure
@@ -1251,7 +1251,7 @@ def bmm(x, y, name=None):
     return out
 
 
-def histogram(input, bins=100, min=0, max=0):
+def histogram(input, bins=100, min=0, max=0, name=None):
     """
     Computes the histogram of a tensor. The elements are sorted into equal width bins between min and max.
     If min and max are both zero, the minimum and maximum values of the data are used.
@@ -1351,7 +1351,7 @@ def mv(x, vec, name=None):
     return out
 
 
-def det(x):
+def det(x, name=None):
     """
     Calculates determinant value of a square matrix or batches of square matrices.
     Args:
@@ -1367,7 +1367,7 @@ def det(x):
 
         x =  paddle.randn([3,3,3])
 
-        A = paddle.det(x)
+        A = paddle.linalg.det(x)
 
         print(A)
 
@@ -1399,7 +1399,7 @@ def det(x):
     return out
 
 
-def slogdet(x):
+def slogdet(x, name=None):
     """
     Calculates the sign and natural logarithm of the absolute value of a square matrix's or batches square matrices' determinant.
     The determinant can be computed with ``sign * exp(logabsdet)
@@ -1422,7 +1422,7 @@ def slogdet(x):
 
         x =  paddle.randn([3,3,3])
 
-        A = paddle.slogdet(x)
+        A = paddle.linalg.slogdet(x)
 
         print(A)
 
@@ -1563,17 +1563,17 @@ def matrix_power(x, n, name=None):
             x = paddle.to_tensor([[1, 2, 3],
                                   [1, 4, 9],
                                   [1, 8, 27]], dtype='float64')
-            print(paddle.matrix_power(x, 2))
+            print(paddle.linalg.matrix_power(x, 2))
             # [[6.  , 34. , 102.],
             #  [14. , 90. , 282.],
             #  [36. , 250., 804.]]
 
-            print(paddle.matrix_power(x, 0))
+            print(paddle.linalg.matrix_power(x, 0))
             # [[1., 0., 0.],
             #  [0., 1., 0.],
             #  [0., 0., 1.]]
 
-            print(paddle.matrix_power(x, -2))
+            print(paddle.linalg.matrix_power(x, -2))
             # [[ 12.91666667, -12.75000000,  2.83333333 ],
             #  [-7.66666667 ,  8.         , -1.83333333 ],
             #  [ 1.80555556 , -1.91666667 ,  0.44444444 ]]
