@@ -54,7 +54,6 @@ def attach_error_data(error, in_runtime=False):
 
     setattr(error, ERROR_DATA, error_data)
 
-    remove_static_file()
     return error
 
 
@@ -173,6 +172,9 @@ class ErrorData(object):
         self.origin_info_map = origin_info_map
         self.in_runtime = False
         self.suggestion_dict = SuggestionDict()
+
+    def __del__(self):
+        remove_static_file()
 
     def create_exception(self):
         message = self.create_message()
