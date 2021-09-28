@@ -72,7 +72,12 @@ struct DropoutParam {
     is_test = context.Attr<bool>(pre_fix + "is_test");
     fix_seed = context.Attr<bool>(pre_fix + "fix_seed");
 
-    std::string str_seed = "Dropout" + str_index + "Seed";
+    std::string str_seed = "Dropout";
+    if (dropout_index > 0) {
+    	str_seed = str_seed + str_index + "Seed";
+    } else {
+    	str_seed = str_seed + "Seed";
+    }
     tensor_seed =
         context.HasInput(str_seed) ? context.Input<Tensor>(str_seed) : nullptr;
     seed_val = context.Attr<int>(pre_fix + "seed");
