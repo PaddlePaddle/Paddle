@@ -45,6 +45,26 @@ def group_norm_naive(x, scale, bias, epsilon, groups, data_layout):
     return output, mean.reshape((N, G)), var.reshape((N, G))
 
 
+class TestGroupNormOpError(unittest.TestCase):
+    def test_errors(self):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+
+            def test_x_type():
+                input = np.random.random(2, 100, 3, 5).astype('float32')
+                groups = 2
+                fluid.layers.group_norm(input, groups)
+
+            self.assertRaises(TypeError, test_x_type)
+
+            def test_x_dtype():
+                x2 = fluid.layers.data(
+                    name='x2', shape=[2, 100, 3, 5], dtype='int32')
+                groups = 2
+                fluid.layers.group_norm(x2, groups)
+
+            self.assertRaises(TypeError, test_x_dtype)
+
+
 class TestGroupNormOp(OpTest):
     def setUp(self):
         self.set_npu()
@@ -55,6 +75,7 @@ class TestGroupNormOp(OpTest):
 
         self.data_format = "NCHW"
         self.atol = 1e-6
+        self.max_relative_error = 0.005
         self.shape = (2, 100, 3, 5)
         self.attrs = {'epsilon': 1e-5, 'groups': 2, 'data_layout': "NCHW"}
         self.compare_between_place = False
@@ -77,8 +98,6 @@ class TestGroupNormOp(OpTest):
         self.outputs = {'Y': output, 'Mean': mean, 'Variance': var}
         self.attrs['data_layout'] = self.data_format
 
-        self.max_relative_error = 0.01
-
     def set_npu(self):
         self.__class__.use_npu = True
 
@@ -91,10 +110,20 @@ class TestGroupNormOp(OpTest):
     def test_check_grad(self):
         if self.dtype == np.float16:
             return
-        self.check_grad_with_place(
-            self.place, ['X', 'Scale', 'Bias'],
-            'Y',
-            max_relative_error=self.max_relative_error)
+
+        self.__class__.exist_check_grad = True
+        inputs_to_check = ['X', 'Scale', 'Bias']
+        output_names = 'Y'
+        no_grad_set = set()
+        cpu_place = fluid.CPUPlace()
+        cpu_grads = self._get_gradient(inputs_to_check, cpu_place, output_names,
+                                       no_grad_set)
+        npu_grads = self._get_gradient(inputs_to_check, self.place,
+                                       output_names, no_grad_set)
+
+        self._assert_is_close(cpu_grads, npu_grads, inputs_to_check,
+                              self.max_relative_error,
+                              "Gradient Check between places")
 
     def init_test_case(self):
         pass
@@ -170,6 +199,18 @@ class TestGroupNormOpFP16_With_NHWC(TestGroupNormOp):
 
     def init_test_case(self):
         self.data_format = "NHWC"
+
+
+class TestGroupNormException(unittest.TestCase):
+    # data_layout is not NHWC or NCHW
+    def test_exception(self):
+        data = fluid.data(name='data', shape=[None, 3, 3, 4], dtype="float64")
+
+        def attr_data_format():
+            out = fluid.layers.group_norm(
+                input=data, groups=2, data_layout="NDHW")
+
+        self.assertRaises(ValueError, attr_data_format)
 
 
 if __name__ == '__main__':
