@@ -33,13 +33,6 @@ def _check_tensors(in_out_list, name):
         return [in_out_list]
 
 
-def _stop_gradient_pre_process(in_list):
-    for each_var in in_list:
-        each_var = paddle.assign(each_var)
-        each_var.stop_gradient = True
-    return in_list
-
-
 def _stack_tensor_or_return_none(origin_list):
     assert len(origin_list) > 0, "Can't not stack an empty list"
     return paddle.stack(
