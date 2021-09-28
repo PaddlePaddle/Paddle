@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "paddle/fluid/platform/gpu_info.h"
 #include <cstdlib>
+#include <mutex>
+#include <vector>
 
 #include "gflags/gflags.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
@@ -38,6 +40,10 @@ DECLARE_string(selected_gpus);
 DECLARE_uint64(gpu_memory_limit_mb);
 
 constexpr static float fraction_reserve_gpu_memory = 0.05f;
+
+static std::once_flag g_device_props_size_init_flag;
+static std::vector<std::unique_ptr<std::once_flag>> g_device_props_init_flags;
+static std::vector<paddle::gpuDeviceProp> g_device_props;
 
 USE_GPU_MEM_STAT;
 namespace paddle {
@@ -295,6 +301,44 @@ std::vector<int> GetSelectedDevices() {
     }
   }
   return devices;
+}
+
+const gpuDeviceProp &GetDeviceProperties(int id) {
+  std::call_once(g_device_props_size_init_flag, [&] {
+    int gpu_num = 0;
+    gpu_num = platform::GetCUDADeviceCount();
+    g_device_props_init_flags.resize(gpu_num);
+    g_device_props.resize(gpu_num);
+    for (int i = 0; i < gpu_num; ++i) {
+      g_device_props_init_flags[i] = std::make_unique<std::once_flag>();
+    }
+  });
+
+  if (id == -1) {
+    id = platform::GetCurrentDeviceId();
+  }
+
+  if (id < 0 || id >= static_cast<int>(g_device_props.size())) {
+    PADDLE_THROW(platform::errors::OutOfRange(
+        "The device id %d is out of range [0, %d), where %d is the number of "
+        "devices on this machine. Because the device id should be greater than "
+        "or equal to zero and smaller than the number of gpus. Please input "
+        "appropriate device again!",
+        id, static_cast<int>(g_device_props.size()),
+        static_cast<int>(g_device_props.size())));
+  }
+
+  std::call_once(*(g_device_props_init_flags[id]), [&] {
+#ifdef PADDLE_WITH_CUDA
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        cudaGetDeviceProperties(&g_device_props[id], id));
+#else
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+      hipGetDeviceProperties(&g_device_props[id], id));
+#endif
+  });
+
+  return g_device_props[id];
 }
 
 void SetDeviceId(int id) {
