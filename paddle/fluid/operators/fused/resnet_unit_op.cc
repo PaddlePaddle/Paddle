@@ -206,6 +206,7 @@ void ResNetUnitOpMaker::Make() {
   AddAttr<bool>("fused_add", "").SetDefault(false);
   AddAttr<bool>("has_shortcut", "").SetDefault(false);
   AddAttr<bool>("use_global_stats", "").SetDefault(false);
+  AddAttr<bool>("use_addto", "").SetDefault(false);
   AddAttr<std::string>("act_type", "The activation type to be fused.")
       .SetDefault("relu");
   AddComment(R"DOC(

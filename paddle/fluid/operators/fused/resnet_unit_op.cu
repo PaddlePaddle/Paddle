@@ -382,11 +382,12 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
       }
     }
     // 2. conv backward for x, get dinput_x and dfilter_x
+    bool use_addto = ctx.Attr<bool>("use_addto");
     CudnnNormConvolutionGrad<T> conv_x_op(dev_ctx, input_x_shape,
                                           filter_x_shape, output_shape, pad,
                                           stride, dilate, group);
     conv_x_op.Backward(dev_ctx, input_x_ptr, dconv_out_x_ptr, filter_x_ptr,
-                       dinput_x_ptr, dfilter_x_ptr);
+                       dinput_x_ptr, dfilter_x_ptr, use_addto);
   }
 };
 

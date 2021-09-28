@@ -196,12 +196,13 @@ class CudnnNormConvolutionGrad {
 
   void Backward(const platform::CUDADeviceContext &ctx, T *input_ptr,
                 T *output_ptr, T *filter_ptr, T *input_grad_ptr,
-                T *filter_grad_ptr) {
+                T *filter_grad_ptr, bool use_addto = false) {
     if (filter_grad_ptr) {
       BackwardFilter(ctx, input_ptr, output_ptr, filter_ptr, filter_grad_ptr);
     }
     if (input_grad_ptr) {
-      BackwardData(ctx, input_ptr, output_ptr, filter_ptr, input_grad_ptr);
+      BackwardData(ctx, input_ptr, output_ptr, filter_ptr, input_grad_ptr,
+                   use_addto);
     }
   }
 
@@ -235,7 +236,8 @@ class CudnnNormConvolutionGrad {
   }
 
   void BackwardData(const platform::CUDADeviceContext &ctx, T *input_ptr,
-                    T *output_ptr, T *filter_ptr, T *input_grad_ptr) {
+                    T *output_ptr, T *filter_ptr, T *input_grad_ptr,
+                    bool use_addto) {
     platform::RecordEvent event("norm_conv_backward_data");
 
     auto cudnn_handle = ctx.cudnn_handle();
@@ -243,7 +245,7 @@ class CudnnNormConvolutionGrad {
 
     // Convolution dgrad followed optionally by batchnorm dgrad
     ScalingParamType<T> alpha = 1.0f;
-    ScalingParamType<T> beta = 0.0f;
+    ScalingParamType<T> beta = use_addto ? 1.0f : 0.0f;
     ctx.cudnn_workspace_handle().RunFunc(
         [&](void *cudnn_workspace_ptr) {
           PADDLE_ENFORCE_CUDA_SUCCESS(
