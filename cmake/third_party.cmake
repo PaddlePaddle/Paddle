@@ -251,7 +251,7 @@ if(WITH_GPU)
         list(APPEND third_party_deps extern_cub)
     endif()
     set(URL  "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg.tar.gz" CACHE STRING "" FORCE)
-    file_download_and_uncompress(${URL} "externalError" MD5 c0749523ebb536eb7382487d645d9cd4)   # download file externalErrorMsg.tar.gz
+    file_download_and_uncompress(${URL} "externalError" MD5 061f3b7895aadcbe2c3ed592590f8b10)   # download file externalErrorMsg.tar.gz
     if(WITH_TESTING)
         # copy externalErrorMsg.pb, just for unittest can get error message correctly.
         set(SRC_DIR ${THIRD_PARTY_PATH}/externalError/data)

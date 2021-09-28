@@ -35,6 +35,10 @@ static std::unordered_set<std::string> operators_to_skip = {
     "minus"  // Multiple ops_
 };
 
+static std::unordered_set<std::string> operators_to_codegen = {
+    "sigmoid", "matmul_v2",
+};
+
 static std::unordered_set<std::string> skipped_operators = {};
 
 namespace paddle {
@@ -334,6 +338,15 @@ void DygraphCodeGeneration(const std::string& output_dir) {
   std::string nodes_dir = output_dir + "/nodes/";
   std::string forwards_dir = output_dir + "/forwards/";
 
+  std::string dygraph_forward_api_path = output_dir + "/dygraph_forward_api.h";
+  std::string dygraph_forward_api_str =
+      "#include \"glog/logging.h\"\n"
+      "#include \"paddle/fluid/eager/autograd_meta.h\"\n"
+      "#include \"paddle/tcmpt/api/all.h\"\n"
+      "#include \"paddle/fluid/imperative/tracer.h\"\n"
+      "#include \"paddle/fluid/eager/utils.h\"\n"
+      "#include \"paddle/fluid/framework/op_registry.h\"\n\n";
+
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
   for (auto& pair : op_info_map) {
@@ -356,6 +369,7 @@ void DygraphCodeGeneration(const std::string& output_dir) {
     // Only handle matmul_v2 for now
     VLOG(2) << "------ Analyzing Op ------: " << op_type;
 
+    if (!operators_to_codegen.count(op_type)) continue;
     if (operators_to_skip.count(op_type)) continue;
 
     // if(op_type != "matmul_v2") continue;
@@ -1054,6 +1068,12 @@ void DygraphCodeGeneration(const std::string& output_dir) {
       const char* USE_OP_TEMPLATE = "USE_OP(%s);\n";
       fwd_function_str += paddle::string::Sprintf(USE_OP_TEMPLATE, op_type);
 
+      // [Generation] Generate forward functions header
+      const char* FWD_HEADER_TEMPLATE = "%s %s(%s);\n";
+      dygraph_forward_api_str += paddle::string::Sprintf(
+          FWD_HEADER_TEMPLATE, function_proto_return_type_str, function_name,
+          dygraph_function_args_str);
+
       VLOG(2) << fwd_function_str;
     }
 
@@ -1398,17 +1418,12 @@ void DygraphCodeGeneration(const std::string& output_dir) {
     std::string forward_cxx_path = forwards_dir + op_type + "_dygraph.cc";
 
     /* -------- Header Files -------- */
-    const char* FORWARD_HEADER_TEMPLATE =
-        "#include \"glog/logging.h\"\n"
-        "#include \"paddle/fluid/eager/autograd_meta.h\"\n"
-        "#include \"paddle/tcmpt/api/all.h\"\n"
-        "#include \"paddle/fluid/imperative/tracer.h\"\n"
-        "#include \"paddle/fluid/eager/utils.h\"\n"
-        "#include \"paddle/fluid/framework/op_registry.h\"\n"
+    const char* FORWARD_INCLUDE_TEMPLATE =
+        "#include \"paddle/fluid/eager/generated/dygraph_forward_api.h\"\n"
         "#include \"paddle/fluid/eager/generated/nodes/%s\"\n\n";
 
     std::string forward_cxx_headers =
-        paddle::string::Sprintf(FORWARD_HEADER_TEMPLATE, node_header_name);
+        paddle::string::Sprintf(FORWARD_INCLUDE_TEMPLATE, node_header_name);
 
     std::string node_header_header =
         "#include \"paddle/fluid/eager/grad_node_info.h\"\n\n";
@@ -1442,6 +1457,10 @@ void DygraphCodeGeneration(const std::string& output_dir) {
     node_cxx_stream.close();
     forward_cxx_stream.close();
   }
+
+  std::ofstream forward_header_stream(dygraph_forward_api_path, std::ios::out);
+  forward_header_stream << dygraph_forward_api_str;
+  forward_header_stream.close();
 }
 
 }  // namespace framework

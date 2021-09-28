@@ -25,23 +25,9 @@
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/imperative/tracer.h"
 
+#include "paddle/fluid/eager/generated/dygraph_forward_api.h"
+
 #include "gperftools/profiler.h"
-
-extern pt::Tensor sigmoid_dygraph_function(
-    const pt::Tensor& X, const bool use_mkldnn, const bool use_cudnn,
-    const int op_role, const std::vector<std::string>& op_role_var,
-    const std::string& op_namescope,
-    const std::vector<std::string>& op_callstack, const std::string& op_device,
-    const bool with_quant_attr, bool trace_backward);
-
-extern pt::Tensor matmul_v2_dygraph_function(
-    const pt::Tensor& X, const pt::Tensor& Y, const bool trans_x,
-    const bool trans_y, const bool use_mkldnn,
-    const std::string& mkldnn_data_type, const int op_role,
-    const std::vector<std::string>& op_role_var,
-    const std::string& op_namescope,
-    const std::vector<std::string>& op_callstack, const std::string& op_device,
-    const bool with_quant_attr, bool trace_backward);
 
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
