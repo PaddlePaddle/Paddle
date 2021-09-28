@@ -71,7 +71,7 @@ void TransposeNchwToNhwc(const framework::Tensor &cpu_in,
 
 template <typename T>
 void CheckOutput(const framework::Tensor &cpu_res,
-                 const framework::Tensor &cpu_base, T diff,
+                 const framework::Tensor &cpu_base, float diff,
                  bool is_relative_atol = false) {
   EXPECT_EQ(cpu_res.dims(), cpu_base.dims());
 
@@ -79,17 +79,19 @@ void CheckOutput(const framework::Tensor &cpu_res,
   const T *cpu_base_ptr = cpu_base.data<T>();
   for (int i = 0; i < cpu_res.numel(); ++i) {
     if (is_relative_atol) {
-      EXPECT_LT(std::abs((cpu_res_ptr[i] - cpu_base_ptr[i]) / cpu_base_ptr[i]),
+      EXPECT_LT(static_cast<float>(std::abs((cpu_res_ptr[i] - cpu_base_ptr[i]) /
+                                            cpu_base_ptr[i])),
                 diff);
     } else {
-      EXPECT_LT(std::abs(cpu_res_ptr[i] - cpu_base_ptr[i]), diff);
+      EXPECT_LT(static_cast<float>(std::abs(cpu_res_ptr[i] - cpu_base_ptr[i])),
+                diff);
     }
   }
 }
 
 // get paddle conv2d op results as baseline
 template <typename T>
-void Conv2DForwardCompute(const platform::CUDADeviceContext &ctx,
+void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
                           const Tensor &cpu_x, const Tensor &cpu_w,
                           Tensor *cpu_y) {
   framework::Scope scope;
@@ -118,6 +120,32 @@ void Conv2DForwardCompute(const platform::CUDADeviceContext &ctx,
 }
 
 template <typename T>
+void ComputeSumAndSquareSum(const framework::Tensor &cpu_out,
+                            framework::Tensor *cpu_sum,
+                            framework::Tensor *cpu_sum_of_square) {
+  auto dims = cpu_out.dims();
+  int64_t c = dims[3];
+
+  const T *cpu_out_ptr = cpu_out.data<T>();
+  float *cpu_sum_ptr =
+      cpu_sum->mutable_data<float>({1, 1, 1, c}, platform::CPUPlace());
+  float *cpu_sum_square_ptr = cpu_sum_of_square->mutable_data<float>(
+      {1, 1, 1, c}, platform::CPUPlace());
+
+  for (int j = 0; j < c; ++j) {
+    float tmp_sum = 0.0f;
+    float tmp_sum_of_squares = 0.0f;
+    for (int i = 0; i < cpu_out.numel() / c; ++i) {
+      float tmp_out = static_cast<float>(cpu_out_ptr[i * c + j]);
+      tmp_sum += tmp_out;
+      tmp_sum_of_squares += tmp_out * tmp_out;
+    }
+    cpu_sum_ptr[j] = tmp_sum;
+    cpu_sum_square_ptr[j] = tmp_sum_of_squares;
+  }
+}
+
+template <typename T>
 class TestCudnnNormConvOpForward {
  public:
   TestCudnnNormConvOpForward(int batch_size, int height, int width,
@@ -131,10 +159,29 @@ class TestCudnnNormConvOpForward {
     kernel_size_ = kernel_size;
     stride_ = stride;
     padding_ = (kernel_size_ - 1) / 2;
+    SetUp();
   }
 
   ~TestCudnnNormConvOpForward() {}
 
+  void CheckForward(const float diff, bool is_relative_atol = false) {
+    platform::CUDADeviceContext *ctx =
+        static_cast<platform::CUDADeviceContext *>(
+            platform::DeviceContextPool::Instance().Get(
+                platform::CUDAPlace(0)));
+    BaselineForward(*ctx);
+    FusedForward(*ctx);
+
+    // Check forward correctness between baseline and results of normconv.
+    CheckOutput<T>(cpu_output_, cpu_output_base_, diff, is_relative_atol);
+    CheckOutput<float>(cpu_sum_, cpu_sum_base_, diff, is_relative_atol);
+    CheckOutput<float>(cpu_sum_of_square_, cpu_sum_of_square_base_, diff,
+                       is_relative_atol);
+  }
+
+  void CheckBackward(const T diff, bool is_relative_atol = false) {}
+
+ private:
   void SetUp() {
     InitRandomTensor<T>({batch_size_, height_, width_, input_channels_},
                         &cpu_input_);
@@ -146,8 +193,10 @@ class TestCudnnNormConvOpForward {
   }
 
   void BaselineForward(const platform::CUDADeviceContext &ctx) {
-    Conv2DForwardCompute<T>(ctx, cpu_input_, cpu_filter_nchw_,
+    ComputeConv2DForward<T>(ctx, cpu_input_, cpu_filter_nchw_,
                             &cpu_output_base_);
+    ComputeSumAndSquareSum<T>(cpu_output_base_, &cpu_sum_base_,
+                              &cpu_sum_of_square_base_);
   }
 
   // get forward results of cudnn_norm_conv
@@ -156,7 +205,7 @@ class TestCudnnNormConvOpForward {
     framework::Tensor filter_nhwc;
     framework::Tensor output;
     framework::Tensor sum;
-    framework::Tensor sum_of_squares;
+    framework::Tensor sum_of_square;
 
     auto place = ctx.GetPlace();
     TensorCopySync(cpu_input_, place, &input);
@@ -168,8 +217,8 @@ class TestCudnnNormConvOpForward {
         {batch_size_, height_, width_, output_channels_}, place);
     float *sum_ptr =
         sum.mutable_data<float>({1, 1, 1, output_channels_}, place);
-    float *sum_of_squares_ptr =
-        sum_of_squares.mutable_data<float>({1, 1, 1, output_channels_}, place);
+    float *sum_of_square_ptr =
+        sum_of_square.mutable_data<float>({1, 1, 1, output_channels_}, place);
 
     auto input_shape = framework::vectorize<int>(input.dims());
     auto filter_shape = framework::vectorize<int>(filter_nhwc.dims());
@@ -178,26 +227,11 @@ class TestCudnnNormConvOpForward {
                                         output_shape, padding_, stride_,
                                         dilation_, group_);
     conv_op.Forward(ctx, input_ptr, filter_ptr, output_ptr, sum_ptr,
-                    sum_of_squares_ptr);
+                    sum_of_square_ptr);
 
     TensorCopySync(output, platform::CPUPlace(), &cpu_output_);
     TensorCopySync(sum, platform::CPUPlace(), &cpu_sum_);
-    TensorCopySync(sum_of_squares, platform::CPUPlace(), &cpu_sum_of_squares_);
-  }
-
-  void Run() {
-    platform::CUDADeviceContext *ctx =
-        static_cast<platform::CUDADeviceContext *>(
-            platform::DeviceContextPool::Instance().Get(
-                platform::CUDAPlace(0)));
-    SetUp();
-    BaselineForward(*ctx);
-    FusedForward(*ctx);
-  }
-
-  // check forward correctness between baseline and results of normconv.
-  void CheckOut(const T diff, bool is_relative_atol = false) {
-    CheckOutput<T>(cpu_output_, cpu_output_base_, diff, is_relative_atol);
+    TensorCopySync(sum_of_square, platform::CPUPlace(), &cpu_sum_of_square_);
   }
 
  private:
@@ -216,9 +250,11 @@ class TestCudnnNormConvOpForward {
   framework::Tensor cpu_filter_nchw_;
   framework::Tensor cpu_filter_nhwc_;
   framework::Tensor cpu_output_;
-  framework::Tensor cpu_output_base_;
   framework::Tensor cpu_sum_;
-  framework::Tensor cpu_sum_of_squares_;
+  framework::Tensor cpu_sum_of_square_;
+  framework::Tensor cpu_output_base_;
+  framework::Tensor cpu_sum_base_;
+  framework::Tensor cpu_sum_of_square_base_;
 };
 
 // test for fp16, kernel = 1, output_channels = input_channels
@@ -233,8 +269,7 @@ TEST(CudnnNormConvForward, GPUCudnnNormConvForward1Fp16) {
   TestCudnnNormConvOpForward<paddle::platform::float16> test(
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
-  test.Run();
-  test.CheckOut(static_cast<paddle::platform::float16>(1e-3), true);
+  test.CheckForward(1e-3, true);
 }
 
 // test for fp16, kernel = 3, output_channels = input_channels
@@ -249,8 +284,7 @@ TEST(CudnnNormConvForward, GPUCudnnNormConvForward2Fp16) {
   TestCudnnNormConvOpForward<paddle::platform::float16> test(
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
-  test.Run();
-  test.CheckOut(static_cast<paddle::platform::float16>(1e-3), true);
+  test.CheckForward(1e-3, true);
 }
 
 // test for fp16, kernel = 1, output_channels = input_channels * 4
@@ -265,6 +299,5 @@ TEST(CudnnNormConvForward, GPUCudnnNormConvForward3Fp16) {
   TestCudnnNormConvOpForward<paddle::platform::float16> test(
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
-  test.Run();
-  test.CheckOut(static_cast<paddle::platform::float16>(1e-3), true);
+  test.CheckForward(1e-3, true);
 }
