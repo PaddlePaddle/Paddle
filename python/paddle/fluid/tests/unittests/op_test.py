@@ -134,6 +134,10 @@ def get_numeric_gradient(place,
         delta = np.array(delta).astype(np.float16)
     elif tensor_to_check_dtype == core.VarDesc.VarType.BF16:
         tensor_to_check_dtype = np.float32
+    elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX64:
+        tensor_to_check_dtype = np.complex64
+    elif tensor_to_check_dtype == core.VarDesc.VarType.COMPLEX128:
+        tensor_tp_check_dtype = np.complex128
     else:
         raise ValueError("Not supported data type " + str(
             tensor_to_check_dtype))
