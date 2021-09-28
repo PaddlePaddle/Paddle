@@ -205,6 +205,9 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
       TensorCopySync(*seed, platform::CPUPlace(), &seed_cpu_tensor);
       seed_data = static_cast<uint64_t>(seed_cpu_tensor.data<int>()[0]);
       increment = offset;
+    } else if (seed && platform::is_cpu_place(seed->place())) {
+      seed_data = *(seed->data<int>());
+      increment = offset;
     } else if (gen_cuda->GetIsInitPy() && (!is_fix_seed)) {
       auto seed_offset = gen_cuda->IncrementOffset(offset);
       seed_data = seed_offset.first;
