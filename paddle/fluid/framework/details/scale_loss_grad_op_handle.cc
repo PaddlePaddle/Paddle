@@ -112,7 +112,7 @@ std::string ScaleLossGradOpHandle::LossGradName() const {
   return static_cast<VarHandle *>(this->outputs_[0])->name();
 }
 
-std::string ScaleLossGradOpHandle::Name() const { return "Scale LossGrad"; }
+std::string ScaleLossGradOpHandle::Name() const { return "ScaleLossGrad"; }
 }  // namespace details
 }  // namespace framework
 }  // namespace paddle
