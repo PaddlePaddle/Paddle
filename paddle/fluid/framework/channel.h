@@ -259,7 +259,7 @@ class ChannelObject {
     CHECK(n <= MaxCapacity() - reading_count_);
     reading_count_ += n;
     while (finished < n && WaitForRead(lock)) {
-      size_t m = std::min(n - finished, data_.size());
+      size_t m = (std::min)(n - finished, data_.size());
       for (size_t i = 0; i < m; i++) {
         p[finished++] = std::move(data_.front());
         data_.pop_front();
