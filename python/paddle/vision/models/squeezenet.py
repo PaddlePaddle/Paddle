@@ -38,20 +38,15 @@ model_urls = {
 
 
 class MakeFireConv(nn.Layer):
-    def __init__(self,
-                 input_channels,
-                 output_channels,
-                 filter_size,
-                 padding=0,
-                 name=None):
+    def __init__(self, input_channels, output_channels, filter_size, padding=0):
         super(MakeFireConv, self).__init__()
         self._conv = Conv2D(
             input_channels,
             output_channels,
             filter_size,
             padding=padding,
-            weight_attr=ParamAttr(name=name + "_weights"),
-            bias_attr=ParamAttr(name=name + "_offset"))
+            weight_attr=ParamAttr(),
+            bias_attr=ParamAttr())
 
     def forward(self, x):
         x = self._conv(x)
@@ -60,23 +55,13 @@ class MakeFireConv(nn.Layer):
 
 
 class MakeFire(nn.Layer):
-    def __init__(self,
-                 input_channels,
-                 squeeze_channels,
-                 expand1x1_channels,
-                 expand3x3_channels,
-                 name=None):
+    def __init__(self, input_channels, squeeze_channels, expand1x1_channels,
+                 expand3x3_channels):
         super(MakeFire, self).__init__()
-        self._conv = MakeFireConv(
-            input_channels, squeeze_channels, 1, name=name + "_squeeze1x1")
-        self._conv_path1 = MakeFireConv(
-            squeeze_channels, expand1x1_channels, 1, name=name + "_expand1x1")
+        self._conv = MakeFireConv(input_channels, squeeze_channels, 1)
+        self._conv_path1 = MakeFireConv(squeeze_channels, expand1x1_channels, 1)
         self._conv_path2 = MakeFireConv(
-            squeeze_channels,
-            expand3x3_channels,
-            3,
-            padding=1,
-            name=name + "_expand3x3")
+            squeeze_channels, expand3x3_channels, 3, padding=1)
 
     def forward(self, inputs):
         x = self._conv(inputs)
@@ -113,19 +98,19 @@ class SqueezeNet(nn.Layer):
                 96,
                 7,
                 stride=2,
-                weight_attr=ParamAttr(name="conv1_weights"),
-                bias_attr=ParamAttr(name="conv1_offset"))
+                weight_attr=ParamAttr(),
+                bias_attr=ParamAttr())
             self._pool = MaxPool2D(kernel_size=3, stride=2, padding=0)
-            self._conv1 = MakeFire(96, 16, 64, 64, name="fire2")
-            self._conv2 = MakeFire(128, 16, 64, 64, name="fire3")
-            self._conv3 = MakeFire(128, 32, 128, 128, name="fire4")
+            self._conv1 = MakeFire(96, 16, 64, 64)
+            self._conv2 = MakeFire(128, 16, 64, 64)
+            self._conv3 = MakeFire(128, 32, 128, 128)
 
-            self._conv4 = MakeFire(256, 32, 128, 128, name="fire5")
-            self._conv5 = MakeFire(256, 48, 192, 192, name="fire6")
-            self._conv6 = MakeFire(384, 48, 192, 192, name="fire7")
-            self._conv7 = MakeFire(384, 64, 256, 256, name="fire8")
+            self._conv4 = MakeFire(256, 32, 128, 128)
+            self._conv5 = MakeFire(256, 48, 192, 192)
+            self._conv6 = MakeFire(384, 48, 192, 192)
+            self._conv7 = MakeFire(384, 64, 256, 256)
 
-            self._conv8 = MakeFire(512, 64, 256, 256, name="fire9")
+            self._conv8 = MakeFire(512, 64, 256, 256)
         else:
             self._conv = Conv2D(
                 3,
@@ -133,27 +118,23 @@ class SqueezeNet(nn.Layer):
                 3,
                 stride=2,
                 padding=1,
-                weight_attr=ParamAttr(name="conv1_weights"),
-                bias_attr=ParamAttr(name="conv1_offset"))
+                weight_attr=ParamAttr(),
+                bias_attr=ParamAttr())
             self._pool = MaxPool2D(kernel_size=3, stride=2, padding=0)
-            self._conv1 = MakeFire(64, 16, 64, 64, name="fire2")
-            self._conv2 = MakeFire(128, 16, 64, 64, name="fire3")
+            self._conv1 = MakeFire(64, 16, 64, 64)
+            self._conv2 = MakeFire(128, 16, 64, 64)
 
-            self._conv3 = MakeFire(128, 32, 128, 128, name="fire4")
-            self._conv4 = MakeFire(256, 32, 128, 128, name="fire5")
+            self._conv3 = MakeFire(128, 32, 128, 128)
+            self._conv4 = MakeFire(256, 32, 128, 128)
 
-            self._conv5 = MakeFire(256, 48, 192, 192, name="fire6")
-            self._conv6 = MakeFire(384, 48, 192, 192, name="fire7")
-            self._conv7 = MakeFire(384, 64, 256, 256, name="fire8")
-            self._conv8 = MakeFire(512, 64, 256, 256, name="fire9")
+            self._conv5 = MakeFire(256, 48, 192, 192)
+            self._conv6 = MakeFire(384, 48, 192, 192)
+            self._conv7 = MakeFire(384, 64, 256, 256)
+            self._conv8 = MakeFire(512, 64, 256, 256)
 
         self._drop = Dropout(p=0.5, mode="downscale_in_infer")
         self._conv9 = Conv2D(
-            512,
-            num_classes,
-            1,
-            weight_attr=ParamAttr(name="conv10_weights"),
-            bias_attr=ParamAttr(name="conv10_offset"))
+            512, num_classes, 1, weight_attr=ParamAttr(), bias_attr=ParamAttr())
         self._avg_pool = AdaptiveAvgPool2D(1)
 
     def forward(self, inputs):
