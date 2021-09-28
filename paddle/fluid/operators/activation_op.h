@@ -38,16 +38,6 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-// template <typename T>
-// void PrintTensor(const framework::Tensor& src,
-//                  const framework::ExecutionContext& ctx) {
-//   std::vector<T> vec(src.numel());
-//   TensorToVector(src, ctx.device_context(), &vec);
-//   for (int i = 0; i < static_cast<int>(vec.size()); ++i) {
-//     VLOG(3) << "vec[" << i << "] : " << vec[i];
-//   }
-// }
-
 using framework::To32BitIndex;
 
 enum ActBwdOpFwdDeps {
@@ -314,7 +304,7 @@ struct SigmoidGradGradFunctor : public BaseActivationFunctor<T> {
     D_Dout_new
 
     D_Dout = (1-2*Out)*DDx*D_Dout_new
-    D_DDx = (1-Out)*Out*D_DDout + (1-2*Out)*DOut*D_DDout
+    D_DDx = (1-Out)*Out*D_DDout + (1-2*Out)*DOut*D_Dout_new
     D_OutNew = (DDx-2*Out*DDx)*D_DDout - 2*DOut*DDx*D_Dout_new
 
     Out, DDX, DOut, D_DDOut, D_DOut_New   // input
@@ -358,7 +348,7 @@ struct SigmoidTripleGradFunctor : public BaseActivationFunctor<T> {
           GET_DATA_SAFELY(d_DDx, "Output", "D_DDx", "SigmoidTripleGrad"));
       d_ddx.device(*d) =
           (static_cast<T>(1) - out) * out * d_ddOut +
-          (static_cast<T>(1) - static_cast<T>(2) * out) * dout * d_ddOut;
+          (static_cast<T>(1) - static_cast<T>(2) * out) * dout * d_dOutNew;
     }
   }
   static constexpr ActBwdOpFwdDeps FwdDeps() { return kDepOut; }
@@ -1653,7 +1643,6 @@ class ActivationDoubleGradKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& ctx) const override {
-    VLOG(3) << "=========== in ActivationDoubleGradKernel =========";
     const framework::Tensor *X, *Out, *ddX;
     X = Out = ddX = nullptr;
     framework::Tensor *ddOut, *dOut, *dX;
@@ -1962,7 +1951,6 @@ class SigmoidTripleGradKernel
  public:
   using T = typename Functor::ELEMENT_TYPE;
   void Compute(const framework::ExecutionContext& ctx) const override {
-    VLOG(3) << "=========== in SigmoidTripleGradKernel =========";
     const framework::Tensor *Out, *ddX, *dOut, *d_ddOut, *d_dOutNew;
     framework::Tensor *d_OutNew, *d_dOut, *d_ddx;
     Out = ddX = dOut = d_ddOut = d_dOutNew = nullptr;

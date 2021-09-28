@@ -29,13 +29,12 @@ from decorator_helper import prog_scope
 class TestSigmoidTripleGradCheck(unittest.TestCase):
     @prog_scope()
     def func(self, place):
-        shape = [2, 3, 4, 5]
+        shape = [2, 3, 7, 9]
         eps = 0.0005
         dtype = np.float64
         x = layers.data('x', shape, False, dtype=dtype)
         x.persistable = True
         y = layers.sigmoid(x)
-        np.random.seed(2021)
         x_arr = np.random.random(shape).astype(dtype)
         x_arr[np.abs(x_arr) < 0.005] = 0.002
         gradient_checker.triple_grad_check(
