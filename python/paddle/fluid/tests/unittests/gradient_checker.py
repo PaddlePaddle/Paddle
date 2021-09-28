@@ -393,6 +393,10 @@ def double_grad_check(x,
     grad_check(x, target_grads, x_init, place, program, eps, atol, rtol)
 
 
+# TODO(jiabin): We currently support only triple grad check here, extend this to support 
+# higher order differenciation later.
+
+
 # check triple grad and two outputs of the triple Kernel
 def triple_grad_check(x,
                       y,
@@ -414,7 +418,7 @@ def triple_grad_check(x,
         y (Variable|list[Variable]): output variables to the program.
         x_init (numpy.array|list[numpy.array]|None): the init value for input x.
         y_grads (numpy.array|list[numpy.array]|None): the gradients with respect to y.
-        x_grads_grads (numpy.array|list[numpy.array]|None): the gradients with respect to dx.
+        x_grads_grads (numpy.array|list[numpy.array]|None): the gradients with respect to your input.
         place (fluid.CPUPlace or fluid.CUDAPlace): the device.
         program (Program|None): a Program with forward pass.
             If None, use fluid.default_main_program().
