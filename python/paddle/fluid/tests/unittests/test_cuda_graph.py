@@ -13,12 +13,16 @@
 # limitations under the License.
 
 import paddle
+import paddle.fluid as fluid
 from paddle.device.cuda.graphs import CUDAGraph
 import unittest
 import numpy as np
 
 
 class TestCUDAGraph(unittest.TestCase):
+    def setUp(self):
+        fluid.set_flags({'FLAGS_allocator_strategy': 'auto_growth'})
+
     def random_tensor(self, shape):
         return paddle.to_tensor(
             np.random.randint(

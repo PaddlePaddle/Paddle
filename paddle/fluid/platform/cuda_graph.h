@@ -31,7 +31,7 @@ namespace platform {
 static void ThrowErrorIfNotSupportCUDAGraph() {}
 #else
 static void ThrowErrorIfNotSupportCUDAGraph() {
-  PADDLE_THROW(errors::Unimplemented(
+  PADDLE_THROW(platform::errors::Unimplemented(
       "CUDA Graph is only supported when CUDA version >= 10.1"));
 }
 #endif

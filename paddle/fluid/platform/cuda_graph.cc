@@ -80,8 +80,8 @@ std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
   PADDLE_ENFORCE_CUDA_SUCCESS(
       cudaGraphInstantiate(&(capturing_graph_->exec_graph_),
                            capturing_graph_->graph_, nullptr, nullptr, 0));
-  return std::move(capturing_graph_);
   VLOG(10) << "End to capture CUDA Graph with ID " << capturing_graph_->id_;
+  return std::move(capturing_graph_);
 #endif
 }
 
