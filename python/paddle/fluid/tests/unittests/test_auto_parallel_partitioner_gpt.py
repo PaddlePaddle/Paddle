@@ -844,16 +844,20 @@ class TestGPTPartitioner(unittest.TestCase):
             'layer_norm_6.tmp_2', 'layer_norm_7.tmp_2', 'layer_norm_7.tmp_2',
             'layer_norm_7.tmp_2', 'layer_norm_8.tmp_2'
         ]
-        mp_parallel_axis, process_mesh = dist_context._get_model_parallel_info()
+        process_mesh = _global_process_mesh
+        mp_parallel_axis = 1
+        dp_parallel_axis = 0
+
         group_ranks = _get_comm_group(process_mesh.process_group,
                                       process_mesh.topology, mp_parallel_axis,
                                       3)
         mp_ring_id = new_process_group(group_ranks).id
-        dp_parallel_axis, process_mesh = dist_context._get_data_parallel_info()
+
         group_ranks = _get_comm_group(process_mesh.process_group,
                                       process_mesh.topology, dp_parallel_axis,
                                       3)
         dp_ring_id = new_process_group(group_ranks).id
+
         tensor_parallel_allreduce_vars = sorted([
             op.desc.output_arg_names()[0].split("@")[0]
             for op in auto_parallel_main_prog.global_block().ops
