@@ -337,6 +337,8 @@ class MultiSlotDataset : public DatasetImpl<Record> {
   virtual ~MultiSlotDataset() {}
   virtual void GlobalShuffle(int thread_num = -1);
   virtual void SetHeterPs(bool enable_heterps);
+  virtual void DynamicAdjustReadersNum(int thread_num);
+  virtual void PrepareTrain();
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
@@ -356,6 +358,8 @@ class SlotRecordDataset : public DatasetImpl<SlotRecord> {
   virtual void DynamicAdjustChannelNum(int channel_num,
                                        bool discard_remaining_ins);
   virtual void SetHeterPs(bool enable_heterps);
+  virtual void PrepareTrain();
+  virtual void DynamicAdjustReadersNum(int thread_num);
 
  protected:
   bool enable_heterps_ = true;

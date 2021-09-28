@@ -1935,9 +1935,9 @@ void SlotRecordInMemoryDataFeed::Init(const DataFeedDesc& data_feed_desc) {
   finish_init_ = false;
   finish_set_filelist_ = false;
   finish_start_ = false;
-
   PADDLE_ENFORCE(data_feed_desc.has_multi_slot_desc(),
-                 "Multi_slot_desc has not been set.");
+                 platform::errors::PreconditionNotMet(
+                     "Multi_slot_desc has not been set in data_feed_desc"));
   paddle::framework::MultiSlotDesc multi_slot_desc =
       data_feed_desc.multi_slot_desc();
   SetBatchSize(data_feed_desc.batch_size());
