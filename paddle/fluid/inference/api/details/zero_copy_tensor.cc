@@ -334,6 +334,8 @@ template PD_INFER_DECL void Tensor::CopyFromCpu<int32_t>(const int32_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<uint8_t>(const uint8_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<int8_t>(const int8_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<float16>(const float16 *data);
+template PD_INFER_DECL void Tensor::CopyFromCpu<paddle::framework::STRINGS>(
+    const paddle::framework::STRINGS *data);
 
 template PD_INFER_DECL void Tensor::CopyToCpu<float>(float *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<int64_t>(int64_t *data) const;

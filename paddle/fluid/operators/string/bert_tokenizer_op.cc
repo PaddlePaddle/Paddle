@@ -26,7 +26,9 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/operators/string/bert_tokenizer_op.h"
-
+#ifdef PADDLE_WITH_MKLML
+#include <omp.h>
+#endif
 namespace paddle {
 namespace operators {
 
@@ -118,7 +120,12 @@ wchar_t BasicTokenizer::do_lower_case(wchar_t ch) const {
 
 void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
   std::wstring unicode_text;
-  framework::ConvertStrToWstr(text, &unicode_text);
+  int status = framework::ConvertStrToWstr(text, &unicode_text);
+  if (!status) {
+    // String is converted into wstring failedly.
+    return;
+  }
+
   std::wstring dest_text;
   for (auto ch : unicode_text) {
     if (ch == 0 || ch == 0xfffd || IsControl(ch)) {
@@ -245,6 +252,7 @@ void BertTokenizer::Tokenize(const string& text,
                              vector<int64_t>* split_token_ids) const {
   std::vector<std::wstring> tmp_tokens;
   basic_tokenizer_.Tokenize(text, &tmp_tokens);
+  if (tmp_tokens.empty()) return;
   split_token_ids->reserve(tmp_tokens.size());
   for (auto& w_token : tmp_tokens) {
     const auto& vec_size = w_token.size();
@@ -384,19 +392,33 @@ int64_t BertTokenizer::GetPadTokenID() const { return pad_token_id_; }
 
 int BertTokenizer::Encode(
     unordered_map<string, vector<int64_t>>* encoded_inputs, const string& text,
-    const string& text_pair /* = "" */, const size_t max_seq_len /* = 0 */,
-    bool pad_to_max_seq_len /* = false */, bool return_length /* = false */,
-    bool return_token_type_ids /* = true */,
-    bool return_position_ids /* = false */,
-    bool return_attention_mask /* = false */,
-    const string& truncation_strategy /* = "longest_first" */,
-    bool return_overflowing_tokens /* = false */,
-    bool return_special_tokens_mask /* = false */) const {
+    const string& text_pair /* = "" */, bool is_split_into_words /* = false */,
+    const size_t max_seq_len /* = 0 */, bool pad_to_max_seq_len /* = false */,
+    const string& truncation_strategy /* = "longest_first" */) const {
   vector<int64_t> ids;
-  Tokenize(text, &ids);
   vector<int64_t> pair_ids;
-  if (text_pair != "") {
-    Tokenize(text_pair, &pair_ids);
+  if (!is_split_into_words) {
+    Tokenize(text, &ids);
+    if (ids.empty()) return 0;
+    if (text_pair != "") {
+      Tokenize(text_pair, &pair_ids);
+      if (pair_ids.empty()) return 0;
+    }
+  } else {
+    std::wstring unicode_text;
+    int status_a = framework::ConvertStrToWstr(text, &unicode_text);
+    if (!status_a) {
+      return 0;
+    }
+    for (size_t i = 0; i < unicode_text.size(); i++) {
+      wstring token = unicode_text.substr(i, 1);
+      auto it = vocab_->find(token);
+      if (it != vocab_->end()) {
+        ids.emplace_back(it->second);
+      } else {
+        ids.emplace_back(unk_token_id_);
+      }
+    }
   }
 
   bool pair = false;
@@ -414,11 +436,9 @@ int BertTokenizer::Encode(
   // then we truncate it.
   size_t total_len = len_ids + len_pair_ids + GetNumSpecialTokensToAdd(pair);
   if (max_seq_len > 0 && total_len > max_seq_len) {
-    auto status = TruncateSequence(&ids, &pair_ids, total_len - max_seq_len,
-                                   truncation_strategy);
-    if (status == 0) {
-      return 0;
-    }
+    int status = TruncateSequence(&ids, &pair_ids, total_len - max_seq_len,
+                                  truncation_strategy);
+    if (!status) return 0;
   }
 
   // Add special tokens
@@ -430,14 +450,7 @@ int BertTokenizer::Encode(
 
   // Build output dictionnary
   encoded_inputs->emplace("input_ids", sequence);
-  if (return_token_type_ids) {
-    encoded_inputs->emplace("token_type_ids", token_type_ids);
-  }
-  if (return_length) {
-    vector<int64_t> len(1, seq_len);
-    encoded_inputs->emplace("seq_len", std::move(len));
-  }
-
+  encoded_inputs->emplace("token_type_ids", token_type_ids);
   // Check lengths
   if (max_seq_len > 0 && seq_len > max_seq_len) {
     VLOG(3) << "There is something wrong with the input sequence length."
@@ -454,125 +467,59 @@ int BertTokenizer::Encode(
 
   if (needs_to_be_padded) {
     int64_t difference = max_seq_len - seq_len;
-    if (padding_site_ == "right") {
-      if (return_attention_mask) {
-        vector<int64_t> attention_mask(max_seq_len, 0);
-        for (size_t i = 0; i < seq_len; i++) {
-          attention_mask[i] = 1;
-        }
-        encoded_inputs->emplace("attention_mask", std::move(attention_mask));
-      }
-
-      size_t pad_start = max_seq_len - 1 - difference;
-      if (return_token_type_ids) {
-        encoded_inputs->at("token_type_ids").resize(max_seq_len);
-        for (size_t i = max_seq_len - 1; i > pad_start; i--) {
-          encoded_inputs->at("token_type_ids")[i] = pad_token_id_;
-        }
-      }
-
-      encoded_inputs->at("input_ids").resize(max_seq_len);
-      for (size_t i = max_seq_len - 1; i > pad_start; i--) {
-        encoded_inputs->at("input_ids")[i] = pad_token_id_;
-      }
-    } else if (padding_site_ == "left") {
-      if (return_attention_mask) {
-        vector<int64_t> attention_mask = vector<int64_t>(max_seq_len, 0);
-        for (size_t i = difference; i < max_seq_len; i++) {
-          attention_mask[i] = 1;
-        }
-      }
-
-      if (return_token_type_ids) {
-        vector<int64_t> tmp(max_seq_len, pad_token_id_);
-        for (size_t i = difference; i < max_seq_len; i++) {
-          tmp[i] = encoded_inputs->at("token_type_ids")[i - difference];
-        }
-        encoded_inputs->at("token_type_ids").swap(tmp);
-      }
-
-      if (return_special_tokens_mask) {
-        vector<int64_t> tmp(max_seq_len, 1);
-        for (size_t i = difference; i < max_seq_len; i++) {
-          tmp[i] = encoded_inputs->at("special_tokens_mask")[i - difference];
-        }
-        encoded_inputs->emplace("special_tokens_mask", std::move(tmp));
-      }
-
-      vector<int64_t> tmp(max_seq_len, pad_token_id_);
-      for (size_t i = difference; i < max_seq_len; i++) {
-        tmp[i] = encoded_inputs->at("input_ids")[i - difference];
-      }
-      encoded_inputs->at("input_ids").swap(tmp);
+    size_t pad_start = max_seq_len - 1 - difference;
+    encoded_inputs->at("token_type_ids").resize(max_seq_len);
+    for (size_t i = max_seq_len - 1; i > pad_start; i--) {
+      encoded_inputs->at("token_type_ids")[i] = pad_token_id_;
     }
-  } else {
-    if (return_attention_mask) {
-      vector<int64_t> tmp(encoded_inputs->at("input_ids").size(), 1);
-      encoded_inputs->emplace("attention_mask", std::move(tmp));
-    }
-  }
 
-  if (return_position_ids) {
-    vector<int64_t> position_ids(encoded_inputs->at("input_ids").size(), 0);
-    for (size_t i = 0; i < encoded_inputs->at("input_ids").size(); i++) {
-      position_ids[i] = i;
+    encoded_inputs->at("input_ids").resize(max_seq_len);
+    for (size_t i = max_seq_len - 1; i > pad_start; i--) {
+      encoded_inputs->at("input_ids")[i] = pad_token_id_;
     }
-    encoded_inputs->emplace("position_ids", std::move(position_ids));
   }
   return 1;
 }
 
-int BertTokenizer::BatchEncode(
+void BertTokenizer::BatchEncode(
     vector<unordered_map<string, vector<int64_t>>>* batch_encode_inputs,
     const vector<string>& batch_text,
     const vector<string>& batch_text_pair /* = vector<string>() */,
     bool is_split_into_words /* = false */, const size_t max_seq_len /* = 0 */,
-    bool pad_to_max_seq_len /* = false */, bool return_length /* = false */,
-    bool return_token_type_ids /* = true */,
-    bool return_position_ids /* = false */,
-    bool return_attention_mask /* = false */,
-    const string& truncation_strategy /* = "longest_first" */,
-    const size_t stride /* = 0 */, bool return_overflowing_tokens /* = false */,
-    bool return_special_tokens_mask /* = false */) const {
+    bool pad_to_max_seq_len /* = false */,
+    const string& truncation_strategy /* = "longest_first" */) const {
   bool has_text_pair = false;
   if (batch_text_pair.size() != 0) {
     has_text_pair = true;
   }
 
   size_t batch_size = batch_text.size();
+#ifdef PADDLE_WITH_MKLML
+#endif
+#pragma omp parallel for
   for (size_t i = 0; i < batch_size; i++) {
-    if (stride > 0 && has_text_pair) {
-      // TODO(Steffy-zxf): add processing for qa-task.
-      VLOG(0) << "Tokenizer op to precoss QA task data needs to be done.";
-      return 0;
-    } else if (has_text_pair) {
-      unordered_map<string, vector<int64_t>> res;
-      auto status = Encode(
-          &res, batch_text[i], batch_text_pair[i], max_seq_len,
-          pad_to_max_seq_len, return_length, return_token_type_ids,
-          return_position_ids, return_attention_mask, truncation_strategy,
-          return_overflowing_tokens, return_special_tokens_mask);
-      if (status) {
-        batch_encode_inputs->emplace_back(std::move(res));
-      } else {
-        return 0;
+    unordered_map<string, vector<int64_t>> res;
+    if (has_text_pair) {
+      auto status =
+          Encode(&res, batch_text[i], batch_text_pair[i], is_split_into_words,
+                 max_seq_len, pad_to_max_seq_len, truncation_strategy);
+      if (!status) {
+        res["input_ids"] =
+            std::vector<int64_t>{cls_token_id_, sep_token_id_, cls_token_id_};
+        res["token_type_ids"] = std::vector<int64_t>{0, 0, 1};
       }
     } else {
-      unordered_map<string, vector<int64_t>> res;
       auto status =
-          Encode(&res, batch_text[i], {}, max_seq_len, pad_to_max_seq_len,
-                 return_length, return_token_type_ids, return_position_ids,
-                 return_attention_mask, truncation_strategy,
-                 return_overflowing_tokens, return_special_tokens_mask);
-      if (status) {
-        batch_encode_inputs->emplace_back(std::move(res));
-      } else {
-        return 0;
+          Encode(&res, batch_text[i], {}, is_split_into_words, max_seq_len,
+                 pad_to_max_seq_len, truncation_strategy);
+
+      if (!status) {
+        res["input_ids"] = std::vector<int64_t>{cls_token_id_, sep_token_id_};
+        res["token_type_ids"] = std::vector<int64_t>{0, 0};
       }
     }
+    batch_encode_inputs->at(i) = std::move(res);
   }
-  // Successed.
-  return 1;
 }
 
 class BertTokenizerOp : public framework::OperatorWithKernel {
@@ -644,45 +591,6 @@ class BertTokenizerOpMaker : public framework::OpProtoAndCheckerMaker {
                   "(bool), If set to `True`, the returned sequences would be"
                   " padded up to `max_seq_len` specified length according to"
                   " padding side and padding token id.")
-        .SetDefault(false);
-    AddAttr<bool>("return_length",
-                  "(bool), Whether to include the length of each encoded "
-                  "inputs in the returned dictionary.")
-        .SetDefault(false);
-    AddAttr<bool>("return_token_type_ids",
-                  "(bool),  Whether to include token type ids in the returned "
-                  "dictionary.")
-        .SetDefault(true);
-    AddAttr<bool>(
-        "return_position_ids",
-        "(bool),  Whether to include tokens position ids in the returned "
-        "dictionary.")
-        .SetDefault(false);
-    AddAttr<bool>(
-        "return_attention_mask",
-        "(bool), Whether to include the attention mask in the returned "
-        "dictionary.")
-        .SetDefault(false);
-    AddAttr<string>(
-        "truncation_strategy",
-        "(std::string), String selected in the following options: \n"
-        "1) longest_first(default) :Iteratively reduce the inputs sequence "
-        "until the input is under `max_seq_len` starting from the longest one "
-        "at each token (when there is a pair of input sequences)."
-        "2) only_first: Only truncate the first sequence. "
-        "3) only_second': Only truncate the second sequence. "
-        "4) do_not_truncate: Do not truncate (raise an error if the input "
-        "sequence is longer than `max_seq_len`.")
-        .SetDefault("longest_first");
-    AddAttr<bool>(
-        "return_overflowing_tokens",
-        "(bool), Whether to include overflowing token information in the "
-        "returned dictionary.")
-        .SetDefault(false);
-    AddAttr<bool>(
-        "return_special_tokens_mask",
-        "(bool), Whether to include special tokens mask information in the "
-        "returned dictionary.")
         .SetDefault(false);
     AddComment(R"DOC(Performs tokenization and uses the tokenized tokens to "
     "prepare model inputs. It supports sequence or sequence pair as input, "

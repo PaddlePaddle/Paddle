@@ -29,7 +29,7 @@ using STRINGS = std::vector<STRING>;
 using WSTRING_MAP = std::unordered_map<std::wstring, std::int32_t>;
 
 // Convert the std::string type to the std::string type.
-void ConvertStrToWstr(const std::string& src, std::wstring* res);
+int ConvertStrToWstr(const std::string& src, std::wstring* res);
 // Convert the std::wstring type to the std::string type.
 void ConvertWstrToStr(const std::wstring& src, std::string* res);
 // Normalization Form Canonical Decomposition.

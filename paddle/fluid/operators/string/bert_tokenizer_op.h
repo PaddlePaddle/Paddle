@@ -97,24 +97,16 @@ class BertTokenizer {
   int64_t GetNumSpecialTokensToAdd(const bool pair = false) const;
   int Encode(unordered_map<string, vector<int64_t>>* encoded_inputs,
              const string& text, const string& text_pair = "",
-             const size_t max_seq_len = 0, bool pad_to_max_seq_len = false,
-             bool return_length = false, bool return_token_type_ids = true,
-             bool return_position_ids = false,
-             bool return_attention_mask = false,
-             const string& truncation_strategy = "longest_first",
-             bool return_overflowing_tokens = false,
-             bool return_special_tokens_mask = false) const;
-  int BatchEncode(
+             bool is_split_into_words = false, const size_t max_seq_len = 0,
+             bool pad_to_max_seq_len = false,
+             const string& truncation_strategy = "longest_first") const;
+  void BatchEncode(
       vector<unordered_map<string, vector<int64_t>>>* batch_encode_inputs,
       const vector<string>& batch_text,
       const vector<string>& batch_text_pair = vector<string>(),
       bool is_split_into_words = false, const size_t max_seq_len = 0,
-      bool pad_to_max_seq_len = false, bool return_length = false,
-      bool return_token_type_ids = true, bool return_position_ids = false,
-      bool return_attention_mask = false,
-      const string& truncation_strategy = "longest_first",
-      const size_t stride = 0, bool return_overflowing_tokens = false,
-      bool return_special_tokens_mask = false) const;
+      bool pad_to_max_seq_len = false,
+      const string& truncation_strategy = "longest_first") const;
 
   int64_t GetUnkTokenID() const;
   int64_t GetPadTokenID() const;
@@ -164,22 +156,17 @@ class BertTokenizerKernel : public framework::OpKernel<T> {
     size_t batch_max_seq_len = 0;
     size_t batch_size = text->size();
 
-    vector<unordered_map<string, vector<int64_t>>> batch_encode_inputs;
-    int status;
+    vector<unordered_map<string, vector<int64_t>>> batch_encode_inputs(
+        batch_size);
     if (text_pair) {
-      status = tokenizer_ptr->BatchEncode(&batch_encode_inputs, *text,
-                                          *text_pair, is_split_into_words,
-                                          max_seq_len, pad_to_max_seq_len);
+      tokenizer_ptr->BatchEncode(&batch_encode_inputs, *text, *text_pair,
+                                 is_split_into_words, max_seq_len,
+                                 pad_to_max_seq_len);
     } else {
-      status = tokenizer_ptr->BatchEncode(&batch_encode_inputs, *text,
-                                          vector<string>(), is_split_into_words,
-                                          max_seq_len, pad_to_max_seq_len);
+      tokenizer_ptr->BatchEncode(&batch_encode_inputs, *text, vector<string>(),
+                                 is_split_into_words, max_seq_len,
+                                 pad_to_max_seq_len);
     }
-
-    PADDLE_ENFORCE_EQ(
-        status, 1,
-        platform::errors::InvalidArgument(
-            "Tokenizer op computes failly.  Please check the input."));
 
     for (size_t i = 0; i < batch_size; ++i) {
       size_t seq_len = batch_encode_inputs[i]["input_ids"].size();

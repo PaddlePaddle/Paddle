@@ -56,7 +56,7 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
     PADDLE_THROW(platform::errors::Unavailable(
         "Variable type %d is not in "
         "[LOD_TENSOR, SELECTED_ROWS, FEED_MINIBATCH, FETCH_LIST, "
-        "STRINGS, WSTRING_MAP, LOD_RANK_TABLE, PLACE_LIST, READER, RAW].",
+        "LOD_RANK_TABLE, PLACE_LIST, READER, RAW].",
         var_type));
   }
 }

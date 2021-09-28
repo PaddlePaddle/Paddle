@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include <utf8proc.h>
 
+#include <exception>
+
 #include "glog/logging.h"
 #include "paddle/fluid/framework/string_array.h"
 
@@ -23,8 +25,14 @@ namespace framework {
 std::wstring_convert<std::codecvt_utf8<wchar_t>> kConverter;
 
 // Convert the std::string type to the std::string type.
-void ConvertStrToWstr(const std::string& src, std::wstring* res) {
-  *res = kConverter.from_bytes(src);
+int ConvertStrToWstr(const std::string& src, std::wstring* res) {
+  try {
+    *res = kConverter.from_bytes(src);
+  } catch (std::range_error& e) {
+    VLOG(3) << "The string " << src << " was converted to unicode failedly! ";
+    return 0;
+  }
+  return 1;
 }
 
 // Convert the std::wstring type to the std::string type.
