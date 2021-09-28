@@ -75,9 +75,9 @@ struct DropoutParam {
 
     std::string str_seed = "Dropout";
     if (dropout_index > 0) {
-    	str_seed = str_seed + str_index + "Seed";
+      str_seed = str_seed + str_index + "Seed";
     } else {
-    	str_seed = str_seed + "Seed";
+      str_seed = str_seed + "Seed";
     }
     tensor_seed =
         context.HasInput(str_seed) ? context.Input<Tensor>(str_seed) : nullptr;
