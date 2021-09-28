@@ -52,7 +52,7 @@ struct DivideFunctor {
 
 template <typename T>
 void Sign(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  module::Sign<CUDAContext, T>(dev_ctx, x, out);
+  eigen::Sign<CUDAContext, T>(dev_ctx, x, out);
 }
 
 template <typename T>
@@ -91,7 +91,7 @@ void Scale(const CUDAContext& dev_ctx,
            float bias,
            bool bias_after_scale,
            DenseTensor* out) {
-  module::Scale<CUDAContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
+  eigen::Scale<CUDAContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
 }
 
 template <typename T>
@@ -117,12 +117,12 @@ void ScaleHost(const CUDAContext& dev_ctx,
   if (paddle::platform::is_gpu_place(scale.place())) {
     throw std::runtime_error("scale host place error.");
   }
-  module::Scale<CUDAContext, T>(dev_ctx,
-                                x,
-                                static_cast<float>(*scale.data<T>()),
-                                bias,
-                                bias_after_scale,
-                                out);
+  eigen::Scale<CUDAContext, T>(dev_ctx,
+                               x,
+                               static_cast<float>(*scale.data<T>()),
+                               bias,
+                               bias_after_scale,
+                               out);
 }
 
 template <typename T>

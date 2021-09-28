@@ -15,10 +15,17 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/tcmpt/api/include/dev/symbols.h"
 #include "paddle/tcmpt/api/include/linalg.h"
 
 #include "paddle/tcmpt/core/dense_tensor.h"
+
+#include "paddle/tcmpt/core/kernel_registry.h"
+
+PT_DECLARE_MODULE(LinalgCPU);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(LinalgCUDA);
+#endif
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;

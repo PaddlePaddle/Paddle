@@ -15,53 +15,51 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/tcmpt/api/include/math.h"
+#include "paddle/tcmpt/api/include/creation.h"
 
 #include "paddle/tcmpt/core/dense_tensor.h"
 
 #include "paddle/tcmpt/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(MathCPU);
+PT_DECLARE_MODULE(FillCPU);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(MathCUDA);
+PT_DECLARE_MODULE(FillCUDA);
 #endif
 
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
-TEST(API, mean) {
+TEST(API, fill) {
   // 1. create tensor
   auto dense_x = std::make_shared<pt::DenseTensor>(
-      pt::TensorMeta(framework::make_ddim({3, 4}),
+      pt::TensorMeta(framework::make_ddim({3, 2}),
                      pt::Backend::kCPU,
                      pt::DataType::kFLOAT32,
                      pt::DataLayout::kNCHW),
       pt::TensorStatus());
   auto* dense_x_data = dense_x->mutable_data<float>();
+  dense_x_data[0] = 0;
 
-  float sum = 0.0;
-  for (size_t i = 0; i < 12; ++i) {
-    dense_x_data[i] = i * 1.0;
-    sum += i * 1.0;
-  }
+  float val = 1.0;
 
   pt::Tensor x(dense_x);
 
   // 2. test API
-  auto out = pt::mean(x);
+  auto out = pt::full_like(x, val);
 
   // 3. check result
-  ASSERT_EQ(out.shape().size(), 1);
-  ASSERT_EQ(out.shape()[0], 1);
-  ASSERT_EQ(out.numel(), 1);
+  ASSERT_EQ(out.shape().size(), 2);
+  ASSERT_EQ(out.shape()[0], 3);
+  ASSERT_EQ(out.numel(), 6);
   ASSERT_EQ(out.is_cpu(), true);
   ASSERT_EQ(out.type(), pt::DataType::kFLOAT32);
   ASSERT_EQ(out.layout(), pt::DataLayout::kNCHW);
   ASSERT_EQ(out.initialized(), true);
 
-  auto expect_result = sum / 12;
   auto dense_out = std::dynamic_pointer_cast<pt::DenseTensor>(out.impl());
-  auto actual_result = dense_out->data<float>()[0];
-  ASSERT_NEAR(expect_result, actual_result, 1e-6f);
+  auto* actual_result = dense_out->data<float>();
+  for (auto i = 0; i < 6; i++) {
+    ASSERT_NEAR(actual_result[i], val, 1e-6f);
+  }
 }

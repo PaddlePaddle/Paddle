@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace pt {
-namespace module {
+namespace eigen {
 
 template <typename DevCtx, typename T>
 void Sign(const DevCtx& dev_ctx, const DenseTensor& x, DenseTensor* out) {
@@ -41,5 +41,5 @@ void Sign(const DevCtx& dev_ctx, const DenseTensor& x, DenseTensor* out) {
       dev, eigen_out, eigen_x);
 }
 
-}  // namespace module
+}  // namespace eigen
 }  // namespace pt

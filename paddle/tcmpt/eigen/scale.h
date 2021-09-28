@@ -21,7 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
 namespace pt {
-namespace module {
+namespace eigen {
 
 template <typename DevCtx, typename T>
 void Scale(const DevCtx& dev_ctx,
@@ -47,5 +47,5 @@ void Scale(const DevCtx& dev_ctx,
       bias_after_scale);
 }
 
-}  // namespace module
+}  // namespace eigen
 }  // namespace pt

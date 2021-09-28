@@ -19,8 +19,10 @@ limitations under the License. */
 // symbol declare
 PT_DECLARE_MODULE(MathCPU);
 PT_DECLARE_MODULE(LinalgCPU);
+PT_DECLARE_MODULE(FillCPU);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 PT_DECLARE_MODULE(MathCUDA);
 PT_DECLARE_MODULE(LinalgCUDA);
+PT_DECLARE_MODULE(FillCUDA);
 #endif
