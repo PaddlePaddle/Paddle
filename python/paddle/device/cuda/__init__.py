@@ -280,7 +280,7 @@ def get_device_name(device=None):
     Return the name of the device which is got from CUDA function `cudaDeviceProp <https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g1bf9d625a931d657e08db2b4391170f0>`_.
     
     Parameters:
-        device(paddle.CUDAPlace|int, optional): The device or the ID of the device. If device is None, the device is the current device. Default: None.
+        device(paddle.CUDAPlace|int, optional): The device or the ID of the device. If device is None (default), the device is the current device.
     
     Returns:
         str: The name of the device.
@@ -308,7 +308,7 @@ def get_device_capability(device=None):
     Return the major and minor revision numbers defining the device's compute capability which are got from CUDA function `cudaDeviceProp <https://docs.nvidia.com/cuda/cuda-runtime-api/group__CUDART__DEVICE.html#group__CUDART__DEVICE_1g1bf9d625a931d657e08db2b4391170f0>`_.
     
     Parameters:
-        device(paddle.CUDAPlace|int, optional): The device or the ID of the device. If device is None, the device is the current device. Default: None.
+        device(paddle.CUDAPlace|int, optional): The device or the ID of the device. If device is None (default), the device is the current device.
     
     Returns:
         tuple(int,int): The major and minor revision numbers defining the device's compute capability.
