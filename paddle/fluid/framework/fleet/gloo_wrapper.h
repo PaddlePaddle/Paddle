@@ -97,6 +97,26 @@ class ParallelConnectContext : public gloo::rendezvous::Context {
   // slowly in case big size, especialy in HdfsStore
   void connectFullMesh(Store& store,                              // NOLINT
                        std::shared_ptr<transport::Device>& dev);  // NOLINT
+  struct Impl {
+    // IP address of the listening socket.
+    struct sockaddr_storage ss;
+    // Sequence number of this address.
+    // If this is equal to -1, the address is assumed to
+    // represent the listening socket of a device. The sequence number
+    // must be set before it can be used by a pair.
+    ssize_t seq{-1};
+  };
+  std::string getCharIpAddr(uint32_t ipAddress) {
+    const int NBYTES = 4;
+    uint8_t octet[NBYTES];
+    char ipAddressFinal[16];
+    for (int i = 0; i < NBYTES; i++) {
+      octet[i] = ipAddress >> (i * 8);
+    }
+    snprintf(ipAddressFinal, sizeof(ipAddressFinal), "%d.%d.%d.%d", octet[0],
+             octet[1], octet[2], octet[3]);
+    return std::string(ipAddressFinal);
+  }
 
  protected:
   int thread_num_ = 6;
