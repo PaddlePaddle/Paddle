@@ -331,8 +331,8 @@ static void SlotNameMatching(
 }
 
 void DygraphCodeGeneration(const std::string& output_dir) {
-  std::string nodes_dir = output_dir + "/generated/nodes/";
-  std::string forwards_dir = output_dir + "/generated/forwards/";
+  std::string nodes_dir = output_dir + "/nodes/";
+  std::string forwards_dir = output_dir + "/forwards/";
 
   auto& op_info_map = paddle::framework::OpInfoMap::Instance().map();
   auto& all_kernels = paddle::framework::OperatorWithKernel::AllOpKernels();
@@ -622,11 +622,12 @@ void DygraphCodeGeneration(const std::string& output_dir) {
         const std::string& input_name = input.name();
         size_t input_position = fwd_inputs_name_pos_map[input_name];
         if (input.duplicable()) {
-          const char* FWD_INS_ARG_TEMPLATE = "std::vector<pt::Tensor>& %s";
+          const char* FWD_INS_ARG_TEMPLATE =
+              "const std::vector<pt::Tensor>& %s";
           input_args_str_list[input_position] =
               paddle::string::Sprintf(FWD_INS_ARG_TEMPLATE, input_name);
         } else {
-          const char* FWD_INS_ARG_TEMPLATE = "pt::Tensor& %s";
+          const char* FWD_INS_ARG_TEMPLATE = "const pt::Tensor& %s";
           input_args_str_list[input_position] =
               paddle::string::Sprintf(FWD_INS_ARG_TEMPLATE, input_name);
         }
@@ -768,7 +769,8 @@ void DygraphCodeGeneration(const std::string& output_dir) {
         const std::string& input_autograd_name = "p_autograd_" + input_name;
 
         const char* GET_SINGLE_AUTOGRAD_META_TEMPLATE =
-            "  egr::AutogradMeta& %s = *egr::EagerUtils::autograd_meta(&%s);\n";
+            "  egr::AutogradMeta& %s = "
+            "*egr::EagerUtils::unsafe_autograd_meta(%s);\n";
         get_autograd_meta_str += paddle::string::Sprintf(
             GET_SINGLE_AUTOGRAD_META_TEMPLATE, input_autograd_name, input_name);
 
@@ -791,7 +793,7 @@ void DygraphCodeGeneration(const std::string& output_dir) {
           if (input.duplicable()) {
             const char* GET_MULTI_AUTOGRAD_META_TEMPLATE =
                 "  std::vector<egr::AutogradMeta*> %s = "
-                "egr::EagerUtils::multi_autograd_meta(&%s);\n";
+                "egr::EagerUtils::unsafe_autograd_meta(%s);\n";
             get_autograd_meta_str +=
                 paddle::string::Sprintf(GET_MULTI_AUTOGRAD_META_TEMPLATE,
                                         input_autograd_name, input_name);
@@ -804,7 +806,7 @@ void DygraphCodeGeneration(const std::string& output_dir) {
           } else {
             const char* GET_SINGLE_AUTOGRAD_META_TEMPLATE =
                 "  egr::AutogradMeta& %s = "
-                "*egr::EagerUtils::autograd_meta(&%s);\n";
+                "*egr::EagerUtils::unsafe_autograd_meta(%s);\n";
             get_autograd_meta_str +=
                 paddle::string::Sprintf(GET_SINGLE_AUTOGRAD_META_TEMPLATE,
                                         input_autograd_name, input_name);
@@ -1403,7 +1405,7 @@ void DygraphCodeGeneration(const std::string& output_dir) {
         "#include \"paddle/fluid/imperative/tracer.h\"\n"
         "#include \"paddle/fluid/eager/utils.h\"\n"
         "#include \"paddle/fluid/framework/op_registry.h\"\n"
-        "#include \"paddle/fluid/eager/tests/generated/nodes/%s\"\n\n";
+        "#include \"paddle/fluid/eager/generated/nodes/%s\"\n\n";
 
     std::string forward_cxx_headers =
         paddle::string::Sprintf(FORWARD_HEADER_TEMPLATE, node_header_name);
@@ -1418,7 +1420,7 @@ void DygraphCodeGeneration(const std::string& output_dir) {
         "#include \"paddle/fluid/imperative/tracer.h\"\n"
         "#include \"paddle/fluid/eager/utils.h\"\n"
         "#include \"paddle/fluid/framework/op_registry.h\"\n"
-        "#include \"paddle/fluid/eager/tests/generated/nodes/%s\"\n\n";
+        "#include \"paddle/fluid/eager/generated/nodes/%s\"\n\n";
     std::string node_cxx_header =
         paddle::string::Sprintf(NODE_CXX_TEMPLATE, node_header_name);
 

@@ -39,6 +39,16 @@ AutogradMeta* EagerUtils::unsafe_autograd_meta(const pt::Tensor& target) {
                      "Null autograd_meta gotten from unsafe_autograd_meta()"));
   return static_cast<AutogradMeta*>(p_autograd_meta);
 }
+
+std::vector<AutogradMeta*> EagerUtils::unsafe_autograd_meta(
+    std::vector<pt::Tensor>* targets) {
+  std::vector<AutogradMeta*> metas;
+  for (const pt::Tensor& t : *targets) {
+    metas.push_back(unsafe_autograd_meta(t));
+  }
+  return metas;
+}
+
 std::vector<AutogradMeta*> EagerUtils::multi_autograd_meta(
     std::vector<pt::Tensor>* targets) {
   std::vector<AutogradMeta*> ret;
@@ -105,7 +115,7 @@ void EagerUtils::SetHistory(std::vector<AutogradMeta*>* autograd_metas,
 
 void EagerUtils::SetHistory(AutogradMeta* autograd_meta,
                             const std::shared_ptr<GradNodeBase>& grad_node) {
-    autograd_meta->SetGradNode(grad_node);
+  autograd_meta->SetGradNode(grad_node);
 }
 
 pt::Tensor EagerUtils::CreateTensorWithValue(const pt::DDim& ddim,
@@ -135,12 +145,11 @@ void EagerUtils::SetMultiOutRankWithSlot(std::vector<AutogradMeta*>* targets,
   }
 }
 void EagerUtils::SetOutRankWithSlot(std::vector<AutogradMeta*>* targets,
-                                         size_t slot_id) {
-    SetMultiOutRankWithSlot(targets, slot_id);
+                                    size_t slot_id) {
+  SetMultiOutRankWithSlot(targets, slot_id);
 }
-void EagerUtils::SetOutRankWithSlot(AutogradMeta* target,
-                                         size_t slot_id) {
-    target->SetSingleOutRankWithSlot(slot_id, 0);
+void EagerUtils::SetOutRankWithSlot(AutogradMeta* target, size_t slot_id) {
+  target->SetSingleOutRankWithSlot(slot_id, 0);
 }
 
 }  // namespace egr
