@@ -716,6 +716,16 @@ class InMemoryDataset(DatasetBase):
         self.dataset.generate_local_tables_unlock(
             table_id, fea_dim, read_thread_num, consume_thread_num, shard_num)
 
+    def set_date(self, date):
+        """
+        set training date, only used in psgpu
+        """
+        year = int(date[:4])
+        month = int(date[4:6])
+        day = int(date[6:])
+        if self.use_ps_gpu and core._is_compiled_with_heterps():
+            self.psgpu.set_date(year, month, day)
+
     @deprecated(
         since="2.0.0",
         update_to="paddle.distributed.InMemoryDataset.load_into_memory")
