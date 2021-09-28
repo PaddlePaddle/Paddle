@@ -55,17 +55,10 @@ class BNACConvLayer(nn.Layer):
                  stride=1,
                  pad=0,
                  groups=1,
-                 act="relu",
-                 name=None):
+                 act="relu"):
         super(BNACConvLayer, self).__init__()
 
-        self._batch_norm = BatchNorm(
-            num_channels,
-            act=act,
-            param_attr=ParamAttr(name=name + '_bn_scale'),
-            bias_attr=ParamAttr(name + '_bn_offset'),
-            moving_mean_name=name + '_bn_mean',
-            moving_variance_name=name + '_bn_variance')
+        self._batch_norm = BatchNorm(num_channels, act=act)
 
         self._conv = Conv2D(
             in_channels=num_channels,
@@ -74,7 +67,7 @@ class BNACConvLayer(nn.Layer):
             stride=stride,
             padding=pad,
             groups=groups,
-            weight_attr=ParamAttr(name=name + "_weights"),
+            weight_attr=ParamAttr(),
             bias_attr=False)
 
     def forward(self, input):
@@ -84,7 +77,7 @@ class BNACConvLayer(nn.Layer):
 
 
 class DenseLayer(nn.Layer):
-    def __init__(self, num_channels, growth_rate, bn_size, dropout, name=None):
+    def __init__(self, num_channels, growth_rate, bn_size, dropout):
         super(DenseLayer, self).__init__()
         self.dropout = dropout
 
@@ -93,16 +86,14 @@ class DenseLayer(nn.Layer):
             num_filters=bn_size * growth_rate,
             filter_size=1,
             pad=0,
-            stride=1,
-            name=name + "_x1")
+            stride=1)
 
         self.bn_ac_func2 = BNACConvLayer(
             num_channels=bn_size * growth_rate,
             num_filters=growth_rate,
             filter_size=3,
             pad=1,
-            stride=1,
-            name=name + "_x2")
+            stride=1)
 
         if dropout:
             self.dropout_func = Dropout(p=dropout, mode="downscale_in_infer")
@@ -138,8 +129,7 @@ class DenseBlock(nn.Layer):
                         num_channels=pre_channel,
                         growth_rate=growth_rate,
                         bn_size=bn_size,
-                        dropout=dropout,
-                        name=name + '_' + str(layer + 1))))
+                        dropout=dropout)))
             pre_channel = pre_channel + growth_rate
 
     def forward(self, input):
@@ -150,7 +140,7 @@ class DenseBlock(nn.Layer):
 
 
 class TransitionLayer(nn.Layer):
-    def __init__(self, num_channels, num_output_features, name=None):
+    def __init__(self, num_channels, num_output_features):
         super(TransitionLayer, self).__init__()
 
         self.conv_ac_func = BNACConvLayer(
@@ -158,8 +148,7 @@ class TransitionLayer(nn.Layer):
             num_filters=num_output_features,
             filter_size=1,
             pad=0,
-            stride=1,
-            name=name)
+            stride=1)
 
         self.pool2d_avg = AvgPool2D(kernel_size=2, stride=2, padding=0)
 
@@ -177,8 +166,7 @@ class ConvBNLayer(nn.Layer):
                  stride=1,
                  pad=0,
                  groups=1,
-                 act="relu",
-                 name=None):
+                 act="relu"):
         super(ConvBNLayer, self).__init__()
 
         self._conv = Conv2D(
@@ -188,15 +176,9 @@ class ConvBNLayer(nn.Layer):
             stride=stride,
             padding=pad,
             groups=groups,
-            weight_attr=ParamAttr(name=name + "_weights"),
+            weight_attr=ParamAttr(),
             bias_attr=False)
-        self._batch_norm = BatchNorm(
-            num_filters,
-            act=act,
-            param_attr=ParamAttr(name=name + '_bn_scale'),
-            bias_attr=ParamAttr(name + '_bn_offset'),
-            moving_mean_name=name + '_bn_mean',
-            moving_variance_name=name + '_bn_variance')
+        self._batch_norm = BatchNorm(num_filters, act=act)
 
     def forward(self, input):
         y = self._conv(input)
@@ -245,8 +227,7 @@ class DenseNet(nn.Layer):
             filter_size=7,
             stride=2,
             pad=3,
-            act='relu',
-            name="conv1")
+            act='relu')
 
         self.pool2d_max = MaxPool2D(kernel_size=3, stride=2, padding=1)
 
@@ -277,18 +258,11 @@ class DenseNet(nn.Layer):
                         "tr_conv{}_blk".format(i + 2),
                         TransitionLayer(
                             num_channels=pre_num_channels,
-                            num_output_features=num_features // 2,
-                            name='conv' + str(i + 2) + "_blk")))
+                            num_output_features=num_features // 2)))
                 pre_num_channels = num_features // 2
                 num_features = num_features // 2
 
-        self.batch_norm = BatchNorm(
-            num_features,
-            act="relu",
-            param_attr=ParamAttr(name='conv5_blk_bn_scale'),
-            bias_attr=ParamAttr(name='conv5_blk_bn_offset'),
-            moving_mean_name='conv5_blk_bn_mean',
-            moving_variance_name='conv5_blk_bn_variance')
+        self.batch_norm = BatchNorm(num_features, act="relu")
 
         self.pool2d_avg = AdaptiveAvgPool2D(1)
 
@@ -297,9 +271,8 @@ class DenseNet(nn.Layer):
         self.out = Linear(
             num_features,
             num_classes,
-            weight_attr=ParamAttr(
-                initializer=Uniform(-stdv, stdv), name="fc_weights"),
-            bias_attr=ParamAttr(name="fc_offset"))
+            weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+            bias_attr=ParamAttr())
 
     def forward(self, input):
         conv = self.conv1_func(input)
