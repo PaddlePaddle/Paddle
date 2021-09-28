@@ -54,6 +54,10 @@ PROCESS_GROUP_MAP = {}
 
 def get_all_process_groups():
     global PROCESS_GROUP_MAP
+    if not PROCESS_GROUP_MAP:
+        genv = _get_global_env()
+        PROCESS_GROUP_MAP["global_group"] = ProcessGroup(
+            0, list(range(genv.world_size)))
     return PROCESS_GROUP_MAP.values()
 
 

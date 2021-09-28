@@ -1420,13 +1420,9 @@ class Fleet(object):
         # Use the auto-parallel's routines instead
         if self._user_defined_strategy.semi_auto:
             from ...auto_parallel.parallelizer import AutoParallelizer
-            from ...auto_parallel.reshard import reshard
-            from ...auto_parallel.completion import complete_backward_annotation
             auto_parallelizer = AutoParallelizer(self)
             optimize_ops, params_grads, dist_startup_prog, dist_main_prog = auto_parallelizer.parallelize(
                 loss, startup_program, parameter_list, no_grad_set)
-            complete_backward_annotation(dist_main_prog)
-            reshard(dist_main_prog, dist_startup_prog)
             return optimize_ops, params_grads, dist_startup_prog, dist_main_prog
 
         # compile time
