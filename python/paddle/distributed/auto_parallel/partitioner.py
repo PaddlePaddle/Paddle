@@ -122,16 +122,6 @@ class Partitioner(object):
         # should be set to False
         self._compatible_with_auto_backward = True
 
-        # data parallelism        
-        self._enable_data_parallel = False
-        self._dp_degree = 0
-        self._dp_group = None
-
-        # tensor parallelism        
-        self._enable_tensor_parallel = False
-        self._tp_degree = 0
-        self._tp_group = None
-
     def transpile_forward(self, serial_main_program, serial_startup_program):
         """
         take serial forward programs with shard annotation, create a new distributed forward programs based on the serial ones.
@@ -235,9 +225,6 @@ class Partitioner(object):
         if not self._is_valid_annotated_program(main_program):
             raise RuntimeError(
                 "Not all vars or ops are annotated in main program !")
-
-        # determine parallelism mode
-        self._determine_parallel_mode(main_program)
 
         # dist op & partition vars
         new_main_prog, new_startup_program = self._dist_var_op_forward_transpile(
@@ -353,54 +340,7 @@ class Partitioner(object):
                     "shape", param2shape[temp_varname_map[output_vars[0]]])
                 partitioned_startup_global_block._sync_with_cpp()
 
-            # # MP broadcast not split parameter
-            # # NOTE Theoretically, the MP param init broadcast should be handled by
-            # # each dist op itself. but if we insert the broadcast op at that moment, the broadcast
-            # # will before the initializer, which lead to a undertermined case.
-            # if self._enable_tensor_parallel:
-            #     param_to_sync = []
-            #     for param in partitioned_startup_prog.all_parameters():
-            #         if not self._is_var_distributed(param):
-            #             param_to_sync.append(param)
-            #             # FIXME the ring id should be set by autoparallel.mapping module
-            #             # it should be determined by dp groups butfixed it here for hacking
-            #             partitioned_startup_global_block.append_op(
-            #                 type='c_broadcast',
-            #                 inputs={'X': param},
-            #                 outputs={'Out': param},
-            #                 attrs={
-            #                     'ring_id': self._tp_group.id,
-            #                     'root': 0,
-            #                     'use_calc_stream': True,
-            #                     OP_ROLE_KEY: OpRole.Forward
-            #                 })
-            #     partitioned_startup_global_block._sync_with_cpp()
-
-            # # DP init param broadcast
-            # if self._enable_data_parallel:
-            #     # parameters initialization synchronization 
-            #     param_to_sync = []
-
-            #     for param in partitioned_startup_global_block.all_parameters():
-            #         param_to_sync.append(param)
-
-            #         # FIXME the ring id should be set by autoparallel.mapping module
-            #         # it should be determined by dp groups butfixed it here for hacking
-            #         partitioned_startup_global_block.append_op(
-            #             type='c_broadcast',
-            #             inputs={'X': param},
-            #             outputs={'Out': param},
-            #             attrs={
-            #                 'ring_id': self._dp_group.id,
-            #                 'root': 0,
-            #                 'use_calc_stream': True,
-            #                 OP_ROLE_KEY: OpRole.Forward
-            #             })
-            #     partitioned_startup_global_block._sync_with_cpp()
-
-            #################################################################
-
-            # TODO move helper init to a comm place
+        # TODO move helper init to a comm place
         dist_op_helper = self._auto_parallel_context.get_dist_op_helper()
         dist_op_helper.set_dst_main_program(partitioned_main_prog)
         dist_op_helper.set_dst_startup_program(partitioned_startup_prog)
@@ -602,47 +542,6 @@ class Partitioner(object):
         dist_var = dist_program.global_block().var(dist_varname)
 
         return dist_var
-
-    def _determine_parallel_mode(self, program):
-        """
-        determine the parallelism that is enabled
-        NOTE a hard rule and should be updated in future
-        """
-
-        for param in program.all_parameters():
-            if self._is_var_distributed(param):
-                self._enable_tensor_parallel = True
-                break
-
-        for var in program.list_vars():
-            var_dist_attr = self._auto_parallel_context.get_tensor_distributed_attr_for_program(
-                var)
-            if not var_dist_attr.is_parameter():
-                mapping = var_dist_attr.get_dims_mapping()
-                mesh = var_dist_attr.get_process_mesh().topology
-                if mapping and mapping[0] >= 0 and mesh[mapping[0]] > 1:
-                    self._enable_data_parallel = True
-                    break
-
-        # tensor parallelism
-        if self._enable_tensor_parallel:
-            model_parallel_axis, process_mesh = self._auto_parallel_context._get_model_parallel_info(
-            )
-            group_ranks = _get_comm_group(process_mesh.process_group,
-                                          process_mesh.topology,
-                                          model_parallel_axis, self._rank_id)
-            self._tp_degree = len(group_ranks)
-            self._tp_group = new_process_group(group_ranks)
-
-        # data parallelism
-        data_parallel_axis, process_mesh = self._auto_parallel_context._get_data_parallel_info(
-        )
-        if self._enable_data_parallel:
-            group_ranks = _get_comm_group(process_mesh.process_group,
-                                          process_mesh.topology,
-                                          data_parallel_axis, self._rank_id)
-            self._dp_degree = len(group_ranks)
-            self._dp_group = new_process_group(group_ranks)
 
     def _is_var_distributed(self, var):
 
