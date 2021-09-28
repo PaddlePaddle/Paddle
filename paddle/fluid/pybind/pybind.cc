@@ -537,11 +537,11 @@ PYBIND11_MODULE(core_noavx, m) {
     DLTensor dl = dmt->dl_tensor;
     framework::Tensor tensor;
 
-    if (dl.ctx.device_type == kDLCPU) {
+    if (dl.device.device_type == kDLCPU) {
       paddle::framework::TensorFromDLPack(dl, &tensor);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (dl.ctx.device_type == kDLGPU) {
+    if (dl.device.device_type == kDLGPU) {
       paddle::framework::TensorFromDLPack(dl, &tensor);
     }
 #endif
@@ -776,8 +776,7 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_to_dlpack",
            [](framework::Tensor &self) {
              DLPackTensor dlpack_tensor(self, 1);
-             DLManagedTensor *dmt =
-                 dlpack_tensor.ToCudfCompatibleDLManagedTensor();
+             DLManagedTensor *dmt = dlpack_tensor.ToDLManagedTensor();
              auto capsule = py::capsule(
                  static_cast<void *>(dmt), "dltensor", [](PyObject *ptr) {
                    if (ptr) {
