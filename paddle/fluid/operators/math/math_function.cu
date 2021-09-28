@@ -44,6 +44,7 @@ template struct SetConstant<platform::CUDADeviceContext,
                             platform::complex<double>>;
 
 #define DEFINE_GPU_TRANS(RANK)                                            \
+  template struct Transpose<platform::CUDADeviceContext, bool, RANK>;     \
   template struct Transpose<platform::CUDADeviceContext, float, RANK>;    \
   template struct Transpose<platform::CUDADeviceContext, double, RANK>;   \
   template struct Transpose<platform::CUDADeviceContext, float16, RANK>;  \
