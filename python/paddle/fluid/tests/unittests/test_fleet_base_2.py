@@ -36,8 +36,13 @@ class TestFleetBase(unittest.TestCase):
 
         input_x = paddle.fluid.layers.data(
             name="x", shape=[32], dtype='float32')
+        input_slot = paddle.fluid.layers.data(
+            name="slot", shape=[1], dtype='int64')
         input_y = paddle.fluid.layers.data(name="y", shape=[1], dtype='int64')
 
+        emb = paddle.fluid.layers.embedding(
+            input=input_slot, size=[10, 9], is_sparse=True)
+        input_x = paddle.concat(x=[input_x, emb], axis=1)
         fc_1 = paddle.fluid.layers.fc(input=input_x, size=64, act='tanh')
         fc_2 = paddle.fluid.layers.fc(input=fc_1, size=64, act='tanh')
         prediction = paddle.fluid.layers.fc(input=[fc_2], size=2, act='softmax')
