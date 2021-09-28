@@ -14,6 +14,7 @@
 
 import unittest
 import paddle
+import random
 import numpy as np
 import paddle.fluid as fluid
 from op_test import OpTest
@@ -306,6 +307,11 @@ def simple_lr_setting(param, decay_rate, n_layers):
 @unittest.skipIf(not core.is_compiled_with_cuda(),
                  "core is not compiled with CUDA")
 class TestAdamWOpLayerwiseLR(TestAdamWOp):
+    def setUp(self):
+        random.seed(2021)
+        np.random.seed(2021)
+        paddle.seed(2021)
+
     def test_adamw_op_dygraph(self):
         paddle.disable_static()
         value = np.arange(26).reshape(2, 13).astype("float32")
@@ -326,12 +332,16 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             weight_decay=0.01,
             lr_ratio=simple_lr_fun)
 
-        for _ in range(2):
+        loss_ref = np.array(
+            [4.8383293, 3.0854003, 1.33299, -0.418993, -2.171043])
+        for i in range(5):
             a1 = linear1(a)
             out = linear2(a1)
+            out = paddle.mean(out)
             out.backward()
             adam.step()
             adam.clear_gradients()
+            self.assertEqual(out[0].numpy(), loss_ref[i])
 
     def test_adamw_op(self):
         paddle.enable_static()
@@ -367,7 +377,10 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
 
         exe = fluid.Executor(place)
         exe.run(startup)
-        for _ in range(2):
+
+        loss_ref = np.array(
+            [0.36120513, 0.2720821, 0.67208904, 0.14607805, 0.24098626])
+        for i in range(5):
             inputs = np.random.random(size=[8, 10]).astype('float32')
             outputs = np.random.random(size=[8, 1]).astype('float32')
             rets = exe.run(train_prog,
@@ -375,6 +388,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                                  "y": outputs},
                            fetch_list=[avg_cost])
             assert rets[0] is not None
+            self.assertEqual(rets[0], loss_ref[i])
 
         paddle.disable_static()
 
