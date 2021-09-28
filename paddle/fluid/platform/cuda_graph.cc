@@ -42,9 +42,9 @@ void CUDAGraph::Replay() {
   PADDLE_ENFORCE_EQ(is_reset_, false,
                     errors::PermissionDenied(
                         "Cannot replay the CUDA Graph after reset is called."));
-  PADDLE_ENFORCE_NOT_NULL(
-      exec_graph_,
-      errors::PermissionDenied("CUDA Graph must be captured before replaying"));
+  PADDLE_ENFORCE_NOT_NULL(exec_graph_,
+                          errors::PermissionDenied(
+                              "CUDA Graph must be captured before replaying."));
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphLaunch(exec_graph_, stream_));
 #endif
 }
@@ -57,7 +57,7 @@ void CUDAGraph::BeginCapture(platform::CUDAPlace place, cudaStream_t stream,
       errors::PermissionDenied("CUDA Graph can only captured one by one."));
   PADDLE_ENFORCE_NOT_NULL(
       stream, errors::PermissionDenied(
-                  "CUDA Graph cannot be captured in default CUDA stream 0"));
+                  "CUDA Graph cannot be captured in default CUDA stream 0."));
   capturing_graph_.reset(new CUDAGraph());
   capturing_graph_->place_ = place;
   capturing_graph_->stream_ = stream;
