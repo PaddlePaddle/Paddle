@@ -18,6 +18,7 @@
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
+#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator_v2.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -32,9 +33,13 @@
 #include "paddle/fluid/memory/allocation/thread_local_allocator.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
+#if CUDA_VERSION >= 10020
+#include "paddle/fluid/memory/allocation/cuda_virtual_mem_allocator.h"
+#endif
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu/xpu_info.h"
 #endif
+#include "paddle/fluid/platform/dynload/cuda_driver.h"
 #include "paddle/fluid/platform/npu_info.h"
 
 PADDLE_DEFINE_EXPORTED_int64(
@@ -184,9 +189,43 @@ class AllocatorFacadePrivate {
   }
 
   void InitAutoGrowthCUDAAllocator(platform::CUDAPlace p) {
+#if defined(PADDLE_WITH_HIP)
     auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
         cuda_allocator, platform::GpuMinChunkSize());
+#endif
+
+#if defined(PADDLE_WITH_CUDA)
+#if CUDA_VERSION >= 10020
+    CUdevice device;
+    PADDLE_ENFORCE_EQ(
+        paddle::platform::dynload::cuDeviceGet(&device, p.GetDeviceId()),
+        CUDA_SUCCESS, platform::errors::Fatal("Call cuDeviceGet faild."));
+
+    int val;
+    PADDLE_ENFORCE_EQ(
+        paddle::platform::dynload::cuDeviceGetAttribute(
+            &val, CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
+            device),
+        CUDA_SUCCESS,
+        platform::errors::Fatal("Call cuDeviceGetAttribute faild."));
+
+    if (val > 0) {
+      auto cuda_allocator = std::make_shared<CUDAVirtualMemAllocator>(p);
+      allocators_[p] = std::make_shared<AutoGrowthBestFitAllocatorV2>(
+          cuda_allocator, platform::GpuMinChunkSize());
+    } else {
+      auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
+      allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
+          cuda_allocator, platform::GpuMinChunkSize());
+    }
+
+#else
+    auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
+    allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
+        cuda_allocator, platform::GpuMinChunkSize());
+#endif
+#endif
   }
 #endif
 

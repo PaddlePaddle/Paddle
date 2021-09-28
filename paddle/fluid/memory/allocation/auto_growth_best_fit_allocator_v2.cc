@@ -1,0 +1,300 @@
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include <mutex>
+
+#include "paddle/fluid/memory/allocation/aligned_allocator.h"
+#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator_v2.h"
+
+#pragma GCC diagnostic ignored "-Wpointer-arith"
+
+namespace paddle {
+namespace memory {
+namespace allocation {
+
+bool NeedSplit(size_t block_size, size_t alignment, size_t allock_size) {
+  return block_size > (allock_size * 2) ||
+         (block_size - allock_size) > alignment;
+}
+
+AutoGrowthBestFitAllocatorV2::AutoGrowthBestFitAllocatorV2(
+    const std::shared_ptr<Allocator> &underlying_allocator, size_t alignment)
+    : underlying_allocator_(
+          std::make_shared<AlignedAllocator>(underlying_allocator, alignment)),
+      alignment_(alignment) {}
+
+Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
+  size = AlignedSize(size, alignment_);
+  auto result = AllocFromFreeBlocks(size);
+
+  if (!result) {
+    auto allocateptr = underlying_allocator_->Allocate(size);
+    TryMergeAlloctation2Blocks(allocateptr->ptr(), allocateptr->size());
+    regions_.emplace(std::move(allocateptr));
+    result = AllocFromFreeBlocks(size);
+  }
+
+  // std::cout << "alloc " << result->ptr() << " " << result->size() <<
+  // std::endl;
+
+  return result;
+}
+
+void AutoGrowthBestFitAllocatorV2::FreeImpl(Allocation *allocation) {
+  auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
+  TryMergeBlock2Blocks(block_it);
+  delete allocation;
+}
+
+uint64_t AutoGrowthBestFitAllocatorV2::ReleaseImpl(
+    const platform::Place &place) {
+  return 0;
+}
+
+void AutoGrowthBestFitAllocatorV2::TryMergeBlock2Blocks(
+    std::list<Block>::iterator block) {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  if (block->ptr_ == all_blocks_.front().ptr_ &&
+      block->ptr_ == all_blocks_.back().ptr_) {
+    block->is_free_ = true;
+    // std::cout << "back1 " << block->ptr_ << " " << block->size_ << std::endl;
+    free_blocks_.emplace(std::make_pair(block->size_, block->ptr_), block);
+  } else if (block->ptr_ == all_blocks_.front().ptr_) {
+    block++;
+    auto next = block;
+    block--;
+    if (next->is_free_ &&
+        reinterpret_cast<uint8_t *>(block->ptr_) + block->size_ == next->ptr_) {
+      // merge with next
+      free_blocks_.erase(std::make_pair(next->size_, next->ptr_));
+      block->size_ += next->size_;
+      block->is_free_ = true;
+      // std::cout << "merge1 " << block->ptr_ << " " << next->ptr_ << " " <<
+      // block->size_ << std::endl;
+      all_blocks_.erase(next);
+      free_blocks_.emplace(std::make_pair(block->size_, block->ptr_), block);
+    } else {
+      block->is_free_ = true;
+      // std::cout << "back2 " << block->ptr_ << " " << block->size_ <<
+      // std::endl;
+      free_blocks_.emplace(std::make_pair(block->size_, block->ptr_), block);
+    }
+  } else if (block->ptr_ == all_blocks_.back().ptr_) {
+    block--;
+    auto pre = block;
+    block++;
+    if (pre->is_free_ &&
+        reinterpret_cast<uint8_t *>(pre->ptr_) + pre->size_ == block->ptr_) {
+      // merge with pre
+      free_blocks_.erase(std::make_pair(pre->size_, pre->ptr_));
+      pre->size_ += block->size_;
+      // std::cout << "merge2 " << pre->ptr_ << " " << block->ptr_ << " " <<
+      // pre->size_ << std::endl;
+      all_blocks_.erase(block);
+      free_blocks_.emplace(std::make_pair(pre->size_, pre->ptr_), pre);
+    } else {
+      block->is_free_ = true;
+      // std::cout << "back3 " << block->ptr_ << " " << block->size_ <<
+      // std::endl;
+      free_blocks_.emplace(std::make_pair(block->size_, block->ptr_), block);
+    }
+  } else {
+    block--;
+    auto pre = block;
+    block++;
+    block++;
+    auto next = block;
+    block--;
+    if (pre->is_free_ &&
+        reinterpret_cast<uint8_t *>(pre->ptr_) + pre->size_ == block->ptr_ &&
+        !(next->is_free_ &&
+          reinterpret_cast<uint8_t *>(block->ptr_) + block->size_ ==
+              next->ptr_)) {
+      // merge with pre
+      free_blocks_.erase(std::make_pair(pre->size_, pre->ptr_));
+      pre->size_ += block->size_;
+      // std::cout << "merge3 " << pre->ptr_ << " " << block->ptr_ << " " <<
+      // pre->size_ << std::endl;
+      all_blocks_.erase(block);
+      free_blocks_.emplace(std::make_pair(pre->size_, pre->ptr_), pre);
+    } else if (next->is_free_ &&
+               reinterpret_cast<uint8_t *>(block->ptr_) + block->size_ ==
+                   next->ptr_ &&
+               !(pre->is_free_ &&
+                 reinterpret_cast<uint8_t *>(pre->ptr_) + pre->size_ ==
+                     block->ptr_)) {
+      // merge with next
+      free_blocks_.erase(std::make_pair(next->size_, next->ptr_));
+      block->size_ += next->size_;
+      block->is_free_ = true;
+      // std::cout << "merge4 " << block->ptr_ << " " << next->ptr_ << " " <<
+      // block->size_ << std::endl;
+      all_blocks_.erase(next);
+      free_blocks_.emplace(std::make_pair(block->size_, block->ptr_), block);
+    } else if (pre->is_free_ &&
+               reinterpret_cast<uint8_t *>(pre->ptr_) + pre->size_ ==
+                   block->ptr_ &&
+               next->is_free_ &&
+               reinterpret_cast<uint8_t *>(block->ptr_) + block->size_ ==
+                   next->ptr_) {
+      // merge with pre and next
+      free_blocks_.erase(std::make_pair(pre->size_, pre->ptr_));
+      free_blocks_.erase(std::make_pair(next->size_, next->ptr_));
+      pre->size_ += (block->size_ + next->size_);
+      // std::cout << "merge5 " << pre->ptr_ << " " << block->ptr_ << " " <<
+      // next->ptr_ << " " << pre->size_ << std::endl;
+      all_blocks_.erase(block);
+      all_blocks_.erase(next);
+      free_blocks_.emplace(std::make_pair(pre->size_, pre->ptr_), pre);
+    } else {
+      block->is_free_ = true;
+      // std::cout << "back4 " << block->ptr_ << " " << block->size_ <<
+      // std::endl;
+      free_blocks_.emplace(std::make_pair(block->size_, block->ptr_), block);
+    }
+  }
+}
+
+void AutoGrowthBestFitAllocatorV2::TryMergeAlloctation2Blocks(void *ptr,
+                                                              size_t size) {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  if (all_blocks_.empty()) {
+    all_blocks_.push_back(Block(ptr, size, true));
+    // std::cout << "insert1 " << ptr << " " << size << std::endl;
+    free_blocks_.emplace(std::make_pair(size, ptr), all_blocks_.begin());
+    return;
+  }
+  for (auto block_it = all_blocks_.begin(); block_it != all_blocks_.end();
+       ++block_it) {
+    if (block_it->ptr_ > ptr) {
+      if (block_it == all_blocks_.begin()) {
+        // insert to front
+        if (block_it->is_free_ &&
+            reinterpret_cast<uint8_t *>(ptr) + size == block_it->ptr_) {
+          // merge with next
+          free_blocks_.erase(std::make_pair(block_it->size_, block_it->ptr_));
+          // std::cout << "merge6 " << ptr << " " << block_it->ptr_ << " " <<
+          // block_it->size_+size << std::endl;
+          block_it->ptr_ = ptr;
+          block_it->size_ += size;
+          free_blocks_.emplace(std::make_pair(block_it->size_, block_it->ptr_),
+                               block_it);
+        } else {
+          // do not merge
+          all_blocks_.push_front(Block(ptr, size, true));
+          // std::cout << "insert2 " << ptr << " " << size << std::endl;
+          free_blocks_.emplace(std::make_pair(size, ptr), all_blocks_.begin());
+        }
+      } else {
+        // insert to middle
+        auto next = block_it;
+        block_it--;
+        auto pre = block_it;
+        if (pre->is_free_ &&
+            reinterpret_cast<uint8_t *>(pre->ptr_) + pre->size_ == ptr &&
+            !(next->is_free_ &&
+              reinterpret_cast<uint8_t *>(ptr) + size == next->ptr_)) {
+          // merge with pre
+          free_blocks_.erase(std::make_pair(pre->size_, pre->ptr_));
+          pre->size_ += size;
+          // std::cout << "merge7 " << pre->ptr_ << " " << ptr << " " <<
+          // pre->size_ << std::endl;
+          free_blocks_.emplace(std::make_pair(pre->size_, pre->ptr_), pre);
+        } else if (next->is_free_ &&
+                   reinterpret_cast<uint8_t *>(ptr) + size == next->ptr_ &&
+                   !(pre->is_free_ &&
+                     reinterpret_cast<uint8_t *>(pre->ptr_) + pre->size_ ==
+                         ptr)) {
+          // merge with next
+          free_blocks_.erase(std::make_pair(next->size_, next->ptr_));
+          // std::cout << "merge8 " << ptr << " " << next->ptr_ << " " <<
+          // next->size_+size << std::endl;
+          next->ptr_ = ptr;
+          next->size_ += size;
+          free_blocks_.emplace(std::make_pair(next->size_, next->ptr_), next);
+        } else if (pre->is_free_ &&
+                   reinterpret_cast<uint8_t *>(pre->ptr_) + pre->size_ == ptr &&
+                   next->is_free_ &&
+                   reinterpret_cast<uint8_t *>(ptr) + size == next->ptr_) {
+          // merge with pre and next
+          free_blocks_.erase(std::make_pair(pre->size_, pre->ptr_));
+          free_blocks_.erase(std::make_pair(next->size_, next->ptr_));
+          // std::cout << "merge9 " << pre->ptr_ << " " << ptr << " " <<
+          // next->ptr_ << " " << pre->size_+next->size_+size << std::endl;
+          pre->size_ += (size + next->size_);
+          free_blocks_.emplace(std::make_pair(pre->size_, pre->ptr_), pre);
+          all_blocks_.erase(next);
+        } else {
+          // do not merge
+          auto iter = all_blocks_.insert(next, Block(ptr, size, true));
+          // std::cout << "insert3 " << ptr << " " << size << std::endl;
+          free_blocks_.emplace(std::make_pair(size, ptr), iter);
+        }
+      }
+      return;
+    }
+  }
+
+  // insert to back
+  auto block_it = all_blocks_.end();
+  block_it--;
+  if (block_it->is_free_ &&
+      reinterpret_cast<uint8_t *>(block_it->ptr_) + block_it->size_ == ptr) {
+    // merge with pre
+    free_blocks_.erase(std::make_pair(block_it->size_, block_it->ptr_));
+    block_it->size_ += size;
+    // std::cout << "merge10 " << block_it->ptr_ << " " << ptr << " " <<
+    // block_it->size_ << std::endl;
+    free_blocks_.emplace(std::make_pair(block_it->size_, block_it->ptr_),
+                         block_it);
+  } else {
+    // do not merge
+    all_blocks_.push_back(Block(ptr, size, true));
+    auto block_it = all_blocks_.end();
+    block_it--;
+    // std::cout << "insert4 " << ptr << " " << size << std::endl;
+    free_blocks_.emplace(std::make_pair(size, ptr), block_it);
+  }
+}
+
+Allocation *AutoGrowthBestFitAllocatorV2::AllocFromFreeBlocks(size_t size) {
+  std::lock_guard<SpinLock> guard(spinlock_);
+  auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
+  if (iter != free_blocks_.end()) {
+    std::list<Block>::iterator block_it = iter->second;
+    free_blocks_.erase(iter);
+    if (NeedSplit(block_it->size_, alignment_, size)) {
+      size_t remaining_size = block_it->size_ - size;
+      auto remaining_free_block = all_blocks_.insert(
+          block_it, Block(block_it->ptr_, remaining_size, true));
+      free_blocks_.emplace(std::make_pair(remaining_size, block_it->ptr_),
+                           remaining_free_block);
+      block_it->ptr_ =
+          reinterpret_cast<uint8_t *>(block_it->ptr_) + remaining_size;
+      block_it->size_ = size;
+      // std::cout << "split " << remaining_free_block->ptr_ << " " <<
+      // remaining_free_block->size_ << " " << block_it->ptr_ << " " <<
+      // block_it->size_ << std::endl;
+    }
+
+    block_it->is_free_ = false;
+    return new BlockAllocation(block_it, place_);
+  }
+
+  return nullptr;
+}
+
+}  // namespace allocation
+}  // namespace memory
+}  // namespace paddle
