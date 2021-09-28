@@ -435,7 +435,6 @@ def find_op_desc_seq(source_tensor, tensor_dist_attr, op_dist_attr):
 def _insert_send_op(block, idx, tensor, dst):
     """Insert send op into block at the given index."""
     op_type = 'send_v2'
-    helper = LayerHelper(op_type, **locals())
     block._insert_op(
         idx,
         type=op_type,
@@ -450,7 +449,6 @@ def _insert_send_op(block, idx, tensor, dst):
 def _insert_recv_op(block, idx, tensor, src):
     """Insert recv op into block at the given index."""
     op_type = 'recv_v2'
-    helper = LayerHelper(op_type, **locals())
     block._insert_op(
         idx,
         type=op_type,
@@ -471,7 +469,8 @@ def _insert_concat_op(block, idx, tensors, axis):
     attrs = {}
     attrs['axis'] = axis
     helper = LayerHelper('concat', **locals())
-    out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+    with paddle.static.program_guard(block.program):
+        out = helper.create_variable_for_type_inference(dtype=helper.input_dtype())
     block._insert_op(
         idx,
         type='concat',
@@ -506,10 +505,11 @@ def _insert_split_op(block, idx, tensor, num_or_sections):
     input_shape = tensor.shape
     inputs = {'X': tensor}
     attrs = {'num': num_or_sections, "axis": 0}
-    outs = [
-        helper.create_variable_for_type_inference(dtype=helper.input_dtype())
-        for i in range(num_or_sections)
-    ]
+    with paddle.static.program_guard(block.program):
+        outs = [
+            helper.create_variable_for_type_inference(dtype=helper.input_dtype())
+            for i in range(num_or_sections)
+        ]
     block._insert_op(
         idx,
         type="split",
@@ -526,7 +526,8 @@ def _insert_allgather_op(block, idx, tensor, ranks):
     def _insert_fill_constant_op(block, idx):
         """Insert fill constant op into block at the given index."""
         helper = LayerHelper("fill_constant", **locals())
-        out = helper.create_variable_for_type_inference(dtype="int32")
+        with paddle.static.program_guard(block.program):
+            out = helper.create_variable_for_type_inference(dtype="int32")
         inputs = {}
         attrs = {'force_cpu': False}
         attrs['str_value'] = str(int("1"))
@@ -544,9 +545,6 @@ def _insert_allgather_op(block, idx, tensor, ranks):
 
     tensor_list = []
     group = new_process_group(ranks)
-    op_type = 'c_allgather'
-    helper = LayerHelper(op_type, **locals())
-    allgather_out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
     idx_offset = 0
 
     # instant process group before insert allgather op.
@@ -574,7 +572,8 @@ def _insert_allgather_op(block, idx, tensor, ranks):
     # insert c_allgather op
     op_type = 'c_allgather'
     helper = LayerHelper(op_type, **locals())
-    allgather_out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
+    with paddle.static.program_guard(block.program):
+        allgather_out = helper.create_variable_for_type_inference(dtype=tensor.dtype)
     block._insert_op(
         idx + idx_offset,
         type=op_type,
@@ -583,11 +582,11 @@ def _insert_allgather_op(block, idx, tensor, ranks):
         attrs={
             'ring_id': group.id,
             'use_calc_stream': True,
-            'nranks': group.nranks})
+            'nranks': group._nranks})
     idx_offset += 1
 
     # insert split op
-    split_out = _insert_split_op(block, idx + idx_offset, allgather_out, group.nranks)
+    split_out = _insert_split_op(block, idx + idx_offset, allgather_out, group._nranks)
     idx_offset += 1
     tensor_list.extend(split_out)
     return tensor_list, idx_offset
@@ -650,12 +649,12 @@ def parse_op_desc(program, rank_id, op_desc_seq, var_name, reshard_op, dist_cont
             if not HAS_ALLGATHER[var_name] or op_desc.group not in list(map(lambda x: x[0], HAS_ALLGATHER[var_name])):
                 tensor_list, idx_offset = _insert_allgather_op(block, idx, source_tensor, op_desc.group)
                 idx += idx_offset
-                tensor_list_copy = copy.deepcopy(tensor_list)
-                HAS_ALLGATHER[var_name].append([op_desc.group, tensor_list_copy])
+                tensor_name_list = [var.name for var in tensor_list]
+                HAS_ALLGATHER[var_name].append([op_desc.group, tensor_name_list])
             else:
                 for item in HAS_ALLGATHER[var_name]:
                     if op_desc.group == item[0]:
-                        tensor_list = copy.deepcopy(item[1])
+                        tensor_list = [program.global_block().vars[var_name] for var_name in item[1]]
                         break
             assert tensor_list, "The result of parsing allgather op should not be None."
 
@@ -864,18 +863,21 @@ def remove_no_need_in_startup(auto_parallel_main_prog, auto_parallel_startup_pro
         startup_block._remove_op(idx)
 
 
-def reshard(auto_parallel_main_prog, auto_parallel_startup_prog):
+def reshard(auto_parallel_main_prog, auto_parallel_startup_prog, rank_id):
     """
     Reshard tensor in the program according to its dist attr and corresponding op dist attr.
 
     Args:
         auto_parallel_main_prog (Program): An auto parallel main program.
         auto_parallel_startup_prog (Program): An auto parallel startup program.
+        rank_id (int): The process id.
     """
     assert isinstance(auto_parallel_main_prog, Program), "The type of auto_parallel_main_prog should be Program, " \
                                          "but got {}.".format(type(auto_parallel_main_prog))
     assert isinstance(auto_parallel_main_prog, Program), "The type of auto_parallel_startup_prog should be Program, " \
                                          "but got {}.".format(type(auto_parallel_startup_prog))
+    assert isinstance(rank_id, int), "The type of rank_id should be int, " \
+                                         "but got {}.".format(type(rank_id))
 
     dist_context = get_default_distributed_context()
     rank_id = paddle.distributed.get_rank()

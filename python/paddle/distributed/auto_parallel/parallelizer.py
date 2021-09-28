@@ -81,17 +81,19 @@ class AutoParallelizer:
         dist_optimize_ops = partitioner.apply_optimize(
             self._optimizer, dist_params_grads, partitioned_main_prog,
             partitioned_startup_prog)
-        complete_backward_annotation(partitioned_main_prog)
         
         # Traverse different rank programs and traverse each op of them,
         # instantiate communication by process_mapping.
         all_process_groups = get_all_process_groups()
         for process_group in all_process_groups:
             process_group.instantiate()
-
-
+        
+        
         # The last step: remove all distributed attributes to be compatiable
         # with inference.
         self._remove_distributed_attrs(partitioned_main_prog)
-        reshard(dist_main_prog, dist_startup_prog, rank)
+
+        complete_backward_annotation(partitioned_main_prog)
+        reshard(partitioned_main_prog, partitioned_startup_prog, rank)
+
         return dist_optimize_ops, dist_params_grads, partitioned_startup_prog, partitioned_main_prog
