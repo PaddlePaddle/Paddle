@@ -219,8 +219,8 @@ def get_device_properties(device=None):
 
     Returns:
         _gpuDeviceProperties: The properties of the device which include ASCII string 
-            identifying device, major compute capability, minor compute capability, global 
-            memory available and the number of multiprocessors on the device.
+        identifying device, major compute capability, minor compute capability, global 
+        memory available and the number of multiprocessors on the device.
 
     Examples:
     
