@@ -216,20 +216,21 @@ class CudnnNormConvolutionGrad {
   ~CudnnNormConvolutionGrad() {}
 
   void Backward(const platform::CUDADeviceContext &ctx, T *input_ptr,
-                T *output_ptr, T *filter_ptr, T *input_grad_ptr,
-                T *filter_grad_ptr, bool use_addto) {
+                T *output_grad_ptr, T *filter_ptr, T *input_grad_ptr,
+                T *filter_grad_ptr, bool use_addto = false) {
     if (filter_grad_ptr) {
-      BackwardFilter(ctx, input_ptr, output_ptr, filter_ptr, filter_grad_ptr);
+      BackwardFilter(ctx, input_ptr, output_grad_ptr, filter_ptr,
+                     filter_grad_ptr);
     }
     if (input_grad_ptr) {
-      BackwardData(ctx, input_ptr, output_ptr, filter_ptr, input_grad_ptr,
+      BackwardData(ctx, input_ptr, output_grad_ptr, filter_ptr, input_grad_ptr,
                    use_addto);
     }
   }
 
  private:
   void BackwardFilter(const platform::CUDADeviceContext &ctx, T *input_ptr,
-                      T *output_ptr, T *filter_ptr, T *filter_grad_ptr) {
+                      T *output_grad_ptr, T *filter_ptr, T *filter_grad_ptr) {
     auto cudnn_handle = ctx.cudnn_handle();
 
     CudnnFusionOp *wgrad_op = GetBackwardFilterOp(ctx);
@@ -238,7 +239,7 @@ class CudnnNormConvolutionGrad {
         512);
 
     wgrad_op->SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, input_ptr);
-    wgrad_op->SetOpVariantParamAttrPtr(CUDNN_PTR_DYDATA, output_ptr);
+    wgrad_op->SetOpVariantParamAttrPtr(CUDNN_PTR_DYDATA, output_grad_ptr);
     wgrad_op->SetOpVariantParamAttrPtr(CUDNN_PTR_DWDATA, filter_grad_ptr);
     wgrad_op->SetOpVariantParamAttrPtr(
         CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &workspace_size);
@@ -255,7 +256,7 @@ class CudnnNormConvolutionGrad {
   }
 
   void BackwardData(const platform::CUDADeviceContext &ctx, T *input_ptr,
-                    T *output_ptr, T *filter_ptr, T *input_grad_ptr,
+                    T *output_grad_ptr, T *filter_ptr, T *input_grad_ptr,
                     bool use_addto = false) {
     auto cudnn_handle = ctx.cudnn_handle();
     size_t workspace_size = GetWorkspaceSizeBwdData(ctx);
@@ -268,9 +269,9 @@ class CudnnNormConvolutionGrad {
           PADDLE_ENFORCE_CUDA_SUCCESS(
               platform::dynload::cudnnConvolutionBackwardData(
                   cudnn_handle, &alpha, args_.filter_desc.desc(), filter_ptr,
-                  args_.out_desc.desc(), output_ptr, args_.conv_desc.desc(),
-                  dgrad_algo_, cudnn_workspace_ptr, workspace_size, &beta,
-                  args_.in_desc.desc(), input_grad_ptr));
+                  args_.out_desc.desc(), output_grad_ptr,
+                  args_.conv_desc.desc(), dgrad_algo_, cudnn_workspace_ptr,
+                  workspace_size, &beta, args_.in_desc.desc(), input_grad_ptr));
         },
         workspace_size);
   }

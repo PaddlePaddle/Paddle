@@ -30,7 +30,9 @@ namespace op = paddle::operators;
 using Tensor = paddle::framework::Tensor;
 
 USE_OP(conv2d);
+USE_OP(conv2d_grad);
 USE_OP_DEVICE_KERNEL(conv2d, CUDNN);
+USE_OP_DEVICE_KERNEL(conv2d_grad, CUDNN);
 
 template <typename T>
 void InitRandomTensor(const std::vector<int64_t> &dims,
@@ -89,19 +91,19 @@ void CheckOutput(const framework::Tensor &cpu_res,
   }
 }
 
-// get paddle conv2d op results as baseline
+// Use Paddle conv2d op results as baseline
 template <typename T>
 void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
-                          const Tensor &cpu_x, const Tensor &cpu_w,
-                          Tensor *cpu_y) {
+                          const Tensor &cpu_input, const Tensor &cpu_filter,
+                          Tensor *cpu_output) {
   framework::Scope scope;
-  auto *x = scope.Var("Input")->GetMutable<framework::LoDTensor>();
-  auto *w = scope.Var("Filter")->GetMutable<framework::LoDTensor>();
-  auto *y = scope.Var("Output")->GetMutable<framework::LoDTensor>();
+  auto *input = scope.Var("Input")->GetMutable<framework::LoDTensor>();
+  auto *filter = scope.Var("Filter")->GetMutable<framework::LoDTensor>();
+  auto *output = scope.Var("Output")->GetMutable<framework::LoDTensor>();
 
   auto place = ctx.GetPlace();
-  TensorCopySync(cpu_x, place, x);
-  TensorCopySync(cpu_w, place, w);
+  TensorCopySync(cpu_input, place, input);
+  TensorCopySync(cpu_filter, place, filter);
 
   framework::AttributeMap attrs;
   bool use_cudnn = true;
@@ -116,7 +118,62 @@ void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
       {{"Output", {"Output"}}}, attrs);
   op->Run(scope, ctx.GetPlace());
 
-  TensorCopySync(*y, platform::CPUPlace(), cpu_y);
+  TensorCopySync(*output, platform::CPUPlace(), cpu_output);
+}
+
+// Use Paddle conv2d_grad op results as baseline
+template <typename T>
+void ComputeConv2DBackward(const platform::CUDADeviceContext &ctx,
+                           const Tensor &cpu_input, const Tensor &cpu_filter,
+                           const Tensor &cpu_output_grad,
+                           framework::Tensor *cpu_input_grad,
+                           framework::Tensor *cpu_filter_grad, int stride,
+                           int padding, int dilation) {
+  framework::Scope scope;
+  auto *input = scope.Var("Input")->GetMutable<framework::LoDTensor>();
+  auto *filter = scope.Var("Filter")->GetMutable<framework::LoDTensor>();
+  auto *output_grad =
+      scope.Var("Output@GRAD")->GetMutable<framework::LoDTensor>();
+  auto *input_grad =
+      scope.Var("Input@GRAD")->GetMutable<framework::LoDTensor>();
+  auto *filter_grad =
+      scope.Var("Filter@GRAD")->GetMutable<framework::LoDTensor>();
+
+  auto place = ctx.GetPlace();
+  TensorCopySync(cpu_input, place, input);
+  TensorCopySync(cpu_filter, place, filter);
+  TensorCopySync(cpu_output_grad, place, output_grad);
+
+  framework::AttributeMap attrs;
+  bool use_cudnn = true;
+  std::string data_format = "NHWC";
+  std::string padding_algorithm = "SAME";
+  std::vector<int> strides = {stride, stride};
+  std::vector<int> paddings = {padding, padding};
+  std::vector<int> dilations = {dilation, dilation};
+  int groups = 1;
+  bool exhaustive_search = false;
+  bool use_addto = false;
+  attrs.insert({"use_cudnn", use_cudnn});
+  attrs.insert({"data_format", data_format});
+  attrs.insert({"padding_algorithm", padding_algorithm});
+  attrs.insert({"strides", strides});
+  attrs.insert({"paddings", paddings});
+  attrs.insert({"dilations", dilations});
+  attrs.insert({"groups", groups});
+  attrs.insert({"exhaustive_search", exhaustive_search});
+  attrs.insert({"use_addto", use_addto});
+
+  auto op = framework::OpRegistry::CreateOp(
+      "conv2d_grad", {{"Input", {"Input"}},
+                      {"Filter", {"Filter"}},
+                      {"Output@GRAD", {"Output@GRAD"}}},
+      {{"Input@GRAD", {"Input@GRAD"}}, {"Filter@GRAD", {"Filter@GRAD"}}},
+      attrs);
+  op->Run(scope, ctx.GetPlace());
+
+  TensorCopySync(*input_grad, platform::CPUPlace(), cpu_input_grad);
+  TensorCopySync(*filter_grad, platform::CPUPlace(), cpu_filter_grad);
 }
 
 template <typename T>
@@ -164,22 +221,52 @@ class TestCudnnNormConvOpForward {
 
   ~TestCudnnNormConvOpForward() {}
 
-  void CheckForward(const float diff, bool is_relative_atol = false) {
+  void CheckForward(float diff, bool is_relative_atol = false) {
     platform::CUDADeviceContext *ctx =
         static_cast<platform::CUDADeviceContext *>(
             platform::DeviceContextPool::Instance().Get(
                 platform::CUDAPlace(0)));
-    BaselineForward(*ctx);
-    FusedForward(*ctx);
+
+    framework::Tensor cpu_output_base;
+    framework::Tensor cpu_sum_base;
+    framework::Tensor cpu_sum_of_square_base;
+    BaselineForward(*ctx, &cpu_output_base, &cpu_sum_base,
+                    &cpu_sum_of_square_base);
+
+    framework::Tensor cpu_output;
+    framework::Tensor cpu_sum;
+    framework::Tensor cpu_sum_of_square;
+    FusedForward(*ctx, &cpu_output, &cpu_sum, &cpu_sum_of_square);
 
     // Check forward correctness between baseline and results of normconv.
-    CheckOutput<T>(cpu_output_, cpu_output_base_, diff, is_relative_atol);
-    CheckOutput<float>(cpu_sum_, cpu_sum_base_, diff, is_relative_atol);
-    CheckOutput<float>(cpu_sum_of_square_, cpu_sum_of_square_base_, diff,
+    CheckOutput<T>(cpu_output, cpu_output_base, diff, is_relative_atol);
+    CheckOutput<float>(cpu_sum, cpu_sum_base, diff, is_relative_atol);
+    CheckOutput<float>(cpu_sum_of_square, cpu_sum_of_square_base, diff,
                        is_relative_atol);
   }
 
-  void CheckBackward(const T diff, bool is_relative_atol = false) {}
+  void CheckBackward(float diff, bool is_relative_atol = false) {
+    platform::CUDADeviceContext *ctx =
+        static_cast<platform::CUDADeviceContext *>(
+            platform::DeviceContextPool::Instance().Get(
+                platform::CUDAPlace(0)));
+
+    framework::Tensor cpu_input_grad_base;
+    framework::Tensor cpu_filter_nchw_grad_base;
+    framework::Tensor cpu_filter_nhwc_grad_base;
+    BaselineBackward(*ctx, &cpu_input_grad_base, &cpu_filter_nchw_grad_base);
+    TransposeNchwToNhwc<T>(cpu_filter_nchw_grad_base,
+                           &cpu_filter_nhwc_grad_base);
+
+    framework::Tensor cpu_input_grad;
+    framework::Tensor cpu_filter_nhwc_grad;
+    FusedBackward(*ctx, &cpu_input_grad, &cpu_filter_nhwc_grad);
+
+    // Check backward correctness between baseline and results of normconv.
+    CheckOutput<T>(cpu_input_grad, cpu_input_grad_base, diff, is_relative_atol);
+    CheckOutput<T>(cpu_filter_nhwc_grad, cpu_filter_nhwc_grad_base, diff,
+                   is_relative_atol);
+  }
 
  private:
   void SetUp() {
@@ -190,17 +277,32 @@ class TestCudnnNormConvOpForward {
         &cpu_filter_nchw_);
     // transpoes for filter, NCHW -> NHWC
     TransposeNchwToNhwc<T>(cpu_filter_nchw_, &cpu_filter_nhwc_);
+    InitRandomTensor<T>({batch_size_, height_, width_, output_channels_},
+                        &cpu_output_grad_);
   }
 
-  void BaselineForward(const platform::CUDADeviceContext &ctx) {
-    ComputeConv2DForward<T>(ctx, cpu_input_, cpu_filter_nchw_,
-                            &cpu_output_base_);
-    ComputeSumAndSquareSum<T>(cpu_output_base_, &cpu_sum_base_,
-                              &cpu_sum_of_square_base_);
+  void BaselineForward(const platform::CUDADeviceContext &ctx,
+                       framework::Tensor *cpu_output_base,
+                       framework::Tensor *cpu_sum_base,
+                       framework::Tensor *cpu_sum_of_square_base) {
+    ComputeConv2DForward<T>(ctx, cpu_input_, cpu_filter_nchw_, cpu_output_base);
+    ComputeSumAndSquareSum<T>(*cpu_output_base, cpu_sum_base,
+                              cpu_sum_of_square_base);
+  }
+
+  void BaselineBackward(const platform::CUDADeviceContext &ctx,
+                        framework::Tensor *cpu_input_grad_base,
+                        framework::Tensor *cpu_filter_grad_base) {
+    ComputeConv2DBackward<T>(ctx, cpu_input_, cpu_filter_nchw_,
+                             cpu_output_grad_, cpu_input_grad_base,
+                             cpu_filter_grad_base, stride_, padding_,
+                             dilation_);
   }
 
   // get forward results of cudnn_norm_conv
-  void FusedForward(const platform::CUDADeviceContext &ctx) {
+  void FusedForward(const platform::CUDADeviceContext &ctx,
+                    framework::Tensor *cpu_output, framework::Tensor *cpu_sum,
+                    framework::Tensor *cpu_sum_of_square) {
     framework::Tensor input;
     framework::Tensor filter_nhwc;
     framework::Tensor output;
@@ -229,9 +331,42 @@ class TestCudnnNormConvOpForward {
     conv_op.Forward(ctx, input_ptr, filter_ptr, output_ptr, sum_ptr,
                     sum_of_square_ptr);
 
-    TensorCopySync(output, platform::CPUPlace(), &cpu_output_);
-    TensorCopySync(sum, platform::CPUPlace(), &cpu_sum_);
-    TensorCopySync(sum_of_square, platform::CPUPlace(), &cpu_sum_of_square_);
+    TensorCopySync(output, platform::CPUPlace(), cpu_output);
+    TensorCopySync(sum, platform::CPUPlace(), cpu_sum);
+    TensorCopySync(sum_of_square, platform::CPUPlace(), cpu_sum_of_square);
+  }
+
+  void FusedBackward(const platform::CUDADeviceContext &ctx,
+                     framework::Tensor *cpu_input_grad,
+                     framework::Tensor *cpu_filter_grad) {
+    framework::Tensor input;
+    framework::Tensor filter_nhwc;
+    framework::Tensor output_grad;
+    framework::Tensor input_grad;
+    framework::Tensor filter_grad;
+
+    auto place = ctx.GetPlace();
+    TensorCopySync(cpu_input_, place, &input);
+    TensorCopySync(cpu_filter_nhwc_, place, &filter_nhwc);
+    TensorCopySync(cpu_output_grad_, place, &output_grad);
+
+    T *input_ptr = input.data<T>();
+    T *filter_ptr = filter_nhwc.data<T>();
+    T *output_grad_ptr = output_grad.data<T>();
+    T *input_grad_ptr = input_grad.mutable_data<T>(input.dims(), place);
+    T *filter_grad_ptr = filter_grad.mutable_data<T>(filter_nhwc.dims(), place);
+
+    auto input_shape = framework::vectorize<int>(input.dims());
+    auto filter_shape = framework::vectorize<int>(filter_nhwc.dims());
+    auto output_shape = framework::vectorize<int>(output_grad.dims());
+    op::CudnnNormConvolutionGrad<T> conv_grad_op(ctx, input_shape, filter_shape,
+                                                 output_shape, padding_,
+                                                 stride_, dilation_, group_);
+    conv_grad_op.Backward(ctx, input_ptr, output_grad_ptr, filter_ptr,
+                          input_grad_ptr, filter_grad_ptr);
+
+    TensorCopySync(input_grad, platform::CPUPlace(), cpu_input_grad);
+    TensorCopySync(filter_grad, platform::CPUPlace(), cpu_filter_grad);
   }
 
  private:
@@ -246,15 +381,13 @@ class TestCudnnNormConvOpForward {
   const int dilation_ = 1;
   const int group_ = 1;
 
+  // Forward input
   framework::Tensor cpu_input_;
   framework::Tensor cpu_filter_nchw_;
   framework::Tensor cpu_filter_nhwc_;
-  framework::Tensor cpu_output_;
-  framework::Tensor cpu_sum_;
-  framework::Tensor cpu_sum_of_square_;
-  framework::Tensor cpu_output_base_;
-  framework::Tensor cpu_sum_base_;
-  framework::Tensor cpu_sum_of_square_base_;
+
+  // Backward input
+  framework::Tensor cpu_output_grad_;
 };
 
 // test for fp16, kernel = 1, output_channels = input_channels
@@ -270,6 +403,7 @@ TEST(CudnnNormConvForward, GPUCudnnNormConvForward1Fp16) {
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
   test.CheckForward(1e-3, true);
+  test.CheckBackward(1e-3, true);
 }
 
 // test for fp16, kernel = 3, output_channels = input_channels
@@ -285,6 +419,7 @@ TEST(CudnnNormConvForward, GPUCudnnNormConvForward2Fp16) {
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
   test.CheckForward(1e-3, true);
+  test.CheckBackward(1e-3, true);
 }
 
 // test for fp16, kernel = 1, output_channels = input_channels * 4
@@ -300,4 +435,5 @@ TEST(CudnnNormConvForward, GPUCudnnNormConvForward3Fp16) {
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
   test.CheckForward(1e-3, true);
+  test.CheckBackward(1e-3, true);
 }
