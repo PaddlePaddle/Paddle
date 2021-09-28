@@ -26,7 +26,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/framework.pb.h"
 
-DECLARE_string(npu_precision_mod);
+DECLARE_string(npu_precision_mode);
 
 namespace paddle {
 namespace operators {
@@ -406,9 +406,11 @@ void NpuOpRunner::Run(aclrtStream stream) const {
   VLOG(4) << "attr: " << attr_;
   VLOG(4) << "stream: " << stream;
 
-  PADDLE_ENFORCE_NPU_SUCCESS(
-      aclSetCompileopt(ACL_PRECISION_MODE, FLAGS_npu_precision_mod.c_str()));
-  VLOG(4) << "set ACL_PRECISION_MODE: " << FLAGS_npu_precision_mod;
+  if (!FLAGS_npu_precision_mode.empty()) {
+    PADDLE_ENFORCE_NPU_SUCCESS(
+        aclSetCompileopt(ACL_PRECISION_MODE, FLAGS_npu_precision_mode.c_str()));
+    VLOG(4) << "set ACL_PRECISION_MODE: " << FLAGS_npu_precision_mode;
+  }
 
   aclError ret = aclopCompileAndExecute(
       op_type_.c_str(), input_descs_.size(), input_descs_.data(),

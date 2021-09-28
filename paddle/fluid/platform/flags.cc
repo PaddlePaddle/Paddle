@@ -122,8 +122,12 @@ PADDLE_DEFINE_EXPORTED_string(
 PADDLE_DEFINE_EXPORTED_int32(min_loss_scaling, 1,
                              "set minmum loss scaling value!");
 PADDLE_DEFINE_EXPORTED_string(
-    npu_precision_mod, "allow_fp32_to_fp16",
-    "NPU precision mode, defalut allow_fp32_to_fp16.");
+    npu_precision_mode, "",
+    "NPU operator precision mode, options are 'force_fp32', 'force_fp16', "
+    "'allow_fp32_to_fp16', 'must_keep_origin_dtype' and "
+    "'allow_mix_precision'. If you want to use the default mode ("
+    "allow_fp32_to_fp16), set this to empty string. For more details, "
+    "please refer to the documents");
 #endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
