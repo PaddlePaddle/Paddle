@@ -25,11 +25,12 @@ namespace paddle {
 namespace operators {
 
 /**
- * Dropout will be called twice in FFN. So there will be two dropout parameters.
+ * Support two Dropouts in the use senarieo.
+ * This warpper can be used in FFN op.
  * The DropoutParam will be used in the fused_dropout_act_bias,
  * fused_residual_dropout_bias(pre_layer_norm=ture) or
  * fused_layernorm_residual_dropout_bias(pre_layer_norm=false).
- */
+*/
 struct DropoutParam {
   uint64_t seed;
   float dropout_prob;
@@ -52,7 +53,7 @@ struct DropoutParam {
 
   /**
    * dropout_index: can be 0, 1, 2. 0 means there is only one dropout,
-   * 1 and 2 represent two dropout in FFN, the parameter name of dropout
+   * 1 and 2 represent two dropout, the parameter name of dropout
    * will be "dropout" + dropout_index + param name, such as dropout1_seed,
    * dropout1_is_test.
    */
