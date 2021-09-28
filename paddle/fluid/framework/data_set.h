@@ -306,7 +306,7 @@ class DatasetImpl : public Dataset {
   int64_t global_index_ = 0;
   std::vector<std::shared_ptr<ThreadPool>> consume_task_pool_;
   std::vector<T> input_records_;  // only for paddleboxdatafeed
-  bool enable_heterps_ = true;
+  bool enable_heterps_ = false;
 };
 
 // use std::vector<MultiSlotType> or Record as data type
