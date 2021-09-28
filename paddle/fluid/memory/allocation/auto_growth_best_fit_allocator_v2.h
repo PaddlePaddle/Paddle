@@ -67,9 +67,6 @@ class AutoGrowthBestFitAllocatorV2 : public Allocator {
 
   void FreeImpl(Allocation *allocation) override;
 
-  // Release the memory block which is not used in pool.
-  uint64_t ReleaseImpl(const platform::Place &place) override;
-
  private:
   Allocation *AllocFromFreeBlocks(size_t size);
   void TryMergeAlloctation2Blocks(void *ptr, size_t size);

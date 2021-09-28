@@ -41,7 +41,7 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
   access_desc_.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
 
   auto result = paddle::platform::dynload::cuMemGetAllocationGranularity(
-          &granularity_, &prop_, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
+      &granularity_, &prop_, CU_MEM_ALLOC_GRANULARITY_MINIMUM);
   PADDLE_ENFORCE_EQ(
       result, CUDA_SUCCESS,
       platform::errors::Fatal(
