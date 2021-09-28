@@ -330,7 +330,6 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             print(vhp_rslt)
     '''
     inputs = _check_tensors(inputs, "inputs")
-    inputs = _stop_gradient_pre_process(inputs)
     outputs = func(*inputs)
     assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
         1

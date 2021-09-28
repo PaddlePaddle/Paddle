@@ -51,19 +51,22 @@ class TestVHP(unittest.TestCase):
         def func(x, y):
             return paddle.sum(paddle.matmul(x, y))
 
-        numerical_hessian = _compute_numerical_hessian(
-            func, [self.x, self.y], self.numerical_delta, self.np_dtype)
+        numerical_func_output = func(self.x, self.y).numpy()
+        numerical_hvp = _compute_numerical_hvp(
+            func, [self.x, self.y], [self.vx, self.vy], self.numerical_delta,
+            self.np_dtype)
 
         self.x.stop_gradient = False
         self.y.stop_gradient = False
-        hessian = paddle.autograd.hessian(func, [self.x, self.y])
-        for i in range(len(hessian)):
-            for j in range(len(hessian[0])):
-                assert np.allclose(hessian[i][j].numpy(),
-                                   numerical_hessian[i][j], self.rtol,
-                                   self.atol)
+        func_output, hvp = paddle.autograd.hvp(func, [self.x, self.y],
+                                               [self.vx, self.vy])
+        assert np.allclose(func_output.numpy(), numerical_func_output,
+                           self.rtol, self.atol)
+        for i in range(len(hvp)):
+            assert np.allclose(hvp[i].numpy(), numerical_hvp[i], self.rtol,
+                               self.atol)
 
-    def test_allow_unused_false(self):
+    def _test_allow_unused_false(self):
         def func(x, y):
             return paddle.sum(paddle.matmul(x, x))
 
@@ -75,7 +78,7 @@ class TestVHP(unittest.TestCase):
             error_msg = cpt.get_exception_message(e)
             assert error_msg.find("allow_unused") > 0
 
-    def test_allow_unused_true(self):
+    def _test_allow_unused_true(self):
         def func(x, y):
             return paddle.sum(paddle.matmul(x, x))
 
@@ -94,7 +97,7 @@ class TestVHP(unittest.TestCase):
                 else:
                     assert hessian[i][j] is None
 
-    def test_create_graph_false(self):
+    def _test_create_graph_false(self):
         def func(x):
             return paddle.sum(paddle.matmul(x, x))
 
@@ -125,19 +128,6 @@ class TestVHP(unittest.TestCase):
                            self.atol)
         triple_grad = paddle.grad(hessian, self.x)
         assert triple_grad is not None
-
-
-class TestHessianFloat64(TestHessian):
-    @classmethod
-    def setUpClass(self):
-        self.shape = (2, 2)
-        self.dtype = 'float64'
-        self.np_dtype = np.float64
-        self.numerical_delta = 1e-5
-        self.rtol = 1e-5
-        self.atol = 1e-5
-        self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
-        self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
 
 
 if __name__ == "__main__":
