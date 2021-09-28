@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
@@ -18,10 +19,13 @@
 
 #include <string>
 #include "paddle/fluid/memory/allocation/cuda_virtual_mem_allocator.h"
+#include "paddle/fluid/platform/enforce.h"
+
+#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #include "paddle/fluid/platform/dynload/cuda_driver.h"
-#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
+#endif
 
 #if CUDA_VERSION >= 10020
 

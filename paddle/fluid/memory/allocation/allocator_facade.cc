@@ -18,7 +18,6 @@
 #include "paddle/fluid/memory/allocation/allocator.h"
 #include "paddle/fluid/memory/allocation/allocator_strategy.h"
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator.h"
-#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator_v2.h"
 #include "paddle/fluid/memory/allocation/cpu_allocator.h"
 #include "paddle/fluid/memory/allocation/naive_best_fit_allocator.h"
 #ifdef PADDLE_WITH_ASCEND_CL
@@ -34,12 +33,13 @@
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
 #if CUDA_VERSION >= 10020
+#include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator_v2.h"
 #include "paddle/fluid/memory/allocation/cuda_virtual_mem_allocator.h"
+#include "paddle/fluid/platform/dynload/cuda_driver.h"
 #endif
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu/xpu_info.h"
 #endif
-#include "paddle/fluid/platform/dynload/cuda_driver.h"
 #include "paddle/fluid/platform/npu_info.h"
 
 PADDLE_DEFINE_EXPORTED_int64(

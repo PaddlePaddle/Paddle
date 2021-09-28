@@ -14,11 +14,13 @@
 
 #pragma once
 
+#ifdef PADDLE_WITH_CUDA
 #include <cuda_runtime.h>
+#include "paddle/fluid/platform/cuda_device_guard.h"
+#endif
+
 #include <mutex>  // NOLINT
 #include "paddle/fluid/memory/allocation/allocator.h"
-#include "paddle/fluid/platform/cuda_device_guard.h"
-#include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/place.h"
 
 #if CUDA_VERSION >= 10020

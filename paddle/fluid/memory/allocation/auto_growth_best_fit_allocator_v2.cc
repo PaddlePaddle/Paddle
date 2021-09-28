@@ -17,8 +17,6 @@
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/memory/allocation/auto_growth_best_fit_allocator_v2.h"
 
-#pragma GCC diagnostic ignored "-Wpointer-arith"
-
 namespace paddle {
 namespace memory {
 namespace allocation {
