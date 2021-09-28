@@ -98,10 +98,21 @@ def generate_combine_mul_v2():
 
 # reshape(reshape(x)) => x
 @ir.RegisterPass(input_specs={'x': InputSpec([-1, 16, 16, 16])})
-def generate_simplify_inference():
+def generate_simplify_inference_v1():
     def pattern(x):
         transpose = paddle.transpose(x, [0, 3, 1, 2])
         return paddle.transpose(transpose, [0, 3, 1, 2])
+
+    return pattern, lambda x: x
+
+
+@ir.RegisterPass
+def generate_simplify_inference_v2():
+    def pattern(x):
+        op1 = ir.PassDesc.OP.transpose2
+        op2 = ir.PassDesc.OP.transpose2
+        # op2.Attr("axis").EQ(op1.Attr("axis"))
+        return op2(X=op1(X=x))
 
     return pattern, lambda x: x
 
@@ -161,9 +172,13 @@ class TestGeneratePass(unittest.TestCase):
             x = paddle.static.data("x", [10, 10, 10], "float32")
             y = paddle.static.data("y", [10, 10, 10], "float32")
             z = paddle.static.data("z", [10, 10, 10], "float32")
-            out = paddle.add(paddle.add(x, y), z)
+            add = paddle.add(paddle.add(x, y), z)
+            out = paddle.matmul(add, z)
         graph = core.Graph(program.desc)
+        before_node_nums = len(graph.nodes())
         core.get_pass("generate_add_n").apply(graph)
+        after_node_nums = len(graph.nodes())
+        self.assertEqual(after_node_nums, before_node_nums - 2)
         after_program = paddle.fluid.framework.IrGraph(graph).to_program()
         executor = paddle.static.Executor(paddle.CPUPlace())
         executor.run(startup_program)
@@ -220,17 +235,36 @@ class TestGeneratePass(unittest.TestCase):
         self.assertEqual(len(replace_op_dicts.get("matmul_v2", [])), 1)
         self.assertEqual(len(replace_op_dicts.get("slice", [])), 2)
 
+    def check_generate_simplify_inference(self, pass_type):
+        paddle.enable_static()
+        program = paddle.static.Program()
+        startup_program = paddle.static.Program()
+        with paddle.static.program_guard(program, startup_program):
+            x = paddle.static.data("x", [10, 16, 32], "float32")
+            y = paddle.static.data("y", [10, 32, 24], "float32")
+            z = paddle.static.data("z", [10, 24, 16], "float32")
+            y = paddle.transpose(paddle.transpose(y, [0, 2, 1]), [0, 2, 1])
+            z = paddle.transpose(paddle.transpose(z, [0, 2, 1]), [0, 2, 1])
+            out = paddle.matmul(paddle.matmul(x, y), z)
+        graph = core.Graph(program.desc)
+        before_node_nums = len(graph.nodes())
+        core.get_pass(pass_type).apply(graph)
+        after_node_nums = len(graph.nodes())
+        self.assertEqual(after_node_nums, before_node_nums - 12)
+        after_program = paddle.fluid.framework.IrGraph(graph).to_program()
+        executor = paddle.static.Executor(paddle.CPUPlace())
+        executor.run(startup_program)
+        feed = {
+            "x": np.random.random([10, 16, 32]).astype("float32"),
+            "y": np.random.random([10, 32, 24]).astype("float32"),
+            "z": np.random.random([10, 24, 16]).astype("float32")
+        }
+        before_out = executor.run(program, feed=feed, fetch_list=[out.name])
+        after_out = executor.run(after_program,
+                                 feed=feed,
+                                 fetch_list=[out.name])
+        self.assertTrue(np.allclose(before_out, after_out))
+
     def test_generate_simplify_inference(self):
-        input_specs = {'x': InputSpec([-1, 16, 16, 16])}
-        helper = ir.RegisterPassHelper(
-            [generate_simplify_inference()], input_specs=input_specs)
-        s = helper.SerializeMultiPassDesc()
-        multi_pass_desc = get_multi_pass_desc_from_str(s)
-        self.assertEqual(len(multi_pass_desc.pass_descs), 1)
-        pass_desc = multi_pass_desc.pass_descs[0]
-        self.assertEqual(len(pass_desc.var_maps), 2)
-        self.assertEqual(len(pass_desc.pattern.blocks[0].ops), 2)
-        self.assertEqual(len(pass_desc.replace.blocks[0].ops), 0)
-        pattern_op_dicts = self.convert_ops_to_op_dicts(
-            pass_desc.pattern.blocks[0].ops)
-        self.assertEqual(len(pattern_op_dicts.get("transpose2", [])), 2)
+        self.check_generate_simplify_inference("generate_simplify_inference_v1")
+        self.check_generate_simplify_inference("generate_simplify_inference_v2")
