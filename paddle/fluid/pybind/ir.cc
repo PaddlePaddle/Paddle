@@ -130,9 +130,8 @@ void BindGraph(py::module *m) {
       .def("get_sub_graph", [](Graph &self, int i) {
         /* Here we use a lambda function as an empty deleter to avoid the double
         free of smart pointer.
-        Otherwise, this shared pointer will free itself both in python and cpp
-        scope, which will lead
-        a core dumped. */
+        Otherwise, this shared pointer will be free both in python and
+        cpp scope, which will lead a core dumped. */
         return std::shared_ptr<Graph>(self.GetSubGraph(i), [](Graph *) {});
       });
 }
