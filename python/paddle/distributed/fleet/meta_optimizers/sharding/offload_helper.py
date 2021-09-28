@@ -56,7 +56,7 @@ class OffloadHelper(object):
         if self.dp_ring_id is not None:
             rings.append(self.dp_ring_id)
 
-        # need sync not distributed param in mp group
+        # need sync non distributed param in mp group
         if self.mp_ring_id is not None:
             param = block.var(param_name)
             if not hasattr(param, 'is_distributed') or not param.is_distributed:
