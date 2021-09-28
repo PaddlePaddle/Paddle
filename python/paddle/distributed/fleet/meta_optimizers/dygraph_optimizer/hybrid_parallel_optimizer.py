@@ -72,15 +72,28 @@ class HybridParallelClipGrad:
         if len(sum_square_list_dist) + len(sum_square_list_not_dist) == 0:
             return params_grads
 
+        if len(sum_square_list_dist) == 0:
+            sum_square_list_dist.append(paddle.to_tensor([0.]))
+        if len(sum_square_list_not_dist) == 0:
+            sum_square_list_not_dist.append(paddle.to_tensor([0.]))
+
         global_norm_var_dist = layers.concat(sum_square_list_dist)
         global_norm_var_dist = layers.reduce_sum(global_norm_var_dist)
         global_norm_var_not_dist = layers.concat(sum_square_list_not_dist)
         global_norm_var_not_dist = layers.reduce_sum(global_norm_var_not_dist)
 
-        # add all reduce to get global norm of distributed params_and_grads in world size
-        # all reduce is not needed while getting global norm of non-distributed params_and_grads
-        paddle.distributed.all_reduce(
-            global_norm_var_dist, group=self._hcg.get_check_parallel_group())
+        # add all reduce to get global norm of distributed params_and_grads in mp world size
+        if self._hcg.get_model_parallel_world_size() > 1:
+            paddle.distributed.all_reduce(
+                global_norm_var_dist,
+                group=self._hcg.get_model_parallel_group())
+
+        # add all reduce to get global norm of non-distributed params_and_grads in pp world size
+        if self._hcg.get_pipe_parallel_world_size() > 1:
+            paddle.distributed.all_reduce(
+                global_norm_var_not_dist,
+                group=self._hcg.get_pipe_parallel_group())
+
         global_norm_var = layers.sqrt(global_norm_var_dist +
                                       global_norm_var_not_dist)
 
