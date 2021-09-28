@@ -36,8 +36,8 @@ class EltwiseDivMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
-    auto* x = ctx.Input<framework::Tensor>("X");
     auto* y = ctx.Input<framework::Tensor>("Y");
+    auto* out = ctx.Input<framework::Tensor>("Out");
     auto* dout = ctx.Input<framework::Tensor>(framework::GradVarName("Out"));
     auto* dx = ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     auto* dy = ctx.Output<framework::Tensor>(framework::GradVarName("Y"));
@@ -47,6 +47,7 @@ class EltwiseDivMKLDNNGradKernel : public ElemwiseGradKernel<T> {
 
     if (dx) {
       // dx = dout / y
+
       platform::BinaryMKLDNNHandler<T> handler(
           dnnl::algorithm::binary_div, axis, mkldnn_engine, ctx.GetPlace(),
           dout, y, dx, 1.0f, 1.0f, 1.0f);
@@ -70,35 +71,23 @@ class EltwiseDivMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     }
 
     if (dy) {
-      // dy = (-dout * x) / y^2
+      // dy = -dout * out / y
 
-      platform::BinaryMKLDNNHandler<T> y_squared_handler(
-          dnnl::algorithm::binary_mul, axis, mkldnn_engine, ctx.GetPlace(), y,
+      platform::BinaryMKLDNNHandler<T> y_handler(
+          dnnl::algorithm::binary_div, axis, mkldnn_engine, ctx.GetPlace(), y,
           y, nullptr, 1.0f, 1.0f, 1.0f);
 
-      const auto src_y_memory_1 = y_squared_handler.AcquireSrcMemory(y);
-      const auto src_y_memory_2 = y_squared_handler.AcquireSecondSrcMemory(y);
-      const auto dst_y_memory = y_squared_handler.AcquireDstMemory();
-
-      const auto y_squared_binary_prim =
-          y_squared_handler.AcquireForwardPrimitive();
-
-      const std::unordered_map<int, dnnl::memory> y_squared_args = {
-          {DNNL_ARG_SRC_0, *src_y_memory_1},
-          {DNNL_ARG_SRC_1, *src_y_memory_2},
-          {DNNL_ARG_DST, *dst_y_memory}};
-
-      y_squared_binary_prim->execute(astream, y_squared_args);
+      const auto y_memory = y_handler.AcquireSrcMemory(y);
 
       dnnl::post_ops po;
-      po.append_binary(dnnl::algorithm::binary_div, dst_y_memory->get_desc());
+      po.append_binary(dnnl::algorithm::binary_div, y_memory->get_desc());
 
       platform::BinaryMKLDNNHandler<T> handler(
           dnnl::algorithm::binary_mul, axis, mkldnn_engine, ctx.GetPlace(),
-          dout, x, nullptr, -1.0f, 1.0f, 1.0f, po);
+          dout, out, nullptr, -1.0f, 1.0f, 1.0f, po);
 
       const auto src_dout_memory = handler.AcquireSrcMemory(dout);
-      const auto src_x_memory = handler.AcquireSecondSrcMemory(x);
+      const auto src_out_memory = handler.AcquireSecondSrcMemory(out);
 
       // If broadcasting is in use then let's write to temporary
       // buffer allocated by oneDNN
@@ -110,9 +99,9 @@ class EltwiseDivMKLDNNGradKernel : public ElemwiseGradKernel<T> {
 
       const std::unordered_map<int, dnnl::memory> args = {
           {DNNL_ARG_SRC_0, *src_dout_memory},
-          {DNNL_ARG_SRC_1, *src_x_memory},
+          {DNNL_ARG_SRC_1, *src_out_memory},
           {DNNL_ARG_DST, *dst_dy_memory},
-          {DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1, *dst_y_memory}};
+          {DNNL_ARG_ATTR_MULTIPLE_POST_OP(0) | DNNL_ARG_SRC_1, *y_memory}};
 
       binary_prim->execute(astream, args);
       astream.wait();
