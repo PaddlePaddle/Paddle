@@ -526,8 +526,9 @@ def start_local_trainers(cluster,
                             pretty_print_envs(proc_env, ("Distributed Envs",
                                                          "Value"))))
             logger.info(
-                "details abouts PADDLE_TRAINER_ENDPOINTS can be found in {}/endpoints.log, and detail running logs maybe found in {}/workerlog.0".
-                format(log_dir, log_dir))
+                "details about PADDLE_TRAINER_ENDPOINTS can be found in "
+                "{}/endpoints.log, and detail running logs maybe found in "
+                "{}/workerlog.0".format(log_dir, log_dir))
         fn = None
         pre_fn = None if os.name == 'nt' else os.setsid
         if log_dir is not None:
@@ -832,7 +833,8 @@ def get_mapped_cluster(node_ips, node_ip, trainer_endpoints, device_mode,
 
 
 def get_mapped_cluster_from_args(args, device_mode):
-    assert device_mode == DeviceMode.GPU, "Only support get mapped cluster for gpu now."
+    assert device_mode == DeviceMode.GPU, \
+        "Only support get mapped cluster for gpu now."
     node_ips = [x.strip() for x in args.ips.split(',')]
     if len(node_ips) == 1:
         node_ip = node_ips[0]
@@ -842,20 +844,20 @@ def get_mapped_cluster_from_args(args, device_mode):
         else:
             _, node_ip = get_host_name_ip()
 
-    assert node_ip in node_ips, "Can't find your local ip {%s} in node_ips: {%s}" \
-        % (node_ip, node_ips)
+    assert node_ip in node_ips, \
+        "Can't find your local ip {%s} in node_ips: {%s}" % (node_ip, node_ips)
     node_rank = node_ips.index(node_ip)
 
     assert args.ranks is not None, \
         "ranks should be provided when enable_rank_mapping is set."
     node_mapping_ranks_tmp = [x.strip() for x in args.ranks.split(';')]
     node_mapping_ranks = []
-    gpus_num = fluid.core.get_cuda_device_count()
     for s in node_mapping_ranks_tmp:
         ranks_in_node = [int(x.strip()) for x in s.split(',')]
-        assert len(ranks_in_node) <= gpus_num, \
-            "number of ranks should not exceed the max."
-        node_mapping_ranks.append([int(x.strip()) for x in s.split(',')])
+        node_mapping_ranks.append(ranks_in_node)
+    gpus_num = fluid.core.get_cuda_device_count()
+    assert len(node_mapping_ranks[node_rank]) <= gpus_num, \
+        "number of ranks should not exceed the max."
     assert len(node_mapping_ranks) == len(node_ips), \
         "ranks length should be equal to ips length."
 

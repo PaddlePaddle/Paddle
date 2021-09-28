@@ -256,24 +256,31 @@ def launch_collective(args):
     start_port = 6170
     if os.environ.get('FLAGS_START_PORT') is not None:
         start_port = os.environ.get('FLAGS_START_PORT')
-    if cloud_utils.use_paddlecloud() and trainers_num != 1:
-        cluster, pod = cloud_utils.get_cloud_cluster(
-            args.ips, device_mode, devices_per_proc, start_port)
-        logger.debug("get cluster from cloud:{}".format(cluster))
-    elif device_mode == DeviceMode.ASCEND_NPU:
-        # for ascend
+    # for ascend
+    if device_mode == DeviceMode.ASCEND_NPU:
         cluster, pod = ascend_utils.get_cloud_cluster(
             rank_table_file=os.getenv("RANK_TABLE_FILE", None),
             device_mode=device_mode,
             start_port=start_port)
-    elif args.enable_rank_mapping == True:
-        # lazy launch for auto-parallel
-        cluster, pod = get_mapped_cluster_from_args(args, device_mode)
+    elif cloud_utils.use_paddlecloud() and trainers_num != 1:
+        if args.enable_rank_mapping == False:
+            cluster, pod = cloud_utils.get_cloud_cluster(
+                args.ips, device_mode, devices_per_proc, start_port)
+            logger.debug("get cluster from cloud:{}".format(cluster))
+        else:
+            # lazy launch for auto-parallel on paddlecloud
+            cluster, pod = get_mapped_cluster_from_args(args, device_mode)
+            logger.debug("get mapped cluster from args:{}".format(cluster))
     else:
         # trainers_num = 1 or not use paddlecloud ips="a,b"
-        cluster, pod = get_cluster_from_args(args, device_mode,
-                                             devices_per_proc)
-        logger.debug("get cluster from args:{}".format(cluster))
+        if args.enable_rank_mapping == False:
+            cluster, pod = get_cluster_from_args(args, device_mode,
+                                                 devices_per_proc)
+            logger.debug("get cluster from args:{}".format(cluster))
+        else:
+            # lazy launch for auto-parallel not on paddlecloud
+            cluster, pod = get_mapped_cluster_from_args(args, device_mode)
+            logger.debug("get mapped cluster from args:{}".format(cluster))
 
     global_envs = copy.copy(os.environ.copy())
     gloo_rendezvous_dir = tempfile.mkdtemp()
