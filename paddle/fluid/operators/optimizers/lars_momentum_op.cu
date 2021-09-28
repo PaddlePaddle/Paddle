@@ -135,14 +135,12 @@ __device__ inline void VectorizeLarsUpdate(
 }
 
 template <typename T, typename MT>
-LARS_FUNCTION_FLAG void L2NormKernel(const T* __restrict__ p_data,
-                                     const T* __restrict__ g_data,
-                                     MT* __restrict__ p_buffer,
-                                     MT* __restrict__ g_buffer, MT s_buffer[],
-                                     int64_t numel, const int repeat_times,
-                                     const int thresh, const MT rescale_grad,
-                                     MT* __restrict__ p_n = nullptr,
-                                     MT* __restrict__ g_n = nullptr) {
+LARS_FUNCTION_FLAG void L2NormKernel(
+    const T* __restrict__ p_data, const T* __restrict__ g_data,
+    MT* __restrict__ p_buffer, MT* __restrict__ g_buffer, MT s_buffer[],
+    const int64_t numel, const int repeat_times, const int thresh,
+    const MT rescale_grad, MT* __restrict__ p_n = nullptr,
+    MT* __restrict__ g_n = nullptr) {
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
   int grid_stride = LARS_BLOCK_SIZE * gridDim.x;
   const MT rescale_grad_pow = rescale_grad * rescale_grad;
@@ -201,7 +199,7 @@ __global__ void MergedMomentumLarsKernel(
     MergedParameter<T, MT>* merged_param, MT* __restrict__ p_buffer,
     MT* __restrict__ g_buffer, const int op_num, const MT mu,
     const MT lars_coeff, const MT lars_weight_decay, const MT epsilon,
-    const MT rescale_grad, const bool use_master_data) {
+    const MT rescale_grad) {
   __shared__ MT s_buffer[2];
   int grid_stride = gridDim.x * LARS_BLOCK_SIZE;
   int tid = threadIdx.x + blockIdx.x * blockDim.x;
@@ -222,30 +220,27 @@ __global__ void MergedMomentumLarsKernel(
           lr * lars_coeff * p_n / (fma(lars_weight_decay, p_n, g_n) + epsilon);
     }
 
-    if (use_master_data) {
+    if (std::is_same<T, paddle::platform::float16>::value) {
       VectorizeLarsUpdate<T, MT, 4, true>(
           merged_param->g_arr[i], merged_param->master_p_arr[i],
           merged_param->v_arr[i], merged_param->p_out_arr[i],
           merged_param->v_out_arr[i], mu, local_lr, lars_weight_decay,
           rescale_grad, tid, grid_stride, numel,
           merged_param->master_p_out_arr[i]);
+    } else if (std::is_same<T, float>::value) {
+      VectorizeLarsUpdate<T, MT, 4, false>(
+          merged_param->g_arr[i],
+          reinterpret_cast<const MT*>(merged_param->p_arr[i]),
+          merged_param->v_arr[i], merged_param->p_out_arr[i],
+          merged_param->v_out_arr[i], mu, local_lr, lars_weight_decay,
+          rescale_grad, tid, grid_stride, numel);
     } else {
-      if (std::is_same<T, float>::value ||
-          std::is_same<T, paddle::platform::float16>::value) {
-        VectorizeLarsUpdate<T, MT, 4, false>(
-            merged_param->g_arr[i],
-            reinterpret_cast<const MT*>(merged_param->p_arr[i]),
-            merged_param->v_arr[i], merged_param->p_out_arr[i],
-            merged_param->v_out_arr[i], mu, local_lr, lars_weight_decay,
-            rescale_grad, tid, grid_stride, numel);
-      } else {
-        VectorizeLarsUpdate<T, MT, 2, false>(
-            merged_param->g_arr[i],
-            reinterpret_cast<const MT*>(merged_param->p_arr[i]),
-            merged_param->v_arr[i], merged_param->p_out_arr[i],
-            merged_param->v_out_arr[i], mu, local_lr, lars_weight_decay,
-            rescale_grad, tid, grid_stride, numel);
-      }
+      VectorizeLarsUpdate<T, MT, 2, false>(
+          merged_param->g_arr[i],
+          reinterpret_cast<const MT*>(merged_param->p_arr[i]),
+          merged_param->v_arr[i], merged_param->p_out_arr[i],
+          merged_param->v_out_arr[i], mu, local_lr, lars_weight_decay,
+          rescale_grad, tid, grid_stride, numel);
     }
   }
 }
@@ -337,7 +332,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
           sizeof(MT) << 1);
 
       MergedParameter<T, MT> merged_params;
-      size_t total_numel = 0;
+      int total_numel = 0;
       size_t op_num = grad.size();
       PADDLE_ENFORCE_LT(
           op_num, MAX_MERGED_OPS,
@@ -398,8 +393,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
                             reinterpret_cast<void*>(&lars_coeff),
                             reinterpret_cast<void*>(&lars_weight_decay),
                             reinterpret_cast<void*>(&epsilon),
-                            reinterpret_cast<void*>(&rescale_grad),
-                            reinterpret_cast<void*>(&multi_precision)};
+                            reinterpret_cast<void*>(&rescale_grad)};
       // Lanuch all sm theads.
       cudaLaunchCooperativeKernel(
           reinterpret_cast<void*>(MergedMomentumLarsKernel<T, MT>), grid_real,
