@@ -45,10 +45,11 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
     }
 
     dnnl::memory::desc x_mem_desc = x->mem_desc();
-    // if (x_vec_dims.size() != out_new_dims.size()) {
-    //  x_mem_desc = GetExtendedFormatTag(x_mem_desc, x_vec_dims,
-    //  out_new_dims.size());
-    //}
+
+    if (x_vec_dims.size() != out_new_dims.size()) {
+      x_mem_desc = GetExtendedMemoryDescriptor(x_mem_desc, x_vec_dims,
+                                               out_new_dims.size());
+    }
 
     out->Resize(paddle::framework::make_ddim(out_new_dims));
     paddle::platform::BroadcastDataMKLDNNHandler<T> handler(
@@ -74,17 +75,14 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
   }
 
  private:
-  dnnl::memory::desc GetExtendedFormatTag(
-      const mkldnn::memory::desc& x_mem_desc,
+  dnnl::memory::desc GetExtendedMemoryDescriptor(
+      const dnnl::memory::desc& x_mem_desc,
       const std::vector<int64_t>& x_vec_dims, int new_size) const {
     std::vector<int64_t> new_dims(new_size, 1);
     std::copy(x_vec_dims.begin(), x_vec_dims.end(),
               new_dims.begin() + new_size - x_vec_dims.size());
 
-    dnnl::memory::desc out_desc(new_dims, x_mem_desc.data_type(),
-                                paddle::platform::GetMKLDNNFormat(x_mem_desc));
-    return out_desc;
-    // return x_mem_desc.reshape(new_dims);
+    return x_mem_desc.reshape(new_dims);
   }
 };
 
@@ -130,8 +128,7 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
       astream.wait();
 
       dx->set_layout(paddle::framework::DataLayout::kMKLDNN);
-      dx->set_format(
-          paddle::platform::GetMKLDNNFormat(reorder_dst_memory_p->get_desc()));
+      dx->set_mem_desc(reorder_dst_memory_p->get_desc());
     } else {
       paddle::platform::ReductionMKLDNNHandler<T> handler(
           dnnl::algorithm::reduction_sum, 0.0f, 0.0f, onednn_engine,
@@ -148,8 +145,8 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
       reduction_p->execute(astream, reduction_args);
       astream.wait();
       dx->set_layout(paddle::framework::DataLayout::kMKLDNN);
-      dx->set_format(paddle::platform::GetMKLDNNFormat(
-          dst_memory_p->get_desc().reshape(vectorize<int64_t>(dx->dims()))));
+      dx->set_mem_desc(
+          dst_memory_p->get_desc().reshape(vectorize<int64_t>(dx->dims())));
     }
   }
 };

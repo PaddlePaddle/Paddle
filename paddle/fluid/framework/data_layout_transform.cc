@@ -144,15 +144,6 @@ void TransDataLayoutFromMKLDNN(const OpKernelType& kernel_type_for_var,
 void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
                                     const Tensor& in, Tensor* out,
                                     platform::Place place, bool always_copy) {
-  PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::undef,
-                    platform::errors::InvalidArgument(
-                        "Input tensor format is invalid. Input tensor should "
-                        "have specified memory format."));
-  PADDLE_ENFORCE_NE(in.format(), MKLDNNMemoryFormat::any,
-                    platform::errors::InvalidArgument(
-                        "Input tensor format is invalid. Input tensor should "
-                        "have specified memory format."));
-
   // Set default as NCHW in case not specified
   out_layout =
       out_layout == DataLayout::kAnyLayout ? DataLayout::kNCHW : out_layout;

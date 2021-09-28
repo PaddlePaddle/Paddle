@@ -328,7 +328,8 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
   return mkldnn::memory::format_tag::undef;
 }
 
-inline mkldnn::memory::format_tag GetMKLDNNFormat(const mkldnn::memory memory) {
+inline mkldnn::memory::format_tag GetMKLDNNFormat(
+    const mkldnn::memory& memory) {
   auto mem_desc = memory.get_desc();
   return GetMKLDNNFormat(mem_desc);
 }
@@ -336,31 +337,31 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(const mkldnn::memory memory) {
 inline mkldnn::memory::format_tag GetPlainMKLDNNFormat(int tensor_rank) {
   switch (tensor_rank) {
     case 1:
-      return mkldnn::format_tag::a;
+      return mkldnn::memory::format_tag::a;
       break;
     case 2:
-      return mkldnn::format_tag::ab;
+      return mkldnn::memory::format_tag::ab;
       break;
     case 3:
-      return mkldnn::format_tag::abc;
+      return mkldnn::memory::format_tag::abc;
       break;
     case 4:
-      return mkldnn::format_tag::abcd;
+      return mkldnn::memory::format_tag::abcd;
       break;
     case 5:
-      return mkldnn::format_tag::abcde;
+      return mkldnn::memory::format_tag::abcde;
       break;
     case 6:
-      return mkldnn::format_tag::abcdef;
+      return mkldnn::memory::format_tag::abcdef;
+      break;
+    case 7:
+      return mkldnn::memory::format_tag::abcdefg;
       break;
     case 8:
-      return mkldnn::format_tag::abcdefg;
-      break;
-    case 8:
-      return mkldnn::format_tag::abcdefgh;
+      return mkldnn::memory::format_tag::abcdefgh;
       break;
     case 9:
-      return mkldnn::format_tag::abcdefghi;
+      return mkldnn::memory::format_tag::abcdefghi;
       break;
     default:
       PADDLE_THROW(platform::errors::Unimplemented(

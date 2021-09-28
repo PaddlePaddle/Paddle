@@ -725,7 +725,8 @@ class BroadcastDataMKLDNNHandler
 
     const auto src0_md =
         dnnl::memory::desc(src0_tz, platform::MKLDNNGetDataType<T>(),
-                           platform::GetMKLDNNFormat(x_mem_desc));
+                           platform::GetPlainMKLDNNFormat(src0_tz.size()));
+    // platform::GetMKLDNNFormat(x_mem_desc));
 
     // const auto src0_md = dnnl::memory::desc(
     //    src0_tz, platform::MKLDNNGetDataType<T>(),
@@ -934,9 +935,9 @@ class ReorderMKLDNNHandler {
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
-      framework::Tensor* output, const mkldnn::memory::desc& mem_desc,
+      framework::Tensor* output, const mkldnn::memory::desc& src_md,
       platform::Place place) {
-    auto strides = mem_desc.data.format_desc.blocking.strides;
+    auto strides = src_md.data.format_desc.blocking.strides;
     auto dst_md = mkldnn::memory::desc(dims_, dtype_dst_,
                                        {strides, strides + dims_.size()});
 

@@ -212,17 +212,12 @@ class MatMulMKLDNNHandler
     }
     astream.wait();
 
-    // why the hell is it done in a loop?
-    // because of this behavior we need to use MKLDNNFormatForSize instead of
-    // setting proper md by dst_memory_p->get_desc()
     auto format =
         MKLDNNFormatForSize(out->dims().size(), dnnl::memory::format_tag::nchw);
     mkldnn::memory::desc out_mem_desc(paddle::framework::vectorize(out->dims()),
                                       dst_memory_p->get_desc().data_type(),
                                       format);
-    // out->set_format(format);
     out->set_mem_desc(out_mem_desc);
-    // out->set_mem_desc(dst_memory_p->get_desc().reshape(out->dims()));
     out->set_layout(DataLayout::kMKLDNN);
   }
 
