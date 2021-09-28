@@ -11,21 +11,15 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-#include "paddle/fluid/memory/allocation/cuda_virtual_mem_allocator.h"
-#include "paddle/fluid/platform/dynload/cuda_driver.h"
-
 #ifdef PADDLE_WITH_CUDA
 #include <cuda.h>
 #include <cuda_runtime.h>
 #endif
 
-#ifdef PADDLE_WITH_HIP
-#include <hip/hip_runtime.h>
-#endif
-
 #include <string>
+#include "paddle/fluid/memory/allocation/cuda_virtual_mem_allocator.h"
 #include "paddle/fluid/platform/cuda_device_guard.h"
+#include "paddle/fluid/platform/dynload/cuda_driver.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
 
@@ -35,57 +29,63 @@ namespace paddle {
 namespace memory {
 namespace allocation {
 
-#define PADDLE_ENFORCE_CUDA_SUCCESS2(COND)                               \
-  do {                                                                   \
-    auto __cond__ = (COND);                                              \
-    if (UNLIKELY(__cond__ != CUDA_SUCCESS)) {                            \
-      auto __summary__ =                                                 \
-          ::paddle::platform::errors::External("cu error %d", __cond__); \
-      __THROW_ERROR_INTERNAL__(__summary__);                             \
-    }                                                                    \
-  } while (0)
-
 CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
     const platform::CUDAPlace& place)
     : place_(place) {
   prop_.type = CU_MEM_ALLOCATION_TYPE_PINNED;
   prop_.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
-  prop_.location.id = place.GetDeviceId();
+  prop_.location.id = place.device;
 
   access_desc_.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
-  access_desc_.location.id = place.GetDeviceId();
+  access_desc_.location.id = place.device;
   access_desc_.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
 
-  PADDLE_ENFORCE_CUDA_SUCCESS2(
-      paddle::platform::dynload::cuMemGetAllocationGranularity(
+  auto result = paddle::platform::dynload::cuMemGetAllocationGranularity(
           &granularity_, &prop_, CU_MEM_ALLOC_GRANULARITY_MINIMUM));
+  PADDLE_ENFORCE_EQ(
+      result, CUDA_SUCCESS,
+      platform::errors::Fatal(
+          "Call CUDA API cuDeviceGetAttribute faild, return %d.", result));
 
   size_t actual_avail, actual_total;
-  paddle::platform::CUDADeviceGuard guard(place.GetDeviceId());
+  paddle::platform::CUDADeviceGuard guard(place.device);
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemGetInfo(&actual_avail, &actual_total));
-
-  // virtual_mem_size_ = actual_total/2;
 
   virtual_mem_size_ = (actual_total + granularity_ - 1) & ~(granularity_ - 1);
 
-  // std::cout << "virtual_mem_size_=" << virtual_mem_size_ << std::endl;
+  result = paddle::platform::dynload::cuMemAddressReserve(
+      &virtual_mem_base_, virtual_mem_size_, 0, 0, 0);
+  PADDLE_ENFORCE_EQ(
+      result, CUDA_SUCCESS,
+      platform::errors::Fatal(
+          "Call CUDA API cuMemAddressReserve faild, return %d.", result));
 
-  PADDLE_ENFORCE_CUDA_SUCCESS2(paddle::platform::dynload::cuMemAddressReserve(
-      &virtual_mem_base_, virtual_mem_size_, 0, 0, 0));
   virtual_mem_alloced_offset_ = 0;
 }
 
 CUDAVirtualMemAllocator::~CUDAVirtualMemAllocator() {
-  paddle::platform::CUDADeviceGuard guard(place_.GetDeviceId());
+  CUresult result;
+  paddle::platform::CUDADeviceGuard guard(place_.device);
   for (auto& item : virtual_2_physical_map_) {
-    PADDLE_ENFORCE_CUDA_SUCCESS2(
-        paddle::platform::dynload::cuMemUnmap(item.first, item.second.second));
-    PADDLE_ENFORCE_CUDA_SUCCESS2(
-        paddle::platform::dynload::cuMemRelease(item.second.first));
+    result =
+        paddle::platform::dynload::cuMemUnmap(item.first, item.second.second);
+    PADDLE_ENFORCE_EQ(
+        result, CUDA_SUCCESS,
+        platform::errors::Fatal("Call CUDA API cuMemUnmap faild, return %d.",
+                                result));
+    result = paddle::platform::dynload::cuMemRelease(item.second.first);
+    PADDLE_ENFORCE_EQ(
+        result, CUDA_SUCCESS,
+        platform::errors::Fatal("Call CUDA API cuMemRelease faild, return %d.",
+                                result));
   }
 
-  PADDLE_ENFORCE_CUDA_SUCCESS2(paddle::platform::dynload::cuMemAddressFree(
-      virtual_mem_base_, virtual_mem_size_));
+  result = paddle::platform::dynload::cuMemAddressFree(virtual_mem_base_,
+                                                       virtual_mem_size_);
+  PADDLE_ENFORCE_EQ(
+      result, CUDA_SUCCESS,
+      platform::errors::Fatal(
+          "Call CUDA API cuMemAddressFree faild, return %d.", result));
 }
 
 bool CUDAVirtualMemAllocator::IsAllocThreadSafe() const { return false; }
@@ -103,11 +103,16 @@ void CUDAVirtualMemAllocator::FreeImpl(Allocation* allocation) {
         "Can not find virtual memory address at %s", allocation->ptr()));
   }
 
-  paddle::platform::CUDADeviceGuard guard(place_.GetDeviceId());
-  PADDLE_ENFORCE_CUDA_SUCCESS2(
-      paddle::platform::dynload::cuMemUnmap(iter->first, iter->second.second));
-  PADDLE_ENFORCE_CUDA_SUCCESS2(
-      paddle::platform::dynload::cuMemRelease(iter->second.first));
+  paddle::platform::CUDADeviceGuard guard(place_.device);
+  auto result =
+      paddle::platform::dynload::cuMemUnmap(iter->first, iter->second.second);
+  PADDLE_ENFORCE_EQ(result, CUDA_SUCCESS,
+                    platform::errors::Fatal(
+                        "Call CUDA API cuMemUnmap faild, return %d.", result));
+  result = paddle::platform::dynload::cuMemRelease(iter->second.first);
+  PADDLE_ENFORCE_EQ(result, CUDA_SUCCESS,
+                    platform::errors::Fatal(
+                        "Call CUDA API cuMemUnmap faild, return %d.", result));
 
   virtual_2_physical_map_.erase(iter);
 
@@ -121,12 +126,11 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
 
   if (ptr + size > virtual_mem_base_ + virtual_mem_size_) {
     PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
-        "\n\nOut of memory error on GPU %d. "
-        "Cannot allocate %s memory on GPU %d, %s memory has been allocated and "
+        "\n\nOut of memory error on GPU Virtual Memory %d. "
+        "Cannot allocate %s memory on GPU Virtual Memory %d, %s memory has "
+        "been allocated and "
         "available memory is only %s.\n\n"
-        "Please check whether there is any other process using GPU %d.\n"
-        "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
-        "2. If no, please decrease the batch size of your model.\n\n",
+        "Please decrease the batch size of your model.\n\n",
         place_.device, string::HumanReadableSize(size), place_.device,
         string::HumanReadableSize(virtual_mem_alloced_offset_),
         string::HumanReadableSize(virtual_mem_size_ -
@@ -137,11 +141,16 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
 
   CUmemGenericAllocationHandle handle;
 
-  paddle::platform::CUDADeviceGuard guard(place_.GetDeviceId());
-  auto ret = paddle::platform::dynload::cuMemCreate(&handle, size, &prop_, 0);
+  paddle::platform::CUDADeviceGuard guard(place_.device);
+  auto result =
+      paddle::platform::dynload::cuMemCreate(&handle, size, &prop_, 0);
 
-  if (ret != CUDA_SUCCESS) {
-    if (ret == CUDA_ERROR_OUT_OF_MEMORY) {
+  if (result != CUDA_SUCCESS) {
+    if (result == CUDA_ERROR_OUT_OF_MEMORY) {
+      size_t actual_avail, actual_total;
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaMemGetInfo(&actual_avail, &actual_total));
+      size_t actual_allocated = actual_total - actual_avail;
+
       PADDLE_THROW_BAD_ALLOC(platform::errors::ResourceExhausted(
           "\n\nOut of memory error on GPU %d. "
           "Cannot allocate %s memory on GPU %d, %s memory has been allocated "
@@ -151,30 +160,32 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
           "1. If yes, please stop them, or start PaddlePaddle on another GPU.\n"
           "2. If no, please decrease the batch size of your model.\n\n",
           place_.device, string::HumanReadableSize(size), place_.device,
-          string::HumanReadableSize(virtual_mem_alloced_offset_),
-          string::HumanReadableSize(virtual_mem_size_ -
-                                    virtual_mem_alloced_offset_),
-          place_.device));
+          string::HumanReadableSize(actual_allocated),
+          string::HumanReadableSize(actual_avail), place_.device));
     } else {
-      PADDLE_ENFORCE_CUDA_SUCCESS2(ret);
+      PADDLE_THROW(platform::errors::Fatal(
+          "Call CUDA API cuMemCreate faild, return %d.", result));
     }
     return nullptr;
   }
 
-  ret = paddle::platform::dynload::cuMemMap(ptr, size, 0, handle, 0);
+  result = paddle::platform::dynload::cuMemMap(ptr, size, 0, handle, 0);
 
-  if (ret != CUDA_SUCCESS) {
+  if (result != CUDA_SUCCESS) {
     paddle::platform::dynload::cuMemRelease(handle);
-    PADDLE_ENFORCE_CUDA_SUCCESS2(ret);
+    PADDLE_THROW(platform::errors::Fatal(
+        "Call CUDA API cuMemMap faild, return %d.", result));
     return nullptr;
   }
 
-  ret = paddle::platform::dynload::cuMemSetAccess(ptr, size, &access_desc_, 1);
+  result =
+      paddle::platform::dynload::cuMemSetAccess(ptr, size, &access_desc_, 1);
 
-  if (ret != CUDA_SUCCESS) {
+  if (result != CUDA_SUCCESS) {
     paddle::platform::dynload::cuMemUnmap(ptr, size);
     paddle::platform::dynload::cuMemRelease(handle);
-    PADDLE_ENFORCE_CUDA_SUCCESS2(ret);
+    PADDLE_THROW(platform::errors::Fatal(
+        "Call CUDA API cuMemSetAccess faild, return %d.", result));
     return nullptr;
   }
 

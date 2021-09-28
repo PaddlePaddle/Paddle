@@ -42,6 +42,7 @@ extern bool HasCUDADriver();
   };                                                                     \
   extern struct DynLoad__##__name __name
 
+#if CUDA_VERSION >= 10020
 /**
  * include all needed cuda driver functions
  **/
@@ -68,7 +69,24 @@ extern bool HasCUDADriver();
   __macro(cuMemAddressFree);                            \
   __macro(cuDeviceGetAttribute);                        \
   __macro(cuDeviceGet)
-
+#else
+/**
+ * include all needed cuda driver functions
+ **/
+#define CUDA_ROUTINE_EACH(__macro)                      \
+  __macro(cuInit);                                      \
+  __macro(cuDriverGetVersion);                          \
+  __macro(cuGetErrorString);                            \
+  __macro(cuModuleLoadData);                            \
+  __macro(cuModuleGetFunction);                         \
+  __macro(cuModuleUnload);                              \
+  __macro(cuOccupancyMaxActiveBlocksPerMultiprocessor); \
+  __macro(cuLaunchKernel);                              \
+  __macro(cuCtxCreate);                                 \
+  __macro(cuCtxGetCurrent);                             \
+  __macro(cuDeviceGetCount);                            \
+  __macro(cuDevicePrimaryCtxGetState)
+#endif
 CUDA_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUDA_WRAP);
 
 #undef DECLARE_DYNAMIC_LOAD_CUDA_WRAP
