@@ -3320,6 +3320,30 @@ class TestBook(LayerTest):
             dy_res_value = dy_res.numpy()
         self.assertTrue(np.array_equal(static_res, dy_res_value))
 
+    def test_dice_loss(self):
+        num_classes = 4
+        eps = 1e-6
+        input_np = np.random.rand(2, 3, num_classes).astype('float32')
+        label_np = np.random.randint(0, num_classes, [2, 3, 1], dtype=np.int64)
+
+        with self.static_graph():
+            input_ = layers.data(
+                name="input", shape=[None, 3, num_classes], dtype="float32")
+            label_ = layers.data(
+                name="label", shape=[None, 3, 1], dtype="int64")
+            output = layers.dice_loss(input_, label_, eps)
+            static_res = self.get_static_graph_result(
+                feed={'input': input_np,
+                      'label': label_np},
+                fetch_list=[output])[0]
+
+        with self.dynamic_graph():
+            input_ = base.to_variable(input_np)
+            label_ = base.to_variable(label_np)
+            dy_res = layers.dice_loss(input_, label_, eps)
+            dy_res_value = dy_res.numpy()
+        self.assertTrue(np.array_equal(static_res, dy_res_value))
+
     def test_roi_perspective_transform(self):
         # TODO(minqiyang): dygraph do not support lod now
         with self.static_graph():

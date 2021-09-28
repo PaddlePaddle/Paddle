@@ -338,8 +338,8 @@ class GroupNorm(Layer):
         name(str, optional): Name for the GroupNorm, default is None. For more information, please refer to :ref:`api_guide_Name`..
 
     Shape:
-        - x: 4-D tensor with shape: (batch, num_features, height, weight).
-        - output: 4-D tensor with same shape as input x.
+        - x: Tensor with shape: (batch, num_features, *).
+        - output: The same shape as input x.
 
     Returns:
         None

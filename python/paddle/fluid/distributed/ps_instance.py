@@ -156,5 +156,5 @@ class PaddlePSInstance(object):
 
 
 if __name__ == "__main__":
-    instance = PaddlePSInstance(1, 1, 2, 50)
+    instance = PaddlePSInstance(1, 2)
     instance.barrier_all()

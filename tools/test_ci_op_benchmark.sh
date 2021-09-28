@@ -36,6 +36,7 @@ function LOG {
 
 # Limit cu file directory
 function match_cu_file_directory {
+  LOG "[INFO] run function match_cu_file_directory"
   local sub_dir cu_file_dir
   cu_file_dir=$(dirname ${1})
   for sub_dir in "" "/elementwise" "/reduce_ops"
@@ -47,6 +48,7 @@ function match_cu_file_directory {
 
 # Load op files by header file
 function load_CHANGE_OP_FILES_by_header_file {
+  LOG "[INFO] run function load_CHANGE_OP_FILES_by_header_file"
   local change_file
   for change_file in $(grep -rl "${1}" paddle/fluid/operators)
   do
@@ -68,6 +70,7 @@ function load_CHANGE_OP_FILES_by_header_file {
 
 # Load op files that PR changes
 function load_CHANGE_OP_FILES {
+  LOG "[INFO] run function load_CHANGE_OP_FILES"
   local sub_dir change_file
   # TODO(Avin0323): Need to filter the files added by the new OP.
   for change_file in $(git diff --name-only origin/develop)
@@ -108,6 +111,7 @@ function prepare_benchmark_environment {
 
 # Load unique op name from CHANGE_OP_FILES
 function load_CHANGE_OP_MAP {
+  LOG "[INFO] run function load_CHANGE_OP_MAP"
   local op_name change_file change_file_name
   source benchmark/ci/scripts/op_benchmark.config
   for change_file in ${CHANGE_OP_FILES[@]}
@@ -133,6 +137,7 @@ function load_CHANGE_OP_MAP {
 
 # Load ops that will run benchmark test
 function load_BENCHMARK_OP_MAP {
+  LOG "[INFO] run function load_BENCHMARK_OP_MAP"
   local line op_name api_name
   source benchmark/ci/scripts/op_benchmark.config
   for line in $(cat api_info.txt)
@@ -173,6 +178,7 @@ function compile_install_paddlepaddle {
 }
 
 function build_whl {
+  LOG "[INFO] run function build_whl"
   for branch_name in "develop" "test"
   do
     git checkout ${branch_name}
@@ -184,6 +190,7 @@ function build_whl {
 
 # run op benchmark test
 function run_op_benchmark_test {
+  LOG "[INFO] run function run_op_benchmark_test"
   [ ${#BENCHMARK_OP_MAP[*]} -eq 0 ] && return
   local logs_dir op_name branch_name api_info_file
   [ -z "$VISIBLE_DEVICES" ] && export VISIBLE_DEVICES=0
@@ -219,6 +226,7 @@ function run_op_benchmark_test {
 
 # check benchmark result
 function check_op_benchmark_result {
+  LOG "[INFO] run function check_op_benchmark_result"
   local logs_dir api_info_file check_status_code
   # default 3 times
   [ -z "${RETRY_TIMES}" ] && RETRY_TIMES=3
@@ -253,15 +261,8 @@ function check_op_benchmark_result {
   return $check_status_code
 }
 
-# diff benchmakr result and miss op
-function summary_problems {
-  local op_name exit_code
-  exit_code=0
-  if [ ${#BENCHMARK_OP_MAP[*]} -ne 0 ]
-  then
-    check_op_benchmark_result
-    exit_code=$?
-  fi
+function check_CHANGE_OP_MAP {
+  LOG "[INFO] run function check_CHANGE_OP_MAP"
   for op_name in ${!CHANGE_OP_MAP[@]}
   do
     if [ -z "${BENCHMARK_OP_MAP[$op_name]}" ]
@@ -277,10 +278,27 @@ function summary_problems {
   fi
 }
 
+# diff benchmakr result and miss op
+function summary_problems {
+  LOG "[INFO]  run function summary_problems"
+  local op_name exit_code
+  exit_code=0
+  if [ ${#BENCHMARK_OP_MAP[*]} -ne 0 ]
+  then
+    check_op_benchmark_result
+    exit_code=$?
+  fi
+  check_CHANGE_OP_MAP
+}
+
 
 function cpu_op_benchmark {
   LOG "[INFO] Start run op benchmark cpu test ..."
   load_CHANGE_OP_FILES
+  prepare_benchmark_environment
+  load_CHANGE_OP_MAP
+  load_BENCHMARK_OP_MAP
+  check_CHANGE_OP_MAP
   build_whl
   LOG "[INFO] Op benchmark run success and no error!"
   exit 0
@@ -290,7 +308,6 @@ function cpu_op_benchmark {
 function gpu_op_benchmark {
   LOG "[INFO] Start run op benchmark gpu test ..."
   load_CHANGE_OP_FILES
-  prepare_benchmark_environment
   load_CHANGE_OP_MAP
   load_BENCHMARK_OP_MAP
   run_op_benchmark_test
@@ -299,6 +316,21 @@ function gpu_op_benchmark {
   exit 0
 }
 
+# The PR will pass quickly when get approval from specific person.
+# Xreki 12538138, luotao1 6836917, Avin0323 16167147
+set +x
+approval_line=$(curl -H "Authorization: token ${GITHUB_API_TOKEN}" https://api.github.com/repos/PaddlePaddle/Paddle/pulls/${GIT_PR_ID}/reviews?per_page=10000)
+if [ -n "${approval_line}" ]; then
+  APPROVALS=$(echo ${approval_line} | python ${PADDLE_ROOT}/tools/check_pr_approval.py 1 16167147 12538138 6836917)
+  LOG "[INFO] current pr ${GIT_PR_ID} got approvals: ${APPROVALS}"
+  if [ "${APPROVALS}" == "TRUE" ]; then
+    LOG "[INFO] ==================================="
+    LOG "[INFO] current pr ${GIT_PR_ID} has got approvals. So, Pass CI directly!"
+    LOG "[INFO] ==================================="
+    exit 0
+  fi
+fi
+set -x
 
 case $1 in
   cpu_op_benchmark)

@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/operators/math/im2col.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
@@ -104,10 +105,14 @@ class Im2ColFunctor<paddle::operators::math::ColFormat::kCFO,
     int col_width = col->dims()[4];
 
     int num_outputs = im_channels * col_height * col_width;
-    int blocks = (num_outputs + 1024 - 1) / 1024;
+    int num_thread = 1024;
+#ifdef WITH_NV_JETSON
+    platform::ChangeThreadNum(context, &num_thread);
+#endif
+    int blocks = (num_outputs + num_thread - 1) / num_thread;
     int block_x = 512;
     int block_y = (blocks + 512 - 1) / 512;
-    dim3 threads(1024, 1);
+    dim3 threads(num_thread, 1);
     dim3 grid(block_x, block_y);
     im2col<T><<<grid, threads, 0, context.stream()>>>(
         im.data<T>(), num_outputs, im_height, im_width, dilation[0],
@@ -228,10 +233,14 @@ class Col2ImFunctor<paddle::operators::math::ColFormat::kCFO,
 
     size_t num_kernels = im_channels * im_height * im_width;
 
-    size_t blocks = (num_kernels + 1024 - 1) / 1024;
+    int num_thread = 1024;
+#ifdef WITH_NV_JETSON
+    platform::ChangeThreadNum(context, &num_thread);
+#endif
+    size_t blocks = (num_kernels + num_thread - 1) / num_thread;
     size_t block_x = 512;
     size_t block_y = (blocks + 512 - 1) / 512;
-    dim3 threads(1024, 1);
+    dim3 threads(num_thread, 1);
     dim3 grid(block_x, block_y);
 
     // To avoid involving atomic operations, we will launch one kernel per

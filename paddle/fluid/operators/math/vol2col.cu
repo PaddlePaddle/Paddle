@@ -16,6 +16,7 @@ limitations under the License. */
 #include <vector>
 #include "paddle/fluid/operators/math/vol2col.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+#include "paddle/fluid/platform/gpu_launch_config.h"
 
 namespace paddle {
 namespace operators {
@@ -152,8 +153,14 @@ class Vol2ColFunctor<platform::CUDADeviceContext, T> {
     int num_outputs =
         input_channels * output_depth * output_height * output_width;
 
-    const int threads = 1024;
-    const int blocks = (num_outputs + 1024 - 1) / 1024;
+    int max_threads = 1024;
+#ifdef WITH_NV_JETSON
+    platform::ChangeThreadNum(context, &max_threads);
+#endif
+
+    const int threads = max_threads;
+    const int blocks = (num_outputs + max_threads - 1) / max_threads;
+
     vol2col<T><<<blocks, threads, 0, context.stream()>>>(
         num_outputs, vol.data<T>(), input_depth, input_height, input_width,
         dilations[0], dilations[1], dilations[2], filter_depth, filter_height,
@@ -313,8 +320,13 @@ class Col2VolFunctor<platform::CUDADeviceContext, T> {
 
     int num_kernels = input_channels * input_depth * input_height * input_width;
 
-    const int threads = 1024;
-    const int blocks = (num_kernels + 1024 - 1) / 1024;
+    int max_threads = 1024;
+#ifdef WITH_NV_JETSON
+    platform::ChangeThreadNum(context, &max_threads);
+#endif
+
+    const int threads = max_threads;
+    const int blocks = (num_kernels + max_threads - 1) / max_threads;
 
     col2vol<T><<<blocks, threads, 0, context.stream()>>>(
         num_kernels, col.data<T>(), input_depth, input_height, input_width,

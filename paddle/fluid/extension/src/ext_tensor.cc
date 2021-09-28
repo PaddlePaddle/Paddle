@@ -90,7 +90,6 @@ void DeviceCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
     PADDLE_THROW(platform::errors::Unavailable(
         "Only GPU related Copy can reach this func."));
   }
-  cudaStreamSynchronize(dev_ctx->stream());
 #elif defined(PADDLE_WITH_HIP)
   platform::DeviceContextPool &pool = platform::DeviceContextPool::Instance();
   int device_num = paddle::platform::GetCurrentDeviceId();
@@ -110,7 +109,6 @@ void DeviceCopy(T *src, T *dst, PlaceType src_plc, PlaceType dst_plc,
     PADDLE_THROW(platform::errors::Unavailable(
         "Only GPU related Copy can reach this func."));
   }
-  hipStreamSynchronize(dev_ctx->stream());
 #else
   PADDLE_THROW(platform::errors::Unavailable(
       "This function can only be used if compiled with"

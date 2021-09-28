@@ -322,8 +322,19 @@ class TypedAttrChecker {
   typedef std::function<void(const T&)> ValueChecker;
 
  public:
-  explicit TypedAttrChecker(const std::string& attr_name)
-      : attr_name_(attr_name) {}
+  explicit TypedAttrChecker(const std::string& attr_name,
+                            proto::OpProto_Attr* attr)
+      : attr_name_(attr_name), attr_(attr) {}
+
+  TypedAttrChecker& AsExtra() {
+    attr_->set_extra(true);
+    return *this;
+  }
+
+  TypedAttrChecker& AsQuant() {
+    attr_->set_quant(true);
+    return *this;
+  }
 
   TypedAttrChecker& InEnum(const std::unordered_set<T>& range) {
     value_checkers_.push_back(EnumInContainer<T>(range));
@@ -398,6 +409,7 @@ class TypedAttrChecker {
 
  private:
   std::string attr_name_;
+  proto::OpProto_Attr* attr_;
   std::vector<ValueChecker> value_checkers_;
   std::vector<DefaultValueChecker> default_value_setter_;
 };
@@ -408,8 +420,9 @@ class OpAttrChecker {
 
  public:
   template <typename T>
-  TypedAttrChecker<T>& AddAttrChecker(const std::string& attr_name) {
-    attr_checkers_.push_back(TypedAttrChecker<T>(attr_name));
+  TypedAttrChecker<T>& AddAttrChecker(const std::string& attr_name,
+                                      proto::OpProto_Attr* attr) {
+    attr_checkers_.push_back(TypedAttrChecker<T>(attr_name, attr));
     AttrChecker& checker = attr_checkers_.back();
     return *(checker.target<TypedAttrChecker<T>>());
   }

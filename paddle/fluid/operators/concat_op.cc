@@ -14,6 +14,7 @@ limitations under the License. */
 
 #include "paddle/fluid/operators/concat_op.h"
 
+#include <paddle/fluid/platform/complex.h>
 #include <memory>
 #include <string>
 #include <vector>
@@ -111,7 +112,8 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>(
         "use_mkldnn",
         "(bool, default false) Indicates if MKL-DNN kernel will be used")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<int>("axis",
                  "The axis along which the input tensors will be concatenated."
                  "The axis could also be negative numbers. Negative axis is "
@@ -128,12 +130,14 @@ class ConcatOpMaker : public framework::OpProtoAndCheckerMaker {
         "use_quantizer",
         "(bool, default false) "
         "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"});
+        .InEnum({"float32", "int8", "bfloat16"})
+        .AsExtra();
     AddComment(R"DOC(
 Concat Operator.
 
@@ -234,7 +238,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::ConcatKernel<paddle::platform::CPUDeviceContext,
                       paddle::platform::float16>,
     ops::ConcatKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ConcatKernel<paddle::platform::CPUDeviceContext, uint8_t>);
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext, uint8_t>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
+                      paddle::platform::complex<float>>,
+    ops::ConcatKernel<paddle::platform::CPUDeviceContext,
+                      paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     concat_grad,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, double>,
@@ -244,4 +252,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
                           paddle::platform::float16>,
     ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, int>,
-    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, uint8_t>);
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
+                          paddle::platform::complex<float>>,
+    ops::ConcatGradKernel<paddle::platform::CPUDeviceContext,
+                          paddle::platform::complex<double>>);

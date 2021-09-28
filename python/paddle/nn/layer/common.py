@@ -24,7 +24,7 @@ __all__ = []
 
 
 def _npairs(x, n):
-    if isinstance(x, (paddle.Tensor, list)):
+    if isinstance(x, (paddle.Tensor, list, tuple)):
         return x
     x = [x] * (n * 2)
     return x
@@ -1390,7 +1390,8 @@ class Embedding(Layer):
             is_bias=False)
 
         if in_dygraph_mode() and padding_idx != -1:
-            self.weight[padding_idx] = 0.0
+            with paddle.no_grad():
+                self.weight[padding_idx] = 0.0
 
     def forward(self, x):
         return F.embedding(

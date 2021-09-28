@@ -24,7 +24,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/var_desc.h"
 #include "paddle/fluid/framework/version.h"
-
 #include "paddle/fluid/pybind/pybind_boost_headers.h"
 
 namespace paddle {
@@ -156,7 +155,8 @@ void BindBlockDesc(pybind11::module *m) {
            pybind11::return_value_policy::reference)
       .def("op_size", &pd::BlockDesc::OpSize)
       .def("op", &pd::BlockDesc::Op, pybind11::return_value_policy::reference)
-      .def("serialize_to_string", SerializeMessage<pd::BlockDesc>);
+      .def("serialize_to_string", SerializeMessage<pd::BlockDesc>)
+      .def("_move_from", &pd::BlockDesc::MoveFrom);
 }
 
 void BindVarDsec(pybind11::module *m) {
@@ -201,6 +201,7 @@ void BindVarDsec(pybind11::module *m) {
       .def("attr_names", &pd::VarDesc::AttrNames)
       .def("_set_attr", &pd::VarDesc::SetAttr)
       .def("remove_attr", &pd::VarDesc::RemoveAttr)
+      .def("id", &pd::VarDesc::Id)
       .def("attr", &pd::VarDesc::GetAttr);
 
   pybind11::enum_<pd::proto::VarType::Type> vartype(var_desc, "VarType", "");
@@ -266,6 +267,7 @@ void BindOpDesc(pybind11::module *m) {
              self.SetOutput(name, vec_var_name);
            })
       .def("remove_output", &pd::OpDesc::RemoveOutput)
+      .def("remove_input", &pd::OpDesc::RemoveInput)
       .def("input_arg_names", &pd::OpDesc::InputArgumentNames)
       .def("output_arg_names", &pd::OpDesc::OutputArgumentNames)
       .def("_rename_input", &pd::OpDesc::RenameInput)
@@ -293,6 +295,7 @@ void BindOpDesc(pybind11::module *m) {
       .def("serialize_to_string", SerializeMessage<pd::OpDesc>)
       .def("block", [](pd::OpDesc &self) { return self.Block(); },
            pybind11::return_value_policy::reference)
+      .def("id", &pd::OpDesc::Id)
       .def("inputs", &pd::OpDesc::Inputs)
       .def("outputs", &pd::OpDesc::Outputs);
 }

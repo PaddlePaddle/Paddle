@@ -30,7 +30,11 @@ template <typename T>
 constexpr uint8_t GetDLDataTypeCode() {
   if (std::is_same<T, platform::complex<float>>::value ||
       std::is_same<T, platform::complex<double>>::value) {
-    return static_cast<uint8_t>(5);
+    return static_cast<uint8_t>(kDLComplex);
+  }
+
+  if (std::is_same<T, platform::bfloat16>::value) {
+    return static_cast<uint8_t>(kDLBfloat);
   }
 
   return std::is_same<platform::float16, T>::value ||
@@ -55,15 +59,15 @@ void TestMain(const platform::Place &place, uint16_t lanes) {
 
   CHECK_EQ(p, dl_tensor.data);
   if (platform::is_cpu_place(place)) {
-    CHECK_EQ(kDLCPU, dl_tensor.ctx.device_type);
-    CHECK_EQ(0, dl_tensor.ctx.device_id);
+    CHECK_EQ(kDLCPU, dl_tensor.device.device_type);
+    CHECK_EQ(0, dl_tensor.device.device_id);
   } else if (platform::is_gpu_place(place)) {
-    CHECK_EQ(kDLGPU, dl_tensor.ctx.device_type);
+    CHECK_EQ(kDLGPU, dl_tensor.device.device_type);
     CHECK_EQ(BOOST_GET_CONST(platform::CUDAPlace, place).device,
-             dl_tensor.ctx.device_id);
+             dl_tensor.device.device_id);
   } else if (platform::is_cuda_pinned_place(place)) {
-    CHECK_EQ(kDLCPUPinned, dl_tensor.ctx.device_type);
-    CHECK_EQ(0, dl_tensor.ctx.device_id);
+    CHECK_EQ(kDLCPUPinned, dl_tensor.device.device_type);
+    CHECK_EQ(0, dl_tensor.device.device_id);
   } else {
     CHECK_EQ(false, true);
   }
@@ -83,8 +87,7 @@ void TestMain(const platform::Place &place, uint16_t lanes) {
 }
 
 template <typename T>
-void TestToCudfCompatibleDLManagedTensor(const platform::Place &place,
-                                         uint16_t lanes) {
+void TestToDLManagedTensor(const platform::Place &place, uint16_t lanes) {
   DDim dims{6, 7};
   Tensor tensor;
   tensor.Resize(dims);
@@ -92,8 +95,7 @@ void TestToCudfCompatibleDLManagedTensor(const platform::Place &place,
 
   DLPackTensor dlpack_tensor(tensor, lanes);
 
-  ::DLManagedTensor *dl_managed_tensor =
-      dlpack_tensor.ToCudfCompatibleDLManagedTensor();
+  ::DLManagedTensor *dl_managed_tensor = dlpack_tensor.ToDLManagedTensor();
 
   CHECK_EQ(dl_managed_tensor->manager_ctx == nullptr, true);
 
@@ -101,7 +103,8 @@ void TestToCudfCompatibleDLManagedTensor(const platform::Place &place,
     CHECK_EQ(dims[i], dl_managed_tensor->dl_tensor.shape[i]);
   }
 
-  CHECK_EQ(dl_managed_tensor->dl_tensor.strides[0] == 1, true);
+  CHECK_EQ(dl_managed_tensor->dl_tensor.strides[0] == 7, true);
+  CHECK_EQ(dl_managed_tensor->dl_tensor.strides[1] == 1, true);
 
   dl_managed_tensor->deleter(dl_managed_tensor);
 }
@@ -122,7 +125,7 @@ void TestMainLoop() {
   for (auto &p : places) {
     for (auto &l : lanes) {
       TestMain<T>(p, l);
-      TestToCudfCompatibleDLManagedTensor<T>(p, l);
+      TestToDLManagedTensor<T>(p, l);
     }
   }
 }

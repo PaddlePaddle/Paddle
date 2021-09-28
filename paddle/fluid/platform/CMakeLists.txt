@@ -37,13 +37,13 @@ if (WITH_PYTHON)
   endif(NOT WIN32)
 endif()
 
-cc_library(flags SRCS flags.cc DEPS gflags)
+cc_library(flags SRCS flags.cc DEPS gflags boost)
 cc_library(denormal SRCS denormal.cc DEPS)
 
 cc_library(errors SRCS errors.cc DEPS error_codes_proto)
 cc_test(errors_test SRCS errors_test.cc DEPS errors enforce)
 
-set(enforce_deps flags errors boost)
+set(enforce_deps flags errors boost flags)
 if(WITH_GPU)
   set(enforce_deps ${enforce_deps} external_error_proto)
 endif()
@@ -60,6 +60,7 @@ cc_test(cpu_info_test SRCS cpu_info_test.cc DEPS cpu_info)
 
 IF(WITH_GPU)
     nv_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce monitor dynload_cuda)
+    nv_library(cuda_profiler SRCS cuda_profiler.cc DEPS enforce)
 ENDIF()
 IF(WITH_ROCM)
     hip_library(gpu_info SRCS gpu_info.cc DEPS gflags glog enforce monitor dynload_cuda)
@@ -151,7 +152,17 @@ endif()
 
 cc_test(init_test SRCS init_test.cc DEPS device_context)
 
+# Manage all device event library
+set(DEVICE_EVENT_LIBS)
+cc_library(device_event_base SRCS device_event_base.cc DEPS place enforce device_context op_registry)
+set(DEVICE_EVENT_LIBS  device_event_base CACHE INTERNAL "device event libs")
+
+
 if(WITH_GPU)
+  nv_library(device_event_gpu SRCS device_event_gpu.cc DEPS device_event_base)
+  set(DEVICE_EVENT_LIBS  device_event_gpu CACHE INTERNAL "device event libs")
+  nv_test(device_event_test SRCS device_event_test.cc DEPS device_event_gpu)
+
   nv_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
   nv_test(cudnn_helper_test SRCS cudnn_helper_test.cc DEPS dynload_cuda)
   nv_test(cudnn_desc_test SRCS cudnn_desc_test.cc DEPS dynload_cuda)
@@ -159,6 +170,10 @@ if(WITH_GPU)
 endif()
 
 if(WITH_ROCM)
+  hip_library(device_event_gpu SRCS device_event_gpu.cc DEPS device_event_base)
+  set(DEVICE_EVENT_LIBS  device_event_gpu CACHE INTERNAL "device event libs")
+  hip_test(device_event_test SRCS device_event_test.cc DEPS device_event_gpu)
+
   hip_test(device_context_test SRCS device_context_test.cu DEPS device_context gpu_info)
   hip_test(miopen_helper_test SRCS miopen_helper_test.cc DEPS dynload_cuda)
   hip_test(cudnn_desc_test SRCS cudnn_desc_test.cc DEPS dynload_cuda tensor)

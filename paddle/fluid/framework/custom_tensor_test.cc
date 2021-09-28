@@ -144,6 +144,13 @@ void TestCast(paddle::DataType data_type) {
   t1.template mutable_data<T>();
   auto t2 = t1.cast(data_type);
   CHECK(t2.type() == data_type);
+#ifdef PADDLE_WITH_CUDA
+  auto tg1 = paddle::Tensor(paddle::PlaceType::kGPU);
+  tg1.reshape(tensor_shape);
+  tg1.template mutable_data<T>();
+  auto tg2 = tg1.cast(data_type);
+  CHECK(tg2.type() == data_type);
+#endif
 }
 
 void GroupTestCopy() {

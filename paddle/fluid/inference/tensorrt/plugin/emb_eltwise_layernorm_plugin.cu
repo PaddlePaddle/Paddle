@@ -139,15 +139,9 @@ int EmbEltwiseLayernormPluginDynamicImpl<T>::enqueue(
   auto emb_ptr_gpu_d =
       emb_ptr_tensor_.mutable_data<int64_t>(platform::CUDAPlace(device_id_));
 
-  auto new_input_ptr = reinterpret_cast<uintptr_t>(inputs[0]);
-
-  if (old_input_ptr_ != new_input_ptr) {
-    old_input_ptr_ = new_input_ptr;
-
-    cudaMemcpyAsync(in_ptr_gpu_d, reinterpret_cast<const void *>(inputs),
-                    sizeof(uintptr_t) * input_num, cudaMemcpyHostToDevice,
-                    stream);
-  }
+  cudaMemcpyAsync(in_ptr_gpu_d, reinterpret_cast<const void *>(inputs),
+                  sizeof(uintptr_t) * input_num, cudaMemcpyHostToDevice,
+                  stream);
 
   auto out_type = output_desc[0].type;
 

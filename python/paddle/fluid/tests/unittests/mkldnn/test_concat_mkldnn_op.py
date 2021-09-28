@@ -87,4 +87,6 @@ class TestMKLDNNConcatOp4(TestConcatOp4):
 
 
 if __name__ == '__main__':
+    from paddle import enable_static
+    enable_static()
     unittest.main()

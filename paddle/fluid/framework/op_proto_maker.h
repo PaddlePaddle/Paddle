@@ -48,6 +48,7 @@ class OpProtoAndCheckerMaker {
   static const char *OpNamescopeAttrName() { return "op_namescope"; }
   static const char *OpCreationCallstackAttrName() { return "op_callstack"; }
   static const char *OpDeviceAttrName() { return "op_device"; }
+  static const char *OpWithQuantAttrName() { return "with_quant_attr"; }
 
   void operator()(proto::OpProto *proto, OpAttrChecker *attr_checker);
 
@@ -75,6 +76,16 @@ class OpProtoAndCheckerMaker {
       var_->set_dispensable(true);
       return *this;
     }
+
+    VariableBuilder &AsExtra() {
+      var_->set_extra(true);
+      return *this;
+    }
+
+    VariableBuilder &AsQuant() {
+      var_->set_quant(true);
+      return *this;
+    }
   };
 
   VariableBuilder AddInput(const std::string &name, const std::string &comment);
@@ -91,7 +102,7 @@ class OpProtoAndCheckerMaker {
     attr->set_comment(comment);
     attr->set_generated(generated);
     attr->set_type(AttrTypeID<T>());
-    return op_checker_->AddAttrChecker<T>(name);
+    return op_checker_->AddAttrChecker<T>(name, attr);
   }
 
   void AddComment(const std::string &comment) { proto_->set_comment(comment); }

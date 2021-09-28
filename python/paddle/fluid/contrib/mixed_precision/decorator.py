@@ -399,12 +399,18 @@ class OptimizerWithMixedPrecision(object):
                         self._decr_ratio,
                         name="update_loss_scaling")
         # Pass found_inf to adam, to skip update for not only param, but also momentum and beta_pow
-        if isinstance(self._optimizer, paddle.fluid.optimizer.Adam):
+        # With fleet, optimizers are nested and the real optimizer set by user is the inner most one.
+        real_optimizer = self._optimizer
+        while hasattr(real_optimizer, "inner_opt"):
+            real_optimizer = real_optimizer.inner_opt
+        if isinstance(real_optimizer, (paddle.fluid.optimizer.Adam,
+                                       paddle.optimizer.AdamW)):
             # NOTE(zhiqiu): Since found_inf needs to be on cpu in adam op, we 
             # copy it in advance to avoid multiple time copies.
-            found_inf = paddle.tensor.creation._memcpy(found_inf,
-                                                       paddle.CPUPlace())
-            self._optimizer._set_auxiliary_var('found_inf', found_inf)
+            with self._train_program._optimized_guard([]):
+                found_inf = paddle.tensor.creation._memcpy(found_inf,
+                                                           paddle.CPUPlace())
+            real_optimizer._set_auxiliary_var('found_inf', found_inf)
         optimize_ops = self._optimizer.apply_gradients(params_grads)
         return optimize_ops
 
