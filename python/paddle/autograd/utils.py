@@ -25,12 +25,19 @@ def _check_tensors(in_out_list, name):
                 each_var,
                 paddle.Tensor), "Elements of {} must be paddle.Tensor".format(
                     name)
-        return in_out_list
+        return list(in_out_list)
     else:
         assert isinstance(
             in_out_list,
             paddle.Tensor), "{} must be Tensor or list of Tensor".format(name)
         return [in_out_list]
+
+
+def _stop_gradient_pre_process(in_list):
+    for each_var in in_list:
+        each_var = paddle.assign(each_var)
+        each_var.stop_gradient = True
+    return in_list
 
 
 def _stack_tensor_or_return_none(origin_list):
