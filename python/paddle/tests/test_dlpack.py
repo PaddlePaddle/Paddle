@@ -22,6 +22,7 @@ import paddle.fluid.core as core
 
 class TestDLPack(unittest.TestCase):
     def test_dlpack_dygraph(self):
+        paddle.disable_static()
         tensor = paddle.to_tensor(np.array([1, 2, 3, 4]).astype('int'))
         dlpack = paddle.utils.dlpack.to_dlpack(tensor)
         out_from_dlpack = paddle.utils.dlpack.from_dlpack(dlpack)
@@ -30,6 +31,15 @@ class TestDLPack(unittest.TestCase):
             np.array_equal(
                 np.array(out_from_dlpack), np.array([1, 2, 3, 4]).astype(
                     'int')))
+
+    def test_dlpack_tensor_larger_than_2dim(self):
+        paddle.disable_static()
+        numpy_data = np.random.randn(4, 5, 6)
+        t = paddle.to_tensor(numpy_data)
+        # TODO: There may be a reference count problem of to_dlpack.
+        dlpack = paddle.utils.dlpack.to_dlpack(t)
+        out = paddle.utils.dlpack.from_dlpack(dlpack)
+        self.assertTrue(np.allclose(numpy_data, out.numpy()))
 
     def test_dlpack_static(self):
         paddle.enable_static()
@@ -56,6 +66,37 @@ class TestDLPack(unittest.TestCase):
                 np.array_equal(
                     np.array(gout_from_dlpack),
                     np.array([[1], [2], [3], [4]]).astype('int')))
+
+    def test_dlpack_dtype_conversion(self):
+        paddle.disable_static()
+        # DLpack does not explicitly support bool data type.
+        dtypes = [
+            "float16",
+            "float32",
+            "float64",
+            "int8",
+            "int16",
+            "int32",
+            "int64",
+            "uint8",
+        ]
+        data = np.ones((2, 3, 4))
+        for dtype in dtypes:
+            x = paddle.to_tensor(data, dtype=dtype)
+            dlpack = paddle.utils.dlpack.to_dlpack(x)
+            o = paddle.utils.dlpack.from_dlpack(dlpack)
+            self.assertEqual(x.dtype, o.dtype)
+            self.assertTrue(np.allclose(x.numpy(), o.numpy()))
+
+        complex_dtypes = ["complex64", "complex128"]
+        for dtype in complex_dtypes:
+            x = paddle.to_tensor(
+                [[1 + 6j, 2 + 5j, 3 + 4j], [4 + 3j, 5 + 2j, 6 + 1j]],
+                dtype=dtype)
+            dlpack = paddle.utils.dlpack.to_dlpack(x)
+            o = paddle.utils.dlpack.from_dlpack(dlpack)
+            self.assertEqual(x.dtype, o.dtype)
+            self.assertTrue(np.allclose(x.numpy(), o.numpy()))
 
 
 class TestRaiseError(unittest.TestCase):
