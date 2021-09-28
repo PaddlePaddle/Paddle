@@ -148,12 +148,16 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
             num_partition = process_mesh_shape[embedding_row_dim_mapping]
             # TODO generalize here, support any mesh group
             model_parallel_axis, process_mesh = op_dist_attr.get_owner_context(
-            )._get_model_parallel_info() 
+            )._get_model_parallel_info()
             if mesh_shape == 1:
                 if rank_id not in process_mesh_group:
-                    assert len(process_mesh.topology) == 2, " row_parallel_embedding process mapping only support 2 dimensional process mesh, \
+                    assert len(
+                        process_mesh.topology
+                    ) == 2, " row_parallel_embedding process mapping only support 2 dimensional process mesh, \
                     but got {}".format(len(process_mesh.topology))
-                    rank_id = process_mesh_group[process_mesh.process_group.index(rank_id) % mesh_shape]
+                    rank_id = process_mesh_group[
+                        process_mesh.process_group.index(rank_id) %
+                        process_mesh_shape[0]]
                 relative_idx = process_mesh_group.index(rank_id)
             else:
                 relative_idx = rank_id % num_partition
