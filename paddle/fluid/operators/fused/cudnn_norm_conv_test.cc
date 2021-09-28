@@ -203,9 +203,9 @@ void ComputeSumAndSquareSum(const framework::Tensor &cpu_out,
 }
 
 template <typename T>
-class TestCudnnNormConvOpForward {
+class CudnnNormConvolutionTester {
  public:
-  TestCudnnNormConvOpForward(int batch_size, int height, int width,
+  CudnnNormConvolutionTester(int batch_size, int height, int width,
                              int input_channels, int output_channels,
                              int kernel_size, int stride) {
     batch_size_ = batch_size;
@@ -219,7 +219,7 @@ class TestCudnnNormConvOpForward {
     SetUp();
   }
 
-  ~TestCudnnNormConvOpForward() {}
+  ~CudnnNormConvolutionTester() {}
 
   void CheckForward(float diff, bool is_relative_atol = false) {
     platform::CUDADeviceContext *ctx =
@@ -391,7 +391,7 @@ class TestCudnnNormConvOpForward {
 };
 
 // test for fp16, kernel = 1, output_channels = input_channels
-TEST(CudnnNormConvForward, GPUCudnnNormConvForward1Fp16) {
+TEST(CudnnNormConvFp16, K1S1) {
   int batch_size = 4;
   int height = 56;
   int width = 56;
@@ -399,7 +399,7 @@ TEST(CudnnNormConvForward, GPUCudnnNormConvForward1Fp16) {
   int output_channels = 32;
   int kernel_size = 1;
   int stride = 1;
-  TestCudnnNormConvOpForward<paddle::platform::float16> test(
+  CudnnNormConvolutionTester<paddle::platform::float16> test(
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
   test.CheckForward(1e-3, true);
@@ -407,7 +407,7 @@ TEST(CudnnNormConvForward, GPUCudnnNormConvForward1Fp16) {
 }
 
 // test for fp16, kernel = 3, output_channels = input_channels
-TEST(CudnnNormConvForward, GPUCudnnNormConvForward2Fp16) {
+TEST(CudnnNormConvFp16, K3S1) {
   int batch_size = 4;
   int height = 56;
   int width = 56;
@@ -415,7 +415,7 @@ TEST(CudnnNormConvForward, GPUCudnnNormConvForward2Fp16) {
   int output_channels = 32;
   int kernel_size = 3;
   int stride = 1;
-  TestCudnnNormConvOpForward<paddle::platform::float16> test(
+  CudnnNormConvolutionTester<paddle::platform::float16> test(
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
   test.CheckForward(1e-3, true);
@@ -423,7 +423,7 @@ TEST(CudnnNormConvForward, GPUCudnnNormConvForward2Fp16) {
 }
 
 // test for fp16, kernel = 1, output_channels = input_channels * 4
-TEST(CudnnNormConvForward, GPUCudnnNormConvForward3Fp16) {
+TEST(CudnnNormConvFp16, K1S1O4) {
   int batch_size = 4;
   int height = 56;
   int width = 56;
@@ -431,7 +431,7 @@ TEST(CudnnNormConvForward, GPUCudnnNormConvForward3Fp16) {
   int output_channels = 128;
   int kernel_size = 1;
   int stride = 1;
-  TestCudnnNormConvOpForward<paddle::platform::float16> test(
+  CudnnNormConvolutionTester<paddle::platform::float16> test(
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
   test.CheckForward(1e-3, true);
