@@ -34,7 +34,7 @@ class EigvalshKernel : public framework::OpKernel<T> {
     bool is_lower = (lower == "L");
     bool is_test = ctx.Attr<bool>("is_test");
     bool compute_vector = !is_test;
-    math::MatrixEighFunctor<DeviceContext, ValueType, T> functor;
+    math::MatrixEighFunctor<DeviceContext, T> functor;
     functor(ctx, *input, output_w, output_v, is_lower, compute_vector);
     std::cout << ">>>>> end forward\n";
   }
