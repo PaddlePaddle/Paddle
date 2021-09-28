@@ -17,8 +17,7 @@ limitations under the License. */
 #define _USE_MATH_DEFINES
 #endif
 
-#include "paddle/fluid/operators/fused/fused_dropout_common.h"
-#include "paddle/fluid/operators/math/functors.h"
+#include "paddle/fluid/operators/fused/fused_residual_dropout_bias.h"
 
 namespace paddle {
 namespace operators {
@@ -75,66 +74,15 @@ __global__ void FusedDropoutActBias(
   curandStatePhilox4_32_10_t state;
   curand_init(seed, idx, increment, &state);
 
-  T factor = static_cast<T>(1.0f / (1.0f - dropout_prob));
-  if (!is_upscale_in_train) {
-    factor = static_cast<T>(1.0);
-  }
-  if (is_test) {
-    factor = static_cast<T>(1.0f - dropout_prob);
-    if (is_upscale_in_train) {
-      factor = static_cast<T>(1.0f);
-    }
-  }
-
-  using LoadT = platform::AlignedVector<T, VecSize>;
-  using StoreT = platform::AlignedVector<T, VecSize>;
-  using MaskLoadT = platform::AlignedVector<MaskType, VecSize>;
-  using MaskStoreT = platform::AlignedVector<MaskType, VecSize>;
+  const T factor = GetFactor<T>(dropout_prob, is_upscale_in_train, is_test);
 
   for (int r = row_id; r < rows; r += blockDim.y * gridDim.y) {
     for (int i = col_id * VecSize; i < cols;
          i += blockDim.x * gridDim.x * VecSize) {
-      LoadT src_vec;
-      LoadT bias_vec;
-      // vectorize load data from global
-      platform::Load<T, VecSize>(&src[r * cols + i], &src_vec);
-
-      if (bias) {
-        platform::Load<T, VecSize>(&bias[i], &bias_vec);
-      } else {
-#pragma unroll
-        for (int ii = 0; ii < VecSize; ii++) {
-          bias_vec[ii] = static_cast<T>(0);
-        }
-      }
-
-      MaskStoreT mask_vec;
-      if (!is_test) {
-        float rand[VecSize];
-        RandVec<VecSize>(&state, rand);
-#pragma unroll
-        for (int ii = 0; ii < VecSize; ii++) {
-          mask_vec[ii] = static_cast<MaskType>(rand[ii] >= dropout_prob);
-        }
-      } else {
-#pragma unroll
-        for (int ii = 0; ii < VecSize; ii++) {
-          mask_vec[ii] = static_cast<MaskType>(1);
-        }
-      }
-
-      StoreT dest_vec;
-#pragma unroll
-      for (int ii = 0; ii < VecSize; ii++) {
-        const T tmp = src_vec[ii] + bias_vec[ii];
-        const T act_out = act(tmp);
-        dest_vec[ii] = act_out * static_cast<T>(mask_vec[ii]) * factor;
-      }
-      // store result to global
-      platform::Store<T, VecSize>(dest_vec, &dst[r * cols + i]);
-      if (!is_test) {
-        platform::Store<MaskType, VecSize>(mask_vec, &mask[r * cols + i]);
-      }
+      FusedResidualDropoutBiasOneThread<T, MaskType, VecSize, false, true,
+                                        Functor>(
+          r, i, cols, &state, dropout_prob, factor, src, nullptr, bias, dst,
+          mask, is_test, nullptr, nullptr, act);
     }
   }
 }
@@ -197,10 +145,8 @@ __global__ void FusedDropoutActGrad(Functor act_grad, const T *dout,
     StoreT dx_vec;
 #pragma unroll
     for (int ii = 0; ii < VecSize; ii++) {
-      T args[2];
-      args[0] = dout_vec[ii] * static_cast<T>(mask_vec[ii]) * factor;
-      args[1] = src_vec[ii];
-      dx_vec[ii] = args[0] * act_grad.UseOut(args[1]);
+      T tmp = dout_vec[ii] * static_cast<T>(mask_vec[ii]) * factor;
+      dx_vec[ii] = tmp * act_grad.UseOut(src_vec[ii]);
     }
     platform::Store<T, VecSize>(dx_vec, &dx[i]);
   }
@@ -243,10 +189,8 @@ __global__ void FusedDropoutActBiasGrad(Functor act_grad, const T *dout,
 #pragma unroll
       for (int i = 0; i < VecSize; i++) {
         T val;
-        T args[2];
-        args[0] = dout_vec[i] * static_cast<T>(mask_vec[i]) * factor;
-        args[1] = src_vec[i] + bias_vec[i];
-        val = args[0] * act_grad.UseOut(args[1]);
+        T tmp = dout_vec[i] * static_cast<T>(mask_vec[i]) * factor;
+        val = tmp * act_grad.UseOut(src_vec[i] + bias_vec[i]);
         dx_vec[i] = val;
         tmp_sum[i] += val;
       }

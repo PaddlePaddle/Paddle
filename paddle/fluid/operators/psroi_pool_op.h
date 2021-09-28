@@ -40,6 +40,13 @@ class CPUPSROIPoolOpKernel : public framework::OpKernel<T> {
     int width = in_dims[3];
     int rois_num = rois->dims()[0];
 
+    PADDLE_ENFORCE_EQ(input_channels,
+                      output_channels * pooled_height * pooled_width,
+                      platform::errors::InvalidArgument(
+                          "the channels of input "
+                          "X should equal the product of "
+                          "output_channels x pooled_height x pooled_width"));
+
     auto in_stride = framework::stride(in_dims);
     auto out_stride = framework::stride(out->dims());
 
@@ -49,32 +56,52 @@ class CPUPSROIPoolOpKernel : public framework::OpKernel<T> {
     rois_batch_id_list.Resize({rois_num});
     int* rois_batch_id_data =
         rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
-
-    auto rois_lod = rois->lod().back();
-    int rois_batch_size = rois_lod.size() - 1;
-    PADDLE_ENFORCE_EQ(
-        rois_batch_size, batch_size,
-        platform::errors::InvalidArgument("the rois_batch_size and input(X) "
-                                          "batch_size should be the same."));
-    int rois_num_with_lod = rois_lod[rois_batch_size];
-    PADDLE_ENFORCE_EQ(rois_num_with_lod, rois_num,
-                      platform::errors::InvalidArgument(
-                          "the rois_num from input and lod must be the same"));
-
-    PADDLE_ENFORCE_EQ(input_channels,
-                      output_channels * pooled_height * pooled_width,
-                      platform::errors::InvalidArgument(
-                          "the channels of input "
-                          "X should equal the product of "
-                          "output_channels x pooled_height x pooled_width"));
-
-    // calculate batch id index for each roi according to LoD
-    for (int n = 0; n < rois_batch_size; ++n) {
-      for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-        rois_batch_id_data[i] = n;
+    int rois_batch_size;
+    if (ctx.HasInput("RoisNum")) {
+      auto* rois_num_t = ctx.Input<framework::Tensor>("RoisNum");
+      rois_batch_size = rois_num_t->numel();
+      auto* rois_num_data = rois_num_t->data<int>();
+      PADDLE_ENFORCE_EQ(
+          rois_batch_size, batch_size,
+          platform::errors::InvalidArgument(
+              "The batch size of rois and the batch size of images "
+              " must be the same. But received the batch size of rois is %d, "
+              "and the batch size of images is %d",
+              rois_batch_size, batch_size));
+      int rois_num_count = 0;
+      for (int i = 0; i < rois_batch_size; ++i) {
+        rois_num_count += rois_num_data[i];
+      }
+      PADDLE_ENFORCE_EQ(
+          rois_num_count, rois_num,
+          platform::errors::InvalidArgument(
+              "the rois_num from input and RoisNum must be the same"));
+      int start = 0;
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (int i = start; i < start + rois_num_data[n]; ++i) {
+          rois_batch_id_data[i] = n;
+        }
+        start += rois_num_data[n];
+      }
+    } else {
+      auto rois_lod = rois->lod().back();
+      rois_batch_size = rois_lod.size() - 1;
+      PADDLE_ENFORCE_EQ(
+          rois_batch_size, batch_size,
+          platform::errors::InvalidArgument("the rois_batch_size and input(X) "
+                                            "batch_size should be the same."));
+      int rois_num_with_lod = rois_lod[rois_batch_size];
+      PADDLE_ENFORCE_EQ(
+          rois_num_with_lod, rois_num,
+          platform::errors::InvalidArgument(
+              "the rois_num from input and lod must be the same"));
+      // calculate batch id index for each roi according to LoD
+      for (int n = 0; n < rois_batch_size; ++n) {
+        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+          rois_batch_id_data[i] = n;
+        }
       }
     }
-
     T* output_data = out->mutable_data<T>(ctx.GetPlace());
     const T* input_rois = rois->data<T>();
 
@@ -93,7 +120,6 @@ class CPUPSROIPoolOpKernel : public framework::OpKernel<T> {
           static_cast<T>(round(offset_input_rois[2]) + 1.) * spatial_scale;
       T roi_end_h =
           static_cast<T>(round(offset_input_rois[3]) + 1.) * spatial_scale;
-
       // Force too small rois to be 1 x 1
       T roi_height = std::max(roi_end_h - roi_start_h, (T)0.1);  // avoid 0
       T roi_width = std::max(roi_end_w - roi_start_w, (T)0.1);
@@ -172,15 +198,28 @@ class CPUPSROIPoolGradOpKernel : public framework::OpKernel<T> {
       rois_batch_id_list.Resize({rois_num});
       int* rois_batch_id_data =
           rois_batch_id_list.mutable_data<int>(ctx.GetPlace());
-      auto rois_lod = rois->lod().back();
-      int rois_batch_size = rois_lod.size() - 1;
-      // calculate batch id index for each roi according to LoD
-      for (int n = 0; n < rois_batch_size; ++n) {
-        for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
-          rois_batch_id_data[i] = n;
+      int rois_batch_size;
+      if (ctx.HasInput("RoisNum")) {
+        auto* rois_num_t = ctx.Input<framework::Tensor>("RoisNum");
+        rois_batch_size = rois_num_t->numel();
+        auto* rois_num_data = rois_num_t->data<int>();
+        int start = 0;
+        for (int n = 0; n < rois_batch_size; ++n) {
+          for (int i = start; i < start + rois_num_data[n]; ++i) {
+            rois_batch_id_data[i] = n;
+          }
+          start += rois_num_data[n];
+        }
+      } else {
+        auto rois_lod = rois->lod().back();
+        rois_batch_size = rois_lod.size() - 1;
+        // calculate batch id index for each roi according to LoD
+        for (int n = 0; n < rois_batch_size; ++n) {
+          for (size_t i = rois_lod[n]; i < rois_lod[n + 1]; ++i) {
+            rois_batch_id_data[i] = n;
+          }
         }
       }
-
       const T* input_rois = rois->data<T>();
       const T* output_grad_data = output_grad->data<T>();
       T* input_grad_data = input_grad->mutable_data<T>(ctx.GetPlace());

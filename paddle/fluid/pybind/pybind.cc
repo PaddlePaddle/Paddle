@@ -38,6 +38,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/ir/coalesce_grad_tensor_pass.h"
+#include "paddle/fluid/framework/ir/cost_model.h"
+#include "paddle/fluid/framework/ir/generate_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
 #include "paddle/fluid/framework/lod_tensor.h"
@@ -77,6 +79,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
+#include "paddle/fluid/pybind/bind_cost_model.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -534,11 +537,11 @@ PYBIND11_MODULE(core_noavx, m) {
     DLTensor dl = dmt->dl_tensor;
     framework::Tensor tensor;
 
-    if (dl.ctx.device_type == kDLCPU) {
+    if (dl.device.device_type == kDLCPU) {
       paddle::framework::TensorFromDLPack(dl, &tensor);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (dl.ctx.device_type == kDLGPU) {
+    if (dl.device.device_type == kDLGPU) {
       paddle::framework::TensorFromDLPack(dl, &tensor);
     }
 #endif
@@ -773,8 +776,7 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_to_dlpack",
            [](framework::Tensor &self) {
              DLPackTensor dlpack_tensor(self, 1);
-             DLManagedTensor *dmt =
-                 dlpack_tensor.ToCudfCompatibleDLManagedTensor();
+             DLManagedTensor *dmt = dlpack_tensor.ToDLManagedTensor();
              auto capsule = py::capsule(
                  static_cast<void *>(dmt), "dltensor", [](PyObject *ptr) {
                    if (ptr) {
@@ -1239,6 +1241,17 @@ All parameter, weight, gradient are variables in Paddle.
                  platform::errors::InvalidArgument(
                      "The variable is not type of ReaderHolder."));
              return self.GetMutable<framework::ReaderHolder>();
+           },
+           py::return_value_policy::reference)
+      .def("get_scope",
+           [](Variable &self) -> Scope * {
+             auto scope_vec =
+                 self.GetMutable<std::vector<framework::Scope *>>();
+             PADDLE_ENFORCE_GT(
+                 scope_vec->size(), 0,
+                 platform::errors::InvalidArgument(
+                     "The size of scope_vec should be greater than 0"));
+             return scope_vec->front();
            },
            py::return_value_policy::reference)
       .def("set_scope", [](Variable &self, Scope &scope) {
@@ -1967,12 +1980,8 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::CostInfo>(m, "CostInfo")
       .def(py::init<>())
       .def("total_time", [](CostInfo &self) { return self.total_time; })
-      .def("host_memory_bytes",
-           [](CostInfo &self) { return self.host_memory_bytes; })
       .def("device_memory_bytes",
-           [](CostInfo &self) { return self.device_memory_bytes; })
-      .def("device_total_memory_bytes",
-           [](CostInfo &self) { return self.device_total_memory_bytes; });
+           [](CostInfo &self) { return self.device_memory_bytes; });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
       .def(py::init<const platform::Place &, const ProgramDesc &,
@@ -2123,6 +2132,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindBlockDesc(&m);
   BindVarDsec(&m);
   BindOpDesc(&m);
+  BindCostModel(&m);
   BindConstValue(&m);
   BindGlobalValueGetterSetter(&m);
   BindProcessMeshDesc(&m);
@@ -2370,6 +2380,21 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("disable_profiler", platform::DisableProfiler);
   m.def("is_profiler_enabled", platform::IsProfileEnabled);
   m.def("reset_profiler", platform::ResetProfiler);
+  m.def("register_pass", [](const std::string &pass_type,
+                            const py::object &callable) {
+    PADDLE_ENFORCE_EQ(
+        framework::ir::PassRegistry::Instance().Has(pass_type), false,
+        platform::errors::AlreadyExists(
+            "Pass '%s' is registered more than once. Please use another name.",
+            pass_type));
+    framework::ir::PassRegistry::Instance().Insert(pass_type, [pass_type,
+                                                               callable]() {
+      py::gil_scoped_acquire guard;
+      std::unique_ptr<framework::ir::Pass> pass(
+          new framework::ir::GeneratePass(py::cast<std::string>(callable())));
+      return pass;
+    });
+  });
   m.def("get_pass", [](const std::string &pass_type) {
     auto pass = framework::ir::PassRegistry::Instance().Get(pass_type);
     return std::shared_ptr<framework::ir::Pass>(std::move(pass));
@@ -2441,7 +2466,6 @@ All parameter, weight, gradient are variables in Paddle.
            [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
 
   // -- python binds for parallel executor.
-
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
   py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
     ExecutionStrategy allows the user to more preciously control how to run

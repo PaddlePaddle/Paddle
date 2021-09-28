@@ -21,6 +21,7 @@ limitations under the License. */
 #include "paddle/fluid/memory/memory.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/operators/layer_norm_kernel.cu.h"
+#include "paddle/fluid/operators/math/functors.h"
 #include "paddle/fluid/platform/aligned_vector.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/device_context.h"
@@ -133,5 +134,17 @@ inline __device__ void CalculateDBias(const T *tmp_sum, T *dbias,
   }
 }
 
+template <typename T>
+inline __device__ T GetFactor(const float dropout_prob,
+                              const bool is_upscale_in_train,
+                              const bool is_test) {
+  T factor = is_upscale_in_train ? static_cast<T>(1.0f / (1.0f - dropout_prob))
+                                 : static_cast<T>(1.0f);
+  if (is_test) {
+    factor = is_upscale_in_train ? static_cast<T>(1.0f)
+                                 : static_cast<T>(1.0f - dropout_prob);
+  }
+  return factor;
+}
 }  // namespace operators
 }  // namespace paddle
