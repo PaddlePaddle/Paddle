@@ -213,14 +213,14 @@ def get_device_properties(device=None):
 
     Args:
         device(paddle.CUDAPlace or int or str): The device, the id of the device 
-        or the string name of device like 'gpu:x' which to get the properties of 
-        the device from. If device is None, the device is the current device. 
-        Default: None.
+            or the string name of device like 'gpu:x' which to get the properties of 
+            the device from. If device is None, the device is the current device. 
+            Default: None.
 
     Returns:
         _gpuDeviceProperties: The properties of the device which include ASCII string 
-        identifying device, major compute capability, minor compute capability, global 
-        memory available and the number of multiprocessors on the device.
+            identifying device, major compute capability, minor compute capability, global 
+            memory available and the number of multiprocessors on the device.
 
     Examples:
     
