@@ -42,6 +42,32 @@ struct NormConvolutionArgs {
            const std::vector<int> &filter_shape,
            const std::vector<int> &output_shape, int padding, int stride,
            int dilation, int group) {
+    PADDLE_ENFORCE_EQ(
+        input_shape.size(), 4U,
+        platform::errors::InvalidArgument(
+            "The size of input_shape is expected to 4. But recieved "
+            "input_shape's size is %d, input_shape is [%s].",
+            input_shape.size(), framework::make_ddim(input_shape)));
+    PADDLE_ENFORCE_EQ(
+        filter_shape.size(), 4U,
+        platform::errors::InvalidArgument(
+            "The size of filter_shape is expected to 4. But recieved "
+            "filter_shape's size is %d, filter_shape is [%s].",
+            filter_shape.size(), framework::make_ddim(filter_shape)));
+    PADDLE_ENFORCE_EQ(filter_shape[1] == filter_shape[2] &&
+                          (filter_shape[1] == 1 || filter_shape[1] == 3),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The filter_shape is expected to store as nhwc, and "
+                          "h = w = 1 or 3. But recieved filter_shape is [%s].",
+                          framework::make_ddim(filter_shape)));
+    PADDLE_ENFORCE_EQ(
+        output_shape.size(), 4U,
+        platform::errors::InvalidArgument(
+            "The size of output_shape is expected to 4. But recieved "
+            "filter_shape's size is %d, filter_shape is [%s].",
+            output_shape.size(), framework::make_ddim(output_shape)));
+
     for (size_t i = 0; i < input_shape.size(); ++i) {
       in_dims.push_back(input_shape[i]);
     }
