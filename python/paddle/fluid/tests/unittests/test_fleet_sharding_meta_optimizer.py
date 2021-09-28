@@ -922,18 +922,17 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         # ring: mp, pp_group, pp_pair, pp_pair
         self.assertEqual(startup_prog_op_types, [
-            'uniform_random', 'cast', 'fill_constant', 'cast', 'uniform_random',
-            'cast', 'fill_constant', 'cast', 'uniform_random', 'cast',
-            'fill_constant', 'cast', 'uniform_random', 'cast', 'fill_constant',
+            'uniform_random', 'fill_constant', 'uniform_random',
+            'fill_constant', 'uniform_random', 'fill_constant',
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
-            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'c_gen_nccl_id', 'c_comm_init',
             'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
-            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
-            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
-            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
-            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
-            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream'
+            'c_gen_nccl_id', 'c_comm_init', 'c_broadcast', 'cast',
+            'c_broadcast', 'cast', 'c_broadcast', 'cast', 'c_broadcast', 'cast',
+            'c_broadcast', 'cast', 'c_broadcast', 'cast', 'c_broadcast', 'cast',
+            'c_broadcast', 'c_sync_comm_stream'
         ])
 
         self.assertEqual(main_prog_op_types, [
@@ -1019,19 +1018,17 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         # ring: mp, pp_group, pp_pair, pp_pair
         self.assertEqual(startup_prog_op_types, [
-            'uniform_random', 'cast', 'memcpy', 'fill_constant', 'cast',
-            'memcpy', 'uniform_random', 'cast', 'memcpy', 'fill_constant',
-            'cast', 'memcpy', 'uniform_random', 'cast', 'memcpy',
-            'fill_constant', 'cast', 'memcpy', 'uniform_random', 'cast',
-            'memcpy', 'fill_constant', 'fill_constant', 'fill_constant',
+            'uniform_random', 'fill_constant', 'uniform_random',
+            'fill_constant', 'uniform_random', 'fill_constant',
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'c_gen_nccl_id', 'c_comm_init',
             'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
-            'c_gen_nccl_id', 'c_comm_init', 'c_broadcast', 'c_broadcast',
-            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
-            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
-            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
+            'c_gen_nccl_id', 'c_comm_init', 'c_broadcast', 'cast', 'memcpy',
+            'c_broadcast', 'cast', 'memcpy', 'c_broadcast', 'cast', 'memcpy',
+            'c_broadcast', 'cast', 'memcpy', 'c_broadcast', 'cast', 'memcpy',
+            'c_broadcast', 'cast', 'memcpy', 'c_broadcast', 'cast', 'memcpy',
             'c_broadcast', 'c_sync_comm_stream'
         ])
 
@@ -1122,18 +1119,17 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
 
         # ring: mp, pp_group, pp_pair, pp_pair
         self.assertEqual(startup_prog_op_types, [
-            'uniform_random', 'cast', 'fill_constant', 'cast', 'uniform_random',
-            'cast', 'fill_constant', 'cast', 'uniform_random', 'cast',
-            'fill_constant', 'cast', 'uniform_random', 'cast', 'fill_constant',
+            'uniform_random', 'fill_constant', 'uniform_random',
+            'fill_constant', 'uniform_random', 'fill_constant',
+            'uniform_random', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
             'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
-            'fill_constant', 'fill_constant', 'fill_constant', 'fill_constant',
+            'fill_constant', 'fill_constant', 'c_gen_nccl_id', 'c_comm_init',
             'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
-            'c_gen_nccl_id', 'c_comm_init', 'c_gen_nccl_id', 'c_comm_init',
-            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
-            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
-            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_broadcast',
-            'c_broadcast', 'c_broadcast', 'c_broadcast', 'c_sync_comm_stream'
+            'c_gen_nccl_id', 'c_comm_init', 'c_broadcast', 'cast',
+            'c_broadcast', 'cast', 'c_broadcast', 'cast', 'c_broadcast', 'cast',
+            'c_broadcast', 'cast', 'c_broadcast', 'cast', 'c_broadcast', 'cast',
+            'c_broadcast', 'c_sync_comm_stream'
         ])
 
         self.assertEqual(main_prog_op_types, [
