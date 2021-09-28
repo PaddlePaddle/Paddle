@@ -32,6 +32,11 @@ class RawProgramOptimizer(MetaOptimizerBase):
         self.meta_optimizers_white_list = [
             "RecomputeOptimizer",
             "AMPOptimizer",
+            "GradientMergeOptimizer",
+            "LambOptimizer",
+            "LarsOptimizer",
+            "DGCOptimizer",
+            "LocalSGDOptimizer",
         ]
         self.meta_optimizers_black_list = ["GraphExecutionOptimizer", ]
         self.global_ring_id = 0
@@ -129,8 +134,103 @@ class RawProgramOptimizer(MetaOptimizerBase):
             self._transpile_main_program(loss)
         return optimize_ops, params_grads
 
+    def _find_gradient_merge_block(self):
+        GRAD_MERGE_COND_NAME = "grad_merge_cond_name"
+        gm_cond_var_name = None
+        for op in self.main_program.global_block().ops:
+            if GRAD_MERGE_COND_NAME not in op.attr_names:
+                continue
+            if gm_cond_var_name is None:
+                gm_cond_var_name = op.attr(GRAD_MERGE_COND_NAME)
+            else:
+                assert gm_cond_var_name == op.attr(
+                    GRAD_MERGE_COND_NAME
+                ), "multiple gradient merge condition found"
+        if gm_cond_var_name is None:
+            return None
+
+        cond_op = None  # false_fn of gm is None, so we should only find one block
+        for op in self.main_program.global_block().ops:
+            if op.type != 'conditional_block' or 'Cond' not in op.input_names:
+                continue
+            cond_vars = op.input('Cond')
+            if not cond_vars or cond_vars[0] != gm_cond_var_name:
+                continue
+            assert cond_op is None, "multiple gradient merge block found"
+            cond_op = op
+        assert cond_op is not None, "cannot find gradient merge block"
+        return cond_op._block_attr("sub_block")
+
+    def _insert_allreduce_ops_for_gm(self, gm_block):
+        block = self.main_program.global_block()
+
+        first_optimize_op_idx = None
+        for i, op in reversed(list(enumerate(gm_block.ops))):
+            if is_backward_op(op) and first_optimize_op_idx is None:
+                first_optimize_op_idx = i + 1
+                break
+        if first_optimize_op_idx is None:
+            first_optimize_op_idx = 0
+
+        param_vars = []
+        grad_vars = []
+        for op in block.ops:
+            if is_backward_op(op) and \
+                    OP_ROLE_VAR_KEY in op.attr_names:
+                op_role_var = op.attr(OP_ROLE_VAR_KEY)
+                assert len(op_role_var) % 2 == 0
+                for i in range(0, len(op_role_var), 2):
+                    param = block.var(op_role_var[i])
+                    grad = block.var(op_role_var[i + 1])
+                    if param.is_distributed:
+                        continue
+                    param_vars.append(param)
+                    grad_vars.append(grad)
+
+        if not grad_vars:
+            return
+
+        gm_block._insert_op(
+            first_optimize_op_idx,
+            type="c_sync_calc_stream",
+            inputs={'X': grad_vars[0]},
+            outputs={'Out': grad_vars[0]},
+            attrs={OP_ROLE_KEY: OpRole.Backward})
+
+        insert_op_num = 1
+        ring_id = self.global_ring_id
+
+        # NOTE: can perform fuse allreduce inside the loop in the future
+        for i, (p, g) in enumerate(zip(param_vars, grad_vars)):
+            gm_block._insert_op(
+                first_optimize_op_idx + insert_op_num,
+                type="c_allreduce_sum",
+                inputs={'X': g},
+                outputs={'Out': g},
+                attrs={
+                    'ring_id': ring_id,
+                    OP_ROLE_KEY: OpRole.Backward,
+                })
+            insert_op_num += 1
+
+        gm_block._insert_op(
+            first_optimize_op_idx + insert_op_num,
+            type="c_sync_comm_stream",
+            inputs={'X': grad_vars[-1]},
+            outputs={'Out': grad_vars[-1]},
+            attrs={
+                'ring_id': ring_id,
+                OP_ROLE_KEY: OpRole.Backward,
+            })
+
     def _transpile_main_program(self, loss):
         self._insert_loss_grad_ops(loss)
+        gm_block = self._find_gradient_merge_block()
+        if gm_block is not None:
+            # TODO(zjl): support fuse allreduce
+            self._insert_allreduce_ops_for_gm(gm_block)
+            return
+
         if self.fuse_all_reduce_ops and self.fuse_grad_size_in_num > 1:
             self._allreduce_fusion_program()
         else:

@@ -16,6 +16,8 @@ import numpy as np
 import unittest
 import abc
 import os
+import enum
+import logging
 import paddle
 import paddle.fluid as fluid
 from paddle.fluid.initializer import NumpyArrayInitializer
@@ -25,11 +27,22 @@ import paddle.inference as paddle_infer
 from typing import Optional, List, Callable, Dict, Any, Set
 from program_config import TensorConfig, OpConfig, ProgramConfig, create_fake_model, create_quant_model
 
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+
+
+class SkipReasons(enum.Enum):
+    # Paddle not support, but trt support, we need to add the feature.
+    TRT_NOT_IMPLEMENTED = 0
+    # TRT not support.
+    TRT_NOT_SUPPORT = 1
+
 
 class AutoScanTest(unittest.TestCase):
     def __init__(self, methodName='runTest'):
+        np.random.seed(1024)
         paddle.enable_static()
         super(AutoScanTest, self).__init__(methodName)
+        self.skip_cases = []
 
     @abc.abstractmethod
     def sample_program_configs(self) -> List[ProgramConfig]:
@@ -43,6 +56,18 @@ class AutoScanTest(unittest.TestCase):
     def sample_predictor_configs(self) -> List[paddle_infer.Config]:
         raise NotImplementedError
 
+    @abc.abstractmethod
+    def add_skip_case(
+            self,
+            teller: [Callable[[ProgramConfig, paddle_infer.Config], bool]],
+            reason: SkipReasons,
+            note: str):
+        self.skip_cases.append((teller, reason, note))
+
+    @abc.abstractmethod
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        raise NotImplementedError
+
     def run_test_config(self, model, params, prog_config, pred_config,
                         feed_data) -> Dict[str, np.ndarray]:
         '''
@@ -53,33 +78,15 @@ class AutoScanTest(unittest.TestCase):
 
         for name, _ in prog_config.inputs.items():
             input_tensor = predictor.get_input_handle(name)
-            input_tensor.copy_from_cpu(feed_data[name])
+            input_tensor.copy_from_cpu(feed_data[name]['data'])
+            if feed_data[name]['lod'] is not None:
+                input_tensor.set_lod(feed_data[name]['lod'])
         predictor.run()
         result = {}
         for out_name, o_name in zip(prog_config.outputs,
                                     predictor.get_output_names()):
             result[out_name] = predictor.get_output_handle(o_name).copy_to_cpu()
         return result
-
-    def assert_op_size(self, trt_engine_num, paddle_op_num):
-        cur_path = os.path.dirname(__file__)
-        last_passed_program = os.path.join(
-            cur_path, 'transpose_flatten_concat_fuse_pass.pdmodel')
-        model_bytes = paddle.static.load_from_file(last_passed_program)
-        pg = paddle.static.deserialize_program(model_bytes)
-        main_block = pg.desc.block(0)
-        op_size = main_block.op_size()
-        op_types = [
-            main_block.op(i).type() == 'tensorrt_engine' for i in range(op_size)
-        ]
-        trt_engine_size = sum(op_types)
-        paddle_op_size = op_size - trt_engine_size
-        self.assertTrue(trt_engine_size == trt_engine_num,
-                        'trt_engine_num is {}, but got {}!'.format(
-                            trt_engine_size, trt_engine_num))
-        self.assertTrue(paddle_op_size == paddle_op_num,
-                        'paddle_op_num is {}, but got {}!'.format(
-                            paddle_op_size, paddle_op_num))
 
     def assert_tensors_near(self,
                             threshold: float,
@@ -89,30 +96,13 @@ class AutoScanTest(unittest.TestCase):
         for group in tensors[1:]:
             for key, arr in group.items():
                 self.assertTrue(
+                    first[key].shape == arr.shape,
+                    "The output shape of GPU and TensorRT are not equal.")
+                self.assertTrue(
                     np.allclose(
                         first[key], arr, atol=threshold),
                     "Output has diff between GPU and TensorRT. ")
 
-    def run_test(self,
-                 trt_engine_num: int,
-                 paddle_op_num: int,
-                 threshold=1e-5,
-                 quant=False):
-        for prog_config in self.sample_program_configs():
-            model, params = create_fake_model(prog_config)
-            if quant:
-                model, params = create_quant_model(model, params)
-            for batch_size in self.batch_size_set:
-                feed_data = {}
-                for name, tensor_config in prog_config.inputs.items():
-                    tensor_shape = tensor_config.shape.copy()
-                    tensor_shape[0] = batch_size
-                    feed_data[name] = np.random.random(tensor_shape).astype(
-                        tensor_config.dtype)
-                results: List[Dict[str, Tensor]] = []
-                for pred_config in self.sample_predictor_configs():
-                    results.append(
-                        self.run_test_config(model, params, prog_config,
-                                             pred_config, feed_data))
-                self.assert_tensors_near(threshold=threshold, tensors=results)
-                self.assert_op_size(trt_engine_num, paddle_op_num)
+    @abc.abstractmethod
+    def run_test(self, quant=False):
+        raise NotImplementedError

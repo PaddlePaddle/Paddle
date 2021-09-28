@@ -705,6 +705,7 @@ class PostTrainingQuantization(object):
                                  self._quantized_var_min[var_name])
                     op._set_attr(var_name + ".max",
                                  self._quantized_var_max[var_name])
+                    op._set_attr("with_quant_attr", True)
 
     def _collect_activation_abs_min_max(self):
         '''
@@ -849,6 +850,7 @@ class PostTrainingQuantization(object):
                 "The output ({}) of {} node does not have threshold.".format(
                 out_var_name, op_node.type)
             op_node._set_attr(out_info_name, threshold_map[var_name])
+            op_node._set_attr("with_quant_attr", True)
             if op_node.type in self._quantizable_op_type:
                 op._set_attr("quantization_type", quantized_type)
 
@@ -921,6 +923,7 @@ class PostTrainingQuantization(object):
                     op._set_attr(argname + str(index) + "_threshold", threshold)
                     op._set_attr("quantization_type", quantization_type)
                     op._set_attr("bit_length", self._weight_bits)
+                    op._set_attr("with_quant_attr", True)
 
     def _get_hist_scaling_factor(self, hist, hist_edges):
         '''
@@ -1184,6 +1187,7 @@ class WeightQuantization(object):
         op._set_attr('quantization_type', 'post_weight_abs_max')
         op._set_attr('quantize_weight_bits', weight_bits)
         op._set_attr(var_name + "_quant_scale", [scale])  # Save as list
+        op._set_attr("with_quant_attr", True)
 
     def _weight_channel_wise_abs_max_quantization(
             self, scope, place, weight_bits, op, var_name, for_test):
@@ -1225,6 +1229,7 @@ class WeightQuantization(object):
         op._set_attr('quantization_type', 'post_weight_channel_wise_abs_max')
         op._set_attr('quantize_weight_bits', weight_bits)
         op._set_attr(var_name + "_quant_scale", scales)
+        op._set_attr("with_quant_attr", True)
 
     def _conv_channel_wise_quantization(self, weight_data, quantize_range,
                                         save_weight_dtype):

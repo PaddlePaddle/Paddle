@@ -27,7 +27,7 @@ print(s.get_config_var('LDVERSION') or s.get_config_var('VERSION'));
             OUTPUT_VARIABLE _PYTHON_VALUES
             ERROR_VARIABLE _PYTHON_ERROR_VALUE)
 
-    if(NOT _PYTHON_SUCCESS MATCHES 0)
+    if(NOT _PYTHON_SUCCESS EQUAL 0)
         set(PYTHONLIBS_FOUND FALSE)
         return()
     endif()

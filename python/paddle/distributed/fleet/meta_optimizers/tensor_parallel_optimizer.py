@@ -124,7 +124,7 @@ class TensorParallelOptimizer(MetaOptimizerBase):
         collective_helper._init_communicator(
             self.startup_program, self.current_endpoint, self.mp_endpoints,
             self.mp_rank, self.mp_ring_id, True, self.global_ring_id, True)
-        #self._broadcast_params(self.mp_ring_id, mp_mode=True)
+        self._broadcast_params(self.mp_ring_id, mp_mode=True)
 
         # Create dp rings
         if self.nranks > self.mp_degree:

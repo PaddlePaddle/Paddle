@@ -29,7 +29,7 @@ from .. import core, unique_name
 from ..framework import Program, default_main_program, default_startup_program
 from .details import wait_server_ready
 
-__all__ = ['GradAllReduce', 'LocalSGD']
+__all__ = ['GradAllReduce', 'LocalSGD', 'MultiThread']
 
 OpRole = core.op_proto_and_checker_maker.OpRole
 
@@ -97,8 +97,14 @@ class Collective(object):
                                     self.wait_port)
         self._broadcast_params()
 
-    def _init_communicator(self, program, current_endpoint, endpoints, rank,
-                           ring_id, wait_port):
+    def _init_communicator(self,
+                           program,
+                           current_endpoint,
+                           endpoints,
+                           rank,
+                           ring_id,
+                           wait_port,
+                           has_multitrainer=False):
         nranks = len(endpoints)
         other_endpoints = endpoints[:]
         other_endpoints.remove(current_endpoint)
@@ -150,16 +156,28 @@ class Collective(object):
                     'other_endpoints': other_endpoints,
                     self.op_role_key: OpRole.Forward
                 })
-            block.append_op(
-                type='c_comm_init',
-                inputs={'X': nccl_id_var},
-                outputs={},
-                attrs={
-                    'nranks': nranks,
-                    'rank': rank,
-                    'ring_id': ring_id,
-                    self.op_role_key: OpRole.Forward
-                })
+            if not has_multitrainer:
+                block.append_op(
+                    type='c_comm_init',
+                    inputs={'X': nccl_id_var},
+                    outputs={},
+                    attrs={
+                        'nranks': nranks,
+                        'rank': rank,
+                        'ring_id': ring_id,
+                        self.op_role_key: OpRole.Forward
+                    })
+            else:
+                block.append_op(
+                    type='c_comm_init_multitrainer',
+                    inputs={'X': nccl_id_var},
+                    outputs={},
+                    attrs={
+                        'ntrainers': nranks,
+                        'trainer_id': rank,
+                        'ring_id': ring_id,
+                        self.op_role_key: OpRole.Forward
+                    })
 
     def _broadcast_params(self):
         block = self.startup_program.global_block()
@@ -419,7 +437,6 @@ class SingleProcessMultiThread(GradAllReduce):
         block.append_op(type='c_comm_init_all', attrs={'ring_id': 0})
 
 
-
 class MultiThread(GradAllReduce):
     '''
     '''
@@ -438,9 +455,9 @@ class MultiThread(GradAllReduce):
             print("total endpoints: ", self.endpoints)
             print("rank: %d, ring_id: %d" % (self.rank, self.nrings))
             for ring_id in range(self.nrings):
-                self._init_communicator(self.startup_program,
-                                        self.current_endpoint, self.endpoints,
-                                        self.rank, ring_id, self.wait_port)
+                self._init_communicator(
+                    self.startup_program, self.current_endpoint, self.endpoints,
+                    self.rank, ring_id, self.wait_port, True)
 
         else:
             print("begin to _transpile_startup_program for single-node")
@@ -493,7 +510,7 @@ class MultiThread(GradAllReduce):
                 last_dtype = var.dtype
             else:
                 segments[-1].append(var)
-        
+
         fused_vars = []
         for idx, op in enumerate(block.ops):
             if self._is_optimizer_op(op):
@@ -554,7 +571,9 @@ class MultiThread(GradAllReduce):
                     type='c_sync_comm_stream',
                     inputs={'X': fused_vars[0]},
                     outputs={'Out': fused_vars[0]},
-                    attrs={'ring_id': ring_id,
-                           self.op_role_key: OpRole.Backward})
+                    attrs={
+                        'ring_id': ring_id,
+                        self.op_role_key: OpRole.Backward
+                    })
                 break
         block._sync_with_cpp()

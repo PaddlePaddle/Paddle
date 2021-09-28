@@ -12,38 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/platform/device_event.h"
+#include "paddle/fluid/platform/device_event_base.h"
 #include "paddle/fluid/platform/event.h"
 
 #ifdef PADDLE_WITH_CUDA
 namespace paddle {
 namespace platform {
 struct CUDADeviceEventWrapper {
-  explicit CUDADeviceEventWrapper(const DeviceOption& dev_opt)
-      : inner_event_() {
+  CUDADeviceEventWrapper(const platform::Place& place, unsigned int flag)
+      : inner_event_(flag) {
     PADDLE_ENFORCE_EQ(
-        dev_opt.device_type(), static_cast<int>(DeviceType::CUDA),
+        platform::is_gpu_place(place), true,
         platform::errors::PreconditionNotMet(
-            "Required device type shall be CUDA, but received %d. ",
-            dev_opt.device_type()));
+            "Required device shall be CUDAPlace, but received %d. ", place));
+
+    device_id_ = BOOST_GET_CONST(platform::CUDAPlace, place).device;
     PADDLE_ENFORCE_GT(
-        dev_opt.device_id(), -1,
+        device_id_, -1,
         platform::errors::PreconditionNotMet(
             "Required DeviceOption.device_id > -1, but received %d. ",
-            dev_opt.device_id()));
-    device_id_ = dev_opt.device_id();
+            device_id_));
   }
 
   CudaEvent inner_event_;
   int device_id_;
 };
 
-void DeviceEventCreateCUDA(DeviceEvent* event, const DeviceOption& dev_opt) {
-  event->InitEvent(std::make_shared<CUDADeviceEventWrapper>(dev_opt));
+void DeviceEventCreateCUDA(DeviceEvent* event, const platform::Place& place,
+                           unsigned int flag) {
+  event->InitEvent(std::make_shared<CUDADeviceEventWrapper>(place, flag));
 }
 
-void DeviceEventRecordCUDA(DeviceEvent* event, const platform::Place& place,
-                           const DeviceContext* context) {
+void DeviceEventRecordCUDA(DeviceEvent* event, const DeviceContext* context) {
   auto* wrapper = static_cast<CUDADeviceEventWrapper*>(event->GetEvent().get());
 
   auto* cuda_dev_ctx =
@@ -72,7 +72,8 @@ void DeviceEventFinishCUDA(const DeviceEvent* event) {
   wrapper->inner_event_.Synchronize();
 }
 
-void DeviceEventCUDAWaitCUDA(const DeviceEvent* event, DeviceContext* context) {
+void DeviceEventCUDAWaitCUDA(const DeviceEvent* event,
+                             const DeviceContext* context) {
   auto* wrapper = static_cast<CUDADeviceEventWrapper*>(event->GetEvent().get());
   auto* cuda_dev_ctx =
       dynamic_cast<const platform::CUDADeviceContext*>(context);
@@ -85,8 +86,17 @@ void DeviceEventCUDAWaitCUDA(const DeviceEvent* event, DeviceContext* context) {
       wrapper->inner_event_.GetRawCudaEvent());
 }
 
-void DeviceEventCPUWaitCUDA(const DeviceEvent* event, DeviceContext* context) {
+void DeviceEventCPUWaitCUDA(const DeviceEvent* event,
+                            const DeviceContext* context) {
   DeviceEventFinishCUDA(event);
+}
+
+void DeviceEventSetFinishedCUDA(const DeviceEvent* event) {
+  // do nothing
+}
+
+void EventResetCUDA(const DeviceEvent* event) {
+  // do nothing
 }
 
 }  // namespace platform
@@ -98,8 +108,11 @@ REGISTER_EVENT_CREATE_FUNCTION(kCUDA, paddle::platform::DeviceEventCreateCUDA)
 REGISTER_EVENT_RECORD_FUNCTION(kCUDA, paddle::platform::DeviceEventRecordCUDA)
 REGISTER_EVENT_QUERY_FUNCTION(kCUDA, paddle::platform::DeviceEventQueryCUDA)
 REGISTER_EVENT_FINISH_FUNCTION(kCUDA, paddle::platform::DeviceEventFinishCUDA)
+REGISTER_EVENT_SET_FINISHED_FUNCTION(
+    kCUDA, paddle::platform::DeviceEventSetFinishedCUDA)
 REGISTER_EVENT_WAIT_FUNCTION(kCUDA, kCUDA,
                              paddle::platform::DeviceEventCUDAWaitCUDA)
 REGISTER_EVENT_WAIT_FUNCTION(kCPU, kCUDA,
                              paddle::platform::DeviceEventCPUWaitCUDA)
+REGISTER_EVENT_RESET_FUNCTION(kCUDA, paddle::platform::EventResetCUDA)
 #endif
