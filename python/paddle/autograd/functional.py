@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid import framework
-from .utils import _check_tensors, _stack_tensor_or_return_none, _replace_none_with_zero_tensor
+from .utils import _check_tensors, _stack_tensor_or_return_none, _replace_none_with_zero_tensor, _stop_gradient_pre_process
 import paddle
 
 
@@ -128,6 +128,7 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
 
     '''
     inputs = _check_tensors(inputs, "inputs")
+    inputs = _stop_gradient_pre_process(inputs)
     outputs = _check_tensors(func(*inputs), "outputs")
     fin_size = len(inputs)
     fout_size = len(outputs)
@@ -267,6 +268,7 @@ def hessian(func, inputs, create_graph=False, allow_unused=False):
 
     '''
     inputs = _check_tensors(inputs, "inputs")
+    inputs = _stop_gradient_pre_process(inputs)
     outputs = func(*inputs)
     assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
         1
@@ -330,6 +332,7 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             print(vhp_rslt)
     '''
     inputs = _check_tensors(inputs, "inputs")
+    inputs = _stop_gradient_pre_process(inputs)
     outputs = func(*inputs)
     assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
         1
@@ -350,6 +353,7 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
         for i in range(len(inputs)))
     vhp = paddle.grad(
         jac,
+        inputs,
         v,
         create_graph=create_graph,
         retain_graph=create_graph,
