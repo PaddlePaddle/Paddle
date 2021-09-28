@@ -2058,6 +2058,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLib(void) {
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
+#ifdef _LINUX
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, all_slots_info_);
   CHECK(parser != nullptr);
@@ -2112,9 +2113,11 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByFile(void) {
             << ", cost time=" << timeline.ElapsedSec()
             << " seconds, thread_id=" << thread_id_ << ", lines=" << lines;
   }
+#endif
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLine(void) {
+#ifdef _LINUX
   paddle::framework::CustomParser* parser =
       global_dlmanager_pool().Load(so_parser_name_, all_slots_info_);
   std::string filename;
@@ -2201,9 +2204,11 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByLine(void) {
 
   VLOG(3) << "LoadIntoMemoryByLib() end, thread_id=" << thread_id_
           << ", total size: " << line_reader.file_size();
+#endif
 }
 
 void SlotRecordInMemoryDataFeed::LoadIntoMemoryByCommand(void) {
+#ifdef _LINUX
   std::string filename;
   BufferedLineFileReader line_reader;
   line_reader.set_sample_rate(sample_rate_);
@@ -2264,6 +2269,7 @@ void SlotRecordInMemoryDataFeed::LoadIntoMemoryByCommand(void) {
   }
   VLOG(3) << "LoadIntoMemory() end, thread_id=" << thread_id_
           << ", total size: " << line_reader.file_size();
+#endif
 }
 
 static void parser_log_key(const std::string& log_key, uint64_t* search_id,
