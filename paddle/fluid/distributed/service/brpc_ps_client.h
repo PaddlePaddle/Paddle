@@ -209,6 +209,9 @@ class BrpcPsClient : public PSClient {
   virtual int32_t recv_and_save_table(const uint64_t table_id,
                                       const std::string &path);
 
+  void print_queue_size();
+  void print_queue_size_thread();
+
  protected:
   virtual size_t get_server_nums() { return _server_channels.size(); }
   inline brpc::Channel *get_sparse_channel(size_t server_id) {
@@ -253,6 +256,8 @@ class BrpcPsClient : public PSClient {
   std::unordered_map<uint32_t, std::shared_ptr<SparseAsyncTaskQueue>>
       _push_sparse_task_queue_map;
   std::unordered_map<uint32_t, uint32_t> _push_sparse_merge_count_map;
+
+  std::thread _print_thread;
 
   int push_sparse_async_shard_merge(
       std::vector<std::shared_ptr<SparseAsyncTask>> &task_list,

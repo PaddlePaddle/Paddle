@@ -161,7 +161,7 @@ void BrpcPsService::service(google::protobuf::RpcController *cntl_base,
     return;
   }
 
-  VLOG(1) << "zcb debug service cmd_id: " << request->cmd_id() << "\n";
+  VLOG(0) << "zcb debug service cmd_id: " << request->cmd_id() << "\n";
   response->set_err_code(0);
   response->set_err_msg("");
   auto *table = _server->table(request->table_id());
@@ -458,8 +458,10 @@ int32_t BrpcPsService::load_all_table(Table *table,
                                       const PsRequestMessage &request,
                                       PsResponseMessage &response,
                                       brpc::Controller *cntl) {
+  VLOG(0) << "zcb debug server load_all_table";
   auto &table_map = *(_server->table());
   for (auto &itr : table_map) {
+    VLOG(0) << "zcb debug server begin load table " << itr.first;
     if (load_one_table(itr.second.get(), request, response, cntl) != 0) {
       LOG(ERROR) << "load table[" << itr.first << "] failed";
       return -1;

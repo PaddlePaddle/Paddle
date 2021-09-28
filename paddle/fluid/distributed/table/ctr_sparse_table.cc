@@ -61,6 +61,10 @@ int32_t CtrSparseTable::load(const std::string& path,
   std::string table_path = table_dir(path);
   auto file_list = _afs_client.list(table_path);
 
+  for (auto file: file_list) {
+    VLOG(0) << "CtrSparseTable::load() file list: " << file;
+  }
+
   int load_param = atoi(param.c_str());
   auto expect_shard_num = _shard_num * task_pool_size_;
   if (file_list.size() != expect_shard_num) {
@@ -82,7 +86,10 @@ int32_t CtrSparseTable::load(const std::string& path,
   //#pragma omp parallel for schedule(dynamic)
   for (size_t i = 0; i < task_pool_size_; ++i) {
     FsChannelConfig channel_config;
-    channel_config.path = file_list[file_start_idx + i];
+    //channel_config.path = file_list[file_start_idx + i];
+    channel_config.path = paddle::string::format_string(
+          "%s/part-%03d-%05d", table_path.c_str(), _shard_idx, i);
+    VLOG(0) << "CtrSparseTable::load begin load " << channel_config.path;
     channel_config.converter = _value_accesor->converter(load_param).converter;
     channel_config.deconverter =
         _value_accesor->converter(load_param).deconverter;
@@ -94,7 +101,9 @@ int32_t CtrSparseTable::load(const std::string& path,
       is_read_failed = false;
       err_no = 0;
       std::string line_data;
+      std::cout << "zcb debug ctr_sparse_table load before read_channel\n";
       auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
+      std::cout << "zcb debug ctr_sparse_table load after read_channel\n";
       char* end = NULL;
       auto& shard = shard_values_[i];
       try {
@@ -121,7 +130,7 @@ int32_t CtrSparseTable::load(const std::string& path,
         LOG(ERROR) << "CtrSparseTable load failed, retry it! path:"
                    << channel_config.path << " , retry_num=" << retry_num;
       }
-      if (retry_num > FLAGS_pslib_table_save_max_retry) {
+      if (retry_num > paddle::distributed::FLAGS_pslib_table_save_max_retry) {
         LOG(ERROR) << "CtrSparseTable load failed reach max limit!";
         exit(-1);
       }
@@ -192,7 +201,7 @@ int32_t CtrSparseTable::load_local_fs(const std::string& path,
                    << file_list[file_start_idx + i]
                    << " , retry_num=" << retry_num;
       }
-      if (retry_num > FLAGS_pslib_table_save_max_retry) {
+      if (retry_num > paddle::distributed::FLAGS_pslib_table_save_max_retry) {
         LOG(ERROR) << "CtrSparseTable load failed reach max limit!";
         exit(-1);
       }
@@ -207,6 +216,7 @@ int32_t CtrSparseTable::load_local_fs(const std::string& path,
 int32_t CtrSparseTable::save(const std::string& dirname,
                              const std::string& param) {
   //                                const std::string& prefix) {
+  VLOG(0) << "CtrSparseTable::save dirname: " << dirname;
   int save_param =
       atoi(param.c_str());  // checkpoint:0  xbox delta:1  xbox base:2
   std::string table_path = table_dir(dirname);
@@ -270,7 +280,7 @@ int32_t CtrSparseTable::save(const std::string& dirname,
       if (is_write_failed) {
         _afs_client.remove(channel_config.path);
       }
-      if (retry_num > FLAGS_pslib_table_save_max_retry) {  // TODO
+      if (retry_num > paddle::distributed::FLAGS_pslib_table_save_max_retry) {  // TODO
         LOG(ERROR) << "CtrSparseTable save prefix failed reach max limit!";
         exit(-1);
       }

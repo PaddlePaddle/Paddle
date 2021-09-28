@@ -228,6 +228,9 @@ int32_t BrpcPsClient::initialize() {
   //_async_push_sparse_thread.detach();
   _async_push_dense_thread =
       std::thread(std::bind(&BrpcPsClient::push_dense_task_consume, this));
+  _print_thread =
+      std::thread(std::bind(&BrpcPsClient::print_queue_size_thread, this));
+
   return 0;
 }
 
@@ -316,7 +319,7 @@ std::future<int32_t> BrpcPsClient::print_table_stat(uint32_t table_id) {
 std::future<int32_t> BrpcPsClient::send_cmd(
     uint32_t table_id, int cmd_id, const std::vector<std::string> &params) {
   size_t request_call_num = _server_channels.size();
-  VLOG(3) << "begin to send cmd_id = ";
+  VLOG(0) << "begin to send cmd_id = " << cmd_id;
   DownpourBrpcClosure *closure = new DownpourBrpcClosure(
       request_call_num, [request_call_num, cmd_id](void *done) {
         int ret = 0;
@@ -406,11 +409,13 @@ std::future<int32_t> BrpcPsClient::load(uint32_t table_id,
 
 std::future<int32_t> BrpcPsClient::save(const std::string &epoch,
                                         const std::string &mode) {
+  VLOG(0) << "BrpcPsClient::save path " << epoch;
   return send_save_cmd(-1, PS_SAVE_ALL_TABLE, {epoch, mode});
 }
 std::future<int32_t> BrpcPsClient::save(uint32_t table_id,
                                         const std::string &epoch,
                                         const std::string &mode) {
+  VLOG(0) << "BrpcPsClient::save one table path " << epoch << " table_id " << table_id;
   return send_save_cmd(table_id, PS_SAVE_ONE_TABLE, {epoch, mode});
 }
 
@@ -434,7 +439,29 @@ std::future<int32_t> BrpcPsClient::flush() {
   promise.set_value(0);
   _flushing = false;
   std::cout << "flush done\n";
+  print_queue_size();
   return fut;
+}
+
+void BrpcPsClient::print_queue_size() {
+  for (auto &push_sparse_task_itr : _push_sparse_task_queue_map) {
+    auto table_id = push_sparse_task_itr.first;
+    auto queue_size = push_sparse_task_itr.second->size();
+    VLOG(0) << "BrpcPsClient::print_queue_size: table " << table_id << " size: " << queue_size;
+  }
+
+  for (auto &task_queue_itr : _push_dense_task_queue_map) {
+    auto table_id = task_queue_itr.first;
+    auto queue_size = task_queue_itr.second->size();
+    VLOG(0) << "BrpcPsClient::print_queue_size: table " << table_id << " size: " << queue_size;
+  }
+}
+
+void BrpcPsClient::print_queue_size_thread() {
+  while (_running) {
+    usleep(1000000*60);
+    print_queue_size();
+  }
 }
 
 void BrpcPsClient::finalize_worker() {
@@ -443,6 +470,7 @@ void BrpcPsClient::finalize_worker() {
   _running = false;
   _async_push_dense_thread.join();
   _async_push_sparse_thread.join();
+  _print_thread.join();
   std::cout << "finalize_worker begin join server\n";
   _server.Stop(1000);
   _server.Join();

@@ -46,15 +46,17 @@ class CommonDenseTable : public DenseTable {
   virtual int32_t pour() override;
   virtual int32_t set_global_lr(float* lr) override;
 
-  int32_t load(const std::string& path, const std::string& param) override {
-    VLOG(0) << "WARNING: dense variables will load on No.0 trainer";
-    return 0;
-  }
+  virtual int32_t load(const std::string& path, const std::string& param) override;
+//  {
+//    VLOG(0) << "WARNING: dense variables will load on No.0 trainer";
+//    return 0;
+//  }
 
-  int32_t save(const std::string& path, const std::string& param) override {
-    VLOG(0) << "WARNING: dense variables will save on No.0 trainer";
-    return 0;
-  }
+  virtual int32_t save(const std::string& path, const std::string& param) override;
+//  {
+//    VLOG(0) << "WARNING: dense variables will save on No.0 trainer";
+//    return 0;
+//  }
 
   virtual int32_t flush() override { return 0; }
   virtual int32_t shrink(const std::string& param) override { return 0; }
@@ -74,6 +76,7 @@ class CommonDenseTable : public DenseTable {
   ReservoirValue<float> pull_reservoir_;
   std::unordered_map<std::string, Initializer*> initializers_;
   std::unordered_map<std::string, int> names_index_;
+  int total_dim_ = 0;
 };
 
 }  // namespace distributed
