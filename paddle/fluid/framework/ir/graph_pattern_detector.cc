@@ -1657,6 +1657,22 @@ PDNode *patterns::MatmulV2::operator()() {
   return matmul_v2_out;
 }
 
+PDNode *patterns::CIdentity::operator()() {
+  auto c_identity_op =
+      pattern->NewNode(c_identity_op_repr())->assert_is_op("c_identity");
+  auto c_identity_in_x = pattern->NewNode(c_identity_in_x_repr())
+                             ->AsInput()
+                             ->assert_is_op_input("c_identity", "X");
+  auto c_identity_out = pattern->NewNode(c_identity_out_repr())
+                            ->AsOutput()
+                            ->assert_is_op_output("c_identity", "Out");
+  c_identity_op->LinksFrom({c_identity_in_x}).LinksTo({c_identity_out});
+  auto next_op = pattern->NewNode(next_op_repr())->assert_is_op();
+  next_op->LinksFrom({c_identity_out});
+
+  return c_identity_out;
+}
+
 PDNode *patterns::Squeeze2Matmul::operator()() {
   auto squeeze2_in_x = pattern->NewNode(squeeze2_in_x_repr())
                            ->assert_is_op_input("squeeze2", "X")

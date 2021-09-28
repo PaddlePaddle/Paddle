@@ -85,6 +85,7 @@ const std::vector<std::string> kTRTSubgraphPasses({
       // "fc_fuse_pass",                                 //
       "simplify_with_basic_ops_pass",           //
       "embedding_eltwise_layernorm_fuse_pass",  //
+      "remove_c_identity_pass",
       "multihead_matmul_fuse_pass_v2",          //
       "multihead_matmul_fuse_pass_v3",          //
       "skip_layernorm_fuse_pass",               //

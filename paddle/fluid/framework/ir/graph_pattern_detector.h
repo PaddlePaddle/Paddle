@@ -1000,6 +1000,17 @@ struct MatmulV2 : public PatternBase {
   PATTERN_DECL_NODE(matmul_v2_out);
 };
 
+struct CIdentity : public PatternBase {
+  CIdentity(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "cidentity") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(c_identity_in_x);
+  PATTERN_DECL_NODE(c_identity_op);
+  PATTERN_DECL_NODE(c_identity_out);
+  PATTERN_DECL_NODE(next_op);
+};
+
 // Squeeze2 + Matmul
 // Forward pass.
 struct Squeeze2Matmul : public PatternBase {
