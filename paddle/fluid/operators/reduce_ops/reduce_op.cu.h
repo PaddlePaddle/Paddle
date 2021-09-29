@@ -685,8 +685,7 @@ static void LaunchReduceKernel(const Tx* x_data, Ty* y_data,
   }
 }
 
-template <typename Tx, typename Ty,
-          template <typename, typename> class ReduceOp,
+template <typename Tx, typename Ty, template <typename> class ReduceOp,
           template <typename, typename> class TransformOp>
 void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
                              std::vector<int> origin_reduce_dims,
@@ -715,7 +714,7 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
                         (!std::is_same<Tx, paddle::platform::float16>::value);
   if (use_cub_reduce) {
     // launch CUB::Reduce
-    auto reducer = ReduceOp<Tx, Ty>();
+    auto reducer = ReduceOp<Ty>();
     cub::TransformInputIterator<Ty, TransformOp<Tx, Ty>, const Tx*> trans_x(
         x_data, TransformOp<Tx, Ty>(config.reduce_num));
     size_t temp_storage_bytes = 0;
@@ -734,7 +733,7 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   }
 
   using MPType = typename details::MPTypeTrait<Ty>::Type;
-  auto reducer = ReduceOp<Tx, MPType>();
+  auto reducer = ReduceOp<MPType>();
   // launch ReduceHigherDimKernel
   // when reduce_dim.size() == 1 and reduce_dim[0] != x_dim.size() - 1, this
   // function will be used
@@ -744,17 +743,17 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   //     else grid.z = 1, grid.y = ny / block_size, grid.x = nx /32
   if (config.reduce_type == ReduceType::kReduceHigherDim) {
     ReduceHigherDimKernel<
-        Tx, Ty, MPType, ReduceOp<Tx, MPType>,
-        TransformOp<Tx, Ty>><<<config.grid, config.block, 0, stream>>>(
+        Tx, Ty, MPType, ReduceOp<MPType>,
+        TransformOp<Tx, MPType>><<<config.grid, config.block, 0, stream>>>(
         x_data, config.output_data, reducer,
-        TransformOp<Tx, Ty>(config.reduce_num), reducer.initial(),
+        TransformOp<Tx, MPType>(config.reduce_num), reducer.initial(),
         config.reduce_num, config.left_num, config.blocking_size);
 
     if (config.should_reduce_again) {
       dim3 block = dim3(config.block.x, 1, 1);
       dim3 grid = dim3(config.grid.x, 1, config.grid.z);
       ReduceHigherDimKernel<
-          Ty, Ty, MPType, ReduceOp<Tx, MPType>,
+          Ty, Ty, MPType, ReduceOp<MPType>,
           kps::IdentityFunctor<Ty, MPType>><<<grid, block, 0, stream>>>(
           config.output_data, y_data, reducer,
           kps::IdentityFunctor<Ty, MPType>(config.grid.y), reducer.initial(),
@@ -766,11 +765,11 @@ void TensorReduceFunctorImpl(const framework::Tensor& x, framework::Tensor* y,
   // when reduce_dim.size() == 1 and reduce_dim[0] == x_dim.size() - 1, or
   // when reduce_dim.size() != 1 and reduce_dim.size() != x_dim.size(), this
   // function will be used
-  LaunchReduceKernel<Tx, Ty, MPType, ReduceOp<Tx, MPType>, TransformOp<Tx, Ty>>(
+  LaunchReduceKernel<Tx, Ty, MPType, ReduceOp<MPType>, TransformOp<Tx, MPType>>(
       x_data, y_data, reducer, reducer.initial(), stream, config);
 }
 
-template <typename Tx, template <typename, typename> class ReduceOp,
+template <typename Tx, template <typename> class ReduceOp,
           template <typename, typename> class TransformOp>
 struct TensorReduceFunc {
   const framework::Tensor& x;

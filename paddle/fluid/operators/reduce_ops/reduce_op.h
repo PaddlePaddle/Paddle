@@ -664,7 +664,7 @@ If reduce_all is true, just reduce along all dimensions and output a scalar.
 };
 
 #if defined(__HIPCC__) || defined(__NVCC__)
-template <typename T, template <typename, typename> class ReduceOp,
+template <typename T, template <typename> class ReduceOp,
           template <typename, typename> class TransformOp =
               kps::IdentityFunctor>
 class ReduceCudaKernel : public framework::OpKernel<T> {

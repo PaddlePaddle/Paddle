@@ -44,9 +44,11 @@ static __device__ __forceinline__ double Log(double x) { return log(x); }
  */
 template <typename Tx, typename Ty = Tx>
 struct ExpFunctor {
+  HOSTDEVICE inline ExpFunctor() {}
+
   HOSTDEVICE explicit inline ExpFunctor(int n) {}
 
-  HOSTDEVICE inline Ty operator()(const Ty& x) const {
+  HOSTDEVICE inline Ty operator()(const Tx& x) const {
     return static_cast<Ty>(details::Exp(x));
   }
 };
@@ -56,6 +58,8 @@ struct ExpFunctor {
  */
 template <typename Tx, typename Ty = Tx>
 struct IdentityFunctor {
+  HOSTDEVICE inline IdentityFunctor() {}
+
   HOSTDEVICE explicit inline IdentityFunctor(int n) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
@@ -68,6 +72,8 @@ struct IdentityFunctor {
  */
 template <typename Tx, typename Ty = Tx>
 struct DivideFunctor {
+  HOSTDEVICE inline DivideFunctor() { n_inv = static_cast<Tx>(1.0f); }
+
   HOSTDEVICE explicit inline DivideFunctor(int n) : n_inv((Tx)(1.0 / n)) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
@@ -83,6 +89,8 @@ struct DivideFunctor {
  */
 template <typename Tx, typename Ty = Tx>
 struct SquareFunctor {
+  HOSTDEVICE inline SquareFunctor() {}
+
   HOSTDEVICE explicit inline SquareFunctor(int n) {}
 
   HOSTDEVICE inline Ty operator()(const Tx& x) const {
@@ -95,13 +103,11 @@ struct SquareFunctor {
 /**
  * @brief Default binary min functor
  */
-template <typename Tx, typename Ty = Tx>
+template <typename T>
 struct MinFunctor {
-  inline Ty initial() {
-    return static_cast<Ty>(std::numeric_limits<Ty>::max());
-  }
+  inline T initial() { return static_cast<T>(std::numeric_limits<T>::max()); }
 
-  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
     return (b < a) ? b : a;
   }
 };
@@ -109,13 +115,13 @@ struct MinFunctor {
 /**
  * @brief Default binary max functor
  */
-template <typename Tx, typename Ty = Tx>
+template <typename T>
 struct MaxFunctor {
-  inline Ty initial() {
-    return static_cast<Ty>(std::numeric_limits<Ty>::lowest());
+  inline T initial() {
+    return static_cast<T>(std::numeric_limits<T>::lowest());
   }
 
-  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
     return (b > a) ? b : a;
   }
 };
@@ -123,23 +129,23 @@ struct MaxFunctor {
 /**
  * @brief Default binary add functor
  */
-template <typename Tx, typename Ty = Tx>
+template <typename T>
 struct AddFunctor {
-  inline Ty initial() { return static_cast<Ty>(0.0f); }
+  inline T initial() { return static_cast<T>(0.0f); }
 
-  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
     return b + a;
   }
 };
 
 /**
- * @brief Default binary mul functor
+ * @brief Default binary add functor
  */
-template <typename Tx, typename Ty = Tx>
+template <typename T>
 struct MulFunctor {
-  inline Ty initial() { return static_cast<Ty>(1.0f); }
+  inline T initial() { return static_cast<T>(1.0f); }
 
-  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
     return b * a;
   }
 };
@@ -147,11 +153,11 @@ struct MulFunctor {
 /**
  * @brief Default binary logic or functor
  */
-template <typename Tx, typename Ty = Tx>
+template <typename T>
 struct LogicalOrFunctor {
-  inline Ty initial() { return static_cast<Ty>(false); }
+  inline T initial() { return static_cast<T>(false); }
 
-  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
     return b || a;
   }
 };
@@ -159,11 +165,11 @@ struct LogicalOrFunctor {
 /**
  * @brief Default binary logic and functor
  */
-template <typename Tx, typename Ty = Tx>
+template <typename T>
 struct LogicalAndFunctor {
-  inline Ty initial() { return static_cast<Ty>(true); }
+  inline T initial() { return static_cast<T>(true); }
 
-  __device__ __forceinline__ Ty operator()(const Ty& a, const Ty& b) const {
+  __device__ __forceinline__ T operator()(const T& a, const T& b) const {
     return b && a;
   }
 };
@@ -171,13 +177,11 @@ struct LogicalAndFunctor {
 /**
  * @brief Default binary sub functor
  */
-template <typename Tx, typename Ty = Tx>
+template <typename T>
 struct SubFunctor {
-  inline Ty initial() { return static_cast<Ty>(1.0f); }
+  inline T initial() { return static_cast<T>(1.0f); }
 
-  inline HOSTDEVICE Ty operator()(const Ty& a, const Ty& b) const {
-    return a - b;
-  }
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a - b; }
 };
 
 /**
@@ -206,16 +210,16 @@ struct DivFunctor<T,
 /**
  * @brief Default binary floor divide functor
  */
-template <typename Tx, typename Ty = Tx>
+template <typename T>
 struct FloorDivFunctor {
-  inline Ty initial() { return static_cast<Ty>(1.0f); }
+  inline T initial() { return static_cast<T>(1.0f); }
 
-  inline HOSTDEVICE Ty operator()(const Ty& a, const Ty& b) const {
+  inline HOSTDEVICE T operator()(const T& a, const T& b) const {
     PADDLE_ENFORCE_NE(
         b, 0, platform::errors::InvalidArgument(
                   "InvalidArgumentError: Integer division by zero encountered "
                   "in (floor) divide. Please check the input value."));
-    return static_cast<Ty>(std::trunc(a / b));
+    return static_cast<T>(std::trunc(a / b));
   }
 };
 
