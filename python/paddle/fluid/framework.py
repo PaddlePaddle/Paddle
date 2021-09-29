@@ -430,7 +430,7 @@ def is_compiled_with_cuda():
         .. code-block:: python
 
             import paddle
-            support_gpu = paddle.is_compiled_with_cuda()
+            support_gpu = paddle.device.is_compiled_with_cuda()
     """
     return core.is_compiled_with_cuda()
 
@@ -445,7 +445,7 @@ def is_compiled_with_rocm():
         .. code-block:: python
 
             import paddle
-            support_gpu = paddle.is_compiled_with_rocm()
+            support_gpu = paddle.device.is_compiled_with_rocm()
     """
     return core.is_compiled_with_rocm()
 
