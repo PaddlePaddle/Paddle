@@ -18,6 +18,8 @@
 #include "paddle/fluid/operators/kernel_primitives/datamover_primitives.h"
 #include "paddle/fluid/operators/kernel_primitives/helper_primitives.h"
 
+namespace kps = paddle::operators::kernel_primitives;
+
 namespace paddle {
 namespace operators {
 namespace kernel_primitives {}
