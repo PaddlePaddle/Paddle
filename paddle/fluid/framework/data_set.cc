@@ -1614,7 +1614,7 @@ void SlotRecordDataset::PrepareTrain() {
   PADDLE_THROW(platform::errors::Unavailable(
       "dataset set heterps need compile with GLOO"));
 #endif
-  return;  
+  return;
 }
 
 void SlotRecordDataset::DynamicAdjustReadersNum(int thread_num) {
