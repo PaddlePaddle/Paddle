@@ -149,7 +149,6 @@ class Dataset {
   virtual void DynamicAdjustReadersNum(int thread_num) = 0;
   // set fleet send sleep seconds
   virtual void SetFleetSendSleepSeconds(int seconds) = 0;
-  virtual void SetHeterPs(bool enable_heterps) = 0;
 
  protected:
   virtual int ReceiveFromClient(int msg_type, int client_id,
@@ -233,7 +232,6 @@ class DatasetImpl : public Dataset {
                                        bool discard_remaining_ins = false);
   virtual void DynamicAdjustReadersNum(int thread_num);
   virtual void SetFleetSendSleepSeconds(int seconds);
-  virtual void SetHeterPs(bool enable_heterps) {}
   /* for enable_heterps_
   virtual void EnableHeterps(bool enable_heterps) {
     enable_heterps_ = enable_heterps;
@@ -336,7 +334,6 @@ class MultiSlotDataset : public DatasetImpl<Record> {
       std::vector<Record>* result);
   virtual ~MultiSlotDataset() {}
   virtual void GlobalShuffle(int thread_num = -1);
-  virtual void SetHeterPs(bool enable_heterps);
   virtual void DynamicAdjustReadersNum(int thread_num);
   virtual void PrepareTrain();
 
@@ -357,7 +354,6 @@ class SlotRecordDataset : public DatasetImpl<SlotRecord> {
   virtual void GlobalShuffle(int thread_num = -1);
   virtual void DynamicAdjustChannelNum(int channel_num,
                                        bool discard_remaining_ins);
-  virtual void SetHeterPs(bool enable_heterps);
   virtual void PrepareTrain();
   virtual void DynamicAdjustReadersNum(int thread_num);
 

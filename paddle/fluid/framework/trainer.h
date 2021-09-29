@@ -258,13 +258,12 @@ class PSGPUTrainer : public TrainerBase {
   virtual void Run();
   virtual void Finalize();
   virtual void RegisterHeterCallback();
-  virtual void DumpWork(int tid);
   virtual Scope* GetWorkerScope(int thread_id);
   virtual void CacheProgram(const ProgramDesc& main_program) {
     new (&program_) ProgramDesc(main_program);
   }
-  virtual std::string GetDumpPath(int tid) { return ""; }
-  virtual void InitDumpEnv() {}
+  virtual std::string GetDumpPath(int tid);
+  virtual void InitDumpEnv() override;
   virtual void MergeDenseParam();
 
   template <typename T>
@@ -286,6 +285,9 @@ class PSGPUTrainer : public TrainerBase {
   std::vector<std::thread> threads_;
   int use_ps_gpu_;
   int thread_num_;
+  int mpi_rank_;
+  int mpi_size_;
+  int dump_file_num_;
 };
 #endif
 

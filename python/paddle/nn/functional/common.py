@@ -1274,7 +1274,8 @@ def pad(x, pad, mode='constant', value=0, data_format="NCHW", name=None):
 
     x_dim = len(x.shape)
 
-    if mode == "constant" and isinstance(pad, list) and len(pad) == x_dim * 2:
+    if mode == "constant" and isinstance(pad, (
+            list, tuple)) and len(pad) == x_dim * 2:
         return layers.pad(x, pad, pad_value=value)
 
     assert x_dim in [
