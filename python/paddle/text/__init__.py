@@ -29,6 +29,6 @@ __all__ = [ #noqa
            'UCIHousing',
            'WMT14',
            'WMT16',
-            'crf_decode',
+           'crf_decode',
            'ViterbiDecoder',
 ]

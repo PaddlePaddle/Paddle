@@ -20,15 +20,18 @@ from ..fluid.data_feeder import check_variable_and_dtype, check_type
 __all__ = []
 
 
-def crf_decode(inputs, transitions, lengths, with_start_stop_tag=True):
+def crf_decode(potentials,
+               transition_params,
+               sequence_length,
+               with_start_stop_tag=True):
     """
     Decode the highest scoring sequence of tags.
     Args:
-        inputs (`Tensor` | `Varaiable`):  
+        potentials (`Tensor` | `Varaiable`):  
             The unary emission tensor. Its dtype is float32 or float64 and has a shape of `[batch_size, sequence_length, num_tags]`.
-        transitions (`Tensor`| `Varaiable`): 
+        transition_params (`Tensor`| `Varaiable`): 
             The transition matrix.  Its dtype is float32 or float64 and has a shape of `[num_tags, num_tags]`.
-        length (`Tensor`| `Varaiable`):  
+        sequence_length (`Tensor`| `Varaiable`):  
             The input length tensor storing real length of each sequence for correctness. Its dtype is int64 and has a shape of `[batch_size]`.
         with_start_stop_tag (`bool`, optional): 
                     If set to True, the last row and the last column of transitions will be considered as start tag,
@@ -41,26 +44,29 @@ def crf_decode(inputs, transitions, lengths, with_start_stop_tag=True):
             The paths tensor containing the highest scoring tag indices. Its dtype is int64 and has a shape of `[batch_size, sequence_length`].
     """
     if in_dygraph_mode():
-        return core.ops.viterbi_decode(inputs, transitions, lengths,
-                                       'with_start_stop_tag',
+        return core.ops.viterbi_decode(potentials, transition_params,
+                                       sequence_length, 'with_start_stop_tag',
                                        with_start_stop_tag)
-    check_variable_and_dtype(inputs, 'input', ['float32', 'float64'],
+    check_variable_and_dtype(potentials, 'input', ['float32', 'float64'],
                              'viterbi_decode')
-    check_variable_and_dtype(transitions, 'transitions',
+    check_variable_and_dtype(transition_params, 'transitions',
                              ['float32', 'float64'], 'viterbi_decode')
-    check_variable_and_dtype(lengths, 'lengths', ['int64'], 'viterbi_decode')
+    check_variable_and_dtype(sequence_length, 'lengths', ['int64'],
+                             'viterbi_decode')
     check_type(with_start_stop_tag, 'with_start_stop_tag', (bool, ),
                'viterbi_decode')
 
     helper = LayerHelper('viterbi_decode', **locals())
     attrs = {'with_start_stop_tag': with_start_stop_tag}
-    scores = helper.create_variable_for_type_inference(inputs.dtype)
+    scores = helper.create_variable_for_type_inference(potentials.dtype)
     path = helper.create_variable_for_type_inference('int64')
     helper.append_op(
         type='viterbi_decode',
-        inputs={'Input': inputs,
-                'Transition': transitions,
-                'Length': lengths},
+        inputs={
+            'Input': potentials,
+            'Transition': transition_params,
+            'Length': sequence_length
+        },
         outputs={'Scores': scores,
                  'Path': path},
         attrs=attrs)
