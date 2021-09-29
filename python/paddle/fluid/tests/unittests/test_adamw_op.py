@@ -341,7 +341,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
             out.backward()
             adam.step()
             adam.clear_gradients()
-            self.assertEqual(out[0].numpy(), loss_ref[i])
+            np.testing.assert_allclose(out[0].numpy(), loss_ref[i], rtol=1e-6)
 
     def test_adamw_op(self):
         paddle.enable_static()
@@ -388,7 +388,7 @@ class TestAdamWOpLayerwiseLR(TestAdamWOp):
                                  "y": outputs},
                            fetch_list=[avg_cost])
             assert rets[0] is not None
-            self.assertEqual(rets[0], loss_ref[i])
+            np.testing.assert_allclose(rets[0], loss_ref[i], rtol=1e-6)
 
         paddle.disable_static()
 
