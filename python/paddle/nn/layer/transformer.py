@@ -402,9 +402,8 @@ class MultiHeadAttention(Layer):
             q, k, v, cache = self._prepare_qkv(query, key, value, cache)
 
         # scale dot product attention
-        # TODO(guosheng): use tensor.matmul, however it doesn't support `alpha`
-        product = layers.matmul(
-            x=q, y=k, transpose_y=True, alpha=self.head_dim**-0.5)
+        product = paddle.matmul(
+            x=q, y=k, transpose_y=True) * (self.head_dim**-0.5)
         if attn_mask is not None:
             # Support bool or int mask
             attn_mask = _convert_attention_mask(attn_mask, product.dtype)
