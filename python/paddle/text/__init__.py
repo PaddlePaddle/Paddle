@@ -19,7 +19,7 @@ from .datasets import Movielens  # noqa: F401
 from .datasets import UCIHousing  # noqa: F401
 from .datasets import WMT14  # noqa: F401
 from .datasets import WMT16  # noqa: F401
-
+from .crf import crf_decode, ViterbiDecoder
 
 __all__ = [ #noqa
            'Conll05st',
@@ -28,5 +28,7 @@ __all__ = [ #noqa
            'Movielens',
            'UCIHousing',
            'WMT14',
-           'WMT16'
+           'WMT16',
+            'crf_decode',
+           'ViterbiDecoder',
 ]

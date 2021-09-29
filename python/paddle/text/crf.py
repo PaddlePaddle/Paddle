@@ -15,12 +15,12 @@
 from ..nn import Layer
 from ..fluid.framework import core, in_dygraph_mode
 from ..fluid.layer_helper import LayerHelper
-from ..fluid.data_feeder import convert_dtype, check_variable_and_dtype, check_type, check_dtype
+from ..fluid.data_feeder import check_variable_and_dtype, check_type
 
 __all__ = []
 
 
-def viterbi_decode(inputs, transitions, lengths, with_start_stop_tag=True):
+def crf_decode(inputs, transitions, lengths, with_start_stop_tag=True):
     """
     Decode the highest scoring sequence of tags.
     Args:
@@ -98,5 +98,5 @@ class ViterbiDecoder(Layer):
             paths(`Tensor`): 
                 The paths tensor containing the highest scoring tag indices. Its dtype is int64 and has a shape of `[batch_size, sequence_length`].
         """
-        return viterbi_decode(inputs, self.transitions, lengths,
-                              self.with_start_stop_tag)
+        return crf_decode(inputs, self.transitions, lengths,
+                          self.with_start_stop_tag)
