@@ -23,7 +23,7 @@ collective_set2 = [
     c.replace("_op_npu", "_npu") for c in collective_set if "_op_npu" in c
 ]
 collective_set += collective_set
-outer_keys = set(sys.argv[1:].split("|^"))
+outer_keys = set(sys.argv[1].split("|^"))
 inner_keys = set(collective_set)
 output = ""
 for key in outer_keys.intersection(inner_keys):
