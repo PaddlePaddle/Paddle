@@ -50,8 +50,8 @@ template <typename DeviceContext, typename T1>
 class PruneGateByCapacityFunctor {
  public:
   PruneGateByCapacityFunctor(const framework::ExecutionContext& context,
-                             const framework::Tensor* gate_idx,
-                             framework::Tensor* expert_count_out,
+                             const framework::LoDTensor* gate_idx,
+                             framework::LoDTensor* expert_count_out,
                              T1* new_gate_idx_data)
       : context_(context),
         gate_idx_(gate_idx),
@@ -75,8 +75,8 @@ class PruneGateByCapacityFunctor {
 
  private:
   const framework::ExecutionContext context_;
-  const framework::Tensor* gate_idx_;
-  framework::Tensor* expert_count_out_;
+  const framework::LoDTensor* gate_idx_;
+  framework::LoDTensor* expert_count_out_;
   T1* new_gate_idx_data_;
 };
 
