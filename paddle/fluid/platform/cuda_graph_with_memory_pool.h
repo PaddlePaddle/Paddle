@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_graph.h"
 #endif
