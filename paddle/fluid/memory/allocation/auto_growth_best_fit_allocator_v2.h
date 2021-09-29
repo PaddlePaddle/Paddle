@@ -34,19 +34,6 @@ struct Block {
   bool is_free_;
 };
 
-struct Region {
-  explicit Region(AllocationPtr allocation)
-      : allocation_(std::move(allocation)) {}
-
-  AllocationPtr allocation_;
-};
-
-struct RegionComp {
-  bool operator()(const Region &a, const Region &b) {
-    return a.allocation_->ptr() < b.allocation_->ptr();
-  }
-};
-
 struct BlockAllocation : public Allocation {
   explicit BlockAllocation(const std::list<Block>::iterator &it,
                            platform::Place place)
@@ -69,7 +56,7 @@ class AutoGrowthBestFitAllocatorV2 : public Allocator {
 
  private:
   Allocation *AllocFromFreeBlocks(size_t size);
-  void TryMergeAlloctation2Blocks(void *ptr, size_t size);
+  void ExtendAndMerge(size_t size);
   void TryMergeBlock2Blocks(std::list<Block>::iterator iter);
 
   std::shared_ptr<Allocator> underlying_allocator_;
@@ -77,7 +64,7 @@ class AutoGrowthBestFitAllocatorV2 : public Allocator {
 
   std::map<std::pair<size_t, void *>, std::list<Block>::iterator> free_blocks_;
   std::list<Block> all_blocks_;
-  std::set<Region, RegionComp> regions_;
+  std::list<AllocationPtr> allocations_;
   platform::Place place_;
   SpinLock spinlock_;
 };

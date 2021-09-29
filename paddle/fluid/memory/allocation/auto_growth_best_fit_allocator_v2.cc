@@ -37,9 +37,7 @@ Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
   auto result = AllocFromFreeBlocks(size);
 
   if (!result) {
-    auto allocateptr = underlying_allocator_->Allocate(size);
-    TryMergeAlloctation2Blocks(allocateptr->ptr(), allocateptr->size());
-    regions_.emplace(std::move(allocateptr));
+    ExtendAndMerge(size);
     result = AllocFromFreeBlocks(size);
   }
 
@@ -147,8 +145,15 @@ void AutoGrowthBestFitAllocatorV2::TryMergeBlock2Blocks(
   }
 }
 
-void AutoGrowthBestFitAllocatorV2::TryMergeAlloctation2Blocks(void *ptr,
-                                                              size_t size) {
+void AutoGrowthBestFitAllocatorV2::ExtendAndMerge(size_t size) {
+  void *ptr = nullptr;
+  {
+    std::lock_guard<SpinLock> guard(spinlock_);
+    auto allocateptr = underlying_allocator_->Allocate(size);
+    ptr = allocateptr->ptr();
+    size = allocateptr->size();
+    allocations_.push_back(std::move(allocateptr));  // hold allocation
+  }
   if (all_blocks_.empty()) {
     std::lock_guard<SpinLock> guard(spinlock_);
     all_blocks_.push_back(Block(ptr, size, true));

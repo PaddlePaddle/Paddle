@@ -36,13 +36,18 @@ namespace allocation {
 CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
     const platform::CUDAPlace& place)
     : place_(place) {
-  prop_.type = CU_MEM_ALLOCATION_TYPE_PINNED;
-  prop_.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
-  prop_.location.id = place.device;
+  CUmemAllocationProp prop = {};
+  CUmemAccessDesc access_desc = {};
 
-  access_desc_.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
-  access_desc_.location.id = place.device;
-  access_desc_.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+  prop.type = CU_MEM_ALLOCATION_TYPE_PINNED;
+  prop.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
+  prop.location.id = place.device;
+  prop_ = prop;
+
+  access_desc.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
+  access_desc.location.id = place.device;
+  access_desc.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+  access_desc_ = access_desc;
 
   auto result = paddle::platform::dynload::cuMemGetAllocationGranularity(
       &granularity_, &prop_, CU_MEM_ALLOC_GRANULARITY_MINIMUM);
