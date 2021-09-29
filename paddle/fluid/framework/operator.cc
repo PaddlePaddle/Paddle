@@ -1592,23 +1592,15 @@ void OperatorWithKernel::ParseInputDataType(
                 "not initialized.",
                 Type(), name, ctx.InputNames(name).at(i)));
         proto::VarType::Type tmp = t->type();
-
-        // int a = static_cast<int>(default_data_type);
-        // int b = static_cast<int>(*data_type);
-        // int c = static_cast<int>(tmp);
-        // std::cout << i << "th op." << std::endl;
-        // std::cout << "default_data_type :" << a << std::endl;
-        // std::cout << "data_type :" << b << std::endl;
-        // std::cout << "tmp_type  :" << c << std::endl;
-
-        PADDLE_ENFORCE(
-            tmp == *data_type || *data_type == default_data_type,
-            platform::errors::InvalidArgument(
-                "The DataType of %s Op's duplicable Variable %s must be "
-                "consistent. The current variable type is (%s), but the "
-                "previous variable type is (%s).",
-                Type(), name, DataTypeToString(tmp),
-                DataTypeToString(*data_type)));
+        PADDLE_ENFORCE(tmp == *data_type || *data_type == default_data_type,
+                       platform::errors::InvalidArgument(
+                           "The DataType of %s Op's duplicable or different "
+                           "slot Variable %s must be "
+                           "consistent or reigster GetExpectedKernelType. The "
+                           "current variable type is (%s), but the "
+                           "previous variable type is (%s).",
+                           Type(), name, DataTypeToString(tmp),
+                           DataTypeToString(*data_type)));
         *data_type = tmp;
       }
     }
