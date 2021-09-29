@@ -12,31 +12,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 #include "paddle/fluid/framework/new_executor/interpretercore_util.h"
+#include <algorithm>
+
 #include "paddle/fluid/framework/executor_gc_helper.h"
 
 namespace paddle {
 namespace framework {
 namespace interpretercore {
 
-AtomicVectorSizeT AsyncWorkQueue::PrepareAtomicDeps(
+AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicDeps(
     const std::vector<size_t>& dependecy_count) {
-  AtomicVectorSizeT working_dependecy_count(dependecy_count.size());
-  for (size_t i = 0; i < dependecy_count.size(); ++i) {
-    working_dependecy_count[i] =
-        std::make_unique<std::atomic<size_t>>(dependecy_count[i]);
+  if (atomic_deps_.size() != dependecy_count.size()) {
+    atomic_deps_.clear();
+    std::generate_n(std::back_inserter(atomic_deps_), dependecy_count.size(),
+                    [] { return std::make_unique<std::atomic<size_t>>(0); });
   }
-  return working_dependecy_count;
+
+  for (size_t i = 0; i < dependecy_count.size(); ++i) {
+    atomic_deps_[i]->store(dependecy_count[i]);
+  }
+  return atomic_deps_;
 }
 
-AtomicVectorSizeT AsyncWorkQueue::PrepareAtomicVarRef(
+AtomicVectorSizeT& AsyncWorkQueue::PrepareAtomicVarRef(
     const std::vector<VariableMetaInfo>& vec_meta_info) {
-  AtomicVectorSizeT working_var_ref(vec_meta_info.size());
+  if (atomic_var_ref_.size() != vec_meta_info.size()) {
+    atomic_var_ref_.clear();
+    std::generate_n(std::back_inserter(atomic_var_ref_), vec_meta_info.size(),
+                    [] { return std::make_unique<std::atomic<size_t>>(0); });
+  }
 
   for (size_t i = 0; i < vec_meta_info.size(); ++i) {
-    working_var_ref[i] =
-        std::make_unique<std::atomic<size_t>>(vec_meta_info[i].var_ref_count_);
+    atomic_var_ref_[i]->store(vec_meta_info[i].var_ref_count_);
   }
-  return working_var_ref;
+  return atomic_var_ref_;
 }
 
 bool var_can_be_deleted(const std::string& name, const BlockDesc& block) {
