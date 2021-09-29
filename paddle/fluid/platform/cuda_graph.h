@@ -16,6 +16,7 @@
 
 #include <functional>
 #include <memory>
+#include <mutex>
 #include "cuda.h"          // NOLINT
 #include "cuda_runtime.h"  // NOLINT
 #include "paddle/fluid/platform/type_defs.h"
@@ -30,6 +31,11 @@ namespace platform {
 #if CUDA_VERSION >= 10010
 static void ThrowErrorIfNotSupportCUDAGraph() {}
 #else
+enum cudaStreamCaptureMode {
+  cudaStreamCaptureModeGlobal = 0,
+  cudaStreamCaptureModeThreadLocal = 1,
+  cudaStreamCaptureModeRelaxed = 2
+};
 static void ThrowErrorIfNotSupportCUDAGraph() {
   PADDLE_THROW(platform::errors::Unimplemented(
       "CUDA Graph is only supported when CUDA version >= 10.1"));
@@ -56,19 +62,27 @@ class CUDAGraph {
 
   void Reset();
 
-  void SetResetCallback(const std::function<void()> &callback) {
-    callback_ = callback;
+  void AddResetCallback(std::function<void()> callback) {
+    std::lock_guard<std::mutex> guard(mtx_);
+    callbacks_.push_back(std::move(callback));
   }
 
   static void BeginCapture(platform::CUDAPlace place, cudaStream_t stream,
                            cudaStreamCaptureMode mode);
   static std::unique_ptr<CUDAGraph> EndCapture();
+  static void AddResetCallbackDuringCapturing(std::function<void()> callback) {
+    capturing_graph_->AddResetCallback(std::move(callback));
+  }
 
   // No need to add CUDA_VERSION macro because capturing_graph_ would
   // always be nullptr (constructor throws error)
   static bool IsCapturing() { return capturing_graph_ != nullptr; }
 
   static CUDAGraphID CapturingID() { return capturing_graph_->id_; }
+
+  static platform::CUDAPlace CapturingPlace() {
+    return capturing_graph_->place_;
+  }
 
  private:
 #if CUDA_VERSION >= 10010
@@ -78,8 +92,9 @@ class CUDAGraph {
   cudaStream_t stream_{nullptr};
   platform::CUDAPlace place_;
   CUDAGraphID id_{0};
-  std::function<void()> callback_;
+  std::vector<std::function<void()>> callbacks_;
   bool is_reset_{false};
+  std::mutex mtx_;
 
   static std::unique_ptr<CUDAGraph> capturing_graph_;
 };
@@ -89,15 +104,20 @@ class CUDAGraphCaptureModeGuard {
   DISABLE_COPY_AND_ASSIGN(CUDAGraphCaptureModeGuard);
 
  public:
-  explicit CUDAGraphCaptureModeGuard(cudaStreamCaptureMode new_mode) {
-    old_mode_ = new_mode;
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaThreadExchangeStreamCaptureMode(&old_mode_));
+  explicit CUDAGraphCaptureModeGuard(cudaStreamCaptureMode mode) {
+    if (UNLIKELY(CUDAGraph::IsCapturing())) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(cudaThreadExchangeStreamCaptureMode(&mode));
+      // After cudaThreadExchangeStreamCaptureMode is called,
+      // the variable "mode" would be set to the old capturing mode.
+      old_mode_ = mode;
+    }
   }
 
   ~CUDAGraphCaptureModeGuard() PADDLE_MAY_THROW {
-    PADDLE_ENFORCE_CUDA_SUCCESS(
-        cudaThreadExchangeStreamCaptureMode(&old_mode_));
+    if (UNLIKELY(CUDAGraph::IsCapturing())) {
+      PADDLE_ENFORCE_CUDA_SUCCESS(
+          cudaThreadExchangeStreamCaptureMode(&old_mode_));
+    }
   }
 
  private:
@@ -108,7 +128,7 @@ class CUDAGraphCaptureModeGuard {
   DISABLE_COPY_AND_ASSIGN(CUDAGraphCaptureModeGuard);
 
  public:
-  CUDAGraphCaptureModeGuard() = default;
+  explicit CUDAGraphCaptureModeGuard(cudaStreamCaptureMode) = default;
 };
 #endif
 

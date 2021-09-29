@@ -25,18 +25,17 @@ void BeginCUDAGraphCapture(platform::CUDAPlace place,
   auto stream =
       platform::DeviceContextPool::Instance().GetByPlace(place)->stream();
   CUDAGraph::BeginCapture(place, stream, mode);
+  auto id = CUDAGraph::CapturingID();
   memory::allocation::AllocatorFacade::Instance().PrepareMemoryPoolForCUDAGraph(
-      CUDAGraph::CapturingID());
-}
-
-std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
-  auto graph = CUDAGraph::EndCapture();
-  auto id = graph->ID();
-  graph->SetResetCallback([id] {
+      id);
+  AddResetCallbackIfCapturingCUDAGraph([id] {
     memory::allocation::AllocatorFacade::Instance().RemoveMemoryPoolOfCUDAGraph(
         id);
   });
-  return graph;
+}
+
+std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
+  return CUDAGraph::EndCapture();
 }
 #endif
 

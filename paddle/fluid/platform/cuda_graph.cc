@@ -20,6 +20,7 @@ namespace platform {
 std::unique_ptr<CUDAGraph> CUDAGraph::capturing_graph_{nullptr};
 
 void CUDAGraph::Reset() {
+  if (is_reset_) return;
 #if CUDA_VERSION >= 10010
   if (graph_) {
     PADDLE_ENFORCE_CUDA_SUCCESS(cudaGraphDestroy(graph_));
@@ -30,10 +31,12 @@ void CUDAGraph::Reset() {
     exec_graph_ = nullptr;
   }
 #endif
-  if (callback_) {
-    callback_();
-    callback_ = nullptr;
+  // callback should be called in reverse order because the latter added
+  // callback may rely on the former added callback.
+  for (auto iter = callbacks_.rbegin(); iter != callbacks_.rend(); ++iter) {
+    (*iter)();
   }
+  callbacks_.clear();
   is_reset_ = true;
 }
 

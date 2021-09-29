@@ -125,9 +125,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/xpu/xpu_info.h"
 #endif
 
-#ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
-#endif
 
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
@@ -524,6 +522,7 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("nccl_version", &GetNCCLVersion);
 #endif
 
+  m.def("is_cuda_graph_capturing", &platform::IsCUDAGraphCapturing);
 #ifdef PADDLE_WITH_CUDA
   py::class_<platform::CUDAGraph>(m, "CUDAGraph")
       .def_static("begin_capture",

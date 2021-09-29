@@ -36,5 +36,22 @@ inline bool IsCUDAGraphCapturing() {
 #endif
 }
 
+inline platform::CUDAPlace CUDAGraphCapturingPlace() {
+  return CUDAGraph::CapturingPlace();
+}
+
+// Add reset callback if CUDA Graph is capturing.
+// Otherwise, invoke callback directly.
+template <typename Callback>
+inline void AddResetCallbackIfCapturingCUDAGraph(Callback &&callback) {
+#ifdef PADDLE_WITH_CUDA
+  if (UNLIKELY(IsCUDAGraphCapturing())) {
+    return CUDAGraph::AddResetCallbackDuringCapturing(
+        std::forward<Callback>(callback));
+  }
+#endif
+  callback();
+}
+
 }  // namespace platform
 }  // namespace paddle

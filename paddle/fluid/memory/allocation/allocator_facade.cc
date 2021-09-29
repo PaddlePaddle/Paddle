@@ -186,8 +186,8 @@ class AllocatorFacadePrivate {
     if (UNLIKELY(platform::CUDAGraph::IsCapturing())) {
       auto id = platform::CUDAGraph::CapturingID();
       auto iter = cuda_graph_allocator_map_.find(id);
-      PADDLE_ENFORCE_EQ(
-          iter != cuda_graph_allocator_map_.end(), true,
+      PADDLE_ENFORCE_NE(
+          iter, cuda_graph_allocator_map_.end(),
           platform::errors::PermissionDenied(
               "No memory pool is prepared for CUDA Graph capturing."));
       return iter->second->allocators_;
@@ -378,7 +378,7 @@ class AllocatorFacadePrivate {
 
   void RemoveMemoryPoolOfCUDAGraph(CUDAGraphID id) {
     auto iter = cuda_graph_allocator_map_.find(id);
-    PADDLE_ENFORCE_EQ(iter != cuda_graph_allocator_map_.end(), true,
+    PADDLE_ENFORCE_NE(iter, cuda_graph_allocator_map_.end(),
                       platform::errors::InvalidArgument(
                           "Cannot find CUDA Graph with ID = %d", id));
     cuda_graph_allocator_map_.erase(iter);
