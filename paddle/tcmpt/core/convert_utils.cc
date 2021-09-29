@@ -14,6 +14,9 @@ limitations under the License. */
 
 #include "paddle/tcmpt/core/convert_utils.h"
 
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/gpu_info.h"
+
 namespace pt {
 
 // TODO(chenweihang): Add other place branchs
@@ -90,15 +93,19 @@ paddle::platform::Place TransToFluidPlace(const Backend& backend) {
     case pt::Backend::kCPU:
       return paddle::platform::CPUPlace();
     case pt::Backend::kCUDA:
-      return paddle::platform::CUDAPlace();
+      return paddle::platform::CUDAPlace(
+          paddle::platform::GetCurrentDeviceId());
     case pt::Backend::kXPU:
+      // TODO(chenweihang): add device id
       return paddle::platform::XPUPlace();
     case pt::Backend::kNPU:
+      // TODO(chenweihang): add device id
       return paddle::platform::NPUPlace();
     case pt::Backend::kMKLDNN:
       return paddle::platform::CPUPlace();
     case pt::Backend::kCUDNN:
-      return paddle::platform::CUDAPlace();
+      return paddle::platform::CUDAPlace(
+          paddle::platform::GetCurrentDeviceId());
     default:
       PADDLE_THROW(paddle::platform::errors::Unimplemented(
           "Unsupported backend `%s` when casting it to paddle place type.",

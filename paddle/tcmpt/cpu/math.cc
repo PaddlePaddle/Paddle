@@ -14,6 +14,7 @@
 
 #include "paddle/tcmpt/cpu/math.h"
 
+#include "paddle/tcmpt/eigen/mean.h"
 #include "paddle/tcmpt/eigen/scale.h"
 #include "paddle/tcmpt/eigen/sign.h"
 
@@ -23,15 +24,6 @@
 
 namespace pt {
 
-template <typename T,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenScalar = paddle::framework::EigenScalar<T, MajorType, IndexType>;
-template <typename T,
-          int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = paddle::framework::EigenVector<T, MajorType, IndexType>;
-
 template <typename T>
 void Sign(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
   module::Sign<CPUContext, T>(dev_ctx, x, out);
@@ -39,11 +31,7 @@ void Sign(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
 
 template <typename T>
 void Mean(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  out->mutable_data<T>();
-  auto x_data = EigenVector<T>::Flatten(x);
-  auto y_data = EigenScalar<T>::From(*out);
-  auto& place = *dev_ctx.eigen_device();
-  y_data.device(place) = x_data.mean();
+  eigen::Mean<CPUContext, T>(dev_ctx, x, out);
 }
 
 template <typename T>

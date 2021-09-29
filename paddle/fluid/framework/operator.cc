@@ -1153,7 +1153,7 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // and RCOM backend, the XPU, NPU and MKLDNN will be supported in the second
   // phase
 
-  VLOG(1) << "Pt KernelFactory: " << pt::KernelFactory::Instance();
+  // VLOG(1) << "Pt KernelFactory: " << pt::KernelFactory::Instance();
   if (pt::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
     if (pt_kernel_key_.get() == nullptr || pt_kernel_.get() == nullptr) {
       ChoosePtKernel(*runtime_ctx, *dev_ctx);
