@@ -49,7 +49,7 @@ class TestPythonOperatorOverride(unittest.TestCase):
                             fetch_list=[out])
 
         np.testing.assert_array_equal(python_out, fluid_out[0])
-    
+
     def check_result_unary(self, fn, place, dtype):
         shape = [9, 10]
 
@@ -76,9 +76,7 @@ class TestPythonOperatorOverride(unittest.TestCase):
             lambda _a, _b: _a >= _b,
         ]
 
-        unary_fns = [
-            lambda _a: ~_a,
-        ]
+        unary_fns = [lambda _a: ~_a, ]
 
         # places to check
         places = [fluid.CPUPlace()]

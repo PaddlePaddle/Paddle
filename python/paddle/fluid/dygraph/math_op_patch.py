@@ -114,7 +114,8 @@ def monkey_patch_math_varbase():
     def _invert_(var):
         var_dtype = var.dtype
         if str(var_dtype) == "paddle.bool":
-            var_temp = core.ops.scale(var.astype("int"), 'scale', -1.0, 'bias', 1.0)
+            var_temp = core.ops.scale(
+                var.astype("int"), 'scale', -1.0, 'bias', 1.0)
             return var_temp.astype("bool")
         return core.ops.scale(var, 'scale', -1.0, 'bias', -1.0)
 
