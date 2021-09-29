@@ -76,6 +76,8 @@ if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
 if not defined retry_times set retry_times=3
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 if not defined BUILD_DIR set BUILD_DIR=build
+set task_name=%1
+set UPLOAD_TP_FILE=OFF
 
 rem ------initialize the python environment------
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
@@ -363,17 +365,24 @@ echo echo ${md5_content}^>md5.txt >> cache.sh
 %cache_dir%\tools\busybox64.exe bash cache.sh
 
 set /p md5=< md5.txt
+echo %task_name%|findstr build >nul && (
+    set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party
+    set THIRD_PARTY_PATH=!THIRD_PARTY_HOME!/%md5%
+    echo %task_name% is a whl-build task, will only reuse local third_party cache.
+    goto :cmake_impl
+) || ( 
+    echo %task_name% is a PR-CI-Windows task, will try to reuse bos and local third_party cache both. 
+)
+
 if "%WITH_GPU%"=="ON" (
-    for /F "delims=" %%# in ('nvcc --version^|findstr V1') do set cuda_version=%%#
-    set cuda_version=!cuda_version:~-7,4!
+    for /F %%# in ('dir /b /d "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\"') do set cuda_version=%%#
+    set cuda_version=!cuda_version:~-4!
     set sub_dir=cuda!cuda_version:.=!
 ) else (
     set sub_dir=cpu
 )
-
 set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party/%sub_dir%
 set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
-set UPLOAD_TP_FILE=OFF
 
 if not exist %THIRD_PARTY_PATH% (
     echo There is no usable third_party cache in %THIRD_PARTY_PATH%, will download from bos.
@@ -397,7 +406,7 @@ if not exist %THIRD_PARTY_PATH% (
     if not exist %THIRD_PARTY_PATH% ( set UPLOAD_TP_FILE=ON ) 
     cd %work_dir%\%BUILD_DIR%
 ) else (
-    echo Found reusable third_party cache locally, will reuse it.
+    echo Found reusable third_party cache in %THIRD_PARTY_PATH%, will reuse it.
 )
 
 :cmake_impl
@@ -512,8 +521,8 @@ if %ERRORLEVEL% NEQ 0 (
     )
 )
 
-set BCE_FILE=%cache_dir%\bce-python-sdk-0.8.33\BosClient.py
-if %UPLOAD_TP_FILE%==ON (
+if "%UPLOAD_TP_FILE%"=="ON" (
+    set BCE_FILE=%cache_dir%\bce-python-sdk-0.8.33\BosClient.py
     echo Uploading third_party: checking bce ...
     if not exist %cache_dir%\bce-python-sdk-0.8.33 (
         echo There is no bce in this PC, will install bce.

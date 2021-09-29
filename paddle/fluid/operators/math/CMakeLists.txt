@@ -39,6 +39,10 @@ function(math_library TARGET)
     endif()
 endfunction()
 
+if (WITH_ASCEND_CL)
+  cc_library(beam_search_npu SRCS beam_search_npu.cc DEPS npu_op_runner)
+endif()
+
 # please add new math_library in alphabetical order
 math_library(concat_and_split)
 math_library(context_project DEPS im2col math_function)
@@ -68,8 +72,13 @@ math_library(sequence_padding)
 math_library(sequence_pooling DEPS math_function jit_kernel_helper)
 math_library(sequence_scale)
 math_library(softmax DEPS math_function jit_kernel_helper)
-math_library(beam_search DEPS math_function)
+if (WITH_ASCEND_CL)
+    math_library(beam_search DEPS math_function beam_search_npu)
+else()
+    math_library(beam_search DEPS math_function)
+endif()
 math_library(fc DEPS blas)
+math_library(lapack_function DEPS dynload_lapack)
 
 math_library(matrix_bit_code)
 
@@ -80,6 +89,7 @@ math_library(bert_encoder_functor)
 math_library(tree2col DEPS math_function)
 math_library(matrix_inverse)
 math_library(segment_pooling)
+math_library(matrix_solve)
 
 cc_test(math_function_test SRCS math_function_test.cc DEPS math_function)
 cc_test(selected_rows_functor_test SRCS selected_rows_functor_test.cc DEPS selected_rows_functor)

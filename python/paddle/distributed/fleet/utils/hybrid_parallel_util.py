@@ -19,7 +19,6 @@ import warnings
 from paddle import framework
 import paddle
 from paddle.fluid import core
-import paddle.distributed as dist
 from paddle.fluid.dygraph.parallel import _split_tensors, sync_params_buffers, build_groups
 from collections import OrderedDict
 from .log_util import logger
@@ -45,7 +44,7 @@ def _apply_collective_grads(parameters, comm_group):
 
     for coalesced_grad, _, _ in coalesced_grads_and_vars:
         # need to div nranks
-        nranks = dist.get_world_size(
+        nranks = paddle.distributed.get_world_size(
         ) if comm_group is None else comm_group.nranks
         div_factor = paddle.to_tensor(nranks, dtype=coalesced_grad.dtype)
         paddle.fluid.framework._dygraph_tracer().trace_op(

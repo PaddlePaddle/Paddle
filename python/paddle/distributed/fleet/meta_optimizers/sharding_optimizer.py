@@ -329,6 +329,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         if self.pp_degree == 1: return
 
         strategy = self.user_defined_strategy
+        sharding_configs = strategy.sharding_configs
 
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
@@ -399,6 +400,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             first_optimize_op_index += (len(main_block.ops) - len_of_ops)
             len_of_ops = len(main_block.ops)
 
+            # NOTE(wangxi): we fused after optimize_cast
+            optimize_cast = sharding_configs['optimize_cast']
             optimizer_param = utils.insert_broadcast_param_ops(
                 main_block,
                 len_of_ops,
@@ -407,10 +410,10 @@ class ShardingOptimizer(MetaOptimizerBase):
                 OpRole.Optimize,
                 use_calc_stream=True,
                 rank=self.dp_rank,
-                strategy=strategy)
+                strategy=None if optimize_cast else strategy)
             logger.info("Optimizer param in this rank {}".format(
                 optimizer_param))
-            if not strategy.fuse_grad_merge:
+            if not strategy.fuse_grad_merge and not optimize_cast:
                 assert len(accumulated_grad_names) == len(optimizer_param)
         elif self.hybrid_dp and self.hybrid_dp_mode == "pp_hybrid_dp":
             insert_allreduce_ops(
@@ -435,7 +438,6 @@ class ShardingOptimizer(MetaOptimizerBase):
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
 
-        # FIXME(wangxi): mp should prune duplicated param_grads when calc
         # amp inf_var & clip global_norm_var
 
         rings = [self.mp_ring_id, self.pp_ring_id]
@@ -446,7 +448,7 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         gradientclip_helper = GradientClipHelper(None)
         gradientclip_helper.sync_global_norm(
-            main_block, [self.mp_ring_id, self.pp_ring_id])
+            main_block, [self.mp_ring_id, self.pp_ring_id], self.mp_rank)
 
     def _insert_loss_grad_scale_op(self):
         main_block = self._main_program.global_block()
@@ -455,22 +457,24 @@ class ShardingOptimizer(MetaOptimizerBase):
         global_dp_degree = self.sharding_degree * self.dp_degree
         assert int(global_dp_degree) == global_dp_degree
         if global_dp_degree > 1:
-            insert_scale_loss_grad_ops(main_block, scale=1.0 / global_dp_degree)
+            insert_scale_loss_grad_ops(main_block, scale=global_dp_degree)
 
         main_block._sync_with_cpp()
 
-    def _apply_optimize_offload_pass(self):
+    def _apply_optimize_offload_pass(self, params_grads):
         strategy = self.user_defined_strategy
         sharding_configs = strategy.sharding_configs
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
+
+        dp_ring_id = self.dp_ring_id if self.dp_degree > 1 else None
 
         # optimize offload should be enable while gradient merge is enable and
         # acc_step is quite large (e.g. >> 100). Since its memcpy could not be
         # overlap with calc, otherwise it will slower down training severely.
         if sharding_configs["optimize_offload"]:
             logger.info("Sharding with optimize offload !")
-            offload_helper = OffloadHelper()
+            offload_helper = OffloadHelper(ring_id=dp_ring_id)
             offload_helper.offload(main_block, startup_block)
             # The optimize_cast is already included in offload_fp32param
             offload_helper.offload_fp32param(main_block, startup_block)
@@ -478,8 +482,17 @@ class ShardingOptimizer(MetaOptimizerBase):
             logger.info("Sharding with optimize cast !")
             # NOTE(wangxi): optimize_cast will persist fp16 param, it
             # will take more memory, but will be faster. Trade space for time.
-            offload_helper = OffloadHelper()
-            offload_helper.cast_fp32param_in_optimize(main_block, startup_block)
+            offload_helper = OffloadHelper(ring_id=dp_ring_id)
+            if self._optimizer_sharding:
+                offload_helper.opt_sharding_cast_fp32param(
+                    main_block, startup_block,
+                    [x[0].name for x in params_grads])
+                # NOTE(wangxi): fused after optimize_cast
+                utils.fuse_opt_broadcast_param_ops(
+                    main_block, dp_ring_id, self._shard, strategy=strategy)
+            else:
+                offload_helper.cast_fp32param_in_optimize(main_block,
+                                                          startup_block)
 
     def _dump_program_for_debug(self):
         main_block = self._main_program.global_block()
@@ -526,7 +539,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         self._insert_loss_grad_scale_op()
 
         # apply optimize offload or optimize cast
-        self._apply_optimize_offload_pass()
+        self._apply_optimize_offload_pass(params_grads)
 
         # step6: (optional) sharding gradient merge
         self._sharding_gradient_merge()
@@ -1381,10 +1394,51 @@ class ShardingOptimizer(MetaOptimizerBase):
             return
 
         startup_block = self._startup_program.global_block()
+        params = startup_block.all_parameters()
+        params_name = []
 
-        params = []
-        for param in startup_block.iter_parameters():
-            params.append(param)
+        # NOTE(wangxi): if param is not persistable, program.clone will
+        #  failed, so we remove no persistable param, re add param as a var
+        for param in params:
+            params_name.append(param.name)
+            if not param.persistable:
+                name = param.name
+                shape = param.shape
+                dtype = param.dtype
+                type = param.type
+                lod_level = param.lod_level
+                stop_gradient = param.stop_gradient
+                trainable = param.trainable
+                optimize_attr = param.optimize_attr
+                regularizer = param.regularizer
+
+                have_dist_attr = False
+                is_distributed = False
+                if hasattr(param, 'is_distributed'):
+                    have_dist_attr = True
+                    is_distributed = param.is_distributed
+
+                startup_block._remove_var(name, sync=False)
+                var = startup_block.create_var(
+                    name=name,
+                    shape=shape,
+                    dtype=dtype,
+                    type=type,
+                    lod_level=lod_level,
+                    stop_gradient=stop_gradient,
+                    trainable=trainable,
+                    persistable=False)
+                if have_dist_attr:
+                    var.is_distributed = is_distributed
+
+        # offload and optimize_cast will insert broadcast op
+        broadcast_params = set()
+        for op in startup_block.ops:
+            if op.type == 'c_broadcast':
+                broadcast_params.add(op.desc.output_arg_names()[0])
+
+        for param in params_name:
+            if param in broadcast_params: continue
             startup_block.append_op(
                 type='c_broadcast',
                 inputs={'X': param},
@@ -1392,14 +1446,18 @@ class ShardingOptimizer(MetaOptimizerBase):
                 attrs={
                     'ring_id': self.dp_ring_id,
                     'root': 0,
+                    'use_calc_stream': True,
                     OP_ROLE_KEY: OpRole.Forward
                 })
+
         startup_block.append_op(
             type='c_sync_comm_stream',
-            inputs={'X': params},
-            outputs={'Out': params},
+            inputs={'X': params_name},
+            outputs={'Out': params_name},
             attrs={'ring_id': self.dp_ring_id,
                    OP_ROLE_KEY: OpRole.Forward})
+
+        startup_block._sync_with_cpp()
 
     # sharding gradient merge
     def create_persistable_gradients_and_insert_merge_ops(
