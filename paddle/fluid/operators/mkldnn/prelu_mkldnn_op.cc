@@ -74,8 +74,6 @@ class PReluMKLDNNHandler
                                               "@alpha_mem_p");
     }
 
-    // ASK JACEK ABOUT THIS WEIGHTS, SHOULD THEY BE TREATEN AS NCHW ALWAYS?
-    // format() set_format()
     auto user_weights_md = input->mem_desc();
 
     return this->AcquireMemoryWithReorder(

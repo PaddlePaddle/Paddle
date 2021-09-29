@@ -717,11 +717,6 @@ class BroadcastDataMKLDNNHandler
     const auto src0_md =
         dnnl::memory::desc(src0_tz, platform::MKLDNNGetDataType<T>(),
                            platform::GetPlainMKLDNNFormat(src0_tz.size()));
-    // platform::GetMKLDNNFormat(x_mem_desc));
-
-    // const auto src0_md = dnnl::memory::desc(
-    //    src0_tz, platform::MKLDNNGetDataType<T>(),
-    //    GetBroadcastedStrides(x_mem_desc, src0_tz));
     const auto src1_md = x_mem_desc;
 
     dnnl::primitive_attr attributes;
@@ -730,17 +725,6 @@ class BroadcastDataMKLDNNHandler
 
     this->AcquireForwardPrimitiveDescriptor(attributes, algo, src0_md, src1_md,
                                             src0_md);
-  }
-
-  std::vector<int64_t> GetBroadcastedStrides(
-      const dnnl::memory::desc& base_md,
-      const std::vector<int64_t>& broadcasted_dims) {
-    auto strides = base_md.data.format_desc.blocking.strides;
-    auto ndims = base_md.data.ndims;
-
-    for (int i = 0; i < ndims; ++i) {
-    }
-    return broadcasted_dims;
   }
 
   template <typename T_out = T>

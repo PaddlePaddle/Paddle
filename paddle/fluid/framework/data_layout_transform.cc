@@ -161,7 +161,6 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
                         "Input tensor type (%s) is not supported.",
                         DataTypeToString(in.type())));
 
-  //  auto in_format = platform::MKLDNNFormatForSize(in_tz.size(), in.format());
   auto out_format =
       platform::MKLDNNFormatForSize(in_tz.size(), ToMKLDNNFormat(out_layout));
   mkldnn::memory::desc out_mem_desc(out_tz, in_type, out_format);

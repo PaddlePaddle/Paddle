@@ -56,8 +56,20 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
         x->mem_desc(), platform::to_void_cast(x->data<T>()));
 
+    auto dst_md =
+        mkldnn::memory::desc(x_vec_dims, x->mem_desc().data_type(),
+                             platform::GetPlainMKLDNNFormat(x_vec_dims.size()));
+    // a trick is used here to fake transpose of out_md, so later it will be
+    // "untransposed", leaving output data in plain format tag
+    auto dst_strides = FakeTranposeStrides(dst_md, transpose_axis);
+
+    dst_md = mkldnn::memory::desc(x_vec_dims, x->mem_desc().data_type(),
+                                  dst_strides);
+    auto dst_data =
+        out->mutable_data(ctx.GetPlace(), x->type(), dst_md.get_size());
+
     auto reorder_dst_memory_p =
-        reorder_handler.AcquireDstMemory(out, x->mem_desc(), ctx.GetPlace());
+        std::make_shared<mkldnn::memory>(dst_md, mkldnn_engine, dst_data);
 
     auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
                                                     reorder_src_memory_p);
@@ -81,6 +93,22 @@ class TransposeMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       permute_axis[transpose_axis[i]] = i;
     }
     return permute_axis;
+  }
+
+  std::vector<int64_t> FakeTranposeStrides(
+      const mkldnn::memory::desc& dst_md,
+      const std::vector<int>& transpose_axis) const {
+    std::vector<int64_t> fake_strides(transpose_axis.size());
+    auto dims = dst_md.dims();
+    int total_stride = 1;
+    int ndims = static_cast<int>(dims.size());
+
+    for (int i = ndims - 1; i >= 0; --i) {
+      fake_strides[transpose_axis[i]] = total_stride;
+      total_stride *= dims[transpose_axis[i]];
+    }
+
+    return fake_strides;
   }
 };
 

@@ -84,7 +84,6 @@ class ReQuantOpKernel : public framework::OpKernel<T> {
       auto src_dt = framework::ToMKLDNNDataType(input->type());
       auto dst_dt = with_shift ? framework::MKLDNNDataType::u8 : src_dt;
 
-      // ASK ASIA ABOUT THAT FORMATS
       src_memory = std::make_shared<dnnl::memory>(input->mem_desc(), engine,
                                                   to_void_cast<T>(input_data));
       auto strides = input->mem_desc().data.format_desc.blocking.strides;

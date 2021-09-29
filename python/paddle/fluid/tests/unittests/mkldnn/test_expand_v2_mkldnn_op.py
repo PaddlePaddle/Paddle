@@ -141,13 +141,13 @@ def create_expand_v2_bf16_test_class(parent):
     globals()[cls_name] = TestExpandV2BF16OneDNNOp
 
 
-#create_expand_v2_bf16_test_class(TestExpandV2OneDNNOp)
-#create_expand_v2_bf16_test_class(TestExpandV2ExpandDimOneDNNOp)
-#create_expand_v2_bf16_test_class(TestExpandV2CopyScenarioOneDNNOp)
-#create_expand_v2_bf16_test_class(TestExpandV2CopyScenarioShapeNotGivenOneDNNOp)
+create_expand_v2_bf16_test_class(TestExpandV2OneDNNOp)
+create_expand_v2_bf16_test_class(TestExpandV2ExpandDimOneDNNOp)
+create_expand_v2_bf16_test_class(TestExpandV2CopyScenarioOneDNNOp)
+create_expand_v2_bf16_test_class(TestExpandV2CopyScenarioShapeNotGivenOneDNNOp)
 create_expand_v2_bf16_test_class(TestExpandV2ExpandShapesTensor1OneDNNOp)
-#create_expand_v2_bf16_test_class(TestExpandV2ExpandShapesTensor2OneDNNOp)
-#create_expand_v2_bf16_test_class(TestExpandV2ShapesTensorOneDNNOp)
+create_expand_v2_bf16_test_class(TestExpandV2ExpandShapesTensor2OneDNNOp)
+create_expand_v2_bf16_test_class(TestExpandV2ShapesTensorOneDNNOp)
 
 if __name__ == '__main__':
     paddle.enable_static()
