@@ -70,7 +70,8 @@ static RNGMap& GetRandomSeedGeneratorMap() {
   return random_seed_generator_map;
 }
 
-void SetRandomSeedGenerator(const std::string& name, uint64_t seed) {
+const std::shared_ptr<Generator>& SetRandomSeedGenerator(
+    const std::string& name, uint64_t seed) {
   auto& rng_map = GetRandomSeedGeneratorMap();
   auto iter = rng_map.find(name);
   PADDLE_ENFORCE_EQ(iter == rng_map.end(), true,
@@ -84,6 +85,7 @@ void SetRandomSeedGenerator(const std::string& name, uint64_t seed) {
       platform::errors::PermissionDenied(
           "SetRandomSeedGenerator cannot emplace %s RandomSeedGenerator",
           name));
+  return generator;
 }
 
 const std::shared_ptr<Generator>& GetRandomSeedGenerator(
