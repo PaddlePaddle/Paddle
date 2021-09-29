@@ -13,18 +13,27 @@
 # limitations under the License.
 
 from __future__ import print_function
-
+from decorator_helper import prog_scope
 import unittest
 import paddle.fluid as fluid
+import numpy as np
+import paddle
+import warnings
 
 
 class TestBackwardInferVarDataTypeShape(unittest.TestCase):
     def test_backward_infer_var_data_type_shape(self):
-        cur_program = fluid.Program()
-        cur_block = cur_program.current_block()
-        dy = current_block().create_var(
+        paddle.enable_static()
+        program = fluid.default_main_program()
+        dy = program.global_block().create_var(
             name="Tmp@GRAD", shape=[1, 1], dtype=np.float32, persistable=True)
-        fluid.backward._infer_var_data_type_shape_(dy, cur_block)
+        # invoke warning
+        fluid.backward._infer_var_data_type_shape_("Tmp@GRAD",
+                                                   program.global_block())
+        res = False
+        with warnings.catch_warnings():
+            res = True
+        self.assertTrue(res)
 
 
 if __name__ == '__main__':
