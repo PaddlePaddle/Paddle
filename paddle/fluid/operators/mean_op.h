@@ -67,6 +67,7 @@ class MeanKernel : public framework::OpKernel<T> {
         framework::MakeTensorImpl<pt::DenseTensor>(*out, x->place(), x->type());
 
     // call new kernel
+    VLOG(1) << "chenweihang: call original mean kernel compute.";
     pt::Mean<T>(dev_ctx, *pt_x.get(), pt_out.get());
   }
 };

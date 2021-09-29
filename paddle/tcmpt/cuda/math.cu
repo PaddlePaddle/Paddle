@@ -14,8 +14,9 @@ limitations under the License. */
 
 #include "paddle/tcmpt/cuda/math.h"
 
-// #include "paddle/tcmpt/eigen/scale.h"
-// #include "paddle/tcmpt/eigen/sign.h"
+#include "paddle/tcmpt/eigen/mean.h"
+#include "paddle/tcmpt/eigen/scale.h"
+#include "paddle/tcmpt/eigen/sign.h"
 
 #ifdef __NVCC__
 #include "cub/cub.cuh"
@@ -57,6 +58,8 @@ void Sign(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
 
 template <typename T>
 void Mean(const CUDAContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
+  VLOG(1) << "chenweihang: call new pt mean kernel.";
+  // eigen::Mean<CUDAContext, T>(dev_ctx, x, out);
   auto size_prob = x.numel();
   const T* x_data = x.data<T>();
   T* out_data = out->mutable_data<T>();
