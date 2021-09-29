@@ -389,44 +389,6 @@ void MultiSlotDataset::PrepareTrain() {
   return;
 }
 
-void MultiSlotDataset::PrepareTrain() {
-#ifdef PADDLE_WITH_GLOO
-  if (enable_heterps_) {
-    if (input_records_.size() == 0 && input_channel_ != nullptr &&
-        input_channel_->Size() != 0) {
-      input_channel_->ReadAll(input_records_);
-      VLOG(3) << "read from channel to records with records size: "
-              << input_records_.size();
-    }
-    VLOG(3) << "input records size: " << input_records_.size();
-    int64_t total_ins_num = input_records_.size();
-    std::vector<std::pair<int, int>> offset;
-    int default_batch_size =
-        reinterpret_cast<MultiSlotInMemoryDataFeed*>(readers_[0].get())
-            ->GetDefaultBatchSize();
-    VLOG(3) << "thread_num: " << thread_num_
-            << " memory size: " << total_ins_num
-            << " default batch_size: " << default_batch_size;
-    compute_thread_batch_nccl(thread_num_, total_ins_num, default_batch_size,
-                              &offset);
-    VLOG(3) << "offset size: " << offset.size();
-    for (int i = 0; i < thread_num_; i++) {
-      reinterpret_cast<MultiSlotInMemoryDataFeed*>(readers_[i].get())
-          ->SetRecord(&input_records_[0]);
-    }
-    for (size_t i = 0; i < offset.size(); i++) {
-      reinterpret_cast<MultiSlotInMemoryDataFeed*>(
-          readers_[i % thread_num_].get())
-          ->AddBatchOffset(offset[i]);
-    }
-  }
-#else
-  PADDLE_THROW(platform::errors::Unavailable(
-      "dataset set heterps need compile with GLOO"));
-#endif
-  return;
-}
-
 // load data into memory, Dataset hold this memory,
 // which will later be fed into readers' channel
 template <typename T>
