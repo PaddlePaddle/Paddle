@@ -10,8 +10,10 @@
 # limitations under the License.
 import numpy as np
 from op_test import OpTest
-import paddle.fluid.core as core
+import paddle.fluid as fluid
 import paddle
+from paddle.text import crf_decode
+import unittest
 paddle.enable_static()
 
 
@@ -72,7 +74,8 @@ class Decoder(object):
 
 class TestViterbiOp(OpTest):
     def set_attr(self):
-        self.dtype = np.float32 if core.is_compiled_with_rocm() else np.float64
+        self.dtype = np.float32 if fluid.core.is_compiled_with_rocm(
+        ) else np.float64
         self.with_start_stop_tag = True
         self.bz = 4
         self.len = 8
@@ -98,3 +101,47 @@ class TestViterbiOp(OpTest):
 
     def test_output(self):
         self.check_output()
+
+
+class TestViterbiAPI(unittest.TestCase):
+    def set_attr(self):
+        self.with_start_stop_tag = True
+        self.bz, self.len, self.ntags = 4, 8, 10
+        self.places = [fluid.CPUPlace()]
+        if fluid.core.is_compiled_with_cuda():
+            self.places.append(fluid.CUDAPlace(0))
+
+    def setUp(self):
+        self.set_attr()
+        bz, length, ntags = self.bz, self.len, self.ntags
+        self.input = np.random.randn(bz, length, ntags).astype('float32')
+        self.transitions = np.random.randn(ntags, ntags).astype('float32')
+        self.length = np.random.randint(1, length + 1, [bz]).astype('int64')
+        decoder = Decoder(self.transitions, self.with_start_stop_tag)
+        self.scores, self.path = decoder(self.input, self.length)
+
+    def check_static_result(self, place):
+        bz, length, ntags = self.bz, self.len, self.ntags
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            Input = fluid.data(
+                name="Input", shape=[bz, length, ntags], dtype="float32")
+            Transition = fluid.data(
+                name="Transition", shape=[ntags, ntags], dtype="float32")
+            Length = fluid.data(name="Length", shape=[bz], dtype="int64")
+            score, path = crf_decode(Input, Transition, Length,
+                                     self.with_start_stop_tag)
+            exe = fluid.Executor(place)
+            feed_list = {
+                "Input": self.input,
+                "Transition": self.transitions,
+                "Length": self.length
+            }
+            fetches = exe.run(fluid.default_main_program(),
+                              feed=feed_list,
+                              fetch_list=[score, path])
+            np.testing.assert_allclose(fetches[0], self.scores, rtol=1e-5)
+            np.testing.assert_allclose(fetches[1], self.path)
+
+    def test_static_net(self):
+        for place in self.places:
+            self.check_static_result(place)
