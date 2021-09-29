@@ -169,13 +169,13 @@ class TestSparseAttentionOp(OpTest):
             'Q': self.q,
             'K': self.k,
             'V': self.v,
-            'offset': self.offset,
-            'columns': self.columns
+            'Offset': self.offset,
+            'Columns': self.columns
         }
         self.outputs = {
             'Out': result.astype(self.dtype),
-            'ResultSdd': result_sdd.astype(self.dtype),
-            'ResultSoftmax': result_softmax.astype(self.dtype)
+            'SparseDotSdd': result_sdd.astype(self.dtype),
+            'Softmax': result_softmax.astype(self.dtype)
         }
 
     def test_check_output(self):
