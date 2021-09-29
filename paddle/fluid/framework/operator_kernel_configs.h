@@ -18,7 +18,7 @@ limitations under the License. */
 #include <mutex>
 #include <unordered_map>
 #include <vector>
-#include "glog/logging.h"  // For VLOG()
+#include "glog/logging.h"
 
 namespace paddle {
 namespace framework {

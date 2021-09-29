@@ -43,6 +43,32 @@ struct NormConvolutionArgs {
            const std::vector<int> &filter_shape,
            const std::vector<int> &output_shape, int padding, int stride,
            int dilation, int group) {
+    PADDLE_ENFORCE_EQ(
+        input_shape.size(), 4U,
+        platform::errors::InvalidArgument(
+            "The size of input_shape is expected to 4. But recieved "
+            "input_shape's size is %d, input_shape is [%s].",
+            input_shape.size(), framework::make_ddim(input_shape)));
+    PADDLE_ENFORCE_EQ(
+        filter_shape.size(), 4U,
+        platform::errors::InvalidArgument(
+            "The size of filter_shape is expected to 4. But recieved "
+            "filter_shape's size is %d, filter_shape is [%s].",
+            filter_shape.size(), framework::make_ddim(filter_shape)));
+    PADDLE_ENFORCE_EQ(filter_shape[1] == filter_shape[2] &&
+                          (filter_shape[1] == 1 || filter_shape[1] == 3),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The filter_shape is expected to store as nhwc, and "
+                          "h = w = 1 or 3. But recieved filter_shape is [%s].",
+                          framework::make_ddim(filter_shape)));
+    PADDLE_ENFORCE_EQ(
+        output_shape.size(), 4U,
+        platform::errors::InvalidArgument(
+            "The size of output_shape is expected to 4. But recieved "
+            "filter_shape's size is %d, filter_shape is [%s].",
+            output_shape.size(), framework::make_ddim(output_shape)));
+
     for (size_t i = 0; i < input_shape.size(); ++i) {
       in_dims.push_back(input_shape[i]);
     }
@@ -195,20 +221,21 @@ class CudnnNormConvolutionGrad {
   ~CudnnNormConvolutionGrad() {}
 
   void Backward(const platform::CUDADeviceContext &ctx, T *input_ptr,
-                T *output_ptr, T *filter_ptr, T *input_grad_ptr,
+                T *output_grad_ptr, T *filter_ptr, T *input_grad_ptr,
                 T *filter_grad_ptr, bool use_addto = false) {
     if (filter_grad_ptr) {
-      BackwardFilter(ctx, input_ptr, output_ptr, filter_ptr, filter_grad_ptr);
+      BackwardFilter(ctx, input_ptr, output_grad_ptr, filter_ptr,
+                     filter_grad_ptr);
     }
     if (input_grad_ptr) {
-      BackwardData(ctx, input_ptr, output_ptr, filter_ptr, input_grad_ptr,
+      BackwardData(ctx, input_ptr, output_grad_ptr, filter_ptr, input_grad_ptr,
                    use_addto);
     }
   }
 
  private:
   void BackwardFilter(const platform::CUDADeviceContext &ctx, T *input_ptr,
-                      T *output_ptr, T *filter_ptr, T *filter_grad_ptr) {
+                      T *output_grad_ptr, T *filter_ptr, T *filter_grad_ptr) {
     platform::RecordEvent event("norm_conv_backward_filter");
 
     auto cudnn_handle = ctx.cudnn_handle();
@@ -219,7 +246,7 @@ class CudnnNormConvolutionGrad {
         512);
 
     wgrad_op->SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, input_ptr);
-    wgrad_op->SetOpVariantParamAttrPtr(CUDNN_PTR_DYDATA, output_ptr);
+    wgrad_op->SetOpVariantParamAttrPtr(CUDNN_PTR_DYDATA, output_grad_ptr);
     wgrad_op->SetOpVariantParamAttrPtr(CUDNN_PTR_DWDATA, filter_grad_ptr);
     wgrad_op->SetOpVariantParamAttrPtr(
         CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &workspace_size);
@@ -236,8 +263,8 @@ class CudnnNormConvolutionGrad {
   }
 
   void BackwardData(const platform::CUDADeviceContext &ctx, T *input_ptr,
-                    T *output_ptr, T *filter_ptr, T *input_grad_ptr,
-                    bool use_addto) {
+                    T *output_grad_ptr, T *filter_ptr, T *input_grad_ptr,
+                    bool use_addto = false) {
     platform::RecordEvent event("norm_conv_backward_data");
 
     auto cudnn_handle = ctx.cudnn_handle();
@@ -251,9 +278,9 @@ class CudnnNormConvolutionGrad {
           PADDLE_ENFORCE_CUDA_SUCCESS(
               platform::dynload::cudnnConvolutionBackwardData(
                   cudnn_handle, &alpha, args_.filter_desc.desc(), filter_ptr,
-                  args_.out_desc.desc(), output_ptr, args_.conv_desc.desc(),
-                  dgrad_algo_, cudnn_workspace_ptr, workspace_size, &beta,
-                  args_.in_desc.desc(), input_grad_ptr));
+                  args_.out_desc.desc(), output_grad_ptr,
+                  args_.conv_desc.desc(), dgrad_algo_, cudnn_workspace_ptr,
+                  workspace_size, &beta, args_.in_desc.desc(), input_grad_ptr));
         },
         workspace_size);
   }
