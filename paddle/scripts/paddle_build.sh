@@ -2757,7 +2757,7 @@ function main() {
         check_coverage
         ;;
       check_npu_dist)
-        cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
+        # cmake_gen_and_build ${PYTHON_ABI:-""} ${parallel_number}
         test_base_npu_dist
         ;;
       reuse_so_cicheck_py35)
