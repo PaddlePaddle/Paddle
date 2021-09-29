@@ -23,6 +23,7 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
 #endif
+#include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
@@ -256,8 +257,22 @@ class AllocatorFacadePrivate {
   void InitAutoGrowthCUDAAllocator(platform::CUDAPlace p,
                                    bool allow_free_idle_chunk) {
     auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
+    auto alignment = platform::GpuMinChunkSize();
+    const auto& prop = platform::GetDeviceProperties(p.GetDeviceId());
+    bool need_addr_align = prop.textureAlignment < alignment;
+    std::shared_ptr<Allocator> underlying_allocator{nullptr};
+    if (need_addr_align) {
+      VLOG(10) << "use AlignedAllocator with alignment: " << alignment
+               << ", textureAlignment: " << prop.textureAlignment;
+      underlying_allocator =
+          std::make_shared<AlignedAllocator>(underlying_allocator, alignment);
+    } else {
+      VLOG(10) << "not use AlignedAllocator with alignment: " << alignment
+               << ", textureAlignment: " << prop.textureAlignment;
+      underlying_allocator = cuda_allocator;
+    }
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-        cuda_allocator, platform::GpuMinChunkSize(), allow_free_idle_chunk);
+        underlying_allocator, alignment, 0, allow_free_idle_chunk);
   }
 #endif
 
