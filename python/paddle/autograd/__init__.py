@@ -20,4 +20,4 @@ from ..framework import set_grad_enabled  # noqa: F401
 from ..fluid.dygraph.base import no_grad_ as no_grad  # noqa: F401
 from .functional import jacobian  # noqa: F401
 
-__all__ = ['backward', 'PyLayer', 'PyLayerContext', 'jacobian']
+__all__ = ['backward', 'PyLayer', 'PyLayerContext']
