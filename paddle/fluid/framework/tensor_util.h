@@ -62,18 +62,6 @@ void TensorFromStream(std::istream& is, Tensor* tensor,
                       const platform::DeviceContext& dev_ctx,
                       const size_t& seek, const std::vector<int64_t>& shape);
 
-// class SerializeStringMap : public std::unordered_map<std::string, int32_t> {
-//  private:
-//   void write(std::ostream& os, int32_t num);
-//   void write(std::ostream& os, const std::string& str);
-//   void read(std::istream& is, int32_t* token_id);
-//   std::string read(std::istream& is);
-
-//  public:
-//   void MapTensorToStream(std::ostream& os);
-//   void MapTensorFromStream(std::istream& is);
-// };
-
 // NOTE(zcd): Because TensorCopy is an async operation, when the src_place
 // and dst_place are two different GPU, to ensure that the operation can
 // be carried out correctly, there is a src_ctx wait operation in TensorCopy.
