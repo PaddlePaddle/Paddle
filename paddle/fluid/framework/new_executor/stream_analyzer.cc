@@ -22,7 +22,7 @@ namespace framework {
  * Parse the var_ids that need to be associated with an event.
  * The caller should guarantee front_op and back_op satisfy the
  * following conditions:
- *   1. kQueueAsync -> kQueueAsync
+ *   1. kQueueSync -> kQueueAsync
  *   2. kQueueAsync -> kQueueSync
  *
  * For example: matmul(gpu) -> out_var -> memcpy_d2h
@@ -48,7 +48,7 @@ std::vector<size_t> StreamAnalyzer::ParseEventVarIds(
 
 void StreamAnalyzer::AssociateInputWithEvents(
     const std::vector<size_t>& new_event_var_id, Instruction* next_instr,
-    bool is_sync) {
+    platform::DeviceType waiter_type) {
   for (auto var_id : new_event_var_id) {
     if (var_id2event_.count(var_id) == 0) {
       auto device_event = std::make_shared<platform::DeviceEvent>(
@@ -57,52 +57,43 @@ void StreamAnalyzer::AssociateInputWithEvents(
     }
     // Add events for next_instr.inputs
     next_instr->intput_events_.emplace_back(var_id, var_id2event_.at(var_id),
-                                            is_sync);
+                                            waiter_type);
   }
 }
 
-void StreamAnalyzer::Schedule(const std::vector<OpFuncNode>& op_func_nodes,
-                              const std::vector<size_t>& downstream_ops,
-                              size_t op_index,
-                              std::vector<Instruction>* instructions) {
-  auto& op_func_type = op_func_nodes[op_index].type_;
+void StreamAnalyzer::Schedule(const std::vector<size_t>& downstream_ops,
+                              std::vector<Instruction>* instructions,
+                              size_t op_index) {
   auto& cur_instr = instructions->at(op_index);
   auto& next_instruction = cur_instr.next_instruction_;
+  std::vector<size_t> event_var_ids;
+  for (auto next_op_id : downstream_ops) {
+    auto& next_instr = instructions->at(next_op_id);
 
-  if (op_func_type == OpFuncType::kQueueSync) {
-    // all downstream ops of kQueueSync can directly run, such as CPU -> Any
-    next_instruction.direct_run_ = downstream_ops;
-  } else {  // kQueueAsync
-    std::vector<size_t> event_var_ids;
-    for (auto next_op_id : downstream_ops) {
-      auto& next_instr = instructions->at(next_op_id);
-      // case 1: GPU -> GPU(same stream)
-      if (cur_instr.dev_ctx_ == next_instr.dev_ctx_) {
-        next_instruction.direct_run_.emplace_back(next_op_id);
-        continue;
-      }
+    if (IsDirectRun(cur_instr, next_instr)) {
+      next_instruction.direct_run_.emplace_back(next_op_id);
+    } else {
       // Always insert events between different stream
       auto new_event_var_ids = ParseEventVarIds(cur_instr, next_instr);
       event_var_ids.insert(event_var_ids.end(), new_event_var_ids.begin(),
                            new_event_var_ids.end());
 
-      bool is_sync =
-          (op_func_nodes[next_op_id].type_ == OpFuncType::kQueueSync);
-      AssociateInputWithEvents(new_event_var_ids, &next_instr, is_sync);
+      auto waiter_type = GetWaiterType(next_instr);
+      AssociateInputWithEvents(new_event_var_ids, &next_instr, waiter_type);
 
-      if (is_sync) {  // GPU -> CPU
+      if (waiter_type == platform::kCPU) {  // GPU -> CPU
         next_instruction.synchronize_run_.emplace_back(next_op_id);
       } else {  // GPU -> GPU(different stream)
         next_instruction.event_wait_run_.emplace_back(next_op_id);
       }
     }
-    // Create events for these cross-stream vars
-    VLOG(3) << cur_instr.kernel_func_.operator_base_->Type()
-            << " event_var_ids.size: " << event_var_ids.size();
-    for (auto var_id : event_var_ids) {
-      cur_instr.output_events_.emplace_back(var_id, var_id2event_.at(var_id),
-                                            false /*not used*/);
-    }
+  }
+  // Create events for these cross-stream vars
+  VLOG(3) << cur_instr.kernel_func_.operator_base_->Type()
+          << " event_var_ids.size: " << event_var_ids.size();
+  for (auto var_id : event_var_ids) {
+    cur_instr.output_events_.emplace_back(var_id, var_id2event_.at(var_id),
+                                          platform::kCUDA /*not used*/);
   }
 }
 
@@ -119,6 +110,28 @@ platform::DeviceContext* StreamAnalyzer::ParseDeviceContext(
   }
 
   return dev_ctx;
+}
+
+/*
+ * NOTE(dev): The following cases are considered as directly run:
+ *
+ *  1. with same dev_ctx_, such as: CPU -> CPU, GPU -> GPU
+ *  2. D2H -> CPU
+ *  3. CPU -> H2D
+ */
+bool StreamAnalyzer::IsDirectRun(Instruction& cur_instr,
+                                 const Instruction& next_instr) {
+  return (cur_instr.dev_ctx_ == next_instr.dev_ctx_ ||
+          interpretercore::IsMemcpyD2H(cur_instr) ||
+          interpretercore::IsMemcpyH2D(next_instr));
+}
+
+platform::DeviceType StreamAnalyzer::GetWaiterType(const Instruction& instr) {
+  if (instr.type_ == OpFuncType::kQueueSync) {
+    return platform::kCPU;
+  } else {
+    return platform::kCUDA;
+  }
 }
 
 }  // namespace framework

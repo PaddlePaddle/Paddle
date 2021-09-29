@@ -1,3 +1,4 @@
+include(tcmpt)
 # tcmpt api
 add_subdirectory(api)
 # tcmpt core components

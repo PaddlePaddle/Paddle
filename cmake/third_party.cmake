@@ -210,9 +210,10 @@ include(external/threadpool)# download threadpool
 include(external/dlpack)    # download dlpack
 include(external/xxhash)    # download, build, install xxhash
 include(external/warpctc)   # download, build, install warpctc
+include(external/lapack)    # download, build, install lapack
 
 list(APPEND third_party_deps extern_eigen3 extern_gflags extern_glog extern_boost extern_xxhash)
-list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool)
+list(APPEND third_party_deps extern_zlib extern_dlpack extern_warpctc extern_threadpool extern_lapack)
 
 include(cblas)              	# find first, then download, build, install openblas
 
@@ -251,7 +252,7 @@ if(WITH_GPU)
         list(APPEND third_party_deps extern_cub)
     endif()
     set(URL  "https://paddlepaddledeps.bj.bcebos.com/externalErrorMsg.tar.gz" CACHE STRING "" FORCE)
-    file_download_and_uncompress(${URL} "externalError" MD5 c0749523ebb536eb7382487d645d9cd4)   # download file externalErrorMsg.tar.gz
+    file_download_and_uncompress(${URL} "externalError" MD5 061f3b7895aadcbe2c3ed592590f8b10)   # download file externalErrorMsg.tar.gz
     if(WITH_TESTING)
         # copy externalErrorMsg.pb, just for unittest can get error message correctly.
         set(SRC_DIR ${THIRD_PARTY_PATH}/externalError/data)

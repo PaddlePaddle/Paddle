@@ -152,7 +152,7 @@ struct KernelRegistrar {
                       meta_kernel_fn,                             \
                       cpp_dtype,                                  \
                       __VA_ARGS__)
-
+#ifndef _WIN32
 #define _PT_REGISTER_KERNEL(                                                   \
     kernel_name, func_id, backend, layout, meta_kernel_fn, cpp_dtype, ...)     \
   PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
@@ -170,6 +170,24 @@ struct KernelRegistrar {
                            cpp_dtype,                                          \
                            __VA_ARGS__);                                       \
   void PT_CONCATENATE(__PT_KERNEL_args_def_FN_, func_id)(::pt::Kernel * kernel)
+#else
+#define _PT_REGISTER_KERNEL(                                                   \
+    kernel_name, func_id, backend, layout, meta_kernel_fn, cpp_dtype, ...)     \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                           \
+      PT_CONCATENATE(pt_op_kernel_ns_check_, func_id),                         \
+      "PT_REGISTER_KERNEL must be called in global namespace.");               \
+  static void PT_CONCATENATE(__PT_KERNEL_args_def_FN_,                         \
+                             func_id)(::pt::Kernel*);                          \
+  PT_KERNEL_REGISTRAR_INIT(kernel_name,                                        \
+                           func_id,                                            \
+                           backend,                                            \
+                           layout,                                             \
+                           &PT_CONCATENATE(__PT_KERNEL_args_def_FN_, func_id), \
+                           meta_kernel_fn,                                     \
+                           cpp_dtype,                                          \
+                           __VA_ARGS__);                                       \
+  void PT_CONCATENATE(__PT_KERNEL_args_def_FN_, func_id)(::pt::Kernel * kernel)
+#endif
 
 #define PT_KERNEL_INSTANTIATION(meta_kernel_fn, cpp_dtype, ...) \
   _PT_KERNEL_INSTANTIATION(PT_NARGS(cpp_dtype, __VA_ARGS__),    \
@@ -190,6 +208,8 @@ struct KernelRegistrar {
  * reference:
  *
  *   https://stackoverflow.com/questions/63989585/explicit-instantiation-of-function-using-decltype-work-on-g-but-not-on-visua
+ *
+ * So we solve the explict instantiation of kernel by CMake
  */
 
 #define _PT_KERNEL_INSTANTIATION_1(meta_kernel_fn, cpp_dtype, ...) \
