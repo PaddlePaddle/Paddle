@@ -128,7 +128,7 @@ class CUDAGraphCaptureModeGuard {
   DISABLE_COPY_AND_ASSIGN(CUDAGraphCaptureModeGuard);
 
  public:
-  explicit CUDAGraphCaptureModeGuard(cudaStreamCaptureMode) = default;
+  explicit CUDAGraphCaptureModeGuard(cudaStreamCaptureMode) {}
 };
 #endif
 
