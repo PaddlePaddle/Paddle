@@ -445,7 +445,7 @@ def is_compiled_with_rocm():
         .. code-block:: python
 
             import paddle
-            support_gpu = paddle.is_compiled_with_rocm()
+            support_gpu = paddle.device.is_compiled_with_rocm()
     """
     return core.is_compiled_with_rocm()
 
@@ -6318,7 +6318,7 @@ def device_guard(device=None):
             import paddle
 
             paddle.enable_static()
-            support_gpu = paddle.is_compiled_with_cuda()
+            support_gpu = paddle.device.is_compiled_with_cuda()
             place = paddle.CPUPlace()
             if support_gpu:
                 place = paddle.CUDAPlace(0)
