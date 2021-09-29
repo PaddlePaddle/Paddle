@@ -66,5 +66,12 @@ class TestTransposeOpFP16(TestTransposeOp):
         self.dtype = np.float16
 
 
+class TestTransposeOpInt64(TestTransposeOp):
+    no_need_check_grad = True
+
+    def init_dtype(self):
+        self.dtype = np.int64
+
+
 if __name__ == '__main__':
     unittest.main()
