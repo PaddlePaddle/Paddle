@@ -115,7 +115,11 @@ int32_t CtrSparseTable::load(const std::string& path,
           int parse_size =
               _value_accesor->parse_from_string(++end, value->data());
           value->resize(parse_size);
-          // value->shrink_to_fit();
+          
+          //for debug
+          for (int i = 0; i < parse_size; ++ i) {
+            VLOG(2) << "CtrSparseTable::load key: " << key << " value " << i << ": " << value->data()[i];
+          }
         }
         read_channel->close();
         if (err_no == -1) {
@@ -592,6 +596,7 @@ int32_t CtrSparseTable::flush() { return 0; }
 
 // TODO: no need param
 int32_t CtrSparseTable::shrink(const std::string& param) {
+  VLOG(0) << "CtrSparseTable::shrink";
   // TODO implement with multi-thread
   for (int shard_id = 0; shard_id < task_pool_size_; ++shard_id) {
     // shrink
@@ -601,6 +606,7 @@ int32_t CtrSparseTable::shrink(const std::string& param) {
         if (_value_accesor->shrink(iter->second->data())) {
           butil::return_object(iter->second);
           iter = table.erase(iter);
+          VLOG(0) << "shrink erase key: " << iter->first;
         } else {
           ++iter;
         }

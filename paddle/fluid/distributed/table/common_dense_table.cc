@@ -94,6 +94,9 @@ int32_t CommonDenseTable::initialize_optimizer() {
   } else if (name == "adam") {
     optimizer_ = std::make_shared<DAdam>(common, &values_);
     optimizer_->set_global_lr(_global_lr);
+  } else if (name == "adam_d2sum"){
+    optimizer_ = std::make_shared<DAdamD2Sum>(common, &values_);
+    //optimizer_->set_global_lr(_global_lr);  //no use
   } else if (name == "sum") {
     optimizer_ = std::make_shared<DSUM>(common, &values_);
   } else {
@@ -207,6 +210,7 @@ int32_t CommonDenseTable::load(const std::string& path, const std::string& param
           CHECK(str_len == 1) << "only expect 1 float: " << str_len;
           values_[x][y] = data_buffer[0];
           ++dim_idx;
+          VLOG(2) << "CommonDenseTable::load x: " << x << " y: " << y << " value: " << values_[x][y];
         }
       }
 
