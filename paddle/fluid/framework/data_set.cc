@@ -351,10 +351,8 @@ static int compute_thread_batch_nccl(
   return thread_avg_batch_num;
 }
 
-template <typename T>
-void DatasetImpl<T>::SetHeterPs(bool enable_heterps) {
+void MultiSlotDataset::PrepareTrain() {
 #ifdef PADDLE_WITH_GLOO
-  enable_heterps_ = enable_heterps;
   if (enable_heterps_) {
     if (input_records_.size() == 0 && input_channel_ != nullptr &&
         input_channel_->Size() != 0) {
@@ -541,22 +539,21 @@ void DatasetImpl<T>::LocalShuffle() {
           << timeline.ElapsedSec() << " seconds";
 }
 
-template <typename T>
-void DatasetImpl<T>::GlobalShuffle(int thread_num) {
+void MultiSlotDataset::GlobalShuffle(int thread_num) {
 #ifdef PADDLE_WITH_PSLIB
-  VLOG(3) << "DatasetImpl<T>::GlobalShuffle() begin";
+  VLOG(3) << "MultiSlotDataset::GlobalShuffle() begin";
   platform::Timer timeline;
   timeline.Start();
   auto fleet_ptr = FleetWrapper::GetInstance();
 
   if (!input_channel_ || input_channel_->Size() == 0) {
-    VLOG(3) << "DatasetImpl<T>::GlobalShuffle() end, no data to shuffle";
+    VLOG(3) << "MultiSlotDataset::GlobalShuffle() end, no data to shuffle";
     return;
   }
 
   // local shuffle
   input_channel_->Close();
-  std::vector<T> data;
+  std::vector<Record> data;
   input_channel_->ReadAll(data);
   std::shuffle(data.begin(), data.end(), fleet_ptr->LocalRandomEngine());
   input_channel_->Open();
@@ -566,10 +563,10 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
 
   input_channel_->Close();
   input_channel_->SetBlockSize(fleet_send_batch_size_);
-  VLOG(3) << "DatasetImpl<T>::GlobalShuffle() input_channel_ size "
+  VLOG(3) << "MultiSlotDataset::GlobalShuffle() input_channel_ size "
           << input_channel_->Size();
 
-  auto get_client_id = [this, fleet_ptr](const T& data) -> size_t {
+  auto get_client_id = [this, fleet_ptr](const Record& data) -> size_t {
     if (!this->merge_by_insid_) {
       return fleet_ptr->LocalRandomEngine()() % this->trainer_num_;
     } else {
@@ -580,7 +577,7 @@ void DatasetImpl<T>::GlobalShuffle(int thread_num) {
 
   auto global_shuffle_func = [this, get_client_id]() {
     auto fleet_ptr = FleetWrapper::GetInstance();
-    std::vector<T> data;
+    std::vector<Record> data;
     while (this->input_channel_->Read(data)) {
       std::vector<paddle::framework::BinaryArchive> ars(this->trainer_num_);
       for (auto& t : data) {
@@ -835,9 +832,6 @@ void DatasetImpl<T>::CreateReaders() {
       channel_idx = 0;
     }
   }
-  if (enable_heterps_) {
-    SetHeterPs(true);
-  }
   VLOG(3) << "readers size: " << readers_.size();
 }
 
@@ -923,9 +917,8 @@ int64_t DatasetImpl<T>::GetShuffleDataSize() {
   return sum;
 }
 
-template <typename T>
-int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
-                                      const std::string& msg) {
+int MultiSlotDataset::ReceiveFromClient(int msg_type, int client_id,
+                                        const std::string& msg) {
 #ifdef _LINUX
   VLOG(3) << "ReceiveFromClient msg_type=" << msg_type
           << ", client_id=" << client_id << ", msg length=" << msg.length();
@@ -937,9 +930,9 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
   if (ar.Cursor() == ar.Finish()) {
     return 0;
   }
-  std::vector<T> data;
+  std::vector<Record> data;
   while (ar.Cursor() < ar.Finish()) {
-    data.push_back(ar.Get<T>());
+    data.push_back(ar.Get<Record>());
   }
   CHECK(ar.Cursor() == ar.Finish());
 
@@ -965,6 +958,20 @@ int DatasetImpl<T>::ReceiveFromClient(int msg_type, int client_id,
 
 // explicit instantiation
 template class DatasetImpl<Record>;
+
+void MultiSlotDataset::DynamicAdjustReadersNum(int thread_num) {
+  if (thread_num_ == thread_num) {
+    VLOG(3) << "DatasetImpl<T>::DynamicAdjustReadersNum thread_num_="
+            << thread_num_ << ", thread_num_=thread_num, no need to adjust";
+    return;
+  }
+  VLOG(3) << "adjust readers num from " << thread_num_ << " to " << thread_num;
+  thread_num_ = thread_num;
+  std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
+  CreateReaders();
+  VLOG(3) << "adjust readers num done";
+  PrepareTrain();
+}
 
 void MultiSlotDataset::PostprocessInstance() {
   // divide pv instance, and merge to input_channel_
