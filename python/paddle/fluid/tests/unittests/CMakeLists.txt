@@ -454,6 +454,11 @@ list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 # disable this unittest temporarily
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
 
+# disable sparse_attention which not in suitable env
+if ( (NOT WITH_GPU) OR (WIN32) OR (PADDLE_WITH_ARM) OR (WITH_ROCM) OR (${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.2))
+    list(REMOVE_ITEM TEST_OPS test_sparse_attention_op)
+endif()
+
 if (APPLE OR WIN32)
   list(REMOVE_ITEM TEST_OPS test_dataset)
   list(REMOVE_ITEM TEST_OPS test_dataset_dataloader)

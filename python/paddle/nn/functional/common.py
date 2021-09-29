@@ -1860,13 +1860,13 @@ def sparse_attention(query,
         'Q': query,
         'K': key,
         'V': value,
-        'offset': sparse_csr_offset,
-        'columns': sparse_csr_columns
+        'Offset': sparse_csr_offset,
+        'Columns': sparse_csr_columns
     }
     outputs = {
         'Out': out,
-        'ResultSdd': result_sdd,
-        'ResultSoftmax': result_softmax
+        'SparseDotSdd': result_sdd,
+        'Softmax': result_softmax
     }
     helper.append_op(type='sparse_attention', inputs=inputs, outputs=outputs)
     return out
