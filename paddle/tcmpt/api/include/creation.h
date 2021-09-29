@@ -18,8 +18,6 @@
 
 namespace pt {
 
-// template<class T>
-// Tensor full_like(const Tensor& x, T value);
 Tensor full_like(const Tensor& x, float value);
 
 }  // namespace pt

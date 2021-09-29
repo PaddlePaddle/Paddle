@@ -25,8 +25,6 @@ limitations under the License. */
 
 namespace pt {
 
-// template<class T>
-// Tensor full_like(const Tensor& x, T value) {
 Tensor full_like(const Tensor& x, float value) {
   // 1. Get kernel signature and kernel
   auto kernel_signature = ParseKernelNameAndKeyByArgs("fill_any_like", x);
