@@ -58,15 +58,16 @@ class PruneGateByCapacityOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(
         expert_count_num_ele, n_expert * n_worker,
         platform::errors::Unavailable(
-            "The number of elements for expert_count is ( %ld ) incorrect "
-            "because the number of expert_count must equal the "
-            "product of n_worker ( %ld )and n_expert( %ld ). "
+            "The number of elements for expert_count is ( %ld ) incorrect. "
+            "Because the number of expert_count must equal the "
+            "product of n_worker ( %ld ) and n_expert ( %ld ). "
             "Please input appropriate expert_count again!",
             expert_count_num_ele, n_worker, n_expert));
 
-    auto in_dims = ctx->GetInputDim("GateIdx");
-    ctx->SetOutputDim("NewGateIdx", in_dims);
-    ctx->SetOutputDim("ExpertCountOut", in_dims);
+    auto gate_idx_in_dims = ctx->GetInputDim("GateIdx");
+    auto expert_count_in_dims = ctx->GetInputDim("ExpertCount");
+    ctx->SetOutputDim("NewGateIdx", gate_idx_in_dims);
+    ctx->SetOutputDim("ExpertCountOut", expert_count_in_dims);
   }
 
  protected:
