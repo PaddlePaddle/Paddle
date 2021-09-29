@@ -5078,11 +5078,7 @@ class Program(object):
                         else:
                             target_op = op
 
-                if target_op is None:
-                    raise ValueError(
-                        "The target variable used for pruning should have an "
-                        "associated operator that generates it.")
-                else:
+                if target_op is not None:
                     targets_idx.append([target_op.block.idx, target_op.idx])
             else:
                 targets_idx.append([t.block.idx, t.idx])

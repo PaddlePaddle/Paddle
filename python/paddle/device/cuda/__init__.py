@@ -27,6 +27,7 @@ __all__ = [
     'device_count',
     'empty_cache',
     'stream_guard',
+    'get_device_properties',
 ]
 
 
@@ -204,3 +205,69 @@ def stream_guard(stream):
             yield
         finally:
             stream = _set_current_stream(pre_stream)
+
+
+def get_device_properties(device=None):
+    '''
+    Return the properties of given device.
+
+    Args:
+        device(paddle.CUDAPlace or int or str): The device, the id of the device 
+            or the string name of device like 'gpu:x' which to get the properties of 
+            the device from. If device is None, the device is the current device. 
+            Default: None.
+
+    Returns:
+        _gpuDeviceProperties: the properties of the device which include ASCII string 
+        identifying device, major compute capability, minor compute capability, global 
+        memory available on device and the number of multiprocessors on the device.
+
+    Examples:
+    
+        .. code-block:: python
+
+            # required: gpu
+
+            import paddle
+            paddle.device.cuda.get_device_properties()
+            # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+
+            paddle.device.cuda.get_device_properties(0)
+            # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+
+            paddle.device.cuda.get_device_properties('gpu:0')
+            # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+
+            paddle.device.cuda.get_device_properties(paddle.CUDAPlace(0))
+            # _gpuDeviceProperties(name='A100-SXM4-40GB', major=8, minor=0, total_memory=40536MB, multi_processor_count=108)
+
+    '''
+
+    if not core.is_compiled_with_cuda():
+        raise ValueError(
+            "The API paddle.device.cuda.get_device_properties is not supported in "
+            "CPU-only PaddlePaddle. Please reinstall PaddlePaddle with GPU support "
+            "to call this API.")
+
+    if device is not None:
+        if isinstance(device, int):
+            device_id = device
+        elif isinstance(device, core.CUDAPlace):
+            device_id = device.get_device_id()
+        elif isinstance(device, str):
+            if device.startswith('gpu:'):
+                device_id = int(device[4:])
+            else:
+                raise ValueError(
+                    "The current string {} is not expected. Because paddle.device."
+                    "cuda.get_device_properties only support string which is like 'gpu:x'. "
+                    "Please input appropriate string again!".format(device))
+        else:
+            raise ValueError(
+                "The device type {} is not expected. Because paddle.device.cuda."
+                "get_device_properties only support int, str or paddle.CUDAPlace. "
+                "Please input appropriate device again!".format(device))
+    else:
+        device_id = -1
+
+    return core.get_device_properties(device_id)

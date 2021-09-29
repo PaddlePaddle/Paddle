@@ -172,6 +172,7 @@ class VariableWrapper {
       return tensor->type();
     } else {
       VLOG(6) << "The tensor of variable " << name_ << " is not initialized";
+
       return data_type_;
     }
   }
