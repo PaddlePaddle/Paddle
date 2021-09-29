@@ -179,6 +179,10 @@ class ProgramStats(object):
             if op.desc.type() != "dropout":
                 op_idx += 1
                 continue
+            # already insert seed op before dropout
+            if op_idx > 0 and self.ops[op_idx - 1].type() == "seed":
+                op_idx += 1
+                continue
             # add a seed op so that the two dropout op can generate same output
             op_unique_name = unique_name.generate("seed")
             var_unique_name = unique_name.generate_with_ignorable_key(".".join(
