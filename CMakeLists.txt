@@ -237,7 +237,7 @@ set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
 if($ENV{WITH_CANN_VERSION_503_ALPHA3})
     message("use cann version 5.0.3_alpha3.")
-    set(PADDLE_WITH_ASCEND_VERSION_503_alpha3  ON)
+    set(WITH_CANN_VERSION_503_ALPHA3  ON)
 endif()
 
 # the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined. Default: OFF
