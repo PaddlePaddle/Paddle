@@ -85,7 +85,7 @@ const std::shared_ptr<Generator>& SetRandomSeedGenerator(
       platform::errors::PermissionDenied(
           "SetRandomSeedGenerator cannot emplace %s RandomSeedGenerator",
           name));
-  return generator;
+  return rng_map[name];
 }
 
 const std::shared_ptr<Generator>& GetRandomSeedGenerator(
