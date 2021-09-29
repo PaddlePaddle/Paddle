@@ -25,6 +25,8 @@ collective_set2 = [
 collective_set += collective_set
 outer_keys = set(sys.argv[1].split("|^"))
 inner_keys = set(collective_set)
+print(outer_keys, file=sys.stderr)
+print(inner_keys, file=sys.stderr)
 output = ""
 for key in outer_keys.intersection(inner_keys):
     if output == "":
