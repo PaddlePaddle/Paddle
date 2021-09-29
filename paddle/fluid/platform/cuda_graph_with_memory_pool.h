@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 #ifdef PADDLE_WITH_CUDA
 #include "paddle/fluid/platform/cuda_graph.h"
@@ -38,7 +39,12 @@ inline bool IsCUDAGraphCapturing() {
 }
 
 inline platform::CUDAPlace CUDAGraphCapturingPlace() {
+#ifdef PADDLE_WITH_CUDA
   return CUDAGraph::CapturingPlace();
+#else
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "CUDA Graph is only supported on NVIDIA GPU device."));
+#endif
 }
 
 // Add reset callback if CUDA Graph is capturing.
