@@ -89,9 +89,7 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
 
-    std::cout << "reshape \n";
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
-    std::cout << std::endl;
 
     astream.wait();
 

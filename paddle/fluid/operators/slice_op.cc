@@ -142,7 +142,7 @@ class SliceOp : public framework::OperatorWithKernel {
         // reorders, because if blocked dimension is not divisible by 8 or
         // 16(depending on which blocking format is used) submemory cannot be
         // created, so in that scenario a fallback is needed
-        auto x_md = ctx.Input<Tensor>("X")->mem_desc();
+        auto x_md = ctx.Input<Tensor>("Input")->mem_desc();
         if (x_md.data.format_desc.blocking.inner_nblks == 0)
           return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                          framework::DataLayout::kMKLDNN,
