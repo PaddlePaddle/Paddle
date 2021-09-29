@@ -19,12 +19,12 @@ collective_set = os.popen(
 collective_set = [
     "test_" + c.split("/")[-1].split(".cc")[0] for c in collective_set
 ]
-collective_set2 = [
+collective_set_no_op = [
     c.replace("_op_npu", "_npu") for c in collective_set if "_op_npu" in c
 ]
-collective_set += collective_set
+
 outer_keys = set(sys.argv[1].split("|^"))
-inner_keys = set(collective_set)
+inner_keys = set(collective_set + collective_set_no_op)
 print(outer_keys, file=sys.stderr)
 print(inner_keys, file=sys.stderr)
 output = ""
