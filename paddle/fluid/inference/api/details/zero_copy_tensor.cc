@@ -148,9 +148,7 @@ DataType Tensor::type() const {
 PlaceType Tensor::place() const { return place_; }
 
 template <typename T>
-typename std::enable_if<
-    !std::is_same<T, paddle::framework::STRINGS>::value>::type
-Tensor::CopyFromCpu(const T *data) {
+void Tensor::CopyFromCpu(const T *data) {
   EAGER_GET_TENSOR(paddle::framework::LoDTensor);
   PADDLE_ENFORCE_GE(tensor->numel(), 0,
                     paddle::platform::errors::PreconditionNotMet(
@@ -212,11 +210,8 @@ Tensor::CopyFromCpu(const T *data) {
   }
 }
 
-template <typename T>
-typename std::enable_if<
-    std::is_same<T, paddle::framework::STRINGS>::value>::type
-Tensor::CopyFromCpu(const T *data) {
-  EAGER_GET_TENSOR(T);
+void Tensor::CopyFromCpu(const paddle::framework::STRINGS *data) {
+  EAGER_GET_TENSOR(paddle::framework::STRINGS);
   PADDLE_ENFORCE_GE(tensor->size(), 0,
                     paddle::platform::errors::PreconditionNotMet(
                         "You should call Tensor::Reshape(const "
@@ -334,8 +329,6 @@ template PD_INFER_DECL void Tensor::CopyFromCpu<int32_t>(const int32_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<uint8_t>(const uint8_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<int8_t>(const int8_t *data);
 template PD_INFER_DECL void Tensor::CopyFromCpu<float16>(const float16 *data);
-template PD_INFER_DECL void Tensor::CopyFromCpu<paddle::framework::STRINGS>(
-    const paddle::framework::STRINGS *data);
 
 template PD_INFER_DECL void Tensor::CopyToCpu<float>(float *data) const;
 template PD_INFER_DECL void Tensor::CopyToCpu<int64_t>(int64_t *data) const;

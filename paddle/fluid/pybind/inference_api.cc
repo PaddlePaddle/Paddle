@@ -176,9 +176,7 @@ py::array PaddleTensorGetData(PaddleTensor &tensor) {  // NOLINT
 }
 
 template <typename T>
-typename std::enable_if<
-    !std::is_same<T, paddle::framework::STRINGS>::value>::type
-ZeroCopyTensorCreate(
+void ZeroCopyTensorCreate(
     ZeroCopyTensor &tensor,  // NOLINT
     py::array_t<T, py::array::c_style | py::array::forcecast> data) {
   std::vector<int> shape;
@@ -187,20 +185,15 @@ ZeroCopyTensorCreate(
   tensor.copy_from_cpu(static_cast<const T *>(data.data()));
 }
 
-template <typename T>
-typename std::enable_if<
-    std::is_same<T, paddle::framework::STRINGS>::value>::type
-ZeroCopyTensorCreate(ZeroCopyTensor &tensor,  // NOLINT
-                     const T *data) {
+void ZeroCopyStringTensorCreate(ZeroCopyTensor &tensor,  // NOLINT
+                                const paddle::framework::STRINGS *data) {
   size_t shape = data->size();
   tensor.Reshape(shape);
   tensor.copy_from_cpu(data);
 }
 
 template <typename T>
-typename std::enable_if<
-    !std::is_same<T, paddle::framework::STRINGS>::value>::type
-PaddleInferTensorCreate(
+void PaddleInferTensorCreate(
     paddle_infer::Tensor &tensor,  // NOLINT
     py::array_t<T, py::array::c_style | py::array::forcecast> data) {
   std::vector<int> shape;
@@ -209,11 +202,8 @@ PaddleInferTensorCreate(
   tensor.CopyFromCpu(static_cast<const T *>(data.data()));
 }
 
-template <typename T>
-typename std::enable_if<
-    std::is_same<T, paddle::framework::STRINGS>::value>::type
-PaddleInferTensorCreate(paddle_infer::Tensor &tensor,  // NOLINT
-                        const T *data) {
+void PaddleInferStringTensorCreate(paddle_infer::Tensor &tensor,  // NOLINT
+                                   const paddle::framework::STRINGS *data) {
   VLOG(3) << "Create PaddleInferTensor, dtype = STRINGS ";
   size_t shape = data->size();
   tensor.Reshape(shape);
@@ -757,7 +747,7 @@ void BindZeroCopyTensor(py::module *m) {
       .def("copy_from_cpu", &ZeroCopyTensorCreate<int64_t>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<float>)
       .def("copy_from_cpu", &ZeroCopyTensorCreate<paddle_infer::float16>)
-      .def("copy_from_cpu", &ZeroCopyTensorCreate<paddle::framework::STRINGS>)
+      .def("copy_from_cpu", &ZeroCopyStringTensorCreate)
       .def("copy_to_cpu", &ZeroCopyTensorToNumpy)
       .def("shape", &ZeroCopyTensor::shape)
       .def("set_lod", &ZeroCopyTensor::SetLoD)
@@ -775,8 +765,7 @@ void BindPaddleInferTensor(py::module *m) {
       .def("copy_from_cpu", &PaddleInferTensorCreate<int64_t>)
       .def("copy_from_cpu", &PaddleInferTensorCreate<float>)
       .def("copy_from_cpu", &PaddleInferTensorCreate<paddle_infer::float16>)
-      .def("copy_from_cpu",
-           &PaddleInferTensorCreate<paddle::framework::STRINGS>)
+      .def("copy_from_cpu", &PaddleInferStringTensorCreate)
       .def("copy_to_cpu", &PaddleInferTensorToNumpy)
       .def("shape", &paddle_infer::Tensor::shape)
       .def("set_lod", &paddle_infer::Tensor::SetLoD)

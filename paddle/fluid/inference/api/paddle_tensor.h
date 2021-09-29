@@ -37,7 +37,6 @@ enum DataType {
   UINT8,
   INT8,
   FLOAT16,
-  STRINGS,
   // TODO(Superjomn) support more data types if needed.
 };
 
@@ -80,13 +79,8 @@ class PD_INFER_DECL Tensor {
   /// It's usually used to set the input tensor data.
   /// \param data The pointer of the data, from which the tensor will copy.
   template <typename T>
-  typename std::enable_if<
-      !std::is_same<T, paddle::framework::STRINGS>::value>::type
-  CopyFromCpu(const T* data);
-  template <typename T>
-  typename std::enable_if<
-      std::is_same<T, paddle::framework::STRINGS>::value>::type
-  CopyFromCpu(const T* data);
+  void CopyFromCpu(const T* data);
+  void CopyFromCpu(const paddle::framework::STRINGS* data);
 
   /// \brief Copy the tensor data to the host memory.
   /// It's usually used to get the output tensor data.

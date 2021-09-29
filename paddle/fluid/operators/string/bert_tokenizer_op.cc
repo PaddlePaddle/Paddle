@@ -26,9 +26,7 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/string_array.h"
 #include "paddle/fluid/operators/string/bert_tokenizer_op.h"
-#ifdef PADDLE_WITH_MKLML
-#include <omp.h>
-#endif
+
 namespace paddle {
 namespace operators {
 
@@ -495,8 +493,8 @@ void BertTokenizer::BatchEncode(
 
   size_t batch_size = batch_text.size();
 #ifdef PADDLE_WITH_MKLML
-#endif
 #pragma omp parallel for
+#endif
   for (size_t i = 0; i < batch_size; i++) {
     unordered_map<string, vector<int64_t>> res;
     if (has_text_pair) {
