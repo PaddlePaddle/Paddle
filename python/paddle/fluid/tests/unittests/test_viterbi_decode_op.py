@@ -12,6 +12,8 @@ import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
 import unittest
+import paddle
+paddle.enable_static()
 
 
 class Decoder(object):
