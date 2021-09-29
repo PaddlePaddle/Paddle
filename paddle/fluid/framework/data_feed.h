@@ -384,7 +384,7 @@ class CustomParser {
   CustomParser() {}
   virtual ~CustomParser() {}
   virtual void Init(const std::vector<SlotConf>& slots) = 0;
-  virtual bool Init(const std::vector<AllSlotInfo>& slots) = 0;
+  virtual bool Init(const std::vector<AllSlotInfo>& slots);
   virtual void ParseOneInstance(const char* str, Record* instance) = 0;
   virtual bool ParseOneInstance(
       const std::string& line,
