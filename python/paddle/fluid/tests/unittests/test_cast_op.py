@@ -74,8 +74,7 @@ class TestCastOp3(op_test.OpTest):
         self.check_output(atol=1e-3)
 
 
-# bf16->fp32
-class TestCastOp4(op_test.OpTest):
+class TestCastBf16ToFp32(op_test.OpTest):
     def setUp(self):
         ipt = np.array(np.random.randint(10, size=(1, 10))).astype('uint16')
         self.inputs = {'X': ipt}
@@ -87,15 +86,10 @@ class TestCastOp4(op_test.OpTest):
         self.op_type = 'cast'
 
     def test_check_output(self):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        for place in places:
-            self.check_output_with_place(place, atol=1e-2)
+        self.check_output(atol=1e-2)
 
 
-# fp32->bf16
-class TestCastOp5(op_test.OpTest):
+class TestCastFp32ToBf16(op_test.OpTest):
     def setUp(self):
         ipt = np.random.random(size=[2, 10]).astype('float32')
         self.inputs = {'X': ipt}
@@ -107,11 +101,7 @@ class TestCastOp5(op_test.OpTest):
         self.op_type = 'cast'
 
     def test_check_output(self):
-        places = [core.CPUPlace()]
-        if core.is_compiled_with_cuda():
-            places.append(core.CUDAPlace(0))
-        for place in places:
-            self.check_output_with_place(place, atol=1e-2)
+        self.check_output(atol=1e-2)
 
 
 class TestCastOpError(unittest.TestCase):
