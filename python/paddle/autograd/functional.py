@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from paddle.fluid import framework
-from .utils import _check_tensors, _stack_tensor_or_return_none, _replace_none_with_zero_tensor
+from .utils import _check_tensors, _stack_tensor_or_return_none, _replace_none_with_zero_tensor, _construct_one_tensor
 import paddle
 
 
@@ -307,8 +307,6 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             of the computing process. When it is True, higher order derivatives
             are supported to compute; when it is False, the gradient graphs of
             the computing process would be discarded. Defaults to ``False``.
-            ``create_graph`` only works on the ``vhp`` parameter in ``output``
-            and doesn't affect the ``func_output`` parameter.
         allow_unused (bool, optional): whether to raise error or return None if
             some Tensors of `inputs` are unreachable in the graph. Error would
             be raised if allow_unused=False, and None would be returned as
@@ -328,6 +326,11 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             x.stop_gradient = False
             vhp_rslt = paddle.autograd.vhp(func, x)
             print(vhp_rslt)
+            # (Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+            #        [8.]),
+            #  Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[4., 4.],
+            #         [4., 4.]]))
     '''
     inputs = _check_tensors(inputs, "inputs")
     outputs = func(*inputs)
@@ -355,4 +358,5 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
         create_graph=create_graph,
         retain_graph=create_graph,
         allow_unused=allow_unused)
-    return tuple(outputs, tuple(vhp))
+    vhp = vhp[0] if len(inputs) == 1 else tuple(vhp)
+    return outputs, vhp

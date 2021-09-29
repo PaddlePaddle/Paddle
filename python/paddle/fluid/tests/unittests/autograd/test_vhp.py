@@ -16,7 +16,7 @@ import unittest
 import numpy as np
 import paddle
 import paddle.compat as cpt
-from utils import _compute_numerical_hessian
+from utils import _compute_numerical_vhp
 
 
 class TestVHP(unittest.TestCase):
