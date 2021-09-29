@@ -111,6 +111,13 @@ def monkey_patch_math_varbase():
     def _neg_(var):
         return _scalar_elementwise_op_(var, -1.0, 0.0)
 
+    def _invert_(var):
+        var_dtype = var.dtype
+        if str(var_dtype) == "paddle.bool":
+            var_temp = core.ops.scale(var.astype("int"), 'scale', -1.0, 'bias', 1.0)
+            return var_temp.astype("bool")
+        return core.ops.scale(var, 'scale', -1.0, 'bias', -1.0)
+
     def _float_(var):
         numel = np.prod(var.shape)
         assert numel == 1, "only one element variable can be converted to float."
@@ -273,6 +280,7 @@ def monkey_patch_math_varbase():
 
     varbase_methods = [
         ('__neg__', _neg_),
+        ('__invert__', _invert_),
         ('__float__', _float_),
         ('__long__', _long_),
         ('__int__', _int_),

@@ -1,4 +1,4 @@
-# Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved
+# Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -49,6 +49,21 @@ class TestPythonOperatorOverride(unittest.TestCase):
                             fetch_list=[out])
 
         np.testing.assert_array_equal(python_out, fluid_out[0])
+    
+    def check_result_unary(self, fn, place, dtype):
+        shape = [9, 10]
+
+        if dtype == 'int32':
+            x_data = np.random.randint(1, 100, size=shape).astype(dtype)
+        else:
+            x_data = np.random.random(size=shape).astype(dtype)
+
+        python_out = fn(x_data)
+        paddle.disable_static()
+        x_var = paddle.to_tensor(x_data)
+        out = fn(x_var)
+
+        np.testing.assert_array_equal(python_out, out)
 
     def test_override(self):
         # compare func to check
@@ -61,6 +76,10 @@ class TestPythonOperatorOverride(unittest.TestCase):
             lambda _a, _b: _a >= _b,
         ]
 
+        unary_fns = [
+            lambda _a: ~_a,
+        ]
+
         # places to check
         places = [fluid.CPUPlace()]
         if fluid.core.is_compiled_with_cuda():
@@ -68,6 +87,7 @@ class TestPythonOperatorOverride(unittest.TestCase):
 
         # dtypes to check
         dtypes = ['int32', 'float32']
+        dtypes_unary = ['int32', 'bool']
 
         for place in places:
             for dtype in dtypes:
@@ -75,6 +95,13 @@ class TestPythonOperatorOverride(unittest.TestCase):
                     with framework.program_guard(framework.Program(),
                                                  framework.Program()):
                         self.check_result(compare_fn, place, dtype)
+
+        for place in places:
+            for dtype in dtypes_unary:
+                for unary_fn in unary_fns:
+                    with framework.program_guard(framework.Program(),
+                                                 framework.Program()):
+                        self.check_result_unary(unary_fn, place, dtype)
 
 
 if __name__ == '__main__':
