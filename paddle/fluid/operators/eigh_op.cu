@@ -16,18 +16,17 @@ limitations under the License. */
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    eigh, ops::EighKernel<paddle::platform::CUDADeviceContext, float, float>,
-    ops::EighKernel<paddle::platform::CUDADeviceContext, double, double>,
-    ops::EighKernel<paddle::platform::CUDADeviceContext, float,
+    eigh, ops::EighKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::EighKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::EighKernel<paddle::platform::CUDADeviceContext,
                     paddle::platform::complex<float>>,
-    ops::EighKernel<paddle::platform::CUDADeviceContext, double,
+    ops::EighKernel<paddle::platform::CUDADeviceContext,
                     paddle::platform::complex<double>>);
 
 REGISTER_OP_CUDA_KERNEL(
-    eigh_grad,
-    ops::EighGradKernel<paddle::platform::CUDADeviceContext, float, float>,
-    ops::EighGradKernel<paddle::platform::CUDADeviceContext, double, double>,
-    ops::EighGradKernel<paddle::platform::CUDADeviceContext, float,
+    eigh_grad, ops::EighGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::EighGradKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::EighGradKernel<paddle::platform::CUDADeviceContext,
                         paddle::platform::complex<float>>,
-    ops::EighGradKernel<paddle::platform::CUDADeviceContext, double,
+    ops::EighGradKernel<paddle::platform::CUDADeviceContext,
                         paddle::platform::complex<double>>);
