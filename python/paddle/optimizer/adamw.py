@@ -171,9 +171,9 @@ class AdamW(Adam):
         self._lr_to_coeff = dict()
         if lr_ratio is not None:
             assert isinstance(lr_ratio, Callable)
-            if core.is_compiled_with_xpu() or core.is_compiled_with_npu():
+            if not core.is_compiled_with_cuda():
                 raise NotImplementedError(
-                    "'lr_ratio' is unimplemented in XPU and NPU")
+                    "'lr_ratio' is unimplemented in CPU, XPU and NPU")
         self._lr_ratio = lr_ratio
 
         super(AdamW, self).__init__(
@@ -305,7 +305,7 @@ class AdamW(Adam):
                 'epsilon', self._epsilon, 'lazy_mode', self._lazy_mode,
                 'min_row_size_to_use_multithread', 1000, 'beta1', _beta1,
                 'beta2', _beta2, 'coeff', self._coeff, 'multi_precision',
-                find_master, "lr_ratio", lr_ratio_)
+                find_master, 'lr_ratio', lr_ratio_)
 
             return None
 
