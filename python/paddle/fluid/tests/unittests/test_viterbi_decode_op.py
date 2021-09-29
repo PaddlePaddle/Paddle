@@ -11,10 +11,7 @@
 import numpy as np
 from op_test import OpTest
 import paddle.fluid as fluid
-import paddle
-from paddle.text import crf_decode
 import unittest
-paddle.enable_static()
 
 
 class Decoder(object):
@@ -77,18 +74,15 @@ class TestViterbiOp(OpTest):
         self.dtype = np.float32 if fluid.core.is_compiled_with_rocm(
         ) else np.float64
         self.with_start_stop_tag = True
-        self.bz = 4
-        self.len = 8
-        self.ntags = 10
+        self.bz, self.len, self.ntags = 4, 8, 10
 
     def setUp(self):
         self.op_type = "viterbi_decode"
         self.set_attr()
-        bz, ntags = self.bz, self.ntags
-        self.input = np.random.randn(bz, self.len, ntags).astype(self.dtype)
+        bz, length, ntags = self.bz, self.len, self.ntags
+        self.input = np.random.randn(bz, length, ntags).astype(self.dtype)
         self.transitions = np.random.randn(ntags, ntags).astype(self.dtype)
-        self.length = np.random.randint(1, self.len + 1,
-                                        [self.bz]).astype('int64')
+        self.length = np.random.randint(1, length + 1, [bz]).astype('int64')
         decoder = Decoder(self.transitions, self.with_start_stop_tag)
         scores, path = decoder(self.input, self.length)
         self.inputs = {
@@ -128,8 +122,8 @@ class TestViterbiAPI(unittest.TestCase):
             Transition = fluid.data(
                 name="Transition", shape=[ntags, ntags], dtype="float32")
             Length = fluid.data(name="Length", shape=[bz], dtype="int64")
-            score, path = crf_decode(Input, Transition, Length,
-                                     self.with_start_stop_tag)
+            score, path = paddle.text.crf_decode(Input, Transition, Length,
+                                                 self.with_start_stop_tag)
             exe = fluid.Executor(place)
             feed_list = {
                 "Input": self.input,
