@@ -97,13 +97,9 @@ namespace ops = paddle::operators;
                         paddle::platform::complex<double>>,                   \
       ##__VA_ARGS__);
 
-#define REGISTER_CAST_EX(op_name)                                           \
-  REGISTER_CAST_BASE(op_name,                                               \
-                     ops::CastOpKernel<paddle::platform::CUDADeviceContext, \
-                                       paddle::platform::bfloat16>)
-
 #if !defined(PADDLE_WITH_HIP)
-REGISTER_CAST_EX(cast)
+REGISTER_CAST_BASE(cast, ops::CastOpKernel<paddle::platform::CUDADeviceContext,
+                                           paddle::platform::bfloat16>)
 #else
 REGISTER_CAST_BASE(cast)
 #endif
