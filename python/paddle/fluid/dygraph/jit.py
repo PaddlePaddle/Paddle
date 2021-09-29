@@ -799,7 +799,7 @@ def save(layer, path, input_spec=None, **configs):
             # 3. share parameters from Layer to scope & record var info
             for param_or_buffer in concrete_program.parameters:
                 # share to scope
-                if param_or_buffer.type == core.VarDesc.VarType.WSTRING_MAP:
+                if param_or_buffer.type == core.VarDesc.VarType.VOCAB:
                     scr_tensor = param_or_buffer.value().get_map_tensor()
                     tgt_var = scope.var(param_or_buffer.name)
                     tgt_var.set_string_map(scr_tensor)

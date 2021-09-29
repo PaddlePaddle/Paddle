@@ -154,15 +154,15 @@ class VariableWrapper {
         tensor = &(var_.Get<framework::LoDTensor>());
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
         tensor = &(var_.Get<framework::SelectedRows>().value());
-      } else if (type_ == framework::proto::VarType::WSTRING_MAP) {
-        const framework::WSTRING_MAP* data = nullptr;
-        data = &(var_.Get<framework::WSTRING_MAP>());
+      } else if (type_ == framework::proto::VarType::VOCAB) {
+        const framework::VOCAB* data = nullptr;
+        data = &(var_.Get<framework::VOCAB>());
         if (data && data->size() != 0) {
           VLOG(6) << "The tensor of variable " << name_
                   << " is not initialized";
           return data_type_;
         }
-        return framework::proto::VarType::WSTRING_MAP;
+        return framework::proto::VarType::VOCAB;
       } else {
         VLOG(6) << "Variable " << name_ << " is not initialized";
         return data_type_;

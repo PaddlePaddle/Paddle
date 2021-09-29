@@ -58,13 +58,13 @@ class BasicTokenizer {
 
 class WordPieceTokenizer {
  public:
-  explicit WordPieceTokenizer(framework::WSTRING_MAP* vocab,
+  explicit WordPieceTokenizer(framework::VOCAB* vocab,
                               const wstring& unk_token = L"[UNK]",
                               const size_t max_input_chars_per_word = 100);
   void Tokenize(const wstring& text, vector<int64_t>* output) const;
 
  private:
-  framework::WSTRING_MAP* vocab_;
+  framework::VOCAB* vocab_;
   wstring unk_token_{L"[UNK]"};
   int64_t unk_token_id_;
   size_t max_input_chars_per_word_;
@@ -72,8 +72,7 @@ class WordPieceTokenizer {
 
 class BertTokenizer {
  public:
-  explicit BertTokenizer(framework::WSTRING_MAP* vocab,
-                         bool do_lower_case = false,
+  explicit BertTokenizer(framework::VOCAB* vocab, bool do_lower_case = false,
                          const wstring& unk_token = L"[UNK]",
                          const wstring& pad_token = L"[PAD]",
                          const wstring& cls_token = L"[CLS]",
@@ -118,7 +117,7 @@ class BertTokenizer {
   bool do_lower_case_;
   wstring unk_token_, pad_token_, cls_token_, mask_token_, sep_token_;
   string padding_site_;
-  framework::WSTRING_MAP* vocab_;
+  framework::VOCAB* vocab_;
   BasicTokenizer basic_tokenizer_;
   WordPieceTokenizer word_piece_tokenizer_;
   int64_t unk_token_id_, cls_token_id_, mask_token_id_, pad_token_id_,
@@ -133,7 +132,7 @@ class BertTokenizerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
     auto* text = ctx.Input<framework::STRINGS>("Text");
-    auto* vocab = ctx.Input<framework::WSTRING_MAP>("Vocab");
+    auto* vocab = ctx.Input<framework::VOCAB>("Vocab");
 
     auto* input_ids = ctx.Output<framework::Tensor>("InputIds");
     auto* seg_ids = ctx.Output<framework::Tensor>("SegmentIds");
@@ -152,7 +151,7 @@ class BertTokenizerKernel : public framework::OpKernel<T> {
     }
 
     BertTokenizer* tokenizer_ptr =
-        new BertTokenizer(const_cast<framework::WSTRING_MAP*>(vocab));
+        new BertTokenizer(const_cast<framework::VOCAB*>(vocab));
     size_t batch_max_seq_len = 0;
     size_t batch_size = text->size();
 

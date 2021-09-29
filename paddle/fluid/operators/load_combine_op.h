@@ -83,8 +83,8 @@ class LoadCombineOpKernel : public framework::OpKernel<T> {
           platform::errors::Unavailable(
               "An error occurred while loading model parameters. "
               "Please check whether the model file is complete or damaged."));
-      if (out_vars[i]->IsType<framework::WSTRING_MAP>()) {
-        auto *tensor = out_vars[i]->GetMutable<framework::WSTRING_MAP>();
+      if (out_vars[i]->IsType<framework::VOCAB>()) {
+        auto *tensor = out_vars[i]->GetMutable<framework::VOCAB>();
         tensor->clear();
         std::unordered_map<std::string, std::int32_t> data;
         framework::StringMapFromStream(*buffer, &data);

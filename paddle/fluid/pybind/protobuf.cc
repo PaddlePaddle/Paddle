@@ -229,7 +229,7 @@ void BindVarDsec(pybind11::module *m) {
       .value("READER", pd::proto::VarType::READER)
       .value("RAW", pd::proto::VarType::RAW)
       .value("STRINGS", pd::proto::VarType::STRINGS)
-      .value("WSTRING_MAP", pd::proto::VarType::WSTRING_MAP);
+      .value("VOCAB", pd::proto::VarType::VOCAB);
 }
 
 void BindOpDesc(pybind11::module *m) {

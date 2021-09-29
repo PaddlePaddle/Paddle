@@ -32,41 +32,22 @@ cache_third_party(extern_utf8proc
     TAG           ${UTF8PROC_TAG}
     DIR           ${UTF8PROC_SOURCE_DIR})
 
-if(WITH_ASCEND OR WITH_ASCEND_CL)
-  ExternalProject_Add(
-      extern_utf8proc
-      ${EXTERNAL_PROJECT_LOG_ARGS}
-      ${SHALLOW_CLONE}
-      "${UTFPROC_DOWNLOAD_CMD}"
-      PREFIX                "${UTF8PROC_PREFIX_DIR}"
-      SOURCE_DIR            "${UTF8PROC_SOURCE_DIR}"
-      UPDATE_COMMAND        ""
-      CONFIGURE_COMMAND     ""
-      BUILD_COMMAND         mkdir -p ${UTF8PROC_SOURCE_DIR}/build
-          && cd ${UTF8PROC_SOURCE_DIR}/build && cmake .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && make
-          && mkdir -p ${UTF8PROC_LIBRARY_DIR} ${UTF8PROC_INCLUDE_DIR}
-      INSTALL_COMMAND      ${CMAKE_COMMAND} -E copy ${UTF8PROC_SOURCE_DIR}/build/libutf8proc.a ${UTF8PROC_LIBRARY_DIR}
-      COMMAND              ${CMAKE_COMMAND} -E copy ${UTF8PROC_SOURCE_DIR}/utf8proc.h ${UTF8PROC_INCLUDE_DIR}
-      BUILD_BYPRODUCTS     ${UTF8PROC_LIBRARIES}
-  )
-else()
-  ExternalProject_Add(
-      extern_utf8proc
-      ${EXTERNAL_PROJECT_LOG_ARGS}
-      ${SHALLOW_CLONE}
-      "${UTFPROC_DOWNLOAD_CMD}"
-      PREFIX                "${UTF8PROC_PREFIX_DIR}"
-      SOURCE_DIR            "${UTF8PROC_SOURCE_DIR}"
-      UPDATE_COMMAND        ""
-      CONFIGURE_COMMAND     ""
-      BUILD_COMMAND         mkdir -p ${UTF8PROC_SOURCE_DIR}/build
-          && cd ${UTF8PROC_SOURCE_DIR}/build && cmake .. && make
-          && mkdir -p ${UTF8PROC_LIBRARY_DIR} ${UTF8PROC_INCLUDE_DIR}
-      INSTALL_COMMAND      ${CMAKE_COMMAND} -E copy ${UTF8PROC_SOURCE_DIR}/build/libutf8proc.a ${UTF8PROC_LIBRARY_DIR}
-      COMMAND              ${CMAKE_COMMAND} -E copy ${UTF8PROC_SOURCE_DIR}/utf8proc.h ${UTF8PROC_INCLUDE_DIR}
-      BUILD_BYPRODUCTS     ${UTF8PROC_LIBRARIES}
-  )
-endif()
+ExternalProject_Add(
+    extern_utf8proc
+    ${EXTERNAL_PROJECT_LOG_ARGS}
+    ${SHALLOW_CLONE}
+    "${UTFPROC_DOWNLOAD_CMD}"
+    PREFIX                "${UTF8PROC_PREFIX_DIR}"
+    SOURCE_DIR            "${UTF8PROC_SOURCE_DIR}"
+    UPDATE_COMMAND        ""
+    CONFIGURE_COMMAND     ""
+    BUILD_COMMAND         cmake -E make_directory ${UTF8PROC_SOURCE_DIR}/build
+        && cd ${UTF8PROC_SOURCE_DIR}/build && cmake .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && make
+        && cmake -E make_directory ${UTF8PROC_LIBRARY_DIR} ${UTF8PROC_INCLUDE_DIR}
+    INSTALL_COMMAND      ${CMAKE_COMMAND} -E copy ${UTF8PROC_SOURCE_DIR}/build/libutf8proc.a ${UTF8PROC_LIBRARY_DIR}
+    COMMAND              ${CMAKE_COMMAND} -E copy ${UTF8PROC_SOURCE_DIR}/utf8proc.h ${UTF8PROC_INCLUDE_DIR}
+    BUILD_BYPRODUCTS     ${UTF8PROC_LIBRARIES}
+)
 
 
 ADD_LIBRARY(utf8proc STATIC IMPORTED GLOBAL)

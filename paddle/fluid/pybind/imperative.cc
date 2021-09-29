@@ -1878,9 +1878,9 @@ void BindImperative(py::module *m_ptr) {
             } else if (self.Var().IsType<framework::STRINGS>()) {
               return std::vector<int>{static_cast<int>(
                   self.Var().Get<framework::STRINGS>().size())};
-            } else if (self.Var().IsType<framework::WSTRING_MAP>()) {
-              return std::vector<int>{static_cast<int>(
-                  self.Var().Get<framework::WSTRING_MAP>().size())};
+            } else if (self.Var().IsType<framework::VOCAB>()) {
+              return std::vector<int>{
+                  static_cast<int>(self.Var().Get<framework::VOCAB>().size())};
             } else {
               VLOG(2) << "It is meaningless to get shape of "
                          "variable type "

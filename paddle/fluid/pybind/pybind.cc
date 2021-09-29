@@ -1218,14 +1218,12 @@ All parameter, weight, gradient are variables in Paddle.
              *self.GetMutable<STRINGS>() = str_list;
            })
       .def("set_string_map",
-           [](Variable &self, WSTRING_MAP map) {
-             *self.GetMutable<WSTRING_MAP>() = map;
-           })
+           [](Variable &self, VOCAB map) { *self.GetMutable<VOCAB>() = map; })
       .def("get_string_tensor",
            [](Variable &self) { return self.GetMutable<STRINGS>(); },
            py::return_value_policy::reference)
       .def("get_map_tensor",
-           [](Variable &self) { return self.GetMutable<WSTRING_MAP>(); },
+           [](Variable &self) { return self.GetMutable<VOCAB>(); },
            py::return_value_policy::reference)
       .def("get_lod_rank_table",
            [](Variable &self) { return self.GetMutable<LoDRankTable>(); },

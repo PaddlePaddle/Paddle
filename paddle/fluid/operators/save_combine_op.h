@@ -68,13 +68,13 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
           inp_vars[i],
           platform::errors::InvalidArgument("Cannot find variable %s to save.",
                                             inp_var_names[i]));
-      PADDLE_ENFORCE_EQ(
-          inp_vars[i]->IsType<framework::LoDTensor>() ||
-              inp_vars[i]->IsType<framework::WSTRING_MAP>(),
-          true, platform::errors::InvalidArgument(
-                    "SaveCombine operator only supports saving "
-                    "LoDTensor or WSTRING_MAP variable, %s has wrong type.",
-                    inp_var_names[i]));
+      PADDLE_ENFORCE_EQ(inp_vars[i]->IsType<framework::LoDTensor>() ||
+                            inp_vars[i]->IsType<framework::VOCAB>(),
+                        true,
+                        platform::errors::InvalidArgument(
+                            "SaveCombine operator only supports saving "
+                            "LoDTensor or VOCAB variable, %s has wrong type.",
+                            inp_var_names[i]));
 
       if (inp_vars[i]->IsType<framework::LoDTensor>()) {
         auto &tensor = inp_vars[i]->Get<framework::LoDTensor>();
@@ -102,7 +102,7 @@ class SaveCombineOpKernel : public framework::OpKernel<T> {
           framework::SerializeToStream(ss, tensor, dev_ctx);
         }
       } else {
-        auto &tensor = inp_vars[i]->Get<framework::WSTRING_MAP>();
+        auto &tensor = inp_vars[i]->Get<framework::VOCAB>();
         std::unordered_map<std::string, std::int32_t> data;
         for (auto it = tensor.begin(); it != tensor.end(); ++it) {
           std::string t;
