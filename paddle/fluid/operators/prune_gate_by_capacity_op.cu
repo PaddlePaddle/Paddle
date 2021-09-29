@@ -72,12 +72,6 @@ class PruneGateByCapacityFunctor {
 
     PruneGateByCapacity<T1, T2><<<blocks, threads, 0, dev_ctx.stream()>>>(
         gate_idx_data, new_gate_idx_data_, expert_count_out_data, batch_size);
-
-#ifdef PADDLE_WITH_HIP
-    PADDLE_ENFORCE_CUDA_SUCCESS(hipStreamSynchronize(dev_ctx.stream()));
-#else
-    PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamSynchronize(dev_ctx.stream()));
-#endif
   }
 
  private:
@@ -107,10 +101,10 @@ template <typename DeviceContext, typename T>
 class PruneGateByCapacityCUDAKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
-    auto* gate_idx = context.Input<Tensor>("GateIdx");
-    auto* expert_count = context.Input<Tensor>("ExpertCount");
-    auto* expert_count_out = context.Output<Tensor>("ExpertCountOut");
-    auto* new_gate_idx = context.Output<Tensor>("NewGateIdx");
+    auto* gate_idx = context.Input<LoDTensor>("GateIdx");
+    auto* expert_count = context.Input<LoDTensor>("ExpertCount");
+    auto* expert_count_out = context.Output<LoDTensor>("ExpertCountOut");
+    auto* new_gate_idx = context.Output<LoDTensor>("NewGateIdx");
     auto* new_gate_idx_data = new_gate_idx->mutable_data<T>(context.GetPlace());
 
     framework::TensorCopy(*expert_count, context.GetPlace(), expert_count_out);
