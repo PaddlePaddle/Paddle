@@ -57,8 +57,7 @@ void Tensor::Reshape(const size_t shape) {
   PADDLE_ENFORCE_NOT_NULL(
       var, paddle::platform::errors::PreconditionNotMet(
                "No tensor called [%s] in the runtime scope", name_));
-  paddle::framework::STRINGS *tensor =
-      var->GetMutable<paddle::framework::STRINGS>();
+  paddle_infer::STRINGS *tensor = var->GetMutable<paddle_infer::STRINGS>();
   tensor->resize(shape);
 }
 
@@ -100,8 +99,8 @@ T *Tensor::mutable_data(PlaceType place) {
   return nullptr;
 }
 
-paddle::framework::STRINGS *Tensor::mutable_data() {
-  EAGER_GET_TENSOR(paddle::framework::STRINGS);
+paddle_infer::STRINGS *Tensor::mutable_data() {
+  EAGER_GET_TENSOR(paddle_infer::STRINGS);
   return tensor;
 }
 
@@ -210,8 +209,8 @@ void Tensor::CopyFromCpu(const T *data) {
   }
 }
 
-void Tensor::CopyFromCpu(const paddle::framework::STRINGS *data) {
-  EAGER_GET_TENSOR(paddle::framework::STRINGS);
+void Tensor::CopyFromCpu(const paddle_infer::STRINGS *data) {
+  EAGER_GET_TENSOR(paddle_infer::STRINGS);
   PADDLE_ENFORCE_GE(tensor->size(), 0,
                     paddle::platform::errors::PreconditionNotMet(
                         "You should call Tensor::Reshape(const "

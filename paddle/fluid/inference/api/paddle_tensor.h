@@ -14,10 +14,16 @@
 
 #pragma once
 
-#include "paddle/fluid/framework/string_array.h"
+#include <string>
+#include <unordered_map>
+
 #include "paddle_infer_declare.h"  // NOLINT
 
 namespace paddle_infer {
+
+/// \brief  Experimental.
+/// STRINGS for text data.
+using STRINGS = std::vector<std::string>;
 
 typedef void (*CallbackFunc)(void*);
 
@@ -65,7 +71,11 @@ class PD_INFER_DECL Tensor {
   /// \param place The place of the tensor.
   template <typename T>
   T* mutable_data(PlaceType place);
-  paddle::framework::STRINGS* mutable_data();
+
+  /// \brief Experimental interface.
+  /// Get the memory pointer in CPU or GPU with STRINGS data type.
+  /// \return The tensor data buffer pointer.
+  paddle_infer::STRINGS* mutable_data();
 
   /// \brief Get the memory pointer directly.
   /// It's usually used to get the output data pointer.
@@ -80,7 +90,11 @@ class PD_INFER_DECL Tensor {
   /// \param data The pointer of the data, from which the tensor will copy.
   template <typename T>
   void CopyFromCpu(const T* data);
-  void CopyFromCpu(const paddle::framework::STRINGS* data);
+
+  /// \brief Experimental interface.
+  /// It's usually used to set the input tensor data with STRINGS data type.
+  /// \param data The pointer of the data, from which the tensor will copy.
+  void CopyFromCpu(const paddle_infer::STRINGS* data);
 
   /// \brief Copy the tensor data to the host memory.
   /// It's usually used to get the output tensor data.
