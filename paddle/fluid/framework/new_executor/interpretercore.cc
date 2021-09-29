@@ -189,8 +189,6 @@ void InterpreterCore::Convert() {
     for (auto inst_id : filter_next) {
       dependecy_count_[inst_id]++;
     }
-    vec_instruction_[i].next_instruction_.all_next_ops_ =
-        std::move(filter_next);
   }
 
   for (size_t i = 0; i < vec_instruction_.size(); ++i) {
@@ -356,31 +354,81 @@ void InterpreterCore::RunInstruction(const Instruction& instr_node) {
 
 void InterpreterCore::ExecuteInstructionList(
     const std::vector<Instruction>& vec_instr) {
-  auto atomic_deps = async_work_queue_.PrepareAtomicDeps(dependecy_count_);
-  auto atomic_var_ref = async_work_queue_.PrepareAtomicVarRef(vec_meta_info_);
-  std::atomic<size_t> op_run_number{0};
+  async_work_queue_.PrepareAtomicDeps(dependecy_count_);
+  async_work_queue_.PrepareAtomicVarRef(vec_meta_info_);
+  op_run_number_ = 0;
 
   for (size_t i = 0; i < dependecy_count_.size(); ++i) {
     if (dependecy_count_[i] == 0) {
-      async_work_queue_.AddTask(vec_instr[i].type_, [&, i]() {
-        RunInstructionAsync(i, &atomic_deps, &atomic_var_ref, &op_run_number);
-      });
+      async_work_queue_.AddTask(vec_instr[i].type_,
+                                [&, i] { RunInstructionAsync(i); });
     }
   }
 
   async_work_queue_.WaitEmpty();
 
   PADDLE_ENFORCE_EQ(
-      op_run_number.load(), vec_instr.size(),
+      op_run_number_.load(), vec_instr.size(),
       platform::errors::Fatal(
           "Required op_run_number == %d, but received op_run_number = %d.",
-          vec_instr.size(), op_run_number.load()));
+          vec_instr.size(), op_run_number_.load()));
 }
 
-void InterpreterCore::RunInstructionAsync(size_t instr_id,
-                                          AtomicVectorSizeT* atomic_deps,
-                                          AtomicVectorSizeT* atomic_var_ref,
-                                          std::atomic<size_t>* op_run_number) {
+void InterpreterCore::RunNextInstruction(const Instruction& instr) {
+  auto& next_instr = instr.next_instruction_;
+  auto& atomic_deps = async_work_queue_.AtomicDeps();
+  auto IsReady = [&](size_t next_id) {
+    return atomic_deps[next_id]->fetch_sub(1, std::memory_order_relaxed) == 1;
+  };
+
+  if (instr.type_ == OpFuncType::kQueueAsync) {
+    // move all sync_ops into other threads
+    for (auto next_id : next_instr.synchronize_run_) {
+      if (IsReady(next_id)) {
+        async_work_queue_.AddTask(
+            vec_instruction_[next_id].type_,
+            [&, next_id] { RunInstructionAsync(next_id); });
+      }
+    }
+    // keep all async_ops running in current thread
+    for (auto next_id : next_instr.direct_run_) {
+      if (IsReady(next_id)) {
+        RunInstructionAsync(next_id);
+      }
+    }
+    for (auto next_id : next_instr.event_wait_run_) {
+      if (IsReady(next_id)) {
+        RunInstructionAsync(next_id);
+      }
+    }
+  } else {
+    // move async_ops into async_thread
+    for (auto next_id : next_instr.event_wait_run_) {
+      if (IsReady(next_id)) {
+        async_work_queue_.AddTask(
+            vec_instruction_[next_id].type_,
+            [&, next_id] { RunInstructionAsync(next_id); });
+      }
+    }
+
+    for (size_t i = 0; i < next_instr.direct_run_.size(); ++i) {
+      auto next_id = next_instr.direct_run_[i];
+      if (IsReady(next_id)) {
+        // only keep one op running in current thread
+        if (i == 0) {
+          RunInstructionAsync(next_id);
+          continue;
+        }
+        // move rest ops into other threads
+        async_work_queue_.AddTask(
+            vec_instruction_[next_id].type_,
+            [&, next_id] { RunInstructionAsync(next_id); });
+      }
+    }
+  }
+}
+
+void InterpreterCore::RunInstructionAsync(size_t instr_id) {
   auto& instr_node = vec_instruction_[instr_id];
   platform::RecordEvent instruction_event(
       instr_node.kernel_func_.operator_base_->Type());
@@ -389,32 +437,22 @@ void InterpreterCore::RunInstructionAsync(size_t instr_id,
   RunInstruction(instr_node);
 
   event_manager_.RecordEvent(instr_node, place_);
-  op_run_number->fetch_add(1, std::memory_order_relaxed);
+  op_run_number_.fetch_add(1, std::memory_order_relaxed);
 
-  auto& next_instr = instr_node.next_instruction_.all_next_ops_;
-
-  for (auto next_i : next_instr) {
-    // fetch_sub return value before applying sub
-    bool is_ready =
-        atomic_deps->at(next_i)->fetch_sub(1, std::memory_order_relaxed) == 1;
-    if (is_ready) {
-      async_work_queue_.AddTask(vec_instruction_[next_i].type_, [=]() {
-        RunInstructionAsync(next_i, atomic_deps, atomic_var_ref, op_run_number);
-      });
-    }
-  }
   // GC infomation
-  CheckGC(instr_id, instr_node.gc_check_var_list, atomic_var_ref);
+  CheckGC(instr_id, instr_node.gc_check_var_list);
+
+  RunNextInstruction(instr_node);
 }
 
 void InterpreterCore::CheckGC(size_t instr_id,
-                              const std::vector<size_t>& gc_check_list,
-                              AtomicVectorSizeT* atomic_var_ref) {
+                              const std::vector<size_t>& gc_check_list) {
   auto& var_scope = *global_scope_;
+  auto& atomic_var_ref = async_work_queue_.AtomicVarRef();
 
   for (auto var_id : gc_check_list) {
-    bool is_ready = atomic_var_ref->at(var_id)->fetch_sub(
-                        1, std::memory_order_relaxed) == 1;
+    bool is_ready =
+        atomic_var_ref[var_id]->fetch_sub(1, std::memory_order_relaxed) == 1;
     if (is_ready && var_scope.vec_meta_info_[var_id].vardesc_ &&
         !var_scope.vec_meta_info_[var_id].vardesc_->Persistable()) {
       gc_.Add(var_scope.var_list[var_id], gc_event_[instr_id],

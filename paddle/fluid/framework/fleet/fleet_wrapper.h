@@ -266,6 +266,7 @@ class FleetWrapper {
                            bool load_combine);
 
   void PrintTableStat(const uint64_t table_id);
+  void SetFileNumOneShard(const uint64_t table_id, int file_num);
   // mode = 0, load all feature
   // mode = 1, load delta feature, which means load diff
   void LoadModel(const std::string& path, const int mode);
