@@ -90,6 +90,11 @@ class TestElementwiseSubOp(OpTest):
     #         max_relative_error=0.006,)
 
 
+class TestElementwiseSubOpInt32(TestElementwiseSubOp):
+    def init_dtype(self):
+        self.dtype = np.int32
+
+
 class TestSubtractAPI(unittest.TestCase):
     def test_name(self):
         with paddle.static.program_guard(paddle.static.Program()):
