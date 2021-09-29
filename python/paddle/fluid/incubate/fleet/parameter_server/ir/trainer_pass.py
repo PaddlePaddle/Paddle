@@ -476,6 +476,58 @@ def find_heter_ops(program, default_device="cpu"):
     origin_porgram = program.clone()
     block = program.global_block()
 
+    '''
+       re-place sum op to fix bug for union forward backward op
+    '''
+    var2idx = {}
+    op_list = list(block.ops)
+    op_size = len(op_list)
+
+    for i in range(op_size - 1, -1, -1):
+        op_list = list(block.ops)
+        op = op_list[i]
+        if "_grad" in op.type:
+            forward_op_type = op.type.split("_grad")[0]
+            if forward_op_type in SPARSE_OP_TYPE_DICT.keys() \
+                and op.attr('remote_prefetch') is True:
+                param_name = op.input(SPARSE_OP_TYPE_DICT[forward_op_type])[0]
+                if param_name in var2idx:
+                   ## insert sum op & remove sum op from var2idx and origin place
+                   op_list = list(block.ops)
+                   sum_op = op_list[var2idx[param_name]]
+                   sum_op_inputs = {sum_op.input_names[0]: [block.vars[input] for input in sum_op.input_arg_names]}
+                   sum_op_outputs = {sum_op.output_names[0]: [block.vars[output] for output in sum_op.output_arg_names]}
+                   block._insert_op(
+                       index= i + 1,
+                       type=sum_op.type,
+                       inputs=sum_op_inputs,
+                       outputs=sum_op_outputs,
+                       attrs=sum_op.all_attrs())
+                   block._remove_op(var2idx[param_name] + 1)
+                   var2idx.pop(param_name)
+                   for var_ in var2idx:
+                       var2idx[var_] += 1
+        else:
+            if op.type == "sum":
+              var = op.output("Out")[0]
+              if "@GRAD" in var:
+                origin_var = var.split("@GRAD")[0]
+                pre_op = op_list[i - 1]
+                if "_grad" in pre_op.type:
+                   forward_op_type = pre_op.type.split("_grad")[0]
+                   if forward_op_type in SPARSE_OP_TYPE_DICT.keys() \
+                       and pre_op.attr('remote_prefetch') is True:
+                       param_name = pre_op.input(SPARSE_OP_TYPE_DICT[forward_op_type])[0]
+                       if param_name == origin_var and op.attr("op_device") == pre_op.attr("op_device"):
+                           continue
+                       else:
+                           var2idx[origin_var] = i
+                else:
+                   var2idx[origin_var] = i
+
+    origin_porgram = program.clone()
+    block = program.global_block()
+    
     program_block_ops = []
     default_ops = {default_device: {}}
     heter_ops = {}
@@ -484,6 +536,7 @@ def find_heter_ops(program, default_device="cpu"):
     current_heter_block_ops = []
     current_default_block_ops = []
     current_heter_device = default_device
+
     is_heter = False
     for op in block.ops:
         if _is_heter_op(op, current_heter_device, default_device):
@@ -550,6 +603,11 @@ def find_heter_ops(program, default_device="cpu"):
     print(
         "There are {} OPs in your main_program, and contains {} heter-OPs which is made up of {} heter-blocks.".
         format(len(block.ops), total_heter_ops, heter_blocks))
+
+
+
+
+
     return origin_porgram, heter_ops, default_ops, program_block_ops
 
 
@@ -910,13 +968,13 @@ def replace_ops_by_communicate_op(program, config, heter_block_index, ops_list,
 
 
 def remove_trainer_send_op(program, config, heter_block_index,
-                           block_var_detaile):
+                           block_var_detail):
 
     # if trainer do FF->BP->SEND, it has follow vars: var, var@GRAD
     # if trainer only do SEND, it has one var: var@GRAD
     # Delete Send op ,if trainer doesn't has pair var (var<->var@GRAD)
-    persistables = block_var_detaile[heter_block_index]["forward"]["persistables"] + \
-                   block_var_detaile[heter_block_index]["backward"]["persistables"]
+    persistables = block_var_detail[heter_block_index]["forward"]["persistables"] + \
+                   block_var_detail[heter_block_index]["backward"]["persistables"]
     need_remove_send_op = []
     need_remove_grad_var = []
     for op in find_send_op(program):
@@ -1061,7 +1119,47 @@ def union_forward_gradient_op(program_block_ops_list):
     union the forward op and corresponding gradient op to elimincate the uneccessary variable
     transmit
     """
+    """
+    fix for 2emb model, re-place sum op
+
+    """
     block_length = len(program_block_ops_list)
+
+    '''
+    ## get the final part
+    final_part_idx = -1 
+    for i in range(block_length):
+        op_list = program_block_ops_list[i]
+        for op in op_list:
+           if "_grad" in op.type:
+              final_part_idx = i
+              break
+        if final_part_idx != -1:
+            break
+    
+    ## eliminate wrong partition because of sum op
+    ## lookup_table_v2_grad
+    ## every looup_table_v2_grad op block should follow a sum op
+    var2idx  = {}
+
+    for i in range(final_part_idx, block_length):
+        op_list = program_block_ops_list[i]
+        for j in range(len(op_list) - 1, -1, -1):
+            op = op_list[j]
+            #if op.type == "lookup_table_v2_grad":
+            #   if j < len(op_list) - 1):
+            #   else:
+            #      ## get var and record place
+            if _grad in op.type:
+                forward_op_type = op.type.split("_grad")[0]
+                if forward_op_type in SPARSE_OP_TYPE_DICT.keys() \
+                    and op.attr('remote_prefetch') is True:
+                    param_name = op.input(SPARSE_OP_TYPE_DICT[forward_op_type])[0]
+                    
+                    var2idx[] = [i,j] ## 
+    
+    '''
+
     union_program_block_ops_list = []
     assert block_length % 2 != 0, "the length of program_block_ops_list should be odd"
     for i in range(0, block_length // 2):
@@ -1073,7 +1171,7 @@ def union_forward_gradient_op(program_block_ops_list):
 
     block_op_list = {"forward": [], "backward": []}
     for op in program_block_ops_list[block_length // 2]:
-        if not "_grad" in op.type:
+        if not "_grad" in op.type and not (op.type == "sum"):
             block_op_list["forward"].append(op)
         else:
             block_op_list["backward"].append(op)
@@ -1144,8 +1242,18 @@ def entrance_exit_check(program, program_block_ops_list, block_var_detail,
             break
         previous_block_exit = block_var_detail[index - 1]["forward"]["exit"]
         previous_block_exit.sort()
-        current_block_entrance = block_var_detail[index]["forward"]["entrance"]
+        current_block_entrance = block_var_detail[index]["forward"]["entrance"] 
+
+        backward_entrance = block_var_detail[index]["backward"]["entrance"]
+
+        forward_all = block_var_detail[index]["forward"]["entrance"] + block_var_detail[index]["forward"]["private"] + block_var_detail[index]["forward"]["exit"]
+
+        for var in backward_entrance:
+            if not ("@GRAD" in var) and not (var in forward_all):
+                current_block_entrance.append(var)
+        
         current_block_entrance.sort()
+
         if previous_block_exit == current_block_entrance:
             continue
         exist_vars = list(
@@ -1163,6 +1271,9 @@ def entrance_exit_check(program, program_block_ops_list, block_var_detail,
             if var not in previous_block_private and var not in previous_block_entrance:
                 previous_block_entrance.append(var)
             previous_block_exit.append(var)
+            if not var in current_block_entrance:
+                current_block_entrance.append(var)  
+    
 
     for index in range(0, len(block_var_detail) - 1, 1):
         previous_block_exit = block_var_detail[index + 1]["backward"]["exit"]
@@ -1550,8 +1661,6 @@ def _get_output_map_from_op(varmap, op):
         else:
             iomap[key] = vars
     return iomap
-
-
 def delete_same_ops(block, ops):
     for op in ops:
         try:

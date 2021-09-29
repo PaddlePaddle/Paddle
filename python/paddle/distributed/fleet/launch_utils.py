@@ -1314,11 +1314,12 @@ class ParameterServerLauncher(object):
         elif fluid.core.is_compiled_with_xpu():
             heter_device_num = fluid.core.get_xpu_device_count()
             device_list = [str(x) for x in range(0, heter_device_num)]
-        if heter_device_num == 0:
-            return
+        #if heter_device_num == 0:
+        #    return
 
         for idx, cur_heter_worker in enumerate(pod.heter_workers):
-            device_id = str(device_list[(idx)% heter_device_num])
+            device_id = "0" if heter_device_num == 0 else str(device_list[
+                (idx) % heter_device_num])
             stage_id = cur_heter_worker.stage
             proc_env = {
                 "PADDLE_PSERVERS_IP_PORT_LIST": self.server_endpoints,

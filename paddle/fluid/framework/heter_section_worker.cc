@@ -14,6 +14,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/executor_gc_helper.h"
 #include "paddle/fluid/platform/device_context.h"
 
+
 namespace paddle {
 namespace framework {
 
@@ -76,7 +77,14 @@ void HeterSectionWorker::RunForward(int micro_id) {
       epoch_finish_ = true;
       return;
     }
+   total_ins_num_ += cur_micro_batch;
+   //if (thread_id_ == 0) {
+   //   auto end = std::chrono::system_clock::now();
+   //   auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start_).count(); 
+   //   std::cout << "run "<< total_ins_num_ << " instance, cost: " << duration << "s" <<std::endl;
+   //}
   }
+
   for (auto &op : ops_) {
     int op_role = op->Attr<int>(std::string("op_role"));
     auto op_type = op->Type();
@@ -104,6 +112,13 @@ void HeterSectionWorker::RunForward(int micro_id) {
       op->Run(*microbatch_scopes_[micro_id], place_);
     }
   }
+  
+   if (thread_id_ == 0) {
+      auto end = std::chrono::system_clock::now();
+      auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start_).count(); 
+      std::cout << "run "<< total_ins_num_ << " instance, cost: " << duration << "s" <<std::endl;
+   }
+
 }
 
 void HeterSectionWorker::BindingDataFeedMemory(int micro_id) {
@@ -217,6 +232,7 @@ void HeterSectionWorker::Run() {
       }
     }
     for (auto i : micro_ids) {
+      batch_id_++;
       BatchBarrier(i);
     }  
   }
@@ -256,11 +272,17 @@ void HeterSectionWorker::TrainFiles() {
   if (is_first_stage) {
     device_reader_->Start();
   }
+  start_ = std::chrono::system_clock::now(); 
   while (true) {
     Run();
     dev_ctx_->Wait();
-    if (epoch_finish_ == true) return;
-    ++batch_id_;
+    if (epoch_finish_ == true) { batch_id_ = 0; return;}
+    //if (thread_id_ == 0 && batch_id_ >= 50) {
+    //  auto end = std::chrono::system_clock::now();
+    //  auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start).count(); 
+    //  std::cout << "run "<< batch_id_ << " minibatch, cost: " << duration << "s" <<std::endl;
+    //}
+    //++batch_id_;
   }
 }
 }  // namespace framework

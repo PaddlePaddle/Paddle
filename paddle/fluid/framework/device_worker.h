@@ -26,6 +26,8 @@ limitations under the License. */
 #include <unordered_set>  // NOLINT
 #include <utility>        // NOLINT
 #include <vector>
+#include <chrono>
+
 
 #include "paddle/fluid/framework/data_feed.h"
 #include "paddle/fluid/framework/executor_gc_helper.h"
@@ -663,6 +665,8 @@ class HeterSectionWorker : public DeviceWorker {
   std::shared_ptr<framework::ProgramDesc> program_;
 
   static uint64_t batch_id_;
+  uint64_t total_ins_num_ = 0;
+  std::chrono::time_point<std::chrono::system_clock> start_;
   platform::DeviceContext* dev_ctx_ = nullptr;
 };
 

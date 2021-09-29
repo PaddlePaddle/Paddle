@@ -19,6 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/cpu_helper.h"
 #include "paddle/fluid/platform/lodtensor_printer.h"
 
+#include <chrono>
+
 #if defined PADDLE_WITH_PSCORE
 #include "paddle/fluid/distributed/service/communicator.h"
 #endif
@@ -212,6 +214,12 @@ void HogwildWorker::TrainFiles() {
   platform::Timer timeline;
   timeline.Start();
 
+
+
+  
+
+  auto start = std::chrono::system_clock::now(); 
+
   int total_ins_num = 0;
   // how to accumulate fetched values here
   device_reader_->Start();
@@ -231,6 +239,13 @@ void HogwildWorker::TrainFiles() {
     }
 
     total_ins_num += cur_batch;
+   
+    if (thread_id_ == 0) {
+      auto end = std::chrono::system_clock::now();
+      auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start).count(); 
+      std::cout << "worker " << thread_id_ << " train cost " << duration
+          << " seconds, ins_num: " << total_ins_num << std::endl;
+    }
     PrintFetchVars();
     thread_scope_->DropKids();
   }

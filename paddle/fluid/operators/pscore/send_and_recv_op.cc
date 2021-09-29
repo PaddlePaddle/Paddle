@@ -99,7 +99,9 @@ namespace ops = paddle::operators;
 REGISTER_OPERATOR(send_and_recv, ops::SendAndRecvOp, ops::SendAndRecvOpMaker);
 REGISTER_OP_CUDA_KERNEL(
     send_and_recv,
-    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, float>);
+    ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, float>,
+     ops::SendAndRecvKernel<paddle::platform::CUDADeviceContext, int64_t>);
 REGISTER_OP_CPU_KERNEL(
     send_and_recv,
-    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, float>)
+    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::SendAndRecvKernel<paddle::platform::CPUDeviceContext, int64_t>);
