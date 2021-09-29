@@ -595,6 +595,21 @@ class TestImperativeLarsMomentumOptimizer(TestImperativeOptimizerBase):
         self._check_mlp()
 
 
+class TestImperativeMergedLarsMomentumOptimizer(TestImperativeOptimizerBase):
+    def get_optimizer_dygraph(self, parameter_list):
+        optimizer = LarsMomentumOptimizer(
+            learning_rate=0.001, momentum=0.9, parameter_list=parameter_list)
+        return optimizer
+
+    def get_optimizer(self):
+        optimizer = LarsMomentumOptimizer(
+            learning_rate=0.001, momentum=0.9, merged_ops=True)
+        return optimizer
+
+    def test_larsmomentum(self):
+        self._check_mlp()
+
+
 class TestImperativeAdagradOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = AdagradOptimizer(
