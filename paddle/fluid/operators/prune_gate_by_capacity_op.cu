@@ -21,7 +21,6 @@ namespace plat = paddle::platform;
 namespace paddle {
 namespace operators {
 using LoDTensor = framework::LoDTensor;
-using Tensor = framework::Tensor;
 
 static constexpr int kNumCUDAThreads = 512;
 static constexpr int kNumMaxinumNumBlocks = 4096;
