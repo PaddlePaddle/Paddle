@@ -62,7 +62,7 @@ function(inference_quant_int8_image_classification_test target quant_model_dir d
 endfunction()
 
 
-# set batch_size 10 for UT only (avoid OOM). For whole dataset, use batch_size 25 
+# set batch_size 10 for UT only (avoid OOM). For whole dataset, use batch_size 25
 function(inference_quant2_int8_image_classification_test target quant_model_dir fp32_model_dir dataset_path)
     py_test(${target} SRCS "${CMAKE_CURRENT_SOURCE_DIR}/quant2_int8_image_classification_comparison.py"
             ENVS FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
@@ -76,7 +76,7 @@ function(inference_quant2_int8_image_classification_test target quant_model_dir 
                  --acc_diff_threshold 0.1)
 endfunction()
 
-# set batch_size 10 for UT only (avoid OOM). For whole dataset, use batch_size 20 
+# set batch_size 10 for UT only (avoid OOM). For whole dataset, use batch_size 20
 function(inference_quant2_int8_nlp_test target quant_model_dir fp32_model_dir dataset_path labels_path ops_to_quantize)
     py_test(${target} SRCS "${CMAKE_CURRENT_SOURCE_DIR}/quant2_int8_nlp_comparison.py"
             ENVS FLAGS_OMP_NUM_THREADS=${CPU_NUM_THREADS_ON_CI}
@@ -237,7 +237,7 @@ if(LINUX AND WITH_MKLDNN)
 	download_quant_model(${QUANT2_MOBILENETV1_MODEL_DIR} ${QUANT2_MOBILENETV1_MODEL_ARCHIVE} 7f626e453db2d56fed6c2538621ffacf)
 	set(FP32_MOBILENETV1_MODEL_DIR "${INT8_INSTALL_DIR}/mobilenetv1")
 	inference_quant2_int8_image_classification_test(test_quant2_int8_mobilenetv1_mkldnn ${QUANT2_MOBILENETV1_MODEL_DIR}/MobileNet_qat_perf/float ${FP32_MOBILENETV1_MODEL_DIR}/model ${IMAGENET_DATA_PATH})
-	
+
 	### Quant2 for NLP
 
 	set(NLP_DATA_ARCHIVE "Ernie_dataset.tar.gz")
@@ -269,7 +269,7 @@ if(LINUX AND WITH_MKLDNN)
 	set(QUANT2_LSTM_OPS_TO_QUANTIZE "fusion_lstm")
 
 	### Save FP32 model or INT8 model from Quant model
-        
+
 	set(QUANT2_INT8_RESNET50_SAVE_PATH "${QUANT_INSTALL_DIR}/ResNet50_quant2_int8")
 	save_quant_ic_model_test(save_quant2_model_resnet50 ${QUANT2_RESNET50_MODEL_DIR}/ResNet50_qat_perf/float ${QUANT2_INT8_RESNET50_SAVE_PATH})
 
@@ -282,7 +282,7 @@ if(LINUX AND WITH_MKLDNN)
 	set(QUANT2_INT8_LSTM_SAVE_PATH "${QUANT_INSTALL_DIR}/lstm_quant2_int8")
 	save_quant_nlp_model_test(save_quant2_model_lstm ${QUANT2_LSTM_MODEL_DIR}/lstm_quant ${QUANT2_INT8_LSTM_SAVE_PATH} ${QUANT2_LSTM_OPS_TO_QUANTIZE})
 
-	# Convert Quant2 model to dot and pdf files 
+	# Convert Quant2 model to dot and pdf files
 	set(QUANT2_INT8_ERNIE_DOT_SAVE_PATH "${QUANT_INSTALL_DIR}/Ernie_quant2_int8_dot_file")
 	convert_model2dot_test(convert_model2dot_ernie ${QUANT2_ERNIE_MODEL_DIR}/Ernie_qat/float ${QUANT2_INT8_ERNIE_DOT_SAVE_PATH} "Ernie_quant2_int8")
 
@@ -297,7 +297,7 @@ if(LINUX AND WITH_MKLDNN)
 
 endif()
 
-# Since the tests for Quant & INT8 comparison support only testing on Linux 
+# Since the tests for Quant & INT8 comparison support only testing on Linux
 # with MKL-DNN, we remove it here to not test it on other systems.
 list(REMOVE_ITEM TEST_OPS
 	test_mkldnn_int8_quantization_strategy
@@ -307,7 +307,7 @@ list(REMOVE_ITEM TEST_OPS
 #TODO(wanghaoshuang): Fix this unitest failed on GCC8.
 LIST(REMOVE_ITEM TEST_OPS test_auto_pruning)
 LIST(REMOVE_ITEM TEST_OPS test_filter_pruning)
-	
+
 # fix
 if(WIN32)
     SET(SINGLE_CARD_TEST_OPS

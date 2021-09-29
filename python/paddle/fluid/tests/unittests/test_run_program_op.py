@@ -39,7 +39,7 @@ def program_scope_guard():
                 yield
 
 
-# NOTE: Because RunProgramOp has a special output of type std::vector<Scope *>, 
+# NOTE: Because RunProgramOp has a special output of type std::vector<Scope *>,
 # the OpTest cannot be used in RunProgramOp. The variable type cannot be specified
 # when creating output variables in OpTest, default type is LoDTensor
 # NOTE: the gradient test method in OpTest also cannot be used for RunProgramOp,
@@ -312,7 +312,7 @@ class TestRunProgramOpWithEmbedding(RunProgramOpTest):
         self.check_output()
 
     def test_check_grad(self):
-        # NOTE: fecth not support SelectedRows, catnot compare 
+        # NOTE: fecth not support SelectedRows, catnot compare
         # sparse gradients with staic mode, only run dygraph
         places = [fluid.CPUPlace()]
         if core.is_compiled_with_cuda():

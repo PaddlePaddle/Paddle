@@ -4,7 +4,7 @@ JIT(Just In Time) Kernel contains actually generated code and some other impleme
 Each implementation has its own condition to use, defined in `CanBeUsed`.
 They are combined together to get the best performance of one single independent function.
 They could be some very simple functions like vector multiply, or some complicated functions like LSTM.
-And they can be composed with some other exited jit kernels to build up a complex function. 
+And they can be composed with some other exited jit kernels to build up a complex function.
 Currently it's only supported on CPU yet.
 
 ## Contents
@@ -38,14 +38,14 @@ All basical definations of jit kernels are addressed in `paddle/fluid/operators/
 
 - `refer`: Each kernel must have one reference implementation on CPU, and it should only focus on the correctness and should not depends on any third-party libraries.
 - `gen`: The code generated should be kept here. They should be designed focusing on the best performance, which depends on Xbyak.
-- `more`: All other implementations should be kept in this folder with one directory corresponding to one library kind or method kind, such as mkl, mkldnn, openblas or intrinsic code. Each implementation should have it advantage. 
+- `more`: All other implementations should be kept in this folder with one directory corresponding to one library kind or method kind, such as mkl, mkldnn, openblas or intrinsic code. Each implementation should have it advantage.
 
 ## How to use
 
 We present these methods to get the functions:
 - `GetAllCandidateFuncs`. It can return all the implementations supported. All of the implementations can get the same result. You can do some runtime benchmark to choose which should actually be used.
 - `GetDefaultBestFunc`. It only return one default function pointer, which is tuning offline with some genenal configures and attributes. This should cover most situations.
-- `KernelFuncs::Cache()`. It can get the default functions and save it for next time with the same attribute. 
+- `KernelFuncs::Cache()`. It can get the default functions and save it for next time with the same attribute.
 - `GetReferFunc`. It can only get the reference code in CPU, and all the others implementations have same logic with this reference code.
 
 And here are some examples:
@@ -86,7 +86,7 @@ All kernels are inlcuded in `paddle/fluid/operators/jit/kernels.h`, which is aut
 
 1. Add `your_key` at `KernelType`.
 2. Add your new `KernelTuple` which must include `your_key`. It should be a combination of the data type, attribute type and function type. You can refer `SeqPoolTuple`.
-3. Add reference function of `your_key`. 
+3. Add reference function of `your_key`.
 Note:
     - this should be run on CPU and do not depend on any third-party.
     - Add `USE_JITKERNEL_REFER(your_key)` in `refer/CmakeLists.txt` to make sure this code can be used.

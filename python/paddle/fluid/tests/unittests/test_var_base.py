@@ -734,8 +734,8 @@ class TestVarBase(unittest.TestCase):
         self.assertTrue(
             np.array_equal(var[9], np_value[None, None, 0, ..., None]))
 
-        # TODO(zyfncg) there is a bug of dimensions when slice step > 1 and 
-        #              indexs has int type 
+        # TODO(zyfncg) there is a bug of dimensions when slice step > 1 and
+        #              indexs has int type
         # self.assertTrue(
         #     np.array_equal(var[10], np_value[0, 1:10:2, None, None, ...]))
 

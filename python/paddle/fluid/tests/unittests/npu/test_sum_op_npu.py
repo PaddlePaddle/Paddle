@@ -66,7 +66,7 @@ class TestSum2(OpTest):
         x3 = np.random.random((3, 3)).astype(self.dtype)
         self.inputs = {'X': [("x0", x0), ("x1", x1), ("x2", x2), ("x3", x3)]}
         # There will be a problem if just using `y=x0+x1+x2+x3` to calculate the
-        # summation result as the reference standard result. The reason is that 
+        # summation result as the reference standard result. The reason is that
         # numpy's fp16 data has precision loss when doing `add` operation.
         # For example, the results of `x0+x1+x2+x3` is different from that of
         # `x3+x2+x1+x0` if the dtype is fp16.

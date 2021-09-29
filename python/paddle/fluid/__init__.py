@@ -156,8 +156,8 @@ def __bootstrap__():
     import platform
     from . import core
 
-    # NOTE(zhiqiu): When (1)numpy < 1.19; (2) python < 3.7, 
-    # unittest is always imported in numpy (maybe some versions not). 
+    # NOTE(zhiqiu): When (1)numpy < 1.19; (2) python < 3.7,
+    # unittest is always imported in numpy (maybe some versions not).
     # so is_test is True and p2p is not inited.
     in_test = 'unittest' in sys.modules
 
@@ -195,7 +195,7 @@ def __bootstrap__():
         remove_flag_if_exists('cpu_deterministic')
 
     core.init_gflags(["--tryfromenv=" + ",".join(read_env_flags)])
-    # Note(zhouwei25): sys may not have argv in some cases, 
+    # Note(zhouwei25): sys may not have argv in some cases,
     # Such as: use Python/C API to call Python from C++
     try:
         core.init_glog(sys.argv[0])

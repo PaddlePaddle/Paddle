@@ -85,7 +85,7 @@ class TestFeedData(unittest.TestCase):
                                                       use_parallel_executor)
                 self._test_feed_lod_tensor(use_cuda, use_parallel_executor)
 
-                # Test exception message when feeding with error 
+                # Test exception message when feeding with error
                 in_shape_tuple = (-1, 3, 4, 8)
                 error_shape_list = [self.data_batch_size, 3, 4, 5]
 

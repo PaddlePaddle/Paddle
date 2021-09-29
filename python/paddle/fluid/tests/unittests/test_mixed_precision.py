@@ -38,7 +38,7 @@ class SimpleNet(nn.Layer):
         x = self.linear1(x)
         # currently, paddle's relu may hide nan/inf, relu(nan) = 0, relu(inf)= inf
         # so, do not use it here.
-        #x = self.relu1(x) 
+        #x = self.relu1(x)
         x = self.linear2(x)
         #x = self.relu2(x)
         x = self.linear3(x)

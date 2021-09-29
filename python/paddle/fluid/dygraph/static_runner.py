@@ -26,7 +26,7 @@ class StaticModelRunner(object):
     and then performing fine-tune training or inference.
 
     .. note::
-        This is a temporary API, which will be deprecated later, please use 
+        This is a temporary API, which will be deprecated later, please use
         `fluid.dygraph.jit.load` to achieve the same function.
     """
 

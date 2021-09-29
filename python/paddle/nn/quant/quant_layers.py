@@ -486,7 +486,7 @@ class QuantizedConv2DTranspose(layers.Layer):
     """
     The computational logic of QuantizedConv2DTranspose is the same with Conv2DTranspose.
     The only difference is that its inputs are all fake quantized.
-    
+
     Examples:
        .. code-block:: python
           import paddle

@@ -56,7 +56,7 @@ class TestCheckFiniteAndUnscaleOpWithNan(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        # When input contains nan, do not check the output, 
+        # When input contains nan, do not check the output,
         # since the output may be nondeterministic and will be discarded.
         self.check_output(no_check_set=['Out'])
 
@@ -79,7 +79,7 @@ class TestCheckFiniteAndUnscaleOpWithInf(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        # When input contains inf, do not check the output, 
+        # When input contains inf, do not check the output,
         # since the output may be nondeterministic and will be discarded.
         self.check_output(no_check_set=['Out'])
 

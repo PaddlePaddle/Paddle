@@ -151,7 +151,7 @@ class Adam(Optimizer):
                     'beta1': 0.8
                 }],
                 weight_decay=0.01,
-                beta1=0.9)                   
+                beta1=0.9)
             out.backward()
             adam.step()
             adam.clear_grad()
@@ -393,7 +393,7 @@ class Adam(Optimizer):
             .. code-block:: python
 
                 import paddle
-                
+
                 a = paddle.rand([2,13], dtype="float32")
                 linear = paddle.nn.Linear(13, 5)
                 # This can be any optimizer supported by dygraph.

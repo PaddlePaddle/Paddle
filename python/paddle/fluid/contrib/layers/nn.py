@@ -1027,7 +1027,7 @@ def sparse_embedding(input,
 def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
     """
     **Tdm Child**
-     According to the input node_id on the given tree, return the corresponding child node_id and 
+     According to the input node_id on the given tree, return the corresponding child node_id and
       whether child is a leaf node by leaf_mask value.
     .. code-block:: text
 
@@ -1048,17 +1048,17 @@ def tdm_child(x, node_nums, child_nums, param_attr=None, dtype='int32'):
         child_nums(int): Maximum number of child nodes per node.
         param_attr(ParamAttr): To specify the tdm-tree-info parameter property. Default: None, which means the
             default weight parameter property is used. See usage for details in: ref: `api_fluid_ParamAttr`, should
-            has shape(node_nums, 3 + child_nums), dtype support int32/int64. 
-            The dimension[1] of tdm-tree-info contains the following: 
+            has shape(node_nums, 3 + child_nums), dtype support int32/int64.
+            The dimension[1] of tdm-tree-info contains the following:
             1. Item_id(int, shape(1)), if node is a leaf node, give its item_id corresponding to node_id, else give 0.
             2. Layer_id(int, shape(1)), indicates which layer the node is on.
             3. Parent_id(int, shape(1)), node's parent node.
-            4. Child_id(int, shape(child_nums)), all child node's node_id of this node should be given. 
+            4. Child_id(int, shape(child_nums)), all child node's node_id of this node should be given.
             If the number of child nodes is insufficient, padding 0 until child nums equal to child_nums
         dtype(str): The data type of output child and leaf_mask, support int32/int64.
 
     Returns:
-        tuple: A tuple including input node's child(Variable) and leaf_mask(Variable). 
+        tuple: A tuple including input node's child(Variable) and leaf_mask(Variable).
             If child is a leaf node, leaf_mask equal ot 1, otherwise equal to 0.
 
     Examples:
@@ -1147,22 +1147,22 @@ def tdm_sampler(x,
         layer_node_num_list (list(int)): Number of nodes per layer, must has same shape with neg_samples_num_list.
         leaf_node_num (int): Number of leaf nodes.
         tree_travel_attr (ParamAttr): To specify the tdm-travel parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should 
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should
             has shape (leaf_node_num, len(layer_node_num_list)), dtype support int32/int64.
         tree_layer_attr (ParamAttr): To specify the tdm-layer parameter property. Default: None, which means the
-            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should 
+            default weight parameter property is used. See usage for details in :ref:`api_fluid_ParamAttr`, should
             has shape (node_num, 1), dtype support int32/int64.
         output_positive (bool): Whether to output positive samples (includ label and mask )at the same time.
         output_list (bool): Whether to divide the output into layers and organize it into list format.
         seed (int): The number of random seed.
         tree_dtype(np.dtype|core.VarDesc.VarType|str): The dtype of tdm-travel and tdm-layer, support int32/int64
-        dtype(np.dtype|core.VarDesc.VarType|str): The dtype of output(sampling results, labels and masks) 
+        dtype(np.dtype|core.VarDesc.VarType|str): The dtype of output(sampling results, labels and masks)
 
     Returns:
         tuple: A tuple including sampling results, corresponding labels and masks. if output_positive = True, sampling
-            result  will include both positive and negative samples. If sampling reseult is a positive sample, the label is 1, 
-            and if it is a negative sample, it is 0. If the tree is unbalanced, in order to ensure the consistency of the 
-            sampling result shape, the padding sample's mask = 0, the real sample's mask value = 1. 
+            result  will include both positive and negative samples. If sampling reseult is a positive sample, the label is 1,
+            and if it is a negative sample, it is 0. If the tree is unbalanced, in order to ensure the consistency of the
+            sampling result shape, the padding sample's mask = 0, the real sample's mask value = 1.
             If output_list = True, the result will organize into list format specified by layer information.
             Output variable have same type with tdm-travel and tdm-layer parameter(tree_dtype).
 
@@ -1326,7 +1326,7 @@ def rank_attention(input,
                    max_size=0):
     """
     **Rank Attention layer**
-    This Op can calculate rank attention between input and rank_param, and 
+    This Op can calculate rank attention between input and rank_param, and
     rank_param gives the organization of data. Notice: It currently supports
     GPU device.
     This Op exists in contrib, which means that it is not shown to the public.
@@ -1389,8 +1389,8 @@ def rank_attention(input,
 def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
     """
     **Batch FC layer**
-    This Op can calculate BatchFC. This is similar to matmul op, 
-    except that the bias and relu activation layers are added. 
+    This Op can calculate BatchFC. This is similar to matmul op,
+    except that the bias and relu activation layers are added.
     Notice: It currently supports GPU device.
     This Op exists in contrib, which means that it is not shown to the public.
     Args:
@@ -1406,7 +1406,7 @@ def batch_fc(input, param_size, param_attr, bias_size, bias_attr, act=None):
     Examples:
         .. code-block:: python
            import paddle.fluid as fluid
-           
+
            input = fluid.data(name="input", shape=[16, 2, 3], dtype="float32")
            out = fluid.contrib.layers.batch_fc(input=input,
                                                param_size=[16, 3, 10],
@@ -1460,7 +1460,7 @@ def _pull_box_extended_sparse(input, size, extend_size=64, dtype='float32'):
             contains the IDs information.
         size(int): The embedding size parameter, which indicates the size of
             each embedding vector respectively.
-        extend_size(int): The embedding size parameter in extended dim, 
+        extend_size(int): The embedding size parameter in extended dim,
             which indicates the size of each embedding vector respectively.
         dtype(str): The dtype refers to the data type of output tensor. Only supports
       float32 now.
@@ -1534,7 +1534,7 @@ def bilateral_slice(x, guide, grid, has_offset, name=None):
 
             # without offset
             output = fluid.contrib.bilateral_slice(x, guide, grid, has_offset=False)
-            
+
             # has offset
             output = fluid.contrib.bilateral_slice(x, guide, grid, has_offset=True)
 
@@ -1570,8 +1570,8 @@ def correlation(x,
     """
 
     This operation compute correlation of two tensor.
-    For more information of correlation, please refer to PWC-Net: 
-    CNNs for Optical Flow Using Pyramid, Warping, and Cost Volume 
+    For more information of correlation, please refer to PWC-Net:
+    CNNs for Optical Flow Using Pyramid, Warping, and Cost Volume
     <https://arxiv.org/pdf/1709.02371.pdf>_
 
     Args:
@@ -1735,7 +1735,7 @@ def fused_bn_add_act(x,
                 startup_program = fluid.Program()
                 place = fluid.CUDAPlace(0)
                 x, y, loss = build_program(main_program, startup_program)
-  
+
                 feeder = fluid.DataFeeder(feed_list=[x, y], place=place)
                 train_reader = paddle.batch(
                     paddle.dataset.mnist.train(), batch_size=batch_size)

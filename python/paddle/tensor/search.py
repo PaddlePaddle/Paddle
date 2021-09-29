@@ -22,7 +22,7 @@ from paddle.common_ops_import import Variable
 from paddle.common_ops_import import VarDesc
 from paddle import _C_ops
 
-# TODO: define searching & indexing functions of a tensor  
+# TODO: define searching & indexing functions of a tensor
 # from ..fluid.layers import has_inf  #DEFINE_ALIAS
 # from ..fluid.layers import has_nan  #DEFINE_ALIAS
 
@@ -55,13 +55,13 @@ def argsort(x, axis=-1, descending=False, name=None):
         .. code-block:: python
 
             import paddle
-            
+
             x = paddle.to_tensor([[[5,8,9,5],
                                    [0,0,1,7],
                                    [6,9,2,4]],
                                   [[5,2,4,2],
                                    [4,7,7,9],
-                                   [1,7,0,6]]], 
+                                   [1,7,0,6]]],
                                 dtype='float32')
             out1 = paddle.argsort(x=x, axis=-1)
             out2 = paddle.argsort(x=x, axis=0)
@@ -143,10 +143,10 @@ def argmax(x, axis=None, keepdim=False, dtype="int64", name=None):
             out1 = paddle.argmax(x)
             print(out1) # 2
             out2 = paddle.argmax(x, axis=1)
-            print(out2) 
+            print(out2)
             # [2 3 1]
             out3 = paddle.argmax(x, axis=-1)
-            print(out3) 
+            print(out3)
             # [2 3 1]
     """
     if axis is not None and not isinstance(axis, int):
@@ -220,10 +220,10 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
             out1 = paddle.argmin(x)
             print(out1) # 4
             out2 = paddle.argmin(x, axis=1)
-            print(out2) 
+            print(out2)
             # [0 0 2]
             out3 = paddle.argmin(x, axis=-1)
-            print(out3) 
+            print(out3)
             # [0 0 2]
     """
     if axis is not None and not isinstance(axis, int):
@@ -267,10 +267,10 @@ def argmin(x, axis=None, keepdim=False, dtype="int64", name=None):
 def index_select(x, index, axis=0, name=None):
     """
 
-    Returns a new tensor which indexes the ``input`` tensor along dimension ``axis`` using 
-    the entries in ``index`` which is a Tensor. The returned tensor has the same number 
-    of dimensions as the original ``x`` tensor. The dim-th dimension has the same 
-    size as the length of ``index``; other dimensions have the same size as in the ``x`` tensor. 
+    Returns a new tensor which indexes the ``input`` tensor along dimension ``axis`` using
+    the entries in ``index`` which is a Tensor. The returned tensor has the same number
+    of dimensions as the original ``x`` tensor. The dim-th dimension has the same
+    size as the length of ``index``; other dimensions have the same size as in the ``x`` tensor.
 
     Args:
         x (Tensor): The input Tensor to be operated. The data of ``x`` can be one of float32, float64, int32, int64.
@@ -282,10 +282,10 @@ def index_select(x, index, axis=0, name=None):
 
     Returns:
         Tensor: A Tensor with same data type as ``x``.
-    
+
     Examples:
         .. code-block:: python
-            
+
             import paddle
 
             x = paddle.to_tensor([[1.0, 2.0, 3.0, 4.0],
@@ -324,12 +324,12 @@ def index_select(x, index, axis=0, name=None):
 
 def nonzero(x, as_tuple=False):
     """
-    Return a tensor containing the indices of all non-zero elements of the `input` 
-    tensor. If as_tuple is True, return a tuple of 1-D tensors, one for each dimension 
-    in `input`, each containing the indices (in that dimension) of all non-zero elements 
-    of `input`. Given a n-Dimensional `input` tensor with shape [x_1, x_2, ..., x_n], If 
-    as_tuple is False, we can get a output tensor with shape [z, n], where `z` is the 
-    number of all non-zero elements in the `input` tensor. If as_tuple is True, we can get 
+    Return a tensor containing the indices of all non-zero elements of the `input`
+    tensor. If as_tuple is True, return a tuple of 1-D tensors, one for each dimension
+    in `input`, each containing the indices (in that dimension) of all non-zero elements
+    of `input`. Given a n-Dimensional `input` tensor with shape [x_1, x_2, ..., x_n], If
+    as_tuple is False, we can get a output tensor with shape [z, n], where `z` is the
+    number of all non-zero elements in the `input` tensor. If as_tuple is True, we can get
     a 1-D tensor tuple of length `n`, and the shape of each 1-D tensor is [z, 1].
 
     Args:
@@ -425,7 +425,7 @@ def sort(x, axis=-1, descending=False, name=None):
                                    [6,9,2,4]],
                                   [[5,2,4,2],
                                    [4,7,7,9],
-                                   [1,7,0,6]]], 
+                                   [1,7,0,6]]],
                                  dtype='float32')
             out1 = paddle.sort(x=x, axis=-1)
             out2 = paddle.sort(x=x, axis=0)
@@ -493,7 +493,7 @@ def where(condition, x, y, name=None):
             refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: A Tensor with the same data dype as x. 
+        Tensor: A Tensor with the same data dype as x.
 
     Examples:
         .. code-block:: python
@@ -544,8 +544,8 @@ def index_sample(x, index):
     """
     **IndexSample Layer**
 
-    IndexSample OP returns the element of the specified location of X, 
-    and the location is specified by Index. 
+    IndexSample OP returns the element of the specified location of X,
+    and the location is specified by Index.
 
     .. code-block:: text
 
@@ -564,9 +564,9 @@ def index_sample(x, index):
                        [6, 8, 10]]
 
     Args:
-        x (Tensor): The source input tensor with 2-D shape. Supported data type is 
+        x (Tensor): The source input tensor with 2-D shape. Supported data type is
             int32, int64, float32, float64.
-        index (Tensor): The index input tensor with 2-D shape, first dimension should be same with X. 
+        index (Tensor): The index input tensor with 2-D shape, first dimension should be same with X.
             Data type is int32 or int64.
 
     Returns:
@@ -637,14 +637,14 @@ def masked_select(x, mask, name=None):
     which is a tensor with data type of bool.
 
     Args:
-        x (Tensor): The input Tensor, the data type can be int32, int64, float32, float64. 
+        x (Tensor): The input Tensor, the data type can be int32, int64, float32, float64.
         mask (Tensor): The Tensor containing the binary mask to index with, it's data type is bool.
         name(str, optional): The default value is None. Normally there is no
             need for user to set this property. For more information, please
             refer to :ref:`api_guide_Name`.
 
     Returns: A 1-D Tensor which is the same data type  as ``x``.
-    
+
     Examples:
 
         .. code-block:: python
@@ -691,7 +691,7 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
         largest(bool, optional) : largest is a flag, if set to true,
             algorithm will sort by descending order, otherwise sort by
             ascending order. Default is True.
-        sorted(bool, optional): controls whether to return the elements in sorted order, default value is True. In gpu device, it always return the sorted value. 
+        sorted(bool, optional): controls whether to return the elements in sorted order, default value is True. In gpu device, it always return the sorted value.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -708,7 +708,7 @@ def topk(x, k, axis=None, largest=True, sorted=True, name=None):
            print(value_1)
            # [7]
            print(indices_1)
-           # [3] 
+           # [3]
            tensor_2 = paddle.to_tensor([[1, 4, 5, 7], [2, 6, 2, 5]])
            value_2, indices_2 = paddle.topk(tensor_2, k=1)
            print(value_2)
@@ -777,20 +777,20 @@ def searchsorted(sorted_sequence,
     This OP is used to find the index of the corresponding `sorted_sequence` in the innermost dimension based on the given `values`.
 
     Args:
-        sorted_sequence(Tensor): An input N-D or 1-D tensor with type int32, int64, float32, float64. The value of the tensor monotonically increases in the innermost dimension. 
+        sorted_sequence(Tensor): An input N-D or 1-D tensor with type int32, int64, float32, float64. The value of the tensor monotonically increases in the innermost dimension.
         values(Tensor): An input N-D tensor value with type int32, int64, float32, float64.
         out_int32(bool, optional): Data type of the output tensor which can be int32, int64. The default value is False, and it indicates that the output data type is int64.
         right(bool, optional): Find the upper or lower bounds of the sorted_sequence range in the innermost dimension based on the given `values`. If the value of the sorted_sequence is nan or inf, return the size of the innermost dimension.
-                               The default value is False and it shows the lower bounds.  
+                               The default value is False and it shows the lower bounds.
         name(str, optional): The default value is None. Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name`.
-        
+
     Returns:
-        Tensor（the same sizes of the `values`）, return the tensor of int32 if set :attr:`out_int32` is True, otherwise return the tensor of int64.  
-    
+        Tensor（the same sizes of the `values`）, return the tensor of int32 if set :attr:`out_int32` is True, otherwise return the tensor of int64.
+
     Examples:
 
         .. code-block:: python
-    
+
             import paddle
 
             sorted_sequence = paddle.to_tensor([[1, 3, 5, 7, 9, 11],
@@ -807,12 +807,12 @@ def searchsorted(sorted_sequence,
             #        [[2, 3, 5, 5],
             #         [1, 3, 4, 5]])
             sorted_sequence_1d = paddle.to_tensor([1, 3, 5, 7, 9, 11, 13])
-            out3 = paddle.searchsorted(sorted_sequence_1d, values)     
+            out3 = paddle.searchsorted(sorted_sequence_1d, values)
             print(out3)
             # Tensor(shape=[2, 4], dtype=int64, place=CUDAPlace(0), stop_gradient=True,
             #        [[1, 3, 4, 5],
             #         [1, 3, 4, 5]])
-            
+
     """
 
     if in_dygraph_mode():

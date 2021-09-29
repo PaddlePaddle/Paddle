@@ -823,7 +823,7 @@ class CategoricalTest(unittest.TestCase):
         self.value_np = np.array([2, 1, 3]).astype('int64')
 
         self.logits_shape = [batch_size, dims]
-        # dist_shape = logits_shape[:-1], it represents the number of 
+        # dist_shape = logits_shape[:-1], it represents the number of
         #  different distributions.
         self.dist_shape = [batch_size]
         # sample shape represents the number of samples
@@ -831,7 +831,7 @@ class CategoricalTest(unittest.TestCase):
         # value used in probs and log_prob method
         # If value is 1-D and logits is 2-D or higher dimension, value will be
         #  broadcasted to have the same number of distributions with logits.
-        # If value is 2-D or higher dimentsion, it should have the same number 
+        # If value is 2-D or higher dimentsion, it should have the same number
         #  of distributions with logtis. ``value[:-1] = logits[:-1]
         self.value_shape = [3]
 

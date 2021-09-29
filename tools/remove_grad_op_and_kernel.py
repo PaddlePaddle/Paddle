@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """
-This script simply removes all grad ops and kernels. You should use this script 
+This script simply removes all grad ops and kernels. You should use this script
 when cmake ON_INFER=ON, which can greatly reduce the volume of the prediction library.
 """
 

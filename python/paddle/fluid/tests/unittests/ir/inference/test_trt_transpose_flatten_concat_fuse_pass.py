@@ -32,8 +32,8 @@ class TransposeFlattenConcatFusePassTRTTest(InferencePassTest):
             flatt1 = fluid.layers.flatten(trans1)
             flatt2 = fluid.layers.flatten(trans2)
             concat_out = fluid.layers.concat([flatt1, flatt2], axis=1)
-            # There is no parameters for above structure. 
-            # Hence, append a batch_norm to avoid failure caused by load_combined. 
+            # There is no parameters for above structure.
+            # Hence, append a batch_norm to avoid failure caused by load_combined.
             reshape_out = fluid.layers.reshape(concat_out, [-1, 0, 1, 1])
             out = fluid.layers.batch_norm(reshape_out, is_test=True)
 

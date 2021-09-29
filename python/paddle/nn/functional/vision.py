@@ -62,7 +62,7 @@ def affine_grid(theta, out_shape, align_corners=True, name=None):
                     [1, 2, 3, 3],
                     align_corners=False)
             print(y_t)
-            
+
             #[[[[ 1.0333333   0.76666665]
             #   [ 0.76666665  1.0999999 ]
             #   [ 0.5         1.4333333 ]]
@@ -145,7 +145,7 @@ def grid_sample(x,
         grid_y = 0.5 * (grid[:, :, :, 1] + 1) * (H - 1)
 
     Step 2:
-    
+
     Indices input data X with grid (x, y) in each [H, W] area, and bilinear
     interpolate point value by 4 nearest points or nearest interpolate point value
     by nearest point.
@@ -204,16 +204,16 @@ def grid_sample(x,
     Examples:
 
         .. code-block:: python
-        
+
             import paddle
             import paddle.nn.functional as F
             import numpy as np
-            
+
             # shape=[1, 1, 3, 3]
             x = np.array([[[[-0.6,  0.8, -0.5],
                             [-0.5,  0.2,  1.2],
                             [ 1.4,  0.3, -0.2]]]]).astype("float64")
-            
+
             # grid shape = [1, 3, 4, 2]
             grid = np.array(
                          [[[[ 0.2,  0.3],
@@ -228,8 +228,8 @@ def grid_sample(x,
                             [-0.3, -1. ],
                             [ 0.7,  0.4],
                             [ 0.2,  0.8]]]]).astype("float64")
-            
-            
+
+
             x = paddle.to_tensor(x)
             grid = paddle.to_tensor(grid)
             y_t = F.grid_sample(
@@ -239,7 +239,7 @@ def grid_sample(x,
                 padding_mode='border',
                 align_corners=True)
             print(y_t)
-            
+
             # output shape = [1, 1, 3, 4]
             # [[[[ 0.34   0.016  0.086 -0.448]
             #    [ 0.55  -0.076  0.35   0.59 ]

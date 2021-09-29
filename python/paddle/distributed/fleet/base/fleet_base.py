@@ -53,10 +53,10 @@ def apply_ir_passes(main_program, startup_program, config):
     fuse_all_reduce = config._user_defined_strategy.fuse_all_reduce_ops
     if fuse_all_reduce and build_strategy.fuse_all_optimizer_ops:
         # FIXME(zjl): currently, fuse_all_optimizer_ops
-        # have conflict with fuse_all_reduce_ops because 
-        # RawProgramOptimizer also inserts coalesce_tensor 
-        # into program. These two procedures may conflict  
-        # in which vars are to be fused. 
+        # have conflict with fuse_all_reduce_ops because
+        # RawProgramOptimizer also inserts coalesce_tensor
+        # into program. These two procedures may conflict
+        # in which vars are to be fused.
         warnings.warn(
             'Currently, the fuse_all_optimizer_ops pass has conflict with fuse_all_reduce_ops pass. Disable the fuse_all_optimizer_ops pass temporarily.'
         )
@@ -174,13 +174,13 @@ class Fleet(object):
 
         Args:
             role_maker (RoleMakerBase, optional): A ``RoleMakerBase`` containing the configuration
-                of environment variables related to distributed training.If you did not initialize 
+                of environment variables related to distributed training.If you did not initialize
                 the rolemaker by yourself, it will be automatically initialized to PaddleRoleMaker.
                 The default value is None.
-            is_collective (Boolean, optional): A ``Boolean`` variable determines whether the program 
+            is_collective (Boolean, optional): A ``Boolean`` variable determines whether the program
                 runs on the CPU or GPU. False means set distributed training using CPU, and True means
                 GPU.The default value is False.The default value is False.
-            strategy (DistributedStrategy): Extra properties for distributed training. 
+            strategy (DistributedStrategy): Extra properties for distributed training.
                 For details, please refer to paddle.distributed.fleet.DistributedStrategy. Default: None.
 
 
@@ -834,10 +834,10 @@ class Fleet(object):
 
         Args:
             optimizer(Optimizer): The executor to run for init server.
-            strategy(DistributedStrategy): Extra properties for distributed optimizer. 
+            strategy(DistributedStrategy): Extra properties for distributed optimizer.
                 It is recommended to use DistributedStrategy in fleet.init(). The strategy
-                here is for compatibility. If the strategy in fleet.distributed_optimizer() 
-                is not None, then it will overwrite the DistributedStrategy in fleet.init(), 
+                here is for compatibility. If the strategy in fleet.distributed_optimizer()
+                is not None, then it will overwrite the DistributedStrategy in fleet.init(),
                 which will take effect in distributed training.
 
         Returns:
@@ -972,7 +972,7 @@ class Fleet(object):
         Get state dict information from optimizer.
         (Only work in dygraph mode)
 
-        Returns: 
+        Returns:
             state_dict(dict) : dict contains all the Tensor used by optimizer
 
         Examples:
@@ -1003,7 +1003,7 @@ class Fleet(object):
         Load optimizer state dict.
         (Only work in dygraph mode)
 
-        Args: 
+        Args:
             state_dict(dict) : Dict contains all the Tensor needed by optimizer
 
         Returns:
@@ -1037,14 +1037,14 @@ class Fleet(object):
     @dygraph_only
     def set_lr(self, value):
         """
-        Set the value of the learning rate manually in the optimizer. 
+        Set the value of the learning rate manually in the optimizer.
         (Only work in dygraph mode)
 
         Args:
             value (float|Tensor): the value of learning rate
 
-        Returns: 
-            None 
+        Returns:
+            None
 
         Examples:
             .. code-block:: python
@@ -1176,7 +1176,7 @@ class Fleet(object):
         Clear the gradients of all optimized parameters for model.
         (Only work in dygraph mode)
 
-        Returns: 
+        Returns:
             None
 
         Examples:
@@ -1255,14 +1255,14 @@ class Fleet(object):
                  use_fp16_test=False):
         """
         Init the amp training, such as cast fp32 parameters to fp16 type.
-  
+
         Args:
-            place(CUDAPlace): place is used to initialize 
+            place(CUDAPlace): place is used to initialize
                 fp16 parameters with fp32 values.
             scope(Scope): The scope is used to find fp32 parameters.
             test_program(Program): The program is used for testing.
             use_fp16_test(bool): Whether to use fp16 testing.
-            
+
         Examples:
             .. code-block:: python
 
@@ -1284,7 +1284,7 @@ class Fleet(object):
                         loss = paddle.mean(hidden)
                     # 2) Create the optimizer and set `multi_precision` to True.
                     # Setting `multi_precision` to True can avoid the poor accuracy
-                    # or the slow convergence in a way. 
+                    # or the slow convergence in a way.
                     optimizer = paddle.optimizer.Momentum(learning_rate=0.01, multi_precision=True)
                     # 3) These ops in `custom_black_list` will keep in the float32 computation type.
                     amp_list = paddle.static.amp.CustomOpLists(
@@ -1304,9 +1304,9 @@ class Fleet(object):
                     # 5) Use `amp_init` after FP32 parameters initialization(such as `exe.run(startup_program)`).
                     # If you want to perform the testing process, you should pass `test_program` into `amp_init`.
                     optimizer.amp_init(place, scope=paddle.static.global_scope())
-                    
+
                 if paddle.is_compiled_with_cuda() and len(paddle.static.cuda_places()) > 0:
-                    run_example_code()       
+                    run_example_code()
         """
         amp_optimizer = self._get_amp_optimizer()
         return amp_optimizer.amp_init(place, scope, test_program, use_fp16_test)
@@ -1561,8 +1561,8 @@ class Fleet(object):
 
             self._found_inf = paddle.cast(self._found_inf, dtype="int32")
 
-            # TODO(shenliang03) Since dp allreduce in the optimizer is 
-            # after the gradscaler, check_finite needs to synchronize global 
+            # TODO(shenliang03) Since dp allreduce in the optimizer is
+            # after the gradscaler, check_finite needs to synchronize global
             # information. In the future, we should use check_group to speed.
             paddle.distributed.all_reduce(
                 self._found_inf, op=paddle.distributed.ReduceOp.MAX, group=None)

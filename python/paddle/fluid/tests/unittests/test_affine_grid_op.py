@@ -41,7 +41,7 @@ def AffineGrid(theta, size, align_corners):
     for i in range(len(theta)):
         ret[i] = np.dot(grid[i].reshape([h * w, 3]), theta[i])
 
-#    print ret.reshape([h * w, 2]).astype("float32")    
+#    print ret.reshape([h * w, 2]).astype("float32")
     return ret.reshape([n, h, w, 2]).astype("float32")
 
 

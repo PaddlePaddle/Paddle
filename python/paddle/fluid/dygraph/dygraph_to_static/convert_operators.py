@@ -309,7 +309,7 @@ def eval_if_exist_else_none(name, global_symbol_table):
         local_symbol_table(dict): Specified from `globals()`. DO NOT use `locals()`,
                                   because all STATIC_CONVERT_VAR_SHAPE_SUFFIX vars is
                                   declared with keyword `global`.
-    
+
     Returns:
         Return the variable if found in global_symbol_table else None.
     """
@@ -363,7 +363,7 @@ def convert_shape_compare(left, *args):
         Python like "a op1 b and b op2 c and ... ".
         If the variables to compare are Paddle Variables, we will do elementwise
         comparsion first and then reduce to a boolean whose numel is 1.
-        
+
     """
     args_len = len(args)
     assert args_len >= 2, "convert_shape_compare needs at least one right compare variable"

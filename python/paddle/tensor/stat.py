@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define statistical functions of a tensor  
+# TODO: define statistical functions of a tensor
 
 import numpy as np
 from ..fluid.framework import Variable
@@ -230,7 +230,7 @@ def numel(x, name=None):
         .. code-block:: python
 
             import paddle
-            
+
             x = paddle.full(shape=[4, 5, 7], fill_value=0, dtype='int32')
             numel = paddle.numel(x) # 140
 

@@ -176,8 +176,8 @@ def monkey_patch_varbase():
         You can clear gradient by ``Tensor.clear_grad()`` .
 
         Args:
-            grad_tensor(Tensor, optional): initial gradient values of the current Tensor. If `grad_tensor` is None, 
-            the initial gradient values of the current Tensor would be Tensor filled with 1.0; 
+            grad_tensor(Tensor, optional): initial gradient values of the current Tensor. If `grad_tensor` is None,
+            the initial gradient values of the current Tensor would be Tensor filled with 1.0;
             if `grad_tensor` is not None, it must have the same length as the current Tensor.
             Teh default value is None.
 
@@ -351,7 +351,7 @@ def monkey_patch_varbase():
     def grad(self):
         """
         .. warning::
-          This API will return the tensor value of the gradient. If you want 
+          This API will return the tensor value of the gradient. If you want
           to get the numpy value of the gradient, you can use :code:`x.grad.numpy()`.
 
         Get the Gradient of Current Tensor.
@@ -390,7 +390,7 @@ def monkey_patch_varbase():
 
     def item(self, *args):
         """
-        Convert element at specific position in Tensor into Python scalars. If the position is not specified, the Tensor must be a 
+        Convert element at specific position in Tensor into Python scalars. If the position is not specified, the Tensor must be a
         single-element Tensor.
 
         Args:
@@ -401,7 +401,7 @@ def monkey_patch_varbase():
 
         Raises:
             ValueError: If the Tensor has more than one element, there must be coordinates.
-        
+
         Examples:
             .. code-block:: python
 
@@ -463,7 +463,7 @@ def monkey_patch_varbase():
                 import paddle
                 x = paddle.rand([2, 5])
                 print(x)
-                
+
                 # Tensor(shape=[2, 5], dtype=float32, place=CPUPlace,
                 #        [[0.30574632, 0.55739117, 0.30902600, 0.39413780, 0.44830436],
                 #         [0.79010487, 0.53972793, 0.09495186, 0.44267157, 0.72112119]])
@@ -482,7 +482,7 @@ def monkey_patch_varbase():
                 import copy
                 x = paddle.to_tensor(2.)
                 y = copy.deepcopy(x)
-                
+
                 print(x)
                 # Tensor(shape=[1], dtype=float32, place=CPUPlace, stop_gradient=True,
                 #        [2.])
@@ -519,7 +519,7 @@ def monkey_patch_varbase():
     def __array__(self, dtype=None):
         """
         Returns a numpy array shows the value of current Tensor.
-        
+
         Returns:
             ndarray: The numpy value of current Tensor.
 

@@ -180,7 +180,7 @@ class TestLinearChainCrfPaddingTensor(OpTest):
         return padded
 
     def set_test_data_1(self):
-        # Fix the unittest by: add padding tensor in inputs 
+        # Fix the unittest by: add padding tensor in inputs
         SEQ_NUM = 3
         TAG_NUM = 17
         MAX_SEQ_LEN = 5

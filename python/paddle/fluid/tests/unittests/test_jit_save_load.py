@@ -431,13 +431,13 @@ class TestSaveLoadWithNestOut(unittest.TestCase):
 
 class TestSaveLoadWithDictInput(unittest.TestCase):
     def test_dict_input(self):
-        # NOTE: This net cannot be executed, it is just 
+        # NOTE: This net cannot be executed, it is just
         # a special case for exporting models in model validation
         # We DO NOT recommend this writing way of Layer
         net = LinearNetWithDictInput(8, 8)
-        # net.forward.concrete_program.inputs: 
-        # (<__main__.LinearNetWithDictInput object at 0x7f2655298a98>, 
-        #  {'img': var img : fluid.VarType.LOD_TENSOR.shape(-1, 8).astype(VarType.FP32)}, 
+        # net.forward.concrete_program.inputs:
+        # (<__main__.LinearNetWithDictInput object at 0x7f2655298a98>,
+        #  {'img': var img : fluid.VarType.LOD_TENSOR.shape(-1, 8).astype(VarType.FP32)},
         #  {'label': var label : fluid.VarType.LOD_TENSOR.shape(-1, 1).astype(VarType.INT64)})
         self.assertEqual(len(net.forward.concrete_program.inputs), 3)
 
@@ -1154,10 +1154,10 @@ class TestJitSaveLoadFinetuneLoad(unittest.TestCase):
         self.assertTrue(float(((result_01 - result_11)).abs().max()) < 1e-5)
 
 
-# NOTE(weixin): When there are multiple test functions in an 
-# `unittest.TestCase`, functions will affect each other, 
-# and there is a risk of random failure. 
-# So divided into three TestCase: TestJitSaveLoadFunctionCase1, 
+# NOTE(weixin): When there are multiple test functions in an
+# `unittest.TestCase`, functions will affect each other,
+# and there is a risk of random failure.
+# So divided into three TestCase: TestJitSaveLoadFunctionCase1,
 # TestJitSaveLoadFunctionCase2, TestJitSaveLoadFunctionCase3.
 class TestJitSaveLoadFunctionCase1(unittest.TestCase):
     def setUp(self):

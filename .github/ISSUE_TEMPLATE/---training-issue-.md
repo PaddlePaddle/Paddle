@@ -32,7 +32,7 @@ If there is no solution,please make sure that this is a training issue including
 -OS Platform (eg.Mac OS 10.14)
 -Other imformation: Distriuted training/informantion of operator/
 Graphics card storage
-Note: You can get most of the information by running [summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py). 
+Note: You can get most of the information by running [summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py).
 **To Reproduce**
 Steps to reproduce the behavior
 **Describe your current behavior**

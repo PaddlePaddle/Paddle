@@ -1,18 +1,18 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the functions to manipulate devices 
+# TODO: define the functions to manipulate devices
 import re
 import os
 from paddle.fluid import core
@@ -78,7 +78,7 @@ def XPUPlace(dev_id):
     Examples:
         .. code-block:: python
             # required: xpu
-            
+
             import paddle
             place = paddle.XPUPlace(0)
     """
@@ -87,15 +87,15 @@ def XPUPlace(dev_id):
 
 def get_cudnn_version():
     """
-    This funciton return the version of cudnn. the retuen value is int which represents the 
+    This funciton return the version of cudnn. the retuen value is int which represents the
     cudnn version. For example, if it return 7600, it represents the version of cudnn is 7.6.
-    
+
     Returns:
         int: A int value which represents the cudnn version. If cudnn version is not installed, it return None.
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
 
             cudnn_version = paddle.get_cudnn_version()
@@ -192,7 +192,7 @@ def set_device(device):
     Examples:
 
      .. code-block:: python
-            
+
         import paddle
 
         paddle.set_device("cpu")
@@ -209,13 +209,13 @@ def get_device():
     """
     This funciton can get the current global device of the program is running.
     It's a string which is like 'cpu', 'gpu:x', 'xpu:x' and 'npu:x'. if the global device is not
-    set, it will return a string which is 'gpu:x' when cuda is avaliable or it 
+    set, it will return a string which is 'gpu:x' when cuda is avaliable or it
     will return a string which is 'cpu' when cuda is not avaliable.
 
     Examples:
 
      .. code-block:: python
-            
+
         import paddle
         device = paddle.get_device()
 

@@ -101,7 +101,7 @@ class InplaceTestBase(unittest.TestCase):
 
         all_vars_name = self.get_all_vars(prog1)
         repeated_var_names = all_vars_name * 2
-        random.shuffle(repeated_var_names)  # add some random 
+        random.shuffle(repeated_var_names)  # add some random
 
         for fetch_var in repeated_var_names:
             for _ in range(4):
@@ -152,7 +152,7 @@ class InplaceTestBase(unittest.TestCase):
                 compiled_programs.append(compiled_program)
 
         repeated_var_names = self.get_all_vars(prog1) * 2
-        random.shuffle(repeated_var_names)  # add some random 
+        random.shuffle(repeated_var_names)  # add some random
 
         for fetch_var in repeated_var_names:
             for _ in range(4):

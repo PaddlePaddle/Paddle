@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define specitial functions used in computer vision task 
+# TODO: define specitial functions used in computer vision task
 
 from .. import Layer
 from .. import functional
@@ -22,8 +22,8 @@ __all__ = []
 
 class PixelShuffle(Layer):
     """
-    
-    PixelShuffle Layer    
+
+    PixelShuffle Layer
 
     This operator rearranges elements in a tensor of shape [N, C, H, W]
     to a tensor of shape [N, C/upscale_factor**2, H*upscale_factor, W*upscale_factor],
@@ -47,7 +47,7 @@ class PixelShuffle(Layer):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
             import paddle.nn as nn
             import numpy as np
@@ -57,7 +57,7 @@ class PixelShuffle(Layer):
             pixel_shuffle = nn.PixelShuffle(3)
             out_var = pixel_shuffle(x_var)
             out = out_var.numpy()
-            print(out.shape) 
+            print(out.shape)
             # (2, 1, 12, 12)
 
     """

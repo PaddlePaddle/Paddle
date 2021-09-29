@@ -199,7 +199,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
         return ret_list
 
     def _if_last_block(self, op, _equal_dict):
-        # for conditional_block op 
+        # for conditional_block op
         cond_str = op.input('Cond')[0]
         bool_test = False
         if cond_str.startswith('equal'):
@@ -433,7 +433,7 @@ class DistributedAdam(DistributedOptimizerImplBase):
                 embedding_table = self._find_multi_distributed_lookup_table(
                     [loss])
                 self._remove_optimize_op_for_embedding(loss, embedding_table)
-            # has condition_block op means multi-task 
+            # has condition_block op means multi-task
             flag_multi_task = self._has_conditional_block(loss)
             if flag_multi_task:
                 self._cond_params = dict()

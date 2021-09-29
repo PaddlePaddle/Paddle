@@ -142,7 +142,7 @@ def rpn_target_assign_in_python(all_anchors,
                                            rpn_negative_overlap,
                                            rpn_fg_fraction,
                                            use_random)
-        # unmap to all anchor 
+        # unmap to all anchor
         loc_inds = inds_inside[loc_inds]
         score_inds = inds_inside[score_inds]
 

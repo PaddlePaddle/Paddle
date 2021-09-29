@@ -107,12 +107,12 @@ def fc(x,
             The default value is None, and the weight will be initialized to zero.
             For detailed information, please refer to :attr:`paddle.ParamAttr`.
             Warning, if x is a list of tensor, weight_attr should also be a list of same length.
-        bias_attr (ParamAttr|bool, optional): The attribute of the learnable bias. 
+        bias_attr (ParamAttr|bool, optional): The attribute of the learnable bias.
             If it is set to False, no bias will be added to the output.
             If it is set to None or one kind of ParamAttr, a bias parameter will
             be created according to ParamAttr. For detailed information, please refer
             to :attr:`paddle.ParamAttr`. The default value is None and the bias will be
-            initialized to zero. 
+            initialized to zero.
         activation (str, optional): Activation to be applied to the output of
             this layer, such as tanh, softmax, sigmoid, relu. For more information,
             please refer to :ref:`api_guide_activations_en` . Default: None.

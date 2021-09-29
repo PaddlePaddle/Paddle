@@ -70,7 +70,7 @@ def _flatten_nested_list(nested_list):
 
 class ProcessMesh(object):
     r"""
-    The class `Processmesh` describes the topology of logical processes. 
+    The class `Processmesh` describes the topology of logical processes.
     A mesh is an N-dimensional array. The shape of the N-dimensional
     array represents the topology of logical processes and every
     element of the N-dimensional array represent a logical process. For
@@ -84,12 +84,12 @@ class ProcessMesh(object):
     Args:
         mesh (list): an N-dimensional array (nested list) describes the toplogy
             of logical processes. The shape of the N-dimensional array
-            represents the topology of logical processes and every 
+            represents the topology of logical processes and every
             element of the N-dimensional array represents a logical process.
         parent (ProcessMesh, optional): the parent ProcessMesh. None means
             the ProcessMesh is the root one without parent ProcessMesh.
             Default: None.
-    
+
     Returns:
         None
 
@@ -101,9 +101,9 @@ class ProcessMesh(object):
 
             import paddle
             import paddle.distributed as dist
-            
+
             paddle.enable_static()
-            
+
             mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
             assert mesh.parent is None
             assert mesh.topology == [2, 3]
@@ -129,7 +129,7 @@ class ProcessMesh(object):
 
         if parent is None:
             # For root ProcessMesh, the ids of logical processes must be range
-            # from 0 to N-1, where N is the number of logical processes. 
+            # from 0 to N-1, where N is the number of logical processes.
             assert max(self._processes) == len(self._processes) - 1, (
                 'For root ProcessMesh, ids of logical processes must be range '
                 'from 0 to N-1, where N is the number of logical processes.')
@@ -198,7 +198,7 @@ class ProcessMesh(object):
 
         Args:
             order (list): order of the physical process ids.
-        
+
         Returns:
             None
 
@@ -207,9 +207,9 @@ class ProcessMesh(object):
 
                 import paddle
                 import paddle.distributed as dist
-                
+
                 paddle.enable_static()
-                
+
                 mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
                 mesh.set_placement([0, 1, 2, 3, 4, 5])
 
@@ -311,7 +311,7 @@ def shard_tensor(x, mesh, dim_mapping):
 
             import paddle
             import paddle.distributed as dist
-            
+
             paddle.enable_static()
 
             mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
@@ -335,7 +335,7 @@ def set_shard_mask(x, mask):
     Args:
         x (Tensor): the tensor to process.
         mask (list): a nested list. The shape of `mask` must be the same as the ProcessMesh belonging to
-            the tensor `x`. Every value of `mask` must be one or zero, where one means 
+            the tensor `x`. Every value of `mask` must be one or zero, where one means
             the tenor `x` will be put on the corresponding logical process and zero means the tensor `x`
             will not be put on the corresponding logical process.
             For example, for a ProcessMesh represented by the 2-dimensional
@@ -353,7 +353,7 @@ def set_shard_mask(x, mask):
             import paddle.distributed as dist
 
             paddle.enable_static()
-            
+
             mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
             mask = [[1, 0, 1], [0, 1, 0]]
             x = paddle.ones([4, 6])
@@ -403,7 +403,7 @@ def shard_op(op_fn, mesh, dim_mapping_dict, **kwargs):
             import paddle.distributed as dist
 
             paddle.enable_static()
-            
+
             mesh = dist.ProcessMesh([[2, 4, 5], [0, 1, 3]])
             x = paddle.ones([4, 6])
             y = paddle.zeros([4, 6])
@@ -464,7 +464,7 @@ def set_offload_device(x, device):
             import paddle.distributed as dist
 
             paddle.enable_static()
-            
+
             x = paddle.ones([4, 6])
             dist.set_offload_device(x, 'cpu')
 
@@ -493,7 +493,7 @@ def set_pipeline_stage(stage):
             import paddle.distributed as dist
 
             paddle.enable_static()
-            
+
             dist.set_pipeline_stage(0)
 
     """

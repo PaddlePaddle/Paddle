@@ -186,7 +186,7 @@ class Hardswish(Layer):
                 \frac{x(x+3)}{6} &, & \text{otherwise}
                 \end{array}
             \right.
-            
+
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).

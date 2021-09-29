@@ -38,7 +38,7 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 class TrtLayerAutoScanTest(AutoScanTest):
     class TensorRTParam:
         '''
-        TensorRT subgraph engine parameters. 
+        TensorRT subgraph engine parameters.
         '''
 
         def __init__(self, workspace_size, max_batch_size, min_subgraph_size,
@@ -52,7 +52,7 @@ class TrtLayerAutoScanTest(AutoScanTest):
 
     class DynamicShapeParam:
         '''
-         Prepare TensorRT subgraph engine dynamic shape parameters. 
+         Prepare TensorRT subgraph engine dynamic shape parameters.
          '''
 
         def __init__(self, min_input_shape, max_input_shape, opt_input_shape,

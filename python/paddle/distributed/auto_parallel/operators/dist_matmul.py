@@ -51,7 +51,7 @@ def _update_dims_mapping_for_matmul(op_dist_attr):
     if y_dims_mapping_len == 1:
         y_dims_mapping.insert(1, -1)
 
-    # Deal with dim > 2 and take care of broadcasting 
+    # Deal with dim > 2 and take care of broadcasting
     if out_dims_mapping_len > 2:
         broadcast_x_dims_mapping = []
         broadcast_y_dims_mapping = []
@@ -93,7 +93,7 @@ def _update_dims_mapping_for_matmul(op_dist_attr):
                 out_dims_mapping[i] = compatible_dims_mapping[i]
                 changed = True
 
-    # The following which uses negative index can be work 
+    # The following which uses negative index can be work
     # when len(out_dims_mapping) > 2 and len(out_dims_mapping) <=2
     dim_changed = compute_compatible_and_update_dim_mapping(
         [x_dims_mapping, y_dims_mapping], [-1, -2])
@@ -414,7 +414,7 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
             return static_handle
 
 
-# ReplicateParallel 
+# ReplicateParallel
 class DistributedMatmulImpl2(DistributedOperatorImpl):
     def __init__(self, name):
         super(DistributedMatmulImpl2, self).__init__()
@@ -757,7 +757,7 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
             return static_handle
 
 
-# ReplicateParallel 
+# ReplicateParallel
 class DistributedMatmulV2Impl2(DistributedOperatorImpl):
     def __init__(self, name):
         super(DistributedMatmulV2Impl2, self).__init__()

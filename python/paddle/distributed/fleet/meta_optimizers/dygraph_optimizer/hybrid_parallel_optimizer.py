@@ -111,8 +111,8 @@ class HybridParallelOptimizer:
 
         self._need_dp = (self._hcg.get_data_parallel_world_size() > 1)
 
-        # NOTE(shenliang03): Because of the pure DataParallel mode, the gradient synchronization 
-        # is achieved through reducer, so there is no need to call fuse_allreduce in oprimizer. 
+        # NOTE(shenliang03): Because of the pure DataParallel mode, the gradient synchronization
+        # is achieved through reducer, so there is no need to call fuse_allreduce in oprimizer.
         self._dp_enable = not self._use_dp_mode and self._need_dp
 
         self._sharding_enable = (
@@ -145,7 +145,7 @@ class HybridParallelOptimizer:
                  parameters=None,
                  no_grad_set=None):
 
-        # minimize does not support parameters in the form of param_group, 
+        # minimize does not support parameters in the form of param_group,
         # so no need use _obtain_optimizer_parameters_list
         parameter_list = parameters if parameters \
             else self._inner_opt._parameter_list

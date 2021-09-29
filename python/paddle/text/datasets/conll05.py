@@ -297,9 +297,9 @@ class Conll05st(Dataset):
         Get the word, verb and label dictionary of Wikipedia corpus.
 
         Examples:
-    
+
             .. code-block:: python
-    
+
             from paddle.text.datasets import Conll05st
             conll05st = Conll05st()
             word_dict, predicate_dict, label_dict = conll05st.get_dict()
@@ -311,9 +311,9 @@ class Conll05st(Dataset):
         Get the embedding dictionary file.
 
         Examples:
-    
+
             .. code-block:: python
-    
+
             from paddle.text.datasets import Conll05st
             conll05st = Conll05st()
             emb_file = conll05st.get_embedding()

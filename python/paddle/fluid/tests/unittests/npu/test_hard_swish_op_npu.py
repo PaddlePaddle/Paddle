@@ -69,8 +69,8 @@ class TestHardSwishNPU(OpTest):
         if self.dtype == np.float16:
             return
         # There is a problem that precision of grad result using float32
-        # can't satisfy the default precision requirement 
-        # when compared with numeric_grads, but the results on 
+        # can't satisfy the default precision requirement
+        # when compared with numeric_grads, but the results on
         # NPU and CPU are same (verified in TestHardSwishNPUWithCPU)
         self.check_grad_with_place(
             self.place, ['X'], 'Out', user_defined_grads=[self.x_grad])

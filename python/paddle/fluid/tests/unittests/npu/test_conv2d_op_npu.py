@@ -212,7 +212,7 @@ class TestWith1x1(TestConv2DOp):
 
     def init_group(self):
         # FIXME: Supporting group = 3 in this case.
-        # NOTE(wangran16): There is an unknown error (acl error code is : 507015) 
+        # NOTE(wangran16): There is an unknown error (acl error code is : 507015)
         # when group = 3, which needs to be fixed.
         self.groups = 1
 

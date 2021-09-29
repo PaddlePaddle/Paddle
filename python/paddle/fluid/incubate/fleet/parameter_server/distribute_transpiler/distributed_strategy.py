@@ -46,7 +46,7 @@ class TrainerRuntimeConfig(object):
         self.runtime_configs['communicator_is_sgd_optimizer'] = os.getenv(
             "FLAGS_communicator_is_sgd_optimizer", "1")
 
-        # not used 
+        # not used
         self.runtime_configs['rpc_deadline'] = os.getenv("FLAGS_rpc_deadline",
                                                          "180000")
         self.runtime_configs['rpc_retry_times'] = os.getenv(

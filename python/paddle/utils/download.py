@@ -79,7 +79,7 @@ def get_weights_path_from_url(url, md5sum=None):
     Args:
         url (str): download url
         md5sum (str): md5 sum of download package
-    
+
     Returns:
         str: a local path to save downloaded weights.
 
@@ -146,8 +146,8 @@ def get_path_from_url(url,
     assert is_url(url), "downloading from {} not a url".format(url)
     # parse path after download to decompress under root_dir
     fullpath = _map_path(url, root_dir)
-    # Mainly used to solve the problem of downloading data from different 
-    # machines in the case of multiple machines. Different ips will download 
+    # Mainly used to solve the problem of downloading data from different
+    # machines in the case of multiple machines. Different ips will download
     # data, and the same ip will only download data once.
     unique_endpoints = _get_unique_endpoints(ParallelEnv().trainer_endpoints[:])
     if osp.exists(fullpath) and check_exist and _md5check(fullpath, md5sum):

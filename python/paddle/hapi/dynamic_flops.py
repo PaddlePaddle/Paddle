@@ -1,11 +1,11 @@
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,11 +25,11 @@ def flops(net, input_size, custom_ops=None, print_detail=False):
     """Print a table about the FLOPs of network.
 
     Args:
-        net (paddle.nn.Layer||paddle.static.Program): The network which could be a instance of paddle.nn.Layer in 
+        net (paddle.nn.Layer||paddle.static.Program): The network which could be a instance of paddle.nn.Layer in
                     dygraph or paddle.static.Program in static graph.
         input_size (list): size of input tensor. Note that the batch_size in argument 'input_size' only support 1.
-        custom_ops (A dict of function, optional): A dictionary which key is the class of specific operation such as 
-                    paddle.nn.Conv2D and the value is the function used to count the FLOPs of this operation. This 
+        custom_ops (A dict of function, optional): A dictionary which key is the class of specific operation such as
+                    paddle.nn.Conv2D and the value is the function used to count the FLOPs of this operation. This
                     argument only work when argument 'net' is an instance of paddle.nn.Layer. The details could be found
                     in following example code. Default is None.
         print_detail (bool, optional): Whether to print the detail information, like FLOPs per layer, about the net FLOPs.

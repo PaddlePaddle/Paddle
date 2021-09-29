@@ -361,7 +361,7 @@ class TestLocalityAwareNMSError(unittest.TestCase):
                           scores, 0.5, 400, keep_top_k)
 
         nms_threshold = int(0)
-        # type of nms_threshold must be int 
+        # type of nms_threshold must be int
         self.assertRaises(TypeError, fluid.layers.locality_aware_nms, boxes,
                           scores, 0.5, 400, 200, nms_threshold)
 
@@ -371,7 +371,7 @@ class TestLocalityAwareNMSError(unittest.TestCase):
                           scores, 0.5, 400, 200, 0.5, nms_eta)
 
         bg_label = 1.5
-        # type of background_label must be int 
+        # type of background_label must be int
         self.assertRaises(TypeError, fluid.layers.locality_aware_nms, boxes,
                           scores, 0.5, 400, 200, 0.5, 1.0, bg_label)
 

@@ -283,7 +283,7 @@ class TestMatrixPowerAPIError(unittest.TestCase):
                 name="input_float32", shape=[4, 4], dtype='float32')
             self.assertRaises(TypeError, paddle.linalg.matrix_power, input, n)
 
-        # The data type of input must be float32 or float64.        
+        # The data type of input must be float32 or float64.
         for dtype in ["bool", "int32", "int64", "float16"]:
             input = fluid.data(name="input_" + dtype, shape=[4, 4], dtype=dtype)
             self.assertRaises(TypeError, paddle.linalg.matrix_power, input, 2)

@@ -989,7 +989,7 @@ class TestBackward(unittest.TestCase):
         loss.backward()
 
         self.assertTrue(var.grad.shape == x.grad[0, :, 0, 0].shape)
-        # 
+        #
         self.assertTrue((0 == x.grad[0, :, 0, 0]).all())
 
 
@@ -1162,7 +1162,7 @@ class TestGradientTruncated(unittest.TestCase):
 
         def op1(x):
             value = paddle.fluid.layers.fill_constant([1], "float32", 1)
-            # test stop_gradient 
+            # test stop_gradient
             value.stop_gradient = True
             x.stop_gradient = False
             start = paddle.fluid.layers.fill_constant(
@@ -1193,7 +1193,7 @@ class TestGradientTruncated(unittest.TestCase):
 
         def op2(x):
             value = paddle.fluid.layers.fill_constant([1, 3, 2], "float32", 1)
-            # test stop_gradient 
+            # test stop_gradient
             value.stop_gradient = False
             x.stop_gradient = False
             attrs = {
@@ -1253,8 +1253,8 @@ class TestGradientTruncated(unittest.TestCase):
             x = paddle.static.data(
                 name=name_x, shape=array.shape, dtype='float32')
 
-            # set_value_op in __get/setitem__ is an inplace operation. 
-            # When `input.stop_gradient = True` and `value.stop_gradient = False`, 
+            # set_value_op in __get/setitem__ is an inplace operation.
+            # When `input.stop_gradient = True` and `value.stop_gradient = False`,
             # set_value_grad_op will not be run during backward.
             y, value = op(x)
 

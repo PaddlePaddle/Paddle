@@ -1021,7 +1021,7 @@ def ctc_loss(log_probs,
         norm_by_times (bool, default False) – Whether to normalize the gradients by the number of time-step, which is also the sequence’s length. There is no need to normalize the gradients if reduction mode is 'mean'.
         norm_by_batchsize (bool): normalize the loss by the batch size (default: `False`). If `True`, supersedes `norm_by_times` (default: `False`)
         norm_by_total_logits_len (bool): normalize the loss by the total number of frames in the batch. If `True`, supersedes `norm_by_batchsize` and `norm_by_times` (default: `False`)
-            
+
     Returns:
         Tensor, The Connectionist Temporal Classification (CTC) loss between ``log_probs`` and  ``labels``. If attr:`reduction` is ``'none'``, the shape of loss is [batch_size], otherwise, the shape of loss is [1]. Data type is the same as ``log_probs``.
 
@@ -1182,7 +1182,7 @@ def margin_cross_entropy(logits,
         print(label)
         print(loss)
         print(softmax)
-        
+
         #Tensor(shape=[2, 4], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
         #       [[ 0.85204151, -0.55557678,  0.04994566,  0.71986042],
         #        [-0.20198586, -0.35270476, -0.55182702,  0.09749021]])
@@ -1243,7 +1243,7 @@ def margin_cross_entropy(logits,
         print(loss)
         print(softmax)
 
-        # python -m paddle.distributed.launch --gpus=0,1 test_margin_cross_entropy.py 
+        # python -m paddle.distributed.launch --gpus=0,1 test_margin_cross_entropy.py
         ## for rank0 input
         #Tensor(shape=[4, 4], dtype=float64, place=CUDAPlace(0), stop_gradient=True,
         #       [[ 0.32888934,  0.02408748, -0.02763289,  0.18173063],
@@ -1391,18 +1391,18 @@ def cross_entropy(input,
                   use_softmax=True,
                   name=None):
     r"""
-    By default, this operator implements the cross entropy loss function with softmax. This function 
-    combines the calculation of the softmax operation and the cross entropy loss function 
-    to provide a more numerically stable computing. 
+    By default, this operator implements the cross entropy loss function with softmax. This function
+    combines the calculation of the softmax operation and the cross entropy loss function
+    to provide a more numerically stable computing.
 
     This operator will calculate the cross entropy loss function without softmax when use_softmax=False.
 
-    By default, this operator will calculate the mean of the result, and you can also affect 
-    the default behavior by using the reduction parameter. Please refer to the part of 
+    By default, this operator will calculate the mean of the result, and you can also affect
+    the default behavior by using the reduction parameter. Please refer to the part of
     parameters for details.
 
     This operator can be used to calculate the softmax cross entropy loss with soft and hard labels.
-    Where, the hard labels mean the actual label value, 0, 1, 2, etc.  And the soft labels 
+    Where, the hard labels mean the actual label value, 0, 1, 2, etc.  And the soft labels
     mean the probability of the actual label, 0.6, 0.8, 0.2, etc.
 
     The calculation of this operator includes the following two steps.
@@ -1457,7 +1457,7 @@ def cross_entropy(input,
             1.1. Hard labels (soft_label = False)
 
             .. math::
-                \\loss_j=loss_j*weight[label_j] 
+                \\loss_j=loss_j*weight[label_j]
 
 
             1.2. Soft labels (soft_label = True)
@@ -1467,21 +1467,21 @@ def cross_entropy(input,
 
         2. reduction
 
-            2.1 if the ``reduction`` parameter is ``none`` 
+            2.1 if the ``reduction`` parameter is ``none``
 
                 Return the previous result directly
 
-            2.2 if the ``reduction`` parameter is ``sum`` 
+            2.2 if the ``reduction`` parameter is ``sum``
 
                 Return the sum of the previous results
 
             .. math::
                \\loss=\sum_{j}loss_j
 
-            2.3 if the ``reduction`` parameter is ``mean`` , it will be processed according to 
-            the ``weight`` parameter as follows. 
+            2.3 if the ``reduction`` parameter is ``mean`` , it will be processed according to
+            the ``weight`` parameter as follows.
 
-            2.3.1. If the  ``weight``  parameter is ``None`` 
+            2.3.1. If the  ``weight``  parameter is ``None``
 
                    Return the average value of the previous results
 
@@ -1495,48 +1495,48 @@ def cross_entropy(input,
             1. Hard labels (soft_label = False)
 
              .. math::
-                \\loss=\sum_{j}loss_j/\sum_{j}weight[label_j] 
+                \\loss=\sum_{j}loss_j/\sum_{j}weight[label_j]
 
             2. Soft labels (soft_label = True)
 
              .. math::
                 \\loss=\sum_{j}loss_j/\sum_{j}\left(\sum_{i}weight[label_i]\right)
- 
- 
+
+
     Parameters:
 
         - **input** (Tensor)
 
             Input tensor, the data type is float32, float64. Shape is
-	    :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` . 
+	    :math:`[N_1, N_2, ..., N_k, C]`, where C is number of classes ,  ``k >= 1`` .
 
-            Note: 
+            Note:
 
-                1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the 
+                1. when use_softmax=True, it expects unscaled logits. This operator should not be used with the
                 output of softmax operator, which will produce incorrect results.
 
                 2. when use_softmax=False, it expects the output of softmax operator.
- 
+
         - **label** (Tensor)
 
             1. If soft_label=False, the shape is
             :math:`[N_1, N_2, ..., N_k]` or :math:`[N_1, N_2, ..., N_k, 1]`, k >= 1.
             the data type is int32, int64, float32, float64, where each value is [0, C-1].
 
-            2. If soft_label=True, the shape and data type should be same with ``input`` , 
+            2. If soft_label=True, the shape and data type should be same with ``input`` ,
             and the sum of the labels for each sample should be 1.
 
         - **weight** (Tensor, optional)
 
-            a manual rescaling weight given to each class. 
-            If given, has to be a Tensor of size C and the data type is float32, float64. 
+            a manual rescaling weight given to each class.
+            If given, has to be a Tensor of size C and the data type is float32, float64.
             Default is ``'None'`` .
 
         - **ignore_index** (int64, optional)
 
             Specifies a target value that is ignored
-            and does not contribute to the loss. A negative value means that no label 
-            value needs to be ignored. Only valid when soft_label = False.  
+            and does not contribute to the loss. A negative value means that no label
+            value needs to be ignored. Only valid when soft_label = False.
             Default is ``-100`` .
 
         - **reduction** (str, optional)
@@ -1550,14 +1550,14 @@ def cross_entropy(input,
 
         - **soft_label** (bool, optional)
 
-            Indicate whether label is soft. 
+            Indicate whether label is soft.
             Default is ``False``.
 
         - **axis** (int, optional)
 
-            The index of dimension to perform softmax calculations. 
-            It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the 
-            number of dimensions of input :attr:`input`. 
+            The index of dimension to perform softmax calculations.
+            It should be in range :math:`[-1, rank - 1]`, where :math:`rank` is the
+            number of dimensions of input :attr:`input`.
             Default is ``-1`` .
 
         - **use_softmax** (bool, optional)
@@ -1579,24 +1579,24 @@ def cross_entropy(input,
 
         If :attr:`reduction` is ``'none'``:
 
-        1. If soft_label = False, the dimension of return value is the same with ``label`` . 
+        1. If soft_label = False, the dimension of return value is the same with ``label`` .
 
-        2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` . 
+        2. if soft_label = True, the dimension of return value is :math:`[N_1, N_2, ..., N_k, 1]` .
 
 
      Example1(hard labels):
 
         .. code-block:: python
-            
+
             import paddle
             paddle.seed(99999)
             N=100
             C=200
             reduction='mean'
-            input =  paddle.rand([N, C], dtype='float64')  
+            input =  paddle.rand([N, C], dtype='float64')
             label =  paddle.randint(0, C, shape=[N], dtype='int64')
-            weight = paddle.rand([C], dtype='float64') 
-            
+            weight = paddle.rand([C], dtype='float64')
+
             cross_entropy_loss = paddle.nn.loss.CrossEntropyLoss(
                 weight=weight, reduction=reduction)
             dy_ret = cross_entropy_loss(
@@ -1608,7 +1608,7 @@ def cross_entropy(input,
     Example2(soft labels):
 
         .. code-block:: python
-            
+
             import paddle
             paddle.seed(99999)
             axis = -1
@@ -1622,9 +1622,9 @@ def cross_entropy(input,
             labels = paddle.uniform(shape, dtype='float64', min=0.1, max=1.0)
             labels /= paddle.sum(labels, axis=axis, keepdim=True)
             paddle_loss_mean = paddle.nn.functional.cross_entropy(
-                                                                  logits,  
-                                                                  labels, 
-                                                                  soft_label=True, 
+                                                                  logits,
+                                                                  labels,
+                                                                  soft_label=True,
                                                                   axis=axis,
                                                                   weight=weight,
                                                                   reduction=reduction)
@@ -1658,7 +1658,7 @@ def cross_entropy(input,
         if soft_label == False:
             valid_label = paddle.where(label == ignore_index,
                                        paddle.zeros_like(label), label)
-            # TODO: Temporarily use paddle.nonzero instead of paddle.max 
+            # TODO: Temporarily use paddle.nonzero instead of paddle.max
             # to detect and find out possible illegal label values
             if len(paddle.nonzero(valid_label < 0)) > 0:
                 invalid_label = paddle.gather_nd(
@@ -1666,7 +1666,7 @@ def cross_entropy(input,
                 raise ValueError(
                     "Target({}) is out of class_dimension's lower bound({})".
                     format(invalid_label[0], 0))
-            # TODO: Temporarily use paddle.nonzero instead of paddle.max 
+            # TODO: Temporarily use paddle.nonzero instead of paddle.max
             # to detect and find out possible illegal label values
             if len(paddle.nonzero(valid_label >= input.shape[-1])) > 0:
                 invalid_label = paddle.gather_nd(
@@ -1874,12 +1874,12 @@ def sigmoid_focal_loss(logit,
     it is used in one-stage object detection where the foreground-background class
     imbalance is extremely high.
 
-    This operator measures focal loss function as follows: 
+    This operator measures focal loss function as follows:
 
     .. math::
            Out = -Labels * alpha * {(1 - \sigma(Logit))}^{gamma}\log(\sigma(Logit)) - (1 - Labels) * (1 - alpha) * {\sigma(Logit)}^{gamma}\log(1 - \sigma(Logit))
 
-    We know that :math:`\sigma(Logit) = \frac{1}{1 + \exp(-Logit)}`. 
+    We know that :math:`\sigma(Logit) = \frac{1}{1 + \exp(-Logit)}`.
 
     Then, if :attr:`normalizer` is not None, this operator divides the
     normalizer tensor on the loss `Out`:
@@ -1906,7 +1906,7 @@ def sigmoid_focal_loss(logit,
             For object detection task, it is the the number of positive samples.
             If set to None, the focal loss will not be normalized. Default is None.
         alpha(int|float, optional): Hyper-parameter to balance the positive and negative example,
-            it should be between 0 and 1.  Default value is set to 0.25. 
+            it should be between 0 and 1.  Default value is set to 0.25.
         gamma(int|float, optional): Hyper-parameter to modulate the easy and hard examples.
             Default value is set to 2.0.
         reduction (str, optional): Indicate how to average the loss by batch_size,

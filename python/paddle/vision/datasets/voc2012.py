@@ -41,7 +41,7 @@ class VOC2012(Dataset):
     """
     Implementation of `VOC2012 <http://host.robots.ox.ac.uk/pascal/VOC/voc2012/>`_ dataset
 
-    To speed up the download, we put the data on https://dataset.bj.bcebos.com/voc/VOCtrainval_11-May-2012.tar. 
+    To speed up the download, we put the data on https://dataset.bj.bcebos.com/voc/VOCtrainval_11-May-2012.tar.
     Original data can get from http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar.
 
     Args:
@@ -49,8 +49,8 @@ class VOC2012(Dataset):
             :attr:`download` is True. Default None,  default data path: ~/.cache/paddle/dataset/voc2012
         mode(str): 'train', 'valid' or 'test' mode. Default 'train'.
         download(bool): download dataset automatically if :attr:`data_file` is None. Default True
-        backend(str, optional): Specifies which type of image to be returned: 
-            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
+        backend(str, optional): Specifies which type of image to be returned:
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
             If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
             default backend is 'pil'. Default: None.
 

@@ -71,7 +71,7 @@ def combine_abs_max_and_hist(tensor, origin_max, origin_hist, bins,
         new_hist += origin_hist
         return origin_max, new_hist
     else:
-        # bin_width = origin_max / (bins * upsample_bins) 
+        # bin_width = origin_max / (bins * upsample_bins)
         #           = new_max / (bins * downsample_bins)
         bin_width = origin_max / (bins * upsample_bins)
         downsampe_bins = int(math.ceil(new_max / (bins * bin_width)))

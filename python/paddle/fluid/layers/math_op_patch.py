@@ -190,7 +190,7 @@ def monkey_patch_variable():
         """
          **Notes**:
             **The type variable must be LoD Tensor Array.
-        
+
         """
         if not isinstance(var, Variable):
             raise TypeError(

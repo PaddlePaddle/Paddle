@@ -40,7 +40,7 @@ DYGRAPH_TO_STATIC_MODULE_PREFIX = 'paddle.fluid.dygraph.dygraph_to_static'
 
 class BaseNodeVisitor(gast.NodeVisitor):
     """
-    Implement customized NodeVisitor inherited from gast.NodeVisitor. 
+    Implement customized NodeVisitor inherited from gast.NodeVisitor.
     Ancestor nodes are traced to easily support more operations of currently
     visited node.
     """
@@ -1171,9 +1171,9 @@ class ForNodeVisitor(object):
         """
         Process special cases for iter_node inclue:
           - Case 1 (for zip):
-            
+
             - for i, val in enumerate(zip(x, y))  # original code:
-            
+
             - __for_loop_iter_zip_0 = list(zip(x, y))
             - for i, val in enumerate(__for_loop_iter_zip_0)
         """

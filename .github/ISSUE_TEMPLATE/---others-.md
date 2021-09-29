@@ -26,8 +26,8 @@ If there is no solution,please provide us with the following details :
 -CPU: including CPUMKL/OpenBlas/MKLDNN version
 -GPU: including CUDA/cuDNN version
 -OS Platform and Distribution(eg.Mac OS 10.14)
--Python version 
-Note: You can get most of the information by running [summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py). 
+-Python version
+Note: You can get most of the information by running [summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py).
 **To Reproduce**
 Steps to reproduce the behavior
 **Describe your current behavior**

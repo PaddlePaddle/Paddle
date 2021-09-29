@@ -82,7 +82,7 @@ class TestInplaceANBOpTraining(unittest.TestCase):
                         bn = fluid.layers.elu(bn, alpha)
 
                 # NOTE: in inplace mode input and output of bn
-                # may have same name, multiply 1. to generate 
+                # may have same name, multiply 1. to generate
                 # a new Variable for fetch
                 bn = bn * 1.
 

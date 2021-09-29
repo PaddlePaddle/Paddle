@@ -19,7 +19,7 @@ from .. import fluid
 from ..fluid.framework import in_dygraph_mode, Variable
 from ..framework import VarBase as Tensor
 
-# TODO: define logic functions of a tensor  
+# TODO: define logic functions of a tensor
 from ..fluid.layers import is_empty  # noqa: F401
 from ..fluid.layers import logical_and  # noqa: F401
 from ..fluid.layers import logical_not  # noqa: F401
@@ -163,7 +163,7 @@ def equal(x, y, name=None):
 
     Returns:
         Tensor: output Tensor, it's shape is the same as the input's Tensor,
-        and the data type is bool. The result of this op is stop_gradient. 
+        and the data type is bool. The result of this op is stop_gradient.
 
     Examples:
         .. code-block:: python
@@ -381,7 +381,7 @@ def less_than(x, y, name=None):
 def not_equal(x, y, name=None):
     """
     This OP returns the truth value of :math:`x != y` elementwise, which is equivalent function to the overloaded operator `!=`.
-    
+
     **NOTICE**: The output of this OP has no gradient.
 
     Args:
@@ -443,7 +443,7 @@ def is_tensor(x):
             input3 = [1, 4]
             check = paddle.is_tensor(input3)
             print(check)  #False
-            
+
     """
     return isinstance(x, Tensor)
 
@@ -486,7 +486,7 @@ def _bitwise_op(op_name, x, y, out=None, name=None, binary_op=True):
 def bitwise_and(x, y, out=None, name=None):
     """
     ${comment}
-    
+
     Args:
         x (Tensor): ${x_comment}
         y (Tensor): ${y_comment}
@@ -494,7 +494,7 @@ def bitwise_and(x, y, out=None, name=None):
 
     Returns:
         Tensor: ${out_comment}
-        
+
     Examples:
         .. code-block:: python
 
@@ -512,7 +512,7 @@ def bitwise_and(x, y, out=None, name=None):
 def bitwise_or(x, y, out=None, name=None):
     """
     ${comment}
-    
+
     Args:
         x (Tensor): ${x_comment}
         y (Tensor): ${y_comment}
@@ -568,7 +568,7 @@ def bitwise_not(x, out=None, name=None):
     Args:
         x(Tensor):  ${x_comment}
         out(Tensor): ${out_comment}
-    
+
     Returns:
         Tensor: ${out_comment}
 

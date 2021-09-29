@@ -88,7 +88,7 @@ def _has_optimizer_in_control_flow(program):
 class CompiledProgram(object):
     """
     :api_attr: Static Graph
-    
+
     The CompiledProgram is used to transform a program or graph for
     various optimizations according to the configuration of build_strategy,
     for example, the operators' fusion in the computation graph, memory
@@ -173,12 +173,12 @@ class CompiledProgram(object):
         exec_strategy to set some optimizations that can be applied during the construction
         and computation of the Graph, such as reducing the number of AllReduce operations,
         specifying the size of the thread pool used in the computation Graph running the model,
-        and so on. 
-        
+        and so on.
+
         .. note::
-            If build_strategy is specified when building CompiledProgram and calling 
-            with_data_parallel, build_strategy in CompiledProgram will be overwritten, therefore, 
-            if it is data parallel training, it is recommended to set build_strategy when calling 
+            If build_strategy is specified when building CompiledProgram and calling
+            with_data_parallel, build_strategy in CompiledProgram will be overwritten, therefore,
+            if it is data parallel training, it is recommended to set build_strategy when calling
             with_data_parallel interface.
 
         Args:
@@ -214,7 +214,7 @@ class CompiledProgram(object):
                 export CPU_NUM=4, if the environment variable is not set, the executor will
                 add the variable to the environment variable and set its value to 1.
                 The default is None. If ``places`` is the list of string, the string in the list
-                can be ``cpu``, ``gpu:x``, where ``x`` is the index of the GPUs. 
+                can be ``cpu``, ``gpu:x``, where ``x`` is the index of the GPUs.
 
         Returns:
             CompiledProgram
@@ -256,7 +256,7 @@ class CompiledProgram(object):
                     static.default_main_program()).with_data_parallel(
                             loss_name=loss.name, places=parallel_places)
                 # NOTE: if not set share_vars_from=compiled_train_prog,
-                # the parameters used in test process are different with 
+                # the parameters used in test process are different with
                 # the parameters used by train process
                 compiled_test_prog = static.CompiledProgram(
                     test_program).with_data_parallel(

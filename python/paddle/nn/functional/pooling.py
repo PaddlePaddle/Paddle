@@ -199,7 +199,7 @@ def avg_pool1d(x,
 
     Examples:
         .. code-block:: python
-          
+
             import paddle
             import paddle.nn.functional as F
             import numpy as np
@@ -310,22 +310,22 @@ def avg_pool2d(x,
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
-    
+
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
-    
+
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
         ShapeError: If the output's shape calculated is not greater than 0.
-    
+
     Examples:
         .. code-block:: python
-          
+
             import paddle
             import paddle.nn.functional as F
             import numpy as np
-            
+
             # avg pool2d
             x = paddle.to_tensor(np.random.uniform(-1, 1, [1, 3, 32, 32]).astype(np.float32))
             out = F.avg_pool2d(x,
@@ -431,18 +431,18 @@ def avg_pool3d(x,
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
-    
+
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
-    
+
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
         ShapeError: If the output's shape calculated is not greater than 0.
-    
+
     Examples:
         .. code-block:: python
-          
+
           import paddle
           import numpy as np
 
@@ -679,12 +679,12 @@ def max_unpool2d(x,
 
     Args:
         x (Tensor): The input tensor of unpooling operator which is a 4-D tensor with
-                          shape [N, C, H, W]. The format of input tensor is `"NCHW"`, 
+                          shape [N, C, H, W]. The format of input tensor is `"NCHW"`,
                           where `N` is batch size, `C` is the number of channels,
                           `H` is the height of the feature, and `W` is the width of the
                           feature. The data type if float32 or float64.
         indices (Tensor): The indices given out by maxpooling2d which is a 4-D tensor with
-                          shape [N, C, H, W]. The format of input tensor is `"NCHW"` , 
+                          shape [N, C, H, W]. The format of input tensor is `"NCHW"` ,
                           where `N` is batch size, `C` is the number of channels,
                           `H` is the height of the feature, and `W` is the width of the
                           feature. The data type if float32 or float64.
@@ -694,7 +694,7 @@ def max_unpool2d(x,
             it must contain an integer.
         kernel_size (int|tuple): Size of the max unpooling window.
         padding (int | tuple): Padding that was added to the input.
-        output_size(list|tuple, optional): The target output size. If output_size is not specified, 
+        output_size(list|tuple, optional): The target output size. If output_size is not specified,
                            the actual output shape will be automatically calculated by (input_shape,
                            kernel_size, padding).
         name(str, optional): For detailed information, please refer
@@ -714,16 +714,16 @@ def max_unpool2d(x,
           or as given by :attr:`output_size` in the call operator
 
         Returns:
-            Tensor: The output tensor of unpooling result. 
+            Tensor: The output tensor of unpooling result.
 
         Raises:
             ValueError: If the input is not a 4-D tensor.
             ValueError: If indeces shape is not equal input shape.
-            
+
 
         Examples:
             .. code-block:: python
-          
+
             import paddle
             import paddle.nn.functional as F
 
@@ -733,9 +733,9 @@ def max_unpool2d(x,
             unpool_out = F.max_unpool2d(pool_out, indices, kernel_size=2, padding=0)
             # unpool_out shape: [1, 1, 6, 6]
 
-            # specify a different output size than input size 
+            # specify a different output size than input size
             unpool_out = F.max_unpool2d(pool_out, indices, kernel_size=2, padding=0, output_size=[7,7])
-            # unpool_out shape: [1, 1, 7, 7] 
+            # unpool_out shape: [1, 1, 7, 7]
 
     """
     kernel_size = utils.convert_to_list(kernel_size, 2, 'pool_size')
@@ -892,15 +892,15 @@ def max_pool3d(x,
         name(str, optional): For detailed information, please refer
                              to :ref:`api_guide_Name`. Usually name is no need to set and
                              None by default.
-    
+
     Returns:
         Tensor: The output tensor of pooling result. The data type is same as input tensor.
-    
+
     Raises:
         ValueError: If `padding` is a string, but not "SAME" or "VALID".
         ValueError: If `padding` is "VALID", but `ceil_mode` is True.
         ShapeError: If the output's shape calculated is not greater than 0.
-    
+
     Examples:
         .. code-block:: python
 

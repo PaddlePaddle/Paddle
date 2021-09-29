@@ -32,10 +32,10 @@ _supported_int_dtype_ = [
     core.VarDesc.VarType.BOOL,
 ]
 
-# NOTE(chenweihang): We currently do not fully support the type promotion 
-# between tensors. Parting support here is because the interoperation of 
-# real and complex numbers in paddle quantum is very frequent, such as the 
-# binary operation between `float` and `complex64`, so we must support the 
+# NOTE(chenweihang): We currently do not fully support the type promotion
+# between tensors. Parting support here is because the interoperation of
+# real and complex numbers in paddle quantum is very frequent, such as the
+# binary operation between `float` and `complex64`, so we must support the
 # correct type promotion on the APIs paddle quantum used.
 # Now only check in dygraph (paddle quantum based dygraph)
 # Full type promotion support will need to be fully verified later.
@@ -197,9 +197,9 @@ def monkey_patch_math_varbase():
                 other_var = float(other_var)
                 # division is a special case
                 # NOTE(chenweihang): because we cast tensor to float32 instead float64,
-                # the division result can only guarantee the numerical accuracy of 6 digits 
-                # after the decimal point. The result of numpy calculation is of float64 type, 
-                # so the calculation result here and the calculation result of numpy are 
+                # the division result can only guarantee the numerical accuracy of 6 digits
+                # after the decimal point. The result of numpy calculation is of float64 type,
+                # so the calculation result here and the calculation result of numpy are
                 # different after 6 decimal point. If necessary, we can also use float64 here.
                 # torch's behavior here is consistent with ours
                 if op_type == 'elementwise_div' and self.dtype in _supported_int_dtype_:

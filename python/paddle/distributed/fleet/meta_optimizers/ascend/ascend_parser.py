@@ -515,13 +515,13 @@ class ReduceSumParser(AscendParserBase):
 #        super(IncrementParser, self).__init__(graph, var2geop)
 #        self.parser_name = "increment"
 #
-#    def _apply(self): 
+#    def _apply(self):
 #        x = self._get_ge_input(self.op.input_arg_names[0])
 #        step = self.op.attr("step") #self._get_ge_input(self.op.input_arg_names[1])
 #        print("step: ", step)
-#            
+#
 #        increment = core.GEOperatorFactory.create_operator("adds" + self._accumulated_op_id(), "Adds").set_input("x", x).set_attr_float("value", step) #set_input("x2", bias)
-#        
+#
 #        return [increment]
 
 
@@ -763,7 +763,7 @@ class SoftMaxParser(AscendParserBase):
         return [softmax], [[0]]
 
 
-## general 
+## general
 class ShapeParser(AscendParserBase):
     def __init__(self, graph, var2geop):
         super(ShapeParser, self).__init__(graph, var2geop)

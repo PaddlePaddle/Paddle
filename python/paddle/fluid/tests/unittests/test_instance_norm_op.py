@@ -219,7 +219,7 @@ class TestInstanceNormOpError(unittest.TestCase):
 class TestInstanceNormOpErrorCase1(unittest.TestCase):
     def test_errors(self):
         with program_guard(Program(), Program()):
-            # the first dimension of input for instance_norm must between [2d, 5d] 
+            # the first dimension of input for instance_norm must between [2d, 5d]
             x = fluid.layers.data(
                 name='x', shape=[3], dtype="float32", append_batch_size=False)
             self.assertRaises(ValueError, paddle.static.nn.instance_norm, x)

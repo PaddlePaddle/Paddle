@@ -82,7 +82,7 @@ class TestMKLDNNMulOpS8S8(OpTest):
 
 
 '''
- test case for  s8 * u8 
+ test case for  s8 * u8
 '''
 
 
@@ -93,7 +93,7 @@ class TestMKLDNNMulOpS8U8(TestMKLDNNMulOpS8S8):
 
 
 '''
- test case for  s8 * s8 
+ test case for  s8 * s8
 '''
 
 
@@ -148,7 +148,7 @@ class TestMKLDNNMulOpS8S8WithFlatten(TestMKLDNNMulOpS8S8):
 
 
 '''
- test case for  s8 * u8 
+ test case for  s8 * u8
 '''
 
 

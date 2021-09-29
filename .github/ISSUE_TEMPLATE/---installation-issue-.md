@@ -18,7 +18,7 @@ about: 您可以提问安装、编译出现报错等问题。 You could use this
 - 安装方式信息：
 1）pip安装/docker安装
 2）本地编译：请提供cmake命令，编译命令
-3）docker编译：请提供docker镜像，编译命令            
+3）docker编译：请提供docker镜像，编译命令           
   特殊环境请注明：如离线安装等
 - 复现信息：如为报错，请给出复现环境、复现步骤
 - 问题描述：请详细描述您的问题，同步贴出报错信息、日志/代码关键片段
@@ -33,8 +33,8 @@ If there is no solution,please make sure that this is an installation issue incl
 -OS Platform (eg. Mac OS 10.14)
 -Python version
 - Install method: pip install/install with docker/build from source(without docker)/build within docker
-- Other special cases that you think may be related to this problem, eg. offline install, special internet condition 
-Note: You can get most of the information by running [summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py).   
+- Other special cases that you think may be related to this problem, eg. offline install, special internet condition
+Note: You can get most of the information by running [summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py).  
 
 **To Reproduce**
 Steps to reproduce the behavior

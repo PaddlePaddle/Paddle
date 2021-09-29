@@ -599,7 +599,7 @@ class PaddingRNNTestBase(unittest.TestCase):
     def compare_padding_static_mode(self, parallel=True,
                                     use_program_cache=True):
         '''
-        Test that train ppl of padding mode is same to that of static mode 
+        Test that train ppl of padding mode is same to that of static mode
         '''
         config = RNNConfig('test', 'padding')
         with fluid.scope_guard(fluid.Scope()):

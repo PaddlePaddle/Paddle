@@ -70,7 +70,7 @@ class KaimingUniform(MSRAInitializer):
     by Kaiming He, Xiangyu Zhang, Shaoqing Ren and Jian Sun. This is a
     robust initialization method that particularly considers the rectifier
     nonlinearities.
-    
+
     In case of Uniform distribution, the range is [-x, x], where
 
     .. math::

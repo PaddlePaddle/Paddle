@@ -54,7 +54,7 @@ class Adadelta(Optimizer):
             If a parameter has set regularizer using :ref:`api_fluid_ParamAttr` already, \
             the regularization setting here in optimizer will be ignored for this parameter. \
             Otherwise, the regularization setting here in optimizer will take effect. \
-            Default None, meaning there is no regularization. 
+            Default None, meaning there is no regularization.
         grad_clip (GradientClipBase, optional): Gradient cliping strategy, it's an instance of
             some derived class of ``GradientClipBase`` . There are three cliping strategies
             ( :ref:`api_fluid_clip_GradientClipByGlobalNorm` , :ref:`api_fluid_clip_GradientClipByNorm` ,
@@ -65,7 +65,7 @@ class Adadelta(Optimizer):
 
     Examples:
         .. code-block:: python
-	
+
             import paddle
             import numpy as np
             inp = np.random.uniform(-0.1, 0.1, [10, 10]).astype("float32")
@@ -96,7 +96,7 @@ class Adadelta(Optimizer):
                     'weight_decay': 0.001,
                     'learning_rate': 0.1,
                 }],
-                weight_decay=0.01)                   
+                weight_decay=0.01)
             out.backward()
             adadelta.step()
             adadelta.clear_grad()

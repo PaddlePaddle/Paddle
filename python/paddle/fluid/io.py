@@ -669,8 +669,8 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
     """
     :api_attr: Static Graph
 
-    This operator saves all persistable variables from :code:`main_program` to 
-    the folder :code:`dirname` or file :code:`filename`. You can refer to 
+    This operator saves all persistable variables from :code:`main_program` to
+    the folder :code:`dirname` or file :code:`filename`. You can refer to
     :ref:`api_guide_model_save_reader_en` for more details. And then
     saves these persistables variables to the folder :code:`dirname` or file
     :code:`filename`.
@@ -688,7 +688,7 @@ def save_persistables(executor, dirname, main_program=None, filename=None):
         dirname(str, optional): The saving directory path.
                             When you need to save the parameter to the memory, set it to None.
         main_program(Program, optional): The program whose persistbale variables will
-                                         be saved. You can refer to 
+                                         be saved. You can refer to
                                          :ref:`api_guide_Program_en` for more details.
                                          If it is None, the default main program will
                                          be used.
@@ -1489,7 +1489,7 @@ def load_inference_model(dirname,
           Default: ``None``.
         params_filename(str, optional): It is only used for the case that all
             parameters were saved in a single binary file. One of the following:
-          - The name of file to load all parameters.  
+          - The name of file to load all parameters.
           - When ``dirname`` is ``None``, it must be set to a string containing all the parameters.
           - If parameters were saved in separate files, set it as ``None``.
             Default: ``None``.
@@ -1859,7 +1859,7 @@ def save(program, model_path, protocol=4, **configs):
         model_path(str): the file prefix to save the program. The format is "dirname/file_prefix". If file_prefix is empty str. A exception will be raised
         protocol(int, optional): The protocol version of pickle module must be greater than 1 and less than 5.
                                  Default: 4
-        configs(dict, optional) : optional keyword arguments.                        
+        configs(dict, optional) : optional keyword arguments.
 
     Returns:
         None
@@ -2275,10 +2275,10 @@ def load_program_state(model_path, var_list=None):
                                               None)
                 else:
                     for var_name in var_name_list:
-                        # NOTE(chenweihang): If identify which files the user wants 
-                        # to load from the disk, we load these variables one by one. 
-                        # If a file does not exist, we only warn the user that the 
-                        # file may be an irrelevant file, but does not throw an error 
+                        # NOTE(chenweihang): If identify which files the user wants
+                        # to load from the disk, we load these variables one by one.
+                        # If a file does not exist, we only warn the user that the
+                        # file may be an irrelevant file, but does not throw an error
                         # to ensure that other legal variables can be loaded.
                         temp_var = load_block.create_var(
                             name=var_name, persistable=True)

@@ -43,7 +43,7 @@ def _stack_tensor_or_return_none(origin_list):
 
 @framework.dygraph_only
 def jacobian(func, inputs, create_graph=False, allow_unused=False):
-    ''' 
+    '''
     .. note::
         **This API is ONLY available in imperative mode.**
 
@@ -52,7 +52,7 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
     Parameters:
         func (function): a Python function that takes a Tensor or a Tensor
             list/tuple as inputs and returns a Tensor or a Tensor tuple.
-        inputs (Tensor|list(Tensor)|tuple(Tensor)): the input Tensor or 
+        inputs (Tensor|list(Tensor)|tuple(Tensor)): the input Tensor or
             Tensor list/tuple of the function ``func``.
         create_graph (bool, optional): whether to create the gradient graphs
             of the computing process. When it is True, higher order derivatives
@@ -84,7 +84,7 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
 
             def func(x):
                 return paddle.matmul(x, x)
-            
+
             x = paddle.ones(shape=[2, 2], dtype='float32')
             x.stop_gradient = False
             jacobian = paddle.autograd.jacobian(func, x)
@@ -102,7 +102,7 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
 
             def func(x, y):
                 return paddle.matmul(x, y)
-            
+
             x = paddle.ones(shape=[2, 2], dtype='float32')
             y = paddle.ones(shape=[2, 2], dtype='float32') * 2
             x.stop_gradient = False
@@ -113,7 +113,7 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
             #        [[2., 2., 0., 0.],
             #         [2., 2., 0., 0.],
             #         [0., 0., 2., 2.],
-            #         [0., 0., 2., 2.]]), 
+            #         [0., 0., 2., 2.]]),
             #  Tensor(shape=[4, 4], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
             #        [[1., 0., 1., 0.],
             #         [0., 1., 0., 1.],

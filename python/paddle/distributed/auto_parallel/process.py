@@ -79,10 +79,10 @@ def new_process_group(ranks):
 
 
 # This implementation refers to lots of Paddle/python/paddle/distributed/collective.py,
-# Fleet also has a collective helper which uses ops to initialize communication in 
+# Fleet also has a collective helper which uses ops to initialize communication in
 # Paddle/python/paddle/distributed/fleet/meta_optimizers/common.py. We use the first one
-# because it seems simple. This should be enhanced to manage the process membership and 
-# the instantiation process in a more general way. In the future, the process group may 
+# because it seems simple. This should be enhanced to manage the process membership and
+# the instantiation process in a more general way. In the future, the process group may
 # handle the communication implementation choice.
 class ProcessGroup:
     def __init__(self, group_id, ranks):
@@ -133,7 +133,7 @@ class ProcessGroup:
             else:
                 assert False, ("No CUDA device found")
 
-        # TODO(shenliang03): This is a temporary solution to solve the problem of 
+        # TODO(shenliang03): This is a temporary solution to solve the problem of
         # hang caused by cross-creation of new_group
         tmp = paddle.to_tensor(
             [1], dtype="int32") if in_dygraph_mode() else fill_constant(

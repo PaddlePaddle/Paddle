@@ -24,11 +24,11 @@ def wait_server_ready(endpoints):
     """
     Wait until parameter servers are ready, use connext_ex to detect
     port readiness.
-    
+
     Args:
     endpoints (list|tuple): endpoints string list, like:
     ["127.0.0.1:8080", "127.0.0.1:8081"]
-    
+
     Examples:
     .. code-block:: python
 

@@ -18,7 +18,7 @@ from ..fluid.framework import core, in_dygraph_mode, Variable
 from ..fluid.layer_helper import LayerHelper
 from ..fluid.data_feeder import check_variable_and_dtype
 
-# TODO: define functions to get tensor attributes  
+# TODO: define functions to get tensor attributes
 from ..fluid.layers import rank  # noqa: F401
 from ..fluid.layers import shape  # noqa: F401
 from paddle import _C_ops
@@ -78,7 +78,7 @@ def real(x, name=None):
         x (Tensor): the input tensor, its data type could be complex64 or complex128.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property. For more information, please refer to :ref:`api_guide_Name` .
-      
+
     Returns:
         Tensor: a tensor containing real values of the input tensor.
 

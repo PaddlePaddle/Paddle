@@ -72,7 +72,7 @@ class TestUnsqueezeOp2(TestUnsqueezeOp):
         self.new_shape = (1, 20, 5)
 
 
-# Just part of axes be squeezed. 
+# Just part of axes be squeezed.
 class TestUnsqueezeOp3(TestUnsqueezeOp):
     def init_test_case(self):
         self.ori_shape = (6, 5, 1, 4)
@@ -80,7 +80,7 @@ class TestUnsqueezeOp3(TestUnsqueezeOp):
         self.new_shape = (6, 1, 5, 1, 4, 1)
 
 
-# unsqueeze 2        
+# unsqueeze 2
 class TestUnsqueeze2Op(OpTest):
     def setUp(self):
         self.set_npu()
@@ -129,7 +129,7 @@ class TestUnsqueeze2Op2(TestUnsqueeze2Op):
         self.new_shape = (1, 20, 5)
 
 
-# Correct: Just part of axes be squeezed. 
+# Correct: Just part of axes be squeezed.
 class TestUnsqueeze2Op3(TestUnsqueeze2Op):
     def init_test_case(self):
         self.ori_shape = (6, 5, 1, 4)

@@ -108,7 +108,7 @@ class MobileNetV2(nn.Layer):
 
         Args:
             scale (float): scale of channels in each layer. Default: 1.0.
-            num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+            num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer
                                 will not be defined. Default: 1000.
             with_pool (bool): use pool before the last fc layer or not. Default: True.
 
@@ -203,7 +203,7 @@ def _mobilenet(arch, pretrained=False, **kwargs):
 
 def mobilenet_v2(pretrained=False, scale=1.0, **kwargs):
     """MobileNetV2
-    
+
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
         scale: (float): scale of channels in each layer. Default: 1.0.

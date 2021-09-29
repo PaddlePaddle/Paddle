@@ -31,10 +31,10 @@ cc_library(paddle_infer_contrib SRCS paddle_infer_contrib.cc DEPS zero_copy_tens
 cc_library(paddle_pass_builder SRCS paddle_pass_builder.cc)
 
 if(WITH_CRYPTO)
-    cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array 
+    cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array
               analysis_config paddle_infer_contrib zero_copy_tensor trainer_desc_proto paddle_crypto custom_operator)
 else()
-    cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array 
+    cc_library(paddle_inference_api SRCS api.cc api_impl.cc helper.cc DEPS lod_tensor scope reset_tensor_array
               analysis_config paddle_infer_contrib zero_copy_tensor trainer_desc_proto custom_operator)
 endif()
 
@@ -48,7 +48,7 @@ if(WITH_GPU AND TENSORRT_FOUND)
     set(inference_deps ${inference_deps} tensorrt_engine tensorrt_converter)
 endif()
 
-cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS ${inference_deps} 
+cc_library(analysis_predictor SRCS analysis_predictor.cc ${mkldnn_quantizer_src} DEPS ${inference_deps}
           zero_copy_tensor ir_pass_manager op_compatible_info infer_io_utils)
 
 cc_test(test_paddle_inference_api SRCS api_tester.cc DEPS paddle_inference_api)

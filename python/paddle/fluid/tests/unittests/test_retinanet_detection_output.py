@@ -428,7 +428,7 @@ class TestRetinanetDetectionOutOpError(unittest.TestCase):
             im_info1 = fluid.data(
                 name="im_info1", shape=[1, 3], dtype='float32')
 
-            # The `bboxes` must be list, each element must be Variable and 
+            # The `bboxes` must be list, each element must be Variable and
             # its Tensor data type must be one of float32 and float64.
             def test_bboxes_type():
                 fluid.layers.retinanet_detection_output(

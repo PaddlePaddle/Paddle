@@ -97,7 +97,7 @@ class TestGroupNormOp(OpTest):
         if core.is_compiled_with_cuda():
             place = core.CUDAPlace(0)
             # group_norm uses AtomicAdd on CUDAPlace, which do not ensure
-            # computation order when multiple threads write the same address. So the 
+            # computation order when multiple threads write the same address. So the
             # result of group_norm is non-deterministic when datatype is float.
             # When inplace_atol is not None, the inplace check uses numpy.allclose
             # to check inplace result instead of numpy.array_equal.
@@ -172,7 +172,7 @@ class TestGroupNormOpBigEps3(TestGroupNormOp):
 
 
 @skip_check_grad_ci(
-    reason='''This test case is used to ensure whether the gradient checking results between CPU and GPU  
+    reason='''This test case is used to ensure whether the gradient checking results between CPU and GPU
             are consistent when using the same inputs, thus, it doesn't need to call check_grad.'''
 )
 class TestGroupNormOpLargeData(TestGroupNormOp):
@@ -215,7 +215,7 @@ class TestGroupNormOpBigEps3_With_NHWC(TestGroupNormOp):
 
 
 @skip_check_grad_ci(
-    reason='''This test case is used to ensure whether the gradient checking results between CPU and GPU  
+    reason='''This test case is used to ensure whether the gradient checking results between CPU and GPU
             are consistent when using the same inputs, thus, it doesn't need to call check_grad.'''
 )
 class TestGroupNormOpLargeData_With_NHWC(TestGroupNormOp):

@@ -23,7 +23,7 @@ from paddle.autograd import PyLayer
 __all__ = []
 
 # Follow this paper to achieve the file:
-# Shoeybi M, Patwary M, Puri R, et al. Megatron-lm: Training multi-billion parameter 
+# Shoeybi M, Patwary M, Puri R, et al. Megatron-lm: Training multi-billion parameter
 # language models using model parallelism[J]. arXiv preprint arXiv:1909.08053, 2019. (https://arxiv.org/abs/1909.08053)
 
 

@@ -794,7 +794,7 @@ class TestPureFp16InferenceSaveLoad(unittest.TestCase):
 
         train(layer, loader, loss_fn, adam)
 
-        # save 
+        # save
         path = "example_model/linear"
         paddle.jit.save(
             layer, path, input_spec=[InputSpec(

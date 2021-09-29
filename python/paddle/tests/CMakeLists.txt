@@ -31,7 +31,7 @@ function(py_dist_test TARGET_NAME)
       set_tests_properties(${TARGET_NAME} PROPERTIES TIMEOUT 600 LABELS "RUN_TYPE=DIST")
     endif()
 
-    
+
   endif()
 endfunction()
 
@@ -48,5 +48,5 @@ set_tests_properties(test_dataset_wmt PROPERTIES TIMEOUT 120)
 set_tests_properties(test_vision_models PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_uci_housing PROPERTIES TIMEOUT 120)
 set_tests_properties(test_dataset_imdb PROPERTIES TIMEOUT 300)
-set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600) 
-set_tests_properties(test_hapi_hub PROPERTIES TIMEOUT 300) 
+set_tests_properties(test_pretrained_model PROPERTIES TIMEOUT 600)
+set_tests_properties(test_hapi_hub PROPERTIES TIMEOUT 300)

@@ -34,7 +34,7 @@ def for_in_range(x):
     return z
 
 
-# 1. for iter list 
+# 1. for iter list
 @paddle.jit.to_static
 def for_iter_list(x_array):
     z = fluid.layers.fill_constant([1], 'int32', 0)

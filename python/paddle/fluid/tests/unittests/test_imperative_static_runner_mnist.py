@@ -332,7 +332,7 @@ class TestImperativeStaticModelRunnerMnist(unittest.TestCase):
         # Phase 1. run and save static model
         self.train_and_save_model()
 
-        # Phase 2. load model & train dygraph        
+        # Phase 2. load model & train dygraph
         dy_x_data, dy_out, dy_param_init_value, dy_param_value, dict_old_new_init= \
             self.load_and_train_dygraph()
 

@@ -479,7 +479,7 @@ class TestDepthWiseConvDoubleGradCheck(unittest.TestCase):
         dtype = np.float32 if fluid.core.is_compiled_with_rocm() else np.float64
         x = layers.data('x', shape, False, dtype)
 
-        # condition of depthwise conv: 
+        # condition of depthwise conv:
         # use_cudnn == False
         # groups == filters
         # num_filters % num_channels == 0

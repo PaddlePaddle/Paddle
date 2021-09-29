@@ -36,7 +36,7 @@ class TRTAffineChannelTest(InferencePassTest):
         self.enable_trt = True
 
     def build(self):
-        # set min_graph_size to 2, 
+        # set min_graph_size to 2,
         # because affine channel doesn't support nhwc format
         self.trt_parameters = InferencePassTest.TensorRTParam(
             1 << 30, self.bs, 2, self.precision, self.serialize, False)

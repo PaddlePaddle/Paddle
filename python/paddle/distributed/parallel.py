@@ -33,7 +33,7 @@ __all__ = []
 
 ParallelStrategy = core.ParallelStrategy
 
-# NOTE(chenweihang): Maintain a global parallel env to avoid 
+# NOTE(chenweihang): Maintain a global parallel env to avoid
 # initializing ParallelEnv every time and improve performance
 _global_parallel_env = None
 
@@ -96,7 +96,7 @@ def init_parallel_env(backend='auto'):
 
     Returns:
         None
-        
+
     Examples:
         .. code-block:: python
             # required: gpu
@@ -110,7 +110,7 @@ def init_parallel_env(backend='auto'):
                     super(LinearNet, self).__init__()
                     self._linear1 = nn.Linear(10, 10)
                     self._linear2 = nn.Linear(10, 1)
-                    
+
                 def forward(self, x):
                     return self._linear2(self._linear1(x))
 
@@ -131,7 +131,7 @@ def init_parallel_env(backend='auto'):
                 outputs = dp_layer(inputs)
                 labels = paddle.randn([10, 1], 'float32')
                 loss = loss_fn(outputs, labels)
-                
+
                 loss.backward()
 
                 adam.step()
@@ -152,10 +152,10 @@ def init_parallel_env(backend='auto'):
             "Currently not a parallel execution environment, `paddle.distributed.init_parallel_env` will not do anything."
         )
         return
-    # NOTE(xiongkun): support cpu gloo only, add this environment variable to 
+    # NOTE(xiongkun): support cpu gloo only, add this environment variable to
     #                 enable cpu only gloo prarllel training)
     is_cpu_only = _check_backend(backend)
-    # 1. gpu xpu check, must be gpu or xpu, 
+    # 1. gpu xpu check, must be gpu or xpu,
     if not (is_cpu_only or core.is_compiled_with_cuda() or
             core.is_compiled_with_xpu()):
         raise NotImplementedError(
@@ -243,7 +243,7 @@ def init_parallel_env(backend='auto'):
     # are separately looking for free ports which sometimes
     # leads to port-conflict.
     if is_cpu_only and parallel_env.rank == 0:
-        # compare to init_gloo, we don't need to 
+        # compare to init_gloo, we don't need to
         # init gloo, because we do this in _init_parallel_ctx;
         http_server_d["running"] = False
         http_server.join()
@@ -270,7 +270,7 @@ def get_rank():
     """
     Returns the rank of current trainer.
 
-    Its value is equal to the value of the environment variable ``PADDLE_TRAINER_ID`` . 
+    Its value is equal to the value of the environment variable ``PADDLE_TRAINER_ID`` .
     The default value is 0.
 
     Returns:
@@ -293,7 +293,7 @@ def get_world_size():
     """
     Returns the number of trainers (number of processes participating in current job).
 
-    Its value is equal to the value of the environment variable ``PADDLE_TRAINERS_NUM`` . 
+    Its value is equal to the value of the environment variable ``PADDLE_TRAINERS_NUM`` .
     The default value is 1.
 
     Returns:

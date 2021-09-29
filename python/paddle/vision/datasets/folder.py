@@ -121,7 +121,7 @@ class DatasetFolder(Dataset):
 
             for items in data_folder:
                 break
-                
+
             shutil.rmtree(temp_dir)
     """
 
@@ -161,7 +161,7 @@ class DatasetFolder(Dataset):
             dir (string): Root directory path.
 
         Returns:
-            tuple: (classes, class_to_idx) where classes are relative to (dir), 
+            tuple: (classes, class_to_idx) where classes are relative to (dir),
                     and class_to_idx is a dictionary.
 
         """
@@ -268,7 +268,7 @@ class ImageFolder(Dataset):
 
             for items in data_folder:
                 break
-                
+
             shutil.rmtree(temp_dir)
      """
 

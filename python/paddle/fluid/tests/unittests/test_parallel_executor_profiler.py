@@ -24,7 +24,7 @@ import os
 # NCCL 2.7 decides to use shared memory while NCCL 2.6 didn't, hence causing the error.
 # include/shm.h:28 NCCL WARN Call to posix_fallocate failed: No space left on device
 #
-# Set environment variables NCCL_SHM_DISABLE=1 to disables the Shared Memory (SHM) transports 
+# Set environment variables NCCL_SHM_DISABLE=1 to disables the Shared Memory (SHM) transports
 # and force to use P2P which is the default transports way of NCCL2.6.
 os.environ['NCCL_SHM_DISABLE'] = str(1)
 

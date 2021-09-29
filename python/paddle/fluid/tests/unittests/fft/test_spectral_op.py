@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -87,7 +87,7 @@ def class_name(cls, num, params_dict):
                       (12, 14))).astype(np.complex128), (1, ), "ortho", True)
 ])
 class TestFFTC2COp(OpTest):
-    # Because framwork not support complex numerial gradient, we skip gradient check. 
+    # Because framwork not support complex numerial gradient, we skip gradient check.
     no_need_check_grad = True
 
     def setUp(self):
@@ -122,7 +122,7 @@ class TestFFTC2COp(OpTest):
           (12, 14)) + 1j * np.random.random((12, 14))).astype(np.complex128),
             (1, ), "ortho", True, 26)])
 class TestFFTC2ROp(OpTest):
-    # Because framwork not support complex numerial gradient, we skip gradient check. 
+    # Because framwork not support complex numerial gradient, we skip gradient check.
     no_need_check_grad = True
 
     def setUp(self):
@@ -157,7 +157,7 @@ class TestFFTC2ROp(OpTest):
                                  np.random.randn(12, 14).astype(np.float64),
                                  (1, ), "ortho", True, False)])
 class TestFFTR2COp(OpTest):
-    # Because framwork not support complex numerial gradient, we skip gradient check. 
+    # Because framwork not support complex numerial gradient, we skip gradient check.
     no_need_check_grad = True
 
     def setUp(self):

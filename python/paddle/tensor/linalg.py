@@ -1608,7 +1608,7 @@ def eig(x, name=None):
     Args:
         x (Tensor): A tensor with shape math:`[*, N, N]`, The data type of the x should be one of ``float32``,
             ``float64``, ``compplex64`` or ``complex128``.
-        name (str, optional): The default value is `None`. Normally there is no need for user to set 
+        name (str, optional): The default value is `None`. Normally there is no need for user to set
             this property. For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

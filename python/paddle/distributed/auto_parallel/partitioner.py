@@ -41,7 +41,7 @@ class Partitioner(object):
     warning:: Partitioner is experimental and subject to change.
 
     Partitioner convert a program into another program.
-    Given a serial program which has been auto completed with shard annotation, the Partitioner 
+    Given a serial program which has been auto completed with shard annotation, the Partitioner
     convert the serial program into a "distributed" program. The Partitioner will  modify the serial
     program in following two ways, which is also the major difference between serial and distributed program:
         1. partition op: replace a serial op into its corresponding dist op infered from the shard annotation
@@ -56,7 +56,7 @@ class Partitioner(object):
             from paddle.distributed import fleet
             from paddle.distributed.auto_parallel.partitioner import Partitioner
 
-            # create serial program with forward only 
+            # create serial program with forward only
             with static.program_guard(serial_main_program, serial_start_program):
                 model = create_model(config)
                 tokens = static.data(name="tokens", shape=[batch_size, sequence_len], dtype='int64')
@@ -69,11 +69,11 @@ class Partitioner(object):
             auto.ProcessMesh(shape=[2, 4], process_group=[0, 1, 2, 3, 4, 5, 6, 7])
             annotated_main_program = auto.complete_annotation(serial_main_program)
             auto_paralle_context = get_default_distributed_context()
-                
+
             # distributed strategy & rank info
             rank_id = paddle.distributed.get_rank()
             dist_strategy = fleet.DistributedStrategy()
-    
+
             # create partitioner
             Partitioner = Partitioner(dist_strategy, auto_paralle_context, rank_id)
 
@@ -117,17 +117,17 @@ class Partitioner(object):
         self._serial2dist_varname_mapping = {}
         self._dist_varname_suffix = ""
 
-        # TODO if there is some dist op that is not compatible 
-        # with auto_backward in forward, the following flag 
+        # TODO if there is some dist op that is not compatible
+        # with auto_backward in forward, the following flag
         # should be set to False
         self._compatible_with_auto_backward = True
 
-        # data parallelism        
+        # data parallelism
         self._enable_data_parallel = False
         self._dp_degree = 0
         self._dp_group = None
 
-        # tensor parallelism        
+        # tensor parallelism
         self._enable_tensor_parallel = False
         self._tp_degree = 0
         self._tp_group = None
@@ -137,17 +137,17 @@ class Partitioner(object):
         take serial forward programs with shard annotation, create a new distributed forward programs based on the serial ones.
         instead of modify the input programs inplace, this function will preserve the inputs and create new program for output.
 
-        beside replace the serial op with its dist op, if user has defined other strategy in fleet.distributed_strategy, and if 
+        beside replace the serial op with its dist op, if user has defined other strategy in fleet.distributed_strategy, and if
         those strategy need to transpile (modify) the forward network program, those forward program modification should also be done within this
         function in auto parallel scenario, in order to facilitate distributed inference/evaluation which need to DECOUPLE strategy specific forward transpilation with fleet.distributed_optimizer.minimize().
 
-        by now the fleet.distributed_strategy that need transpile forward program are following: 
+        by now the fleet.distributed_strategy that need transpile forward program are following:
             1. (optimizer) sharding
 
         Args:
             main_program (paddle.fluid.framework.program): serial main program with forward network only
             startup_program (paddle.fluid.framework.program): serial startup program with forward network only
-        
+
         return:
             main_program (paddle.fluid.framework.program): distributed main program with forward network only
             startup_program (paddle.fluid.framework.program): distributed startup program with forward network only
@@ -167,18 +167,18 @@ class Partitioner(object):
                        no_grad_set=None,
                        callbacks=None):
         """
-        A complete training neural network is made up of forward and backward propagation. 
+        A complete training neural network is made up of forward and backward propagation.
         This function is to generate the dist backward program for the distributed forward program.
 
-        By now, the current automatical backward mechanism in paddle framework might NOT handle the backward generation for 
+        By now, the current automatical backward mechanism in paddle framework might NOT handle the backward generation for
         some dist ops correctly, some so we now have two ways to genenate the backward program:
             1. dist_forward_program --> auto_backward --> dist_backward_program (if auto_backward could handle all dist op)
             2. serial_forward_program --> auto_backward --> serial_backward_program --> dist_op_backward_transpile --> dist_backward_program (if auto_backward could not handle all dist op)
-        
+
         the backprogram is append the input dist program inplaced.
 
         Args:
-            serial_loss (Variable) the loss in serial program that to be minimized 
+            serial_loss (Variable) the loss in serial program that to be minimized
             serial_main_program (paddle.fluid.framework.program): serial main program with forward network only
             serial_startup_program (paddle.fluid.framework.program): serial startup program with forward network only
             dist_main_program (paddle.fluid.framework.program): dist main program with forward network only
@@ -190,7 +190,7 @@ class Partitioner(object):
                 to be updated. The default value is None.
             callbacks (list, optional): list of callable objects to run when appending backward
                 operator for one parameter. The default value is None.
-        
+
         return:
             params_grads (list) list of tuple that contain param and its grad variable
         """
@@ -207,10 +207,10 @@ class Partitioner(object):
         naive gradient synchronization before update
 
         Args:
-            user_define_optimizer (paddle.fluid.optimizer): 
+            user_define_optimizer (paddle.fluid.optimizer):
             params_grads (list) list of tuple that contain param and its grad variable
-            dist_main_program (paddle.fluid.framework.program): dist main program with forward & backward network 
-            dist_startup_program (paddle.fluid.framework.program): dist startup program with forward & backward  network 
+            dist_main_program (paddle.fluid.framework.program): dist main program with forward & backward network
+            dist_startup_program (paddle.fluid.framework.program): dist startup program with forward & backward  network
         """
 
         optimize_ops = self.apply_optimize_impl(user_define_optimizer,
@@ -285,10 +285,10 @@ class Partitioner(object):
         naive gradient synchronization before update
 
         Args:
-            user_define_optimizer (paddle.fluid.optimizer): 
+            user_define_optimizer (paddle.fluid.optimizer):
             params_grads (list) list of tuple that contain param and its grad variable
-            dist_main_program (paddle.fluid.framework.program): dist main program with forward & backward network 
-            dist_startup_program (paddle.fluid.framework.program): dist startup program with forward & backward  network 
+            dist_main_program (paddle.fluid.framework.program): dist main program with forward & backward network
+            dist_startup_program (paddle.fluid.framework.program): dist startup program with forward & backward  network
         """
 
         if self._dist_strategy.sharding:
@@ -422,7 +422,7 @@ class Partitioner(object):
 
             # DP init param broadcast
             if self._enable_data_parallel:
-                # parameters initialization synchronization 
+                # parameters initialization synchronization
                 param_to_sync = []
 
                 for param in partitioned_startup_global_block.all_parameters():
@@ -599,7 +599,7 @@ class Partitioner(object):
         which majorly include:
             1. partition the parameter
             2. insert broadcast op
-            3. insert sync op 
+            3. insert sync op
 
         NOTE the transpile modification is inplace on the input program
         """
@@ -613,7 +613,7 @@ class Partitioner(object):
         which majorly include:
             1. partition the gradient
             2. insert broadcast op
-            3. insert sync op 
+            3. insert sync op
 
         NOTE the transpile modification is inplace on the input program
         """
@@ -625,7 +625,7 @@ class Partitioner(object):
                                      dist_startup_program):
         """
         shard params_grads
-        append the broadcast to sync parameters 
+        append the broadcast to sync parameters
         """
         raise RuntimeError("sharding transpile is NOT implemented !")
 
@@ -796,7 +796,7 @@ def _get_dist_shape(var, dist_attr):
 def _partition_parameter(auto_paralle_context, src_var, dst_block, dst_varname,
                          dst_shape):
     # NOTE hack to copied Parameter
-    # not initialized parameter, need to initialize it 
+    # not initialized parameter, need to initialize it
     copied_kwargs = {}
     copied_kwargs['trainable'] = src_var.trainable
     copied_kwargs['optimize_attr'] = src_var.optimize_attr
@@ -911,7 +911,7 @@ def _insert_dist_op(src_op, dst_block, varname_mapping, auto_paralle_context,
             varnames.append(varname_mapping[varname])
         output_mapping[output_name] = varnames
 
-    # append dist op 
+    # append dist op
     dist_attr = auto_paralle_context.get_op_distributed_attr_for_program(src_op)
     dist_ops = get_distributed_operator(src_op.type)
     append_op_handle = dist_ops.get_impl(dist_attr.get_impl_idx()).forward(

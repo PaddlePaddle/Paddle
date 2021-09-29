@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -58,7 +58,7 @@ class QuantDequantTest(unittest.TestCase):
         np.random.seed(1)
         random.seed(1)
 
-    # from Paddle release2.1 
+    # from Paddle release2.1
     def _normalize_program(self, program, feed_vars, fetch_vars):
         if not isinstance(program, Program):
             raise TypeError(
@@ -121,7 +121,7 @@ class QuantDequantTest(unittest.TestCase):
 
     def _get_paddle_outs(self, feed, fetch_list, executor, program, scope):
         '''
-        Return PaddlePaddle outputs. 
+        Return PaddlePaddle outputs.
         '''
         with fluid.scope_guard(scope):
             outs = executor.run(program=program,
@@ -132,7 +132,7 @@ class QuantDequantTest(unittest.TestCase):
 
     def _get_inference_outs(self, config):
         '''
-        Return AnalysisPredictor outputs. 
+        Return AnalysisPredictor outputs.
         '''
         predictor = create_paddle_predictor(config)
         tensor_shapes = predictor.get_input_tensor_shape()
@@ -160,7 +160,7 @@ class QuantDequantTest(unittest.TestCase):
                              use_trt=False,
                              use_mkldnn=False):
         '''
-        Return a new object of AnalysisConfig. 
+        Return a new object of AnalysisConfig.
         '''
         config = AnalysisConfig(self.path)
         config.disable_gpu()
@@ -201,9 +201,9 @@ class QuantDequantTest(unittest.TestCase):
                                  quant=False,
                                  rtol=1e-5):
         '''
-        Check whether calculating on CPU and GPU, enable TensorRT 
-        or disable TensorRT, enable MKLDNN or disable MKLDNN 
-        are all the same. 
+        Check whether calculating on CPU and GPU, enable TensorRT
+        or disable TensorRT, enable MKLDNN or disable MKLDNN
+        are all the same.
         '''
         place = fluid.CUDAPlace(0) if use_gpu else fluid.CPUPlace()
         executor = fluid.Executor(place)
@@ -278,7 +278,7 @@ class QuantDequantTest(unittest.TestCase):
         inference_outs = self._get_inference_outs(
             self._get_analysis_config(use_gpu=use_gpu))
 
-        # Check whether the results calculated on CPU and on GPU are the same. 
+        # Check whether the results calculated on CPU and on GPU are the same.
         self.assertTrue(
             len(paddle_outs) == len(inference_outs),
             "The number of outputs is different between inference and training forward at {}".
@@ -297,7 +297,7 @@ class QuantDequantTest(unittest.TestCase):
                 "Output has diff between inference and training forward at {} ".
                 format(device))
 
-        # Check whether the trt results and the GPU results are the same. 
+        # Check whether the trt results and the GPU results are the same.
         if use_gpu and self.enable_trt:
             tensorrt_outputs = self._get_inference_outs(
                 self._get_analysis_config(
@@ -326,7 +326,7 @@ class QuantDequantTest(unittest.TestCase):
                         paddle_out, tensorrt_output, rtol=rtol, atol=atol),
                     "Output has diff between GPU and TensorRT. ")
 
-        # Check whether the mkldnn results and the CPU results are the same. 
+        # Check whether the mkldnn results and the CPU results are the same.
         if (not use_gpu) and self.enable_mkldnn:
             mkldnn_outputs = self._get_inference_outs(
                 self._get_analysis_config(
@@ -346,7 +346,7 @@ class QuantDequantTest(unittest.TestCase):
 
     class TensorRTParam:
         '''
-        Prepare TensorRT subgraph engine parameters. 
+        Prepare TensorRT subgraph engine parameters.
         '''
 
         def __init__(self, workspace_size, max_batch_size, min_subgraph_size,
@@ -360,7 +360,7 @@ class QuantDequantTest(unittest.TestCase):
 
     class DynamicShapeParam:
         '''
-        Prepare TensorRT subgraph engine dynamic shape parameters. 
+        Prepare TensorRT subgraph engine dynamic shape parameters.
         '''
 
         def __init__(self, min_input_shape, max_input_shape, optim_input_shape,

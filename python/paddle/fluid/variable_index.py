@@ -90,7 +90,7 @@ class SliceInfo:
                 self.pre_shape = index.shape
             else:
                 if self.pre_shape != index.shape:
-                    # broadcast 
+                    # broadcast
                     cur_shape = paddle.broadcast_shape(self.pre_shape,
                                                        index.shape)
                     for i in range(len(self.indexes)):
@@ -671,11 +671,11 @@ def _setitem_impl_(var, item, value):
     return var
 
 
-# the item is a tensor of bool 
+# the item is a tensor of bool
 def set_value_for_bool_tensor(var, item, value):
 
-    # TODO(zyfncg): Now scatter_nd_add only support float32 and float64 tensor, 
-    # so in the current version we also only support float32 and float64 tensor, 
+    # TODO(zyfncg): Now scatter_nd_add only support float32 and float64 tensor,
+    # so in the current version we also only support float32 and float64 tensor,
     # this problem will be fixed in the future.
     if var.dtype != core.VarDesc.VarType.FP32 and var.dtype != core.VarDesc.VarType.FP64:
         raise TypeError("Only support float and double tensor for bool index, "

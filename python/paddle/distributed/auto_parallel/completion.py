@@ -36,8 +36,8 @@ def is_elementwise_like_op(op_type):
 
 def update_tensor_node_process_mesh(dist_context, tensor_node, fwd=True):
     """
-    Update tensor's process mesh by using its predecessor's process mesh if in the forward direction, 
-    and by using its successor's process mesh if in the backward direction. Note: only the equal 
+    Update tensor's process mesh by using its predecessor's process mesh if in the forward direction,
+    and by using its successor's process mesh if in the backward direction. Note: only the equal
     process meshes are compatible for now.
     """
     changed = False
@@ -77,8 +77,8 @@ def update_tensor_node_process_mesh(dist_context, tensor_node, fwd=True):
 
 def update_op_node_process_mesh(dist_context, op_node, fwd=True):
     """
-    Update op's process mesh by using its predecessor's process mesh if in the forward direction, 
-    and by using its successor's process mesh if in the backward direction. Note: only the equal 
+    Update op's process mesh by using its predecessor's process mesh if in the forward direction,
+    and by using its successor's process mesh if in the backward direction. Note: only the equal
     process meshes are compatible for now.
     """
     changed = False

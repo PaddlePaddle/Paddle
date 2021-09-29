@@ -153,7 +153,7 @@ class ResNet(nn.Layer):
     Args:
         Block (BasicBlock|BottleneckBlock): block module of model.
         depth (int): layers of resnet, default: 50.
-        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer
                             will not be defined. Default: 1000.
         with_pool (bool): use pool before the last fc layer or not. Default: True.
 
@@ -269,7 +269,7 @@ def _resnet(arch, Block, depth, pretrained, **kwargs):
 
 def resnet18(pretrained=False, **kwargs):
     """ResNet 18-layer model
-    
+
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
 
@@ -289,10 +289,10 @@ def resnet18(pretrained=False, **kwargs):
 
 def resnet34(pretrained=False, **kwargs):
     """ResNet 34-layer model
-    
+
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
-    
+
     Examples:
         .. code-block:: python
 
@@ -309,7 +309,7 @@ def resnet34(pretrained=False, **kwargs):
 
 def resnet50(pretrained=False, **kwargs):
     """ResNet 50-layer model
-    
+
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
 
@@ -329,7 +329,7 @@ def resnet50(pretrained=False, **kwargs):
 
 def resnet101(pretrained=False, **kwargs):
     """ResNet 101-layer model
-    
+
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
 
@@ -349,7 +349,7 @@ def resnet101(pretrained=False, **kwargs):
 
 def resnet152(pretrained=False, **kwargs):
     """ResNet 152-layer model
-    
+
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
 

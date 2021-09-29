@@ -70,8 +70,8 @@ class HybridParallelGradScaler:
         # allreduce_max found_inf in check_group
         if not self._use_dp_mode:
             self._found_inf = paddle.cast(self._found_inf, dtype="int32")
-            # TODO(shenliang03) Since the minimize call in the optimizer is 
-            # after the gradscaler, check_finite needs to synchronize global 
+            # TODO(shenliang03) Since the minimize call in the optimizer is
+            # after the gradscaler, check_finite needs to synchronize global
             # information. In the future, we should use check_group
             paddle.distributed.all_reduce(
                 self._found_inf, op=paddle.distributed.ReduceOp.MAX, group=None)

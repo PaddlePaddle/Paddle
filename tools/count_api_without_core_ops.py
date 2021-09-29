@@ -25,7 +25,7 @@ import platform
 
 __all__ = ['get_apis_with_and_without_core_ops', ]
 
-# APIs that should not be printed into API.spec 
+# APIs that should not be printed into API.spec
 omitted_list = [
     "paddle.fluid.LoDTensor.set",  # Do not know why it should be omitted
     "paddle.fluid.io.ComposeNotAligned",
@@ -206,8 +206,8 @@ if __name__ == "__main__":
                 print(name, func_dict[name])
 
     else:
-        print("""Usage: 
-            1. Count and list all operator-raleated APIs that contains append_op but not core.ops.xx. 
+        print("""Usage:
+            1. Count and list all operator-raleated APIs that contains append_op but not core.ops.xx.
                 python ./count_api_without_core_ops.py -c paddle
             2. Print api and the md5 of source code of the api.
                 python ./count_api_without_core_ops.py -p paddle

@@ -33,7 +33,7 @@ class VGG(nn.Layer):
 
     Args:
         features (nn.Layer): Vgg features create by function make_layers.
-        num_classes (int): Output dim of last fc layer. If num_classes <=0, last fc layer 
+        num_classes (int): Output dim of last fc layer. If num_classes <=0, last fc layer
                             will not be defined. Default: 1000.
         with_pool (bool): Use pool before the last three fc layer or not. Default: True.
 
@@ -131,7 +131,7 @@ def _vgg(arch, cfg, batch_norm, pretrained, **kwargs):
 
 def vgg11(pretrained=False, batch_norm=False, **kwargs):
     """VGG 11-layer model
-    
+
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
         batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
@@ -155,7 +155,7 @@ def vgg11(pretrained=False, batch_norm=False, **kwargs):
 
 def vgg13(pretrained=False, batch_norm=False, **kwargs):
     """VGG 13-layer model
-    
+
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
         batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
@@ -178,8 +178,8 @@ def vgg13(pretrained=False, batch_norm=False, **kwargs):
 
 
 def vgg16(pretrained=False, batch_norm=False, **kwargs):
-    """VGG 16-layer model 
-    
+    """VGG 16-layer model
+
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
         batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.
@@ -202,8 +202,8 @@ def vgg16(pretrained=False, batch_norm=False, **kwargs):
 
 
 def vgg19(pretrained=False, batch_norm=False, **kwargs):
-    """VGG 19-layer model 
-    
+    """VGG 19-layer model
+
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet. Default: False.
         batch_norm (bool): If True, returns a model with batch_norm layer. Default: False.

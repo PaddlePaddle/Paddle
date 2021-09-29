@@ -54,7 +54,7 @@ class TestSparseSGDOp(unittest.TestCase):
     def check_with_place(self, place):
         scope = core.Scope()
 
-        # create and initialize Grad Variable   
+        # create and initialize Grad Variable
         height = 10
         rows = [0, 4, 7]
         self.conf()

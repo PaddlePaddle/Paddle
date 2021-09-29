@@ -348,7 +348,7 @@ class TensorShapeTransformer(gast.NodeTransformer):
                             idx)
                         sub_node = gast.parse(sub_node_str).body[0].value
                         # Note(Aurelius84): Becuase static_shape_var_name is used in
-                        # eval_if_exist_else_none() as plain string, so it will not 
+                        # eval_if_exist_else_none() as plain string, so it will not
                         # be pasred as argument in convert_loop/ifelse. We delcare it
                         # as global var because it has unique name.
                         update_static_shape_var_node.append(

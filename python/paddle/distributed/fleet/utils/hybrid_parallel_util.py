@@ -124,7 +124,7 @@ def fused_allreduce_gradients(parameter_list, hcg):
 
 def sharding_reduce_gradients(parameter_list, hcg):
     # TODO allreduce --> reduce
-    # TODO merge grad / nrank with dp 
+    # TODO merge grad / nrank with dp
     logger.debug("sharding start gradients sync")
     with framework.no_grad():
 
@@ -134,7 +134,7 @@ def sharding_reduce_gradients(parameter_list, hcg):
 
                 g_var = param._grad_ivar()
 
-                # need use trace_op to allreduce 
+                # need use trace_op to allreduce
                 # paddle.distributed.all_reduce(
                 #     g_var, group=hcg.get_sharding_parallel_group(), use_calc_stream=True)
                 paddle.fluid.framework._dygraph_tracer().trace_op(

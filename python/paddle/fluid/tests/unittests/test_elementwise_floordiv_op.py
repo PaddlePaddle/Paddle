@@ -95,7 +95,7 @@ class TestFloorDivideOp(unittest.TestCase):
             self.assertEqual((np_z == z_expected).all(), True)
 
         with fluid.dygraph.guard(fluid.CPUPlace()):
-            # divide by zero 
+            # divide by zero
             np_x = np.array([2, 3, 4])
             np_y = np.array([0])
             x = paddle.to_tensor(np_x)
@@ -105,7 +105,7 @@ class TestFloorDivideOp(unittest.TestCase):
             except Exception as e:
                 print("Error: Divide by zero encounter in floor_divide\n")
 
-            # divide by zero 
+            # divide by zero
             np_x = np.array([2])
             np_y = np.array([0, 0, 0])
             x = paddle.to_tensor(np_x, dtype="int32")

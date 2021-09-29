@@ -28,10 +28,10 @@ class PRChecker(object):
         self.repo = None
 
     def check(self, filename, msg):
-        """ 
+        """
         Args:
-            filename (str): File to get block names.  
-            msg (str): Error message.  
+            filename (str): File to get block names.
+            msg (str): Error message.
         """
         pr_id = os.getenv('GIT_PR_ID')
         if not pr_id:

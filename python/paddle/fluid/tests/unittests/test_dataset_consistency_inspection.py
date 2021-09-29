@@ -306,7 +306,7 @@ class TestDataset(unittest.TestCase):
                 fluid.layers.data(
                     name=str(feat_name), shape=[1], dtype='int64', lod_level=1))
 
-        # sparse_url_feat_names 
+        # sparse_url_feat_names
         for feat_name in range(len_sparse_query + 1, len_sparse_query + 5):
             slot_data.append(
                 fluid.layers.data(
@@ -324,7 +324,7 @@ class TestDataset(unittest.TestCase):
                 fluid.layers.data(
                     name=str(feat_name), shape=[1], dtype='float32'))
 
-        # neg sparse_url_feat_names 
+        # neg sparse_url_feat_names
         for feat_name in range(len_sparse_query + 18, len_sparse_query + 22):
             slot_data.append(
                 fluid.layers.data(

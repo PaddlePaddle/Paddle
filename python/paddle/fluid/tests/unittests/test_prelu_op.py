@@ -174,7 +174,7 @@ class PReluTest(OpTest):
         self.inputs = {'X': x_np, 'Alpha': alpha_np}
 
         # NOTE(zhiqu): reshape inputs['Alpha'] from [1, 100, 1, 1] to [1, 100] + [1]*len(x.shape[2:])
-        # since np operands could not be broadcast together with shapes (1,100,2,2,2,3) (1,100,1,1) 	
+        # since np operands could not be broadcast together with shapes (1,100,2,2,2,3) (1,100,1,1)
         reshaped_alpha = self.inputs['Alpha']
         if self.attrs == {'mode': "channel"}:
             reshaped_alpha = np.reshape(

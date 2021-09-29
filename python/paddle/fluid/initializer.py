@@ -100,7 +100,7 @@ class ConstantInitializer(Initializer):
     """Implements the constant initializer
 
     Args:
-        value (float32): constant value to initialize the variable 
+        value (float32): constant value to initialize the variable
 
     Examples:
         .. code-block:: python
@@ -964,11 +964,11 @@ def set_global_initializer(weight_init, bias_init=None):
 
     After this API is invoked, the global initializer will takes effect in subsequent code.
 
-    The model parameters include ``weight`` and ``bias`` . In the framework, they correspond 
+    The model parameters include ``weight`` and ``bias`` . In the framework, they correspond
     to ``paddle.ParamAttr`` , which is inherited from ``paddle.Tensor`` , and is a persistable Variable.
-    This API only takes effect for model parameters, not for variables created through apis such as 
+    This API only takes effect for model parameters, not for variables created through apis such as
     :ref:`api_fluid_layers_create_global_var` , :ref:`api_fluid_layers_create_tensor`.
-    
+
     If the initializer is also set up by ``param_attr`` or ``bias_attr`` when creating a network layer,
     the global initializer setting here will not take effect because it has a lower priority.
 
@@ -976,7 +976,7 @@ def set_global_initializer(weight_init, bias_init=None):
 
     Args:
         weight_init (Initializer): set the global initializer for ``weight`` of model parameters.
-        bias_init (Initializer, optional): set the global initializer for ``bias`` of model parameters. 
+        bias_init (Initializer, optional): set the global initializer for ``bias`` of model parameters.
             Default: None.
 
     Returns:
@@ -999,7 +999,7 @@ def set_global_initializer(weight_init, bias_init=None):
             # If set param_attr/bias_attr too, global initializer will not take effect
             # The weight of conv2 is initialized by Xavier
             # The bias of conv2 is initialized by Normal
-            conv2 = nn.Conv2D(4, 6, (3, 3), 
+            conv2 = nn.Conv2D(4, 6, (3, 3),
                 weight_attr=nn.initializer.XavierUniform(),
                 bias_attr=nn.initializer.Normal())
             y_var2 = conv2(x_var)

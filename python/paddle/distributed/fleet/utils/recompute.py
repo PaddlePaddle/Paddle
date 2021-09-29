@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -65,7 +65,7 @@ class RecomputeFunction(PyLayer):
     def forward(ctx, run_function, preserve_rng_state, *args):
         check_recompute_necessary(args)
 
-        # store for recomputing 
+        # store for recomputing
         ctx.run_function = run_function
         ctx.preserve_rng_state = preserve_rng_state
 
@@ -152,7 +152,7 @@ class RecomputeFunction(PyLayer):
             # run backward() with only tensor that requires grad
             forward_outputs_with_grad = []
             # NOTE In Transformer-like network, if user put the attention mask into the recompute segment output,
-            # pylayer will force the stop_gradient of attention mask to be False, which will make the number of 
+            # pylayer will force the stop_gradient of attention mask to be False, which will make the number of
             # tensor that need grad does not match.
             # the following backward_inputs_with_grad is used to avoid this case.
             backward_inputs_with_grad = []
@@ -167,7 +167,7 @@ class RecomputeFunction(PyLayer):
                     "none of output has requires_grad=True, this recompute() is not necessary"
                 )
 
-            # actually backward            
+            # actually backward
             paddle.autograd.backward(forward_outputs_with_grad,
                                      backward_inputs_with_grad)
 
@@ -181,10 +181,10 @@ def recompute(function, *args, **kwargs):
     recompute intermediate activations to save then memory.
 
     Args:
-        function: layer of sequence of layers that describes part of forward pass of the model whose 
-        intermediate activations will be released to save memory in forward stage and will be recomputed 
+        function: layer of sequence of layers that describes part of forward pass of the model whose
+        intermediate activations will be released to save memory in forward stage and will be recomputed
         in backward stage for gradient calculation.
-        preserve_rng_state(bool, optional):  if preserve the RNG state of forward and restore it in backward. 
+        preserve_rng_state(bool, optional):  if preserve the RNG state of forward and restore it in backward.
         args: inputs to the function
 
     Returns:

@@ -39,16 +39,16 @@ class MNIST(Dataset):
         mode(str): 'train' or 'test' mode. Default 'train'.
         download(bool): download dataset automatically if
             :attr:`image_path` :attr:`label_path` is not set. Default True
-        backend(str, optional): Specifies which type of image to be returned: 
-            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
+        backend(str, optional): Specifies which type of image to be returned:
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
             If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
             default backend is 'pil'. Default: None.
-            
+
     Returns:
         Dataset: MNIST Dataset.
 
     Examples:
-        
+
         .. code-block:: python
 
             from paddle.vision.datasets import MNIST
@@ -189,16 +189,16 @@ class FashionMNIST(MNIST):
         mode(str): 'train' or 'test' mode. Default 'train'.
         download(bool): whether to download dataset automatically if
             :attr:`image_path` :attr:`label_path` is not set. Default True
-        backend(str, optional): Specifies which type of image to be returned: 
-            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
+        backend(str, optional): Specifies which type of image to be returned:
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
             If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
             default backend is 'pil'. Default: None.
-            
+
     Returns:
         Dataset: Fashion-MNIST Dataset.
 
     Examples:
-        
+
         .. code-block:: python
 
             from paddle.vision.datasets import FashionMNIST

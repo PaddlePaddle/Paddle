@@ -16,13 +16,13 @@ about: 您可以提出您的建议。 You could use this template for reporting 
 
 Thank you for contributing to PaddlePaddle.
 Before submitting the issue, you could search issue in the github in case that there was a similar issue submitted or resolved before.
-Please make sure that this is a feature request. 
+Please make sure that this is a feature request.
 **System information**
 -PaddlePaddle version （eg.1.1）or CommitID
 -CPU: including CPUMKL/OpenBlas/MKLDNN version
 -GPU: including CUDA/CUDNN version
 -OS Platform (eg.Mac OS 10.14)
-Note: You can get most of the information by running [summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py). 
+Note: You can get most of the information by running [summary_env.py](https://github.com/PaddlePaddle/Paddle/blob/develop/tools/summary_env.py).
 **To Reproduce**
 Steps to reproduce the behavior
 **Describe the feature and the current behavior/state.**

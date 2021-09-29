@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -45,7 +45,7 @@ function check_whl {
     [ $? -ne 0 ] && echo "diff paddle whl failed." && exit 1
     if [ ${diff_whl} -eq 0 ];then
         echo "paddle whl does not diff in PR-CI-Model-benchmark, so skip this ci"
-        echo "ipipe_log_param_isSkipTest_model_benchmark: 1" 
+        echo "ipipe_log_param_isSkipTest_model_benchmark: 1"
         echo "cpu_benchmark=ON" >${cfs_dir}/model_benchmark/${AGILE_PULL_ID}/${AGILE_REVISION}/pass.txt
         exit 0
     else
@@ -79,12 +79,12 @@ function init_benchmark {
 
 function prepare_data {
     cd ${cache_dir}
-    if [ -d "benchmark_data" ];then 
+    if [ -d "benchmark_data" ];then
         echo -e "benchmark_data exist!"
     else
         mkdir benchmark_data && cd benchmark_data
         mkdir dataset && cd dataset
-        wget --no-proxy -q https://paddle-qa.bj.bcebos.com/benchmark_data/Bert.zip 
+        wget --no-proxy -q https://paddle-qa.bj.bcebos.com/benchmark_data/Bert.zip
         unzip Bert.zip
         wget --no-proxy -q https://paddle-qa.bj.bcebos.com/benchmark_data/imagenet100_data.zip
         unzip imagenet100_data.zip

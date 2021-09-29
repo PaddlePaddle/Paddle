@@ -232,7 +232,7 @@ def less_than_ver(a, b):
     return operator.lt(to_list(a), to_list(b))
 
 
-# NOTE(zhiqiu): An error may occurs when import paddle in linux platform with glibc < 2.22, 
+# NOTE(zhiqiu): An error may occurs when import paddle in linux platform with glibc < 2.22,
 # the error message of which is "dlopen: cannot load any more object with static TLS".
 # This happens when:
 # (1) the number of dynamic shared librarys (DSO) loaded > 14,

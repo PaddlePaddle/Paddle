@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -70,7 +70,7 @@ class AscendIRParser(object):
             nccl_id = op.output_arg_names[0]
 
             # c_gen_nccl_id operator splits endpoints into local endpoint and other_endpoints
-            # we should combine these together to produce world_rank_ids 
+            # we should combine these together to produce world_rank_ids
             self.hcom_endpoints[nccl_id] = other_endpoints[:]
             self.hcom_endpoints[nccl_id].insert(rank, endpoint)
 

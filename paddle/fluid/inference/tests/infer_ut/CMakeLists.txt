@@ -9,7 +9,7 @@ option(WITH_GTEST "Compile demo with GTEST"   OFF)
 if(NOT WITH_STATIC_LIB)
   add_definitions("-DPADDLE_WITH_SHARED_LIB")
 else()
-  # PD_INFER_DECL is mainly used to set the dllimport/dllexport attribute in dynamic library mode. 
+  # PD_INFER_DECL is mainly used to set the dllimport/dllexport attribute in dynamic library mode.
   # Set it to empty in static library mode to avoid compilation issues.
   add_definitions("/DPD_INFER_DECL=")
 endif()
@@ -247,7 +247,7 @@ if(WIN32)
     )
   endif()
   if(NOT WITH_STATIC_LIB)
-      add_custom_command(TARGET ${DEMO_NAME} POST_BUILD 
+      add_custom_command(TARGET ${DEMO_NAME} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy "${PADDLE_LIB}/paddle/lib/paddle_inference.dll" ${CMAKE_BINARY_DIR}/${CMAKE_BUILD_TYPE}
       )
   endif()

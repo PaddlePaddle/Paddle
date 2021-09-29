@@ -331,7 +331,7 @@ class conv2d(fluid.dygraph.Layer):
                 initializer=fluid.initializer.NormalInitializer(
                     loc=0.0, scale=stddev)),
             bias_attr=con_bias_attr)
-        # Note(Aurelius84): The calculation of GPU kernel in BN is non-deterministic, 
+        # Note(Aurelius84): The calculation of GPU kernel in BN is non-deterministic,
         # failure rate is 1/100 in Dev but seems incremental in CE platform.
         # If on GPU, we disable BN temporarily.
         if fluid.is_compiled_with_cuda():
@@ -619,7 +619,7 @@ class TestCycleGANModel(unittest.TestCase):
         dy_out = self.train(to_static=False)
 
         assert_func = np.allclose
-        # Note(Aurelius84): Because we disable BN on GPU, 
+        # Note(Aurelius84): Because we disable BN on GPU,
         # but here we enhance the check on CPU by `np.array_equal`
         # which means the dy_out and st_out shall be exactly same.
         if not fluid.is_compiled_with_cuda():

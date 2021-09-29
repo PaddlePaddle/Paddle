@@ -106,7 +106,7 @@ def _initialize_recompute_hcg(hcg):
 
 def _all_gather(tensor, group=None, use_calc_stream=True):
     """
-    The main difference with paddle.distributed.all_gather: 
+    The main difference with paddle.distributed.all_gather:
     no need to pass in tensor_list, the returned tensor is spliced
     """
     if group is not None and not group.is_member():
@@ -177,7 +177,7 @@ class _HPRecomputeFunction(PyLayer):
     def forward(ctx, run_function, all_outputs, *args):
         check_recompute_necessary(args)
 
-        # store for recomputing 
+        # store for recomputing
         ctx.run_function = run_function
 
         # store the rng states
@@ -285,7 +285,7 @@ class _HPRecomputeFunction(PyLayer):
                     "none of output has stop_gradient=False, this recompute() is not necessary"
                 )
 
-            # actually backward            
+            # actually backward
             paddle.autograd.backward(forward_outputs_with_grad, backward_inputs)
             grads = list(inp._grad_ivar() for inp in detached_inputs
                          if isinstance(inp, core.VarBase))
@@ -293,7 +293,7 @@ class _HPRecomputeFunction(PyLayer):
 
 
 def _hp_recompute(function, *args):
-    # NODTE(shenliang03)The current hybrid parallel recompute has limitations. 
+    # NODTE(shenliang03)The current hybrid parallel recompute has limitations.
     # It cannot handle the following situations:
     # 1. The calculation output of recompute, there are tensors that do not require gradients.
     # 2. The forward output tensor has no gradient. This problem can be solved temporarily by detach().

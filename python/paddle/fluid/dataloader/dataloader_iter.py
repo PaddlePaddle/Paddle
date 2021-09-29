@@ -198,7 +198,7 @@ class _DataLoaderIterSingleProcess(_DataLoaderIterBase):
         #NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
         # and it will call platform::SetDeviceId() in c++ internally.
         # If we do not set cudaDeviceId in new thread, the default cudaDeviceId will be 0,
-        # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda 
+        # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda
         # APIs in this thread.
         _set_expected_place(legacy_expected_place)
 
@@ -331,7 +331,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         self._data_queue = None
 
         # data get from _data_queue will be reordered by _rcvd_idx
-        # for data order keeping, data index not equal _rcvd_idx 
+        # for data order keeping, data index not equal _rcvd_idx
         # will be cached in _task_infos
         self._send_idx = 0
         self._rcvd_idx = 0
@@ -369,7 +369,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         # create data_queue for workers
         self._data_queue = multiprocessing.Queue()
 
-        # event for workers and thread, thread event is only need 
+        # event for workers and thread, thread event is only need
         # in multi-processing mode
         self._workers_done_event = multiprocessing.Event()
         self._thread_done_event = threading.Event()
@@ -497,7 +497,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
         #NOTE(zhiqiu): Set the expected place for new thread as the same as father thread,
         # and it will call platform::SetDeviceId() in c++ internally.
         # If we do not set cudaDeviceId in new thread, the default cudaDeviceId will be 0,
-        # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda 
+        # Which may cost hundreds of MB of GPU memory on CUDAPlace(0) if calling some cuda
         # APIs in this thread.
         _set_expected_place(legacy_expected_place)
 
@@ -542,7 +542,7 @@ class _DataLoaderIterMultiProcess(_DataLoaderIterBase):
             # For IterableDataset, batch indices is generated infinitely
             # for each worker to raise StopIteration, but a StopIteration
             # raising process will discard a batch indices which is count
-            # in _send_idx but will not increase _rcvd_idx, so we check 
+            # in _send_idx but will not increase _rcvd_idx, so we check
             # whether the worker is still alive here to skip the discarded
             # batch indices and increase _rcvd_idx
             if self._dataset_kind == _DatasetKind.ITER:

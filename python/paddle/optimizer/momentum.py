@@ -112,7 +112,7 @@ class Momentum(Optimizer):
                     'learning_rate': 0.1
                 }],
                 weight_decay=0.01,
-                momentum=0.9)                   
+                momentum=0.9)
             out.backward()
             momentum.step()
             momentum.clear_grad()
@@ -266,7 +266,7 @@ class Momentum(Optimizer):
 
     def _create_regularization_of_grad(self, param, grad, regularization=None):
         """ Create and add backward regularization Operators
-    
+
         Function helper of append_regularization_ops.
         """
         # If ParamAttr is set to L2Decay, we skip doing regularization here. And then we fused
@@ -286,7 +286,7 @@ class Momentum(Optimizer):
                                              param_and_grad[0])
         lr = self._create_param_lr(param_and_grad)
 
-        # For fusion of momentum and l2decay 
+        # For fusion of momentum and l2decay
         param = param_and_grad[0]
         regularization_method = self._regularization_method
         regularization_coeff = self._regularization_coeff

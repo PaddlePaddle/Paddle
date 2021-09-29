@@ -882,7 +882,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         2. prune cast_fp32_to_fp16; update amp_infine_checking
         3. prune gradient_clip related; update global_norm_sum
         4. prune optimizer op + param + gradient
-            
+
         """
         weightdecay_helper = WeightDecayHelper()
         weightdecay_helper.prune_weight_decay(block, shard)
@@ -970,7 +970,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                     program_deps.remove_op(idx, reserved_vars)
 
         # NOTE (JZ-LIANG) revise and unify logic here
-        # sharding support fp16_allreduce logic            
+        # sharding support fp16_allreduce logic
         block._sync_with_cpp()
         for idx, op in reversed(list(enumerate(block.ops))):
             if op.type == 'concat' and is_optimizer_op(op):
@@ -987,7 +987,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         add broadcast allreduce op
         if enable gradient_merge, insert related ops
 
-        if combined with pipeline(grad accumulate), 
+        if combined with pipeline(grad accumulate),
         the grad allreduce should be done in optimize role
         """
         if len(self._segments) < 1:
@@ -1023,7 +1023,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                         self.dp_ring_id,
                         shard_allredue_vars,
                         user_defined_strategy=self.user_defined_strategy)
-            # gradient merge 
+            # gradient merge
             elif self.gradient_merge_mode == "sharding_gm" and self._gradient_merge_acc_step > 1:
                 self.create_persistable_gradients_and_insert_merge_ops(
                     block,
@@ -1034,7 +1034,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             insert_sync_comm_ops(block, self._segments[-1]._end_idx,
                                  self.sharding_ring_id,
                                  self._segments[-1]._allreduce_vars)
-            # allreduce --> reduce 
+            # allreduce --> reduce
             insert_reduce_ops(
                 block,
                 self._segments[-1]._end_idx,
@@ -1116,11 +1116,11 @@ class ShardingOptimizer(MetaOptimizerBase):
                 insert_sync_calc_op(block, segment._end_idx,
                                     [calc_dep_vars[-1]])
 
-            # step3: insert `fill_constant` ops 
+            # step3: insert `fill_constant` ops
             insert_fill_constant_ops(block, segment._end_idx,
                                      fill_constant_vars)
 
-            # step4: add `cast` ops     
+            # step4: add `cast` ops
             insert_cast_ops(block, segment._end_idx, cast_ops)
 
             # step5: add broadcast ops
@@ -1152,7 +1152,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 insert_sync_comm_ops(block, segment._start_idx,
                                      self.sharding_ring_id, allreduce_vars)
             # sharding
-            # allreduce --> reduce 
+            # allreduce --> reduce
             # TODO temp change
             if len(allreduce_vars) > 0:
                 insert_reduce_ops(
@@ -1227,7 +1227,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             pp: 4
             pp-pair: >= 20
         if one parallelism is not enable: -1
-        and only support parallelism hierarchy: mp --> sharding --> pp --> dp        
+        and only support parallelism hierarchy: mp --> sharding --> pp --> dp
         """
         # step 1: initialize nccl
         self.global_word_size = self.role_maker._worker_num()
@@ -1266,7 +1266,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             self.mp_group_id = -1
             self.mp_group_endpoints = []
 
-        # sharding 
+        # sharding
         if self.sharding_degree > 1:
             self.sharding_ring_id = 1
             self.sharding_rank = (self.global_rank //
@@ -1280,7 +1280,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                     if (idx // (self.mp_degree * self.sharding_degree)) == self.
                     sharding_group_id and idx % self.mp_degree == self.mp_rank
                 ]
-            # sharding + ...    
+            # sharding + ...
             else:
                 self.sharding_group_endpoints = [
                     ep for idx, ep in enumerate(self.global_endpoints)
@@ -1325,7 +1325,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         # outter-pure-dp group
         # NOTE (JZ-LIANG) support outter-pure-dp to scale the throughput in 3D parallelism
         # e.g. mp-sharding-pp-dp
-        # sharding-hybrid-dp as one senario of outter-pure-dp 
+        # sharding-hybrid-dp as one senario of outter-pure-dp
         assert self.global_word_size == self.mp_degree * self.sharding_degree * self.pp_degree * self.dp_degree, "mp_degree: [{}], sharding_degree: [{}], pp_degree: [{}], dp_degree: [{}]; BUT global nrank: [{}]".format(
             self.mp_degree, self.sharding_degree, self.pp_degree,
             self.dp_degree, self.global_word_size)
@@ -1604,7 +1604,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         grad@gradientmerge / acc_step
         re-create all optimize ops of origin main block and rename them
             cast(backward)
-            amp 
+            amp
             clip
             opt
         # fill constant grad@gradientmerge
@@ -1619,7 +1619,7 @@ class ShardingOptimizer(MetaOptimizerBase):
         # cur_block's forward_block & backward_block is itself
         cur_block._set_forward_block_idx(cur_block_idx)
 
-        # allreduce grad@gradientmerge  
+        # allreduce grad@gradientmerge
         if self.hybrid_dp:
             assert self.dp_ring_id >= 0, "dp_ring_id should larger than 0 when in sharding&DP mode"
             for grad, merged_grad in self._grad2merged_grad.items():

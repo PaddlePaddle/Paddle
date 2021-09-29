@@ -33,11 +33,11 @@ class ParamAttr(object):
     Create a object to represent the attribute of parameter. The attributes are:
     name, initializer, learning rate, regularizer, trainable, gradient clip,
     and model average.
-    
+
     Note:
-        ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0. 
+        ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0.
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
-        There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` , 
+        There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` ,
         :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` .
 
     Parameters:
@@ -49,10 +49,10 @@ class ParamAttr(object):
         learning_rate (float, optional): The parameter's learning rate. The learning rate when
                 optimize is the global learning rates times the parameter's learning rate times
                 the factor of learning rate scheduler. Default 1.0.
-        regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are two method: 
-                :ref:`api_paddle_regularizer_L1Decay` , :ref:`api_paddle_regularizer_L2Decay` . If 
-                regularizer is also set in ``optimizer`` (such as :ref:`api_paddle_optimizer_SGD` ), 
-                that regularizer setting in optimizer will be ignored. Default None, meaning there is 
+        regularizer (WeightDecayRegularizer, optional): Regularization strategy. There are two method:
+                :ref:`api_paddle_regularizer_L1Decay` , :ref:`api_paddle_regularizer_L2Decay` . If
+                regularizer is also set in ``optimizer`` (such as :ref:`api_paddle_optimizer_SGD` ),
+                that regularizer setting in optimizer will be ignored. Default None, meaning there is
                 no regularization.
         trainable (bool, optional): Whether this parameter is trainable. Default True.
         do_model_average (bool, optional): Whether this parameter should do model average
@@ -224,13 +224,13 @@ class WeightNormParamAttr(ParamAttr):
     paper: `Weight Normalization: A Simple Reparameterization to Accelerate
     Training of Deep Neural Networks
     <https://arxiv.org/pdf/1602.07868.pdf>`_.
-      
+
     Note:
-        ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0. 
+        ``gradient_clip`` of ``ParamAttr`` HAS BEEN DEPRECATED since 2.0.
         Please use ``need_clip`` in ``ParamAttr`` to speficiy the clip scope.
-        There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` , 
+        There are three clipping strategies: :ref:`api_paddle_nn_ClipGradByGlobalNorm` ,
         :ref:`api_paddle_nn_ClipGradByNorm` , :ref:`api_paddle_nn_ClipGradByValue` .
-        
+
 
     Args:
         dim(int, optional): Dimension over which to compute the norm. Dim is a non-negative
@@ -259,7 +259,7 @@ class WeightNormParamAttr(ParamAttr):
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
 
             paddle.enable_static()

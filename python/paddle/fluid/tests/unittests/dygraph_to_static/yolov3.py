@@ -100,7 +100,7 @@ cfg.learning_rate = 0.001
 cfg.max_iter = 20 if fluid.is_compiled_with_cuda() else 1
 # Disable mixup in last N iter
 cfg.no_mixup_iter = 10 if fluid.is_compiled_with_cuda() else 1
-# warm up to learning rate 
+# warm up to learning rate
 cfg.warm_up_iter = 10 if fluid.is_compiled_with_cuda() else 1
 cfg.warm_up_factor = 0.
 # lr steps_with_decay

@@ -173,7 +173,7 @@ class HybridCommunicateGroup(object):
 
     def get_parallel_mode(self):
         # there are four modes : DataParallel / TensorParallel / PipelineParallel / ShardingParallel
-        # NOTE when sharding conjugates with other parallel, sharding should act like a optimizer and 
+        # NOTE when sharding conjugates with other parallel, sharding should act like a optimizer and
         # adding its parallel logic within that parallelism
         # when use sharding alone, it should have its own parallelism for its parallel logic
         # TODO modify 3 others parallel to support sharding

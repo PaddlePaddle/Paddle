@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,12 +23,12 @@ __all__ = []
 def backward(tensors, grad_tensors=None, retain_graph=False):
     """
     Compute the backward gradients of given tensors.
-    
+
     Args:
         tensors(list of Tensors): the tensors which the gradient to be computed. The tensors can not contain the same tensor.
 
         grad_tensors(list of Tensors of None, optional): the init gradients of the `tensors`` .If not None, it must have the same length with ``tensors`` ,
-            and if any of the elements is None, then the init gradient is the default value which is filled with 1.0. 
+            and if any of the elements is None, then the init gradient is the default value which is filled with 1.0.
             If None, all the gradients of the ``tensors`` is the default value which is filled with 1.0.
             Defaults to None.
 
@@ -36,7 +36,7 @@ def backward(tensors, grad_tensors=None, retain_graph=False):
             like to add more ops to the built graph after calling this method( :code:`backward` ), set the parameter
             :code:`retain_graph` to True, then the grads will be retained. Thus, seting it to False is much more memory-efficient.
             Defaults to False.
-    
+
     Returns:
         NoneType: None
 

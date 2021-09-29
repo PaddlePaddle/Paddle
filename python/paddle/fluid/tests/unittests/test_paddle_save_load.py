@@ -214,7 +214,7 @@ class TestSaveLoadAny(unittest.TestCase):
                                      .get_tensor())
                     base_t = base_map[var.name]
                     self.assertTrue(np.array_equal(new_t, np.array(base_t)))
-            # legacy paddle.fluid.save, paddle.load 
+            # legacy paddle.fluid.save, paddle.load
             paddle.fluid.io.save(prog, path)
             self.set_zero(prog, place)
             self.replace_static_load(prog, path)

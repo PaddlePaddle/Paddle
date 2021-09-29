@@ -694,7 +694,7 @@ class TestStridedSliceTensorArray(unittest.TestCase):
         l2.sum().backward()
         grads_static = net.get_all_grads()
         net.clear_all_grad()
-        # compare result of dygraph and static 
+        # compare result of dygraph and static
         self.is_grads_equal(grads_static, grads_dy)
         self.assertTrue(
             np.array_equal(s1, s2),

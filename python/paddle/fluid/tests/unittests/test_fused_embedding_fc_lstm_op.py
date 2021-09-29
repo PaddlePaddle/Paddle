@@ -56,7 +56,7 @@ class TestFusionLSTMOp(OpTest):
         self.op_type = 'fused_embedding_fc_lstm'
         self.lod = [[2, 3, 5, 4]]
         self.M = 8  # Embedding size
-        self.D = 16  # Hidden size 
+        self.D = 16  # Hidden size
         self.dict_size = 18
         self.has_initial_state = False
         self.use_peepholes = False

@@ -618,7 +618,7 @@ class TestFunctional(unittest.TestCase):
 
         np.testing.assert_allclose(np_tensor.numpy(), pil_tensor.numpy())
 
-        # test float dtype 
+        # test float dtype
         float_img = np.random.rand(28, 28)
         float_tensor = F.to_tensor(float_img)
 

@@ -284,7 +284,7 @@ class Normal(Distribution):
 
     Examples:
         .. code-block:: python
-          
+
           import numpy as np
           from paddle.fluid import layers
           from paddle.fluid.layers import Normal
@@ -424,9 +424,9 @@ class Normal(Distribution):
 
 class Categorical(Distribution):
     r"""
-    Categorical distribution is a discrete probability distribution that 
-    describes the possible results of a random variable that can take on 
-    one of K possible categories, with the probability of each category 
+    Categorical distribution is a discrete probability distribution that
+    describes the possible results of a random variable that can take on
+    one of K possible categories, with the probability of each category
     separately specified.
 
     The probability mass function (pmf) is:
@@ -456,7 +456,7 @@ class Categorical(Distribution):
           b_logits_npdata = np.array([-0.102,-0.112], dtype="float32")
           b_logits_tensor = layers.create_tensor(dtype="float32")
           layers.assign(b_logits_npdata, b_logits_tensor)
-          
+
           a = Categorical(a_logits_tensor)
           b = Categorical(b_logits_tensor)
 
@@ -561,7 +561,7 @@ class MultivariateNormalDiag(Distribution):
 
     Examples:
         .. code-block:: python
-    
+
             import numpy as np
             from paddle.fluid import layers
             from paddle.fluid.layers import MultivariateNormalDiag
@@ -585,7 +585,7 @@ class MultivariateNormalDiag(Distribution):
 
             a = MultivariateNormalDiag(a_loc_tensor, a_scale_tensor)
             b = MultivariateNormalDiag(b_loc_tensor, b_scale_tensor)
-            
+
             a.entropy()
             # [2.033158] with shape: [1]
             b.entropy()
@@ -593,7 +593,7 @@ class MultivariateNormalDiag(Distribution):
 
             a.kl_divergence(b)
             # [0.06542051] with shape: [1]
-       
+
     """
 
     def __init__(self, loc, scale):

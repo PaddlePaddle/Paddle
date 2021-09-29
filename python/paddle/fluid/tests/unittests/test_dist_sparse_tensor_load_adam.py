@@ -28,7 +28,7 @@ from test_dist_sparse_tensor_load_sgd import TestSparseLoadProgram
 
 
 class TestSparseLoadProgramAdam(TestSparseLoadProgram):
-    """ 
+    """
     Test Sparse load operator.
     """
 

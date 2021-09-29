@@ -112,7 +112,7 @@ def proposal_for_one_image(im_info, all_anchors, variances, bbox_deltas, scores,
 
 def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
     """
-    Decode proposals by anchors and bbox_deltas from RPN 
+    Decode proposals by anchors and bbox_deltas from RPN
     """
     offset = 1 if pixel_offset else 0
     #proposals: xmin, ymin, xmax, ymax
@@ -126,7 +126,7 @@ def box_coder(all_anchors, bbox_deltas, variances, pixel_offset=True):
     anchor_loc[:, 2] = all_anchors[:, 0] + 0.5 * anchor_loc[:, 0]
     anchor_loc[:, 3] = all_anchors[:, 1] + 0.5 * anchor_loc[:, 1]
 
-    #predicted bbox: bbox_center_x, bbox_center_y, bbox_width, bbox_height 
+    #predicted bbox: bbox_center_x, bbox_center_y, bbox_width, bbox_height
     pred_bbox = np.zeros_like(bbox_deltas, dtype=np.float32)
     if variances is not None:
         for i in range(bbox_deltas.shape[0]):

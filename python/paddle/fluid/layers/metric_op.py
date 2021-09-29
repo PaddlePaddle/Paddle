@@ -206,8 +206,8 @@ def auc(input,
     # make tp, tn, fp, fn persistable, so that can accumulate all batches.
 
     # for batch auc
-    # we create slide_step+1 buckets, the first slide_steps buckets store 
-    # historical batch-level values, and the last bucket stores the sum values of 
+    # we create slide_step+1 buckets, the first slide_steps buckets store
+    # historical batch-level values, and the last bucket stores the sum values of
     # previous slide_step buckets.
     # The index of bucket that the newest batch will use is determined by batch_id mod slide_steps,
     # and batch_id is store in the last posision of following variable

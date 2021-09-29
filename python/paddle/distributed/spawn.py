@@ -53,9 +53,9 @@ class ParallelEnvArgs(object):
         # Print the config or not
         self.print_config = True
 
-        # It's for gpu training and the training process will run 
-        # on the selected_devices, each process is bound to a single GPU. 
-        # And if it's not set, this module will use all the gpu cards 
+        # It's for gpu training and the training process will run
+        # on the selected_devices, each process is bound to a single GPU.
+        # And if it's not set, this module will use all the gpu cards
         # for training.
         self.selected_devices = None
 
@@ -238,8 +238,8 @@ def _remove_risky_env():
 
 def _set_trainer_env(env_dict):
     # NOTE(chenweihang): [ Why need set FLAGS_selected_gpus or FLAGS_selected_xpus here? ]
-    # When the child process starts, it will inherit the configuration of the 
-    # main process and set the FLAGS once, but the environment variable has 
+    # When the child process starts, it will inherit the configuration of the
+    # main process and set the FLAGS once, but the environment variable has
     # not been set at this time, which leads to the FLAGS_selected_gpus or FLAGS_selected_xpus
     # is keep same with mainprocess(usually empty), so manually update the flags here
     if core.is_compiled_with_cuda():
@@ -273,10 +273,10 @@ class MultiprocessContext(object):
     def __init__(self, processes, error_queues, return_queues):
         _py_supported_check()
         self.error_queues = error_queues
-        # NOTE(chenweihang): The `spawn` method is mainly used 
-        # to wrap the outermost execution function of the program for 
-        # parallel execution. Generally, the return value is not concerned, 
-        # but if the user needs to obtain the return value, users can get  
+        # NOTE(chenweihang): The `spawn` method is mainly used
+        # to wrap the outermost execution function of the program for
+        # parallel execution. Generally, the return value is not concerned,
+        # but if the user needs to obtain the return value, users can get
         # the return result of each process from context.return_queues
         self.return_queues = return_queues
         self.processes = processes
@@ -450,12 +450,12 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
     """
     # NOTE(chenweihang): [ why only supports python3.4+ ? ]
     # Python supported setting the child process startup method
-    # since 3.4. The previous version can only use the default startup 
-    # method, while the default startup method of Unix is fork, which 
+    # since 3.4. The previous version can only use the default startup
+    # method, while the default startup method of Unix is fork, which
     # cannot support CUDA runtime multi-process
     _py_supported_check()
 
-    # Give an error hint when the users enter a configuration option 
+    # Give an error hint when the users enter a configuration option
     # that does not exist
     _options_valid_check(options)
 
@@ -464,15 +464,15 @@ def spawn(func, args=(), nprocs=-1, join=True, daemon=False, **options):
         nprocs = _get_default_nprocs()
 
     # NOTE(chenweihang): [ why need get cluster info before run? ]
-    # when using `paddle.distributed.spawn` start parallel training, 
-    # we should get cluster info before starting subprocess, and pass 
+    # when using `paddle.distributed.spawn` start parallel training,
+    # we should get cluster info before starting subprocess, and pass
     # correct info to each subprocess
     procs_env_list = _get_subprocess_env_list(nprocs, options)
 
     # start processes
     # NOTE(chenweihang): [ why default start method is spawn? ]
-    # The CUDA runtime does not support the fork start method, 
-    # either the spawn or forkserver start method are required 
+    # The CUDA runtime does not support the fork start method,
+    # either the spawn or forkserver start method are required
     # to use CUDA in subprocesses.
     start_method = options.get('start_method', None)
     if start_method is None:

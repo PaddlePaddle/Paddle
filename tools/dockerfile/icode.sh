@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -41,7 +41,7 @@ function centos_gcc8(){
 
 
 function fix_https(){
-  sed -i 's#https#http#g' /etc/apt/sources.list.d/nvidia-ml.list 
+  sed -i 's#https#http#g' /etc/apt/sources.list.d/nvidia-ml.list
   sed -i 's#https#http#g' /etc/apt/sources.list.d/cuda.list
 }
 
@@ -52,16 +52,16 @@ function all_change(){
 
 function centos() {
   # centos6
-  sed 's#<baseimg>#8.0-cudnn7-devel-centos6#g'  Dockerfile.centos >test/centos_6_cpu_runtime.dockerfile 
+  sed 's#<baseimg>#8.0-cudnn7-devel-centos6#g'  Dockerfile.centos >test/centos_6_cpu_runtime.dockerfile
   sed 's#<baseimg>#9.0-cudnn7-devel-centos6#g'  Dockerfile.centos >test/centos_6_gpu_cuda9.0_cudnn7_single_gpu_runtime.dockerfile
   sed 's#<baseimg>#9.1-cudnn7-devel-centos6#g'  Dockerfile.centos >test/centos_6_gpu_cuda9.1_cudnn7_single_gpu_runtime.dockerfile
   sed 's#<baseimg>#9.2-cudnn7-devel-centos6#g'  Dockerfile.centos >test/centos_6_gpu_cuda9.2_cudnn7_single_gpu_runtime.dockerfile
   sed 's#<baseimg>#10.0-cudnn7-devel-centos6#g' Dockerfile.centos >test/centos_6_gpu_cuda10.0_cudnn7_single_gpu_runtime.dockerfile
   sed 's#<baseimg>#10.1-cudnn7-devel-centos6#g' Dockerfile.centos >test/centos_6_gpu_cuda10.1_cudnn7_single_gpu_runtime.dockerfile
   centos_gcc8 "test/centos_6_gpu_cuda10.1_cudnn7_single_gpu_runtime.dockerfile"
-  
+
   # centos7
-  sed 's#<baseimg>#8.0-cudnn7-devel-centos7#g'  Dockerfile.centos >test/centos_7_cpu_runtime.dockerfile 
+  sed 's#<baseimg>#8.0-cudnn7-devel-centos7#g'  Dockerfile.centos >test/centos_7_cpu_runtime.dockerfile
   sed 's#<baseimg>#9.0-cudnn7-devel-centos7#g'  Dockerfile.centos >test/centos_7_gpu_cuda9.0_cudnn7_single_gpu_runtime.dockerfile
   sed 's#<baseimg>#9.1-cudnn7-devel-centos7#g'  Dockerfile.centos >test/centos_7_gpu_cuda9.1_cudnn7_single_gpu_runtime.dockerfile
   sed 's#<baseimg>#9.2-cudnn7-devel-centos7#g'  Dockerfile.centos >test/centos_7_gpu_cuda9.2_cudnn7_single_gpu_runtime.dockerfile
@@ -79,7 +79,7 @@ function ubuntu() {
   install_gcc "test/ubuntu_1404_gpu_cuda10.0_cudnn7_runtime.dockerfile"
   sed 's#<baseimg>#10.1-cudnn7-devel-ubuntu14.04#g' Dockerfile.ubuntu >test/ubuntu_1404_gpu_cuda10.1_cudnn7_runtime.dockerfile
   install_gcc8 "test/ubuntu_1404_gpu_cuda10.1_cudnn7_runtime.dockerfile"
- 
+
   # ubuntu 16
   sed 's#<baseimg>#8.0-cudnn7-devel-ubuntu16.04#g'  Dockerfile.ubuntu >test/ubuntu_1604_cpu.dockerfile
   install_gcc "test/ubuntu_1604_cpu.dockerfile"

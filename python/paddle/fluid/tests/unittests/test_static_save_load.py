@@ -1016,7 +1016,7 @@ class TestLoadFromOldInterface(unittest.TestCase):
             fluid.io.save_persistables(exe, "test_static_load_var_list",
                                        main_program)
 
-            # set var to zero            
+            # set var to zero
             var_list = []
             for i, var in enumerate(main_program.list_vars()):
                 if isinstance(var, framework.Parameter) or var.persistable:

@@ -197,7 +197,7 @@ class ProgramStats(object):
             if op.desc.has_attr(op_device_attr_name):
                 op_device = op.desc.attr(op_device_attr_name)
 
-            # Setting the force_cpu of seed to true will make the output of seed in cpu memory, 
+            # Setting the force_cpu of seed to true will make the output of seed in cpu memory,
             # reduce the synchronous copy from GPU to CPU in dropout, and reduce the communication hang
             added_op = self.block._insert_op(
                 index=op.idx,
@@ -946,7 +946,7 @@ def _append_backward_ops_with_checkpoints_(
         # added_descs should be in grad_op_descs because it is backward op desc
         grad_op_descs.extend(buffer_descs)
 
-        # 3.c. add backward ops for all ops in current segment 
+        # 3.c. add backward ops for all ops in current segment
         for op_desc in reversed(added_descs):
             grad_op_desc, op_grad_to_var = core.get_grad_op_desc(
                 op_desc, cpt.to_text(no_grad_dict[block.idx]), [])
@@ -1231,11 +1231,11 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
     """
     ops_to_remove = []
     '''
-    NOTE(paddle-dev): while_grad op may hold some inputs which are not found 
-    in the parent/forward block, and they are also the outputs of while_grad 
-    op. These kinds of inputs are the recursive outputs inside while_grad op. 
-    They should be considered as "already created" when scanning the inner 
-    ops of while_grad ops.  
+    NOTE(paddle-dev): while_grad op may hold some inputs which are not found
+    in the parent/forward block, and they are also the outputs of while_grad
+    op. These kinds of inputs are the recursive outputs inside while_grad op.
+    They should be considered as "already created" when scanning the inner
+    ops of while_grad ops.
     '''
     parent_op = _find_parent_op_(block)
     parent_op_vars = []
@@ -1274,7 +1274,7 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
             continue
         else:
             '''
-            If the output is not empty and there is any grad input, find 
+            If the output is not empty and there is any grad input, find
             whether there is any existing input. If not, just remove it.
             '''
             if grad_var_ins:
@@ -1286,11 +1286,11 @@ def _append_backward_vars_(block, start_op_idx, grad_to_var, grad_info_map):
                 if not existing_grad_var_ins:
                     '''
                     FIXME(paddle-dev, zengjinle): rnn_memory_helper_grad is used
-                    in recurrent op. The input of this op does not even exist in 
-                    the program! Therefore, any dependency analysis would not 
+                    in recurrent op. The input of this op does not even exist in
+                    the program! Therefore, any dependency analysis would not
                     work to this op! If I do not add the following code, this op
-                    would be pruned, and the calculation result would be wrong. 
-                    Maybe we should re-design this op later...  
+                    would be pruned, and the calculation result would be wrong.
+                    Maybe we should re-design this op later...
                     '''
                     if op_desc.type() not in ['rnn_memory_helper_grad']:
                         ops_to_remove.append(op_idx)

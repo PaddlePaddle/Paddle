@@ -305,8 +305,8 @@ class _ProgramHolder(object):
     """
     Holds the execution information of a Program.
 
-    _ProgramHolder is the execution unit of TranslatedLayer, 
-    if TranslatedLayer contains multiple _ProgramHolder, 
+    _ProgramHolder is the execution unit of TranslatedLayer,
+    if TranslatedLayer contains multiple _ProgramHolder,
     it can execute multiple methods
 
     _ProgramHolder is an internal concept.
@@ -411,16 +411,16 @@ class _ProgramHolder(object):
         # 3. Output processing, add scale for outputs
         tmp_program = _build_program_by_desc(program_desc)
         # NOTE: [why need append scale for outputs]
-        # When dealing with some more complex pre-training models, there 
-        # will be situations where the pre-training model has multiple 
-        # fetch outputs. In the scenario of multiple fetch outputs, 
-        # there is a special case where multiple outputs of the model 
-        # may be on the same branch. According to the user's subsequent 
+        # When dealing with some more complex pre-training models, there
+        # will be situations where the pre-training model has multiple
+        # fetch outputs. In the scenario of multiple fetch outputs,
+        # there is a special case where multiple outputs of the model
+        # may be on the same branch. According to the user's subsequent
         # use, multiple outputs may be associated with multiple branches.
-        # These subsequent operations are added in TranslatedLayer is 
-        # agnostic during initialization, which results in subsequent 
-        # gradient accumulation operations that are required on the 
-        # output node in the middle of the branch will not be performed, 
+        # These subsequent operations are added in TranslatedLayer is
+        # agnostic during initialization, which results in subsequent
+        # gradient accumulation operations that are required on the
+        # output node in the middle of the branch will not be performed,
         # resulting in error, details see pull request:
         # [https://github.com/PaddlePaddle/Paddle/pull/24627]
         self._append_scale_to_output(tmp_program)
@@ -428,12 +428,12 @@ class _ProgramHolder(object):
         # 4. Persistable vars processing
         # - append loaded suffix to persistable vars
         # NOTE: [why need to append suffix to persistable vars]
-        # Dygraph and static graph mode use the same naming mechanism. 
-        # If users want to load the model fine-tune, it is possible 
-        # to add the existing Layer in the loaded model to enhance 
-        # the network. For example, the original saved model has linear, 
-        # and later after loading, a new linear is added. At this time, 
-        # there will be a problem of duplicate names, so here is unified 
+        # Dygraph and static graph mode use the same naming mechanism.
+        # If users want to load the model fine-tune, it is possible
+        # to add the existing Layer in the loaded model to enhance
+        # the network. For example, the original saved model has linear,
+        # and later after loading, a new linear is added. At this time,
+        # there will be a problem of duplicate names, so here is unified
         # to add the LOADED suffix to the parameters of the model loaded
         self._suffix_varname_dict = _get_loaded_var_new_old(program_desc,
                                                             rename_new_old_dict)
@@ -467,7 +467,7 @@ class _ProgramHolder(object):
         # 2. prepare program and related var
         # NOTE: To reuse backward interfaces, build Program firstly.
         # Originally, there is no need to build a program, but need to almost
-        # rewrite a series of methods for append_backward for program_desc. 
+        # rewrite a series of methods for append_backward for program_desc.
         # Therefore, in order to reuse the method of backward.py, build the program here.
         program = _build_program_by_desc(program_desc_copy)
         # 3. Add the outputs which is only used for training and not saved in
@@ -497,7 +497,7 @@ class _ProgramHolder(object):
 
 
 # [ TranslatedLayer : Run program in imperative mode ]
-# 
+#
 # DESIGN IDEA: using an special operator `RunProgram`, execute program inside operator.
 #
 # Op's Inputs:
@@ -505,21 +505,21 @@ class _ProgramHolder(object):
 #   - the necessary parameters of the network
 # Op's Outputs:
 #   - the output variable of fetch
-# 
+#
 # This op receives a complete program desc, internally creates scope
 # and executor, executes this program. Key points:
 #
-# 1. Data Sharing: 
+# 1. Data Sharing:
 #   The varBase of the dynamic graph is not in the scope, so before the op
 #   executes the program internally, create persistent variables with the
 #   same name as feed, parameters, and fetch in the scope, and share the
 #   LoDTensor of the op input.
-# 
+#
 # 2. Forward and Backward Separation:
 #   Because the dynamic graph op performs the forward and backward separately,
 #   in the forward op RunProgram, we only execute the forward part of whole program,
 #   and in the backward op RunProgramGrad, we execute the backward part of program.
-#   We can not separate the program into forward and backward part, which will 
+#   We can not separate the program into forward and backward part, which will
 #   make some control flow execution logic wrong.
 
 
@@ -579,7 +579,7 @@ def _load_persistable_vars_by_program(model_path,
             param.stop_gradient = False
 
     # NOTE: [Recovery stop gradient information based on the program]
-    # After loading the model, the stop_gradient information 
+    # After loading the model, the stop_gradient information
     # of the original variable is lost, but if a parameter does not
     # have a corresponding @GRAD variable in the backward program,
     # it can be said that it is also stop_gradient
@@ -608,7 +608,7 @@ def _load_persistable_vars(model_path, var_info_path, program_holder,
 
     # NOTE(chenweihang): we need load persistable vars based the program,
     # because the program may be pruned when `save_inference_model`, some
-    # var in `extra_var_info` may have been pruned 
+    # var in `extra_var_info` may have been pruned
     for name in sorted(inv_suffix_varname_dict):
         if name not in extra_var_info:
             raise RuntimeError(
@@ -761,7 +761,7 @@ def _run_dygraph(instance, input, program_holder):
                 zero_copy=True)
         else:
             var = value
-            # NOTE: we changed var name here, 
+            # NOTE: we changed var name here,
             # but it may be an important name set by user
             var.name = program_holder.input_descs[i].name()
         input_vars.append(var)
@@ -838,7 +838,7 @@ def _run_dygraph(instance, input, program_holder):
     for persistable_var in persistable_vars:
         grad_var_name = var.name + core.grad_var_suffix()
         grad_var = trace_program.block(0).find_var(cpt.to_bytes(grad_var_name))
-        # NOTE: cannot find var desc maybe not problem, 
+        # NOTE: cannot find var desc maybe not problem,
         # such as in batch_norm
         if grad_var is None:
             continue
@@ -872,7 +872,7 @@ def _run_static_graph(input, program_holder, trace_program):
 def _collect_current_and_parent_var(program, block_idx):
     '''
     Get variables in current block and its parent block.
-    
+
     Args:
         program(Program): The program containing the current block.
         block_idx(int): index of current block.
@@ -898,13 +898,13 @@ def _append_block(dest_program,
                   dict_rename_var_old_new=None):
     '''
     Append Variables and Operators in 'src_program_desc' to dest_program.
-    
+
     Args:
         dest_program(Program): Variables and Operators are appended to it.
         src_program_desc(ProgramDesc): Variables in it will be appended to 'dest_program'.
         program_holder(_ProgramHolder): program_holder of TranslatedLayer
         input_variables(list): list of input variables
-        dict_rename_var_old_new(None|dict): When using '_rename_var_program_desc', 
+        dict_rename_var_old_new(None|dict): When using '_rename_var_program_desc',
         use it to map the name of the variable before it was modified and the new name.
     '''
 
@@ -1083,10 +1083,10 @@ def append_var_from_block_desc_static(block,
 
 class TranslatedLayer(layers.Layer):
     """
-    TranslatedLayer is a ``paddle.nn.Layer`` for holding the model 
-    loaded by :ref:`api_paddle_jit_load` . It can be used like a 
+    TranslatedLayer is a ``paddle.nn.Layer`` for holding the model
+    loaded by :ref:`api_paddle_jit_load` . It can be used like a
     general Layer object in eval or train mode.
-    
+
     .. note:
         The TranslatedLayer objects should not be created by constructor, it only can be loaded and constructed by :ref:`api_paddle_jit_load` .
 
@@ -1289,13 +1289,13 @@ class TranslatedLayer(layers.Layer):
         Args:
             - method_name (string): mehtod name corresponding to the program
                 to be obtained. Default: 'forward'.
-        
+
         Returns:
             Program
 
         Examples:
             .. code-block:: python
-            
+
                 import numpy as np
                 import paddle
                 import paddle.nn as nn
@@ -1407,8 +1407,8 @@ class TranslatedLayer(layers.Layer):
         # 2. build output spec by output desc
         output_spec = []
         for var_desc in program_holder.output_descs:
-            # NOTE(chenweihang): InputSpec describes a tensor, not just input. 
-            # Maybe the name is not good enough. Here we use InputSpec to 
+            # NOTE(chenweihang): InputSpec describes a tensor, not just input.
+            # Maybe the name is not good enough. Here we use InputSpec to
             # construct the description of Output tensor
             spec = paddle.static.InputSpec(
                 shape=var_desc.shape(),

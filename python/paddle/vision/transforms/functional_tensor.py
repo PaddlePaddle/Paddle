@@ -93,7 +93,7 @@ def normalize(img, mean, std, data_format='CHW'):
         img (paddle.Tensor): input data to be normalized.
         mean (list|tuple): Sequence of means for each channel.
         std (list|tuple): Sequence of standard deviations for each channel.
-        data_format (str, optional): Data format of img, should be 'HWC' or 
+        data_format (str, optional): Data format of img, should be 'HWC' or
             'CHW'. Default: 'CHW'.
 
     Returns:
@@ -119,8 +119,8 @@ def to_grayscale(img, num_output_channels=1, data_format='CHW'):
         img (paddel.Tensor): Image to be converted to grayscale.
         num_output_channels (int, optionl[1, 3]):
             if num_output_channels = 1 : returned image is single channel
-            if num_output_channels = 3 : returned image is 3 channel 
-        data_format (str, optional): Data format of img, should be 'HWC' or 
+            if num_output_channels = 3 : returned image is 3 channel
+        data_format (str, optional): Data format of img, should be 'HWC' or
             'CHW'. Default: 'CHW'.
 
     Returns:
@@ -205,10 +205,10 @@ def rotate(img,
     Args:
         img (paddle.Tensor): Image to be rotated.
         angle (float or int): In degrees degrees counter clockwise order.
-        interpolation (str, optional): Interpolation method. If omitted, or if the 
-            image has only one channel, it is set NEAREST . when use pil backend, 
-            support method are as following: 
-            - "nearest" 
+        interpolation (str, optional): Interpolation method. If omitted, or if the
+            image has only one channel, it is set NEAREST . when use pil backend,
+            support method are as following:
+            - "nearest"
             - "bilinear"
             - "bicubic"
         expand (bool, optional): Optional expansion flag.
@@ -297,7 +297,7 @@ def vflip(img, data_format='CHW'):
 
     Args:
         img (paddle.Tensor): Image to be flipped.
-        data_format (str, optional): Data format of img, should be 'HWC' or 
+        data_format (str, optional): Data format of img, should be 'HWC' or
             'CHW'. Default: 'CHW'.
 
     Returns:
@@ -316,7 +316,7 @@ def hflip(img, data_format='CHW'):
 
     Args:
         img (paddle.Tensor): Image to be flipped.
-        data_format (str, optional): Data format of img, should be 'HWC' or 
+        data_format (str, optional): Data format of img, should be 'HWC' or
             'CHW'. Default: 'CHW'.
 
     Returns:
@@ -334,13 +334,13 @@ def crop(img, top, left, height, width, data_format='CHW'):
     """Crops the given paddle.Tensor Image.
 
     Args:
-        img (paddle.Tensor): Image to be cropped. (0,0) denotes the top left 
+        img (paddle.Tensor): Image to be cropped. (0,0) denotes the top left
             corner of the image.
         top (int): Vertical component of the top left corner of the crop box.
         left (int): Horizontal component of the top left corner of the crop box.
         height (int): Height of the crop box.
         width (int): Width of the crop box.
-        data_format (str, optional): Data format of img, should be 'HWC' or 
+        data_format (str, optional): Data format of img, should be 'HWC' or
             'CHW'. Default: 'CHW'.
     Returns:
         paddle.Tensor: Cropped image.
@@ -360,9 +360,9 @@ def center_crop(img, output_size, data_format='CHW'):
         Args:
             img (paddle.Tensor): Image to be cropped. (0,0) denotes the top left corner of the image.
             output_size (sequence or int): (height, width) of the crop box. If int,
-                it is used for both directions   
-            data_format (str, optional): Data format of img, should be 'HWC' or 
-                'CHW'. Default: 'CHW'.     
+                it is used for both directions
+            data_format (str, optional): Data format of img, should be 'HWC' or
+                'CHW'. Default: 'CHW'.
         Returns:
             paddle.Tensor: Cropped image.
 
@@ -398,7 +398,7 @@ def pad(img, padding, fill=0, padding_mode='constant', data_format='CHW'):
             respectively.
         fill (float, optional): Pixel fill value for constant fill. If a tuple of
             length 3, it is used to fill R, G, B channels respectively.
-            This value is only used when the padding_mode is constant. Default: 0. 
+            This value is only used when the padding_mode is constant. Default: 0.
         padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default: 'constant'.
 
             - constant: pads with a constant value, this value is specified with fill
@@ -472,9 +472,9 @@ def resize(img, size, interpolation='bilinear', data_format='CHW'):
     Args:
         input (paddle.Tensor): Image to be resized.
         size (int|list|tuple): Target size of input data, with (height, width) shape.
-        interpolation (int|str, optional): Interpolation method. when use paddle backend, 
-            support method are as following: 
-            - "nearest"  
+        interpolation (int|str, optional): Interpolation method. when use paddle backend,
+            support method are as following:
+            - "nearest"
             - "bilinear"
             - "bicubic"
             - "trilinear"

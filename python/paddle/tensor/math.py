@@ -102,7 +102,7 @@ def pow(x, y, name=None):
     Compute the power of tensor elements. The equation is:
 
     .. math::
-        out = x^{y} 
+        out = x^{y}
 
     **Note**:
     ``paddle.pow`` supports broadcasting. If you want know more about broadcasting, please refer to :ref:`user_guide_broadcasting` .
@@ -112,7 +112,7 @@ def pow(x, y, name=None):
         x (Tensor): An N-D Tensor, the data type is float32, float64, int32 or int64.
         y (float|int|Tensor): If it is an N-D Tensor, its data type should be the same as `x`.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
         N-D Tensor. A location into which the result is stored. Its dimension and data type are the same as `x`.
 
@@ -673,7 +673,7 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 
     Returns:
         Tensor: Results of summation operation on the specified axis of input Tensor `x`,
-        if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`, 
+        if `x.dtype='bool'`, `x.dtype='int32'`, it's data type is `'int64'`,
         otherwise it's data type is the same as `x`.
 
     Raises:
@@ -699,11 +699,11 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
             #      [[[1, 2], [3, 4]],
             #      [[5, 6], [7, 8]]]
             # Each example is followed by the corresponding output tensor.
-            y = paddle.to_tensor([[[1, 2], [3, 4]], 
+            y = paddle.to_tensor([[[1, 2], [3, 4]],
                                   [[5, 6], [7, 8]]])
             out5 = paddle.sum(y, axis=[1, 2]) # [10, 26]
             out6 = paddle.sum(y, axis=[0, 1]) # [16, 20]
-            
+
             # x is a Tensor with following elements:
             #    [[True, True, True, True]
             #     [False, False, False, False]]
@@ -783,11 +783,11 @@ def sum(x, axis=None, dtype=None, keepdim=False, name=None):
 def add_n(inputs, name=None):
     """
     This OP is used to sum one or more Tensor of the input.
-    
+
     For example:
 
     .. code-block:: text
-    
+
         Case 1:
 
             Input:
@@ -801,7 +801,7 @@ def add_n(inputs, name=None):
                           [4, 5, 6]]
 
         Case 2:
-       
+
             Input:
                 First input:
                     input1.shape = [2, 3]
@@ -835,7 +835,7 @@ def add_n(inputs, name=None):
             input0 = paddle.to_tensor([[1, 2, 3], [4, 5, 6]], dtype='float32')
             input1 = paddle.to_tensor([[7, 8, 9], [10, 11, 12]], dtype='float32')
             output = paddle.add_n([input0, input1])
-            # [[8., 10., 12.], 
+            # [[8., 10., 12.],
             #  [14., 16., 18.]]
     """
     if in_dygraph_mode():
@@ -869,14 +869,14 @@ def add_n(inputs, name=None):
 def trunc(input, name=None):
     '''
     This API is used to returns a new tensor with the truncated integer values of input.
-    
+
     Args:
         input (Tensor): The input tensor, it's data type should be int32, int64, float32, float64.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
-    
+
     Returns:
         Tensor: The output Tensor of trunc.
-    
+
     Examples:
         .. code-block:: python
 
@@ -1022,7 +1022,7 @@ def addmm(input, x, y, beta=1.0, alpha=1.0, name=None):
 
     Examples:
         ..  code-block:: python
-            
+
             import paddle
 
             x = paddle.ones([2,2])
@@ -1234,7 +1234,7 @@ def max(x, axis=None, keepdim=False, name=None):
             # [0.7]]
 
             # data_y is a Tensor with shape [2, 2, 2]
-            # the axis is list 
+            # the axis is list
 
             y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
                                   [[5.0, 6.0], [7.0, 8.0]]])
@@ -1294,7 +1294,7 @@ def min(x, axis=None, keepdim=False, name=None):
             output Tensor. The result tensor will have one fewer dimension
             than the `x` unless :attr:`keepdim` is true, default
             value is False.
-        name(str, optional): The default value is None.  Normally there is no need for 
+        name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
 
     Returns:
@@ -1325,7 +1325,7 @@ def min(x, axis=None, keepdim=False, name=None):
             # [0.1]]
 
             # y is a Tensor with shape [2, 2, 2]
-            # the axis is list 
+            # the axis is list
             y = paddle.to_tensor([[[1.0, 2.0], [3.0, 4.0]],
                                   [[5.0, 6.0], [7.0, 8.0]]])
             result5 = paddle.min(y, axis=[1, 2])
@@ -1377,7 +1377,7 @@ def log1p(x, name=None):
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
-        name(str, optional): The default value is None.  Normally there is no need for 
+        name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
         Tensor, the natural log of the input Tensor computed element-wise.
@@ -1422,7 +1422,7 @@ def log2(x, name=None):
     Examples:
 
         .. code-block:: python
-        
+
             import paddle
 
             # example 1: x is a float
@@ -1472,7 +1472,7 @@ def log10(x, name=None):
     Examples:
 
         .. code-block:: python
-        
+
             import paddle
 
             # example 1: x is a float
@@ -1708,7 +1708,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
     This OP computes the diagonals of the input tensor x.
 
     If ``x`` is 2D, returns the diagonal.
-    If ``x`` has larger dimensions, diagonals be taken from the 2D planes specified by axis1 and axis2. 
+    If ``x`` has larger dimensions, diagonals be taken from the 2D planes specified by axis1 and axis2.
     By default, the 2D planes formed by the first and second axis of the input tensor x.
 
     The argument ``offset`` determines where diagonals are taken from input tensor x:
@@ -1716,7 +1716,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
     - If offset = 0, it is the main diagonal.
     - If offset > 0, it is above the main diagonal.
     - If offset < 0, it is below the main diagonal.
-    
+
     Args:
         x(Tensor): The input tensor x. Must be at least 2-dimensional. The input data type should be bool, int32, int64, float16, float32, float64.
         offset(int, optional): Which diagonals in input tensor x will be taken. Default: 0 (main diagonals).
@@ -1766,7 +1766,7 @@ def diagonal(x, offset=0, axis1=0, axis2=1, name=None):
             #Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #       [[0.45661032, 0.86177313],
             #        [0.17020577, 0.27325270]])
-            
+
     """
     if in_dygraph_mode():
         return _C_ops.diagonal(x, 'offset', offset, 'axis1', axis1, 'axis2', axis2)
@@ -1859,25 +1859,25 @@ ${comment}
 
 def cumsum(x, axis=None, dtype=None, name=None):
     """
-    The cumulative sum of the elements along a given axis. 
-    
+    The cumulative sum of the elements along a given axis.
+
     **Note**:
-    The first element of the result is the same of the first element of the input. 
+    The first element of the result is the same of the first element of the input.
 
     Args:
         x (Tensor): The input tensor needed to be cumsumed.
         axis (int, optional): The dimension to accumulate along. -1 means the last dimension. The default (None) is to compute the cumsum over the flattened array.
-        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None. 
+        dtype (str, optional): The data type of the output tensor, can be float32, float64, int32, int64. If specified, the input tensor is casted to dtype before the operation is performed. This is useful for preventing data type overflows. The default value is None.
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
-        Tensor, the result of cumsum operator. 
+        Tensor, the result of cumsum operator.
 
     Examples:
         .. code-block:: python
-            
+
             import paddle
-            
+
             data = paddle.arange(12)
             data = paddle.reshape(data, (3, 4))
 
@@ -1888,7 +1888,7 @@ def cumsum(x, axis=None, dtype=None, name=None):
             # [[ 0  1  2  3]
             #  [ 4  6  8 10]
             #  [12 15 18 21]]
-            
+
             y = paddle.cumsum(data, axis=-1)
             # [[ 0  1  3  6]
             #  [ 4  9 15 22]
@@ -2073,15 +2073,15 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
 
     Args:
         x(Tensor): The input tensor, its data type should be float32, float64, int32, int64.
-        axis(int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`, 
-            multiply all elements of `x` and return a Tensor with a single element, 
-            otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`, 
+        axis(int|list|tuple, optional): The axis along which the product is computed. If :attr:`None`,
+            multiply all elements of `x` and return a Tensor with a single element,
+            otherwise must be in the range :math:`[-x.ndim, x.ndim)`. If :math:`axis[i]<0`,
             the axis to reduce is :math:`x.ndim + axis[i]`. Default is None.
-        dtype(str|np.dtype, optional): The desired date type of returned tensor, can be float32, float64, 
-            int32, int64. If specified, the input tensor is casted to dtype before operator performed. 
-            This is very useful for avoiding data type overflows. The default value is None, the dtype 
+        dtype(str|np.dtype, optional): The desired date type of returned tensor, can be float32, float64,
+            int32, int64. If specified, the input tensor is casted to dtype before operator performed.
+            This is very useful for avoiding data type overflows. The default value is None, the dtype
             of output is the same as input Tensor `x`.
-        keepdim(bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result 
+        keepdim(bool, optional): Whether to reserve the reduced dimension in the output Tensor. The result
             tensor will have one fewer dimension than the input unless `keepdim` is true. Default is False.
         name(string, optional): The default value is None. Normally there is no need for user to set this property.
             For more information, please refer to :ref:`api_guide_Name` .
@@ -2092,7 +2092,7 @@ def prod(x, axis=None, keepdim=False, dtype=None, name=None):
     Raises:
         ValueError: The :attr:`dtype` must be float32, float64, int32 or int64.
         TypeError: The type of :attr:`axis` must be int, list or tuple.
-    
+
     Examples:
         .. code-block:: python
 
@@ -2278,31 +2278,31 @@ def all(x, axis=None, keepdim=False, name=None):
 
             import paddle
             import numpy as np
-            
+
             # x is a bool Tensor with following elements:
             #    [[True, False]
             #     [True, True]]
             x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
             print(x)
             x = paddle.cast(x, 'bool')
-            
+
             # out1 should be [False]
             out1 = paddle.all(x)  # [False]
             print(out1)
-            
+
             # out2 should be [True, False]
             out2 = paddle.all(x, axis=0)  # [True, False]
             print(out2)
-            
+
             # keep_dim=False, out3 should be [False, True], out.shape should be (2,)
             out3 = paddle.all(x, axis=-1)  # [False, True]
             print(out3)
-            
+
             # keep_dim=True, out4 should be [[False], [True]], out.shape should be (2,1)
             out4 = paddle.all(x, axis=1, keepdim=True)
             out4 = paddle.cast(out4, 'int32')  # [[False], [True]]
             print(out4)
-            
+
     """
     if axis is not None and not isinstance(axis, (list, tuple)):
         axis = [axis]
@@ -2370,31 +2370,31 @@ def any(x, axis=None, keepdim=False, name=None):
 
             import paddle
             import numpy as np
-            
+
             # x is a bool Tensor with following elements:
             #    [[True, False]
             #     [False, False]]
             x = paddle.assign(np.array([[1, 0], [1, 1]], dtype='int32'))
             print(x)
             x = paddle.cast(x, 'bool')
-            
+
             # out1 should be [True]
             out1 = paddle.any(x)  # [True]
             print(out1)
-            
+
             # out2 should be [True, True]
             out2 = paddle.any(x, axis=0)  # [True, True]
             print(out2)
-            
+
             # keep_dim=False, out3 should be [True, True], out.shape should be (2,)
             out3 = paddle.any(x, axis=-1)  # [True, True]
             print(out3)
-            
+
             # keep_dim=True, result should be [[True], [True]], out.shape should be (2,1)
             out4 = paddle.any(x, axis=1, keepdim=True)
             out4 = paddle.cast(out4, 'int32')  # [[True], [True]]
             print(out4)
-            
+
     """
     if axis is not None and not isinstance(axis, (list, tuple)):
         axis = [axis]
@@ -2439,7 +2439,7 @@ def broadcast_shape(x_shape, y_shape):
     Args:
         x_shape (list[int]|tuple[int]): A shape of tensor.
         y_shape (list[int]|tuple[int]): A shape of tensor.
-        
+
 
     Returns:
         list[int], the result shape.
@@ -2451,7 +2451,7 @@ def broadcast_shape(x_shape, y_shape):
 
             shape = paddle.broadcast_shape([2, 1, 3], [1, 3, 1])
             # [2, 3, 3]
-            
+
             # shape = paddle.broadcast_shape([2, 1, 3], [3, 3, 1])
             # ValueError (terminated with error message).
 
@@ -2464,7 +2464,7 @@ def conj(x, name=None):
     This function computes the conjugate of the Tensor elementwisely.
 
     Args:
-        x (Tensor): The input tensor which hold the complex numbers. 
+        x (Tensor): The input tensor which hold the complex numbers.
             Optional data types are: complex64, complex128, float32, float64, int32 or int64.
         name (str, optional): The default value is None. Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
@@ -2509,7 +2509,7 @@ def digamma(x, name=None):
 
     Args:
         x (Tensor): Input Tensor. Must be one of the following types: float32, float64.
-        name(str, optional): The default value is None.  Normally there is no need for 
+        name(str, optional): The default value is None.  Normally there is no need for
             user to set this property.  For more information, please refer to :ref:`api_guide_Name`
     Returns:
         Tensor, the digamma of the input Tensor, the shape and data type is the same with input.

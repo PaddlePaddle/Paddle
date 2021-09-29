@@ -43,8 +43,8 @@ class TestParallelDygraphMnist(TestDistBase):
 
 
 #TODO(liuyuhui): Multi-Card Baidu Kunlun XPU training exist accuracy problems
-#it is difficult to find out immediately where the problem is, 
-#and we will work with frameworkers' help to fix it. 
+#it is difficult to find out immediately where the problem is,
+#and we will work with frameworkers' help to fix it.
 class TestParallelDygraphMnistXPU(TestDistBase):
     def _setup_config(self):
         self._sync_mode = False

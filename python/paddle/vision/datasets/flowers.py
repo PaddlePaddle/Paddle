@@ -55,13 +55,13 @@ class Flowers(Dataset):
         mode(str): 'train', 'valid' or 'test' mode. Default 'train'.
         transform(callable): transform to perform on image, None for no transform.
         download(bool): download dataset automatically if :attr:`data_file` is None. Default True
-        backend(str, optional): Specifies which type of image to be returned: 
-            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}. 
+        backend(str, optional): Specifies which type of image to be returned:
+            PIL.Image or numpy.ndarray. Should be one of {'pil', 'cv2'}.
             If this option is not set, will get backend from ``paddle.vsion.get_image_backend`` ,
             default backend is 'pil'. Default: None.
 
     Examples:
-        
+
         .. code-block:: python
 
             from paddle.vision.datasets import Flowers

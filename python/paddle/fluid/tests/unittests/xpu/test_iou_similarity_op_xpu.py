@@ -41,7 +41,7 @@ class TestXPUIOUSimilarityOp(XPUOpTest):
         self.boxes2 = random.rand(3, 4).astype('float32')
         self.output = random.rand(2, 3).astype('float32')
         self.box_normalized = False
-        # run python iou computation 
+        # run python iou computation
         self._compute_iou()
         self.inputs = {'X': self.boxes1, 'Y': self.boxes2}
         self.attrs = {"box_normalized": self.box_normalized, 'use_xpu': True}
@@ -87,7 +87,7 @@ class TestXPUIOUSimilarityOpWithLoD(TestXPUIOUSimilarityOp):
         self.boxes1_lod = [[1, 1]]
         self.output_lod = [[1, 1]]
         self.box_normalized = False
-        # run python iou computation 
+        # run python iou computation
         self._compute_iou()
         self.inputs = {'X': (self.boxes1, self.boxes1_lod), 'Y': self.boxes2}
         self.attrs = {"box_normalized": self.box_normalized}
@@ -105,7 +105,7 @@ class TestXPUIOUSimilarityOpWithBoxNormalized(TestXPUIOUSimilarityOp):
         self.boxes1_lod = [[1, 1]]
         self.output_lod = [[1, 1]]
         self.box_normalized = True
-        # run python iou computation 
+        # run python iou computation
         self._compute_iou()
         self.inputs = {'X': (self.boxes1, self.boxes1_lod), 'Y': self.boxes2}
         self.attrs = {"box_normalized": self.box_normalized}

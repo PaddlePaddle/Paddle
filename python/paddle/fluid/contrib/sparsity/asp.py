@@ -1,12 +1,12 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 # Copyright (c) 2021 NVIDIA Corporation.  All rights reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -43,7 +43,7 @@ def set_excluded_layers(main_program, param_names):
 
 def reset_excluded_layers(main_program=None):
     r"""
-    Reset exculded layers setting corresponding to :attr:`main_program`. If :attr:`main_program` 
+    Reset exculded layers setting corresponding to :attr:`main_program`. If :attr:`main_program`
     is None, then all configurations of excluded_layers would be cleaned.
 
     Args:
@@ -54,7 +54,7 @@ def reset_excluded_layers(main_program=None):
 
 def decorate(optimizer):
     r"""
-    Wrap the given optimizer as a OptimizerWithSparsityGuarantee, 
+    Wrap the given optimizer as a OptimizerWithSparsityGuarantee,
     which would insert necessary ops for ASP workflows when calling minimize()
 
     Args:
@@ -99,18 +99,18 @@ def prune_model(place,
                 func_name=sparsity.MaskAlgo.MASK_1D,
                 with_mask=True):
     r"""
-    Pruning parameters of supported layers in :attr:`main_program` via 
-    specified mask generation function given by :attr:`func_name`. This 
+    Pruning parameters of supported layers in :attr:`main_program` via
+    specified mask generation function given by :attr:`func_name`. This
     function supports both training and inference controlled by :attr:`with_mask`.
     If :attr:`with_mask` is True, it would also prune parameter related ASP mask Variables,
     else only prunes parameters.
 
-    *Note*: If parameters are supported and in FP16, please set :attr:`n`=2, :attr:`m`=4, 
+    *Note*: If parameters are supported and in FP16, please set :attr:`n`=2, :attr:`m`=4,
     if they in FP32, then :attr:`n`=1, :attr:`m`=2` to further enable Sparse Tensor Core acceleration.
 
-    *Note*: If calling this function with :attr:`with_mask`, it should call `OptimizerWithSparsityGuarantee.minimize` 
-    and initialization (`exe.run(startup_program`)) before (For successfully obtain mask Variable). 
-    Typically set `with_mask` as true for training (have called `OptimizerWithSparsityGuarantee.minimize`) and false for 
+    *Note*: If calling this function with :attr:`with_mask`, it should call `OptimizerWithSparsityGuarantee.minimize`
+    and initialization (`exe.run(startup_program`)) before (For successfully obtain mask Variable).
+    Typically set `with_mask` as true for training (have called `OptimizerWithSparsityGuarantee.minimize`) and false for
     inference only. To obtain OptimizerWithSparsityGuarantee, please see `sparsity.decoreate()`.
 
     Args:
@@ -153,7 +153,7 @@ def prune_model(place,
 
                 optimizer = fluid.optimizer.SGD(learning_rate=0.1)
                 optimizer = fluid.contrib.mixed_precision.decorator.decorate(optimizer )
-                # Calling sparsity.decorate() to wrap minimize() in optimizer, which 
+                # Calling sparsity.decorate() to wrap minimize() in optimizer, which
                 # will insert necessary masking operations for ASP workflow.
                 optimizer = sparsity.decorate(optimizer)
                 optimizer.minimize(loss, startup_program)
@@ -213,7 +213,7 @@ class ProgramASPInfo(object):
 
 class ASPHelper(object):
     r"""
-    ASPHelper is a collection of Auto SParsity (ASP) functions to enable 
+    ASPHelper is a collection of Auto SParsity (ASP) functions to enable
 
     1. training models with weights in 2:4 sparse pattern on FP16 or 1:2 sparse pattern on FP32 from scratch.
     2. pruning well-trained models into 2:4 sparse pattern on FP16 or 1:2 sparse pattern on FP32 for fine-tuning.
@@ -277,11 +277,11 @@ class ASPHelper(object):
                 # cuSparseLt would prune matrix A along k dimension.
                 # In sparse training, layer weight matriices is viewed sparse matrix A, so
                 # the math fomula should be 'Act(WX + b)'. However, default fomula in PaddlePaddle
-                #  is 'Act(XW + b)'. For enabling SPMMA, weights and inputs should be transposed 
-                # for computing, Act( (W^T X^T)^T + b). Therefore, we have to prune alog k dimension 
-                # of W^T, which is m dimension of W. Moreove, all mask generating functions in 
-                # sparsity/utils is row-major pruning. That is the reason we have to transpose weight 
-                # matrices beforce invoking create_mask. Then we transpose the result maks to make 
+                #  is 'Act(XW + b)'. For enabling SPMMA, weights and inputs should be transposed
+                # for computing, Act( (W^T X^T)^T + b). Therefore, we have to prune alog k dimension
+                # of W^T, which is m dimension of W. Moreove, all mask generating functions in
+                # sparsity/utils is row-major pruning. That is the reason we have to transpose weight
+                # matrices beforce invoking create_mask. Then we transpose the result maks to make
                 # sure its shape to be the same as the input weight.
                 weight_sparse_mask = sparsity.create_mask(
                     weight_nparray.T, func_name=func_name, n=n, m=m).T
@@ -391,8 +391,8 @@ class ASPHelper(object):
         2. Create sparse mask Tensors according to supported layers in :attr:`main_program`.
         3. Insert masking ops in the end of parameters update.
 
-        *Note*: Please use `ASP.decorate` instead when applying distributed training with `Fleet`. 
-        (Due to there is a invisiable graphs optimization in `Fleet.minimize()` which make training graph 
+        *Note*: Please use `ASP.decorate` instead when applying distributed training with `Fleet`.
+        (Due to there is a invisiable graphs optimization in `Fleet.minimize()` which make training graph
         cannot be modified anymore.)
 
         Args:

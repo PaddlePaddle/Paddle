@@ -53,7 +53,7 @@ class TestSolveOp(OpTest):
         self.check_grad(['X', 'Y'], 'Out')
 
 
-# x broadcast + 3D batch case 
+# x broadcast + 3D batch case
 class TestSolveOpBatched_case0(OpTest):
     def setUp(self):
         self.op_type = "solve"
@@ -113,7 +113,7 @@ class TestSolveOpBatched_case2(OpTest):
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.02)
 
 
-# x broadcast + 3D batch case 
+# x broadcast + 3D batch case
 class TestSolveOpBatched_case3(OpTest):
     def setUp(self):
         self.op_type = "solve"
@@ -133,7 +133,7 @@ class TestSolveOpBatched_case3(OpTest):
         self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.02)
 
 
-# 3D normal batch case 
+# 3D normal batch case
 class TestSolveOpBatched_case4(OpTest):
     def setUp(self):
         self.op_type = "solve"
@@ -243,7 +243,7 @@ class TestSolveOpError(unittest.TestCase):
                 np.array([[-1]]), [[1]], fluid.CPUPlace())
             self.assertRaises(TypeError, paddle.linalg.solve, x1, y1)
 
-            # The data type of input must be float32 or float64.        
+            # The data type of input must be float32 or float64.
             x2 = fluid.data(name="x2", shape=[30, 30], dtype="bool")
             y2 = fluid.data(name="y2", shape=[30, 10], dtype="bool")
             self.assertRaises(TypeError, paddle.linalg.solve, x2, y2)

@@ -1137,7 +1137,7 @@ class MaxUnPool2D(Layer):
     'max_unpool2d' accepts the output of 'max_unpool2d' as input
     Including the indices of the maximum value and calculating the partial inverse
     All non-maximum values ​​are set to zero.
-    
+
 
     Parameters:
         kernel_size (int|list|tuple): The unpool kernel size. If unpool kernel size is a tuple or list,
@@ -1146,7 +1146,7 @@ class MaxUnPool2D(Layer):
             it must contain an integer.
         kernel_size (int|tuple): Size of the max unpooling window.
         padding (int | tuple): Padding that was added to the input.
-        output_size(list|tuple, optional): The target output size. If output_size is not specified, 
+        output_size(list|tuple, optional): The target output size. If output_size is not specified,
                            the actual output shape will be automatically calculated by (input_shape,
                            kernel_size, padding).
         name(str, optional): For detailed information, please refer
@@ -1168,11 +1168,11 @@ class MaxUnPool2D(Layer):
     Returns:
         A callable object of MaxUnPool2D.
 
-            
+
 
     Examples:
         .. code-block:: python
-        
+
         import paddle
         import paddle.nn.functional as F
         import numpy as np

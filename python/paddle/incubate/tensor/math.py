@@ -31,9 +31,9 @@ def segment_sum(data, segment_ids, name=None):
     Args:
         data (Tensor): A tensor, available data type float32, float64.
         segment_ids (Tensor): A 1-D tensor, which have the same size
-                            with the first dimension of input data. 
+                            with the first dimension of input data.
                             Available data type is int32, int64.
-        name (str, optional): Name for the operation (optional, default is None). 
+        name (str, optional): Name for the operation (optional, default is None).
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -83,10 +83,10 @@ def segment_mean(data, segment_ids, name=None):
 
     Args:
         data (tensor): a tensor, available data type float32, float64.
-        segment_ids (tensor): a 1-d tensor, which have the same size 
-                            with the first dimension of input data. 
+        segment_ids (tensor): a 1-d tensor, which have the same size
+                            with the first dimension of input data.
                             available data type is int32, int64.
-        name (str, optional): Name for the operation (optional, default is None). 
+        name (str, optional): Name for the operation (optional, default is None).
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -136,9 +136,9 @@ def segment_min(data, segment_ids, name=None):
     Args:
         data (tensor): a tensor, available data type float32, float64.
         segment_ids (tensor): a 1-d tensor, which have the same size
-                            with the first dimension of input data. 
+                            with the first dimension of input data.
                             available data type is int32, int64.
-        name (str, optional): Name for the operation (optional, default is None). 
+        name (str, optional): Name for the operation (optional, default is None).
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:
@@ -188,9 +188,9 @@ def segment_max(data, segment_ids, name=None):
     Args:
         data (tensor): a tensor, available data type float32, float64.
         segment_ids (tensor): a 1-d tensor, which have the same size
-                            with the first dimension of input data. 
+                            with the first dimension of input data.
                             available data type is int32, int64.
-        name (str, optional): Name for the operation (optional, default is None). 
+        name (str, optional): Name for the operation (optional, default is None).
                             For more information, please refer to :ref:`api_guide_Name`.
 
     Returns:

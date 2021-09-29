@@ -84,7 +84,7 @@ set(SHARED_INFERENCE_SRCS
 # shared inference library deps
 set(SHARED_INFERENCE_DEPS ${fluid_modules} analysis_predictor)
 
-if (WITH_CRYPTO) 
+if (WITH_CRYPTO)
     set(SHARED_INFERENCE_DEPS ${SHARED_INFERENCE_DEPS} paddle_crypto)
 endif (WITH_CRYPTO)
 

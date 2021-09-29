@@ -187,12 +187,12 @@ class TestTopKAPI(unittest.TestCase):
         numpy_result = numpy_topk(self.input_data, k=2, axis=-1, largest=False)
         self.assertTrue(np.allclose(paddle_result[0].numpy(), numpy_result[0]))
         self.assertTrue(np.allclose(paddle_result[1].numpy(), numpy_result[1]))
-        # test case for basic test case 6 for the partial sort 
+        # test case for basic test case 6 for the partial sort
         paddle_result = paddle.topk(large_input_tensor, k=1, axis=-1)
         numpy_result = numpy_topk(self.large_input_data, k=1, axis=-1)
         self.assertTrue(np.allclose(paddle_result[0].numpy(), numpy_result[0]))
         self.assertTrue(np.allclose(paddle_result[1].numpy(), numpy_result[1]))
-        # test case for basic test case 7 for the unsorted 
+        # test case for basic test case 7 for the unsorted
         paddle_result = paddle.topk(input_tensor, k=2, axis=1, sorted=False)
         sort_paddle = numpy_topk(
             np.array(paddle_result[0].numpy()), axis=1, k=2)

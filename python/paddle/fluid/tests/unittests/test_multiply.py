@@ -110,7 +110,7 @@ class TestMultiplyError(unittest.TestCase):
             y = paddle.static.data(name='y', shape=[100], dtype=np.int8)
             self.assertRaises(TypeError, tensor.multiply, x, y)
 
-        # test static computation graph: inputs must be broadcastable 
+        # test static computation graph: inputs must be broadcastable
         with program_guard(Program(), Program()):
             x = paddle.static.data(name='x', shape=[20, 50], dtype=np.float64)
             y = paddle.static.data(name='y', shape=[20], dtype=np.float64)
@@ -139,7 +139,7 @@ class TestMultiplyError(unittest.TestCase):
         y = paddle.to_tensor(y_data)
         self.assertRaises(ValueError, paddle.multiply, x, y)
 
-        # test dynamic computation graph: dtype must be same	
+        # test dynamic computation graph: dtype must be same
         x_data = np.random.randn(200).astype(np.int64)
         y_data = np.random.randn(200).astype(np.float64)
         x = paddle.to_tensor(x_data)

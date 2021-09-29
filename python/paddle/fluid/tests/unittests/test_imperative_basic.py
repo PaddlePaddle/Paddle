@@ -540,7 +540,7 @@ class TestImperative(unittest.TestCase):
 
             loss = fun(x, y, z)
             loss.backward(retain_graph=True)
-            # x.grad = 2*x*y + z + 2*y = 27 
+            # x.grad = 2*x*y + z + 2*y = 27
             self.assertTrue(np.array_equal(x.grad.numpy(), [27]))
 
             loss.backward(retain_graph=True)

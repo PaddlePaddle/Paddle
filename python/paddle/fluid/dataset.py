@@ -133,13 +133,13 @@ class DatasetBase(object):
         """
         set fea eval mode for slots shuffle to debug the importance level of
         slots(features), fea_eval need to be set True for slots shuffle.
-        
+
         Args:
-            record_candidate_size(int): size of instances candidate to shuffle 
+            record_candidate_size(int): size of instances candidate to shuffle
                                         one slot
             fea_eval(bool): whether enable fea eval mode to enable slots shuffle.
                             default is True.
-            
+
         Examples:
             .. code-block:: python
 
@@ -154,12 +154,12 @@ class DatasetBase(object):
 
     def slots_shuffle(self, slots):
         """
-        Slots Shuffle 
-        Slots Shuffle is a shuffle method in slots level, which is usually used 
+        Slots Shuffle
+        Slots Shuffle is a shuffle method in slots level, which is usually used
         in sparse feature with large scale of instances. To compare the metric, i.e.
-        auc while doing slots shuffle on one or several slots with baseline to 
+        auc while doing slots shuffle on one or several slots with baseline to
         evaluate the importance level of slots(features).
-        
+
         Args:
             slots(list[string]): the set of slots(string) to do slots shuffle.
 
@@ -578,7 +578,7 @@ class InMemoryDataset(DatasetBase):
 
     def preprocess_instance(self):
         """
-        Merge pv instance and convey it from input_channel to input_pv_channel. 
+        Merge pv instance and convey it from input_channel to input_pv_channel.
         It will be effective when enable_pv_merge_ is True.
 
         Examples:
@@ -865,7 +865,7 @@ class InMemoryDataset(DatasetBase):
     def release_memory(self):
         """
         :api_attr: Static Graph
-        
+
         Release InMemoryDataset memory data, when data will not be used again.
 
         Examples:
@@ -1157,7 +1157,7 @@ class BoxPSDataset(InMemoryDataset):
     def begin_pass(self):
         """
         Begin Pass
-        Notify BoxPS to load sparse parameters of next pass to GPU Memory 
+        Notify BoxPS to load sparse parameters of next pass to GPU Memory
 
         Examples:
             .. code-block:: python
@@ -1171,7 +1171,7 @@ class BoxPSDataset(InMemoryDataset):
     def end_pass(self, need_save_delta):
         """
         End Pass
-        Notify BoxPS that current pass ended 
+        Notify BoxPS that current pass ended
         Examples:
             .. code-block:: python
 
@@ -1237,12 +1237,12 @@ class BoxPSDataset(InMemoryDataset):
 
     def slots_shuffle(self, slots):
         """
-        Slots Shuffle 
-        Slots Shuffle is a shuffle method in slots level, which is usually used 
+        Slots Shuffle
+        Slots Shuffle is a shuffle method in slots level, which is usually used
         in sparse feature with large scale of instances. To compare the metric, i.e.
-        auc while doing slots shuffle on one or several slots with baseline to 
+        auc while doing slots shuffle on one or several slots with baseline to
         evaluate the importance level of slots(features).
-        
+
         Args:
             slots(list[string]): the set of slots(string) to do slots shuffle.
 

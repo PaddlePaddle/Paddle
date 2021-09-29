@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# TODO: define the distribution functions 
+# TODO: define the distribution functions
 # __all__ = ['Categorical',
 #            'MultivariateNormalDiag',
 #            'Normal',
@@ -41,7 +41,7 @@ __all__ = ['Distribution', 'Uniform', 'Normal', 'Categorical']
 
 class Distribution(object):
     """
-    The abstract base class for probability distributions. Functions are 
+    The abstract base class for probability distributions. Functions are
     implemented in specific distributions.
     """
 
@@ -416,7 +416,7 @@ class Normal(Distribution):
 
     Examples:
         .. code-block:: python
-          
+
           import paddle
           from paddle.distribution import Normal
 
@@ -605,7 +605,7 @@ class Normal(Distribution):
         .. math::
 
             ratio = \\frac{\sigma_0}{\sigma_1}
-        
+
         .. math::
 
             diff = \mu_1 - \mu_0
@@ -640,9 +640,9 @@ class Normal(Distribution):
 
 class Categorical(Distribution):
     r"""
-    Categorical distribution is a discrete probability distribution that 
-    describes the possible results of a random variable that can take on 
-    one of K possible categories, with the probability of each category 
+    Categorical distribution is a discrete probability distribution that
+    describes the possible results of a random variable that can take on
+    one of K possible categories, with the probability of each category
     separately specified.
 
     The probability mass function (pmf) is:
@@ -733,7 +733,7 @@ class Categorical(Distribution):
 
         Returns:
             Tensor: A tensor with prepended dimensions shape.
-        
+
         Examples:
             .. code-block:: python
 
@@ -780,7 +780,7 @@ class Categorical(Distribution):
 
         Returns:
             Tensor: kl-divergence between two Categorical distributions.
-        
+
         Examples:
             .. code-block:: python
 
@@ -831,7 +831,7 @@ class Categorical(Distribution):
 
         Returns:
             Tensor: Shannon entropy of Categorical distribution. The data type is float32.
-        
+
         Examples:
             .. code-block:: python
 
@@ -864,9 +864,9 @@ class Categorical(Distribution):
     def probs(self, value):
         """Probabilities of the given category (``value``).
 
-        If ``logits`` is 2-D or higher dimension, the last dimension will be regarded as 
+        If ``logits`` is 2-D or higher dimension, the last dimension will be regarded as
         category, and the others represents the different distributions.
-        At the same time, if ``vlaue`` is 1-D Tensor, ``value`` will be broadcast to the 
+        At the same time, if ``vlaue`` is 1-D Tensor, ``value`` will be broadcast to the
         same number of distributions as ``logits``.
         If ``value`` is not 1-D Tensor, ``value`` should have the same number distributions
         with ``logits. That is, ``value[:-1] = logits[:-1]``.
@@ -876,7 +876,7 @@ class Categorical(Distribution):
 
         Returns:
             Tensor: probability according to the category index.
-        
+
         Examples:
             .. code-block:: python
 
@@ -942,7 +942,7 @@ class Categorical(Distribution):
 
         Returns:
             Tensor: Log probability.
-        
+
         Examples:
             .. code-block:: python
 

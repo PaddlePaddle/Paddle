@@ -131,7 +131,7 @@ def convert_pascalvoc_local2bin(args):
     f1.close()
 
     object_nums_sum = sum(object_nums)
-    # The data should be contains 
+    # The data should be contains
     # number of images + all images data + an array that represent object numbers of each image
     # + labels of all objects in images + bboxes of all objects + difficulties of all objects
     # so the target size should be as follows:
@@ -230,7 +230,7 @@ def convert_pascalvoc_tar2bin(tar_path, data_out_path):
         if line_idx % per_percentage:
             print_processbar(line_idx / per_percentage)
 
-    # The data should be stored in binary in following sequence: 
+    # The data should be stored in binary in following sequence:
     # number of images->all images data->an array that represent object numbers in each image
     # ->labels of all objects in images->bboxes of all objects->difficulties of all objects
     f1.write(np.array(object_nums).astype('uint64').tobytes())

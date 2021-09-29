@@ -74,7 +74,7 @@ def _switch_scope(scope):
 def scope_guard(scope):
     """
     :api_attr: Static Graph
-    
+
     This function switches scope through python `with` statement.
     Scope records the mapping between variable names and variables ( :ref:`api_guide_Variable` ),
     similar to brackets in programming languages.
@@ -159,10 +159,10 @@ def dtype_is_compatible_with(first, second):
     """
     Returns True if the first dtype can be compatible the second one.
     Currently, we require the two dtype's have to be same.
-      
+
     Args:
         dtype (np.dtype|VarType|str): The type of data: float32, int64, etc.
-    
+
     Returns:
         True if the two types are same.
     """
@@ -218,7 +218,7 @@ def check_feed_shape_type(var, feed, num_places=1):
     2. Each non-negative number of the two dimensions are same.
     3. For negative number or 'None' in a dimension, it means unknown so it
        is compatible with any number.
-    
+
     Args:
         var (Variable): the Variable object
         feed (LoDTensor): the fed value, which must be a LoDTensor
@@ -504,7 +504,7 @@ class _StandaloneExecutor(object):
                 so the length of this list should be equal to the number of places.
                 The default is None.
             fetch_list(list): This parameter represents the Tensors that need to be returned
-                after the model runs. The default is None. 
+                after the model runs. The default is None.
             return_numpy(bool): This parameter indicates whether convert the fetched Tensors
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
                 the type of the return value is a list of :code:`LoDTensor`. The default is True.
@@ -529,10 +529,10 @@ class _StandaloneExecutor(object):
 
     def _update_feed(self, feed):
         """
-        Update the feed dict, remove the feed item which is pruned in program.  
+        Update the feed dict, remove the feed item which is pruned in program.
 
         Notes: This is a very low level API. Users should not use this API
-        directly. 
+        directly.
 
         Args:
             feed(list|dict): feed dict or list.
@@ -590,7 +590,7 @@ class _ExecutorCache(object):
 
     def _get_exe_from_cache(self, program):
         """
-        Return cached _StandaloneExecutor instance. If not found, create associated 
+        Return cached _StandaloneExecutor instance. If not found, create associated
         _StandaloneExecutor instance with given program and cache it.
         """
         assert isinstance(
@@ -616,7 +616,7 @@ class Executor(object):
             will set the default device according to its installation version. If Paddle
             is CPU version, the default device would be set to `CPUPlace()` . If Paddle is
             GPU version, the default device would be set to `CUDAPlace(0)` . Default is None.
-            If ``place`` is string, it can be ``cpu``, and ``gpu:x``, where ``x`` 
+            If ``place`` is string, it can be ``cpu``, and ``gpu:x``, where ``x``
             is the index of the GPUs.
 
     Returns:
@@ -818,7 +818,7 @@ class Executor(object):
 
         Returns:
             optimize_ops(list): The optimize operators splited from fetch_list.
-            fetch_list(list):  The updated fetch_list which does not contain optimize operators.  
+            fetch_list(list):  The updated fetch_list which does not contain optimize operators.
         """
         _optimize_ops = []
         _fetch_list = []
@@ -864,12 +864,12 @@ class Executor(object):
                        optimize_ops=None):
         """
         Prune operators and variables which are not needed to generate
-        :code:`fetch_list` and optimize operators. 
-        Prune operators and variables which are needed 
-        to generate variables to be feeded.  
+        :code:`fetch_list` and optimize operators.
+        Prune operators and variables which are needed
+        to generate variables to be feeded.
 
         Notes: This is a very low level API. Users should not use this API
-        directly. 
+        directly.
 
         Args:
             program(Program): the origin program
@@ -922,10 +922,10 @@ class Executor(object):
 
     def _update_feed(self, program, feed):
         """
-        Update the feed dict, remove the feed item which is pruned in program.  
+        Update the feed dict, remove the feed item which is pruned in program.
 
         Notes: This is a very low level API. Users should not use this API
-        directly. 
+        directly.
 
         Args:
             program(Program): the pruned program.
@@ -1086,12 +1086,12 @@ class Executor(object):
                 so the length of this list should be equal to the number of places.
                 The default is None.
             fetch_list(list): This parameter represents the Tensors that need to be returned
-                after the model runs. The default is None. 
+                after the model runs. The default is None.
             feed_var_name(str): This parameter represents the name of the input Tensor of
                 the feed operator. The default is "feed".
             fetch_var_name(str): This parameter represents the name of the output Tensor of
                 the fetch operator. The default is "fetch".
-            scope(Scope): the scope used to run this program, you can switch 
+            scope(Scope): the scope used to run this program, you can switch
                 it to different scope. default is :code:`paddle.static.global_scope()`
             return_numpy(bool): This parameter indicates whether convert the fetched Tensors
                 (the Tensor specified in the fetch list) to numpy.ndarray. if it is False,
@@ -1112,14 +1112,14 @@ class Executor(object):
                 results are variant, please set :code:`return_merged` as False, which denotes that the fetched
                 results will not be merged. The default is True, but it is just for the compatibility, and may
                 use False as default value in the future version.
-            use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned. 
+            use_prune(bool): This parameter indicates whether the input :code:`Program` will be pruned.
                 If the parameter is True, the program will be pruned accroding to the given feed and fetch_list,
-                which means the operators and variables in program that generate :code:`feed` and are not 
-                needed to generate :code:`fetch_list` will be pruned. The default is False, which means the 
+                which means the operators and variables in program that generate :code:`feed` and are not
+                needed to generate :code:`fetch_list` will be pruned. The default is False, which means the
                 program will not pruned and all the operators and variables will be executed during running.
-                Note that if the tuple returned from :code:`Optimizer.minimize()` is passed to :code:`fetch_list`, 
+                Note that if the tuple returned from :code:`Optimizer.minimize()` is passed to :code:`fetch_list`,
                 :code:`use_prune` will be overrided to True, and the program will be pruned.
-                
+
         Returns:
 
             List: The fetched result list.
@@ -1216,7 +1216,7 @@ class Executor(object):
                 print("The merged prediction shape: {}".format(
                     np.array(merged_prediction).shape))
                 print(merged_prediction)
- 
+
                 # Out:
                 # The unmerged prediction shape: (2, 3, 2)
                 # [array([[-0.37620035, -0.19752218],
@@ -1612,7 +1612,7 @@ class Executor(object):
             import paddle
             if dataset is not None:
                 raise RuntimeError("dataset should be None for pipeline mode")
-            # The following fake dataset is created to call 
+            # The following fake dataset is created to call
             # the _prepare_trainer api, and it is meaningless.
             data_vars = []
             for var in program.global_block().vars.values():
@@ -2004,7 +2004,7 @@ class Executor(object):
                 for each run. default is global_scope
             thread(int): number of thread a user wants to run in this function. Default is 0, which
                 means using thread num of dataset
-            debug(bool): whether a user wants to run train_from_dataset 
+            debug(bool): whether a user wants to run train_from_dataset
             fetch_list(Tensor List): fetch Tensor list, each variable will be printed
                 during training
             fetch_info(String List): print information for each Tensor, its length should be equal
@@ -2014,9 +2014,9 @@ class Executor(object):
 
         Returns:
             None
-        
+
         Examples:
-        
+
             .. code-block:: python
 
               import paddle

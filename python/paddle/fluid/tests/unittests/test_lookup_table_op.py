@@ -195,7 +195,7 @@ class TestLookupTableOpInt8(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        # since int8 type only be used in test and inference, there is 
+        # since int8 type only be used in test and inference, there is
         # no gradient implement, so we don't need to test it
         pass
 
@@ -214,7 +214,7 @@ class TestLookupTableOpWithTensorIdsInt8(OpTest):
         self.check_output()
 
     def test_check_grad(self):
-        # since int8 type only be used in test and inference, there is 
+        # since int8 type only be used in test and inference, there is
         # no gradient implement, so we don't need to test it
         pass
 

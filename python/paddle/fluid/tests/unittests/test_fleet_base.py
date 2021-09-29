@@ -163,8 +163,8 @@ class TestFleetDygraph(unittest.TestCase):
         try:
             dp_layer = fleet.distributed_model(layer)
         except Exception as e:
-            # This is just for testing the interface, 
-            # and will not actually be called. Therefore, 
+            # This is just for testing the interface,
+            # and will not actually be called. Therefore,
             # use "try-except" to avoid errors.
             lr = 0.001
             adam.set_lr(lr)

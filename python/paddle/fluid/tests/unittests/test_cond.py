@@ -251,7 +251,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
             a = 2 * i
             if i < 5:
                 if i >= 3:
-                    return a + a 
+                    return a + a
                 else:
                     return a - a
             else:
@@ -318,7 +318,7 @@ class TestCondNestedControlFlow(unittest.TestCase):
         ) else fluid.CPUPlace()
         exe = fluid.Executor(place)
         ret = exe.run(main_program, fetch_list=[out, a.grad_name, b.grad_name])
-        # Note: fill_constant has loss of precision, so we assertAlmostEqual.    
+        # Note: fill_constant has loss of precision, so we assertAlmostEqual.
         self.assertAlmostEqual(ret[0][0], 1.5252)
         self.assertAlmostEqual(ret[1][0], 1.24)
         self.assertAlmostEqual(ret[2][0], 1.23)

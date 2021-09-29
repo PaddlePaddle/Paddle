@@ -7,7 +7,7 @@ Paddle can be built for linux-musl such as alpine, and be used in libos-liked SG
 
 # Build Automatically
 1. clone paddle source from github
-   
+
 ```bash
 git clone https://github.com/PaddlePaddle/Paddle.git
 ```
@@ -88,7 +88,7 @@ make -j8
 # Scripts
 1. **build_docker.sh**
    compiling docker building script. it use alpine linux 3.10 as musl linux build enironment. it will try to install all the compiling tools, development packages, and python requirements for paddle musl compiling.
-    
+
     environment variables:
    - PYTHON_VERSION: the version of python used for image building, default=3.7.
    - WITH_PRUNE_DAYS: prune old docker images, with days limitation.

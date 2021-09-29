@@ -220,7 +220,7 @@ class TestXPUBatchNormOp(unittest.TestCase):
         program = paddle.static.Program()
         with paddle.static.program_guard(program):
             block = program.global_block()
-            # Set inputs, outputs and attributes to the forward op of batch_norm 
+            # Set inputs, outputs and attributes to the forward op of batch_norm
             input_vars = {}
             for var_name in inputs:
                 arg_name = var_name

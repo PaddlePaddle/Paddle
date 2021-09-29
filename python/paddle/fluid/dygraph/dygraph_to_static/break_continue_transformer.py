@@ -88,7 +88,7 @@ class BreakContinueTransformer(BaseNodeVisitor):
     """
     Rewrite 'break' and 'continue' key words in a if-else python way to make
     it equivalent to original control flow
-    
+
     The main idea of this class is:
 
         1. Map the 'break/continue' stmt with an unique boolean variable V.
@@ -276,9 +276,9 @@ def _find_ancestor_loop_index(node, ancestor_nodes):
 
 class BreakTransformOptimizer(BaseNodeVisitor):
     """
-    In specific pattern, the transformed code could be optimized by joining the 
-    If.test with while.test. 
-    
+    In specific pattern, the transformed code could be optimized by joining the
+    If.test with while.test.
+
     Currently supported pattern is:
     ```
         while cond1:            while cond1 and not cond2:
@@ -286,7 +286,7 @@ class BreakTransformOptimizer(BaseNodeVisitor):
                 break
             do_something()
     ```
-    
+
     See following example:
 
     >>> def foo(x):
@@ -307,7 +307,7 @@ class BreakTransformOptimizer(BaseNodeVisitor):
                 i += 1
             return x
     ```
-    It can avoid wrapping all ops after `break` statement into `cond_op` that 
+    It can avoid wrapping all ops after `break` statement into `cond_op` that
     usually brings very heavy overhead.
     """
 

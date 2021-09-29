@@ -137,8 +137,8 @@ class TestArgsortOpDescendingAxisNeg2NPU(TestArgsortOpAxisNeg2NPU):
         self.descending = True
 
 
-# liurui25: argsort of npu has bug with type fp32, 
-# it will change the type from fp32 to fp16, 
+# liurui25: argsort of npu has bug with type fp32,
+# it will change the type from fp32 to fp16,
 # so the check_output_with_place add thw atol
 # this test is only used to test the grad
 # issue： https://gitee.com/ascend/modelzoo/issues/I44I7K

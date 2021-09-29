@@ -59,7 +59,7 @@ class TestDGCOp(unittest.TestCase):
         self.k = np.full((1), 0.0).astype("float32")
         self.gather_buff_name = "GatherBuff"
 
-        # scope data 
+        # scope data
         self.u_tensor = self.scope.var(self.u_name).get_tensor()
         self.u_tensor.set(self.u, place)
 

@@ -101,7 +101,7 @@ class ImperativeQuantAware(object):
                 Using this can quickly test if user's quantization method works or not.
                 In this layer, user should both define quantization method and
                 dequantization method, that is, the function's input is non-quantized
-                activation and returns dequantized activation. 
+                activation and returns dequantized activation.
                 If None, will use quantization op defined by 'activation_quantize_type'.
                 Default is None.
 
@@ -119,13 +119,13 @@ class ImperativeQuantAware(object):
                 import ImperativeQuantAware
             from paddle.vision.models \
                 import resnet
-            
+
             model = resnet.resnet50(pretrained=True)
 
             imperative_qat = ImperativeQuantAware(
                 weight_quantize_type='abs_max',
                 activation_quantize_type='moving_average_abs_max')
-            
+
             # Add the fake quant logical.
             # The original model will be rewrite.
             # The outscale of outputs in supportted layers would be calculated.
@@ -133,7 +133,7 @@ class ImperativeQuantAware(object):
 
             # Fine-tune the quantized model
             # ...
-            
+
             # Save quant model for the inference.
             imperative_qat.save_quantized_model(
                 layer=model,
@@ -281,7 +281,7 @@ class ImperativeQuantizeInputs(object):
             weight_quantize_layer=None,
             act_quantize_layer=None):
         """
-        The constructor for ImperativeQuantizeInputs. 
+        The constructor for ImperativeQuantizeInputs.
 
         Please refer to the args of ImperativeQuantAware.
         """
@@ -341,7 +341,7 @@ class ImperativeQuantizeInputs(object):
 
     def apply(self, model):
         """
-        Quantize the weights and activations to calculate for specific 
+        Quantize the weights and activations to calculate for specific
         layers.
 
         Args:
@@ -436,11 +436,11 @@ class ImperativeQuantizeOutputs(object):
 
         Args:
             model (Layer): The model to be saved.
-            path (str): The path prefix to save model. The format is 
+            path (str): The path prefix to save model. The format is
                 ``dirname/file_prefix`` or ``file_prefix``.
             input_spec (list[InputSpec|Tensor], optional): Describes the input
                 of the saved model's forward method, which can be described by
-                InputSpec or example Tensor. If None, all input variables of 
+                InputSpec or example Tensor. If None, all input variables of
                 the original Layer's forward method would be the inputs of
                 the saved model. Default None.
             **configs (dict, optional): Other save configuration options for
@@ -451,9 +451,9 @@ class ImperativeQuantizeOutputs(object):
                 (1) output_spec (list[Tensor]): Selects the output targets of
                 the saved model. By default, all return variables of original
                 Layer's forward method are kept as the output of the saved model.
-                If the provided ``output_spec`` list is not all output variables, 
+                If the provided ``output_spec`` list is not all output variables,
                 the saved model will be pruned according to the given
-                ``output_spec`` list. 
+                ``output_spec`` list.
 
         Returns:
             None
@@ -523,7 +523,7 @@ class ImperativeQuantizeOutputs(object):
     def _gather_scales(self, program, scope):
         """
         Get all scales from fake ops, save them into the corresponding ops
-        and delete all moving_average_abs_max_scale ops. 
+        and delete all moving_average_abs_max_scale ops.
         """
 
         def _gather_input_scale():

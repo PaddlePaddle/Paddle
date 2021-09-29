@@ -258,7 +258,7 @@ class TestConv2DAPI_Error(unittest.TestCase):
 
         self.assertRaises(ValueError, run_9)
 
-        # ValueError: stride 
+        # ValueError: stride
         def run_10():
             fluid.layers.conv2d(
                 input=input,

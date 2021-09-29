@@ -222,28 +222,28 @@ def create_test_case(op_type):
             op = eval("paddle.%s" % (op_type))
             data_tensor = paddle.to_tensor(self.input_data)
 
-            #case 1 
+            #case 1
             result_data = op(data_tensor)
             excepted_data = self.numpy_op(self.input_data)
             self.assertTrue((result_data.numpy() == excepted_data).all(), True)
 
-            #case 2 
+            #case 2
             result_data = op(data_tensor, axis=1)
             excepted_data = self.numpy_op(self.input_data, axis=1)
             self.assertTrue((result_data.numpy() == excepted_data).all(), True)
 
-            #case 3 
+            #case 3
             result_data = op(data_tensor, axis=-1)
             excepted_data = self.numpy_op(self.input_data, axis=-1)
             self.assertTrue((result_data.numpy() == excepted_data).all(), True)
 
-            #case 4 
+            #case 4
             result_data = op(data_tensor, axis=-1, keepdim=True)
             excepted_data = self.numpy_op(self.input_data, axis=-1)
             excepted_data = excepted_data.reshape((10, 1))
             self.assertTrue((result_data.numpy() == excepted_data).all(), True)
 
-            #case 5 
+            #case 5
             result_data = op(data_tensor, axis=-1, keepdim=True, dtype="int32")
             self.assertTrue(result_data.numpy().dtype == np.int32)
 

@@ -51,7 +51,7 @@ def to_tensor(pic, data_format='CHW'):
 
     Args:
         pic (PIL.Image|np.ndarray): Image to be converted to tensor.
-        data_format (str, optional): Data format of output tensor, should be 'HWC' or 
+        data_format (str, optional): Data format of output tensor, should be 'HWC' or
             'CHW'. Default: 'CHW'.
 
     Returns:
@@ -93,19 +93,19 @@ def resize(img, size, interpolation='bilinear'):
     Args:
         input (PIL.Image|np.ndarray): Image to be resized.
         size (int|list|tuple): Target size of input data, with (height, width) shape.
-        interpolation (int|str, optional): Interpolation method. when use pil backend, 
-            support method are as following: 
-            - "nearest": Image.NEAREST, 
-            - "bilinear": Image.BILINEAR, 
-            - "bicubic": Image.BICUBIC, 
-            - "box": Image.BOX, 
-            - "lanczos": Image.LANCZOS, 
+        interpolation (int|str, optional): Interpolation method. when use pil backend,
+            support method are as following:
+            - "nearest": Image.NEAREST,
+            - "bilinear": Image.BILINEAR,
+            - "bicubic": Image.BICUBIC,
+            - "box": Image.BOX,
+            - "lanczos": Image.LANCZOS,
             - "hamming": Image.HAMMING
-            when use cv2 backend, support method are as following: 
-            - "nearest": cv2.INTER_NEAREST, 
-            - "bilinear": cv2.INTER_LINEAR, 
-            - "area": cv2.INTER_AREA, 
-            - "bicubic": cv2.INTER_CUBIC, 
+            when use cv2 backend, support method are as following:
+            - "nearest": cv2.INTER_NEAREST,
+            - "bilinear": cv2.INTER_LINEAR,
+            - "area": cv2.INTER_AREA,
+            - "bicubic": cv2.INTER_CUBIC,
             - "lanczos": cv2.INTER_LANCZOS4
 
     Returns:
@@ -155,7 +155,7 @@ def pad(img, padding, fill=0, padding_mode='constant'):
             respectively.
         fill (float, optional): Pixel fill value for constant fill. If a tuple of
             length 3, it is used to fill R, G, B channels respectively.
-            This value is only used when the padding_mode is constant. Default: 0. 
+            This value is only used when the padding_mode is constant. Default: 0.
         padding_mode: Type of padding. Should be: constant, edge, reflect or symmetric. Default: 'constant'.
 
             - constant: pads with a constant value, this value is specified with fill
@@ -210,7 +210,7 @@ def crop(img, top, left, height, width):
     """Crops the given Image.
 
     Args:
-        img (PIL.Image|np.array): Image to be cropped. (0,0) denotes the top left 
+        img (PIL.Image|np.array): Image to be cropped. (0,0) denotes the top left
             corner of the image.
         top (int): Vertical component of the top left corner of the crop box.
         left (int): Horizontal component of the top left corner of the crop box.
@@ -256,7 +256,7 @@ def center_crop(img, output_size):
             img (PIL.Image|np.array): Image to be cropped. (0,0) denotes the top left corner of the image.
             output_size (sequence or int): (height, width) of the crop box. If int,
                 it is used for both directions
-        
+
         Returns:
             PIL.Image or np.array: Cropped image.
 
@@ -535,15 +535,15 @@ def rotate(img,
     Args:
         img (PIL.Image|np.array): Image to be rotated.
         angle (float or int): In degrees degrees counter clockwise order.
-        interpolation (str, optional): Interpolation method. If omitted, or if the 
-            image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST 
-            according the backend. when use pil backend, support method are as following: 
-            - "nearest": Image.NEAREST, 
-            - "bilinear": Image.BILINEAR, 
+        interpolation (str, optional): Interpolation method. If omitted, or if the
+            image has only one channel, it is set to PIL.Image.NEAREST or cv2.INTER_NEAREST
+            according the backend. when use pil backend, support method are as following:
+            - "nearest": Image.NEAREST,
+            - "bilinear": Image.BILINEAR,
             - "bicubic": Image.BICUBIC
-            when use cv2 backend, support method are as following: 
-            - "nearest": cv2.INTER_NEAREST, 
-            - "bilinear": cv2.INTER_LINEAR, 
+            when use cv2 backend, support method are as following:
+            - "nearest": cv2.INTER_NEAREST,
+            - "bilinear": cv2.INTER_LINEAR,
             - "bicubic": cv2.INTER_CUBIC
         expand (bool, optional): Optional expansion flag.
             If true, expands the output image to make it large enough to hold the entire rotated image.
@@ -604,7 +604,7 @@ def to_grayscale(img, num_output_channels=1):
             if num_output_channels = 1 : returned image is single channel
 
             if num_output_channels = 3 : returned image is 3 channel with r = g = b
-    
+
     Examples:
         .. code-block:: python
 
@@ -641,14 +641,14 @@ def normalize(img, mean, std, data_format='CHW', to_rgb=False):
         img (PIL.Image|np.array|paddle.Tensor): input data to be normalized.
         mean (list|tuple): Sequence of means for each channel.
         std (list|tuple): Sequence of standard deviations for each channel.
-        data_format (str, optional): Data format of input img, should be 'HWC' or 
+        data_format (str, optional): Data format of input img, should be 'HWC' or
             'CHW'. Default: 'CHW'.
-        to_rgb (bool, optional): Whether to convert to rgb. If input is tensor, 
+        to_rgb (bool, optional): Whether to convert to rgb. If input is tensor,
             this option will be igored. Default: False.
 
     Returns:
         np.ndarray or Tensor: Normalized mage. Data format is same as input img.
-    
+
     Examples:
         .. code-block:: python
 

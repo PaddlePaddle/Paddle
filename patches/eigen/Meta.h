@@ -483,14 +483,14 @@ Index size(const T (&) [N]) { return N; }
 /** \internal
   * Convenient struct to get the result type of a nullary, unary, binary, or
   * ternary functor.
-  * 
+  *
   * Pre C++11:
   * Supports both a Func::result_type member and templated
   * Func::result<Func(ArgTypes...)>::type member.
-  * 
+  *
   * If none of these members is provided, then the type of the first
   * argument is returned.
-  * 
+  *
   * Post C++11:
   * This uses std::result_of. However, note the `type` member removes
   * const and converts references/pointers to their corresponding value type.

@@ -274,7 +274,7 @@ def insert_sync_comm_ops(block, insert_idx, ring_id, comm_dep_vars):
     """
     insert sync_comm_op for vars
     """
-    # NOTE (JZ-LIANG) to be check, may result undefined case 
+    # NOTE (JZ-LIANG) to be check, may result undefined case
     if len(comm_dep_vars) == 0:
         return 0
 
@@ -816,7 +816,7 @@ def insert_scale_loss_grad_ops(block, scale=1.0):
 
 def comm_analyse(main_program):
     """
-    Analyse the parameter size that need to be broadcast/allreduce during sharding training 
+    Analyse the parameter size that need to be broadcast/allreduce during sharding training
     """
     reduce_vars = {}
     broadcast_vars = {}
@@ -858,7 +858,7 @@ def comm_analyse(main_program):
 
 def add_sync_comm(program, sharding_ring_id):
     """
-    When clone a test prog by clone from the sharding main prog, 
+    When clone a test prog by clone from the sharding main prog,
     part of the sync_comm op maybe be pruned by mistake, this function
     add the sync_comm op for the test prog.
 
@@ -939,7 +939,7 @@ def save_persistables(exe, dirname, main_program, filename=None):
 
 def append_naive_sync(block, sync_var, ring_id):
     # NOTE (JZ-LIANG) update this to use barrier sync for more elegent logic
-    # sync within global 
+    # sync within global
     block.append_op(
         type="fill_constant",
         outputs={"Out": sync_var},

@@ -117,10 +117,10 @@ class TestGumbelSoftmaxOpSampleDistribution(OpTest):
         # Experiment should result in batch num .
         self.assertEqual(self.counts.sum(), self.shape[0])
 
-        # Treat the probability from softmax as 
+        # Treat the probability from softmax as
         # the probability of binomial distribution.
         # Samples from gumbel softmax meet this binomial distribution.
-        # Construct statistics z for samples and 
+        # Construct statistics z for samples and
         # z is approximately N(0,1) for unbiased count
         expected = self.probs * self.shape[0]
         z = (self.counts - expected) / np.sqrt((expected * (1 - self.probs)))

@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,7 +16,7 @@
 
 docker_name=$1
 
-  
+
 function ref_whl(){
   if [[ ${WITH_GPU} == "ON" ]]; then
       ref_gpu=gpu-cuda${ref_CUDA_MAJOR}-cudnn${CUDNN_MAJOR}
@@ -25,7 +25,7 @@ function ref_whl(){
       ref_gpu="cpu"
       install_gpu=""
   fi
-  
+
   if [[ ${WITH_MKL} == "ON" ]]; then
       ref_mkl=mkl
   else
@@ -55,9 +55,9 @@ function ref_whl(){
   fi
 
   ref_dev=2.1.0.dev0
-  
+
   ref_web="https://paddle-wheel.bj.bcebos.com/${PADDLE_BRANCH}/linux/linux-${ref_gpu}-${ref_mkl}${ref_gcc}-avx"
-  
+
   if [[ ${PADDLE_VERSION} == "develop" && ${WITH_GPU} == "ON" ]]; then
     ref_paddle37_whl=paddlepaddle${install_gpu}-${ref_dev}${ref_version}-cp37-cp37m-linux_x86_64.whl
   elif [[ ${PADDLE_VERSION} == "develop" && ${WITH_GPU} != "ON" ]]; then

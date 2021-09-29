@@ -159,7 +159,7 @@ class ModelAverage(Optimizer):
         print("\nEvaluate With Restored Paramters")
         model_average.restore()
         evaluate(layer, eval_loader, loss_fn)
-  
+
     """
 
     def __init__(self,
@@ -279,7 +279,7 @@ class ModelAverage(Optimizer):
                  no_grad_set=None):
         """
         Add operations to minimize ``loss`` by updating ``parameters``.
-        
+
         Args:
             loss (Tensor): A ``Tensor`` containing the value to minimize.
             startup_program (Program, optional): :ref:`api_fluid_Program` for
@@ -290,17 +290,17 @@ class ModelAverage(Optimizer):
                 will be updated.
             no_grad_set (set, optional): Set of ``Tensor``  or ``Tensor.name`` that don't need
                 to be updated. The default value is None.
-        
+
         Returns:
             tuple: tuple (optimize_ops, params_grads), A list of operators appended
             by minimize and a list of (param, grad) tensor pairs, param is
             ``Parameter``, grad is the gradient value corresponding to the parameter.
-            In static graph mode, the returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to 
-            indicate program pruning. If so, the program will be pruned by ``feed`` and 
+            In static graph mode, the returned tuple can be passed to ``fetch_list`` in ``Executor.run()`` to
+            indicate program pruning. If so, the program will be pruned by ``feed`` and
             ``fetch_list`` before run, see details in ``Executor``.
-        
+
         Examples:
-        
+
             .. code-block:: python
 
                 import paddle
@@ -331,7 +331,7 @@ class ModelAverage(Optimizer):
     def step(self):
         """
         Execute the optimizer and update parameters once.
-        
+
         Returns:
             None
 
@@ -402,7 +402,7 @@ class ModelAverage(Optimizer):
                                                             max_average_window=4)
                 sgd.step()
                 modelaverage.step()
-                
+
                 with modelaverage.apply():
                     for param in linear.parameters():
                         print(param)
@@ -449,7 +449,7 @@ class ModelAverage(Optimizer):
     def restore(self, executor=None):
         """
         Restore ``Parameter`` values of current model.
-        
+
         Args:
             executor(Executor): The network executor in static-graph mode. The default value is None in dygraph mode
 
@@ -473,7 +473,7 @@ class ModelAverage(Optimizer):
                                                             max_average_window=4)
                 sgd.step()
                 modelaverage.step()
-                
+
                 with modelaverage.apply(need_restore=False):
                     for param in linear.parameters():
                         print(param)

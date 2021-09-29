@@ -1,13 +1,13 @@
 #!/bin/bash
 
 # Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,21 +20,21 @@ REPO="${REPO:-paddledocker}"
 
 function make_cuda9cudnn7(){
   sed 's/<baseimg>/9.0-cudnn7-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc54 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-5.4/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp 
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc54 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-5.4/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
 
 }
 
 
 function make_cuda10cudnn7() {
   sed 's/<baseimg>/10.0-cudnn7-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc54 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-5.4/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp 
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc54 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-5.4/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
 
 }
 
 
 function make_cuda101cudnn7() {
   sed 's/<baseimg>/10.1-cudnn7-devel-centos7/g' Dockerfile.centos >Dockerfile.tmp
-  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc54 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-5.4/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp 
+  sed -i "s#RUN bash build_scripts/build.sh#RUN bash build_scripts/install_gcc.sh gcc54 \nRUN mv /usr/bin/cc /usr/bin/cc.bak \&\& ln -s /usr/local/gcc-5.4/bin/gcc /usr/bin/cc \nENV PATH=/usr/local/gcc-5.4/bin:\$PATH \nRUN bash build_scripts/build.sh#g" Dockerfile.tmp
 }
 
 function make_cuda102cudnn7() {
@@ -101,7 +101,7 @@ function make_cuda112cudnn821trt8034gcc54() {
 }
 
 function main() {
-  local CMD=$1 
+  local CMD=$1
   case $CMD in
     cuda9cudnn7)
       make_cuda9cudnn7
@@ -141,10 +141,10 @@ function main() {
      ;;
     cuda112cudnn821trt8034gcc82)
       make_cuda112cudnn821trt8034gcc82
-     ;; 
+     ;;
     cuda112cudnn821trt8034gcc54)
       make_cuda112cudnn821trt8034gcc54
-     ;; 
+     ;;
     *)
       echo "Make dockerfile error, Without this paramet."
       exit 1

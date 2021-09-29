@@ -128,9 +128,9 @@ if(WIN32)
         CMAKE_C_FLAGS CMAKE_C_FLAGS_DEBUG CMAKE_C_FLAGS_RELEASE
         CMAKE_C_FLAGS_MINSIZEREL CMAKE_C_FLAGS_RELWITHDEBINFO)
         string(REGEX REPLACE "/W[1-4]" " /W0 " ${flag_var} "${${flag_var}}")
-        
+
         # NOTE(zhouwei25): GPU compile have too high memory utilization when parallel compiling,
-        # For Visual Studio generators, /MP should be added. 
+        # For Visual Studio generators, /MP should be added.
         # For other generators like Ninja, it is not need to add /MP.
         if(CMAKE_GENERATOR MATCHES "Visual Studio" AND NOT WITH_GPU)
             math(EXPR PROCESS_MAX "${CPU_CORES} * 2 / 3")

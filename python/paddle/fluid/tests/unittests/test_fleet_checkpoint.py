@@ -75,7 +75,7 @@ class FleetTest(unittest.TestCase):
         assert len(cp_nos) == 1  # cleanup all others
 
         # unnormal
-        # test remain_all_checkpoint 
+        # test remain_all_checkpoint
         fleet.save_checkpoint(
             exe,
             dir_path,

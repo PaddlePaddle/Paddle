@@ -5,7 +5,7 @@ cc_library(scale_loss_grad_op_handle SRCS scale_loss_grad_op_handle.cc DEPS op_h
 cc_library(fetch_op_handle SRCS fetch_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory)
 cc_library(fetch_async_op_handle SRCS fetch_async_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory)
 
-cc_library(share_tensor_buffer_functor SRCS share_tensor_buffer_functor.cc DEPS framework_proto scope place operator op_registry) 
+cc_library(share_tensor_buffer_functor SRCS share_tensor_buffer_functor.cc DEPS framework_proto scope place operator op_registry)
 cc_library(computation_op_handle SRCS computation_op_handle.cc DEPS framework_proto scope place operator op_registry)
 cc_library(share_tensor_buffer_op_handle SRCS share_tensor_buffer_op_handle.cc DEPS op_handle_base scope computation_op_handle share_tensor_buffer_functor)
 cc_library(rpc_op_handle SRCS rpc_op_handle.cc DEPS framework_proto scope place operator op_registry)
@@ -32,7 +32,7 @@ if(WITH_GPU)
             ddim memory dynload_cuda variable_visitor place device_memory_aligment all_reduce_op_handle fused_all_reduce_op_handle)
 
     if(WITH_DGC)
-        nv_library(sparse_all_reduce_op_handle SRCS sparse_all_reduce_op_handle.cc DEPS op_handle_base scope 
+        nv_library(sparse_all_reduce_op_handle SRCS sparse_all_reduce_op_handle.cc DEPS op_handle_base scope
             lod_tensor ddim memory dynload_cuda variable_visitor dgc all_reduce_op_handle)
     endif()
 
@@ -128,8 +128,8 @@ cc_test(exception_holder_test SRCS exception_holder_test.cc )
 
 set(IR_PASS_DEPS graph_viz_pass multi_devices_graph_pass
     multi_devices_graph_print_pass multi_devices_graph_check_pass
-    fuse_elewise_add_act_pass fuse_bn_act_pass fuse_bn_add_act_pass 
-    multi_batch_merge_pass 
+    fuse_elewise_add_act_pass fuse_bn_act_pass fuse_bn_add_act_pass
+    multi_batch_merge_pass
     fuse_relu_depthwise_conv_pass
     lock_free_optimize_pass
     sequential_execution_pass

@@ -12,7 +12,7 @@ if (WITH_GPU AND TENSORRT_FOUND)
   set(INFER_IR_PASSES ${INFER_IR_PASSES} tensorrt_subgraph_pass CACHE INTERNAL "")
 endif()
 
-if (WITH_LITE) 
+if (WITH_LITE)
   cc_library(lite_subgraph_pass SRCS lite_subgraph_pass.cc DEPS ${analysis_deps} subgraph_util lite_op_teller)
   set(analysis_deps ${analysis_deps} subgraph_util lite_subgraph_pass CACHE INTERNAL "")
   set(pass_file ${PADDLE_BINARY_DIR}/paddle/fluid/inference/api/paddle_inference_pass.h.tmp)

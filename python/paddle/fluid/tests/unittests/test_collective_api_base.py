@@ -157,7 +157,7 @@ class TestDistBase(unittest.TestCase):
         tr1_cmd = tr_cmd % (self._python_interp, model_file)
         tr0_pipe = open("/tmp/tr0_err_%d.log" % os.getpid(), "w")
         tr1_pipe = open("/tmp/tr1_err_%d.log" % os.getpid(), "w")
-        #print(tr0_cmd) 
+        #print(tr0_cmd)
         tr0_proc = subprocess.Popen(
             tr0_cmd.strip().split(),
             stdout=subprocess.PIPE,

@@ -1,11 +1,11 @@
 # Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 # Unless required by applicable law or agreed to in writing, software
 # distributed under the License is distributed on an "AS IS" BASIS,
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -176,9 +176,9 @@ def list(repo_dir, source='github', force_reload=False):
 
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
             tag/branch. The default branch is `main` if not specified.
-            
+
             local path (str): local repo path
-        
+
         source (str): `github` | `gitee` | `local`, default is `github`.
         force_reload (bool, optional): whether to discard the existing cache and force a fresh download, default is `False`.
     Returns:
@@ -220,9 +220,9 @@ def help(repo_dir, model, source='github', force_reload=False):
 
             github path (str): a str with format "repo_owner/repo_name[:tag_name]" with an optional
             tag/branch. The default branch is `main` if not specified.
-            
+
             local path (str): local repo path.
-        
+
         model (str): model name.
         source (str): `github` | `gitee` | `local`, default is `github`.
         force_reload (bool, optional): default is `False`.
@@ -264,7 +264,7 @@ def load(repo_dir, model, source='github', force_reload=False, **kwargs):
             tag/branch. The default branch is `main` if not specified.
 
             local path (str): local repo path.
-        
+
         model (str): model name.
         source (str): `github` | `gitee` | `local`, default is `github`.
         force_reload (bool, optional): default is `False`.

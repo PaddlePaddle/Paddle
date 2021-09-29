@@ -232,7 +232,7 @@ def distributed_attr_check_for_dist_op(serial_main_prog, dist_main_prog,
             equal = check_equal_var_dist_attr(serial_out_dist_attr,
                                               out_dist_attr)
 
-        # check op's dist_attr 
+        # check op's dist_attr
         equal = check_equal_dist_op_attr(dist_context, dist_main_prog,
                                          serial_op, dist_ops, dist_op_idx[i])
 
@@ -356,7 +356,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         dist_ops = [op.type for op in dist_ops]
         self.assertTrue(serial_ops == dist_ops)
 
-        # parameter initialization 
+        # parameter initialization
         var_need_broadcast = []
         self.assertTrue(
             initialization_check(_global_parallel_strategy, dist_context,
@@ -402,7 +402,7 @@ class TestMLPAutoPartitioner(unittest.TestCase):
         ]
         self.assertTrue(dist_ops == ref_ops)
 
-        # parameter initialization 
+        # parameter initialization
         var_need_broadcast = sorted(
             ['layer_norm_0.b_0', 'layer_norm_0.w_0', 'linear_1.b_0'])
         self.assertTrue(
@@ -632,7 +632,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         dist_ops = [op.type for op in dist_ops]
         self.assertTrue(serial_ops == dist_ops)
 
-        # parameter initialization 
+        # parameter initialization
         var_need_broadcast = []
         self.assertTrue(
             initialization_check(_global_parallel_strategy, dist_context,
@@ -683,7 +683,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         ]
         self.assertTrue(dist_ops == ref_ops)
 
-        # parameter initialization 
+        # parameter initialization
         var_need_broadcast = ['linear_3.b_0']
         self.assertTrue(
             initialization_check(_global_parallel_strategy, dist_context,
@@ -745,7 +745,7 @@ class TestAttentionAutoPartitioner(unittest.TestCase):
         ]
         self.assertTrue(dist_ops == ref_ops)
 
-        # parameter initialization 
+        # parameter initialization
         var_need_broadcast = ['linear_3.b_0']
         self.assertTrue(
             initialization_check(_global_parallel_strategy, dist_context,
@@ -1037,7 +1037,7 @@ class TestDecoderLayerPartitioner(unittest.TestCase):
         ]
         self.assertTrue(dist_ops == ref_ops)
 
-        # parameter initialization 
+        # parameter initialization
         var_need_broadcast = sorted([
             'linear_3.b_0', 'pos_embeddings', 'layer_norm_0.b_0',
             'layer_norm_0.w_0', 'linear_5.b_0'

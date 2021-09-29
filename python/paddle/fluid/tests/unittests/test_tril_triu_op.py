@@ -91,7 +91,7 @@ def case_generator(op_type, Xshape, diagonal, expected):
 
 
 ### NOTE: meaningful diagonal is [1 - min(H, W), max(H, W) -1]
-### test the diagonal just at the border, upper/lower the border, 
+### test the diagonal just at the border, upper/lower the border,
 ###     negative/positive integer within range and a zero
 cases = {
     'success': {
@@ -122,7 +122,7 @@ for _op_type in ['tril', 'triu']:
 
 
 class TestTrilTriuOpAPI(unittest.TestCase):
-    """ test case by using API and has -1 dimension 
+    """ test case by using API and has -1 dimension
     """
 
     def test_api(self):

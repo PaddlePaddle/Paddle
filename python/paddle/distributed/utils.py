@@ -59,26 +59,26 @@ def global_scatter(x,
                    group=None,
                    use_calc_stream=True):
     """
-    Scatter data in x which has been put together belong to one expert 
-    to n_expert * world_size exeperts according to local_count and receive tensors 
+    Scatter data in x which has been put together belong to one expert
+    to n_expert * world_size exeperts according to local_count and receive tensors
     from n_expert * world_size experts according
     to global_count.
-    
+
     Args:
         x (Tensor): Tensor. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64.
         local_count (Tensor): Tensor which have n_expert * world_size elements that indicates
-            how many data needed to be sent. Every element in the list must be a Tensor whose 
+            how many data needed to be sent. Every element in the list must be a Tensor whose
             data type should be int64.
         global_count (Tensor): Tensor which have n_expert * world_size elements that indicates
-            how many data needed to be received. Every element in the list must be a Tensor whose 
+            how many data needed to be received. Every element in the list must be a Tensor whose
             data type should be int64.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
-    
+
     Returns:
-        out (Tensor): The data received from all experts. 
-    
+        out (Tensor): The data received from all experts.
+
     Examples:
         .. code-block:: python
 
@@ -94,7 +94,7 @@ def global_scatter(x,
             local_input_buf = np.array([[1, 2],[3, 4],[5, 6],[7, 8],[9, 10]], \
             dtype=np.float32)
             if paddle.distributed.ParallelEnv().local_rank == 0:
-                local_count = np.array([2, 1, 1, 1]) 
+                local_count = np.array([2, 1, 1, 1])
                 global_count = np.array([2, 1, 1, 1])
             else:
                 local_count = np.array([1, 1, 2, 1])
@@ -164,17 +164,17 @@ def global_gather(x,
         x (Tensor): Tensor. Every element in the list must be a Tensor whose data type
             should be float16, float32, float64, int32 or int64.
         local_count (Tensor): Tensor which have n_expert * world_size elements that indicates
-            how many data needed to be received. Every element in the list must be a Tensor whose 
+            how many data needed to be received. Every element in the list must be a Tensor whose
             data type should be int64.
         global_count (Tensor): Tensor which have n_expert * world_size elements that indicates
-            how many data needed to be sent. Every element in the list must be a Tensor whose 
+            how many data needed to be sent. Every element in the list must be a Tensor whose
             data type should be int64.
         group (Group, optional): The group instance return by new_group or None for global default group. Default: None.
         use_calc_stream (bool, optional): Wether to use calculation stream (True) or communication stream. Default: True.
-    
+
     Returns:
         None.
-    
+
     Examples:
         .. code-block:: python
 

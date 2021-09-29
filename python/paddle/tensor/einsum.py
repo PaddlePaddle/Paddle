@@ -39,8 +39,8 @@ def parse_op_labels(labelstr, operand):
 
     Returns
     -------
-    the input operand's full label string in which all anonymous dimensions are 
-    labeled in dots. 
+    the input operand's full label string in which all anonymous dimensions are
+    labeled in dots.
     '''
     # Sanity checks
     for c in labelstr.replace('.', ''):
@@ -66,14 +66,14 @@ def parse_op_labels(labelstr, operand):
 def parse_labels(labelstr, operands):
     '''
     Parse label strings for all input operands.
-    
+
     Parameters
     ----------
     labelstr:
         The equation's label string
     operands:
         The input operands
-    
+
     Returns
     -------
     list of full label strings for all input operands
@@ -89,7 +89,7 @@ def parse_labels(labelstr, operands):
 
 def validate_rhs(rhs, input_labels, n_bcast_dims):
     '''
-    Check whether the equation's right hand side is valid 
+    Check whether the equation's right hand side is valid
     '''
     # Sanity check.
     if n_bcast_dims > 0:
@@ -113,7 +113,7 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
 
 
 #     '''
-#     Tests if the two operands can perform a broadcast operation on the given ranges of dimensions. 
+#     Tests if the two operands can perform a broadcast operation on the given ranges of dimensions.
 #     We follow the Numpy broadcasting convention which states that, by lining up the shape arrays
 #     starting from the right most dimension, all the aligned dimensions either have equal sizes or
 #     one of them is sized one.
@@ -121,7 +121,7 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
 #     ----------
 #     args:
 #         *args unpacks into operand one's axes range, shape, operand two's axes range, shape
-#     f: 
+#     f:
 #         if available, is used as a callback for postprocessing the aligned operand dimensions.
 #     '''
 #     xran, xshape, yran, yshape = args
@@ -144,8 +144,8 @@ def validate_rhs(rhs, input_labels, n_bcast_dims):
 
 def build_view(in_labels, out_labels):
     '''
-    Build an inverse map of dimension indices. Three conditions must hold for 
-    the result to be meaningful. 
+    Build an inverse map of dimension indices. Three conditions must hold for
+    the result to be meaningful.
     First, no duplicate letter labels in each label string.
     Second, the number of dots in dimout_labels >= that in in_labels.
     Third, dots are contiguous in each label string.
@@ -156,7 +156,7 @@ def build_view(in_labels, out_labels):
         The dimension labels to map to
     out_labels:
         The dimension labels to map from
-    
+
     Returns
     -------
     The inverse map from out_labels to in_labels. The length of the inverse map equals that of
@@ -184,7 +184,7 @@ def build_view(in_labels, out_labels):
                     range(start, end)[::-1], range(s.start(), s.end())[::-1]):
                 inv_map[ax] = dim
 
-    # Now work on non-broadcast dimensions 
+    # Now work on non-broadcast dimensions
     if r:
         it = itertools.chain(range(start), range(end, len(out_labels)))
     else:
@@ -202,7 +202,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
     plus an index table that maps from the layout to the dimensions
     in each operand. In the global view, the dimensions are arranged
     such that output ones are put on the left and contraction ones
-    are put on the right.  
+    are put on the right.
 
     Parameters
     ----------
@@ -212,7 +212,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
         The equation right hand side
     n_bcast_dims:
         The maxium number of broadcast dimensions
-    
+
     Returns
     -------
     A tuple of g_labels, g_view, g_nout, g_count
@@ -258,7 +258,7 @@ def build_global_view(nop_labels, rhs, n_bcast_dims):
 
 def build_global_shape(g_view, g_labels, op_shapes):
     '''
-    The global shape is the shape of all dimensions rearranged and broadcasting 
+    The global shape is the shape of all dimensions rearranged and broadcasting
     to the global view. It's a reference data structure for einsum planning.
 
     Parameters
@@ -312,12 +312,12 @@ def dim_strides(shape):
 def create_view(operand, *view_def):
     '''
     Create and materialize a view.
-    
+
     Parameters
     ----------
     operand:
         the base tensor operand
-    view_def: 
+    view_def:
         include two lists which define the view's dimension sizes and strides
     '''
     assert False, f'Diagonal and trace not implemented yet.'
@@ -335,15 +335,15 @@ def has_duplicated_labels(labels):
 
 def diagonalize(labels, operand):
     '''
-    Merges dimensions with duplicate labels. 
-    
+    Merges dimensions with duplicate labels.
+
     For those dimensions with duplicate labels, merge them into one dimension
     which represents the diagonal elements. That requires the duplicate labeled
-    dimensions equal sized. The order of dimensions is kept unchanged up to 
+    dimensions equal sized. The order of dimensions is kept unchanged up to
     the left-most appearance of each label.
-    
+
     Examples
-    -------- 
+    --------
     'ijj...i' would be merged into 'ij...'
     '''
     if not has_duplicated_labels(labels):
@@ -469,7 +469,7 @@ def plan_matmul(plan, g_view, op1, op2, g_op_masks, g_shape, I, J1, J2, K):
         # Build vector-vector matmul
         step = matmul, [var1, var2], var2
         plan.add_step(step)
-    # General case, there are K... and some I... and J..., the actual operation will be 
+    # General case, there are K... and some I... and J..., the actual operation will be
     # matrix-vector or matrix-matrix multiplies, depending on the operands' shapes.
     else:
         # Merge J dims and K dims by reshaping
@@ -681,8 +681,8 @@ def plan_einsum(operands, g_view, g_shape, g_op_masks, g_count, n_bcast):
         # We'd like to arrange the dimensions in the following way:
         # [I...  J... K...]
         # [I...  J... K...]
-        # where  
-        #       I... are aligned and not to be combined immediately 
+        # where
+        #       I... are aligned and not to be combined immediately
         #       J... are not aligned and not to be combined immediately
         #       K... are aligned and should be immediately combined
         # At this point the non-trivial broadcast dimensinos in K are already reduced
@@ -754,7 +754,7 @@ def einsum(equation, *operands):
         - for many operads
             - broadcasting multiply
             - chained matrix multiply
-    
+
     **The summation notation**
 
         - The tensor dimensions are labeled using uncased English letters. E.g., `ijk`
@@ -762,7 +762,7 @@ def einsum(equation, *operands):
         - The equation is `,` separated into terms, each being a distinct input's
         dimension label string.
         - Ellipsis `...` enables broadcasting by automatically converting the unlabeled
-        dimensions into broadcasting dimensions. 
+        dimensions into broadcasting dimensions.
         - Singular labels are called free labels, duplicate are dummy labels. Dummy labeled
         dimensions will be reduced and removed in the output.
         - Output labels can be explicitly specified on the right hand side of `->` or omitted.
@@ -783,7 +783,7 @@ def einsum(equation, *operands):
         - Examples
             - '...ij, ...jk'，where i and k are free labels, j is dummy. The output label
             string is '...ik'
-            - 'ij -> i', where i is a free label and j is a dummy label. 
+            - 'ij -> i', where i is a free label and j is a dummy label.
             - '...ij, ...jk -> ...ijk'，where i, j and k are all free labels.
             - '...ij, ...jk -> ij', an invalid equation since `...` is not present for
             the output.
@@ -802,7 +802,7 @@ def einsum(equation, *operands):
 
     **On trace and diagonal**
 
-    The trace and diagonal are planned yet unimplemented features. 
+    The trace and diagonal are planned yet unimplemented features.
 
     Args:
         equation (`str`):
@@ -810,10 +810,10 @@ def einsum(equation, *operands):
         operands (`list|Tensor`):
             The input tensors over which to compute the Einstein summation. The number of
             operands should equal the number of input terms in the equation.
-    
+
     Returns:
         result (`Tensor`): the result tensor.
-    
+
     Examples:
         .. code-block:: python
 
@@ -831,7 +831,7 @@ def einsum(equation, *operands):
         print(paddle.einsum('i,i->', x, x))
         # Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
         #   [1.45936954])
-        
+
         # outer
         print(paddle.einsum("i,j->ij", x, y))
         # Tensor(shape=[4, 5], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
@@ -839,10 +839,10 @@ def einsum(equation, *operands):
         #    [0.23455200, 0.35519385, 0.40186870, 0.54970956, 0.56441545],
         #    [0.11773264, 0.17828843, 0.20171674, 0.27592498, 0.28330654],
         #    [0.32897076, 0.49817693, 0.56364071, 0.77099484, 0.79162055]])
-        
+
         A = paddle.rand([2, 3, 2])
         B = paddle.rand([2, 2, 3])
-        
+
         # transpose
         print(paddle.einsum('ijk->kji', A))
         #  Tensor(shape=[2, 3, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
@@ -853,7 +853,7 @@ def einsum(equation, *operands):
         #    [[0.07637714, 0.29374704],
         #     [0.51470858, 0.51907635],
         #     [0.99066722, 0.55802226]]])
-        
+
         # batch matrix multiplication
         print(paddle.einsum('ijk, ikl->ijl', A,B))
         # Tensor(shape=[2, 3, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
@@ -864,7 +864,7 @@ def einsum(equation, *operands):
         #    [[0.32043904, 0.18164253, 0.27810261],
         #     [0.50226176, 0.24512935, 0.39881429],
         #     [0.51476848, 0.23367381, 0.39229113]]])
-        
+
         # Ellipsis transpose
         print(paddle.einsum('...jk->...kj', A))
         # Tensor(shape=[2, 2, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
@@ -873,7 +873,7 @@ def einsum(equation, *operands):
         #
         #    [[0.49684682, 0.46258664, 0.33383518],
         #     [0.29374704, 0.51907635, 0.55802226]]])
-        
+
         # Ellipsis batch matrix multiplication
         print(paddle.einsum('...jk, ...kl->...jl', A,B))
         # Tensor(shape=[2, 3, 3], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
@@ -908,12 +908,12 @@ def einsum(equation, *operands):
     n_bcast_dims = max(map(lambda s: s.count('.'), nop_labels))
 
     # Build the data structures for planning. It's helpful to think of all the operands
-    # broadcasting together from a global view. In this view, dimensions from multiple 
+    # broadcasting together from a global view. In this view, dimensions from multiple
     # operands are mapped to the same position if they are labeled uniquely. Broadcasting
     # dimensions are mapped to adjacent positions with the right bound fixed. Subject to
-    # each operand, the map is injective but for all operands the map is on-to.  
+    # each operand, the map is injective but for all operands the map is on-to.
     # g_labels:
-    #   The labels of the global view 
+    #   The labels of the global view
     # g_view:
     #   Includes a list of maps from each operand's dimensions to the global view's dimensions
     #   which we refer to as ax or axes in the code to distinguish from operand's dims
