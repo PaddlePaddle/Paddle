@@ -126,5 +126,10 @@ std::shared_ptr<std::mt19937_64> GetCPURandomEngine(uint64_t);
 const std::shared_ptr<Generator>& GetDefaultCUDAGenerator(
     int64_t device_id = -1);
 
+void SetRandomSeedGenerator(const std::string& name, uint64_t seed);
+
+const std::shared_ptr<Generator>& GetRandomSeedGenerator(
+    const std::string& name);
+
 }  // namespace framework
 }  // namespace paddle
