@@ -40,9 +40,23 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
       places_(places),
       graph_(graph),
       fetch_ctxs_(places),
-      pool_(strategy.num_threads_),
       // add one more thread for generate op_deps
       prepare_pool_(1) {
+  if (ir::IsTopologySortOperationsUnique(*graph_)) {
+    VLOG(10)
+        << "Change thread number to 1 because the toposort order is unique";
+    strategy_.num_threads_ = 1;
+  }
+  if (strategy_.num_threads_ > 1) {
+    pool_.reset(new ::ThreadPool(strategy.num_threads_));
+  } else {
+    auto nodes = ir::TopologySortOperations(*graph_);
+    traced_ops_.clear();
+    traced_ops_.reserve(nodes.size());
+    for (auto *node : nodes) {
+      traced_ops_.push_back(&node->Wrapper<OpHandleBase>());
+    }
+  }
   for (auto &op : ir::FilterByNodeWrapper<OpHandleBase>(*graph_)) {
     int dep = static_cast<int>(op->NotReadyInputSize());
     op_deps_.emplace(op, dep);
@@ -125,10 +139,12 @@ FetchResultType FastThreadedSSAGraphExecutor::Run(
     }
   }
   // Wait FetchOps.
-  ClearFetchOp(graph_, &fetch_ops);
+  if (!fetch_ops.empty()) {
+    ClearFetchOp(graph_, &fetch_ops);
 
-  for (auto &place : places_) {
-    fetch_ctxs_.Get(place)->Wait();
+    for (auto &place : places_) {
+      fetch_ctxs_.Get(place)->Wait();
+    }
   }
 
   return fetches;
@@ -223,7 +239,7 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
     OpHandleBase *op,
     const std::shared_ptr<BlockingQueue<size_t>> &complete_q) {
   ++remaining_;
-  this->pool_.enqueue([=] {
+  auto func = [=] {
     std::deque<OpHandleBase *> op_queue;
     op_queue.push_front(op);
 
@@ -282,7 +298,12 @@ void FastThreadedSSAGraphExecutor::RunOpAsync(
     }
     --remaining_;
     complete_q->Push(complete);
-  });
+  };
+  if (pool_) {
+    pool_->enqueue(func);
+  } else {
+    func();
+  }
 }
 
 void FastThreadedSSAGraphExecutor::PrepareAtomicOpDeps() {

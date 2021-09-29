@@ -85,6 +85,14 @@ class ElementwiseOp : public framework::OperatorWithKernel {
       auto y_dims = ctx->GetInputDim("Y");
       int max_dim = std::max(x_dims.size(), y_dims.size());
       int axis = ctx->Attrs().Get<int>("axis");
+      if (x_dims.size() == y_dims.size()) {
+        PADDLE_ENFORCE_EQ((axis == -1) || (axis == 0), true,
+                          platform::errors::InvalidArgument(
+                              "axis should be -1 or 0 while the dimension of "
+                              "tensor X (%s) is equal to the dimension of "
+                              "tensor Y (%s), but received axis: %s",
+                              x_dims.size(), y_dims.size(), axis));
+      }
       PADDLE_ENFORCE_EQ((axis >= (-1 * max_dim)) && (axis < max_dim), true,
                         platform::errors::InvalidArgument(
                             "The axis range must be [%s, %s), but axis is %s. "
@@ -157,31 +165,39 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
                  "for broadcasting Y onto X. ")
         .SetDefault(-1);
     AddAttr<bool>("use_mkldnn", "(bool, default false). Used by MKLDNN.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>("x_data_format", "This parameter is no longer used.")
-        .SetDefault("");
+        .SetDefault("")
+        .AsExtra();
     AddAttr<std::string>("y_data_format", "This parameter is no longer used.")
-        .SetDefault("");
+        .SetDefault("")
+        .AsExtra();
     AddAttr<bool>(
         "use_quantizer",
         "(bool, default false) "
         "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<std::string>(
         "mkldnn_data_type",
         "(string, default \"float32\"). Data type of mkldnn kernel")
         .SetDefault("float32")
-        .InEnum({"float32", "int8", "bfloat16"});
+        .InEnum({"float32", "int8", "bfloat16"})
+        .AsExtra();
     /* int8 parameters */
     AddAttr<float>("Scale_x",
                    "(float, default 1.0f), The quantize scale of X tensor")
-        .SetDefault(1.0f);
+        .SetDefault(1.0f)
+        .AsExtra();
     AddAttr<float>("Scale_y",
                    "(float, default 1.0f), The quantize scale of Y tensor")
-        .SetDefault(1.0f);
+        .SetDefault(1.0f)
+        .AsExtra();
     AddAttr<float>("Scale_out",
                    "(float, default 1.0f), The quantize scale of output data")
-        .SetDefault(1.0f);
+        .SetDefault(1.0f)
+        .AsExtra();
     AddOpComment();
   }
 

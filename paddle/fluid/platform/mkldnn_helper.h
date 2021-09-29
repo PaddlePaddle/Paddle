@@ -358,6 +358,8 @@ inline MKLDNNMemoryFormat MKLDNNFormatForSize(size_t dims_size,
     } else if (data_format == MKLDNNMemoryFormat::nhwc) {
       return MKLDNNMemoryFormat::ndhwc;
     }
+  } else if (dims_size == 6) {
+    return MKLDNNMemoryFormat::abcdef;
   }
   return data_format;
 }
@@ -476,10 +478,8 @@ inline std::string CreateKey(const platform::MKLDNNDeviceContext& dev_ctx,
 
 inline std::string ExtendKeyWithThreadInfoIfNeeded(
     const platform::MKLDNNDeviceContext& dev_ctx, const std::string& key) {
-  return ((paddle::platform::MKLDNNDeviceContext::tls().is_tid_used_in_key() ==
-           true) &&
-          (platform::MKLDNNDeviceContext::tls().get_cur_mkldnn_session_id() ==
-           platform::MKLDNNDeviceContextThreadLocals::kMKLDNNSessionID_Default))
+  return (paddle::platform::MKLDNNDeviceContext::tls().is_tid_used_in_key() ==
+          true)
              ? key + "-t:" + ThreadIDasStr()
              : key;
 }

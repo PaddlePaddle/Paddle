@@ -24,7 +24,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/nvtx.h"
 #endif
 
-DEFINE_bool(enable_rpc_profiler, false, "Enable rpc profiler or not.");
+PADDLE_DEFINE_EXPORTED_bool(enable_rpc_profiler, false,
+                            "Enable rpc profiler or not.");
 
 namespace paddle {
 namespace platform {
@@ -262,9 +263,40 @@ void DisableProfiler(EventSortingKey sorted_key,
 
   ParseEvents(all_events, true, sorted_key);
   ParseEvents(all_events, false, sorted_key);
-  if (VLOG_IS_ON(5)) {
-    std::vector<std::vector<MemEvent>> all_mem_events = GetMemEvents();
-    ParseMemEvents(all_mem_events);
+
+  std::vector<std::vector<MemEvent>> all_mem_events = GetMemEvents();
+  ParseMemEvents(all_mem_events);
+
+  ResetProfiler();
+  g_state = ProfilerState::kDisabled;
+  g_tracer_option = TracerOption::kDefault;
+  should_send_profile_state = true;
+}
+
+void CompleteProfilerEvents(proto::Profile *tracer_profile,
+                            std::vector<std::vector<Event>> *time_events,
+                            std::vector<std::vector<MemEvent>> *mem_events) {
+  SynchronizeAllDevice();
+  MemEvenRecorder::Instance().Flush();
+
+  std::lock_guard<std::mutex> l(profiler_mu);
+  if (g_state == ProfilerState::kDisabled) return;
+
+  // Mark the profiling stop.
+  Mark("_stop_profiler_");
+
+  DeviceTracer *tracer = GetDeviceTracer();
+  if (tracer->IsEnabled() && tracer_profile != nullptr) {
+    tracer->Disable();
+    tracer->GenEventKernelCudaElapsedTime();
+    *tracer_profile = tracer->GetProfile();
+  }
+
+  if (time_events != nullptr) {
+    *time_events = GetAllEvents();
+  }
+  if (mem_events != nullptr) {
+    *mem_events = GetMemEvents();
   }
 
   ResetProfiler();

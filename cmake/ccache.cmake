@@ -18,7 +18,7 @@ elseif("${CMAKE_GENERATOR}" STREQUAL "Ninja")
 
     if(SCCACHE_PATH)
         execute_process(COMMAND sccache -V OUTPUT_VARIABLE sccache_version)
-        message(STATUS "${sccache_version} is founded, use [${SCCACHE_PATH}] to speed up compile on Windows.")
+        message(STATUS "sccache is founded, use [${SCCACHE_PATH}] to speed up compile on Windows.")
 
         set(CMAKE_C_COMPILER_LAUNCHER ${SCCACHE_PATH})
         set(CMAKE_CXX_COMPILER_LAUNCHER ${SCCACHE_PATH})

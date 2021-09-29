@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <string>
 #include "paddle/fluid/inference/api/paddle_analysis_config.h"
 #include "paddle/fluid/inference/api/paddle_pass_builder.h"
+#include "paddle/fluid/inference/utils/table_printer.h"
 #include "paddle/fluid/platform/cpu_info.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/gpu_info.h"
@@ -112,6 +114,14 @@ void AnalysisConfig::EnableXpu(int l3_workspace_size, bool locked,
   Update();
 }
 
+void AnalysisConfig::SetXpuDeviceId(int device_id) {
+  PADDLE_ENFORCE_EQ(use_xpu_, true,
+                    platform::errors::PreconditionNotMet(
+                        "Should call EnableXpu before SetXpuDeviceId."));
+  xpu_device_id_ = device_id;
+  Update();
+}
+
 void AnalysisConfig::EnableNpu(int device_id) {
 #ifdef PADDLE_WITH_ASCEND_CL
   use_npu_ = true;
@@ -156,6 +166,10 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   CP_MEMBER(trt_use_static_engine_);
   CP_MEMBER(trt_use_calib_mode_);
   CP_MEMBER(trt_use_oss_);
+  CP_MEMBER(trt_tuned_dynamic_shape_);
+  CP_MEMBER(trt_allow_build_at_runtime_);
+  CP_MEMBER(collect_shape_range_info_);
+  CP_MEMBER(shape_range_info_path_);
   // Dlnne related
   CP_MEMBER(use_dlnne_);
   CP_MEMBER(dlnne_min_subgraph_size_);
@@ -193,6 +207,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // NPU related.
   CP_MEMBER(use_npu_);
   CP_MEMBER(npu_device_id_);
+  CP_MEMBER(nnadapter_config_);
 
   // profile related.
   CP_MEMBER(with_profile_);
@@ -540,7 +555,7 @@ void AnalysisConfig::Update() {
   }
 
   if (use_npu_) {
-#ifdef PADDLE_WITH_ASCEND_CL
+#if defined(PADDLE_WITH_ASCEND_CL) || defined(LITE_SUBGRAPH_WITH_NPU)
     PADDLE_ENFORCE_EQ(use_gpu_, false,
                       platform::errors::Unavailable(
                           "Currently, NPU and GPU cannot be enabled in the "
@@ -651,8 +666,8 @@ float AnalysisConfig::fraction_of_gpu_memory_for_pool() const {
 #endif
 }
 
-void AnalysisConfig::EnableMemoryOptim() {
-  enable_memory_optim_ = true;
+void AnalysisConfig::EnableMemoryOptim(bool x) {
+  enable_memory_optim_ = x;
   Update();
 }
 
@@ -719,4 +734,195 @@ void AnalysisConfig::PartiallyRelease() {
 
 void AnalysisConfig::EnableGpuMultiStream() { thread_local_stream_ = true; }
 
+std::string AnalysisConfig::Summary() {
+  const std::vector<std::string> header{"Option", "Value"};
+  paddle::inference::TablePrinter os(header);
+
+  if (!model_dir_.empty()) {
+    os.InsertRow({"model_dir", model_dir_});
+  }
+  if (!(prog_file_.empty() && params_file_.empty())) {
+    os.InsertRow({"model_file", prog_file_});
+    os.InsertRow({"params_file", params_file_});
+  }
+  if (model_from_memory_) {
+    os.InsertRow({"model_from_memory", params_file_});
+  }
+  os.InsetDivider();
+
+  // cpu info
+  os.InsertRow(
+      {"cpu_math_thread", std::to_string(cpu_math_library_num_threads_)});
+  os.InsertRow({"enable_mkldnn", use_mkldnn_ ? "true" : "false"});
+  os.InsertRow(
+      {"mkldnn_cache_capacity", std::to_string(mkldnn_cache_capacity_)});
+  os.InsetDivider();
+
+  auto Precision2String =
+      [](paddle::AnalysisConfig::Precision prec) -> std::string {
+    if (prec == Precision::kFloat32)
+      return "fp32";
+    else if (prec == Precision::kHalf)
+      return "fp16";
+    else if (prec == Precision::kInt8)
+      return "int8";
+    else
+      return "None";
+  };
+  // gpu info
+  os.InsertRow({"use_gpu", use_gpu_ ? "true" : "false"});
+  if (use_gpu_) {
+    os.InsertRow({"gpu_device_id", std::to_string(gpu_device_id_)});
+    os.InsertRow({"memory_pool_init_size",
+                  std::to_string(memory_pool_init_size_mb_) + "MB"});
+    os.InsertRow(
+        {"thread_local_stream", thread_local_stream_ ? "true" : "false"});
+
+    os.InsertRow({"use_tensorrt", use_tensorrt_ ? "true" : "false"});
+    if (use_tensorrt_) {
+      os.InsertRow({"tensorrt_precision_mode",
+                    Precision2String(tensorrt_precision_mode_)});
+      os.InsertRow({"tensorrt_workspace_size",
+                    std::to_string(tensorrt_workspace_size_)});
+      os.InsertRow(
+          {"tensorrt_max_batch_size", std::to_string(tensorrt_max_batchsize_)});
+      os.InsertRow({"tensorrt_min_subgraph_size",
+                    std::to_string(tensorrt_min_subgraph_size_)});
+      os.InsertRow({"tensorrt_use_static_engine",
+                    trt_use_static_engine_ ? "true" : "false"});
+      os.InsertRow(
+          {"tensorrt_use_calib_mode", trt_use_calib_mode_ ? "true" : "false"});
+
+      // dynamic_shape
+      os.InsertRow({"tensorrt_enable_dynamic_shape",
+                    min_input_shape_.empty() ? "false" : "true"});
+      os.InsertRow({"tensorrt_tuned_dynamic_shape", trt_tuned_dynamic_shape_
+                                                        ? shape_range_info_path_
+                                                        : "false"});
+
+      os.InsertRow({"tensorrt_use_oss", trt_use_oss_ ? "true" : "false"});
+      os.InsertRow({"tensorrt_use_dla", trt_use_dla_ ? "true" : "false"});
+      if (trt_use_dla_) {
+        os.InsertRow({"tensorrt_dla_core", std::to_string(trt_dla_core_)});
+      }
+    }
+  }
+  os.InsetDivider();
+
+  // xpu info
+  os.InsertRow({"use_xpu", use_xpu_ ? "true" : "false"});
+  if (use_xpu_) {
+    os.InsertRow({"xpu_device_id", std::to_string(xpu_device_id_)});
+    os.InsertRow(
+        {"xpu_l3_workspace_size", std::to_string(xpu_l3_workspace_size_)});
+  }
+  os.InsetDivider();
+
+  if (use_lite_) {
+    os.InsertRow({"use_lite", use_lite_ ? "true" : "false"});
+  }
+
+  // ir info
+  os.InsertRow({"ir_optim", enable_ir_optim_ ? "true" : "false"});
+  os.InsertRow({"ir_debug", ir_debug_ ? "true" : "false"});
+  os.InsertRow({"memory_optim", enable_memory_optim_ ? "true" : "false"});
+  os.InsertRow({"enable_profile", with_profile_ ? "true" : "false"});
+  os.InsertRow({"enable_log", with_glog_info_ ? "true" : "false"});
+  os.InsertRow({"collect_shape_range_info",
+                collect_shape_range_info_ ? shape_range_info_path_ : "false"});
+
+  return os.PrintTable();
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetDeviceNames(
+    const std::vector<std::string> &names) {
+  nnadapter_device_names = names;
+  return *this;
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetContextProperties(
+    const std::string &properties) {
+  nnadapter_context_properties = properties;
+  return *this;
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheDir(
+    const std::string &dir) {
+  nnadapter_model_cache_dir = dir;
+  return *this;
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheBuffers(
+    const std::string &model_cache_token,
+    const std::vector<char> &model_cache_buffer) {
+  PADDLE_ENFORCE_EQ(model_cache_token.empty(), false,
+                    platform::errors::InvalidArgument(
+                        "model_cache_token should not be empty."));
+  PADDLE_ENFORCE_EQ(model_cache_buffer.empty(), false,
+                    platform::errors::InvalidArgument(
+                        "model_cache_buffer should not be empty."));
+  PADDLE_ENFORCE_EQ(nnadapter_model_cache_buffers.count(model_cache_token),
+                    false, platform::errors::InvalidArgument(
+                               "model_cache_token has already been set."));
+
+  nnadapter_model_cache_buffers[model_cache_token] = model_cache_buffer;
+  return *this;
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetSubgraphPartitionConfigPath(
+    const std::string &path) {
+  nnadapter_subgraph_partition_config_path = path;
+  return *this;
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetSubgraphPartitionConfigBuffer(
+    const std::string &buffer) {
+  nnadapter_subgraph_partition_config_buffer = buffer;
+  return *this;
+}
+LiteNNAdapterConfig &LiteNNAdapterConfig::Enable() {
+  use_nnadapter = true;
+  return *this;
+}
+LiteNNAdapterConfig &LiteNNAdapterConfig::Disable() {
+  use_nnadapter = false;
+  return *this;
+}
+
+void AnalysisConfig::CollectShapeRangeInfo(
+    const std::string &shape_range_info_path) {
+  LOG(INFO) << "In CollectShapeInfo mode, we will disable optimizations and "
+               "collect the shape information of "
+            << "all intermediate tensors in the compute graph and calculate "
+               "the min_shape, max_shape and opt_shape.";
+  collect_shape_range_info_ = true;
+  PADDLE_ENFORCE_EQ(shape_range_info_path.empty(), false,
+                    platform::errors::InvalidArgument(
+                        "The shape_range_info_path should not be empty, please "
+                        "re-check the argument."));
+  shape_range_info_path_ = shape_range_info_path;
+}
+
+const std::string &AnalysisConfig::shape_range_info_path() {
+  return shape_range_info_path_;
+}
+
+bool AnalysisConfig::shape_range_info_collected() {
+  return collect_shape_range_info_;
+}
+
+void AnalysisConfig::EnableTunedTensorRtDynamicShape(
+    const std::string &shape_range_info_path, bool allow_build_at_runtime) {
+  shape_range_info_path_ = shape_range_info_path;
+  trt_allow_build_at_runtime_ = allow_build_at_runtime;
+  trt_tuned_dynamic_shape_ = true;
+}
+
+bool AnalysisConfig::tuned_tensorrt_dynamic_shape() {
+  return trt_tuned_dynamic_shape_;
+}
+
+bool AnalysisConfig::trt_allow_build_at_runtime() {
+  return trt_allow_build_at_runtime_;
+}
 }  // namespace paddle

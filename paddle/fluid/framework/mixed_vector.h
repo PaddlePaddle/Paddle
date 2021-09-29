@@ -27,6 +27,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tensor_util.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/memory/memcpy.h"
+#include "paddle/utils/none.h"
+#include "paddle/utils/optional.h"
 
 namespace paddle {
 namespace framework {
@@ -195,10 +197,10 @@ class Vector {
 
     std::mutex &Mutex() const { return mtx_; }
 
-    boost::optional<platform::CUDAPlace> CUDAPlace() const {
+    paddle::optional<platform::CUDAPlace> CUDAPlace() const {
       return gpu_ == nullptr
-                 ? boost::none
-                 : boost::optional<platform::CUDAPlace>(
+                 ? paddle::none
+                 : paddle::optional<platform::CUDAPlace>(
                        BOOST_GET_CONST(platform::CUDAPlace, gpu_->place()));
     }
 
@@ -389,7 +391,7 @@ class Vector {
       auto &mtx = m_.Data().Mutex();
       std::lock_guard<std::mutex> guard(mtx);
       auto cuda_place = m_.Data().CUDAPlace();
-      if (cuda_place == boost::none ||
+      if (cuda_place == paddle::none ||
           cuda_place == BOOST_GET(platform::CUDAPlace, place)) {
         return m_.Data().CUDAData(place);
       }
@@ -405,7 +407,7 @@ class Vector {
       auto &mtx = m_.Data().Mutex();
       std::lock_guard<std::mutex> guard(mtx);
       auto cuda_place = m_.Data().CUDAPlace();
-      if (cuda_place == boost::none ||
+      if (cuda_place == paddle::none ||
           cuda_place == BOOST_GET(platform::CUDAPlace, place)) {
         return m_.MutableData()->CUDAMutableData(place);
       }

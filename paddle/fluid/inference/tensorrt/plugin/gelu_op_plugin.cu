@@ -30,8 +30,8 @@ static const float kAT = 0.5;
 static const float kBT = 0.7978845608028654;    // sqrt(2.0/M_PI)
 static const float kCT = 0.035677408136300125;  // 0.044715 * sqrt(2.0/M_PI)
 
-bool GeluPlugin::supportsFormat(nvinfer1::DataType type,
-                                nvinfer1::PluginFormat format) const {
+bool GeluPlugin::supportsFormat(
+    nvinfer1::DataType type, nvinfer1::PluginFormat format) const TRT_NOEXCEPT {
   if (with_fp16_) {
     return ((type == nvinfer1::DataType::kFLOAT ||
              type == nvinfer1::DataType::kHALF) &&
@@ -44,7 +44,7 @@ bool GeluPlugin::supportsFormat(nvinfer1::DataType type,
 
 nvinfer1::Dims GeluPlugin::getOutputDimensions(int index,
                                                const nvinfer1::Dims* in_dims,
-                                               int nb_inputs) {
+                                               int nb_inputs) TRT_NOEXCEPT {
   assert(nb_inputs == 1);
   assert(index < this->getNbOutputs());
   nvinfer1::Dims const& input_dims = in_dims[0];
@@ -96,7 +96,8 @@ int GeluPlugin::enqueue(int batch_size, const void* const* inputs,
 #if IS_TRT_VERSION_LT(8000)
                         void** outputs, void*, cudaStream_t stream) {
 #else
-                        void* const* outputs, void*, cudaStream_t stream) {
+                        void* const* outputs, void*,
+                        cudaStream_t stream) TRT_NOEXCEPT {
 #endif
   const auto& input_dims = this->getInputDims(0);
   int num = batch_size;
@@ -132,13 +133,13 @@ int GeluPlugin::enqueue(int batch_size, const void* const* inputs,
 
 nvinfer1::DimsExprs GeluPluginDynamic::getOutputDimensions(
     int output_index, const nvinfer1::DimsExprs* inputs, int nb_inputs,
-    nvinfer1::IExprBuilder& expr_builder) {
+    nvinfer1::IExprBuilder& expr_builder) TRT_NOEXCEPT {
   return inputs[0];
 }
 
 bool GeluPluginDynamic::supportsFormatCombination(
     int pos, const nvinfer1::PluginTensorDesc* in_out, int nb_inputs,
-    int nb_outputs) {
+    int nb_outputs) TRT_NOEXCEPT {
   PADDLE_ENFORCE_NOT_NULL(
       in_out, platform::errors::InvalidArgument(
                   "The input of swish plugin shoule not be nullptr."));
@@ -167,7 +168,8 @@ bool GeluPluginDynamic::supportsFormatCombination(
 }
 
 nvinfer1::DataType GeluPluginDynamic::getOutputDataType(
-    int index, const nvinfer1::DataType* input_types, int nb_inputs) const {
+    int index, const nvinfer1::DataType* input_types,
+    int nb_inputs) const TRT_NOEXCEPT {
   PADDLE_ENFORCE_EQ(index, 0, platform::errors::InvalidArgument(
                                   "The Gelu Plugin only has one input, so the "
                                   "index value should be 0, but get %d.",
@@ -178,7 +180,8 @@ nvinfer1::DataType GeluPluginDynamic::getOutputDataType(
 int GeluPluginDynamic::enqueue(const nvinfer1::PluginTensorDesc* input_desc,
                                const nvinfer1::PluginTensorDesc* output_desc,
                                const void* const* inputs, void* const* outputs,
-                               void* workspace, cudaStream_t stream) {
+                               void* workspace,
+                               cudaStream_t stream) TRT_NOEXCEPT {
   auto input_dims = input_desc[0].dims;
   size_t num = ProductDim(input_dims);
   const int block_size = 256;

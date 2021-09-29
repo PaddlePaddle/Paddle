@@ -52,30 +52,30 @@ class TestMul(OpTest):
         self.dtype = np.float32
 
     def test_check_output(self):
-        self.check_output_with_place(self.place, check_dygraph=False, atol=1e-5)
+        self.check_output_with_place(self.place, atol=1e-5)
 
     def test_check_grad_normal(self):
         self.check_grad_with_place(
-            self.place, ['X', 'Y'],
+            self.place,
+            ['X', 'Y'],
             'Out',
-            max_relative_error=0.0065,
-            check_dygraph=False)
+            max_relative_error=0.0065, )
 
     def test_check_grad_ingore_x(self):
         self.check_grad_with_place(
-            self.place, ['Y'],
+            self.place,
+            ['Y'],
             'Out',
             no_grad_set=set("X"),
-            max_relative_error=0.0065,
-            check_dygraph=False)
+            max_relative_error=0.0065, )
 
     def test_check_grad_ingore_y(self):
         self.check_grad_with_place(
-            self.place, ['X'],
+            self.place,
+            ['X'],
             'Out',
             no_grad_set=set("Y"),
-            max_relative_error=0.0065,
-            check_dygraph=False)
+            max_relative_error=0.0065, )
 
 
 @skip_check_grad_ci(
@@ -170,8 +170,44 @@ class TestMul3FP16(TestMul3):
         pass
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
+class TestMul4(TestMul):
+    # case 4: (20, 2, 2, 3) * (12, 50) -> (20, 50), x_num_col_dims = 1
+    def config(self):
+        self.x_shape = (20, 2, 2, 3)
+        self.y_shape = (12, 50)
+
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "mul"
+        self.place = paddle.NPUPlace(0)
+        self.init_dtype()
+        self.config()
+        np.random.seed(SEED)
+        self.inputs = {
+            'X': np.random.random(self.x_shape).astype(self.dtype),
+            'Y': np.random.random(self.y_shape).astype(self.dtype)
+        }
+        self.outputs = {
+            'Out': np.dot(self.inputs['X'].reshape(20, 12), self.inputs['Y'])
+        }
+
+
+@skip_check_grad_ci(
+    reason="Don't support grad checking for NPU OP with FP16 data type.")
+class TestMul4FP16(TestMul4):
+    def init_dtype(self):
+        self.dtype = np.float16
+
+    def test_check_grad_normal(self):
+        pass
+
+    def test_check_grad_ingore_x(self):
+        pass
+
+    def test_check_grad_ingore_y(self):
+        pass
+
+
 class TestMulNet(unittest.TestCase):
     def init_dtype(self):
         self.dtype = np.float32
@@ -243,8 +279,6 @@ class TestMulNet(unittest.TestCase):
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMulNet3_2(unittest.TestCase):
     def init_dtype(self):
         self.dtype = np.float32
@@ -317,8 +351,6 @@ class TestMulNet3_2(unittest.TestCase):
         self.assertTrue(np.allclose(npu_loss, cpu_loss, atol=1e-5))
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestMulNet3_2_xc2(unittest.TestCase):
     def init_dtype(self):
         self.dtype = np.float32
@@ -389,6 +421,81 @@ class TestMulNet3_2_xc2(unittest.TestCase):
 
         self.assertTrue(np.allclose(npu_pred, cpu_pred))
         self.assertTrue(np.allclose(npu_loss, cpu_loss))
+
+
+class TestMulNet4_2(unittest.TestCase):
+    def init_dtype(self):
+        self.dtype = np.float32
+
+    def _test(self, run_npu=True):
+        main_prog = paddle.static.Program()
+        startup_prog = paddle.static.Program()
+        main_prog.random_seed = SEED
+        startup_prog.random_seed = SEED
+        np.random.seed(SEED)
+
+        a_np = np.random.random(size=(12, 5)).astype(self.dtype)
+        b_np = np.random.random(size=(12, 5)).astype(self.dtype)
+        c_np = np.random.random(size=(12, 5)).astype(self.dtype)
+        d_np = np.random.random(size=(12, 5)).astype(self.dtype)
+        label_np = np.random.randint(2, size=(2, 1)).astype('int64')
+
+        with paddle.static.program_guard(main_prog, startup_prog):
+            a = paddle.static.data(name="a", shape=[12, 5], dtype=self.dtype)
+            b = paddle.static.data(name="b", shape=[12, 5], dtype=self.dtype)
+            c = paddle.static.data(name="c", shape=[12, 5], dtype=self.dtype)
+            d = paddle.static.data(name="d", shape=[12, 5], dtype=self.dtype)
+            label = paddle.static.data(
+                name="label", shape=[2, 1], dtype='int64')
+
+            sum_1 = paddle.add(a, b)  # [12, 5]
+            sum_2 = paddle.add(c, d)  # [12, 5]
+            fc_1 = fluid.layers.fc(input=sum_1, size=2)  # [12, 2]
+            fc_1_re_shape = paddle.reshape(fc_1, shape=[2, 3, 2, 2])
+            fc_2 = fluid.layers.fc(input=sum_2, size=2)  # [12, 2]
+            result = paddle.fluid.layers.mul(fc_1_re_shape,
+                                             fc_2)  # [2, 3, 2, 2] * [12, 2]
+
+            prediction = fluid.layers.fc(input=result, size=2, act='softmax')
+
+            cost = fluid.layers.cross_entropy(input=prediction, label=label)
+            loss = fluid.layers.reduce_mean(cost)
+            sgd = fluid.optimizer.SGD(learning_rate=0.01)
+            sgd.minimize(loss)
+
+        if run_npu:
+            place = paddle.NPUPlace(0)
+        else:
+            place = paddle.CPUPlace()
+        exe = paddle.static.Executor(place)
+        exe.run(startup_prog)
+
+        print("testMulNet4_2 tart run on {}".format(place))
+        for epoch in range(100):
+
+            pred_res, loss_res = exe.run(main_prog,
+                                         feed={
+                                             "a": a_np,
+                                             "b": b_np,
+                                             "c": c_np,
+                                             "d": d_np,
+                                             "label": label_np
+                                         },
+                                         fetch_list=[prediction, loss])
+            if epoch % 10 == 0:
+                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
+                    epoch, pred_res[0], loss_res))
+
+        return pred_res, loss_res
+
+    def test_npu(self):
+        self.init_dtype()
+        cpu_pred, cpu_loss = self._test(False)
+        npu_pred, npu_loss = self._test(True)
+
+        self.assertTrue(np.allclose(
+            npu_pred, cpu_pred, atol=1e-5))  # atol needed on cann 20.3
+        self.assertTrue(np.allclose(npu_loss, cpu_loss, atol=1e-5))
 
 
 if __name__ == '__main__':

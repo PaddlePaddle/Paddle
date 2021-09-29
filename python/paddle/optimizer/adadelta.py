@@ -31,11 +31,11 @@ class Adadelta(Optimizer):
 
     .. math::
 
-        E(g_t^2) &= \\rho * E(g_{t-1}^2) + (1-\\rho) * g^2
+        E(g_t^2) &= \rho * E(g_{t-1}^2) + (1-\rho) * g^2
 
-        learning\_rate &= \sqrt{ ( E(dx_{t-1}^2) + \\epsilon ) / ( E(g_t^2) + \\epsilon ) }
+        learning\_rate &= \sqrt{ ( E(dx_{t-1}^2) + \epsilon ) / ( E(g_t^2) + \epsilon ) }
 
-        E(dx_t^2) &= \\rho * E(dx_{t-1}^2) + (1-\\rho) * (-g*learning\_rate)^2
+        E(dx_t^2) &= \rho * E(dx_{t-1}^2) + (1-\rho) * (-g*learning\_rate)^2
 
     Args:
         learning_rate (float|Tensor|LearningRateDecay, optional): The learning rate used to update ``Parameter``.

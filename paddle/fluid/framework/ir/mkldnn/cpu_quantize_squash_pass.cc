@@ -77,7 +77,7 @@ CPUQuantizeSquashPass::CPUQuantizeSquashPass() {
       .End()
       .AddAttr("data_format")
       .IsOptional()
-      .IsStringIn({"NCHW", "NHWC"})
+      .IsStringIn({"NCHW", "NHWC", "AnyLayout"})
       .End();
 }
 

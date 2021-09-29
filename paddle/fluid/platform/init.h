@@ -61,5 +61,7 @@ class SignalMessageDumper {
 void SignalHandle(const char* data, int size);
 #endif
 
+void DisableSignalHandler();
+
 }  // namespace framework
 }  // namespace paddle

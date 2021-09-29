@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/complex.h"
 #include "paddle/fluid/platform/profiler.h"
 #ifdef PADDLE_WITH_MKLDNN
-#include "dnnl_debug.h"
+#include "dnnl_debug.h"  // NOLINT
 #endif
 
 namespace paddle {
@@ -112,11 +112,32 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   }
   else if (platform::is_cpu_place(src_place) &&  // NOLINT
            platform::is_npu_place(dst_place)) {
-    auto stream =
-        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream();
-    memory::Copy(BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
-                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size,
-                 stream);
+    //  1. cpu tensor -> npu pinned tensor
+    platform::NPUPinnedPlace npu_pinned_place;
+    Tensor npu_pinned_tensor;
+    npu_pinned_tensor.Resize(src.dims());
+    auto npu_pinned_ptr =
+        npu_pinned_tensor.mutable_data(npu_pinned_place, src.type());
+    memory::Copy(npu_pinned_place, npu_pinned_ptr,
+                 BOOST_GET_CONST(platform::CPUPlace, src_place), src_ptr, size);
+
+    //  2. async copy npu pinned tensor -> npu tensor
+    memory::Copy(
+        BOOST_GET_CONST(platform::NPUPlace, dst_place), dst_ptr,
+        npu_pinned_place, npu_pinned_ptr, size,
+        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
+
+    //  3. record event
+    auto npu_pinned_allocator =
+        static_cast<paddle::memory::allocation::NPUPinnedAllocator*>(
+            paddle::memory::allocation::AllocatorFacade::Instance()
+                .GetAllocator(npu_pinned_place)
+                .get());
+    paddle::memory::allocation::Allocation* allocation =
+        npu_pinned_tensor.Holder().get();
+    npu_pinned_allocator->RecordEvent(
+        allocation,
+        reinterpret_cast<const platform::NPUDeviceContext&>(ctx).stream());
   }
   else if (platform::is_npu_place(src_place) &&  // NOLINT
            platform::is_npu_place(dst_place)) {
@@ -1044,6 +1065,9 @@ void* GetDstPtrByDLDataType(DLDataType type, framework::Tensor* dst,
       if (type.code == kDLFloat)
         return static_cast<void*>(
             dst->mutable_data<paddle::platform::float16>(dst_place));
+      if (type.code == kDLBfloat)
+        return static_cast<void*>(
+            dst->mutable_data<paddle::platform::bfloat16>(dst_place));
       PADDLE_THROW(platform::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code, type.bits));
@@ -1060,6 +1084,16 @@ void* GetDstPtrByDLDataType(DLDataType type, framework::Tensor* dst,
         return static_cast<void*>(dst->mutable_data<int64_t>(dst_place));
       if (type.code == kDLFloat)
         return static_cast<void*>(dst->mutable_data<double>(dst_place));
+      if (type.code == kDLComplex)
+        return static_cast<void*>(
+            dst->mutable_data<paddle::platform::complex<float>>(dst_place));
+      PADDLE_THROW(platform::errors::Unimplemented(
+          "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
+          type.code, type.bits));
+    case 128:
+      if (type.code == kDLComplex)
+        return static_cast<void*>(
+            dst->mutable_data<paddle::platform::complex<double>>(dst_place));
       PADDLE_THROW(platform::errors::Unimplemented(
           "DLDataType code <%d> is illegal when DLDataType.bits is <%d>.",
           type.code, type.bits));
@@ -1086,15 +1120,15 @@ void TensorFromDLPack(const ::DLTensor& dl_tensor, framework::Tensor* dst) {
   auto src_ptr = static_cast<const void*>(dl_tensor.data);
   auto size = paddle::framework::product(vddim) * type.bits / 8;
 
-  if (dl_tensor.ctx.device_type == kDLCPU) {
+  if (dl_tensor.device.device_type == kDLCPU) {
     memory::Copy(dst_place, dst_ptr, src_place, src_ptr, size);
   }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-  if (dl_tensor.ctx.device_type == kDLGPU) {
+  if (dl_tensor.device.device_type == kDLGPU) {
     platform::CUDAPlace dst_place =
-        platform::CUDAPlace(dl_tensor.ctx.device_id);
+        platform::CUDAPlace(dl_tensor.device.device_id);
     platform::CUDAPlace src_place =
-        platform::CUDAPlace(dl_tensor.ctx.device_id);
+        platform::CUDAPlace(dl_tensor.device.device_id);
     dst_ptr = GetDstPtrByDLDataType(type, dst, dst_place);
     auto* ctx = platform::DeviceContextPool::Instance().GetByPlace(dst_place);
     memory::Copy(

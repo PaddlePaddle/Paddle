@@ -336,7 +336,8 @@ void Pool2dOpMaker::Make() {
   AddAttr<bool>(
       "use_cudnn",
       "(bool) Only used in cudnn kernel, need install cudnn. Default False")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>(
       "ceil_mode",
       "(bool) Whether to use the ceil function to calculate "
@@ -345,17 +346,20 @@ void Pool2dOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool) Only used in mkldnn kernel. Default False")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>(
       "use_quantizer",
       "(bool, default false) "
       "This parameter is no longer used. Use 'mkldnn_data_type' instead.")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>(
       "mkldnn_data_type",
       "(string, default \"float32\"). Data type of mkldnn kernel")
       .SetDefault("float32")
-      .InEnum({"float32", "int8", "bfloat16"});
+      .InEnum({"float32", "int8", "bfloat16"})
+      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCHW) Only used in "
@@ -366,7 +370,8 @@ void Pool2dOpMaker::Make() {
   AddAttr<bool>("is_test",
                 "(bool, default false) Set to true for inference only, false "
                 "for training. Some layers may run faster when this is true.")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
 
   AddAttr<std::string>(
       "padding_algorithm",
@@ -464,6 +469,20 @@ Example:
 )DOC");
 }
 
+template <typename T>
+class Pool2dOpGradGradMaker : public framework::SingleGradOpMaker<T> {
+ public:
+  using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> grad_op) const override {
+    grad_op->SetType("pool2d_grad_grad");
+    grad_op->SetInput("X", this->OutputGrad(framework::GradVarName("X")));
+    grad_op->SetOutput("Out", this->InputGrad(framework::GradVarName("Out")));
+    grad_op->SetAttrMap(this->Attrs());
+  }
+};
+
 class PoolOpInferVarType : public framework::PassInDtypeAndVarTypeToOutput {
  protected:
   std::unordered_map<std::string, std::string>& GetInputOutputWithSameType()
@@ -540,7 +559,8 @@ void Pool3dOpMaker::Make() {
   AddAttr<bool>(
       "use_cudnn",
       "(bool) Only used in cudnn kernel, need install cudnn. Default False")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>(
       "ceil_mode",
       "(bool) Whether to use the ceil function to calculate "
@@ -549,7 +569,8 @@ void Pool3dOpMaker::Make() {
       .SetDefault(false);
   AddAttr<bool>("use_mkldnn",
                 "(bool) Only used in mkldnn kernel. Default False")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<std::string>(
       "data_format",
       "(string, default NCDHW) Only used in "
@@ -680,7 +701,10 @@ REGISTER_OPERATOR(
     pool2d, ops::PoolOp, ops::Pool2dOpMaker, ops::PoolOpInferVarType,
     paddle::framework::DefaultGradOpMaker<paddle::framework::OpDesc, true>,
     paddle::framework::DefaultGradOpMaker<paddle::imperative::OpBase, true>);
-REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad);
+REGISTER_OPERATOR(pool2d_grad, ops::PoolOpGrad,
+                  ops::Pool2dOpGradGradMaker<paddle::framework::OpDesc>,
+                  ops::Pool2dOpGradGradMaker<paddle::imperative::OpBase>);
+REGISTER_OPERATOR(pool2d_grad_grad, ops::PoolOp);
 
 REGISTER_OP_CPU_KERNEL(
     pool2d, ops::PoolKernel<paddle::platform::CPUDeviceContext, float>,
@@ -688,6 +712,10 @@ REGISTER_OP_CPU_KERNEL(
 REGISTER_OP_CPU_KERNEL(
     pool2d_grad, ops::PoolGradKernel<paddle::platform::CPUDeviceContext, float>,
     ops::PoolGradKernel<paddle::platform::CPUDeviceContext, double>);
+REGISTER_OP_CPU_KERNEL(
+    pool2d_grad_grad,
+    ops::PoolGradGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::PoolGradGradKernel<paddle::platform::CPUDeviceContext, double>);
 
 REGISTER_OPERATOR(
     pool3d, ops::PoolOp, ops::Pool3dOpMaker, ops::PoolOpInferVarType,

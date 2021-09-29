@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
 if [ -z ${BRANCH} ]; then
     BRANCH="develop"
 fi
@@ -40,13 +41,13 @@ function add_failed(){
 api_params_diff=`python ${PADDLE_ROOT}/tools/check_api_compatible.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec` 
 api_spec_diff=`python ${PADDLE_ROOT}/tools/diff_api.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.spec.api  ${PADDLE_ROOT}/paddle/fluid/API_PR.spec.api` 
 if [ "$api_spec_diff" != "" -o "${api_params_diff}" != "" ]; then
-    echo_line="You must have one RD (XiaoguangHu01 or lanxianghit) approval for API change.\n"
+    echo_line="You must have one RD (XiaoguangHu01, lanxianghit or Superjomn) approval for API change.\n"
     echo_line="${echo_line} and one TPM approval for API change: \n"
     echo_line="${echo_line} jzhang533/ZhangJun, dingjiaweiww/DingJiaWei, Heeenrrry/LiKunLun, TCChenlong/ChenLong for general APIs\n"
     echo_line="${echo_line} PangHua/XiangHui for distributed related APIs\n"
     echo_line="${echo_line} twismon/WangYunKai, CheQiXiao/CheQiXiao for inference related APIs.\n"
 
-    check_approval 1 46782768 47554610
+    check_approval 1 46782768 47554610 328693
     check_approval 1 29231 23093488 28379894 11935832 2682285 12050047 50894398
 fi
 
@@ -63,7 +64,7 @@ fi
 api_src_spec_diff=`python ${PADDLE_ROOT}/tools/check_api_source_without_core_ops.py ${PADDLE_ROOT}/paddle/fluid/API_DEV.source.md5  ${PADDLE_ROOT}/paddle/fluid/API_PR.source.md5` 
 if [ "$api_src_spec_diff" != "" ]; then
     echo_line="APIs without core.ops: \n${api_src_spec_diff}\n"
-    echo_line="${echo_line}You must have one RD (zhiqiu (Recommend) or phlrain) approval for the api change for the opreator-related api without 'core.ops'.\n"
+    echo_line="${echo_line}You must have one RD (zhiqiu (Recommend) or phlrain) approval for the api change for the opreator-related api without '_C_ops'.\n"
     echo_line="${echo_line}For more details, please click [https://github.com/PaddlePaddle/Paddle/wiki/paddle_api_development_manual.md]\n"
     check_approval 1 6888866 43953930
 fi
@@ -91,6 +92,7 @@ fi
 
 if [ -n "${echo_list}" ];then
   echo "****************"
+  echo "Please find RD for approval first, and then find TPM for approval."
   echo -e "${echo_list[@]}"
   echo "There are ${failed_num} approved errors."
   echo "****************"

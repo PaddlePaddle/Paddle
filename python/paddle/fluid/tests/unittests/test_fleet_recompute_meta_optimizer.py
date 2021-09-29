@@ -77,40 +77,6 @@ class TestFleetRecomputeMetaOptimizer(TestFleetMetaOptimizer):
         ]
         self.assertIn('subprog', ''.join(outs))
 
-    def test_recompute_optimizer_backward(self):
-        """ test recompute optimizer backward """
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
-        avg_cost, strategy = self.net(train_prog, startup_prog)
-
-        self.set_strategy(strategy, 'recompute')
-        opt = fluid.optimizer.MomentumOptimizer(
-            learning_rate=0.001, momentum=0.9)
-        opt = RecomputeOptimizer(opt)
-        opt.user_defined_strategy = strategy
-        params_grads = opt.backward(avg_cost, startup_prog)
-
-        outs = [
-            op.output('Out')[0] for op in avg_cost.block.ops if op.type == 'mul'
-        ]
-        self.assertIn('subprog', ''.join(outs))
-
-    def test_recompute_optimizer_backward(self):
-        """ test recompute optimizer backward """
-        train_prog, startup_prog = fluid.Program(), fluid.Program()
-        avg_cost, strategy = self.net(train_prog, startup_prog)
-
-        self.set_strategy(strategy, 'recompute')
-        opt = fluid.optimizer.MomentumOptimizer(
-            learning_rate=0.001, momentum=0.9)
-        opt = RecomputeOptimizer(opt)
-        opt.user_defined_strategy = strategy
-        params_grads = opt.backward(avg_cost, startup_prog)
-
-        outs = [
-            op.output('Out')[0] for op in avg_cost.block.ops if op.type == 'mul'
-        ]
-        self.assertIn('subprog', ''.join(outs))
-
     def test_recompute_optimizer(self):
         train_prog, startup_prog = fluid.Program(), fluid.Program()
         avg_cost, strategy = self.net(train_prog, startup_prog)

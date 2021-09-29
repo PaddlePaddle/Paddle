@@ -31,49 +31,6 @@
 namespace paddle {
 namespace framework {
 
-struct OpInOutInfo {
- public:
-  void Build(const OperatorBase *op) {
-    is_built_ = true;
-    auto &inferer = op->Info().NoNeedBufferVarsInferer();
-    if (inferer) {
-      no_need_buffer_ins_ = inferer(op->Inputs(), op->Outputs(), op->Attrs());
-
-      if (no_need_buffer_ins_.empty()) return;
-
-      for (auto &in_name_pair : op->Inputs()) {
-        if (no_need_buffer_ins_.count(in_name_pair.first) != 0) {
-          continue;
-        }
-
-        for (auto &in_arg_name : in_name_pair.second) {
-          other_args_set_.insert(in_arg_name);
-        }
-      }
-
-      for (auto &out_name_pair : op->Outputs()) {
-        for (auto &out_arg_name : out_name_pair.second) {
-          other_args_set_.insert(out_arg_name);
-        }
-      }
-    }
-  }
-
-  bool IsBuilt() const { return is_built_; }
-
-  bool IsInArgBufferNeeded(const std::string &in_arg_name) const {
-    return no_need_buffer_ins_.empty() ||
-           other_args_set_.count(in_arg_name) != 0;
-  }
-
- private:
-  // A set to record unused buffer input vars of op
-  std::unordered_set<std::string> no_need_buffer_ins_;
-  // A set to record other args of op (including in, out)
-  std::unordered_set<std::string> other_args_set_;
-  bool is_built_{false};
-};
-
 static bool VarCanBeDeleted(const std::string &name, const BlockDesc &block,
                             const std::unordered_set<std::string> &skip_vars) {
   if (skip_vars.count(name) != 0) {
@@ -146,18 +103,9 @@ GetUnusedVars(const BlockDesc &block,
   return result;
 }
 
-void DeleteUnusedTensors(
-    const Scope &scope, const OperatorBase *op,
-    const std::unordered_map<const OperatorBase *, std::vector<std::string>>
-        &delete_vars_map,
-    GarbageCollector *gc) {
-  auto iter = delete_vars_map.find(op);
-  if (iter == delete_vars_map.end()) {
-    return;
-  }
-
-  auto &delete_vars = iter->second;
-
+void DeleteUnusedTensors(const Scope &scope,
+                         const std::vector<std::string> &delete_vars,
+                         GarbageCollector *gc) {
   std::deque<std::shared_ptr<memory::Allocation>> garbages;
 
   for (auto &var_name : delete_vars) {
@@ -187,6 +135,20 @@ void DeleteUnusedTensors(
   if (!garbages.empty()) {
     gc->Add(std::move(garbages));
   }
+}
+
+void DeleteUnusedTensors(
+    const Scope &scope, const OperatorBase *op,
+    const std::unordered_map<const OperatorBase *, std::vector<std::string>>
+        &delete_vars_map,
+    GarbageCollector *gc) {
+  auto iter = delete_vars_map.find(op);
+  if (iter == delete_vars_map.end()) {
+    return;
+  }
+
+  auto &delete_vars = iter->second;
+  DeleteUnusedTensors(scope, delete_vars, gc);
 }
 
 static std::vector<std::unique_ptr<OperatorBase>> CreateOpsFromBlock(

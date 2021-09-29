@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <vector>
 #include "paddle/fluid/memory/malloc.h"
+#include "paddle/fluid/platform/complex.h"
 
 namespace paddle {
 namespace operators {
@@ -163,4 +164,7 @@ REGISTER_OP_CUDA_KERNEL(
     ops::FlipKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::FlipKernel<paddle::platform::CUDADeviceContext, int>,
     ops::FlipKernel<paddle::platform::CUDADeviceContext, int64_t>,
-    ops::FlipKernel<paddle::platform::CUDADeviceContext, bool>);
+    ops::FlipKernel<paddle::platform::CUDADeviceContext, bool>,
+    ops::FlipKernel<paddle::platform::CUDADeviceContext, plat::complex<float>>,
+    ops::FlipKernel<paddle::platform::CUDADeviceContext,
+                    plat::complex<double>>);

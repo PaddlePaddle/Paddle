@@ -39,7 +39,7 @@ class InstanceNormPlugin : public PluginTensorRT {
   cudnnTensorDescriptor_t x_desc_, y_desc_, b_desc_;
 
  public:
-  size_t getSerializationSize() const override {
+  size_t getSerializationSize() const TRT_NOEXCEPT override {
     return getBaseSerializationSize() + SerializedSize(eps_) +
            SerializedSize(scale_) + SerializedSize(bias_);
   }
@@ -47,7 +47,7 @@ class InstanceNormPlugin : public PluginTensorRT {
   // TRT will call this func when we need to serialize the configuration of
   // tensorrt.
   // It should not be called by users.
-  void serialize(void *buffer) const override {
+  void serialize(void *buffer) const TRT_NOEXCEPT override {
     serializeBase(buffer);
     SerializeValue(&buffer, eps_);
     SerializeValue(&buffer, scale_);
@@ -89,37 +89,41 @@ class InstanceNormPlugin : public PluginTensorRT {
     platform::dynload::cudnnDestroyTensorDescriptor(b_desc_);
   }
 
-  int initialize() override;
+  int initialize() TRT_NOEXCEPT override;
 
-  InstanceNormPlugin *clone() const override {
+  InstanceNormPlugin *clone() const TRT_NOEXCEPT override {
     return new InstanceNormPlugin(eps_, scale_, bias_);
   }
 
-  const char *getPluginType() const override { return "instance_norm_plugin"; }
-  int getNbOutputs() const override { return 1; }
+  const char *getPluginType() const TRT_NOEXCEPT override {
+    return "instance_norm_plugin";
+  }
+  int getNbOutputs() const TRT_NOEXCEPT override { return 1; }
   nvinfer1::Dims getOutputDimensions(int index, const nvinfer1::Dims *inputs,
-                                     int nbInputDims) override;
+                                     int nbInputDims) TRT_NOEXCEPT override;
 
 #if IS_TRT_VERSION_LT(8000)
   int enqueue(int batchSize, const void *const *inputs, void **outputs,
 #else
   int enqueue(int batchSize, const void *const *inputs, void *const *outputs,
 #endif
-              void *workspace, cudaStream_t stream) override;
+              void *workspace, cudaStream_t stream) TRT_NOEXCEPT override;
 
-  bool supportsFormat(nvinfer1::DataType type,
-                      nvinfer1::PluginFormat format) const override;
+  bool supportsFormat(nvinfer1::DataType type, nvinfer1::PluginFormat format)
+      const TRT_NOEXCEPT override;
 };
 
 class InstanceNormPluginCreator : public TensorRTPluginCreator {
  public:
-  const char *getPluginName() const override { return "instance_norm_plugin"; }
+  const char *getPluginName() const TRT_NOEXCEPT override {
+    return "instance_norm_plugin";
+  }
 
-  const char *getPluginVersion() const override { return "1"; }
+  const char *getPluginVersion() const TRT_NOEXCEPT override { return "1"; }
 
-  nvinfer1::IPluginV2 *deserializePlugin(const char *name,
-                                         const void *serial_data,
-                                         size_t serial_length) override {
+  nvinfer1::IPluginV2 *deserializePlugin(
+      const char *name, const void *serial_data,
+      size_t serial_length) TRT_NOEXCEPT override {
     return new InstanceNormPlugin(serial_data, serial_length);
   }
 };

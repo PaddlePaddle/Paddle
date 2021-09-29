@@ -36,8 +36,6 @@ from op_test import _set_use_system_allocator
 _set_use_system_allocator(False)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestLayerNormOp(unittest.TestCase):
     def setUp(self):
         self.use_cudnn = True
@@ -191,8 +189,6 @@ class TestLayerNormOp(unittest.TestCase):
         self.check_forward_backward(shape=[2, 3, 4, 5], begin_norm_axis=3)
 
 
-@unittest.skipIf(not paddle.is_compiled_with_npu(),
-                 "core is not compiled with NPU")
 class TestLayerNormOpFP16(TestLayerNormOp):
     def init_dtype(self):
         self.dtype = np.float16

@@ -216,6 +216,7 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
   PADDLE_ENFORCE_LT(offset, self.numel(),
                     platform::errors::InvalidArgument(
                         "The offset exceeds the size of tensor."));
+
   T b = static_cast<T>(0);
   if (platform::is_cpu_place(self.place())) {
     b = self.data<T>()[offset];
@@ -232,7 +233,16 @@ T TensorGetElement(const framework::Tensor &self, size_t offset) {
     paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
                          nullptr);
 #endif
+  } else if (platform::is_npu_place(self.place())) {
+#if defined(PADDLE_WITH_ASCEND_CL)
+    const T *a = self.data<T>();
+    auto p = BOOST_GET_CONST(platform::NPUPlace, self.place());
+    paddle::memory::Copy(platform::CPUPlace(), &b, p, a + offset, sizeof(T),
+                         nullptr);
+#endif
   }
+  VLOG(10) << "TensorGetElement, place: " << self.place()
+           << ", offset: " << offset << ", element: " << b;
   return b;
 }
 
@@ -241,6 +251,8 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
   PADDLE_ENFORCE_LT(offset, self->numel(),
                     platform::errors::InvalidArgument(
                         "The offset exceeds the size of tensor."));
+  VLOG(10) << "TensorSetElement, place: " << self->place()
+           << ", offset: " << offset << ", element: " << elem;
   if (platform::is_cpu_place(self->place())) {
     self->mutable_data<T>(self->place())[offset] = elem;
   } else if (platform::is_xpu_place(self->place())) {
@@ -252,6 +264,13 @@ void TensorSetElement(framework::Tensor *self, size_t offset, T elem) {
   } else if (platform::is_gpu_place(self->place())) {
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     auto p = BOOST_GET_CONST(platform::CUDAPlace, self->place());
+    T *a = self->mutable_data<T>(p);
+    paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
+                         nullptr);
+#endif
+  } else if (platform::is_npu_place(self->place())) {
+#if defined(PADDLE_WITH_ASCEND_CL)
+    auto p = BOOST_GET_CONST(platform::NPUPlace, self->place());
     T *a = self->mutable_data<T>(p);
     paddle::memory::Copy(p, a + offset, platform::CPUPlace(), &elem, sizeof(T),
                          nullptr);
@@ -676,7 +695,7 @@ inline py::array TensorToPyArray(const framework::Tensor &tensor,
 
   size_t numel = 1;
   for (int i = tensor_dims.size() - 1; i >= 0; --i) {
-    py_dims[i] = (size_t)tensor_dims[i];
+    py_dims[i] = static_cast<size_t>(tensor_dims[i]);
     py_strides[i] = sizeof_dtype * numel;
     numel *= py_dims[i];
   }

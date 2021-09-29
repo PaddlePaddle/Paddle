@@ -119,10 +119,10 @@ void TensorFormatter::FormatData(const framework::LoDTensor& print_tensor,
                            ? print_tensor.numel()
                            : std::min(summarize_, print_tensor.numel());
   const T* data = nullptr;
+  framework::LoDTensor cpu_tensor;
   if (is_cpu_place(print_tensor.place())) {
     data = print_tensor.data<T>();
   } else {
-    framework::LoDTensor cpu_tensor;
     platform::CPUPlace cpu_place;
     TensorCopy(print_tensor, cpu_place, &cpu_tensor);
 #ifdef PADDLE_WITH_ASCEND_CL
