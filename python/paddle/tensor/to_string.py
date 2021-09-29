@@ -34,15 +34,18 @@ DEFAULT_PRINT_OPTIONS = PrintOptions()
 def set_printoptions(precision=None,
                      threshold=None,
                      edgeitems=None,
-                     sci_mode=None):
+                     sci_mode=None,
+                     linewidth=None):
     """Set the printing options for Tensor.
     NOTE: The function is similar with numpy.set_printoptions()
 
     Args:
         precision (int, optional): Number of digits of the floating number, default 8.
         threshold (int, optional): Total number of elements printed, default 1000.
-        edgeitems (int, optional): Number of elements in summary at the begining and end of each dimension, defalt 3.
+        edgeitems (int, optional): Number of elements in summary at the begining and ending of each dimension, default 3.
         sci_mode (bool, optional): Format the floating number with scientific notation or not, default False.
+        linewidth (int, optional): Number of characters each line, default 80.
+       
     
     Returns:
         None.
@@ -82,15 +85,18 @@ def set_printoptions(precision=None,
         check_type(edgeitems, 'edgeitems', (int), 'set_printoptions')
         DEFAULT_PRINT_OPTIONS.edgeitems = edgeitems
         kwargs['edgeitems'] = edgeitems
+    if linewidth is not None:
+        check_type(linewidth, 'linewidth', (int), 'set_printoptions')
+        DEFAULT_PRINT_OPTIONS.linewidth = linewidth
+        kwargs['linewidth'] = linewidth
     if sci_mode is not None:
         check_type(sci_mode, 'sci_mode', (bool), 'set_printoptions')
         DEFAULT_PRINT_OPTIONS.sci_mode = sci_mode
         kwargs['sci_mode'] = sci_mode
-    #TODO(zhiqiu): support linewidth
     core.set_printoptions(**kwargs)
 
 
-def _to_sumary(var):
+def _to_summary(var):
     edgeitems = DEFAULT_PRINT_OPTIONS.edgeitems
 
     # Handle tensor of shape contains 0, like [0, 2], [3, 0, 3]
@@ -101,17 +107,17 @@ def _to_sumary(var):
         return var
     elif len(var.shape) == 1:
         if var.shape[0] > 2 * edgeitems:
-            return np.concatenate([var[:edgeitems], var[-edgeitems:]])
+            return np.concatenate([var[:edgeitems], var[(-1 * edgeitems):]])
         else:
             return var
     else:
         # recursively handle all dimensions
         if var.shape[0] > 2 * edgeitems:
             begin = [x for x in var[:edgeitems]]
-            end = [x for x in var[-edgeitems:]]
-            return np.stack([_to_sumary(x) for x in (begin + end)])
+            end = [x for x in var[(-1 * edgeitems):]]
+            return np.stack([_to_summary(x) for x in (begin + end)])
         else:
-            return np.stack([_to_sumary(x) for x in var])
+            return np.stack([_to_summary(x) for x in var])
 
 
 def _format_item(np_var, max_width=0, signed=False):
@@ -140,6 +146,7 @@ def _format_item(np_var, max_width=0, signed=False):
 
 
 def _get_max_width(var):
+    # return max_width for a scalar
     max_width = 0
     signed = False
     for item in list(var.flatten()):
@@ -151,41 +158,61 @@ def _get_max_width(var):
     return max_width, signed
 
 
-def _format_tensor(var, sumary, indent=0, max_width=0, signed=False):
+def _format_tensor(var, summary, indent=0, max_width=0, signed=False):
+    """
+    Format a tensor
+
+    Args:
+        var(Tensor): The tensor to be formatted.
+        summary(bool): Do summary or not. If true, some elements will not be printed, and be replaced with "...".
+        indent(int): The indent of each line.
+        max_width(int): The max width of each elements in var.
+        signed(bool): Print +/- or not.
+    """
     edgeitems = DEFAULT_PRINT_OPTIONS.edgeitems
+    linewidth = DEFAULT_PRINT_OPTIONS.linewidth
 
     if len(var.shape) == 0:
         # currently, shape = [], i.e., scaler tensor is not supported.
         # If it is supported, it should be formatted like this.
         return _format_item(var, max_width, signed)
     elif len(var.shape) == 1:
-        if sumary and var.shape[0] > 2 * edgeitems:
+        item_length = max_width + 2
+        items_per_line = (linewidth - indent) // item_length
+        items_per_line = max(1, items_per_line)
+
+        if summary and var.shape[0] > 2 * edgeitems:
             items = [
                 _format_item(item, max_width, signed)
-                for item in list(var)[:DEFAULT_PRINT_OPTIONS.edgeitems]
+                for item in list(var)[:edgeitems]
             ] + ['...'] + [
                 _format_item(item, max_width, signed)
-                for item in list(var)[-DEFAULT_PRINT_OPTIONS.edgeitems:]
+                for item in list(var)[(-1 * edgeitems):]
             ]
         else:
             items = [
                 _format_item(item, max_width, signed) for item in list(var)
             ]
-        s = ', '.join(items)
+        lines = [
+            items[i:i + items_per_line]
+            for i in range(0, len(items), items_per_line)
+        ]
+        s = (',\n' + ' ' *
+             (indent + 1)).join([', '.join(line) for line in lines])
         return '[' + s + ']'
     else:
         # recursively handle all dimensions
-        if sumary and var.shape[0] > 2 * edgeitems:
+        if summary and var.shape[0] > 2 * edgeitems:
             vars = [
-                _format_tensor(x, sumary, indent + 1, max_width, signed)
+                _format_tensor(x, summary, indent + 1, max_width, signed)
                 for x in var[:edgeitems]
             ] + ['...'] + [
-                _format_tensor(x, sumary, indent + 1, max_width, signed)
-                for x in var[-edgeitems:]
+                _format_tensor(x, summary, indent + 1, max_width, signed)
+                for x in var[(-1 * edgeitems):]
             ]
         else:
             vars = [
-                _format_tensor(x, sumary, indent + 1, max_width, signed)
+                _format_tensor(x, summary, indent + 1, max_width, signed)
                 for x in var
             ]
 
@@ -211,14 +238,14 @@ def to_string(var, prefix='Tensor'):
         for dim in var.shape:
             size *= dim
 
-    sumary = False
+    summary = False
     if size > DEFAULT_PRINT_OPTIONS.threshold:
-        sumary = True
+        summary = True
 
-    max_width, signed = _get_max_width(_to_sumary(np_var))
+    max_width, signed = _get_max_width(_to_summary(np_var))
 
     data = _format_tensor(
-        np_var, sumary, indent=indent, max_width=max_width, signed=signed)
+        np_var, summary, indent=indent, max_width=max_width, signed=signed)
 
     return _template.format(
         prefix=prefix,

@@ -167,7 +167,7 @@ class TestIdentityActivation(TestConv2DFusionOp):
         self.activation = 'identity'
 
 
-class TestIdentityActivation(TestConv2DFusionOp):
+class TestIdentityActivation1(TestConv2DFusionOp):
     def init_activation(self):
         self.activation = 'identity'
         self.add_residual_data = False

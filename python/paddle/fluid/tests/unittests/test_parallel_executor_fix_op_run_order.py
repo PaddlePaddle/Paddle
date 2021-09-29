@@ -16,7 +16,7 @@ import paddle
 import paddle.fluid as fluid
 import unittest
 import numpy as np
-from paddle.vision.models import resnet50
+from paddle.vision.models import resnet18
 from paddle.nn import CrossEntropyLoss
 
 
@@ -33,7 +33,7 @@ class TestFixOpRunOrder(unittest.TestCase):
         ) else paddle.CPUPlace()
 
     def get_feed(self):
-        batch_size = 32
+        batch_size = 4
         image = np.random.random([batch_size, 3, 224, 224]).astype('float32')
         label = np.random.randint(0, 1000, [batch_size, 1]).astype('int64')
         return {"image": image, "label": label}
@@ -47,7 +47,7 @@ class TestFixOpRunOrder(unittest.TestCase):
                 name="image", shape=[None, 3, 224, 224], dtype="float32")
             label = paddle.static.data(
                 name="label", shape=[None, 1], dtype="int64")
-            model = resnet50()
+            model = resnet18()
             pred = model(image)
             loss_fn = CrossEntropyLoss()
             loss = loss_fn(pred, label)

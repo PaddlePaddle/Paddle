@@ -36,7 +36,7 @@ class ClearFloatStatusKernel : public framework::OpKernel<T> {
     Tensor tmp;
     tmp.mutable_data<float>({8}, ctx.GetPlace());
     const auto& runner =
-        NpuOpRunner("NPUClearFloatStatus", {*float_status}, {tmp});
+        NpuOpRunner("NPUClearFloatStatus", {tmp}, {*float_status_out});
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();

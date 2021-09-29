@@ -38,4 +38,20 @@ REGISTER_OP_NPU_KERNEL(
     ops::UnsqueezeKernel<plat::NPUDeviceContext, int>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, int8_t>,
     ops::UnsqueezeKernel<plat::NPUDeviceContext, int64_t>);
+REGISTER_OP_NPU_KERNEL(
+    unsqueeze_grad, ops::UnsqueezeGradKernel<plat::NPUDeviceContext, float>,
+    ops::UnsqueezeGradKernel<plat::NPUDeviceContext, double>,
+    ops::UnsqueezeGradKernel<plat::NPUDeviceContext, plat::float16>,
+    ops::UnsqueezeGradKernel<plat::NPUDeviceContext, bool>,
+    ops::UnsqueezeGradKernel<plat::NPUDeviceContext, int>,
+    ops::UnsqueezeGradKernel<plat::NPUDeviceContext, int8_t>,
+    ops::UnsqueezeGradKernel<plat::NPUDeviceContext, int64_t>);
+REGISTER_OP_NPU_KERNEL(
+    unsqueeze2_grad, ops::Unsqueeze2GradKernel<plat::NPUDeviceContext, float>,
+    ops::Unsqueeze2GradKernel<plat::NPUDeviceContext, double>,
+    ops::Unsqueeze2GradKernel<plat::NPUDeviceContext, plat::float16>,
+    ops::Unsqueeze2GradKernel<plat::NPUDeviceContext, bool>,
+    ops::Unsqueeze2GradKernel<plat::NPUDeviceContext, int>,
+    ops::Unsqueeze2GradKernel<plat::NPUDeviceContext, int8_t>,
+    ops::Unsqueeze2GradKernel<plat::NPUDeviceContext, int64_t>);
 #endif

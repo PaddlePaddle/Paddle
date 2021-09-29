@@ -436,7 +436,7 @@ class TestArgsortImperative3(TestArgsortImperative):
         self.axis = 1
 
 
-class TestArgsortImperative2(TestArgsortImperative):
+class TestArgsortImperative4(TestArgsortImperative):
     def init(self):
         self.input_shape = [2, 3, 4]
         self.axis = 1

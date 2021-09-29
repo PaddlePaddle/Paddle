@@ -35,7 +35,7 @@ from paddle.nn import Linear, Conv2D, Softmax, BatchNorm2D, MaxPool2D
 from paddle.fluid.log_helper import get_logger
 from paddle.fluid.dygraph import nn
 
-from imperative_test_utils import fix_model_dict, train_lenet, ImperativeLenet
+from imperative_test_utils import fix_model_dict, train_lenet
 
 paddle.enable_static()
 

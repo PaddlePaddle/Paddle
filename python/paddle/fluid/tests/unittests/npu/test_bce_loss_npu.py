@@ -96,7 +96,7 @@ def test_dygraph_layer(place,
                        label_np,
                        reduction='mean',
                        weight_np=None):
-    paddle.disable_static()
+    paddle.disable_static(place)
     if weight_np is not None:
         weight = paddle.to_tensor(weight_np)
         bce_loss = paddle.nn.loss.BCELoss(weight=weight, reduction=reduction)
@@ -113,7 +113,7 @@ def test_dygraph_functional(place,
                             label_np,
                             reduction='mean',
                             weight_np=None):
-    paddle.disable_static()
+    paddle.disable_static(place)
     input = paddle.to_tensor(input_np)
     label = paddle.to_tensor(label_np)
 

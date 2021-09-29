@@ -36,6 +36,107 @@ DLManager& global_dlmanager_pool() {
   return manager;
 }
 
+class BufferedLineFileReader {
+  typedef std::function<bool()> SampleFunc;
+  static const int MAX_FILE_BUFF_SIZE = 4 * 1024 * 1024;
+  class FILEReader {
+   public:
+    explicit FILEReader(FILE* fp) : fp_(fp) {}
+    int read(char* buf, int len) { return fread(buf, sizeof(char), len, fp_); }
+
+   private:
+    FILE* fp_;
+  };
+
+ public:
+  typedef std::function<bool(const std::string&)> LineFunc;
+
+ private:
+  template <typename T>
+  int read_lines(T* reader, LineFunc func, int skip_lines) {
+    int lines = 0;
+    size_t ret = 0;
+    char* ptr = NULL;
+    char* eol = NULL;
+    total_len_ = 0;
+    error_line_ = 0;
+
+    SampleFunc spfunc = get_sample_func();
+    std::string x;
+    while (!is_error() && (ret = reader->read(buff_, MAX_FILE_BUFF_SIZE)) > 0) {
+      total_len_ += ret;
+      ptr = buff_;
+      eol = reinterpret_cast<char*>(memchr(ptr, '\n', ret));
+      while (eol != NULL) {
+        int size = static_cast<int>((eol - ptr) + 1);
+        x.append(ptr, size - 1);
+        ++lines;
+        if (lines > skip_lines && spfunc()) {
+          if (!func(x)) {
+            ++error_line_;
+          }
+        }
+
+        x.clear();
+        ptr += size;
+        ret -= size;
+        eol = reinterpret_cast<char*>(memchr(ptr, '\n', ret));
+      }
+      if (ret > 0) {
+        x.append(ptr, ret);
+      }
+    }
+    if (!is_error() && !x.empty()) {
+      ++lines;
+      if (lines > skip_lines && spfunc()) {
+        if (!func(x)) {
+          ++error_line_;
+        }
+      }
+    }
+    return lines;
+  }
+
+ public:
+  BufferedLineFileReader()
+      : random_engine_(std::random_device()()),
+        uniform_distribution_(0.0f, 1.0f) {
+    total_len_ = 0;
+    sample_line_ = 0;
+    buff_ =
+        reinterpret_cast<char*>(calloc(MAX_FILE_BUFF_SIZE + 1, sizeof(char)));
+  }
+  ~BufferedLineFileReader() { free(buff_); }
+
+  int read_file(FILE* fp, LineFunc func, int skip_lines) {
+    FILEReader reader(fp);
+    return read_lines<FILEReader>(&reader, func, skip_lines);
+  }
+  uint64_t file_size(void) { return total_len_; }
+  void set_sample_rate(float r) { sample_rate_ = r; }
+  size_t get_sample_line() { return sample_line_; }
+  bool is_error(void) { return (error_line_ > 10); }
+
+ private:
+  SampleFunc get_sample_func() {
+    if (std::abs(sample_rate_ - 1.0f) < 1e-5f) {
+      return [this](void) { return true; };
+    }
+    return [this](void) {
+      return (uniform_distribution_(random_engine_) < sample_rate_);
+    };
+  }
+
+ private:
+  char* buff_ = nullptr;
+  uint64_t total_len_ = 0;
+
+  std::default_random_engine random_engine_;
+  std::uniform_real_distribution<float> uniform_distribution_;
+  float sample_rate_ = 1.0f;
+  size_t sample_line_ = 0;
+  size_t error_line_ = 0;
+};
 void RecordCandidateList::ReSize(size_t length) {
   mutex_.lock();
   capacity_ = length;
@@ -257,6 +358,11 @@ bool InMemoryDataFeed<T>::Start() {
     output_channel_->Write(std::move(data));
   }
 #endif
+  if (batch_offsets_.size() > 0) {
+    VLOG(3) << "batch_size offsets: " << batch_offsets_.size();
+    enable_heterps_ = true;
+    this->offset_index_ = 0;
+  }
   this->finish_start_ = true;
   return true;
 }
@@ -265,34 +371,57 @@ template <typename T>
 int InMemoryDataFeed<T>::Next() {
 #ifdef _LINUX
   this->CheckStart();
-  CHECK(output_channel_ != nullptr);
-  CHECK(consume_channel_ != nullptr);
-  VLOG(3) << "output_channel_ size=" << output_channel_->Size()
-          << ", consume_channel_ size=" << consume_channel_->Size()
-          << ", thread_id=" << thread_id_;
-  int index = 0;
-  T instance;
-  std::vector<T> ins_vec;
-  ins_vec.reserve(this->default_batch_size_);
-  while (index < this->default_batch_size_) {
-    if (output_channel_->Size() == 0) {
-      break;
-    }
-    output_channel_->Get(instance);
-    ins_vec.push_back(instance);
-    ++index;
-    consume_channel_->Put(std::move(instance));
-  }
-  this->batch_size_ = index;
-  VLOG(3) << "batch_size_=" << this->batch_size_
-          << ", thread_id=" << thread_id_;
-  if (this->batch_size_ != 0) {
-    PutToFeedVec(ins_vec);
-  } else {
-    VLOG(3) << "finish reading, output_channel_ size="
-            << output_channel_->Size()
+  if (!enable_heterps_) {
+    CHECK(output_channel_ != nullptr);
+    CHECK(consume_channel_ != nullptr);
+    VLOG(3) << "output_channel_ size=" << output_channel_->Size()
             << ", consume_channel_ size=" << consume_channel_->Size()
             << ", thread_id=" << thread_id_;
+    int index = 0;
+    T instance;
+    std::vector<T> ins_vec;
+    ins_vec.reserve(this->default_batch_size_);
+    while (index < this->default_batch_size_) {
+      if (output_channel_->Size() == 0) {
+        break;
+      }
+      output_channel_->Get(instance);
+      ins_vec.push_back(instance);
+      ++index;
+      consume_channel_->Put(std::move(instance));
+    }
+    this->batch_size_ = index;
+    VLOG(3) << "batch_size_=" << this->batch_size_
+            << ", thread_id=" << thread_id_;
+    if (this->batch_size_ != 0) {
+      PutToFeedVec(ins_vec);
+    } else {
+      VLOG(3) << "finish reading, output_channel_ size="
+              << output_channel_->Size()
+              << ", consume_channel_ size=" << consume_channel_->Size()
+              << ", thread_id=" << thread_id_;
+    }
+  } else {
+    VLOG(3) << "enable heter next: " << offset_index_
+            << " batch_offsets: " << batch_offsets_.size();
+    if (offset_index_ >= batch_offsets_.size()) {
+      VLOG(3) << "offset_index: " << offset_index_
+              << " batch_offsets: " << batch_offsets_.size();
+      return 0;
+    }
+    auto& batch = batch_offsets_[offset_index_++];
+    this->batch_size_ = batch.second;
+    VLOG(3) << "batch_size_=" << this->batch_size_
+            << ", thread_id=" << thread_id_;
+    if (this->batch_size_ != 0) {
+      PutToFeedVec(&records_[batch.first], this->batch_size_);
+    } else {
+      VLOG(3) << "finish reading for heterps, batch size zero, thread_id="
+              << thread_id_;
+    }
+    VLOG(3) << "enable heter next: " << offset_index_
+            << " batch_offsets: " << batch_offsets_.size()
+            << " baych_size: " << this->batch_size_;
   }
   return this->batch_size_;
 #else
@@ -847,8 +976,10 @@ void MultiSlotDataFeed::PutToFeedVec(
                        total_instance * sizeof(int64_t));
     }
 
-    LoD data_lod{offset};
-    feed_vec_[i]->set_lod(data_lod);
+    if (!use_slots_is_dense_[i]) {
+      LoD data_lod{offset};
+      feed_vec_[i]->set_lod(data_lod);
+    }
     if (use_slots_is_dense_[i]) {
       if (inductive_shape_index_[i] != -1) {
         use_slots_shape_[i][inductive_shape_index_[i]] =
@@ -1139,6 +1270,103 @@ bool MultiSlotInMemoryDataFeed::ParseOneInstance(Record* instance) {
   return false;
 }
 
+void MultiSlotInMemoryDataFeed::PutToFeedVec(const Record* ins_vec, int num) {
+#ifdef _LINUX
+  for (size_t i = 0; i < batch_float_feasigns_.size(); ++i) {
+    batch_float_feasigns_[i].clear();
+    batch_uint64_feasigns_[i].clear();
+    offset_[i].clear();
+    offset_[i].push_back(0);
+  }
+  ins_content_vec_.clear();
+  ins_content_vec_.reserve(num);
+  ins_id_vec_.clear();
+  ins_id_vec_.reserve(num);
+  for (int i = 0; i < num; ++i) {
+    auto& r = ins_vec[i];
+    ins_id_vec_.push_back(r.ins_id_);
+    ins_content_vec_.push_back(r.content_);
+    for (auto& item : r.float_feasigns_) {
+      batch_float_feasigns_[item.slot()].push_back(item.sign().float_feasign_);
+      visit_[item.slot()] = true;
+    }
+    for (auto& item : r.uint64_feasigns_) {
+      batch_uint64_feasigns_[item.slot()].push_back(
+          item.sign().uint64_feasign_);
+      visit_[item.slot()] = true;
+    }
+    for (size_t j = 0; j < use_slots_.size(); ++j) {
+      const auto& type = all_slots_type_[j];
+      if (visit_[j]) {
+        visit_[j] = false;
+      } else {
+        // fill slot value with default value 0
+        if (type[0] == 'f') {  // float
+          batch_float_feasigns_[j].push_back(0.0);
+        } else if (type[0] == 'u') {  // uint64
+          batch_uint64_feasigns_[j].push_back(0);
+        }
+      }
+      // get offset of this ins in this slot
+      if (type[0] == 'f') {  // float
+        offset_[j].push_back(batch_float_feasigns_[j].size());
+      } else if (type[0] == 'u') {  // uint64
+        offset_[j].push_back(batch_uint64_feasigns_[j].size());
+      }
+    }
+  }
+
+  for (size_t i = 0; i < use_slots_.size(); ++i) {
+    if (feed_vec_[i] == nullptr) {
+      continue;
+    }
+    int total_instance = offset_[i].back();
+    const auto& type = all_slots_type_[i];
+    if (type[0] == 'f') {  // float
+      float* feasign = batch_float_feasigns_[i].data();
+      float* tensor_ptr =
+          feed_vec_[i]->mutable_data<float>({total_instance, 1}, this->place_);
+      CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(float));
+    } else if (type[0] == 'u') {  // uint64
+      // no uint64_t type in paddlepaddle
+      uint64_t* feasign = batch_uint64_feasigns_[i].data();
+      int64_t* tensor_ptr = feed_vec_[i]->mutable_data<int64_t>(
+          {total_instance, 1}, this->place_);
+      CopyToFeedTensor(tensor_ptr, feasign, total_instance * sizeof(int64_t));
+    }
+    auto& slot_offset = offset_[i];
+    if (this->input_type_ == 0) {
+      LoD data_lod{slot_offset};
+      feed_vec_[i]->set_lod(data_lod);
+    } else if (this->input_type_ == 1) {
+      if (!use_slots_is_dense_[i]) {
+        std::vector<size_t> tmp_offset;
+        PADDLE_ENFORCE_EQ(slot_offset.size(), 2,
+                          platform::errors::InvalidArgument(
+                              "In batch reader, the sparse tensor lod size "
+                              "must be 2, but received %d.",
+                              slot_offset.size()));
+        const auto& max_size = slot_offset[1];
+        tmp_offset.reserve(max_size + 1);
+        for (unsigned int k = 0; k <= max_size; k++) {
+          tmp_offset.emplace_back(k);
+        }
+        slot_offset = tmp_offset;
+        LoD data_lod{slot_offset};
+        feed_vec_[i]->set_lod(data_lod);
+      }
+    }
+    if (use_slots_is_dense_[i]) {
+      if (inductive_shape_index_[i] != -1) {
+        use_slots_shape_[i][inductive_shape_index_[i]] =
+            total_instance / total_dims_without_inductive_[i];
+      }
+      feed_vec_[i]->Resize(framework::make_ddim(use_slots_shape_[i]));
+    }
+  }
+#endif
+}
+
 void MultiSlotInMemoryDataFeed::PutToFeedVec(
     const std::vector<Record>& ins_vec) {
 #ifdef _LINUX
@@ -1206,8 +1434,10 @@ void MultiSlotInMemoryDataFeed::PutToFeedVec(
     }
     auto& slot_offset = offset_[i];
     if (this->input_type_ == 0) {
-      LoD data_lod{slot_offset};
-      feed_vec_[i]->set_lod(data_lod);
+      if (!use_slots_is_dense_[i]) {
+        LoD data_lod{slot_offset};
+        feed_vec_[i]->set_lod(data_lod);
+      }
     } else if (this->input_type_ == 1) {
       if (!use_slots_is_dense_[i]) {
         std::vector<size_t> tmp_offset;

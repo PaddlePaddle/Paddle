@@ -133,20 +133,20 @@ class TestLinspaceOpError(unittest.TestCase):
 
             self.assertRaises(TypeError, test_dtype)
 
-            def test_dtype():
+            def test_dtype1():
                 fluid.layers.linspace(0, 10, 1.33, dtype="int32")
 
-            self.assertRaises(TypeError, test_dtype)
+            self.assertRaises(TypeError, test_dtype1)
 
             def test_start_type():
                 fluid.layers.linspace([0], 10, 1, dtype="float32")
 
             self.assertRaises(TypeError, test_start_type)
 
-            def test_end_dtype():
+            def test_end_type():
                 fluid.layers.linspace(0, [10], 1, dtype="float32")
 
-            self.assertRaises(TypeError, test_end_dtype)
+            self.assertRaises(TypeError, test_end_type)
 
             def test_step_dtype():
                 fluid.layers.linspace(0, 10, [0], dtype="float32")

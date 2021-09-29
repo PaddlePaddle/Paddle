@@ -30,6 +30,8 @@ DECLARE_string(tracer_mkldnn_ops_off);
 namespace paddle {
 namespace imperative {
 
+thread_local bool Tracer::has_grad_ = true;
+
 static std::shared_ptr<Tracer> g_current_tracer(nullptr);
 
 const std::shared_ptr<Tracer>& GetCurrentTracer() { return g_current_tracer; }
@@ -174,9 +176,12 @@ void Tracer::TraceOp(const std::string& type, const NameVarBaseMap& ins,
                               : attr_checker->GetDefaultAttrMap();
 
   NameVarBaseMap new_ins = ins;
-  if (enable_autocast_) {
+  if (amp_level_ == 1) {
     VLOG(5) << "Auto mixed precision run operator: " << type;
     new_ins = AutoCastInputs(type, ins);
+  } else if (amp_level_ == 2) {
+    VLOG(5) << "Pure fp16 run operator: " << type;
+    new_ins = CastPureFp16Inputs(type, ins);
   }
 
   try {

@@ -17,18 +17,21 @@
 #include <algorithm>
 #include <mutex>  // NOLINT
 #include "paddle/fluid/memory/allocation/aligned_allocator.h"
+#include "paddle/fluid/platform/flags.h"
 
-DEFINE_bool(free_idle_chunk, false,
-            "Whether to free idle chunk when each allocation is freed. "
-            "If false, all freed allocation would be cached to speed up next "
-            "allocation request. If true, no allocation would be cached. This "
-            "flag only works when FLAGS_allocator_strategy=auto_growth.");
+PADDLE_DEFINE_EXPORTED_READONLY_bool(
+    free_idle_chunk, false,
+    "Whether to free idle chunk when each allocation is freed. "
+    "If false, all freed allocation would be cached to speed up next "
+    "allocation request. If true, no allocation would be cached. This "
+    "flag only works when FLAGS_allocator_strategy=auto_growth.");
 
-DEFINE_bool(free_when_no_cache_hit, false,
-            "Whether to free idle chunks when no cache hit. If true, idle "
-            "chunk would be freed when no cache hit; if false, idle "
-            "chunk would be freed when out of memory occurs. This flag "
-            "only works when FLAGS_allocator_strategy=auto_growth.");
+PADDLE_DEFINE_EXPORTED_READONLY_bool(
+    free_when_no_cache_hit, false,
+    "Whether to free idle chunks when no cache hit. If true, idle "
+    "chunk would be freed when no cache hit; if false, idle "
+    "chunk would be freed when out of memory occurs. This flag "
+    "only works when FLAGS_allocator_strategy=auto_growth.");
 
 namespace paddle {
 namespace memory {
@@ -36,16 +39,17 @@ namespace allocation {
 
 AutoGrowthBestFitAllocator::AutoGrowthBestFitAllocator(
     const std::shared_ptr<Allocator> &underlying_allocator, size_t alignment,
-    size_t chunk_size)
+    size_t chunk_size, bool allow_free_idle_chunk)
     : underlying_allocator_(
           std::make_shared<AlignedAllocator>(underlying_allocator, alignment)),
       alignment_(alignment),
-      chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)) {}
+      chunk_size_(std::max(AlignedSize(chunk_size, alignment), alignment)),
+      allow_free_idle_chunk_(allow_free_idle_chunk) {}
 
 Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
   size = AlignedSize(size, alignment_);
 
-  std::lock_guard<std::mutex> guard(mtx_);
+  std::lock_guard<SpinLock> guard(spinlock_);
   auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
   BlockIt block_it;
   if (iter != free_blocks_.end()) {
@@ -98,7 +102,7 @@ Allocation *AutoGrowthBestFitAllocator::AllocateImpl(size_t size) {
 }
 
 void AutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
-  std::lock_guard<std::mutex> guard(mtx_);
+  std::lock_guard<SpinLock> guard(spinlock_);
   auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
   auto &blocks = block_it->chunk_->blocks_;
 
@@ -136,6 +140,9 @@ void AutoGrowthBestFitAllocator::FreeImpl(Allocation *allocation) {
 }
 
 uint64_t AutoGrowthBestFitAllocator::FreeIdleChunks() {
+  if (!allow_free_idle_chunk_) {
+    return 0;
+  }
   uint64_t bytes = 0;
   for (auto chunk_it = chunks_.begin(); chunk_it != chunks_.end();) {
     auto &blocks = chunk_it->blocks_;

@@ -196,7 +196,10 @@ Eigen::DefaultDevice* CPUDeviceContext::eigen_device() const {
 Place CPUDeviceContext::GetPlace() const { return place_; }
 
 #ifdef PADDLE_WITH_XPU
-XPUDeviceContext::XPUDeviceContext() { context_ = xpu::create_context(); }
+XPUDeviceContext::XPUDeviceContext() {
+  context_ = xpu::create_context();
+  xpu_version_ = get_xpu_version(place_.device);
+}
 
 XPUDeviceContext::~XPUDeviceContext() {}
 
@@ -408,10 +411,11 @@ void CUDAContext::InitEigenContext() {
 }
 
 CUDAContext::CUDAContext(const CUDAPlace& place,
-                         const stream::Priority& priority) {
+                         const stream::Priority& priority,
+                         const stream::StreamFlag& flag) {
   place_ = place;
   CUDADeviceGuard guard(place_.device);
-  stream_.reset(new stream::CUDAStream(place, priority));
+  stream_.reset(new stream::CUDAStream(place, priority, flag));
   InitEigenContext();
   InitCuBlasContext();
   InitCuDNNContext();

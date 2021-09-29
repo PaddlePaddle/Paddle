@@ -31,7 +31,7 @@ class ELU(Layer):
 
     .. math::
 
-        ELU(x) = max(0, x) + min(0, \\alpha * (e^{x}-1))
+        ELU(x) = max(0, x) + min(0, \alpha * (e^{x}-1))
 
     Parameters:
         alpha (float, optional): The 'alpha' value of the ELU formulation. Default is 1.0.
@@ -75,13 +75,13 @@ class GELU(Layer):
 
     .. math::
 
-        GELU(x) = 0.5 * x * (1 + tanh(\\sqrt{\\frac{2}{\\pi}} * (x + 0.044715x^{3})))
+        GELU(x) = 0.5 * x * (1 + tanh(\sqrt{\frac{2}{\pi}} * (x + 0.044715x^{3})))
 
     else
 
     .. math::
 
-        GELU(x) = 0.5 * x * (1 + erf(\\frac{x}{\\sqrt{2}}))
+        GELU(x) = 0.5 * x * (1 + erf(\frac{x}{\sqrt{2}}))
 
     Parameters:
         approximate (bool, optional): Wether to enable approximation. Default is False.
@@ -127,13 +127,13 @@ class Hardshrink(Layer):
     .. math::
 
         hardshrink(x)=
-            \\left\\{
-            \\begin{aligned}
-            &x, & & if \\ x > threshold \\\\
-            &x, & & if \\ x < -threshold \\\\
-            &0, & & if \\ others
-            \\end{aligned}
-            \\right.
+            \left\{
+                \begin{array}{rcl}
+                    x, & & if \ x > threshold \\
+                    x, & & if \ x < -threshold \\
+                    0, & & if \ others
+            \end{array}
+            \right.
 
     Parameters:
         threshold (float, optional): The value of threshold for hardthrink. Default is 0.5
@@ -179,13 +179,14 @@ class Hardswish(Layer):
     .. math::
 
         Hardswish(x)=
-            \\left\\{
-            \\begin{aligned}
-            &0, & & \\text{if } x \\leq -3 \\\\
-            &x, & & \\text{if } x \\geq 3 \\\\
-            &\\frac{x(x+3)}{6}, & & \\text{otherwise}
-            \\end{aligned}
-            \\right.
+            \left\{
+                \begin{array}{cll}
+                0 &, & \text{if } x \leq -3 \\
+                x &, & \text{if } x \geq 3 \\
+                \frac{x(x+3)}{6} &, & \text{otherwise}
+                \end{array}
+            \right.
+            
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -223,7 +224,7 @@ class Tanh(Layer):
     Tanh Activation.
 
     .. math::
-        Tanh(x) = \\frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
+        Tanh(x) = \frac{e^{x} - e^{-x}}{e^{x} + e^{-x}}
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -265,11 +266,15 @@ class Hardtanh(Layer):
 
     .. math::
 
-        Hardtanh(x)= \\begin{cases}
-                        max, \\text{if } x > max \\\\
-                        min, \\text{if } x < min \\\\
-                        x,  \\text{otherwise}
-                      \\end{cases}
+        Hardtanh(x)=
+            \left\{
+                \begin{array}{cll}
+                    max,& & \text{if } x > max \\
+                    min,& & \text{if } x < min \\
+                    x,& & \text{otherwise}
+                \end{array}
+            \right.
+
 
     Parameters:
         min (float, optional): The value of min for Hardtanh. Default is -1.
@@ -461,10 +466,12 @@ class SELU(Layer):
     .. math::
 
         SELU(x)= scale *
-                 \\begin{cases}
-                   x, \\text{if } x > 0 \\\\
-                   alpha * e^{x} - alpha, \\text{if } x <= 0
-                 \\end{cases}
+            \left\{
+                \begin{array}{lcl}
+                x,& &\text{if } \ x > 0 \\
+                alpha * e^{x} - alpha,& &\text{if } \ x <= 0
+                \end{array}
+            \right.
 
     Parameters:
         scale (float, optional): The value of scale(must be greater than 1.0) for SELU. Default is 1.0507009873554804934193349852946
@@ -512,12 +519,13 @@ class LeakyReLU(Layer):
     .. math::
 
         LeakyReLU(x)=
-            \\left\\{
-            \\begin{aligned}
-            &x, & & if \\ x >= 0 \\\\
-            &negative\_slope * x, & & otherwise \\\\
-            \\end{aligned}
-            \\right. \\\\
+            \left\{
+                \begin{array}{rcl}
+                    x, & & if \ x >= 0 \\
+                    negative\_slope * x, & & otherwise \\
+                \end{array}
+            \right.
+
 
     Parameters:
         negative_slope (float, optional): Slope of the activation function at
@@ -604,13 +612,14 @@ class Hardsigmoid(Layer):
     .. math::
 
         Hardsigmoid(x)=
-            \\left\\{
-            \\begin{aligned}
-            &0, & & \\text{if } x \\leq -3 \\\\
-            &1, & & \\text{if } x \\geq 3 \\\\
-            &x/6 + 1/2, & & \\text{otherwise}
-            \\end{aligned}
-            \\right.
+            \left\{
+                \begin{array}{rcl}
+            0, & & \text{if } \ x \leq -3 \\
+            1, & & \text{if } \ x \geq 3 \\
+            x/6 + 1/2, & & \text{otherwise}
+                \end{array}
+            \right.
+
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None). For more information, please refer to :ref:`api_guide_Name`.
@@ -650,8 +659,8 @@ class Softplus(Layer):
 
     .. math::
 
-        Softplus(x) = \\frac{1}{beta} * \\log(1 + e^{beta * x}) \\\\
-        \\text{For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.}
+        Softplus(x) = \frac{1}{beta} * \log(1 + e^{beta * x}) \\
+        \text{For numerical stability, the implementation reverts to the linear function when: beta * x > threshold.}
 
     Parameters:
         beta (float, optional): The value of beta for Softplus. Default is 1
@@ -695,11 +704,15 @@ class Softshrink(Layer):
 
     .. math::
 
-        Softshrink(x)= \\begin{cases}
-                        x - threshold, \\text{if } x > threshold \\\\
-                        x + threshold, \\text{if } x < -threshold \\\\
-                        0,  \\text{otherwise}
-                      \\end{cases}
+        Softshrink(x)=
+            \left\{
+                \begin{array}{rcl}
+                x - threshold,& & \text{if } x > threshold \\
+                x + threshold,& & \text{if } x < -threshold \\
+                0,& &  \text{otherwise}
+            \end{array}
+            \right.
+
 
     Parameters:
         threshold (float, optional): The value of threshold(must be no less than zero) for softplus. Default is 0.5
@@ -740,7 +753,7 @@ class Softsign(Layer):
 
     .. math::
 
-        Softsign(x) = \\frac{x}{1 + |x|}
+        Softsign(x) = \frac{x}{1 + |x|}
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -779,7 +792,7 @@ class Swish(Layer):
 
     .. math::
 
-        Swish(x) = \\frac{x}{1 + e^{-x}}
+        Swish(x) = \frac{x}{1 + e^{-x}}
 
     Parameters:
         name (str, optional): Name for the operation (optional, default is None).
@@ -857,10 +870,14 @@ class ThresholdedReLU(Layer):
 
     .. math::
 
-        ThresholdedReLU(x) = \\begin{cases}
-                               x, \\text{if } x > threshold \\\\
-                               0, \\text{otherwise}
-                              \\end{cases}
+        ThresholdedReLU(x) =
+            \left\{
+                \begin{array}{rl}
+                x,& \text{if } \ x > threshold \\
+                0,& \text{otherwise}
+                \end{array}
+            \right.
+
 
     Parameters:
         threshold (float, optional): The value of threshold for ThresholdedReLU. Default is 1.0
@@ -939,7 +956,7 @@ class LogSigmoid(Layer):
 
     .. math::
 
-        LogSigmoid(x) = log \\frac{1}{1 + e^{-x}}
+        LogSigmoid(x) = log \frac{1}{1 + e^{-x}}
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, or float64.
@@ -1001,7 +1018,7 @@ class Softmax(Layer):
 
     .. math::
 
-        Softmax[i, j] = \\frac{\\exp(x[i, j])}{\\sum_j(exp(x[i, j])}
+        Softmax[i, j] = \frac{\exp(x[i, j])}{\sum_j(exp(x[i, j])}
 
     Example:
 
@@ -1105,10 +1122,10 @@ class LogSoftmax(Layer):
 
     .. math::
 
-        \\begin{aligned} 
-        Out[i, j] &= log(softmax(x)) \\\\
-        &= log(\\frac{\\exp(X[i, j])}{\\sum_j(\\exp(X[i, j])})
-        \\end{aligned}
+        \begin{array} {rcl}
+            Out[i, j] &= &log(softmax(x)) \\
+            &= &log(\frac{\exp(X[i, j])}{\sum_j(\exp(X[i, j])})
+        \end{array}
 
     Parameters:
         axis (int, optional): The axis along which to perform log_softmax
@@ -1167,12 +1184,14 @@ class Maxout(Layer):
 
     .. math::
 
-        &out_{si+j} = \max_{k} x_{gsi + sk + j} \\\\
-        &g = groups \\\\
-        &s = \\frac{input.size}{num\\_channels} \\\\
-        &0 \\le i < \\frac{num\\_channels}{groups} \\\\
-        &0 \\le j < s \\\\
-        &0 \\le k < groups
+        \begin{array}{l}
+            &out_{si+j} = \max_{k} x_{gsi + sk + j} \\
+            &g = groups \\
+            &s = \frac{input.size}{num\_channels} \\
+            &0 \le i < \frac{num\_channels}{groups} \\
+            &0 \le j < s \\
+            &0 \le k < groups
+        \end{array}
 
     Parameters:
         groups (int, optional): The groups number of maxout. `groups` specifies the

@@ -34,12 +34,12 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
     .. math::
 
-        y = \\frac{x}{ \\max\\left( \\lvert \\lvert x \\rvert \\rvert_p, epsilon\\right) }
+        y = \frac{x}{ \max\left( \lvert \lvert x \rvert \rvert_p, epsilon\right) }
     
     .. math::
-        \\lvert \\lvert x \\rvert \\rvert_p = \\left( \\sum_i {\\lvert x_i \\rvert^p}  \\right)^{1/p}
+        \lvert \lvert x \rvert \rvert_p = \left( \sum_i {\lvert x_i \rvert^p}  \right)^{1/p}
 
-    where, :math:`\\sum_i{\\lvert x_i \\rvert^p}` is calculated along the ``axis`` dimension.
+    where, :math:`\sum_i{\lvert x_i \rvert^p}` is calculated along the ``axis`` dimension.
 
 
     Parameters:
@@ -86,7 +86,8 @@ def normalize(x, p=2, axis=1, epsilon=1e-12, name=None):
 
     check_type(p, 'p', (float, int), 'normalize')
     check_type(axis, 'axis', (int), 'normalize')
-    check_variable_and_dtype(x, 'x', ['float32', 'float64'], 'normalize')
+    check_variable_and_dtype(x, 'x', ['float16', 'float32', 'float64'],
+                             'normalize')
     if len(x.shape) == 1 and axis != 0 and axis != -1:
         raise ValueError(
             "Axis must be 0 or -1 when x is a 1-D tensor, but received axis = {}".
@@ -432,7 +433,7 @@ def local_response_norm(x,
 
         .. math::
 
-            Output(i, x, y) = Input(i, x, y) / \\left(k + \\alpha \\sum\\limits^{\\min(C-1, i + size/2)}_{j = \\max(0, i - size/2)}(Input(j, x, y))^2\\right)^{\\beta}
+            Output(i, x, y) = Input(i, x, y) / \left(k + \alpha \sum\limits^{\min(C-1, i + size/2)}_{j = \max(0, i - size/2)}(Input(j, x, y))^2\right)^{\beta}
 
         In the above equation:
 

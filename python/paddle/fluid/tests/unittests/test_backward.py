@@ -16,6 +16,9 @@ from __future__ import print_function
 
 import unittest
 import paddle.fluid as fluid
+import paddle.static as static
+import paddle
+
 import numpy as np
 
 
@@ -327,6 +330,35 @@ class TestAppendBackwardWithError(unittest.TestCase):
                 loss=self.avg_loss, callbacks=callback)
 
 
+class TestGradientsWithOptimizer(unittest.TestCase):
+    def _check_grad_op_name(self, forward_list, optimiezed_list):
+        backward_list = [op + "_grad" for op in reversed(forward_list)]
+        idx = optimiezed_list.index(backward_list[0], len(backward_list))
+
+        self.assertListEqual(backward_list,
+                             optimiezed_list[idx:idx + len(backward_list)])
+
+    def test_gradient_with_optimizer(self):
+        main = fluid.Program()
+        startup = fluid.Program()
+
+        with fluid.program_guard(main, startup):
+            img = static.data(name='image', shape=[None, 784])
+            pred = static.nn.fc(x=img, size=10, activation='relu')
+            loss = paddle.mean(pred)
+            opt = paddle.optimizer.Momentum(learning_rate=0.01, momentum=0.9)
+
+            forward_list = [o.type for o in main.current_block().ops]
+            optimize_ops, pram_grads = paddle.autograd.backward_mode.gradients_with_optimizer(
+                main, opt)
+
+            optimized_list = [o.type for o in main.current_block().ops]
+
+            self.assertGreater(len(optimized_list), len(forward_list))
+            self.assertIn(opt.type, optimized_list)
+            self._check_grad_op_name(forward_list, optimized_list)
+
+
 # TODO(Aurelius84): add conditional network test
 class ConditionalNet(BackwardNet):
     def __init__(self):
@@ -334,4 +366,5 @@ class ConditionalNet(BackwardNet):
 
 
 if __name__ == '__main__':
+    paddle.enable_static()
     unittest.main()

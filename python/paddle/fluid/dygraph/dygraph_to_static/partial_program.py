@@ -17,7 +17,7 @@ import numpy as np
 import six
 
 import paddle
-from paddle.fluid import framework, backward, core
+from paddle.fluid import framework, backward, core, program_guard
 from paddle.fluid.dygraph import layers
 from paddle.fluid.dygraph.base import switch_to_static_graph
 from paddle.fluid.dygraph.dygraph_to_static import logging_utils
@@ -26,6 +26,9 @@ from paddle.fluid.layers.utils import flatten
 from paddle.fluid.layers.utils import pack_sequence_as
 from paddle.fluid.layers.utils import _hash_with_id
 from paddle.fluid.compiler import BuildStrategy
+from paddle.fluid.contrib.mixed_precision.decorator import AutoMixedPrecisionLists
+from paddle.fluid.contrib.mixed_precision.fp16_utils import rewrite_program
+from paddle.fluid.dygraph.amp.auto_cast import _in_amp_guard
 import paddle.compat as cpt
 from paddle import _C_ops
 
@@ -149,6 +152,9 @@ class PartialProgramLayer:
         self._double_grads = self._get_double_grads(self._origin_main_program)
         self.training = True
 
+        # For AMP training
+        self._amp_list = AutoMixedPrecisionLists()
+
     @LazyInitialized
     def _infer_program(self):
         """
@@ -169,12 +175,39 @@ class PartialProgramLayer:
         return train_program
 
     @LazyInitialized
+    @switch_to_static_graph
+    def _infer_amp_program(self):
+        """
+        Lazy initialized property of infer_amp_program.
+        """
+        infer_amp_program = self._origin_main_program.clone()
+        with program_guard(infer_amp_program):
+            rewrite_program(infer_amp_program, self._amp_list)
+
+        return infer_amp_program
+
+    @LazyInitialized
+    def _train_amp_program(self):
+        """
+        Lazy initialized property of train_amp_program.
+        """
+        return self._append_backward_desc(self._infer_amp_program)
+
+    @LazyInitialized
     def _infer_program_id(self):
         return _hash_with_id(self._infer_program, self)
 
     @LazyInitialized
     def _train_program_id(self):
         program_id = _hash_with_id(self._train_program, self)
+        core._set_cached_executor_build_strategy(program_id,
+                                                 self._build_strategy)
+
+        return program_id
+
+    @LazyInitialized
+    def _train_amp_program_id(self):
+        program_id = _hash_with_id(self._train_amp_program, self)
         core._set_cached_executor_build_strategy(program_id,
                                                  self._build_strategy)
 
@@ -241,28 +274,46 @@ class PartialProgramLayer:
                     double_grads.append(var_base)
         return self._valid_vars(double_grads)
 
+    def _get_end_op_index(self):
+        infer_program = self._infer_amp_program if _in_amp_guard(
+        ) else self._infer_program
+        return infer_program.desc.block(0).op_size()
+
     def __call__(self, inputs):
         in_vars, out_vars = self._prepare(inputs)
 
         attrs = ('global_block', self.program.desc.block(0), 'start_op_index',
-                 0, 'end_op_index', self._infer_program.desc.block(0).op_size(),
-                 'is_test', not self.training, 'program_id', self.program_id)
+                 0, 'end_op_index', self._get_end_op_index(), 'is_test',
+                 not self.training, 'program_id', self.program_id)
         _C_ops.run_program(
             self._valid_vars(in_vars),
             self._valid_vars(self._params),
             self._valid_vars(out_vars), self._tmp_scope_vec, self._double_grads,
             *attrs)
-
+        self.drop_scope_if_no_grad()
         restored_nest_out = self._restore_out(out_vars)
         return self._remove_no_value(restored_nest_out)
 
+    def drop_scope_if_no_grad(self):
+        tracer = framework._dygraph_tracer()
+        if self.training and not tracer._has_grad:
+            self._tmp_scope_vec.value().get_scope().drop_kids()
+
     @property
     def program(self):
-        return self._train_program if self.training else self._infer_program
+        if self.training:
+            return self._train_amp_program if _in_amp_guard(
+            ) else self._train_program
+        else:
+            return self._infer_program
 
     @property
     def program_id(self):
-        return self._train_program_id if self.training else self._infer_program_id
+        if self.training:
+            return self._train_amp_program_id if _in_amp_guard(
+            ) else self._train_program_id
+        else:
+            return self._infer_program_id
 
     def _prepare(self, inputs):
         """
@@ -428,11 +479,12 @@ class PartialProgramLayer:
                 if isinstance(var, framework.Parameter):
                     if name not in param_and_buffer_names_set:
                         raise ValueError(
-                            "\n\tWe don't support to define layer with parameters in the function "
-                            "decorated by `@declarative`.\n\tBecause that will re-defined parameters "
-                            "every time when you run the function.\n\t"
-                            "But we found parameter(%s) was created in the decorated function.\n\t"
-                            "Please define the layer with parameters in `__init__` function."
+                            "\n\tWe don't support to define layer with parameters in the function decorated by `@to_static`."
+                            "\n\tBut we found parameter(%s) was created in the decorated function."
+                            "\n"
+                            "\n\tRevise suggestion: "
+                            "\n\t\t1. Please ensure all your sublayers are inheritted from nn.Layer."
+                            "\n\t\t2. Please use nn.ParameterList and nn.LayerList as container instead of using a native Python container such as List"
                             % name)
 
     def _valid_vars(self, vars):

@@ -19,7 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 
 #ifdef PADDLE_WITH_XPU
-#include "paddle/fluid/platform/xpu_header.h"
+#include "paddle/fluid/platform/xpu/xpu_header.h"
 #endif
 
 namespace paddle {

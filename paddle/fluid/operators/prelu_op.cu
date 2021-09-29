@@ -87,8 +87,9 @@ __global__ void PReluOpGradKernel(const T* x_ptr, const T* alpha_ptr,
     }
     T x = x_ptr[index];
     T dy = dy_ptr[index];
-    if (dx_ptr != nullptr) dx_ptr[index] = (x > 0) ? dy : scale * dy;
-    if (dalpha_ptr != nullptr) dalpha_ptr[index] = (x > 0) ? 0 : x * dy;
+    T zero = static_cast<T>(0);
+    if (dx_ptr != nullptr) dx_ptr[index] = (x > zero) ? dy : scale * dy;
+    if (dalpha_ptr != nullptr) dalpha_ptr[index] = (x > zero) ? zero : x * dy;
   }
 }
 
@@ -112,9 +113,11 @@ class PreluOpGradFunctor {
   }
 };
 
-template <typename T>
 struct IdentityFunctor {
-  HOSTDEVICE inline T operator()(const T& x) const { return x; }
+  template <typename T>
+  HOSTDEVICE inline T operator()(const T& x) const {
+    return x;
+  }
 };
 
 template <typename DeviceContext, typename T>
@@ -174,9 +177,9 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
       reduce_dims.push_back(i);
     }
 
-    TensorReduce<T, T, cub::Sum, IdentityFunctor<T>>(
+    TensorReduce<T, T, cub::Sum, IdentityFunctor>(
         dalpha_tmp, dalpha, reduce_dims, static_cast<T>(0), cub::Sum(),
-        IdentityFunctor<T>(), stream);
+        IdentityFunctor(), stream);
   }
 };
 
@@ -184,10 +187,14 @@ class CUDAPReluGradKernel : public framework::OpKernel<T> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     prelu, ops::CUDAPReluKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::CUDAPReluKernel<paddle::platform::CUDADeviceContext, plat::float16>,
     ops::CUDAPReluKernel<paddle::platform::CUDADeviceContext, double>);
 REGISTER_OP_CUDA_KERNEL(
     prelu_grad,
     ops::CUDAPReluGradKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::CUDAPReluGradKernel<paddle::platform::CUDADeviceContext,
+                             plat::float16>,
     ops::CUDAPReluGradKernel<paddle::platform::CUDADeviceContext, double>);

@@ -29,11 +29,6 @@ class LookupTableV2NPUKernel : public framework::OpKernel<T> {
     auto *output_t = ctx.Output<framework::LoDTensor>("Out");  // float tensor
     auto *table_t = ctx.Input<framework::LoDTensor>("W");
 
-    // It seems cann 20.1 accepts int64, but cann 20.2+ not.
-    PADDLE_ENFORCE_EQ(ids_t->type(), framework::proto::VarType::INT32,
-                      platform::errors::Unimplemented(
-                          "The index of LookupTableV2 should be int32."));
-
     auto *table_var = ctx.InputVar("W");
     PADDLE_ENFORCE_EQ(
         table_var->IsType<framework::LoDTensor>(), true,
@@ -65,8 +60,9 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
 
-    int embedding_dim = table_grad_t->dims()[1];
+    /* EmbeddingDenseGrad has bug on large shape, temporarily disable it.
 
+    int embedding_dim = table_grad_t->dims()[1];
     if (embedding_dim % 32 == 0) {
       // NOTE(pangyoki): The embedding_dim of Tensor used in
       // EmbeddingDenseGrad must be an integer multiple of 32.
@@ -77,19 +73,21 @@ class LookupTableV2GradNPUKernel : public framework::OpKernel<T> {
                                         {"padding_idx", -1},
                                         {"scale_grad_by_freq", false}});
       runner.Run(stream);
-    } else {
-      const auto &runner_zeros =
-          NpuOpRunner("ZerosLike", {*table_grad_t}, {*table_grad_t});
-      runner_zeros.Run(stream);
-
-      // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
-      // can be different tensor, but in cann 20.2+, it does inplace operation.
-      // Thus, the first input and output should be same tensor.
-      const auto &runner_scatter =
-          NpuOpRunner("ScatterAdd", {*table_grad_t, *ids_t, *output_grad_t},
-                      {*table_grad_t}, {{"use_locking", true}});
-      runner_scatter.Run(stream);
+      return;
     }
+    */
+
+    const auto &runner_zeros =
+        NpuOpRunner("ZerosLike", {*table_grad_t}, {*table_grad_t});
+    runner_zeros.Run(stream);
+
+    // NOTE(zhiqiu): It seems in cann 20.1, the first input and output
+    // can be different tensor, but in cann 20.2+, it does inplace operation.
+    // Thus, the first input and output should be same tensor.
+    const auto &runner_scatter =
+        NpuOpRunner("ScatterAdd", {*table_grad_t, *ids_t, *output_grad_t},
+                    {*table_grad_t}, {{"use_locking", true}});
+    runner_scatter.Run(stream);
   }
 };
 }  // namespace operators
