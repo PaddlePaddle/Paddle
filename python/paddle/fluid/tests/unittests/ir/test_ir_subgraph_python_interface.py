@@ -19,6 +19,7 @@ import six
 
 from paddle.fluid.framework import IrGraph
 from paddle.fluid.framework import IrNode
+from paddle.fluid.tests.unittests.op_test import OpTestTool
 from paddle.fluid import core
 import paddle.fluid.layers as layers
 from paddle.fluid.framework import Program, program_guard, default_startup_program
@@ -66,11 +67,12 @@ class TestQuantizationSubGraph(unittest.TestCase):
         # be destructed and the sub_graphs will be empty.
         return graph, all_sub_graphs
 
-    def test_quant_sub_graphs(self):
+    def test_quant_sub_graphs(self, use_cuda=False):
         graph, sub_graphs = self.build_graph_with_sub_graph()
+        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
         transform_pass = QuantizationTransformPass(
             scope=fluid.global_scope(),
-            place=fluid.CUDAPlace(0),
+            place=place,
             activation_quantize_type='abs_max',
             weight_quantize_type='range_abs_max')
         Find_inserted_quant_op = False
@@ -80,6 +82,14 @@ class TestQuantizationSubGraph(unittest.TestCase):
                 if 'quantize' in op.name():
                     Find_inserted_quant_op = True
         self.assertTrue(Find_inserted_quant_op)
+
+    def test_quant_sub_graphs_cpu(self):
+        self.test_quant_sub_graphs(use_cuda=False)
+
+    @OpTestTool.skip_if(not paddle.is_compiled_with_cuda(),
+                        "Not GPU version paddle")
+    def test_quant_sub_graphs_gpu(self):
+        self.test_quant_sub_graphs(use_cuda=True)
 
 
 if __name__ == '__main__':
