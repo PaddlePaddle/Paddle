@@ -39,9 +39,10 @@ static inline std::tuple<bool, bool> _parse_qr_mode(std::string mode) {
     compute_q = false;
     reduced = true;
   } else {
-    PADDLE_ENFORCE(
-        false, "QR received unrecognized mode '", mode,
-        "' but expected one of 'reduced' (default), 'r', or 'complete'");
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "QR received unrecognized mode '%s'"
+        " but expected one of 'reduced' (default), 'r', or 'complete'",
+        mode));
   }
   return std::make_tuple(compute_q, reduced);
 }
@@ -125,9 +126,8 @@ template <typename DeviceContext, typename T>
 class QrGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const {
-    PADDLE_ENFORCE(
-        false,
-        "QR doesn't have the backward kernel now and will be supported soon.");
+    PADDLE_THROW(platform::errors::InvalidArgument(
+        "QR doesn't have the backward kernel now and will be supported soon."));
   }
 };
 

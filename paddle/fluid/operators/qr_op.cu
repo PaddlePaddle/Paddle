@@ -50,9 +50,18 @@ class QrGPUKernel : public framework::OpKernel<T> {
     int m = x_dims[x_rank - 2];
     int n = x_dims[x_rank - 1];
     int min_mn = std::min(m, n);
+    int k = reduced_mode ? min_mn : m;
     int batch_size = numel / (m * n);
     int qr_stride = m * n;
     int tau_stride = min_mn;
+
+    if (compute_q) {
+      q.mutable_data<math::Real<T>>(
+          context.GetPlace(),
+          size_t(batch_size * m * k * sizeof(math::Real<T>)));
+    }
+    r.mutable_data<math::Real<T>>(
+        context.GetPlace(), size_t(batch_size * k * n * sizeof(math::Real<T>)));
 
     auto dito =
         math::DeviceIndependenceTensorOperations<platform::CUDADeviceContext,
@@ -75,7 +84,7 @@ class QrGPUKernel : public framework::OpKernel<T> {
 
     // Transpose 'qr' to conform the column-major order
     auto tmp_qr = dito.Transpose(qr);
-    qr.ShareDataWith(tmp_qr);
+    framework::TensorCopy(tmp_qr, qr.place(), &qr);
     auto qr_data = qr.mutable_data<T>(context.GetPlace());
     auto tau_data = tau.mutable_data<T>(context.GetPlace());
 
@@ -87,12 +96,12 @@ class QrGPUKernel : public framework::OpKernel<T> {
       auto sliced_qr = dito.Slice(trans_qr, {-2}, {0}, {min_mn});
       auto tmp_r = dito.TrilTriu(sliced_qr, 0, false);
       // Transpose 'tmp_r' to retore the original row-major order
-      r.ShareDataWith(tmp_r);
+      framework::TensorCopy(tmp_r, r.place(), &r);
     } else {
       auto trans_qr = dito.Transpose(qr);
       auto tmp_r = dito.TrilTriu(trans_qr, 0, false);
       // Transpose 'tmp_r' to retore the original row-major order
-      r.ShareDataWith(tmp_r);
+      framework::TensorCopy(tmp_r, r.place(), &r);
     }
 
     if (compute_q) {
@@ -103,7 +112,7 @@ class QrGPUKernel : public framework::OpKernel<T> {
                      tau_data, qr_stride, tau_stride);
         auto trans_q = dito.Transpose(qr);
         auto sliced_q = dito.Slice(trans_q, {-1}, {0}, {min_mn});
-        q.ShareDataWith(sliced_q);
+        framework::TensorCopy(sliced_q, q.place(), &q);
       } else {
         if (m > n) {
           auto new_qr_dims_vec = framework::vectorize<int>(x_dims);
@@ -122,13 +131,13 @@ class QrGPUKernel : public framework::OpKernel<T> {
           BatchedOrgqr(dev_ctx, batch_size, m, m, min_mn, new_qr_data, m,
                        tau_data, new_qr_stride, tau_stride);
           auto trans_q = dito.Transpose(new_qr);
-          q.ShareDataWith(trans_q);
+          framework::TensorCopy(trans_q, q.place(), &q);
         } else {
           BatchedOrgqr(dev_ctx, batch_size, m, m, min_mn, qr_data, m, tau_data,
                        qr_stride, tau_stride);
           auto trans_q = dito.Transpose(qr);
           auto sliced_q = dito.Slice(trans_q, {-1}, {0}, {m});
-          q.ShareDataWith(sliced_q);
+          framework::TensorCopy(sliced_q, q.place(), &q);
         }
       }
     }

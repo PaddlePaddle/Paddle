@@ -1595,7 +1595,8 @@ def matrix_power(x, n, name=None):
 
 def qr(x, mode="reduced", name=None):
     r"""
-    Computes the QR decomposition of one matrix or batches of matrice.
+    Computes the QR decomposition of one matrix or batches of matrice. Note that this operator
+    does not support the backward for now.
 
     Args:
         x (Tensor): The input tensor. Its shape should be `[..., M, N]`,
