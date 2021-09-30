@@ -91,7 +91,7 @@ void StringMapFromStream(std::istream& is,
     char* tmp = new char[token_length];
     is.read(tmp, token_length);
     std::string token(tmp, tmp + token_length);
-    free(tmp);
+    delete tmp;
     // read the token_id
     int32_t token_id;
     is.read(reinterpret_cast<char*>(&token_id), sizeof(token_id));
