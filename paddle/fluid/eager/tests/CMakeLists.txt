@@ -1,7 +1,6 @@
 add_subdirectory(benchmark)
 
 cc_test(test_egr_autocodegen SRCS generated_test.cc DEPS ${eager_deps} ${fluid_deps} ${generated_deps})
-add_dependencies(test_egr_autocodegen eager_codegen)
 
 cc_test(test_egr_utils SRCS eager_utils_test.cc DEPS ${eager_deps} ${fluid_deps})
 cc_test(test_egr_backward SRCS backward_test.cc DEPS ${eager_deps} ${fluid_deps})
