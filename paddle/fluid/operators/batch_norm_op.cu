@@ -166,7 +166,8 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
 #else
     const bool fast_nhwc_batch_norm =
         test_mode ||
-        (dtype == CUDNN_DATA_HALF && FLAGS_cudnn_batchnorm_spatial_persistent);
+        ((dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
+         FLAGS_cudnn_batchnorm_spatial_persistent);
 
     auto compute_format =
         fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
@@ -904,8 +905,8 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 // auto compute_format = DataLayout::kNCHW;
 #else
     const bool fast_nhwc_batch_norm =
-        dtype == CUDNN_DATA_HALF && FLAGS_cudnn_batchnorm_spatial_persistent &&
-        reserve_space != nullptr;
+        (dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLAOT16) &&
+        FLAGS_cudnn_batchnorm_spatial_persistent && reserve_space != nullptr;
     auto compute_format =
         fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
             ? DataLayout::kNHWC
@@ -1339,28 +1340,42 @@ class BatchNormDoubleGradKernel<platform::CUDADeviceContext, T>
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
+
+#define REGISTER_BN_CUDA_BASE(op_name, ...)                          \
+  REGISTER_OP_CUDA_KERNEL(                                           \
+      op_name, ops::BatchNormKernel<plat::CUDADeviceContext, float>, \
+      ops::BatchNormKernel<plat::CUDADeviceContext, plat::float16>,  \
+      ##__VA_ARGS__);
+
+#define REGISTER_BNGRAD_CUDA_BASE(op_name, ...)                          \
+  REGISTER_OP_CUDA_KERNEL(                                               \
+      op_name, ops::BatchNormGradKernel<plat::CUDADeviceContext, float>, \
+      ops::BatchNormGradKernel<plat::CUDADeviceContext, plat::float16>,  \
+      ##__VA_ARGS__);
+
 #ifdef PADDLE_WITH_HIP
 // MIOPEN do not support double
-REGISTER_OP_CUDA_KERNEL(
-    batch_norm, ops::BatchNormKernel<plat::CUDADeviceContext, float>,
-    ops::BatchNormKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    batch_norm_grad, ops::BatchNormGradKernel<plat::CUDADeviceContext, float>,
-    ops::BatchNormGradKernel<plat::CUDADeviceContext, plat::float16>);
+REGISTER_BN_CUDA_BASE(batch_norm);
+REGISTER_BNGRAD_CUDA_KERNEL(batch_norm_grad);
 REGISTER_OP_CUDA_KERNEL(
     batch_norm_grad_grad,
     ops::BatchNormDoubleGradKernel<plat::CUDADeviceContext, float>);
-#else
-REGISTER_OP_CUDA_KERNEL(
-    batch_norm, ops::BatchNormKernel<plat::CUDADeviceContext, float>,
-    ops::BatchNormKernel<plat::CUDADeviceContext, double>,
-    ops::BatchNormKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    batch_norm_grad, ops::BatchNormGradKernel<plat::CUDADeviceContext, float>,
-    ops::BatchNormGradKernel<plat::CUDADeviceContext, double>,
-    ops::BatchNormGradKernel<plat::CUDADeviceContext, plat::float16>);
+#else  // PADDLE_WITH_HIP
+#if CUDNN_VERSION >= 8100
+REGISTER_BN_CUDA_BASE(
+    batch_norm, ops::BatchNormKernel<plat::CUDADeviceContext, double>,
+    ops::BatchNormKernel<plat::CUDADeviceContext, plat::bfloat16>);
+REGISTER_BNGRAD_CUDA_BASE(
+    batch_norm_grad, ops::BatchNormGradKernel<plat::CUDADeviceContext, double>,
+    ops::BatchNormGradKernel<plat::CUDADeviceContext, plat::bfloat16>);
+#else   // CUDNN_VERSION >= 8100
+REGISTER_BN_CUDA_BASE(batch_norm,
+                      ops::BatchNormKernel<plat::CUDADeviceContext, double>);
+REGISTER_BNGRAD_CUDA_BASE(
+    batch_norm_grad, ops::BatchNormGradKernel<plat::CUDADeviceContext, double>);
+#endif  // CUDNN_VERSION >= 8100
 REGISTER_OP_CUDA_KERNEL(
     batch_norm_grad_grad,
     ops::BatchNormDoubleGradKernel<plat::CUDADeviceContext, float>,
     ops::BatchNormDoubleGradKernel<plat::CUDADeviceContext, double>);
-#endif
+#endif  // PADDLE_WITH_HIP
