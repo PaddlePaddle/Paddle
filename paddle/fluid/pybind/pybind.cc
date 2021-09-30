@@ -125,6 +125,11 @@ limitations under the License. */
 #include "paddle/fluid/platform/xpu/xpu_info.h"
 #endif
 
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/framework/ipu/ipu_backend.h"
+#include "paddle/fluid/platform/ipu_info.h"
+#endif
+
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
 #endif
@@ -179,6 +184,14 @@ bool IsCompiledWithXPU() {
 
 bool IsCompiledWithNPU() {
 #ifndef PADDLE_WITH_ASCEND_CL
+  return false;
+#else
+  return true;
+#endif
+}
+
+bool IsCompiledWithIPU() {
+#ifndef PADDLE_WITH_IPU
   return false;
 #else
   return true;
@@ -729,6 +742,8 @@ PYBIND11_MODULE(core_noavx, m) {
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::NPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
+      .def("set", SetTensorFromPyArray<paddle::platform::IPUPlace>,
+           py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::CUDAPinnedPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false,
            R"DOC(
@@ -736,7 +751,7 @@ PYBIND11_MODULE(core_noavx, m) {
         
         Args:
           lod (numpy.ndarray): The data to set.
-          place (CPUPlace|CUDAPlace|XPUPlace|CUDAPinnedPlace|NPUPlace): The place where the
+          place (CPUPlace|CUDAPlace|XPUPlace|IPUPlace|CUDAPinnedPlace|NPUPlace): The place where the
           LoDTensor is to be set.
           zero_copy (bool, optional): Whether to share memory with the input numpy array.
           This parameter only works with CPUPlace. Default: False.
@@ -1786,6 +1801,55 @@ All parameter, weight, gradient are variables in Paddle.
            [](const platform::NPUPlace &self) { return self.GetDeviceId(); })
       .def("__str__", string::to_string<const platform::NPUPlace &>);
 
+  // IPUPlace
+  py::class_<platform::IPUPlace>(m, "IPUPlace", R"DOC(
+    IPUPlace is a descriptor of a device.
+    It represents a IPU device on which a tensor will be allocated and a model will run.
+
+    Examples:
+        .. code-block:: python
+          import paddle
+          ipu_place = paddle.IPUPlace(0)
+
+        )DOC")
+      .def("__init__",
+           [](platform::IPUPlace &self) {
+#ifdef PADDLE_WITH_IPU
+             if (platform::GetIPUDeviceCount() == 0) {
+               LOG(ERROR) << "Cannot use IPU because there is no IPU "
+                             "detected on your "
+                             "machine.";
+               std::exit(-1);
+             }
+             // use ipu(0) to comile, while run with the number user configure
+             // in sharding and pipline.
+             new (&self) platform::IPUPlace(0);
+#else
+             LOG(ERROR) << string::Sprintf(
+                 "Cannot use IPU because you didn't install IPU version "
+                 "PaddlePaddle.\n"
+                 "If you want to use IPU, please try to install IPU version "
+                 "PaddlePaddle by: pip install paddlepaddle*\n"
+                 "If you only have CPU, please change IPUPlace to be "
+                 "CPUPlace().\n");
+             std::exit(-1);
+#endif
+           })
+      .def("_type", &PlaceIndex<platform::IPUPlace>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::Place>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::CUDAPlace>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::CPUPlace>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::XPUPlace>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::NPUPlace>)
+      .def("_equals", &IsSamePlace<platform::IPUPlace, platform::IPUPlace>)
+      .def("_equals",
+           &IsSamePlace<platform::IPUPlace, platform::CUDAPinnedPlace>)
+#ifdef PADDLE_WITH_IPU
+      .def("get_device_id",
+           [](const platform::IPUPlace &self) { return self.GetDeviceId(); })
+#endif
+      .def("__str__", string::to_string<const platform::IPUPlace &>);
+
   py::class_<platform::Place>(m, "Place")
       .def(py::init<>())
       .def("_type", &PlaceIndex<platform::Place>)
@@ -1794,6 +1858,7 @@ All parameter, weight, gradient are variables in Paddle.
       .def("_equals", &IsSamePlace<platform::Place, platform::CPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::XPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::NPUPlace>)
+      .def("_equals", &IsSamePlace<platform::Place, platform::IPUPlace>)
       .def("_equals", &IsSamePlace<platform::Place, platform::CUDAPinnedPlace>)
       .def("is_gpu_place",
            [](platform::Place &self) { return platform::is_gpu_place(self); })
@@ -1803,6 +1868,8 @@ All parameter, weight, gradient are variables in Paddle.
            [](platform::Place &self) { return platform::is_xpu_place(self); })
       .def("is_npu_place",
            [](platform::Place &self) { return platform::is_npu_place(self); })
+      .def("is_ipu_place",
+           [](platform::Place &self) { return platform::is_ipu_place(self); })
       .def("is_cuda_pinned_place",
            [](platform::Place &self) {
              return platform::is_cuda_pinned_place(self);
@@ -1818,6 +1885,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def("npu_device_id",
            [](platform::Place &self) {
              return BOOST_GET_CONST(platform::NPUPlace, self).device;
+           })
+      .def("ipu_device_id",
+           [](platform::Place &self) {
+             return BOOST_GET_CONST(platform::IPUPlace, self).device;
            })
       .def("set_place", [](platform::Place &self,
                            const platform::Place &other) { self = other; })
@@ -1841,6 +1912,10 @@ All parameter, weight, gradient are variables in Paddle.
       .def("set_place",
            [](platform::Place &self, const platform::NPUPlace &npu_place) {
              self = npu_place;
+           })
+      .def("set_place",
+           [](platform::Place &self, const platform::IPUPlace &ipu_place) {
+             self = ipu_place;
            })
       .def("__repr__", string::to_string<const platform::Place &>)
       .def("__str__", string::to_string<const platform::Place &>);
@@ -2060,9 +2135,11 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("is_compiled_with_ascend", IsCompiledWithAscend);
   m.def("is_compiled_with_rocm", IsCompiledWithROCM);
   m.def("is_compiled_with_npu", IsCompiledWithNPU);
+  m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("is_compiled_with_xpu", IsCompiledWithXPU);
   m.def("is_compiled_with_mkldnn", IsCompiledWithMKLDNN);
   m.def("_is_compiled_with_heterps", IsCompiledWithHETERPS);
+  m.def("is_compiled_with_ipu", IsCompiledWithIPU);
   m.def("supports_bfloat16", SupportsBfloat16);
   m.def("supports_bfloat16_fast_performance", SupportsBfloat16FastPerformance);
   m.def("op_supported_infos", OpSupportedInfos);
@@ -2353,6 +2430,10 @@ All parameter, weight, gradient are variables in Paddle.
   });
 #endif
 
+#ifdef PADDLE_WITH_IPU
+  m.def("get_ipu_device_count", platform::GetIPUDeviceCount);
+#endif
+
   py::enum_<platform::TracerOption>(m, "TracerOption", py::arithmetic())
       .value("kDefault", platform::TracerOption::kDefault)
       .value("kOpDetail", platform::TracerOption::kOpDetail)
@@ -2430,6 +2511,11 @@ All parameter, weight, gradient are variables in Paddle.
                      bool val) { self.Set<bool>(name, new bool(val)); })
       .def("set", [](ir::Pass &self, const std::string &name,
                      int val) { self.Set<const int>(name, new int(val)); })
+      .def("set",
+           [](ir::Pass &self, const std::string &name,
+              std::vector<std::string> set) {
+             self.Set(name, new std::vector<std::string>(set));
+           })
       .def("set",
            [](ir::Pass &self, const std::string &name,
               std::unordered_set<std::string> set) {
@@ -3254,6 +3340,110 @@ All parameter, weight, gradient are variables in Paddle.
              }
            })
       .def("device_count", &ParallelExecutor::DeviceCount);
+
+#ifdef PADDLE_WITH_IPU
+  py::class_<framework::ipu::IpuBackend,
+             std::shared_ptr<framework::ipu::IpuBackend>>(m, "IpuBackend")
+      .def(py::init(&ipu::IpuBackend::GetNewInstance))
+      .def("clear", &ipu::IpuBackend::Clear)
+      .def("set_scope", &ipu::IpuBackend::SetScope)
+      .def("set_ipu_strategy", &ipu::IpuBackend::SetIpuStrategy);
+
+  py::class_<framework::ipu::IpuStrategy>(m, "IpuStrategy")
+      .def(py::init())
+      .def_property("num_ipus",
+                    [](const ipu::IpuStrategy &self) { return self.num_ipus; },
+                    [](ipu::IpuStrategy &self, int num_ipus) {
+                      self.num_ipus = num_ipus;
+                    },
+                    R"DOC(
+            Int type, set the number ipu we need. Default 1.
+          )DOC")
+      .def_property("accumulationFactor",
+                    [](const ipu::IpuStrategy &self) {
+                      return self.popart_options_.accumulationFactor;
+                    },
+                    [](ipu::IpuStrategy &self, int accumulationFactor) {
+                      self.popart_options_.accumulationFactor =
+                          accumulationFactor;
+                    },
+                    R"DOC(
+            Specify the number of micro-batches to accumulate before
+            applying the varUpdate. Default 1.
+          )DOC")
+      .def_property(
+          "batches_per_step",
+          [](const ipu::IpuStrategy &self) { return self.batches_per_step; },
+          [](ipu::IpuStrategy &self, int batches_per_step) {
+            self.batches_per_step = batches_per_step;
+          },
+          R"DOC(
+            Int type, set batches_per_step. Default 1.
+          )DOC")
+      .def_property(
+          "is_training",
+          [](const ipu::IpuStrategy &self) { return self.is_training; },
+          [](ipu::IpuStrategy &self, bool is_training) {
+            self.is_training = is_training;
+          },
+          R"DOC(
+            Bool type, True for training, False inference. Default True.
+          )DOC")
+      .def_property("enable_pipelining",
+                    [](const ipu::IpuStrategy &self) {
+                      return self.popart_options_.enablePipelining;
+                    },
+                    [](ipu::IpuStrategy &self, bool enable_pipelining) {
+                      self.popart_options_.enablePipelining = enable_pipelining;
+                    },
+                    R"DOC(
+            Bool type, True enable pipeline, otherwise disable. Default False.
+          )DOC")
+      .def_property("enable_manual_shard",
+                    [](const ipu::IpuStrategy &self) {
+                      return self.popart_options_.virtualGraphMode ==
+                             ipu::VirtualGraphMode::Manual;
+                    },
+                    [](ipu::IpuStrategy &self, bool enable_ipu_shard) {
+                      if (enable_ipu_shard) {
+                        self.popart_options_.virtualGraphMode =
+                            ipu::VirtualGraphMode::Manual;
+                      } else {
+                        self.popart_options_.virtualGraphMode =
+                            ipu::VirtualGraphMode::Off;
+                      }
+                    },
+                    R"DOC(
+            Bool type, True enable model sharding, otherwise disable. Default "
+            "False.
+          )DOC")
+      .def_property(
+          "need_avg_shard",
+          [](const ipu::IpuStrategy &self) { return self.need_avg_shard; },
+          [](ipu::IpuStrategy &self, bool need_avg_shard) {
+            self.need_avg_shard = need_avg_shard;
+          },
+          R"DOC(
+            Bool type, True enable avg shard, otherwise disable. Default False.
+          )DOC")
+      .def_property(
+          "batch_size",
+          [](const ipu::IpuStrategy &self) { return self.batch_size; },
+          [](ipu::IpuStrategy &self, int batch_size) {
+            self.batch_size = batch_size;
+          },
+          R"DOC(
+            Int type, used to make batch size fixed. Default 1.
+          )DOC")
+      .def_property(
+          "enable_fp16",
+          [](const ipu::IpuStrategy &self) { return self.enable_fp16; },
+          [](ipu::IpuStrategy &self, bool enable_fp16) {
+            self.enable_fp16 = enable_fp16;
+          },
+          R"DOC(
+            Bool type, True enable float16 mode, otherwise disable. Default False.)DOC");
+#endif
 
   BindFleetWrapper(&m);
   BindIO(&m);

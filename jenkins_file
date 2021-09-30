@@ -1,0 +1,47 @@
+pipeline {
+    agent {
+        label '172.10.100.143-agent-2'
+    }
+    stages {
+        stage('Build') {
+            agent {
+                label '172.10.100.143-agent-2'
+            }
+            steps {
+                echo 'Building...'
+                script {
+                    sh 'pwd > workspace'
+                    def workspace = readFile('workspace').trim()
+                    println("mywork space is: " + workspace)
+                    println("branch is: " + env.BRANCH_NAME)
+                    def current_folder = workspace.split("/")[4]
+                    println("current_folder is: " + current_folder)
+                    dir('build') {
+                     sh "pwd"
+                     sh 'ls ./ | grep -v "third_party" |xargs sudo rm -rf'
+                    }
+                    try {
+                        sh '/usr/bin/docker run --ulimit memlock=-1:-1 --net=host --cap-add=IPC_LOCK --device=/dev/infiniband/ --ipc=host --name paddle-with-dev-test -v /etc/ipuof.conf.d/:/etc/ipuof.conf.d/ -v $PWD:/paddle -v /home/haichengj/popsdk:/popsdk -itd paddlepaddle/paddle:latest-ipu-dev /bin/bash'sh 'docker start paddle-with-dev-test'
+                    } catch(error) {
+                        println("Create docker error, maybe it existed already.")
+                    } finally {}
+                    sh 'docker exec paddle-with-dev-test /bin/bash "/paddle/paddle/scripts/ipu/compile_ipu.sh"'
+                }
+                echo 'Build done'
+            }
+        }
+        stage('Test') {
+            steps {
+                echo 'Testing...'
+                sh 'docker exec paddle-with-dev-test /bin/bash "/paddle/paddle/scripts/ipu/prechekin.sh"'
+            }
+        }
+        stage('Destroy') {
+            steps {
+                echo 'Destroying...'
+                sh 'docker stop paddle-with-dev-test'
+                sh 'docker rm paddle-with-dev-test'
+            }
+        }
+    }
+}

@@ -61,6 +61,9 @@ limitations under the License. */
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/platform/stream/npu_stream.h"
 #endif
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/framework/ipu/device.h"
+#endif
 #include "unsupported/Eigen/CXX11/Tensor"
 
 namespace Eigen {
@@ -98,8 +101,8 @@ enum DeviceType {
   CUDA = 1,
   XPU = 2,
   NPU = 3,
-
-  MAX_DEVICE_TYPES = 4,
+  IPU = 4,
+  MAX_DEVICE_TYPES = 5,
 };
 
 DeviceType Place2DeviceType(const platform::Place& place);
@@ -108,6 +111,7 @@ constexpr DeviceType kCPU = DeviceType::CPU;
 constexpr DeviceType kCUDA = DeviceType::CUDA;
 constexpr DeviceType kXPU = DeviceType::XPU;
 constexpr DeviceType kNPU = DeviceType::NPU;
+constexpr DeviceType kIPU = DeviceType::IPU;
 
 class DeviceContext {
  public:
@@ -138,6 +142,30 @@ template <>
 struct DefaultDeviceContextType<platform::CPUPlace> {
   using TYPE = CPUDeviceContext;
 };
+
+// Graphcore IPU
+#ifdef PADDLE_WITH_IPU
+class IPUDeviceContext : public DeviceContext {
+ public:
+  IPUDeviceContext() = delete;
+  explicit IPUDeviceContext(IPUPlace place);
+  virtual ~IPUDeviceContext();
+  Eigen::DefaultDevice* eigen_device() const { return nullptr; }
+  Place GetPlace() const override;
+  /*! \brief  Wait for all operations completion in the stream. */
+  void Wait() const override;
+  int DeviceId() const { return device_.getId(); }
+
+ private:
+  IPUPlace place_;
+  framework::ipu::Device device_;
+};
+template <>
+struct DefaultDeviceContextType<platform::IPUPlace> {
+  using TYPE = IPUDeviceContext;
+};
+
+#endif
 
 #ifdef PADDLE_WITH_XPU
 namespace xpu = baidu::xpu::api;

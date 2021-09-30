@@ -1,4 +1,4 @@
-file(GLOB TEST_OPS RELATIVE
+python/paddle/fluid/tests/unittests/CMakeLists.txtfile(GLOB TEST_OPS RELATIVE
 "${CMAKE_CURRENT_SOURCE_DIR}" "test_*.py")
 string(REPLACE ".py" "" TEST_OPS "${TEST_OPS}")
 set(GC_ENVS FLAGS_eager_delete_tensor_gb=0.0 FLAGS_fast_eager_deletion_mode=1 FLAGS_memory_fraction_of_eager_deletion=1.0)
@@ -728,6 +728,10 @@ endif()
 
 if (WITH_MKLDNN)
     add_subdirectory(mkldnn)
+endif()
+
+if (WITH_IPU)
+    add_subdirectory(ipu)
 endif()
 
 add_subdirectory(asp)

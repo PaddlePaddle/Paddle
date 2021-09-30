@@ -53,6 +53,15 @@ void XPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
 }
 #endif
 
+#ifdef PADDLE_WITH_IPU
+IPUGarbageCollector::IPUGarbageCollector(const platform::IPUPlace &place,
+                                         size_t max_memory_size)
+    : GarbageCollector(place, max_memory_size) {}
+void IPUGarbageCollector::ClearCallback(const std::function<void()> &callback) {
+  callback();
+}
+#endif
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 UnsafeFastGPUGarbageCollector::UnsafeFastGPUGarbageCollector(
     const platform::CUDAPlace &place, size_t max_memory_size)

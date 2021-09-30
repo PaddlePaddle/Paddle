@@ -35,6 +35,9 @@
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu/xpu_info.h"
 #endif
+#ifdef PADDLE_WITH_IPU
+#include "paddle/fluid/platform/ipu_info.h"
+#endif
 #include "paddle/fluid/platform/npu_info.h"
 
 PADDLE_DEFINE_EXPORTED_int64(
@@ -65,6 +68,11 @@ class AllocatorFacadePrivate {
           InitNaiveBestFitXPUAllocator(platform::XPUPlace(dev_id));
         }
 #endif
+#ifdef PADDLE_WITH_IPU
+        for (int dev_id = 0; dev_id < platform::GetIPUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitIPUAllocator(platform::IPUPlace(dev_id));
+        }
+#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
              ++dev_id) {
@@ -88,6 +96,11 @@ class AllocatorFacadePrivate {
           InitNaiveBestFitXPUAllocator(platform::XPUPlace(dev_id));
         }
 #endif
+#ifdef PADDLE_WITH_IPU
+        for (int dev_id = 0; dev_id < platform::GetIPUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitIPUAllocator(platform::IPUPlace(dev_id));
+        }
+#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
         for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount();
              ++dev_id) {
@@ -103,6 +116,11 @@ class AllocatorFacadePrivate {
 #ifdef PADDLE_WITH_XPU
         for (int dev_id = 0; dev_id < platform::GetXPUDeviceCount(); ++dev_id) {
           InitNaiveBestFitXPUAllocator(platform::XPUPlace(dev_id));
+        }
+#endif
+#ifdef PADDLE_WITH_IPU
+        for (int dev_id = 0; dev_id < platform::GetIPUDeviceCount(); ++dev_id) {
+          InitNaiveBestFitIPUAllocator(platform::IPUPlace(dev_id));
         }
 #endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -153,6 +171,13 @@ class AllocatorFacadePrivate {
       system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
     }
 #endif
+#ifdef PADDLE_WITH_IPU
+    int device_count = platform::GetIPUDeviceCount();
+    for (int i = 0; i < device_count; ++i) {
+      platform::IPUPlace p(i);
+      system_allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+    }
+#endif
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     system_allocators_[platform::CUDAPinnedPlace()] =
         std::make_shared<CPUPinnedAllocator>();
@@ -192,6 +217,12 @@ class AllocatorFacadePrivate {
 
 #ifdef PADDLE_WITH_XPU
   void InitNaiveBestFitXPUAllocator(platform::XPUPlace p) {
+    allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
+  }
+#endif
+
+#ifdef PADDLE_WITH_IPU
+  void InitNaiveBestFitIPUAllocator(platform::IPUPlace p) {
     allocators_[p] = std::make_shared<NaiveBestFitAllocator>(p);
   }
 #endif
@@ -245,6 +276,12 @@ class AllocatorFacadePrivate {
     int device_count = platform::GetNPUDeviceCount();
     for (int dev_id = 0; dev_id < device_count; ++dev_id) {
       places.emplace_back(platform::NPUPlace(dev_id));
+    }
+#endif
+#ifdef PADDLE_WITH_IPU
+    int device_count = platform::GetIPUDeviceCount();
+    for (int dev_id = 0; dev_id < device_count; ++dev_id) {
+      places.emplace_back(platform::IPUPlace(dev_id));
     }
 #endif
 

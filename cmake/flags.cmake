@@ -151,6 +151,13 @@ set(COMMON_FLAGS
     ${fsanitize}
 )
 
+if(WITH_IPU)
+    set(COMMON_FLAGS ${COMMON_FLAGS} 
+        -Wno-sign-compare # Warnings in Popart
+        -Wno-non-virtual-dtor # Warnings in Popart
+    )
+endif()
+
 if(NOT APPLE)
     if((${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER 8.0) OR (WITH_ROCM))
         set(COMMON_FLAGS

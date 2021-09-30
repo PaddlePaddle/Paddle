@@ -236,7 +236,18 @@ void IRPassManager::CreatePasses(Argument *argument,
       bool use_fc_padding = !fc_mkldnn_pass && argument->use_fc_padding();
       pass->Set("use_fc_padding", new bool(use_fc_padding));
     }
-
+#ifdef PADDLE_WITH_IPU
+    if (pass_name == "ipu_graph_builder_pass" ||
+        pass_name == "ipu_runtime_replacer_pass") {
+      // Need to be modified in future
+      std::vector<std::string> feed_list = {"a", "b"};
+      std::vector<std::string> fetch_list = {"tmp_0"};
+      pass->Set("feed_list",
+                new std::vector<std::string>(std::move(feed_list)));
+      pass->Set("fetch_list",
+                new std::vector<std::string>(std::move(fetch_list)));
+    }
+#endif
     pre_pass = pass_name;
 
     passes_.emplace_back(std::move(pass));

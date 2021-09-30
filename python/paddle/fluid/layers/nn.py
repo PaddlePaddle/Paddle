@@ -491,7 +491,7 @@ def embedding(input,
     """
 
     helper = LayerHelper('embedding', **locals())
-    check_variable_and_dtype(input, 'input', ['int64'],
+    check_variable_and_dtype(input, 'input', ['int64', 'int32'],
                              'fluid.layers.embedding')
     check_dtype(dtype, 'dtype', ['uint16', 'float16', 'float32', 'float64'],
                 'fluid.layers.embedding')

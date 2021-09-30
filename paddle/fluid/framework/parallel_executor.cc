@@ -516,6 +516,16 @@ ir::Graph *ParallelExecutorPrivate::ApplyMemoryOptimizePass(ir::Graph *graph) {
           "Paddle can't use XPU device since it's not compiled with XPU,"
           "Please recompile or reinstall Paddle with XPU support."));
 #endif
+    } else if (platform::is_ipu_place(place)) {
+#if defined(PADDLE_WITH_IPU)
+      gc.reset(new IPUGarbageCollector(
+          BOOST_GET_CONST(platform::IPUPlace, place), max_memory_size));
+      VLOG(10) << "Created " << i << "-th GarbageCollector at " << place;
+#else
+      PADDLE_THROW(platform::errors::PermissionDenied(
+          "Paddle can't use IPU device since it's not compiled with IPU,"
+          "Please recompile or reinstall Paddle with IPU support."));
+#endif
     } else if (platform::is_cpu_place(place)) {
       gc.reset(new CPUGarbageCollector(
           BOOST_GET_CONST(platform::CPUPlace, place), max_memory_size));

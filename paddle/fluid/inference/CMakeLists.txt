@@ -53,6 +53,7 @@ if(WIN32 AND WITH_GPU)
   cc_library(paddle_inference DEPS ${fluid_modules} ${STATIC_INFERENCE_API})
 else()
   create_static_lib(paddle_inference ${fluid_modules} ${STATIC_INFERENCE_API})
+  target_link_libraries(paddle_inference -Wl,--allow-multiple-definition popart_canonicalization_utils)
 endif()
 
 if(NOT APPLE)
