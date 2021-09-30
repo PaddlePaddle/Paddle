@@ -869,11 +869,11 @@ class TheOnePSRuntime(RuntimeBase):
         proto_txt = str(server)
         fs_client = kwargs.get("fs_client") if "fs_client" in kwargs else {}
         if "uri" in fs_client and "user" in fs_client and "passwd" in fs_client and "hadoop_bin" in fs_client:
-            fs = fsClient(
+            self.fs = fsClient(
                 fs_client.get("uri"),
                 fs_client.get("user"),
                 fs_client.get("passwd"), fs_client.get("hadoop_bin"))
-            proto_txt = proto_txt + "\n" + fs.to_string()
+            proto_txt = proto_txt + "\n" + self.fs.to_string()
         #with open('./sparse_table.prototxt') as f:
         #    proto_txt = f.read()
 
@@ -991,9 +991,9 @@ class TheOnePSRuntime(RuntimeBase):
                 except:
                     pass
             # save sparse & distributed param on server
-#            self._worker.save_one_model(id, dirname, mode)
+            self._worker.save_one_model(id, dirname, mode)
             values.extend(names)
-        self._worker.save_all_model(dirname ,mode)
+        # self._worker.save_all_model(dirname, mode)
         return values
 
     def _save_distributed_persistables(self,
@@ -1026,18 +1026,12 @@ class TheOnePSRuntime(RuntimeBase):
                 TheOnePSRuntime.__exclude_vars(saved_varnames),
                 main_program.list_vars()))
 
-        dense_output_dir = './output_dense_param/' + '/'.join(dirname.split('/')[:-2]) + '/dense_vars'
-        os.mkdir(dense_output_dir)
-
         import paddle
-        #dirname = dirname + '/dense_vars/'
-        dirname = dense_output_dir
         for var in remaining_vars:
             if var.name not in recv_dense_varnames:
                 continue
             tensor = var.get_value()
             paddle.save(
-#                tensor, os.path.join(dense_output_dir, var.name), use_binary_format=True)
                 tensor, os.path.join(dirname, var.name), use_binary_format=True)
             ####TODO: zcb put into hdfs
 
@@ -1076,8 +1070,9 @@ class TheOnePSRuntime(RuntimeBase):
             )
 
         # Todo(MrChengmo): Save optimizer status
-        self._save_distributed_persistables(executor, dirname, main_program,
-                                            mode)
+        # self._save_distributed_persistables(executor, dirname, main_program,
+        #                                     mode)
+        self._worker.save_all_model(dirname, mode)
 
     def _ps_inference_save_inference_model(self,
                                            executor,
@@ -1118,9 +1113,29 @@ class TheOnePSRuntime(RuntimeBase):
 
         infer_program._copy_dist_param_info_from(program)
 
+        if dirname.startswith("afs:") or dirname.startswith("hdfs:"):
+            model_path = "./dnn_plugin"
+        else:
+            model_path = os.path.join(dirname, "dnn_plugin")
         model_basename = "__model__"
-        model_basename = os.path.join(dirname, model_basename)
+        model_basename = os.path.join(model_path, model_basename)
         paddle.save(infer_program, model_basename)
+
+        denses = self.compiled_strategy.get_the_one_recv_context(
+            is_dense=True,
+            split_dense_table=self.role_maker._is_heter_parameter_server_mode,
+            use_origin_program=True)
+        self._communicator.pull_dense(denses)
+
+        generate_vars = self.context["user_defined_strategy"].trainer_desc_configs["stat_var_names"]
+        remaining_vars = list(
+            filter(
+                TheOnePSRuntime.__exclude_vars(generate_vars),
+                infer_program.list_vars()))
+        for var in remaining_vars:
+            tensor = var.get_value()
+            paddle.save(
+                tensor, os.path.join(model_path, var.name), use_binary_format=True)
 
         self._ps_inference_save_persistables(executor, dirname, infer_program,
                                              mode)
@@ -1145,8 +1160,8 @@ class TheOnePSRuntime(RuntimeBase):
             values.extend(names)
         return values
 
-    def _load_distributed_persistables(self, dirname, main_program=None,
-                                       mode=0):
+    def _ps_inference_load_inference_model(self, dirname,
+                                       mode=0, main_program=None):
         if main_program is None:
             main_program = self.compiled_strategy.get_origin_ps_main_program()
 
@@ -1178,19 +1193,28 @@ class TheOnePSRuntime(RuntimeBase):
                 TheOnePSRuntime.__exclude_vars(loaded_varnames),
                 main_program.list_vars()))
 
+        if dirname.startswith("afs:") or dirname.startswith("hdfs:"):
+            model_path = "./dnn_plugin"
+        else:
+            model_path = os.path.join(dirname, "dnn_plugin")
         import paddle
-        #dirname = './dense_param_need_to_load'
         for var in remaining_vars:
             if var.name not in recv_dense_varnames:
                 continue
-            tensor = paddle.load(os.path.join(dirname, var.name))
+            tensor = paddle.load(os.path.join(model_path, var.name))
             var.set_value(tensor)
 
         self._communicator.init_params(denses)
 
-    def load_model(self, path, mode):
+    def _load_distributed_persistables(self, path, mode):
         self._worker.load_model(path, mode)
-#        self._load_distributed_persistables(path, mode=mode)
+
+    def load_model(self, path, mode):
+        if mode == 0 or mode == 3:
+            self._load_distributed_persistables(path, mode)
+        else:
+            self._ps_inference_load_inference_model(path, mode)
+        # self._load_distributed_persistables(path, mode=mode)
 
     def _shrink(self, threshold):
         import paddle.distributed.fleet as fleet
