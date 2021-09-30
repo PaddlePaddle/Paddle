@@ -28,6 +28,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/transfer_scope_cache.h"
 #include "paddle/fluid/framework/unused_var_check.h"
 #include "paddle/fluid/framework/var_type.h"
+#include "paddle/fluid/imperative/kernel_args_names_maker.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -1873,7 +1874,6 @@ pt::KernelKey OperatorWithKernel::ConstructPtKernelKey(
   return pt::KernelKey(backend, layout, dtype);
 }
 
-// TODO(chenweihang): This function is too complicated and needs to be split
 pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
     const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const {
   VLOG(1) << RuntimeContextDebugString(ctx);
@@ -1888,162 +1888,88 @@ pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
   pt::KernelContext op_kernel_ctx(dev_ctx);
   auto input_defs = pt_kernel_->args_def().input_defs();
   auto output_defs = pt_kernel_->args_def().output_defs();
+  auto attr_defs = pt_kernel_->args_def().attribute_defs();
 
   // TODO(chenweihang): use ordered_map for VariableNameMap and VariableValueMap
   // If we the VariableValueMap are ordered, we can get tensor by iter the map,
   // and its order is same as OpProto
 
-  // TODO(chenweihang): For scale op, when the input has a `ScaleTensor`,
-  // the following scale attribute should be skipped, and there are many
-  // such ops, which require certain rules to process, now only for verify
-  // scale op
-  std::unordered_map<std::string, bool> contain_host_tensor_flags{
-      {"ScaleTensor", false}};
-  std::unordered_map<std::string, std::string> attr_to_host_tensor{
-      {"scale", "ScaleTensor"}};
+  paddle::imperative::KernelArgsNameMakerByOpProto<Variable> argMaker(
+      Info().proto_, &ctx.inputs, &ctx.outputs);
 
-  auto* op_proto = Info().proto_;
-  for (int i = 0; i < op_proto->inputs_size(); ++i) {
-    auto in = op_proto->inputs()[i];
-    // TODO(chenweihang): skip special cases temporarily
-    // TODO(chenweihang): deal with diff param in vector
-    if ((in.has_extra() && in.extra()) || (in.has_quant() && in.quant())) {
-      VLOG(1) << "Static graph PtKernel input: skip extra & quant input - "
-              << in.name();
-      continue;
-    }
-    auto in_name = in.name();
-    if (in.has_dispensable() && in.dispensable()) {
-      if (contain_host_tensor_flags.count(in_name) > 0 &&
-          IsValidVar(in_name, ctx.inputs)) {
-        VLOG(1) << "Static graph PtKernel input: contain host input - "
-                << in_name;
-        contain_host_tensor_flags[in_name] = true;
-      } else {
-        VLOG(1) << "Static graph PtKernel input: skip dispensable input - "
-                << in_name;
-        continue;
-      }
-    }
-    VLOG(1) << "Static graph PtKernel input: " << in_name;
+  auto& input_names = argMaker.GetInputArgsNames();
+  auto& output_names = argMaker.GetOutputArgsNames();
+  auto& attr_pairs = argMaker.GetAttrsArgsNamesAndTypes();
+
+  PADDLE_ENFORCE_EQ(input_names.size(), input_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of inputs_args names (%d) must be equal to "
+                        "the size of kernel input_defs (%d).",
+                        input_names.size(), input_defs.size()));
+
+  PADDLE_ENFORCE_EQ(output_names.size(), output_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of outputs_args names (%d) must be equal to "
+                        "the size of kernel output_defs (%d).",
+                        output_names.size(), output_defs.size()));
+
+  PADDLE_ENFORCE_EQ(attr_pairs.size(), attr_defs.size(),
+                    platform::errors::InvalidArgument(
+                        "the size of attribute_args names (%d) must be equal "
+                        "to the size of kernel attribute_defs (%d).",
+                        attr_pairs.size(), attr_defs.size()));
+
+  for (size_t i = 0; i < input_names.size(); ++i) {
     auto in_def = input_defs.at(i);
     VLOG(1) << "in_def: " << in_def.backend << ", " << in_def.dtype << ", "
             << in_def.layout;
-    // TODO(chenweihang): input need to be transformed by in all define
-    auto expected_place = pt::TransToFluidPlace(in_def.backend);
-    VLOG(1) << "expected_place: " << expected_place;
-    for (auto* var : ctx.inputs.at(in_name)) {
-      if (var->IsType<LoDTensor>()) {
-        VLOG(1) << "var is LoDTensor";
-        const auto& tensor = var->Get<LoDTensor>();
-        if (!platform::is_same_place(tensor.place(), expected_place)) {
-          VLOG(1) << "var place is mismatch.";
-          LoDTensor tmp_tensor;
-          TensorCopySync(tensor, expected_place, &tmp_tensor);
-          auto pt_in = MakeTensorImpl<pt::DenseTensor, LoDTensor>(
-              tmp_tensor, in_def.backend, in_def.dtype, in_def.layout);
-          op_kernel_ctx.EmplaceBackInput(pt_in);
-        } else {
-          auto pt_in = MakeTensorImpl<pt::DenseTensor, LoDTensor>(
-              tensor, in_def.backend, in_def.dtype, in_def.layout);
-          op_kernel_ctx.EmplaceBackInput(pt_in);
-        }
-      } else if (var->IsType<SelectedRows>()) {
-        const auto& tensor = var->Get<SelectedRows>();
-        if (!platform::is_same_place(tensor.value().place(), expected_place)) {
-          SelectedRows tmp_tensor;
-          tmp_tensor.set_rows(tensor.rows());
-          tmp_tensor.set_height(tensor.height());
-          TensorCopySync(tensor.value(), expected_place,
-                         tmp_tensor.mutable_value());
-          auto pt_in = MakeTensorImpl<pt::SelectedRowsTensor, SelectedRows>(
-              tmp_tensor, in_def.backend, in_def.dtype, in_def.layout);
-          op_kernel_ctx.EmplaceBackInput(pt_in);
-        } else {
-          auto pt_in = MakeTensorImpl<pt::SelectedRowsTensor, SelectedRows>(
-              tensor, in_def.backend, in_def.dtype, in_def.layout);
-          op_kernel_ctx.EmplaceBackInput(pt_in);
-        }
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported shared input `%s` type now when call pt kernel.",
-            ToTypeName(var->Type())));
-      }
+
+    auto ins_vector = ctx.inputs.at(input_names[i]);
+    std::vector<std::shared_ptr<pt::TensorInterface>> tmp_inputs;
+
+    for (auto var : ins_vector) {
+      auto pt_in = framework::InputVariableToPtTensor(*var, in_def);
+      tmp_inputs.emplace_back(pt_in);
     }
+    op_kernel_ctx.EmplaceBackInputs(tmp_inputs);
   }
-  for (int i = 0; i < op_proto->outputs_size(); ++i) {
-    auto out_name = op_proto->outputs()[i].name();
-    VLOG(1) << "Static graph PtKernel output: " << out_name;
-    // TODO(chenweihang): outputs also need skip some cases
+
+  for (size_t i = 0; i < output_names.size(); ++i) {
     auto out_def = output_defs.at(i);
-    for (auto* var : ctx.outputs.at(out_name)) {
-      // mutable_data before run kernel, to avoid share output form
-      // KernelContext to original tensor
-      if (var->IsType<LoDTensor>()) {
-        auto* tensor = var->GetMutable<LoDTensor>();
-        tensor->mutable_data(pt::TransToFluidPlace(out_def.backend),
-                             pt::TransToProtoVarType(out_def.dtype));
-        auto pt_out = MakeTensorImpl<pt::DenseTensor, LoDTensor>(
-            *tensor, out_def.backend, out_def.dtype, out_def.layout);
-        op_kernel_ctx.EmplaceBackOutput(pt_out);
-      } else if (var->IsType<SelectedRows>()) {
-        auto* tensor = var->GetMutable<SelectedRows>();
-        tensor->mutable_value()->mutable_data(
-            pt::TransToFluidPlace(out_def.backend),
-            pt::TransToProtoVarType(out_def.dtype));
-        auto pt_out = MakeTensorImpl<pt::SelectedRowsTensor, SelectedRows>(
-            *tensor, out_def.backend, out_def.dtype, out_def.layout);
-        op_kernel_ctx.EmplaceBackOutput(pt_out);
-      } else {
-        PADDLE_THROW(platform::errors::Unimplemented(
-            "Unsupported shared output `%s` type now when call pt kernel.",
-            ToTypeName(var->Type())));
-      }
+    auto outs_vector = ctx.outputs.at(output_names[i]);
+
+    std::vector<std::shared_ptr<pt::TensorInterface>> tmp_outputs;
+    for (auto var : outs_vector) {
+      auto pt_out = framework::OutputVariableToPtTensor(var, out_def);
+      tmp_outputs.emplace_back(pt_out);
     }
+    op_kernel_ctx.EmplaceBackOutputs(tmp_outputs);
   }
-  for (int i = 0; i < op_proto->attrs_size(); ++i) {
-    auto attr = op_proto->attrs()[i];
-    if (attr.name() == "use_mkldnn" || attr.name() == "op_role" ||
-        attr.name() == "op_role_var" || attr.name() == "op_namescope" ||
-        attr.name() == "op_callstack" || attr.name() == "op_device") {
-      VLOG(1) << "Static graph PtKernel attribute: skip needless attr - "
-              << attr.name();
-      continue;
-    }
-    if ((attr.has_extra() && attr.extra()) ||
-        (attr.has_quant() && attr.quant())) {
-      VLOG(1) << "Static graph PtKernel attribute: skip extra or quant attr - "
-              << attr.name();
-      continue;
-    }
-    if (attr_to_host_tensor.count(attr.name()) > 0 &&
-        contain_host_tensor_flags.at(attr_to_host_tensor.at(attr.name())) ==
-            true) {
-      VLOG(1) << "Static graph PtKernel attribute: skip dynaimc attr - "
-              << attr.name() << ", because "
-              << attr_to_host_tensor.at(attr.name()) << " exists.";
-      continue;
-    }
-    VLOG(1) << "Static graph PtKernel attribute: " << attr.name();
+
+  for (size_t i = 0; i < attr_pairs.size(); ++i) {
     // TODO(chenweihang): support other attrs
-    switch (attr.type()) {
-      case proto::AttrType::INT:
-        op_kernel_ctx.EmplaceBackAttr(Attr<int>(attr.name()));
+    // In principle, the attr required by the dynamic mode should be
+    // passed in from the Python side, and there is no need to look up
+    // from the default_map, but now this nor work
+    switch (attr_pairs[i].second) {
+      case framework::proto::AttrType::INT:
+        op_kernel_ctx.EmplaceBackAttr(Attr<int>(attr_pairs[i].first));
         break;
-      case proto::AttrType::FLOAT:
-        op_kernel_ctx.EmplaceBackAttr(Attr<float>(attr.name()));
+      case framework::proto::AttrType::FLOAT:
+        op_kernel_ctx.EmplaceBackAttr(Attr<float>(attr_pairs[i].first));
         break;
-      case proto::AttrType::BOOLEAN:
-        op_kernel_ctx.EmplaceBackAttr(Attr<bool>(attr.name()));
+      case framework::proto::AttrType::BOOLEAN:
+        op_kernel_ctx.EmplaceBackAttr(Attr<bool>(attr_pairs[i].first));
         break;
       default:
         // TODO(chenweihang): support other attrs type
         PADDLE_THROW(platform::errors::Unimplemented(
-            "unsupported cast op `%s`'s attribute `%s` when construct "
+            "unsupported cast op attribute `%s` when construct "
             "KernelContext.",
-            Type(), attr.name()));
+            attr_pairs[i].first));
     }
   }
+
   return op_kernel_ctx;
 }
 

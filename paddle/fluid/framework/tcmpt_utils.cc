@@ -16,6 +16,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/lod_tensor.h"
 #include "paddle/fluid/framework/selected_rows.h"
 
+#include "paddle/fluid/framework/variable.h"
+#include "paddle/tcmpt/api/include/dev/core.h"
 #include "paddle/tcmpt/api/include/dev/symbols.h"
 
 namespace paddle {
@@ -107,6 +109,81 @@ void ShareTensorImpl<pt::DenseTensor>(pt::DenseTensor* tensor_impl,
                                       Tensor* out) {
   out->ResetHolderWithType(tensor_impl->allocation(),
                            pt::TransToProtoVarType(tensor_impl->type()));
+}
+
+std::shared_ptr<pt::TensorInterface> InputVariableToPtTensor(
+    const framework::Variable& variable, const pt::TensorArgDef& arg_def) {
+  auto expected_place = pt::TransToFluidPlace(arg_def.backend);
+
+  if (variable.template IsType<framework::LoDTensor>()) {
+    const auto& tensor = variable.template Get<framework::LoDTensor>();
+    if (!platform::is_same_place(tensor.place(), expected_place)) {
+      framework::LoDTensor tmp_tensor;
+      framework::TensorCopySync(tensor, expected_place, &tmp_tensor);
+      auto pt_in =
+          framework::MakeTensorImpl<pt::DenseTensor, framework::LoDTensor>(
+              tmp_tensor, arg_def.backend, arg_def.dtype, arg_def.layout);
+      return pt_in;
+    } else {
+      auto pt_in =
+          framework::MakeTensorImpl<pt::DenseTensor, framework::LoDTensor>(
+              tensor, arg_def.backend, arg_def.dtype, arg_def.layout);
+      return pt_in;
+    }
+  } else if (variable.template IsType<framework::SelectedRows>()) {
+    const auto& tensor = variable.template Get<framework::SelectedRows>();
+    if (!platform::is_same_place(tensor.value().place(), expected_place)) {
+      framework::SelectedRows tmp_tensor;
+      tmp_tensor.set_rows(tensor.rows());
+      tmp_tensor.set_height(tensor.height());
+      TensorCopySync(tensor.value(), expected_place,
+                     tmp_tensor.mutable_value());
+      auto pt_in = framework::MakeTensorImpl<pt::SelectedRowsTensor,
+                                             framework::SelectedRows>(
+          tmp_tensor, arg_def.backend, arg_def.dtype, arg_def.layout);
+      return pt_in;
+    } else {
+      auto pt_in = framework::MakeTensorImpl<pt::SelectedRowsTensor,
+                                             framework::SelectedRows>(
+          tensor, arg_def.backend, arg_def.dtype, arg_def.layout);
+      return pt_in;
+    }
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported shared input `%s` type now when call pt kernel.",
+        framework::ToTypeName(variable.Type())));
+  }
+  return nullptr;
+}
+
+std::shared_ptr<pt::TensorInterface> OutputVariableToPtTensor(
+    framework::Variable* variable, const pt::TensorArgDef& arg_def) {
+  // mutable_data before run kernel, to avoid share output form
+  // KernelContext to original tensor
+  if (variable->template IsType<framework::LoDTensor>()) {
+    auto* tensor = variable->template GetMutable<framework::LoDTensor>();
+    tensor->mutable_data(pt::TransToFluidPlace(arg_def.backend),
+                         pt::TransToProtoVarType(arg_def.dtype));
+    auto pt_out =
+        framework::MakeTensorImpl<pt::DenseTensor, framework::LoDTensor>(
+            *tensor, arg_def.backend, arg_def.dtype, arg_def.layout);
+    return pt_out;
+  } else if (variable->template IsType<framework::SelectedRows>()) {
+    auto* tensor = variable->template GetMutable<framework::SelectedRows>();
+    tensor->mutable_value()->mutable_data(
+        pt::TransToFluidPlace(arg_def.backend),
+        pt::TransToProtoVarType(arg_def.dtype));
+    auto pt_out = framework::MakeTensorImpl<pt::SelectedRowsTensor,
+                                            framework::SelectedRows>(
+        *tensor, arg_def.backend, arg_def.dtype, arg_def.layout);
+    return pt_out;
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Unsupported shared output `%s` type now when call pt kernel.",
+        framework::ToTypeName(variable->Type())));
+  }
+
+  return nullptr;
 }
 
 /* For MKLDNNDenseTensor (move this part into a single file later) */

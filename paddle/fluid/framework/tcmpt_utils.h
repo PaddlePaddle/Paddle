@@ -44,5 +44,10 @@ void ShareTensorImpl(PtTensorImplT* tensor_impl, LoDTensor* out);
 template <typename PtTensorImplT>
 void ShareTensorImpl(PtTensorImplT* tensor_impl, Tensor* out);
 
+std::shared_ptr<pt::TensorInterface> InputVariableToPtTensor(
+    const framework::Variable& variable, const pt::TensorArgDef& arg_def);
+std::shared_ptr<pt::TensorInterface> OutputVariableToPtTensor(
+    framework::Variable* variable, const pt::TensorArgDef& arg_def);
+
 }  // namespace framework
 }  // namespace paddle
