@@ -187,57 +187,6 @@ class TestBertTokenizerOp(unittest.TestCase):
             np.allclose(
                 token_type_ids, py_token_type_ids, rtol=0, atol=0.01))
 
-    def test_is_split_into_words(self):
-        paddle.disable_static()
-
-        self.max_seq_len = 128
-        self.pad_to_max_seq_len = False
-        self.is_split_into_words = True
-
-        # case 1: only one text (batch_size = 1)
-        input_ids, token_type_ids = core.ops.bert_tokenizer(
-            self.vocab_tensor, self.text_tensor, None, "max_seq_len",
-            self.max_seq_len, "pad_to_max_seq_len", self.pad_to_max_seq_len,
-            "is_split_into_words", self.is_split_into_words)
-        input_ids = input_ids.numpy()
-        token_type_ids = token_type_ids.numpy()
-
-        encoded_inputs = self.bert_tokenizer(
-            self.text,
-            max_seq_len=self.max_seq_len,
-            pad_to_max_seq_len=self.pad_to_max_seq_len,
-            is_split_into_words=self.is_split_into_words)
-        py_input_ids = np.array(encoded_inputs[0]["input_ids"]).reshape([1, -1])
-        py_token_type_ids = np.array(encoded_inputs[0][
-            "token_type_ids"]).reshape([1, -1])
-        self.assertTrue(np.allclose(input_ids, py_input_ids, rtol=0, atol=0.01))
-        self.assertTrue(
-            np.allclose(
-                token_type_ids, py_token_type_ids, rtol=0, atol=0.01))
-
-        # case 2: only one text and one text_pair (batch_size = 1)
-        input_ids, token_type_ids = core.ops.bert_tokenizer(
-            self.vocab_tensor, self.text_tensor, self.text_pair_tensor,
-            "max_seq_len", self.max_seq_len, "pad_to_max_seq_len",
-            self.pad_to_max_seq_len, "is_split_into_words",
-            self.is_split_into_words)
-        input_ids = input_ids.numpy()
-        token_type_ids = token_type_ids.numpy()
-
-        encoded_inputs = self.bert_tokenizer(
-            self.text,
-            self.text_pair,
-            max_seq_len=self.max_seq_len,
-            pad_to_max_seq_len=self.pad_to_max_seq_len,
-            is_split_into_words=self.is_split_into_words)
-        py_input_ids = np.array(encoded_inputs[0]["input_ids"]).reshape([1, -1])
-        py_token_type_ids = np.array(encoded_inputs[0][
-            "token_type_ids"]).reshape([1, -1])
-        self.assertTrue(np.allclose(input_ids, py_input_ids, rtol=0, atol=0.01))
-        self.assertTrue(
-            np.allclose(
-                token_type_ids, py_token_type_ids, rtol=0, atol=0.01))
-
     def test_no_padding(self):
         paddle.disable_static()
 
