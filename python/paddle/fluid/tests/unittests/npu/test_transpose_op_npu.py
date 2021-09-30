@@ -33,11 +33,9 @@ class TestTransposeOp(OpTest):
         self.init_dtype()
         self.init_shape_axis()
 
-        self.x = np.random.uniform(0.1, 1, self.shape).astype(self.dtype)
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(self.x)}
+        self.inputs = {'X': np.random.random(self.shape).astype(self.dtype)}
         self.attrs = {'axis': self.axis, 'data_format': 'AnyLayout'}
-        self.out = np.transpose(self.x, self.axis)
-        self.outputs = {'Out': self.out}
+        self.outputs = {'Out': self.inputs['X'].transpose(self.axis)}
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -53,8 +51,6 @@ class TestTransposeOp(OpTest):
         self.check_output_with_place(self.place)
 
     def test_check_grad(self):
-        if self.dtype == np.int64:
-            return
         self.check_grad_with_place(self.place, ['X'], 'Out')
 
 
@@ -123,8 +119,7 @@ class TestTransposeOpFP16(TestTransposeOp):
         self.dtype = np.float16
 
     def test_check_grad(self):
-        self.check_grad_with_place(
-            self.place, ['X'], 'Out', max_relative_error=1e-2)
+        pass
 
 
 class TestTransposeOpInt64(TestTransposeOp):
