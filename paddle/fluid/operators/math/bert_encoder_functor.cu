@@ -97,7 +97,8 @@ __device__ inline void LayerNorm2(const kvp<T> &thread_data, const int ld,
 
   if (threadIdx.x == 0) {
     mu = sum_kv.key;
-    rsigma = local_rsqrt(sum_kv.value - mu * mu + eps);
+    rsigma =
+        (T)local_rsqrt(abs(static_cast<float>(sum_kv.value - mu * mu + eps)));
   }
   __syncthreads();
 
