@@ -29,11 +29,12 @@ from paddle.distributed.auto_parallel.completion import complete_backward_annota
 from paddle.distributed.auto_parallel.reshard import reshard
 
 paddle.enable_static()
-_global_parallel_strategy = None
-_global_process_mesh = None
-ROOT_MESH = auto.ProcessMesh([0, 1])
-PP_MESH_0 = None
-PP_MESH_1 = None
+_global_parallel_strategy = "dp_mp_pp"
+ROOT_MESH = auto.ProcessMesh([[[0, 1], [4, 5]], [[2, 3], [6, 7]]])
+_global_process_mesh = auto.ProcessMesh(
+    [[[0, 1], [4, 5]], [[2, 3], [6, 7]]], parent=ROOT_MESH)
+PP_MESH_0 = auto.ProcessMesh([[0, 1], [4, 5]], parent=ROOT_MESH)
+PP_MESH_1 = auto.ProcessMesh([[2, 3], [6, 7]], parent=ROOT_MESH)
 
 
 class MLPLayer(nn.Layer):
@@ -55,18 +56,8 @@ class MLPLayer(nn.Layer):
         self.norm = nn.LayerNorm(d_model, epsilon=1e-5)
 
     def forward(self, input):
-        if _global_parallel_strategy == "pp":
-            auto.shard_tensor(
-                self.linear0.weight, PP_MESH_0, dim_mapping=[-1, -1])
-            auto.shard_tensor(
-                self.linear1.weight, PP_MESH_1, dim_mapping=[-1, -1])
-        else:
-            auto.shard_tensor(
-                self.linear0.weight, _global_process_mesh,
-                dim_mapping=[-1, -1])
-            auto.shard_tensor(
-                self.linear1.weight, _global_process_mesh,
-                dim_mapping=[-1, -1])
+        auto.shard_tensor(self.linear0.weight, PP_MESH_0, dim_mapping=[-1, 1])
+        auto.shard_tensor(self.linear1.weight, PP_MESH_1, dim_mapping=[1, -1])
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -87,13 +78,8 @@ def mlp_forward(train_program, start_program):
         label = static.data(
             name="label", shape=[batch_size, 1], dtype='float32')
 
-        if _global_parallel_strategy == "pp":
-            auto.shard_tensor(input, PP_MESH_0, dim_mapping=[-1, -1])
-            auto.shard_tensor(label, PP_MESH_1, dim_mapping=[-1, -1])
-        elif _global_parallel_strategy == "dp":
-            auto.shard_tensor(input, _global_process_mesh, dim_mapping=[0, -1])
-        else:
-            auto.shard_tensor(input, _global_process_mesh, dim_mapping=[-1, -1])
+        auto.shard_tensor(input, PP_MESH_0, dim_mapping=[0, -1])
+        auto.shard_tensor(label, PP_MESH_1, dim_mapping=[0, -1])
 
         mlp = MLPLayer(
             hidden_size=hidden_size,
@@ -132,37 +118,11 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     return auto_parallel_main_prog, auto_parallel_startup_prog
 
 
-def check_backward_dist_attr(dist_context, dist_main_prog, op_need_check):
-    has_dist_attr = True
-    vars = dist_main_prog.global_block().vars
-
-    op_dist_attr = dist_context.get_op_distributed_attr_for_program(
-        op_need_check)
-    if not op_dist_attr or not op_dist_attr.get_process_mesh():
-        has_dist_attr = False
-
-    for var_name in op_need_check.input_arg_names:
-        if not op_dist_attr.get_input_dims_mapping(var_name) or \
-        not dist_context.get_tensor_distributed_attr_for_program(vars[var_name]).get_dims_mapping() or \
-        not dist_context.get_tensor_distributed_attr_for_program(vars[var_name]).get_process_mesh():
-            has_dist_attr = False
-            break
-
-    if has_dist_attr:
-        for var_name in op_need_check.output_arg_names:
-            if not dist_context.get_tensor_distributed_attr_for_program(vars[var_name]).get_dims_mapping() or \
-            not dist_context.get_tensor_distributed_attr_for_program(vars[var_name]).get_process_mesh():
-                has_dist_attr = False
-                break
-
-    return has_dist_attr
-
-
 def check_send_recv_result(dist_main_prog, rank_id):
     send_result = False
     recv_result = False
     ops = dist_main_prog.global_block().ops
-    if rank_id == 0:
+    if rank_id in [0, 1, 4, 5]:
         for idx, op in enumerate(ops):
             if op.type == "send_v2" and "gelu_0.tmp_0" in op.input_arg_names:
                 send_result = True
@@ -180,107 +140,33 @@ def check_send_recv_result(dist_main_prog, rank_id):
     return send_result and recv_result
 
 
-def check_initialization(dist_startup_prog, rank_id):
-    if rank_id == 0:
-        need_check_params = [
-            "layer_norm_0.b_0", "layer_norm_0.w_0", "linear_0.w_0",
-            "linear_0.b_0"
-        ]
-    else:
-        need_check_params = ['linear_1.w_0', 'linear_1.b_0']
-
-    params = []
-    for var_name, var in dist_startup_prog.global_block().vars.items():
-        if var.is_parameter:
-            params.append(var_name)
-
-    return params == need_check_params
-
-
-def check_initialization_for_dp(dist_startup_prog):
-    need_check_params = [
-        "layer_norm_0.b_0", "layer_norm_0.w_0", "linear_0.w_0", "linear_0.b_0"
-    ] + ['linear_1.w_0', 'linear_1.b_0']
-    params = []
-    for var_name, var in dist_startup_prog.global_block().vars.items():
-        if var.is_parameter:
-            params.append(var_name)
+def check_initialization_for_dpmppp(dist_startup_prog):
     broadcast_varnames = []
     for op in dist_startup_prog.global_block().ops:
         if op.type == "c_broadcast":
             broadcast_varnames.append(op.output_arg_names[0])
-
-    return params == need_check_params == broadcast_varnames
+    result = len(broadcast_varnames) > 0
+    return result
 
 
 class TestMLPReshard(unittest.TestCase):
-    def test_complete_backward_annotation(self):
-        global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1], parent=ROOT_MESH)
-
+    def test_mlp_dpmppp(self):
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
-        rank_id = 0
-        dist_main_prog, dist_startup_prog = get_dist_prog(
-            train_program, startup_program, dist_context, 0)
-        complete_backward_annotation(dist_main_prog, dist_context)
-
-        op_need_check = None
-        for op in dist_main_prog.global_block().ops:
-            if op.type == "gelu_grad":
-                op_need_check = op
-                break
-
-        # grad op should have dist attr
-        self.assertTrue(
-            check_backward_dist_attr(dist_context, dist_main_prog,
-                                     op_need_check))
-
-    def test_mlp_pp(self):
-        global _global_parallel_strategy
-        _global_parallel_strategy = "pp"
-        global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1], parent=ROOT_MESH)
-        global PP_MESH_0
-        PP_MESH_0 = auto.ProcessMesh(mesh=[0], parent=ROOT_MESH)
-        global PP_MESH_1
-        PP_MESH_1 = auto.ProcessMesh(mesh=[1], parent=ROOT_MESH)
-
-        train_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        dist_context = DistributedContext()
-        rank_id = 1
+        rank_id = 2
         dist_main_prog, dist_startup_prog = get_dist_prog(
             train_program, startup_program, dist_context, rank_id)
+        print(dist_main_prog)
         complete_backward_annotation(dist_main_prog, dist_context)
         reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
-
+        print(dist_main_prog)
+        print(dist_startup_prog)
         # check send and recv result
         self.assertTrue(check_send_recv_result(dist_main_prog, rank_id))
 
-        # parameter initialization of every rank should be different in the pipeline scene
-        self.assertTrue(check_initialization(dist_startup_prog, rank_id))
-
-    def test_mlp_dp(self):
-        global _global_parallel_strategy
-        _global_parallel_strategy = "dp"
-        global _global_process_mesh
-        _global_process_mesh = auto.ProcessMesh(mesh=[0, 1], parent=ROOT_MESH)
-
-        train_program = paddle.static.Program()
-        startup_program = paddle.static.Program()
-        dist_context = DistributedContext()
-        rank_id = 0
-        dist_main_prog, dist_startup_prog = get_dist_prog(
-            train_program, startup_program, dist_context, rank_id)
-        complete_backward_annotation(dist_main_prog, dist_context)
-        reshard(dist_main_prog, dist_startup_prog, rank_id, dist_context)
-        # send and recv should not exist in dp scene.
-        self.assertFalse(check_send_recv_result(dist_main_prog, rank_id))
-
-        # all parameters should be initialized in dp scene
-        self.assertTrue(check_initialization_for_dp(dist_startup_prog))
+        # check parameter initialization
+        self.assertTrue(check_initialization_for_dpmppp(dist_startup_prog))
 
 
 if __name__ == "__main__":

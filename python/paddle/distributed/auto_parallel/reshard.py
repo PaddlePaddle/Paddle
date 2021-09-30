@@ -587,7 +587,7 @@ def _insert_allgather_op(block, idx, tensor, ranks):
     idx_offset = 0
 
     # instant process group before insert allgather op.
-    if not group.is_instantiate:
+    if not group.is_instantiate():
         # insert fill_constant op
         fill_constant_out = _insert_fill_constant_op(block, idx)
         fill_constant_out.stop_gradient = True
@@ -662,10 +662,7 @@ def _concat_partitions_with_op(partition_tensor_list, tensor, partition_index,
 
 
 def _init_comm_for_send_recv():
-    if not PROCESS_GROUP_MAP:
-        genv = _get_global_env()
-        PROCESS_GROUP_MAP["global_group"] = ProcessGroup(
-            0, list(range(genv.world_size)))
+    if not PROCESS_GROUP_MAP["global_group"].is_instantiate():
         PROCESS_GROUP_MAP["global_group"].instantiate()
 
 
