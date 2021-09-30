@@ -144,6 +144,10 @@ class ParallelExecutor {
   void SetReaderOpDeviceInfoOfGraphs(
       const std::vector<ir::Graph *> &final_graphs);
 
+#ifdef PADDLE_WITH_CUDA
+  void PrepareForCUDAGraphCapture(ir::Graph *graph);
+#endif
+
   ParallelExecutorPrivate *member_;
   std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
   std::vector<VariableInfo> var_infos_;
