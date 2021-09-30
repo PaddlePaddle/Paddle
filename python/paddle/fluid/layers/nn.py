@@ -10315,6 +10315,8 @@ def unstack(x, axis=0, num=None):
     if in_dygraph_mode():
         if num == None:
             num = x.shape[axis]
+        if num == 0:
+            return []
         return _C_ops.unstack(x, num, 'axis', int(axis), 'num', num)
 
     helper = LayerHelper('unstack', **locals())

@@ -454,7 +454,6 @@ class PSGPUWorker : public HogwildWorker {
   virtual void Initialize(const TrainerDesc& desc);
   virtual void TrainFiles();
   virtual void TrainFilesWithProfiler();
-  virtual void SetNeedDump(bool need_dump_field);
   virtual void SetChannelWriter(ChannelObject<std::string>* queue);
   virtual void SetWorkerNum(int num) { worker_num_ = num; }
   virtual void CacheProgram(const ProgramDesc& main_program) {
@@ -467,7 +466,6 @@ class PSGPUWorker : public HogwildWorker {
 
  protected:
   void PushGradients();
-  void DumpParam();
   void CopySparseTable();
   void CopyDenseTable();
   void CopyDenseVars();
@@ -475,18 +473,12 @@ class PSGPUWorker : public HogwildWorker {
  private:
   int mpi_rank_;
   std::mutex mutex_;
-  std::vector<std::string> send_var_list_;
   int worker_num_;
   ProgramDesc program_;
   HeterObjectPool<HeterTask> object_pool_;
-  bool need_dump_param_;
-  std::vector<std::string> dump_param_;
   bool need_to_push_dense_;
-  bool need_dump_field_;
   bool dump_slot_;
   bool need_to_push_sparse_;
-  std::vector<std::string> dump_fields_;
-  ChannelWriter<std::string> writer_;
   DownpourWorkerParameter param_;
   float scale_datanorm_;
   // just save the value in param_ for easy access
