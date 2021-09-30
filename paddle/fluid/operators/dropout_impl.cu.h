@@ -215,7 +215,7 @@ void DropoutFwGPUKernelDriver(const platform::CUDADeviceContext& dev_ctx,
                          mask_data, y_data, upscale_in_train, increment);
     }
 #else
-    if (vec_size == 4 && size % 4 == 0) {
+    if (false && vec_size == 4 && size % 4 == 0) {
       VectorizedRandomGenerator<
           T, uint8_t,
           4><<<config.block_per_grid, config.thread_per_block, 0, stream>>>(
