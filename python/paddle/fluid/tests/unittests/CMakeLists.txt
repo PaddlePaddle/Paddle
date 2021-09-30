@@ -455,7 +455,7 @@ list(REMOVE_ITEM TEST_OPS test_imperative_static_runner_while)
 list(REMOVE_ITEM TEST_OPS test_imperative_data_loader_exception)
 
 # disable sparse_attention which not in suitable env
-if ( (NOT WITH_GPU) OR (WIN32) OR (PADDLE_WITH_ARM) OR (WITH_ROCM) OR (${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.2))
+if ( (NOT WITH_GPU) OR (WIN32) OR (PADDLE_WITH_ARM) OR (WITH_ROCM) )
     list(REMOVE_ITEM TEST_OPS test_sparse_attention_op)
 endif()
 
