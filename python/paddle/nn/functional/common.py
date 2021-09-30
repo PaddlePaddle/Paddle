@@ -1747,3 +1747,26 @@ def class_center_sample(label, num_classes, num_samples, group=None):
             'seed': seed if seed is not None else 0
         })
     return remapped_label, sampled_class_center
+
+def fold(inputs, output_size, kernel_size, padding, stride):
+    """Combines an array of sliding local blocks into a large containing tensor
+    """
+
+    B, D, L = inputs.shape
+    H, W = output_size
+    C = int(D / (kernel_size * kernel_size))
+    out_h = (H + 2*padding - kernel_size) // stride + 1
+    out_w = (W + 2*padding - kernel_size) // stride + 1
+
+    inputs = inputs.reshape([B, C, kernel_size, kernel_size, out_h, out_w])
+
+    img = paddle.zeros([B, C, H + 2 * padding + stride - 1,
+                        W + 2 * padding + stride - 1], dtype=inputs.dtype)
+
+    for y in range(kernel_size):
+        y_max = y + stride * out_h
+        for x in range(kernel_size):
+            x_max = x + stride * out_w
+            img[:, :, y:y_max:stride, x:x_max:stride] += inputs[:, :, y, x, :, :]
+
+    return img[:, :, padding: H + padding, padding: W + padding]
