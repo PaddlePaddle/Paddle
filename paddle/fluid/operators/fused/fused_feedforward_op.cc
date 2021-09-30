@@ -24,38 +24,39 @@ namespace paddle {
 namespace operators {
 using Tensor = framework::Tensor;
 
-class FusedFfnOp : public framework::OperatorWithKernel {
+class FusedFeedForwardOp : public framework::OperatorWithKernel {
  public:
   using framework::OperatorWithKernel::OperatorWithKernel;
 
  protected:
   void InferShape(framework::InferShapeContext *context) const override {
-    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "fused_ffn");
+    OP_INOUT_CHECK(context->HasInput("X"), "Input", "X", "fused_feedforward");
     OP_INOUT_CHECK(context->HasInput("Linear1Weight"), "Input", "Linear1Weight",
-                   "fused_ffn");
+                   "fused_feedforward");
     OP_INOUT_CHECK(context->HasInput("Linear2Weight"), "Input", "Linear2Weight",
-                   "fused_ffn");
-    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out", "fused_ffn");
+                   "fused_feedforward");
+    OP_INOUT_CHECK(context->HasOutput("Out"), "Output", "Out",
+                   "fused_feedforward");
     OP_INOUT_CHECK(context->HasOutput("Dropout1Mask"), "Output", "Dropout1Mask",
-                   "fused_ffn");
+                   "fused_feedforward");
     OP_INOUT_CHECK(context->HasOutput("Dropout2Mask"), "Output", "Dropout2Mask",
-                   "fused_ffn");
+                   "fused_feedforward");
     OP_INOUT_CHECK(context->HasOutput("Ln1Mean"), "Output", "Ln1Mean",
-                   "fused_ffn");
+                   "fused_feedforward");
     OP_INOUT_CHECK(context->HasOutput("Ln1Variance"), "Output", "Ln1Variance",
-                   "fused_ffn");
+                   "fused_feedforward");
     OP_INOUT_CHECK(context->HasOutput("Ln2Mean"), "Output", "Ln2Mean",
-                   "fused_ffn");
+                   "fused_feedforward");
     OP_INOUT_CHECK(context->HasOutput("Ln2Variance"), "Output", "Ln2Variance",
-                   "fused_ffn");
+                   "fused_feedforward");
     OP_INOUT_CHECK(context->HasOutput("Linear1Out"), "Output", "Linear1Out",
-                   "fused_ffn");
+                   "fused_feedforward");
     OP_INOUT_CHECK(context->HasOutput("Ln1Out"), "Output", "Ln1Out",
-                   "fused_ffn");
+                   "fused_feedforward");
     OP_INOUT_CHECK(context->HasOutput("Dropout1Out"), "Output", "Dropout1Out",
-                   "fused_ffn");
+                   "fused_feedforward");
     OP_INOUT_CHECK(context->HasOutput("Dropout2Out"), "Output", "Dropout2Out",
-                   "fused_ffn");
+                   "fused_feedforward");
 
     auto dim_x = context->GetInputDim("X");
     auto mat_dim_x =
@@ -105,10 +106,10 @@ class FusedFfnOp : public framework::OperatorWithKernel {
   }
 };
 
-class FusedFfnOpMaker : public framework::OpProtoAndCheckerMaker {
+class FusedFeedForwardOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("X", "The input of FusedFfn op");
+    AddInput("X", "The input of FusedFeedForward op");
     AddInput(
         "Dropout1Seed",
         "The seed of first dropout op, it has higher priority than the attr "
@@ -120,18 +121,21 @@ class FusedFfnOpMaker : public framework::OpProtoAndCheckerMaker {
         "fix_seed and seed")
         .AsDispensable();
 
-    AddInput("Linear1Weight", "The linear1 weight of FusedFfn op");
-    AddInput("Linear1Bias", "The linear1 bias of FusedFfn op").AsDispensable();
-    AddInput("Linear2Weight", "The linear2 weight of FusedFfn op");
-    AddInput("Linear2Bias", "The linear2 bias input of FusedFfn op")
+    AddInput("Linear1Weight", "The linear1 weight of FusedFeedForward op");
+    AddInput("Linear1Bias", "The linear1 bias of FusedFeedForward op")
         .AsDispensable();
-    AddInput("Ln1Scale", "The layer_norm1 scale of FusedFfn op")
+    AddInput("Linear2Weight", "The linear2 weight of FusedFeedForward op");
+    AddInput("Linear2Bias", "The linear2 bias input of FusedFeedForward op")
         .AsDispensable();
-    AddInput("Ln1Bias", "The layer_norm1 bias of FusedFfn op").AsDispensable();
-    AddInput("Ln2Scale", "The layer_norm2 scale of FusedFfn op")
+    AddInput("Ln1Scale", "The layer_norm1 scale of FusedFeedForward op")
         .AsDispensable();
-    AddInput("Ln2Bias", "The layer_norm2 bias of FusedFfn op").AsDispensable();
-    AddOutput("Out", "The output of FusedFfn op");
+    AddInput("Ln1Bias", "The layer_norm1 bias of FusedFeedForward op")
+        .AsDispensable();
+    AddInput("Ln2Scale", "The layer_norm2 scale of FusedFeedForward op")
+        .AsDispensable();
+    AddInput("Ln2Bias", "The layer_norm2 bias of FusedFeedForward op")
+        .AsDispensable();
+    AddOutput("Out", "The output of FusedFeedForward op");
     AddOutput("Dropout1Mask", "The mask of dropout1").AsIntermediate();
     AddOutput("Dropout2Mask", "The mask of dropout2").AsIntermediate();
     AddOutput("Ln1Mean", "The mean of layer_norm1").AsIntermediate();
@@ -197,8 +201,7 @@ class FusedFfnOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<int>("dropout1_seed", "Dropout1 random seed.").SetDefault(0);
     AddAttr<int>("dropout2_seed", "Dropout2 random seed.").SetDefault(0);
     AddComment(R"DOC(
-        The fused_ffn(fused feedforward network) Operator. 
-        the function of this operator is the same as the following pseudo code:
+        the function of fused_feedforward operator is the same as the following pseudo code:
         residual = src;
         ln1_out = src;
         if(normalize_pre_or_post){
@@ -216,4 +219,5 @@ class FusedFfnOpMaker : public framework::OpProtoAndCheckerMaker {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
-REGISTER_OPERATOR(fused_ffn, ops::FusedFfnOp, ops::FusedFfnOpMaker);
+REGISTER_OPERATOR(fused_feedforward, ops::FusedFeedForwardOp,
+                  ops::FusedFeedForwardOpMaker);

@@ -29,7 +29,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename DeviceContext, typename T>
-class FusedFfnKernel : public framework::OpKernel<T> {
+class FusedFeedForwardKernel : public framework::OpKernel<T> {
  public:
   void MatMul(const platform::CUDADeviceContext& ctx,
               const framework::Tensor& a, const framework::Tensor& b,
@@ -180,7 +180,8 @@ class FusedFfnKernel : public framework::OpKernel<T> {
 
 namespace ops = paddle::operators;
 REGISTER_OP_CUDA_KERNEL(
-    fused_ffn, ops::FusedFfnKernel<paddle::platform::CUDADeviceContext, float>,
-    ops::FusedFfnKernel<paddle::platform::CUDADeviceContext, double>,
-    ops::FusedFfnKernel<paddle::platform::CUDADeviceContext,
-                        paddle::platform::float16>);
+    fused_feedforward,
+    ops::FusedFeedForwardKernel<paddle::platform::CUDADeviceContext, float>,
+    ops::FusedFeedForwardKernel<paddle::platform::CUDADeviceContext, double>,
+    ops::FusedFeedForwardKernel<paddle::platform::CUDADeviceContext,
+                                paddle::platform::float16>);
