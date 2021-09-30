@@ -129,6 +129,7 @@ class CustomParser {
   CustomParser() {}
   virtual ~CustomParser() {}
   virtual void Init(const std::vector<SlotConf>& slots) = 0;
+  virtual bool Init(const std::vector<AllSlotInfo>& slots);
   virtual void ParseOneInstance(const char* str, Record* instance) = 0;
 };
 
@@ -802,6 +803,42 @@ class MultiSlotInMemoryDataFeed : public InMemoryDataFeed<Record> {
   std::vector<std::vector<uint64_t>> batch_uint64_feasigns_;
   std::vector<std::vector<size_t>> offset_;
   std::vector<bool> visit_;
+};
+
+class SlotRecordInMemoryDataFeed : public InMemoryDataFeed<SlotRecord> {
+ public:
+  SlotRecordInMemoryDataFeed() {}
+  virtual ~SlotRecordInMemoryDataFeed() {}
+  virtual void Init(const DataFeedDesc& data_feed_desc);
+  virtual void LoadIntoMemory();
+  void ExpandSlotRecord(SlotRecord* ins);
+
+ protected:
+  virtual bool Start();
+  virtual int Next();
+  virtual bool ParseOneInstance(SlotRecord* instance) { return false; }
+  virtual bool ParseOneInstanceFromPipe(SlotRecord* instance) { return false; }
+  // virtual void ParseOneInstanceFromSo(const char* str, T* instance,
+  //                                    CustomParser* parser) {}
+  virtual void PutToFeedVec(const std::vector<SlotRecord>& ins_vec) {}
+
+  virtual void LoadIntoMemoryByCommand(void);
+  virtual void LoadIntoMemoryByLib(void);
+  virtual void LoadIntoMemoryByLine(void);
+  virtual void LoadIntoMemoryByFile(void);
+  virtual void SetInputChannel(void* channel) {
+    input_channel_ = static_cast<ChannelObject<SlotRecord>*>(channel);
+  }
+  bool ParseOneInstance(const std::string& line, SlotRecord* rec);
+  virtual void PutToFeedVec(const SlotRecord* ins_vec, int num);
+  float sample_rate_ = 1.0f;
+  int use_slot_size_ = 0;
+  int float_use_slot_size_ = 0;
+  int uint64_use_slot_size_ = 0;
+  std::vector<AllSlotInfo> all_slots_info_;
+  std::vector<UsedSlotInfo> used_slots_info_;
+  size_t float_total_dims_size_ = 0;
+  std::vector<int> float_total_dims_without_inductives_;
 };
 
 class PaddleBoxDataFeed : public MultiSlotInMemoryDataFeed {

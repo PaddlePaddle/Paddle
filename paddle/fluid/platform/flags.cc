@@ -673,3 +673,13 @@ PADDLE_DEFINE_EXPORTED_int32(get_host_by_name_time, 120,
 PADDLE_DEFINE_EXPORTED_bool(
     apply_pass_to_program, false,
     "It controls whether to apply IR pass to program when using Fleet APIs");
+
+DEFINE_int32(record_pool_max_size, 2000000,
+             "SlotRecordDataset slot record pool max size");
+DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");
+DEFINE_bool(enable_slotpool_wait_release, false,
+            "enable slotrecord obejct wait release, default false");
+DEFINE_bool(enable_slotrecord_reset_shrink, false,
+            "enable slotrecord obejct reset shrink memory, default false");
+DEFINE_bool(enable_ins_parser_file, false,
+            "enable parser ins file , default false");

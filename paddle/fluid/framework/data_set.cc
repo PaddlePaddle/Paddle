@@ -1503,5 +1503,154 @@ void MultiSlotDataset::SlotsShuffle(
           << ", cost time=" << timeline.ElapsedSec() << " seconds";
 }
 
+template class DatasetImpl<SlotRecord>;
+void SlotRecordDataset::CreateChannel() {
+  if (input_channel_ == nullptr) {
+    input_channel_ = paddle::framework::MakeChannel<SlotRecord>();
+  }
+}
+void SlotRecordDataset::CreateReaders() {
+  VLOG(3) << "Calling CreateReaders()";
+  VLOG(3) << "thread num in Dataset: " << thread_num_;
+  VLOG(3) << "Filelist size in Dataset: " << filelist_.size();
+  VLOG(3) << "channel num in Dataset: " << channel_num_;
+  CHECK(thread_num_ > 0) << "thread num should > 0";
+  CHECK(channel_num_ > 0) << "channel num should > 0";
+  CHECK(channel_num_ <= thread_num_) << "channel num should <= thread num";
+  VLOG(3) << "readers size: " << readers_.size();
+  if (readers_.size() != 0) {
+    VLOG(3) << "readers_.size() = " << readers_.size()
+            << ", will not create again";
+    return;
+  }
+  VLOG(3) << "data feed class name: " << data_feed_desc_.name();
+  for (int i = 0; i < thread_num_; ++i) {
+    readers_.push_back(DataFeedFactory::CreateDataFeed(data_feed_desc_.name()));
+    readers_[i]->Init(data_feed_desc_);
+    readers_[i]->SetThreadId(i);
+    readers_[i]->SetThreadNum(thread_num_);
+    readers_[i]->SetFileListMutex(&mutex_for_pick_file_);
+    readers_[i]->SetFileListIndex(&file_idx_);
+    readers_[i]->SetFeaNumMutex(&mutex_for_fea_num_);
+    readers_[i]->SetFeaNum(&total_fea_num_);
+    readers_[i]->SetFileList(filelist_);
+    readers_[i]->SetParseInsId(parse_ins_id_);
+    readers_[i]->SetParseContent(parse_content_);
+    readers_[i]->SetParseLogKey(parse_logkey_);
+    readers_[i]->SetEnablePvMerge(enable_pv_merge_);
+    readers_[i]->SetCurrentPhase(current_phase_);
+    if (input_channel_ != nullptr) {
+      readers_[i]->SetInputChannel(input_channel_.get());
+    }
+  }
+  VLOG(3) << "readers size: " << readers_.size();
+}
+
+void SlotRecordDataset::ReleaseMemory() {
+  VLOG(3) << "SlotRecordDataset::ReleaseMemory() begin";
+  platform::Timer timeline;
+  timeline.Start();
+
+  if (input_channel_) {
+    input_channel_->Clear();
+    input_channel_ = nullptr;
+  }
+  if (enable_heterps_) {
+    VLOG(3) << "put pool records size: " << input_records_.size();
+    SlotRecordPool().put(&input_records_);
+    input_records_.clear();
+    input_records_.shrink_to_fit();
+    VLOG(3) << "release heterps input records records size: "
+            << input_records_.size();
+  }
+
+  readers_.clear();
+  readers_.shrink_to_fit();
+
+  std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
+
+  VLOG(3) << "SlotRecordDataset::ReleaseMemory() end";
+  VLOG(3) << "total_feasign_num_(" << STAT_GET(STAT_total_feasign_num_in_mem)
+          << ") - current_fea_num_(" << total_fea_num_ << ") = ("
+          << STAT_GET(STAT_total_feasign_num_in_mem) - total_fea_num_ << ")"
+          << " object pool size=" << SlotRecordPool().capacity();  // For Debug
+  STAT_SUB(STAT_total_feasign_num_in_mem, total_fea_num_);
+}
+void SlotRecordDataset::GlobalShuffle(int thread_num) {
+  // TODO(yaoxuefeng)
+  return;
+}
+
+void SlotRecordDataset::DynamicAdjustChannelNum(int channel_num,
+                                                bool discard_remaining_ins) {
+  if (channel_num_ == channel_num) {
+    VLOG(3) << "DatasetImpl<T>::DynamicAdjustChannelNum channel_num_="
+            << channel_num_ << ", channel_num_=channel_num, no need to adjust";
+    return;
+  }
+  VLOG(3) << "adjust channel num from " << channel_num_ << " to "
+          << channel_num;
+  channel_num_ = channel_num;
+
+  if (static_cast<int>(input_channel_->Size()) >= channel_num) {
+    input_channel_->SetBlockSize(input_channel_->Size() / channel_num +
+                                 (discard_remaining_ins ? 0 : 1));
+  }
+
+  VLOG(3) << "adjust channel num done";
+}
+
+void SlotRecordDataset::PrepareTrain() {
+#ifdef PADDLE_WITH_GLOO
+  if (enable_heterps_) {
+    if (input_records_.size() == 0 && input_channel_ != nullptr &&
+        input_channel_->Size() != 0) {
+      input_channel_->ReadAll(input_records_);
+      VLOG(3) << "read from channel to records with records size: "
+              << input_records_.size();
+    }
+    VLOG(3) << "input records size: " << input_records_.size();
+    int64_t total_ins_num = input_records_.size();
+    std::vector<std::pair<int, int>> offset;
+    int default_batch_size =
+        reinterpret_cast<SlotRecordInMemoryDataFeed*>(readers_[0].get())
+            ->GetDefaultBatchSize();
+    VLOG(3) << "thread_num: " << thread_num_
+            << " memory size: " << total_ins_num
+            << " default batch_size: " << default_batch_size;
+    compute_thread_batch_nccl(thread_num_, total_ins_num, default_batch_size,
+                              &offset);
+    VLOG(3) << "offset size: " << offset.size();
+    for (int i = 0; i < thread_num_; i++) {
+      reinterpret_cast<SlotRecordInMemoryDataFeed*>(readers_[i].get())
+          ->SetRecord(&input_records_[0]);
+    }
+    for (size_t i = 0; i < offset.size(); i++) {
+      reinterpret_cast<SlotRecordInMemoryDataFeed*>(
+          readers_[i % thread_num_].get())
+          ->AddBatchOffset(offset[i]);
+    }
+  }
+#else
+  PADDLE_THROW(platform::errors::Unavailable(
+      "dataset set heterps need compile with GLOO"));
+#endif
+  return;
+}
+
+void SlotRecordDataset::DynamicAdjustReadersNum(int thread_num) {
+  if (thread_num_ == thread_num) {
+    VLOG(3) << "DatasetImpl<T>::DynamicAdjustReadersNum thread_num_="
+            << thread_num_ << ", thread_num_=thread_num, no need to adjust";
+    return;
+  }
+  VLOG(3) << "adjust readers num from " << thread_num_ << " to " << thread_num;
+  thread_num_ = thread_num;
+  std::vector<std::shared_ptr<paddle::framework::DataFeed>>().swap(readers_);
+  CreateReaders();
+  VLOG(3) << "adjust readers num done";
+  PrepareTrain();
+}
+
 }  // end namespace framework
 }  // end namespace paddle
