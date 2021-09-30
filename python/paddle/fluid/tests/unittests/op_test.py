@@ -1092,9 +1092,7 @@ class OpTest(unittest.TestCase):
             atol = 0
 
         if self.is_bfloat16_op():
-            if self.__class__.use_mkldnn:
-                check_dygraph = False
-            atol = 5e-1
+            atol = 1e-2
 
         if no_check_set is not None:
             if self.op_type not in no_check_set_white_list.no_check_set_white_list:
