@@ -66,6 +66,7 @@ from .conv import conv3d  # noqa: F401
 from .conv import conv3d_transpose  # noqa: F401
 from .extension import diag_embed  # noqa: F401
 from .extension import sequence_mask
+from .extension import bezier_align  # noqa: F401
 from .loss import binary_cross_entropy  # noqa: F401
 from .loss import binary_cross_entropy_with_logits  # noqa: F401
 from .loss import cross_entropy  # noqa: F401

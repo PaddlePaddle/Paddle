@@ -23,6 +23,7 @@ from ...tensor.creation import assign
 from ...fluid import core, dygraph_utils
 from ...fluid.layers.layer_function_generator import templatedoc
 from ...fluid.layers.sequence_lod import sequence_mask
+from paddle import _C_ops
 
 __all__ = []
 
@@ -140,3 +141,47 @@ def diag_embed(input, offset=0, dim1=-2, dim2=-1):
         outputs={'Out': [out]})
     out.stop_gradient = True
     return out
+
+
+def bezier_align(x,
+                 rois,
+                 rois_num,
+                 output_size,
+                 spatial_scale,
+                 sampling_ratio,
+                 aligned=True):
+
+    assert rois.shape[0] == rois_num.shape[
+        0], f"The shape of rois and rois_num of bezier_align \
+    must be same but received rois's shape[0] {rois.shape[0]} and rois_num's shape[0] {rois_num.shape[0]}"
+
+    pooled_height = int(output_size[0])
+    pooled_width = int(output_size[1])
+
+    if in_dygraph_mode():
+        pool_out = _C_ops.bezier_align(x, rois, rois_num, 'sampling_ratio',
+                                       float(sampling_ratio), 'spatial_scale',
+                                       float(spatial_scale), 'pooled_height',
+                                       pooled_height, 'pooled_width',
+                                       pooled_width, 'aligned', aligned)
+        return pool_out
+
+    l_type = 'bezier_align'
+
+    helper = LayerHelper(l_type, **locals())
+    dtype = helper.input_dtype(input_param_name='x')
+    pool_out = helper.create_variable_for_type_inference(dtype)
+    outputs = {"Out": pool_out}
+
+    helper.append_op(
+        type=l_type,
+        inputs={"X": x,
+                'ROIS': rois,
+                'RoisNum': rois_num},
+        outputs=outputs,
+        attrs={
+            'sampling_ratio', sampling_ratio, 'spatial_scale', spatial_scale,
+            'pooled_height', pooled_height, 'pooled_width', pooled_width,
+            'aligned', aligned
+        })
+    return pool_out

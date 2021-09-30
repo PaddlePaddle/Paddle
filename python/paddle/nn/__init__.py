@@ -143,6 +143,8 @@ from . import functional  # noqa: F401
 from . import initializer  # noqa: F401
 from . import quant  # noqa: F401
 
+from .layer.extension import BezierAlign
+
 #TODO: remove 'diag_embed', 'remove_weight_norm', 'weight_norm' months later.
 import paddle.utils.deprecated as deprecated
 
@@ -291,5 +293,6 @@ __all__ = [     #noqa
            'PixelShuffle',
            'ELU',
            'ReLU6',
-           'LayerDict'
+           'LayerDict',
+           'BezierAlign'
 ]
