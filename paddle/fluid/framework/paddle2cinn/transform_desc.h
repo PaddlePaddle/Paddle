@@ -29,30 +29,37 @@ namespace paddle {
 namespace framework {
 namespace paddle2cinn {
 
-namespace cpp = ::cinn::frontend::paddle::cpp;
-
+// Why use framework::VarDesc* rather than const framework::VarDesc& here?
+// framework::VarDesc lack of many API like clear(), etc. On the other hand,
+// the paddle node return framework::Desc* even if the node is const
 void TransformVarDescToCinn(framework::VarDesc* pb_desc,
-                            cpp::VarDesc* cpp_desc);
+                            ::cinn::frontend::paddle::cppVarDesc* cpp_desc);
 
-void TransformVarDescFromCinn(const cpp::VarDesc& cpp_desc,
-                              framework::VarDesc* pb_desc);
+void TransformVarDescFromCinn(
+    const ::cinn::frontend::paddle::cppVarDesc& cpp_desc,
+    framework::VarDesc* pb_desc);
 
-void TransformOpDescToCinn(framework::OpDesc* pb_desc, cpp::OpDesc* cpp_desc);
+void TransformOpDescToCinn(framework::OpDesc* pb_desc,
+                           ::cinn::frontend::paddle::cppOpDesc* cpp_desc);
 
-void TransformOpDescFromCinn(const cpp::OpDesc& cpp_desc,
-                             framework::OpDesc* pb_desc);
+void TransformOpDescFromCinn(
+    const ::cinn::frontend::paddle::cppOpDesc& cpp_desc,
+    framework::OpDesc* pb_desc);
 
 void TransformBlockDescToCinn(framework::BlockDesc* pb_desc,
-                              cpp::BlockDesc* cpp_desc);
+                              ::cinn::frontend::paddle::cppBlockDesc* cpp_desc);
 
-void TransformBlockDescFromCinn(const cpp::BlockDesc& cpp_desc,
-                                framework::BlockDesc* pb_desc);
+void TransformBlockDescFromCinn(
+    const ::cinn::frontend::paddle::cppBlockDesc& cpp_desc,
+    framework::BlockDesc* pb_desc);
 
-void TransformProgramDescToCinn(framework::ProgramDesc* pb_desc,
-                                cpp::ProgramDesc* cpp_desc);
+void TransformProgramDescToCinn(
+    framework::ProgramDesc* pb_desc,
+    ::cinn::frontend::paddle::cppProgramDesc* cpp_desc);
 
-void TransformProgramDescFromCinn(const cpp::ProgramDesc& cpp_desc,
-                                  framework::ProgramDesc* pb_desc);
+void TransformProgramDescFromCinn(
+    const ::cinn::frontend::paddle::cppProgramDesc& cpp_desc,
+    framework::ProgramDesc* pb_desc);
 
 }  // namespace paddle2cinn
 }  // namespace framework

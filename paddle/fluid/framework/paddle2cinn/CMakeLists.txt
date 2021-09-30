@@ -7,5 +7,5 @@ cc_test(cinn_cache_key_test SRCS cinn_cache_key_test.cc DEPS cinn_cache_key)
 cc_test(cinn_runner_test SRCS cinn_runner_test.cc DEPS cinn_runner proto_desc)
 cc_test(cinn_compiled_object_test SRCS cinn_compiled_object_test.cc DEPS cinn_compiled_object)
 
-cc_library(transform_desc SRCS transform_desc.cc DEPS proto_desc cinn_core)
+cc_library(transform_desc SRCS transform_desc.cc DEPS proto_desc cinnapi.so)
 cc_test(transform_desc_test SRCS transform_desc_test.cc DEPS transform_desc)
