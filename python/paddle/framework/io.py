@@ -42,12 +42,13 @@ def _build_saved_state_dict(state_dict):
     save_dict = {}
     name_table = {}
     for key, value in state_dict.items():
-        if value.type == core.VarDesc.VarType.VOCAB:
-            save_dict[key] = value.value().get_map_tensor()
-        elif value.type == core.VarDesc.VarType.STRINGS:
-            save_dict[key] = value.value().get_string_tensor()
-        elif isinstance(value, (Variable, core.VarBase)):
-            save_dict[key] = value.numpy()
+        if isinstance(value, (Variable, core.VarBase)):
+            if value.type == core.VarDesc.VarType.VOCAB:
+                save_dict[key] = value.value().get_map_tensor()
+            elif value.type == core.VarDesc.VarType.STRINGS:
+                save_dict[key] = value.value().get_string_tensor()
+            else:
+                save_dict[key] = value.numpy()
             name_table[key] = value.name
         else:
             save_dict[key] = value
