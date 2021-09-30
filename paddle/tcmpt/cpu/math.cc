@@ -26,7 +26,7 @@ namespace pt {
 
 template <typename T>
 void Sign(const CPUContext& dev_ctx, const DenseTensor& x, DenseTensor* out) {
-  module::Sign<CPUContext, T>(dev_ctx, x, out);
+  eigen::Sign<CPUContext, T>(dev_ctx, x, out);
 }
 
 template <typename T>
@@ -41,7 +41,7 @@ void Scale(const CPUContext& dev_ctx,
            float bias,
            bool bias_after_scale,
            DenseTensor* out) {
-  module::Scale<CPUContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
+  eigen::Scale<CPUContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
 }
 
 template <typename T>
@@ -66,12 +66,12 @@ void ScaleHost(const CPUContext& dev_ctx,
                float bias,
                bool bias_after_scale,
                DenseTensor* out) {
-  module::Scale<CPUContext, T>(dev_ctx,
-                               x,
-                               static_cast<float>(*scale.data<T>()),
-                               bias,
-                               bias_after_scale,
-                               out);
+  eigen::Scale<CPUContext, T>(dev_ctx,
+                              x,
+                              static_cast<float>(*scale.data<T>()),
+                              bias,
+                              bias_after_scale,
+                              out);
 }
 
 template <typename T>

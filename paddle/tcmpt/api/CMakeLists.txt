@@ -10,12 +10,12 @@ add_subdirectory(src)
 # endfunction()
 
 set(TCMPT_DEPS convert_utils dense_tensor selected_rows_tensor kernel_factory kernel_context)
-set(TCMPT_DEPS ${TCMPT_DEPS} math_cpu linalg_cpu)
+set(TCMPT_DEPS ${TCMPT_DEPS} math_cpu linalg_cpu fill_cpu)
 if(WITH_GPU OR WITH_ROCM)
-  set(TCMPT_DEPS ${TCMPT_DEPS} math_cuda linalg_cuda)
+  set(TCMPT_DEPS ${TCMPT_DEPS} math_cuda linalg_cuda fill_cuda)
 endif()
 
-set(TCMPT_DEPS ${TCMPT_DEPS} math_api linalg_api)
+set(TCMPT_DEPS ${TCMPT_DEPS} math_api linalg_api fill_api)
 
 # TODO(chenweihang): unify decclare into **_library
 # declare_module(MathCPU)
