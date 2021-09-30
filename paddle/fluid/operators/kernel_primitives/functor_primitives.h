@@ -179,7 +179,7 @@ struct LogicalAndFunctor {
  */
 template <typename T>
 struct SubFunctor {
-  inline T initial() { return static_cast<T>(1.0f); }
+  inline T initial() { return static_cast<T>(0.0f); }
 
   inline HOSTDEVICE T operator()(const T& a, const T& b) const { return a - b; }
 };
