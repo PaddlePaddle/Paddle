@@ -41,6 +41,19 @@ def fused_feedforward(x,
                       dropout2_implementation='upscale_in_train',
                       normalize_pre_or_post=False,
                       name=None):
+    """
+        the fused_feedforward operator is the same as the following pseudo code:
+        residual = src;
+        if normalize_pre_or_post:
+            src = layer_norm(src)
+        src = linear(dropout(activation(dropout(linear(src)))))
+        if not normalize_pre_or_post:
+            src = layer_norm(out)
+
+        Args:
+            x (Tensor): The input tensor of fused_feedforward
+
+    """
     if in_dygraph_mode():
         out, _, _, _, _, _, _, _, _, _, _ = _C_ops.fused_feedforward(
             x, None, None, linear1_weight, linear1_bias, linear2_weight,

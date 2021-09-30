@@ -100,9 +100,8 @@ class FusedFeedForwardOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const override {
-    auto input = ctx.Input<Tensor>("X");
-    auto input_data_type = input->type();
-    return framework::OpKernelType(input_data_type, ctx.GetPlace());
+    return framework::OpKernelType(
+        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
 };
 
