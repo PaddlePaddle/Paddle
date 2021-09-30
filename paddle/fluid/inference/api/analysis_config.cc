@@ -207,6 +207,7 @@ AnalysisConfig::AnalysisConfig(const AnalysisConfig &other) {
   // NPU related.
   CP_MEMBER(use_npu_);
   CP_MEMBER(npu_device_id_);
+  CP_MEMBER(nnadapter_config_);
 
   // profile related.
   CP_MEMBER(with_profile_);
@@ -554,7 +555,7 @@ void AnalysisConfig::Update() {
   }
 
   if (use_npu_) {
-#ifdef PADDLE_WITH_ASCEND_CL
+#if defined(PADDLE_WITH_ASCEND_CL) || defined(LITE_SUBGRAPH_WITH_NPU)
     PADDLE_ENFORCE_EQ(use_gpu_, false,
                       platform::errors::Unavailable(
                           "Currently, NPU and GPU cannot be enabled in the "
@@ -831,6 +832,61 @@ std::string AnalysisConfig::Summary() {
                 collect_shape_range_info_ ? shape_range_info_path_ : "false"});
 
   return os.PrintTable();
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetDeviceNames(
+    const std::vector<std::string> &names) {
+  nnadapter_device_names = names;
+  return *this;
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetContextProperties(
+    const std::string &properties) {
+  nnadapter_context_properties = properties;
+  return *this;
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheDir(
+    const std::string &dir) {
+  nnadapter_model_cache_dir = dir;
+  return *this;
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetModelCacheBuffers(
+    const std::string &model_cache_token,
+    const std::vector<char> &model_cache_buffer) {
+  PADDLE_ENFORCE_EQ(model_cache_token.empty(), false,
+                    platform::errors::InvalidArgument(
+                        "model_cache_token should not be empty."));
+  PADDLE_ENFORCE_EQ(model_cache_buffer.empty(), false,
+                    platform::errors::InvalidArgument(
+                        "model_cache_buffer should not be empty."));
+  PADDLE_ENFORCE_EQ(nnadapter_model_cache_buffers.count(model_cache_token),
+                    false, platform::errors::InvalidArgument(
+                               "model_cache_token has already been set."));
+
+  nnadapter_model_cache_buffers[model_cache_token] = model_cache_buffer;
+  return *this;
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetSubgraphPartitionConfigPath(
+    const std::string &path) {
+  nnadapter_subgraph_partition_config_path = path;
+  return *this;
+}
+
+LiteNNAdapterConfig &LiteNNAdapterConfig::SetSubgraphPartitionConfigBuffer(
+    const std::string &buffer) {
+  nnadapter_subgraph_partition_config_buffer = buffer;
+  return *this;
+}
+LiteNNAdapterConfig &LiteNNAdapterConfig::Enable() {
+  use_nnadapter = true;
+  return *this;
+}
+LiteNNAdapterConfig &LiteNNAdapterConfig::Disable() {
+  use_nnadapter = false;
+  return *this;
 }
 
 void AnalysisConfig::CollectShapeRangeInfo(

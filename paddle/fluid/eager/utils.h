@@ -15,6 +15,7 @@
 #pragma once
 
 #include "paddle/fluid/imperative/layer.h"
+#include "paddle/fluid/imperative/tracer.h"
 #include "paddle/tcmpt/api/include/tensor.h"
 std::vector<std::shared_ptr<paddle::imperative::VarBase>> TensorsToVarBases(
     const pt::Tensor& tensor);
@@ -24,3 +25,6 @@ std::vector<pt::Tensor> VarBasesToTensors(
     const std::shared_ptr<paddle::imperative::VarBase>& var_base);
 std::vector<pt::Tensor> VarBasesToTensors(
     const std::vector<std::shared_ptr<paddle::imperative::VarBase>>& var_bases);
+
+std::vector<std::shared_ptr<paddle::imperative::VarBase>>
+ConstructDuplicableOutput(const size_t num);

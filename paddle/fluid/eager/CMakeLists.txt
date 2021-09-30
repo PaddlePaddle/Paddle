@@ -1,7 +1,13 @@
 add_subdirectory(nodes)
-add_subdirectory(tests)
 add_subdirectory(api)
 add_subdirectory(autocodegen)
+
+set(eager_deps eager_api utils function_api backward autograd_meta grad_node_info tcmpt)
+set(fluid_deps tracer layer proto_desc operator op_registry variable_helper scale_op memcpy)
+set(generated_deps dygraph_function dygraph_node)
+
+add_subdirectory(generated)
+add_subdirectory(tests)
 
 cc_library(autograd_meta SRCS autograd_meta.cc DEPS tcmpt)
 cc_library(backward SRCS backward.cc DEPS autograd_meta grad_node_info)

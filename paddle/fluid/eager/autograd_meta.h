@@ -198,12 +198,13 @@ class EagerUtils {
   static void SetMultiOutRankWithSlot(std::vector<AutogradMeta*>* targets,
                                       size_t slot_id);
   static void SetOutRankWithSlot(std::vector<AutogradMeta*>* targets,
-                                      size_t slot_id);
-  static void SetOutRankWithSlot(AutogradMeta* target,
-                                      size_t slot_id);
+                                 size_t slot_id);
+  static void SetOutRankWithSlot(AutogradMeta* target, size_t slot_id);
 
   // This method will return an AutogradMeta pointer unsafely.
   static AutogradMeta* unsafe_autograd_meta(const pt::Tensor& target);
+  static std::vector<AutogradMeta*> unsafe_autograd_meta(
+      std::vector<pt::Tensor>* targets);
 };
 
 }  // namespace egr

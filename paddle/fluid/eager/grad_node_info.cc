@@ -124,7 +124,7 @@ void GradNodeBase::SetMultiGradOutMeta(const std::vector<AutogradMeta*>& fwd_in,
 
 void GradNodeBase::SetGradOutMeta(const AutogradMeta& fwd_in,
                                   size_t slot_rank) {
-  PADDLE_ENFORCE_LE(slot_rank, (bwd_out_meta_.size() - 1),
+  PADDLE_ENFORCE_LE((slot_rank + 1), bwd_out_meta_.size(),
                     "Slot Rank should less equal than bwd_out_meta_ size.");
   auto& meta = bwd_out_meta_.at(slot_rank);
   PADDLE_ENFORCE_EQ(meta.IsInitialized(), false,
