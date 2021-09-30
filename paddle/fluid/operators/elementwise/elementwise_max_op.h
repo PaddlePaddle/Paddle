@@ -39,14 +39,14 @@ class ElementwiseMaxKernel : public framework::OpKernel<T> {
 template <typename T>
 struct MaxGradDx {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * (x > y);
+    return dout * static_cast<T>(x > y);
   }
 };
 
 template <typename T>
 struct MaxGradDy {
   HOSTDEVICE T operator()(T x, T y, T out, T dout) const {
-    return dout * (x <= y);
+    return dout * static_cast<T>(x <= y);
   }
 };
 
