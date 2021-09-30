@@ -121,7 +121,9 @@ int32_t CtrSparseTable::load(const std::string& path,
             VLOG(2) << "CtrSparseTable::load key: " << key << " value " << i << ": " << value->data()[i];
           }
         }
+        std::cout << "before close channel\n";
         read_channel->close();
+        std::cout << "after close channel\n";
         if (err_no == -1) {
           ++retry_num;
           is_read_failed = true;
@@ -142,7 +144,7 @@ int32_t CtrSparseTable::load(const std::string& path,
   }
   LOG(INFO) << "CtrSparseTable load success, path from "
             << file_list[file_start_idx] << " to "
-            << file_list[file_start_idx + task_pool_size_];
+            << file_list[file_start_idx + task_pool_size_ - 1];
   return 0;
 }
 
@@ -606,7 +608,7 @@ int32_t CtrSparseTable::shrink(const std::string& param) {
         if (_value_accesor->shrink(iter->second->data())) {
           butil::return_object(iter->second);
           iter = table.erase(iter);
-          VLOG(0) << "shrink erase key: " << iter->first;
+          VLOG(1) << "shrink erase key: " << iter->first;
         } else {
           ++iter;
         }

@@ -232,6 +232,62 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                         })
 
     def _push_sparse_fuse(_program, push_sparse_ops, use_ps_gpu):
+        show = None
+        clk = None
+        use_entry = False
+        for param, ops in push_sparse_ops.items():
+            op_first = ops[0]
+            break
+        print(op_first)
+        entry = op_first.attr("entry")
+        entry = entry.split(':')
+        if len(entry) == 3 and entry[0] == 'show_click_entry':
+            show_var_name = entry[1]
+            click_var_name = entry[2]
+            if show_var_name in program.global_block().vars and click_var_name in program.global_block().vars:
+                show = program.global_block().vars[show_var_name]
+                clk = program.global_block().vars[click_var_name]
+                use_entry = True
+            else:
+                warnings.warn('ShowClickEntry configured, but cannot find show/click var, will not use')
+
+        if not use_entry:
+            print('ShowClickEntry not configured, will not use')
+            print('debug zcb append show click var')
+            show = program.global_block().create_var(
+                    name="show",
+                    dtype=core.VarDesc.VarType.INT64,
+                    persistable=False,
+                    stop_gradient=True)
+            program.global_block()._insert_op(
+                    index=0,
+                    type='fill_constant',
+                    inputs={},
+                    outputs={'Out': show},
+                    attrs={
+                        'shape': [1],
+                        'dtype': show.dtype,
+                        'value': 1,
+                    #OP_ROLE_KEY: OpRole.Forward
+                    })
+
+            clk = program.global_block().create_var(
+                    name="clk",
+                    dtype=core.VarDesc.VarType.INT64,
+                    persistable=False,
+                    stop_gradient=True)
+            program.global_block()._insert_op(
+                    index=0,
+                    type='fill_constant',
+                    inputs={},
+                    outputs={'Out': clk},
+                    attrs={
+                        'shape': [1],
+                        'dtype': clk.dtype,
+                        'value': 0,
+                    #OP_ROLE_KEY: OpRole.Forward
+                    })
+
         for param, ops in push_sparse_ops.items():
             all_ops = program.global_block().ops
             op_idxs = [all_ops.index(op) for op in ops]
@@ -240,6 +296,7 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
             ]
             w = program.global_block().vars[ops[0].output("W@GRAD")[0]]
 
+            '''
             ######TODO
             #show = fluid.global_scope().find_var("show")
             #clk = fluid.global_scope().find_var("click")
@@ -285,11 +342,14 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
             else:
                 print('find var click')
                 clk = program.global_block().vars["click"]
+            '''
 
             table_id = w_2_table_id[param]
 
             padding_idx = ops[0].attr("padding_idx")
             is_distributed = ops[0].attr("is_distributed")
+
+            
             op_type = ops[0].type
 
             outputs = [
@@ -298,7 +358,6 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
  
             for idx in op_idxs[::-1]:
                 program.global_block()._remove_op(idx)
-
 
             print("yxf::pushfuse::inputs: {}".format(inputs))
             print("yxf::pushfuse::outputs: {}".format(outputs))

@@ -65,7 +65,8 @@ int32_t CommonDenseTable::initialize_value() {
     if (varname == "Param") {
       param_dim_ = dim;
       param_idx_ = x;
-    }
+    } 
+
     auto& initializer = common.initializers()[x];
     total_dim_ += dim;
 
@@ -76,6 +77,11 @@ int32_t CommonDenseTable::initialize_value() {
     for (int y = 0; y < dim; ++y) {
       values_[x][y] = initializers_[varname]->GetValue();
     }
+
+    if (varname == "AdaEpsilon") {
+      VLOG(1) << "debug dense optimizer AdaEpsilon: " << values_[x][0];
+    }
+
   }
   VLOG(1) << "CommonDenseTable::initialize_value total dim: " << total_dim_;
 
@@ -214,6 +220,8 @@ int32_t CommonDenseTable::load(const std::string& path, const std::string& param
         }
       }
 
+      VLOG(0) << "debug zcb dense optimizer load AdaEpsilon: " << values_[values_.size() - 2][0];
+
       read_channel->close();
 
       if (err_no == -1 || dim_idx < total_dim_) {
@@ -259,12 +267,16 @@ int32_t CommonDenseTable::save(const std::string& path, const std::string& param
 
   auto common = _config.common();
   int size = static_cast<int>(common.params().size());
+  std::ostringstream os;
   for (int x = 0; x < size; ++x) {
     auto& varname = common.params()[x];
     auto& dim = common.dims()[x];
     VLOG(0) << "CommonDenseTable::save dim " << x << " size: " << dim;
     for (int y = 0; y < dim; ++y) {
-      result_buffer.emplace_back(std::move(std::to_string(values_[x][y])));
+      os.clear();
+      os.str("");
+      os << values_[x][y];
+      result_buffer.emplace_back(std::move(os.str()));
     }
   }
 

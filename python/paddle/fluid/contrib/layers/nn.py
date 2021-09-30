@@ -1002,10 +1002,10 @@ def sparse_embedding(input,
 
     if entry is not None:
         if entry.__class__.__name__ not in [
-                "ProbabilityEntry", "CountFilterEntry"
+                "ProbabilityEntry", "CountFilterEntry", "ShowClickEntry"
         ]:
             raise ValueError(
-                "entry must be instance in [paddle.distributed.ProbabilityEntry, paddle.distributed.CountFilterEntry]"
+                "entry must be instance in [paddle.distributed.ProbabilityEntry, paddle.distributed.CountFilterEntry, paddle.distributed.ShowClickEntry]"
             )
         entry_str = entry._to_attr()
 
