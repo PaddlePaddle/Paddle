@@ -29,17 +29,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
 
-namespace paddle {
-namespace platform {
-mkldnn::memory::format_tag GetMKLDNNFormat(const mkldnn::memory::desc&);
-}  // namespace platform
-}  // namespace paddle
-
-namespace paddle {
-namespace framework {
-mkldnn::memory::data_type ToMKLDNNDataType(proto::VarType::Type);
-}  // namespace framework
-}  // namespace paddle
+// temporary import, it will be deleted after full mkldnn tensor refactoring
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_utils.h"
+#endif
 
 namespace paddle {
 namespace memory {

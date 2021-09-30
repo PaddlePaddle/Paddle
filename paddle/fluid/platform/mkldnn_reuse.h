@@ -912,12 +912,17 @@ class ReorderMKLDNNHandler {
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(
       framework::Tensor* output, const mkldnn::memory::desc& src_md,
       platform::Place place) {
-    auto strides = src_md.data.format_desc.blocking.strides;
-    auto dst_md = mkldnn::memory::desc(dims_, dtype_dst_,
-                                       {strides, strides + dims_.size()});
-
-    auto dst_data = output->mutable_data(place, vtype_dst_, dst_md.get_size());
-    return std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
+    if (vtype_dst_ == vtype_) {
+      auto dst_data =
+          output->mutable_data(place, vtype_dst_, src_md.get_size());
+      return std::make_shared<mkldnn::memory>(src_md, engine_, dst_data);
+    } else {
+      auto dst_md = src_md;
+      dst_md.data.data_type = static_cast<dnnl_data_type_t>(dtype_dst_);
+      auto dst_data =
+          output->mutable_data(place, vtype_dst_, dst_md.get_size());
+      return std::make_shared<mkldnn::memory>(dst_md, engine_, dst_data);
+    }
   }
 
   std::shared_ptr<mkldnn::memory> AcquireDstMemory(

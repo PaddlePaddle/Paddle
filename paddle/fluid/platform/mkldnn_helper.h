@@ -24,6 +24,11 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/platform/place.h"
 #include "paddle/fluid/platform/profiler.h"
+
+#ifdef PADDLE_WITH_MKLDNN
+#include "paddle/fluid/platform/mkldnn_utils.h"
+#endif
+
 namespace paddle {
 #ifdef PADDLE_WITH_MKLDNN
 using MKLDNNMemoryFormat = mkldnn::memory::format_tag;
@@ -194,138 +199,6 @@ inline void Reorder(mkldnn::memory src, mkldnn::memory dst,
                                        platform::EventRole::kUniqueOp);
   reorder_prim.execute(astream, src, dst);
   astream.wait();
-}
-
-inline mkldnn::memory::format_tag GetMKLDNNFormat(
-    const mkldnn::memory::desc& mem_desc) {
-  auto ndims = mem_desc.data.ndims;
-  auto strides = mem_desc.data.format_desc.blocking.strides;
-  auto inner_nblks = mem_desc.data.format_desc.blocking.inner_nblks;
-  auto inner_blks = mem_desc.data.format_desc.blocking.inner_blks;
-  auto inner_idxs = mem_desc.data.format_desc.blocking.inner_idxs;
-
-  if (ndims == 1) {
-    return mkldnn::memory::format_tag::x;
-  } else if (ndims == 2) {
-    if (inner_nblks == 0) {
-      if (strides[0] >= strides[1]) {
-        return mkldnn::memory::format_tag::nc;
-      } else {
-        return mkldnn::memory::format_tag::cn;
-      }
-    }
-  } else if (ndims == 3) {
-    if (inner_nblks == 0) {
-      if (strides[0] >= strides[1] && strides[1] >= strides[2]) {
-        return mkldnn::memory::format_tag::ncw;
-      } else if (strides[1] >= strides[0] && strides[0] >= strides[2]) {
-        return mkldnn::memory::format_tag::ntc;
-      } else {
-        return mkldnn::memory::format_tag::nwc;
-      }
-    }
-  } else if (ndims == 4) {
-    if (inner_nblks == 0) {
-      if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
-          strides[2] >= strides[3]) {
-        return mkldnn::memory::format_tag::nchw;
-      } else if (strides[2] >= strides[3] && strides[3] >= strides[1] &&
-                 strides[1] >= strides[0]) {
-        return mkldnn::memory::format_tag::cdba;
-      } else {
-        return mkldnn::memory::format_tag::nhwc;
-      }
-    } else if (inner_nblks == 1) {
-      if (inner_blks[0] == 16 && inner_idxs[0] == 1) {
-        return mkldnn::memory::format_tag::nChw16c;
-      } else if (inner_blks[0] == 8 && inner_idxs[0] == 1) {
-        return mkldnn::memory::format_tag::nChw8c;
-      } else if (inner_blks[0] == 8 && inner_idxs[0] == 0) {
-        if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
-            strides[3] >= strides[1]) {
-          return mkldnn::memory::format_tag::Acdb8a;
-        }
-      } else if (inner_blks[0] == 4 && inner_idxs[0] == 1) {
-        return mkldnn::memory::format_tag::nChw4c;
-      } else if (inner_blks[0] == 16 && inner_idxs[0] == 0) {
-        if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
-            strides[3] >= strides[1]) {
-          return mkldnn::memory::format_tag::Acdb16a;
-        }
-      }
-    } else if (inner_nblks == 2) {
-      if (inner_blks[0] == 16 && inner_blks[1] == 16) {
-        if (inner_idxs[0] == 1 && inner_idxs[1] == 0) {
-          return mkldnn::memory::format_tag::OIhw16i16o;
-        }
-      } else if (inner_blks[0] == 8 && inner_blks[1] == 8) {
-        if (inner_idxs[0] == 1 && inner_idxs[1] == 0) {
-          return mkldnn::memory::format_tag::OIhw8i8o;
-        }
-      }
-    }
-  } else if (ndims == 5) {
-    if (inner_nblks == 0) {
-      if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
-          strides[2] >= strides[3] && strides[3] >= strides[4]) {
-        return mkldnn::memory::format_tag::ncdhw;
-      } else {
-        return mkldnn::memory::format_tag::ndhwc;
-      }
-    } else if (inner_nblks == 1) {
-      if (inner_blks[0] == 8 && inner_idxs[0] == 0) {
-        if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
-            strides[3] >= strides[4] && strides[4] >= strides[1]) {
-          return mkldnn::memory::format_tag::Acdeb8a;
-        }
-        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
-            strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return mkldnn::memory::format_tag::Abcde8a;
-        }
-      } else if (inner_blks[0] == 8 && inner_idxs[0] == 1) {
-        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
-            strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return mkldnn::memory::format_tag::aBcde8b;
-        }
-      } else if (inner_blks[0] == 16 && inner_idxs[0] == 0) {
-        if (strides[0] >= strides[2] && strides[2] >= strides[3] &&
-            strides[3] >= strides[4] && strides[4] >= strides[1]) {
-          return mkldnn::memory::format_tag::Acdeb16a;
-        }
-        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
-            strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return mkldnn::memory::format_tag::Abcde16a;
-        }
-      } else if (inner_blks[0] == 16 && inner_idxs[0] == 1) {
-        if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
-            strides[2] >= strides[3] && strides[3] >= strides[4]) {
-          return mkldnn::memory::format_tag::aBcde16b;
-        }
-      }
-    }
-  } else if (ndims == 6) {
-    if (inner_nblks == 0) {
-      if (strides[0] >= strides[1] && strides[1] >= strides[2] &&
-          strides[2] >= strides[3] && strides[3] >= strides[4] &&
-          strides[4] >= strides[5]) {
-        return mkldnn::memory::format_tag::abcdef;
-      }
-    }
-  }
-  // DEBUG CODE - KEEP UNTILL TENSOR.MEMORY_DESC IMPLEMENTED
-  // std::cout<<"@@@@@@@@@@ UNDEFINED FORMAT @@@@@@@@@@@@@@@@@@@"<<std::endl;
-  // std::cout<<"NDIMS: "<<ndims<<std::endl;
-  // std::cout<<"INNER_NBLKS: "<<inner_nblks<<std::endl;
-  // for (int i=0;i<ndims;++i) {
-  //   std::cout<<"STRIDE["<<i<<"]: "<<strides[i]<<std::endl;
-  // }
-  // for (int i=0;i<inner_nblks;++i) {
-  //   std::cout<<"INNER_BLKS["<<i<<"]: "<<inner_blks[i]<<std::endl;
-  // }
-  // for (int i=0;i<inner_nblks;++i) {
-  //   std::cout<<"INNER_IDXS["<<i<<"]: "<<inner_idxs[i]<<std::endl;
-  // }
-  return mkldnn::memory::format_tag::undef;
 }
 
 inline mkldnn::memory::format_tag GetMKLDNNFormat(
