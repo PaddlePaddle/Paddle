@@ -42,6 +42,19 @@ class DropoutOp : public framework::OperatorWithKernel {
     return framework::OpKernelType(
         OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
   }
+
+  framework::OpKernelType GetKernelTypeForVar(
+      const std::string& var_name, const Tensor& tensor,
+      const framework::OpKernelType& expected_kernel_type) const override {
+    if (var_name == "Seed") {
+      VLOG(10) << "var_name:" << var_name
+               << " does not need to transform in dropout op";
+      return expected_kernel_type;
+    }
+
+    return framework::OpKernelType(expected_kernel_type.data_type_,
+                                   tensor.place(), tensor.layout());
+  }
 };
 
 class DropoutOpMaker : public framework::OpProtoAndCheckerMaker {

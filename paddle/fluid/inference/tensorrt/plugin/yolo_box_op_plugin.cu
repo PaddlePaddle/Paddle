@@ -119,10 +119,10 @@ __device__ inline void GetYoloBox(float* box, const T* x, const int* anchors,
                                   int img_height, int img_width, float scale,
                                   float bias) {
   box[0] = static_cast<float>(
-      (i + sigmoid(static_cast<float>(x[index]) * scale + bias)) * img_width /
+      (i + sigmoid(static_cast<float>(x[index])) * scale + bias) * img_width /
       grid_size_w);
   box[1] = static_cast<float>(
-      (j + sigmoid(static_cast<float>(x[index + stride]) * scale + bias)) *
+      (j + sigmoid(static_cast<float>(x[index + stride])) * scale + bias) *
       img_height / grid_size_h);
   box[2] = static_cast<float>(expf(static_cast<float>(x[index + 2 * stride])) *
                               anchors[2 * an_idx] * img_width / input_size_w);

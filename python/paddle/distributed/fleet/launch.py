@@ -72,8 +72,8 @@ from paddle.distributed.fleet import launch_utils
 
 # TODO(danleifeng): Don't import * from a module
 from paddle.distributed.fleet.launch_utils import *
-import paddle.distributed.fleet.cloud_utils as cloud_utils
-import paddle.distributed.fleet.ascend_utils as ascend_utils
+from paddle.distributed.fleet import cloud_utils
+from paddle.distributed.fleet import ascend_utils
 
 from paddle.distributed.fleet.elastic import enable_elastic, launch_elastic
 

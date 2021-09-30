@@ -22,57 +22,51 @@ namespace operators {
 
 using Tensor = framework::Tensor;
 
-template <typename T, size_t D, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenTensor = framework::EigenTensor<T, D, MajorType, IndexType>;
-template <typename T, int MajorType = Eigen::RowMajor,
-          typename IndexType = Eigen::DenseIndex>
-using EigenVector = framework::EigenVector<T, MajorType, IndexType>;
-
-template <typename DeviceContext, typename ValueType, typename T>
+template <typename DeviceContext, typename T>
 class EighKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto input_var = ctx.Input<Tensor>("X");
-    auto output_w_var = ctx.Output<Tensor>("Eigenvalues");
-    auto output_v_var = ctx.Output<Tensor>("Eigenvectors");
+    auto input = ctx.Input<Tensor>("X");
+    auto output_w = ctx.Output<Tensor>("Eigenvalues");
+    auto output_v = ctx.Output<Tensor>("Eigenvectors");
     std::string lower = ctx.Attr<std::string>("UPLO");
     bool is_lower = (lower == "L");
-    math::MatrixEighFunctorCPU<DeviceContext, ValueType, T> functor;
-    functor(ctx, *input_var, output_w_var, output_v_var, is_lower, true);
+    math::MatrixEighFunctor<DeviceContext, T> functor;
+    functor(ctx, *input, output_w, output_v, is_lower, true);
   }
 };
 
-template <typename DeviceContext, typename ValueType, typename T>
+template <typename DeviceContext, typename T>
 class EighGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    using ValueType = math::Real<T>;
     auto& x_grad = *ctx.Output<framework::Tensor>(framework::GradVarName("X"));
     x_grad.mutable_data<T>(ctx.GetPlace());
-    auto& output_w_var = *ctx.Input<Tensor>("Eigenvalues");
-    auto& output_v_var = *ctx.Input<Tensor>("Eigenvectors");
+    auto& output_w = *ctx.Input<Tensor>("Eigenvalues");
+    auto& output_v = *ctx.Input<Tensor>("Eigenvectors");
     auto& output_w_grad =
         *ctx.Input<Tensor>(framework::GradVarName("Eigenvalues"));
     auto& output_v_grad =
         *ctx.Input<Tensor>(framework::GradVarName("Eigenvectors"));
 
-    auto& dims = output_v_var.dims();
+    auto& dims = output_v.dims();
     const int m = dims[dims.size() - 1];
     auto dito =
         math::DeviceIndependenceTensorOperations<DeviceContext, T, ValueType>(
             ctx);
-    auto tV = dito.Transpose(dito.Conj(output_v_var));
-    auto W = dito.Sub_(dito.Unsqueeze(output_w_var, -2),
-                       dito.Unsqueeze(output_w_var, -1));
+    auto tV = dito.Transpose(dito.Conj(output_v));
+    auto W = dito.template Sub<ValueType>(dito.Unsqueeze(output_w, -2),
+                                          dito.Unsqueeze(output_w, -1));
     Tensor result = dito.Matmul(tV, output_v_grad);
     result.mutable_data<T>(dims, ctx.GetPlace());
     std::vector<int> out_shape = framework::vectorize<int>(dims);
     auto constant = dito.Fill(out_shape, 0.5);
     result = dito.Sub(result, dito.Conj(dito.Transpose(result)));
     result = dito.Mul(result, constant);
-    result = dito.Div_(result, W);
+    result = dito.Div(result, W);
     result = dito.DiagFill(m, m, m, 0, output_w_grad, result);
-    x_grad = dito.Matmul(output_v_var, dito.Matmul(result, tV));
+    x_grad = dito.Matmul(output_v, dito.Matmul(result, tV));
   }
 };
 

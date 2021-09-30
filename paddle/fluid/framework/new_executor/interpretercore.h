@@ -57,20 +57,18 @@ class InterpreterCore {
 
   void BuildInplace();
 
+  bool BuildInplaceCheckVarIsOnlyInput(size_t var_index);
+
   void RunInstruction(const Instruction& instr_node);
 
-  void ExecuteInstructionList(const std::vector<Instruction>& vec_instr,
-                              bool is_dry_run = false);
+  void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
 
   void DryRunPrepare(const std::vector<framework::Tensor>& feed_tensors);
 
-  void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list,
-               AtomicVectorSizeT* working_var_ref);
+  void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list);
 
-  void RunInstructionAsync(size_t instr_id,
-                           AtomicVectorSizeT* working_dependecy_count,
-                           AtomicVectorSizeT* working_var_ref,
-                           std::atomic<size_t>* op_run_number, bool is_dry_run);
+  void RunInstructionAsync(size_t instr_id);
+  void RunNextInstruction(const Instruction& instr_id);
   void AddFetch(const std::vector<std::string>& fetch_names);
 
   void BuildSkipShareLoDInfo();
@@ -100,7 +98,7 @@ class InterpreterCore {
 
   InterpreterCoreGarbageCollector gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;
-  std::unique_ptr<WorkQueueGroup> group_thread_pool_;
+  std::atomic<size_t> op_run_number_{0};
 };
 }  // namespace framework
 }  // namespace paddle

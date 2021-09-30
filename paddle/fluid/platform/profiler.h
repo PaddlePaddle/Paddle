@@ -28,9 +28,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/place.h"
+#include "paddle/fluid/platform/profiler.pb.h"
+
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
+
 namespace paddle {
 namespace platform {
 
@@ -215,6 +218,11 @@ void EnableProfiler(ProfilerState state);
 void ResetProfiler();
 void DisableProfiler(EventSortingKey sorted_key,
                      const std::string& profile_path);
+// Disable profiler but return events instead of print it.
+void CompleteProfilerEvents(proto::Profile* tracer_profile,
+                            std::vector<std::vector<Event>>* time_events,
+                            std::vector<std::vector<MemEvent>>* mem_events);
+
 // Test if the profiler is currently enabled.
 bool IsProfileEnabled();
 // Whether the trainer should send profiling state to PS.

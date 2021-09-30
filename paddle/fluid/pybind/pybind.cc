@@ -38,6 +38,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/garbage_collector.h"
 #include "paddle/fluid/framework/io/fs.h"
 #include "paddle/fluid/framework/ir/coalesce_grad_tensor_pass.h"
+#include "paddle/fluid/framework/ir/cost_model.h"
 #include "paddle/fluid/framework/ir/generate_pass.h"
 #include "paddle/fluid/framework/ir/pass_builder.h"
 #include "paddle/fluid/framework/lod_rank_table.h"
@@ -78,6 +79,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_ASCEND
 #include "paddle/fluid/pybind/ascend_wrapper_py.h"
 #endif
+#include "paddle/fluid/pybind/bind_cost_model.h"
 #include "paddle/fluid/pybind/box_helper_py.h"
 #include "paddle/fluid/pybind/compatible.h"
 #include "paddle/fluid/pybind/const_value.h"
@@ -122,6 +124,8 @@ limitations under the License. */
 #ifdef PADDLE_WITH_XPU
 #include "paddle/fluid/platform/xpu/xpu_info.h"
 #endif
+
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
@@ -518,6 +522,19 @@ PYBIND11_MODULE(core_noavx, m) {
   m.def("nccl_version", &GetNCCLVersion);
 #endif
 
+  m.def("is_cuda_graph_capturing", &platform::IsCUDAGraphCapturing);
+#ifdef PADDLE_WITH_CUDA
+  py::class_<platform::CUDAGraph>(m, "CUDAGraph")
+      .def_static("begin_capture",
+                  [](platform::CUDAPlace place, int mode) {
+                    platform::BeginCUDAGraphCapture(
+                        place, static_cast<cudaStreamCaptureMode>(mode));
+                  })
+      .def_static("end_capture", &platform::EndCUDAGraphCapture)
+      .def("replay", &platform::CUDAGraph::Replay)
+      .def("reset", &platform::CUDAGraph::Reset);
+#endif
+
   m.def("wait_device", [](const platform::Place &place) {
     platform::DeviceContextPool::Instance().Get(place)->Wait();
   });
@@ -535,11 +552,11 @@ PYBIND11_MODULE(core_noavx, m) {
     DLTensor dl = dmt->dl_tensor;
     framework::Tensor tensor;
 
-    if (dl.ctx.device_type == kDLCPU) {
+    if (dl.device.device_type == kDLCPU) {
       paddle::framework::TensorFromDLPack(dl, &tensor);
     }
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-    if (dl.ctx.device_type == kDLGPU) {
+    if (dl.device.device_type == kDLGPU) {
       paddle::framework::TensorFromDLPack(dl, &tensor);
     }
 #endif
@@ -774,8 +791,7 @@ PYBIND11_MODULE(core_noavx, m) {
       .def("_to_dlpack",
            [](framework::Tensor &self) {
              DLPackTensor dlpack_tensor(self, 1);
-             DLManagedTensor *dmt =
-                 dlpack_tensor.ToCudfCompatibleDLManagedTensor();
+             DLManagedTensor *dmt = dlpack_tensor.ToDLManagedTensor();
              auto capsule = py::capsule(
                  static_cast<void *>(dmt), "dltensor", [](PyObject *ptr) {
                    if (ptr) {
@@ -1979,12 +1995,8 @@ All parameter, weight, gradient are variables in Paddle.
   py::class_<framework::CostInfo>(m, "CostInfo")
       .def(py::init<>())
       .def("total_time", [](CostInfo &self) { return self.total_time; })
-      .def("host_memory_bytes",
-           [](CostInfo &self) { return self.host_memory_bytes; })
       .def("device_memory_bytes",
-           [](CostInfo &self) { return self.device_memory_bytes; })
-      .def("device_total_memory_bytes",
-           [](CostInfo &self) { return self.device_total_memory_bytes; });
+           [](CostInfo &self) { return self.device_memory_bytes; });
 
   py::class_<framework::StandaloneExecutor>(m, "StandaloneExecutor")
       .def(py::init<const platform::Place &, const ProgramDesc &,
@@ -2135,6 +2147,7 @@ All parameter, weight, gradient are variables in Paddle.
   BindBlockDesc(&m);
   BindVarDsec(&m);
   BindOpDesc(&m);
+  BindCostModel(&m);
   BindConstValue(&m);
   BindGlobalValueGetterSetter(&m);
   BindProcessMeshDesc(&m);
@@ -2287,6 +2300,31 @@ All parameter, weight, gradient are variables in Paddle.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
   m.def("cuda_empty_cache", platform::EmptyCache);
+  m.def("get_device_properties",
+        [](int id) -> const gpuDeviceProp & {
+          return platform::GetDeviceProperties(id);
+        },
+        py::return_value_policy::copy);
+
+  py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties")
+      .def_readonly("name", &gpuDeviceProp::name)
+      .def_readonly("major", &gpuDeviceProp::major)
+      .def_readonly("minor", &gpuDeviceProp::minor)
+      .def_readonly("is_multi_gpu_board", &gpuDeviceProp::isMultiGpuBoard)
+      .def_readonly("is_integrated", &gpuDeviceProp::integrated)
+      .def_readonly("multi_processor_count",
+                    &gpuDeviceProp::multiProcessorCount)
+      .def_readonly("total_memory", &gpuDeviceProp::totalGlobalMem)
+      .def("__repr__", [](const gpuDeviceProp &gpu_device_prop) {
+        std::ostringstream stream;
+        stream << "_gpuDeviceProperties(name='" << gpu_device_prop.name
+               << "', major=" << gpu_device_prop.major
+               << ", minor=" << gpu_device_prop.minor << ", total_memory="
+               << gpu_device_prop.totalGlobalMem / (1024 * 1024)
+               << "MB, multi_processor_count="
+               << gpu_device_prop.multiProcessorCount << ")";
+        return stream.str();
+      });
 
 #if !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   m.def("nvprof_init", platform::CudaProfilerInit);
@@ -2443,7 +2481,6 @@ All parameter, weight, gradient are variables in Paddle.
            [](ir::PassBuilder &self, size_t idx) { self.RemovePass(idx); });
 
   // -- python binds for parallel executor.
-
   py::class_<ParallelExecutor> pe(m, "ParallelExecutor");
   py::class_<ExecutionStrategy> exec_strategy(pe, "ExecutionStrategy", R"DOC(
     ExecutionStrategy allows the user to more preciously control how to run
