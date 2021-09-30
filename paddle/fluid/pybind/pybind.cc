@@ -125,6 +125,8 @@ limitations under the License. */
 #include "paddle/fluid/platform/xpu/xpu_info.h"
 #endif
 
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
+
 #ifdef PADDLE_WITH_CRYPTO
 #include "paddle/fluid/pybind/crypto.h"
 #endif
@@ -518,6 +520,19 @@ PYBIND11_MODULE(core_noavx, m) {
 
 #ifdef PADDLE_WITH_NCCL
   m.def("nccl_version", &GetNCCLVersion);
+#endif
+
+  m.def("is_cuda_graph_capturing", &platform::IsCUDAGraphCapturing);
+#ifdef PADDLE_WITH_CUDA
+  py::class_<platform::CUDAGraph>(m, "CUDAGraph")
+      .def_static("begin_capture",
+                  [](platform::CUDAPlace place, int mode) {
+                    platform::BeginCUDAGraphCapture(
+                        place, static_cast<cudaStreamCaptureMode>(mode));
+                  })
+      .def_static("end_capture", &platform::EndCUDAGraphCapture)
+      .def("replay", &platform::CUDAGraph::Replay)
+      .def("reset", &platform::CUDAGraph::Reset);
 #endif
 
   m.def("wait_device", [](const platform::Place &place) {
@@ -2285,6 +2300,31 @@ All parameter, weight, gradient are variables in Paddle.
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
   m.def("cuda_empty_cache", platform::EmptyCache);
+  m.def("get_device_properties",
+        [](int id) -> const gpuDeviceProp & {
+          return platform::GetDeviceProperties(id);
+        },
+        py::return_value_policy::copy);
+
+  py::class_<gpuDeviceProp>(m, "_gpuDeviceProperties")
+      .def_readonly("name", &gpuDeviceProp::name)
+      .def_readonly("major", &gpuDeviceProp::major)
+      .def_readonly("minor", &gpuDeviceProp::minor)
+      .def_readonly("is_multi_gpu_board", &gpuDeviceProp::isMultiGpuBoard)
+      .def_readonly("is_integrated", &gpuDeviceProp::integrated)
+      .def_readonly("multi_processor_count",
+                    &gpuDeviceProp::multiProcessorCount)
+      .def_readonly("total_memory", &gpuDeviceProp::totalGlobalMem)
+      .def("__repr__", [](const gpuDeviceProp &gpu_device_prop) {
+        std::ostringstream stream;
+        stream << "_gpuDeviceProperties(name='" << gpu_device_prop.name
+               << "', major=" << gpu_device_prop.major
+               << ", minor=" << gpu_device_prop.minor << ", total_memory="
+               << gpu_device_prop.totalGlobalMem / (1024 * 1024)
+               << "MB, multi_processor_count="
+               << gpu_device_prop.multiProcessorCount << ")";
+        return stream.str();
+      });
 
 #if !defined(PADDLE_WITH_HIP) && !defined(_WIN32)
   m.def("nvprof_init", platform::CudaProfilerInit);
