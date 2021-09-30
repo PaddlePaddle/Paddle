@@ -16,6 +16,7 @@
 
 #include <memory>
 #include "paddle/fluid/framework/executor.h"
+#include "paddle/fluid/framework/parallel_executor.h"
 #include "paddle/fluid/framework/scope.h"
 #include "paddle/fluid/platform/errors.h"
 #include "paddle/fluid/platform/place.h"
@@ -151,6 +152,13 @@ bool CostData::SetCostData(const ProgramDesc& program,
   return event_to_cost_success;
 }
 
+bool CostData::SetGraphCostData(
+    const ir::Graph& graph,
+    const std::vector<std::vector<Event>>& time_events) {
+  bool event_to_cost_success = false;
+  return event_to_cost_success;
+}
+
 void PrintEvents(const std::vector<std::vector<Event>>* time_events,
                  const std::vector<std::vector<MemEvent>>* mem_events) {
   if (time_events != nullptr) {
@@ -249,6 +257,46 @@ CostData CostModel::ProfileMeasure(
   CostData cost_data;
   cost_data.SetCostData(main_program, *time_events);
 
+  return cost_data;
+}
+CostData CostModel::ProfileMeasureGraph(
+    ir::Graph* graph, const std::string& device,
+    const std::vector<std::string>& fetch_cost_list) const {
+  platform::ProfilerState profiler_state;
+  platform::Place place;
+
+  std::string device_lower_case = ToLowerCopy(device);
+  if (device_lower_case == "cpu") {
+    profiler_state = platform::ProfilerState::kCPU;
+    place = platform::CPUPlace();
+  } else if (device_lower_case == "gpu") {
+    profiler_state = platform::ProfilerState::kAll;
+    place = platform::CUDAPlace();
+  } else {
+    PADDLE_THROW(platform::errors::Unimplemented(
+        "Not support %s in CostModel now", device));
+  }
+  EnableProfiler(profiler_state);
+  std::unique_ptr<std::vector<std::vector<Event>>> time_events(
+      new std::vector<std::vector<Event>>());
+  std::unique_ptr<std::vector<std::vector<MemEvent>>> mem_events(
+      new std::vector<std::vector<MemEvent>>());
+
+  details::ExecutionStrategy exec_strategy;
+  details::BuildStrategy build_strategy;
+  build_strategy.enable_inplace_ = false;
+  build_strategy.memory_optimize_ = false;
+  Scope scope;
+
+  ParallelExecutor* Pe = new ParallelExecutor(
+      platform::CUDAPlace(0), &scope, exec_strategy, build_strategy, graph);
+  Pe->Run({"Out"}, false);
+  CompleteProfilerEvents(/*tracer_profile= */ nullptr, time_events.get(),
+                         mem_events.get());
+
+  PrintEvents(time_events.get(), mem_events.get());
+  CostData cost_data;
+  cost_data.SetGraphCostData(*graph, *time_events);
   return cost_data;
 }
 

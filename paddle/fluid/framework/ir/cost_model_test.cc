@@ -141,6 +141,15 @@ TEST(CostModelTest, TestProfileMeasure_UnsupportedDevice) {
                paddle::platform::EnforceNotMet);
 }
 
+TEST(CostModelTest, TestProfileMeasure_Graph) {
+  CostModel cost_model;
+  ProgramDesc program = CreateTestProgram();
+  // ProgramDesc empty_program;
+  ir::Graph graph(program);
+  // VLOG(3) << "graph info" << graph;
+  CostData cost_data = cost_model.ProfileMeasureGraph(graph, "cpu", {"time"});
+}
+
 TEST(CostDataTest, TestGetGraphProgram) {
   CostData cost_data;
   EXPECT_EQ(cost_data.GetGraph(), nullptr);

@@ -63,6 +63,8 @@ FastThreadedSSAGraphExecutor::FastThreadedSSAGraphExecutor(
 
 FetchResultType FastThreadedSSAGraphExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
+  VLOG(3) << "In PE Run, fetch_tensors:" << fetch_tensors.size();
+
   VLOG(3) << "enter FastThreadedSSAGraphExecutor Run";
   std::unique_ptr<platform::RecordEvent> event(
       new platform::RecordEvent("FastThreadedSSAGraphExecutorPrepare"));

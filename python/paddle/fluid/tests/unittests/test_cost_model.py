@@ -45,6 +45,7 @@ class TestCostModel(unittest.TestCase):
         cost_data = cost_model.profile_measure(main_program, startup_program,
                                                device, ["time"])
         fc_op_time = cost_data.get_op_time_ms(0)
+        print('fc_op_time:', fc_op_time)
         mean_op_time = cost_data.get_op_time_ms(1)
         self.assertGreater(fc_op_time, 0)
         self.assertGreater(mean_op_time, 0)

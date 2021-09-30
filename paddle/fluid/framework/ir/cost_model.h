@@ -53,6 +53,9 @@ class CostData {
       const ProgramDesc& program,
       const std::vector<std::vector<platform::Event>>& time_events);
 
+  bool SetGraphCostData(
+      const ir::Graph& graph,
+      const std::vector<std::vector<platform::Event>>& time_events);
   static const double NOT_MEASURED;
 
  private:
@@ -78,6 +81,10 @@ class CostModel {
   CostData ProfileMeasure(
       const ProgramDesc& main_program, const ProgramDesc& startup_program,
       const std::string& device,
+      const std::vector<std::string>& fetch_cost_list) const;
+
+  CostData ProfileMeasureGraph(
+      ir::Graph* graph, const std::string& device,
       const std::vector<std::string>& fetch_cost_list) const;
 };
 
