@@ -843,12 +843,12 @@ def create_trainer_program(program, origin_program, config,
         })
 
     ## add trainer barrier op
-    program.global_block()._insert_op(
-        index=0,
-        type="trainer_barrier",
-        inputs={'X': []},
-        outputs={},
-        attrs={RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE})
+    #program.global_block()._insert_op(
+    #    index=0,
+    #    type="trainer_barrier",
+    #    inputs={'X': []},
+    #    outputs={},
+    #    attrs={RPC_OP_ROLE_ATTR_NAME: RPC_OP_ROLE_ATTR_VALUE})
     ## TODO add check for bp block
     check_op_device(program.global_block(), DEFAULT_DEVICE)
 

@@ -45,13 +45,13 @@ void HeterSectionWorker::BatchBarrier(int barrier_id) {
   }
 }
 
-void HeterSectionWorker::TrainerBarrier() {
-  for (auto &op : ops_) {
-    auto op_type = op->Type();
-    if (op_type != "trainer_barrier") continue;
-    op->Run(*root_scope_, place_);
-  }
-}
+//void HeterSectionWorker::TrainerBarrier() {
+//  for (auto &op : ops_) {
+//    auto op_type = op->Type();
+//    if (op_type != "trainer_barrier") continue;
+//    op->Run(*root_scope_, place_);
+//  }
+//}
 
 void HeterSectionWorker::RunListen() {
   bool is_first_stage = (pipeline_stage_ == 0);
@@ -94,7 +94,7 @@ void HeterSectionWorker::RunForward(int micro_id) {
       auto op_mode = op->Attr<std::string>(std::string("mode"));
       if (op_mode == "barrier") continue;
     }
-    if (op_type == "trainer_barrier") continue;
+    //if (op_type == "trainer_barrier") continue;
     bool run_first_mbatch = (op_role == static_cast<int>(OpRole::kForward)) ||
                             (op_role == (static_cast<int>(OpRole::kForward) |
                                          static_cast<int>(OpRole::kLoss))) ||
@@ -277,12 +277,6 @@ void HeterSectionWorker::TrainFiles() {
     Run();
     dev_ctx_->Wait();
     if (epoch_finish_ == true) { batch_id_ = 0; return;}
-    //if (thread_id_ == 0 && batch_id_ >= 50) {
-    //  auto end = std::chrono::system_clock::now();
-    //  auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start).count(); 
-    //  std::cout << "run "<< batch_id_ << " minibatch, cost: " << duration << "s" <<std::endl;
-    //}
-    //++batch_id_;
   }
 }
 }  // namespace framework
