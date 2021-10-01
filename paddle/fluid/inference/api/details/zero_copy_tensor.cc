@@ -43,7 +43,7 @@ void Tensor::Reshape(const std::vector<int> &shape) {
   tensor->Resize(paddle::framework::make_ddim(shape));
 }
 
-void Tensor::Reshape(const size_t shape) {
+void Tensor::ReshapeStrings(const size_t shape) {
   PADDLE_ENFORCE_EQ(
       name_.empty(), false,
       paddle::platform::errors::PreconditionNotMet(
@@ -209,7 +209,7 @@ void Tensor::CopyFromCpu(const T *data) {
   }
 }
 
-void Tensor::CopyFromCpu(const paddle_infer::STRINGS *data) {
+void Tensor::CopyStringsFromCpu(const paddle_infer::STRINGS *data) {
   EAGER_GET_TENSOR(paddle_infer::STRINGS);
   PADDLE_ENFORCE_GE(tensor->size(), 0,
                     paddle::platform::errors::PreconditionNotMet(

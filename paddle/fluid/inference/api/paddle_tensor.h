@@ -63,7 +63,7 @@ class PD_INFER_DECL Tensor {
   /// Reshape must be called before calling mutable_data() or copy_from_cpu()
   /// \param shape The shape to set.
   void Reshape(const std::vector<int>& shape);
-  void Reshape(const std::size_t shape);
+  void ReshapeStrings(const std::size_t shape);
 
   /// \brief Get the memory pointer in CPU or GPU with specific data type.
   /// Please Reshape the tensor first before call this.
@@ -94,7 +94,7 @@ class PD_INFER_DECL Tensor {
   /// \brief Experimental interface.
   /// It's usually used to set the input tensor data with STRINGS data type.
   /// \param data The pointer of the data, from which the tensor will copy.
-  void CopyFromCpu(const paddle_infer::STRINGS* data);
+  void CopyStringsFromCpu(const paddle_infer::STRINGS* data);
 
   /// \brief Copy the tensor data to the host memory.
   /// It's usually used to get the output tensor data.
