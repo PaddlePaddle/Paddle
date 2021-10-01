@@ -1334,18 +1334,15 @@ class ConvMKLDNNTemplateHandler : public MKLDNNHandler {
       int mask = output_shift_scale.size() > 1 ? 1 << 1 : 0;
       conv_attr.set_output_scales(mask, output_shift_scale);
     }
-    // Fusion with Elementwise layer relies on adding a sum post-operation
-    // with
-    // the scale parameter. It is assumed that when fuse_residual_connection
-    // is
+    // Fusion with Elementwise layer relies on adding a sum post-operation with
+    // the scale parameter. It is assumed that when fuse_residual_connection is
     // true, the output tensor contains the data coming from residual
     // connection. The result of this post_op is:
     // Output = scale * Output + Conv_Out.
     if (fuse_residual_conn) {
       post_operations.append_sum(sum_scale);
     }
-    // Fusion with ReLU layer is executed through the PostOps feature. Create
-    // a
+    // Fusion with ReLU layer is executed through the PostOps feature. Create a
     // PostOps object and configure it to execute an eltwise relu operation.
     if (fuse_activation == "relu" || fuse_activation == "leaky_relu") {
       constexpr float scale = 1.0f;

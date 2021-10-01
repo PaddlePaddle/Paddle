@@ -43,15 +43,15 @@ class TestMKLDNNElementwiseDivOp(OpTest):
         self.out = np.divide(self.x, self.y)
 
     def test_check_grad_normal(self):
-        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.05)
+        self.check_grad(['X', 'Y'], 'Out', max_relative_error=0.02)
 
     def test_check_grad_ignore_x(self):
         self.check_grad(
-            ['Y'], 'Out', no_grad_set=set("X"), max_relative_error=0.05)
+            ['Y'], 'Out', no_grad_set=set("X"), max_relative_error=0.02)
 
     def test_check_grad_ignore_y(self):
         self.check_grad(
-            ['X'], 'Out', no_grad_set=set('Y'), max_relative_error=0.05)
+            ['X'], 'Out', no_grad_set=set('Y'), max_relative_error=0.02)
 
     def init_axis(self):
         self.axis = -1
@@ -86,6 +86,7 @@ class TestMKLDNNElementwiseDivOp4(TestMKLDNNElementwiseDivOp):
         self.y = np.random.uniform(1, 2, [4, 32]).astype(self.dtype)
         self.out = np.divide(self.x, self.y)
 
+    # TODO(piotrekobiIntel): Enable when grad is ready
     def test_check_grad_normal(self):
         pass
 
@@ -99,6 +100,7 @@ class TestMKLDNNElementwiseDivOp5(TestMKLDNNElementwiseDivOp):
         self.y = np.random.uniform(1, 2, [100]).astype(self.dtype)
         self.out = np.divide(self.x, self.y)
 
+    # TODO(piotrekobiIntel): Enable when grad is ready
     def test_check_grad_normal(self):
         pass
 

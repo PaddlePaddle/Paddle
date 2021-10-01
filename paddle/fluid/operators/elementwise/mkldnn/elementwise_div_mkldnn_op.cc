@@ -33,7 +33,7 @@ class EltwiseDivMKLDNNGradKernel : public ElemwiseGradKernel<T> {
     ElemwiseGradKernel<T>::Compute(ctx);
 
     auto& dev_ctx =
-        ctx.template device_context<paddle::platform::MKLDNNDeviceContext>();
+        ctx.template device_context<platform::MKLDNNDeviceContext>();
     const auto& mkldnn_engine = dev_ctx.GetEngine();
 
     auto* y = ctx.Input<framework::Tensor>("Y");
@@ -122,7 +122,7 @@ class EltwiseDivMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         astream.wait();
         dy->set_format(
             platform::GetMKLDNNFormat(dy_memory_p->get_desc().reshape(
-                paddle::framework::vectorize<int64_t>(dy->dims()))));
+                framework::vectorize<int64_t>(dy->dims()))));
 
       } else {
         dy->set_format(platform::GetMKLDNNFormat(*dst_dy_memory));
