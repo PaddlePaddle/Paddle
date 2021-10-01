@@ -17,7 +17,10 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 
 // NOTE:
-// GetOneDNNFormat and ToOneDNNDataType functions are here temporarily. They are needed because without them forward declaration was causing an error when building with "-DWITH_TESTING=ON". They will be deleted from here after full md-related refactoring
+// GetMKLDNNFormat and ToMKLDNNDataType functions are here temporarily. They are
+// needed because without them forward declaration was causing an error when
+// building with "-DWITH_TESTING=ON". They will be deleted from here after full
+// md-related refactoring
 
 namespace paddle {
 namespace platform {
@@ -154,8 +157,8 @@ inline mkldnn::memory::format_tag GetMKLDNNFormat(
   return mkldnn::memory::format_tag::undef;
 }
 
-} // namespace platform
-} // namespace paddle
+}  // namespace platform
+}  // namespace paddle
 
 namespace paddle {
 namespace framework {
@@ -174,5 +177,5 @@ inline MKLDNNDataType ToMKLDNNDataType(proto::VarType::Type type) {
   return MKLDNNDataType::undef;
 }
 
-} // namespace framework
-} // namespace paddle
+}  // namespace framework
+}  // namespace paddle
