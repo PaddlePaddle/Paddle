@@ -38,7 +38,7 @@ limitations under the License. */
 #define LARS_BLOCK_SIZE 512
 #endif
 
-#define MAX_MERGED_OPS 200
+#define LARS_MAX_MERGED_OPS 200
 
 namespace paddle {
 namespace operators {
@@ -49,17 +49,17 @@ using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
 template <typename T, typename MT>
 struct MergedParameter {
  public:
-  int64_t numel_arr[MAX_MERGED_OPS];
-  int repeat_arr[MAX_MERGED_OPS];
-  int thresh_arr[MAX_MERGED_OPS];
-  const T* __restrict__ p_arr[MAX_MERGED_OPS];
-  const T* __restrict__ g_arr[MAX_MERGED_OPS];
-  const MT* __restrict__ v_arr[MAX_MERGED_OPS];
-  const MT* __restrict__ lr_arr[MAX_MERGED_OPS];
-  const MT* __restrict__ master_p_arr[MAX_MERGED_OPS];
-  T* __restrict__ p_out_arr[MAX_MERGED_OPS];
-  MT* __restrict__ v_out_arr[MAX_MERGED_OPS];
-  MT* __restrict__ master_p_out_arr[MAX_MERGED_OPS];
+  int64_t numel_arr[LARS_MAX_MERGED_OPS];
+  int repeat_arr[LARS_MAX_MERGED_OPS];
+  int thresh_arr[LARS_MAX_MERGED_OPS];
+  const T* __restrict__ p_arr[LARS_MAX_MERGED_OPS];
+  const T* __restrict__ g_arr[LARS_MAX_MERGED_OPS];
+  const MT* __restrict__ v_arr[LARS_MAX_MERGED_OPS];
+  const MT* __restrict__ lr_arr[LARS_MAX_MERGED_OPS];
+  const MT* __restrict__ master_p_arr[LARS_MAX_MERGED_OPS];
+  T* __restrict__ p_out_arr[LARS_MAX_MERGED_OPS];
+  MT* __restrict__ v_out_arr[LARS_MAX_MERGED_OPS];
+  MT* __restrict__ master_p_out_arr[LARS_MAX_MERGED_OPS];
 };
 
 __device__ __forceinline__ float Sqrt(float x) { return sqrtf(x); }
@@ -206,21 +206,21 @@ __global__ void MergedMomentumLarsKernel(
   const cooperative_groups::grid_group cg = cooperative_groups::this_grid();
   for (int i = 0; i < op_num; ++i) {
     int numel = merged_param->numel_arr[i];
-    MT p_n = static_cast<MT>(0);
-    MT g_n = static_cast<MT>(0);
+    MT param_norm = static_cast<MT>(0);
+    MT grad_norm = static_cast<MT>(0);
     s_buffer[0] = static_cast<MT>(0);
     s_buffer[1] = static_cast<MT>(0);
-    L2NormKernel<T, MT>(
-        merged_param->p_arr[i], merged_param->g_arr[i], p_buffer, g_buffer,
-        s_buffer, numel, merged_param->repeat_arr[i],
-        merged_param->thresh_arr[i], rescale_grad, &p_n, &g_n, &cg);
+    L2NormKernel<T, MT>(merged_param->p_arr[i], merged_param->g_arr[i],
+                        p_buffer, g_buffer, s_buffer, numel,
+                        merged_param->repeat_arr[i],
+                        merged_param->thresh_arr[i], rescale_grad, &param_norm,
+                        &grad_norm, &cg);
     const MT lr = *(merged_param->lr_arr[i]);
     MT local_lr = lr;
     if (lars_weight_decay > static_cast<MT>(0)) {
-      local_lr =
-          lr * lars_coeff * p_n / (fma(lars_weight_decay, p_n, g_n) + epsilon);
+      local_lr = lr * lars_coeff * param_norm /
+                 (fma(lars_weight_decay, param_norm, grad_norm) + epsilon);
     }
-
     if (multi_precision) {
       VectorizeLarsUpdate<T, MT, 4, true>(
           merged_param->g_arr[i], merged_param->master_p_arr[i],
@@ -270,14 +270,12 @@ __global__ void MomentumLarsKernel(
   L2NormKernel<T, MT>(param, grad, p_buffer, g_buffer, s_buffer, numel,
                       repeat_times, gridDim.x, rescale_grad, &param_norm,
                       &grad_norm, &cg);
-
   const MT lr = learning_rate[0];
   MT local_lr = lr;
   if (lars_weight_decay > static_cast<MT>(0)) {
     local_lr = lr * lars_coeff * param_norm /
                (fma(lars_weight_decay, param_norm, grad_norm) + epsilon);
   }
-
   if (master_param_out) {
     VectorizeLarsUpdate<T, MT, 4, true>(grad, master_param, velocity, param_out,
                                         velocity_out, mu, local_lr,
@@ -341,12 +339,11 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
       int total_numel = 0;
       size_t op_num = grad.size();
       PADDLE_ENFORCE_LT(
-          op_num, MAX_MERGED_OPS,
+          op_num, LARS_MAX_MERGED_OPS,
           platform::errors::InvalidArgument(
-              "Currently, the maximum quantity of merged-op supported is "
-              "(%d), "
+              "Currently, the maximum number of merged-op supported is (%d), "
               "but lars op required for trainning this model is (%d)\n",
-              MAX_MERGED_OPS, op_num));
+              LARS_MAX_MERGED_OPS, op_num));
 
       for (int i = 0; i < op_num; ++i) {
         int temp_numel = param[i]->numel();
@@ -372,7 +369,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
                    LARS_BLOCK_SIZE;
         merged_params.repeat_arr[i] =
             (merged_params.numel_arr[i] + grid_stride - 1) / grid_stride - 1;
-        merged_params.thresh_arr[i] = std::min(thread_num, grid_num);
+        merged_params.thresh_arr[i] = std::min(thread_num, grid_real);
       }
       if (multi_precision) {
         auto master_param = ctx.MultiInput<framework::LoDTensor>("MasterParam");

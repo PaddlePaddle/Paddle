@@ -1563,9 +1563,6 @@ void OperatorWithKernel::ParseInputDataType(
   proto::VarType::Type default_data_type =
       static_cast<proto::VarType::Type>(-1);
   const std::vector<Variable*> vars = ctx.MultiInputVar(name);
-  // if (vars.size() == 161) {
-  //   std::cout << "vars.size(): " << vars.size() << std::endl;
-  // }
   for (size_t i = 0; i < vars.size(); ++i) {
     const Variable* var = vars[i];
     if (var != nullptr) {
