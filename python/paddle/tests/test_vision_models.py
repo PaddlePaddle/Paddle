@@ -82,6 +82,14 @@ class TestVisonModels(unittest.TestCase):
         x = np.array(np.random.random((2, 1, 28, 28)), dtype=np.float32)
         lenet.predict_batch(x)
 
+    def test_alexnet(self):
+        input = InputSpec([None, 3, 224, 224], 'float32', 'x')
+        alexnet = paddle.Model(models.__dict__['AlexNet'](), input)
+        alexnet.prepare()
+
+        x = np.array(np.random.random((2, 3, 224, 224)), dtype=np.float32)
+        alexnet.predict_batch(x)
+
 
 if __name__ == '__main__':
     unittest.main()
