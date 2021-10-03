@@ -18,7 +18,7 @@ paddle.framework.set_default_dtype("float64")
 import numpy as np
 import unittest
 
-from rnn_numpy import SimpleRNNCell, LSTMCell, GRUCell
+from rnn_numpy import SimpleRNNCell, LSTMCell, GRUCell, BiRNN
 from convert import convert_params_for_cell
 
 
@@ -176,12 +176,87 @@ class TestLSTMCell(unittest.TestCase):
         self.test_errors()
 
 
+class TestBiRNN(unittest.TestCase):
+    def __init__(self, bias=True, place="cpu") -> None:
+        super(TestBiRNN, self).__init__(methodName="runTest")
+        self.bias = bias
+        self.place = paddle.CPUPlace if place == "cpu" \
+                else paddle.CUDAPlace(0)
+        
+    def setUp(self):
+        # paddle.disable_static(self.place)
+        cell_fw1 = SimpleRNNCell(16, 32, bias=self.bias)
+        cell_bw1 = SimpleRNNCell(16, 32, bias=self.bias)
+        cell_fw2 = paddle.nn.SimpleRNNCell(
+            16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias)
+        cell_bw2 = paddle.nn.SimpleRNNCell(
+            16, 32, bias_ih_attr=self.bias, bias_hh_attr=self.bias)
+
+        convert_params_for_cell(cell_fw1, cell_fw2)
+        convert_params_for_cell(cell_bw1, cell_bw2)
+
+        rnn1 = BiRNN(cell_fw1, cell_bw1)
+        rnn2 = paddle.nn.BiRNN(cell_fw2, cell_bw2)
+
+        self.rnn1 = rnn1
+        self.rnn2 = rnn2
+        
+    def test_with_initial_state(self):
+        rnn1 = self.rnn1
+        rnn2 = self.rnn2
+
+        x = np.random.randn(3, 23, 16) # batch_size, time_steps, size
+        fw_states = np.random.randn(3, 32)
+        bw_states = np.random.randn(3, 32)
+        initial_states = (fw_states, bw_states)
+        y1, f1 = rnn1(x, initial_states)
+        y2, f2 = rnn2(paddle.to_tensor(x), paddle.to_tensor(initial_states))
+
+        np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
+
+        for it in zip(f1,f2):
+            np.testing.assert_allclose(it[0], it[1].numpy(), atol=1e-8, rtol=1e-5)
+
+
+    def test_with_zero_state(self):
+        rnn1 = self.rnn1
+        rnn2 = self.rnn2
+
+        x = np.random.randn(2, 23, 16)
+
+        y1, f1 = rnn1(x)
+        y2, f2 = rnn2(paddle.to_tensor(x))
+        np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
+
+        for it in zip(f1, f2):
+            np.testing.assert_allclose(it[0], it[1].numpy(), atol=1e-8, rtol=1e-5)
+
+
+    def test_errors(self):
+        # def test_zero_hidden_size():
+        #     cell = paddle.nn.LSTMCell(-1, 0)
+        # self.assertRaises(ValueError, test_zero_hidden_size)
+        #
+        with self.assertRaises(ValueError):
+            self.rnn2()
+
+
+    # 参数覆盖、正确性验证、数据类型覆盖、异常输入
+    def runTest(self):
+        self.test_with_initial_state()
+        self.test_with_zero_state()
+        self.test_errors()
+
+
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
     devices = ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() \
         else ["cpu"]
     for bias in [True, False]:
         for device in devices:
-            for test_class in [TestSimpleRNNCell, TestGRUCell, TestLSTMCell]:
+            # TestSimpleRNNCell, TestGRUCell, TestLSTMCell, 
+            for test_class in [TestLSTMCell, TestBiRNN]:
                 suite.addTest(test_class(bias, device))
     return suite
+
+unittest.main()
