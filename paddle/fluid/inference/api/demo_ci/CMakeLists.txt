@@ -153,12 +153,12 @@ if (NOT WIN32)
   set(EXTERNAL_LIB "-lrt -ldl -lpthread")
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags protobuf xxhash cryptopp
+      glog gflags protobuf xxhash cryptopp uft8proc
       ${EXTERNAL_LIB})
 else()
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags_static libprotobuf xxhash cryptopp-static ${EXTERNAL_LIB})
+      glog gflags_static libprotobuf xxhash cryptopp-static uft8proc ${EXTERNAL_LIB})
   set(DEPS ${DEPS} shlwapi.lib)
 endif(NOT WIN32)
 
