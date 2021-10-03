@@ -256,7 +256,6 @@ class TestBiRNN(unittest.TestCase):
 
         self.assertRaises(ValueError, test_zero_hidden_size)
 
-    # 参数覆盖、正确性验证、数据类型覆盖、异常输入
     def runTest(self):
         self.test_with_initial_state()
         self.test_with_zero_state()
@@ -268,10 +267,12 @@ def load_tests(loader, tests, pattern):
     devices = ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() \
         else ["cpu"]
 
-    # for bias in [True, False]:
-    #     for device in devices:
-    #         for test_class in [TestLSTMCell, TestSimpleRNNCell, TestGRUCell, TestLSTMCell]:
-    #             suite.addTest(test_class(bias, device))
+    for bias in [True, False]:
+        for device in devices:
+            for test_class in [
+                    TestLSTMCell, TestSimpleRNNCell, TestGRUCell, TestLSTMCell
+            ]:
+                suite.addTest(test_class(bias, device))
 
     for bias in [True, False]:
         for device in devices:
@@ -281,4 +282,5 @@ def load_tests(loader, tests, pattern):
     return suite
 
 
-unittest.main()
+if __name__ == '__main__':
+    unittest.main()
