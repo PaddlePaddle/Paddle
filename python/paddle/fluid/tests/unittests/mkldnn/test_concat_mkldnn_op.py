@@ -102,39 +102,6 @@ class TestConcatAxis3OneDNNOp(TestConcatAxis0OneDNNOp):
         self.x2_shape = [5, 3, 5, 7]
 
 
-#   BF16 TESTS
-def create_bf16_test_class(parent):
-    @OpTestTool.skip_if_not_cpu_bf16()
-    class TestConcatBF16OneDNNOp(parent):
-        def configure_datatype(self):
-            self.mkldnn_data_type = "bfloat16"
-            self.dtype = np.uint16
-            self.x0 = convert_float_to_uint16(self.x0)
-            self.x1 = convert_float_to_uint16(self.x1)
-            self.x2 = convert_float_to_uint16(self.x2)
-
-        def calculate_grads(self):
-            self.dout = self.outputs['Out']
-            self.dxs = np.split(self.dout, self.sections, self.axis)
-
-        def test_check_grad(self):
-            self.calculate_grads()
-            self.check_grad_with_place(
-                core.CPUPlace(), ["x0", "x1", "x2"],
-                "Out",
-                user_defined_grads=[self.dxs[0], self.dxs[1], self.dxs[2]],
-                user_defined_grad_outputs=[self.dout])
-
-    cls_name = "{0}_{1}".format(parent.__name__, "BF16")
-    TestConcatBF16OneDNNOp.__name__ = cls_name
-    globals()[cls_name] = TestConcatBF16OneDNNOp
-
-
-create_bf16_test_class(TestConcatAxis0OneDNNOp)
-create_bf16_test_class(TestConcatAxis1OneDNNOp)
-create_bf16_test_class(TestConcatAxis2OneDNNOp)
-create_bf16_test_class(TestConcatAxis3OneDNNOp)
-
 if __name__ == '__main__':
     enable_static()
     unittest.main()
