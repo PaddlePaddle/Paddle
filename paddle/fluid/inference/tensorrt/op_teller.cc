@@ -149,13 +149,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     return false;
 
   for (auto& teller : tellers_) {
-    if (op_type == "depthwise_conv2d") {
-      std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
-
-      if (paddings.size() > 2) return false;
-    }
-
     if (op_type == "relu" || op_type == "relu6" || op_type == "tanh" ||
         op_type == "sigmoid") {
       auto* block = desc.Block();
@@ -179,6 +172,22 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
       if (paddings.size() > 2) return false;
+      if (desc.HasAttr("exclusive")) {
+        if (BOOST_GET_CONST(bool, desc.GetAttr("exclusive"))) {
+          std::vector<int> ksize =
+              BOOST_GET_CONST(std::vector<int>, desc.GetAttr("ksize"));
+          for (size_t i = 0; i < ksize.size(); i++) {
+            if (ksize[i] <= paddings[i]) {
+              VLOG(3) << "the padding size should be less than the filter size "
+                         "for exclusive-counting pooling.";
+              return false;
+            }
+          }
+        }
+      }
+      if (desc.HasAttr("ceil_mode")) {
+        if (BOOST_GET_CONST(bool, desc.GetAttr("ceil_mode"))) return false;
+      }
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "TRT Pool2d expect 1 input, but got "
                 << desc.Input("X").size();
@@ -208,9 +217,6 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
 
-      // conv2d and conv2d_transpose need padding check
-      if (paddings.size() > 2 && op_type != "conv2d_fusion") return false;
-
       if (desc.Input("Input").size() != 1) {
         VLOG(3) << "TRT Conv2d expect 1 input, but got "
                 << desc.Input("Input").size() << " input.";
@@ -221,6 +227,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "TRT Conv2d expect 1 filter, but got "
                 << desc.Input("Filter").size() << " filter.";
         return false;
+      }
+
+      if (desc.HasAttr("padding_algorithm")) {
+        auto padding_algorithm =
+            BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
+        if (padding_algorithm == "SAME" || padding_algorithm == "VALID") {
+          return false;
+        }
       }
 
       if (desc.HasAttr("enable_int8")) {
@@ -440,6 +454,10 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                 << " ] not equal to x dims size [" << x_shape.size() << "]";
         return false;
       }
+    }
+
+    if (op_type == "anchor_generator") {
+      if (!with_dynamic_shape) return false;
     }
 
     if (op_type == "yolo_box") {
@@ -1085,6 +1103,42 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "multihead_matmul") {
       if (!with_dynamic_shape) {
         VLOG(3) << "the multihead_matmul does not support static shape yet";
+        return false;
+      }
+
+      if (desc.HasAttr("enable_int8") && !desc.HasAttr("Input_scale")) {
+        VLOG(3) << "Multihead layers must have input scale in int8 mode.";
+        return false;
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* input_desc = block->FindVar(desc.Input("Input").front());
+      const auto input_shape = input_desc->GetShape();
+      const auto head_number =
+          BOOST_GET_CONST(int, desc.GetAttr("head_number"));
+
+      auto* biasqk_desc = block->FindVar(desc.Input("BiasQK").front());
+      const auto biasqk_shape = biasqk_desc->GetShape();
+      // The BiasQK's shape requires to be
+      // [batch, 1, 1, length] or [batch, head, length, length].
+      bool has_same_shape = head_number == biasqk_shape[1] &&
+                            input_shape[1] == biasqk_shape[2] &&
+                            input_shape[1] == biasqk_shape[3];
+      bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
+                              input_shape[1] == biasqk_shape[3];
+      if (!(has_same_shape || is_broadcastable)) {
+        VLOG(3) << "The BiasQK's shape is invalid, expect [" << input_shape[0]
+                << ", 1, 1, " << input_shape[1] << "] or [" << input_shape[0]
+                << ", " << head_number << ", " << input_shape[1] << ", "
+                << input_shape[1] << "] but [" << biasqk_shape[0] << ", "
+                << biasqk_shape[1] << ", " << biasqk_shape[2] << ", "
+                << biasqk_shape[3] << "].";
         return false;
       }
     }
