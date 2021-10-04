@@ -28,6 +28,11 @@ from .datasets import Flowers  # noqa: F401
 from .datasets import Cifar10  # noqa: F401
 from .datasets import Cifar100  # noqa: F401
 from .datasets import VOC2012  # noqa: F401
+from .models import DenseNet # noqa: F401
+from .models import densenet121 # noqa: F401
+from .models import densenet161 # noqa: F401
+from .models import densenet169 # noqa: F401
+from .models import densenet201 # noqa: F401
 from .models import ResNet  # noqa: F401
 from .models import resnet18  # noqa: F401
 from .models import resnet34  # noqa: F401
