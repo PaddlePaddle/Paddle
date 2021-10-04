@@ -41,9 +41,6 @@ class TestConcatAxis0OneDNNOp(OpTest):
         self.output = np.concatenate(
             (self.x0, self.x1, self.x2), axis=self.axis).astype(self.dtype)
 
-        self.sections = [self.x0.shape[self.axis]] * 2
-        self.sections[1] += self.x1.shape[self.axis]
-
         self.outputs = {'Out': self.output}
 
     def configure_datatype(self):
