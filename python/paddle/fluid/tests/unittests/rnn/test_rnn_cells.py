@@ -185,7 +185,6 @@ class TestBiRNN(unittest.TestCase):
         self.time_major = time_major
 
     def setUp(self):
-        # paddle.disable_static(self.place)
         cell_fw1 = SimpleRNNCell(16, 32, bias=self.bias)
         cell_bw1 = SimpleRNNCell(16, 32, bias=self.bias)
         cell_fw2 = paddle.nn.SimpleRNNCell(
