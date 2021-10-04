@@ -17,7 +17,10 @@ include(ExternalProject)
 # update eigen to the commit id f612df27 on 03/16/2021
 set(EIGEN_PREFIX_DIR ${THIRD_PARTY_PATH}/eigen3)
 set(EIGEN_SOURCE_DIR ${THIRD_PARTY_PATH}/eigen3/src/extern_eigen3)
-set(EIGEN_REPOSITORY https://gitlab.com/libeigen/eigen.git)
+# TODO jakpiase THIS IS ONLY TEMPORARY DUE TO EIGEN REPO PROBLEM
+# IT WILL NOT BE A PART OF FINAL REFACTORING! CI WOULD NOT RUN
+# SUCCESFULLY WITHOUT THAT TEMPORARY CHANGE
+set(EIGEN_REPOSITORY https://gitlab.com/cantonios/eigen.git)
 set(EIGEN_TAG        f612df273689a19d25b45ca4f8269463207c4fee)
 
 cache_third_party(extern_eigen3

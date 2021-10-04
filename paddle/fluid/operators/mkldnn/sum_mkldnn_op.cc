@@ -150,6 +150,9 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     sum_p->execute(astream, args);
     astream.wait();
 
+    output->set_layout(framework::DataLayout::kMKLDNN);
+    output->set_mem_desc(dst_mem->get_desc());
+
     // For in-place execution which sum does not have we need to fake it
     // so from oneDNN dst memory we reorder data into input
     if (in_place) {
@@ -170,8 +173,6 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         astream.wait();
       }
     }
-    output->set_layout(framework::DataLayout::kMKLDNN);
-    output->set_mem_desc(dst_mem->get_desc());
   }
 };
 
