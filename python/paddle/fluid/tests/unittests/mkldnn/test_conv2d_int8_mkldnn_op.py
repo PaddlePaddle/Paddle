@@ -343,6 +343,17 @@ def create_test_int8_class(parent):
     globals()[cls_name_s8s8_re_1] = TestS8S8ResCase
     globals()[cls_name_u8s8_re_1] = TestU8S8ResCase
 
+    if os.name != 'nt':
+        #--------------------test conv2d s8 in and u8 out with residual fuse--------------------
+        class TestS8U8ResCase(parent):
+            def init_data_type(self):
+                init_data_type_with_fusion(self, np.int8, "relu", True)
+
+        cls_name_s8u8_re_1 = "{0}_relu_{1}_residual_{2}".format(parent.__name__,
+                                                                "1", "1")
+        TestS8U8ResCase.__name__ = cls_name_s8u8_re_1
+        globals()[cls_name_s8u8_re_1] = TestS8U8ResCase
+
 
 create_test_int8_class(TestConv2DInt8Op)
 create_test_int8_class(TestWithPad)
