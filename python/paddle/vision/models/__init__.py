@@ -28,8 +28,18 @@ from .vgg import vgg13  # noqa: F401
 from .vgg import vgg16  # noqa: F401
 from .vgg import vgg19  # noqa: F401
 from .lenet import LeNet  # noqa: F401
+from .densenet import DenseNet # noqa: F401
+from .densenet import densenet121
+from .densenet import densenet161
+from .densenet import densenet169
+from .densenet import densenet201
 
 __all__ = [ #noqa
+    'DenseNet',
+    'densenet121',
+    'densenet161',
+    'densenet169',
+    'densenet201',
     'ResNet',
     'resnet18',
     'resnet34',
