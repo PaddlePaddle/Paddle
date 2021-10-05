@@ -39,7 +39,7 @@ class LeNet(nn.Layer):
         self.num_classes = num_classes
         self.features = nn.Sequential(
             nn.Conv2D(
-                1, 6, 3, stride=1, padding=1),
+                1, 6, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
             nn.MaxPool2D(2, 2),
             nn.Conv2D(
