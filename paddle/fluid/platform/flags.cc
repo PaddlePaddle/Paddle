@@ -681,6 +681,21 @@ PADDLE_DEFINE_EXPORTED_bool(
     apply_pass_to_program, false,
     "It controls whether to apply IR pass to program when using Fleet APIs");
 
+/**
+ * Distributed related FLAG
+ * Name: FLAGS_allreduce_record_one_event
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_allreduce_record_one_event=true makes the allreduce
+ *          operations would only wait one event instead of multiple events.
+ * Note: Make the allreduce operations would only wait one event instead of
+ *       multiple events.
+ */
+PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event, false,
+                            "It controls whether the allreduce operations "
+                            "would only wait one event instead of multiple "
+                            "events.");
+
 DEFINE_int32(record_pool_max_size, 2000000,
              "SlotRecordDataset slot record pool max size");
 DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");

@@ -97,6 +97,7 @@ class TestDistMnist2x2(TestDistRunnerBase):
         # opt = fluid.optimizer.AdamOptimizer(
         #     learning_rate=0.001, beta1=0.9, beta2=0.999)
         if not use_dgc:
+            paddle.set_flags({'FLAGS_allreduce_record_one_event': True})
             opt = fluid.optimizer.Momentum(learning_rate=self.lr, momentum=0.9)
         else:
             opt = fluid.optimizer.DGCMomentumOptimizer(
