@@ -73,14 +73,14 @@ class HybridParallelClipGrad:
         if len(sum_square_list_dist) + len(sum_square_list_not_dist) == 0:
             return params_grads
 
-        if len(sum_square_list_dist) == 0:
-            sum_square_list_dist.append(paddle.to_tensor([0.]))
-        if len(sum_square_list_not_dist) == 0:
-            sum_square_list_not_dist.append(paddle.to_tensor([0.]))
-
-        global_norm_var_dist = layers.concat(sum_square_list_dist)
+        global_norm_var_dist = layers.concat(sum_square_list_dist) if len(
+            sum_square_list_dist) == 0 else layers.concat(
+                [paddle.to_tensor([0.])])
         global_norm_var_dist = layers.reduce_sum(global_norm_var_dist)
-        global_norm_var_not_dist = layers.concat(sum_square_list_not_dist)
+        global_norm_var_not_dist = layers.concat(
+            sum_square_list_not_dist) if len(
+                sum_square_list_not_dist) == 0 else layers.concat(
+                    [paddle.to_tensor([0.])])
         global_norm_var_not_dist = layers.reduce_sum(global_norm_var_not_dist)
 
         # add all reduce to get global norm of distributed params_and_grads in world size
