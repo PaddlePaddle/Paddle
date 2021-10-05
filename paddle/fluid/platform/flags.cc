@@ -689,12 +689,14 @@ PADDLE_DEFINE_EXPORTED_bool(
  * Example: FLAGS_allreduce_record_one_event=true makes the allreduce
  *          operations would only wait one event instead of multiple events.
  * Note: Make the allreduce operations would only wait one event instead of
- *       multiple events.
+ *       multiple events. Currently, only fuse allreduce supports this.
+ *       Otherwise, the precision may be wrong.
  */
 PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event, false,
                             "It controls whether the allreduce operations "
                             "would only wait one event instead of multiple "
-                            "events.");
+                            "events. Currently, only fuse allreduce supports "
+                            "this. Otherwise, the precision may be wrong.");
 
 DEFINE_int32(record_pool_max_size, 2000000,
              "SlotRecordDataset slot record pool max size");
