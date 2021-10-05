@@ -31,6 +31,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/profiler.h"
 #include "paddle/pten/common/scalar.h"
 
+#include "paddle/fluid/framework/tensor_util.h"
+
+#include "paddle/fluid/operators/cast_op.h"
+
 namespace paddle {
 namespace framework {
 class LoDTensor;
@@ -54,6 +58,78 @@ DECLARE_bool(run_pten_kernel);
 
 namespace paddle {
 namespace framework {
+template <typename T>
+void print_data(const std::vector<T>& vec, std::stringstream& sstr) {
+  auto& vec1 = vec;
+  size_t step = vec1.size() / 20;
+  step = step < 1 ? 1 : step;
+  for (size_t i = 0; i < vec1.size(); i += step) {
+    sstr << vec1[i] << " ";
+  }
+  if (vec1.size() > 0) {
+    sstr << vec1[vec1.size() - 1];
+  }
+}
+
+void show_var(const Scope& scope, const std::string& var_name,
+              const platform::DeviceContext* ctx) {
+  auto* var = scope.FindVar(var_name);
+  std::stringstream sstr;
+  VLOG(0) << "try to find: " << var_name;
+  sstr << "dp diff: " << var_name << " ";
+  if (var != nullptr) {
+    VLOG(0) << "found var: " << var_name;
+    VLOG(0) << "initialized: " << var->IsInitialized();
+
+    std::vector<float> vec_float(0);
+    std::vector<int> vec_int(0);
+    std::vector<int64_t> vec_int64(0);
+    std::vector<paddle::platform::float16> vec_fp16(0);
+
+    if (var->IsInitialized()) {
+      if (var->IsType<LoDTensor>()) {
+        const LoDTensor& tensor = var->Get<LoDTensor>();
+        if (tensor.IsInitialized()) {
+          auto type = tensor.type();
+          if (type == proto::VarType::INT32) {
+            TensorToVector(tensor, *ctx, &vec_int);
+          } else if (type == proto::VarType::INT64) {
+            TensorToVector(tensor, *ctx, &vec_int64);
+          } else if (type == proto::VarType::FP32) {
+            TensorToVector(tensor, *ctx, &vec_float);
+          } else if (type == proto::VarType::FP16) {
+            TensorToVector(tensor, *ctx, &vec_fp16);
+          }
+        }
+      } else if (var->IsType<Tensor>()) {
+        const Tensor& tensor = var->Get<Tensor>();
+        if (tensor.IsInitialized()) {
+          auto type = tensor.type();
+          if (type == proto::VarType::INT32) {
+            TensorToVector(tensor, *ctx, &vec_int);
+          } else if (type == proto::VarType::INT64) {
+            TensorToVector(tensor, *ctx, &vec_int64);
+          } else if (type == proto::VarType::FP32) {
+            TensorToVector(tensor, *ctx, &vec_float);
+          } else if (type == proto::VarType::FP16) {
+            // Tensor cast_tensor(proto::VarType::FP32);
+            // cast_tensor.mutable_data<float>(tensor.dims(), ctx->GetPlace());
+            // paddle::operators::CastOpFunctor<paddle::platform::GPUDeviceContext,
+            // paddle::platform::float16> cast_op(&tensor, &cast_tensor,*ctx);
+            // cast_op.apply();
+            TensorToVector(tensor, *ctx, &vec_fp16);
+          }
+        }
+      }
+    }
+
+    print_data<int64_t>(vec_int64, sstr);
+    print_data<int>(vec_int, sstr);
+    print_data<float>(vec_float, sstr);
+    print_data<paddle::platform::float16>(vec_fp16, sstr);
+    VLOG(0) << sstr.str();
+  }
+}
 
 std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN),
@@ -241,6 +317,15 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     VLOG(3) << GetExecutionPlace(place) << " " << DebugStringEx(&scope);
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* dev_ctx = pool.Get(place);
+    int param_num = 0;
+    for (auto& var_map : Outputs()) {
+      for (std::string name : var_map.second) {
+        param_num++;
+        show_var(scope, name, dev_ctx);
+      }
+    }
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
