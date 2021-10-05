@@ -74,12 +74,12 @@ class HybridParallelClipGrad:
             return params_grads
 
         global_norm_var_dist = layers.concat(sum_square_list_dist) if len(
-            sum_square_list_dist) == 0 else layers.concat(
+            sum_square_list_dist) != 0 else layers.concat(
                 [paddle.to_tensor([0.])])
         global_norm_var_dist = layers.reduce_sum(global_norm_var_dist)
         global_norm_var_not_dist = layers.concat(
             sum_square_list_not_dist) if len(
-                sum_square_list_not_dist) == 0 else layers.concat(
+                sum_square_list_not_dist) != 0 else layers.concat(
                     [paddle.to_tensor([0.])])
         global_norm_var_not_dist = layers.reduce_sum(global_norm_var_not_dist)
 
