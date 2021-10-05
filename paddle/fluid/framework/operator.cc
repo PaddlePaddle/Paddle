@@ -30,6 +30,10 @@ limitations under the License. */
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/profiler.h"
 
+#include "paddle/fluid/framework/tensor_util.h"
+
+#include "paddle/fluid/operators/cast_op.h"
+
 namespace paddle {
 namespace framework {
 class LoDTensor;
@@ -52,6 +56,149 @@ PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
 
 namespace paddle {
 namespace framework {
+template <typename T>
+void print_data(const std::vector<T>& vec, std::stringstream& sstr, bool whole = false) {
+  auto& vec1 = vec;
+  // size_t step = vec1.size() / 1;
+  size_t step = 1;
+  step = step < 1 ? 1 : step;
+  for (size_t i = 0; i < vec1.size() && (i < 100 || whole); i += step) {
+    sstr << vec1[i] << " ";
+  }
+}
+
+static std::vector<std::string> split_str(std::string strtem,char a)
+    {
+        std::vector<std::string> strvec;
+ 
+        std::string::size_type pos1, pos2;
+        pos2 = strtem.find(a);
+        pos1 = 0;
+        while (std::string::npos != pos2)
+        {
+                strvec.push_back(strtem.substr(pos1, pos2 - pos1));
+ 
+                pos1 = pos2 + 1;
+                pos2 = strtem.find(a, pos1);
+        }
+        strvec.push_back(strtem.substr(pos1));
+        return strvec;
+}
+
+void show_var(const Scope& scope, const std::string& var_name,
+              const platform::DeviceContext* ctx) {
+
+  /*
+  SHOW_ALL_VAR: 0 / not set: not show all, else: show all 
+  VAR_NAMES: var names, splited by ','
+  VAR_NAME_LIST_FILE: filepath recording var names to show
+  SHOW_VAR_KEY: key contained by var names to show
+  VAR_TO_SHOW_WHOLE_DATA: var name to show all data of it
+  */
+
+  static std::vector<std::string> to_show_names(0);
+  static bool inited_var_name_list = false;
+  char* show_all = std::getenv("SHOW_ALL_VAR");
+  if (show_all == nullptr || strcmp(show_all, "0") == 0){
+    char* var_name_list = std::getenv("VAR_NAMES");
+    if (var_name_list != nullptr && !inited_var_name_list){
+      to_show_names = split_str(var_name_list, ',');
+    }
+
+    if (!inited_var_name_list){
+      inited_var_name_list = true;
+      char *var_name_path = std::getenv("VAR_NAME_LIST_FILE");
+      if (var_name_path == nullptr){
+        return;
+      }
+      FILE* names_file = fopen(var_name_path, "r");
+      while(names_file){
+        char name[512];
+        auto matched = fscanf(names_file, "%s", name);
+        if (matched == 1){
+          if (name[0] != '#'){
+            to_show_names.push_back(name);
+          }
+        }else{
+          fclose(names_file);
+          break;
+        }
+      }
+    }
+    
+    char* show_var_key = std::getenv("SHOW_VAR_KEY");
+    if (show_var_key == nullptr){
+      auto it = to_show_names.begin();
+      for (; it != to_show_names.end(); it ++){
+        if ( strcmp(it->c_str(), var_name.c_str()) == 0 ){
+          break;
+        }
+      }
+      
+      if (it == to_show_names.end()){
+        return;
+      }
+    }else{
+      if (var_name.find(show_var_key) == std::string::npos){
+        return;
+      }
+    }
+  }
+
+  auto* var = scope.FindVar(var_name);
+  std::stringstream sstr;
+  VLOG(0) << "try to find: " << var_name;
+  sstr << "dp diff: " << var_name << " ";
+  if (var != nullptr) {
+    VLOG(0) << "found var: " << var_name;
+    VLOG(0) << "initialized: " << var->IsInitialized();
+
+    std::vector<float> vec_float(0);
+    std::vector<int> vec_int(0);
+    std::vector<int64_t> vec_int64(0);
+    std::vector<paddle::platform::float16> vec_fp16(0);
+
+    if (var->IsInitialized()) {
+      if (var->IsType<LoDTensor>()) {
+        const LoDTensor& tensor = var->Get<LoDTensor>();
+        if (tensor.IsInitialized()) {
+          auto type = tensor.type();
+          if (type == proto::VarType::INT32) {
+            TensorToVector(tensor, *ctx, &vec_int);
+          } else if (type == proto::VarType::INT64) {
+            TensorToVector(tensor, *ctx, &vec_int64);
+          } else if (type == proto::VarType::FP32) {
+            TensorToVector(tensor, *ctx, &vec_float);
+          } else if (type == proto::VarType::FP16) {
+            TensorToVector(tensor, *ctx, &vec_fp16);
+          }
+        }
+      } else if (var->IsType<Tensor>()) {
+        const Tensor& tensor = var->Get<Tensor>();
+        if (tensor.IsInitialized()) {
+          auto type = tensor.type();
+          if (type == proto::VarType::INT32) {
+            TensorToVector(tensor, *ctx, &vec_int);
+          } else if (type == proto::VarType::INT64) {
+            TensorToVector(tensor, *ctx, &vec_int64);
+          } else if (type == proto::VarType::FP32) {
+            TensorToVector(tensor, *ctx, &vec_float);
+          } else if (type == proto::VarType::FP16) {
+            TensorToVector(tensor, *ctx, &vec_fp16);
+          }
+        }
+      }
+    }
+    char * whole_data_name = std::getenv("VAR_TO_SHOW_WHOLE_DATA");
+    bool show_whole = false;
+    show_whole = (whole_data_name != nullptr && strcmp(var_name.c_str(), whole_data_name) == 0);
+    print_data<int64_t>(vec_int64, sstr, show_whole);
+    print_data<int>(vec_int, sstr, show_whole);
+    print_data<float>(vec_float, sstr, show_whole);
+    print_data<paddle::platform::float16>(vec_fp16, sstr, show_whole);
+    VLOG(0) << sstr.str();
+  }
+}
 
 std::vector<std::tuple<platform::Place, LibraryType>> kKernelPriority = {
     std::make_tuple(platform::CUDAPlace(0), LibraryType::kCUDNN),
@@ -235,6 +382,15 @@ void OperatorBase::Run(const Scope& scope, const platform::Place& place) {
     }
 
     VLOG(3) << GetExecutionPlace(place) << " " << DebugStringEx(&scope);
+    platform::DeviceContextPool& pool = platform::DeviceContextPool::Instance();
+    auto* dev_ctx = pool.Get(place);
+    int param_num = 0;
+    for (auto& var_map : Outputs()) {
+      for (std::string name : var_map.second) {
+        param_num++;
+        show_var(scope, name, dev_ctx);
+      }
+    }
   } catch (platform::EnforceNotMet& exception) {
     framework::InsertCallStackInfo(Type(), Attrs(), &exception);
     throw std::move(exception);
