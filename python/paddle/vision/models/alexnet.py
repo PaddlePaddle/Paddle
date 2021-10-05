@@ -33,7 +33,7 @@ class AlexNet(nn.Layer):
             model = AlexNet()
     """
 
-    def __init__(self, num_classes: int=1000) -> None:
+    def __init__(self, num_classes=10):
         super(AlexNet, self).__init__()
         self.features = nn.Sequential(
             nn.Conv2D(
@@ -67,7 +67,7 @@ class AlexNet(nn.Layer):
             nn.ReLU(),
             nn.Linear(4096, num_classes), )
 
-    def forward(self, x: paddle.Tensor) -> paddle.Tensor:
+    def forward(self, x):
         x = self.features(x)
         x = self.avgpool(x)
         x = paddle.flatten(x, start_axis=1)
