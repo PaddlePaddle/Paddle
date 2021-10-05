@@ -180,8 +180,8 @@ class TestBiRNN(unittest.TestCase):
     def __init__(self, bias=True, place="cpu", time_major=False) -> None:
         super(TestBiRNN, self).__init__(methodName="runTest")
         self.bias = bias
-        self.place = paddle.CPUPlace if place == "cpu" \
-                else paddle.CUDAPlace(0)
+        self.place = paddle.CUDAPlace(0) if place == "gpu" \
+                else paddle.CPUPlace()
         self.time_major = time_major
 
     def setUp(self):
@@ -217,7 +217,10 @@ class TestBiRNN(unittest.TestCase):
         bw_states = np.random.randn(bz, size * 2)
         initial_states = (fw_states, bw_states)
         y1, f1 = rnn1(x, initial_states)
-        y2, f2 = rnn2(paddle.to_tensor(x), paddle.to_tensor(initial_states))
+        y2, f2 = rnn2(
+            paddle.to_tensor(x),
+            paddle.to_tensor(
+                initial_states, place=self.place))
 
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
 
@@ -238,7 +241,7 @@ class TestBiRNN(unittest.TestCase):
             x = np.random.randn(bz, time_step, size)
 
         y1, f1 = rnn1(x)
-        y2, f2 = rnn2(paddle.to_tensor(x))
+        y2, f2 = rnn2(paddle.to_tensor(x, place=self.place))
         np.testing.assert_allclose(y1, y2.numpy(), atol=1e-8, rtol=1e-5)
 
         for it in zip(f1, f2):
@@ -279,3 +282,7 @@ def load_tests(loader, tests, pattern):
                 for test_class in [TestBiRNN]:
                     suite.addTest(test_class(bias, device, time_major))
     return suite
+
+
+if __name__ == '__main__':
+    unittest.main()
