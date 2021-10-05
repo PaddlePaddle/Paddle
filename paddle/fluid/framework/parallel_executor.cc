@@ -45,6 +45,10 @@ limitations under the License. */
 
 DECLARE_double(eager_delete_tensor_gb);
 
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+DECLARE_bool(sync_nccl_allreduce);
+#endif
+
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
 #endif
@@ -1606,11 +1610,10 @@ const ir::Graph &ParallelExecutor::Graph() const {
   return member_->executor_->Graph();
 }
 
-#ifdef PADDLE_WITH_CUDA
 void ParallelExecutor::PrepareForCUDAGraphCapture(ir::Graph *graph) {
   const auto &build_strategy = member_->build_strategy_;
   if (!build_strategy.allow_cuda_graph_capture_) return;
-
+#ifdef PADDLE_WITH_CUDA
   PADDLE_ENFORCE_EQ(
       build_strategy.async_mode_, false,
       platform::errors::InvalidArgument(
@@ -1626,6 +1629,10 @@ void ParallelExecutor::PrepareForCUDAGraphCapture(ir::Graph *graph) {
   PADDLE_ENFORCE_EQ(platform::is_gpu_place(member_->places_[0]), true,
                     platform::errors::InvalidArgument(
                         "CUDA Graph is only supported on NVIDIA GPU device."));
+  PADDLE_ENFORCE_EQ(FLAGS_sync_nccl_allreduce, false,
+                    platform::errors::InvalidArgument(
+                        "FLAGS_sync_nccl_allreduce must be False to support "
+                        "CUDA Graph capturing."));
 
   std::unordered_map<std::string, std::vector<VarDesc *>> all_vars;
   for (auto &node : graph->Nodes()) {
@@ -1696,8 +1703,11 @@ void ParallelExecutor::PrepareForCUDAGraphCapture(ir::Graph *graph) {
     loss_grad_op->RunOnVar(scope->Var(loss_grad_name));
     loss_grad_op->SetSkipRunning(true);
   }
-}
+#else
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "CUDA Graph is only supported on NVIDIA GPU device."));
 #endif
+}
 
 }  // namespace framework
 }  // namespace paddle
