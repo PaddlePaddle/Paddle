@@ -133,6 +133,7 @@ def _split_activation(tensor):
 
     # use inplace operation to save memory
     data = tensor.flatten_()
+
     part_size = tensor_numel // mp_degree
     start = part_size * mp_rank
     end = start + part_size
@@ -197,7 +198,11 @@ class _HPRecomputeFunction(PyLayer):
 
         # TODO support AMP
         tracer = framework._dygraph_tracer()
-        ctx.is_fw_autocast = tracer._enable_autocast
+        if tracer._amp_level == 0:
+            ctx.is_fw_autocast = False
+        else:
+            ctx.is_fw_autocast = True
+        ctx.amp_mode = 'O1'
         ctx.amp_white_list, ctx.amp_black_list = tracer._get_amp_op_list()
 
         with paddle.no_grad():
@@ -257,7 +262,8 @@ class _HPRecomputeFunction(PyLayer):
                 with paddle.amp.auto_cast(
                         enable=ctx.is_fw_autocast,
                         custom_white_list=ctx.amp_white_list,
-                        custom_black_list=ctx.amp_black_list):
+                        custom_black_list=ctx.amp_black_list,
+                        level=ctx.amp_mode):
                     detached_inputs = detach_variable(tuple(inputs))
                     outputs = ctx.run_function(*detached_inputs)
 

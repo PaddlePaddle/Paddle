@@ -112,7 +112,7 @@ void ScatterAssign(const platform::DeviceContext& ctx, const Tensor& src,
 
   const size_t slice_bytes = slice_size * sizeof(T);
 
-  for (int i = 0; i < index_size; ++i) {
+  for (int64_t i = 0; i < index_size; ++i) {
     IndexT index_ = p_index[i];
 
     PADDLE_ENFORCE_GE(index_, 0,
@@ -175,7 +175,7 @@ void ScatterAssignAdd(const framework::ExecutionContext& ctx, const Tensor& src,
   }
 
   // if not in overwrite mode, need to init output data
-  for (int i = 0; i < index_size; ++i) {
+  for (int64_t i = 0; i < index_size; ++i) {
     const IndexT& index_val = p_index[i];
 
     PADDLE_ENFORCE_GE(index_val, 0,

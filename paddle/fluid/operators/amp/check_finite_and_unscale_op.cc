@@ -26,27 +26,28 @@ class CheckFiniteAndUnscaleOp : public framework::OperatorWithKernel {
       : OperatorWithKernel(type, inputs, outputs, attrs) {}
 
   void InferShape(framework::InferShapeContext* ctx) const override {
-    OP_INOUT_CHECK(ctx->HasInputs("X"), "Input", "X",
-                   "check_finite_and_unscale");
-    OP_INOUT_CHECK(ctx->HasOutputs("Out"), "Output", "Out",
-                   "check_finite_and_unscale");
-    PADDLE_ENFORCE_EQ(
-        ctx->Inputs("X").size(), ctx->Outputs("Out").size(),
-        platform::errors::InvalidArgument(
-            "The input(X) and output(Out) should have same size in "
-            "Operator(check_finite_and_unscale), size of input(X) is %d "
-            "and size of output(Out) is %d.",
-            ctx->Inputs("X").size(), ctx->Outputs("Out").size()));
-    auto x_dims = ctx->GetInputsDim("X");
-    ctx->SetOutputsDim("Out", x_dims);
+    if (ctx->HasInputs("X") || ctx->HasOutputs("Out")) {
+      PADDLE_ENFORCE_EQ(
+          ctx->Inputs("X").size(), ctx->Outputs("Out").size(),
+          platform::errors::InvalidArgument(
+              "The input(X) and output(Out) should have same size in "
+              "Operator(check_finite_and_unscale), size of input(X) is %d "
+              "and size of output(Out) is %d.",
+              ctx->Inputs("X").size(), ctx->Outputs("Out").size()));
+      auto x_dims = ctx->GetInputsDim("X");
+      ctx->SetOutputsDim("Out", x_dims);
+    }
     ctx->SetOutputDim("FoundInfinite", {1});
   }
 
  protected:
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext& ctx) const override {
-    return framework::OpKernelType(
-        OperatorWithKernel::IndicateVarDataType(ctx, "X"), ctx.GetPlace());
+    auto dtype = framework::proto::VarType::FP32;
+    if (ctx.MultiInputVar("X").size() >= 1) {
+      dtype = OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    }
+    return framework::OpKernelType(dtype, ctx.GetPlace());
   }
 };
 

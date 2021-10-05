@@ -25,7 +25,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/operator.h"
 #include "paddle/fluid/memory/malloc.h"
-#include "paddle/fluid/operators/elementwise/elementwise_op_function.cu.h"
+#include "paddle/fluid/operators/elementwise/elementwise_functor.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/transform.h"
 
@@ -37,8 +37,10 @@ limitations under the License. */
 #endif
 #include <thrust/iterator/iterator_adaptor.h>
 
+#include "paddle/fluid/operators/elementwise/elementwise_op_broadcast.cu.h"
 #include "paddle/fluid/platform/cuda_device_function.h"
 #include "paddle/fluid/platform/cuda_primitives.h"
+
 #ifdef __HIPCC__
 constexpr int ELEMWISE_MAX_BLOCK_DIM = 256;
 #else
@@ -277,128 +279,6 @@ void CommonForwardBroadcastCPU(const framework::Tensor *x,
     UpdateElementwiseIndexArray(out_dims_array, max_dim, index_array.data());
   }
 }
-
-#if defined(__NVCC__) || defined(__HIPCC__)
-template <typename Functor, typename T, typename OutType>
-__global__ void ElementwiseKernel(const T *__restrict__ x_data,
-                                  const T *__restrict__ y_data,
-                                  OutType *__restrict__ out_data, int n,
-                                  int post, const size_t total, Functor func) {
-  int tid = threadIdx.x + blockDim.x * blockIdx.x;
-  int stride = blockDim.x * gridDim.x;
-
-  for (int i = tid; i < total; i += stride) {
-    int idx = i / post % n;
-    out_data[i] = func(x_data[i], y_data[idx]);
-  }
-}
-
-template <typename Functor, typename T, typename OutType>
-void ComputeElementwiseCUDA(const framework::Tensor *x,
-                            const framework::Tensor *y, framework::Tensor *z,
-                            int pre, int n, int post,
-                            const platform::CUDADeviceContext &ctx,
-                            Functor func, const bool is_xsize_larger = true) {
-  const T *x_data = x->data<T>();
-  const T *y_data = y->data<T>();
-  OutType *out_data = z->mutable_data<OutType>(ctx.GetPlace());
-
-  int numel = pre * n * post;
-  int threads = 256;
-  int blocks = (numel + threads - 1) / threads;
-
-  if (is_xsize_larger) {
-    ElementwiseKernel<Functor, T,
-                      OutType><<<blocks, threads, 0, ctx.stream()>>>(
-        x_data, y_data, out_data, n, post, numel, func);
-
-  } else {
-    ElementwiseKernel<Functor, T,
-                      OutType><<<blocks, threads, 0, ctx.stream()>>>(
-        y_data, x_data, out_data, n, post, numel, func);
-  }
-}
-
-template <typename Functor, typename T, typename OutType = T>
-__global__ void CommonForwardBroadcastCUDAKernel(
-    const int *x_strides_array, const int *y_strides_array,
-    const int *out_dims_array, const T *x, const T *y, OutType *out,
-    int out_size, int max_dim, Functor func, const bool is_xsize_larger) {
-  for (int out_index = blockIdx.x * blockDim.x + threadIdx.x;
-       out_index < out_size; out_index += blockDim.x * gridDim.x) {
-    int x_index = 0;
-    int y_index = 0;
-    int out_index_quotient = out_index;
-    int remainder = 0;
-#pragma unroll
-    for (int i = max_dim - 1; i >= 0; --i) {
-      GetDivMod(out_index_quotient, out_dims_array[i], &out_index_quotient,
-                &remainder);
-      x_index += remainder * x_strides_array[i];
-      y_index += remainder * y_strides_array[i];
-    }
-    if (is_xsize_larger) {
-      out[out_index] = func(x[x_index], y[y_index]);
-    } else {
-      out[out_index] = func(y[y_index], x[x_index]);
-    }
-  }
-}
-
-template <typename Functor, typename T, typename OutType = T>
-void CommonForwardBroadcastCUDA(
-    const framework::Tensor *x, const framework::Tensor *y,
-    framework::Tensor *z, int *x_dims_array, int *y_dims_array,
-    int *out_dims_array, int max_dim, const platform::CUDADeviceContext &ctx,
-    Functor func, const bool is_xsize_larger = true) {
-  const auto gplace = BOOST_GET_CONST(platform::CUDAPlace, ctx.GetPlace());
-  auto cplace = platform::CPUPlace();
-  const T *x_data = x->data<T>();
-  const T *y_data = y->data<T>();
-  OutType *out_data = z->mutable_data<OutType>(ctx.GetPlace());
-
-  std::vector<int> x_strides_array(max_dim);
-  std::vector<int> y_strides_array(max_dim);
-  int x_stride = 1;
-  int y_stride = 1;
-  for (int i = max_dim - 1; i >= 0; i--) {
-    x_strides_array[i] = x_dims_array[i] == 1 ? 0 : x_stride;
-    y_strides_array[i] = y_dims_array[i] == 1 ? 0 : y_stride;
-    x_stride *= x_dims_array[i];
-    y_stride *= y_dims_array[i];
-  }
-
-  int bytes = max_dim * sizeof(int);
-  auto x_strides_array_tmp = memory::Alloc(ctx, bytes);
-  int *x_strides_array_gpu =
-      reinterpret_cast<int *>(x_strides_array_tmp->ptr());
-  memory::Copy(gplace, x_strides_array_gpu, cplace, x_strides_array.data(),
-               bytes, ctx.stream());
-
-  auto y_strides_array_tmp = memory::Alloc(ctx, bytes);
-  int *y_strides_array_gpu =
-      reinterpret_cast<int *>(y_strides_array_tmp->ptr());
-  memory::Copy(gplace, y_strides_array_gpu, cplace, y_strides_array.data(),
-               bytes, ctx.stream());
-
-  auto out_dims_array_tmp = memory::Alloc(ctx, bytes);
-  int *out_dims_array_gpu = reinterpret_cast<int *>(out_dims_array_tmp->ptr());
-  memory::Copy(gplace, out_dims_array_gpu, cplace, out_dims_array, bytes,
-               ctx.stream());
-
-  const int out_size = std::accumulate(out_dims_array, out_dims_array + max_dim,
-                                       1, std::multiplies<int>());
-  dim3 gird_size = dim3(
-      (out_size + PADDLE_CUDA_THREAD_SIZE - 1) / PADDLE_CUDA_THREAD_SIZE, 1);
-  dim3 block_size = dim3(PADDLE_CUDA_THREAD_SIZE, 1);
-
-  CommonForwardBroadcastCUDAKernel<
-      Functor, T, OutType><<<gird_size, block_size, 0, ctx.stream()>>>(
-      x_strides_array_gpu, y_strides_array_gpu, out_dims_array_gpu, x_data,
-      y_data, out_data, out_size, max_dim, func, is_xsize_larger);
-}
-
-#endif  // __NVCC__ or __HIPCC__
 
 template <typename T, typename DX_OP, typename DY_OP>
 void CommonGradBroadcastCPU(
@@ -1917,21 +1797,10 @@ void CommonElementwiseBroadcastForward(
                          y_dims_array.data(), out_dims_array.data(), max_dim,
                          axis);
 
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-#if defined(__NVCC__) || defined(__HIPCC__)
-    CommonForwardBroadcastCUDA<Functor, T, OutType>(
-        x, y, z, x_dims_array.data(), y_dims_array.data(),
-        out_dims_array.data(), max_dim,
-        ctx.template device_context<platform::CUDADeviceContext>(), func,
-        is_xsize_larger);
-#endif
-  } else {
-    CommonForwardBroadcastCPU<Functor, T, OutType>(
-        x, y, z, x_dims_array.data(), y_dims_array.data(),
-        out_dims_array.data(), max_dim,
-        ctx.template device_context<platform::CPUDeviceContext>(), func,
-        is_xsize_larger);
-  }
+  CommonForwardBroadcastCPU<Functor, T, OutType>(
+      x, y, z, x_dims_array.data(), y_dims_array.data(), out_dims_array.data(),
+      max_dim, ctx.template device_context<platform::CPUDeviceContext>(), func,
+      is_xsize_larger);
 }
 
 template <typename DeviceContext, typename T, typename DX_OP, typename DY_OP>
@@ -1975,12 +1844,35 @@ void ElemwiseExplicitGradCompute(const framework::ExecutionContext &ctx,
   }
 }
 
+// It is a common implementation to compute binary calculation with the support
+// of broadcast, supporting both CPU and GPU.
+// - CPU implementation cannot support the case when x needs broadcast, thus
+//   this function need to be called with XxxFunctor and XxxInverseFunctor,
+//   like paddle/fluid/operators/elementwise/elementwise_add_op.h#L49 - L55.
+// - GPU implementation supports all the broadcast cases, thus there is no need
+//   to define and call with XxxInverseFunctor.
+// TODO(liuyiqun): optimize the CPU implementation to support all broadcast
+// cases and avoid the need of XxxInverseFunctor.
 template <typename Functor, typename DeviceContext, typename T,
           typename OutType = T>
 void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
                           const framework::Tensor *x,
                           const framework::Tensor *y, int axis, Functor func,
                           framework::Tensor *z) {
+  if (platform::is_gpu_place(ctx.GetPlace())) {
+#if defined(__NVCC__) || defined(__HIPCC__)
+    std::vector<const framework::Tensor *> ins = {x, y};
+    std::vector<framework::Tensor *> outs = {z};
+    z->mutable_data<OutType>(ctx.GetPlace());
+
+    const auto &dev_ctx =
+        ctx.template device_context<platform::CUDADeviceContext>();
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, OutType>(
+        dev_ctx, ins, &outs, axis, func);
+#endif
+    return;
+  }
+
   auto x_dims = x->dims();
   auto y_dims = y->dims();
   bool is_xsize_larger = true;
@@ -2029,15 +1921,6 @@ void ElementwiseComputeEx(const framework::ExecutionContext &ctx,
     return;
   }
 
-  if (platform::is_gpu_place(ctx.GetPlace())) {
-#if defined(__NVCC__) || defined(__HIPCC__)
-    ComputeElementwiseCUDA<Functor, T, OutType>(
-        x, y, z, pre, n, post,
-        ctx.template device_context<platform::CUDADeviceContext>(), func,
-        is_xsize_larger);
-#endif
-    return;
-  }
   if (post == 1) {
     functor.RunRowWise(n, pre);
     return;

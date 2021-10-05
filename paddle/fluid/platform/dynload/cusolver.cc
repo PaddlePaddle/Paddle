@@ -28,6 +28,11 @@ CUSOLVER_ROUTINE_EACH(DEFINE_WRAP);
 #ifdef CUSOLVER_ROUTINE_EACH_R1
 CUSOLVER_ROUTINE_EACH_R1(DEFINE_WRAP);
 #endif
+
+#ifdef CUSOLVER_ROUTINE_EACH_R2
+CUSOLVER_ROUTINE_EACH_R2(DEFINE_WRAP);
+#endif
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle
