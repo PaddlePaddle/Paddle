@@ -37,6 +37,7 @@ class TestAlphaDropout(unittest.TestCase):
         if training:
             if p == 1:
                 return f_scale(x, scale=0.)
+            # get transformation params
             alpha = 1.6732632423543772848170429916717
             scale = 1.0507009873554804934193349852946
             alpha_p = -alpha * scale
@@ -61,7 +62,7 @@ class TestAlphaDropout(unittest.TestCase):
             return x
 
     def test_normal_state(self):
-        x = np.random.randn(2, 3, 3).astype(self.dtype)
+        x = np.random.randn(2, 3, 3).astype(self.dtype) * 2.
         # to ensure has the same random mask
         paddle.seed(100)
         y_train1 = self.numpy_alpha_dropout(x, self.p)
@@ -85,10 +86,11 @@ class TestAlphaDropout(unittest.TestCase):
 
 
 class TestAlphaDropoutParams(unittest.TestCase):
-    def __init__(self, place):
+    def __init__(self, name="test", place="cpu"):
         super(TestAlphaDropoutParams, self).__init__(methodName="runTest")
-        self.place = paddle.CPUPlace() if place == "cpu" else paddle.CUDAPlace(
-            0)
+        self.place = paddle.CUDAPlace(0) if place=="gpu" \
+            else paddle.CPUPlace()
+        self.name = name
 
     def setUp(self) -> None:
         self.x = np.array([[-3, 1], [-1, 1]]).astype('float32')
@@ -119,16 +121,14 @@ def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()
     devices = ["cpu", "gpu"] if paddle.fluid.is_compiled_with_cuda() \
         else ["cpu"]
-    for p in [0., 0.5, 1]:
-        for device in devices:
+    for device in devices:
+        for p in [0., 0.5, 1]:
             for dtpye in ["float32", "float64"]:
                 for test_class in [TestAlphaDropout]:
                     suite.addTest(test_class(p, device, dtpye))
 
-    for device in devices:
         for test_class in [TestAlphaDropoutParams]:
             suite.addTest(test_class(device))
-
     return suite
 
 
