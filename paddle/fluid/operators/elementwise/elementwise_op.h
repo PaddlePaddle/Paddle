@@ -185,6 +185,10 @@ class ElementwiseOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault("float32")
         .InEnum({"float32", "int8", "bfloat16"})
         .AsExtra();
+    AddAttr<std::string>("activation_type",
+                         "Activation type used in elementwise operator.")
+        .SetDefault("")
+        .AsExtra();
     /* int8 parameters */
     AddAttr<float>("Scale_x",
                    "(float, default 1.0f), The quantize scale of X tensor")

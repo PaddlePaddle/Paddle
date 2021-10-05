@@ -32,6 +32,10 @@ extra {
     type: STRING
   }
   attrs {
+    name: "activation_type"
+    type: STRING
+  }
+  attrs {
     name: "Scale_x"
     type: FLOAT
   }

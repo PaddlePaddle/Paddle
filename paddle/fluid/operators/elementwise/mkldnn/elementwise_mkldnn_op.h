@@ -47,9 +47,19 @@ class EltwiseMKLDNNKernel : public framework::OpKernel<T> {
     float scale_o = ctx.Attr<float>("Scale_out");
     int axis = ctx.Attr<int>("axis");
 
+    dnnl::post_ops post_operations;
+    if (ctx.Attr<std::string>("activation_type") == "relu")
+    {
+      constexpr float scale = 1.0f;
+      constexpr float alpha = 0.0f;
+      constexpr float beta = 0.0f;
+      post_operations.append_eltwise(scale, mkldnn::algorithm::eltwise_relu,
+                                     alpha, beta);
+    }
+
     platform::BinaryMKLDNNHandler<T> handler(BINARY_OP, axis, mkldnn_engine,
                                              ctx.GetPlace(), x, y, z, scale_x,
-                                             scale_y, scale_o);
+                                             scale_y, scale_o, post_operations);
 
     const auto src_x_memory = handler.AcquireSrcMemory(x);
     const auto src_y_memory = handler.AcquireSecondSrcMemory(y);

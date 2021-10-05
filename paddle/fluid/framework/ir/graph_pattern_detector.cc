@@ -917,6 +917,33 @@ PDNode *patterns::ConvActivation::operator()(
   return activation_out_var;
 }
 
+PDNode *patterns::ElementwiseAddActivation::operator()(
+    paddle::framework::ir::PDNode *add_input_a,
+    std::string activation_type) {
+  // Create Operators
+  add_input_a->assert_is_op_input("elementwise_add", "X");
+  auto *elementwise_add_op = pattern->NewNode(elementwise_add_repr())->assert_is_op("elementwise_add");
+  auto *activation_op =
+      pattern->NewNode(activation_repr())->assert_is_op(activation_type);
+  // Create variables
+  auto *elementwise_add_b = pattern->NewNode(elementwise_add_b_repr())
+                              ->AsInput()
+                              ->assert_is_op_input("elementwise_add", "Y");
+  // intermediate variable, will be removed in the IR after fuse.
+  auto *elementwise_add_out_var = pattern->NewNode(elementwise_add_out_repr())
+                           ->AsIntermediate()
+                           ->assert_is_only_output_of_op("elementwise_add")
+                           ->assert_is_op_input(activation_type);
+  // output
+  auto *activation_out_var = pattern->NewNode(activation_out_repr())
+                                 ->AsOutput()
+                                 ->assert_is_op_output(activation_type);
+
+  elementwise_add_op->LinksFrom({add_input_a, elementwise_add_b}).LinksTo({elementwise_add_out_var});
+  activation_op->LinksFrom({elementwise_add_out_var}).LinksTo({activation_out_var});
+  return activation_out_var;
+}
+
 PDNode *patterns::SeqConvEltAddRelu::operator()(
     paddle::framework::ir::PDNode *seqconv_input) {
   // Create Operators
