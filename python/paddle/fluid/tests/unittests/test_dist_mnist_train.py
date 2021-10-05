@@ -30,7 +30,8 @@ class TestDistMnist2x2(TestDistBase):
             "dist_mnist.py",
             delta=1e-5,
             check_error_log=True,
-            log_name=flag_name)
+            log_name=flag_name,
+            need_envs={'FLAGS_allreduce_record_one_event': 'true'})
 
 
 class TestDistMnist2x2WithMemopt(TestDistBase):
