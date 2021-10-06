@@ -636,8 +636,16 @@ class BinaryMKLDNNHandler
     const auto dst_tz = (z == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
                                        : framework::vectorize(z->dims());
 
-    auto src0_md = x->mem_desc();
-    auto src1_md = y->mem_desc();
+    // mem desc support is disabled here until matmul and matmul_v2 will be
+    // refactored to support every possible data layout, this is a temporary fix
+    // for tnt_small model
+    //    auto src0_md = x->mem_desc();
+    //    auto src1_md = y->mem_desc();
+
+    auto src0_md = dnnl::memory::desc(
+        src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
+    auto src1_md = dnnl::memory::desc(
+        src_y_tz, platform::MKLDNNGetDataType<T>(), y->format());
 
     if (rankdiff > 0) {  // Second input is of smaller rank than first
       std::vector<int64_t> dims1_ex(rankdiff, 1);
