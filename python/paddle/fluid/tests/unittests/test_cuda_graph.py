@@ -18,8 +18,7 @@ from paddle.device.cuda.graphs import CUDAGraph
 import unittest
 import numpy as np
 from paddle.fluid.dygraph.base import switch_to_static_graph
-from paddle.vision.models import resnet50
-from paddle.nn import CrossEntropyLoss
+from simple_nets import simple_fc_net_with_inputs
 
 
 class TestCUDAGraph(unittest.TestCase):
@@ -51,7 +50,8 @@ class TestCUDAGraph(unittest.TestCase):
 
     def cuda_graph_static_graph_main(self, seed, use_cuda_graph):
         batch_size = 1
-        image_shape = [batch_size, 3, 224, 224]
+        class_num = 10
+        image_shape = [batch_size, 784]
         label_shape = [batch_size, 1]
 
         paddle.seed(seed)
@@ -65,10 +65,7 @@ class TestCUDAGraph(unittest.TestCase):
                 name="label", shape=label_shape, dtype='int64')
             image.persistable = True
             label.persistable = True
-            model = resnet50()
-            loss_fn = CrossEntropyLoss()
-            pred = model(image)
-            loss = loss_fn(pred, label)
+            loss = simple_fc_net_with_inputs(image, label, class_num)
             loss.persistable = True
             optimizer = paddle.optimizer.SGD(learning_rate=1e-3)
             optimizer.minimize(loss)
@@ -79,6 +76,7 @@ class TestCUDAGraph(unittest.TestCase):
             exe.run(startup)
             build_strategy = paddle.static.BuildStrategy()
             build_strategy.allow_cuda_graph_capture = True
+            build_strategy.fix_op_run_order = True
             compiled_program = paddle.static.CompiledProgram(
                 main).with_data_parallel(
                     loss_name=loss.name,
@@ -92,11 +90,11 @@ class TestCUDAGraph(unittest.TestCase):
                 image_t.set(
                     np.random.rand(*image_shape).astype('float32'), place)
                 label_t.set(np.random.randint(
-                    low=0, high=1000, size=label_shape, dtype='int64'),
+                    low=0, high=class_num, size=label_shape, dtype='int64'),
                             place)
 
                 if batch_id == 1 and use_cuda_graph:
-                    cuda_graph = CUDAGraph()
+                    cuda_graph = CUDAGraph(place, mode="global")
                     cuda_graph.capture_begin()
                     exe.run(compiled_program)
                     cuda_graph.capture_end()
@@ -105,6 +103,8 @@ class TestCUDAGraph(unittest.TestCase):
                     cuda_graph.replay()
                 else:
                     exe.run(compiled_program)
+            if cuda_graph:
+                cuda_graph.reset()
         return np.array(loss_t)
 
     def test_cuda_graph_dynamic_graph(self):
