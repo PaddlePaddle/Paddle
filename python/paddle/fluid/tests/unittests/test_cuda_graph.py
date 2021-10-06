@@ -67,7 +67,9 @@ class TestCUDAGraph(unittest.TestCase):
             label.persistable = True
             loss = simple_fc_net_with_inputs(image, label, class_num)
             loss.persistable = True
-            optimizer = paddle.optimizer.SGD(learning_rate=1e-3)
+            lr = paddle.optimizer.lr.PiecewiseDecay(
+                boundaries=[2, 3, 4], values=[0.01, 0.02, 0.03, 0.04])
+            optimizer = paddle.optimizer.SGD(learning_rate=lr)
             optimizer.minimize(loss)
         place = paddle.CUDAPlace(0)
         exe = paddle.static.Executor(place)
@@ -86,6 +88,9 @@ class TestCUDAGraph(unittest.TestCase):
             image_t = scope.var(image.name).get_tensor()
             label_t = scope.var(label.name).get_tensor()
             loss_t = scope.var(loss.name).get_tensor()
+            lr_var = main.global_block().var(lr._var_name)
+            self.assertTrue(lr_var.persistable)
+            lr_t = scope.var(lr_var.name).get_tensor()
             cuda_graph = None
             for batch_id in range(20):
                 image_t.set(
@@ -101,9 +106,11 @@ class TestCUDAGraph(unittest.TestCase):
                     cuda_graph.capture_end()
 
                 if cuda_graph:
+                    lr_t.set(np.array([lr()], dtype='float32'), place)
                     cuda_graph.replay()
                 else:
                     exe.run(compiled_program)
+                lr.step()
             if cuda_graph:
                 cuda_graph.reset()
         return np.array(loss_t)
