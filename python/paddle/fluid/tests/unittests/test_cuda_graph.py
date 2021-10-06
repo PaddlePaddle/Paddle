@@ -50,7 +50,7 @@ class TestCUDAGraph(unittest.TestCase):
         self.assertEqual(loss_cuda_graph, loss_no_cuda_graph)
 
     def cuda_graph_static_graph_main(self, seed, use_cuda_graph):
-        batch_size = 32
+        batch_size = 1
         image_shape = [batch_size, 3, 224, 224]
         label_shape = [batch_size, 1]
 
