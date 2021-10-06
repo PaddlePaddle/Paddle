@@ -256,7 +256,6 @@ namespace ops = paddle::operators;
       ops::MKLDNNActivationGradKernel<                                        \
           ops::grad_functor<paddle::platform::bfloat16>>);
 
-//  __macro(relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);                \/
 #define FOR_EACH_MKLDNN_KERNEL_FUNCTOR(__macro)                           \
   __macro(relu6, Relu6MKLDNNFunctor, Relu6MKLDNNGradFunctor);             \
   __macro(leaky_relu, ReluMKLDNNFunctor, ReluMKLDNNGradFunctor);          \
