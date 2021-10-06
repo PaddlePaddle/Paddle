@@ -32,10 +32,7 @@ class TestDistMnistLocalSGDFleetApi(TestDistBase):
     def test_dist_train(self):
         import paddle.fluid as fluid
         if fluid.core.is_compiled_with_cuda():
-            self.check_with_place(
-                "dist_mnist.py",
-                delta=1e-5,
-                need_envs={'FLAGS_allreduce_record_one_event': 'true'})
+            self.check_with_place("dist_mnist.py", delta=1e-5)
 
 
 class TestDistMnistGradAllReduceFleetApi(TestDistBase):
