@@ -1686,8 +1686,10 @@ void ParallelExecutor::PrepareForCUDAGraphCapture(ir::Graph *graph) {
     auto &startup_programs =
         graph->GetOrInit<details::ProgramDescs>(details::kStartupProgramDescs);
     for (auto &startup_program : startup_programs) {
-      for (auto &var_desc : startup_program.Block(0).AllVars()) {
-        mark_var_as_persistable(var_desc->Name());
+      for (auto &op_desc : startup_program.Block(0).AllOps()) {
+        for (auto &output : op_desc->OutputArgumentNames()) {
+          mark_var_as_persistable(output);
+        }
       }
     }
   }
