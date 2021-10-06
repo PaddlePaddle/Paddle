@@ -104,3 +104,21 @@ class TestMKLDNNGeluTanhBF16Op(TestMKLDNNSigmoidBF16Op):
 class TestMKLDNNGeluTanhDim2BF16Op(TestMKLDNNGeluTanhBF16Op):
     def init_data(self):
         self.x = np.random.uniform(-1, 1, [11, 17]).astype(np.float32)
+
+
+class TestMKLDNNReluBF16Op(TestMKLDNNSigmoidBF16Op):
+    def config(self):
+        self.op_type = "relu"
+
+    def init_dtype(self):
+        self.dtype = np.uint16
+
+    def op_forward(self, x):
+        return np.maximum(x, 0)
+
+    def op_grad(self, dout, x):
+        return dout
+
+
+if __name__ == '__main__':
+    unittest.main()
