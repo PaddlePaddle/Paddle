@@ -44,20 +44,21 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
       out_new_dims[i] = out_new_dims[i] > 0 ? out_new_dims[i] : x_vec_dims[i];
     }
 
-    dnnl::memory::format_tag x_format_tag = x->format();
+    dnnl::memory::desc x_mem_desc = x->mem_desc();
+
     if (x_vec_dims.size() != out_new_dims.size()) {
-      x_format_tag =
-          GetExtendedFormatTag(x_vec_dims, out_new_dims.size(), x_format_tag);
+      x_mem_desc = GetExtendedMemoryDescriptor(x_mem_desc, x_vec_dims,
+                                               out_new_dims.size());
     }
 
     out->Resize(paddle::framework::make_ddim(out_new_dims));
-    out->set_format(x_format_tag);
     paddle::platform::BroadcastDataMKLDNNHandler<T> handler(
         dnnl::algorithm::binary_add, onednn_engine, ctx.GetPlace(), out, x,
-        0.0f, 1.0f, x_vec_dims);
+        0.0f, 1.0f, x_mem_desc);
 
     auto src_memory_p = handler.AcquireSrcMemory(x);
-    auto dst_memory_p = handler.AcquireDstMemory(out);
+    auto dst_memory_p = handler.AcquireDstMemory(
+        out);  // overrided method, ecquires zeroed memory
     auto binary_p = handler.AcquireForwardPrimitive();
 
     const std::unordered_map<int, dnnl::memory> args = {
@@ -70,21 +71,18 @@ class ExpandMKLDNNKernel : public paddle::framework::OpKernel<T> {
     astream.wait();
 
     out->set_layout(paddle::framework::DataLayout::kMKLDNN);
-    out->set_format(paddle::platform::GetMKLDNNFormat(*dst_memory_p));
+    out->set_mem_desc(dst_memory_p->get_desc());
   }
 
  private:
-  dnnl::memory::format_tag GetExtendedFormatTag(
-      std::vector<int64_t>& dims, int new_size,
-      mkldnn::memory::format_tag format_tag) const {
-    mkldnn::memory::desc md(dims, paddle::platform::MKLDNNGetDataType<T>(),
-                            format_tag);
+  dnnl::memory::desc GetExtendedMemoryDescriptor(
+      const dnnl::memory::desc& x_mem_desc,
+      const std::vector<int64_t>& x_vec_dims, int new_size) const {
     std::vector<int64_t> new_dims(new_size, 1);
-    std::copy(dims.begin(), dims.end(),
-              new_dims.begin() + new_size - dims.size());
+    std::copy(x_vec_dims.begin(), x_vec_dims.end(),
+              new_dims.begin() + new_size - x_vec_dims.size());
 
-    dims = std::move(new_dims);
-    return paddle::platform::GetMKLDNNFormat(md.reshape(dims));
+    return x_mem_desc.reshape(new_dims);
   }
 };
 
@@ -118,10 +116,10 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
           dout_vec_dims, dout->type(), dout_type, onednn_engine);
 
       auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-          dout->format(), paddle::platform::to_void_cast(dout->data<T>()));
+          dout->mem_desc(), paddle::platform::to_void_cast(dout->data<T>()));
 
-      auto reorder_dst_memory_p =
-          reorder_handler.AcquireDstMemory(dx, dout->format(), ctx.GetPlace());
+      auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
+          dx, dout->mem_desc(), ctx.GetPlace());
 
       auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                       reorder_dst_memory_p);
@@ -130,8 +128,7 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
       astream.wait();
 
       dx->set_layout(paddle::framework::DataLayout::kMKLDNN);
-      dx->set_format(
-          paddle::platform::GetMKLDNNFormat(reorder_dst_memory_p->get_desc()));
+      dx->set_mem_desc(reorder_dst_memory_p->get_desc());
     } else {
       paddle::platform::ReductionMKLDNNHandler<T> handler(
           dnnl::algorithm::reduction_sum, 0.0f, 0.0f, onednn_engine,
@@ -148,8 +145,8 @@ class ExpandGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
       reduction_p->execute(astream, reduction_args);
       astream.wait();
       dx->set_layout(paddle::framework::DataLayout::kMKLDNN);
-      dx->set_format(paddle::platform::GetMKLDNNFormat(
-          dst_memory_p->get_desc().reshape(vectorize<int64_t>(dx->dims()))));
+      dx->set_mem_desc(
+          dst_memory_p->get_desc().reshape(vectorize<int64_t>(dx->dims())));
     }
   }
 };

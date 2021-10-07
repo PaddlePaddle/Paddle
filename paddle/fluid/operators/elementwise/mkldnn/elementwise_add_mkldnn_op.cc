@@ -48,11 +48,11 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     auto reorder_src_memory_p = handler.AcquireSrcMemory(
-        dout->format(), platform::to_void_cast(dout->data<T>()));
+        dout->mem_desc(), platform::to_void_cast(dout->data<T>()));
 
     if (dx) {
       auto reorder_dst_memory_p =
-          handler.AcquireDstMemory(dx, dout->format(), ctx.GetPlace());
+          handler.AcquireDstMemory(dx, dout->mem_desc(), ctx.GetPlace());
       auto reorder_p =
           handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
       platform::RecordEvent record_reorder("int_reorder",
@@ -61,14 +61,14 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       astream.wait();
 
       dx->set_layout(DataLayout::kMKLDNN);
-      dx->set_format(platform::GetMKLDNNFormat(*reorder_dst_memory_p));
+      dx->set_mem_desc(reorder_dst_memory_p->get_desc());
     }
 
     if (dy) {
       // Direct copy
       if (dout->dims() == dy->dims()) {
         auto reorder_dst_memory_p =
-            handler.AcquireDstMemory(dy, dout->format(), ctx.GetPlace());
+            handler.AcquireDstMemory(dy, dout->mem_desc(), ctx.GetPlace());
         auto reorder_p =
             handler.AcquireReorder(reorder_dst_memory_p, reorder_src_memory_p);
         platform::RecordEvent record_reorder("int_reorder",
@@ -78,7 +78,7 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         astream.wait();
 
         dy->set_layout(DataLayout::kMKLDNN);
-        dy->set_format(platform::GetMKLDNNFormat(*reorder_dst_memory_p));
+        dy->set_mem_desc(reorder_dst_memory_p->get_desc());
       } else {
         // Broadcasting
         platform::ReductionMKLDNNHandler<T> handler_sum(
@@ -91,9 +91,8 @@ class EltwiseAddMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         astream.wait();
 
         dy->set_layout(DataLayout::kMKLDNN);
-        dy->set_format(
-            platform::GetMKLDNNFormat(dy_memory_p->get_desc().reshape(
-                paddle::framework::vectorize<int64_t>(dy->dims()))));
+        dy->set_mem_desc(
+            dy_memory_p->get_desc().reshape(framework::vectorize(dy->dims())));
       }
     }
   }
