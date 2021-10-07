@@ -19,6 +19,8 @@ import paddle
 from paddle import framework
 from ...utils.log_util import logger
 
+import paddle.distributed as dist
+
 
 def _is_trainable(param: paddle.Tensor) -> bool:
     return not param.stop_gradient
@@ -47,6 +49,7 @@ class DygraphShardingOptimizer(object):
             user_defined_strategy,
             params,
             inner_optimizer_class,
+            reduce_bucket_size=500000000,
             **inner_optimizer_kargs, ):
 
         if not isinstance(params, list):
@@ -73,6 +76,42 @@ class DygraphShardingOptimizer(object):
 
         # actually create opt ops
         self._buid_inner_optimizer()
+
+        #################################################################
+        ################# Zero Stage 2: Gradient Sharding ###############
+        #################################################################
+
+        # init reduction stream
+        self._reduction_stream = paddle.device.cuda.Stream()
+
+        # reduce bucket grads and gc
+        self._elements_in_grad_bucket = 0
+        self._grad_bucket_size = reduce_bucket_size
+        self._extra_large_param_to_reduce = None
+        self._grads_in_grad_bucket = []
+        self._params_in_grad_bucket = []
+
+        # generate param id for each param
+        self._param_id = {}
+        self._params_already_reduced = []
+
+        count = 0
+        for param in self._parameter_list:
+            unique_id = id(param)
+            self._param_id[unique_id] = count
+            self._params_already_reduced.append(False)
+            count += 1
+
+        # use 2 overlapping cuda streams(default stream and reduction stream)
+        self._overlap_comm = False
+
+        # register grad reduction and gc hooks
+        self._hook_removers = []
+        self._register_hooks_for_grad_reduction_and_gc()
+
+        #################################################################
+        ################# Zero Stage 2 finishes #########################
+        #################################################################
 
     def clear_grad(self):
         """
@@ -196,3 +235,97 @@ class DygraphShardingOptimizer(object):
 
     def __getattr__(self, item):
         return getattr(self._inner_optimizer, item)
+
+    #################################################################
+    ################# Zero Stage 2: Gradient Sharding ###############
+    #################################################################
+
+    def _register_hooks_for_grad_reduction_and_gc(self):
+        #TODO: find grad_fn and next.functions in paddle
+        for param in self._parameter_list:
+            if param.requires_grad and not param.stop_gradient:
+                # define grad reduction closure here
+                def reduce_grad_and_gc_closure(grad):
+                    self._reduce_grad_buckets_and_gc(param, grad)
+                hook_remover = param.register_hook(reduce_grad_and_gc_closure)
+                self._hook_removers.append(hook_remover)
+
+    # currently useless
+    def _remove_hooks_for_grad_reduction_and_gc(self):
+        for hook_remover in self._hook_removers:
+            hook_remover.remove()
+
+    def _reduce_grad_buckets_and_gc(self, param, grad=None):
+        # if grad bucket is full
+        if self._elements_in_grad_bucket + param.numel() > self._grad_bucket_size:
+            self._reduce_grads_immediately_and_gc()
+
+        param_id = self._get_param_id(param)
+
+        # if a single param is larger than bucket size
+        if param.numel() > self._grad_bucket_size:
+            self._extra_large_param_to_reduce = param
+
+        self._elements_in_grad_bucket += param.numel()
+
+        if grad is None:    # if entered by epilogue
+            self._grads_in_grad_bucket.append(param.grad)
+        else:               # if entered by hooks
+            self._grads_in_grad_bucket.append(grad)
+        self._elements_in_grad_bucket.append((param, param_id))
+
+    def _reduce_grads_immediately_and_gc(self):
+
+        if self._overlap_comm:
+            paddle.device.cuda.synchronize()
+            self._clear_previous_reduced_grads()
+            stream = self._reduction_stream
+        else:
+            stream = paddle.device.cuda.current_stream()
+
+        self._buffered_reduce(self._grads_in_grad_bucket, self._elements_in_grad_bucket)
+
+        with paddle.device.cuda.stream_guard(stream):
+            for param, param_id in self._params_in_grad_bucket:
+                # one param cannot be reduced twice
+                assert self._params_already_reduced[param_id] is False
+
+                self._params_already_reduced[param_id] = True
+
+                if not self._is_param_in_current_partition[param_id]:
+                    if self._overlap_comm:
+                        # GC grads of other sharding ranks during the next reduction
+                        # to avoid clearing them before the reduction is complete.
+                        if self._previous_reduced_grads is None:
+                            self._previous_reduced_grads = []
+                        self._previous_reduced_grads.append(param)
+                    else:
+                        param.grad = None
+
+        self._grads_in_grad_bucket = []
+        self._params_in_grad_bucket = []
+        self._elements_in_grad_bucket = 0
+
+    # reduce averaged gradients
+    def _buffered_reduce(self, grads, params):
+        for grad, param, _ in grads, zip(params):
+            dst_rank = self._param2rank[param.name]
+            tensor_to_reduce = grad.div_(1. / self._sharding_world_size)
+            dist.reduce(tensor_to_reduce,
+                        self._hcg.get_sharding_parallel_group().ranks[dst_rank],
+                        group=self._hcg.get_sharding_parallel_group())
+            grad.copy_(tensor_to_reduce)
+
+    # gc gradients
+    def _clear_previous_reduced_grads(self):
+        if self._previous_reduced_grads is not None:
+            for param in self._previous_reduced_grads:
+                param.grad = None
+            self._previous_reduced_grads = None
+
+    def _get_param_id(self, param):
+        unique_id = id(param)
+        return self._param_id[unique_id]
+    #################################################################
+    ################# Zero Stage 2 finishes #########################
+    #################################################################
