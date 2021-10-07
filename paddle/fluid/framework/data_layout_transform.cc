@@ -175,9 +175,6 @@ void innerTransDataLayoutFromMKLDNN(DataLayout in_layout, DataLayout out_layout,
     platform::ReorderMKLDNNHandler handler(in_tz, in.type(), in_type,
                                            cpu_engine);
 
-    // we are dropping format_tag support, but until all changes are implemented
-    // we still need to support that, because some ops will temporary use that
-    // instead of md
     auto reorder_src_memory_p =
         handler.AcquireSrcMemory(in.mem_desc(), in_data);
     auto reorder_dst_memory_p =
