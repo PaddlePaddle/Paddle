@@ -26,28 +26,31 @@ using string::PrettyLogDetail;
 
 void ElementwiseAddActivationOneDNNPass::ApplyImpl(Graph *graph) const {
   std::vector<std::string> act_types = {"relu"};
+  std::vector<std::string> elt_types = {"elementwise_add"};
 
-  for (std::string act_type : act_types) FuseElementwiseAddAct(graph, act_type);
+  for (const auto& elt_type : elt_types)
+    for (const auto& act_type : act_types)
+      FuseElementwiseAddAct(graph, elt_type, act_type);
 }
 
-void ElementwiseAddActivationOneDNNPass::FuseElementwiseAddAct(Graph *graph, const std::string &act_type) const {
+void ElementwiseAddActivationOneDNNPass::FuseElementwiseAddAct(Graph *graph, const std::string &elt_type, const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("elementwise_add_act", graph);
 
   GraphPatternDetector gpd;
   auto* elementwise_add_input = gpd.mutable_pattern()
-                         ->NewNode("elementwise_add_act/elementwise_add_input")
+                         ->NewNode(elt_type + "_act/elementwise_add_input")
                          ->AsInput()
-                         ->assert_is_op_input("elementwise_add", "X");
+                         ->assert_is_op_input(elt_type, "X");
   patterns::ElementwiseActivation elementwise_add_act_pattern(
-      gpd.mutable_pattern(), "elementwise_add_act");
-  elementwise_add_act_pattern(elementwise_add_input, "elementwise_add", act_type);
+      gpd.mutable_pattern(), elt_type + "_act");
+  elementwise_add_act_pattern(elementwise_add_input, elt_type, act_type);
 
   int found_elementwise_add_activation_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
-    VLOG(4) << "Fuse Elementwise Add with activation op.";
+    VLOG(4) << "Fuse " << elt_type << " with activation op.";
     // Elementwise Add output
     GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, elementwise_add_act_pattern);
     // ACT output
@@ -62,7 +65,7 @@ void ElementwiseAddActivationOneDNNPass::FuseElementwiseAddAct(Graph *graph, con
       PADDLE_ENFORCE(
           BOOST_GET_CONST(bool, elementwise_add_op->GetAttr("use_mkldnn")),
           platform::errors::PreconditionNotMet(
-              "The ElementwiseAdd+Act fusion may happen only when oneDNN library "
+              "The " + elt_type + "+Act fusion may happen only when oneDNN library "
               "is used."));
     }
 
@@ -79,8 +82,8 @@ void ElementwiseAddActivationOneDNNPass::FuseElementwiseAddAct(Graph *graph, con
 
   gpd(graph, handler);
   AddStatis(found_elementwise_add_activation_count);
-  PrettyLogDetail("---    fused %d elementwise_add with %s activation", found_elementwise_add_activation_count,
-                  act_type);
+  PrettyLogDetail("---    fused %d %s with %s activation", found_elementwise_add_activation_count,
+                  elt_type, act_type);
 }
 
 }  // namespace ir

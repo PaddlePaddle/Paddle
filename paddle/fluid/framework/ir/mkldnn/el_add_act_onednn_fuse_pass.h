@@ -36,7 +36,7 @@ class ElementwiseAddActivationOneDNNPass : public FusePassBase {
  protected:
   void ApplyImpl(ir::Graph *graph) const override;
 
-  void FuseElementwiseAddAct(ir::Graph *graph, const std::string &act_types) const;
+  void FuseElementwiseAddAct(ir::Graph *graph, const std::string &elt_types, const std::string &act_types) const;
 };
 
 }  // namespace ir
