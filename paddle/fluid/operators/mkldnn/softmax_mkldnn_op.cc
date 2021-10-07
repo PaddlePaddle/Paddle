@@ -46,8 +46,12 @@ class SoftmaxMKLDNNHandler
         platform::errors::InvalidArgument(
             "The shape of input and output tensor must be identical."));
 
-    this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring,
-                                            input->mem_desc(), axis);
+    auto softmax_tz = framework::vectorize(input->dims());
+    auto md = memory::desc(softmax_tz, platform::MKLDNNGetDataType<T>(),
+                           input->format());
+
+    this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring, md,
+                                            axis);
   }
 
   SoftmaxMKLDNNHandler(const framework::ExecutionContext& ctx,
@@ -67,11 +71,17 @@ class SoftmaxMKLDNNHandler
 
     auto dims = out_grad->dims();  // input and output share the same shape
     const int axis = CanonicalAxis(ctx.Attr<int>("axis"), dims.size());
+    auto softmax_tz = framework::vectorize<int64_t>(dims);
+
+    auto data_softmax_md = MKLDNNMemDesc(
+        softmax_tz, platform::MKLDNNGetDataType<T>(), out->format());
+    auto diff_softmax_md = MKLDNNMemDesc(
+        softmax_tz, platform::MKLDNNGetDataType<T>(), out_grad->format());
 
     this->AcquireForwardPrimitiveDescriptor(prop_kind::forward_scoring,
-                                            out->mem_desc(), axis);
-    this->AcquireBackwardPrimitiveDescriptor(out_grad->mem_desc(),
-                                             out->mem_desc(), axis);
+                                            data_softmax_md, axis);
+    this->AcquireBackwardPrimitiveDescriptor(diff_softmax_md, data_softmax_md,
+                                             axis);
   }
 };
 
@@ -112,7 +122,8 @@ class SoftmaxMKLDNNKernel : public paddle::framework::OpKernel<T> {
     }
 
     output->set_layout(framework::DataLayout::kMKLDNN);
-    output->set_mem_desc(softmax_dst_memory_p->get_desc());
+    // Softmax output format is the same as input one
+    output->set_format(input->format());
   }
 };
 
@@ -146,7 +157,7 @@ class SoftmaxMKLDNNGradKernel : public paddle::framework::OpKernel<T> {
     astream.wait();
 
     in_x_grad->set_layout(framework::DataLayout::kMKLDNN);
-    in_x_grad->set_mem_desc(diff_src_memory_p->get_desc());
+    in_x_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory_p));
   }
 };
 }  // namespace operators

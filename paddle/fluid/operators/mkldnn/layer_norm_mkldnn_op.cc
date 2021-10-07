@@ -24,10 +24,11 @@ class LayerNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
  public:
   LayerNormMKLDNNHandler(const std::vector<int64_t>& dims, const float& epsilon,
                          const dnnl::normalization_flags& flags,
-                         const bool& is_test, const Tensor* x,
+                         const bool& is_test, const MKLDNNMemoryFormat fmt,
                          const mkldnn::engine engine, platform::Place cpu_place)
       : platform::MKLDNNHandlerNoCachingT<T, dnnl::layer_normalization_forward>(
             engine, cpu_place) {
+    auto md = dnnl::memory::desc(dims, platform::MKLDNNGetDataType<T>(), fmt);
     if (!is_test) {
       // TODO(grygielski) Delete forcing stats_md after DNNL 1.2 is introduced
       auto stats_md = dnnl::memory::desc(
@@ -35,11 +36,10 @@ class LayerNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
           platform::MKLDNNFormatForSize(dims.size() - 1,
                                         MKLDNNMemoryFormat::nchw));
       this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                              x->mem_desc(), stats_md, epsilon,
-                                              flags);
+                                              md, stats_md, epsilon, flags);
     } else {
       this->AcquireForwardPrimitiveDescriptor(
-          dnnl::prop_kind::forward_inference, x->mem_desc(), epsilon, flags);
+          dnnl::prop_kind::forward_inference, md, epsilon, flags);
     }
   }
 
@@ -103,8 +103,9 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
       flags |= dnnl::normalization_flags::use_scale_shift;
     }
 
-    LayerNormMKLDNNHandler<T> handler(src_tz, epsilon, flags, is_test, x,
-                                      mkldnn_engine, ctx.GetPlace());
+    LayerNormMKLDNNHandler<T> handler(src_tz, epsilon, flags, is_test,
+                                      x->format(), mkldnn_engine,
+                                      ctx.GetPlace());
 
     auto src_memory = handler.AcquireSrcMemory(x);
     auto dst_memory = handler.AcquireDstMemory(y);
@@ -153,7 +154,7 @@ class LayerNormMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     astream.wait();
 
     y->set_layout(DataLayout::kMKLDNN);
-    y->set_mem_desc(dst_memory->get_desc());
+    y->set_format(platform::GetMKLDNNFormat(*dst_memory));
   }
 };
 

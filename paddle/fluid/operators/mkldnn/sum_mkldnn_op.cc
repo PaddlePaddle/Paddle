@@ -58,15 +58,17 @@ class SumMKLDNNHandler
     auto src_tz = dst_tz;
 
     std::vector<mkldnn::memory::desc> srcs_md;
-    for (size_t i = 0; i < in_vars.size(); ++i) {
+    for (size_t i = 0; i < in_vars.size(); i++) {
       auto& input_it = in_vars[i]->Get<framework::LoDTensor>();
       if (input_it.numel() == 0) {
         continue;
       }
-      srcs_md.push_back(input_it.mem_desc());
+      MKLDNNMemoryFormat input_format = input_it.format();
+      srcs_md.push_back(mkldnn::memory::desc(
+          src_tz, platform::MKLDNNGetDataType<T>(), input_format));
       ++num_inputs_;
     }
-    std::vector<float> scales(num_inputs_, 1.0f);
+    std::vector<float> scales(num_inputs_, 1.0);
 
     auto dst_md = mkldnn::memory::desc(dst_tz, platform::MKLDNNGetDataType<T>(),
                                        MKLDNNMemoryFormat::any);
@@ -126,7 +128,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     std::vector<std::shared_ptr<mkldnn::memory>> srcs_mem;
     srcs_mem.reserve(handler.GetNumInputs());
     int input_index = 0;
-    for (size_t i = 0; i < in_vars.size(); ++i) {
+    for (size_t i = 0; i < in_vars.size(); i++) {
       auto& input_it = in_vars[i]->Get<framework::LoDTensor>();
       if (input_it.numel() == 0) {
         continue;
@@ -150,9 +152,6 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
     sum_p->execute(astream, args);
     astream.wait();
 
-    output->set_layout(framework::DataLayout::kMKLDNN);
-    output->set_mem_desc(dst_mem->get_desc());
-
     // For in-place execution which sum does not have we need to fake it
     // so from oneDNN dst memory we reorder data into input
     if (in_place) {
@@ -163,7 +162,7 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
           dev_ctx.GetEngine());
 
       auto target_mem = reorder_handler.AcquireDstMemory(
-          output, output->mem_desc(), ctx.GetPlace());
+          output, in_out.format(), ctx.GetPlace());
 
       auto reorder_p = reorder_handler.AcquireReorder(target_mem, dst_mem);
       {
@@ -173,6 +172,8 @@ class SumMKLDNNOpKernel : public paddle::framework::OpKernel<T> {
         astream.wait();
       }
     }
+    output->set_layout(framework::DataLayout::kMKLDNN);
+    output->set_format(platform::GetMKLDNNFormat(*dst_mem));
   }
 };
 
