@@ -98,8 +98,8 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
       work_mem, 3 * n_dim * sizeof(T),
       platform::errors::InvalidArgument(
           "The memory size of the work tensor in LapackEigvals function "
-          "should be at least %" PRId64 " bytes, "
-          "but received work\'s memory size = %" PRId64 " bytes.",
+          "should be at least %ld bytes, "
+          "but received work\'s memory size = %ld bytes.",
           required_work_mem, work_mem));
 
   int info = 0;
@@ -137,8 +137,8 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
       work_mem, 3 * n_dim * sizeof(T),
       platform::errors::InvalidArgument(
           "The memory size of the work tensor in LapackEigvals function "
-          "should be at least %" PRId64 " bytes, "
-          "but received work\'s memory size = %" PRId64 " bytes.",
+          "should be at least %ld bytes, "
+          "but received work\'s memory size = %ld bytes.",
           required_work_mem, work_mem));
 
   int64_t rwork_mem = rwork->memory_size();
@@ -147,8 +147,8 @@ LapackEigvals(const framework::ExecutionContext& ctx, const Tensor& input,
       rwork_mem, required_rwork_mem,
       platform::errors::InvalidArgument(
           "The memory size of the rwork tensor in LapackEigvals function "
-          "should be at least %" PRId64 " bytes, "
-          "but received rwork\'s memory size = %" PRId64 " bytes.",
+          "should be at least %ld bytes, "
+          "but received work\'s memory size = %ld bytes.",
           required_rwork_mem, rwork_mem));
 
   int info = 0;
