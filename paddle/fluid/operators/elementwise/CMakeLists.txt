@@ -11,5 +11,4 @@ cc_test(test_elementwise_add_grad_grad SRCS test_elementwise_add_grad_grad.cc DE
 
 if(WITH_ASCEND_CL)
 cc_test(elementwise_op_npu_test SRCS elementwise_op_npu_test.cc DEPS op_registry elementwise_add_op elementwise_sub_op scope device_context enforce executor)
-cc_test(elementwise_mul_op_test SRCS elementwise_mul_op_test.cc DEPS op_registry elementwise_mul_op scope device_context enforce executor tensor_formatter)
 endif()

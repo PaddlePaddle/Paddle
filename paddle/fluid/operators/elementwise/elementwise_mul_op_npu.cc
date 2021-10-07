@@ -16,25 +16,11 @@ limitations under the License. */
 #include "paddle/fluid/operators/elementwise/elementwise_npu.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
-// #include "paddle/fluid/operators/tensor_formatter.h"
-
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
-
-// static void PrintTensor(const Tensor* tensor, const std::string name,
-//                         const std::string msg) {
-//   std::cout << "=================== Print Tensor <" << name << ">, Place <"
-//             << tensor->place() << "> ===================" << std::endl;
-//   framework::LoDTensor cpu_tensor;
-//   cpu_tensor.Resize(tensor->dims());
-//   framework::TensorCopySync(*tensor, platform::CPUPlace(), &cpu_tensor);
-
-//   operators::TensorFormatter formatter;
-//   formatter.Print(cpu_tensor, name, msg);
-// }
 
 template <typename T>
 static void ReduceDims(const framework::ExecutionContext& ctx,
@@ -74,11 +60,6 @@ class ElementwiseMulNPUKernel : public framework::OpKernel<T> {
 
     int axis = ctx.Attr<int>("axis");
 
-    // PrintTensor(x, "x", "forward");
-    // PrintTensor(y, "y", "forward");
-
-    // LOG(INFO) << "axis = " << axis;
-
     bool direct_compute = false;
     auto x_dims = x->dims();
     auto y_dims = y->dims();
@@ -89,11 +70,6 @@ class ElementwiseMulNPUKernel : public framework::OpKernel<T> {
       direct_compute = y_dims.size() == (x_dims.size() + axis);
     }
 
-    // LOG(INFO) << "direct_compute = " << direct_compute;
-    // LOG(INFO) << "x_dims = " << x_dims.to_str();
-    // LOG(INFO) << "y_dims = " << y_dims.to_str();
-    // LOG(INFO) << "axis = " << axis;
-
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
 
     if (direct_compute) {
@@ -102,12 +78,9 @@ class ElementwiseMulNPUKernel : public framework::OpKernel<T> {
     } else {
       Tensor trans_x, trans_y;
       NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &trans_x, &trans_y);
-      // PrintTensor(&trans_x, "trans_x", "forward");
-      // PrintTensor(&trans_y, "trans_y", "forward");
       const auto& runner = NpuOpRunner("Mul", {trans_x, trans_y}, {*out}, {});
       runner.Run(stream);
     }
-    // PrintTensor(out, "out", "forward");
   }
 };
 
@@ -128,11 +101,6 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
 
     Tensor trans_x, trans_y;
     NpuElementWiseOpBroadcast<T>(dev_ctx, x, y, axis, &trans_x, &trans_y);
-
-    // PrintTensor(dout, "dout", "backward");
-    // PrintTensor(&trans_x, "trans_x", "backward");
-    // PrintTensor(&trans_y, "trans_y", "backward");
-    // LOG(INFO) << "axis = " << axis;
 
     if (dx) {
       if (dx->dims() == dout->dims()) {
