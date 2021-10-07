@@ -179,3 +179,5 @@ class TestUpsamplingNearest2D(unittest.TestCase):
             self.assertEqual(res[r],res_[r])
 if __name__ == '__main__':
     unittest.main()
+
+    
