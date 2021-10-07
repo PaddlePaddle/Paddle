@@ -40,23 +40,23 @@ void ElementwiseAddActivationOneDNNPass::FuseElementwiseAddAct(Graph *graph, con
                          ->NewNode("elementwise_add_act/elementwise_add_input")
                          ->AsInput()
                          ->assert_is_op_input("elementwise_add", "X");
-  patterns::ElementwiseAddActivation elementwise_add_act_pattern(
+  patterns::ElementwiseActivation elementwise_add_act_pattern(
       gpd.mutable_pattern(), "elementwise_add_act");
-  elementwise_add_act_pattern(elementwise_add_input, act_type);
+  elementwise_add_act_pattern(elementwise_add_input, "elementwise_add", act_type);
 
   int found_elementwise_add_activation_count = 0;
   auto handler = [&](const GraphPatternDetector::subgraph_t &subgraph,
                      Graph *g) {
     VLOG(4) << "Fuse Elementwise Add with activation op.";
     // Elementwise Add output
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add_out, elementwise_add_out, elementwise_add_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, elementwise_add_act_pattern);
     // ACT output
     GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out, elementwise_add_act_pattern);
     // ops
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_add, elementwise_add, elementwise_add_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise, elementwise_add_act_pattern);
     GET_IR_NODE_FROM_SUBGRAPH(activation, activation, elementwise_add_act_pattern);
 
-    auto *elementwise_add_op = elementwise_add->Op();
+    auto *elementwise_add_op = elementwise->Op();
 
     if (elementwise_add_op->HasAttr("use_mkldnn")) {
       PADDLE_ENFORCE(
@@ -72,8 +72,8 @@ void ElementwiseAddActivationOneDNNPass::FuseElementwiseAddAct(Graph *graph, con
 
     elementwise_add_op->SetOutput("Out", {activation_out->Name()});
 
-    IR_OP_VAR_LINK(elementwise_add, activation_out);
-    GraphSafeRemoveNodes(g, {activation, elementwise_add_out});
+    IR_OP_VAR_LINK(elementwise, activation_out);
+    GraphSafeRemoveNodes(g, {activation, elementwise_out});
     found_elementwise_add_activation_count++;
   };
 
