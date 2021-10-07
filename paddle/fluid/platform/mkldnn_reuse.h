@@ -636,9 +636,8 @@ class BinaryMKLDNNHandler
     const auto dst_tz = (z == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
                                        : framework::vectorize(z->dims());
 
-    // mem desc support is disabled here until matmul and matmul_v2 will be
-    // refactored to support every possible data layout, this is a temporary fix
-    // for tnt_small model
+    // TODO jakpiase mem desc support is disabled here because oneDNN has a bug
+    // which will be resolved in 2.4.0v
     //    auto src0_md = x->mem_desc();
     //    auto src1_md = y->mem_desc();
 

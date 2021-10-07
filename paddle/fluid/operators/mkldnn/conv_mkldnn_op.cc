@@ -269,14 +269,14 @@ class ConvMKLDNNHandlerT
           filter->layout(), framework::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
               "The filter tensor's layout should be %d, but got %d.",
-              DataLayout::kMKLDNN, filter->layout()));
+              framework::DataLayout::kMKLDNN, filter->layout()));
 
       PADDLE_ENFORCE_EQ(
           out_grad->layout(), framework::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
               "The output_grad tensor's layout should be %d, but got %d.",
               framework::DataLayout::kMKLDNN, out_grad->layout()));
-              
+
       PADDLE_ENFORCE_EQ(
           ctx.Attr<bool>("is_test"), false,
           platform::errors::InvalidArgument(
@@ -821,7 +821,7 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
 
     output->set_layout(framework::DataLayout::kMKLDNN);
     output->set_mem_desc(dst_memory_p->get_desc());
- }
+  }
 };
 
 template <typename T, typename K>
@@ -943,7 +943,8 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
       astream.wait();
 
       input_grad->set_layout(framework::DataLayout::kMKLDNN);
-      input_grad->set_mem_desc(diff_src_memory_p->get_desc);    }
+      input_grad->set_mem_desc(diff_src_memory_p->get_desc);
+    }
   }
 };
 
