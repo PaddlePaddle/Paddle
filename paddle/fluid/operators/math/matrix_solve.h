@@ -70,6 +70,46 @@ void compute_solve_eigen(const DeviceContext& context,
   }
 }
 
+// only used for complex input
+template <typename T>
+void SolveLinearSystem(T* matrix_data, T* rhs_data, T* out_data, int order,
+                       int rhs_cols, int batch) {
+  using Treal = typename Eigen::NumTraits<T>::Real;
+
+  // cast paddle::complex into std::complex
+  std::complex<Treal>* matrix_data_ =
+      reinterpret_cast<std::complex<Treal>*>(matrix_data);
+  std::complex<Treal>* rhs_data_ =
+      reinterpret_cast<std::complex<Treal>*>(rhs_data);
+  std::complex<Treal>* out_data_ =
+      reinterpret_cast<std::complex<Treal>*>(out_data);
+
+  using Matrix = Eigen::Matrix<std::complex<Treal>, Eigen::Dynamic,
+                               Eigen::Dynamic, Eigen::RowMajor>;
+  using InputMatrixMap = Eigen::Map<Matrix>;
+  using OutputMatrixMap = Eigen::Map<Matrix>;
+
+  for (int i = 0; i < batch; ++i) {
+    auto input_matrix =
+        InputMatrixMap(matrix_data_ + i * order * order, order, order);
+    auto input_rhs =
+        InputMatrixMap(rhs_data_ + i * order * rhs_cols, order, rhs_cols);
+    auto output =
+        OutputMatrixMap(out_data_ + i * order * rhs_cols, order, rhs_cols);
+
+    Eigen::PartialPivLU<Matrix> lu_decomposition(order);
+    lu_decomposition.compute(input_matrix);
+
+    const Treal min_abs_piv =
+        lu_decomposition.matrixLU().diagonal().cwiseAbs().minCoeff();
+    PADDLE_ENFORCE_GT(min_abs_piv, Treal(0),
+                      platform::errors::InvalidArgument(
+                          "Something's wrong with SolveLinearSystem. "));
+
+    output = lu_decomposition.solve(input_rhs);
+  }
+}
+
 template <typename DeviceContext, typename T>
 class MatrixSolveFunctor {
  public:
