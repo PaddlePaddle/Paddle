@@ -943,7 +943,7 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
       astream.wait();
 
       input_grad->set_layout(framework::DataLayout::kMKLDNN);
-      input_grad->set_mem_desc(diff_src_memory_p->get_desc);
+      input_grad->set_mem_desc(diff_src_memory_p->get_desc());
     }
   }
 };
