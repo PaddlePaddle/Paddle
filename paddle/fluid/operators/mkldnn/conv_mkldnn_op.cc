@@ -130,9 +130,6 @@ class ConvMKLDNNHandlerT
             platform::errors::InvalidArgument(
                 "The Bias tensor's layout should be %d, but got %d.",
                 framework::DataLayout::kMKLDNN, bias->layout()));
-        PADDLE_ENFORCE_NE(bias->format(), MKLDNNMemoryFormat::undef,
-                          platform::errors::InvalidArgument(
-                              "Got wrong format for Bias tensor."));
 
         PADDLE_ENFORCE_EQ(bias->dims().size(), 1,
                           platform::errors::InvalidArgument(
@@ -267,28 +264,19 @@ class ConvMKLDNNHandlerT
           platform::errors::InvalidArgument(
               "The input tensor's layout should be %d, but got %d.",
               framework::DataLayout::kMKLDNN, in->layout()));
-      PADDLE_ENFORCE_NE(in->format(), MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Got wrong format for Input tensor."));
 
       PADDLE_ENFORCE_EQ(
           filter->layout(), framework::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
               "The filter tensor's layout should be %d, but got %d.",
-              framework::DataLayout::kMKLDNN, filter->layout()));
-      PADDLE_ENFORCE_NE(filter->format(), MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Got wrong format for Filter tensor."));
+              DataLayout::kMKLDNN, filter->layout()));
 
       PADDLE_ENFORCE_EQ(
           out_grad->layout(), framework::DataLayout::kMKLDNN,
           platform::errors::InvalidArgument(
               "The output_grad tensor's layout should be %d, but got %d.",
               framework::DataLayout::kMKLDNN, out_grad->layout()));
-      PADDLE_ENFORCE_NE(out_grad->format(), MKLDNNMemoryFormat::undef,
-                        platform::errors::InvalidArgument(
-                            "Wrong format set for output_grad tensor"));
-
+              
       PADDLE_ENFORCE_EQ(
           ctx.Attr<bool>("is_test"), false,
           platform::errors::InvalidArgument(
@@ -552,9 +540,7 @@ class ConvMKLDNNHandlerT
     auto user_mem_p = this->AcquireMemory(user_key_suffix);
 
     if (!user_mem_p) {
-      auto user_mem_md = platform::MKLDNNMemDesc(
-          framework::vectorize(in_mem->dims()),
-          platform::MKLDNNGetDataType<T>(), in_mem->format());
+      auto user_mem_md = in_mem->mem_desc();
       return this->AcquireMemoryWithReorder(
           user_mem_md, mem_md, platform::to_void_cast<T>(in_mem_data), key_mem);
     } else {
@@ -739,7 +725,7 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
     astream.wait();
 
     output->set_layout(framework::DataLayout::kMKLDNN);
-    output->set_format(platform::GetMKLDNNFormat(*dst_memory_p));
+    output->set_mem_desc(dst_memory_p->get_desc());
   }
 
   template <typename T_out>
@@ -834,8 +820,8 @@ class ConvMKLDNNOpKernel : public framework::OpKernel<T> {
     }
 
     output->set_layout(framework::DataLayout::kMKLDNN);
-    output->set_format(platform::GetMKLDNNFormat(*dst_memory_p));
-  }
+    output->set_mem_desc(dst_memory_p->get_desc());
+ }
 };
 
 template <typename T, typename K>
@@ -957,8 +943,7 @@ class ConvMKLDNNGradOpKernel : public framework::OpKernel<T> {
       astream.wait();
 
       input_grad->set_layout(framework::DataLayout::kMKLDNN);
-      input_grad->set_format(platform::GetMKLDNNFormat(*diff_src_memory_p));
-    }
+      input_grad->set_mem_desc(diff_src_memory_p->get_desc);    }
   }
 };
 

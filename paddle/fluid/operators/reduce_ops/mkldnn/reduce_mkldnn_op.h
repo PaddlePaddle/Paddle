@@ -80,8 +80,8 @@ class ReduceMKLDNNKernel : public framework::OpKernel<T> {
       auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
           output, input->mem_desc(), ctx.GetPlace());
 
-      auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
-                                                      reorder_dst_memory_p);
+      auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
+                                                      reorder_src_memory_p);
 
       platform::RecordEvent record_reorder("int_reorder",
                                            platform::EventRole::kUniqueOp);

@@ -48,7 +48,7 @@ void TensorCopy(const Tensor& src, const platform::Place& dst_place,
   auto src_place = src.place();
   auto src_ptr = src.data<void>();
 #ifdef PADDLE_WITH_MKLDNN
-  dst->set_format(src.format());
+  dst->set_mem_desc(src.mem_desc());
   // oneDNN tensors due to padding may be of bigger size
   // than numel()*size(type())
   auto dst_ptr =
@@ -324,7 +324,7 @@ void TensorCopySync(const Tensor& src, const platform::Place& dst_place,
   dst->Resize(src.dims());
   dst->set_layout(src.layout());
 #ifdef PADDLE_WITH_MKLDNN
-  dst->set_format(src.format());
+  dst->set_mem_desc(src.mem_desc());
 #endif
   auto src_place = src.place();
   auto src_ptr = src.data<void>();

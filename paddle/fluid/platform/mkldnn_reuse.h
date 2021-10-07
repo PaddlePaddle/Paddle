@@ -621,20 +621,12 @@ class BinaryMKLDNNHandler
         platform::errors::InvalidArgument(
             "Wrong layout set for X tensor. Expected: %d (kMKLDNN), Actual: %d",
             DataLayout::kMKLDNN, x->layout()));
-    PADDLE_ENFORCE_NE(x->format(), MKLDNNMemoryFormat::undef,
-                      platform::errors::InvalidArgument(
-                          "Wrong format set for X tensor : %d (undef)",
-                          static_cast<unsigned int>(x->format())));
 
     PADDLE_ENFORCE_EQ(
         y->layout(), DataLayout::kMKLDNN,
         platform::errors::InvalidArgument(
             "Wrong layout set for Y tensor. Expected: %d (kMKLDNN), Actual: %d",
             DataLayout::kMKLDNN, y->layout()));
-    PADDLE_ENFORCE_NE(y->format(), MKLDNNMemoryFormat::undef,
-                      platform::errors::InvalidArgument(
-                          "Wrong format set for Y tensor : %d (undef)",
-                          static_cast<unsigned int>(y->format())));
 
     const auto src_x_tz = framework::vectorize(x->dims());
     const auto src_y_tz = framework::vectorize(y->dims());
@@ -644,10 +636,9 @@ class BinaryMKLDNNHandler
     const auto dst_tz = (z == nullptr) ? (rankdiff > 0 ? src_x_tz : src_y_tz)
                                        : framework::vectorize(z->dims());
 
-    auto src0_md = dnnl::memory::desc(
-        src_x_tz, platform::MKLDNNGetDataType<T>(), x->format());
-    auto src1_md = dnnl::memory::desc(
-        src_y_tz, platform::MKLDNNGetDataType<T>(), y->format());
+    auto src0_md = x->mem_desc();
+    auto src1_md = y->mem_desc();
+
     if (rankdiff > 0) {  // Second input is of smaller rank than first
       std::vector<int64_t> dims1_ex(rankdiff, 1);
       dims1_ex.insert(next(dims1_ex.begin(), (axis == -1 ? rankdiff : axis)),

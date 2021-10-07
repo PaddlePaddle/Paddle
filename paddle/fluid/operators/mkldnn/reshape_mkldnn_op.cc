@@ -79,23 +79,26 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
                                                    x_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        x->format(), platform::to_void_cast(x->data<T>()));
+        x->mem_desc(), platform::to_void_cast(x->data<T>()));
     out->Resize(x_dims);  // to match x numel, format is changed later
     // reorder is done into a plain tag to allow usage with blocked formats
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        out, getPlainFormatTag(x), ctx.GetPlace());
-    auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
-                                                    reorder_dst_memory_p);
+        out, platform::GetPlainMKLDNNFormat(x_dims.size()), ctx.GetPlace());
+    auto reorder_p = reorder_handler.AcquireReorder(reorder_dst_memory_p,
+                                                    reorder_src_memory_p);
 
     auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
+
+    std::cout << "reshape \n";
     reorder_p->execute(astream, *reorder_src_memory_p, *reorder_dst_memory_p);
+    std::cout << std::endl;
 
     astream.wait();
 
     out->Resize(out_dims);
     out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(GetMKLDNNFormat(reorder_dst_memory_p->get_desc().reshape(
-        framework::vectorize(out_dims))));
+    out->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(
+        framework::vectorize(out_dims)));
   }
 
   void InferInOutShape(const framework::ExecutionContext& ctx,
@@ -194,30 +197,6 @@ class ReshapeMKLDNNKernel : public framework::OpKernel<T> {
     out_dims = framework::make_ddim(
         FlattenKernel<platform::CPUDeviceContext, float>::GetOutputShape(
             axes, x_dims));
-  }
-
- protected:
-  static mkldnn::memory::format_tag getPlainFormatTag(const Tensor* tensor) {
-    auto tensor_dims_size = tensor->dims().size();
-    PADDLE_ENFORCE_EQ(
-        tensor_dims_size <= 6 && tensor_dims_size >= 1, true,
-        platform::errors::InvalidArgument(
-            "Dims for squeeze_grad oneDNN op must be in range <1, 6>"));
-
-    switch (tensor_dims_size) {
-      case 1:
-        return mkldnn::memory::format_tag::a;
-      case 2:
-        return mkldnn::memory::format_tag::ab;
-      case 3:
-        return mkldnn::memory::format_tag::abc;
-      case 4:
-        return mkldnn::memory::format_tag::abcd;
-      case 5:
-        return mkldnn::memory::format_tag::abcde;
-      default:
-        return mkldnn::memory::format_tag::abcdef;
-    }
   }
 
   static framework::DDim ValidateShape(const std::vector<int>& shape,
@@ -330,9 +309,10 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
                                                    dout_type, onednn_engine);
 
     auto reorder_src_memory_p = reorder_handler.AcquireSrcMemory(
-        dout->format(), platform::to_void_cast(dout->data<T>()));
+        dout->mem_desc(), platform::to_void_cast(dout->data<T>()));
     auto reorder_dst_memory_p = reorder_handler.AcquireDstMemory(
-        dx, this->getPlainFormatTag(dout), ctx.GetPlace());
+        dx, platform::GetPlainMKLDNNFormat(dout_vec_dims.size()),
+        ctx.GetPlace());
     auto reorder_p = reorder_handler.AcquireReorder(reorder_src_memory_p,
                                                     reorder_dst_memory_p);
 
@@ -342,8 +322,8 @@ class ReshapeGradMKLDNNKernel : public ReshapeMKLDNNKernel<T, op_name> {
 
     dx->Resize(dx_dims);
     dx->set_layout(framework::DataLayout::kMKLDNN);
-    dx->set_format(GetMKLDNNFormat(reorder_dst_memory_p->get_desc().reshape(
-        framework::vectorize(dx_dims))));
+    dx->set_mem_desc(reorder_dst_memory_p->get_desc().reshape(
+        framework::vectorize(dx_dims)));
   }
 
   void InferOutputShapeInGrad(const framework::ExecutionContext& ctx,

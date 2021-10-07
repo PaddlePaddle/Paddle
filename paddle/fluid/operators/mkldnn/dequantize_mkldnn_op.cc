@@ -128,7 +128,7 @@ class DeQuantOpKernel : public framework::OpKernel<T> {
     astream.wait();
 
     output->set_layout(DataLayout::kMKLDNN);
-    output->set_format(GetMKLDNNFormat(*dst_memory));
+    output->set_mem_desc(dst_memory->get_desc());
   }
 };
 

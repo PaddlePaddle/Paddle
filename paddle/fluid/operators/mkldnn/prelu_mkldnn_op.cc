@@ -75,9 +75,9 @@ class PReluMKLDNNHandler
     }
 
     // ASK JACEK ABOUT THIS WEIGHTS, SHOULD THEY BE TREATEN AS NCHW ALWAYS?
-    auto user_weights_md =
-        memory::desc(framework::vectorize(input->dims()),
-                     MKLDNNGetDataType<T>(), input->format());
+    // format() set_format()
+    auto user_weights_md = input->mem_desc();
+
     return this->AcquireMemoryWithReorder(
         user_weights_md, this->fwd_pd_->weights_desc(),
         to_void_cast<T>(input_data), "@alpha_mem_p", is_test);
