@@ -134,8 +134,7 @@ class MatMulV2MKLDNNKernel
     astream.wait();
 
     out->set_layout(paddle::framework::DataLayout::kMKLDNN);
-    out->set_format(
-        GetMKLDNNFormat(dst_memory_p->get_desc().reshape(out_dims)));
+    out->set_mem_desc(dst_memory_p->get_desc().reshape(out_dims));
   }
 
  private:
@@ -257,6 +256,8 @@ class MatMulV2GradMKLDNNKernel : public MatMulV2MKLDNNKernel<T> {
 
     reduction_p->execute(astream, reduction_args);
     astream.wait();
+
+    dx->set_mem_desc(dst_memory_p->get_desc());
   }
 
   void RunKernel(const ExecutionContext& ctx) const {
@@ -351,10 +352,9 @@ class MatMulV2GradMKLDNNKernel : public MatMulV2MKLDNNKernel<T> {
       *dy = std::move(dy_tmp);
     }
 
+    // mem desc are set in ExecuteMatmul and ReduceSumForMatmulGradOutput
     dx->set_layout(paddle::framework::DataLayout::kMKLDNN);
-    dx->set_format(x->format());
     dy->set_layout(paddle::framework::DataLayout::kMKLDNN);
-    dy->set_format(y->format());
   }
 };
 }  // anonymous namespace

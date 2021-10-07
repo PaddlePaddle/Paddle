@@ -40,9 +40,6 @@ class PReluMKLDNNHandler
             platform::CreateKey(dev_ctx, framework::vectorize(x->dims()),
                                 uniq_name)) {
     if (!this->isCached()) {
-      auto x_md = memory::desc(framework::vectorize(x->dims()),
-                               MKLDNNGetDataType<T>(), x->format());
-
       auto weights_dims = framework::vectorize(weights->dims());
 
       // weights must have same size as X only for "element" case
@@ -58,10 +55,10 @@ class PReluMKLDNNHandler
                                      memory::format_tag::any);
 
       this->AcquireForwardPrimitiveDescriptor(dnnl::prop_kind::forward_training,
-                                              x_md, weights_md);
+                                              x->mem_desc(), weights_md);
       if (!is_test)
-        this->AcquireBackwardPrimitiveDescriptor(x_md, weights_md, x_md,
-                                                 weights_md);
+        this->AcquireBackwardPrimitiveDescriptor(x->mem_desc(), weights_md,
+                                                 x->mem_desc(), weights_md);
     }
   }
 
@@ -77,9 +74,8 @@ class PReluMKLDNNHandler
                                               "@alpha_mem_p");
     }
 
-    auto user_weights_md =
-        memory::desc(framework::vectorize(input->dims()),
-                     MKLDNNGetDataType<T>(), input->format());
+    auto user_weights_md = input->mem_desc();
+
     return this->AcquireMemoryWithReorder(
         user_weights_md, this->fwd_pd_->weights_desc(),
         to_void_cast<T>(input_data), "@alpha_mem_p", is_test);
@@ -127,7 +123,7 @@ class PReluMKLDNNKernel : public framework::OpKernel<T> {
     astream.wait();
 
     out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(GetMKLDNNFormat(*dst_memory_p));
+    out->set_mem_desc(dst_memory_p->get_desc());
   }
 };
 
@@ -171,7 +167,7 @@ class PReluGradMKLDNNKernel : public framework::OpKernel<T> {
     astream.wait();
 
     dx->set_layout(framework::DataLayout::kMKLDNN);
-    dx->set_format(GetMKLDNNFormat(*diff_src_memory_p));
+    dx->set_mem_desc(diff_src_memory_p->get_desc());
   }
 };
 }  // namespace operators

@@ -214,7 +214,10 @@ class MatMulMKLDNNHandler
 
     auto format =
         MKLDNNFormatForSize(out->dims().size(), dnnl::memory::format_tag::nchw);
-    out->set_format(format);
+    mkldnn::memory::desc out_mem_desc(paddle::framework::vectorize(out->dims()),
+                                      dst_memory_p->get_desc().data_type(),
+                                      format);
+    out->set_mem_desc(out_mem_desc);
     out->set_layout(DataLayout::kMKLDNN);
   }
 
@@ -558,8 +561,8 @@ void MatMulGradMKLDNNKernel<T>::ExecuteMatMulGrad(
   astream.wait();
 
   out->set_layout(framework::DataLayout::kMKLDNN);
-  out->set_format(platform::GetMKLDNNFormat(
-      dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims()))));
+  out->set_mem_desc(
+      dst_memory_p->get_desc().reshape(vectorize<int64_t>(out->dims())));
 }
 
 template <typename T>
@@ -622,13 +625,13 @@ void MatMulGradMKLDNNKernel<T>::RunKernel(const ExecutionContext& ctx) const {
   if (dx) {
     if (dx_dims != x.dims()) {
       dx->Resize(dx_dims);
-      dx->set_format(x.format());
+      dx->set_mem_desc(x.mem_desc());
     }
   }
   if (dy) {
     if (dy_dims != y.dims()) {
       dy->Resize(dy_dims);
-      dy->set_format(y.format());
+      dy->set_mem_desc(y.mem_desc());
     }
   }
 }

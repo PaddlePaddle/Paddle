@@ -45,13 +45,13 @@ class ScaleMKLDNNKernel : public framework::OpKernel<T> {
         is_inplaced ? src_memory_p : handler.AcquireDstMemory(out);
     auto activation_p = handler.AcquireForwardPrimitive();
 
-    auto& astream = paddle::platform::MKLDNNDeviceContext::tls().get_stream();
+    auto& astream = platform::MKLDNNDeviceContext::tls().get_stream();
     activation_p->execute(astream, {{MKLDNN_ARG_FROM, *src_memory_p},
                                     {MKLDNN_ARG_TO, *dst_memory_p}});
     astream.wait();
 
     out->set_layout(framework::DataLayout::kMKLDNN);
-    out->set_format(platform::GetMKLDNNFormat(*dst_memory_p));
+    out->set_mem_desc(dst_memory_p->get_desc());
   }
 };
 }  // namespace operators
