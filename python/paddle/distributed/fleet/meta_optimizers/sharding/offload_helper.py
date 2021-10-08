@@ -25,8 +25,9 @@ class OffloadHelper(object):
     cuda_place_type = 1
     cuda_pinned_place_type = 2
 
-    def __init__(self, ring_id=None):
-        self.ring_id = ring_id
+    def __init__(self, mp_ring_id=None, dp_ring_id=None):
+        self.mp_ring_id = mp_ring_id
+        self.dp_ring_id = dp_ring_id
 
     def _insert_cast_op(self, block, idx, src_name, dst_name):
         src_var = block.var(src_name)
@@ -49,20 +50,31 @@ class OffloadHelper(object):
                 OP_ROLE_KEY: OpRole.Optimize
             })
 
-    def _insert_broadcast_op(self, block, idx, param):
-        if self.ring_id is None:
-            return
-        block._insert_op_without_sync(
-            idx,
-            type="c_broadcast",
-            inputs={'X': param},
-            outputs={'Out': param},
-            attrs={
-                'ring_id': self.ring_id,
-                'root': 0,
-                'use_calc_stream': True,
-                OP_ROLE_KEY: OpRole.Forward,
-            })
+    def _insert_broadcast_op(self, block, idx, param_name):
+        rings = []
+
+        if self.dp_ring_id is not None:
+            rings.append(self.dp_ring_id)
+
+        # need sync non distributed param in mp group
+        if self.mp_ring_id is not None:
+            param = block.var(param_name)
+            if not hasattr(param, 'is_distributed') or not param.is_distributed:
+                rings.append(self.mp_ring_id)
+
+        # the insert op order is: mp, dp
+        for ring in rings:
+            block._insert_op_without_sync(
+                idx,
+                type="c_broadcast",
+                inputs={'X': param_name},
+                outputs={'Out': param_name},
+                attrs={
+                    'ring_id': ring,
+                    'root': 0,
+                    'use_calc_stream': True,
+                    OP_ROLE_KEY: OpRole.Forward,
+                })
 
     def _insert_memcpy_op(self, block, idx, src_name, dst_name, dst_place_type):
         src_var = block.var(src_name)
@@ -236,7 +248,7 @@ class OffloadHelper(object):
                     self._insert_cast_op(startup_block, insert_idx, var_name,
                                          param_to_fp16[var_name])
                     # NOTE(wangxi): cast and offload should insert after broadcast param.
-                    # the insert op order is: broadcast, cast, offload
+                    # the insert op order is: {mp, dp}broadcast, cast, offload
                     self._insert_broadcast_op(startup_block, insert_idx,
                                               var_name)
 
@@ -489,6 +501,8 @@ class OffloadHelper(object):
                     self._insert_cast_op(startup_block, insert_idx, var_name,
                                          param_to_fp16[var_name])
 
+                    # NOTE(wangxi): cast and offload should insert after broadcast param.
+                    # the insert op order is: {mp, dp}broadcast, cast, offload
                     self._insert_broadcast_op(startup_block, insert_idx,
                                               var_name)
 
