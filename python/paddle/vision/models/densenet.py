@@ -195,6 +195,7 @@ class DenseNet(nn.Layer):
         bn_size (int): expansion of growth rate in the middle layer. Default: 4.
         dropout (float): dropout rate. Default: 0..
         num_classes (int): output dim of last fc layer. Default: 1000.
+        with_pool (bool): use pool before the last fc layer or not. Default: True.
 
     Examples:
         .. code-block:: python
@@ -205,9 +206,15 @@ class DenseNet(nn.Layer):
 
     """
 
-    def __init__(self, layers=121, bn_size=4, dropout=0., num_classes=1000):
+    def __init__(self,
+                 layers=121,
+                 bn_size=4,
+                 dropout=0.,
+                 num_classes=1000,
+                 with_pool=True):
         super(DenseNet, self).__init__()
-
+        self.num_classes = num_classes
+        self.with_pool = with_pool
         supported_layers = [121, 161, 169, 201, 264]
         assert layers in supported_layers, \
             "supported layers are {} but input layer is {}".format(
@@ -263,16 +270,16 @@ class DenseNet(nn.Layer):
                 num_features = num_features // 2
 
         self.batch_norm = BatchNorm(num_features, act="relu")
+        if self.with_pool:
+            self.pool2d_avg = AdaptiveAvgPool2D(1)
 
-        self.pool2d_avg = AdaptiveAvgPool2D(1)
-
-        stdv = 1.0 / math.sqrt(num_features * 1.0)
-
-        self.out = Linear(
-            num_features,
-            num_classes,
-            weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
-            bias_attr=ParamAttr())
+        if self.num_classes > 0:
+            stdv = 1.0 / math.sqrt(num_features * 1.0)
+            self.out = Linear(
+                num_features,
+                num_classes,
+                weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+                bias_attr=ParamAttr())
 
     def forward(self, input):
         conv = self.conv1_func(input)
@@ -284,9 +291,13 @@ class DenseNet(nn.Layer):
                 conv = self.transition_func_list[i](conv)
 
         conv = self.batch_norm(conv)
-        y = self.pool2d_avg(conv)
-        y = paddle.flatten(y, start_axis=1, stop_axis=-1)
-        y = self.out(y)
+
+        if self.with_pool:
+            y = self.pool2d_avg(conv)
+
+        if self.num_classes:
+            y = paddle.flatten(y, start_axis=1, stop_axis=-1)
+            y = self.out(y)
         return y
 
 
