@@ -28,14 +28,14 @@ from .vgg import vgg13  # noqa: F401
 from .vgg import vgg16  # noqa: F401
 from .vgg import vgg19  # noqa: F401
 from .lenet import LeNet  # noqa: F401
-from .shufflenetv2 import ShuffleNetV2
-from .shufflenetv2 import shufflenetv2_x0_25
-from .shufflenetv2 import shufflenetv2_x0_33
-from .shufflenetv2 import shufflenetv2_x0_5
-from .shufflenetv2 import shufflenetv2_x1_0
-from .shufflenetv2 import shufflenetv2_x1_5
-from .shufflenetv2 import shufflenetv2_x2_0
-from .shufflenetv2 import shufflenetv2_swish
+from .shufflenetv2 import ShuffleNetV2  # noqa: F401
+from .shufflenetv2 import shufflenetv2_x0_25  # noqa: F401
+from .shufflenetv2 import shufflenetv2_x0_33  # noqa: F401
+from .shufflenetv2 import shufflenetv2_x0_5  # noqa: F401
+from .shufflenetv2 import shufflenetv2_x1_0  # noqa: F401
+from .shufflenetv2 import shufflenetv2_x1_5  # noqa: F401
+from .shufflenetv2 import shufflenetv2_x2_0  # noqa: F401
+from .shufflenetv2 import shufflenetv2_swish  # noqa: F401
 
 
 __all__ = [ #noqa
