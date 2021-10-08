@@ -18,7 +18,7 @@ limitations under the License. */
 namespace paddle {
 namespace operators {
 
-using Tensor = Tensor;
+using Tensor = framework::Tensor;
 using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
@@ -41,7 +41,6 @@ class SetValueNPUKernel : public framework::OpKernel<T> {
     auto decrease_axes = ctx.Attr<std::vector<int64_t>>("decrease_axes");
     auto none_axes = ctx.Attr<std::vector<int64_t>>("none_axes");
 
-    // auto dtype = in->type();
     if (!starts_tensor_list.empty()) {
       starts = GetDataFromTensorList<int64_t>(starts_tensor_list);
     }
