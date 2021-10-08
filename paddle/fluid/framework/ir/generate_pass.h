@@ -173,9 +173,9 @@ class PassPairs {
 
 // Use function to register in CC.
 template <PassPairs (*Functor)(void)>
-class CXXGeneratePass : public GeneratePass {
+class MacroPassHelper : public GeneratePass {
  public:
-  CXXGeneratePass() : GeneratePass(Functor().MultiPassDesc()) {}
+  MacroPassHelper() : GeneratePass(Functor().MultiPassDesc()) {}
 };
 
 #define VAR_(name)                                         \
@@ -191,7 +191,7 @@ class CXXGeneratePass : public GeneratePass {
   paddle::framework::ir::PassPairs register_##pass_type();              \
   REGISTER_PASS(                                                        \
       pass_type,                                                        \
-      ::paddle::framework::ir::CXXGeneratePass<&register_##pass_type>); \
+      ::paddle::framework::ir::MacroPassHelper<&register_##pass_type>); \
   paddle::framework::ir::PassPairs register_##pass_type()
 
 }  // namespace ir
