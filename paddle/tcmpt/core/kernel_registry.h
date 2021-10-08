@@ -87,6 +87,58 @@ struct KernelRegistrar {
                   KernelArgsParseFn args_parse_fn,
                   KernelArgsDefFn args_def_fn,
                   KernelFn kernel_fn) {
+    ConstructKernel(kernel_name_cstr,
+                    backend,
+                    layout,
+                    dtype,
+                    args_parse_fn,
+                    args_def_fn,
+                    kernel_fn);
+  }
+
+  KernelRegistrar(const char* kernel_name_cstr,
+                  Backend backend,
+                  DataLayout layout,
+                  KernelArgsParseFn args_parse_fn,
+                  KernelArgsDefFn args_def_fn,
+                  KernelFn kernel_fn) {
+    if (layout == DataLayout::kAny) {
+      for (DataLayout layout_ = DataLayout::kNHWC;
+           layout_ != DataLayout::kNumLayouts;
+           layout_++) {
+        for (DataType dtype = DataType::kBOOL; dtype != DataType::kNumDataTypes;
+             dtype++) {
+          ConstructKernel(kernel_name_cstr,
+                          backend,
+                          layout_,
+                          dtype,
+                          args_parse_fn,
+                          args_def_fn,
+                          kernel_fn);
+        }
+      }
+    } else {
+      for (DataType dtype = DataType::kBOOL; dtype != DataType::kNumDataTypes;
+           dtype++) {
+        ConstructKernel(kernel_name_cstr,
+                        backend,
+                        layout,
+                        static_cast<DataType>(dtype),
+                        args_parse_fn,
+                        args_def_fn,
+                        kernel_fn);
+      }
+    }
+  }
+
+ private:
+  void ConstructKernel(const char* kernel_name_cstr,
+                       Backend backend,
+                       DataLayout layout,
+                       DataType dtype,
+                       KernelArgsParseFn args_parse_fn,
+                       KernelArgsDefFn args_def_fn,
+                       KernelFn kernel_fn) {
     KernelName kernel_name(kernel_name_cstr);
     KernelKey kernel_key(backend, layout, dtype);
     Kernel kernel(kernel_fn);
@@ -552,4 +604,25 @@ struct KernelRegistrar {
   void PT_CONCATENATE(__PT_KERNEL_for_test_args_def_FN_,                   \
                       func_id)(::pt::Kernel * kernel)
 
+#define PT_REGISTER_KERNEL_WITH_NO_TYPE(          \
+    kernel_name, backend, layout, meta_kernel_fn) \
+  _PT_REGISTER_KERNEL_WITH_NO_TYPE(               \
+      kernel_name, PT_ID, backend, layout, meta_kernel_fn)
+
+#define _PT_REGISTER_KERNEL_WITH_NO_TYPE(                             \
+    kernel_name, func_id, backend, layout, meta_kernel_fn)            \
+  PT_STATIC_ASSERT_GLOBAL_NAMESPACE(                                  \
+      PT_CONCATENATE(pt_op_kernel_ns_check_, func_id),                \
+      "PT_REGISTER_KERNEL must be called in global namespace.");      \
+  decltype(meta_kernel_fn) meta_kernel_fn;                            \
+  static void PT_CONCATENATE(__PT_KERNEL_args_def_FN_,                \
+                             func_id)(::pt::Kernel*);                 \
+  static const ::pt::KernelRegistrar __reg_pt_op_kernel_##func_id(    \
+      kernel_name,                                                    \
+      BACKEND(backend),                                               \
+      DATALAYOUT(layout),                                             \
+      ::pt::KernelArgsParseFunctor<decltype(&meta_kernel_fn)>::Parse, \
+      &PT_CONCATENATE(__PT_KERNEL_args_def_FN_, func_id),             \
+      PT_KERNEL(meta_kernel_fn));                                     \
+  void PT_CONCATENATE(__PT_KERNEL_args_def_FN_, func_id)(::pt::Kernel * kernel)
 }  // namespace pt

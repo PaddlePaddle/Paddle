@@ -56,9 +56,12 @@ enum class DataType {
   kCOMPLEX64,
   kCOMPLEX128,
   kNumDataTypes,
+  End
 };
 
 std::ostream& operator<<(std::ostream& os, DataType dtype);
+
+DataType& operator++(DataType& dtype, int);
 
 #define PT_FOR_EACH_DATA_TYPE(_)     \
   _(bool, DataType::kBOOL)           \

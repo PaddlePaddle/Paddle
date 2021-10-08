@@ -24,5 +24,6 @@ limitations under the License. */
 // user apis
 #include "paddle/tcmpt/api/include/creation.h"
 #include "paddle/tcmpt/api/include/linalg.h"
+#include "paddle/tcmpt/api/include/manipulation.h"
 #include "paddle/tcmpt/api/include/math.h"
 #include "paddle/tcmpt/api/include/tensor.h"

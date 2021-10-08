@@ -50,15 +50,12 @@ Tensor dot(const Tensor& x, const Tensor& y) {
 
   // 4. InferShape
   // TODO(chenweihang): how to auto selected infershape?
-  auto out_dims = DotInferShape(dense_x->dims());
+  auto out_meta = DotInferShape(dense_x->meta());
 
   // 5. Prepare outputs
   pt::Tensor out;
   // TODO(chenweihang): deal with multiple outputs
-  auto out_def = kernel.args_def().output_defs()[0];
-  auto dense_out = std::make_shared<DenseTensor>(
-      TensorMeta(out_dims, out_def.backend, out_def.dtype, out_def.layout),
-      TensorStatus());
+  auto dense_out = std::make_shared<DenseTensor>(out_meta, TensorStatus());
   kernel_context.EmplaceBackOutput(dense_out);
   out.set_impl(dense_out);
 

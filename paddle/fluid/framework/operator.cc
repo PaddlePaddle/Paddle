@@ -1296,9 +1296,23 @@ static bool ContainHostTensor(const proto::OpProto& op_proto,
   return false;
 }
 
+// TODO(yuanrisheng): enhance rules, for get kernel that contains Intermediate
+// Tensor
+static bool ContainMidOutputTensor(const proto::OpProto& op_proto,
+                                   const VariableValueMap& outputs) {
+  for (int i = 0; i < op_proto.outputs_size(); ++i) {
+    auto output = op_proto.outputs()[i];
+    if (output.has_intermediate() && output.intermediate()) {
+      return IsValidVar(output.name(), outputs);
+    }
+  }
+  return false;
+}
+
 static pt::KernelName ConstructPtKernelName(const std::string& op_type,
                                             const proto::OpProto& op_proto,
-                                            const VariableValueMap& inputs) {
+                                            const VariableValueMap& inputs,
+                                            const VariableValueMap& outputs) {
   std::string overload_name;
   if (ContainSelectedRows(inputs)) {
     overload_name = pt::kContainSelectedRowsSuffix;
@@ -1309,6 +1323,12 @@ static pt::KernelName ConstructPtKernelName(const std::string& op_type,
     }
     overload_name += pt::kContainHostTensorSuffix;
   }
+  if (ContainMidOutputTensor(op_proto, outputs)) {
+    if (overload_name != "") {
+      overload_name += ".";
+    }
+    overload_name += pt::kContainMidOutputTensorSuffix;
+  }
   return pt::KernelName(op_type, overload_name);
 }
 
@@ -1317,7 +1337,7 @@ void OperatorWithKernel::ChoosePtKernel(
   // 1. construct operation name
   // TODO(chenweihang): add rules for construct op name
   auto kernel_name =
-      ConstructPtKernelName(Type(), *(Info().proto_), ctx.inputs);
+      ConstructPtKernelName(Type(), *(Info().proto_), ctx.inputs, ctx.outputs);
 
   // 2. construct op kernel key
   pt_kernel_key_.reset(

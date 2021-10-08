@@ -14,31 +14,21 @@ limitations under the License. */
 
 #pragma once
 
-#include <ostream>
+#include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/core/kernel_registry.h"
+
+// See Note [ Why still include the fluid headers? ]
+#include "paddle/fluid/platform/device_context.h"
 
 namespace pt {
 
-/**
- * We need to ensure that the operator library is relatively independent
- * and does not depend on the framework. Therefore, before calling the kernel
- * in the Tensor Compute library inside the framework, the internal
- * layout needs to be converted to the data type in the Tensor Compute
- * library.
- *
- * Here we also can use the DataLayout in framework, they are all enum classes.
- */
-enum class DataLayout {
-  kUndef = 0,
-  kAny,
-  kNHWC,
-  kNCHW,
-  kMKLDNN,
-  kNumLayouts,
-  End
-};
+using CPUContext = paddle::platform::CPUDeviceContext;
 
-std::ostream& operator<<(std::ostream& os, DataLayout dtype);
-
-DataLayout& operator++(DataLayout& layout, int);
+template <typename T>
+void Flatten(const CPUContext& dev_ctx,
+             const DenseTensor& x,
+             int start_axis,
+             int stop_axis,
+             DenseTensor* out);
 
 }  // namespace pt

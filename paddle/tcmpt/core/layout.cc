@@ -40,4 +40,12 @@ std::ostream& operator<<(std::ostream& os, DataLayout dtype) {
   return os;
 }
 
+DataLayout& operator++(DataLayout& layout, int) {
+  if (layout == DataLayout::End) {
+    throw std::out_of_range("for DataLayout");
+  }
+  layout = DataLayout(
+      static_cast<std::underlying_type<DataLayout>::type>(layout) + 1);
+  return layout;
+}
 }  // namespace pt

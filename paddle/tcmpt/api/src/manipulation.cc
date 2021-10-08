@@ -12,22 +12,23 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/tcmpt/api/include/creation.h"
+#include "paddle/tcmpt/api/include/manipulation.h"
 
 #include <memory>
 
 #include "glog/logging.h"
 
-#include "paddle/tcmpt/api/include/dev/core.h"
-#include "paddle/tcmpt/api/include/dev/creation.h"
-#include "paddle/tcmpt/api/include/dev/infershape.h"
+#include "paddle/tcmpt/core/convert_utils.h"
+#include "paddle/tcmpt/core/dense_tensor.h"
+#include "paddle/tcmpt/core/kernel_context.h"
 #include "paddle/tcmpt/core/kernel_generate.h"
+#include "paddle/tcmpt/infershape/unary.h"
 
 namespace pt {
 
-Tensor full_like(const Tensor& x, float value) {
+Tensor flatten(const Tensor& x, int start_axis, int stop_axis) {
   // 1. Get kernel signature and kernel
-  auto kernel_signature = ParseKernelNameAndKeyByArgs("fill_any_like", x);
+  auto kernel_signature = ParseKernelNameAndKeyByArgs("flatten", x);
   VLOG(1) << kernel_signature.first;
   VLOG(1) << kernel_signature.second;
   VLOG(1) << KernelFactory::Instance();
@@ -43,14 +44,16 @@ Tensor full_like(const Tensor& x, float value) {
   // 3. Auto data transform
   auto dense_x = std::dynamic_pointer_cast<DenseTensor>(x.impl());
   kernel_context.EmplaceBackInput(dense_x);
-
-  kernel_context.EmplaceBackAttr(value);
+  kernel_context.EmplaceBackAttr(start_axis);
+  kernel_context.EmplaceBackAttr(stop_axis);
 
   // 4. InferShape
-  auto out_meta = UnchangedInferShape(dense_x->meta());
+  // TODO(chenweihang): how to auto selected infershape?
+  auto out_meta = FlattenInferShape(dense_x->meta(), start_axis, stop_axis);
 
   // 5. Prepare outputs
   pt::Tensor out;
+  // TODO(chenweihang): deal with multiple outputs
   auto dense_out = std::make_shared<DenseTensor>(out_meta, TensorStatus());
   kernel_context.EmplaceBackOutput(dense_out);
   out.set_impl(dense_out);
