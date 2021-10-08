@@ -2303,10 +2303,6 @@ def tensordot(x, y, axes=2, name=None):
             "please convert its type to int|Tuple|List, or use dynamic graph mode."
         )
 
-    def _is_int_tuple_list(x):
-        return isinstance(axes_x, (tuple, list)) and all(
-            np.issubdtype(type(i), np.integer) for i in x)
-
     axes_x = []
     axes_y = []
     if np.issubdtype(type(axes), np.integer):
@@ -2319,7 +2315,7 @@ def tensordot(x, y, axes=2, name=None):
         if isinstance(axes, Variable):
             axes = _var_to_list(axes)
 
-        if all(np.issubdtype(type(i), np.integer) for i in axes):
+        if not axes or np.issubdtype(type(axes[0]), np.integer):
             axes_x = axes
         else:
             axes_x = axes[0]
@@ -2330,9 +2326,6 @@ def tensordot(x, y, axes=2, name=None):
                 axes_x = _var_to_list(axes_x)
             if isinstance(axes_y, Variable):
                 axes_y = _var_to_list(axes_y)
-            assert _is_int_tuple_list(axes_x) and _is_int_tuple_list(
-                axes_y
-            ), "The 'axes' in " + op_type + f" is expected to be tuple(int|Tensor) or list[int|Tensor] or Tensor(int|Tensor), or to be tuple|list containing two tuple(int) or list[int] or tensor(int), but received axes={axes}."
 
     axes_x, axes_y = list(axes_x), list(axes_y)
     len_axes_x, len_axes_y = len(axes_x), len(axes_y)
@@ -2347,13 +2340,6 @@ def tensordot(x, y, axes=2, name=None):
     contraction_size = 1
     for i in range(len(axes_x)):
         dim_x, dim_y = axes_x[i], axes_y[i]
-        assert dim_x >= 0 and dim_x < x.ndim, "The axial index for 'x' in " + op_type + f" should be larger than or equal to 0, and smaller than the ndim of 'x', but received an index {dim_x} in axes={axes} and the ndim of x={x} is {x.ndim}."
-        assert dim_y >= 0 and dim_y < y.ndim, "The axial index for 'y' in " + op_type + f" should be larger than or equal to 0, and smaller than the ndim of 'y', but received an index {dim_y} in axes={axes} and the ndim of x={y} is {y.ndim}."
-        assert need_contracted_dim_x[
-            dim_x] == False, op_type + f" got recurring axial index {dim_x} for 'x' with axes={axes}."
-        assert need_contracted_dim_y[
-            dim_y] == False, op_type + f" got recurring axial index {dim_y} for 'y' with axes={axes}."
-
         sx, sy = shape_x[dim_x], shape_y[dim_y]
         if sx == 1:
             shape_y[dim_y] = 1
