@@ -7,3 +7,4 @@ foreach(TEST_OP ${TEST_OPS})
 endforeach(TEST_OP)
 
 set_tests_properties(test_jacobian PROPERTIES TIMEOUT 20)
+set_tests_properties(test_hessian PROPERTIES TIMEOUT 50)
