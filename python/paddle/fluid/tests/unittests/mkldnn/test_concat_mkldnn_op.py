@@ -15,78 +15,90 @@
 from __future__ import print_function
 
 import unittest
-from paddle.fluid.tests.unittests.test_concat_op import TestConcatOp, TestConcatOp2, TestConcatOp3, TestConcatOp4
+import numpy as np
+import struct
+
+import paddle.fluid.core as core
+from paddle.fluid.tests.unittests.op_test import OpTest, convert_float_to_uint16
+from paddle import enable_static
 
 
-class TestMKLDNNConcatOp(TestConcatOp):
+class TestConcatAxis0OneDNNOp(OpTest):
     def setUp(self):
-        super(TestMKLDNNConcatOp, self).setUp()
-        self.attrs["use_mkldnn"] = True
-        self._cpu_only = True
+        self.op_type = "concat"
+        self.mkldnn_data_type = "float32"
+        self.init_axis()
+        self.init_shape()
+        self.init_test_data()
+        self.configure_datatype()
+        self.inputs = {'X': [('x0', self.x0), ('x1', self.x1), ('x2', self.x2)]}
+        self.attrs = {
+            'axis': self.axis,
+            'use_mkldnn': True,
+            'mkldnn_data_type': self.mkldnn_data_type
+        }
+
+        self.output = np.concatenate(
+            (self.x0, self.x1, self.x2), axis=self.axis).astype(self.dtype)
+
+        self.outputs = {'Out': self.output}
+
+    def configure_datatype(self):
+        self.mkldnn_data_type = "float32"
+        self.dtype = np.float32
 
     def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=(self.attrs["use_mkldnn"] == False))
+        self.check_output_with_place(core.CPUPlace())
 
     def test_check_grad(self):
-        pass
+        self.check_grad(['x0'], 'Out')
+        self.check_grad(['x1'], 'Out')
+        self.check_grad(['x2'], 'Out')
 
-    def init_kernel_type(self):
-        self.use_mkldnn = True
+    def init_test_data(self):
+        self.x0 = np.random.random(self.x0_shape).astype(np.float32)
+        self.x1 = np.random.random(self.x1_shape).astype(np.float32)
+        self.x2 = np.random.random(self.x2_shape).astype(np.float32)
 
+    def init_axis(self):
+        self.axis = 0
 
-class TestMKLDNNConcatOp2(TestConcatOp2):
-    def setUp(self):
-        super(TestMKLDNNConcatOp2, self).setUp()
-        self.attrs["use_mkldnn"] = True
-        self._cpu_only = True
-
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=(self.attrs["use_mkldnn"] == False))
-
-    def test_check_grad(self):
-        pass
-
-    def init_kernel_type(self):
-        self.use_mkldnn = True
+    def init_shape(self):
+        self.x0_shape = [2, 2, 1, 50]
+        self.x1_shape = [1, 2, 1, 50]
+        self.x2_shape = [3, 2, 1, 50]
 
 
-class TestMKLDNNConcatOp3(TestConcatOp3):
-    def setUp(self):
-        super(TestMKLDNNConcatOp3, self).setUp()
-        self.attrs["use_mkldnn"] = True
-        self._cpu_only = True
+class TestConcatAxis1OneDNNOp(TestConcatAxis0OneDNNOp):
+    def init_axis(self):
+        self.axis = 1
 
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=(self.attrs["use_mkldnn"] == False))
-
-    def test_check_grad(self):
-        pass
-
-    def init_kernel_type(self):
-        self.use_mkldnn = True
+    def init_shape(self):
+        self.x0_shape = [1, 1, 5, 50]
+        self.x1_shape = [1, 2, 5, 50]
+        self.x2_shape = [1, 3, 5, 50]
 
 
-class TestMKLDNNConcatOp4(TestConcatOp4):
-    def setUp(self):
-        super(TestMKLDNNConcatOp4, self).setUp()
-        self.attrs["use_mkldnn"] = True
-        self._cpu_only = True
+class TestConcatAxis2OneDNNOp(TestConcatAxis0OneDNNOp):
+    def init_axis(self):
+        self.axis = 2
 
-    def test_check_output(self):
-        # TODO(wangzhongpu): support mkldnn op in dygraph mode
-        self.check_output(check_dygraph=(self.attrs["use_mkldnn"] == False))
+    def init_shape(self):
+        self.x0_shape = [2, 3, 4, 50]
+        self.x1_shape = [2, 3, 5, 50]
+        self.x2_shape = [2, 3, 6, 50]
 
-    def test_check_grad(self):
-        pass
 
-    def init_kernel_type(self):
-        self.use_mkldnn = True
+class TestConcatAxis3OneDNNOp(TestConcatAxis0OneDNNOp):
+    def init_axis(self):
+        self.axis = 3
+
+    def init_shape(self):
+        self.x0_shape = [5, 3, 5, 5]
+        self.x1_shape = [5, 3, 5, 6]
+        self.x2_shape = [5, 3, 5, 7]
 
 
 if __name__ == '__main__':
-    from paddle import enable_static
     enable_static()
     unittest.main()
