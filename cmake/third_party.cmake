@@ -368,4 +368,9 @@ if (WITH_POCKETFFT)
     add_definitions(-DPADDLE_WITH_POCKETFFT)
 endif (WITH_POCKETFFT)
 
+if (WITH_IPU)
+    include(external/poplar)
+    list(APPEND third_party_deps extern_poplar)
+endif()
+
 add_custom_target(third_party ALL DEPENDS ${third_party_deps})
