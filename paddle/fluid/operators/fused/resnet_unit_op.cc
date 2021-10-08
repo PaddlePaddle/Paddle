@@ -39,8 +39,8 @@ void ResNetUnitOp::InferShape(framework::InferShapeContext *ctx) const {
 
   // check output
   OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "ResNetUnitOp");
-  // OP_INOUT_CHECK(ctx->HasOutput("BitMask"), "Output", "BitMask",
-  //                "ResNetUnitOp");
+  OP_INOUT_CHECK(ctx->HasOutput("BitMask"), "Output", "BitMask",
+                 "ResNetUnitOp");
   OP_INOUT_CHECK(ctx->HasOutput("ConvX"), "Output", "ConvX", "ResNetUnitOp");
   // OP_INOUT_CHECK(ctx->HasOutput("SumX"), "Output", "SumX", "ResNetUnitOp");
   // OP_INOUT_CHECK(ctx->HasOutput("SqSumX"), "Output", "SqSumX",
@@ -106,20 +106,19 @@ void ResNetUnitOp::InferShape(framework::InferShapeContext *ctx) const {
   int out_w = (x_dims[2] + pad * 2 - filter_size) / stride + 1;
   std::vector<int> out_shape = {batch, out_h, out_w, output_channel};
   // shape of bitmask
-  // int C = output_channel;
-  // int64_t NHW = std::accumulate(out_shape.begin(), out_shape.end(), 1,
-  //                               std::multiplies<int>()) /
-  //               output_channel;
-  // int32_t C_int32Elems = ((C + 63) & ~63) / 32;
-  // int32_t NHW_int32Elems = (NHW + 31) & ~31;
-  // std::vector<int> bitmask_shape = {NHW_int32Elems, C_int32Elems, 1};
-  // printf("==============%d, %d\n", NHW_int32Elems, C_int32Elems);
+  int C = output_channel;
+  int64_t NHW = std::accumulate(out_shape.begin(), out_shape.end(), 1,
+                                std::multiplies<int>()) /
+                output_channel;
+  int32_t C_int32Elems = ((C + 63) & ~63) / 32;
+  int32_t NHW_int32Elems = ((NHW + 31) & ~31);
+  std::vector<int> bitmask_shape = {NHW_int32Elems, C_int32Elems, 1};
 
   auto y_dims = framework::make_ddim(out_shape);
-  // auto bitmask_dims = framework::make_ddim(bitmask_shape);
+  auto bitmask_dims = framework::make_ddim(bitmask_shape);
   auto bn_param_dims = framework::make_ddim({1, 1, 1, output_channel});
   ctx->SetOutputDim("Y", y_dims);
-  // ctx->SetOutputDim("BitMask", bitmask_dims);
+  ctx->SetOutputDim("BitMask", bitmask_dims);
   ctx->SetOutputDim("ConvX", y_dims);
   // ctx->SetOutputDim("SumX", bn_param_dims);
   // ctx->SetOutputDim("SqSumX", bn_param_dims);
@@ -175,7 +174,7 @@ void ResNetUnitOpMaker::Make() {
   AddInput("MeanZ", "The bn mean tensor of input 2").AsDispensable();
   AddInput("VarZ", "The bn var tensor of input 2").AsDispensable();
   AddOutput("Y", "The result of the resnet unit");
-  // AddOutput("BitMask", "The bitmask");
+  AddOutput("BitMask", "The bitmask");
   AddOutput("ConvX", "The output of x after conv");
   // AddOutput("SumX", "The sum of conv_x");
   // AddOutput("SqSumX", "The square of sum of conv_x");
@@ -245,8 +244,8 @@ void ResNetUnitGradOp::InferShape(framework::InferShapeContext *ctx) const {
                    "ResNetUnitGradOp");
   }
   OP_INOUT_CHECK(ctx->HasInput("Y"), "Input", "Y", "ResNetUnitGradOp");
-  // OP_INOUT_CHECK(ctx->HasInput("BitMask"), "Input", "BitMask",
-  //                "ResNetUnitGradOp");
+  OP_INOUT_CHECK(ctx->HasInput("BitMask"), "Input", "BitMask",
+                 "ResNetUnitGradOp");
   OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",
                  framework::GradVarName("Y"), "ResNetUnitGradOp");
 

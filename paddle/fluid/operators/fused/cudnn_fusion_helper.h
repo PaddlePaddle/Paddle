@@ -18,7 +18,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/enforce.h"
-#include "paddle/fluid/platform/profiler.h"
 
 namespace paddle {
 namespace operators {
@@ -47,7 +46,6 @@ class CudnnFusionOp {
 
   // Execute fused op
   void Execute(cudnnHandle_t cudnn_handle) {
-    platform::RecordEvent event("cudnn_fusion_execute");
     PADDLE_ENFORCE_EQ(
         plan_created_, true,
         platform::errors::Fatal(

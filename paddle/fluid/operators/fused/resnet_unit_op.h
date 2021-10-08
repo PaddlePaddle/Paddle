@@ -81,7 +81,7 @@ class ResNetUnitGradOpMaker : public framework::SingleGradOpMaker<T> {
     op->SetInput("SavedMeanZ", this->Output("SavedMeanZ"));
     op->SetInput("SavedInvstdZ", this->Output("SavedInvstdZ"));
     op->SetInput("Y", this->Output("Y"));
-    // op->SetInput("BitMask", this->Output("BitMask"));
+    op->SetInput("BitMask", this->Output("BitMask"));
     op->SetInput(framework::GradVarName("Y"), this->OutputGrad("Y"));
 
     op->SetAttrMap(this->Attrs());
