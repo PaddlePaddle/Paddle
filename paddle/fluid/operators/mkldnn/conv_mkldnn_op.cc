@@ -216,7 +216,8 @@ class ConvMKLDNNHandlerT
 
       float sum_scale;
       std::vector<float> output_shift_scale;
-      std::tie(sum_scale, output_shift_scale) = get_int8_scales(ctx);
+      if (platform::is_int8<T>() || fuse_residual_conn)
+        std::tie(sum_scale, output_shift_scale) = get_int8_scales(ctx);
 
       const mkldnn::primitive_attr conv_attr = CreatePostOps(
           fuse_activation, fuse_alpha, fuse_beta, fuse_residual_conn,
