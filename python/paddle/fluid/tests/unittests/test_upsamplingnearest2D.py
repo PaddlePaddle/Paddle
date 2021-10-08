@@ -20,46 +20,47 @@ import paddle
 import paddle.nn as nn
 
 
-def upsample_2d(img, type='float64', scale_factor=None, size=[5, 5], data_format='NCHW'):
+def upsample_2d(img, type='float64', scale_factor=None, size=None, data_format='NCHW'):
+    H_out = size[0]
+    W_out = size[1]
+    H_in = img.shape[2]
+    W_in = img.shape[3]
     if size == None:
-        size = [img.shape[2] * scale_factor, img.shapep[3] * scale_factor]
+        size = [H_in * scale_factor, W_in * scale_factor]
     if data_format == 'NCHW':
         num_batches, channels, height, width = img.shape
-        emptyImage = np.zeros((num_batches, channels, size[0], size[1]), type)
-        sh = size[0] / height
-        sw = size[1] / width
-        for num_batche in range(num_batches):
-            for channel in range(channels):
-                for i in range(size[0]):
-                    for j in range(size[1]):
-                        x = int(i / sh)
-                        y = int(j / sw)
-                        emptyImage[num_batche, channel, i, j] = img[num_batche, channel, x, y]
+        emptyImage = np.zeros((num_batches, channels, H_out, W_out), type)
+        sh = H_out / height
+        sw = W_out / width
+        for i in range(H_out):
+            for j in range(W_out):
+                x = int(i / sh)
+                y = int(j / sw)
+                emptyImage[:, :, i, j] = img[:, :, x, y]
     elif data_format == 'NHWC':
         img = img.transpose((0, 3, 1, 2))
         num_batches, channels, height, width = img.shape
-        emptyImage = np.zeros((num_batches, channels, size[0], size[1]), type)
-        sh = size[0] / height
-        sw = size[1] / width
-        for num_batche in range(num_batches):
-            for channel in range(channels):
-                for i in range(size[0]):
-                    for j in range(size[1]):
-                        x = int(i / sh)
-                        y = int(j / sw)
-                        emptyImage[num_batche, channel, i, j] = img[num_batche, channel, x, y]
+        emptyImage = np.zeros((num_batches, channels, H_out, W_out), type)
+        sh = H_out / height
+        sw = W_out / width
+        for i in range(H_out):
+            for j in range(W_out):
+                x = int(i / sh)
+                y = int(j / sw)
+                emptyImage[:, :, i, j] = img[:, :, x, y]
         emptyImage = emptyImage.transpose((0, 2, 3, 1))
     return emptyImage
 
 
 class TestUpsamplingNearest2D(unittest.TestCase):
     def test_input_range(self):
+        size = [5, 5]
         # generate test data
         np.random.seed(0)
         input_data = paddle.rand(shape=[2, 3, 6, 10])
         # data_format='NCHW'
         # generation Function
-        upsample = nn.UpsamplingNearest2D(size=[5, 5], data_format='NCHW')
+        upsample = nn.UpsamplingNearest2D(size=size, data_format='NCHW')
         # result verification
         for i in range(-3, 10):
             times = 10 ** i
@@ -70,7 +71,7 @@ class TestUpsamplingNearest2D(unittest.TestCase):
 
         # data_format='NHWC'
         # generation Function
-        upsample = nn.UpsamplingNearest2D(size=[5, 5], data_format='NHWC')
+        upsample = nn.UpsamplingNearest2D(size=size, data_format='NHWC')
         # result verification
         for i in range(-3, 10):
             times = 10 ** i
@@ -81,12 +82,13 @@ class TestUpsamplingNearest2D(unittest.TestCase):
 
     def test_input_dtype(self):
         # generate test data
+        size = [5, 5]
         np.random.seed(0)
         input_data = paddle.rand(shape=[2, 3, 6, 10])
 
         # data_format='NCHW'
         # generation Function
-        upsample = nn.UpsamplingNearest2D(size=[5, 5], data_format='NCHW')
+        upsample = nn.UpsamplingNearest2D(size=size, data_format='NCHW')
         # Data type test
         type_list = ['float32', 'float64']
         for try_type in type_list:
@@ -95,7 +97,7 @@ class TestUpsamplingNearest2D(unittest.TestCase):
 
         # data_format='NHWC'
         # generation Function
-        upsample = nn.UpsamplingNearest2D(size=[5, 5], data_format='NHWC')
+        upsample = nn.UpsamplingNearest2D(size=size, data_format='NHWC')
         # Data type test
         type_list = ['float32', 'float64']
         for try_type in type_list:
@@ -104,12 +106,13 @@ class TestUpsamplingNearest2D(unittest.TestCase):
 
     def test_wrong_input_dtype(self):
         # generate test data
+        size = [5, 5]
         np.random.seed(0)
         input_data = paddle.rand(shape=[2, 3, 6, 10])
 
         # data_format='NCHW'
         # generation Function
-        upsample = nn.UpsamplingNearest2D(size=[5, 5], data_format='NCHW')
+        upsample = nn.UpsamplingNearest2D(size=size, data_format='NCHW')
         # generation type list
         type_list = [
             'bool', 'float16', 'int8', 'int16'
@@ -121,7 +124,7 @@ class TestUpsamplingNearest2D(unittest.TestCase):
 
         # data_format='NHWC'
         # generation Function
-        upsample = nn.UpsamplingNearest2D(size=[5, 5], data_format='NHWC')
+        upsample = nn.UpsamplingNearest2D(size=size, data_format='NHWC')
         # generation type list
         type_list = [
             'bool', 'float16', 'int8', 'int16'
@@ -134,6 +137,7 @@ class TestUpsamplingNearest2D(unittest.TestCase):
     def test_range(self):
         # when x are larger than 10**9 or less than 10**-4, the result may error
         # generate test data
+        size = [5, 5]
         np.random.seed(0)
         input_data = paddle.rand(shape=[2, 3, 6, 10])
 
@@ -141,26 +145,26 @@ class TestUpsamplingNearest2D(unittest.TestCase):
 
         # data_format='NCHW'
         # generation Function
-        upsample = nn.UpsamplingNearest2D(size=[5, 5], data_format='NCHW')
+        upsample = nn.UpsamplingNearest2D(size=size, data_format='NCHW')
         # data modification
         x = paddle.to_tensor(input_data * 10 ** 10).astype('float64')
         # result verification
-        res = upsample(x).numpy().flatten().tolist()
-        res_ = upsample_2d(x).flatten().tolist()
+        res = upsample(x, size=size).numpy().flatten().tolist()
+        res_ = upsample_2d(x, size=size).flatten().tolist()
         self.assertEqual(res, res_)
 
         # data modification
         x = paddle.to_tensor(input_data * 10 ** -4).astype('float64')
         # data conversion
-        res = upsample(x).numpy().flatten().tolist()
-        res_ = upsample_2d(x).flatten().tolist()
+        res = upsample(x, size=size).numpy().flatten().tolist()
+        res_ = upsample_2d(x, size=size).flatten().tolist()
         self.assertEqual(res, res_)
 
         # Small number test
 
         # data_format='NHWC'
         # generation Function
-        upsample = nn.UpsamplingNearest2D(size=[5, 5], data_format='NHWC')
+        upsample = nn.UpsamplingNearest2D(size=size, data_format='NHWC')
         # data modification
         x = paddle.to_tensor(input_data * 10 ** 10).astype('float64')
         # data conversion
