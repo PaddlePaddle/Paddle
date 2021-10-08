@@ -83,16 +83,6 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
             "quantity. But number of Param is [%d] and Velocity is [%d].",
             param_dim.size(), velocity_dim.size()));
 
-    auto lars_weight_decays =
-        ctx->Attrs().Get<std::vector<float>>("lars_weight_decay");
-    PADDLE_ENFORCE_EQ(lars_weight_decays.size(), grad_dim.size(),
-                      platform::errors::InvalidArgument(
-                          "Lars_weight_decay and Grad input of LarsMomentumOp "
-                          "should have the same "
-                          "quantity. But number of Lars_weight_decay is [%d] "
-                          "and Grad is [%d].",
-                          lars_weight_decays.size(), grad_dim.size()));
-
     if (ctx->GetInputsVarType("Grad")[0] ==
         framework::proto::VarType::LOD_TENSOR) {
       for (size_t i = 0; i < param_dim.size(); ++i) {
@@ -167,8 +157,11 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("mu", "(float) Momentum coefficient");
     AddAttr<float>("lars_coeff", "(float, default 0.001) LARS coefficient.")
         .SetDefault(0.001);
+    // AddAttr<float>("lars_weight_decay",
+    //                "(float, default 0.0005) LARS weight decay")
+    //     .SetDefault({0.0005});
     AddAttr<std::vector<float>>("lars_weight_decay",
-                                "(float, default 0.0005) LARS weight decay")
+        "(float, default 0.0005) Merged LARS weight decay params")
         .SetDefault({0.0005});
     AddAttr<float>("epsilon",
                    "(float, default 0.0) epsilon to avoid Division by Zero.")

@@ -193,7 +193,7 @@ class TestLarsMomentumOpWithMP(OpTest):
         self.attrs = {
             'mu': mu,
             'lars_coeff': lars_coeff,
-            'lars_weight_decay': lars_weight_decay,
+            'lars_weight_decay': [lars_weight_decay],
             'multi_precision': True,
             'rescale_grad': rescale_grad
         }
@@ -259,7 +259,7 @@ class TestLarsMomentumOp(OpTest):
         self.attrs = {
             'mu': mu,
             'lars_coeff': lars_coeff,
-            'lars_weight_decay': lars_weight_decay
+            'lars_weight_decay': [lars_weight_decay]
         }
         self.outputs = {'ParamOut': param_outs, 'VelocityOut': velocity_outs}
 
@@ -359,7 +359,7 @@ class TestMergedLarsMomentumOp(OpTest):
         self.op_type = "lars_momentum"
         mu = 0.0001
         lars_coeff = 0.001
-        lars_weight_decay = 0.0005
+        lars_weight_decay = [0.0005] * self.params_num
 
         params = []
         grads = []
@@ -375,8 +375,8 @@ class TestMergedLarsMomentumOp(OpTest):
             pnorm = np.sqrt(np.square(param).sum())
             gnorm = np.sqrt(np.square(grad).sum())
             local_lr = learning_rate * lars_coeff * pnorm / (
-                gnorm + lars_weight_decay * param)
-            velocity_out = mu * velocity + local_lr * (grad + lars_weight_decay
+                gnorm + lars_weight_decay[i] * param)
+            velocity_out = mu * velocity + local_lr * (grad + lars_weight_decay[i]
                                                        * param)
             param_out = param - velocity_out
 

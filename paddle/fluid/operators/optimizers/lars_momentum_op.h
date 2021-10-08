@@ -23,36 +23,36 @@ template <typename T>
 class LarsMomentumOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto param_out = ctx.Output<framework::LoDTensor>("ParamOut");
-    auto velocity_out = ctx.Output<framework::LoDTensor>("VelocityOut");
-    auto param = ctx.Input<framework::LoDTensor>("Param");
-    auto velocity = ctx.Input<framework::LoDTensor>("Velocity");
-    auto learning_rate = ctx.Input<framework::LoDTensor>("LearningRate");
-    auto* grad_var = ctx.InputVar("Grad");
+    auto param_out = ctx.MultiOutput<framework::LoDTensor>("ParamOut");
+    auto velocity_out = ctx.MultiOutput<framework::LoDTensor>("VelocityOut");
+    auto param = ctx.MultiInput<framework::LoDTensor>("Param");
+    auto velocity = ctx.MultiInput<framework::LoDTensor>("Velocity");
+    auto learning_rate = ctx.MultiInput<framework::LoDTensor>("LearningRate");
+    auto grad_var = ctx.MultiInputVar("Grad");
     // only support dense for now.
-    PADDLE_ENFORCE_EQ(grad_var->IsType<framework::LoDTensor>(), true,
+    PADDLE_ENFORCE_EQ(grad_var[0]->IsType<framework::LoDTensor>(), true,
                       platform::errors::InvalidArgument(
                           "The Var(%s)'s type should be LoDTensor, "
                           "but the received is %s",
                           ctx.InputNames("Grad").front(),
-                          framework::ToTypeName(grad_var->Type())));
-    auto grad = ctx.Input<framework::LoDTensor>("Grad");
+                          framework::ToTypeName(grad_var[0]->Type())));
+    auto grad = ctx.MultiInput<framework::LoDTensor>("Grad");
 
-    param_out->mutable_data<T>(ctx.GetPlace());
-    velocity_out->mutable_data<T>(ctx.GetPlace());
+    param_out[0]->mutable_data<T>(ctx.GetPlace());
+    velocity_out[0]->mutable_data<T>(ctx.GetPlace());
 
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
     T lars_coeff = ctx.Attr<float>("lars_coeff");
-    T lars_weight_decay = ctx.Attr<float>("lars_weight_decay");
+    T lars_weight_decay = (ctx.Attr<std::vector<float>>("lars_weight_decay"))[0];
     T epsilon = ctx.Attr<float>("epsilon");
 
-    auto p_out = framework::EigenVector<T>::Flatten(*param_out);
-    auto v_out = framework::EigenVector<T>::Flatten(*velocity_out);
+    auto p_out = framework::EigenVector<T>::Flatten(*(param_out[0]));
+    auto v_out = framework::EigenVector<T>::Flatten(*(velocity_out[0]));
 
-    auto p = framework::EigenVector<T>::Flatten(*param);
-    auto v = framework::EigenVector<T>::Flatten(*velocity);
-    auto g = framework::EigenVector<T>::Flatten(*grad);
-    auto* lr = learning_rate->data<T>();
+    auto p = framework::EigenVector<T>::Flatten(*(param[0]));
+    auto v = framework::EigenVector<T>::Flatten(*(velocity[0]));
+    auto g = framework::EigenVector<T>::Flatten(*(grad[0]));
+    auto* lr = learning_rate[0]->data<T>();
 
     framework::Tensor p_norm_t, g_norm_t;
     p_norm_t.Resize({1});

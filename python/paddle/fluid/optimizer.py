@@ -2098,6 +2098,8 @@ class LarsMomentumOptimizer(Optimizer):
             }
             outputs = {"ParamOut": param_array, "VelocityOut": velocity_array}
             attrs["merge_operation"] = self._merged_ops
+
+            # param lars_weight_decay combination 
             attrs["lars_weight_decay"] = lars_weight_decay_array
 
             if find_master:
@@ -2146,7 +2148,7 @@ class LarsMomentumOptimizer(Optimizer):
                     if name in param_name:
                         _lars_weight_decay = 0.0
                         break
-            attrs["lars_weight_decay"] = _lars_weight_decay,
+            attrs["lars_weight_decay"] = [_lars_weight_decay]
 
             # create the momentum optimize op
             momentum_op = block.append_op(
