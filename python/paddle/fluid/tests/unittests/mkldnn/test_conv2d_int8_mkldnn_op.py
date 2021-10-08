@@ -290,6 +290,59 @@ def init_data_type_with_fusion(self, input_dt, fuse_activation, fuse_residual):
 
 def create_test_int8_class(parent):
 
+    #--------------------test conv2d s8 in and u8 out--------------------
+    class TestS8U8Case(parent):
+        def init_data_type(self):
+            init_data_type_with_fusion(self, np.int8, "relu", False)
+
+    #--------------------test conv2d s8 in and s8 out--------------------
+    class TestS8S8Case(parent):
+        def init_data_type(self):
+            init_data_type_with_fusion(self, np.int8, "", False)
+
+    #--------------------test conv2d u8 in and s8 out--------------------
+    class TestU8S8Case(parent):
+        def init_data_type(self):
+            init_data_type_with_fusion(self, np.uint8, "", False)
+
+    #--------------------test conv2d u8 in and u8 out without residual fuse--------------------
+    class TestU8U8Case(parent):
+        def init_data_type(self):
+            init_data_type_with_fusion(self, np.uint8, "relu", False)
+
+    #--------------------test conv2d s8 in and s8 out with residual fuse--------------------
+    class TestS8S8ResCase(parent):
+        def init_data_type(self):
+            init_data_type_with_fusion(self, np.int8, "", True)
+
+    #--------------------test conv2d u8 in and s8 out with residual fuse--------------------
+    class TestU8S8ResCase(parent):
+        def init_data_type(self):
+            init_data_type_with_fusion(self, np.uint8, "", True)
+
+    cls_name_s8u8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "1")
+    cls_name_s8s8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "0")
+    cls_name_u8s8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "0")
+    cls_name_u8u8 = "{0}_relu_{1}_residual_0".format(parent.__name__, "1")
+
+    cls_name_s8s8_re_1 = "{0}_relu_{1}_residual_{2}".format(parent.__name__,
+                                                            "0", "1")
+    cls_name_u8s8_re_1 = "{0}_relu_{1}_residual_{2}".format(parent.__name__,
+                                                            "0", "1")
+    TestS8U8Case.__name__ = cls_name_s8u8
+    TestS8S8Case.__name__ = cls_name_s8s8
+    TestU8S8Case.__name__ = cls_name_u8s8
+    TestU8U8Case.__name__ = cls_name_u8u8
+
+    TestS8S8ResCase.__name__ = cls_name_s8s8_re_1
+    TestU8S8ResCase.__name__ = cls_name_u8s8_re_1
+    globals()[cls_name_s8u8] = TestS8U8Case
+    globals()[cls_name_s8s8] = TestS8S8Case
+    globals()[cls_name_u8s8] = TestU8S8Case
+    globals()[cls_name_u8u8] = TestU8U8Case
+    globals()[cls_name_s8s8_re_1] = TestS8S8ResCase
+    globals()[cls_name_u8s8_re_1] = TestU8S8ResCase
+
     if os.name != 'nt':
         #--------------------test conv2d s8 in and u8 out with residual fuse--------------------
         class TestS8U8ResCase(parent):
@@ -311,6 +364,25 @@ create_test_int8_class(TestWith1x1)
 create_test_int8_class(TestWithInput1x1Filter1x1)
 
 
+class TestConv2DOp_AsyPadding_INT_MKLDNN(TestConv2DInt8Op):
+    def init_kernel_type(self):
+        self.use_mkldnn = True
+
+    def init_paddings(self):
+        self.pad = [0, 0, 1, 2]
+        self.padding_algorithm = "EXPLICIT"
+
+
+class TestConv2DOp_Same_INT_MKLDNN(TestConv2DOp_AsyPadding_INT_MKLDNN):
+    def init_paddings(self):
+        self.pad = [0, 0]
+        self.padding_algorithm = "SAME"
+
+
+class TestConv2DOp_Valid_INT_MKLDNN(TestConv2DOp_AsyPadding_INT_MKLDNN):
+    def init_paddings(self):
+        self.pad = [1, 1]
+        self.padding_algorithm = "VALID"
 
 
 if __name__ == '__main__':
