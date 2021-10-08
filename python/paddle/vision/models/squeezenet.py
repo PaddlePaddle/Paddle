@@ -78,6 +78,7 @@ class SqueezeNet(nn.Layer):
     Args:
         version (str): version of squeezenet.
         num_classes (int): output dim of last fc layer. Default: 1000.
+        with_pool (bool): use pool before the last fc layer or not. Default: True.
 
     Examples:
         .. code-block:: python
@@ -88,10 +89,11 @@ class SqueezeNet(nn.Layer):
 
     """
 
-    def __init__(self, version, num_classes=1000):
+    def __init__(self, version, num_classes=1000, with_pool=True):
         super(SqueezeNet, self).__init__()
         self.version = version
-
+        self.num_classes = num_classes
+        self.with_pool = with_pool
         if self.version == "1.0":
             self._conv = Conv2D(
                 3,
@@ -163,11 +165,15 @@ class SqueezeNet(nn.Layer):
             x = self._conv6(x)
             x = self._conv7(x)
             x = self._conv8(x)
-        x = self._drop(x)
-        x = self._conv9(x)
-        x = F.relu(x)
-        x = self._avg_pool(x)
-        x = paddle.squeeze(x, axis=[2, 3])
+
+        if self.num_classes > 0:
+            x = self._drop(x)
+            x = self._conv9(x)
+
+        if self.with_pool:
+            x = F.relu(x)
+            x = self._avg_pool(x)
+            x = paddle.squeeze(x, axis=[2, 3])
         return x
 
 
