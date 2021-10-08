@@ -92,7 +92,6 @@ void CheckOutput(const framework::Tensor &cpu_res,
 }
 
 // Use Paddle conv2d op results as baseline
-template <typename T>
 void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
                           const Tensor &cpu_input, const Tensor &cpu_filter,
                           Tensor *cpu_output) {
@@ -122,7 +121,6 @@ void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
 }
 
 // Use Paddle conv2d_grad op results as baseline
-template <typename T>
 void ComputeConv2DBackward(const platform::CUDADeviceContext &ctx,
                            const Tensor &cpu_input, const Tensor &cpu_filter,
                            const Tensor &cpu_output_grad,
@@ -285,7 +283,7 @@ class CudnnNormConvolutionTester {
                        framework::Tensor *cpu_output_base,
                        framework::Tensor *cpu_sum_base,
                        framework::Tensor *cpu_sum_of_square_base) {
-    ComputeConv2DForward<T>(ctx, cpu_input_, cpu_filter_nchw_, cpu_output_base);
+    ComputeConv2DForward(ctx, cpu_input_, cpu_filter_nchw_, cpu_output_base);
     ComputeSumAndSquareSum<T>(*cpu_output_base, cpu_sum_base,
                               cpu_sum_of_square_base);
   }
@@ -293,10 +291,9 @@ class CudnnNormConvolutionTester {
   void BaselineBackward(const platform::CUDADeviceContext &ctx,
                         framework::Tensor *cpu_input_grad_base,
                         framework::Tensor *cpu_filter_grad_base) {
-    ComputeConv2DBackward<T>(ctx, cpu_input_, cpu_filter_nchw_,
-                             cpu_output_grad_, cpu_input_grad_base,
-                             cpu_filter_grad_base, stride_, padding_,
-                             dilation_);
+    ComputeConv2DBackward(ctx, cpu_input_, cpu_filter_nchw_, cpu_output_grad_,
+                          cpu_input_grad_base, cpu_filter_grad_base, stride_,
+                          padding_, dilation_);
   }
 
   // get forward results of cudnn_norm_conv

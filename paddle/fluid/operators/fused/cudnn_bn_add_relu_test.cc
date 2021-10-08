@@ -11,6 +11,7 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
+
 #include <random>
 #include <vector>
 
@@ -24,6 +25,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/math/math_function.h"
 #include "paddle/fluid/platform/float16.h"
 
+DECLARE_bool(cudnn_batchnorm_spatial_persistent);
+
 namespace framework = paddle::framework;
 namespace platform = paddle::platform;
 namespace op = paddle::operators;
@@ -31,40 +34,125 @@ using Tensor = paddle::framework::Tensor;
 
 USE_OP(batch_norm);
 
+template <typename T>
+void InitRandomTensor(const std::vector<int64_t> &dims,
+                      framework::Tensor *cpu_out) {
+  T *cpu_out_ptr = cpu_out->mutable_data<T>(framework::make_ddim(dims),
+                                            platform::CPUPlace());
+  std::default_random_engine random(0);
+  std::uniform_real_distribution<float> dis(0.0, 1.0);
+  for (int i = 0; i < cpu_out->numel(); ++i) {
+    cpu_out_ptr[i] = static_cast<T>(dis(random));
+  }
+}
+
+template <typename T>
+void InitConstantTensor(const std::vector<int64_t> &dims, T value,
+                        framework::Tensor *cpu_out) {
+  T *cpu_out_ptr = cpu_out->mutable_data<T>(framework::make_ddim(dims),
+                                            platform::CPUPlace());
+  for (int i = 0; i < cpu_out->numel(); ++i) {
+    cpu_out_ptr[i] = value;
+  }
+}
+
+template <typename T>
+void CheckOutput(std::string name, const framework::Tensor &cpu_res,
+                 const framework::Tensor &cpu_base, float diff,
+                 bool is_relative_atol = false) {
+  if (cpu_res.dims().size() == cpu_base.dims().size()) {
+    EXPECT_EQ(cpu_res.dims(), cpu_base.dims());
+  } else {
+    EXPECT_EQ(cpu_res.numel(), cpu_base.numel());
+  }
+
+  const T *cpu_res_ptr = cpu_res.data<T>();
+  const T *cpu_base_ptr = cpu_base.data<T>();
+  float max_diff = 0;
+  int index = 0;
+  for (int i = 0; i < cpu_res.numel(); ++i) {
+    float cur_diff;
+    if (is_relative_atol) {
+      cur_diff = static_cast<float>(
+          std::abs((cpu_res_ptr[i] - cpu_base_ptr[i]) / cpu_base_ptr[i]));
+      EXPECT_LT(static_cast<float>(std::abs((cpu_res_ptr[i] - cpu_base_ptr[i]) /
+                                            cpu_base_ptr[i])),
+                diff);
+    } else {
+      cur_diff = static_cast<float>(std::abs(cpu_res_ptr[i] - cpu_base_ptr[i]));
+      EXPECT_LT(static_cast<float>(std::abs(cpu_res_ptr[i] - cpu_base_ptr[i])),
+                diff);
+    }
+    if (cur_diff > max_diff) {
+      max_diff = cur_diff;
+      index = i;
+    }
+  }
+  std::string error_type = is_relative_atol ? "relative" : "absolute";
+  LOG(INFO) << "[" << name << "], The dims is [" << cpu_res.dims()
+            << "], maximum " << error_type << " error is " << max_diff << ": "
+            << cpu_res_ptr[index] << " vs " << cpu_base_ptr[index];
+}
+
+template <typename T>
+void ComputeSumAndSquareSum(const framework::Tensor &cpu_x,
+                            framework::Tensor *cpu_sum,
+                            framework::Tensor *cpu_sum_of_square) {
+  // x is in NHWC format.
+  auto dims = cpu_x.dims();
+  int64_t c = dims[3];
+
+  const T *cpu_x_ptr = cpu_x.data<T>();
+  float *cpu_sum_ptr =
+      cpu_sum->mutable_data<float>({1, 1, 1, c}, platform::CPUPlace());
+  float *cpu_sum_square_ptr = cpu_sum_of_square->mutable_data<float>(
+      {1, 1, 1, c}, platform::CPUPlace());
+
+  for (int j = 0; j < c; ++j) {
+    float tmp_sum = 0.0f;
+    float tmp_sum_of_squares = 0.0f;
+    for (int i = 0; i < cpu_x.numel() / c; ++i) {
+      float tmp_x = static_cast<float>(cpu_x_ptr[i * c + j]);
+      tmp_sum += tmp_x;
+      tmp_sum_of_squares += tmp_x * tmp_x;
+    }
+    cpu_sum_ptr[j] = tmp_sum;
+    cpu_sum_square_ptr[j] = tmp_sum_of_squares;
+  }
+}
+
 // get paddle batchnorm op results as baseline
-void BatchNormForwardCompute(const Tensor &x, const Tensor &scale,
-                             const Tensor &bias, Tensor *mean, Tensor *var,
-                             Tensor *y, Tensor *saved_mean, Tensor *saved_var,
-                             Tensor *reserve_space,
-                             const framework::DDim &data_dim,
-                             const framework::DDim &param_dim,
-                             const platform::CUDADeviceContext &ctx) {
+void ComputeBatchNormForward(const platform::CUDADeviceContext &ctx,
+                             const Tensor &cpu_x, const Tensor &cpu_scale,
+                             const Tensor &cpu_bias, Tensor *cpu_mean,
+                             Tensor *cpu_var, Tensor *cpu_saved_mean,
+                             Tensor *cpu_saved_var, Tensor *cpu_y,
+                             Tensor *cpu_reserve_space) {
   framework::Scope scope;
-  auto var_x = scope.Var("X");
-  auto tensor_x = var_x->GetMutable<framework::LoDTensor>();
-  auto var_scale = scope.Var("Scale");
-  auto tensor_scale = var_scale->GetMutable<framework::LoDTensor>();
-  auto var_bias = scope.Var("Bias");
-  auto tensor_bias = var_bias->GetMutable<framework::LoDTensor>();
-  auto var_mean = scope.Var("Mean");
-  auto tensor_mean = var_mean->GetMutable<framework::LoDTensor>();
-  auto var_var = scope.Var("Variance");
-  auto tensor_var = var_var->GetMutable<framework::LoDTensor>();
-  auto var_y = scope.Var("Y");
-  auto tensor_y = var_y->GetMutable<framework::LoDTensor>();
-  auto var_saved_mean = scope.Var("SavedMean");
-  auto tensor_saved_mean = var_saved_mean->GetMutable<framework::LoDTensor>();
-  auto var_saved_var = scope.Var("SavedVariance");
-  auto tensor_saved_var = var_saved_var->GetMutable<framework::LoDTensor>();
-  auto var_reserve = scope.Var("ReserveSpace");
-  auto tensor_reserve = var_reserve->GetMutable<framework::LoDTensor>();
+  auto *x = scope.Var("X")->GetMutable<framework::LoDTensor>();
+  auto *scale = scope.Var("Scale")->GetMutable<framework::LoDTensor>();
+  auto *bias = scope.Var("Bias")->GetMutable<framework::LoDTensor>();
+  auto *mean = scope.Var("Mean")->GetMutable<framework::LoDTensor>();
+  auto *var = scope.Var("Variance")->GetMutable<framework::LoDTensor>();
+  auto *y = scope.Var("Y")->GetMutable<framework::LoDTensor>();
+  auto *saved_mean = scope.Var("SavedMean")->GetMutable<framework::LoDTensor>();
+  auto *saved_var =
+      scope.Var("SavedVariance")->GetMutable<framework::LoDTensor>();
+  auto *reserve_space =
+      scope.Var("ReserveSpace")->GetMutable<framework::LoDTensor>();
 
   auto place = ctx.GetPlace();
-  TensorCopySync(x, place, tensor_x);
-  TensorCopySync(scale, place, tensor_scale);
-  TensorCopySync(bias, place, tensor_bias);
-  TensorCopySync(*mean, place, tensor_mean);
-  TensorCopySync(*var, place, tensor_var);
+  TensorCopySync(cpu_x, place, x);
+  TensorCopySync(cpu_scale, place, scale);
+  TensorCopySync(cpu_bias, place, bias);
+  TensorCopySync(*cpu_mean, place, mean);
+  TensorCopySync(*cpu_var, place, var);
+
+  int64_t channels = x->dims()[3];
+  scale->Resize({channels});
+  bias->Resize({channels});
+  mean->Resize({channels});
+  var->Resize({channels});
 
   framework::AttributeMap attrs;
   std::string data_layout = "NHWC";
@@ -85,268 +173,201 @@ void BatchNormForwardCompute(const Tensor &x, const Tensor &scale,
       attrs);
   op->Run(scope, ctx.GetPlace());
 
-  TensorCopySync(*tensor_y, place, y);
-  TensorCopySync(*tensor_mean, place, mean);
-  TensorCopySync(*tensor_var, place, var);
-  TensorCopySync(*tensor_saved_mean, place, saved_mean);
-  TensorCopySync(*tensor_saved_var, place, saved_var);
-  TensorCopySync(*tensor_reserve, place, reserve_space);
-  ctx.Wait();
+  TensorCopySync(*y, platform::CPUPlace(), cpu_y);
+  TensorCopySync(*mean, platform::CPUPlace(), cpu_mean);
+  TensorCopySync(*var, platform::CPUPlace(), cpu_var);
+  TensorCopySync(*saved_mean, platform::CPUPlace(), cpu_saved_mean);
+  TensorCopySync(*saved_var, platform::CPUPlace(), cpu_saved_var);
+  TensorCopySync(*reserve_space, platform::CPUPlace(), cpu_reserve_space);
 }
 
 template <typename T>
-class TestCudnnBNAddReluForward {
+class CudnnBNAddReluTester {
  public:
-  TestCudnnBNAddReluForward() {
-    batch_size_ = 2;
-    height_ = 8;
-    width_ = 8;
-    channels_ = 32;
-    ele_count_ = batch_size_ * height_ * width_;
-    ctx_ = new platform::CUDADeviceContext(place_);
-  }
-
-  TestCudnnBNAddReluForward(int batch_size, int height, int width,
-                            int channels) {
+  CudnnBNAddReluTester(int batch_size, int height, int width, int channels) {
     batch_size_ = batch_size;
     height_ = height;
     width_ = width;
     channels_ = channels;
     ele_count_ = batch_size_ * height_ * width_;
-    ctx_ = new platform::CUDADeviceContext(place_);
-  }
-
-  ~TestCudnnBNAddReluForward() { delete ctx_; }
-
-  void SetUp() {
-    data_size_ = batch_size_ * height_ * width_ * channels_;
-    param_size_ = channels_;
-
-    x_vec_.resize(data_size_);
-    sum_vec_.resize(param_size_);
-    sum_of_squares_vec_.resize(param_size_);
-    scale_vec_.resize(param_size_);
-    bias_vec_.resize(param_size_);
-    mean_vec_.resize(param_size_);
-    var_vec_.resize(param_size_);
-    y_vec_.resize(data_size_);
-    saved_mean_vec_.resize(param_size_);
-    saved_var_vec_.resize(param_size_);
-    equiv_scale_vec_.resize(param_size_);
-    equiv_bias_vec_.resize(param_size_);
-    base_y_vec_.resize(data_size_);
-    base_mean_vec_.resize(param_size_);
-    base_var_vec_.resize(param_size_);
-    base_saved_mean_vec_.resize(param_size_);
-    base_saved_var_vec_.resize(param_size_);
-
-    // initial data
-    std::default_random_engine random(0);
-    std::uniform_real_distribution<float> dis(0.0, 1.0);
-    for (int c = 0; c < channels_; ++c) {
-      float sum = 0;
-      float sum_of_squares = 0;
-      for (int n = 0; n < batch_size_; ++n) {
-        for (int h = 0; h < height_; ++h) {
-          for (int w = 0; w < width_; ++w) {
-            float temp = dis(random);
-            float ttemp = static_cast<float>(static_cast<T>(temp));
-            int idx = n * height_ * width_ * channels_ +
-                      h * width_ * channels_ + w * channels_ + c;
-            sum += ttemp;
-            sum_of_squares += ttemp * ttemp;
-            x_vec_[idx] = static_cast<T>(temp);
-          }
-        }
-      }
-      sum_vec_[c] = sum;
-      sum_of_squares_vec_[c] = sum_of_squares;
-    }
-    for (int i = 0; i < param_size_; ++i) {
-      scale_vec_[i] = 1.0;
-      bias_vec_[i] = 0.0;
-      mean_vec_[i] = 0.0;
-      var_vec_[i] = 1.0;
-      saved_mean_vec_[i] = 0.0;
-      saved_var_vec_[i] = 0.0;
-      base_mean_vec_[i] = 0.0;
-      base_var_vec_[i] = 1.0;
-      base_saved_mean_vec_[i] = 0.0;
-      base_saved_var_vec_[i] = 0.0;
-    }
-    for (int i = 0; i < data_size_; ++i) {
-      y_vec_[i] = static_cast<T>(0.0f);
-      base_y_vec_[i] = static_cast<T>(0.0f);
-    }
-
-    // input
-    framework::TensorFromVector<T>(x_vec_, *ctx_, &x_);
-    x_.Resize({batch_size_, height_, width_, channels_});
-    framework::TensorFromVector<float>(sum_vec_, *ctx_, &sum_);
-    sum_.Resize({1, 1, 1, channels_});
-    framework::TensorFromVector<float>(sum_of_squares_vec_, *ctx_,
-                                       &sum_of_squares_);
-    sum_of_squares_.Resize({1, 1, 1, channels_});
-    framework::TensorFromVector<float>(scale_vec_, *ctx_, &scale_);
-    scale_.Resize({1, 1, 1, channels_});
-    framework::TensorFromVector<float>(bias_vec_, *ctx_, &bias_);
-    bias_.Resize({1, 1, 1, channels_});
-    framework::TensorFromVector<float>(mean_vec_, *ctx_, &mean_);
-    mean_.Resize({1, 1, 1, channels_});
-    framework::TensorFromVector<float>(var_vec_, *ctx_, &var_);
-    var_.Resize({1, 1, 1, channels_});
-    // baseline
-    framework::TensorFromVector<float>(scale_vec_, *ctx_, &base_scale_);
-    base_scale_.Resize({channels_});
-    framework::TensorFromVector<float>(bias_vec_, *ctx_, &base_bias_);
-    base_bias_.Resize({channels_});
-    framework::TensorFromVector<float>(base_mean_vec_, *ctx_, &base_mean_);
-    base_mean_.Resize({channels_});
-    framework::TensorFromVector<float>(base_var_vec_, *ctx_, &base_var_);
-    base_var_.Resize({channels_});
-    // output
-    y_.Resize({batch_size_, height_, width_, channels_});
-    equiv_scale_.Resize({1, 1, 1, channels_});
-    equiv_bias_.Resize({1, 1, 1, channels_});
-    saved_mean_.Resize({1, 1, 1, channels_});
-    saved_var_.Resize({1, 1, 1, channels_});
-    // baseline
-    base_y_.Resize({batch_size_, height_, width_, channels_});
-    base_saved_mean_.Resize({channels_});
-    base_saved_var_.Resize({channels_});
-    // bitmask
-    int C = channels_;
-    int64_t NHW = ele_count_;
-    int32_t C_int32Elems = ((C + 63) & ~63) / 32;
-    int32_t NHW_int32Elems = (NHW + 31) & ~31;
-    bitmask_.Resize({NHW_int32Elems, C_int32Elems, 1});
-
-    ctx_->Wait();
-  }
-
-  void BaselineForward() {
-    BatchNormForwardCompute(x_, base_scale_, base_bias_, &base_mean_,
-                            &base_var_, &base_y_, &base_saved_mean_,
-                            &base_saved_var_, &reserve_space_, x_.dims(),
-                            framework::make_ddim({channels_}), *ctx_);
-
-    ctx_->Wait();
-  }
-
-  // get forward results of cudnn_bn_stats_finalize + cudnn_scale_bias_add_relu
-  void FusedForward() {
-    auto data_shape = framework::vectorize<int>(x_.dims());
-    auto param_shape = framework::vectorize<int>(scale_.dims());
-    auto bitmask_shape = framework::vectorize<int>(bitmask_.dims());
-    T *x_ptr = x_.data<T>();
-    float *sum_ptr = sum_.data<float>();
-    float *sum_of_squares_ptr = sum_of_squares_.data<float>();
-    float *scale_ptr = scale_.data<float>();
-    float *bias_ptr = bias_.data<float>();
-    float *mean_ptr = mean_.data<float>();
-    float *var_ptr = var_.data<float>();
-    float *saved_mean_ptr = saved_mean_.mutable_data<float>(place_);
-    float *saved_var_ptr = saved_var_.mutable_data<float>(place_);
-    T *equiv_scale_ptr = equiv_scale_.mutable_data<T>(place_);
-    T *equiv_bias_ptr = equiv_bias_.mutable_data<T>(place_);
-    T *y_ptr = y_.mutable_data<T>(place_);
-    int32_t *bitmask_ptr = bitmask_.mutable_data<int32_t>(place_);
-
-    // 1. BN Stats Finalize
-    std::shared_ptr<op::CudnnBNStatsFinalizeOp<T>> bn_op(
-        new op::CudnnBNStatsFinalizeOp<T>());
-    bn_op->Init(*ctx_, param_shape);
-    bn_op->Forward(*ctx_, sum_ptr, sum_of_squares_ptr, scale_ptr, bias_ptr,
-                   saved_mean_ptr, saved_var_ptr, mean_ptr, var_ptr,
-                   equiv_scale_ptr, equiv_bias_ptr, eps_, momentum_, ele_count_,
-                   true);
-    // 2. Scale Bias + Relu (not fused add)
-    std::string act_type = "";
-    std::shared_ptr<op::CudnnScaleBiasAddReluOp<T>> sbar_op(
-        new op::CudnnScaleBiasAddReluOp<T>(false, false));
-    sbar_op->Init(*ctx_, act_type, data_shape, bitmask_shape, data_shape,
-                  param_shape);
-    sbar_op->Forward(*ctx_, x_ptr, equiv_scale_ptr, equiv_bias_ptr, y_ptr,
-                     bitmask_ptr);
-
-    ctx_->Wait();
-  }
-
-  void Run() {
     SetUp();
-    BaselineForward();
-    FusedForward();
   }
 
-  // check forward correctness between baseline and results of fused op.
-  void CheckOut(const float diff, bool is_relative_atol = false) {
-    TensorToVector(y_, *ctx_, &y_vec_);
-    TensorToVector(mean_, *ctx_, &mean_vec_);
-    TensorToVector(var_, *ctx_, &var_vec_);
-    TensorToVector(saved_mean_, *ctx_, &saved_mean_vec_);
-    TensorToVector(saved_var_, *ctx_, &saved_var_vec_);
-    TensorToVector(base_y_, *ctx_, &base_y_vec_);
-    TensorToVector(base_mean_, *ctx_, &base_mean_vec_);
-    TensorToVector(base_var_, *ctx_, &base_var_vec_);
-    TensorToVector(base_saved_mean_, *ctx_, &base_saved_mean_vec_);
-    TensorToVector(base_saved_var_, *ctx_, &base_saved_var_vec_);
-    ctx_->Wait();
+  ~CudnnBNAddReluTester() {}
 
-    for (int i = 0; i < data_size_; ++i) {
-      if (is_relative_atol) {
-        EXPECT_LT(std::abs((y_vec_[i] - base_y_vec_[i]) / base_y_vec_[i]),
-                  static_cast<T>(diff));
-      } else {
-        EXPECT_LT(std::abs(y_vec_[i] - base_y_vec_[i]), static_cast<T>(diff));
-      }
-    }
+  void CheckForward(float diff, bool is_relative_atol = false) {
+    platform::CUDADeviceContext *ctx =
+        static_cast<platform::CUDADeviceContext *>(
+            platform::DeviceContextPool::Instance().Get(
+                platform::CUDAPlace(0)));
 
-    for (int i = 0; i < param_size_; ++i) {
-      if (is_relative_atol) {
-        EXPECT_LT(
-            std::abs((mean_vec_[i] - base_mean_vec_[i]) / base_mean_vec_[i]),
-            diff);
-        EXPECT_LT(std::abs((var_vec_[i] - base_var_vec_[i]) / base_var_vec_[i]),
-                  diff);
-        EXPECT_LT(std::abs((saved_mean_vec_[i] - base_saved_mean_vec_[i]) /
-                           base_saved_mean_vec_[i]),
-                  diff);
-        EXPECT_LT(std::abs((saved_var_vec_[i] - base_saved_var_vec_[i]) /
-                           base_saved_var_vec_[i]),
-                  diff);
-      } else {
-        EXPECT_LT(std::abs(mean_vec_[i] - base_mean_vec_[i]), diff);
-        EXPECT_LT(std::abs(var_vec_[i] - base_var_vec_[i]), diff);
-        EXPECT_LT(std::abs(saved_mean_vec_[i] - base_saved_mean_vec_[i]), diff);
-        EXPECT_LT(std::abs(saved_var_vec_[i] - base_saved_var_vec_[i]), diff);
-      }
-    }
+    framework::Tensor cpu_mean_base;
+    framework::Tensor cpu_var_base;
+    framework::Tensor cpu_saved_mean_base;
+    framework::Tensor cpu_saved_var_base;
+    framework::Tensor cpu_y_base;
+    framework::Tensor cpu_reserve_space_base;
+    BaselineForward(*ctx, &cpu_mean_base, &cpu_var_base, &cpu_saved_mean_base,
+                    &cpu_saved_var_base, &cpu_y_base, &cpu_reserve_space_base);
+
+    framework::Tensor cpu_mean;
+    framework::Tensor cpu_var;
+    framework::Tensor cpu_saved_mean;
+    framework::Tensor cpu_saved_var;
+    framework::Tensor cpu_y;
+    framework::Tensor cpu_bitmask;
+    FusedForward(*ctx, &cpu_mean, &cpu_var, &cpu_saved_mean, &cpu_saved_var,
+                 &cpu_y, &cpu_bitmask);
+
+    CheckOutput<float>("Mean", cpu_mean, cpu_mean_base, diff, is_relative_atol);
+    CheckOutput<float>("Variance", cpu_var, cpu_var_base, diff,
+                       is_relative_atol);
+    CheckOutput<float>("SavedMean", cpu_saved_mean, cpu_saved_mean_base, diff,
+                       is_relative_atol);
+    CheckOutput<float>("SavedVariance", cpu_saved_var, cpu_saved_var_base, diff,
+                       is_relative_atol);
+    CheckOutput<T>("Y", cpu_y, cpu_y_base, diff, is_relative_atol);
   }
 
  private:
-  int batch_size_, height_, width_, channels_;
-  int data_size_, param_size_;
+  void SetUp() {
+    // Initialize input data
+    InitRandomTensor<T>({batch_size_, height_, width_, channels_}, &cpu_x_);
+    ComputeSumAndSquareSum<T>(cpu_x_, &cpu_sum_, &cpu_sum_of_square_);
 
-  framework::Tensor x_, scale_, bias_, mean_, var_, sum_, sum_of_squares_;
-  framework::Tensor y_, saved_mean_, saved_var_, equiv_scale_, equiv_bias_,
-      bitmask_;
-  std::vector<T> x_vec_, y_vec_, equiv_scale_vec_, equiv_bias_vec_;
-  std::vector<float> sum_vec_, sum_of_squares_vec_, scale_vec_, bias_vec_;
-  std::vector<float> mean_vec_, var_vec_, saved_mean_vec_, saved_var_vec_;
-  // baseline
-  framework::Tensor base_y_, base_scale_, base_bias_, base_mean_, base_var_,
-      base_saved_mean_, base_saved_var_, reserve_space_;
-  std::vector<T> base_y_vec_;
-  std::vector<float> base_mean_vec_, base_var_vec_, base_saved_mean_vec_,
-      base_saved_var_vec_;
+    // scale and bias should be initialized randomly.
+    InitConstantTensor<float>({channels_}, static_cast<float>(1.0f),
+                              &cpu_bn_scale_);
+    InitConstantTensor<float>({channels_}, static_cast<float>(0.0f),
+                              &cpu_bn_bias_);
+  }
+
+  void InitMeanVar(Tensor *cpu_mean, Tensor *cpu_var, Tensor *cpu_saved_mean,
+                   Tensor *cpu_saved_var) {
+    InitConstantTensor<float>({channels_}, static_cast<float>(0.0f), cpu_mean);
+    InitConstantTensor<float>({channels_}, static_cast<float>(1.0f), cpu_var);
+    InitConstantTensor<float>({channels_}, static_cast<float>(0.0f),
+                              cpu_saved_mean);
+    InitConstantTensor<float>({channels_}, static_cast<float>(0.0f),
+                              cpu_saved_var);
+  }
+
+  void BaselineForward(const platform::CUDADeviceContext &ctx, Tensor *cpu_mean,
+                       Tensor *cpu_var, Tensor *cpu_saved_mean,
+                       Tensor *cpu_saved_var, Tensor *cpu_y,
+                       Tensor *cpu_reserve_space) {
+    InitMeanVar(cpu_mean, cpu_var, cpu_saved_mean, cpu_saved_var);
+    ComputeBatchNormForward(ctx, cpu_x_, cpu_bn_scale_, cpu_bn_bias_, cpu_mean,
+                            cpu_var, cpu_saved_mean, cpu_saved_var, cpu_y,
+                            cpu_reserve_space);
+  }
+
+  // Get forward results of CudnnBNStatsFinalize + CudnnScaleBiasAddRelu
+  void FusedForward(const platform::CUDADeviceContext &ctx, Tensor *cpu_mean,
+                    Tensor *cpu_var, Tensor *cpu_saved_mean,
+                    Tensor *cpu_saved_var, Tensor *cpu_y, Tensor *cpu_bitmask) {
+    framework::Tensor x;
+    framework::Tensor sum;
+    framework::Tensor sum_of_square;
+    framework::Tensor bn_scale;
+    framework::Tensor bn_bias;
+
+    auto place = ctx.GetPlace();
+    TensorCopySync(cpu_x_, place, &x);
+    TensorCopySync(cpu_sum_, place, &sum);
+    TensorCopySync(cpu_sum_of_square_, place, &sum_of_square);
+    TensorCopySync(cpu_bn_scale_, place, &bn_scale);
+    TensorCopySync(cpu_bn_bias_, place, &bn_bias);
+
+    bn_scale.Resize({1, 1, 1, channels_});
+    bn_bias.Resize({1, 1, 1, channels_});
+
+    T *x_ptr = x.data<T>();
+    float *sum_ptr = sum.data<float>();
+    float *sum_of_square_ptr = sum_of_square.data<float>();
+    float *bn_scale_ptr = bn_scale.data<float>();
+    float *bn_bias_ptr = bn_bias.data<float>();
+
+    framework::Tensor mean;
+    framework::Tensor var;
+    framework::Tensor saved_mean;
+    framework::Tensor saved_var;
+    framework::Tensor equiv_scale;
+    framework::Tensor equiv_bias;
+    framework::Tensor y;
+    framework::Tensor bitmask;
+
+    InitMeanVar(cpu_mean, cpu_var, cpu_saved_mean, cpu_saved_var);
+    TensorCopySync(*cpu_mean, place, &mean);
+    TensorCopySync(*cpu_var, place, &var);
+
+    mean.Resize({1, 1, 1, channels_});
+    var.Resize({1, 1, 1, channels_});
+
+    float *mean_ptr = mean.data<float>();
+    float *var_ptr = var.data<float>();
+    float *saved_mean_ptr =
+        saved_mean.mutable_data<float>({1, 1, 1, channels_}, place);
+    float *saved_var_ptr =
+        saved_var.mutable_data<float>({1, 1, 1, channels_}, place);
+    T *equiv_scale_ptr =
+        equiv_scale.mutable_data<T>({1, 1, 1, channels_}, place);
+    T *equiv_bias_ptr = equiv_bias.mutable_data<T>({1, 1, 1, channels_}, place);
+    T *y_ptr =
+        y.mutable_data<T>({batch_size_, height_, width_, channels_}, place);
+
+    // bitmask
+    int c = channels_;
+    int64_t nhw = ele_count_;
+    int32_t c_int32_elems = ((c + 63) & ~63) / 32;
+    int32_t nhw_int32_elems = (nhw + 31) & ~31;
+    int32_t *bitmask_ptr = bitmask.mutable_data<int32_t>(
+        {nhw_int32_elems, c_int32_elems, 1}, place);
+
+    auto data_shape = framework::vectorize<int>(x.dims());
+    auto param_shape = framework::vectorize<int>(bn_scale.dims());
+    auto bitmask_shape = framework::vectorize<int>(bitmask.dims());
+
+    // 1. BN Stats Finalize
+    op::CudnnBNStatsFinalizeOp<T> bn_op;
+    bn_op.Init(ctx, param_shape);
+    bn_op.Forward(ctx, sum_ptr, sum_of_square_ptr, bn_scale_ptr, bn_bias_ptr,
+                  saved_mean_ptr, saved_var_ptr, mean_ptr, var_ptr,
+                  equiv_scale_ptr, equiv_bias_ptr, eps_, momentum_, ele_count_,
+                  true);
+
+    // 2. Scale Bias + Relu (not fused add)
+    std::string act_type = "";
+    op::CudnnScaleBiasAddReluOp<T> sbar_op(false, false);
+    sbar_op.Init(ctx, act_type, data_shape, bitmask_shape, data_shape,
+                 param_shape);
+    sbar_op.Forward(ctx, x_ptr, equiv_scale_ptr, equiv_bias_ptr, y_ptr,
+                    bitmask_ptr);
+
+    TensorCopySync(mean, platform::CPUPlace(), cpu_mean);
+    TensorCopySync(var, platform::CPUPlace(), cpu_var);
+    TensorCopySync(saved_mean, platform::CPUPlace(), cpu_saved_mean);
+    TensorCopySync(saved_var, platform::CPUPlace(), cpu_saved_var);
+    TensorCopySync(y, platform::CPUPlace(), cpu_y);
+    TensorCopySync(bitmask, platform::CPUPlace(), cpu_bitmask);
+  }
+
+ private:
+  int batch_size_;
+  int height_;
+  int width_;
+  int channels_;
+  int ele_count_;
+
+  // Forward input
+  framework::Tensor cpu_x_;
+  framework::Tensor cpu_sum_;
+  framework::Tensor cpu_sum_of_square_;
+  framework::Tensor cpu_bn_scale_;
+  framework::Tensor cpu_bn_bias_;
 
   double eps_ = 1e-5;
   float momentum_ = 0.9;
-  int ele_count_;
-  platform::CUDAPlace place_ = platform::CUDAPlace(0);
-  platform::CUDADeviceContext *ctx_ =
-      static_cast<platform::CUDADeviceContext *>(
-          platform::DeviceContextPool::Instance().Get(place_));
 };
 
 TEST(CudnnBNAddReluForward, GPUCudnnBNAddReluForwardFp16) {
@@ -354,8 +375,8 @@ TEST(CudnnBNAddReluForward, GPUCudnnBNAddReluForwardFp16) {
   int height = 8;
   int width = 8;
   int channels = 64;
-  TestCudnnBNAddReluForward<paddle::platform::float16> test(batch_size, height,
-                                                            width, channels);
-  test.Run();
-  test.CheckOut(2e-3);
+  FLAGS_cudnn_batchnorm_spatial_persistent = true;
+  CudnnBNAddReluTester<paddle::platform::float16> test(batch_size, height,
+                                                       width, channels);
+  test.CheckForward(1e-3, true);
 }
