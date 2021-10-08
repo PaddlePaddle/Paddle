@@ -52,7 +52,7 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
     Tensor equiv_bias_x;   //= ctx.Output<Tensor>("EqBiasX");
     // sbar
     Tensor *output = ctx.Output<Tensor>("Y");
-    // Tensor *bitmask = ctx.Output<Tensor>("BitMask");
+    Tensor *bitmask = ctx.Output<Tensor>("BitMask");
     // attrs
     int pad = ctx.Attr<int>("pad");
     int stride = ctx.Attr<int>("stride");
@@ -72,8 +72,7 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
     auto param_dims = scale_x->dims();
     auto param_shape = framework::vectorize<int>(scale_x->dims());
     auto output_shape = framework::vectorize<int>(output->dims());
-    // auto bitmask_shape = framework::vectorize<int>(bitmask->dims());
-    auto bitmask_shape = {1};
+    auto bitmask_shape = framework::vectorize<int>(bitmask->dims());
     auto place = input_x->place();
     int output_channel = filter_x_shape[0];
     int64_t ele_count =
@@ -81,10 +80,6 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
                         std::multiplies<int>()) /
         output_channel;
 
-    // sum_x->Resize(framework::make_ddim({param_shape}));
-    // sum_of_squares_x->Resize(framework::make_ddim({param_shape}));
-    // equiv_scale_x->Resize(framework::make_ddim({param_shape}));
-    // equiv_bias_x->Resize(framework::make_ddim({param_shape}));
     float *sum_x_ptr = sum_x.mutable_data<float>(param_dims, place);
     float *sum_of_squares_x_ptr =
         sum_of_squares_x.mutable_data<float>(param_dims, place);
@@ -100,8 +95,7 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
     // MALLOC_AND_GET_PTR(equiv_scale_x, T, place)
     // MALLOC_AND_GET_PTR(equiv_bias_x, T, place)
     MALLOC_AND_GET_PTR(output, T, place)
-    // MALLOC_AND_GET_PTR(bitmask, int32_t, place)
-    int32_t *bitmask_ptr = nullptr;
+    MALLOC_AND_GET_PTR(bitmask, int32_t, place)
 
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
     // 1. Conv
@@ -143,20 +137,11 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
       Tensor *running_var_z = ctx.Output<Tensor>("RunningVarZ");
       Tensor equiv_scale_z;  // = ctx.Output<Tensor>("EqScaleZ");
       Tensor equiv_bias_z;   // = ctx.Output<Tensor>("EqBiasZ");
-      // sum_z->Resize(framework::make_ddim({param_shape}));
-      // sum_of_squares_z->Resize(framework::make_ddim({param_shape}));
-      // equiv_scale_z->Resize(framework::make_ddim({param_shape}));
-      // equiv_bias_z->Resize(framework::make_ddim({param_shape}));
-      float *sum_z_ptr = sum_x.mutable_data<float>(param_dims, place);
+      float *sum_z_ptr = sum_z.mutable_data<float>(param_dims, place);
       float *sum_of_squares_z_ptr =
           sum_of_squares_z.mutable_data<float>(param_dims, place);
       T *equiv_scale_z_ptr = equiv_scale_z.mutable_data<T>(param_dims, place);
       T *equiv_bias_z_ptr = equiv_bias_z.mutable_data<T>(param_dims, place);
-      // float *sum_z_ptr = sum_z.mutable_data<float>(place);
-      // float *sum_of_squares_z_ptr =
-      // sum_of_squares_z.mutable_data<float>(place);
-      // T *equiv_scale_z_ptr = equiv_scale_z.mutable_data<T>(place);
-      // T *equiv_bias_z_ptr = equiv_bias_z.mutable_data<T>(place);
       MALLOC_AND_GET_PTR(conv_out_z, T, place)
       // MALLOC_AND_GET_PTR(sum_z, float, place)
       // MALLOC_AND_GET_PTR(sum_of_squares_z, float, place)
@@ -235,7 +220,7 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
     // forward output (backward input)
     const Tensor *conv_out_x = ctx.Input<Tensor>("ConvX");
     const Tensor *output = ctx.Input<Tensor>("Y");
-    // const Tensor *bitmask = ctx.Input<Tensor>("BitMask");
+    const Tensor *bitmask = ctx.Input<Tensor>("BitMask");
 
     // backward output
     Tensor *dinput_x = ctx.Output<Tensor>(framework::GradVarName("X"));
@@ -264,8 +249,7 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
     auto filter_x_shape = framework::vectorize<int>(filter_x->dims());
     auto param_shape = framework::vectorize<int>(scale_x->dims());
     auto output_shape = framework::vectorize<int>(output->dims());
-    // auto bitmask_shape = framework::vectorize<int>(bitmask->dims());
-    auto bitmask_shape = {1};
+    auto bitmask_shape = framework::vectorize<int>(bitmask->dims());
 
     auto place = input_x->place();
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
@@ -282,6 +266,7 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
         const_cast<float *>(saved_invstd_x->data<float>());
     T *conv_out_x_ptr = const_cast<T *>(conv_out_x->data<T>());
     T *output_ptr = const_cast<T *>(output->data<T>());
+    int32_t *bitmask_ptr = const_cast<int32_t *>(bitmask->data<int32_t>());
     // output ptr
     MALLOC_AND_GET_PTR(dinput_x, T, place)
     MALLOC_AND_GET_PTR(dfilter_x, T, place)
@@ -338,19 +323,19 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
       T *dz_temp_ptr = dz_temp.mutable_data<T>(conv_out_z->dims(), place);
       sbar_x_op->Init(dev_ctx, act_type, output_shape, bitmask_shape,
                       output_shape, param_shape, output_shape);
-      sbar_x_op->Backward(dev_ctx, doutput_ptr, conv_out_x_ptr, output_ptr,
-                          scale_x_ptr, bias_x_ptr, saved_mean_x_ptr,
-                          saved_invstd_x_ptr, dconv_out_x_ptr, dz_temp_ptr,
+      sbar_x_op->Backward(dev_ctx, doutput_ptr, conv_out_x_ptr, scale_x_ptr,
+                          bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
+                          bitmask_ptr, dconv_out_x_ptr, dz_temp_ptr,
                           dscale_x_ptr, dbias_x_ptr, eps);
       // 1.2 bn backward for z, get dconv_out_z, dscale_z, dbias_z
       std::shared_ptr<CudnnScaleBiasAddReluOp<T>> sbar_z_op(
           new CudnnScaleBiasAddReluOp<T>(false, false));
       sbar_z_op->Init(dev_ctx, "", output_shape, bitmask_shape, output_shape,
                       param_shape);
-      sbar_z_op->Backward(dev_ctx, dz_temp_ptr, conv_out_z_ptr, nullptr,
-                          scale_z_ptr, bias_z_ptr, saved_mean_z_ptr,
-                          saved_invstd_z_ptr, dconv_out_z_ptr, nullptr,
-                          dscale_z_ptr, dbias_z_ptr, eps);
+      sbar_z_op->Backward(dev_ctx, dz_temp_ptr, conv_out_z_ptr, scale_z_ptr,
+                          bias_z_ptr, saved_mean_z_ptr, saved_invstd_z_ptr,
+                          nullptr, dconv_out_z_ptr, nullptr, dscale_z_ptr,
+                          dbias_z_ptr, eps);
       // 1.3 conv backward for z, get dinput_z and dfilter_z
       auto input_z_shape = framework::vectorize<int>(input_z->dims());
       auto filter_z_shape = framework::vectorize<int>(filter_z->dims());
@@ -367,18 +352,18 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
         MALLOC_AND_GET_PTR(dinput_z, T, place)
         sbar_x_op->Init(dev_ctx, act_type, output_shape, bitmask_shape,
                         output_shape, param_shape, output_shape);
-        sbar_x_op->Backward(dev_ctx, doutput_ptr, conv_out_x_ptr, output_ptr,
-                            scale_x_ptr, bias_x_ptr, saved_mean_x_ptr,
-                            saved_invstd_x_ptr, dconv_out_x_ptr, dinput_z_ptr,
+        sbar_x_op->Backward(dev_ctx, doutput_ptr, conv_out_x_ptr, scale_x_ptr,
+                            bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
+                            bitmask_ptr, dconv_out_x_ptr, dinput_z_ptr,
                             dscale_x_ptr, dbias_x_ptr, eps);
       } else {
         // 1.1 bn add relu backward for x, get dconv_out_x, dscale_x, dbias_x
         sbar_x_op->Init(dev_ctx, act_type, output_shape, bitmask_shape,
                         output_shape, param_shape);
-        sbar_x_op->Backward(dev_ctx, doutput_ptr, conv_out_x_ptr, output_ptr,
-                            scale_x_ptr, bias_x_ptr, saved_mean_x_ptr,
-                            saved_invstd_x_ptr, dconv_out_x_ptr, nullptr,
-                            dscale_x_ptr, dbias_x_ptr, eps);
+        sbar_x_op->Backward(dev_ctx, doutput_ptr, conv_out_x_ptr, scale_x_ptr,
+                            bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
+                            bitmask_ptr, dconv_out_x_ptr, nullptr, dscale_x_ptr,
+                            dbias_x_ptr, eps);
       }
     }
     // 2. conv backward for x, get dinput_x and dfilter_x

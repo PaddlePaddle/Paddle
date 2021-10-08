@@ -57,9 +57,10 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
     helper = LayerHelper('resnet_unit', **locals())
     # intermediate_out for x
     bn_param_dtype = fluid.core.VarDesc.VarType.FP32
-    # bit_mask_dtype = fluid.core.VarDesc.VarType.INT32
+    bit_mask_dtype = fluid.core.VarDesc.VarType.INT32
     out = helper.create_variable_for_type_inference(x.dtype)
-    # bit_mask = helper.create_variable_for_type_inference(bit_mask_dtype)
+    bit_mask = helper.create_variable_for_type_inference(
+        dtype=bit_mask_dtype, stop_gradient=True)
     conv_x = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True)
     # sum_x = helper.create_variable_for_type_inference(bn_param_dtype)
@@ -120,7 +121,7 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
 
     outputs = {
         'Y': out,
-        # 'BitMask': bit_mask,
+        'BitMask': bit_mask,
         'ConvX': conv_x,
         # 'SumX': sum_x,
         # 'SqSumX': sqsum_x,
