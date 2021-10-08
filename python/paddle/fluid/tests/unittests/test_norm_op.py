@@ -41,10 +41,10 @@ class TestNormOp(OpTest):
         self.outputs = {'Out': y, 'Norm': norm}
 
     def test_check_output(self):
-        self.check_output(atol=1e-5)
+        self.check_output()
 
     def test_check_grad(self):
-        self.check_grad(['X'], 'Out', max_relative_error=0.008)
+        self.check_grad(['X'], 'Out')
 
     def init_test_case(self):
         self.shape = [2, 3, 4, 5]
@@ -96,6 +96,9 @@ class TestNormOp5(TestNormOp):
 class TestNormOp6(TestNormOp):
     def init_dtype(self):
         self.dtype = "float32"
+
+    def test_check_grad(self):
+        self.check_grad(['X'], 'Out', max_relative_error=0.008)
 
 
 @unittest.skipIf(not fluid.core.is_compiled_with_cuda(),

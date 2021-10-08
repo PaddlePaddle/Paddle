@@ -50,6 +50,15 @@ std::vector<int64_t> ConvOp::ComputeOutputShape(
       ctx->Attrs().Get<std::string>("padding_algorithm");
   int groups = ctx->Attrs().Get<int>("groups");
   std::vector<int> dilations = ctx->Attrs().Get<std::vector<int>>("dilations");
+  int dilation_size = dilations.size();
+  for (int i = 0; i < dilation_size; ++i) {
+    PADDLE_ENFORCE_GT(
+        dilations[i], 0,
+        platform::errors::InvalidArgument(
+            "The dilation of Op(Conv) should be larget than 0, but received "
+            "dilation is %d.",
+            dilations[i]));
+  }
   const std::string data_format = ctx->Attrs().Get<std::string>("data_format");
 
   // MKL-DNN Kernels are using NCHW order of dims description

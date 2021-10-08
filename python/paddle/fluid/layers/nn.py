@@ -4521,7 +4521,10 @@ def reduce_mean(input, dim=None, keep_dim=False, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
+
             # x is a Tensor variable with following elements:
             #    [[0.2, 0.3, 0.5, 0.9]
             #     [0.1, 0.2, 0.6, 0.7]]
@@ -5061,7 +5064,7 @@ def l2_normalize(x, axis, epsilon=1e-12, name=None):
         
         X = paddle.randn(shape=[3, 5], dtype='float64')
         out = paddle.fluid.layers.l2_normalize(X, axis=-1)
-        print(out.numpy())
+        print(out)
 
         # [[ 0.21558504  0.56360189  0.47466096  0.46269539 -0.44326736]
         #  [-0.70602414 -0.52745777  0.37771788 -0.2804768  -0.04449922]
@@ -5160,7 +5163,10 @@ def matmul(x, y, transpose_x=False, transpose_y=False, alpha=1.0, name=None):
             # x: [M], y: [N]
             # fluid.layers.matmul(x, y, True, True)  # out: [M, N]
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
+
             x = fluid.layers.data(name='x', shape=[2, 3], dtype='float32')
             y = fluid.layers.data(name='y', shape=[3, 2], dtype='float32')
             out = fluid.layers.matmul(x, y, True, True)
@@ -5499,12 +5505,12 @@ def transpose(x, perm, name=None):
     perm[i]-th dimension of `input`.
 
     Args:
-        x (Tensor): The input Tensor. It is a N-D Tensor of data types float32, float64, int32.
+        x (Tensor): The input Tensor. It is a N-D Tensor of data types bool, float32, float64, int32.
         perm (list|tuple): Permute the input according to the data of perm.
         name (str): The name of this layer. It is optional.
 
     Returns:
-        Tensor: A transposed n-D Tensor, with data type being float32, float64, int32, int64.
+        Tensor: A transposed n-D Tensor, with data type being bool, float32, float64, int32, int64.
 
     For Example:
 
@@ -5546,7 +5552,7 @@ def transpose(x, perm, name=None):
         return out
 
     check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'],
+        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
         'transpose')
     check_type(perm, 'perm', (list, tuple), 'transpose')
     if isinstance(perm, tuple):
@@ -5999,7 +6005,10 @@ def one_hot(input, depth, allow_out_of_range=False):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
+
             # Correspond to the first example above, where label.shape is [4, 1] and one_hot_label.shape is [4, 4].
             label = fluid.data(name="label", shape=[4, 1], dtype="int64")
             one_hot_label = fluid.layers.one_hot(input=label, depth=4)
@@ -6727,8 +6736,10 @@ def pad(x, paddings, pad_value=0., name=None):
             x = fluid.data(name='data', shape=[300, 300], dtype='float32')
             out = fluid.layers.pad(x=x, paddings=[0, 1, 1, 2], pad_value=0.)
     """
-    check_variable_and_dtype(
-        x, 'x', ['float16', 'float32', 'float64', 'int32', 'int64'], "pad")
+    check_variable_and_dtype(x, 'x', [
+        'float16', 'float32', 'float64', 'int32', 'int64', 'complex64',
+        'complex128'
+    ], "pad")
 
     helper = LayerHelper('pad', **locals())
     dtype = helper.input_dtype(input_param_name='x')
@@ -8361,7 +8372,10 @@ def gather(input, index, overwrite=True):
 
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
+
             x = fluid.data(name='x', shape=[-1, 5], dtype='float32')
             index = fluid.data(name='index', shape=[-1, 1], dtype='int32')
             output = fluid.layers.gather(x, index)
@@ -8451,7 +8465,10 @@ def gather_nd(input, index, name=None):
 
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
+
             x = fluid.data(name='x', shape=[3, 4, 5], dtype='float32')
             index = fluid.data(name='index', shape=[2, 2], dtype='int32')
             output = fluid.layers.gather_nd(x, index)
@@ -8486,6 +8503,7 @@ def scatter(input, index, updates, name=None, overwrite=True):
     Output is obtained by updating the input on selected indices based on updates.
 
     .. code-block:: python
+
         import numpy as np
 
         #input:
@@ -8527,8 +8545,10 @@ def scatter(input, index, updates, name=None, overwrite=True):
 
         .. code-block:: python
 
+            import paddle
             import numpy as np
             import paddle.fluid as fluid
+            paddle.enable_static()
 
             input = fluid.layers.data(name='data', shape=[3, 2], dtype='float32', append_batch_size=False)
             index = fluid.layers.data(name='index', shape=[4], dtype='int64', append_batch_size=False)
@@ -8869,8 +8889,10 @@ def selu(x, scale=None, alpha=None, name=None):
 
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
             import numpy as np
+            paddle.enable_static()
 
             inputs = fluid.layers.data(name="x", shape=[2, 2], dtype="float32")
             output = fluid.layers.selu(inputs)
@@ -10293,6 +10315,8 @@ def unstack(x, axis=0, num=None):
     if in_dygraph_mode():
         if num == None:
             num = x.shape[axis]
+        if num == 0:
+            return []
         return _C_ops.unstack(x, num, 'axis', int(axis), 'num', num)
 
     helper = LayerHelper('unstack', **locals())
@@ -10478,22 +10502,24 @@ def expand_as(x, target_tensor, name=None):
     Examples:
         .. code-block:: python
 
-        import paddle.fluid as fluid
-        import numpy as np
+            import paddle
+            import paddle.fluid as fluid
+            import numpy as np
+            paddle.enable_static()
 
-        data = fluid.layers.data(name="data", shape=[-1,10], dtype='float64')
-        target_tensor = fluid.layers.data(
-          name="target_tensor", shape=[-1,20], dtype='float64')
-        result = fluid.layers.expand_as(x=data, target_tensor=target_tensor)
-        use_cuda = False
-        place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
-        exe = fluid.Executor(place)
-        exe.run(fluid.default_startup_program())
-        x = np.random.rand(3,10)
-        y = np.random.rand(3,20)
-        output= exe.run(feed={"data":x,"target_tensor":y},fetch_list=[result.name])
-        print(output[0].shape)
-        #(3,20)
+            data = fluid.layers.data(name="data", shape=[-1,10], dtype='float64')
+            target_tensor = fluid.layers.data(
+              name="target_tensor", shape=[-1,20], dtype='float64')
+            result = fluid.layers.expand_as(x=data, target_tensor=target_tensor)
+            use_cuda = False
+            place = fluid.CUDAPlace(0) if use_cuda else fluid.CPUPlace()
+            exe = fluid.Executor(place)
+            exe.run(fluid.default_startup_program())
+            x = np.random.rand(3,10)
+            y = np.random.rand(3,20)
+            output= exe.run(feed={"data":x,"target_tensor":y},fetch_list=[result.name])
+            print(output[0].shape)
+            #(3,20)
 
     """
     if in_dygraph_mode():
@@ -10574,7 +10600,9 @@ def uniform_random_batch_size_like(input,
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
 
             # example 1:
             input = fluid.data(name="input", shape=[1, 3], dtype='float32')
@@ -10647,7 +10675,9 @@ def gaussian_random(shape,
     Examples:
        .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
 
             # example 1:
             # attr shape is a list which doesn't contain Tensor.
@@ -10675,7 +10705,8 @@ def gaussian_random(shape,
        
        .. code-block:: python
        
-           # declarative mode 
+           # declarative mode
+           # required: skiptest
            import numpy as np
            from paddle import fluid
    
@@ -10814,7 +10845,10 @@ def gaussian_random_batch_size_like(input,
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
+
             input = fluid.data(name="input", shape=[13, 11], dtype='float32')
 
             out = fluid.layers.gaussian_random_batch_size_like(
@@ -11420,7 +11454,9 @@ def size(input):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid.layers as layers
+            paddle.enable_static()
 
             input = layers.data(
                 name="input", shape=[3, 100], dtype="float32", append_batch_size=False)
@@ -12523,7 +12559,10 @@ def mean(x, name=None):
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
+
             input = fluid.layers.data(
                 name='data', shape=[2, 3], dtype='float32')
             mean = fluid.layers.mean(input)
@@ -15193,7 +15232,9 @@ def uniform_random(shape, dtype='float32', min=-1.0, max=1.0, seed=0,
     Examples:
         .. code-block:: python
 
+            import paddle
             import paddle.fluid as fluid
+            paddle.enable_static()
 
             # example 1:
             # attr shape is a list which doesn't contain Tensor.

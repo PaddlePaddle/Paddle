@@ -540,19 +540,24 @@ class _StandaloneExecutor(object):
         Returns:
             feed:(list|dict)  updated feed.
         """
-        global_block = self._main_program.global_block()
         if feed is None:
             feed = {}
-        elif isinstance(feed, dict):
-            for feed_name in list(feed.keys()):
-                if not global_block.has_var(feed_name):
-                    feed.pop(feed_name)
-                    warnings.warn(
-                        "The variable %s is not found in program. It is not declared or is pruned."
-                        % feed_name)
-        else:
-            raise TypeError("Only support feed with `dict`, but received {}".
-                            format(type(feed).__name__))
+        elif isinstance(feed, (list, tuple)):
+            assert len(feed) == 1, "Not compiled with data parallel"
+            feed = feed[0]
+
+        if not isinstance(feed, dict):
+            raise TypeError(
+                "feed requires dict as its Parameter. But you passed in %s" %
+                (type(feed)))
+
+        global_block = self._main_program.global_block()
+        for feed_name in list(feed.keys()):
+            if not global_block.has_var(feed_name):
+                feed.pop(feed_name)
+                warnings.warn(
+                    "The variable %s is not found in program. It is not declared or is pruned."
+                    % feed_name)
 
         return feed
 
@@ -1039,9 +1044,15 @@ class Executor(object):
             lr_value = lr_sheduler()
             lr_var = program._program.global_block().vars[lr_sheduler._var_name]
             lr_tensor = _as_lodtensor(lr_value, core.CPUPlace(), lr_var.dtype)
-            exe.feed_and_split_tensor_into_local_scopes({
-                lr_sheduler._var_name: lr_tensor
-            })
+            if core.is_cuda_graph_capturing():
+                warnings.warn(
+                    "Caution!!! When capturing CUDA Graph, the learning rate scheduler would not "
+                    "take any effect! Please set the learning rate manually before each batch!"
+                )
+            else:
+                exe.feed_and_split_tensor_into_local_scopes({
+                    lr_sheduler._var_name: lr_tensor
+                })
 
         fetch_var_names = list(map(_to_name_str, fetch_list))
         tensors = exe.run(fetch_var_names, return_merged)._move_to_list()

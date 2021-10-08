@@ -35,7 +35,6 @@ namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-using DataLayout = framework::DataLayout;
 template <typename T>
 using CudnnDataType = platform::CudnnDataType<T>;
 template <typename T>

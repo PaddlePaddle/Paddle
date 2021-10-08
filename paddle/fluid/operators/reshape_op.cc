@@ -229,7 +229,7 @@ class ReshapeOp : public framework::OperatorWithKernel {
     // by now we require that if the input tensor is zero shape, the target
     // shape of output must be zero
     if (in_size == 0) {
-      PADDLE_ENFORCE_EQ(
+      PADDLE_ENFORCE_LE(
           capacity, in_size,
           platform::errors::InvalidArgument(
               "The 'shape' in ReshapeOp is invalid. "
@@ -248,13 +248,13 @@ class ReshapeOp : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
+    //#ifdef PADDLE_WITH_MKLDNN
+    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+    //                                     framework::DataLayout::kMKLDNN,
+    //                                     framework::LibraryType::kMKLDNN);
+    //    }
+    //#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 
@@ -366,13 +366,13 @@ class ReshapeGradOp : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
+    //#ifdef PADDLE_WITH_MKLDNN
+    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+    //                                     framework::DataLayout::kMKLDNN,
+    //                                     framework::LibraryType::kMKLDNN);
+    //    }
+    //#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -557,13 +557,13 @@ class Reshape2GradOp : public framework::OperatorWithKernel {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
 
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
+    //#ifdef PADDLE_WITH_MKLDNN
+    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+    //                                     framework::DataLayout::kMKLDNN,
+    //                                     framework::LibraryType::kMKLDNN);
+    //    }
+    //#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 

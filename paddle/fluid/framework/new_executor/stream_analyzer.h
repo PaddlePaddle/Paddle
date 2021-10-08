@@ -29,9 +29,8 @@ class StreamAnalyzer {
 
   ~StreamAnalyzer() {}
 
-  void Schedule(const std::vector<OpFuncNode>& op_func_nodes,
-                const std::vector<size_t>& downstream_ops, size_t op_index,
-                std::vector<Instruction>* instructions);
+  void Schedule(const std::vector<size_t>& downstream_ops,
+                std::vector<Instruction>* instructions, size_t op_index);
 
   platform::DeviceContext* ParseDeviceContext(const OpFuncNode& op_func_node,
                                               const OperatorBase& op_base);
@@ -41,7 +40,14 @@ class StreamAnalyzer {
                                        const Instruction& next_instr);
 
   void AssociateInputWithEvents(const std::vector<size_t>& new_event_var_id,
-                                Instruction* next_instr, bool is_sync);
+                                Instruction* next_instr,
+                                platform::DeviceType waiter_type);
+
+  bool IsDirectRun(Instruction& cur_instr,  // NOLINT
+                   const Instruction& next_instr);
+
+  platform::DeviceType GetWaiterType(const Instruction& instr);
+
   platform::Place place_;
   platform::DeviceContextPool d2h_ctx_pool_;
   platform::DeviceContextPool h2d_ctx_pool_;

@@ -3956,6 +3956,23 @@ class IrGraph(object):
         """
         return {IrOpNode(node) for node in self.graph.nodes() if node.is_op()}
 
+    def all_sub_graphs(self, for_test=False):
+        """
+        Return all sub_graphs included in the main graph as a set.
+        """
+
+        return [
+            IrGraph(
+                self.graph.get_sub_graph(i), for_test=for_test)
+            for i in range(self.graph.sub_graph_size())
+        ]
+
+    def get_sub_graph(self, i, for_test=False):
+        """
+        Return i-th sub_graph in the main graph.
+        """
+        return IrGraph(self.graph.get_sub_graph(i), for_test=for_test)
+
     def create_persistable_node(self, name, var_type, shape, var_dtype):
         """
         Create a persistable variable node in the graph. In IrGraph,
@@ -4102,8 +4119,10 @@ class IrGraph(object):
             node_in(IrNode): the input node.
             node_out(IrNode): the output node.
         """
-        assert node_in.node in self.graph.nodes() and node_out.node in self.graph.nodes(), \
-            'The two arguments(node_in&node_out) must be in the graph nodes.'
+        assert node_in.node in self.graph.nodes(), (
+            'node_in(%s) must be in the graph nodes.' % node_in.node.name())
+        assert node_out.node in self.graph.nodes(), (
+            'node_out(%s) must be in the graph nodes.' % node_out.node.name())
         node_in.append_output(node_out)
         node_out.append_input(node_in)
 
@@ -4265,7 +4284,8 @@ class IrGraph(object):
         for n in nodes:
             if n.name() == node_name:
                 target_node = n
-        assert target_node is not None, "Cannot find the target node in the giving set."
+        assert target_node is not None, (
+            "Cannot find the target node (%s)in the giving set." % node_name)
         return target_node
 
     def _update_desc_attr(self, desc, name, val):
@@ -5021,6 +5041,22 @@ class Program(object):
                     "All feeded_var_names of Program._prune_with_input() can only be "
                     "str, but received %s." % type(var))
 
+        # find out all variables that can be generated or updated with given feed
+        generatable_vars = set()
+
+        for idx, op in enumerate(self.global_block().ops):
+            runnable_op = True
+            for name in op.input_arg_names:
+                if not self.global_block().has_var(name):
+                    continue
+                if self.global_block().var(name).persistable:
+                    continue
+                if name not in generatable_vars.union(feeded_var_names):
+                    runnable_op = False
+                    break
+            if runnable_op:
+                generatable_vars = generatable_vars.union(op.output_arg_names)
+
         targets_idx = []
         for t in targets:
             if not isinstance(t, Operator):
@@ -5038,7 +5074,9 @@ class Program(object):
                 # (2) the variable is not leaf, and we need to prune the op that generates it.
                 # In both cases, wo can just skip target_op of that it.
                 if name in feeded_var_names:
-                    continue
+                    # however if the var is also updated by a runnable op, will shall keep it
+                    if name not in generatable_vars:
+                        continue
 
                 # After transpiler processing, the op that output this
                 # variable maybe has been changed, so t.op is not reliable
@@ -5055,12 +5093,8 @@ class Program(object):
                             continue
                         else:
                             target_op = op
-                            break
-                if target_op is None:
-                    raise ValueError(
-                        "The target variable used for pruning should have an "
-                        "associated operator that generates it.")
-                else:
+
+                if target_op is not None:
                     targets_idx.append([target_op.block.idx, target_op.idx])
             else:
                 targets_idx.append([t.block.idx, t.idx])

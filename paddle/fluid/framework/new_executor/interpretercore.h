@@ -29,10 +29,12 @@
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/framework/variable.h"
+#include "paddle/fluid/memory/allocation/spin_lock.h"
 #include "paddle/fluid/platform/device_event.h"
 
 namespace paddle {
 namespace framework {
+using AtomicVectorSizeT = std::vector<std::unique_ptr<std::atomic<size_t>>>;
 
 class InterpreterCore {
  public:
@@ -55,19 +57,18 @@ class InterpreterCore {
 
   void BuildInplace();
 
+  bool BuildInplaceCheckVarIsOnlyInput(size_t var_index);
+
   void RunInstruction(const Instruction& instr_node);
 
-  void ExecuteInstructionList(const std::vector<Instruction>& vec_instr,
-                              const VariableScope& var_scope,
-                              const platform::Place& place,
-                              bool is_dry_run = false);
+  void ExecuteInstructionList(const std::vector<Instruction>& vec_instr);
 
   void DryRunPrepare(const std::vector<framework::Tensor>& feed_tensors);
 
-  void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list,
-               const VariableScope& var_scope, const platform::Place& place,
-               std::vector<VariableMetaInfo>& working_var_ref);  // NOLINT
+  void CheckGC(size_t instr_id, const std::vector<size_t>& gc_check_list);
 
+  void RunInstructionAsync(size_t instr_id);
+  void RunNextInstruction(const Instruction& instr_id);
   void AddFetch(const std::vector<std::string>& fetch_names);
 
   void BuildSkipShareLoDInfo();
@@ -93,9 +94,11 @@ class InterpreterCore {
   InterpreterProfiler dry_run_profiler_;
   StreamAnalyzer stream_analyzer_;
   EventManager event_manager_;
+  interpretercore::AsyncWorkQueue async_work_queue_;
 
   InterpreterCoreGarbageCollector gc_;
   std::vector<paddle::platform::DeviceEvent> gc_event_;
+  std::atomic<size_t> op_run_number_{0};
 };
 }  // namespace framework
 }  // namespace paddle
