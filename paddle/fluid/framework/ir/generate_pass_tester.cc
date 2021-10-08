@@ -155,20 +155,20 @@ TEST(GeneratePass, generate_multi_add_to_addn) {
 
   graph.reset(pass->Apply(graph.release()));
   int num_nodes_after = graph->Nodes().size();
-  int num_sum_nodes_after = GetNumOpNodes(graph, "sum");
+  int num_addn_nodes_after = GetNumOpNodes(graph, "sum");
   VLOG(3) << DebugString(graph);
 
   PADDLE_ENFORCE_EQ(num_nodes_before, num_nodes_after + 2,
                     platform::errors::InvalidArgument(
                         "num_nodes_before=%d, num_nodes_after=%d.",
                         num_nodes_before, num_nodes_after));
-  PADDLE_ENFORCE_EQ(num_sum_nodes_after, 1,
-                    platform::errors::InvalidArgument("num_sum_nodes_after=%d.",
-                                                      num_sum_nodes_after));
-  PADDLE_ENFORCE_EQ(num_add_nodes_before, num_sum_nodes_after + 1,
+  PADDLE_ENFORCE_EQ(num_addn_nodes_after, 1,
                     platform::errors::InvalidArgument(
-                        "num_add_nodes_before=%d, num_sum_nodes_after=%d.",
-                        num_add_nodes_before, num_sum_nodes_after));
+                        "num_addn_nodes_after=%d.", num_addn_nodes_after));
+  PADDLE_ENFORCE_EQ(num_add_nodes_before, num_addn_nodes_after + 1,
+                    platform::errors::InvalidArgument(
+                        "num_add_nodes_before=%d, num_addn_nodes_after=%d.",
+                        num_add_nodes_before, num_addn_nodes_after));
 }
 
 TEST(GeneratePass, generate_combine_matmul) {
