@@ -57,7 +57,6 @@ from .common import interpolate  # noqa: F401
 from .common import upsample  # noqa: F401
 from .common import bilinear  # noqa: F401
 from .common import class_center_sample  # noqa: F401
-from .common import sparse_attention
 from .conv import conv1d  # noqa: F401
 from .conv import conv1d_transpose  # noqa: F401
 from .common import linear  # noqa: F401
@@ -112,6 +111,8 @@ from .input import one_hot  # noqa: F401
 from .input import embedding  # noqa: F401
 from ...fluid.layers import gather_tree  # noqa: F401
 from ...fluid.layers import temporal_shift  # noqa: F401
+
+from .sparse_attention import sparse_attention
 
 __all__ = [     #noqa
            'conv1d',
@@ -208,4 +209,5 @@ __all__ = [     #noqa
            'layer_norm',
            'instance_norm',
            'class_center_sample',
+           'sparse_attention',
 ]

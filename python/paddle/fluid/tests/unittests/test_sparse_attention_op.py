@@ -304,5 +304,13 @@ class TestSparseAttentionAPITestShape3(TestSparseAttentionAPI):
         self.dtype = 'float64'
 
 
+class TestSparseAttentionAPITestShape4(TestSparseAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (3, 3, 35, 15)
+        self.blocksize = 3
+        self.dtype = 'float64'
+
+
 if __name__ == '__main__':
     unittest.main()
