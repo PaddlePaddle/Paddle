@@ -58,8 +58,8 @@ def _start_kv_server(port, http_server_d, size):
 
 def _is_cpuonly(backend):
     check_backend(backend)
-    if backend in ['auto', 'nccl', 'bkcl'] and (core.is_compiled_with_cuda() or
-                                                core.is_compiled_with_xpu()):
+    if backend in ['auto', 'nccl', 'bkcl', 'hccl'] and (core.is_compiled_with_cuda() or
+                                                core.is_compiled_with_xpu() or core.is_compiled_with_npu()):
         # passes 'auto' and can use cuda or xpu, use the default logics. so return False
         return False
     else:
@@ -142,7 +142,7 @@ def init_parallel_env():
     is_cpu_only = _is_cpuonly(backend)
     # 1. gpu xpu check, must be gpu or xpu, 
     if not (is_cpu_only or core.is_compiled_with_cuda() or
-            core.is_compiled_with_xpu()):
+            core.is_compiled_with_xpu() or core.is_compiled_with_npu()):
         raise NotImplementedError(
             "If you want to use CPU-only version, please use 'gloo' as backend")
 
@@ -204,6 +204,8 @@ def init_parallel_env():
         place = core.CUDAPlace(parallel_env.device_id)
     elif core.is_compiled_with_xpu():
         place = core.XPUPlace(parallel_env.device_id)
+    elif core.is_compiled_with_npu():
+        place = core.NPUPlace(parallel_env.device_id)
 
     _set_expected_place(place)
     # init nccl or bkcl context
@@ -216,6 +218,9 @@ def init_parallel_env():
     elif core.is_compiled_with_xpu():
         parallel_helper._set_parallel_ctx(
             core.BKCLParallelContext(strategy, place))
+    elif core.is_compiled_with_npu():
+        parallel_helper._set_parallel_ctx(
+            core.HCCLParallelContext(strategy, place))
 
     other_endpoints = strategy.trainer_endpoints[:]
     other_endpoints.remove(strategy.current_endpoint)

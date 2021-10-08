@@ -36,6 +36,7 @@ limitations under the License. */
 #include "paddle/fluid/imperative/bkcl_context.h"
 #include "paddle/fluid/imperative/data_loader.h"
 #include "paddle/fluid/imperative/gloo_context.h"
+#include "paddle/fluid/imperative/hccl_context.h"
 #include "paddle/fluid/imperative/hooks.h"
 #include "paddle/fluid/imperative/layer.h"
 #include "paddle/fluid/imperative/nccl_context.h"
@@ -2335,6 +2336,18 @@ void BindImperative(py::module *m_ptr) {
       .def("init", [](imperative::GLOOParallelContext &self) { self.Init(); })
       .def("init_with_ring_id",
            &imperative::GLOOParallelContext::InitWithRingID,
+           py::arg("ring_id"));
+#endif
+
+#if defined(PADDLE_WITH_ASCEND_CL)
+  py::class_<imperative::HCCLParallelContext, imperative::ParallelContext,
+             std::shared_ptr<imperative::HCCLParallelContext>>(
+      m, "HCCLParallelContext")
+      .def(py::init<const imperative::ParallelStrategy &,
+                    const platform::NPUPlace &>())
+      .def("init", [](imperative::HCCLParallelContext &self) { self.Init(); })
+      .def("init_with_ring_id",
+           &imperative::HCCLParallelContext::InitWithRingID,
            py::arg("ring_id"));
 #endif
 
