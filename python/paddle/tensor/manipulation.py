@@ -2176,25 +2176,44 @@ def strided_slice(x, axes, starts, ends, strides, name=None):
 
 
 def tensordot(x, y, axes=2, name=None):
-    """
+    r"""
     This function computes a contraction, which sum the product of elements from two tensors along the given axes. 
 
     Args:
         x (Tensor): The left tensor for contraction with data type ``float32`` or ``float64``.
         y (Tensor): The right tensor for contraction with the same data type as ``x``.
-        axes (int|tuple|list|Tensor, optional):  The axes to contract for ``x`` and ``y``, defaulted to integer 2.
-            1. It could be a non-negative integer ``n``, in which the function will sum over the last ``n`` axes of ``x`` and the first ``n`` axes of ``y`` in order.
-            2. It could be a 1-d tuple or list with data type ``int``, in which ``x`` and ``y`` will be contracted along the same given axes. For example, ``axes``=[0, 1] applies contraction along the first two axes for ``x`` and  the first two axes for ``y``.
-            3. It could be a tuple or list containing one or two 1-d tuple|list|Tensor with data type ``int``. When containing one tuple|list|Tensor, the data in tuple|list|Tensor specified the same axes for ``x`` and ``y`` to contract. When containing two tuple|list|Tensor, the first will be applied to ``x`` and the second to ``y``. When containing more than two tuple|list|Tensor, only the first two axis sequences will be used while the others will be ignored.
-            4. It could be a tensor, in which the ``axes`` tensor will be translated to a python list using :ref:`tolist_en` and applied the same rules described above to determine the contraction axes. Note that the ``axes`` with Tensor type is ONLY available in Dygraph mode.
-        name(str, optional): The default value is None.  Normally there is no need for user to set this property. For more information, please refer to :ref:`api_guide_Name` .
+        axes (int|tuple|list|Tensor, optional):  The axes to contract for ``x`` and ``y``, defaulted to integer ``2``.
+
+            1. It could be a non-negative integer ``n``, 
+               in which the function will sum over the last ``n`` axes of ``x`` and the first ``n`` axes of ``y`` in order.
+        
+            2. It could be a 1-d tuple or list with data type ``int``, in which ``x`` and ``y`` will be contracted along the same given axes. 
+               For example, ``axes`` =[0, 1] applies contraction along the first two axes for ``x`` and the first two axes for ``y``.
+        
+            3. It could be a tuple or list containing one or two 1-d tuple|list|Tensor with data type ``int``. 
+               When containing one tuple|list|Tensor, the data in tuple|list|Tensor specified the same axes for ``x`` and ``y`` to contract. 
+               When containing two tuple|list|Tensor, the first will be applied to ``x`` and the second to ``y``. 
+               When containing more than two tuple|list|Tensor, only the first two axis sequences will be used while the others will be ignored.
+        
+            4. It could be a tensor, in which the ``axes`` tensor will be translated to a python list 
+               and applied the same rules described above to determine the contraction axes. 
+               Note that the ``axes`` with Tensor type is ONLY available in Dygraph mode.
+        name(str, optional): The default value is None.  Normally there is no need for user to set this property. 
+                             For more information, please refer to :ref:`api_guide_Name` .
 
     Return: 
-        Output (Tensor): The contraction result with the same data type as ``x`` and ``y``. In general, :math:`output.ndim = x.ndim + y.ndim - 2 \times n_{axes}`, where `n_{axes}` denotes the number of axes to be contracted.
+        Output (Tensor): The contraction result with the same data type as ``x`` and ``y``. 
+        In general, :math:`output.ndim = x.ndim + y.ndim - 2 \times n_{axes}`, where :math:`n_{axes}` denotes the number of axes to be contracted.
     
-    .. note::
-        This function supports tensor broadcast, the size in the corresponding dimensions of ``x`` and ``y`` should be equal, or applies to the broadcast rules.
-        This function also supports axes expansion, when the two given axis sequences for ``x`` and ``y`` are of different lengths, the shorter sequence will expand the same axes as the longer one at the end. For example, if ``axes``=[[0, 1, 2, 3], [1, 0]], the axis sequence for ``x`` is [0, 1, 2, 3], while the corresponding axis sequences for ``y`` will be expanded from [1, 0] to [1, 0, 2, 3].
+    NOTES:
+        1. This function supports tensor broadcast, 
+           the size in the corresponding dimensions of ``x`` and ``y`` should be equal, or applies to the broadcast rules.
+        2. This function also supports axes expansion, 
+           when the two given axis sequences for ``x`` and ``y`` are of different lengths, 
+           the shorter sequence will expand the same axes as the longer one at the end. 
+           For example, if ``axes``=[[0, 1, 2, 3], [1, 0]], 
+           the axis sequence for ``x`` is [0, 1, 2, 3], 
+           while the corresponding axis sequences for ``y`` will be expanded from [1, 0] to [1, 0, 2, 3].
   
     Examples:
         .. code-block:: python
