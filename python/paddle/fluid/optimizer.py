@@ -2048,11 +2048,9 @@ class LarsMomentumOptimizer(Optimizer):
 
     def _append_optimize_op(self, block, param_and_grad):
         assert isinstance(block, framework.Block)
-        _lars_weight_decay = self._lars_weight_decay
         attrs = {
             "mu": self._momentum,
             "lars_coeff": self._lars_coeff,
-            "lars_weight_decay": _lars_weight_decay,
             "rescale_grad": self._rescale_grad,
             "multi_precision": False
         }
@@ -2066,6 +2064,7 @@ class LarsMomentumOptimizer(Optimizer):
             grad_array = []
             param_array = []
             velocity_array = []
+            lars_weight_decay_array = []
             find_master = self._multi_precision and param_and_grad[0][
                 0].dtype == core.VarDesc.VarType.FP16
             master_weight_array = [] if find_master else None
@@ -2081,6 +2080,16 @@ class LarsMomentumOptimizer(Optimizer):
                     master_weight_array.append(self._master_weights[
                         param_and_grad_element[0].name])
 
+                if len(self._exclude_from_weight_decay) > 0:
+                    _lars_weight_decay = self._lars_weight_decay
+                    for name in self._exclude_from_weight_decay:
+                        if name in param_and_grad_element[0].name:
+                            _lars_weight_decay = 0.0
+                            break
+                    lars_weight_decay_array.append(_lars_weight_decay)
+                else:
+                    lars_weight_decay_array.append(self._lars_weight_decay)
+
             inputs = {
                 "Param": param_array,
                 "Grad": grad_array,
@@ -2089,6 +2098,7 @@ class LarsMomentumOptimizer(Optimizer):
             }
             outputs = {"ParamOut": param_array, "VelocityOut": velocity_array}
             attrs["merge_operation"] = self._merged_ops
+            attrs["lars_weight_decay"] = lars_weight_decay_array
 
             if find_master:
                 attrs["multi_precision"] = True
@@ -2104,13 +2114,6 @@ class LarsMomentumOptimizer(Optimizer):
                 stop_gradient=True)
             return lars_momentum_op
         else:
-            _lars_weight_decay = self._lars_weight_decay
-            param_name = param_and_grad[0].name
-            if len(self._exclude_from_weight_decay) > 0:
-                for name in self._exclude_from_weight_decay:
-                    if name in param_name:
-                        _lars_weight_decay = 0.0
-                        break
             velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                                  param_and_grad[0])
             lr = self._create_param_lr(param_and_grad)
@@ -2135,6 +2138,15 @@ class LarsMomentumOptimizer(Optimizer):
                 inputs["MasterParam"] = master_weight
                 outputs["MasterParamOut"] = master_weight
                 attrs["multi_precision"] = find_master
+
+            _lars_weight_decay = self._lars_weight_decay
+            param_name = param_and_grad[0].name
+            if len(self._exclude_from_weight_decay) > 0:
+                for name in self._exclude_from_weight_decay:
+                    if name in param_name:
+                        _lars_weight_decay = 0.0
+                        break
+            attrs["lars_weight_decay"] = _lars_weight_decay,
 
             # create the momentum optimize op
             momentum_op = block.append_op(

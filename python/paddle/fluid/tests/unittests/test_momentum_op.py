@@ -279,7 +279,7 @@ class TestMergedLarsMomentumOpWithMP(OpTest):
         self.op_type = "lars_momentum"
         mu = 0.0001
         lars_coeff = 0.001
-        lars_weight_decay = 0.0005
+        lars_weight_decay = [0.0005] * self.params_num
         rescale_grad = 1.0
 
         params = []
@@ -301,10 +301,10 @@ class TestMergedLarsMomentumOpWithMP(OpTest):
             pnorm = np.sqrt(np.square(master_param).sum())
             gnorm = np.sqrt(np.square(fp32_grad).sum())
             local_lr = learning_rate * lars_coeff * pnorm / (
-                gnorm + lars_weight_decay * pnorm)
+                gnorm + lars_weight_decay[i] * pnorm)
             fp32_grad = fp32_grad * rescale_grad
             velocity_out = mu * velocity + local_lr * (
-                fp32_grad + lars_weight_decay * master_param)
+                fp32_grad + lars_weight_decay[i] * master_param)
             p_new = master_param - velocity_out
             param_out = p_new.astype("float16")
             master_param_out = p_new

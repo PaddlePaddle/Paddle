@@ -509,12 +509,18 @@ class TestImperativeLarsMomentumOptimizer(TestImperativeOptimizerBase):
 class TestImperativeMergedLarsMomentumOptimizer(TestImperativeOptimizerBase):
     def get_optimizer_dygraph(self, parameter_list):
         optimizer = LarsMomentumOptimizer(
-            learning_rate=0.001, momentum=0.9, parameter_list=parameter_list)
+            learning_rate=0.001,
+            momentum=0.9,
+            exclude_from_weight_decay=['.b_0'],
+            parameter_list=parameter_list)
         return optimizer
 
     def get_optimizer(self):
         optimizer = LarsMomentumOptimizer(
-            learning_rate=0.001, momentum=0.9, merged_ops=True)
+            learning_rate=0.001,
+            momentum=0.9,
+            exclude_from_weight_decay=['.b_0'],
+            merged_ops=True)
         return optimizer
 
     def test_larsmomentum(self):
