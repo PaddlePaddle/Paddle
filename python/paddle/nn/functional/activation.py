@@ -37,7 +37,7 @@ def celu(x, alpha=1.0, name=None):
 
     .. math::
 
-        elu(x) = max(0, x) + min(0, \alpha * (e^{x/\alpha}-1))
+        celu(x) = max(0, x) + min(0, \alpha * (e^{x/\alpha}-1))
 
     Parameters:
         x (Tensor): The input Tensor with data type float32, float64.
