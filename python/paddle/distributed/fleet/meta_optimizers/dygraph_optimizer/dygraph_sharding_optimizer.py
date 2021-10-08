@@ -19,8 +19,6 @@ import paddle
 from paddle import framework
 from ...utils.log_util import logger
 
-import paddle.distributed as dist
-
 
 def _is_trainable(param: paddle.Tensor) -> bool:
     return not param.stop_gradient
@@ -50,6 +48,7 @@ class DygraphShardingOptimizer(object):
             params,
             inner_optimizer_class,
             reduce_bucket_size=500000000,
+            overlap_comm=False,
             **inner_optimizer_kargs, ):
 
         if not isinstance(params, list):
@@ -91,19 +90,25 @@ class DygraphShardingOptimizer(object):
         self._grads_in_grad_bucket = []
         self._params_in_grad_bucket = []
 
-        # generate param id for each param
-        self._param_id = {}
-        self._params_already_reduced = []
+        # store whether param is in this rank
+        self._is_param_in_current_rank = {}
+        self._params_in_current_rank = []
+        self._params_not_in_current_rank = []
+        for param in _parameter_list:
+            if self._param2rank[param.name] == self._sharding_rank:
+                self._is_param_in_current_rank[param.name] = True
+                self._params_in_current_rank.append(param)
+            else:
+                self._is_param_in_current_rank[param.name] = False
+                self._params_not_in_current_rank.append(param)
 
-        count = 0
+        # recording reduction of params
+        self._params_already_reduced = {}
         for param in self._parameter_list:
-            unique_id = id(param)
-            self._param_id[unique_id] = count
-            self._params_already_reduced.append(False)
-            count += 1
+            self._params_already_reduced[param.name] = False
 
         # use 2 overlapping cuda streams(default stream and reduction stream)
-        self._overlap_comm = False
+        self._overlap_comm = overlap_comm
 
         # register grad reduction and gc hooks
         self._hook_removers = []
@@ -197,6 +202,9 @@ class DygraphShardingOptimizer(object):
         """
         raise NotImplementedError
 
+    def _pre_update(self):
+        self._backward_pass_grad_reduction_epilogue()
+
     def minimize(self,
                  loss,
                  startup_program=None,
@@ -205,6 +213,9 @@ class DygraphShardingOptimizer(object):
 
         # NOTE in dygraph mode, the only different between step and minimize is that minimize 
         # allow user to customize the parameters for updating on each step
+
+        # do something before updating params
+        self._pre_update()
 
         input_param_names = set([param.name for param in parameters])
         parameters = list(
@@ -220,6 +231,9 @@ class DygraphShardingOptimizer(object):
 
     def step(self):
         # TODO Check whether the model trainable param changed and update state accordingly
+
+        # do something before updating params
+        self._pre_update()
 
         # actually updating
         self._inner_optimizer.step()
@@ -240,11 +254,30 @@ class DygraphShardingOptimizer(object):
     ################# Zero Stage 2: Gradient Sharding ###############
     #################################################################
 
+    # when backward pass is finished,
+    # use this epilogue to reduce and GC any remaining grads
+    def _backward_pass_grad_reduction_epilogue(self):
+        # reduce remaining grads in bucket
+        self._reduce_grads_immediately_and_gc()
+
+        if self._overlap_comm:
+            # sync remaining reduce kernels in stream
+            paddle.device.cuda.synchronize()
+            # GC grads reduced by these kernels
+            self._clear_previous_reduced_grads()
+
+        # reset reduction state of each param
+        for param in self._parameter_list:
+            self._params_already_reduced[param.name] = False
+
+    # create hook for each param when its grad is computed
     def _register_hooks_for_grad_reduction_and_gc(self):
-        #TODO: find grad_fn and next.functions in paddle
         for param in self._parameter_list:
             if param.requires_grad and not param.stop_gradient:
-                # define grad reduction closure here
+                # definition of grad reduction closure.
+                # the input of this closure (current gradient) is needed
+                # because when hook is being executed, param.grad is None
+                # only after hook finished its execution will param.grad be set
                 def reduce_grad_and_gc_closure(grad):
                     self._reduce_grad_buckets_and_gc(param, grad)
                 hook_remover = param.register_hook(reduce_grad_and_gc_closure)
@@ -255,12 +288,11 @@ class DygraphShardingOptimizer(object):
         for hook_remover in self._hook_removers:
             hook_remover.remove()
 
+    # use buckets for gradient reduction
     def _reduce_grad_buckets_and_gc(self, param, grad=None):
         # if grad bucket is full
         if self._elements_in_grad_bucket + param.numel() > self._grad_bucket_size:
             self._reduce_grads_immediately_and_gc()
-
-        param_id = self._get_param_id(param)
 
         # if a single param is larger than bucket size
         if param.numel() > self._grad_bucket_size:
@@ -272,27 +304,34 @@ class DygraphShardingOptimizer(object):
             self._grads_in_grad_bucket.append(param.grad)
         else:               # if entered by hooks
             self._grads_in_grad_bucket.append(grad)
-        self._elements_in_grad_bucket.append((param, param_id))
 
+        self._params_in_grad_bucket.append(param)
+
+    # reduce gradients immediately when grad bucket is full or backward pass is finished.
     def _reduce_grads_immediately_and_gc(self):
-
         if self._overlap_comm:
+            # wait for previous reduction kernels to complete
             paddle.device.cuda.synchronize()
+
+            # clear grads in last reduction
             self._clear_previous_reduced_grads()
+
+            # use reduction stream for reduction, default stream for calculation
             stream = self._reduction_stream
         else:
             stream = paddle.device.cuda.current_stream()
 
-        self._buffered_reduce(self._grads_in_grad_bucket, self._elements_in_grad_bucket)
-
         with paddle.device.cuda.stream_guard(stream):
-            for param, param_id in self._params_in_grad_bucket:
+            # step 1: reduction
+            self._buffered_reduce(self._grads_in_grad_bucket, self._elements_in_grad_bucket)
+
+            # step 2: gradient Garbage Collection
+            for param in self._params_in_grad_bucket:
                 # one param cannot be reduced twice
-                assert self._params_already_reduced[param_id] is False
+                assert self._params_already_reduced[param.name] is False
+                self._params_already_reduced[param.name] = True
 
-                self._params_already_reduced[param_id] = True
-
-                if not self._is_param_in_current_partition[param_id]:
+                if not self._is_param_in_current_rank[param.name]:
                     if self._overlap_comm:
                         # GC grads of other sharding ranks during the next reduction
                         # to avoid clearing them before the reduction is complete.
@@ -306,15 +345,31 @@ class DygraphShardingOptimizer(object):
         self._params_in_grad_bucket = []
         self._elements_in_grad_bucket = 0
 
-    # reduce averaged gradients
+    # reduce communicator for averaged gradients
     def _buffered_reduce(self, grads, params):
+        #TODO: fused param reduce
         for grad, param, _ in grads, zip(params):
             dst_rank = self._param2rank[param.name]
             tensor_to_reduce = grad.div_(1. / self._sharding_world_size)
-            dist.reduce(tensor_to_reduce,
+            paddle.distributed.reduce(tensor_to_reduce,
                         self._hcg.get_sharding_parallel_group().ranks[dst_rank],
                         group=self._hcg.get_sharding_parallel_group())
             grad.copy_(tensor_to_reduce)
+
+    # TODO: fuse multiple tensors for the same rank
+    def _buffered_reduce_rank_aggregation(self, grads, params):
+        # init data structures
+        params_group_by_rank = {}
+        for rank in range(self._sharding_world_size):
+            params_group_by_rank[rank] = []
+
+        # group params by rank
+        for param in params:
+            rank = self._param2rank[param.name]
+            params_group_by_rank[rank].append(param)
+
+        # TODO: Reduce Grouped Params
+        raise NotImplementedError("rank fuse not implemented!")
 
     # gc gradients
     def _clear_previous_reduced_grads(self):
@@ -323,9 +378,6 @@ class DygraphShardingOptimizer(object):
                 param.grad = None
             self._previous_reduced_grads = None
 
-    def _get_param_id(self, param):
-        unique_id = id(param)
-        return self._param_id[unique_id]
     #################################################################
     ################# Zero Stage 2 finishes #########################
     #################################################################
