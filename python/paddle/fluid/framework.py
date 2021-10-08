@@ -567,6 +567,7 @@ def npu_places(device_ids=None):
     """
     **Note**:
         For multi-card tasks, please use `FLAGS_selected_npus` environment variable to set the visible NPU device.
+    
     This function creates a list of :code:`paddle.NPUPlace` objects.
     If :code:`device_ids` is None, environment variable of
     :code:`FLAGS_selected_npus` would be checked first. For example, if
@@ -585,6 +586,7 @@ def npu_places(device_ids=None):
         list of paddle.NPUPlace: Created NPU place list.
     Examples:
         .. code-block:: python
+
             # required: npu
 
             import paddle
