@@ -234,7 +234,36 @@ class AllocatorFacadePrivate {
     int device_count = platform::GetCUDADeviceCount();
     for (int i = 0; i < device_count; ++i) {
       platform::CUDAPlace p(i);
+#if CUDA_VERSION >= 10020
+      CUdevice device;
+      auto result =
+          paddle::platform::dynload::cuDeviceGet(&device, p.GetDeviceId());
+      PADDLE_ENFORCE_EQ(
+          result, CUDA_SUCCESS,
+          platform::errors::Fatal("Call CUDA API cuDeviceGet faild, return %d.",
+                                  result));
+
+      int val;
+      result = paddle::platform::dynload::cuDeviceGetAttribute(
+          &val, CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
+          device);
+      PADDLE_ENFORCE_EQ(
+          result, CUDA_SUCCESS,
+          platform::errors::Fatal(
+              "Call CUDA API cuDeviceGetAttribute faild, return %d.", result));
+
+      if (val > 0) {
+        auto cuda_allocator = std::make_shared<CUDAVirtualMemAllocator>(p);
+        system_allocators_[p] = std::make_shared<AutoGrowthBestFitAllocatorV2>(
+            cuda_allocator, platform::GpuMinChunkSize());
+      } else {
+        auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
+        system_allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
+            cuda_allocator, platform::GpuMinChunkSize());
+      }
+#else
       system_allocators_[p] = std::make_shared<CUDAAllocator>(p);
+#endif
     }
 #endif
   }
