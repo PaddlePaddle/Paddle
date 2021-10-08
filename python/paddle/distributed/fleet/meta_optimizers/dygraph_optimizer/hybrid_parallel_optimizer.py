@@ -88,6 +88,13 @@ class HybridParallelClipGrad:
         paddle.distributed.all_reduce(
             global_norm_var_dist, group=self._hcg.get_check_parallel_group())
 
+        # In Sharding mode, param and grad is mapping different rank in optimizer.
+        # ClipGradByGlobalNorm need allreduce to get globol norm
+        if self._hcg.get_sharding_parallel_world_size() > 1:
+            paddle.distributed.all_reduce(
+                global_norm_var_not_dist,
+                group=self._hcg.get_sharding_parallel_group())
+
         global_norm_var = layers.sqrt(global_norm_var_dist +
                                       global_norm_var_not_dist)
 
@@ -140,7 +147,7 @@ class HybridParallelOptimizer:
                   "optmizer'grad clip will be changed.")
 
             if self._sharding_enable:
-                self._inner_opt._inner_optimizer_class._grad_clip = HybridParallelClipGrad(
+                self._inner_opt._inner_optimizer._grad_clip = HybridParallelClipGrad(
                     self._inner_opt._grad_clip, hcg)
             else:
                 self._inner_opt._grad_clip = HybridParallelClipGrad(
