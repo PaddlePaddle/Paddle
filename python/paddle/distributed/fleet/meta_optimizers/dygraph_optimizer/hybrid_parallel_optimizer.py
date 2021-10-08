@@ -147,6 +147,7 @@ class HybridParallelOptimizer:
                   "optmizer'grad clip will be changed.")
 
             if self._sharding_enable:
+                # change sharding inner_optimizer's _grad_clip
                 self._inner_opt._inner_optimizer._grad_clip = HybridParallelClipGrad(
                     self._inner_opt._grad_clip, hcg)
             else:
