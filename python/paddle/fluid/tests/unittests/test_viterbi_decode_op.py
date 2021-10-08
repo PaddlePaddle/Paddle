@@ -124,8 +124,9 @@ class TestViterbiAPI(unittest.TestCase):
             Transition = fluid.data(
                 name="Transition", shape=[ntags, ntags], dtype="float32")
             Length = fluid.data(name="Length", shape=[bz], dtype="int64")
-            score, path = paddle.text.crf_decode(Input, Transition, Length,
+            decoder = paddle.text.ViterbiDecoder(Transition,
                                                  self.with_start_stop_tag)
+            score, path = decoder(Input, Length)
             exe = fluid.Executor(place)
             feed_list = {
                 "Input": self.input,
