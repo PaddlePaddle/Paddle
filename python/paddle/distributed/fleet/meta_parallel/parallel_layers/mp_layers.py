@@ -144,7 +144,7 @@ class ColumnParallelLinear(Layer):
                 attr=paddle.nn.initializer.Constant(value=0.0),
                 dtype=self._dtype,
                 is_bias=True)
-            self.weight.is_distributed = True if self.is_mp else False
+            self.bias.is_distributed = True if self.is_mp else False
         else:
             self.bias = None
 
