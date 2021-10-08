@@ -34,7 +34,7 @@ def channel_shuffle(x: Tensor, groups: int) -> Tensor:
     return x
 
 
-class InvertedResidual(nn.Module):
+class InvertedResidual(nn.Layer):
     def __init__(self, inp: int, oup: int, stride: int) -> None:
         super(InvertedResidual, self).__init__()
 
@@ -76,7 +76,7 @@ class InvertedResidual(nn.Module):
     @staticmethod
     def depthwise_conv(
         i: int, o: int, kernel_size: int, stride: int = 1, padding: int = 0, bias: bool = False
-    ) -> nn.Conv2d:
+    ) -> nn.Conv2D:
         return nn.Conv2D(i, o, kernel_size, stride, padding, bias=bias, groups=i)
 
     def forward(self, x: Tensor) -> Tensor:
@@ -91,13 +91,13 @@ class InvertedResidual(nn.Module):
         return out
 
 
-class ShuffleNetV2(nn.Module):
+class ShuffleNetV2(nn.Layer):
     def __init__(
         self,
         stages_repeats: List[int],
         stages_out_channels: List[int],
         num_classes: int = 1000,
-        inverted_residual: Callable[..., nn.Module] = InvertedResidual,
+        inverted_residual: Callable[..., nn.Layer] = InvertedResidual,
     ) -> None:
         super(ShuffleNetV2, self).__init__()
 
@@ -169,7 +169,7 @@ def _shufflenetv2(arch: str, pretrained: bool, progress: bool, *args: Any, **kwa
 
     return model
 
-def shufflnet_v2_x0_25(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> ShuffleNetV2:
+def shufflenet_v2_x0_25(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> ShuffleNetV2:
     """
     Constructs a ShuffleNetV2 with 0.5x output channels, as described in
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design"
@@ -180,7 +180,7 @@ def shufflnet_v2_x0_25(pretrained: bool = False, progress: bool = True, **kwargs
     """
     return _shufflenetv2("shufflenetv2_x0.25", pretrained, progress, [4, 8, 4], [24, 24, 48, 96, 512], **kwargs)
 
-def shufflnet_v2_x0_33(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> ShuffleNetV2:
+def shufflenet_v2_x0_33(pretrained: bool = False, progress: bool = True, **kwargs: Any) -> ShuffleNetV2:
     """
     Constructs a ShuffleNetV2 with 0.5x output channels, as described in
     `"ShuffleNet V2: Practical Guidelines for Efficient CNN Architecture Design"

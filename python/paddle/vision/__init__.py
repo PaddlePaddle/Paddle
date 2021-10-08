@@ -38,6 +38,13 @@ from .models import MobileNetV1  # noqa: F401
 from .models import mobilenet_v1  # noqa: F401
 from .models import MobileNetV2  # noqa: F401
 from .models import mobilenet_v2  # noqa: F401
+from .models import ShuffleNetV2 # noqa: F401
+from .models import shufflenet_v2_x0_25  #noqa: F401
+from .models import shufflenet_v2_x0_33  #noqa: F401
+from .models import shufflenet_v2_x0_5   #noqa: F401
+from .models import shufflenet_v2_x1_0   #noqa: F401
+from .models import shufflenet_v2_x1_5   #noqa: F401
+from .models import shufflenet_v2_x0_5   #noqa: F401
 from .models import VGG  # noqa: F401
 from .models import vgg11  # noqa: F401
 from .models import vgg13  # noqa: F401

@@ -70,6 +70,24 @@ class TestVisonModels(unittest.TestCase):
 
     def test_resnet152(self):
         self.models_infer('resnet152')
+    
+    def test_shufflenet_v2_x0_25(self):
+        self.models_infer('shufflenet_v2_x0_25')
+
+    def test_shufflenet_v2_x0_33(self):
+        self.models_infer('shufflenet_v2_x0_33')
+
+    def test_shufflenet_v2_x0_5(self):
+        self.models_infer('shufflenet_v2_x0_5')
+
+    def test_shufflenet_v2_x1_0(self):
+        self.models_infer('shufflenet_v2_x1_0')
+
+    def test_shufflenet_v2_x1_5(self):
+        self.models_infer('shufflenet_v2_x1_5')
+
+    def test_shufflenet_v2_x2_0(self):
+        self.models_infer('shufflenet_v2_x2_0')
 
     def test_vgg16_num_classes(self):
         vgg16 = models.__dict__['vgg16'](pretrained=False, num_classes=10)
