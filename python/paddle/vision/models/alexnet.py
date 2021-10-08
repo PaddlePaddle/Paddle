@@ -153,6 +153,7 @@ class AlexNet(nn.Layer):
             x = self._fc7(x)
             x = F.relu(x)
             x = self._fc8(x)
+
         return x
 
 
