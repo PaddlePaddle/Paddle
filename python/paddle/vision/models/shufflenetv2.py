@@ -70,8 +70,7 @@ class ConvBNLayer(Layer):
             stride,
             padding,
             groups=1,
-            act=None,
-            name=None, ):
+            act=None):
         super(ConvBNLayer, self).__init__()
         self._conv = Conv2D(
             in_channels=in_channels,
@@ -81,16 +80,14 @@ class ConvBNLayer(Layer):
             padding=padding,
             groups=groups,
             weight_attr=ParamAttr(
-                initializer=KaimingNormal(), name=name + "_weights"),
+                initializer=KaimingNormal()),
             bias_attr=False)
 
         self._batch_norm = BatchNorm(
             out_channels,
-            param_attr=ParamAttr(name=name + "_bn_scale"),
-            bias_attr=ParamAttr(name=name + "_bn_offset"),
-            act=act,
-            moving_mean_name=name + "_bn_mean",
-            moving_variance_name=name + "_bn_variance")
+            param_attr=ParamAttr(),
+            bias_attr=ParamAttr(),
+            act=act)
 
     def forward(self, inputs):
         y = self._conv(inputs)
@@ -103,8 +100,7 @@ class InvertedResidual(Layer):
                  in_channels,
                  out_channels,
                  stride,
-                 act="relu",
-                 name=None):
+                 act="relu"):
         super(InvertedResidual, self).__init__()
         self._conv_pw = ConvBNLayer(
             in_channels=in_channels // 2,
@@ -113,8 +109,7 @@ class InvertedResidual(Layer):
             stride=1,
             padding=0,
             groups=1,
-            act=act,
-            name='stage_' + name + '_conv1')
+            act=act)
         self._conv_dw = ConvBNLayer(
             in_channels=out_channels // 2,
             out_channels=out_channels // 2,
@@ -122,8 +117,7 @@ class InvertedResidual(Layer):
             stride=stride,
             padding=1,
             groups=out_channels // 2,
-            act=None,
-            name='stage_' + name + '_conv2')
+            act=None)
         self._conv_linear = ConvBNLayer(
             in_channels=out_channels // 2,
             out_channels=out_channels // 2,
@@ -131,8 +125,7 @@ class InvertedResidual(Layer):
             stride=1,
             padding=0,
             groups=1,
-            act=act,
-            name='stage_' + name + '_conv3')
+            act=act)
 
     def forward(self, inputs):
         x1, x2 = split(
@@ -151,8 +144,7 @@ class InvertedResidualDS(Layer):
                  in_channels,
                  out_channels,
                  stride,
-                 act="relu",
-                 name=None):
+                 act="relu"):
         super(InvertedResidualDS, self).__init__()
 
         # branch1
@@ -163,8 +155,7 @@ class InvertedResidualDS(Layer):
             stride=stride,
             padding=1,
             groups=in_channels,
-            act=None,
-            name='stage_' + name + '_conv4')
+            act=None)
         self._conv_linear_1 = ConvBNLayer(
             in_channels=in_channels,
             out_channels=out_channels // 2,
@@ -172,8 +163,7 @@ class InvertedResidualDS(Layer):
             stride=1,
             padding=0,
             groups=1,
-            act=act,
-            name='stage_' + name + '_conv5')
+            act=act)
         # branch2
         self._conv_pw_2 = ConvBNLayer(
             in_channels=in_channels,
@@ -182,8 +172,7 @@ class InvertedResidualDS(Layer):
             stride=1,
             padding=0,
             groups=1,
-            act=act,
-            name='stage_' + name + '_conv1')
+            act=act)
         self._conv_dw_2 = ConvBNLayer(
             in_channels=out_channels // 2,
             out_channels=out_channels // 2,
@@ -191,8 +180,7 @@ class InvertedResidualDS(Layer):
             stride=stride,
             padding=1,
             groups=out_channels // 2,
-            act=None,
-            name='stage_' + name + '_conv2')
+            act=None)
         self._conv_linear_2 = ConvBNLayer(
             in_channels=out_channels // 2,
             out_channels=out_channels // 2,
@@ -200,8 +188,7 @@ class InvertedResidualDS(Layer):
             stride=1,
             padding=0,
             groups=1,
-            act=act,
-            name='stage_' + name + '_conv3')
+            act=act)
 
     def forward(self, inputs):
         x1 = self._conv_dw_1(inputs)
@@ -257,8 +244,7 @@ class ShuffleNetV2(Layer):
             kernel_size=3,
             stride=2,
             padding=1,
-            act=act,
-            name='stage1_conv')
+            act=act)
         self._max_pool = MaxPool2D(kernel_size=3, stride=2, padding=1)
 
         # 2. bottleneck sequences
@@ -272,8 +258,7 @@ class ShuffleNetV2(Layer):
                             in_channels=stage_out_channels[stage_id + 1],
                             out_channels=stage_out_channels[stage_id + 2],
                             stride=2,
-                            act=act,
-                            name=str(stage_id + 2) + '_' + str(i + 1)))
+                            act=act))
                 else:
                     block = self.add_sublayer(
                         name=str(stage_id + 2) + '_' + str(i + 1),
@@ -281,8 +266,7 @@ class ShuffleNetV2(Layer):
                             in_channels=stage_out_channels[stage_id + 2],
                             out_channels=stage_out_channels[stage_id + 2],
                             stride=1,
-                            act=act,
-                            name=str(stage_id + 2) + '_' + str(i + 1)))
+                            act=act))
                 self._block_list.append(block)
         # 3. last_conv
         self._last_conv = ConvBNLayer(
@@ -291,8 +275,7 @@ class ShuffleNetV2(Layer):
             kernel_size=1,
             stride=1,
             padding=0,
-            act=act,
-            name='conv5')
+            act=act)
         # 4. pool
         self._pool2d_avg = AdaptiveAvgPool2D(1)
         self._out_c = stage_out_channels[-1]
@@ -300,8 +283,8 @@ class ShuffleNetV2(Layer):
         self._fc = Linear(
             stage_out_channels[-1],
             num_classes,
-            weight_attr=ParamAttr(name='fc6_weights'),
-            bias_attr=ParamAttr(name='fc6_offset'))
+            weight_attr=ParamAttr(),
+            bias_attr=ParamAttr())
 
     def forward(self, inputs):
         y = self._conv1(inputs)
