@@ -253,21 +253,17 @@ class TestCudnnBNAddReluForward {
     int32_t *bitmask_ptr = bitmask_.mutable_data<int32_t>(place_);
 
     // 1. BN Stats Finalize
-    std::shared_ptr<op::CudnnBNStatsFinalizeOp<T>> bn_op(
-        new op::CudnnBNStatsFinalizeOp<T>());
-    bn_op->Init(*ctx_, param_shape);
-    bn_op->Forward(*ctx_, sum_ptr, sum_of_squares_ptr, scale_ptr, bias_ptr,
-                   saved_mean_ptr, saved_var_ptr, mean_ptr, var_ptr,
-                   equiv_scale_ptr, equiv_bias_ptr, eps_, momentum_, ele_count_,
-                   true);
+    op::CudnnBNStatsFinalize<T> bn_op(*ctx_, param_shape);
+    bn_op.Forward(*ctx_, sum_ptr, sum_of_squares_ptr, scale_ptr, bias_ptr,
+                  saved_mean_ptr, saved_var_ptr, mean_ptr, var_ptr,
+                  equiv_scale_ptr, equiv_bias_ptr, eps_, momentum_, ele_count_,
+                  true);
     // 2. Scale Bias + Relu (not fused add)
     std::string act_type = "";
-    std::shared_ptr<op::CudnnScaleBiasAddReluOp<T>> sbar_op(
-        new op::CudnnScaleBiasAddReluOp<T>(false, false));
-    sbar_op->Init(*ctx_, act_type, data_shape, bitmask_shape, data_shape,
-                  param_shape);
-    sbar_op->Forward(*ctx_, x_ptr, equiv_scale_ptr, equiv_bias_ptr, y_ptr,
-                     bitmask_ptr);
+    op::CudnnScaleBiasAddRelu<T> sbar_op(
+        *ctx_, act_type, false, false, data_shape, param_shape, bitmask_shape);
+    sbar_op.Forward(*ctx_, x_ptr, equiv_scale_ptr, equiv_bias_ptr, y_ptr,
+                    bitmask_ptr);
 
     ctx_->Wait();
   }

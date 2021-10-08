@@ -108,18 +108,16 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
     // 2. BN
     float *scale_x_ptr = const_cast<float *>(scale_x->data<float>());
     float *bias_x_ptr = const_cast<float *>(bias_x->data<float>());
-    std::shared_ptr<CudnnBNStatsFinalizeOp<T>> bn_x_op(
-        new CudnnBNStatsFinalizeOp<T>());
-    bn_x_op->Init(dev_ctx, param_shape);
-    bn_x_op->Forward(dev_ctx, sum_x_ptr, sum_of_squares_x_ptr, scale_x_ptr,
-                     bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
-                     running_mean_x_ptr, running_var_x_ptr, equiv_scale_x_ptr,
-                     equiv_bias_x_ptr, eps, momentum, ele_count,
-                     use_global_stats);
+    CudnnBNStatsFinalize<T> bn_x_op(dev_ctx, param_shape);
+    bn_x_op.Forward(dev_ctx, sum_x_ptr, sum_of_squares_x_ptr, scale_x_ptr,
+                    bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
+                    running_mean_x_ptr, running_var_x_ptr, equiv_scale_x_ptr,
+                    equiv_bias_x_ptr, eps, momentum, ele_count,
+                    use_global_stats);
 
     // 3. scale + bias + add + relu
-    std::shared_ptr<CudnnScaleBiasAddReluOp<T>> sbar_op(
-        new CudnnScaleBiasAddReluOp<T>(fused_add, has_shortcut));
+    CudnnScaleBiasAddRelu<T> sbar_op(dev_ctx, act_type, fused_add, has_shortcut,
+                                     output_shape, param_shape, bitmask_shape);
     if (has_shortcut) {
       // input z
       const Tensor *input_z = ctx.Input<Tensor>("Z");
@@ -164,36 +162,28 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
       // 3.2 BN for second input
       float *scale_z_ptr = const_cast<float *>(scale_z->data<float>());
       float *bias_z_ptr = const_cast<float *>(bias_z->data<float>());
-      std::shared_ptr<CudnnBNStatsFinalizeOp<T>> bn_z_op(
-          new CudnnBNStatsFinalizeOp<T>());
-      bn_z_op->Init(dev_ctx, param_shape);
-      bn_z_op->Forward(dev_ctx, sum_z_ptr, sum_of_squares_z_ptr, scale_z_ptr,
-                       bias_z_ptr, saved_mean_z_ptr, saved_invstd_z_ptr,
-                       running_mean_z_ptr, running_var_z_ptr, equiv_scale_z_ptr,
-                       equiv_bias_z_ptr, eps, momentum, ele_count,
-                       use_global_stats);
+      CudnnBNStatsFinalize<T> bn_z_op(dev_ctx, param_shape);
+      bn_z_op.Forward(dev_ctx, sum_z_ptr, sum_of_squares_z_ptr, scale_z_ptr,
+                      bias_z_ptr, saved_mean_z_ptr, saved_invstd_z_ptr,
+                      running_mean_z_ptr, running_var_z_ptr, equiv_scale_z_ptr,
+                      equiv_bias_z_ptr, eps, momentum, ele_count,
+                      use_global_stats);
       // 3.3 sbar
-      sbar_op->Init(dev_ctx, act_type, output_shape, bitmask_shape,
-                    output_shape, param_shape, output_shape);
-      sbar_op->Forward(dev_ctx, conv_out_x_ptr, equiv_scale_x_ptr,
-                       equiv_bias_x_ptr, output_ptr, bitmask_ptr,
-                       conv_out_z_ptr, equiv_scale_z_ptr, equiv_bias_z_ptr);
+      sbar_op.Forward(dev_ctx, conv_out_x_ptr, equiv_scale_x_ptr,
+                      equiv_bias_x_ptr, output_ptr, bitmask_ptr, conv_out_z_ptr,
+                      equiv_scale_z_ptr, equiv_bias_z_ptr);
     } else {
       if (fused_add) {
         // input z
         const Tensor *input_z = ctx.Input<Tensor>("Z");
         T *input_z_ptr = const_cast<T *>(input_z->data<T>());
         auto input_z_shape = framework::vectorize<int>(input_z->dims());
-        sbar_op->Init(dev_ctx, act_type, output_shape, bitmask_shape,
-                      output_shape, param_shape, input_z_shape);
-        sbar_op->Forward(dev_ctx, conv_out_x_ptr, equiv_scale_x_ptr,
-                         equiv_bias_x_ptr, output_ptr, bitmask_ptr,
-                         const_cast<T *>(input_z_ptr));
+        sbar_op.Forward(dev_ctx, conv_out_x_ptr, equiv_scale_x_ptr,
+                        equiv_bias_x_ptr, output_ptr, bitmask_ptr,
+                        const_cast<T *>(input_z_ptr));
       } else {
-        sbar_op->Init(dev_ctx, act_type, output_shape, bitmask_shape,
-                      output_shape, param_shape);
-        sbar_op->Forward(dev_ctx, conv_out_x_ptr, equiv_scale_x_ptr,
-                         equiv_bias_x_ptr, output_ptr, bitmask_ptr);
+        sbar_op.Forward(dev_ctx, conv_out_x_ptr, equiv_scale_x_ptr,
+                        equiv_bias_x_ptr, output_ptr, bitmask_ptr);
       }
     }
   }
@@ -276,8 +266,9 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
     T *dconv_out_x_ptr = dconv_out_x.mutable_data<T>(conv_out_x->dims(), place);
 
     // 1. bn add relu backward, get dconv_out_x, dscale_x, dbias_x
-    std::shared_ptr<CudnnScaleBiasAddReluOp<T>> sbar_x_op(
-        new CudnnScaleBiasAddReluOp<T>(fused_add, has_shortcut));
+    CudnnScaleBiasAddRelu<T> sbar_x_op(dev_ctx, act_type, fused_add,
+                                       has_shortcut, output_shape, param_shape,
+                                       bitmask_shape);
     if (has_shortcut) {
       // get dconv_out_z, dz, dscale_z and dbias_z
       // forward input (backward input)
@@ -321,21 +312,17 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
       // temp grad for z
       Tensor dz_temp;
       T *dz_temp_ptr = dz_temp.mutable_data<T>(conv_out_z->dims(), place);
-      sbar_x_op->Init(dev_ctx, act_type, output_shape, bitmask_shape,
-                      output_shape, param_shape, output_shape);
-      sbar_x_op->Backward(dev_ctx, doutput_ptr, conv_out_x_ptr, scale_x_ptr,
-                          bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
-                          bitmask_ptr, dconv_out_x_ptr, dz_temp_ptr,
-                          dscale_x_ptr, dbias_x_ptr, eps);
+      sbar_x_op.Backward(dev_ctx, doutput_ptr, conv_out_x_ptr, scale_x_ptr,
+                         bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
+                         bitmask_ptr, dconv_out_x_ptr, dz_temp_ptr,
+                         dscale_x_ptr, dbias_x_ptr, eps);
       // 1.2 bn backward for z, get dconv_out_z, dscale_z, dbias_z
-      std::shared_ptr<CudnnScaleBiasAddReluOp<T>> sbar_z_op(
-          new CudnnScaleBiasAddReluOp<T>(false, false));
-      sbar_z_op->Init(dev_ctx, "", output_shape, bitmask_shape, output_shape,
-                      param_shape);
-      sbar_z_op->Backward(dev_ctx, dz_temp_ptr, conv_out_z_ptr, scale_z_ptr,
-                          bias_z_ptr, saved_mean_z_ptr, saved_invstd_z_ptr,
-                          nullptr, dconv_out_z_ptr, nullptr, dscale_z_ptr,
-                          dbias_z_ptr, eps);
+      CudnnScaleBiasAddRelu<T> sbar_z_op(
+          dev_ctx, "", false, false, output_shape, param_shape, bitmask_shape);
+      sbar_z_op.Backward(dev_ctx, dz_temp_ptr, conv_out_z_ptr, scale_z_ptr,
+                         bias_z_ptr, saved_mean_z_ptr, saved_invstd_z_ptr,
+                         nullptr, dconv_out_z_ptr, nullptr, dscale_z_ptr,
+                         dbias_z_ptr, eps);
       // 1.3 conv backward for z, get dinput_z and dfilter_z
       auto input_z_shape = framework::vectorize<int>(input_z->dims());
       auto filter_z_shape = framework::vectorize<int>(filter_z->dims());
@@ -350,20 +337,16 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
         // and dinput_z
         Tensor *dinput_z = ctx.Output<Tensor>(framework::GradVarName("Z"));
         MALLOC_AND_GET_PTR(dinput_z, T, place)
-        sbar_x_op->Init(dev_ctx, act_type, output_shape, bitmask_shape,
-                        output_shape, param_shape, output_shape);
-        sbar_x_op->Backward(dev_ctx, doutput_ptr, conv_out_x_ptr, scale_x_ptr,
-                            bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
-                            bitmask_ptr, dconv_out_x_ptr, dinput_z_ptr,
-                            dscale_x_ptr, dbias_x_ptr, eps);
+        sbar_x_op.Backward(dev_ctx, doutput_ptr, conv_out_x_ptr, scale_x_ptr,
+                           bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
+                           bitmask_ptr, dconv_out_x_ptr, dinput_z_ptr,
+                           dscale_x_ptr, dbias_x_ptr, eps);
       } else {
         // 1.1 bn add relu backward for x, get dconv_out_x, dscale_x, dbias_x
-        sbar_x_op->Init(dev_ctx, act_type, output_shape, bitmask_shape,
-                        output_shape, param_shape);
-        sbar_x_op->Backward(dev_ctx, doutput_ptr, conv_out_x_ptr, scale_x_ptr,
-                            bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
-                            bitmask_ptr, dconv_out_x_ptr, nullptr, dscale_x_ptr,
-                            dbias_x_ptr, eps);
+        sbar_x_op.Backward(dev_ctx, doutput_ptr, conv_out_x_ptr, scale_x_ptr,
+                           bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
+                           bitmask_ptr, dconv_out_x_ptr, nullptr, dscale_x_ptr,
+                           dbias_x_ptr, eps);
       }
     }
     // 2. conv backward for x, get dinput_x and dfilter_x
