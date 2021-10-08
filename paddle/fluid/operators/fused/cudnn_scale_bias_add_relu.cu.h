@@ -97,7 +97,9 @@ class CudnnScaleBiasAddRelu {
                         const std::string &act_type, bool fused_add,
                         bool has_shortcut, const std::vector<int> &data_shape,
                         const std::vector<int> &param_shape,
-                        const std::vector<int> &bitmask_shape) {
+                        const std::vector<int> &bitmask_shape)
+      : fwd_op_(CUDNN_FUSED_SCALE_BIAS_ADD_ACTIVATION_GEN_BITMASK),
+        bwd_op_(CUDNN_FUSED_DACTIVATION_FORK_DBATCHNORM) {
     fused_add_ = fused_add;
     has_shortcut_ = has_shortcut;
     args_.Set(act_type, data_shape, param_shape, bitmask_shape);
@@ -109,38 +111,38 @@ class CudnnScaleBiasAddRelu {
                T *x_bias_ptr, T *out_ptr, int32_t *bitmask_ptr,
                T *z_ptr = nullptr, T *z_scale_ptr = nullptr,
                T *z_bias_ptr = nullptr) {
+    ForwardInit(ctx);
     auto handle = ctx.cudnn_handle();
     auto workspace_handle = ctx.cudnn_workspace_handle();
-    CudnnFusionOp *fwd_op = GetForwardOp(ctx);
-    fwd_workspace_byte_ = fwd_op->GetWorkspaceSizeInBytes(handle);
+    fwd_workspace_byte_ = fwd_op_.GetWorkspaceSizeInBytes(handle);
     // Set variant_param
     // input ptr
-    fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, x_ptr);
-    fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQSCALE, x_scale_ptr);
-    fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQBIAS, x_bias_ptr);
+    fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, x_ptr);
+    fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQSCALE, x_scale_ptr);
+    fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQBIAS, x_bias_ptr);
     if (has_shortcut_) {
-      fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_ZDATA, z_ptr);
-      fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_Z_EQSCALE, z_scale_ptr);
-      fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_Z_EQBIAS, z_bias_ptr);
+      fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ZDATA, z_ptr);
+      fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_Z_EQSCALE, z_scale_ptr);
+      fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_Z_EQBIAS, z_bias_ptr);
     } else {
       if (fused_add_) {
-        fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_ZDATA, z_ptr);
+        fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ZDATA, z_ptr);
       }
     }
 
-    fwd_op->SetOpVariantParamAttrPtr(
+    fwd_op_.SetOpVariantParamAttrPtr(
         CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &fwd_workspace_byte_);
 
     // output ptr
-    fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_YDATA, out_ptr);
-    fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_ACTIVATION_BITMASK, bitmask_ptr);
+    fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_YDATA, out_ptr);
+    fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ACTIVATION_BITMASK, bitmask_ptr);
 
     workspace_handle.RunFunc(
         [&](void *workspace_ptr) {
           // workspace ptr
-          fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE, workspace_ptr);
+          fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE, workspace_ptr);
           // workspace ptr
-          fwd_op->Execute(handle);
+          fwd_op_.Execute(handle);
         },
         fwd_workspace_byte_);
   }
@@ -149,100 +151,95 @@ class CudnnScaleBiasAddRelu {
                 float *scale_ptr, float *bias_ptr, float *saved_mean_ptr,
                 float *saved_invstd_ptr, int32_t *bitmask_ptr, T *dx_ptr,
                 T *dz_ptr, float *dscale_ptr, float *dbias_ptr, double eps) {
+    BackwardInit(ctx);
     auto handle = ctx.cudnn_handle();
     auto workspace_handle = ctx.cudnn_workspace_handle();
-    CudnnFusionOp *bwd_op = GetBackwardOp(ctx);
-    bwd_workspace_byte_ = bwd_op->GetWorkspaceSizeInBytes(handle);
+    bwd_workspace_byte_ = bwd_op_.GetWorkspaceSizeInBytes(handle);
     // Set variant_param
     // input ptr
-    bwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, x_ptr);
-    bwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_DYDATA, dy_ptr);
-    bwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SCALE, scale_ptr);
-    bwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_BIAS, bias_ptr);
-    bwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SAVED_MEAN, saved_mean_ptr);
-    bwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SAVED_INVSTD,
+    bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, x_ptr);
+    bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_DYDATA, dy_ptr);
+    bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SCALE, scale_ptr);
+    bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_BIAS, bias_ptr);
+    bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SAVED_MEAN, saved_mean_ptr);
+    bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SAVED_INVSTD,
                                      saved_invstd_ptr);
-    bwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_ACTIVATION_BITMASK, bitmask_ptr);
+    bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ACTIVATION_BITMASK, bitmask_ptr);
 
-    bwd_op->SetOpVariantParamAttrPtr(
+    bwd_op_.SetOpVariantParamAttrPtr(
         CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &bwd_workspace_byte_);
 
     // output ptr
-    bwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_DXDATA, dx_ptr);
-    bwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_DSCALE, dscale_ptr);
-    bwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_DBIAS, dbias_ptr);
-    bwd_op->SetOpVariantParamAttrPtr<double>(CUDNN_SCALAR_DOUBLE_BN_EPSILON,
+    bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_DXDATA, dx_ptr);
+    bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_DSCALE, dscale_ptr);
+    bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_DBIAS, dbias_ptr);
+    bwd_op_.SetOpVariantParamAttrPtr<double>(CUDNN_SCALAR_DOUBLE_BN_EPSILON,
                                              &eps);
     if (has_shortcut_ || fused_add_) {
-      bwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_DZDATA, dz_ptr);
+      bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_DZDATA, dz_ptr);
     }
 
     workspace_handle.RunFunc(
         [&](void *workspace_ptr) {
           // workspace ptr
-          bwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE, workspace_ptr);
+          bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE, workspace_ptr);
           // workspace ptr
-          bwd_op->Execute(handle);
+          bwd_op_.Execute(handle);
         },
         bwd_workspace_byte_);
   }
 
  private:
-  CudnnFusionOp *GetForwardOp(const platform::CUDADeviceContext &ctx) {
-    CudnnFusionOp *fwd_op =
-        new CudnnFusionOp(CUDNN_FUSED_SCALE_BIAS_ADD_ACTIVATION_GEN_BITMASK);
+  void ForwardInit(const platform::CUDADeviceContext &ctx) {
     // Set constant_param
-    fwd_op->SetOpConstParamAttr(
+    fwd_op_.SetOpConstParamAttr(
         {CUDNN_PARAM_XDATA_PLACEHOLDER, CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER,
          CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER, CUDNN_PARAM_YDATA_PLACEHOLDER,
          CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER},
         CUDNN_PTR_16B_ALIGNED);
     if (has_shortcut_) {
-      fwd_op->SetOpConstParamAttr(
+      fwd_op_.SetOpConstParamAttr(
           {CUDNN_PARAM_ZDATA_PLACEHOLDER, CUDNN_PARAM_BN_Z_EQSCALE_PLACEHOLDER,
            CUDNN_PARAM_BN_Z_EQBIAS_PLACEHOLDER},
           CUDNN_PTR_16B_ALIGNED);
     } else if (fused_add_) {
-      fwd_op->SetOpConstParamAttr(CUDNN_PARAM_ZDATA_PLACEHOLDER,
+      fwd_op_.SetOpConstParamAttr(CUDNN_PARAM_ZDATA_PLACEHOLDER,
                                   CUDNN_PTR_16B_ALIGNED);
     }
 
     // input desc
-    fwd_op->SetOpConstParamDesc(CUDNN_PARAM_XDESC, args_.in_desc.desc());
+    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_XDESC, args_.in_desc.desc());
     if (has_shortcut_ || fused_add_) {
-      fwd_op->SetOpConstParamDesc(CUDNN_PARAM_ZDESC, args_.in_desc.desc());
+      fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_ZDESC, args_.in_desc.desc());
     }
 
     // equiv scale/bias desc
-    fwd_op->SetOpConstParamDesc(CUDNN_PARAM_BN_EQSCALEBIAS_DESC,
+    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_BN_EQSCALEBIAS_DESC,
                                 args_.equiv_scale_bias_desc.desc());
     if (has_shortcut_) {
-      fwd_op->SetOpConstParamDesc(CUDNN_PARAM_BN_Z_EQSCALEBIAS_DESC,
+      fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_BN_Z_EQSCALEBIAS_DESC,
                                   args_.equiv_scale_bias_desc.desc());
     }
 
     // output desc
-    fwd_op->SetOpConstParamDesc(CUDNN_PARAM_YDESC, args_.out_desc.desc());
+    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_YDESC, args_.out_desc.desc());
 
     // bitmask desc
-    fwd_op->SetOpConstParamDesc(CUDNN_PARAM_ACTIVATION_BITMASK_DESC,
+    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_ACTIVATION_BITMASK_DESC,
                                 args_.bitmask_desc.desc());
 
     // activation desc
-    fwd_op->SetOpConstParamDesc(CUDNN_PARAM_ACTIVATION_DESC,
+    fwd_op_.SetOpConstParamDesc(CUDNN_PARAM_ACTIVATION_DESC,
                                 args_.activation_desc.desc());
 
     // others
-    fwd_op->SetOpConstParamAttr(CUDNN_PARAM_BN_MODE,
+    fwd_op_.SetOpConstParamAttr(CUDNN_PARAM_BN_MODE,
                                 CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
-    return fwd_op;
   }
 
-  CudnnFusionOp *GetBackwardOp(const platform::CUDADeviceContext &ctx) {
-    CudnnFusionOp *bwd_op =
-        new CudnnFusionOp(CUDNN_FUSED_DACTIVATION_FORK_DBATCHNORM);
+  void BackwardInit(const platform::CUDADeviceContext &ctx) {
     // Set constant_param
-    bwd_op->SetOpConstParamAttr(
+    bwd_op_.SetOpConstParamAttr(
         {CUDNN_PARAM_XDATA_PLACEHOLDER, CUDNN_PARAM_DYDATA_PLACEHOLDER,
          CUDNN_PARAM_DXDATA_PLACEHOLDER, CUDNN_PARAM_BN_SCALE_PLACEHOLDER,
          CUDNN_PARAM_BN_BIAS_PLACEHOLDER, CUDNN_PARAM_BN_SAVED_MEAN_PLACEHOLDER,
@@ -251,36 +248,35 @@ class CudnnScaleBiasAddRelu {
          CUDNN_PARAM_ACTIVATION_BITMASK_PLACEHOLDER},
         CUDNN_PTR_16B_ALIGNED);
     if (has_shortcut_ || fused_add_) {
-      bwd_op->SetOpConstParamAttr(CUDNN_PARAM_DZDATA_PLACEHOLDER,
+      bwd_op_.SetOpConstParamAttr(CUDNN_PARAM_DZDATA_PLACEHOLDER,
                                   CUDNN_PTR_16B_ALIGNED);
     }
 
     // input desc
-    bwd_op->SetOpConstParamDesc(CUDNN_PARAM_XDESC, args_.in_desc.desc());
-    bwd_op->SetOpConstParamDesc(CUDNN_PARAM_DXDESC, args_.in_desc.desc());
+    bwd_op_.SetOpConstParamDesc(CUDNN_PARAM_XDESC, args_.in_desc.desc());
+    bwd_op_.SetOpConstParamDesc(CUDNN_PARAM_DXDESC, args_.in_desc.desc());
     if (has_shortcut_ || fused_add_) {
-      bwd_op->SetOpConstParamDesc(CUDNN_PARAM_DZDESC, args_.in_desc.desc());
+      bwd_op_.SetOpConstParamDesc(CUDNN_PARAM_DZDESC, args_.in_desc.desc());
     }
 
     // scale/bias/mean/var desc for backward
-    bwd_op->SetOpConstParamDesc(CUDNN_PARAM_BN_SCALEBIAS_MEANVAR_DESC,
+    bwd_op_.SetOpConstParamDesc(CUDNN_PARAM_BN_SCALEBIAS_MEANVAR_DESC,
                                 args_.scale_bias_mean_var_desc.desc());
 
     // output desc
-    bwd_op->SetOpConstParamDesc(CUDNN_PARAM_DYDESC, args_.out_desc.desc());
+    bwd_op_.SetOpConstParamDesc(CUDNN_PARAM_DYDESC, args_.out_desc.desc());
 
     // bitmask desc
-    bwd_op->SetOpConstParamDesc(CUDNN_PARAM_ACTIVATION_BITMASK_DESC,
+    bwd_op_.SetOpConstParamDesc(CUDNN_PARAM_ACTIVATION_BITMASK_DESC,
                                 args_.bitmask_desc.desc());
 
     // activation desc
-    bwd_op->SetOpConstParamDesc(CUDNN_PARAM_ACTIVATION_DESC,
+    bwd_op_.SetOpConstParamDesc(CUDNN_PARAM_ACTIVATION_DESC,
                                 args_.activation_desc.desc());
 
     // others
-    bwd_op->SetOpConstParamAttr(CUDNN_PARAM_BN_MODE,
+    bwd_op_.SetOpConstParamAttr(CUDNN_PARAM_BN_MODE,
                                 CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
-    return bwd_op;
   }
 
   bool fused_add_ = false;
@@ -288,6 +284,8 @@ class CudnnScaleBiasAddRelu {
   size_t fwd_workspace_byte_;
   size_t bwd_workspace_byte_;
   ScaleBiasAddReluArgs<T> args_;
+  CudnnFusionOp fwd_op_;
+  CudnnFusionOp bwd_op_;
 };
 #endif
 }  // namespace operators

@@ -61,7 +61,9 @@ template <typename T>
 class CudnnBNStatsFinalize {
  public:
   CudnnBNStatsFinalize(const platform::CUDADeviceContext &ctx,
-                       const std::vector<int> &param_shape) {
+                       const std::vector<int> &param_shape)
+      : train_op_(CUDNN_FUSED_BN_FINALIZE_STATISTICS_TRAINING),
+        inference_op_(CUDNN_FUSED_BN_FINALIZE_STATISTICS_INFERENCE) {
     args_.Set(param_shape);
   }
   ~CudnnBNStatsFinalize() {}
@@ -72,41 +74,43 @@ class CudnnBNStatsFinalize {
                float *running_mean_ptr, float *running_var_ptr,
                T *equiv_scale_ptr, T *equiv_bias_ptr, double eps,
                float momentum, int64_t ele_count, bool is_train) {
-    CudnnFusionOp *op =
-        is_train ? GetTrainForwardOp(ctx) : GetInferenceForwardOp(ctx);
+    if (is_train) {
+      TrainInit(ctx);
+    } else {
+      InferenceInit(ctx);
+    }
+    auto &op = is_train ? train_op_ : inference_op_;
 
     // Set variant_param for both inference_op_ and train_op_
-    op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SCALE, scale_ptr);
-    op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_BIAS, bias_ptr);
-    op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_RUNNING_MEAN, running_mean_ptr);
-    op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_RUNNING_VAR, running_var_ptr);
-    op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQSCALE, equiv_scale_ptr);
-    op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQBIAS, equiv_bias_ptr);
-    op->SetOpVariantParamAttrPtr<double>(CUDNN_SCALAR_DOUBLE_BN_EPSILON, &eps);
+    op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SCALE, scale_ptr);
+    op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_BIAS, bias_ptr);
+    op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_RUNNING_MEAN, running_mean_ptr);
+    op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_RUNNING_VAR, running_var_ptr);
+    op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQSCALE, equiv_scale_ptr);
+    op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQBIAS, equiv_bias_ptr);
+    op.SetOpVariantParamAttrPtr<double>(CUDNN_SCALAR_DOUBLE_BN_EPSILON, &eps);
 
     // Set extra variant_param only for train_op_:
     if (is_train) {
-      op->SetOpVariantParamAttrPtr(CUDNN_PTR_YSUM, sum_ptr);
-      op->SetOpVariantParamAttrPtr(CUDNN_PTR_YSQSUM, sum_of_squares_ptr);
-      op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SAVED_MEAN, saved_mean_ptr);
-      op->SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SAVED_INVSTD, saved_invstd_ptr);
+      op.SetOpVariantParamAttrPtr(CUDNN_PTR_YSUM, sum_ptr);
+      op.SetOpVariantParamAttrPtr(CUDNN_PTR_YSQSUM, sum_of_squares_ptr);
+      op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SAVED_MEAN, saved_mean_ptr);
+      op.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SAVED_INVSTD, saved_invstd_ptr);
       double avg_factor = 1.0 - momentum;
-      op->SetOpVariantParamAttrPtr(CUDNN_SCALAR_INT64_T_BN_ACCUMULATION_COUNT,
-                                   &ele_count);
-      op->SetOpVariantParamAttrPtr(CUDNN_SCALAR_DOUBLE_BN_EXP_AVG_FACTOR,
-                                   &avg_factor);
+      op.SetOpVariantParamAttrPtr(CUDNN_SCALAR_INT64_T_BN_ACCUMULATION_COUNT,
+                                  &ele_count);
+      op.SetOpVariantParamAttrPtr(CUDNN_SCALAR_DOUBLE_BN_EXP_AVG_FACTOR,
+                                  &avg_factor);
     }
     // fused op execute
     auto handle = ctx.cudnn_handle();
-    op->Execute(handle);
+    op.Execute(handle);
   }
 
  private:
-  CudnnFusionOp *GetTrainForwardOp(const platform::CUDADeviceContext &ctx) {
-    CudnnFusionOp *train_op =
-        new CudnnFusionOp(CUDNN_FUSED_BN_FINALIZE_STATISTICS_TRAINING);
+  void TrainInit(const platform::CUDADeviceContext &ctx) {
     // Set constant_param for train op
-    train_op->SetOpConstParamAttr(
+    train_op_.SetOpConstParamAttr(
         {CUDNN_PARAM_YSUM_PLACEHOLDER, CUDNN_PARAM_YSQSUM_PLACEHOLDER,
          CUDNN_PARAM_BN_SCALE_PLACEHOLDER, CUDNN_PARAM_BN_BIAS_PLACEHOLDER,
          CUDNN_PARAM_BN_SAVED_MEAN_PLACEHOLDER,
@@ -116,63 +120,61 @@ class CudnnBNStatsFinalize {
          CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER, CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER},
         CUDNN_PTR_16B_ALIGNED);
     // Set input and output desc for train op
-    train_op->SetOpConstParamDesc(
+    train_op_.SetOpConstParamDesc(
         {CUDNN_PARAM_YSTATS_DESC, CUDNN_PARAM_BN_SCALEBIAS_MEANVAR_DESC},
         args_.in_desc.desc());
-    train_op->SetOpConstParamDesc(CUDNN_PARAM_BN_EQSCALEBIAS_DESC,
+    train_op_.SetOpConstParamDesc(CUDNN_PARAM_BN_EQSCALEBIAS_DESC,
                                   args_.out_desc.desc());
 
     // Get workspace
     auto handle = ctx.cudnn_handle();
-    train_op->SetOpConstParamAttr(CUDNN_PARAM_BN_MODE,
+    train_op_.SetOpConstParamAttr(CUDNN_PARAM_BN_MODE,
                                   CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
     // Check workspace size, also creates plan.
-    size_t workspace_size_bytes = train_op->GetWorkspaceSizeInBytes(handle);
+    size_t workspace_size_bytes = train_op_.GetWorkspaceSizeInBytes(handle);
     PADDLE_ENFORCE_EQ(workspace_size_bytes, 0U,
                       platform::errors::InvalidArgument(
                           "Unexpected non-zero workspace size for "
                           "CudnnBNStatsFinalize."));
-    train_op->SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE,
+    train_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE,
                                        static_cast<void *>(nullptr));
-    train_op->SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE,
+    train_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE,
                                        &workspace_size_bytes);
-    return train_op;
   }
 
-  CudnnFusionOp *GetInferenceForwardOp(const platform::CUDADeviceContext &ctx) {
-    CudnnFusionOp *inference_op =
-        new CudnnFusionOp(CUDNN_FUSED_BN_FINALIZE_STATISTICS_INFERENCE);
+  void InferenceInit(const platform::CUDADeviceContext &ctx) {
     // Set constant_param for inference op
-    inference_op->SetOpConstParamAttr(
+    inference_op_.SetOpConstParamAttr(
         {CUDNN_PARAM_BN_SCALE_PLACEHOLDER, CUDNN_PARAM_BN_BIAS_PLACEHOLDER,
          CUDNN_PARAM_BN_RUNNING_MEAN_PLACEHOLDER,
          CUDNN_PARAM_BN_RUNNING_VAR_PLACEHOLDER,
          CUDNN_PARAM_BN_EQSCALE_PLACEHOLDER, CUDNN_PARAM_BN_EQBIAS_PLACEHOLDER},
         CUDNN_PTR_16B_ALIGNED);
     // Set input and output desc for inference op
-    inference_op->SetOpConstParamDesc(CUDNN_PARAM_BN_SCALEBIAS_MEANVAR_DESC,
+    inference_op_.SetOpConstParamDesc(CUDNN_PARAM_BN_SCALEBIAS_MEANVAR_DESC,
                                       args_.in_desc.desc());
-    inference_op->SetOpConstParamDesc(CUDNN_PARAM_BN_EQSCALEBIAS_DESC,
+    inference_op_.SetOpConstParamDesc(CUDNN_PARAM_BN_EQSCALEBIAS_DESC,
                                       args_.out_desc.desc());
 
     // Get workspace
     auto handle = ctx.cudnn_handle();
-    inference_op->SetOpConstParamAttr(CUDNN_PARAM_BN_MODE,
+    inference_op_.SetOpConstParamAttr(CUDNN_PARAM_BN_MODE,
                                       CUDNN_BATCHNORM_SPATIAL_PERSISTENT);
     // Check workspace size, also creates plan.
-    size_t workspace_size_bytes = inference_op->GetWorkspaceSizeInBytes(handle);
+    size_t workspace_size_bytes = inference_op_.GetWorkspaceSizeInBytes(handle);
     PADDLE_ENFORCE_EQ(workspace_size_bytes, 0U,
                       platform::errors::InvalidArgument(
                           "Unexpected non-zero workspace size for "
                           "CudnnBNStatsFinalize."));
-    inference_op->SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE,
+    inference_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE,
                                            static_cast<void *>(nullptr));
-    inference_op->SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE,
+    inference_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_WORKSPACE,
                                            &workspace_size_bytes);
-    return inference_op;
   }
 
   BNStatsFinalizeArgs<T> args_;
+  CudnnFusionOp train_op_;
+  CudnnFusionOp inference_op_;
 };
 #endif
 }  // namespace operators
