@@ -81,9 +81,9 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
     const bool trans_x = ctx.Attr<bool>("trans_x");
     const bool trans_y = ctx.Attr<bool>("trans_y");
 
-    std::vector<std::int64_t> x_dims = framework::vectorize(X->dims());
-    std::vector<std::int64_t> y_dims = framework::vectorize(Y->dims());
-    std::vector<std::int64_t> out_dims = framework::vectorize(Out->dims());
+    std::vector<int64_t> x_dims = framework::vectorize(X->dims());
+    std::vector<int64_t> y_dims = framework::vectorize(Y->dims());
+    std::vector<int64_t> out_dims = framework::vectorize(Out->dims());
     int x_ndim = x_dims.size();
     int y_ndim = y_dims.size();
     int out_ndim = out_dims.size();
@@ -159,8 +159,8 @@ class MatMulV2NPUKernel : public framework::OpKernel<T> {
     }
 
     // Case 4: [B, M, K] x  [B, K, N] = [B, M, N]
-    std::vector<std::int64_t> x_broadcast_dims(out_ndim, 1);
-    std::vector<std::int64_t> y_broadcast_dims(out_ndim, 1);
+    std::vector<int64_t> x_broadcast_dims(out_ndim, 1);
+    std::vector<int64_t> y_broadcast_dims(out_ndim, 1);
     std::copy(out_dims.begin(), out_dims.end() - 2, x_broadcast_dims.begin());
     std::copy(out_dims.begin(), out_dims.end() - 2, y_broadcast_dims.begin());
     std::copy(x_dims.end() - 2, x_dims.end(), x_broadcast_dims.end() - 2);
@@ -211,9 +211,9 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
     const bool trans_x = ctx.Attr<bool>("trans_x");
     const bool trans_y = ctx.Attr<bool>("trans_y");
 
-    std::vector<std::int64_t> x_dims = framework::vectorize(X->dims());
-    std::vector<std::int64_t> y_dims = framework::vectorize(Y->dims());
-    std::vector<std::int64_t> out_dims = framework::vectorize(dOut->dims());
+    std::vector<int64_t> x_dims = framework::vectorize(X->dims());
+    std::vector<int64_t> y_dims = framework::vectorize(Y->dims());
+    std::vector<int64_t> out_dims = framework::vectorize(dOut->dims());
     int x_ndim = x_dims.size();
     int y_ndim = y_dims.size();
     int out_ndim = out_dims.size();
@@ -316,8 +316,8 @@ class MatMulV2GradNPUKernel : public framework::OpKernel<T> {
     }
 
     // Case 4: [B, M, K] x  [B, K, N] = [B, M, N]
-    std::vector<std::int64_t> x_broadcast_dims(out_ndim, 1);
-    std::vector<std::int64_t> y_broadcast_dims(out_ndim, 1);
+    std::vector<int64_t> x_broadcast_dims(out_ndim, 1);
+    std::vector<int64_t> y_broadcast_dims(out_ndim, 1);
     std::copy(out_dims.begin(), out_dims.end() - 2, x_broadcast_dims.begin());
     std::copy(out_dims.begin(), out_dims.end() - 2, y_broadcast_dims.begin());
     std::copy(x_dims.end() - 2, x_dims.end(), x_broadcast_dims.end() - 2);
