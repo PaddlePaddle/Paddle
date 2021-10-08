@@ -48,6 +48,8 @@ class TestFusedFFNOp(OpTest):
     def setUp(self):
         paddle.disable_static()
         self.__class__.op_type = "fused_feedforward"
+        #check grad in test_out_and_grad()
+        self.__class__.no_need_check_grad = True
         self.getDtype()
         self.getShape()
         self.getDiff()
@@ -82,6 +84,8 @@ class TestFusedFFNOp(OpTest):
 
         self.src = np.random.random((self.batch_size, self.query_length,
                                      self.d_model)).astype(self.dtype)
+        self.dout = np.random.random((self.batch_size, self.query_length,
+                                      self.d_model)).astype(self.dtype)
 
     def Base(self):
         paddle.disable_static()
@@ -92,12 +96,17 @@ class TestFusedFFNOp(OpTest):
             linear2_out = self.linear2(
                 self.dropout(self.activation(self.linear1(ln1_out))))
             dropout2_out = residual + self.dropout2(linear2_out)
+            paddle.autograd.backward([dropout2_out],
+                                     [paddle.to_tensor(self.dout)], True)
+            return dropout2_out, tensor_src.grad
         else:
             linear2_out = self.linear2(
                 self.dropout(self.activation(self.linear1(tensor_src))))
             dropout2_out = residual + self.dropout2(linear2_out)
             dropout2_out = self.norm2(dropout2_out)
-        return dropout2_out
+            paddle.autograd.backward([dropout2_out],
+                                     [paddle.to_tensor(self.dout)], True)
+            return dropout2_out, tensor_src.grad
 
     def FusedFFN(self):
         paddle.disable_static()
@@ -126,13 +135,19 @@ class TestFusedFFNOp(OpTest):
             0.0,
             act_method=self.act_method,
             normalize_pre_or_post=self.normalize_before)
-        return out
+        paddle.autograd.backward([out], [paddle.to_tensor(self.dout)])
+        return out, x.grad
 
-    def test_fused_ffn(self):
-        base_out = self.Base()
-        fused_out = self.FusedFFN()
+    def test_out_and_grad(self):
+        base_out, base_grad = self.Base()
+        fused_out, fused_grad = self.FusedFFN()
         np.testing.assert_allclose(
             base_out.numpy(), fused_out.numpy(), rtol=self.rtol, atol=self.atol)
+        np.testing.assert_allclose(
+            base_grad.numpy(),
+            fused_grad.numpy(),
+            rtol=self.rtol,
+            atol=self.atol)
 
 
 class TestFusedFFNOpFp16(TestFusedFFNOp):
