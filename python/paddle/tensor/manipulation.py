@@ -2211,7 +2211,7 @@ def tensordot(x, y, axes=2, name=None):
         2. This function also supports axes expansion, 
            when the two given axis sequences for ``x`` and ``y`` are of different lengths, 
            the shorter sequence will expand the same axes as the longer one at the end. 
-           For example, if ``axes``=[[0, 1, 2, 3], [1, 0]], 
+           For example, if ``axes`` =[[0, 1, 2, 3], [1, 0]], 
            the axis sequence for ``x`` is [0, 1, 2, 3], 
            while the corresponding axis sequences for ``y`` will be expanded from [1, 0] to [1, 0, 2, 3].
   
@@ -2307,9 +2307,8 @@ def tensordot(x, y, axes=2, name=None):
         return isinstance(axes_x, (tuple, list)) and all(
             np.issubdtype(type(i), np.integer) for i in x)
 
-    axes_x: List[int] = []
-    axes_y: List[int] = []
-
+    axes_x = []
+    axes_y = []
     if np.issubdtype(type(axes), np.integer):
         assert axes >= 0, (
             "The 'axes' in " + op_type +
@@ -2369,9 +2368,9 @@ def tensordot(x, y, axes=2, name=None):
         need_contracted_dim_y[dim_y] = True
         contraction_size *= shape_x[dim_x]
 
-    perm_x: List[int] = []
-    perm_y: List[int] = []
-    shape_out: List[int] = []
+    perm_x = []
+    perm_y = []
+    shape_out = []
     not_contraction_size_x = 1
     not_contraction_size_y = 1
     for i in range(x.ndim):
