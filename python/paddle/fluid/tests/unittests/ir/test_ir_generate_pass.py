@@ -45,15 +45,29 @@ def generate_fc_fuse():
     return list(map(create_pass_pair, [True, False]))
 
 
-# add(X=add(x, y), Y=z)z => add_n(X=[x, y, z])
+# add(X=add(X=x, Y=y), Y=z) => sum(X=[x, y, z])
 @ir.RegisterPass
-def generate_add_n():
+def multi_add_to_sum_v1():
+    pattern = lambda x, y, z: paddle.add(paddle.add(x, y), z)
+    replace = lambda x, y, z: paddle.add_n([x, y, z])
+    return pattern, replace
+
+
+@ir.RegisterPass
+def multi_add_to_sum_v2():
     def pattern(x, y, z):
-        return paddle.add(paddle.add(x, y), z)
+        ewadd1 = ir.PassDesc.OP.elementwise_add(X=x, Y=y)
+        ewadd2 = ir.PassDesc.OP.elementwise_add(X=ewadd1, Y=z)
+        return ewadd2
 
-    def replace(x, y, z):
-        return paddle.add_n([x, y, z])
+    replace = lambda x, y, z: ir.PassDesc.OP.sum(X=[x, y, z])
+    return pattern, replace
 
+
+@ir.RegisterPass
+def multi_add_to_sum_v3():
+    pattern = lambda x, y, z: paddle.add(paddle.add(x, y), z)
+    replace = lambda x, y, z: ir.PassDesc.OP.sum(X=[x, y, z])
     return pattern, replace
 
 
@@ -164,19 +178,22 @@ class TestGeneratePass(unittest.TestCase):
         _check_fc_fuse_pass(multi_pass_desc.pass_descs[0], True)
         _check_fc_fuse_pass(multi_pass_desc.pass_descs[1], False)
 
-    def test_generate_add_n(self):
-        paddle.enable_static()
+    def check_multi_add_to_sum(self, pass_type):
         program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(program, startup_program):
             x = paddle.static.data("x", [10, 10, 10], "float32")
             y = paddle.static.data("y", [10, 10, 10], "float32")
             z = paddle.static.data("z", [10, 10, 10], "float32")
-            add = paddle.add(paddle.add(x, y), z)
-            out = paddle.matmul(add, z)
+            add_1 = paddle.add(paddle.add(x, y), z)
+            matmul_1 = paddle.matmul(add_1, z)
+            add_tmp = paddle.add(x, y)
+            add_2 = paddle.add(add_tmp, z)
+            matmul_2 = paddle.matmul(add_2, add_tmp)
+            out = paddle.add(matmul_1, matmul_2)
         graph = core.Graph(program.desc)
         before_node_nums = len(graph.nodes())
-        core.get_pass("generate_add_n").apply(graph)
+        core.get_pass(pass_type).apply(graph)
         after_node_nums = len(graph.nodes())
         self.assertEqual(after_node_nums, before_node_nums - 2)
         after_program = paddle.fluid.framework.IrGraph(graph).to_program()
@@ -192,6 +209,12 @@ class TestGeneratePass(unittest.TestCase):
                                  feed=feed,
                                  fetch_list=[out.name])
         self.assertTrue(np.allclose(before_out, after_out))
+
+    def test_multi_add_to_sum(self):
+        paddle.enable_static()
+        self.check_multi_add_to_sum("multi_add_to_sum_v1")
+        self.check_multi_add_to_sum("multi_add_to_sum_v2")
+        self.check_multi_add_to_sum("multi_add_to_sum_v3")
 
     def test_generate_combine_mul_v1(self):
         input_specs = {
@@ -240,25 +263,20 @@ class TestGeneratePass(unittest.TestCase):
         program = paddle.static.Program()
         startup_program = paddle.static.Program()
         with paddle.static.program_guard(program, startup_program):
-            x = paddle.static.data("x", [10, 16, 32], "float32")
-            y = paddle.static.data("y", [10, 32, 24], "float32")
-            z = paddle.static.data("z", [10, 24, 16], "float32")
-            y = paddle.transpose(paddle.transpose(y, [0, 2, 1]), [0, 2, 1])
-            z = paddle.transpose(paddle.transpose(z, [0, 2, 1]), [0, 2, 1])
-            out = paddle.matmul(paddle.matmul(x, y), z)
+            x = paddle.static.data("x", [10, 16, 16], "float32")
+            x1 = paddle.transpose(paddle.transpose(x, [0, 2, 1]), [0, 2, 1])
+            tmp = paddle.transpose(x, [0, 2, 1])
+            x2 = paddle.transpose(tmp, [0, 2, 1])
+            out = paddle.add(x1, paddle.matmul(x2, tmp))
         graph = core.Graph(program.desc)
         before_node_nums = len(graph.nodes())
         core.get_pass(pass_type).apply(graph)
         after_node_nums = len(graph.nodes())
-        self.assertEqual(after_node_nums, before_node_nums - 12)
+        self.assertEqual(after_node_nums, before_node_nums - 6)
         after_program = paddle.fluid.framework.IrGraph(graph).to_program()
         executor = paddle.static.Executor(paddle.CPUPlace())
         executor.run(startup_program)
-        feed = {
-            "x": np.random.random([10, 16, 32]).astype("float32"),
-            "y": np.random.random([10, 32, 24]).astype("float32"),
-            "z": np.random.random([10, 24, 16]).astype("float32")
-        }
+        feed = {"x": np.random.random([10, 16, 16]).astype("float32")}
         before_out = executor.run(program, feed=feed, fetch_list=[out.name])
         after_out = executor.run(after_program,
                                  feed=feed,
