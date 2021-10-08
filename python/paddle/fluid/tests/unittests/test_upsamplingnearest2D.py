@@ -20,31 +20,35 @@ import paddle
 import paddle.nn as nn
 
 
-def upsample_2d(img, type='float64', scale_factor=None, size=None, data_format='NCHW'):
-    H_out = size[0]
-    W_out = size[1]
-    H_in = img.shape[2]
-    W_in = img.shape[3]
+def upsample_2d(img,
+                type='float64',
+                scale_factor=None,
+                size=None,
+                data_format='NCHW'):
+    h_out = size[0]
+    w_out = size[1]
+    h_in = img.shape[2]
+    w_in = img.shape[3]
     if size == None:
-        size = [H_in * scale_factor, W_in * scale_factor]
+        size = [h_in * scale_factor, w_in * scale_factor]
     if data_format == 'NCHW':
         num_batches, channels, height, width = img.shape
-        emptyImage = np.zeros((num_batches, channels, H_out, W_out), type)
-        sh = H_out / height
-        sw = W_out / width
-        for i in range(H_out):
-            for j in range(W_out):
+        emptyImage = np.zeros((num_batches, channels, h_out, w_out), type)
+        sh = h_out / height
+        sw = w_out / width
+        for i in range(h_out):
+            for j in range(w_out):
                 x = int(i / sh)
                 y = int(j / sw)
                 emptyImage[:, :, i, j] = img[:, :, x, y]
     elif data_format == 'NHWC':
         img = img.transpose((0, 3, 1, 2))
         num_batches, channels, height, width = img.shape
-        emptyImage = np.zeros((num_batches, channels, H_out, W_out), type)
-        sh = H_out / height
-        sw = W_out / width
-        for i in range(H_out):
-            for j in range(W_out):
+        emptyImage = np.zeros((num_batches, channels, h_out, w_out), type)
+        sh = h_out / height
+        sw = w_out / width
+        for i in range(h_out):
+            for j in range(w_out):
                 x = int(i / sh)
                 y = int(j / sw)
                 emptyImage[:, :, i, j] = img[:, :, x, y]
