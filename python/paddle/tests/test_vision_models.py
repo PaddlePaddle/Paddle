@@ -81,7 +81,27 @@ class TestVisonModels(unittest.TestCase):
 
         x = np.array(np.random.random((2, 1, 28, 28)), dtype=np.float32)
         lenet.predict_batch(x)
+        
+    def test_shufflenetv2_x0_25(self):
+        self.models_infer('shufflenetv2_x0_25')
+        
+    def test_shufflenetv2_x0_33(self):
+        self.models_infer('shufflenetv2_x0_33')
 
+    def test_shufflenetv2_x0_5(self):
+        self.models_infer('shufflenetv2_x0_5')
+        
+    def test_shufflenetv2_x1_0(self):
+        self.models_infer('shufflenetv2_x1_0')
+        
+    def test_shufflenetv2_x1_5(self):
+        self.models_infer('shufflenetv2_x1_5')
+        
+    def test_shufflenetv2_x2_0(self):
+        self.models_infer('shufflenetv2_x2_0')
+        
+    def test_shufflenetv2_swish(self):
+        self.models_infer('shufflenetv2_swish')        
 
 if __name__ == '__main__':
     unittest.main()
