@@ -315,6 +315,15 @@ class ShuffleNetV2(Layer):
         return y
 
 
+def _shufflenetv2(arch, scale, pretrained=False, **kwargs):
+    model = ShuffleNetV2(scale=scale, **kwargs)
+    if pretrained:
+        weight_path = get_weights_path_from_url(MODEL_URLS[arch])
+        param = paddle.load(weight_path)
+        model.set_dict(param)    
+    return model    
+
+
 def shufflenetv2_x0_25(pretrained=False, **kwargs):
     """ShuffleNetV2_x0_25 model
     
@@ -328,13 +337,8 @@ def shufflenetv2_x0_25(pretrained=False, **kwargs):
             model = shufflenetv2_x0_25()
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x0_25(pretrained=True)
-    """     
-    model = ShuffleNetV2(scale=0.25, **kwargs)
-    if pretrained:
-        weight_path = get_weights_path_from_url(MODEL_URLS["ShuffleNetV2_x0_25"])
-        param = paddle.load(weight_path)
-        model.set_dict(param)              
-    return model
+    """
+    return _shufflenetv2("ShuffleNetV2_x0_25", 0.25, pretrained, **kwargs)     
 
 
 def shufflenetv2_x0_33(pretrained=False, **kwargs):
@@ -351,12 +355,7 @@ def shufflenetv2_x0_33(pretrained=False, **kwargs):
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x0_33(pretrained=True)
     """      
-    model = ShuffleNetV2(scale=0.33, **kwargs)
-    if pretrained:
-        weight_path = get_weights_path_from_url(MODEL_URLS["ShuffleNetV2_x0_33"])
-        param = paddle.load(weight_path)
-        model.set_dict(param)            
-    return model
+    return _shufflenetv2("ShuffleNetV2_x0_33", 0.33, pretrained, **kwargs)       
 
 
 def shufflenetv2_x0_5(pretrained=False, **kwargs):
@@ -372,13 +371,8 @@ def shufflenetv2_x0_5(pretrained=False, **kwargs):
             model = shufflenetv2_x0_5()
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x0_5(pretrained=True)
-    """        
-    model = ShuffleNetV2(scale=0.5, **kwargs)
-    if pretrained:
-        weight_path = get_weights_path_from_url(MODEL_URLS["ShuffleNetV2_x0_5"])
-        param = paddle.load(weight_path)
-        model.set_dict(param)    
-    return model
+    """       
+    return _shufflenetv2("ShuffleNetV2_x0_5", 0.5, pretrained, **kwargs) 
 
 
 def shufflenetv2_x1_0(pretrained=False, **kwargs):
@@ -395,13 +389,7 @@ def shufflenetv2_x1_0(pretrained=False, **kwargs):
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x1_0(pretrained=True)
     """     
-    model = ShuffleNetV2(scale=1.0, **kwargs)
-    if pretrained:
-        weight_path = get_weights_path_from_url(MODEL_URLS["ShuffleNetV2_x1_0"])
-        param = paddle.load(weight_path)
-        model.set_dict(param)    
-
-    return model
+    return _shufflenetv2("ShuffleNetV2_x1_0", 1.0, pretrained, **kwargs)
 
 
 def shufflenetv2_x1_5(pretrained=False, **kwargs):
@@ -418,13 +406,7 @@ def shufflenetv2_x1_5(pretrained=False, **kwargs):
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x1_5(pretrained=True)
     """       
-    model = ShuffleNetV2(scale=1.5, **kwargs)
-    if pretrained:
-        weight_path = get_weights_path_from_url(MODEL_URLS["ShuffleNetV2_x1_5"])
-        param = paddle.load(weight_path)
-        model.set_dict(param)
-
-    return model
+    return _shufflenetv2("ShuffleNetV2_x1_5", 1.5, pretrained, **kwargs)
 
 
 def shufflenetv2_x2_0(pretrained=False, **kwargs):
@@ -441,13 +423,7 @@ def shufflenetv2_x2_0(pretrained=False, **kwargs):
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x2_0(pretrained=True)
     """    
-    model = ShuffleNetV2(scale=2.0, **kwargs)
-    if pretrained:
-        weight_path = get_weights_path_from_url(MODEL_URLS["ShuffleNetV2_x2_0"])
-        param = paddle.load(weight_path)
-        model.set_dict(param)
-
-    return model
+    return _shufflenetv2("ShuffleNetV2_x2_0", 2.0, pretrained, **kwargs)    
 
 
 def shufflenetv2_swish(pretrained=False, **kwargs):
@@ -464,10 +440,4 @@ def shufflenetv2_swish(pretrained=False, **kwargs):
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_swish(pretrained=True)
     """
-    model = ShuffleNetV2(scale=1.0, act="swish", **kwargs)
-    if pretrained:
-        weight_path = get_weights_path_from_url(MODEL_URLS["ShuffleNetV2_swish"])
-        param = paddle.load(weight_path)
-        model.set_dict(param)
-
-    return model
+    return _shufflenetv2("ShuffleNetV2_swish", 1.0, pretrained, act="swish", **kwargs) 
