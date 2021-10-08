@@ -1092,7 +1092,15 @@ class OpTest(unittest.TestCase):
             atol = 0
 
         if self.is_bfloat16_op():
-            atol = 1e-2
+            if (hasattr(self, "use_mkldnn") and self.use_mkldnn == True) or \
+                (hasattr(self, "attrs") and "use_mkldnn" in self.attrs and \
+                        self.attrs["use_mkldnn"] == True):
+                check_dygraph = False
+            if hasattr(self,
+                       'force_fp32_output') and self.force_fp32_output == False:
+                atol = 2
+            else:
+                atol = 1e-2
 
         if no_check_set is not None:
             if self.op_type not in no_check_set_white_list.no_check_set_white_list:

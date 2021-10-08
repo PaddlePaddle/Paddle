@@ -77,7 +77,6 @@ class TestCastOp3(op_test.OpTest):
 class TestCastBf16ToFp32(op_test.OpTest):
     def setUp(self):
         ipt = np.array(np.random.randint(10, size=(1, 10))).astype('uint16')
-        self.__class__.use_mkldnn = False
         self.inputs = {'X': ipt}
         self.outputs = {'Out': convert_uint16_to_float(ipt)}
         self.attrs = {
@@ -93,7 +92,6 @@ class TestCastBf16ToFp32(op_test.OpTest):
 class TestCastFp32ToBf16(op_test.OpTest):
     def setUp(self):
         ipt = np.random.random(size=[2, 10]).astype('float32')
-        self.__class__.use_mkldnn = False
         self.inputs = {'X': ipt}
         self.outputs = {'Out': convert_float_to_uint16(ipt)}
         self.attrs = {
