@@ -53,7 +53,7 @@ template <class... ARGS>
 std::string format_string(const char* fmt, ARGS&&... args) {
   std::string str;
   format_string_append(str, fmt, args...);
-  return std::move(str);
+  return str;
 }
 
 template <class... ARGS>
