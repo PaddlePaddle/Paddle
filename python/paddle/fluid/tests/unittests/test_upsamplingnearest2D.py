@@ -114,7 +114,9 @@ class TestUpsamplingNearest2D(unittest.TestCase):
         # generation Function
         upsample = nn.UpsamplingNearest2D(size=size, data_format='NCHW')
         # generation type list
-        type_list = ['bool', 'float16', 'int8', 'int16']
+        type_list = [
+            'bool', 'float16', 'int8', 'int16'
+        ]
         # Data type test
         for try_type in type_list:
             x = paddle.to_tensor(input_data).astype(try_type)
@@ -124,7 +126,9 @@ class TestUpsamplingNearest2D(unittest.TestCase):
         # generation Function
         upsample = nn.UpsamplingNearest2D(size=size, data_format='NHWC')
         # generation type list
-        type_list = ['bool', 'float16', 'int8', 'int16']
+        type_list = [
+            'bool', 'float16', 'int8', 'int16'
+        ]
         # Data type test
         for try_type in type_list:
             x = paddle.to_tensor(input_data).astype(try_type)
