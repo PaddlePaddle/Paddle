@@ -72,31 +72,6 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
   virtual_mem_alloced_offset_ = 0;
 }
 
-CUDAVirtualMemAllocator::~CUDAVirtualMemAllocator() {
-  CUresult result;
-  paddle::platform::CUDADeviceGuard guard(place_.device);
-  for (auto& item : virtual_2_physical_map_) {
-    result =
-        paddle::platform::dynload::cuMemUnmap(item.first, item.second.second);
-    PADDLE_ENFORCE_EQ(
-        result, CUDA_SUCCESS,
-        platform::errors::Fatal("Call CUDA API cuMemUnmap faild, return %d.",
-                                result));
-    result = paddle::platform::dynload::cuMemRelease(item.second.first);
-    PADDLE_ENFORCE_EQ(
-        result, CUDA_SUCCESS,
-        platform::errors::Fatal("Call CUDA API cuMemRelease faild, return %d.",
-                                result));
-  }
-
-  result = paddle::platform::dynload::cuMemAddressFree(virtual_mem_base_,
-                                                       virtual_mem_size_);
-  PADDLE_ENFORCE_EQ(
-      result, CUDA_SUCCESS,
-      platform::errors::Fatal(
-          "Call CUDA API cuMemAddressFree faild, return %d.", result));
-}
-
 bool CUDAVirtualMemAllocator::IsAllocThreadSafe() const { return false; }
 
 void CUDAVirtualMemAllocator::FreeImpl(Allocation* allocation) {

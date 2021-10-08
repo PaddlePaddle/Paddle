@@ -32,7 +32,6 @@ namespace allocation {
 class CUDAVirtualMemAllocator : public Allocator {
  public:
   explicit CUDAVirtualMemAllocator(const platform::CUDAPlace& place);
-  ~CUDAVirtualMemAllocator();
 
   bool IsAllocThreadSafe() const override;
 
