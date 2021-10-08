@@ -64,24 +64,25 @@ class TestUpsamplingNearest2D(unittest.TestCase):
         input_data = paddle.rand(shape=[2, 3, 6, 10])
         # data_format='NCHW'
         # generation Function
-        upsample = nn.UpsamplingNearest2D(size=size, data_format='NCHW')
+        upsample_func = nn.UpsamplingNearest2D(size=size, data_format='NCHW')
         # result verification
         for i in range(-3, 10):
-            times = 10 ** i
+            times = 10**i
             x = paddle.to_tensor(input_data * times).astype('float64')
-            res = upsample(x).numpy().flatten().tolist()
+            res = upsample_func(x).numpy().flatten().tolist()
             res_ = upsample_2d(x, size=size).flatten().tolist()
             self.assertAlmostEqual(res, res_)
 
         # data_format='NHWC'
         # generation Function
-        upsample = nn.UpsamplingNearest2D(size=size, data_format='NHWC')
+        upsample_func = nn.UpsamplingNearest2D(size=size, data_format='NHWC')
         # result verification
         for i in range(-3, 10):
-            times = 10 ** i
+            times = 10**i
             x = paddle.to_tensor(input_data * times).astype('float64')
-            res = upsample(x).numpy().flatten().tolist()
-            res_ = upsample_2d(x, size=size, data_format='NHWC').flatten().tolist()
+            res = upsample_func(x).numpy().flatten().tolist()
+            res_ = upsample_2d(
+                x, size=size, data_format='NHWC').flatten().tolist()
             self.assertAlmostEqual(res, res_)
 
     def test_input_dtype(self):
@@ -92,21 +93,21 @@ class TestUpsamplingNearest2D(unittest.TestCase):
 
         # data_format='NCHW'
         # generation Function
-        upsample = nn.UpsamplingNearest2D(size=size, data_format='NCHW')
+        upsample_func = nn.UpsamplingNearest2D(size=size, data_format='NCHW')
         # Data type test
         type_list = ['float32', 'float64']
         for try_type in type_list:
             x = paddle.to_tensor(input_data).astype(try_type)
-            result = upsample(x)
+            result = upsample_func(x)
 
         # data_format='NHWC'
         # generation Function
-        upsample = nn.UpsamplingNearest2D(size=size, data_format='NHWC')
+        upsample_func = nn.UpsamplingNearest2D(size=size, data_format='NHWC')
         # Data type test
         type_list = ['float32', 'float64']
         for try_type in type_list:
             x = paddle.to_tensor(input_data).astype(try_type)
-            result = upsample(x)
+            result = upsample_func(x)
 
     def test_wrong_input_dtype(self):
         # generate test data
@@ -116,27 +117,23 @@ class TestUpsamplingNearest2D(unittest.TestCase):
 
         # data_format='NCHW'
         # generation Function
-        upsample = nn.UpsamplingNearest2D(size=size, data_format='NCHW')
+        upsample_func = nn.UpsamplingNearest2D(size=size, data_format='NCHW')
         # generation type list
-        type_list = [
-            'bool', 'float16', 'int8', 'int16'
-        ]
+        type_list = ['bool', 'float16', 'int8', 'int16']
         # Data type test
         for try_type in type_list:
             x = paddle.to_tensor(input_data).astype(try_type)
-            self.assertRaises(RuntimeError, upsample, x)
+            self.assertRaises(RuntimeError, upsample_func, x)
 
         # data_format='NHWC'
         # generation Function
-        upsample = nn.UpsamplingNearest2D(size=size, data_format='NHWC')
+        upsample_func = nn.UpsamplingNearest2D(size=size, data_format='NHWC')
         # generation type list
-        type_list = [
-            'bool', 'float16', 'int8', 'int16'
-        ]
+        type_list = ['bool', 'float16', 'int8', 'int16']
         # Data type test
         for try_type in type_list:
             x = paddle.to_tensor(input_data).astype(try_type)
-            self.assertRaises(RuntimeError, upsample, x)
+            self.assertRaises(RuntimeError, upsample_func, x)
 
     def test_range(self):
         # when x are larger than 10**9 or less than 10**-4, the result may error
@@ -149,18 +146,18 @@ class TestUpsamplingNearest2D(unittest.TestCase):
 
         # data_format='NCHW'
         # generation Function
-        upsample = nn.UpsamplingNearest2D(size=size, data_format='NCHW')
+        upsample_func = nn.UpsamplingNearest2D(size=size, data_format='NCHW')
         # data modification
-        x = paddle.to_tensor(input_data * 10 ** 10).astype('float64')
+        x = paddle.to_tensor(input_data * 10**10).astype('float64')
         # result verification
-        res = upsample(x).numpy().flatten().tolist()
+        res = upsample_func(x).numpy().flatten().tolist()
         res_ = upsample_2d(x, size=size).flatten().tolist()
         self.assertEqual(res, res_)
 
         # data modification
-        x = paddle.to_tensor(input_data * 10 ** -4).astype('float64')
+        x = paddle.to_tensor(input_data * 10**-4).astype('float64')
         # data conversion
-        res = upsample(x).numpy().flatten().tolist()
+        res = upsample_func(x).numpy().flatten().tolist()
         res_ = upsample_2d(x, size=size).flatten().tolist()
         self.assertEqual(res, res_)
 
@@ -168,18 +165,18 @@ class TestUpsamplingNearest2D(unittest.TestCase):
 
         # data_format='NHWC'
         # generation Function
-        upsample = nn.UpsamplingNearest2D(size=size, data_format='NHWC')
+        upsample_func = nn.UpsamplingNearest2D(size=size, data_format='NHWC')
         # data modification
-        x = paddle.to_tensor(input_data * 10 ** 10).astype('float64')
+        x = paddle.to_tensor(input_data * 10**10).astype('float64')
         # data conversion
-        res = upsample(x).numpy().flatten().tolist()
+        res = upsample_func(x).numpy().flatten().tolist()
         res_ = upsample_2d(x, size=size, data_format='NHWC').flatten().tolist()
         self.assertEqual(res, res_)
 
         # data modificatio
-        x = paddle.to_tensor(input_data * 10 ** -4).astype('float64')
+        x = paddle.to_tensor(input_data * 10**-4).astype('float64')
         # data conversion
-        res = upsample(x).numpy().flatten().tolist()
+        res = upsample_func(x).numpy().flatten().tolist()
         res_ = upsample_2d(x, size=size, data_format='NHWC').flatten().tolist()
         self.assertEqual(res, res_)
 
