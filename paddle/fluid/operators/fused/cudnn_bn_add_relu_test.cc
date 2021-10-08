@@ -329,8 +329,7 @@ class CudnnBNAddReluTester {
     auto bitmask_shape = framework::vectorize<int>(bitmask.dims());
 
     // 1. BN Stats Finalize
-    op::CudnnBNStatsFinalizeOp<T> bn_op;
-    bn_op.Init(ctx, param_shape);
+    op::CudnnBNStatsFinalize<T> bn_op(ctx, param_shape);
     bn_op.Forward(ctx, sum_ptr, sum_of_square_ptr, bn_scale_ptr, bn_bias_ptr,
                   saved_mean_ptr, saved_var_ptr, mean_ptr, var_ptr,
                   equiv_scale_ptr, equiv_bias_ptr, eps_, momentum_, ele_count_,
@@ -338,9 +337,8 @@ class CudnnBNAddReluTester {
 
     // 2. Scale Bias + Relu (not fused add)
     std::string act_type = "";
-    op::CudnnScaleBiasAddReluOp<T> sbar_op(false, false);
-    sbar_op.Init(ctx, act_type, data_shape, bitmask_shape, data_shape,
-                 param_shape);
+    op::CudnnScaleBiasAddRelu<T> sbar_op(
+        ctx, act_type, false, false, data_shape, param_shape, bitmask_shape);
     sbar_op.Forward(ctx, x_ptr, equiv_scale_ptr, equiv_bias_ptr, y_ptr,
                     bitmask_ptr);
 
