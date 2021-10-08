@@ -1347,6 +1347,20 @@ void FleetWrapper::PrintTableStat(const uint64_t table_id) {
 #endif
 }
 
+void FleetWrapper::SetFileNumOneShard(const uint64_t table_id, int file_num) {
+#ifdef PADDLE_WITH_PSLIB
+  auto ret =
+      pslib_ptr_->_worker_ptr->set_file_num_one_shard(table_id, file_num);
+  ret.wait();
+  int32_t err_code = ret.get();
+  if (err_code == -1) {
+    LOG(ERROR) << "set_file_num_one_shard failed";
+  }
+#else
+  VLOG(0) << "FleetWrapper::SetFileNumOneShard does nothing when no pslib";
+#endif
+}
+
 double FleetWrapper::GetCacheThreshold(int table_id) {
 #ifdef PADDLE_WITH_PSLIB
   double cache_threshold = 0.0;

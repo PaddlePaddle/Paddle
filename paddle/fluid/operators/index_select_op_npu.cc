@@ -99,10 +99,11 @@ class IndexSelectGradNPUKernel : public framework::OpKernel<T> {
         transed_out_dims[i] = out_dims[in_trans_perm[i]];
       }
       transed_out_grad.mutable_data<T>(transed_out_dims, ctx.GetPlace());
-      framework::NPUAttributeMap in_trans_attr = {{"perm", in_trans_perm}};
-
-      const auto& in_trans_runner = NpuOpRunner(
-          "TransposeD", {*out_grad}, {transed_out_grad}, in_trans_attr);
+      NpuOpRunner in_trans_runner;
+      in_trans_runner.SetType("Transpose")
+          .AddInput(*out_grad)
+          .AddInput(std::move(in_trans_perm))
+          .AddOutput(transed_out_grad);
       in_trans_runner.Run(stream);
 
       Tensor sum_out;
@@ -133,10 +134,12 @@ class IndexSelectGradNPUKernel : public framework::OpKernel<T> {
       for (int i = 1 + dim; i < x_dims.size(); ++i) {
         out_trans_perm.push_back(i);
       }
-      framework::NPUAttributeMap out_trans_attr = {{"perm", out_trans_perm}};
       x_grad->mutable_data<T>(ctx.GetPlace());
-      const auto& out_trans_runner =
-          NpuOpRunner("TransposeD", {sum_out}, {*x_grad}, out_trans_attr);
+      NpuOpRunner out_trans_runner;
+      out_trans_runner.SetType("Transpose")
+          .AddInput(sum_out)
+          .AddInput(std::move(out_trans_perm))
+          .AddOutput(*x_grad);
       out_trans_runner.Run(stream);
     }
   }

@@ -45,6 +45,7 @@ from .linalg import cholesky  # noqa: F401
 from .linalg import bmm  # noqa: F401
 from .linalg import histogram  # noqa: F401
 from .linalg import mv  # noqa: F401
+from .linalg import eig  # noqa: F401
 from .linalg import matrix_power  # noqa: F401
 from .linalg import eigvals  # noqa: F401
 from .linalg import multi_dot  # noqa: F401
@@ -386,7 +387,9 @@ tensor_method_func  = [ #noqa
            'bitwise_xor',
            'bitwise_not',
            'broadcast_tensors',
+           'eig',
            'uniform_',
+           'multi_dot',
            'solve',
 ]
 
