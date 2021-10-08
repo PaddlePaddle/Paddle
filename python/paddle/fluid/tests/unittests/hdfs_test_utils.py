@@ -254,5 +254,6 @@ class FSTestBase(unittest.TestCase):
         fs.list_files_info(path)
         fs.delete(path)
 
+
 if __name__ == '__main__':
     unittest.main()
