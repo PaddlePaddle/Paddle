@@ -13,13 +13,12 @@
 # limitations under the License.
 
 import contextlib
+import paddle
 from ..fluid import framework
-from ..fluid import Tensor
 from ..fluid.dygraph import grad
 from ..nn.initializer import assign
 from ..tensor import reshape, zeros_like, to_tensor
 from .utils import _check_tensors, _stack_tensor_or_return_none, _replace_none_with_zero_tensor
-
 
 def to_tensorlist(tl):
     if not isinstance(tl, list):
@@ -28,7 +27,7 @@ def to_tensorlist(tl):
         else:
             tl = [tl]
     for t in tl:
-        assert isinstance(t, Tensor) or t is None, (
+        assert isinstance(t, paddle.Tensor) or t is None, (
             f'{t} is expected to be paddle.Tensor or None, but found {type(t)}.'
         )
     return tl
@@ -49,7 +48,7 @@ def gradient_scope(*var_lists, create_graph=False, allow_unused=False):
             ys, xs, v, create_graph=create_graph, allow_unused=allow_unused)
 
     def return_fn(out):
-        if isinstance(out, Tensor):
+        if isinstance(out, paddle.Tensor):
             if not create_graph:
                 out = out.detach()
             return out
@@ -376,7 +375,7 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
             for j in range(fin_size):
                 jac_i[j].append(
                     reshape(row_k[j], shape=[-1])
-                    if isinstance(row_k[j], Tensor) else None)
+                    if isinstance(row_k[j], paddle.Tensor) else None)
         jacobian += (tuple(
             _stack_tensor_or_return_none(jac_i_j) for jac_i_j in jac_i), )
     if fin_size == 1 and fout_size == 1:
@@ -496,7 +495,7 @@ def hessian(func, inputs, create_graph=False, allow_unused=False):
     '''
     inputs = _check_tensors(inputs, "inputs")
     outputs = func(*inputs)
-    assert isinstance(outputs, Tensor) and outputs.shape == [
+    assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
         1
     ], "The function to compute Hessian matrix should return a Tensor with a single element"
 
