@@ -98,5 +98,4 @@ __all__ = [     #noqa
     'sequence_scatter',
     'sequence_enumerate',
     'sequence_reverse',
-    'sparse_embedding',
 ]
