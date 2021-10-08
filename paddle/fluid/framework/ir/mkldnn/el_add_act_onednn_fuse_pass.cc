@@ -25,8 +25,8 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ElementwiseAddActivationOneDNNPass::ApplyImpl(Graph *graph) const {
-  std::vector<std::string> act_types = {"relu"};
-  std::vector<std::string> elt_types = {"elementwise_add"};
+  std::vector<std::string> act_types = {"relu", "tanh", "leaky_relu", "swish", "hardswish", "sqrt", "abs", "clip", "gelu"};
+  std::vector<std::string> elt_types = {"elementwise_add", "elementwise_sub", "elementwise_mul", "elementwise_div"};
 
   for (const auto& elt_type : elt_types)
     for (const auto& act_type : act_types)
@@ -96,4 +96,15 @@ REGISTER_PASS_CAPABILITY(el_add_act_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("elementwise_add", 0)
-            .LE("relu", 0));
+            .LE("elementwise_sub", 0)
+            .LE("elementwise_mul", 0)
+            .LE("elementwise_div", 0)
+            .LE("relu", 0)
+            .LE("tanh", 0)
+            .LE("leaky_relu", 0)
+            .LE("swish", 0)
+            .LE("hardswish", 0)
+            .LE("sqrt", 0)
+            .LE("abs", 0)
+            .LE("clip", 0)
+            .LE("gelu", 0));
