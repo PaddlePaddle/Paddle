@@ -142,10 +142,8 @@ class SliceOp : public framework::OperatorWithKernel {
         // reorders, because if blocked dimension is not divisible by 8 or
         // 16(depending on which blocking format is used) submemory cannot be
         // created, so in that scenario a fallback is needed
-        auto tmp_md = dnnl::memory::desc(
-            framework::vectorize(ctx.Input<Tensor>("Input")->dims()),
-            dnnl::memory::data_type::f32, ctx.Input<Tensor>("Input")->format());
-        if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
+        auto x_md = ctx.Input<Tensor>("Input")->mem_desc();
+        if (x_md.data.format_desc.blocking.inner_nblks == 0)
           return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                          framework::DataLayout::kMKLDNN,
                                          framework::LibraryType::kMKLDNN);
@@ -320,12 +318,9 @@ class SliceOpGrad : public framework::OperatorWithKernel {
       // reorders, because if blocked dimension is not divisible by 8 or
       // 16(depending on which blocking format is used) submemory cannot be
       // created, so in that scenario a fallback is needed
-      auto tmp_md = dnnl::memory::desc(
-          framework::vectorize(
-              ctx.Input<Tensor>(framework::GradVarName("Out"))->dims()),
-          dnnl::memory::data_type::f32,
-          ctx.Input<Tensor>(framework::GradVarName("Out"))->format());
-      if (tmp_md.data.format_desc.blocking.inner_nblks == 0)
+      auto out_md =
+          ctx.Input<Tensor>(framework::GradVarName("Out"))->mem_desc();
+      if (out_md.data.format_desc.blocking.inner_nblks == 0)
         return framework::OpKernelType(input_data_type, ctx.GetPlace(),
                                        framework::DataLayout::kMKLDNN,
                                        framework::LibraryType::kMKLDNN);
