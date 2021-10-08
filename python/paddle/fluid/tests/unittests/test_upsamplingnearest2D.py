@@ -66,7 +66,7 @@ class TestUpsamplingNearest2D(unittest.TestCase):
             times = 10 ** i
             x = paddle.to_tensor(input_data * times).astype('float64')
             res = upsample(x).numpy().flatten().tolist()
-            res_ = upsample_2d(x).flatten().tolist()
+            res_ = upsample_2d(x, size=size).flatten().tolist()
             self.assertAlmostEqual(res, res_)
 
         # data_format='NHWC'
@@ -77,7 +77,7 @@ class TestUpsamplingNearest2D(unittest.TestCase):
             times = 10 ** i
             x = paddle.to_tensor(input_data * times).astype('float64')
             res = upsample(x).numpy().flatten().tolist()
-            res_ = upsample_2d(x, data_format='NHWC').flatten().tolist()
+            res_ = upsample_2d(x, size=size, data_format='NHWC').flatten().tolist()
             self.assertAlmostEqual(res, res_)
 
     def test_input_dtype(self):
@@ -149,14 +149,14 @@ class TestUpsamplingNearest2D(unittest.TestCase):
         # data modification
         x = paddle.to_tensor(input_data * 10 ** 10).astype('float64')
         # result verification
-        res = upsample(x, size=size).numpy().flatten().tolist()
+        res = upsample(x).numpy().flatten().tolist()
         res_ = upsample_2d(x, size=size).flatten().tolist()
         self.assertEqual(res, res_)
 
         # data modification
         x = paddle.to_tensor(input_data * 10 ** -4).astype('float64')
         # data conversion
-        res = upsample(x, size=size).numpy().flatten().tolist()
+        res = upsample(x).numpy().flatten().tolist()
         res_ = upsample_2d(x, size=size).flatten().tolist()
         self.assertEqual(res, res_)
 
@@ -169,14 +169,14 @@ class TestUpsamplingNearest2D(unittest.TestCase):
         x = paddle.to_tensor(input_data * 10 ** 10).astype('float64')
         # data conversion
         res = upsample(x).numpy().flatten().tolist()
-        res_ = upsample_2d(x, data_format='NHWC').flatten().tolist()
+        res_ = upsample_2d(x, size=size, data_format='NHWC').flatten().tolist()
         self.assertEqual(res, res_)
 
         # data modificatio
         x = paddle.to_tensor(input_data * 10 ** -4).astype('float64')
         # data conversion
         res = upsample(x).numpy().flatten().tolist()
-        res_ = upsample_2d(x, data_format='NHWC').flatten().tolist()
+        res_ = upsample_2d(x, size=size, data_format='NHWC').flatten().tolist()
         self.assertEqual(res, res_)
 
 
