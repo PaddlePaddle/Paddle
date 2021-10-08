@@ -97,6 +97,9 @@ from .trainer_desc import TrainerDesc, DistMultiTrainer, PipelineTrainer, MultiT
 from .transpiler import HashName, RoundRobin
 from .backward import append_backward
 
+import multiprocessing as mp
+mp.set_start_method('spawn')
+
 Tensor = LoDTensor
 enable_imperative = enable_dygraph
 disable_imperative = disable_dygraph
