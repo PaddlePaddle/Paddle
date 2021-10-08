@@ -217,10 +217,9 @@ class ConvMKLDNNHandlerT
       const auto fwd_prop_kind = is_test ? mkldnn::prop_kind::forward_inference
                                          : mkldnn::prop_kind::forward_training;
 
-      float sum_scale;
+      float sum_scale = 1.0f;
       std::vector<float> output_shift_scale;
-
-      if (platform::is_int8<T>() || fuse_residual_conn)
+      if (platform::is_int8<T>())
         std::tie(sum_scale, output_shift_scale) = get_int8_scales(ctx);
 
       const mkldnn::primitive_attr conv_attr = CreatePostOps(
