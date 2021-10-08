@@ -110,27 +110,32 @@ inline __device__ void CalculateDBias(const T *tmp_sum, T *dbias,
   }
   __syncthreads();
   // reduce sum
-  T sum = static_cast<T>(0);
+  T sum[2] = {static_cast<T>(0)};
   int tid = threadIdx.y * blockDim.x + threadIdx.x;
   int x = tid >> 5;  // warp id
   int y = tid & 31;  // thread id on warp 0~31
 
   // need BlockSizeX * VecSize warps
-  if (x < BlockSizeX * VecSize) {
+  for (int j = x; j < BlockSizeX * VecSize; j += 32) {
 // reduce 128 to 32
 #pragma unroll
     for (int i = 0; i < (BlockSizeY >> 5); i++) {
-      sum += cache[x][y + i * 32];
+      sum[j >> 5] += cache[j][y + i * 32];
     }
   }
 
+  int reduce_num_pre_thread = (BlockSizeX * VecSize + 31) / 32;
   // reduce 32 to 1
-  sum = WarpReduceSum(sum);
+  for (int i = 0; i < reduce_num_pre_thread; i++) {
+    sum[i] = WarpReduceSum(sum[i]);
+  }
 
   // save sum to dbias
-  int bias_id = blockIdx.x * blockDim.x * VecSize + x;
-  if (y == 0 && x < VecSize * BlockSizeX && bias_id < cols) {
-    dbias[bias_id] = sum;
+  if (y < reduce_num_pre_thread) {
+    int bias_id = blockIdx.x * blockDim.x * VecSize + x + y * 32;
+    if (x < BlockSizeX * VecSize && bias_id < cols) {
+      dbias[bias_id] = sum[y];
+    }
   }
 }
 
