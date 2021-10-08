@@ -174,6 +174,7 @@ class SqueezeNet(nn.Layer):
             x = F.relu(x)
             x = self._avg_pool(x)
             x = paddle.squeeze(x, axis=[2, 3])
+
         return x
 
 
