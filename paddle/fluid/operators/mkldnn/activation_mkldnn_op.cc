@@ -32,6 +32,7 @@ using framework::Tensor;
 using mkldnn::memory;
 using mkldnn::primitive;
 using mkldnn::stream;
+using platform::GetMKLDNNFormat;
 using platform::MKLDNNDeviceContext;
 using platform::to_void_cast;
 
@@ -44,6 +45,9 @@ class MKLDNNActivationKernel
     PADDLE_ENFORCE_EQ(
         x->layout(), DataLayout::kMKLDNN,
         platform::errors::InvalidArgument("Wrong layout set for X tensor"));
+    PADDLE_ENFORCE_NE(
+        x->format(), MKLDNNMemoryFormat::undef,
+        platform::errors::InvalidArgument("Wrong format set for X tensor"));
 
     Functor functor;
     functor(ctx);
@@ -59,6 +63,9 @@ class MKLDNNActivationGradKernel
     PADDLE_ENFORCE_EQ(diff_y->layout(), DataLayout::kMKLDNN,
                       platform::errors::InvalidArgument(
                           "Wrong layout set for Input OutGrad tensor"));
+    PADDLE_ENFORCE_NE(diff_y->format(), MKLDNNMemoryFormat::undef,
+                      platform::errors::InvalidArgument(
+                          "Wrong format set for Input OutGrad tensor"));
 
     Functor functor;
     functor(ctx);
@@ -92,7 +99,7 @@ void eltwise_forward(const framework::ExecutionContext &ctx,
   astream.wait();
 
   y->set_layout(DataLayout::kMKLDNN);
-  y->set_mem_desc(dst_memory_p->get_desc());
+  y->set_format(GetMKLDNNFormat(*dst_memory_p));
 }
 
 template <typename T>
@@ -121,7 +128,7 @@ void eltwise_grad(const framework::ExecutionContext &ctx,
   astream.wait();
 
   diff_x->set_layout(DataLayout::kMKLDNN);
-  diff_x->set_mem_desc(diff_src_memory_p->get_desc());
+  diff_x->set_format(GetMKLDNNFormat(*diff_src_memory_p));
 }
 
 template <typename T, mkldnn::algorithm algorithm>

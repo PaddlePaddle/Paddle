@@ -66,7 +66,7 @@ class EltwiseMulMKLDNNGradKernel : public ElemwiseGradKernel<T> {
       astream.wait();
 
       dx->set_layout(framework::DataLayout::kMKLDNN);
-      dx->set_mem_desc(dst_dx_memory->get_desc());
+      dx->set_format(platform::GetMKLDNNFormat(*dst_dx_memory));
     }
 
     if (dy) {
@@ -109,10 +109,12 @@ class EltwiseMulMKLDNNGradKernel : public ElemwiseGradKernel<T> {
         reduction_p->execute(astream, {{DNNL_ARG_SRC, *dst_dy_memory},
                                        {DNNL_ARG_DST, *dy_memory_p}});
         astream.wait();
-        dy->set_mem_desc(
-            dy_memory_p->get_desc().reshape(framework::vectorize(dy->dims())));
+        dy->set_format(
+            platform::GetMKLDNNFormat(dy_memory_p->get_desc().reshape(
+                paddle::framework::vectorize<int64_t>(dy->dims()))));
+
       } else {
-        dy->set_mem_desc(dst_dy_memory->get_desc());
+        dy->set_format(platform::GetMKLDNNFormat(*dst_dy_memory));
       }
     }
   }

@@ -47,7 +47,7 @@ class ClipMKLDNNKernel : public paddle::framework::OpKernel<T> {
     astream.wait();
 
     out->set_layout(paddle::framework::DataLayout::kMKLDNN);
-    out->set_mem_desc(dst_memory_p->get_desc());
+    out->set_format(paddle::platform::GetMKLDNNFormat(*dst_memory_p));
   }
 };
 
@@ -84,7 +84,7 @@ class ClipGradMKLDNNKernel : public paddle::framework::OpKernel<T> {
     astream.wait();
 
     dx->set_layout(paddle::framework::DataLayout::kMKLDNN);
-    dx->set_mem_desc(diff_dst_memory_p->get_desc());
+    dx->set_format(paddle::platform::GetMKLDNNFormat(*diff_dst_memory_p));
   }
 };
 
