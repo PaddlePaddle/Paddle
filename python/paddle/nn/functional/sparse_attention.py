@@ -34,46 +34,46 @@ def sparse_attention(query,
 
     .. math::
 
-        $$ result=softmax(\frac{ Q * K^T }{\sqrt{d}}) * V $$,
+        result=softmax(\frac{ Q * K^T }{\sqrt{d}}) * V
 
-    where : Q, K, and V represent the three input parameters of the attention module. 
+    where : ``Q``, ``K``, and ``V`` represent the three input parameters of the attention module. 
     The dimensions of the three parameters are the same. 
-    d represents the size of the last dimension of the three parameters.
+    ``d`` represents the size of the last dimension of the three parameters.
 
     Parameters:
         query(Tensor): The query tensor in the Attention module. 
                         It's a multidimensional tensor with a shape of  
-                        :math:`[batch_size, num_heads, target_len, head_dim]`. 
+                        :math:`[batch\_size, num\_heads, target\_len, head\_dim]`. 
                         The dtype can be "float32" and "float64".
         key(Tensor): The key tensor in the Attention module. 
                         It's a multidimensional tensor with a shape of  
-                        :math:`[batch_size, num_heads, target_len, head_dim]`. 
+                        :math:`[batch\_size, num\_heads, target\_len, head\_dim]`. 
                         The dtype can be "float32" and "float64".
         value(Tensor): The value tensor in the Attention module. 
                         It's a multidimensional tensor with a shape of  
-                        :math:`[batch_size, num_heads, target_len, head_dim]`. 
+                        :math:`[batch\_size, num\_heads, target\_len, head\_dim]`. 
                         The dtype can be "float32" and "float64".
         sparse_csr_offset(Tensor): The sparsity feature in the Attention module 
                         is expressed in the CSR format, and the offset represents 
                         the number of non-zero elements in each row of the matrix.
                         It's a multidimensional tensor with a shape of  
-                        :math:`[batch_size, num_heads, target_len + 1]`. 
+                        :math:`[batch\_size, num\_heads, target\_len + 1]`. 
                         The dtype should be "int32".
         sparse_csr_columns(Tensor): The sparsity feature in the Attention module 
                         is expressed in the CSR format, and the columns represent 
                         the column index values of non-zero elements in the matrix.
                         It's a multidimensional tensor with a shape of  
-                        :math:`[batch_size, num_heads, sparse_nnz]`. 
+                        :math:`[batch\_size, num\_heads, sparse\_nnz]`. 
                         The dtype should be "int32".
         name(str, optional): The default value is None. Normally there is no need for user
                         to set this property. For more information, please refer to
                         :ref:`api_guide_Name`.
 
     Returns:
-        Tensor: The result in the Attention module. 
-                It's a multidimensional tensor with a shape of  
-                :math:`[batch_size, num_heads, target_len, head_dim]`. 
-                The dtype can be "float32" and "float64".
+        A Tensor which refers to the result in the Attention module. 
+        It's a multidimensional tensor with a shape of  
+        :math:`[batch\_size, num\_heads, target\_len, head\_dim]`. 
+        The dtype can be "float32" and "float64".
 
     Examples:
         .. code-block:: python
