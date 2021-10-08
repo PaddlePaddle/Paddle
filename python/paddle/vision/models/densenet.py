@@ -298,6 +298,7 @@ class DenseNet(nn.Layer):
         if self.num_classes:
             y = paddle.flatten(y, start_axis=1, stop_axis=-1)
             y = self.out(y)
+
         return y
 
 
