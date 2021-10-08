@@ -47,12 +47,12 @@ __global__ void CastCUDAKernel(const InT* in, const int64_t N, OutT* out) {
 }
 
 template <typename InT>
-struct CastOpFunctor<platform::CUDADeviceContext, InT> {
+struct CastCUDAOpFunctor {
   const framework::Tensor* in_;
   framework::Tensor* out_;
   const platform::CUDADeviceContext& ctx_;
-  CastOpFunctor(const framework::Tensor* in, framework::Tensor* out,
-                const platform::CUDADeviceContext& ctx)
+  CastCUDAOpFunctor(const framework::Tensor* in, framework::Tensor* out,
+                    const platform::CUDADeviceContext& ctx)
       : in_(in), out_(out), ctx_(ctx) {}
 
   template <typename OutT>
@@ -72,6 +72,21 @@ struct CastOpFunctor<platform::CUDADeviceContext, InT> {
                                   config.thread_per_block, 0, ctx_.stream()>>>(
           in, size, out);
     }
+  }
+};
+
+template <typename InT>
+class CastCUDAOpKernel : public framework::OpKernel<InT> {
+ public:
+  void Compute(const framework::ExecutionContext& context) const override {
+    auto* in = context.Input<framework::Tensor>("X");
+    auto* out = context.Output<framework::Tensor>("Out");
+    framework::VisitDataType(
+        static_cast<framework::proto::VarType::Type>(
+            context.Attr<int>("out_dtype")),
+        CastCUDAOpFunctor<InT>(
+            in, out,
+            context.template device_context<platform::CUDADeviceContext>()));
   }
 };
 
