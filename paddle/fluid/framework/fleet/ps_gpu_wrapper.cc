@@ -45,9 +45,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
   platform::Timer timeline;
   timeline.Start();
   int device_num = heter_devices_.size();
-  MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
   gpu_task->init(thread_keys_shard_num_, device_num);
-  auto input_channel = dataset->GetInputChannel();
   auto& local_keys = gpu_task->feature_keys_;
   auto& local_ptr = gpu_task->value_ptr_;
 
@@ -68,35 +66,83 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
   for (int i = 0; i < thread_keys_thread_num_; i++) {
     thread_keys_[i].resize(thread_keys_shard_num_);
   }
-  const std::deque<Record>& vec_data = input_channel->GetData();
-  size_t total_len = vec_data.size();
-  size_t len_per_thread = total_len / thread_keys_thread_num_;
-  int remain = total_len % thread_keys_thread_num_;
+
+  size_t total_len = 0;
+  size_t len_per_thread = 0;
+  int remain = 0;
   size_t begin = 0;
-  auto gen_func = [this](const std::deque<Record>& total_data, int begin_index,
-                         int end_index, int i) {
-    for (auto iter = total_data.begin() + begin_index;
-         iter != total_data.begin() + end_index; iter++) {
-      const auto& ins = *iter;
-      const auto& feasign_v = ins.uint64_feasigns_;
-      for (const auto feasign : feasign_v) {
-        uint64_t cur_key = feasign.sign().uint64_feasign_;
-        int shard_id = cur_key % thread_keys_shard_num_;
-        this->thread_keys_[i][shard_id].insert(cur_key);
+
+  std::string data_set_name = std::string(typeid(*dataset_).name());
+
+  if (data_set_name.find("SlotRecordDataset") != std::string::npos) {
+    VLOG(0) << "ps_gpu_wrapper use SlotRecordDataset";
+    SlotRecordDataset* dataset = dynamic_cast<SlotRecordDataset*>(dataset_);
+    auto input_channel = dataset->GetInputChannel();
+    VLOG(0) << "yxf::buildtask::inputslotchannle size: "
+            << input_channel->Size();
+    const std::deque<SlotRecord>& vec_data = input_channel->GetData();
+    total_len = vec_data.size();
+    len_per_thread = total_len / thread_keys_thread_num_;
+    remain = total_len % thread_keys_thread_num_;
+    VLOG(0) << "total len: " << total_len;
+    auto gen_func = [this](const std::deque<SlotRecord>& total_data,
+                           int begin_index, int end_index, int i) {
+      for (auto iter = total_data.begin() + begin_index;
+           iter != total_data.begin() + end_index; iter++) {
+        const auto& ins = *iter;
+        const auto& feasign_v = ins->slot_uint64_feasigns_.slot_values;
+        for (const auto feasign : feasign_v) {
+          int shard_id = feasign % thread_keys_shard_num_;
+          this->thread_keys_[i][shard_id].insert(feasign);
+        }
       }
+    };
+    for (int i = 0; i < thread_keys_thread_num_; i++) {
+      threads.push_back(
+          std::thread(gen_func, std::ref(vec_data), begin,
+                      begin + len_per_thread + (i < remain ? 1 : 0), i));
+      begin += len_per_thread + (i < remain ? 1 : 0);
     }
-  };
-  for (int i = 0; i < thread_keys_thread_num_; i++) {
-    threads.push_back(std::thread(gen_func, std::ref(vec_data), begin,
-                                  begin + len_per_thread + (i < remain ? 1 : 0),
-                                  i));
-    begin += len_per_thread + (i < remain ? 1 : 0);
+    for (std::thread& t : threads) {
+      t.join();
+    }
+    timeline.Pause();
+    VLOG(1) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
+  } else {
+    CHECK(data_set_name.find("MultiSlotDataset") != std::string::npos);
+    VLOG(0) << "ps_gpu_wrapper use MultiSlotDataset";
+    MultiSlotDataset* dataset = dynamic_cast<MultiSlotDataset*>(dataset_);
+    auto input_channel = dataset->GetInputChannel();
+
+    const std::deque<Record>& vec_data = input_channel->GetData();
+    total_len = vec_data.size();
+    len_per_thread = total_len / thread_keys_thread_num_;
+    remain = total_len % thread_keys_thread_num_;
+    auto gen_func = [this](const std::deque<Record>& total_data,
+                           int begin_index, int end_index, int i) {
+      for (auto iter = total_data.begin() + begin_index;
+           iter != total_data.begin() + end_index; iter++) {
+        const auto& ins = *iter;
+        const auto& feasign_v = ins.uint64_feasigns_;
+        for (const auto feasign : feasign_v) {
+          uint64_t cur_key = feasign.sign().uint64_feasign_;
+          int shard_id = cur_key % thread_keys_shard_num_;
+          this->thread_keys_[i][shard_id].insert(cur_key);
+        }
+      }
+    };
+    for (int i = 0; i < thread_keys_thread_num_; i++) {
+      threads.push_back(
+          std::thread(gen_func, std::ref(vec_data), begin,
+                      begin + len_per_thread + (i < remain ? 1 : 0), i));
+      begin += len_per_thread + (i < remain ? 1 : 0);
+    }
+    for (std::thread& t : threads) {
+      t.join();
+    }
+    timeline.Pause();
+    VLOG(1) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
   }
-  for (std::thread& t : threads) {
-    t.join();
-  }
-  timeline.Pause();
-  VLOG(1) << "GpuPs build task cost " << timeline.ElapsedSec() << " seconds.";
 
   timeline.Start();
 
