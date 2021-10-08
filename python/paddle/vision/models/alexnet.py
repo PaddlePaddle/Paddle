@@ -88,7 +88,7 @@ class AlexNet(nn.Layer):
 
     def __init__(self, num_classes=1000):
         super(AlexNet, self).__init__()
-
+        self.num_classes = num_classes
         stdv = 1.0 / math.sqrt(3 * 11 * 11)
         self._conv1 = ConvPoolLayer(3, 64, 11, 4, 2, stdv, act="relu")
         stdv = 1.0 / math.sqrt(64 * 5 * 5)
@@ -113,26 +113,27 @@ class AlexNet(nn.Layer):
             bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
         stdv = 1.0 / math.sqrt(256 * 3 * 3)
         self._conv5 = ConvPoolLayer(256, 256, 3, 1, 1, stdv, act="relu")
-        stdv = 1.0 / math.sqrt(256 * 6 * 6)
 
-        self._drop1 = Dropout(p=0.5, mode="downscale_in_infer")
-        self._fc6 = Linear(
-            in_features=256 * 6 * 6,
-            out_features=4096,
-            weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
-            bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
+        if self.num_classes > 0:
+            stdv = 1.0 / math.sqrt(256 * 6 * 6)
+            self._drop1 = Dropout(p=0.5, mode="downscale_in_infer")
+            self._fc6 = Linear(
+                in_features=256 * 6 * 6,
+                out_features=4096,
+                weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+                bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
 
-        self._drop2 = Dropout(p=0.5, mode="downscale_in_infer")
-        self._fc7 = Linear(
-            in_features=4096,
-            out_features=4096,
-            weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
-            bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
-        self._fc8 = Linear(
-            in_features=4096,
-            out_features=num_classes,
-            weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
-            bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
+            self._drop2 = Dropout(p=0.5, mode="downscale_in_infer")
+            self._fc7 = Linear(
+                in_features=4096,
+                out_features=4096,
+                weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+                bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
+            self._fc8 = Linear(
+                in_features=4096,
+                out_features=num_classes,
+                weight_attr=ParamAttr(initializer=Uniform(-stdv, stdv)),
+                bias_attr=ParamAttr(initializer=Uniform(-stdv, stdv)))
 
     def forward(self, inputs):
         x = self._conv1(inputs)
@@ -142,14 +143,16 @@ class AlexNet(nn.Layer):
         x = self._conv4(x)
         x = F.relu(x)
         x = self._conv5(x)
-        x = paddle.flatten(x, start_axis=1, stop_axis=-1)
-        x = self._drop1(x)
-        x = self._fc6(x)
-        x = F.relu(x)
-        x = self._drop2(x)
-        x = self._fc7(x)
-        x = F.relu(x)
-        x = self._fc8(x)
+
+        if self.num_classes > 0:
+            x = paddle.flatten(x, start_axis=1, stop_axis=-1)
+            x = self._drop1(x)
+            x = self._fc6(x)
+            x = F.relu(x)
+            x = self._drop2(x)
+            x = self._fc7(x)
+            x = F.relu(x)
+            x = self._fc8(x)
         return x
 
 
