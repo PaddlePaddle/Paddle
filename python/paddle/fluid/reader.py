@@ -50,8 +50,6 @@ data_loader_unique_name_generator = UniqueNameGenerator()
 KEEP_DATA_LOADER_ORDER = True
 USE_PINNED_MEMORY = None
 
-multiprocessing.set_start_method('spawn')
-
 
 def keep_data_loader_order(*args):
     global KEEP_DATA_LOADER_ORDER
