@@ -905,7 +905,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 // auto compute_format = DataLayout::kNCHW;
 #else
     const bool fast_nhwc_batch_norm =
-        (dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLAOT16) &&
+        (dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
         FLAGS_cudnn_batchnorm_spatial_persistent && reserve_space != nullptr;
     auto compute_format =
         fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC

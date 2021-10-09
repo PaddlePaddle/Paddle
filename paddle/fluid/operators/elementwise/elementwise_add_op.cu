@@ -166,25 +166,48 @@ elementwise_add_grad(const framework::ExecutionContext& ctx,
 
 }  // namespace operators
 }  // namespace paddle
-REGISTER_OP_CUDA_KERNEL(
-    elementwise_add, ops::ElementwiseAddKernel<plat::CUDADeviceContext, float>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, double>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, int>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, int64_t>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex<float>>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex<double>>);
-REGISTER_OP_CUDA_KERNEL(
+
+#define REGISTER_ELEMENTWISE_ADD_BASE(op_name, ...)                       \
+  REGISTER_OP_CUDA_KERNEL(                                                \
+      op_name, ops::ElementwiseAddKernel<plat::CUDADeviceContext, float>, \
+      ops::ElementwiseAddKernel<plat::CUDADeviceContext, double>,         \
+      ops::ElementwiseAddKernel<plat::CUDADeviceContext, int>,            \
+      ops::ElementwiseAddKernel<plat::CUDADeviceContext, int64_t>,        \
+      ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::float16>,  \
+      ops::ElementwiseAddKernel<plat::CUDADeviceContext,                  \
+                                plat::complex<float>>,                    \
+      ops::ElementwiseAddKernel<plat::CUDADeviceContext,                  \
+                                plat::complex<double>>,                   \
+      ##__VA_ARGS__);
+
+#define REGISTER_ELEMENTWISE_ADD_GRAD_BASE(op_name, ...)                      \
+  REGISTER_OP_CUDA_KERNEL(                                                    \
+      op_name, ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, float>, \
+      ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, double>,         \
+      ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, int>,            \
+      ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, int64_t>,        \
+      ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, plat::float16>,  \
+      ops::ElementwiseAddGradKernel<plat::CUDADeviceContext,                  \
+                                    plat::complex<float>>,                    \
+      ops::ElementwiseAddGradKernel<plat::CUDADeviceContext,                  \
+                                    plat::complex<double>>);
+
+#if !defined(PADDLE_WITH_HIP) && CUDA_VERSION >= 11000
+REGISTER_ELEMENTWISE_ADD_BASE(
+    elementwise_add,
+    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::bfloat16>);
+REGISTER_ELEMENTWISE_ADD_GRAD_BASE(
     elementwise_add_grad,
-    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, float>,
-    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, double>,
-    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, int>,
-    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, int64_t>,
-    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext,
-                                  plat::complex<float>>,
-    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext,
-                                  plat::complex<double>>);
+    ops::ElementwiseAddGradKernel<plat::CUDADeviceContext, plat::bfloat16>);
+REGISTER_ELEMENTWISE_ADD_BASE(
+    grad_add,
+    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::bfloat16>);
+#else
+REGISTER_ELEMENTWISE_ADD_BASE(elementwise_add);
+REGISTER_ELEMENTWISE_ADD_GRAD_BASE(elementwise_add_grad);
+REGISTER_ELEMENTWISE_ADD_BASE(grad_add);
+#endif
+
 REGISTER_OP_CUDA_KERNEL(
     elementwise_add_grad_grad,
     ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext, float>,
@@ -196,12 +219,3 @@ REGISTER_OP_CUDA_KERNEL(
                                         plat::complex<float>>,
     ops::ElementwiseAddDoubleGradKernel<plat::CUDADeviceContext,
                                         plat::complex<double>>);
-
-REGISTER_OP_CUDA_KERNEL(
-    grad_add, ops::ElementwiseAddKernel<plat::CUDADeviceContext, float>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, double>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, int>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, int64_t>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::float16>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex<float>>,
-    ops::ElementwiseAddKernel<plat::CUDADeviceContext, plat::complex<double>>);

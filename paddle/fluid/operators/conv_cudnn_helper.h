@@ -198,7 +198,6 @@ static void SetConvMathType(const framework::ExecutionContext& ctx,
     VLOG(5) << "use cudnn_default_math";
   }
 #endif
-  return;
 }
 
 struct ConvArgs {
