@@ -1106,3 +1106,35 @@ class HDFSClient(FS):
             begin += blocks[i]
 
         return trainer_files[trainer_id]
+
+    def list_files_info(self, path_list):
+        """
+        list_files return file path and size
+        Args:
+            path_list(list): file list
+        Returns:
+            fileist(list): file list with file path and size
+        """
+        if len(path_list) <= 0:
+            return []
+
+        file_list = []
+
+        #concat filelist can speed up 'hadoop ls'
+        str_concat = ""
+        for path in path_list:
+            str_concat += path + " "
+        cmd = "ls " + str_concat + " | awk '{if ($8 != \"\") {print $5\" \"$8 }}'"
+        ret, lines = self._run_cmd(cmd)
+        if (len(lines) == 0):
+            logger.warning("list_files empty, path[%s]" % path_list)
+            return []
+        for line in lines:
+            arr = line.split(' ')
+            if len(arr) < 2:
+                continue
+            file_path = arr[1]
+            file_size = int(arr[0])
+            file_list.append({'path': file_path, 'size': file_size})
+
+        return file_list
