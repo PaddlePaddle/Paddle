@@ -118,6 +118,35 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
   }
 }
 
+static DataLayout GetComputeFormat(const DataLayout data_layout,
+                                   cudnnDataType_t dtype, bool test_mode) {
+#ifdef PADDLE_WITH_HIP
+  auto compute_format =
+      data_layout == DataLayout::kNHWC ? DataLayout::kNHWC : DataLayout::kNCHW;
+
+// TODO(wangran16): wait for MIOpen to improve the performance of BN
+// HIP do not support compute format of NHWC
+// auto compute_format = DataLayout::kNCHW;
+#else
+#if CUDNN_VERSION >= 8100
+  bool fast_nhwc_batch_norm =
+      test_mode ||
+      ((dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
+       FLAGS_cudnn_batchnorm_spatial_persistent);
+#else
+  bool fast_nhwc_batch_norm =
+      test_mode ||
+      (dtype == CUDNN_DATA_HALF && FLAGS_cudnn_batchnorm_spatial_persistent);
+#endif
+
+  auto compute_format = fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
+                            ? DataLayout::kNHWC
+                            : DataLayout::kNCHW;
+#endif
+
+  return compute_format;
+}
+
 template <typename T>
 class BatchNormKernel<platform::CUDADeviceContext, T>
     : public framework::OpKernel<T> {
@@ -155,25 +184,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
     auto dtype = platform::CudnnDataType<T>::type;
-
-#ifdef PADDLE_WITH_HIP
-    auto compute_format = data_layout == DataLayout::kNHWC ? DataLayout::kNHWC
-                                                           : DataLayout::kNCHW;
-
-// TODO(wangran16): wait for MIOpen to improve the performance of BN
-// HIP do not support compute format of NHWC
-// auto compute_format = DataLayout::kNCHW;
-#else
-    const bool fast_nhwc_batch_norm =
-        test_mode ||
-        ((dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
-         FLAGS_cudnn_batchnorm_spatial_persistent);
-
-    auto compute_format =
-        fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
-            ? DataLayout::kNHWC
-            : DataLayout::kNCHW;
-#endif
+    auto compute_format = GetComputeFormat(data_layout, dtype, test_mode);
 
     Tensor transformed_x(x->type());
     Tensor transformed_y(y->type());
@@ -896,22 +907,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 
     auto dtype = platform::CudnnDataType<T>::type;
     const auto *reserve_space = ctx.Input<Tensor>("ReserveSpace");
-#ifdef PADDLE_WITH_HIP
-    auto compute_format = data_layout == DataLayout::kNHWC ? DataLayout::kNHWC
-                                                           : DataLayout::kNCHW;
-
-// TODO(wangran16): wait for MIOpen to improve the performance of BN
-// HIP do not support compute format of NHWC
-// auto compute_format = DataLayout::kNCHW;
-#else
-    const bool fast_nhwc_batch_norm =
-        (dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
-        FLAGS_cudnn_batchnorm_spatial_persistent && reserve_space != nullptr;
-    auto compute_format =
-        fast_nhwc_batch_norm && data_layout == DataLayout::kNHWC
-            ? DataLayout::kNHWC
-            : DataLayout::kNCHW;
-#endif
+    auto compute_format = GetComputeFormat(data_layout, dtype, false);
 
     Tensor transformed_x(x->type());
     Tensor transformed_d_y(d_y->type());

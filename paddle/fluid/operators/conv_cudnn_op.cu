@@ -47,6 +47,32 @@ static inline bool IsVoltaOrLater(const platform::CUDADeviceContext& dev_ctx) {
   return dev_ctx.GetComputeCapability() >= 70;
 }
 
+static inline bool IsAmpereOrLater(const platform::CUDADeviceContext& dev_ctx) {
+  return dev_ctx.GetComputeCapability() >= 80;
+}
+
+static DataLayout GetComputeFormat(const platform::CUDADeviceContext& dev_ctx,
+                                   cudnnDataType_t dtype, bool channel_last) {
+#ifdef PADDLE_WITH_HIP
+  // HIP MIOPEN ONLY SUPPORT NCHW format
+  auto compute_format = DataLayout::kNCHW;
+#else
+  // Tensor Core introduced from Volta GPUs supports more faster conv op
+  // with FP16 in NHWC data format.
+  bool compute_in_nhwc = (dtype == CUDNN_DATA_HALF) && IsVoltaOrLater(dev_ctx);
+#if CUDNN_VERSION_MIN(8, 1, 0)
+  compute_in_nhwc = compute_in_nhwc || ((dtype == CUDNN_DATA_BFLOAT16) &&
+                                        IsAmpereOrLater(dev_ctx));
+#endif
+  // We will only do data format conversion from NHWC to NCHW.
+  // cudnn will convert NCHW to NHWC automatically on Tensor Core.
+  auto compute_format =
+      compute_in_nhwc && channel_last ? DataLayout::kNHWC : DataLayout::kNCHW;
+#endif
+
+  return compute_format;
+}
+
 template <typename T>
 class CUDNNConvOpKernel : public framework::OpKernel<T> {
  public:
@@ -79,21 +105,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
     auto dtype = platform::CudnnDataType<T>::type;
-
-#ifdef PADDLE_WITH_HIP
-    // HIP MIOPEN ONLY SUPPORT NCHW format
-    auto compute_format = DataLayout::kNCHW;
-#else
-    // Tensor Core introduced from Volta GPUs supports more faster conv op
-    // with FP16 in NHWC data format.
-    const bool compute_in_nhwc =
-        (dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
-        IsVoltaOrLater(dev_ctx);
-    // We will only do data format conversion from NHWC to NCHW.
-    // cudnn will convert NCHW to NHWC automatically on Tensor Core.
-    auto compute_format =
-        compute_in_nhwc && channel_last ? DataLayout::kNHWC : DataLayout::kNCHW;
-#endif
+    auto compute_format = GetComputeFormat(dev_ctx, dtype, channel_last);
     VLOG(3) << "Compute ConvOp with cuDNN:"
             << " data_format=" << data_format << " compute_format="
             << (compute_format == DataLayout::kNHWC ? "NHWC" : "NCHW");
@@ -399,17 +411,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
     auto dtype = platform::CudnnDataType<T>::type;
-
-#ifdef PADDLE_WITH_HIP
-    // HIP MIOPEN ONLY SUPPORT NCHW format
-    auto compute_format = DataLayout::kNCHW;
-#else
-    const bool compute_in_nhwc =
-        (dtype == CUDNN_DATA_HALF || dtype == CUDNN_DATA_BFLOAT16) &&
-        IsVoltaOrLater(dev_ctx);
-    auto compute_format =
-        compute_in_nhwc && channel_last ? DataLayout::kNHWC : DataLayout::kNCHW;
-#endif
+    auto compute_format = GetComputeFormat(dev_ctx, dtype, channel_last);
     VLOG(3) << "Compute ConvGradOp with cuDNN:"
             << " data_format=" << data_format << " compute_format="
             << (compute_format == DataLayout::kNHWC ? "NHWC" : "NCHW");
