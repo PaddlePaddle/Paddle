@@ -14,10 +14,11 @@ limitations under the License. */
 
 #pragma once
 
+#include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/operators/fused/cudnn_bn_stats_finalize.cu.h"
 #include "paddle/fluid/operators/fused/cudnn_norm_conv.cu.h"
 #include "paddle/fluid/operators/fused/cudnn_scale_bias_add_relu.cu.h"
-#include "paddle/fluid/operators/fused/resnet_unit_op.h"
+#include "paddle/fluid/platform/float16.h"
 
 namespace paddle {
 namespace operators {
@@ -25,8 +26,7 @@ namespace operators {
 using Tensor = framework::Tensor;
 
 template <typename T>
-class ResNetUnitKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class ResNetUnitKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
@@ -178,7 +178,6 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
     } else {
       T *input_z_ptr = nullptr;
       if (fused_add) {
-        // input z
         const Tensor *input_z = ctx.Input<Tensor>("Z");
         input_z_ptr = const_cast<T *>(input_z->data<T>());
       }
@@ -189,8 +188,7 @@ class ResNetUnitKernel<platform::CUDADeviceContext, T>
 };
 
 template <typename T>
-class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
-    : public framework::OpKernel<T> {
+class ResNetUnitGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
     PADDLE_ENFORCE_EQ(
@@ -216,7 +214,6 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
     Tensor *scale_x_grad = ctx.Output<Tensor>(framework::GradVarName("ScaleX"));
     Tensor *bias_x_grad = ctx.Output<Tensor>(framework::GradVarName("BiasX"));
 
-    // attrs
     int pad = ctx.Attr<int>("pad");
     int stride = ctx.Attr<int>("stride");
     int stride_z = ctx.Attr<int>("stride_z");
@@ -238,7 +235,8 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
     auto place = ctx.GetPlace();
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
-    // 1. bn add relu backward, get conv_out_x_grad, scale_x_grad, bias_x_grad
+    // 1. Backward of BN (+ Add + Relu) for x, get conv_out_x_grad,
+    // scale_x_grad, bias_x_grad
     T *y_grad_ptr = const_cast<T *>(y_grad->data<T>());
     T *conv_out_x_ptr = const_cast<T *>(conv_out_x->data<T>());
     float *scale_x_ptr = const_cast<float *>(scale_x->data<float>());
@@ -284,9 +282,8 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
           ctx.Output<Tensor>(framework::GradVarName("ScaleZ"));
       Tensor *bias_z_grad = ctx.Output<Tensor>(framework::GradVarName("BiasZ"));
 
-      // 1.1 Backward of BN + Add (+ Relu) backward for x, get conv_out_x_grad,
-      // dscale_x, dbias_x and
-      // temp grad for z
+      // 1.1 Backward of BN + Add (+ Relu) for x, get conv_out_x_grad,
+      // scale_x_grad, bias_x_grad and z_grad_temp
       Tensor z_grad_temp;
       T *z_grad_temp_ptr =
           z_grad_temp.mutable_data<T>(conv_out_z->dims(), place);
@@ -317,7 +314,7 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
                          nullptr, conv_out_z_grad_ptr, nullptr,
                          scale_z_grad_ptr, bias_z_grad_ptr, eps);
 
-      // 1.3 conv backward for z, get dinput_z and filter_z_grad
+      // 1.3 Backward of Conv for z, get z_grad and filter_z_grad
       T *z_ptr = const_cast<T *>(z->data<T>());
       T *filter_z_ptr = const_cast<T *>(filter_z->data<T>());
       T *z_grad_ptr = z_grad ? z_grad->mutable_data<T>(place) : nullptr;
@@ -333,9 +330,8 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
                          z_grad_ptr, filter_z_grad_ptr);
     } else {
       T *z_grad_ptr = nullptr;
-      // 1.1 backward of BN (+ Add + Relu) for x, get conv_out_x_grad, dscale_x,
-      // dbias_x
-      // (and z_grad)
+      // 1.1 Backward of BN (+ Add + Relu) for x, get conv_out_x_grad,
+      // scale_x_grad, bias_x_grad (and z_grad)
       if (fused_add) {
         Tensor *z_grad = ctx.Output<Tensor>(framework::GradVarName("Z"));
         z_grad_ptr = z_grad->mutable_data<T>(place);
@@ -346,7 +342,7 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
                          scale_x_grad_ptr, bias_x_grad_ptr, eps);
     }
 
-    // 2. conv backward for x, get x_grad and filter_x_grad
+    // 2. Backward of Conv for x, get x_grad and filter_x_grad
     T *x_ptr = const_cast<T *>(x->data<T>());
     T *filter_x_ptr = const_cast<T *>(filter_x->data<T>());
     T *x_grad_ptr = x_grad ? x_grad->mutable_data<T>(place) : nullptr;
@@ -362,16 +358,13 @@ class ResNetUnitGradKernel<platform::CUDADeviceContext, T>
   }
 };
 
-#undef MALLOC_AND_GET_PTR
 }  // namespace operators
 }  // namespace paddle
 
 #if CUDNN_VERSION >= 8000
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
-REGISTER_OP_CUDA_KERNEL(
-    resnet_unit, ops::ResNetUnitKernel<plat::CUDADeviceContext, plat::float16>);
-REGISTER_OP_CUDA_KERNEL(
-    resnet_unit_grad,
-    ops::ResNetUnitGradKernel<plat::CUDADeviceContext, plat::float16>);
+REGISTER_OP_CUDA_KERNEL(resnet_unit, ops::ResNetUnitKernel<plat::float16>);
+REGISTER_OP_CUDA_KERNEL(resnet_unit_grad,
+                        ops::ResNetUnitGradKernel<plat::float16>);
 #endif
