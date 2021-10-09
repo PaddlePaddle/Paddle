@@ -116,7 +116,7 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
         'fused_add': fused_add,
         'has_shortcut': has_shortcut,
         'use_global_stats': use_global_stats,
-        'act': act
+        'act_type': act
     }
 
     outputs = {
