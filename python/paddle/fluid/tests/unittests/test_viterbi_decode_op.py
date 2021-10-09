@@ -62,11 +62,13 @@ class Decoder(object):
         batch_offset = np.arange(batch_size) * n_label
         for hist in historys:
             left_length = left_length + 1
-            tag_mask = (left_length >= 0)
             gather_idx = batch_offset + last_ids
-            last_ids_update = np.take(hist, gather_idx) * tag_mask
+            last_ids_update = np.take(hist, gather_idx) * (left_length > 0)
+            zero_len_mask = (left_length == 0)
+            last_ids_update = last_ids_update * (1 - zero_len_mask
+                                                 ) + last_ids * zero_len_mask
             batch_path.insert(0, last_ids_update)
-            last_ids = last_ids_update + (1 - tag_mask) * last_ids
+            last_ids = last_ids_update + (left_length < 0) * last_ids
         batch_path = np.stack(batch_path, 1)
         return scores, batch_path
 
