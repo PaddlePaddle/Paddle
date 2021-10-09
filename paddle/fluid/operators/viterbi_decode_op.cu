@@ -49,7 +49,7 @@ namespace operators {
 #define CUDA_MUL(lhs, rhs, output, dtype) \
   CUDA_ELEMENT_BINARY_OP(lhs, rhs, output, Mul, dtype)
 
-#define GET_MASK(lhs, rhs, mask, functor_template, dtype)                  \
+#define GET_CUDA_MASK(lhs, rhs, mask, functor_template, dtype)             \
   do {                                                                     \
     std::vector<const Tensor*> ins = {&lhs, &rhs};                         \
     std::vector<Tensor*> outs = {&mask};                                   \
@@ -164,7 +164,7 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
     INIT_REQUIRED_TENSOR();
     if (with_start_stop_tag) {
       CUDA_ADD(logit0, start_trans_exp, alpha, T);
-      GET_MASK(left_length, one, float_mask, EqualFunctor, T);
+      GET_CUDA_MASK(left_length, one, float_mask, EqualFunctor, T);
       CUDA_MUL(stop_trans_exp, float_mask, alpha_nxt, T);
       CUDA_ADD(alpha, alpha_nxt, alpha, T);
     } else {
@@ -182,13 +182,13 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
       historys.push_back(alpha_argmax_temp);
       CUDA_ADD(alpha_max, logit, alpha_nxt, T);
       alpha.Resize({batch_size, n_labels});
-      GET_MASK(left_length, zero, float_mask, GreaterThanFunctor, T);
+      GET_CUDA_MASK(left_length, zero, float_mask, GreaterThanFunctor, T);
       CUDA_MUL(alpha_nxt, float_mask, alpha_nxt, T);
       CUDA_SUB(float_one, float_mask, float_mask, T);
       CUDA_MUL(alpha, float_mask, alpha, T);
       CUDA_ADD(alpha, alpha_nxt, alpha, T);
       if (with_start_stop_tag) {
-        GET_MASK(left_length, one, float_mask, EqualFunctor, T);
+        GET_CUDA_MASK(left_length, one, float_mask, EqualFunctor, T);
         CUDA_MUL(stop_trans_exp, float_mask, alpha_nxt, T);
         CUDA_ADD(alpha, alpha_nxt, alpha, T);
       }
@@ -196,7 +196,7 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
     }
     cuda_argmax(ctx, alpha, &last_ids, scores, 1);
     left_length.Resize({batch_size});
-    GET_MASK(left_length, zero, int_mask, GreaterEqualFunctor, int64_t);
+    GET_CUDA_MASK(left_length, zero, int_mask, GreaterEqualFunctor, int64_t);
     int last_id_index = 1;
     int act_len = std::min(seq_len, static_cast<int>(max_seq_len));
     CUDA_MUL(last_ids, int_mask, batch_path[act_len - last_id_index], int64_t);
@@ -209,9 +209,14 @@ class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
       Tensor& last_ids_update = batch_path[act_len - last_id_index];
       hist->Resize({batch_size * n_labels});
       GPUGather<int64_t, int64_t>(dev_ctx, *hist, gather_idx, &last_ids_update);
-      GET_MASK(left_length, zero, int_mask, GreaterEqualFunctor, int64_t);
+      GET_CUDA_MASK(left_length, zero, int_mask, GreaterThanFunctor, int64_t);
       CUDA_MUL(last_ids_update, int_mask, last_ids_update, int64_t);
-      CUDA_SUB(one, int_mask, int_mask, int64_t);
+      GET_CUDA_MASK(left_length, zero, zero_len_mask, EqualFunctor, int64_t);
+      CUDA_MUL(last_ids, zero_len_mask, last_ids_tmp, int64_t);
+      CUDA_SUB(one, zero_len_mask, zero_len_mask, int64_t);
+      CUDA_MUL(last_ids_update, zero_len_mask, last_ids_update, int64_t);
+      CUDA_ADD(last_ids_update, last_ids_tmp, last_ids_update, int64_t);
+      GET_CUDA_MASK(left_length, zero, int_mask, LessThanFunctor, int64_t);
       CUDA_MUL(last_ids, int_mask, last_ids, int64_t);
       CUDA_ADD(last_ids_update, last_ids, last_ids, int64_t);
     }
