@@ -70,8 +70,8 @@ void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
           });
         } else if (var_pdnode->IsInput()) {
           var_pdnode->AsIntermediate();
-          var_pdnode->assert_is_op_output(op.type());
         }
+        var_pdnode->assert_is_op_output(op.type());
         pattern->AddEdge(op_pdnode, var_pdnode);
       }
     }
