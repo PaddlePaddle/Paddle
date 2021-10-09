@@ -38,32 +38,32 @@ class TestVHP(unittest.TestCase):
             return paddle.sum(paddle.matmul(x, x))
 
         numerical_func_output = func(self.x).numpy()
-        numerical_hvp = _compute_numerical_hvp(
+        numerical_vhp = _compute_numerical_vhp(
             func, self.x, self.vx, self.numerical_delta, self.np_dtype)
 
         self.x.stop_gradient = False
-        func_output, hvp = paddle.autograd.hvp(func, self.x, self.vx)
+        func_output, vhp = paddle.autograd.vhp(func, self.x, self.vx)
         assert np.allclose(func_output.numpy(), numerical_func_output,
                            self.rtol, self.atol)
-        assert np.allclose(hvp.numpy(), numerical_hvp[0], self.rtol, self.atol)
+        assert np.allclose(vhp.numpy(), numerical_vhp[0], self.rtol, self.atol)
 
     def test_multi_input(self):
         def func(x, y):
             return paddle.sum(paddle.matmul(x, y))
 
         numerical_func_output = func(self.x, self.y).numpy()
-        numerical_hvp = _compute_numerical_hvp(
+        numerical_vhp = _compute_numerical_vhp(
             func, [self.x, self.y], [self.vx, self.vy], self.numerical_delta,
             self.np_dtype)
 
         self.x.stop_gradient = False
         self.y.stop_gradient = False
-        func_output, hvp = paddle.autograd.hvp(func, [self.x, self.y],
+        func_output, vhp = paddle.autograd.vhp(func, [self.x, self.y],
                                                [self.vx, self.vy])
         assert np.allclose(func_output.numpy(), numerical_func_output,
                            self.rtol, self.atol)
-        for i in range(len(hvp)):
-            assert np.allclose(hvp[i].numpy(), numerical_hvp[i], self.rtol,
+        for i in range(len(vhp)):
+            assert np.allclose(vhp[i].numpy(), numerical_vhp[i], self.rtol,
                                self.atol)
 
     def _test_allow_unused_false(self):
