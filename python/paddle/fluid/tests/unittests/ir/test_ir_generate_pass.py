@@ -123,6 +123,9 @@ class TestGeneratePass(unittest.TestCase):
                 op_dicts[op.type] = [op]
         return op_dicts
 
+    def test_has_attr(self):
+        self.assertFalse(hasattr(ir.PassDesc.OP, '__name__'))
+
     def test_generate_fc_fuse(self):
         def _check_fc_fuse_pass(pass_desc, with_relu):
             pattern_op_dicts = self.convert_ops_to_op_dicts(
