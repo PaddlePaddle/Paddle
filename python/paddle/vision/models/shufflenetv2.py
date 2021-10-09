@@ -27,19 +27,19 @@ from paddle.utils.download import get_weights_path_from_url
 
 
 MODEL_URLS = {
-    "ShuffleNetV2_x0_25":
+    "shufflenetv2_x0_25":
     "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_25_pretrained.pdparams",
-    "ShuffleNetV2_x0_33":
+    "shufflenetv2_x0_33":
     "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_33_pretrained.pdparams",
-    "ShuffleNetV2_x0_5":
+    "shufflenetv2_x0_5":
     "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_5_pretrained.pdparams",
-    "ShuffleNetV2_x1_0":
+    "shufflenetv2_x1_0":
     "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x1_0_pretrained.pdparams",
-    "ShuffleNetV2_x1_5":
+    "shufflenetv2_x1_5":
     "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x1_5_pretrained.pdparams",
-    "ShuffleNetV2_x2_0":
+    "shufflenetv2_x2_0":
     "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x2_0_pretrained.pdparams",
-    "ShuffleNetV2_swish":
+    "shufflenetv2_swish":
     "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_swish_pretrained.pdparams"
 }
 
@@ -313,7 +313,7 @@ def _shufflenetv2(arch, scale, pretrained=False, **kwargs):
 
 
 def shufflenetv2_x0_25(pretrained=False, **kwargs):
-    """ShuffleNetV2_x0_25 model
+    """shufflenetv2_x0_25 model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -328,11 +328,11 @@ def shufflenetv2_x0_25(pretrained=False, **kwargs):
             # model = shufflenetv2_x0_25(pretrained=True)
 
     """
-    return _shufflenetv2("ShuffleNetV2_x0_25", 0.25, pretrained, **kwargs)     
+    return _shufflenetv2("shufflenetv2_x0_25", 0.25, pretrained, **kwargs)     
 
 
 def shufflenetv2_x0_33(pretrained=False, **kwargs):
-    """ShuffleNetV2_x0_33 model
+    """shufflenetv2_x0_33 model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -351,7 +351,7 @@ def shufflenetv2_x0_33(pretrained=False, **kwargs):
 
 
 def shufflenetv2_x0_5(pretrained=False, **kwargs):
-    """ShuffleNetV2_x0_5 model
+    """shufflenetv2_x0_5 model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -366,11 +366,11 @@ def shufflenetv2_x0_5(pretrained=False, **kwargs):
             # model = shufflenetv2_x0_5(pretrained=True)
 
     """       
-    return _shufflenetv2("ShuffleNetV2_x0_5", 0.5, pretrained, **kwargs) 
+    return _shufflenetv2("shufflenetv2_x0_5", 0.5, pretrained, **kwargs) 
 
 
 def shufflenetv2_x1_0(pretrained=False, **kwargs):
-    """ShuffleNetV2_x1_0 model
+    """shufflenetv2_x1_0 model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -385,11 +385,11 @@ def shufflenetv2_x1_0(pretrained=False, **kwargs):
             # model = shufflenetv2_x1_0(pretrained=True)
 
     """     
-    return _shufflenetv2("ShuffleNetV2_x1_0", 1.0, pretrained, **kwargs)
+    return _shufflenetv2("shufflenetv2_x1_0", 1.0, pretrained, **kwargs)
 
 
 def shufflenetv2_x1_5(pretrained=False, **kwargs):
-    """ShuffleNetV2_x1_5 model
+    """shufflenetv2_x1_5 model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -404,11 +404,11 @@ def shufflenetv2_x1_5(pretrained=False, **kwargs):
             # model = shufflenetv2_x1_5(pretrained=True)
 
     """       
-    return _shufflenetv2("ShuffleNetV2_x1_5", 1.5, pretrained, **kwargs)
+    return _shufflenetv2("shufflenetv2_x1_5", 1.5, pretrained, **kwargs)
 
 
 def shufflenetv2_x2_0(pretrained=False, **kwargs):
-    """ShuffleNetV2_x2_0 model
+    """shufflenetv2_x2_0 model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -423,11 +423,11 @@ def shufflenetv2_x2_0(pretrained=False, **kwargs):
             # model = shufflenetv2_x2_0(pretrained=True)
 
     """    
-    return _shufflenetv2("ShuffleNetV2_x2_0", 2.0, pretrained, **kwargs)    
+    return _shufflenetv2("shufflenetv2_x2_0", 2.0, pretrained, **kwargs)    
 
 
 def shufflenetv2_swish(pretrained=False, **kwargs):
-    """ShuffleNetV2_swish model
+    """shufflenetv2_swish model
     
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
@@ -442,4 +442,4 @@ def shufflenetv2_swish(pretrained=False, **kwargs):
             # model = shufflenetv2_swish(pretrained=True)
 
     """
-    return _shufflenetv2("ShuffleNetV2_swish", 1.0, pretrained, act="swish", **kwargs) 
+    return _shufflenetv2("shufflenetv2_swish", 1.0, pretrained, act="swish", **kwargs) 
