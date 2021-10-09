@@ -293,7 +293,6 @@ void ComputeFusedBNAddReluBackward(
   TensorCopySync(cpu_saved_mean, place, saved_mean);
   TensorCopySync(cpu_saved_var, place, saved_var);
   reserve_space->ShareDataWith(saved_reserve_space);
-  printf("%d\n", static_cast<int>(saved_reserve_space.numel()));
 
   int64_t channels = x->dims()[3];
   scale->Resize({channels});
@@ -419,17 +418,14 @@ class CudnnBNAddReluTester {
     framework::Tensor cpu_dz_base;
     framework::Tensor cpu_dscale_base;
     framework::Tensor cpu_dbias_base;
-    printf("1\n");
     BaselineBackwardFusedBNAddRelu(*ctx, &cpu_dx_base, &cpu_dz_base,
                                    &cpu_dscale_base, &cpu_dbias_base);
-    printf("2\n");
 
     framework::Tensor cpu_dx;
     framework::Tensor cpu_dz;
     framework::Tensor cpu_dscale;
     framework::Tensor cpu_dbias;
     FusedBackward(*ctx, &cpu_dx, &cpu_dz, &cpu_dscale, &cpu_dbias);
-    printf("3\n");
 
     CheckOutput<T>("DX", cpu_dx, cpu_dx_base, diff, is_relative_atol);
     CheckOutput<T>("DZ", cpu_dz, cpu_dz_base, diff, is_relative_atol);
