@@ -54,7 +54,8 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
   PADDLE_ENFORCE_EQ(
       result, CUDA_SUCCESS,
       platform::errors::Fatal(
-          "Call CUDA API cuDeviceGetAttribute faild, return %d.", result));
+          "Call CUDA API cuMemGetAllocationGranularity faild, return %d.",
+          result));
 
   size_t actual_avail, actual_total;
   paddle::platform::CUDADeviceGuard guard(place.device);
@@ -87,16 +88,32 @@ void CUDAVirtualMemAllocator::FreeImpl(Allocation* allocation) {
         "Can not find virtual memory address at %s", allocation->ptr()));
   }
 
-  paddle::platform::CUDADeviceGuard guard(place_.device);
+  int prev_id;
+  cudaGetDevice(&prev_id);
+  if (prev_id != place_.device) {
+    cudaSetDevice(place_.device);
+  }
+
   auto result =
       paddle::platform::dynload::cuMemUnmap(iter->first, iter->second.second);
-  PADDLE_ENFORCE_EQ(result, CUDA_SUCCESS,
-                    platform::errors::Fatal(
-                        "Call CUDA API cuMemUnmap faild, return %d.", result));
-  result = paddle::platform::dynload::cuMemRelease(iter->second.first);
-  PADDLE_ENFORCE_EQ(result, CUDA_SUCCESS,
-                    platform::errors::Fatal(
-                        "Call CUDA API cuMemUnmap faild, return %d.", result));
+  if (result != CUDA_ERROR_DEINITIALIZED) {
+    PADDLE_ENFORCE_EQ(
+        result, CUDA_SUCCESS,
+        platform::errors::Fatal("Call CUDA API cuMemUnmap faild, return %d.",
+                                result));
+  }
+
+  if (result != CUDA_ERROR_DEINITIALIZED) {
+    result = paddle::platform::dynload::cuMemRelease(iter->second.first);
+    PADDLE_ENFORCE_EQ(
+        result, CUDA_SUCCESS,
+        platform::errors::Fatal("Call CUDA API cuMemUnmap faild, return %d.",
+                                result));
+  }
+
+  if (prev_id != place_.device) {
+    cudaSetDevice(prev_id);
+  }
 
   virtual_2_physical_map_.erase(iter);
 
