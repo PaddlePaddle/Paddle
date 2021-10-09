@@ -197,12 +197,14 @@ struct DivFunctor {
 template <typename T>
 struct DivFunctor<T,
                   typename std::enable_if<std::is_integral<T>::value>::type> {
+  inline T initial() { return static_cast<T>(1.0f); }
+
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
     // For int32/int64, need to check whether the divison is zero.
-    PADDLE_ENFORCE_NE(
-        b, 0, platform::errors::InvalidArgument(
-                  "InvalidArgumentError: Integer division by zero encountered "
-                  "in (floor) divide. Please check the input value."));
+    PADDLE_ENFORCE_NE(b, 0,
+                      platform::errors::InvalidArgument(
+                          "Integer division by zero encountered "
+                          "in (floor) divide. Please check the input value."));
     return a / b;
   }
 };
@@ -215,10 +217,10 @@ struct FloorDivFunctor {
   inline T initial() { return static_cast<T>(1.0f); }
 
   inline HOSTDEVICE T operator()(const T& a, const T& b) const {
-    PADDLE_ENFORCE_NE(
-        b, 0, platform::errors::InvalidArgument(
-                  "InvalidArgumentError: Integer division by zero encountered "
-                  "in (floor) divide. Please check the input value."));
+    PADDLE_ENFORCE_NE(b, 0,
+                      platform::errors::InvalidArgument(
+                          "Integer division by zero encountered "
+                          "in (floor) divide. Please check the input value."));
     return static_cast<T>(std::trunc(a / b));
   }
 };
