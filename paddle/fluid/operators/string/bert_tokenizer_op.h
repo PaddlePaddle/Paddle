@@ -58,13 +58,13 @@ class BasicTokenizer {
 
 class WordPieceTokenizer {
  public:
-  explicit WordPieceTokenizer(framework::VOCAB* vocab,
+  explicit WordPieceTokenizer(framework::Vocab* vocab,
                               const wstring& unk_token = L"[UNK]",
                               const size_t max_input_chars_per_word = 100);
   void Tokenize(const wstring& text, vector<int64_t>* output) const;
 
  private:
-  framework::VOCAB* vocab_;
+  framework::Vocab* vocab_;
   wstring unk_token_{L"[UNK]"};
   int64_t unk_token_id_;
   size_t max_input_chars_per_word_;
@@ -72,7 +72,7 @@ class WordPieceTokenizer {
 
 class BertTokenizer {
  public:
-  explicit BertTokenizer(framework::VOCAB* vocab, bool do_lower_case = false,
+  explicit BertTokenizer(framework::Vocab* vocab, bool do_lower_case = false,
                          const wstring& unk_token = L"[UNK]",
                          const wstring& pad_token = L"[PAD]",
                          const wstring& cls_token = L"[CLS]",
@@ -117,7 +117,7 @@ class BertTokenizer {
   bool do_lower_case_;
   wstring unk_token_, pad_token_, cls_token_, mask_token_, sep_token_;
   string padding_site_;
-  framework::VOCAB* vocab_;
+  framework::Vocab* vocab_;
   BasicTokenizer basic_tokenizer_;
   WordPieceTokenizer word_piece_tokenizer_;
   int64_t unk_token_id_, cls_token_id_, mask_token_id_, pad_token_id_,
@@ -131,8 +131,8 @@ template <typename T>
 class BertTokenizerKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* text = ctx.Input<framework::STRINGS>("Text");
-    auto* vocab = ctx.Input<framework::VOCAB>("Vocab");
+    auto* text = ctx.Input<framework::Strings>("Text");
+    auto* vocab = ctx.Input<framework::Vocab>("Vocab");
 
     auto* input_ids = ctx.Output<framework::Tensor>("InputIds");
     auto* seg_ids = ctx.Output<framework::Tensor>("SegmentIds");
@@ -143,7 +143,7 @@ class BertTokenizerKernel : public framework::OpKernel<T> {
     auto pad_to_max_seq_len =
         static_cast<bool>(ctx.Attr<bool>("pad_to_max_seq_len"));
 
-    auto* text_pair = ctx.Input<framework::STRINGS>("TextPair");
+    auto* text_pair = ctx.Input<framework::Strings>("TextPair");
     if (text_pair && text->size() != text_pair->size()) {
       VLOG(3) << "The input text(list[str]) and text pair (list[str]) must"
               << "be the same number of text sequence. Please check the input!";
@@ -151,7 +151,7 @@ class BertTokenizerKernel : public framework::OpKernel<T> {
     }
 
     BertTokenizer* tokenizer_ptr =
-        new BertTokenizer(const_cast<framework::VOCAB*>(vocab));
+        new BertTokenizer(const_cast<framework::Vocab*>(vocab));
     size_t batch_max_seq_len = 0;
     size_t batch_size = text->size();
 

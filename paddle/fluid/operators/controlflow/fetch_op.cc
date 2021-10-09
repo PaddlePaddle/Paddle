@@ -109,9 +109,9 @@ class FetchOp : public framework::OperatorBase {
       auto &src_item = fetch_var->Get<framework::LoDTensor>();
       auto *dst_item = &(BOOST_GET(framework::LoDTensor, fetch_list->at(col)));
       DataCopy(src_item, fetch_var_name, dst_item);
-    } else if (fetch_var->IsType<framework::VOCAB>()) {
-      auto &src_item = fetch_var->Get<framework::VOCAB>();
-      auto *dst_item = &(BOOST_GET(framework::VOCAB, fetch_list->at(col)));
+    } else if (fetch_var->IsType<framework::Vocab>()) {
+      auto &src_item = fetch_var->Get<framework::Vocab>();
+      auto *dst_item = &(BOOST_GET(framework::Vocab, fetch_list->at(col)));
       *dst_item = src_item;
     } else {
       auto &src_item = fetch_var->Get<framework::LoDTensorArray>();

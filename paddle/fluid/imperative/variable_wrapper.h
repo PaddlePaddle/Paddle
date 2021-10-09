@@ -155,8 +155,8 @@ class VariableWrapper {
       } else if (type_ == framework::proto::VarType::SELECTED_ROWS) {
         tensor = &(var_.Get<framework::SelectedRows>().value());
       } else if (type_ == framework::proto::VarType::VOCAB) {
-        const framework::VOCAB* data = nullptr;
-        data = &(var_.Get<framework::VOCAB>());
+        const framework::Vocab* data = nullptr;
+        data = &(var_.Get<framework::Vocab>());
         if (data && data->size() != 0) {
           VLOG(6) << "The tensor of variable " << name_
                   << " is not initialized";

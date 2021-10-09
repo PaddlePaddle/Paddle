@@ -22,8 +22,8 @@
 namespace paddle_infer {
 
 /// \brief  Experimental.
-/// STRINGS for text data.
-using STRINGS = std::vector<std::string>;
+/// Strings for text data.
+using Strings = std::vector<std::string>;
 
 typedef void (*CallbackFunc)(void*);
 
@@ -63,6 +63,13 @@ class PD_INFER_DECL Tensor {
   /// Reshape must be called before calling mutable_data() or copy_from_cpu()
   /// \param shape The shape to set.
   void Reshape(const std::vector<int>& shape);
+
+  /// \brief Experimental interface.
+  /// Reset the shape of the Strings tensor.
+  /// Generally it's only used for the input tensor.
+  /// Reshape must be called before calling
+  /// ZeroCopyStringTensorCreate() or PaddleInferTensorCreate()
+  /// \param shape The shape to set.
   void ReshapeStrings(const std::size_t shape);
 
   /// \brief Get the memory pointer in CPU or GPU with specific data type.
@@ -71,11 +78,6 @@ class PD_INFER_DECL Tensor {
   /// \param place The place of the tensor.
   template <typename T>
   T* mutable_data(PlaceType place);
-
-  /// \brief Experimental interface.
-  /// Get the memory pointer in CPU or GPU with STRINGS data type.
-  /// \return The tensor data buffer pointer.
-  paddle_infer::STRINGS* mutable_data();
 
   /// \brief Get the memory pointer directly.
   /// It's usually used to get the output data pointer.
@@ -92,9 +94,9 @@ class PD_INFER_DECL Tensor {
   void CopyFromCpu(const T* data);
 
   /// \brief Experimental interface.
-  /// It's usually used to set the input tensor data with STRINGS data type.
+  /// It's usually used to set the input tensor data with Strings data type.
   /// \param data The pointer of the data, from which the tensor will copy.
-  void CopyStringsFromCpu(const paddle_infer::STRINGS* data);
+  void CopyStringsFromCpu(const paddle_infer::Strings* data);
 
   /// \brief Copy the tensor data to the host memory.
   /// It's usually used to get the output tensor data.

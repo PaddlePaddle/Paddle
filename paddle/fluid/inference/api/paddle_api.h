@@ -176,9 +176,9 @@ class PD_INFER_DECL ZeroCopyTensor : public paddle_infer::Tensor {
   }
 
   /// \brief Experimental interface.
-  /// It's usually used to set the input tensor data with STRINGS data type.
+  /// It's usually used to set the input tensor data with Strings data type.
   /// \param data The pointer of the data, from which the tensor will copy.
-  void copy_strings_from_cpu(const paddle_infer::STRINGS* data) {
+  void copy_strings_from_cpu(const paddle_infer::Strings* data) {
     return CopyStringsFromCpu(data);
   }
 

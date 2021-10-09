@@ -23,10 +23,10 @@ limitations under the License. */
 
 namespace paddle {
 namespace framework {
-using FeedType = boost::variant<LoDTensor, STRINGS>;
+using FeedType = boost::variant<LoDTensor, Strings>;
 using FeedList = std::vector<FeedType>;
 
-using FetchType = boost::variant<LoDTensor, LoDTensorArray, VOCAB>;
+using FetchType = boost::variant<LoDTensor, LoDTensorArray>;
 using FetchList = std::vector<FetchType>;
 
 using FetchUnmergedList = std::vector<std::vector<FetchType>>;
@@ -46,15 +46,8 @@ inline bool data_is_lod_tensor_array(const FetchType &data) {
   return false;
 }
 
-inline bool data_is_string_map(const FetchType &data) {
-  if (data.type() == typeid(VOCAB)) {
-    return true;
-  }
-  return false;
-}
-
 inline bool data_is_string_tensor(const FeedType &data) {
-  if (data.type() == typeid(STRINGS)) {
+  if (data.type() == typeid(Strings)) {
     return true;
   }
   return false;

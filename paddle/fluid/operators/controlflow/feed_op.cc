@@ -28,7 +28,7 @@ namespace paddle {
 namespace operators {
 
 // FeedVariableVisitor is to feed the variable data
-// according to data type (LoDTensor or  STRINGS).
+// according to data type (LoDTensor or  Strings).
 class FeedVariableVisitor : public boost::static_visitor<void> {
  public:
   explicit FeedVariableVisitor(framework::Variable *out_var,
@@ -48,8 +48,8 @@ class FeedVariableVisitor : public boost::static_visitor<void> {
     out_tensor->set_lod(in_tensor.lod());
   }
 
-  void operator()(const framework::STRINGS &in_str) const {
-    framework::STRINGS *out_str = out_var_->GetMutable<framework::STRINGS>();
+  void operator()(const framework::Strings &in_str) const {
+    framework::Strings *out_str = out_var_->GetMutable<framework::Strings>();
     out_str->resize(in_str.size());
     *out_str = in_str;
   }

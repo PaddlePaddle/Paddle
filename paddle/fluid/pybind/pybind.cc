@@ -1214,16 +1214,16 @@ All parameter, weight, gradient are variables in Paddle.
              return py::bytes(*self.GetMutable<std::string>());
            })
       .def("set_string_list",
-           [](Variable &self, STRINGS str_list) {
-             *self.GetMutable<STRINGS>() = str_list;
+           [](Variable &self, Strings str_list) {
+             *self.GetMutable<Strings>() = str_list;
            })
       .def("set_string_map",
-           [](Variable &self, VOCAB map) { *self.GetMutable<VOCAB>() = map; })
+           [](Variable &self, Vocab map) { *self.GetMutable<Vocab>() = map; })
       .def("get_string_tensor",
-           [](Variable &self) { return self.GetMutable<STRINGS>(); },
+           [](Variable &self) { return self.GetMutable<Strings>(); },
            py::return_value_policy::reference)
       .def("get_map_tensor",
-           [](Variable &self) { return self.GetMutable<VOCAB>(); },
+           [](Variable &self) { return self.GetMutable<Vocab>(); },
            py::return_value_policy::reference)
       .def("get_lod_rank_table",
            [](Variable &self) { return self.GetMutable<LoDRankTable>(); },
@@ -2129,7 +2129,7 @@ All parameter, weight, gradient are variables in Paddle.
         static_cast<void (*)(Scope *, const LoDTensor &, const std::string &,
                              size_t)>(&framework::SetFeedVariable));
   m.def("set_feed_variable",
-        static_cast<void (*)(Scope *, const STRINGS &, const std::string &,
+        static_cast<void (*)(Scope *, const Strings &, const std::string &,
                              size_t)>(&framework::SetFeedVariable));
   m.def("get_fetch_variable",
         [](const Scope &scope, const std::string &var_name,

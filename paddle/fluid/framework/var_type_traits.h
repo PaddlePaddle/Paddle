@@ -164,7 +164,7 @@ struct VarTypeRegistryImpl {
 // Paddle would generate unique Ids for each registered variable types.
 using VarTypeRegistry = detail::VarTypeRegistryImpl<
     Tensor, LoDTensor, SelectedRows, std::vector<Scope *>, LoDRankTable,
-    STRINGS, LoDTensorArray, platform::PlaceList, ReaderHolder, std::string,
+    Strings, LoDTensorArray, platform::PlaceList, ReaderHolder, std::string,
     Scope *, operators::reader::LoDTensorBlockingQueueHolder, FetchList,
     FeedList, operators::reader::OrderedMultiDeviceLoDTensorBlockingQueueHolder,
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -179,7 +179,7 @@ using VarTypeRegistry = detail::VarTypeRegistryImpl<
 #if defined(PADDLE_WITH_XPU_BKCL)
     BKCLUniqueId, platform::BKCLCommunicator,
 #endif
-    int, float, VOCAB>;
+    int, float, Vocab>;
 template <typename T>
 struct VarTypeTrait {
   static_assert(VarTypeRegistry::IsRegistered<T>(), "Must be registered type");
@@ -213,8 +213,8 @@ REG_PROTO_VAR_TYPE_TRAIT(FeedList, proto::VarType::FEED_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(FetchList, proto::VarType::FETCH_LIST);
 REG_PROTO_VAR_TYPE_TRAIT(int, proto::VarType::INT32);
 REG_PROTO_VAR_TYPE_TRAIT(float, proto::VarType::FP32);
-REG_PROTO_VAR_TYPE_TRAIT(VOCAB, proto::VarType::VOCAB);
-REG_PROTO_VAR_TYPE_TRAIT(STRINGS, proto::VarType::STRINGS);
+REG_PROTO_VAR_TYPE_TRAIT(Vocab, proto::VarType::VOCAB);
+REG_PROTO_VAR_TYPE_TRAIT(Strings, proto::VarType::STRINGS);
 
 /** End of variable type registration */
 

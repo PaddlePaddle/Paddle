@@ -43,9 +43,9 @@ void InitializeVariable(Variable *var, proto::VarType::Type var_type) {
   } else if (var_type == proto::VarType::LOD_TENSOR_ARRAY) {
     var->GetMutable<LoDTensorArray>();
   } else if (var_type == proto::VarType::STRINGS) {
-    var->GetMutable<STRINGS>();
+    var->GetMutable<Strings>();
   } else if (var_type == proto::VarType::VOCAB) {
-    var->GetMutable<VOCAB>();
+    var->GetMutable<Vocab>();
   } else if (var_type == proto::VarType::PLACE_LIST) {
     var->GetMutable<platform::PlaceList>();
   } else if (var_type == proto::VarType::READER) {

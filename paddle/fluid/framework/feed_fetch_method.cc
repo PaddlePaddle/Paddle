@@ -38,7 +38,7 @@ void SetFeedVariable(Scope* scope, const LoDTensor& input,
   boost::get<LoDTensor>(feed_inputs[index]).set_lod(input.lod());
 }
 
-void SetFeedVariable(Scope* scope, const STRINGS& input,
+void SetFeedVariable(Scope* scope, const Strings& input,
                      const std::string& var_name, size_t index) {
   // If var_name Variable is not found in GlobalScope, a new variable will
   // be created.

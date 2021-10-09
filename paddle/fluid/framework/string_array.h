@@ -24,9 +24,8 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-using STRING = std::string;
-using STRINGS = std::vector<STRING>;
-using VOCAB = std::unordered_map<std::wstring, std::int32_t>;
+using Strings = std::vector<std::string>;
+using Vocab = std::unordered_map<std::wstring, std::int32_t>;
 
 // Convert the std::string type to the std::string type.
 int ConvertStrToWstr(const std::string& src, std::wstring* res);

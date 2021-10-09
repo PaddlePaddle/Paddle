@@ -186,12 +186,12 @@ void ZeroCopyTensorCreate(
 }
 
 /// \brief Experimental interface.
-/// Create the STRINGS tensor from data.
+/// Create the Strings tensor from data.
 /// \param tensor The tensor will be created and
 /// the tensor value is same as data.
 /// \param data The input text.
 void ZeroCopyStringTensorCreate(ZeroCopyTensor &tensor,  // NOLINT
-                                const paddle_infer::STRINGS *data) {
+                                const paddle_infer::Strings *data) {
   size_t shape = data->size();
   tensor.ReshapeStrings(shape);
   tensor.copy_strings_from_cpu(data);
@@ -208,13 +208,13 @@ void PaddleInferTensorCreate(
 }
 
 /// \brief Experimental interface.
-/// Create the STRINGS tensor from data.
+/// Create the Strings tensor from data.
 /// \param tensor The tensor will be created and
 /// the tensor value is same as data.
 /// \param data The input text.
 void PaddleInferStringTensorCreate(paddle_infer::Tensor &tensor,  // NOLINT
-                                   const paddle_infer::STRINGS *data) {
-  VLOG(3) << "Create PaddleInferTensor, dtype = STRINGS ";
+                                   const paddle_infer::Strings *data) {
+  VLOG(3) << "Create PaddleInferTensor, dtype = Strings ";
   size_t shape = data->size();
   tensor.ReshapeStrings(shape);
   tensor.CopyStringsFromCpu(data);

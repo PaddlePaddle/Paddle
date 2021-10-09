@@ -146,7 +146,7 @@ void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
 }
 
 WordPieceTokenizer::WordPieceTokenizer(
-    framework::VOCAB* vocab, const wstring& unk_token /* = L"[UNK]"*/,
+    framework::Vocab* vocab, const wstring& unk_token /* = L"[UNK]"*/,
     const size_t max_input_chars_per_word /* = 100 */)
     : vocab_(vocab),
       unk_token_(unk_token),
@@ -201,7 +201,7 @@ void WordPieceTokenizer::Tokenize(const wstring& text,
   }
 }
 
-BertTokenizer::BertTokenizer(framework::VOCAB* vocab,
+BertTokenizer::BertTokenizer(framework::Vocab* vocab,
                              bool do_lower_case /* = false */,
                              const wstring& unk_token /* = L"[UNK]" */,
                              const wstring& pad_token /* = L"[PAD]" */,
