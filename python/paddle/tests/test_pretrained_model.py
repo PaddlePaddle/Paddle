@@ -52,7 +52,9 @@ class TestPretrainedModel(unittest.TestCase):
         np.testing.assert_allclose(res['dygraph'], res['static'])
 
     def test_models(self):
-        arches = ['mobilenet_v1', 'mobilenet_v2', 'resnet18', 'vgg16', 'shufflenetv2_swish']
+        arches = ['mobilenet_v1', 'mobilenet_v2', 'resnet18', 'vgg16',
+                  'shufflenetv2_swish'
+        ]
         for arch in arches:
             self.infer(arch)
 
