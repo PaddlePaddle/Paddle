@@ -26,20 +26,13 @@ from paddle.utils.download import get_weights_path_from_url
 
 
 MODEL_URLS = {
-    "shufflenetv2_x0_25":
-    "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_25_pretrained.pdparams",
-    "shufflenetv2_x0_33":
-    "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_33_pretrained.pdparams",
-    "shufflenetv2_x0_5":
-    "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_5_pretrained.pdparams",
-    "shufflenetv2_x1_0":
-    "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x1_0_pretrained.pdparams",
-    "shufflenetv2_x1_5":
-    "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x1_5_pretrained.pdparams",
-    "shufflenetv2_x2_0":
-    "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x2_0_pretrained.pdparams",
-    "shufflenetv2_swish":
-    "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_swish_pretrained.pdparams"
+    "shufflenetv2_x0_25": "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_25_pretrained.pdparams",
+    "shufflenetv2_x0_33": "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_33_pretrained.pdparams",
+    "shufflenetv2_x0_5": "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_5_pretrained.pdparams",
+    "shufflenetv2_x1_0": "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x1_0_pretrained.pdparams",
+    "shufflenetv2_x1_5": "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x1_5_pretrained.pdparams",
+    "shufflenetv2_x2_0": "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x2_0_pretrained.pdparams",
+    "shufflenetv2_swish": "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_swish_pretrained.pdparams"
 }
 
 __all__ = list(MODEL_URLS.keys())
@@ -306,8 +299,10 @@ def _shufflenetv2(arch, scale, pretrained=False, **kwargs):
     model = ShuffleNetV2(scale=scale, **kwargs)
     if pretrained:
         weight_path = get_weights_path_from_url(MODEL_URLS[arch])
+        
         param = paddle.load(weight_path)
-        model.set_dict(param)    
+        model.set_dict(param)  
+        
     return model    
 
 
@@ -321,7 +316,6 @@ def shufflenetv2_x0_25(pretrained=False, **kwargs):
         .. code-block:: python
 
             from paddle.vision.models import shufflenetv2_x0_25
-            
             
             # build model
             model = shufflenetv2_x0_25()
@@ -344,7 +338,6 @@ def shufflenetv2_x0_33(pretrained=False, **kwargs):
 
             from paddle.vision.models import shufflenetv2_x0_33
             
-            
             # build model
             model = shufflenetv2_x0_33()
             
@@ -365,7 +358,6 @@ def shufflenetv2_x0_5(pretrained=False, **kwargs):
         .. code-block:: python
 
             from paddle.vision.models import shufflenetv2_x0_5
-            
             
             # build model
             model = shufflenetv2_x0_5()
@@ -388,7 +380,6 @@ def shufflenetv2_x1_0(pretrained=False, **kwargs):
 
             from paddle.vision.models import shufflenetv2_x1_0
             
-            
             # build model
             model = shufflenetv2_x1_0()
             
@@ -409,7 +400,6 @@ def shufflenetv2_x1_5(pretrained=False, **kwargs):
         .. code-block:: python
 
             from paddle.vision.models import shufflenetv2_x1_5
-            
             
             # build model
             model = shufflenetv2_x1_5()
@@ -432,7 +422,6 @@ def shufflenetv2_x2_0(pretrained=False, **kwargs):
 
             from paddle.vision.models import shufflenetv2_x2_0
             
-            
             # build model
             model = shufflenetv2_x2_0()
             
@@ -453,7 +442,6 @@ def shufflenetv2_swish(pretrained=False, **kwargs):
         .. code-block:: python
 
             from paddle.vision.models import shufflenetv2_swish
-            
             
             # build model
             model = shufflenetv2_swish()
