@@ -78,6 +78,7 @@ def sparse_attention(query,
     Examples:
         .. code-block:: python
 
+            # required: gpu
             import paddle
             import numpy as np
             
