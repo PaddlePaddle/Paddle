@@ -47,6 +47,8 @@ extern void* mkldfti_dso_handle;
   };                                                                           \
   extern DynLoad__##__name __name
 
+// mkl-dfti has a macro that shadows the function with the same name
+// un-defeine this macro so as to export that function
 #undef DftiCreateDescriptor
 
 #define MKLDFTI_ROUTINE_EACH(__macro) \
@@ -68,6 +70,7 @@ MKLDFTI_ROUTINE_EACH(DYNAMIC_LOAD_MKLDFTI_WRAP)
 
 #undef DYNAMIC_LOAD_MKLDFTI_WRAP
 
+// avoid naming conflict
 DFTI_EXTERN MKL_LONG DftiCreateDescriptorX(DFTI_DESCRIPTOR_HANDLE* desc,
                                            enum DFTI_CONFIG_VALUE prec,
                                            enum DFTI_CONFIG_VALUE domain,

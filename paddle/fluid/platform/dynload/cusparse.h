@@ -41,8 +41,9 @@ extern void *cusparse_dso_handle;
   };                                                                 \
   extern DynLoad__##__name __name
 
-#ifndef _WIN32
-#if CUDA_VERSION >= 11020
+#if !defined(PADDLE_WITH_ARM) && !defined(_WIN32)
+// APIs available after CUDA 11.0
+#if CUDA_VERSION >= 11000
 #define CUSPARSE_ROUTINE_EACH(__macro) \
   __macro(cusparseCreate);             \
   __macro(cusparseCreateCsr);          \
@@ -51,12 +52,19 @@ extern void *cusparse_dso_handle;
   __macro(cusparseSpMM);               \
   __macro(cusparseDestroySpMat);       \
   __macro(cusparseDestroyDnMat);       \
-  __macro(cusparseDestroy);            \
-  __macro(cusparseSDDMM_bufferSize);   \
-  __macro(cusparseSDDMM_preprocess);   \
-  __macro(cusparseSDDMM);
+  __macro(cusparseDestroy);
 
 CUSPARSE_ROUTINE_EACH(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP);
+
+// APIs available after CUDA 11.2
+#if CUDA_VERSION >= 11020
+#define CUSPARSE_ROUTINE_EACH_R2(__macro) \
+  __macro(cusparseSDDMM_bufferSize);      \
+  __macro(cusparseSDDMM_preprocess);      \
+  __macro(cusparseSDDMM);
+
+CUSPARSE_ROUTINE_EACH_R2(DECLARE_DYNAMIC_LOAD_CUSPARSE_WRAP)
+#endif
 #endif
 #endif
 

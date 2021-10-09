@@ -64,7 +64,6 @@ import paddle.reader  # noqa: F401
 import paddle.static  # noqa: F401
 import paddle.vision  # noqa: F401
 
-from .tensor import fft
 from .tensor.random import bernoulli  # noqa: F401
 
 from .tensor.attribute import rank  # noqa: F401
@@ -94,18 +93,12 @@ from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
 from .tensor.linalg import transpose  # noqa: F401
 from .tensor.linalg import dist  # noqa: F401
-from .tensor.linalg import cond  # noqa: F401
 from .tensor.linalg import t  # noqa: F401
 from .tensor.linalg import cross  # noqa: F401
 from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import bmm  # noqa: F401
 from .tensor.linalg import histogram  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
-from .tensor.linalg import det  # noqa: F401
-from .tensor.linalg import slogdet  # noqa: F401
-from .tensor.linalg import matrix_power  # noqa: F401
-from .tensor.linalg import svd  # noqa: F401
-from .tensor.linalg import solve  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
 from .tensor.logic import greater_than  # noqa: F401
@@ -300,6 +293,7 @@ from .hapi import summary  # noqa: F401
 from .hapi import flops  # noqa: F401
 from . import hub  # noqa: F401
 from . import linalg  # noqa: F401
+from . import fft  # noqa: F401
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
@@ -504,7 +498,6 @@ __all__ = [  # noqa
            'stack',
            'sqrt',
            'cholesky',
-           'matrix_power',
            'randperm',
            'linspace',
            'reshape',
