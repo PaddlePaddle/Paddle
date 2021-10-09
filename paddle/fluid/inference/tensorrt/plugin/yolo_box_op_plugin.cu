@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <cuda_fp16.h>
-#include <cuda_runtime.h>
 #include <algorithm>
 #include <cassert>
 
@@ -109,24 +107,12 @@ size_t YoloBoxPlugin::getWorkspaceSize(int max_batch_size) const TRT_NOEXCEPT {
 
 template <typename T>
 __device__ inline T sigmoid(T x) {
-  return 1. / (1. + expf(-x));
+  return 1. / (1. + exp(-x));
 }
 
 template <>
-__device__ inline half sigmoid(half x) {
-  half one = static_cast<half>(1.0);
-  return one / (one + hexp(-x));
-}
-
-template <typename T>
-__device__ inline T pow(T x, T exp) {
-  return powf(x, exp);
-}
-
-template <>
-__device__ inline half pow(half x, half exp) {
-  const float tmp = powf(__half2float(x), __half2float(exp));
-  return __float2half(tmp);
+__device__ inline float sigmoid(float x) {
+  return 1.f / (1.f + expf(-x));
 }
 
 template <typename T>
@@ -228,9 +214,8 @@ __global__ void KeYoloBoxFw(const T* const input, const int* const imgsize,
     float conf = sigmoid(static_cast<float>(input[obj_idx]));
     if (iou_aware) {
       int iou_idx = GetIoUIndex(i, j, k * w + l, an_num, an_stride, grid_num);
-      T iou = sigmoid<T>(input[iou_idx]);
-      conf = pow<T>(conf, static_cast<T>(1. - iou_aware_factor)) *
-             pow<T>(iou, static_cast<T>(iou_aware_factor));
+      float iou = sigmoid<float>(input[iou_idx]);
+      conf = powf(conf, 1. - iou_aware_factor) * powf(iou, iou_aware_factor);
     }
     int box_idx = GetEntryIndex(i, j, k * w + l, an_num, an_stride, grid_num, 0,
                                 iou_aware);
