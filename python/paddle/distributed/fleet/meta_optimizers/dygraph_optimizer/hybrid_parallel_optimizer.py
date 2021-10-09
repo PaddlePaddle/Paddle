@@ -194,8 +194,13 @@ class HybridParallelOptimizer:
             logger.warning("While using ClipGradByGlobalNorm in TensorParallel, PipelineParallel " \
                            "or Sharding, the grad clip of original optimizer will be changed.")
 
-            self._inner_opt._grad_clip = HybridParallelClipGrad(
-                self._inner_opt._grad_clip, hcg)
+            if self._sharding_enable:
+                # change sharding inner_optimizer's _grad_clip
+                self._inner_opt._inner_optimizer._grad_clip = HybridParallelClipGrad(
+                    self._inner_opt._grad_clip, hcg)
+            else:
+                self._inner_opt._grad_clip = HybridParallelClipGrad(
+                    self._inner_opt._grad_clip, hcg)
 
     @imperative_base.no_grad
     @framework.dygraph_only
