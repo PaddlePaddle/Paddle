@@ -1292,7 +1292,49 @@ def histogram(input, bins=100, min=0, max=0, name=None):
                'max': max})
     return out
 
+def bincount(x, weights=None, minlength=0):
+    """
+    Computes frequency of each value in the input tensor. 
 
+    Args:
+        x (Tensor): A Tensor(or LoDTensor) with non-negative integer. Should be 1-D tensor.
+        weights (Tensor, optional): Weight for each value in the input tensor. Should have the same shape as input.
+        minlength (int): Minimum number of bins. Should be non-negative integer.
+
+    Returns:
+        Tensor: The tensor of frequency.
+
+    Examples:
+        .. code-block:: python
+
+            import paddle
+
+            x = paddle.to_tensor([1, 2, 1, 4, 5])
+            result = paddle.histogram(inputs)
+            print(result) # [0, 2, 1, 0, 1, 1]
+    """
+    if in_dygraph_mode():
+        return _C_ops.bincount(x, weights, "minlength", minlength)
+
+    helper = LayerHelper('bincount', **locals())
+
+    check_variable_and_dtype(
+        x, 'X', ['int32', 'int64'], 'bincount')
+    check_variable_and_dtype(
+        weights, 'Weights', ['int32', 'int64', 'float32', 'float64'], 'bincount')
+    
+    if weights is not None:
+        out = helper.create_variable_for_type_inference(dtype=weights.dtype)
+    else:
+        out = helper.create_variable_for_type_inference(dtype=x.dtype)
+    helper.append_op(
+        type='bincount',
+        inputs={'X': x,
+                'Weights': weights},
+        outputs={'Out': out},
+        attrs={'minlength': minlength})
+    return out
+    
 def mv(x, vec, name=None):
     """
     Performs a matrix-vector product of the matrix x and the vector vec.
