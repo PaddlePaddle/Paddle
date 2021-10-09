@@ -2302,9 +2302,9 @@ void BindImperative(py::module *m_ptr) {
         platform::errors::PreconditionNotMet(
             "Required `dst` device should be CUDAPlace, but received %d.", dst.Place()));
     PADDLE_ENFORCE_EQ(
-        platform::is_cuda_pinned_place(index.Place()), true,
+        platform::is_cpu_place(index.Place()), true,
         platform::errors::PreconditionNotMet(
-            "Required `index` device should be CUDAPinnedPlace, but received %d.", index.Place()));
+            "Required `index` device should be CPUPlace, but received %d.", index.Place()));
     PADDLE_ENFORCE_EQ(
         platform::is_cuda_pinned_place(buffer.Place()), true,
         platform::errors::PreconditionNotMet(
@@ -2367,6 +2367,7 @@ void BindImperative(py::module *m_ptr) {
           index_tensor.numel() <= buffer_tensor.dims()[0], true,
           platform::errors::PreconditionNotMet("Buffer tensor size is too small."));
     }
+
     // Select the index data to the buffer
     auto index_select = [](const framework::Tensor &src_tensor,
                            const framework::Tensor &index_tensor,
