@@ -365,11 +365,6 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       ++last_ids_index;
       ADD(left_length, one, left_length, is_multi_threads, int64_t);
       SAME_DIMS_OP(batch_offset, last_ids, gather_idx, Add, int64_t);
-      // tag_mask = paddle.cast((left_length > 0), 'int64')
-      // last_ids_update = paddle.gather(hist.flatten(), gather_idx) * tag_mask
-      // zero_len_mask = paddle.cast((left_length == 0), 'int64')
-      // last_ids_update = last_ids_update * (1 - zero_len_mask) + last_ids *
-      // zero_len_mask
       Tensor& last_ids_update = batch_path[actual_len - last_ids_index];
       hist->Resize({batch_size * n_labels});
       CPUGather<int64_t, int64_t>(dev_ctx, *hist, gather_idx, &last_ids_update);
@@ -383,8 +378,6 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       SAME_DIMS_OP(last_ids_update, last_ids_tmp, last_ids_update, Add,
                    int64_t);
       GET_MASK(left_length, zero, int_mask, LessThanFunctor, int64_t);
-      // tag_mask = paddle.cast((left_length < 0), 'int64');
-      // last_ids = last_ids_update + last_ids * tag_mask
       SAME_DIMS_OP(last_ids, int_mask, last_ids, Mul, int64_t);
       SAME_DIMS_OP(last_ids_update, last_ids, last_ids, Add, int64_t);
     }
