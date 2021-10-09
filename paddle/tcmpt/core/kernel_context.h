@@ -50,10 +50,37 @@ class KernelContext {
 
   void EmplaceBackInput(std::shared_ptr<TensorInterface> input) {
     inputs_.emplace_back(input);
+    // Record the start and end index of the input
+    int index = inputs_.size();
+    input_range_.emplace_back(std::pair<int, int>(index, index + 1));
+  }
+
+  void EmplaceBackInputs(std::vector<std::shared_ptr<TensorInterface>> inputs) {
+    for (auto in : inputs) {
+      inputs_.emplace_back(in);
+    }
+    // Record the start and end index of the input
+    int index = inputs_.size();
+    input_range_.emplace_back(
+        std::pair<int, int>(index, index + inputs.size()));
   }
 
   void EmplaceBackOutput(std::shared_ptr<TensorInterface> output) {
     outputs_.emplace_back(output);
+    // Record the start and end index of the input
+    int index = outputs_.size();
+    output_range_.emplace_back(std::pair<int, int>(index, index + 1));
+  }
+
+  void EmplaceBackOutputs(
+      std::vector<std::shared_ptr<TensorInterface>> outputs) {
+    for (auto out : outputs) {
+      outputs_.emplace_back(out);
+    }
+    // Record the start and end index of the input
+    int index = outputs_.size();
+    output_range_.emplace_back(
+        std::pair<int, int>(index, index + outputs.size()));
   }
 
   void EmplaceBackAttr(paddle::any attr) { attrs_.emplace_back(attr); }
@@ -77,6 +104,9 @@ class KernelContext {
           "Attribute cast error in Op Kernel Context."));
     }
   }
+
+ private:
+  bool IsDuplicable() const { return input_range_.size() != inputs_.size(); }
 
  private:
   // DeviceContext base class
