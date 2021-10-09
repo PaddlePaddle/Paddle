@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "paddle/fluid/framework/ir/generate_pass.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
 namespace framework {
@@ -222,6 +223,115 @@ void GeneratePass::VerifyDesc() const {
 bool GeneratePass::VerifyGraph(const Graph& graph) {
   // Return true temporarily.
   return true;
+}
+
+namespace generate_pass {
+
+VarHelper::VarHelper(const char* name) : name_(name), type_(Type::kInput) {}
+VarHelper::VarHelper(const std::string& name, Type type)
+    : name_(name), type_(type) {}
+
+OpHelper::OpHelper(const char* type, SubgraphHelper* subgraph_helper)
+    : type_(type), subgraph_helper_(subgraph_helper) {
+  op_desc_ = subgraph_helper_->ProgramDesc()->mutable_blocks(0)->add_ops();
+  op_desc_->set_type(type_);
+}
+
+OpHelper::Arguments::Arguments(const char* parameter,
+                               const VarHelper& var_helper)
+    : parameter_(parameter) {
+  var_helpers_.push_back(var_helper);
+}
+
+OpHelper::Arguments::Arguments(const char* parameter,
+                               std::initializer_list<VarHelper> var_helpers)
+    : parameter_(parameter), var_helpers_(var_helpers) {}
+
+OpHelper& OpHelper::operator()(const Arguments& input) {
+  proto::OpDesc::Var* var = op_desc_->add_inputs();
+  var->set_parameter(input.parameter_);
+  for (const VarHelper& var_helper : input.var_helpers_) {
+    var->add_arguments()->assign(var_helper.name_);
+    if (VarHelper::Type::kInput == var_helper.type_) {
+      subgraph_helper_->AddInputVar(var_helper.name_);
+    }
+  }
+  return *this;
+}
+
+OpHelper& OpHelper::operator()(std::initializer_list<Arguments> inputs) {
+  for (const auto& input : inputs) {
+    operator()(input);
+  }
+  return *this;
+}
+
+VarHelper OpHelper::Out(const char* name) {
+  std::string argument = patterns::UniqueKey(type_);
+  proto::OpDesc::Var* var = op_desc_->add_outputs();
+  var->set_parameter(name);
+  var->add_arguments()->assign(argument);
+  return VarHelper(argument, VarHelper::Type::kOutput);
+}
+
+proto::ProgramDesc* SubgraphHelper::ProgramDesc() { return &program_desc_; }
+
+const proto::ProgramDesc& SubgraphHelper::ProgramDesc() const {
+  return program_desc_;
+}
+
+const std::vector<std::string>& SubgraphHelper::InputVars() const {
+  return input_vars_;
+}
+
+const std::vector<std::string>& SubgraphHelper::OutputVars() const {
+  return output_vars_;
+}
+
+void SubgraphHelper::AddInputVar(const std::string& name) {
+  auto iter = std::find(input_vars_.begin(), input_vars_.end(), name);
+  if (input_vars_.end() == iter) {
+    input_vars_.push_back(name);
+  }
+}
+
+void SubgraphHelper::AddOutputVars(const VarHelper& var_helper) {
+  output_vars_.push_back(var_helper.name_);
+}
+
+}  // namespace generate_pass
+
+PassPairs::PassPairs(const SubgraphType& pattern, const SubgraphType& replace) {
+  AddPassDesc(pattern, replace);
+}
+
+void PassPairs::AddPassDesc(const SubgraphType& pattern,
+                            const SubgraphType& replace) {
+  proto::PassDesc* pass_desc = multi_pass_desc_.add_pass_descs();
+  pass_desc->mutable_pattern()->CopyFrom(pattern.ProgramDesc());
+  pass_desc->mutable_replace()->CopyFrom(replace.ProgramDesc());
+  PADDLE_ENFORCE_EQ(pattern.InputVars().size(), replace.InputVars().size(),
+                    platform::errors::InvalidArgument(
+                        "Size of lambda expression arguments is not equal "
+                        "between pattern/replace subgraph."));
+  for (size_t i = 0; i < pattern.InputVars().size(); i++) {
+    proto::PassDesc::VarMap* var_map = pass_desc->add_var_maps();
+    var_map->set_pattern_var(pattern.InputVars()[i]);
+    var_map->set_replace_var(replace.InputVars()[i]);
+  }
+  PADDLE_ENFORCE_EQ(pattern.OutputVars().size(), replace.OutputVars().size(),
+                    platform::errors::InvalidArgument(
+                        "Size of lambda expression returns is not equal "
+                        "between pattern/replace subgraph."));
+  for (size_t i = 0; i < pattern.OutputVars().size(); i++) {
+    proto::PassDesc::VarMap* var_map = pass_desc->add_var_maps();
+    var_map->set_pattern_var(pattern.OutputVars()[i]);
+    var_map->set_replace_var(replace.OutputVars()[i]);
+  }
+}
+
+const proto::MultiPassDesc& PassPairs::MultiPassDesc() const {
+  return multi_pass_desc_;
 }
 
 }  // namespace ir

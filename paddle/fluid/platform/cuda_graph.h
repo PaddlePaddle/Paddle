@@ -84,6 +84,10 @@ class CUDAGraph {
     return capturing_graph_->place_;
   }
 
+  // This API can be used to debug which GPU operation is not
+  // supported during capturing CUDA Graph.
+  static bool IsValidCapturing();
+
  private:
 #if CUDA_VERSION >= 10010
   cudaGraph_t graph_{nullptr};
@@ -104,7 +108,8 @@ class CUDAGraphCaptureModeGuard {
   DISABLE_COPY_AND_ASSIGN(CUDAGraphCaptureModeGuard);
 
  public:
-  explicit CUDAGraphCaptureModeGuard(cudaStreamCaptureMode mode) {
+  explicit CUDAGraphCaptureModeGuard(
+      cudaStreamCaptureMode mode = cudaStreamCaptureModeRelaxed) {
     if (UNLIKELY(CUDAGraph::IsCapturing())) {
       PADDLE_ENFORCE_CUDA_SUCCESS(cudaThreadExchangeStreamCaptureMode(&mode));
       // After cudaThreadExchangeStreamCaptureMode is called,
@@ -128,7 +133,8 @@ class CUDAGraphCaptureModeGuard {
   DISABLE_COPY_AND_ASSIGN(CUDAGraphCaptureModeGuard);
 
  public:
-  explicit CUDAGraphCaptureModeGuard(cudaStreamCaptureMode) {}
+  explicit CUDAGraphCaptureModeGuard(
+      cudaStreamCaptureMode mode = cudaStreamCaptureModeRelaxed) {}
 };
 #endif
 
