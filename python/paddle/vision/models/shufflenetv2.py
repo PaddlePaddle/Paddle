@@ -21,7 +21,6 @@ from paddle.fluid.layers import reshape, transpose, concat, split
 from paddle.fluid.param_attr import ParamAttr
 from paddle.nn import Layer, Conv2D, MaxPool2D, AdaptiveAvgPool2D, BatchNorm, Linear
 from paddle.nn.initializer import KaimingNormal
-from paddle.nn.functional import swish
 
 from paddle.utils.download import get_weights_path_from_url
 
@@ -207,9 +206,9 @@ class ShuffleNetV2(Layer):
     `"ShuffleNet V2: Practical Guidelines for Ecient CNN Architecture Design" <https://arxiv.org/pdf/1807.11164.pdf>`_
 
     Args:
-        num_classes (int): output dim of last fc layer. If num_classes <=0, last fc layer 
+        num_classes (int, optional): output dim of last fc layer. If num_classes <=0, last fc layer 
                             will not be defined. Default: 1000.
-        scale (float): network architecture. Default: 1.0.
+        scale (float, optional): network architecture. Default: 1.0.
         act (str, optional): Activation to be applied to the output of batch normalization. Default: "relu".
 
     Examples:
@@ -217,8 +216,8 @@ class ShuffleNetV2(Layer):
 
             from paddle.vision.models import ShuffleNetV2
 
+
             shufflenetv2_x0_25 = ShuffleNetV2(num_classes=1000, scale=0.25, act="relu")
-            shufflenetv2_swish = ShuffleNetV2(num_classes=1000, scale=1.0, act="swish")
             
     """    
     def __init__(self, num_classes=1000, scale=1.0, act="relu"):
@@ -322,8 +321,11 @@ def shufflenetv2_x0_25(pretrained=False, **kwargs):
         .. code-block:: python
 
             from paddle.vision.models import shufflenetv2_x0_25
+            
+            
             # build model
             model = shufflenetv2_x0_25()
+            
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x0_25(pretrained=True)
 
@@ -341,8 +343,11 @@ def shufflenetv2_x0_33(pretrained=False, **kwargs):
         .. code-block:: python
 
             from paddle.vision.models import shufflenetv2_x0_33
+            
+            
             # build model
             model = shufflenetv2_x0_33()
+            
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x0_33(pretrained=True)
 
@@ -360,8 +365,11 @@ def shufflenetv2_x0_5(pretrained=False, **kwargs):
         .. code-block:: python
 
             from paddle.vision.models import shufflenetv2_x0_5
+            
+            
             # build model
             model = shufflenetv2_x0_5()
+            
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x0_5(pretrained=True)
 
@@ -379,8 +387,11 @@ def shufflenetv2_x1_0(pretrained=False, **kwargs):
         .. code-block:: python
 
             from paddle.vision.models import shufflenetv2_x1_0
+            
+            
             # build model
             model = shufflenetv2_x1_0()
+            
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x1_0(pretrained=True)
 
@@ -398,8 +409,11 @@ def shufflenetv2_x1_5(pretrained=False, **kwargs):
         .. code-block:: python
 
             from paddle.vision.models import shufflenetv2_x1_5
+            
+            
             # build model
             model = shufflenetv2_x1_5()
+            
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x1_5(pretrained=True)
 
@@ -417,8 +431,11 @@ def shufflenetv2_x2_0(pretrained=False, **kwargs):
         .. code-block:: python
 
             from paddle.vision.models import shufflenetv2_x2_0
+            
+            
             # build model
             model = shufflenetv2_x2_0()
+            
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x2_0(pretrained=True)
 
@@ -436,8 +453,11 @@ def shufflenetv2_swish(pretrained=False, **kwargs):
         .. code-block:: python
 
             from paddle.vision.models import shufflenetv2_swish
+            
+            
             # build model
             model = shufflenetv2_swish()
+            
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_swish(pretrained=True)
 
