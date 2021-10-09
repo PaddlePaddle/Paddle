@@ -129,7 +129,8 @@ def init_csr_format(batch_size, num_heads, rows, blocksize):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "core is not compiled with CUDA and cuda version need larger than 11.2")
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.2"
+)
 class TestSparseAttentionOp(OpTest):
     def config(self):
         self.shape = (1, 1, 16, 8)
@@ -190,7 +191,8 @@ class TestSparseAttentionOpShapeTest(TestSparseAttentionOp):
 
 @unittest.skipIf(
     not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
-    "core is not compiled with CUDA and cuda version need larger than 11.2")
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.2"
+)
 class TestSparseAttentionAPI(unittest.TestCase):
     def setUp(self):
         self.place = paddle.CUDAPlace(0)
@@ -198,12 +200,12 @@ class TestSparseAttentionAPI(unittest.TestCase):
         self.blocksize = 2
         self.dtype = 'float64'
 
-    def test_static_result(self):
+    def test_static_graph(self):
         paddle.enable_static()
         with paddle.static.program_guard(paddle.static.Program()):
-            Q = paddle.static.data(name="Q", shape=self.shape, dtype="float32")
-            K = paddle.static.data(name="K", shape=self.shape, dtype="float32")
-            V = paddle.static.data(name="V", shape=self.shape, dtype="float32")
+            Q = paddle.static.data(name="Q", shape=self.shape, dtype=self.dtype)
+            K = paddle.static.data(name="K", shape=self.shape, dtype=self.dtype)
+            V = paddle.static.data(name="V", shape=self.shape, dtype=self.dtype)
 
             batch_size, num_heads, rows = self.shape[0], self.shape[
                 1], self.shape[2]
@@ -219,9 +221,9 @@ class TestSparseAttentionAPI(unittest.TestCase):
                 name="Columns", shape=columns_shape, dtype="int32")
             Out = F.sparse_attention(Q, K, V, offset, columns)
 
-            Q_np = np.random.random(self.shape).astype("float32")
-            K_np = np.random.random(self.shape).astype("float32")
-            V_np = np.random.random(self.shape).astype("float32")
+            Q_np = np.random.random(self.shape).astype(self.dtype)
+            K_np = np.random.random(self.shape).astype(self.dtype)
+            V_np = np.random.random(self.shape).astype(self.dtype)
             offset_np, columns_np = init_csr_format(
                 self.shape[0], self.shape[1], self.shape[2], self.blocksize)
             offset_np = offset_np.astype('int32')
