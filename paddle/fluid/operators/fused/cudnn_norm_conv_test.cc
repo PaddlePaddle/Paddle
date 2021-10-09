@@ -94,7 +94,7 @@ void CheckOutput(const framework::Tensor &cpu_res,
 // Use Paddle conv2d op results as baseline
 void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
                           const Tensor &cpu_input, const Tensor &cpu_filter,
-                          Tensor *cpu_output) {
+                          Tensor *cpu_output, int stride, int pad) {
   framework::Scope scope;
   auto *input = scope.Var("Input")->GetMutable<framework::LoDTensor>();
   auto *filter = scope.Var("Filter")->GetMutable<framework::LoDTensor>();
@@ -107,10 +107,12 @@ void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
   framework::AttributeMap attrs;
   bool use_cudnn = true;
   std::string data_format = "NHWC";
-  std::string padding_algorithm = "SAME";
+  std::vector<int> strides = {stride, stride};
+  std::vector<int> paddings = {pad, pad};
+  attrs.insert({"strides", strides});
+  attrs.insert({"paddings", paddings});
   attrs.insert({"use_cudnn", use_cudnn});
   attrs.insert({"data_format", data_format});
-  attrs.insert({"padding_algorithm", padding_algorithm});
 
   auto op = framework::OpRegistry::CreateOp(
       "conv2d", {{"Input", {"Input"}}, {"Filter", {"Filter"}}},
@@ -145,7 +147,7 @@ void ComputeConv2DBackward(const platform::CUDADeviceContext &ctx,
   framework::AttributeMap attrs;
   bool use_cudnn = true;
   std::string data_format = "NHWC";
-  std::string padding_algorithm = "SAME";
+  std::string padding_algorithm = "EXPLICIT";
   std::vector<int> strides = {stride, stride};
   std::vector<int> paddings = {padding, padding};
   std::vector<int> dilations = {dilation, dilation};
@@ -214,6 +216,8 @@ class CudnnNormConvolutionTester {
     kernel_size_ = kernel_size;
     stride_ = stride;
     padding_ = (kernel_size_ - 1) / 2;
+    out_height_ = (height_ + 2 * padding_ - kernel_size_) / stride_ + 1;
+    out_width_ = (width_ + 2 * padding_ - kernel_size_) / stride_ + 1;
     SetUp();
   }
 
@@ -275,15 +279,17 @@ class CudnnNormConvolutionTester {
         &cpu_filter_nchw_);
     // transpoes for filter, NCHW -> NHWC
     TransposeNchwToNhwc<T>(cpu_filter_nchw_, &cpu_filter_nhwc_);
-    InitRandomTensor<T>({batch_size_, height_, width_, output_channels_},
-                        &cpu_output_grad_);
+    InitRandomTensor<T>(
+        {batch_size_, out_height_, out_width_, output_channels_},
+        &cpu_output_grad_);
   }
 
   void BaselineForward(const platform::CUDADeviceContext &ctx,
                        framework::Tensor *cpu_output_base,
                        framework::Tensor *cpu_sum_base,
                        framework::Tensor *cpu_sum_of_square_base) {
-    ComputeConv2DForward(ctx, cpu_input_, cpu_filter_nchw_, cpu_output_base);
+    ComputeConv2DForward(ctx, cpu_input_, cpu_filter_nchw_, cpu_output_base,
+                         stride_, padding_);
     ComputeSumAndSquareSum<T>(*cpu_output_base, cpu_sum_base,
                               cpu_sum_of_square_base);
   }
@@ -313,7 +319,7 @@ class CudnnNormConvolutionTester {
     T *input_ptr = input.data<T>();
     T *filter_ptr = filter_nhwc.data<T>();
     T *output_ptr = output.mutable_data<T>(
-        {batch_size_, height_, width_, output_channels_}, place);
+        {batch_size_, out_height_, out_width_, output_channels_}, place);
     float *sum_ptr =
         sum.mutable_data<float>({1, 1, 1, output_channels_}, place);
     float *sum_of_square_ptr =
@@ -370,6 +376,8 @@ class CudnnNormConvolutionTester {
   int batch_size_;
   int height_;
   int width_;
+  int out_height_;
+  int out_width_;
   int input_channels_;
   int output_channels_;
   int kernel_size_;
@@ -433,4 +441,20 @@ TEST(CudnnNormConvFp16, K1S1O4) {
       stride);
   test.CheckForward(1e-3, true);
   test.CheckBackward(1e-3, true);
+}
+
+// test for fp16, kernel = 1, stride = 2, output_channels = input_channels * 4
+TEST(CudnnNormConvFp16, K1S2O4) {
+  int batch_size = 1;
+  int height = 8;
+  int width = 8;
+  int input_channels = 8;
+  int output_channels = 32;
+  int kernel_size = 1;
+  int stride = 2;
+  CudnnNormConvolutionTester<paddle::platform::float16> test(
+      batch_size, height, width, input_channels, output_channels, kernel_size,
+      stride);
+  test.CheckForward(1e-3, true);
+  test.CheckBackward(1e-3);
 }
