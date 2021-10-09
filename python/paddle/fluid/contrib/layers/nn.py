@@ -1060,6 +1060,7 @@ def sparse_embedding(input,
         .. code-block:: python
 
             import paddle
+            
             paddle.enable_static()
             sparse_feature_dim = 1024
             embedding_size = 64
