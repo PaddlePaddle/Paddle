@@ -44,6 +44,14 @@ from .models import vgg13  # noqa: F401
 from .models import vgg16  # noqa: F401
 from .models import vgg19  # noqa: F401
 from .models import LeNet  # noqa: F401
+from .models import ShuffleNetV2  # noqa: F401
+from .models import shufflenetv2_x0_25  # noqa: F401
+from .models import shufflenetv2_x0_33  # noqa: F401
+from .models import shufflenetv2_x0_5  # noqa: F401
+from .models import shufflenetv2_x1_0  # noqa: F401
+from .models import shufflenetv2_x1_5  # noqa: F401
+from .models import shufflenetv2_x2_0  # noqa: F401
+from .models import shufflenetv2_swish  # noqa: F401
 from .transforms import BaseTransform  # noqa: F401
 from .transforms import Compose  # noqa: F401
 from .transforms import Resize  # noqa: F401
