@@ -286,9 +286,9 @@ class TestMergedLarsMomentumOpWithMP(OpTest):
         grads = []
         velocitys = []
         learning_rates = []
-        master_params = []
         param_outs = []
         velocity_outs = []
+        master_params = []
         master_param_outs = []
         for i in range(self.params_num):
             master_param = np.random.random((123, 321)).astype("float32")
@@ -376,8 +376,8 @@ class TestMergedLarsMomentumOp(OpTest):
             gnorm = np.sqrt(np.square(grad).sum())
             local_lr = learning_rate * lars_coeff * pnorm / (
                 gnorm + lars_weight_decay[i] * param)
-            velocity_out = mu * velocity + local_lr * (grad + lars_weight_decay[i]
-                                                       * param)
+            velocity_out = mu * velocity + local_lr * (
+                grad + lars_weight_decay[i] * param)
             param_out = param - velocity_out
 
             params.append(("SubParam_" + str(i), param))

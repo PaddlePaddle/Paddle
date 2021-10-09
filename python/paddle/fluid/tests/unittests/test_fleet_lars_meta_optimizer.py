@@ -51,7 +51,7 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
                 strategy.lars = True
                 strategy.lars_configs = {
                     "lars_coeff": 0.001,
-                    "lars_weight_decay": [0.0005],
+                    "lars_weight_decay": 0.0005,
                     "epsilon": 0,
                     "exclude_from_weight_decay": ["batch_norm", ".b"],
                 }
@@ -134,7 +134,7 @@ class TestFleetLarsMetaOptimizer(unittest.TestCase):
         strategy.lars = True
         strategy.lars_configs = {
             "lars_coeff": 0.001,
-            "lars_weight_decay": [0.0005],
+            "lars_weight_decay": 0.0005,
             "epsilon": 0,
             "exclude_from_weight_decay": ["batch_norm", ".b"],
         }

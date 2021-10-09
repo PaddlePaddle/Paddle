@@ -43,7 +43,7 @@ class LarsMomentumOpKernel : public framework::OpKernel<T> {
 
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
     T lars_coeff = ctx.Attr<float>("lars_coeff");
-    T lars_weight_decay = (ctx.Attr<std::vector<float>>("lars_weight_decay"))[0];
+    T lars_weight_decay = ctx.Attr<std::vector<float>>("lars_weight_decay")[0];
     T epsilon = ctx.Attr<float>("epsilon");
 
     auto p_out = framework::EigenVector<T>::Flatten(*(param_out[0]));

@@ -279,13 +279,12 @@ __global__ void MomentumLarsKernel(
                       rescale_grad, gridDim.x, &param_norm, &grad_norm);
 #else
   const MT rescale_grad_pow = rescale_grad * rescale_grad;
-  MT param_parital_norm = threadIdx.x < thresh ? p_buffer[threadIdx.x] : 0;
-  MT grad_parital_norm = threadIdx.x < thresh ? g_buffer[threadIdx.x] : 0;
+  MT param_part_norm = threadIdx.x < thresh ? p_buffer[threadIdx.x] : 0;
+  MT grad_part_norm = threadIdx.x < thresh ? g_buffer[threadIdx.x] : 0;
   __syncthreads();
-  MT param_norm =
-      Sqrt(math::blockReduceSum<MT>(param_parital_norm, FINAL_MASK));
+  MT param_norm = Sqrt(math::blockReduceSum<MT>(param_part_norm, FINAL_MASK));
   MT grad_norm = Sqrt(rescale_grad_pow *
-                      math::blockReduceSum<MT>(grad_parital_norm, FINAL_MASK));
+                      math::blockReduceSum<MT>(grad_part_norm, FINAL_MASK));
 #endif
 
   const MT lr = learning_rate[0];
@@ -499,9 +498,9 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
       MT* master_param_out_data = nullptr;
 
       if (multi_precision) {
-        auto master_param = ctx.MultiInput<framework::Tensor>("MasterParam");
+        auto master_param = ctx.MultiInput<framework::LoDTensor>("MasterParam");
         auto master_param_out =
-            ctx.MultiOutput<framework::Tensor>("MasterParamOut");
+            ctx.MultiOutput<framework::LoDTensor>("MasterParamOut");
         master_param_data = master_param[0]->data<MT>();
         master_param_out_data =
             master_param_out[0]->mutable_data<MT>(ctx.GetPlace());
