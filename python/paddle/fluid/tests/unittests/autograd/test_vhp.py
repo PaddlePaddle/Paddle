@@ -66,50 +66,74 @@ class TestVHP(unittest.TestCase):
             assert np.allclose(vhp[i].numpy(), numerical_vhp[i], self.rtol,
                                self.atol)
 
-    def _test_allow_unused_false(self):
+    def test_v_default(self):
+        def func(x, y):
+            return paddle.sum(paddle.matmul(x, y))
+
+        numerical_func_output = func(self.x, self.y).numpy()
+        vx = paddle.ones(self.vx.shape, dtype=self.vx.dtype)
+        vy = paddle.ones(self.vy.shape, dtype=self.vy.dtype)
+        numerical_vhp = _compute_numerical_vhp(func, [self.x, self.y],
+                                               [vx, vy], self.numerical_delta,
+                                               self.np_dtype)
+
+        self.x.stop_gradient = False
+        self.y.stop_gradient = False
+        func_output, vhp = paddle.autograd.vhp(func, [self.x, self.y])
+        assert np.allclose(func_output.numpy(), numerical_func_output,
+                           self.rtol, self.atol)
+        for i in range(len(vhp)):
+            assert np.allclose(vhp[i].numpy(), numerical_vhp[i], self.rtol,
+                               self.atol)
+
+    def test_allow_unused_false(self):
         def func(x, y):
             return paddle.sum(paddle.matmul(x, x))
 
         try:
             self.x.stop_gradient = False
             self.y.stop_gradient = False
-            hessian = paddle.autograd.hessian(func, [self.x, self.y])
+            _ = paddle.autograd.vhp(func, [self.x, self.y])
         except ValueError as e:
             error_msg = cpt.get_exception_message(e)
             assert error_msg.find("allow_unused") > 0
 
-    def _test_allow_unused_true(self):
+    def test_allow_unused_true(self):
         def func(x, y):
             return paddle.sum(paddle.matmul(x, x))
 
-        numerical_hessian = _compute_numerical_hessian(
-            func, [self.x, self.y], self.numerical_delta, self.np_dtype)
+        numerical_func_output = func(self.x, self.y).numpy()
+        numerical_vhp = _compute_numerical_vhp(
+            func, [self.x, self.y], [self.vx, self.vy], self.numerical_delta,
+            self.np_dtype)
+
         self.x.stop_gradient = False
         self.y.stop_gradient = False
-        hessian = paddle.autograd.hessian(
-            func, [self.x, self.y], allow_unused=True)
-        for i in range(len(hessian)):
-            for j in range(len(hessian[0])):
-                if i == j == 0:
-                    assert np.allclose(hessian[i][j].numpy(),
-                                       numerical_hessian[i][j], self.rtol,
-                                       self.atol)
-                else:
-                    assert hessian[i][j] is None
+        func_output, vhp = paddle.autograd.vhp(func, [self.x, self.y],
+                                               [self.vx, self.vy],
+                                               allow_unused=True)
+        assert np.allclose(func_output.numpy(), numerical_func_output,
+                           self.rtol, self.atol)
+        assert np.allclose(vhp[0].numpy(), numerical_vhp[0], self.rtol,
+                           self.atol)
+        assert vhp[1] is None
 
-    def _test_create_graph_false(self):
+    def test_create_graph_false(self):
         def func(x):
             return paddle.sum(paddle.matmul(x, x))
 
-        numerical_hessian = _compute_numerical_hessian(
-            func, self.x, self.numerical_delta, self.np_dtype)
+        numerical_func_output = func(self.x).numpy()
+        numerical_vhp = _compute_numerical_vhp(
+            func, self.x, self.vx, self.numerical_delta, self.np_dtype)
+
         self.x.stop_gradient = False
-        hessian = paddle.autograd.hessian(func, self.x)
-        assert hessian.stop_gradient == True
-        assert np.allclose(hessian.numpy(), numerical_hessian[0][0], self.rtol,
-                           self.atol)
+        func_output, vhp = paddle.autograd.vhp(func, self.x, self.vx)
+        assert np.allclose(func_output.numpy(), numerical_func_output,
+                           self.rtol, self.atol)
+        assert vhp.stop_gradient == True
+        assert np.allclose(vhp.numpy(), numerical_vhp[0], self.rtol, self.atol)
         try:
-            paddle.grad(hessian, self.x)
+            paddle.grad(vhp, self.x)
         except RuntimeError as e:
             error_msg = cpt.get_exception_message(e)
             assert error_msg.find("has no gradient") > 0
@@ -119,14 +143,20 @@ class TestVHP(unittest.TestCase):
         def func(x):
             return paddle.sum(paddle.matmul(x, x))
 
-        numerical_hessian = _compute_numerical_hessian(
-            func, self.x, self.numerical_delta, self.np_dtype)
+        numerical_func_output = func(self.x).numpy()
+        numerical_vhp = _compute_numerical_vhp(
+            func, self.x, self.vx, self.numerical_delta, self.np_dtype)
+
         self.x.stop_gradient = False
-        hessian = paddle.autograd.hessian(func, self.x, create_graph=True)
-        assert hessian.stop_gradient == False
-        assert np.allclose(hessian.numpy(), numerical_hessian[0][0], self.rtol,
-                           self.atol)
-        triple_grad = paddle.grad(hessian, self.x)
+        func_output, vhp = paddle.autograd.vhp(func,
+                                               self.x,
+                                               self.vx,
+                                               create_graph=True)
+        assert np.allclose(func_output.numpy(), numerical_func_output,
+                           self.rtol, self.atol)
+        assert vhp.stop_gradient == False
+        assert np.allclose(vhp.numpy(), numerical_vhp[0], self.rtol, self.atol)
+        triple_grad = paddle.grad(vhp, self.x)
         assert triple_grad is not None
 
 
