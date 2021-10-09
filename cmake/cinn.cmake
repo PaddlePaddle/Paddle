@@ -21,9 +21,6 @@ set(CINN_LIB_NAME "libcinnapi.so")
 set(CINN_LIB_DIR "/workspace/share/dist/cinn/lib")
 set(CINN_INCLUDE_DIR "/workspace/share/dist/cinn/include")
 
-#include_directories(${CINN_INCLUDE_DIR})
-#include_directories(${CINN_LIB_DIR})
-
 find_library(CINN_LIB_LOCATION NAMES ${CINN_LIB_NAME} PATHS ${CINN_LIB_DIR})
 add_library(cinnapi SHARED IMPORTED)
 set_target_properties(cinnapi PROPERTIES
