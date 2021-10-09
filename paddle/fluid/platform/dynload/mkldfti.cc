@@ -25,6 +25,27 @@ void* mkldfti_dso_handle = nullptr;
 
 MKLDFTI_ROUTINE_EACH(DEFINE_WRAP);
 
+DFTI_EXTERN MKL_LONG DftiCreateDescriptorX(DFTI_DESCRIPTOR_HANDLE* desc,
+                                           enum DFTI_CONFIG_VALUE prec,
+                                           enum DFTI_CONFIG_VALUE domain,
+                                           MKL_LONG dim, MKL_LONG* sizes) {
+  if (prec == DFTI_SINGLE) {
+    if (dim == 1) {
+      return DftiCreateDescriptor_s_1d(desc, domain, sizes[0]);
+    } else {
+      return DftiCreateDescriptor_s_md(desc, domain, dim, sizes);
+    }
+  } else if (prec == DFTI_DOUBLE) {
+    if (dim == 1) {
+      return DftiCreateDescriptor_d_1d(desc, domain, sizes[0]);
+    } else {
+      return DftiCreateDescriptor_d_md(desc, domain, dim, sizes);
+    }
+  } else {
+    return DftiCreateDescriptor(desc, prec, domain, dim, sizes);
+  }
+}
+
 }  // namespace dynload
 }  // namespace platform
 }  // namespace paddle

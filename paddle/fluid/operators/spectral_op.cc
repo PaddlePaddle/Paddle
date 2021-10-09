@@ -383,13 +383,8 @@ class DftiDescriptor {
           "DFT DESCRIPTOR can only be initialized once."));
     }
     DFTI_DESCRIPTOR* raw_desc;
-    if (signal_ndim == 1) {
-      MKL_DFTI_CHECK(
-          DftiCreateDescriptor(&raw_desc, precision, signal_type, 1, sizes[0]));
-    } else {
-      MKL_DFTI_CHECK(DftiCreateDescriptor(&raw_desc, precision, signal_type,
-                                          signal_ndim, sizes));
-    }
+    MKL_DFTI_CHECK(platform::dynload::DftiCreateDescriptorX(
+        &raw_desc, precision, signal_type, signal_ndim, sizes));
     desc_.reset(raw_desc);
   }
 

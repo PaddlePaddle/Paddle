@@ -15,6 +15,7 @@ limitations under the License. */
 #pragma once
 
 #include <mkl_dfti.h>
+
 #include <mutex>  // NOLINT
 
 #include "paddle/fluid/platform/dynload/dynamic_loader.h"
@@ -44,12 +45,16 @@ extern void* mkldfti_dso_handle;
       return reinterpret_cast<mkldftiFunc>(p_##__name)(args...);               \
     }                                                                          \
   };                                                                           \
-  extern struct DynLoad__##__name __name
+  extern DynLoad__##__name __name
 
-// #define DECLARE_DYNAMIC_LOAD_MKLDFTI_WRAP(__name)
-// DYNAMIC_LOAD_MKLDFTI_WRAP(__name)
+#undef DftiCreateDescriptor
 
 #define MKLDFTI_ROUTINE_EACH(__macro) \
+  __macro(DftiCreateDescriptor);      \
+  __macro(DftiCreateDescriptor_s_1d); \
+  __macro(DftiCreateDescriptor_d_1d); \
+  __macro(DftiCreateDescriptor_s_md); \
+  __macro(DftiCreateDescriptor_d_md); \
   __macro(DftiSetValue);              \
   __macro(DftiGetValue);              \
   __macro(DftiCommitDescriptor);      \
@@ -59,11 +64,14 @@ extern void* mkldfti_dso_handle;
   __macro(DftiErrorClass);            \
   __macro(DftiErrorMessage);
 
-MKLDFTI_ROUTINE_EACH(DYNAMIC_LOAD_MKLDFTI_WRAPP)
-
-// dlsym(mkldfti_dso_handle, DftiCreateDescriptor);
+MKLDFTI_ROUTINE_EACH(DYNAMIC_LOAD_MKLDFTI_WRAP)
 
 #undef DYNAMIC_LOAD_MKLDFTI_WRAP
+
+DFTI_EXTERN MKL_LONG DftiCreateDescriptorX(DFTI_DESCRIPTOR_HANDLE* desc,
+                                           enum DFTI_CONFIG_VALUE prec,
+                                           enum DFTI_CONFIG_VALUE domain,
+                                           MKL_LONG dim, MKL_LONG* sizes);
 
 }  // namespace dynload
 }  // namespace platform

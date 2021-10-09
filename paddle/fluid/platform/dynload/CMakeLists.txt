@@ -50,7 +50,11 @@ cc_library(dynload_lapack SRCS lapack.cc DEPS dynamic_loader)
 add_dependencies(dynload_lapack extern_lapack)
 # TODO(TJ): add iomp, mkldnn?
 
+# message("ONEMKL INCLUDE directory is ${MKL_INCLUDE}")
+# message("MKL_FOUND ${MKL_FOUND}")
+# message("WITH_ONEMKL ${WITH_ONEMKL}")
 if (MKL_FOUND AND WITH_ONEMKL)
+  message("ONEMKL INCLUDE directory is ${MKL_INCLUDE}")
   add_definitions(-DMKL_LIBRARY_PATH="${MKL_ROOT}/lib/${MKL_ARCH}")
   cc_library(dynload_mkldfti SRCS mkldfti.cc DEPS dynamic_loader)
   target_include_directories(dynload_mkldfti PRIVATE ${MKL_INCLUDE})
