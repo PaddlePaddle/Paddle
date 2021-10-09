@@ -153,14 +153,11 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
               "It shared memory with Input(MasterParam).")
         .AsDuplicable()
         .AsDispensable();
-
     AddAttr<float>("mu", "(float) Momentum coefficient");
     AddAttr<float>("lars_coeff", "(float, default 0.001) LARS coefficient.")
         .SetDefault(0.001);
-    // AddAttr<float>("lars_weight_decay",
-    //                "(float, default 0.0005) LARS weight decay")
-    //     .SetDefault({0.0005});
-    AddAttr<std::vector<float>>("lars_weight_decay",
+    AddAttr<std::vector<float>>(
+        "lars_weight_decay",
         "(float, default 0.0005) Merged LARS weight decay params")
         .SetDefault({0.0005});
     AddAttr<float>("epsilon",

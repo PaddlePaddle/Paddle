@@ -317,6 +317,36 @@ __global__ void MomentumLarsKernel(
   }
 }
 
+template <typename T, typename MT>
+void SeparatedLarsMomentumOpCUDAKernel(
+    const platform::CUDADeviceContext& cuda_ctx, const T* param_data,
+    T* param_out_data, const MT* velocity_data, MT* velocity_out_data,
+    const T* grad_data, const MT* lr, MT* p_buffer, MT* g_buffer, const MT mu,
+    const MT lars_coeff, const MT weight_decay, const MT epsilon,
+    const MT rescale_grad, const int64_t numel,
+    const MT* master_param_data = nullptr, MT* master_out_data = nullptr) {
+  int grid = (numel + LARS_BLOCK_SIZE - 1) / LARS_BLOCK_SIZE;
+  int grid_norm = std::min(grid, LARS_BLOCK_SIZE);
+  // Determine to read 4 fp16 or float data once, but 2 double data once.
+  int grid_lars =
+      std::is_same<double, T>::value
+          ? (numel + (LARS_BLOCK_SIZE << 1) - 1) / (LARS_BLOCK_SIZE << 1)
+          : (numel + (LARS_BLOCK_SIZE << 2) - 1) / (LARS_BLOCK_SIZE << 2);
+  const int grid_stride = grid_norm * LARS_BLOCK_SIZE;
+  const int repeat_times = (numel + grid_stride - 1) / grid_stride - 1;
+
+  L2NormKernel<T, MT><<<grid_norm, LARS_BLOCK_SIZE, 0, cuda_ctx.stream()>>>(
+      param_data, grad_data, p_buffer, g_buffer, numel, repeat_times,
+      rescale_grad);
+
+  MomentumLarsKernel<T,
+                     MT><<<grid_lars, LARS_BLOCK_SIZE, 0, cuda_ctx.stream()>>>(
+      param_data, grad_data, velocity_data, param_out_data, velocity_out_data,
+      master_param_data, master_out_data, lr, p_buffer, g_buffer, mu,
+      lars_coeff, weight_decay, epsilon, rescale_grad, 0, grid_norm,
+      numel);  // 0 is just a placeholder.
+}
+
 template <typename DeviceContext, typename T>
 class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
   using MT = MultiPrecisionType<T>;
@@ -426,82 +456,34 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
           reinterpret_cast<void*>(MergedMomentumLarsKernel<T, MT>), grid_real,
           LARS_BLOCK_SIZE, cuda_param, 0, cuda_ctx.stream());
 #else
-      /* As for older cuda version, a fake lars_merge op is provided for passing
+      /* As for older cuda version, a lars_merge op is provided for passing
         through the ci.*/
       if (multi_precision) {
-        auto master_param = ctx.MultiInput<framework::Tensor>("MasterParam");
+        auto master_param = ctx.MultiInput<framework::LoDTensor>("MasterParam");
         auto master_param_out =
-            ctx.MultiOutput<framework::Tensor>("MasterParamOut");
+            ctx.MultiOutput<framework::LoDTensor>("MasterParamOut");
 
         for (int i = 0; i < op_num; ++i) {
-          int numel = param[i]->numel();
-          auto* param_data = param[i]->data<T>();
-          auto* grad_data = grad[i]->data<T>();
-          auto* velocity_data = velocity[i]->data<MT>();
-          auto* lr = learning_rate[i]->data<MT>();
-          auto* param_out_data = param_out[i]->mutable_data<T>(ctx.GetPlace());
-          auto* velocity_out_data =
-              velocity_out[i]->mutable_data<MT>(ctx.GetPlace());
-          const MT* master_param_data = master_param[i]->data<MT>();
-          MT* master_param_out_data =
-              master_param_out[i]->mutable_data<MT>(ctx.GetPlace());
-
-          int grid = (numel + LARS_BLOCK_SIZE - 1) / LARS_BLOCK_SIZE;
-          int grid_norm = std::min(grid, LARS_BLOCK_SIZE);
-          int grid_lars = sizeof(T) < sizeof(double)
-                              ? (numel + (LARS_BLOCK_SIZE << 2) - 1) /
-                                    (LARS_BLOCK_SIZE << 2)
-                              : (numel + (LARS_BLOCK_SIZE << 1) - 1) /
-                                    (LARS_BLOCK_SIZE << 1);
-          const int grid_stride = grid_norm * LARS_BLOCK_SIZE;
-          const int repeat_times = (numel + grid_stride - 1) / grid_stride - 1;
-
-          L2NormKernel<
-              T, MT><<<grid_norm, LARS_BLOCK_SIZE, 0, cuda_ctx.stream()>>>(
-              param_data, grad_data, p_buffer, g_buffer, numel, repeat_times,
-              rescale_grad);
-
-          MomentumLarsKernel<
-              T, MT><<<grid_lars, LARS_BLOCK_SIZE, 0, cuda_ctx.stream()>>>(
-              param_data, grad_data, velocity_data, param_out_data,
-              velocity_out_data, master_param_data, master_param_out_data, lr,
-              p_buffer, g_buffer, mu, lars_coeff, weight_decay_arr[i], epsilon,
-              rescale_grad, 0, grid_norm, numel);  // 0 is just a placeholder.
+          SeparatedLarsMomentumOpCUDAKernel<T, MT>(
+              cuda_ctx, param[i]->data<T>(),
+              param_out[i]->mutable_data<T>(ctx.GetPlace()),
+              velocity[i]->data<MT>(),
+              velocity_out[i]->mutable_data<MT>(ctx.GetPlace()),
+              grad[i]->data<T>(), learning_rate[i]->data<MT>(), p_buffer,
+              g_buffer, mu, lars_coeff, weight_decay_arr[i], epsilon,
+              rescale_grad, param[i]->numel(), master_param[i]->data<MT>(),
+              master_param_out[i]->mutable_data<MT>(ctx.GetPlace()));
         }
       } else {
         for (int i = 0; i < op_num; ++i) {
-          int numel = param[i]->numel();
-          auto* param_data = param[i]->data<T>();
-          auto* grad_data = grad[i]->data<T>();
-          auto* velocity_data = velocity[i]->data<MT>();
-          auto* lr = learning_rate[i]->data<MT>();
-          auto* param_out_data = param_out[i]->mutable_data<T>(ctx.GetPlace());
-          auto* velocity_out_data =
-              velocity_out[i]->mutable_data<MT>(ctx.GetPlace());
-
-          const MT* master_param_data = nullptr;
-          MT* master_param_out_data = nullptr;
-          int grid = (numel + LARS_BLOCK_SIZE - 1) / LARS_BLOCK_SIZE;
-          int grid_norm = std::min(grid, LARS_BLOCK_SIZE);
-          int grid_lars = sizeof(T) < sizeof(double)
-                              ? (numel + (LARS_BLOCK_SIZE << 2) - 1) /
-                                    (LARS_BLOCK_SIZE << 2)
-                              : (numel + (LARS_BLOCK_SIZE << 1) - 1) /
-                                    (LARS_BLOCK_SIZE << 1);
-          const int grid_stride = grid_norm * LARS_BLOCK_SIZE;
-          const int repeat_times = (numel + grid_stride - 1) / grid_stride - 1;
-
-          L2NormKernel<
-              T, MT><<<grid_norm, LARS_BLOCK_SIZE, 0, cuda_ctx.stream()>>>(
-              param_data, grad_data, p_buffer, g_buffer, numel, repeat_times,
-              rescale_grad);
-
-          MomentumLarsKernel<
-              T, MT><<<grid_lars, LARS_BLOCK_SIZE, 0, cuda_ctx.stream()>>>(
-              param_data, grad_data, velocity_data, param_out_data,
-              velocity_out_data, master_param_data, master_param_out_data, lr,
-              p_buffer, g_buffer, mu, lars_coeff, weight_decay_arr[i], epsilon,
-              rescale_grad, 0, grid_norm, numel);  // 0 is just a placeholder.
+          SeparatedLarsMomentumOpCUDAKernel<T, MT>(
+              cuda_ctx, param[i]->data<T>(),
+              param_out[i]->mutable_data<T>(ctx.GetPlace()),
+              velocity[i]->data<MT>(),
+              velocity_out[i]->mutable_data<MT>(ctx.GetPlace()),
+              grad[i]->data<T>(), learning_rate[i]->data<MT>(), p_buffer,
+              g_buffer, mu, lars_coeff, weight_decay_arr[i], epsilon,
+              rescale_grad, param[i]->numel());
         }
       }
 #endif
@@ -525,7 +507,6 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
             master_param_out[0]->mutable_data<MT>(ctx.GetPlace());
       }
       int64_t numel = param[0]->numel();
-      int grid = (numel + LARS_BLOCK_SIZE - 1) / LARS_BLOCK_SIZE;
       MT lars_weight_decay = weight_decay_arr[0];
 #if CUDA_VERSION >= 11000
       /*
@@ -550,6 +531,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
           synchronize as they execute.
       */
       // Figure out how many blocks can be active in each sm.
+      int grid = (numel + LARS_BLOCK_SIZE - 1) / LARS_BLOCK_SIZE;
       cudaOccupancyMaxActiveBlocksPerMultiprocessor(
           &num_blocks_per_sm, MomentumLarsKernel<T, MT>, LARS_BLOCK_SIZE,
           sizeof(MT) << 1);
@@ -584,25 +566,11 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
           reinterpret_cast<void*>(MomentumLarsKernel<T, MT>), grid_real,
           LARS_BLOCK_SIZE, cuda_param, 0, cuda_ctx.stream());
 #else
-      // Determine to read 4 fp16 or float data once, but 2 double data once.
-      int grid_lars =
-          sizeof(T) < sizeof(double)
-              ? (numel + (LARS_BLOCK_SIZE << 2) - 1) / (LARS_BLOCK_SIZE << 2)
-              : (numel + (LARS_BLOCK_SIZE << 1) - 1) / (LARS_BLOCK_SIZE << 1);
-      int grid_norm = std::min(grid, LARS_BLOCK_SIZE);
-      const int grid_stride = grid_norm * LARS_BLOCK_SIZE;
-      const int repeat_times = (numel + grid_stride - 1) / grid_stride - 1;
-
-      L2NormKernel<T, MT><<<grid_norm, LARS_BLOCK_SIZE, 0, cuda_ctx.stream()>>>(
-          param_data, grad_data, p_buffer, g_buffer, numel, repeat_times,
-          rescale_grad);
-
-      MomentumLarsKernel<
-          T, MT><<<grid_lars, LARS_BLOCK_SIZE, 0, cuda_ctx.stream()>>>(
-          param_data, grad_data, velocity_data, param_out_data,
-          velocity_out_data, master_param_data, master_param_out_data, lr,
-          p_buffer, g_buffer, mu, lars_coeff, lars_weight_decay, epsilon,
-          rescale_grad, 0, grid_norm, numel);  // 0 is just a placeholder.
+      SeparatedLarsMomentumOpCUDAKernel<T, MT>(
+          cuda_ctx, param_data, param_out_data, velocity_data,
+          velocity_out_data, grad_data, lr, p_buffer, g_buffer, mu, lars_coeff,
+          lars_weight_decay, epsilon, rescale_grad, numel, master_param_data,
+          master_param_out_data);
 #endif
     }
   }
