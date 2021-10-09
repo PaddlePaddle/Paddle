@@ -55,15 +55,15 @@ def channel_shuffle(x, groups):
 
 
 class ConvBNLayer(Layer):
-    def __init__(
-            self,
-            in_channels,
-            out_channels,
-            kernel_size,
-            stride,
-            padding,
-            groups=1,
-            act=None):
+    
+    def __init__(self,
+                 in_channels,
+                 out_channels,
+                 kernel_size,
+                 stride,
+                 padding,
+                 groups=1,
+                 act=None):
         super(ConvBNLayer, self).__init__()
         self._conv = Conv2D(
             in_channels=in_channels,
@@ -72,8 +72,7 @@ class ConvBNLayer(Layer):
             stride=stride,
             padding=padding,
             groups=groups,
-            weight_attr=ParamAttr(
-                initializer=KaimingNormal()),
+            weight_attr=ParamAttr(initializer=KaimingNormal()),
             bias_attr=False)
 
         self._batch_norm = BatchNorm(
@@ -89,11 +88,8 @@ class ConvBNLayer(Layer):
 
 
 class InvertedResidual(Layer):
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 stride,
-                 act="relu"):
+    
+    def __init__(self, in_channels, out_channels, stride, act="relu"):
         super(InvertedResidual, self).__init__()
         self._conv_pw = ConvBNLayer(
             in_channels=in_channels // 2,
@@ -133,11 +129,8 @@ class InvertedResidual(Layer):
 
 
 class InvertedResidualDS(Layer):
-    def __init__(self,
-                 in_channels,
-                 out_channels,
-                 stride,
-                 act="relu"):
+    
+    def __init__(self, in_channels, out_channels, stride, act="relu"):
         super(InvertedResidualDS, self).__init__()
 
         # branch1
@@ -213,6 +206,7 @@ class ShuffleNetV2(Layer):
             shufflenetv2_x0_25 = ShuffleNetV2(num_classes=1000, scale=0.25, act="relu")
             
     """    
+    
     def __init__(self, num_classes=1000, scale=1.0, act="relu"):
         super(ShuffleNetV2, self).__init__()
         self.scale = scale
@@ -322,7 +316,6 @@ def shufflenetv2_x0_25(pretrained=False, **kwargs):
             
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x0_25(pretrained=True)
-
     """
     return _shufflenetv2("shufflenetv2_x0_25", 0.25, pretrained, **kwargs)     
 
@@ -343,7 +336,6 @@ def shufflenetv2_x0_33(pretrained=False, **kwargs):
             
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x0_33(pretrained=True)
-
     """      
     return _shufflenetv2("ShuffleNetV2_x0_33", 0.33, pretrained, **kwargs)       
 
@@ -364,8 +356,7 @@ def shufflenetv2_x0_5(pretrained=False, **kwargs):
             
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x0_5(pretrained=True)
-
-    """       
+    """    
     return _shufflenetv2("shufflenetv2_x0_5", 0.5, pretrained, **kwargs) 
 
 
@@ -385,7 +376,6 @@ def shufflenetv2_x1_0(pretrained=False, **kwargs):
             
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x1_0(pretrained=True)
-
     """     
     return _shufflenetv2("shufflenetv2_x1_0", 1.0, pretrained, **kwargs)
 
@@ -406,7 +396,6 @@ def shufflenetv2_x1_5(pretrained=False, **kwargs):
             
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x1_5(pretrained=True)
-
     """       
     return _shufflenetv2("shufflenetv2_x1_5", 1.5, pretrained, **kwargs)
 
@@ -427,7 +416,6 @@ def shufflenetv2_x2_0(pretrained=False, **kwargs):
             
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_x2_0(pretrained=True)
-
     """    
     return _shufflenetv2("shufflenetv2_x2_0", 2.0, pretrained, **kwargs)    
 
@@ -448,6 +436,6 @@ def shufflenetv2_swish(pretrained=False, **kwargs):
             
             # build model and load imagenet pretrained weight
             # model = shufflenetv2_swish(pretrained=True)
-
     """
-    return _shufflenetv2("shufflenetv2_swish", 1.0, pretrained, act="swish", **kwargs) 
+    return _shufflenetv2(
+        "shufflenetv2_swish", 1.0, pretrained, act="swish", **kwargs) 
