@@ -26,13 +26,20 @@ from paddle.utils.download import get_weights_path_from_url
 
 
 MODEL_URLS = {
-    "shufflenetv2_x0_25": "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_25_pretrained.pdparams",
-    "shufflenetv2_x0_33": "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_33_pretrained.pdparams",
-    "shufflenetv2_x0_5": "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_5_pretrained.pdparams",
-    "shufflenetv2_x1_0": "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x1_0_pretrained.pdparams",
-    "shufflenetv2_x1_5": "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x1_5_pretrained.pdparams",
-    "shufflenetv2_x2_0": "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x2_0_pretrained.pdparams",
-    "shufflenetv2_swish": "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_swish_pretrained.pdparams"
+    "shufflenetv2_x0_25":
+    "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_25_pretrained.pdparams",
+    "shufflenetv2_x0_33":
+    "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_33_pretrained.pdparams",
+    "shufflenetv2_x0_5":
+    "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x0_5_pretrained.pdparams",
+    "shufflenetv2_x1_0":
+    "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x1_0_pretrained.pdparams",
+    "shufflenetv2_x1_5":
+    "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x1_5_pretrained.pdparams",
+    "shufflenetv2_x2_0":
+    "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_x2_0_pretrained.pdparams",
+    "shufflenetv2_swish":
+    "https://paddle-imagenet-models-name.bj.bcebos.com/dygraph/ShuffleNetV2_swish_pretrained.pdparams"
 }
 
 __all__ = list(MODEL_URLS.keys())
@@ -55,7 +62,6 @@ def channel_shuffle(x, groups):
 
 
 class ConvBNLayer(Layer):
-    
     def __init__(self,
                  in_channels,
                  out_channels,
@@ -88,7 +94,6 @@ class ConvBNLayer(Layer):
 
 
 class InvertedResidual(Layer):
-    
     def __init__(self, in_channels, out_channels, stride, act="relu"):
         super(InvertedResidual, self).__init__()
         self._conv_pw = ConvBNLayer(
@@ -129,7 +134,6 @@ class InvertedResidual(Layer):
 
 
 class InvertedResidualDS(Layer):
-    
     def __init__(self, in_channels, out_channels, stride, act="relu"):
         super(InvertedResidualDS, self).__init__()
 
