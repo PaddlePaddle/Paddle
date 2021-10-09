@@ -2360,14 +2360,14 @@ def tensordot(x, y, axes=2, name=None):
     not_contraction_size_x = 1
     not_contraction_size_y = 1
     for i in range(x.ndim):
-        if need_contracted_dim_x[i] == False:
+        if not need_contracted_dim_x[i]:
             perm_x.append(i)
             shape_out.append(shape_x[i])
             not_contraction_size_x *= shape_x[i]
     perm_x.extend(axes_x)
     perm_y.extend(axes_y)
     for i in range(y.ndim):
-        if need_contracted_dim_y[i] == False:
+        if not need_contracted_dim_y[i]:
             perm_y.append(i)
             shape_out.append(shape_y[i])
             not_contraction_size_y *= shape_y[i]
