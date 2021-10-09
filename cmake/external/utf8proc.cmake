@@ -23,7 +23,13 @@ SET(UTF8PROC_LIBRARY_DIR   "${UTF8PROC_INSTALL_DIR}/lib" CACHE PATH "utf8proc li
 # As we add extra features for utf8proc, we use the non-official repo
 SET(UTF8PROC_REPOSITORY    ${GIT_URL}/JuliaStrings/utf8proc.git)
 SET(UTF8PROC_TAG           v2.6.1)
-SET(UTF8PROC_LIBRARIES     "${UTF8PROC_INSTALL_DIR}/lib/libutf8proc.a" CACHE FILEPATH "utf8proc library." FORCE)
+IF(WIN32)
+  SET(UTF8PROC_LIBRARIES     "${UTF8PROC_INSTALL_DIR}/lib/utf8proc.lib" CACHE FILEPATH "utf8proc library." FORCE)
+  SET(INSTALL_COMMAND ${CMAKE_COMMAND} -E copy ${UTF8PROC_SOURCE_DIR}/build/utf8proc.lib ${UTF8PROC_LIBRARY_DIR})
+ELSE(WIN32)
+  SET(UTF8PROC_LIBRARIES     "${UTF8PROC_INSTALL_DIR}/lib/libutf8proc.a" CACHE FILEPATH "utf8proc library." FORCE)
+  SET(INSTALL_COMMAND ${CMAKE_COMMAND} -E copy ${UTF8PROC_SOURCE_DIR}/build/libutf8proc.a ${UTF8PROC_LIBRARY_DIR})
+ENDIF(WIN32)
 
 INCLUDE_DIRECTORIES(${UTF8PROC_INCLUDE_DIR})
 
@@ -41,10 +47,10 @@ ExternalProject_Add(
     SOURCE_DIR            "${UTF8PROC_SOURCE_DIR}"
     UPDATE_COMMAND        ""
     CONFIGURE_COMMAND     ""
-    BUILD_COMMAND         cmake -E make_directory ${UTF8PROC_SOURCE_DIR}/build
-        && cd ${UTF8PROC_SOURCE_DIR}/build && cmake .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && make
-        && cmake -E make_directory ${UTF8PROC_LIBRARY_DIR} ${UTF8PROC_INCLUDE_DIR}
-    INSTALL_COMMAND      ${CMAKE_COMMAND} -E copy ${UTF8PROC_SOURCE_DIR}/build/libutf8proc.a ${UTF8PROC_LIBRARY_DIR}
+    BUILD_COMMAND         ${CMAKE_COMMAND} -E make_directory ${UTF8PROC_SOURCE_DIR}/build
+        && cd ${UTF8PROC_SOURCE_DIR}/build && cmake .. -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS} && $(MAKE_COMMAND)
+        && ${CMAKE_COMMAND} -E make_directory ${UTF8PROC_LIBRARY_DIR} ${UTF8PROC_INCLUDE_DIR}
+    INSTALL_COMMAND      ${INSTALL_COMMAND}
     COMMAND              ${CMAKE_COMMAND} -E copy ${UTF8PROC_SOURCE_DIR}/utf8proc.h ${UTF8PROC_INCLUDE_DIR}
     BUILD_BYPRODUCTS     ${UTF8PROC_LIBRARIES}
 )
