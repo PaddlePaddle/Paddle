@@ -365,6 +365,13 @@ class BertTokenizer(PretrainedTokenizer):
         self.basic_tokenizer = BasicTokenizer(do_lower_case=do_lower_case)
         self.wordpiece_tokenizer = WordpieceTokenizer(
             vocab=self.vocab, unk_token=unk_token)
+        self.special_tokens_map = {
+            'unk_token': unk_token,
+            'sep_token': sep_token,
+            'pad_token': pad_token,
+            'cls_token': cls_token,
+            'mask_token': mask_token
+        }
 
     @property
     def vocab_size(self):

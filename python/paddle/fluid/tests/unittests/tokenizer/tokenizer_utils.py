@@ -15,99 +15,15 @@
 # limitations under the License.
 
 import copy
-import functools
 import io
-import inspect
 import json
 import os
-import six
 import unicodedata
 from shutil import copyfile
 from typing import Iterable, Iterator, Optional, List, Any, Callable, Union
 
-import paddle
 from paddle.dataset.common import DATA_HOME
 from paddle.utils.download import get_path_from_url
-from paddle.nn import Layer
-from paddle.utils import try_import
-
-try:
-    from functools import lru_cache
-except ImportError:
-    from backports.functools_lru_cache import lru_cache
-
-
-def fn_args_to_dict(func, *args, **kwargs):
-    """
-    Inspect function `func` and its arguments for running, and extract a
-    dict mapping between argument names and keys. 
-    """
-    if hasattr(inspect, 'getfullargspec'):
-        (spec_args, spec_varargs, spec_varkw, spec_defaults, _, _,
-         _) = inspect.getfullargspec(func)
-    else:
-        (spec_args, spec_varargs, spec_varkw,
-         spec_defaults) = inspect.getargspec(func)
-    # add positional argument values
-    init_dict = dict(zip(spec_args, args))
-    # add default argument values
-    kwargs_dict = dict(zip(spec_args[-len(spec_defaults):],
-                           spec_defaults)) if spec_defaults else {}
-    kwargs_dict.update(kwargs)
-    init_dict.update(kwargs_dict)
-    return init_dict
-
-
-class InitTrackerMeta(type(Layer)):
-    """
-    This metaclass wraps the `__init__` method of a class to add `init_config`
-    attribute for instances of that class, and `init_config` use a dict to track
-    the initial configuration. If the class has `_wrap_init` method, it would be
-    hooked after `__init__` and called as `_wrap_init(self, init_fn, init_args)`.
-    Since InitTrackerMeta would be used as metaclass for pretrained model classes,
-    which always are Layer and `type(Layer)` is not `type`, thus use `type(Layer)`
-    rather than `type` as base class for it to avoid inheritance metaclass
-    conflicts.
-    """
-
-    def __init__(cls, name, bases, attrs):
-        init_func = cls.__init__
-        # If attrs has `__init__`, wrap it using accessable `_wrap_init`.
-        # Otherwise, no need to wrap again since the super cls has been wraped.
-        # TODO: remove reduplicated tracker if using super cls `__init__`
-        help_func = getattr(cls, '_wrap_init',
-                            None) if '__init__' in attrs else None
-        cls.__init__ = InitTrackerMeta.init_and_track_conf(init_func, help_func)
-        super(InitTrackerMeta, cls).__init__(name, bases, attrs)
-
-    @staticmethod
-    def init_and_track_conf(init_func, help_func=None):
-        """
-        wraps `init_func` which is `__init__` method of a class to add `init_config`
-        attribute for instances of that class.
-        Args:
-            init_func (callable): It should be the `__init__` method of a class.
-            help_func (callable, optional): If provided, it would be hooked after
-                `init_func` and called as `_wrap_init(self, init_func, *init_args, **init_args)`.
-                Default None.
-        
-        Returns:
-            function: the wrapped function
-        """
-
-        @functools.wraps(init_func)
-        def __impl__(self, *args, **kwargs):
-            # keep full configuration
-            init_func(self, *args, **kwargs)
-            # registed helper by `_wrap_init`
-            if help_func:
-                help_func(self, init_func, *args, **kwargs)
-            self.init_config = kwargs
-            if args:
-                kwargs['init_args'] = args
-            kwargs['init_class'] = self.__class__.__name__
-
-        return __impl__
 
 
 def convert_to_unicode(text):
@@ -226,7 +142,6 @@ def tokenize_chinese_chars(text):
     return output
 
 
-@six.add_metaclass(InitTrackerMeta)
 class PretrainedTokenizer(object):
     """
     The base class for all pretrained tokenizers. It mainly provides common methods
@@ -264,28 +179,6 @@ class PretrainedTokenizer(object):
     pretrained_resource_files_map = {}
     padding_side = 'right'
     pad_token_type_id = 0
-
-    def _wrap_init(self, original_init, *args, **kwargs):
-        """
-        It would be hooked after `__init__` to add specials tokens (arguments of
-        `__init__` whose name ends with `_token`) as attributes of the tokenizer
-        instance.
-        """
-        # expose tokens as attributes
-        self.padding_side = kwargs.pop("padding_side", self.padding_side)
-        assert self.padding_side in [
-            "right", "left"
-        ], "Padding side must be either left or right"
-
-        init_dict = fn_args_to_dict(original_init, *args, **kwargs)
-        # TODO(guosheng): Use OrderedDict, otherwise `all_special_tokens` returns
-        # a list without order.
-        special_tokens_map = {}
-        for identifier, token in init_dict.items():
-            if identifier.endswith('_token'):
-                # setattr(self, identifier, token)
-                special_tokens_map[identifier] = token
-        self.special_tokens_map = special_tokens_map
 
     def __call__(self,
                  text,
