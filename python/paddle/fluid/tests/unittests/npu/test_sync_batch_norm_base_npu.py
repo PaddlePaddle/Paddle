@@ -362,7 +362,8 @@ class TestSyncBatchNormRunnerBase(object):
                 # continue
 
             atol = self.atol
-            if layout == 'NHWC' and fetch_names[i] == 'conv2d_0.tmp_0@GRAD':
+            # if layout == 'NHWC' and fetch_names[i] == 'conv2d_0.tmp_0@GRAD':
+            if fetch_names[i] == 'conv2d_0.tmp_0@GRAD':
                 atol = 1e-2
 
             assert np.allclose(
