@@ -276,10 +276,14 @@ class TestConv2DOp_v2(OpTest):
     def set_npu(self):
         self.__class__.use_npu = True
 
+    def init_dtype(self):
+        self.dtype = np.float32
+
     def setUp(self):
         self.set_npu()
         self.op_type = "conv2d"
-        self.dtype = np.float32
+        # self.dtype = np.float32
+        self.init_dtype()
         self.init_kernel_type()
         self.init_group()
         self.init_dilation()
