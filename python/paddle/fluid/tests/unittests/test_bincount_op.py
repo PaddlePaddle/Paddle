@@ -130,7 +130,7 @@ class TestBincountOp(OpTest):
         self.inputs = {"X": np_input, "Weights": np_weights}
         self.init_attrs()
         Out = np.bincount(
-            np_input, Weights=np_weights, minlength=self.minlength)
+            np_input, weights=np_weights, minlength=self.minlength)
         self.outputs = {"Out": Out}
 
     def init_test_case(self):
