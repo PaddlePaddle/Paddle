@@ -20,10 +20,36 @@ namespace operators {
 
 using NPUDeviceContext = platform::NPUDeviceContext;
 
+using Tensor = framework::Tensor;
+
+template <typename T>
+std::string outputVector(const std::vector<T> vec) {
+  std::ostringstream oss;
+  // for (auto ele : vec) oss << ele << ' ';
+  for (size_t i = 0; i < vec.size() && i < 10; ++i) {
+    oss << vec[i] << ' ';
+  }
+  return oss.str();
+}
+template <typename T>
+void PrintTensor(const framework::Tensor &src,
+                 const framework::ExecutionContext &ctx) {
+  LOG(WARNING) << "shape: " << src.dims();
+  // return;
+
+  std::vector<T> vec(src.numel());
+  TensorToVector(src, ctx.device_context(), &vec);
+  ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
+  LOG(WARNING) << "vec: " << outputVector<T>(vec);
+}
+
 template <typename T>
 class NPUBatchNormOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    LOG(WARNING) << "NPUBatchNormOpKernel";
+    LOG(WARNING) << "op type: " << ctx.Type();
+
     const float epsilon = ctx.Attr<float>("epsilon");
     float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -48,8 +74,31 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
     const auto *scale = ctx.Input<Tensor>("Scale");
     const auto *bias = ctx.Input<Tensor>("Bias");
 
+    LOG(WARNING) << "data_layout_str: " << data_layout_str;
+    LOG(WARNING) << "data_layout: " << data_layout;
+
+    LOG(WARNING) << "Input Tensor | x: ";
+    PrintTensor<T>(*x, ctx);
+    LOG(WARNING) << "Input Tensor | scale: ";
+    PrintTensor<float>(*scale, ctx);
+    LOG(WARNING) << "Input Tensor | bias: ";
+    PrintTensor<float>(*bias, ctx);
+    LOG(WARNING) << "Input Tensor | mean: ";
+    PrintTensor<float>(*running_mean, ctx);
+    LOG(WARNING) << "Input Tensor | variance: ";
+    PrintTensor<float>(*running_var, ctx);
+
+    LOG(WARNING) << "x->type(): " << x->type();
+    LOG(WARNING) << "scale->type(): " << scale->type();
+    LOG(WARNING) << "bias->type(): " << bias->type();
+    LOG(WARNING) << "running_mean->type(): " << running_mean->type();
+    LOG(WARNING) << "running_var->type(): " << running_var->type();
+
     auto *y = ctx.Output<Tensor>("Y");
     y->mutable_data<T>(ctx.GetPlace());
+
+    LOG(WARNING) << "y->dims(): " << y->dims();
+    LOG(WARNING) << "y->type(): " << y->type();
 
     Tensor x_tensor(x->type());
     Tensor y_tesnor(y->type());
@@ -62,19 +111,33 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     if (!training) {
+      LOG(WARNING) << "inference";
+
       const auto &runner_infer = NpuOpRunner(
           "BNInfer", {x_tensor, *scale, *bias, *running_mean, *running_var},
           {y_tesnor}, {{"epsilon", epsilon}});
       runner_infer.Run(stream);
     } else {
+      LOG(WARNING) << "training";
+
       auto *mean_out = ctx.Output<Tensor>("MeanOut");
       auto *variance_out = ctx.Output<Tensor>("VarianceOut");
       auto *saved_mean = ctx.Output<Tensor>("SavedMean");
       auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
-      mean_out->mutable_data<T>(ctx.GetPlace());
-      variance_out->mutable_data<T>(ctx.GetPlace());
-      saved_mean->mutable_data<T>(ctx.GetPlace());
-      saved_variance->mutable_data<T>(ctx.GetPlace());
+      mean_out->mutable_data<float>(ctx.GetPlace());
+      variance_out->mutable_data<float>(ctx.GetPlace());
+      saved_mean->mutable_data<float>(ctx.GetPlace());
+      saved_variance->mutable_data<float>(ctx.GetPlace());
+
+      LOG(WARNING) << "mean_out->dims(): " << mean_out->dims();
+      LOG(WARNING) << "variance_out->dims(): " << variance_out->dims();
+      LOG(WARNING) << "saved_mean->dims(): " << saved_mean->dims();
+      LOG(WARNING) << "saved_variance->dims(): " << saved_variance->dims();
+
+      LOG(WARNING) << "mean_out->type(): " << mean_out->type();
+      LOG(WARNING) << "variance_out->type(): " << variance_out->type();
+      LOG(WARNING) << "saved_mean->type(): " << saved_mean->type();
+      LOG(WARNING) << "saved_variance->type(): " << saved_variance->type();
 
       // if MomentumTensor is set, use MomentumTensor value, momentum
       // is only used in this training branch
@@ -100,6 +163,17 @@ class NPUBatchNormOpKernel : public framework::OpKernel<T> {
           {y_tesnor, *mean_out, *variance_out, *saved_mean, *saved_variance},
           {{"factor", momentum}, {"epsilon", epsilon}});
       runner_update.Run(stream);
+
+      LOG(WARNING) << "Output Tensor | y: ";
+      PrintTensor<T>(*y, ctx);
+      LOG(WARNING) << "Output Tensor | mean_out: ";
+      PrintTensor<float>(*mean_out, ctx);
+      LOG(WARNING) << "Output Tensor | variance_out: ";
+      PrintTensor<float>(*variance_out, ctx);
+      LOG(WARNING) << "Output Tensor | saved_mean: ";
+      PrintTensor<float>(*saved_mean, ctx);
+      LOG(WARNING) << "Output Tensor | saved_variance: ";
+      PrintTensor<float>(*saved_variance, ctx);
     }
   }
 };
@@ -108,6 +182,9 @@ template <typename T>
 class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
+    LOG(WARNING) << "NPUBatchNormGradOpKernel";
+    LOG(WARNING) << "op type: " << ctx.Type();
+
     const auto *x = ctx.Input<Tensor>("X");
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
@@ -120,6 +197,22 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
     const bool is_test = ctx.Attr<bool>("is_test");
     const float epsilon = ctx.Attr<float>("epsilon");
     DataLayout data_layout = framework::StringToDataLayout(data_layout_str);
+
+    LOG(WARNING) << "data_layout_str: " << data_layout_str;
+    LOG(WARNING) << "data_layout: " << data_layout;
+
+    LOG(WARNING) << "Input Tensor | x: ";
+    PrintTensor<T>(*x, ctx);
+    LOG(WARNING) << "Input Tensor | dy: ";
+    PrintTensor<T>(*d_y, ctx);
+    LOG(WARNING) << "Input Tensor | scale: ";
+    PrintTensor<float>(*scale, ctx);
+    LOG(WARNING) << "Input Tensor | bias: ";
+    PrintTensor<float>(*bias, ctx);
+    LOG(WARNING) << "Input Tensor | saved_mean: ";
+    PrintTensor<float>(*saved_mean, ctx);
+    LOG(WARNING) << "Input Tensor | saved_variance: ";
+    PrintTensor<float>(*saved_inv_variance, ctx);
 
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
@@ -149,8 +242,8 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     if (d_scale && d_bias) {
-      d_scale->mutable_data<T>(ctx.GetPlace());
-      d_bias->mutable_data<T>(ctx.GetPlace());
+      d_scale->mutable_data<float>(ctx.GetPlace());
+      d_bias->mutable_data<float>(ctx.GetPlace());
       if (use_global_stats) {
         const auto *running_mean = ctx.Input<Tensor>("Mean");
         const auto *running_variance = ctx.Input<Tensor>("Variance");
@@ -171,6 +264,9 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
       d_x->mutable_data<T>(ctx.GetPlace());
       Tensor dx_tensor(d_x->type());
       dx_tensor.ShareDataWith(*d_x);
+      if (data_layout == DataLayout::kNHWC) {
+        dx_tensor.set_layout(DataLayout::kNHWC);
+      }
       if (use_global_stats) {
         const auto *running_var = ctx.Input<Tensor>("Variance");
         const auto &runner_infer =
@@ -185,6 +281,13 @@ class NPUBatchNormGradOpKernel : public framework::OpKernel<T> {
         runner_reduce.Run(stream);
       }
     }
+
+    LOG(WARNING) << "Output Tensor | d_x: ";
+    PrintTensor<T>(*d_x, ctx);
+    LOG(WARNING) << "Output Tensor | d_scale: ";
+    PrintTensor<float>(*d_scale, ctx);
+    LOG(WARNING) << "Output Tensor | d_bias: ";
+    PrintTensor<float>(*d_bias, ctx);
   }
 };
 }  // namespace operators

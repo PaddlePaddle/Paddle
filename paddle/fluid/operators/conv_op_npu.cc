@@ -307,11 +307,18 @@ template <typename T>
 class NPUConvGradOpKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& ctx) const override {
+    LOG(WARNING) << "NPUConvGradOpKernel";
+    LOG(WARNING) << "op type: " << ctx.Type();
+
     auto input = ctx.Input<Tensor>("Input");
     auto filter = ctx.Input<Tensor>("Filter");
     auto output_grad = ctx.Input<Tensor>(framework::GradVarName("Output"));
     auto input_grad = ctx.Output<Tensor>(framework::GradVarName("Input"));
     auto filter_grad = ctx.Output<Tensor>(framework::GradVarName("Filter"));
+
+    LOG(WARNING) << "input->type(): " << input->type();
+    LOG(WARNING) << "filter->type(): " << filter->type();
+    LOG(WARNING) << "output_grad->type(): " << output_grad->type();
 
     const std::vector<int> strides = ctx.Attr<std::vector<int>>("strides");
     std::vector<int> paddings = ctx.Attr<std::vector<int>>("paddings");
@@ -346,6 +353,9 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
     Tensor input_tensor, output_grad_tensor;
     input_tensor.ShareDataWith(*input);
     output_grad_tensor.ShareDataWith(*output_grad);
+    LOG(WARNING) << "input_tensor.type(): " << input_tensor.type();
+    LOG(WARNING) << "output_grad_tensor.type(): " << output_grad_tensor.type();
+
     if (channel_last) {
       input_tensor.set_layout(DataLayout::kNHWC);
       output_grad_tensor.set_layout(DataLayout::kNHWC);
@@ -362,7 +372,9 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     if (filter_grad) {
-      filter_grad->mutable_data<T>(ctx.GetPlace());
+      filter_grad->mutable_data<float>(ctx.GetPlace());
+      LOG(WARNING) << "filter_grad->type(): " << filter_grad->type();
+
       std::vector<int> filter_shape_vec =
           framework::vectorize<int>(filter->dims());
 
@@ -377,12 +389,16 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
       runner.Run(stream);
     }
     if (input_grad) {
-      input_grad->mutable_data<T>(ctx.GetPlace());
+      input_grad->mutable_data<float>(ctx.GetPlace());
+      LOG(WARNING) << "input_grad->type(): " << input_grad->type();
+
       std::vector<int> input_shape_vec =
           framework::vectorize<int>(input->dims());
 
       Tensor input_grad_tensor;
       input_grad_tensor.ShareDataWith(*input_grad);
+      LOG(WARNING) << "input_grad_tensor.type(): " << input_grad_tensor.type();
+
       if (channel_last) {
         input_grad_tensor.set_layout(DataLayout::kNHWC);
       }

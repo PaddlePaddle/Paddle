@@ -142,11 +142,41 @@ class TestSyncBatchNormRunnerBase(object):
         place = fluid.NPUPlace(device_id)
         places = [place]
 
+        # Test training
         for place in places:
-            # for layout in ["NCHW", "NHWC"]:
-            # for layout in ["NCHW"]:
-            for layout in ["NHWC"]:
+            for layout in ["NCHW", "NHWC"]:
+                # for layout in ["NCHW"]:
+                # for layout in ["NHWC"]:
                 self._compare(args, place, layout, False)
+
+        # Test inference
+        for place in places:
+            for layout in ["NCHW", "NHWC"]:
+                # for layout in ["NCHW"]:
+                # for layout in ["NHWC"]:
+                self._compare(args, place, layout, True)
+
+        # Test FP16
+        self.dtype = np.float16
+        self.atol = 1e-2
+
+        # Test training
+        for place in places:
+            for layout in ["NCHW", "NHWC"]:
+                # for layout in ["NCHW"]:
+                # for layout in ["NHWC"]:
+                self._compare(args, place, layout, False)
+
+        # Test inference
+        for place in places:
+            for layout in ["NCHW", "NHWC"]:
+                # for layout in ["NCHW"]:
+                # for layout in ["NHWC"]:
+                self._compare(args, place, layout, True)
+
+        sys.stdout.buffer.write(
+            pickle.dumps(
+                'training, inference, fp32, fp16, NCHW, NHWC all passed'))
 
     def _compare(self, args, place, layout, only_forward):
         scope = core.Scope()
@@ -164,7 +194,7 @@ class TestSyncBatchNormRunnerBase(object):
 
         sys.stderr.write("len(sync_bn_fetches): " + str(len(sync_bn_fetches)) +
                          "\n")
-        for i in six.moves.xrange(1, len(sync_bn_fetches)):
+        for i in six.moves.xrange(0, len(sync_bn_fetches)):
             # print('i: ', i)
             # print('fetch_names[i]: ', fetch_names[i])
             sys.stderr.write("i: " + str(i) + "\n")
@@ -175,6 +205,33 @@ class TestSyncBatchNormRunnerBase(object):
             if sync_bn_val.shape != bn_val.shape:
                 sync_bn_val = sync_bn_val[:bn_val.shape[0]]
 
+            # i = 0
+            if fetch_names[i] == 'reduce_sum_0.tmp_0':
+                # print('skip reduce_sum_0.tmp_0 (Out of reduce_sum op)')
+                # print('bn_val: ', str(bn_val))
+                # print('sync_bn_val: ', str(sync_bn_val))
+
+                # sys.stderr.write("skip reduce_sum_0.tmp_0 (Out of reduce_sum op)" + "\n")
+                sys.stderr.write("reduce_sum_0.tmp_0 (Out of reduce_sum op)" +
+                                 "\n")
+                sys.stderr.write("bn_val: " + str(bn_val) + "\n")
+                sys.stderr.write("sync_bn_val: " + str(sync_bn_val) + "\n")
+
+                # continue
+
+            # i = 1
+            if fetch_names[i] == 'conv2d_0.tmp_0':
+                # print('skip conv2d_0.tmp_0 (X)')
+                # print('bn_val: ', str(bn_val))
+                # print('sync_bn_val: ', str(sync_bn_val))
+
+                # sys.stderr.write("skip conv2d_0.tmp_0 (X)" + "\n")
+                sys.stderr.write("conv2d_0.tmp_0 (X)" + "\n")
+                sys.stderr.write("bn_val: " + str(bn_val) + "\n")
+                sys.stderr.write("sync_bn_val: " + str(sync_bn_val) + "\n")
+
+                # continue
+
             # i = 2
             if fetch_names[i] == 'batch_norm_0.tmp_3':
                 # print('skip batch_norm_0.tmp_3 (Y)')
@@ -183,6 +240,20 @@ class TestSyncBatchNormRunnerBase(object):
 
                 # sys.stderr.write("skip batch_norm_0.tmp_3 (Y)" + "\n")
                 sys.stderr.write("batch_norm_0.tmp_3 (Y)" + "\n")
+                sys.stderr.write("bn_val: " + str(bn_val) + "\n")
+                sys.stderr.write("sync_bn_val: " + str(sync_bn_val) + "\n")
+
+                # continue
+
+            # i = 2
+            if fetch_names[i] == 'batch_norm_0.tmp_2':
+                # print('skip batch_norm_0.tmp_2 (ReserveSpace of batch_norm)')
+                # print('bn_val: ', str(bn_val))
+                # print('sync_bn_val: ', str(sync_bn_val))
+
+                # sys.stderr.write("skip batch_norm_0.tmp_2 (ReserveSpace of batch_norm)" + "\n")
+                sys.stderr.write(
+                    "batch_norm_0.tmp_2 (ReserveSpace of batch_norm)" + "\n")
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
                 sys.stderr.write("sync_bn_val: " + str(sync_bn_val) + "\n")
 
@@ -290,8 +361,12 @@ class TestSyncBatchNormRunnerBase(object):
 
                 # continue
 
+            atol = self.atol
+            if layout == 'NHWC' and fetch_names[i] == 'conv2d_0.tmp_0@GRAD':
+                atol = 1e-2
+
             assert np.allclose(
-                bn_val, sync_bn_val, atol=self.atol), "Output (" + fetch_names[
+                bn_val, sync_bn_val, atol=atol), "Output (" + fetch_names[
                     i] + ") has diff. \n" + "\nBN     " + str(
                         bn_val) + "\n" + "Sync BN " + str(sync_bn_val)
 
@@ -307,7 +382,7 @@ class TestSyncBatchNormRunnerBase(object):
         # sys.stderr.flush()
 
         outs = self.get_model(train_prog, startup_prog, place, layout, SEED,
-                              False, False)
+                              False, only_forward)
         # sys.stderr.write("after get_model, train_prog: " + train_prog.to_string(
         #     True) + "\n")
         # sys.stderr.write("after get_model, startup_prog: " +
@@ -367,7 +442,7 @@ class TestSyncBatchNormRunnerBase(object):
 
         self.rank = rank
         outs = self.get_model(train_prog, startup_prog, place, layout, SEED,
-                              True, False)
+                              True, only_forward)
         sys.stderr.write("after get_model, train_prog: " + train_prog.to_string(
             True) + "\n")
         sys.stderr.write("after get_model, startup_prog: " +
@@ -509,15 +584,20 @@ class TestDistBase(unittest.TestCase):
         # close trainer file
         tr0_pipe.close()
         tr1_pipe.close()
-        # return pickle.loads(tr0_out), pickle.loads(
-        #     tr1_out), tr0_proc.pid, tr1_proc.pid
+        return pickle.loads(tr0_out), pickle.loads(
+            tr1_out), tr0_proc.pid, tr1_proc.pid
 
     def check_with_place(self, model_file, col_type, need_envs={}):
         # print('test_sync_batch_norm_base_npu.py check_with_place')
 
-        self._run_cluster(model_file, need_envs)
+        # self._run_cluster(model_file, need_envs)
 
-        # tr0_out, tr1_out, pid0, pid1 = self._run_cluster(model_file, need_envs)
+        tr0_out, tr1_out, pid0, pid1 = self._run_cluster(model_file, need_envs)
+        self.assertEqual(
+            tr0_out, 'training, inference, fp32, fp16, NCHW, NHWC all passed')
+        self.assertEqual(
+            tr1_out, 'training, inference, fp32, fp16, NCHW, NHWC all passed')
+
         # np.random.seed(pid0)
         # input1 = np.random.random((10, 1000))
         # np.random.seed(pid1)

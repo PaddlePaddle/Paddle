@@ -86,8 +86,8 @@ class TestSyncBatchNormOpTraining(TestSyncBatchNormRunnerBase):
                     moving_variance_name='bn_moving_variance',
                     data_layout=layout,
                     is_test=only_forward)
-                if self.dtype == np.float16:
-                    bn = fluid.layers.cast(bn, 'float32')
+                # if self.dtype == np.float16:
+                #     bn = fluid.layers.cast(bn, 'float32')
                 sigmoid = fluid.layers.sigmoid(bn)
                 out = fluid.layers.reduce_sum(sigmoid)
                 # if not sync_bn:
