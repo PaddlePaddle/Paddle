@@ -1298,7 +1298,7 @@ def bincount(x, weights=None, minlength=0):
     Computes frequency of each value in the input tensor. 
 
     Args:
-        x (Tensor): A Tensor(or LoDTensor) with non-negative integer. Should be 1-D tensor.
+        x (Tensor): A Tensor with non-negative integer. Should be 1-D tensor.
         weights (Tensor, optional): Weight for each value in the input tensor. Should have the same shape as input.
         minlength (int): Minimum number of bins. Should be non-negative integer.
 
@@ -1311,8 +1311,12 @@ def bincount(x, weights=None, minlength=0):
             import paddle
 
             x = paddle.to_tensor([1, 2, 1, 4, 5])
-            result = paddle.histogram(inputs)
-            print(result) # [0, 2, 1, 0, 1, 1]
+            result1 = paddle.bincount(x)
+            print(result1) # [0, 2, 1, 0, 1, 1]
+
+            w = paddle.to_tensor([2.1, 0.4, 0.1, 0.5, 0.5])
+            result2 = paddle.bincount(x, weights=w)
+            print(result2) # [0., 2.19999981, 0.40000001, 0., 0.50000000, 0.50000000]
     """
     if in_dygraph_mode():
         return _C_ops.bincount(x, weights, "minlength", minlength)
