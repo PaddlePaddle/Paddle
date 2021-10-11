@@ -28,6 +28,7 @@ int main(int argc, char** argv) {
   }
 
   std::vector<std::string> envs;
+  std::vector<std::string> undefok;
 #if defined(PADDLE_WITH_DISTRIBUTE) && !defined(PADDLE_WITH_PSLIB)
   std::string str_max_body_size;
   if (::GFLAGS_NAMESPACE::GetCommandLineOption("max_body_size",
@@ -40,8 +41,18 @@ int main(int argc, char** argv) {
   const auto& flag_map = paddle::platform::GetExportedFlagInfoMap();
   for (const auto& pair : flag_map) {
     const std::string& name = pair.second.name;
+    // NOTE(zhiqiu): some names may not linked in some tests, so add to
+    // `undefok`.
+    // One way to handle that is to check each flag item by item, and put it in
+    // `envs` or `undefok`;
+    // another way is to add all flags to `envs` and `undeok`, basically it is
+    // not a good design,
+    // but it can simplify the procedure of creating new flag and seems no side
+    // effects.
+    // see details: https://gflags.github.io/gflags/#special
     if (pair.second.is_writable) {  // means public
       envs.push_back(name);
+      undefok.push_back(name);
     }
   }
 
@@ -57,6 +68,18 @@ int main(int argc, char** argv) {
     VLOG(1) << "gtest env_string:" << env_string;
   }
 
+  char* undefok_str = nullptr;
+  if (undefok.size() > 0) {
+    std::string undefok_string = "--undefok=";
+    for (auto t : undefok) {
+      undefok_string += t + ",";
+    }
+    undefok_string = undefok_string.substr(0, undefok_string.length() - 1);
+    undefok_str = strdup(undefok_string.c_str());
+    new_argv.push_back(undefok_str);
+    VLOG(1) << "gtest undefok_string:" << undefok_string;
+  }
+
   int new_argc = static_cast<int>(new_argv.size());
   char** new_argv_address = new_argv.data();
   ::GFLAGS_NAMESPACE::ParseCommandLineFlags(
@@ -68,7 +91,7 @@ int main(int argc, char** argv) {
 #ifdef PADDLE_WITH_ASCEND_CL
   paddle::platform::AclInstance::Instance().Finalize();
 #endif
-
   if (env_str) free(env_str);
+  if (undefok_str) free(undefok_str);
   return ret;
 }

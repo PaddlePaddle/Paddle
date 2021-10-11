@@ -11,7 +11,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#define EIGEN_USE_THREADS
 #include <glog/logging.h>
 #include <algorithm>
 #include <memory>
