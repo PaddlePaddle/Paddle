@@ -85,6 +85,25 @@ MkldnnQuantizerConfig::MkldnnQuantizerConfig() {
   rules_["multi_gru"]["WeightH"] = ScaleAlgo::NONE;  // separately
   rules_["multi_gru"]["Scale_weights"] = ScaleAlgo::NONE;
   rules_["multi_gru"]["Hidden"] = ScaleAlgo::KL;
+
+  rules_["fusion_lstm"]["X"] = ScaleAlgo::KL;
+  rules_["fusion_lstm"]["H0"] = ScaleAlgo::NONE;
+  rules_["fusion_lstm"]["C0"] = ScaleAlgo::NONE;
+  rules_["fusion_lstm"]["Bias"] = ScaleAlgo::NONE;
+  rules_["fusion_lstm"]["WeightX"] =
+      ScaleAlgo::NONE;  // Weights will be handled separately
+  rules_["fusion_lstm"]["WeightH"] = ScaleAlgo::NONE;
+  rules_["fusion_lstm"]["XX"] = ScaleAlgo::NONE;
+  rules_["fusion_lstm"]["Cell"] = ScaleAlgo::NONE;
+  rules_["fusion_lstm"]["BatchedInput"] = ScaleAlgo::NONE;
+  rules_["fusion_lstm"]["BatchedHidden"] = ScaleAlgo::NONE;
+  rules_["fusion_lstm"]["BatchedCell"] = ScaleAlgo::NONE;
+  rules_["fusion_lstm"]["BatchedGate"] = ScaleAlgo::NONE;
+  rules_["fusion_lstm"]["BatchedCellPreAct"] = ScaleAlgo::NONE;
+  rules_["fusion_lstm"]["ReorderedH0"] = ScaleAlgo::NONE;
+  rules_["fusion_lstm"]["ReorderedC0"] = ScaleAlgo::NONE;
+  rules_["fusion_lstm"]["CheckedCell"] = ScaleAlgo::NONE;
+  rules_["fusion_lstm"]["Hidden"] = ScaleAlgo::KL;
 }
 
 ScaleAlgo MkldnnQuantizerConfig::scale_algo(

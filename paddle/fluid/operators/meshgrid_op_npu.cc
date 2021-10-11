@@ -18,7 +18,7 @@ limitations under the Licnse. */
 namespace paddle {
 namespace operators {
 
-template <typename DeviceContext, typename T>
+template <typename T>
 class MeshgridNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext& context) const override {
@@ -65,9 +65,12 @@ class MeshgridNPUKernel : public framework::OpKernel<T> {
       auto stream =
           context.template device_context<paddle::platform::NPUDeviceContext>()
               .stream();
-      const auto& runner = NpuOpRunner("BroadcastToD", {reshape_ins_tensor},
-                                       {*(outs[i])}, {{"shape", shape}});
-      runner.Run(stream);
+      NpuOpRunner runner;
+      runner.SetType("BroadcastTo")
+          .AddInput(reshape_ins_tensor)
+          .AddInput(std::move(shape))
+          .AddOutput(*(outs[i]))
+          .Run(stream);
     }
   }
 };
@@ -75,10 +78,10 @@ class MeshgridNPUKernel : public framework::OpKernel<T> {
 }  // namespace operators
 }  // namespace paddle
 
-namespace ops = paddle::operators;
-namespace plat = paddle::platform;
-
 REGISTER_OP_NPU_KERNEL(
-    meshgrid, ops::MeshgridNPUKernel<plat::NPUDeviceContext, float>,
-    ops::MeshgridNPUKernel<plat::NPUDeviceContext, plat::float16>,
-    ops::MeshgridNPUKernel<plat::NPUDeviceContext, int32_t>);
+    meshgrid, paddle::operators::MeshgridNPUKernel<int>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+    paddle::operators::MeshgridNPUKernel<int64_t>,
+#endif
+    paddle::operators::MeshgridNPUKernel<float>,
+    paddle::operators::MeshgridNPUKernel<paddle::platform::float16>);

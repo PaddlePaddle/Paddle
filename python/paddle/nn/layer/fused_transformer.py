@@ -68,6 +68,7 @@ class FusedMultiHeadAttention(Layer):
                  weight_attr=None,
                  bias_attr=None):
         super(FusedMultiHeadAttention, self).__init__()
+        raise NotImplementedError()
 
     def forward(self, query, key=None, value=None, attn_mask=None, cache=None):
         """
@@ -119,7 +120,7 @@ class FusedMultiHeadAttention(Layer):
                 reserves tensors concatanating raw tensors with intermediate \
                 results of current query.
         """
-        pass
+        raise NotImplementedError()
 
 
 class FusedFeedForward(Layer):
@@ -134,9 +135,10 @@ class FusedFeedForward(Layer):
                  bias_attr=None):
 
         super(FusedFeedForward, self).__init__()
+        raise NotImplementedError()
 
     def forward(self, src, cache=None):
-        pass
+        raise NotImplementedError()
 
 
 class FusedTransformerEncoderLayer(Layer):
@@ -212,6 +214,7 @@ class FusedTransformerEncoderLayer(Layer):
         self._config.pop("__class__", None)  # py3
 
         super(FusedTransformerEncoderLayer, self).__init__()
+        raise NotImplementedError()
 
     def forward(self, src, src_mask=None, cache=None):
         """
@@ -243,7 +246,7 @@ class FusedTransformerEncoderLayer(Layer):
                 incremental length. See `MultiHeadAttention.gen_cache` and \
                 `MultiHeadAttention.forward` for more details.
         """
-        pass
+        raise NotImplementedError()
 
 
 class FusedTransformer(Layer):
@@ -356,6 +359,7 @@ class FusedTransformer(Layer):
                  custom_encoder=None,
                  custom_decoder=None):
         super(fusedTransformer, self).__init__()
+        raise NotImplementedError()
 
     def forward(self, src, tgt, src_mask=None, tgt_mask=None, memory_mask=None):
-        pass
+        raise NotImplementedError()

@@ -20,26 +20,18 @@ import unittest
 import numpy as np
 import paddle
 import paddle.fluid as fluid
-from op_test import OpTest, skip_check_grad_ci
-
-SEED = 2021
-
-
-def l2_norm(x, axis, epsilon):
-    x2 = x**2
-    s = np.sum(x2, axis=axis, keepdims=True)
-    r = np.sqrt(s) + epsilon
-    y = x / np.broadcast_to(r, x.shape)
-    return y, r
+from paddle.fluid.tests.unittests.op_test import OpTest, skip_check_grad_ci
+from paddle.fluid.tests.unittests.test_norm_op import l2_norm
 
 
-class TestNorm(OpTest):
+class TestNPUNormOp(OpTest):
     def setUp(self):
         paddle.enable_static()
         self.set_npu()
         self.place = paddle.NPUPlace(0)
         self.op_type = "norm"
         self.init_dtype()
+        self.init_test_case()
 
         x = np.random.random(self.shape).astype(self.dtype)
         y, norm = l2_norm(x, self.axis, self.epsilon)
@@ -52,6 +44,8 @@ class TestNorm(OpTest):
 
     def init_dtype(self):
         self.dtype = np.float32
+
+    def init_test_case(self):
         self.axis = 1
         self.epsilon = 1e-10
         self.shape = (2, 3, 4, 5)
@@ -59,29 +53,50 @@ class TestNorm(OpTest):
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
+    def test_check_grad(self):
+        if self.dtype == np.float16:
+            return
 
-class TestNormOp2(TestNorm):
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', max_relative_error=0.006)
+
+
+class TestNPUNormOp2(TestNPUNormOp):
     def init_test_case(self):
         self.shape = [5, 3, 9, 7]
         self.axis = 0
         self.epsilon = 1e-8
-        self.dtype = np.float32
 
 
-class TestNormOp3(TestNorm):
+class TestNPUNormOp3(TestNPUNormOp):
     def init_test_case(self):
         self.shape = [5, 3, 2, 7]
         self.axis = -1
         self.epsilon = 1e-8
-        self.dtype = np.float32
 
 
-class TestNormOp4(TestNorm):
+@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
+                    "however it is desirable to cover the forward pass")
+class TestNPUNormOp4(TestNPUNormOp):
     def init_test_case(self):
         self.shape = [128, 1024, 14, 14]
         self.axis = 2
         self.epsilon = 1e-8
-        self.dtype = np.float32
+
+    def test_check_grad(self):
+        pass
+
+
+@skip_check_grad_ci(reason="'check_grad' on large inputs is too slow, " +
+                    "however it is desirable to cover the forward pass")
+class TestNPUNormOp5(TestNPUNormOp):
+    def init_test_case(self):
+        self.shape = [2048, 2048]
+        self.axis = 1
+        self.epsilon = 1e-8
+
+    def test_check_grad(self):
+        pass
 
 
 class API_NormTest(unittest.TestCase):
@@ -96,13 +111,15 @@ class API_NormTest(unittest.TestCase):
             self.assertRaises(TypeError, test_norm_x_type)
 
 
-class TestNormFP16(TestNorm):
+class TestNPUNormOpFP16(TestNPUNormOp):
     def set_npu(self):
         self.__class__.use_npu = True
         self.__class__.no_need_check_grad = True
 
     def init_dtype(self):
         self.dtype = np.float16
+
+    def init_test_case(self):
         self.axis = -1
         self.epsilon = 1e-10
         self.shape = (2, 3, 100)

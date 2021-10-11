@@ -17,6 +17,7 @@ import six
 import sys
 import traceback
 import linecache
+import re
 
 from paddle.fluid.dygraph.dygraph_to_static.origin_info import Location, OriginInfo, global_origin_info_map
 
@@ -106,28 +107,57 @@ class TraceBackFrameRange(OriginInfo):
         begin_lineno = max(1, self.location.lineno - int(SOURCE_CODE_RANGE / 2))
 
         for i in range(begin_lineno, begin_lineno + SOURCE_CODE_RANGE):
-            line = linecache.getline(self.location.filepath, i)
-            line_lstrip = line.strip()
+            line = linecache.getline(self.location.filepath, i).rstrip('\n')
+            line_lstrip = line.lstrip()
             self.source_code.append(line_lstrip)
-            blank_count.append(len(line) - len(line_lstrip))
+            if not line_lstrip:  # empty line from source code
+                blank_count.append(-1)
+            else:
+                blank_count.append(len(line) - len(line_lstrip))
 
             if i == self.location.lineno:
                 hint_msg = '~' * len(self.source_code[-1]) + ' <--- HERE'
                 self.source_code.append(hint_msg)
                 blank_count.append(blank_count[-1])
         linecache.clearcache()
+        # remove top and bottom empty line in source code
+        while len(self.source_code) > 0 and not self.source_code[0]:
+            self.source_code.pop(0)
+            blank_count.pop(0)
+        while len(self.source_code) > 0 and not self.source_code[-1]:
+            self.source_code.pop(-1)
+            blank_count.pop(-1)
 
-        min_black_count = min(blank_count)
+        min_black_count = min([i for i in blank_count if i >= 0])
         for i in range(len(self.source_code)):
-            self.source_code[i] = ' ' * (blank_count[i] - min_black_count +
-                                         BLANK_COUNT_BEFORE_FILE_STR * 2
-                                         ) + self.source_code[i]
+            # if source_code[i] is empty line between two code line, dont add blank
+            if self.source_code[i]:
+                self.source_code[i] = ' ' * (blank_count[i] - min_black_count +
+                                             BLANK_COUNT_BEFORE_FILE_STR * 2
+                                             ) + self.source_code[i]
 
     def formated_message(self):
         msg = ' ' * BLANK_COUNT_BEFORE_FILE_STR + 'File "{}", line {}, in {}\n'.format(
             self.location.filepath, self.location.lineno, self.function_name)
         # add empty line after range code
         return msg + '\n'.join(self.source_code) + '\n'
+
+
+class SuggestionDict(object):
+    def __init__(self):
+        # {(keywords): (suggestions)}
+        self.suggestion_dict = {
+            ('is not initialized.', 'Hint:', 'IsInitialized'):
+            ("Please ensure all your sublayers are inheritted from nn.Layer.",
+             "Please ensure there is no tensor created explicitly depended on external data, we suggest to register it as buffer tensor. See https://www.paddlepaddle.org.cn/documentation/docs/zh/guides/04_dygraph_to_static/export_model/principle_cn.html#parameters-buffers for details"
+             )
+        }
+
+    def keys(self):
+        return self.suggestion_dict.keys()
+
+    def __getitem__(self, key):
+        return self.suggestion_dict[key]
 
 
 class ErrorData(object):
@@ -142,6 +172,7 @@ class ErrorData(object):
         self.origin_traceback = origin_traceback
         self.origin_info_map = origin_info_map
         self.in_runtime = False
+        self.suggestion_dict = SuggestionDict()
 
     def create_exception(self):
         message = self.create_message()
@@ -202,6 +233,22 @@ class ErrorData(object):
 
         return '\n'.join(message_lines)
 
+    def _create_revise_suggestion(self, bottom_error_message):
+        revise_suggestions = [
+            '', ' ' * BLANK_COUNT_BEFORE_FILE_STR + 'Revise suggestion: '
+        ]
+        for keywords in self.suggestion_dict.keys():
+            contain_keywords = [
+                True for i in keywords if i in ''.join(bottom_error_message)
+            ]
+            if len(contain_keywords) == len(
+                    keywords):  # all keywords should be in bottom_error_message
+                for suggestion in self.suggestion_dict[keywords]:
+                    suggestion_msg = ' ' * BLANK_COUNT_BEFORE_FILE_STR * 2 + '{}. {}'.format(
+                        str(len(revise_suggestions) - 1), suggestion)
+                    revise_suggestions.append(suggestion_msg)
+        return revise_suggestions if len(revise_suggestions) > 2 else []
+
     def _simplify_error_value(self):
         """
         Simplifies error value to improve readability if error is raised in runtime.
@@ -212,6 +259,7 @@ class ErrorData(object):
             1. Need a more robust way because the code of start_trace may change.
             2. Set the switch to determine whether to simplify error_value
         """
+
         assert self.in_runtime is True
 
         error_value_lines = str(self.error_value).split("\n")
@@ -219,9 +267,45 @@ class ErrorData(object):
 
         start_trace = "outputs = static_func(*inputs)"
         start_idx = error_value_lines_strip.index(start_trace)
-        error_value_lines = error_value_lines[start_idx + 1:]
 
-        error_value_str = '\n'.join(error_value_lines)
+        error_value_lines = error_value_lines[start_idx + 1:]
+        error_value_lines_strip = error_value_lines_strip[start_idx + 1:]
+
+        # use empty line to locate the bottom_error_message
+        empty_line_idx = error_value_lines_strip.index('')
+        bottom_error_message = error_value_lines[empty_line_idx + 1:]
+        revise_suggestion = self._create_revise_suggestion(bottom_error_message)
+
+        filepath = ''
+        error_from_user_code = []
+        pattern = 'File "(?P<filepath>.+)", line (?P<lineno>.+), in (?P<function_name>.+)'
+        for i in range(0, len(error_value_lines_strip), 2):
+            if error_value_lines_strip[i].startswith("File "):
+                re_result = re.search(pattern, error_value_lines_strip[i])
+                tmp_filepath, lineno_str, function_name = re_result.groups()
+                code = error_value_lines_strip[i + 1] if i + 1 < len(
+                    error_value_lines_strip) else ''
+                if i == 0:
+                    filepath = tmp_filepath
+                if tmp_filepath == filepath:
+                    error_from_user_code.append(
+                        (tmp_filepath, int(lineno_str), function_name, code))
+
+        error_frame = []
+        whether_source_range = True
+        for filepath, lineno, funcname, code in error_from_user_code[::-1]:
+            loc = Location(filepath, lineno)
+            if whether_source_range:
+                traceback_frame = TraceBackFrameRange(loc, funcname)
+                whether_source_range = False
+            else:
+                traceback_frame = TraceBackFrame(loc, funcname, code)
+
+            error_frame.insert(0, traceback_frame.formated_message())
+
+        error_frame.extend(bottom_error_message)
+        error_frame.extend(revise_suggestion)
+        error_value_str = '\n'.join(error_frame)
         self.error_value = self.error_type(error_value_str)
 
     def raise_new_exception(self):

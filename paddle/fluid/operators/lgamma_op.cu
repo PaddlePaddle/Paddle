@@ -15,18 +15,14 @@
 #include <unsupported/Eigen/SpecialFunctions>
 #include "paddle/fluid/operators/elementwise/elementwise_op_impl.cu.h"
 #include "paddle/fluid/operators/lgamma_op.h"
-#include "paddle/fluid/operators/math/complex_functors.h"
 
 namespace paddle {
 namespace operators {
 
-template <typename T, typename Enable = void>
-struct CudaLgammaFunctor;
-
 template <typename T>
-struct CudaLgammaFunctor<T, math::NoComplex<T, math::Real<T>>> {
-  __device__ __forceinline__ T operator()(const T* args) const {
-    return Eigen::numext::lgamma(args[0]);
+struct CudaLgammaFunctor {
+  __device__ __forceinline__ T operator()(const T& x) const {
+    return Eigen::numext::lgamma(x);
   }
 };
 
@@ -37,15 +33,14 @@ class LgammaKernel<platform::CUDADeviceContext, T>
   void Compute(const framework::ExecutionContext& context) const override {
     const Tensor* x = context.Input<Tensor>("X");
     Tensor* out = context.Output<Tensor>("Out");
-    out->mutable_data<math::Real<T>>(context.GetPlace());
+    out->mutable_data<T>(context.GetPlace());
 
     auto& dev_ctx = context.device_context<platform::CUDADeviceContext>();
     std::vector<const framework::Tensor*> ins = {x};
     std::vector<framework::Tensor*> outs = {out};
     auto functor = CudaLgammaFunctor<T>();
-    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T,
-                                        math::Real<T>>(dev_ctx, ins, &outs,
-                                                       functor);
+    LaunchSameDimsElementwiseCudaKernel<ElementwiseType::kUnary, T, T>(
+        dev_ctx, ins, &outs, functor);
   }
 };
 

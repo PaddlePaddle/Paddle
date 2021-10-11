@@ -216,6 +216,7 @@ void HogwildWorker::TrainFiles() {
   // how to accumulate fetched values here
   device_reader_->Start();
   int cur_batch;
+  int batch_cnt = 0;
   while ((cur_batch = device_reader_->Next()) > 0) {
     for (auto &op : ops_) {
       bool need_skip = false;
@@ -230,13 +231,26 @@ void HogwildWorker::TrainFiles() {
       }
     }
 
+    if (need_dump_field_) {
+      DumpField(*thread_scope_, dump_mode_, dump_interval_);
+    }
+    if (need_dump_param_ && thread_id_ == 0) {
+      DumpParam(*thread_scope_, batch_cnt);
+    }
+
     total_ins_num += cur_batch;
+    ++batch_cnt;
     PrintFetchVars();
     thread_scope_->DropKids();
   }
   timeline.Pause();
   VLOG(3) << "worker " << thread_id_ << " train cost " << timeline.ElapsedSec()
           << " seconds, ins_num: " << total_ins_num;
+
+  if (need_dump_field_ || need_dump_param_) {
+    writer_.Flush();
+  }
+
 #if defined PADDLE_WITH_PSCORE
   if (thread_barrier_) {
     paddle::distributed::Communicator::GetInstance()->BarrierTriggerDecrement();

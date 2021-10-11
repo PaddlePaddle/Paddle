@@ -20,6 +20,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_MKLDNN
 #include "paddle/fluid/platform/mkldnn_helper.h"
 #endif
+#include "paddle/fluid/platform/cpu_helper.h"
 
 namespace paddle {
 namespace operators {
@@ -257,13 +258,16 @@ void BatchNormOpMaker::Make() {
   AddOutput("ReserveSpace",
             "Reserve GPU space for triggering the new semi-persistent "
             "NHWC kernel")
-      .AsDispensable();
+      .AsDispensable()
+      .AsExtra();
   AddAttr<bool>("use_mkldnn",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("fuse_with_relu",
                 "(bool, default false) Only used in mkldnn kernel")
-      .SetDefault(false);
+      .SetDefault(false)
+      .AsExtra();
   AddAttr<bool>("use_global_stats",
                 "(bool, default false) Whether to use global mean and "
                 "variance. In inference or test mode, set use_global_stats "
@@ -811,13 +815,16 @@ class BatchNormGradKernel<platform::CPUDeviceContext, T>
           EigenArrayMap<T> d_x_arr(d_x->mutable_data<T>(ctx.GetPlace()), C,
                                    N * sample_size);
           if (!use_global_stats) {
-            for (int nhw = 0; nhw < N * sample_size; ++nhw) {
-              d_x_arr.col(nhw) =
-                  scale_inv_var_nhw *
-                  (d_y_arr.col(nhw) * N * sample_size - dy_sum_arr -
-                   (x_arr.col(nhw) - mean_arr) *
-                       dy_mul_x_sub_mean_mul_invstd_sum_arr * inv_var_arr);
-            }
+            auto parallel_compute = [&](int64_t loop_begin, int64_t loop_end) {
+              for (int nhw = loop_begin; nhw < loop_end; ++nhw) {
+                d_x_arr.col(nhw) =
+                    scale_inv_var_nhw *
+                    (d_y_arr.col(nhw) * N * sample_size - dy_sum_arr -
+                     (x_arr.col(nhw) - mean_arr) *
+                         dy_mul_x_sub_mean_mul_invstd_sum_arr * inv_var_arr);
+              }
+            };
+            platform::RunParallelFor(0, N * sample_size, parallel_compute);
           } else {
             for (int nhw = 0; nhw < N * sample_size; ++nhw) {
               d_x_arr.col(nhw) = scale_inv_var_nhw * d_y_arr.col(nhw);
@@ -848,7 +855,8 @@ void BatchNormGradMaker<T>::Apply(GradOpPtr<T> op) const {
   }
 
   // used when setting use_global_stats True during training
-  if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats"))) {
+  if (BOOST_GET_CONST(bool, this->GetAttr("use_global_stats")) ||
+      BOOST_GET_CONST(bool, this->GetAttr("is_test"))) {
     op->SetInput("Mean", this->Output("MeanOut"));
     op->SetInput("Variance", this->Output("VarianceOut"));
   }

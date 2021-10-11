@@ -97,8 +97,8 @@ class TestAutoParallelAPI(unittest.TestCase):
 
         self.assertEqual(last_op.pipeline_stage, LAST_PP_STAGE)
 
-        DIMS_MAPPING1 = [0, 1, -1]
-        DIMS_MAPPING2 = [-1, 2, 0]
+        DIMS_MAPPING1 = [0, 1]
+        DIMS_MAPPING2 = [-1, 0]
         kwargs = {'x': data2, 'y': data3}
         dist.shard_op(
             paddle.add,

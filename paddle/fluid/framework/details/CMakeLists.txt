@@ -64,7 +64,11 @@ elseif(WITH_ROCM)
     hip_library(broadcast_op_handle SRCS broadcast_op_handle.cc DEPS op_handle_base scope ddim memory variable_visitor dynload_cuda)
     hip_library(fused_broadcast_op_handle SRCS fused_broadcast_op_handle.cc DEPS broadcast_op_handle)
 else()
-    cc_library(nan_inf_utils SRCS nan_inf_utils_detail.cc DEPS framework_proto scope place)
+    if (WITH_ASCEND_CL)
+        cc_library(nan_inf_utils SRCS nan_inf_utils_detail.cc DEPS npu_op_runner framework_proto scope place)
+    else()
+        cc_library(nan_inf_utils SRCS nan_inf_utils_detail.cc DEPS framework_proto scope place)
+    endif()
     cc_library(all_reduce_op_handle SRCS all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
              variable_visitor)
     cc_library(fused_all_reduce_op_handle SRCS fused_all_reduce_op_handle.cc DEPS op_handle_base scope lod_tensor ddim memory
@@ -135,7 +139,7 @@ set(IR_PASS_DEPS graph_viz_pass multi_devices_graph_pass
     coalesce_grad_tensor_pass fuse_all_reduce_op_pass backward_optimizer_op_deps_pass
     fuse_adam_op_pass fuse_sgd_op_pass fuse_momentum_op_pass
     sync_batch_norm_pass runtime_context_cache_pass graph_to_program_pass
-    fix_op_run_order_pass)
+    paddle_to_cinn_pass fix_op_run_order_pass)
 if(NOT APPLE AND NOT WIN32 AND (WITH_GPU OR WITH_ROCM))
   set(IR_PASS_DEPS ${IR_PASS_DEPS} fusion_group_pass)
 endif()

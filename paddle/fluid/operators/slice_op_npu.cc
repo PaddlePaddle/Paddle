@@ -181,12 +181,37 @@ class SliceGradNPUKernel : public framework::OpKernel<T> {
       paddings[i][1] = static_cast<int64_t>(in_dims[i] - size[i] - offsets[i]);
     }
 
+    Tensor tmp_dout;
+    tmp_dout.ShareDataWith(*dout);
+    auto out_dims = dout->dims();
+    auto decrease_axis = ctx.Attr<std::vector<int>>("decrease_axis");
+    auto decrease_size = decrease_axis.size();
+    if (decrease_size > 0) {
+      if (decrease_size == static_cast<size_t>(in_dims.size())) {
+        out_dims = framework::make_ddim(std::vector<int>(decrease_size, 1));
+      } else {
+        std::vector<int> origin_out_shape(out_dims.size() + decrease_size, -1);
+        for (size_t i = 0; i < decrease_size; ++i) {
+          origin_out_shape[decrease_axis[i]] = 1;
+        }
+        int index = 0;
+        for (size_t i = 0; i < origin_out_shape.size(); ++i) {
+          if (origin_out_shape[i] == -1) {
+            origin_out_shape[i] = out_dims[index];
+            ++index;
+          }
+        }
+        out_dims = framework::make_ddim(origin_out_shape);
+      }
+      tmp_dout.Resize(out_dims);
+    }
+
     dinput->mutable_data<T>(ctx.GetPlace());
     auto stream =
         ctx.template device_context<paddle::platform::NPUDeviceContext>()
             .stream();
     const auto& runner =
-        NpuOpRunner("PadD", {*dout}, {*dinput}, {{"paddings", paddings}});
+        NpuOpRunner("PadD", {tmp_dout}, {*dinput}, {{"paddings", paddings}});
     runner.Run(stream);
   }
 };

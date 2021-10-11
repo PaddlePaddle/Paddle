@@ -26,14 +26,14 @@ function check_whl {
     unzip -q build/python/dist/*.whl -d /tmp/pr
     rm -f build/python/dist/*.whl && rm -f build/python/build/.timestamp
 
-    git checkout .
-    git checkout -b develop_base_pr upstream/$BRANCH
-    [ $? -ne 0 ] && echo "install paddle failed." && exit 1
     rm -rf ${PADDLE_ROOT}/build/Makefile ${PADDLE_ROOT}/build/CMakeCache.txt
     cmake_change=`git diff --name-only upstream/$BRANCH | grep "cmake/external" || true`
     if [ ${cmake_change} ];then
         rm -rf ${PADDLE_ROOT}/build/third_party
     fi
+    git checkout .
+    git checkout -b develop_base_pr upstream/$BRANCH
+    [ $? -ne 0 ] && echo "checkout paddle branch failed." && exit 1
 
     bash -x paddle/scripts/paddle_build.sh build_only
     [ $? -ne 0 ] && echo "build paddle failed." && exit 1
@@ -63,7 +63,18 @@ function compile_install_paddle {
     export WITH_UNITY_BUILD=ON
     check_whl
     cd /workspace/Paddle
-    git clone --recurse-submodules=PaddleClas --recurse-submodules=PaddleNLP --recurse-submodules=PaddleDetection --recurse-submodules=PaddleVideo --recurse-submodules=PaddleSeg --recurse-submodules=PaddleGAN --recurse-submodules=PaddleOCR --recurse-submodules=models https://github.com/paddlepaddle/benchmark.git
+    git clone --depth=1 https://github.com/paddlepaddle/benchmark.git
+    cd benchmark
+    set +x
+    wget -q --no-proxy https://xly-devops.bj.bcebos.com/benchmark/new_clone/benchmark/benchmark_allgit.tar.gz
+    tar xf benchmark_allgit.tar.gz
+    set -x
+}
+
+function init_benchmark {
+    cd /workspace/Paddle/benchmark
+    git clone PaddleClas.bundle PaddleClas
+
 }
 
 function prepare_data {
@@ -96,6 +107,7 @@ case $1 in
     compile_install_paddle
   ;;
   run_benchmark)
+    init_benchmark
     prepare_data
     run_model_benchmark
   ;;

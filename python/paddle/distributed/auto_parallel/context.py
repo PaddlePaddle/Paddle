@@ -15,9 +15,11 @@
 import copy
 from collections import defaultdict
 from paddle.fluid import framework
+from paddle.fluid import core
 from .attribute import TensorDistributedAttribute
 from .attribute import OperatorDistributedAttribute
 from .utils import append_distributed_attr_suffix
+from .interface import _g_process_mesh_map
 
 # There always exists a default context for user. And user can set it to another one.
 DEFAULT_DISTRIBUTED_CONTEXT = None
@@ -49,6 +51,20 @@ class DistributedContext:
         self._op_distributed_attr_map_for_program = {}
         self._tensor_distributed_attr_map_for_graph = {}
         self._op_distributed_attr_map_for_graph = {}
+        # The following is a hard code and will be removed in the future
+        self._data_parallel_axis = None
+        self._model_parallel_axis = None
+        self._process_mesh = _g_process_mesh_map.get(0, None)
+        if self._process_mesh is not None:
+            if self._process_mesh.ndim == 1:
+                self._data_parallel_axis = 0
+                self._model_parallel_axis = 0
+            else:
+                self._data_parallel_axis = 0
+                self._model_parallel_axis = 1
+        else:
+            self._data_parallel_axis = -1
+            self._model_parallel_axis = -1
 
     def is_initialized_for_program(self):
         return self._is_initialized_for_program
@@ -99,6 +115,19 @@ class DistributedContext:
         op_node_id = op_node.id()
         self._op_distributed_attr_map_for_graph[op_node_id] = op_dist_attr
 
+    def set_process_mesh(self, process_mesh):
+        self._process_mesh = process_mesh
+        if self._process_mesh is not None:
+            if self._process_mesh.ndim == 1:
+                self._data_parallel_axis = 0
+                self._model_parallel_axis = 0
+            else:
+                self._data_parallel_axis = 0
+                self._model_parallel_axis = 1
+        else:
+            self._data_parallel_axis = -1
+            self._model_parallel_axis = -1
+
     def initialize_distributed_attr_for_program(self, program):
         if self._is_initialized_for_program:
             return
@@ -113,12 +142,15 @@ class DistributedContext:
                         tensor.desc, tensor_dist_attr)
                     self.set_tensor_distributed_attr_for_program(
                         tensor, tensor_dist_attr)
-                tensor_dist_attr.set_shape(tensor.desc.shape())
+                if tensor.type == core.VarDesc.VarType.READER:
+                    tensor_dist_attr.set_shape([])
+                else:
+                    tensor_dist_attr.set_shape(tensor.desc.shape())
                 if tensor_dist_attr.get_process_mesh() is not None:
                     tensor_dist_attr.mark_as_annotated("process_mesh")
                 if tensor_dist_attr.get_dims_mapping() is None:
                     tensor_dims_mapping = [
-                        -1 for _ in range(len(tensor.desc.shape()))
+                        -1 for _ in range(len(tensor_dist_attr.get_shape()))
                     ]
                     tensor_dist_attr.set_dims_mapping(tensor_dims_mapping)
                 else:
@@ -139,12 +171,18 @@ class DistributedContext:
                     op_dist_attr.mark_as_annotated("process_mesh")
                 for tensor_name in op.input_arg_names:
                     # There may be a better way to find the tensor by name
-                    tensor = op.block._var_recursive(tensor_name)
-                    op_dist_attr.set_input_shape(tensor_name,
-                                                 tensor.desc.shape())
+                    if op.type == "create_py_reader" \
+                        or tensor.type == core.VarDesc.VarType.READER:
+                        op_dist_attr.set_input_shape(tensor_name, [])
+                    else:
+                        tensor = op.block._var_recursive(tensor_name)
+                        op_dist_attr.set_input_shape(tensor_name,
+                                                     tensor.desc.shape())
                     if op_dist_attr.get_input_dims_mapping(tensor_name) is None:
                         tensor_dims_mapping = [
-                            -1 for _ in range(len(tensor.desc.shape()))
+                            -1
+                            for _ in range(
+                                len(op_dist_attr.get_input_shape(tensor_name)))
                         ]
                         op_dist_attr.set_input_dims_mapping(tensor_name,
                                                             tensor_dims_mapping)
@@ -155,12 +193,18 @@ class DistributedContext:
                         op_dist_attr.mark_as_parameter(tensor_name)
                 for tensor_name in op.output_arg_names:
                     tensor = op.block._var_recursive(tensor_name)
-                    op_dist_attr.set_output_shape(tensor_name,
-                                                  tensor.desc.shape())
+                    if tensor.type == core.VarDesc.VarType.READER:
+                        op_dist_attr.set_output_shape(tensor_name, [])
+                    else:
+                        op_dist_attr.set_output_shape(tensor_name,
+                                                      tensor.desc.shape())
                     if op_dist_attr.get_output_dims_mapping(
                             tensor_name) is None:
                         tensor_dims_mapping = [
-                            -1 for _ in range(len(tensor.desc.shape()))
+                            -1
+                            for _ in range(
+                                len(
+                                    op_dist_attr.get_output_shape(tensor_name)))
                         ]
                         op_dist_attr.set_output_dims_mapping(
                             tensor_name, tensor_dims_mapping)
@@ -349,8 +393,8 @@ class DistributedContext:
             # If the dimension of tensor is less than the sharding dimension of process mesh,
             # we just amend the dimension mapping to -1. (Is this really OK?)
             for i in range(len(tensor_shape)):
-                if dims_mapping[i] != -1 and process_mesh_shape[dims_mapping[
-                        i]] > tensor_shape[i]:
+                if dims_mapping[i] != -1 and tensor_shape[i] > 0 \
+                    and process_mesh_shape[dims_mapping[i]] > tensor_shape[i]:
                     dims_mapping[i] = -1
 
         for attr in self._op_distributed_attr_map_for_program.values():
@@ -363,8 +407,8 @@ class DistributedContext:
                 # If the dimension of tensor is less than the sharding dimension of process mesh,
                 # we just amend the dimension mapping to -1. (Is this really OK?)
                 for i in range(len(tensor_shape)):
-                    if dims_mapping[i] != -1 and process_mesh_shape[
-                            dims_mapping[i]] > tensor_shape[i]:
+                    if dims_mapping[i] != -1 and tensor_shape[i] > 0 \
+                        and process_mesh_shape[dims_mapping[i]] > tensor_shape[i]:
                         dims_mapping[i] = -1
 
             for arg_name in attr.get_owner_op().desc.output_arg_names():
@@ -374,6 +418,14 @@ class DistributedContext:
                 # If the dimension of tensor is less than the sharding dimension of process mesh,
                 # we just amend the dimension mapping to -1. (Is this really OK?)
                 for i in range(len(tensor_shape)):
-                    if dims_mapping[i] != -1 and process_mesh_shape[
-                            dims_mapping[i]] > tensor_shape[i]:
+                    if dims_mapping[i] != -1 and tensor_shape[i] > 0 \
+                        and process_mesh_shape[dims_mapping[i]] > tensor_shape[i]:
                         dims_mapping[i] = -1
+
+    def _get_data_parallel_info(self):
+        # This function is a hard code, and will be obsoleted in the future
+        return self._data_parallel_axis, self._process_mesh
+
+    def _get_model_parallel_info(self):
+        # This function is a hard code, and will be obsoleted in the future
+        return self._model_parallel_axis, self._process_mesh

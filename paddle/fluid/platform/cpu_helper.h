@@ -48,16 +48,25 @@ inline void RunParallelFor(const int64_t begin, const int64_t end,
 
 #ifdef PADDLE_WITH_MKLML
   int64_t max_threads = GetMaxThreads();
-  int64_t num_threads = std::min(max_threads, end - begin);
+  int64_t num_threads = max_threads > end - begin ? end - begin : max_threads;
+
   if (num_threads > 1) {
 #pragma omp parallel
     {
       int64_t tid = omp_get_thread_num();
-      int64_t chunk_size = (end - begin) / num_threads;
+      int64_t chunk_size = (end - begin + num_threads - 1) / num_threads;
       int64_t begin_tid = begin + tid * chunk_size;
-      if (begin_tid < end) {
-        f(begin_tid, std::min(end, chunk_size + begin_tid));
-      }
+      int64_t end_tid =
+          chunk_size + begin_tid > end ? end : chunk_size + begin_tid;
+      f(begin_tid, end_tid);
+      // int64_t tid = omp_get_thread_num();
+      // int64_t chunk_size = (end - begin) / num_threads;
+      // int64_t begin_tid = begin + tid * chunk_size;
+      // if (begin_tid < end) {
+      //   int64_t end_tid =
+      //       chunk_size + begin_tid > end ? end : chunk_size + begin_tid;
+      //   f(begin_tid, end_tid);
+      // }
     }
     return;
   }
