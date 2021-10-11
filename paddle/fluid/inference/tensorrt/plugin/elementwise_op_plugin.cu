@@ -65,12 +65,6 @@ nvinfer1::Dims ElementWisePlugin::getOutputDimensions(
 }
 
 int ElementWisePlugin::initialize() TRT_NOEXCEPT {
-  PADDLE_ENFORCE_GT(dims_y_.nbDims, 0,
-                    platform::errors::InvalidArgument(
-                        "The dimension of input Y of TRT elementwise op plugin "
-                        "should be greater than 0, but got %d.",
-                        dims_y_.nbDims));
-
   axis_ = (axis_ == -1) ? dims_x_.nbDims - dims_y_.nbDims : axis_;
   int trimed_nb_dims = dims_y_.nbDims;
   for (; trimed_nb_dims > 0; --trimed_nb_dims) {

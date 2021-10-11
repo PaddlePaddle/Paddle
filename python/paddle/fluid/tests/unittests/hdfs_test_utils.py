@@ -245,6 +245,15 @@ class FSTestBase(unittest.TestCase):
         self.assertFalse(fs.is_dir(path))
         fs.delete(path)
 
+    def _test_list_files_info(self, fs):
+        path = []
+        fs.list_files_info(path)
+        path = ["./list_files_info.flag"]
+        fs.list_files_info(path)
+        fs.touch(path, exist_ok=True)
+        fs.list_files_info(path)
+        fs.delete(path)
+
 
 if __name__ == '__main__':
     unittest.main()

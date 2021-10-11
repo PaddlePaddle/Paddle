@@ -115,6 +115,7 @@ message BuildStrategy {
   optional bool enable_auto_fusion = 11 [ default = false ];
   optional bool enable_addto = 12 [ default = false ];
   optional bool fix_op_run_order = 13 [ default = false ];
+  optional bool allow_cuda_graph_capture = 14 [ default = false ];
 }
 
 message ExecutionStrategy {
