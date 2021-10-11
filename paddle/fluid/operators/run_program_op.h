@@ -247,9 +247,9 @@ class RunProgramOpKernel : public framework::OpKernel<T> {
       parallel_executor->RunWithoutFetch(skip_eager_delete_vars);
     }
     // Step 4. Get Output
-    details::ShareVarsFromScope(output_vars, output_var_names, &global_block,
+    details::ShareVarsFromScope(output_vars, output_var_names, *global_block,
                                 &scope);
-    details::ShareVarsFromScope(dout_vars, dout_var_names, &global_block,
+    details::ShareVarsFromScope(dout_vars, dout_var_names, *global_block,
                                 &scope);
 
     // Debug info: scope info when run end
@@ -352,9 +352,9 @@ class RunProgramGradOpKernel : public framework::OpKernel<T> {
 
     // Step 4. get outputs
     details::ShareVarsFromScope(input_grad_vars, input_grad_var_names,
-                                &global_block, &scope);
+                                *global_block, &scope);
     details::ShareVarsFromScope(param_grad_vars, param_grad_names,
-                                &global_block, &scope);
+                                *global_block, &scope);
 
     // Step5. drop current scope
     global_inner_scope->DeleteScope(&scope);
