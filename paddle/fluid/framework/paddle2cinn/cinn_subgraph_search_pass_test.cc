@@ -428,13 +428,11 @@ TEST(CinnSubgraphSearchPassTest, MultiCinnSubgraph) {
   const auto& subgraph1 = cinn_subgraphs[0];
   const auto& subnodes1 = subgraph1->Nodes();
   ASSERT_EQ(subnodes1.size(), static_cast<size_t>(1));
-  ASSERT_TRUE(CheckNodeExisted(subnodes1, "relu"));
 
   // subgraph2: mul
   const auto& subgraph2 = cinn_subgraphs[1];
   const auto& subnodes2 = subgraph2->Nodes();
   ASSERT_EQ(subnodes2.size(), static_cast<size_t>(1));
-  ASSERT_TRUE(CheckNodeExisted(subnodes2, "mul"));
 }
 
 }  // namespace paddle2cinn
