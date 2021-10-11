@@ -83,6 +83,17 @@ class TestElementwiseMulFp16(TestElementwiseMul):
         self.out = np.multiply(self.x, self.y)
 
 
+class TestElementwiseMul_xsize_lessthan_ysize(TestElementwiseMul):
+    def init_input_output(self):
+        np.random.seed(SEED)
+        self.x = np.random.rand(10, 10).astype(self.dtype)
+        self.y = np.random.rand(2, 2, 10, 10).astype(self.dtype)
+        self.out = np.multiply(self.x.reshape(1, 1, 10, 10), self.y)
+
+    def init_axis(self):
+        self.axis = 2
+
+
 class TestElementwiseMul_broadcast_0(TestElementwiseMul):
     def init_input_output(self):
         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
