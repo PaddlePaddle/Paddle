@@ -1670,7 +1670,8 @@ def cross_entropy(input,
             # to detect and find out possible illegal label values
             if len(paddle.nonzero(valid_label >= input.shape[axis])) > 0:
                 invalid_label = paddle.gather_nd(
-                    valid_label, paddle.nonzero(valid_label >= input.shape[axis]))
+                    valid_label,
+                    paddle.nonzero(valid_label >= input.shape[axis]))
                 raise ValueError(
                     "Target({}) is out of class_dimension's upper bound({})".
                     format(invalid_label[0], input.shape[axis] - 1))
