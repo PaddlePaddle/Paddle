@@ -1713,7 +1713,8 @@ def cross_entropy(input,
                 if ignore_weight_mask.ndim > 1 and ignore_weight_mask.shape[
                         axis] == 1:
                     # TODO: Temporarily use squeeze instead of squeeze_
-                    ignore_weight_mask = paddle.squeeze(ignore_weight_mask, axis)
+                    ignore_weight_mask = paddle.squeeze(ignore_weight_mask,
+                                                        axis)
                 if axis != -1 and axis != valid_label.ndim - 1:
                     temp_perm = list(range(axis % valid_label.ndim)) \
                                 + list(range((axis % valid_label.ndim + 1) , valid_label.ndim)) \
