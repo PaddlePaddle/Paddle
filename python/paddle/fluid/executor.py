@@ -1626,7 +1626,7 @@ class Executor(object):
                           fetch_info=None,
                           print_period=100,
                           fetch_handler=None):
-        if program._pipeline_opt is not None:
+        if isinstance(program, Program) and program._pipeline_opt is not None:
             import paddle
             if dataset is not None:
                 raise RuntimeError("dataset should be None for pipeline mode")
