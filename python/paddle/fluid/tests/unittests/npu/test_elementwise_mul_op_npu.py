@@ -96,32 +96,29 @@ class TestElementwiseMulOp_Vector(ElementwiseMulOp):
         self.outputs = {'Out': np.multiply(self.inputs['X'], self.inputs['Y'])}
 
 
-# TODO(qili93): Paddle enformce not met: 
-# dimension mismatch at elementwise_op_function.h:240
-# class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp):
-#     def init_input_output(self):
-#         self.x = np.random.rand(100, 2, 3).astype(self.dtype)
-#         self.y = np.random.rand(100).astype(self.dtype)
-#         self.out = self.x * self.y.reshape(100, 1, 1)
+class TestElementwiseMulOp_broadcast_0(ElementwiseMulOp):
+    def init_input_output(self):
+        self.x = np.random.rand(100, 2, 3).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x * self.y.reshape(100, 1, 1)
 
-#     def init_axis(self):
-#         self.axis = 0
+    def init_axis(self):
+        self.axis = 0
 
-# TODO(qili93): Paddle enformce not met: 
-# dimension mismatch at elementwise_op_function.h:240
-# class TestElementwiseMulOp_broadcast_1(ElementwiseMulOp):
-#     def setUp(self):
-#         self.set_npu()
-#         self.op_type = "elementwise_mul"
-#         self.inputs = {
-#             'X': np.random.rand(2, 100, 3).astype(np.float32),
-#             'Y': np.random.rand(100).astype(np.float32)
-#         }
 
-#         self.attrs = {'axis': 1}
-#         self.outputs = {
-#             'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 100, 1)
-#         }
+class TestElementwiseMulOp_broadcast_1(ElementwiseMulOp):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'X': np.random.rand(2, 100, 3).astype(np.float32),
+            'Y': np.random.rand(100).astype(np.float32)
+        }
+
+        self.attrs = {'axis': 1}
+        self.outputs = {
+            'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 100, 1)
+        }
 
 
 class TestElementwiseMulOp_broadcast_2(ElementwiseMulOp):
@@ -138,21 +135,19 @@ class TestElementwiseMulOp_broadcast_2(ElementwiseMulOp):
         }
 
 
-# TODO(qili93): Paddle enformce not met: 
-# dimension mismatch at elementwise_op_function.h:240
-# class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
-#     def setUp(self):
-#         self.set_npu()
-#         self.op_type = "elementwise_mul"
-#         self.inputs = {
-#             'X': np.random.rand(2, 10, 12, 3).astype(np.float32),
-#             'Y': np.random.rand(10, 12).astype(np.float32)
-#         }
+class TestElementwiseMulOp_broadcast_3(ElementwiseMulOp):
+    def setUp(self):
+        self.set_npu()
+        self.op_type = "elementwise_mul"
+        self.inputs = {
+            'X': np.random.rand(2, 10, 12, 3).astype(np.float32),
+            'Y': np.random.rand(10, 12).astype(np.float32)
+        }
 
-#         self.attrs = {'axis': 1}
-#         self.outputs = {
-#             'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 10, 12, 1)
-#         }
+        self.attrs = {'axis': 1}
+        self.outputs = {
+            'Out': self.inputs['X'] * self.inputs['Y'].reshape(1, 10, 12, 1)
+        }
 
 
 class TestElementwiseMulOp_broadcast_4(ElementwiseMulOp):

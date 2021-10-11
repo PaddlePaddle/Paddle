@@ -24,24 +24,24 @@ using NPUDeviceContext = platform::NPUDeviceContext;
 
 template <typename T>
 static void ReduceDims(const framework::ExecutionContext& ctx,
-                       const aclrtStream& stream, const framework::DDim& ddims,
+                       const aclrtStream& stream, const int axis,
+                       const framework::DDim& ddims,
                        const framework::DDim& brd_ddims, const Tensor& in,
                        Tensor* out) {
-  const std::vector<int64_t> dims = framework::vectorize(ddims);
-  const std::vector<int64_t> brd_dims = framework::vectorize(brd_ddims);
-
   std::vector<int64_t> axes;
-  int64_t size = brd_dims.size();
-  int64_t diff = brd_dims.size() - dims.size();
-  for (int64_t i = 0; i < size; ++i) {
-    if (i < diff) {
+  int64_t brd_size = brd_ddims.size();
+  int64_t org_size = ddims.size();
+  // int64_t diff = brd_dims.size() - dims.size();
+  for (int64_t i = 0; i < brd_size; ++i) {
+    if (i < axis || i >= org_size + axis) {
       axes.push_back(i);
       continue;
     }
-    if (brd_dims[i] > dims[i - diff]) {
+    if (brd_ddims[i] > ddims[i - axis]) {
       axes.push_back(i);
     }
   }
+  // LOG(INFO) << "axes = " << framework::make_ddim(axes).to_str();
   out->mutable_data<T>(ctx.GetPlace());
   const auto& runner = NpuOpRunner("ReduceSumD", {in}, {*out},
                                    {{"axes", axes}, {"keep_dims", false}});
@@ -114,7 +114,8 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
         const auto& runner_dx =
             NpuOpRunner("Mul", {*dout, trans_y}, {dx_temp}, {});
         runner_dx.Run(stream);
-        ReduceDims<T>(ctx, stream, dx->dims(), trans_x.dims(), dx_temp, dx);
+        ReduceDims<T>(ctx, stream, axis, dx->dims(), trans_x.dims(), dx_temp,
+                      dx);
       }
     }
     if (dy) {
@@ -129,7 +130,8 @@ class ElementwiseMulGradNPUKernel : public framework::OpKernel<T> {
         const auto& runner_dy =
             NpuOpRunner("Mul", {trans_x, *dout}, {dy_temp}, {});
         runner_dy.Run(stream);
-        ReduceDims<T>(ctx, stream, dy->dims(), trans_y.dims(), dy_temp, dy);
+        ReduceDims<T>(ctx, stream, axis, dy->dims(), trans_y.dims(), dy_temp,
+                      dy);
       }
     }
   }
