@@ -96,6 +96,20 @@ struct PowFunctor {
   float exp_;
 };
 
+template <typename T>
+struct RealMulComplexFunctor {
+  // x: complex number (a+bj)
+  // y: complex number (c+0j) pretend to be a real number
+  // out: complex number (ac+bcj)
+  inline HOSTDEVICE T operator()(T x, T y) {
+    PADDLE_ENFORCE_LT(y.imag, 1e-6, platform::errors::InvalidArgument(
+                                        "The image part of y must to be 0"
+                                        "but got [%d]",
+                                        y.imag));
+    return platform::complex<Real<T>>(x.real * y.real, x.imag * y.real);
+  }
+};
+
 static std::vector<int> GetBroadcastShape(InTensors ins) {
   PADDLE_ENFORCE_EQ(ins.size(), 2, platform::errors::InvalidArgument(
                                        "GetBroadcastShape Receive 2 tensors"
@@ -286,6 +300,45 @@ struct DeviceIndependenceTensorOperations {
     for_range(DiagFunctor<T>(x.data<T>(), x.numel(), output));
     return ret;
   }
+
+  // batch_diag for CPU only
+  Tensor BatchDiag(const Tensor& x, int batch) {
+    Tensor out;
+    auto* x_data = x.data<math::Real<T>>();
+    auto numel = x.numel();
+    auto* out_data = out.mutable_data<math::Real<T>>(
+        x.dims(), context.GetPlace(),
+        static_cast<size_t>(numel * sizeof(math::Real<T>)));
+
+    auto x_dims = x.dims();
+    int num_dims = x_dims.size();
+    std::vector<int> out_shape;
+
+    for (int i = 0; i < num_dims - 1; ++i) {
+      out_shape.push_back(x.dims()[i]);
+    }
+    out.Resize(framework::make_ddim(out_shape));
+    int order = x.dims()[num_dims - 1];
+    int stride_out = order * order;
+    int stride_in = order + 1;
+    for (int i = 0; i < batch; ++i) {
+      for (int j = 0; j < order; ++j) {
+        out_data[i * order + j] = x_data[stride_out * i + stride_in * j];
+      }
+    }
+    return out;
+  }
+
+  // a complex number x times a real number y, which is represented as (a+0j)
+  Tensor RealMulComplex(const Tensor& x, const Tensor& y) {
+    framework::Tensor ret;
+    std::vector<int> out_shape = GetBroadcastShape({&x, &y});
+    ret.Resize(framework::make_ddim(out_shape));
+    ElementwiseComputeEx<RealMulComplexFunctor<T>, DeviceContext, T>(
+        context, &x, &y, -1, RealMulComplexFunctor<T>(), &ret);
+    return ret;
+  }
+
   framework::Tensor Div(const framework::Tensor& x,
                         const framework::Tensor& y) {
     framework::Tensor ret;
@@ -455,6 +508,19 @@ struct DeviceIndependenceTensorOperations {
     auto* x_data = x.data<T>();
     auto for_range = GetForRange(x.numel());
     math::ConjFunctor<T> functor(x_data, x.numel(), out_data);
+    for_range(functor);
+    return out;
+  }
+
+  Tensor Real(const Tensor& x) {
+    Tensor out;
+    auto numel = x.numel();
+    auto* out_data = out.mutable_data<math::Real<T>>(
+        x.dims(), context.GetPlace(),
+        static_cast<size_t>(numel * sizeof(math::Real<T>)));
+    auto* x_data = x.data<T>();
+    auto for_range = GetForRange(numel);
+    math::RealFunctor<T> functor(x_data, out_data, numel);
     for_range(functor);
     return out;
   }

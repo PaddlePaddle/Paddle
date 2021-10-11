@@ -88,7 +88,7 @@ function run_tools_test() {
     cd ${CUR_PWD}
 }
 
-changed_env_var_count=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/paddle | grep 'DEFINE_EXPORTED' | wc -l`
+changed_env_var_count=`git diff -U0 upstream/$BRANCH ${PADDLE_ROOT}/paddle | grep 'DEFINE_EXPORTED' | grep -v '@@' | wc -l`
 if [[ $changed_env_var_count -gt 0 ]]; then
     echo_line="You must have one RD (lanxianghit (Recommend), phlrain or luotao1) approval for changing the FLAGS, which manages the environment variables.\n"
     check_approval 1 6836917 47554610 43953930

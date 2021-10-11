@@ -147,18 +147,17 @@ REGISTER_OPERATOR(eigh, ops::EighOp, ops::EignOpMaker,
 REGISTER_OPERATOR(eigh_grad, ops::EighGradOp);
 
 REGISTER_OP_CPU_KERNEL(
-    eigh, ops::EighKernel<paddle::platform::CPUDeviceContext, float, float>,
-    ops::EighKernel<paddle::platform::CPUDeviceContext, double, double>,
-    ops::EighKernel<paddle::platform::CPUDeviceContext, float,
+    eigh, ops::EighKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::EighKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::EighKernel<paddle::platform::CPUDeviceContext,
                     paddle::platform::complex<float>>,
-    ops::EighKernel<paddle::platform::CPUDeviceContext, double,
+    ops::EighKernel<paddle::platform::CPUDeviceContext,
                     paddle::platform::complex<double>>);
 
 REGISTER_OP_CPU_KERNEL(
-    eigh_grad,
-    ops::EighGradKernel<paddle::platform::CPUDeviceContext, float, float>,
-    ops::EighGradKernel<paddle::platform::CPUDeviceContext, double, double>,
-    ops::EighGradKernel<paddle::platform::CPUDeviceContext, float,
+    eigh_grad, ops::EighGradKernel<paddle::platform::CPUDeviceContext, float>,
+    ops::EighGradKernel<paddle::platform::CPUDeviceContext, double>,
+    ops::EighGradKernel<paddle::platform::CPUDeviceContext,
                         paddle::platform::complex<float>>,
-    ops::EighGradKernel<paddle::platform::CPUDeviceContext, double,
+    ops::EighGradKernel<paddle::platform::CPUDeviceContext,
                         paddle::platform::complex<double>>);

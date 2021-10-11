@@ -31,6 +31,49 @@ void lapackLu<float>(int m, int n, float *a, int lda, int *ipiv, int *info) {
   platform::dynload::sgetrf_(&m, &n, a, &lda, ipiv, info);
 }
 
+// eigh
+template <>
+void lapackEigh<float>(char jobz, char uplo, int n, float *a, int lda, float *w,
+                       float *work, int lwork, float *rwork, int lrwork,
+                       int *iwork, int liwork, int *info) {
+  (void)rwork;   // unused
+  (void)lrwork;  // unused
+  platform::dynload::ssyevd_(&jobz, &uplo, &n, a, &lda, w, work, &lwork, iwork,
+                             &liwork, info);
+}
+
+template <>
+void lapackEigh<double>(char jobz, char uplo, int n, double *a, int lda,
+                        double *w, double *work, int lwork, double *rwork,
+                        int lrwork, int *iwork, int liwork, int *info) {
+  (void)rwork;   // unused
+  (void)lrwork;  // unused
+  platform::dynload::dsyevd_(&jobz, &uplo, &n, a, &lda, w, work, &lwork, iwork,
+                             &liwork, info);
+}
+
+template <>
+void lapackEigh<platform::complex<float>, float>(
+    char jobz, char uplo, int n, platform::complex<float> *a, int lda, float *w,
+    platform::complex<float> *work, int lwork, float *rwork, int lrwork,
+    int *iwork, int liwork, int *info) {
+  platform::dynload::cheevd_(&jobz, &uplo, &n,
+                             reinterpret_cast<std::complex<float> *>(a), &lda,
+                             w, reinterpret_cast<std::complex<float> *>(work),
+                             &lwork, rwork, &lrwork, iwork, &liwork, info);
+}
+
+template <>
+void lapackEigh<platform::complex<double>, double>(
+    char jobz, char uplo, int n, platform::complex<double> *a, int lda,
+    double *w, platform::complex<double> *work, int lwork, double *rwork,
+    int lrwork, int *iwork, int liwork, int *info) {
+  platform::dynload::zheevd_(&jobz, &uplo, &n,
+                             reinterpret_cast<std::complex<double> *>(a), &lda,
+                             w, reinterpret_cast<std::complex<double> *>(work),
+                             &lwork, rwork, &lrwork, iwork, &liwork, info);
+}
+
 // Eig
 template <>
 void lapackEig<double>(char jobvl, char jobvr, int n, double *a, int lda,
