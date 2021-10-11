@@ -107,25 +107,32 @@ class CudnnScaleBiasAddRelu {
 
   ~CudnnScaleBiasAddRelu() {}
 
-  void Forward(const platform::CUDADeviceContext &ctx, T *x_ptr, T *x_scale_ptr,
-               T *x_bias_ptr, T *out_ptr, int32_t *bitmask_ptr,
-               T *z_ptr = nullptr, T *z_scale_ptr = nullptr,
-               T *z_bias_ptr = nullptr) {
+  void Forward(const platform::CUDADeviceContext &ctx, Tensor *x,
+               Tensor *x_scale, Tensor *x_bias, Tensor *out, Tensor *bitmask,
+               Tensor *z, Tensor *z_scale = nullptr, Tensor *z_bias = nullptr) {
     ForwardInit(ctx);
     auto handle = ctx.cudnn_handle();
+    auto place = ctx.GetPlace();
     auto workspace_handle = ctx.cudnn_workspace_handle();
     fwd_workspace_byte_ = fwd_op_.GetWorkspaceSizeInBytes(handle);
     // Set variant_param
     // input ptr
+    T *x_ptr = x->mutable_data<T>(place);
+    T *x_scale_ptr = x_scale->mutable_data<T>(place);
+    T *x_bias_ptr = x_bias->mutable_data<T>(place);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, x_ptr);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQSCALE, x_scale_ptr);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQBIAS, x_bias_ptr);
     if (has_shortcut_) {
+      T *z_ptr = z->mutable_data<T>(place);
+      T *z_scale_ptr = z_scale->mutable_data<T>(place);
+      T *z_bias_ptr = z_bias->mutable_data<T>(place);
       fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ZDATA, z_ptr);
       fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_Z_EQSCALE, z_scale_ptr);
       fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_Z_EQBIAS, z_bias_ptr);
     } else {
       if (fused_add_) {
+        T *z_ptr = z->data<T>();
         fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ZDATA, z_ptr);
       }
     }
@@ -134,6 +141,8 @@ class CudnnScaleBiasAddRelu {
         CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &fwd_workspace_byte_);
 
     // output ptr
+    T *out_ptr = out->mutable_data<T>(place);
+    int32_t *bitmask_ptr = bitmask->mutable_data<int32_t>(place);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_YDATA, out_ptr);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ACTIVATION_BITMASK, bitmask_ptr);
 
@@ -147,16 +156,30 @@ class CudnnScaleBiasAddRelu {
         fwd_workspace_byte_);
   }
 
-  void Backward(const platform::CUDADeviceContext &ctx, T *dy_ptr, T *x_ptr,
-                float *scale_ptr, float *bias_ptr, float *saved_mean_ptr,
-                float *saved_invstd_ptr, int32_t *bitmask_ptr, T *dx_ptr,
-                T *dz_ptr, float *dscale_ptr, float *dbias_ptr, double eps) {
+  void Backward(const platform::CUDADeviceContext &ctx, const Tensor *dy,
+                const Tensor *x, const Tensor *scale, const Tensor *bias,
+                const Tensor *saved_mean, const Tensor *saved_invstd,
+                const Tensor *bitmask, Tensor *dx, Tensor *dz, Tensor *dscale,
+                Tensor *dbias, double eps) {
     BackwardInit(ctx);
     auto handle = ctx.cudnn_handle();
+    auto place = ctx.GetPlace();
     auto workspace_handle = ctx.cudnn_workspace_handle();
     bwd_workspace_byte_ = bwd_op_.GetWorkspaceSizeInBytes(handle);
     // Set variant_param
     // input ptr
+    T *dy_ptr = const_cast<T *>(dy->data<T>());
+    T *x_ptr = const_cast<T *>(x->data<T>());
+    float *scale_ptr = const_cast<float *>(scale->data<float>());
+    float *bias_ptr = const_cast<float *>(bias->data<float>());
+    float *saved_mean_ptr = const_cast<float *>(saved_mean->data<float>());
+    float *saved_invstd_ptr = const_cast<float *>(saved_invstd->data<float>());
+    int32_t *bitmask_ptr = const_cast<int32_t *>(bitmask->data<int32_t>());
+    T *dx_ptr = dx->mutable_data<T>(place);
+    T *dz_ptr = dz->mutable_data<T>(place);
+    float *dscale_ptr = dscale ? dscale->mutable_data<float>(place) : nullptr;
+    float *dbias_ptr = dbias ? dbias->mutable_data<float>(place) : nullptr;
+
     bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, x_ptr);
     bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_DYDATA, dy_ptr);
     bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SCALE, scale_ptr);
