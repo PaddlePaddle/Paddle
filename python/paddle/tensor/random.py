@@ -712,39 +712,7 @@ def randint_like(x, low=0, high=None, dtype=None, name=None):
             # [7]  # random
 
     """
-    if high is None:
-        if low <= 0:
-            raise ValueError(
-                "If high is None, low must be greater than 0, but received low = {0}.".
-                format(low))
-        high = low
-        low = 0
-    if dtype is None:
-        dtype = 'int64'
-    if not isinstance(dtype, core.VarDesc.VarType):
-        dtype = convert_np_dtype_to_dtype_(dtype)
-
-    if in_dygraph_mode():
-        return _C_ops.randint_like(x, 'low', low, 'high', high, 'seed', 0,
-                                   'dtype', dtype)
-
-    check_variable_and_dtype(
-        x, 'x', ['bool', 'float16', 'float32', 'float64', 'int32', 'int64'],
-        'randint_like')
-    check_dtype(dtype, 'dtype', ['int32', 'int64'], 'randint_like')
-    if low >= high:
-        raise ValueError(
-            "randint_like's low must less then high, but received low = {0}, "
-            "high = {1}".format(low, high))
-
-    attrs = {'low': low, 'high': high, 'seed': 0, 'dtype': dtype}
-
-    helper = LayerHelper("randint_like", **locals())
-    out = helper.create_variable_for_type_inference(dtype=dtype)
-    helper.append_op(
-        type='randint_like', inputs={'X': x}, outputs={'Out': out}, attrs=attrs)
-    out.stop_gradient = True
-    return out
+    return randint(low=low, high=high, shape=x.shape, dtype=dtype, name=name)
 
 
 def randperm(n, dtype="int64", name=None):

@@ -16,9 +16,7 @@ from __future__ import print_function
 
 import unittest
 import numpy as np
-from op_test import OpTest
 import paddle
-from paddle.fluid import core
 from paddle.static import program_guard, Program
 
 
@@ -28,28 +26,6 @@ def output_hist(out):
     hist /= float(out.size)
     prob = 0.1 * np.ones((10))
     return hist, prob
-
-
-class TestRandintLikeOp(OpTest):
-    def setUp(self):
-        self.op_type = "randint_like"
-        x = np.zeros((10000, 784)).astype("float32")
-        self.inputs = {'X': OpTest.np_dtype_to_fluid_dtype(x)}
-        self.init_attrs()
-        self.outputs = {"Out": np.zeros((10000, 784)).astype("float32")}
-
-    def init_attrs(self):
-        self.attrs = {"low": -10, "high": 10, "seed": 10}
-        self.output_hist = output_hist
-
-    def test_check_output(self):
-        self.check_output_customized(self.verify_output)
-
-    def verify_output(self, outs):
-        hist, prob = self.output_hist(np.array(outs[0]))
-        self.assertTrue(
-            np.allclose(
-                hist, prob, rtol=0, atol=0.001), "hist: " + str(hist))
 
 
 # Test python API

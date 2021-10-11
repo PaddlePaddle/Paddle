@@ -417,7 +417,6 @@ STATIC_MODE_TESTING_LIST = [
     'test_pyramid_hash_op',
     'test_queue',
     'test_randint_op',
-    'test_randint_like_op',
     'test_randn_op',
     'test_random_crop_op',
     'test_randperm_op',
