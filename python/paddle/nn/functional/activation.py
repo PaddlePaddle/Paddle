@@ -31,7 +31,8 @@ from paddle import _C_ops
 __all__ = []
 
 
-def elu(x, alpha=1.0, name=None):
+#del default of alpha
+def elu(x, alpha, name=None):
     r"""
     elu activation.
 
@@ -74,8 +75,9 @@ def elu(x, alpha=1.0, name=None):
     return out
 
 
+#add new arg y
 @inplace_apis_in_dygraph_only
-def elu_(x, alpha=1.0, name=None):
+def elu_(x, y, alpha=1.0, name=None):
     r"""
     Inplace version of ``elu`` API, the output Tensor will be inplaced with input ``x``.
     Please refer to :ref:`api_nn_cn_elu`.
@@ -83,7 +85,8 @@ def elu_(x, alpha=1.0, name=None):
     return _C_ops.elu_(x, 'alpha', alpha)
 
 
-def gelu(x, approximate=False, name=None):
+#del arg name
+def gelu(x, approximate=False):
     r"""
     gelu activation.
 
@@ -137,7 +140,8 @@ def gelu(x, approximate=False, name=None):
     return out
 
 
-def hardshrink(x, threshold=0.5, name=None):
+#change position
+def hardshrink(x, name=None, threshold=0.5):
     r"""
     hard shrinkage activation
 
@@ -186,7 +190,8 @@ def hardshrink(x, threshold=0.5, name=None):
     return out
 
 
-def hardtanh(x, min=-1.0, max=1.0, name=None):
+#add new arg with default
+def hardtanh(x, min=-1.0, max=1.0, name=None, other=None):
     r"""
     hardtanh activation
 
