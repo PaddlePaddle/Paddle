@@ -74,7 +74,7 @@ void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
   const size_t slice_bytes = slice_size * sizeof(T);
 
   auto parallel_compute = [&](int64_t loop_begin, int64_t loop_end) {
-    for (int64_t i = 0; i < index_size; ++i) {
+    for (int64_t i = loop_begin; i < loop_end; ++i) {
       IndexT index_ = p_index[i];
       PADDLE_ENFORCE_LT(
           p_index[i], input_size,
@@ -93,7 +93,8 @@ void CPUGather(const platform::DeviceContext& ctx, const Tensor& src,
       memcpy(p_output + i * slice_size, p_src + index_ * slice_size,
              slice_bytes);
     }
-  } platform::RunParallelFor(0, index_size, parallel_compute);
+  };
+  platform::RunParallelFor(0, index_size, parallel_compute);
 }
 
 template <typename T, typename IndexT = int>
