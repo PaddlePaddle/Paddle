@@ -70,14 +70,10 @@ class HybridParallelClipGrad:
                 getattr(p, 'is_firstly_shared', True))
 
             if not_shared_enable:
-                if p.is_distributed and not_shared_enable:
+                if p.is_distributed:
                     sum_square_list_dist.append(sum_square)
                 else:
                     sum_square_list_not_dist.append(sum_square)
-
-        # all parameters have been filterd out
-        if len(sum_square_list_dist) + len(sum_square_list_not_dist) == 0:
-            return params_grads
 
         global_norm_var_dist = layers.concat(sum_square_list_dist) if len(
             sum_square_list_dist) != 0 else layers.concat(
