@@ -1076,7 +1076,6 @@ function get_quickly_disable_ut() {
 
 function card_test() {
     set -m
-    echo "$2 bengingggggg!!!!!"
     case_count $1 $2
     ut_startTime_s=`date +%s` 
 
