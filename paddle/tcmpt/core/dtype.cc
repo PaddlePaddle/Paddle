@@ -65,9 +65,6 @@ std::ostream& operator<<(std::ostream& os, DataType dtype) {
 }
 
 DataType& operator++(DataType& dtype, int) {
-  if (dtype == DataType::End) {
-    throw std::out_of_range("for DataType");
-  }
   dtype =
       DataType(static_cast<std::underlying_type<DataType>::type>(dtype) + 1);
   return dtype;

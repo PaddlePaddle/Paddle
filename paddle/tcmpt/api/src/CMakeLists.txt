@@ -1,4 +1,4 @@
-set(API_DEPS convert_utils dense_tensor selected_rows_tensor kernel_factory kernel_context)
+set(API_DEPS convert_utils dense_tensor selected_rows_tensor kernel_factory kernel_context unary binary)
 set(API_DEPS ${API_DEPS} math_cpu linalg_cpu fill_cpu manipulation_cpu)
 if(WITH_GPU OR WITH_ROCM)
   set(API_DEPS ${API_DEPS} math_cuda linalg_cuda fill_cuda manipulation_cuda)

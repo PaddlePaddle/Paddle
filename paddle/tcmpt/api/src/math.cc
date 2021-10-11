@@ -47,7 +47,7 @@ Tensor mean(const Tensor& x) {
 
   // 4. InferShape
   // TODO(chenweihang): how to auto selected infershape?
-  auto out_meta = MeanInferShape(dense_x->meta());
+  auto out_meta = ReductionInferShape(dense_x->meta());
 
   // 5. Prepare outputs
   pt::Tensor out;

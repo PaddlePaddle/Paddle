@@ -55,8 +55,7 @@ enum class DataType {
   kFLOAT64,
   kCOMPLEX64,
   kCOMPLEX128,
-  kNumDataTypes,
-  End
+  kNumDataTypes
 };
 
 std::ostream& operator<<(std::ostream& os, DataType dtype);

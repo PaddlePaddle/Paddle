@@ -19,18 +19,10 @@ namespace pt {
 
 TensorMeta UnchangedInferShape(const TensorMeta& x_meta) { return x_meta; }
 
-TensorMeta MeanInferShape(const TensorMeta& x_meta) {
+TensorMeta ReductionInferShape(const TensorMeta& x_meta) {
   const auto& out_dims = paddle::framework::make_ddim({1});
   TensorMeta return_meta(
       out_dims, x_meta.backend, x_meta.type, x_meta.layout, x_meta.offset);
-  return return_meta;
-}
-
-TensorMeta DotInferShape(const TensorMeta& x_meta) {
-  auto dims = x_meta.dims;
-  dims[x_meta.dims.size() - 1] = 1;
-  TensorMeta return_meta(
-      dims, x_meta.backend, x_meta.type, x_meta.layout, x_meta.offset);
   return return_meta;
 }
 

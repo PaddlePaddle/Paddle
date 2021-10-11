@@ -103,14 +103,14 @@ struct KernelRegistrar {
                   KernelArgsDefFn args_def_fn,
                   KernelFn kernel_fn) {
     if (layout == DataLayout::kAny) {
-      for (DataLayout layout_ = DataLayout::kNHWC;
-           layout_ != DataLayout::kNumLayouts;
-           layout_++) {
+      for (DataLayout layout_iter = DataLayout::kNHWC;
+           layout_iter != DataLayout::kNumLayouts;
+           layout_iter++) {
         for (DataType dtype = DataType::kBOOL; dtype != DataType::kNumDataTypes;
              dtype++) {
           ConstructKernel(kernel_name_cstr,
                           backend,
-                          layout_,
+                          layout_iter,
                           dtype,
                           args_parse_fn,
                           args_def_fn,

@@ -22,7 +22,7 @@ limitations under the License. */
 #include "paddle/tcmpt/core/dense_tensor.h"
 #include "paddle/tcmpt/core/kernel_context.h"
 #include "paddle/tcmpt/core/kernel_generate.h"
-#include "paddle/tcmpt/infershape/unary.h"
+#include "paddle/tcmpt/infershape/binary.h"
 
 namespace pt {
 
@@ -50,7 +50,7 @@ Tensor dot(const Tensor& x, const Tensor& y) {
 
   // 4. InferShape
   // TODO(chenweihang): how to auto selected infershape?
-  auto out_meta = DotInferShape(dense_x->meta());
+  auto out_meta = DotInferShape(dense_x->meta(), dense_y->meta());
 
   // 5. Prepare outputs
   pt::Tensor out;

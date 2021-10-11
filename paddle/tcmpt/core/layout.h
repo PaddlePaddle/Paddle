@@ -34,7 +34,6 @@ enum class DataLayout {
   kNCHW,
   kMKLDNN,
   kNumLayouts,
-  End
 };
 
 std::ostream& operator<<(std::ostream& os, DataLayout dtype);
