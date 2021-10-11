@@ -467,6 +467,30 @@ __device__ __forceinline__ void WriteData(T* dst, T* __restrict__ src,
   }
 }
 
+/**
+ * @brief Initialize register with init_data.
+ *
+ * @template paraments
+ * T: Data type of register.
+ * NX: Number of data to initialize.
+ *
+ * @param：
+ * dst: The register pointer of the thread, the size is NX.
+ * init_data: The register pointer of init data, the size is NX.
+ */
+template <typename T, int NX, bool IsBoundary = false>
+__device__ __forceinline__ void Init(T* dst, T* init_data, int num) {
+#pragma unroll
+  for (int i = 0; i < NX; i++) {
+    if (IsBoundary) {
+      if (i >= num) {
+        break;
+      }
+    }
+    dst[i] = init_data[i];
+  }
+}
+
 }  // namespace kernel_primitives
 }  // namespace operators
 }  // namespace paddle
