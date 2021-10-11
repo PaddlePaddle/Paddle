@@ -35,7 +35,7 @@ class BincountOp : public framework::OperatorWithKernel {
     PADDLE_ENFORCE_EQ(ctx->HasOutput("Out"), true,
                       platform::errors::InvalidArgument(
                           "Output(Out) of BincountOp should not be null."));
-    
+
     auto input_dim = ctx->GetInputDim("X");
     auto minlength = ctx->Attrs().Get<int>("minlength");
 
@@ -44,30 +44,29 @@ class BincountOp : public framework::OperatorWithKernel {
                           "The minlength should be greater than or equal to 0."
                           "But received minlength is %d",
                           minlength));
-    
-    PADDLE_ENFORCE_EQ(
-        input_dim.size(), 1,
-        platform::errors::InvalidArgument(
-            "The 'shape' of Input(X) must be 1-D tensor."
-            "But the dimension of Input(X) is [%d]",
-            input_dim.size()));
+
+    PADDLE_ENFORCE_EQ(input_dim.size(), 1,
+                      platform::errors::InvalidArgument(
+                          "The 'shape' of Input(X) must be 1-D tensor."
+                          "But the dimension of Input(X) is [%d]",
+                          input_dim.size()));
 
     if (ctx->HasInput("Weights")) {
-        auto weights_dim = ctx->GetInputDim("Weights");
-        PADDLE_ENFORCE_EQ(
-            weights_dim.size(), 1,
-            platform::errors::InvalidArgument(
-                "The 'shape' of Input(Weights) must be 1-D tensor."
-                "But the dimension of Input(Weights) is [%d]",
-                weights_dim.size()));
-        
-        PADDLE_ENFORCE_EQ(
-            weights_dim[0], input_dim[0],
-            platform::errors::InvalidArgument(
-                "The 'shape' of Input(Weights) must be equal to the 'shape' of Input(X)."
-                "But received: the 'shape' of Input(Weights) is [%s],"
-                "the 'shape' of Input(X) is [%s]",
-                weights_dim, input_dim));
+      auto weights_dim = ctx->GetInputDim("Weights");
+      PADDLE_ENFORCE_EQ(weights_dim.size(), 1,
+                        platform::errors::InvalidArgument(
+                            "The 'shape' of Input(Weights) must be 1-D tensor."
+                            "But the dimension of Input(Weights) is [%d]",
+                            weights_dim.size()));
+
+      PADDLE_ENFORCE_EQ(
+          weights_dim[0], input_dim[0],
+          platform::errors::InvalidArgument(
+              "The 'shape' of Input(Weights) must be equal to the 'shape' of "
+              "Input(X)."
+              "But received: the 'shape' of Input(Weights) is [%s],"
+              "the 'shape' of Input(X) is [%s]",
+              weights_dim, input_dim));
     }
 
     ctx->SetOutputDim("Out", framework::make_ddim({-1}));
@@ -76,7 +75,10 @@ class BincountOp : public framework::OperatorWithKernel {
 
   framework::OpKernelType GetExpectedKernelType(
       const framework::ExecutionContext &ctx) const {
-    auto data_type = ctx.HasInput("Weights") ? OperatorWithKernel::IndicateVarDataType(ctx, "Weights") : OperatorWithKernel::IndicateVarDataType(ctx, "X");
+    auto data_type =
+        ctx.HasInput("Weights")
+            ? OperatorWithKernel::IndicateVarDataType(ctx, "Weights")
+            : OperatorWithKernel::IndicateVarDataType(ctx, "X");
     return framework::OpKernelType(data_type, ctx.device_context());
   }
 };
@@ -85,7 +87,8 @@ class BincountOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "(Tensor) The input tensor of Bincount op,");
-    AddInput("Weights", "(Tensor) The weights tensor of Bincount op,").AsDispensable();
+    AddInput("Weights", "(Tensor) The weights tensor of Bincount op,")
+        .AsDispensable();
     AddOutput("Out", "(Tensor) The output tensor of Bincount op,");
     AddAttr<int>("minlength", "(int) The minimal numbers of bins")
         .SetDefault(0)

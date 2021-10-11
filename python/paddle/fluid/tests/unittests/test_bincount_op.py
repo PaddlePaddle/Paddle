@@ -33,18 +33,21 @@ class TestBincountOpAPI(unittest.TestCase):
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
             inputs = fluid.data(name='input', dtype='int64', shape=[7])
-            output = paddle.bincount(inputs)
+            weights = fluid.data(name='weights', dtype='int64', shape=[7])
+            output = paddle.bincount(inputs, weights=weights)
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
                 place = fluid.CUDAPlace(0)
             exe = fluid.Executor(place)
             exe.run(startup_program)
             img = np.array([0, 1, 1, 3, 2, 1, 7]).astype(np.int64)
+            w = np.array([0, 1, 1, 2, 2, 1, 0]).astype(np.int64)
             res = exe.run(train_program,
-                          feed={'input': img},
+                          feed={'input': img,
+                                'weights': w},
                           fetch_list=[output])
             actual = np.array(res[0])
-            expected = np.array([1, 3, 1, 1, 0, 0, 0, 1]).astype(np.int64)
+            expected = np.array([0., 3., 2., 2., 0., 0., 0., 0.])
             self.assertTrue(
                 (actual == expected).all(),
                 msg='bincount output is wrong, out =' + str(actual))
@@ -120,24 +123,74 @@ class TestBincountOpError(unittest.TestCase):
 
 
 class TestBincountOp(OpTest):
+    # without weights
     def setUp(self):
         self.op_type = "bincount"
         self.init_test_case()
-        np_input = np.random.randint(low=0, high=20, size=self.in_shape)
-        self.inputs = {"X": np_input}
-        self.init_attrs()
-        Out = np.bincount(np_input, minlength=self.minlength)
-        self.outputs = {"Out": Out}
+        self.inputs = {"X": self.np_input}
+        self.attrs = {"minlength": self.minlength}
+        self.outputs = {"Out": self.Out}
 
     def init_test_case(self):
-        self.in_shape = 10
         self.minlength = 0
-
-    def init_attrs(self):
-        self.attrs = {"minlength": self.minlength}
+        self.np_input = np.random.randint(low=0, high=20, size=10)
+        self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestCase1(TestBincountOp):
+    # with weights(FLOAT32)
+    def setUp(self):
+        self.op_type = "bincount"
+        self.init_test_case()
+        self.inputs = {"X": self.np_input, "Weights": self.np_weights}
+        self.attrs = {"minlength": self.minlength}
+        self.outputs = {"Out": self.Out}
+
+    def init_test_case(self):
+        self.minlength = 0
+        self.np_weights = np.random.randint(
+            low=0, high=20, size=10).astype(np.float32)
+        self.np_input = np.random.randint(low=0, high=20, size=10)
+        self.Out = np.bincount(
+            self.np_input, weights=self.np_weights,
+            minlength=self.minlength).astype(np.float32)
+
+
+class TestCase2(TestBincountOp):
+    # with weights(other)
+    def setUp(self):
+        self.op_type = "bincount"
+        self.init_test_case()
+        self.inputs = {"X": self.np_input, "Weights": self.np_weights}
+        self.attrs = {"minlength": self.minlength}
+        self.outputs = {"Out": self.Out}
+
+    def init_test_case(self):
+        self.minlength = 0
+        self.np_weights = np.random.randint(low=0, high=20, size=10)
+        self.np_input = np.random.randint(low=0, high=20, size=10)
+        self.Out = np.bincount(
+            self.np_input, weights=self.np_weights, minlength=self.minlength)
+
+
+class TestCase3(TestBincountOp):
+    # empty input
+    def init_test_case(self):
+        self.minlength = 0
+        self.np_input = np.array([], dtype=np.int64)
+        self.Out = np.bincount(self.np_input, minlength=self.minlength)
+
+
+class TestCase4(TestBincountOp):
+    # with input(INT32)
+    def init_test_case(self):
+        self.minlength = 0
+        self.np_input = np.random.randint(
+            low=0, high=20, size=10).astype(np.int32)
+        self.Out = np.bincount(self.np_input, minlength=self.minlength)
 
 
 if __name__ == "__main__":

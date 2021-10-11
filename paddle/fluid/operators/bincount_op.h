@@ -41,14 +41,17 @@ void BincountInner(const framework::ExecutionContext& context) {
     output->Resize(out_dim);
     output->mutable_data<InputT>(context.GetPlace());
     return;
-  }    
+  }
 
   PADDLE_ENFORCE_GE(
-        *std::min_element(input_data, input_data + input_numel), static_cast<InputT>(0),
-        platform::errors::InvalidArgument(
-            "The elements in input tensor must be non-negative ints"));
+      *std::min_element(input_data, input_data + input_numel),
+      static_cast<InputT>(0),
+      platform::errors::InvalidArgument(
+          "The elements in input tensor must be non-negative ints"));
 
-  int64_t output_size = static_cast<int64_t>(*std::max_element(input_data, input_data + input_numel)) + 1L;
+  int64_t output_size = static_cast<int64_t>(*std::max_element(
+                            input_data, input_data + input_numel)) +
+                        1L;
   output_size = std::max(output_size, static_cast<int64_t>(minlength));
 
   framework::DDim out_dim{output_size};
@@ -56,9 +59,9 @@ void BincountInner(const framework::ExecutionContext& context) {
 
   bool has_weights = (weights != nullptr);
 
-  if (has_weights){
+  if (has_weights) {
     const T* weights_data = weights->data<T>();
-    const auto& weights_type = weights->type(); 
+    const auto& weights_type = weights->type();
     if (weights_type == framework::proto::VarType::FP32) {
       float* output_data = output->mutable_data<float>(context.GetPlace());
       math::SetConstant<DeviceContext, float>()(
@@ -76,17 +79,15 @@ void BincountInner(const framework::ExecutionContext& context) {
         output_data[input_data[i]] += static_cast<double>(weights_data[i]);
       }
     }
-    
+
   } else {
     int64_t* output_data = output->mutable_data<int64_t>(context.GetPlace());
     math::SetConstant<DeviceContext, int64_t>()(
-        context.template device_context<DeviceContext>(), output,
-        0L);
+        context.template device_context<DeviceContext>(), output, 0L);
     for (int64_t i = 0; i < input_numel; i++) {
       output_data[input_data[i]] += 1L;
     }
   }
-      
 }
 
 template <typename DeviceContext, typename T>
@@ -106,7 +107,7 @@ class BincountKernel : public framework::OpKernel<T> {
                               framework::proto::VarType::INT32),
                           paddle::framework::DataTypeToString(
                               framework::proto::VarType::INT64)));
-    
+
     if (input_type == framework::proto::VarType::INT32) {
       BincountInner<DeviceContext, T, int>(context);
     } else if (input_type == framework::proto::VarType::INT64) {
