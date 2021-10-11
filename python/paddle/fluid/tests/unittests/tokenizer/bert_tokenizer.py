@@ -514,11 +514,3 @@ class BertTokenizer(PretrainedTokenizer):
             return [1] + ([0] * len(token_ids_0)) + [1] + (
                 [0] * len(token_ids_1)) + [1]
         return [1] + ([0] * len(token_ids_0)) + [1]
-
-
-if __name__ == "__main__":
-    t = BertTokenizer.from_pretrained("bert-base-chinese")
-
-    encoded_inputs = t('非常不错，服务很好，位于市中心区，交通方便，不过价格也高！')
-
-    print(encoded_inputs)

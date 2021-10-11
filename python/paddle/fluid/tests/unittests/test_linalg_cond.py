@@ -32,9 +32,6 @@ def test_static_assert_true(self, x_list, p_list):
                 exe = static.Executor()
                 result = exe.run(feed={"X": x}, fetch_list=[output])
                 expected_output = np.linalg.cond(x, p)
-                # print("%"*10)
-                # print(result)
-                # print(expected_output)
                 self.assertTrue(np.allclose(result, expected_output))
 
 
