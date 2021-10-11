@@ -37,40 +37,35 @@ class TestAsyncRead(unittest.TestCase):
         self.buffer = paddle.empty(shape=[50, 100]).pin_memory()
 
     def test_async_read_empty_offset_and_count(self):
-        if core.is_compiled_with_cuda():
-            core.async_read(self.src, self.dst, self.index, self.buffer,
-                            self.empty, self.empty)
-            array1 = paddle.gather(self.src, self.index)
-            array2 = self.dst[:len(self.index)]
-            self.assertTrue(np.allclose(array1.numpy(), array2.numpy()))
+        core.async_read(self.src, self.dst, self.index, self.buffer, self.empty,
+                        self.empty)
+        array1 = paddle.gather(self.src, self.index)
+        array2 = self.dst[:len(self.index)]
+        self.assertTrue(np.allclose(array1.numpy(), array2.numpy()))
 
     def test_async_read_success(self):
-        if core.is_compiled_with_cuda():
-            offset = paddle.to_tensor(
-                np.array(
-                    [10, 20], dtype="int64"), place=paddle.CPUPlace())
-            count = paddle.to_tensor(
-                np.array(
-                    [5, 10], dtype="int64"), place=paddle.CPUPlace())
-            core.async_read(self.src, self.dst, self.index, self.buffer, offset,
-                            count)
+        offset = paddle.to_tensor(
+            np.array(
+                [10, 20], dtype="int64"), place=paddle.CPUPlace())
+        count = paddle.to_tensor(
+            np.array(
+                [5, 10], dtype="int64"), place=paddle.CPUPlace())
+        core.async_read(self.src, self.dst, self.index, self.buffer, offset,
+                        count)
 
-            # index data
-            index_array1 = paddle.gather(self.src, self.index)
-            count_numel = paddle.sum(count).numpy()[0]
-            index_array2 = self.dst[count_numel:count_numel + len(self.index)]
-            self.assertTrue(
-                np.allclose(index_array1.numpy(), index_array2.numpy()))
+        # index data
+        index_array1 = paddle.gather(self.src, self.index)
+        count_numel = paddle.sum(count).numpy()[0]
+        index_array2 = self.dst[count_numel:count_numel + len(self.index)]
+        self.assertTrue(np.allclose(index_array1.numpy(), index_array2.numpy()))
 
-            # 判断 offset, count 后的结果是否正确
-            offset_a = paddle.gather(self.src,
-                                     paddle.to_tensor(np.arange(10, 15)))
-            offset_b = paddle.gather(self.src,
-                                     paddle.to_tensor(np.arange(20, 30)))
-            offset_array1 = paddle.concat([offset_a, offset_b], axis=0)
-            offset_array2 = self.dst[:count_numel]
-            self.assertTrue(
-                np.allclose(offset_array1.numpy(), offset_array2.numpy()))
+        # 判断 offset, count 后的结果是否正确
+        offset_a = paddle.gather(self.src, paddle.to_tensor(np.arange(10, 15)))
+        offset_b = paddle.gather(self.src, paddle.to_tensor(np.arange(20, 30)))
+        offset_array1 = paddle.concat([offset_a, offset_b], axis=0)
+        offset_array2 = self.dst[:count_numel]
+        self.assertTrue(
+            np.allclose(offset_array1.numpy(), offset_array2.numpy()))
 
 
 class TestAsyncWrite(unittest.TestCase):
@@ -84,22 +79,20 @@ class TestAsyncWrite(unittest.TestCase):
         self.dst = paddle.empty(shape=[200, 100]).pin_memory()
 
     def test_async_write_success(self):
-        if core.is_compiled_with_cuda():
-            offset = paddle.to_tensor(
-                np.array(
-                    [0, 60], dtype="int64"), place=paddle.CPUPlace())
-            count = paddle.to_tensor(
-                np.array(
-                    [40, 60], dtype="int64"), place=paddle.CPUPlace())
-            core.async_write(self.src, self.dst, offset, count)
+        offset = paddle.to_tensor(
+            np.array(
+                [0, 60], dtype="int64"), place=paddle.CPUPlace())
+        count = paddle.to_tensor(
+            np.array(
+                [40, 60], dtype="int64"), place=paddle.CPUPlace())
+        core.async_write(self.src, self.dst, offset, count)
 
-            offset_a = paddle.gather(self.dst,
-                                     paddle.to_tensor(np.arange(0, 40)))
-            offset_b = paddle.gather(self.dst,
-                                     paddle.to_tensor(np.arange(60, 120)))
-            offset_array = paddle.concat([offset_a, offset_b], axis=0)
-            self.assertTrue(np.allclose(self.src.numpy(), offset_array.numpy()))
+        offset_a = paddle.gather(self.dst, paddle.to_tensor(np.arange(0, 40)))
+        offset_b = paddle.gather(self.dst, paddle.to_tensor(np.arange(60, 120)))
+        offset_array = paddle.concat([offset_a, offset_b], axis=0)
+        self.assertTrue(np.allclose(self.src.numpy(), offset_array.numpy()))
 
 
 if __name__ == "__main__":
-    unittest.main()
+    if core.is_compiled_with_cuda():
+        unittest.main()

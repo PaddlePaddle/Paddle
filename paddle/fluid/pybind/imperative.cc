@@ -2278,7 +2278,6 @@ void BindImperative(py::module *m_ptr) {
                       platform::errors::PreconditionNotMet(
                           "Offset and count tensor size dismatch."));
 
-    // TODO(daisiming): ensure this stream should not be the default stream.
     auto stream =
         paddle::platform::stream::get_current_stream(deviceId)->raw_stream();
 
@@ -2345,7 +2344,6 @@ void BindImperative(py::module *m_ptr) {
     auto *dst_data_new = const_cast<float *>(dst_data);
     const auto &deviceId = paddle::platform::GetCurrentDeviceId();
 
-    // TODO(daisiming): ensure this stream should not be the default stream.
     auto stream =
         paddle::platform::stream::get_current_stream(deviceId)->raw_stream();
 
