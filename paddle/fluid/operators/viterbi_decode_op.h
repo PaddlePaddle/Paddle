@@ -35,93 +35,20 @@ using LoDTensor = framework::LoDTensor;
   tensor.Resize(framework::make_ddim({__VA_ARGS__})); \
   tensor.mutable_data<dtype>(ctx.GetPlace())
 
-#define CREATE_TENSOR_BUFFER(int_tensor_buffer, float_tensor_buffer)          \
-  int buffer_size = batch_size * seq_len + batch_size * n_labels * seq_len +  \
-                    9 * batch_size + 10;                                      \
-  CREATE_TENSOR(int_buffer, int64_t, buffer_size);                            \
-  TensorBuffer int_tensor_buffer(int_buffer);                                 \
-  buffer_size = seq_len * batch_size * n_labels + 5 * batch_size * n_labels + \
-                2 * n_labels * n_labels + batch_size * n_labels * n_labels +  \
-                3 * batch_size + 1;                                           \
-  CREATE_TENSOR(float_buffer, T, buffer_size);                                \
-  TensorBuffer float_tensor_buffer(float_buffer)
+template <typename DeviceContext, template <typename T> typename CompareFunctor,
+          typename T>
+struct GetMask {
+  void operator()(const framework::ExecutionContext& ctx, const Tensor& lhs,
+                  const Tensor& rhs, Tensor* mask) {
+    ElementwiseComputeEx<CompareFunctor<int64_t>, DeviceContext, int64_t, T>(
+        ctx, &lhs, &rhs, -1, CompareFunctor<int64_t>(), mask);
+  }
+};
 
-#define INIT_REQUIRED_TENSOR()                                                 \
-  Tensor input_exp =                                                           \
-      float_tensor_buffer.GetBufferBlock({seq_len, batch_size, n_labels});     \
-  TransCompute<DeviceContext, T>(3, dev_ctx, *input, &input_exp, {1, 0, 2});   \
-  auto* transition = ctx.Input<Tensor>("Transition");                          \
-  Tensor trans_exp = float_tensor_buffer.GetBufferBlock({n_labels, n_labels}); \
-  framework::TensorCopy(*transition, curr_place, dev_ctx, &trans_exp);         \
-  trans_exp.Resize({1, n_labels, n_labels});                                   \
-  Tensor alpha = float_tensor_buffer.GetBufferBlock({batch_size, n_labels});   \
-  Tensor zero = int_tensor_buffer.GetBufferBlock({1});                         \
-  int_functor(dev_ctx, &zero, 0);                                              \
-  Tensor one = int_tensor_buffer.GetBufferBlock({1});                          \
-  int_functor(dev_ctx, &one, 1);                                               \
-  Tensor float_one = float_tensor_buffer.GetBufferBlock({batch_size, 1});      \
-  float_functor(dev_ctx, &float_one, static_cast<T>(1.0));                     \
-  Tensor alpha_trn_sum =                                                       \
-      float_tensor_buffer.GetBufferBlock({batch_size, n_labels, n_labels});    \
-  Tensor alpha_max =                                                           \
-      float_tensor_buffer.GetBufferBlock({batch_size, n_labels});              \
-  Tensor alpha_argmax =                                                        \
-      int_tensor_buffer.GetBufferBlock({seq_len, batch_size, n_labels});       \
-  auto alpha_argmax_unbind = Unbind(alpha_argmax);                             \
-  Tensor alpha_nxt =                                                           \
-      float_tensor_buffer.GetBufferBlock({batch_size, n_labels});              \
-  Tensor int_mask = int_tensor_buffer.GetBufferBlock({batch_size});            \
-  Tensor zero_len_mask = int_tensor_buffer.GetBufferBlock({batch_size});       \
-  Tensor float_mask = float_tensor_buffer.GetBufferBlock({batch_size, 1});     \
-  Tensor stop_trans_exp =                                                      \
-      float_tensor_buffer.GetBufferBlock({1, 1, n_labels});                    \
-  Tensor start_trans_exp =                                                     \
-      float_tensor_buffer.GetBufferBlock({1, 1, n_labels});                    \
-  Tensor rest_trans_exp =                                                      \
-      float_tensor_buffer.GetBufferBlock({1, n_labels - 2, n_labels});         \
-  Tensor last_ids = int_tensor_buffer.GetBufferBlock({batch_size});            \
-  Tensor last_ids_tmp = int_tensor_buffer.GetBufferBlock({batch_size});        \
-  Tensor batch_offset = int_tensor_buffer.GetBufferBlock({batch_size});        \
-  Tensor gather_idx = int_tensor_buffer.GetBufferBlock({batch_size});          \
-  std::vector<const Tensor*> shape_refer{&rest_trans_exp, &stop_trans_exp,     \
-                                         &start_trans_exp};                    \
-  std::vector<Tensor*> outputs{&rest_trans_exp, &stop_trans_exp,               \
-                               &start_trans_exp};                              \
-  math::SplitFunctor<DeviceContext, T> split_functor;                          \
-  split_functor(dev_ctx, trans_exp, shape_refer, 1, &outputs);                 \
-  stop_trans_exp.Resize({1, n_labels});                                        \
-  start_trans_exp.Resize({1, n_labels});                                       \
-  auto logit0 = input_exp.Slice(0, 1);                                         \
-  logit0.Resize({batch_size, n_labels})
-
-#define BROADCAST_BINARY_OP(lhs, rhs, out, func_type, is_multi_threads, dtype) \
-  do {                                                                         \
-    if (is_multi_threads) {                                                    \
-      SimpleBroadcastBinaryOP<dtype, func_type##Functor<dtype>, true>(         \
-          lhs, rhs, &out);                                                     \
-    } else {                                                                   \
-      SimpleBroadcastBinaryOP<dtype, func_type##Functor<dtype>, false>(        \
-          lhs, rhs, &out);                                                     \
-    }                                                                          \
-  } while (0)
-
-#define ADD(lhs, rhs, output, is_multi_threads, dtype) \
-  BROADCAST_BINARY_OP(lhs, rhs, output, Add, is_multi_threads, dtype)
-
-#define SUB(lhs, rhs, output, is_multi_threads, dtype) \
-  BROADCAST_BINARY_OP(lhs, rhs, output, Sub, is_multi_threads, dtype)
-
-#define MUL(lhs, rhs, output, is_multi_threads, dtype) \
-  BROADCAST_BINARY_OP(lhs, rhs, output, Mul, is_multi_threads, dtype)
-
-#define GET_MASK(lhs, rhs, mask, functor_template, dtype)                 \
-  ElementwiseComputeEx<functor_template<int64_t>, DeviceContext, int64_t, \
-                       dtype>(ctx, &lhs, &rhs, -1,                        \
-                              functor_template<int64_t>(), &mask)
-
-template <typename T, typename IndType>
-struct CPUArgmax {
-  void operator()(const Tensor& input, Tensor* out_idx, Tensor* out, int axis) {
+template <typename DeviceContext, typename T, typename IndType>
+struct Argmax {
+  void operator()(const framework::ExecutionContext& ctx, const Tensor& input,
+                  Tensor* out_idx, Tensor* out, int axis) {
     framework::DDim input_dims = input.dims();
     int64_t pre = 1;
     int64_t post = 1;
@@ -171,10 +98,6 @@ void SameDimsBinaryOP(const Tensor& lhs, const Tensor& rhs, Tensor* out) {
     out_ptr[i] = functor(lhs_ptr[i], rhs_ptr[i]);
   }
 }
-
-// Need to gurantee that lhs, rhs have same dims.
-#define SAME_DIMS_OP(lhs, rhs, output, functor_type, dtype) \
-  SameDimsBinaryOP<dtype, functor_type##Functor<dtype>>(lhs, rhs, &output)
 
 template <bool is_multi_threads>
 struct GetInputIndex {
@@ -248,6 +171,66 @@ void SimpleBroadcastBinaryOP(const Tensor& lhs, const Tensor& rhs,
   }
 }
 
+template <typename DeviceContext, template <typename T> typename BinaryFunctor,
+          typename T>
+struct BinaryOperation {
+  void operator()(const DeviceContext& dev_ctx, const Tensor& lhs,
+                  const Tensor& rhs, Tensor* output) {
+    if (lhs.dims() == rhs.dims()) {
+      SameDimsBinaryOP<T, BinaryFunctor<T>>(lhs, rhs, output);
+    } else {
+      bool is_multi_threads = false;
+#ifdef PADDLE_WITH_MKLML
+      if (omp_get_max_threads() > 1) {
+        is_multi_threads = true;
+      }
+#endif
+      if (is_multi_threads) {
+        SimpleBroadcastBinaryOP<T, BinaryFunctor<T>, true>(lhs, rhs, output);
+      } else {
+        SimpleBroadcastBinaryOP<T, BinaryFunctor<T>, false>(lhs, rhs, output);
+      }
+    }
+  }
+};
+
+template <typename DeviceContext, typename T>
+struct ADD : BinaryOperation<DeviceContext, AddFunctor, T> {};
+
+template <typename DeviceContext, typename T>
+struct SUB : BinaryOperation<DeviceContext, SubFunctor, T> {};
+
+template <typename DeviceContext, typename T>
+struct MUL : BinaryOperation<DeviceContext, MulFunctor, T> {};
+
+template <typename DeviceContext>
+struct ARange {
+  void operator()(const DeviceContext& dev_ctx, int64_t* data, int end,
+                  int64_t scale) {
+    for (int i = 0; i < end; ++i) {
+      data[i] = i * scale;
+    }
+  }
+};
+
+template <typename DeviceContext, typename T>
+struct GetMaxValue {
+  void operator()(const DeviceContext& dev_ctx, const Tensor& input,
+                  T* max_value) {
+    auto input_ptr = input.data<T>();
+    auto num = input.numel();
+    *max_value = *std::max_element(input_ptr, input_ptr + num);
+  }
+};
+
+template <typename DeviceContext, typename T, typename IndexT = int>
+struct Gather {
+  void operator()(const DeviceContext& ctx, const Tensor& src,
+                  const Tensor& index, Tensor* output) {
+    CPUGather<T, IndexT>(ctx, src, index, output);
+  }
+};
+
 class TensorBuffer {
  public:
   explicit TensorBuffer(const LoDTensor& in) : buffer_(in), offset_(0) {
@@ -281,12 +264,20 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     math::SetConstant<DeviceContext, T> float_functor;
     math::SetConstant<DeviceContext, int64_t> int_functor;
     std::vector<Tensor> historys;
-    CREATE_TENSOR_BUFFER(int_tensor_buffer, float_tensor_buffer);
+    int buffer_size = batch_size * seq_len + batch_size * n_labels * seq_len +
+                      9 * batch_size + 10;
+    CREATE_TENSOR(int_buffer, int64_t, buffer_size);
+    TensorBuffer int_tensor_buffer(int_buffer);
+    buffer_size = seq_len * batch_size * n_labels + 5 * batch_size * n_labels +
+                  2 * n_labels * n_labels + batch_size * n_labels * n_labels +
+                  3 * batch_size + 1;
+    CREATE_TENSOR(float_buffer, T, buffer_size);
+    TensorBuffer float_tensor_buffer(float_buffer);
     auto* length = ctx.Input<Tensor>("Length");
     Tensor left_length = int_tensor_buffer.GetBufferBlock({batch_size, 1});
     framework::TensorCopy(*length, curr_place, dev_ctx, &left_length);
-    auto len_ptr = left_length.data<int64_t>();
-    int64_t max_seq_len = *std::max_element(len_ptr, len_ptr + batch_size);
+    int64_t max_seq_len = 0;
+    GetMaxValue<DeviceContext, int64_t>()(dev_ctx, left_length, &max_seq_len);
 
     auto* scores = ctx.Output<Tensor>("Scores");
     scores->mutable_data<T>(curr_place);
@@ -299,87 +290,137 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
       it->Resize({batch_size});
     }
     // create and init required tensor
-    INIT_REQUIRED_TENSOR();
-    bool is_multi_threads = false;
-#ifdef PADDLE_WITH_MKLML
-    if (omp_get_max_threads() > 1) {
-      is_multi_threads = true;
-    }
-#endif
+    Tensor input_exp =
+        float_tensor_buffer.GetBufferBlock({seq_len, batch_size, n_labels});
+    TransCompute<DeviceContext, T>(3, dev_ctx, *input, &input_exp, {1, 0, 2});
+    auto* transition = ctx.Input<Tensor>("Transition");
+    Tensor trans_exp = float_tensor_buffer.GetBufferBlock({n_labels, n_labels});
+    framework::TensorCopy(*transition, curr_place, dev_ctx, &trans_exp);
+    trans_exp.Resize({1, n_labels, n_labels});
+    Tensor alpha = float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
+    Tensor zero = int_tensor_buffer.GetBufferBlock({1});
+    int_functor(dev_ctx, &zero, 0);
+    Tensor one = int_tensor_buffer.GetBufferBlock({1});
+    int_functor(dev_ctx, &one, 1);
+    Tensor float_one = float_tensor_buffer.GetBufferBlock({batch_size, 1});
+    float_functor(dev_ctx, &float_one, static_cast<T>(1.0));
+    Tensor alpha_trn_sum =
+        float_tensor_buffer.GetBufferBlock({batch_size, n_labels, n_labels});
+    Tensor alpha_max =
+        float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
+    Tensor alpha_argmax =
+        int_tensor_buffer.GetBufferBlock({seq_len, batch_size, n_labels});
+    auto alpha_argmax_unbind = Unbind(alpha_argmax);
+    Tensor alpha_nxt =
+        float_tensor_buffer.GetBufferBlock({batch_size, n_labels});
+    Tensor int_mask = int_tensor_buffer.GetBufferBlock({batch_size});
+    Tensor zero_len_mask = int_tensor_buffer.GetBufferBlock({batch_size});
+    Tensor float_mask = float_tensor_buffer.GetBufferBlock({batch_size, 1});
+    Tensor stop_trans_exp =
+        float_tensor_buffer.GetBufferBlock({1, 1, n_labels});
+    Tensor start_trans_exp =
+        float_tensor_buffer.GetBufferBlock({1, 1, n_labels});
+    Tensor rest_trans_exp =
+        float_tensor_buffer.GetBufferBlock({1, n_labels - 2, n_labels});
+    Tensor last_ids = int_tensor_buffer.GetBufferBlock({batch_size});
+    Tensor last_ids_tmp = int_tensor_buffer.GetBufferBlock({batch_size});
+    Tensor batch_offset = int_tensor_buffer.GetBufferBlock({batch_size});
+    Tensor gather_idx = int_tensor_buffer.GetBufferBlock({batch_size});
+    std::vector<const Tensor*> shape_refer{&rest_trans_exp, &stop_trans_exp,
+                                           &start_trans_exp};
+    std::vector<Tensor*> outputs{&rest_trans_exp, &stop_trans_exp,
+                                 &start_trans_exp};
+    math::SplitFunctor<DeviceContext, T> split_functor;
+    split_functor(dev_ctx, trans_exp, shape_refer, 1, &outputs);
+    stop_trans_exp.Resize({1, n_labels});
+    start_trans_exp.Resize({1, n_labels});
+    auto logit0 = input_exp.Slice(0, 1);
+    logit0.Resize({batch_size, n_labels});
+    ADD<DeviceContext, T> AddFloat;
+    ADD<DeviceContext, int64_t> AddInt;
+    MUL<DeviceContext, T> MulFloat;
+    MUL<DeviceContext, int64_t> MulInt;
+    SUB<DeviceContext, T> SubFloat;
+    SUB<DeviceContext, int64_t> SubInt;
+
     if (with_start_stop_tag) {
-      ADD(logit0, start_trans_exp, alpha, is_multi_threads, T);
-      GET_MASK(left_length, one, float_mask, EqualFunctor, T);
-      MUL(stop_trans_exp, float_mask, alpha_nxt, is_multi_threads, T);
-      SAME_DIMS_OP(alpha, alpha_nxt, alpha, Add, T);
+      AddFloat(dev_ctx, logit0, start_trans_exp, &alpha);
+      GetMask<DeviceContext, EqualFunctor, T>()(ctx, left_length, one,
+                                                &float_mask);
+      MulFloat(dev_ctx, stop_trans_exp, float_mask, &alpha_nxt);
+      AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
     } else {
       alpha = logit0;
     }
-    SUB(left_length, one, left_length, is_multi_threads, int64_t);
-    CPUArgmax<T, int64_t> argmax;
+    SubInt(dev_ctx, left_length, one, &left_length);
+    Argmax<DeviceContext, T, int64_t> argmax;
     for (int64_t i = 1; i < max_seq_len; ++i) {
       Tensor logit = input_exp.Slice(i, i + 1);
       logit.Resize({batch_size, n_labels});
       Tensor& alpha_exp = alpha.Resize({batch_size, n_labels, 1});
-      ADD(alpha_exp, trans_exp, alpha_trn_sum, is_multi_threads, T);
+      AddFloat(dev_ctx, alpha_exp, trans_exp, &alpha_trn_sum);
       auto alpha_argmax_temp = alpha_argmax_unbind[i - 1];
       alpha_argmax_temp.Resize({batch_size, n_labels});
-      argmax(alpha_trn_sum, &alpha_argmax_temp, &alpha_max, 1);
+      argmax(ctx, alpha_trn_sum, &alpha_argmax_temp, &alpha_max, 1);
       historys.push_back(alpha_argmax_temp);
-      SAME_DIMS_OP(alpha_max, logit, alpha_nxt, Add, T);
+      AddFloat(dev_ctx, alpha_max, logit, &alpha_nxt);
       alpha.Resize({batch_size, n_labels});
       // mask = paddle.cast((left_length > 0), dtype='float32')
       // alpha = mask * alpha_nxt + (1 - mask) * alpha
-      GET_MASK(left_length, zero, float_mask, GreaterThanFunctor, T);
+      GetMask<DeviceContext, GreaterThanFunctor, T>()(ctx, left_length, zero,
+                                                      &float_mask);
       // alpha_nxt = mask * alpha_nxt
-      MUL(alpha_nxt, float_mask, alpha_nxt, is_multi_threads, T);
+      MulFloat(dev_ctx, alpha_nxt, float_mask, &alpha_nxt);
       // inv_mask = 1 - mask
-      SAME_DIMS_OP(float_one, float_mask, float_mask, Sub, T);
+      SubFloat(dev_ctx, float_one, float_mask, &float_mask);
       // alpha = (1 - mask) * alpha
-      MUL(alpha, float_mask, alpha, is_multi_threads, T);
+      MulFloat(dev_ctx, alpha, float_mask, &alpha);
       // alpha += alpha_nxt
-      SAME_DIMS_OP(alpha, alpha_nxt, alpha, Add, T);
+      AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
       if (with_start_stop_tag) {  // cost 10% time
-        GET_MASK(left_length, one, float_mask, EqualFunctor, T);
+        GetMask<DeviceContext, EqualFunctor, T>()(ctx, left_length, one,
+                                                  &float_mask);
         // trans_exp: [1, n, n]
         // alpha += mask * trans_exp[:, self.stop_idx]
-        MUL(stop_trans_exp, float_mask, alpha_nxt, is_multi_threads, T);
-        SAME_DIMS_OP(alpha, alpha_nxt, alpha, Add, T);
+        MulFloat(dev_ctx, stop_trans_exp, float_mask, &alpha_nxt);
+        AddFloat(dev_ctx, alpha, alpha_nxt, &alpha);
       }
-      SUB(left_length, one, left_length, is_multi_threads, int64_t);
+      SubInt(dev_ctx, left_length, one, &left_length);
     }
     // scores, last_ids = alpha.max(1), alpha.argmax(1)
-    argmax(alpha, &last_ids, scores, 1);
+    argmax(ctx, alpha, &last_ids, scores, 1);
     // tag_mask = paddle.cast((left_length >= 0), 'int64')
     left_length.Resize({batch_size});
-    GET_MASK(left_length, zero, int_mask, GreaterEqualFunctor, int64_t);
+    GetMask<DeviceContext, GreaterEqualFunctor, int64_t>()(ctx, left_length,
+                                                           zero, &int_mask);
     // last_ids_update = last_ids * tag_mask
     int last_ids_index = 1;
     int actual_len = (std::min)(seq_len, static_cast<int>(max_seq_len));
-
-    SAME_DIMS_OP(last_ids, int_mask, batch_path[actual_len - last_ids_index],
-                 Mul, int64_t);
-    for (int i = 0; i < batch_size; ++i) {
-      batch_offset.data<int64_t>()[i] = i * n_labels;
-    }
+    MulInt(dev_ctx, last_ids, int_mask,
+           &batch_path[actual_len - last_ids_index]);
+    ARange<DeviceContext>()(dev_ctx, batch_offset.data<int64_t>(), batch_size,
+                            n_labels);
     for (auto hist = historys.rbegin(); hist != historys.rend(); ++hist) {
       ++last_ids_index;
-      ADD(left_length, one, left_length, is_multi_threads, int64_t);
-      SAME_DIMS_OP(batch_offset, last_ids, gather_idx, Add, int64_t);
+      AddInt(dev_ctx, left_length, one, &left_length);
+      AddInt(dev_ctx, batch_offset, last_ids, &gather_idx);
       Tensor& last_ids_update = batch_path[actual_len - last_ids_index];
       hist->Resize({batch_size * n_labels});
-      CPUGather<int64_t, int64_t>(dev_ctx, *hist, gather_idx, &last_ids_update);
-      GET_MASK(left_length, zero, int_mask, GreaterThanFunctor, int64_t);
-      SAME_DIMS_OP(last_ids_update, int_mask, last_ids_update, Mul, int64_t);
-      GET_MASK(left_length, zero, zero_len_mask, EqualFunctor, int64_t);
-      SAME_DIMS_OP(last_ids, zero_len_mask, last_ids_tmp, Mul, int64_t);
-      SUB(one, zero_len_mask, zero_len_mask, is_multi_threads, int64_t);
-      SAME_DIMS_OP(last_ids_update, zero_len_mask, last_ids_update, Mul,
-                   int64_t);
-      SAME_DIMS_OP(last_ids_update, last_ids_tmp, last_ids_update, Add,
-                   int64_t);
-      GET_MASK(left_length, zero, int_mask, LessThanFunctor, int64_t);
-      SAME_DIMS_OP(last_ids, int_mask, last_ids, Mul, int64_t);
-      SAME_DIMS_OP(last_ids_update, last_ids, last_ids, Add, int64_t);
+      Gather<DeviceContext, int64_t, int64_t>()(dev_ctx, *hist, gather_idx,
+                                                &last_ids_update);
+      GetMask<DeviceContext, GreaterThanFunctor, int64_t>()(ctx, left_length,
+                                                            zero, &int_mask);
+      MulInt(dev_ctx, last_ids_update, int_mask, &last_ids_update);
+      GetMask<DeviceContext, EqualFunctor, int64_t>()(ctx, left_length, zero,
+                                                      &zero_len_mask);
+      MulInt(dev_ctx, last_ids, zero_len_mask, &last_ids_tmp);
+      SubInt(dev_ctx, one, zero_len_mask, &zero_len_mask);
+      MulInt(dev_ctx, last_ids_update, zero_len_mask, &last_ids_update);
+      AddInt(dev_ctx, last_ids_update, last_ids_tmp, &last_ids_update);
+      GetMask<DeviceContext, LessThanFunctor, int64_t>()(ctx, left_length, zero,
+                                                         &int_mask);
+      MulInt(dev_ctx, last_ids, int_mask, &last_ids);
+      AddInt(dev_ctx, last_ids_update, last_ids, &last_ids);
     }
     TransCompute<DeviceContext, int64_t>(2, dev_ctx, tpath, path, {1, 0});
   }

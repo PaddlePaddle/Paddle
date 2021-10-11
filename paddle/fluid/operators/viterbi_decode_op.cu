@@ -32,30 +32,28 @@ namespace operators {
         height, width, post, in_data, out_idx_data, out_data);           \
   } while (0)
 
-#define CUDA_ELEMENT_BINARY_OP(lhs, rhs, output, functor_type, dtype)    \
-  do {                                                                   \
-    std::vector<const Tensor*> ins{&lhs, &rhs};                          \
-    std::vector<Tensor*> outs{&output};                                  \
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, dtype, dtype>( \
-        dev_ctx, ins, &outs, -1, functor_type##Functor<dtype>());        \
-  } while (0)
+template <template <typename T> typename BinaryFunctor, typename T>
+struct BinaryOperation<platform::CUDADeviceContext, BinaryFunctor, T> {
+  void operator()(const platform::CUDADeviceContext& dev_ctx, const Tensor& lhs,
+                  const Tensor& rhs, Tensor* output) {
+    std::vector<const Tensor*> ins{&lhs, &rhs};
+    std::vector<Tensor*> outs{output};
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, T, T>(
+        dev_ctx, ins, &outs, -1, BinaryFunctor<T>());
+  }
+};
 
-#define CUDA_ADD(lhs, rhs, output, dtype) \
-  CUDA_ELEMENT_BINARY_OP(lhs, rhs, output, Add, dtype)
-
-#define CUDA_SUB(lhs, rhs, output, dtype) \
-  CUDA_ELEMENT_BINARY_OP(lhs, rhs, output, Sub, dtype)
-
-#define CUDA_MUL(lhs, rhs, output, dtype) \
-  CUDA_ELEMENT_BINARY_OP(lhs, rhs, output, Mul, dtype)
-
-#define GET_CUDA_MASK(lhs, rhs, mask, functor_template, dtype)             \
-  do {                                                                     \
-    std::vector<const Tensor*> ins = {&lhs, &rhs};                         \
-    std::vector<Tensor*> outs = {&mask};                                   \
-    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, int64_t, dtype>( \
-        dev_ctx, ins, &outs, -1, functor_template<int64_t>());             \
-  } while (0)
+template <template <typename T> typename CompareFunctor, typename T>
+struct GetMask<platform::CUDADeviceContext, CompareFunctor, T> {
+  void operator()(const framework::ExecutionContext& ctx, const Tensor& lhs,
+                  const Tensor& rhs, Tensor* mask) {
+    std::vector<const Tensor*> ins = {&lhs, &rhs};
+    std::vector<Tensor*> outs = {mask};
+    auto& dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
+    LaunchElementwiseCudaKernel<ElementwiseType::kBinary, int64_t, T>(
+        dev_ctx, ins, &outs, -1, CompareFunctor<int64_t>());
+  }
+};
 
 template <typename T, typename IndType, size_t BlockDim>
 __global__ void ArgmaxCUDAKernel(const int64_t height,     // n * h
@@ -77,22 +75,30 @@ __global__ void ArgmaxCUDAKernel(const int64_t height,     // n * h
     kv_pair = BlockReduce(temp_storage).Reduce(kv_pair, reducer);
     if (threadIdx.x == 0) {
       // return max, argmax
-      out_idx[idx] = static_cast<IndType>(kv_pair.key);
-      out[idx] = kv_pair.value;
+      if (out_idx != nullptr) out_idx[idx] = static_cast<IndType>(kv_pair.key);
+      if (out != nullptr) out[idx] = kv_pair.value;
     }
     __syncthreads();
   }
 }
 
-__global__ void ARange(int64_t* data, int end, int64_t scale) {
+__global__ void ARangeKernel(int64_t* data, int end, int64_t scale) {
   int idx = blockIdx.x * blockDim.x + threadIdx.x;
   for (int start = idx; idx < end; idx += gridDim.x) {
     data[idx] = idx * scale;
   }
 }
 
+template <>
+struct ARange<platform::CUDADeviceContext> {
+  void operator()(const platform::CUDADeviceContext& dev_ctx, int64_t* data,
+                  int end, int64_t scale) {
+    ARangeKernel<<<1, 128, 0, dev_ctx.stream()>>>(data, end, scale);
+  }
+};
+
 template <typename T, typename IndType>
-struct CUDAArgmax {
+struct Argmax<platform::CUDADeviceContext, T, IndType> {
   void operator()(const framework::ExecutionContext& ctx, const Tensor& input,
                   Tensor* out_idx, Tensor* out, int axis) {
     framework::DDim input_dims = input.dims();
@@ -121,108 +127,30 @@ struct CUDAArgmax {
   }
 };
 
-template <typename DeviceContext, typename T>
-class ViterbiDecodeGPUKernel : public framework::OpKernel<T> {
- public:
-  void Compute(const framework::ExecutionContext& ctx) const override {
-    auto* input = ctx.Input<Tensor>("Input");
-    auto* length = ctx.Input<Tensor>("Length");
-    bool with_start_stop_tag = ctx.Attr<bool>("with_start_stop_tag");
-    auto& dev_ctx = ctx.template device_context<DeviceContext>();
-    auto curr_place = ctx.GetPlace();
-    auto batch_size = static_cast<int>(input->dims()[0]);
-    auto seq_len = static_cast<int>(input->dims()[1]);
-    auto n_labels = static_cast<int>(input->dims()[2]);
-    math::SetConstant<DeviceContext, T> float_functor;
-    math::SetConstant<DeviceContext, int64_t> int_functor;
-    std::vector<Tensor> historys;
-    CUDAArgmax<T, int64_t> cuda_argmax;
-    CREATE_TENSOR_BUFFER(int_tensor_buffer, float_tensor_buffer);
-    Tensor left_length = int_tensor_buffer.GetBufferBlock({batch_size, 1});
-    framework::TensorCopy(*length, curr_place, dev_ctx, &left_length);
-
-    auto* scores = ctx.Output<Tensor>("Scores");
-    scores->mutable_data<T>(curr_place);
-
-    auto out_idx_data = int_tensor_buffer.GetBufferBlock({1});
-    auto out_data = int_tensor_buffer.GetBufferBlock({1});
-    ArgmaxCUDAKernel<int64_t, int64_t, 32><<<1, 32, 0, dev_ctx.stream()>>>(
-        1, left_length.numel(), 1, left_length.data<int64_t>(),
-        out_idx_data.data<int64_t>(), out_data.data<int64_t>());
-    Tensor max_seq_len_tenor;
-    framework::TensorCopy(out_data, platform::CPUPlace(), &max_seq_len_tenor);
-    int64_t max_seq_len = max_seq_len_tenor.data<int64_t>()[0];
-    auto* path = ctx.Output<Tensor>("Path");
-    path->Resize({batch_size, max_seq_len});
-    path->mutable_data<int64_t>(curr_place);
-
-    Tensor tpath = int_tensor_buffer.GetBufferBlock({max_seq_len, batch_size});
-    auto batch_path = Unbind(tpath);
-    for (auto it = batch_path.begin(); it != batch_path.end(); ++it) {
-      it->Resize({batch_size});
-    }
-    INIT_REQUIRED_TENSOR();
-    if (with_start_stop_tag) {
-      CUDA_ADD(logit0, start_trans_exp, alpha, T);
-      GET_CUDA_MASK(left_length, one, float_mask, EqualFunctor, T);
-      CUDA_MUL(stop_trans_exp, float_mask, alpha_nxt, T);
-      CUDA_ADD(alpha, alpha_nxt, alpha, T);
-    } else {
-      alpha = logit0;
-    }
-    CUDA_SUB(left_length, one, left_length, int64_t);
-    for (int64_t i = 1; i < max_seq_len; ++i) {
-      Tensor logit = input_exp.Slice(i, i + 1);
-      logit.Resize({batch_size, n_labels});
-      Tensor& alpha_exp = alpha.Resize({batch_size, n_labels, 1});
-      CUDA_ADD(alpha_exp, trans_exp, alpha_trn_sum, T);
-      auto alpha_argmax_temp = alpha_argmax_unbind[i - 1];
-      alpha_argmax_temp.Resize({batch_size, n_labels});
-      cuda_argmax(ctx, alpha_trn_sum, &alpha_argmax_temp, &alpha_max, 1);
-      historys.push_back(alpha_argmax_temp);
-      CUDA_ADD(alpha_max, logit, alpha_nxt, T);
-      alpha.Resize({batch_size, n_labels});
-      GET_CUDA_MASK(left_length, zero, float_mask, GreaterThanFunctor, T);
-      CUDA_MUL(alpha_nxt, float_mask, alpha_nxt, T);
-      CUDA_SUB(float_one, float_mask, float_mask, T);
-      CUDA_MUL(alpha, float_mask, alpha, T);
-      CUDA_ADD(alpha, alpha_nxt, alpha, T);
-      if (with_start_stop_tag) {
-        GET_CUDA_MASK(left_length, one, float_mask, EqualFunctor, T);
-        CUDA_MUL(stop_trans_exp, float_mask, alpha_nxt, T);
-        CUDA_ADD(alpha, alpha_nxt, alpha, T);
-      }
-      CUDA_SUB(left_length, one, left_length, int64_t);
-    }
-    cuda_argmax(ctx, alpha, &last_ids, scores, 1);
-    left_length.Resize({batch_size});
-    GET_CUDA_MASK(left_length, zero, int_mask, GreaterEqualFunctor, int64_t);
-    int last_id_index = 1;
-    int act_len = std::min(seq_len, static_cast<int>(max_seq_len));
-    CUDA_MUL(last_ids, int_mask, batch_path[act_len - last_id_index], int64_t);
-    ARange<<<1, 128, 0, dev_ctx.stream()>>>(batch_offset.data<int64_t>(),
-                                            batch_size, n_labels);
-    for (auto hist = historys.rbegin(); hist != historys.rend(); ++hist) {
-      ++last_id_index;
-      CUDA_ADD(left_length, one, left_length, int64_t);
-      CUDA_ADD(batch_offset, last_ids, gather_idx, int64_t);
-      Tensor& last_ids_update = batch_path[act_len - last_id_index];
-      hist->Resize({batch_size * n_labels});
-      GPUGather<int64_t, int64_t>(dev_ctx, *hist, gather_idx, &last_ids_update);
-      GET_CUDA_MASK(left_length, zero, int_mask, GreaterThanFunctor, int64_t);
-      CUDA_MUL(last_ids_update, int_mask, last_ids_update, int64_t);
-      GET_CUDA_MASK(left_length, zero, zero_len_mask, EqualFunctor, int64_t);
-      CUDA_MUL(last_ids, zero_len_mask, last_ids_tmp, int64_t);
-      CUDA_SUB(one, zero_len_mask, zero_len_mask, int64_t);
-      CUDA_MUL(last_ids_update, zero_len_mask, last_ids_update, int64_t);
-      CUDA_ADD(last_ids_update, last_ids_tmp, last_ids_update, int64_t);
-      GET_CUDA_MASK(left_length, zero, int_mask, LessThanFunctor, int64_t);
-      CUDA_MUL(last_ids, int_mask, last_ids, int64_t);
-      CUDA_ADD(last_ids_update, last_ids, last_ids, int64_t);
-    }
-    TransCompute<DeviceContext, int64_t>(2, dev_ctx, tpath, path, {1, 0});
+template <typename T>
+struct GetMaxValue<platform::CUDADeviceContext, T> {
+  void operator()(const platform::CUDADeviceContext& dev_ctx,
+                  const Tensor& input, T* max_value) {
+    Tensor out_data;
+    out_data.Resize(framework::make_ddim({1}));
+    out_data.mutable_data<T>(platform::CUDAPlace());
+    ArgmaxCUDAKernel<T, T, 32><<<1, 32, 0, dev_ctx.stream()>>>(
+        1, input.numel(), 1, input.data<int64_t>(), nullptr,
+        out_data.data<int64_t>());
+    Tensor max_value_tensor;
+    framework::TensorCopy(out_data, platform::CPUPlace(), &max_value_tensor);
+    *max_value = max_value_tensor.data<T>()[0];
   }
 };
+
+template <typename T, typename IndexT>
+struct Gather<platform::CUDADeviceContext, T, IndexT> {
+  void operator()(const platform::CUDADeviceContext& ctx, const Tensor& src,
+                  const Tensor& index, Tensor* output) {
+    GPUGather<T, IndexT>(ctx, src, index, output);
+  }
+};
+
 }  // namespace operators
 }  // namespace paddle
 
@@ -230,5 +158,5 @@ namespace ops = paddle::operators;
 namespace platform = paddle::platform;
 REGISTER_OP_CUDA_KERNEL(
     viterbi_decode,
-    ops::ViterbiDecodeGPUKernel<platform::CUDADeviceContext, float>,
-    ops::ViterbiDecodeGPUKernel<platform::CUDADeviceContext, double>);
+    ops::ViterbiDecodeKernel<platform::CUDADeviceContext, float>,
+    ops::ViterbiDecodeKernel<platform::CUDADeviceContext, double>);
