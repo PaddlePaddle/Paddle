@@ -18,9 +18,6 @@ import numpy as np
 import paddle
 from paddle.fluid import core
 
-async_read = paddle.fluid.framework.core.async_read
-async_write = paddle.fluid.framework.core.async_write
-
 
 class TestAsyncRead(unittest.TestCase):
     """
@@ -41,8 +38,8 @@ class TestAsyncRead(unittest.TestCase):
 
     def test_async_read_empty_offset_and_count(self):
         if core.is_compiled_with_cuda():
-            async_read(self.src, self.dst, self.index, self.buffer, self.empty,
-                       self.empty)
+            core.async_read(self.src, self.dst, self.index, self.buffer,
+                            self.empty, self.empty)
             array1 = paddle.gather(self.src, self.index)
             array2 = self.dst[:len(self.index)]
             self.assertTrue(np.allclose(array1.numpy(), array2.numpy()))
@@ -55,8 +52,8 @@ class TestAsyncRead(unittest.TestCase):
             count = paddle.to_tensor(
                 np.array(
                     [5, 10], dtype="int64"), place=paddle.CPUPlace())
-            async_read(self.src, self.dst, self.index, self.buffer, offset,
-                       count)
+            core.async_read(self.src, self.dst, self.index, self.buffer, offset,
+                            count)
 
             # index data
             index_array1 = paddle.gather(self.src, self.index)
@@ -94,7 +91,7 @@ class TestAsyncWrite(unittest.TestCase):
             count = paddle.to_tensor(
                 np.array(
                     [40, 60], dtype="int64"), place=paddle.CPUPlace())
-            async_write(self.src, self.dst, offset, count)
+            core.async_write(self.src, self.dst, offset, count)
 
             offset_a = paddle.gather(self.dst,
                                      paddle.to_tensor(np.arange(0, 40)))
