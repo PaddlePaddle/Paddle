@@ -178,8 +178,8 @@ __global__ void L2NormKernel(
 #if CUDA_VERSION >= 11000
   // Grid sync for completely writring partial result back to gloabl memory
   cg->sync();
-  MT p_partial_sum = threadIdx.x < thresh ? p_buffer[threadIdx.x] : 0;
-  MT g_partial_sum = threadIdx.x < thresh ? g_buffer[threadIdx.x] : 0;
+  MT p_partial_sum = threadIdx.x < gridDim.x ? p_buffer[threadIdx.x] : 0;
+  MT g_partial_sum = threadIdx.x < gridDim.x ? g_buffer[threadIdx.x] : 0;
   *p_n = sqrt(math::blockReduceSum<MT>(p_partial_sum, FINAL_MASK));
   *g_n = sqrt(rescale_grad_pow *
               math::blockReduceSum<MT>(g_partial_sum, FINAL_MASK));
@@ -193,7 +193,6 @@ struct MergedParameter {
  public:
   int64_t numel_arr[LARS_MAX_MERGED_OPS];
   int repeat_arr[LARS_MAX_MERGED_OPS];
-  int thresh_arr[LARS_MAX_MERGED_OPS];
   const T* __restrict__ p_arr[LARS_MAX_MERGED_OPS];
   const T* __restrict__ g_arr[LARS_MAX_MERGED_OPS];
   const MT* __restrict__ v_arr[LARS_MAX_MERGED_OPS];
@@ -222,8 +221,7 @@ __global__ void MergedMomentumLarsKernel(MergedParameter<T, MT>* merged_params,
     MT grad_norm = static_cast<MT>(0);
     L2NormKernel<T, MT>(&cg, merged_params->p_arr[i], merged_params->g_arr[i],
                         p_buffer, g_buffer, numel, merged_params->repeat_arr[i],
-                        rescale_grad, merged_params->thresh_arr[i], &param_norm,
-                        &grad_norm);
+                        rescale_grad, 0, &param_norm, &grad_norm);
     const MT lr = *(merged_params->lr_arr[i]);
     const MT lars_weight_decay = merged_params->weight_decay_arr[i];
     MT local_lr = lr;
@@ -418,11 +416,9 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
       for (int i = 0; i < op_num; ++i) {
         grid_num = (merged_params.numel_arr[i] + LARS_BLOCK_SIZE - 1) /
                    LARS_BLOCK_SIZE;
+        // The maximum block number for L2 norm kernel is grid_real.
         merged_params.repeat_arr[i] =
             (merged_params.numel_arr[i] + grid_stride - 1) / grid_stride - 1;
-        // The maximum block number for L2 norm kernel is grid_real.
-        merged_params.thresh_arr[i] =
-            merged_params.repeat_arr[i] > 0 ? grid_real : grid_num;
       }
       if (multi_precision) {
         auto master_param = ctx.MultiInput<framework::LoDTensor>("MasterParam");
