@@ -536,7 +536,8 @@ class OperatorWithKernel : public OperatorBase {
   /* member functions for adapting to tcmpt lib */
   // TODO(chenweihang): Temporarily as a class method
   virtual pt::KernelKey ConstructPtKernelKey(
-      const VariableValueMap& inputs, const platform::Place& ctx_place) const;
+      const VariableValueMap& inputs, const AttributeMap& attrs,
+      const platform::Place& ctx_place) const;
 
   virtual pt::KernelContext ConstructPtKernelContext(
       const RuntimeContext& ctx, const platform::DeviceContext& dev_ctx) const;
