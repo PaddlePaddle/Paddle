@@ -295,14 +295,14 @@ class Table:
         self.accessor = None
         self.common = None
         self.tensor = None
+        self.accessor_proto = None
 
     def to_string(self, indent):
-        if self.id == 1:
-            proto_txt = ''
-            with open('./sparse_table.prototxt') as f:
-                proto_txt = f.read()
-            return proto_txt
-
+        # if self.id == 1:
+        #     proto_txt = ''
+        #     with open('./sparse_table.prototxt') as f:
+        #         proto_txt = f.read()
+        #     return proto_txt
         table_str = "{}downpour_table_param {{{}\n{}}}"
 
         attrs = ""
@@ -313,6 +313,12 @@ class Table:
         attrs += "\n"
         indent += 2
 
+        if self.accessor_proto is not None:
+            accessor_str = "{}accessor {{{}\n{}}}"
+            accessor_str = accessor_str.format(conv_indent(indent), self.accessor_proto, conv_indent(indent))
+            attrs += accessor_str + "\n"
+            return table_str.format(conv_indent(indent), attrs, conv_indent(indent))
+        
         if self.accessor is not None:
             attrs += self.accessor.to_string(indent)
             attrs += "\n"
@@ -780,7 +786,7 @@ class TheOnePSRuntime(RuntimeBase):
 
                 if ctx.is_sparse():
                     table.type = "PS_SPARSE_TABLE"
-                    table.shard_num = 256
+                    # table.shard_num = 256
 
                     common.table_name = self.compiled_strategy.grad_name_to_param_name[
                         ctx.origin_varnames()[0]]
@@ -790,7 +796,11 @@ class TheOnePSRuntime(RuntimeBase):
                     else:
                         table.table_class = parse_table_class(
                             common.table_name, self.origin_main_program)
-
+                    table_proto = self.context["user_defined_strategy"].sparse_table_configs
+                    table.shard_num = table_proto.shard_num
+                    from google.protobuf import text_format
+                    table.accessor_proto = text_format.MessageToString(table_proto.accessor)
+                    print("the_one_ps table_proto:", table.accessor_proto)
                 else:
                     table.type = "PS_DENSE_TABLE"
                     table.table_class = "CommonDenseTable"
@@ -816,8 +826,9 @@ class TheOnePSRuntime(RuntimeBase):
 
                 print('debug zcb build_merge_accessor:')
                 print(str(ctx))
-                accessor = _build_merge_accessor(ctx)
-                table.accessor = accessor
+                if not ctx.is_sparse():
+                    accessor = _build_merge_accessor(ctx)
+                    table.accessor = accessor
                 tables.append(table)
 
             tensor_table_dict = self.compiled_strategy.get_tensor_table_dict()

@@ -390,6 +390,34 @@ class DistributedStrategy(object):
         assign_configs_value(self.strategy.trainer_desc_configs, configs)
 
     @property
+    def sparse_table_configs(self):
+        return self.strategy.downpour_table_param
+
+    @sparse_table_configs.setter
+    @is_strict_auto
+    def sparse_table_configs(self, configs):
+        from google.protobuf import text_format
+        from google.protobuf.descriptor import FieldDescriptor
+        table_param = self.strategy.downpour_table_param
+        def set_table_config(msg, config_name, configs):
+            for field in msg.DESCRIPTOR.fields:
+                name = config_name + "." + field.name
+                if field.type == FieldDescriptor.TYPE_MESSAGE:
+                    print("message:", name)
+                    set_table_config(getattr(msg, field.name), name, configs)
+                else:
+                    print("not message:", name)
+                    if name not in configs:
+                        continue
+                    if field.label == FieldDescriptor.LABEL_REPEATED:
+                        getattr(msg, field.name).extend(configs[name])
+                    else:
+                        setattr(msg, field.name, configs[name])
+                
+        set_table_config(table_param, "table_parameters", configs)
+        print("text:", text_format.MessageToString(self.strategy.downpour_table_param))
+
+    @property
     def amp(self):
         """
         Indicating whether we are using automatic mixed precision training
