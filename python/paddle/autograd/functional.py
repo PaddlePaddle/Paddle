@@ -20,6 +20,7 @@ from ..nn.initializer import assign
 from ..tensor import reshape, zeros_like, to_tensor
 from .utils import _check_tensors, _stack_tensor_or_return_none, _replace_none_with_zero_tensor
 
+
 def to_tensorlist(tl):
     if not isinstance(tl, list):
         if isinstance(tl, tuple):
@@ -360,8 +361,7 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
     outputs = _check_tensors(func(*inputs), "outputs")
     fin_size = len(inputs)
     fout_size = len(outputs)
-    flat_outputs = tuple(
-        reshape(output, shape=[-1]) for output in outputs)
+    flat_outputs = tuple(reshape(output, shape=[-1]) for output in outputs)
     jacobian = tuple()
     for i, flat_output in enumerate(flat_outputs):
         jac_i = list([] for _ in range(fin_size))
@@ -374,7 +374,8 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
                 allow_unused=allow_unused)
             for j in range(fin_size):
                 jac_i[j].append(
-                    reshape(row_k[j], shape=[-1])
+                    reshape(
+                        row_k[j], shape=[-1])
                     if isinstance(row_k[j], paddle.Tensor) else None)
         jacobian += (tuple(
             _stack_tensor_or_return_none(jac_i_j) for jac_i_j in jac_i), )
