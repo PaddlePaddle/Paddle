@@ -48,9 +48,11 @@ struct SimpleOpTypeSetTeller : public Teller {
     int8_teller_set.insert("skip_layernorm");
     int8_teller_set.insert("slice");
 #endif
-#if IS_TRT_VERSION_GE(7130)
-    teller_set.insert("group_norm");
-#endif
+// TODO(baoachun) The group_norm trt plugin will check input's dim
+// not -1 failed when dynamic shape mode.
+// #if IS_TRT_VERSION_GE(7130)
+//     teller_set.insert("group_norm");
+// #endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
 #endif
@@ -134,7 +136,8 @@ struct SimpleOpTypeSetTeller : public Teller {
                                              "reduce_sum",
                                              "reduce_mean",
                                              "conv3d",
-                                             "conv3d_transpose"};
+                                             "conv3d_transpose",
+                                             "mish"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -1041,6 +1044,44 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!with_dynamic_shape) {
         if (x_shape.size() == 2) {
           VLOG(3) << "prelu op does not support input's dim is 2 in tensorrt.";
+          return false;
+        }
+      }
+    }
+
+    if (op_type == "mish") {
+      if (desc.Input("X").size() != 1) {
+        VLOG(3) << "Invalid input X's size of mish TRT converter. "
+                   "Expected 1, received "
+                << desc.Input("X").size() << ".";
+        return false;
+      }
+      if (desc.Output("Out").size() != 1) {
+        VLOG(3) << "Invalid output Out's size of mish TRT converter. "
+                   "Expected 1, received "
+                << desc.Output("Out").size() << ".";
+        return false;
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 1) {
+        VLOG(3) << "mish op does not support input's dim is 1 in tensorrt.";
+        return false;
+      }
+
+      if (!with_dynamic_shape) {
+        if (x_shape.size() == 2) {
+          VLOG(3) << "mish op does not support input's dim is 2 in tensorrt.";
           return false;
         }
       }
