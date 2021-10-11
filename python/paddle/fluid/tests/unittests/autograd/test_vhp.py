@@ -160,5 +160,20 @@ class TestVHP(unittest.TestCase):
         assert triple_grad is not None
 
 
+class TestVHPFloat64(TestVHP):
+    @classmethod
+    def setUpClass(self):
+        self.shape = (2, 2)
+        self.dtype = 'float64'
+        self.np_dtype = np.float64
+        self.numerical_delta = 1e-5
+        self.rtol = 1e-5
+        self.atol = 1e-5
+        self.x = paddle.rand(shape=self.shape, dtype=self.dtype)
+        self.y = paddle.rand(shape=self.shape, dtype=self.dtype)
+        self.vx = paddle.rand(shape=self.shape, dtype=self.dtype)
+        self.vy = paddle.rand(shape=self.shape, dtype=self.dtype)
+
+
 if __name__ == "__main__":
     unittest.main()
