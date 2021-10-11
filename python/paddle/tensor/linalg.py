@@ -1292,6 +1292,7 @@ def histogram(input, bins=100, min=0, max=0, name=None):
                'max': max})
     return out
 
+
 def bincount(x, weights=None, minlength=0):
     """
     Computes frequency of each value in the input tensor. 
@@ -1318,12 +1319,12 @@ def bincount(x, weights=None, minlength=0):
 
     helper = LayerHelper('bincount', **locals())
 
-    check_variable_and_dtype(
-        x, 'X', ['int32', 'int64'], 'bincount')
-    check_variable_and_dtype(
-        weights, 'Weights', ['int32', 'int64', 'float32', 'float64'], 'bincount')
-    
+    check_variable_and_dtype(x, 'X', ['int32', 'int64'], 'bincount')
+
     if weights is not None:
+        check_variable_and_dtype(weights, 'Weights',
+                                 ['int32', 'int64', 'float32', 'float64'],
+                                 'bincount')
         out = helper.create_variable_for_type_inference(dtype=weights.dtype)
     else:
         out = helper.create_variable_for_type_inference(dtype=x.dtype)
@@ -1334,7 +1335,8 @@ def bincount(x, weights=None, minlength=0):
         outputs={'Out': out},
         attrs={'minlength': minlength})
     return out
-    
+
+
 def mv(x, vec, name=None):
     """
     Performs a matrix-vector product of the matrix x and the vector vec.

@@ -22,6 +22,8 @@ import paddle.fluid.core as core
 from paddle.fluid import Program, program_guard
 from op_test import OpTest
 
+paddle.enable_static()
+
 
 class TestBincountOpAPI(unittest.TestCase):
     """Test bincount api."""
@@ -30,7 +32,7 @@ class TestBincountOpAPI(unittest.TestCase):
         startup_program = fluid.Program()
         train_program = fluid.Program()
         with fluid.program_guard(train_program, startup_program):
-            inputs = fluid.data(name='input', dtype='int64', shape=[5])
+            inputs = fluid.data(name='input', dtype='int64', shape=[7])
             output = paddle.bincount(inputs)
             place = fluid.CPUPlace()
             if fluid.core.is_compiled_with_cuda():
@@ -62,12 +64,8 @@ class TestBincountOpError(unittest.TestCase):
     """Test bincount op error."""
 
     def run_network(self, net_func):
-        main_program = fluid.Program()
-        startup_program = fluid.Program()
-        with fluid.program_guard(main_program, startup_program):
+        with fluid.dygraph.guard():
             net_func()
-            exe = fluid.Executor()
-            exe.run(main_program)
 
     def test_input_value_error(self):
         """Test input tensor should only contain non-negative ints."""
@@ -108,7 +106,7 @@ class TestBincountOpError(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             self.run_network(net_func)
-    
+
     def test_weights_shape_error(self):
         """Test weights tensor should have the same shape as input tensor."""
 
@@ -128,14 +126,12 @@ class TestBincountOp(OpTest):
         np_input = np.random.randint(low=0, high=20, size=self.in_shape)
         self.inputs = {"X": np_input}
         self.init_attrs()
-        Out = np.bincount(
-            np_input, minlength=self.minlength)
+        Out = np.bincount(np_input, minlength=self.minlength)
         self.outputs = {"Out": Out}
 
     def init_test_case(self):
         self.in_shape = 10
         self.minlength = 0
-
 
     def init_attrs(self):
         self.attrs = {"minlength": self.minlength}
@@ -145,5 +141,4 @@ class TestBincountOp(OpTest):
 
 
 if __name__ == "__main__":
-    paddle.enable_static()
     unittest.main()
