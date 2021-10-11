@@ -47,7 +47,8 @@ class LoDTensor;
 DECLARE_bool(benchmark);
 DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
-DEFINE_int32(inner_op_parallelism, 0, "number of threads for inner op");
+PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
+                             "number of threads for inner op");
 
 namespace paddle {
 namespace framework {
@@ -1588,14 +1589,15 @@ void OperatorWithKernel::ParseInputDataType(
                 "not initialized.",
                 Type(), name, ctx.InputNames(name).at(i)));
         proto::VarType::Type tmp = t->type();
-        PADDLE_ENFORCE(
-            tmp == *data_type || *data_type == default_data_type,
-            platform::errors::InvalidArgument(
-                "The DataType of %s Op's duplicable Variable %s must be "
-                "consistent. The current variable type is (%s), but the "
-                "previous variable type is (%s).",
-                Type(), name, DataTypeToString(tmp),
-                DataTypeToString(*data_type)));
+        PADDLE_ENFORCE(tmp == *data_type || *data_type == default_data_type,
+                       platform::errors::InvalidArgument(
+                           "The DataType of %s Op's duplicable or different "
+                           "slot Variable %s must be "
+                           "consistent or reigster GetExpectedKernelType. The "
+                           "current variable type is (%s), but the "
+                           "previous variable type is (%s).",
+                           Type(), name, DataTypeToString(tmp),
+                           DataTypeToString(*data_type)));
         *data_type = tmp;
       }
     }

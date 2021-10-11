@@ -164,7 +164,7 @@ class OpDesc {
 
   // Note: the identity only used as a key for referring to its
   // distributed attribute now.
-  uint64_t Id() { return id_; }
+  uint64_t Id() const { return id_; }
 
  private:
   template <typename MapType>
@@ -178,7 +178,7 @@ class OpDesc {
   }
 
   proto::OpDesc desc_;
-  BlockDesc *block_;  // not_own
+  BlockDesc *block_{nullptr};  // not_own
   // input arg name => input variable names
   VariableNameMap inputs_;
   // output arg name => output variable names
