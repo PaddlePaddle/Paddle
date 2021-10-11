@@ -28,18 +28,25 @@ __all__ = []
 class CELU(Layer):
     r"""
     CELU Activation.
+
     .. math::
+    
         CELU(x) = max(0, x) + min(0, \alpha * (e^{x/\alpha}-1))
+
     Parameters:
         alpha (float, optional): The 'alpha' value of the CELU formulation. Default is 1.0.
         name (str, optional): Name for the operation (optional, default is None).
             For more information, please refer to :ref:`api_guide_Name`.
+
     Shape:
         - input: Tensor with any shape.
         - output: Tensor with the same shape as input.
+
     Examples:
         .. code-block:: python
+
             import paddle
+            
             x = paddle.to_tensor([[-1. ,6.], [1., 15.6]])
             m = paddle.nn.CELU(0.2)
             out = m(x)

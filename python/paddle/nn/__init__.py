@@ -186,6 +186,7 @@ def weight_norm(*args):
 
 __all__ = [     #noqa
            'BatchNorm',
+           'CELU',
            'GroupNorm',
            'LayerNorm',
            'SpectralNorm',
