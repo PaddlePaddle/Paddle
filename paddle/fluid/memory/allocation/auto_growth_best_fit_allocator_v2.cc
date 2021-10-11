@@ -33,6 +33,7 @@ AutoGrowthBestFitAllocatorV2::AutoGrowthBestFitAllocatorV2(
       alignment_(alignment) {}
 
 Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
+  std::lock_guard<SpinLock> guard(spinlock_);
   size = AlignedSize(size, alignment_);
   auto result = AllocFromFreeBlocks(size);
 
@@ -45,6 +46,7 @@ Allocation *AutoGrowthBestFitAllocatorV2::AllocateImpl(size_t size) {
 }
 
 void AutoGrowthBestFitAllocatorV2::FreeImpl(Allocation *allocation) {
+  std::lock_guard<SpinLock> guard(spinlock_);
   auto block_it = static_cast<BlockAllocation *>(allocation)->block_it_;
   TryMergeBlock2Blocks(block_it);
   delete allocation;
@@ -52,7 +54,6 @@ void AutoGrowthBestFitAllocatorV2::FreeImpl(Allocation *allocation) {
 
 void AutoGrowthBestFitAllocatorV2::TryMergeBlock2Blocks(
     std::list<Block>::iterator block) {
-  std::lock_guard<SpinLock> guard(spinlock_);
   if (block->ptr_ == all_blocks_.front().ptr_ &&
       block->ptr_ == all_blocks_.back().ptr_) {
     block->is_free_ = true;
@@ -139,7 +140,6 @@ void AutoGrowthBestFitAllocatorV2::TryMergeBlock2Blocks(
 
 void AutoGrowthBestFitAllocatorV2::ExtendAndMerge(size_t size) {
   void *ptr = nullptr;
-  std::lock_guard<SpinLock> guard(spinlock_);
 
   auto allocateptr = underlying_allocator_->Allocate(size);
   ptr = allocateptr->ptr();
@@ -232,7 +232,6 @@ void AutoGrowthBestFitAllocatorV2::ExtendAndMerge(size_t size) {
 }
 
 Allocation *AutoGrowthBestFitAllocatorV2::AllocFromFreeBlocks(size_t size) {
-  std::lock_guard<SpinLock> guard(spinlock_);
   auto iter = free_blocks_.lower_bound(std::make_pair(size, nullptr));
   if (iter != free_blocks_.end()) {
     std::list<Block>::iterator block_it = iter->second;
