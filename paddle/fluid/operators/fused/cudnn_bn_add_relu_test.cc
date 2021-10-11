@@ -794,7 +794,7 @@ TEST(CudnnBNAddReluFp16, BNAddRelu) {
         batch_size, height, width, channels, act_type, fuse_add, has_shortcut);
     test.CheckForward(2e-3);
     if (fuse_add) {
-      test.CheckBackward(1e-5);
+      test.CheckBackward(2e-4);
     }
   }
 }
