@@ -269,20 +269,25 @@ class AllocatorFacadePrivate {
 #if defined(PADDLE_WITH_CUDA)
 #if CUDA_VERSION >= 10020
     CUdevice device;
-    auto result =
-        paddle::platform::dynload::cuDeviceGet(&device, p.GetDeviceId());
-    PADDLE_ENFORCE_EQ(
-        result, CUDA_SUCCESS,
-        platform::errors::Fatal("Call CUDA API cuDeviceGet faild, return %d.",
-                                result));
-
     int val;
-    result = paddle::platform::dynload::cuDeviceGetAttribute(
-        &val, CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED, device);
-    PADDLE_ENFORCE_EQ(
-        result, CUDA_SUCCESS,
-        platform::errors::Fatal(
-            "Call CUDA API cuDeviceGetAttribute faild, return %d.", result));
+    try {
+      auto result =
+          paddle::platform::dynload::cuDeviceGet(&device, p.GetDeviceId());
+      PADDLE_ENFORCE_EQ(
+          result, CUDA_SUCCESS,
+          platform::errors::Fatal("Call CUDA API cuDeviceGet faild, return %d.",
+                                  result));
+
+      result = paddle::platform::dynload::cuDeviceGetAttribute(
+          &val, CU_DEVICE_ATTRIBUTE_VIRTUAL_ADDRESS_MANAGEMENT_SUPPORTED,
+          device);
+      PADDLE_ENFORCE_EQ(
+          result, CUDA_SUCCESS,
+          platform::errors::Fatal(
+              "Call CUDA API cuDeviceGetAttribute faild, return %d.", result));
+    } catch (...) {
+      val = 0;
+    }
 
     if (val > 0) {
       auto cuda_allocator = std::make_shared<CUDAVirtualMemAllocator>(p);
