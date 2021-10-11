@@ -92,9 +92,34 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
               "Variance and VarianceOut should share the same memory"));
     }
 
-    // TODO(zhangzheng): check dims for input and output
+    // Check dims of inputs
     const auto x_dims = ctx->GetInputDim("X");
     const auto w_dims = ctx->GetInputDim("FilterX");
+    const auto bn_param_dims = ctx->GetInputDim("ScaleX");
+    PADDLE_ENFORCE_EQ(
+        x_dims.size(), 4,
+        platform::errors::InvalidArgument("ShapeError: the dimensions of input "
+                                          "must equal to 4."
+                                          "But received: the shape of input "
+                                          "= [%s], the dimension of input = "
+                                          "[%d]",
+                                          x_dims, x_dims.size()));
+    PADDLE_ENFORCE_EQ(w_dims.size(), 4,
+                      platform::errors::InvalidArgument(
+                          "ShapeError: the dimensions of filter "
+                          "must equal to 4."
+                          "But received: the shape of filter "
+                          "= [%s], the dimension of filter = "
+                          "[%d]",
+                          w_dims, w_dims.size()));
+    PADDLE_ENFORCE_EQ(bn_param_dims.size(), 4,
+                      platform::errors::InvalidArgument(
+                          "ShapeError: the dimensions of bn param "
+                          "must equal to 4."
+                          "But received: the shape of bn param "
+                          "= [%s], the dimension of bn param = "
+                          "[%d]",
+                          bn_param_dims, bn_param_dims.size()));
     int batch = x_dims[0];
     int output_channel = w_dims[0];
     int filter_size = w_dims[2];
@@ -114,7 +139,6 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
 
     auto y_dims = framework::make_ddim(out_shape);
     auto bitmask_dims = framework::make_ddim(bitmask_shape);
-    auto bn_param_dims = framework::make_ddim({1, 1, 1, output_channel});
     ctx->SetOutputDim("Y", y_dims);
     ctx->SetOutputDim("BitMask", bitmask_dims);
     ctx->SetOutputDim("ConvX", y_dims);
@@ -193,6 +217,10 @@ class ResNetUnitOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("fused_add", "").SetDefault(false);
     AddAttr<bool>("has_shortcut", "").SetDefault(false);
     AddAttr<bool>("use_global_stats", "").SetDefault(false);
+    AddAttr<bool>("is_test",
+                  "(bool, default false) Set to true for inference only, false "
+                  "for training. Some layers may run faster when this is true.")
+        .SetDefault(false);
     AddAttr<bool>("use_addto", "").SetDefault(false);
     AddAttr<std::string>("act_type", "The activation type to be fused.")
         .SetDefault("relu");

@@ -59,6 +59,8 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
     bool has_shortcut = ctx.Attr<bool>("has_shortcut");
     bool fused_add = ctx.Attr<bool>("fused_add");
     bool use_global_stats = ctx.Attr<bool>("use_global_stats");
+    bool is_test = ctx.Attr<bool>("is_test");
+    bool is_train = !is_test && !use_global_stats;
     std::string act_type = ctx.Attr<std::string>("act_type");
 
     auto input_x_shape = framework::vectorize<int>(input_x->dims());
@@ -109,8 +111,7 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
     bn_x_op.Forward(dev_ctx, sum_x_ptr, sum_of_squares_x_ptr, scale_x_ptr,
                     bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
                     running_mean_x_ptr, running_var_x_ptr, equiv_scale_x_ptr,
-                    equiv_bias_x_ptr, eps, momentum, ele_count,
-                    !use_global_stats);
+                    equiv_bias_x_ptr, eps, momentum, ele_count, is_train);
 
     // 3. scale + bias + add + relu
     T *output_ptr = output->mutable_data<T>(place);
@@ -169,8 +170,7 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
       bn_z_op.Forward(dev_ctx, sum_z_ptr, sum_of_squares_z_ptr, scale_z_ptr,
                       bias_z_ptr, saved_mean_z_ptr, saved_invstd_z_ptr,
                       running_mean_z_ptr, running_var_z_ptr, equiv_scale_z_ptr,
-                      equiv_bias_z_ptr, eps, momentum, ele_count,
-                      !use_global_stats);
+                      equiv_bias_z_ptr, eps, momentum, ele_count, is_train);
       // 3.3 sbar
       sbar_op.Forward(dev_ctx, conv_out_x_ptr, equiv_scale_x_ptr,
                       equiv_bias_x_ptr, output_ptr, bitmask_ptr, conv_out_z_ptr,

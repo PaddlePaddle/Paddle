@@ -56,6 +56,7 @@ class ResNetUnit(Layer):
                  fused_add=False,
                  has_shortcut=False,
                  use_global_stats=False,
+                 is_test=False,
                  filter_x_attr=None,
                  scale_x_attr=None,
                  bias_x_attr=None,
@@ -83,6 +84,7 @@ class ResNetUnit(Layer):
         self._fused_add = fused_add
         self._has_shortcut = has_shortcut
         self._use_global_stats = use_global_stats
+        self._is_test = is_test
 
         # check format
         valid_format = {'NHWC'}
@@ -179,11 +181,12 @@ class ResNetUnit(Layer):
         if self._fused_add and z is None:
             raise ValueError("z can not be None")
 
-        out = F.resnet_unit(
-            x, self.filter_x, self.scale_x, self.bias_x, self.mean_x,
-            self.var_x, z, self.filter_z, self.scale_z, self.bias_z,
-            self.mean_z, self.var_z, self._stride, self._stride_z,
-            self._padding, self._dilation, self._groups, self._momentum,
-            self._eps, self._conv_format, self._bn_format, self._fused_add,
-            self._has_shortcut, self._use_global_stats, self._act)
+        out = F.resnet_unit(x, self.filter_x, self.scale_x, self.bias_x,
+                            self.mean_x, self.var_x, z, self.filter_z,
+                            self.scale_z, self.bias_z, self.mean_z, self.var_z,
+                            self._stride, self._stride_z, self._padding,
+                            self._dilation, self._groups, self._momentum,
+                            self._eps, self._conv_format, self._bn_format,
+                            self._fused_add, self._has_shortcut,
+                            self._use_global_stats, self._is_test, self._act)
         return out

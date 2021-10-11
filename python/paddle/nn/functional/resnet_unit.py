@@ -40,43 +40,26 @@ __all__ = []
 def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
                 scale_z, bias_z, mean_z, var_z, stride, stride_z, padding,
                 dilation, groups, momentum, eps, conv_format, bn_format,
-                fused_add, has_shortcut, use_global_stats, act):
+                fused_add, has_shortcut, use_global_stats, is_test, act):
 
-    # if fluid.framework.in_dygraph_mode():
-    #     attrs = ('stride', stride, 'pad', padding, 'dilate', dilation, 'group',
-    #              groups, 'momentum', momentum, 'epsilon', eps, 'conv_format',
-    #              conv_format, 'bn_format', bn_format, 'fused_add', fused_add,
-    #              'has_shortcut', has_shortcut, 'use_global_stats',
-    #              use_global_stats, 'act', act)
-    #     out_list = _C_ops.resnet_unit(
-    #         x, filter_x, scale_x, bias_x, mean_x, var_x, running_mean_x,
-    #         running_var_x, *attrs, z, filter_z, scale_z, bias_z, mean_z, var_z,
-    #         running_mean_z, running_var_z)
-    #     out = out_list[0]
-    # else:
     helper = LayerHelper('resnet_unit', **locals())
-    # intermediate_out for x
     bn_param_dtype = fluid.core.VarDesc.VarType.FP32
     bit_mask_dtype = fluid.core.VarDesc.VarType.INT32
     out = helper.create_variable_for_type_inference(x.dtype)
     bit_mask = helper.create_variable_for_type_inference(
         dtype=bit_mask_dtype, stop_gradient=True)
+    # intermediate_out for x
     conv_x = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True)
-    # sum_x = helper.create_variable_for_type_inference(bn_param_dtype)
-    # sqsum_x = helper.create_variable_for_type_inference(bn_param_dtype)
     saved_mean_x = helper.create_variable_for_type_inference(
         dtype=bn_param_dtype, stop_gradient=True)
     saved_invstd_x = helper.create_variable_for_type_inference(
         dtype=bn_param_dtype, stop_gradient=True)
     running_mean_x = mean_x
     running_var_x = var_x
-    # eq_scale_x = helper.create_variable_for_type_inference(x.dtype)
-    # eq_bias_x = helper.create_variable_for_type_inference(x.dtype)
+    # intermediate_out for z
     conv_z = helper.create_variable_for_type_inference(
         dtype=x.dtype, stop_gradient=True)
-    # sum_z = helper.create_variable_for_type_inference(bn_param_dtype)
-    # sqsum_z = helper.create_variable_for_type_inference(bn_param_dtype)
     saved_mean_z = helper.create_variable_for_type_inference(
         dtype=bn_param_dtype, stop_gradient=True)
     saved_invstd_z = helper.create_variable_for_type_inference(
@@ -85,8 +68,6 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
         dtype=bn_param_dtype, stop_gradient=True) if mean_z is None else mean_z
     running_var_z = helper.create_variable_for_type_inference(
         dtype=bn_param_dtype, stop_gradient=True) if var_z is None else var_z
-    # eq_scale_z = helper.create_variable_for_type_inference(x.dtype)
-    # eq_bias_z = helper.create_variable_for_type_inference(x.dtype)
 
     inputs = {
         'X': x,
@@ -116,6 +97,7 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
         'fused_add': fused_add,
         'has_shortcut': has_shortcut,
         'use_global_stats': use_global_stats,
+        'is_test': is_test,
         'act_type': act
     }
 
@@ -123,23 +105,15 @@ def resnet_unit(x, filter_x, scale_x, bias_x, mean_x, var_x, z, filter_z,
         'Y': out,
         'BitMask': bit_mask,
         'ConvX': conv_x,
-        # 'SumX': sum_x,
-        # 'SqSumX': sqsum_x,
         'SavedMeanX': saved_mean_x,
         'SavedInvstdX': saved_invstd_x,
         'RunningMeanX': running_mean_x,
         'RunningVarX': running_var_x,
-        # 'EqScaleX': eq_scale_x,
-        # 'EqBiasX': eq_bias_x,
         'ConvZ': conv_z,
-        # 'SumZ': sum_z,
-        # 'SqSumZ': sqsum_z,
         'SavedMeanZ': saved_mean_z,
         'SavedInvstdZ': saved_invstd_z,
         'RunningMeanZ': running_mean_z,
         'RunningVarZ': running_var_z,
-        # 'EqScaleZ': eq_scale_z,
-        # 'EqBiasZ': eq_bias_z
     }
 
     helper.append_op(
