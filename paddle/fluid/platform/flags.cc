@@ -698,6 +698,16 @@ PADDLE_DEFINE_EXPORTED_bool(allreduce_record_one_event, false,
                             "events. Currently, only fuse allreduce supports "
                             "this. Otherwise, the precision may be wrong.");
 
+/*
+ * CINN related FLAG
+ * Name: FLAGS_use_cinn
+ * Since Version: 2.3
+ * Value Range: bool, default=false
+ * Example: FLAGS_use_cinn=true would run PaddlePaddle using CINN
+ */
+PADDLE_DEFINE_EXPORTED_bool(
+    use_cinn, false, "It controls whether to run PaddlePaddle using CINN");
+
 DEFINE_int32(record_pool_max_size, 2000000,
              "SlotRecordDataset slot record pool max size");
 DEFINE_int32(slotpool_thread_num, 1, "SlotRecordDataset slot pool thread num");

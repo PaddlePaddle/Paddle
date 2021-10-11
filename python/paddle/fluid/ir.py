@@ -230,9 +230,6 @@ class PassDesc(object):
             self._type = type
 
         def __getattr__(self, name):
-            if self._type is not None:
-                raise AttributeError(
-                    "type object 'OpHelper' has no attribute '{}'".format(name))
             op = PassDesc.OpHelper(name)
             op.Init()
             return op
@@ -261,7 +258,12 @@ class PassDesc(object):
             self._op_idx = len(block.ops)
             self._op_desc = block.desc.append_op()
             self._op_desc.set_type(self._type)
-            self._op_proto = OpProtoHolder.instance().get_op_proto(self._type)
+            self._op_proto = OpProtoHolder.instance().op_proto_map.get(
+                self._type)
+            if self._op_proto is None:
+                raise AttributeError(
+                    "type object 'OpHelper' has no attribute '{}'".format(
+                        self._type))
             block.ops.append(self)
 
         def Attr(self, name):
