@@ -1,0 +1,5 @@
+cc_test(test_allocator SRCS test_allocator.cc DEPS tcmpt_core)
+cc_test(test_intrusive_ptr SRCS test_intrusive_ptr.cc)
+cc_test(test_storage SRCS test_storage.cc DEPS tcmpt_core)
+cc_test(test_dense_tensor SRCS test_dense_tensor.cc DEPS tcmpt_core)
+cc_test(test_type_info SRCS test_type_info.cc DEPS tcmpt_core)
