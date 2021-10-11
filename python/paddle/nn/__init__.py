@@ -49,6 +49,7 @@ from .layer.activation import Tanhshrink  # noqa: F401
 from .layer.activation import ThresholdedReLU  # noqa: F401
 from .layer.activation import LogSoftmax  # noqa: F401
 from .layer.activation import Maxout  # noqa: F401
+from .layer.adaptive import AdaptiveLogSoftmaxWithLoss  # noqa: F401
 from .layer.common import Pad1D  # noqa: F401
 from .layer.common import Pad2D  # noqa: F401
 from .layer.common import Pad3D  # noqa: F401
