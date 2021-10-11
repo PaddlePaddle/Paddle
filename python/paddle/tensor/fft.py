@@ -21,30 +21,7 @@ from .. import _C_ops
 from ..fluid.data_feeder import check_variable_and_dtype
 from ..fluid.layer_helper import LayerHelper
 
-__all__ = [
-    'fft',
-    'fft2',
-    'fftn',
-    'ifft',
-    'ifft2',
-    'ifftn',
-    'rfft',
-    'rfft2',
-    'rfftn',
-    'irfft',
-    'irfft2',
-    'irfftn',
-    'hfft',
-    'hfft2',
-    'hfftn',
-    'ihfft',
-    'ihfft2',
-    'ihfftn',
-    'fftfreq',
-    'rfftfreq',
-    'fftshift',
-    'ifftshift',
-]
+__all__ = []
 
 
 def _check_normalization(norm):
@@ -1135,7 +1112,24 @@ def ihfft2(x, s=None, axes=(-2, -1), norm="backward", name=None):
             refer to :ref:`api_guide_Name` . 
 
     Returns:
-        out(Tensor) : The result of the inverse real 2-D FFT.
+        out(Tensor) : The result of the inverse hermitian 2-D FFT.
+
+    Examples:
+
+        .. code-block:: python
+
+            import numpy as np
+            import paddle
+
+            x = np.mgrid[:5, :5][0].astype(np.float64)
+            xp = paddle.to_tensor(x)
+            ihfft2_xp = paddle.fft.ihfft2(xp).numpy()
+            print(ihfft2_xp)
+            # [[ 2. +0.j          0. +0.j          0. +0.j        ]
+            #  [-0.5-0.68819096j  0. +0.j          0. +0.j        ]
+            #  [-0.5-0.16245985j  0. +0.j          0. +0.j        ]
+            #  [-0.5+0.16245985j  0. +0.j          0. +0.j        ]
+            #  [-0.5+0.68819096j  0. +0.j          0. +0.j        ]]
     """
     _check_at_least_ndim(x, 2)
     if s is not None:
