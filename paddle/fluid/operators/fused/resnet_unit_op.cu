@@ -201,23 +201,8 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
 
     // 1. Backward of BN (+ Add + Relu) for x, get conv_out_x_grad,
     // scale_x_grad, bias_x_grad
-    T *y_grad_ptr = const_cast<T *>(y_grad->data<T>());
-    T *conv_out_x_ptr = const_cast<T *>(conv_out_x->data<T>());
-    float *scale_x_ptr = const_cast<float *>(scale_x->data<float>());
-    float *bias_x_ptr = const_cast<float *>(bias_x->data<float>());
-    float *saved_mean_x_ptr = const_cast<float *>(saved_mean_x->data<float>());
-    float *saved_invstd_x_ptr =
-        const_cast<float *>(saved_invstd_x->data<float>());
-    int32_t *bitmask_ptr = const_cast<int32_t *>(bitmask->data<int32_t>());
-    float *scale_x_grad_ptr =
-        scale_x_grad ? scale_x_grad->mutable_data<float>(place) : nullptr;
-    float *bias_x_grad_ptr =
-        bias_x_grad ? bias_x_grad->mutable_data<float>(place) : nullptr;
-
-    Tensor conv_out_x_grad;
-    T *conv_out_x_grad_ptr =
-        conv_out_x_grad.mutable_data<T>(conv_out_x->dims(), place);
-
+    Tensor *conv_out_x_grad;
+    conv_out_x_grad->Resize(conv_out_x->dims());
     CudnnScaleBiasAddRelu<T> sbar_x_op(dev_ctx, act_type, fused_add,
                                        has_shortcut, output_shape, param_shape,
                                        bitmask_shape);
@@ -248,77 +233,46 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
 
       // 1.1 Backward of BN + Add (+ Relu) for x, get conv_out_x_grad,
       // scale_x_grad, bias_x_grad and z_grad_temp
-      Tensor z_grad_temp;
-      T *z_grad_temp_ptr =
-          z_grad_temp.mutable_data<T>(conv_out_z->dims(), place);
-      sbar_x_op.Backward(dev_ctx, y_grad_ptr, conv_out_x_ptr, scale_x_ptr,
-                         bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
-                         bitmask_ptr, conv_out_x_grad_ptr, z_grad_temp_ptr,
-                         scale_x_grad_ptr, bias_x_grad_ptr, eps);
+      Tensor *z_grad_temp;
+      z_grad_temp->Resize(conv_out_z->dims());
+      sbar_x_op.Backward(dev_ctx, y_grad, conv_out_x, scale_x, bias_x,
+                         saved_mean_x, saved_invstd_x, bitmask, conv_out_x_grad,
+                         z_grad_temp, scale_x_grad, bias_x_grad, eps);
 
       // 1.2 bn backward for z, get conv_out_z_grad, dscale_z, dbias_z
-      T *conv_out_z_ptr = const_cast<T *>(conv_out_z->data<T>());
-      float *scale_z_ptr = const_cast<float *>(scale_z->data<float>());
-      float *bias_z_ptr = const_cast<float *>(bias_z->data<float>());
-      float *saved_mean_z_ptr =
-          const_cast<float *>(saved_mean_z->data<float>());
-      float *saved_invstd_z_ptr =
-          const_cast<float *>(saved_invstd_z->data<float>());
-      float *scale_z_grad_ptr = scale_z_grad->mutable_data<float>(place);
-      float *bias_z_grad_ptr = bias_z_grad->mutable_data<float>(place);
-
-      Tensor conv_out_z_grad;
-      T *conv_out_z_grad_ptr =
-          conv_out_z_grad.mutable_data<T>(conv_out_z->dims(), place);
-
+      Tensor *conv_out_z_grad;
+      conv_out_z_grad->Resize(conv_out_z->dims());
       CudnnScaleBiasAddRelu<T> sbar_z_op(
           dev_ctx, "", false, false, output_shape, param_shape, bitmask_shape);
-      sbar_z_op.Backward(dev_ctx, z_grad_temp_ptr, conv_out_z_ptr, scale_z_ptr,
-                         bias_z_ptr, saved_mean_z_ptr, saved_invstd_z_ptr,
-                         nullptr, conv_out_z_grad_ptr, nullptr,
-                         scale_z_grad_ptr, bias_z_grad_ptr, eps);
+      sbar_z_op.Backward(dev_ctx, z_grad_temp, conv_out_z, scale_z, bias_z,
+                         saved_mean_z, saved_invstd_z, nullptr, conv_out_z_grad,
+                         nullptr, scale_z_grad, bias_z_grad, eps);
 
       // 1.3 Backward of Conv for z, get z_grad and filter_z_grad
-      T *z_ptr = const_cast<T *>(z->data<T>());
-      T *filter_z_ptr = const_cast<T *>(filter_z->data<T>());
-      T *z_grad_ptr = z_grad ? z_grad->mutable_data<T>(place) : nullptr;
-      T *filter_z_grad_ptr =
-          filter_z_grad ? filter_z_grad->mutable_data<T>(place) : nullptr;
-
       auto z_shape = framework::vectorize<int>(z->dims());
       auto filter_z_shape = framework::vectorize<int>(filter_z->dims());
       CudnnNormConvolutionGrad<T> conv_z_op(dev_ctx, z_shape, filter_z_shape,
                                             output_shape, pad, stride_z, dilate,
                                             group);
-      conv_z_op.Backward(dev_ctx, z_ptr, conv_out_z_grad_ptr, filter_z_ptr,
-                         z_grad_ptr, filter_z_grad_ptr);
+      conv_z_op.Backward(dev_ctx, z, filter_z, conv_out_z_grad, z_grad,
+                         filter_z_grad);
     } else {
-      T *z_grad_ptr = nullptr;
       // 1.1 Backward of BN (+ Add + Relu) for x, get conv_out_x_grad,
       // scale_x_grad, bias_x_grad (and z_grad)
-      if (fused_add) {
-        Tensor *z_grad = ctx.Output<Tensor>(framework::GradVarName("Z"));
-        z_grad_ptr = z_grad->mutable_data<T>(place);
-      }
-      sbar_x_op.Backward(dev_ctx, y_grad_ptr, conv_out_x_ptr, scale_x_ptr,
-                         bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
-                         bitmask_ptr, conv_out_x_grad_ptr, z_grad_ptr,
-                         scale_x_grad_ptr, bias_x_grad_ptr, eps);
+      Tensor *z_grad =
+          fused_add ? ctx.Output<Tensor>(framework::GradVarName("Z")) : nullptr;
+      sbar_x_op.Backward(dev_ctx, y_grad, conv_out_x, scale_x, bias_x,
+                         saved_mean_x, saved_invstd_x, bitmask, conv_out_x_grad,
+                         z_grad, scale_x_grad, bias_x_grad, eps);
     }
 
     // 2. Backward of Conv for x, get x_grad and filter_x_grad
-    T *x_ptr = const_cast<T *>(x->data<T>());
-    T *filter_x_ptr = const_cast<T *>(filter_x->data<T>());
-    T *x_grad_ptr = x_grad ? x_grad->mutable_data<T>(place) : nullptr;
-    T *filter_x_grad_ptr =
-        filter_x_grad ? filter_x_grad->mutable_data<T>(place) : nullptr;
-
     bool use_addto = ctx.Attr<bool>("use_addto");
     CudnnNormConvolutionGrad<T> conv_x_op(dev_ctx, x_shape, filter_x_shape,
                                           output_shape, pad, stride, dilate,
                                           group);
-    conv_x_op.Backward(dev_ctx, x_ptr, conv_out_x_grad_ptr, filter_x_ptr,
-                       x_grad_ptr, filter_x_grad_ptr, use_addto);
+    conv_x_op.Backward(dev_ctx, x, filter_x, conv_out_x_grad, x_grad,
+                       filter_x_grad, use_addto);
   }
 };
 

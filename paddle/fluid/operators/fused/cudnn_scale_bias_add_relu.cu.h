@@ -156,16 +156,30 @@ class CudnnScaleBiasAddRelu {
         fwd_workspace_byte_);
   }
 
-  void Backward(const platform::CUDADeviceContext &ctx, T *dy_ptr, T *x_ptr,
-                float *scale_ptr, float *bias_ptr, float *saved_mean_ptr,
-                float *saved_invstd_ptr, int32_t *bitmask_ptr, T *dx_ptr,
-                T *dz_ptr, float *dscale_ptr, float *dbias_ptr, double eps) {
+  void Backward(const platform::CUDADeviceContext &ctx, const Tensor *dy,
+                const Tensor *x, const Tensor *scale, const Tensor *bias,
+                const Tensor *saved_mean, const Tensor *saved_invstd,
+                const Tensor *bitmask, Tensor *dx, Tensor *dz, Tensor *dscale,
+                Tensor *dbias, double eps) {
     BackwardInit(ctx);
     auto handle = ctx.cudnn_handle();
+    auto place = ctx.GetPlace();
     auto workspace_handle = ctx.cudnn_workspace_handle();
     bwd_workspace_byte_ = bwd_op_.GetWorkspaceSizeInBytes(handle);
     // Set variant_param
     // input ptr
+    T *dy_ptr = const_cast<T *>(dy->data<T>());
+    T *x_ptr = const_cast<T *>(x->data<T>());
+    float *scale_ptr = const_cast<float *>(scale->data<float>());
+    float *bias_ptr = const_cast<float *>(bias->data<float>());
+    float *saved_mean_ptr = const_cast<float *>(saved_mean->data<float>());
+    float *saved_invstd_ptr = const_cast<float *>(saved_invstd->data<float>());
+    int32_t *bitmask_ptr = const_cast<int32_t *>(bitmask->data<int32_t>());
+    T *dx_ptr = dx->mutable_data<T>(place);
+    T *dz_ptr = dz->mutable_data<T>(place);
+    float *dscale_ptr = dscale ? dscale->mutable_data<float>(place) : nullptr;
+    float *dbias_ptr = dbias ? dbias->mutable_data<float>(place) : nullptr;
+
     bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, x_ptr);
     bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_DYDATA, dy_ptr);
     bwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_SCALE, scale_ptr);

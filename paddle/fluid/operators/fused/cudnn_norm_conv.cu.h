@@ -221,22 +221,29 @@ class CudnnNormConvolutionGrad {
   }
   ~CudnnNormConvolutionGrad() {}
 
-  void Backward(const platform::CUDADeviceContext &ctx, T *input_ptr,
-                T *output_grad_ptr, T *filter_ptr, T *input_grad_ptr,
-                T *filter_grad_ptr, bool use_addto = false) {
-    if (filter_grad_ptr) {
-      BackwardFilter(ctx, input_ptr, output_grad_ptr, filter_ptr,
-                     filter_grad_ptr);
+  void Backward(const platform::CUDADeviceContext &ctx, const Tensor *input,
+                const Tensor *filter, Tensor *output_grad, Tensor *input_grad,
+                Tensor *filter_grad, bool use_addto = false) {
+    auto place = ctx.GetPlace();
+    T *input_ptr = const_cast<T *>(input->data<T>());
+    T *output_grad_ptr = output_grad->mutable_data<T>(place);
+    T *filter_ptr = const_cast<T *>(filter->data<T>());
+    T *input_grad_ptr =
+        input_grad ? input_grad->mutable_data<T>(place) : nullptr;
+    T *filter_grad_ptr =
+        filter_grad ? filter_grad->mutable_data<T>(place) : nullptr;
+
+    if (filter_grad) {
+      BackwardFilter(ctx, output_grad_ptr, input_ptr, filter_grad_ptr);
     }
-    if (input_grad_ptr) {
-      BackwardData(ctx, input_ptr, output_grad_ptr, filter_ptr, input_grad_ptr,
-                   use_addto);
+    if (input_grad) {
+      BackwardData(ctx, output_grad_ptr, filter_ptr, input_grad_ptr, use_addto);
     }
   }
 
  private:
-  void BackwardFilter(const platform::CUDADeviceContext &ctx, T *input_ptr,
-                      T *output_grad_ptr, T *filter_ptr, T *filter_grad_ptr) {
+  void BackwardFilter(const platform::CUDADeviceContext &ctx,
+                      T *output_grad_ptr, T *input_ptr, T *filter_grad_ptr) {
     auto cudnn_handle = ctx.cudnn_handle();
 
     CudnnFusionOp *wgrad_op = GetBackwardFilterOp(ctx);
@@ -261,9 +268,8 @@ class CudnnNormConvolutionGrad {
         workspace_size);
   }
 
-  void BackwardData(const platform::CUDADeviceContext &ctx, T *input_ptr,
-                    T *output_grad_ptr, T *filter_ptr, T *input_grad_ptr,
-                    bool use_addto = false) {
+  void BackwardData(const platform::CUDADeviceContext &ctx, T *output_grad_ptr,
+                    T *filter_ptr, T *input_grad_ptr, bool use_addto = false) {
     auto cudnn_handle = ctx.cudnn_handle();
     size_t workspace_size = GetWorkspaceSizeBwdData(ctx);
 

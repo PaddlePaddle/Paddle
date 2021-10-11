@@ -348,11 +348,8 @@ class CudnnNormConvolutionTester {
     TensorCopySync(cpu_filter_nhwc_, place, &filter_nhwc);
     TensorCopySync(cpu_output_grad_, place, &output_grad);
 
-    T *input_ptr = input.data<T>();
-    T *filter_ptr = filter_nhwc.data<T>();
-    T *output_grad_ptr = output_grad.data<T>();
-    T *input_grad_ptr = input_grad.mutable_data<T>(input.dims(), place);
-    T *filter_grad_ptr = filter_grad.mutable_data<T>(filter_nhwc.dims(), place);
+    input_grad.Resize(input.dims());
+    filter_grad.Resize(filter_nhwc.dims());
 
     auto input_shape = framework::vectorize<int>(input.dims());
     auto filter_shape = framework::vectorize<int>(filter_nhwc.dims());
@@ -360,8 +357,8 @@ class CudnnNormConvolutionTester {
     op::CudnnNormConvolutionGrad<T> conv_grad_op(ctx, input_shape, filter_shape,
                                                  output_shape, padding_,
                                                  stride_, dilation_, group_);
-    conv_grad_op.Backward(ctx, input_ptr, output_grad_ptr, filter_ptr,
-                          input_grad_ptr, filter_grad_ptr);
+    conv_grad_op.Backward(ctx, &input, &filter_nhwc, &output_grad, &input_grad,
+                          &filter_grad);
 
     TensorCopySync(input_grad, platform::CPUPlace(), cpu_input_grad);
     TensorCopySync(filter_grad, platform::CPUPlace(), cpu_filter_grad);
