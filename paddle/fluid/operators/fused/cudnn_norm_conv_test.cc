@@ -229,6 +229,15 @@ class CudnnNormConvolutionTester {
             platform::DeviceContextPool::Instance().Get(
                 platform::CUDAPlace(0)));
 
+    if (!Support(*ctx)) {
+      LOG(INFO)
+          << "Current test is only supported in the platforms with "
+          << "compatiblity greater than or equal to 70 and the kernel size "
+          << "must be equal to 1 or 3. Besides, when the kernel size is 1, "
+          << "the stride must be 1 if the compatiblity is equal to 70.";
+      return;
+    }
+
     framework::Tensor cpu_output_base;
     framework::Tensor cpu_sum_base;
     framework::Tensor cpu_sum_of_square_base;
@@ -372,6 +381,19 @@ class CudnnNormConvolutionTester {
     TensorCopySync(filter_grad, platform::CPUPlace(), cpu_filter_grad);
   }
 
+  bool Support(const platform::CUDADeviceContext &ctx) {
+    if (ctx.GetComputeCapability() == 70) {
+      if ((kernel_size_ == 3) || ((kernel_size_ == 1) && (stride_ == 1))) {
+        return true;
+      }
+    } else if (ctx.GetComputeCapability() > 70) {
+      if ((kernel_size_ == 3) || (kernel_size_ == 1)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
  private:
   int batch_size_;
   int height_;
@@ -445,11 +467,11 @@ TEST(CudnnNormConvFp16, K1S1O4) {
 
 // test for fp16, kernel = 1, stride = 2, output_channels = input_channels * 4
 TEST(CudnnNormConvFp16, K1S2O4) {
-  int batch_size = 1;
+  int batch_size = 4;
   int height = 8;
   int width = 8;
-  int input_channels = 8;
-  int output_channels = 32;
+  int input_channels = 32;
+  int output_channels = 128;
   int kernel_size = 1;
   int stride = 2;
   CudnnNormConvolutionTester<paddle::platform::float16> test(
