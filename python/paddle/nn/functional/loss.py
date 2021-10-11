@@ -1700,19 +1700,26 @@ def cross_entropy(input,
                 out = _C_ops.elementwise_mul(out, weight_gather_reshape)
 
             else:
-                if input.shape[-1] != weight.shape[-1]:
+                if input.shape[axis] != weight.shape[-1]:
                     raise ValueError(
-                        "input's class_dimension({}) must equal to \
-                        weight's class_dimension({}) \
-                            when weight is provided"
-                        .format(input.shape[-1], weight.shape[-1]))
+                        "input's class_dimension({}) must equal to "
+                        "weight's class_dimension({}) "
+                            "when weight is provided"\
+                        .format(input.shape[axis], weight.shape[-1]))
 
                 ignore_weight_mask = paddle.cast((label != ignore_index),
                                                  out.dtype)
                 if ignore_weight_mask.ndim > 1 and ignore_weight_mask.shape[
-                        -1] == 1:
-                    ignore_weight_mask.squeeze_(-1)
-                weight_gather = _C_ops.gather_nd(weight, valid_label)
+                        axis] == 1:
+                    ignore_weight_mask.squeeze_(axis)
+                if axis != -1:
+                    temp_perm = list(range(axis % valid_label.ndim)) \
+                                + list(range((axis + 1) % valid_label.ndim, valid_label.ndim)) \
+                                + [axis%valid_label.ndim]
+                    weight_gather = _C_ops.gather_nd(
+                        weight, valid_label.transpose(temp_perm))
+                else:
+                    weight_gather = _C_ops.gather_nd(weight, valid_label)
                 weight_gather = _C_ops.elementwise_mul(weight_gather,
                                                        ignore_weight_mask)
                 input_shape = list(label.shape)
@@ -1807,20 +1814,27 @@ def cross_entropy(input,
             weight_gather_reshape = reshape(weight_gather, shape=out_shape)
             out = paddle.cast(out, weight_gather_reshape.dtype)
         else:
-            if input.shape[-1] != weight.shape[-1]:
-                raise ValueError("input's class_dimension({}) must equal to "\
-                        "weight's class_dimension({}) "\
-                            "when weight is provided"
-                                 .format(input.shape[-1], weight.shape[-1]))
+            if input.shape[axis] != weight.shape[-1]:
+                raise ValueError("input's class_dimension({}) must equal to "
+                        "weight's class_dimension({}) "
+                            "when weight is provided"\
+                                 .format(input.shape[axis], weight.shape[-1]))
 
             valid_label = paddle.where(label == ignore_index,
                                        paddle.zeros_like(label), label)
             ignore_weight_mask = paddle.cast((label != ignore_index),
                                              input.dtype)
             if ignore_weight_mask.ndim > 1 and ignore_weight_mask.shape[
-                    -1] == 1:
-                ignore_weight_mask = paddle.squeeze(ignore_weight_mask, -1)
-            weight_gather = paddle.gather_nd(weight, valid_label)
+                    axis] == 1:
+                ignore_weight_mask = paddle.squeeze(ignore_weight_mask, axis)
+            if axis != -1:
+                temp_perm = list(range(axis % valid_label.ndim)) \
+                            + list(range((axis + 1) % valid_label.ndim, valid_label.ndim)) \
+                            + [axis % valid_label.ndim]
+                weight_gather = paddle.gather_nd(
+                    weight, paddle.transpose(valid_label, temp_perm))
+            else:
+                weight_gather = paddle.gather_nd(weight, valid_label)
             weight_gather = paddle.multiply(weight_gather, ignore_weight_mask)
 
             input_shape = list(label.shape)
