@@ -79,44 +79,27 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
     auto &dev_ctx = ctx.template device_context<platform::CUDADeviceContext>();
 
     // 1. Conv
-    T *input_x_ptr = const_cast<T *>(input_x->data<T>());
-    T *filter_x_ptr = const_cast<T *>(filter_x->data<T>());
-    T *conv_out_x_ptr = conv_out_x->mutable_data<T>(place);
-
-    Tensor sum_x;
-    Tensor sum_of_squares_x;
-    float *sum_x_ptr = sum_x.mutable_data<float>(param_dims, place);
-    float *sum_of_squares_x_ptr =
-        sum_of_squares_x.mutable_data<float>(param_dims, place);
-
+    Tensor *sum_x;
+    Tensor *sum_of_squares_x;
+    sum_x->Resize(param_dims);
+    sum_of_squares_x->Resize(param_dims);
     CudnnNormConvolution<T> conv_x_op(dev_ctx, input_x_shape, filter_x_shape,
                                       output_shape, pad, stride, dilate, group);
-    conv_x_op.Forward(dev_ctx, input_x_ptr, filter_x_ptr, conv_out_x_ptr,
-                      sum_x_ptr, sum_of_squares_x_ptr);
+    conv_x_op.Forward(dev_ctx, input_x, filter_x, conv_out_x, sum_x,
+                      sum_of_squares_x);
 
     // 2. BN
-    float *scale_x_ptr = const_cast<float *>(scale_x->data<float>());
-    float *bias_x_ptr = const_cast<float *>(bias_x->data<float>());
-    float *saved_mean_x_ptr = saved_mean_x->mutable_data<float>(place);
-    float *saved_invstd_x_ptr = saved_invstd_x->mutable_data<float>(place);
-    float *running_mean_x_ptr = running_mean_x->mutable_data<float>(place);
-    float *running_var_x_ptr = running_var_x->mutable_data<float>(place);
-
-    Tensor equiv_scale_x;
-    Tensor equiv_bias_x;
-    T *equiv_scale_x_ptr = equiv_scale_x.mutable_data<T>(param_dims, place);
-    T *equiv_bias_x_ptr = equiv_bias_x.mutable_data<T>(param_dims, place);
-
+    Tensor *equiv_scale_x;
+    Tensor *equiv_bias_x;
+    equiv_scale_x->Resize(param_dims);
+    equiv_bias_x->Resize(param_dims);
     CudnnBNStatsFinalize<T> bn_x_op(dev_ctx, param_shape);
-    bn_x_op.Forward(dev_ctx, sum_x_ptr, sum_of_squares_x_ptr, scale_x_ptr,
-                    bias_x_ptr, saved_mean_x_ptr, saved_invstd_x_ptr,
-                    running_mean_x_ptr, running_var_x_ptr, equiv_scale_x_ptr,
-                    equiv_bias_x_ptr, eps, momentum, ele_count, is_train);
+    bn_x_op.Forward(dev_ctx, sum_x, sum_of_squares_x, scale_x, bias_x,
+                    saved_mean_x, saved_invstd_x, running_mean_x, running_var_x,
+                    equiv_scale_x, equiv_bias_x, eps, momentum, ele_count,
+                    is_train);
 
     // 3. scale + bias + add + relu
-    T *output_ptr = output->mutable_data<T>(place);
-    int32_t *bitmask_ptr = bitmask->mutable_data<int32_t>(place);
-
     CudnnScaleBiasAddRelu<T> sbar_op(dev_ctx, act_type, fused_add, has_shortcut,
                                      output_shape, param_shape, bitmask_shape);
     if (has_shortcut) {
@@ -137,52 +120,33 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
       auto filter_z_shape = framework::vectorize<int>(filter_z->dims());
 
       // 3.1 Conv for second input
-      T *input_z_ptr = const_cast<T *>(input_z->data<T>());
-      T *filter_z_ptr = const_cast<T *>(filter_z->data<T>());
-      T *conv_out_z_ptr = conv_out_z->mutable_data<T>(place);
-
-      Tensor sum_z;
-      Tensor sum_of_squares_z;
-      float *sum_z_ptr = sum_z.mutable_data<float>(param_dims, place);
-      float *sum_of_squares_z_ptr =
-          sum_of_squares_z.mutable_data<float>(param_dims, place);
-
+      Tensor *sum_z;
+      Tensor *sum_of_squares_z;
+      sum_z->Resize(param_dims);
+      sum_of_squares_z->Resize(param_dims);
       CudnnNormConvolution<T> conv_z_op(dev_ctx, input_z_shape, filter_z_shape,
                                         output_shape, pad, stride_z, dilate,
                                         group);
-      conv_z_op.Forward(dev_ctx, input_z_ptr, filter_z_ptr, conv_out_z_ptr,
-                        sum_z_ptr, sum_of_squares_z_ptr);
+      conv_z_op.Forward(dev_ctx, input_z, filter_z, conv_out_z, sum_z,
+                        sum_of_squares_z);
 
       // 3.2 BN for second input
-      float *scale_z_ptr = const_cast<float *>(scale_z->data<float>());
-      float *bias_z_ptr = const_cast<float *>(bias_z->data<float>());
-      float *saved_mean_z_ptr = saved_mean_z->mutable_data<float>(place);
-      float *saved_invstd_z_ptr = saved_invstd_z->mutable_data<float>(place);
-      float *running_mean_z_ptr = running_mean_z->mutable_data<float>(place);
-      float *running_var_z_ptr = running_var_z->mutable_data<float>(place);
-
-      Tensor equiv_scale_z;
-      Tensor equiv_bias_z;
-      T *equiv_scale_z_ptr = equiv_scale_z.mutable_data<T>(param_dims, place);
-      T *equiv_bias_z_ptr = equiv_bias_z.mutable_data<T>(param_dims, place);
-
+      Tensor *equiv_scale_z;
+      Tensor *equiv_bias_z;
+      equiv_scale_z->Resize(param_dims);
+      equiv_bias_z->Resize(param_dims);
       CudnnBNStatsFinalize<T> bn_z_op(dev_ctx, param_shape);
-      bn_z_op.Forward(dev_ctx, sum_z_ptr, sum_of_squares_z_ptr, scale_z_ptr,
-                      bias_z_ptr, saved_mean_z_ptr, saved_invstd_z_ptr,
-                      running_mean_z_ptr, running_var_z_ptr, equiv_scale_z_ptr,
-                      equiv_bias_z_ptr, eps, momentum, ele_count, is_train);
+      bn_z_op.Forward(dev_ctx, sum_z, sum_of_squares_z, scale_z, bias_z,
+                      saved_mean_z, saved_invstd_z, running_mean_z,
+                      running_var_z, equiv_scale_z, equiv_bias_z, eps, momentum,
+                      ele_count, is_train);
       // 3.3 sbar
-      sbar_op.Forward(dev_ctx, conv_out_x_ptr, equiv_scale_x_ptr,
-                      equiv_bias_x_ptr, output_ptr, bitmask_ptr, conv_out_z_ptr,
-                      equiv_scale_z_ptr, equiv_bias_z_ptr);
+      sbar_op.Forward(dev_ctx, conv_out_x, equiv_scale_x, equiv_bias_x, output,
+                      bitmask, conv_out_z, equiv_scale_z, equiv_bias_z);
     } else {
-      T *input_z_ptr = nullptr;
-      if (fused_add) {
-        const Tensor *input_z = ctx.Input<Tensor>("Z");
-        input_z_ptr = const_cast<T *>(input_z->data<T>());
-      }
-      sbar_op.Forward(dev_ctx, conv_out_x_ptr, equiv_scale_x_ptr,
-                      equiv_bias_x_ptr, output_ptr, bitmask_ptr, input_z_ptr);
+      const Tensor *input_z = fused_add ? ctx.Input<Tensor>("Z") : nullptr;
+      sbar_op.Forward(dev_ctx, conv_out_x, equiv_scale_x, equiv_bias_x, output,
+                      bitmask, const_cast<Tensor *>(input_z));
     }
   }
 };

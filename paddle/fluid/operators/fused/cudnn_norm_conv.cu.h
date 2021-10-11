@@ -120,10 +120,11 @@ class CudnnNormConvolution {
   }
   ~CudnnNormConvolution() {}
 
-  void Forward(const platform::CUDADeviceContext &ctx, T *input_ptr,
-               T *filter_ptr, T *output_ptr, float *sum_ptr,
-               float *sum_of_squares_ptr) {
+  void Forward(const platform::CUDADeviceContext &ctx, const Tensor *input,
+               const Tensor *filter, Tensor *output, Tensor *sum,
+               Tensor *sum_of_squares) {
     auto cudnn_handle = ctx.cudnn_handle();
+    auto place = ctx.GetPlace();
 
     CudnnFusionOp *fwd_op = GetForwardOp(ctx);
     size_t workspace_size = RoundUp(
@@ -132,12 +133,17 @@ class CudnnNormConvolution {
 
     // Set variant_param
     // input ptr
+    T *input_ptr = const_cast<T *>(input->data<T>());
+    T *filter_ptr = const_cast<T *>(filter->data<T>());
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, input_ptr);
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_WDATA, filter_ptr);
     fwd_op->SetOpVariantParamAttrPtr(
         CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &workspace_size);
 
     // output ptr
+    T *output_ptr = output->mutable_data<T>(place);
+    float *sum_ptr = sum->mutable_data<float>(place);
+    float *sum_of_squares_ptr = sum_of_squares->mutable_data<float>(place);
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_YDATA, output_ptr);
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_YSUM, sum_ptr);
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_YSQSUM, sum_of_squares_ptr);

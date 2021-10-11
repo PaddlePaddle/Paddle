@@ -107,25 +107,32 @@ class CudnnScaleBiasAddRelu {
 
   ~CudnnScaleBiasAddRelu() {}
 
-  void Forward(const platform::CUDADeviceContext &ctx, T *x_ptr, T *x_scale_ptr,
-               T *x_bias_ptr, T *out_ptr, int32_t *bitmask_ptr,
-               T *z_ptr = nullptr, T *z_scale_ptr = nullptr,
-               T *z_bias_ptr = nullptr) {
+  void Forward(const platform::CUDADeviceContext &ctx, Tensor *x,
+               Tensor *x_scale, Tensor *x_bias, Tensor *out, Tensor *bitmask,
+               Tensor *z, Tensor *z_scale = nullptr, Tensor *z_bias = nullptr) {
     ForwardInit(ctx);
     auto handle = ctx.cudnn_handle();
+    auto place = ctx.GetPlace();
     auto workspace_handle = ctx.cudnn_workspace_handle();
     fwd_workspace_byte_ = fwd_op_.GetWorkspaceSizeInBytes(handle);
     // Set variant_param
     // input ptr
+    T *x_ptr = x->mutable_data<T>(place);
+    T *x_scale_ptr = x_scale->mutable_data<T>(place);
+    T *x_bias_ptr = x_bias->mutable_data<T>(place);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, x_ptr);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQSCALE, x_scale_ptr);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQBIAS, x_bias_ptr);
     if (has_shortcut_) {
+      T *z_ptr = z->mutable_data<T>(place);
+      T *z_scale_ptr = z_scale->mutable_data<T>(place);
+      T *z_bias_ptr = z_bias->mutable_data<T>(place);
       fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ZDATA, z_ptr);
       fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_Z_EQSCALE, z_scale_ptr);
       fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_Z_EQBIAS, z_bias_ptr);
     } else {
       if (fused_add_) {
+        T *z_ptr = z->data<T>();
         fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ZDATA, z_ptr);
       }
     }
@@ -134,6 +141,8 @@ class CudnnScaleBiasAddRelu {
         CUDNN_SCALAR_SIZE_T_WORKSPACE_SIZE_IN_BYTES, &fwd_workspace_byte_);
 
     // output ptr
+    T *out_ptr = out->mutable_data<T>(place);
+    int32_t *bitmask_ptr = bitmask->mutable_data<int32_t>(place);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_YDATA, out_ptr);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ACTIVATION_BITMASK, bitmask_ptr);
 

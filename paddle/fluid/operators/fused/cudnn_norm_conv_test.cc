@@ -316,14 +316,10 @@ class CudnnNormConvolutionTester {
     TensorCopySync(cpu_input_, place, &input);
     TensorCopySync(cpu_filter_nhwc_, place, &filter_nhwc);
 
-    T *input_ptr = input.data<T>();
-    T *filter_ptr = filter_nhwc.data<T>();
-    T *output_ptr = output.mutable_data<T>(
-        {batch_size_, out_height_, out_width_, output_channels_}, place);
-    float *sum_ptr =
-        sum.mutable_data<float>({1, 1, 1, output_channels_}, place);
-    float *sum_of_square_ptr =
-        sum_of_square.mutable_data<float>({1, 1, 1, output_channels_}, place);
+    output.Resize(framework::make_ddim(
+        {batch_size_, out_height_, out_width_, output_channels_}));
+    sum.Resize(framework::make_ddim({1, 1, 1, output_channels_}));
+    sum_of_square.Resize(framework::make_ddim({1, 1, 1, output_channels_}));
 
     auto input_shape = framework::vectorize<int>(input.dims());
     auto filter_shape = framework::vectorize<int>(filter_nhwc.dims());
@@ -331,8 +327,7 @@ class CudnnNormConvolutionTester {
     op::CudnnNormConvolution<T> conv_op(ctx, input_shape, filter_shape,
                                         output_shape, padding_, stride_,
                                         dilation_, group_);
-    conv_op.Forward(ctx, input_ptr, filter_ptr, output_ptr, sum_ptr,
-                    sum_of_square_ptr);
+    conv_op.Forward(ctx, &input, &filter_nhwc, &output, &sum, &sum_of_square);
 
     TensorCopySync(output, platform::CPUPlace(), cpu_output);
     TensorCopySync(sum, platform::CPUPlace(), cpu_sum);
