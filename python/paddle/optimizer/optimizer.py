@@ -426,7 +426,7 @@ class Optimizer(object):
         """
         Get current learning rate of optimizer. 
         If 'LRScheduler' is not used, the return value is all the same.
-        If 'LRScheduler' is used, the return value is the current scheduled learing rete.
+        If 'LRScheduler' is used, the return value is the current scheduled learning rate.
 
         Returns:
             float: The current learning rate of optimizer.
