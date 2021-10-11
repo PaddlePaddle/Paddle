@@ -21,6 +21,9 @@ except ImportError:
      import paddle from the source directory; please install paddlepaddle*.whl firstly.'''
                      )
 
+import os
+os.environ['CUDA_CACHE_MAXSIZE'] = '805306368'
+
 from .batch import batch  # noqa: F401
 from .fluid import monkey_patch_variable
 from .fluid.dygraph import monkey_patch_math_varbase
