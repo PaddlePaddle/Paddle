@@ -949,9 +949,7 @@ def mm(input, mat2, name=None):
 
     """
     if in_dygraph_mode():
-        out = _varbase_creator(dtype=input.dtype)
-        _C_ops.matmul_v2(input, mat2, out)
-        return out
+        return _C_ops.matmul_v2(input, mat2)
 
     def __check_input(x, y):
         var_names = {'x': x, 'y': y}
