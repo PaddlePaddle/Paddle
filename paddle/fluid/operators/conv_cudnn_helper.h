@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/operator_kernel_configs.h"
 #include "paddle/fluid/operators/conv_cudnn_op_cache.h"
 #include "paddle/fluid/operators/eigen/eigen_function.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/cudnn_desc.h"
 namespace paddle {
 namespace operators {
@@ -480,6 +481,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
   static algo_t Find(const ConvArgs& args, bool exhaustive_search,
                      bool deterministic,
                      const framework::ExecutionContext& ctx) {
+    platform::CUDAGraphCaptureModeGuard guard;
     auto dtype = platform::CudnnDataType<T>::type;
     size_t workspace_size_limit = FLAGS_conv_workspace_size_limit * 1024 * 1024;
     size_t workspace_size = 0;
@@ -601,6 +603,7 @@ struct SearchAlgorithm<cudnnConvolutionBwdFilterAlgoPerf_t> {
   }
 
   static size_t GetWorkspaceSize(const ConvArgs& args, algo_t algo) {
+    platform::CUDAGraphCaptureModeGuard guard;
     size_t workspace_size = 0;
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnGetConvolutionBackwardFilterWorkspaceSize(
