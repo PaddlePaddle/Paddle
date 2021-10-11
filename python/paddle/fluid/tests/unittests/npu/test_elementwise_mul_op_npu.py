@@ -31,19 +31,16 @@ class TestElementwiseMul(OpTest):
         self.set_npu()
         self.op_type = "elementwise_mul"
         self.place = paddle.NPUPlace(0)
-
+        self.init_axis()
         self.init_dtype()
-        np.random.seed(SEED)
-        x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
-        out = np.multiply(x, y)
+        self.init_input_output()
 
         self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
+            'X': OpTest.np_dtype_to_fluid_dtype(self.x),
+            'Y': OpTest.np_dtype_to_fluid_dtype(self.y)
         }
-        self.attrs = {}
-        self.outputs = {'Out': out}
+        self.attrs = {'axis': self.axis}
+        self.outputs = {'Out': self.out}
 
     def set_npu(self):
         self.__class__.use_npu = True
@@ -51,45 +48,93 @@ class TestElementwiseMul(OpTest):
     def init_dtype(self):
         self.dtype = np.float32
 
+    def init_axis(self):
+        self.axis = -1
+
+    def init_input_output(self):
+        np.random.seed(SEED)
+        self.x = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        self.y = np.random.uniform(1, 2, [11, 17]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
     def test_check_output(self):
         self.check_output_with_place(self.place)
 
-    # TODO(ascendrc): Mul grad test
-    # def test_check_grad(self):
-    #     if self.dtype == np.float16:
-    #         return
-    #     self.check_grad(['X'], 'Out')
-    #
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
+
+    def test_check_grad_ignore_x(self):
+        self.check_grad_with_place(
+            self.place, ['Y'], 'Out', no_grad_set=set("X"))
+
+    def test_check_grad_ignore_y(self):
+        self.check_grad_with_place(
+            self.place, ['X'], 'Out', no_grad_set=set("Y"))
 
 
-class TestElementwiseMulFp16(OpTest):
-    def setUp(self):
-        self.set_npu()
-        self.op_type = "elementwise_mul"
-        self.place = paddle.NPUPlace(0)
-
-        self.init_dtype()
-        np.random.seed(SEED)
-        x = np.random.uniform(1, 2, [3, 4]).astype(self.dtype)
-        y = np.random.uniform(1, 2, [3, 4]).astype(self.dtype)
-        out = np.multiply(x, y)
-
-        self.inputs = {
-            'X': OpTest.np_dtype_to_fluid_dtype(x),
-            'Y': OpTest.np_dtype_to_fluid_dtype(y)
-        }
-        self.attrs = {}
-        self.outputs = {'Out': out}
-
-    def set_npu(self):
-        self.__class__.use_npu = True
-        self.__class__.no_need_check_grad = True
-
+class TestElementwiseMulFp16(TestElementwiseMul):
     def init_dtype(self):
         self.dtype = np.float16
 
+    def init_input_output(self):
+        np.random.seed(SEED)
+        self.x = np.random.uniform(1, 2, [100, 4]).astype(self.dtype)
+        self.y = np.random.uniform(1, 2, [100, 4]).astype(self.dtype)
+        self.out = np.multiply(self.x, self.y)
+
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5)
+        self.check_output_with_place(self.place, atol=1e-2)
+
+
+class TestElementwiseMul_broadcast_0(TestElementwiseMul):
+    def init_input_output(self):
+        self.x = np.random.rand(100, 2, 3).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x * self.y.reshape(100, 1, 1)
+
+    def init_axis(self):
+        self.axis = 0
+
+
+class TestElementwiseMul_broadcast_1(TestElementwiseMul):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 100, 3).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x * self.y.reshape(1, 100, 1)
+
+    def init_axis(self):
+        self.axis = 1
+
+
+class TestElementwiseMul_broadcast_2(TestElementwiseMul):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 3, 100).astype(self.dtype)
+        self.y = np.random.rand(100).astype(self.dtype)
+        self.out = self.x * self.y.reshape(1, 1, 100)
+
+
+class TestElementwiseMul_broadcast_3(TestElementwiseMul):
+    def init_input_output(self):
+        self.x = np.random.rand(2, 10, 12, 3).astype(self.dtype)
+        self.y = np.random.rand(10, 12).astype(self.dtype)
+        self.out = self.x * self.y.reshape(1, 10, 12, 1)
+
+    def init_axis(self):
+        self.axis = 1
+
+
+class TestElementwiseMulOp_broadcast_4(TestElementwiseMul):
+    def init_input_output(self):
+        self.x = np.random.rand(10, 2, 11).astype(self.dtype)
+        self.y = np.random.rand(10, 1, 11).astype(self.dtype)
+        self.out = self.x * self.y
+
+
+class TestElementwiseMulOp_broadcast_5(TestElementwiseMul):
+    def init_input_output(self):
+        self.x = np.random.rand(10, 4, 2, 3).astype(self.dtype)
+        self.y = np.random.rand(10, 4, 1, 3).astype(self.dtype)
+        self.out = self.x * self.y
 
 
 class TestElementwiseMulNet(unittest.TestCase):

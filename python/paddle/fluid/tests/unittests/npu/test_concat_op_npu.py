@@ -68,6 +68,14 @@ class TestConcat(OpTest):
         self.check_grad_with_place(self.place, ['x2'], 'Out')
 
 
+class TestConcatInt64(TestConcat):
+    def init_dtype(self):
+        self.dtype = np.int64
+
+    def test_check_grad(self):
+        pass
+
+
 class TestConcatFP16(OpTest):
     def setUp(self):
         self.set_npu()
