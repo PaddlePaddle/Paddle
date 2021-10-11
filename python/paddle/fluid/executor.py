@@ -23,7 +23,8 @@ import numpy as np
 from .wrapped_decorator import signature_safe_contextmanager
 import six
 from .data_feeder import convert_dtype
-from .framework import Program, default_main_program, Variable, Operator, convert_np_dtype_to_dtype_
+from .framework import Program, default_main_program, Variable, Operator
+from .framework import convert_np_dtype_to_dtype_, get_flags
 from . import core
 from . import unique_name
 from . import compiler
@@ -1016,7 +1017,16 @@ class Executor(object):
                     check_feed_shape_type(var, feed_tensor, exe.device_count())
                 feed_tensor_dict[feed_name] = feed_tensor
 
-            exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
+            #TODO(zhhsplendid): handle other feed data format case for CINN
+            use_cinn = get_flags("FLAGS_use_cinn")["FLAGS_use_cinn"]
+            if use_cinn:
+                fetch_var_names = list(map(_to_name_str, fetch_list))
+                fetch_tensors = exe.run_from_cinn(
+                    feed_tensor_dict, fetch_var_names)._move_to_list()
+                return as_numpy(
+                    fetch_tensors) if return_numpy else fetch_tensors
+            else:
+                exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
         elif isinstance(feed, list) or isinstance(feed, tuple):
             res = list()
             for i, each in enumerate(feed):
@@ -1036,6 +1046,8 @@ class Executor(object):
                         check_feed_shape_type(var, tensor)
                     res_dict[feed_name] = tensor
                 res.append(res_dict)
+
+            use_cinn = get_flags("FLAGS_use_cinn")["FLAGS_use_cinn"]
             exe.feed_tensors_into_local_scopes(res)
 
         if hasattr(program._program, 'lr_sheduler'):

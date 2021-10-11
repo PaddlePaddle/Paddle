@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "gtest/gtest.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_runner.h"
 
+#include <memory>
+
+#include "gtest/gtest.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/lod_tensor.h"
-#include "paddle/fluid/framework/paddle2cinn/cinn_runner.h"
 #include "paddle/fluid/framework/program_desc.h"
 #include "paddle/fluid/framework/scope.h"
 
@@ -32,8 +34,9 @@ TEST(CinnRunnerTest, TodoTest) {
   Scope empty_scope;
   std::map<std::string, const LoDTensor*> empty_feed;
 
-  CinnRunner cinn_runner;
-  cinn_runner.Run(empty_graph, &empty_scope, &empty_feed);
+  std::shared_ptr<CinnRunner> cinn_runner = CinnRunner::GetInstance();
+  cinn_runner->ReplaceWithCinn(&empty_graph);
+  cinn_runner->Run(empty_graph, &empty_scope, &empty_feed);
 }
 
 }  // namespace paddle2cinn
