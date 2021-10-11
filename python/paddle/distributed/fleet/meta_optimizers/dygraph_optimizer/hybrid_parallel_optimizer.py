@@ -65,10 +65,15 @@ class HybridParallelClipGrad:
             square = layers.square(merge_grad)
             sum_square = layers.reduce_sum(square)
 
-            if p.is_distributed:
-                sum_square_list_dist.append(sum_square)
-            else:
-                sum_square_list_not_dist.append(sum_square)
+            not_shared_enable = (not hasattr(p, 'is_firstly_shared')) or (
+                hasattr(p, 'is_firstly_shared') and
+                getattr(p, 'is_firstly_shared', True))
+
+            if not_shared_enable:
+                if p.is_distributed and not_shared_enable:
+                    sum_square_list_dist.append(sum_square)
+                else:
+                    sum_square_list_not_dist.append(sum_square)
 
         # all parameters have been filterd out
         if len(sum_square_list_dist) + len(sum_square_list_not_dist) == 0:
@@ -85,12 +90,13 @@ class HybridParallelClipGrad:
                     [paddle.to_tensor([0.])])
         global_norm_var_not_dist = layers.reduce_sum(global_norm_var_not_dist)
 
-        # add all reduce to get global norm of distributed params_and_grads in world size of mp
+        # add all reduce to get global norm of distributed params_and_grads
         if self._hcg.get_model_parallel_world_size() > 1:
             paddle.distributed.all_reduce(
                 global_norm_var_dist,
-                group=self._hcg.get_model_parallel_group())
-        # add all reduce to get global norm of non-distributed params_and_grads in world size of pp
+                group=self._hcg.get_check_parallel_group())
+
+        # add all reduce to get global norm of non-distributed params_and_grads in groups of pp
         if self._hcg.get_pipe_parallel_world_size() > 1:
             paddle.distributed.all_reduce(
                 global_norm_var_not_dist,
@@ -144,8 +150,8 @@ class HybridParallelOptimizer:
 
         if isinstance(self._inner_opt._grad_clip,
                       ClipGradByGlobalNorm) and not self._use_dp_mode:
-            logger.warning("using ClipGradByGlobalNorm in TensorParallel or PipelineParallel, " \
-                           "the grad clip of original optimizer will be changed.")
+            logger.warning("While using ClipGradByGlobalNorm in TensorParallel, PipelineParallel " \
+                           "or Sharding, the grad clip of original optimizer will be changed.")
 
             self._inner_opt._grad_clip = HybridParallelClipGrad(
                 self._inner_opt._grad_clip, hcg)
