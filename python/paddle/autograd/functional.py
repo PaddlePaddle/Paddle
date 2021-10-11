@@ -324,6 +324,23 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             
             x = paddle.ones(shape=[2, 2], dtype='float32')
             x.stop_gradient = False
+            vx = paddle.ones(shape=[2, 2], dtype='float32') * 2
+            vhp_rslt = paddle.autograd.vhp(func, x, v=vx)
+            print(vhp_rslt)
+            # (Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+            #        [8.]),
+            #  Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[8., 8.],
+            #         [8., 8.]]))
+
+    Examples 2:
+        .. code-block:: python
+            import paddle
+            def func(x):
+                return paddle.sum(paddle.matmul(x, x))
+            
+            x = paddle.ones(shape=[2, 2], dtype='float32')
+            x.stop_gradient = False
             vhp_rslt = paddle.autograd.vhp(func, x)
             print(vhp_rslt)
             # (Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
@@ -331,6 +348,26 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             #  Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
             #        [[4., 4.],
             #         [4., 4.]]))
+
+    Examples 3:
+        .. code-block:: python
+            import paddle
+            def func(x, y):
+                return paddle.sum(paddle.matmul(x, x))
+            
+            x = paddle.ones(shape=[2, 2], dtype='float32')
+            x.stop_gradient = False
+            y = paddle.ones(shape=[2, 2], dtype='float32')
+            y.stop_gradient = False
+            vx = paddle.ones(shape=[2, 2], dtype='float32') * 2
+            vy = paddle.ones(shape=[2, 2], dtype='float32') * 3
+            vhp_rslt = paddle.autograd.vhp(func, [x, y], v=[vx, vy], allow_unused=True)
+            print(vhp_rslt)
+            # (Tensor(shape=[1], dtype=float32, place=CUDAPlace(0), stop_gradient=False,
+            #        [8.]),
+            # (Tensor(shape=[2, 2], dtype=float32, place=CUDAPlace(0), stop_gradient=True,
+            #        [[8., 8.],
+            #         [8., 8.]]), None))
     '''
     inputs = _check_tensors(inputs, "inputs")
     outputs = func(*inputs)
