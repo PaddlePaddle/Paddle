@@ -194,15 +194,6 @@ struct BinaryOperation {
   }
 };
 
-template <typename DeviceContext, typename T>
-struct ADD : BinaryOperation<DeviceContext, AddFunctor, T> {};
-
-template <typename DeviceContext, typename T>
-struct SUB : BinaryOperation<DeviceContext, SubFunctor, T> {};
-
-template <typename DeviceContext, typename T>
-struct MUL : BinaryOperation<DeviceContext, MulFunctor, T> {};
-
 template <typename DeviceContext>
 struct ARange {
   void operator()(const DeviceContext& dev_ctx, int64_t* data, int end,
@@ -336,12 +327,12 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     start_trans_exp.Resize({1, n_labels});
     auto logit0 = input_exp.Slice(0, 1);
     logit0.Resize({batch_size, n_labels});
-    ADD<DeviceContext, T> AddFloat;
-    ADD<DeviceContext, int64_t> AddInt;
-    MUL<DeviceContext, T> MulFloat;
-    MUL<DeviceContext, int64_t> MulInt;
-    SUB<DeviceContext, T> SubFloat;
-    SUB<DeviceContext, int64_t> SubInt;
+    BinaryOperation<DeviceContext, AddFunctor, T> AddFloat;
+    BinaryOperation<DeviceContext, AddFunctor, int64_t> AddInt;
+    BinaryOperation<DeviceContext, MulFunctor, T> MulFloat;
+    BinaryOperation<DeviceContext, MulFunctor, int64_t> MulInt;
+    BinaryOperation<DeviceContext, SubFunctor, T> SubFloat;
+    BinaryOperation<DeviceContext, SubFunctor, int64_t> SubInt;
 
     if (with_start_stop_tag) {
       AddFloat(dev_ctx, logit0, start_trans_exp, &alpha);
