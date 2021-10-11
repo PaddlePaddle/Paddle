@@ -12,11 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <memory>
-#include <string>
-
-#include "paddle/fluid/operators/npu_op_runner.h"
 #include "paddle/fluid/operators/scale_op.h"
+#include "paddle/fluid/operators/npu_op_runner.h"
 
 namespace paddle {
 namespace operators {
@@ -45,6 +42,33 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
       bias *= scale;
     }
     out->mutable_data<T>(ctx.GetPlace());
+
+#ifdef PADDLE_WITH_ASCEND_INT64
+    if (x->type() == framework::proto::VarType::INT64) {
+      Tensor in_temp(framework::proto::VarType::FP32);
+      in_temp.mutable_data<float>(x->dims(), ctx.GetPlace());
+
+      auto dst_type_fp32 = ConvertToNpuDtype(framework::proto::VarType::FP32);
+      const auto& runner_cast_fp32 =
+          NpuOpRunner("Cast", {*x}, {in_temp},
+                      {{"dst_type", static_cast<int>(dst_type_fp32)}});
+      runner_cast_fp32.Run(stream);
+
+      Tensor out_temp(framework::proto::VarType::FP32);
+      out_temp.mutable_data<float>(out->dims(), ctx.GetPlace());
+      const auto& runner =
+          NpuOpRunner("Power", {in_temp}, {out_temp},
+                      {{"power", power}, {"scale", scale}, {"shift", bias}});
+      runner.Run(stream);
+
+      auto dst_type_int64 = ConvertToNpuDtype(framework::proto::VarType::INT64);
+      const auto& runner_cast_int64 =
+          NpuOpRunner("Cast", {out_temp}, {*out},
+                      {{"dst_type", static_cast<int>(dst_type_int64)}});
+      runner_cast_int64.Run(stream);
+      return;
+    }
+#endif
     const auto& runner =
         NpuOpRunner("Power", {*x}, {*out},
                     {{"power", power}, {"scale", scale}, {"shift", bias}});
@@ -57,4 +81,7 @@ class ScaleNPUKernel : public framework::OpKernel<T> {
 
 REGISTER_OP_NPU_KERNEL(
     scale, paddle::operators::ScaleNPUKernel<float>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+    paddle::operators::ScaleNPUKernel<int64_t>,
+#endif
     paddle::operators::ScaleNPUKernel<paddle::platform::float16>);
