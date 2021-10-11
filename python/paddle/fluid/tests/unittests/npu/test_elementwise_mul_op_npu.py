@@ -82,9 +82,6 @@ class TestElementwiseMulFp16(TestElementwiseMul):
         self.y = np.random.uniform(1, 2, [100, 4]).astype(self.dtype)
         self.out = np.multiply(self.x, self.y)
 
-    def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-2)
-
 
 class TestElementwiseMul_broadcast_0(TestElementwiseMul):
     def init_input_output(self):
