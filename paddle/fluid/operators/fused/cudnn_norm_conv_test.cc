@@ -94,7 +94,7 @@ void CheckOutput(const framework::Tensor &cpu_res,
 // Use Paddle conv2d op results as baseline
 void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
                           const Tensor &cpu_input, const Tensor &cpu_filter,
-                          Tensor *cpu_output, int stride, int pad) {
+                          Tensor *cpu_output, int stride, int padding) {
   framework::Scope scope;
   auto *input = scope.Var("Input")->GetMutable<framework::LoDTensor>();
   auto *filter = scope.Var("Filter")->GetMutable<framework::LoDTensor>();
@@ -108,7 +108,7 @@ void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
   bool use_cudnn = true;
   std::string data_format = "NHWC";
   std::vector<int> strides = {stride, stride};
-  std::vector<int> paddings = {pad, pad};
+  std::vector<int> paddings = {padding, padding};
   attrs.insert({"strides", strides});
   attrs.insert({"paddings", paddings});
   attrs.insert({"use_cudnn", use_cudnn});
