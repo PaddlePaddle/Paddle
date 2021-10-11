@@ -2274,6 +2274,10 @@ void BindImperative(py::module *m_ptr) {
     auto &count_tensor = count.Var().Get<framework::LoDTensor>();
     const auto &deviceId = paddle::platform::GetCurrentDeviceId();
 
+    PADDLE_ENFORCE_EQ(offset_tensor.numel() == count_tensor.numel(), true,
+                      platform::errors::PreconditionNotMet(
+                          "Offset and count tensor size dismatch."));
+
     // TODO(daisiming): ensure this stream should not be the default stream.
     auto stream =
         paddle::platform::stream::get_current_stream(deviceId)->raw_stream();
@@ -2284,10 +2288,6 @@ void BindImperative(py::module *m_ptr) {
     auto *dst_data_new = const_cast<float *>(dst_data);
     const int64_t *offset_data = offset_tensor.data<int64_t>();
     const int64_t *count_data = count_tensor.data<int64_t>();
-
-    PADDLE_ENFORCE_EQ(offset_data.numel() == count_data.numel(), true,
-                      platform::errors::PreconditionNotMet(
-                          "Offset and count tensor size dismatch."));
 
     int64_t src_offset = 0, dst_offset, c;
     for (int64_t i = 0; i < offset_tensor.numel(); i++) {
