@@ -98,6 +98,13 @@ class HybridParallelClipGrad:
                 global_norm_var_not_dist,
                 group=self._hcg.get_pipe_parallel_group())
 
+        # In Sharding mode, param and grad is mapping different rank in optimizer.
+        # ClipGradByGlobalNorm need allreduce to get globol norm
+        if self._hcg.get_sharding_parallel_world_size() > 1:
+            paddle.distributed.all_reduce(
+                global_norm_var_not_dist,
+                group=self._hcg.get_sharding_parallel_group())
+
         global_norm_var = layers.sqrt(global_norm_var_dist +
                                       global_norm_var_not_dist)
 
@@ -149,8 +156,13 @@ class HybridParallelOptimizer:
             logger.warning("While using ClipGradByGlobalNorm in TensorParallel, PipelineParallel " \
                            "or Sharding, the grad clip of original optimizer will be changed.")
 
-            self._inner_opt._grad_clip = HybridParallelClipGrad(
-                self._inner_opt._grad_clip, hcg)
+            if self._sharding_enable:
+                # change sharding inner_optimizer's _grad_clip
+                self._inner_opt._inner_optimizer._grad_clip = HybridParallelClipGrad(
+                    self._inner_opt._grad_clip, hcg)
+            else:
+                self._inner_opt._grad_clip = HybridParallelClipGrad(
+                    self._inner_opt._grad_clip, hcg)
 
     @imperative_base.no_grad
     @framework.dygraph_only
