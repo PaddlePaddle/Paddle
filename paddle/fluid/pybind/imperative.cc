@@ -2250,34 +2250,45 @@ void BindImperative(py::module *m_ptr) {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(src.Place()), true,
         platform::errors::PreconditionNotMet(
-            "Required `src` device should be CUDAPlace, but received %d. ", src.Place()));
-    PADDLE_ENFORCE_EQ(
-        platform::is_cuda_pinned_place(dst.Place()), true,
-        platform::errors::PreconditionNotMet(
-            "Required `dst` device should be CUDAPinnedPlace, but received %d. ", dst.Place()));
+            "Required `src` device should be CUDAPlace, but received %d. ",
+            src.Place()));
+    PADDLE_ENFORCE_EQ(platform::is_cuda_pinned_place(dst.Place()), true,
+                      platform::errors::PreconditionNotMet(
+                          "Required `dst` device should be CUDAPinnedPlace, "
+                          "but received %d. ",
+                          dst.Place()));
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(offset.Place()), true,
         platform::errors::PreconditionNotMet(
-            "Required `offset` device should be CPUPlace, but received %d. ", offset.Place()));
+            "Required `offset` device should be CPUPlace, but received %d. ",
+            offset.Place()));
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(count.Place()), true,
         platform::errors::PreconditionNotMet(
-            "Required `count` device should be CPUPlace, but received %d. ", count.Place()));
-    
+            "Required `count` device should be CPUPlace, but received %d. ",
+            count.Place()));
+
     auto &src_tensor = src.Var().Get<framework::LoDTensor>();
     auto &dst_tensor = dst.Var().Get<framework::LoDTensor>();
     auto &offset_tensor = offset.Var().Get<framework::LoDTensor>();
     auto &count_tensor = count.Var().Get<framework::LoDTensor>();
     const auto &deviceId = paddle::platform::GetCurrentDeviceId();
+
+    // TODO(daisiming): ensure this stream should not be the default stream.
     auto stream =
         paddle::platform::stream::get_current_stream(deviceId)->raw_stream();
-    
+
     int64_t size = src_tensor.numel() / src_tensor.dims()[0];
     auto *src_data = src_tensor.data<float>();
     auto *dst_data = dst_tensor.data<float>();
     auto *dst_data_new = const_cast<float *>(dst_data);
     const int64_t *offset_data = offset_tensor.data<int64_t>();
     const int64_t *count_data = count_tensor.data<int64_t>();
+
+    PADDLE_ENFORCE_EQ(offset_data.numel() == count_data.numel(), true,
+                      platform::errors::PreconditionNotMet(
+                          "Offset and count tensor size dismatch."));
+
     int64_t src_offset = 0, dst_offset, c;
     for (int64_t i = 0; i < offset_tensor.numel(); i++) {
       dst_offset = offset_data[i], c = count_data[i];
@@ -2296,30 +2307,36 @@ void BindImperative(py::module *m_ptr) {
     PADDLE_ENFORCE_EQ(
         platform::is_cuda_pinned_place(src.Place()), true,
         platform::errors::PreconditionNotMet(
-            "Required `src` device should be CUDAPinnedPlace, but received %d.", src.Place()));
+            "Required `src` device should be CUDAPinnedPlace, but received %d.",
+            src.Place()));
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(dst.Place()), true,
         platform::errors::PreconditionNotMet(
-            "Required `dst` device should be CUDAPlace, but received %d.", dst.Place()));
+            "Required `dst` device should be CUDAPlace, but received %d.",
+            dst.Place()));
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(index.Place()), true,
         platform::errors::PreconditionNotMet(
-            "Required `index` device should be CPUPlace, but received %d.", index.Place()));
-    PADDLE_ENFORCE_EQ(
-        platform::is_cuda_pinned_place(buffer.Place()), true,
-        platform::errors::PreconditionNotMet(
-            "Required `buffer` device should be CUDAPinnedPlace, but received %d.", buffer.Place()));
+            "Required `index` device should be CPUPlace, but received %d.",
+            index.Place()));
+    PADDLE_ENFORCE_EQ(platform::is_cuda_pinned_place(buffer.Place()), true,
+                      platform::errors::PreconditionNotMet(
+                          "Required `buffer` device should be CUDAPinnedPlace, "
+                          "but received %d.",
+                          buffer.Place()));
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(offset.Place()), true,
         platform::errors::PreconditionNotMet(
-            "Required `offset` device should be CPUPlace, but received %d.", offset.Place()));
+            "Required `offset` device should be CPUPlace, but received %d.",
+            offset.Place()));
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(count.Place()), true,
         platform::errors::PreconditionNotMet(
-            "Required `count` device should be CPUPlace, but received %d.", count.Place()));
+            "Required `count` device should be CPUPlace, but received %d.",
+            count.Place()));
 
     auto &src_tensor = src.Var().Get<framework::LoDTensor>();
-    auto &dst_tensor = dst.Var().Get<framework::LoDTensor>();  
+    auto &dst_tensor = dst.Var().Get<framework::LoDTensor>();
     auto &index_tensor = index.Var().Get<framework::LoDTensor>();
     auto &buffer_tensor = buffer.Var().Get<framework::LoDTensor>();
     auto &offset_tensor = offset.Var().Get<framework::LoDTensor>();
@@ -2327,45 +2344,47 @@ void BindImperative(py::module *m_ptr) {
     auto *dst_data = dst_tensor.data<float>();
     auto *dst_data_new = const_cast<float *>(dst_data);
     const auto &deviceId = paddle::platform::GetCurrentDeviceId();
+
+    // TODO(daisiming): ensure this stream should not be the default stream.
     auto stream =
         paddle::platform::stream::get_current_stream(deviceId)->raw_stream();
 
-    int64_t numel = 0; // total copy length
+    int64_t numel = 0;  // total copy length
     int64_t copy_flag = offset_tensor.dims()[0];
     int64_t size = src_tensor.numel() / src_tensor.dims()[0];
-    // Copy src in (offset, count) to dst
+
     if (copy_flag != 0) {
       auto *offset_data = offset_tensor.data<int64_t>();
       auto *count_data = count_tensor.data<int64_t>();
       for (int64_t i = 0; i < count_tensor.numel(); i++) {
         numel += count_data[i];
       }
-      PADDLE_ENFORCE_EQ(
-          numel + index_tensor.numel() <= buffer_tensor.dims()[0], true, 
-          platform::errors::PreconditionNotMet("Buffer tensor size is too small."));
-      PADDLE_ENFORCE_EQ(
-      numel + index_tensor.numel() <= dst_tensor.dims()[0], true,
-          platform::errors::PreconditionNotMet("Target tensor size is too small."));
+      PADDLE_ENFORCE_EQ(numel + index_tensor.numel() <= buffer_tensor.dims()[0],
+                        true, platform::errors::PreconditionNotMet(
+                                  "Buffer tensor size is too small."));
+      PADDLE_ENFORCE_EQ(numel + index_tensor.numel() <= dst_tensor.dims()[0],
+                        true, platform::errors::PreconditionNotMet(
+                                  "Target tensor size is too small."));
 
       int64_t src_offset, dst_offset = 0, c;
       auto *src_data = src_tensor.data<float>();
       for (int64_t i = 0; i < offset_tensor.numel(); i++) {
         src_offset = offset_data[i], c = count_data[i];
-        PADDLE_ENFORCE_EQ(
-            src_offset + c <= src_tensor.dims()[0], true,
-            platform::errors::PreconditionNotMet("Invalid index."));
-        PADDLE_ENFORCE_EQ(
-            dst_offset + c <= dst_tensor.dims()[0], true,
-            platform::errors::PreconditionNotMet("Invalid index."));
+        PADDLE_ENFORCE_EQ(src_offset + c <= src_tensor.dims()[0], true,
+                          platform::errors::PreconditionNotMet(
+                              "Invalid offset or count index."));
+        PADDLE_ENFORCE_EQ(dst_offset + c <= dst_tensor.dims()[0], true,
+                          platform::errors::PreconditionNotMet(
+                              "Invalid offset or count index."));
         cudaMemcpyAsync(
             dst_data_new + (dst_offset * size), src_data + (src_offset * size),
             c * size * sizeof(float), cudaMemcpyHostToDevice, stream);
         dst_offset += c;
       }
     } else {
-      PADDLE_ENFORCE_EQ(
-          index_tensor.numel() <= buffer_tensor.dims()[0], true,
-          platform::errors::PreconditionNotMet("Buffer tensor size is too small."));
+      PADDLE_ENFORCE_EQ(index_tensor.numel() <= buffer_tensor.dims()[0], true,
+                        platform::errors::PreconditionNotMet(
+                            "Buffer tensor size is too small."));
     }
 
     // Select the index data to the buffer
