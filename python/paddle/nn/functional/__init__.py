@@ -104,6 +104,8 @@ from .pooling import adaptive_avg_pool2d  # noqa: F401
 from .pooling import adaptive_avg_pool3d  # noqa: F401
 from .pooling import max_unpool2d  # noqa: F401
 
+from .resnet_unit import resnet_unit  # noqa: F401
+
 from .vision import affine_grid  # noqa: F401
 from .vision import grid_sample  # noqa: F401
 from .vision import pixel_shuffle  # noqa: F401
@@ -210,4 +212,5 @@ __all__ = [     #noqa
            'instance_norm',
            'class_center_sample',
            'sparse_attention',
+           'resnet_unit'
 ]
