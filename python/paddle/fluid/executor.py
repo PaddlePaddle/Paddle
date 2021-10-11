@@ -1652,7 +1652,7 @@ class Executor(object):
 
         dataset._prepare_to_run()
         real_fetch_list = []
-        if program._pipeline_opt:
+        if isinstance(program, Program) and program._pipeline_opt:
             real_program = program._pipeline_opt["section_program"]
             for fetch_var in fetch_list:
                 if isinstance(fetch_var, Variable):
@@ -1691,7 +1691,7 @@ class Executor(object):
         trainer._set_infer(is_infer)
         trainer._gen_trainer_desc()
 
-        if program._pipeline_opt is None:
+        if isinstance(program, Program) and program._pipeline_opt is None:
             self._dump_debug_info(program=program, trainer=trainer)
         # in case of calling _set_use_ps_gpu explicitly
         if dataset.use_ps_gpu is False:
