@@ -339,7 +339,7 @@ def irfft(x, n=None, axis=-1, norm="backward", name=None):
             xp = paddle.to_tensor(x)
             irfft_xp = paddle.fft.irfft(xp).numpy()
             print(irfft_xp)
-            #  [0. 0. 0. 4.]
+            #  [0. 1. 0. 0.]
 
     """
     return fft_c2r(x, n, axis, norm, forward=False, name=name)
