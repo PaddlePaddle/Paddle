@@ -32,6 +32,9 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::PreconditionNotMet("It must use CUDAPlace."));
+    PADDLE_ENFORCE_EQ(platform::CudnnDataType<T>::type, CUDNN_DATA_HALF,
+                      platform::errors::Unavailable(
+                          "ResNetUnitOp only supports float16 for now."));
 
     // input x
     const Tensor *input_x = ctx.Input<Tensor>("X");
@@ -161,6 +164,9 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(ctx.GetPlace()), true,
         platform::errors::PreconditionNotMet("It must use CUDAPlace."));
+    PADDLE_ENFORCE_EQ(platform::CudnnDataType<T>::type, CUDNN_DATA_HALF,
+                      platform::errors::Unavailable(
+                          "ResNetUnitOp only supports float16 for now."));
 
     const Tensor *y_grad = ctx.Input<Tensor>(framework::GradVarName("Y"));
 
