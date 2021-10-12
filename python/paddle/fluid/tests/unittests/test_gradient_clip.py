@@ -520,5 +520,52 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
                     % (a, b))
 
 
+class TestDygraphGradientClipFP64(unittest.TestCase):
+    def test_gradient_clip(self):
+        with fluid.dygraph.guard():
+            inputs = fluid.layers.uniform_random(
+                [16, 5], min=-10, max=10).astype('float64')
+            linear = fluid.dygraph.Linear(5, 5, dtype="float64")
+            out = linear(fluid.dygraph.to_variable(inputs))
+            out = linear(fluid.dygraph.to_variable(inputs))
+            loss = fluid.layers.reduce_mean(out)
+            loss.backward()
+            # before clip
+            params_grads = []
+            for param in linear.parameters():
+                if param.stop_gradient:
+                    continue
+                if param._grad_ivar() is not None:
+                    params_grads.append((param, param._grad_ivar()))
+            _, grads = zip(*params_grads)
+            # clip grads
+            clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=0.1)
+            params_grads = clip(params_grads)
+            _, grads_clip = zip(*params_grads)
+
+            global_norm = 0
+            for u in grads:
+                u = u.numpy()
+                global_norm += np.sum(np.power(u, 2))
+            global_norm = np.sqrt(global_norm)
+
+            global_norm_clip = 0
+            for v in grads_clip:
+                v = v.numpy()
+                print(v)
+                global_norm_clip += np.sum(np.power(v, 2))
+            global_norm_clip = np.sqrt(global_norm_clip)
+            print(global_norm_clip)
+
+            a = np.minimum(global_norm, 0.1)
+            b = global_norm_clip
+
+            self.assertTrue(
+                np.isclose(
+                    a=a, b=b, rtol=1e-6, atol=1e-8),
+                "gradient clip by global norm has wrong results, expetcd:%f, but recieved:%f"
+                % (a, b))
+
+
 if __name__ == '__main__':
     unittest.main()
