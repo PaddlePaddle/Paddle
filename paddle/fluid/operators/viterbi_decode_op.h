@@ -268,7 +268,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     Tensor left_length = int_tensor_buffer.GetBufferBlock({batch_size, 1});
     framework::TensorCopy(*length, curr_place, dev_ctx, &left_length);
     int64_t max_seq_len = 0;
-    GetMaxValue<DeviceContext, int64_t>()(dev_ctx, left_length, &max_seq_len);
+    GetMaxValue<DeviceContext, int64_t> get_max_value;
+    get_max_value(dev_ctx, left_length, &max_seq_len);
 
     auto* scores = ctx.Output<Tensor>("Scores");
     scores->mutable_data<T>(curr_place);
@@ -391,14 +392,14 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
            &batch_path[actual_len - last_ids_index]);
     ARange<DeviceContext>()(dev_ctx, batch_offset.data<int64_t>(), batch_size,
                             n_labels);
+    Gather<DeviceContext, int64_t, int64_t> gather;
     for (auto hist = historys.rbegin(); hist != historys.rend(); ++hist) {
       ++last_ids_index;
       AddInt(dev_ctx, left_length, one, &left_length);
       AddInt(dev_ctx, batch_offset, last_ids, &gather_idx);
       Tensor& last_ids_update = batch_path[actual_len - last_ids_index];
       hist->Resize({batch_size * n_labels});
-      Gather<DeviceContext, int64_t, int64_t>()(dev_ctx, *hist, gather_idx,
-                                                &last_ids_update);
+      gather(dev_ctx, *hist, gather_idx, &last_ids_update);
       GetMask<DeviceContext, GreaterThanFunctor, int64_t>()(ctx, left_length,
                                                             zero, &int_mask);
       MulInt(dev_ctx, last_ids_update, int_mask, &last_ids_update);
