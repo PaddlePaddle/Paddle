@@ -31,6 +31,7 @@ limitations under the License. */
 #ifdef PADDLE_WITH_CUDA
 #include <cublas_v2.h>
 #include <cudnn.h>
+#include <cufft.h>
 #include <curand.h>
 #include <thrust/system/cuda/error.h>
 #include <thrust/system_error.h>
@@ -714,6 +715,7 @@ DEFINE_EXTERNAL_API_TYPE(curandStatus_t, CURAND_STATUS_SUCCESS, CURAND);
 DEFINE_EXTERNAL_API_TYPE(cudnnStatus_t, CUDNN_STATUS_SUCCESS, CUDNN);
 DEFINE_EXTERNAL_API_TYPE(cublasStatus_t, CUBLAS_STATUS_SUCCESS, CUBLAS);
 DEFINE_EXTERNAL_API_TYPE(cusolverStatus_t, CUSOLVER_STATUS_SUCCESS, CUSOLVER);
+DEFINE_EXTERNAL_API_TYPE(cufftResult_t, CUFFT_SUCCESS, CUFFT);
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 DEFINE_EXTERNAL_API_TYPE(ncclResult_t, ncclSuccess, NCCL);
@@ -751,6 +753,8 @@ inline const char* GetErrorMsgUrl(T status) {
       return "https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/api/"
              "types.html#ncclresult-t";
       break;
+    case platform::proto::ApiType::CUFFT:
+      return "https://docs.nvidia.com/cuda/cufft/index.html#cufftresult";
     default:
       return "Unknown type of External API, can't get error message URL!";
       break;
@@ -839,6 +843,7 @@ template std::string GetExternalErrorMsg<curandStatus_t>(curandStatus_t);
 template std::string GetExternalErrorMsg<cudnnStatus_t>(cudnnStatus_t);
 template std::string GetExternalErrorMsg<cublasStatus_t>(cublasStatus_t);
 template std::string GetExternalErrorMsg<cusolverStatus_t>(cusolverStatus_t);
+template std::string GetExternalErrorMsg<cufftResult_t>(cufftResult_t);
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 template std::string GetExternalErrorMsg<ncclResult_t>(ncclResult_t);
 #endif
@@ -896,6 +901,15 @@ inline bool is_error(cusolverStatus_t stat) {
 inline std::string build_nvidia_error_msg(cusolverStatus_t stat) {
   std::ostringstream sout;
   sout << "CUSOLVER error(" << stat << "). " << GetExternalErrorMsg(stat);
+  return sout.str();
+}
+
+/*************** CUFFT ERROR ***************/
+inline bool is_error(cufftResult_t stat) { return stat != CUFFT_SUCCESS; }
+
+inline std::string build_nvidia_error_msg(cufftResult_t stat) {
+  std::ostringstream sout;
+  sout << "CUFFT error(" << stat << "). " << GetExternalErrorMsg(stat);
   return sout.str();
 }
 
