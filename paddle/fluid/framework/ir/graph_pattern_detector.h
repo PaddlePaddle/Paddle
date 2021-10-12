@@ -493,12 +493,11 @@ struct ConvActivation : public PatternBase {
 // elementwise_a, elementwise_b,
 // elementwise_out, elementwise,
 // activation_out, activation
-struct ElementwiseActivation: public PatternBase {
+struct ElementwiseActivation : public PatternBase {
   ElementwiseActivation(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "elementwise_add_activation") {}
 
-  PDNode* operator()(PDNode* elementwise_a,
-                     std::string elementwise_type,
+  PDNode* operator()(PDNode* elementwise_a, std::string elementwise_type,
                      std::string activation_type);
 
   // declare operator node's name

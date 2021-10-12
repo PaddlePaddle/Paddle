@@ -25,24 +25,31 @@ namespace ir {
 using string::PrettyLogDetail;
 
 void ElementwiseAddActivationOneDNNPass::ApplyImpl(Graph *graph) const {
-  std::vector<std::string> act_types = {"relu", "tanh", "leaky_relu", "swish", "hardswish", "sqrt", "abs", "clip", "gelu"};
-  std::vector<std::string> elt_types = {"elementwise_add", "elementwise_sub", "elementwise_mul", "elementwise_div", "elementwise_pow"};
+  std::vector<std::string> act_types = {"relu",  "tanh",      "leaky_relu",
+                                        "swish", "hardswish", "sqrt",
+                                        "abs",   "clip",      "gelu"};
+  std::vector<std::string> elt_types = {"elementwise_add", "elementwise_sub",
+                                        "elementwise_mul", "elementwise_div",
+                                        "elementwise_pow"};
 
-  for (const auto& elt_type : elt_types)
-    for (const auto& act_type : act_types)
+  for (const auto &elt_type : elt_types)
+    for (const auto &act_type : act_types)
       FuseElementwiseAddAct(graph, elt_type, act_type);
 }
 
-void ElementwiseAddActivationOneDNNPass::FuseElementwiseAddAct(Graph *graph, const std::string &elt_type, const std::string &act_type) const {
+void ElementwiseAddActivationOneDNNPass::FuseElementwiseAddAct(
+    Graph *graph, const std::string &elt_type,
+    const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
       graph, platform::errors::InvalidArgument("Graph cannot be nullptr."));
   FusePassBase::Init("elementwise_add_act", graph);
 
   GraphPatternDetector gpd;
-  auto* elementwise_add_input = gpd.mutable_pattern()
-                         ->NewNode(elt_type + "_act/elementwise_add_input")
-                         ->AsInput()
-                         ->assert_is_op_input(elt_type, "X");
+  auto *elementwise_add_input =
+      gpd.mutable_pattern()
+          ->NewNode(elt_type + "_act/elementwise_add_input")
+          ->AsInput()
+          ->assert_is_op_input(elt_type, "X");
   patterns::ElementwiseActivation elementwise_add_act_pattern(
       gpd.mutable_pattern(), elt_type + "_act");
   elementwise_add_act_pattern(elementwise_add_input, elt_type, act_type);
@@ -52,12 +59,16 @@ void ElementwiseAddActivationOneDNNPass::FuseElementwiseAddAct(Graph *graph, con
                      Graph *g) {
     VLOG(4) << "Fuse " << elt_type << " with activation op.";
     // Elementwise Add output
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out, elementwise_add_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise_out, elementwise_out,
+                              elementwise_add_act_pattern);
     // ACT output
-    GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out, elementwise_add_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(activation_out, activation_out,
+                              elementwise_add_act_pattern);
     // ops
-    GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise, elementwise_add_act_pattern);
-    GET_IR_NODE_FROM_SUBGRAPH(activation, activation, elementwise_add_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(elementwise, elementwise,
+                              elementwise_add_act_pattern);
+    GET_IR_NODE_FROM_SUBGRAPH(activation, activation,
+                              elementwise_add_act_pattern);
 
     auto *elementwise_add_op = elementwise->Op();
 
@@ -65,7 +76,8 @@ void ElementwiseAddActivationOneDNNPass::FuseElementwiseAddAct(Graph *graph, con
       PADDLE_ENFORCE(
           BOOST_GET_CONST(bool, elementwise_add_op->GetAttr("use_mkldnn")),
           platform::errors::PreconditionNotMet(
-              "The " + elt_type + "+Act fusion may happen only when oneDNN library "
+              "The " + elt_type +
+              "+Act fusion may happen only when oneDNN library "
               "is used."));
     }
 
@@ -82,8 +94,8 @@ void ElementwiseAddActivationOneDNNPass::FuseElementwiseAddAct(Graph *graph, con
 
   gpd(graph, handler);
   AddStatis(found_elementwise_add_activation_count);
-  PrettyLogDetail("---    fused %d %s with %s activation", found_elementwise_add_activation_count,
-                  elt_type, act_type);
+  PrettyLogDetail("---    fused %d %s with %s activation",
+                  found_elementwise_add_activation_count, elt_type, act_type);
 }
 
 }  // namespace ir
