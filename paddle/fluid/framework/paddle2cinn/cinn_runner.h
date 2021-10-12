@@ -16,6 +16,7 @@
 
 #include <map>
 #include <memory>
+#include <mutex>
 #include <unordered_map>
 
 #include "paddle/fluid/framework/ir/graph.h"
@@ -36,8 +37,13 @@ namespace paddle2cinn {
 // cache.
 class CinnRunner {
  public:
-  CinnRunner() {}
   ~CinnRunner() {}
+
+  // Singleton
+  static std::shared_ptr<CinnRunner> GetInstance();
+
+  // Replace Paddle graph with some CINN subgraphs/ops
+  void ReplaceWithCinn(ir::Graph* graph);
 
   // Feed LoDTensors to tun CINN compiled object and return fetched result
   std::map<std::string, FetchType*> Run(
@@ -45,6 +51,10 @@ class CinnRunner {
       std::map<std::string, const LoDTensor*>* feed_targets);
 
  private:
+  CinnRunner() {}
+
+  static std::once_flag get_instance_once_flag_;
+  static std::shared_ptr<CinnRunner> instance_;
   std::unordered_map<CinnCacheKey, std::shared_ptr<CinnCompiledObject>,
                      CinnCacheKey::Hash>
       cache_;

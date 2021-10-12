@@ -50,7 +50,9 @@ class HybridParallelClipGrad:
     @imperative_base.no_grad
     def _dygraph_clip(self, params_grads):
         params_and_grads = []
-        sum_square_list = []
+        sum_square_list_dist = []
+        sum_square_list_not_dist = []
+
         for p, g in params_grads:
             if g is None:
                 continue
@@ -62,18 +64,49 @@ class HybridParallelClipGrad:
                 merge_grad = layers.get_tensor_from_selected_rows(merge_grad)
             square = layers.square(merge_grad)
             sum_square = layers.reduce_sum(square)
-            sum_square_list.append(sum_square)
 
-        # all parameters have been filterd out
-        if len(sum_square_list) == 0:
-            return params_grads
+            not_shared_enable = (not hasattr(p, 'is_firstly_shared')) or (
+                hasattr(p, 'is_firstly_shared') and
+                getattr(p, 'is_firstly_shared', True))
 
-        global_norm_var = layers.concat(sum_square_list)
-        global_norm_var = layers.reduce_sum(global_norm_var)
-        # add all reduce to get global norm in world size
-        paddle.distributed.all_reduce(global_norm_var,
-                                      self._hcg.get_check_parallel_group())
-        global_norm_var = layers.sqrt(global_norm_var)
+            if not_shared_enable:
+                if p.is_distributed:
+                    sum_square_list_dist.append(sum_square)
+                else:
+                    sum_square_list_not_dist.append(sum_square)
+
+        global_norm_var_dist = layers.concat(sum_square_list_dist) if len(
+            sum_square_list_dist) != 0 else layers.concat(
+                [paddle.to_tensor([0.])])
+        global_norm_var_dist = layers.reduce_sum(global_norm_var_dist)
+
+        global_norm_var_not_dist = layers.concat(
+            sum_square_list_not_dist) if len(
+                sum_square_list_not_dist) != 0 else layers.concat(
+                    [paddle.to_tensor([0.])])
+        global_norm_var_not_dist = layers.reduce_sum(global_norm_var_not_dist)
+
+        # add all reduce to get global norm of distributed params_and_grads
+        if self._hcg.get_model_parallel_world_size() > 1:
+            paddle.distributed.all_reduce(
+                global_norm_var_dist,
+                group=self._hcg.get_check_parallel_group())
+
+        # add all reduce to get global norm of non-distributed params_and_grads in groups of pp
+        if self._hcg.get_pipe_parallel_world_size() > 1:
+            paddle.distributed.all_reduce(
+                global_norm_var_not_dist,
+                group=self._hcg.get_pipe_parallel_group())
+
+        # In Sharding mode, param and grad is mapping different rank in optimizer.
+        # ClipGradByGlobalNorm need allreduce to get globol norm
+        if self._hcg.get_sharding_parallel_world_size() > 1:
+            paddle.distributed.all_reduce(
+                global_norm_var_not_dist,
+                group=self._hcg.get_sharding_parallel_group())
+
+        global_norm_var = layers.sqrt(global_norm_var_dist +
+                                      global_norm_var_not_dist)
 
         max_global_norm = layers.fill_constant(
             shape=[1], dtype=global_norm_var.dtype, value=self.clip_norm)
@@ -96,7 +129,7 @@ class HybridParallelClipGrad:
         return getattr(self._clip, item)
 
     def __call__(self, params_grads):
-        return self._clip(params_grads)
+        return self._dygraph_clip(params_grads)
 
 
 class HybridParallelOptimizer:
@@ -112,7 +145,7 @@ class HybridParallelOptimizer:
         self._need_dp = (self._hcg.get_data_parallel_world_size() > 1)
 
         # NOTE(shenliang03): Because of the pure DataParallel mode, the gradient synchronization 
-        # is achieved through reducer, so there is no need to call fuse_allreduce in oprimizer. 
+        # is achieved through reducer, so there is no need to call fuse_allreduce in optimizer. 
         self._dp_enable = not self._use_dp_mode and self._need_dp
 
         self._sharding_enable = (
@@ -120,11 +153,16 @@ class HybridParallelOptimizer:
 
         if isinstance(self._inner_opt._grad_clip,
                       ClipGradByGlobalNorm) and not self._use_dp_mode:
-            logger.warning("using ClipGradByGlobalNorm in TensorParallel, the origin " \
-                  "optmizer'grad clip will be changed.")
+            logger.warning("While using ClipGradByGlobalNorm in TensorParallel, PipelineParallel " \
+                           "or Sharding, the grad clip of original optimizer will be changed.")
 
-            self._inner_opt._grad_clip = HybridParallelClipGrad(
-                self._inner_opt._grad_clip, hcg)
+            if self._sharding_enable:
+                # change sharding inner_optimizer's _grad_clip
+                self._inner_opt._inner_optimizer._grad_clip = HybridParallelClipGrad(
+                    self._inner_opt._grad_clip, hcg)
+            else:
+                self._inner_opt._grad_clip = HybridParallelClipGrad(
+                    self._inner_opt._grad_clip, hcg)
 
     @imperative_base.no_grad
     @framework.dygraph_only
