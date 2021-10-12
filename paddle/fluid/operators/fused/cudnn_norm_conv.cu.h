@@ -38,7 +38,8 @@ struct NormConvolutionArgs {
     compute_type = platform::CudnnDataType<float>::type;
   }
 
-  void Set(const std::vector<int> &input_shape,
+  void Set(const platform::CUDADeviceContext &ctx,
+           const std::vector<int> &input_shape,
            const std::vector<int> &filter_shape,
            const std::vector<int> &output_shape, int padding, int stride,
            int dilation, int group) {
@@ -61,12 +62,33 @@ struct NormConvolutionArgs {
                           "The filter_shape is expected to store as nhwc, and "
                           "h = w = 1 or 3. But recieved filter_shape is [%s].",
                           framework::make_ddim(filter_shape)));
+    PADDLE_ENFORCE_EQ((filter_shape[0] % 32 == 0 && filter_shape[3] % 8 == 0),
+                      true,
+                      platform::errors::InvalidArgument(
+                          "The input channel is expected to be multiple of 8, "
+                          "and the output channel is expected to be multiple "
+                          "of 32. But recieved input channel is %d, output "
+                          "channel is %d.",
+                          filter_shape[3], filter_shape[0]));
     PADDLE_ENFORCE_EQ(
         output_shape.size(), 4U,
         platform::errors::InvalidArgument(
             "The size of output_shape is expected to 4. But recieved "
             "filter_shape's size is %d, filter_shape is [%s].",
             output_shape.size(), framework::make_ddim(output_shape)));
+    is_support = IsSupport(ctx, filter_shape, stride, dilation, group);
+    PADDLE_ENFORCE_EQ(
+        is_support, true,
+        platform::errors::InvalidArgument(
+            "Current test is only supported in the platforms with "
+            "compatiblity greater than or equal to 70 and the kernel size "
+            "must be equal to 1 or 3. When the kernel size is 1, "
+            "the stride must be 1 if the compatiblity is equal to 70. "
+            "Besides, the dilation and group must be equal to 1. But recieved "
+            "compatiblity is %d, kernel size is %d, stride is %d, "
+            "dilation is %d, group is %d",
+            ctx.GetComputeCapability(), filter_shape[1], stride, dilation,
+            group));
 
     for (size_t i = 0; i < input_shape.size(); ++i) {
       in_dims.push_back(input_shape[i]);
@@ -89,6 +111,25 @@ struct NormConvolutionArgs {
     conv_desc.set(dtype, paddings, strides, dilations, false, group);
   }
 
+  bool IsSupport(const platform::CUDADeviceContext &ctx,
+                 const std::vector<int> &filter_shape, int stride, int dilation,
+                 int group) {
+    int kernel_size = filter_shape[1];
+    if (dilation != 1 || group != 1) {
+      return false;
+    }
+    if (ctx.GetComputeCapability() == 70) {
+      if ((kernel_size == 3) || ((kernel_size == 1) && (stride == 1))) {
+        return true;
+      }
+    } else if (ctx.GetComputeCapability() > 70) {
+      if ((kernel_size == 3) || (kernel_size == 1)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   cudnnDataType_t dtype;
   cudnnTensorFormat_t format;
   cudnnDataType_t compute_type;
@@ -104,6 +145,8 @@ struct NormConvolutionArgs {
   platform::TensorDescriptor out_desc;
   platform::TensorDescriptor out_stats_desc;
   platform::ConvolutionDescriptor conv_desc;
+
+  bool is_support;
 };
 
 template <typename T>
@@ -115,7 +158,7 @@ class CudnnNormConvolution {
                        const std::vector<int> &output_shape, const int &padding,
                        const int &stride, const int &dilation,
                        const int &group) {
-    args_.Set(input_shape, filter_shape, output_shape, padding, stride,
+    args_.Set(ctx, input_shape, filter_shape, output_shape, padding, stride,
               dilation, group);
   }
   ~CudnnNormConvolution() {}
@@ -215,7 +258,7 @@ class CudnnNormConvolutionGrad {
                            const std::vector<int> &output_shape,
                            const int &padding, const int &stride,
                            const int &dilation, const int &group) {
-    args_.Set(input_shape, filter_shape, output_shape, padding, stride,
+    args_.Set(ctx, input_shape, filter_shape, output_shape, padding, stride,
               dilation, group);
     dgrad_algo_ = CUDNN_CONVOLUTION_BWD_DATA_ALGO_1;
   }

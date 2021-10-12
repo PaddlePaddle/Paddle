@@ -229,15 +229,6 @@ class CudnnNormConvolutionTester {
             platform::DeviceContextPool::Instance().Get(
                 platform::CUDAPlace(0)));
 
-    if (!Support(*ctx)) {
-      LOG(INFO)
-          << "Current test is only supported in the platforms with "
-          << "compatiblity greater than or equal to 70 and the kernel size "
-          << "must be equal to 1 or 3. Besides, when the kernel size is 1, "
-          << "the stride must be 1 if the compatiblity is equal to 70.";
-      return;
-    }
-
     framework::Tensor cpu_output_base;
     framework::Tensor cpu_sum_base;
     framework::Tensor cpu_sum_of_square_base;
@@ -371,19 +362,6 @@ class CudnnNormConvolutionTester {
 
     TensorCopySync(input_grad, platform::CPUPlace(), cpu_input_grad);
     TensorCopySync(filter_grad, platform::CPUPlace(), cpu_filter_grad);
-  }
-
-  bool Support(const platform::CUDADeviceContext &ctx) {
-    if (ctx.GetComputeCapability() == 70) {
-      if ((kernel_size_ == 3) || ((kernel_size_ == 1) && (stride_ == 1))) {
-        return true;
-      }
-    } else if (ctx.GetComputeCapability() > 70) {
-      if ((kernel_size_ == 3) || (kernel_size_ == 1)) {
-        return true;
-      }
-    }
-    return false;
   }
 
  private:
