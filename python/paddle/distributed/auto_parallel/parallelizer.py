@@ -97,7 +97,7 @@ class AutoParallelizer:
 
         complete_backward_annotation(partitioned_main_prog, self._dist_context)
 
-        make_data_unshard(dist_main_prog, dist_startup_prog)
+        make_data_unshard(partitioned_main_prog, partitioned_startup_prog)
         reshard(partitioned_main_prog, partitioned_startup_prog, rank,
                 self._dist_context)
 
