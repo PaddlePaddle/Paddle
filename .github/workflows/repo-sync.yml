@@ -17,11 +17,11 @@ jobs:
         with:
           source_repo: "PaddlePaddle/Paddle"
           source_branch: "develop"
-          destination_branch: ${{ secrets.INTERMEDIATE_BRANCH }}
+          destination_branch: develop_sync_repo
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - uses: gglin001/pull-request@v2
         name: Create pull request
         with:
-          source_branch: ${{ secrets.INTERMEDIATE_BRANCH }}
+          source_branch: develop_sync_repo
           destination_branch: develop
           github_token: ${{ secrets.GITHUB_TOKEN }}
