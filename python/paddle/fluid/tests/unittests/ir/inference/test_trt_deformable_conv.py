@@ -65,11 +65,11 @@ class TRTDeformableConvTest(InferencePassTest):
         self.padding = [1, 1]
         self.dilations = [1, 1]
         self.stride = [1, 1]
-        self.dilations = [1, 1]
         self.im2col_step = 1
         self.deformable_groups = 1
 
-        self.input_size = [2, 8, 4, 4]
+        self.bs = 2
+        self.input_size = [self.bs, 8, 4, 4]
         self.num_filters = 8
         self.filter_size = 3
         offset_c = 2 * self.deformable_groups * self.filter_size * self.filter_size
@@ -89,31 +89,6 @@ class TRTDeformableConvTest(InferencePassTest):
             self.check_output_with_option(use_gpu)
             self.assertTrue(
                 PassVersionChecker.IsCompatible('tensorrt_subgraph_pass'))
-
-
-class TRTDeformableConvFP16Test(TRTDeformableConvTest):
-    def set_params(self):
-        self.groups = 1
-        self.padding = [1, 1]
-        self.dilations = [1, 1]
-        self.stride = [1, 1]
-        self.dilations = [1, 1]
-        self.im2col_step = 1
-        self.deformable_groups = 1
-
-        self.input_size = [2, 8, 4, 4]
-        self.num_filters = 8
-        self.filter_size = 3
-        offset_c = 2 * self.deformable_groups * self.filter_size * self.filter_size
-        mask_c = self.deformable_groups * self.filter_size * self.filter_size
-        self.offset_size = [
-            self.input_size[0], offset_c, self.input_size[2], self.input_size[3]
-        ]
-        self.mask_size = [
-            self.input_size[0], mask_c, self.input_size[2], self.input_size[3]
-        ]
-
-        self.dtype = 'float16'
 
 
 if __name__ == "__main__":

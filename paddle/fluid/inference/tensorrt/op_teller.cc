@@ -333,6 +333,41 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 #endif
     }
 
+    if (op_type == "deformable_conv") {
+      auto* block = desc.Block();
+      auto input_name = desc.Input("Input")[0];
+      auto* input_desc = block->FindVar(input_name);
+      const auto input_shape = input_desc->GetShape();
+
+      auto filter_name = desc.Input("Filter")[0];
+      auto* filter_desc = block->FindVar(filter_name);
+      const auto filter_shape = filter_desc->GetShape();
+
+      int groups = BOOST_GET_CONST(int, desc.GetAttr("groups"));
+      if (input_shape[1] != filter_shape[1] * groups) {
+        VLOG(3) << "The number of input channels should be equal to filter "
+                << "channels * groups. But got input channels "
+                << input_shape[1] << "filter channels " << filter_shape[1];
+        return false;
+      }
+
+      const std::vector<int> strides =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("strides"));
+      if (strides.size() != 2) {
+        VLOG(3) << "The size of strides should be 2, but got "
+                << strides.size();
+        return false;
+      }
+
+      const std::vector<int> paddings =
+          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
+      if (paddings.size() != 2) {
+        VLOG(3) << "The size of paddings shoule be 2, but got "
+                << paddings.size();
+        return false;
+      }
+    }
+
     if (op_type == "matmul") {
       auto* block = desc.Block();
       if (block == nullptr) {
