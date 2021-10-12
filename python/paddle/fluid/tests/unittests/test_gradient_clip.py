@@ -471,10 +471,8 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
             with fluid.dygraph.guard():
                 paddle.seed(10)
                 model = SimpleNet()
-                sgd_optimizer = fluid.optimizer.SGD(
-                    learning_rate=0.0,
-                    parameter_list=model.parameters(),
-                    grad_clip=fluid.clip.GradientClipByGlobalNorm(1.0))
+                sgd_optimizer = paddle.optimizer.SGD(
+                    learning_rate=0.0, parameters=model.parameters())
                 model, sgd_optimizer = paddle.amp.decorate(
                     models=model, optimizers=sgd_optimizer, level='O2')
                 scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
@@ -483,12 +481,25 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
                 with paddle.amp.auto_cast(level='O2'):
                     out = model(fluid.dygraph.to_variable(inputs))
                     loss = fluid.layers.reduce_mean(out)
-                scaler.scale(loss).backward()
-                opt, params_grads = scaler.minimize(sgd_optimizer, loss)
-                clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=0.8)
+                scaled = scaler.scale(loss)
+                scaled.backward()
+                scaler.unscale_(sgd_optimizer)
+                # before clip
+                params_grads = []
+                for param in model.parameters():
+                    if param.stop_gradient:
+                        continue
+                    if param._grad_ivar() is not None:
+                        params_grads.append((param, param._grad_ivar()))
                 _, grads = zip(*params_grads)
+                # clip grads
+                clip = fluid.clip.GradientClipByGlobalNorm(clip_norm=0.8)
                 params_grads = clip(params_grads)
                 _, grads_clip = zip(*params_grads)
+                # param update                      
+                scaler.step(sgd_optimizer)
+                scaler.update()
+
                 global_norm = 0
                 for u in grads:
                     u = u.numpy()
@@ -499,6 +510,7 @@ class TestDygraphGradientClipFP16(unittest.TestCase):
                     v = v.numpy()
                     global_norm_clip += np.sum(np.power(v, 2))
                 global_norm_clip = np.sqrt(global_norm_clip)
+
                 a = np.minimum(global_norm, 0.8)
                 b = global_norm_clip
                 self.assertTrue(
