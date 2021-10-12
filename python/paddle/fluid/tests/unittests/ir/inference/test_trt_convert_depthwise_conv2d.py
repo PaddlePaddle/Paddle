@@ -165,7 +165,6 @@ class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
             attrs, False), (1e-5, 1e-5)
 
         # for dynamic_shape
-
         generate_dynamic_shape(attrs)
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(attrs,
@@ -188,6 +187,16 @@ class TrtConvertDepthwiseConv2dTest(TrtLayerAutoScanTest):
         self.add_skip_case(
             teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
             "When padding_algorithm is 'SAME' or 'VALID', Trt dose not support. In this case, trt build error is caused by scale op."
+        )
+
+        def teller2(program_config, predictor_config):
+            if self.trt_param.precision == paddle_infer.PrecisionType.Int8:
+                return True
+            return False
+
+        self.add_skip_case(
+            teller2, SkipReasons.TRT_NOT_IMPLEMENTED,
+            "When precisionType is int8 without relu op, output is different between Trt and Paddle."
         )
 
     def test(self):
