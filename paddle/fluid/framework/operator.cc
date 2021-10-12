@@ -51,6 +51,7 @@ DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
 PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
                              "number of threads for inner op");
+DECLARE_bool(use_pt_kernel);
 
 namespace paddle {
 namespace framework {
@@ -1155,7 +1156,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // phase
 
   // VLOG(1) << "Pt KernelFactory: " << pt::KernelFactory::Instance();
-  if (pt::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
+  if (FLAGS_use_pt_kernel &&
+      pt::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
     if (pt_kernel_key_.get() == nullptr || pt_kernel_.get() == nullptr) {
       ChoosePtKernel(*runtime_ctx, *dev_ctx);
     }

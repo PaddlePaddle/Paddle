@@ -21,56 +21,35 @@ sys.path.append("..")
 from op_test import OpTest
 import paddle
 import paddle.fluid as fluid
+from test_matmul_v2_op import reference_matmul
 
 paddle.enable_static()
 SEED = 2021
 
 
-def reference_matmul(X, Y, transpose_X=False, transpose_Y=False):
-    """Reference forward implementation using np.matmul."""
-    # np.matmul does not support the transpose flags, so we manually
-    # transpose X and Y appropriately.
-    if transpose_X:
-        if X.ndim == 1:
-            X = X.reshape((X.size))
-        elif X.ndim == 2:
-            X = X.T
-        else:
-            dim = [i for i in range(len(X.shape))]
-            dim[-1], dim[len(X.shape) - 2] = dim[len(X.shape) - 2], dim[-1]
-            X = np.transpose(X, tuple(dim))
-    if transpose_Y:
-        if Y.ndim == 1:
-            Y = Y.reshape((Y.size))
-        else:
-            dim = [i for i in range(len(Y.shape))]
-            dim[-1], dim[len(Y.shape) - 2] = dim[len(Y.shape) - 2], dim[-1]
-            Y = np.transpose(Y, tuple(dim))
+class TestMatMulV2Op(OpTest):
+    """
+    case 1
+    """
 
-    Out = np.matmul(X, Y)
-    if not Out.shape:
-        # We do not support 0-dimensional Tensors (scalars). So where
-        # np.matmul outputs a scalar, we must convert to a Tensor of
-        # shape (1) instead.
-        # Everywhere else, we are compatible with np.matmul.
-        Out = np.array([Out], dtype="float64")
-    return Out
+    def set_npu(self):
+        self.__class__.use_npu = True
+        self.place = paddle.NPUPlace(0)
 
-
-class TestMatMul(OpTest):
     def config(self):
-        self.x_shape = (100, 24)
-        self.y_shape = (24, 100)
+        self.x_shape = (100, )
+        self.y_shape = (100, )
         self.trans_x = False
         self.trans_y = False
 
+    def init_kernel_type(self):
+        self.dtype = "float32"
+
     def setUp(self):
         self.set_npu()
-        self.op_type = "matmul_v2"
-        self.place = paddle.NPUPlace(0)
-        self.init_dtype()
+        self.init_kernel_type()
         self.config()
-        np.random.seed(SEED)
+        self.op_type = "matmul_v2"
         x = np.random.random(self.x_shape).astype(self.dtype)
         y = np.random.random(self.y_shape).astype(self.dtype)
         # -0.1 ~ 0.1
@@ -85,201 +64,314 @@ class TestMatMul(OpTest):
         self.attrs = {'trans_x': self.trans_x, 'trans_y': self.trans_y}
         self.outputs = {'Out': result}
 
-    def set_npu(self):
-        self.__class__.use_npu = True
-        self.__class__.no_need_check_grad = True
-
-    def init_dtype(self):
-        self.dtype = np.float32
-
     def test_check_output(self):
-        self.check_output_with_place(self.place, atol=1e-5)
+        self.check_output_with_place(self.place, atol=1e-7)
+
+    def test_check_grad(self):
+        self.check_grad_with_place(self.place, ['X', 'Y'], 'Out')
 
 
-    # TODO(ascendrc): Add grad test
-    # def test_check_grad(self):
-    #     if self.dtype == np.float16:
-    #         return
-    #     self.check_grad(['X'], 'Out')
-    #
-class TestMatMul2(TestMatMul):
+class TestMatMuklOp2(TestMatMulV2Op):
     """
     case 2
     """
 
     def config(self):
-        self.x_shape = (32, 24)
-        self.y_shape = (32, 24)
+        self.x_shape = (100, )
+        self.y_shape = (1, 3, 2, 100)
         self.trans_x = False
         self.trans_y = True
 
 
-class TestMatMul3(TestMatMul):
+class TestMatMuklOp3(TestMatMulV2Op):
     """
     case 3
     """
 
-    def init_dtype(self):
-        self.dtype = np.float16
-
-
-class TestMatMul4(TestMatMul):
-    """
-    case 4 dim=3
-    """
-
     def config(self):
-        self.x_shape = (2, 3, 4)
-        self.y_shape = (2, 4, 3)
+        self.x_shape = (100, )
+        self.y_shape = (1, 1, 100, 2)
         self.trans_x = False
         self.trans_y = False
 
 
-class TestMatMulNet(unittest.TestCase):
-    def _test(self, run_npu=True):
-        main_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
-        np.random.seed(SEED)
+class TestMatMuklOp4(TestMatMulV2Op):
+    """
+    case 4
+    """
 
-        a_np = np.random.random(size=(2, 3)).astype('float32')
-        b_np = np.random.random(size=(2, 3)).astype('float32')
-        c_np = np.random.random(size=(3, 2)).astype('float32')
-        d_np = np.random.random(size=(3, 2)).astype('float32')
-        label_np = np.random.randint(2, size=(2, 1)).astype('int64')
+    def config(self):
+        self.x_shape = (100, )
+        self.y_shape = (1, 2, 100, 2)
+        self.trans_x = False
+        self.trans_y = False
 
-        with paddle.static.program_guard(main_prog, startup_prog):
-            a = paddle.static.data(name="a", shape=[2, 3], dtype='float32')
-            b = paddle.static.data(name="b", shape=[2, 3], dtype='float32')
-            c = paddle.static.data(name="c", shape=[3, 2], dtype='float32')
-            d = paddle.static.data(name="d", shape=[3, 2], dtype='float32')
-            label = paddle.static.data(
-                name="label", shape=[2, 1], dtype='int64')
 
-            sum_1 = paddle.add(a, b)
-            sum_2 = paddle.add(c, d)
-            result = paddle.matmul(sum_1, sum_2)
+class TestMatMuklOp5(TestMatMulV2Op):
+    """
+    case 5
+    """
 
-            fc_1 = fluid.layers.fc(input=result, size=8)
-            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
+    def config(self):
+        self.x_shape = (1, 1, 100, 1)
+        self.y_shape = (100, )
+        self.trans_x = True
+        self.trans_y = False
 
-            cost = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.reduce_mean(cost)
-            sgd = fluid.optimizer.SGD(learning_rate=0.01)
-            sgd.minimize(loss)
 
-        if run_npu:
+class TestMatMuklOp6(TestMatMulV2Op):
+    """
+    case 6
+    """
+
+    def config(self):
+        self.x_shape = (1, 2, 102, 1)
+        self.y_shape = (102, )
+        self.trans_x = True
+        self.trans_y = False
+
+
+class TestMatMuklOp7(TestMatMulV2Op):
+    """
+    case 7
+    """
+
+    def config(self):
+        self.x_shape = (1, 2, 1, 100)
+        self.y_shape = (100, )
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMuklOp8(TestMatMulV2Op):
+    """
+    case 8
+    """
+
+    def config(self):
+        self.x_shape = (1, 1, 2, 100)
+        self.y_shape = (1, 1, 100, 2)
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMuklOp9(TestMatMulV2Op):
+    """
+    case 9
+    """
+
+    def config(self):
+        self.x_shape = (1, 1, 1, 100)
+        self.y_shape = (2, 1, 2, 100)
+        self.trans_x = False
+        self.trans_y = True
+
+
+class TestMatMuklOp10(TestMatMulV2Op):
+    """
+    case 10
+    """
+
+    def config(self):
+        self.x_shape = (1, 1, 25, 4)
+        self.y_shape = (1, 2, 4, 25)
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMuklOp11(TestMatMulV2Op):
+    """
+    case 11
+    """
+
+    def config(self):
+        self.x_shape = (2, 1, 2, 100)
+        self.y_shape = (1, 1, 100, 2)
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMuklOp12(TestMatMulV2Op):
+    """
+    case 12
+    """
+
+    def config(self):
+        self.x_shape = (2, 1, 4, 25)
+        self.y_shape = (1, 1, 4, 25)
+        self.trans_x = True
+        self.trans_y = False
+
+
+class TestMatMuklOp13(TestMatMulV2Op):
+    """
+    case 13
+    """
+
+    def config(self):
+        self.x_shape = (2, 2, 10, 10)
+        self.y_shape = (2, 2, 10, 10)
+        self.trans_x = True
+        self.trans_y = False
+
+
+class TestMatMuklOp14(TestMatMulV2Op):
+    """
+    case 14_1
+    """
+
+    def config(self):
+        self.x_shape = (3, 1, 6, 6)
+        self.y_shape = (1, 2, 6, 9)
+        self.trans_x = True
+        self.trans_y = False
+
+
+class TestMatMuklOp15(TestMatMulV2Op):
+    """
+    case 14_2
+    """
+
+    def config(self):
+        self.x_shape = (3, 1, 6, 6)
+        self.y_shape = (1, 2, 6, 9)
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMuklOp16(TestMatMulV2Op):
+    """
+    case 16 : to check the gradient for special case
+    """
+
+    def config(self):
+        self.x_shape = (100)
+        self.y_shape = (1, 2, 2, 100, 2)
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMuklOp17(TestMatMulV2Op):
+    """
+    case 17 : to check the gradient for special case
+    """
+
+    def config(self):
+        self.x_shape = (2, 1, 100)
+        self.y_shape = (100)
+        self.trans_x = False
+        self.trans_y = False
+
+
+class TestMatMuklOpBroadcast1(TestMatMulV2Op):
+    """
+    case 14_3
+    """
+
+    def config(self):
+        self.x_shape = (3, 1, 10, 10)
+        self.y_shape = (1, 2, 10, 10)
+        self.trans_x = True
+        self.trans_y = True
+
+
+class TestMatMuklOpBroadcast2(TestMatMulV2Op):
+    """
+    case 14_4
+    """
+
+    def config(self):
+        self.x_shape = (3, 1, 10, 10)
+        self.y_shape = (1, 2, 10, 10)
+        self.trans_x = False
+        self.trans_y = True
+
+
+#--------------------test matmul fp16--------------------
+
+
+def create_test_fp16_class(parent, atol=0.001, max_relative_error=2.5):
+    class TestMatMulOpFp16Case(parent):
+        def init_kernel_type(self):
+            self.dtype = np.float16
+
+        def test_check_output(self):
+            self.check_output_with_place(self.place, atol=atol)
+
+        def test_check_grad(self):
+            self.check_grad_with_place(
+                self.place, ['X', 'Y'],
+                'Out',
+                max_relative_error=max_relative_error)
+
+    cls_name = "{0}_{1}".format(parent.__name__, "Fp16")
+    TestMatMulOpFp16Case.__name__ = cls_name
+    globals()[cls_name] = TestMatMulOpFp16Case
+
+
+create_test_fp16_class(TestMatMulV2Op)
+create_test_fp16_class(TestMatMuklOp2)
+create_test_fp16_class(TestMatMuklOp3)
+create_test_fp16_class(TestMatMuklOp4)
+create_test_fp16_class(TestMatMuklOp5)
+create_test_fp16_class(TestMatMuklOp6)
+create_test_fp16_class(TestMatMuklOp7)
+create_test_fp16_class(TestMatMuklOp8)
+create_test_fp16_class(TestMatMuklOp9)
+create_test_fp16_class(TestMatMuklOp10)
+create_test_fp16_class(TestMatMuklOp11)
+create_test_fp16_class(TestMatMuklOp12)
+create_test_fp16_class(TestMatMuklOp13)
+create_test_fp16_class(TestMatMuklOp14)
+create_test_fp16_class(TestMatMuklOp15)
+create_test_fp16_class(TestMatMuklOp16)
+create_test_fp16_class(TestMatMuklOp17)
+
+
+class TestMatMulV2API(unittest.TestCase):
+    def setUp(self):
+        self.places = [paddle.CPUPlace()]
+        if paddle.is_compiled_with_npu():
+            self.places.append(paddle.NPUPlace(0))
+
+    def check_static_result(self, place):
+        with fluid.program_guard(fluid.Program(), fluid.Program()):
+            input_x = fluid.data(name="input_x", shape=[4, 3], dtype="float32")
+            input_y = fluid.data(name="input_y", shape=[3, 4], dtype="float32")
+
+            result = paddle.matmul(input_x, input_y)
+
+            x_np = np.random.random([4, 3]).astype("float32")
+            y_np = np.random.random([3, 4]).astype("float32")
+
+            exe = fluid.Executor(place)
+            fetches = exe.run(fluid.default_main_program(),
+                              feed={"input_x": x_np,
+                                    "input_y": y_np},
+                              fetch_list=[result])
+
+    def test_static(self):
+        for place in self.places:
+            self.check_static_result(place=place)
+
+    def test_dygraph(self):
+        for place in self.places:
+            with fluid.dygraph.guard(place):
+                input_x = np.random.random([4, 3]).astype("float32")
+                input_y = np.random.random([3, 4]).astype("float32")
+                x = paddle.to_tensor(input_x)
+                y = paddle.to_tensor(input_y)
+                result = paddle.matmul(x, y)
+
+    def test_dygraph_fp16(self):
+        if paddle.is_compiled_with_npu():
             place = paddle.NPUPlace(0)
-        else:
-            place = paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-        exe.run(startup_prog)
-
-        print("Start run on {}".format(place))
-        for epoch in range(100):
-
-            pred_res, loss_res = exe.run(main_prog,
-                                         feed={
-                                             "a": a_np,
-                                             "b": b_np,
-                                             "c": c_np,
-                                             "d": d_np,
-                                             "label": label_np
-                                         },
-                                         fetch_list=[prediction, loss])
-            if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
-
-        return pred_res, loss_res
-
-    def test_npu(self):
-        cpu_pred, cpu_loss = self._test(False)
-        npu_pred, npu_loss = self._test(True)
-
-        self.assertTrue(np.allclose(npu_pred, cpu_pred))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss))
-
-
-# The precision is aligned in NPU and GPU separately, which is only used for the usage method.
-
-
-class TestMatMulNet3_2(unittest.TestCase):
-    def _test(self, run_npu=True):
-        main_prog = paddle.static.Program()
-        startup_prog = paddle.static.Program()
-        main_prog.random_seed = SEED
-        startup_prog.random_seed = SEED
-        np.random.seed(SEED)
-        self._dtype = "float32"
-
-        a_np = np.random.random(size=(2, 1, 3)).astype(self._dtype)
-        b_np = np.random.random(size=(2, 1, 3)).astype(self._dtype)
-        c_np = np.random.random(size=(3, 2)).astype(self._dtype)
-        d_np = np.random.random(size=(3, 2)).astype(self._dtype)
-        label_np = np.random.randint(2, size=(2, 1)).astype('int64')
-
-        with paddle.static.program_guard(main_prog, startup_prog):
-            a = paddle.static.data(name="a", shape=[2, 1, 3], dtype=self._dtype)
-            b = paddle.static.data(name="b", shape=[2, 1, 3], dtype=self._dtype)
-            c = paddle.static.data(name="c", shape=[3, 2], dtype=self._dtype)
-            d = paddle.static.data(name="d", shape=[3, 2], dtype=self._dtype)
-            label = paddle.static.data(
-                name="label", shape=[2, 1], dtype='int64')
-
-            sum_1 = paddle.add(a, b)
-            sum_2 = paddle.add(c, d)
-            sum_1 = paddle.cast(sum_1, 'float16')
-            sum_2 = paddle.cast(sum_2, 'float16')
-            if not run_npu:
-                sum_1 = paddle.cast(sum_1, 'float32')
-                sum_2 = paddle.cast(sum_2, 'float32')
-
-            result = paddle.matmul(sum_1, sum_2)
-            if run_npu:
-                result = paddle.cast(result, 'float32')
-
-            result = paddle.reshape(result, shape=[2, 2])
-            fc_1 = fluid.layers.fc(input=result, size=8)
-            prediction = fluid.layers.fc(input=fc_1, size=2, act='softmax')
-
-            cost = fluid.layers.cross_entropy(input=prediction, label=label)
-            loss = fluid.layers.reduce_mean(cost)
-            sgd = fluid.optimizer.SGD(learning_rate=0.01)
-            sgd.minimize(loss)
-
-        if run_npu:
-            place = paddle.NPUPlace(0)
-        else:
-            place = paddle.CPUPlace()
-        exe = paddle.static.Executor(place)
-        exe.run(startup_prog)
-
-        print("Start run on {}".format(place))
-        for epoch in range(100):
-
-            pred_res, loss_res = exe.run(main_prog,
-                                         feed={
-                                             "a": a_np,
-                                             "b": b_np,
-                                             "c": c_np,
-                                             "d": d_np,
-                                             "label": label_np
-                                         },
-                                         fetch_list=[prediction, loss])
-            if epoch % 10 == 0:
-                print("Epoch {} | Prediction[0]: {}, Loss: {}".format(
-                    epoch, pred_res[0], loss_res))
-
-        return pred_res, loss_res
-
-    def test_npu(self):
-        cpu_pred, cpu_loss = self._test(False)
-        npu_pred, npu_loss = self._test(True)
-
-        self.assertTrue(np.allclose(npu_pred, cpu_pred, atol=1e-4))
-        self.assertTrue(np.allclose(npu_loss, cpu_loss, atol=1e-4))
+            with fluid.dygraph.guard(place):
+                input_x = np.random.random([4, 3]).astype("float16")
+                input_y = np.random.random([3, 4]).astype("float16")
+                x = paddle.to_tensor(input_x)
+                y = paddle.to_tensor(input_y)
+                result = paddle.matmul(x, y)
 
 
 if __name__ == '__main__':
