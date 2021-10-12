@@ -563,7 +563,10 @@ class _BatchNormBase(Layer):
         self._bias_attr = bias_attr
         self._use_global_stats = use_global_stats
 
-        self._dtype = 'float32'
+        if get_default_dtype() == 'float16':
+            self._dtype = 'float32'
+        else:
+            self._dtype = get_default_dtype()
 
         param_shape = [num_features]
 
