@@ -25,6 +25,7 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
   using framework::OperatorWithKernel::OperatorWithKernel;
 
   void InferShape(framework::InferShapeContext* ctx) const {
+    // Check input
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "ResNetUnitOp");
     OP_INOUT_CHECK(ctx->HasInput("FilterX"), "Input", "FilterX",
                    "ResNetUnitOp");
@@ -48,6 +49,7 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
       OP_INOUT_CHECK(ctx->HasInput("VarZ"), "Input", "VarZ", "ResNetUnitOp");
     }
 
+    // Check output
     OP_INOUT_CHECK(ctx->HasOutput("Y"), "Output", "Y", "ResNetUnitOp");
     OP_INOUT_CHECK(ctx->HasOutput("BitMask"), "Output", "BitMask",
                    "ResNetUnitOp");
@@ -73,23 +75,23 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
                      "ResNetUnitOp");
     }
 
-    // make sure Mean/MeanOut and Variance/VarianceOut share memory in Python
-    PADDLE_ENFORCE_EQ(ctx->Inputs("MeanX")[0], ctx->Outputs("RunningMeanX")[0],
-                      platform::errors::InvalidArgument(
-                          "Mean and MeanOut should share the same memory"));
+    // make sure Mean/RunningMean and Var/RunningVar share memory
     PADDLE_ENFORCE_EQ(
-        ctx->Inputs("VarX")[0], ctx->Outputs("RunningVarX")[0],
+        ctx->Inputs("MeanX")[0], ctx->Outputs("RunningMeanX")[0],
         platform::errors::InvalidArgument(
-            "Variance and VarianceOut should share the same memory"));
+            "MeanX and RunningMeanX should share the same memory"));
+    PADDLE_ENFORCE_EQ(ctx->Inputs("VarX")[0], ctx->Outputs("RunningVarX")[0],
+                      platform::errors::InvalidArgument(
+                          "VarX and RunningVarX should share the same memory"));
     if (has_shortcut) {
-      PADDLE_ENFORCE_EQ(ctx->Inputs("MeanZ")[0],
-                        ctx->Outputs("RunningMeanZ")[0],
-                        platform::errors::InvalidArgument(
-                            "Mean and MeanOut should share the same memory"));
+      PADDLE_ENFORCE_EQ(
+          ctx->Inputs("MeanZ")[0], ctx->Outputs("RunningMeanZ")[0],
+          platform::errors::InvalidArgument(
+              "MeanZ and RunningMeanZ should share the same memory"));
       PADDLE_ENFORCE_EQ(
           ctx->Inputs("VarZ")[0], ctx->Outputs("RunningVarZ")[0],
           platform::errors::InvalidArgument(
-              "Variance and VarianceOut should share the same memory"));
+              "VarZ and RunningVarZ should share the same memory"));
     }
 
     // Check dims of inputs
@@ -120,6 +122,7 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
                           "= [%s], the dimension of bn param = "
                           "[%d]",
                           bn_param_dims, bn_param_dims.size()));
+    // Calculate the dims of outputs
     int batch = x_dims[0];
     int output_channel = w_dims[0];
     int filter_size = w_dims[2];
@@ -128,7 +131,7 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
     int out_h = (x_dims[1] + pad * 2 - filter_size) / stride + 1;
     int out_w = (x_dims[2] + pad * 2 - filter_size) / stride + 1;
     std::vector<int> out_shape = {batch, out_h, out_w, output_channel};
-    // shape of bitmask
+    // Shape of bitmask
     int C = output_channel;
     int64_t NHW = std::accumulate(out_shape.begin(), out_shape.end(), 1,
                                   std::multiplies<int>()) /
@@ -139,6 +142,7 @@ class ResNetUnitOp : public framework::OperatorWithKernel {
 
     auto y_dims = framework::make_ddim(out_shape);
     auto bitmask_dims = framework::make_ddim(bitmask_shape);
+    // Set dims of outputs
     ctx->SetOutputDim("Y", y_dims);
     ctx->SetOutputDim("BitMask", bitmask_dims);
     ctx->SetOutputDim("ConvX", y_dims);
@@ -180,31 +184,31 @@ class ResNetUnitOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() {
     AddInput("X", "The input 1 tensor");
-    AddInput("FilterX", "The filter tensor of input 1");
-    AddInput("ScaleX", "The bn scale tensor of input 1");
-    AddInput("BiasX", "The bn bias tensor of input 1");
-    AddInput("MeanX", "The bn mean tensor of input 1");
-    AddInput("VarX", "The bn var tensor of input 1");
+    AddInput("FilterX", "Filter tensor of input 1");
+    AddInput("ScaleX", "Scale tensor of input 1 used in batchnorm");
+    AddInput("BiasX", "Bias tensor of input 1 used in batchnorm");
+    AddInput("MeanX", "Mean tensor of input 1 used in batchnorm");
+    AddInput("VarX", "Variance tensor of input 1 used in batchnorm");
     AddInput("Z", "The input 2 tensor").AsDispensable();
-    AddInput("FilterZ", "The filter tensor of input 2").AsDispensable();
-    AddInput("ScaleZ", "The bn scale tensor of input 2").AsDispensable();
-    AddInput("BiasZ", "The bn bias tensor of input 2").AsDispensable();
-    AddInput("MeanZ", "The bn mean tensor of input 2").AsDispensable();
-    AddInput("VarZ", "The bn var tensor of input 2").AsDispensable();
+    AddInput("FilterZ", "Filter tensor of input 2").AsDispensable();
+    AddInput("ScaleZ", "Scale tensor of input 2").AsDispensable();
+    AddInput("BiasZ", "Bias tensor of input 2").AsDispensable();
+    AddInput("MeanZ", "Mean tensor of input 2").AsDispensable();
+    AddInput("VarZ", "Variance tensor of input 2").AsDispensable();
     AddOutput("Y", "The result of the resnet unit");
-    AddOutput("BitMask", "The bitmask");
-    AddOutput("ConvX", "The output of x after conv");
-    AddOutput("SavedMeanX", "The output of saved mean of x");
-    AddOutput("SavedInvstdX", "The output of saved invstd of x");
-    AddOutput("RunningMeanX", "The output of running mean of x");
-    AddOutput("RunningVarX", "The output of running var of x");
-    AddOutput("ConvZ", "The output of z after conv").AsDispensable();
-    AddOutput("SavedMeanZ", "The output of saved mean of z").AsDispensable();
-    AddOutput("SavedInvstdZ", "The output of saved invstd of z")
+    AddOutput("BitMask", "The bitmask generated after relu");
+    AddOutput("ConvX", "The output of input 1 after conv");
+    AddOutput("SavedMeanX", "Mean of input 1 in the current batch");
+    AddOutput("SavedInvstdX", "Invstd of input 1 in the current batch");
+    AddOutput("RunningMeanX", "Shared memory with MeanX");
+    AddOutput("RunningVarX", "Shared memory with VarX");
+    AddOutput("ConvZ", "The output of input 2 after conv").AsDispensable();
+    AddOutput("SavedMeanZ", "Mean of input 1 in the current batch")
         .AsDispensable();
-    AddOutput("RunningMeanZ", "The output of running mean of z")
+    AddOutput("SavedInvstdZ", "Invstd of input 1 in the current batch")
         .AsDispensable();
-    AddOutput("RunningVarZ", "The output of running var of z").AsDispensable();
+    AddOutput("RunningMeanZ", "Shared memory with MeanZ").AsDispensable();
+    AddOutput("RunningVarZ", "Shared memory with VarZ").AsDispensable();
     AddAttr<int>("stride", "").SetDefault(1);
     AddAttr<int>("stride_z", "").SetDefault(1);
     AddAttr<int>("pad", "").SetDefault(0);
@@ -225,7 +229,12 @@ class ResNetUnitOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>("act_type", "The activation type to be fused.")
         .SetDefault("relu");
     AddComment(R"DOC(
-****TODO****.
+Fusion op of the basic unit of resnet block. 
+
+The implementation is based on the latest fusion op interface in cuDNN v8.0.
+For more details: 
+https://docs.nvidia.com/deeplearning/cudnn/api/index.html#cudnnFusedOps_t
+
 )DOC");
   }
 };
