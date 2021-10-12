@@ -94,7 +94,7 @@ class DygraphShardingOptimizer(object):
         self._is_param_in_current_rank = {}
         self._params_in_current_rank = []
         self._params_not_in_current_rank = []
-        for param in _parameter_list:
+        for param in self._parameter_list:
             if self._param2rank[param.name] == self._sharding_rank:
                 self._is_param_in_current_rank[param.name] = True
                 self._params_in_current_rank.append(param)
@@ -273,7 +273,7 @@ class DygraphShardingOptimizer(object):
     # create hook for each param when its grad is computed
     def _register_hooks_for_grad_reduction_and_gc(self):
         for param in self._parameter_list:
-            if param.requires_grad and not param.stop_gradient:
+            if not param.stop_gradient:
                 # definition of grad reduction closure.
                 # the input of this closure (current gradient) is needed
                 # because when hook is being executed, param.grad is None
@@ -323,7 +323,7 @@ class DygraphShardingOptimizer(object):
 
         with paddle.device.cuda.stream_guard(stream):
             # step 1: reduction
-            self._buffered_reduce(self._grads_in_grad_bucket, self._elements_in_grad_bucket)
+            self._buffered_reduce(self._grads_in_grad_bucket, self._params_in_grad_bucket)
 
             # step 2: gradient Garbage Collection
             for param in self._params_in_grad_bucket:
@@ -348,9 +348,9 @@ class DygraphShardingOptimizer(object):
     # reduce communicator for averaged gradients
     def _buffered_reduce(self, grads, params):
         #TODO: fused param reduce
-        for grad, param, _ in grads, zip(params):
+        for grad, param in zip(grads, params):
             dst_rank = self._param2rank[param.name]
-            tensor_to_reduce = grad.div_(1. / self._sharding_world_size)
+            tensor_to_reduce = grad.divide(paddle.to_tensor(self._sharding_world_size))
             paddle.distributed.reduce(tensor_to_reduce,
                         self._hcg.get_sharding_parallel_group().ranks[dst_rank],
                         group=self._hcg.get_sharding_parallel_group())
