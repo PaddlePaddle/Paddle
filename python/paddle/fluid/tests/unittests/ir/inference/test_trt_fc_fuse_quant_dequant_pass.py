@@ -118,11 +118,11 @@ class FCQuantDequantFusePassTRTDims3Cols2Test(QuantDequantTest):
         self.dynamic_shape_params = FCQuantDequantFusePassTRTDims3Cols2Test.DynamicShapeParam(
             {
                 'data': [1, 28, 28],
-                'reshape2_1.tmp_0': [1, 784]
+                'reshape2_0.tmp_0': [1, 784]
             }, {'data': [4, 28, 28],
-                'reshape2_1.tmp_0':
+                'reshape2_0.tmp_0':
                 [4, 784]}, {'data': [1, 28, 28],
-                            'reshape2_1.tmp_0': [1, 784]}, False)
+                            'reshape2_0.tmp_0': [1, 784]}, False)
         self.activation_quantize_type = 'moving_average_abs_max'
         self.weight_quantize_type = 'channel_wise_abs_max'
 
