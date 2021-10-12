@@ -89,7 +89,7 @@ if "%WITH_PYTHON%" == "ON" (
     pip install -r %work_dir%\python\requirements.txt --user
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
-        exit /b 7
+        exit /b 5
     )
 )
 
@@ -138,6 +138,17 @@ if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
     rmdir %BUILD_DIR% /s/q
+
+    : clear third party cache every once in a while
+    if %day_now% EQU 21 (
+        rmdir %cache_dir%\third_party /s/q
+    )
+    if %day_now% EQU 11 (
+        rmdir %cache_dir%\third_party /s/q
+    )
+    if %day_now% EQU 01 (
+        rmdir %cache_dir%\third_party /s/q
+    )
     goto :mkbuild
 )
 
@@ -309,7 +320,7 @@ if %GENERATOR% == "Ninja" (
     pip install ninja
     if %errorlevel% NEQ 0 (
         echo pip install ninja failed!
-        exit /b 7
+        exit /b 5
     )
 )
 
@@ -333,24 +344,6 @@ rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 rem clcache.exe -M 21474836480
 
 rem ------set third_party cache dir------
-: clear third party cache every once in a while
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
-set day_now=%datetime:~6,2%
-set day_before=-1
-set /p day_before=< %cache_dir%\day.txt
-if %day_now% NEQ %day_before% (
-    echo %day_now% > %cache_dir%\day.txt
-    type %cache_dir%\day.txt
-    if %day_now% EQU 21 (
-        rmdir %cache_dir%\third_party /s/q
-    )
-    if %day_now% EQU 11 (
-        rmdir %cache_dir%\third_party /s/q
-    )
-    if %day_now% EQU 01 (
-        rmdir %cache_dir%\third_party /s/q
-    )
-)
 
 if "%WITH_TPCACHE%"=="OFF" (
     set THIRD_PARTY_PATH=%work_dir:\=/%/%BUILD_DIR%/third_party
@@ -627,7 +620,7 @@ git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 pip install -r %work_dir%\python\unittest_py\requirements.txt --user
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
-    exit /b 7
+    exit /b 5
 )
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#

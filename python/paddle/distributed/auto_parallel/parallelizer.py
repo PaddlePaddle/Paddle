@@ -17,9 +17,10 @@ from paddle.distributed.fleet import cloud_utils
 import paddle.fluid.core as core
 from .context import DistributedContext
 from .context import get_default_distributed_context
-from .completion import complete_annotation
+from .completion import complete_annotation, complete_backward_annotation
 from .partitioner import Partitioner
 from .process import get_all_process_groups
+from .reshard import reshard
 
 
 class AutoParallelizer:
@@ -85,10 +86,16 @@ class AutoParallelizer:
         # instantiate communication by process_mapping.
         all_process_groups = get_all_process_groups()
         for process_group in all_process_groups:
+            if rank not in process_group._ranks:
+                continue
             process_group.instantiate()
 
         # The last step: remove all distributed attributes to be compatiable
         # with inference.
         self._remove_distributed_attrs(partitioned_main_prog)
+
+        complete_backward_annotation(partitioned_main_prog, self._dist_context)
+        reshard(partitioned_main_prog, partitioned_startup_prog, rank,
+                self._dist_context)
 
         return dist_optimize_ops, dist_params_grads, partitioned_startup_prog, partitioned_main_prog
