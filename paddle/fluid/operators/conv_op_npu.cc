@@ -186,11 +186,6 @@ class DepthwiseConvGradNPUKernel : public framework::OpKernel<T> {
       dilations[3] = dilation[1];
     }
 
-    // LOG(INFO) << "strides = " << framework::make_ddim(strides).to_str();
-    // LOG(INFO) << "dilations = " << framework::make_ddim(dilations).to_str();
-    // LOG(INFO) << "padding = " << framework::make_ddim(padding).to_str();
-    // LOG(INFO) << "data_format = " << data_format;
-
     if (filter_grad) {
       filter_grad->mutable_data<T>(ctx.GetPlace());
 

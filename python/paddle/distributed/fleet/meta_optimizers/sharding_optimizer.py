@@ -467,14 +467,16 @@ class ShardingOptimizer(MetaOptimizerBase):
         main_block = self._main_program.global_block()
         startup_block = self._startup_program.global_block()
 
+        mp_ring_id = self.mp_ring_id if self.mp_degree > 1 else None
         dp_ring_id = self.dp_ring_id if self.dp_degree > 1 else None
+        offload_helper = OffloadHelper(
+            mp_ring_id=mp_ring_id, dp_ring_id=dp_ring_id)
 
         # optimize offload should be enable while gradient merge is enable and
         # acc_step is quite large (e.g. >> 100). Since its memcpy could not be
         # overlap with calc, otherwise it will slower down training severely.
         if sharding_configs["optimize_offload"]:
             logger.info("Sharding with optimize offload !")
-            offload_helper = OffloadHelper(ring_id=dp_ring_id)
             offload_helper.offload(main_block, startup_block)
             # The optimize_cast is already included in offload_fp32param
             offload_helper.offload_fp32param(main_block, startup_block)
@@ -482,7 +484,6 @@ class ShardingOptimizer(MetaOptimizerBase):
             logger.info("Sharding with optimize cast !")
             # NOTE(wangxi): optimize_cast will persist fp16 param, it
             # will take more memory, but will be faster. Trade space for time.
-            offload_helper = OffloadHelper(ring_id=dp_ring_id)
             if self._optimizer_sharding:
                 offload_helper.opt_sharding_cast_fp32param(
                     main_block, startup_block,
@@ -553,6 +554,10 @@ class ShardingOptimizer(MetaOptimizerBase):
         # NOTE(JZ-LIANG) ensure in both sharding_hybrid_dp & pp_hybrid_dp
         # init param broadcast should be called after startup pruning
         self._initialization_broadcast()
+
+        # NOTE(wangxi): if param is not persistable, program.clone will
+        #  failed, so we remove no persistable param, recreate param as a var
+        self._recreate_not_persist_param_as_var()
 
         self._dump_program_for_debug()
 
@@ -1385,23 +1390,14 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         return
 
-    def _initialization_broadcast(self):
-        """
-        this funtion is to ensure the initialization between dp group to be 
-        identical when hybrid-dp is used.
-        """
-        if not self.hybrid_dp:
-            return
+    def _recreate_not_persist_param_as_var(self):
+        def recreate_not_persist_param_as_var(program):
+            block = program.global_block()
+            params = block.all_parameters()
+            for param in params:
+                if param.persistable:
+                    continue
 
-        startup_block = self._startup_program.global_block()
-        params = startup_block.all_parameters()
-        params_name = []
-
-        # NOTE(wangxi): if param is not persistable, program.clone will
-        #  failed, so we remove no persistable param, re add param as a var
-        for param in params:
-            params_name.append(param.name)
-            if not param.persistable:
                 name = param.name
                 shape = param.shape
                 dtype = param.dtype
@@ -1411,15 +1407,14 @@ class ShardingOptimizer(MetaOptimizerBase):
                 trainable = param.trainable
                 optimize_attr = param.optimize_attr
                 regularizer = param.regularizer
-
                 have_dist_attr = False
                 is_distributed = False
                 if hasattr(param, 'is_distributed'):
                     have_dist_attr = True
                     is_distributed = param.is_distributed
 
-                startup_block._remove_var(name, sync=False)
-                var = startup_block.create_var(
+                block._remove_var(name, sync=False)
+                var = block.create_var(
                     name=name,
                     shape=shape,
                     dtype=dtype,
@@ -1431,6 +1426,31 @@ class ShardingOptimizer(MetaOptimizerBase):
                 if have_dist_attr:
                     var.is_distributed = is_distributed
 
+            block._sync_with_cpp()
+
+        recreate_not_persist_param_as_var(self._startup_program)
+        recreate_not_persist_param_as_var(self._main_program)
+
+    def _initialization_broadcast(self):
+        """
+        this funtion is to ensure the initialization between dp group to be
+        identical when hybrid-dp is used, and the initialization of
+        not distributed param between mp group to be identical.
+        """
+        if self.dp_degree <= 1 and self.mp_degree <= 1:
+            return
+
+        startup_block = self._startup_program.global_block()
+
+        params = startup_block.all_parameters()
+        params_name = []
+        not_dist_param_name = set()
+
+        for param in params:
+            params_name.append(param.name)
+            if not hasattr(param, 'is_distributed') or not param.is_distributed:
+                not_dist_param_name.add(param.name)
+
         # offload and optimize_cast will insert broadcast op
         broadcast_params = set()
         for op in startup_block.ops:
@@ -1439,23 +1459,25 @@ class ShardingOptimizer(MetaOptimizerBase):
 
         for param in params_name:
             if param in broadcast_params: continue
-            startup_block.append_op(
-                type='c_broadcast',
-                inputs={'X': param},
-                outputs={'Out': param},
-                attrs={
-                    'ring_id': self.dp_ring_id,
-                    'root': 0,
-                    'use_calc_stream': True,
-                    OP_ROLE_KEY: OpRole.Forward
-                })
 
-        startup_block.append_op(
-            type='c_sync_comm_stream',
-            inputs={'X': params_name},
-            outputs={'Out': params_name},
-            attrs={'ring_id': self.dp_ring_id,
-                   OP_ROLE_KEY: OpRole.Forward})
+            rings = []
+            # need sync not distributed param in mp group
+            if self.mp_degree > 1 and param in not_dist_param_name:
+                rings.append(self.mp_ring_id)
+            if self.dp_degree > 1:
+                rings.append(self.dp_ring_id)
+
+            for ring in rings:
+                startup_block.append_op(
+                    type='c_broadcast',
+                    inputs={'X': param},
+                    outputs={'Out': param},
+                    attrs={
+                        'ring_id': ring,
+                        'root': 0,
+                        'use_calc_stream': True,
+                        OP_ROLE_KEY: OpRole.Forward
+                    })
 
         startup_block._sync_with_cpp()
 

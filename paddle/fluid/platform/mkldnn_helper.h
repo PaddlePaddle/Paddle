@@ -531,7 +531,13 @@ inline bool HasOpBFLOAT16DataType(const paddle::framework::OpDesc* op) {
 inline bool HasOpFLOAT32DataType(const paddle::framework::OpDesc* op) {
   return op->GetAttrIfExists<std::string>("mkldnn_data_type") == "float32";
 }
+
 enum class RNNReorderType { PP_NTC, PP_TNC, NTC_PP, TNC_PP };
+
+template <typename T>
+bool constexpr is_int8() {
+  return std::is_same<T, int8_t>::value || std::is_same<T, uint8_t>::value;
+}
 
 }  // namespace platform
 }  // namespace paddle

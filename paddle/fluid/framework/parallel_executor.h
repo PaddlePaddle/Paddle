@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -92,6 +93,10 @@ class ParallelExecutor {
 
   void RunWithoutFetch(const std::vector<std::string> &skip_eager_vars);
 
+  FetchResultType RunFromCinn(
+      const std::unordered_map<std::string, LoDTensor> &feed_tensors,
+      const std::vector<std::string> &fetch_names);
+
   void ResetOpHandleScopeMapOfGraphs(
       const std::unordered_map<Scope *, Scope *> &scope_map);
 
@@ -143,6 +148,8 @@ class ParallelExecutor {
 
   void SetReaderOpDeviceInfoOfGraphs(
       const std::vector<ir::Graph *> &final_graphs);
+
+  void PrepareForCUDAGraphCapture(ir::Graph *graph);
 
   ParallelExecutorPrivate *member_;
   std::vector<std::unique_ptr<ir::Graph>> async_graphs_;
