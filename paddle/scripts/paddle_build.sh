@@ -1900,7 +1900,6 @@ set -ex
 
 
 function test_base_npu_dist() {
-
     export HCCL_CONNECT_TIMEOUT=120
     export HCCL_WHITELIST_DISABLE=1
     export HCCL_SECURITY_MODE=1
