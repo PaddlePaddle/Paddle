@@ -182,6 +182,7 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
     local_ptr[i].resize(local_keys[i].size());
   }
 
+#ifdef PADDLE_WITH_PSLIB
   // get day_id: day nums from 1970
   struct std::tm b;
   b.tm_year = year_ - 1900;
@@ -190,7 +191,6 @@ void PSGPUWrapper::BuildTask(std::shared_ptr<HeterContext> gpu_task) {
   b.tm_min = b.tm_hour = b.tm_sec = 0;
   std::time_t seconds_from_1970 = std::mktime(&b);
   int day_id = seconds_from_1970 / 86400;
-#ifdef PADDLE_WITH_PSLIB
   fleet_ptr->pslib_ptr_->_worker_ptr->set_day_id(table_id_, day_id);
 #endif
 
