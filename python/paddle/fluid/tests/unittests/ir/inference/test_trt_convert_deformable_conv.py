@@ -43,19 +43,19 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
             return np.random.random([2, 18, 32, 32]).astype(np.float32)
 
         def generate_mask1(attrs: List[Dict[str, Any]]):
-            return np.random.random([2, 18, 32, 32]).astype(np.float32)
+            return np.random.random([2, 9, 32, 32]).astype(np.float32)
 
         def generate_filter1(attrs: List[Dict[str, Any]]):
             return np.random.random([6, 3, 3, 3]).astype(np.float32)
 
         for strides in [[1, 1], [2, 2]]:
-            for paddings in [[0, 3], [3, 1]]:
+            for paddings in [[1, 1]]:
                 for groups in [1, ]:
                     for dilations in [[1, 1]]:
                         dics = [{
                             "strides": strides,
                             "paddings": paddings,
-                            "gropus": groups,
+                            "groups": groups,
                             "dilations": dilations,
                             "deformable_groups": 1,
                             "im2col_step": 1
@@ -77,7 +77,7 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
                         ops = self.generate_op_config(ops_config)
 
                         program_config = ProgramConfig(
-                            op=ops,
+                            ops=ops,
                             weights={
                                 "filter_data": TensorConfig(data_gen=partial(
                                     generate_filter1, dics))
