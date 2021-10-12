@@ -23,6 +23,7 @@
 #ifdef PADDLE_WITH_ASCEND_CL
 #include "paddle/fluid/memory/allocation/npu_pinned_allocator.h"
 #endif
+#include "paddle/fluid/memory/allocation/aligned_allocator.h"
 #include "paddle/fluid/memory/allocation/retry_allocator.h"
 #include "paddle/fluid/platform/enforce.h"
 #include "paddle/fluid/platform/place.h"
@@ -206,6 +207,8 @@ class AllocatorFacadePrivate {
 
   inline const std::shared_ptr<Allocator>& GetAllocator(
       const platform::Place& place, size_t size) {
+    VLOG(4) << "GetAllocator"
+            << " " << place << " " << size;
     const auto& allocators =
         (size > 0 ? (UNLIKELY(FLAGS_use_system_allocator) ? system_allocators_
                                                           : GetAllocatorMap())
@@ -301,8 +304,39 @@ class AllocatorFacadePrivate {
 
 #else
     auto cuda_allocator = std::make_shared<CUDAAllocator>(p);
+    auto alignment = platform::GpuMinChunkSize();
+    bool need_addr_align = true;
+    // NOTE: sometimes, since cuda runtime can not be forked, calling any cuda
+    // API in that case may got cuda error(3), i.e.,
+    // cudaErrorInitializationError. And, the CUDAAllocator is only initialized
+    // but not really used.
+    // Here, the try-catch block is added to handle the case that
+    // GetDeviceProperties() may failed in the multiple process(for example, in
+    // dataloader with num_worker > 0)
+    try {
+      const auto& prop = platform::GetDeviceProperties(p.GetDeviceId());
+      need_addr_align = prop.textureAlignment < alignment;
+      VLOG(4) << "GetDeviceProperties ok, textureAlignment: "
+              << prop.textureAlignment
+              << ", set need_addr_align=" << need_addr_align;
+    } catch (...) {
+      need_addr_align = true;
+      VLOG(4) << "GetDeviceProperties failed, set need_addr_align=true";
+    }
+    // The address returned is aligned already,
+    // ref:
+    // https://stackoverflow.com/questions/14082964/cuda-alignment-256bytes-seriously/14083295#14083295
+    std::shared_ptr<Allocator> underlying_allocator{nullptr};
+    if (need_addr_align) {
+      VLOG(10) << "use AlignedAllocator with alignment: " << alignment;
+      underlying_allocator =
+          std::make_shared<AlignedAllocator>(underlying_allocator, alignment);
+    } else {
+      VLOG(10) << "not use AlignedAllocator with alignment: " << alignment;
+      underlying_allocator = cuda_allocator;
+    }
     allocators_[p] = std::make_shared<AutoGrowthBestFitAllocator>(
-        cuda_allocator, platform::GpuMinChunkSize(), allow_free_idle_chunk);
+        underlying_allocator, alignment, 0, allow_free_idle_chunk);
 #endif
 #endif
   }
