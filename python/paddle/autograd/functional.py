@@ -20,6 +20,7 @@ from ..nn.initializer import assign
 from ..tensor import reshape, zeros_like, to_tensor
 from .utils import _tensors, _stack_tensor_or_return_none, _replace_none_with_zero_tensor
 
+
 @contextlib.contextmanager
 def gradient_scope(*var_lists, create_graph=False, allow_unused=False):
     def grad_fn(ys, xs, v, create_graph=create_graph):
