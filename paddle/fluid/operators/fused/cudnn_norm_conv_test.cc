@@ -94,7 +94,7 @@ void CheckOutput(const framework::Tensor &cpu_res,
 // Use Paddle conv2d op results as baseline
 void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
                           const Tensor &cpu_input, const Tensor &cpu_filter,
-                          Tensor *cpu_output, int stride, int pad) {
+                          Tensor *cpu_output, int stride, int padding) {
   framework::Scope scope;
   auto *input = scope.Var("Input")->GetMutable<framework::LoDTensor>();
   auto *filter = scope.Var("Filter")->GetMutable<framework::LoDTensor>();
@@ -108,7 +108,7 @@ void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
   bool use_cudnn = true;
   std::string data_format = "NHWC";
   std::vector<int> strides = {stride, stride};
-  std::vector<int> paddings = {pad, pad};
+  std::vector<int> paddings = {padding, padding};
   attrs.insert({"strides", strides});
   attrs.insert({"paddings", paddings});
   attrs.insert({"use_cudnn", use_cudnn});
@@ -228,6 +228,15 @@ class CudnnNormConvolutionTester {
         static_cast<platform::CUDADeviceContext *>(
             platform::DeviceContextPool::Instance().Get(
                 platform::CUDAPlace(0)));
+
+    if (!Support(*ctx)) {
+      LOG(INFO)
+          << "Current test is only supported in the platforms with "
+          << "compatiblity greater than or equal to 70 and the kernel size "
+          << "must be equal to 1 or 3. Besides, when the kernel size is 1, "
+          << "the stride must be 1 if the compatiblity is equal to 70.";
+      return;
+    }
 
     framework::Tensor cpu_output_base;
     framework::Tensor cpu_sum_base;
@@ -364,6 +373,19 @@ class CudnnNormConvolutionTester {
     TensorCopySync(filter_grad, platform::CPUPlace(), cpu_filter_grad);
   }
 
+  bool Support(const platform::CUDADeviceContext &ctx) {
+    if (ctx.GetComputeCapability() == 70) {
+      if ((kernel_size_ == 3) || ((kernel_size_ == 1) && (stride_ == 1))) {
+        return true;
+      }
+    } else if (ctx.GetComputeCapability() > 70) {
+      if ((kernel_size_ == 3) || (kernel_size_ == 1)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
  private:
   int batch_size_;
   int height_;
@@ -437,11 +459,11 @@ TEST(CudnnNormConvFp16, K1S1O4) {
 
 // test for fp16, kernel = 1, stride = 2, output_channels = input_channels * 4
 TEST(CudnnNormConvFp16, K1S2O4) {
-  int batch_size = 1;
+  int batch_size = 4;
   int height = 8;
   int width = 8;
-  int input_channels = 8;
-  int output_channels = 32;
+  int input_channels = 32;
+  int output_channels = 128;
   int kernel_size = 1;
   int stride = 2;
   CudnnNormConvolutionTester<paddle::platform::float16> test(
