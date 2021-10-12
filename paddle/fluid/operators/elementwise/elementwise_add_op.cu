@@ -190,7 +190,8 @@ elementwise_add_grad(const framework::ExecutionContext& ctx,
       ops::ElementwiseAddGradKernel<plat::CUDADeviceContext,                  \
                                     plat::complex<float>>,                    \
       ops::ElementwiseAddGradKernel<plat::CUDADeviceContext,                  \
-                                    plat::complex<double>>);
+                                    plat::complex<double>>,                   \
+      ##__VA_ARGS__);
 
 #if !defined(PADDLE_WITH_HIP) && CUDA_VERSION >= 11000
 REGISTER_ELEMENTWISE_ADD_BASE(

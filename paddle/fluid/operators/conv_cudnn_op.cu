@@ -51,8 +51,11 @@ static inline bool IsAmpereOrLater(const platform::CUDADeviceContext& dev_ctx) {
   return dev_ctx.GetComputeCapability() >= 80;
 }
 
+template <typename T>
 static DataLayout GetComputeFormat(const platform::CUDADeviceContext& dev_ctx,
-                                   cudnnDataType_t dtype, bool channel_last) {
+                                   bool channel_last) {
+  auto dtype = platform::CudnnDataType<T>::type;
+
 #ifdef PADDLE_WITH_HIP
   // HIP MIOPEN ONLY SUPPORT NCHW format
   auto compute_format = DataLayout::kNCHW;
@@ -105,7 +108,7 @@ class CUDNNConvOpKernel : public framework::OpKernel<T> {
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
     auto dtype = platform::CudnnDataType<T>::type;
-    auto compute_format = GetComputeFormat(dev_ctx, dtype, channel_last);
+    auto compute_format = GetComputeFormat<T>(dev_ctx, channel_last);
     VLOG(3) << "Compute ConvOp with cuDNN:"
             << " data_format=" << data_format << " compute_format="
             << (compute_format == DataLayout::kNHWC ? "NHWC" : "NCHW");
@@ -411,7 +414,7 @@ class CUDNNConvGradOpKernel : public framework::OpKernel<T> {
     const bool channel_last = (data_format == "NHWC" || data_format == "NDHWC");
 
     auto dtype = platform::CudnnDataType<T>::type;
-    auto compute_format = GetComputeFormat(dev_ctx, dtype, channel_last);
+    auto compute_format = GetComputeFormat<T>(dev_ctx, channel_last);
     VLOG(3) << "Compute ConvGradOp with cuDNN:"
             << " data_format=" << data_format << " compute_format="
             << (compute_format == DataLayout::kNHWC ? "NHWC" : "NCHW");

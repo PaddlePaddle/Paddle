@@ -118,8 +118,11 @@ static __global__ LAUNCH_BOUNDS(BlockDim) void BNForwardTraining(
   }
 }
 
+template <typename T>
 static DataLayout GetComputeFormat(const DataLayout data_layout,
-                                   cudnnDataType_t dtype, bool test_mode) {
+                                   bool test_mode) {
+  auto dtype = platform::CudnnDataType<T>::type;
+
 #ifdef PADDLE_WITH_HIP
   auto compute_format =
       data_layout == DataLayout::kNHWC ? DataLayout::kNHWC : DataLayout::kNCHW;
@@ -184,7 +187,7 @@ class BatchNormKernel<platform::CUDADeviceContext, T>
     ExtractNCWHD(x_dims, data_layout, &N, &C, &H, &W, &D);
 
     auto dtype = platform::CudnnDataType<T>::type;
-    auto compute_format = GetComputeFormat(data_layout, dtype, test_mode);
+    auto compute_format = GetComputeFormat<T>(data_layout, test_mode);
 
     Tensor transformed_x(x->type());
     Tensor transformed_y(y->type());
@@ -907,7 +910,7 @@ class BatchNormGradKernel<platform::CUDADeviceContext, T>
 
     auto dtype = platform::CudnnDataType<T>::type;
     const auto *reserve_space = ctx.Input<Tensor>("ReserveSpace");
-    auto compute_format = GetComputeFormat(data_layout, dtype, false);
+    auto compute_format = GetComputeFormat<T>(data_layout, false);
 
     Tensor transformed_x(x->type());
     Tensor transformed_d_y(d_y->type());
