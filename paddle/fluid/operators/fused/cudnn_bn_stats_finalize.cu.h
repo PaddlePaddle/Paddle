@@ -68,11 +68,12 @@ class CudnnBNStatsFinalize {
   }
   ~CudnnBNStatsFinalize() {}
 
-  void Forward(const platform::CUDADeviceContext &ctx, Tensor *sum,
-               Tensor *sum_of_squares, const Tensor *scale, const Tensor *bias,
-               Tensor *saved_mean, Tensor *saved_invstd, Tensor *running_mean,
-               Tensor *running_var, Tensor *equiv_scale, Tensor *equiv_bias,
-               double eps, float momentum, int64_t ele_count, bool is_train) {
+  void Forward(const platform::CUDADeviceContext &ctx, const Tensor &sum,
+               const Tensor &sum_of_squares, const Tensor &scale,
+               const Tensor &bias, Tensor *saved_mean, Tensor *saved_invstd,
+               Tensor *running_mean, Tensor *running_var, Tensor *equiv_scale,
+               Tensor *equiv_bias, double eps, float momentum,
+               int64_t ele_count, bool is_train) {
     auto place = ctx.GetPlace();
     if (is_train) {
       TrainInit(ctx);
@@ -82,10 +83,11 @@ class CudnnBNStatsFinalize {
     auto &op = is_train ? train_op_ : inference_op_;
 
     // Set variant_param for both inference_op_ and train_op_
-    float *sum_ptr = sum->mutable_data<float>(place);
-    float *sum_of_squares_ptr = sum_of_squares->mutable_data<float>(place);
-    float *scale_ptr = const_cast<float *>(scale->data<float>());
-    float *bias_ptr = const_cast<float *>(bias->data<float>());
+    float *sum_ptr = const_cast<float *>(sum.data<float>());
+    float *sum_of_squares_ptr =
+        const_cast<float *>(sum_of_squares.data<float>());
+    float *scale_ptr = const_cast<float *>(scale.data<float>());
+    float *bias_ptr = const_cast<float *>(bias.data<float>());
     float *saved_mean_ptr = saved_mean->mutable_data<float>(place);
     float *saved_invstd_ptr = saved_invstd->mutable_data<float>(place);
     float *running_mean_ptr = running_mean->mutable_data<float>(place);

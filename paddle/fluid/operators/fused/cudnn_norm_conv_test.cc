@@ -336,7 +336,7 @@ class CudnnNormConvolutionTester {
     op::CudnnNormConvolution<T> conv_op(ctx, input_shape, filter_shape,
                                         output_shape, padding_, stride_,
                                         dilation_, group_);
-    conv_op.Forward(ctx, &input, &filter_nhwc, &output, &sum, &sum_of_square);
+    conv_op.Forward(ctx, input, filter_nhwc, &output, &sum, &sum_of_square);
 
     TensorCopySync(output, platform::CPUPlace(), cpu_output);
     TensorCopySync(sum, platform::CPUPlace(), cpu_sum);
@@ -366,7 +366,7 @@ class CudnnNormConvolutionTester {
     op::CudnnNormConvolutionGrad<T> conv_grad_op(ctx, input_shape, filter_shape,
                                                  output_shape, padding_,
                                                  stride_, dilation_, group_);
-    conv_grad_op.Backward(ctx, &input, &filter_nhwc, &output_grad, &input_grad,
+    conv_grad_op.Backward(ctx, input, filter_nhwc, output_grad, &input_grad,
                           &filter_grad);
 
     TensorCopySync(input_grad, platform::CPUPlace(), cpu_input_grad);

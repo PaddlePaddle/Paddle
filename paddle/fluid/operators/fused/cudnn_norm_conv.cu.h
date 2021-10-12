@@ -120,8 +120,8 @@ class CudnnNormConvolution {
   }
   ~CudnnNormConvolution() {}
 
-  void Forward(const platform::CUDADeviceContext &ctx, const Tensor *input,
-               const Tensor *filter, Tensor *output, Tensor *sum,
+  void Forward(const platform::CUDADeviceContext &ctx, const Tensor &input,
+               const Tensor &filter, Tensor *output, Tensor *sum,
                Tensor *sum_of_squares) {
     auto cudnn_handle = ctx.cudnn_handle();
     auto place = ctx.GetPlace();
@@ -133,8 +133,8 @@ class CudnnNormConvolution {
 
     // Set variant_param
     // input ptr
-    T *input_ptr = const_cast<T *>(input->data<T>());
-    T *filter_ptr = const_cast<T *>(filter->data<T>());
+    T *input_ptr = const_cast<T *>(input.data<T>());
+    T *filter_ptr = const_cast<T *>(filter.data<T>());
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, input_ptr);
     fwd_op->SetOpVariantParamAttrPtr(CUDNN_PTR_WDATA, filter_ptr);
     fwd_op->SetOpVariantParamAttrPtr(
@@ -221,22 +221,21 @@ class CudnnNormConvolutionGrad {
   }
   ~CudnnNormConvolutionGrad() {}
 
-  void Backward(const platform::CUDADeviceContext &ctx, const Tensor *input,
-                const Tensor *filter, Tensor *output_grad, Tensor *input_grad,
-                Tensor *filter_grad, bool use_addto = false) {
+  void Backward(const platform::CUDADeviceContext &ctx, const Tensor &input,
+                const Tensor &filter, const Tensor &output_grad,
+                Tensor *input_grad, Tensor *filter_grad,
+                bool use_addto = false) {
     auto place = ctx.GetPlace();
-    T *input_ptr = const_cast<T *>(input->data<T>());
-    T *output_grad_ptr = output_grad->mutable_data<T>(place);
-    T *filter_ptr = const_cast<T *>(filter->data<T>());
-    T *input_grad_ptr =
-        input_grad ? input_grad->mutable_data<T>(place) : nullptr;
-    T *filter_grad_ptr =
-        filter_grad ? filter_grad->mutable_data<T>(place) : nullptr;
+    T *input_ptr = const_cast<T *>(input.data<T>());
+    T *filter_ptr = const_cast<T *>(filter.data<T>());
+    T *output_grad_ptr = const_cast<T *>(output_grad.data<T>());
 
     if (filter_grad) {
+      T *filter_grad_ptr = filter_grad->mutable_data<T>(place);
       BackwardFilter(ctx, output_grad_ptr, input_ptr, filter_grad_ptr);
     }
     if (input_grad) {
+      T *input_grad_ptr = input_grad->mutable_data<T>(place);
       BackwardData(ctx, output_grad_ptr, filter_ptr, input_grad_ptr, use_addto);
     }
   }
