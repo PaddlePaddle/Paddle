@@ -22,8 +22,10 @@ namespace platform {
 #ifdef PADDLE_WITH_CUDA
 void BeginCUDAGraphCapture(platform::CUDAPlace place,
                            cudaStreamCaptureMode mode) {
-  auto stream =
-      platform::DeviceContextPool::Instance().GetByPlace(place)->stream();
+  auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(place);
+  dev_ctx->cudnn_workspace_handle().ResetWorkspace();
+
+  auto stream = dev_ctx->stream();
   CUDAGraph::BeginCapture(place, stream, mode);
   auto id = CUDAGraph::CapturingID();
   memory::allocation::AllocatorFacade::Instance().PrepareMemoryPoolForCUDAGraph(
@@ -35,6 +37,9 @@ void BeginCUDAGraphCapture(platform::CUDAPlace place,
 }
 
 std::unique_ptr<CUDAGraph> EndCUDAGraphCapture() {
+  auto place = CUDAGraph::CapturingPlace();
+  auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(place);
+  dev_ctx->cudnn_workspace_handle().ResetWorkspace();
   return CUDAGraph::EndCapture();
 }
 #endif

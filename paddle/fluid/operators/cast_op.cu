@@ -94,24 +94,19 @@ class CastCUDAOpKernel : public framework::OpKernel<InT> {
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 
-#ifdef PADDLE_WITH_HIP
-REGISTER_OP_CUDA_KERNEL(
-    cast, ops::CastCUDAOpKernel<float>, ops::CastCUDAOpKernel<double>,
-    ops::CastCUDAOpKernel<int>, ops::CastCUDAOpKernel<int64_t>,
-    ops::CastCUDAOpKernel<int16_t>, ops::CastCUDAOpKernel<bool>,
-    ops::CastCUDAOpKernel<uint8_t>,
-    ops::CastCUDAOpKernel<paddle::platform::float16>,
-    ops::CastCUDAOpKernel<paddle::platform::complex<float>>,
-    ops::CastCUDAOpKernel<paddle::platform::complex<double>>);
+#define REGISTER_CAST_CUDA_BASE(op_name, ...)                               \
+  REGISTER_OP_CUDA_KERNEL(                                                  \
+      op_name, ops::CastCUDAOpKernel<float>, ops::CastCUDAOpKernel<double>, \
+      ops::CastCUDAOpKernel<int>, ops::CastCUDAOpKernel<int64_t>,           \
+      ops::CastCUDAOpKernel<int16_t>, ops::CastCUDAOpKernel<bool>,          \
+      ops::CastCUDAOpKernel<uint8_t>, ops::CastCUDAOpKernel<plat::float16>, \
+      ops::CastCUDAOpKernel<plat::complex<float>>,                          \
+      ops::CastCUDAOpKernel<plat::complex<double>>, ##__VA_ARGS__);
+
+#if !defined(PADDLE_WITH_HIP)
+REGISTER_CAST_CUDA_BASE(cast, ops::CastCUDAOpKernel<plat::bfloat16>)
 #else
-REGISTER_OP_CUDA_KERNEL(
-    cast, ops::CastCUDAOpKernel<float>, ops::CastCUDAOpKernel<double>,
-    ops::CastCUDAOpKernel<int>, ops::CastCUDAOpKernel<int64_t>,
-    ops::CastCUDAOpKernel<int16_t>, ops::CastCUDAOpKernel<bool>,
-    ops::CastCUDAOpKernel<uint8_t>,
-    ops::CastCUDAOpKernel<paddle::platform::float16>,
-    ops::CastCUDAOpKernel<paddle::platform::bfloat16>,
-    ops::CastCUDAOpKernel<paddle::platform::complex<float>>,
-    ops::CastCUDAOpKernel<paddle::platform::complex<double>>);
+REGISTER_CAST_CUDA_BASE(cast)
 #endif

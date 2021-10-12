@@ -70,6 +70,9 @@ void CUDAGraph::BeginCapture(platform::CUDAPlace place, cudaStream_t stream,
   cudaStreamCaptureStatus status;
   PADDLE_ENFORCE_CUDA_SUCCESS(cudaStreamGetCaptureInfo(
       capturing_graph_->stream_, &status, &(capturing_graph_->id_)));
+  PADDLE_ENFORCE_EQ(IsValidCapturing(), true,
+                    platform::errors::PermissionDenied(
+                        "CUDA Graph should not be invalidated."));
   VLOG(10) << "Begin to capture CUDA Graph with ID " << capturing_graph_->id_;
 }
 
@@ -86,6 +89,15 @@ std::unique_ptr<CUDAGraph> CUDAGraph::EndCapture() {
   VLOG(10) << "End to capture CUDA Graph with ID " << capturing_graph_->id_;
   return std::move(capturing_graph_);
 #endif
+}
+
+bool CUDAGraph::IsValidCapturing() {
+  if (!IsCapturing()) return false;
+  cudaStreamCaptureStatus status;
+  CUDAGraphID id;
+  PADDLE_ENFORCE_CUDA_SUCCESS(
+      cudaStreamGetCaptureInfo(capturing_graph_->stream_, &status, &id));
+  return status == cudaStreamCaptureStatusActive;
 }
 
 }  // namespace platform

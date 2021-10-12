@@ -114,19 +114,33 @@ class TrtConvertGroupNormTest(TrtLayerAutoScanTest):
         clear_dynamic_shape()
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False), (1e-5, 1e-5)
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-5
+            attrs, False), (1e-5, 1e-5)
 
         # for dynamic_shape
         generate_dynamic_shape(attrs)
-        # self.trt_param.precision = paddle_infer.PrecisionType.Float32
-        # yield self.create_inference_config(), generate_trt_nodes_num(attrs, True), 1e-5
-        # self.trt_param.precision = paddle_infer.PrecisionType.Half
-        # yield self.create_inference_config(), generate_trt_nodes_num(attrs, True), 1e-5
+        self.trt_param.precision = paddle_infer.PrecisionType.Float32
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), (1e-5, 1e-5)
+        self.trt_param.precision = paddle_infer.PrecisionType.Half
+        yield self.create_inference_config(), generate_trt_nodes_num(
+            attrs, True), (1e-5, 1e-5)
+
+    def add_skip_trt_case(self):
+        def teller1(program_config, predictor_config):
+            if len(self.dynamic_shape.min_input_shape) != 0:
+                return True
+            return False
+
+        self.add_skip_case(
+            teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
+            "The goup_norm plugin will check dim not -1 failed when dynamic fp16 mode."
+        )
 
     def test(self):
+        self.add_skip_trt_case()
         self.run_test()
 
 
