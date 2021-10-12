@@ -2249,22 +2249,22 @@ void BindImperative(py::module *m_ptr) {
                           imperative::VarBase &count) {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(src.Place()), true,
-        platform::errors::PreconditionNotMet(
+        platform::errors::InvalidArgument(
             "Required `src` device should be CUDAPlace, but received %d. ",
             src.Place()));
     PADDLE_ENFORCE_EQ(platform::is_cuda_pinned_place(dst.Place()), true,
-                      platform::errors::PreconditionNotMet(
+                      platform::errors::InvalidArgument(
                           "Required `dst` device should be CUDAPinnedPlace, "
                           "but received %d. ",
                           dst.Place()));
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(offset.Place()), true,
-        platform::errors::PreconditionNotMet(
+        platform::errors::InvalidArgument(
             "Required `offset` device should be CPUPlace, but received %d. ",
             offset.Place()));
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(count.Place()), true,
-        platform::errors::PreconditionNotMet(
+        platform::errors::InvalidArgument(
             "Required `count` device should be CPUPlace, but received %d. ",
             count.Place()));
 
@@ -2305,32 +2305,32 @@ void BindImperative(py::module *m_ptr) {
                          imperative::VarBase &count) {
     PADDLE_ENFORCE_EQ(
         platform::is_cuda_pinned_place(src.Place()), true,
-        platform::errors::PreconditionNotMet(
+        platform::errors::InvalidArgument(
             "Required `src` device should be CUDAPinnedPlace, but received %d.",
             src.Place()));
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(dst.Place()), true,
-        platform::errors::PreconditionNotMet(
+        platform::errors::InvalidArgument(
             "Required `dst` device should be CUDAPlace, but received %d.",
             dst.Place()));
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(index.Place()), true,
-        platform::errors::PreconditionNotMet(
+        platform::errors::InvalidArgument(
             "Required `index` device should be CPUPlace, but received %d.",
             index.Place()));
     PADDLE_ENFORCE_EQ(platform::is_cuda_pinned_place(buffer.Place()), true,
-                      platform::errors::PreconditionNotMet(
+                      platform::errors::InvalidArgument(
                           "Required `buffer` device should be CUDAPinnedPlace, "
                           "but received %d.",
                           buffer.Place()));
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(offset.Place()), true,
-        platform::errors::PreconditionNotMet(
+        platform::errors::InvalidArgument(
             "Required `offset` device should be CPUPlace, but received %d.",
             offset.Place()));
     PADDLE_ENFORCE_EQ(
         platform::is_cpu_place(count.Place()), true,
-        platform::errors::PreconditionNotMet(
+        platform::errors::InvalidArgument(
             "Required `count` device should be CPUPlace, but received %d.",
             count.Place()));
 
