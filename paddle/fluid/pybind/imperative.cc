@@ -2244,14 +2244,16 @@ void BindImperative(py::module *m_ptr) {
         });
 
 #if defined(PADDLE_WITH_CUDA)
-  m.def("async_write", [](imperative::VarBase &src, imperative::VarBase &dst,
-                          imperative::VarBase &offset,
-                          imperative::VarBase &count) {
+  m.def("async_write", [](const imperative::VarBase &src,
+                          imperative::VarBase &dst,
+                          const imperative::VarBase &offset,
+                          const imperative::VarBase &count) {
     PADDLE_ENFORCE_EQ(
         platform::is_gpu_place(src.Place()), true,
         platform::errors::InvalidArgument(
             "Required `src` device should be CUDAPlace, but received %d. ",
             src.Place()));
+
     PADDLE_ENFORCE_EQ(platform::is_cuda_pinned_place(dst.Place()), true,
                       platform::errors::InvalidArgument(
                           "Required `dst` device should be CUDAPinnedPlace, "
@@ -2269,13 +2271,13 @@ void BindImperative(py::module *m_ptr) {
             count.Place()));
 
     auto &src_tensor = src.Var().Get<framework::LoDTensor>();
-    auto &dst_tensor = dst.Var().Get<framework::LoDTensor>();
+    auto *dst_tensor = dst.MutableVar()->GetMutable<framework::LoDTensor>();
     auto &offset_tensor = offset.Var().Get<framework::LoDTensor>();
     auto &count_tensor = count.Var().Get<framework::LoDTensor>();
     const auto &deviceId = paddle::platform::GetCurrentDeviceId();
 
     PADDLE_ENFORCE_EQ(offset_tensor.numel() == count_tensor.numel(), true,
-                      platform::errors::PreconditionNotMet(
+                      platform::errors::InvalidArgument(
                           "Offset and count tensor size dismatch."));
 
     auto stream =
@@ -2283,26 +2285,25 @@ void BindImperative(py::module *m_ptr) {
 
     int64_t size = src_tensor.numel() / src_tensor.dims()[0];
     auto *src_data = src_tensor.data<float>();
-    auto *dst_data = dst_tensor.data<float>();
-    auto *dst_data_new = const_cast<float *>(dst_data);
+    auto *dst_data = dst_tensor->mutable_data<float>(dst.Place());
     const int64_t *offset_data = offset_tensor.data<int64_t>();
     const int64_t *count_data = count_tensor.data<int64_t>();
-
     int64_t src_offset = 0, dst_offset, c;
     for (int64_t i = 0; i < offset_tensor.numel(); i++) {
       dst_offset = offset_data[i], c = count_data[i];
-      cudaMemcpyAsync(dst_data_new + (dst_offset * size),
+      cudaMemcpyAsync(dst_data + (dst_offset * size),
                       src_data + (src_offset * size), c * size * sizeof(float),
                       cudaMemcpyDeviceToHost, stream);
       src_offset += c;
     }
   });
 
-  m.def("async_read", [](imperative::VarBase &src, imperative::VarBase &dst,
-                         imperative::VarBase &index,
+  m.def("async_read", [](const imperative::VarBase &src,
+                         imperative::VarBase &dst,
+                         const imperative::VarBase &index,
                          imperative::VarBase &buffer,
-                         imperative::VarBase &offset,
-                         imperative::VarBase &count) {
+                         const imperative::VarBase &offset,
+                         const imperative::VarBase &count) {
     PADDLE_ENFORCE_EQ(
         platform::is_cuda_pinned_place(src.Place()), true,
         platform::errors::InvalidArgument(
@@ -2335,13 +2336,13 @@ void BindImperative(py::module *m_ptr) {
             count.Place()));
 
     auto &src_tensor = src.Var().Get<framework::LoDTensor>();
-    auto &dst_tensor = dst.Var().Get<framework::LoDTensor>();
+    auto *dst_tensor = dst.MutableVar()->GetMutable<framework::LoDTensor>();
     auto &index_tensor = index.Var().Get<framework::LoDTensor>();
-    auto &buffer_tensor = buffer.Var().Get<framework::LoDTensor>();
+    auto *buffer_tensor =
+        buffer.MutableVar()->GetMutable<framework::LoDTensor>();
     auto &offset_tensor = offset.Var().Get<framework::LoDTensor>();
     auto &count_tensor = count.Var().Get<framework::LoDTensor>();
-    auto *dst_data = dst_tensor.data<float>();
-    auto *dst_data_new = const_cast<float *>(dst_data);
+    auto *dst_data = dst_tensor->mutable_data<float>(dst.Place());
     const auto &deviceId = paddle::platform::GetCurrentDeviceId();
 
     auto stream =
@@ -2357,10 +2358,11 @@ void BindImperative(py::module *m_ptr) {
       for (int64_t i = 0; i < count_tensor.numel(); i++) {
         numel += count_data[i];
       }
-      PADDLE_ENFORCE_EQ(numel + index_tensor.numel() <= buffer_tensor.dims()[0],
-                        true, platform::errors::PreconditionNotMet(
-                                  "Buffer tensor size is too small."));
-      PADDLE_ENFORCE_EQ(numel + index_tensor.numel() <= dst_tensor.dims()[0],
+      PADDLE_ENFORCE_EQ(
+          numel + index_tensor.numel() <= buffer_tensor->dims()[0], true,
+          platform::errors::PreconditionNotMet(
+              "Buffer tensor size is too small."));
+      PADDLE_ENFORCE_EQ(numel + index_tensor.numel() <= dst_tensor->dims()[0],
                         true, platform::errors::PreconditionNotMet(
                                   "Target tensor size is too small."));
 
@@ -2371,16 +2373,16 @@ void BindImperative(py::module *m_ptr) {
         PADDLE_ENFORCE_EQ(src_offset + c <= src_tensor.dims()[0], true,
                           platform::errors::PreconditionNotMet(
                               "Invalid offset or count index."));
-        PADDLE_ENFORCE_EQ(dst_offset + c <= dst_tensor.dims()[0], true,
+        PADDLE_ENFORCE_EQ(dst_offset + c <= dst_tensor->dims()[0], true,
                           platform::errors::PreconditionNotMet(
                               "Invalid offset or count index."));
         cudaMemcpyAsync(
-            dst_data_new + (dst_offset * size), src_data + (src_offset * size),
+            dst_data + (dst_offset * size), src_data + (src_offset * size),
             c * size * sizeof(float), cudaMemcpyHostToDevice, stream);
         dst_offset += c;
       }
     } else {
-      PADDLE_ENFORCE_EQ(index_tensor.numel() <= buffer_tensor.dims()[0], true,
+      PADDLE_ENFORCE_EQ(index_tensor.numel() <= buffer_tensor->dims()[0], true,
                         platform::errors::PreconditionNotMet(
                             "Buffer tensor size is too small."));
     }
@@ -2388,16 +2390,16 @@ void BindImperative(py::module *m_ptr) {
     // Select the index data to the buffer
     auto index_select = [](const framework::Tensor &src_tensor,
                            const framework::Tensor &index_tensor,
-                           const framework::Tensor &buffer_tensor) {
+                           framework::Tensor *buffer_tensor) {
       auto *src_data = src_tensor.data<float>();
       auto *index_data = index_tensor.data<int64_t>();
-      auto *buffer_data = buffer_tensor.data<float>();
-      auto *buffer_data_new = const_cast<float *>(buffer_data);
+      auto *buffer_data =
+          buffer_tensor->mutable_data<float>(buffer_tensor->place());
       const int &slice_size = src_tensor.dims()[1];
       const int &copy_bytes = slice_size * sizeof(float);
       int64_t c = 0;
       for (int64_t i = 0; i < index_tensor.numel(); i++) {
-        std::memcpy(buffer_data_new + c * slice_size,
+        std::memcpy(buffer_data + c * slice_size,
                     src_data + index_data[i] * slice_size, copy_bytes);
         c += 1;
       }
@@ -2405,7 +2407,7 @@ void BindImperative(py::module *m_ptr) {
     index_select(src_tensor, index_tensor, buffer_tensor);
 
     // Copy the data to device memory
-    cudaMemcpyAsync(dst_data_new + (numel * size), buffer_tensor.data<float>(),
+    cudaMemcpyAsync(dst_data + (numel * size), buffer_tensor->data<float>(),
                     index_tensor.numel() * size * sizeof(float),
                     cudaMemcpyHostToDevice, stream);
   });
