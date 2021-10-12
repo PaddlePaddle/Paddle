@@ -38,7 +38,7 @@ class MergedMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddInput("Param", "").AsDuplicable();
     AddInput("Grad", "").AsDuplicable();
     AddInput("Velocity", "").AsDuplicable();
-    AddInput("LearningRate", "").AsDuplicable();
+    AddInput("LearningRate", "");
     AddInput("MasterParam", "").AsDispensable().AsDuplicable();
     AddOutput("ParamOut", "").AsDuplicable();
     AddOutput("VelocityOut", "").AsDuplicable();
