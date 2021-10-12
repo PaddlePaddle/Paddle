@@ -87,31 +87,22 @@ class BertTokenizer {
   void CreateTokenTypeIdsFromSequences(
       vector<int64_t>* token_type_ids, const vector<int64_t>& token_ids_0,
       const vector<int64_t>& token_ids_1 = vector<int64_t>()) const;
-  void ConvertTokensToIds(const vector<wstring>& tokens,
-                          vector<int64_t>* token_ids) const;
-  int TruncateSequence(vector<int64_t>* ids, vector<int64_t>* pair_ids,
-                       const size_t num_tokens_to_remove = 0,
-                       const string& truncation_strategy = "longest_first",
-                       const size_t stride = 0) const;
+  void TruncateSequence(vector<int64_t>* ids, vector<int64_t>* pair_ids,
+                        const size_t num_tokens_to_remove = 0,
+                        const size_t stride = 0) const;
   int64_t GetNumSpecialTokensToAdd(const bool pair = false) const;
   int Encode(unordered_map<string, vector<int64_t>>* encoded_inputs,
              const string& text, const string& text_pair = "",
              bool is_split_into_words = false, const size_t max_seq_len = 0,
-             bool pad_to_max_seq_len = false,
-             const string& truncation_strategy = "longest_first") const;
+             bool pad_to_max_seq_len = false) const;
   void BatchEncode(
       vector<unordered_map<string, vector<int64_t>>>* batch_encode_inputs,
       const vector<string>& batch_text,
       const vector<string>& batch_text_pair = vector<string>(),
       bool is_split_into_words = false, const size_t max_seq_len = 0,
-      bool pad_to_max_seq_len = false,
-      const string& truncation_strategy = "longest_first") const;
+      bool pad_to_max_seq_len = false) const;
 
-  int64_t GetUnkTokenID() const;
   int64_t GetPadTokenID() const;
-  int64_t GetClsTokenID() const;
-  int64_t GetMaskTokenID() const;
-  int64_t GetSepTokenID() const;
 
  private:
   bool do_lower_case_;

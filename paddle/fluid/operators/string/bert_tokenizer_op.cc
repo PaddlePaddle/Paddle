@@ -232,20 +232,6 @@ BertTokenizer::BertTokenizer(framework::Vocab* vocab,
                               mask_token_id_, sep_token_id_});
 }
 
-void BertTokenizer::ConvertTokensToIds(const vector<wstring>& tokens,
-                                       vector<int64_t>* token_ids) const {
-  token_ids->clear();
-  token_ids->resize(tokens.size());
-  for (size_t i = 0; i < token_ids->size(); ++i) {
-    auto iter = vocab_->find(tokens[i]);
-    if (iter != vocab_->end()) {
-      token_ids->at(i) = iter->second;
-    } else {
-      token_ids->at(i) = unk_token_id_;
-    }
-  }
-}
-
 void BertTokenizer::Tokenize(const string& text,
                              vector<int64_t>* split_token_ids) const {
   std::vector<std::wstring> tmp_tokens;
@@ -329,70 +315,26 @@ void BertTokenizer::CreateTokenTypeIdsFromSequences(
   }
 }
 
-int BertTokenizer::TruncateSequence(
-    // unordered_map<string, vector<int64_t>>* res,
+void BertTokenizer::TruncateSequence(
     vector<int64_t>* ids, vector<int64_t>* pair_ids,
     const size_t num_tokens_to_remove /* = 0 */,
-    const string& truncation_strategy /* = "longest_first" */,
     const size_t stride /* = 0 */) const {
-  if (truncation_strategy == "longest_first") {
-    for (size_t i = 0; i < num_tokens_to_remove; i++) {
-      if ((pair_ids->size() == 0) || (ids->size() > pair_ids->size())) {
-        ids->pop_back();
-      } else {
-        pair_ids->pop_back();
-      }
-    }
-  } else if (truncation_strategy == "only_first") {
-    if (ids->size() > num_tokens_to_remove) {
-      for (size_t i = 0; i < num_tokens_to_remove; i++) {
-        ids->pop_back();
-      }
+  for (size_t i = 0; i < num_tokens_to_remove; i++) {
+    if ((pair_ids->size() == 0) || (ids->size() > pair_ids->size())) {
+      ids->pop_back();
     } else {
-      VLOG(2) << "We need to remove " << num_tokens_to_remove << " tokens "
-              << "to truncate the input but the first sequence has a length "
-              << ids->size()
-              << ". Please select another truncation strategy than "
-              << truncation_strategy
-              << ", for instance \'longest_first\' or \'only_second\'." << endl;
-      // Failed.
-      return 0;
-    }
-  } else if (truncation_strategy == "only_second" && pair_ids->size() != 0) {
-    if (pair_ids->size() > num_tokens_to_remove) {
-      for (size_t i = 0; i < num_tokens_to_remove; i++) {
-        pair_ids->pop_back();
-      }
-    } else {
-      VLOG(2) << "We need to remove " << num_tokens_to_remove
-              << " to truncate the input but the second sequence has a length "
-              << pair_ids->size()
-              << ". Please select another truncation strategy than "
-              << truncation_strategy
-              << ", for instance \'longest_first\' or \'only_first\'." << endl;
-      // Failed.
-      return 0;
+      pair_ids->pop_back();
     }
   }
-  // Successed.
-  return 1;
 }
-
-int64_t BertTokenizer::GetClsTokenID() const { return cls_token_id_; }
-
-int64_t BertTokenizer::GetSepTokenID() const { return sep_token_id_; }
-
-int64_t BertTokenizer::GetUnkTokenID() const { return unk_token_id_; }
-
-int64_t BertTokenizer::GetMaskTokenID() const { return mask_token_id_; }
 
 int64_t BertTokenizer::GetPadTokenID() const { return pad_token_id_; }
 
 int BertTokenizer::Encode(
     unordered_map<string, vector<int64_t>>* encoded_inputs, const string& text,
     const string& text_pair /* = "" */, bool is_split_into_words /* = false */,
-    const size_t max_seq_len /* = 0 */, bool pad_to_max_seq_len /* = false */,
-    const string& truncation_strategy /* = "longest_first" */) const {
+    const size_t max_seq_len /* = 0 */,
+    bool pad_to_max_seq_len /* = false */) const {
   vector<int64_t> ids;
   vector<int64_t> pair_ids;
   if (!is_split_into_words) {
@@ -434,9 +376,7 @@ int BertTokenizer::Encode(
   // then we truncate it.
   size_t total_len = len_ids + len_pair_ids + GetNumSpecialTokensToAdd(pair);
   if (max_seq_len > 0 && total_len > max_seq_len) {
-    int status = TruncateSequence(&ids, &pair_ids, total_len - max_seq_len,
-                                  truncation_strategy);
-    if (!status) return 0;
+    TruncateSequence(&ids, &pair_ids, total_len - max_seq_len);
   }
 
   // Add special tokens
@@ -484,8 +424,7 @@ void BertTokenizer::BatchEncode(
     const vector<string>& batch_text,
     const vector<string>& batch_text_pair /* = vector<string>() */,
     bool is_split_into_words /* = false */, const size_t max_seq_len /* = 0 */,
-    bool pad_to_max_seq_len /* = false */,
-    const string& truncation_strategy /* = "longest_first" */) const {
+    bool pad_to_max_seq_len /* = false */) const {
   bool has_text_pair = false;
   if (batch_text_pair.size() != 0) {
     has_text_pair = true;
@@ -500,16 +439,15 @@ void BertTokenizer::BatchEncode(
     if (has_text_pair) {
       auto status =
           Encode(&res, batch_text[i], batch_text_pair[i], is_split_into_words,
-                 max_seq_len, pad_to_max_seq_len, truncation_strategy);
+                 max_seq_len, pad_to_max_seq_len);
       if (!status) {
         res["input_ids"] =
             std::vector<int64_t>{cls_token_id_, sep_token_id_, cls_token_id_};
         res["token_type_ids"] = std::vector<int64_t>{0, 0, 1};
       }
     } else {
-      auto status =
-          Encode(&res, batch_text[i], {}, is_split_into_words, max_seq_len,
-                 pad_to_max_seq_len, truncation_strategy);
+      auto status = Encode(&res, batch_text[i], {}, is_split_into_words,
+                           max_seq_len, pad_to_max_seq_len);
 
       if (!status) {
         res["input_ids"] = std::vector<int64_t>{cls_token_id_, sep_token_id_};
