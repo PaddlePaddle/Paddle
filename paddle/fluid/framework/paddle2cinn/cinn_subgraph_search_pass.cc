@@ -16,6 +16,7 @@ limitations under the License. */
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -25,7 +26,10 @@ limitations under the License. */
 // #include "cinn/frontend/op_mapper_registry.h"
 // #include "cinn/frontend/op_mappers/use_op_mappers.h"
 
-// just for local compile
+// TODO(jiangcheng05): just for local compile, remove after
+// paddle and CINN have been binded
+// The APIs are the same as CINN:
+// https://github.com/PaddlePaddle/CINN/blob/develop/cinn/utils/registry.h
 namespace cinn {
 namespace frontend {
 class OpMapperRegistry {
@@ -68,17 +72,43 @@ std::unique_ptr<Graph> CreateNewSubGraph(
   // the ProgramDesc is useless, so here we pass a temporary object.
   auto sub_graph = std::make_unique<Graph>(framework::ProgramDesc());
 
+  std::unordered_map<Node*, Node*> old_op2new_op;
   for (auto* op : cluster) {
     auto sub_node = sub_graph->CreateOpNode(op->Op());
-    sub_node->inputs = op->inputs;
-    sub_node->outputs = op->outputs;
+    old_op2new_op[op] = sub_node;
+  }
+
+  std::unordered_map<Node*, Node*> old_var2new_var;
+  for (auto* var : cluster_internals) {
+    auto sub_node = sub_graph->CreateVarNode(var->Var());
+    old_var2new_var[var] = sub_node;
+  }
+
+  // link new node of new subgraph
+  for (auto* op : cluster) {
+    for (auto* var : op->inputs) {
+      // if the var is internal node, link to new node
+      // else the var is out-graph, link to old node
+      old_op2new_op[op]->inputs.emplace_back(
+          cluster_internals.count(var) ? old_var2new_var[var] : var);
+    }
+    for (auto* var : op->outputs) {
+      old_op2new_op[op]->outputs.emplace_back(
+          cluster_internals.count(var) ? old_var2new_var[var] : var);
+    }
   }
 
   for (auto* var : cluster_internals) {
-    auto sub_node = sub_graph->CreateVarNode(var->Var());
-    sub_node->inputs = var->inputs;
-    sub_node->outputs = var->outputs;
+    for (auto* op : var->inputs) {
+      old_var2new_var[var]->inputs.emplace_back(
+          cluster.count(op) ? old_op2new_op[op] : op);
+    }
+    for (auto* op : var->outputs) {
+      old_var2new_var[var]->outputs.emplace_back(
+          cluster.count(op) ? old_op2new_op[op] : op);
+    }
   }
+
   return sub_graph;
 }
 
@@ -105,7 +135,7 @@ void AnalyseClusterVariables(const GraphNodeSet& cluster,
   // and add cluster_internals node
   for (auto* var_node : *cluster_outputs) {
     if (cluster_inputs->count(var_node) > 0) {
-      // if a input node also existed in output list, remove
+      // if a input node also exists in output list, remove
       cluster_inputs->erase(var_node);
 
       // the internal node is must an output node of sub-graph,
@@ -120,11 +150,11 @@ void AnalyseClusterVariables(const GraphNodeSet& cluster,
     }
   }
 
-  // if a output node also existed in input list, remove.
+  // if a output node also exists in input list, remove.
   for (auto* var_node : *cluster_inputs) {
     cluster_outputs->erase(var_node);
   }
-  // if a output node also existed in internal list, remove.
+  // if a output node also exists in internal list, remove.
   for (auto* var_node : *cluster_internals) {
     cluster_outputs->erase(var_node);
   }
@@ -184,8 +214,9 @@ void RemoveUselessLink(const GraphNodeSet& cluster,
 }
 
 // Removing cluster node and internals node from Graph
-void RemoveSubGraphFromGraph(Graph* graph, const GraphNodeSet& cluster,
-                             const GraphNodeSet& cluster_internals) {
+void RemoveSubGraphFromGraph(const GraphNodeSet& cluster,
+                             const GraphNodeSet& cluster_internals,
+                             Graph* graph) {
   for (auto* op_node : cluster) {
     graph->RemoveNode(op_node);
   }
@@ -197,16 +228,17 @@ void RemoveSubGraphFromGraph(Graph* graph, const GraphNodeSet& cluster,
 // Replacing Cinn subgraph to a special op node, whose op_type is
 // kCinnSubgraphSearchOpName, and input is cluster_inputs and
 // outputs is cluster_outputs.
-// Meanwhile, remove all cluster node from cluster_inputs and cluster_outputs.
-void ReplaceSubGraphToSpecialOpNode(Graph* graph, const GraphNodeSet& cluster,
-                                    const GraphNodeSet& cluster_inputs,
-                                    const GraphNodeSet& cluster_outputs,
-                                    const GraphNodeSet& cluster_internals) {
+// Meanwhile, remove all clusters node from cluster_inputs and cluster_outputs.
+void ReplaceSubGraphWithSpecialOpNode(const GraphNodeSet& cluster,
+                                      const GraphNodeSet& cluster_inputs,
+                                      const GraphNodeSet& cluster_outputs,
+                                      const GraphNodeSet& cluster_internals,
+                                      Graph* graph) {
   auto special_op_node =
       AddSpecialOpToGraph(graph, cluster_inputs, cluster_outputs);
   RemoveUselessLink(cluster, cluster_inputs, cluster_outputs);
   AddLinkToSpecialOp(special_op_node, cluster_inputs, cluster_outputs);
-  RemoveSubGraphFromGraph(graph, cluster, cluster_internals);
+  RemoveSubGraphFromGraph(cluster, cluster_internals, graph);
 }
 
 // Search all subgraphs which all op node supported by CINN,
@@ -235,8 +267,8 @@ void SearchAllSubgraphs(Graph* graph,
         CreateNewSubGraph(cluster_set, cluster_internals));
 
     // replacing subgraph to a new special op node
-    ReplaceSubGraphToSpecialOpNode(graph, cluster_set, cluster_inputs,
-                                   cluster_outputs, cluster_internals);
+    ReplaceSubGraphWithSpecialOpNode(cluster_set, cluster_inputs,
+                                     cluster_outputs, cluster_internals, graph);
   }
 }
 
