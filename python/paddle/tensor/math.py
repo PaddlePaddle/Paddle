@@ -923,8 +923,6 @@ def mm(input, mat2, name=None):
     nontransposed, the prepended or appended dimension :math:`1` will be
     removed after matrix multiplication.
 
-    This op does not support broadcasting. See paddle.matmul.
-
     Args:
         input (Tensor): The input tensor which is a Tensor.
         mat2 (Tensor): The input tensor which is a Tensor.
