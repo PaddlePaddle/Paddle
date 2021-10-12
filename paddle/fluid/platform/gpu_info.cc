@@ -558,7 +558,7 @@ class RecordedCudaMallocHelper {
 #ifdef PADDLE_WITH_HIP
     auto result = hipMalloc(ptr, size);
 #else
-    CUDAGraphCaptureModeGuard capture_mode_guard{cudaStreamCaptureModeRelaxed};
+    CUDAGraphCaptureModeGuard capture_mode_guard;
     auto result = cudaMalloc(ptr, size);
 #endif
     if (result == gpuSuccess) {
