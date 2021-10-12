@@ -131,6 +131,7 @@ def dropout(x,
         x (Tensor): The input tensor. The data type is float32 or float64.
         p (float|int): Probability of setting units to zero. Default 0.5.
         axis (int|list|tuple): The axis along which the dropout is performed. Default None.
+        rng_name (str): The random seed generator name, which used to obtain deterministic results.
         training (bool): A flag indicating whether it is in train phrase or not. Default True.
         mode(str): ['upscale_in_train'(default) | 'downscale_in_infer'].
 
@@ -181,83 +182,15 @@ def dropout(x,
             [[0.5 1.  1.5]
              [2.  2.5 3. ]]
 
-
-
-        2. When ``axis!=None`` , this is useful for dropping whole channels from an image or sequence.
-
-        ..  code-block:: text
-
-            Let's see the simple case when x is a 2d tensor with shape 2*3 again:
-            [[1 2 3]
-             [4 5 6]]
-            (1) If ``axis=0`` , this means the dropout is only performed in axis `0` .
-                we generate mask with the shape 2*1. Only in axis `0` the value is randomly selected.
-                For example, we may get such mask:
-                [[1]
-                 [0]]
-                The output is obtained from elementwise multiply of x and mask. Doing that the mask will be
-                broadcast from 2*1 to 2*3:
-                [[1 1 1]
-                 [0 0 0]]
-                and the result after elementwise multiply is:
-                [[1 2 3]
-                 [0 0 0]]
-                then we can do upscale or downscale according to the setting of other arguments.
-            (2) If ``axis=1`` , this means the dropout is only performed in axis `1` .
-                we generate mask with the shape 1*3. Only in axis `1` the value is randomly selected.
-                For example, we may get such mask:
-                [[1 0 1]]
-                Doing elementwise multiply the mask will be broadcast from 1*3 to 2*3:
-                [[1 0 1]
-                 [1 0 1]]
-                and the result after elementwise multiply is:
-                [[1 0 3]
-                 [4 0 6]]
-            (3) What about ``axis=[0, 1]`` ? This means the dropout is performed in all axes of x,
-                which is the same case as default setting ``axis=None`` .
-            (4) You may note that logically `axis=None` means the dropout is performed in none axis of x,
-                We generate mask with the shape 1*1. Whole input is randomly selected or dropped.
-                For example, we may get such mask:
-                [[0]]
-                Doing elementwise multiply the mask will be broadcast from 1*1 to 2*3:
-                [[0 0 0]
-                 [0 0 0]]
-                and the result after elementwise multiply is:
-                [[0 0 0]
-                 [0 0 0]]
-                Actually this is not what we want because all elements may set to zero~
-
-        When x is a 4d tensor with shape `NCHW`, we can set ``axis=[0,1]`` and the dropout will be performed in channel `N` and `C`, `H` and `W` is tied, i.e. paddle.nn.dropout(x, p, axis=[0,1]) . Please refer to ``paddle.nn.functional.dropout2d`` for more details.
-        Similarly, when x is a 5d tensor with shape `NCDHW`, we can set ``axis=[0,1]`` to perform dropout3d. Please refer to ``paddle.nn.functional.dropout3d`` for more details.
-
-        .. code-block:: python
-
-            import paddle
-            import numpy as np
-
-            x = np.array([[1,2,3], [4,5,6]]).astype('float32')
-            x = paddle.to_tensor(x)
-            y_train = paddle.nn.functional.dropout(x, 0.5)
-            y_test = paddle.nn.functional.dropout(x, 0.5, training=False)
-            y_0 = paddle.nn.functional.dropout(x, axis=0)
-            y_1 = paddle.nn.functional.dropout(x, axis=1)
-            y_01 = paddle.nn.functional.dropout(x, axis=[0,1])
-            print(x)
-            print(y_train)
-            print(y_test)
-            print(y_0)
-            print(y_1)
-            print(y_01)
-
     """
-    if rng_name is None or in_dygraph_mode():
+    if rng_name is None:
         return paddle.nn.functional.dropout(x, p, axis, training, mode, name)
 
     # fast return for p == 0
     if p == 0: return x
 
-    assert isinstance(p,
-                      (float, int)), TypeError("p argument should be a number")
+    assert isinstance(p, (float, int)), \
+        TypeError("p argument should be a number")
     assert 0 <= p <= 1, ValueError("p argument should between 0 and 1")
     assert mode in ('downscale_in_infer', 'upscale_in_train'), \
         ValueError(
@@ -267,6 +200,13 @@ def dropout(x,
         TypeError("unsupport axis when using random seed generator")
 
     mode = 'downgrade_in_infer' if mode == 'downscale_in_infer' else mode  #semantic transfer
+
+    # dygraph using tracker, doesn't need determinate seed
+    if in_dygraph_mode():
+        out, mask = _C_ops.dropout(x, 'dropout_prob', p, 'is_test',
+                                   not training, 'fix_seed', False, 'seed', 0,
+                                   'dropout_implementation', mode)
+        return out
 
     seed = determinate_seed(rng_name)
 
