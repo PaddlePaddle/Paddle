@@ -309,7 +309,7 @@ def grad_check(x,
             _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
 
     for i, (x_idx,
-            y_idx) in enumerate(product(*[range(len(x)), range(len(y))])):
+            y_idx) in enumerate(product(* [range(len(x)), range(len(y))])):
         a = analytical[y_idx][x_idx]
         n = numerical[x_idx][y_idx]
         if not np.allclose(a, n, rtol, atol):
@@ -487,12 +487,13 @@ def triple_grad_check(x,
             for v in x_grads_grads
         ]
     # append second order grads
-    target_grads_grads = fluid.gradients(target_grads, x, x_grads_grads)
-
     x += y_grads
     x_init = _as_list(x_init)
     x_init += y_grads_init
 
+    target_grads_grads = fluid.gradients(target_grads, x, x_grads_grads)
+
+    # append third order grads
     x += x_grads_grads
     x_init += x_grads_grads_init
 
