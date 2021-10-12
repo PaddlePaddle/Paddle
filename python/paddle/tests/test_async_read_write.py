@@ -33,7 +33,9 @@ class TestAsyncRead(unittest.TestCase):
         data = np.random.randn(100, 100).astype("float32")
         self.src = paddle.to_tensor(data, place=paddle.CUDAPinnedPlace())
         self.dst = paddle.empty(shape=[100, 100])
-        self.index = paddle.to_tensor(np.array([1, 3, 5, 7, 9])).cpu()
+        self.index = paddle.to_tensor(
+            np.array(
+                [1, 3, 5, 7, 9], dtype="int64")).cpu()
         self.buffer = paddle.empty(shape=[50, 100]).pin_memory()
 
     def test_async_read_empty_offset_and_count(self):
