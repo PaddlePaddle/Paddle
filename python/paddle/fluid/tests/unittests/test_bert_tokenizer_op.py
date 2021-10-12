@@ -347,8 +347,8 @@ class TestBertTokenizerOp(unittest.TestCase):
         if not os.path.exists(self.save_path):
             os.makedirs(self.save_path, exist_ok=True)
         paddle.save(self.faster_tokenizer.state_dict(), self.param_path)
-        # state_dict = paddle.load(self.param_path)
-        # self.faster_tokenizer.set_dict(state_dict)
+        state_dict = paddle.load(self.param_path)
+        self.faster_tokenizer.set_dict(state_dict)
 
         static_model = paddle.jit.to_static(
             self.faster_tokenizer,

@@ -941,8 +941,9 @@ def load(path, **configs):
                     if "StructuredToParameterName@@" in load_result:
 
                         for key in load_result["StructuredToParameterName@@"]:
-                            load_result[key] = _ndarray_to_tensor(
-                                load_result[key], config.return_numpy)
+                            if isinstance(load_result[key], np.ndarray):
+                                load_result[key] = _ndarray_to_tensor(
+                                    load_result[key], config.return_numpy)
 
                         if not config.keep_name_table and "StructuredToParameterName@@" in load_result:
                             del load_result["StructuredToParameterName@@"]
