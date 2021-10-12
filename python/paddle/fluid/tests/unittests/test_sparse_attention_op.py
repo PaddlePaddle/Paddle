@@ -16,10 +16,13 @@ import unittest
 import numpy as np
 from op_test import OpTest
 import paddle.fluid.core as core
+from paddle.static import Program, program_guard
 import paddle
+import paddle.fluid as fluid
+import paddle.fluid.framework as framework
+import paddle.nn.functional as F
 import os
 import re
-import platform
 
 
 def get_cuda_version():
@@ -32,22 +35,6 @@ def get_cuda_version():
         return int(integer) * 1000 + int(float(decimal) * 10)
     else:
         return -1
-
-
-def get_linux_platform():
-    if platform.system().lower() == 'windows':
-        return 0
-    elif platform.system().lower() == 'linux':
-        return 1
-    else:
-        return -1
-
-
-def get_suitable_env():
-    if get_cuda_version() >= 11020 and get_linux_platform() == 1:
-        return True
-    else:
-        return False
 
 
 def softmax(x):
@@ -141,8 +128,9 @@ def init_csr_format(batch_size, num_heads, rows, blocksize):
 
 
 @unittest.skipIf(
-    not core.is_compiled_with_cuda() or get_suitable_env() == False,
-    "core is not compiled with CUDA and cuda version need >= 11.2 in windows")
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.2"
+)
 class TestSparseAttentionOp(OpTest):
     def config(self):
         self.shape = (1, 1, 16, 8)
@@ -169,13 +157,13 @@ class TestSparseAttentionOp(OpTest):
             'Q': self.q,
             'K': self.k,
             'V': self.v,
-            'offset': self.offset,
-            'columns': self.columns
+            'Offset': self.offset,
+            'Columns': self.columns
         }
         self.outputs = {
             'Out': result.astype(self.dtype),
-            'ResultSdd': result_sdd.astype(self.dtype),
-            'ResultSoftmax': result_softmax.astype(self.dtype)
+            'SparseDotSdd': result_sdd.astype(self.dtype),
+            'Softmax': result_softmax.astype(self.dtype)
         }
 
     def test_check_output(self):
@@ -199,6 +187,131 @@ class TestSparseAttentionOpShapeTest(TestSparseAttentionOp):
         self.shape = (2, 2, 32, 8)
         self.blocksize = 8
         self.dtype = "float64"
+
+
+@unittest.skipIf(
+    not core.is_compiled_with_cuda() or get_cuda_version() < 11020,
+    "core is not compiled with CUDA and cuda version need larger than or equal to 11.2"
+)
+class TestSparseAttentionAPI(unittest.TestCase):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (1, 1, 8, 4)
+        self.blocksize = 2
+        self.dtype = 'float64'
+
+    def test_static_graph(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program()):
+            Q = paddle.static.data(name="Q", shape=self.shape, dtype=self.dtype)
+            K = paddle.static.data(name="K", shape=self.shape, dtype=self.dtype)
+            V = paddle.static.data(name="V", shape=self.shape, dtype=self.dtype)
+
+            batch_size, num_heads, rows = self.shape[0], self.shape[
+                1], self.shape[2]
+            block_num = rows / self.blocksize
+            block_last = rows % self.blocksize
+            sparse_nnz_num = block_num * self.blocksize * self.blocksize + block_last * block_last
+            offset_shape = (batch_size, num_heads, rows + 1)
+            columns_shape = (batch_size, num_heads, int(sparse_nnz_num))
+
+            offset = paddle.static.data(
+                name="Offset", shape=offset_shape, dtype="int32")
+            columns = paddle.static.data(
+                name="Columns", shape=columns_shape, dtype="int32")
+            Out = F.sparse_attention(Q, K, V, offset, columns)
+
+            Q_np = np.random.random(self.shape).astype(self.dtype)
+            K_np = np.random.random(self.shape).astype(self.dtype)
+            V_np = np.random.random(self.shape).astype(self.dtype)
+            offset_np, columns_np = init_csr_format(
+                self.shape[0], self.shape[1], self.shape[2], self.blocksize)
+            offset_np = offset_np.astype('int32')
+            columns_np = columns_np.astype('int32')
+
+            exe = fluid.Executor(self.place)
+            fetches_result = exe.run(feed={
+                "Q": Q_np,
+                "K": K_np,
+                "V": V_np,
+                "Offset": offset_np,
+                "Columns": columns_np
+            },
+                                     fetch_list=[Out])
+            expected_result, __, __ = ref_batch_sparse_attention(
+                Q_np, K_np, V_np, offset_np, columns_np)
+
+            self.assertTrue(
+                np.allclose(
+                    fetches_result, expected_result, atol=1e-5))
+
+    def test_dygraph(self):
+        paddle.disable_static()
+        offset, columns = init_csr_format(self.shape[0], self.shape[1],
+                                          self.shape[2], self.blocksize)
+        offset = offset.astype('int32')
+        columns = columns.astype('int32')
+        query = np.random.random(self.shape).astype(self.dtype)
+        key = np.random.random(self.shape).astype(self.dtype)
+        value = np.random.random(self.shape).astype(self.dtype)
+
+        paddle_query = paddle.to_tensor(query, place=self.place)
+        paddle_key = paddle.to_tensor(key, place=self.place)
+        paddle_value = paddle.to_tensor(value, place=self.place)
+        paddle_offset = paddle.to_tensor(offset, place=self.place)
+        paddle_colunmns = paddle.to_tensor(columns, place=self.place)
+
+        paddle_result = F.sparse_attention(paddle_query, paddle_key,
+                                           paddle_value, paddle_offset,
+                                           paddle_colunmns)
+
+        numpy_result, __, __ = ref_batch_sparse_attention(query, key, value,
+                                                          offset, columns)
+        numpy_result = numpy_result.astype(self.dtype)
+
+        self.assertTrue(
+            np.allclose(
+                paddle_result.numpy(), numpy_result, atol=1e-5))
+
+
+class TestSparseAttentionAPITestFloat(TestSparseAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (2, 2, 8, 4)
+        self.blocksize = 2
+        self.dtype = 'float32'
+
+
+class TestSparseAttentionAPITestShape1(TestSparseAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (2, 2, 64, 32)
+        self.blocksize = 2
+        self.dtype = 'float64'
+
+
+class TestSparseAttentionAPITestShape2(TestSparseAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (2, 1, 64, 32)
+        self.blocksize = 2
+        self.dtype = 'float64'
+
+
+class TestSparseAttentionAPITestShape3(TestSparseAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (4, 4, 128, 32)
+        self.blocksize = 8
+        self.dtype = 'float64'
+
+
+class TestSparseAttentionAPITestShape4(TestSparseAttentionAPI):
+    def setUp(self):
+        self.place = paddle.CUDAPlace(0)
+        self.shape = (3, 3, 35, 15)
+        self.blocksize = 3
+        self.dtype = 'float64'
 
 
 if __name__ == '__main__':
