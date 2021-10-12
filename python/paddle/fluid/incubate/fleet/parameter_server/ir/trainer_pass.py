@@ -176,18 +176,18 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                     ins = op.input(op.input_names[i])
                     for out_id, out_var in enumerate(outputs):
                         if out_var.name in ins:
-                            print("idx: {} ||| op:: {} ||||| op_input names: {} ||||| ins: {} ||||| out var: {} |||| out id: {}".format(idx, op, op.input_names, ins, out_var.name, out_id))
+#                            print("idx: {} ||| op:: {} ||||| op_input names: {} ||||| ins: {} ||||| out var: {} |||| out id: {}".format(idx, op, op.input_names, ins, out_var.name, out_id))
                             outputs_idxs[out_id] = idx
 
-            print("yxf::inputs: {}".format(inputs))
-            print("yxf::outputs: {}".format(outputs))
-            print("yxf::inputs_idx: {}".format(inputs_idxs))
-            print("yxf::outputs_idx: {}".format(outputs_idxs))
+#            print("yxf::inputs: {}".format(inputs))
+#            print("yxf::outputs: {}".format(outputs))
+#            print("yxf::inputs_idx: {}".format(inputs_idxs))
+#            print("yxf::outputs_idx: {}".format(outputs_idxs))
             if min(outputs_idxs) - max(inputs_idxs) >= 1:
                 distributed_idx = max(inputs_idxs) + 1
                 distributed_push_idx = max(outputs_idxs) + 1
-                print("yxf::case111")
-                print("yxf::distributed_push_idx: {}".format(distributed_push_idx))
+#                print("yxf::case111")
+#                print("yxf::distributed_push_idx: {}".format(distributed_push_idx))
                 if use_ps_gpu:
                     program.global_block()._insert_op(
                         index=distributed_idx,
@@ -214,7 +214,7 @@ def distributed_ops_pass(program, config, use_ps_gpu=False):
                             "lookup_table_version": op_type
                         })
             else:
-                print("yxf::case222")
+#                print("yxf::case222")
                 for i in range(len(inputs_idxs)):
                     distributed_idx = op_idxs[i] + 1
 

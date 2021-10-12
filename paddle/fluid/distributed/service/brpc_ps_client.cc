@@ -198,12 +198,6 @@ int32_t BrpcPsClient::initialize() {
   // 启动client探听接口, 并相互建立连接
   start_client_service();
 
-  //for global shuffle
-  //TODO: check zcb
-  //TODO: param configure
-  //cannot get all clients, only self
-  //create_client2client_connection(500000, 10000, 3);
-
   // 异步push 请求队列初始化
   const auto &worker_param = _config.worker_param().downpour_worker_param();
   for (size_t i = 0; i < worker_param.downpour_table_param_size(); ++i) {
@@ -546,8 +540,20 @@ std::future<int32_t> BrpcPsClient::push_sparse_param(
   std::vector<std::vector<const float *>> value_ptrs;
   ids.resize(request_call_num);
   value_ptrs.resize(request_call_num);
+
+  const auto &server_param = _config.server_param().downpour_server_param();
+  uint64_t shard_num = FLAGS_pslib_sparse_table_shard_num;
+  for (int i = 0; i < server_param.downpour_table_param_size(); ++i) {
+    const auto &table_param = server_param.downpour_table_param(i);
+    if (table_param.table_id() == table_id) {
+      shard_num = table_param.shard_num();
+      break;
+    }
+  }
+
   for (size_t i = 0; i < num; ++i) {
-    size_t pserver_idx = keys[i] % request_call_num;
+    //size_t pserver_idx = keys[i] % request_call_num;
+    size_t pserver_idx = get_sparse_shard(shard_num, request_call_num, keys[i]);
     ids[pserver_idx].push_back(keys[i]);
     value_ptrs[pserver_idx].push_back(update_values[i]);
   }
@@ -746,8 +752,20 @@ std::future<int32_t> BrpcPsClient::push_sparse_raw_gradient(
   ids.resize(request_call_num);
   value_ptrs.resize(request_call_num);
 
+  const auto &server_param = _config.server_param().downpour_server_param();
+  uint64_t shard_num = FLAGS_pslib_sparse_table_shard_num;
+  for (int i = 0; i < server_param.downpour_table_param_size(); ++i) {
+    const auto &table_param = server_param.downpour_table_param(i);
+    if (table_param.table_id() == table_id) {
+      shard_num = table_param.shard_num();
+      break;
+    }
+  }
+
   for (size_t i = 0; i < num; ++i) {
-    size_t pserver_idx = keys[i] % request_call_num;
+    //size_t pserver_idx = keys[i] % request_call_num;
+    size_t pserver_idx = get_sparse_shard(shard_num, request_call_num, keys[i]);
+    VLOG(2) << "zcb debug push sparse key: " << keys[i] << " pserver_idx: " << pserver_idx;
     ids[pserver_idx].push_back(keys[i]);
     value_ptrs[pserver_idx].push_back(update_values[i]);
   }
@@ -856,8 +874,20 @@ std::future<int32_t> BrpcPsClient::pull_sparse(float **select_values,
       std::vector<std::vector<std::pair<uint64_t, float *>>>>();
   shard_sorted_kvs->resize(request_call_num);
 
+  const auto &server_param = _config.server_param().downpour_server_param();
+  uint64_t shard_num = FLAGS_pslib_sparse_table_shard_num;
+  for (int i = 0; i < server_param.downpour_table_param_size(); ++i) {
+    const auto &table_param = server_param.downpour_table_param(i);
+    if (table_param.table_id() == table_id) {
+      shard_num = table_param.shard_num();
+      break;
+    }
+  }
+
   for (size_t i = 0; i < num; ++i) {
-    size_t shard_id = keys[i] % request_call_num;
+//    size_t shard_id = keys[i] % request_call_num;
+    size_t shard_id = get_sparse_shard(shard_num, request_call_num, keys[i]);
+    VLOG(2) << "zcb debug pull sparse key: " << keys[i] << " pserver_idx: " << shard_id;
     shard_sorted_kvs->at(shard_id).push_back({keys[i], select_values[i]});
   }
 
@@ -1112,12 +1142,11 @@ std::future<int32_t> BrpcPsClient::push_sparse(size_t table_id,
     }
   }
   for (size_t i = 0; i < num; ++i) {
-    // size_t shard_id = get_sparse_shard(
-    //    shard_num, request_call_num, keys[i]);
-    size_t shard_id = keys[i] % request_call_num;
+    size_t shard_id = get_sparse_shard(
+        shard_num, request_call_num, keys[i]);
+    //size_t shard_id = keys[i] % request_call_num;
     shard_sorted_kv_list[shard_id].push_back({keys[i], update_values[i]});
-    // std::cout << "zcb client push_sparse(): " << keys[i] << " -> " <<
-    // shard_id << "\n";
+    VLOG(2) << "zcb client push_sparse(): " << keys[i] << " -> " << shard_id;
   }
   auto sparse_task_data = _sparse_task_pool.get();
   sparse_task_data->shared_data.resize(request_call_num);

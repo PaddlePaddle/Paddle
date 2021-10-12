@@ -83,6 +83,9 @@ class CtrSparseTable : public SparseTable {
 
  protected:
   const int task_pool_size_ = 11;
+  size_t _avg_local_shard_num;
+  size_t _real_local_shard_num;
+  size_t _sparse_table_shard_num;
   std::vector<std::shared_ptr<::ThreadPool>> _shards_task_pool;
   std::vector<std::shared_ptr<CtrValueBlock>> shard_values_;
 };
