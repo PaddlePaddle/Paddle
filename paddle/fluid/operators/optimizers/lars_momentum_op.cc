@@ -23,20 +23,17 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
 
  protected:
   void InferShape(framework::InferShapeContext* ctx) const override {
-    PADDLE_ENFORCE_EQ(ctx->HasInputs("Param"), true,
-                      platform::errors::NotFound(
-                          "Inputs(param) of LarsMomentum should not be null."));
-    PADDLE_ENFORCE_EQ(ctx->HasInputs("Grad"), true,
-                      platform::errors::NotFound(
-                          "Input(grad) of LarsMomentum should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInputs("Velocity"), true,
-        platform::errors::NotFound(
-            "Inputs(velocity) of LarsMomentum should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasInputs("LearningRate"), true,
-        platform::errors::NotFound(
-            "Input(LearningRate) of LarsMomentum should not be null."));
+    OP_INOUT_CHECK(ctx->HasInputs("Param"), "Input", "Param", "LarsMomentum");
+    OP_INOUT_CHECK(ctx->HasInputs("Grad"), "Input", "Grad", "LarsMomentum");
+    OP_INOUT_CHECK(ctx->HasInputs("Velocity"), "Input", "Velocity",
+                   "LarsMomentum");
+    OP_INOUT_CHECK(ctx->HasInputs("LearningRate"), "Input", "LearningRate",
+                   "LarsMomentum");
+    OP_INOUT_CHECK(ctx->HasOutputs("ParamOut"), "Output", "ParamOut",
+                   "LarsMomentum");
+    OP_INOUT_CHECK(ctx->HasOutputs("VelocityOut"), "Output", "VelocityOut",
+                   "LarsMomentum");
+
     PADDLE_ENFORCE_EQ(
         ctx->GetInputsVarType("Param").front(),
         framework::proto::VarType::LOD_TENSOR,
@@ -44,22 +41,43 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
             "The input var's type should be LoDTensor, but the received is %s",
             ctx->GetInputsVarType("Param").front()));
 
-    PADDLE_ENFORCE_EQ(ctx->HasOutputs("ParamOut"), true,
-                      platform::errors::NotFound(
-                          "Output(ParamOut) of Momentum should not be null."));
-    PADDLE_ENFORCE_EQ(
-        ctx->HasOutputs("VelocityOut"), true,
-        platform::errors::NotFound(
-            "Output(VelocityOut) of Momentum should not be null."));
-
     auto lr_dims = ctx->GetInputsDim("LearningRate");
+    auto grad_dim = ctx->GetInputsDim("Grad");
+    auto param_dim = ctx->GetInputsDim("Param");
+    auto velocity_dim = ctx->GetInputsDim("Velocity");
+    auto lars_weight_decays =
+        ctx->Attrs().Get<std::vector<float>>("lars_weight_decay");
+    auto multi_precision = ctx->Attrs().Get<bool>("multi_precision");
+
+    PADDLE_ENFORCE_EQ(
+        param_dim.size(), grad_dim.size(),
+        platform::errors::InvalidArgument(
+            "Input(Param) and Input(Grad) of LarsMomentumOp should have "
+            "same quantity. But number of Param is [%d] and Grad is [%d].",
+            param_dim.size(), grad_dim.size()));
+    PADDLE_ENFORCE_EQ(
+        param_dim.size(), velocity_dim.size(),
+        platform::errors::InvalidArgument(
+            "Input(Param) and Input(Velocity) of LarsMomentumOp should "
+            "have same quantity. But number of Param is [%d] and Velocity "
+            "is [%d].",
+            param_dim.size(), velocity_dim.size()));
+    PADDLE_ENFORCE_EQ(
+        lars_weight_decays.size(), grad_dim.size(),
+        platform::errors::InvalidArgument(
+            "Attr(Lars_weight_decay) and "
+            "Input(Grad) of LarsMomentumOp should have same quantity. "
+            "But number of Lars_weight_decay is [%d] and Grad is [%d].",
+            lars_weight_decays.size(), grad_dim.size()));
+
+    if (multi_precision) {
+      OP_INOUT_CHECK(ctx->HasInputs("MasterParam"), "Input", "MasterParam",
+                     "LarsMomentumMultiPrecision");
+      OP_INOUT_CHECK(ctx->HasOutputs("MasterParamOut"), "Output",
+                     "MasterParamOut", "LarsMomentumMultiPrecision");
+    }
+
     for (size_t i = 0; i < lr_dims.size(); ++i) {
-      PADDLE_ENFORCE_NE(framework::product(lr_dims[i]), 0,
-                        platform::errors::InvalidArgument(
-                            "Maybe the Input variable LearningRate has not "
-                            "been initialized. You may need to confirm "
-                            "whether exe.run(startup_program) is put "
-                            "after optimizer.minimize function."));
       PADDLE_ENFORCE_EQ(framework::product(lr_dims[i]), 1,
                         platform::errors::InvalidArgument(
                             "Learning_rate should be a scalar. But Received "
@@ -67,40 +85,29 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
                             framework::product(lr_dims[i])));
     }
 
-    auto param_dim = ctx->GetInputsDim("Param");
-    auto grad_dim = ctx->GetInputsDim("Grad");
-    auto velocity_dim = ctx->GetInputsDim("Velocity");
-    PADDLE_ENFORCE_EQ(
-        param_dim.size(), grad_dim.size(),
-        platform::errors::InvalidArgument(
-            "Param and Grad input of LarsMomentumOp should have the same "
-            "quantity. But number of Param is [%d] and Grad is [%d].",
-            param_dim.size(), grad_dim.size()));
-    PADDLE_ENFORCE_EQ(
-        param_dim.size(), velocity_dim.size(),
-        platform::errors::InvalidArgument(
-            "Param and Velocity input of LarsMomentumOp should have the same "
-            "quantity. But number of Param is [%d] and Velocity is [%d].",
-            param_dim.size(), velocity_dim.size()));
-
-    if (ctx->GetInputsVarType("Grad")[0] ==
-        framework::proto::VarType::LOD_TENSOR) {
-      for (size_t i = 0; i < param_dim.size(); ++i) {
-        PADDLE_ENFORCE_EQ(
-            param_dim[i], grad_dim[i],
-            platform::errors::InvalidArgument(
-                "Param and Grad input of MomentumOp should have the same "
-                "dimension. But received Param's dim [%s] and Grad's dim [%s].",
-                param_dim[i], grad_dim[i]));
-        PADDLE_ENFORCE_EQ(
-            param_dim[i], velocity_dim[i],
-            platform::errors::InvalidArgument(
-                "Param and Velocity of MomentumOp should have the same "
-                "dimension. But received Param's dim [%s] and Velocity [%s].",
-                param_dim[i], velocity_dim[i]));
-      }
+    for (size_t i = 0; i < param_dim.size(); ++i) {
+      PADDLE_ENFORCE_EQ(ctx->GetInputsVarType("Grad")[i],
+                        framework::proto::VarType::LOD_TENSOR,
+                        platform::errors::InvalidArgument(
+                            "The Var(%s)'s type should be LoDTensor, "
+                            "but the received is %s",
+                            ctx->Inputs("Grad")[i].front(),
+                            ctx->GetInputsVarType("Grad")[i]));
+      PADDLE_ENFORCE_EQ(
+          param_dim[i], grad_dim[i],
+          platform::errors::InvalidArgument(
+              "Input(Param) and Input(Grad) input of LarsMomentumOp shall "
+              "have same dimension. But Param`s dim is [%s] and Grad's dim "
+              "is [%s].",
+              param_dim[i], grad_dim[i]));
+      PADDLE_ENFORCE_EQ(
+          param_dim[i], velocity_dim[i],
+          platform::errors::InvalidArgument(
+              "Input(Param) and Input(Velocity) of LarsMomentumOp shall have "
+              "same dimension. But Param's dim is [%s] and Velocity`s dim "
+              "is [%s].",
+              param_dim[i], velocity_dim[i]));
     }
-
     ctx->SetOutputsDim("ParamOut", param_dim);
     ctx->SetOutputsDim("VelocityOut", param_dim);
     if (ctx->HasOutputs("MasterParamOut")) {
@@ -166,10 +173,6 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<bool>("multi_precision",
                   "(bool, default false) "
                   "Whether to use multi-precision during weight updating.")
-        .SetDefault(false);
-    AddAttr<bool>("merge_operation",
-                  "(bool, default false) "
-                  "Whether to merge all lars optimizer into one kernel.")
         .SetDefault(false);
     AddAttr<float>(
         "rescale_grad",

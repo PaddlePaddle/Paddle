@@ -520,7 +520,7 @@ class TestImperativeMergedLarsMomentumOptimizer(TestImperativeOptimizerBase):
             learning_rate=0.001,
             momentum=0.9,
             exclude_from_weight_decay=['.b_0'],
-            merged_ops=True)
+            merge_option=True)
         return optimizer
 
     def test_larsmomentum(self):

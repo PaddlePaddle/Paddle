@@ -333,7 +333,6 @@ class TestMergedLarsMomentumOpWithMP(OpTest):
             'lars_weight_decay': lars_weight_decay,
             'rescale_grad': rescale_grad,
             'multi_precision': True,
-            'merge_operation': True
         }
 
         self.outputs = {
@@ -397,7 +396,6 @@ class TestMergedLarsMomentumOp(OpTest):
             'mu': mu,
             'lars_coeff': lars_coeff,
             'lars_weight_decay': lars_weight_decay,
-            'merge_operation': True
         }
         self.outputs = {'ParamOut': param_outs, 'VelocityOut': velocity_outs}
 

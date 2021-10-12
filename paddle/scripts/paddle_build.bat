@@ -89,7 +89,7 @@ if "%WITH_PYTHON%" == "ON" (
     pip install -r %work_dir%\python\requirements.txt --user
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
-        exit /b 7
+        exit /b 5
     )
 )
 
@@ -138,6 +138,17 @@ if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
     rmdir %BUILD_DIR% /s/q
+
+    : clear third party cache every once in a while
+    if %day_now% EQU 21 (
+        rmdir %cache_dir%\third_party /s/q
+    )
+    if %day_now% EQU 11 (
+        rmdir %cache_dir%\third_party /s/q
+    )
+    if %day_now% EQU 01 (
+        rmdir %cache_dir%\third_party /s/q
+    )
     goto :mkbuild
 )
 
@@ -309,7 +320,7 @@ if %GENERATOR% == "Ninja" (
     pip install ninja
     if %errorlevel% NEQ 0 (
         echo pip install ninja failed!
-        exit /b 7
+        exit /b 5
     )
 )
 
@@ -333,24 +344,6 @@ rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 rem clcache.exe -M 21474836480
 
 rem ------set third_party cache dir------
-: clear third party cache every once in a while
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
-set day_now=%datetime:~6,2%
-set day_before=-1
-set /p day_before=< %cache_dir%\day.txt
-if %day_now% NEQ %day_before% (
-    echo %day_now% > %cache_dir%\day.txt
-    type %cache_dir%\day.txt
-    if %day_now% EQU 21 (
-        rmdir %cache_dir%\third_party /s/q
-    )
-    if %day_now% EQU 11 (
-        rmdir %cache_dir%\third_party /s/q
-    )
-    if %day_now% EQU 01 (
-        rmdir %cache_dir%\third_party /s/q
-    )
-)
 
 if "%WITH_TPCACHE%"=="OFF" (
     set THIRD_PARTY_PATH=%work_dir:\=/%/%BUILD_DIR%/third_party
@@ -395,15 +388,15 @@ if not exist %THIRD_PARTY_PATH% (
         echo Getting third party: extracting ...
         tar -xf %md5%.tar.gz
         if !ERRORLEVEL! EQU 0 ( 
-            echo Get third party from bos successfully
+            echo Get third party from bos successfully.
         ) else (
-            echo Get third party failed, reason: extract failed, will build locally
+            echo Get third party failed, reason: extract failed, will build locally.
         )
         del %md5%.tar.gz
     ) else (
-        echo Get third party failed, reason: download failed, will build locally
+        echo Get third party failed, reason: download failed, will build locally.
     )
-    if not exist %THIRD_PARTY_PATH% ( set UPLOAD_TP_FILE=ON ) 
+    if not exist %THIRD_PARTY_PATH% set UPLOAD_TP_FILE=ON
     cd %work_dir%\%BUILD_DIR%
 ) else (
     echo Found reusable third_party cache in %THIRD_PARTY_PATH%, will reuse it.
@@ -540,18 +533,18 @@ if "%UPLOAD_TP_FILE%"=="ON" (
         tar -zcf %md5%.tar.gz %md5%
         if !errorlevel! EQU 0 (
             echo Uploading third_party: uploading ...
-            %PYTHON_ROOT%\python.exe %BCE_FILE% %md5%.tar.gz paddle-windows/third_party/%sub_dir% 1>nul
+            %PYTHON_ROOT%\python.exe !BCE_FILE! %md5%.tar.gz paddle-windows/third_party/%sub_dir% 1>nul
             if !errorlevel! EQU 0 (
-                echo Upload third party to bos paddle-windows/third_party/%sub_dir% successfully 
+                echo Upload third party %md5% to bos paddle-windows/third_party/%sub_dir% successfully.
             ) else (
-                echo Failed upload third party to bos, reason: upload failed
+                echo Failed upload third party to bos, reason: upload failed.
             )
         ) else (
-            echo Failed upload third party to bos, reason: compress failed
+            echo Failed upload third party to bos, reason: compress failed.
         )
         del %md5%.tar.gz
     ) else (
-        echo Failed upload third party to bos, reason: install bce failed
+        echo Failed upload third party to bos, reason: install bce failed.
     )
     cd %work_dir%\%BUILD_DIR%
 )
@@ -627,7 +620,7 @@ git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 pip install -r %work_dir%\python\unittest_py\requirements.txt --user
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
-    exit /b 7
+    exit /b 5
 )
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#

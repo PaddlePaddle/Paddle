@@ -1960,7 +1960,7 @@ class LarsMomentumOptimizer(Optimizer):
                  name=None,
                  exclude_from_weight_decay=None,
                  epsilon=0,
-                 merged_ops=False,
+                 merge_option=False,
                  multi_precision=False,
                  rescale_grad=1.0):
         assert learning_rate is not None
@@ -1983,7 +1983,7 @@ class LarsMomentumOptimizer(Optimizer):
         self._multi_precision = multi_precision
         self._rescale_grad = float(rescale_grad)
         self._master_weights = {}
-        self._merged_ops = merged_ops
+        self._merge_option = merge_option
 
     def _create_master_weight(self, param):
         if param.name in self._master_weights:
@@ -2055,7 +2055,7 @@ class LarsMomentumOptimizer(Optimizer):
             "multi_precision": False
         }
 
-        if self._merged_ops and not framework.in_dygraph_mode():
+        if self._merge_option and not framework.in_dygraph_mode():
             assert isinstance(
                 param_and_grad, list
             ), "Once merging all lars ops, argument `param_and_grad` must be list type."
@@ -2097,7 +2097,6 @@ class LarsMomentumOptimizer(Optimizer):
                 "LearningRate": lr_array
             }
             outputs = {"ParamOut": param_array, "VelocityOut": velocity_array}
-            attrs["merge_operation"] = self._merged_ops
 
             # param lars_weight_decay combination 
             attrs["lars_weight_decay"] = lars_weight_decay_array
@@ -2116,6 +2115,15 @@ class LarsMomentumOptimizer(Optimizer):
                 stop_gradient=True)
             return lars_momentum_op
         else:
+            _lars_weight_decay = self._lars_weight_decay
+            param_name = param_and_grad[0].name
+            if len(self._exclude_from_weight_decay) > 0:
+                for name in self._exclude_from_weight_decay:
+                    if name in param_name:
+                        _lars_weight_decay = 0.0
+                        break
+            attrs["lars_weight_decay"] = [_lars_weight_decay]
+
             velocity_acc = self._get_accumulator(self._velocity_acc_str,
                                                  param_and_grad[0])
             lr = self._create_param_lr(param_and_grad)
@@ -2141,15 +2149,6 @@ class LarsMomentumOptimizer(Optimizer):
                 outputs["MasterParamOut"] = master_weight
                 attrs["multi_precision"] = find_master
 
-            _lars_weight_decay = self._lars_weight_decay
-            param_name = param_and_grad[0].name
-            if len(self._exclude_from_weight_decay) > 0:
-                for name in self._exclude_from_weight_decay:
-                    if name in param_name:
-                        _lars_weight_decay = 0.0
-                        break
-            attrs["lars_weight_decay"] = [_lars_weight_decay]
-
             # create the momentum optimize op
             momentum_op = block.append_op(
                 type=self.type,
@@ -2163,11 +2162,6 @@ class LarsMomentumOptimizer(Optimizer):
         global_block = framework.default_main_program().global_block()
         target_block = global_block
         current_block = framework.default_main_program().current_block()
-        if current_block.idx != global_block.idx:
-            assert current_block.backward_block_idx != -1, \
-                "current block is not global_block, but it doesn't have backward block."
-            target_block = framework.default_main_program().blocks[
-                current_block.backward_block_idx]
 
         start = len(target_block.ops)
         self._update_param_device_map(parameters_and_grads, target_block)
@@ -2178,15 +2172,11 @@ class LarsMomentumOptimizer(Optimizer):
 
         if framework.in_dygraph_mode():
             for param_and_grad in parameters_and_grads:
-                if param_and_grad[1] is None:
-                    continue
                 if param_and_grad[0].trainable is True:
                     self._append_optimize_op(target_block, param_and_grad)
         else:
-            if (not self._merged_ops):
+            if (not self._merge_option):
                 for param_and_grad in parameters_and_grads:
-                    if param_and_grad[1] is None:
-                        continue
                     with param_and_grad[0].block.program._optimized_guard(
                             param_and_grad), name_scope("optimizer"):
                         if param_and_grad[0].trainable is True:
@@ -2201,8 +2191,6 @@ class LarsMomentumOptimizer(Optimizer):
                 has_amp_lars = False
                 has_lars = False
                 for param_and_grad in parameters_and_grads:
-                    if param_and_grad[1] is None:
-                        continue
                     with param_and_grad[0].block.program._optimized_guard(
                             param_and_grad), name_scope("optimizer"):
                         if param_and_grad[0].trainable is True:

@@ -603,7 +603,7 @@ class TestImperativeMergedLarsMomentumOptimizer(TestImperativeOptimizerBase):
 
     def get_optimizer(self):
         optimizer = LarsMomentumOptimizer(
-            learning_rate=0.001, momentum=0.9, merged_ops=True)
+            learning_rate=0.001, momentum=0.9, merge_option=True)
         return optimizer
 
     def test_larsmomentum(self):
