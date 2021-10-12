@@ -19,6 +19,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/data_type.h"
 #include "paddle/fluid/memory/malloc.h"
 #include "paddle/fluid/platform/enforce.h"
+#include "paddle/fluid/platform/gpu_info.h"
 #include "paddle/fluid/platform/place.h"
 
 namespace pt {
@@ -57,16 +58,18 @@ Place DenseTensor::GetPlaceByBackend() const {
       return CPUPlace();
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
     case Backend::kCUDA:
-      return CUDAPlace();
+      return CUDAPlace(paddle::platform::GetCurrentDeviceId());
     case Backend::kCUDAPinned:
       return CUDAPinnedPlace();
 #endif
 #ifdef PADDLE_WITH_XPU
     case Backend::kXPU:
+      // TODO(chenweihang): add device id
       return XPUPlace();
 #endif
 #ifdef PADDLE_WITH_NPU
     case Backend::kNPU:
+      // TODO(chenweihang): add device id
       return NPUPlace();
     case Backend::kNPUPinned:
       return NPUPinnedPlace();
