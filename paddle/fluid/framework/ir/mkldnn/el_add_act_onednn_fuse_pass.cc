@@ -26,7 +26,7 @@ using string::PrettyLogDetail;
 
 void ElementwiseAddActivationOneDNNPass::ApplyImpl(Graph *graph) const {
   std::vector<std::string> act_types = {"relu", "tanh", "leaky_relu", "swish", "hardswish", "sqrt", "abs", "clip", "gelu"};
-  std::vector<std::string> elt_types = {"elementwise_add", "elementwise_sub", "elementwise_mul", "elementwise_div"};
+  std::vector<std::string> elt_types = {"elementwise_add", "elementwise_sub", "elementwise_mul", "elementwise_div", "elementwise_pow"};
 
   for (const auto& elt_type : elt_types)
     for (const auto& act_type : act_types)
@@ -99,6 +99,7 @@ REGISTER_PASS_CAPABILITY(el_add_act_onednn_fuse_pass)
             .LE("elementwise_sub", 0)
             .LE("elementwise_mul", 0)
             .LE("elementwise_div", 0)
+            .LE("elementwise_pow", 0)
             .LE("relu", 0)
             .LE("tanh", 0)
             .LE("leaky_relu", 0)
