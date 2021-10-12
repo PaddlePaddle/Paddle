@@ -673,3 +673,17 @@ PADDLE_DEFINE_EXPORTED_int32(get_host_by_name_time, 120,
 PADDLE_DEFINE_EXPORTED_bool(
     apply_pass_to_program, false,
     "It controls whether to apply IR pass to program when using Fleet APIs");
+
+/**
+ * Pt kernel related FLAG
+ * Name: FLAGS_use_pt_kernel
+ * Since Version: 2.2.0
+ * Value Range: bool, default=false
+ * Example: FLAGS_use_pt_kernel=true would use the pt kernel to compute in the
+ * Op.
+ * Note:
+ */
+// TODO(chentianyu03): change default value to false before merge into develop
+// branch
+PADDLE_DEFINE_EXPORTED_bool(use_pt_kernel, true,
+                            "It controls whether to use pt kernel");
