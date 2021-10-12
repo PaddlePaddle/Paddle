@@ -139,6 +139,7 @@ class CUDNNMultiHeadAttention(Layer):
         super(CUDNNMultiHeadAttention, self).__init__()
 
         self._dtype = self._helper.get_default_dtype()
+        self._embed_dim = embed_dim
         self._weight_attr = weight_attr
 
         self.meta_data = CUDNNMHAMetaData(num_heads, embed_dim, dropout)
@@ -149,17 +150,103 @@ class CUDNNMultiHeadAttention(Layer):
             attr=self._weight_attr,
             dtype=self._dtype,
             is_bias=False)
+
         self.name = name
 
     def forward(self, query, key, value, seq_data_info):
         return F.multi_head_attn(query, key, value, self.weight, self.meta_data,
                                  seq_data_info)
 
+    def state_dict(self,
+                   destination=None,
+                   include_sublayers=True,
+                   structured_name_prefix=""):
+
+        if destination is None:
+            destination = collections.OrderedDict()
+        WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B = self._split_W_into_WQKVO(
+        )
+        destination['q_proj.weight'] = WQ_P
+        destination['q_proj.bias'] = WQ_B
+        destination['k_proj.weight'] = WK_P
+        destination['k_proj.bias'] = WK_B
+        destination['v_proj.weight'] = WV_P
+        destination['v_proj.bias'] = WV_B
+        destination['out_proj.weight'] = WO_P
+        destination['out_proj.bias'] = WO_B
+        return destination
+
+    def set_state_dict(self, state_dict, use_structured_name=True):
+        WQ_P = state_dict['q_proj.weight']
+        WQ_B = state_dict['q_proj.bias']
+        WK_P = state_dict['k_proj.weight']
+        WK_B = state_dict['k_proj.bias']
+        WV_P = state_dict['v_proj.weight']
+        WV_B = state_dict['v_proj.bias']
+        WO_P = state_dict['out_proj.weight']
+        WO_B = state_dict['out_proj.bias']
+        W = self._merge_WQKVO_to_W(WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P,
+                                   WO_B)
+        self.weight.set_value(W)
+
     def extra_repr(self):
         name_str = ', name={}'.format(self.name) if self.name else ''
         return 'total weights={}, W[Q/k/V/O]={}x{}, dtype={}{}'.format(
             self.weight.shape[0], self.meta_data.hidden_size,
             self.meta_data.hidden_size, self._dtype, name_str)
+
+    def _split_W_into_WQKVO(self):
+
+        # import paddle.fluid.framework.ParamBase as ParamBase
+        # import copy
+        param_shape = (self._embed_dim, self._embed_dim)
+        # state = copy.deepcopy(self.__dict__, memo)
+        # # state["name"] = self.name + unique_name.generate("_deepcopy")
+        # WQ_P = ParamBase(param_shape, self._dtype, **state)
+        # WQ_B = ParamBase(self._embed_dim, self._dtype, **state)
+        # WK_P = ParamBase(param_shape, self._dtype, **state)
+        # WK_B = ParamBase(self._embed_dim, self._dtype, **state)
+        # WV_P = ParamBase(param_shape, self._dtype, **state)
+        # WV_B = ParamBase(self._embed_dim, self._dtype, **state)
+        # WO_P = ParamBase(param_shape, self._dtype, **state)
+        # WO_B = ParamBase(self._embed_dim, self._dtype, **state)
+
+        stride = self._embed_dim * self._embed_dim
+        # WQ_P.set_value(self.weight[:stride].reshape(param_shape))
+        # WK_P.set_value(self.weight[stride:2*stride].reshape(param_shape))
+        # WV_P.set_value(self.weight[2*stride:3*stride].reshape(param_shape))
+        # WO_P.set_value(self.weight[3*stride:].reshape(param_shape))
+
+        # WQ_B.set_value(np.zeros(self._embed_dim))
+        # WK_B.set_value(np.zeros(self._embed_dim))
+        # WV_B.set_value(np.zeros(self._embed_dim))
+        # WO_B.set_value(np.zeros(self._embed_dim))
+
+        WQ_P = self.weight[:stride].reshape(param_shape)
+        WK_P = self.weight[stride:2 * stride].reshape(param_shape)
+        WV_P = self.weight[2 * stride:3 * stride].reshape(param_shape)
+        WO_P = self.weight[3 * stride:].reshape(param_shape)
+
+        WQ_B = np.zeros(self._embed_dim, dtype=self._dtype)
+        WK_B = np.zeros(self._embed_dim, dtype=self._dtype)
+        WV_B = np.zeros(self._embed_dim, dtype=self._dtype)
+        WO_B = np.zeros(self._embed_dim, dtype=self._dtype)
+
+        return WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B
+
+    def _merge_WQKVO_to_W(self, WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B):
+        stride = self._embed_dim * self._embed_dim
+        W = np.concatenate(
+            [WQ_P.flatten(), WK_P.flatten(), WV_P.flatten(), WO_P.flatten()])
+        # W = np.concatenate([WQ_P.flatten(),
+        #                     WQ_B.flatten(),
+        #                     WK_P.flatten(),
+        #                     WK_B.flatten(),
+        #                     WV_P.flatten(),
+        #                     WV_B.flatten(),
+        #                     WO_P.flatten(),
+        #                     WO_B.flatten()])
+        return W
 
 
 class MultiHeadAttention(Layer):
