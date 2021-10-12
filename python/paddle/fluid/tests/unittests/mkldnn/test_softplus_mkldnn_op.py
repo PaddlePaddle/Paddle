@@ -21,11 +21,13 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 
+
 def ref_softplus(x, beta, threshold):
     x_beta = beta * x
     out = np.select([x_beta <= threshold, x_beta > threshold],
                     [np.log(1 + np.exp(x_beta)) / beta, x])
     return out
+
 
 class TestSoftplusOneDNNOp(OpTest):
     def setUp(self):
@@ -33,6 +35,7 @@ class TestSoftplusOneDNNOp(OpTest):
         self.beta = 1
         self.threshold = 20
         self.config()
+        self.attrs = {'use_mkldnn': True, 'beta': self.beta}
         self.inputs = {'X': np.random.random(self.x_shape).astype(np.float32)}
         self.outputs = {
             'Out': ref_softplus(self.inputs['X'], self.beta, self.threshold)
@@ -40,10 +43,31 @@ class TestSoftplusOneDNNOp(OpTest):
 
     def config(self):
         self.x_shape = (10, 10)
-        self.attrs = {'use_mkldnn': True}
 
     def test_check_output(self):
         self.check_output()
+
+
+class TestSoftplus4DOneDNNOp(TestSoftplusOneDNNOp):
+    def config(self):
+        self.x_shape = (10, 5, 4, 2)
+
+
+class TestSoftplus6DOneDNNOp(TestSoftplusOneDNNOp):
+    def config(self):
+        self.x_shape = (3, 2, 2, 5, 4, 2)
+
+
+class TestSoftplus6DExtendedFunctorOneDNNOp(TestSoftplusOneDNNOp):
+    def config(self):
+        self.x_shape = (3, 5, 2, 5, 4, 2)
+        self.beta = 2.5
+
+
+class TestSoftplus3DExtendedFunctorOneDNNOp(TestSoftplusOneDNNOp):
+    def config(self):
+        self.x_shape = (20, 4, 2)
+        self.beta = 0.4
 
 
 if __name__ == "__main__":
