@@ -97,7 +97,10 @@ def resnet_cifar10(input, depth=32):
     return pool
 
 
-def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
+def train(use_pure_fp16=True,
+          use_nesterov=False,
+          optimizer="",
+          open_merge_option=False):
     classdim = 10
     data_shape = [3, 32, 32]
     PASS_NUM = 1
@@ -129,7 +132,8 @@ def train(use_pure_fp16=True, use_nesterov=False, optimizer=""):
             optimizer = paddle.fluid.optimizer.LarsMomentumOptimizer(
                 learning_rate=0.001,
                 momentum=0.9,
-                multi_precision=use_pure_fp16)
+                multi_precision=use_pure_fp16,
+                merge_option=open_merge_option)
         else:
             optimizer = paddle.optimizer.Momentum(
                 learning_rate=0.001,
@@ -238,10 +242,71 @@ class TestImageMultiPrecision(unittest.TestCase):
                     equal_nan=True),
                 msg='Failed to test in pure FP16.')
 
+        def do_merge_test(optimizer=""):
+            if optimizer is "Lars":
+                suffix = "use Lars "
+            with self.scope_prog_guard():
+                print("-----------------FP16 Merged Train {}-----------------".
+                      format(suffix))
+                train_loss_fp16_merge, test_loss_fp16_merge = train(
+                    use_pure_fp16=True,
+                    open_merge_option=True,
+                    optimizer=optimizer)
+            with self.scope_prog_guard():
+                print("-----------------FP32 Merged Train {}-----------------".
+                      format(suffix))
+                train_loss_fp32_merge, test_loss_fp32_merge = train(
+                    use_pure_fp16=False,
+                    open_merge_option=True,
+                    optimizer=optimizer)
+
+            with self.scope_prog_guard():
+                print("-----------------FP32 Validation {}-----------------".
+                      format(suffix))
+                train_loss_fp32, test_loss_fp32 = train(
+                    use_pure_fp16=False,
+                    open_merge_option=False,
+                    optimizer=optimizer)
+
+            self.assertTrue(
+                np.allclose(
+                    np.array(train_loss_fp16_merge),
+                    np.array(train_loss_fp32),
+                    rtol=1e-02,
+                    atol=1e-05,
+                    equal_nan=True),
+                msg='Failed to train in merged FP16.')
+            self.assertTrue(
+                np.allclose(
+                    np.array(train_loss_fp32_merge),
+                    np.array(train_loss_fp32),
+                    rtol=1e-02,
+                    atol=1e-05,
+                    equal_nan=True),
+                msg='Failed to train in merged FP32.')
+
+            self.assertTrue(
+                np.allclose(
+                    np.array(test_loss_fp16_merge),
+                    np.array(test_loss_fp32),
+                    rtol=1e-02,
+                    atol=1e-05,
+                    equal_nan=True),
+                msg='Failed to test in pure FP16.')
+            self.assertTrue(
+                np.allclose(
+                    np.array(test_loss_fp32_merge),
+                    np.array(test_loss_fp32),
+                    rtol=1e-02,
+                    atol=1e-05,
+                    equal_nan=True),
+                msg='Failed to test in pure FP32.')
+
         do_test(use_nesterov=False)
         do_test(use_nesterov=True)
         do_test(optimizer="Adam")
         do_test(optimizer="Lars")
+        do_merge_test(optimizer="Lars")
 
     @contextlib.contextmanager
     def scope_prog_guard(self):

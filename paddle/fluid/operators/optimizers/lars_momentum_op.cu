@@ -38,8 +38,8 @@ class LarsThreadConfig {
  public:
   int grid_for_norm;
   int grid_for_lars;
-
 #if CUDA_VERSION >= 11000
+
  private:
   int grid_stride;
 
@@ -55,7 +55,7 @@ class LarsThreadConfig {
     return (numel + grid_stride - 1) / grid_stride - 1;
   }
 #else
-  const int repeat_times;
+  int repeat_times;
   explicit LarsThreadConfig(const int64_t numel) {
     int grid = (numel + LARS_BLOCK_SIZE - 1) / LARS_BLOCK_SIZE;
     grid_for_norm = std::min(grid, LARS_BLOCK_SIZE);
