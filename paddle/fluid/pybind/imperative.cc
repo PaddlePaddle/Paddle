@@ -2295,7 +2295,7 @@ void BindImperative(py::module *m_ptr) {
           src_offset + c <= src_tensor.dims()[0], true,
           platform::errors::InvalidArgument("Invalid offset or count index"));
       PADDLE_ENFORCE_EQ(
-          dst_offset + c <= dst_tensor.dims()[0], true,
+          dst_offset + c <= dst_tensor->dims()[0], true,
           platform::errors::InvalidArgument("Invalid offset or count index"));
       cudaMemcpyAsync(dst_data + (dst_offset * size),
                       src_data + (src_offset * size), c * size * sizeof(float),
