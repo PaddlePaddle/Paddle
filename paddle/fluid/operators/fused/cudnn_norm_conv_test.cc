@@ -447,6 +447,15 @@ TEST(CudnnNormConvFp16, K1S2O4) {
   CudnnNormConvolutionTester<paddle::platform::float16> test(
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
-  test.CheckForward(1e-3, true);
-  test.CheckBackward(1e-3);
+  platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+
+  if (ctx->GetComputeCapability() <= 70) {
+    ASSERT_THROW(test.CheckForward(1e-3, true),
+                 paddle::platform::EnforceNotMet);
+    ASSERT_THROW(test.CheckBackward(1e-3), paddle::platform::EnforceNotMet);
+  } else {
+    ASSERT_NO_THROW(test.CheckForward(1e-3, true));
+    ASSERT_NO_THROW(test.CheckBackward(1e-3));
+  }
 }
