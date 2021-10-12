@@ -126,7 +126,7 @@ function(copy_part_of_thrid_party TARGET DST)
 
     set(dst_dir "${DST}/third_party/install/utf8proc")
     copy(${TARGET}
-            SRCS ${UTF8PROC_INCLUDE_DIR} ${UTF8PROC_LIBRARIES}
+            SRCS ${UTF8PROC_INSTALL_DIR}/include ${UTF8PROC_LIBRARIES}
             DSTS ${dst_dir} ${dst_dir}/lib)
 
     if (WITH_CRYPTO)
