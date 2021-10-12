@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from .spawn import spawn  # noqa: F401
-from paddle.distributed.fleet.launch import launch  # noqa: F401
+from .fleet.launch import launch  # noqa: F401
 
 from .parallel import init_parallel_env  # noqa: F401
 from .parallel import get_rank  # noqa: F401

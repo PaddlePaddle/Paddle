@@ -197,13 +197,18 @@ class ProgramStats(object):
             if op.desc.has_attr(op_device_attr_name):
                 op_device = op.desc.attr(op_device_attr_name)
 
+            # Setting the force_cpu of seed to true will make the output of seed in cpu memory, 
+            # reduce the synchronous copy from GPU to CPU in dropout, and reduce the communication hang
             added_op = self.block._insert_op(
                 index=op.idx,
                 type='seed',
                 inputs={},
                 outputs={'Out': [added_var]},
-                attrs={'seed': seed,
-                       'op_device': op_device})
+                attrs={
+                    'seed': seed,
+                    'op_device': op_device,
+                    'force_cpu': True
+                })
             self.ops.insert(op_idx, added_op)
             # modify dropout op desc so that it accept a seed var as input
             op.desc.set_input("Seed", [var_unique_name])

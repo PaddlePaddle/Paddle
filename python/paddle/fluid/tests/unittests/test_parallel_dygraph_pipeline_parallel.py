@@ -42,6 +42,9 @@ class TestHybridPipeParallel(TestMultipleGpus):
     def test_hybrid_parallel_recompute(self):
         self.run_mnist_2gpu('hybrid_parallel_pp_recompute.py')
 
+    def test_hybrid_parallel_pp_clip_grad(self):
+        self.run_mnist_2gpu('hybrid_parallel_pp_clip_grad.py')
+
 
 if __name__ == "__main__":
     unittest.main()

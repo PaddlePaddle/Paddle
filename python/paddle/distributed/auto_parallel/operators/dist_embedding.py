@@ -31,7 +31,7 @@ from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process import new_process_group
-from ..utils import _get_comm_group
+from ..utils import _get_comm_group, _get_relative_idx_in_axis, _get_corresponding_rank
 
 
 class DistributedEmbedding(DistributedOperator):
@@ -149,17 +149,14 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         process_mesh_shape = op_dist_attr.get_process_mesh().topology
         process_mesh_group = op_dist_attr.get_process_mesh().process_group
 
-        # caculate embedding offset
-        # TODO generalize here, using cartisian product to allow any dimensional mesh shape
-        mesh_shape = len(process_mesh_shape)
-        assert mesh_shape <= 2, "row_parallel_embedding only support 1 or 2 dimensional process mesh, but got {}".format(
-            process_mesh_shape)
-        num_partition = process_mesh_shape[embedding_row_dim_mapping]
-        # TODO generalize here, support any mesh group 
-        if mesh_shape == 1:
-            relative_idx = process_mesh_group.index(rank_id)
-        else:
-            relative_idx = rank_id % num_partition
+        # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
+        if rank_id not in process_mesh_group:
+            rank_id = _get_corresponding_rank(process_mesh_group, rank_id)
+
+        # A generalized method to caculate embedding offset using cartisian product
+        relative_idx = _get_relative_idx_in_axis(
+            process_mesh_group, process_mesh_shape, embedding_row_dim_mapping,
+            rank_id)
 
         per_part_size = Weight_var.shape[0]
         relative_idx = relative_idx * per_part_size
@@ -289,6 +286,7 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         batch_size_axis = var_dim_mapping[0]
         if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
             need_gradient_allreduce = True
+
             group_ranks = _get_comm_group(process_mesh.process_group,
                                           process_mesh.topology,
                                           batch_size_axis, rank_id)

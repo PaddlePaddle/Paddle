@@ -76,6 +76,8 @@ if not defined NIGHTLY_MODE set PRECISION_TEST=OFF
 if not defined retry_times set retry_times=3
 if not defined PYTHON_ROOT set PYTHON_ROOT=C:\Python37
 if not defined BUILD_DIR set BUILD_DIR=build
+set task_name=%1
+set UPLOAD_TP_FILE=OFF
 
 rem ------initialize the python environment------
 set PYTHON_EXECUTABLE=%PYTHON_ROOT%\python.exe
@@ -87,7 +89,7 @@ if "%WITH_PYTHON%" == "ON" (
     pip install -r %work_dir%\python\requirements.txt --user
     if !ERRORLEVEL! NEQ 0 (
         echo pip install requirements.txt failed!
-        exit /b 7
+        exit /b 5
     )
 )
 
@@ -136,6 +138,17 @@ if %day_now% NEQ %day_before% (
     echo %day_now% > %cache_dir%\day.txt
     type %cache_dir%\day.txt
     rmdir %BUILD_DIR% /s/q
+
+    : clear third party cache every once in a while
+    if %day_now% EQU 21 (
+        rmdir %cache_dir%\third_party /s/q
+    )
+    if %day_now% EQU 11 (
+        rmdir %cache_dir%\third_party /s/q
+    )
+    if %day_now% EQU 01 (
+        rmdir %cache_dir%\third_party /s/q
+    )
     goto :mkbuild
 )
 
@@ -307,7 +320,7 @@ if %GENERATOR% == "Ninja" (
     pip install ninja
     if %errorlevel% NEQ 0 (
         echo pip install ninja failed!
-        exit /b 7
+        exit /b 5
     )
 )
 
@@ -331,24 +344,6 @@ rem set CLCACHE_OBJECT_CACHE_TIMEOUT_MS=1000000
 rem clcache.exe -M 21474836480
 
 rem ------set third_party cache dir------
-: clear third party cache every once in a while
-for /F %%# in ('wmic os get localdatetime^|findstr 20') do set datetime=%%#
-set day_now=%datetime:~6,2%
-set day_before=-1
-set /p day_before=< %cache_dir%\day.txt
-if %day_now% NEQ %day_before% (
-    echo %day_now% > %cache_dir%\day.txt
-    type %cache_dir%\day.txt
-    if %day_now% EQU 21 (
-        rmdir %cache_dir%\third_party /s/q
-    )
-    if %day_now% EQU 11 (
-        rmdir %cache_dir%\third_party /s/q
-    )
-    if %day_now% EQU 01 (
-        rmdir %cache_dir%\third_party /s/q
-    )
-)
 
 if "%WITH_TPCACHE%"=="OFF" (
     set THIRD_PARTY_PATH=%work_dir:\=/%/%BUILD_DIR%/third_party
@@ -363,17 +358,24 @@ echo echo ${md5_content}^>md5.txt >> cache.sh
 %cache_dir%\tools\busybox64.exe bash cache.sh
 
 set /p md5=< md5.txt
+echo %task_name%|findstr build >nul && (
+    set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party
+    set THIRD_PARTY_PATH=!THIRD_PARTY_HOME!/%md5%
+    echo %task_name% is a whl-build task, will only reuse local third_party cache.
+    goto :cmake_impl
+) || ( 
+    echo %task_name% is a PR-CI-Windows task, will try to reuse bos and local third_party cache both. 
+)
+
 if "%WITH_GPU%"=="ON" (
-    for /F "delims=" %%# in ('nvcc --version^|findstr V1') do set cuda_version=%%#
-    set cuda_version=!cuda_version:~-7,4!
+    for /F %%# in ('dir /b /d "C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\"') do set cuda_version=%%#
+    set cuda_version=!cuda_version:~-4!
     set sub_dir=cuda!cuda_version:.=!
 ) else (
     set sub_dir=cpu
 )
-
 set THIRD_PARTY_HOME=%cache_dir:\=/%/third_party/%sub_dir%
 set THIRD_PARTY_PATH=%THIRD_PARTY_HOME%/%md5%
-set UPLOAD_TP_FILE=OFF
 
 if not exist %THIRD_PARTY_PATH% (
     echo There is no usable third_party cache in %THIRD_PARTY_PATH%, will download from bos.
@@ -386,18 +388,18 @@ if not exist %THIRD_PARTY_PATH% (
         echo Getting third party: extracting ...
         tar -xf %md5%.tar.gz
         if !ERRORLEVEL! EQU 0 ( 
-            echo Get third party from bos successfully
+            echo Get third party from bos successfully.
         ) else (
-            echo Get third party failed, reason: extract failed, will build locally
+            echo Get third party failed, reason: extract failed, will build locally.
         )
         del %md5%.tar.gz
     ) else (
-        echo Get third party failed, reason: download failed, will build locally
+        echo Get third party failed, reason: download failed, will build locally.
     )
-    if not exist %THIRD_PARTY_PATH% ( set UPLOAD_TP_FILE=ON ) 
+    if not exist %THIRD_PARTY_PATH% set UPLOAD_TP_FILE=ON
     cd %work_dir%\%BUILD_DIR%
 ) else (
-    echo Found reusable third_party cache locally, will reuse it.
+    echo Found reusable third_party cache in %THIRD_PARTY_PATH%, will reuse it.
 )
 
 :cmake_impl
@@ -512,8 +514,8 @@ if %ERRORLEVEL% NEQ 0 (
     )
 )
 
-set BCE_FILE=%cache_dir%\bce-python-sdk-0.8.33\BosClient.py
-if %UPLOAD_TP_FILE%==ON (
+if "%UPLOAD_TP_FILE%"=="ON" (
+    set BCE_FILE=%cache_dir%\bce-python-sdk-0.8.33\BosClient.py
     echo Uploading third_party: checking bce ...
     if not exist %cache_dir%\bce-python-sdk-0.8.33 (
         echo There is no bce in this PC, will install bce.
@@ -531,18 +533,18 @@ if %UPLOAD_TP_FILE%==ON (
         tar -zcf %md5%.tar.gz %md5%
         if !errorlevel! EQU 0 (
             echo Uploading third_party: uploading ...
-            %PYTHON_ROOT%\python.exe %BCE_FILE% %md5%.tar.gz paddle-windows/third_party/%sub_dir% 1>nul
+            %PYTHON_ROOT%\python.exe !BCE_FILE! %md5%.tar.gz paddle-windows/third_party/%sub_dir% 1>nul
             if !errorlevel! EQU 0 (
-                echo Upload third party to bos paddle-windows/third_party/%sub_dir% successfully 
+                echo Upload third party %md5% to bos paddle-windows/third_party/%sub_dir% successfully.
             ) else (
-                echo Failed upload third party to bos, reason: upload failed
+                echo Failed upload third party to bos, reason: upload failed.
             )
         ) else (
-            echo Failed upload third party to bos, reason: compress failed
+            echo Failed upload third party to bos, reason: compress failed.
         )
         del %md5%.tar.gz
     ) else (
-        echo Failed upload third party to bos, reason: install bce failed
+        echo Failed upload third party to bos, reason: install bce failed.
     )
     cd %work_dir%\%BUILD_DIR%
 )
@@ -618,7 +620,7 @@ git diff --name-only %BRANCH% | findstr /V "\.py" || set CI_SKIP_CPP_TEST=ON
 pip install -r %work_dir%\python\unittest_py\requirements.txt --user
 if %ERRORLEVEL% NEQ 0 (
     echo pip install unittest requirements.txt failed!
-    exit /b 7
+    exit /b 5
 )
 
 for /F %%# in ('wmic os get localdatetime^|findstr 20') do set start=%%#

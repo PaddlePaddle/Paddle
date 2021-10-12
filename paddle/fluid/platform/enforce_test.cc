@@ -9,10 +9,11 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include "paddle/fluid/platform/enforce.h"
+
 #include <list>
 
 #include "gtest/gtest.h"
-#include "paddle/fluid/platform/enforce.h"
 
 TEST(ENFORCE, OK) {
   PADDLE_ENFORCE(true, paddle::platform::errors::Unavailable(
@@ -417,6 +418,25 @@ TEST(enforce, cuda_success) {
       "An unsupported value or parameter was passed to the function (a "
       "negative vector size, for example).To correct: ensure that all the "
       "parameters being passed have valid values"));
+
+  EXPECT_TRUE(CheckCudaStatusSuccess(CUFFT_SUCCESS));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_INVALID_PLAN, "CUFFT error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_ALLOC_FAILED, "CUFFT error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_INVALID_TYPE, "CUFFT error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_INVALID_VALUE, "CUFFT error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_INTERNAL_ERROR, "CUFFT error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_EXEC_FAILED, "CUFFT error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_SETUP_FAILED, "CUFFT error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_INVALID_SIZE, "CUFFT error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_UNALIGNED_DATA, "CUFFT error"));
+  EXPECT_TRUE(
+      CheckCudaStatusFailure(CUFFT_INCOMPLETE_PARAMETER_LIST, "CUFFT error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_INVALID_DEVICE, "CUFFT error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_PARSE_ERROR, "CUFFT error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_NO_WORKSPACE, "CUFFT error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_NOT_IMPLEMENTED, "CUFFT error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_LICENSE_ERROR, "CUFFT error"));
+  EXPECT_TRUE(CheckCudaStatusFailure(CUFFT_NOT_SUPPORTED, "CUFFT error"));
 
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
   EXPECT_TRUE(CheckCudaStatusSuccess(ncclSuccess));

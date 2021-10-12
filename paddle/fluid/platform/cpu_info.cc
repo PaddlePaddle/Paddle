@@ -31,7 +31,7 @@ limitations under the License. */
 #endif  // _WIN32
 
 #include <algorithm>
-#include "gflags/gflags.h"
+#include "paddle/fluid/platform/flags.h"
 
 DECLARE_double(fraction_of_cpu_memory_to_use);
 DECLARE_uint64(initial_cpu_memory_in_mb);
@@ -42,7 +42,8 @@ DECLARE_double(fraction_of_cuda_pinned_memory_to_use);
 // between host and device.  Allocates too much would reduce the amount
 // of memory available to the system for paging.  So, by default, we
 // should set false to use_pinned_memory.
-DEFINE_bool(use_pinned_memory, true, "If set, allocate cpu pinned memory.");
+PADDLE_DEFINE_EXPORTED_bool(use_pinned_memory, true,
+                            "If set, allocate cpu pinned memory.");
 
 namespace paddle {
 namespace platform {
@@ -54,7 +55,9 @@ size_t CpuTotalPhysicalMemory() {
   mib[1] = HW_MEMSIZE;
   int64_t size = 0;
   size_t len = sizeof(size);
-  if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) return (size_t)size;
+  if (sysctl(mib, 2, &size, &len, NULL, 0) == 0) {
+    return static_cast<size_t>(size);
+  }
   return 0L;
 #elif defined(_WIN32)
   MEMORYSTATUSEX sMeminfo;

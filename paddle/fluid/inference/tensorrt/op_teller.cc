@@ -48,9 +48,11 @@ struct SimpleOpTypeSetTeller : public Teller {
     int8_teller_set.insert("skip_layernorm");
     int8_teller_set.insert("slice");
 #endif
-#if IS_TRT_VERSION_GE(7130)
-    teller_set.insert("group_norm");
-#endif
+// TODO(baoachun) The group_norm trt plugin will check input's dim
+// not -1 failed when dynamic shape mode.
+// #if IS_TRT_VERSION_GE(7130)
+//     teller_set.insert("group_norm");
+// #endif
 #if IS_TRT_VERSION_GE(7000)
     teller_set.insert("tile");
 #endif
@@ -134,7 +136,8 @@ struct SimpleOpTypeSetTeller : public Teller {
                                              "reduce_sum",
                                              "reduce_mean",
                                              "conv3d",
-                                             "conv3d_transpose"};
+                                             "conv3d_transpose",
+                                             "mish"};
 };
 
 bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
@@ -149,16 +152,15 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     return false;
 
   for (auto& teller : tellers_) {
-    if (op_type == "depthwise_conv2d") {
-      std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
-
-      if (paddings.size() > 2) return false;
-    }
-
     if (op_type == "relu" || op_type == "relu6" || op_type == "tanh" ||
         op_type == "sigmoid") {
       auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -172,7 +174,9 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "pool2d") {
       std::vector<int> paddings =
           BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
-      if (paddings.size() > 2) return false;
+      if (paddings.size() > 2) {
+        return false;
+      }
       if (desc.Input("X").size() != 1) {
         VLOG(3) << "TRT Pool2d expect 1 input, but got "
                 << desc.Input("X").size();
@@ -193,18 +197,32 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
                   << pool_type << " pool type.";
           return false;
         }
+        if (pool_type == "avg") {
+          if (desc.HasAttr("global_pooling")) {
+            if (!BOOST_GET_CONST(bool, desc.GetAttr("global_pooling"))) {
+              if (desc.HasAttr("exclusive")) {
+                if (BOOST_GET_CONST(bool, desc.GetAttr("exclusive"))) {
+                  std::vector<int> ksize =
+                      BOOST_GET_CONST(std::vector<int>, desc.GetAttr("ksize"));
+                  for (size_t i = 0; i < ksize.size(); i++) {
+                    if (ksize[i] <= paddings[i]) {
+                      VLOG(3) << "the padding size should be less than the "
+                                 "filter size "
+                                 "for exclusive-counting pooling.";
+                      return false;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
       }
     }
 
     if (op_type == "conv2d" || op_type == "conv2d_transpose" ||
         op_type == "conv2d_fusion" || op_type == "depthwise_conv2d" ||
         op_type == "depthwise_conv2d_transpose") {
-      std::vector<int> paddings =
-          BOOST_GET_CONST(std::vector<int>, desc.GetAttr("paddings"));
-
-      // conv2d and conv2d_transpose need padding check
-      if (paddings.size() > 2 && op_type != "conv2d_fusion") return false;
-
       if (desc.Input("Input").size() != 1) {
         VLOG(3) << "TRT Conv2d expect 1 input, but got "
                 << desc.Input("Input").size() << " input.";
@@ -215,6 +233,14 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "TRT Conv2d expect 1 filter, but got "
                 << desc.Input("Filter").size() << " filter.";
         return false;
+      }
+
+      if (desc.HasAttr("padding_algorithm")) {
+        auto padding_algorithm =
+            BOOST_GET_CONST(std::string, desc.GetAttr("padding_algorithm"));
+        if (padding_algorithm == "SAME" || padding_algorithm == "VALID") {
+          return false;
+        }
       }
 
       if (desc.HasAttr("enable_int8")) {
@@ -274,6 +300,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "matmul") {
       auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       for (auto& param_name : desc.Inputs()) {
         for (auto& var_name : param_name.second) {
           auto* var_desc = block->FindVar(var_name);
@@ -324,6 +356,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (axis[0] == 0 && axis.size() == 2) return false;
 
       auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -372,6 +410,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       } else {
         auto* block = desc.Block();
+        if (block == nullptr) {
+          VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                     "Developers need to check whether block_desc is passed in "
+                     "the pass.";
+          return false;
+        }
         auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
         const auto x_shape = x_var_desc->GetShape();
         if (x_shape.size() == 1) {
@@ -385,6 +429,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!with_dynamic_shape) return false;
 
       auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       auto x_var_name = desc.Input("X")[0];
       auto index_var_name = desc.Input("Index")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
@@ -412,6 +462,10 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
     }
 
+    if (op_type == "anchor_generator") {
+      if (!with_dynamic_shape) return false;
+    }
+
     if (op_type == "yolo_box") {
       if (with_dynamic_shape) return false;
       bool has_attrs =
@@ -428,6 +482,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (data_layout != framework::DataLayout::kNCHW) return false;
 
       auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -439,6 +499,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
     if (op_type == "multiclass_nms") {
       if (with_dynamic_shape) return false;
       auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       for (auto& param_name : desc.Inputs()) {
         for (auto& var_name : param_name.second) {
           auto* var_desc = block->FindVar(var_name);
@@ -598,6 +664,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
       auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -657,6 +729,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         }
       }
       auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -724,6 +802,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         return false;
       }
       auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       auto* x_var_desc = block->FindVar(desc.Input("X")[0]);
       auto* y_var_desc = block->FindVar(desc.Input("Y")[0]);
       const auto x_shape = x_var_desc->GetShape();
@@ -775,6 +859,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
 
       auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -856,6 +946,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
       std::vector<int64_t> shape;
       auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       for (auto& param_name : desc.Inputs()) {
         for (auto& var_name : param_name.second) {
           auto* var_desc = block->FindVar(var_name);
@@ -881,6 +977,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "scale") {
       auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -892,6 +994,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
 
     if (op_type == "swish") {
       auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -916,6 +1024,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
 
       auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       auto* var_desc = block->FindVar(desc.Input("Alpha")[0]);
       if (!var_desc) {
         VLOG(3) << "Variable Alpha of prelu TRT converter not found.";
@@ -933,6 +1047,44 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       if (!with_dynamic_shape) {
         if (x_shape.size() == 2) {
           VLOG(3) << "prelu op does not support input's dim is 2 in tensorrt.";
+          return false;
+        }
+      }
+    }
+
+    if (op_type == "mish") {
+      if (desc.Input("X").size() != 1) {
+        VLOG(3) << "Invalid input X's size of mish TRT converter. "
+                   "Expected 1, received "
+                << desc.Input("X").size() << ".";
+        return false;
+      }
+      if (desc.Output("Out").size() != 1) {
+        VLOG(3) << "Invalid output Out's size of mish TRT converter. "
+                   "Expected 1, received "
+                << desc.Output("Out").size() << ".";
+        return false;
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+
+      auto x_var_name = desc.Input("X")[0];
+      auto* x_var_desc = block->FindVar(x_var_name);
+      const auto x_shape = x_var_desc->GetShape();
+      if (x_shape.size() == 1) {
+        VLOG(3) << "mish op does not support input's dim is 1 in tensorrt.";
+        return false;
+      }
+
+      if (!with_dynamic_shape) {
+        if (x_shape.size() == 2) {
+          VLOG(3) << "mish op does not support input's dim is 2 in tensorrt.";
           return false;
         }
       }
@@ -997,6 +1149,42 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "the multihead_matmul does not support static shape yet";
         return false;
       }
+
+      if (desc.HasAttr("enable_int8") && !desc.HasAttr("Input_scale")) {
+        VLOG(3) << "Multihead layers must have input scale in int8 mode.";
+        return false;
+      }
+
+      auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
+      auto* input_desc = block->FindVar(desc.Input("Input").front());
+      const auto input_shape = input_desc->GetShape();
+      const auto head_number =
+          BOOST_GET_CONST(int, desc.GetAttr("head_number"));
+
+      auto* biasqk_desc = block->FindVar(desc.Input("BiasQK").front());
+      const auto biasqk_shape = biasqk_desc->GetShape();
+      // The BiasQK's shape requires to be
+      // [batch, 1, 1, length] or [batch, head, length, length].
+      bool has_same_shape = head_number == biasqk_shape[1] &&
+                            input_shape[1] == biasqk_shape[2] &&
+                            input_shape[1] == biasqk_shape[3];
+      bool is_broadcastable = biasqk_shape[1] == 1 && biasqk_shape[2] == 1 &&
+                              input_shape[1] == biasqk_shape[3];
+      if (!(has_same_shape || is_broadcastable)) {
+        VLOG(3) << "The BiasQK's shape is invalid, expect [" << input_shape[0]
+                << ", 1, 1, " << input_shape[1] << "] or [" << input_shape[0]
+                << ", " << head_number << ", " << input_shape[1] << ", "
+                << input_shape[1] << "] but [" << biasqk_shape[0] << ", "
+                << biasqk_shape[1] << ", " << biasqk_shape[2] << ", "
+                << biasqk_shape[3] << "].";
+        return false;
+      }
     }
 
     if (op_type == "fc") {
@@ -1051,6 +1239,12 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
       }
 
       auto* block = desc.Block();
+      if (block == nullptr) {
+        VLOG(3) << "The block desc is nullptr, we can't continue to analyze. "
+                   "Developers need to check whether block_desc is passed in "
+                   "the pass.";
+        return false;
+      }
       auto x_var_name = desc.Input("X")[0];
       auto* x_var_desc = block->FindVar(x_var_name);
       const auto x_shape = x_var_desc->GetShape();
@@ -1078,6 +1272,16 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
             BOOST_GET_CONST(std::vector<int32_t>, desc.GetAttr("dim"));
         for (auto x : dim) {
           if (!x) return false;
+        }
+      } else {
+        if (BOOST_GET_CONST(bool, desc.GetAttr("reduce_all")) &&
+            !BOOST_GET_CONST(bool, desc.GetAttr("keep_dim")))
+          return false;
+      }
+      if (desc.HasAttr("reduce_all")) {
+        int out_dtype = BOOST_GET_CONST(int32_t, desc.GetAttr("out_dtype"));
+        if (out_dtype != -1) {
+          return false;
         }
       }
     }
@@ -1156,6 +1360,24 @@ bool OpTeller::Tell(const framework::ir::Node* node, bool use_no_calib_int8,
         VLOG(3) << "TRT Conv3d expect 1 output, but got "
                 << desc.Output("Output").size() << " output.";
         return false;
+      }
+    }
+
+    if (op_type == "hard_sigmoid") {
+      if (!with_dynamic_shape) {
+        auto* block = desc.Block();
+        if (block == nullptr) {
+          VLOG(3) << "The block is null.";
+          return false;
+        }
+        auto x_var_name = desc.Input("X")[0];
+        auto* x_var_desc = block->FindVar(x_var_name);
+        const auto x_shape = x_var_desc->GetShape();
+        if (x_shape.size() <= 2) {
+          VLOG(3) << "hard_sigmoid op does not support input's dim less than 3 "
+                     "in tensorrt.";
+          return false;
+        }
       }
     }
 

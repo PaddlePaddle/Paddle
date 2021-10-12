@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/operators/shape_op.h"
 #include <string>
 #include "paddle/fluid/framework/op_registry.h"
+#include "paddle/fluid/platform/complex.h"
 
 namespace paddle {
 namespace operators {
@@ -64,6 +65,7 @@ Return the shape of the input.
 }  // namespace paddle
 
 namespace ops = paddle::operators;
+namespace plat = paddle::platform;
 REGISTER_OPERATOR(
     shape, ops::ShapeOp, ops::ShapeOpMaker,
     paddle::framework::EmptyGradOpMaker<paddle::framework::OpDesc>,
@@ -71,4 +73,6 @@ REGISTER_OPERATOR(
 REGISTER_OP_CPU_KERNEL(shape, ops::ShapeKernel<bool>, ops::ShapeKernel<int>,
                        ops::ShapeKernel<int8_t>, ops::ShapeKernel<uint8_t>,
                        ops::ShapeKernel<int64_t>, ops::ShapeKernel<float>,
-                       ops::ShapeKernel<double>);
+                       ops::ShapeKernel<double>,
+                       ops::ShapeKernel<plat::complex<float>>,
+                       ops::ShapeKernel<plat::complex<double>>);

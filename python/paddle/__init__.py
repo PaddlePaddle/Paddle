@@ -93,17 +93,12 @@ from .tensor.linalg import dot  # noqa: F401
 from .tensor.linalg import norm  # noqa: F401
 from .tensor.linalg import transpose  # noqa: F401
 from .tensor.linalg import dist  # noqa: F401
-from .tensor.linalg import cond  # noqa: F401
 from .tensor.linalg import t  # noqa: F401
 from .tensor.linalg import cross  # noqa: F401
 from .tensor.linalg import cholesky  # noqa: F401
 from .tensor.linalg import bmm  # noqa: F401
 from .tensor.linalg import histogram  # noqa: F401
 from .tensor.linalg import mv  # noqa: F401
-from .tensor.linalg import multi_dot  # noqa: F401
-from .tensor.linalg import matrix_power  # noqa: F401
-from .tensor.linalg import svd  # noqa: F401
-from .tensor.linalg import eigh  # noqa: F401
 from .tensor.logic import equal  # noqa: F401
 from .tensor.logic import greater_equal  # noqa: F401
 from .tensor.logic import greater_than  # noqa: F401
@@ -156,6 +151,7 @@ from .tensor.manipulation import unbind  # noqa: F401
 from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
 from .tensor.manipulation import tolist  # noqa: F401
+from .tensor.manipulation import tensordot  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -298,6 +294,7 @@ from .hapi import summary  # noqa: F401
 from .hapi import flops  # noqa: F401
 from . import hub  # noqa: F401
 from . import linalg  # noqa: F401
+from . import fft  # noqa: F401
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
@@ -474,6 +471,7 @@ __all__ = [  # noqa
            'bmm',
            'chunk',
            'tolist',
+           'tensordot',
            'greater_than',
            'shard_index',
            'argsort',
@@ -502,7 +500,6 @@ __all__ = [  # noqa
            'stack',
            'sqrt',
            'cholesky',
-           'matrix_power',
            'randperm',
            'linspace',
            'reshape',

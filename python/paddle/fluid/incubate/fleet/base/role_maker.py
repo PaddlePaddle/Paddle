@@ -383,7 +383,7 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return the current number of worker
         """
         if self._check_role_generation():
-            return self._get_size() / self._proc_per_node
+            return int(self._get_size() / self._proc_per_node)
         return 0
 
     def _server_num(self):
@@ -391,30 +391,30 @@ class MPISymetricRoleMaker(MPIRoleMaker):
         return the current number of server
         """
         if self._check_role_generation():
-            return self._get_size() / self._proc_per_node
+            return int(self._get_size() / self._proc_per_node)
         else:
             self.generate_role()
-            return self._get_size() / self._proc_per_node
+            return int(self._get_size() / self._proc_per_node)
 
     def worker_index(self):
         """
         return the index of worker
         """
         if self._check_role_generation():
-            return self._rank / self._proc_per_node
+            return int(self._rank / self._proc_per_node)
         else:
             self.generate_role()
-            return self._get_size() / 2
+            return int(self._get_size() / 2)
 
     def server_index(self):
         """
         return the index of server
         """
         if self._check_role_generation():
-            return self._rank / self._proc_per_node
+            return int(self._rank / self._proc_per_node)
         else:
             self.generate_role()
-            return self._get_size() / self._proc_per_node
+            return int(self._get_size() / self._proc_per_node)
 
     def _all_reduce(self, input, output, mode="sum"):
         """
@@ -612,6 +612,7 @@ class GeneralRoleMaker(RoleMakerBase):
             # set running status of http server
             self._http_server_d["running"] = False
         self._iface = self.__get_default_iface()
+        self._iface = "" if self._iface == "lo" else self._iface
         # this environment variable can be empty
         self._prefix = os.getenv("SYS_JOB_ID", "")
 

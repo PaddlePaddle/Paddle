@@ -113,13 +113,13 @@ class SqueezeOp : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
+    //#ifdef PADDLE_WITH_MKLDNN
+    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+    //                                     framework::DataLayout::kMKLDNN,
+    //                                     framework::LibraryType::kMKLDNN);
+    //    }
+    //#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -140,13 +140,13 @@ class SqueezeGradOp : public framework::OperatorWithKernel {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
 
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
+    //#ifdef PADDLE_WITH_MKLDNN
+    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+    //                                     framework::DataLayout::kMKLDNN,
+    //                                     framework::LibraryType::kMKLDNN);
+    //    }
+    //#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -241,13 +241,13 @@ class Squeeze2Op : public framework::OperatorWithKernel {
     auto input_data_type =
         framework::OperatorWithKernel::IndicateVarDataType(ctx, "X");
 
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
+    //#ifdef PADDLE_WITH_MKLDNN
+    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+    //                                     framework::DataLayout::kMKLDNN,
+    //                                     framework::LibraryType::kMKLDNN);
+    //    }
+    //#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -287,13 +287,13 @@ class Squeeze2GradOp : public framework::OperatorWithKernel {
     auto input_data_type = framework::OperatorWithKernel::IndicateVarDataType(
         ctx, framework::GradVarName("Out"));
 
-#ifdef PADDLE_WITH_MKLDNN
-    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
-      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
-                                     framework::DataLayout::kMKLDNN,
-                                     framework::LibraryType::kMKLDNN);
-    }
-#endif
+    //#ifdef PADDLE_WITH_MKLDNN
+    //    if (this->CanMKLDNNBeUsed(ctx, input_data_type)) {
+    //      return framework::OpKernelType(input_data_type, ctx.GetPlace(),
+    //                                     framework::DataLayout::kMKLDNN,
+    //                                     framework::LibraryType::kMKLDNN);
+    //    }
+    //#endif
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
 };
@@ -389,7 +389,11 @@ REGISTER_OP_CPU_KERNEL(
     ops::SqueezeKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SqueezeKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::SqueezeKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::SqueezeKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::SqueezeKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::SqueezeKernel<paddle::platform::CPUDeviceContext,
+                       paddle::platform::complex<float>>,
+    ops::SqueezeKernel<paddle::platform::CPUDeviceContext,
+                       paddle::platform::complex<double>>);
 REGISTER_OP_CPU_KERNEL(
     squeeze_grad,
     ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -398,7 +402,12 @@ REGISTER_OP_CPU_KERNEL(
     ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext,
+                           paddle::platform::complex<float>>,
+    ops::SqueezeGradKernel<paddle::platform::CPUDeviceContext,
+                           paddle::platform::complex<double>>);
+
 REGISTER_OP_CPU_KERNEL(
     squeeze2, ops::Squeeze2Kernel<paddle::platform::CPUDeviceContext, float>,
     ops::Squeeze2Kernel<paddle::platform::CPUDeviceContext, double>,
@@ -406,7 +415,12 @@ REGISTER_OP_CPU_KERNEL(
     ops::Squeeze2Kernel<paddle::platform::CPUDeviceContext, int>,
     ops::Squeeze2Kernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::Squeeze2Kernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::Squeeze2Kernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::Squeeze2Kernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::Squeeze2Kernel<paddle::platform::CPUDeviceContext,
+                        paddle::platform::complex<float>>,
+    ops::Squeeze2Kernel<paddle::platform::CPUDeviceContext,
+                        paddle::platform::complex<double>>);
+
 REGISTER_OP_CPU_KERNEL(
     squeeze2_grad,
     ops::Squeeze2GradKernel<paddle::platform::CPUDeviceContext, float>,
@@ -415,4 +429,8 @@ REGISTER_OP_CPU_KERNEL(
     ops::Squeeze2GradKernel<paddle::platform::CPUDeviceContext, int>,
     ops::Squeeze2GradKernel<paddle::platform::CPUDeviceContext, uint8_t>,
     ops::Squeeze2GradKernel<paddle::platform::CPUDeviceContext, int8_t>,
-    ops::Squeeze2GradKernel<paddle::platform::CPUDeviceContext, int64_t>);
+    ops::Squeeze2GradKernel<paddle::platform::CPUDeviceContext, int64_t>,
+    ops::Squeeze2GradKernel<paddle::platform::CPUDeviceContext,
+                            paddle::platform::complex<float>>,
+    ops::Squeeze2GradKernel<paddle::platform::CPUDeviceContext,
+                            paddle::platform::complex<double>>);

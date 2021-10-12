@@ -276,6 +276,22 @@ bool AnalysisPredictor::CreateExecutor() {
         "You tried to use NPU forward propagation, but Paddle was not compiled "
         "with WITH_ASCEND_CL."));
 #endif
+  } else if (config_.NNAdapter().use_nnadapter) {
+    if (config_.lite_engine_enabled()) {
+      place_ = paddle::platform::CPUPlace();
+#ifndef LITE_SUBGRAPH_WITH_NNADAPTER
+      PADDLE_THROW(
+          platform::errors::Unavailable("You tried to use an NNAdapter lite "
+                                        "engine, but Paddle was not compiled "
+                                        "with it."));
+#endif  // LITE_SUBGRAPH_WITH_NNADAPTER
+    } else {
+      PADDLE_THROW(
+          platform::errors::Unavailable("You tried to use NNadapter forward "
+                                        "propagation (inference without lite "
+                                        "engine), but Paddle was not compiled "
+                                        "with LITE_WITH_NNADAPTER."));
+    }
   } else {
     place_ = paddle::platform::CPUPlace();
   }
@@ -601,6 +617,26 @@ void AnalysisPredictor::PrepareArgument() {
     argument_.SetXpuAutotuneFile(config_.xpu_autotune_file_);
     argument_.SetXpuPrecision(config_.xpu_precision_);
     argument_.SetXpuAdaptiveSeqlen(config_.xpu_adaptive_seqlen_);
+    // NNAdapter related
+    argument_.SetUseNNAdapter(config_.NNAdapter().use_nnadapter);
+    argument_.SetNNAdapterDeviceNames(
+        config_.NNAdapter().nnadapter_device_names);
+    argument_.SetNNAdapterContextProperties(
+        config_.NNAdapter().nnadapter_context_properties);
+    argument_.SetNNAdapterModelCacheDir(
+        config_.NNAdapter().nnadapter_model_cache_dir);
+    argument_.SetNNAdapterSubgraphPartitionConfigBuffer(
+        config_.NNAdapter().nnadapter_subgraph_partition_config_buffer);
+    argument_.SetNNAdapterSubgraphPartitionConfigPath(
+        config_.NNAdapter().nnadapter_subgraph_partition_config_path);
+    std::vector<std::string> buffer_keys;
+    std::vector<std::vector<char>> buffer_vals;
+    for (auto it : config_.NNAdapter().nnadapter_model_cache_buffers) {
+      buffer_keys.emplace_back(it.first);
+      buffer_vals.emplace_back(it.second);
+    }
+    argument_.SetNNAdapterModelCacheToken(buffer_keys);
+    argument_.SetNNAdapterModelCacheBuffer(buffer_vals);
     LOG(INFO) << "Lite subgraph engine is enabled";
   }
 
@@ -645,7 +681,32 @@ void AnalysisPredictor::OptimizeInferenceProgram() {
   VLOG(5) << "to prepare executor";
   ARGUMENT_CHECK_FIELD((&argument_), ir_analyzed_program);
   inference_program_.reset(
-      new framework::ProgramDesc(argument_.ir_analyzed_program()));
+      new framework::ProgramDesc(argument_.ir_analyzed_program()),
+      [](framework::ProgramDesc *prog) {
+// Note, please do NOT use any member variables, because member variables may
+// have been destructed in multiple threads.
+#if PADDLE_WITH_TENSORRT
+        auto &block = prog->Block(0);
+        for (auto &op_desc : block.AllOps()) {
+          if (op_desc->Type() == "tensorrt_engine") {
+            std::string engine_key =
+                BOOST_GET_CONST(std::string, op_desc->GetAttr("engine_key"));
+            int engine_predictor_id =
+                BOOST_GET_CONST(int, op_desc->GetAttr("predictor_id"));
+            std::string engine_name =
+                engine_key + std::to_string(engine_predictor_id);
+            if (paddle::inference::Singleton<
+                    inference::tensorrt::TRTEngineManager>::Global()
+                    .Has(engine_name)) {
+              paddle::inference::Singleton<
+                  inference::tensorrt::TRTEngineManager>::Global()
+                  .DeleteKey(engine_name);
+            }
+          }
+        }
+#endif
+        delete prog;
+      });
   // The config and argument take a lot of storage,
   // when the predictor settings are complete, we release these stores.
   argument_.PartiallyRelease();
@@ -1349,6 +1410,7 @@ USE_TRT_CONVERTER(reduce_mean);
 USE_TRT_CONVERTER(tile);
 USE_TRT_CONVERTER(conv3d);
 USE_TRT_CONVERTER(conv3d_transpose);
+USE_TRT_CONVERTER(mish);
 #endif
 
 namespace paddle_infer {
