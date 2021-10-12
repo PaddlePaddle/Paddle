@@ -145,14 +145,12 @@ class ResNetUnitKernel : public framework::OpKernel<T> {
                       momentum, ele_count, is_train);
       // 3.3 sbar
       sbar_op.Forward(dev_ctx, *conv_out_x, equiv_scale_x, equiv_bias_x,
-                      *conv_out_z, equiv_scale_z, equiv_bias_z, output,
+                      conv_out_z, &equiv_scale_z, &equiv_bias_z, output,
                       bitmask);
     } else {
       const Tensor *input_z = fused_add ? ctx.Input<Tensor>("Z") : nullptr;
-      Tensor equiv_scale_z;
-      Tensor equiv_bias_z;
       sbar_op.Forward(dev_ctx, *conv_out_x, equiv_scale_x, equiv_bias_x,
-                      *input_z, equiv_scale_z, equiv_bias_z, output, bitmask);
+                      input_z, nullptr, nullptr, output, bitmask);
     }
   }
 };
@@ -245,7 +243,7 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
       Tensor z_grad_temp;
       z_grad_temp.Resize(conv_out_z->dims());
       sbar_x_op.Backward(dev_ctx, *y_grad, *conv_out_x, *scale_x, *bias_x,
-                         *saved_mean_x, *saved_invstd_x, *bitmask,
+                         *saved_mean_x, *saved_invstd_x, bitmask,
                          &conv_out_x_grad, &z_grad_temp, scale_x_grad,
                          bias_x_grad, eps);
 
@@ -255,7 +253,7 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
       CudnnScaleBiasAddRelu<T> sbar_z_op(
           dev_ctx, "", false, false, output_shape, param_shape, bitmask_shape);
       sbar_z_op.Backward(dev_ctx, z_grad_temp, *conv_out_z, *scale_z, *bias_z,
-                         *saved_mean_z, *saved_invstd_z, *bitmask,
+                         *saved_mean_z, *saved_invstd_z, nullptr,
                          &conv_out_z_grad, nullptr, scale_z_grad, bias_z_grad,
                          eps);
 
@@ -273,7 +271,7 @@ class ResNetUnitGradKernel : public framework::OpKernel<T> {
       Tensor *z_grad =
           fused_add ? ctx.Output<Tensor>(framework::GradVarName("Z")) : nullptr;
       sbar_x_op.Backward(dev_ctx, *y_grad, *conv_out_x, *scale_x, *bias_x,
-                         *saved_mean_x, *saved_invstd_x, *bitmask,
+                         *saved_mean_x, *saved_invstd_x, bitmask,
                          &conv_out_x_grad, z_grad, scale_x_grad, bias_x_grad,
                          eps);
     }
