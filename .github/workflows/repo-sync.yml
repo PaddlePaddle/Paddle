@@ -1,0 +1,27 @@
+# from https://github.com/repo-sync/repo-sync
+
+on:
+  schedule:
+    - cron: "*/2 * * * *"
+  workflow_dispatch:
+
+jobs:
+  repo-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          persist-credentials: false
+      - name: repo-sync
+        uses: gglin001/github-sync@v2
+        with:
+          source_repo: "PaddlePaddle/Paddle"
+          source_branch: "develop"
+          destination_branch: "develop"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: gglin001/pull-request@v2
+        name: Create pull request
+        with:
+          source_branch: ${{ secrets.INTERMEDIATE_BRANCH }}
+          destination_branch: develop
+          github_token: ${{ secrets.GITHUB_TOKEN }}
