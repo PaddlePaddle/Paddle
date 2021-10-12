@@ -177,6 +177,8 @@ class DensityPriorBoxOpNPUKernel : public framework::OpKernel<T> {
     h.Resize({layer_h, 1, 1, 1});
     w.Resize({1, layer_w, 1, 1});
 
+    step_w = step_w > 0 ? step_w : static_cast<float>(image_w) / layer_w;
+    step_h = step_h > 0 ? step_h : static_cast<float>(image_h) / layer_h;
     int step_average = static_cast<int>((step_w + step_h) * 0.5);
 
     int ratios_size = fixed_ratios.size();
