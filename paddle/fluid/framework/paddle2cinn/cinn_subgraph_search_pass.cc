@@ -84,28 +84,32 @@ std::unique_ptr<Graph> CreateNewSubGraph(
     old_var2new_var[var] = sub_node;
   }
 
-  // link new node of new subgraph
+  // the subgraph is independently, so here we only need link
+  // to the node in new subgraph, and discard the link to
+  // out-graph.
   for (auto* op : cluster) {
     for (auto* var : op->inputs) {
-      // if the var is internal node, link to new node
-      // else the var is out-graph, link to old node
-      old_op2new_op[op]->inputs.emplace_back(
-          cluster_internals.count(var) ? old_var2new_var[var] : var);
+      if (cluster_internals.count(var)) {
+        old_op2new_op[op]->inputs.emplace_back(old_var2new_var[var]);
+      }
     }
     for (auto* var : op->outputs) {
-      old_op2new_op[op]->outputs.emplace_back(
-          cluster_internals.count(var) ? old_var2new_var[var] : var);
+      if (cluster_internals.count(var)) {
+        old_op2new_op[op]->outputs.emplace_back(old_var2new_var[var]);
+      }
     }
   }
 
   for (auto* var : cluster_internals) {
     for (auto* op : var->inputs) {
-      old_var2new_var[var]->inputs.emplace_back(
-          cluster.count(op) ? old_op2new_op[op] : op);
+      if (cluster.count(op)) {
+        old_var2new_var[var]->inputs.emplace_back(old_op2new_op[op]);
+      }
     }
     for (auto* op : var->outputs) {
-      old_var2new_var[var]->outputs.emplace_back(
-          cluster.count(op) ? old_op2new_op[op] : op);
+      if (cluster.count(op)) {
+        old_var2new_var[var]->outputs.emplace_back(old_op2new_op[op]);
+      }
     }
   }
 
