@@ -14,6 +14,17 @@
 
 import os
 import sys
+'''
+输入是一个字符串，包含所有单测（通信单测与非通信单测）名，各个单测名以‘|^’分隔
+
+输出是一个字符串，包含所有通信单测名，各个单测名以‘|^’分隔
+
+本程序会搜索所有以op_npu.cc结尾 并且包含/collective/的文件名，
+以op_npu.cc结尾，表示是npu op， 包含/collective/，表示是通信op
+对所有被筛选出的文件，加上前缀test_,同时去掉后缀.cc
+通信算子的单测名格式要求是test_xxx_npu 或者 test_xxx_op_npu
+ 
+'''
 collective_set = os.popen(
     "find ${PADDLE_ROOT} -name '*op_npu.cc'|grep '/collective/' ").readlines()
 collective_set = [

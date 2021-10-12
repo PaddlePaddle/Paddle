@@ -1939,7 +1939,7 @@ EOF
             single_card_tests="$single_card_tests|^$testcase"
         fi
     done <<< "$test_cases";
-    single_card_tests=`python3 in_collective.py $single_card_tests`
+    single_card_tests=`python3 ${PADDLE_ROOT}/paddle/scripts/in_collective.py $single_card_tests`
 
     ut_actual_total_startTime_s=`date +%s`
 
