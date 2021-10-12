@@ -30,7 +30,7 @@ PT_DECLARE_MODULE(FillCUDA);
 namespace framework = paddle::framework;
 using DDim = paddle::framework::DDim;
 
-TEST(API, fill) {
+TEST(API, full_like) {
   // 1. create tensor
   auto dense_x = std::make_shared<pt::DenseTensor>(
       pt::TensorMeta(framework::make_ddim({3, 2}),
@@ -46,7 +46,7 @@ TEST(API, fill) {
   pt::Tensor x(dense_x);
 
   // 2. test API
-  auto out = pt::full_like(x, val);
+  auto out = pt::full_like(x, val, pt::DataType::kFLOAT32);
 
   // 3. check result
   ASSERT_EQ(out.shape().size(), 2);
@@ -61,5 +61,69 @@ TEST(API, fill) {
   auto* actual_result = dense_out->data<float>();
   for (auto i = 0; i < 6; i++) {
     ASSERT_NEAR(actual_result[i], val, 1e-6f);
+  }
+}
+
+TEST(API, zeros_like) {
+  // 1. create tensor
+  auto dense_x = std::make_shared<pt::DenseTensor>(
+      pt::TensorMeta(framework::make_ddim({3, 2}),
+                     pt::Backend::kCPU,
+                     pt::DataType::kFLOAT32,
+                     pt::DataLayout::kNCHW),
+      pt::TensorStatus());
+  auto* dense_x_data = dense_x->mutable_data<float>();
+  dense_x_data[0] = 1;
+
+  pt::Tensor x(dense_x);
+
+  // 2. test API
+  auto out = pt::zeros_like(x, pt::DataType::kFLOAT32);
+
+  // 3. check result
+  ASSERT_EQ(out.shape().size(), 2);
+  ASSERT_EQ(out.shape()[0], 3);
+  ASSERT_EQ(out.numel(), 6);
+  ASSERT_EQ(out.is_cpu(), true);
+  ASSERT_EQ(out.type(), pt::DataType::kFLOAT32);
+  ASSERT_EQ(out.layout(), pt::DataLayout::kNCHW);
+  ASSERT_EQ(out.initialized(), true);
+
+  auto dense_out = std::dynamic_pointer_cast<pt::DenseTensor>(out.impl());
+  auto* actual_result = dense_out->data<float>();
+  for (auto i = 0; i < 6; i++) {
+    ASSERT_NEAR(actual_result[i], 0, 1e-6f);
+  }
+}
+
+TEST(API, ones_like) {
+  // 1. create tensor
+  auto dense_x = std::make_shared<pt::DenseTensor>(
+      pt::TensorMeta(framework::make_ddim({3, 2}),
+                     pt::Backend::kCPU,
+                     pt::DataType::kFLOAT32,
+                     pt::DataLayout::kNCHW),
+      pt::TensorStatus());
+  auto* dense_x_data = dense_x->mutable_data<float>();
+  dense_x_data[0] = 0;
+
+  pt::Tensor x(dense_x);
+
+  // 2. test API
+  auto out = pt::ones_like(x, pt::DataType::kINT32);
+
+  // 3. check result
+  ASSERT_EQ(out.shape().size(), 2);
+  ASSERT_EQ(out.shape()[0], 3);
+  ASSERT_EQ(out.numel(), 6);
+  ASSERT_EQ(out.is_cpu(), true);
+  ASSERT_EQ(out.type(), pt::DataType::kINT32);
+  ASSERT_EQ(out.layout(), pt::DataLayout::kNCHW);
+  ASSERT_EQ(out.initialized(), true);
+
+  auto dense_out = std::dynamic_pointer_cast<pt::DenseTensor>(out.impl());
+  auto* actual_result = dense_out->data<float>();
+  for (auto i = 0; i < 6; i++) {
+    ASSERT_EQ(actual_result[i], 1);
   }
 }

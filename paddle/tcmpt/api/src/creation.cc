@@ -25,7 +25,7 @@ limitations under the License. */
 
 namespace pt {
 
-Tensor full_like(const Tensor& x, float value) {
+Tensor full_like(const Tensor& x, const Scalar& value, DataType dtype) {
   // 1. Get kernel signature and kernel
   auto kernel_signature = ParseKernelNameAndKeyByArgs("fill_any_like", x);
   VLOG(1) << kernel_signature.first;
@@ -52,6 +52,10 @@ Tensor full_like(const Tensor& x, float value) {
   // 5. Prepare outputs
   pt::Tensor out;
   auto out_def = kernel.args_def().output_defs()[0];
+  // InferDataType
+  if (dtype != DataType::kUndef) {
+    out_def.SetDataType(dtype);
+  }
   auto dense_out = std::make_shared<DenseTensor>(
       TensorMeta(out_dims, out_def.backend, out_def.dtype, out_def.layout),
       TensorStatus());
@@ -62,6 +66,14 @@ Tensor full_like(const Tensor& x, float value) {
   kernel(&kernel_context);
 
   return out;
+}
+
+Tensor ones_like(const Tensor& x, DataType dtype) {
+  return full_like(x, 1, dtype);
+}
+
+Tensor zeros_like(const Tensor& x, DataType dtype) {
+  return full_like(x, 0, dtype);
 }
 
 }  // namespace pt
