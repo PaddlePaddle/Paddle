@@ -30,11 +30,6 @@ namespace operators {
 
 using LoDTensor = framework::LoDTensor;
 
-#define CREATE_TENSOR(tensor, dtype, ...)             \
-  LoDTensor tensor;                                   \
-  tensor.Resize(framework::make_ddim({__VA_ARGS__})); \
-  tensor.mutable_data<dtype>(ctx.GetPlace())
-
 template <typename DeviceContext, template <typename T> typename CompareFunctor,
           typename T>
 struct GetMask {
@@ -82,6 +77,34 @@ struct Argmax {
       out_data[i] = max_value;
       out_idx_data[i] = max_idx;
     }
+  }
+};
+
+template <typename DeviceContext>
+struct ARange {
+  void operator()(const DeviceContext& dev_ctx, int64_t* data, int end,
+                  int64_t scale) {
+    for (int i = 0; i < end; ++i) {
+      data[i] = i * scale;
+    }
+  }
+};
+
+template <typename DeviceContext, typename T>
+struct GetMaxValue {
+  void operator()(const DeviceContext& dev_ctx, const Tensor& input,
+                  T* max_value) {
+    auto input_ptr = input.data<T>();
+    auto num = input.numel();
+    *max_value = *std::max_element(input_ptr, input_ptr + num);
+  }
+};
+
+template <typename DeviceContext, typename T, typename IndexT = int>
+struct Gather {
+  void operator()(const DeviceContext& ctx, const Tensor& src,
+                  const Tensor& index, Tensor* output) {
+    CPUGather<T, IndexT>(ctx, src, index, output);
   }
 };
 
@@ -194,34 +217,6 @@ struct BinaryOperation {
   }
 };
 
-template <typename DeviceContext>
-struct ARange {
-  void operator()(const DeviceContext& dev_ctx, int64_t* data, int end,
-                  int64_t scale) {
-    for (int i = 0; i < end; ++i) {
-      data[i] = i * scale;
-    }
-  }
-};
-
-template <typename DeviceContext, typename T>
-struct GetMaxValue {
-  void operator()(const DeviceContext& dev_ctx, const Tensor& input,
-                  T* max_value) {
-    auto input_ptr = input.data<T>();
-    auto num = input.numel();
-    *max_value = *std::max_element(input_ptr, input_ptr + num);
-  }
-};
-
-template <typename DeviceContext, typename T, typename IndexT = int>
-struct Gather {
-  void operator()(const DeviceContext& ctx, const Tensor& src,
-                  const Tensor& index, Tensor* output) {
-    CPUGather<T, IndexT>(ctx, src, index, output);
-  }
-};
-
 class TensorBuffer {
  public:
   explicit TensorBuffer(const LoDTensor& in) : buffer_(in), offset_(0) {
@@ -255,14 +250,20 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     math::SetConstant<DeviceContext, T> float_functor;
     math::SetConstant<DeviceContext, int64_t> int_functor;
     std::vector<Tensor> historys;
+    // create int tensor buffer
     int buffer_size = batch_size * seq_len + batch_size * n_labels * seq_len +
                       9 * batch_size + 10;
-    CREATE_TENSOR(int_buffer, int64_t, buffer_size);
+    LoDTensor int_buffer;
+    int_buffer.Resize(framework::make_ddim({buffer_size}));
+    int_buffer.mutable_data<int64_t>(ctx.GetPlace());
     TensorBuffer int_tensor_buffer(int_buffer);
+    // create float tensor buffer
     buffer_size = seq_len * batch_size * n_labels + 5 * batch_size * n_labels +
                   2 * n_labels * n_labels + batch_size * n_labels * n_labels +
                   3 * batch_size + 1;
-    CREATE_TENSOR(float_buffer, T, buffer_size);
+    LoDTensor float_buffer;
+    float_buffer.Resize(framework::make_ddim({buffer_size}));
+    float_buffer.mutable_data<T>(ctx.GetPlace());
     TensorBuffer float_tensor_buffer(float_buffer);
     auto* length = ctx.Input<Tensor>("Length");
     Tensor left_length = int_tensor_buffer.GetBufferBlock({batch_size, 1});
@@ -334,7 +335,6 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     BinaryOperation<DeviceContext, MulFunctor, int64_t> MulInt;
     BinaryOperation<DeviceContext, SubFunctor, T> SubFloat;
     BinaryOperation<DeviceContext, SubFunctor, int64_t> SubInt;
-
     if (with_start_stop_tag) {
       AddFloat(dev_ctx, logit0, start_trans_exp, &alpha);
       GetMask<DeviceContext, EqualFunctor, T>()(ctx, left_length, one,
@@ -390,8 +390,8 @@ class ViterbiDecodeKernel : public framework::OpKernel<T> {
     int actual_len = (std::min)(seq_len, static_cast<int>(max_seq_len));
     MulInt(dev_ctx, last_ids, int_mask,
            &batch_path[actual_len - last_ids_index]);
-    ARange<DeviceContext>()(dev_ctx, batch_offset.data<int64_t>(), batch_size,
-                            n_labels);
+    ARange<DeviceContext> arange;
+    arange(dev_ctx, batch_offset.data<int64_t>(), batch_size, n_labels);
     Gather<DeviceContext, int64_t, int64_t> gather;
     for (auto hist = historys.rbegin(); hist != historys.rend(); ++hist) {
       ++last_ids_index;
