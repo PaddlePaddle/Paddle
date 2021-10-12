@@ -94,9 +94,7 @@ def _keep_fp32_output(op, out_name):
     if op.type in ['batch_norm', 'fused_bn_add_activation', 'layer_norm']:
         return out_name != 'Y'
     if op.type == 'resnet_unit':
-        return out_name not in {
-            'Y', 'ConvX', 'EqScaleX', 'EqBiasX', 'ConvZ', 'EqScaleZ', 'EqBiasZ'
-        }
+        return out_name not in {'Y', 'ConvX', 'ConvZ'}
 
 
 def _insert_cast_op(block, op, idx, src_dtype, dest_dtype):
