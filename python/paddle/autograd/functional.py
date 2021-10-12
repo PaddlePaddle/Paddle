@@ -21,9 +21,9 @@ import paddle
 def jacobian(func, inputs, create_graph=False, allow_unused=False):
     ''' 
     .. note::
-        **This API is ONLY available in imperative mode.**
+        **This API is ONLY available in the imperative mode.**
 
-    This API computes the Jacobian matrix of `func` with respect to `inputs`.
+    This function computes the Jacobian matrix of `func` with respect to `inputs`.
 
     Parameters:
         func (function): a Python function that takes a Tensor or a Tensor
@@ -165,9 +165,9 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
 def hessian(func, inputs, create_graph=False, allow_unused=False):
     ''' 
     .. note::
-        **This API is ONLY available in imperative mode.**
+        **This API is ONLY available in the imperative mode.**
 
-    This API computes the Hessian matrix of `func` with respect to `inputs`.
+    This function computes the Hessian matrix of `func` with respect to `inputs`.
 
     Parameters:
         func (function): a Python function that takes a Tensor or a Tensor
@@ -291,9 +291,11 @@ def hessian(func, inputs, create_graph=False, allow_unused=False):
 def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
     ''' 
     .. note::
-        **This API is ONLY available in imperative mode.**
-    This API computes the dot product between a vector ``v`` and the
+        **This API is ONLY available in the imperative mode.**
+
+    This function computes the product between a vector ``v`` and the
     Hessian matrix of `func` with respect to `inputs`.
+
     Parameters:
         func (function): a Python function that takes a Tensor or a Tensor
             list/tuple as inputs and returns a Tensor with a single element.
@@ -314,8 +316,8 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
     Returns:
         output (tuple): tuple with:
             func_output (Tensor or tuple of Tensors): output of ``func(inputs)``
-            vhp (Tensor of tuple of Tensors): result of the dot product with the
-            same shape and dtype as the inputs.
+            vhp (Tensor of tuple of Tensors): result of the vector hessian product
+            with the same shape and dtype as the inputs.
     Examples 1:
         .. code-block:: python
             import paddle
