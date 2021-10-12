@@ -53,8 +53,11 @@ DEFINE_string(mklml_dir, "", "Specify path for loading libmklml_intel.so.");
 
 DEFINE_string(lapack_dir, "", "Specify path for loading liblapack.so.");
 
-DEFINE_string(mklcdft_dir, MKL_LIBRARY_PATH,
-              "Specify path for loading libmklcdft.so.");
+DEFINE_string(mkl_dir, "",
+              "Specify path for loading libmkl_core.so. "
+              "For insrance, /opt/intel/oneapi/mkl/latest/lib/intel64/."
+              "If default, "
+              "dlopen will search mkl from LD_LIBRARY_PATH");
 
 DEFINE_string(op_dir, "", "Specify path for loading user-defined op library.");
 
@@ -523,12 +526,11 @@ void* GetCUFFTDsoHandle() {
 
 void* GetMKLDFTIDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_mklcdft_dir,
-                                    "libmkl_cdft_core.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "libmkl_core.dylib");
 #elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(FLAGS_mklcdft_dir, "libmkl_cdft_core.dll");
+  return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "mkl_core.dll");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_mklcdft_dir, "libmkl_cdft_core.so");
+  return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "libmkl_core.so");
 #endif
 }
 
