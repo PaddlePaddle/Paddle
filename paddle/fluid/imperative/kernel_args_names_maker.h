@@ -125,6 +125,12 @@ class KernelArgsNameMakerByOpProto : public KernelArgsNameMaker {
                 << attr_to_host_tensor.at(attr.name()) << " exists.";
         continue;
       }
+      // TODO(chenweihang): we need better methods to deal with special cases
+      if (attr.name() == "dtype") {
+        VLOG(1) << "Dygraph PtKernel attribute: skip " << op_proto_->type()
+                << "'s dtype attr.";
+        continue;
+      }
       VLOG(1) << "Dygraph PtKernel attribute: " << attr.name();
       attr_names.emplace_back(
           std::pair<std::string, framework::proto::AttrType>(attr.name(),
