@@ -2,7 +2,7 @@
 
 on:
   schedule:
-    - cron: "*/2 * * * *"
+    - cron: "*/20 * * * *"
   workflow_dispatch:
 
 jobs:
@@ -17,7 +17,7 @@ jobs:
         with:
           source_repo: "PaddlePaddle/Paddle"
           source_branch: "develop"
-          destination_branch: "develop"
+          destination_branch: ${{ secrets.INTERMEDIATE_BRANCH }}
           github_token: ${{ secrets.GITHUB_TOKEN }}
       - uses: gglin001/pull-request@v2
         name: Create pull request
