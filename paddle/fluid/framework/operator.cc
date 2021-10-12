@@ -1964,13 +1964,16 @@ pt::KernelContext OperatorWithKernel::ConstructPtKernelContext(
     // from the default_map, but now this nor work
     switch (attr_pairs[i].second) {
       case framework::proto::AttrType::INT:
-        op_kernel_ctx.EmplaceBackAttr(Attr<int>(attr_pairs[i].first));
+        op_kernel_ctx.EmplaceBackAttr(
+            pt::Scalar(Attr<int>(attr_pairs[i].first)));
         break;
       case framework::proto::AttrType::FLOAT:
-        op_kernel_ctx.EmplaceBackAttr(Attr<float>(attr_pairs[i].first));
+        op_kernel_ctx.EmplaceBackAttr(
+            pt::Scalar(Attr<float>(attr_pairs[i].first)));
         break;
       case framework::proto::AttrType::BOOLEAN:
-        op_kernel_ctx.EmplaceBackAttr(Attr<bool>(attr_pairs[i].first));
+        op_kernel_ctx.EmplaceBackAttr(
+            pt::Scalar(Attr<bool>(attr_pairs[i].first)));
         break;
       default:
         // TODO(chenweihang): support other attrs type

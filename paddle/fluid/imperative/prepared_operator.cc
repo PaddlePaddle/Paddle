@@ -370,16 +370,16 @@ static pt::KernelContext BuildDygraphKernelContext(
     // from the default_map, but now this nor work
     switch (attr_pairs[i].second) {
       case framework::proto::AttrType::INT:
-        op_kernel_ctx.EmplaceBackAttr(
-            GetAttr<int>(attrs, default_attrs, attr_pairs[i].first));
+        op_kernel_ctx.EmplaceBackAttr(pt::Scalar(
+            GetAttr<int>(attrs, default_attrs, attr_pairs[i].first)));
         break;
       case framework::proto::AttrType::FLOAT:
-        op_kernel_ctx.EmplaceBackAttr(
-            GetAttr<float>(attrs, default_attrs, attr_pairs[i].first));
+        op_kernel_ctx.EmplaceBackAttr(pt::Scalar(
+            GetAttr<float>(attrs, default_attrs, attr_pairs[i].first)));
         break;
       case framework::proto::AttrType::BOOLEAN:
-        op_kernel_ctx.EmplaceBackAttr(
-            GetAttr<bool>(attrs, default_attrs, attr_pairs[i].first));
+        op_kernel_ctx.EmplaceBackAttr(pt::Scalar(
+            GetAttr<bool>(attrs, default_attrs, attr_pairs[i].first)));
         break;
       default:
         // TODO(chenweihang): support other attrs type
