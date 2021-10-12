@@ -18,7 +18,7 @@ import paddle.fluid as fluid
 from paddle.static import default_startup_program, device_guard
 from paddle.fluid import layers
 
-from .common import OpRole, OP_ROLE_VAR_KEY, CollectiveHelper
+from .common import OpRole, OP_ROLE_VAR_KEY, CollectiveHelper, OP_ROLE_KEY
 from .common import is_backward_op, is_optimizer_op, is_update_op
 from .meta_optimizer_base import MetaOptimizerBase
 from .sharding.shard import Shard, ProgramSegment
@@ -193,6 +193,11 @@ class ShardingOptimizer(MetaOptimizerBase):
         else:
             gm_mode = "pp_gm"
             gm_acc_step = strategy.pipeline_configs['accumulate_steps']
+            # Note (Yuang Liu): this flag determines where to do the average op for grad merge.
+            # If True, will do sum firstly for gradient merge, then do scale by gm_acc_step.
+            # If False, will scale loss by gm_acc_step first, then do sum for gradient merge.
+            self.grad_merge_avg_after_sum = strategy.pipeline_configs[
+                'grad_merge_avg_after_sum']
         if gm_acc_step > 1:
             logger.info("Gradient merge in [{}], acc step = [{}]".format(
                 gm_mode, gm_acc_step))
@@ -241,6 +246,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 'global_ring_id': 3,
                 'mp_degree': self.mp_degree,
                 'mp_rank': global_rank % self.mp_degree,
+                'grad_merge_avg_after_sum': self.grad_merge_avg_after_sum
             }
             main_program = loss.block.program
             main_program._pipeline_opt = pipeline_opt
@@ -362,7 +368,11 @@ class ShardingOptimizer(MetaOptimizerBase):
             main_block, strategy=strategy, shard=shard)
 
         len_of_ops = len(main_block.ops)
-        first_optimize_op_index = get_first_optimize_op_idx(main_block)
+        if self.grad_merge_avg_after_sum:
+            first_optimize_op_index = self._avg_grad_merge_after_sum(
+                main_block, accumulated_grad_names)
+        else:
+            first_optimize_op_index = get_first_optimize_op_idx(main_block)
 
         if self.pp_allreduce_in_optimize:
             logger.info("Pipeline Persistable grad is {}".format(
@@ -428,6 +438,27 @@ class ShardingOptimizer(MetaOptimizerBase):
             len_of_ops = len(main_block.ops)
 
         # FIXME(wangxi): if fp16_allreduce, put cast fp16->fp32 to there?
+
+    def _avg_grad_merge_after_sum(self, main_block, accumulated_grad_names):
+        # For pp, do the avg operation for gradient merge after merging
+        # the gradient to meet the logic for gradient merge under pure dp.
+        tmp_first_opt_idx = get_first_optimize_op_idx(main_block)
+        for grad in accumulated_grad_names:
+            main_block._insert_op_without_sync(
+                tmp_first_opt_idx,
+                type='scale',
+                inputs={'X': grad},
+                outputs={'Out': grad},
+                attrs={
+                    'scale': 1.0 / self._gradient_merge_acc_step,
+                    'bias': 0.0,
+                    'bias_after_scale': False,
+                    OP_ROLE_KEY: OpRole.Optimize
+                })
+        # Note(Yuang Liu): Need to move the first opt idx a little bit after
+        # to make sure the c_allreudce_sum ops are inserted behind scale ops
+        tmp_first_opt_idx += len(accumulated_grad_names)
+        return tmp_first_opt_idx
 
     def _adapt_amp_clip_without_sharding(self):
         # if not use sharding, adapt amp/clip, for remain parallelism.

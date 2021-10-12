@@ -162,6 +162,7 @@ message PipelineConfig {
   optional int32 accumulate_steps = 2 [ default = 1 ];
   optional string schedule_mode = 3 [ default = '1F1B' ];
   optional bool p2p_cache_shape = 4 [ default = true ];
+  optional bool grad_merge_avg_after_sum = 5 [ default = false ];
 }
 
 message TensorParallelConfig {
