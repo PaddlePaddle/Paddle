@@ -103,6 +103,10 @@ class FusedAttentionCuDNNFMHAOpKernel : public framework::OpKernel<T> {
         ctx.Attr<std::vector<int>>("attn_low_windows");
     std::vector<int> attn_high_windows =
         ctx.Attr<std::vector<int>>("attn_high_windows");
+    std::vector<int> attn_qo_seqlen =
+        ctx.Attr<std::vector<int>>("attn_qo_seqlen");
+    std::vector<int> attn_kv_seqlen =
+        ctx.Attr<std::vector<int>>("attn_kv_seqlen");
 
     int num_head = attn_heads;
     int dim_head = dim_embed/num_head;
@@ -136,7 +140,8 @@ class FusedAttentionCuDNNFMHAOpKernel : public framework::OpKernel<T> {
     double attn_sm_scaler = 1.0/sqrt(dim_head); // 1/sqrt(dim_head)
     // double attn_sm_scaler = 1.0;
 
-    // std::cout << "attn_vec_size, attn_q_proj_size, attn_o_proj_size = " <<
+#if 0
+    std::cout << "attn_vec_size, attn_q_proj_size, attn_o_proj_size = " <<
     std::cout << "low_win = " << std::endl;
     for (int i=0; i<max_seq_len; i++) {
         std::cout << attn_low_windows[i] << " "; 
@@ -149,6 +154,7 @@ class FusedAttentionCuDNNFMHAOpKernel : public framework::OpKernel<T> {
 
     const auto ln_out_dims = ln_out->dims();
     std::cout << "ln_out_dims = " << ln_out_dims << std::endl;
+#endif
 
     auto layer_norm_compute = AttnLayerNorm<T>(ctx.cuda_device_context(),
                                                epsilon, bsz_seq, dim_embed);
@@ -171,7 +177,8 @@ class FusedAttentionCuDNNFMHAOpKernel : public framework::OpKernel<T> {
                     attn_v_proj_size, attn_o_proj_size,
                     attn_max_qo_seq_len, attn_max_kv_seq_len,
                     attn_beam_size, attn_low_windows,
-                    attn_high_windows, out_linear_out);
+                    attn_high_windows, out_linear_out,
+                    attn_qo_seqlen, attn_kv_seqlen);
     } else {
         // the input of cudnn fmha is x
         MHAFwKernel<T>(ctx.cuda_device_context(), 
@@ -182,7 +189,8 @@ class FusedAttentionCuDNNFMHAOpKernel : public framework::OpKernel<T> {
         attn_v_proj_size, attn_o_proj_size,
         attn_max_qo_seq_len, attn_max_kv_seq_len,
         attn_beam_size, attn_low_windows,
-        attn_high_windows, out_linear_out);
+        attn_high_windows, out_linear_out,
+        attn_qo_seqlen, attn_kv_seqlen);
     }
     // out = layernorm(residual + dropout(src + bias))
     fused_dropout_layernorm_helper.LayernormResidualDropoutBias(

@@ -187,8 +187,8 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
         #     (3, self.num_heads, self.head_dim, self.embed_dim))
 
         weight = np.concatenate((self.q_proj.weight, self.k_proj.weight, self.v_proj.weight, self.out_proj.weight))
-        print("weight shape: ")
-        print(weight.shape)
+        # print("weight shape: ")
+        # print(weight.shape)
     
         x = paddle.to_tensor(self.query, stop_gradient=False)
         seq_len_tensor = paddle.to_tensor(self.seq_len_vec, stop_gradient=True)
@@ -208,7 +208,8 @@ class TestFusedAttentionCuDNNFMHAOp(unittest.TestCase):
                 ln2_scale, ln2_bias, epsilon, out_linear_bias, 
                 self.dropout_prob, self.attn_dropout_prob, 
                 ln2_epsilon, self.attn_low_windows, 
-                self.attn_high_windows)
+                self.attn_high_windows,
+                self.seq_len_vec, self.seq_len_vec)
             paddle.autograd.backward(
                 [final_out], [paddle.to_tensor(self.dout)], retain_graph=True)
 

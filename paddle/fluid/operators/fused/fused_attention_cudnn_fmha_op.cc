@@ -111,7 +111,8 @@ class FusedAttentionCuDNNFMHAOp : public framework::OperatorWithKernel {
   }
 };
 
-class FusedAttentionCuDNNFMHAOpMaker : public framework::OpProtoAndCheckerMaker {
+class FusedAttentionCuDNNFMHAOpMaker
+    : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
 #if CUDNN_VERSION >= 8000
@@ -183,6 +184,9 @@ class FusedAttentionCuDNNFMHAOpMaker : public framework::OpProtoAndCheckerMaker 
     AddAttr<std::vector<int>>("attn_low_windows", "(Tensor), attn_low_windows");
     AddAttr<std::vector<int>>("attn_high_windows",
                               "(Tensor), attn_high_windows");
+    AddAttr<std::vector<int>>("attn_qo_seqlen", "(Tensor), attn_qo_seqlen");
+    AddAttr<std::vector<int>>("attn_kv_seqlen", "(Tensor), attn_kv_seqlen");
+
     AddAttr<float>("attn_dropout_prob", "");
     AddAttr<int>("attn_heads", "");
     //  AddAttr<float>("attn_sm_scaler", "");
@@ -288,7 +292,8 @@ class FusedAttentionCuDNNFMHAGradOp : public framework::OperatorWithKernel {
     //     ctx->SetOutputDim(grad_name, dims);
     //   }
     // }
-    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X", "FusedAttentionCuDNNFMHAGrad");
+    OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
+                   "FusedAttentionCuDNNFMHAGrad");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
       ctx->SetOutputDim(framework::GradVarName("X"), ctx->GetInputDim("X"));
     }
@@ -345,7 +350,8 @@ class FusedAttentionCuDNNFMHAGradOp : public framework::OperatorWithKernel {
 };
 
 template <typename T>
-class FusedAttentionCuDNNFMHAGradOpMaker : public framework::SingleGradOpMaker<T> {
+class FusedAttentionCuDNNFMHAGradOpMaker
+    : public framework::SingleGradOpMaker<T> {
  public:
   using framework::SingleGradOpMaker<T>::SingleGradOpMaker;
 
@@ -429,4 +435,5 @@ REGISTER_OPERATOR(
     ops::FusedAttentionCuDNNFMHAGradOpMaker<paddle::framework::OpDesc>,
     ops::FusedAttentionCuDNNFMHAGradOpMaker<paddle::imperative::OpBase>);
 
-REGISTER_OPERATOR(fused_attention_cudnn_fmha_grad, ops::FusedAttentionCuDNNFMHAGradOp);
+REGISTER_OPERATOR(fused_attention_cudnn_fmha_grad,
+                  ops::FusedAttentionCuDNNFMHAGradOp);
