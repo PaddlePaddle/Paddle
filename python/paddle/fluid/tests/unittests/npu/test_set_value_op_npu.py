@@ -67,7 +67,11 @@ class TestSetValueApi(TestSetValueBase):
         return out
 
     def _run_dynamic(self):
+<<<<<<< HEAD
         paddle.disable_static(self.place)
+=======
+        paddle.disable_static(paddle.NPUPlace(0))
+>>>>>>> 10eebfa028d46c5c2c8fdba9ede822956ce5af73
         x = paddle.ones(shape=self.shape, dtype=self.dtype)
         self._call_setitem(x)
         out = x.numpy()

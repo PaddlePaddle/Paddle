@@ -197,9 +197,15 @@ set(LITE_SHARED_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libpaddle_
 if (LITE_WITH_NNADAPTER)
   set(LITE_NNADAPTER_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so)
   if (NNADAPTER_WITH_HUAWEI_ASCEND_NPU)
+<<<<<<< HEAD
     external_lite_libs(lite_nnadapter ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libhuawei_ascend_npu.so)
     set(LITE_DEPS lite_full_static lite_nnadapter)
     set(LITE_NNADAPTER_NPU_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libhuawei_ascend_npu.so)
+=======
+    external_lite_libs(lite_nnadapter ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter.so ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter_driver_huawei_ascend_npu.so)
+    set(LITE_DEPS lite_full_static lite_nnadapter)
+    set(LITE_NNADAPTER_NPU_LIB ${LITE_BINARY_DIR}/${LITE_OUTPUT_BIN_DIR}/cxx/lib/libnnadapter_driver_huawei_ascend_npu.so)
+>>>>>>> 10eebfa028d46c5c2c8fdba9ede822956ce5af73
   endif()
 else()
   set(LITE_DEPS lite_full_static)

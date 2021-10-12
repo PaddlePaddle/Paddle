@@ -7,7 +7,11 @@ set(PYBIND_DEPS pybind python proto_desc memory executor fleet_wrapper box_wrapp
   feed_fetch_method pass generate_pass pass_builder parallel_executor profiler layer tracer engine scope_pool
   analysis_predictor imperative_profiler imperative_flag save_load_util dlpack_tensor device_context
   gloo_wrapper infer_io_utils heter_wrapper generator op_version_registry ps_gpu_wrapper custom_operator
+<<<<<<< HEAD
   cost_model cuda_graph_with_memory_pool)
+=======
+  cost_model)
+>>>>>>> 10eebfa028d46c5c2c8fdba9ede822956ce5af73
 
 if (WITH_PSCORE)
   set(PYBIND_DEPS ${PYBIND_DEPS} ps_service)

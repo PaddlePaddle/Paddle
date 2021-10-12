@@ -134,6 +134,7 @@ class Pool2dOpConverter : public OpConverter {
         if (padding_algorithm == "SAME") {
           pool_layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
         }
+<<<<<<< HEAD
         layer = pool_layer;
       } else if (!adaptive && !global_pooling && ceil_mode) {
         nvinfer1::DimsHW pre_pad(0, 0);
@@ -158,6 +159,8 @@ class Pool2dOpConverter : public OpConverter {
         if (padding_algorithm == "SAME") {
           pool_layer->setPaddingMode(nvinfer1::PaddingMode::kSAME_UPPER);
         }
+=======
+>>>>>>> 10eebfa028d46c5c2c8fdba9ede822956ce5af73
         layer = pool_layer;
       } else if (global_pooling) {
         auto *reduce_layer = TRT_ENGINE_ADD_LAYER(engine_, Reduce, *input1,

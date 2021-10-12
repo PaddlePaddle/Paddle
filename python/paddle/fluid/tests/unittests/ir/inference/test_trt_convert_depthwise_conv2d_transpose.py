@@ -137,7 +137,11 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
             attrs, False), 1e-5
         self.trt_param.precision = paddle_infer.PrecisionType.Half
         yield self.create_inference_config(), generate_trt_nodes_num(
+<<<<<<< HEAD
             attrs, False), (1e-5, 1e-3)
+=======
+            attrs, False), (1e-5, 1e-5)
+>>>>>>> 10eebfa028d46c5c2c8fdba9ede822956ce5af73
         self.trt_param.precision = paddle_infer.PrecisionType.Int8
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False), (1e-5, 1e-5)
@@ -178,6 +182,7 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
             "When dilations's element is not equal 1, there are different behaviors between Trt and Paddle."
         )
 
+<<<<<<< HEAD
         def teller3(program_config, predictor_config):
             if self.trt_param.precision == paddle_infer.PrecisionType.Int8:
                 return True
@@ -188,6 +193,8 @@ class TrtConvertDepthwiseConv2dTransposeTest(TrtLayerAutoScanTest):
             "When precisionType is int8 without relu op, output is different between Trt and Paddle."
         )
 
+=======
+>>>>>>> 10eebfa028d46c5c2c8fdba9ede822956ce5af73
     def test(self):
         self.add_skip_trt_case()
         self.run_test()

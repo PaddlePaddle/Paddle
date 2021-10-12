@@ -143,7 +143,10 @@ cc_test(pass_test SRCS pass_test.cc DEPS graph pass graph_helper)
 cc_test(graph_test SRCS graph_test.cc DEPS graph graph_helper op_registry)
 cc_test(graph_helper_test SRCS graph_helper_test.cc DEPS graph graph_helper op_registry)
 cc_test(graph_to_program_pass_test SRCS graph_to_program_pass_test.cc DEPS graph_to_program_pass)
+<<<<<<< HEAD
 cc_test(paddle_to_cinn_pass_test SRCS paddle_to_cinn_pass_test.cc DEPS paddle_to_cinn_pass proto_desc)
+=======
+>>>>>>> 10eebfa028d46c5c2c8fdba9ede822956ce5af73
 cc_test(cost_model_test SRCS cost_model_test.cc DEPS cost_model op_registry)
 cc_test(test_graph_pattern_detector SRCS graph_pattern_detector_tester.cc DEPS graph_pattern_detector)
 cc_test(test_op_compat_sensible_pass SRCS op_compat_sensible_pass_tester.cc DEPS op_compat_sensible_pass)

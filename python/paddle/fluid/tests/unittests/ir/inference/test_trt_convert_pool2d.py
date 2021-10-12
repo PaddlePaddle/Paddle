@@ -21,6 +21,7 @@ from typing import Optional, List, Callable, Dict, Any, Set
 
 
 class TrtConvertPool2dTest(TrtLayerAutoScanTest):
+<<<<<<< HEAD
     def is_paddings_valid(self, program_config: ProgramConfig) -> bool:
         exclusive = program_config.ops[0].attrs['exclusive']
         paddings = program_config.ops[0].attrs['paddings']
@@ -36,6 +37,10 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
 
     def is_program_valid(self, program_config: ProgramConfig) -> bool:
         return self.is_paddings_valid(program_config)
+=======
+    def is_program_valid(self, program_config: ProgramConfig) -> bool:
+        return True
+>>>>>>> 10eebfa028d46c5c2c8fdba9ede822956ce5af73
 
     def sample_program_configs(self):
         self.trt_param.workspace_size = 1073741824
@@ -47,7 +52,11 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
             return np.random.random([24, 3, 3, 3]).astype(np.float32)
 
         for strides in [[1, 1], [2, 2], [1, 2]]:
+<<<<<<< HEAD
             for paddings in [[0, 2], [0, 3], [0, 1, 2, 3]]:
+=======
+            for paddings in [[0, 2], [0, 3], [1, 2, 3, 4]]:
+>>>>>>> 10eebfa028d46c5c2c8fdba9ede822956ce5af73
                 for pooling_type in ['max', 'avg']:
                     for padding_algotithm in ['EXPLICIT', 'SAME', 'VAILD']:
                         for ksize in [[2, 3], [3, 3]]:
@@ -56,6 +65,10 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
                                     for exclusive in [True, False]:
                                         for adaptive in [True, False]:
                                             for ceil_mode in [True, False]:
+<<<<<<< HEAD
+=======
+                                                self.paddings = paddings
+>>>>>>> 10eebfa028d46c5c2c8fdba9ede822956ce5af73
 
                                                 dics = [{
                                                     "pooling_type":
@@ -114,6 +127,12 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
             self.dynamic_shape.opt_input_shape = {}
 
         def generate_trt_nodes_num(attrs, dynamic_shape):
+<<<<<<< HEAD
+=======
+            if self.paddings == [0, 3] or attrs[0][
+                    'global_pooling'] == True or attrs[0]['ceil_mode'] == True:
+                return 0, 3
+>>>>>>> 10eebfa028d46c5c2c8fdba9ede822956ce5af73
             return 1, 2
 
         attrs = [
@@ -148,6 +167,7 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
         self.add_skip_case(teller1, SkipReasons.TRT_NOT_IMPLEMENTED,
                            "4-dims paddings are not support for trt now.")
 
+<<<<<<< HEAD
         def teller2(program_config, predictor_config):
             if program_config.ops[0].attrs['global_pooling'] == True:
                 return True
@@ -157,6 +177,8 @@ class TrtConvertPool2dTest(TrtLayerAutoScanTest):
             teller2, SkipReasons.TRT_NOT_IMPLEMENTED,
             "It is not support that global_pooling is true for trt now.")
 
+=======
+>>>>>>> 10eebfa028d46c5c2c8fdba9ede822956ce5af73
     def test(self):
         self.add_skip_trt_case()
         self.run_test()
