@@ -30,7 +30,6 @@ class LarsMomentumOpKernel : public framework::OpKernel<T> {
     auto learning_rate = ctx.MultiInput<framework::LoDTensor>("LearningRate");
     auto grad = ctx.MultiInput<framework::LoDTensor>("Grad");
     auto weight_decay_arr = ctx.Attr<std::vector<float>>("lars_weight_decay");
-
     T mu = static_cast<T>(ctx.Attr<float>("mu"));
     T lars_coeff = ctx.Attr<float>("lars_coeff");
     T epsilon = ctx.Attr<float>("epsilon");
@@ -47,7 +46,6 @@ class LarsMomentumOpKernel : public framework::OpKernel<T> {
       auto p = framework::EigenVector<T>::Flatten(*(param[i]));
       auto v = framework::EigenVector<T>::Flatten(*(velocity[i]));
       auto g = framework::EigenVector<T>::Flatten(*(grad[i]));
-
       framework::Tensor p_norm_t, g_norm_t;
       p_norm_t.Resize({1});
       g_norm_t.Resize({1});

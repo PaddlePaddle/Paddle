@@ -34,6 +34,18 @@ namespace paddle {
 namespace operators {
 
 template <typename T>
+using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
+
+__device__ __forceinline__ float Sqrt(float x) { return sqrtf(x); }
+__device__ __forceinline__ double Sqrt(double x) { return sqrt(x); }
+__device__ __forceinline__ float Fma(float x, float y, float z) {
+  return fmaf(x, y, z);
+}
+__device__ __forceinline__ double Fma(double x, double y, double z) {
+  return fma(x, y, z);
+}
+
+template <typename T>
 class LarsThreadConfig {
  public:
   int grid_for_norm;
@@ -61,7 +73,6 @@ class LarsThreadConfig {
     grid_for_norm = std::min(grid, LARS_BLOCK_SIZE);
     const int grid_stride = grid_for_norm * LARS_BLOCK_SIZE;
     repeat_times = (numel + grid_stride - 1) / grid_stride - 1;
-
     // Determine to read 4 fp16 or float data once, but 2 double data once.
     grid_for_lars =
         std::is_same<double, T>::value
@@ -70,18 +81,6 @@ class LarsThreadConfig {
   }
 #endif
 };
-
-template <typename T>
-using MultiPrecisionType = typename details::MPTypeTrait<T>::Type;
-
-__device__ __forceinline__ float Sqrt(float x) { return sqrtf(x); }
-__device__ __forceinline__ double Sqrt(double x) { return sqrt(x); }
-__device__ __forceinline__ float Fma(float x, float y, float z) {
-  return fmaf(x, y, z);
-}
-__device__ __forceinline__ double Fma(double x, double y, double z) {
-  return fma(x, y, z);
-}
 
 template <typename T, typename MT, int VecSize, bool IsAmp = false>
 __device__ inline void VectorizeLarsUpdate(
@@ -115,7 +114,6 @@ __device__ inline void VectorizeLarsUpdate(
     VecType grad_data = grad_vec[i];
     VecMType param_data = param_vec[i];
     VecMType velocity_data = velocity_vec[i];
-
 #pragma unroll
     for (int j = 0; j < VecSize; ++j) {
       MT grad_val = static_cast<MT>(grad_data[j]) * rescale_grad;
@@ -147,16 +145,11 @@ __device__ inline void VectorizeLarsUpdate(
 }
 
 #if CUDA_VERSION >= 11000
-/* Once CUDA_VERSION is beyond 11.0, cooperative_groups can be involved in
-   without adding --rdc=true compile flag, then L2_norm cuda kernel can be
-   set as __device__ kernel and argument type cooperative_groups::grid_group
-   also can be involved.
-   On the contrary, the compile flag shall be set in old version, which may
-   affect the cuda kernel performance in paddle, consequently, L2_norm kernel
-   shall be set as __global__ kernel.
-*/
-// TODO(limingshu): declaration of cooperative_groups wapper is invalid in host
-// codes.
+/* Once CUDA_VERSION is beyond 11, cooperative_groups can be involved in without
+  --rdc=true compile flag, then L2_norm kernel can be set with __device__ and
+  cooperative_groups::grid_group also can be involved. Otherwise, adding this
+  flag may affect much, L2_norm kernel shall be set with __global__.*/
+// TODO(limingshu): declaration of cooperative_groups wapper is invalid in host.
 template <typename T, typename MT>
 __forceinline__ __device__ void L2NormKernel(
     const cooperative_groups::grid_group* cg,
@@ -168,36 +161,32 @@ __global__ void L2NormKernel(
     MT* __restrict__ p_buffer, MT* __restrict__ g_buffer, const int64_t numel,
     const int repeat_times, const MT rescale_grad, const int thresh = 0,
     MT* __restrict__ p_n = nullptr, MT* __restrict__ g_n = nullptr) {
+  __shared__ MT s_buffer[2];
   int tid = threadIdx.x + blockDim.x * blockIdx.x;
   int grid_stride = LARS_BLOCK_SIZE * gridDim.x;
   const MT rescale_pow = rescale_grad * rescale_grad;
-
-  __shared__ MT s_buffer[2];
   s_buffer[0] = static_cast<MT>(0);
   s_buffer[1] = static_cast<MT>(0);
-  MT p_arr_val = static_cast<MT>(0);
-  MT g_arr_val = static_cast<MT>(0);
+  MT p_tmp = static_cast<MT>(0);
+  MT g_tmp = static_cast<MT>(0);
 
   if (repeat_times == 0) {
     if (tid < numel) {
-      p_arr_val = static_cast<MT>(p_data[tid]);
-      g_arr_val = static_cast<MT>(g_data[tid]);
+      p_tmp = static_cast<MT>(p_data[tid]);
+      g_tmp = static_cast<MT>(g_data[tid]);
     }
-    s_buffer[0] += math::blockReduceSum<MT>(p_arr_val * p_arr_val, FINAL_MASK);
-    s_buffer[1] += math::blockReduceSum<MT>(g_arr_val * g_arr_val, FINAL_MASK);
+    s_buffer[0] += math::blockReduceSum<MT>(p_tmp * p_tmp, FINAL_MASK);
+    s_buffer[1] += math::blockReduceSum<MT>(g_tmp * g_tmp, FINAL_MASK);
   } else {
-    /* To avoid occupy too much temp buffer. Hence, slice the whole data into 2
-    parts, the front of them whose quantity is excatly multiple of grid-thread
-    number, and this part of data is delt in for loop, the rest of data is delt
-    with another step to avoid visiting data address beyond bound. */
+    /* Avoid occupy too much temp buffer. Slice the whole data into 2 parts,
+    the front of data whose quantity is excatly multiple of grid-thread
+    number, and delt in for loop, the rest is delt with another step. */
     for (int i = 0; i < repeat_times; ++i) {
-      p_arr_val = static_cast<MT>(p_data[tid]);
-      g_arr_val = static_cast<MT>(g_data[tid]);
+      p_tmp = static_cast<MT>(p_data[tid]);
+      g_tmp = static_cast<MT>(g_data[tid]);
       tid += grid_stride;
-      s_buffer[0] +=
-          math::blockReduceSum<MT>(p_arr_val * p_arr_val, FINAL_MASK);
-      s_buffer[1] +=
-          math::blockReduceSum<MT>(g_arr_val * g_arr_val, FINAL_MASK);
+      s_buffer[0] += math::blockReduceSum<MT>(p_tmp * p_tmp, FINAL_MASK);
+      s_buffer[1] += math::blockReduceSum<MT>(g_tmp * g_tmp, FINAL_MASK);
       __syncthreads();
     }
     MT p_val = 0;
@@ -216,8 +205,7 @@ __global__ void L2NormKernel(
     g_buffer[blockIdx.x] = s_buffer[1];
   }
 #if CUDA_VERSION >= 11000
-  // Grid sync for completely writring partial result back to gloabl memory
-  cg->sync();
+  cg->sync();  // Grid sync for writring partial result to gloabl memory
   MT p_part_sum = threadIdx.x < gridDim.x ? p_buffer[threadIdx.x] : 0;
   MT g_part_sum = threadIdx.x < gridDim.x ? g_buffer[threadIdx.x] : 0;
   *p_n = Sqrt(math::blockReduceSum<MT>(p_part_sum, FINAL_MASK));
@@ -249,8 +237,7 @@ __forceinline__ __device__ void MomentumUpdate(
   } else {
     if (std::is_same<T, float>::value ||
         std::is_same<T, paddle::platform::float16>::value) {
-      /* TODO(limingshu): once type(param) is just fp16 type,
-        pointer cast may damage memory accessing. */
+      /* TODO(limingshu): pointer cast may damage memory accessing for fp16 */
       VectorizeLarsUpdate<T, MT, /*VecSize=*/4, /*IsAmp=*/false>(
           grad, reinterpret_cast<const MT*>(param), velocity, param_out,
           velocity_out, mu, local_lr, lars_weight_decay, rescale_grad, tid,
@@ -265,10 +252,8 @@ __forceinline__ __device__ void MomentumUpdate(
 }
 
 #if CUDA_VERSION >= 11000
-
 template <typename T, typename MT>
 struct LarsParamWarpper {
- public:
   int64_t numel_arr[LARS_MAX_MERGED_OPS];
   int repeat_arr[LARS_MAX_MERGED_OPS];
   const T* __restrict__ p_arr[LARS_MAX_MERGED_OPS];
@@ -363,8 +348,7 @@ inline void SeparatedLarsMomentumOpCUDAKernel(
       param_data, grad_data, velocity_data, param_out_data, velocity_out_data,
       master_param_data, master_out_data, lr, p_buffer, g_buffer, mu,
       lars_coeff, weight_decay, epsilon, rescale_grad, 0,
-      lars_thread_config.grid_for_norm, numel,
-      is_amp);  // 0 is just a placeholder.
+      lars_thread_config.grid_for_norm, numel, is_amp);
 }
 
 template <typename DeviceContext, typename T>
@@ -387,13 +371,13 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     MT lars_coeff = static_cast<MT>(ctx.Attr<float>("lars_coeff"));
     MT epsilon = static_cast<MT>(ctx.Attr<float>("epsilon"));
     MT rescale_grad = static_cast<MT>(ctx.Attr<float>("rescale_grad"));
+    auto weight_decay_arr = ctx.Attr<std::vector<float>>("lars_weight_decay");
     auto grad = ctx.MultiInput<framework::LoDTensor>("Grad");
     auto param = ctx.MultiInput<framework::LoDTensor>("Param");
     auto velocity = ctx.MultiInput<framework::LoDTensor>("Velocity");
     auto param_out = ctx.MultiOutput<framework::LoDTensor>("ParamOut");
     auto velocity_out = ctx.MultiOutput<framework::LoDTensor>("VelocityOut");
     auto learning_rate = ctx.MultiInput<framework::LoDTensor>("LearningRate");
-    auto weight_decay_arr = ctx.Attr<std::vector<float>>("lars_weight_decay");
     auto master_param = ctx.MultiInput<framework::LoDTensor>("MasterParam");
     auto master_param_out =
         ctx.MultiOutput<framework::LoDTensor>("MasterParamOut");
@@ -401,26 +385,21 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     int op_num = grad.size();
 #if CUDA_VERSION >= 11000
     if (op_num > 1) {
+      LarsParamWarpper<T, MT> lars_warpper;
       PADDLE_ENFORCE_LT(
           op_num, LARS_MAX_MERGED_OPS,
           platform::errors::InvalidArgument(
               "The maximum number of merged-ops supported is (%d), but"
               "lars op required for trainning this model is (%d)\n",
               LARS_MAX_MERGED_OPS, op_num));
-      LarsParamWarpper<T, MT> lars_warpper;
 
-      /*Once model trainning with lars optimizer, whose principal implementation
-      is achieved by following two steps:
+      /* Implementation of lars optimizer consists of following two steps:
         1. Figure out the L2 norm statistic result of grad data and param data.
         2. Update param and velocity with usage of L2 norm statistic result.
-      Since the step1 is l2 norm statistic, grid level reduce is needed. To
-      achieve this and continuous calculation of step 2 in only one global
-      lanuch, essential basis is to control all grid-threads while running.
-      Instead of normal lanuch form, cuda provides `cudaLaunchCooperativeKernel`
-      api :
+      Step1 and step2 can be merged with api provided by nvida
+        cudaLaunchCooperativeKernel:
         - The thread quantity shall less than pyhsical SM limited threads
-        - Launches a device function where thread-block can cooperate and
-          synchronize as they execute. */
+        - Launche as thread-block can synchronizlly execute. */
       cudaOccupancyMaxActiveBlocksPerMultiprocessor(
           &num_blocks_per_sm, MergedMomentumLarsKernel<T, MT>, LARS_BLOCK_SIZE,
           sizeof(MT) << 1);
@@ -500,8 +479,6 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
                                                  num_blocks_per_sm);
       int repeat_times = lars_thread_config.GetRepeatTimes(numel);
       int thresh = 0;
-
-      // Uniform kernel parameter for cudaLaunchCooperativeKernel
       void* cuda_param[] = {
           reinterpret_cast<void*>(&param_data),
           reinterpret_cast<void*>(&grad_data),

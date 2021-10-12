@@ -33,7 +33,6 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
                    "LarsMomentum");
     OP_INOUT_CHECK(ctx->HasOutputs("VelocityOut"), "Output", "VelocityOut",
                    "LarsMomentum");
-
     PADDLE_ENFORCE_EQ(
         ctx->GetInputsVarType("Param").front(),
         framework::proto::VarType::LOD_TENSOR,
@@ -76,7 +75,6 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
       OP_INOUT_CHECK(ctx->HasOutputs("MasterParamOut"), "Output",
                      "MasterParamOut", "LarsMomentumMultiPrecision");
     }
-
     for (size_t i = 0; i < lr_dims.size(); ++i) {
       PADDLE_ENFORCE_EQ(framework::product(lr_dims[i]), 1,
                         platform::errors::InvalidArgument(
@@ -104,8 +102,8 @@ class LarsMomentumOp : public framework::OperatorWithKernel {
           param_dim[i], velocity_dim[i],
           platform::errors::InvalidArgument(
               "Input(Param) and Input(Velocity) of LarsMomentumOp shall have "
-              "same dimension. But Param's dim is [%s] and Velocity`s dim "
-              "is [%s].",
+              "same dimension. But Param dim [%s] differs with Velocity dim "
+              "[%s].",
               param_dim[i], velocity_dim[i]));
     }
     ctx->SetOutputsDim("ParamOut", param_dim);
@@ -165,7 +163,7 @@ class LarsMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(0.001);
     AddAttr<std::vector<float>>(
         "lars_weight_decay",
-        "(float, default 0.0005) Merged LARS weight decay params")
+        "(std::vector<float>, default 0.0005) LARS weight decay params")
         .SetDefault({0.0005});
     AddAttr<float>("epsilon",
                    "(float, default 0.0) epsilon to avoid Division by Zero.")

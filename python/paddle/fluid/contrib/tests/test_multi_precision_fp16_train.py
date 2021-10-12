@@ -245,28 +245,31 @@ class TestImageMultiPrecision(unittest.TestCase):
         def do_merge_test(optimizer=""):
             if optimizer is "Lars":
                 suffix = "use Lars "
-            with self.scope_prog_guard():
-                print("-----------------FP16 Merged Train {}-----------------".
-                      format(suffix))
-                train_loss_fp16_merge, test_loss_fp16_merge = train(
-                    use_pure_fp16=True,
-                    open_merge_option=True,
-                    optimizer=optimizer)
-            with self.scope_prog_guard():
-                print("-----------------FP32 Merged Train {}-----------------".
-                      format(suffix))
-                train_loss_fp32_merge, test_loss_fp32_merge = train(
-                    use_pure_fp16=False,
-                    open_merge_option=True,
-                    optimizer=optimizer)
+                with self.scope_prog_guard():
+                    print(
+                        "-----------------FP16 Merged Train {}---------------".
+                        format(suffix))
+                    train_loss_fp16_merge, test_loss_fp16_merge = train(
+                        use_pure_fp16=True,
+                        open_merge_option=True,
+                        optimizer=optimizer)
+                with self.scope_prog_guard():
+                    print(
+                        "-----------------FP32 Merged Train {}---------------".
+                        format(suffix))
+                    train_loss_fp32_merge, test_loss_fp32_merge = train(
+                        use_pure_fp16=False,
+                        open_merge_option=True,
+                        optimizer=optimizer)
 
-            with self.scope_prog_guard():
-                print("-----------------FP32 Validation {}-----------------".
-                      format(suffix))
-                train_loss_fp32, test_loss_fp32 = train(
-                    use_pure_fp16=False,
-                    open_merge_option=False,
-                    optimizer=optimizer)
+                with self.scope_prog_guard():
+                    print(
+                        "-----------------FP32 Validation {}-----------------".
+                        format(suffix))
+                    train_loss_fp32, test_loss_fp32 = train(
+                        use_pure_fp16=False,
+                        open_merge_option=False,
+                        optimizer=optimizer)
 
             self.assertTrue(
                 np.allclose(
