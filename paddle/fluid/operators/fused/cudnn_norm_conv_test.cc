@@ -229,15 +229,6 @@ class CudnnNormConvolutionTester {
             platform::DeviceContextPool::Instance().Get(
                 platform::CUDAPlace(0)));
 
-    if (!Support(*ctx)) {
-      LOG(INFO)
-          << "Current test is only supported in the platforms with "
-          << "compatiblity greater than or equal to 70 and the kernel size "
-          << "must be equal to 1 or 3. Besides, when the kernel size is 1, "
-          << "the stride must be 1 if the compatiblity is equal to 70.";
-      return;
-    }
-
     framework::Tensor cpu_output_base;
     framework::Tensor cpu_sum_base;
     framework::Tensor cpu_sum_of_square_base;
@@ -336,7 +327,7 @@ class CudnnNormConvolutionTester {
     op::CudnnNormConvolution<T> conv_op(ctx, input_shape, filter_shape,
                                         output_shape, padding_, stride_,
                                         dilation_, group_);
-    conv_op.Forward(ctx, &input, &filter_nhwc, &output, &sum, &sum_of_square);
+    conv_op.Forward(ctx, input, filter_nhwc, &output, &sum, &sum_of_square);
 
     TensorCopySync(output, platform::CPUPlace(), cpu_output);
     TensorCopySync(sum, platform::CPUPlace(), cpu_sum);
@@ -366,24 +357,11 @@ class CudnnNormConvolutionTester {
     op::CudnnNormConvolutionGrad<T> conv_grad_op(ctx, input_shape, filter_shape,
                                                  output_shape, padding_,
                                                  stride_, dilation_, group_);
-    conv_grad_op.Backward(ctx, &input, &filter_nhwc, &output_grad, &input_grad,
+    conv_grad_op.Backward(ctx, input, filter_nhwc, output_grad, &input_grad,
                           &filter_grad);
 
     TensorCopySync(input_grad, platform::CPUPlace(), cpu_input_grad);
     TensorCopySync(filter_grad, platform::CPUPlace(), cpu_filter_grad);
-  }
-
-  bool Support(const platform::CUDADeviceContext &ctx) {
-    if (ctx.GetComputeCapability() == 70) {
-      if ((kernel_size_ == 3) || ((kernel_size_ == 1) && (stride_ == 1))) {
-        return true;
-      }
-    } else if (ctx.GetComputeCapability() > 70) {
-      if ((kernel_size_ == 3) || (kernel_size_ == 1)) {
-        return true;
-      }
-    }
-    return false;
   }
 
  private:
@@ -469,6 +447,15 @@ TEST(CudnnNormConvFp16, K1S2O4) {
   CudnnNormConvolutionTester<paddle::platform::float16> test(
       batch_size, height, width, input_channels, output_channels, kernel_size,
       stride);
-  test.CheckForward(1e-3, true);
-  test.CheckBackward(1e-3);
+  platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+
+  if (ctx->GetComputeCapability() <= 70) {
+    ASSERT_THROW(test.CheckForward(1e-3, true),
+                 paddle::platform::EnforceNotMet);
+    ASSERT_THROW(test.CheckBackward(1e-3), paddle::platform::EnforceNotMet);
+  } else {
+    ASSERT_NO_THROW(test.CheckForward(1e-3, true));
+    ASSERT_NO_THROW(test.CheckBackward(1e-3));
+  }
 }

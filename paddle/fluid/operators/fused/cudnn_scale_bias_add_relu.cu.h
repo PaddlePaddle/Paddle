@@ -107,9 +107,10 @@ class CudnnScaleBiasAddRelu {
 
   ~CudnnScaleBiasAddRelu() {}
 
-  void Forward(const platform::CUDADeviceContext &ctx, Tensor *x,
-               Tensor *x_scale, Tensor *x_bias, Tensor *out, Tensor *bitmask,
-               Tensor *z, Tensor *z_scale = nullptr, Tensor *z_bias = nullptr) {
+  void Forward(const platform::CUDADeviceContext &ctx, const Tensor &x,
+               const Tensor &x_scale, const Tensor &x_bias, const Tensor &z,
+               const Tensor &z_scale, const Tensor &z_bias, Tensor *out,
+               Tensor *bitmask) {
     ForwardInit(ctx);
     auto handle = ctx.cudnn_handle();
     auto place = ctx.GetPlace();
@@ -117,22 +118,22 @@ class CudnnScaleBiasAddRelu {
     fwd_workspace_byte_ = fwd_op_.GetWorkspaceSizeInBytes(handle);
     // Set variant_param
     // input ptr
-    T *x_ptr = x->mutable_data<T>(place);
-    T *x_scale_ptr = x_scale->mutable_data<T>(place);
-    T *x_bias_ptr = x_bias->mutable_data<T>(place);
+    T *x_ptr = const_cast<T *>(x.data<T>());
+    T *x_scale_ptr = const_cast<T *>(x_scale.data<T>());
+    T *x_bias_ptr = const_cast<T *>(x_bias.data<T>());
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_XDATA, x_ptr);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQSCALE, x_scale_ptr);
     fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_EQBIAS, x_bias_ptr);
     if (has_shortcut_) {
-      T *z_ptr = z->mutable_data<T>(place);
-      T *z_scale_ptr = z_scale->mutable_data<T>(place);
-      T *z_bias_ptr = z_bias->mutable_data<T>(place);
+      T *z_ptr = const_cast<T *>(z.data<T>());
+      T *z_scale_ptr = const_cast<T *>(z_scale.data<T>());
+      T *z_bias_ptr = const_cast<T *>(z_bias.data<T>());
       fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ZDATA, z_ptr);
       fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_Z_EQSCALE, z_scale_ptr);
       fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_BN_Z_EQBIAS, z_bias_ptr);
     } else {
       if (fused_add_) {
-        T *z_ptr = z->data<T>();
+        T *z_ptr = const_cast<T *>(z.data<T>());
         fwd_op_.SetOpVariantParamAttrPtr(CUDNN_PTR_ZDATA, z_ptr);
       }
     }
@@ -156,10 +157,10 @@ class CudnnScaleBiasAddRelu {
         fwd_workspace_byte_);
   }
 
-  void Backward(const platform::CUDADeviceContext &ctx, const Tensor *dy,
-                const Tensor *x, const Tensor *scale, const Tensor *bias,
-                const Tensor *saved_mean, const Tensor *saved_invstd,
-                const Tensor *bitmask, Tensor *dx, Tensor *dz, Tensor *dscale,
+  void Backward(const platform::CUDADeviceContext &ctx, const Tensor &dy,
+                const Tensor &x, const Tensor &scale, const Tensor &bias,
+                const Tensor &saved_mean, const Tensor &saved_invstd,
+                const Tensor &bitmask, Tensor *dx, Tensor *dz, Tensor *dscale,
                 Tensor *dbias, double eps) {
     BackwardInit(ctx);
     auto handle = ctx.cudnn_handle();
@@ -168,15 +169,15 @@ class CudnnScaleBiasAddRelu {
     bwd_workspace_byte_ = bwd_op_.GetWorkspaceSizeInBytes(handle);
     // Set variant_param
     // input ptr
-    T *dy_ptr = const_cast<T *>(dy->data<T>());
-    T *x_ptr = const_cast<T *>(x->data<T>());
-    float *scale_ptr = const_cast<float *>(scale->data<float>());
-    float *bias_ptr = const_cast<float *>(bias->data<float>());
-    float *saved_mean_ptr = const_cast<float *>(saved_mean->data<float>());
-    float *saved_invstd_ptr = const_cast<float *>(saved_invstd->data<float>());
-    int32_t *bitmask_ptr = const_cast<int32_t *>(bitmask->data<int32_t>());
+    T *dy_ptr = const_cast<T *>(dy.data<T>());
+    T *x_ptr = const_cast<T *>(x.data<T>());
+    float *scale_ptr = const_cast<float *>(scale.data<float>());
+    float *bias_ptr = const_cast<float *>(bias.data<float>());
+    float *saved_mean_ptr = const_cast<float *>(saved_mean.data<float>());
+    float *saved_invstd_ptr = const_cast<float *>(saved_invstd.data<float>());
+    int32_t *bitmask_ptr = const_cast<int32_t *>(bitmask.data<int32_t>());
     T *dx_ptr = dx->mutable_data<T>(place);
-    T *dz_ptr = dz->mutable_data<T>(place);
+    T *dz_ptr = dz ? dz->mutable_data<T>(place) : nullptr;
     float *dscale_ptr = dscale ? dscale->mutable_data<float>(place) : nullptr;
     float *dbias_ptr = dbias ? dbias->mutable_data<float>(place) : nullptr;
 
