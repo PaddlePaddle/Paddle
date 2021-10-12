@@ -527,7 +527,6 @@ class TestDygraphGradientClipFP64(unittest.TestCase):
                 [16, 5], min=-10, max=10).astype('float64')
             linear = fluid.dygraph.Linear(5, 5, dtype="float64")
             out = linear(fluid.dygraph.to_variable(inputs))
-            out = linear(fluid.dygraph.to_variable(inputs))
             loss = fluid.layers.reduce_mean(out)
             loss.backward()
             # before clip
