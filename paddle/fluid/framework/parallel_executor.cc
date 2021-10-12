@@ -27,13 +27,16 @@ limitations under the License. */
 #include "paddle/fluid/framework/details/multi_devices_helper.h"
 #include "paddle/fluid/framework/details/op_handle_base.h"
 #include "paddle/fluid/framework/details/parallel_ssa_graph_executor.h"
+#include "paddle/fluid/framework/details/scale_loss_grad_op_handle.h"
 #include "paddle/fluid/framework/details/threaded_ssa_graph_executor.h"
 #include "paddle/fluid/framework/ir/graph.h"
 #include "paddle/fluid/framework/ir/graph_helper.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/set_reader_device_info_utils.h"
+#include "paddle/fluid/framework/paddle2cinn/cinn_runner.h"
 #include "paddle/fluid/framework/variable_helper.h"
+#include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/event.h"
 #include "paddle/fluid/platform/profiler.h"
 
@@ -41,7 +44,12 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
+DECLARE_bool(use_cinn);
 DECLARE_double(eager_delete_tensor_gb);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+DECLARE_bool(sync_nccl_allreduce);
+#endif
 
 #ifdef WITH_GPERFTOOLS
 #include "gperftools/profiler.h"
@@ -669,6 +677,7 @@ ParallelExecutor::ParallelExecutor(const std::vector<platform::Place> &places,
   // ncclOp
   std::vector<ir::Graph *> async_graphs =
       CompileGraphWithBuildStrategy(graph, &graphs, loss_var_name);
+  PrepareForCUDAGraphCapture(graph);
   graph = member_->ApplyMemoryOptimizePass(graph);
   async_graphs[0] = graph;
 
@@ -882,6 +891,23 @@ void ParallelExecutor::BCastParamsToDevices(
 FetchResultType ParallelExecutor::Run(
     const std::vector<std::string> &fetch_tensors, bool return_merged) {
   VLOG(3) << "enter ParallelExecutor Run";
+#ifdef PADDLE_WITH_CUDA
+  if (platform::IsCUDAGraphCapturing()) {
+    PADDLE_ENFORCE_EQ(fetch_tensors.empty(), true,
+                      platform::errors::InvalidArgument(
+                          "Cannot fetch data when using CUDA Graph."));
+    PADDLE_ENFORCE_EQ(
+        member_->build_strategy_.allow_cuda_graph_capture_, true,
+        platform::errors::InvalidArgument(
+            "You must turn on build_strategy.allow_cuda_graph_capture = True "
+            "to enable CUDA Graph capturing."));
+    PADDLE_ENFORCE_EQ(
+        member_->places_[0], platform::CUDAGraphCapturingPlace(),
+        platform::errors::InvalidArgument("The place to capture CUDAGraph is "
+                                          "not the same as the place to run."));
+  }
+#endif
+
 #ifdef WITH_GPERFTOOLS
   if (gProfileStarted) {
     ProfilerFlush();
@@ -919,6 +945,40 @@ void ParallelExecutor::RunWithoutFetch(
   member_->executor_->Run(/*fetch_tensors*/ {}, /*return_merged*/ false);
 }
 
+FetchResultType ParallelExecutor::RunFromCinn(
+    const std::unordered_map<std::string, LoDTensor> &feed_tensors,
+    const std::vector<std::string> &fetch_names) {
+  // Feed tensor to scope, now only support 1 scope
+  // TODO(zhhsplendid): handle multiple scope
+  size_t scope_id = 0;
+  std::map<std::string, const LoDTensor *> cinn_input_tensors;
+  for (auto &name_tensor_pair : feed_tensors) {
+    bool is_persistable = member_->IsPersistable(name_tensor_pair.first);
+    if (!is_persistable) {
+      member_->SetSkipMemoryReuse(scope_id, name_tensor_pair.first);
+    }
+    Scope *feed_scope = is_persistable ? member_->local_scopes_[scope_id]
+                                       : member_->local_exec_scopes_[scope_id];
+    Variable *feed_var = feed_scope->Var(name_tensor_pair.first);
+    LoDTensor *trg = feed_var->GetMutable<LoDTensor>();
+    trg->ShareDataWith(name_tensor_pair.second);
+    trg->set_lod(name_tensor_pair.second.lod());
+
+    cinn_input_tensors[name_tensor_pair.first] = trg;
+  }
+
+  // TODO(zhhsplendid): get correct API after CINN API is ready
+  // now only return empty fetch result;
+  std::shared_ptr<paddle2cinn::CinnRunner> cinn_runner =
+      paddle2cinn::CinnRunner::GetInstance();
+
+  cinn_runner->Run(Graph(), member_->local_exec_scopes_[scope_id],
+                   &cinn_input_tensors);
+
+  paddle::framework::FetchResultType fetches = FetchList(fetch_names.size());
+  return fetches;
+}
+
 void ParallelExecutor::SkipMemoryReuse(
     size_t scope_idx, const std::vector<std::string> &skip_vars) {
   for (auto &var_name : skip_vars) {
@@ -932,6 +992,16 @@ void ParallelExecutor::SkipMemoryReuse(
 
 void ParallelExecutor::FeedTensorsIntoLocalScopes(
     const std::vector<std::unordered_map<std::string, LoDTensor>> &tensors) {
+  if (platform::IsCUDAGraphCapturing()) {
+    for (auto &tensor : tensors) {
+      PADDLE_ENFORCE_EQ(
+          tensor.empty(), true,
+          platform::errors::PermissionDenied(
+              "Feeding data is not permitted when capturing CUDA Graph."));
+    }
+    return;
+  }
+
   if (!member_->AllowPartialFeed()) {
     PADDLE_ENFORCE_EQ(tensors.size(), member_->local_scopes_.size(),
                       platform::errors::Unimplemented(
@@ -987,6 +1057,14 @@ void ParallelExecutor::FeedTensorsIntoLocalScopes(
 
 void ParallelExecutor::FeedAndSplitTensorIntoLocalScopes(
     const std::unordered_map<std::string, LoDTensor> &tensors) {
+  if (platform::IsCUDAGraphCapturing()) {
+    PADDLE_ENFORCE_EQ(
+        tensors.empty(), true,
+        platform::errors::PermissionDenied(
+            "Feeding data is not permitted when capturing CUDA Graph."));
+    return;
+  }
+
   size_t num_places = member_->places_.size();
   bool allow_partial_feed = member_->AllowPartialFeed();
 
@@ -1566,6 +1644,107 @@ void ParallelExecutor::SetReaderOpDeviceInfoOfGraphs(
 
 const ir::Graph &ParallelExecutor::Graph() const {
   return member_->executor_->Graph();
+}
+
+void ParallelExecutor::PrepareForCUDAGraphCapture(ir::Graph *graph) {
+  const auto &build_strategy = member_->build_strategy_;
+  if (!build_strategy.allow_cuda_graph_capture_) return;
+#ifdef PADDLE_WITH_CUDA
+  PADDLE_ENFORCE_EQ(
+      build_strategy.async_mode_, false,
+      platform::errors::InvalidArgument(
+          "Async Executor does not support CUDA Graph capturing."));
+  PADDLE_ENFORCE_EQ(
+      platform::IsCUDAGraphCapturing(), false,
+      platform::errors::PermissionDenied("CUDA Graph is not allowed to capture "
+                                         "when running the first batch."));
+  PADDLE_ENFORCE_EQ(
+      member_->places_.size(), 1,
+      platform::errors::InvalidArgument(
+          "CUDA Graph is only supported when one GPU device is running."));
+  PADDLE_ENFORCE_EQ(platform::is_gpu_place(member_->places_[0]), true,
+                    platform::errors::InvalidArgument(
+                        "CUDA Graph is only supported on NVIDIA GPU device."));
+  PADDLE_ENFORCE_EQ(FLAGS_sync_nccl_allreduce, false,
+                    platform::errors::InvalidArgument(
+                        "FLAGS_sync_nccl_allreduce must be False to support "
+                        "CUDA Graph capturing."));
+
+  std::unordered_map<std::string, std::vector<VarDesc *>> all_vars;
+  for (auto &node : graph->Nodes()) {
+    if (node->IsVar() && !node->IsCtrlVar() && node->Var()) {
+      auto *var_desc = node->Var();
+      all_vars[var_desc->Name()].emplace_back(var_desc);
+    }
+  }
+
+  auto mark_var_as_persistable = [&all_vars](const std::string &name) {
+    auto iter = all_vars.find(name);
+    if (iter != all_vars.end()) {
+      for (auto *var_desc : iter->second) {
+        var_desc->SetPersistable(true);
+      }
+    }
+  };
+
+  // Step 1: All fused vars must be persistable.
+  if (graph->Has(details::kFusedVars)) {
+    auto &fused_vars = graph->Get<details::FusedVars>(details::kFusedVars);
+    for (auto &fused_var : fused_vars) {
+      fused_var.second.persistable_ = true;
+      mark_var_as_persistable(fused_var.first);
+    }
+  }
+
+  // Step 2: All pinned vars must be persistable.
+  if (graph->Has(details::kPinnedVars)) {
+    auto &pinned_vars = graph->Get<details::PinnedVars>(details::kPinnedVars);
+    for (auto &pinned_var : pinned_vars) {
+      mark_var_as_persistable(pinned_var);
+    }
+  }
+
+  // Step 3: Move all main programs to startup programs to make sure that
+  // the main programs would only be run once.
+  if (graph->Has(details::kProgramDescs)) {
+    auto &startup_programs =
+        graph->GetOrInit<details::ProgramDescs>(details::kStartupProgramDescs);
+    auto &main_programs =
+        graph->Get<details::ProgramDescs>(details::kProgramDescs);
+    for (auto &main_program : main_programs) {
+      startup_programs.emplace_back(main_program);
+    }
+    graph->Erase(details::kProgramDescs);
+  }
+
+  // Step 4: Mark all vars in startup programs to be persistable.
+  if (graph->Has(details::kStartupProgramDescs)) {
+    auto &startup_programs =
+        graph->GetOrInit<details::ProgramDescs>(details::kStartupProgramDescs);
+    for (auto &startup_program : startup_programs) {
+      for (auto &op_desc : startup_program.Block(0).AllOps()) {
+        for (auto &output : op_desc->OutputArgumentNames()) {
+          mark_var_as_persistable(output);
+        }
+      }
+    }
+  }
+
+  // Step 5: ScaleLossGrad must be run beforehand to avoid H2D copy.
+  auto ops = ir::FilterByNodeWrapper<details::OpHandleBase>(*graph);
+  auto *scope = member_->local_scopes_[0];
+  for (auto *op : ops) {
+    auto *loss_grad_op = dynamic_cast<details::ScaleLossGradOpHandle *>(op);
+    if (loss_grad_op == nullptr) continue;
+    auto loss_grad_name = loss_grad_op->LossGradName();
+    mark_var_as_persistable(loss_grad_name);
+    loss_grad_op->RunOnVar(scope->Var(loss_grad_name));
+    loss_grad_op->SetSkipRunning(true);
+  }
+#else
+  PADDLE_THROW(platform::errors::Unimplemented(
+      "CUDA Graph is only supported on NVIDIA GPU device."));
+#endif
 }
 
 }  // namespace framework

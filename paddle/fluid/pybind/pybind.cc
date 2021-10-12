@@ -736,6 +736,17 @@ PYBIND11_MODULE(core_noavx, m) {
               paddle::framework::proto::VarType::Type type) {
              return reinterpret_cast<uintptr_t>(self.mutable_data(place, type));
            })
+      .def("_copy_from",
+           [](framework::Tensor &self, const framework::Tensor &other,
+              const platform::Place &place, int64_t batch_size) {
+             if (batch_size < 0) {
+               framework::TensorCopy(other, place, &self);
+             } else {
+               auto sliced = other.Slice(0, batch_size);
+               framework::TensorCopy(sliced, place, &self);
+             }
+           },
+           py::arg("tensor"), py::arg("place"), py::arg("batch_size") = -1)
       .def("set", SetTensorFromPyArray<paddle::platform::CPUPlace>,
            py::arg("array"), py::arg("place"), py::arg("zero_copy") = false)
       .def("set", SetTensorFromPyArray<paddle::platform::XPUPlace>,
@@ -2299,7 +2310,14 @@ All parameter, weight, gradient are variables in Paddle.
   m.def("op_support_gpu", OpSupportGPU);
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
   m.def("get_cuda_device_count", platform::GetCUDADeviceCount);
-  m.def("cuda_empty_cache", platform::EmptyCache);
+  m.def("cuda_empty_cache", [] {
+    for (int dev_id : platform::GetSelectedDevices()) {
+      auto *dev_ctx = platform::DeviceContextPool::Instance().GetByPlace(
+          platform::CUDAPlace(dev_id));
+      dev_ctx->cudnn_workspace_handle().ResetWorkspace();
+    }
+    platform::EmptyCache();
+  });
   m.def("get_device_properties",
         [](int id) -> const gpuDeviceProp & {
           return platform::GetDeviceProperties(id);
@@ -3211,6 +3229,13 @@ All parameter, weight, gradient are variables in Paddle.
           [](BuildStrategy &self, bool fix_op_run_order) {
             self.fix_op_run_order_ = fix_op_run_order;
           })
+      .def_property("allow_cuda_graph_capture",
+                    [](const BuildStrategy &self) {
+                      return self.allow_cuda_graph_capture_;
+                    },
+                    [](BuildStrategy &self, bool allow_cuda_graph_capture) {
+                      self.allow_cuda_graph_capture_ = allow_cuda_graph_capture;
+                    })
       .def("_copy",
            [](const BuildStrategy &self) {
              auto new_bs = self;
@@ -3267,6 +3292,18 @@ All parameter, weight, gradient are variables in Paddle.
                return py::cast(std::move(
                    BOOST_GET(paddle::framework::FetchUnmergedList, ret)));
              }
+           })
+      .def("run_from_cinn",
+           [](ParallelExecutor &self,
+              const std::unordered_map<std::string, LoDTensor> &feed_tensors,
+              const std::vector<std::string> &fetch_names) -> py::object {
+             paddle::framework::FetchResultType ret;
+             {
+               pybind11::gil_scoped_release release;
+               ret = self.RunFromCinn(feed_tensors, fetch_names);
+             }
+             return py::cast(
+                 std::move(BOOST_GET(paddle::framework::FetchList, ret)));
            })
       .def("device_count", &ParallelExecutor::DeviceCount);
 
