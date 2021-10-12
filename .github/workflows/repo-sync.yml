@@ -1,8 +1,8 @@
 # from https://github.com/repo-sync/repo-sync
 
 on:
-  schedule:
-    - cron: "*/20 * * * *"
+  # schedule:
+  #   - cron: "*/20 * * * *"
   workflow_dispatch:
 
 jobs:
