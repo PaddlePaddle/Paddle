@@ -39,7 +39,7 @@ class SeedOpMaker : public framework::OpProtoAndCheckerMaker {
   void Make() override {
     AddOutput("Out", "The output of seed op.");
     AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
-    AddAttr<bool>("determinate",
+    AddAttr<bool>("deterministic",
                   "(bool, default false) Whether to use deterministic "
                   "RandomSeedGenerator which "
                   "generate by `set_random_seed_generator`")

@@ -108,7 +108,7 @@ def determinate_seed(rng_name):
     helper.append_op(
         type='seed',
         outputs={'Out': out},
-        attrs={'determinate': True,
+        attrs={'deterministic': True,
                'rng_name': rng_name,
                'force_cpu': True})
     return out
