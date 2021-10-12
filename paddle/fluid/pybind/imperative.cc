@@ -2291,6 +2291,12 @@ void BindImperative(py::module *m_ptr) {
     int64_t src_offset = 0, dst_offset, c;
     for (int64_t i = 0; i < offset_tensor.numel(); i++) {
       dst_offset = offset_data[i], c = count_data[i];
+      PADDLE_ENFORCE_EQ(
+          src_offset + c <= src_tensor.dims()[0], true,
+          platform::errors::InvalidArgument("Invalid offset or count index"));
+      PADDLE_ENFORCE_EQ(
+          dst_offset + c <= dst_tensor.dims()[0], true,
+          platform::errors::InvalidArgument("Invalid offset or count index"));
       cudaMemcpyAsync(dst_data + (dst_offset * size),
                       src_data + (src_offset * size), c * size * sizeof(float),
                       cudaMemcpyDeviceToHost, stream);
@@ -2360,10 +2366,10 @@ void BindImperative(py::module *m_ptr) {
       }
       PADDLE_ENFORCE_EQ(
           numel + index_tensor.numel() <= buffer_tensor->dims()[0], true,
-          platform::errors::PreconditionNotMet(
+          platform::errors::InvalidArgument(
               "Buffer tensor size is too small."));
       PADDLE_ENFORCE_EQ(numel + index_tensor.numel() <= dst_tensor->dims()[0],
-                        true, platform::errors::PreconditionNotMet(
+                        true, platform::errors::InvalidArgument(
                                   "Target tensor size is too small."));
 
       int64_t src_offset, dst_offset = 0, c;
@@ -2371,10 +2377,10 @@ void BindImperative(py::module *m_ptr) {
       for (int64_t i = 0; i < offset_tensor.numel(); i++) {
         src_offset = offset_data[i], c = count_data[i];
         PADDLE_ENFORCE_EQ(src_offset + c <= src_tensor.dims()[0], true,
-                          platform::errors::PreconditionNotMet(
+                          platform::errors::InvalidArgument(
                               "Invalid offset or count index."));
         PADDLE_ENFORCE_EQ(dst_offset + c <= dst_tensor->dims()[0], true,
-                          platform::errors::PreconditionNotMet(
+                          platform::errors::InvalidArgument(
                               "Invalid offset or count index."));
         cudaMemcpyAsync(
             dst_data + (dst_offset * size), src_data + (src_offset * size),
@@ -2383,7 +2389,7 @@ void BindImperative(py::module *m_ptr) {
       }
     } else {
       PADDLE_ENFORCE_EQ(index_tensor.numel() <= buffer_tensor->dims()[0], true,
-                        platform::errors::PreconditionNotMet(
+                        platform::errors::InvalidArgument(
                             "Buffer tensor size is too small."));
     }
 

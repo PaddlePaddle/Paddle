@@ -61,7 +61,7 @@ class TestAsyncRead(unittest.TestCase):
         index_array2 = self.dst[count_numel:count_numel + len(self.index)]
         self.assertTrue(np.allclose(index_array1.numpy(), index_array2.numpy()))
 
-        # 判断 offset, count 后的结果是否正确
+        # offset, count
         offset_a = paddle.gather(self.src, paddle.to_tensor(np.arange(10, 15)))
         offset_b = paddle.gather(self.src, paddle.to_tensor(np.arange(20, 30)))
         offset_array1 = paddle.concat([offset_a, offset_b], axis=0)
