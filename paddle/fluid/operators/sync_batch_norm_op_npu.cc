@@ -15,36 +15,13 @@ limitations under the Licnse. */
 #include "paddle/fluid/operators/batch_norm_op.h"
 #include "paddle/fluid/operators/npu_op_runner.h"
 
-#if defined(PADDLE_WITH_ASCEND_CL)
 #include "paddle/fluid/platform/collective_helper.h"
 #include "paddle/fluid/platform/hccl_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
 
 using Tensor = framework::Tensor;
-
-template <typename T>
-std::string outputVector(const std::vector<T> vec) {
-  std::ostringstream oss;
-  // for (auto ele : vec) oss << ele << ' ';
-  for (size_t i = 0; i < vec.size() && i < 10; ++i) {
-    oss << vec[i] << ' ';
-  }
-  return oss.str();
-}
-template <typename T>
-void PrintTensor(const framework::Tensor &src,
-                 const framework::ExecutionContext &ctx) {
-  LOG(WARNING) << "shape: " << src.dims();
-  // return;
-
-  std::vector<T> vec(src.numel());
-  TensorToVector(src, ctx.device_context(), &vec);
-  ctx.template device_context<paddle::platform::NPUDeviceContext>().Wait();
-  LOG(WARNING) << "vec: " << outputVector<T>(vec);
-}
 
 template <typename T>
 void training_or_inference(
@@ -75,15 +52,11 @@ void training_or_inference(
     common_mean_tile_1.mutable_data<float>(place);
 
     TensorCopySync(*common_mean, place, &common_mean_tile_1);
-    LOG(WARNING) << "common_mean_tile_1: ";
-    PrintTensor<float>(common_mean_tile_1, ctx);
 
     if (layout == framework::DataLayout::kNCHW)
       common_mean_tile_1.Resize({1, C, 1, 1});
     else if (layout == framework::DataLayout::kNHWC)
       common_mean_tile_1.Resize({1, 1, 1, C});
-    LOG(WARNING) << "common_mean_tile_1: ";
-    PrintTensor<float>(common_mean_tile_1, ctx);
   }
 
   Tensor common_mean_tile;
@@ -96,9 +69,6 @@ void training_or_inference(
     const auto &runner = NpuOpRunner("TileD", {common_mean_tile_1},
                                      {common_mean_tile}, attr_input);
     runner.Run(stream);
-
-    LOG(WARNING) << "common_mean_tile: ";
-    PrintTensor<float>(common_mean_tile, ctx);
   }
 
   Tensor common_var_tile_1;
@@ -107,15 +77,11 @@ void training_or_inference(
     common_var_tile_1.mutable_data<float>(place);
 
     TensorCopySync(*common_var, place, &common_var_tile_1);
-    LOG(WARNING) << "common_var_tile_1: ";
-    PrintTensor<float>(common_var_tile_1, ctx);
 
     if (layout == framework::DataLayout::kNCHW)
       common_var_tile_1.Resize({1, C, 1, 1});
     else if (layout == framework::DataLayout::kNHWC)
       common_var_tile_1.Resize({1, 1, 1, C});
-    LOG(WARNING) << "common_var_tile_1: ";
-    PrintTensor<float>(common_var_tile_1, ctx);
   }
 
   Tensor common_var_tile;
@@ -128,9 +94,6 @@ void training_or_inference(
     const auto &runner = NpuOpRunner("TileD", {common_var_tile_1},
                                      {common_var_tile}, attr_input);
     runner.Run(stream);
-
-    LOG(WARNING) << "common_var_tile: ";
-    PrintTensor<float>(common_var_tile, ctx);
   }
 
   Tensor common_var_tile_add_epsilon;
@@ -143,9 +106,6 @@ void training_or_inference(
     const auto &runner = NpuOpRunner("Adds", {common_var_tile},
                                      {common_var_tile_add_epsilon}, attr_input);
     runner.Run(stream);
-
-    LOG(WARNING) << "common_var_tile_add_epsilon: ";
-    PrintTensor<float>(common_var_tile_add_epsilon, ctx);
   }
 
   Tensor common_var_tile_add_epsilon_sqrt;
@@ -156,16 +116,10 @@ void training_or_inference(
     const auto &runner = NpuOpRunner("Sqrt", {common_var_tile_add_epsilon},
                                      {common_var_tile_add_epsilon_sqrt}, {});
     runner.Run(stream);
-
-    LOG(WARNING) << "common_var_tile_add_epsilon_sqrt: ";
-    PrintTensor<float>(common_var_tile_add_epsilon_sqrt, ctx);
   }
 
   Tensor x_sub_common_mean;
   {
-    LOG(WARNING) << "x: ";
-    PrintTensor<T>(*x, ctx);
-
     if (x->type() == framework::proto::VarType::FP16) {
       Tensor x_fp32;
       {
@@ -178,9 +132,6 @@ void training_or_inference(
 
         const auto &runner = NpuOpRunner("Cast", {*x}, {x_fp32}, attr_input);
         runner.Run(stream);
-
-        LOG(WARNING) << "x_fp32: ";
-        PrintTensor<float>(x_fp32, ctx);
       }
 
       {
@@ -190,9 +141,6 @@ void training_or_inference(
         const auto &runner = NpuOpRunner("Sub", {x_fp32, common_mean_tile},
                                          {x_sub_common_mean}, {});
         runner.Run(stream);
-
-        LOG(WARNING) << "x_sub_common_mean: ";
-        PrintTensor<float>(x_sub_common_mean, ctx);
       }
     } else {
       x_sub_common_mean.Resize(x->dims());
@@ -201,9 +149,6 @@ void training_or_inference(
       const auto &runner =
           NpuOpRunner("Sub", {*x, common_mean_tile}, {x_sub_common_mean}, {});
       runner.Run(stream);
-
-      LOG(WARNING) << "x_sub_common_mean: ";
-      PrintTensor<float>(x_sub_common_mean, ctx);
     }
   }
 
@@ -216,9 +161,6 @@ void training_or_inference(
         "Div", {x_sub_common_mean, common_var_tile_add_epsilon_sqrt},
         {normalized}, {});
     runner.Run(stream);
-
-    LOG(WARNING) << "normalized: ";
-    PrintTensor<float>(normalized, ctx);
   }
 
   Tensor scale_tile_1;
@@ -227,15 +169,11 @@ void training_or_inference(
     scale_tile_1.mutable_data<float>(place);
 
     TensorCopySync(*scale, place, &scale_tile_1);
-    LOG(WARNING) << "scale_tile_1: ";
-    PrintTensor<float>(scale_tile_1, ctx);
 
     if (layout == framework::DataLayout::kNCHW)
       scale_tile_1.Resize({1, C, 1, 1});
     else if (layout == framework::DataLayout::kNHWC)
       scale_tile_1.Resize({1, 1, 1, C});
-    LOG(WARNING) << "scale_tile_1: ";
-    PrintTensor<float>(scale_tile_1, ctx);
   }
 
   Tensor scale_tile;
@@ -248,9 +186,6 @@ void training_or_inference(
     const auto &runner =
         NpuOpRunner("TileD", {scale_tile_1}, {scale_tile}, attr_input);
     runner.Run(stream);
-
-    LOG(WARNING) << "scale_tile: ";
-    PrintTensor<float>(scale_tile, ctx);
   }
 
   Tensor normalized_mul_scale;
@@ -261,9 +196,6 @@ void training_or_inference(
     const auto &runner = NpuOpRunner("Mul", {normalized, scale_tile},
                                      {normalized_mul_scale}, {});
     runner.Run(stream);
-
-    LOG(WARNING) << "normalized_mul_scale: ";
-    PrintTensor<float>(normalized_mul_scale, ctx);
   }
 
   Tensor bias_tile_1;
@@ -272,15 +204,11 @@ void training_or_inference(
     bias_tile_1.mutable_data<float>(place);
 
     TensorCopySync(*bias, place, &bias_tile_1);
-    LOG(WARNING) << "bias_tile_1: ";
-    PrintTensor<float>(bias_tile_1, ctx);
 
     if (layout == framework::DataLayout::kNCHW)
       bias_tile_1.Resize({1, C, 1, 1});
     else if (layout == framework::DataLayout::kNHWC)
       bias_tile_1.Resize({1, 1, 1, C});
-    LOG(WARNING) << "bias_tile_1: ";
-    PrintTensor<float>(bias_tile_1, ctx);
   }
 
   Tensor bias_tile;
@@ -293,12 +221,9 @@ void training_or_inference(
     const auto &runner =
         NpuOpRunner("TileD", {bias_tile_1}, {bias_tile}, attr_input);
     runner.Run(stream);
-
-    LOG(WARNING) << "bias_tile: ";
-    PrintTensor<float>(bias_tile, ctx);
   }
 
-  // at last, we get y
+  // calculate y
   {
     if (x->type() == framework::proto::VarType::FP16) {
       Tensor y_fp32;
@@ -309,9 +234,6 @@ void training_or_inference(
         const auto &runner =
             NpuOpRunner("Add", {normalized_mul_scale, bias_tile}, {y_fp32}, {});
         runner.Run(stream);
-
-        LOG(WARNING) << "y_fp32: ";
-        PrintTensor<float>(y_fp32, ctx);
       }
 
       {
@@ -323,9 +245,6 @@ void training_or_inference(
 
         const auto &runner = NpuOpRunner("Cast", {y_fp32}, {*y}, attr_input);
         runner.Run(stream);
-
-        LOG(WARNING) << "y: ";
-        PrintTensor<T>(*y, ctx);
       }
 
     } else {
@@ -334,9 +253,6 @@ void training_or_inference(
       const auto &runner =
           NpuOpRunner("Add", {normalized_mul_scale, bias_tile}, {*y}, {});
       runner.Run(stream);
-
-      LOG(WARNING) << "y: ";
-      PrintTensor<T>(*y, ctx);
     }
   }
 
@@ -347,14 +263,6 @@ void training_or_inference(
       ones.mutable_data<float>(place);
 
       FillNpuTensorWithConstant<float>(&ones, 1);
-
-      // Or
-      // const auto &runner =
-      //     NpuOpRunner("OnesLike", {*variance}, {ones}, {});
-      // runner.Run(stream);
-
-      LOG(WARNING) << "ones: ";
-      PrintTensor<float>(ones, ctx);
     }
 
     // cacl mean_out
@@ -370,9 +278,6 @@ void training_or_inference(
             NpuOpRunner("Muls", {*common_mean},
                         {common_mean_mul_1_sub_momentum}, attr_input);
         runner.Run(stream);
-
-        LOG(WARNING) << "common_mean_mul_1_sub_momentum: ";
-        PrintTensor<float>(common_mean_mul_1_sub_momentum, ctx);
       }
 
       Tensor mean_mul_momentum;
@@ -385,9 +290,6 @@ void training_or_inference(
         const auto &runner =
             NpuOpRunner("Muls", {*mean}, {mean_mul_momentum}, attr_input);
         runner.Run(stream);
-
-        LOG(WARNING) << "mean_mul_momentum: ";
-        PrintTensor<float>(mean_mul_momentum, ctx);
       }
 
       mean_out->mutable_data<float>(place);
@@ -396,9 +298,6 @@ void training_or_inference(
           "Add", {common_mean_mul_1_sub_momentum, mean_mul_momentum},
           {*mean_out}, {});
       runner.Run(stream);
-
-      LOG(WARNING) << "mean_out: ";
-      PrintTensor<float>(*mean_out, ctx);
     }
 
     // cacl variance_out
@@ -413,9 +312,6 @@ void training_or_inference(
         const auto &runner =
             NpuOpRunner("Muls", {*variance}, {momentum_mul_var}, attr_input);
         runner.Run(stream);
-
-        LOG(WARNING) << "momentum_mul_var: ";
-        PrintTensor<float>(momentum_mul_var, ctx);
       }
 
       Tensor var_ref_mul_1_sub_momentum;
@@ -428,9 +324,6 @@ void training_or_inference(
         const auto &runner = NpuOpRunner(
             "Muls", {*common_var}, {var_ref_mul_1_sub_momentum}, attr_input);
         runner.Run(stream);
-
-        LOG(WARNING) << "var_ref_mul_1_sub_momentum: ";
-        PrintTensor<float>(var_ref_mul_1_sub_momentum, ctx);
       }
 
       variance_out->mutable_data<float>(place);
@@ -439,9 +332,6 @@ void training_or_inference(
           NpuOpRunner("Add", {var_ref_mul_1_sub_momentum, momentum_mul_var},
                       {*variance_out}, {});
       runner.Run(stream);
-
-      LOG(WARNING) << "variance_out: ";
-      PrintTensor<float>(*variance_out, ctx);
     }
 
     // cacl saved_variance
@@ -456,9 +346,6 @@ void training_or_inference(
         const auto &runner = NpuOpRunner("Adds", {*common_var},
                                          {var_ref_add_epsilon}, attr_input);
         runner.Run(stream);
-
-        LOG(WARNING) << "var_ref_add_epsilon: ";
-        PrintTensor<float>(var_ref_add_epsilon, ctx);
       }
 
       Tensor var_ref_add_epsilon_sqrt;
@@ -469,9 +356,6 @@ void training_or_inference(
         const auto &runner = NpuOpRunner("Sqrt", {var_ref_add_epsilon},
                                          {var_ref_add_epsilon_sqrt}, {});
         runner.Run(stream);
-
-        LOG(WARNING) << "var_ref_add_epsilon_sqrt: ";
-        PrintTensor<float>(var_ref_add_epsilon_sqrt, ctx);
       }
 
       saved_variance->mutable_data<float>(place);
@@ -479,9 +363,6 @@ void training_or_inference(
       const auto &runner = NpuOpRunner("Div", {ones, var_ref_add_epsilon_sqrt},
                                        {*saved_variance}, {});
       runner.Run(stream);
-
-      LOG(WARNING) << "saved_variance: ";
-      PrintTensor<float>(*saved_variance, ctx);
     }
   }
 }
@@ -490,10 +371,6 @@ template <typename DeviceContext, typename T>
 class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    LOG(WARNING) << "SyncBatchNormNPUKernel";
-    LOG(WARNING) << "op type: " << ctx.Type();
-
-    // double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     const float epsilon = ctx.Attr<float>("epsilon");
     float momentum = ctx.Attr<float>("momentum");
     const bool is_test = ctx.Attr<bool>("is_test");
@@ -501,14 +378,6 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
     const DataLayout layout = framework::StringToDataLayout(layout_str);
     const bool use_global_stats = ctx.Attr<bool>("use_global_stats");
     const bool trainable_stats = ctx.Attr<bool>("trainable_statistics");
-
-    LOG(WARNING) << "epsilon: " << epsilon;
-    LOG(WARNING) << "momentum: " << momentum;
-    LOG(WARNING) << "is_test: " << is_test;
-    LOG(WARNING) << "layout_str: " << layout_str;
-    LOG(WARNING) << "layout: " << layout;
-    LOG(WARNING) << "use_global_stats: " << use_global_stats;
-    LOG(WARNING) << "trainable_stats: " << trainable_stats;
 
     PADDLE_ENFORCE_EQ(use_global_stats, false,
                       platform::errors::InvalidArgument(
@@ -525,49 +394,11 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
     const auto *mean = ctx.Input<Tensor>("Mean");
     const auto *variance = ctx.Input<Tensor>("Variance");
 
-    // moving mean/variance
     auto *mean_out = ctx.Output<Tensor>("MeanOut");
     auto *variance_out = ctx.Output<Tensor>("VarianceOut");
 
     auto *saved_mean = ctx.Output<Tensor>("SavedMean");
     auto *saved_variance = ctx.Output<Tensor>("SavedVariance");
-
-    LOG(WARNING) << "mean: " << mean;
-    LOG(WARNING) << "mean_out: " << mean_out;
-    LOG(WARNING) << "variance: " << variance;
-    LOG(WARNING) << "variance_out: " << variance_out;
-
-    LOG(WARNING) << "x dims: " << x->dims();
-    LOG(WARNING) << "x numel: " << x->numel();
-    LOG(WARNING) << "y dims: " << y->dims();
-    LOG(WARNING) << "y numel: " << y->numel();
-    LOG(WARNING) << "scale dims: " << scale->dims();
-    LOG(WARNING) << "scale numel: " << scale->numel();
-    LOG(WARNING) << "bias dims: " << bias->dims();
-    LOG(WARNING) << "bias numel: " << bias->numel();
-    LOG(WARNING) << "mean dims: " << mean->dims();
-    LOG(WARNING) << "mean numel: " << mean->numel();
-    LOG(WARNING) << "variance dims: " << variance->dims();
-    LOG(WARNING) << "variance numel: " << variance->numel();
-    LOG(WARNING) << "mean_out dims: " << mean_out->dims();
-    LOG(WARNING) << "mean_out numel: " << mean_out->numel();
-    LOG(WARNING) << "variance_out dims: " << variance_out->dims();
-    LOG(WARNING) << "variance_out numel: " << variance_out->numel();
-    LOG(WARNING) << "saved_mean dims: " << saved_mean->dims();
-    LOG(WARNING) << "saved_mean numel: " << saved_mean->numel();
-    LOG(WARNING) << "saved_variance dims: " << saved_variance->dims();
-    LOG(WARNING) << "saved_variance numel: " << saved_variance->numel();
-
-    LOG(WARNING) << "Input Tensor | x: ";
-    PrintTensor<T>(*x, ctx);
-    LOG(WARNING) << "Input Tensor | scale: ";
-    PrintTensor<float>(*scale, ctx);
-    LOG(WARNING) << "Input Tensor | bias: ";
-    PrintTensor<float>(*bias, ctx);
-    LOG(WARNING) << "Input Tensor | mean: ";
-    PrintTensor<float>(*mean, ctx);
-    LOG(WARNING) << "Input Tensor | variance: ";
-    PrintTensor<float>(*variance, ctx);
 
     const auto &x_dims = x->dims();
     PADDLE_ENFORCE_EQ(x_dims.size(), 4,
@@ -579,22 +410,7 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
     int N, C, H, W, D;
     ExtractNCWHD(x_dims, layout, &N, &C, &H, &W, &D);
 
-    LOG(WARNING) << "N: " << N;
-    LOG(WARNING) << "C: " << C;
-    LOG(WARNING) << "H: " << H;
-    LOG(WARNING) << "W: " << W;
-    LOG(WARNING) << "D: " << D;
-
     int x_numel = x->numel();
-
-    // const T *x_data = x->data<T>();
-    // const auto *scale_data = scale->data<float>();
-    // const auto *bias_data = bias->data<float>();
-    auto *mean_data = mean->data<float>();
-    auto *mean_out_data = mean_out->data<float>();
-
-    LOG(WARNING) << "mean_data: " << mean_data;
-    LOG(WARNING) << "mean_out_data: " << mean_out_data;
 
     auto place = ctx.GetPlace();
 
@@ -611,21 +427,13 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
 
     bool test_mode = is_test && (!trainable_stats);
     if (test_mode) {  // inference
-      LOG(WARNING) << "inference";
-
       // cacl saved_mean
       saved_mean->mutable_data<float>(place);
-      // saved_mean->ShareDataWith(*mean);
       TensorCopySync(*mean, place, saved_mean);
-      LOG(WARNING) << "saved_mean: ";
-      PrintTensor<float>(*saved_mean, ctx);
 
       // cacl saved_variance
       saved_variance->mutable_data<float>(place);
-      // saved_variance->ShareDataWith(*variance);
       TensorCopySync(*variance, place, saved_variance);
-      LOG(WARNING) << "saved_variance: ";
-      PrintTensor<float>(*saved_variance, ctx);
 
       // cacl y
       training_or_inference<T>(ctx, stream, place, layout, test_mode, N, C, H,
@@ -633,8 +441,6 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
                                bias, mean, variance, NULL, NULL, NULL, NULL, y);
 
     } else {  // training
-      LOG(WARNING) << "training";
-
       // if MomentumTensor is set, use MomentumTensor value, momentum
       // is only used in this training branch
       if (ctx.HasInput("MomentumTensor")) {
@@ -642,8 +448,6 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
         Tensor mom_cpu;
         TensorCopySync(*mom_tensor, platform::CPUPlace(), &mom_cpu);
         momentum = mom_cpu.data<float>()[0];
-
-        LOG(WARNING) << "momentum: " << momentum;
       }
 
       // cacl saved_mean and var_ref
@@ -652,7 +456,6 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
       var_ref.mutable_data<float>(place);
       {
         Tensor x_sum;
-        // cacl x_sum
         {
           framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                                    {"axes", axes}};
@@ -674,31 +477,21 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
               const auto &runner =
                   NpuOpRunner("Cast", {*x}, {x_fp32}, attr_input);
               runner.Run(stream);
-
-              LOG(WARNING) << "x_fp32: ";
-              PrintTensor<float>(x_fp32, ctx);
             }
 
             {
               const auto &runner =
                   NpuOpRunner("ReduceSumD", {x_fp32}, {x_sum}, attr_input);
               runner.Run(stream);
-
-              LOG(WARNING) << "x_sum: ";
-              PrintTensor<float>(x_sum, ctx);
             }
           } else {
             const auto &runner =
                 NpuOpRunner("ReduceSumD", {*x}, {x_sum}, attr_input);
             runner.Run(stream);
-
-            LOG(WARNING) << "x_sum: ";
-            PrintTensor<float>(x_sum, ctx);
           }
         }
 
         Tensor x_square;
-        // cacl x_square
         {
           x_square.Resize(x->dims());
           x_square.mutable_data<float>(place);
@@ -717,30 +510,20 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
               const auto &runner =
                   NpuOpRunner("Cast", {*x}, {x_fp32}, attr_input);
               runner.Run(stream);
-
-              LOG(WARNING) << "x_fp32: ";
-              PrintTensor<float>(x_fp32, ctx);
             }
 
             {
               const auto &runner =
                   NpuOpRunner("Square", {x_fp32}, {x_square}, {});
               runner.Run(stream);
-
-              LOG(WARNING) << "x_square: ";
-              PrintTensor<float>(x_square, ctx);
             }
           } else {
             const auto &runner = NpuOpRunner("Square", {*x}, {x_square}, {});
             runner.Run(stream);
-
-            LOG(WARNING) << "x_square: ";
-            PrintTensor<float>(x_square, ctx);
           }
         }
 
         Tensor x_square_sum;
-        // cacl x_square_sum
         {
           framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                                    {"axes", axes}};
@@ -751,17 +534,12 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
           const auto &runner =
               NpuOpRunner("ReduceSumD", {x_square}, {x_square_sum}, attr_input);
           runner.Run(stream);
-
-          LOG(WARNING) << "x_square_sum: ";
-          PrintTensor<float>(x_square_sum, ctx);
         }
 
         auto comm = paddle::platform::HCCLCommContext::Instance().Get(0, place);
-        LOG(WARNING) << "comm: " << comm;
 
         float device_counts = 0.0;
         if (comm) {
-          // stream = comm->stream();
           HcclDataType dtype = platform::ToHCCLDataType(mean_out->type());
 
           Tensor device_count_tensor;
@@ -770,72 +548,41 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
             device_count_tensor.mutable_data<float>(place);
 
             FillNpuTensorWithConstant<float>(&device_count_tensor, 1);
-
-            LOG(WARNING) << "device_count_tensor: ";
-            PrintTensor<float>(device_count_tensor, ctx);
           }
 
           // HcclAllReduce device_count_tensor
           {
-            // In-place operation
             void *sendbuff = reinterpret_cast<void *>(
                 const_cast<float *>(device_count_tensor.data<float>()));
             void *recvbuff = sendbuff;
-            LOG(WARNING) << "sendbuff: " << sendbuff;
-            LOG(WARNING) << "recvbuff: " << recvbuff;
-
-            LOG(WARNING) << "before hccl | device_count_tensor: ";
-            PrintTensor<float>(device_count_tensor, ctx);
             PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
                 sendbuff, recvbuff, 1, dtype, HCCL_REDUCE_SUM, comm->comm(),
                 reinterpret_cast<void *>(stream)));
-            LOG(WARNING) << "after hccl | device_count_tensor";
-            PrintTensor<float>(device_count_tensor, ctx);
           }
 
           std::vector<float> device_count_vec(1);
           TensorToVector(device_count_tensor, ctx.device_context(),
                          &device_count_vec);
           device_counts = device_count_vec[0];
-          LOG(WARNING) << "device_counts: " << device_counts;
-          PADDLE_ENFORCE_GE(device_counts, 2,
-                            platform::errors::PreconditionNotMet(
-                                "device_counts should >= 2."));
 
           // HcclAllReduce x_sum
           {
-            // In-place operation
             void *sendbuff = reinterpret_cast<void *>(
                 const_cast<float *>(x_sum.data<float>()));
             void *recvbuff = sendbuff;
-            LOG(WARNING) << "sendbuff: " << sendbuff;
-            LOG(WARNING) << "recvbuff: " << recvbuff;
-
-            LOG(WARNING) << "before hccl | x_sum: ";
-            PrintTensor<float>(x_sum, ctx);
             PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
                 sendbuff, recvbuff, C, dtype, HCCL_REDUCE_SUM, comm->comm(),
                 reinterpret_cast<void *>(stream)));
-            LOG(WARNING) << "after hccl | x_sum";
-            PrintTensor<float>(x_sum, ctx);
           }
 
           // HcclAllReduce x_square_sum
           {
-            // In-place operation
             void *sendbuff = reinterpret_cast<void *>(
                 const_cast<float *>(x_square_sum.data<float>()));
             void *recvbuff = sendbuff;
-            LOG(WARNING) << "sendbuff: " << sendbuff;
-            LOG(WARNING) << "recvbuff: " << recvbuff;
-
-            LOG(WARNING) << "before hccl | x_square_sum: ";
-            PrintTensor<float>(x_square_sum, ctx);
             PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
                 sendbuff, recvbuff, C, dtype, HCCL_REDUCE_SUM, comm->comm(),
                 reinterpret_cast<void *>(stream)));
-            LOG(WARNING) << "after hccl | x_square_sum";
-            PrintTensor<float>(x_square_sum, ctx);
           }
         }
 
@@ -849,15 +596,11 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
           const auto &runner =
               NpuOpRunner("Muls", {x_sum}, {*saved_mean}, attr_input);
           runner.Run(stream);
-
-          LOG(WARNING) << "saved_mean: ";
-          PrintTensor<float>(*saved_mean, ctx);
         }
 
         // cacl var_ref
         {
           Tensor saved_mean_square;
-          // cacl saved_mean_square
           {
             saved_mean_square.Resize({C});
             saved_mean_square.mutable_data<float>(place);
@@ -865,15 +608,11 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
             const auto &runner =
                 NpuOpRunner("Square", {*saved_mean}, {saved_mean_square}, {});
             runner.Run(stream);
-
-            LOG(WARNING) << "saved_mean_square: ";
-            PrintTensor<float>(saved_mean_square, ctx);
           }
 
           Tensor var_ref_tmp;
           var_ref_tmp.Resize({C});
           var_ref_tmp.mutable_data<float>(place);
-          // cacl var_ref_tmp
           {
             framework::NPUAttributeMap attr_input = {
                 {"value", 1.0f * C / x_numel / device_counts}};
@@ -881,9 +620,6 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
             const auto &runner =
                 NpuOpRunner("Muls", {x_square_sum}, {var_ref_tmp}, attr_input);
             runner.Run(stream);
-
-            LOG(WARNING) << "var_ref_tmp: ";
-            PrintTensor<float>(var_ref_tmp, ctx);
           }
 
           // cacl var_ref
@@ -891,9 +627,6 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
             const auto &runner = NpuOpRunner(
                 "Sub", {var_ref_tmp, saved_mean_square}, {var_ref}, {});
             runner.Run(stream);
-
-            LOG(WARNING) << "var_ref: ";
-            PrintTensor<float>(var_ref, ctx);
           }
         }
       }
@@ -903,17 +636,6 @@ class SyncBatchNormNPUKernel : public framework::OpKernel<T> {
                                scale, bias, mean, variance, mean_out,
                                variance_out, saved_mean, saved_variance, y);
     }
-
-    LOG(WARNING) << "Output Tensor | y: ";
-    PrintTensor<T>(*y, ctx);
-    LOG(WARNING) << "Output Tensor | mean_out: ";
-    PrintTensor<float>(*mean_out, ctx);
-    LOG(WARNING) << "Output Tensor | variance_out: ";
-    PrintTensor<float>(*variance_out, ctx);
-    LOG(WARNING) << "Output Tensor | saved_mean: ";
-    PrintTensor<float>(*saved_mean, ctx);
-    LOG(WARNING) << "Output Tensor | saved_variance: ";
-    PrintTensor<float>(*saved_variance, ctx);
   }
 };
 
@@ -921,103 +643,30 @@ template <typename DeviceContext, typename T>
 class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
  public:
   void Compute(const framework::ExecutionContext &ctx) const override {
-    LOG(WARNING) << "SyncBatchNormNPUGradKernel";
-    LOG(WARNING) << "op type: " << ctx.Type();
-
-    // double epsilon = static_cast<double>(ctx.Attr<float>("epsilon"));
     float epsilon = ctx.Attr<float>("epsilon");
     const std::string layout_str = ctx.Attr<std::string>("data_layout");
     const DataLayout layout = framework::StringToDataLayout(layout_str);
 
-    LOG(WARNING) << "epsilon: " << epsilon;
-    LOG(WARNING) << "layout_str: " << layout_str;
-    LOG(WARNING) << "layout: " << layout;
-
     const auto *d_y = ctx.Input<Tensor>(framework::GradVarName("Y"));
     const auto *scale = ctx.Input<Tensor>("Scale");
-    const auto *bias = ctx.Input<Tensor>("Bias");
 
-    LOG(WARNING) << "Input Tensor | dy: ";
-    PrintTensor<T>(*d_y, ctx);
-    LOG(WARNING) << "Input Tensor | scale: ";
-    PrintTensor<float>(*scale, ctx);
-    LOG(WARNING) << "Input Tensor | bias: ";
-    PrintTensor<float>(*bias, ctx);
-
-    // init output
     auto *d_x = ctx.Output<Tensor>(framework::GradVarName("X"));
     auto *d_scale = ctx.Output<Tensor>(framework::GradVarName("Scale"));
     auto *d_bias = ctx.Output<Tensor>(framework::GradVarName("Bias"));
 
     const auto *saved_mean = ctx.Input<Tensor>("SavedMean");
-    const auto *saved_var = ctx.Input<Tensor>("SavedVariance");
-    LOG(WARNING) << "Input Tensor | saved_mean: ";
-    PrintTensor<float>(*saved_mean, ctx);
-    LOG(WARNING) << "Input Tensor | saved_variance: ";
-    PrintTensor<float>(*saved_var, ctx);
 
-    LOG(WARNING) << "saved_mean: ";
-    PrintTensor<float>(*saved_mean, ctx);
-
-    // sync_batch_norm with inplace as false will take X as grad input, which
-    // is same as cuDNN batch_norm backward calculation, batch_norm
-    // with inplace as true only take Y as input and X should be calculate
-    // by inverse operation of batch_norm on Y
     const Tensor *x;
-    bool is_inplace;
     if (ctx.HasInput("Y")) {
       PADDLE_ENFORCE_EQ(true, false,
                         platform::errors::InvalidArgument(
                             "sync_batch_norm_grad doesn't support input Y"));
-
-      x = ctx.Input<Tensor>("Y");
-      is_inplace = true;
     } else {
       x = ctx.Input<Tensor>("X");
-      is_inplace = false;
     }
-
-    LOG(WARNING) << "Input Tensor | x: ";
-    PrintTensor<T>(*x, ctx);
-
-    LOG(WARNING) << "is_inplace: " << is_inplace;
-
-    LOG(WARNING) << "d_y dims: " << d_y->dims();
-    LOG(WARNING) << "d_y numel: " << d_y->numel();
-    LOG(WARNING) << "scale dims: " << scale->dims();
-    LOG(WARNING) << "scale numel: " << scale->numel();
-    LOG(WARNING) << "bias dims: " << bias->dims();
-    LOG(WARNING) << "bias numel: " << bias->numel();
-
-    if (d_x) {
-      LOG(WARNING) << "d_x dims: " << d_x->dims();
-      LOG(WARNING) << "d_x numel: " << d_x->numel();
-    }
-    if (d_scale) {
-      LOG(WARNING) << "d_scale dims: " << d_scale->dims();
-      LOG(WARNING) << "d_scale numel: " << d_scale->numel();
-    }
-    if (d_bias) {
-      LOG(WARNING) << "d_bias dims: " << d_bias->dims();
-      LOG(WARNING) << "d_bias numel: " << d_bias->numel();
-    }
-
-    LOG(WARNING) << "saved_mean dims: " << saved_mean->dims();
-    LOG(WARNING) << "saved_mean numel: " << saved_mean->numel();
-    LOG(WARNING) << "saved_var dims: " << saved_var->dims();
-    LOG(WARNING) << "saved_var numel: " << saved_var->numel();
-
-    LOG(WARNING) << "x dims: " << x->dims();
-    LOG(WARNING) << "x numel: " << x->numel();
 
     int N, C, H, W, D;
     ExtractNCWHD(x->dims(), layout, &N, &C, &H, &W, &D);
-
-    LOG(WARNING) << "N: " << N;
-    LOG(WARNING) << "C: " << C;
-    LOG(WARNING) << "H: " << H;
-    LOG(WARNING) << "W: " << W;
-    LOG(WARNING) << "D: " << D;
 
     int x_numel = x->numel();
 
@@ -1041,48 +690,32 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       multiples = {N, H, W, 1};
 
     auto comm = paddle::platform::HCCLCommContext::Instance().Get(0, place);
-    LOG(WARNING) << "comm: " << comm;
     HcclDataType dtype = platform::ToHCCLDataType(scale->type());
 
     float device_counts = 0.0;
-    LOG(WARNING) << "device_counts: " << device_counts;
     if (comm) {
-      // stream = comm->stream();
-
       Tensor device_count_tensor;
       {
         device_count_tensor.Resize({1});
         device_count_tensor.mutable_data<float>(place);
 
         FillNpuTensorWithConstant<float>(&device_count_tensor, 1);
-
-        LOG(WARNING) << "device_count_tensor: ";
-        PrintTensor<float>(device_count_tensor, ctx);
       }
 
       // HcclAllReduce device_count_tensor
       {
-        // In-place operation
         void *sendbuff = reinterpret_cast<void *>(
             const_cast<float *>(device_count_tensor.data<float>()));
         void *recvbuff = sendbuff;
-        LOG(WARNING) << "sendbuff: " << sendbuff;
-        LOG(WARNING) << "recvbuff: " << recvbuff;
-
-        LOG(WARNING) << "before hccl | device_count_tensor: ";
-        PrintTensor<float>(device_count_tensor, ctx);
         PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
             sendbuff, recvbuff, 1, dtype, HCCL_REDUCE_SUM, comm->comm(),
             reinterpret_cast<void *>(stream)));
-        LOG(WARNING) << "after hccl | device_count_tensor";
-        PrintTensor<float>(device_count_tensor, ctx);
       }
 
       std::vector<float> device_count_vec(1);
       TensorToVector(device_count_tensor, ctx.device_context(),
                      &device_count_vec);
       device_counts = device_count_vec[0];
-      LOG(WARNING) << "device_counts: " << device_counts;
       PADDLE_ENFORCE_GE(device_counts, 2, platform::errors::PreconditionNotMet(
                                               "device_counts should >= 2."));
     }
@@ -1098,9 +731,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
 
       const auto &runner = NpuOpRunner("Cast", {*x}, {x_fp32}, attr_input);
       runner.Run(stream);
-
-      LOG(WARNING) << "x_fp32: ";
-      PrintTensor<float>(x_fp32, ctx);
     } else {
       x_fp32.ShareDataWith(*x);
     }
@@ -1115,20 +745,15 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       // cacl var_ref
       {
         Tensor x_square;
-        // cacl x_square
         {
           x_square.Resize(x->dims());
           x_square.mutable_data<float>(place);
 
           const auto &runner = NpuOpRunner("Square", {x_fp32}, {x_square}, {});
           runner.Run(stream);
-
-          LOG(WARNING) << "x_square: ";
-          PrintTensor<float>(x_square, ctx);
         }
 
         Tensor x_square_sum;
-        // cacl x_square_sum
         {
           framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                                    {"axes", axes}};
@@ -1139,13 +764,9 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
           const auto &runner =
               NpuOpRunner("ReduceSumD", {x_square}, {x_square_sum}, attr_input);
           runner.Run(stream);
-
-          LOG(WARNING) << "x_square_sum: ";
-          PrintTensor<float>(x_square_sum, ctx);
         }
 
         Tensor x_square_sum_mean;
-        // cacl x_square_sum_mean
         {
           framework::NPUAttributeMap attr_input = {
               {"value", 1.0f * C / x_numel}};
@@ -1156,13 +777,9 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
           const auto &runner = NpuOpRunner("Muls", {x_square_sum},
                                            {x_square_sum_mean}, attr_input);
           runner.Run(stream);
-
-          LOG(WARNING) << "x_square_sum_mean: ";
-          PrintTensor<float>(x_square_sum_mean, ctx);
         }
 
         Tensor mean_square;
-        // cacl mean_square
         {
           mean_square.Resize({C});
           mean_square.mutable_data<float>(place);
@@ -1170,9 +787,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
           const auto &runner =
               NpuOpRunner("Square", {*saved_mean}, {mean_square}, {});
           runner.Run(stream);
-
-          LOG(WARNING) << "mean_square: ";
-          PrintTensor<float>(mean_square, ctx);
         }
 
         // cacl var_ref
@@ -1180,9 +794,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
           const auto &runner = NpuOpRunner(
               "Sub", {x_square_sum_mean, mean_square}, {var_ref}, {});
           runner.Run(stream);
-
-          LOG(WARNING) << "var_ref: ";
-          PrintTensor<float>(var_ref, ctx);
         }
       }
     }
@@ -1193,15 +804,11 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       saved_mean_tile_1.mutable_data<float>(place);
 
       TensorCopySync(*saved_mean, place, &saved_mean_tile_1);
-      LOG(WARNING) << "saved_mean_tile_1: ";
-      PrintTensor<float>(saved_mean_tile_1, ctx);
 
       if (layout == framework::DataLayout::kNCHW)
         saved_mean_tile_1.Resize({1, C, 1, 1});
       else if (layout == framework::DataLayout::kNHWC)
         saved_mean_tile_1.Resize({1, 1, 1, C});
-      LOG(WARNING) << "saved_mean_tile_1: ";
-      PrintTensor<float>(saved_mean_tile_1, ctx);
     }
 
     Tensor saved_mean_tile;
@@ -1214,9 +821,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       const auto &runner = NpuOpRunner("TileD", {saved_mean_tile_1},
                                        {saved_mean_tile}, attr_input);
       runner.Run(stream);
-
-      LOG(WARNING) << "saved_mean_tile: ";
-      PrintTensor<float>(saved_mean_tile, ctx);
     }
 
     Tensor x_sub_saved_mean;
@@ -1227,9 +831,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       const auto &runner =
           NpuOpRunner("Sub", {x_fp32, saved_mean_tile}, {x_sub_saved_mean}, {});
       runner.Run(stream);
-
-      LOG(WARNING) << "x_sub_saved_mean: ";
-      PrintTensor<float>(x_sub_saved_mean, ctx);
     }
 
     Tensor var_ref_tile_1;
@@ -1238,15 +839,11 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       var_ref_tile_1.mutable_data<float>(place);
 
       TensorCopySync(var_ref, place, &var_ref_tile_1);
-      LOG(WARNING) << "var_ref_tile_1: ";
-      PrintTensor<float>(var_ref_tile_1, ctx);
 
       if (layout == framework::DataLayout::kNCHW)
         var_ref_tile_1.Resize({1, C, 1, 1});
       else if (layout == framework::DataLayout::kNHWC)
         var_ref_tile_1.Resize({1, 1, 1, C});
-      LOG(WARNING) << "var_ref_tile_1: ";
-      PrintTensor<float>(var_ref_tile_1, ctx);
     }
 
     Tensor var_ref_tile;
@@ -1259,9 +856,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       const auto &runner =
           NpuOpRunner("TileD", {var_ref_tile_1}, {var_ref_tile}, attr_input);
       runner.Run(stream);
-
-      LOG(WARNING) << "var_ref_tile: ";
-      PrintTensor<float>(var_ref_tile, ctx);
     }
 
     Tensor var_ref_tile_add_epsilon;
@@ -1274,9 +868,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       const auto &runner = NpuOpRunner("Adds", {var_ref_tile},
                                        {var_ref_tile_add_epsilon}, attr_input);
       runner.Run(stream);
-
-      LOG(WARNING) << "var_ref_tile_add_epsilon: ";
-      PrintTensor<float>(var_ref_tile_add_epsilon, ctx);
     }
 
     Tensor var_ref_tile_add_epsilon_sqrt;
@@ -1287,9 +878,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
       const auto &runner = NpuOpRunner("Sqrt", {var_ref_tile_add_epsilon},
                                        {var_ref_tile_add_epsilon_sqrt}, {});
       runner.Run(stream);
-
-      LOG(WARNING) << "var_ref_tile_add_epsilon_sqrt: ";
-      PrintTensor<float>(var_ref_tile_add_epsilon_sqrt, ctx);
     }
 
     Tensor d_y_fp32;
@@ -1303,9 +891,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
 
       const auto &runner = NpuOpRunner("Cast", {*d_y}, {d_y_fp32}, attr_input);
       runner.Run(stream);
-
-      LOG(WARNING) << "d_y_fp32: ";
-      PrintTensor<float>(d_y_fp32, ctx);
     }
 
     Tensor dy_mul_x_sub_mean_for_scale;
@@ -1317,9 +902,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         const auto &runner = NpuOpRunner("Mul", {d_y_fp32, x_sub_saved_mean},
                                          {dy_mul_x_sub_mean_for_scale}, {});
         runner.Run(stream);
-
-        LOG(WARNING) << "dy_mul_x_sub_mean_for_scale: ";
-        PrintTensor<float>(dy_mul_x_sub_mean_for_scale, ctx);
       } else {
         dy_mul_x_sub_mean_for_scale.Resize(x->dims());
         dy_mul_x_sub_mean_for_scale.mutable_data<float>(place);
@@ -1327,9 +909,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         const auto &runner = NpuOpRunner("Mul", {*d_y, x_sub_saved_mean},
                                          {dy_mul_x_sub_mean_for_scale}, {});
         runner.Run(stream);
-
-        LOG(WARNING) << "dy_mul_x_sub_mean_for_scale: ";
-        PrintTensor<float>(dy_mul_x_sub_mean_for_scale, ctx);
       }
     }
 
@@ -1342,9 +921,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         const auto &runner = NpuOpRunner("Mul", {d_y_fp32, x_sub_saved_mean},
                                          {dy_mul_x_sub_mean}, {});
         runner.Run(stream);
-
-        LOG(WARNING) << "dy_mul_x_sub_mean: ";
-        PrintTensor<float>(dy_mul_x_sub_mean, ctx);
       } else {
         dy_mul_x_sub_mean.Resize(x->dims());
         dy_mul_x_sub_mean.mutable_data<float>(place);
@@ -1352,31 +928,18 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         const auto &runner = NpuOpRunner("Mul", {*d_y, x_sub_saved_mean},
                                          {dy_mul_x_sub_mean}, {});
         runner.Run(stream);
-
-        LOG(WARNING) << "dy_mul_x_sub_mean: ";
-        PrintTensor<float>(dy_mul_x_sub_mean, ctx);
       }
     }
 
     // HcclAllReduce dy_mul_x_sub_mean
     if (comm) {
       {
-        // stream = comm->stream();
-
-        // In-place operation
         void *sendbuff = reinterpret_cast<void *>(
             const_cast<float *>(dy_mul_x_sub_mean.data<float>()));
         void *recvbuff = sendbuff;
-        LOG(WARNING) << "sendbuff: " << sendbuff;
-        LOG(WARNING) << "recvbuff: " << recvbuff;
-
-        LOG(WARNING) << "before hccl | dy_mul_x_sub_mean: ";
-        PrintTensor<float>(dy_mul_x_sub_mean, ctx);
         PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
             sendbuff, recvbuff, C, dtype, HCCL_REDUCE_SUM, comm->comm(),
             reinterpret_cast<void *>(stream)));
-        LOG(WARNING) << "after hccl | dy_mul_x_sub_mean";
-        PrintTensor<float>(dy_mul_x_sub_mean, ctx);
       }
 
       {
@@ -1386,15 +949,10 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         const auto &runner = NpuOpRunner("Muls", {dy_mul_x_sub_mean},
                                          {dy_mul_x_sub_mean}, attr_input);
         runner.Run(stream);
-
-        LOG(WARNING) << "dy_mul_x_sub_mean: ";
-        PrintTensor<float>(dy_mul_x_sub_mean, ctx);
       }
     }
 
     // cacl d_x
-    // d_x = scale * (dy_sub_dy_mean - x_sub_saved_mean * dy_mul_x_sub_mean_mean
-    // / var_ref_tile_add_epsilon) / var_ref_tile_add_epsilon_sqrt
     if (d_x) {
       Tensor dy_mean;
       {
@@ -1408,9 +966,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
           const auto &runner =
               NpuOpRunner("ReduceMeanD", {d_y_fp32}, {dy_mean}, attr_input);
           runner.Run(stream);
-
-          LOG(WARNING) << "dy_mean: ";
-          PrintTensor<float>(dy_mean, ctx);
         } else {
           framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                                    {"axes", axes}};
@@ -1421,31 +976,18 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
           const auto &runner =
               NpuOpRunner("ReduceMeanD", {*d_y}, {dy_mean}, attr_input);
           runner.Run(stream);
-
-          LOG(WARNING) << "dy_mean: ";
-          PrintTensor<float>(dy_mean, ctx);
         }
       }
 
       // HcclAllReduce dy_mean
       if (comm) {
         {
-          // stream = comm->stream();
-
-          // In-place operation
           void *sendbuff = reinterpret_cast<void *>(
               const_cast<float *>(dy_mean.data<float>()));
           void *recvbuff = sendbuff;
-          LOG(WARNING) << "sendbuff: " << sendbuff;
-          LOG(WARNING) << "recvbuff: " << recvbuff;
-
-          LOG(WARNING) << "before hccl | dy_mean: ";
-          PrintTensor<float>(dy_mean, ctx);
           PADDLE_ENFORCE_NPU_SUCCESS(platform::dynload::HcclAllReduce(
               sendbuff, recvbuff, C, dtype, HCCL_REDUCE_SUM, comm->comm(),
               reinterpret_cast<void *>(stream)));
-          LOG(WARNING) << "after hccl | dy_mean";
-          PrintTensor<float>(dy_mean, ctx);
         }
 
         {
@@ -1455,9 +997,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
           const auto &runner =
               NpuOpRunner("Muls", {dy_mean}, {dy_mean}, attr_input);
           runner.Run(stream);
-
-          LOG(WARNING) << "dy_mean: ";
-          PrintTensor<float>(dy_mean, ctx);
         }
       }
 
@@ -1467,15 +1006,11 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         dy_mean_tile_1.mutable_data<float>(place);
 
         TensorCopySync(dy_mean, place, &dy_mean_tile_1);
-        LOG(WARNING) << "dy_mean_tile_1: ";
-        PrintTensor<float>(dy_mean_tile_1, ctx);
 
         if (layout == framework::DataLayout::kNCHW)
           dy_mean_tile_1.Resize({1, C, 1, 1});
         else if (layout == framework::DataLayout::kNHWC)
           dy_mean_tile_1.Resize({1, 1, 1, C});
-        LOG(WARNING) << "mean_tile_1: ";
-        PrintTensor<float>(dy_mean_tile_1, ctx);
       }
 
       Tensor dy_mean_tile;
@@ -1488,9 +1023,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         const auto &runner =
             NpuOpRunner("TileD", {dy_mean_tile_1}, {dy_mean_tile}, attr_input);
         runner.Run(stream);
-
-        LOG(WARNING) << "dy_mean_tile: ";
-        PrintTensor<float>(dy_mean_tile, ctx);
       }
 
       Tensor dy_sub_dy_mean;
@@ -1502,9 +1034,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
           const auto &runner = NpuOpRunner("Sub", {d_y_fp32, dy_mean_tile},
                                            {dy_sub_dy_mean}, {});
           runner.Run(stream);
-
-          LOG(WARNING) << "dy_sub_dy_mean: ";
-          PrintTensor<float>(dy_sub_dy_mean, ctx);
         } else {
           dy_sub_dy_mean.Resize(x->dims());
           dy_sub_dy_mean.mutable_data<float>(place);
@@ -1512,9 +1041,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
           const auto &runner =
               NpuOpRunner("Sub", {*d_y, dy_mean_tile}, {dy_sub_dy_mean}, {});
           runner.Run(stream);
-
-          LOG(WARNING) << "dy_sub_dy_mean: ";
-          PrintTensor<float>(dy_sub_dy_mean, ctx);
         }
       }
 
@@ -1529,9 +1055,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         const auto &runner = NpuOpRunner("ReduceMeanD", {dy_mul_x_sub_mean},
                                          {dy_mul_x_sub_mean_mean}, attr_input);
         runner.Run(stream);
-
-        LOG(WARNING) << "dy_mul_x_sub_mean_mean: ";
-        PrintTensor<float>(dy_mul_x_sub_mean_mean, ctx);
       }
 
       Tensor dy_mul_x_sub_mean_mean_tile_1;
@@ -1541,15 +1064,11 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
 
         TensorCopySync(dy_mul_x_sub_mean_mean, place,
                        &dy_mul_x_sub_mean_mean_tile_1);
-        LOG(WARNING) << "dy_mul_x_sub_mean_mean_tile_1: ";
-        PrintTensor<float>(dy_mul_x_sub_mean_mean_tile_1, ctx);
 
         if (layout == framework::DataLayout::kNCHW)
           dy_mul_x_sub_mean_mean_tile_1.Resize({1, C, 1, 1});
         else if (layout == framework::DataLayout::kNHWC)
           dy_mul_x_sub_mean_mean_tile_1.Resize({1, 1, 1, C});
-        LOG(WARNING) << "dy_mul_x_sub_mean_mean_tile_1: ";
-        PrintTensor<float>(dy_mul_x_sub_mean_mean_tile_1, ctx);
       }
 
       Tensor dy_mul_x_sub_mean_mean_tile;
@@ -1563,9 +1082,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
             NpuOpRunner("TileD", {dy_mul_x_sub_mean_mean_tile_1},
                         {dy_mul_x_sub_mean_mean_tile}, attr_input);
         runner.Run(stream);
-
-        LOG(WARNING) << "dy_mul_x_sub_mean_mean_tile: ";
-        PrintTensor<float>(dy_mul_x_sub_mean_mean_tile, ctx);
       }
 
       // (x - mean) * np.mean(dy * (x - mean), axis=axis)
@@ -1578,9 +1094,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         const auto &runner = NpuOpRunner(
             "Mul", {x_sub_saved_mean, dy_mul_x_sub_mean_mean_tile}, {tmp1}, {});
         runner.Run(stream);
-
-        LOG(WARNING) << "tmp1: ";
-        PrintTensor<float>(tmp1, ctx);
       }
 
       // (x - mean) * np.mean(dy * (x - mean), axis=axis) / (var + epsilon)
@@ -1594,9 +1107,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         const auto &runner =
             NpuOpRunner("Div", {tmp1, var_ref_tile_add_epsilon}, {tmp2}, {});
         runner.Run(stream);
-
-        LOG(WARNING) << "tmp2: ";
-        PrintTensor<float>(tmp2, ctx);
       }
 
       // dy - np.mean(dy, axis) - (x - mean) * np.mean(dy * (x - mean), axis) /
@@ -1610,9 +1120,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         const auto &runner =
             NpuOpRunner("Sub", {dy_sub_dy_mean, tmp2}, {tmp3}, {});
         runner.Run(stream);
-
-        LOG(WARNING) << "tmp3: ";
-        PrintTensor<float>(tmp3, ctx);
       }
 
       Tensor scale_tile_1;
@@ -1621,15 +1128,11 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         scale_tile_1.mutable_data<float>(place);
 
         TensorCopySync(*scale, place, &scale_tile_1);
-        LOG(WARNING) << "scale_tile_1: ";
-        PrintTensor<float>(scale_tile_1, ctx);
 
         if (layout == framework::DataLayout::kNCHW)
           scale_tile_1.Resize({1, C, 1, 1});
         else if (layout == framework::DataLayout::kNHWC)
           scale_tile_1.Resize({1, 1, 1, C});
-        LOG(WARNING) << "scale_tile_1: ";
-        PrintTensor<float>(scale_tile_1, ctx);
       }
 
       Tensor scale_tile;
@@ -1642,9 +1145,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         const auto &runner =
             NpuOpRunner("TileD", {scale_tile_1}, {scale_tile}, attr_input);
         runner.Run(stream);
-
-        LOG(WARNING) << "scale_tile: ";
-        PrintTensor<float>(scale_tile, ctx);
       }
 
       // scale * (dy - np.mean(dy, axis) - (x - mean) * np.mean(dy * (x - mean),
@@ -1657,9 +1157,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
 
         const auto &runner = NpuOpRunner("Mul", {scale_tile, tmp3}, {dx_1}, {});
         runner.Run(stream);
-
-        LOG(WARNING) << "dx_1: ";
-        PrintTensor<float>(dx_1, ctx);
       }
 
       // dx_1 / var_ref_tile_add_epsilon_sqrt
@@ -1676,9 +1173,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
             const auto &runner = NpuOpRunner(
                 "Div", {dx_1, var_ref_tile_add_epsilon_sqrt}, {d_x_fp32}, {});
             runner.Run(stream);
-
-            LOG(WARNING) << "d_x_fp32: ";
-            PrintTensor<float>(d_x_fp32, ctx);
           }
 
           {
@@ -1689,17 +1183,11 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
             const auto &runner =
                 NpuOpRunner("Cast", {d_x_fp32}, {*d_x}, attr_input);
             runner.Run(stream);
-
-            LOG(WARNING) << "d_x: ";
-            PrintTensor<T>(*d_x, ctx);
           }
         } else {
           const auto &runner = NpuOpRunner(
               "Div", {dx_1, var_ref_tile_add_epsilon_sqrt}, {*d_x}, {});
           runner.Run(stream);
-
-          LOG(WARNING) << "d_x: ";
-          PrintTensor<T>(*d_x, ctx);
         }
       }
     }
@@ -1715,9 +1203,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
             "Div", {dy_mul_x_sub_mean_for_scale, var_ref_tile_add_epsilon_sqrt},
             {d_scale_2}, {});
         runner.Run(stream);
-
-        LOG(WARNING) << "d_scale_2: ";
-        PrintTensor<float>(d_scale_2, ctx);
       }
 
       {
@@ -1729,9 +1214,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         const auto &runner =
             NpuOpRunner("ReduceSumD", {d_scale_2}, {*d_scale}, attr_input);
         runner.Run(stream);
-
-        LOG(WARNING) << "d_scale: ";
-        PrintTensor<float>(*d_scale, ctx);
       }
     }
 
@@ -1746,9 +1228,6 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         const auto &runner =
             NpuOpRunner("ReduceSumD", {d_y_fp32}, {*d_bias}, attr_input);
         runner.Run(stream);
-
-        LOG(WARNING) << "d_bias: ";
-        PrintTensor<float>(*d_bias, ctx);
       } else {
         framework::NPUAttributeMap attr_input = {{"keep_dims", false},
                                                  {"axes", axes}};
@@ -1758,18 +1237,8 @@ class SyncBatchNormNPUGradKernel : public framework::OpKernel<T> {
         const auto &runner =
             NpuOpRunner("ReduceSumD", {*d_y}, {*d_bias}, attr_input);
         runner.Run(stream);
-
-        LOG(WARNING) << "d_bias: ";
-        PrintTensor<float>(*d_bias, ctx);
       }
     }
-
-    LOG(WARNING) << "Output Tensor | d_x: ";
-    PrintTensor<T>(*d_x, ctx);
-    LOG(WARNING) << "Output Tensor | d_scale: ";
-    PrintTensor<float>(*d_scale, ctx);
-    LOG(WARNING) << "Output Tensor | d_bias: ";
-    PrintTensor<float>(*d_bias, ctx);
   }
 };
 

@@ -34,38 +34,15 @@ import paddle
 
 from paddle.fluid.tests.unittests.op_test import OpTest, _set_use_system_allocator
 
+from paddle.fluid.tests.unittests.test_sync_batch_norm_op import create_or_get_tensor
+
 _set_use_system_allocator(False)
 paddle.enable_static()
 
 SEED = 10
 
 
-def create_or_get_tensor(scope, var_name, var, place):
-    # print('test_sync_batch_norm_base_npu.py create_or_get_tensor')
-    # print('var_name: ', var_name)
-    # print('var: ', var)
-    # print('place: ', place)
-    """Get tensor, if not found, create a new one."""
-    tensor = scope.var(var_name).get_tensor()
-    # print('tensor: ', tensor)
-    # print('create_or_get_tensor 41')
-    # with paddle.static.device_guard('NPUPlace(0)'):
-    # with paddle.static.device_guard(place):
-    with paddle.static.device_guard('npu'):
-        if var is not None:
-            # print('create_or_get_tensor 43')
-            assert isinstance(var, np.ndarray)
-            # print('create_or_get_tensor 44')
-            tensor.set_recursive_sequence_lengths([])
-            # print('create_or_get_tensor 47')
-            tensor.set(var, place)
-            # print('create_or_get_tensor 49')
-        # print('create_or_get_tensor 50')
-    return tensor
-
-
 class TestSyncBatchNormRunnerBase(object):
-    # def get_model(self, train_prog, startup_prog):
     def get_model(self,
                   main,
                   startup,
@@ -135,25 +112,18 @@ class TestSyncBatchNormRunnerBase(object):
             })
 
     def run_trainer(self, args):
-        # print('test_sync_batch_norm_base_npu.py run_trainer')
-
         device_id = int(os.getenv("FLAGS_selected_npus", "0"))
-        # print("use selected_npus:", device_id)
         place = fluid.NPUPlace(device_id)
         places = [place]
 
         # Test training
         for place in places:
             for layout in ["NCHW", "NHWC"]:
-                # for layout in ["NCHW"]:
-                # for layout in ["NHWC"]:
                 self._compare(args, place, layout, False)
 
         # Test inference
         for place in places:
             for layout in ["NCHW", "NHWC"]:
-                # for layout in ["NCHW"]:
-                # for layout in ["NHWC"]:
                 self._compare(args, place, layout, True)
 
         # Test FP16
@@ -163,15 +133,11 @@ class TestSyncBatchNormRunnerBase(object):
         # Test training
         for place in places:
             for layout in ["NCHW", "NHWC"]:
-                # for layout in ["NCHW"]:
-                # for layout in ["NHWC"]:
                 self._compare(args, place, layout, False)
 
         # Test inference
         for place in places:
             for layout in ["NCHW", "NHWC"]:
-                # for layout in ["NCHW"]:
-                # for layout in ["NHWC"]:
                 self._compare(args, place, layout, True)
 
         sys.stdout.buffer.write(
@@ -195,8 +161,6 @@ class TestSyncBatchNormRunnerBase(object):
         sys.stderr.write("len(sync_bn_fetches): " + str(len(sync_bn_fetches)) +
                          "\n")
         for i in six.moves.xrange(0, len(sync_bn_fetches)):
-            # print('i: ', i)
-            # print('fetch_names[i]: ', fetch_names[i])
             sys.stderr.write("i: " + str(i) + "\n")
             sys.stderr.write("fetch_names[i]): " + fetch_names[i] + "\n")
 
@@ -207,10 +171,6 @@ class TestSyncBatchNormRunnerBase(object):
 
             # i = 0
             if fetch_names[i] == 'reduce_sum_0.tmp_0':
-                # print('skip reduce_sum_0.tmp_0 (Out of reduce_sum op)')
-                # print('bn_val: ', str(bn_val))
-                # print('sync_bn_val: ', str(sync_bn_val))
-
                 # sys.stderr.write("skip reduce_sum_0.tmp_0 (Out of reduce_sum op)" + "\n")
                 sys.stderr.write("reduce_sum_0.tmp_0 (Out of reduce_sum op)" +
                                  "\n")
@@ -221,10 +181,6 @@ class TestSyncBatchNormRunnerBase(object):
 
             # i = 1
             if fetch_names[i] == 'conv2d_0.tmp_0':
-                # print('skip conv2d_0.tmp_0 (X)')
-                # print('bn_val: ', str(bn_val))
-                # print('sync_bn_val: ', str(sync_bn_val))
-
                 # sys.stderr.write("skip conv2d_0.tmp_0 (X)" + "\n")
                 sys.stderr.write("conv2d_0.tmp_0 (X)" + "\n")
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
@@ -234,10 +190,6 @@ class TestSyncBatchNormRunnerBase(object):
 
             # i = 2
             if fetch_names[i] == 'batch_norm_0.tmp_3':
-                # print('skip batch_norm_0.tmp_3 (Y)')
-                # print('bn_val: ', str(bn_val))
-                # print('sync_bn_val: ', str(sync_bn_val))
-
                 # sys.stderr.write("skip batch_norm_0.tmp_3 (Y)" + "\n")
                 sys.stderr.write("batch_norm_0.tmp_3 (Y)" + "\n")
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
@@ -247,10 +199,6 @@ class TestSyncBatchNormRunnerBase(object):
 
             # i = 2
             if fetch_names[i] == 'batch_norm_0.tmp_2':
-                # print('skip batch_norm_0.tmp_2 (ReserveSpace of batch_norm)')
-                # print('bn_val: ', str(bn_val))
-                # print('sync_bn_val: ', str(sync_bn_val))
-
                 # sys.stderr.write("skip batch_norm_0.tmp_2 (ReserveSpace of batch_norm)" + "\n")
                 sys.stderr.write(
                     "batch_norm_0.tmp_2 (ReserveSpace of batch_norm)" + "\n")
@@ -261,10 +209,6 @@ class TestSyncBatchNormRunnerBase(object):
 
             # i = 3
             if fetch_names[i] == 'bn_moving_mean':
-                # print('skip bn_moving_mean (MeanOut)')
-                # print('bn_val: ', str(bn_val))
-                # print('sync_bn_val: ', str(sync_bn_val))
-
                 sys.stderr.write("skip bn_moving_mean (MeanOut)" + "\n")
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
                 sys.stderr.write("sync_bn_val: " + str(sync_bn_val) + "\n")
@@ -273,10 +217,6 @@ class TestSyncBatchNormRunnerBase(object):
 
             # i = 4
             if fetch_names[i] == 'bn_moving_variance':
-                # print('skip bn_moving_variance (VarianceOut)')
-                # print('bn_val: ', str(bn_val))
-                # print('sync_bn_val: ', str(sync_bn_val))
-
                 sys.stderr.write("skip bn_moving_variance (VarianceOut)" + "\n")
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
                 sys.stderr.write("sync_bn_val: " + str(sync_bn_val) + "\n")
@@ -285,10 +225,6 @@ class TestSyncBatchNormRunnerBase(object):
 
             # i = 7
             if fetch_names[i] == 'batch_norm_0.tmp_0':
-                # print('skip batch_norm_0.tmp_0 (SavedMean)')
-                # print('bn_val: ', str(bn_val))
-                # print('sync_bn_val: ', str(sync_bn_val))
-
                 # sys.stderr.write("skip batch_norm_0.tmp_0 (SavedMean)" + "\n")
                 sys.stderr.write("batch_norm_0.tmp_0 (SavedMean)" + "\n")
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
@@ -298,10 +234,6 @@ class TestSyncBatchNormRunnerBase(object):
 
             # i = 8
             if fetch_names[i] == 'batch_norm_0.tmp_1':
-                # print('skip batch_norm_0.tmp_1 (SavedVariance)')
-                # print('bn_val: ', str(bn_val))
-                # print('sync_bn_val: ', str(sync_bn_val))
-
                 sys.stderr.write("skip batch_norm_0.tmp_1 (SavedVariance)" +
                                  "\n")
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
@@ -311,10 +243,6 @@ class TestSyncBatchNormRunnerBase(object):
 
             # i = 9
             if fetch_names[i] == 'bn_scale@GRAD':
-                # print('skip bn_scale@GRAD (Scale@GRAD)')
-                # print('bn_val: ', str(bn_val))
-                # print('sync_bn_val: ', str(sync_bn_val))
-
                 # sys.stderr.write("skip bn_scale@GRAD (Scale@GRAD)" + "\n")
                 sys.stderr.write("bn_scale@GRAD (Scale@GRAD)" + "\n")
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
@@ -324,10 +252,6 @@ class TestSyncBatchNormRunnerBase(object):
 
             # i = 10
             if fetch_names[i] == 'bn_bias@GRAD':
-                # print('skip bn_bias@GRAD (Bias@GRAD)')
-                # print('bn_val: ', str(bn_val))
-                # print('sync_bn_val: ', str(sync_bn_val))
-
                 # sys.stderr.write("skip bn_bias@GRAD (Bias@GRAD)" + "\n")
                 sys.stderr.write("bn_bias@GRAD (Bias@GRAD)" + "\n")
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
@@ -337,10 +261,6 @@ class TestSyncBatchNormRunnerBase(object):
 
             # i = 11
             if fetch_names[i] == 'batch_norm_0.tmp_3@GRAD':
-                # print('skip batch_norm_0.tmp_3@GRAD (Y@GRAD)')
-                # print('bn_val: ', str(bn_val))
-                # print('sync_bn_val: ', str(sync_bn_val))
-
                 # sys.stderr.write("skip batch_norm_0.tmp_3@GRAD (Y@GRAD)" + "\n")
                 sys.stderr.write("batch_norm_0.tmp_3@GRAD (Y@GRAD)" + "\n")
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
@@ -350,10 +270,6 @@ class TestSyncBatchNormRunnerBase(object):
 
             # i = 12
             if fetch_names[i] == 'conv2d_0.tmp_0@GRAD':
-                # print('skip conv2d_0.tmp_0@GRAD (X@GRAD)')
-                # print('bn_val: ', str(bn_val))
-                # print('sync_bn_val: ', str(sync_bn_val))
-
                 # sys.stderr.write("skip conv2d_0.tmp_0@GRAD (X@GRAD)" + "\n")
                 sys.stderr.write("conv2d_0.tmp_0@GRAD (X@GRAD)" + "\n")
                 sys.stderr.write("bn_val: " + str(bn_val) + "\n")
@@ -362,7 +278,6 @@ class TestSyncBatchNormRunnerBase(object):
                 # continue
 
             atol = self.atol
-            # if layout == 'NHWC' and fetch_names[i] == 'conv2d_0.tmp_0@GRAD':
             if fetch_names[i] == 'conv2d_0.tmp_0@GRAD':
                 atol = 1e-2
 
@@ -378,16 +293,9 @@ class TestSyncBatchNormRunnerBase(object):
         train_prog.global_seed(SEED)
         startup_prog.global_seed(SEED)
         paddle.seed(SEED)
-        # sys.stderr.write("train_prog: " + train_prog.to_string(True) + "\n")
-        # sys.stderr.write("startup_prog: " + startup_prog.to_string(True) + "\n")
-        # sys.stderr.flush()
 
         outs = self.get_model(train_prog, startup_prog, place, layout, SEED,
                               False, only_forward)
-        # sys.stderr.write("after get_model, train_prog: " + train_prog.to_string(
-        #     True) + "\n")
-        # sys.stderr.write("after get_model, startup_prog: " +
-        #                  startup_prog.to_string(True) + "\n")
 
         exe = fluid.Executor(place)
         exe.run(startup_prog)
@@ -403,7 +311,6 @@ class TestSyncBatchNormRunnerBase(object):
         bn_fetches = exe.run(program=train_prog,
                              feed={'input': data},
                              fetch_list=fetch_names)
-        # sys.stdout.buffer.write(pickle.dumps(bn_fetches))
 
         return bn_fetches
 
@@ -419,7 +326,6 @@ class TestSyncBatchNormRunnerBase(object):
         paddle.seed(SEED)
         sys.stderr.write("train_prog: " + train_prog.to_string(True) + "\n")
         sys.stderr.write("startup_prog: " + startup_prog.to_string(True) + "\n")
-        # sys.stderr.flush()
 
         endpoints = args["endpoints"].split(",")
         rank = args["trainerid"]
@@ -436,11 +342,6 @@ class TestSyncBatchNormRunnerBase(object):
         startup_prog._sync_with_cpp()
         paddle.seed(SEED)
 
-        # train_prog.random_seed = SEED
-        # train_prog.global_seed(SEED)
-        # train_prog.random_seed(SEED)
-        # train_prog._sync_with_cpp()
-
         self.rank = rank
         outs = self.get_model(train_prog, startup_prog, place, layout, SEED,
                               True, only_forward)
@@ -455,14 +356,11 @@ class TestSyncBatchNormRunnerBase(object):
                 sys.stderr.write("i: " + str(i) + "\n")
                 sys.stderr.write("op type: " + op.type + "\n")
                 op.desc.set_type('sync_batch_norm')
-                # train_prog.blocks[0].ops[i].desc.set_type('sync_batch_norm')
             if op.type == 'batch_norm_grad':
                 sys.stderr.write("i: " + str(i) + "\n")
                 sys.stderr.write("op type: " + op.type + "\n")
                 op.desc.set_type('sync_batch_norm_grad')
-                # train_prog.blocks[0].ops[i].desc.set_type('sync_batch_norm_grad')
 
-            # print('after train_prog: ', train_prog)
         sys.stderr.write("after update sync_batch_norm, train_prog: " +
                          train_prog.to_string(True) + "\n")
 
@@ -480,14 +378,11 @@ class TestSyncBatchNormRunnerBase(object):
         sync_bn_fetches = exe.run(program=train_prog,
                                   feed={'input': data},
                                   fetch_list=fetch_names)
-        # sys.stdout.buffer.write(pickle.dumps(sync_bn_fetches))
 
         return fetch_names, sync_bn_fetches
 
 
 def runtime_main(test_class, col_type, sub_type):
-    # print('test_sync_batch_norm_base_npu.py runtime_main')
-
     args = {}
     model = test_class()
     args["deviceid"] = os.getenv("FLAGS_selected_npus")
@@ -526,9 +421,6 @@ class TestDistBase(unittest.TestCase):
                 return port
 
     def _run_cluster(self, model_file, envs):
-        # print(' test_sync_batch_norm_base_npu.py _run_cluster ')
-        # print(' envs: ', envs)
-
         worker_endpoints = self._ps_endpoints.split(",")
         w0_ep, w1_ep = worker_endpoints
         # print("w0_ep:", w0_ep, " w1_ep:", w1_ep)
@@ -550,8 +442,6 @@ class TestDistBase(unittest.TestCase):
         #update environment
         env0.update(envs)
         env1.update(envs)
-        # print(' env0: ', env0)
-        # print(' env1: ', env1)
 
         tr_cmd = "%s %s"
         tr0_cmd = tr_cmd % (self._python_interp, model_file)
@@ -575,11 +465,6 @@ class TestDistBase(unittest.TestCase):
         tr0_out, tr0_err = tr0_proc.communicate()
         tr1_out, tr1_err = tr1_proc.communicate()
 
-        # print('tr0_out: ', tr0_out)
-        # print('tr1_out: ', tr1_out)
-        # print('tr0_err: ', tr0_err)
-        # print('tr1_err: ', tr1_err)
-
         sys.stderr.write('trainer 0 stderr: %s\n' % tr0_err)
         sys.stderr.write('trainer 1 stderr: %s\n' % tr1_err)
         # close trainer file
@@ -589,22 +474,8 @@ class TestDistBase(unittest.TestCase):
             tr1_out), tr0_proc.pid, tr1_proc.pid
 
     def check_with_place(self, model_file, col_type, need_envs={}):
-        # print('test_sync_batch_norm_base_npu.py check_with_place')
-
-        # self._run_cluster(model_file, need_envs)
-
         tr0_out, tr1_out, pid0, pid1 = self._run_cluster(model_file, need_envs)
         self.assertEqual(
             tr0_out, 'training, inference, fp32, fp16, NCHW, NHWC all passed')
         self.assertEqual(
             tr1_out, 'training, inference, fp32, fp16, NCHW, NHWC all passed')
-
-        # np.random.seed(pid0)
-        # input1 = np.random.random((10, 1000))
-        # np.random.seed(pid1)
-        # input2 = np.random.random((10, 1000))
-        # if col_type == "identity":
-        #     need_result1 = input1
-        #     need_result2 = input2
-        #     self.assertTrue(np.allclose(tr0_out, need_result1, rtol=0, atol=0))
-        #     self.assertTrue(np.allclose(tr1_out, need_result2, rtol=0, atol=0))

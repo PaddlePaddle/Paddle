@@ -33,8 +33,6 @@ class TestSyncBatchNormOp(TestDistBase):
         pass
 
     def test_identity(self, col_type="identity"):
-        # print('test_sync_batch_norm_op_npu_5.py test_identity')
-
         dist_env = os.environ
         self.check_with_place(
             "sync_batch_norm_op_npu.py", col_type, need_envs=dist_env)
