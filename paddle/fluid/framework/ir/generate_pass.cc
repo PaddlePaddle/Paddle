@@ -21,6 +21,16 @@ namespace ir {
 
 void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
   const proto::BlockDesc& block = pass_desc.pattern().blocks(0);
+  for (const proto::VarDesc& var : block.vars()) {
+    PDNode* var_pdnode = pattern->NewNode(var.name())->AsInput();
+    var_pdnode->assert_is_var();
+    var_pdnode->assert_more([&](Node* x) {
+      if (VarDesc(var).GetShape() == x->Var()->GetShape()) {
+        return true;
+      }
+      return false;
+    });
+  }
   // Traverse all operators to create subgraph.
   for (int index = 0; index < block.ops_size(); ++index) {
     const proto::OpDesc& op = block.ops(index);
@@ -31,15 +41,32 @@ void InitGeneratePattern(const proto::PassDesc& pass_desc, PDPattern* pattern) {
         pattern->NewNode(std::to_string(index))->assert_is_op(op.type());
     // Create PDNodes for inputs of current operator.
     for (const proto::OpDesc::Var& var : op.inputs()) {
-      for (const std::string& argument : var.arguments()) {
+      for (int n = 0; n < var.arguments_size(); ++n) {
+        const std::string& argument = var.arguments(n);
         // The input may be the output of other operator.
         PDNode* var_pdnode = pattern->RetrieveNode(argument);
         if (nullptr == var_pdnode) {
           var_pdnode = pattern->NewNode(argument)->AsInput();
+          var_pdnode->assert_is_var();
         } else if (var_pdnode->IsOutput()) {
           var_pdnode->AsIntermediate();
         }
-        var_pdnode->assert_is_op_input(op.type());
+        var_pdnode->assert_more([&](Node* x) {
+          for (auto* out : x->outputs) {
+            if (out->IsOp() && out->Op()->Type() == op.type()) {
+              const auto& inputs = out->Op()->Inputs();
+              const auto& iter = inputs.find(var.parameter());
+              if (inputs.end() != iter) {
+                if (iter->second.end() != std::find(iter->second.begin(),
+                                                    iter->second.end(),
+                                                    x->Name())) {
+                  return true;
+                }
+              }
+            }
+          }
+          return false;
+        });
         pattern->AddEdge(var_pdnode, op_pdnode);
       }
     }

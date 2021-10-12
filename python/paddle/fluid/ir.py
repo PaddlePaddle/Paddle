@@ -152,9 +152,32 @@ class RegisterPassHelper(object):
 
     def _prune_program_desc(self, program_desc):
         block_desc = program_desc.blocks[0]
-        block_desc.ClearField("vars")
+        # block_desc.ClearField("vars")
+        for var in [
+                var for var in block_desc.vars
+                if var.name not in self._input_specs
+        ]:
+            block_desc.vars.remove(var)
         for op_desc in block_desc.ops:
-            op_desc.ClearField("attrs")
+            default_attrs = core.get_op_attrs_default_value(
+                paddle.compat.to_bytes(op_desc.type))
+            remove_attrs = list()
+            for attr in op_desc.attrs:
+                # attr must not in 
+                if attr.name not in [
+                        "op_namescope", "op_callstack", "op_device"
+                ]:
+                    attr_list_fields = attr.ListFields()
+                    # attr format must be: name, type, value
+                    if len(attr_list_fields) == 3:
+                        attr_value = attr.ListFields()[-1][-1]
+                        default_attr_value = default_attrs.get(attr.name)
+                        # value must not default
+                        if default_attr_value != attr_value:
+                            continue
+                remove_attrs.append(attr)
+            for attr in remove_attrs:
+                op_desc.attrs.remove(attr)
 
     def _func_to_program_desc(self, func, program_desc, is_replace=False):
         vars = list()
