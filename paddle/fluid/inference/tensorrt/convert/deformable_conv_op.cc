@@ -49,11 +49,7 @@ class DeformableConvOpConverter : public OpConverter {
 
     float* filter_data =
         engine_->GetWeightCPUData(filter_name, filter_tensor, false);
-    PADDLE_ENFORCE_EQ(
-        filter_tensor->dims().size(), 4UL,
-        platform::errors::InvalidArgument(
-            "The deformable conv filter's dims size should be 4, but got %d",
-            filter_tensor->dims().size()));
+
     const int c_o = filter_tensor->dims()[0];
     const int c_i = filter_tensor->dims()[1];
     const int k_h = filter_tensor->dims()[2];
