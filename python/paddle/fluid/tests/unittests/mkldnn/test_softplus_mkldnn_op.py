@@ -29,6 +29,8 @@ def ref_softplus(x, beta, threshold):
     return out
 
 
+@OpTestTool.skip_if(not (isinstance(_current_expected_place(), core.CPUPlace)),
+                    "GPU is not supported")
 class TestSoftplusOneDNNOp(OpTest):
     def setUp(self):
         self.op_type = "softplus"
