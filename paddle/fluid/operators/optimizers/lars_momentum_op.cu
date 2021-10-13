@@ -371,6 +371,7 @@ class LarsMomentumOpCUDAKernel : public framework::OpKernel<T> {
     MT lars_coeff = static_cast<MT>(ctx.Attr<float>("lars_coeff"));
     MT epsilon = static_cast<MT>(ctx.Attr<float>("epsilon"));
     MT rescale_grad = static_cast<MT>(ctx.Attr<float>("rescale_grad"));
+
     auto weight_decay_arr = ctx.Attr<std::vector<float>>("lars_weight_decay");
     auto grad = ctx.MultiInput<framework::LoDTensor>("Grad");
     auto param = ctx.MultiInput<framework::LoDTensor>("Param");

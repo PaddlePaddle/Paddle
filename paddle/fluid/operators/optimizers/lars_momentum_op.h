@@ -46,6 +46,7 @@ class LarsMomentumOpKernel : public framework::OpKernel<T> {
       auto p = framework::EigenVector<T>::Flatten(*(param[i]));
       auto v = framework::EigenVector<T>::Flatten(*(velocity[i]));
       auto g = framework::EigenVector<T>::Flatten(*(grad[i]));
+
       framework::Tensor p_norm_t, g_norm_t;
       p_norm_t.Resize({1});
       g_norm_t.Resize({1});
