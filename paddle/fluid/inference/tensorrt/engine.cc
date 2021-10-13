@@ -356,6 +356,13 @@ nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2Ext(
   return network()->addPluginV2(inputs, num_inputs, *plugin);
 }
 
+nvinfer1::IPluginV2Layer *TensorRTEngine::AddPluginV2IOExt(
+    nvinfer1::ITensor *const *inputs, int num_inputs,
+    nvinfer1::IPluginV2IOExt *plugin) {
+  owned_plugin_v2ioext_.emplace_back(plugin);
+  return network()->addPluginV2(inputs, num_inputs, *plugin);
+}
+
 void TensorRTEngine::freshDeviceId() {
   int count;
   cudaGetDeviceCount(&count);
