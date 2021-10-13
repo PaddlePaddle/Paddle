@@ -1,4 +1,4 @@
-// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2018 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,14 +13,24 @@
 // limitations under the License.
 
 #pragma once
-
-#include "paddle/fluid/operators/kernel_primitives/compute_primitives.h"
-#include "paddle/fluid/operators/kernel_primitives/datamover_primitives.h"
-#include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
-#include "paddle/fluid/operators/kernel_primitives/helper_primitives.h"
+#include "paddle/fluid/framework/ir/fuse_pass_base.h"
+#include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 
 namespace paddle {
-namespace operators {
-namespace kernel_primitives {}
-}
-}
+namespace framework {
+namespace ir {
+
+class Graph;
+
+class AddSupportInt8Pass : public FusePassBase {
+ public:
+  AddSupportInt8Pass() {}
+  virtual ~AddSupportInt8Pass() {}
+
+ protected:
+  void ApplyImpl(ir::Graph* graph) const override;
+};
+
+}  // namespace ir
+}  // namespace framework
+}  // namespace paddle

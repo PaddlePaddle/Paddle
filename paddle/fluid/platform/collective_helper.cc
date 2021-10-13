@@ -148,7 +148,7 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
       paddle::platform::errors::InvalidArgument(
           "dev ids = [%d], it should greater than 0.", dev_ids.size()));
   const int kDevices = dev_ids.size();
-  VLOG(3) << "Begin CreateNCCLCommMultiTrainer. device number: " << kDevices
+  VLOG(1) << "Begin CreateNCCLCommMultiTrainer. device number: " << kDevices
           << ", ntrainers: " << ntrainers << ", train_id: " << train_id
           << ", rind_id: " << ring_id;
   ncclComm_t comms[kDevices];
@@ -162,10 +162,10 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
 #endif
       platform::dynload::ncclCommInitRank(comms + i, kDevices * ntrainers,
                                           *nccl_id, train_id * kDevices + i);
-      VLOG(3) << "ncclCommInitRank: " << i;
+      VLOG(1) << "ncclCommInitRank: " << i;
     }
     PADDLE_ENFORCE_CUDA_SUCCESS(dynload::ncclGroupEnd());
-    VLOG(3) << "nccl group end seccessss";
+    VLOG(1) << "nccl group end seccessss";
   }
   PADDLE_ENFORCE_EQ(comm_map_.count(ring_id), 0,
                     platform::errors::InvalidArgument(
@@ -174,7 +174,7 @@ void NCCLCommContext::CreateNCCLCommMultiTrainer(
   for (int i = 0; i < kDevices; ++i) {
     AssignNCCLComm(comms[i], kDevices * ntrainers, train_id * kDevices + i,
                    dev_ids[i], ring_id);
-    VLOG(3) << "nccl communicator of train_id " << train_id * kDevices + i
+    VLOG(1) << "nccl communicator of train_id " << train_id * kDevices + i
             << " in ring " << ring_id << " has been created on device "
             << dev_ids[i];
   }
