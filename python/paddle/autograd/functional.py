@@ -18,20 +18,7 @@ from ..fluid import framework
 from ..fluid.dygraph import grad
 from ..nn.initializer import assign
 from ..tensor import reshape, zeros_like, to_tensor
-from .utils import _check_tensors, _stack_tensor_or_return_none, _replace_none_with_zero_tensor
-
-
-def to_tensorlist(tl):
-    if not isinstance(tl, list):
-        if isinstance(tl, tuple):
-            tl = list(tl)
-        else:
-            tl = [tl]
-    for t in tl:
-        assert isinstance(t, paddle.Tensor) or t is None, (
-            f'{t} is expected to be paddle.Tensor or None, but found {type(t)}.'
-        )
-    return tl
+from .utils import _tensors, _stack_tensor_or_return_none, _replace_none_with_zero_tensor
 
 
 @contextlib.contextmanager
@@ -98,19 +85,19 @@ def vjp(func, inputs, v=None, create_graph=False, allow_unused=False):
     reverse mode automatic differentiation.
 
     Args:
-        func(Callable): `func` takes as input a tensor or a list
-            of tensors and returns a tensor or a list of tensors.
-        inputs(list[Tensor]|Tensor): used as positional arguments
-            to evaluate `func`. `inputs` is accepted as one tensor
-            or a list of tensors.
-        v(list[Tensor]|Tensor, optional): the cotangent vector
-            invovled in the VJP computation. `v` matches the size
-            and shape of `func`'s output. Default value is None
+        func(Callable): `func` takes as input a tensor or a list/tuple
+            of tensors and returns a tensor or a list/tuple of tensors.
+        inputs(list[Tensor]|tuple[Tensor]|Tensor): used as positional
+            arguments to evaluate `func`. `inputs` is accepted as one
+            tensor or a list of tensors.
+        v(list[Tensor]|tuple[Tensor]|Tensor|None, optional): the
+            cotangent vector invovled in the VJP computation. `v` matches
+            the size and shape of `func`'s output. Default value is None
             and in this case is equivalent to all ones the same size
             of `func`'s output.
-        create_graph(bool, optional): if `True`, gradients can
-            be evaluated on the results. If `False`, taking gradients
-            on the results is invalid. Default value is False.
+        create_graph(bool, optional): if `True`, gradients can be
+            evaluated on the results. If `False`, taking gradients on
+            the results is invalid. Default value is False.
         allow_unused(bool, optional): In case that some Tensors of
             `inputs` do not contribute to the computation of the output.
             If `allow_unused` is False, an error will be raised,
@@ -119,8 +106,9 @@ def vjp(func, inputs, v=None, create_graph=False, allow_unused=False):
 
     Returns:
         output(tuple):
-            func_out: the output of `func(inputs)`
-            vjp(list[Tensor]|Tensor): the pullback results of `v` on `func`
+            func_out(list[Tensor]|tuple[Tensor]|Tensor): the output of
+                `func(inputs)`
+            vjp(list[Tensor]): the pullback results of `v` on `func`
 
     Examples:
       .. code-block:: python
@@ -163,13 +151,13 @@ def vjp(func, inputs, v=None, create_graph=False, allow_unused=False):
         #        [[2., 1.],
         #         [1., 0.]]), None]
     """
-    xs, v = to_tensorlist(inputs), to_tensorlist(v)
+    xs, v = _tensors(inputs, "inputs"), _tensors(v, "v")
 
     with gradient_scope(
             xs, v, create_graph=create_graph,
             allow_unused=allow_unused) as [xs, v, grad_fn, return_fn]:
         outputs = func(*xs)
-        ys = to_tensorlist(outputs)
+        ys = _tensors(outputs, "outputs")
         grads = grad_fn(ys, xs, v)
         outputs, grads = return_fn(outputs), return_fn(grads)
 
@@ -186,16 +174,16 @@ def jvp(func, inputs, v=None, create_graph=False, allow_unused=False):
         **This API is ONLY available in imperative mode.**
 
     Args:
-        func(Callable): `func` takes as input a tensor or a list
-            of tensors and returns a tensor or a list of tensors.
-        inputs(list[Tensor]|Tensor): used as positional arguments
-            to evaluate `func`. `inputs` is accepted as one tensor
-            or a list of tensors.
-        v(list[Tensor]|Tensor, optional): the tangent vector
-            invovled in the JVP computation. `v` matches the size
-            and shape of `inputs`. `v` is Optional if `func` returns
-            a single tensor. Default value is None and in this case
-            is equivalent to all ones the same size of `inputs`.
+        func(Callable): `func` takes as input a tensor or a list/tuple
+            of tensors and returns a tensor or a list/tuple of tensors.
+        inputs(list[Tensor]|tuple[Tensor]|Tensor): used as positional
+            arguments to evaluate `func`. `inputs` is accepted as one
+            tensor or a list/tuple of tensors.
+        v(list[Tensor]|tuple[Tensor]|Tensor|None, optional): the
+            tangent vector invovled in the JVP computation. `v` matches
+            the size and shape of `inputs`. `v` is Optional if `func`
+            returns a single tensor. Default value is None and in this
+            case is equivalent to all ones the same size of `inputs`.
         create_graph(bool, optional): if `True`, gradients can
             be evaluated on the results. If `False`, taking gradients
             on the results is invalid. Default value is False.
@@ -207,8 +195,9 @@ def jvp(func, inputs, v=None, create_graph=False, allow_unused=False):
 
     Returns:
         output(tuple):
-            func_out: the output of `func(inputs)`
-            jvp(list[Tensor]|Tensor): the pullback results of `v` on `func`
+            func_out(list[Tensor]|tuple[Tensor]|Tensor): the output of
+                `func(inputs)`
+            jvp(list[Tensor]): the pullback results of `v` on `func`
 
     Examples:
     .. code-block:: python
@@ -232,13 +221,13 @@ def jvp(func, inputs, v=None, create_graph=False, allow_unused=False):
         #         [0., 0.]])]
 
     """
-    xs, v = to_tensorlist(inputs), to_tensorlist(v)
+    xs, v = _tensors(inputs, "inputs"), _tensors(v, "v")
 
     with gradient_scope(
             xs, v, create_graph=create_graph,
             allow_unused=allow_unused) as [xs, v, grad_fn, return_fn]:
         outputs = func(*xs)
-        ys = to_tensorlist(outputs)
+        ys = _tensors(outputs, "outputs")
         ys_grad = [zeros_like(y) for y in ys]
         xs_grad = grad_fn(ys, xs, ys_grad, create_graph=True)
         ys_grad = grad_fn(xs_grad, ys_grad, v)
@@ -357,8 +346,8 @@ def jacobian(func, inputs, create_graph=False, allow_unused=False):
             #         [0., 0., 0., 2.]]), None))
 
     '''
-    inputs = _check_tensors(inputs, "inputs")
-    outputs = _check_tensors(func(*inputs), "outputs")
+    inputs = _tensors(inputs, "inputs")
+    outputs = _tensors(func(*inputs), "outputs")
     fin_size = len(inputs)
     fout_size = len(outputs)
     flat_outputs = tuple(reshape(output, shape=[-1]) for output in outputs)
@@ -494,7 +483,7 @@ def hessian(func, inputs, create_graph=False, allow_unused=False):
             #         [0., 1., 1., 2.]]), None), (None, None))
 
     '''
-    inputs = _check_tensors(inputs, "inputs")
+    inputs = _tensors(inputs, "inputs")
     outputs = func(*inputs)
     assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
         1
