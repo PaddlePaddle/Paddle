@@ -163,7 +163,7 @@ class CommonAccessor:
         return attr_str
 
     def parse_by_optimizer(self, grad_name, is_sparse, total_dims,
-                           compiled_strategy):
+                           compiled_strategy, adam_d2sum):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
         param_name = compiled_strategy.grad_name_to_param_name[grad_name]
         main_program, startup_program = compiled_strategy.get_origin_programs()
@@ -188,6 +188,7 @@ class CommonAccessor:
 
         self.trainer_num = compiled_strategy.get_trainers()
 
+        print("adam_d2sum:", adam_d2sum)
         if compiled_strategy.is_geo_mode():
             param_varnames = self.opt_input_map["sum"]
             attr_varnames = self.opt_attr_map["sum"]
@@ -807,11 +808,13 @@ class TheOnePSRuntime(RuntimeBase):
                     table.shard_num = 256
                     common.table_name = "MergedDense"
 
+                adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
                 common.parse_by_optimizer(ctx.origin_varnames()[0],
                                           ctx.is_sparse(),
                                           ctx.sections()[1] if ctx.is_sparse()
                                           else ctx.sections()[0],
-                                          self.compiled_strategy)
+                                          self.compiled_strategy,
+                                          adam_d2sum)
 
                 if ctx.is_sparse():
                     common.parse_entry(common.table_name,
