@@ -1925,7 +1925,7 @@ function test_base_npu_dist() {
     Running unit npu tests ...
     ========================================
 EOF
-
+    npu-smi info
     set +x
     test_cases=$(ctest -N -V) # get all test cases
     # get_quickly_disable_ut||disable_ut_quickly=''   # indicate whether the case was in quickly disable list
