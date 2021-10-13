@@ -28,7 +28,7 @@ class TestZeroPad2dError(unittest.TestCase):
         unsupport dtypes
         """
         self.shape = [4, 3, 224, 224]
-        self.unsupport_dtypes = ['bool', 'int8', 'float16']
+        self.unsupport_dtypes = ['bool', 'int8']
 
     def test_unsupport_dtypes(self):
         """
