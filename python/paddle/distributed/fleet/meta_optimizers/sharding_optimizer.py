@@ -371,11 +371,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             main_block, strategy=strategy, shard=shard)
 
         len_of_ops = len(main_block.ops)
-        if self.scale_gradient:
-            first_optimize_op_index = self._avg_grad_merge_after_sum(
-                main_block, accumulated_grad_names)
-        else:
-            first_optimize_op_index = get_first_optimize_op_idx(main_block)
+        first_optimize_op_index = get_first_optimize_op_idx(main_block)
 
         if self.pp_allreduce_in_optimize:
             logger.info("Pipeline Persistable grad is {}".format(
@@ -440,10 +436,11 @@ class ShardingOptimizer(MetaOptimizerBase):
             first_optimize_op_index += (len(main_block.ops) - len_of_ops)
             len_of_ops = len(main_block.ops)
 
+        self._avg_grad_merge_after_sum(main_block, accumulated_grad_names)
+
         # FIXME(wangxi): if fp16_allreduce, put cast fp16->fp32 to there?
 
     def _avg_grad_merge_after_sum(self, main_block, accumulated_grad_names):
-        tmp_first_opt_idx = get_first_optimize_op_idx(main_block)
         if self.user_defined_strategy.amp and \
                 self.user_defined_strategy.amp_configs['use_dynamic_loss_scaling']:
             # For AMP, if using dynamic loss scaling the avg
@@ -471,6 +468,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                     op._rename_input(loss_scale_name, loss_scale_tmp_var_name)
                     break
         else:
+            tmp_first_opt_idx = get_first_optimize_op_idx(main_block)
             # For pp, do the avg operation for gradient merge after merging
             # the gradient to meet the logic for gradient merge under pure dp.
             for grad in accumulated_grad_names:
@@ -485,10 +483,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                         'bias_after_scale': False,
                         OP_ROLE_KEY: OpRole.Optimize
                     })
-            # Note(Yuang Liu): Need to move the first opt idx a little bit after
-            # to make sure the c_allreudce_sum ops are inserted behind scale ops
-            tmp_first_opt_idx += len(accumulated_grad_names)
-        return tmp_first_opt_idx
 
     def _adapt_amp_clip_without_sharding(self):
         # if not use sharding, adapt amp/clip, for remain parallelism.
