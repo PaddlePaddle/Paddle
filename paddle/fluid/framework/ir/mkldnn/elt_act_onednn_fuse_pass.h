@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -24,20 +24,18 @@ namespace framework {
 namespace ir {
 
 /*
- * \brief   Fuse the ElementwiseAdd and activation operators into single
+ * \brief   Fuse the Elementwise and activation operators into single
  * OneDNN's
- *          ElementwizeAdd with post-op.
- *
- * \note    Currently only ReLU is supported as an activation function.
+ *          Elementwize with post-op.
  */
-class ElementwiseAddActivationOneDNNPass : public FusePassBase {
+class ElementwiseActivationOneDNNPass : public FusePassBase {
  public:
-  virtual ~ElementwiseAddActivationOneDNNPass() {}
+  virtual ~ElementwiseActivationOneDNNPass() {}
 
  protected:
   void ApplyImpl(ir::Graph *graph) const override;
 
-  void FuseElementwiseAddAct(ir::Graph *graph, const std::string &elt_types,
+  void FuseElementwiseAct(ir::Graph *graph, const std::string &elt_types,
                              const std::string &act_types) const;
 };
 

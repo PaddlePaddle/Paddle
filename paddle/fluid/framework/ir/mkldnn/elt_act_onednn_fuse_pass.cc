@@ -1,4 +1,4 @@
-// Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
+// Copyright (c) 2021 PaddlePaddle Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/framework/ir/mkldnn/el_add_act_onednn_fuse_pass.h"
+#include "paddle/fluid/framework/ir/mkldnn/elt_act_onednn_fuse_pass.h"
 #include "paddle/fluid/framework/ir/graph_pattern_detector.h"
 #include "paddle/fluid/framework/op_version_registry.h"
 #include "paddle/fluid/platform/enforce.h"
@@ -24,7 +24,7 @@ namespace ir {
 
 using string::PrettyLogDetail;
 
-void ElementwiseAddActivationOneDNNPass::ApplyImpl(Graph *graph) const {
+void ElementwiseActivationOneDNNPass::ApplyImpl(Graph *graph) const {
   std::vector<std::string> act_types = {"relu",  "tanh",      "leaky_relu",
                                         "swish", "hardswish", "sqrt",
                                         "abs",   "clip",      "gelu"};
@@ -34,10 +34,10 @@ void ElementwiseAddActivationOneDNNPass::ApplyImpl(Graph *graph) const {
 
   for (const auto &elt_type : elt_types)
     for (const auto &act_type : act_types)
-      FuseElementwiseAddAct(graph, elt_type, act_type);
+      FuseElementwiseAct(graph, elt_type, act_type);
 }
 
-void ElementwiseAddActivationOneDNNPass::FuseElementwiseAddAct(
+void ElementwiseActivationOneDNNPass::FuseElementwiseAct(
     Graph *graph, const std::string &elt_type,
     const std::string &act_type) const {
   PADDLE_ENFORCE_NOT_NULL(
@@ -102,9 +102,9 @@ void ElementwiseAddActivationOneDNNPass::FuseElementwiseAddAct(
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(el_add_act_onednn_fuse_pass,
-              paddle::framework::ir::ElementwiseAddActivationOneDNNPass);
-REGISTER_PASS_CAPABILITY(el_add_act_onednn_fuse_pass)
+REGISTER_PASS(elt_act_onednn_fuse_pass,
+              paddle::framework::ir::ElementwiseActivationOneDNNPass);
+REGISTER_PASS_CAPABILITY(elt_act_onednn_fuse_pass)
     .AddCombination(
         paddle::framework::compatible::OpVersionComparatorCombination()
             .LE("elementwise_add", 0)
