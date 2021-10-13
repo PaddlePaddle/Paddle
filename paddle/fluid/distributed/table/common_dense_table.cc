@@ -92,6 +92,10 @@ int32_t CommonDenseTable::initialize_value() {
       param_col_ids_.push_back(x);
     }
   }
+  if (_config.common().name() == "adam_d2sum") {
+    param_col_ids_.insert(param_col_ids_.begin() + 1, -1);
+  }
+
   VLOG(1) << "CommonDenseTable::initialize_value total dim: " << total_dim_ << " fixed_len_params_dim: " << fixed_len_params_dim_;
 
   pull_reservoir_ = ReservoirValue<float>(param_dim_);
@@ -222,7 +226,7 @@ int32_t CommonDenseTable::load(const std::string& path, const std::string& param
     is_read_failed = false;
     try {
       size_t dim_idx = 0;
-      float data_buffer[4];
+      float data_buffer[5];
       float* data_buff_ptr = data_buffer;
       std::string line_data;
       int size = static_cast<int>(values_.size());
@@ -234,6 +238,7 @@ int32_t CommonDenseTable::load(const std::string& path, const std::string& param
         auto read_channel = _afs_client.open_r(channel_config, 0, &err_no);
         size_t file_start_idx = start_dim_idx - i * dim_num_per_file;
 
+        /*
         size_t fixed_len_param_idx = 0;
         for (int x = 0; x < size; ++x) {
           auto& dim = common.dims()[x];
@@ -252,6 +257,7 @@ int32_t CommonDenseTable::load(const std::string& path, const std::string& param
         }
         CHECK(fixed_len_param_idx == fixed_len_params_dim_) << "dense table load expect fixed_len_params_dim_ " 
             << fixed_len_params_dim_ << " but got " << fixed_len_param_idx;
+        */
 
         //not all file contains param and the length of last file containing param may not equal to others
         size_t file_dim_idx = 0;
@@ -269,6 +275,9 @@ int32_t CommonDenseTable::load(const std::string& path, const std::string& param
           //TODO: zcb create param_col and map: col_idx => param_idx(or param_idx list) in init()
           CHECK(str_len == param_col_ids_.size()) << "expect " << param_col_ids_.size() << " float, but got " << str_len;
           for (size_t col_idx = 0; col_idx < str_len; ++col_idx) {
+            if (param_col_ids_[col_idx] < 0) {
+              continue;
+            }
             values_[param_col_ids_[col_idx]][dim_idx] = data_buffer[col_idx];
             VLOG(2) << "CommonDenseTable::load param x: " << param_col_ids_[col_idx] << " y: " << dim_idx << " value: " << values_[param_col_ids_[col_idx]][dim_idx] << " line " << file_dim_idx;
           }
@@ -350,6 +359,7 @@ int32_t CommonDenseTable::save(const std::string& path, const std::string& param
       feasign_size = 0;
       // 40M
       auto write_channel = _afs_client.open_w(channel_config, 1024 * 1024 * 40, &err_no);
+      /*
       for (auto& t : result_buffer_fixed_len) {
           if (0 != write_channel->write_line(t)) {
               ++retry_num;
@@ -360,8 +370,12 @@ int32_t CommonDenseTable::save(const std::string& path, const std::string& param
           }
       }
       VLOG(0) << "result_buffer_param.size(): " << result_buffer_param.size();
+      */
       for (auto& t : result_buffer_param) {
-          if (0 != write_channel->write_line(paddle::string::join_strings(t, '\t'))) {
+          if (_config.common().name() == "adam_d2sum") {
+            t.insert(t.begin() + 1, "0"); //avg_w
+          }
+          if (0 != write_channel->write_line(paddle::string::join_strings(t, ' '))) {
               ++retry_num;
               is_write_failed = true;
               LOG(ERROR) << "DownpourDenseTable save failed, retry it! "

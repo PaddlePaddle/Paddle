@@ -82,7 +82,7 @@ class CtrSparseTable : public SparseTable {
                                size_t num);
 
  protected:
-  const int task_pool_size_ = 11;
+  const int task_pool_size_ = 24;
   size_t _avg_local_shard_num;
   size_t _real_local_shard_num;
   size_t _sparse_table_shard_num;

@@ -96,8 +96,8 @@ class CommonAccessor:
         opt_input_map["adam"] = [("Param", None), ("Moment1", None),
                                  ("Moment2", None), ("Beta1Pow", 1),
                                  ("Beta2Pow", 1), ("LearningRate", 1)]
-        opt_input_map["adam_d2sum"] = [("Param", None), ("Moment", None),
-                                 ("G2Sum", None), ("D2Sum", None),
+        opt_input_map["adam_d2sum"] = [("Param", None), ("D2Sum", None),
+                                 ("G2Sum", None), ("Moment", None),
                                  ("MomentDecayRate", 1), ("AdaDecayRate", 1),
                                  ("AdaEpsilon", 1), ("LearningRate", 1)]
         opt_input_map["sum"] = [("Param", None)]
