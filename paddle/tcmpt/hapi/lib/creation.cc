@@ -50,8 +50,9 @@ Tensor full_like(const Tensor& x, float value) {
   auto out_meta = UnchangedInferShape(dense_x->meta());
 
   // 5. Prepare outputs
-  pt::Tensor out;
-  auto dense_out = std::make_shared<DenseTensor>(out_meta, TensorStatus());
+  Tensor out;
+  auto dense_out =
+      std::make_shared<pt::DenseTensor>(out_meta, pt::TensorStatus());
   kernel_context.EmplaceBackOutput(dense_out);
   out.set_impl(dense_out);
 

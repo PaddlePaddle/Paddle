@@ -23,7 +23,7 @@ limitations under the License. */
 #include "paddle/tcmpt/core/convert_utils.h"
 #include "paddle/tcmpt/core/dense_tensor.h"
 #include "paddle/tcmpt/core/kernel_context.h"
-#include "paddle/tcmpt/core/kernel_generate.h"
+#include "paddle/tcmpt/hapi/lib/kernel_generate.h"
 #include "paddle/tcmpt/infershape/binary.h"
 
 namespace paddle {
@@ -58,7 +58,8 @@ Tensor dot(const Tensor& x, const Tensor& y) {
   // 5. Prepare outputs
   Tensor out;
   // TODO(chenweihang): deal with multiple outputs
-  auto dense_out = std::make_shared<DenseTensor>(out_meta, TensorStatus());
+  auto dense_out =
+      std::make_shared<pt::DenseTensor>(out_meta, pt::TensorStatus());
   kernel_context.EmplaceBackOutput(dense_out);
   out.set_impl(dense_out);
 
