@@ -84,20 +84,38 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
     auto params = ctx.MultiInput<framework::Tensor>("Param");
     auto params_out = ctx.MultiOutput<framework::Tensor>("ParamOut");
     size_t n = params.size();
-    PADDLE_ENFORCE_EQ(n, params_out.size());
+    PADDLE_ENFORCE_EQ(
+        n, params_out.size(),
+        platform::errors::InvalidArgument(
+            "Output(ParamOut) number must be equal to Input(Param) number."));
     for (size_t i = 0; i < n; ++i) {
-      PADDLE_ENFORCE_EQ(params[i], params_out[i]);
+      PADDLE_ENFORCE_EQ(
+          params[i], params_out[i],
+          platform::errors::InvalidArgument(
+              "Input(Param) and Output(ParamOut) must be the same Tensors."));
     }
 
     auto grads = ctx.MultiInput<framework::Tensor>("Grad");
-    PADDLE_ENFORCE_EQ(n, grads.size());
+    PADDLE_ENFORCE_EQ(
+        n, grads.size(),
+        platform::errors::InvalidArgument(
+            "Input(Grad) number must be equal to Input(Param) number."));
 
     auto velocitys = ctx.MultiInput<framework::Tensor>("Velocity");
-    PADDLE_ENFORCE_EQ(n, velocitys.size());
+    PADDLE_ENFORCE_EQ(n, velocitys.size(),
+                      platform::errors::InvalidArgument(
+                          "Input(Velocity) number and Input(Param) number."));
+
     auto velocitys_out = ctx.MultiOutput<framework::Tensor>("VelocityOut");
-    PADDLE_ENFORCE_EQ(n, velocitys_out.size());
+    PADDLE_ENFORCE_EQ(
+        n, velocitys_out.size(),
+        platform::errors::InvalidArgument("Output(VelocityOut) number must be "
+                                          "equal to Input(Param) number."));
     for (size_t i = 0; i < n; ++i) {
-      PADDLE_ENFORCE_EQ(velocitys[i], velocitys_out[i]);
+      PADDLE_ENFORCE_EQ(velocitys[i], velocitys_out[i],
+                        platform::errors::InvalidArgument(
+                            "Input(Velocity) and Output(VelocityOut) must be "
+                            "the same Tensors."));
     }
 
     auto master_params = ctx.MultiInput<framework::Tensor>("MasterParam");
@@ -105,11 +123,23 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
         ctx.MultiOutput<framework::Tensor>("MasterParamOut");
     auto multi_precision = ctx.Attr<bool>("multi_precision");
     if (multi_precision) {
-      PADDLE_ENFORCE_EQ(n, master_params.size());
-      PADDLE_ENFORCE_EQ(n, master_params_out.size());
+      PADDLE_ENFORCE_EQ(
+          n, master_params.size(),
+          platform::errors::InvalidArgument("Input(MasterParam) number must be "
+                                            "equal to Input(Param) number."));
+      PADDLE_ENFORCE_EQ(n, master_params_out.size(),
+                        platform::errors::InvalidArgument(
+                            "Output(MasterParamOut) number must be equal to "
+                            "Input(MasterParam) number."));
       for (size_t i = 0; i < n; ++i) {
-        PADDLE_ENFORCE_EQ(master_params[i], master_params_out[i]);
-        PADDLE_ENFORCE_NOT_NULL(master_params[i]);
+        PADDLE_ENFORCE_EQ(master_params[i], master_params_out[i],
+                          platform::errors::InvalidArgument(
+                              "Input(MasterParam) and Output(MasterParamOut) "
+                              "must be the same Tensors."));
+        PADDLE_ENFORCE_NOT_NULL(master_params[i],
+                                platform::errors::InvalidArgument(
+                                    "Input(MasterParam) must be provided when "
+                                    "multi_precision=True."));
       }
     } else {
       master_params.clear();
@@ -157,6 +187,8 @@ class MergedMomentumOpKernel : public framework::OpKernel<T> {
     } else {
       PADDLE_LAUNCH_MERGED_MOMENTUM_KERNEL(false);
     }
+
+#undef PADDLE_LAUNCH_MERGED_MOMENTUM_KERNEL
   }
 };
 
