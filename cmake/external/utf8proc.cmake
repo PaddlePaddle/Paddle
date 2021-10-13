@@ -22,7 +22,7 @@ SET(UTF8PROC_TAG           v2.6.1)
 
 IF(WIN32)
   SET(UTF8PROC_LIBRARIES     "${UTF8PROC_INSTALL_DIR}/lib/utf8proc_static.lib")
-  add_definitions(-DUTF8PROC_STATIC)
+  add_definitions(-DUTF8PROC_EXPORTS)
 ELSE(WIN32)
   SET(UTF8PROC_LIBRARIES     "${UTF8PROC_INSTALL_DIR}/lib/libutf8proc.a")
 ENDIF(WIN32)
