@@ -141,15 +141,15 @@ struct BroadcastConfig {
  * parameter will be used when IsBoundary = true.
  * size_ny: The current block needs to load size_ny rows of data. This parameter
  * will be used when IsBoundary = true.
- * stride_nx: The stride of cols.
- * stride_ny: The stride of rows.
+ * stride_nx: Each read one element stride stride_nx elements in the last dim.
+ * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
 template <typename Tx, typename Ty, int NX, int NY, int BlockSize,
           bool IsBoundary = false>
 __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
                                          int size_nx, int size_ny,
                                          int stride_nx, int stride_ny) {
-  int thread_offset = threadIdx.x * NX;
+  int thread_offset = threadIdx.x;
   int left_size_nx = size_nx - thread_offset;
 
   // Each branch is added for better performance
@@ -165,7 +165,7 @@ __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
 #pragma unroll
     for (int idy = 0; idy < NY; ++idy) {
       if (IsBoundary) {
-        if (idy >= size_ny) {
+        if (idy * stride_ny >= size_ny) {
           break;
         }
       }
@@ -175,7 +175,7 @@ __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
       if (IsBoundary) {
-        if (idx >= left_size_nx) {
+        if (idx * stride_nx >= left_size_nx) {
           break;
         }
       }
@@ -185,14 +185,14 @@ __device__ __forceinline__ void ReadData(Ty* dst, const Tx* __restrict__ src,
 #pragma unroll
     for (int idx = 0; idx < NX; ++idx) {
       if (IsBoundary) {
-        if (idx >= left_size_nx) {
+        if (idx * stride_nx >= left_size_nx) {
           break;
         }
       }
 #pragma unroll
       for (int idy = 0; idy < NY; ++idy) {
         if (IsBoundary) {
-          if (idy >= size_ny) {
+          if (idy * stride_ny >= size_ny) {
             break;
           }
         }
@@ -299,8 +299,8 @@ __device__ __forceinline__ void ReadData(T* dst, const T* __restrict__ src,
  * coordinate mapping relationship between output data and input data. Please
  * refer to the sample code for specific usage.
  * total_num_output: Total number of original output.
- * stride_nx: The stride of cols.
- * stride_ny: The stride of rows.
+ * stride_nx: Each read one element stride stride_nx elements in the last dim.
+ * stride_ny: Each read one element stride stride_ny elements in the first dim.
  */
 template <typename T, int NX, int NY, int BlockSize, int Rank,
           bool IsBoundary = false>
@@ -363,8 +363,8 @@ __device__ __forceinline__ void ReadDataBc(
  * parameter will be used when IsBoundary = true.
  * size_ny: The current block needs to load size_ny rows of data. This parameter
  * will be used when IsBoundary = true.
- * stride_nx: The stride of cols.
- * stride_ny: The stride of rows.
+ * stride_nx: Each read one element stride stride_nx elements in the last dim.
+ * stride_ny: Each read one element stride stride_ny elements in the first dim.
  * reduce_last_dim: Used to indicate whether the dimension of reduce contains
  * the lowest dimension.
  */
@@ -375,17 +375,21 @@ __device__ __forceinline__ void ReadDataReduce(
     const IndexCal& index_cal, int size_nx, int size_ny, int stride_nx,
     int stride_ny, bool reduce_last_dim) {
   int thread_offset = 0;
+  int left_size_nx = size_nx;
+  int left_size_ny = size_ny;
   if (reduce_last_dim) {
     thread_offset = block_offset + threadIdx.x;
+    left_size_nx -= thread_offset;
   } else {
     thread_offset = block_offset + threadIdx.y;
+    left_size_ny -= thread_offset;
   }
 
   if (NX == 1) {
 #pragma unroll
     for (int ny = 0; ny < NY; ++ny) {
       if (IsBoundary) {
-        if (thread_offset >= size_ny) {
+        if (ny * stride_ny >= left_size_ny) {
           break;
         }
       }
@@ -396,15 +400,11 @@ __device__ __forceinline__ void ReadDataReduce(
   } else {
 #pragma unroll
     for (int nx = 0; nx < NX; ++nx) {
-      if (IsBoundary) {
-        if (nx * stride_nx >= size_nx) {
-          break;
-        }
-      }
 #pragma unroll
       for (int ny = 0; ny < NY; ++ny) {
         if (IsBoundary) {
-          if (nx * stride_nx >= size_nx) {
+          if ((ny * stride_ny >= left_size_ny) ||
+              (nx * stride_nx >= left_size_nx)) {
             break;
           }
         }
