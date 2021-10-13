@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/paddle2cinn/cinn_subgraph_search_pass.h"
+#include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 
 #include <algorithm>
 #include <memory>
@@ -96,12 +96,12 @@ std::unique_ptr<Graph> BuildNoCinnSubgraph() {
   return g;
 }
 
-TEST(CinnSubgraphSearchPassTest, NoCinnSubgraph) {
+TEST(BuildCinnPassTest, NoCinnSubgraph) {
   auto g = BuildNoCinnSubgraph();
   auto previous_nodes = g->Nodes();
 
-  auto pass = paddle::framework::ir::PassRegistry::Instance().Get(
-      "cinn_subgraph_search_pass");
+  auto pass =
+      paddle::framework::ir::PassRegistry::Instance().Get("build_cinn_pass");
   std::vector<std::unique_ptr<Graph>> cinn_subgraphs;
   pass->SetNotOwned<std::vector<std::unique_ptr<Graph>>>("cinn_subgraphs",
                                                          &cinn_subgraphs);
@@ -176,11 +176,11 @@ std::unique_ptr<Graph> BuildAllOpSupportCinnGraph() {
   return g;
 }
 
-TEST(CinnSubgraphSearchPassTest, AllOpSupportCinn) {
+TEST(BuildCinnPassTest, AllOpSupportCinn) {
   auto g = BuildAllOpSupportCinnGraph();
 
-  auto pass = paddle::framework::ir::PassRegistry::Instance().Get(
-      "cinn_subgraph_search_pass");
+  auto pass =
+      paddle::framework::ir::PassRegistry::Instance().Get("build_cinn_pass");
   std::vector<std::unique_ptr<Graph>> cinn_subgraphs;
   pass->SetNotOwned<std::vector<std::unique_ptr<Graph>>>("cinn_subgraphs",
                                                          &cinn_subgraphs);
@@ -188,14 +188,14 @@ TEST(CinnSubgraphSearchPassTest, AllOpSupportCinn) {
 
   // After search, the graph should as following
   // v1 --|
-  // v2 --| --> kCinnSubgraphSearchOpName --> v6
+  // v2 --| --> kCinnLaunchOp --> v6
   // v4 --|
   const auto& nodes = g->Nodes();
   ASSERT_EQ(nodes.size(), static_cast<size_t>(5));
 
-  // A new op named kCinnSubgraphSearchOpName should be added
-  ASSERT_TRUE(CheckNodeExisted(nodes, kCinnSubgraphSearchOpName));
-  auto* cinn_op = GetNode(nodes, kCinnSubgraphSearchOpName);
+  // A new op named kCinnLaunchOp should be added
+  ASSERT_TRUE(CheckNodeExisted(nodes, kCinnLaunchOp));
+  auto* cinn_op = GetNode(nodes, kCinnLaunchOp);
   auto* v1 = GetNode(nodes, "var1");
   auto* v2 = GetNode(nodes, "var2");
   auto* v4 = GetNode(nodes, "var4");
@@ -283,11 +283,11 @@ std::unique_ptr<Graph> BuildGraphWithOneCinnSubgraph() {
   return g;
 }
 
-TEST(CinnSubgraphSearchPassTest, OneCinnSubgraph) {
+TEST(BuildCinnPassTest, OneCinnSubgraph) {
   auto g = BuildGraphWithOneCinnSubgraph();
 
-  auto pass = paddle::framework::ir::PassRegistry::Instance().Get(
-      "cinn_subgraph_search_pass");
+  auto pass =
+      paddle::framework::ir::PassRegistry::Instance().Get("build_cinn_pass");
   std::vector<std::unique_ptr<Graph>> cinn_subgraphs;
   pass->SetNotOwned<std::vector<std::unique_ptr<Graph>>>("cinn_subgraphs",
                                                          &cinn_subgraphs);
@@ -295,13 +295,13 @@ TEST(CinnSubgraphSearchPassTest, OneCinnSubgraph) {
 
   // After search, the graph should as following
   // fake1 --> v1 --
-  //                | --> kCinnSubgraphSearchOpName --> v4 --> fake2
+  //                | --> kCinnLaunchOp --> v4 --> fake2
   //           v2 --
   const auto& nodes = g->Nodes();
   ASSERT_EQ(nodes.size(), static_cast<size_t>(6));
 
-  // A new op named kCinnSubgraphSearchOpName should be added
-  ASSERT_TRUE(CheckNodeExisted(nodes, kCinnSubgraphSearchOpName));
+  // A new op named kCinnLaunchOp should be added
+  ASSERT_TRUE(CheckNodeExisted(nodes, kCinnLaunchOp));
 
   // previous op (mul, add, relu) should be removed
   ASSERT_FALSE(CheckNodeExisted(nodes, "mul"));
@@ -390,11 +390,11 @@ std::unique_ptr<Graph> BuildGraphWithMultiCinnSubgraph() {
   return g;
 }
 
-TEST(CinnSubgraphSearchPassTest, MultiCinnSubgraph) {
+TEST(BuildCinnPassTest, MultiCinnSubgraph) {
   auto g = BuildGraphWithMultiCinnSubgraph();
 
-  auto pass = paddle::framework::ir::PassRegistry::Instance().Get(
-      "cinn_subgraph_search_pass");
+  auto pass =
+      paddle::framework::ir::PassRegistry::Instance().Get("build_cinn_pass");
   std::vector<std::unique_ptr<Graph>> cinn_subgraphs;
   pass->SetNotOwned<std::vector<std::unique_ptr<Graph>>>("cinn_subgraphs",
                                                          &cinn_subgraphs);
@@ -407,9 +407,9 @@ TEST(CinnSubgraphSearchPassTest, MultiCinnSubgraph) {
   const auto& nodes = g->Nodes();
   ASSERT_EQ(nodes.size(), static_cast<size_t>(10));
 
-  // A new op named kCinnSubgraphSearchOpName should be added
-  ASSERT_TRUE(CheckNodeExisted(nodes, kCinnSubgraphSearchOpName));
-  ASSERT_EQ(CountNode(nodes, kCinnSubgraphSearchOpName), 2);
+  // A new op named kCinnLaunchOp should be added
+  ASSERT_TRUE(CheckNodeExisted(nodes, kCinnLaunchOp));
+  ASSERT_EQ(CountNode(nodes, kCinnLaunchOp), 2);
 
   // previous op (mul, add, relu) should be removed
   ASSERT_FALSE(CheckNodeExisted(nodes, "mul"));
@@ -439,4 +439,4 @@ TEST(CinnSubgraphSearchPassTest, MultiCinnSubgraph) {
 }  // namespace framework
 }  // namespace paddle
 
-USE_PASS(cinn_subgraph_search_pass);
+USE_PASS(build_cinn_pass);

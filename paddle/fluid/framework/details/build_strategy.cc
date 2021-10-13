@@ -71,11 +71,6 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                         "modify_op_lock_and_record_event_pass");
     // Note: This pass is used to check whether the multi_device_graph is right.
     AppendPass("multi_devices_check_pass");
-
-    // Note: This pass is used to enable cinn.
-    if (FLAGS_use_cinn) {
-      AppendPass("paddle_to_cinn_pass");
-    }
     SetCollectiveContext();
   }
 
@@ -486,7 +481,7 @@ USE_PASS(fuse_momentum_op_pass);
 USE_PASS(fuse_all_reduce_op_pass);
 USE_PASS(runtime_context_cache_pass);
 USE_PASS(add_reader_dependency_pass);
-USE_PASS(cinn_subgraph_search_pass);
+USE_PASS(build_cinn_pass);
 #ifdef PADDLE_WITH_MKLDNN
 USE_PASS(mkldnn_placement_pass);
 #endif

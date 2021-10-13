@@ -20,15 +20,15 @@ namespace paddle {
 namespace framework {
 namespace paddle2cinn {
 
-constexpr char kCinnSubgraphSearchOpName[] = "cinn_subgraph_search_op";
+constexpr char kCinnLaunchOp[] = "CinnLaunchOp";
 
-// A pass named CinnSubgraphSearchPass, the function of this pass is:
+// A pass named BuildCinnPass, the function of this pass is:
 //
 // a) Detect the subgraphs that can be compiled by the CINN compiler. We call a
 // detected subgraph a cluster, which is consisted of several op nodes.
 //
 // b) Call the CINN compiler to compile each original cluster and get the
-// compiled cluster, which is consisted of several kCinnSubgraphSearchOpName.
+// compiled cluster, which is consisted of several kCinnLaunchOp.
 //
 // c) Replace the original cluster with corresponding compiled cluster on the
 // original graph.
@@ -51,7 +51,7 @@ constexpr char kCinnSubgraphSearchOpName[] = "cinn_subgraph_search_op";
 // We first add links between the var nodes in global graph and the op nodes in
 // the compiled cluster, and then remove useless links between the var nodes in
 // global graph and the op nodes in the original cluster.
-class CinnSubgraphSearchPass : public framework::ir::Pass {
+class BuildCinnPass : public framework::ir::Pass {
  protected:
   void ApplyImpl(framework::ir::Graph* graph) const override;
 };

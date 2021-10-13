@@ -12,7 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/fluid/framework/paddle2cinn/cinn_subgraph_search_pass.h"
+#include "paddle/fluid/framework/paddle2cinn/build_cinn_pass.h"
 
 #include <memory>
 #include <string>
@@ -168,7 +168,7 @@ Node* AddSpecialOpToGraph(Graph* graph, const GraphNodeSet& cluster_inputs,
                           const GraphNodeSet& cluster_outputs) {
   // add special cinn op
   framework::OpDesc special_op_desc;
-  special_op_desc.SetType(kCinnSubgraphSearchOpName);
+  special_op_desc.SetType(kCinnLaunchOp);
   auto* special_op_node = graph->CreateOpNode(&special_op_desc);
   special_op_node->inputs.assign(cluster_inputs.begin(), cluster_inputs.end());
   special_op_node->outputs.assign(cluster_outputs.begin(),
@@ -190,9 +190,9 @@ void AddLinkToSpecialOp(Node* special_op_node,
   }
 }
 
-void RemoveUselessLink(const GraphNodeSet& cluster,
-                       const GraphNodeSet& cluster_inputs,
-                       const GraphNodeSet& cluster_outputs) {
+void RemoveLinkFromCluster(const GraphNodeSet& cluster,
+                           const GraphNodeSet& cluster_inputs,
+                           const GraphNodeSet& cluster_outputs) {
   // remove all nodes in cluster
   auto get_preserved_ops = [&cluster](const GraphNodeVec& ops) {
     GraphNodeVec nodes;
@@ -206,14 +206,14 @@ void RemoveUselessLink(const GraphNodeSet& cluster,
 
   // removing useless link from cluster_inputs to cluster
   for (auto* var_node : cluster_inputs) {
-    auto preserved_node = get_preserved_ops(var_node->outputs);
-    var_node->outputs.assign(preserved_node.begin(), preserved_node.end());
+    auto preserved_nodes = get_preserved_ops(var_node->outputs);
+    var_node->outputs.assign(preserved_nodes.begin(), preserved_nodes.end());
   }
 
   // removing useless link from cluster to cluster_outputs
   for (auto* var_node : cluster_outputs) {
-    auto preserved_node = get_preserved_ops(var_node->inputs);
-    var_node->inputs.assign(preserved_node.begin(), preserved_node.end());
+    auto preserved_nodes = get_preserved_ops(var_node->inputs);
+    var_node->inputs.assign(preserved_nodes.begin(), preserved_nodes.end());
   }
 }
 
@@ -230,18 +230,22 @@ void RemoveSubGraphFromGraph(const GraphNodeSet& cluster,
 }
 
 // Replacing Cinn subgraph to a special op node, whose op_type is
-// kCinnSubgraphSearchOpName, and input is cluster_inputs and
-// outputs is cluster_outputs.
-// Meanwhile, remove all clusters node from cluster_inputs and cluster_outputs.
+// kCinnLaunchOp, and inputs ares cluster_inputs and outputs are
+// cluster_outputs.
+// Meanwhile, move all links of cluster to the special op.
 void ReplaceSubGraphWithSpecialOpNode(const GraphNodeSet& cluster,
                                       const GraphNodeSet& cluster_inputs,
                                       const GraphNodeSet& cluster_outputs,
                                       const GraphNodeSet& cluster_internals,
                                       Graph* graph) {
+  // First, add the special op node whose name is "kCinnLaunchOp" into graph
   auto special_op_node =
       AddSpecialOpToGraph(graph, cluster_inputs, cluster_outputs);
-  RemoveUselessLink(cluster, cluster_inputs, cluster_outputs);
+  // Second, remove all graph's links which are from or to cluster nodes
+  RemoveLinkFromCluster(cluster, cluster_inputs, cluster_outputs);
+  // Third, add new links from or to the the special op node
   AddLinkToSpecialOp(special_op_node, cluster_inputs, cluster_outputs);
+  // Finally, remove the cinn sub graph from graph
   RemoveSubGraphFromGraph(cluster, cluster_internals, graph);
 }
 
@@ -276,7 +280,7 @@ void SearchAllSubgraphs(Graph* graph,
   }
 }
 
-void CinnSubgraphSearchPass::ApplyImpl(Graph* graph) const {
+void BuildCinnPass::ApplyImpl(Graph* graph) const {
   auto& cinn_subgraphs =
       Get<std::vector<std::unique_ptr<Graph>>>("cinn_subgraphs");
   SearchAllSubgraphs(graph, &cinn_subgraphs);
@@ -286,5 +290,4 @@ void CinnSubgraphSearchPass::ApplyImpl(Graph* graph) const {
 }  // namespace framework
 }  // namespace paddle
 
-REGISTER_PASS(cinn_subgraph_search_pass,
-              paddle::framework::paddle2cinn::CinnSubgraphSearchPass);
+REGISTER_PASS(build_cinn_pass, paddle::framework::paddle2cinn::BuildCinnPass);
