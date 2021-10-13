@@ -371,6 +371,8 @@ class ShardingOptimizer(MetaOptimizerBase):
             main_block, strategy=strategy, shard=shard)
 
         len_of_ops = len(main_block.ops)
+        if self.scale_gradient:
+            self._avg_grad_merge_after_sum(main_block, accumulated_grad_names)
         first_optimize_op_index = get_first_optimize_op_idx(main_block)
 
         if self.pp_allreduce_in_optimize:
@@ -435,8 +437,6 @@ class ShardingOptimizer(MetaOptimizerBase):
                 user_defined_strategy=strategy)
             first_optimize_op_index += (len(main_block.ops) - len_of_ops)
             len_of_ops = len(main_block.ops)
-
-        self._avg_grad_merge_after_sum(main_block, accumulated_grad_names)
 
         # FIXME(wangxi): if fp16_allreduce, put cast fp16->fp32 to there?
 
