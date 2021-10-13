@@ -51,6 +51,7 @@ DECLARE_bool(check_nan_inf);
 DECLARE_bool(enable_unused_var_check);
 PADDLE_DEFINE_EXPORTED_int32(inner_op_parallelism, 0,
                              "number of threads for inner op");
+DECLARE_bool(use_pt_kernel);
 
 namespace paddle {
 namespace framework {
@@ -1155,7 +1156,8 @@ void OperatorWithKernel::RunImpl(const Scope& scope,
   // phase
 
   // VLOG(1) << "Pt KernelFactory: " << pt::KernelFactory::Instance();
-  if (pt::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
+  if (FLAGS_use_pt_kernel &&
+      pt::KernelFactory::Instance().ContainsKernel(type_.c_str())) {
     if (pt_kernel_key_.get() == nullptr || pt_kernel_.get() == nullptr) {
       ChoosePtKernel(*runtime_ctx, *dev_ctx);
     }
@@ -1340,8 +1342,8 @@ void OperatorWithKernel::ChoosePtKernel(
       ConstructPtKernelName(Type(), *(Info().proto_), ctx.inputs, ctx.outputs);
 
   // 2. construct op kernel key
-  pt_kernel_key_.reset(
-      new pt::KernelKey(ConstructPtKernelKey(ctx.inputs, dev_ctx.GetPlace())));
+  pt_kernel_key_.reset(new pt::KernelKey(
+      ConstructPtKernelKey(ctx.inputs, Attrs(), dev_ctx.GetPlace())));
 
   // 3. selecte op kernel
   pt_kernel_.reset(new pt::Kernel(pt::KernelFactory::Instance().SelectKernel(
@@ -1857,12 +1859,16 @@ OpKernelType OperatorWithKernel::GetKernelTypeForVar(
 }
 
 pt::KernelKey OperatorWithKernel::ConstructPtKernelKey(
-    const VariableValueMap& inputs, const platform::Place& ctx_place) const {
+    const VariableValueMap& inputs, const AttributeMap& attrs,
+    const platform::Place& ctx_place) const {
   // 1. get backend based place and attrs
+  auto attr_reader = AttrReader(attrs);
   pt::Backend backend = pt::TransToPtBackend(ctx_place);
-  if (HasAttr("use_mkldnn") && Attr<bool>("use_mkldnn") == true) {
+  if (attrs.count("use_mkldnn") != 0 &&
+      attr_reader.Get<bool>("use_mkldnn") == true) {
     backend = pt::Backend::kMKLDNN;
-  } else if (HasAttr("use_cudnn") && Attr<bool>("use_cudnn") == true) {
+  } else if (attrs.count("use_cudnn") != 0 &&
+             attr_reader.Get<bool>("use_cudnn") == true) {
     backend = pt::Backend::kCUDNN;
   } else {
     // do nothing
@@ -1889,6 +1895,13 @@ pt::KernelKey OperatorWithKernel::ConstructPtKernelKey(
       platform::errors::NotFound(
           "DataType should be indicated by input Variable at %s.", Type()));
   pt::DataType dtype = pt::TransToPtDataType(data_type);
+
+  // TODO(chenweihang): polish special dtype rules
+  if (attrs.count("dtype") != 0 &&
+      attr_reader.Get<int>("dtype") != static_cast<int>(data_type)) {
+    dtype = pt::TransToPtDataType(static_cast<framework::proto::VarType::Type>(
+        attr_reader.Get<int>("dtype")));
+  }
 
   // 4. build pt KernelKey
   return pt::KernelKey(backend, layout, dtype);

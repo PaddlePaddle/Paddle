@@ -22,6 +22,7 @@
 #include "paddle/fluid/platform/xpu/xpu_op_list.h"
 #endif
 DECLARE_bool(check_nan_inf);
+DECLARE_bool(use_pt_kernel);
 
 namespace paddle {
 namespace imperative {
@@ -205,11 +206,14 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
 #endif
 
   // 1. get expected kernel key
-  if (pt::KernelFactory::Instance().ContainsKernel(op.Type().c_str())) {
+  if (FLAGS_use_pt_kernel &&
+      pt::KernelFactory::Instance().ContainsKernel(op.Type().c_str())) {
     auto kernel_name =
         ConstructPtKernelName<VarType>(op.Type(), (*op.Info().proto_), ins);
     auto inputs = BuildInputMap<VarType>(ins);
-    auto pt_kernel_key = op.ConstructPtKernelKey(inputs, place);
+    // we only need attrs here
+    // auto final_attrs = BuildAttrMap(attrs, default_attrs);
+    auto pt_kernel_key = op.ConstructPtKernelKey(inputs, attrs, place);
     auto pt_kernel =
         pt::KernelFactory::Instance().SelectKernel(kernel_name, pt_kernel_key);
     // for debug
