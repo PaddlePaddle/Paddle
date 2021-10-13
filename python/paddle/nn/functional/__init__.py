@@ -15,6 +15,7 @@
 # TODO: import all neural network related api under this directory,
 # including layers, linear, conv, rnn etc.
 
+from .activation import celu  # noqa: F401
 from .activation import elu  # noqa: F401
 from .activation import elu_  # noqa: F401
 from .activation import gelu  # noqa: F401
@@ -115,6 +116,7 @@ from ...fluid.layers import temporal_shift  # noqa: F401
 from .sparse_attention import sparse_attention
 
 __all__ = [     #noqa
+           'celu',
            'conv1d',
            'conv1d_transpose',
            'conv2d',
