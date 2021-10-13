@@ -30,7 +30,9 @@ def run_momentum_op(params,
                     rescale_grad=0.01,
                     use_merged=False):
     assert len(params) == len(grads)
-    assert len(velocitys) == len(velocitys)
+    assert len(params) == len(velocitys)
+    if multi_precision:
+        assert len(params) == len(master_params)
     op_type = 'merged_momentum' if use_merged else 'momentum'
     main = paddle.static.Program()
     startup = paddle.static.Program()
