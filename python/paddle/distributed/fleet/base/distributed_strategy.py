@@ -441,7 +441,7 @@ class DistributedStrategy(object):
             # code block for defining loss and local optimizer
             # sgd = fleet.distributed_optimizer(optimizer, strategy)
         """
-        return get_msg_dict(self.strategy.fs_client_param)
+        return self.strategy.fs_client_param
 
     @fs_client_param.setter
     @is_strict_auto

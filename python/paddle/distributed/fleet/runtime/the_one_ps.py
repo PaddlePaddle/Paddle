@@ -448,15 +448,21 @@ class Worker:
 
 
 class fsClient:
-    def __init__(self, uri, user, passwd, hadoop_bin):
-        self.uri = uri
-        self.user = user
-        self.passwd = passwd
-        self.hadoop_bin = hadoop_bin
+    def __init__(self, proto):
+        self.proto = proto
+        self.uri = proto.uri
+        self.user = proto.user
+        self.passwd = proto.passwd
+        self.hadoop_bin = proto.hadoop_bin
 
     def to_string(self):
-        return "fs_client_param {\n\t" + "uri:\"{}\"\n\tuser:\"{}\"\n\tpasswd:\"{}\"\n\thadoop_bin:\"{}\"\n".format(
-            self.uri, self.user, self.passwd, self.hadoop_bin) + "}\n"
+        from google.protobuf import text_format
+        proto_txt = text_format.MessageToString(self.proto)
+        if proto_txt:
+            fs_str = "fs_client_param {{\n{}}}"
+            return fs_str.format(proto_txt)
+        else:
+            return ""
 
 
 class TheOnePSRuntime(RuntimeBase):
@@ -881,13 +887,8 @@ class TheOnePSRuntime(RuntimeBase):
 
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
-        fs_client = kwargs.get("fs_client") if "fs_client" in kwargs else {}
-        if "uri" in fs_client and "user" in fs_client and "passwd" in fs_client and "hadoop_bin" in fs_client:
-            self.fs = fsClient(
-                fs_client.get("uri"),
-                fs_client.get("user"),
-                fs_client.get("passwd"), fs_client.get("hadoop_bin"))
-            proto_txt = proto_txt + "\n" + self.fs.to_string()
+        fs_client = fsClient(self.context["user_defined_strategy"].fs_client_param)
+        proto_txt = proto_txt + "\n" + fs_client.to_string()
         #with open('./sparse_table.prototxt') as f:
         #    proto_txt = f.read()
 

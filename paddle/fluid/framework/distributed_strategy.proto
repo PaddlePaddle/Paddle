@@ -211,15 +211,10 @@ message DownpourAccessorParameter {
 }
 
 message FsClientParameter {
-    enum FsApiType {
-        HDFS = 0;
-        AFS = 1;
-    }
-    optional FsApiType fs_type = 1 [default = HDFS];
-    optional string uri = 2; 
-    optional string user = 3; 
-    optional string passwd = 4; 
-    optional string hadoop_bin = 5;
+    optional string uri = 1; 
+    optional string user = 2; 
+    optional string passwd = 3; 
+    optional string hadoop_bin = 4;
 }
 
 message DistributedStrategy {
