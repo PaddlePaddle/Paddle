@@ -2986,6 +2986,29 @@ PDNode *patterns::LayerNorm::operator()() {
   return shift_out;
 }
 
+// Add support int8 flag
+PDNode *patterns::AddSupportInt8::operator()() {
+  auto prev_op =
+      pattern->NewNode(prev_op_repr())
+          ->assert_is_op()
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("out_threshold") ? true : false;
+          });
+  auto prev_out = pattern->NewNode(prev_out_repr())->assert_is_var();
+  auto quant_op =
+      pattern->NewNode(quant_op_repr())
+          ->assert_is_op()
+          ->assert_more([&](Node *node) {
+            return node->Op()->HasAttr("out_threshold") ? true : false;
+          });
+  auto quant_out =
+      pattern->NewNode(quant_out_repr())->assert_is_var()->AsOutput();
+  prev_op->LinksTo({prev_out});
+  prev_out->LinksTo({quant_op});
+  quant_op->LinksTo({quant_out});
+  return quant_out;
+}
+
 }  // namespace ir
 }  // namespace framework
 }  // namespace paddle

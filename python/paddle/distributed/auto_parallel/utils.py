@@ -277,3 +277,40 @@ def _linear_idx2coordinate(mesh_shape, linear_idx):
 
     # row major order
     return coordinate
+
+
+def _get_unshard_dist_shape(var, dist_attr):
+    var_shape = var.shape
+    mapping = dist_attr.get_dims_mapping()
+    mesh = dist_attr.get_process_mesh().topology
+    assert len(var_shape) == len(
+        mapping
+    ), "variable shape [{}] and dim_mapping [{}] is NOT match !".format(
+        var_shape, mapping)
+    new_shape = []
+    for idx in range(len(var_shape)):
+        if var_shape[idx] == -1 or mapping[idx] == -1:
+            new_shape.append(var_shape[idx])
+        else:
+            new_shape.append(var_shape[idx] * mesh[mapping[idx]])
+
+    return new_shape
+
+
+def make_data_unshard(dist_main_prog, dist_startup_prog):
+    from .context import get_default_distributed_context
+    dist_context = get_default_distributed_context()
+
+    for var in dist_main_prog.list_vars():
+        if var.is_data:
+            tensor_dist_attr = dist_context.get_tensor_distributed_attr_for_program(
+                var)
+            inverse_shape = _get_unshard_dist_shape(var, tensor_dist_attr)
+            var.desc.set_shape(inverse_shape)
+            dim_mapping = tensor_dist_attr.get_dims_mapping()
+            dim_mapping = [-1] * len(dim_mapping)
+            tensor_dist_attr.set_dims_mapping(dim_mapping)
+            dist_context.set_tensor_distributed_attr_for_program(
+                var, tensor_dist_attr)
+            var._set_attr('dim_mapping' + core.kAutoParallelSuffix(),
+                          dim_mapping)
