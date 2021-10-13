@@ -294,7 +294,7 @@ class DenseNet(nn.Layer):
         if self.with_pool:
             y = self.pool2d_avg(conv)
 
-        if self.num_classes:
+        if self.num_classes > 0:
             y = paddle.flatten(y, start_axis=1, stop_axis=-1)
             y = self.out(y)
 
