@@ -148,20 +148,28 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
   //             << attn_max_qo_seq_len << ", " << attn_max_kv_seq_len << ", "
   //             << batch_size << ", " << attn_beam_size << std::endl;
 
-  // Setup Attention Desc
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetAttnDescriptor(
-      MHASingleton::Instance().Data(key).attn_desc,
-      CUDNN_ATTN_QUERYMAP_ALL_TO_ONE, attn_heads, attn_sm_scaler, dtype,
-      comp_prec, CUDNN_DEFAULT_MATH, attn_dropout_desc, post_dropout_desc,
-      attn_vec_size, attn_vec_size, attn_vec_size, attn_q_proj_size,
-      attn_k_proj_size, attn_v_proj_size, attn_o_proj_size, attn_max_qo_seq_len,
-      attn_max_kv_seq_len, batch_size, attn_beam_size));
+  {
+    // platform::RecordEvent record_event("cudnn_set_attn_descriptor",
+    //                                    platform::EventRole::kInnerOp);
+    // Setup Attention Desc
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetAttnDescriptor(
+        MHASingleton::Instance().Data(key).attn_desc,
+        CUDNN_ATTN_QUERYMAP_ALL_TO_ONE, attn_heads, attn_sm_scaler, dtype,
+        comp_prec, CUDNN_DEFAULT_MATH, attn_dropout_desc, post_dropout_desc,
+        attn_vec_size, attn_vec_size, attn_vec_size, attn_q_proj_size,
+        attn_k_proj_size, attn_v_proj_size, attn_o_proj_size,
+        attn_max_qo_seq_len, attn_max_kv_seq_len, batch_size, attn_beam_size));
+  }
 
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetMultiHeadAttnBuffers(
-      cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
-      &MHASingleton::Instance().Data(key).weights_size,
-      &MHASingleton::Instance().Data(key).workspace_size,
-      &MHASingleton::Instance().Data(key).reserve_size));
+  {
+    // platform::RecordEvent record_event("cudnn_get_multi_head_attn_buffers",
+    //                                    platform::EventRole::kInnerOp);
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnGetMultiHeadAttnBuffers(
+        cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
+        &MHASingleton::Instance().Data(key).weights_size,
+        &MHASingleton::Instance().Data(key).workspace_size,
+        &MHASingleton::Instance().Data(key).reserve_size));
+  }
 
   // TODO(rewang): ensure workspace size will not be increased
   if (MHASingleton::Instance().Data(key).workspace == nullptr) {
@@ -206,10 +214,15 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
   dimA[CUDNN_SEQDATA_BEAM_DIM] = 1;
   dimA[CUDNN_SEQDATA_TIME_DIM] = q->dims()[1];
   dimA[CUDNN_SEQDATA_BATCH_DIM] = q->dims()[0];
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
-      MHASingleton::Instance().Data(key).q_desc, dtype, CUDNN_SEQDATA_DIM_COUNT,
-      dimA, axes, batch_size * attn_beam_size, attn_qo_seqlen.data(), nullptr));
-  // dimA, axes, batch_size * attn_beam_size, qo_slen_host.data(), nullptr));
+  {
+    // platform::RecordEvent record_event("cudnn_set_seq_data_descriptor_q",
+    //                                    platform::EventRole::kInnerOp);
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
+        MHASingleton::Instance().Data(key).q_desc, dtype,
+        CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
+        attn_qo_seqlen.data(), nullptr));
+    // dimA, axes, batch_size * attn_beam_size, qo_slen_host.data(), nullptr));
+  }
 
   //   dimA[CUDNN_SEQDATA_VECT_DIM] = k->dims()[3];
   //   dimA[CUDNN_SEQDATA_BEAM_DIM] = k->dims()[2];
@@ -219,10 +232,15 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
   dimA[CUDNN_SEQDATA_BEAM_DIM] = 1;
   dimA[CUDNN_SEQDATA_TIME_DIM] = k->dims()[1];
   dimA[CUDNN_SEQDATA_BATCH_DIM] = k->dims()[0];
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
-      MHASingleton::Instance().Data(key).k_desc, dtype, CUDNN_SEQDATA_DIM_COUNT,
-      dimA, axes, batch_size * attn_beam_size, attn_kv_seqlen.data(), nullptr));
-  // dimA, axes, batch_size * attn_beam_size, kv_slen_host.data(), nullptr));
+  {
+    // platform::RecordEvent record_event("cudnn_set_seq_data_descriptor_k",
+    //                                    platform::EventRole::kInnerOp);
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
+        MHASingleton::Instance().Data(key).k_desc, dtype,
+        CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
+        attn_kv_seqlen.data(), nullptr));
+    // dimA, axes, batch_size * attn_beam_size, kv_slen_host.data(), nullptr));
+  }
 
   //   dimA[CUDNN_SEQDATA_VECT_DIM] = v->dims()[3];
   //   dimA[CUDNN_SEQDATA_BEAM_DIM] = v->dims()[2];
@@ -232,10 +250,15 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
   dimA[CUDNN_SEQDATA_BEAM_DIM] = 1;
   dimA[CUDNN_SEQDATA_TIME_DIM] = v->dims()[1];
   dimA[CUDNN_SEQDATA_BATCH_DIM] = v->dims()[0];
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
-      MHASingleton::Instance().Data(key).v_desc, dtype, CUDNN_SEQDATA_DIM_COUNT,
-      dimA, axes, batch_size * attn_beam_size, attn_kv_seqlen.data(), nullptr));
-  // dimA, axes, batch_size * attn_beam_size, kv_slen_host.data(), nullptr));
+  {
+    // platform::RecordEvent record_event("cudnn_set_seq_data_descriptor_v",
+    //                                    platform::EventRole::kInnerOp);
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
+        MHASingleton::Instance().Data(key).v_desc, dtype,
+        CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
+        attn_kv_seqlen.data(), nullptr));
+    // dimA, axes, batch_size * attn_beam_size, kv_slen_host.data(), nullptr));
+  }
 
   //   dimA[CUDNN_SEQDATA_VECT_DIM] = o->dims()[3];
   //   dimA[CUDNN_SEQDATA_BEAM_DIM] = o->dims()[2];
@@ -245,10 +268,15 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
   dimA[CUDNN_SEQDATA_BEAM_DIM] = 1;
   dimA[CUDNN_SEQDATA_TIME_DIM] = o->dims()[1];
   dimA[CUDNN_SEQDATA_BATCH_DIM] = o->dims()[0];
-  PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
-      MHASingleton::Instance().Data(key).o_desc, dtype, CUDNN_SEQDATA_DIM_COUNT,
-      dimA, axes, batch_size * attn_beam_size, attn_qo_seqlen.data(), nullptr));
-  // dimA, axes, batch_size * attn_beam_size, qo_slen_host.data(), nullptr));
+  {
+    // platform::RecordEvent record_event("cudnn_set_seq_data_descriptor_o",
+    //                                    platform::EventRole::kInnerOp);
+    PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnSetSeqDataDescriptor(
+        MHASingleton::Instance().Data(key).o_desc, dtype,
+        CUDNN_SEQDATA_DIM_COUNT, dimA, axes, batch_size * attn_beam_size,
+        attn_qo_seqlen.data(), nullptr));
+    // dimA, axes, batch_size * attn_beam_size, qo_slen_host.data(), nullptr));
+  }
 
   //   std::vector<int> attn_low_windows =
   //       context.Attr<std::vector<int>>("attn_low_windows");

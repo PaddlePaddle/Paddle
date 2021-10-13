@@ -25,6 +25,7 @@ from paddle.fluid import layers
 from paddle.nn.layer import fused_transformer
 # import unittest
 import time
+#import paddle.fluid.profiler as profiler
 
 place = paddle.CUDAPlace(0)
 
@@ -73,7 +74,7 @@ norm2 = LayerNorm(embed_dim)
 paddle.set_default_dtype(x_type)
 dropout = Dropout(dropout_prob, mode="upscale_in_train")
 
-iters = 10001
+iters = 1001
 
 def print_time(desc, times):
     #times *= 1000
@@ -83,11 +84,12 @@ def print_time(desc, times):
 def GetBaselineOut():
     tensor_query = paddle.to_tensor(query, stop_gradient=False)
     residual = tensor_query
+    dout_tensor = paddle.to_tensor(dout)
 
     paddle.device.cuda.synchronize(place)
     #t0 = time.time()
     for i in range(iters):
-        if i == 0:
+        if i == 1:
             t0 = time.time()
 
         ln1_out = tensor_query
@@ -137,7 +139,7 @@ def GetBaselineOut():
             final_out = norm2(residual_out)
 
         paddle.autograd.backward(
-            [final_out], [paddle.to_tensor(dout)], retain_graph=True)
+            [final_out], [dout_tensor], retain_graph=True)
     paddle.device.cuda.synchronize(place)
     t1 = time.time()
     print_time("baseline dynamic: ", (t1 - t0))
@@ -162,12 +164,26 @@ def GetFusedAttentionCuDNNFMHAOut():
     weight_tensor = paddle.to_tensor(weight, stop_gradient=False)
     epsilon = 1e-05
     ln2_epsilon = 1e-05
+    dout_tensor = paddle.to_tensor(dout)
 
     paddle.device.cuda.synchronize(place)
+    #profiler.start_profiler('All', 'OpDetail')
     #t0 = time.time()
     for i in range(iters):
-        if i == 0:
+        if i == 1:
             t0 = time.time()
+            #profiler.reset_profiler()
+            core.nvprof_start()
+            core.nvprof_enable_record_event()
+            core.nvprof_nvtx_push(str(i))
+        if i == 30:
+            core.nvprof_nvtx_pop()
+            core.nvprof_stop()
+        if i > 1 and i < 30:
+            core.nvprof_nvtx_pop()
+            core.nvprof_nvtx_push(str(i))
+
+        core.nvprof_nvtx_push("forward")
         ln_out, out_linear_out, final_out = F.fused_multihead_attention_cudnn_impl(
             x, weight_tensor, seq_len_tensor, num_heads,
             pre_layer_norm, ln1_scale, ln1_bias, 
@@ -176,9 +192,15 @@ def GetFusedAttentionCuDNNFMHAOut():
             ln2_epsilon, attn_low_windows, 
             attn_high_windows, 
             seq_len_vec, seq_len_vec)
+        core.nvprof_nvtx_pop()
+
+        core.nvprof_nvtx_push("backward")
         paddle.autograd.backward(
-            [final_out], [paddle.to_tensor(dout)], retain_graph=True)
+            [final_out], [dout_tensor], retain_graph=True)
+        core.nvprof_nvtx_pop()
     paddle.device.cuda.synchronize(place)
+    #profiler.stop_profiler('total', 'cudnn-fmha-profiler-res')
+
     t1 = time.time()
     print_time("fused dynamic: ", (t1 - t0))
     #return ln_out, out_linear_out, final_out, final_out.grad, out_linear_out.grad, ln_out.grad, x.grad
@@ -191,8 +213,8 @@ def test_fused_attention_cudnn_fmha_op():
     print(batch_size, query_length, embed_dim, num_heads, head_dim)
     #ln_out_ref, out_linear_out_ref, final_out_ref, final_grad_ref, out_linear_grad_ref, ln_grad_ref, x_grad_ref = GetBaselineOut()
     #ln_out, out_linear_out, final_out, final_grad, out_linear_grad, ln_grad, x_grad = GetFusedAttentionCuDNNFMHAOut()
-    ln_out_ref, out_linear_out_ref, final_out_ref = GetBaselineOut()
-    #ln_out, out_linear_out, final_out = GetFusedAttentionCuDNNFMHAOut()
+    #ln_out_ref, out_linear_out_ref, final_out_ref = GetBaselineOut()
+    ln_out, out_linear_out, final_out = GetFusedAttentionCuDNNFMHAOut()
     
     # np.testing.assert_allclose(
     #     ln_out_ref, ln_out.numpy(), rtol=1e-5, atol=1e-5)
