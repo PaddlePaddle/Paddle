@@ -87,7 +87,7 @@ class FusedAttentionCuDNNFMHAOp : public framework::OperatorWithKernel {
 
     ctx->SetOutputDim("Ln2Mean", {x_dim[0] * x_dim[1]});
     ctx->SetOutputDim("Ln2Variance", {x_dim[0] * x_dim[1]});
-    if (ctx->Attrs().Get<bool>("is_test") == false) {
+    if (ctx->Attrs().Get<bool>("dropout_is_test") == false) {
       ctx->SetOutputDim("DropoutMaskOut", ctx->GetInputDim("X"));
     }
     ctx->SetOutputDim("BiasDropoutResidualOut", ctx->GetInputDim("X"));
@@ -207,18 +207,18 @@ class FusedAttentionCuDNNFMHAOpMaker
                                 "'dropout_prob' must be between 0.0 and 1.0."));
         });
 
-    AddAttr<bool>("is_test",
+    AddAttr<bool>("dropout_is_test",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
-    AddAttr<bool>("fix_seed",
+    AddAttr<bool>("dropout_fix_seed",
                   "A flag indicating whether to use a fixed seed to generate "
                   "random mask. NOTE: DO NOT set this flag to true in "
                   "training. Setting this flag to true is only useful in "
                   "unittest or for debug that always the same output units "
                   "will be dropped.")
         .SetDefault(true);
-    AddAttr<int>("seed", "Dropout random seed.").SetDefault(0);
+    AddAttr<int>("dropout_seed", "Dropout random seed.").SetDefault(0);
     AddAttr<std::string>(
         "dropout_implementation",
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
@@ -267,9 +267,10 @@ class FusedAttentionCuDNNFMHAGradOp : public framework::OperatorWithKernel {
 
   void InferShape(framework::InferShapeContext *ctx) const override {
 #if CUDNN_VERSION >= 8000
-    PADDLE_ENFORCE_EQ(ctx->Attrs().Get<bool>("is_test"), false,
-                      platform::errors::InvalidArgument(
-                          "GradOp is only callable when is_test is false"));
+    PADDLE_ENFORCE_EQ(
+        ctx->Attrs().Get<bool>("dropout_is_test"), false,
+        platform::errors::InvalidArgument(
+            "GradOp is only callable when dropout_is_test is false"));
 
     // mha
     OP_INOUT_CHECK(ctx->HasInput(framework::GradVarName("Y")), "Input",

@@ -28,6 +28,7 @@ from .dygraph import base as imperative_base
 from .data_feeder import check_variable_and_dtype
 from .framework import in_dygraph_mode
 from .layer_helper import LayerHelper
+from .framework import default_main_program
 
 __all__ = [
     'set_gradient_clip', 'ErrorClipByValue', 'ClipGradByValue',
@@ -547,7 +548,12 @@ class ClipGradByGlobalNorm(ClipGradBase):
                     scale_input = (scale_var.astype('float16')
                                    if g.dtype == core.VarDesc.VarType.FP16 else
                                    scale_var)
-                    p.block.append_op(
+                    # NOTE(Yuang Liu): For pure dp with gradient merge, the p and g
+                    # will be in different blocks with the gradient clip related ops.
+                    # We need to handle the correct block, otherwise will encounter
+                    # a 'NotFoundError' during compile time.
+                    block = default_main_program().current_block()
+                    block.append_op(
                         type='elementwise_mul',
                         inputs={'X': g,
                                 'Y': scale_input},
