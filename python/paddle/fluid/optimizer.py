@@ -5812,7 +5812,6 @@ class PipelineOptimizer(object):
             'use_sharding',
             'mp_degree',
             'mp_rank',
-            'avg_loss',
         ]
         for key in required_keys:
             assert key in pipeline_opt, \
@@ -5825,7 +5824,7 @@ class PipelineOptimizer(object):
         self.global_ring_id = pipeline_opt['global_ring_id']
         self.mp_degree = pipeline_opt['mp_degree']
         self.mp_rank = pipeline_opt['mp_rank']
-        self.avg_loss = pipeline_opt['avg_loss']
+        self.avg_loss = pipeline_opt.get('avg_loss', True)
         assert self.mp_degree >= 1
         assert 0 <= self.mp_rank < self.mp_degree
 
