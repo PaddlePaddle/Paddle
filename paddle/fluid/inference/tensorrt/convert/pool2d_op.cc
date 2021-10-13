@@ -114,6 +114,10 @@ class Pool2dOpConverter : public OpConverter {
     nvinfer1::ILayer *layer = nullptr;
     nvinfer1::DimsHW pre_pad(0, 0);
     nvinfer1::DimsHW post_pad(0, 0);
+    // paddle Non ceil_mode : Output size = (input size - filter size + 2 *
+    // padding) / stride (stride size) + 1
+    // tensorrt EXPLICIT_ROUND_DOWN: O = floor((M - DK) / S) + 1
+    // so if M - DK < 0 we need extra padding
     if (input_shape.d[input_dims - 2] - ksize[0] + 2 * paddings[0] < 0) {
       post_pad.h() = strides[0] - 1;
     }
@@ -133,9 +137,8 @@ class Pool2dOpConverter : public OpConverter {
       if (!adaptive && !global_pooling && !ceil_mode) {
         if ((post_pad.w() > 0 || post_pad.h() > 0) &&
             (padding_algorithm != "SAME")) {
-          auto *pad_layer = TRT_ENGINE_ADD_LAYER(
-              engine_, Padding, *const_cast<nvinfer1::ITensor *>(input1),
-              pre_pad, post_pad);
+          auto *pad_layer = TRT_ENGINE_ADD_LAYER(engine_, Padding, *input1,
+                                                 pre_pad, post_pad);
           PADDLE_ENFORCE_NOT_NULL(
               pad_layer, platform::errors::Fatal(
                              "Pad layer in poolOp converter could not be "
@@ -176,9 +179,8 @@ class Pool2dOpConverter : public OpConverter {
     if (global_pooling == true) {
       nv_ksize.d[0] = input_shape.d[input_dims - 2];
       nv_ksize.d[1] = input_shape.d[input_dims - 1];
-      auto *pool_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Pooling, *const_cast<nvinfer1::ITensor *>(input1),
-          nv_pool_type, nv_ksize);
+      auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *input1,
+                                              nv_pool_type, nv_ksize);
       PADDLE_ENFORCE_NOT_NULL(
           pool_layer, platform::errors::Fatal(
                           "trt pool layer in converter could not be created."));
@@ -208,9 +210,8 @@ class Pool2dOpConverter : public OpConverter {
 
       if ((post_pad.w() > 0 || post_pad.h() > 0) &&
           (padding_algorithm != "SAME")) {
-        auto *pad_layer = TRT_ENGINE_ADD_LAYER(
-            engine_, Padding, *const_cast<nvinfer1::ITensor *>(input1), pre_pad,
-            post_pad);
+        auto *pad_layer =
+            TRT_ENGINE_ADD_LAYER(engine_, Padding, *input1, pre_pad, post_pad);
         PADDLE_ENFORCE_NOT_NULL(
             pad_layer, platform::errors::Fatal(
                            "Pad layer in poolOp converter could not be "
@@ -218,9 +219,8 @@ class Pool2dOpConverter : public OpConverter {
         input1 = pad_layer->getOutput(0);
       }
 
-      auto *pool_layer = TRT_ENGINE_ADD_LAYER(
-          engine_, Pooling, *const_cast<nvinfer1::ITensor *>(input1),
-          nv_pool_type, nv_ksize);
+      auto *pool_layer = TRT_ENGINE_ADD_LAYER(engine_, Pooling, *input1,
+                                              nv_pool_type, nv_ksize);
       PADDLE_ENFORCE_NOT_NULL(
           pool_layer, platform::errors::Fatal(
                           "trt pool layer in converter could not be created."));
