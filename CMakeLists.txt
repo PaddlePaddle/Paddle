@@ -228,6 +228,7 @@ option(NEW_RELEASE_CUBIN   "PaddlePaddle next-level release strategy for pypi cu
 option(NEW_RELEASE_JIT   "PaddlePaddle next-level release strategy for backup jit package"             OFF)
 option(WITH_ASCEND_INT64 "Compile with int64 kernel for ascend NPU"    OFF)
 option(WITH_POCKETFFT    "Compile with pocketfft support"      ON)
+option(WITH_CANN_VERSION_503_ALPHA3    "Compile with CANN_503_alpha3 for ascend NPU"        OFF)
 
 # PY_VERSION
 if(NOT PY_VERSION)
@@ -235,10 +236,6 @@ if(NOT PY_VERSION)
 endif()
 set(PYBIND11_PYTHON_VERSION ${PY_VERSION})
 
-if($ENV{WITH_CANN_VERSION_503_ALPHA3})
-    message("use cann version 5.0.3_alpha3.")
-    set(WITH_CANN_VERSION_503_ALPHA3  ON)
-endif()
 
 # the type of sanitizer, options are: Address, Leak, Memory, Thread, Undefined. Default: OFF
 if(SANITIZER_TYPE AND NOT "${SANITIZER_TYPE}" MATCHES "^(Address|Leak|Memory|Thread|Undefined)$")
