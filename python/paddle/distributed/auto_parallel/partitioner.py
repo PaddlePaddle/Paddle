@@ -30,6 +30,7 @@ from paddle.distributed.fleet.meta_optimizers.common import is_loss_grad_op, is_
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from .process import new_process_group
 from .interface import _g_process_mesh_map
+from .attribute import OperatorDistributedAttribute
 from paddle.distributed.auto_parallel.completion import complete_backward_annotation, complete_update_annotation
 
 __varname_not_in_block__ = ["lod_tensor_blocking_queue_0"]
@@ -341,19 +342,21 @@ class Partitioner(object):
 
                 # set distribute atrribute
                 new_op = partitioned_startup_global_block.ops[-1]
-                assert new_op.type() == new_op_desc.type()
+                assert new_op.type == new_op_desc.type()
                 assert new_op.desc == new_op_desc
                 output_var = partitioned_startup_global_block.var(output_vars[
                     0])
                 output_var_attr = self._auto_parallel_context.get_tensor_distributed_attr_for_program(
                     output_var)
-                op_attr = OperatorDistributedAttribute(new_op, ctx)
+                op_attr = OperatorDistributedAttribute(
+                    new_op, self._auto_parallel_context)
                 op_attr.set_process_mesh(output_var_attr.get_process_mesh())
                 op_attr.set_output_dims_mapping(
-                    param.name, output_var_attr.get_dims_mapping())
+                    output_var.name, output_var_attr.get_dims_mapping())
                 op_attr.set_input_dims_mapping(
-                    param.name, output_var_attr.get_dims_mapping())
-                ctx.set_op_distributed_attr_for_program(new_op, op_attr)
+                    output_var.name, output_var_attr.get_dims_mapping())
+                self._auto_parallel_context.set_op_distributed_attr_for_program(
+                    new_op, op_attr)
 
         # TODO move helper init to a comm place
         dist_op_helper = self._auto_parallel_context.get_dist_op_helper()
