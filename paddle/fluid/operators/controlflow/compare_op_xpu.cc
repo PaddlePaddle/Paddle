@@ -19,7 +19,7 @@ namespace paddle {
 namespace operators {
 
 template <typename T, typename XPUType>
-static void XPUCompare(
+void XPUCompare(
     const framework::ExecutionContext& ctx,
     std::function<int(xpu::Context*, const XPUType*, const XPUType*, bool*,
                       const std::vector<int>&, const std::vector<int>&)>
