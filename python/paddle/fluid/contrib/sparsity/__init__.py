@@ -26,7 +26,8 @@ from .utils import check_sparsity
 from .utils import MaskAlgo
 from .utils import CheckMethod
 from .asp import decorate, prune_model
-from .asp import set_excluded_layers, reset_excluded_layers, add_supported_layer
+from .asp import set_excluded_layers, reset_excluded_layers
+from .supported_layer_list import add_supported_layer
 
 __all__ = [
     'calculate_density', 'check_mask_1d', 'get_mask_1d', 'check_mask_2d',

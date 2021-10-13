@@ -21,6 +21,7 @@ import paddle
 import paddle.fluid as fluid
 import paddle.fluid.core as core
 from paddle.fluid.contrib import sparsity
+from paddle.fluid.contrib.sparsity.supported_layer_list import SUPPORTED_LAYERS_AND_PRUNE_FUNC_MAP
 from paddle.fluid.dygraph.layers import Layer, _convert_camel_to_snake
 
 paddle.enable_static()
@@ -56,15 +57,15 @@ class TestASPHelperAddSupportedLayer(unittest.TestCase):
         my_own_layer_name = _convert_camel_to_snake(MyOwnLayer.__name__)
 
         self.assertTrue(
-            "test_supported_1" in sparsity.asp.ASPHelper.SUPPORTED_LAYERS)
+            "test_supported_1" in SUPPORTED_LAYERS_AND_PRUNE_FUNC_MAP)
         self.assertTrue(
-            "test_supported_2" in sparsity.asp.ASPHelper.SUPPORTED_LAYERS)
-        self.assertTrue("test_supported_2" in
-                        sparsity.asp.ASPHelper.LAYERS_AND_PRUNE_FUNC_MAP)
-        self.assertTrue(sparsity.asp.ASPHelper.LAYERS_AND_PRUNE_FUNC_MAP["test_supported_2"] \
+            "test_supported_2" in SUPPORTED_LAYERS_AND_PRUNE_FUNC_MAP)
+        self.assertTrue(
+            "test_supported_2" in SUPPORTED_LAYERS_AND_PRUNE_FUNC_MAP)
+        self.assertTrue(SUPPORTED_LAYERS_AND_PRUNE_FUNC_MAP["test_supported_2"]
                         == my_own_pruning)
         self.assertTrue(
-            my_own_layer_name in sparsity.asp.ASPHelper.SUPPORTED_LAYERS)
+            my_own_layer_name in SUPPORTED_LAYERS_AND_PRUNE_FUNC_MAP)
 
 
 class TestASPHelperCustomerizedPruneFunc(unittest.TestCase):

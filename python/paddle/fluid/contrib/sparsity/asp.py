@@ -22,6 +22,7 @@ import paddle
 from paddle.fluid import framework, global_scope, program_guard, layers
 from paddle.fluid.initializer import ConstantInitializer
 from paddle.fluid.contrib import sparsity
+from paddle.fluid.contrib.sparsity.supported_layer_list import SUPPORTED_LAYERS_AND_PRUNE_FUNC_MAP, _default_pruning
 from paddle.fluid import core
 
 __all__ = [
@@ -52,28 +53,28 @@ def reset_excluded_layers(main_program=None):
     ASPHelper.reset_excluded_layers(main_program=main_program)
 
 
-def add_supported_layer(layer, pruning_func=None):
-    r"""
-    Add supported layers and its corresponding pruning functino.
+# def add_supported_layer(layer, pruning_func=None):
+#     r"""
+#     Add supported layers and its corresponding pruning functino.
 
-    Args:
-        name (string|Layer): The name or type of layer, needed to support. If layer is `Layer` then 
-        it would be turn to string internally. ASP would use this name to match parameter's name and call 
-        its the corresponding pruning function.
-        pruning_func (function, optional): a function type which receives five argument (weight_nparray,
-        m, n, func_name, param_name), weight_nparray is a nparray of weight, param_name is the name of weight,
-        m, n, and func_name, please see `prune_model` for details.
-    """
-    name = None
-    if isinstance(layer, str):
-        name = layer
-    elif issubclass(layer, paddle.fluid.dygraph.layers.Layer):
-        name = paddle.fluid.dygraph.layers._convert_camel_to_snake(
-            layer.__name__)
-    else:
-        assert "The type of layer should be string of Layer, but got {}!".format(
-            type(layer))
-    ASPHelper.add_supported_layer(name, pruning_func)
+#     Args:
+#         name (string|Layer): The name or type of layer, needed to support. If layer is `Layer` then 
+#         it would be turn to string internally. ASP would use this name to match parameter's name and call 
+#         its the corresponding pruning function.
+#         pruning_func (function, optional): a function type which receives five argument (weight_nparray,
+#         m, n, func_name, param_name), weight_nparray is a nparray of weight, param_name is the name of weight,
+#         m, n, and func_name, please see `prune_model` for details.
+#     """
+#     name = None
+#     if isinstance(layer, str):
+#         name = layer
+#     elif issubclass(layer, paddle.fluid.dygraph.layers.Layer):
+#         name = paddle.fluid.dygraph.layers._convert_camel_to_snake(
+#             layer.__name__)
+#     else:
+#         assert "The type of layer should be string of Layer, but got {}!".format(
+#             type(layer))
+#     ASPHelper.add_supported_layer(name, pruning_func)
 
 
 def decorate(optimizer):
@@ -245,10 +246,10 @@ class ASPHelper(object):
 
     MASK_APPENDDED_NAME = '_asp_mask'
     PADDLE_WEIGHT_SUFFIX = "w_"
-    # When value of given key in this DICT is None, 
-    # ASP will call default pruning function in pruning stage.
-    SUPPORTED_LAYERS = set(['fc', 'linear', 'conv'])
-    LAYERS_AND_PRUNE_FUNC_MAP = {}
+    # # When value of given key in this DICT is None, 
+    # # ASP will call default pruning function in pruning stage.
+    # SUPPORTED_LAYERS = set(['fc', 'linear', 'conv'])
+    # LAYERS_AND_PRUNE_FUNC_MAP = {}
 
     __asp_info = {}
 
@@ -271,11 +272,11 @@ class ASPHelper(object):
         else:
             cls._get_program_asp_info(main_program).reset_excluded_layers()
 
-    @classmethod
-    def add_supported_layer(cls, name, pruning_func=None):
-        cls.SUPPORTED_LAYERS.add(name)
-        if pruning_func is not None:
-            cls.LAYERS_AND_PRUNE_FUNC_MAP.update({name: pruning_func})
+    # @classmethod
+    # def add_supported_layer(cls, name, pruning_func=None):
+    #     cls.SUPPORTED_LAYERS.add(name)
+    #     if pruning_func is not None:
+    #         cls.LAYERS_AND_PRUNE_FUNC_MAP.update({name: pruning_func})
 
     @staticmethod
     def decorate(optimizer):
@@ -305,18 +306,18 @@ class ASPHelper(object):
                 weight_tensor = global_scope().find_var(param.name).get_tensor()
                 weight_nparray = np.array(weight_tensor)
 
-                prune_func = None
-                for layer_name in ASPHelper.LAYERS_AND_PRUNE_FUNC_MAP:
+                prune_func = _default_pruning
+                for layer_name in SUPPORTED_LAYERS_AND_PRUNE_FUNC_MAP:
                     if layer_name in param.name:
-                        prune_func = ASPHelper.LAYERS_AND_PRUNE_FUNC_MAP[
+                        prune_func = SUPPORTED_LAYERS_AND_PRUNE_FUNC_MAP[
                             layer_name]
                         break
-                if prune_func is None:
-                    weight_pruned_nparray, weight_sparse_mask = \
-                        ASPHelper._default_pruning(weight_nparray, m, n, func_name, param.name)
-                else:
-                    weight_pruned_nparray, weight_sparse_mask = \
-                        prune_func(weight_nparray, m, n, func_name, param.name)
+                # if prune_func is None:
+                #     weight_pruned_nparray, weight_sparse_mask = \
+                #         ASPHelper._default_pruning(weight_nparray, m, n, func_name, param.name)
+                # else:
+                weight_pruned_nparray, weight_sparse_mask = \
+                    prune_func(weight_nparray, m, n, func_name, param.name)
                 weight_tensor.set(weight_pruned_nparray, place)
                 # weight_sparse_mask = sparsity.create_mask(
                 #     weight_nparray.T, func_name=func_name, n=n, m=m).T
@@ -427,7 +428,7 @@ class ASPHelper(object):
             if layer in param_name:
                 return False
 
-        for name in ASPHelper.SUPPORTED_LAYERS:
+        for name in SUPPORTED_LAYERS_AND_PRUNE_FUNC_MAP:
             if name in param_name and \
                ASPHelper.PADDLE_WEIGHT_SUFFIX in param_name:
                 return True
