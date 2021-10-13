@@ -57,7 +57,6 @@ class BNACConvLayer(nn.Layer):
                  groups=1,
                  act="relu"):
         super(BNACConvLayer, self).__init__()
-
         self._batch_norm = BatchNorm(num_channels, act=act)
 
         self._conv = Conv2D(
