@@ -34,7 +34,6 @@ limitations under the License. */
 #include "paddle/fluid/framework/ir/memory_optimize_pass/memory_optimization_var_info.h"
 #include "paddle/fluid/framework/ir/memory_optimize_pass/reference_count_pass_helper.h"
 #include "paddle/fluid/framework/ir/multi_devices_graph_pass/set_reader_device_info_utils.h"
-#include "paddle/fluid/framework/paddle2cinn/cinn_runner.h"
 #include "paddle/fluid/framework/variable_helper.h"
 #include "paddle/fluid/platform/cuda_graph_with_memory_pool.h"
 #include "paddle/fluid/platform/event.h"
@@ -44,7 +43,6 @@ limitations under the License. */
 #include "paddle/fluid/platform/cuda_device_guard.h"
 #endif
 
-DECLARE_bool(use_cinn);
 DECLARE_double(eager_delete_tensor_gb);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
@@ -943,40 +941,6 @@ void ParallelExecutor::RunWithoutFetch(
 
   VLOG(3) << "ParallelExecutor begin to run member_->executor_->Run";
   member_->executor_->Run(/*fetch_tensors*/ {}, /*return_merged*/ false);
-}
-
-FetchResultType ParallelExecutor::RunFromCinn(
-    const std::unordered_map<std::string, LoDTensor> &feed_tensors,
-    const std::vector<std::string> &fetch_names) {
-  // Feed tensor to scope, now only support 1 scope
-  // TODO(zhhsplendid): handle multiple scope
-  size_t scope_id = 0;
-  std::map<std::string, const LoDTensor *> cinn_input_tensors;
-  for (auto &name_tensor_pair : feed_tensors) {
-    bool is_persistable = member_->IsPersistable(name_tensor_pair.first);
-    if (!is_persistable) {
-      member_->SetSkipMemoryReuse(scope_id, name_tensor_pair.first);
-    }
-    Scope *feed_scope = is_persistable ? member_->local_scopes_[scope_id]
-                                       : member_->local_exec_scopes_[scope_id];
-    Variable *feed_var = feed_scope->Var(name_tensor_pair.first);
-    LoDTensor *trg = feed_var->GetMutable<LoDTensor>();
-    trg->ShareDataWith(name_tensor_pair.second);
-    trg->set_lod(name_tensor_pair.second.lod());
-
-    cinn_input_tensors[name_tensor_pair.first] = trg;
-  }
-
-  // TODO(zhhsplendid): get correct API after CINN API is ready
-  // now only return empty fetch result;
-  std::shared_ptr<paddle2cinn::CinnRunner> cinn_runner =
-      paddle2cinn::CinnRunner::GetInstance();
-
-  cinn_runner->Run(Graph(), member_->local_exec_scopes_[scope_id],
-                   &cinn_input_tensors);
-
-  paddle::framework::FetchResultType fetches = FetchList(fetch_names.size());
-  return fetches;
 }
 
 void ParallelExecutor::SkipMemoryReuse(

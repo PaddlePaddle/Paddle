@@ -1682,6 +1682,18 @@ struct LayerNorm : public PatternBase {
   PATTERN_DECL_NODE(shift_out);
 };
 
+// Add support int8 flag
+struct AddSupportInt8 : public PatternBase {
+  AddSupportInt8(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "Add_support_int8") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(prev_out);
+  PATTERN_DECL_NODE(quant_op);
+  PATTERN_DECL_NODE(quant_out);
+};
+
 }  // namespace patterns
 
 // Link two ir::Nodes from each other.
