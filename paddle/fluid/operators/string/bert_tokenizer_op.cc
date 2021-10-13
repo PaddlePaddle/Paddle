@@ -91,34 +91,34 @@ inline bool IsPunctuation(const wchar_t& ch) {
 
 BasicTokenizer::BasicTokenizer(bool do_lower_case /* = true */)
     : do_lower_case_(do_lower_case) {
-  accent_map_ = {
-      {L'à', 'a'}, {L'â', 'a'}, {L'ã', 'a'}, {L'ä', 'a'}, {L'å', 'a'},
-      {L'ạ', 'a'}, {L'ấ', 'a'}, {L'ả', 'a'}, {L'ą', 'a'}, {L'ằ', 'a'},
-      {L'ǎ', 'a'}, {L'ā', 'a'}, {L'á', 'a'}, {L'ǎ', 'a'}, {L'à', 'a'},
-      {L'ầ', 'a'}, {L'ă', 'a'}, {L'è', 'e'}, {L'é', 'e'}, {L'ê', 'e'},
-      {L'ë', 'e'}, {L'ễ', 'e'}, {L'ẽ', 'e'}, {L'ē', 'e'}, {L'ę', 'e'},
-      {L'ě', 'e'}, {L'ế', 'e'}, {L'ệ', 'e'}, {L'í', 'i'}, {L'ì', 'i'},
-      {L'î', 'i'}, {L'ï', 'i'}, {L'ǐ', 'i'}, {L'ī', 'i'}, {L'ị', 'i'},
-      {L'ù', 'u'}, {L'ú', 'u'}, {L'û', 'u'}, {L'ü', 'u'}, {L'ư', 'u'},
-      {L'ũ', 'u'}, {L'ǔ', 'u'}, {L'ū', 'u'}, {L'ứ', 'u'}, {L'ǚ', 'u'},
-      {L'ự', 'u'}, {L'ử', 'u'}, {L'ò', 'o'}, {L'ó', 'o'}, {L'ō', 'o'},
-      {L'ǒ', 'o'}, {L'ô', 'o'}, {L'õ', 'o'}, {L'ö', 'o'}, {L'ớ', 'o'},
-      {L'ợ', 'o'}, {L'ơ', 'o'}, {L'ổ', 'o'}, {L'ỡ', 'o'}, {L'ő', 'o'},
-      {L'ộ', 'o'}, {L'ĉ', 'c'}, {L'ć', 'c'}, {L'č', 'c'}, {L'ċ', 'c'},
-      {L'ƈ', 'c'}, {L'ç', 'c'}, {L'ĝ', 'g'}, {L'ĥ', 'h'}, {L'ĵ', 'j'},
-      {L'ñ', 'n'}, {L'ņ', 'n'}, {L'ř', 'r'}, {L'ś', 's'}, {L'ŝ', 's'},
-      {L'š', 's'}, {L'ş', 's'}, {L'ț', 't'}, {L'ŭ', 'u'}, {L'ý', 'y'},
-      {L'ÿ', 'y'}, {L'ž', 'z'}, {L'ż', 'z'}};
+  //   accent_map_ = {
+  //       {L'à', 'a'}, {L'â', 'a'}, {L'ã', 'a'}, {L'ä', 'a'}, {L'å', 'a'},
+  //       {L'ạ', 'a'}, {L'ấ', 'a'}, {L'ả', 'a'}, {L'ą', 'a'}, {L'ằ', 'a'},
+  //       {L'ǎ', 'a'}, {L'ā', 'a'}, {L'á', 'a'}, {L'ǎ', 'a'}, {L'à', 'a'},
+  //       {L'ầ', 'a'}, {L'ă', 'a'}, {L'è', 'e'}, {L'é', 'e'}, {L'ê', 'e'},
+  //       {L'ë', 'e'}, {L'ễ', 'e'}, {L'ẽ', 'e'}, {L'ē', 'e'}, {L'ę', 'e'},
+  //       {L'ě', 'e'}, {L'ế', 'e'}, {L'ệ', 'e'}, {L'í', 'i'}, {L'ì', 'i'},
+  //       {L'î', 'i'}, {L'ï', 'i'}, {L'ǐ', 'i'}, {L'ī', 'i'}, {L'ị', 'i'},
+  //       {L'ù', 'u'}, {L'ú', 'u'}, {L'û', 'u'}, {L'ü', 'u'}, {L'ư', 'u'},
+  //       {L'ũ', 'u'}, {L'ǔ', 'u'}, {L'ū', 'u'}, {L'ứ', 'u'}, {L'ǚ', 'u'},
+  //       {L'ự', 'u'}, {L'ử', 'u'}, {L'ò', 'o'}, {L'ó', 'o'}, {L'ō', 'o'},
+  //       {L'ǒ', 'o'}, {L'ô', 'o'}, {L'õ', 'o'}, {L'ö', 'o'}, {L'ớ', 'o'},
+  //       {L'ợ', 'o'}, {L'ơ', 'o'}, {L'ổ', 'o'}, {L'ỡ', 'o'}, {L'ő', 'o'},
+  //       {L'ộ', 'o'}, {L'ĉ', 'c'}, {L'ć', 'c'}, {L'č', 'c'}, {L'ċ', 'c'},
+  //       {L'ƈ', 'c'}, {L'ç', 'c'}, {L'ĝ', 'g'}, {L'ĥ', 'h'}, {L'ĵ', 'j'},
+  //       {L'ñ', 'n'}, {L'ņ', 'n'}, {L'ř', 'r'}, {L'ś', 's'}, {L'ŝ', 's'},
+  //       {L'š', 's'}, {L'ş', 's'}, {L'ț', 't'}, {L'ŭ', 'u'}, {L'ý', 'y'},
+  //       {L'ÿ', 'y'}, {L'ž', 'z'}, {L'ż', 'z'}};
 }
 
-wchar_t BasicTokenizer::do_lower_case(wchar_t ch) const {
-  wchar_t new_ch = utf8proc_tolower(ch);
-  auto it = accent_map_.find(new_ch);
-  if (it != accent_map_.end()) {
-    new_ch = it->second;
-  }
-  return new_ch;
-}
+// wchar_t BasicTokenizer::do_lower_case(wchar_t ch) const {
+//   wchar_t new_ch = utf8proc_tolower(ch);
+//   auto it = accent_map_.find(new_ch);
+//   if (it != accent_map_.end()) {
+//     new_ch = it->second;
+//   }
+//   return new_ch;
+// }
 
 void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
   std::wstring unicode_text;
@@ -133,9 +133,9 @@ void BasicTokenizer::Tokenize(const string& text, vector<wstring>* res) const {
     if (ch == 0 || ch == 0xfffd || IsControl(ch)) {
       continue;
     }
-    if (do_lower_case_) {
-      ch = do_lower_case(ch);
-    }
+    // if (do_lower_case_) {
+    //   ch = do_lower_case(ch);
+    // }
     if (IsChineseChar(ch) || IsPunctuation(ch)) {
       dest_text += ' ';
       dest_text += ch;

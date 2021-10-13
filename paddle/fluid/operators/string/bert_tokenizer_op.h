@@ -56,7 +56,7 @@ class BasicTokenizer {
   wchar_t do_lower_case(wchar_t ch) const;
 
   bool do_lower_case_;
-  std::unordered_map<wchar_t, wchar_t> accent_map_;
+  // std::unordered_map<wchar_t, wchar_t> accent_map_;
 };
 
 class WordPieceTokenizer {
