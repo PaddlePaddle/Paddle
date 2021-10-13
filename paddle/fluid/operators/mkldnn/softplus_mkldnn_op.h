@@ -37,7 +37,11 @@ class SoftplusMKLDNNHandler
     dnnl::post_ops post_ops;
     post_ops.append_eltwise(1.0f, dnnl::algorithm::eltwise_soft_relu, 0.0f,
                             0.0f);
-    post_ops.append_binary(dnnl::algorithm::binary_div, beta_md);
+    if (beta != 1.0f) {
+      post_ops.append_eltwise(1.0f, dnnl::algorithm::eltwise_linear,
+                              1.0f / beta, 0.0f);
+    }
+
     dnnl::primitive_attr attrs;
     attrs.set_post_ops(post_ops);
 
@@ -78,8 +82,7 @@ void custom_softplus_eltwise_forward(const framework::ExecutionContext& ctx) {
   const std::unordered_map<int, dnnl::memory> args = {
       {DNNL_ARG_SRC_0, *src_memory_p},
       {DNNL_ARG_SRC_1, *beta_memory_p},
-      {DNNL_ARG_DST, *dst_memory_p},
-      {DNNL_ARG_ATTR_MULTIPLE_POST_OP(1) | DNNL_ARG_SRC_1, *beta_memory_p}};
+      {DNNL_ARG_DST, *dst_memory_p}};
 
   binary_p->execute(astream, args);
   astream.wait();

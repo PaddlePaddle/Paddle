@@ -173,14 +173,7 @@ struct GeluMKLDNNGradFunctor : public BaseActivationFunctor<T> {
 template <typename T>
 struct SoftplusMKLDNNFunctor : public BaseActivationFunctor<T> {
   void operator()(const framework::ExecutionContext &ctx) const {
-    const float beta = ctx.Attr<float>("beta");
-    // if beta is equal to 1.0f then we can simply use oneDNN's soft_relu but if
-    // it has other value, we have to fuse binary + eltwise + binary
-    if (beta == 1.0f) {
-      eltwise_forward<T>(ctx, mkldnn::algorithm::eltwise_soft_relu);
-    } else {
-      custom_softplus_eltwise_forward<T>(ctx);
-    }
+    custom_softplus_eltwise_forward<T>(ctx);
   }
 };
 
