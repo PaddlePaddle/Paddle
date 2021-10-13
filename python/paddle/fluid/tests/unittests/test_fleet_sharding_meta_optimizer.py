@@ -1289,8 +1289,11 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         strategy.pipeline_configs = {
             "schedule_mode": "1F1B",
             "micro_batch_size": 2,
-            "accumulate_steps": 4,
-            "grad_merge_avg_after_sum": True,
+            "accumulate_steps": 4
+        }
+        strategy.gradient_scale_configs = {
+            'scale_strategy': 'avg',
+            'avg_loss': False
         }
         strategy.fuse_grad_merge = True
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)

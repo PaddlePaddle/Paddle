@@ -193,11 +193,14 @@ class ShardingOptimizer(MetaOptimizerBase):
         else:
             gm_mode = "pp_gm"
             gm_acc_step = strategy.pipeline_configs['accumulate_steps']
-            # Note (Yuang Liu): this flag determines where to do the average op for grad merge.
+            gradient_scale_configs = strategy.gradient_scale_configs
+            assert gradient_scale_configs['scale_strategy'] == 'avg', \
+                'For pipeline mode, the ' 'gradient scale mode should ' \
+                'be "avg", but got {}'.format(gradient_scale_configs['scale_strategy'])
+            # Note (Yuang Liu): this avg_loss flag determines where to do the average op for grad merge.
             # If True, will do sum firstly for gradient merge, then do scale by gm_acc_step.
             # If False, will scale loss by gm_acc_step first, then do sum for gradient merge.
-            self.grad_merge_avg_after_sum = strategy.pipeline_configs[
-                'grad_merge_avg_after_sum']
+            self.avg_loss = gradient_scale_configs['avg_loss']
         if gm_acc_step > 1:
             logger.info("Gradient merge in [{}], acc step = [{}]".format(
                 gm_mode, gm_acc_step))
@@ -246,7 +249,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 'global_ring_id': 3,
                 'mp_degree': self.mp_degree,
                 'mp_rank': global_rank % self.mp_degree,
-                'grad_merge_avg_after_sum': self.grad_merge_avg_after_sum
+                'avg_loss': self.avg_loss
             }
             main_program = loss.block.program
             main_program._pipeline_opt = pipeline_opt
@@ -368,11 +371,11 @@ class ShardingOptimizer(MetaOptimizerBase):
             main_block, strategy=strategy, shard=shard)
 
         len_of_ops = len(main_block.ops)
-        if self.grad_merge_avg_after_sum:
+        if self.avg_loss:
+            first_optimize_op_index = get_first_optimize_op_idx(main_block)
+        else:
             first_optimize_op_index = self._avg_grad_merge_after_sum(
                 main_block, accumulated_grad_names)
-        else:
-            first_optimize_op_index = get_first_optimize_op_idx(main_block)
 
         if self.pp_allreduce_in_optimize:
             logger.info("Pipeline Persistable grad is {}".format(

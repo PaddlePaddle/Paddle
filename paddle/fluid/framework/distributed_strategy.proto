@@ -133,6 +133,10 @@ message GradientScaleConfig {
   // Else if sum, the gradient will accumulated among multiple
   // devices.
   optional string scale_strategy = 1 [ default = 'avg' ];
+  // The avg_loss flag is used to determine the position of average
+  // If avg_loss is True, it will avg the loss before grad merge.
+  // Otherwise, it will do grad merge firstly, then avg the grad after merging.
+  optional bool avg_loss = 2 [ default = false ];
 }
 
 message AsyncConfig {
@@ -162,7 +166,6 @@ message PipelineConfig {
   optional int32 accumulate_steps = 2 [ default = 1 ];
   optional string schedule_mode = 3 [ default = '1F1B' ];
   optional bool p2p_cache_shape = 4 [ default = true ];
-  optional bool grad_merge_avg_after_sum = 5 [ default = false ];
 }
 
 message TensorParallelConfig {
