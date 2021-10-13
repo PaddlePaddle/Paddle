@@ -365,30 +365,53 @@ static pt::KernelContext BuildDygraphKernelContext(
     op_kernel_ctx.EmplaceBackOutputs(tmp_outputs);
   }
 
-  for (size_t i = 0; i < attr_pairs.size(); ++i) {
-    // TODO(chenweihang): support other attrs
-    // In principle, the attr required by the dynamic mode should be
-    // passed in from the Python side, and there is no need to look up
-    // from the default_map, but now this nor work
-    switch (attr_pairs[i].second) {
-      case framework::proto::AttrType::INT:
-        op_kernel_ctx.EmplaceBackAttr(pt::Scalar(
-            GetAttr<int>(attrs, default_attrs, attr_pairs[i].first)));
-        break;
-      case framework::proto::AttrType::FLOAT:
-        op_kernel_ctx.EmplaceBackAttr(pt::Scalar(
-            GetAttr<float>(attrs, default_attrs, attr_pairs[i].first)));
-        break;
-      case framework::proto::AttrType::BOOLEAN:
-        op_kernel_ctx.EmplaceBackAttr(pt::Scalar(
-            GetAttr<bool>(attrs, default_attrs, attr_pairs[i].first)));
-        break;
-      default:
+  for (size_t i = 0; i < attr_defs.size(); ++i) {
+    if (attr_defs[i].type_index == std::type_index(typeid(pt::Scalar))) {
+      // TODO(chenweihang): support other attrs
+      // In principle, the attr required by the dynamic mode should be
+      // passed in from the Python side, and there is no need to look up
+      // from the default_map, but now this nor work
+      switch (attr_pairs[i].second) {
+        case framework::proto::AttrType::INT:
+          op_kernel_ctx.EmplaceBackAttr(pt::Scalar(
+              GetAttr<int>(attrs, default_attrs, attr_pairs[i].first)));
+          break;
+        case framework::proto::AttrType::FLOAT:
+          op_kernel_ctx.EmplaceBackAttr(pt::Scalar(
+              GetAttr<float>(attrs, default_attrs, attr_pairs[i].first)));
+          break;
+        case framework::proto::AttrType::BOOLEAN:
+          op_kernel_ctx.EmplaceBackAttr(pt::Scalar(
+              GetAttr<bool>(attrs, default_attrs, attr_pairs[i].first)));
+          break;
+        default:
+          // TODO(chenweihang): support other attrs type
+          PADDLE_THROW(platform::errors::Unimplemented(
+              "unsupported cast op attribute `%s` when construct "
+              "KernelContext.",
+              attr_pairs[i].first));
+      }
+    } else {
+      // TODO(chenweihang): support other attrs
+      // In principle, the attr required by the dynamic mode should be
+      // passed in from the Python side, and there is no need to look up
+      // from the default_map, but now this nor work
+      if (attr_defs[i].type_index == std::type_index(typeid(int))) {
+        op_kernel_ctx.EmplaceBackAttr(
+            GetAttr<int>(attrs, default_attrs, attr_pairs[i].first));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(float))) {
+        op_kernel_ctx.EmplaceBackAttr(
+            GetAttr<float>(attrs, default_attrs, attr_pairs[i].first));
+      } else if (attr_defs[i].type_index == std::type_index(typeid(bool))) {
+        op_kernel_ctx.EmplaceBackAttr(
+            GetAttr<bool>(attrs, default_attrs, attr_pairs[i].first));
+      } else {
         // TODO(chenweihang): support other attrs type
         PADDLE_THROW(platform::errors::Unimplemented(
             "unsupported cast op attribute `%s` when construct "
             "KernelContext.",
             attr_pairs[i].first));
+      }
     }
   }
 
