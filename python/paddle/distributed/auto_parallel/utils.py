@@ -172,7 +172,9 @@ def _get_comm_group(processes, shape, axis, rank):
     """
 
     # NOTE _linear_idx2coordinate assume processes mesh start with 0 and continuous
-    #  tricks to support processes mesh when it is not start with 0 or continuous
+    # tricks to support processes mesh when it is not start with 0 or continuous
+    assert rank in processes, "rank [{}] is NOT in processes group {}".format(
+        rank, processes)
     rank_relatvie = processes.index(rank)
     coordinate = _linear_idx2coordinate(shape, rank_relatvie)
     coordinates_in_group = [coordinate[:] for i in range(shape[axis])]
@@ -309,12 +311,12 @@ def _get_corresponding_rank(target_mesh, rank):
     for key, mesh in _g_process_mesh_map.items():
         if key == 0:
             continue
-        if rank in mesh.process_group and mesh.toplogy == target_mesh.toplogy:
-            coordinate = _linear_idx2coordinate(mesh.toplogy,
+        if rank in mesh.process_group and mesh.topology == target_mesh.topology:
+            coordinate = _linear_idx2coordinate(mesh.topology,
                                                 mesh.process_group.index(rank))
             break
 
     assert coordinate is not None, "could NOT found rank [{}] in any registered mesh".format(
         rank)
-    return target_mesh.process_group[_coordinate2linear_idx(mesh.toplogy,
+    return target_mesh.process_group[_coordinate2linear_idx(mesh.topology,
                                                             coordinate)]
