@@ -89,7 +89,7 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
                  int attn_beam_size, std::vector<int> attn_low_windows,
                  std::vector<int> attn_high_windows, Tensor* o,
                  std::vector<int> attn_qo_seqlen,
-                 std::vector<int> attn_kv_seqlen) {
+                 std::vector<int> attn_kv_seqlen, Tensor* reserve_space) {
   //   auto& dev_ctx =
   //       context.template device_context<platform::CUDADeviceContext>();
   //   const Tensor* q = context.Input<Tensor>("Q");
@@ -120,6 +120,9 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
       dtype == CUDNN_DATA_DOUBLE ? CUDNN_DATA_DOUBLE : CUDNN_DATA_FLOAT;
 
   auto cudnn_handle = dev_ctx.cudnn_handle();
+
+  size_t reserve_space_size = 0;
+  void* reserve_space_ptr = nullptr;
 
   // TODO(Ming Huang): Need to come out a way to pass related variables from
   // FWD to BWD.
@@ -168,7 +171,8 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
         cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
         &MHASingleton::Instance().Data(key).weights_size,
         &MHASingleton::Instance().Data(key).workspace_size,
-        &MHASingleton::Instance().Data(key).reserve_size));
+        &reserve_space_size));
+    // &MHASingleton::Instance().Data(key).reserve_size));
   }
 
   // TODO(rewang): ensure workspace size will not be increased
@@ -178,10 +182,13 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
   }
 
   // TODO(rewang): ensure reserve_size size will not be increased
-  if (MHASingleton::Instance().Data(key).reserve_space == nullptr) {
-    MHASingleton::Instance().Data(key).reserve_space =
-        memory::Alloc(dev_ctx, MHASingleton::Instance().Data(key).reserve_size);
-  }
+  // if (MHASingleton::Instance().Data(key).reserve_space == nullptr) {
+  //   MHASingleton::Instance().Data(key).reserve_space =
+  //       memory::Alloc(dev_ctx,
+  //       MHASingleton::Instance().Data(key).reserve_size);
+  // }
+  reserve_space_ptr = reserve_space->mutable_data(dev_ctx.GetPlace(), q->type(),
+                                                  reserve_space_size);
 
   //   std::vector<int> qo_slen_host(qo_slen->dims()[0]);
   //   std::vector<int> kv_slen_host(kv_slen->dims()[0]);
@@ -303,8 +310,9 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
       MHASingleton::Instance().Data(key).weights_size, w_data,
       MHASingleton::Instance().Data(key).workspace_size,
       MHASingleton::Instance().Data(key).workspace->ptr(),
-      MHASingleton::Instance().Data(key).reserve_size,
-      MHASingleton::Instance().Data(key).reserve_space->ptr()));
+      // MHASingleton::Instance().Data(key).reserve_size,
+      reserve_space_size, reserve_space_ptr));
+  // MHASingleton::Instance().Data(key).reserve_space->ptr()));
 }
 
 // template <typename DeviceContext, typename T>
@@ -318,7 +326,7 @@ void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
                    const Tensor* v, const Tensor* w, const Tensor* qo_slen,
                    const Tensor* kv_slen, std::vector<int> attn_low_windows,
                    std::vector<int> attn_high_windows, Tensor* dq, Tensor* dk,
-                   Tensor* dv, Tensor* dw) {
+                   Tensor* dv, Tensor* dw, const Tensor* reserve_space) {
   //   auto& dev_ctx =
   //       context.template device_context<platform::CUDADeviceContext>();
 
@@ -336,6 +344,8 @@ void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
   //   Tensor* dw = context.Output<Tensor>(framework::GradVarName("W"));
 
   auto cudnn_handle = dev_ctx.cudnn_handle();
+
+  auto reserve_space_size = reserve_space->memory_size();
 
   // TODO(Ming Huang): Need to come out a way to pass related variables from
   // FWD to BWD.
@@ -372,9 +382,10 @@ void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
       MHASingleton::Instance().Data(key).v_desc, dv_data, v_data,
       MHASingleton::Instance().Data(key).weights_size, w_data,
       MHASingleton::Instance().Data(key).workspace_size,
-      MHASingleton::Instance().Data(key).workspace->ptr(),
-      MHASingleton::Instance().Data(key).reserve_size,
-      MHASingleton::Instance().Data(key).reserve_space->ptr()));
+      MHASingleton::Instance().Data(key).workspace->ptr(), reserve_space_size,
+      const_cast<T*>(reserve_space->template data<T>())));
+  // MHASingleton::Instance().Data(key).reserve_size,
+  // MHASingleton::Instance().Data(key).reserve_space->ptr()));
   PADDLE_ENFORCE_CUDA_SUCCESS(
       platform::dynload::cudnnMultiHeadAttnBackwardWeights(
           cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
@@ -385,8 +396,10 @@ void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
           MHASingleton::Instance().Data(key).weights_size, w_data, dw_data,
           MHASingleton::Instance().Data(key).workspace_size,
           MHASingleton::Instance().Data(key).workspace->ptr(),
-          MHASingleton::Instance().Data(key).reserve_size,
-          MHASingleton::Instance().Data(key).reserve_space->ptr()));
+          reserve_space_size,
+          const_cast<T*>(reserve_space->template data<T>())));
+  // MHASingleton::Instance().Data(key).reserve_size,
+  // MHASingleton::Instance().Data(key).reserve_space->ptr()));
 }
 #endif
 

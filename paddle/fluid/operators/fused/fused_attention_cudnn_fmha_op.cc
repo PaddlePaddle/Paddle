@@ -153,6 +153,11 @@ class FusedAttentionCuDNNFMHAOpMaker
         .AsIntermediate();
     AddOutput("LnOut", "The output of pre layer_norm.").AsIntermediate();
 
+    AddOutput("ReserveSpace",
+              "Reserve GPU space for triggering the new semi-persistent "
+              "NHWC kernel")
+        .AsDispensable()
+        .AsExtra();
     AddOutput("OutLinearOut", "Result after out_linear.").AsIntermediate();
 
     AddOutput("DropoutMaskOut", "The random sampled dropout mask.")
@@ -293,6 +298,7 @@ class FusedAttentionCuDNNFMHAGradOp : public framework::OperatorWithKernel {
     //     ctx->SetOutputDim(grad_name, dims);
     //   }
     // }
+
     OP_INOUT_CHECK(ctx->HasInput("X"), "Input", "X",
                    "FusedAttentionCuDNNFMHAGrad");
     if (ctx->HasOutput(framework::GradVarName("X"))) {
@@ -380,6 +386,10 @@ class FusedAttentionCuDNNFMHAGradOpMaker
                     this->InputGrad("LnBias"));
     }
     op->SetInput("OutLinearBias", this->Input("OutLinearBias"));
+
+    if (this->HasOutput("ReserveSpace")) {
+      op->SetInput("ReserveSpace", this->Output("ReserveSpace"));
+    }
 
     if (this->HasInput("Ln2Scale")) {
       op->SetInput("Ln2Scale", this->Input("Ln2Scale"));
