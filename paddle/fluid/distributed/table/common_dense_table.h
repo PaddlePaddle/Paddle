@@ -77,6 +77,8 @@ class CommonDenseTable : public DenseTable {
   std::unordered_map<std::string, Initializer*> initializers_;
   std::unordered_map<std::string, int> names_index_;
   int total_dim_ = 0;
+  int fixed_len_params_dim_ = 0; //used for save/load
+  std::vector<int> param_col_ids_; //used for save/load
 };
 
 }  // namespace distributed

@@ -95,10 +95,10 @@ class ParameterServerOptimizer(MetaOptimizerBase):
                 self.user_defined_strategy.a_sync_configs["lr_decay_steps"])
 
             # for main program
-            print("before build_distributed_ops_pass, _main = ", _main)
+            #print("before build_distributed_ops_pass, _main = ", _main)
             _main = worker.distributed_ops_pass(_main, compiled_config,
                                                 use_ps_gpu)
-            print("after build_distributed_ops_pass, _main = ", _main)
+            #print("after build_distributed_ops_pass, _main = ", _main)
             if not use_ps_gpu:
                 _main = worker.delete_optimizer_pass(_main, compiled_config)
                 _main = worker.append_send_ops_pass(_main, compiled_config)
@@ -321,6 +321,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
         compiled_config = public.CompileTimeStrategy(_origin_main_program,
                                                      _origin_startup_program,
                                                      strategy, self.role_maker)
+        '''
         print("yxf::origin_sparse_pairs:")
         for cc in compiled_config.origin_sparse_pairs:
             p, g = cc
@@ -374,6 +375,7 @@ class ParameterServerOptimizer(MetaOptimizerBase):
             print('{} => {}'.format(
                 str(k), str(compiled_config.grad_param_mapping[k])))
         print("yxf::grad_param_mapping: end")
+        '''
 
         compiled_config.strategy = strategy
 

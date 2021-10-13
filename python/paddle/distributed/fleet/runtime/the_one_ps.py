@@ -94,8 +94,12 @@ class CommonAccessor:
         opt_input_map = {}
         opt_input_map["sgd"] = [("Param", None), ("LearningRate", 1)]
         opt_input_map["adam"] = [("Param", None), ("Moment1", None),
-                                 ("Moment2", None), ("Beta1Pow", None),
+                                 ("Moment2", None), ("Beta1Pow", 1),
                                  ("Beta2Pow", 1), ("LearningRate", 1)]
+        opt_input_map["adam_d2sum"] = [("Param", None), ("D2Sum", None),
+                                 ("G2Sum", None), ("Moment", None),
+                                 ("MomentDecayRate", 1), ("AdaDecayRate", 1),
+                                 ("AdaEpsilon", 1), ("LearningRate", 1)]
         opt_input_map["sum"] = [("Param", None)]
         opt_input_map["naive_adagrad"] = [("Param", None), ("G2Sum", 1),
                                           ("LearningRate", 1)]
@@ -105,6 +109,8 @@ class CommonAccessor:
         opt_attr_map["sum"] = []
         opt_attr_map["naive_adagrad"] = []
         opt_attr_map["adam"] = [("beta1", "f"), ("beta2", "f"),
+                                ("epsilon", "f")]
+        opt_attr_map["adam_d2sum"] = [("beta1", "f"), ("beta2", "f"),
                                 ("epsilon", "f")]
 
         opt_init_map = {}
@@ -197,6 +203,10 @@ class CommonAccessor:
             param_varnames = self.opt_input_map["naive_adagrad"]
             attr_varnames = self.opt_attr_map["naive_adagrad"]
             self.accessor_class = "sgd"
+        elif adam_d2sum:
+            param_varnames = self.opt_input_map["adam_d2sum"]
+            attr_varnames = self.opt_attr_map["adam_d2sum"]
+            self.accessor_class = "adam_d2sum"
         else:
             param_varnames = self.opt_input_map[oop.type]
             attr_varnames = self.opt_attr_map[oop.type]
@@ -204,17 +214,8 @@ class CommonAccessor:
 
         for (formal_name, shape) in param_varnames:
             params.append(formal_name)
-            if formal_name == "G2Sum":
-                dims.append(1)
-                initializer = "fill_constant&0"
-                initializers.append(initializer)
-            else:
-                param = main_program.global_block().vars[oop.input(formal_name)[
-                    0]]
-                if formal_name == "LearningRate" and param.name != "learning_rate_0":
-                    warnings.warn("will support decay soon")
-                    param = main_program.global_block().vars["learning_rate_0"]
-
+            if self.accessor_class == "adam_d2sum":
+                #for dims
                 if shape is None:
                     if is_sparse:
                         shape = total_dims
@@ -222,12 +223,50 @@ class CommonAccessor:
                         shape = self.get_shard(total_dims, pserver_num,
                                                pserver_id)
                 dims.append(shape)
-                if formal_name == 'Beta1Pow':
-                    initializer = "fill_constant&0"
-                else:
+                
+                #for initializers
+                if formal_name == "Param" or formal_name == "LearningRate":
+                    param = main_program.global_block().vars[oop.input(formal_name)[
+                            0]]
+                    #TODO: for dense learning_rate, can be different from sparse lr
+                    if formal_name == "LearningRate" and param.name != "learning_rate_0":
+                        warnings.warn("will support decay soon")
+                        param = main_program.global_block().vars["learning_rate_0"]
+
                     initializer = self.get_initializer_attr(param.name,
-                                                        startup_program)
+                                                    startup_program)
+                elif formal_name == "MomentDecayRate":
+                    initializer = "fill_constant&0.99"
+                elif formal_name == "AdaDecayRate":
+                    initializer = "fill_constant&0.9999"
+                elif formal_name == "AdaEpsilon":
+                    initializer = "fill_constant&1.0e-8"
+                else:
+                    initializer = "fill_constant&0"
                 initializers.append(initializer)
+            else:
+                if formal_name == "G2Sum":
+                    dims.append(1)
+                    initializer = "fill_constant&0"
+                    initializers.append(initializer)
+                else:
+                    param = main_program.global_block().vars[oop.input(formal_name)[
+                        0]]
+                    if formal_name == "LearningRate" and param.name != "learning_rate_0":
+                        warnings.warn("will support decay soon")
+                        param = main_program.global_block().vars["learning_rate_0"]
+
+                    if shape is None:
+                        if is_sparse:
+                            shape = total_dims
+                        else:
+                            shape = self.get_shard(total_dims, pserver_num,
+                                                   pserver_id)
+                    dims.append(shape)
+
+                    initializer = self.get_initializer_attr(param.name,
+                                                            startup_program)
+                    initializers.append(initializer)
 
         for (attr_varname, type_) in attr_varnames:
             value = oop.attr(attr_varname)
