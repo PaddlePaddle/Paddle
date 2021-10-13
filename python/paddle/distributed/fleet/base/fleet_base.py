@@ -1423,6 +1423,7 @@ class Fleet(object):
             auto_parallelizer = AutoParallelizer(self)
             optimize_ops, params_grads, dist_startup_prog, dist_main_prog = auto_parallelizer.parallelize(
                 loss, startup_program, parameter_list, no_grad_set)
+
             return optimize_ops, params_grads, dist_startup_prog, dist_main_prog
 
         # compile time
