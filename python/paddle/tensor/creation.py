@@ -442,26 +442,11 @@ def zeropad2d(x, pad, data_format="NCHW", name=None):
     ), "pad type should be one of [paddle.Tensor, list, tuple], but got {}".format(
         type(x))
 
-    if in_dygraph_mode():
-        if isinstance(pad, Variable):
-            pad = pad.numpy()
-        out = core.ops.pad2d(x, "paddings", pad, "value", 0, "data_format",
-                             data_format, "name", name)
-    else:
-        attrs = {'value': 0, 'data_format': data_format}
-        inputs = {'X': [x]}
-        if isinstance(pad, Variable):
-            inputs['Paddings'] = [pad]
-            attrs['paddings'] = []
-        else:
-            attrs['paddings'] = pad
+    if isinstance(pad, Variable):
+        pad = pad.numpy()
+    out = core.ops.pad2d(x, "paddings", pad, "value", 0, "data_format",
+                         data_format, "name", name)
 
-        helper = LayerHelper('pad2d', **locals())
-
-        dtype = helper.input_dtype(input_param_name='input')
-        out = helper.create_variable_for_type_inference(dtype)
-        helper.append_op(
-            type='pad2d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
     return out
 
 
