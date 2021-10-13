@@ -234,57 +234,5 @@ def test_fused_attention_cudnn_fmha_op():
     # np.testing.assert_allclose(
     #     x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-2)
 
-# fp16 is not supported when cudnn > 8.2 
-# @unittest.skipIf(not core.is_compiled_with_cuda(),
-#                  "Paddle core is not compiled with CUDA")
-# class TestFusedAttentionCuDNNFMHAOpFp16(TestFusedAttentionCuDNNFMHAOp):
-#     def config(self):
-#         self.x_type = np.float16
-#         #self.attn_mask_type = np.float64
-#         self.pre_layer_norm = True
-#         self.training = True
-
-#         self.batch_size = 8
-#         self.query_length = 128
-#         self.head_dim = 64
-#         self.num_heads = 16
-#         self.embed_dim = self.head_dim * self.num_heads
-
-#         self.dropout_prob = 0.0
-#         self.attn_dropout_prob = 0.0
-
-#         self.weight_attr = None
-#         self.bias_attr = None
-
-#         self.kdim, self.vdim = self.embed_dim, self.embed_dim
-#         self.key_length, self.value_length = self.query_length, self.query_length
-
-#     def test_fused_attention_cudnn_fmha_op(self):
-#         print(
-#             "self.batch_size, self.query_length, self.embed_dim, self.num_heads, self.head_dim = "
-#         )
-#         print(self.batch_size, self.query_length, self.embed_dim,
-#               self.num_heads, self.head_dim)
-#         ln_out_ref, out_linear_out_ref, final_out_ref, final_grad_ref, out_linear_grad_ref, ln_grad_ref, x_grad_ref = self.GetBaselineOut()
-#         ln_out, out_linear_out, final_out, final_grad, out_linear_grad, ln_grad, x_grad = self.GetFusedAttentionFMHAOut()
-        
-#         np.testing.assert_allclose(
-#             ln_out_ref, ln_out.numpy(), rtol=1e-5, atol=1e-1)
-        
-#         np.testing.assert_allclose(
-#             out_linear_out_ref, out_linear_out.numpy(), rtol=1e-5, atol=1e-1)
-
-#         np.testing.assert_allclose(
-#             final_out_ref, final_out.numpy(), rtol=1e-5, atol=1e-1)
-
-#         np.testing.assert_allclose(
-#             final_grad_ref, final_grad.numpy(), rtol=1e-5, atol=1e-1)
-#         np.testing.assert_allclose(
-#             out_linear_grad_ref, out_linear_grad.numpy(), rtol=1e-5, atol=1e-1)
-#         np.testing.assert_allclose(
-#             ln_grad_ref, ln_grad.numpy(), rtol=1e-5, atol=1e-1)
-#         np.testing.assert_allclose(
-#             x_grad_ref, x_grad.numpy(), rtol=1e-5, atol=1e-1)
-
 test_fused_attention_cudnn_fmha_op()
 
