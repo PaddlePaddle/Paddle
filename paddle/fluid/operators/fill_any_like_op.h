@@ -19,8 +19,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/tcmpt_utils.h"
 
-#include "paddle/tcmpt/api/include/dev/core.h"
-#include "paddle/tcmpt/api/include/dev/creation.h"
+#include "paddle/tcmpt/api/include/core.h"
+#include "paddle/tcmpt/api/include/creation.h"
 
 namespace paddle {
 namespace operators {

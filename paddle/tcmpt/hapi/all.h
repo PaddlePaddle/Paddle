@@ -14,6 +14,8 @@ limitations under the License. */
 
 #pragma once
 
-// See Note: [ How do we organize the kernel directory ]
-#include "paddle/tcmpt/cpu/math.h"
-#include "paddle/tcmpt/cuda/math.h"
+// user apis
+#include "paddle/tcmpt/hapi/include/creation.h"
+#include "paddle/tcmpt/hapi/include/linalg.h"
+#include "paddle/tcmpt/hapi/include/math.h"
+#include "paddle/tcmpt/hapi/include/tensor.h"

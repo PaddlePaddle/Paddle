@@ -1,6 +1,8 @@
 include(tcmpt)
 # tcmpt api
 add_subdirectory(api)
+# tcmpt high level api
+add_subdirectory(hapi)
 # tcmpt core components
 add_subdirectory(core)
 # tcmpt eigne functors, now paddle must compiled with eigen, but eigen just is

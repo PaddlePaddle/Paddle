@@ -21,8 +21,8 @@
 #include "paddle/fluid/platform/for_range.h"
 
 // only can include the headers in paddle/tcmpt/api dirs
-#include "paddle/tcmpt/api/include/dev/core.h"
-#include "paddle/tcmpt/api/include/dev/linalg.h"
+#include "paddle/tcmpt/api/include/core.h"
+#include "paddle/tcmpt/api/include/linalg.h"
 
 namespace paddle {
 namespace operators {

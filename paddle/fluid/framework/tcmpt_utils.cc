@@ -17,8 +17,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/selected_rows.h"
 
 #include "paddle/fluid/framework/variable.h"
-#include "paddle/tcmpt/api/include/dev/core.h"
-#include "paddle/tcmpt/api/include/dev/symbols.h"
+#include "paddle/tcmpt/api/include/core.h"
+#include "paddle/tcmpt/api/include/symbols.h"
 
 namespace paddle {
 namespace framework {

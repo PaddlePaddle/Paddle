@@ -12,28 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/tcmpt/cpu/fill.h"
+#include "paddle/tcmpt/cuda/creation.h"
 
 #include "paddle/tcmpt/core/kernel_registry.h"
-
 #include "paddle/tcmpt/eigen/fill.h"
 
 namespace pt {
 
 template <typename T>
-void FillAnyLike(const CPUContext& dev_ctx,
+void FillAnyLike(const CUDAContext& dev_ctx,
                  const DenseTensor& x,
                  const Scalar& val,
                  DenseTensor* out) {
-  eigen::fill<CPUContext, T>(dev_ctx, out, val.to<T>());
+  eigen::fill<CUDAContext, T>(dev_ctx, out, val.to<T>());
 }
 
 }  // namespace pt
 
-PT_REGISTER_MODULE(FillCPU);
+PT_REGISTER_MODULE(CreationCUDA);
 
 PT_REGISTER_KERNEL("fill_any_like",
-                   CPU,
+                   CUDA,
                    NCHW,
                    pt::FillAnyLike,
                    float,

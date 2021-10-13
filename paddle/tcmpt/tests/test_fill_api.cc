@@ -15,16 +15,15 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/tcmpt/api/include/creation.h"
+#include "paddle/tcmpt/hapi/include/creation.h"
 
 #include "paddle/tcmpt/core/dense_tensor.h"
-
 #include "paddle/tcmpt/core/kernel_registry.h"
 
-PT_DECLARE_MODULE(FillCPU);
+PT_DECLARE_MODULE(CreationCPU);
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(FillCUDA);
+PT_DECLARE_MODULE(CreationCUDA);
 #endif
 
 namespace framework = paddle::framework;
@@ -43,7 +42,7 @@ TEST(API, full_like) {
 
   float val = 1.0;
 
-  pt::Tensor x(dense_x);
+  paddle::experimental::Tensor x(dense_x);
 
   // 2. test API
   auto out = pt::full_like(x, val, pt::DataType::kFLOAT32);

@@ -41,7 +41,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/ddim.h"
 #include "paddle/fluid/platform/place.h"
 
-namespace pt {
+namespace paddle {
+namespace experimental {
 
 class Tensor;
 
@@ -90,7 +91,7 @@ class Tensor final {
    * @param {shared_ptr<TensorInterface>} tensor_impl
    * @return {Tensor}
    */
-  explicit Tensor(std::shared_ptr<TensorInterface> tensor_impl)
+  explicit Tensor(std::shared_ptr<pt::TensorInterface> tensor_impl)
       : impl_(std::move(tensor_impl)) {
     if (impl_.get() == nullptr) {
       throw std::runtime_error("TensorImpl with nullptr is not supported");
@@ -110,21 +111,21 @@ class Tensor final {
    * @param None
    * @return {DDim}
    */
-  DDim shape() const { return impl_->dims(); }
+  pt::DDim shape() const { return impl_->dims(); }
 
   /**
    * @description: Return the data type of current Tensor.
    * @param None
    * @return {DataType}
    */
-  DataType type() const { return impl_->type(); }
+  pt::DataType type() const { return impl_->type(); }
 
   /**
    * @description: Return the layout of current Tensor.
    * @param None
    * @return {DataLayout}
    */
-  DataLayout layout() const { return impl_->layout(); }
+  pt::DataLayout layout() const { return impl_->layout(); }
 
   /* Part 3: Device and Backend methods */
   /**
@@ -132,13 +133,13 @@ class Tensor final {
    * @param None
    * @return {Place}
    */
-  Place place() const { return impl_->place(); }
+  pt::Place place() const { return impl_->place(); }
 
   /**
    * Backend judgment APIs, shield the concept of Backend.
    */
-  bool is_cpu() const { return impl_->backend() == Backend::kCPU; }
-  bool is_cuda() const { return impl_->backend() == Backend::kCUDA; }
+  bool is_cpu() const { return impl_->backend() == pt::Backend::kCPU; }
+  bool is_cuda() const { return impl_->backend() == pt::Backend::kCUDA; }
   bool is_hip() const;
   bool is_xpu() const;
   bool is_npu() const;
@@ -164,14 +165,16 @@ class Tensor final {
    * @param None
    * @return {std::shared_ptr<TensorInterface>}
    */
-  std::shared_ptr<TensorInterface> impl() const { return impl_; }
+  std::shared_ptr<pt::TensorInterface> impl() const { return impl_; }
 
   /**
    * @description: Set the implemention of current Tensor.
    * @param {std::shared_ptr<TensorInterface>}
    * @return None
    */
-  void set_impl(const std::shared_ptr<TensorInterface>& impl) { impl_ = impl; }
+  void set_impl(const std::shared_ptr<pt::TensorInterface>& impl) {
+    impl_ = impl;
+  }
 
   // TODO(chenweihang): Whether API Tensor need `data` and `mutable_data`?
 
@@ -242,7 +245,7 @@ class Tensor final {
    * heterogeneous Tensor implementation, so that the API level can be unified
    * to one `Tensor`.
    */
-  std::shared_ptr<TensorInterface> impl_;
+  std::shared_ptr<pt::TensorInterface> impl_;
 
   /**
    * [ Why need abstract AutogradMetaInterface here? ]
@@ -258,4 +261,5 @@ class Tensor final {
   std::shared_ptr<AutogradMetaInterface> autograd_meta_ = nullptr;
 };
 
-}  // namespace pt
+}  // namespace experimental
+}  // namespace paddle
