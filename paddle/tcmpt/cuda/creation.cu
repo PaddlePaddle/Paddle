@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/tcmpt/cuda/fill.h"
+#include "paddle/tcmpt/cuda/creation.h"
 
 #include "paddle/tcmpt/core/kernel_registry.h"
-
 #include "paddle/tcmpt/eigen/fill.h"
 
 namespace pt {
@@ -34,7 +33,7 @@ void FillAnyLike(const CUDAContext& dev_ctx,
 
 }  // namespace pt
 
-PT_REGISTER_MODULE(FillCUDA);
+PT_REGISTER_MODULE(CreationCUDA);
 
 PT_REGISTER_KERNEL("fill_any_like",
                    CUDA,

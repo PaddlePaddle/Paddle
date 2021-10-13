@@ -12,10 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/tcmpt/cpu/fill.h"
+#include "paddle/tcmpt/cpu/creation.h"
 
 #include "paddle/tcmpt/core/kernel_registry.h"
-
 #include "paddle/tcmpt/eigen/fill.h"
 
 namespace pt {
@@ -34,7 +33,7 @@ void FillAnyLike(const CPUContext& dev_ctx,
 
 }  // namespace pt
 
-PT_REGISTER_MODULE(FillCPU);
+PT_REGISTER_MODULE(CreationCPU);
 
 PT_REGISTER_KERNEL("fill_any_like",
                    CPU,

@@ -12,39 +12,42 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/tcmpt/api/include/linalg.h"
+#include "paddle/tcmpt/hapi/include/linalg.h"
 
 #include <memory>
 
 #include "glog/logging.h"
 
+#include "paddle/tcmpt/api/include/core.h"
+#include "paddle/tcmpt/api/include/infershape.h"
 #include "paddle/tcmpt/core/convert_utils.h"
 #include "paddle/tcmpt/core/dense_tensor.h"
 #include "paddle/tcmpt/core/kernel_context.h"
 #include "paddle/tcmpt/core/kernel_generate.h"
 #include "paddle/tcmpt/infershape/binary.h"
 
-namespace pt {
+namespace paddle {
+namespace experimental {
 
 Tensor dot(const Tensor& x, const Tensor& y) {
   // 1. Get kernel signature and kernel
   auto kernel_signature = ParseKernelNameAndKeyByArgs("dot", x);
   VLOG(1) << kernel_signature.first;
   VLOG(1) << kernel_signature.second;
-  VLOG(1) << KernelFactory::Instance();
+  VLOG(1) << pt::KernelFactory::Instance();
 
-  auto kernel = KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel = pt::KernelFactory::Instance().SelectKernelOrThrowError(
       kernel_signature.first, kernel_signature.second);
   VLOG(1) << kernel;
 
   // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_signature.second.backend());
-  auto kernel_context = KernelContext(*dev_ctx);
+  auto kernel_context = pt::KernelContext(*dev_ctx);
 
   // 3. Auto data transform
-  auto dense_x = std::dynamic_pointer_cast<DenseTensor>(x.impl());
+  auto dense_x = std::dynamic_pointer_cast<pt::DenseTensor>(x.impl());
   kernel_context.EmplaceBackInput(dense_x);
-  auto dense_y = std::dynamic_pointer_cast<DenseTensor>(y.impl());
+  auto dense_y = std::dynamic_pointer_cast<pt::DenseTensor>(y.impl());
   kernel_context.EmplaceBackInput(dense_y);
   // TODO(chenweihang): add transform impl
 
@@ -53,7 +56,7 @@ Tensor dot(const Tensor& x, const Tensor& y) {
   auto out_meta = DotInferShape(dense_x->meta(), dense_y->meta());
 
   // 5. Prepare outputs
-  pt::Tensor out;
+  Tensor out;
   // TODO(chenweihang): deal with multiple outputs
   auto dense_out = std::make_shared<DenseTensor>(out_meta, TensorStatus());
   kernel_context.EmplaceBackOutput(dense_out);
@@ -65,4 +68,5 @@ Tensor dot(const Tensor& x, const Tensor& y) {
   return out;
 }
 
-}  // namespace pt
+}  // namespace experimental
+}  // namespace paddle

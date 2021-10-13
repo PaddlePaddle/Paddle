@@ -18,8 +18,8 @@ limitations under the License. */
 #include "paddle/fluid/framework/tcmpt_utils.h"
 
 // only can include the headers in paddle/top/api dirs
-#include "paddle/tcmpt/api/include/dev/core.h"
-#include "paddle/tcmpt/api/include/dev/math.h"
+#include "paddle/tcmpt/api/include/core.h"
+#include "paddle/tcmpt/api/include/math.h"
 
 namespace paddle {
 namespace operators {

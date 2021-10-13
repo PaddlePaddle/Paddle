@@ -12,12 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#pragma once
+#include "paddle/tcmpt/hapi/all.h"
 
-// develop apis
-#include "paddle/tcmpt/api/include/core.h"
-#include "paddle/tcmpt/api/include/creation.h"
-#include "paddle/tcmpt/api/include/infershape.h"
-#include "paddle/tcmpt/api/include/linalg.h"
-#include "paddle/tcmpt/api/include/manipulation.h"
-#include "paddle/tcmpt/api/include/math.h"
+namespace paddle {
+namespace experimental {}  // namespace experimental
+}  // namespace paddle

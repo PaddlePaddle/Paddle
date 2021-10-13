@@ -14,6 +14,15 @@ limitations under the License. */
 
 #pragma once
 
-// See Note: [ How do we organize the kernel directory ]
-#include "paddle/tcmpt/cpu/math.h"
-#include "paddle/tcmpt/cuda/math.h"
+#include "paddle/tcmpt/core/kernel_registry.h"
+
+// symbol declare
+PT_DECLARE_MODULE(MathCPU);
+PT_DECLARE_MODULE(LinalgCPU);
+PT_DECLARE_MODULE(CreationCPU);
+
+#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
+PT_DECLARE_MODULE(MathCUDA);
+PT_DECLARE_MODULE(LinalgCUDA);
+PT_DECLARE_MODULE(CreationCUDA);
+#endif

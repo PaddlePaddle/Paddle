@@ -14,15 +14,12 @@ limitations under the License. */
 
 #pragma once
 
-#include "paddle/tcmpt/core/kernel_registry.h"
+#include "paddle/tcmpt/hapi/include/tensor.h"
 
-// symbol declare
-PT_DECLARE_MODULE(MathCPU);
-PT_DECLARE_MODULE(LinalgCPU);
-PT_DECLARE_MODULE(FillCPU);
+namespace paddle {
+namespace experimental {
 
-#if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
-PT_DECLARE_MODULE(MathCUDA);
-PT_DECLARE_MODULE(LinalgCUDA);
-PT_DECLARE_MODULE(FillCUDA);
-#endif
+Tensor mean(const Tensor& x);
+
+}  // namespace experimental
+}  // namespace paddle

@@ -17,13 +17,16 @@ limitations under the License. */
 #include <string>
 #include <utility>
 
+#include "paddle/tcmpt/hapi/include/tensor.h"
+
 // TODO(chenweihang): split KernelName, Key, Kernel, Factory into diff files
 #include "paddle/tcmpt/core/kernel_factory.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
 
-namespace pt {
+namespace paddle {
+namespace experimental {
 
 // TODO(shixiaowei): replaced by new DeviceContext later
 using CPUContext = paddle::platform::CPUDeviceContext;
@@ -58,9 +61,9 @@ struct ArgsIterator {
 
 struct KernelNameAndKeyParser : ArgsIterator<KernelNameAndKeyParser> {
   std::string kernel_name;
-  Backend backend;
-  DataLayout layout;
-  DataType dtype;
+  pt::Backend backend;
+  pt::DataLayout layout;
+  pt::DataType dtype;
 
   explicit KernelNameAndKeyParser(const std::string& name)
       : kernel_name(name) {}
@@ -69,9 +72,9 @@ struct KernelNameAndKeyParser : ArgsIterator<KernelNameAndKeyParser> {
   // TODO(chenweihang): deal with multiple diff input Tensors
   void operator()(const Tensor& x) {
     if (x.is_cpu()) {
-      backend = Backend::kCPU;
+      backend = pt::Backend::kCPU;
     } else if (x.is_cuda()) {
-      backend = Backend::kCUDA;
+      backend = pt::Backend::kCUDA;
     } else {
       throw std::runtime_error("Unsupported backend when parser args.");
     }
@@ -94,19 +97,20 @@ struct KernelNameAndKeyParser : ArgsIterator<KernelNameAndKeyParser> {
 // suffix on the basis of the function name, or the input contains HostTensor,
 // and the `host` suffix should be added on the basis of the function name.
 template <typename... Args>
-std::pair<KernelName, KernelKey> ParseKernelNameAndKeyByArgs(
+std::pair<pt::KernelName, pt::KernelKey> ParseKernelNameAndKeyByArgs(
     const std::string& fn_name, const Args&... args) {
   auto parser = detail::KernelNameAndKeyParser(fn_name);
   parser(args...);
   // TODO(chenweihang): polish design here
-  KernelName kernel_name(parser.kernel_name);
-  KernelKey kernel_key(parser.backend, parser.layout, parser.dtype);
+  pt::KernelName kernel_name(parser.kernel_name);
+  pt::KernelKey kernel_key(parser.backend, parser.layout, parser.dtype);
   return std::make_pair(kernel_name, kernel_key);
 }
 
-paddle::platform::DeviceContext* GetDeviceContextByBackend(Backend backend) {
+paddle::platform::DeviceContext* GetDeviceContextByBackend(
+    pt::Backend backend) {
   auto& pool = paddle::platform::DeviceContextPool::Instance();
-  auto place = TransToFluidPlace(backend);
+  auto place = pt::TransToFluidPlace(backend);
   // switch (backend) {
   //   case Backend::kCPU:
   //     return pool.GetByPlace(paddle::platform::CPUPlace());
@@ -119,4 +123,5 @@ paddle::platform::DeviceContext* GetDeviceContextByBackend(Backend backend) {
   return pool.Get(place);
 }
 
-}  // namespace pt
+}  // namespace experimental
+}  // namespace paddle

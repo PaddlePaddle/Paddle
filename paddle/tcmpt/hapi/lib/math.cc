@@ -12,53 +12,56 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "paddle/tcmpt/api/include/creation.h"
+#include "paddle/tcmpt/hapi/include/math.h"
 
 #include <memory>
 
 #include "glog/logging.h"
 
-#include "paddle/tcmpt/api/include/dev/core.h"
-#include "paddle/tcmpt/api/include/dev/creation.h"
-#include "paddle/tcmpt/api/include/dev/infershape.h"
-#include "paddle/tcmpt/core/kernel_generate.h"
+#include "paddle/tcmpt/api/include/core.h"
+#include "paddle/tcmpt/api/include/infershape.h"
+#include "paddle/tcmpt/hapi/lib/kernel_generate.h"
 
-namespace pt {
+namespace paddle {
+namespace experimental {
 
-Tensor full_like(const Tensor& x, float value) {
+Tensor mean(const Tensor& x) {
   // 1. Get kernel signature and kernel
-  auto kernel_signature = ParseKernelNameAndKeyByArgs("fill_any_like", x);
+  auto kernel_signature = ParseKernelNameAndKeyByArgs("mean", x);
   VLOG(1) << kernel_signature.first;
   VLOG(1) << kernel_signature.second;
-  VLOG(1) << KernelFactory::Instance();
+  VLOG(1) << pt::KernelFactory::Instance();
 
-  auto kernel = KernelFactory::Instance().SelectKernelOrThrowError(
+  auto kernel = pt::KernelFactory::Instance().SelectKernelOrThrowError(
       kernel_signature.first, kernel_signature.second);
   VLOG(1) << kernel;
 
   // 2. Get Device Context
   auto* dev_ctx = GetDeviceContextByBackend(kernel_signature.second.backend());
-  auto kernel_context = KernelContext(*dev_ctx);
+  auto kernel_context = pt::KernelContext(*dev_ctx);
 
   // 3. Auto data transform
-  auto dense_x = std::dynamic_pointer_cast<DenseTensor>(x.impl());
+  auto dense_x = std::dynamic_pointer_cast<pt::DenseTensor>(x.impl());
   kernel_context.EmplaceBackInput(dense_x);
-
-  kernel_context.EmplaceBackAttr(value);
+  // TODO(chenweihang): add transform impl
 
   // 4. InferShape
-  auto out_meta = UnchangedInferShape(dense_x->meta());
+  // TODO(chenweihang): how to auto selected infershape?
+  auto out_meta = ReductionInferShape(dense_x->meta());
 
   // 5. Prepare outputs
-  pt::Tensor out;
+  Tensor out;
+  // TODO(chenweihang): deal with multiple outputs
   auto dense_out = std::make_shared<DenseTensor>(out_meta, TensorStatus());
   kernel_context.EmplaceBackOutput(dense_out);
   out.set_impl(dense_out);
 
   // 6. Call kernel
+  // TODO(chenweihang): finally, we may call the function directly,
   kernel(&kernel_context);
 
   return out;
 }
 
-}  // namespace pt
+}  // namespace experimental
+}  // namespace paddle

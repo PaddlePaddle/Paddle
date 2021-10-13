@@ -20,8 +20,8 @@ limitations under the License. */
 #include "paddle/fluid/operators/eigen/eigen_function.h"
 
 // only can include the headers in paddle/tcmpt/api dirs
-#include "paddle/tcmpt/api/include/dev/core.h"
-#include "paddle/tcmpt/api/include/dev/math.h"
+#include "paddle/tcmpt/api/include/core.h"
+#include "paddle/tcmpt/api/include/math.h"
 
 namespace paddle {
 namespace operators {

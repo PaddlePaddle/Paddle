@@ -14,10 +14,5 @@
 
 #pragma once
 
-#include "paddle/tcmpt/api/include/tensor.h"
-
-namespace pt {
-
-Tensor full_like(const Tensor& x, float value);
-
-}  // namespace pt
+#include "paddle/tcmpt/cpu/creation.h"
+#include "paddle/tcmpt/cuda/creation.h"
