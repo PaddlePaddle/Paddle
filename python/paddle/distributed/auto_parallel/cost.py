@@ -21,6 +21,7 @@ import paddle
 SUCC = 0  # successor
 PRED = 1  # predecessor
 
+
 class NodeType(Enum):
     DEFAULT = 0
     COMPUTATION = 1
@@ -41,7 +42,7 @@ class CostModelMode(Enum):
     DEFAULT = 0
     BENCHMARKING = 1  # costs based on trial runs
     ANALYSIS = 2  # costs based on analysis
-    MIXED = 3 
+    MIXED = 3
 
 
 class NodeBase(object):
@@ -87,7 +88,7 @@ class CommNode(NodeBase):
 
         if 'allreduce' in self.comm_type:
             self.cost = comm_volumn / (BANDWIDTH * num_ranks / 
-                                        (2 * (num_ranks - 1)))
+                                       (2 * (num_ranks - 1)))
         elif 'gather' in self.comm_type:
             self.cost = comm_volumn / (BANDWIDTH * num_ranks / (num_ranks - 1))
         elif 'broadcast' in self.comm_type:
@@ -102,10 +103,11 @@ class CommNode(NodeBase):
 
 
 class VarNode(NodeBase):
-    def __init__(self, 
-                 node, 
-                 node_type,id=None, 
-                 base_node_list=None, 
+    def __init__(self,
+                 node,
+                 node_type,
+                 id=None,
+                 base_node_list=None,
                  batch_size=None,
                  shared_node_id=None):
         super(VarNode, self).__init__(node, node_type, id)
@@ -164,8 +166,8 @@ class PipeEvent(object):
 class CostModelContext(object):
     def __init__(self,
                  mode=CostModelMode.BENCHMARKING,
-                 cluster=None, 
-                 batch_size=1, 
+                 cluster=None,
+                 batch_size=1,
                  microbatch_num=1,
                  opcall_overhead=0,
                  bwd_ratio=1.5,
@@ -181,7 +183,7 @@ class CostModelContext(object):
         self.update_time = update_time
         self.microbatch_num = microbatch_num
 
-        self.nodes= {}  # name -> node
+        self.nodes = {}  # name -> node
 
         self.origin_graph = {}  # original graph
         self.op_graph = {}  # op graph (no variables nodes)
@@ -221,7 +223,7 @@ class CostModelContext(object):
         for op in block.ops:
             op_id = op.type + "_" + str(op.idx)
             if op.type.startswith('c_') or op.type.startswith(
-                   'send') or op.type.startswith('recv'):
+                    'send') or op.type.startswith('recv'):
                 op_node = CommNode(op, NodeType.COMMUNICATION, op_id)
             else:
                 op_node = CompNode(op, NodeType.COMPUTATION, op_id)
@@ -261,7 +263,7 @@ class CostModelContext(object):
                 for pred_id in graph[node_id][PRED]:
                     pred = nodes[pred_id]
                     if pred.type == NodeType.COMPUTATION and (
-                            pred_id in graph[node_id][SUCC]): 
+                            pred_id in graph[node_id][SUCC]):
 
                         graph[pred_id][SUCC].remove(node_id)
                         graph[node_id][PRED].remove(pred_id)
@@ -269,9 +271,9 @@ class CostModelContext(object):
                         write_op_cnt += 1
                         new_var_id = node_id + '_write_{}'.format(write_op_cnt)
                         new_var = VarNode(
-                            node.node, 
-                            NodeType.VARIABLE, 
-                            new_var_id, 
+                            node.node,
+                            NodeType.VARIABLE,
+                            new_var_id,
                             shared_node_id=node_id)
 
                         graph[new_var_id] = [[], []]
@@ -287,7 +289,7 @@ class CostModelContext(object):
         self.distributed_program = distributed_program
         sub_prog_cnt = len(distributed_program)
         self.nodes = [] * sub_prog_cnt
-        self.origin_graph =[] * sub_prog_cnt  # original graph
+        self.origin_graph = [] * sub_prog_cnt  # original graph
         self.op_graph = [] * sub_prog_cnt  # op graph (no variables nodes)
         self.rt_graph = [] * sub_prog_cnt  # runtime graph, for simulation
 
@@ -311,8 +313,8 @@ class CostModelContext(object):
             elif succ.type == NodeType.VARIABLE:
                 succ_ops_id = succ_ops_id + self._find_succ_op(succ_id, sub_idx)
             else:
-                raise NotImplementedError('This type of node \
-                    not supported yet:{}'.format(succ.type))
+                raise NotImplementedError(
+                    'This type of node not supported yet:{}'.format(succ.type))
         return succ_ops_id
 
     def build_op_graph(self):
@@ -332,7 +334,7 @@ class CostModelContext(object):
 
     def build_rt_graph(self):
         self.rt_graph = copy.deepcopy(self.op_graph)
-        
+
     def elim_multi_edges(self, graph=None):
         for node_id, edges in graph.items():
             graph[node_id][PRED] = list(set(edges[PRED]))
@@ -343,27 +345,27 @@ class CostModelContext(object):
             dim = self.rank2dim[sub_idx]
             start_idx = dim[1] * self.process_mesh.topology[2] + \
                         dim[0] * self.process_mesh.topology[2] * self.process_mesh.topology[1]
-            end_idx =   (dim[1]+1) * self.process_mesh.topology[2] + \
-                        dim[0] * self.process_mesh.topology[2] * self.process_mesh.topology[1]
+            end_idx = (dim[1]+1) * self.process_mesh.topology[2] + \
+                       dim[0] * self.process_mesh.topology[2] * self.process_mesh.topology[1]
             mp_group = list(
-                map(lambda x: self.process_mesh.process_group[x], 
-                    range(start_idx,end_idx)))
-        
+                map(lambda x: self.process_mesh.process_group[x],
+                    range(start_idx, end_idx)))
+
             start_idx = dim[2] + dim[0] * self.process_mesh.topology[
                 2] * self.process_mesh.topology[1]
-            end_idx =  start_idx + self.process_mesh.topology[
+            end_idx = start_idx + self.process_mesh.topology[
                 2] * self.process_mesh.topology[1]
             dp_group = list(
                 map(lambda x: self.process_mesh.process_group[x],
-                            range(start_idx, end_idx, self.process_mesh.topology[2])))
+                    range(start_idx, end_idx, self.process_mesh.topology[2])))
 
             rank = self.process_mesh.process_group.index(sub_idx)
-            if dim[0] != 0: # first stage
+            if dim[0] != 0:  # first stage
                 pp_pred_peer = self.process_mesh.process_group[
                     rank - self.process_mesh.topology[
                         2] * self.process_mesh.topology[1]]
 
-            if dim[0] != (self.process_mesh.topology[0] - 1 ): # last stage
+            if dim[0] != (self.process_mesh.topology[0] - 1):  # last stage
                 pp_succ_peer = self.process_mesh.process_group[
                     rank + self.process_mesh.topology[
                         2] * self.process_mesh.topology[1]]
@@ -391,9 +393,8 @@ class CostModelContext(object):
                         node.set_ranks([sub_idx, pp_pred_peer])
                     node.set_cost(self.cluster)
                 else:
-                    raise NotImplementedError('This type of communication op \
-                        not supported yet:{}'.format(node_id))
-
+                    pass  # Not communication op
+                    
     def _merge_node(self, to_merge_node_list, merge_type='linear', nodes=None):
         nodes_list = []
         node_cost = 0
@@ -408,8 +409,8 @@ class CostModelContext(object):
             elif merge_type == 'branch':
                 node_cost = max(node_cost, node.cost)
             else:
-                raise NotImplementedError('This type of merging \
-                    is not supported:{}'.format(merge_type))
+                raise NotImplementedError(
+                    'This type of merging is not supported:{}'.format(merge_type))
 
         merged_node_id = 'merged_' + str(len(nodes))
         merged_node = MergedNode(
@@ -428,7 +429,7 @@ class CostModelContext(object):
         '''
         cnt = 0
         for sub_idx in range(len(self.distributed_program)):
-            cnt += self._merge_linear(self.nodes[sub_idx], 
+            cnt += self._merge_linear(self.nodes[sub_idx],
                                       self.rt_graph[sub_idx])
         return cnt
 
@@ -445,7 +446,7 @@ class CostModelContext(object):
         '''
         cnt = 0
         for sub_idx in range(len(self.distributed_program)):
-            cnt += self._merge_branch(self.nodes[sub_idx], 
+            cnt += self._merge_branch(self.nodes[sub_idx],
                                       self.rt_graph[sub_idx])
         return cnt
 
@@ -519,7 +520,7 @@ class CostModelContext(object):
                 to_merge = True
                 # print(edges)
                 if len(edges[SUCC]) < 1 or len(rt_graph[edges[SUCC][0]][
-                        SUCC]) < 1 :
+                        SUCC]) < 1:
                     continue
                 end_node_id = rt_graph[edges[SUCC][0]][SUCC][0]
                 for i in succ_nodes_id:
@@ -625,12 +626,12 @@ class CostModelContext(object):
         else:
             pp = list(
                 map(lambda x: self.process_mesh.process_group[x],
-                    range(0, self.process_mesh.topology[2]* self.process_mesh.
-                        topology[1], self.process_mesh.topology[2])))
-            
+                    range(0, self.process_mesh.topology[2] * self.process_mesh.
+                          topology[1], self.process_mesh.topology[2])))
+
             self.fwd_time = [self.time_list[pp[i]] for i in range(len(pp))]
             self.bwd_time = [
-                self.time_list[pp[i]]* self.bwd_ratio for i in range(len(pp))
+                self.time_list[pp[i]] * self.bwd_ratio for i in range(len(pp))
             ]
             self.optim_time = [self.update_time for i in range(len(pp))]
         return self.sim_pipeline()
@@ -693,15 +694,15 @@ class CostModelContext(object):
                             'optim',
                             self.optim_time[stid],
                             start_time=e.e_time))
-                global_time[stid]  = e.e_time
+                global_time[stid] = e.e_time
             elif e.name == 'optim':
                 e.s_time = max(global_time[stid], e.s_time)
                 e.e_time = e.s_time + e.duration
                 event_list.append(e)
                 global_time[stid] = e.e_time
             else:
-                raise NotImplementedError('This type of pipe \
-                    event is not supported yet.{}'.format(e.name))
+                raise NotImplementedError(
+                    'This type of pipe event is not supported yet.{}'.format(e.name))
 
         for t in global_time:
             total_time = max(total_time, t)
@@ -734,7 +735,7 @@ def estimate_cost(distributed_program, cluster, process_mesh,
     for sub_idx in range(len(distributed_program)):
         cm_ctx.elim_multi_edges(cm_ctx.op_graph[sub_idx])
     cm_ctx.build_rt_graph()
-    
+
     static_mem, peak_mem = cm_ctx.get_mem()
     cost.static_mem = static_mem
     cost.peak_mem = peak_mem
@@ -744,7 +745,7 @@ def estimate_cost(distributed_program, cluster, process_mesh,
         cnt = 0
         cnt += cm_ctx.merge_linear()
         cnt += cm_ctx.merge_branch()
-        if cnt == 0: # can't be further merged
+        if cnt == 0:  # can't be further merged
             break
 
     cost.runtime = cm_ctx.get_rt_cost()

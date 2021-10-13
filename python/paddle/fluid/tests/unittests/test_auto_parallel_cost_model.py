@@ -43,6 +43,7 @@ STAGE_1_CNT = 10
 
 device = "gpu" if core.is_compiled_with_cuda() else "cpu"
 
+
 class MLPLayer(nn.Layer):
     def __init__(self,
                  hidden_size=256,
@@ -66,8 +67,10 @@ class MLPLayer(nn.Layer):
 
     def forward(self, input):
         if self.is_distributed:
-            auto.shard_tensor(self.linear0.weight, PP_MESH_0, dim_mapping=[-1, 1])
-            auto.shard_tensor(self.linear1.weight, PP_MESH_1, dim_mapping=[1, -1])
+            auto.shard_tensor(
+                self.linear0.weight, PP_MESH_0, dim_mapping=[-1, 1])
+            auto.shard_tensor(
+                self.linear1.weight, PP_MESH_1, dim_mapping=[1, -1])
 
         out = self.norm(input)
         out = self.linear0(out)
@@ -76,19 +79,19 @@ class MLPLayer(nn.Layer):
 
         return out
 
+
 def get_single_node_data():
     train_program = paddle.static.Program()
     startup_program = paddle.static.Program()
     
-    loss, train_program, startup_program = mlp_forward(train_program,
-                                                       startup_program,
-                                                       is_distributed = False)
+    loss, train_program, startup_program = mlp_forward(
+        train_program, startup_program, is_distributed=False)
 
     cost_model = core.CostModel()
     cost_data = cost_model.profile_measure(train_program, startup_program,
-                                            device, ["time"])
+                                           device, ["time"])
 
-    op_name2cost = [{},{}]
+    op_name2cost = [{}, {}]
     for idx, op in enumerate(train_program.blocks[0].ops):
         if idx <= STAGE_0_CNT:
             op_name2cost[0][op.type] = cost_data.get_op_time_ms(idx)
@@ -96,7 +99,8 @@ def get_single_node_data():
             op_name2cost[1][op.type] = cost_data.get_op_time_ms(idx)
     return op_name2cost
 
-def mlp_forward(train_program, start_program, is_distributed = True):
+
+def mlp_forward(train_program, start_program, is_distributed=True):
     with static.program_guard(train_program,
                               start_program), utils.unique_name.guard():
         batch_size = 4
@@ -130,7 +134,7 @@ def mlp_forward(train_program, start_program, is_distributed = True):
     return loss, train_program, start_program
 
 
-def get_dist_prog(train_program, startup_program,  dist_context, rank_id):
+def get_dist_prog(train_program, startup_program, dist_context, rank_id):
     global _global_process_mesh
     dist_context.set_process_mesh(_global_process_mesh)
     loss, train_program, startup_program = mlp_forward(train_program,
@@ -153,34 +157,39 @@ def get_dist_prog(train_program, startup_program,  dist_context, rank_id):
             auto_parallel_startup_prog)
         optimizer = paddle.fluid.optimizer.AdamOptimizer()
         opt_ops = partitioner.apply_optimize(optimizer, dist_params_grads,
-                                            auto_parallel_main_prog,
-                                            auto_parallel_startup_prog)
+                                             auto_parallel_main_prog,
+                                             auto_parallel_startup_prog)
         dist_main_prog.append(auto_parallel_main_prog)
         dist_startup_prog.append(auto_parallel_startup_prog)
     return dist_main_prog, dist_startup_prog
 
+
 def check_runtime_estimation(cost):
     return cost.runtime > 0
 
+
 def check_memory_estimation(cost):
     for i in range(NUM_RANKS):
-        if cost.static_mem[i] <=0 or cost.peak_mem[i] <= 0 :
+        if cost.static_mem[i] <= 0 or cost.peak_mem[i] <= 0:
             return False
         if cost.static_mem[i] > cost.peak_mem[i]:
             return False
     return True
 
+
 def check_empty_program_runtime(cost):
-    return cost.runtime == 0.0
+    return cost.runtime == 0
+
 
 def check_empty_program_memory(cost):
     for mem in cost.peak_mem:
-        if mem > 0.0 :
+        if mem > 0:
             return False
     for mem in cost.static_mem:
-        if mem > 0.0 :
+        if mem > 0:
             return False
     return True
+
 
 class TestCostModel(unittest.TestCase):
     def test_empty_program_cost_model(self):
@@ -188,30 +197,39 @@ class TestCostModel(unittest.TestCase):
         startup_program = paddle.static.Program()
         single_cost_data = [{}]
         cluster = None
-        cost = estimate_cost([empty_program], cluster = cluster, process_mesh = _global_process_mesh, single_cost_data=single_cost_data, batch_size = 4)
+        cost = estimate_cost(
+            [empty_program],
+            cluster=cluster,
+            process_mesh=_global_process_mesh,
+            single_cost_data=single_cost_data,
+            batch_size=1)
 
         self.assertTrue(check_empty_program_runtime(cost))
         self.assertTrue(check_empty_program_memory(cost))
-    
+
     def test_auto_parallel_cost_model(self):
         train_program = paddle.static.Program()
         startup_program = paddle.static.Program()
         dist_context = DistributedContext()
-
         op2cost = get_single_node_data()
-        
+
         distributed_program, dist_startup_prog = get_dist_prog(
-            train_program, startup_program,  dist_context,0)
+            train_program, startup_program, dist_context, 0)
         for rank_id in range(NUM_RANKS):
-            complete_backward_annotation(distributed_program[rank_id], dist_context)
-            reshard(distributed_program[rank_id], dist_startup_prog[rank_id], rank_id, dist_context)
-
+            complete_backward_annotation(distributed_program[rank_id],
+                                         dist_context)
+            reshard(distributed_program[rank_id],
+                    dist_startup_prog[rank_id], rank_id, dist_context)
         cluster = None
-
-        cost = estimate_cost(distributed_program, cluster = cluster, process_mesh = _global_process_mesh, single_cost_data=op2cost, batch_size = 4)
-
+        cost = estimate_cost(
+            distributed_program, 
+            cluster=cluster,
+            process_mesh=_global_process_mesh,
+            single_cost_data=op2cost,
+            batch_size=4)
         self.assertTrue(check_runtime_estimation(cost))
         self.assertTrue(check_memory_estimation(cost))
-    
+
+
 if __name__ == "__main__":
     unittest.main()
