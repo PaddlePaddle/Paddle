@@ -71,6 +71,10 @@ class ParallelExecutorPassBuilder : public ir::PassBuilder {
                         "modify_op_lock_and_record_event_pass");
     // Note: This pass is used to check whether the multi_device_graph is right.
     AppendPass("multi_devices_check_pass");
+    // Note: This pass is used to enable cinn.
+    if (FLAGS_use_cinn) {
+      AppendPass("build_cinn_pass");
+    }
     SetCollectiveContext();
   }
 
