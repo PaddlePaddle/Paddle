@@ -1300,8 +1300,6 @@ class Variable(object):
             var_str += ", {name} = {value}".format(
                 name="dist_attr", value=var_dist_attr)
 
-        var_str = var_str + " , id = " + str(self.desc.id()) + "."
-
         return var_str
 
     def to_string(self, throw_on_error, with_details=False):
@@ -2521,8 +2519,6 @@ class Operator(object):
         if op_dist_attr is not None:
             attrs_str += ", {name} = {value}".format(
                 name="dist_attr", value=op_dist_attr)
-
-        attrs_str = attrs_str + " , id = " + str(self.desc.id()) + "."
 
         if outputs_str != "{}":
             op_str = "{outputs} = {op_type}(inputs={inputs}, {attrs})".\
