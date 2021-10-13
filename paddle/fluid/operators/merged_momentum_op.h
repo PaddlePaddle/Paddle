@@ -38,7 +38,7 @@ struct MergedMomentumMasterParams<MT, kParamNum, false> {
 };
 
 template <typename T, typename MT, bool kHasMasterParams,
-          uint32_t kParamNum = kHasMasterParams ? 60 : 120>
+          uint32_t kParamNum = kHasMasterParams ? 55 : 110>
 struct MergedMomentumKernelParam
     : public MergedMomentumMasterParams<MT, kParamNum, kHasMasterParams> {
   static constexpr auto N = kParamNum;
@@ -55,7 +55,7 @@ struct MergedMomentumKernelParam
     const auto lr_val = *lr;
     for (uint32_t idx = 0; idx < param_num; ++idx) {
       auto size = sizes[idx];
-      if (i > size) continue;
+      if (i >= size) continue;
 
       auto param_p = params[idx];
       auto grad_p = grads[idx];
@@ -64,10 +64,10 @@ struct MergedMomentumKernelParam
 
       const MT param =
           master_param_p ? master_param_p[i] : static_cast<MT>(param_p[i]);
-      MT grad = static_cast<MT>(grad_p[i]) * rescale_grad;
+      const MT grad = static_cast<MT>(grad_p[i]) * rescale_grad;
       const MT velocity = velocity_p[i];
-      MT velocity_out = velocity * mu + grad;
-      MT param_out = param - (grad + velocity_out * mu) * lr_val;
+      const MT velocity_out = velocity * mu + grad;
+      const MT param_out = param - lr_val * velocity_out;
       velocity_p[i] = velocity_out;
       param_p[i] = static_cast<T>(param_out);
       if (master_param_p) {

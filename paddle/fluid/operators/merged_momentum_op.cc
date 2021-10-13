@@ -35,17 +35,48 @@ class MergedMomentumOp : public framework::OperatorWithKernel {
 class MergedMomentumOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
-    AddInput("Param", "").AsDuplicable();
-    AddInput("Grad", "").AsDuplicable();
-    AddInput("Velocity", "").AsDuplicable();
-    AddInput("LearningRate", "");
-    AddInput("MasterParam", "").AsDispensable().AsDuplicable();
-    AddOutput("ParamOut", "").AsDuplicable();
-    AddOutput("VelocityOut", "").AsDuplicable();
-    AddOutput("MasterParamOut", "").AsDispensable().AsDuplicable();
-    AddAttr<float>("mu", "");
-    AddAttr<bool>("multi_precision", "").SetDefault(false);
-    AddAttr<float>("rescale_grad", "").SetDefault(1.0f);
+    AddInput("Param",
+             "(Tensor, default Tensor<float>) "
+             "Input parameter that has to be updated")
+        .AsDuplicable();
+    AddInput("Grad",
+             "(Tensor, default Tensor<float>) "
+             "Input gradient of the parameter")
+        .AsDuplicable();
+    AddInput("Velocity",
+             "(Tensor, default Tensor<float>) "
+             "Input velocity (corresponding to the parameter) "
+             "that has to be updated")
+        .AsDuplicable();
+    AddInput("LearningRate",
+             "(Tensor, default Tensor<float>) "
+             "Input learning rate");
+    AddInput("MasterParam", "FP32 master weight for AMP.")
+        .AsDispensable()
+        .AsDuplicable();
+    AddOutput("ParamOut",
+              "(Tensor) This output is updated parameter. "
+              "It shared memory with Input(Param).")
+        .AsDuplicable();
+    AddOutput("VelocityOut",
+              "(Tensor) This output is updated velocity. "
+              "It shared memory with Input(Velocity).")
+        .AsDuplicable();
+    AddOutput("MasterParamOut",
+              "The updated FP32 master weight for AMP. "
+              "It shared memory with Input(MasterParam).")
+        .AsDispensable()
+        .AsDuplicable();
+    AddAttr<float>("mu", "(float) Momentum coefficient");
+    AddAttr<bool>("multi_precision",
+                  "(bool, default false) "
+                  "Whether to use multi-precision during weight updating.")
+        .SetDefault(false);
+    AddAttr<float>(
+        "rescale_grad",
+        "(float, default 1.0) Multiply the gradient with `rescale_grad`"
+        "before updating. Often choose to be `1.0/batch_size`.")
+        .SetDefault(1.0f);
     AddComment(R"DOC(Merged Momentum Optimizer.)DOC");
   }
 };
