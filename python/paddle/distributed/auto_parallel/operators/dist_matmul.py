@@ -31,7 +31,7 @@ from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process import new_process_group
-from ..utils import _get_comm_group
+from ..utils import _get_comm_group, _get_corresponding_rank
 
 
 def _update_dims_mapping_for_matmul(op_dist_attr):
@@ -137,6 +137,10 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     assert dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
         str(backward_op))
 
+    # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
+    if rank_id not in dist_attr.get_process_mesh().process_group:
+        rank_id = _get_corresponding_rank(dist_attr.get_process_mesh(), rank_id)
+
     # check if need gradient allreduce
     need_gradient_allreduce = False
 
@@ -170,6 +174,7 @@ def _right_operand_parameter_matmul_backward(ctx, *args, **kwargs):
     X_var = main_block.var(kwargs['X'][0])
     assert not X_var.is_parameter, "left operand(X) [{}] of dist matmul should not be parameter".format(
         X_var.name)
+
     process_mesh = dist_attr.get_process_mesh()
     var_dim_mapping = dist_attr.get_input_dims_mapping(X_var.name)
     mesh_shape = process_mesh.topology
@@ -313,6 +318,11 @@ class DistributedMatmulImpl0(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))
+
+        # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
+        if rank_id not in op_dist_attr.get_process_mesh().process_group:
+            rank_id = _get_corresponding_rank(op_dist_attr.get_process_mesh(),
+                                              rank_id)
 
         # check validation of inputs / outputs 
         for input_name in src_op.desc.input_names():
@@ -461,6 +471,11 @@ class DistributedMatmulImpl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))
+
+        # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
+        if rank_id not in op_dist_attr.get_process_mesh().process_group:
+            rank_id = _get_corresponding_rank(op_dist_attr.get_process_mesh(),
+                                              rank_id)
 
         # check validation of inputs / outputs 
         for input_name in src_op.desc.input_names():
@@ -680,6 +695,11 @@ class DistributedMatmulV2Impl0(DistributedOperatorImpl):
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))
 
+        # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
+        if rank_id not in op_dist_attr.get_process_mesh().process_group:
+            rank_id = _get_corresponding_rank(op_dist_attr.get_process_mesh(),
+                                              rank_id)
+
         # check validation of inputs / outputs 
         for input_name in src_op.desc.input_names():
             assert input_name in kwargs, "input [{}] is not given".format(
@@ -827,6 +847,11 @@ class DistributedMatmulV2Impl1(DistributedOperatorImpl):
         op_dist_attr = ctx.get_op_distributed_attr_for_program(src_op)
         assert op_dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(src_op))
+
+        # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
+        if rank_id not in op_dist_attr.get_process_mesh().process_group:
+            rank_id = _get_corresponding_rank(op_dist_attr.get_process_mesh(),
+                                              rank_id)
 
         # check validation of inputs / outputs 
         for input_name in src_op.desc.input_names():
