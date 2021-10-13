@@ -92,10 +92,9 @@ void CheckOutput(const framework::Tensor &cpu_res,
 }
 
 // Use Paddle conv2d op results as baseline
-template <typename T>
 void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
                           const Tensor &cpu_input, const Tensor &cpu_filter,
-                          Tensor *cpu_output) {
+                          Tensor *cpu_output, int stride, int padding) {
   framework::Scope scope;
   auto *input = scope.Var("Input")->GetMutable<framework::LoDTensor>();
   auto *filter = scope.Var("Filter")->GetMutable<framework::LoDTensor>();
@@ -108,10 +107,12 @@ void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
   framework::AttributeMap attrs;
   bool use_cudnn = true;
   std::string data_format = "NHWC";
-  std::string padding_algorithm = "SAME";
+  std::vector<int> strides = {stride, stride};
+  std::vector<int> paddings = {padding, padding};
+  attrs.insert({"strides", strides});
+  attrs.insert({"paddings", paddings});
   attrs.insert({"use_cudnn", use_cudnn});
   attrs.insert({"data_format", data_format});
-  attrs.insert({"padding_algorithm", padding_algorithm});
 
   auto op = framework::OpRegistry::CreateOp(
       "conv2d", {{"Input", {"Input"}}, {"Filter", {"Filter"}}},
@@ -122,7 +123,6 @@ void ComputeConv2DForward(const platform::CUDADeviceContext &ctx,
 }
 
 // Use Paddle conv2d_grad op results as baseline
-template <typename T>
 void ComputeConv2DBackward(const platform::CUDADeviceContext &ctx,
                            const Tensor &cpu_input, const Tensor &cpu_filter,
                            const Tensor &cpu_output_grad,
@@ -147,7 +147,7 @@ void ComputeConv2DBackward(const platform::CUDADeviceContext &ctx,
   framework::AttributeMap attrs;
   bool use_cudnn = true;
   std::string data_format = "NHWC";
-  std::string padding_algorithm = "SAME";
+  std::string padding_algorithm = "EXPLICIT";
   std::vector<int> strides = {stride, stride};
   std::vector<int> paddings = {padding, padding};
   std::vector<int> dilations = {dilation, dilation};
@@ -216,6 +216,8 @@ class CudnnNormConvolutionTester {
     kernel_size_ = kernel_size;
     stride_ = stride;
     padding_ = (kernel_size_ - 1) / 2;
+    out_height_ = (height_ + 2 * padding_ - kernel_size_) / stride_ + 1;
+    out_width_ = (width_ + 2 * padding_ - kernel_size_) / stride_ + 1;
     SetUp();
   }
 
@@ -277,15 +279,17 @@ class CudnnNormConvolutionTester {
         &cpu_filter_nchw_);
     // transpoes for filter, NCHW -> NHWC
     TransposeNchwToNhwc<T>(cpu_filter_nchw_, &cpu_filter_nhwc_);
-    InitRandomTensor<T>({batch_size_, height_, width_, output_channels_},
-                        &cpu_output_grad_);
+    InitRandomTensor<T>(
+        {batch_size_, out_height_, out_width_, output_channels_},
+        &cpu_output_grad_);
   }
 
   void BaselineForward(const platform::CUDADeviceContext &ctx,
                        framework::Tensor *cpu_output_base,
                        framework::Tensor *cpu_sum_base,
                        framework::Tensor *cpu_sum_of_square_base) {
-    ComputeConv2DForward<T>(ctx, cpu_input_, cpu_filter_nchw_, cpu_output_base);
+    ComputeConv2DForward(ctx, cpu_input_, cpu_filter_nchw_, cpu_output_base,
+                         stride_, padding_);
     ComputeSumAndSquareSum<T>(*cpu_output_base, cpu_sum_base,
                               cpu_sum_of_square_base);
   }
@@ -293,10 +297,9 @@ class CudnnNormConvolutionTester {
   void BaselineBackward(const platform::CUDADeviceContext &ctx,
                         framework::Tensor *cpu_input_grad_base,
                         framework::Tensor *cpu_filter_grad_base) {
-    ComputeConv2DBackward<T>(ctx, cpu_input_, cpu_filter_nchw_,
-                             cpu_output_grad_, cpu_input_grad_base,
-                             cpu_filter_grad_base, stride_, padding_,
-                             dilation_);
+    ComputeConv2DBackward(ctx, cpu_input_, cpu_filter_nchw_, cpu_output_grad_,
+                          cpu_input_grad_base, cpu_filter_grad_base, stride_,
+                          padding_, dilation_);
   }
 
   // get forward results of cudnn_norm_conv
@@ -313,14 +316,10 @@ class CudnnNormConvolutionTester {
     TensorCopySync(cpu_input_, place, &input);
     TensorCopySync(cpu_filter_nhwc_, place, &filter_nhwc);
 
-    T *input_ptr = input.data<T>();
-    T *filter_ptr = filter_nhwc.data<T>();
-    T *output_ptr = output.mutable_data<T>(
-        {batch_size_, height_, width_, output_channels_}, place);
-    float *sum_ptr =
-        sum.mutable_data<float>({1, 1, 1, output_channels_}, place);
-    float *sum_of_square_ptr =
-        sum_of_square.mutable_data<float>({1, 1, 1, output_channels_}, place);
+    output.Resize(framework::make_ddim(
+        {batch_size_, out_height_, out_width_, output_channels_}));
+    sum.Resize(framework::make_ddim({1, 1, 1, output_channels_}));
+    sum_of_square.Resize(framework::make_ddim({1, 1, 1, output_channels_}));
 
     auto input_shape = framework::vectorize<int>(input.dims());
     auto filter_shape = framework::vectorize<int>(filter_nhwc.dims());
@@ -328,8 +327,7 @@ class CudnnNormConvolutionTester {
     op::CudnnNormConvolution<T> conv_op(ctx, input_shape, filter_shape,
                                         output_shape, padding_, stride_,
                                         dilation_, group_);
-    conv_op.Forward(ctx, input_ptr, filter_ptr, output_ptr, sum_ptr,
-                    sum_of_square_ptr);
+    conv_op.Forward(ctx, input, filter_nhwc, &output, &sum, &sum_of_square);
 
     TensorCopySync(output, platform::CPUPlace(), cpu_output);
     TensorCopySync(sum, platform::CPUPlace(), cpu_sum);
@@ -350,11 +348,8 @@ class CudnnNormConvolutionTester {
     TensorCopySync(cpu_filter_nhwc_, place, &filter_nhwc);
     TensorCopySync(cpu_output_grad_, place, &output_grad);
 
-    T *input_ptr = input.data<T>();
-    T *filter_ptr = filter_nhwc.data<T>();
-    T *output_grad_ptr = output_grad.data<T>();
-    T *input_grad_ptr = input_grad.mutable_data<T>(input.dims(), place);
-    T *filter_grad_ptr = filter_grad.mutable_data<T>(filter_nhwc.dims(), place);
+    input_grad.Resize(input.dims());
+    filter_grad.Resize(filter_nhwc.dims());
 
     auto input_shape = framework::vectorize<int>(input.dims());
     auto filter_shape = framework::vectorize<int>(filter_nhwc.dims());
@@ -362,8 +357,8 @@ class CudnnNormConvolutionTester {
     op::CudnnNormConvolutionGrad<T> conv_grad_op(ctx, input_shape, filter_shape,
                                                  output_shape, padding_,
                                                  stride_, dilation_, group_);
-    conv_grad_op.Backward(ctx, input_ptr, output_grad_ptr, filter_ptr,
-                          input_grad_ptr, filter_grad_ptr);
+    conv_grad_op.Backward(ctx, input, filter_nhwc, output_grad, &input_grad,
+                          &filter_grad);
 
     TensorCopySync(input_grad, platform::CPUPlace(), cpu_input_grad);
     TensorCopySync(filter_grad, platform::CPUPlace(), cpu_filter_grad);
@@ -373,6 +368,8 @@ class CudnnNormConvolutionTester {
   int batch_size_;
   int height_;
   int width_;
+  int out_height_;
+  int out_width_;
   int input_channels_;
   int output_channels_;
   int kernel_size_;
@@ -436,4 +433,29 @@ TEST(CudnnNormConvFp16, K1S1O4) {
       stride);
   test.CheckForward(1e-3, true);
   test.CheckBackward(1e-3, true);
+}
+
+// test for fp16, kernel = 1, stride = 2, output_channels = input_channels * 4
+TEST(CudnnNormConvFp16, K1S2O4) {
+  int batch_size = 4;
+  int height = 8;
+  int width = 8;
+  int input_channels = 32;
+  int output_channels = 128;
+  int kernel_size = 1;
+  int stride = 2;
+  CudnnNormConvolutionTester<paddle::platform::float16> test(
+      batch_size, height, width, input_channels, output_channels, kernel_size,
+      stride);
+  platform::CUDADeviceContext *ctx = static_cast<platform::CUDADeviceContext *>(
+      platform::DeviceContextPool::Instance().Get(platform::CUDAPlace(0)));
+
+  if (ctx->GetComputeCapability() <= 70) {
+    ASSERT_THROW(test.CheckForward(1e-3, true),
+                 paddle::platform::EnforceNotMet);
+    ASSERT_THROW(test.CheckBackward(1e-3), paddle::platform::EnforceNotMet);
+  } else {
+    ASSERT_NO_THROW(test.CheckForward(1e-3, true));
+    ASSERT_NO_THROW(test.CheckBackward(1e-3));
+  }
 }

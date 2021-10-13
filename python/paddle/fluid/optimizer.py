@@ -2066,7 +2066,7 @@ class LarsMomentumOptimizer(Optimizer):
         attrs = {
             "mu": self._momentum,
             "lars_coeff": self._lars_coeff,
-            "lars_weight_decay": _lars_weight_decay,
+            "lars_weight_decay": [_lars_weight_decay],
             "multi_precision": find_master,
             "rescale_grad": self._rescale_grad
         }

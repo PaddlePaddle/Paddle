@@ -117,6 +117,15 @@ class PSGPUWrapper {
       resource_ = std::make_shared<HeterPsResource>(dev_ids);
       resource_->enable_p2p();
       keys_tensor.resize(resource_->total_gpu());
+#ifdef PADDLE_WITH_GLOO
+      auto gloo = paddle::framework::GlooWrapper::GetInstance();
+      if (gloo->Size() > 1) {
+        multi_node_ = 1;
+      }
+#else
+      PADDLE_THROW(
+          platform::errors::Unavailable("heter ps need compile with GLOO"));
+#endif
       if (multi_node_) {
         int dev_size = dev_ids.size();
         // init inner comm
@@ -127,7 +136,6 @@ class PSGPUWrapper {
 // init inter comm
 #ifdef PADDLE_WITH_GLOO
         inter_comms_.resize(dev_size);
-        auto gloo = paddle::framework::GlooWrapper::GetInstance();
         if (gloo->Rank() == 0) {
           for (int i = 0; i < dev_size; ++i) {
             platform::dynload::ncclGetUniqueId(&inter_ncclids_[i]);
