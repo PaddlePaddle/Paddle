@@ -19,13 +19,14 @@
 #include "paddle/fluid/framework/tensor.h"
 #include "paddle/fluid/operators/amp/fp16_type_traits.h"
 #include "paddle/fluid/platform/for_range.h"
+#include "paddle/fluid/platform/macros.h"
 
 namespace paddle {
 namespace operators {
 
 template <typename MT, uint32_t kParamNum, bool kHasMasterParams>
 struct MergedMomentumMasterParams {
-  MT *master_params[kParamNum];
+  MT *PADDLE_RESTRICT master_params[kParamNum];
 
   HOSTDEVICE MT *MasterParam(size_t idx) const { return master_params[idx]; }
   HOSTDEVICE void SetMasterParam(size_t idx, MT *p) { master_params[idx] = p; }
@@ -43,10 +44,10 @@ struct MergedMomentumKernelParam
     : public MergedMomentumMasterParams<MT, kParamNum, kHasMasterParams> {
   static constexpr auto N = kParamNum;
   size_t sizes[N];
-  T *params[N];
-  const T *grads[N];
-  MT *velocitys[N];
-  const MT *lr;
+  T *PADDLE_RESTRICT params[N];
+  const T *PADDLE_RESTRICT grads[N];
+  MT *PADDLE_RESTRICT velocitys[N];
+  const MT *PADDLE_RESTRICT lr;
   MT mu;
   MT rescale_grad;
   uint32_t param_num;
