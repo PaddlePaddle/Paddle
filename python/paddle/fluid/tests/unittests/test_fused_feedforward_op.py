@@ -145,10 +145,10 @@ class TestFusedFFNOpFp16(TestFusedFFNOp):
         self.atol = 1e-2
 
     def getShape(self):
-        self.batch_size = 1
-        self.query_length = 8
-        self.d_model = 8
-        self.dim_feedforward = 8
+        self.batch_size = 8
+        self.query_length = 128
+        self.d_model = 1024
+        self.dim_feedforward = 4096
 
 
 class TestFusedFFNOpFp64(TestFusedFFNOp):

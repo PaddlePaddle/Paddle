@@ -120,7 +120,7 @@ inline __device__ void CalculateDBias(const T *tmp_sum, T *dbias,
 // reduce 128 to 32
 #pragma unroll
     for (int i = 0; i < (BlockSizeY >> 5); i++) {
-      sum[j >> 5] += cache[j][y + i * 32];
+      sum[(j >> 5)] += cache[j][y + i * 32];
     }
   }
 
@@ -131,10 +131,12 @@ inline __device__ void CalculateDBias(const T *tmp_sum, T *dbias,
   }
 
   // save sum to dbias
-  if (y < reduce_num_pre_thread) {
-    int bias_id = blockIdx.x * blockDim.x * VecSize + x + y * 32;
-    if (x < BlockSizeX * VecSize && bias_id < cols) {
-      dbias[bias_id] = sum[y];
+  if (y == 0 && x < BlockSizeX * VecSize) {
+    for (int i = 0; i < reduce_num_pre_thread; i++) {
+      int bias_id = blockIdx.x * BlockSizeX * VecSize + x + i * 32;
+      if (bias_id < cols) {
+        dbias[bias_id] = sum[i];
+      }
     }
   }
 }
