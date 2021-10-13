@@ -48,7 +48,7 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
         def generate_filter1(attrs: List[Dict[str, Any]]):
             return np.random.random([6, 3, 3, 3]).astype(np.float32)
 
-        for strides in [[1, 1], [2, 2]]:
+        for strides in [[1, 1]]:
             for paddings in [[1, 1]]:
                 for groups in [1, ]:
                     for dilations in [[1, 1]]:
@@ -118,12 +118,6 @@ class TrtConvertDeformableConvTest(TrtLayerAutoScanTest):
         self.trt_param.precision = paddle_infer.PrecisionType.Float32
         yield self.create_inference_config(), generate_trt_nodes_num(
             attrs, False), 1e-5
-        self.trt_param.precision = paddle_infer.PrecisionType.Half
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-2
-        self.trt_param.precision = paddle_infer.PrecisionType.Int8
-        yield self.create_inference_config(), generate_trt_nodes_num(
-            attrs, False), 1e-1
 
     def add_skip_trt_case(self):
         def teller1(program_config, predictor_config):

@@ -381,8 +381,8 @@ int DeformableConvPlugin::enqueue_impl(int batch_size,
           gemm_impl<T>(cublasHandle_, CUBLAS_OP_N, CUBLAS_OP_N, N, M, K, &alpha,
                        col, N, weight, K, &beta, out, N));
     }
-    return 0;
   }
+  return 0;
 }
 
 int DeformableConvPlugin::initialize() TRT_NOEXCEPT { return 0; }
