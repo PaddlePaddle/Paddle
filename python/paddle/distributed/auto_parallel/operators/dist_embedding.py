@@ -254,6 +254,11 @@ class DistributedEmbeddingImpl(DistributedOperatorImpl):
         assert dist_attr is not None, "backward op [{}] don't have dist attribute !".format(
             str(backward_op))
 
+        # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
+        if rank_id not in dist_attr.get_process_mesh().process_group:
+            rank_id = _get_corresponding_rank(dist_attr.get_process_mesh(),
+                                              rank_id)
+
         # check if need gradient allreduce
         need_gradient_allreduce = False
 
