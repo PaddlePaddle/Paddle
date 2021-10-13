@@ -14,10 +14,6 @@
 
 #pragma once
 
-#include "paddle/tcmpt/api/include/tensor.h"
-
-namespace pt {
-
-Tensor flatten(const Tensor& x, int start_axis = 0, int stop_axis = -1);
-
-}  // namespace pt
+// See Note: [ How do we organize the kernel directory ]
+#include "paddle/tcmpt/cpu/manipulation.h"
+#include "paddle/tcmpt/cuda/manipulation.h"
