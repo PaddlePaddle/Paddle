@@ -53,6 +53,7 @@ from .common import label_smooth  # noqa: F401
 from .common import pad  # noqa: F401
 from .common import cosine_similarity  # noqa: F401
 from .common import unfold  # noqa: F401
+from .common import fold  # noqa: F401
 from .common import interpolate  # noqa: F401
 from .common import upsample  # noqa: F401
 from .common import bilinear  # noqa: F401
@@ -159,6 +160,7 @@ __all__ = [     #noqa
            'linear',
            'pad',
            'unfold',
+           'fold',
            'interpolate',
            'upsample',
            'bilinear',

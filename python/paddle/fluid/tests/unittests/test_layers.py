@@ -3442,6 +3442,12 @@ class TestBook(LayerTest):
             out = layers.unfold(x, [3, 3], 1, 1, 1)
             return (out)
 
+    def test_fold(self):
+        with self.static_graph():
+            x = layers.data(name='x', shape=[2, 12, 12], dtype='float32')
+            out = layers.fold(x, [4, 5], 2, 1, 0, 1)
+            return (out)
+
     def test_partial_concat(self):
         with self.static_graph():
             x = fluid.data(name="x", shape=[None, 3], dtype="float32")
