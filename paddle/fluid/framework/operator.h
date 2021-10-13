@@ -39,7 +39,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/variant.h"
 #include "paddle/utils/flat_hash_map.h"
 
-#include "paddle/tcmpt/api/include/dev/core.h"
+#include "paddle/tcmpt/api/include/core.h"
 
 namespace paddle {
 namespace framework {

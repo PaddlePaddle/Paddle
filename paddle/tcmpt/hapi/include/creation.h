@@ -14,6 +14,12 @@
 
 #pragma once
 
-// See Note: [ How do we organize the kernel directory ]
-#include "paddle/tcmpt/cpu/linalg.h"
-#include "paddle/tcmpt/cuda/linalg.h"
+#include "paddle/tcmpt/hapi/include/tensor.h"
+
+namespace paddle {
+namespace experimental {
+
+Tensor full_like(const Tensor& x, float value);
+
+}  // namespace experimental
+}  // namespace paddle

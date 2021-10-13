@@ -14,5 +14,12 @@
 
 #pragma once
 
-#include "paddle/tcmpt/cpu/fill.h"
-#include "paddle/tcmpt/cuda/fill.h"
+#include "paddle/tcmpt/hapi/include/tensor.h"
+
+namespace paddle {
+namespace experimental {
+
+Tensor dot(const Tensor& x, const Tensor& y);
+
+}  // namespace experimental
+}  // namespace paddle

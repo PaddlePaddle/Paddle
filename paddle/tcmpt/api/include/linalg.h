@@ -14,10 +14,6 @@
 
 #pragma once
 
-#include "paddle/tcmpt/api/include/tensor.h"
-
-namespace pt {
-
-Tensor dot(const Tensor& x, const Tensor& y);
-
-}  // namespace pt
+// See Note: [ How do we organize the kernel directory ]
+#include "paddle/tcmpt/cpu/linalg.h"
+#include "paddle/tcmpt/cuda/linalg.h"
