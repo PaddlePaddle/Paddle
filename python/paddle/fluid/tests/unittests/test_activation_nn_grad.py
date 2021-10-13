@@ -22,6 +22,7 @@ import paddle
 import paddle.fluid.layers as layers
 import paddle.fluid.core as core
 import gradient_checker
+import paddle.nn.functional as F
 
 from decorator_helper import prog_scope
 
@@ -155,6 +156,32 @@ class TestELUDoubleGradCheck(unittest.TestCase):
         x.persistable = True
 
         y = layers.elu(x, alpha=alpha)
+        np.random.RandomState(SEED)
+        x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
+        gradient_checker.double_grad_check(
+            [x], y, x_init=x_arr, place=place, eps=eps)
+
+    def test_grad(self):
+        places = [fluid.CPUPlace()]
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
+        for p in places:
+            self.func(p)
+
+
+class TestCELUDoubleGradCheck(unittest.TestCase):
+    @prog_scope()
+    def func(self, place):
+        shape = [2, 4, 4, 4]
+        eps = 1e-6
+        alpha = 0.2
+        dtype = np.float64
+        SEED = 0
+
+        x = layers.data('x', shape, False, dtype)
+        x.persistable = True
+
+        y = F.celu(x, alpha=alpha)
         np.random.RandomState(SEED)
         x_arr = np.random.uniform(-1, 1, shape).astype(dtype)
         gradient_checker.double_grad_check(
