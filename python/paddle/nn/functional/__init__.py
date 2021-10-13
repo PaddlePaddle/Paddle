@@ -44,6 +44,7 @@ from .activation import tanhshrink  # noqa: F401
 from .activation import thresholded_relu  # noqa: F401
 from .activation import log_softmax  # noqa: F401
 from .activation import glu  # noqa: F401
+from .activation import gumbel_softmax  # noqa: F401
 from .common import dropout  # noqa: F401
 from .common import dropout2d  # noqa: F401
 from .common import dropout3d  # noqa: F401
@@ -111,6 +112,8 @@ from .input import embedding  # noqa: F401
 from ...fluid.layers import gather_tree  # noqa: F401
 from ...fluid.layers import temporal_shift  # noqa: F401
 
+from .sparse_attention import sparse_attention
+
 __all__ = [     #noqa
            'conv1d',
            'conv1d_transpose',
@@ -147,6 +150,7 @@ __all__ = [     #noqa
            'thresholded_relu',
            'log_softmax',
            'glu',
+           'gumbel_softmax',
            'diag_embed',
            'sequence_mask',
            'dropout',
@@ -205,4 +209,5 @@ __all__ = [     #noqa
            'layer_norm',
            'instance_norm',
            'class_center_sample',
+           'sparse_attention',
 ]

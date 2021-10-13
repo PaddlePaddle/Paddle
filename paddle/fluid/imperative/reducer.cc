@@ -451,6 +451,21 @@ void Reducer::PrepareDeps(const std::unordered_set<GradOpNode *> &init_nodes) {
       PADDLE_ENFORCE_NOT_NULL(
           grad_pending_node,
           platform::errors::NotFound("Grad pending node should not be null"));
+      // py_layer is not supported in DataParallel
+      auto begin = grad_pending_node->begin();
+      auto end = grad_pending_node->end();
+      for (auto op_base = begin; op_base != end; op_base++) {
+        PADDLE_ENFORCE_EQ(
+            op_base->Type() != "py_layer", true,
+            platform::errors::PreconditionNotMet(
+                "Note: Currently PyLayer is not supported in DataParallel. For "
+                "using PyLayer in a DataParallel model, you can skip gradient "
+                "synchronization among multiple cards by 'no_sync', and "
+                "manually implement 'all_reduce' before model optimization. "
+                "There is an example showing specific implemetation processing "
+                "in offical docs: https://www.paddlepaddle.org.cn/documentation"
+                "/docs/api/paddle/DataParallel_cn.html"));
+      }
       ++node_deps_[grad_pending_node.get()];
       if (visited.count(grad_pending_node.get()) == 0) {
         visited.insert(grad_pending_node.get());

@@ -14,11 +14,14 @@
 
 import paddle
 from paddle.distributed.fleet import cloud_utils
+import paddle.fluid.core as core
 from .context import DistributedContext
 from .context import get_default_distributed_context
-from .completion import complete_annotation
+from .completion import complete_annotation, complete_backward_annotation
 from .partitioner import Partitioner
 from .process import get_all_process_groups
+from .utils import make_data_unshard
+from .reshard import reshard
 
 
 class AutoParallelizer:
@@ -37,6 +40,16 @@ class AutoParallelizer:
         self._dist_strategy = self._fleet._user_defined_strategy
         # self._dist_context = DistributedContext()
         self._dist_context = get_default_distributed_context()
+
+    def _remove_distributed_attrs(self, main_program):
+        suffix = core.kAutoParallelSuffix()
+        # distributed attributes for variable have been removed
+        # in previous process.
+        for block in main_program.blocks:
+            for op in block.ops:
+                for attr_name in op.attr_names:
+                    if suffix in attr_name:
+                        op._remove_attr(attr_name)
 
     def parallelize(self,
                     loss,
@@ -74,6 +87,18 @@ class AutoParallelizer:
         # instantiate communication by process_mapping.
         all_process_groups = get_all_process_groups()
         for process_group in all_process_groups:
+            if rank not in process_group._ranks:
+                continue
             process_group.instantiate()
+
+        # The last step: remove all distributed attributes to be compatiable
+        # with inference.
+        self._remove_distributed_attrs(partitioned_main_prog)
+
+        complete_backward_annotation(partitioned_main_prog, self._dist_context)
+
+        make_data_unshard(partitioned_main_prog, partitioned_startup_prog)
+        reshard(partitioned_main_prog, partitioned_startup_prog, rank,
+                self._dist_context)
 
         return dist_optimize_ops, dist_params_grads, partitioned_startup_prog, partitioned_main_prog

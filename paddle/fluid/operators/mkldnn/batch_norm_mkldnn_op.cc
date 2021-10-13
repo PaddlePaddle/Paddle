@@ -47,7 +47,9 @@ class BatchNormMKLDNNHandler : public platform::MKLDNNHandlerNoCachingT<
                                           mkldnn::batch_normalization_backward>(
             mkldnn_engine, ctx.GetPlace()) {
     const float epsilon = ctx.Attr<float>("epsilon");
-    const bool fuse_with_relu = ctx.Attr<bool>("fuse_with_relu");
+    const bool fuse_with_relu = ctx.HasAttr("fuse_with_relu")
+                                    ? ctx.Attr<bool>("fuse_with_relu")
+                                    : false;
 
     std::vector<std::string> DataLayout_error_msg = {"kNHWC", "kNCHW",
                                                      "kAnyLayout", "kMKLDNN"};

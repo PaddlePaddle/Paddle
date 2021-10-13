@@ -270,6 +270,7 @@ class PSLib(Fleet):
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             self._fleet_ptr.stop_server()
+        if self._heter_ptr:
             self._heter_ptr.stop_xpu_service()
         self._role_maker._barrier_worker()
         self._role_maker._barrier_all()
@@ -325,6 +326,21 @@ class PSLib(Fleet):
         self._role_maker._barrier_worker()
         if self._role_maker.is_first_worker():
             self._fleet_ptr.print_table_stat(table_id)
+        self._role_maker._barrier_worker()
+
+    def set_file_num_one_shard(self, table_id, file_num):
+        """
+        set file_num in one shard
+        Args:
+            table_id(int): the id of table
+            file_num(int): file num in one shard
+        Example:
+            .. code-block:: python
+              fleet.set_file_num_one_shard(0, 5)
+        """
+        self._role_maker._barrier_worker()
+        if self._role_maker.is_first_worker():
+            self._fleet_ptr.set_file_num_one_shard(table_id, file_num)
         self._role_maker._barrier_worker()
 
     def save_persistables(self, executor, dirname, main_program=None, **kwargs):
@@ -1075,7 +1091,8 @@ class DownpourOptimizer(DistributedOptimizer):
                  scopes=None,
                  startup_programs=None,
                  parameter_list=None,
-                 no_grad_set=None):
+                 no_grad_set=None,
+                 program_mode="all_reduce"):
         """
         minimize a program through loss, loss can be a list in DistributedOptimizer.
         Note that in parameter server mode, a worker will not get anything about optimize_os
@@ -1089,6 +1106,7 @@ class DownpourOptimizer(DistributedOptimizer):
                 in `parameter_list`.
             parameter_list (list): list of Variables to update.
             no_grad_set (set|None): set of Variables should be ignored.
+            program_mode (str|"all_reduce"): grad action for grogram when use_ps_gpu. 
         Returns:
             tuple: (optimize_ops, params_grads) which are, list of operators appended;
             and list of (param, grad) Variables pair for optimization.
@@ -1123,12 +1141,17 @@ class DownpourOptimizer(DistributedOptimizer):
         if opt_info["use_ps_gpu"]:
             from paddle.fluid.transpiler.collective import MultiThread
             # check start program
-
+            if program_mode not in [
+                    "all_reduce", "fuse_all_reduce", "all_gather"
+            ]:
+                raise ValueError("You should set program_mode in [ all_reduce, \
+                                fuse_all_reduce, all_gather ]")
             env = self.get_dist_env()
             if not isinstance(losses, list):
                 startup_programs = [startup_programs]
             for i in range(0, len(startup_programs)):
-                t = MultiThread()
+
+                t = MultiThread(trans_mode=program_mode)
                 start_program = startup_programs[i]
                 main_program = programs[i]
                 t.transpile(

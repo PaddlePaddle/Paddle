@@ -63,9 +63,12 @@ class FillAnyLikeNPUKernel : public framework::OpKernel<T> {
             .stream();
 
     auto shape = out->dims();
-    const auto& runner = NpuOpRunner("FillD", {tensor_tmp}, {*out},
-                                     {{"dims", framework::vectorize(shape)}});
-    runner.Run(stream);
+    NpuOpRunner runner;
+    runner.SetType("Fill")
+        .AddInput(framework::vectorize(shape))
+        .AddInput(tensor_tmp)
+        .AddOutput(*out)
+        .Run(stream);
   }
 };
 
@@ -75,5 +78,8 @@ class FillAnyLikeNPUKernel : public framework::OpKernel<T> {
 namespace ops = paddle::operators;
 
 REGISTER_OP_NPU_KERNEL(fill_any_like, ops::FillAnyLikeNPUKernel<int>,
+#ifdef PADDLE_WITH_ASCEND_INT64
+                       ops::FillAnyLikeNPUKernel<int64_t>,
+#endif
                        ops::FillAnyLikeNPUKernel<float>,
                        ops::FillAnyLikeNPUKernel<paddle::platform::float16>);

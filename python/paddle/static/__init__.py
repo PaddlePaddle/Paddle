@@ -43,11 +43,13 @@ from ..fluid.framework import program_guard  # noqa: F401
 from ..fluid.framework import cpu_places  # noqa: F401
 from ..fluid.framework import cuda_places  # noqa: F401
 from ..fluid.framework import xpu_places  # noqa: F401
+from ..fluid.framework import npu_places  # noqa: F401
 from ..fluid.framework import Variable  # noqa: F401
 from ..fluid.layers.control_flow import Print  # noqa: F401
 from ..fluid.layers.nn import py_func  # noqa: F401
 from ..fluid.parallel_executor import ParallelExecutor  # noqa: F401
 from ..fluid.param_attr import WeightNormParamAttr  # noqa: F401
+from ..fluid.optimizer import ExponentialMovingAverage  # noqa: F401
 from ..fluid.io import save  # noqa: F401
 from ..fluid.io import load  # noqa: F401
 from ..fluid.io import load_program_state  # noqa: F401
@@ -76,6 +78,7 @@ __all__ = [     #noqa
            'ParallelExecutor',
            'program_guard',
            'WeightNormParamAttr',
+           'ExponentialMovingAverage',
            'default_main_program',
            'default_startup_program',
            'Program',
@@ -97,6 +100,7 @@ __all__ = [     #noqa
            'cpu_places',
            'cuda_places',
            'xpu_places',
+           'npu_places',
            'Variable',
            'create_global_var',
            'accuracy',

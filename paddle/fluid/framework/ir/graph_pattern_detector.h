@@ -1481,14 +1481,12 @@ struct DeleteQuantDequantOpPattern : public PatternBase {
   DeleteQuantDequantOpPattern(PDPattern* pattern, const std::string& name_scope)
       : PatternBase(pattern, name_scope, "delete_quantdequant_op_pattern") {}
 
-  void operator()();
+  void operator()(PDNode* input_node, const std::string& quantdequant_types);
 
-  PATTERN_DECL_NODE(any_op_out);
   PATTERN_DECL_NODE(quant_dequant_op_inscale);
   PATTERN_DECL_NODE(quant_dequant_op);
   PATTERN_DECL_NODE(quant_dequant_op_outscale);
   PATTERN_DECL_NODE(quant_dequant_op_out);
-  PATTERN_DECL_NODE(any_op2);
 };
 
 struct DeleteQuantDequantFilterOpPattern : public PatternBase {
@@ -1682,6 +1680,18 @@ struct LayerNorm : public PatternBase {
   PATTERN_DECL_NODE(beta);
   PATTERN_DECL_NODE(shift);
   PATTERN_DECL_NODE(shift_out);
+};
+
+// Add support int8 flag
+struct AddSupportInt8 : public PatternBase {
+  AddSupportInt8(PDPattern* pattern, const std::string& name_scope)
+      : PatternBase(pattern, name_scope, "Add_support_int8") {}
+
+  PDNode* operator()();
+  PATTERN_DECL_NODE(prev_op);
+  PATTERN_DECL_NODE(prev_out);
+  PATTERN_DECL_NODE(quant_op);
+  PATTERN_DECL_NODE(quant_out);
 };
 
 }  // namespace patterns

@@ -24,6 +24,7 @@ limitations under the License. */
 #include "paddle/fluid/platform/dynload/cublas.h"
 #include "paddle/fluid/platform/dynload/cudnn.h"
 #include "paddle/fluid/platform/dynload/cusolver.h"
+#include "paddle/fluid/platform/dynload/cusparse.h"
 #if !defined(__APPLE__) && defined(PADDLE_WITH_NCCL)
 #include "paddle/fluid/platform/dynload/nccl.h"
 #endif
@@ -272,7 +273,8 @@ class CUDAContext {
   CUDAContext() = default;
   explicit CUDAContext(
       const CUDAPlace& place,
-      const stream::Priority& priority = stream::Priority::kNormal);
+      const stream::Priority& priority = stream::Priority::kNormal,
+      const stream::StreamFlag& flag = stream::StreamFlag::kDefaultFlag);
 
   ~CUDAContext();
 
@@ -287,6 +289,12 @@ class CUDAContext {
   }
 
   const std::unique_ptr<stream::CUDAStream>& Stream() const { return stream_; }
+
+  stream::CUDAStream* SetStream(stream::CUDAStream* new_stream_ptr) {
+    auto* old_stream_ptr = stream_.release();
+    stream_.reset(new_stream_ptr);
+    return old_stream_ptr;
+  }
 
   const gpuStream_t& RawStream() { return stream_->raw_stream(); }
 
@@ -749,18 +757,20 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   // Following three maps are used to cache MKLDNN primitives.
   // There relations are:
   // - BlobMap = Map<cur_thread_id, ShapeBlob>
-  // - ShapeBlob = Map<cur_input_shape_str, KeyBlob>
+  // - ShapeBlob = Map<cur_input_shape_str,<unsigned long long, KeyBlob>>
   // - KeyBlob  = Map<blob_name, blob>
 
   using KeyBlob = umap_key_string_t<void>;
-  using ShapeBlob = umap_key_string_t<KeyBlob>;
+  using ShapeBlob = umap_key_string_t<std::pair<unsigned long long, KeyBlob>>;
   using BlobMap = umap_value_smart_t<int, ShapeBlob>;
 
   // Auxillary two-level structure (shape, executor) to easier control
   // clearing cache objects related to specific executor
 
   using ExecKey = void*;
-  using ExecMapCacheIterPair = std::pair<BlobPtr_t<KeyBlob>, KeyBlob::iterator>;
+  using ExecMapCacheIterPair =
+      std::pair<BlobPtr_t<std::pair<unsigned long long, KeyBlob>>,
+                KeyBlob::iterator>;
   using ExecMap =
       std::unordered_map<ExecKey, std::vector<ExecMapCacheIterPair>>;
   using ExecShape = std::unordered_map<std::string, std::shared_ptr<ExecMap>>;
@@ -771,8 +781,11 @@ class MKLDNNDeviceContext : public CPUDeviceContext {
   const mkldnn::engine& GetEngine() const { return tls().get_engine(); }
 
   // Register object to currently used executor's map
-  void LinkEntryWithExecutor(BlobPtr_t<KeyBlob>, KeyBlob::iterator) const;
-  void RemoveShapeEntriesWithExecutor(void) const;
+  void LinkEntryWithExecutor(
+      BlobPtr_t<std::pair<unsigned long long, KeyBlob>> pblob,
+      KeyBlob::iterator it) const;
+  void RemoveShapeEntriesWithExecutor(std::string) const;
+  std::string PickLeastUsedShape(BlobPtr_t<ShapeBlob> sb) const;
 
   // Remove all entries from the blob map
   void ResetBlobMap(void* ptr);
