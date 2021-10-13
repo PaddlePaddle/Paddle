@@ -31,6 +31,8 @@ from .lenet import LeNet  # noqa: F401
 from .squeezenet import SqueezeNet  # noqa: F401
 from .squeezenet import squeezenet1_0  # noqa: F401
 from .squeezenet import squeezenet1_1  # noqa: F401
+from .alexnet import AlexNet  # noqa: F401
+from .alexnet import alexnet  # noqa: F401
 
 __all__ = [ #noqa
     'ResNet',
@@ -51,5 +53,7 @@ __all__ = [ #noqa
     'LeNet',
     'SqueezeNet',
     'squeezenet1_0',
-    'squeezenet1_1'
+    'squeezenet1_1',
+    'AlexNet',
+    'alexnet'
 ]
