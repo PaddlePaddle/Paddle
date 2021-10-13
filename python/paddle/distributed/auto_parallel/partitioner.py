@@ -339,6 +339,22 @@ class Partitioner(object):
                     "shape", param2shape[temp_varname_map[output_vars[0]]])
                 partitioned_startup_global_block._sync_with_cpp()
 
+                # set distribute atrribute
+                new_op = partitioned_startup_global_block.ops[-1]
+                assert new_op.type() == new_op_desc.type()
+                assert new_op.desc == new_op_desc
+                output_var = partitioned_startup_global_block.var(output_vars[
+                    0])
+                output_var_attr = self._auto_parallel_context.get_tensor_distributed_attr_for_program(
+                    output_var)
+                op_attr = OperatorDistributedAttribute(new_op, ctx)
+                op_attr.set_process_mesh(output_var_attr.get_process_mesh())
+                op_attr.set_output_dims_mapping(
+                    param.name, output_var_attr.get_dims_mapping())
+                op_attr.set_input_dims_mapping(
+                    param.name, output_var_attr.get_dims_mapping())
+                ctx.set_op_distributed_attr_for_program(new_op, op_attr)
+
         # TODO move helper init to a comm place
         dist_op_helper = self._auto_parallel_context.get_dist_op_helper()
         dist_op_helper.set_dst_main_program(partitioned_main_prog)
