@@ -183,21 +183,23 @@ class TestDistMPTraning(unittest.TestCase):
                         strategy=None,
                         is_sharding=True,
                         Optimizer="adam"):
-
+        clip = paddle.nn.ClipGradByGlobalNorm(0.5)
         if Optimizer == "adam":
             if is_sharding:
                 optimizer = DygraphShardingOptimizer(
                     hcg=fleet.get_hybrid_communicate_group(),
                     user_defined_strategy=strategy,
                     params=model.parameters(),
-                    inner_optimizer_class=paddle.optimizer.Adam,
+                    inner_optimizer_class=paddle.optimizer.AdamW,
                     learning_rate=0.001,
-                    weight_decay=0.00001, )
+                    weight_decay=0.00001,
+                    grad_clip=clip)
             else:
-                optimizer = paddle.optimizer.Adam(
+                optimizer = paddle.optimizer.AdamW(
                     parameters=model.parameters(),
                     learning_rate=0.001,
-                    weight_decay=0.00001, )
+                    weight_decay=0.00001,
+                    grad_clip=clip)
         else:
             if is_sharding:
                 optimizer = DygraphShardingOptimizer(
@@ -205,10 +207,13 @@ class TestDistMPTraning(unittest.TestCase):
                     user_defined_strategy=strategy,
                     params=model.parameters(),
                     inner_optimizer_class=paddle.optimizer.Momentum,
-                    learning_rate=0.001, )
+                    learning_rate=0.001,
+                    grad_clip=clip)
             else:
                 optimizer = paddle.optimizer.Momentum(
-                    learning_rate=0.001, parameters=model.parameters())
+                    learning_rate=0.001,
+                    parameters=model.parameters(),
+                    grad_clip=clip)
         return optimizer
 
     def build_model_optimizer(self, Optimizer="adam"):

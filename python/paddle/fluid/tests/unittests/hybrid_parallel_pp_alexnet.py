@@ -53,6 +53,13 @@ class TestDistPPTraning(unittest.TestCase):
         }
         fleet.init(is_collective=True, strategy=strategy)
 
+    def build_optimizer(self, model):
+        scheduler = paddle.optimizer.lr.PiecewiseDecay(
+            boundaries=[2], values=[0.001, 0.002], verbose=True)
+        optimizer = paddle.optimizer.SGD(learning_rate=scheduler,
+                                         parameters=model.parameters())
+        return scheduler, optimizer
+
     def test_pp_model(self):
         hcg = fleet.get_hybrid_communicate_group()
         word_size = hcg.get_model_parallel_world_size()
@@ -63,10 +70,7 @@ class TestDistPPTraning(unittest.TestCase):
 
         #construct model a
         model_a = AlexNet(10)
-        scheduler_a = paddle.optimizer.lr.PiecewiseDecay(
-            boundaries=[2], values=[0.001, 0.002], verbose=True)
-        optimizer_a = paddle.optimizer.SGD(learning_rate=scheduler_a,
-                                           parameters=model_a.parameters())
+        scheduler_a, optimizer_a = self.build_optimizer(model_a)
 
         param_len = len(model_a.parameters())
 
@@ -76,10 +80,7 @@ class TestDistPPTraning(unittest.TestCase):
 
         # construct model b
         model_b = AlexNetPipeDesc(num_stages=self.pipeline_parallel_size)
-        scheduler_b = paddle.optimizer.lr.PiecewiseDecay(
-            boundaries=[2], values=[0.001, 0.002], verbose=True)
-        optimizer_b = paddle.optimizer.SGD(learning_rate=scheduler_b,
-                                           parameters=model_b.parameters())
+        scheduler_b, optimizer_b = self.build_optimizer(model_b)
         model_b = fleet.distributed_model(model_b)
         optimizer_b = fleet.distributed_optimizer(optimizer_b)
 
