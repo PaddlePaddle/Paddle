@@ -356,6 +356,16 @@ void* GetCurandDsoHandle() {
 #endif
 }
 
+#ifdef PADDLE_WITH_HIP
+void* GetROCFFTDsoHandle() {
+#if defined(__APPLE__) || defined(__OSX__)
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocfft.dylib");
+#else
+  return GetDsoHandleFromSearchPath(FLAGS_rocm_dir, "librocfft.so");
+#endif
+}
+#endif
+
 void* GetNvjpegDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
   return GetDsoHandleFromSearchPath(FLAGS_cuda_dir, "libnvjpeg.dylib");
