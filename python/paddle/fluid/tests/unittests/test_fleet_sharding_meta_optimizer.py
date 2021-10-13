@@ -1393,7 +1393,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'mul_grad', 'tanh_grad', 'elementwise_add_grad', 'mul_grad',
             'tanh_grad', 'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
-            'sum', 'c_allreduce_sum', 'scale', 'c_sync_comm_stream', 'momentum',
+            'sum', 'c_allreduce_sum', 'c_sync_comm_stream', 'scale', 'momentum',
             'momentum', 'momentum', 'momentum', 'momentum', 'momentum',
             'momentum', 'momentum'
         ])
@@ -1461,8 +1461,8 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
-            'cast', 'sum', 'sum', 'c_allreduce_sum', 'c_allreduce_sum', 'scale',
-            'scale', 'c_sync_comm_stream', 'check_finite_and_unscale',
+            'cast', 'sum', 'sum', 'c_allreduce_sum', 'c_allreduce_sum',
+            'c_sync_comm_stream', 'scale', 'scale', 'check_finite_and_unscale',
             'momentum', 'momentum', 'momentum', 'momentum', 'momentum',
             'momentum', 'momentum', 'momentum'
         ])

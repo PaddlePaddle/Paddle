@@ -468,9 +468,14 @@ class ShardingOptimizer(MetaOptimizerBase):
                     op._rename_input(loss_scale_name, loss_scale_tmp_var_name)
                     break
         else:
-            tmp_first_opt_idx = get_first_optimize_op_idx(main_block)
             # For pp, do the avg operation for gradient merge after merging
             # the gradient to meet the logic for gradient merge under pure dp.
+            tmp_first_opt_idx = None
+            for idx, op in enumerate(main_block.ops):
+                if is_optimizer_op(op) and op.type != 'c_sync_comm_stream':
+                    tmp_first_opt_idx = idx
+                    break
+            assert tmp_first_opt_idx is not None, 'Occurs some errors, no optimize ops'
             for grad in accumulated_grad_names:
                 main_block._insert_op_without_sync(
                     tmp_first_opt_idx,
