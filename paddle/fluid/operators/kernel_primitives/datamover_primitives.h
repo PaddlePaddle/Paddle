@@ -308,7 +308,7 @@ __device__ __forceinline__ void ReadDataBc(
     T* dst, const T* __restrict__ src, uint32_t block_offset,
     details::BroadcastConfig<Rank> config, int total_num_output, int stride_nx,
     int stride_ny) {
-  uint32_t thread_offset = block_offset + threadIdx.x * NX;
+  uint32_t thread_offset = block_offset + threadIdx.x;
   uint32_t index_src = 0;
 
 #pragma unroll
@@ -354,11 +354,7 @@ __device__ __forceinline__ void ReadDataBc(
  * src: Raw input data pointer of kernel.
  * block_offset: Data offset of this block, blockDim.x * blockIdx.x * NX;
  * index_cal: Calculation configuration of Reduce. It is used to calculate the
- * coordinate mapping relationship between output data and input data. Please
- * refer to the sample code for specific usage.
- * block_offset: data offset of this block, blockDim.x * blockIdx.x * NX;
- * index_cal: get the global index in src, attention config was declared in
- * host;
+ * coordinate mapping relationship between output data and input data.
  * size_nx: The current block needs to load size_nx columns of data, this
  * parameter will be used when IsBoundary = true.
  * size_ny: The current block needs to load size_ny rows of data. This parameter
@@ -418,7 +414,7 @@ __device__ __forceinline__ void ReadDataReduce(
 }
 
 /**
- * @brief Write 2D data from registers to global memory. When IsBoundary = true
+ * @brief Write 1D data from registers to global memory. When IsBoundary = true
  * and (NX % 4 == 0 or Nx % 2 == 0), the data will be vectorized to improve the
  * data loading efficiency
  *
@@ -488,6 +484,58 @@ __device__ __forceinline__ void Init(T* dst, T* init_data, int num) {
       }
     }
     dst[i] = init_data[i];
+  }
+}
+
+/**
+ * @brief Read 1D data from global memory to registers for broadcast.
+ *
+ * @template paraments
+ * T: The type of data stored in the global memory.
+ * NX: The number of data continuously loaded by each thread.
+ * NY: The number of data rows loaded by each thread, only NY = 1 was supported.
+ * BlockSize: Identifies the current device thread index method. For GPU,
+ * threadIdx.x is used as the thread index, and for xpu, core_id() is used as
+ * the index. Currently only GPU was supported.
+ * Rank: The shape size of out. eg in[1, 35], out[32, 35] then shape size is 2.
+ * IsBoundary: Indicates whether to perform block access storage out-of-bounds
+ * judgment. When the number of data processed by the block is less than
+ * NX x NY x blockDim.x, boundary judgment is required to avoid memory access
+ * crossing the boundary.
+ *
+ * @param：
+ * dst: The register pointer of the thread, the size is NX * NY.
+ * src: Raw input data pointer of kernel.
+ * block_offset: Data offset of this block, blockDim.x * blockIdx.x * NX;
+ * config: Calculation configuration of broadcast. It is used to calculate the
+ * coordinate mapping relationship between output data and input data. Please
+ * refer to the sample code for specific usage.
+ * total_num_output: Total number of original output.
+ */
+template <typename T, int NX, int NY, int BlockSize, int Rank,
+          bool IsBoundary = false>
+__device__ __forceinline__ void ReadDataBc(
+    T* dst, const T* __restrict__ src, uint32_t block_offset,
+    details::BroadcastConfig<Rank> config, int total_num_output) {
+  uint32_t thread_offset = block_offset + threadIdx.x * NX;
+  uint32_t index_src = 0;
+
+#pragma unroll
+  for (uint32_t nx = 0; nx < NX; ++nx) {
+    uint32_t index_output = thread_offset + nx;
+    index_src = 0;
+    if (IsBoundary) {
+      if (index_output >= total_num_output) {
+        break;
+      }
+    }
+#pragma unroll
+    for (int i = 0; i < Rank; ++i) {
+      auto fast_divmoder = config.divmoders[i].Divmod(index_output);
+      index_output = fast_divmoder.val[0];
+      index_src += fast_divmoder.val[1] * config.strides[i];
+    }
+    dst[nx + ny * NX] = src[index_src];
   }
 }
 
