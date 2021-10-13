@@ -15,7 +15,7 @@
 import unittest
 import paddle
 
-from paddle.autograd.functional import vjp, jvp, to_tensorlist
+from paddle.autograd.functional import vjp, jvp, _tensors
 from paddle import grad, ones_like, zeros_like
 
 
@@ -55,7 +55,7 @@ def nested(x):
 
 
 def make_v(f, inputs):
-    outputs = to_tensorlist(f(*inputs))
+    outputs = _tensors(f(*inputs), "outputs")
     return [ones_like(x) for x in outputs]
 
 
