@@ -1332,11 +1332,11 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'tanh_grad',
             'elementwise_add_grad', 'mul_grad', 'c_sync_calc_stream', 'send_v2',
-            'cast', 'sum', 'sum', 'scale', 'scale', 'c_allreduce_sum',
-            'c_allreduce_sum', 'c_sync_comm_stream', 'check_finite_and_unscale',
-            'cast', 'c_allreduce_max', 'cast', 'update_loss_scaling',
+            'cast', 'sum', 'sum', 'c_allreduce_sum', 'c_allreduce_sum',
+            'c_sync_comm_stream', 'scale', 'check_finite_and_unscale', 'cast',
+            'c_allreduce_max', 'cast', 'update_loss_scaling', 'momentum',
             'momentum', 'momentum', 'momentum', 'momentum', 'momentum',
-            'momentum', 'momentum', 'momentum'
+            'momentum', 'momentum'
         ])
 
 
