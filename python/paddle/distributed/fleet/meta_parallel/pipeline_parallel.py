@@ -159,12 +159,12 @@ class PipelineParallel(MetaParallelBase):
                                                     output_tensor_grad)
             p2p.send_backward(input_tensor_grad)
 
-        self._layers.allreduce_shared_weight_gradients()
-
         self.train_loss = self._broadcast_final_loss()
 
         # optimizer
-        self._optimizer_step()
+        with paddle.amp.auto_cast(enable=False):
+            self._layers.allreduce_shared_weight_gradients()
+            self._optimizer_step()
         return self.train_loss
 
     def eval_batch(self, data, compute_loss=False):
@@ -233,12 +233,13 @@ class PipelineParallel(MetaParallelBase):
                     output_tensor, paddle.Tensor
                 ), "Currently, loss_fn should obtain Paddle.Tensor dtype"
 
-                if self.accumulate_steps > 1:
-                    output_tensor = output_tensor / self.accumulate_steps
+                with paddle.amp.auto_cast(enable=False):
+                    if self.accumulate_steps > 1:
+                        output_tensor = output_tensor / self.accumulate_steps
 
-                if self.total_loss is None:
-                    self.total_loss = paddle.zeros_like(output_tensor)
-                self.total_loss += output_tensor.detach()
+                    if self.total_loss is None:
+                        self.total_loss = paddle.zeros_like(output_tensor)
+                    self.total_loss += output_tensor.detach()
 
         self.micro_batch_id += 1
         return output_tensor
@@ -312,18 +313,20 @@ class PipelineParallel(MetaParallelBase):
         if self.is_last_stage:
             assert self.total_loss is not None, "train_batch() in last stage should obtain vaild loss"
             loss = self.total_loss.detach()
-            paddle.distributed.broadcast(
-                loss,
-                src=self.global_rank,
-                use_calc_stream=True,
-                group=self.pp_group)
+            with paddle.amp.auto_cast(enable=False):
+                paddle.distributed.broadcast(
+                    loss,
+                    src=self.global_rank,
+                    use_calc_stream=True,
+                    group=self.pp_group)
         else:
             loss = paddle.zeros(shape=[1], dtype="float32")
-            paddle.distributed.broadcast(
-                loss,
-                src=self._hcg.get_rank_from_stage(self.num_stages - 1),
-                use_calc_stream=True,
-                group=self.pp_group)
+            with paddle.amp.auto_cast(enable=False):
+                paddle.distributed.broadcast(
+                    loss,
+                    src=self._hcg.get_rank_from_stage(self.num_stages - 1),
+                    use_calc_stream=True,
+                    group=self.pp_group)
         return loss
 
     def _optimizer_step(self):

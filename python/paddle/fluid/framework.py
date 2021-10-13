@@ -6085,7 +6085,7 @@ class ParamBase(core.VarBase):
 
         self.need_clip = kwargs.get('need_clip', True)
 
-        self.is_distributed = False
+        self.is_distributed = kwargs.get('is_distributed', False)
         # self.block = default_main_program().global_block()
 
     @property
@@ -6153,7 +6153,6 @@ class ParamBase(core.VarBase):
         return new_param
 
     def _copy_to(self, device, blocking):
-        print("in ParamBase copy_to func")
         state = copy.deepcopy(self.__dict__)
         new_param = ParamBase(self.shape, self.dtype, **state)
         core.varbase_copy(self, new_param, device, blocking)
