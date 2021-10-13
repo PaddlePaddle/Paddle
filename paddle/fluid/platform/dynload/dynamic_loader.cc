@@ -526,11 +526,11 @@ void* GetCUFFTDsoHandle() {
 
 void* GetMKLDFTIDsoHandle() {
 #if defined(__APPLE__) || defined(__OSX__)
-  return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "libmkl_core.dylib");
+  return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "libmkl_rt.dylib");
 #elif defined(_WIN32)
-  return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "mkl_core.dll");
+  return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "mkl_rt.dll");
 #else
-  return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "libmkl_core.so");
+  return GetDsoHandleFromSearchPath(FLAGS_mkl_dir, "libmkl_rt.so");
 #endif
 }
 
