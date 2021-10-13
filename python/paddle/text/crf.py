@@ -23,7 +23,8 @@ __all__ = []
 def crf_decode(potentials,
                transition_params,
                sequence_length,
-               with_start_stop_tag=True):
+               with_start_stop_tag=True,
+               name=None):
     """
     Decode the highest scoring sequence of tags.
     Args:
@@ -37,6 +38,7 @@ def crf_decode(potentials,
                     If set to True, the last row and the last column of transitions will be considered as start tag,
                     the the penultimate row and the penultimate column of transitions will be considered as stop tag.
                     Else, all the rows and columns will be considered as the real tag. Defaults to ``True``.
+        name (str|None) – A name for this layer(optional). If set None, the layer will be named automatically.
     Returns:
         scores(`Tensor`| `Varaiable`): 
             The scores tensor containing the score for the Viterbi sequence. Its dtype is float32 and has a shape of `[batch_size]`.
@@ -85,10 +87,11 @@ class ViterbiDecoder(Layer):
             Else, all the rows and columns will be considered as the real tag. Defaults to ``True``.
     """
 
-    def __init__(self, transitions, with_start_stop_tag=True):
+    def __init__(self, transitions, with_start_stop_tag=True, name=None):
         super(ViterbiDecoder, self).__init__()
         self.transitions = transitions
         self.with_start_stop_tag = with_start_stop_tag
+        self.name = name
 
     def forward(self, inputs, lengths):
         """
@@ -105,4 +108,4 @@ class ViterbiDecoder(Layer):
                 The paths tensor containing the highest scoring tag indices. Its dtype is int64 and has a shape of `[batch_size, sequence_length`].
         """
         return crf_decode(inputs, self.transitions, lengths,
-                          self.with_start_stop_tag)
+                          self.with_start_stop_tag, self.name)
