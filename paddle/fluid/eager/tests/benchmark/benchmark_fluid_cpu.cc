@@ -14,78 +14,121 @@
 
 #include <paddle/fluid/framework/op_registry.h>
 
+#include <chrono>
+#include <iostream>
 #include <memory>
 #include <set>
 #include <string>
 #include <vector>
-#include <iostream>
 
-#include "gtest/gtest.h"
 #include "glog/logging.h"
+#include "gtest/gtest.h"
 
+#include "paddle/fluid/eager/tests/benchmark/benchmark_utils.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 #include "paddle/fluid/imperative/basic_engine.h"
 #include "paddle/fluid/imperative/tracer.h"
 #include "paddle/fluid/memory/memcpy.h"
-#include "paddle/fluid/eager/tests/benchmark/benchmark_utils.h"
 
 #include "gperftools/profiler.h"
 
-#include <chrono>
+namespace paddle {
+namespace imperative {
 
-using namespace paddle;
-using namespace imperative;
+TEST(Benchmark, FluidScalePerformance) {
+  // Prepare Device Contexts
+  platform::CPUPlace place;
+  egr::InitEnv(place);
 
-TEST(Benchmark, FluidAccuracy) {
-    // Prepare Device Contexts
-    egr::InitEnv(paddle::platform::CPUPlace());
-    
+  for (const std::string& mode : {"Accuracy", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
     X->SetOverridedStopGradient(false);
 
-    std::shared_ptr<imperative::VarBase> Out(new imperative::VarBase(true, "Out"));
+    std::shared_ptr<imperative::VarBase> Out(
+        new imperative::VarBase(true, "Out"));
     std::vector<float> src_data(128, 5.0);
-    std::vector<int64_t> dims = {2,4,4,4};
-    platform::CPUPlace place;
-  
+    std::vector<int64_t> dims = {2, 4, 4, 4};
+
     auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
     x_tensor->Resize(framework::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
     paddle::memory::Copy(place, mutable_x, place, src_data.data(),
                          sizeof(float) * src_data.size());
 
-    benchmark_fluid_accuracy_check(X, Out, platform::Place(place));
+    if (mode == "Accuracy") {
+      benchmark_fluid_scale_accuracy_check(X, Out, platform::Place(place));
+
+    } else if (mode == "Performance") {
+      auto t_start = std::chrono::high_resolution_clock::now();
+      ProfilerStart("fluid_scale_cpu.out");
+
+      benchmark_fluid_scale(X, Out, platform::Place(place));
+
+      ProfilerStop();
+      auto t_end = std::chrono::high_resolution_clock::now();
+      double elapsed_time_ms =
+          std::chrono::duration<double, std::milli>(t_end - t_start).count();
+      std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
+
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+    }
+  }
 }
 
-TEST(Benchmark, FluidPerformance) {
-    // Prepare Device Contexts
-    egr::InitEnv(paddle::platform::CPUPlace());
-    
+TEST(Benchmark, FluidMatmulAccuracy) {
+  // Prepare Device Contexts
+  platform::CPUPlace place;
+  egr::InitEnv(place);
+
+  for (const std::string& mode : {"Accuracy", "Performance"}) {
     std::shared_ptr<imperative::VarBase> X(new imperative::VarBase(true, "X"));
     X->SetOverridedStopGradient(false);
+    std::shared_ptr<imperative::VarBase> Y(new imperative::VarBase(true, "Y"));
+    Y->SetOverridedStopGradient(false);
 
-    std::shared_ptr<imperative::VarBase> Out(new imperative::VarBase(true, "Out"));
-    std::vector<float> src_data(128, 5.0);
-    std::vector<int64_t> dims = {2,4,4,4};
-    platform::CPUPlace place;
-  
+    std::shared_ptr<imperative::VarBase> Out(
+        new imperative::VarBase(true, "Out"));
+    std::vector<float> x_src_data(4, 1.0);
+    std::vector<float> y_src_data(4, 2.0);
+    std::vector<int64_t> dims = {2, 2};
+
     auto* x_tensor = X->MutableVar()->GetMutable<framework::LoDTensor>();
     x_tensor->Resize(framework::make_ddim(dims));
     auto* mutable_x = x_tensor->mutable_data<float>(place);
-    paddle::memory::Copy(place, mutable_x, place, src_data.data(),
-                         sizeof(float) * src_data.size());
+    paddle::memory::Copy(place, mutable_x, place, x_src_data.data(),
+                         sizeof(float) * x_src_data.size());
 
-    auto t_start = std::chrono::high_resolution_clock::now();
-    
-    ProfilerStart("fluid_cpu.out");
-    benchmark_fluid(X, Out, platform::Place(place));
-    ProfilerStop();
+    auto* y_tensor = Y->MutableVar()->GetMutable<framework::LoDTensor>();
+    y_tensor->Resize(framework::make_ddim(dims));
+    auto* mutable_y = y_tensor->mutable_data<float>(place);
+    paddle::memory::Copy(place, mutable_y, place, y_src_data.data(),
+                         sizeof(float) * y_src_data.size());
 
-    auto t_end = std::chrono::high_resolution_clock::now();
-    double elapsed_time_ms = std::chrono::duration<double, std::milli>(t_end-t_start).count();
+    if (mode == "Accuracy") {
+      benchmark_fluid_matmul_accuracy_check(X, Y, Out, platform::Place(place));
 
-    std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
+    } else if (mode == "Performance") {
+      auto t_start = std::chrono::high_resolution_clock::now();
+      ProfilerStart("fluid_matmul_cpu.out");
+
+      benchmark_fluid_matmul(X, Y, Out, platform::Place(place));
+
+      ProfilerStop();
+      auto t_end = std::chrono::high_resolution_clock::now();
+      double elapsed_time_ms =
+          std::chrono::duration<double, std::milli>(t_end - t_start).count();
+
+      std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
+
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+    }
+  }
 }
+
+}  // namespace imperative
+}  // namespace paddle
 
 USE_OP(scale);
-
+USE_OP(matmul_v2);

@@ -22,6 +22,8 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
 
+#include "paddle/fluid/imperative/tracer.h"
+
 #include "paddle/fluid/eager/tests/benchmark/benchmark_utils.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 
@@ -30,40 +32,76 @@
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 
-TEST(Benchmark, EagerAccuracy) {
+TEST(Benchmark, EagerScalePerformance) {
   // Prepare Device Contexts
-  InitEnv(paddle::platform::CPUPlace());
+  egr::InitEnv(paddle::platform::CPUPlace());
 
-  // 1. Prepare Input
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
-  pt::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
-      5.0, true);
-  RetainGradForTensor(tensor);
+  for (const std::string& mode : {"Accuracy", "Performance"}) {
+    paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
+    pt::Tensor tensor = EagerUtils::CreateTensorWithValue(
+        ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+        5.0, true);
+    RetainGradForTensor(tensor);
 
-  benchmark_eager_accuracy_check(tensor);
+    if (mode == "Accuracy") {
+      benchmark_eager_scale_accuracy_check(tensor);
+
+    } else if (mode == "Performance") {
+      auto t_start = std::chrono::high_resolution_clock::now();
+      ProfilerStart("eager_scale_cpu.out");
+
+      benchmark_eager_scale(tensor);
+
+      ProfilerStop();
+      auto t_end = std::chrono::high_resolution_clock::now();
+      double elapsed_time_ms =
+          std::chrono::duration<double, std::milli>(t_end - t_start).count();
+
+      std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
+
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+    }
+  }
 }
 
-TEST(Benchmark, EagerPerformance) {
+TEST(Benchmark, EagerIntermediateMatmulPerformance) {
   // Prepare Device Contexts
   InitEnv(paddle::platform::CPUPlace());
 
-  // 1. Prepare Input
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
-  pt::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
-      5.0 /*value*/, true /*is_leaf*/);
-  RetainGradForTensor(tensor);
+  auto tracer = std::make_shared<paddle::imperative::Tracer>();
+  paddle::imperative::SetCurrentTracer(tracer);
 
-  auto t_start = std::chrono::high_resolution_clock::now();
+  for (const std::string& mode : {"Accuracy", "Performance"}) {
+    paddle::framework::DDim ddimX = paddle::framework::make_ddim({2, 2});
+    pt::Tensor X = EagerUtils::CreateTensorWithValue(
+        ddimX, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+        1.0, true);
+    RetainGradForTensor(X);
 
-  ProfilerStart("eager_cpu.out");
-  benchmark_eager(tensor);
-  ProfilerStop();
+    paddle::framework::DDim ddimY = paddle::framework::make_ddim({2, 2});
+    pt::Tensor Y = EagerUtils::CreateTensorWithValue(
+        ddimY, pt::Backend::kCPU, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
+        2.0, true);
+    RetainGradForTensor(Y);
 
-  auto t_end = std::chrono::high_resolution_clock::now();
-  double elapsed_time_ms =
-      std::chrono::duration<double, std::milli>(t_end - t_start).count();
+    if (mode == "Accuracy") {
+      benchmark_eager_intermediate_matmul_accuracy_check(X, Y);
 
-  std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
+    } else if (mode == "Performance") {
+      auto t_start = std::chrono::high_resolution_clock::now();
+      ProfilerStart("eager_intermediate_matmul_cpu.out");
+
+      benchmark_eager_intermediate_matmul(X, Y);
+
+      ProfilerStop();
+      auto t_end = std::chrono::high_resolution_clock::now();
+      double elapsed_time_ms =
+          std::chrono::duration<double, std::milli>(t_end - t_start).count();
+      std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
+
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+    }
+  }
 }

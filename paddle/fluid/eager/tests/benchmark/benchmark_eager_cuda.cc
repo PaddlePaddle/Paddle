@@ -21,6 +21,8 @@
 #include "paddle/fluid/eager/autograd_meta.h"
 #include "paddle/fluid/eager/backward.h"
 
+#include "paddle/fluid/imperative/tracer.h"
+
 #include "paddle/fluid/eager/tests/benchmark/benchmark_utils.h"
 #include "paddle/fluid/eager/tests/test_utils.h"
 
@@ -29,51 +31,81 @@
 // TODO(jiabin): remove nolint here!!!
 using namespace egr;  // NOLINT
 
-TEST(Benchmark, EagerAccuracy) {
-  // Prepare Device Contexts
-  InitEnv(paddle::platform::CUDAPlace());
+TEST(Benchmark, EagerScalePerformance) {
+  egr::InitEnv(paddle::platform::CUDAPlace());
 
-  // 1. Prepare Input
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
-  pt::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pt::Backend::kCUDA, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
-      5.0, true);
-  RetainGradForTensor(tensor);
-
-  benchmark_eager_accuracy_check(tensor);
-}
-
-TEST(Benchmark, EagerPerformance) {
-  // Prepare Device Contexts
-  InitEnv(paddle::platform::CUDAPlace());
-
-  // Warm Up
-  {
+  for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
     paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
     pt::Tensor tensor = EagerUtils::CreateTensorWithValue(
         ddim, pt::Backend::kCUDA, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
         5.0 /*value*/, true /*is_leaf*/);
     RetainGradForTensor(tensor);
 
-    benchmark_eager(tensor);
+    if (mode == "Accuracy") {
+      benchmark_eager_scale_accuracy_check(tensor);
+
+    } else if (mode == "WarmUp") {
+      benchmark_eager_scale(tensor);
+
+    } else if (mode == "Performance") {
+      auto t_start = std::chrono::high_resolution_clock::now();
+      ProfilerStart("eager_scale_cuda.out");
+
+      benchmark_eager_scale(tensor);
+
+      ProfilerStop();
+      auto t_end = std::chrono::high_resolution_clock::now();
+      double elapsed_time_ms =
+          std::chrono::duration<double, std::milli>(t_end - t_start).count();
+      std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
+
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+    }
   }
+}
 
-  // 1. Prepare Input
-  paddle::framework::DDim ddim = paddle::framework::make_ddim({2, 4, 4, 4});
-  pt::Tensor tensor = EagerUtils::CreateTensorWithValue(
-      ddim, pt::Backend::kCUDA, pt::DataType::kFLOAT32, pt::DataLayout::kNCHW,
-      5.0 /*value*/, true /*is_leaf*/);
-  RetainGradForTensor(tensor);
+TEST(Benchmark, EagerIntermediateMatmulPerformance) {
+  paddle::platform::CUDAPlace place;
+  egr::InitEnv(place);
 
-  auto t_start = std::chrono::high_resolution_clock::now();
+  auto tracer = std::make_shared<paddle::imperative::Tracer>();
+  tracer->SetExpectedPlace(place);
+  paddle::imperative::SetCurrentTracer(tracer);
 
-  ProfilerStart("eager_cuda.out");
-  benchmark_eager(tensor);
-  ProfilerStop();
+  for (const std::string& mode : {"Accuracy", "WarmUp", "Performance"}) {
+    paddle::framework::DDim ddimX = paddle::framework::make_ddim({2, 2});
+    pt::Tensor X = EagerUtils::CreateTensorWithValue(
+        ddimX, pt::Backend::kCUDA, pt::DataType::kFLOAT32,
+        pt::DataLayout::kNCHW, 1.0, true);
+    RetainGradForTensor(X);
 
-  auto t_end = std::chrono::high_resolution_clock::now();
-  double elapsed_time_ms =
-      std::chrono::duration<double, std::milli>(t_end - t_start).count();
+    paddle::framework::DDim ddimY = paddle::framework::make_ddim({2, 2});
+    pt::Tensor Y = EagerUtils::CreateTensorWithValue(
+        ddimY, pt::Backend::kCUDA, pt::DataType::kFLOAT32,
+        pt::DataLayout::kNCHW, 2.0, true);
+    RetainGradForTensor(Y);
 
-  std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
+    if (mode == "Accuracy") {
+      benchmark_eager_intermediate_matmul_accuracy_check(X, Y);
+
+    } else if (mode == "WarmUp") {
+      benchmark_eager_intermediate_matmul(X, Y);
+
+    } else if (mode == "Performance") {
+      auto t_start = std::chrono::high_resolution_clock::now();
+      ProfilerStart("eager_intermediate_matmul_cuda.out");
+
+      benchmark_eager_intermediate_matmul(X, Y);
+
+      ProfilerStop();
+      auto t_end = std::chrono::high_resolution_clock::now();
+      double elapsed_time_ms =
+          std::chrono::duration<double, std::milli>(t_end - t_start).count();
+      std::cout << "Duration: " << elapsed_time_ms << " ms" << std::endl;
+
+    } else {
+      PADDLE_THROW(paddle::platform::errors::Fatal("Unknown benchmark mode"));
+    }
+  }
 }
