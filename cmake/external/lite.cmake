@@ -87,6 +87,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
       GIT_TAG             ${LITE_GIT_TAG}
       PREFIX              ${LITE_SOURCES_DIR}
       PATCH_COMMAND       mkdir -p ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code && touch ${LITE_SOURCES_DIR}/src/extern_lite-build/lite/gen_code/__generated_code__.cc && sed -i "/aarch64-linux-gnu-gcc/d" ${LITE_SOURCES_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake && sed -i "/aarch64-linux-gnu-g++/d" ${LITE_SOURCES_DIR}/src/extern_lite/cmake/cross_compiling/armlinux.cmake
+      BUILD_ALWAYS        true
       UPDATE_COMMAND      ""
       BUILD_COMMAND       ${LITE_BUILD_COMMAND}
       INSTALL_COMMAND     ""
@@ -135,6 +136,7 @@ if (NOT LITE_SOURCE_DIR OR NOT LITE_BINARY_DIR)
         PREFIX              ${LITE_SOURCES_DIR}
         UPDATE_COMMAND      ""
         PATCH_COMMAND       sed -i "s?NNadapter_bridges_path = os.path.abspath('..')+\"\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?NNadapter_bridges_path = os.path.abspath(\'..\')+\"\/extern_lite\/lite\/kernels\/nnadapter\/bridges\/paddle_use_bridges.h\"?" ${LITE_SOURCES_DIR}/src/extern_lite//lite/tools/cmake_tools/record_supported_kernel_op.py && sed -i "/general::ssa::ConvertToSSA(cpp_prog)$<SEMICOLON>/d" ${LITE_SOURCES_DIR}/src/extern_lite/lite/model_parser/model_parser.cc
+        BUILD_ALWAYS        true
         BUILD_COMMAND       ${LITE_BUILD_COMMAND}
         INSTALL_COMMAND     ""
         CMAKE_ARGS          -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
