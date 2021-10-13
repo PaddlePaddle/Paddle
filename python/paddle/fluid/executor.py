@@ -1016,6 +1016,7 @@ class Executor(object):
                 if need_check_feed:
                     check_feed_shape_type(var, feed_tensor, exe.device_count())
                 feed_tensor_dict[feed_name] = feed_tensor
+            exe.feed_and_split_tensor_into_local_scopes(feed_tensor_dict)
 
         elif isinstance(feed, list) or isinstance(feed, tuple):
             res = list()
