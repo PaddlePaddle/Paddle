@@ -64,16 +64,16 @@ def run_momentum_op(params,
         fetch_list = []
 
         feed_dict.update(
-            dict([(p_var.name, p_val)
-                  for p_var, p_val in zip(param_vars, params)]))
+            OrderedDict([(p_var.name, p_val)
+                         for p_var, p_val in zip(param_vars, params)]))
         feed_dict.update(
-            dict([(v_var.name, v_val)
-                  for v_var, v_val in zip(velocity_vars, velocitys)]))
+            OrderedDict([(v_var.name, v_val)
+                         for v_var, v_val in zip(velocity_vars, velocitys)]))
         fetch_list = list(feed_dict.keys())
 
         feed_dict.update(
-            dict([(g_var.name, g_val)
-                  for g_var, g_val in zip(grad_vars, grads)]))
+            OrderedDict([(g_var.name, g_val)
+                         for g_var, g_val in zip(grad_vars, grads)]))
         feed_dict.update({lr_var.name: learning_rate})
 
         if multi_precision:
@@ -83,9 +83,9 @@ def run_momentum_op(params,
                 for p in master_params
             ]
             feed_dict.update(
-                dict([(mp_var.name, mp_val)
-                      for mp_var, mp_val in zip(master_param_vars,
-                                                master_params)]))
+                OrderedDict([(mp_var.name, mp_val)
+                             for mp_var, mp_val in zip(master_param_vars,
+                                                       master_params)]))
             fetch_list = fetch_list + [
                 mp_var.name for mp_var in master_param_vars
             ]
@@ -130,8 +130,7 @@ def run_momentum_op(params,
 class TestMergedMomentum(unittest.TestCase):
     def setUp(self):
         paddle.enable_static()
-        # self.shapes = [[3, 4], [2, 7], [5, 6], [7, 8]]
-        self.shapes = [[3, 4]]
+        self.shapes = [[3, 4], [2, 7], [5, 6], [7, 8]]
         self.seed = 10
 
     def gen_rand_data(self, shapes, dtype):
