@@ -184,8 +184,15 @@ endif()
 
 list(REMOVE_ITEM TEST_OPS test_parallel_dygraph_hybrid_parallel)
 
+LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_transformer_gloo) # NOTE: @xiongkun03, cpu is too slow, fix it in next PR
+
 if (NOT WITH_GLOO)
     LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_dataparallel_cpuonly)
+
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_unused_variables_gloo)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_se_resnext_gloo)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding_over_height_gloo)
+    LIST(REMOVE_ITEM TEST_OPS test_parallel_dygraph_sparse_embedding_gloo)
 endif()
 
 if ((NOT WITH_GPU) AND (NOT WITH_ROCM))
