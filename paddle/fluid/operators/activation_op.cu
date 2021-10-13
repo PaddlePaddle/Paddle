@@ -1398,6 +1398,15 @@ REGISTER_OP_CUDA_KERNEL(
                                  ops::SigmoidGradGradFunctor<double>>,
     ops::SigmoidDoubleGradKernel<plat::CUDADeviceContext,
                                  ops::SigmoidGradGradFunctor<plat::float16>>);
+
+REGISTER_OP_CUDA_KERNEL(
+    sigmoid_triple_grad,
+    ops::SigmoidTripleGradKernel<paddle::platform::CUDADeviceContext,
+                                 ops::SigmoidTripleGradFunctor<float>>,
+    ops::SigmoidTripleGradKernel<paddle::platform::CUDADeviceContext,
+                                 ops::SigmoidTripleGradFunctor<double>>,
+    ops::SigmoidTripleGradKernel<plat::CUDADeviceContext,
+                                 ops::SigmoidTripleGradFunctor<plat::float16>>);
 /* ========================================================================== */
 
 /* ===========================    tanh register  ============================ */

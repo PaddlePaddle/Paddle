@@ -34,6 +34,8 @@ from .densenet import densenet161  # noqa: F401
 from .densenet import densenet169  # noqa: F401
 from .densenet import densenet201  # noqa: F401
 from .densenet import densenet264  # noqa: F401
+from .alexnet import AlexNet  # noqa: F401
+from .alexnet import alexnet  # noqa: F401
 
 __all__ = [ #noqa
     'ResNet',
@@ -57,5 +59,7 @@ __all__ = [ #noqa
     'densenet161',
     'densenet169',
     'densenet201',
-    'densenet264'
+    'densenet264',
+    'AlexNet',
+    'alexnet'
 ]

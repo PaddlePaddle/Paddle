@@ -45,6 +45,7 @@ from .linalg import cholesky  # noqa: F401
 from .linalg import bmm  # noqa: F401
 from .linalg import histogram  # noqa: F401
 from .linalg import mv  # noqa: F401
+from .linalg import eig  # noqa: F401
 from .linalg import matrix_power  # noqa: F401
 from .linalg import eigvals  # noqa: F401
 from .linalg import multi_dot  # noqa: F401
@@ -104,6 +105,7 @@ from .manipulation import flip  # noqa: F401
 from .manipulation import unbind  # noqa: F401
 from .manipulation import roll  # noqa: F401
 from .manipulation import chunk  # noqa: F401
+from .manipulation import tensordot  # noqa: F401
 from .math import abs  # noqa: F401
 from .math import acos  # noqa: F401
 from .math import asin  # noqa: F401
@@ -345,6 +347,7 @@ tensor_method_func  = [ #noqa
            'slice',
            'split',
            'chunk',
+           'tensordot',
            'squeeze',
            'squeeze_',
            'stack',
@@ -386,7 +389,9 @@ tensor_method_func  = [ #noqa
            'bitwise_xor',
            'bitwise_not',
            'broadcast_tensors',
+           'eig',
            'uniform_',
+           'multi_dot',
            'solve',
 ]
 

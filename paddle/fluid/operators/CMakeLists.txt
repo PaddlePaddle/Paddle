@@ -78,7 +78,7 @@ if(WITH_UNITY_BUILD)
     include(unity_build_rule.cmake)
 endif()
 
-register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op lstm_op run_program_op eye_op recurrent_op
+register_operators(EXCLUDES py_layer_op py_func_op warpctc_op dgc_op sparse_attention_op lstm_op run_program_op eye_op recurrent_op
         sync_batch_norm_op spectral_op ${OP_MKL_DEPS} DEPS ${OP_HEADER_DEPS})
 
 op_library(run_program_op SRCS run_program_op.cc run_program_op.cu.cc DEPS executor_cache ${OP_HEADER_DEPS})
@@ -94,6 +94,10 @@ if (WITH_GPU OR WITH_ROCM)
     endif()
     op_library(sync_batch_norm_op)
     file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(sync_batch_norm);\n")
+    if ((NOT WIN32) AND (NOT WITH_ROCM) AND (NOT PADDLE_WITH_ARM) AND (NOT ${CMAKE_CUDA_COMPILER_VERSION} VERSION_LESS 11.2) )
+        op_library(sparse_attention_op)
+        file(APPEND ${pybind_file} "USE_CUDA_ONLY_OP(sparse_attention);\n")
+    endif()
 else()
     op_library(warpctc_op DEPS dynload_warpctc sequence_padding sequence_scale)
 endif()
