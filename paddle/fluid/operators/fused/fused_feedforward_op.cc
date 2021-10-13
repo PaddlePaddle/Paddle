@@ -153,21 +153,21 @@ class FusedFeedForwardOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<float>("ln2_epsilon", "epsilon of post layer_norm")
         .SetDefault(1e-5f);
     AddAttr<std::string>("act_method", "act_method").SetDefault("gelu");
-    AddAttr<float>("dropout1_prob", "the dropout_prob of first dropout")
+    AddAttr<float>("dropout1_rate", "the dropout rate of first dropout")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
           PADDLE_ENFORCE_EQ(
               drop_p >= 0.0f && drop_p <= 1.0f, true,
               platform::errors::InvalidArgument(
-                  "'dropout1_prob' must be between 0.0 and 1.0."));
+                  "'dropout1_rate' must be between 0.0 and 1.0."));
         });
-    AddAttr<float>("dropout2_prob", "the dropout_prob of second dropout")
+    AddAttr<float>("dropout2_rate", "the dropout rate of second dropout")
         .SetDefault(.5f)
         .AddCustomChecker([](const float &drop_p) {
           PADDLE_ENFORCE_EQ(
               drop_p >= 0.0f && drop_p <= 1.0f, true,
               platform::errors::InvalidArgument(
-                  "'dropout2_prob' must be between 0.0 and 1.0."));
+                  "'dropout2_rate' must be between 0.0 and 1.0."));
         });
     AddAttr<std::string>("dropout1_implementation",
                          "the dropout implementation of first dropout")
