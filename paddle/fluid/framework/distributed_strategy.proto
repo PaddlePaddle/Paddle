@@ -136,7 +136,7 @@ message GradientScaleConfig {
   // The avg_loss flag is used to determine the position of average
   // If avg_loss is True, it will avg the loss before grad merge.
   // Otherwise, it will do grad merge firstly, then avg the grad after merging.
-  optional bool avg_loss = 2 [ default = false ];
+  optional bool avg_loss = 2 [ default = true ];
 }
 
 message AsyncConfig {
