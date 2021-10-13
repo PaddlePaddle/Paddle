@@ -94,7 +94,6 @@ class AutoParallelizer:
         # with inference.
         self._remove_distributed_attrs(partitioned_main_prog)
 
-        complete_backward_annotation(partitioned_main_prog, self._dist_context)
         reshard(partitioned_main_prog, partitioned_startup_prog, rank,
                 self._dist_context)
 
