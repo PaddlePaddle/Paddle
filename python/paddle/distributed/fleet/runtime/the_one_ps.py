@@ -194,10 +194,6 @@ class CommonAccessor:
 
         self.trainer_num = compiled_strategy.get_trainers()
 
-        #TODO: configured by user
-        adam_d2sum = True
-        #adam_d2sum = False
-
         if compiled_strategy.is_geo_mode():
             param_varnames = self.opt_input_map["sum"]
             attr_varnames = self.opt_attr_map["sum"]
@@ -1069,12 +1065,7 @@ class TheOnePSRuntime(RuntimeBase):
                 TheOnePSRuntime.__exclude_vars(saved_varnames),
                 main_program.list_vars()))
 
-        #dense_output_dir = './output_dense_param/' + '/'.join(dirname.split('/')[:-2]) + '/dense_vars'
-        #os.mkdir(dense_output_dir)
-
         import paddle
-        dirname = dirname + '/dense_vars/'
-        #dirname = dense_output_dir
         for var in remaining_vars:
             if var.name not in recv_dense_varnames:
                 continue
