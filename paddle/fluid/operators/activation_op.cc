@@ -77,12 +77,12 @@ class ActivationGradOpMaker : public framework::SingleGradOpMaker<T> {
         FLAGS_use_mkldnn ||
         (op->HasAttr("use_mkldnn") &&
          BOOST_GET_CONST(bool, op->GetAttr("use_mkldnn")))) {
-      op->SetInput("X", this->Input("X"));
+      op->SetInput("X", this->Input("X"));  // x
     }
 
     if (static_cast<int>(kDepValue) &
         static_cast<int>(ActBwdOpFwdDeps::kDepOut)) {
-      op->SetInput("Out", this->Output("Out"));
+      op->SetInput("Out", this->Output("Out"));  // out
     }
   }
 };
@@ -767,6 +767,10 @@ class ActivationOpDoubleGrad : public framework::OperatorWithKernel {
         ctx->ShareDim("Out", "DDOut");
         ctx->ShareLoD("Out", "DDOut");
       }
+      if (ctx->HasOutput("DOutNew")) {
+        ctx->ShareDim("Out", "DOutNew");
+        ctx->ShareLoD("Out", "DOutNew");
+      }
     }
   }
 
@@ -804,6 +808,45 @@ class ActivationOpDoubleGrad2 : public framework::OperatorWithKernel {
   }
 };
 
+template <ActBwdOpFwdDeps kDepValue>
+class ActivationOpTripleGrad : public framework::OperatorWithKernel {
+ public:
+  using framework::OperatorWithKernel::OperatorWithKernel;
+
+  void InferShape(framework::InferShapeContext* ctx) const override {
+    if (static_cast<int>(kDepValue) & static_cast<int>(kDepX)) {
+      if (ctx->HasOutput("DX")) {
+        ctx->ShareDim("X", "DX");
+        ctx->ShareLoD("X", "DX");
+      }
+      if (ctx->HasOutput("DDOut")) {
+        ctx->ShareDim("X", "DDOut");
+        ctx->ShareLoD("X", "DDOut");
+      }
+    }
+    if (static_cast<int>(kDepValue) & static_cast<int>(kDepOut)) {
+      if (ctx->HasOutput("D_DOut")) {
+        ctx->ShareDim("Out", "D_DOut");
+        ctx->ShareLoD("Out", "D_DOut");
+      }
+      if (ctx->HasOutput("D_OutNew")) {
+        ctx->ShareDim("Out", "D_OutNew");
+        ctx->ShareLoD("Out", "D_OutNew");
+      }
+      if (ctx->HasOutput("D_DDx")) {
+        ctx->ShareDim("DDX", "D_DDx");
+        ctx->ShareLoD("DDX", "D_DDx");
+      }
+    }
+  }
+
+ protected:
+  framework::OpKernelType GetExpectedKernelType(
+      const framework::ExecutionContext& ctx) const override {
+    return GetKernelType(ctx, *this, "DDX");
+  }
+};
+
 template <typename T>
 class SigmoidDoubleGradMaker
     : public ::paddle::framework::SingleGradOpMaker<T> {
@@ -822,6 +865,36 @@ class SigmoidDoubleGradMaker
     // output: ddy
     op->SetOutput("DOutNew", this->InputGrad("Out"));
     op->SetOutput("DDOut", this->InputGrad(framework::GradVarName("Out")));
+  }
+};
+
+template <typename T>
+class SigmoidTripleGradMaker
+    : public ::paddle::framework::SingleGradOpMaker<T> {
+ public:
+  using ::paddle::framework::SingleGradOpMaker<T>::SingleGradOpMaker;
+
+ protected:
+  void Apply(GradOpPtr<T> op) const override {
+    op->SetType("sigmoid_triple_grad");
+    // Out, DDX, DOut, D_DDOut, D_DOut_New   // input
+    // D_OutNew, D_DOut, D_DDx               // output
+    // input1: Out
+    op->SetInput("Out", this->Input("Out"));
+    // input2: ddx
+    op->SetInput("DDX", this->Input("DDX"));
+    // input3: dout
+    op->SetInput("DOut", this->Input("DOut"));
+    // input4: d_ddout
+    op->SetInput("D_DDOut", this->OutputGrad("DDOut"));
+    // input5: d_dout_new
+    op->SetInput("D_DOut_New", this->OutputGrad("DOutNew"));
+    op->SetAttrMap(this->Attrs());
+
+    // output: d_dOut, d_OutNew, d_ddx
+    op->SetOutput("D_OutNew", this->InputGrad("Out"));
+    op->SetOutput("D_DOut", this->InputGrad("DOut"));
+    op->SetOutput("D_DDx", this->InputGrad("DDX"));
   }
 };
 
@@ -995,10 +1068,12 @@ class LogDoubleGradMaker : public ::paddle::framework::SingleGradOpMaker<T> {
 };
 
 DECLARE_INPLACE_OP_INFERER(ActivationGradOpInplaceInferer,
-                           {framework::GradVarName("Out"),
-                            framework::GradVarName("X")});
+                           {framework::GradVarName("Out"),  // dout
+                            framework::GradVarName("X")});  // dx
 DECLARE_INPLACE_OP_INFERER(ActivationDoubleGradOpInplaceInferer,
                            {"DDX", "DDOut"});
+DECLARE_INPLACE_OP_INFERER(ActivationTripleGradOpInplaceInferer,
+                           {"DDX", "D_DOut"});
 
 template <typename T>
 class PowGradOpMaker : public framework::SingleGradOpMaker<T> {
@@ -1121,13 +1196,21 @@ REGISTER_OPERATOR(
 REGISTER_OPERATOR(sigmoid_grad, ops::ActivationOpGrad,
                   ops::ActivationGradOpInplaceInferer,
                   ops::SigmoidDoubleGradMaker<paddle::framework::OpDesc>,
-                  ops::SigmoidDoubleGradMaker<paddle::imperative::OpBase>)
+                  ops::SigmoidDoubleGradMaker<paddle::imperative::OpBase>);
 
 // 3. Register Sigmoid DoubleGrad Operator
 REGISTER_OPERATOR(
     sigmoid_grad_grad,
-    ops::ActivationOpDoubleGrad<ops::SigmoidGradFunctor<float>::FwdDeps()>,
-    ops::ActivationDoubleGradOpInplaceInferer);
+    ops::ActivationOpDoubleGrad<ops::SigmoidGradGradFunctor<float>::FwdDeps()>,
+    ops::ActivationDoubleGradOpInplaceInferer,
+    ops::SigmoidTripleGradMaker<paddle::framework::OpDesc>,
+    ops::SigmoidTripleGradMaker<paddle::imperative::OpBase>);
+
+// 4. Register Sigmoid TripleGrad Operator
+REGISTER_OPERATOR(sigmoid_triple_grad,
+                  ops::ActivationOpTripleGrad<
+                      ops::SigmoidTripleGradFunctor<float>::FwdDeps()>,
+                  ops::ActivationTripleGradOpInplaceInferer);
 
 // Register Sigmoid/GradSigmoid Kernels
 REGISTER_ACTIVATION_CPU_KERNEL(sigmoid, Sigmoid, SigmoidFunctor,
@@ -1142,6 +1225,16 @@ REGISTER_OP_CPU_KERNEL(
                                  ops::SigmoidGradGradFunctor<double>>,
     ops::SigmoidDoubleGradKernel<plat::CPUDeviceContext,
                                  ops::SigmoidGradGradFunctor<plat::float16>>);
+
+// Register TripleGrad Kernel
+REGISTER_OP_CPU_KERNEL(
+    sigmoid_triple_grad,
+    ops::SigmoidTripleGradKernel<plat::CPUDeviceContext,
+                                 ops::SigmoidTripleGradFunctor<float>>,
+    ops::SigmoidTripleGradKernel<plat::CPUDeviceContext,
+                                 ops::SigmoidTripleGradFunctor<double>>,
+    ops::SigmoidTripleGradKernel<plat::CPUDeviceContext,
+                                 ops::SigmoidTripleGradFunctor<plat::float16>>);
 
 /* ========================================================================== */
 

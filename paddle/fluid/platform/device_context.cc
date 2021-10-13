@@ -11,6 +11,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 #include "paddle/fluid/platform/device_context.h"
 #include <set>
+#include <utility>
+#ifdef _WIN32
+#include <intrin.h>
+#else
+#include <x86intrin.h>
+#endif
 
 #if defined(PADDLE_WITH_CUDA) || defined(PADDLE_WITH_HIP)
 #include "paddle/fluid/memory/allocation/cuda_device_context_allocator.h"
@@ -666,7 +672,7 @@ void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
       // of this executor
       for (auto& s : *p_exec_items_) {
         for (auto& v : (*s.second)[ptr]) {
-          (v.first)->erase(v.second);
+          (v.first)->second.erase(v.second);
         }
         s.second->erase(ptr);
       }
@@ -677,12 +683,27 @@ void MKLDNNDeviceContext::ResetBlobMap(void* ptr) {
   }
 }
 
-void MKLDNNDeviceContext::RemoveShapeEntriesWithExecutor(void) const {
-  p_exec_items_->erase(p_exec_items_->begin());
+std::string MKLDNNDeviceContext::PickLeastUsedShape(
+    BlobPtr_t<ShapeBlob> sb) const {
+  auto ancient_one = sb->begin();
+  for (auto v = std::next(sb->begin()); v != sb->end(); ++v) {
+    if (v->second->first < ancient_one->second->first) {
+      ancient_one = v;
+    }
+  }
+  VLOG(2) << "num_shapes: " << sb->size()
+          << ", remove all blobs of shape: " << ancient_one->first;
+  return ancient_one->first;
 }
 
-void MKLDNNDeviceContext::LinkEntryWithExecutor(BlobPtr_t<KeyBlob> pblob,
-                                                KeyBlob::iterator it) const {
+void MKLDNNDeviceContext::RemoveShapeEntriesWithExecutor(
+    std::string shape_to_be_removed) const {
+  p_exec_items_->erase(shape_to_be_removed);
+}
+
+void MKLDNNDeviceContext::LinkEntryWithExecutor(
+    BlobPtr_t<std::pair<unsigned long long, KeyBlob>> pblob,
+    KeyBlob::iterator it) const {
   // Take current input shape from TLS
   // Take current executor addess from TLS
   // and for this executor's items add the one defined with arguments
@@ -719,7 +740,7 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
                                   BlobPtr_t<void> data) const {
   BlobMap* pMap = p_blobmap_.get();
   BlobPtr_t<ShapeBlob> sBlob = nullptr;
-  BlobPtr_t<KeyBlob> pBlob = nullptr;
+  BlobPtr_t<std::pair<unsigned long long, KeyBlob>> pBlob = nullptr;
 
   int sid = tls().get_cur_mkldnn_session_id();
 
@@ -748,22 +769,24 @@ void MKLDNNDeviceContext::SetBlob(const std::string& name,
         sBlob->size() &&
         (sBlob->size() >=
          static_cast<size_t>(tls().cur_input_shape_cache_capacity))) {
-      VLOG(2) << "sid=" << sid
-              << ", remove all blobs of shape: " << sBlob->begin()->first;
-      sBlob->erase(sBlob->begin()->first);
-      RemoveShapeEntriesWithExecutor();
+      auto shape_to_be_erased = PickLeastUsedShape(sBlob);
+      sBlob->erase(shape_to_be_erased);
+      RemoveShapeEntriesWithExecutor(shape_to_be_erased);
     }
-    pBlob = std::make_shared<KeyBlob>();
+    pBlob = std::make_shared<std::pair<unsigned long long, KeyBlob>>();
+    pBlob->first = __rdtsc();
     (*sBlob)[tls().cur_input_shape_str] = pBlob;
   } else {
     pBlob = key_it->second;
+    // Update time stamp
+    pBlob->first = __rdtsc();
   }
 
   // Find Blob via name
-  auto blob_it = pBlob->find(name);
-  if (blob_it == pBlob->end()) {
-    auto el =
-        pBlob->insert(std::make_pair(name, data));  //  (*pBlob)[name] = data;
+  auto blob_it = pBlob->second.find(name);
+  if (blob_it == pBlob->second.end()) {
+    auto el = pBlob->second.insert(
+        std::make_pair(name, data));  //  (*pBlob)[name] = data;
     // Register new element in per executor map
     // to have easily erased when executor terminated
     LinkEntryWithExecutor(pBlob, el.first);
@@ -779,7 +802,7 @@ unsigned int MKLDNNDeviceContext::GetCachedObjectsNumber(void) const {
   unsigned int num_entries = 0;
   for (auto const& l3 : *p_blobmap_) {
     for (auto const& l2 : *(l3.second)) {
-      num_entries += (l2.second)->size();
+      num_entries += (l2.second->second).size();
     }
   }
   return num_entries;
@@ -789,7 +812,7 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
     const std::string& name) const {
   BlobMap* pMap = p_blobmap_.get();
   BlobPtr_t<ShapeBlob> sBlob = nullptr;
-  BlobPtr_t<KeyBlob> pBlob = nullptr;
+  BlobPtr_t<std::pair<unsigned long long, KeyBlob>> pBlob = nullptr;
 
   int sid = tls().get_cur_mkldnn_session_id();
 
@@ -813,12 +836,14 @@ MKLDNNDeviceContext::BlobPtr_t<void> MKLDNNDeviceContext::GetBlob(
   pBlob = sBlob_it->second;
 
   // Find Blob via name
-  auto key_it = pBlob->find(name);
+  auto key_it = pBlob->second.find(name);
 
-  if (key_it == pBlob->end()) {
+  if (key_it == pBlob->second.end()) {
     VLOG(2) << "GetBlob sid=" << sid << ", miss blob=" << name << "\n";
     return nullptr;
   }
+  // Update timestamp
+  sBlob_it->second->first = __rdtsc();  // TODO(windows)
 
   VLOG(2) << "GetBlob sid=" << sid << ", get blob=" << name << "\n";
   // lock will be automatically released when out of scope

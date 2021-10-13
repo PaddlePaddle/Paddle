@@ -113,6 +113,8 @@ from .fused_transformer import fused_feedforward  # noqa: F401
 from ...fluid.layers import gather_tree  # noqa: F401
 from ...fluid.layers import temporal_shift  # noqa: F401
 
+from .sparse_attention import sparse_attention
+
 __all__ = [     #noqa
            'conv1d',
            'conv1d_transpose',
@@ -209,4 +211,5 @@ __all__ = [     #noqa
            'instance_norm',
            'class_center_sample',
             'fused_feedforward',
+           'sparse_attention',
 ]

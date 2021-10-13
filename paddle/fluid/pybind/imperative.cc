@@ -1940,6 +1940,13 @@ void BindImperative(py::module *m_ptr) {
            &imperative::jit::ProgramDescTracer::CreateProgramDesc)
       .def("reset", &imperative::jit::ProgramDescTracer::Reset);
 
+  py::enum_<paddle::imperative::AmpLevel>(m, "AmpLevel", py::arithmetic())
+      .value("O0", paddle::imperative::AmpLevel::O0)
+      .value("O1", paddle::imperative::AmpLevel::O1)
+      .value("O2", paddle::imperative::AmpLevel::O2)
+      .value("O3", paddle::imperative::AmpLevel::O3)
+      .export_values();
+
   py::class_<imperative::Tracer, std::shared_ptr<imperative::Tracer>>(
       m, "Tracer", R"DOC()DOC")
       .def("__init__",
@@ -1947,8 +1954,8 @@ void BindImperative(py::module *m_ptr) {
       .def_property("_enable_program_desc_tracing",
                     &imperative::Tracer::IsProgramDescTracingEnabled,
                     &imperative::Tracer::SetEnableProgramDescTracing)
-      .def_property("_amp_level", &imperative::Tracer::AMPLevel,
-                    &imperative::Tracer::SetAMPLevel)
+      .def_property("_amp_level", &imperative::Tracer::GetAmpLevel,
+                    &imperative::Tracer::SetAmpLevel)
       .def_property("_has_grad", &imperative::Tracer::HasGrad,
                     &imperative::Tracer::SetHasGrad)
       .def_property(
