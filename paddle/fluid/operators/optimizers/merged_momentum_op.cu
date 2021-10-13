@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "paddle/fluid/operators/merged_momentum_op.h"
+#include "paddle/fluid/operators/optimizers/merged_momentum_op.h"
 
 namespace ops = paddle::operators;
 namespace plat = paddle::platform;
