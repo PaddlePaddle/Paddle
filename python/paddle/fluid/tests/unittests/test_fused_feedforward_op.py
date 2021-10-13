@@ -43,7 +43,7 @@ class TestFusedFFNOp(OpTest):
         self.act_method = "gelu"
 
     def getNormalizeBefore(self):
-        self.normalize_before = False
+        self.pre_layer_norm = False
 
     def setUp(self):
         paddle.disable_static()
@@ -87,7 +87,7 @@ class TestFusedFFNOp(OpTest):
         paddle.disable_static()
         tensor_src = paddle.to_tensor(self.src, stop_gradient=False)
         residual = paddle.to_tensor(self.src)
-        if self.normalize_before:
+        if self.pre_layer_norm:
             ln1_out = self.norm1(tensor_src)
             linear2_out = self.linear2(
                 self.dropout(self.activation(self.linear1(ln1_out))))
@@ -124,8 +124,8 @@ class TestFusedFFNOp(OpTest):
             ln2_bias,
             0.0,
             0.0,
-            act_method=self.act_method,
-            normalize_pre_or_post=self.normalize_before)
+            activation=self.act_method,
+            pre_layer_norm=self.pre_layer_norm)
         return out
 
     def test_fused_ffn(self):
@@ -164,7 +164,7 @@ class TestFusedFFNOpActivation(TestFusedFFNOp):
 
 class TestFusedFFNOpNormalizeBefore(TestFusedFFNOp):
     def getNormalizeBefore(self):
-        self.normalize_before = True
+        self.pre_layer_norm = True
 
     def getShape(self):
         self.batch_size = 1
@@ -212,8 +212,8 @@ class APITestStaticFusedFFN(unittest.TestCase):
             ln2_bias,
             0.0,
             0.0,
-            act_method="relu",
-            normalize_pre_or_post=False)
+            activation="relu",
+            pre_layer_norm=False)
 
         ######base ffn######
         linear1_out = F.linear(x, linear1_weight, linear1_bias)
@@ -265,6 +265,49 @@ class APITestStaticFusedFFN(unittest.TestCase):
             np.allclose(
                 real_res[0], real_res[1], atol=1e-5),
             "two value is check diff")
+
+
+class TestFusedFFNOpError(unittest.TestCase):
+    def test_errors(self):
+        paddle.enable_static()
+        with paddle.static.program_guard(paddle.static.Program(),
+                                         paddle.static.Program()):
+
+            def test_dtype():
+                x = paddle.static.data(
+                    name='x', shape=[1, 10, 10], dtype="int32")
+                linear1_weight = paddle.static.data(
+                    name='linear1_weight', shape=[1, 10, 10], dtype="float32")
+                linear2_weight = paddle.static.data(
+                    name='linear2_weight', shape=[1, 10, 10], dtype="float32")
+                paddle.nn.functional.fused_feedforward(x, linear1_weight,
+                                                       linear2_weight)
+
+            self.assertRaises(TypeError, test_dtype)
+
+            def test_dropout_rate_type():
+                x = paddle.static.data(
+                    name='x1', shape=[1, 10, 10], dtype="float32")
+                linear1_weight = paddle.static.data(
+                    name='linear1_weight1', shape=[10, 10], dtype="float32")
+                linear2_weight = paddle.static.data(
+                    name='linear2_weight1', shape=[10, 10], dtype="float32")
+                paddle.nn.functional.fused_feedforward(
+                    x, linear1_weight, linear2_weight, dropout1_rate="a")
+
+            self.assertRaises(TypeError, test_dropout_rate_type)
+
+            def test_dropout_rate_value():
+                x = paddle.static.data(
+                    name='x2', shape=[1, 10, 10], dtype="float32")
+                linear1_weight = paddle.static.data(
+                    name='linear1_weight2', shape=[10, 10], dtype="float32")
+                linear2_weight = paddle.static.data(
+                    name='linear2_weight2', shape=[10, 10], dtype="float32")
+                paddle.nn.functional.fused_feedforward(
+                    x, linear1_weight, linear2_weight, dropout2_rate=-1)
+
+            self.assertRaises(ValueError, test_dropout_rate_value)
 
 
 if __name__ == "__main__":

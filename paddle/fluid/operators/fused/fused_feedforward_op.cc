@@ -82,19 +82,12 @@ class FusedFeedForwardOp : public framework::OperatorWithKernel {
     if (context->Attrs().Get<bool>("dropout2_is_test") == false) {
       context->SetOutputDim("Dropout2Mask", dim_x);
     }
-    context->SetOutputDim(
-        "Ln1Mean",
-        framework::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_}));
-    context->SetOutputDim(
-        "Ln1Variance",
-        framework::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_}));
-    context->SetOutputDim(
-        "Ln2Mean",
-        framework::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_}));
-    context->SetOutputDim(
-        "Ln2Variance",
-        framework::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_}));
-
+    framework::DDim mean_dim =
+        framework::make_ddim({mat_dim_x.batch_size_ * mat_dim_x.height_});
+    context->SetOutputDim("Ln1Mean", mean_dim);
+    context->SetOutputDim("Ln1Variance", mean_dim);
+    context->SetOutputDim("Ln2Mean", mean_dim);
+    context->SetOutputDim("Ln2Variance", mean_dim);
     context->ShareLoD("X", "Out");
   }
 
@@ -146,8 +139,7 @@ class FusedFeedForwardOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Dropout1Out", "The output of dropout1").AsIntermediate();
     AddOutput("Dropout2Out", "The output of dropout2").AsIntermediate();
 
-    AddAttr<bool>("normalize_pre_or_post", "true is pre layernorm")
-        .SetDefault(false);
+    AddAttr<bool>("pre_layer_norm", "true is pre layernorm").SetDefault(false);
     AddAttr<float>("ln1_epsilon", "epsilon of pre layer_norm")
         .SetDefault(1e-5f);
     AddAttr<float>("ln2_epsilon", "epsilon of post layer_norm")
@@ -203,11 +195,11 @@ class FusedFeedForwardOpMaker : public framework::OpProtoAndCheckerMaker {
         the function of fused_feedforward operator is the same as the following pseudo code:
         residual = src;
         ln1_out = src;
-        if(normalize_pre_or_post){
+        if(pre_layer_norm){
             ln1_out = layer_norm(src);
         }
         out = linear(dropout(activation(dropout(linear(ln1_out)))));
-        if(!normalize_pre_or_post) {
+        if(!pre_layer_norm) {
             out = layer_norm(out);
         }
         )DOC");
