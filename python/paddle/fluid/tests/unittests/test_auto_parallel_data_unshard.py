@@ -20,8 +20,8 @@ import paddle.fluid as fluid
 from test_parallel_dygraph_dataparallel import TestMultipleGpus
 
 
-class TestParallelClassCenterSample(TestMultipleGpus):
-    def test_parallel_class_center_sample(self):
+class TestAutoParallelDataUnshard(TestMultipleGpus):
+    def test_auto_parallel_data_unshard(self):
         self.run_mnist_2gpu('auto_parallel_data_unshard.py')
 
 

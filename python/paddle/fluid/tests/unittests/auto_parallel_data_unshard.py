@@ -31,7 +31,7 @@ paddle.enable_static()
 paddle.distributed.init_parallel_env()
 
 
-class TestDataUnReshard(unittest.TestCase):
+class TestDataUnshard(unittest.TestCase):
     def test_dp2pp1mp1(self):
         def create_model(train_program, start_program):
             with paddle.static.program_guard(train_program, start_program):
