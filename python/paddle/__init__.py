@@ -79,6 +79,7 @@ from .tensor.creation import ones  # noqa: F401
 from .tensor.creation import ones_like  # noqa: F401
 from .tensor.creation import zeros  # noqa: F401
 from .tensor.creation import zeros_like  # noqa: F401
+from .tensor.creation import zeropad2d  # noqa: F401
 from .tensor.creation import arange  # noqa: F401
 from .tensor.creation import full  # noqa: F401
 from .tensor.creation import full_like  # noqa: F401

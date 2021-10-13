@@ -381,6 +381,90 @@ def zeros_like(x, dtype=None, name=None):
     return full_like(x=x, fill_value=0, dtype=dtype, name=name)
 
 
+def zeropad2d(x, pad, data_format="NCHW", name=None):
+    """
+    Pad tensor with 0 according to 'pad'.
+
+    Args:
+        x(Tensor): The input tensor with data type float32/float64/int32/int64.
+        pad(Tensor | List[int] | Tuple[int]): The padding size with data type int.
+            The input dimension should be 3 and pad has the form (pad_left, pad_right,
+            pad_top, pad_bottom).
+        data_format(str): An string from: "NHWC", "NCHW". Specify the data format of 
+            the input data. Default: "NCHW".
+        name(str, optional): The default value is None. Normally there is no need for user
+            to set this property.
+
+    Returns: A Tensor padded according to pad and data type is same as input.
+    Returns: Tensor
+
+    Examples:
+        .. code-block:: text
+            x = [[[[1., 2., 3.],
+                  [4., 5., 6.]]]]
+            pad = [0, 0, 0, 0, 0, 0, 1, 1,]
+            out = [[[[0., 0., 0.],
+                     [1., 2., 3.],
+                     [4., 5., 6.],
+                     [0., 0., 0.]]]]
+    
+    Code Examples:
+        .. code-block:: python
+            
+            import paddle
+            import numpy as np
+            
+            x_shape = (1, 1, 2, 3)
+            x = paddle.arrange(np.prod(x_shape), dtype='float32').reshape(x_shape) + 1
+            y = paddle.zeropad2d(x, [1, 2, 1, 1])
+            print(y)
+            # [[[[0. 0. 0. 0. 0. 0.]
+            #    [0. 1. 2. 3. 0. 0.]
+            #    [0. 4. 5. 6. 0. 0.]
+            #    [0. 0. 0. 0. 0. 0.]]]]
+    """
+    data_format = data_format.upper()
+    assert data_format in [
+        "NCHW", "NHWC"
+    ], "data_format should be in one of [NCHW, NHWC], bug got {}".format(
+        data_format)
+
+    x_dim = len(x.shape)
+
+    assert x_dim == 4, "input tensor dimension should be 4, but got {}".format(
+        x_dim)
+
+    if isinstance(pad, int):
+        pad = [pad] * 4
+
+    assert isinstance(
+        pad, (paddle.Tensor, list, tuple)
+    ), "pad type should be one of [paddle.Tensor, list, tuple], but got {}".format(
+        type(x))
+
+    if in_dygraph_mode():
+        if isinstance(pad, Variable):
+            pad = pad.numpy()
+        out = core.ops.pad2d(x, "paddings", pad, "value", 0, "data_format",
+                             data_format, "name", name)
+    else:
+        attrs = {'value': 0, 'data_format': data_format}
+        inputs = {'X': [x]}
+        if isinstance(pad, Variable):
+            inputs['Paddings'] = [pad]
+            attrs['paddings'] = []
+        else:
+            attrs['paddings'] = pad
+
+        helper = LayerHelper('pad2d', **locals())
+
+        dtype = helper.input_dtype(input_param_name='input')
+        out = helper.create_variable_for_type_inference(dtype)
+        helper.append_op(
+            type='pad2d', inputs=inputs, outputs={"Out": out}, attrs=attrs)
+    return out
+
+
 def eye(num_rows, num_columns=None, dtype=None, name=None):
     """
     
