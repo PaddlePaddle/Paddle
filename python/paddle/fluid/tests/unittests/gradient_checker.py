@@ -309,7 +309,7 @@ def grad_check(x,
             _compute_analytical_jacobian(prog, clone_x, clone_y, place, scope))
 
     for i, (x_idx,
-            y_idx) in enumerate(product(* [range(len(x)), range(len(y))])):
+            y_idx) in enumerate(product(*[range(len(x)), range(len(y))])):
         a = analytical[y_idx][x_idx]
         n = numerical[x_idx][y_idx]
         if not np.allclose(a, n, rtol, atol):
@@ -391,3 +391,118 @@ def double_grad_check(x,
     x_init += y_grads_init
 
     grad_check(x, target_grads, x_init, place, program, eps, atol, rtol)
+
+
+# TODO(jiabin): We currently support only triple grad check here, extend this to support 
+# higher order differenciation later.
+
+
+# check triple grad and two outputs of the triple Kernel
+def triple_grad_check(x,
+                      y,
+                      x_init=None,
+                      y_grads=None,
+                      x_grads_grads=None,
+                      place=None,
+                      program=None,
+                      eps=1e-6,
+                      atol=1e-5,
+                      rtol=1e-3,
+                      raise_exception=True):
+    """
+    Check triple gradients. This function will append backward to the
+    program before third order gradient check.
+
+    Args:
+        x (Variable|list[Variable]): input variables to the program.
+        y (Variable|list[Variable]): output variables to the program.
+        x_init (numpy.array|list[numpy.array]|None): the init value for input x.
+        y_grads (numpy.array|list[numpy.array]|None): the gradients with respect to y.
+        x_grads_grads (numpy.array|list[numpy.array]|None): the gradients with respect to your input.
+        place (fluid.CPUPlace or fluid.CUDAPlace): the device.
+        program (Program|None): a Program with forward pass.
+            If None, use fluid.default_main_program().
+        eps (float): perturbation for finite differences.
+        atol (float): absolute tolerance.
+        rtol (float): relative tolerance.
+        raise_exception (bool): whether to raise an exception if
+            the check fails. Default is True.
+    Returns:
+        True if all differences satisfy numpy.allclose condition.
+    """
+    # check input arguments
+    x = _as_list(x)
+    for v in x:
+        v.stop_gradient = False
+        v.persistable = True
+    y = _as_list(y)
+
+    if program is None:
+        program = fluid.default_main_program()
+
+    if y_grads is None:
+        scope = fluid.executor.global_scope()
+        y_grads = []
+        y_grads_init = []
+        for yi in y:
+            dyi_name = _append_grad_suffix_(yi.name)
+            np_type = dtype_to_np_dtype(yi.dtype)
+            dy = program.global_block().create_var(
+                name=dyi_name, shape=yi.shape, dtype=np_type, persistable=True)
+            dy.stop_gradient = False
+            v = np.random.random(size=yi.shape).astype(np_type)
+            set_var_in_scope(scope, place, dyi_name, v)
+            y_grads.append(dy)
+            y_grads_init.append(v)
+    else:
+        y_grads = _as_list(y_grads)
+        y_grads_init = [
+            var_to_np_array_in_scope(scope, place, v.name) for v in y_grads
+        ]
+
+    # append first order grads
+    target_grads = fluid.gradients(y, x, y_grads)
+
+    if x_grads_grads is None:
+        scope = fluid.executor.global_scope()
+        x_grads_grads = []
+        x_grads_grads_init = []
+        for dxi in target_grads:
+            ddxi_name = _append_grad_suffix_(dxi.name)
+            np_type = dtype_to_np_dtype(dxi.dtype)
+            ddx = program.global_block().create_var(
+                name=ddxi_name,
+                shape=dxi.shape,
+                dtype=np_type,
+                persistable=True)
+            ddx.stop_gradient = False
+            v = np.random.random(size=dxi.shape).astype(np_type)
+            set_var_in_scope(scope, place, ddxi_name, v)
+            x_grads_grads.append(ddx)
+            x_grads_grads_init.append(v)
+    else:
+        x_grads_grads = _as_list(x_grads_grads)
+        x_grads_grads_init = [
+            var_to_np_array_in_scope(scope, place, v.name)
+            for v in x_grads_grads
+        ]
+    # append second order grads
+    target_grads_grads = fluid.gradients(target_grads, x, x_grads_grads)
+
+    x += y_grads
+    x_init = _as_list(x_init)
+    x_init += y_grads_init
+
+    x += x_grads_grads
+    x_init += x_grads_grads_init
+
+    # x <=> [x, dout, ddx]
+    grad_check(
+        x=x,
+        y=target_grads_grads,
+        x_init=x_init,
+        place=place,
+        program=program,
+        eps=eps,
+        atol=atol,
+        rtol=rtol)
