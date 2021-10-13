@@ -2324,17 +2324,29 @@ void BindImperative(py::module *m_ptr) {
         }
       },
       R"DOC(
-  This api provides a way to write pieces of source tensor to destination tensor inplacely and asynchronously. In which, we use `offset` and `count` to determine where to copy. `offset` means the begin points of the copy pieces of `src`, and `count` means the lengths of the copy pieces of `src`. To be noted, the copy process will run asynchronously from cuda to pin memory. We can simply remember this as "gpu async_write to pin_memory".
+  This api provides a way to write pieces of source tensor to destination tensor 
+  inplacely and asynchronously. In which, we use `offset` and `count` to determine 
+  where to copy. `offset` means the begin points of the copy pieces of `src`, and 
+  `count` means the lengths of the copy pieces of `src`. To be noted, the copy process 
+  will run asynchronously from cuda to pin memory. We can simply remember this as 
+  "gpu async_write to pin_memory".
   
   Arguments:
   
-    src (Tensor): The source tensor, and the data type should be `float32` currently. Besides, `src` should be placed on CUDAPlace.
+    src (Tensor): The source tensor, and the data type should be `float32` currently. 
+                  Besides, `src` should be placed on CUDAPlace.
 
-    dst (Tensor): The destination tensor, and the data type should be `float32` currently. Besides, `dst` should be placed on CUDAPinnedPlace. The shape of `dst` should be the same with `src` except for the first dimension. 
+    dst (Tensor): The destination tensor, and the data type should be `float32` currently. 
+                  Besides, `dst` should be placed on CUDAPinnedPlace. The shape of `dst` 
+                  should be the same with `src` except for the first dimension. 
 
-    offset (Tensor): The offset tensor, and the data type should be `int64` currently. Besides, `offset` should be placed on CPUPlace. The shape of `offset` should be one-dimensional. 
+    offset (Tensor): The offset tensor, and the data type should be `int64` currently. 
+                     Besides, `offset` should be placed on CPUPlace. The shape of `offset` 
+                     should be one-dimensional. 
     
-    count (Tensor): The count tensor, and the data type should be `int64` currently. Besides, `count` should be placed on CPUPlace. The shape of `count` should be one-dimensinal. 
+    count (Tensor): The count tensor, and the data type should be `int64` currently. 
+                    Besides, `count` should be placed on CPUPlace. The shape of `count` 
+                    should be one-dimensinal. 
 
   Examples:
       
@@ -2431,6 +2443,9 @@ void BindImperative(py::module *m_ptr) {
                   "`src` and `buffer` should have the same tensor shape, "
                   "except for the first dimension."));
         }
+        PADDLE_ENFORCE_EQ(index_tensor.dims().size(), 1,
+                          platform::errors::InvalidArgument(
+                              "`index` tensor should be one-dimensional."));
 
         auto stream = paddle::platform::stream::get_current_stream(deviceId)
                           ->raw_stream();
@@ -2508,21 +2523,37 @@ void BindImperative(py::module *m_ptr) {
                         cudaMemcpyHostToDevice, stream);
       },
       R"DOC(
-  This api provides a way to read from pieces of source tensor to destination tensor asynchronously. In which, we use `index`, `offset` and `count` to determine where to copy. `index` means the index position of src tensor we want to read. `offset` and count means the begin points and length of pieces of src tensor we want to read. The to noted, the copy process will run asynchronously from pin memory to cuda place. we can simply remember this as "cuda async_read from pin_memory".
+  This api provides a way to read from pieces of source tensor to destination tensor 
+  asynchronously. In which, we use `index`, `offset` and `count` to determine where 
+  to read. `index` means the index position of src tensor we want to read. `offset` 
+  and count means the begin points and length of pieces of src tensor we want to read. 
+  To be noted, the copy process will run asynchronously from pin memory to cuda place. 
+  We can simply remember this as "cuda async_read from pin_memory".
 
   Arguments:
   
-    src (Tensor): The source tensor, and the data type should be `float32` currently. Besides, `src` should be placed on CUDAPinnedPlace.
+    src (Tensor): The source tensor, and the data type should be `float32` currently. 
+                  Besides, `src` should be placed on CUDAPinnedPlace.
   
-    dst (Tensor): The destination tensor, and the data type should be `float32` currently. Besides, `dst` should be placed on CUDAPlace.
+    dst (Tensor): The destination tensor, and the data type should be `float32` currently. 
+                  Besides, `dst` should be placed on CUDAPlace. The shape of `dst` should 
+                  be the same with `src` except for the first dimension.
 
-    index (Tensor): The index tensor, and the data type should be `int64` currently. Besides, `index` should be on CPUplace.
+    index (Tensor): The index tensor, and the data type should be `int64` currently. 
+                    Besides, `index` should be on CPUplace. The shape of `index` should 
+                    be one-dimensional.
 
-    buffer (Tensor): The buffer tensor, used to buffer index copy tensor temporarily. The data type should be `float32` currently, and should be placed on CUDAPinnedPlace.
+    buffer (Tensor): The buffer tensor, used to buffer index copy tensor temporarily. 
+                     The data type should be `float32` currently, and should be placed 
+                     on CUDAPinnedPlace. The shape of `buffer` should be the same with `src` except for the first dimension.
 
-    offset (Tensor): The offset tensor, and the data type should be `int64` currently. Besides, `offset` should be placed on CPUPlace. The shape of `offset` should be one-dimensional.
+    offset (Tensor): The offset tensor, and the data type should be `int64` currently. 
+                     Besides, `offset` should be placed on CPUPlace. The shape of `offset` 
+                     should be one-dimensional.
 
-    count (Tensor): The count tensor, and the data type should be `int64` currently. Besides, `count` should be placed on CPUPlace. The shape of `count` should be one-dimensinal.
+    count (Tensor): The count tensor, and the data type should be `int64` currently. 
+                    Besides, `count` should be placed on CPUPlace. The shape of `count` 
+                    should be one-dimensinal.
     
   Examples:
       .. code-block:: python
