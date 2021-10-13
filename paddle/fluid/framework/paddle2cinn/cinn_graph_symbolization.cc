@@ -15,6 +15,7 @@ limitations under the License. */
 #include "paddle/fluid/framework/paddle2cinn/cinn_graph_symbolization.h"
 
 #include <algorithm>
+#include <iterator>
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
@@ -48,9 +49,6 @@ CinnVarInfo GetCinnVarInfoFromTensor(const Tensor* tensor) {
 }
 }  // namespace utils
 
-using ::cinn::frontend::OpMapperContext;
-using ::cinn::frontend::Program;
-
 void CinnGraphSymbolization::AddFeedVarIntoCinn(
     const OpMapperContext& ctx) const {
   for (auto& feed_pair : *feed_targets_) {
@@ -69,7 +67,8 @@ std::vector<Node*> CinnGraphSymbolization::TopoSortGraph() const {
 
   std::unordered_set<Node*> cluster_set;
   const auto& nodes = graph_.Nodes();
-  std::copy_if(nodes.begin(), nodes.end(), cluster_set.begin(),
+  std::copy_if(nodes.begin(), nodes.end(),
+               std::inserter(cluster_set, cluster_set.begin()),
                [](Node* node) { return node->IsOp(); });
 
   std::unordered_map<Node*, size_t> indegree;
@@ -153,7 +152,7 @@ void CinnGraphSymbolization::RunGraph(const OpMapperContext& ctx) const {
   }
 }
 
-Program CinnGraphSymbolization::operator()() const {
+::cinn::frontend::Program CinnGraphSymbolization::operator()() const {
   std::string builder_name = "graph_";
   builder_name.append(std::to_string(graph_id_));
   builder_name.append("_of_");
@@ -166,11 +165,8 @@ Program CinnGraphSymbolization::operator()() const {
   auto scope = ::cinn::hlir::framework::Scope::Create();
   auto target = ::cinn::common::DefaultHostTarget();
 
-  absl::flat_hash_map<std::string, ::cinn::frontend::Variable> var_map;
-  absl::flat_hash_map<std::string, std::string> var_model_to_program_map;
-
-  OpMapperContext ctx(scope.get(), target, &builder, &var_map,
-                      &var_model_to_program_map);
+  OpMapperContext ctx(scope.get(), target, &builder, &var_map_,
+                      &var_model_to_program_map_);
 
   AddFeedVarIntoCinn(ctx);
   RunGraph(ctx);

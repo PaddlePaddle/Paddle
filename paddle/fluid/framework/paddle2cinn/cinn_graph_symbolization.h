@@ -14,6 +14,7 @@ limitations under the License. */
 
 #pragma once
 
+#include <absl/container/flat_hash_map.h>
 #include <map>
 
 #include "paddle/fluid/framework/ir/graph.h"
@@ -64,11 +65,24 @@ class CinnGraphSymbolization {
   // run all CINN op in graph by topo sorting then return its NetBuilder
   ::cinn::frontend::Program operator()() const;
 
+  // return the internal variable map
+  const decltype(auto)& var_map() const { return var_map_; }
+
+  // return the map from the variable name in paddle model to cinn program.
+  const decltype(auto)& var_model_to_program_map() const {
+    return var_model_to_program_map_;
+  }
+
  private:
   const int64_t graph_id_;
   const ir::Graph& graph_;
   const std::map<std::string, const LoDTensor*>* feed_targets_;
 
+  // preserve local variable map
+  absl::flat_hash_map<std::string, ::cinn::frontend::Variable> var_map_;
+  absl::flat_hash_map<std::string, std::string> var_model_to_program_map_;
+
+  using OpMapperContext = ::cinn::frontend::OpMapperContext;
   // transform all paddle var desc in feed list into cinn_var_descs_
   void AddFeedVarIntoCinn(const OpMapperContext& ctx) const;
 
@@ -78,7 +92,7 @@ class CinnGraphSymbolization {
 
   // topo sort graph and return sorted op list,
   // called in TransformAllOpDescToCinn.
-  std::vector<Node*> TopoSortGraph() const;
+  std::vector<ir::Node*> TopoSortGraph() const;
 
   // RunOp accept OpDesc and global run context then run
   // it's kernel registered in OpMapper.
