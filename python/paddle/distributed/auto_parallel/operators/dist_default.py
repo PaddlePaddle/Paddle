@@ -29,7 +29,7 @@ from paddle.fluid.framework import Program, Parameter, Variable, program_guard
 from paddle.fluid.data_feeder import check_variable_and_dtype, check_dtype
 from paddle.distributed.fleet.meta_optimizers.common import OpRole, OP_ROLE_KEY, OP_ROLE_VAR_KEY
 from ..process import new_process_group
-from ..utils import _get_comm_group
+from ..utils import _get_comm_group, _get_corresponding_rank
 
 
 class DistributedDefault(DistributedOperator):
@@ -106,11 +106,15 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                 param_dist_attr = ctx.get_tensor_distributed_attr_for_program(
                     param)
                 process_mesh = param_dist_attr.get_process_mesh()
-                dim_mapping = param_dist_attr.get_dims_mapping()
+                dims_mapping = param_dist_attr.get_dims_mapping()
+
+                # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
+                if rank_id not in process_mesh.process_group:
+                    rank_id = _get_corresponding_rank(process_mesh, rank_id)
 
                 # NOTE all not splited axis should be presented in mesh 
                 for axis, size in enumerate(process_mesh.topology):
-                    if size <= 1 or axis in dim_mapping:
+                    if size <= 1 or axis in dims_mapping:
                         pass
                     else:
                         group_ranks = _get_comm_group(
@@ -118,7 +122,7 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                             axis, rank_id)
                         sync_group = new_process_group(group_ranks)
 
-                        startup_block.append_op(
+                        new_op = startup_block.append_op(
                             type='c_broadcast',
                             inputs={'X': param},
                             outputs={'Out': param},
@@ -128,6 +132,15 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                                 'use_calc_stream': True,
                                 OP_ROLE_KEY: OpRole.Forward
                             })
+
+                        # set distributed attribute
+                        op_attr = OperatorDistributedAttribute(new_op, ctx)
+                        op_attr.set_process_mesh(process_mesh)
+                        op_attr.set_output_dims_mapping(param.name,
+                                                        dims_mapping)
+                        op_attr.set_input_dims_mapping(param.name, dims_mapping)
+                        ctx.set_op_distributed_attr_for_program(new_op, op_attr)
+
                 startup_block._sync_with_cpp()
 
     @staticmethod
