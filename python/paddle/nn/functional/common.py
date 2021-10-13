@@ -24,6 +24,7 @@ from ...fluid.layers import core
 from ...fluid import dygraph_utils
 # TODO: define the common functions to build a neural network  
 from ...fluid.layers import unfold  # noqa: F401
+from ...fluid.layers import fold  # noqa: F401
 from ...tensor.manipulation import squeeze
 from ...tensor.manipulation import unsqueeze
 from ...tensor import clip
