@@ -168,6 +168,10 @@ class DistributedDefaultImpl0(DistributedOperatorImpl):
                     process_mesh = dist_attr.get_process_mesh()
                     var_dim_mapping = dist_attr.get_input_dims_mapping(varname)
 
+                    # FIXME (JZ-LIANG) Remove this hack to support any op mesh group for Pipeline Parallelism
+                    if rank_id not in process_mesh.process_group:
+                        rank_id = _get_corresponding_rank(process_mesh, rank_id)
+
                     mesh_shape = process_mesh.topology
                     batch_size_axis = var_dim_mapping[0]
                     if batch_size_axis > -1 and mesh_shape[batch_size_axis] > 1:
