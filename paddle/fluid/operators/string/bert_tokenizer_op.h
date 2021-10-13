@@ -10,9 +10,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
-#if _MSC_VER >= 1600
-#pragma execution_character_set("utf-8")
-#endif
 
 #include <utf8proc.h>
 
@@ -23,7 +20,6 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 #include "paddle/fluid/framework/string_array.h"
-// #include <chrono>
 
 namespace paddle {
 namespace operators {
@@ -56,7 +52,6 @@ class BasicTokenizer {
   wchar_t do_lower_case(wchar_t ch) const;
 
   bool do_lower_case_;
-  // std::unordered_map<wchar_t, wchar_t> accent_map_;
 };
 
 class WordPieceTokenizer {
