@@ -115,7 +115,7 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     // the same as QKOut's shape.
     ctx->SetOutputDim("AttnDropoutOut",
                       {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
-    if (ctx->Attrs().Get<bool>("attn_dropout_is_test") == false) {
+    if (ctx->Attrs().Get<bool>("is_test1") == false) {
       ctx->SetOutputDim("AttnDropoutMaskOut",
                         {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
     }
@@ -220,20 +220,20 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
               platform::errors::InvalidArgument(
                   "'attn_dropout_prob' must be between 0.0 and 1.0."));
         });
-    AddAttr<bool>("attn_dropout_is_test",
+    AddAttr<bool>("is_test1",
                   "(bool, default false) Set to true for inference only, false "
                   "for training. Some layers may run faster when this is true.")
         .SetDefault(false);
-    AddAttr<bool>("attn_dropout_fix_seed",
+    AddAttr<bool>("fix_seed1",
                   "A flag indicating whether to use a fixed seed to generate "
                   "random mask. NOTE: DO NOT set this flag to true in "
                   "training. Setting this flag to true is only useful in "
                   "unittest or for debug that always the same output units "
                   "will be dropped.")
         .SetDefault(true);
-    AddAttr<int>("attn_dropout_seed_val", "Dropout random seed.").SetDefault(0);
+    AddAttr<int>("seed1", "Dropout random seed.").SetDefault(0);
     AddAttr<std::string>(
-        "attn_dropout_implementation",
+        "dropout_implementation1",
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
         "There are two kinds of ways to implement dropout"
         "(the mask below is a tensor have the same shape with input"
@@ -280,7 +280,19 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddAttr<std::string>(
         "dropout_implementation",
         "[\"downgrade_in_infer\"|\"upscale_in_train\"]"
-        "The meaning is the same as \"attn_dropout_implementation\" attribute.")
+        "There are two kinds of ways to implement dropout"
+        "(the mask below is a tensor have the same shape with input"
+        "the value of mask is 0 or 1, the ratio of 0 is dropout_prob)"
+        "1. downgrade_in_infer(default), downgrade the outcome at inference "
+        "time"
+        "   train: out = input * mask"
+        "   inference: out = input * (1.0 - dropout_prob)"
+        "2. upscale_in_train, upscale the outcome at training time, do nothing "
+        "in inference"
+        "   train: out = input * mask / ( 1.0 - dropout_prob )"
+        "   inference: out = input"
+        "   dropout op can be removed from the program. the program will be "
+        "efficient")
         .SetDefault("downgrade_in_infer")
         .AddCustomChecker([](const std::string &type) {
           PADDLE_ENFORCE_EQ(
