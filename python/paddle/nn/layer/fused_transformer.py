@@ -31,15 +31,15 @@ import collections
 
 def fused_multihead_attention(x,
                               qkv_weight,
-                              linear_weight,
+                              out_linear_weight,
                               pre_layer_norm=False,
-                              pre_ln_scale=None,
-                              pre_ln_bias=None,
                               ln_scale=None,
                               ln_bias=None,
+                              ln_2_scale=None,
+                              ln_2_bias=None,
                               epsilon=1e-05,
                               qkv_bias=None,
-                              linear_bias=None,
+                              out_linear_bias=None,
                               src_mask=None,
                               dropout=0.,
                               attn_dropout=0.,
@@ -48,11 +48,11 @@ def fused_multihead_attention(x,
     r"""
     """
     if in_dygraph_mode():
-        ln_mean, ln_variance, ln_out, qkv_out, qkv_bias_out, transpose_out, qk_out, qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, src_mask_out, fmha_out, out_linear_out, dropout_mask_out, ln2_mean_out, ln2_var_out, bias_dropout_residual_out, final_out = _C_ops.fused_attention(
-            x, pre_ln_scale, pre_ln_bias, qkv_weight, qkv_bias, src_mask,
-            linear_weight, linear_bias, ln_scale, ln_bias, 'pre_layer_norm',
-            pre_layer_norm, 'epsilon', epsilon, 'dropout_prob', dropout,
-            'attn_dropout_prob', attn_dropout)
+        ln_mean, ln_variance, ln_out, qkv_out, qkv_bias_out, transpose_out_2, qk_out, qktv_out, softmax_out, attn_dropout_mask_out, attn_dropout_out, src_mask_out, fmha_out, out_linear_out, dropout_mask_out, ln2_mean_out, ln2_var_out, bias_dropout_residual_out, final_out = _C_ops.fused_attention(
+            x, ln_scale, ln_bias, qkv_weight, qkv_bias, src_mask,
+            out_linear_weight, out_linear_bias, ln_2_scale, ln_2_bias,
+            'pre_layer_norm', pre_layer_norm, 'epsilon', epsilon,
+            'dropout_prob', dropout, 'attn_dropout_prob', attn_dropout)
         return final_out
 
 
@@ -103,12 +103,12 @@ class FusedMultiHeadAttention(Layer):
             attr=self._bias_attr,
             dtype=self._dtype,
             is_bias=True)
-        self.linear_weight = self.create_parameter(
+        self.out_linear_weight = self.create_parameter(
             shape=[embed_dim, embed_dim],
             attr=self._weight_attr,
             dtype=self._dtype,
             is_bias=False)
-        self.linear_bias = self.create_parameter(
+        self.out_linear_bias = self.create_parameter(
             shape=[embed_dim],
             attr=self._bias_attr,
             dtype=self._dtype,
@@ -117,17 +117,17 @@ class FusedMultiHeadAttention(Layer):
         if get_default_dtype() == 'float16':
             set_default_dtype('float32')
         ## layer_norm parameters.
-        self.pre_ln_scale = self.create_parameter(
-            attr=self._weight_attr,
-            shape=[embed_dim],
-            default_initializer=Constant(value=1.0))
-        self.pre_ln_bias = self.create_parameter(
-            attr=self._bias_attr, shape=[embed_dim], is_bias=True)
         self.ln_scale = self.create_parameter(
             attr=self._weight_attr,
             shape=[embed_dim],
             default_initializer=Constant(value=1.0))
         self.ln_bias = self.create_parameter(
+            attr=self._bias_attr, shape=[embed_dim], is_bias=True)
+        self.ln_2_scale = self.create_parameter(
+            attr=self._weight_attr,
+            shape=[embed_dim],
+            default_initializer=Constant(value=1.0))
+        self.ln_2_bias = self.create_parameter(
             attr=self._bias_attr, shape=[embed_dim], is_bias=True)
         if get_default_dtype() == 'float16':
             set_default_dtype('float16')
@@ -147,15 +147,15 @@ class FusedMultiHeadAttention(Layer):
         out = fused_multihead_attention(
             x=query,
             qkv_weight=self.qkv_weight,
-            linear_weight=self.linear_weight,
+            out_linear_weight=self.out_linear_weight,
             pre_layer_norm=self.normalize_before,
-            pre_ln_scale=self.pre_ln_scale,
-            pre_ln_bias=self.pre_ln_bias,
             ln_scale=self.ln_scale,
             ln_bias=self.ln_bias,
+            ln_2_scale=self.ln_2_scale,
+            ln_2_bias=self.ln_2_bias,
             epsilon=1e-05,
             qkv_bias=self.qkv_bias,
-            linear_bias=self.linear_bias,
+            out_linear_bias=self.out_linear_bias,
             src_mask=attn_mask,
             dropout=self.dropout,
             attn_dropout=self.attn_dropout,

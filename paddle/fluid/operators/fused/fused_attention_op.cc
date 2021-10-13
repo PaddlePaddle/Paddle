@@ -29,23 +29,23 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     OP_INOUT_CHECK(ctx->HasInput("QKVW"), "Input", "QKVW", "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasInput("QKVBias"), "Input", "QKVBias",
                    "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasInput("LinearW"), "Input", "LinearW",
+    OP_INOUT_CHECK(ctx->HasInput("OutLinearW"), "Input", "OutLinearW",
                    "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasInput("LinearBias"), "Input", "LinearBias",
+    OP_INOUT_CHECK(ctx->HasInput("OutLinearBias"), "Input", "OutLinearBias",
                    "FusedAttentionOp");
 
-    OP_INOUT_CHECK(ctx->HasOutput("PreLnMean"), "Output", "PreLnMean",
+    OP_INOUT_CHECK(ctx->HasOutput("LnMean"), "Output", "LnMean",
                    "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("PreLnVariance"), "Output", "PreLnVariance",
+    OP_INOUT_CHECK(ctx->HasOutput("LnVariance"), "Output", "LnVariance",
                    "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("PreLnOut"), "Output", "PreLnOut",
+    OP_INOUT_CHECK(ctx->HasOutput("LnOut"), "Output", "LnOut",
                    "FusedAttentionOp");
     // qkv_out: [batch_size, seq_len, 3, num_head, dim_head]
     OP_INOUT_CHECK(ctx->HasOutput("QKVOut"), "Output", "QKVOut",
                    "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasOutput("QKVBiasOut"), "Output", "QKVBiasOut",
                    "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("TransposeOut"), "Output", "TransposeOut",
+    OP_INOUT_CHECK(ctx->HasOutput("TransposeOut2"), "Output", "TransposeOut2",
                    "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasOutput("QKOut"), "Output", "QKOut",
                    "FusedAttentionOp");
@@ -61,11 +61,11 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                    "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasOutput("FMHAOut"), "Output", "FMHAOut",
                    "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("LinearOut"), "Output", "LinearOut",
+    OP_INOUT_CHECK(ctx->HasOutput("OutLinearOut"), "Output", "OutLinearOut",
                    "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("LnMean"), "Output", "LnMean",
+    OP_INOUT_CHECK(ctx->HasOutput("Ln2Mean"), "Output", "Ln2Mean",
                    "FusedAttentionOp");
-    OP_INOUT_CHECK(ctx->HasOutput("LnVariance"), "Output", "LnVariance",
+    OP_INOUT_CHECK(ctx->HasOutput("Ln2Variance"), "Output", "Ln2Variance",
                    "FusedAttentionOp");
     OP_INOUT_CHECK(ctx->HasOutput("BiasDropoutResidualOut"), "Output",
                    "BiasDropoutResidualOut", "FusedAttentionOp");
@@ -98,16 +98,16 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
                           "input qkv_weight = [%s]",
                           x_dim, y_dim));
 
-    ctx->SetOutputDim("PreLnMean", {x_dim[0] * x_dim[1]});
-    ctx->SetOutputDim("PreLnVariance", {x_dim[0] * x_dim[1]});
-    ctx->SetOutputDim("PreLnOut", ctx->GetInputDim("X"));
+    ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
+    ctx->SetOutputDim("LnVariance", {x_dim[0] * x_dim[1]});
+    ctx->SetOutputDim("LnOut", ctx->GetInputDim("X"));
     // [batch_size, seq_len, 3, num_head, head_size]
     ctx->SetOutputDim("QKVOut",
                       {x_dim[0], x_dim[1], y_dim[0], y_dim[1], y_dim[2]});
     ctx->SetOutputDim("QKVBiasOut",
                       {x_dim[0], x_dim[1], y_dim[0], y_dim[1], y_dim[2]});
     // [3, batch_size, num_head, seq_len, head_size]
-    ctx->SetOutputDim("TransposeOut",
+    ctx->SetOutputDim("TransposeOut2",
                       {y_dim[0], x_dim[0], y_dim[1], x_dim[1], y_dim[2]});
     // [batch, num_head, seq_len, seq_len]
     ctx->SetOutputDim("QKOut", {x_dim[0], y_dim[1], x_dim[1], x_dim[1]});
@@ -124,10 +124,10 @@ class FusedAttentionOp : public framework::OperatorWithKernel {
     ctx->SetOutputDim("QKTVOut", {x_dim[0], y_dim[1], x_dim[1], y_dim[2]});
     // [batch_size, seq_len, number of heads*head size]
     ctx->SetOutputDim("FMHAOut", {x_dim[0], x_dim[1], y_dim[1], y_dim[2]});
-    ctx->SetOutputDim("LinearOut", ctx->GetInputDim("X"));
+    ctx->SetOutputDim("OutLinearOut", ctx->GetInputDim("X"));
 
-    ctx->SetOutputDim("LnMean", {x_dim[0] * x_dim[1]});
-    ctx->SetOutputDim("LnVariance", {x_dim[0] * x_dim[1]});
+    ctx->SetOutputDim("Ln2Mean", {x_dim[0] * x_dim[1]});
+    ctx->SetOutputDim("Ln2Variance", {x_dim[0] * x_dim[1]});
     if (ctx->Attrs().Get<bool>("dropout_is_test") == false) {
       ctx->SetOutputDim("DropoutMaskOut", ctx->GetInputDim("X"));
     }
@@ -148,20 +148,6 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
  public:
   void Make() override {
     AddInput("X", "The input tensor.");
-    AddInput("PreLnScale",
-             "(optional) Scale is a 1-dimensional tensor of size "
-             "H. Here, H represents the last dimension of its input tensor.")
-        .AsDispensable();
-    AddInput("PreLnBias",
-             "(optional) Bias is a 1-dimensional tensor of size "
-             "H. Here, H represents the last dimension of its input tensor.")
-        .AsDispensable();
-    AddInput("QKVW", "The qkv weight tensor.");
-    AddInput("QKVBias", "The qkv bias tensor.");
-    AddInput("SrcMask", "(optional) The attention mask tensor in fmha.")
-        .AsDispensable();
-    AddInput("LinearW", "The linear weight tensor.");
-    AddInput("LinearBias", "The linear bias tensor.");
     AddInput("LnScale",
              "(optional) Scale is a 1-dimensional tensor of size "
              "H. Here, H represents the last dimension of its input tensor.")
@@ -170,13 +156,27 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
              "(optional) Bias is a 1-dimensional tensor of size "
              "H. Here, H represents the last dimension of its input tensor.")
         .AsDispensable();
-    AddOutput("PreLnMean", "Mean of the current mini batch.").AsIntermediate();
-    AddOutput("PreLnVariance", "Variance of the current mini batch.")
+    AddInput("QKVW", "The qkv weight tensor.");
+    AddInput("QKVBias", "The qkv bias tensor.");
+    AddInput("SrcMask", "(optional) The attention mask tensor in fmha.")
+        .AsDispensable();
+    AddInput("OutLinearW", "The out_linear weight tensor.");
+    AddInput("OutLinearBias", "The out_linear bias tensor.");
+    AddInput("Ln2Scale",
+             "(optional) Scale is a 1-dimensional tensor of size "
+             "H. Here, H represents the last dimension of its input tensor.")
+        .AsDispensable();
+    AddInput("Ln2Bias",
+             "(optional) Bias is a 1-dimensional tensor of size "
+             "H. Here, H represents the last dimension of its input tensor.")
+        .AsDispensable();
+    AddOutput("LnMean", "Mean of the current mini batch.").AsIntermediate();
+    AddOutput("LnVariance", "Variance of the current mini batch.")
         .AsIntermediate();
-    AddOutput("PreLnOut", "The output of pre layer_norm.").AsIntermediate();
+    AddOutput("LnOut", "The output of pre layer_norm.").AsIntermediate();
     AddOutput("QKVOut", "Result after qkv.").AsIntermediate();
     AddOutput("QKVBiasOut", "Result after qkv and bias op.").AsIntermediate();
-    AddOutput("TransposeOut", "Result in fmha.").AsIntermediate();
+    AddOutput("TransposeOut2", "Result in fmha.").AsIntermediate();
     AddOutput("QKOut", "Result in fmha.").AsIntermediate();
     AddOutput("QKTVOut", "Result in fmha.").AsIntermediate();
     AddOutput("SoftmaxOut", "Result in fmha.").AsIntermediate();
@@ -184,11 +184,11 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("AttnDropoutOut", "Result in fmha.").AsIntermediate();
     AddOutput("SrcMaskOut", "Result in fmha.").AsIntermediate();
     AddOutput("FMHAOut", "Result after fmha.").AsIntermediate();
-    AddOutput("LinearOut", "Result after linear.").AsIntermediate();
+    AddOutput("OutLinearOut", "Result after out_linear.").AsIntermediate();
     AddOutput("DropoutMaskOut", "The random sampled dropout mask.")
         .AsIntermediate();
-    AddOutput("LnMean", "Mean of the current mini batch.").AsIntermediate();
-    AddOutput("LnVariance", "Variance of the current mini batch.")
+    AddOutput("Ln2Mean", "Mean of the current mini batch.").AsIntermediate();
+    AddOutput("Ln2Variance", "Variance of the current mini batch.")
         .AsIntermediate();
     AddOutput("BiasDropoutResidualOut",
               "Result of residual + dropout(src + bias).")
@@ -289,16 +289,16 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
                   "dropout_implementation can only be downgrade_in_infer or "
                   "upscale_in_train"));
         });
-    AddAttr<float>("ln_epsilon",
+    AddAttr<float>("ln2epsilon",
                    "Constant for numerical stability [default 1e-5].")
         .SetDefault(1e-5)
-        .AddCustomChecker([](const float &ln_epsilon) {
-          PADDLE_ENFORCE_EQ(ln_epsilon >= 0.0f && ln_epsilon <= 0.001f, true,
+        .AddCustomChecker([](const float &ln2epsilon) {
+          PADDLE_ENFORCE_EQ(ln2epsilon >= 0.0f && ln2epsilon <= 0.001f, true,
                             platform::errors::InvalidArgument(
                                 "'epsilon' of the second LayerNorm in Fused "
                                 "attention op should be between"
                                 "0.0 and 0.001, But received [%s].",
-                                ln_epsilon));
+                                ln2epsilon));
         });
 
     AddComment(R"DOC(
@@ -319,7 +319,7 @@ class FusedAttentionOpMaker : public framework::OpProtoAndCheckerMaker {
             out = transpose(out, perm=[0, 2, 1, 3]);
                 
         }
-	out = linear(out);
+	out = out_linear(out);
 	final_out = layer_norm(residual + dropout(bias + out));
     )DOC");
   }

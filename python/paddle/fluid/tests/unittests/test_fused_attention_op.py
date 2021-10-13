@@ -27,19 +27,19 @@ from op_test import OpTest
 
 
 def GetBaselineOut(pre_layer_norm, training, embed_dim, num_heads, head_dim,
-                   query, attn_mask, pre_ln_scale, pre_ln_bias, ln_scale,
-                   ln_bias, qkv_weight, qkv_bias, linear_weight, linear_bias,
+                   query, attn_mask, ln_scale, ln_bias, ln_2_scale, ln_2_bias,
+                   qkv_weight, qkv_bias, out_linear_weight, out_linear_bias,
                    attn_dropout_prob, dropout_prob):
     paddle.disable_static(place=paddle.CUDAPlace(0))
     tensor_query = paddle.to_tensor(query, stop_gradient=False)
     attn_mask = paddle.to_tensor(attn_mask, stop_gradient=False)
     residual = tensor_query
-    pre_ln_scale = paddle.to_tensor(pre_ln_scale)
-    pre_ln_bias = paddle.to_tensor(pre_ln_bias)
     ln_scale = paddle.to_tensor(ln_scale)
     ln_bias = paddle.to_tensor(ln_bias)
-    linear_weight = paddle.to_tensor(linear_weight)
-    linear_bias = paddle.to_tensor(linear_bias)
+    ln_2_scale = paddle.to_tensor(ln_2_scale)
+    ln_2_bias = paddle.to_tensor(ln_2_bias)
+    out_linear_weight = paddle.to_tensor(out_linear_weight)
+    out_linear_bias = paddle.to_tensor(out_linear_bias)
 
     # qkv_weight: [3, num_heads, self.head_dim, embed_dim]
     q_weight = qkv_weight[0:1, ::]
@@ -65,8 +65,7 @@ def GetBaselineOut(pre_layer_norm, training, embed_dim, num_heads, head_dim,
     for i in range(1):
         ln1_out = tensor_query
         if pre_layer_norm:
-            ln1_out = F.layer_norm(tensor_query, embed_dim, pre_ln_scale,
-                                   pre_ln_bias)
+            ln1_out = F.layer_norm(tensor_query, embed_dim, ln_scale, ln_bias)
 
         q = F.linear(ln1_out, q_weight, q_bias)
         q = tensor.reshape(x=q, shape=[0, 0, num_heads, head_dim])
@@ -99,13 +98,13 @@ def GetBaselineOut(pre_layer_norm, training, embed_dim, num_heads, head_dim,
             qktv_out = tensor.matmul(softmax_out, v_out)
 
         fmha_out = tensor.transpose(qktv_out, perm=[0, 2, 1, 3])
-        linear_in = tensor.reshape(
+        out_linear_in = tensor.reshape(
             x=fmha_out, shape=[0, 0, fmha_out.shape[2] * fmha_out.shape[3]])
-        out = F.linear(linear_in, linear_weight, linear_bias)
+        out = F.linear(out_linear_in, out_linear_weight, out_linear_bias)
 
         residual_out = residual + F.dropout(
             out, dropout_prob, training=training, mode="upscale_in_train")
-        final_out = F.layer_norm(residual_out, embed_dim, ln_scale, ln_bias)
+        final_out = F.layer_norm(residual_out, embed_dim, ln_2_scale, ln_2_bias)
     return final_out
 
 
@@ -165,14 +164,14 @@ class TestFusedAttentionOpFp32(OpTest):
         ref_out = GetBaselineOut(self.pre_layer_norm, self.training,
                                  self.embed_dim, self.num_heads, self.head_dim,
                                  self.query, self.attn_mask,
-                                 fused_attn.pre_ln_scale.numpy(),
-                                 fused_attn.pre_ln_bias.numpy(),
                                  fused_attn.ln_scale.numpy(),
                                  fused_attn.ln_bias.numpy(),
+                                 fused_attn.ln_2_scale.numpy(),
+                                 fused_attn.ln_2_bias.numpy(),
                                  fused_attn.qkv_weight.numpy(),
                                  fused_attn.qkv_bias.numpy(),
-                                 fused_attn.linear_weight.numpy(),
-                                 fused_attn.linear_bias.numpy(),
+                                 fused_attn.out_linear_weight.numpy(),
+                                 fused_attn.out_linear_bias.numpy(),
                                  self.attn_dropout_prob, self.dropout_prob)
         return ref_out, out
 
