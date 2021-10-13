@@ -443,24 +443,49 @@ class ShardingOptimizer(MetaOptimizerBase):
         # FIXME(wangxi): if fp16_allreduce, put cast fp16->fp32 to there?
 
     def _avg_grad_merge_after_sum(self, main_block, accumulated_grad_names):
-        # For pp, do the avg operation for gradient merge after merging
-        # the gradient to meet the logic for gradient merge under pure dp.
         tmp_first_opt_idx = get_first_optimize_op_idx(main_block)
-        for grad in accumulated_grad_names:
-            main_block._insert_op_without_sync(
-                tmp_first_opt_idx,
-                type='scale',
-                inputs={'X': grad},
-                outputs={'Out': grad},
-                attrs={
-                    'scale': 1.0 / self._gradient_merge_acc_step,
-                    'bias': 0.0,
-                    'bias_after_scale': False,
-                    OP_ROLE_KEY: OpRole.Optimize
-                })
-        # Note(Yuang Liu): Need to move the first opt idx a little bit after
-        # to make sure the c_allreudce_sum ops are inserted behind scale ops
-        tmp_first_opt_idx += len(accumulated_grad_names)
+        if self.user_defined_strategy.amp:
+            # For AMP, the avg operation can be simple done by modify the
+            # LossScaling op.
+            for idx, op in enumerate(main_block.ops):
+                if op.type == 'check_finite_and_unscale':
+                    loss_scale_name = op.input('Scale')[0]
+                    loss_scaling_var = main_block.var(loss_scale_name)
+                    loss_scale_tmp_var = main_block.create_var(
+                        name="loss_scale_tmp_var",
+                        shape=loss_scaling_var.shape,
+                        dtype=loss_scaling_var.dtype)
+                    main_block._insert_op(
+                        idx,
+                        type='scale',
+                        inputs={'X': loss_scaling_var},
+                        outputs={'Out': loss_scale_tmp_var},
+                        attrs={
+                            'scale': self._gradient_merge_acc_step,
+                            'bias': 0.0,
+                            'bias_after_scale': False,
+                            OP_ROLE_KEY: OpRole.Optimize
+                        })
+                    op._rename_input(loss_scale_name, loss_scale_tmp_var.name)
+                    break
+        else:
+            # For pp, do the avg operation for gradient merge after merging
+            # the gradient to meet the logic for gradient merge under pure dp.
+            for grad in accumulated_grad_names:
+                main_block._insert_op_without_sync(
+                    tmp_first_opt_idx,
+                    type='scale',
+                    inputs={'X': grad},
+                    outputs={'Out': grad},
+                    attrs={
+                        'scale': 1.0 / self._gradient_merge_acc_step,
+                        'bias': 0.0,
+                        'bias_after_scale': False,
+                        OP_ROLE_KEY: OpRole.Optimize
+                    })
+            # Note(Yuang Liu): Need to move the first opt idx a little bit after
+            # to make sure the c_allreudce_sum ops are inserted behind scale ops
+            tmp_first_opt_idx += len(accumulated_grad_names)
         return tmp_first_opt_idx
 
     def _adapt_amp_clip_without_sharding(self):
