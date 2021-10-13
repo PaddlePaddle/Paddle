@@ -135,7 +135,8 @@ class CUDNNMultiHeadAttention(Layer):
                  num_heads,
                  dropout=0.,
                  weight_attr=None,
-                 name=None):
+                 name=None,
+                 add_to_asp=True):
         super(CUDNNMultiHeadAttention, self).__init__()
 
         self._dtype = self._helper.get_default_dtype()
@@ -152,6 +153,13 @@ class CUDNNMultiHeadAttention(Layer):
             is_bias=False)
 
         self.name = name
+
+        if add_to_asp:
+            from paddle.fluid.contrib.sparsity import add_supported_layer
+            add_supported_layer(
+                self.weight.name,
+                CUDNNMultiHeadAttention._cudnn_mha_pruning_func_maker(
+                    self._embed_dim))
 
     def forward(self, query, key, value, seq_data_info):
         return F.multi_head_attn(query, key, value, self.weight, self.meta_data,
@@ -235,7 +243,6 @@ class CUDNNMultiHeadAttention(Layer):
         return WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B
 
     def _merge_WQKVO_to_W(self, WQ_P, WQ_B, WK_P, WK_B, WV_P, WV_B, WO_P, WO_B):
-        stride = self._embed_dim * self._embed_dim
         W = np.concatenate(
             [WQ_P.flatten(), WK_P.flatten(), WV_P.flatten(), WO_P.flatten()])
         # W = np.concatenate([WQ_P.flatten(),
@@ -247,6 +254,35 @@ class CUDNNMultiHeadAttention(Layer):
         #                     WO_P.flatten(),
         #                     WO_B.flatten()])
         return W
+
+    @staticmethod
+    def _cudnn_mha_pruning_func_maker(vec_size):
+        def cudnn_pruning(weight_nparray, m, n, func_name, param_name):
+            from paddle.fluid.contrib import sparsity
+
+            stride = vec_size * vec_size
+            WQ = weight_nparray[0:stride].reshape((vec_size, vec_size))
+            WK = weight_nparray[stride:2 * stride].reshape((vec_size, vec_size))
+            WV = weight_nparray[2 * stride:3 * stride].reshape(
+                (vec_size, vec_size))
+            WO = weight_nparray[3 * stride:].reshape((vec_size, vec_size))
+
+            WQ_sparse_mask = sparsity.create_mask(
+                WQ.T, func_name=func_name, n=n, m=m).T.flatten()
+            WK_sparse_mask = sparsity.create_mask(
+                WK.T, func_name=func_name, n=n, m=m).T.flatten()
+            WV_sparse_mask = sparsity.create_mask(
+                WV.T, func_name=func_name, n=n, m=m).T.flatten()
+            WO_sparse_mask = sparsity.create_mask(
+                WO.T, func_name=func_name, n=n, m=m).T.flatten()
+            weight_sparse_mask = np.concatenate([
+                WQ_sparse_mask, WK_sparse_mask, WV_sparse_mask, WO_sparse_mask
+            ])
+            weight_pruned_nparray = np.multiply(weight_nparray,
+                                                weight_sparse_mask)
+            return weight_pruned_nparray, weight_sparse_mask
+
+        return cudnn_pruning
 
 
 class MultiHeadAttention(Layer):
