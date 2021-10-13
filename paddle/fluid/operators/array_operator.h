@@ -47,7 +47,8 @@ class ArrayOp : public framework::OperatorBase {
 
     size_t offset;
     if (platform::is_gpu_place(i_tensor.place()) ||
-        platform::is_xpu_place(i_tensor.place())) {
+        platform::is_xpu_place(i_tensor.place()) ||
+        platform::is_npu_place(i_tensor.place())) {
       // FIXME: Avoid copy from GPU to CPU
       framework::Tensor t;
       framework::TensorCopy(i_tensor, platform::CPUPlace(), dev_ctx, &t);

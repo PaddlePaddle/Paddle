@@ -60,7 +60,7 @@ class CGenNCCLIdOp : public framework::OperatorBase {
   void RunImpl(const framework::Scope& scope,
                const platform::Place& dev_place) const override {
     int rank = Attr<int>("rank");
-    framework::Scope& local_scope = scope.NewScope();
+    int ring_id = Attr<int>("ring_id");
 
     std::function<std::string(size_t)> func = [&](size_t i) -> std::string {
       return Output("Out");
@@ -76,13 +76,12 @@ class CGenNCCLIdOp : public framework::OperatorBase {
       GenNCCLID(&nccl_ids);
       std::vector<std::string> endpoint_list =
           Attr<std::vector<std::string>>("other_endpoints");
-      platform::SendBroadCastCommID(endpoint_list, &nccl_ids);
+      platform::SendBroadCastCommID(endpoint_list, &nccl_ids, ring_id);
     } else {
-      platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids);
+      platform::RecvBroadCastCommID(server_fd, endpoint, &nccl_ids, ring_id);
     }
 
     CopyNCCLIDToVar(nccl_ids, func, scope);
-    scope.DeleteScope(&local_scope);
   }
 };
 
@@ -122,6 +121,8 @@ For trainer 1~n: start a gRPC server to get the UniqueId, once got, stop the ser
     AddAttr<int>("rank",
                  "(int default 0) "
                  "The rank of the trainer in distributed training.")
+        .SetDefault(0);
+    AddAttr<int>("ring_id", "(int default 0) user specified ring id")
         .SetDefault(0);
   }
 };

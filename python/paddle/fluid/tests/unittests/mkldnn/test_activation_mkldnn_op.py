@@ -117,9 +117,6 @@ class TestMKLDNNSwishDim2(TestSwish):
     def init_dtype(self):
         self.dtype = np.float32
 
-    def init_dtype(self):
-        self.dtype = np.float32
-
 
 class TestMKLDNNHardSwishDim2(TestHardSwish):
     def setUp(self):

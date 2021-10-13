@@ -532,9 +532,11 @@ class ReduceOp : public framework::OperatorWithKernel {
 #endif
 
     if (input_data_type == framework::proto::VarType::FP16) {
-      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()), true,
+      PADDLE_ENFORCE_EQ(platform::is_gpu_place(ctx.GetPlace()) ||
+                            platform::is_npu_place(ctx.GetPlace()),
+                        true,
                         platform::errors::InvalidArgument(
-                            "float16 can only be used on GPU place"));
+                            "float16 can only be used on GPU or NPU place"));
     }
     return framework::OpKernelType(input_data_type, ctx.GetPlace());
   }
@@ -589,7 +591,6 @@ class ReduceGradOp : public framework::OperatorWithKernel {
         (in_dtype >= 0) ? static_cast<framework::proto::VarType::Type>(in_dtype)
                         : OperatorWithKernel::IndicateVarDataType(
                               ctx, framework::GradVarName("Out"));
-
 #ifdef PADDLE_WITH_MKLDNN
     auto CanMKLDNNReduceGradBeUsed = [&]() {
       auto dx_dims = ctx.Input<Tensor>("X")->dims();
@@ -644,7 +645,8 @@ class ReduceOpMaker : public framework::OpProtoAndCheckerMaker {
         .SetDefault(-1);
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddComment(string::Sprintf(R"DOC(
 %s Operator.
 

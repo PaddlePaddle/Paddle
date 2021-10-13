@@ -14,7 +14,7 @@
 try:
     from paddle.version import full_version as __version__
     from paddle.version import commit as __git_commit__
-
+    from paddle.cuda_env import *
 except ImportError:
     import sys
     sys.stderr.write('''Warning with import paddle: you should not
@@ -142,6 +142,7 @@ from .tensor.manipulation import squeeze_  # noqa: F401
 from .tensor.manipulation import stack  # noqa: F401
 from .tensor.manipulation import strided_slice  # noqa: F401
 from .tensor.manipulation import unique  # noqa: F401
+from .tensor.manipulation import unique_consecutive  # noqa: F401
 from .tensor.manipulation import unsqueeze  # noqa: F401
 from .tensor.manipulation import unsqueeze_  # noqa: F401
 from .tensor.manipulation import unstack  # noqa: F401
@@ -150,6 +151,7 @@ from .tensor.manipulation import unbind  # noqa: F401
 from .tensor.manipulation import roll  # noqa: F401
 from .tensor.manipulation import chunk  # noqa: F401
 from .tensor.manipulation import tolist  # noqa: F401
+from .tensor.manipulation import tensordot  # noqa: F401
 from .tensor.math import abs  # noqa: F401
 from .tensor.math import acos  # noqa: F401
 from .tensor.math import asin  # noqa: F401
@@ -160,6 +162,7 @@ from .tensor.math import cos  # noqa: F401
 from .tensor.math import tan  # noqa: F401
 from .tensor.math import cosh  # noqa: F401
 from .tensor.math import cumsum  # noqa: F401
+from .tensor.math import cumprod  # noqa: F401
 from .tensor.math import exp  # noqa: F401
 from .tensor.math import expm1  # noqa: F401
 from .tensor.math import floor  # noqa: F401
@@ -229,6 +232,7 @@ from .tensor.random import randperm  # noqa: F401
 from .tensor.search import argmax  # noqa: F401
 from .tensor.search import argmin  # noqa: F401
 from .tensor.search import argsort  # noqa: F401
+from .tensor.search import searchsorted  # noqa: F401
 from .tensor.search import masked_select  # noqa: F401
 from .tensor.search import topk  # noqa: F401
 from .tensor.search import where  # noqa: F401
@@ -237,6 +241,8 @@ from .tensor.search import nonzero  # noqa: F401
 from .tensor.search import sort  # noqa: F401
 
 from .tensor.to_string import set_printoptions  # noqa: F401
+
+from .tensor.einsum import einsum  # noqa: F401
 
 from .framework.random import seed  # noqa: F401
 from .framework.random import get_cuda_rng_state  # noqa: F401
@@ -248,9 +254,9 @@ from .framework import CUDAPlace  # noqa: F401
 from .framework import NPUPlace  # noqa: F401
 from .framework import CUDAPinnedPlace  # noqa: F401
 
-from .framework import grad  # noqa: F401
-from .framework import no_grad  # noqa: F401
-from .framework import set_grad_enabled  # noqa: F401
+from .autograd import grad  # noqa: F401
+from .autograd import no_grad  # noqa: F401
+from .autograd import set_grad_enabled  # noqa: F401
 from .framework import save  # noqa: F401
 from .framework import load  # noqa: F401
 from .framework import DataParallel  # noqa: F401
@@ -269,6 +275,9 @@ from .device import set_device  # noqa: F401
 from .device import get_device  # noqa: F401
 from .fluid.framework import is_compiled_with_cuda  # noqa: F401
 from .fluid.framework import is_compiled_with_rocm  # noqa: F401
+from .fluid.framework import disable_signal_handler  # noqa: F401
+from .fluid.framework import get_flags  # noqa: F401
+from .fluid.framework import set_flags  # noqa: F401
 from .device import is_compiled_with_xpu  # noqa: F401
 from .device import is_compiled_with_npu  # noqa: F401
 from .device import XPUPlace  # noqa: F401
@@ -285,6 +294,7 @@ from .hapi import summary  # noqa: F401
 from .hapi import flops  # noqa: F401
 from . import hub  # noqa: F401
 from . import linalg  # noqa: F401
+from . import fft  # noqa: F401
 
 import paddle.text  # noqa: F401
 import paddle.vision  # noqa: F401
@@ -324,6 +334,7 @@ __all__ = [  # noqa
            'empty_like',
            'eye',
            'cumsum',
+           'cumprod',
            'sign',
            'is_empty',
            'equal',
@@ -350,6 +361,7 @@ __all__ = [  # noqa
            'summary',
            'flops',
            'sort',
+           'searchsorted',
            'split',
            'logical_and',
            'full_like',
@@ -425,7 +437,6 @@ __all__ = [  # noqa
            'exp',
            'expm1',
            'bernoulli',
-           'summary',
            'sinh',
            'round',
            'DataParallel',
@@ -460,6 +471,7 @@ __all__ = [  # noqa
            'bmm',
            'chunk',
            'tolist',
+           'tensordot',
            'greater_than',
            'shard_index',
            'argsort',
@@ -469,6 +481,7 @@ __all__ = [  # noqa
            'randn',
            'strided_slice',
            'unique',
+           'unique_consecutive',
            'set_cuda_rng_state',
            'set_printoptions',
            'std',
@@ -482,6 +495,7 @@ __all__ = [  # noqa
            'enable_static',
            'scatter_nd',
            'set_default_dtype',
+           'disable_signal_handler',
            'expand_as',
            'stack',
            'sqrt',
@@ -510,4 +524,7 @@ __all__ = [  # noqa
            'standard_normal',
            'diagonal',
            'broadcast_tensors',
+           'einsum',
+           'set_flags',
+           'get_flags'
 ]

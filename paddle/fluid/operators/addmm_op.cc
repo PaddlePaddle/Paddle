@@ -144,7 +144,8 @@ class AddMMOpMaker : public framework::OpProtoAndCheckerMaker {
     AddOutput("Out", "(Tensor), The output tensor of addmm op.");
     AddAttr<bool>("use_mkldnn",
                   "(bool, default false) Only used in mkldnn kernel")
-        .SetDefault(false);
+        .SetDefault(false)
+        .AsExtra();
     AddAttr<float>("Alpha", "coefficient of x*y.").SetDefault(1.0f);
     AddAttr<float>("Beta", "coefficient of input.").SetDefault(1.0f);
     AddComment(R"DOC(

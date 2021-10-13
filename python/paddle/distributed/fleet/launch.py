@@ -69,17 +69,13 @@ from argparse import ArgumentParser, REMAINDER
 import paddle
 import paddle.fluid as fluid
 from paddle.distributed.fleet import launch_utils
-import signal
 
 # TODO(danleifeng): Don't import * from a module
 from paddle.distributed.fleet.launch_utils import *
-import paddle.distributed.fleet.cloud_utils as cloud_utils
-import paddle.distributed.fleet.ascend_utils as ascend_utils
+from paddle.distributed.fleet import cloud_utils
+from paddle.distributed.fleet import ascend_utils
 
-from paddle.distributed.fleet.elastic import ElasticManager
-from paddle.distributed.fleet.elastic import LauncherInterface
-from paddle.distributed.fleet.elastic import ElasticStatus
-from paddle.distributed.fleet.elastic import ELASTIC_EXIT_CODE
+from paddle.distributed.fleet.elastic import enable_elastic, launch_elastic
 
 __all__ = []
 
@@ -106,8 +102,7 @@ see: http://www.paddlepaddle.org/documentation/docs/zh/1.6/user_guides/howto/tra
         "--log_dir",
         type=str,
         default="log",
-        help="The path for each process's log.If it's not set, the log will printed to default pipe."
-    )
+        help="The path for each process's log. Default --log_dir=log/")
 
     base_group.add_argument(
         "--nproc_per_node",
@@ -235,76 +230,71 @@ def get_cluster_from_args(args, device_mode, devices_per_proc):
                        devices_per_proc)
 
 
-class CollectiveLauncher(LauncherInterface):
-    def __init__(self, args):
-        self.args = args
-        self.procs = []
+def launch_collective(args):
+    # parse arguments, used for cloud-single-machine and local
+    (device_mode, devices_per_proc) = launch_utils.get_device_proc_info(args)
+    trainers_num = cloud_utils.get_trainers_num()
+    logger.debug("parsed from args trainerss_num:{} mode:{} devices:{}".format(
+        trainers_num, device_mode, devices_per_proc))
 
-    def launch(self):
-        logger.info("collective lauchner launch ...")
-        args = self.args
-        # parse arguments, used for cloud-single-machine and local
-        (device_mode,
-         devices_per_proc) = launch_utils.get_device_proc_info(args)
-        trainers_num = cloud_utils.get_trainers_num()
-        logger.debug("parsed from args trainerss_num:{} mode:{} devices:{}".
-                     format(trainers_num, device_mode, devices_per_proc))
+    cluster = None
+    pod = None
 
-        cluster = None
-        pod = None
+    start_port = 6170
+    if os.environ.get('FLAGS_START_PORT') is not None:
+        start_port = os.environ.get('FLAGS_START_PORT')
+    if cloud_utils.use_paddlecloud() and trainers_num != 1:
+        cluster, pod = cloud_utils.get_cloud_cluster(
+            args.ips, device_mode, devices_per_proc, start_port)
+        logger.debug("get cluster from cloud:{}".format(cluster))
+    elif device_mode == DeviceMode.ASCEND_NPU:
+        # for ascend
+        cluster, pod = ascend_utils.get_cloud_cluster(
+            rank_table_file=os.getenv("RANK_TABLE_FILE", None),
+            device_mode=device_mode,
+            start_port=start_port)
+    else:
+        # trainers_num = 1 or not use paddlecloud ips="a,b"
+        cluster, pod = get_cluster_from_args(args, device_mode,
+                                             devices_per_proc)
+        logger.debug("get cluster from args:{}".format(cluster))
 
-        start_port = 6170
-        if os.environ.get('FLAGS_START_PORT') is not None:
-            start_port = os.environ.get('FLAGS_START_PORT')
-        if cloud_utils.use_paddlecloud() and trainers_num != 1:
-            cluster, pod = cloud_utils.get_cloud_cluster(
-                args.ips, device_mode, devices_per_proc, start_port)
-            logger.debug("get cluster from cloud:{}".format(cluster))
-        elif device_mode == DeviceMode.ASCEND_NPU:
-            # for ascend
-            cluster, pod = ascend_utils.get_cloud_cluster(
-                rank_table_file=os.getenv("RANK_TABLE_FILE", None),
-                device_mode=device_mode,
-                start_port=start_port)
-        else:
-            # trainers_num = 1 or not use paddlecloud ips="a,b"
-            cluster, pod = get_cluster_from_args(args, device_mode,
-                                                 devices_per_proc)
-            logger.debug("get cluster from args:{}".format(cluster))
+    global_envs = copy.copy(os.environ.copy())
+    gloo_rendezvous_dir = tempfile.mkdtemp()
+    # add gloo env
+    global_envs["PADDLE_WITH_GLOO"] = str(os.getenv("PADDLE_WITH_GLOO", "0"))
+    global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
+    global_envs["PADDLE_GLOO_FS_PATH"] = gloo_rendezvous_dir
 
-        global_envs = copy.copy(os.environ.copy())
-        self.gloo_rendezvous_dir = tempfile.mkdtemp()
-        # add gloo env
-        global_envs["PADDLE_WITH_GLOO"] = str(
-            os.getenv("PADDLE_WITH_GLOO", "0"))
-        global_envs["PADDLE_GLOO_RENDEZVOUS"] = "3"
-        global_envs["PADDLE_GLOO_FS_PATH"] = self.gloo_rendezvous_dir
+    procs = start_local_trainers(
+        cluster,
+        pod,
+        training_script=args.training_script,
+        training_script_args=args.training_script_args,
+        log_dir=args.log_dir,
+        envs=global_envs)
 
-        self.procs = start_local_trainers(
-            cluster,
-            pod,
-            training_script=args.training_script,
-            training_script_args=args.training_script_args,
-            log_dir=args.log_dir,
-            envs=global_envs)
+    for idx, proc in enumerate(procs):
+        print("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
 
-        for idx, proc in enumerate(self.procs):
-            logger.info("launch proc_id:{} idx:{}".format(proc.proc.pid, idx))
+    while True:
+        try:
+            alive = watch_local_trainers(procs, cluster.trainers_nranks())
 
-    def stop(self):
-        logger.info("collective lauchner stop ...")
-        if not self._terminate_procs():
-            logger.error("kill process failed")
-        if os.path.exists(self.gloo_rendezvous_dir):
-            shutil.rmtree(self.gloo_rendezvous_dir)
+            if not alive:
+                logger.info("Local processes completed.")
+                logger.debug("POD info:{}".format(pod))
+                break
 
-    def watch(self):
-        logger.debug("collective lauchner watch ...")
-        for p in self.procs:
-            if p.log_fn and p.local_rank == 0:
-                pull_worker_log(p)
-        ret = self._check_procs()
-        return ret
+            time.sleep(3)
+
+        except:
+            logger.warning("Terminating... exit")
+            terminate_local_procs(procs)
+            exit(1)
+
+    if os.path.exists(gloo_rendezvous_dir):
+        shutil.rmtree(gloo_rendezvous_dir)
 
 
 def launch_ps(args, distribute_mode):
@@ -394,47 +384,188 @@ def which_distributed_mode(args):
 
 
 def launch():
+    """
+    Paddle distribution training entry ``python -m paddle.distributed.launch``.
+    
+    Usage:
+        .. code-block:: bash
+            :name: code-block-bash1
+
+            python -m paddle.distributed.launch [-h] [--log_dir LOG_DIR] [--nproc_per_node NPROC_PER_NODE] [--run_mode RUN_MODE] [--gpus GPUS]
+                             [--selected_gpus GPUS] [--ips IPS] [--servers SERVERS] [--workers WORKERS] [--heter_workers HETER_WORKERS]
+                             [--worker_num WORKER_NUM] [--server_num SERVER_NUM] [--heter_worker_num HETER_WORKER_NUM]
+                             [--http_port HTTP_PORT] [--elastic_server ELASTIC_SERVER] [--job_id JOB_ID] [--np NP] [--scale SCALE]
+                             [--host HOST] [--force FORCE]
+                             training_script ...    
+
+
+    Base Parameters:
+        - ``--log_dir``: The path for each process's log. e.g., ``--log_dir=output_dir``. Default ``--log_dir=log``.
+
+        - ``--nproc_per_node``: The number of processes to launch on a node. In gpu training, it should be less or equal to the gpus number of you system(or you set by --gpus).  e.g., ``--nproc_per_node=8``
+
+        - ``--run_mode``: run mode of job, can be:collective/ps/ps-heter. e.g., ``--run_mode=ps``. Default ``--run_mode=collective``.
+
+        - ``--gpus``: It's for gpu training. e.g., ``--gpus=0,1,2,3`` will launch four training processes each bound to one gpu.
+
+        - ``--selected_gpus``: gpus aliases, recommend to use ``--gpus``.
+        
+        - ``--xpus``: It's for xpu training if xpu is available. e.g., ``--xpus=0,1,2,3``.
+        
+        - ``--selected_xpus``: xpus aliases, recommend to use ``--xpus``.
+
+        - ``training_script``: The full path to the single GPU training program/script to be launched in parallel, followed by all the arguments for the training script. e.g., ``traing.py``
+
+        - ``training_script_args``: The args of training_script. e.g., ``--lr=0.1``
+
+    Collective Parameters:
+        - ``--ips``: Paddle cluster nodes ips, e.g., ``--ips=192.168.0.16,192.168.0.17``. Default ``--ips=127.0.0.1``.
+
+    Parameter-Server Parameters:
+        - ``--servers``: User defined servers ip:port, e.g., ``--servers="192.168.0.16:6170,192.168.0.17:6170"``
+
+        - ``--workers``: User defined workers ip:port, e.g., ``--workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172"``
+
+        - ``--heter_workers``: User defined heter workers ip:port, e.g., ``--heter_workers="192.168.0.16:6172,192.168.0.17:6172"``
+
+        - ``--worker_num``: Number of workers (It recommend to set when in the emulated distributed environment using single node)
+
+        - ``--server_num``: Number of servers (It recommend to set when in the emulated distributed environment using single node)
+
+        - ``--heter_worker_num``: Number of heter_workers (It recommend to set when in the emulated distributed environment using single node)
+
+        - ``--http_port``: Gloo http Port
+
+    Elastic Parameters:
+        - ``--elastic_server``: etcd server host:port, e.g., ``--elastic_server=127.0.0.1:2379``
+
+        - ``--job_id``: job unique id, e.g., ``--job_id=job1``
+
+        - ``--np``: job pod/node number, e.g., ``--np=2``
+
+        - ``--host``: bind host, default to POD_IP env.
+
+
+    Returns:
+        ``None``
+
+    Examples 1 (collective, single node):
+        .. code-block:: bash
+            :name: code-block-example-bash1
+            
+            # For training on single node using 4 gpus.
+
+            python -m paddle.distributed.launch --gpus=0,1,2,3 train.py --lr=0.01
+        
+    Examples 2 (collective, multi node):
+        .. code-block:: bash
+            :name: code-block-example-bash2
+
+            # The parameters of --gpus and --ips must be consistent in each node.
+
+            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17 
+
+            # On 192.168.0.16:
+
+            python -m paddle.distributed.launch --gpus=0,1,2,3 --ips=192.168.0.16,192.168.0.17 train.py --lr=0.01
+
+            # On 192.168.0.17:
+            python -m paddle.distributed.launch --gpus=0,1,2,3 --ips=192.168.0.16,192.168.0.17 train.py --lr=0.01
+        
+    Examples 3 (ps, cpu, single node):
+        .. code-block:: bash
+            :name: code-block-example-bash3
+
+            # To simulate distributed environment using single node, e.g., 2 servers and 4 workers.
+            
+            python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
+        
+    Examples 4 (ps, cpu, multi node):
+        .. code-block:: bash
+            :name: code-block-example-bash4
+
+            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17 where each node with 1 server and 2 workers.
+
+            # On 192.168.0.16:
+
+            python -m paddle.distributed.launch --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --lr=0.01
+
+            # On 192.168.0.17:
+
+            python -m paddle.distributed.launch --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --lr=0.01
+
+    Examples 5 (ps, gpu, single node):
+        .. code-block:: bash
+            :name: code-block-example-bash5
+
+           # To simulate distributed environment using single node, e.g., 2 servers and 4 workers, each worker use single gpu.
+            
+            export CUDA_VISIBLE_DEVICES=0,1,2,3
+            python -m paddle.distributed.launch --server_num=2 --worker_num=4 train.py --lr=0.01
+            
+    Examples 6 (ps, gpu, multi node):
+        .. code-block:: bash
+            :name: code-block-example-bash6
+
+            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17 where each node with 1 server and 2 workers.
+
+            # On 192.168.0.16:
+
+            export CUDA_VISIBLE_DEVICES=0,1
+            python -m paddle.distributed.launch --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --lr=0.01
+
+            # On 192.168.0.17:
+
+            export CUDA_VISIBLE_DEVICES=0,1
+            python -m paddle.distributed.launch --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.16:6172,192.168.0.17:6171,192.168.0.17:6172" train.py --lr=0.01
+
+    Examples 7 (ps-heter, cpu + gpu, single node):
+        .. code-block:: bash
+            :name: code-block-example-bash7
+
+            # To simulate distributed environment using single node, e.g., 2 servers and 4 workers, two workers use gpu, two workers use cpu.
+            
+            export CUDA_VISIBLE_DEVICES=0,1
+            python -m paddle.distributed.launch --server_num=2 --worker_num=2 --heter_worker_num=2 train.py --lr=0.01
+            
+    Examples 8 (ps-heter, cpu + gpu, multi node):
+        .. code-block:: bash
+            :name: code-block-example-bash8
+
+            # For training on multiple nodes, e.g., 192.168.0.16, 192.168.0.17 where each node with 1 server, 1 gpu worker, 1 cpu worker.
+
+            # On 192.168.0.16:
+
+            export CUDA_VISIBLE_DEVICES=0
+            python -m paddle.distributed.launch --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.17:6171" --heter_workers="192.168.0.16:6172,192.168.0.17:6172" train.py --lr=0.01
+
+            # On 192.168.0.17:
+
+            export CUDA_VISIBLE_DEVICES=0
+            python -m paddle.distributed.launch --servers="192.168.0.16:6170,192.168.0.17:6170" --workers="192.168.0.16:6171,192.168.0.17:6171" --heter_workers="192.168.0.16:6172,192.168.0.17:6172" train.py --lr=0.01
+
+    Examples 9 (elastic):
+        .. code-block:: bash
+            :name: code-block-example-bash9
+
+            python -m paddle.distributed.launch --elastic_server=127.0.0.1:2379 --np=2 --job_id=job1  --gpus=0,1,2,3 train.py
+        
+    """
+
     args = _parse_args()
     logger = get_logger()
     _print_arguments(args)
 
     distribute_mode = which_distributed_mode(args)
-    # TODO(kuizhiqing) support ps later
-    if not distribute_mode == DistributeMode.COLLECTIVE:
-        launch_ps(args, distribute_mode)
+
+    if enable_elastic(args, distribute_mode):
+        launch_elastic(args, distribute_mode)
         return
 
-    elastic = ElasticManager(args)
-
-    signal.signal(signal.SIGTERM, elastic.signal_handler)
-    signal.signal(signal.SIGABRT, elastic.signal_handler)
-    signal.signal(signal.SIGINT, elastic.signal_handler)
-
-    while True:
-
-        # wait for all nodes ready to run
-        elastic.wait()
-
-        # run self with specified launcher
-        elastic.run(CollectiveLauncher)
-
-        # keep wathing the health status of self and being notified for other's failure
-        ret = elastic.watch()
-        if ret == ElasticStatus.COMPLETED:
-            break
-        if ret == ElasticStatus.HOLD:
-            continue
-        if ret == ElasticStatus.EXIT:
-            break
-        if ret == ElasticStatus.ERROR:
-            sys.exit(3)
-        if ret == ElasticStatus.RESTART:
-            sys.exit(ELASTIC_EXIT_CODE)
-
-    if int(elastic.sigint) > 0:
-        sys.exit(128 + int(elastic.sigint))
+    if distribute_mode == DistributeMode.COLLECTIVE:
+        launch_collective(args)
     else:
-        sys.exit(0)
+        launch_ps(args, distribute_mode)
 
 
 if __name__ == "__main__":

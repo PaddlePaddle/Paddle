@@ -24,15 +24,16 @@ limitations under the License. */
 
 #include "paddle/fluid/framework/op_registry.h"
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
+#include "paddle/fluid/platform/collective_helper.h"
+#endif
+
 namespace paddle {
 namespace framework {
 class Scope;
 }  // namespace framework
 }  // namespace paddle
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
-    defined(PADDLE_WITH_XPU_BKCL)
-#include "paddle/fluid/platform/collective_helper.h"
-#endif
 
 namespace paddle {
 namespace operators {
@@ -46,56 +47,51 @@ class CCommInitOp : public framework::OperatorBase {
 
   void RunImpl(const framework::Scope& scope,
                const platform::Place& place) const override {
+// TODO(wangxi): Put this in the unified header file
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
+    using UniqueId = ncclUniqueId;
+    using Place = platform::CUDAPlace;
+    using CommContext = platform::NCCLCommContext;
+#elif defined(PADDLE_WITH_XPU_BKCL)
+    using UniqueId = BKCLUniqueId;
+    using Place = platform::XPUPlace;
+    using CommContext = platform::BKCLCommContext;
+#else
+    PADDLE_THROW(platform::errors::PreconditionNotMet(
+        "PaddlePaddle should be compiled with GPU or XPU."));
+#endif
+
     PADDLE_ENFORCE_EQ(is_gpu_place(place) || is_xpu_place(place), true,
                       platform::errors::PreconditionNotMet(
                           "CCommInitOp can run on gpu or xpu place only."));
 
+#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL) || \
+    defined(PADDLE_WITH_XPU_BKCL)
     auto var = scope.FindVar(Input("X"));
     PADDLE_ENFORCE_NOT_NULL(
         var, platform::errors::InvalidArgument("Input con not be empty."));
-    if (is_gpu_place(place)) {
-#if defined(PADDLE_WITH_NCCL) || defined(PADDLE_WITH_RCCL)
-      ncclUniqueId* nccl_id = var->GetMutable<ncclUniqueId>();
 
-      int nranks = Attr<int>("nranks");
-      int rank_id = Attr<int>("rank");
-      int rid = Attr<int>("ring_id");
-      int device_id = BOOST_GET_CONST(platform::CUDAPlace, place).device;
-      if (Attr<int>("device_id") >= 0) {
-        device_id = Attr<int>("device_id");
-      }
-      platform::NCCLCommContext::Instance().CreateNCCLComm(
-          nccl_id, nranks, rank_id, device_id, rid);
-#else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "PaddlePaddle should be compiled with GPU."));
-#endif
-    } else if (is_xpu_place(place)) {
+    UniqueId* comm_id = var->GetMutable<UniqueId>();
+
+    int nranks = Attr<int>("nranks");
+    int rank_id = Attr<int>("rank");
+    int rid = Attr<int>("ring_id");
+
 #if defined(PADDLE_WITH_XPU_BKCL)
-      BKCLUniqueId* bkcl_id = var->GetMutable<BKCLUniqueId>();
-
-      int nranks = Attr<int>("nranks");
-      int rank_id = Attr<int>("rank");
-      int rid = Attr<int>("ring_id");
-      PADDLE_ENFORCE_EQ(
-          rid, 0,
-          platform::errors::OutOfRange(
-              "Ring id must equal 0 in multi Kunlun cards training, but got %d",
-              rid));
-      int device_id = BOOST_GET_CONST(platform::XPUPlace, place).device;
-      if (Attr<int>("device_id") >= 0) {
-        device_id = Attr<int>("device_id");
-      }
-      platform::BKCLCommContext::Instance().CreateBKCLComm(
-          bkcl_id, nranks, rank_id, device_id, rid);
-#else
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "PaddlePaddle should be compiled with XPU."));
+    PADDLE_ENFORCE_EQ(
+        rid, 0,
+        platform::errors::OutOfRange(
+            "Ring id must equal 0 in multi Kunlun cards training, but got %d",
+            rid));
 #endif
-    } else {
-      PADDLE_THROW(platform::errors::PreconditionNotMet(
-          "CCommInitOp can run on gpu or xpu place only."));
+
+    int device_id = BOOST_GET_CONST(Place, place).device;
+    if (Attr<int>("device_id") >= 0) {
+      device_id = Attr<int>("device_id");
     }
+    CommContext::Instance().CreateComm(comm_id, nranks, rank_id, device_id,
+                                       rid);
+#endif
   }
 };
 

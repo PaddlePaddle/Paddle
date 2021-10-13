@@ -17,7 +17,9 @@
 #include "paddle/fluid/framework/data_type_transform.h"
 #include "paddle/fluid/framework/details/nan_inf_utils.h"
 #include "paddle/fluid/imperative/infer_shape_context.h"
-
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/platform/xpu/xpu_op_list.h"
+#endif
 DECLARE_bool(check_nan_inf);
 
 namespace paddle {
@@ -104,7 +106,10 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   // Const qualifier of Attrs had to be discarded to overwrite it.
   if (FLAGS_use_mkldnn) {
     auto& mutable_op_attrs = const_cast<framework::AttributeMap&>(op.Attrs());
-    mutable_op_attrs = attrs;
+    mutable_op_attrs = default_attrs;
+    for (auto& attr : attrs) {
+      mutable_op_attrs[attr.first] = attr.second;
+    }
   }
 #endif
 
@@ -126,8 +131,10 @@ PreparedOp PrepareImpl(const NameVarMap<VarType>& ins,
   auto& kernels = kernels_iter->second;
   auto kernel_iter = kernels.find(expected_kernel_key);
 #ifdef PADDLE_WITH_XPU
-  if (kernel_iter == kernels.end() &&
-      is_xpu_place(expected_kernel_key.place_)) {
+  if (is_xpu_place(expected_kernel_key.place_) &&
+      (kernel_iter == kernels.end() ||
+       !paddle::platform::is_xpu_support_op(op.Type(), expected_kernel_key) ||
+       paddle::platform::is_in_xpu_black_list(op.Type()))) {
     VLOG(3) << "missing XPU kernel: " << op.Type()
             << ", expected_kernel_key:" << expected_kernel_key
             << ", fallbacking to CPU one!";

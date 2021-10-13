@@ -494,6 +494,16 @@ class DeviceTracerImpl : public DeviceTracer {
   }
 
   proto::Profile GenProfile(const std::string &profile_path) {
+    proto::Profile profile_pb = this->GetProfile();
+    std::ofstream profile_f;
+    profile_f.open(profile_path,
+                   std::ios::out | std::ios::trunc | std::ios::binary);
+    profile_pb.SerializeToOstream(&profile_f);
+    profile_f.close();
+    return profile_pb;
+  }
+
+  proto::Profile GetProfile() {
     int miss = 0, find = 0;
     std::lock_guard<std::mutex> l(trace_mu_);
     proto::Profile profile_pb;
@@ -601,12 +611,6 @@ class DeviceTracerImpl : public DeviceTracer {
         event->set_thread_id(r.thread_id);
       }
     }
-
-    std::ofstream profile_f;
-    profile_f.open(profile_path,
-                   std::ios::out | std::ios::trunc | std::ios::binary);
-    profile_pb.SerializeToOstream(&profile_f);
-    profile_f.close();
     return profile_pb;
   }
 

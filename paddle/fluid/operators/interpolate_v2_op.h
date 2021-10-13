@@ -58,6 +58,12 @@ inline std::vector<T> get_new_data_from_tensor(const Tensor* new_data_tensor) {
     TensorCopySync(*new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
     new_data = cpu_starts_tensor.data<T>();
   }
+#ifdef PADDLE_WITH_ASCEND_CL
+  if (platform::is_npu_place(new_data_tensor->place())) {
+    TensorCopySync(*new_data_tensor, platform::CPUPlace(), &cpu_starts_tensor);
+    new_data = cpu_starts_tensor.data<T>();
+  }
+#endif
   vec_new_data = std::vector<T>(new_data, new_data + new_data_tensor->numel());
   return vec_new_data;
 }

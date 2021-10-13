@@ -220,6 +220,7 @@ void MultiTrainer::Finalize() {
   if (need_dump_field_ || need_dump_param_) {
     FinalizeDumpEnv();
   }
+
   for (size_t i = 0; i < need_merge_var_names_.size(); i++) {
     Variable* root_var = root_scope_->FindVar(need_merge_var_names_[i]);
     if (root_var == nullptr) {
@@ -255,7 +256,6 @@ void MultiTrainer::Finalize() {
       _ForEachDataType_(MergeCallback);
     }
   }
-
 #ifdef PADDLE_WITH_HETERPS
   MergeDenseParam();
 #endif

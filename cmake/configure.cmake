@@ -20,6 +20,10 @@ if(WITH_TESTING)
     add_definitions(-DPADDLE_WITH_TESTING)
 endif(WITH_TESTING)
 
+if(WITH_INFERENCE_API_TEST)
+    add_definitions(-DPADDLE_WITH_INFERENCE_API_TEST)
+endif(WITH_INFERENCE_API_TEST)
+
 if(NOT WITH_PROFILER)
     add_definitions(-DPADDLE_DISABLE_PROFILER)
 endif(NOT WITH_PROFILER)
@@ -84,6 +88,10 @@ endif()
 
 if(WITH_ASCEND_CL)
     add_definitions(-DPADDLE_WITH_ASCEND_CL)
+endif()
+
+if(WITH_ASCEND_INT64)
+    add_definitions(-DPADDLE_WITH_ASCEND_INT64)
 endif()
 
 if(WITH_XPU)
