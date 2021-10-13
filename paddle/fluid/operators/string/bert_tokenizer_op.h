@@ -10,6 +10,9 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #pragma once
+#if _MSC_VER >= 1600
+#pragma execution_character_set("utf-8")
+#endif
 
 #include <utf8proc.h>
 
