@@ -96,8 +96,9 @@ const std::vector<std::string> kTRTSubgraphPasses({
       "map_matmul_to_mul_pass",                 //
       "fc_fuse_pass",                           //
       "conv_elementwise_add_fuse_pass",         //
-      "tensorrt_subgraph_pass",                 //
-      "conv_bn_fuse_pass",                      //
+      "add_support_int8_pass",
+      "tensorrt_subgraph_pass",  //
+      "conv_bn_fuse_pass",       //
 #if CUDNN_VERSION >= 7100  // To run conv_fusion, the version of cudnn must be
                            // guaranteed at least v7
 // cudnn8.0 has memory leak problem in conv + eltwise + act, so we
