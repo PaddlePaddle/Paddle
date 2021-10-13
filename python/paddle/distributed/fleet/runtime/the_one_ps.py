@@ -169,7 +169,7 @@ class CommonAccessor:
         return attr_str
 
     def parse_by_optimizer(self, grad_name, is_sparse, total_dims,
-                           compiled_strategy):
+                           compiled_strategy, adam_d2sum):
         from paddle.fluid.incubate.fleet.parameter_server.ir.public import _get_optimize_ops
         param_name = compiled_strategy.grad_name_to_param_name[grad_name]
         main_program, startup_program = compiled_strategy.get_origin_programs()
@@ -194,6 +194,7 @@ class CommonAccessor:
 
         self.trainer_num = compiled_strategy.get_trainers()
 
+        print("adam_d2sum:", adam_d2sum)
         if compiled_strategy.is_geo_mode():
             param_varnames = self.opt_input_map["sum"]
             attr_varnames = self.opt_attr_map["sum"]
@@ -334,14 +335,14 @@ class Table:
         self.accessor = None
         self.common = None
         self.tensor = None
+        self.accessor_proto = None
 
     def to_string(self, indent):
-        if self.id == 1:
-            proto_txt = ''
-            with open('./sparse_table.prototxt') as f:
-                proto_txt = f.read()
-            return proto_txt
-
+        # if self.id == 1:
+        #     proto_txt = ''
+        #     with open('./sparse_table.prototxt') as f:
+        #         proto_txt = f.read()
+        #     return proto_txt
         table_str = "{}downpour_table_param {{{}\n{}}}"
 
         attrs = ""
@@ -352,6 +353,12 @@ class Table:
         attrs += "\n"
         indent += 2
 
+        if self.accessor_proto is not None:
+            accessor_str = "{}accessor {{{}\n{}}}"
+            accessor_str = accessor_str.format(conv_indent(indent), self.accessor_proto, conv_indent(indent))
+            attrs += accessor_str + "\n"
+            return table_str.format(conv_indent(indent), attrs, conv_indent(indent))
+        
         if self.accessor is not None:
             attrs += self.accessor.to_string(indent)
             attrs += "\n"
@@ -480,15 +487,21 @@ class Worker:
 
 
 class fsClient:
-    def __init__(self, uri, user, passwd, hadoop_bin):
-        self.uri = uri
-        self.user = user
-        self.passwd = passwd
-        self.hadoop_bin = hadoop_bin
+    def __init__(self, proto):
+        self.proto = proto
+        self.uri = proto.uri
+        self.user = proto.user
+        self.passwd = proto.passwd
+        self.hadoop_bin = proto.hadoop_bin
 
     def to_string(self):
-        return "fs_client_param {\n\t" + "uri:\"{}\"\n\tuser:\"{}\"\n\tpasswd:\"{}\"\n\thadoop_bin:\"{}\"\n".format(
-            self.uri, self.user, self.passwd, self.hadoop_bin) + "}\n"
+        from google.protobuf import text_format
+        proto_txt = text_format.MessageToString(self.proto)
+        if proto_txt:
+            fs_str = "fs_client_param {{\n{}}}"
+            return fs_str.format(proto_txt)
+        else:
+            return ""
 
 
 class TheOnePSRuntime(RuntimeBase):
@@ -819,7 +832,7 @@ class TheOnePSRuntime(RuntimeBase):
 
                 if ctx.is_sparse():
                     table.type = "PS_SPARSE_TABLE"
-                    table.shard_num = 256
+                    # table.shard_num = 256
 
                     common.table_name = self.compiled_strategy.grad_name_to_param_name[
                         ctx.origin_varnames()[0]]
@@ -829,18 +842,24 @@ class TheOnePSRuntime(RuntimeBase):
                     else:
                         table.table_class = parse_table_class(
                             common.table_name, self.origin_main_program)
-
+                    table_proto = self.context["user_defined_strategy"].sparse_table_configs
+                    table.shard_num = table_proto.shard_num
+                    from google.protobuf import text_format
+                    table.accessor_proto = text_format.MessageToString(table_proto.accessor)
+                    print("the_one_ps table_proto:", table.accessor_proto)
                 else:
                     table.type = "PS_DENSE_TABLE"
                     table.table_class = "CommonDenseTable"
                     table.shard_num = 256
                     common.table_name = "MergedDense"
 
+                adam_d2sum = self.context["user_defined_strategy"].adam_d2sum
                 common.parse_by_optimizer(ctx.origin_varnames()[0],
                                           ctx.is_sparse(),
                                           ctx.sections()[1] if ctx.is_sparse()
                                           else ctx.sections()[0],
-                                          self.compiled_strategy)
+                                          self.compiled_strategy,
+                                          adam_d2sum)
 
                 if ctx.is_sparse():
                     common.parse_entry(common.table_name,
@@ -855,8 +874,9 @@ class TheOnePSRuntime(RuntimeBase):
 
                 print('debug zcb build_merge_accessor:')
                 print(str(ctx))
-                accessor = _build_merge_accessor(ctx)
-                table.accessor = accessor
+                if not ctx.is_sparse():
+                    accessor = _build_merge_accessor(ctx)
+                    table.accessor = accessor
                 tables.append(table)
 
             tensor_table_dict = self.compiled_strategy.get_tensor_table_dict()
@@ -906,13 +926,8 @@ class TheOnePSRuntime(RuntimeBase):
 
         server = self._get_fleet_proto(is_server=True, is_sync=is_sync)
         proto_txt = str(server)
-        fs_client = kwargs.get("fs_client") if "fs_client" in kwargs else {}
-        if "uri" in fs_client and "user" in fs_client and "passwd" in fs_client and "hadoop_bin" in fs_client:
-            fs = fsClient(
-                fs_client.get("uri"),
-                fs_client.get("user"),
-                fs_client.get("passwd"), fs_client.get("hadoop_bin"))
-            proto_txt = proto_txt + "\n" + fs.to_string()
+        fs_client = fsClient(self.context["user_defined_strategy"].fs_client_param)
+        proto_txt = proto_txt + "\n" + fs_client.to_string()
         #with open('./sparse_table.prototxt') as f:
         #    proto_txt = f.read()
 
@@ -1030,9 +1045,9 @@ class TheOnePSRuntime(RuntimeBase):
                 except:
                     pass
             # save sparse & distributed param on server
-#            self._worker.save_one_model(id, dirname, mode)
+            self._worker.save_one_model(id, dirname, mode)
             values.extend(names)
-        self._worker.save_all_model(dirname ,mode)
+        # self._worker.save_all_model(dirname, mode)
         return values
 
     def _save_distributed_persistables(self,
@@ -1071,7 +1086,6 @@ class TheOnePSRuntime(RuntimeBase):
                 continue
             tensor = var.get_value()
             paddle.save(
-#                tensor, os.path.join(dense_output_dir, var.name), use_binary_format=True)
                 tensor, os.path.join(dirname, var.name), use_binary_format=True)
             ####TODO: zcb put into hdfs
 
@@ -1110,8 +1124,9 @@ class TheOnePSRuntime(RuntimeBase):
             )
 
         # Todo(MrChengmo): Save optimizer status
-        self._save_distributed_persistables(executor, dirname, main_program,
-                                            mode)
+        # self._save_distributed_persistables(executor, dirname, main_program,
+        #                                     mode)
+        self._worker.save_all_model(dirname, mode)
 
     def _ps_inference_save_inference_model(self,
                                            executor,
@@ -1152,9 +1167,29 @@ class TheOnePSRuntime(RuntimeBase):
 
         infer_program._copy_dist_param_info_from(program)
 
+        if dirname.startswith("afs:") or dirname.startswith("hdfs:"):
+            model_path = "./dnn_plugin"
+        else:
+            model_path = os.path.join(dirname, "dnn_plugin")
         model_basename = "__model__"
-        model_basename = os.path.join(dirname, model_basename)
+        model_basename = os.path.join(model_path, model_basename)
         paddle.save(infer_program, model_basename)
+
+        denses = self.compiled_strategy.get_the_one_recv_context(
+            is_dense=True,
+            split_dense_table=self.role_maker._is_heter_parameter_server_mode,
+            use_origin_program=True)
+        self._communicator.pull_dense(denses)
+
+        generate_vars = self.context["user_defined_strategy"].trainer_desc_configs["stat_var_names"]
+        remaining_vars = list(
+            filter(
+                TheOnePSRuntime.__exclude_vars(generate_vars),
+                infer_program.list_vars()))
+        for var in remaining_vars:
+            tensor = var.get_value()
+            paddle.save(
+                tensor, os.path.join(model_path, var.name), use_binary_format=True)
 
         self._ps_inference_save_persistables(executor, dirname, infer_program,
                                              mode)
@@ -1179,8 +1214,8 @@ class TheOnePSRuntime(RuntimeBase):
             values.extend(names)
         return values
 
-    def _load_distributed_persistables(self, dirname, main_program=None,
-                                       mode=0):
+    def _ps_inference_load_inference_model(self, dirname,
+                                       mode=0, main_program=None):
         if main_program is None:
             main_program = self.compiled_strategy.get_origin_ps_main_program()
 
@@ -1212,19 +1247,28 @@ class TheOnePSRuntime(RuntimeBase):
                 TheOnePSRuntime.__exclude_vars(loaded_varnames),
                 main_program.list_vars()))
 
+        if dirname.startswith("afs:") or dirname.startswith("hdfs:"):
+            model_path = "./dnn_plugin"
+        else:
+            model_path = os.path.join(dirname, "dnn_plugin")
         import paddle
-        #dirname = './dense_param_need_to_load'
         for var in remaining_vars:
             if var.name not in recv_dense_varnames:
                 continue
-            tensor = paddle.load(os.path.join(dirname, var.name))
+            tensor = paddle.load(os.path.join(model_path, var.name))
             var.set_value(tensor)
 
         self._communicator.init_params(denses)
 
-    def load_model(self, path, mode):
+    def _load_distributed_persistables(self, path, mode):
         self._worker.load_model(path, mode)
-#        self._load_distributed_persistables(path, mode=mode)
+
+    def load_model(self, path, mode):
+        if mode == 0 or mode == 3:
+            self._load_distributed_persistables(path, mode)
+        else:
+            self._ps_inference_load_inference_model(path, mode)
+        # self._load_distributed_persistables(path, mode=mode)
 
     def _shrink(self, threshold):
         import paddle.distributed.fleet as fleet

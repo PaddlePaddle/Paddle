@@ -586,10 +586,9 @@ void FleetWrapper::PushSparseFromTensorAsync(
       push_keys.size());
 }
 
-void FleetWrapper::LoadModel(const std::string& path, const std::string& mode) {
+void FleetWrapper::LoadModel(const std::string& path, const int mode) {
   auto* communicator = Communicator::GetInstance();
-  auto ret = communicator->_worker_ptr->load(path, mode);
-  // auto ret = pserver_ptr_->_worker_ptr->load(path, std::to_string(mode));
+  auto ret = communicator->_worker_ptr->load(path, std::to_string(mode));
   ret.wait();
   if (ret.get() != 0) {
     LOG(ERROR) << "load model from path:" << path << " failed";

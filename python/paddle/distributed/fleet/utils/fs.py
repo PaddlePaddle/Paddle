@@ -836,6 +836,7 @@ class HDFSClient(FS):
             return self._try_download(fs_path, local_path)
         # download dir
         _, all_files = self.ls_dir(fs_path)
+        all_files = [os.path.join(fs_path, x) for x in all_files]
 
         procs = []
         for i in range(multi_processes):
