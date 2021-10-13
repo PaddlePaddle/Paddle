@@ -30,11 +30,11 @@ class MHAMetaData {
   cudnnHandle_t cudnn_handle = nullptr;
 
   memory::allocation::AllocationPtr workspace = nullptr;
-  memory::allocation::AllocationPtr reserve_space = nullptr;
+  // memory::allocation::AllocationPtr reserve_space = nullptr;
 
   size_t weights_size = 0;
   size_t workspace_size = 0;
-  size_t reserve_size = 0;
+  // size_t reserve_size = 0;
 
   void SetCudnnHandle(cudnnHandle_t cudnn_handle) {
     cudnn_handle = cudnn_handle;
@@ -51,6 +51,19 @@ class MHAMetaData {
         platform::dynload::cudnnCreateSeqDataDescriptor(&v_desc));
     PADDLE_ENFORCE_CUDA_SUCCESS(
         platform::dynload::cudnnCreateSeqDataDescriptor(&o_desc));
+  }
+
+  ~MHAMetaData() {
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroyAttnDescriptor(attn_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroySeqDataDescriptor(q_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroySeqDataDescriptor(k_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroySeqDataDescriptor(v_desc));
+    PADDLE_ENFORCE_CUDA_SUCCESS(
+        platform::dynload::cudnnDestroySeqDataDescriptor(o_desc));
   }
 };
 
@@ -313,6 +326,21 @@ void MHAFwKernel(const platform::CUDADeviceContext& dev_ctx, const Tensor* q,
       // MHASingleton::Instance().Data(key).reserve_size,
       reserve_space_size, reserve_space_ptr));
   // MHASingleton::Instance().Data(key).reserve_space->ptr()));
+
+  // PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnMultiHeadAttnForward(
+  //     cudnn_handle, MHASingleton::Instance().Data(key).attn_desc, -1,
+  //     attn_low_windows.data(), attn_high_windows.data(),
+  //     qo_slen->data<int>(), qo_slen->data<int>(),
+  //     MHASingleton::Instance().Data(key).q_desc, q_data, residuals,
+  //     MHASingleton::Instance().Data(key).q_desc, k_data,
+  //     MHASingleton::Instance().Data(key).q_desc, v_data,
+  //     MHASingleton::Instance().Data(key).q_desc, o_data,
+  //     MHASingleton::Instance().Data(key).weights_size, w_data,
+  //     MHASingleton::Instance().Data(key).workspace_size,
+  //     MHASingleton::Instance().Data(key).workspace->ptr(),
+  //     // MHASingleton::Instance().Data(key).reserve_size,
+  //     reserve_space_size, reserve_space_ptr));
+  // // MHASingleton::Instance().Data(key).reserve_space->ptr()));
 }
 
 // template <typename DeviceContext, typename T>
@@ -368,6 +396,8 @@ void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
   //   dv->mutable_data<T>(context.GetPlace());
   //   dw->mutable_data<T>(context.GetPlace());
 
+  // todo: e.g., when dq is null, xxx
+
   T* dq_data = dq->data<T>();
   T* dk_data = dk->data<T>();
   T* dv_data = dv->data<T>();
@@ -386,6 +416,23 @@ void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
       const_cast<T*>(reserve_space->template data<T>())));
   // MHASingleton::Instance().Data(key).reserve_size,
   // MHASingleton::Instance().Data(key).reserve_space->ptr()));
+
+  // PADDLE_ENFORCE_CUDA_SUCCESS(platform::dynload::cudnnMultiHeadAttnBackwardData(
+  //     cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
+  //     attn_low_windows.data(), attn_high_windows.data(),
+  //     qo_slen->data<int>(), qo_slen->data<int>(),
+  //     MHASingleton::Instance().Data(key).q_desc, dout_data,
+  //     MHASingleton::Instance().Data(key).q_desc, dq_data, q_data,
+  //     MHASingleton::Instance().Data(key).q_desc, dk_data, k_data,
+  //     MHASingleton::Instance().Data(key).q_desc, dv_data, v_data,
+  //     MHASingleton::Instance().Data(key).weights_size, w_data,
+  //     MHASingleton::Instance().Data(key).workspace_size,
+  //     MHASingleton::Instance().Data(key).workspace->ptr(),
+  //     reserve_space_size, const_cast<T*>(reserve_space->template
+  //     data<T>())));
+  // // MHASingleton::Instance().Data(key).reserve_size,
+  // // MHASingleton::Instance().Data(key).reserve_space->ptr()));
+
   PADDLE_ENFORCE_CUDA_SUCCESS(
       platform::dynload::cudnnMultiHeadAttnBackwardWeights(
           cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
@@ -400,6 +447,21 @@ void MHAGradKernel(const platform::CUDADeviceContext& dev_ctx,
           const_cast<T*>(reserve_space->template data<T>())));
   // MHASingleton::Instance().Data(key).reserve_size,
   // MHASingleton::Instance().Data(key).reserve_space->ptr()));
+
+  // PADDLE_ENFORCE_CUDA_SUCCESS(
+  //     platform::dynload::cudnnMultiHeadAttnBackwardWeights(
+  //         cudnn_handle, MHASingleton::Instance().Data(key).attn_desc,
+  //         CUDNN_WGRAD_MODE_SET, MHASingleton::Instance().Data(key).q_desc,
+  //         q_data, MHASingleton::Instance().Data(key).q_desc, k_data,
+  //         MHASingleton::Instance().Data(key).q_desc, v_data,
+  //         MHASingleton::Instance().Data(key).q_desc, dout_data,
+  //         MHASingleton::Instance().Data(key).weights_size, w_data, dw_data,
+  //         MHASingleton::Instance().Data(key).workspace_size,
+  //         MHASingleton::Instance().Data(key).workspace->ptr(),
+  //         reserve_space_size,
+  //         const_cast<T*>(reserve_space->template data<T>())));
+  // // MHASingleton::Instance().Data(key).reserve_size,
+  // // MHASingleton::Instance().Data(key).reserve_space->ptr()))
 }
 #endif
 

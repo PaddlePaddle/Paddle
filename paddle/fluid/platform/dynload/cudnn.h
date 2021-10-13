@@ -193,8 +193,10 @@ CUDNN_DNN_ROUTINE_EACH_AFTER_R7(DECLARE_DYNAMIC_LOAD_CUDNN_WRAP)
   __macro(cudnnSetFusedOpsVariantParamPackAttribute); \
   __macro(cudnnMakeFusedOpsPlan);                     \
   __macro(cudnnCreateSeqDataDescriptor);              \
+  __macro(cudnnDestroySeqDataDescriptor);             \
   __macro(cudnnSetSeqDataDescriptor);                 \
   __macro(cudnnCreateAttnDescriptor);                 \
+  __macro(cudnnDestroyAttnDescriptor);                \
   __macro(cudnnSetAttnDescriptor);                    \
   __macro(cudnnGetMultiHeadAttnBuffers);              \
   __macro(cudnnMultiHeadAttnForward);                 \
