@@ -1293,7 +1293,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         }
         strategy.gradient_scale_configs = {
             'scale_strategy': 'avg',
-            'avg_loss': False
+            'scale_gradient': True
         }
         strategy.fuse_grad_merge = True
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)
@@ -1358,7 +1358,7 @@ class TestFleetShardingHybridOptimizer(TestFleetMetaOptimizer):
         }
         strategy.gradient_scale_configs = {
             'scale_strategy': 'avg',
-            'avg_loss': False
+            'scale_gradient': True
         }
         strategy.fuse_grad_merge = True
         self.optimizer(avg_cost, strategy, train_prog, startup_prog)

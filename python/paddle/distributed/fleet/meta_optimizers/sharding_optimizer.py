@@ -200,7 +200,7 @@ class ShardingOptimizer(MetaOptimizerBase):
             # Note (Yuang Liu): this avg_loss flag determines where to do the average op for grad merge.
             # If True, will do sum firstly for gradient merge, then do scale by gm_acc_step.
             # If False, will scale loss by gm_acc_step first, then do sum for gradient merge.
-            self.avg_loss = gradient_scale_configs['avg_loss']
+            self.scale_gradient = gradient_scale_configs['scale_gradient']
         if gm_acc_step > 1:
             logger.info("Gradient merge in [{}], acc step = [{}]".format(
                 gm_mode, gm_acc_step))
@@ -249,7 +249,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                 'global_ring_id': 3,
                 'mp_degree': self.mp_degree,
                 'mp_rank': global_rank % self.mp_degree,
-                'avg_loss': self.avg_loss
+                'scale_gradient': self.scale_gradient
             }
             main_program = loss.block.program
             main_program._pipeline_opt = pipeline_opt
@@ -371,11 +371,11 @@ class ShardingOptimizer(MetaOptimizerBase):
             main_block, strategy=strategy, shard=shard)
 
         len_of_ops = len(main_block.ops)
-        if self.avg_loss:
-            first_optimize_op_index = get_first_optimize_op_idx(main_block)
-        else:
+        if self.scale_gradient:
             first_optimize_op_index = self._avg_grad_merge_after_sum(
                 main_block, accumulated_grad_names)
+        else:
+            first_optimize_op_index = get_first_optimize_op_idx(main_block)
 
         if self.pp_allreduce_in_optimize:
             logger.info("Pipeline Persistable grad is {}".format(
@@ -444,18 +444,20 @@ class ShardingOptimizer(MetaOptimizerBase):
 
     def _avg_grad_merge_after_sum(self, main_block, accumulated_grad_names):
         tmp_first_opt_idx = get_first_optimize_op_idx(main_block)
-        if self.user_defined_strategy.amp:
-            # For AMP, the avg operation can be simple done by modify the
-            # LossScaling op.
+        if self.user_defined_strategy.amp and \
+                self.user_defined_strategy.amp_configs['use_dynamic_loss_scaling']:
+            # For AMP, if using dynamic loss scaling the avg
+            # operation can be simple done by modify the LossScaling op.
             for idx, op in enumerate(main_block.ops):
                 if op.type == 'check_finite_and_unscale':
                     loss_scale_name = op.input('Scale')[0]
                     loss_scaling_var = main_block.var(loss_scale_name)
+                    loss_scale_tmp_var_name = loss_scale_name + '@TMP'
                     loss_scale_tmp_var = main_block.create_var(
-                        name="loss_scale_tmp_var",
+                        name=loss_scale_tmp_var_name,
                         shape=loss_scaling_var.shape,
                         dtype=loss_scaling_var.dtype)
-                    main_block._insert_op(
+                    main_block._insert_op_without_sync(
                         idx,
                         type='scale',
                         inputs={'X': loss_scaling_var},
@@ -466,7 +468,7 @@ class ShardingOptimizer(MetaOptimizerBase):
                             'bias_after_scale': False,
                             OP_ROLE_KEY: OpRole.Optimize
                         })
-                    op._rename_input(loss_scale_name, loss_scale_tmp_var.name)
+                    op._rename_input(loss_scale_name, loss_scale_tmp_var_name)
                     break
         else:
             # For pp, do the avg operation for gradient merge after merging

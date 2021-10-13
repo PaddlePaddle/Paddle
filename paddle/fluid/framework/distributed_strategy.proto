@@ -134,9 +134,9 @@ message GradientScaleConfig {
   // devices.
   optional string scale_strategy = 1 [ default = 'avg' ];
   // The avg_loss flag is used to determine the position of average
-  // If avg_loss is True, it will avg the loss before grad merge.
+  // If scale_gradient is False, it will avg the loss@Grad before grad merge.
   // Otherwise, it will do grad merge firstly, then avg the grad after merging.
-  optional bool avg_loss = 2 [ default = true ];
+  optional bool scale_gradient = 2 [ default = false ];
 }
 
 message AsyncConfig {
