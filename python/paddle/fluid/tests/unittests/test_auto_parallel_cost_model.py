@@ -83,7 +83,7 @@ class MLPLayer(nn.Layer):
 def get_single_node_data():
     train_program = paddle.static.Program()
     startup_program = paddle.static.Program()
-    
+
     loss, train_program, startup_program = mlp_forward(
         train_program, startup_program, is_distributed=False)
 
@@ -153,8 +153,8 @@ def get_dist_prog(train_program, startup_program, dist_context, rank_id):
         auto_parallel_main_prog, auto_parallel_startup_prog = partitioner.transpile_forward(
             complete_train_program, startup_program)
         dist_params_grads = partitioner.apply_backward(
-            loss, complete_train_program, startup_program, auto_parallel_main_prog,
-            auto_parallel_startup_prog)
+            loss, complete_train_program, startup_program,
+            auto_parallel_main_prog, auto_parallel_startup_prog)
         optimizer = paddle.fluid.optimizer.AdamOptimizer()
         opt_ops = partitioner.apply_optimize(optimizer, dist_params_grads,
                                              auto_parallel_main_prog,
@@ -218,11 +218,11 @@ class TestCostModel(unittest.TestCase):
         for rank_id in range(NUM_RANKS):
             complete_backward_annotation(distributed_program[rank_id],
                                          dist_context)
-            reshard(distributed_program[rank_id],
-                    dist_startup_prog[rank_id], rank_id, dist_context)
+            reshard(distributed_program[rank_id], dist_startup_prog[rank_id],
+                    rank_id, dist_context)
         cluster = None
         cost = estimate_cost(
-            distributed_program, 
+            distributed_program,
             cluster=cluster,
             process_mesh=_global_process_mesh,
             single_cost_data=op2cost,

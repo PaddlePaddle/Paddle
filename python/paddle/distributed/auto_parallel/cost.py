@@ -87,7 +87,7 @@ class CommNode(NodeBase):
         comm_volumn = np.prod(self.input_shape) * 4
 
         if 'allreduce' in self.comm_type:
-            self.cost = comm_volumn / (BANDWIDTH * num_ranks / 
+            self.cost = comm_volumn / (BANDWIDTH * num_ranks /
                                        (2 * (num_ranks - 1)))
         elif 'gather' in self.comm_type:
             self.cost = comm_volumn / (BANDWIDTH * num_ranks / (num_ranks - 1))
@@ -394,7 +394,7 @@ class CostModelContext(object):
                     node.set_cost(self.cluster)
                 else:
                     pass  # Not communication op
-                    
+
     def _merge_node(self, to_merge_node_list, merge_type='linear', nodes=None):
         nodes_list = []
         node_cost = 0
@@ -410,7 +410,8 @@ class CostModelContext(object):
                 node_cost = max(node_cost, node.cost)
             else:
                 raise NotImplementedError(
-                    'This type of merging is not supported:{}'.format(merge_type))
+                    'This type of merging is not supported:{}'.format(
+                        merge_type))
 
         merged_node_id = 'merged_' + str(len(nodes))
         merged_node = MergedNode(
@@ -498,7 +499,7 @@ class CostModelContext(object):
 
     def _merge_branch(self, nodes, rt_graph):
         reduct_cnt = 0
-        rt_nodes_id = rt_graph.keys()
+        rt_nodes_id = list(rt_graph.keys())
         for node_id in rt_nodes_id:
             edges = rt_graph[node_id]
             outd = len(edges[SUCC])  # out_degree
@@ -702,15 +703,16 @@ class CostModelContext(object):
                 global_time[stid] = e.e_time
             else:
                 raise NotImplementedError(
-                    'This type of pipe event is not supported yet.{}'.format(e.name))
+                    'This type of pipe event is not supported yet.{}'.format(
+                        e.name))
 
         for t in global_time:
             total_time = max(total_time, t)
         return total_time
 
 
-def estimate_cost(distributed_program, cluster, process_mesh,
-                  single_cost_data, batch_size):
+def estimate_cost(distributed_program, cluster, process_mesh, single_cost_data,
+                  batch_size):
     """
     Estimated cost from distributed program, cluster model and distributed settings.
     
