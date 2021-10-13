@@ -2086,7 +2086,7 @@ class LarsMomentumOptimizer(Optimizer):
 
         # create the momentum optimize op
         momentum_op = block.append_op(
-            type=self.type if _lars_weight_decay != 0.0 else 'momentum',
+            type=self.type,
             inputs=inputs,
             outputs=outputs,
             attrs=attrs,
