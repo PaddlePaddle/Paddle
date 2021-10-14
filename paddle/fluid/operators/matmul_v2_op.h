@@ -1853,6 +1853,15 @@ class MatMulV2TripleGradKernel : public framework::OpKernel<T> {
       // Case2: no broadcast or no batch size
       VLOG(3) << "========  MatMulV2TripleGradKernel, Compute ====== Case 2";
       ReshapeXYOutIntoMatrixSequence(&x, &y, &dout, transpose_x, transpose_y);
+
+      if (ddx.dims() != x.dims()) {
+        ddx.Resize(x.dims());
+      }
+
+      if (ddy.dims() != y.dims()) {
+        ddy.Resize(y.dims());
+      }
+
       ConjHelper<DeviceContext, T> conj_helper(context);
 
       framework::DDim out_dx_dims;
