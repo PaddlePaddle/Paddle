@@ -1745,7 +1745,7 @@ void BindImperative(py::module *m_ptr) {
         Examples:
             .. code-block:: python
 
-              # required: gpu
+              '''required: gpu'''
               import paddle
               x = paddle.to_tensor(1.0, place=paddle.CPUPlace())
               print(x.place)        # CPUPlace
@@ -2352,7 +2352,7 @@ void BindImperative(py::module *m_ptr) {
       
       .. code-block:: python
 
-          # required gpu
+          '''required: gpu'''
           import paddle
           from paddle.fluid import core  
           from paddle.device import cuda
@@ -2558,7 +2558,7 @@ void BindImperative(py::module *m_ptr) {
   Examples:
       .. code-block:: python
 
-          # required gpu
+          '''required: gpu'''
           import paddle
           from paddle.fluid import core
           from paddle.device import cuda
