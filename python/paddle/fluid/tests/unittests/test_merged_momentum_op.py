@@ -63,7 +63,6 @@ def run_momentum_op(params,
             dtype=learning_rate.dtype)
 
         feed_dict = OrderedDict()
-        fetch_list = []
 
         feed_dict.update(
             OrderedDict([(p_var.name, p_val)
@@ -88,9 +87,11 @@ def run_momentum_op(params,
                 OrderedDict([(mp_var.name, mp_val)
                              for mp_var, mp_val in zip(master_param_vars,
                                                        master_params)]))
-            fetch_list = fetch_list + [
-                mp_var.name for mp_var in master_param_vars
-            ]
+            # CPUPlace does not use MasterParam
+            if isinstance(place, paddle.CUDAPlace):
+                fetch_list = fetch_list + [
+                    mp_var.name for mp_var in master_param_vars
+                ]
         else:
             master_param_vars = None
 
@@ -138,23 +139,24 @@ class TestMergedMomentum(unittest.TestCase):
     def gen_rand_data(self, shapes, dtype):
         return [np.random.random(s).astype(dtype) for s in shapes]
 
-    def prepare_data(self, shapes, multi_precision, seed):
+    def prepare_data(self, shapes, multi_precision, seed, place):
         np.random.seed(seed)
-        params = self.gen_rand_data(shapes, np.float16
-                                    if multi_precision else np.float32)
-        grads = self.gen_rand_data(shapes, np.float16
-                                   if multi_precision else np.float32)
-        velocitys = self.gen_rand_data(shapes, np.float32)
-        learning_rate = self.gen_rand_data([[1]], np.float32)[0]
+        mp_dtype = np.float32
+        dtype = np.float16 if multi_precision and isinstance(
+            place, paddle.CUDAPlace) else np.float32
+        params = self.gen_rand_data(shapes, dtype)
+        grads = self.gen_rand_data(shapes, dtype)
+        velocitys = self.gen_rand_data(shapes, mp_dtype)
+        learning_rate = self.gen_rand_data([[1]], mp_dtype)[0]
         if multi_precision:
-            master_params = [p.astype(np.float32) for p in params]
+            master_params = [p.astype(mp_dtype) for p in params]
         else:
             master_params = None
         return params, grads, velocitys, master_params, learning_rate
 
     def check_with_place(self, place, multi_precision):
         params, grads, velocitys, master_params, learning_rate = self.prepare_data(
-            self.shapes, multi_precision, self.seed)
+            self.shapes, multi_precision, self.seed, place)
 
         def run_op(use_merged):
             # FIXME(zengjinle): CPU Momentum Op does not support rescale_grad 
@@ -176,15 +178,15 @@ class TestMergedMomentum(unittest.TestCase):
         for i, (out1, out2) in enumerate(zip(outs1, outs2)):
             self.assertTrue(np.allclose(out1, out2, atol=1e-7))
 
-    def get_places(self, multi_precision):
-        places = [paddle.CPUPlace()] if not multi_precision else []
+    def get_places(self):
+        places = [paddle.CPUPlace()]
         if paddle.is_compiled_with_cuda():
             places.append(paddle.CUDAPlace(0))
         return places
 
     def test_main(self):
         for multi_precision in [False, True]:
-            for place in self.get_places(multi_precision):
+            for place in self.get_places():
                 self.check_with_place(place, multi_precision)
 
 
