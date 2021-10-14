@@ -108,7 +108,7 @@ def _compute_numerical_hessian(func, xs, delta, np_dtype):
 
 
 def _compute_numerical_vjp(func, xs, v, delta, np_dtype):
-    xs = _check_tensors(xs, "xs")
+    xs = _tensors(xs, "xs")
     jacobian = np.array(_compute_numerical_jacobian(func, xs, delta, np_dtype))
     flat_v = np.array([v_el.numpy().reshape(-1) for v_el in v])
     vjp = [np.zeros((_product(x.shape)), dtype=np_dtype) for x in xs]
@@ -121,7 +121,7 @@ def _compute_numerical_vjp(func, xs, v, delta, np_dtype):
 
 
 def _compute_numerical_vhp(func, xs, v, delta, np_dtype):
-    xs = _check_tensors(xs, "xs")
+    xs = _tensors(xs, "xs")
     hessian = np.array(_compute_numerical_hessian(func, xs, delta, np_dtype))
     flat_v = np.array([v_el.numpy().reshape(-1) for v_el in v])
     vhp = [np.zeros((_product(x.shape)), dtype=np_dtype) for x in xs]

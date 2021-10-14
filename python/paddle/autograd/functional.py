@@ -589,15 +589,27 @@ def vhp(func, inputs, v=None, create_graph=False, allow_unused=False):
             #        [[8., 8.],
             #         [8., 8.]]), None])
     '''
-    inputs = _tensors(inputs, "inputs")
+    inputs, v = _tensors(inputs, "inputs"), _tensors(v, "v")
     outputs = func(*inputs)
     assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
         1
     ], "The function to compute vhp should return a Tensor with a single element"
-    if v is None:
-        v = list(_construct_one_tensor(input) for input in inputs)
-    else:
-        v = _tensors(v, "v")
+
+    with gradient_scope(
+            inputs, v, create_graph=create_graph,
+            allow_unused=allow_unused) as [inputs, v, grad_fn, return_fn]:
+        outputs = func(*inputs)
+        assert isinstance(outputs, paddle.Tensor) and outputs.shape == [
+            1
+        ], "The function to compute vhp should return a Tensor with a single element"
+        outputs = _tensors(outputs, "outputs")
+        jac = grad_fn(outputs, inputs, create_graph=True)
+
+
+
+        ys_grad = grad_fn(xs_grad, ys_grad, v)
+        outputs, ys_grad = return_fn(outputs), return_fn(ys_grad)
+
 
     jac = grad(
         outputs,
