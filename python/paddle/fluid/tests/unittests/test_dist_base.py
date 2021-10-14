@@ -1083,8 +1083,8 @@ class TestDistBase(unittest.TestCase):
         env = {}
         tr_cmd = "%s -u"
 
-        assert os.getenv('WITH_COVERAGE',
-                         'OFF') == 'OFF', "gloo not support WITH_COVERAGE"
+        if os.getenv('WITH_COVERAGE', 'OFF') == 'ON':
+            tr_cmd += " -m coverage run --branch -p"
 
         tr_cmd += " %s --role trainer --endpoints %s --trainer_id %d --current_endpoint %s --update_method %s --lr %f"
 
