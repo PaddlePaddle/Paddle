@@ -44,19 +44,6 @@ void Scale(const CPUContext& dev_ctx,
   eigen::Scale<CPUContext, T>(dev_ctx, x, scale, bias, bias_after_scale, out);
 }
 
-template <typename T>
-void ScaleSelectedRows(const CPUContext& dev_ctx,
-                       const SelectedRowsTensor& x,
-                       float scale,
-                       float bias,
-                       bool bias_after_scale,
-                       SelectedRowsTensor* out) {
-  out->set_rows(x.rows());
-  out->set_height(x.height());
-  Scale<T>(
-      dev_ctx, x.value(), scale, bias, bias_after_scale, out->mutable_value());
-}
-
 // TODO(chenweihang): now the ScaleTensor's dtype are same as x, so we cannot
 // register its dtype def
 template <typename T>
@@ -72,23 +59,6 @@ void ScaleHost(const CPUContext& dev_ctx,
                               bias,
                               bias_after_scale,
                               out);
-}
-
-template <typename T>
-void ScaleSelectedRowsHost(const CPUContext& dev_ctx,
-                           const SelectedRowsTensor& x,
-                           const DenseTensor& scale,
-                           float bias,
-                           bool bias_after_scale,
-                           SelectedRowsTensor* out) {
-  out->set_rows(x.rows());
-  out->set_height(x.height());
-  Scale<T>(dev_ctx,
-           x.value(),
-           static_cast<float>(*scale.data<T>()),
-           bias,
-           bias_after_scale,
-           out->mutable_value());
 }
 
 }  // namespace pt
@@ -113,36 +83,10 @@ PT_REGISTER_KERNEL("scale",
                    int16_t,
                    int,
                    int64_t) {}
-PT_REGISTER_KERNEL("scale.sr",
-                   CPU,
-                   NCHW,
-                   pt::ScaleSelectedRows,
-                   float,
-                   double,
-                   paddle::platform::bfloat16,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {}
 PT_REGISTER_KERNEL("scale.host",
                    CPU,
                    NCHW,
                    pt::ScaleHost,
-                   float,
-                   double,
-                   paddle::platform::bfloat16,
-                   uint8_t,
-                   int8_t,
-                   int16_t,
-                   int,
-                   int64_t) {
-  kernel->InputAt(1).SetBackend(pt::Backend::kCPU);
-}
-PT_REGISTER_KERNEL("scale.sr.host",
-                   CPU,
-                   NCHW,
-                   pt::ScaleSelectedRowsHost,
                    float,
                    double,
                    paddle::platform::bfloat16,

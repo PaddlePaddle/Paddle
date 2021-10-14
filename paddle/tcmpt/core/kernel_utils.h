@@ -18,7 +18,6 @@
 #include "paddle/tcmpt/core/kernel_context.h"
 #include "paddle/tcmpt/core/kernel_def.h"
 #include "paddle/tcmpt/core/scalar.h"
-#include "paddle/tcmpt/core/selected_rows_tensor.h"
 
 // See Note [ Why still include the fluid headers? ]
 #include "paddle/fluid/platform/device_context.h"
@@ -153,7 +152,8 @@ struct KernelImpl<Return (*)(Args...), kernel_fn> {
   /* Input Helpers */
 
   PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(DenseTensor);
-  PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRowsTensor);
+  // TODO(chenweihang): adapt SelectedRows
+  // PT_SPECIALIZE_KernelCallHelper_FOR_INPUT(SelectedRowsTensor);
 
   /* Attribute Helpers */
 
@@ -168,7 +168,8 @@ struct KernelImpl<Return (*)(Args...), kernel_fn> {
   /* Output Helpers */
 
   PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(DenseTensor);
-  PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRowsTensor);
+  // TODO(chenweihang): adapt SelectedRows
+  // PT_SPECIALIZE_KernelCallHelper_FOR_OUTPUT(SelectedRowsTensor);
 
   /* End case */
   template <typename T>

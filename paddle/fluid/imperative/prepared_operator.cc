@@ -168,9 +168,10 @@ static pt::KernelName ConstructPtKernelName(
     const std::string& op_type, const framework::proto::OpProto& op_proto,
     const NameVarMap<VarType>& inputs) {
   std::string overload_name;
-  if (ContainSelectedRows<VarType>(inputs)) {
-    overload_name = pt::kContainSelectedRowsSuffix;
-  }
+  // TODO(chenweihang): adapt SelectedRows by xiaowei's design
+  // if (ContainSelectedRows<VarType>(inputs)) {
+  //   overload_name = pt::kContainSelectedRowsSuffix;
+  // }
   if (ContainHostTensor<VarType>(op_proto, inputs)) {
     if (overload_name != "") {
       overload_name += ".";

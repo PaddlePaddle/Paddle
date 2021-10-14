@@ -23,7 +23,7 @@ limitations under the License. */
 namespace paddle {
 namespace framework {
 
-/* For DenseTensor */
+// TODO(chenweihang, shixiaowei): adapt SelectedRows
 
 template <>
 std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor, LoDTensor>(
@@ -55,26 +55,6 @@ std::shared_ptr<pt::DenseTensor> MakeTensorImpl<pt::DenseTensor, Tensor>(
     tensor_impl->ShareAllocation(tensor.Holder());
   } else {
     VLOG(1) << "Old Tensor holder is nullptr.";
-  }
-  return tensor_impl;
-}
-
-template <>
-std::shared_ptr<pt::SelectedRowsTensor>
-MakeTensorImpl<pt::SelectedRowsTensor, SelectedRows>(const SelectedRows& tensor,
-                                                     pt::Backend backend,
-                                                     pt::DataType dtype,
-                                                     pt::DataLayout layout) {
-  auto value = tensor.value();
-  auto holder = value.Holder();
-  auto tensor_impl = std::make_shared<pt::SelectedRowsTensor>(
-      pt::TensorMeta(value.dims(), backend, dtype, layout, value.offset()),
-      pt::TensorStatus(), tensor.rows(), tensor.height());
-
-  if (holder != nullptr) {
-    tensor_impl->mutable_value()->ShareAllocation(tensor.value().Holder());
-  } else {
-    VLOG(1) << "Old SelectedRows holder is nullptr.";
   }
   return tensor_impl;
 }
@@ -131,21 +111,21 @@ std::shared_ptr<pt::TensorInterface> InputVariableToPtTensor(
       return pt_in;
     }
   } else if (variable.template IsType<framework::SelectedRows>()) {
+    // TODO(chenweihang): now we don't deal with row and height
+    // by xiaowei's advice
     const auto& tensor = variable.template Get<framework::SelectedRows>();
     if (!platform::is_same_place(tensor.value().place(), expected_place)) {
-      framework::SelectedRows tmp_tensor;
-      tmp_tensor.set_rows(tensor.rows());
-      tmp_tensor.set_height(tensor.height());
-      TensorCopySync(tensor.value(), expected_place,
-                     tmp_tensor.mutable_value());
-      auto pt_in = framework::MakeTensorImpl<pt::SelectedRowsTensor,
-                                             framework::SelectedRows>(
-          tmp_tensor, arg_def.backend, arg_def.dtype, arg_def.layout);
+      framework::Tensor tmp_tensor;
+      TensorCopySync(tensor.value(), expected_place, &tmp_tensor);
+      // TODO(chenweihang): adapt SelectedRows by xiaowei's design
+      auto pt_in =
+          framework::MakeTensorImpl<pt::DenseTensor, framework::Tensor>(
+              tmp_tensor, arg_def.backend, arg_def.dtype, arg_def.layout);
       return pt_in;
     } else {
-      auto pt_in = framework::MakeTensorImpl<pt::SelectedRowsTensor,
-                                             framework::SelectedRows>(
-          tensor, arg_def.backend, arg_def.dtype, arg_def.layout);
+      auto pt_in =
+          framework::MakeTensorImpl<pt::DenseTensor, framework::Tensor>(
+              tensor.value(), arg_def.backend, arg_def.dtype, arg_def.layout);
       return pt_in;
     }
   } else {
@@ -173,9 +153,10 @@ std::shared_ptr<pt::TensorInterface> OutputVariableToPtTensor(
     tensor->mutable_value()->mutable_data(
         pt::TransToFluidPlace(arg_def.backend),
         pt::TransToProtoVarType(arg_def.dtype));
-    auto pt_out = framework::MakeTensorImpl<pt::SelectedRowsTensor,
-                                            framework::SelectedRows>(
-        *tensor, arg_def.backend, arg_def.dtype, arg_def.layout);
+    // TODO(chenweihang): adapt SelectedRows by xiaowei's design,
+    // here the row and height will lost in output!
+    auto pt_out = framework::MakeTensorImpl<pt::DenseTensor, framework::Tensor>(
+        tensor->value(), arg_def.backend, arg_def.dtype, arg_def.layout);
     return pt_out;
   } else {
     PADDLE_THROW(platform::errors::Unimplemented(

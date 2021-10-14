@@ -11,7 +11,7 @@
 # declare_module(MathCPU)
 # declare_module(MathCUDA)
 
-set(TCMPT_DEPS convert_utils dense_tensor selected_rows_tensor kernel_factory kernel_context)
+set(TCMPT_DEPS convert_utils dense_tensor kernel_factory kernel_context)
 set(TCMPT_DEPS ${TCMPT_DEPS} math_cpu linalg_cpu creation_cpu manipulation_cpu)
 set(TCMPT_DEPS ${TCMPT_DEPS} unary binary)
 if(WITH_GPU OR WITH_ROCM)
