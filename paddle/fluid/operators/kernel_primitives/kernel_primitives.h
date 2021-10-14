@@ -13,9 +13,13 @@
 // limitations under the License.
 
 #pragma once
-
+#ifdef PADDLE_WITH_XPU
+#include "paddle/fluid/operators/kernel_primitives/compute_primitives_xpu2.h"
+#include "paddle/fluid/operators/kernel_primitives/datamover_primitives_xpu2.h"
+#else
 #include "paddle/fluid/operators/kernel_primitives/compute_primitives.h"
 #include "paddle/fluid/operators/kernel_primitives/datamover_primitives.h"
+#endif
 #include "paddle/fluid/operators/kernel_primitives/functor_primitives.h"
 #include "paddle/fluid/operators/kernel_primitives/helper_primitives.h"
 
