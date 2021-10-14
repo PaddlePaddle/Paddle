@@ -48,7 +48,7 @@ class CUDAVirtualMemAllocator : public Allocator {
   size_t granularity_;
 
   CUmemAllocationProp prop_;
-  CUmemAccessDesc access_desc_;
+  std::vector<CUmemAccessDesc> access_desc_;
 
   std::map<CUdeviceptr, std::pair<CUmemGenericAllocationHandle, size_t>>
       virtual_2_physical_map_;

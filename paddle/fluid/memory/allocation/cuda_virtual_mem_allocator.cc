@@ -26,7 +26,6 @@
 #include "paddle/fluid/platform/dynload/cuda_driver.h"
 #include "paddle/fluid/platform/gpu_info.h"
 #endif
-
 #if CUDA_VERSION >= 10020
 
 namespace paddle {
@@ -37,25 +36,32 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
     const platform::CUDAPlace& place)
     : place_(place) {
   CUmemAllocationProp prop = {};
-  CUmemAccessDesc access_desc = {};
 
   prop.type = CU_MEM_ALLOCATION_TYPE_PINNED;
   prop.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
   prop.location.id = place.device;
   prop_ = prop;
 
-  access_desc.location.type = CU_MEM_LOCATION_TYPE_DEVICE;
-  access_desc.location.id = place.device;
-  access_desc.flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
-  access_desc_ = access_desc;
+  access_desc_.resize(platform::GetCUDADeviceCount());
+  for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount(); ++dev_id) {
+    access_desc_[dev_id].location.type = CU_MEM_LOCATION_TYPE_DEVICE;
+    access_desc_[dev_id].location.id = dev_id;
+    access_desc_[dev_id].flags = CU_MEM_ACCESS_FLAGS_PROT_READWRITE;
+  }
 
-  auto result = paddle::platform::dynload::cuMemGetAllocationGranularity(
-      &granularity_, &prop_, CU_MEM_ALLOC_GRANULARITY_MINIMUM);
-  PADDLE_ENFORCE_EQ(
-      result, CUDA_SUCCESS,
-      platform::errors::Fatal(
-          "Call CUDA API cuMemGetAllocationGranularity faild, return %d.",
-          result));
+  granularity_ = 0;
+  for (int dev_id = 0; dev_id < platform::GetCUDADeviceCount(); ++dev_id) {
+    size_t granularity;
+    prop.location.id = dev_id;
+    auto result = paddle::platform::dynload::cuMemGetAllocationGranularity(
+        &granularity, &prop, CU_MEM_ALLOC_GRANULARITY_MINIMUM);
+    PADDLE_ENFORCE_EQ(
+        result, CUDA_SUCCESS,
+        platform::errors::Fatal(
+            "Call CUDA API cuMemGetAllocationGranularity faild, return %d.",
+            result));
+    granularity_ = std::max(granularity, granularity_);
+  }
 
   size_t actual_avail, actual_total;
   paddle::platform::CUDADeviceGuard guard(place.device);
@@ -63,7 +69,7 @@ CUDAVirtualMemAllocator::CUDAVirtualMemAllocator(
 
   virtual_mem_size_ = (actual_total + granularity_ - 1) & ~(granularity_ - 1);
 
-  result = paddle::platform::dynload::cuMemAddressReserve(
+  auto result = paddle::platform::dynload::cuMemAddressReserve(
       &virtual_mem_base_, virtual_mem_size_, 0, 0, 0);
   PADDLE_ENFORCE_EQ(
       result, CUDA_SUCCESS,
@@ -179,8 +185,8 @@ Allocation* CUDAVirtualMemAllocator::AllocateImpl(size_t size) {
     return nullptr;
   }
 
-  result =
-      paddle::platform::dynload::cuMemSetAccess(ptr, size, &access_desc_, 1);
+  result = paddle::platform::dynload::cuMemSetAccess(
+      ptr, size, access_desc_.data(), access_desc_.size());
 
   if (result != CUDA_SUCCESS) {
     paddle::platform::dynload::cuMemUnmap(ptr, size);
