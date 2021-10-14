@@ -366,13 +366,13 @@ void LaunchKernel(const platform::CUDADeviceContext &ctx,
   }
 
 #ifdef PADDLE_WITH_XPU
-  blocks = 8;
+  int cluster_num = 8;
   ElementwiseKernel<InT, OutT, Functor, VecSize, Arity,
-                    Rank><<<blocks, threads, stream>>>(
+                    Rank><<<cluster_num, threads, 0, stream>>>(
       ins_data, out_data, use_broadcast, numel, configs, main_tid, func);
 #else
   ElementwiseKernel<InT, OutT, Functor, VecSize, Arity,
-                    Rank><<<blocks, threads, 0, stream>>>(
+                    Rank><<<blocks, threads, stream>>>(
       ins_data, out_data, use_broadcast, numel, configs, main_tid, func);
 #endif
 }
