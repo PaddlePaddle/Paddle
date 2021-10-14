@@ -86,8 +86,8 @@ class TestTanhTripleGradCheck(unittest.TestCase):
 
     def test_grad(self):
         places = [fluid.CPUPlace()]
-        # if core.is_compiled_with_cuda():
-        #     places.append(fluid.CUDAPlace(0))
+        if core.is_compiled_with_cuda():
+            places.append(fluid.CUDAPlace(0))
         for p in places:
             self.func(p)
 
