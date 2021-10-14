@@ -51,10 +51,9 @@ Tensor full_like(const Tensor& x, const pt::Scalar& value, pt::DataType dtype) {
 
   // 5. Prepare outputs
   Tensor out;
-  auto out_def = kernel.args_def().output_defs()[0];
   // InferDataType
   if (dtype != pt::DataType::kUndef) {
-    out_def.SetDataType(dtype);
+    out_meta.type = dtype;
   }
   auto dense_out =
       std::make_shared<pt::DenseTensor>(out_meta, pt::TensorStatus());
