@@ -107,7 +107,6 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     auto *qkv_bias_out_data = qkv_bias_out->mutable_data<T>(ctx.GetPlace());
 
     // get data ptr for FMHA.
-    auto *src_mask_data = (src_mask == nullptr ? nullptr : src_mask->data<T>());
     auto *transpose_out_2_data =
         transpose_out_2->mutable_data<T>(ctx.GetPlace());
     auto *qk_out_data = qk_out->mutable_data<T>(ctx.GetPlace());
@@ -150,14 +149,11 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
     int output_size = 3 * hidden_size;
     int input_size = dim_embed;
 
-    bool transA = false;
-    bool transB = true;
-    bool compute_bias = true;
     auto layer_norm_compute = AttnLayerNorm<T>(ctx.cuda_device_context(),
                                                epsilon, bsz_seq, dim_embed);
-    auto qkv_compute =
-        AttnMatMul<T>(ctx.cuda_device_context(), transA, transB, bsz_seq,
-                      output_size, input_size, compute_bias);
+    // (transA, transB, compute_bias) = (false, true, true)
+    auto qkv_compute = AttnMatMul<T>(ctx.cuda_device_context(), false, true,
+                                     bsz_seq, output_size, input_size, true);
 
     AttnDropoutParam attn_dropout_param(
         is_test_1, dropout_implementation_1, attn_dropout_prob,
@@ -167,12 +163,10 @@ class FusedAttentionOpKernel : public framework::OpKernel<T> {
                    dim_head, attn_dropout_param);
 
     output_size = hidden_size;
-    transA = false;
-    transB = false;
-    compute_bias = false;
+    // (transA, transB, compute_bias) = (false, false, false)
     auto out_linear_compute =
-        AttnMatMul<T>(ctx.cuda_device_context(), transA, transB, bsz_seq,
-                      output_size, input_size, compute_bias);
+        AttnMatMul<T>(ctx.cuda_device_context(), false, false, bsz_seq,
+                      output_size, input_size, false);
     DropoutParam dropout_param2(ctx, 0);
     FusedDropoutLayerNormHelper<T, uint8_t> fused_dropout_layernorm_helper(
         ctx.cuda_device_context(), bsz_seq, dim_embed, dropout_param2,

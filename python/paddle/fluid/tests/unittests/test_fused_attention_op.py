@@ -102,52 +102,50 @@ class TestFusedAttentionOp(OpTest):
         attn_mask = paddle.to_tensor(self.attn_mask, stop_gradient=False)
         residual = tensor_query
 
-        for i in range(1):
-            ln1_out = tensor_query
-            if self.pre_layer_norm:
-                ln1_out = self.norm1(tensor_query)
+        ln1_out = tensor_query
+        if self.pre_layer_norm:
+            ln1_out = self.norm1(tensor_query)
 
-            q = self.q_proj(ln1_out)
-            q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
-            q_out = tensor.transpose(x=q, perm=[0, 2, 1, 3])
-            k = self.k_proj(ln1_out)
-            v = self.v_proj(ln1_out)
-            k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
-            k_out = tensor.transpose(x=k, perm=[0, 2, 1, 3])
-            v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
-            v_out = tensor.transpose(x=v, perm=[0, 2, 1, 3])
+        q = self.q_proj(ln1_out)
+        q = tensor.reshape(x=q, shape=[0, 0, self.num_heads, self.head_dim])
+        q_out = tensor.transpose(x=q, perm=[0, 2, 1, 3])
+        k = self.k_proj(ln1_out)
+        v = self.v_proj(ln1_out)
+        k = tensor.reshape(x=k, shape=[0, 0, self.num_heads, self.head_dim])
+        k_out = tensor.transpose(x=k, perm=[0, 2, 1, 3])
+        v = tensor.reshape(x=v, shape=[0, 0, self.num_heads, self.head_dim])
+        v_out = tensor.transpose(x=v, perm=[0, 2, 1, 3])
 
-            qk_out = layers.matmul(
-                x=q_out, y=k_out, transpose_y=True, alpha=self.head_dim**-0.5)
+        qk_out = layers.matmul(
+            x=q_out, y=k_out, transpose_y=True, alpha=self.head_dim**-0.5)
 
-            if attn_mask is not None:
-                attn_mask = _convert_attention_mask(attn_mask, qk_out.dtype)
-                attn_mask_out = qk_out + attn_mask
-                softmax_out = F.softmax(attn_mask_out)
-            else:
-                softmax_out = F.softmax(qk_out)
+        if attn_mask is not None:
+            attn_mask = _convert_attention_mask(attn_mask, qk_out.dtype)
+            attn_mask_out = qk_out + attn_mask
+            softmax_out = F.softmax(attn_mask_out)
+        else:
+            softmax_out = F.softmax(qk_out)
 
-            if self.dropout_prob:
-                dropout_out = F.dropout(
-                    softmax_out,
-                    self.dropout_prob,
-                    training=self.training,
-                    mode="upscale_in_train")
-                qktv_out = tensor.matmul(dropout_out, v_out)
-            else:
-                qktv_out = tensor.matmul(softmax_out, v_out)
+        if self.dropout_prob:
+            dropout_out = F.dropout(
+                softmax_out,
+                self.dropout_prob,
+                training=self.training,
+                mode="upscale_in_train")
+            qktv_out = tensor.matmul(dropout_out, v_out)
+        else:
+            qktv_out = tensor.matmul(softmax_out, v_out)
 
-            fmha_out = tensor.transpose(qktv_out, perm=[0, 2, 1, 3])
-            out_linear_in = tensor.reshape(
-                x=fmha_out,
-                shape=[0, 0, fmha_out.shape[2] * fmha_out.shape[3]])
-            out = self.out_proj(out_linear_in)
+        fmha_out = tensor.transpose(qktv_out, perm=[0, 2, 1, 3])
+        out_linear_in = tensor.reshape(
+            x=fmha_out, shape=[0, 0, fmha_out.shape[2] * fmha_out.shape[3]])
+        out = self.out_proj(out_linear_in)
 
-            residual_out = residual + self.dropout(out)
-            if not self.pre_layer_norm:
-                final_out = self.norm1(residual_out)
-            if self.pre_layer_norm:
-                final_out = self.norm2(residual_out)
+        residual_out = residual + self.dropout(out)
+        if not self.pre_layer_norm:
+            final_out = self.norm1(residual_out)
+        if self.pre_layer_norm:
+            final_out = self.norm2(residual_out)
         return final_out
 
     def GetFusedAttentionOut(self):
