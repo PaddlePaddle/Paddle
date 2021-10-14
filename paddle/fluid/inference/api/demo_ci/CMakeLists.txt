@@ -155,12 +155,12 @@ if (NOT WIN32)
       ${MATH_LIB} ${MKLDNN_LIB}
       glog gflags protobuf xxhash cryptopp 
       ${EXTERNAL_LIB})
-  set(DEPS ${DEPS} libutf8proc.a)
+  set(DEPS ${DEPS} "${PADDLE_LIB_THIRD_PARTY_PATH}uft8proc/lib/libutf8proc.a")
 else()
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
       glog gflags_static libprotobuf xxhash cryptopp-static ${EXTERNAL_LIB})
-  set(DEPS ${DEPS} utf8proc_static.lib)
+  set(DEPS ${DEPS} "${PADDLE_LIB_THIRD_PARTY_PATH}uft8proc/lib/libutf8proc.a")
 endif(NOT WIN32)
 
 if(WITH_GPU)
