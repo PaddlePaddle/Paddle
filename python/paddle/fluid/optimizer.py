@@ -5807,6 +5807,7 @@ class PipelineOptimizer(object):
         self.global_ring_id = pipeline_opt['global_ring_id']
         self.mp_degree = pipeline_opt['mp_degree']
         self.mp_rank = pipeline_opt['mp_rank']
+        self.scale_gradient = pipeline_opt.get('scale_gradient', False)
         assert self.mp_degree >= 1
         assert 0 <= self.mp_rank < self.mp_degree
 
@@ -5873,7 +5874,8 @@ class PipelineOptimizer(object):
             "startup_program": new_startup_program,
         }
         real_block = program_list[self.local_rank].global_block()
-        self._insert_loss_scale(real_block)
+        if not self.scale_gradient:
+            self._insert_loss_scale(real_block)
         if not self.use_sharding:
             # Step7: clear gradients before each mini-batch and 
             # accumulate gradients during backward
