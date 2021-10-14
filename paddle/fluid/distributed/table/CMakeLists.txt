@@ -35,4 +35,7 @@ cc_library(tensor_accessor SRCS tensor_accessor.cc DEPS ${TABLE_DEPS} eigen3 ps_
 cc_library(tensor_table SRCS tensor_table.cc DEPS eigen3 ps_framework_proto executor scope device_context tensor ${TABLE_DEPS})
 set_source_files_properties(table.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
 
-cc_library(table SRCS table.cc DEPS common_table tensor_accessor tensor_table ps_framework_proto string_helper device_context gflags glog boost)
+set_source_files_properties(ctr_sparse_sgd.cc PROPERTIES COMPILE_FLAGS ${DISTRIBUTE_COMPILE_FLAGS})
+cc_library(ctr_sparse_sgd SRCS ctr_sparse_sgd.cc DEPS ${TABLE_DEPS} ps_framework_proto)
+
+cc_library(table SRCS table.cc DEPS ctr_sparse_sgd common_table tensor_accessor tensor_table ps_framework_proto string_helper device_context gflags glog boost)
