@@ -15,8 +15,7 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 
-#include "paddle/tcmpt/api/include/dev/symbols.h"
-#include "paddle/tcmpt/api/include/manipulation.h"
+#include "paddle/tcmpt/hapi/include/manipulation.h"
 
 #include "paddle/tcmpt/core/dense_tensor.h"
 
@@ -37,10 +36,10 @@ TEST(API, flatten) {
     dense_x_data[i] = i;
   }
 
-  pt::Tensor x(dense_x);
+  paddle::experimental::Tensor x(dense_x);
   int start_axis = 1, stop_axis = 2;
   // 2. test API
-  auto out = pt::flatten(x, start_axis, stop_axis);
+  auto out = paddle::experimental::flatten(x, start_axis, stop_axis);
 
   // 3. check result
   std::vector<int> expect_shape = {3, 4, 3};
