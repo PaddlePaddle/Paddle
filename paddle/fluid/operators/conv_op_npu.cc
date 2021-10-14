@@ -341,7 +341,6 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
     Tensor input_tensor, output_grad_tensor;
     input_tensor.ShareDataWith(*input);
     output_grad_tensor.ShareDataWith(*output_grad);
-
     if (channel_last) {
       input_tensor.set_layout(DataLayout::kNHWC);
       output_grad_tensor.set_layout(DataLayout::kNHWC);
@@ -358,7 +357,7 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
 
     auto stream = ctx.template device_context<NPUDeviceContext>().stream();
     if (filter_grad) {
-      filter_grad->mutable_data<float>(ctx.GetPlace());
+      filter_grad->mutable_data<T>(ctx.GetPlace());
       std::vector<int> filter_shape_vec =
           framework::vectorize<int>(filter->dims());
 
@@ -373,13 +372,12 @@ class NPUConvGradOpKernel : public framework::OpKernel<T> {
       runner.Run(stream);
     }
     if (input_grad) {
-      input_grad->mutable_data<float>(ctx.GetPlace());
+      input_grad->mutable_data<T>(ctx.GetPlace());
       std::vector<int> input_shape_vec =
           framework::vectorize<int>(input->dims());
 
       Tensor input_grad_tensor;
       input_grad_tensor.ShareDataWith(*input_grad);
-
       if (channel_last) {
         input_grad_tensor.set_layout(DataLayout::kNHWC);
       }
