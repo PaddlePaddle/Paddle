@@ -153,14 +153,13 @@ if (NOT WIN32)
   set(EXTERNAL_LIB "-lrt -ldl -lpthread")
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags protobuf xxhash cryptopp 
+      glog gflags protobuf xxhash cryptopp utf8proc
       ${EXTERNAL_LIB})
-  set(DEPS ${DEPS} "${PADDLE_LIB_THIRD_PARTY_PATH}uft8proc/lib/libutf8proc.a")
 else()
   set(DEPS ${DEPS}
       ${MATH_LIB} ${MKLDNN_LIB}
-      glog gflags_static libprotobuf xxhash cryptopp-static ${EXTERNAL_LIB})
-  set(DEPS ${DEPS} "${PADDLE_LIB_THIRD_PARTY_PATH}uft8proc/lib/utf8proc_static.lib")
+      glog gflags_static libprotobuf xxhash cryptopp-static utf8proc_static
+      ${EXTERNAL_LIB})
 endif(NOT WIN32)
 
 if(WITH_GPU)
